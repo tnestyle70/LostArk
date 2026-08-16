@@ -28,6 +28,7 @@ NS_BEGIN(Client)
 
 class CEffectObject;
 class CEffectThumbnailCache;
+struct EFFECT_PRODUCT_CUE_ADMISSION;
 class EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION;
 struct EFFECT_FIXED_STEP_TRANSFORM_SAMPLE;
 struct EFFECT_VISUAL_PROGRAM;
@@ -89,6 +90,46 @@ enum class EFFECT_DOCUMENT_SOURCE : uint8_t
     END
 };
 
+enum class EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND : uint8_t
+{
+	PLAYER_CLASS,
+	VALTAN_BOSS
+};
+
+struct EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION final
+{
+	EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND eKind =
+		EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS;
+	LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::END;
+	std::string_view strLabel;
+};
+
+inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 7u>
+	EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS = {{
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
+			"Lance Master" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::GUNSLINGER,
+			"Gunslinger" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::SLAYER,
+			"Slayer" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
+			"Artist" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
+			"Dimension Master" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
+			LostArk::Shared::CHARACTER_CLASS_ID::WARLORD,
+			"Warlord" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS,
+			LostArk::Shared::CHARACTER_CLASS_ID::END,
+			"Valtan" }
+	}};
+
 enum class EFFECT_AUTHORING_FAMILY : uint8_t
 {
 	MESH,
@@ -135,6 +176,8 @@ private:
         {
             ANIMATION_EFFECT_CUE Cue;
             size_t iBoundClipOrdinal = 0u;
+			size_t iStageIndex = 0u;
+			size_t iStageClipIndex = 0u;
         };
 
         PLAYER_SKILL_DEFINITION Skill;
@@ -161,6 +204,16 @@ private:
         EFFECT_DOCUMENT_SOURCE eSource = EFFECT_DOCUMENT_SOURCE::END;
     };
 
+	struct DIRECT_AUTHORED_EDITABLE_ENTRY final
+	{
+		std::filesystem::path Path;
+		std::filesystem::file_time_type LastWriteTime{};
+		uint64_t iFileSize = 0u;
+		bool_t bIdentityObserved = false;
+		bool_t bIdentityValid = false;
+		std::string strStatus;
+	};
+
     struct PENDING_DOCUMENT_LOAD final
     {
         std::filesystem::path Path;
@@ -185,6 +238,26 @@ private:
 		std::string strDrawableError;
 		std::string strPreviewReadinessError;
 		std::string strStatus;
+	};
+
+	struct UNIFIED_EFFECT_CANDIDATE_BINDING final
+	{
+		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
+			LostArk::Shared::CHARACTER_CLASS_ID::END;
+		LostArk::Shared::SKILL_ID iSkillId =
+			LostArk::Shared::INVALID_SKILL_ID;
+		size_t iStageIndex = 0u;
+		size_t iStageClipIndex = 0u;
+		std::string strClipName;
+		std::string strEffectAssetId;
+		std::string strLegacyProductEffectAssetId;
+		std::filesystem::path Path;
+	};
+
+	struct BOSS_PATTERN_EFFECT_TREE_ENTRY final
+	{
+		BOSS_PATTERN_EFFECT_TREE_ROW Row;
+		UNIFIED_EFFECT_CACHE Cache;
 	};
 
 	enum class ARTIST_F_PREPARATION_STATE : uint8_t
@@ -251,10 +324,15 @@ private:
     void Render_UVDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_UVKeyframes(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TimingDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
+	void Render_SizeDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
+	void Render_AuthoringMaterialParameters(
+		EFFECT_ELEMENT_DESC& Element,
+		bool_t& bChanged);
     void Render_KindDetail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_SourceRecipeDetail(
         EFFECT_CASCADE_RECIPE_DESC& Recipe,
-        bool_t& bChanged);
+        bool_t& bChanged,
+		bool_t bPortableReadOnly);
 	void Render_SelectedVisualProgramEvidence() const;
     void Render_SourceModuleDetail(
         EFFECT_SOURCE_MODULE_DESC& Module,
@@ -295,6 +373,9 @@ private:
     bool_t Try_ClearElements();
     bool_t Try_ApplyDraftAndSave();
     bool_t Try_SaveDocument();
+	bool_t Resolve_ActiveProductCueAdmission(
+		std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>& OutAdmission,
+		std::string& strOutStatus) const;
     bool_t Try_PublishActiveProductAndReloadRuntime();
     bool_t Try_SaveDocumentAs(const std::string& strAssetId);
 	bool_t Try_SaveSelectedAdapterElementAsGenericAuthoredCopy(
@@ -313,12 +394,15 @@ private:
         bool_t bBypassUnsavedGuard);
     bool_t Execute_PendingDocumentLoad(bool_t bSaveFirst);
     bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
+	bool_t Refresh_ValtanBossPatternEffects();
     bool_t Refresh_DataFiles();
     bool_t Refresh_ResourceCatalog();
     void Select_AuthoringDomain(const std::string& strDomainId);
     bool_t Select_AuthoringDomainForClass(
         LostArk::Shared::CHARACTER_CLASS_ID eClass);
     bool_t Try_BindResource(const std::string& strAssetId);
+	bool_t Try_ResetAuthoringResourceOverride(const std::string& strSlotId);
+	bool_t Try_ClearAuthoringOverrides();
     bool_t Try_ClearSelectedSlot();
     bool_t Try_CommitDocument(EFFECT_DOCUMENT_DESC&& Staged);
     bool_t Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER eFilter);
@@ -335,6 +419,13 @@ private:
 		UNIFIED_EFFECT_CACHE& Cache,
 		const std::filesystem::path& Path,
 		const std::string& strExpectedEffectAssetId);
+	bool_t Refresh_UnifiedCandidateBindings(
+		const std::vector<EFFECT_DATA_FILE_ENTRY>& DataFiles);
+	bool_t Refresh_DirectAuthoredEditableIndex(
+		const std::vector<EFFECT_DATA_FILE_ENTRY>& DataFiles);
+	const std::filesystem::path* Resolve_DirectAuthoredEditablePath(
+		const std::string& strEffectAssetId,
+		std::string& strOutStatus);
 	bool_t Is_UnifiedEffectActive(
 		const UNIFIED_EFFECT_CACHE& Cache) const;
 	bool_t Validate_UnifiedEffectPreviewReadiness(
@@ -422,6 +513,15 @@ private:
 		f32_t fEffectSampleTimeSeconds,
 		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
 		std::string& strOutError) const;
+	bool_t Prepare_ValtanBossPatternTransformHistory(
+		const BOSS_PATTERN_EFFECT_BINDING& Binding,
+		const EFFECT_DOCUMENT_DESC& Document,
+		std::string& strOutError);
+	bool_t Build_ValtanBossPatternTransformSample(
+		f32_t fEffectSampleTimeSeconds,
+		EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+		std::string& strOutError) const;
+	void Reset_ValtanBossPatternTransformHistory();
 	bool_t Update_ReconstructedSourceRuntimeTimeline(f32_t fTimeDelta);
 	bool_t Seek_ReconstructedSourceRuntimeTimeline(f32_t fSampleTimeSeconds);
 	void Reset_ReconstructedSourceRuntimeTimeline();
@@ -501,6 +601,7 @@ private:
     void Reset_MeshAuthoringDraft();
     void Reset_ParticleSystemDraft();
     void Reset_DetailDraft();
+	void Refresh_DetailDraftAdmission(const EFFECT_ELEMENT_DESC& Element);
 	void Reset_ModelCueDraft();
     void Recalculate_PreviewDuration();
     void Recalculate_PreviewDuration(const EFFECT_DOCUMENT_DESC& Document);
@@ -537,7 +638,12 @@ private:
 		m_SourceAuthoringOverlayDocument;
 	optional<EFFECT_OCCURRENCE_LOCAL_TRANSFORM> m_OccurrenceTransformDraft;
 	UNIFIED_EFFECT_CACHE m_ArtistFUnifiedCache;
-	UNIFIED_EFFECT_CACHE m_DimensionMasterTUnifiedCache;
+	std::vector<UNIFIED_EFFECT_CANDIDATE_BINDING>
+		m_UnifiedCandidateBindings;
+	std::unordered_map<std::string, UNIFIED_EFFECT_CACHE>
+		m_UnifiedCandidateCaches;
+	std::unordered_map<std::string, DIRECT_AUTHORED_EDITABLE_ENTRY>
+		m_DirectAuthoredEditableEntries;
 	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		m_pSelectedVisualSourceProjection;
 	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
@@ -557,6 +663,7 @@ private:
     vector<EFFECT_RESOURCE_DOMAIN_CATALOG> m_ResourceDomains;
     vector<size_t> m_VisibleResourceIndices;
     vector<EFFECT_SKILL_TREE_ENTRY> m_AllEffects;
+	std::vector<BOSS_PATTERN_EFFECT_TREE_ENTRY> m_ValtanBossPatternEffects;
     vector<EFFECT_DATA_FILE_ENTRY> m_DataFiles;
     vector<string> m_DataFileDomains;
     vector<ANIMATION_SKILL_CLIP> m_SynchronizedAnimationClips;
@@ -568,6 +675,7 @@ private:
         EFFECT_DETAIL_SELECTION::NONE;
     LostArk::Shared::CHARACTER_CLASS_ID m_eAllEffectsClass =
         LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER;
+	bool_t m_bAllEffectsValtanBossSelected = false;
     EFFECT_PREVIEW_FILTER m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     EFFECT_DOCUMENT_SOURCE m_eActiveDocumentSource =
         EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT;
@@ -602,7 +710,10 @@ private:
     string m_strSelectedDataFileAssetId;
     string m_strSelectedAuthoringDomainId = "DimensionMaster";
     string m_strPreviewAnchorSlotId = "root";
-    string m_strDetailDraftElementId;
+	string m_strDetailDraftElementId;
+	string m_strDetailDraftCapabilityReason;
+	string m_strUnifiedCandidateStatus;
+	string m_strValtanBossPatternStatus;
     string m_strResourceViewFilter;
     string m_strResourceViewDomainId;
     string m_strResourceViewCategory;
@@ -641,6 +752,14 @@ private:
 	bool_t m_bReconstructedSourceRuntimeStartPending = false;
 	bool_t m_bReconstructedSourceRuntimeNaturalTailActive = false;
 	CAnimationHistoricalPoseBinding m_ReconstructedSourceRuntimePoseBinding;
+	CAnimationHistoricalPoseBinding m_ValtanBossPatternPoseBinding;
+	EFFECT_TRANSFORM_DESC m_ValtanBossPatternSocketLocalTransform{};
+	std::string m_strValtanBossPatternPreviewEffectAssetId;
+	std::string m_strValtanBossPatternAnchorSlotId;
+	std::string m_strValtanBossPatternBoneName;
+	f32_t m_fValtanBossPatternAnimationDurationSeconds = 0.f;
+	bool_t m_bValtanBossPatternTransformHistoryRequired = false;
+	bool_t m_bValtanBossPatternTransformHistoryActive = false;
 	bool_t m_bDocumentDirty = false;
 	bool_t m_bActiveDocumentDrawable = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;
@@ -651,6 +770,8 @@ private:
     bool_t m_bParticleSystemDraftDirty = false;
     bool_t m_bMeshAuthoringDraftInitialized = false;
     bool_t m_bDetailDraftDirty = false;
+	bool_t m_bDetailDraftPortableRecipeReadOnly = false;
+	bool_t m_bDetailDraftCapabilityDeferred = false;
 	bool_t m_bDetailDraftPreviewPending = false;
 	bool_t m_bModelCueDraftDirty = false;
 	bool_t m_bOccurrenceTuningDirty = false;
@@ -678,8 +799,10 @@ private:
 	f32_t m_fReconstructedSourceRuntimeClockSeconds = 0.f;
 	f32_t m_fReconstructedSourceRuntimeTailSeconds = 0.f;
 	double m_fNextUnifiedCachePollSeconds = 0.0;
+	double m_fNextUnifiedCandidateCachePollSeconds = 0.0;
 
 	string m_strDocumentStatus;
+	string m_strDirectAuthoredEditableStatus;
 	string m_strActiveDocumentDrawableError;
     shared_ptr<const EFFECT_DOCUMENT_DESC> m_pRuntimeEquivalenceDocument;
     string m_strRuntimeEquivalenceCanonical;

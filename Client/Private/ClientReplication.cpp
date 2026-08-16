@@ -17,6 +17,8 @@
 #include "ValtanPresentationAssetService.h"
 #include "DeployPropRuntime.h"
 
+#include <algorithm>
+
 namespace
 {
 	Client::NET_PLAYER_RECORD Make_Record(
@@ -316,6 +318,38 @@ bool Client::CClientReplication::Try_Consume_WorldDestructionLiveEvent(
 std::shared_ptr<CCharacter> Client::CClientReplication::Get_LocalCharacter() const
 {
 	return m_Registry.Resolve(m_LocalCharacterHandle);
+}
+
+void Client::CClientReplication::Collect_PlayerViews(
+	std::vector<REPLICATED_PLAYER_VIEW>& outPlayers) const
+{
+	const std::vector<LIVE_NET_PLAYER> livePlayers =
+		m_Registry.Get_LivePlayers();
+	const std::shared_ptr<CCharacter> localCharacter =
+		m_Registry.Resolve(m_LocalCharacterHandle);
+
+	outPlayers.resize(livePlayers.size());
+	for (std::size_t index = 0u; index < livePlayers.size(); ++index)
+	{
+		const LIVE_NET_PLAYER& source = livePlayers[index];
+		REPLICATED_PLAYER_VIEW& target = outPlayers[index];
+		target.iPlayerId = source.Record.iPlayerId;
+		target.iNetEntityId = source.Record.iNetEntityId;
+		target.eCharacterClass = source.Record.eCharacterClass;
+		target.strNickname = source.Record.strNickName;
+		target.isLocal = nullptr != localCharacter &&
+			source.pCharacter == localCharacter;
+		target.pCharacter = source.pCharacter;
+	}
+
+	std::sort(
+		outPlayers.begin(),
+		outPlayers.end(),
+		[](const REPLICATED_PLAYER_VIEW& left,
+			const REPLICATED_PLAYER_VIEW& right)
+		{
+			return left.iNetEntityId < right.iNetEntityId;
+		});
 }
 
 #ifdef _DEBUG

@@ -15,6 +15,7 @@ import importlib.util
 import json
 from pathlib import Path, PurePosixPath
 import re
+import stat
 import sys
 from typing import Any
 
@@ -28,9 +29,9 @@ DIRECT_ENTRY_KEYS = (
     "payloadKind",
     "effectAssetId",
     "authoringFormatVersion",
+    "authoredDocumentPath",
     "contentSha256",
     "dependencies",
-    "authoredDocumentUtf8",
 )
 DEPENDENCY_KEYS = ("assetId", "sha256")
 STABLE_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
@@ -112,31 +113,60 @@ def _validate_dependency_asset_id(value: Any, previous: str) -> str:
     return value
 
 
-def validate_direct_entry(entry: dict[str, Any], effect_id: str) -> None:
-    _require_exact_order(entry, DIRECT_ENTRY_KEYS, "direct authored runtime entry")
-    if entry["payloadKind"] != DIRECT_PAYLOAD_KIND:
-        raise ContractError("direct authored runtime payloadKind mismatch")
-    if entry["effectAssetId"] != effect_id:
-        raise ContractError("direct authored outer effect identity mismatch")
-    version = entry["authoringFormatVersion"]
-    if type(version) is not int or version != AUTHORING_VERSION:
-        raise ContractError("direct authored runtime authoring version is invalid")
+def _load_sealed_authored_document(
+    runtime_catalog_path: Path,
+    authored_document_path: Any,
+    effect_id: str,
+    content_sha: str,
+) -> dict[str, Any]:
+    expected_path = f"Authored/{effect_id}.{content_sha}.effect.json"
+    if authored_document_path != expected_path:
+        raise ContractError(
+            "direct authored runtime document path is not the sealed canonical path"
+        )
 
-    content_sha = _require_sha(
-        entry["contentSha256"], "direct authored runtime contentSha256"
-    )
-    authored_text = entry["authoredDocumentUtf8"]
-    if not isinstance(authored_text, str) or authored_text.startswith("\ufeff"):
-        raise ContractError("direct authored runtime document text is invalid")
+    catalog_root = runtime_catalog_path.resolve(strict=False).parent
+    relative_path = PurePosixPath(expected_path)
+    candidate = catalog_root.joinpath(*relative_path.parts)
     try:
-        authored_bytes = authored_text.encode("utf-8")
-    except UnicodeEncodeError as exc:
-        raise ContractError("direct authored runtime document is not UTF-8") from exc
+        resolved = candidate.resolve(strict=True)
+    except OSError as exc:
+        raise ContractError(
+            f"direct authored runtime document could not be resolved: {exc}"
+        ) from exc
+    try:
+        resolved.relative_to(catalog_root)
+    except ValueError as exc:
+        raise ContractError(
+            "direct authored runtime document escapes the runtime catalog directory"
+        ) from exc
+    try:
+        candidate_stat = candidate.lstat()
+    except OSError as exc:
+        raise ContractError(
+            f"direct authored runtime document could not be inspected: {exc}"
+        ) from exc
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    file_attributes = getattr(candidate_stat, "st_file_attributes", 0)
+    if (
+        not stat.S_ISREG(candidate_stat.st_mode)
+        or (reparse_flag and file_attributes & reparse_flag)
+        or not resolved.is_file()
+    ):
+        raise ContractError("direct authored runtime document is not a regular file")
+    try:
+        authored_bytes = resolved.read_bytes()
+    except OSError as exc:
+        raise ContractError(
+            f"direct authored runtime document could not be read: {exc}"
+        ) from exc
+    if authored_bytes.startswith(b"\xef\xbb\xbf"):
+        raise ContractError("direct authored runtime document must be UTF-8 without BOM")
     if hashlib.sha256(authored_bytes).hexdigest() != content_sha:
         raise ContractError("direct authored runtime document hash mismatch")
     try:
         authored = json.loads(
-            authored_text, object_pairs_hook=_object_no_duplicates
+            authored_bytes.decode("utf-8"), object_pairs_hook=_object_no_duplicates
         )
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise ContractError(
@@ -153,6 +183,30 @@ def validate_direct_entry(entry: dict[str, Any], effect_id: str) -> None:
         or not isinstance(authored.get("elements"), list)
     ):
         raise ContractError("direct authored runtime document identity mismatch")
+    return authored
+
+
+def validate_direct_entry(
+    entry: dict[str, Any], effect_id: str, runtime_catalog_path: Path
+) -> None:
+    _require_exact_order(entry, DIRECT_ENTRY_KEYS, "direct authored runtime entry")
+    if entry["payloadKind"] != DIRECT_PAYLOAD_KIND:
+        raise ContractError("direct authored runtime payloadKind mismatch")
+    if entry["effectAssetId"] != effect_id:
+        raise ContractError("direct authored outer effect identity mismatch")
+    version = entry["authoringFormatVersion"]
+    if type(version) is not int or version != AUTHORING_VERSION:
+        raise ContractError("direct authored runtime authoring version is invalid")
+
+    content_sha = _require_sha(
+        entry["contentSha256"], "direct authored runtime contentSha256"
+    )
+    _load_sealed_authored_document(
+        runtime_catalog_path,
+        entry["authoredDocumentPath"],
+        effect_id,
+        content_sha,
+    )
 
     dependencies = entry["dependencies"]
     if not isinstance(dependencies, list):
@@ -188,12 +242,55 @@ def _load_derived_validator() -> Any:
     return module
 
 
-def validate_runtime_catalog(value: dict[str, Any]) -> None:
-    _require_exact_order(
-        value,
-        ("schema", "formatVersion", "components", "effects"),
-        "runtime catalog",
+def validate_runtime_catalog(
+    value: dict[str, Any], runtime_catalog_path: Path
+) -> None:
+    root_keys = tuple(value.keys())
+    plain_keys = ("schema", "formatVersion", "components", "effects")
+    sidecar_plain_keys = (
+        "schema",
+        "formatVersion",
+        "visualProgramSidecarRequired",
+        "components",
+        "effects",
     )
+    admission_keys = (
+        "schema",
+        "formatVersion",
+        "productCueAdmissionsRequired",
+        "productCuePolicySha256",
+        "components",
+        "effects",
+    )
+    sidecar_admission_keys = (
+        "schema",
+        "formatVersion",
+        "visualProgramSidecarRequired",
+        "productCueAdmissionsRequired",
+        "productCuePolicySha256",
+        "components",
+        "effects",
+    )
+    if root_keys not in (
+        plain_keys,
+        sidecar_plain_keys,
+        admission_keys,
+        sidecar_admission_keys,
+    ):
+        raise ContractError("runtime catalog fields or order are invalid")
+    if "visualProgramSidecarRequired" in value and type(
+        value["visualProgramSidecarRequired"]
+    ) is not bool:
+        raise ContractError("runtime catalog visual-program sidecar marker is invalid")
+    if root_keys in (admission_keys, sidecar_admission_keys) and value[
+        "productCueAdmissionsRequired"
+    ] is not True:
+        raise ContractError("runtime catalog Product cue admission marker is invalid")
+    if root_keys in (admission_keys, sidecar_admission_keys):
+        _require_sha(
+            value["productCuePolicySha256"],
+            "runtime catalog productCuePolicySha256",
+        )
     if value["schema"] != RUNTIME_SCHEMA:
         raise ContractError("runtime catalog schema mismatch")
     version = value["formatVersion"]
@@ -216,7 +313,7 @@ def validate_runtime_catalog(value: dict[str, Any]) -> None:
             raise ContractError(f"duplicate runtime effect ID: {effect_id}")
         effect_ids.add(effect_id)
         if entry.get("payloadKind") == DIRECT_PAYLOAD_KIND:
-            validate_direct_entry(entry, effect_id)
+            validate_direct_entry(entry, effect_id, runtime_catalog_path)
         else:
             non_direct.append(entry)
 
@@ -243,8 +340,11 @@ def make_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = make_parser().parse_args(argv)
+    runtime_catalog_path = args.catalog.resolve()
     try:
-        validate_runtime_catalog(_load_json(args.catalog))
+        validate_runtime_catalog(
+            _load_json(runtime_catalog_path), runtime_catalog_path
+        )
     except ContractError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

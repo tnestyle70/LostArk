@@ -182,32 +182,28 @@
       "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba1.restoration-candidate.effect.json",
       "rawSha256": "397ab6724e5e00f73c3747c3cf3a1bafb1b9ff5a913ad43b1b7c6dc4671ee2b9",
       "roles": [
-        "ANIMATION_TRAIL_TARGET_ELEMENT",
-        "COMBAT_BA_CASCADE_RIBBON_TARGET_PAYLOAD"
+        "ANIMATION_TRAIL_TARGET_ELEMENT"
       ]
     },
     {
       "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba2.restoration-candidate.effect.json",
       "rawSha256": "1515c2ca4e25bd93732de09cadefea12b624ae1fd3a5e32f07c1b0ab65736929",
       "roles": [
-        "ANIMATION_TRAIL_TARGET_ELEMENT",
-        "COMBAT_BA_CASCADE_RIBBON_TARGET_PAYLOAD"
+        "ANIMATION_TRAIL_TARGET_ELEMENT"
       ]
     },
     {
       "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba3.restoration-candidate.effect.json",
       "rawSha256": "2ba23ddf351e3ed291f7b4e2e8f0ba8b9baf232ec9f913a2521ae1efc5374688",
       "roles": [
-        "ANIMATION_TRAIL_TARGET_ELEMENT",
-        "COMBAT_BA_CASCADE_RIBBON_TARGET_PAYLOAD"
+        "ANIMATION_TRAIL_TARGET_ELEMENT"
       ]
     },
     {
       "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba4.restoration-candidate.effect.json",
       "rawSha256": "a2c571c19e54cba7ac4da259b20a008e330fe7120114cbe2287767005e4be9af",
       "roles": [
-        "ANIMATION_TRAIL_TARGET_ELEMENT",
-        "COMBAT_BA_CASCADE_RIBBON_TARGET_PAYLOAD"
+        "ANIMATION_TRAIL_TARGET_ELEMENT"
       ]
     },
     {
@@ -375,7 +371,7 @@
     },
     {
       "path": "Data/Effects/Imported/Artist/Materials/skill.31470.local-decal-acquisition.receipt.json",
-      "rawSha256": "65b02d12e9aaeccfef4890b960fd99609a89c835bd80da886c129c52824421db",
+      "rawSha256": "3477c2d7ec84d8daeabc5691be610b9e9e947b0c8090e1119831cd033eea0f2b",
       "roles": [
         "ARTIST_F_LOCAL_DECAL_ACQUISITION_RECEIPT"
       ]
@@ -389,7 +385,7 @@
     },
     {
       "path": "Data/Effects/Imported/CombatBA/lmb-combo-3class.v1.runtime-admission.json",
-      "rawSha256": "ac56f907812745ac2ac867feb312277d47b3ea852ec8a70bf1147cc287eefa78",
+      "rawSha256": "146082cc110010782f4335d5e42eb8b60b652436ba68d1d53adbce6ec5bc0c58",
       "roles": [
         "COMBAT_BA_RUNTIME_ADMISSION_INDEX"
       ]
@@ -431,7 +427,7 @@
     },
     {
       "path": "Tools/EffectPipeline/Schemas/lostark.effect-visual-program-corpus.schema.json",
-      "rawSha256": "8cb28933dcfdef902e825a3b0b55c49e17bd2a7332bba55681feebbc1762e81c",
+      "rawSha256": "90eb9311e65b8f4ebe0413c7a19b293671c2550d10233b1acdc7acdaebd512f3",
       "roles": [
         "VISUAL_PROGRAM_CORPUS_SCHEMA"
       ]
@@ -13649,12 +13645,7 @@
         "recordId": "fx_pc_flm_01.par_m_flm_ribbon_02.particlespriteemitter_0",
         "recordSha256": "c5df733eb72b2f034da8a00b19a27139d48108cdc2fd842340e051ce6511df25"
       },
-      "targetPayload": {
-        "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba1.restoration-candidate.effect.json",
-        "rawSha256": "397ab6724e5e00f73c3747c3cf3a1bafb1b9ff5a913ad43b1b7c6dc4671ee2b9",
-        "recordId": "manual.trackb.ba1.ribbon-companion-blocked",
-        "recordSha256": "5cd9ccb8709252af2728f53ab37052cd97f38a617cdea5b12ac29b21c409c1b8"
-      },
+      "targetPayload": null,
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
@@ -13685,25 +13676,29 @@
       "executionProjection": {
         "family": "CASCADE_RIBBON",
         "adapterId": "cascade-ribbon-document-v12",
-        "packetLayout": "EFFECT_DOCUMENT_ELEMENT_V12",
-        "tuningEligibleTransform": true,
-        "fidelity": "BOUNDED_RECONSTRUCTION",
-        "disposition": "ADMITTED_BOUNDED",
+        "packetLayout": "NONE",
+        "tuningEligibleTransform": false,
+        "fidelity": "EVIDENCE_ONLY",
+        "disposition": "FAIL_CLOSED",
         "nativeExecution": false,
         "sourceExact": false,
         "executionBasis": {
-          "status": "TARGET_DOCUMENT_BOUNDED",
-          "basisSha256": "d098da2311fa675a5556348509dc0b5d83d843ec6b4190f45d66054f0fe1f4bf"
+          "status": "UNRESOLVED_FAIL_CLOSED",
+          "basisSha256": "e12e756d948618dd96a9c445f14a438f2d001f90a4c7e84be333a0c25fb84ff5"
         },
         "resourceRoles": [],
-        "admissionBlockers": [],
-        "preservedLimitations": [
-          "BOUNDED_CASCADE_RIBBON_NOT_NATIVE_SOURCE_EXACT",
-          "MANUAL_TARGET_CARRIER_VALUES_REQUIRE_USER_REVIEW"
+        "admissionBlockers": [
+          "ASSET_ROTATION_BASIS_UNPROVEN",
+          "ATTACHMENT_ROOT_BASIS_UNPROVEN",
+          "LEGACY_CARRIER_REJECTED",
+          "MESH_CARRIER_AXIS_BASIS_UNPROVEN",
+          "OCCURRENCE_VF_PASS_BINDING_UNPROVEN",
+          "SOURCE_RUNTIME_PROGRAM_NOT_PUBLISHED"
         ],
+        "preservedLimitations": [],
         "productMutation": false
       },
-      "rowSha256": "759508fee3a0146ee4faead562887462de595eaf9661a73f6acb5ef87d3ba7f1"
+      "rowSha256": "1a23bf9ffe20aca74c0f9af8c464673530e1a0ed719158ee816fe26750a5efcb"
     },
     {
       "selector": {
@@ -14053,12 +14048,7 @@
         "recordId": "fx_pc_flm_01.par_m_flm_ribbon_02.particlespriteemitter_0.event_source-event-007",
         "recordSha256": "3189a3046adad662af367e4bdb57f7573bab1263cde433b717b3b354f38c78a4"
       },
-      "targetPayload": {
-        "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba2.restoration-candidate.effect.json",
-        "rawSha256": "1515c2ca4e25bd93732de09cadefea12b624ae1fd3a5e32f07c1b0ab65736929",
-        "recordId": "manual.trackb.ba2.ribbon-companion-blocked",
-        "recordSha256": "bf667852f5774c1ecc0c558d9426c1fb7035babc22ea62e97b88200f6e380907"
-      },
+      "targetPayload": null,
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
@@ -14089,25 +14079,29 @@
       "executionProjection": {
         "family": "CASCADE_RIBBON",
         "adapterId": "cascade-ribbon-document-v12",
-        "packetLayout": "EFFECT_DOCUMENT_ELEMENT_V12",
-        "tuningEligibleTransform": true,
-        "fidelity": "BOUNDED_RECONSTRUCTION",
-        "disposition": "ADMITTED_BOUNDED",
+        "packetLayout": "NONE",
+        "tuningEligibleTransform": false,
+        "fidelity": "EVIDENCE_ONLY",
+        "disposition": "FAIL_CLOSED",
         "nativeExecution": false,
         "sourceExact": false,
         "executionBasis": {
-          "status": "TARGET_DOCUMENT_BOUNDED",
-          "basisSha256": "f5a3ac0903806ce145f518e4ac0235133d8e8a0ede778cfc696ee098331e32a0"
+          "status": "UNRESOLVED_FAIL_CLOSED",
+          "basisSha256": "e12e756d948618dd96a9c445f14a438f2d001f90a4c7e84be333a0c25fb84ff5"
         },
         "resourceRoles": [],
-        "admissionBlockers": [],
-        "preservedLimitations": [
-          "BOUNDED_CASCADE_RIBBON_NOT_NATIVE_SOURCE_EXACT",
-          "MANUAL_TARGET_CARRIER_VALUES_REQUIRE_USER_REVIEW"
+        "admissionBlockers": [
+          "ASSET_ROTATION_BASIS_UNPROVEN",
+          "ATTACHMENT_ROOT_BASIS_UNPROVEN",
+          "LEGACY_CARRIER_REJECTED",
+          "MESH_CARRIER_AXIS_BASIS_UNPROVEN",
+          "OCCURRENCE_VF_PASS_BINDING_UNPROVEN",
+          "SOURCE_RUNTIME_PROGRAM_NOT_PUBLISHED"
         ],
+        "preservedLimitations": [],
         "productMutation": false
       },
-      "rowSha256": "cdded211d0a149aabcc0baa6c73ad7da4a4ce1c819806d6d9cdcf0fae1fb6b30"
+      "rowSha256": "a9b47478256020aabee4e1acc7d8f223ee7b9727e10139a008075592e9c84fd1"
     },
     {
       "selector": {
@@ -14223,12 +14217,7 @@
         "recordId": "fx_pc_flm_01.par_m_flm_ribbon_02.particlespriteemitter_0.event_source-event-014",
         "recordSha256": "c0364b04c8bfb1e82bbd0887b379ea6e22b29ba93252d1b6cfbaf41ec1ad1dad"
       },
-      "targetPayload": {
-        "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba3.restoration-candidate.effect.json",
-        "rawSha256": "2ba23ddf351e3ed291f7b4e2e8f0ba8b9baf232ec9f913a2521ae1efc5374688",
-        "recordId": "manual.trackb.ba3.ribbon-companion-blocked",
-        "recordSha256": "43dcee979c1674ba95deafe9808492bc9634d06e470a8869f3fbe97e5054e768"
-      },
+      "targetPayload": null,
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
@@ -14259,25 +14248,29 @@
       "executionProjection": {
         "family": "CASCADE_RIBBON",
         "adapterId": "cascade-ribbon-document-v12",
-        "packetLayout": "EFFECT_DOCUMENT_ELEMENT_V12",
-        "tuningEligibleTransform": true,
-        "fidelity": "BOUNDED_RECONSTRUCTION",
-        "disposition": "ADMITTED_BOUNDED",
+        "packetLayout": "NONE",
+        "tuningEligibleTransform": false,
+        "fidelity": "EVIDENCE_ONLY",
+        "disposition": "FAIL_CLOSED",
         "nativeExecution": false,
         "sourceExact": false,
         "executionBasis": {
-          "status": "TARGET_DOCUMENT_BOUNDED",
-          "basisSha256": "b060f1a7acf145846617a0264c7d1e2b0139451cf3036bebf7f0028b5f7f2b6c"
+          "status": "UNRESOLVED_FAIL_CLOSED",
+          "basisSha256": "e12e756d948618dd96a9c445f14a438f2d001f90a4c7e84be333a0c25fb84ff5"
         },
         "resourceRoles": [],
-        "admissionBlockers": [],
-        "preservedLimitations": [
-          "BOUNDED_CASCADE_RIBBON_NOT_NATIVE_SOURCE_EXACT",
-          "MANUAL_TARGET_CARRIER_VALUES_REQUIRE_USER_REVIEW"
+        "admissionBlockers": [
+          "ASSET_ROTATION_BASIS_UNPROVEN",
+          "ATTACHMENT_ROOT_BASIS_UNPROVEN",
+          "LEGACY_CARRIER_REJECTED",
+          "MESH_CARRIER_AXIS_BASIS_UNPROVEN",
+          "OCCURRENCE_VF_PASS_BINDING_UNPROVEN",
+          "SOURCE_RUNTIME_PROGRAM_NOT_PUBLISHED"
         ],
+        "preservedLimitations": [],
         "productMutation": false
       },
-      "rowSha256": "fd9512b9220016b898229f29d5e5d3f022da162661c79999f8c3d2edfb1afb8e"
+      "rowSha256": "eb787f46f0b9763cc745012be6c55fa900e3217380a46ebcc6955b0df4a1de35"
     },
     {
       "selector": {
@@ -15670,12 +15663,7 @@
         "recordId": "fx_pc_flm_01.par_m_flm_ribbon_02.particlespriteemitter_0.event_source-event-022",
         "recordSha256": "3b17d52bcce76cadbb1c60089898bcadb5a30906b5a5c6e6c28889b65cb1e731"
       },
-      "targetPayload": {
-        "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba4.restoration-candidate.effect.json",
-        "rawSha256": "a2c571c19e54cba7ac4da259b20a008e330fe7120114cbe2287767005e4be9af",
-        "recordId": "manual.trackb.ba4.ribbon-companion-blocked",
-        "recordSha256": "5e5ef13eff9c7c0c0071fa6c86ebd332f1e450526001f013a6fd57472a33dc1a"
-      },
+      "targetPayload": null,
       "sourceRecipe": {
         "enabled": true,
         "rendererShape": "sprite",
@@ -15706,25 +15694,29 @@
       "executionProjection": {
         "family": "CASCADE_RIBBON",
         "adapterId": "cascade-ribbon-document-v12",
-        "packetLayout": "EFFECT_DOCUMENT_ELEMENT_V12",
-        "tuningEligibleTransform": true,
-        "fidelity": "BOUNDED_RECONSTRUCTION",
-        "disposition": "ADMITTED_BOUNDED",
+        "packetLayout": "NONE",
+        "tuningEligibleTransform": false,
+        "fidelity": "EVIDENCE_ONLY",
+        "disposition": "FAIL_CLOSED",
         "nativeExecution": false,
         "sourceExact": false,
         "executionBasis": {
-          "status": "TARGET_DOCUMENT_BOUNDED",
-          "basisSha256": "f8d85170dfba1503b28c140d5cc875c5b6dc6118d4560222ea243e2605f2c08e"
+          "status": "UNRESOLVED_FAIL_CLOSED",
+          "basisSha256": "e12e756d948618dd96a9c445f14a438f2d001f90a4c7e84be333a0c25fb84ff5"
         },
         "resourceRoles": [],
-        "admissionBlockers": [],
-        "preservedLimitations": [
-          "BOUNDED_CASCADE_RIBBON_NOT_NATIVE_SOURCE_EXACT",
-          "MANUAL_TARGET_CARRIER_VALUES_REQUIRE_USER_REVIEW"
+        "admissionBlockers": [
+          "ASSET_ROTATION_BASIS_UNPROVEN",
+          "ATTACHMENT_ROOT_BASIS_UNPROVEN",
+          "LEGACY_CARRIER_REJECTED",
+          "MESH_CARRIER_AXIS_BASIS_UNPROVEN",
+          "OCCURRENCE_VF_PASS_BINDING_UNPROVEN",
+          "SOURCE_RUNTIME_PROGRAM_NOT_PUBLISHED"
         ],
+        "preservedLimitations": [],
         "productMutation": false
       },
-      "rowSha256": "98b9437e2e39c82a40959664c66fb74eeacb9e8ef1c80799e6d0d5d7814cb55d"
+      "rowSha256": "2030c5a2814237be64088b72d79a9f0b9e198bd16c3391a5d8f2442ba48a431f"
     },
     {
       "selector": {
@@ -16653,10 +16645,10 @@
     "supplementalElementCount": 5,
     "artistFCascadeRibbonElementCount": 1,
     "animationTrailElementCount": 4,
-    "admittedBoundedCount": 72,
-    "failClosedCount": 63,
+    "admittedBoundedCount": 68,
+    "failClosedCount": 67,
     "legacyApproximationCount": 66,
-    "boundedReconstructionCount": 6,
+    "boundedReconstructionCount": 2,
     "productMutationCount": 0
   },
   "transactionPolicy": {
@@ -16671,5 +16663,5 @@
     "productMutation": false,
     "runtimeCatalogMutation": false
   },
-  "artifactSha256": "9b531c931354be3aee5549a13f954dd3dcbd5558d88c7348b42a10e0f9e4925c"
+  "artifactSha256": "6a39eec6e496c93eb8d1b4ef6bdbae0cbfc9f5e130f6dd18ceb81723b1761d49"
 }

@@ -54,6 +54,7 @@ private:
 	LEVEL m_ePendingLevel = LEVEL::END;
 	LOBBY_COMMAND_PURPOSE m_ePendingPurpose =
 		LOBBY_COMMAND_PURPOSE::GAMEPLAY;
+	bool_t m_hasPendingCharacterCreationEntry = false;
 	std::chrono::steady_clock::time_point m_ApprovalDeadline{};
 	string m_strStatus =
 		"Choose a stage directly or open Character Select to change class.";

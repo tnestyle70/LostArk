@@ -1,0 +1,172 @@
+{
+  "schema": "lostark.effect-role-composition",
+  "formatVersion": 1,
+  "characterClass": "ARTIST",
+  "policy": "Stable source occurrences are disabled, never deleted. Selected material rows retain every named resource lane carried by the authored element.",
+  "skills": [
+    {
+      "inputSlot": "E",
+      "skillId": 31480,
+      "clips": ["sdm_sk_flyinheaven"],
+      "status": "SELECTED_SOURCE_COMPOSITE",
+      "effectDocument": "Data/Effects/Authored/effect.artist.skill.31480.unified.effect.json",
+      "selectedResourceSignatureSha256": "455de75180cc630952d28ceddcb0265f5424c1f2e9bb5ac2d10f21a03426496e",
+      "budget": {"visibleBefore": 36, "visibleAfter": 36, "peakActiveRows": 36, "peakCap": 179, "peakBurst": 45, "peakTimeSeconds": 0.9967},
+      "roles": [
+        {
+          "role": "BRUSH_ORIGIN_TRAIL",
+          "stableIds": [
+            "authored.source-particle.228c781f9545045d66eef1c0", "authored.source-particle.173f4cc3741ef2e62b60f926",
+            "authored.source-particle.ad20accfef3620193f6a4f4f", "authored.source-particle.fa75736ead9dafc6f30a8f61",
+            "authored.source-particle.d4a4ff7e85d04a9c97474b5c", "authored.source-particle.cb1434a614d5e1987403fcf3",
+            "authored.source-particle.fef211f460c176313750906e", "authored.source-particle.5e84487a930db4af6cac3f52",
+            "authored.source-particle.62e2f865c777785632d88bb8", "authored.source-particle.e0372a59abb4cb30e81f4a68",
+            "authored.source-particle.ab4b2b5f5c1fedca246742f9", "authored.source-particle.6256de5ed1ad6fd338e03bf5"
+          ]
+        },
+        {"role": "WHITE_PORTAL", "stableIds": ["authored.source-particle.8a03740cf9425501a726cf85", "authored.source-particle.c989c9c7e80fa4c3dba4f46b", "authored.source-particle.da7b286b97f2513218232311"]},
+        {"role": "CENTER_GLOW", "stableIds": ["authored.source-particle.a1235160616f5d7254322ed0", "authored.source-particle.d9ba04d2bba9b9a9e4976c8c", "authored.source-particle.1c00868ec9eabe5862f8db2b"]},
+        {"role": "CRANE_MESH", "stableIds": ["authored.source-particle.eca80b9359a2e82767dc1a48", "authored.source-particle.7f36d21e5758ac0230afd2c2", "authored.source-particle.609c72dc65320f5cf2ce3a98", "authored.source-particle.1dd5c16efb8459f6b50aab1c", "authored.source-particle.8eeae2b61095abb21b6a47b7", "authored.source-particle.90f0ca98e937c9dca697b625"]},
+        {
+          "role": "BLACK_INK_AROUND_CRANE",
+          "stableIds": [
+            "authored.source-particle.267635e0c75f0affc4fa0564", "authored.source-particle.66cf79ff1d99ae1bd135fea9",
+            "authored.source-particle.4bdfebe7a5144ea7174137a0", "authored.source-particle.3bd68d745abb09837fbb8c74",
+            "authored.source-particle.19764a88f74369f32fd6d863", "authored.source-particle.05d506b7482632f745e55a4b",
+            "authored.source-particle.90f3fa061299895f7ebedb6d", "authored.source-particle.8701c7f2701b31a1a01f8402",
+            "authored.source-particle.65c131ded369f156e6bd0a86", "authored.source-particle.1fab32a4976dc9a2aabef7f9",
+            "authored.source-particle.34423f756bdf19acd4f683de", "authored.source-particle.ce17031dbe693e24a6569c01"
+          ]
+        }
+      ]
+    },
+    {
+      "inputSlot": "R",
+      "skillId": 31210,
+      "comboStage": 1,
+      "clips": ["sdm_sk_skykongkong_01", "sdm_sk_skykongkong_03"],
+      "status": "DUPLICATE_PROJECTION_SUPPRESSED",
+      "effectDocument": "Data/Effects/Authored/effect.artist.skill.31210.ba1.unified.effect.json",
+      "selectedResourceSignatureSha256": "a5654a0a17c3acd84ba1c64b4a102b73709298c021cf2397325a109774143ee2",
+      "budget": {"visibleBefore": 46, "visibleAfter": 32, "peakActiveRows": 32, "peakCap": 134, "peakBurst": 77, "peakTimeSeconds": 0.6004},
+      "roles": [
+        {"role": "FAINT_CIRCULAR_FIELD", "stableIds": ["authored.source-particle.731e9222d13df64554d1eabf", "authored.source-particle.c99d513d3c5810245d83eeac"]},
+        {"role": "LIQUID_INK_SPREAD_DISSOLVE", "stableIds": ["authored.source-particle.2eb1edf7b1b226527b0c1c02", "authored.source-particle.370377c66810472dcba8fc94", "authored.source-particle.6b03e58116a39330b8bcdf96", "authored.source-particle.85abb151d479b56598384f87", "authored.source-particle.98ba7ae504cce7d359b4fffe", "authored.source-particle.c4c34251fc2190b3c290657d", "authored.source-particle.d440bde490c39577b8b917c3", "authored.source-particle.da0df3ab8aded3bdcf8068c4"]},
+        {"role": "BLACK_PURPLE_SPRITES", "stableIds": ["authored.source-particle.0f6e3e58e8a37457b7e31be8", "authored.source-particle.160fdd8c5adf3f43be37cae5", "authored.source-particle.20f9813d37a1abd5bb782790", "authored.source-particle.36a253015af4da53c380e3b7", "authored.source-particle.3d768ab8a93e0be18e1568ea", "authored.source-particle.6181c965f42bc65d2e05f7ac", "authored.source-particle.83707b86f14b6bb4ca64956d", "authored.source-particle.8c7560b7d83e487fb76fa0b3", "authored.source-particle.a1e9f1a5115dd4e801e9d8b7", "authored.source-particle.bd09986fa6aa911dcd502946", "authored.source-particle.c4be3f32c080f9b9341d78c7", "authored.source-particle.d571493fc23db6b3ced88102", "authored.source-particle.dba44173cd25a55029802947", "authored.source-particle.e1db1501cbf8bd6c5fcd8a6d", "authored.source-particle.f752fdb7d34a877d8c665258"]},
+        {"role": "SMALL_WHITE_PURPLE_F_LIKE", "stableIds": ["authored.source-particle.51190468c13db9c61a42332f", "authored.source-particle.6530450623be9258061f9906", "authored.source-particle.7561568fe346b4b83c83de9e", "authored.source-particle.9b7f0c95d4dd2e3e8f62c533", "authored.source-particle.e25898902dec132317718587", "authored.source-particle.e422cca7b92217ebb92e6db9", "authored.source-particle.f544ac943110e3d7d9f2e768"]}
+      ],
+      "duplicatePairs": [
+        ["authored.source-particle.2eb1edf7b1b226527b0c1c02", "authored.source-particle.a82c4bf657778ed388d8454c"],
+        ["authored.source-particle.a1e9f1a5115dd4e801e9d8b7", "authored.source-particle.a98ccd7ca9ad80ebfa9ef872"],
+        ["authored.source-particle.7561568fe346b4b83c83de9e", "authored.source-particle.bd0abaa7df4ef634f1062195"],
+        ["authored.source-particle.f752fdb7d34a877d8c665258", "authored.source-particle.b8299d3959eb8ecf79a4dfd0"],
+        ["authored.source-particle.3d768ab8a93e0be18e1568ea", "authored.source-particle.1d2a8b255ae04c0bacca9b4d"],
+        ["authored.source-particle.0f6e3e58e8a37457b7e31be8", "authored.source-particle.395a1c66020c8494f87d7dc1"],
+        ["authored.source-particle.6530450623be9258061f9906", "authored.source-particle.ead756c637f7bf053dd709fb"],
+        ["authored.source-particle.98ba7ae504cce7d359b4fffe", "authored.source-particle.4233e6578f19b6b47c80c621"],
+        ["authored.source-particle.85abb151d479b56598384f87", "authored.source-particle.79e1c50f03754c09ffaa026c"],
+        ["authored.source-particle.160fdd8c5adf3f43be37cae5", "authored.source-particle.9e9c59d1a6c7c6460e8b121a"],
+        ["authored.source-particle.c4be3f32c080f9b9341d78c7", "authored.source-particle.29930ac9c4b526a41c9f94b7"],
+        ["authored.source-particle.6181c965f42bc65d2e05f7ac", "authored.source-particle.8daac8118301614e5ee11f40"],
+        ["authored.source-particle.9b7f0c95d4dd2e3e8f62c533", "authored.source-particle.2a64fca33b55451a131f6d1e"],
+        ["authored.source-particle.da0df3ab8aded3bdcf8068c4", "authored.source-particle.587b19e513d30dbf40a46224"]
+      ]
+    },
+    {
+      "inputSlot": "S",
+      "skillId": 31420,
+      "clips": ["sdm_sk_fourgentlemen"],
+      "status": "PARTIAL_TYPED_RIBBON_BLOCKED",
+      "effectDocument": "Data/Effects/Authored/effect.artist.skill.31420.unified.effect.json",
+      "selectedResourceSignatureSha256": "314266305d335e334a20853e98c2b1f27c48b9b7c0f28613b4e05f73ea620c5a",
+      "budget": {"visibleBefore": 4, "visibleAfter": 1, "peakActiveRows": 1, "peakCap": 7, "peakBurst": 5, "peakTimeSeconds": 0.4318},
+      "roles": [
+        {"role": "SOURCE_ORANGE_PARTICLEMASTER_CARRIER_REVIEW", "stableIds": ["authored.source-particle.25b54f02bd198502d3b9f851"]}
+      ],
+      "duplicatePairs": [
+        ["authored.source-particle.25b54f02bd198502d3b9f851", "authored.source-particle.accb6197cc529c1fa40cfe12"]
+      ],
+      "suppressedDuplicatePairs": [
+        ["authored.source-particle.5b8f86766c12eb4835f7f010", "authored.source-particle.1f43a3590c76fe87d0da7843"]
+      ],
+      "blockedRoles": [
+        {
+          "role": "ORCHID_GROW_CONTRACT_REPEAT",
+          "typedReason": "SOURCE_RIBBON_RUNTIME_UNAVAILABLE",
+          "sourceTypeData": "particlemoduletypedataribbon",
+          "stableIds": ["authored.source-particle.11e0b8952f89d79f54fbde4e", "authored.source-particle.889e369c9c692d83b74f8256", "authored.source-particle.a50f6db558e201a7349907d7", "authored.source-particle.637333e3b72858bdd4e73c27"],
+          "note": "The source proves Ribbon. Do not substitute Decal, Mesh, or Sprite."
+        },
+        {
+          "role": "GROUND_INK_WHITE_FORWARD_TIP_GLOW",
+          "typedReason": "SOURCE_ROLE_ROWS_HARD_FAIL_CLOSED",
+          "stableIds": ["authored.source-particle.3629fdd4cf5a82448bb686b2", "authored.source-particle.8cf8c50887d11fd675c8653f", "authored.source-particle.8552259fa65500d9f178d28f", "authored.source-particle.5fa3f029d22ad7341107aa92", "authored.source-particle.ef9e8b122cbf12ea4a8a46b6", "authored.source-particle.ec4ef3431bdf1adf173fd323", "authored.source-particle.a08f2b12cbe97e7e93f18379"]
+        },
+        {
+          "role": "BLACK_SPRITE_ENDING",
+          "typedReason": "SOURCE_SEED_MATERIAL_RUNTIME_PROFILE_NOT_EXECUTABLE",
+          "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_seed_01_03_tr",
+          "sourceColor": [0.0, 0.0, 0.0, 1.0],
+          "stableIds": ["authored.source-particle.1e1c0028bba7444168a1d1b1", "authored.source-particle.02347652cc6d0a0071a842f0"],
+          "note": "These are the source-backed black seed rows. Keep them fail-closed until the seed material profile and its textureless source contract are recovered; do not recolor the orange ParticleMaster row."
+        }
+      ]
+    },
+    {
+      "inputSlot": "V",
+      "skillId": 31910,
+      "clips": ["sdm_sk_pungnyudo"],
+      "status": "SELECTED_SOURCE_COMPOSITE",
+      "effectDocument": "Data/Effects/Authored/effect.artist.skill.31910.unified.effect.json",
+      "selectedResourceSignatureSha256": "03325bed0b2ec69ad0967777dd64e8f2a174c57283d9315d62d89be7dfc12c8a",
+      "budget": {"visibleBefore": 47, "visibleAfter": 47, "peakActiveRows": 31, "peakCap": 443, "peakBurst": 131, "peakTimeSeconds": 3.4000001},
+      "roles": [
+        {"role": "PALE_YELLOW_RED_ORBIT", "stableIds": ["authored.source-particle.36087cc48e5c8db080571686", "authored.source-particle.61ecad590318a01a22324657", "authored.source-particle.8538a8b05418b8e42b779058", "authored.source-particle.b637bf78a795c9584bfe596a", "authored.source-particle.c63d1b07360842840df9db42", "authored.source-particle.f2a563a924c233629be7a601", "authored.source-particle.f81b385edfd495c8f9b0ee62"]},
+        {"role": "SURROUNDING_FIELD", "stableIds": ["authored.source-decal.38975449f5001cc0a908dabe", "authored.source-decal.b92c1bd680cb641a066731ce", "authored.source-particle.2c74363776bbff2dc985ac36", "authored.source-particle.3fd970591a70916253b02b0e", "authored.source-particle.440f146a6274627acaf2ccca", "authored.source-particle.5fd58f3a1a64c69be1112b4f", "authored.source-particle.60cfc9ef1fa097c5e68c4645", "authored.source-particle.657ad9658fb77904387f0ec3", "authored.source-particle.6b805e09ff04e3e71cb48ebe", "authored.source-particle.7537c19dd8fd20b6ad00333b", "authored.source-particle.8a0e9d68ec0a741e8abf919b", "authored.source-particle.929afb96dc43ba9b77ce0975", "authored.source-particle.92dcabb7702430cf54000130", "authored.source-particle.969dfb082483ed7f753706d3", "authored.source-particle.a0978a8cb76188c043a34515", "authored.source-particle.ac481c98215d20c024b0cbfa", "authored.source-particle.b67cec9212f4d6c2c838d496", "authored.source-particle.b6f3da28d6516c8fcb04fcca", "authored.source-particle.e9eaaf1f4960f6d089e28900"]},
+        {"role": "SCREEN_FILLING_FIRE_VORTEX_SPIRAL_OUT", "stableIds": ["authored.source-decal.1efee3883f5427d3d7d6cfc9", "authored.source-decal.c474efdb506cab9df8bbce3a", "authored.source-particle.01974fe2d8f6c786b9fe3828", "authored.source-particle.105ebe977a423d7b2bf49bd3", "authored.source-particle.27dc5d780db61e28234319b7", "authored.source-particle.288721c7ae7a2f8d4b3fbdfb", "authored.source-particle.35c9dcee175d6bb19eda9f23", "authored.source-particle.5137ffc8e4fc29caf59481ae", "authored.source-particle.5ae202c4402be55dca34bd54", "authored.source-particle.6c08e22fbbc5cad983c34fd1", "authored.source-particle.73d335c968e16bdde0c27b38", "authored.source-particle.89e54774262bbfa7d738ae90", "authored.source-particle.ad29d9d83db3e2e442a5e579", "authored.source-particle.bdce66573d49210d95e1d19f", "authored.source-particle.cf524680677ed1d6c4795ea2", "authored.source-particle.d90b5754833bc5aed48bad41", "authored.source-particle.da5354e11e2eb389efdb2301", "authored.source-particle.dd7a0b093bd92eddcab4cc9e", "authored.source-particle.f1fb0c908f39b4a2c1a02120", "authored.source-particle.fad07ed90d8a0ddcb33699c4", "authored.source-particle.fd1dd274454b9dd137619abf"]}
+      ]
+    },
+    {
+      "inputSlot": "D",
+      "skillId": 31490,
+      "clips": ["sdm_sk_cloudtiger"],
+      "status": "ROLE_CURATED_PARTIAL_RUNTIME_PROFILE_BLOCKED",
+      "roleManifest": "Data/Effects/AuthoredCorrections/Artist/effect.artist.skill.31490.role-manifest.json",
+      "effectDocuments": ["Data/Effects/Authored/effect.artist.skill.31490.unified.effect.json"],
+      "resourceClosure": "EXACT_SELECTED_ROLE_PHYSICAL_CLOSURE",
+      "visibleElementCount": 56,
+      "roleLockedElementCount": 37,
+      "selectedRoles": ["GROUND_INK_DECAL", "BRUSH_RIBBON", "BLACK_TIGER_STROKE", "INK_PARTICLE", "SMALL_BLACK_SLASH_MESH"],
+      "remainingBlockers": ["SOURCE_RIBBON_RUNTIME_UNAVAILABLE", "SOURCE_MATERIAL_RUNTIME_PROFILE_NOT_EXECUTABLE"],
+      "note": "All 117 source occurrences remain preserved. Only the exact role allowlist is visible; 37 source-proven role rows stay hidden and fail-closed until their typed runtime profile exists."
+    },
+    {
+      "inputSlot": "T",
+      "skillId": 31950,
+      "clips": ["sdm_sk_dragonrising_01"],
+      "status": "ROLE_CURATED_PARTIAL_RUNTIME_PROFILE_BLOCKED",
+      "roleManifest": "Data/Effects/AuthoredCorrections/Artist/effect.artist.skill.31950.role-manifest.json",
+      "effectDocuments": ["Data/Effects/Authored/effect.artist.skill.31950.unified.effect.json"],
+      "resourceClosure": "EXACT_SELECTED_ROLE_PHYSICAL_CLOSURE",
+      "visibleElementCount": 7,
+      "roleLockedElementCount": 13,
+      "selectedRoles": ["DRAGON_SWIM_MESH", "DRAGON_INK_PARTICLE", "CIRCULAR_WHITE_RIM_COMPOSITE", "DRAGON_GROUND_DECAL"],
+      "remainingBlockers": ["SOURCE_MATERIAL_RUNTIME_PROFILE_NOT_EXECUTABLE"],
+      "note": "Exact source mesh objects, decal material textures, and all source occurrences are pinned. The non-executable material rows remain hidden and fail-closed."
+    },
+    {
+      "inputSlot": "Z",
+      "skillId": 31050,
+      "clips": ["sdm_sk_harmonyofyin_01", "sdm_sk_harmonyofyin_02"],
+      "status": "ROLE_CURATED_PARTIAL_RUNTIME_PROFILE_BLOCKED",
+      "roleManifest": "Data/Effects/AuthoredCorrections/Artist/effect.artist.skill.31050.role-manifest.json",
+      "effectDocuments": ["Data/Effects/Authored/effect.artist.skill.31050.clip1.unified.effect.json", "Data/Effects/Authored/effect.artist.skill.31050.clip2.unified.effect.json"],
+      "resourceClosure": "EXACT_SELECTED_ROLE_PHYSICAL_CLOSURE",
+      "visibleElementCount": 4,
+      "roleLockedElementCount": 16,
+      "selectedRoles": ["SOFT_PORTAL_PARTICLE", "SOFT_PORTAL_RIBBON", "GROUND_YIN_YANG_SYMBOL", "PORTAL_INWARD_FLOW", "BLACK_AND_BRIGHT_PARTICLE", "PORTAL_GLOW_MESH"],
+      "remainingBlockers": ["SOURCE_RIBBON_RUNTIME_UNAVAILABLE", "SOURCE_MATERIAL_RUNTIME_PROFILE_NOT_EXECUTABLE"],
+      "note": "31050 remains distinct from ALT_V 31930. Both exact source clips and their role rows are preserved; unsupported Ribbon and material profiles stay hidden and fail-closed."
+    }
+  ]
+}

@@ -15,9 +15,13 @@ from build_four_class_combat_source_intake import (  # noqa: E402
     CLASS_CONFIGS,
     EXPECTED_SKILL_COUNTS,
     EXPECTED_STAGE_COUNTS,
+    MATERIALIZED_CLASS_CONFIGS,
     binding_stages,
     build_class_stage_contract,
+    build_pending_source_inventory,
+    exact_timeline,
     normalize_json_for_serialization,
+    parse_exact_clip_catalog,
 )
 
 
@@ -189,14 +193,14 @@ class FourClassCombatSourceIntakeTests(unittest.TestCase):
                     enforce_expected_counts=False,
                 )
 
-    def test_repository_contract_is_exactly_51_skills_and_74_stages(self):
+    def test_repository_contract_is_exactly_56_skills_and_78_stages(self):
         repository = SCRIPT_ROOT.parent.parent
         data = repository / "Data"
         player_path = data / "Balance" / "PlayerSkills.json"
         players = json.loads(player_path.read_text(encoding="utf-8-sig"))
         total_skills = 0
         total_stages = 0
-        for config in CLASS_CONFIGS:
+        for config in MATERIALIZED_CLASS_CONFIGS:
             result = build_class_stage_contract(
                 config,
                 players,
@@ -225,8 +229,134 @@ class FourClassCombatSourceIntakeTests(unittest.TestCase):
                     self.assertEqual(len(stage["sourceSkillIds"]), 1)
             total_skills += result["summary"]["skillCount"]
             total_stages += result["summary"]["stageCount"]
-        self.assertEqual(total_skills, 51)
-        self.assertEqual(total_stages, 74)
+        self.assertEqual(total_skills, 56)
+        self.assertEqual(total_stages, 78)
+
+    def test_lancemaster_d_f_use_current_exact_clip_source_events(self):
+        repository = SCRIPT_ROOT.parent.parent
+        data = repository / "Data"
+        player_path = data / "Balance" / "PlayerSkills.json"
+        players = json.loads(player_path.read_text(encoding="utf-8-sig"))
+        config = next(
+            row for row in MATERIALIZED_CLASS_CONFIGS if row.asset_id == "LanceMaster"
+        )
+        bindings_path = (
+            data
+            / "Animation"
+            / "Authored"
+            / "LanceMaster"
+            / "LanceMaster.skillbindings.json"
+        )
+        animnotify_path = (
+            data
+            / "Animation"
+            / "Reference"
+            / "LanceMaster"
+            / "LanceMaster.animnotify"
+        )
+        manifest = build_class_stage_contract(
+            config,
+            players,
+            bindings_path,
+            animnotify_path,
+            player_path,
+        )
+        catalog = parse_exact_clip_catalog(animnotify_path)
+        skills = {row["productSkillId"]: row for row in manifest["skills"]}
+        expected = {
+            34110: {
+                "inputSlot": "D",
+                "clip": "flm_sk_crescentsweep",
+                "eventCount": 50,
+                "particleCount": 32,
+                "anchorAssets": {
+                    "FX_PC_FLM_01.Par_M_FLM_Sasun_MTrail_04",
+                    "FX_PC_FLM_01.Par_M_FLM_Sasun_UpImpact_01",
+                },
+            },
+            34150: {
+                "inputSlot": "F",
+                "clip": "flm_sk_crushingblow",
+                "eventCount": 92,
+                "particleCount": 75,
+                "anchorAssets": {
+                    "FX_PC_FLM_03.Par_N_FLM_DragonSwing_03",
+                    "FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_010",
+                },
+            },
+        }
+        for skill_id, evidence in expected.items():
+            skill = skills[skill_id]
+            self.assertEqual(skill["inputSlot"], evidence["inputSlot"])
+            self.assertEqual(skill["sourceSkillIds"], [skill_id])
+            self.assertEqual(len(skill["stages"]), 1)
+            self.assertEqual(
+                [
+                    clip["clip"]
+                    for stage in skill["stages"]
+                    for clip in stage["clips"]
+                ],
+                [evidence["clip"]],
+            )
+            _, events, _ = exact_timeline(skill, catalog)
+            particle_events = [
+                row
+                for row in events
+                if row["kind"] == "EFFECT"
+                and row["sourceType"] == "PlayParticleEffect"
+            ]
+            self.assertEqual(len(events), evidence["eventCount"])
+            self.assertEqual(len(particle_events), evidence["particleCount"])
+            self.assertTrue(
+                all(row["clip"] == evidence["clip"] for row in particle_events)
+            )
+            self.assertTrue(
+                evidence["anchorAssets"]
+                <= {row["sourceAsset"] for row in particle_events}
+            )
+
+    def test_pending_source_inventory_is_pinned_and_keeps_38180_cueless(self):
+        repository = SCRIPT_ROOT.parent.parent
+        result = build_pending_source_inventory(repository / "Data")
+        self.assertEqual(
+            result["schema"],
+            "lostark.combat-effect-pending-source-inventory",
+        )
+        self.assertFalse(result["policy"]["writesImportedArtifacts"])
+        self.assertEqual(result["policy"]["genericFallback"], "FORBIDDEN")
+        self.assertEqual(result["summary"]["classCount"], 2)
+        self.assertEqual(result["summary"]["skillCount"], 23)
+        self.assertEqual(result["summary"]["stageCount"], 28)
+
+        classes = {row["animationAssetId"]: row for row in result["classes"]}
+        self.assertEqual(set(classes), {"GunSlinger", "Slayer"})
+        self.assertEqual(
+            classes["GunSlinger"]["source"]["skillBindingsSha256"],
+            "b068c2bb14c47730540d4eee9720ad82efc4a6d4e0652e9f9f48b4eb5de97d24",
+        )
+        self.assertEqual(
+            classes["GunSlinger"]["source"]["animationNotifySha256"],
+            "d84fa2c3218739f559fb2aef6f042ef604faf1ab3c67e48625114a5eeeadea08",
+        )
+        self.assertEqual(
+            classes["Slayer"]["source"]["skillBindingsSha256"],
+            "e2504a561eab0b57a4b2c4ffa16b6348b2b4f65dce1414fac8b262254657a63d",
+        )
+        self.assertEqual(
+            classes["Slayer"]["source"]["animationNotifySha256"],
+            "d651a13dd64c786d7bae18a374e0222bdebc76ce9b172a38253c0571895c26c7",
+        )
+
+        gunslinger_skills = {
+            row["productSkillId"]: row for row in classes["GunSlinger"]["skills"]
+        }
+        spiral_chaser = gunslinger_skills[38180]
+        self.assertEqual(spiral_chaser["inputSlot"], "S")
+        self.assertEqual(spiral_chaser["status"], "SOURCE_CUE_ABSENT")
+        self.assertEqual(spiral_chaser["genericFallback"], "FORBIDDEN")
+        self.assertEqual(spiral_chaser["exactParticleOccurrenceCount"], 0)
+        self.assertEqual(spiral_chaser["unresolvedEffectNotifyCount"], 4)
+        self.assertEqual(spiral_chaser["exactSourceAssets"], [])
 
     def test_materialized_stage_manifests_have_exact_source_artifact_closure(self):
         repository = SCRIPT_ROOT.parent.parent
@@ -234,7 +364,7 @@ class FourClassCombatSourceIntakeTests(unittest.TestCase):
         hash_cache = {}
         total_skills = 0
         total_stages = 0
-        for config in CLASS_CONFIGS:
+        for config in MATERIALIZED_CLASS_CONFIGS:
             manifest_path = (
                 imported
                 / config.asset_id

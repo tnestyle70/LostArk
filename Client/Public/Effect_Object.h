@@ -188,6 +188,9 @@ public:
 		return m_pRenderer->Get_LastRenderSubmissionStats();
 	}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+	bool_t Set_TestPreviewElementIsolation(
+		std::vector<std::string> ElementIds,
+		std::string& strOutError);
 	const EFFECT_EVALUATED_FRAME& Get_ReconstructedTestFrame() const
 	{
 		return m_Playback.Get_Frame();

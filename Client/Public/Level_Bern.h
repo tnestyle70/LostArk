@@ -6,6 +6,7 @@
 #include "MapPlacementRuntime.h"
 
 #include "PlayerController.h"
+#include "WorldPlayerNameplateView.h"
 
 NS_BEGIN(Client)
 
@@ -49,6 +50,8 @@ private:
 	weak_ptr<CCharacter> m_pCameraTarget;
 
 	CClientReplication m_Replication;
+	CWorldPlayerNameplateView m_PlayerNameplateView;
+	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	//PlayerController 추가
 	CPlayerController m_PlayerController;

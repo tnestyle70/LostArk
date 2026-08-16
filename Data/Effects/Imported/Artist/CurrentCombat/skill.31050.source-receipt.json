@@ -1,0 +1,2941 @@
+{
+  "schema": "lostark.effect-source-receipt",
+  "schemaVersion": 2,
+  "characterClass": "ARTIST",
+  "inputSlot": "Z",
+  "skillId": 31050,
+  "productSkillId": 31050,
+  "sourceSkillIds": [
+    31050
+  ],
+  "animationAssetId": "Artist",
+  "clipOwnershipProvenance": {
+    "joinKey": "exact bound clip identity",
+    "numericSkillAliasIsJoinKey": false,
+    "clips": [
+      {
+        "clip": "sdm_sk_harmonyofyin_01",
+        "sequenceIndex": 0,
+        "sourceSkillId": 31050,
+        "sourceLine": 526
+      },
+      {
+        "clip": "sdm_sk_harmonyofyin_02",
+        "sequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "sourceLine": 536
+      }
+    ]
+  },
+  "animationVisualContract": {
+    "combinedMeshAnimationStatus": "ORIGINAL_MATCH_CONFIRMED",
+    "combinedMeshAnimationOwner": "Animation/CModel",
+    "reconstructCombinedMeshAsEffectElement": false,
+    "effectExtractionScope": [
+      "particle",
+      "texture_or_sprite",
+      "trail",
+      "distortion",
+      "post_effect",
+      "particle_owned_mesh_emitter"
+    ]
+  },
+  "timeline": {
+    "durationSeconds": 1.5,
+    "bindingClips": [
+      "sdm_sk_harmonyofyin_01",
+      "sdm_sk_harmonyofyin_02"
+    ],
+    "clips": [
+      {
+        "sequenceIndex": 0,
+        "clip": "sdm_sk_harmonyofyin_01",
+        "sourceSkillId": 31050,
+        "offsetSeconds": 0.0,
+        "lengthSeconds": 0.5,
+        "sourceLine": 526
+      },
+      {
+        "sequenceIndex": 1,
+        "clip": "sdm_sk_harmonyofyin_02",
+        "sourceSkillId": 31050,
+        "offsetSeconds": 0.5,
+        "lengthSeconds": 1.0,
+        "sourceLine": 536
+      }
+    ],
+    "events": [
+      {
+        "eventId": "source-event-001",
+        "clip": "sdm_sk_harmonyofyin_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.0,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SDM_00.Par_O_TrailTest_01",
+        "sourceLine": 527,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_sdm_00.par_o_trailtest_01"
+      },
+      {
+        "eventId": "source-event-002",
+        "clip": "sdm_sk_harmonyofyin_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.0,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_CM_02.Light.Par_MP_Light_03",
+        "sourceLine": 528,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_cm_02.light.par_mp_light_03"
+      },
+      {
+        "eventId": "source-event-003",
+        "clip": "sdm_sk_harmonyofyin_01",
+        "clipSequenceIndex": 0,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.0,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 529,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-004",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.5,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 539,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-005",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.5,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 540,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-006",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.5,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 541,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-007",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.5,
+        "durationSeconds": 0.3652,
+        "kind": "SHAKE",
+        "sourceType": "ViewShake",
+        "sourceAsset": "",
+        "sourceLine": 542,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-008",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0291,
+        "globalTimeSeconds": 0.5291,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01",
+        "sourceLine": 545,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_pc_sdm_00.par_o_harmonyofyin_01_01"
+      },
+      {
+        "eventId": "source-event-009",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0313,
+        "globalTimeSeconds": 0.5313,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_Post.FX_Par.Par_C_FilmNoise_01",
+        "sourceLine": 546,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_post.fx_par.par_c_filmnoise_01"
+      },
+      {
+        "eventId": "source-event-010",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0313,
+        "globalTimeSeconds": 0.5313,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "FX_Post.FX_Par.Par_C_ZoomBlur_03",
+        "sourceLine": 547,
+        "resolutionStatus": "RESOLVED_PARTICLE_GRAPH",
+        "sourceSystemId": "fx_post.fx_par.par_c_zoomblur_03"
+      },
+      {
+        "eventId": "source-event-011",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0313,
+        "globalTimeSeconds": 0.5313,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "PlayParticleEffect",
+        "sourceAsset": "",
+        "sourceLine": 548,
+        "resolutionStatus": "UNSUPPORTED_SOURCE_NOTIFY"
+      },
+      {
+        "eventId": "source-event-012",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0355,
+        "globalTimeSeconds": 0.5355,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 549,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-013",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0355,
+        "globalTimeSeconds": 0.5355,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 550,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-014",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0355,
+        "globalTimeSeconds": 0.5355,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 551,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-015",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0355,
+        "globalTimeSeconds": 0.5355,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 552,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-016",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0355,
+        "globalTimeSeconds": 0.5355,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 553,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-017",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0355,
+        "globalTimeSeconds": 0.5355,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 554,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-018",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0355,
+        "globalTimeSeconds": 0.5355,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 555,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-019",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0356,
+        "globalTimeSeconds": 0.5356,
+        "durationSeconds": 0.217,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 556,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-020",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0356,
+        "globalTimeSeconds": 0.5356,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 557,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-021",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0357,
+        "globalTimeSeconds": 0.5357,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 558,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-022",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0357,
+        "globalTimeSeconds": 0.5357,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 559,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-023",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0357,
+        "globalTimeSeconds": 0.5357,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 560,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-024",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0357,
+        "globalTimeSeconds": 0.5357,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 561,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-025",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0357,
+        "globalTimeSeconds": 0.5357,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 562,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      },
+      {
+        "eventId": "source-event-026",
+        "clip": "sdm_sk_harmonyofyin_02",
+        "clipSequenceIndex": 1,
+        "sourceSkillId": 31050,
+        "localTimeSeconds": 0.0357,
+        "globalTimeSeconds": 0.5357,
+        "durationSeconds": 0.0,
+        "kind": "EFFECT",
+        "sourceType": "Effect",
+        "sourceAsset": "",
+        "sourceLine": 563,
+        "resolutionStatus": "OUT_OF_EFFECT_DOCUMENT"
+      }
+    ]
+  },
+  "sourcePackages": [
+    {
+      "logicalPackage": "FX_CM_02",
+      "physicalPackage": "XFH2RCA2R0EF0CYE90QX0CMQ.upk",
+      "graphSha256": "96c1018ac75a56ead77fb1eec726564e0472484f529c05d9131a94ee2418f375",
+      "graphSummary": {
+        "graphObjectCount": 7014,
+        "particleSystemCount": 194,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 636,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 6908,
+        "decodedInterpCurveCount": 47,
+        "decodedInterpCurvePointCount": 151,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 255488,
+      "sourcePackageSha256": "79de79f59ac835e96b54c7e2217b55579266239834cc9fd8eede51a7e5e1fc32"
+    },
+    {
+      "logicalPackage": "FX_PC_SDM_00",
+      "physicalPackage": "YGI3SWD3SHKB3D11G9KMHCX6M.upk",
+      "graphSha256": "7ffd7c27c460e14aae5e9ff531e6733806c6b123e57f78f6f41f33a708266ad5",
+      "graphSummary": {
+        "graphObjectCount": 4346,
+        "particleSystemCount": 100,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 749,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 2913,
+        "decodedInterpCurveCount": 6,
+        "decodedInterpCurvePointCount": 12,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 158616,
+      "sourcePackageSha256": "735db8b2347566c43835f636d2175e9a7e7e24407096a4d6614c17cd85adadaa"
+    },
+    {
+      "logicalPackage": "FX_POST",
+      "physicalPackage": "WEG1QUNFMEF1TGW9PW6M37Q.upk",
+      "graphSha256": "7b0572546d3aab789d288c10e42c1854c0dd8701ba133869013d359cd171caa3",
+      "graphSummary": {
+        "graphObjectCount": 659,
+        "particleSystemCount": 61,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 78,
+        "missingParticleEmitterTargetCount": 0,
+        "decodedRawDistributionCount": 503,
+        "decodedInterpCurveCount": 1,
+        "decodedInterpCurvePointCount": 3,
+        "opaqueSupportedDistributionStructCount": 0
+      },
+      "sourcePackageBytes": 91566,
+      "sourcePackageSha256": "cd538c071af21b171aabeb7cb3ac95e789a50b6fa6cc1f811b5c35e172df3c99"
+    }
+  ],
+  "sourceSystems": [
+    {
+      "sourceSystemId": "fx_cm_02.light.par_mp_light_03",
+      "sourceAsset": "FX_CM_02.Light.Par_MP_Light_03",
+      "logicalPackage": "FX_CM_02",
+      "objectName": "par_mp_light_03",
+      "objectPath": "light.par_mp_light_03",
+      "rootNodeId": "FX_CM_02:export:7018",
+      "summary": {
+        "nodeCount": 11,
+        "edgeCount": 14,
+        "emitterCount": 1,
+        "lodLevelCount": 2,
+        "moduleCount": 4,
+        "distributionCount": 3,
+        "resourceBindingCount": 1,
+        "unresolvedExternalReferenceCount": 9,
+        "featureClasses": [
+          "efparticlemoduletypedatalight"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_CM_02:export:4132",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -78,
+          "objectPath": "enginematerials.defaultparticle",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_sdm_00.par_o_harmonyofyin_01_01",
+      "sourceAsset": "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01",
+      "logicalPackage": "FX_PC_SDM_00",
+      "objectName": "par_o_harmonyofyin_01_01",
+      "objectPath": "par_o_harmonyofyin_01_01",
+      "rootNodeId": "FX_PC_SDM_00:export:4318",
+      "summary": {
+        "nodeCount": 86,
+        "edgeCount": 121,
+        "emitterCount": 17,
+        "lodLevelCount": 34,
+        "moduleCount": 34,
+        "distributionCount": 0,
+        "resourceBindingCount": 21,
+        "unresolvedExternalReferenceCount": 304,
+        "featureClasses": [
+          "particlemoduletypedatamesh"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2681",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -159,
+          "objectPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_trail_01_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2682",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -76,
+          "objectPath": "fx_m_mi_03.fx_m.fx_d_markring_02_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2683",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -120,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_d_pa_ringmaster_01_51_dt_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2684",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -120,
+          "objectPath": "fx_m_mi_03.fx_mi.fx_d_pa_ringmaster_01_51_dt_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2685",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -158,
+          "objectPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_sy_09_1_ts_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2686",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -157,
+          "objectPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_sy_08_8_ts_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2687",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -77,
+          "objectPath": "fx_m_mi_03.fx_m.fx_d_pa_ring_12_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2688",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -83,
+          "objectPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2689",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -71,
+          "objectPath": "fx_m_mi_02.fx_m.fx_d_pa_shine_02_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2690",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -90,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2691",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -90,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2692",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -117,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_j_me_shine_02_1_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:3401",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1487,
+          "objectPath": "fx_sm_00.fm_b_cylinder_002",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2693",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -116,
+          "objectPath": "fx_m_mi_02.fx_mi.fx_d_me_shine_02_04_dt_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:3402",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1490,
+          "objectPath": "fx_sm_00.fm_d_cylinder_004",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2694",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -95,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_d_me_flow_02_01_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:3403",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1490,
+          "objectPath": "fx_sm_00.fm_d_cylinder_004",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2695",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -95,
+          "objectPath": "fx_m_mi_00.fx_mi.fx_d_me_flow_02_01_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:3404",
+          "referenceIndex": 0,
+          "property": "mesh",
+          "packageIndex": -1490,
+          "objectPath": "fx_sm_00.fm_d_cylinder_004",
+          "role": "mesh"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2696",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -146,
+          "objectPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_circledisort_01_01_ad",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2680",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -134,
+          "objectPath": "fx_m_mi_k_00.fx_d_pa_ring_12_ad_inst352423sdsd",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_pc_sdm_00.par_o_trailtest_01",
+      "sourceAsset": "FX_PC_SDM_00.Par_O_TrailTest_01",
+      "logicalPackage": "FX_PC_SDM_00",
+      "objectName": "par_o_trailtest_01",
+      "objectPath": "par_o_trailtest_01",
+      "rootNodeId": "FX_PC_SDM_00:export:4353",
+      "summary": {
+        "nodeCount": 17,
+        "edgeCount": 16,
+        "emitterCount": 3,
+        "lodLevelCount": 3,
+        "moduleCount": 10,
+        "distributionCount": 0,
+        "resourceBindingCount": 3,
+        "unresolvedExternalReferenceCount": 19,
+        "featureClasses": [
+          "particlemoduletypedataribbon"
+        ]
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2896",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -143,
+          "objectPath": "fx_m_mi_o_00.fx_mi.fx_o_maskedrib_01_01_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2895",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -136,
+          "objectPath": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr",
+          "role": "material"
+        },
+        {
+          "sourceNodeId": "FX_PC_SDM_00:export:2897",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": -149,
+          "objectPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_master_01_17_tr",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_post.fx_par.par_c_filmnoise_01",
+      "sourceAsset": "FX_Post.FX_Par.Par_C_FilmNoise_01",
+      "logicalPackage": "FX_POST",
+      "objectName": "par_c_filmnoise_01",
+      "objectPath": "fx_par.par_c_filmnoise_01",
+      "rootNodeId": "FX_POST:export:1542",
+      "summary": {
+        "nodeCount": 4,
+        "edgeCount": 3,
+        "emitterCount": 1,
+        "lodLevelCount": 1,
+        "moduleCount": 1,
+        "distributionCount": 0,
+        "resourceBindingCount": 1,
+        "unresolvedExternalReferenceCount": 8,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_POST:export:1299",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": 883,
+          "objectPath": "fx_mi.fx_c_pa_filmnoise_01_tr",
+          "role": "material"
+        }
+      ]
+    },
+    {
+      "sourceSystemId": "fx_post.fx_par.par_c_zoomblur_03",
+      "sourceAsset": "FX_Post.FX_Par.Par_C_ZoomBlur_03",
+      "logicalPackage": "FX_POST",
+      "objectName": "par_c_zoomblur_03",
+      "objectPath": "fx_par.par_c_zoomblur_03",
+      "rootNodeId": "FX_POST:export:1558",
+      "summary": {
+        "nodeCount": 5,
+        "edgeCount": 5,
+        "emitterCount": 1,
+        "lodLevelCount": 2,
+        "moduleCount": 1,
+        "distributionCount": 0,
+        "resourceBindingCount": 1,
+        "unresolvedExternalReferenceCount": 16,
+        "featureClasses": []
+      },
+      "resourceBindings": [
+        {
+          "sourceNodeId": "FX_POST:export:1315",
+          "referenceIndex": 0,
+          "property": "material",
+          "packageIndex": 893,
+          "objectPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
+          "role": "material"
+        }
+      ]
+    }
+  ],
+  "materialParameterBindings": [
+    {
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
+      "sourceLogicalPackage": "bfx_m_mi_00",
+      "expectedPhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
+      "sourcePhysicalPackage": "6YGC3DB3SBJ3S11G16MH6QMH8.upk",
+      "materialPath": "bfx_mi.bfx_d_pa_circ_01_01_dt_ad",
+      "objectName": "bfx_d_pa_circ_01_01_dt_ad",
+      "className": "materialinstanceconstant",
+      "parent": "bfx_m.bfx_d_pa_circ_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [
+        {
+          "name": "depthbiasdalpha_bias",
+          "value": 30.0
+        },
+        {
+          "name": "03.spherepower",
+          "value": 4.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "enginematerials.defaultparticle",
+      "sourceLogicalPackage": "enginematerials",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "UNRESOLVED_MATERIAL_PATH",
+      "candidateCount": 0,
+      "candidates": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_a_pa_db_01_1_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_a_pa_db_01_1_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_a_pa_db_01_1_ad",
+      "objectName": "fx_a_pa_db_01_1_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "subuv_tex",
+          "texture": "fx_tex_00.fx_a_fragment_007",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_fragment_007.dds"
+        }
+      ],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_flow_02_01_ad",
+      "sourceLogicalPackage": "fx_m_mi_00",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_d_me_flow_02_01_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "materialPath": "fx_mi.fx_d_me_flow_02_01_ad",
+      "objectName": "fx_d_me_flow_02_01_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_d_me_flow_02_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_02.fx_d_atypical_035_1_cl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_035_1_cl.dds"
+        },
+        {
+          "name": "01.map_e",
+          "texture": "fx_tex_00.fx_a_noise_017",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_noise_017.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "09.str",
+          "value": 1.0
+        },
+        {
+          "name": "10.power",
+          "value": 1.0
+        },
+        {
+          "name": "02.map_e_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "03.map_e_uvscale_g",
+          "value": 0.0
+        },
+        {
+          "name": "05.uv.y.strech",
+          "value": 1.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "16.color",
+          "value": {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 5.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_m.fx_d_pa_shine_02_ad",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_d_pa_shine_02_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_m.fx_d_pa_shine_02_ad",
+      "objectName": "fx_d_pa_shine_02_ad",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_d_me_shine_02_04_dt_ad",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_d_me_shine_02_04_dt_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_d_me_shine_02_04_dt_ad",
+      "objectName": "fx_d_me_shine_02_04_dt_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_d_pa_shine_02_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_02.fx_d_cloud_035",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_cloud_035.dds"
+        },
+        {
+          "name": "06.map_b",
+          "texture": "fx_tex_02.fx_d_atypical_028",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_028.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "01.height.power",
+          "value": 3.0
+        },
+        {
+          "name": "02.height.strength",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "11.width.power",
+          "value": 2.0
+        },
+        {
+          "name": "12.width.strength",
+          "value": 1.0
+        },
+        {
+          "name": "31.fresnal_power",
+          "value": 1.0
+        },
+        {
+          "name": "02.map_a_uvscale_r",
+          "value": 3.0
+        },
+        {
+          "name": "03.map_a_uvscale_g",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "04.map_a_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "05.map_a_panning_y",
+          "value": 0.5
+        },
+        {
+          "name": "07.map_b_uvscale_r",
+          "value": 2.0
+        },
+        {
+          "name": "08.map_b_uvscale_g",
+          "value": 0.0
+        },
+        {
+          "name": "09.map_b_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "10.map_b_panning_y",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "31.noisepower",
+          "value": 1.0
+        },
+        {
+          "name": "32.noisestr",
+          "value": 20.0
+        },
+        {
+          "name": "01.depthbiasdalpha_bias",
+          "value": 100.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_02.fx_mi.fx_j_me_shine_02_1_ad",
+      "sourceLogicalPackage": "fx_m_mi_02",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_j_me_shine_02_1_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1FGUMP6QMP8Y5.upk",
+      "materialPath": "fx_mi.fx_j_me_shine_02_1_ad",
+      "objectName": "fx_j_me_shine_02_1_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mi.fx_d_me_shine_02_14_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "01.map_a",
+          "texture": "fx_tex_00.fx_b_atypical_004",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_b_atypical_004.dds"
+        },
+        {
+          "name": "06.map_b",
+          "texture": "fx_tex_02.fx_d_atypical_028",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_028.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "01.height.power",
+          "value": 2.0
+        },
+        {
+          "name": "02.height.strength",
+          "value": 0.5
+        },
+        {
+          "name": "11.width.power",
+          "value": 0.0
+        },
+        {
+          "name": "12.width.strength",
+          "value": 1.0
+        },
+        {
+          "name": "31.fresnal_power",
+          "value": 2.0
+        },
+        {
+          "name": "02.map_a_uvscale_r",
+          "value": 0.5
+        },
+        {
+          "name": "04.map_a_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "05.map_a_panning_y",
+          "value": 0.0
+        },
+        {
+          "name": "07.map_b_uvscale_r",
+          "value": 2.0
+        },
+        {
+          "name": "08.map_b_uvscale_g",
+          "value": 0.0
+        },
+        {
+          "name": "09.map_b_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "10.map_b_panning_y",
+          "value": 0.0
+        },
+        {
+          "name": "11.desaturation",
+          "value": 0.5
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_03.fx_m.fx_d_markring_02_tr",
+      "sourceLogicalPackage": "fx_m_mi_03",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_d_markring_02_tr",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "materialPath": "fx_m.fx_d_markring_02_tr",
+      "objectName": "fx_d_markring_02_tr",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_03.fx_m.fx_d_pa_ring_12_ad",
+      "sourceLogicalPackage": "fx_m_mi_03",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_m.fx_d_pa_ring_12_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "materialPath": "fx_m.fx_d_pa_ring_12_ad",
+      "objectName": "fx_d_pa_ring_12_ad",
+      "className": "material",
+      "parent": null,
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_03.fx_mi.fx_d_pa_ringmaster_01_51_dt_ad",
+      "sourceLogicalPackage": "fx_m_mi_03",
+      "expectedPhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_d_pa_ringmaster_01_51_dt_ad",
+      "sourcePhysicalPackage": "YGI3SB3OBJ3O1MGUMP6QMP8B5.upk",
+      "materialPath": "fx_mi.fx_d_pa_ringmaster_01_51_dt_ad",
+      "objectName": "fx_d_pa_ringmaster_01_51_dt_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mi.fx_d_pa_ringmaster_01_50_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [
+        {
+          "name": "01.depthbiasdalpha_bias",
+          "value": 100.0
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_d_pa_ring_12_ad_inst352423sdsd",
+      "sourceLogicalPackage": "fx_m_mi_k_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_d_pa_ring_12_ad_inst352423sdsd",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "materialPath": "fx_d_pa_ring_12_ad_inst352423sdsd",
+      "objectName": "fx_d_pa_ring_12_ad_inst352423sdsd",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_03.fx_m.fx_d_pa_ring_12_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr",
+      "sourceLogicalPackage": "fx_m_mi_k_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_k_flowrib_01_03_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "materialPath": "fx_mi.fx_k_flowrib_01_03_tr",
+      "objectName": "fx_k_flowrib_01_03_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_k_flowrib_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "colormap",
+          "texture": "fx_tex_05.fx_l_environment_001",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_05/fx_l_environment_001.dds"
+        },
+        {
+          "name": "flowtex",
+          "texture": "fx_tex_02.fx_d_noise_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_noise_002.dds"
+        },
+        {
+          "name": "tex_main",
+          "texture": "fx_tex_04.fx_i_atypical_03_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_i_atypical_03_ycl.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "colormap_coord_x",
+          "value": 1.0
+        },
+        {
+          "name": "colormap_coord_y",
+          "value": 1.0
+        },
+        {
+          "name": "colormap_des",
+          "value": 0.800000011920929
+        },
+        {
+          "name": "colormap_power",
+          "value": 2.0
+        },
+        {
+          "name": "colormap_str",
+          "value": 5.0
+        },
+        {
+          "name": "flow_ucoord",
+          "value": 1.0
+        },
+        {
+          "name": "flow_vcoord",
+          "value": 0.5
+        },
+        {
+          "name": "maintex_pos_v",
+          "value": 0.15000000596046448
+        },
+        {
+          "name": "maintex_str",
+          "value": 10.0
+        },
+        {
+          "name": "maintex_ucoord",
+          "value": 1.0
+        },
+        {
+          "name": "maintex_vcoord",
+          "value": 0.800000011920929
+        }
+      ],
+      "vectors": [
+        {
+          "name": "colormap_color",
+          "value": {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_maskedrib_01_01_tr",
+      "sourceLogicalPackage": "fx_m_mi_o_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_o_maskedrib_01_01_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "materialPath": "fx_mi.fx_o_maskedrib_01_01_tr",
+      "objectName": "fx_o_maskedrib_01_01_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_02.fx_m.fx_j_maskedrib_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "tex_main",
+          "texture": "fx_tex_04.fx_i_atypical_03_1_ycl",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_i_atypical_03_1_ycl.dds"
+        }
+      ],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_circledisort_01_01_ad",
+      "sourceLogicalPackage": "fx_m_mi_o_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_o_pa_circledisort_01_01_ad",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "materialPath": "fx_mi.fx_o_pa_circledisort_01_01_ad",
+      "objectName": "fx_o_pa_circledisort_01_01_ad",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_o_pa_circledisort_01_ad",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_master_01_17_tr",
+      "sourceLogicalPackage": "fx_m_mi_o_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_o_pa_master_01_17_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "materialPath": "fx_mi.fx_o_pa_master_01_17_tr",
+      "objectName": "fx_o_pa_master_01_17_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_00.fx_m.fx_d_pa_master_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "21.map_c",
+          "texture": "fx_tex_02.fx_d_fluid_007"
+        },
+        {
+          "name": "02.map_e",
+          "texture": "fx_tex_00.fx_a_ice_002"
+        },
+        {
+          "name": "12.map_f",
+          "texture": "fx_tex_02.fx_d_atypical_098"
+        },
+        {
+          "name": "01.specmap",
+          "texture": "fx_tex_00.fx_a_noise_002",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_00/fx_a_noise_002.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "36.str",
+          "value": 1.0
+        },
+        {
+          "name": "37.power",
+          "value": 1.0
+        },
+        {
+          "name": "03.map_e_uvscale_r",
+          "value": 2.0
+        },
+        {
+          "name": "04.map_e_uvscale_g",
+          "value": 2.0
+        },
+        {
+          "name": "05.map_e_panning_x",
+          "value": 0.009999999776482582
+        },
+        {
+          "name": "06.map_e_panning_y",
+          "value": 0.009999999776482582
+        },
+        {
+          "name": "13.map_f_uvscale_r",
+          "value": 1.0
+        },
+        {
+          "name": "14.map_f_uvscale_g",
+          "value": 1.0
+        },
+        {
+          "name": "15.map_f_panning_x",
+          "value": -0.009999999776482582
+        },
+        {
+          "name": "16.map_f_panning_y",
+          "value": -0.009999999776482582
+        },
+        {
+          "name": "91.desaturation",
+          "value": 0.8999999761581421
+        },
+        {
+          "name": "92.emissiion_power",
+          "value": 1.0
+        },
+        {
+          "name": "02.specmap_str",
+          "value": 1.0
+        },
+        {
+          "name": "07.desaturation",
+          "value": 0.75
+        },
+        {
+          "name": "08.specmap_power",
+          "value": 3.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "93.emissiion_color",
+          "value": {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 3.0
+          }
+        },
+        {
+          "name": "09.specmap_color",
+          "value": {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 15.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_sy_08_8_ts_tr",
+      "sourceLogicalPackage": "fx_m_mi_o_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_o_pa_sy_08_8_ts_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "materialPath": "fx_mi.fx_o_pa_sy_08_8_ts_tr",
+      "objectName": "fx_o_pa_sy_08_8_ts_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_high_03.fx_o_symbol_14"
+        },
+        {
+          "name": "uv_noise_tex",
+          "texture": "fx_tex_04.fx_j_mirnoise_01",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_04/fx_j_mirnoise_01.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "uv_noise_intensity",
+          "value": 0.10000000149011612
+        },
+        {
+          "name": "uv_noise_panning_x",
+          "value": 0.0
+        },
+        {
+          "name": "uv_noise_panning_y",
+          "value": 0.5
+        },
+        {
+          "name": "uv_noise_tilling",
+          "value": 1.0
+        }
+      ],
+      "vectors": [
+        {
+          "name": "emissive_color&intensity",
+          "value": {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_sy_09_1_ts_tr",
+      "sourceLogicalPackage": "fx_m_mi_o_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_o_pa_sy_09_1_ts_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "materialPath": "fx_mi.fx_o_pa_sy_09_1_ts_tr",
+      "objectName": "fx_o_pa_sy_09_1_ts_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_mastermaterial.fx_mm.fx_mm_simple_02_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "emissive_tex",
+          "texture": "fx_tex_high_03.fx_o_symbol_01"
+        }
+      ],
+      "scalars": [],
+      "vectors": [
+        {
+          "name": "emissive_color&intensity",
+          "value": {
+            "r": 1.0,
+            "g": 1.0,
+            "b": 1.0,
+            "a": 1.0
+          }
+        }
+      ]
+    },
+    {
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_trail_01_01_tr",
+      "sourceLogicalPackage": "fx_m_mi_o_00",
+      "expectedPhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "resolutionStatus": "RESOLVED_EXACT_SOURCE_PACKAGE",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_o_pa_trail_01_01_tr",
+      "sourcePhysicalPackage": "ZHJ4TC4PCK4PQ4J22HIXEYUX4U.upk",
+      "materialPath": "fx_mi.fx_o_pa_trail_01_01_tr",
+      "objectName": "fx_o_pa_trail_01_01_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m_mi_03.fx_mi.fx_m_pa_trail_01_tr",
+      "parentSourcePhysicalPackage": null,
+      "textures": [
+        {
+          "name": "tex_uvnoise_01",
+          "texture": "fx_tex_02.fx_d_atypical_043",
+          "dds_path": "Effect/Dimensionist/Textures/FX_TEX_02/fx_d_atypical_043.dds"
+        }
+      ],
+      "scalars": [
+        {
+          "name": "tex_alpha_01_r_tile",
+          "value": 1.2000000476837158
+        },
+        {
+          "name": "tex_alpha_multiply",
+          "value": 500.0
+        },
+        {
+          "name": "tex_alpha_power",
+          "value": 1.5
+        },
+        {
+          "name": "tex_flow_g_tile",
+          "value": 5.0
+        },
+        {
+          "name": "tex_flow_r_tile",
+          "value": 0.0
+        },
+        {
+          "name": "center_hole_hardness",
+          "value": -2.0
+        },
+        {
+          "name": "center_hole_power",
+          "value": 6.0
+        },
+        {
+          "name": "center_hole_size",
+          "value": 0.30000001192092896
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_mi.fx_c_pa_filmnoise_01_tr",
+      "sourceLogicalPackage": "fx_mi",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_c_pa_filmnoise_01_tr",
+      "sourcePhysicalPackage": "WEG1QUNFMEF1TGW9PW6M37Q.upk",
+      "materialPath": "fx_mi.fx_c_pa_filmnoise_01_tr",
+      "objectName": "fx_c_pa_filmnoise_01_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_c_po_filmnoise_01",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [
+        {
+          "name": "channel spread range",
+          "value": 1.0
+        },
+        {
+          "name": "desaturation value",
+          "value": 0.30000001192092896
+        },
+        {
+          "name": "circle radius",
+          "value": 20.0
+        },
+        {
+          "name": "circleedge hardness",
+          "value": 1.5
+        },
+        {
+          "name": "b channel strength",
+          "value": 1.0
+        },
+        {
+          "name": "b noise strength",
+          "value": 0.003000000026077032
+        },
+        {
+          "name": "g channel strength",
+          "value": 1.0
+        },
+        {
+          "name": "g noise strength",
+          "value": 0.004999999888241291
+        },
+        {
+          "name": "r channel strength",
+          "value": 1.0
+        },
+        {
+          "name": "r noise strength",
+          "value": 0.004999999888241291
+        }
+      ],
+      "vectors": []
+    },
+    {
+      "sourceMaterialPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
+      "sourceLogicalPackage": "fx_mi",
+      "expectedPhysicalPackage": null,
+      "resolutionStatus": "RESOLVED_UNIQUE_PATH",
+      "candidateCount": 1,
+      "catalogKey": "fx_mi.fx_c_pa_zoomblur_01_tr",
+      "sourcePhysicalPackage": "WEG1QUNFMEF1TGW9PW6M37Q.upk",
+      "materialPath": "fx_mi.fx_c_pa_zoomblur_01_tr",
+      "objectName": "fx_c_pa_zoomblur_01_tr",
+      "className": "materialinstanceconstant",
+      "parent": "fx_m.fx_c_po_zoomblur_01",
+      "parentSourcePhysicalPackage": null,
+      "textures": [],
+      "scalars": [
+        {
+          "name": "circle radius",
+          "value": 15.0
+        },
+        {
+          "name": "circleedge hardness",
+          "value": 5.0
+        }
+      ],
+      "vectors": []
+    }
+  ],
+  "runtimeResourceBindings": [
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_b_cylinder_002",
+      "resolutionStatus": "MISSING_RUNTIME_ASSET",
+      "assetId": null,
+      "candidateCount": 0
+    },
+    {
+      "role": "mesh",
+      "sourceObjectPath": "fx_sm_00.fm_d_cylinder_004",
+      "resolutionStatus": "MISSING_RUNTIME_ASSET",
+      "assetId": null,
+      "candidateCount": 0
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_fragment_007",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_a_fragment_007.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_ice_002",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_a_ice_002.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_noise_002",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_a_noise_002.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_a_noise_017",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_a_noise_017.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_00.fx_b_atypical_004",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_b_atypical_004.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_028",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_d_atypical_028.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_035_1_cl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_d_atypical_035_1_cl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_043",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_d_atypical_043.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_098",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_d_atypical_098.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_cloud_035",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_d_cloud_035.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_fluid_007",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_d_fluid_007.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_02.fx_d_noise_002",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_d_noise_002.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_i_atypical_03_1_ycl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_i_atypical_03_1_ycl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_i_atypical_03_ycl",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_i_atypical_03_ycl.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_04.fx_j_mirnoise_01",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_j_mirnoise_01.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_05.fx_l_environment_001",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_l_environment_001.dds",
+      "candidateCount": 1
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_high_03.fx_o_symbol_01",
+      "resolutionStatus": "MISSING_RUNTIME_ASSET",
+      "assetId": null,
+      "candidateCount": 0
+    },
+    {
+      "role": "texture",
+      "sourceObjectPath": "fx_tex_high_03.fx_o_symbol_14",
+      "resolutionStatus": "RESOLVED_RUNTIME_ASSET",
+      "assetId": "Effect/Artist/Textures/fx_o_symbol_14.dds",
+      "candidateCount": 1
+    }
+  ],
+  "unsupportedUnresolved": [
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.efparticlemodulelocationonground_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulecameraoffset_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulelifetime_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulemeshrotation_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemoduleorientationaxislock_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 22,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulerotation_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulesize_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_11",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 31,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01",
+        "FX_Post.FX_Par.Par_C_FilmNoise_01",
+        "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_00.explosion.par_q_isbc_jump_02.particlemodulespawn_13",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_high_01.light.par_j_lighthit_002.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 8,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01",
+        "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulecameraoffset_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01",
+        "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 10,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_21",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulelifetime_22",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulelocation_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulerotationrate_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulerotationrate_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulesize_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulesubuv_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_01.explosion.par_g_explosion_02.particlemodulevelocity_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_03.particlemodulecolorscaleoverlife_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_05.sparkling.par_h_spark_03.particlemodulesubuv_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_10.dust.par_l_dustbust_01.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_13.light.par_d_unseallight_start_01.particlemodulelifetime_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_14.portal.par_d_portal_local_001.particlemodulelifetime_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_f_boriwater_001.particlemodulelocation_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_h_fishhook_02.particlemodulespawn_4",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "bfx_low_16.water.par_h_fishing_s_01.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 18,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_attnormal_ft_01.particlemodulesizemultiplylife_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_attnormal_gn_01.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_b_mat_metal_001.particlemodulelifetime_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_c_hit_ballista_001.particlemodulemeshrotation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_backattackcri_02.particlemodulesizemultiplylife_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_hit_rifle_back_02.particlemodulesizemultiplylife_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_d_msr_backattack_01.particlemodulelifetime_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitdefault_01.particlemodulesize_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_e_hitholycri_01.particlemodulesize_40",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulecolorscaleoverlife_15",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_j_whkf_holypower_exp_01.particlemodulesizemultiplylife_18",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_l_cdkcn_hit_01_l.particlemodulerotation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_x_cnct_hit_00_00.particlemodulelifetime_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_00.hit.par_x_cnct_hit_00_00.particlemodulesizemultiplylife_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 6,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_g_gadgetskill_001.particlemodulelocation_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_g_ghost_01.particlemodulesize_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_k_item_massteleport_01.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_l_carve_01.particlemodulespawn_0",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_l_firework_anniversary_02.particlemodulesize_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_l_firework_anniversary_02_1.particlemodulesize_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_02.item.par_u_conieracing_prj_02.particlemodulecolor_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_b_statefear_001.particlemodulesize_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_g_death_rock_01.particlemodulelifetime_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_i_classup_02.particlemodulecolor_11",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_i_classup_02.particlemodulecoloroverlife_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 3,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01",
+        "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_i_classup_02.particlemodulesize_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_l_greatbox_01.particlemodulespawn_12",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulecolorscaleoverlife_12",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_u_fullswing_exp_dust_01.particlemodulesizemultiplylife_17",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_u_treasurefishing_01.particlemoduleparameterdynamic_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_u_treekick_01.particlemodulesizemultiplylife_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_04.state.par_u_treekick_01.particlemodulesizemultiplylife_29",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_d_soundnote_prj01.particlemodulecolor_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_g_stonetrap_exp_01.particlemodulecolorscaleoverlife_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_k_chaosdeathsnipe_atk_01.particlemodulerotation_seeded_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_k_chaosdeathsnipe_atk_01.particlemodulerotationratemultiplylife_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_chicken_prj_01.particlemodulemeshrotation_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_imagedestroy_prj_01.particlemoduleparameterdynamic_32",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_l_starmarble_02.particlemodulesize_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_m_cnpt_battleitem_prj_direction_04.particlemodulemeshrotation_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_m_cnpt_battleitem_prj_direction_04.particlemodulesizemultiplylife_58",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_m_cnpt_battleitem_prj_ground_01.particlemoduleparameterdynamic_57",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_m_cnpt_battleitem_prj_spawn_01.particlemodulespawn_1",
+      "property": "spawnmodule",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_tile_05_tonado_01.particlemodulerotationrate_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_p_tile_58_tree_explo_01.particlemodulelifetime_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_t_fireleaf_prj_01.particlemodulecolorscaleoverlife_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_05.prj.par_w_03185_prj_spawn_01.efparticlemodulevelocityoverlifetime_2",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_j_lightshafting_02.particlemodulesize_9",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_07.gadget.par_l_rifle_shot_01.particlemodulecolorscaleoverlife_21",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_g_buff_quest_brain_overdrive_01.particlemodulesize_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_n_hell_reward_start.particlemodulecolor_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_r_taegeukgi02_buff_02.particlemoduleparameterdynamic_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_08.buff.par_v_quest_visualbuff_ground_01.particlemodulevelocity_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 3,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01",
+        "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_10.hit.par_o_hit_lava_01.particlemodulecolorscaleoverlife_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_bs_10.hit.par_o_hit_lava_01.particlemoduleparameterdynamic_4",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_00.dust.par_mp_dust_-x_high_01.particlemodulelifetime_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.distortion.par_mp_concavedis_z_03.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_01.etc.par_l_function_music_09.particlemodulecolorscaleoverlife_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_cm_03.shield.par_d_wdr_gravityshield_03.particlemodulesize_27",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_esther_sdsd_00.par_d_sdsd_buff01_02.particlemodulecolor_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_02613.par_w_watergun01_sk_01_1.particlemodulespawnperunit_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_10285.par_y_10285_on_02.particlemodulecolorscaleoverlife_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_itr_10285.par_y_10285_on_02.particlemodulesize_8",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_anh_00.0035.par_o_0035_atk_07_3_loc_int.particlemodulesize_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_bogt_00.par_z_bogt_shot_dust_01_loc_int.particlemodulesizemultiplylife_22",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_bons_00-5.par_z_bons_buff_01_04.particlemoduleparameterdynamic_61",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boss_03.rrnf.par_h_wickedfox_05_1.particlemodulecolor_10",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_boss_05.rrcl.par_k_rrcl_buff_pcbody_01.particlemodulesize_6",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_00_l.par_l_cdkcn_sword_prj_exp_01.particlemodulecolorscaleoverlife_49",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_02_v.par_v_cdkcn_kamen_zone_cast_01.particlemodulecolorscaleoverlife_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_02_v.par_v_cdkcn_kamen_zone_cast_01.particlemodulesizemultiplylife_14",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_02_v.par_v_cdkcn_kamen_zone_cast_01.particlemodulesizemultiplylife_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cdkcn_02_v.par_v_cdkcn_meto_prj_01.particlemodulecolor_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cmhm_00_z.par_z_cmhm_01_etc_prj01_1.particlemodulecolor_33",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnbg_00_p.par_p_cnbg_atk29_spin02.particlemoduleparameterdynamic_55",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cnbz_00_n.par_n_cnbz_sk16_prj_exp_01.particlemoduleparameterdynamic_30",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cuas_00-4_n.par_n_cuas_shadowarea_exp_03_02_loc_int.particlemodulecolor_20",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_cuas_00-4_o.par_o_cuas_atk_25_04.particlemodulesizemultiplylife_132",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kzzy_00_z.par_z_kzzy_dustarea_01_01.particlemodulesizemultiplylife_13",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_mn_kzzy_00_z.par_z_kzzy_fire_buff_01.particlemodulesizemultiplylife_1",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_01.par_o_drp_quickblow_05_03_loc_int.particlemodulecameraoffset_7",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_drp_01.par_o_drp_quickblow_05_03_loc_int.particlemodulecolorscaleoverlife_16",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_dse_00.par_o_dse_attack_01_01.particlemodulecolor_19",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fbm_06.par_r_fbm_blasting_16_01_01.particlemodulecolorscaleoverlife_3",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fif_03.par_t_fif_filmnoise_01.particlemodulelocation_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fif_03.par_t_fif_filmnoise_01.particlemodulesize_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_FilmNoise_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_flm_01.par_m_flm_ribbon_02.particlemodulelifetime_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fsm_04.par_u_fsm_step_exp_04.particlemodulevelocity_5",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 4,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_fsm_08.par_s_fsm_finishspark_cast_00.particlemodulecolor_59",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_gbs_01.par_o_gbs_plasma_ball_01_01.particlemodulesizemultiplylife_24",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 2,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_HarmonyofYin_01_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_msm_11.par_j_msm_superbagron_handcast_02.particlemoduleparameterdynamic_52",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_pc_msm_11.par_j_msm_superbagron_handcast_02.particlemodulesizescale_0",
+      "property": "modules",
+      "reason": "external_graph_package_not_loaded",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_PC_SDM_00.Par_O_TrailTest_01"
+      ]
+    },
+    {
+      "sourceObjectPath": "light.par_mp_light_03.efparticlemoduletypedatalight_0.pointlightcomponent_1335",
+      "property": "pointlightcomponent",
+      "reason": "local_reference_is_not_a_decoded_particle_graph_node",
+      "occurrences": 1,
+      "sourceSystems": [
+        "FX_CM_02.Light.Par_MP_Light_03"
+      ]
+    },
+    {
+      "sourceEventId": "source-event-011",
+      "sourceObjectPath": null,
+      "reason": "unsupported_source_notify",
+      "sourceSystems": [],
+      "occurrences": 1
+    }
+  ],
+  "conversionState": {
+    "normalizedSourceGraph": "EXTRACTED",
+    "materialInstanceParameterBindings": "PARTIAL",
+    "runtimeElementMapping": "PENDING",
+    "importedEffectDocument": "PENDING"
+  },
+  "summary": {
+    "sourceSystemCount": 5,
+    "effectEventCount": 25,
+    "resolvedParticleEventCount": 5,
+    "unsupportedNotifyCount": 1,
+    "unresolvedSourceSystemCount": 0,
+    "relatedViewShakeCount": 1,
+    "unsupportedUnresolvedUniqueCount": 122,
+    "uniqueMaterialBindingCount": 20,
+    "resolvedMaterialBindingCount": 19,
+    "runtimeResourceBindingCount": 20,
+    "resolvedRuntimeResourceBindingCount": 17,
+    "missingParticleGraphPackageCount": 0
+  }
+}

@@ -180,6 +180,9 @@
     <ClCompile Include="..\Private\CharacterPreviewPanel.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\PlayableCharacterPreviewContract.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
@@ -465,6 +468,9 @@
     <ClCompile Include="..\Private\PartyWindowView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\WorldPlayerNameplateView.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\UITextureCache.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -530,6 +536,9 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\CharacterPreviewPanel.h">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\PlayableCharacterPreviewContract.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h">
@@ -773,6 +782,9 @@
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\PartyWindowView.h">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\WorldPlayerNameplateView.h">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\UITextureCache.h">
@@ -1758,6 +1770,9 @@
     <Filter Include="96.DataFiles\Effects\Imported\Artist\CurrentCombat">
       <UniqueIdentifier>{b9328335-bbde-5d4c-8497-0d0dd38889f5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Artist\CurrentCombat\Candidates">
+      <UniqueIdentifier>{0b4f24c0-5b36-58fd-9156-1f5d64c16ca6}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted">
       <UniqueIdentifier>{82d32379-981e-5a69-be63-1fac82dae935}</UniqueIdentifier>
     </Filter>
@@ -1808,6 +1823,9 @@
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\DimensionMaster\Modules">
       <UniqueIdentifier>{4ab9b51a-e613-5e4c-9814-7e2272d6dc48}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\FourClassCombat">
+      <UniqueIdentifier>{e16c8f37-8b6b-5e6d-99ed-235d1f4c550e}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\LanceMaster">
       <UniqueIdentifier>{c712c4e7-25be-5a3d-8ae2-561126926891}</UniqueIdentifier>
@@ -2244,22 +2262,46 @@
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31000.ba4.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31050.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31050.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31200.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31200.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31210.ba1.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31210.ba1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31210.ba4.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31210.ba4.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31420.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31420.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31430.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31430.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31470.unified.effect.json">
@@ -2268,7 +2310,16 @@
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31480.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31480.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31490.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31910.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31910.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.authored-baseline.clip1.effect.json">
@@ -2278,6 +2329,15 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31930.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31950.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050010.ba1.effect.json">
@@ -2313,6 +2373,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050100.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050110.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -2323,6 +2386,12 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050120.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050120.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050120.clip3.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050120.effect.json">
@@ -2343,6 +2412,15 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050160.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050160.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050160.clip3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050160.clip4.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050160.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -2350,6 +2428,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050180.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050180.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050190.effect.json">
@@ -2367,16 +2448,25 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050220.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050230.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050230.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050230.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.authored-baseline.clip1.effect.json">
@@ -2386,6 +2476,12 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.clip2.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050240.effect.json">
@@ -2409,10 +2505,16 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050520.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050520.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050540.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050550.effect.json">
@@ -2463,7 +2565,16 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34040.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34040.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34040.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34090.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34090.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34100.authored-baseline.clip1.effect.json">
@@ -2478,6 +2589,18 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34100.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34100.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34100.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34100.clip3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34110.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34120.authored-baseline.clip1.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -2490,10 +2613,25 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34120.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34120.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34120.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34120.clip3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba1.clip1.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba1.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba1.clip2.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba1.clip2.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba1.effect.json">
@@ -2502,13 +2640,25 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba2.clip2.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba2.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34140.ba2.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34150.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34160.ba1.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34160.ba1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34160.ba2.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34160.ba2.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba1.effect.json">
@@ -2517,10 +2667,16 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba1.restoration-candidate.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba2.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba2.restoration-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba2.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba3.effect.json">
@@ -2529,10 +2685,19 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba3.restoration-candidate.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34510.ba3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34540.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34540.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34550.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34550.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34560.authored-baseline.clip2.effect.json">
@@ -2544,6 +2709,12 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34560.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34560.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34560.clip3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34570.authored-baseline.clip1.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -2553,19 +2724,40 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34570.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34570.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34570.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34580.ba1.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34580.ba1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34580.ba2.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34580.ba2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34590.ba1.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34590.ba1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34590.ba2.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34590.ba2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34590.ba3.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34590.ba3.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.authored-baseline.clip1.effect.json">
@@ -2578,6 +2770,15 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip3.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.authored-baseline.clip1.effect.json">
@@ -2595,6 +2796,18 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.clip4.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34650.authored-baseline.clip1.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -2602,6 +2815,12 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34650.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34650.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34650.clip2.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.test.winters.effect.json">
@@ -2625,16 +2844,31 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba2.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba3.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba3.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17030.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17030.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17040.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17040.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17060.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17060.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17080.authored-baseline.clip1.effect.json">
@@ -2646,10 +2880,22 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17080.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17080.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17080.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17090.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17090.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17100.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17100.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.authored-baseline.clip2.effect.json">
@@ -2661,7 +2907,16 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17140.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17140.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.authored-baseline.clip1.effect.json">
@@ -2676,13 +2931,31 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.clip3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.ba1.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.ba1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.ba2.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.ba2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.ba3.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17240.ba3.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17250.authored-baseline.clip1.effect.json">
@@ -2692,6 +2965,12 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17250.authored-baseline.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17250.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17250.clip2.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.authored-baseline.clip1.effect.json">
@@ -2715,10 +2994,64 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.authored-baseline.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.clip1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.clip2.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.clip3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.clip4.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.clip5.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.clip8.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\Artist.e-r-d-s-t-v-z.composition.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31000.combo-role-manifest.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31000.materialization.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
     </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31050.clip1.unified.role-materialization.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31050.clip2.unified.role-materialization.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31050.role-manifest.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31200.role-manifest.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31430.role-manifest.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31460.role-manifest.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31470.occurrence-tuning.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31490.role-manifest.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31490.unified.role-materialization.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.role-manifest.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.unified.role-materialization.receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\DimensionMaster\effect.dimensionmaster.skill.2050210.authored-baseline.correction.json">
@@ -2829,7 +3162,22 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.authored-product-rollout.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
     </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.source-material-contract.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.source-material-contract.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.targeted-current-combat-transaction.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
+    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-authored-import-batch.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-restoration-receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-targeted-current-combat-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34010.ba1.approximation-receipt.json">
@@ -2988,8 +3336,14 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Warlord\effect.warlord.skill.17820.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\Warlord</Filter>
     </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\LanceMaster\LanceMaster.q-w-e-r-a-s.user-role-composition.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\LanceMaster</Filter>
+    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\LanceMaster\effect.lancemaster.skill.34010.materialization.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Warlord\Warlord.user-role-composition.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Warlord</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Warlord\effect.warlord.skill.17000.materialization.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Warlord</Filter>
@@ -4725,6 +5079,21 @@
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Artist.source-package-resolution.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Candidates\skill.31050.clip1.role-blueprint.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Candidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Candidates\skill.31050.clip2.role-blueprint.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Candidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Candidates\skill.31490.clip1.role-blueprint.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Candidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Candidates\skill.31950.clip1.role-blueprint.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Candidates</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\effect.artist.skill.31050.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\effect.artist.skill.31200.imported.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
     </None>
@@ -4743,10 +5112,19 @@
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\effect.artist.skill.31480.imported.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\effect.artist.skill.31490.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\effect.artist.skill.31910.imported.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\effect.artist.skill.31930.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\effect.artist.skill.31950.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\skill.31050.element-conversion-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\skill.31200.element-conversion-receipt.json">
@@ -4767,11 +5145,20 @@
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\skill.31480.element-conversion-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\skill.31490.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\skill.31910.element-conversion-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\skill.31930.element-conversion-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Converted\skill.31950.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Graphs\skill.31050.normalized-effect-graph.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Graphs</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Graphs\skill.31200.normalized-effect-graph.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Graphs</Filter>
@@ -4791,11 +5178,20 @@
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Graphs\skill.31480.normalized-effect-graph.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Graphs</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Graphs\skill.31490.normalized-effect-graph.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Graphs</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Graphs\skill.31910.normalized-effect-graph.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Graphs</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Graphs\skill.31930.normalized-effect-graph.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Graphs</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Graphs\skill.31950.normalized-effect-graph.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Graphs</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Modules\skill.31050.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Modules</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Modules\skill.31200.external-module-closure.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Modules</Filter>
@@ -4815,13 +5211,22 @@
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Modules\skill.31480.external-module-closure.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Modules</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Modules\skill.31490.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Modules</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Modules\skill.31910.external-module-closure.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Modules</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Modules\skill.31930.external-module-closure.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Modules</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\Modules\skill.31950.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\Modules</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\ProductReceipts\skill.31000.product-source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\ProductReceipts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\ProductReceipts\skill.31050.product-source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\ProductReceipts</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\ProductReceipts\skill.31200.product-source-receipt.json">
@@ -4842,11 +5247,23 @@
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\ProductReceipts\skill.31480.product-source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\ProductReceipts</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\ProductReceipts\skill.31490.product-source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\ProductReceipts</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\ProductReceipts\skill.31910.product-source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\ProductReceipts</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\ProductReceipts\skill.31930.product-source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\ProductReceipts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\ProductReceipts\skill.31950.product-source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat\ProductReceipts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31050.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31200.q-mesh-source-evidence.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31200.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
@@ -4866,10 +5283,16 @@
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31480.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31490.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31910.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31930.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31950.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Artist\Drafts\skill.31000.imported-effect-draft.json">
@@ -5313,6 +5736,9 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.summon-animation-retime.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\DimensionMaster.summon-bind-pose-repair.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050010.imported-effect-draft.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
     </None>
@@ -5457,6 +5883,18 @@
     <None Include="..\..\Data\Effects\Imported\FourClassCombat.source-blocker-matrix.json">
       <Filter>96.DataFiles\Effects\Imported</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\FourClassCombat\FourClassCombat.material-candidate-catalog.json">
+      <Filter>96.DataFiles\Effects\Imported\FourClassCombat</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\FourClassCombat\FourClassCombat.parent-package-map.json">
+      <Filter>96.DataFiles\Effects\Imported\FourClassCombat</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\FourClassCombat\FourClassCombat.source-material-evidence.json">
+      <Filter>96.DataFiles\Effects\Imported\FourClassCombat</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\FourClassCombat\FourClassCombat.source-material-evidence.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\FourClassCombat</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\Converted\effect.lancemaster.skill.34010.imported.effect.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\Converted</Filter>
     </None>
@@ -5478,10 +5916,16 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\effect.lancemaster.skill.34100.imported.effect.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Converted</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\effect.lancemaster.skill.34110.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Converted</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\effect.lancemaster.skill.34120.imported.effect.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Converted</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\effect.lancemaster.skill.34140.imported.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\effect.lancemaster.skill.34150.imported.effect.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Converted</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\effect.lancemaster.skill.34160.imported.effect.json">
@@ -5526,10 +5970,16 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\skill.34100.element-conversion-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Converted</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\skill.34110.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Converted</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\skill.34120.element-conversion-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Converted</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\skill.34140.element-conversion-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Converted</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\skill.34150.element-conversion-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Converted</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Converted\skill.34160.element-conversion-receipt.json">
@@ -5574,10 +6024,16 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Graphs\skill.34100.normalized-effect-graph.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Graphs</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Graphs\skill.34110.normalized-effect-graph.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Graphs</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Graphs\skill.34120.normalized-effect-graph.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Graphs</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Graphs\skill.34140.normalized-effect-graph.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Graphs</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Graphs\skill.34150.normalized-effect-graph.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Graphs</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Graphs\skill.34160.normalized-effect-graph.json">
@@ -5625,10 +6081,16 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Modules\skill.34100.external-module-closure.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Modules</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Modules\skill.34110.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Modules</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Modules\skill.34120.external-module-closure.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Modules</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Modules\skill.34140.external-module-closure.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Modules</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Modules\skill.34150.external-module-closure.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\Modules</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\Modules\skill.34160.external-module-closure.json">
@@ -5676,10 +6138,16 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts\skill.34100.product-source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts\skill.34110.product-source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts\skill.34120.product-source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts\skill.34140.product-source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts\skill.34150.product-source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\ProductReceipts\skill.34160.product-source-receipt.json">
@@ -5724,10 +6192,16 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34100.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34110.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34120.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34140.source-receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34150.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34160.source-receipt.json">
@@ -5934,6 +6408,18 @@
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.effect-resource-catalog.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.material-candidate-catalog.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.parent-package-map.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.source-material-evidence.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.source-material-evidence.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Warlord\Converted\effect.warlord.skill.17000.imported.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Warlord\Converted</Filter>
     </None>
@@ -6135,6 +6621,9 @@
     <None Include="..\..\Data\Effects\Imported\Warlord\CurrentCombat\skill.17080.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Warlord\CurrentCombat</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Warlord\CurrentCombat\skill.17090.chain-source-evidence.json">
+      <Filter>96.DataFiles\Effects\Imported\Warlord\CurrentCombat</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Warlord\CurrentCombat\skill.17090.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Warlord\CurrentCombat</Filter>
     </None>
@@ -6188,6 +6677,9 @@
     </None>
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy.receipt.json">
       <Filter>96.DataFiles\Effects\Policies\Artist</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ProductCueApprovals.json">
+      <Filter>96.DataFiles\Effects</Filter>
     </None>
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\A\DimensionMaster.A.effect-resources.json">
       <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\A</Filter>

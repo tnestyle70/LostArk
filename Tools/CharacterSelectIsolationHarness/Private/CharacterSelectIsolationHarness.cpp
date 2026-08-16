@@ -35,6 +35,7 @@ namespace
 		std::string strHost = "127.0.0.1";
 		std::uint16_t iPort = 7777u;
 		std::uint32_t iTimeoutMilliseconds = 4000u;
+		bool isG02IdentityFast = false;
 	};
 
 	bool Parse_Unsigned(
@@ -62,6 +63,7 @@ namespace
 		bool hasHost = false;
 		bool hasPort = false;
 		bool hasTimeout = false;
+		bool hasG02IdentityFast = false;
 		for (int index = 1; index < argumentCount; ++index)
 		{
 			const std::string_view argument(arguments[index]);
@@ -98,9 +100,17 @@ namespace
 				hasTimeout = true;
 				continue;
 			}
+			if ("--g02-identity-fast" == argument &&
+				!hasG02IdentityFast)
+			{
+				options.isG02IdentityFast = true;
+				hasG02IdentityFast = true;
+				continue;
+			}
 
 			error = "Usage: CharacterSelectIsolationHarness [--host IPv4] "
-				"[--port 1..65535] [--timeout-ms 1000..4000]";
+				"[--port 1..65535] [--timeout-ms 1000..4000] "
+				"[--g02-identity-fast]";
 			return false;
 		}
 
@@ -332,6 +342,15 @@ namespace
 			return m_EnterAccepted.iNetEntityId;
 		}
 
+		[[nodiscard]] bool Has_ExactSpawnNickname(
+			const NET_ENTITY_ID entityId,
+			const std::string_view expected) const
+		{
+			const auto iter = m_ObservedSpawnedPlayerNicknames.find(entityId);
+			return iter != m_ObservedSpawnedPlayerNicknames.end() &&
+				std::string_view(iter->second) == expected;
+		}
+
 		[[nodiscard]] std::uint32_t Get_ServerTick() const
 		{
 			return m_iLastServerTick;
@@ -483,6 +502,7 @@ namespace
 				m_LatestPlayerEntityIds.clear();
 				m_LatestWorldEntityIds.clear();
 				m_ObservedSpawnedPlayerEntityIds.clear();
+				m_ObservedSpawnedPlayerNicknames.clear();
 				m_ObservedSpawnedWorldEntityIds.clear();
 				m_OutgoingDamageTargetIds.clear();
 				m_iLastServerTick = 0;
@@ -513,6 +533,8 @@ namespace
 					return false;
 				}
 				m_ObservedSpawnedPlayerEntityIds.insert(spawned.iNetEntityId);
+				m_ObservedSpawnedPlayerNicknames.insert_or_assign(
+					spawned.iNetEntityId, spawned.strNickName);
 				return true;
 			}
 			if (PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED == frame.ePacketType)
@@ -600,6 +622,8 @@ namespace
 		std::set<NET_ENTITY_ID> m_LatestPlayerEntityIds;
 		std::set<NET_ENTITY_ID> m_LatestWorldEntityIds;
 		std::set<NET_ENTITY_ID> m_ObservedSpawnedPlayerEntityIds;
+		std::map<NET_ENTITY_ID, std::string>
+			m_ObservedSpawnedPlayerNicknames;
 		std::set<NET_ENTITY_ID> m_ObservedSpawnedWorldEntityIds;
 		std::set<NET_ENTITY_ID> m_OutgoingDamageTargetIds;
 		std::map<std::string, WORLD_ENTITY_SPAWN_RESULT> m_SpawnResults;
@@ -650,8 +674,11 @@ namespace
 			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(2));
 		}
+		const std::string lastProbeDetail = error;
 		error = std::string(stage) + ": timed out after " +
 			std::to_string(timeout.count()) + " ms";
+		if (!lastProbeDetail.empty())
+			error += "; last probe: " + lastProbeDetail;
 		return false;
 	}
 
@@ -729,7 +756,11 @@ namespace
 					return PROBE_RESULT::FAIL;
 				}
 				return clientA->Has_OwnOnlyPlayerSnapshot() &&
-					clientB->Has_OwnOnlyPlayerSnapshot() ?
+					clientB->Has_OwnOnlyPlayerSnapshot() &&
+					clientA->Has_ExactSpawnNickname(
+						clientA->Get_NetEntityId(), "CS-Isolation-A") &&
+					clientB->Has_ExactSpawnNickname(
+						clientB->Get_NetEntityId(), "CS-Isolation-B") ?
 					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
 			},
 			"simultaneous Character Select admission", error))
@@ -944,7 +975,15 @@ namespace
 					return PROBE_RESULT::FAIL;
 				}
 				return first->Has_ExactPlayerSnapshot(expected) &&
-					second->Has_ExactPlayerSnapshot(expected) ?
+					second->Has_ExactPlayerSnapshot(expected) &&
+					first->Has_ExactSpawnNickname(
+						first->Get_NetEntityId(), "Bern-Shared-A") &&
+					first->Has_ExactSpawnNickname(
+						second->Get_NetEntityId(), "Bern-Shared-B") &&
+					second->Has_ExactSpawnNickname(
+						first->Get_NetEntityId(), "Bern-Shared-A") &&
+					second->Has_ExactSpawnNickname(
+						second->Get_NetEntityId(), "Bern-Shared-B") ?
 					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
 			},
 			"Bern shared simulation", error))
@@ -985,7 +1024,9 @@ namespace
 					return PROBE_RESULT::FAIL;
 				}
 				return client->Is_Accepted() &&
-					client->Has_OwnOnlyPlayerSnapshot() ?
+					client->Has_OwnOnlyPlayerSnapshot() &&
+					client->Has_ExactSpawnNickname(
+						client->Get_NetEntityId(), "Bern-To-Valtan") ?
 					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
 			},
 			"Bern transfer admission", error))
@@ -1003,10 +1044,30 @@ namespace
 					probeError = "Bern-to-Valtan transfer was rejected";
 					return PROBE_RESULT::FAIL;
 				}
-				return 2u == client->Get_AcceptanceCount() &&
+				const bool hasAcceptedTarget =
+					2u == client->Get_AcceptanceCount() &&
 					WORLD_ID::VALTAN_ARENA == client->Get_CurrentWorld() &&
-					client->Has_OwnOnlyPlayerSnapshot() ?
-					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+					client->Has_OwnOnlyPlayerSnapshot();
+				if (!hasAcceptedTarget)
+				{
+					probeError = "acceptances=" +
+						std::to_string(client->Get_AcceptanceCount()) +
+						", world=" +
+						std::to_string(static_cast<unsigned>(
+							client->Get_CurrentWorld())) +
+						", position=(" +
+						std::to_string(client->Get_OwnPositionX()) + "," +
+						std::to_string(client->Get_OwnPositionZ()) + ")";
+					return PROBE_RESULT::WAIT;
+				}
+				if (!client->Has_ExactSpawnNickname(
+					client->Get_NetEntityId(), "Bern-To-Valtan"))
+				{
+					probeError =
+						"Valtan spawn did not preserve the submitted nickname";
+					return PROBE_RESULT::FAIL;
+				}
+				return PROBE_RESULT::PASS;
 			},
 			"Bern-to-Valtan accepted transition", error))
 		{
@@ -1066,7 +1127,8 @@ int main(const int argumentCount, char** arguments)
 
 	if (!Run_CharacterSelectIsolation(options, error) ||
 		!Run_BernSharedProof(options, error) ||
-		!Run_BernToValtanTransferProof(options, error))
+		(!options.isG02IdentityFast &&
+			!Run_BernToValtanTransferProof(options, error)))
 	{
 		std::cerr << "[FAILURE] " << error << '\n';
 		return 1;

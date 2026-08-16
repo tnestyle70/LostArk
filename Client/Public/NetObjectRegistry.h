@@ -66,6 +66,14 @@ namespace Client
 		float fYawDegrees = 0.f;
 	};
 
+	// Server record와 실제 presentation을 잃지 않고 묶어 읽는 snapshot이다.
+	// Registry의 owner 상태가 아니며, 반환 vector가 살아 있는 동안만 Character 수명을 붙든다.
+	struct LIVE_NET_PLAYER
+	{
+		NET_PLAYER_RECORD Record;
+		std::shared_ptr<CCharacter> pCharacter;
+	};
+
 	class CNetObjectRegistry final
 	{
 	public:
@@ -104,6 +112,9 @@ namespace Client
 
 		//live objects 가지고 오기
 		std::vector<std::shared_ptr<CCharacter>> Get_LiveObjects() const;
+
+		// Level/UI consumer가 stable record와 살아 있는 presentation을 함께 읽는다.
+		std::vector<LIVE_NET_PLAYER> Get_LivePlayers() const;
 
 		//접속이 끊기거나 월드 상태를 비울 때, 모든 slot을 무효화 시킨다.
 		void Reset();

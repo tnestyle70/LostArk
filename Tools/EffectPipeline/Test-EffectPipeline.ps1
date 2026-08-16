@@ -180,12 +180,29 @@ try {
     [IO.File]::WriteAllBytes(
         $fixtureVisualProgramSource,
         [IO.File]::ReadAllBytes($visualProgramSource))
+    foreach ($animationAssetId in @(
+            'Artist', 'DimensionMaster', 'LanceMaster', 'Warlord')) {
+        $eventPath = Join-Path $dataRoot (
+            "Animation\Authored\$animationAssetId\$animationAssetId.animevents")
+        $eventRows = if ($animationAssetId -ceq 'Artist') {
+            @('"fixture_clip" EFFECT startms=0 effectref=asset payload="effect.pipeline.fixture"')
+        }
+        else {
+            @()
+        }
+        Write-Utf8 $eventPath ((
+            "LOSTARK_ANIM_EVENTS 5 `"$animationAssetId`" $($eventRows.Count)`n" +
+            (($eventRows -join "`n") + $(if ($eventRows.Count) { "`n" } else { '' }))))
+    }
     [IO.Directory]::CreateDirectory($effectResource) | Out-Null
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'base.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'blankwhite.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'normal.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'reflection.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'dissolve.dds'), [byte[]](1,2,3,4))
+    [IO.File]::WriteAllBytes((Join-Path $effectResource 'mask.dds'), [byte[]](1,2,3,4))
+    [IO.File]::WriteAllBytes((Join-Path $effectResource 'emissive.dds'), [byte[]](1,2,3,4))
+    [IO.File]::WriteAllBytes((Join-Path $effectResource 'noise.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'mesh.wmodel'), [byte[]](5,6,7,8))
     $modelCueResource = Join-Path $resourceRoot 'Character\Test'
     [IO.Directory]::CreateDirectory($modelCueResource) | Out-Null
@@ -418,6 +435,293 @@ try {
         -ResourceRoot $resourceRoot -OutputPath $output
     if ($LASTEXITCODE) { throw 'Grouped Source Material restore failed.' }
     $groupedBaseline = [IO.File]::ReadAllBytes($output)
+
+    # The two strict typed family profiles remain compiler evidence only here;
+    # this focused publisher seam proves their complete texture/resource ABI
+    # and rollback without changing product mappings.
+    $typedElement = ($groupedElement | ConvertTo-Json -Depth 100) |
+        ConvertFrom-Json
+    $typedElement.kind = 'particle'
+    $typedElement.resources = @(
+        [ordered]@{ slotId = 'meshModel'; assetId = 'Effect/Test/mesh.wmodel' },
+        [ordered]@{ slotId = 'base'; assetId = 'Effect/Test/base.dds' },
+        [ordered]@{ slotId = 'mask'; assetId = 'Effect/Test/mask.dds' },
+        [ordered]@{ slotId = 'emissive'; assetId = 'Effect/Test/emissive.dds' },
+        [ordered]@{ slotId = 'noise'; assetId = 'Effect/Test/noise.dds' },
+        [ordered]@{ slotId = 'dissolve'; assetId = 'Effect/Test/dissolve.dds' })
+    $typedElement.material.sourceProfile.runtimeShaderProfileId =
+		'effect.ue3.missiletrail-two-emissive.v1'
+    $typedElement.material.sourceProfile.dynamicParameterSemantics = @(
+        'missile_alpha_pan','missile_noise_strength',
+        'missile_noise_pan','missile_dissolve')
+    $typedElement.material.sourceProfile | Add-Member `
+        -NotePropertyName textures -Force -NotePropertyValue @(
+        [ordered]@{ name='alpha_tex'; sourceObjectPath='fx.alpha'; assetId='Effect/Test/mask.dds' },
+        [ordered]@{ name='emissive_tex01'; sourceObjectPath='fx.emissive01'; assetId='Effect/Test/base.dds' },
+        [ordered]@{ name='emissive_tex02'; sourceObjectPath='fx.emissive02'; assetId='Effect/Test/emissive.dds' },
+        [ordered]@{ name='uv_dissolve_tex'; sourceObjectPath='fx.dissolve'; assetId='Effect/Test/dissolve.dds' },
+        [ordered]@{ name='uv_noise_tex'; sourceObjectPath='fx.noise'; assetId='Effect/Test/noise.dds' })
+    $document.elements = @($typedElement)
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Typed MissileTrail publish failed.' }
+    $typedMissileBaseline = [IO.File]::ReadAllBytes($output)
+    $savedTypedResources = @($typedElement.resources)
+    $typedElement.resources = @($typedElement.resources | Where-Object {
+        $_.slotId -ne 'emissive' })
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Typed MissileTrail missing second emissive lane' `
+        $typedMissileBaseline
+    $typedElement.resources = $savedTypedResources
+    $savedTypedTextures = @($typedElement.material.sourceProfile.textures)
+    $typedElement.material.sourceProfile.textures = @(
+        $savedTypedTextures | Where-Object { $_.name -ne 'emissive_tex02' })
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Typed MissileTrail missing named emissive texture' `
+        $typedMissileBaseline
+
+    $typedElement.resources = @(
+        [ordered]@{ slotId = 'meshModel'; assetId = 'Effect/Test/mesh.wmodel' },
+        [ordered]@{ slotId = 'base'; assetId = 'Effect/Test/base.dds' },
+        [ordered]@{ slotId = 'noise'; assetId = 'Effect/Test/noise.dds' })
+    $typedElement.material.sourceProfile.runtimeShaderProfileId =
+        'effect.ue3.watertrail-01.v1'
+    $typedElement.material.sourceProfile.dynamicParameterSemantics = @(
+        'water_alpha_pan','water_noise_pan','water_dissolve',
+        'water_noise_strength')
+    $typedElement.material.sourceProfile.textures = @(
+        [ordered]@{ name='maintex'; sourceObjectPath='fx.main'; assetId='Effect/Test/base.dds' },
+        [ordered]@{ name='uv_noise_tex'; sourceObjectPath='fx.noise'; assetId='Effect/Test/noise.dds' })
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Typed WaterTrail publish failed.' }
+    $typedWaterBaseline = [IO.File]::ReadAllBytes($output)
+    $typedElement.material.sourceProfile.textures = @(
+        $typedElement.material.sourceProfile.textures | Where-Object {
+            $_.name -ne 'uv_noise_tex' })
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Typed WaterTrail missing named noise texture' `
+        $typedWaterBaseline
+
+    $document.elements = @($groupedElement)
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE -or
+        [Convert]::ToBase64String($groupedBaseline) -ne
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes($output))) {
+        throw 'Grouped Source Material restore after typed profile fixtures failed.'
+    }
+
+    # G3 artist overrides are admissible metadata only when their effective
+    # values still agree with compiler-declared targets. They never open an
+    # authoring-approximate product gate.
+    $document.version = 13
+    $legacyCatalogEntry = $catalog.effects[0]
+    $catalog.effects = @([ordered]@{
+        effectAssetId = $effectId
+        payloadKind = 'DIRECT_AUTHORED_DOCUMENT_V13'
+        authoringPath = "Effects/Authored/$effectId.effect.json"
+    })
+    $groupedElement.material.sourceProfile.scalars = @([ordered]@{
+        name = 'opacity_strength'
+        group = ''
+        value = 0.75
+    })
+    $groupedElement.material.sourceProfile.vectors = @([ordered]@{
+        name = 'tint_color'
+        group = ''
+        value = @(0.25, 0.5, 0.75, 1.0)
+    })
+    $groupedElement.material.sourceProfile | Add-Member `
+        -NotePropertyName sourceBlendClass -NotePropertyValue 'translucent' `
+        -Force
+    $groupedElement | Add-Member -NotePropertyName authoringOverrides `
+        -NotePropertyValue ([ordered]@{
+            resources = @([ordered]@{
+                slotId = 'base'
+                assetId = 'Effect/Test/base.dds'
+                compilerAssetId = 'Effect/Test/dissolve.dds'
+            })
+            scalars = @([ordered]@{
+                name = 'opacity_strength'
+                value = 0.75
+                compilerValue = 0.5
+            })
+            colors = @([ordered]@{
+                name = 'tint_color'
+                value = @(0.25, 0.5, 0.75, 1.0)
+                compilerValue = @(1.0, 1.0, 1.0, 1.0)
+            })
+        }) -Force
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Valid G3 authoring overrides publish failed.' }
+    $overrideBaseline = [IO.File]::ReadAllBytes($output)
+
+    $sourceProfileBackup = ($groupedElement.material.sourceProfile |
+        ConvertTo-Json -Depth 30) | ConvertFrom-Json
+    $executionPropertyBackup =
+        $groupedElement.material.PSObject.Properties['execution']
+    $executionBackup = if ($null -eq $executionPropertyBackup) {
+        $null
+    } else {
+        ($executionPropertyBackup.Value | ConvertTo-Json -Depth 30) |
+            ConvertFrom-Json
+    }
+    $templateBackup = [string]$groupedElement.material.templateId
+    $groupedElement.material.templateId = 'effect.standard'
+    $groupedElement.material.sourceProfile = [ordered]@{ enabled = $false }
+    $groupedElement.material | Add-Member -NotePropertyName execution `
+        -NotePropertyValue ([ordered]@{
+            enabled = $true
+            textureLanes = @()
+            scalars = @([ordered]@{
+                name = 'opacity_strength'
+                packedIndex = 0
+                value = 0.75
+            })
+            vectors = @()
+            artistParameters = @()
+            colors = @([ordered]@{
+                name = 'tint_color'
+                packedIndex = 0
+                value = @(0.25, 0.5, 0.75, 1.0)
+            })
+        }) -Force
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) {
+        throw 'Valid execution-only G3 authoring overrides publish failed.'
+    }
+    $groupedElement.material.templateId = $templateBackup
+    $groupedElement.material.sourceProfile = $sourceProfileBackup
+    if ($null -eq $executionPropertyBackup) {
+        $groupedElement.material.PSObject.Properties.Remove('execution')
+    } else {
+        $groupedElement.material.execution = $executionBackup
+    }
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Source-profile G3 override restore failed.' }
+    $overrideBaseline = [IO.File]::ReadAllBytes($output)
+
+    $groupedElement.authoringOverrides.resources[0].assetId = '../escape.dds'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Unsafe G3 resource override' $overrideBaseline
+    $groupedElement.authoringOverrides.resources[0].assetId =
+        'Effect/Test/base.dds'
+
+    $groupedElement.material.sourceProfile.sourceBlendClass = 'screen'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Unknown G3 source blend class' $overrideBaseline
+    $groupedElement.material.sourceProfile.sourceBlendClass = 'translucent'
+
+    $groupedElement.authoringOverrides.resources[0].compilerAssetId =
+        'Effect/Test/mesh.wmodel'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Wrong-kind G3 resource override' $overrideBaseline
+    $groupedElement.authoringOverrides.resources[0].compilerAssetId =
+        'Effect/Test/dissolve.dds'
+
+    $resourceOverrideCopy =
+        ($groupedElement.authoringOverrides.resources[0] |
+            ConvertTo-Json -Depth 10) | ConvertFrom-Json
+    $groupedElement.authoringOverrides.resources = @(
+        $groupedElement.authoringOverrides.resources[0],
+        $resourceOverrideCopy)
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Duplicate G3 resource override' $overrideBaseline
+    $groupedElement.authoringOverrides.resources = @(
+        $groupedElement.authoringOverrides.resources[0])
+
+    $groupedElement.authoringOverrides.scalars[0].name = 'missing_scalar'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Unknown G3 scalar override' $overrideBaseline
+    $groupedElement.authoringOverrides.scalars[0].name = 'opacity_strength'
+
+    $groupedElement.authoringOverrides.scalars[0].value = 0.8
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Stale G3 scalar effective value' $overrideBaseline
+    $groupedElement.authoringOverrides.scalars[0].value = 0.75
+
+    $groupedElement.authoringOverrides.colors[0].name = 'opacity_strength'
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'Wrong-type G3 color override' $overrideBaseline
+    $groupedElement.authoringOverrides.colors[0].name = 'tint_color'
+
+    $groupedElement.authoringOverrides.colors[0].compilerValue =
+        @(0.25, 0.5, 0.75, 1.0)
+    Write-Fixture $document $catalog
+    Assert-PublishRejected 'No-op G3 color override' $overrideBaseline
+    $groupedElement.authoringOverrides.colors[0].compilerValue =
+        @(1.0, 1.0, 1.0, 1.0)
+
+    $groupedElement.PSObject.Properties.Remove('authoringOverrides')
+    $groupedElement.material.sourceProfile.scalars = @()
+    $groupedElement.material.sourceProfile.vectors = @()
+    $groupedElement.material.sourceProfile.PSObject.Properties.Remove(
+        'sourceBlendClass')
+    $document.version = 12
+    $catalog.effects = @($legacyCatalogEntry)
+    Write-Fixture $document $catalog
+    & $publisher -Mode Publish -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) { throw 'Grouped Source Material G3 restore failed.' }
+    $groupedBaseline = [IO.File]::ReadAllBytes($output)
+
+    $originalExecutionProperty =
+        $groupedElement.material.PSObject.Properties['execution']
+    $originalExecution = if ($null -eq $originalExecutionProperty) {
+        $null
+    } else {
+        ($originalExecutionProperty.Value | ConvertTo-Json -Depth 30) |
+            ConvertFrom-Json
+    }
+    $groupedElement.material | Add-Member -NotePropertyName execution `
+        -NotePropertyValue ([ordered]@{
+            enabled = $false
+            failClosed = $true
+            authoringApproximate = $true
+        }) -Force
+    Write-Fixture $document $catalog
+    Assert-PublishRejected `
+        'Authoring-approximate document transaction' $groupedBaseline
+    if ($null -eq $originalExecutionProperty) {
+        $groupedElement.material.PSObject.Properties.Remove('execution')
+    } else {
+        $groupedElement.material.execution = $originalExecution
+    }
+
+	$ordinaryEffectId = $effectId
+	$ordinaryDocumentEffectId = [string]$document.effectAssetId
+	$ordinaryCatalogEffects = @($catalog.effects)
+	$ordinarySourceMaterialPath =
+		[string]$groupedElement.material.sourceMaterialPath
+	$ordinaryVersion = [int]$document.version
+	$effectId = 'effect.warlord.skill.17090.unified'
+	$document.effectAssetId = $effectId
+	$document.version = 13
+	$catalog.effects = @([ordered]@{
+		effectAssetId = $effectId
+		payloadKind = 'DIRECT_AUTHORED_DOCUMENT_V13'
+		authoringPath = "Effects/Authored/$effectId.effect.json"
+	})
+	$groupedElement.material.sourceMaterialPath =
+		'fx_m_mi_d_00.fx_mi.fx_d_me_chain_01_101_ma'
+	Write-Fixture $document $catalog
+	Assert-PublishRejected `
+		'Warlord chain grouped Full promotion' $groupedBaseline
+	$effectId = $ordinaryEffectId
+	$document.effectAssetId = $ordinaryDocumentEffectId
+	$document.version = $ordinaryVersion
+	$catalog.effects = $ordinaryCatalogEffects
+	$groupedElement.material.sourceMaterialPath = $ordinarySourceMaterialPath
 
     $groupedElement.resources = @([ordered]@{
         slotId = 'noise'

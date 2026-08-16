@@ -282,9 +282,7 @@ HRESULT CLoader::Ready_For_CharacterSelect()
 	Set_Status(TEXT("CHARACTER SELECT: playable classes"));
 	if (FAILED(Ready_Character_Rendering(
 			ETOUI(LEVEL::CHARACTER_SELECT),
-			characterClasses)) ||
-		FAILED(Ready_AnimationPreviewModels(
-			ETOUI(LEVEL::CHARACTER_SELECT))))
+			characterClasses)))
 	{
 		return E_FAIL;
 	}
@@ -432,6 +430,8 @@ HRESULT CLoader::Ready_For_Development()
 	}
 #endif
 
+	CValtanPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::DEVELOPMENT));
 	CNpcPlacementPresentationService::Begin_LevelLoad(
 		ETOUI(LEVEL::DEVELOPMENT));
 	if (FAILED(CNpcPlacementPresentationService::Load(
@@ -884,35 +884,6 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 		return E_INVALIDARG;
 	}
 
-	using LostArk::Shared::CHARACTER_CLASS_ID;
-	constexpr std::array previewClasses =
-	{
-		CHARACTER_CLASS_ID::LANCE_MASTER,
-		CHARACTER_CLASS_ID::GUNSLINGER,
-		CHARACTER_CLASS_ID::SLAYER,
-		CHARACTER_CLASS_ID::ARTIST,
-		CHARACTER_CLASS_ID::DIMENSIONMASTER,
-		CHARACTER_CLASS_ID::WARLORD
-	};
-	for (const CHARACTER_CLASS_ID characterClass : previewClasses)
-	{
-		if (CPlayableCharacterAssetService::Is_Ready(
-			iLevelIndex, characterClass))
-		{
-			continue;
-		}
-		Set_Status(TEXT("Animation preview: playable character"));
-		if (FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
-			m_pDevice,
-			m_pContext,
-			iLevelIndex,
-			characterClass,
-			&m_isCancellationRequested)))
-		{
-			return E_FAIL;
-		}
-	}
-
 	constexpr std::array playablePrototypeTags =
 	{
 		TEXT("Prototype_Component_Model_LanceMaster"),
@@ -955,6 +926,11 @@ HRESULT CLoader::Ready_AnimationPreviewModels(
 			pBoss = CActorCatalog::Find_Boss(asset.pBossArchetypeId);
 			if (nullptr == pBoss || pBoss->bodyModel != asset.pModelAssetId)
 				return E_FAIL;
+
+			/* Product Valtan is optional Model View content. It is prepared on
+			   selection (or before an actual Server spawn), not on every Character
+			   Select entry. */
+			continue;
 		}
 		const filesystem::path path =
 			CRuntimeAssetRoot::Resolve(asset.pModelAssetId);

@@ -8,9 +8,15 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "Part_Body.h"
+#include "PlayableCharacterAssetService.h"
+#include "PlayableCharacterPreviewContract.h"
+#include "RuntimeAssetRoot.h"
 #include "Transform.h"
+#include "Valtan.h"
+#include "ValtanPresentationAssetService.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <utility>
 
 Client::CCharacterPreviewPanel::~CCharacterPreviewPanel()
@@ -20,26 +26,47 @@ Client::CCharacterPreviewPanel::~CCharacterPreviewPanel()
 	Release(false);
 }
 
+void Client::CCharacterPreviewPanel::On_LevelChanged()
+{
+	Release(false);
+	m_iPreparedGenericPreviewLevelIndex = UINT32_MAX;
+	m_PreparedGenericPreviewAssetIds.clear();
+}
+
 void Client::CCharacterPreviewPanel::Refresh_Level()
 {
-	const shared_ptr<CPart_Body> previewBody = m_pPreviewBody.lock();
-	if (nullptr == previewBody)
+	const auto resetPreparedGenericAssets = [this]()
+	{
+		m_iPreparedGenericPreviewLevelIndex = UINT32_MAX;
+		m_PreparedGenericPreviewAssetIds.clear();
+	};
+	const uint32_t currentLevel =
+		CGameInstance::Get().Get_CurrentLevelID();
+	if (UINT32_MAX != m_iPreparedGenericPreviewLevelIndex &&
+		currentLevel != m_iPreparedGenericPreviewLevelIndex)
+	{
+		resetPreparedGenericAssets();
+	}
+	const shared_ptr<CGameObject> previewObject = m_pPreviewObject.lock();
+	if (nullptr == previewObject)
 	{
 		if (nullptr != m_pPreviewAsset || UINT32_MAX != m_iPreviewLevelIndex)
+		{
 			CAnimationTargetService::Clear_Preview();
-		m_pPreviewBody.reset();
+			resetPreparedGenericAssets();
+		}
+		m_pPreviewObject.reset();
 		m_pPreviewAsset = nullptr;
 		m_iPreviewLevelIndex = UINT32_MAX;
 		return;
 	}
 
-	const uint32_t currentLevel =
-		CGameInstance::Get().Get_CurrentLevelID();
 	if (currentLevel == m_iPreviewLevelIndex)
 		return;
 
-	CAnimationTargetService::Unbind_Preview(previewBody->Get_Model());
-	m_pPreviewBody.reset();
+	CAnimationTargetService::Clear_Preview();
+	resetPreparedGenericAssets();
+	m_pPreviewObject.reset();
 	m_pPreviewAsset = nullptr;
 	m_iPreviewLevelIndex = UINT32_MAX;
 }
@@ -66,7 +93,7 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 	}
 	if (nullptr != m_pPreviewAsset &&
 		strAnimationAssetName == m_pPreviewAsset->pAssetName &&
-		!m_pPreviewBody.expired())
+		!m_pPreviewObject.expired())
 	{
 		return true;
 	}
@@ -87,18 +114,18 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 
 void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)
 {
-	const shared_ptr<CPart_Body> previewBody = m_pPreviewBody.lock();
-	if (nullptr == previewBody)
+	const shared_ptr<CGameObject> previewObject = m_pPreviewObject.lock();
+	if (nullptr == previewObject)
 	{
 		if (nullptr != m_pPreviewAsset || UINT32_MAX != m_iPreviewLevelIndex)
 			CAnimationTargetService::Clear_Preview();
-		m_pPreviewBody.reset();
+		m_pPreviewObject.reset();
 		m_pPreviewAsset = nullptr;
 		m_iPreviewLevelIndex = UINT32_MAX;
 		return;
 	}
 
-	CAnimationTargetService::Unbind_Preview(previewBody->Get_Model());
+	CAnimationTargetService::Clear_Preview();
 	if (removeFromLayer &&
 		m_iPreviewLevelIndex ==
 			CGameInstance::Get().Get_CurrentLevelID())
@@ -106,9 +133,9 @@ void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			m_iPreviewLevelIndex,
 			TEXT("Layer_AnimationPreview"),
-			previewBody);
+			previewObject);
 	}
-	m_pPreviewBody.reset();
+	m_pPreviewObject.reset();
 	m_pPreviewAsset = nullptr;
 	m_iPreviewLevelIndex = UINT32_MAX;
 }
@@ -125,10 +152,15 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			"Character previews are admitted in Character Select or Development.";
 		return false;
 	}
+	if (m_iPreparedGenericPreviewLevelIndex != currentLevel)
+	{
+		m_iPreparedGenericPreviewLevelIndex = currentLevel;
+		m_PreparedGenericPreviewAssetIds.clear();
+	}
 
 	vector_t previewPosition = XMVectorSet(2.5f, 0.f, 0.f, 1.f);
 	const shared_ptr<CCharacter> character =
-		CAnimationTargetService::Resolve_Character();
+		CAnimationTargetService::Resolve_SceneCharacter();
 	if (nullptr != character && nullptr != character->Get_Transform())
 	{
 		previewPosition = XMVectorAdd(
@@ -136,56 +168,248 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 			character->Get_Transform()->Get_State(STATE::POSITION));
 		previewPosition = XMVectorSetW(previewPosition, 1.f);
 	}
+	const size_t stagedParentMatrixIndex =
+		(m_iPreviewParentMatrixIndex + 1u) % m_PreviewParentMatrices.size();
+	float4x4_t& stagedParentMatrix =
+		m_PreviewParentMatrices[stagedParentMatrixIndex];
 	XMStoreFloat4x4(
-		&m_PreviewParentMatrix,
+		&stagedParentMatrix,
 		XMMatrixTranslationFromVector(previewPosition));
 
-	CPart_Body::PART_BODY_DESC desc{};
-	desc.pParentMatrix = &m_PreviewParentMatrix;
-	desc.iPrototypeLevelIndex = currentLevel;
-	desc.strModelTag = asset.pPrototypeTag;
-	desc.strShaderTag =
-		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
-	desc.pInitialAnimation = nullptr;
-
 	shared_ptr<CGameObject> stagedObject;
-	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-			currentLevel,
-			TEXT("Prototype_GameObject_Part_Body"),
-			currentLevel,
-			TEXT("Layer_AnimationPreview"),
-			&desc,
-			&stagedObject)))
+	shared_ptr<CCharacter> stagedCharacter;
+	shared_ptr<CValtan> stagedValtan;
+	shared_ptr<CPart_Body> stagedBody;
+	if (asset.bPlayableClassBody)
 	{
-		m_Status = string("Preview asset is not admitted: ") +
-			asset.pModelAssetId;
-		return false;
-	}
+		PLAYABLE_CHARACTER_PREVIEW_COMPOSITION composition;
+		if (!CPlayableCharacterPreviewContract::Stage(asset, composition) ||
+			nullptr == composition.pSpec ||
+			PLAYABLE_PREVIEW_OWNER_KIND::CHARACTER != composition.eOwnerKind)
+		{
+			m_Status = string("Playable preview composition is not admitted: ") +
+				asset.pAssetName;
+			return false;
+		}
+		if (!CPlayableCharacterAssetService::Is_Ready(
+				currentLevel, composition.pSpec->eCharacterClass) &&
+			FAILED(CPlayableCharacterAssetService::Ensure_Prototypes(
+				m_pDevice,
+				m_pContext,
+				currentLevel,
+				composition.pSpec->eCharacterClass)))
+		{
+			m_Status = string("Playable preview assets failed to prepare: ") +
+				asset.pAssetName;
+			return false;
+		}
 
-	const shared_ptr<CPart_Body> stagedBody =
-		dynamic_pointer_cast<CPart_Body>(stagedObject);
-	if (nullptr == stagedBody || nullptr == stagedBody->Get_Model())
+		CCharacter::CHARACTER_DESC desc{};
+		desc.iPrototypeLevelIndex = currentLevel;
+		desc.pSpec = composition.pSpec;
+		desc.fSpeedPerSec = 6.f;
+		desc.fRotationPerSec = 180.f;
+		desc.vPosition = float3_t(
+			XMVectorGetX(previewPosition),
+			XMVectorGetY(previewPosition),
+			XMVectorGetZ(previewPosition));
+		desc.strNickName = "Model View";
+		desc.isLocallyControlled = false;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+				currentLevel,
+				TEXT("Prototype_GameObject_Character"),
+				currentLevel,
+				TEXT("Layer_AnimationPreview"),
+				&desc,
+				&stagedObject)))
+		{
+			m_Status = string("Playable preview parts failed to stage: ") +
+				asset.pAssetName;
+			return false;
+		}
+		stagedCharacter = dynamic_pointer_cast<CCharacter>(stagedObject);
+		if (nullptr == stagedCharacter ||
+			nullptr == stagedCharacter->Get_BodyModel() ||
+			stagedCharacter->Get_Spec() != composition.pSpec)
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				currentLevel,
+				TEXT("Layer_AnimationPreview"),
+				stagedObject);
+			m_Status =
+				"Playable preview did not expose its Character composition.";
+			return false;
+		}
+
+		LostArk::Shared::PLAYER_STANCE_ID previewStance =
+			composition.eFallbackStance;
+		if (nullptr != character && nullptr != character->Get_Spec() &&
+			character->Get_Spec()->eCharacterClass ==
+				composition.pSpec->eCharacterClass)
+		{
+			LostArk::Shared::PLAYER_STANCE_ID sceneStance;
+			if (character->Try_Get_NetworkStance(sceneStance))
+				previewStance = sceneStance;
+		}
+		stagedCharacter->Apply_NetworkStance(previewStance);
+	}
+	else if (nullptr != asset.pBossArchetypeId)
 	{
-		CGameInstance::Get().Remove_GameObject_from_Layer(
-			currentLevel,
-			TEXT("Layer_AnimationPreview"),
-			stagedObject);
-		m_Status = "Preview body did not expose an animated CModel.";
-		return false;
+		if (string{ asset.pBossArchetypeId } != "BOSS_VALTAN")
+		{
+			m_Status = string("Boss preview composition is not admitted: ") +
+				asset.pAssetName;
+			return false;
+		}
+		if (!CValtanPresentationAssetService::Is_Ready(currentLevel) &&
+			FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+				m_pDevice,
+				m_pContext,
+				currentLevel)))
+		{
+			m_Status = string("Boss preview assets failed to prepare: ") +
+				asset.pAssetName;
+			return false;
+		}
+
+		CValtan::VALTAN_DESC desc{};
+		desc.iPrototypeLevelIndex = currentLevel;
+		desc.vPosition = float3_t(
+			XMVectorGetX(previewPosition),
+			XMVectorGetY(previewPosition),
+			XMVectorGetZ(previewPosition));
+		desc.fScale = CValtan::MODEL_VIEW_SCALE;
+		desc.fCollisionRadius = 0.f;
+		desc.isServerAuthoritative = false;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+				currentLevel,
+				TEXT("Prototype_GameObject_Valtan"),
+				currentLevel,
+				TEXT("Layer_AnimationPreview"),
+				&desc,
+				&stagedObject)))
+		{
+			m_Status = "Valtan product composition failed to stage.";
+			return false;
+		}
+
+		stagedValtan = dynamic_pointer_cast<CValtan>(stagedObject);
+		float4x4_t presentationRoot{};
+		if (nullptr == stagedValtan ||
+			nullptr == stagedValtan->Get_BodyModel() ||
+			!stagedValtan->Try_Get_PresentationRootMatrix(&presentationRoot))
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				currentLevel,
+				TEXT("Layer_AnimationPreview"),
+				stagedObject);
+			m_Status =
+				"Valtan preview did not expose its body/weapon presentation root.";
+			return false;
+		}
+	}
+	else
+	{
+		if (currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) &&
+			!m_PreparedGenericPreviewAssetIds.contains(asset.pId))
+		{
+			const std::filesystem::path modelPath =
+				CRuntimeAssetRoot::Resolve(asset.pModelAssetId);
+			const matrix_t previewTransform =
+				XMMatrixScaling(
+					asset.fPreviewScale,
+					asset.fPreviewScale,
+					asset.fPreviewScale) *
+				XMMatrixRotationY(
+					XMConvertToRadians(asset.fPreviewYawDegrees));
+			unique_ptr<CModel> model;
+			if (!modelPath.empty() &&
+				std::filesystem::is_regular_file(modelPath))
+			{
+				model = CModel::Create(
+					m_pDevice,
+					m_pContext,
+					MODEL::ANIM,
+					modelPath.string().c_str(),
+					previewTransform);
+			}
+			if (nullptr == model ||
+				FAILED(CGameInstance::Get().Add_Prototype(
+					currentLevel,
+					asset.pPrototypeTag,
+					std::move(model))))
+			{
+				m_Status = string("Preview asset failed to prepare: ") +
+					asset.pModelAssetId;
+				return false;
+			}
+			m_PreparedGenericPreviewAssetIds.insert(asset.pId);
+		}
+
+		CPart_Body::PART_BODY_DESC desc{};
+		desc.pParentMatrix = &stagedParentMatrix;
+		desc.iPrototypeLevelIndex = currentLevel;
+		desc.strModelTag = asset.pPrototypeTag;
+		desc.strShaderTag =
+			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+		desc.pInitialAnimation = nullptr;
+		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+				currentLevel,
+				TEXT("Prototype_GameObject_Part_Body"),
+				currentLevel,
+				TEXT("Layer_AnimationPreview"),
+				&desc,
+				&stagedObject)))
+		{
+			m_Status = string("Preview asset is not admitted: ") +
+				asset.pModelAssetId;
+			return false;
+		}
+
+		stagedBody = dynamic_pointer_cast<CPart_Body>(stagedObject);
+		if (nullptr == stagedBody || nullptr == stagedBody->Get_Model())
+		{
+			CGameInstance::Get().Remove_GameObject_from_Layer(
+				currentLevel,
+				TEXT("Layer_AnimationPreview"),
+				stagedObject);
+			m_Status = "Preview body did not expose an animated CModel.";
+			return false;
+		}
 	}
 
 	/* The new body is staged before the old one is dropped, so a failure above
 	   leaves the previous target published and editable. */
 	Release(true);
-	m_pPreviewBody = stagedBody;
+	m_iPreviewParentMatrixIndex = stagedParentMatrixIndex;
+	m_pPreviewObject = stagedObject;
 	m_pPreviewAsset = &asset;
 	m_iPreviewLevelIndex = currentLevel;
-	CAnimationTargetService::Bind_Preview(
-		stagedBody->Get_Model(),
-		asset.pAssetName,
-		m_PreviewParentMatrix);
-	m_Status = string("Previewing ") + asset.pLabel +
-		" 2.5 m to the right of the scene character.";
+	if (nullptr != stagedCharacter)
+	{
+		CAnimationTargetService::Bind_Preview(stagedCharacter);
+		m_Status = string("Previewing live Character parts for ") +
+			asset.pLabel +
+			" 2.5 m to the right of the scene character.";
+	}
+	else if (nullptr != stagedValtan)
+	{
+		CAnimationTargetService::Bind_Preview(
+			stagedValtan,
+			asset.pAssetName);
+		m_Status = string("Previewing product Valtan body and socketed axe for ") +
+			asset.pLabel +
+			" 2.5 m to the right of the scene character.";
+	}
+	else
+	{
+		CAnimationTargetService::Bind_Preview(
+			stagedBody->Get_Model(),
+			asset.pAssetName,
+			stagedParentMatrix);
+		m_Status = string("Previewing ") + asset.pLabel +
+			" 2.5 m to the right of the scene character.";
+	}
 	return true;
 }
 
@@ -209,7 +433,7 @@ void Client::CCharacterPreviewPanel::Render_Selector(
 	const string& effectiveLockReason = nullptr != pSessionLockReason ?
 		*pSessionLockReason : strLockReason;
 	ImGui::BeginDisabled(isSelectionLocked);
-	const bool_t sceneSelected = m_pPreviewBody.expired();
+	const bool_t sceneSelected = m_pPreviewObject.expired();
 	if (ImGui::Selectable("Scene Character", sceneSelected))
 		Release(true);
 
@@ -219,7 +443,7 @@ void Client::CCharacterPreviewPanel::Render_Selector(
 			continue;
 		ImGui::PushID(asset.pId);
 		const bool_t isSelected =
-			!m_pPreviewBody.expired() && m_pPreviewAsset == &asset;
+			!m_pPreviewObject.expired() && m_pPreviewAsset == &asset;
 		if (ImGui::Selectable(asset.pLabel, isSelected) && !isSelected)
 			Select_Asset(asset);
 		ImGui::PopID();

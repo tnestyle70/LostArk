@@ -13,6 +13,7 @@
 #include <chrono>
 #include <cstdint>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <set>
 #include <span>
@@ -306,6 +307,13 @@ namespace
 			return m_strLabel;
 		}
 
+		[[nodiscard]] bool Has_ExactOwnSpawnNickname() const
+		{
+			const auto iter = m_SpawnNicknameByEntityId.find(Get_NetEntityId());
+			return iter != m_SpawnNicknameByEntityId.end() &&
+				iter->second == m_strLabel;
+		}
+
 	private:
 		bool Send_All(
 			const std::span<const std::uint8_t> bytes,
@@ -363,6 +371,19 @@ namespace
 				m_hasEnterRejected = true;
 				return true;
 			}
+			if (PACKET_TYPE::S2C_PLAYER_SPAWNED == frame.ePacketType)
+			{
+				S2C_PLAYER_SPAWNED spawned{};
+				if (!Read_Message(reader, spawned) ||
+					0u != reader.Get_RemainingSize())
+				{
+					error = m_strLabel + ": invalid player-spawn packet";
+					return false;
+				}
+				m_SpawnNicknameByEntityId.insert_or_assign(
+					spawned.iNetEntityId, spawned.strNickName);
+				return true;
+			}
 			if (PACKET_TYPE::S2C_WORLD_SNAPSHOT == frame.ePacketType)
 			{
 				S2C_WORLD_SNAPSHOT snapshot{};
@@ -404,6 +425,7 @@ namespace
 		CPacketStreamParser m_StreamParser;
 		S2C_ENTER_ACCEPTED m_EnterAccepted{};
 		S2C_ENTER_REJECTED m_EnterRejected{};
+		std::map<NET_ENTITY_ID, std::string> m_SpawnNicknameByEntityId;
 		std::size_t m_iSnapshotPlayerCount = 0;
 		std::size_t m_iSnapshotUniqueEntityCount = 0;
 		bool m_hasEnterAccepted = false;
@@ -450,7 +472,8 @@ namespace
 		for (const CTestClient* client : clients)
 		{
 			if (nullptr == client || !client->Is_Accepted() ||
-				!client->Has_PlayerCount(expectedCount))
+				!client->Has_PlayerCount(expectedCount) ||
+				!client->Has_ExactOwnSpawnNickname())
 			{
 				return false;
 			}
@@ -512,7 +535,8 @@ namespace
 		{
 			return false;
 		}
-		std::cout << "[PASS] four initial clients accepted and converged at 4/4\n";
+		std::cout << "[PASS] four initial clients accepted with exact nicknames "
+			"and converged at 4/4\n";
 
 		auto overflow = Connect_Client(
 			options,
@@ -595,7 +619,8 @@ namespace
 		{
 			return false;
 		}
-		std::cout << "[PASS] empty-room reset admitted a second 4/4 generation\n";
+		std::cout << "[PASS] empty-room reset admitted a second exact-nickname "
+			"4/4 generation\n";
 		for (CTestClient* client : secondActive)
 			client->Close();
 		return true;

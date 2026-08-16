@@ -31,6 +31,46 @@ namespace
 	// advances at the same rate as the authoritative action/animation clock.
 	constexpr uint32_t MAX_CATCH_UP_STEPS = 60u;
 	constexpr uint32_t MAX_SOURCE_EVENTS_PER_STEP = 4096u;
+	struct DYNAMIC_PARAMETER_PROPERTY_PATHS final
+	{
+		std::string_view strSpawnTimeOnly;
+		std::string_view strUseEmitterTime;
+		std::string_view strValue;
+		std::string_view strScaleVelocityByValue;
+	};
+	constexpr std::array<DYNAMIC_PARAMETER_PROPERTY_PATHS, 4u>
+		DYNAMIC_PARAMETER_PATHS = {{
+			{ "dynamicparams[0].bspawntimeonly",
+			  "dynamicparams[0].buseemittertime",
+			  "dynamicparams[0].paramvalue",
+			  "dynamicparams[0].bscalevelocitybyparamvalue" },
+			{ "dynamicparams[1].bspawntimeonly",
+			  "dynamicparams[1].buseemittertime",
+			  "dynamicparams[1].paramvalue",
+			  "dynamicparams[1].bscalevelocitybyparamvalue" },
+			{ "dynamicparams[2].bspawntimeonly",
+			  "dynamicparams[2].buseemittertime",
+			  "dynamicparams[2].paramvalue",
+			  "dynamicparams[2].bscalevelocitybyparamvalue" },
+			{ "dynamicparams[3].bspawntimeonly",
+			  "dynamicparams[3].buseemittertime",
+			  "dynamicparams[3].paramvalue",
+			  "dynamicparams[3].bscalevelocitybyparamvalue" }
+		}};
+	constexpr std::string_view WARLORD_CHAIN_SOURCE_MATERIAL_PATH =
+		"fx_m_mi_d_00.fx_mi.fx_d_me_chain_01_101_ma";
+	constexpr std::string_view WARLORD_CHAIN_BASE_ALIAS_ASSET_ID =
+		"Effect/Warlord/Textures/FX_TEX_02/fx_d_atypical_028.dds";
+	constexpr std::string_view WARLORD_CHAIN_SOURCE_PROFILE_ID =
+		"ue3.material.fx.m.mi.00.fx.m.fx.d.me.chain.01.ma.a8a92d2a6abc";
+	constexpr std::string_view WARLORD_CHAIN_PARENT_MATERIAL_PATH =
+		"fx_m_mi_00.fx_m.fx_d_me_chain_01_ma";
+	constexpr std::string_view WARLORD_CHAIN_RUNTIME_PROFILE_ID =
+		"effect.ue3.grouped-translucent.v1";
+	constexpr std::string_view WARLORD_CHAIN_06_MODEL_ASSET_ID =
+		"Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel";
+	constexpr std::string_view WARLORD_CHAIN_07_MODEL_ASSET_ID =
+		"Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_07.wmodel";
 
 	bool_t Is_FiniteAffineMatrix(const float4x4_t& Matrix)
 	{
@@ -278,6 +318,136 @@ namespace
 		return PropertyPath == "startalpha" ||
 			PropertyPath == "alphaoverlife" ||
 			PropertyPath == "alphascaleoverlife";
+	}
+
+	bool_t Is_SourceNullCdoDistribution(
+		const Client::EFFECT_DISTRIBUTION_DESC& Distribution)
+	{
+		const auto IsZero4 = [](const float4_t& Value)
+		{
+			return Value.x == 0.f && Value.y == 0.f &&
+				Value.z == 0.f && Value.w == 0.f;
+		};
+		return Distribution.strSourceClass.empty() &&
+			Distribution.strSourceObjectPath.empty() &&
+			Distribution.iComponentCount == 1u &&
+			Distribution.iOperation == 1u &&
+			Distribution.iRandomLockAxes == 0u &&
+			Distribution.iLookupTableChunkSize == 0u &&
+			Distribution.iLookupTableNumElements == 0u &&
+			Distribution.fLookupTableTimeScale == 0.f &&
+			Distribution.fLookupTableStartTime == 0.f &&
+			IsZero4(Distribution.vDefaultMinimum) &&
+			IsZero4(Distribution.vDefaultMaximum) &&
+			Distribution.LookupTable.empty() && Distribution.Keys.empty();
+	}
+
+	bool_t Is_Warlord17090ChainTypedScaleIdentity(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module)
+	{
+		using namespace Client;
+		const EFFECT_SOURCE_MATERIAL_DESC& SourceProfile =
+			Element.Material.SourceMaterial;
+		if (Module.strClassName != "particlemodulelocationdirect" ||
+			Element.Material.strSourceMaterialPath !=
+				WARLORD_CHAIN_SOURCE_MATERIAL_PATH ||
+			Element.Material.strTemplateId !=
+				EFFECT_SOURCE_MATERIAL_TEMPLATE_ID ||
+			!SourceProfile.bEnabled ||
+			SourceProfile.strProfileId != WARLORD_CHAIN_SOURCE_PROFILE_ID ||
+			SourceProfile.strParentMaterialPath !=
+				WARLORD_CHAIN_PARENT_MATERIAL_PATH ||
+			SourceProfile.strRuntimeShaderProfileId !=
+				WARLORD_CHAIN_RUNTIME_PROFILE_ID ||
+			Element.Material.Execution.bEnabled ||
+			!Element.Material.Execution.bFailClosed ||
+			!Element.Material.Execution.bAuthoringApproximate ||
+			Element.Detail.Mesh.bUseModelMaterial ||
+			!Element.strSourceNode.starts_with(
+				"authored-source-particle:effect.warlord.skill.17090.unified|"))
+		{
+			return false;
+		}
+		const auto ResolveCompilerAssetId = [&Element](
+			const EFFECT_RESOURCE_BINDING_DESC& Binding,
+			std::string_view& strOutCompilerAssetId) -> bool_t
+		{
+			const auto First = std::find_if(
+				Element.AuthoringOverrides.ResourceBindings.begin(),
+				Element.AuthoringOverrides.ResourceBindings.end(),
+				[&Binding](const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override)
+				{
+					return Override.strSlotId == Binding.strSlotId;
+				});
+			if (First == Element.AuthoringOverrides.ResourceBindings.end())
+			{
+				strOutCompilerAssetId = Binding.strAssetId;
+				return true;
+			}
+			if (std::find_if(std::next(First),
+					Element.AuthoringOverrides.ResourceBindings.end(),
+					[&Binding](
+						const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override)
+					{
+						return Override.strSlotId == Binding.strSlotId;
+					}) != Element.AuthoringOverrides.ResourceBindings.end() ||
+				First->strAssetId != Binding.strAssetId ||
+				First->strCompilerAssetId.empty())
+			{
+				return false;
+			}
+			strOutCompilerAssetId = First->strCompilerAssetId;
+			return true;
+		};
+		bool_t bExactMesh = false;
+		bool_t bPreviewBase = false;
+		for (const EFFECT_RESOURCE_BINDING_DESC& Binding :
+			Element.ResourceBindings)
+		{
+			std::string_view strCompilerAssetId;
+			if (!ResolveCompilerAssetId(Binding, strCompilerAssetId))
+				return false;
+			if (Binding.strSlotId == EFFECT_MESH_SHAPE_SLOT_ID &&
+				(strCompilerAssetId == WARLORD_CHAIN_06_MODEL_ASSET_ID ||
+				 strCompilerAssetId == WARLORD_CHAIN_07_MODEL_ASSET_ID))
+			{
+				if (bExactMesh)
+					return false;
+				bExactMesh = true;
+			}
+			else if (Binding.strSlotId == "base" &&
+				strCompilerAssetId == WARLORD_CHAIN_BASE_ALIAS_ASSET_ID)
+			{
+				if (bPreviewBase)
+					return false;
+				bPreviewBase = true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		const EFFECT_DISTRIBUTION_DESC* pScaleFactor =
+			Find_SourceDistribution(&Module, "scalefactor");
+		const auto IsZero4 = [](const float4_t& Value)
+		{
+			return Value.x == 0.f && Value.y == 0.f &&
+				Value.z == 0.f && Value.w == 0.f;
+		};
+		return bExactMesh && bPreviewBase && nullptr != pScaleFactor &&
+			pScaleFactor->strSourceClass.empty() &&
+			pScaleFactor->strSourceObjectPath.empty() &&
+			pScaleFactor->iComponentCount == 3u &&
+			pScaleFactor->iOperation == 1u &&
+			pScaleFactor->iRandomLockAxes == 0u &&
+			pScaleFactor->iLookupTableChunkSize == 0u &&
+			pScaleFactor->iLookupTableNumElements == 0u &&
+			pScaleFactor->fLookupTableTimeScale == 0.f &&
+			pScaleFactor->fLookupTableStartTime == 0.f &&
+			IsZero4(pScaleFactor->vDefaultMinimum) &&
+			IsZero4(pScaleFactor->vDefaultMaximum) &&
+			pScaleFactor->LookupTable.empty() && pScaleFactor->Keys.empty();
 	}
 
 	bool_t SourceClass_Matches(
@@ -619,6 +789,159 @@ namespace
 			Element.SourceRecipe.bEnabled &&
 			(Element.SourceRecipe.strRendererShape == "mesh" ||
 			 Element.SourceRecipe.strRendererShape == "sprite");
+	}
+
+	bool_t Validate_PortableSourceEventRoutes(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		bool_t& bOutHasEvents,
+		std::string& strOutError)
+	{
+		bOutHasEvents = false;
+		std::unordered_map<std::string, std::vector<std::string>> Generators;
+		std::unordered_map<std::string, std::vector<std::string>> Receivers;
+		uint64_t iMaximumQueuedEvents = 0u;
+		const auto RouteKey = [](const std::string_view Type,
+			const std::string_view Name)
+		{
+			std::string Result(Type);
+			Result.push_back('\0');
+			Result.append(Name);
+			return Result;
+		};
+		for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			if (!Element.bVisible ||
+				!Client::Is_EffectAuthoringExecutionTarget(
+					Element.Material.Execution) ||
+				!Is_PortableAuthoredParticleCarrier(Element))
+			{
+				continue;
+			}
+			uint32_t iGeneratorCount = 0u;
+			for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
+				Element.SourceRecipe.Modules)
+			{
+				if (!SourceModule_Enabled(Module))
+					continue;
+				if (SourceClass_Matches(Module,
+					"particlemoduleeventgenerator"))
+				{
+					const std::string_view Type =
+						SourceString(Module, "events[0].type");
+					const std::string_view Name =
+						SourceString(Module, "events[0].customname");
+					if (Type != "epet_spawn" || Name.empty())
+					{
+						strOutError =
+							"Portable source event generator route is invalid: " +
+							Element.strElementId + ".";
+						return false;
+					}
+					Generators[RouteKey(Type, Name)].push_back(
+						Element.strElementId);
+					++iGeneratorCount;
+					bOutHasEvents = true;
+				}
+				else if (SourceClass_Matches(Module,
+					"particlemoduleeventreceiverspawn"))
+				{
+					const std::string_view Type =
+						SourceString(Module, "eventgeneratortype");
+					const std::string_view Name =
+						SourceString(Module, "eventname");
+					if (Type != "epet_spawn" || Name.empty())
+					{
+						strOutError =
+							"Portable source event receiver route is invalid: " +
+							Element.strElementId + ".";
+						return false;
+					}
+					Receivers[RouteKey(Type, Name)].push_back(
+						Element.strElementId);
+					bOutHasEvents = true;
+				}
+			}
+			iMaximumQueuedEvents +=
+				static_cast<uint64_t>(Element.Detail.Particle.iMaxParticles) *
+				static_cast<uint64_t>(iGeneratorCount);
+		}
+		if (!bOutHasEvents)
+		{
+			strOutError.clear();
+			return true;
+		}
+		if (iMaximumQueuedEvents > MAX_SOURCE_EVENTS_PER_STEP)
+		{
+			strOutError =
+				"Portable source event queue has an unbounded per-step upper limit.";
+			return false;
+		}
+		for (const auto& [Route, Elements] : Generators)
+		{
+			UNREFERENCED_PARAMETER(Elements);
+			if (!Receivers.contains(Route))
+			{
+				strOutError =
+					"Portable source event generator has no same-document receiver.";
+				return false;
+			}
+		}
+		for (const auto& [Route, Elements] : Receivers)
+		{
+			UNREFERENCED_PARAMETER(Elements);
+			if (!Generators.contains(Route))
+			{
+				strOutError =
+					"Portable source event receiver has no same-document generator.";
+				return false;
+			}
+		}
+
+		std::unordered_map<std::string, std::vector<std::string>> Edges;
+		for (const auto& [Route, SourceElements] : Generators)
+		{
+			const std::vector<std::string>& TargetElements = Receivers.at(Route);
+			for (const std::string& SourceElement : SourceElements)
+			{
+				auto& Targets = Edges[SourceElement];
+				Targets.insert(Targets.end(), TargetElements.begin(),
+					TargetElements.end());
+			}
+		}
+		std::unordered_map<std::string, uint8_t> Visit;
+		const auto VisitNode = [&Edges, &Visit](
+			const auto& Self, const std::string& Node) -> bool_t
+		{
+			uint8_t& State = Visit[Node];
+			if (State == 1u)
+				return false;
+			if (State == 2u)
+				return true;
+			State = 1u;
+			const auto Iterator = Edges.find(Node);
+			if (Iterator != Edges.end())
+			{
+				for (const std::string& Target : Iterator->second)
+				{
+					if (!Self(Self, Target))
+						return false;
+				}
+			}
+			State = 2u;
+			return true;
+		};
+		for (const auto& [Node, Targets] : Edges)
+		{
+			UNREFERENCED_PARAMETER(Targets);
+			if (!VisitNode(VisitNode, Node))
+			{
+				strOutError =
+					"Portable source event route graph contains a cycle.";
+				return false;
+			}
+		}
+		strOutError.clear();
+		return true;
 	}
 
 	void Resolve_SourceSpritePresentation(
@@ -1262,6 +1585,11 @@ bool_t Client::CEffectPlayback::Prepare_DocumentResources(
 	}
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
+		if (Element.Material.Execution.bFailClosed &&
+			!Element.Material.Execution.bAuthoringApproximate)
+		{
+			continue;
+		}
 		for (const EFFECT_SOURCE_MODULE_DESC& Module :
 			Element.SourceRecipe.Modules)
 		{
@@ -1511,8 +1839,19 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 		strOutError = "Prepared Effect playback resources are missing.";
 		return false;
 	}
+	bool_t bStagedHasPortableSourceEvents = false;
+	if (!Document.bSourceContract && !Validate_PortableSourceEventRoutes(
+			Document, bStagedHasPortableSourceEvents, strOutError))
+	{
+		return false;
+	}
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
+		if (Element.Material.Execution.bFailClosed &&
+			!Element.Material.Execution.bAuthoringApproximate)
+		{
+			continue;
+		}
 		for (const EFFECT_SOURCE_MODULE_DESC& Module :
 			Element.SourceRecipe.Modules)
 		{
@@ -1620,6 +1959,7 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 	m_SourceVisualTargetElementIds =
 		std::move(SourceVisualTargetElementIds);
 	m_bReconstructedSourceRuntimeActive = false;
+	m_bHasPortableSourceEvents = bStagedHasPortableSourceEvents;
 	m_strSourceVisualProgramStatus.clear();
 	m_States = std::move(StagedStates);
 	m_TransformMasterIndices = std::move(StagedTransformMasterIndices);
@@ -1833,6 +2173,50 @@ Client::CEffectPlayback::Resolve_SourceSubUVFrame(
 	return Result;
 }
 
+bool_t Client::CEffectPlayback::Resolve_ParticleSpriteSubUV(
+	const EFFECT_EVALUATED_PARTICLE& Particle,
+	const EFFECT_SUBUV_FRAME_DESC& SourceSubUV,
+	EFFECT_SUBUV_FRAME_DESC& OutSubUV)
+{
+	EFFECT_SUBUV_FRAME_DESC Staged = SourceSubUV;
+	/* Mesh particles retain their signed model transform.  Cascade image
+	   flipping is a Sprite renderer contract and must not mirror mesh UVs. */
+	if (!Particle.bSourceImageFlipping ||
+		(nullptr != Particle.pElement && Is_MeshParticle(*Particle.pElement)))
+	{
+		OutSubUV = Staged;
+		return true;
+	}
+	const auto IsUnitSign = [](const f32_t fValue)
+	{
+		return fValue == -1.f || fValue == 1.f;
+	};
+	if (!IsUnitSign(Particle.vSourceImageFlipSign.x) ||
+		!IsUnitSign(Particle.vSourceImageFlipSign.y))
+	{
+		return false;
+	}
+	const auto ApplyImageFlip = [&Particle](float4_t& Transform)
+	{
+		if (Particle.vSourceImageFlipSign.x < 0.f)
+		{
+			Transform.z += Transform.x;
+			Transform.x = -Transform.x;
+		}
+		if (Particle.vSourceImageFlipSign.y < 0.f)
+		{
+			Transform.w += Transform.y;
+			Transform.y = -Transform.y;
+		}
+	};
+	/* Apply the evaluated StartSize signs exactly once, within each atlas cell.
+	   Positive billboard geometry keeps front-face winding stable. */
+	ApplyImageFlip(Staged.Current);
+	ApplyImageFlip(Staged.Next);
+	OutSubUV = Staged;
+	return true;
+}
+
 void Client::CEffectPlayback::Reset()
 {
 	std::string GateStatus;
@@ -1846,6 +2230,11 @@ void Client::CEffectPlayback::Reset()
 	m_fSampleTimeSeconds = 0.f;
 	m_fAccumulatorSeconds = 0.0;
 	m_iSimulationStep = 0u;
+	m_vPreviousRootPosition = {};
+	m_vParentVelocity = {};
+	m_bPreviousRootPositionInitialized = false;
+	m_bSourceEventQueueOverflow = false;
+	m_PendingSourceEvents.clear();
 	m_Frame = {};
 	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
 	{
@@ -1888,7 +2277,8 @@ void Client::CEffectPlayback::Update(
 		FIXED_STEP_SECONDS_EXACT &&
 		iSteps < MAX_CATCH_UP_STEPS)
 	{
-		Step(FIXED_STEP_SECONDS, RootWorld);
+		if (!Step(FIXED_STEP_SECONDS, RootWorld))
+			return;
 		m_fAccumulatorSeconds = (std::max)(0.0,
 			m_fAccumulatorSeconds - FIXED_STEP_SECONDS_EXACT);
 		++iSteps;
@@ -1932,7 +2322,10 @@ void Client::CEffectPlayback::Seek(
 		static_cast<f64_t>(fTarget) / FIXED_STEP_SECONDS_EXACT +
 		FIXED_STEP_EPSILON));
 	for (uint64_t iStep = 0u; iStep < iTargetSteps; ++iStep)
-		Step(FIXED_STEP_SECONDS, RootWorld);
+	{
+		if (!Step(FIXED_STEP_SECONDS, RootWorld))
+			return;
+	}
 	m_fAccumulatorSeconds = (std::max)(0.0,
 		static_cast<f64_t>(fTarget) -
 		static_cast<f64_t>(iTargetSteps) * FIXED_STEP_SECONDS_EXACT);
@@ -2084,7 +2477,11 @@ bool_t Client::CEffectPlayback::Update_WithTransformHistory(
 	{
 		m_SourceAnchorWorlds = std::move(Sample.SourceAnchorWorlds);
 		FinalRoot = Sample.RootWorld;
-		Step(FIXED_STEP_SECONDS, FinalRoot);
+		if (!Step(FIXED_STEP_SECONDS, FinalRoot))
+		{
+			strOutError = m_strSourceVisualProgramStatus;
+			return false;
+		}
 		fCommittedAccumulator = (std::max)(
 			0.0, fCommittedAccumulator - FIXED_STEP_SECONDS_EXACT);
 	}
@@ -2147,7 +2544,11 @@ bool_t Client::CEffectPlayback::Seek_WithTransformHistory(
 	for (EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& Sample : Samples)
 	{
 		m_SourceAnchorWorlds = std::move(Sample.SourceAnchorWorlds);
-		Step(FIXED_STEP_SECONDS, Sample.RootWorld);
+		if (!Step(FIXED_STEP_SECONDS, Sample.RootWorld))
+		{
+			strOutError = m_strSourceVisualProgramStatus;
+			return false;
+		}
 	}
 	m_fAccumulatorSeconds = (std::max)(
 		0.0, static_cast<f64_t>(fTarget) - fSteppedTime);
@@ -2164,14 +2565,35 @@ f64_t Client::CEffectPlayback::Get_FixedStepClockSeconds() const
 		FIXED_STEP_SECONDS_EXACT + m_fAccumulatorSeconds;
 }
 
-void Client::CEffectPlayback::Step(
+bool_t Client::CEffectPlayback::Step(
 	const f32_t fFixedDelta,
 	const float4x4_t& RootWorld)
 {
+	const auto PreviousStates = m_bHasPortableSourceEvents ?
+		m_States : decltype(m_States){};
+	const uint64_t iPreviousSimulationStep = m_iSimulationStep;
+	const f32_t fPreviousSampleTimeSeconds = m_fSampleTimeSeconds;
+	const float3_t vPreviousRootPosition = m_vPreviousRootPosition;
+	const float3_t vPreviousParentVelocity = m_vParentVelocity;
+	const bool_t bPreviousRootPositionInitialized =
+		m_bPreviousRootPositionInitialized;
+	const float3_t CurrentRootPosition = Get_Translation(RootWorld);
+	if (m_bPreviousRootPositionInitialized)
+	{
+		m_vParentVelocity = Scale3(Subtract3(
+			CurrentRootPosition, m_vPreviousRootPosition), 1.f / fFixedDelta);
+	}
+	else
+	{
+		m_vParentVelocity = {};
+	}
+	m_vPreviousRootPosition = CurrentRootPosition;
+	m_bPreviousRootPositionInitialized = true;
 	++m_iSimulationStep;
 	m_fSampleTimeSeconds = static_cast<f32_t>(
 		static_cast<f64_t>(m_iSimulationStep) * FIXED_STEP_SECONDS_EXACT);
 	m_PendingSourceEvents.clear();
+	m_bSourceEventQueueOverflow = false;
 
 	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
 	{
@@ -2249,19 +2671,22 @@ void Client::CEffectPlayback::Step(
 					}
 					const EFFECT_SOURCE_MODULE_DESC* pSpawnModule =
 						Find_SourceModule(Element, "particlemodulespawn");
-					/* Cascade advances the emitter random stream only when Rate's
-					   distribution operation actually consumes a random value.  An
-					   unconditional draw here shifts every later burst/lifetime/module
-					   sample even for the deterministic operation-1 Rate rows used by
-					   Artist 31470.  Keep RateScale out of this playback seam until the
-					   pinned null CDO row is projected as its reconstructed identity 1. */
 					const f32_t fRate = nullptr == pSpawnModule ?
 						Element.Detail.Particle.fSpawnRatePerSecond :
 						Evaluate_ModuleFloat(State, *pSpawnModule, "rate",
 							fEmitterTime,
 							Element.Detail.Particle.fSpawnRatePerSecond);
+					const EFFECT_DISTRIBUTION_DESC* pRateScaleDistribution =
+						Find_SourceDistribution(pSpawnModule, "ratescale");
+					/* Cascade's null CDO RateScale is multiplicative identity.  It must
+					   neither collapse Rate to zero nor advance the emitter random stream. */
+					const f32_t fRateScale =
+						nullptr == pRateScaleDistribution ||
+						Is_SourceNullCdoDistribution(*pRateScaleDistribution) ? 1.f :
+						Evaluate_ModuleFloat(State, *pSpawnModule, "ratescale",
+							fEmitterTime, 1.f);
 					State.fSpawnAccumulator +=
-						(std::max)(0.f, fRate) * fFixedDelta;
+						(std::max)(0.f, fRate * fRateScale) * fFixedDelta;
 					const uint32_t iSpawnCount = static_cast<uint32_t>(
 						std::floor(State.fSpawnAccumulator));
 					State.fSpawnAccumulator -=
@@ -2291,7 +2716,22 @@ void Client::CEffectPlayback::Step(
 		}
 	}
 
-	Dispatch_SourceEvents(fFixedDelta, RootWorld);
+	if (!Dispatch_SourceEvents(fFixedDelta, RootWorld))
+	{
+		if (m_bHasPortableSourceEvents)
+			m_States = PreviousStates;
+		m_iSimulationStep = iPreviousSimulationStep;
+		m_fSampleTimeSeconds = fPreviousSampleTimeSeconds;
+		m_vPreviousRootPosition = vPreviousRootPosition;
+		m_vParentVelocity = vPreviousParentVelocity;
+		m_bPreviousRootPositionInitialized =
+			bPreviousRootPositionInitialized;
+		m_PendingSourceEvents.clear();
+		m_bSourceEventQueueOverflow = false;
+		m_strSourceVisualProgramStatus =
+			"Portable source event queue overflow rolled back the fixed step.";
+		return false;
+	}
 
 	for (const EFFECT_ELEMENT_DESC& Element : m_Document.Elements)
 	{
@@ -2309,6 +2749,7 @@ void Client::CEffectPlayback::Step(
 			Sample_AfterImages(Element, State, fFixedDelta, RootWorld);
 		}
 	}
+	return true;
 }
 
 uint32_t Client::CEffectPlayback::Consume_SourceSpawnPerUnit(
@@ -2490,6 +2931,8 @@ void Client::CEffectPlayback::Spawn_Particles(
 		}
 		Particle.vVelocity = Apply_ParticleEmissionModifier(
 			Particle.vVelocity);
+		Particle.vVelocity = Add3(
+			Particle.vVelocity, Particle.vInheritedParentVelocity);
 		Particle.vBaseVelocity = Particle.vVelocity;
 		if (Particle.fLifeTimeSeconds <= 0.f)
 			Particle.fLifeTimeSeconds = Random_Range(
@@ -2509,8 +2952,6 @@ void Client::CEffectPlayback::Queue_SpawnEvents(
 	const PARTICLE_STATE& Particle,
 	const float4x4_t& ElementWorld)
 {
-	if (m_PendingSourceEvents.size() >= MAX_SOURCE_EVENTS_PER_STEP)
-		return;
 	for (const EFFECT_SOURCE_MODULE_DESC& Module : Element.SourceRecipe.Modules)
 	{
 		if (!SourceModule_Enabled(Module) ||
@@ -2527,7 +2968,7 @@ void Client::CEffectPlayback::Queue_SpawnEvents(
 					continue;
 				break;
 			}
-			if (!Type.ends_with("spawn"))
+			if (Type != "epet_spawn")
 				continue;
 			const std::string CounterId = Module.strStableId + ":" +
 				std::to_string(iEvent) + ":spawn";
@@ -2550,18 +2991,23 @@ void Client::CEffectPlayback::Queue_SpawnEvents(
 				EventPosition, XMLoadFloat4x4(&ParticleRoot));
 			Event.vVelocity = Transform_Normal(
 				Particle.vVelocity, XMLoadFloat4x4(&ParticleRoot));
-			m_PendingSourceEvents.push_back(std::move(Event));
 			if (m_PendingSourceEvents.size() >= MAX_SOURCE_EVENTS_PER_STEP)
+			{
+				m_bSourceEventQueueOverflow = true;
 				return;
+			}
+			m_PendingSourceEvents.push_back(std::move(Event));
 		}
 	}
 }
 
-void Client::CEffectPlayback::Dispatch_SourceEvents(
+bool_t Client::CEffectPlayback::Dispatch_SourceEvents(
 	const f32_t fFixedDelta,
 	const float4x4_t& RootWorld)
 {
 	UNREFERENCED_PARAMETER(fFixedDelta);
+	if (m_bSourceEventQueueOverflow)
+		return false;
 	for (size_t iEvent = 0u;
 		iEvent < m_PendingSourceEvents.size() &&
 		iEvent < MAX_SOURCE_EVENTS_PER_STEP;
@@ -2587,7 +3033,8 @@ void Client::CEffectPlayback::Dispatch_SourceEvents(
 				const std::string_view EventType = SourceString(
 					Module, "eventgeneratortype");
 				if (EventName != Event.strName ||
-					(!EventType.ends_with("any") && EventType != Event.strType))
+					EventType != "epet_spawn" ||
+					Event.strType != "epet_spawn")
 				{
 					continue;
 				}
@@ -2603,14 +3050,17 @@ void Client::CEffectPlayback::Dispatch_SourceEvents(
 					Forced.vVelocity = {};
 				else
 					Forced.vVelocity = Multiply3(Forced.vVelocity,
-						Evaluate_ModuleVector(State, Module,
+						UE3_AxisScaleToClient(Evaluate_ModuleVector(State, Module,
 							"inheritvelocityscale", Event.fEmitterTimeSeconds,
-							float3_t(1.f, 1.f, 1.f)));
+							float3_t(1.f, 1.f, 1.f))));
 				Spawn_Particles(Element, State,
 					static_cast<uint32_t>(iCount), RootWorld, &Forced);
+				if (m_bSourceEventQueueOverflow)
+					return false;
 			}
 		}
 	}
+	return !m_bSourceEventQueueOverflow;
 }
 
 void Client::CEffectPlayback::Set_SourceAnchorWorlds(
@@ -2858,16 +3308,22 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			const float3_t Offset = Evaluate_ModuleVector(
 				State, Module, "locationoffset", fEmitterTimeSeconds,
 				float3_t{});
-			const float3_t Scale = Evaluate_ModuleVector(
-				State, Module, "scalefactor", fEmitterTimeSeconds,
-				float3_t(1.f, 1.f, 1.f));
-			Particle.vPosition = Add3(Particle.vPosition,
+			const float3_t Scale =
+				Is_Warlord17090ChainTypedScaleIdentity(Element, Module) ?
+				float3_t(1.f, 1.f, 1.f) : Evaluate_ModuleVector(
+					State, Module, "scalefactor", fEmitterTimeSeconds,
+					float3_t(1.f, 1.f, 1.f));
+			Particle.vSourceDirectLocationContribution =
 				UE3_CentimetersToClient(
-					Add3(Multiply3(Location, Scale), Offset)));
-			Particle.vVelocity = Add3(Particle.vVelocity,
+					Add3(Multiply3(Location, Scale), Offset));
+			Particle.vSourceDirectDirectionContribution =
 				UE3_CentimetersToClient(Evaluate_ModuleVector(
 					State, Module, "direction",
-					fEmitterTimeSeconds, float3_t{})));
+					fEmitterTimeSeconds, float3_t{}));
+			Particle.vPosition = Add3(Particle.vPosition,
+				Particle.vSourceDirectLocationContribution);
+			Particle.vVelocity = Add3(Particle.vVelocity,
+				Particle.vSourceDirectDirectionContribution);
 		}
 		else if (SourceClass_Matches(
 			Module, "particlemodulelocationonground"))
@@ -3108,10 +3564,19 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				static_cast<f32_t>(iSplit);
 			const f32_t fStartRotation = Evaluate_ModuleFloat(
 				State, Module, "startrot", fEmitterTimeSeconds, 0.f);
-			const f32_t fAngle = (fStep + fStartRotation) * XM_2PI;
-			const float3_t Offset(
-				std::cos(fAngle) * fRadius, 0.f,
-				std::sin(fAngle) * fRadius);
+			const bool_t bHalfMode = SourceBool(Module, "bhalfmode", false);
+			const f32_t fAngle = fStep * (bHalfMode ? XM_PI : XM_2PI) +
+				fStartRotation * XM_2PI +
+				(SourceBool(Module, "bnegativeaxis", false) ? XM_PI : 0.f);
+			const f32_t fCosRadius = std::cos(fAngle) * fRadius;
+			const f32_t fSinRadius = std::sin(fAngle) * fRadius;
+			const std::string_view SurfaceAxis =
+				SourceString(Module, "surfaceaxis");
+			float3_t Offset(fCosRadius, fSinRadius, 0.f);
+			if (SurfaceAxis.ends_with("_yz"))
+				Offset = float3_t(0.f, fCosRadius, fSinRadius);
+			else if (SurfaceAxis.ends_with("_zx"))
+				Offset = float3_t(fCosRadius, 0.f, fSinRadius);
 			const float3_t Start = Evaluate_ModuleVector(
 				State, Module, "startlocation", fEmitterTimeSeconds,
 				float3_t{});
@@ -3143,6 +3608,27 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 				State, Module, "startvelocityradial", fEmitterTimeSeconds, 0.f);
 			Particle.vVelocity = Add3(Particle.vVelocity,
 				Scale3(Normalize3(Particle.vPosition), fRadial * 0.01f));
+		}
+		else if (SourceClass_Matches(
+			Module, "particlemodulevelocityinheritparent"))
+		{
+			float3_t ParentVelocity = m_vParentVelocity;
+			if (Element.Detail.Particle.bLocalSpace)
+			{
+				ParentVelocity = Transform_Normal(ParentVelocity,
+					XMMatrixInverse(nullptr, XMLoadFloat4x4(&ElementWorld)));
+			}
+			Particle.vInheritedParentVelocity = Add3(
+				Particle.vInheritedParentVelocity,
+				Multiply3(ParentVelocity, UE3_AxisScaleToClient(
+					Evaluate_ModuleVector(State, Module, "scale",
+						fEmitterTimeSeconds, float3_t(1.f, 1.f, 1.f)))));
+		}
+		else if (SourceClass_Matches(
+			Module, "particlemodulevectorfieldscale"))
+		{
+			Particle.fVectorFieldScale *= Evaluate_ModuleFloat(
+				State, Module, "scale", fEmitterTimeSeconds, 1.f);
 		}
 		else if (SourceClass_Matches(Module, "particlemodulesize"))
 		{
@@ -3246,17 +3732,15 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 			f32_t* pValues = &Particle.vDynamicParameter.x;
 			for (uint32_t iParameter = 0u; iParameter < 4u; ++iParameter)
 			{
-				const std::string Path = "dynamicparams[" +
-					std::to_string(iParameter) + "].paramvalue";
-				const std::string Prefix = "dynamicparams[" +
-					std::to_string(iParameter) + "].";
+				const DYNAMIC_PARAMETER_PROPERTY_PATHS& Paths =
+					DYNAMIC_PARAMETER_PATHS[iParameter];
 				const f32_t fTime = SourceBool(Module,
-					Prefix + "buseemittertime", false) ?
+					Paths.strUseEmitterTime, false) ?
 					fEmitterTimeSeconds : 0.f;
 				pValues[iParameter] = Evaluate_ModuleFloat(
-					State, Module, Path, fTime, 0.f);
+					State, Module, Paths.strValue, fTime, 0.f);
 				if (SourceBool(Module,
-					Prefix + "bscalevelocitybyparamvalue", false))
+					Paths.strScaleVelocityByValue, false))
 				{
 					pValues[iParameter] *= Length3(Particle.vVelocity);
 				}
@@ -3374,9 +3858,6 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 	Particle.vVelocityScale = { 1.f, 1.f, 1.f };
 	Particle.vRotationRateScale = { 1.f, 1.f, 1.f };
 	Particle.vSourceMeshRotationRateScale = { 1.f, 1.f, 1.f };
-	Particle.vOrbitOffset = {};
-	Particle.vSourceOrbitRotationDegrees = {};
-	Particle.vSourceOrbitRotationRateDegreesPerSecond = {};
 	const bool_t bSourceVisualDecalParticle =
 		Is_SourceVisualDecalParticle(
 			Element, Is_SourceVisualProgramElementAdmitted(Element));
@@ -3387,7 +3868,37 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		if (!SourceModule_Enabled(Module))
 			continue;
 
-		if (SourceClass_Matches(Module, "particlemodulelocationbonesocket"))
+		if (SourceClass_Matches(
+			Module, "particlemodulelocationdirect"))
+		{
+			/* Cascade LocationDirect evaluates its curves over particle relative
+			   time.  Replacing only the module's previous contribution preserves
+			   every other source module and makes the source 0.9 -> 1.0 return
+			   segment execute instead of freezing at its spawn sample. */
+			const float3_t Location = Evaluate_ModuleVector(
+				State, Module, "location", fNormalizedAge, float3_t{});
+			const float3_t Offset = Evaluate_ModuleVector(
+				State, Module, "locationoffset", fNormalizedAge, float3_t{});
+			const float3_t Scale =
+				Is_Warlord17090ChainTypedScaleIdentity(Element, Module) ?
+				float3_t(1.f, 1.f, 1.f) : Evaluate_ModuleVector(
+					State, Module, "scalefactor", fNormalizedAge,
+					float3_t(1.f, 1.f, 1.f));
+			const float3_t DirectLocation = UE3_CentimetersToClient(
+				Add3(Multiply3(Location, Scale), Offset));
+			const float3_t DirectDirection = UE3_CentimetersToClient(
+				Evaluate_ModuleVector(State, Module, "direction",
+					fNormalizedAge, float3_t{}));
+			Particle.vPosition = Add3(Particle.vPosition,
+				Subtract3(DirectLocation,
+					Particle.vSourceDirectLocationContribution));
+			Particle.vVelocity = Add3(Particle.vVelocity,
+				Subtract3(DirectDirection,
+					Particle.vSourceDirectDirectionContribution));
+			Particle.vSourceDirectLocationContribution = DirectLocation;
+			Particle.vSourceDirectDirectionContribution = DirectDirection;
+		}
+		else if (SourceClass_Matches(Module, "particlemodulelocationbonesocket"))
 		{
 			if (!Particle.bUpdateSourceAnchor ||
 				Particle.strSourceAnchorName.empty())
@@ -3502,7 +4013,7 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			const float3_t Sample = Transform_Normal(
 				Sample_VectorField(*Field, UV, Tiling), FieldRotation);
 			const f32_t fIntensity = SourceNumber(Module, "intensity", 1.f) *
-				fPerParticleScale;
+				Particle.fVectorFieldScale * fPerParticleScale;
 			const f32_t fTightness = Clamp01(
 				SourceNumber(Module, "tightness", 0.f));
 			const float3_t FieldVelocity = Scale3(
@@ -3562,11 +4073,19 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 					State, Module, "lifemultiplier", fNormalizedAge,
 					float3_t(1.f, 1.f, 1.f))));
 		}
+		else if (SourceClass_Matches(
+			Module, "particlemodulesizescalebytime"))
+		{
+			Particle.vSize = Multiply3(Particle.vSize,
+				UE3_SizeToClient(Element, Evaluate_ModuleVector(
+					State, Module, "sizescalebytime", Particle.fAgeSeconds,
+					float3_t(1.f, 1.f, 1.f))));
+		}
 		else if (SourceClass_Matches(Module, "particlemodulesizescale"))
 		{
 			Particle.vSize = Multiply3(Particle.vSize,
 				UE3_SizeToClient(Element, Evaluate_ModuleVector(
-					State, Module, "sizescale", fEmitterTimeSeconds,
+					State, Module, "sizescale", fNormalizedAge,
 					float3_t(1.f, 1.f, 1.f))));
 		}
 		else if (SourceClass_Matches(
@@ -3643,17 +4162,17 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			f32_t* pValues = &Particle.vDynamicParameter.x;
 			for (uint32_t iParameter = 0u; iParameter < 4u; ++iParameter)
 			{
-				const std::string Prefix = "dynamicparams[" +
-					std::to_string(iParameter) + "].";
-				if (SourceBool(Module, Prefix + "bspawntimeonly", false))
+				const DYNAMIC_PARAMETER_PROPERTY_PATHS& Paths =
+					DYNAMIC_PARAMETER_PATHS[iParameter];
+				if (SourceBool(Module, Paths.strSpawnTimeOnly, false))
 					continue;
 				const f32_t fTime = SourceBool(Module,
-					Prefix + "buseemittertime", false) ?
+					Paths.strUseEmitterTime, false) ?
 					fEmitterTimeSeconds : fNormalizedAge;
 				pValues[iParameter] = Evaluate_ModuleFloat(State, Module,
-					Prefix + "paramvalue", fTime, 0.f);
+					Paths.strValue, fTime, 0.f);
 				if (SourceBool(Module,
-					Prefix + "bscalevelocitybyparamvalue", false))
+					Paths.strScaleVelocityByValue, false))
 				{
 					pValues[iParameter] *= Length3(Particle.vVelocity);
 				}
@@ -3661,24 +4180,44 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		}
 		else if (SourceClass_Matches(Module, "particlemoduleorbit"))
 		{
-			Particle.vOrbitOffset = Add3(Particle.vOrbitOffset,
-				UE3_CentimetersToClient(Evaluate_ModuleVector(
-					State, Module, "offsetamount", fNormalizedAge,
-					float3_t{})));
-			Particle.vSourceOrbitRotationDegrees = Add3(
-				Particle.vSourceOrbitRotationDegrees,
-				Scale3(Evaluate_ModuleVector(State, Module, "rotationamount",
-					fNormalizedAge, float3_t{}), 360.f));
-			Particle.vSourceOrbitRotationRateDegreesPerSecond = Add3(
-				Particle.vSourceOrbitRotationRateDegreesPerSecond,
-				Scale3(Evaluate_ModuleVector(State, Module, "rotationrateamount",
-					fNormalizedAge, float3_t{}), 360.f));
+			if (SourceBool(Module,
+				"offsetoptions.bprocessduringupdate", false))
+			{
+				const f32_t fTime = SourceBool(Module,
+					"offsetoptions.buseemittertime", false) ?
+					fEmitterTimeSeconds : fNormalizedAge;
+				Particle.vOrbitOffset = Add3(Particle.vOrbitOffset,
+					UE3_CentimetersToClient(Evaluate_ModuleVector(
+						State, Module, "offsetamount", fTime, float3_t{})));
+			}
+			if (SourceBool(Module,
+				"rotationoptions.bprocessduringupdate", false))
+			{
+				const f32_t fTime = SourceBool(Module,
+					"rotationoptions.buseemittertime", false) ?
+					fEmitterTimeSeconds : fNormalizedAge;
+				Particle.vSourceOrbitRotationDegrees = Add3(
+					Particle.vSourceOrbitRotationDegrees,
+					Scale3(Evaluate_ModuleVector(State, Module,
+						"rotationamount", fTime, float3_t{}), 360.f));
+			}
+			if (SourceBool(Module,
+				"rotationrateoptions.bprocessduringupdate", false))
+			{
+				const f32_t fTime = SourceBool(Module,
+					"rotationrateoptions.buseemittertime", false) ?
+					fEmitterTimeSeconds : fNormalizedAge;
+				Particle.vSourceOrbitRotationRateDegreesPerSecond = Add3(
+					Particle.vSourceOrbitRotationRateDegreesPerSecond,
+					Scale3(Evaluate_ModuleVector(State, Module,
+						"rotationrateamount", fTime, float3_t{}), 360.f));
+			}
 		}
 		else if (SourceClass_Matches(Module, "particlemodulevortex"))
 		{
-			const f32_t fPower = Evaluate_ModuleFloat(State, Module,
-				"poweracceleration", fNormalizedAge,
-				SourceNumber(Module, "power", 0.f));
+			const f32_t fPower = SourceNumber(Module, "power", 1.f) *
+				Evaluate_ModuleFloat(State, Module,
+					"poweracceleration", fNormalizedAge, 1.f);
 			const float3_t Radial = Normalize3(Particle.vPosition);
 			const float3_t Tangent(-Radial.z, 0.f, Radial.x);
 			Particle.vVelocity = Add3(Particle.vVelocity,
@@ -3798,20 +4337,20 @@ void Client::CEffectPlayback::Sample_Trail(
 		f32_t* const pValues = &Point.vDynamicParameter.x;
 		for (uint32_t iParameter = 0u; iParameter < 4u; ++iParameter)
 		{
-			const std::string Prefix = "dynamicparams[" +
-				std::to_string(iParameter) + "].";
+			const DYNAMIC_PARAMETER_PROPERTY_PATHS& Paths =
+				DYNAMIC_PARAMETER_PATHS[iParameter];
 			/* These branches require particle spawn/emitter time or velocity state;
 			   a geometry-only trail point cannot manufacture that authority. */
-			if (SourceBool(*pDynamic, Prefix + "bspawntimeonly", false) ||
-				SourceBool(*pDynamic, Prefix + "buseemittertime", false) ||
+			if (SourceBool(*pDynamic, Paths.strSpawnTimeOnly, false) ||
+				SourceBool(*pDynamic, Paths.strUseEmitterTime, false) ||
 				SourceBool(*pDynamic,
-					Prefix + "bscalevelocitybyparamvalue", false))
+					Paths.strScaleVelocityByValue, false))
 			{
 				continue;
 			}
 			f32_t fValue = 0.f;
 			if (EvaluateDeterministicFloat("particlemoduleparameterdynamic",
-				Prefix + "paramvalue", Point.fNormalizedAge, fValue))
+				Paths.strValue, Point.fNormalizedAge, fValue))
 			{
 				pValues[iParameter] = fValue;
 				Point.iDynamicParameterComponentMask |= 1u << iParameter;
@@ -4604,16 +5143,8 @@ bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(
 			SourceNumber(*pRequired, "subimages_vertical", 1.f)));
 	const uint64_t iFrameCount =
 		static_cast<uint64_t>(iColumns) * static_cast<uint64_t>(iRows);
-	if (iFrameCount <= 1u || iFrameCount > UINT32_MAX ||
-		strSubUVMode.empty() || strSubUVMode == "none" ||
-		strSubUVMode == "psuvim_none")
-	{
-		return true;
-	}
-	const bool_t bAllowFlip = nullptr != pRequired &&
-		SourceBool(*pRequired, "ballowimageflipping", false);
-	const bool_t bSquareFlip = nullptr != pRequired &&
-		SourceBool(*pRequired, "bsquareimageflipping", false);
+	if (iFrameCount > UINT32_MAX)
+		return false;
 	const EFFECT_EVALUATED_PARTICLE* pFirst = nullptr;
 	for (const EFFECT_EVALUATED_PARTICLE& Particle : m_Frame.Particles)
 	{
@@ -4626,10 +5157,24 @@ bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(
 	}
 	if (nullptr != pFirst)
 	{
-		OutProbe.FirstSubUV = Resolve_SourceSubUVFrame(
-			iColumns, iRows, pFirst->fSubImageIndex,
-			bAllowFlip, bSquareFlip, pFirst->fDistributionRandom,
-			Is_EffectSourceLinearBlendSubUVMode(strSubUVMode));
+		const bool_t bHasSubUV = iFrameCount > 1u &&
+			!strSubUVMode.empty() && strSubUVMode != "none" &&
+			strSubUVMode != "psuvim_none";
+		const EFFECT_SUBUV_FRAME_DESC SourceSubUV =
+			Resolve_SourceSubUVFrame(
+				bHasSubUV ? iColumns : 1u,
+				bHasSubUV ? iRows : 1u,
+				bHasSubUV ? pFirst->fSubImageIndex : 0.f,
+				false, false, pFirst->fDistributionRandom,
+				bHasSubUV &&
+					Is_EffectSourceLinearBlendSubUVMode(strSubUVMode));
+		EFFECT_SUBUV_FRAME_DESC ResolvedSubUV;
+		if (!Resolve_ParticleSpriteSubUV(
+			*pFirst, SourceSubUV, ResolvedSubUV))
+		{
+			return false;
+		}
+		OutProbe.FirstSubUV = ResolvedSubUV;
 	}
 	return true;
 }

@@ -289,6 +289,142 @@ namespace
 			"Consume Entire Payload");
 	}
 
+	void Test_PlayerNicknameContract(TEST_RUNNER& testRunner)
+	{
+		const std::string korean = "\xED\x95\x9C\xEA\xB8\x80";
+		const std::string exactLimit(MAX_NICKNAME_BYTES, 'N');
+		testRunner.Require(
+			Is_Valid_PlayerNickname("Test-1234") &&
+			Is_Valid_PlayerNickname(korean) &&
+			Is_Valid_PlayerNickname(exactLimit),
+			"Accept ASCII Korean And Exact-Limit Nicknames");
+
+		const std::vector<std::string> invalidNicknames
+		{
+			{},
+			std::string(MAX_NICKNAME_BYTES + 1u, 'N'),
+			std::string("A\0B", 3u),
+			" leading",
+			"trailing\t",
+			"line\nbreak",
+			std::string("\xC2\x85", 2u),
+			std::string("\x80", 1u),
+			std::string("\xC0\xAF", 2u),
+			std::string("\xED\xA0\x80", 3u),
+			std::string("\xF4\x90\x80\x80", 4u)
+		};
+		bool allInvalidRejected = true;
+		for (const std::string& nickname : invalidNicknames)
+		{
+			C2S_ENTER_WORLD enter{};
+			enter.eWorldId = WORLD_ID::BERN;
+			enter.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+			enter.strNickName = nickname;
+			CPacketWriter enterWriter;
+			allInvalidRejected &= !Write_Message(enterWriter, enter);
+
+			S2C_PLAYER_SPAWNED spawned{};
+			spawned.iPlayerId = 1u;
+			spawned.iNetEntityId = 101u;
+			spawned.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+			spawned.strNickName = nickname;
+			CPacketWriter spawnedWriter;
+			allInvalidRejected &= !Write_Message(spawnedWriter, spawned);
+		}
+		testRunner.Require(allInvalidRejected,
+			"C2S And Spawn Writers Share Exact Nickname Rejection Policy");
+
+		bool allRoundTripsExact = true;
+		for (const std::string& nickname :
+			std::vector<std::string>{ "Test-1234", korean, exactLimit })
+		{
+			C2S_ENTER_WORLD enter{};
+			enter.eWorldId = WORLD_ID::BERN;
+			enter.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+			enter.strNickName = nickname;
+			CPacketWriter enterWriter;
+			C2S_ENTER_WORLD decodedEnter{};
+			if (!Write_Message(enterWriter, enter))
+			{
+				allRoundTripsExact = false;
+				continue;
+			}
+			CPacketReader enterReader{ enterWriter.Get_Buffer() };
+			allRoundTripsExact &= Read_Message(enterReader, decodedEnter) &&
+				0u == enterReader.Get_RemainingSize() &&
+				decodedEnter.strNickName == nickname;
+
+			S2C_PLAYER_SPAWNED spawned{};
+			spawned.iPlayerId = 2u;
+			spawned.iNetEntityId = 202u;
+			spawned.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+			spawned.strNickName = nickname;
+			CPacketWriter spawnedWriter;
+			S2C_PLAYER_SPAWNED decodedSpawned{};
+			if (!Write_Message(spawnedWriter, spawned))
+			{
+				allRoundTripsExact = false;
+				continue;
+			}
+			CPacketReader spawnedReader{ spawnedWriter.Get_Buffer() };
+			allRoundTripsExact &=
+				Read_Message(spawnedReader, decodedSpawned) &&
+				0u == spawnedReader.Get_RemainingSize() &&
+				decodedSpawned.strNickName == nickname;
+		}
+		testRunner.Require(allRoundTripsExact,
+			"C2S And Spawn Codecs Preserve Exact Nickname Bytes");
+
+		const std::string malformed("\xC0\xAF", 2u);
+		CPacketWriter rawEnter;
+		rawEnter.Write_U16(NETWORK_PROTOCOL_VERSION);
+		rawEnter.Write_U16(static_cast<std::uint16_t>(WORLD_ID::BERN));
+		rawEnter.Write_U8(static_cast<std::uint8_t>(
+			CHARACTER_CLASS_ID::ARTIST));
+		const bool builtMalformedEnter = rawEnter.Write_String(
+			malformed, MAX_NICKNAME_BYTES);
+		CPacketReader malformedEnterReader{ rawEnter.Get_Buffer() };
+		C2S_ENTER_WORLD unchangedEnter{};
+		unchangedEnter.iProtocolVersion = 77u;
+		unchangedEnter.eWorldId = WORLD_ID::TRAINING_GROUND;
+		unchangedEnter.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+		unchangedEnter.strNickName = "keep-enter";
+		testRunner.Require(
+			builtMalformedEnter &&
+			!Read_Message(malformedEnterReader, unchangedEnter) &&
+			77u == unchangedEnter.iProtocolVersion &&
+			WORLD_ID::TRAINING_GROUND == unchangedEnter.eWorldId &&
+			CHARACTER_CLASS_ID::WARLORD == unchangedEnter.eCharacterClass &&
+			"keep-enter" == unchangedEnter.strNickName,
+			"Malformed C2S Nickname Decode Preserves Destination");
+
+		CPacketWriter rawSpawn;
+		rawSpawn.Write_U32(3u);
+		rawSpawn.Write_U32(303u);
+		rawSpawn.Write_U8(static_cast<std::uint8_t>(
+			CHARACTER_CLASS_ID::ARTIST));
+		const bool builtMalformedSpawn = rawSpawn.Write_String(
+			malformed, MAX_NICKNAME_BYTES);
+		rawSpawn.Write_F32(1.f);
+		rawSpawn.Write_F32(2.f);
+		rawSpawn.Write_F32(3.f);
+		rawSpawn.Write_F32(90.f);
+		CPacketReader malformedSpawnReader{ rawSpawn.Get_Buffer() };
+		S2C_PLAYER_SPAWNED unchangedSpawn{};
+		unchangedSpawn.iPlayerId = 9u;
+		unchangedSpawn.iNetEntityId = 909u;
+		unchangedSpawn.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+		unchangedSpawn.strNickName = "keep-spawn";
+		testRunner.Require(
+			builtMalformedSpawn &&
+			!Read_Message(malformedSpawnReader, unchangedSpawn) &&
+			9u == unchangedSpawn.iPlayerId &&
+			909u == unchangedSpawn.iNetEntityId &&
+			CHARACTER_CLASS_ID::WARLORD == unchangedSpawn.eCharacterClass &&
+			"keep-spawn" == unchangedSpawn.strNickName,
+			"Malformed Spawn Nickname Decode Preserves Destination");
+	}
+
 	void Test_PlayableCharacterRoster(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
@@ -2466,6 +2602,7 @@ int main()
 	TEST_RUNNER testRunner{};
 
 	Test_EnterWorldRoundTrip(testRunner);
+	Test_PlayerNicknameContract(testRunner);
 	Test_PlayableCharacterRoster(testRunner);
 	Test_InvalidPayloads(testRunner);
 

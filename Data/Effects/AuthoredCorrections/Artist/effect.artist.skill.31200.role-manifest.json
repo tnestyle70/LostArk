@@ -1,0 +1,265 @@
+{
+  "schema": "lostark.effect-role-manifest",
+  "version": 1,
+  "effectAssetId": "effect.artist.skill.31200.unified",
+  "strategy": "DISABLE_FIRST_PRESERVE_SOURCE_ROWS_AND_RESOURCE_LANES",
+  "sourceEvidence": {
+    "sourceReceiptPath": "Effects/Imported/Artist/CurrentCombat/skill.31200.source-receipt.json",
+    "sourceReceiptSha256": "76c9d2f6881d8c93c08f7dbb9e998fd6cad60d40e112898baab78888b2cbf807",
+    "normalizedGraphPath": "Effects/Imported/Artist/CurrentCombat/Graphs/skill.31200.normalized-effect-graph.json",
+    "normalizedGraphSha256": "19f9bb46aea594c09677a9c8b0600f42384be01e37bf179431585e54936f8ea4",
+    "logicalPackage": "FX_PC_SDM_04",
+    "physicalPackage": "YGI3SWD3SHKB3D1TG9KMHCX6M.upk",
+    "sourcePackageSha256": "7ef09f957e9d2e2124f10f0e8634abe08f915ceebbccaf803ecd047a9a47aaf1",
+    "qMeshSourceEvidencePath": "Effects/Imported/Artist/CurrentCombat/skill.31200.q-mesh-source-evidence.receipt.json",
+    "qMeshSourceEvidenceSha256": "ef813b6ecaeee9d885c7af7370e8456009f412bc88bdad801a31d9ff417c733c"
+  },
+  "baseline": {
+    "documentElementCount": 31,
+    "historicalVisibleElementCount": 18
+  },
+  "target": {
+    "visibleElementCount": 3,
+    "suppressedElementCount": 28,
+    "authoringApproximateVisibleElementCount": 2,
+    "selectedRoles": [
+      "GROUND_INK_DECAL",
+      "BLACK_CRESCENT_SLASH"
+    ]
+  },
+  "entries": [
+    {
+      "elementId": "authored.source-particle.ead49bfd0a9e71d312555a14",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_28",
+      "role": "NON_ROLE_VELOCITY_FLOW",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.829f2d9e9aa992c6837d81cf",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_29",
+      "role": "NON_ROLE_VELOCITY_FLOW",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.ca3c50241f19a2c78d7826e6",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_30",
+      "role": "PURPLE_PARTICLE_CLUSTER",
+      "decision": "SUPPRESSED",
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_spla_01_09_tr",
+      "materialContract": "TYPED_SPLA01_APPROXIMATE",
+      "effectiveLifetimeSeconds": 0.8
+    },
+    {
+      "elementId": "authored.source-particle.c167db11fc4c9e951e93a67c",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_31",
+      "role": "PURPLE_PARTICLE_CLUSTER",
+      "decision": "SUPPRESSED",
+      "sourceMaterialPath": "bfx_m_mi_00.bfx_mi.bfx_d_pa_spla_01_09_tr",
+      "materialContract": "TYPED_SPLA01_APPROXIMATE",
+      "effectiveLifetimeSeconds": 0.8
+    },
+    {
+      "elementId": "authored.source-particle.c2b8f8b50dabd82ee18a6dc2",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_26",
+      "role": "NON_ROLE_BASIC_FLOW",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.8189310e91882c69e60d6149",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_25",
+      "role": "PURPLE_PARTICLE_CLUSTER",
+      "decision": "SUPPRESSED",
+      "sourceMaterialPath": "fx_m_mi_h_00.fx_mi.fx_h_pa_master_01_31_tr",
+      "materialContract": "TYPED_PARTICLE_MASTER_APPROXIMATE",
+      "effectiveLifetimeSeconds": 3.0
+    },
+    {
+      "elementId": "authored.source-particle.6eb403dd65fb452e7fcc7bde",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_57",
+      "role": "NON_ROLE_SHINE",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.e705de9acdd96252b98fb6ff",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_21",
+      "role": "BLACK_CRESCENT_SLASH",
+      "decision": "SELECTED",
+      "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_me_master_01_119_dt_ds_tr",
+      "materialContract": "TYPED_PARTICLE_MASTER_FULL_NAMED_LANES_APPROXIMATE",
+      "meshAssetId": "Effect/Artist/Meshes/fm_h_swing_03.wmodel",
+      "effectiveLifetimeSeconds": 0.4
+    },
+    {
+      "elementId": "authored.source-particle.0fd0ae28dc4b2bfe45852232",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_20",
+      "role": "NON_ROLE_INCOMPLETE_MAKEFLOW03",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.32734ffc8e24398830d130b8",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_0",
+      "role": "NON_ROLE_INCOMPLETE_TRAIL",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.70dd17dbda72256f82eb5b73",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_45",
+      "role": "NON_ROLE_INCOMPLETE_TRAIL",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.8b8cad3aafdd36174d713698",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_22",
+      "role": "BLACK_CRESCENT_SLASH",
+      "decision": "SELECTED",
+      "sourceMaterialPath": "fx_m_mi_m_00.fx_m_pa_spritewave_01_19_tr",
+      "materialContract": "RUNTIME_MATERIAL_V2_SOURCE_EXACT_INPUTS",
+      "meshAssetId": "Effect/Artist/Meshes/fm_h_swing_05.wmodel",
+      "effectiveLifetimeSeconds": 0.4
+    },
+    {
+      "elementId": "authored.source-particle.3cfbbbd5d4515497be7802f4",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_41",
+      "role": "NON_ROLE_INCOMPLETE_MASTER_MESH",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.ea4b422479d386c38e6a2afd",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_00.particlespriteemitter_11",
+      "role": "NON_ROLE_LIGHT_HEAD",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.1bdd6f21e4d3ba454275711c",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_01.particlespriteemitter_69",
+      "role": "NON_ROLE_UNDER_CIRCLE",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.47b5bafc4ac66d2600afc8d6",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_01.particlespriteemitter_2",
+      "role": "INK_SPREAD_DISSOLVE",
+      "decision": "SUPPRESSED",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_76_tr",
+      "materialContract": "TYPED_SPRITEWAVE_APPROXIMATE",
+      "effectiveLifetimeSeconds": 1.6
+    },
+    {
+      "elementId": "authored.source-particle.2fb643ae5caa2e3f47709b88",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_01.particlespriteemitter_56",
+      "role": "NON_ROLE_SMOKE_TAIL",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.d152ae27e1a42e78af6dc4ba",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_01.particlespriteemitter_7",
+      "role": "PURPLE_PARTICLE_CLUSTER",
+      "decision": "SUPPRESSED",
+      "sourceMaterialPath": "fx_m_mi_h_00.fx_mi.fx_h_pa_master_01_31_tr",
+      "materialContract": "TYPED_PARTICLE_MASTER_APPROXIMATE",
+      "effectiveLifetimeSeconds": 1.5
+    },
+    {
+      "elementId": "authored.source-particle.9884e1b749a8dbff12c4a34c",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_02.particlespriteemitter_13",
+      "role": "NON_ROLE_UNDEPLOYED_RING_MESH",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.666a8f0af29f837cdad5808c",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_02.particlespriteemitter_99",
+      "role": "NON_ROLE_INCOMPLETE_TRAIL_MESH",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.fb0e1be781f519a2ea2a02d6",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_02.particlespriteemitter_15",
+      "role": "NON_ROLE_UNDEPLOYED_SPHERE_MESH",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.0f23b8105317d951c61a6cd9",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_02.particlespriteemitter_12",
+      "role": "NON_ROLE_UNDEPLOYED_SPHERE_MESH",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.2d3dcc59214f3e356e161e73",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_02.particlespriteemitter_32",
+      "role": "PURPLE_PARTICLE_CLUSTER",
+      "decision": "SUPPRESSED",
+      "sourceMaterialPath": "fx_m_mi_h_00.fx_mi.fx_h_pa_master_01_31_tr",
+      "materialContract": "TYPED_PARTICLE_MASTER_APPROXIMATE",
+      "effectiveLifetimeSeconds": 1.5
+    },
+    {
+      "elementId": "authored.source-particle.7aa9ad19918018f3f09ccf63",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_dec_01.particlespriteemitter_2",
+      "role": "NON_ROLE_INCOMPLETE_WORLDOFFSET02",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.1ba21b39a105d20b0c206fae",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_dec_01.particlespriteemitter_47",
+      "role": "INK_SPREAD_DISSOLVE",
+      "decision": "SUPPRESSED",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_76_tr",
+      "materialContract": "TYPED_SPRITEWAVE_APPROXIMATE",
+      "effectiveLifetimeSeconds": 3.0
+    },
+    {
+      "elementId": "authored.source-particle.b343898c5097b872385fd544",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_dec_01.particlespriteemitter_4",
+      "role": "NON_ROLE_INCOMPLETE_WORLDOFFSET02",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.b70ac86e0ad56e11ff51ba65",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_wp.particlespriteemitter_12",
+      "role": "NON_ROLE_MASKED_RIBBON",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.2a2c86ce77d7ae2d2f7bbe15",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_wp.particlespriteemitter_4",
+      "role": "NON_ROLE_MASKED_RIBBON",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-particle.1dbc1daa7ce7b2e9eb6134e7",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_wp.particlespriteemitter_14",
+      "role": "NON_ROLE_SIMPLE_GLOW",
+      "decision": "SUPPRESSED"
+    },
+    {
+      "elementId": "authored.source-decal.45800d0c0054acd91f11cfb4",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_dec_01.particlespriteemitter_0",
+      "role": "GROUND_INK_DECAL",
+      "decision": "SELECTED",
+      "sourceMaterialPath": "fx_m_mi_w_00.mi.fx_w_de_master_01_47_tr",
+      "materialContract": "SOURCE_LANE_APPROXIMATE",
+      "approximationReason": "SOURCE_DECAL_PARENT_ARITHMETIC_UNAVAILABLE",
+      "effectiveLifetimeSeconds": 3.6,
+      "requiredResourceBindings": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Artist/Textures/fx_d_environ_004.dds"
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Artist/Textures/fx_w_inkpaddle.dds"
+        },
+        {
+          "slotId": "emissive",
+          "assetId": "Effect/Artist/Textures/fx_k_blood_01.dds"
+        }
+      ]
+    },
+    {
+      "elementId": "authored.source-decal.d82f06bca496640cd1634971",
+      "sourceEmitterPath": "fx_pc_sdm_04.par_w_sdm_inkpaddle_dec_01.particlespriteemitter_43",
+      "role": "NON_ROLE_SECONDARY_CRASH_DECAL",
+      "decision": "SUPPRESSED"
+    }
+  ]
+}

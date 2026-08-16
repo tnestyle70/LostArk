@@ -252,6 +252,108 @@ def retime_wmodel(
     return receipt
 
 
+def validate_retime_receipt(
+    wmodel_path: Path,
+    psa_path: Path,
+    receipt_path: Path,
+    runtime_prefix: str = "pc_sp_m_00_sk_",
+    expected_source_sha256: str | None = None,
+    expected_before_sha256: str | None = None,
+    expected_after_sha256: str | None = None,
+    expected_ticks_per_second: float | None = None,
+) -> dict[str, Any]:
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if (
+        receipt.get("schema") != "lostark.wmodel-animation-retime-receipt"
+        or receipt.get("formatVersion") != 1
+        or receipt.get("sourceContract") != "PSA_ANIMINFO_ANIMRATE"
+        or receipt.get("sourceRateRestorationComplete") is not True
+    ):
+        raise ValueError("WModel retime receipt header is invalid")
+
+    source_bytes = psa_path.read_bytes()
+    runtime_bytes = wmodel_path.read_bytes()
+    source_sha256 = sha256_bytes(source_bytes)
+    runtime_sha256 = sha256_bytes(runtime_bytes)
+    receipt_source_sha256 = str(receipt.get("sourcePsaSha256") or "").lower()
+    receipt_before_sha256 = str(receipt.get("beforeSha256") or "").lower()
+    receipt_after_sha256 = str(receipt.get("afterSha256") or "").lower()
+    for label, value in (
+        ("sourcePsaSha256", receipt_source_sha256),
+        ("beforeSha256", receipt_before_sha256),
+        ("afterSha256", receipt_after_sha256),
+    ):
+        if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+            raise ValueError(f"WModel retime receipt {label} is invalid")
+    if source_sha256 != receipt_source_sha256:
+        raise ValueError("PSA bytes do not match the WModel retime receipt")
+    if runtime_sha256 != receipt_after_sha256:
+        raise ValueError("Deployed WModel bytes do not match the retimed receipt")
+    if expected_source_sha256 is not None and source_sha256 != expected_source_sha256.lower():
+        raise ValueError("PSA bytes do not match the expected source identity")
+    if expected_before_sha256 is not None and receipt_before_sha256 != expected_before_sha256.lower():
+        raise ValueError("WModel retime receipt before identity changed")
+    if expected_after_sha256 is not None and runtime_sha256 != expected_after_sha256.lower():
+        raise ValueError("Deployed WModel bytes do not match the expected after identity")
+
+    source = read_psa_animation_infos(psa_path)
+    runtime = read_wmodel_animation_sections(runtime_bytes)
+    source_runtime_order = sorted(
+        source,
+        key=lambda value: (runtime_prefix + str(value["name"])).casefold(),
+    )
+    clips = receipt.get("clips")
+    if (
+        not isinstance(clips, list)
+        or len(source_runtime_order) != len(runtime)
+        or len(clips) != len(runtime)
+        or receipt.get("animationCount") != len(runtime)
+    ):
+        raise ValueError("PSA/WModel/receipt animation count mismatch")
+
+    changed_count = 0
+    observed_rates: list[float] = []
+    for psa, wmodel, clip in zip(source_runtime_order, runtime, clips, strict=True):
+        expected_name = runtime_prefix.casefold() + str(psa["name"]).casefold()
+        runtime_name = str(wmodel["name"]).casefold()
+        expected_duration_ticks = float(psa["numRawFrames"] - 1)
+        source_rate = float(psa["animRate"])
+        if (
+            not expected_name.startswith(runtime_name)
+            or abs(float(wmodel["durationTicks"]) - expected_duration_ticks) > 0.001
+            or abs(float(wmodel["ticksPerSecond"]) - source_rate) > 1e-5
+        ):
+            raise ValueError(f"Retimed WModel clip contract changed for {psa['name']}")
+        if expected_ticks_per_second is not None and abs(source_rate - expected_ticks_per_second) > 1e-5:
+            raise ValueError(f"PSA clip rate changed for {psa['name']}")
+        if not isinstance(clip, dict) or (
+            clip.get("index") != int(psa["index"])
+            or clip.get("runtimeIndex") != int(wmodel["index"])
+            or clip.get("sourceClip") != str(psa["name"])
+            or clip.get("runtimeClip") != str(wmodel["name"])
+            or abs(float(clip.get("durationTicks", -1.0)) - expected_duration_ticks) > 0.001
+            or abs(float(clip.get("sourceAnimRate", -1.0)) - source_rate) > 1e-5
+            or abs(float(clip.get("durationSeconds", -1.0)) - expected_duration_ticks / source_rate) > 1e-6
+        ):
+            raise ValueError(f"WModel retime receipt clip changed for {psa['name']}")
+        previous_rate = float(clip.get("previousTicksPerSecond", -1.0))
+        if not math.isfinite(previous_rate) or previous_rate <= 0.0:
+            raise ValueError(f"WModel retime receipt previous rate is invalid for {psa['name']}")
+        changed_count += abs(previous_rate - source_rate) > 1e-5
+        observed_rates.append(float(wmodel["ticksPerSecond"]))
+
+    if receipt.get("changedAnimationCount") != changed_count:
+        raise ValueError("WModel retime receipt changed-animation count is invalid")
+    return {
+        "receiptVerified": True,
+        "sourcePsaSha256": source_sha256,
+        "beforeSha256": receipt_before_sha256,
+        "afterSha256": runtime_sha256,
+        "animationCount": len(runtime),
+        "ticksPerSecond": observed_rates,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--wmodel", required=True, type=Path)
@@ -259,7 +361,25 @@ def main() -> int:
     parser.add_argument("--receipt", required=True, type=Path)
     parser.add_argument("--runtime-prefix", default="pc_sp_m_00_sk_")
     parser.add_argument("--source-logical-path")
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--expected-source-sha256")
+    parser.add_argument("--expected-before-sha256")
+    parser.add_argument("--expected-after-sha256")
+    parser.add_argument("--expected-ticks-per-second", type=float)
     args = parser.parse_args()
+    if args.check:
+        result = validate_retime_receipt(
+            args.wmodel,
+            args.psa,
+            args.receipt,
+            args.runtime_prefix,
+            args.expected_source_sha256,
+            args.expected_before_sha256,
+            args.expected_after_sha256,
+            args.expected_ticks_per_second,
+        )
+        print(json.dumps(result, sort_keys=True))
+        return 0
     receipt = retime_wmodel(
         args.wmodel,
         args.psa,

@@ -1,0 +1,1670 @@
+{
+  "schema": "lostark.warlord-17090-chain-source-evidence",
+  "formatVersion": 1,
+  "effectAssetId": "effect.warlord.skill.17090.unified",
+  "sourceEffectAssetId": "effect.warlord.skill.17090.imported",
+  "classification": {
+    "typedReason": "SOURCE_MASKED_WPO_ARITHMETIC_UNAVAILABLE",
+    "exactRuntimeEligible": false,
+    "requiresArtistTunedApproximation": true,
+    "fullPromotionAllowed": false,
+    "statement": "The exact carriers and source inputs survive, but the cooked parent has no executable opacity-mask or WPO expression edges."
+  },
+  "packages": [
+    {
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "byteSize": 536936,
+      "sha256": "5b9d692b3f8ccb4bb914ce1b1b0ab100afc0b8a482a184cd10716aa523756cc8"
+    },
+    {
+      "logicalPackage": "fx_m_mi_d_00",
+      "physicalPackage": "ZHJ4TC4PCK4PL4J22HIXEYUX5U.upk",
+      "byteSize": 306154,
+      "sha256": "79e61663cd8f120badbd2309bb3a4638d5853afcfa5db4f012065a899aee0c0a"
+    },
+    {
+      "logicalPackage": "fx_tex_02",
+      "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "byteSize": 17288410,
+      "sha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5"
+    },
+    {
+      "logicalPackage": "fx_tex_05",
+      "physicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk",
+      "byteSize": 18709734,
+      "sha256": "7c312729211f44aa7981a4a14c5054bd928de8a32819ec265eb43b47985e839c"
+    },
+    {
+      "logicalPackage": "fx_tex_00",
+      "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
+      "byteSize": 5889712,
+      "sha256": "c650b18b6998a4c26cb520aeed2a36f9d90f4f77228da218d0fe568b1ba9d1c5"
+    },
+    {
+      "logicalPackage": "fx_sm_01",
+      "physicalPackage": "XFH2RGA2R07F04YE90DX0SMQ.upk",
+      "byteSize": 29005789,
+      "sha256": "9f75c660d45c1c70dd2c368a138be960634be209bf470f9f1ad29c4035c349f1"
+    }
+  ],
+  "tools": {
+    "umodel": {
+      "fileName": "umodel_lostark_v7.exe",
+      "byteSize": 1766400,
+      "sha256": "b9573cdcbb7e9d26dbf60a0e3af47fb5af8543140873da8483c26d58cf40b249"
+    },
+    "materialGraphExtractor": {
+      "repoPath": "Tools/LevelPlacementExtractor/extract_ue3_material_graph.py",
+      "sha256": "62a9184ae779dc0f41b5d47b5c9d399670deaac27de82f61aa0a21424ac08030"
+    }
+  },
+  "material": {
+    "childMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_me_chain_01_101_ma",
+    "childSourcePhysicalPackage": "ZHJ4TC4PCK4PL4J22HIXEYUX5U.upk",
+    "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_me_chain_01_ma",
+    "parentSourcePhysicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+    "parentPropsFile": "FX_M_MI_00/Material3/fx_d_me_chain_01_ma.props.txt",
+    "parentPropsSha256": "eb398e5cf4323e8c23e39e0278dd057bf43349f3d2607793dec2e4d175a15973",
+    "renderState": {
+      "blendMode": "BLEND_Masked",
+      "lightingModel": null,
+      "twoSided": true,
+      "disableDepthTest": false,
+      "usesDistortion": null
+    },
+    "referencedTextureObjectNames": [
+      "sk_wbk_bex_00",
+      "sk_wbk_bex_00_n",
+      "fx_d_grid_016",
+      "fx_e_symbol_064_1_n_xcl",
+      "fx_d_atypical_076_cl",
+      "fx_d_atypical_076_3_cl",
+      "fx_e_symbol_064_1_cl",
+      "fx_m_noise_003",
+      "fx_a_fluid_003"
+    ],
+    "collectedTextureParameterCount": 0,
+    "childScalarOverrides": [
+      {
+        "name": "worldpositionoffset_bias",
+        "value": 1.5
+      },
+      {
+        "name": "worldpositionoffset_uvscale",
+        "value": 1.0
+      }
+    ],
+    "childVectorOverrides": [
+      {
+        "name": "01.duffusecolor",
+        "value": {
+          "r": 1.1,
+          "g": 1.0,
+          "b": 0.9,
+          "a": 1.0
+        }
+      },
+      {
+        "name": "02.envcolor",
+        "value": {
+          "r": 0.492282,
+          "g": 0.580534,
+          "b": 0.696107,
+          "a": 1.0
+        }
+      }
+    ],
+    "parentPackage": {
+      "logicalPackage": "fx_m_mi_00",
+      "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+      "byteSize": 536936,
+      "sha256": "5b9d692b3f8ccb4bb914ce1b1b0ab100afc0b8a482a184cd10716aa523756cc8"
+    },
+    "parentOpacityMaskClipValue": 0.333,
+    "parentUModelDumpSha256": "f85c226523778d4cad9e38d22dbbe389a35fba68902f07e6f4eedd2007980f95",
+    "cookedGraph": {
+      "outputs": {
+        "emissivecolor": {
+          "packageIndex": 0,
+          "objectPath": null
+        },
+        "opacitymask": {
+          "packageIndex": 0,
+          "objectPath": null
+        },
+        "normal": {
+          "packageIndex": 0,
+          "objectPath": null
+        },
+        "worldpositionoffset": {
+          "packageIndex": 0,
+          "objectPath": null
+        }
+      },
+      "summary": {
+        "expressionEntryCount": 132,
+        "nonNullExpressionCount": 5,
+        "nullExpressionCount": 127,
+        "namedTextureCount": 0,
+        "unresolvedInputEdgeCount": 0,
+        "topologyStatus": "COOKED_PARTIAL",
+        "runtimeExactEligible": false
+      },
+      "survivingExpressions": [
+        {
+          "sourceOrder": 6,
+          "exportIndex": 158,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_d_me_chain_01_ma.materialexpressionscalarparameter_0",
+          "parameterName": "worldpositionoffset_bias",
+          "group": null,
+          "defaultValue": 50.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 13,
+          "exportIndex": 159,
+          "className": "materialexpressionscalarparameter",
+          "objectPath": "fx_m.fx_d_me_chain_01_ma.materialexpressionscalarparameter_2",
+          "parameterName": "worldpositionoffset_uvscale",
+          "group": null,
+          "defaultValue": 1.0,
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 148,
+          "propertyStreamEnd": 148
+        },
+        {
+          "sourceOrder": 33,
+          "exportIndex": 2905,
+          "className": "materialexpressionvectorparameter",
+          "objectPath": "fx_m.fx_d_me_chain_01_ma.materialexpressionvectorparameter_0",
+          "parameterName": "01.duffusecolor",
+          "group": null,
+          "defaultValue": {
+            "size": 16,
+            "hex": "0000803f9a99993f0000c03f0000003f"
+          },
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 168,
+          "propertyStreamEnd": 168
+        },
+        {
+          "sourceOrder": 59,
+          "exportIndex": 2906,
+          "className": "materialexpressionvectorparameter",
+          "objectPath": "fx_m.fx_d_me_chain_01_ma.materialexpressionvectorparameter_4",
+          "parameterName": "02.envcolor",
+          "group": null,
+          "defaultValue": {
+            "size": 16,
+            "hex": "0000803f0000803f0000803f0000803f"
+          },
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 168,
+          "propertyStreamEnd": 168
+        },
+        {
+          "sourceOrder": 81,
+          "exportIndex": 2907,
+          "className": "materialexpressionvectorparameter",
+          "objectPath": "fx_m.fx_d_me_chain_01_ma.materialexpressionvectorparameter_6",
+          "parameterName": "31.specularcolor",
+          "group": null,
+          "defaultValue": {
+            "size": 16,
+            "hex": "0000803f0000803f0000803f00002041"
+          },
+          "textureObjectPath": null,
+          "inputs": [],
+          "serialSize": 168,
+          "propertyStreamEnd": 168
+        }
+      ]
+    }
+  },
+  "textures": [
+    {
+      "sourceObjectPath": "fx_tex_02.sk_wbk_bex_00",
+      "sourcePhysicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "runtimeAssetId": "Effect/Warlord/Textures/FX_TEX_02/sk_wbk_bex_00.dds",
+      "byteSize": 32896,
+      "sha256": "0ec091a8e738de8d4b8db295419ee588a1f2c17d6db791b164b1480aa4125776",
+      "sourceExportByteEquivalent": true,
+      "width": 256,
+      "height": 128,
+      "channels": [
+        {
+          "channel": "R",
+          "minimum": 8,
+          "maximum": 222,
+          "uniqueValueCount": 89,
+          "nonZeroPixelCount": 32768,
+          "fullyOpaquePixelCount": 0,
+          "mean": 81.461884
+        },
+        {
+          "channel": "G",
+          "minimum": 0,
+          "maximum": 227,
+          "uniqueValueCount": 167,
+          "nonZeroPixelCount": 32767,
+          "fullyOpaquePixelCount": 0,
+          "mean": 75.921143
+        },
+        {
+          "channel": "B",
+          "minimum": 0,
+          "maximum": 222,
+          "uniqueValueCount": 94,
+          "nonZeroPixelCount": 32725,
+          "fullyOpaquePixelCount": 0,
+          "mean": 67.103638
+        },
+        {
+          "channel": "A",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 183,
+          "nonZeroPixelCount": 13386,
+          "fullyOpaquePixelCount": 11414,
+          "mean": 95.254944
+        }
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_tex_02.sk_wbk_bex_00_n",
+      "sourcePhysicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "runtimeAssetId": "Effect/Warlord/Textures/FX_TEX_02/sk_wbk_bex_00_n.dds",
+      "byteSize": 32896,
+      "sha256": "6711520f617ddf3ae861a3f81134ffc3620a4156c8e3c5a51f6d1505f1d9a9b7",
+      "sourceExportByteEquivalent": true,
+      "width": 256,
+      "height": 128,
+      "channels": [
+        {
+          "channel": "R",
+          "minimum": 0,
+          "maximum": 252,
+          "uniqueValueCount": 243,
+          "nonZeroPixelCount": 32762,
+          "fullyOpaquePixelCount": 0,
+          "mean": 130.138428
+        },
+        {
+          "channel": "G",
+          "minimum": 0,
+          "maximum": 252,
+          "uniqueValueCount": 241,
+          "nonZeroPixelCount": 32762,
+          "fullyOpaquePixelCount": 0,
+          "mean": 129.475433
+        },
+        {
+          "channel": "B",
+          "minimum": 0,
+          "maximum": 0,
+          "uniqueValueCount": 1,
+          "nonZeroPixelCount": 0,
+          "fullyOpaquePixelCount": 0,
+          "mean": 0.0
+        },
+        {
+          "channel": "A",
+          "minimum": 255,
+          "maximum": 255,
+          "uniqueValueCount": 1,
+          "nonZeroPixelCount": 32768,
+          "fullyOpaquePixelCount": 32768,
+          "mean": 255.0
+        }
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_tex_02.fx_d_grid_016",
+      "sourcePhysicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "runtimeAssetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_grid_016.dds",
+      "byteSize": 32896,
+      "sha256": "183b412068b71b33dc8ebc18a1ca5774803af3e97e9c511d31cee1080e7666d4",
+      "sourceExportByteEquivalent": true,
+      "width": 256,
+      "height": 256,
+      "channels": [
+        {
+          "channel": "R",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 2,
+          "nonZeroPixelCount": 18176,
+          "fullyOpaquePixelCount": 18176,
+          "mean": 70.722656
+        },
+        {
+          "channel": "G",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 2,
+          "nonZeroPixelCount": 18176,
+          "fullyOpaquePixelCount": 18176,
+          "mean": 70.722656
+        },
+        {
+          "channel": "B",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 2,
+          "nonZeroPixelCount": 18176,
+          "fullyOpaquePixelCount": 18176,
+          "mean": 70.722656
+        },
+        {
+          "channel": "A",
+          "minimum": 255,
+          "maximum": 255,
+          "uniqueValueCount": 1,
+          "nonZeroPixelCount": 65536,
+          "fullyOpaquePixelCount": 65536,
+          "mean": 255.0
+        }
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_tex_02.fx_e_symbol_064_1_n_xcl",
+      "sourcePhysicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "runtimeAssetId": "Effect/Warlord/Textures/FX_TEX_02/fx_e_symbol_064_1_n_xcl.dds",
+      "byteSize": 32896,
+      "sha256": "b7882261f856f70bd1838167d4845453c5df14cdf61157b73c2c4c0d90851806",
+      "sourceExportByteEquivalent": true,
+      "width": 512,
+      "height": 64,
+      "channels": [
+        {
+          "channel": "R",
+          "minimum": 3,
+          "maximum": 250,
+          "uniqueValueCount": 241,
+          "nonZeroPixelCount": 32768,
+          "fullyOpaquePixelCount": 0,
+          "mean": 126.195374
+        },
+        {
+          "channel": "G",
+          "minimum": 0,
+          "maximum": 254,
+          "uniqueValueCount": 255,
+          "nonZeroPixelCount": 32737,
+          "fullyOpaquePixelCount": 0,
+          "mean": 127.406433
+        },
+        {
+          "channel": "B",
+          "minimum": 0,
+          "maximum": 0,
+          "uniqueValueCount": 1,
+          "nonZeroPixelCount": 0,
+          "fullyOpaquePixelCount": 0,
+          "mean": 0.0
+        },
+        {
+          "channel": "A",
+          "minimum": 255,
+          "maximum": 255,
+          "uniqueValueCount": 1,
+          "nonZeroPixelCount": 32768,
+          "fullyOpaquePixelCount": 32768,
+          "mean": 255.0
+        }
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_076_cl",
+      "sourcePhysicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "runtimeAssetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_atypical_076_cl.dds",
+      "byteSize": 384,
+      "sha256": "0e52495629185392bd73b308bf38a6c128bf1de6c3c1cf43471d41bf928ac223",
+      "sourceExportByteEquivalent": true,
+      "width": 128,
+      "height": 4,
+      "channels": [
+        {
+          "channel": "R",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 83,
+          "nonZeroPixelCount": 506,
+          "fullyOpaquePixelCount": 4,
+          "mean": 126.886719
+        },
+        {
+          "channel": "G",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 86,
+          "nonZeroPixelCount": 506,
+          "fullyOpaquePixelCount": 4,
+          "mean": 127.164062
+        },
+        {
+          "channel": "B",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 83,
+          "nonZeroPixelCount": 506,
+          "fullyOpaquePixelCount": 4,
+          "mean": 126.886719
+        },
+        {
+          "channel": "A",
+          "minimum": 255,
+          "maximum": 255,
+          "uniqueValueCount": 1,
+          "nonZeroPixelCount": 512,
+          "fullyOpaquePixelCount": 512,
+          "mean": 255.0
+        }
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_tex_02.fx_d_atypical_076_3_cl",
+      "sourcePhysicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "runtimeAssetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_atypical_076_3_cl.dds",
+      "byteSize": 384,
+      "sha256": "c8cc2e330513f60c39d19ac15c172e7f4d9ac9bebd65ec98d473b3dbcdfc11bd",
+      "sourceExportByteEquivalent": true,
+      "width": 128,
+      "height": 4,
+      "channels": [
+        {
+          "channel": "R",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 83,
+          "nonZeroPixelCount": 506,
+          "fullyOpaquePixelCount": 4,
+          "mean": 126.886719
+        },
+        {
+          "channel": "G",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 86,
+          "nonZeroPixelCount": 506,
+          "fullyOpaquePixelCount": 4,
+          "mean": 127.164062
+        },
+        {
+          "channel": "B",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 83,
+          "nonZeroPixelCount": 506,
+          "fullyOpaquePixelCount": 4,
+          "mean": 126.886719
+        },
+        {
+          "channel": "A",
+          "minimum": 255,
+          "maximum": 255,
+          "uniqueValueCount": 1,
+          "nonZeroPixelCount": 512,
+          "fullyOpaquePixelCount": 512,
+          "mean": 255.0
+        }
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_tex_02.fx_e_symbol_064_1_cl",
+      "sourcePhysicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+      "runtimeAssetId": "Effect/Warlord/Textures/FX_TEX_02/fx_e_symbol_064_1_cl.dds",
+      "byteSize": 32896,
+      "sha256": "15b135b34da415769304a3fffdbb64567c5e0972c02f76e817932cf1b73a47b2",
+      "sourceExportByteEquivalent": true,
+      "width": 512,
+      "height": 64,
+      "channels": [
+        {
+          "channel": "R",
+          "minimum": 0,
+          "maximum": 222,
+          "uniqueValueCount": 102,
+          "nonZeroPixelCount": 20608,
+          "fullyOpaquePixelCount": 0,
+          "mean": 61.684052
+        },
+        {
+          "channel": "G",
+          "minimum": 0,
+          "maximum": 211,
+          "uniqueValueCount": 177,
+          "nonZeroPixelCount": 20849,
+          "fullyOpaquePixelCount": 0,
+          "mean": 58.457825
+        },
+        {
+          "channel": "B",
+          "minimum": 0,
+          "maximum": 206,
+          "uniqueValueCount": 97,
+          "nonZeroPixelCount": 20627,
+          "fullyOpaquePixelCount": 0,
+          "mean": 54.603973
+        },
+        {
+          "channel": "A",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 221,
+          "nonZeroPixelCount": 21797,
+          "fullyOpaquePixelCount": 17066,
+          "mean": 154.207336
+        }
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_tex_05.fx_m_noise_003",
+      "sourcePhysicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk",
+      "runtimeAssetId": "Effect/Warlord/Textures/FX_TEX_05/fx_m_noise_003.dds",
+      "byteSize": 32896,
+      "sha256": "424d8477961361dc34945fe73ea4fe402e6c0c50efa59d427a3737034a7f50f5",
+      "sourceExportByteEquivalent": true,
+      "width": 256,
+      "height": 256,
+      "channels": [
+        {
+          "channel": "R",
+          "minimum": 0,
+          "maximum": 222,
+          "uniqueValueCount": 102,
+          "nonZeroPixelCount": 64446,
+          "fullyOpaquePixelCount": 0,
+          "mean": 57.917542
+        },
+        {
+          "channel": "G",
+          "minimum": 0,
+          "maximum": 227,
+          "uniqueValueCount": 182,
+          "nonZeroPixelCount": 64508,
+          "fullyOpaquePixelCount": 0,
+          "mean": 57.807449
+        },
+        {
+          "channel": "B",
+          "minimum": 0,
+          "maximum": 222,
+          "uniqueValueCount": 102,
+          "nonZeroPixelCount": 64446,
+          "fullyOpaquePixelCount": 0,
+          "mean": 57.917542
+        },
+        {
+          "channel": "A",
+          "minimum": 255,
+          "maximum": 255,
+          "uniqueValueCount": 1,
+          "nonZeroPixelCount": 65536,
+          "fullyOpaquePixelCount": 65536,
+          "mean": 255.0
+        }
+      ]
+    },
+    {
+      "sourceObjectPath": "fx_tex_00.fx_a_fluid_003",
+      "sourcePhysicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
+      "runtimeAssetId": "Effect/Warlord/Textures/FX_TEX_00/fx_a_fluid_003.dds",
+      "byteSize": 8320,
+      "sha256": "0f8b781ccf049e7e2a034fea32d36123c2f5ec4eba74e224fdce2ee490398ab0",
+      "sourceExportByteEquivalent": true,
+      "width": 128,
+      "height": 128,
+      "channels": [
+        {
+          "channel": "R",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 106,
+          "nonZeroPixelCount": 14250,
+          "fullyOpaquePixelCount": 13,
+          "mean": 22.593933
+        },
+        {
+          "channel": "G",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 173,
+          "nonZeroPixelCount": 14367,
+          "fullyOpaquePixelCount": 12,
+          "mean": 22.493835
+        },
+        {
+          "channel": "B",
+          "minimum": 0,
+          "maximum": 255,
+          "uniqueValueCount": 106,
+          "nonZeroPixelCount": 14250,
+          "fullyOpaquePixelCount": 13,
+          "mean": 22.593933
+        },
+        {
+          "channel": "A",
+          "minimum": 255,
+          "maximum": 255,
+          "uniqueValueCount": 1,
+          "nonZeroPixelCount": 16384,
+          "fullyOpaquePixelCount": 16384,
+          "mean": 255.0
+        }
+      ]
+    }
+  ],
+  "textureExtractionInvocations": [
+    {
+      "logicalPackage": "fx_tex_02",
+      "objectName": "sk_wbk_bex_00",
+      "exitCode": 0
+    },
+    {
+      "logicalPackage": "fx_tex_02",
+      "objectName": "sk_wbk_bex_00_n",
+      "exitCode": 0
+    },
+    {
+      "logicalPackage": "fx_tex_02",
+      "objectName": "fx_d_grid_016",
+      "exitCode": 0
+    },
+    {
+      "logicalPackage": "fx_tex_02",
+      "objectName": "fx_e_symbol_064_1_n_xcl",
+      "exitCode": 0
+    },
+    {
+      "logicalPackage": "fx_tex_02",
+      "objectName": "fx_d_atypical_076_cl",
+      "exitCode": 0
+    },
+    {
+      "logicalPackage": "fx_tex_02",
+      "objectName": "fx_d_atypical_076_3_cl",
+      "exitCode": 0
+    },
+    {
+      "logicalPackage": "fx_tex_02",
+      "objectName": "fx_e_symbol_064_1_cl",
+      "exitCode": 0
+    },
+    {
+      "logicalPackage": "fx_tex_05",
+      "objectName": "fx_m_noise_003",
+      "exitCode": 0
+    },
+    {
+      "logicalPackage": "fx_tex_00",
+      "objectName": "fx_a_fluid_003",
+      "exitCode": 0
+    }
+  ],
+  "meshes": [
+    {
+      "sourceAssetPath": "fx_sm_01.fm_d_berchain_06",
+      "sourcePhysicalPackage": "XFH2RGA2R07F04YE90DX0SMQ.upk",
+      "rawWModel": {
+        "relativePath": "FourClass/wmodel/fx_sm_01/fm_d_berchain_06.wmodel",
+        "byteSize": 24492,
+        "sha256": "f7760a4f6cd09ba9d2eeeb796940d9915ab54e9e2467e2e07e52ecab922cf212"
+      },
+      "runtimeAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel",
+      "runtimeWModel": {
+        "byteSize": 24492,
+        "sha256": "e17e84ab897c21a92af3efa41a83321555f67c80568dba0506adcee28cd2ca1e"
+      },
+      "vertexCount": 255,
+      "indexCount": 1200,
+      "runtimePositionScaleFromRawCook": 100.0,
+      "authoredModelPreScale": 0.01,
+      "effectiveSourcePositionScale": 1.0,
+      "maximumPositionProjectionError": 3.0517578125e-05,
+      "indicesAndNonPositionChannelsByteEquivalent": true,
+      "materialSectionByteEquivalent": true
+    },
+    {
+      "sourceAssetPath": "fx_sm_01.fm_d_berchain_07",
+      "sourcePhysicalPackage": "XFH2RGA2R07F04YE90DX0SMQ.upk",
+      "rawWModel": {
+        "relativePath": "FourClass/wmodel/fx_sm_01/fm_d_berchain_07.wmodel",
+        "byteSize": 36492,
+        "sha256": "c7bb33af5194d0164d247f35462a5160ce3f6c9f9bb37f78fb4c4a27c8cc0368"
+      },
+      "runtimeAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_07.wmodel",
+      "runtimeWModel": {
+        "byteSize": 36492,
+        "sha256": "9e998bdd71ee177fe03ee82a76cf077d743a6f4622a7ce41bce37b510d2bb2eb"
+      },
+      "vertexCount": 465,
+      "indexCount": 2160,
+      "runtimePositionScaleFromRawCook": 100.0,
+      "authoredModelPreScale": 0.01,
+      "effectiveSourcePositionScale": 1.0,
+      "maximumPositionProjectionError": 3.0517578125e-05,
+      "indicesAndNonPositionChannelsByteEquivalent": true,
+      "materialSectionByteEquivalent": true
+    }
+  ],
+  "chainRows": [
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_01.particlespriteemitter_10",
+      "targetElementId": "authored.source-particle.fe0d3291da32d9c797705c72",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_01",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        45.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "d2ee65663a70dc98d113e5db34af71c09a66ba875e4ef4683a08244cc34c7f84",
+          "minimum": 0.14686822891235352,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "1de11157bd7faff081c6faf4767d3bee7f4e9cbdcd17b41ca7ab1b3c51f89f4a",
+          "minimum": 1.0,
+          "maximum": 5.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_01.particlespriteemitter_12",
+      "targetElementId": "authored.source-particle.1bb7a50a0c3ff729ca586851",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_01",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        45.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "322f2621dc2fd0cc38384a3edca98d9f76cca8a0cf49a9860bb7690457172742",
+          "minimum": 0.9792322516441345,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "58a00f1df377495d378c81b7ac51d670a6fc7d2bd7826993b82584d721652764",
+          "minimum": 1.0,
+          "maximum": 3.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_01.particlespriteemitter_14",
+      "targetElementId": "authored.source-particle.eedca4cf57247af0f82fba11",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_01",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        45.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "9561bdb677e872883f889dc16725aeed52b17e3bb9b407bb8bf586a98db00d58",
+          "minimum": 2.9835972785949707,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "cf32a12aacf07ccabf47c6943277ef2bf7d623458bc31dd22deb061027b2a1a0",
+          "minimum": 1.0,
+          "maximum": 3.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_01.particlespriteemitter_11",
+      "targetElementId": "authored.source-particle.cd8d5f0dbedb3e620880378d",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_01",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        45.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "d2ee65663a70dc98d113e5db34af71c09a66ba875e4ef4683a08244cc34c7f84",
+          "minimum": 0.14686822891235352,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "1de11157bd7faff081c6faf4767d3bee7f4e9cbdcd17b41ca7ab1b3c51f89f4a",
+          "minimum": 1.0,
+          "maximum": 5.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_31.particlespriteemitter_10",
+      "targetElementId": "authored.source-particle.a3cbc6a5ccb3876669945ebd",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_31",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        45.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "d2ee65663a70dc98d113e5db34af71c09a66ba875e4ef4683a08244cc34c7f84",
+          "minimum": 0.14686822891235352,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "1de11157bd7faff081c6faf4767d3bee7f4e9cbdcd17b41ca7ab1b3c51f89f4a",
+          "minimum": 1.0,
+          "maximum": 5.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_31.particlespriteemitter_12",
+      "targetElementId": "authored.source-particle.6ad86a3bed5164050280ee47",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_31",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        45.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "322f2621dc2fd0cc38384a3edca98d9f76cca8a0cf49a9860bb7690457172742",
+          "minimum": 0.9792322516441345,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "58a00f1df377495d378c81b7ac51d670a6fc7d2bd7826993b82584d721652764",
+          "minimum": 1.0,
+          "maximum": 3.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_31.particlespriteemitter_14",
+      "targetElementId": "authored.source-particle.3903aa4912d4eeeba9d7d951",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_31",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        45.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "9561bdb677e872883f889dc16725aeed52b17e3bb9b407bb8bf586a98db00d58",
+          "minimum": 2.9835972785949707,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "cf32a12aacf07ccabf47c6943277ef2bf7d623458bc31dd22deb061027b2a1a0",
+          "minimum": 1.0,
+          "maximum": 3.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_31.particlespriteemitter_11",
+      "targetElementId": "authored.source-particle.71f0b215e9cff2426ac0ce47",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_31",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        45.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "d2ee65663a70dc98d113e5db34af71c09a66ba875e4ef4683a08244cc34c7f84",
+          "minimum": 0.14686822891235352,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "1de11157bd7faff081c6faf4767d3bee7f4e9cbdcd17b41ca7ab1b3c51f89f4a",
+          "minimum": 1.0,
+          "maximum": 5.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_31.particlespriteemitter_3",
+      "targetElementId": "authored.source-particle.a7fae01987d89775468563e4",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_31",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_07.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "d2ee65663a70dc98d113e5db34af71c09a66ba875e4ef4683a08244cc34c7f84",
+          "minimum": 0.14686822891235352,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "1de11157bd7faff081c6faf4767d3bee7f4e9cbdcd17b41ca7ab1b3c51f89f4a",
+          "minimum": 1.0,
+          "maximum": 5.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_31.particlespriteemitter_2",
+      "targetElementId": "authored.source-particle.a2d9eabb94a5702c933cd727",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_31",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_07.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        -45.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "322f2621dc2fd0cc38384a3edca98d9f76cca8a0cf49a9860bb7690457172742",
+          "minimum": 0.9792322516441345,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "58a00f1df377495d378c81b7ac51d670a6fc7d2bd7826993b82584d721652764",
+          "minimum": 1.0,
+          "maximum": 3.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_31.particlespriteemitter_1",
+      "targetElementId": "authored.source-particle.72835f216dd26bb28166301f",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_31",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_07.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        45.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "9561bdb677e872883f889dc16725aeed52b17e3bb9b407bb8bf586a98db00d58",
+          "minimum": 2.9835972785949707,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "cf32a12aacf07ccabf47c6943277ef2bf7d623458bc31dd22deb061027b2a1a0",
+          "minimum": 1.0,
+          "maximum": 3.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    },
+    {
+      "sourceElementId": "fx_pc_wgl_00.par_d_chain_attraction_31.particlespriteemitter_0",
+      "targetElementId": "authored.source-particle.78efab80dc7c76fc2b416cba",
+      "sourceGroupId": "fx_pc_wgl_00.par_d_chain_attraction_31",
+      "meshAssetId": "Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_07.wmodel",
+      "sourceTypeDataRotationDegrees": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "modelPreScale": 0.01,
+      "startDelaySeconds": 0.3668,
+      "particleLifetimeSeconds": [
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "locationDirect": {
+        "lookupTable": [
+          -30.0,
+          35.0,
+          0.0,
+          35.0,
+          0.0,
+          -20.0,
+          -30.0,
+          0.0
+        ],
+        "lookupTableCanonicalSha256": "7fd96b9e11e77a9430d2890f69cd8d26957ea549858c2a8d46bd4f87a8c9f3ef",
+        "lookupTableTimeScale": 9.999998092651367,
+        "lookupTableStartTime": 0.8999999761581421
+      },
+      "dynamicParameters": [
+        {
+          "component": 0,
+          "name": "worldpositionoffset_str",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "d2ee65663a70dc98d113e5db34af71c09a66ba875e4ef4683a08244cc34c7f84",
+          "minimum": 0.14686822891235352,
+          "maximum": 50.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 1,
+          "name": "worldposition_uvscale",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "1de11157bd7faff081c6faf4767d3bee7f4e9cbdcd17b41ca7ab1b3c51f89f4a",
+          "minimum": 1.0,
+          "maximum": 5.0,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 2,
+          "name": "x.pan",
+          "lookupTableCount": 23,
+          "lookupTableCanonicalSha256": "e9f64fbe39c6dcda0a17cb454b9faf7f04f3c460e6e36f5a143c69d66f744c67",
+          "minimum": 0.0,
+          "maximum": 0.6227160096168518,
+          "lookupTableTimeScale": 20.0,
+          "lookupTableStartTime": 0.0
+        },
+        {
+          "component": 3,
+          "name": "worldposition_zoffset",
+          "lookupTableCount": 4,
+          "lookupTableCanonicalSha256": "9b869400cb44a39a76139f349e3a4ad25b257777f743ac1f21905ddbe20dedee",
+          "minimum": 1.0,
+          "maximum": 1.0,
+          "lookupTableTimeScale": 0.0,
+          "lookupTableStartTime": 0.0
+        }
+      ]
+    }
+  ],
+  "erroneousAutoBinding": {
+    "assetId": "Effect/Warlord/Textures/FX_TEX_02/fx_d_grid_016.dds",
+    "wasPreviouslyDescribedAs": "exact parent Diffuse",
+    "isExactBaseSemantic": false,
+    "reason": "The parent only lists this object among nine referenced textures, declares zero collected texture parameters, and its cooked opacity-mask/WPO outputs both target packageIndex 0. The DDS alpha channel is fully opaque, so binding it to the standard alpha lane produces an unsupported white carrier.",
+    "requiredAction": "REMOVE_ERRONEOUS_EXACT_BASE_AUTO_BINDING",
+    "typedReason": "SOURCE_MASKED_WPO_ARITHMETIC_UNAVAILABLE"
+  },
+  "requiredGpuWitness": {
+    "status": "NOT_RUN_NO_TYPED_EVALUATOR",
+    "rowCount": 12,
+    "perRow": "Render each exact stable row with its chain06/07 WModel, typed masked/two-sided evaluator, four DynamicParameter curves, and resolved texture semantics; require nonzero non-white chroma.",
+    "composite": "Render all twelve rows at identical camera/times and require four launch directions, four spear tips, tiled chain silhouettes, and outbound-to-return motion.",
+    "forbiddenSubstitute": "A helix or unrelated Mesh witness cannot satisfy this contract."
+  },
+  "inputSha256": {
+    "importedDocument": "0a150e1736d2116ac9524a58cce3030b072f6c08522b9fca845fb5f91004b8e2",
+    "authoredDocument": "987b6a89b40d80bfb11368bc92e635c2b140f6b03a0a9cd8c8ab32d4a9406811",
+    "materialEvidence": "73b34a4f249619a0538de0a417f74e0b6d636b3a9f734f2500f5634a12b136d1",
+    "rawInventory": "578fadda10903e4935bb633947843aeefe709c55dfa4767fa2fb62ad4817e500"
+  }
+}

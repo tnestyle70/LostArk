@@ -1,0 +1,14 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.artist.skill.31210.ba4.unified",
+  "displayName": "effect.artist.skill.31210.ba4.unified",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1.0,
+    "yawOffsetDegrees": 0.0,
+    "directionYawDegrees": 0.0,
+    "initialSpeedMultiplier": 1.0
+  },
+  "modelCues": [],
+  "elements": []
+}

@@ -781,6 +781,32 @@ def assign_action(armature, imported_actions, preferred_name):
     return selected
 
 
+def prepare_bind_pose_export(armature):
+    """Detach the preview Action without disabling all-Action FBX baking."""
+    armature.data.pose_position = "POSE"
+    armature.animation_data_create()
+    armature.animation_data.action = None
+    bpy.context.scene.frame_set(bpy.context.scene.frame_start)
+    bpy.context.view_layer.update()
+
+    maximum_error = 0.0
+    for pose_bone in armature.pose.bones:
+        rest = pose_bone.bone.matrix_local
+        evaluated = pose_bone.matrix
+        for row in range(4):
+            for column in range(4):
+                maximum_error = max(
+                    maximum_error,
+                    abs(float(evaluated[row][column] - rest[row][column])),
+                )
+    if maximum_error > 1e-5:
+        raise RuntimeError(
+            "Detached ActorX armature did not return to its PSK bind pose: "
+            "maximumMatrixError={:.9g}".format(maximum_error)
+        )
+    return maximum_error
+
+
 def select_export_objects(armature, meshes):
     bpy.ops.object.mode_set(mode="OBJECT")
     bpy.ops.object.select_all(action="DESELECT")
@@ -865,6 +891,7 @@ def write_report(
     psa_metadata,
     frame_rate,
     selected_action,
+    bind_pose_matrix_error,
     scale_down,
     prefix_actions,
 ):
@@ -927,6 +954,11 @@ def write_report(
         "action_count": len(actions),
         "actions": actions,
         "selected_action": selected_action.name,
+        "export_bind_pose": {
+            "active_action_detached": armature.animation_data.action is None,
+            "armature_pose_position": armature.data.pose_position,
+            "maximum_matrix_error": bind_pose_matrix_error,
+        },
         "settings": {
             "scale_down": scale_down,
             "prefix_actions_with_source": prefix_actions,
@@ -1045,6 +1077,7 @@ def run(args):
 
     if output_blend is not None:
         bpy.ops.wm.save_as_mainfile(filepath=str(output_blend), check_existing=False)
+    bind_pose_matrix_error = prepare_bind_pose_export(armature)
     export_fbx(output_fbx)
     write_report(
         report_path,
@@ -1059,6 +1092,7 @@ def run(args):
         psa_metadata,
         frame_rate,
         selected_action,
+        bind_pose_matrix_error,
         args.scale_down,
         args.prefix_actions_with_source,
     )

@@ -7,7 +7,8 @@ param(
     [ValidateRange(1000, 15000)]
     [int]$ServerStartupTimeoutMilliseconds = 10000,
     [ValidateRange(1, 65535)]
-    [int]$HarnessPort = 17777
+    [int]$HarnessPort = 17777,
+    [switch]$G02IdentityFast
 )
 
 $ErrorActionPreference = 'Stop'
@@ -130,8 +131,12 @@ try {
     $harnessStartInfo.CreateNoWindow = $true
     $harnessStartInfo.RedirectStandardOutput = $true
     $harnessStartInfo.RedirectStandardError = $true
-    $harnessStartInfo.Arguments =
+    $harnessArguments =
         "--host 127.0.0.1 --port $HarnessPort --timeout-ms $HarnessTimeoutMilliseconds"
+    if ($G02IdentityFast) {
+        $harnessArguments += ' --g02-identity-fast'
+    }
+    $harnessStartInfo.Arguments = $harnessArguments
     $harnessProcess = [Diagnostics.Process]::new()
     $harnessProcess.StartInfo = $harnessStartInfo
     if (-not $harnessProcess.Start()) {

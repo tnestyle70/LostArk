@@ -108,13 +108,13 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
             "sourceRecipeOverlayProgramCount": 12,
             "adapterPacketProgramCount": 1,
             "visualRowCount": 135,
-            "sourceRecipeOverlayCount": 70,
+            "sourceRecipeOverlayCount": 66,
             "localDecalAdapterPacketCount": 2,
             "cascadeRibbonVisualRowCount": 4,
             "supplementalElementCount": 5,
             "artistFCascadeRibbonElementCount": 1,
             "animationTrailElementCount": 4,
-            "failClosedCount": 63,
+            "failClosedCount": 67,
             "extensionCanaryCount": 2,
             "productMutationCount": 0,
         })
@@ -202,9 +202,9 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
                 )
             for element_id in set(base_by_id) - admitted_targets:
                 self.assertEqual(base_by_id[element_id], projected_by_id[element_id])
-        self.assertEqual(admitted_count, 70)
+        self.assertEqual(admitted_count, 66)
 
-    def test_cascade_and_animation_trail_packets_are_stable_elements(self) -> None:
+    def test_cascade_rows_fail_closed_and_animation_trail_packets_are_stable_elements(self) -> None:
         cascade_rows = [
             row
             for program in self.runtime["programs"]
@@ -212,27 +212,23 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
             if row["family"] == "CASCADE_RIBBON"
         ]
         self.assertEqual(len(cascade_rows), 4)
-        self.assertTrue(
-            all(
-                row["sourceIdentity"]["moduleCount"] == 10
-                and row["targetIdentity"]["targetElementId"].endswith(
-                    "ribbon-companion-blocked"
-                )
-                for row in cascade_rows
-            )
-        )
+        self.assertTrue(all(
+            row["sourceIdentity"]["moduleCount"] == 10
+            and row["disposition"] == "FAIL_CLOSED"
+            and row["packetLayout"] == "NONE"
+            and row["targetIdentity"] is None
+            and row["admissionBlockers"]
+            for row in cascade_rows
+        ))
         for row in cascade_rows:
             program = next(
                 item for item in self.runtime["programs"]
                 if item["effectAssetId"] == row["selector"]["effectAssetId"]
             )
-            target = next(
-                item for item in program["projectedDocument"]["elements"]
-                if item["id"] == row["targetIdentity"]["targetElementId"]
-            )
-            self.assertTrue(target["visible"])
-            self.assertEqual(target["kind"], "trail")
-            self.assertEqual(target["sourceRecipe"]["rendererShape"], "ribbon")
+            self.assertFalse(any(
+                item["id"].endswith("ribbon-companion-blocked")
+                for item in program["projectedDocument"]["elements"]
+            ))
 
         supplemental = [
             item

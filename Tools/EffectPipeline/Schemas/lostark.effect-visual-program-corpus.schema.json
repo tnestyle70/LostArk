@@ -119,10 +119,10 @@
         "supplementalElementCount": { "const": 5 },
         "artistFCascadeRibbonElementCount": { "const": 1 },
         "animationTrailElementCount": { "const": 4 },
-        "admittedBoundedCount": { "const": 72 },
-        "failClosedCount": { "const": 63 },
+        "admittedBoundedCount": { "const": 68 },
+        "failClosedCount": { "const": 67 },
         "legacyApproximationCount": { "const": 66 },
-        "boundedReconstructionCount": { "const": 6 },
+        "boundedReconstructionCount": { "const": 2 },
         "productMutationCount": { "const": 0 }
       }
     },

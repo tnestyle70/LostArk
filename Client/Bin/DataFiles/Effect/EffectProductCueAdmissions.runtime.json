@@ -1,0 +1,131 @@
+{
+  "schema": "lostark.effect-product-cue-admissions",
+  "formatVersion": 1,
+  "runtimeCatalogSha256": "81c19d6b4bf57af36ad9d3bb1c932a725cca1c5b01b9b3878400cb45ae622f20",
+  "sourcePolicySha256": "a83b2bd667d86082bad6056cf053dd96de602138eaf3f05be9b076c732f37755",
+  "sourcePolicyUtf8Json": "{\n  \"schema\": \"lostark.effect-product-cue-approval-policy\",\n  \"formatVersion\": 1,\n  \"decisionSetId\": \"track1.user-approved-canary.2026-08-15\",\n  \"defaultAdmission\": \"DENY\",\n  \"approvals\": [\n    {\n      \"cueId\": \"artist.skill.31470.stage-0\",\n      \"approvalCeiling\": \"PRODUCT_APPROVED_APPROXIMATE\",\n      \"animationAssetId\": \"Artist\",\n      \"characterClass\": \"ARTIST\",\n      \"inputSlot\": \"F\",\n      \"skillId\": 31470,\n      \"stageIndex\": 0,\n      \"clipName\": \"sdm_sk_onestroke\",\n      \"startMs\": 0,\n      \"effectAssetId\": \"effect.artist.skill.31470.unified\",\n      \"rollbackEffectAssetId\": \"effect.artist.skill.31470\",\n      \"effectContentSha256\": \"503dc0582f3af8284f82020b111c67c39e447c6dfe098878b7040538b8aa1214\",\n      \"provenance\": {\n        \"decision\": \"EXPLICIT_USER_OPT_IN\",\n        \"approvedAtKst\": \"2026-08-15\",\n        \"sourceThreadId\": \"01a00345-84c6-7ec0-9459-33a075d6b631\",\n        \"scope\": \"Artist F 31470 current Product control\"\n      }\n    },\n    {\n      \"cueId\": \"dimensionmaster.skill.2050010.stage-0\",\n      \"approvalCeiling\": \"PRODUCT_APPROVED_APPROXIMATE\",\n      \"animationAssetId\": \"DimensionMaster\",\n      \"characterClass\": \"DIMENSIONMASTER\",\n      \"inputSlot\": \"LMB\",\n      \"skillId\": 2050010,\n      \"stageIndex\": 0,\n      \"clipName\": \"pc_sp_m_00_sk_att_battle_1_01\",\n      \"startMs\": 0,\n      \"effectAssetId\": \"effect.dimensionmaster.skill.2050010.ba1.unified\",\n      \"rollbackEffectAssetId\": \"effect.dimensionmaster.skill.2050010.ba1\",\n      \"effectContentSha256\": \"a3f677666d0fddf163a51f2c1f8009d952cd9843051b1f789cff6bf3e5b9d1bb\",\n      \"provenance\": {\n        \"decision\": \"EXPLICIT_USER_OPT_IN\",\n        \"approvedAtKst\": \"2026-08-15\",\n        \"sourceThreadId\": \"01a00345-84c6-7ec0-9459-33a075d6b631\",\n        \"scope\": \"DimensionMaster LMB 2050010 BA1\"\n      }\n    },\n    {\n      \"cueId\": \"dimensionmaster.skill.2050010.stage-2\",\n      \"approvalCeiling\": \"PRODUCT_APPROVED_APPROXIMATE\",\n      \"animationAssetId\": \"DimensionMaster\",\n      \"characterClass\": \"DIMENSIONMASTER\",\n      \"inputSlot\": \"LMB\",\n      \"skillId\": 2050010,\n      \"stageIndex\": 2,\n      \"clipName\": \"pc_sp_m_00_sk_att_battle_1_03\",\n      \"startMs\": 0,\n      \"effectAssetId\": \"effect.dimensionmaster.skill.2050010.ba3.unified\",\n      \"rollbackEffectAssetId\": \"effect.dimensionmaster.skill.2050010.ba3\",\n      \"effectContentSha256\": \"5d25d2a038241aada7dc2c6766e9d2b3fb3ab74b0383a282d4107811912c02b3\",\n      \"provenance\": {\n        \"decision\": \"EXPLICIT_USER_OPT_IN\",\n        \"approvedAtKst\": \"2026-08-15\",\n        \"sourceThreadId\": \"01a00345-84c6-7ec0-9459-33a075d6b631\",\n        \"scope\": \"DimensionMaster LMB 2050010 BA3\"\n      }\n    },\n    {\n      \"cueId\": \"dimensionmaster.skill.2050210.stage-0\",\n      \"approvalCeiling\": \"PRODUCT_APPROVED_APPROXIMATE\",\n      \"animationAssetId\": \"DimensionMaster\",\n      \"characterClass\": \"DIMENSIONMASTER\",\n      \"inputSlot\": \"A\",\n      \"skillId\": 2050210,\n      \"stageIndex\": 0,\n      \"clipName\": \"pc_sp_m_00_sk_sk_willowrend\",\n      \"startMs\": 0,\n      \"effectAssetId\": \"effect.dimensionmaster.skill.2050210.unified\",\n      \"rollbackEffectAssetId\": \"effect.dimensionmaster.skill.2050210.authored-baseline\",\n      \"effectContentSha256\": \"eefa4acf835319ffbeb43845a2eafe2126b4af9e26786ff97705d262f7fe4b4b\",\n      \"provenance\": {\n        \"decision\": \"EXPLICIT_USER_OPT_IN\",\n        \"approvedAtKst\": \"2026-08-15\",\n        \"sourceThreadId\": \"01a00345-84c6-7ec0-9459-33a075d6b631\",\n        \"scope\": \"DimensionMaster A 2050210\"\n      }\n    },\n    {\n      \"cueId\": \"lancemaster.skill.34010.stage-0\",\n      \"approvalCeiling\": \"PRODUCT_APPROVED_APPROXIMATE\",\n      \"animationAssetId\": \"LanceMaster\",\n      \"characterClass\": \"LANCE_MASTER\",\n      \"inputSlot\": \"LMB\",\n      \"skillId\": 34010,\n      \"stageIndex\": 0,\n      \"clipName\": \"flm_att_identity1_1_01\",\n      \"startMs\": 0,\n      \"effectAssetId\": \"effect.lancemaster.skill.34010.ba1.unified\",\n      \"rollbackEffectAssetId\": \"effect.lancemaster.skill.34010.ba1\",\n      \"effectContentSha256\": \"6a0290cdc9248e7126b157ee5016c6d843ab080e9170d4072fee76135593a610\",\n      \"provenance\": {\n        \"decision\": \"EXPLICIT_USER_OPT_IN\",\n        \"approvedAtKst\": \"2026-08-15\",\n        \"sourceThreadId\": \"01a00345-84c6-7ec0-9459-33a075d6b631\",\n        \"scope\": \"LanceMaster LMB 34010 BA1\"\n      }\n    }\n  ]\n}\n",
+  "decisionSetId": "track1.user-approved-canary.2026-08-15",
+  "admissionMode": "EXPLICIT_CUE_OPT_IN_ONLY",
+  "approvals": [
+    {
+      "cueId": "artist.skill.31470.stage-0",
+      "admission": "PRODUCT_APPROVED_FULL",
+      "approvalCeiling": "PRODUCT_APPROVED_APPROXIMATE",
+      "observedExactness": "FULL",
+      "characterClass": "ARTIST",
+      "inputSlot": "F",
+      "skillId": 31470,
+      "stageIndex": 0,
+      "animationAssetId": "Artist",
+      "clipName": "sdm_sk_onestroke",
+      "startMs": 0,
+      "effectAssetId": "effect.artist.skill.31470.unified",
+      "rollbackEffectAssetId": "effect.artist.skill.31470",
+      "effectContentSha256": "503dc0582f3af8284f82020b111c67c39e447c6dfe098878b7040538b8aa1214",
+      "approximateElementCount": 0,
+      "hardSuppressedElementCount": 4,
+      "provenance": {
+        "decision": "EXPLICIT_USER_OPT_IN",
+        "approvedAtKst": "2026-08-15",
+        "sourceThreadId": "01a00345-84c6-7ec0-9459-33a075d6b631",
+        "scope": "Artist F 31470 current Product control"
+      }
+    },
+    {
+      "cueId": "dimensionmaster.skill.2050010.stage-0",
+      "admission": "PRODUCT_APPROVED_FULL",
+      "approvalCeiling": "PRODUCT_APPROVED_APPROXIMATE",
+      "observedExactness": "FULL",
+      "characterClass": "DIMENSIONMASTER",
+      "inputSlot": "LMB",
+      "skillId": 2050010,
+      "stageIndex": 0,
+      "animationAssetId": "DimensionMaster",
+      "clipName": "pc_sp_m_00_sk_att_battle_1_01",
+      "startMs": 0,
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1.unified",
+      "rollbackEffectAssetId": "effect.dimensionmaster.skill.2050010.ba1",
+      "effectContentSha256": "a3f677666d0fddf163a51f2c1f8009d952cd9843051b1f789cff6bf3e5b9d1bb",
+      "approximateElementCount": 0,
+      "hardSuppressedElementCount": 2,
+      "provenance": {
+        "decision": "EXPLICIT_USER_OPT_IN",
+        "approvedAtKst": "2026-08-15",
+        "sourceThreadId": "01a00345-84c6-7ec0-9459-33a075d6b631",
+        "scope": "DimensionMaster LMB 2050010 BA1"
+      }
+    },
+    {
+      "cueId": "dimensionmaster.skill.2050010.stage-2",
+      "admission": "PRODUCT_APPROVED_FULL",
+      "approvalCeiling": "PRODUCT_APPROVED_APPROXIMATE",
+      "observedExactness": "FULL",
+      "characterClass": "DIMENSIONMASTER",
+      "inputSlot": "LMB",
+      "skillId": 2050010,
+      "stageIndex": 2,
+      "animationAssetId": "DimensionMaster",
+      "clipName": "pc_sp_m_00_sk_att_battle_1_03",
+      "startMs": 0,
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3.unified",
+      "rollbackEffectAssetId": "effect.dimensionmaster.skill.2050010.ba3",
+      "effectContentSha256": "5d25d2a038241aada7dc2c6766e9d2b3fb3ab74b0383a282d4107811912c02b3",
+      "approximateElementCount": 0,
+      "hardSuppressedElementCount": 0,
+      "provenance": {
+        "decision": "EXPLICIT_USER_OPT_IN",
+        "approvedAtKst": "2026-08-15",
+        "sourceThreadId": "01a00345-84c6-7ec0-9459-33a075d6b631",
+        "scope": "DimensionMaster LMB 2050010 BA3"
+      }
+    },
+    {
+      "cueId": "dimensionmaster.skill.2050210.stage-0",
+      "admission": "PRODUCT_APPROVED_FULL",
+      "approvalCeiling": "PRODUCT_APPROVED_APPROXIMATE",
+      "observedExactness": "FULL",
+      "characterClass": "DIMENSIONMASTER",
+      "inputSlot": "A",
+      "skillId": 2050210,
+      "stageIndex": 0,
+      "animationAssetId": "DimensionMaster",
+      "clipName": "pc_sp_m_00_sk_sk_willowrend",
+      "startMs": 0,
+      "effectAssetId": "effect.dimensionmaster.skill.2050210.unified",
+      "rollbackEffectAssetId": "effect.dimensionmaster.skill.2050210.authored-baseline",
+      "effectContentSha256": "eefa4acf835319ffbeb43845a2eafe2126b4af9e26786ff97705d262f7fe4b4b",
+      "approximateElementCount": 0,
+      "hardSuppressedElementCount": 37,
+      "provenance": {
+        "decision": "EXPLICIT_USER_OPT_IN",
+        "approvedAtKst": "2026-08-15",
+        "sourceThreadId": "01a00345-84c6-7ec0-9459-33a075d6b631",
+        "scope": "DimensionMaster A 2050210"
+      }
+    },
+    {
+      "cueId": "lancemaster.skill.34010.stage-0",
+      "admission": "PRODUCT_APPROVED_FULL",
+      "approvalCeiling": "PRODUCT_APPROVED_APPROXIMATE",
+      "observedExactness": "FULL",
+      "characterClass": "LANCE_MASTER",
+      "inputSlot": "LMB",
+      "skillId": 34010,
+      "stageIndex": 0,
+      "animationAssetId": "LanceMaster",
+      "clipName": "flm_att_identity1_1_01",
+      "startMs": 0,
+      "effectAssetId": "effect.lancemaster.skill.34010.ba1.unified",
+      "rollbackEffectAssetId": "effect.lancemaster.skill.34010.ba1",
+      "effectContentSha256": "6a0290cdc9248e7126b157ee5016c6d843ab080e9170d4072fee76135593a610",
+      "approximateElementCount": 0,
+      "hardSuppressedElementCount": 2,
+      "provenance": {
+        "decision": "EXPLICIT_USER_OPT_IN",
+        "approvedAtKst": "2026-08-15",
+        "sourceThreadId": "01a00345-84c6-7ec0-9459-33a075d6b631",
+        "scope": "LanceMaster LMB 34010 BA1"
+      }
+    }
+  ]
+}

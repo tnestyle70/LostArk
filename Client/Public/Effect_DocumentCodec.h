@@ -77,6 +77,45 @@ struct EFFECT_GENERIC_AUTHORED_ELEMENT_IMPORT_REQUEST final
 	EFFECT_MATERIAL_EXECUTION_DESC MaterialExecution;
 };
 
+/* Stable one-to-one join for refreshing a previously authored Element from a
+   compiler/import stage.  The compiler owns executable recipe and source
+   resource data; the authored target keeps only the fields that the Effect
+   Tool is expected to tune by eye. */
+struct EFFECT_GENERIC_AUTHORED_ELEMENT_REIMPORT_REQUEST final
+{
+	std::string strElementId;
+};
+
+enum class EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_KIND : uint8_t
+{
+	RESOURCE,
+	SCALAR,
+	COLOR,
+	END
+};
+
+enum class EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_REASON : uint8_t
+{
+	RESOURCE_SLOT_VANISHED,
+	SCALAR_PARAMETER_VANISHED,
+	COLOR_PARAMETER_VANISHED,
+	END
+};
+
+struct EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_DESC final
+{
+	EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_KIND eKind =
+		EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_KIND::END;
+	EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_REASON eReason =
+		EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_REASON::END;
+	std::string strTargetId;
+};
+
+struct EFFECT_GENERIC_AUTHORED_REIMPORT_REPORT final
+{
+	std::vector<EFFECT_GENERIC_AUTHORED_REIMPORT_DROP_DESC> DroppedOverrides;
+};
+
 class CEffectDocumentCodec final
 {
 public:
@@ -130,6 +169,55 @@ public:
 		const EFFECT_GENERIC_AUTHORED_ELEMENT_IMPORT_REQUEST& Request,
 		EFFECT_DOCUMENT_DESC& InOutDocument,
 		std::string& strOutError);
+	/* Field-aware Track A refresh. CompilerDocument owns SourceRecipe, source
+	   Material/profile, default resources, execution and admission. The existing
+	   Element keeps stable identity and artist fields; valid resource/scalar/color
+	   overrides are rebased on the new compiler values and applied last. */
+	/* Record an artist rebind of a compiler-owned resource slot together with
+	   the compiler value it replaced.  Without this the next re-materialize
+	   silently reverts the artist's choice, because the compiler rewrites
+	   every resource binding.  Re-binding back to the compiler value retires
+	   the override instead of leaving a no-op entry behind. */
+	static void Record_AuthoringResourceOverride(
+		EFFECT_ELEMENT_DESC& Element,
+		const std::string& strSlotId,
+		const std::string& strAssetId,
+		const std::string& strCompilerAssetId);
+	static bool_t Set_AuthoringResourceOverride(
+		EFFECT_ELEMENT_DESC& Element,
+		std::string_view strSlotId,
+		std::string_view strAssetId,
+		std::string& strOutError);
+	static bool_t Reset_AuthoringResourceOverride(
+		EFFECT_ELEMENT_DESC& Element,
+		std::string_view strSlotId,
+		std::string& strOutError);
+	static bool_t Set_AuthoringScalarOverride(
+		EFFECT_ELEMENT_DESC& Element,
+		std::string_view strName,
+		f32_t fValue,
+		std::string& strOutError);
+	static bool_t Reset_AuthoringScalarOverride(
+		EFFECT_ELEMENT_DESC& Element,
+		std::string_view strName,
+		std::string& strOutError);
+	static bool_t Set_AuthoringColorOverride(
+		EFFECT_ELEMENT_DESC& Element,
+		std::string_view strName,
+		const float4_t& vValue,
+		std::string& strOutError);
+	static bool_t Reset_AuthoringColorOverride(
+		EFFECT_ELEMENT_DESC& Element,
+		std::string_view strName,
+		std::string& strOutError);
+
+	static bool_t Build_GenericAuthoredElementReimportStage(
+		const EFFECT_DOCUMENT_DESC& CompilerDocument,
+		const EFFECT_DOCUMENT_DESC& ExistingDocument,
+		const EFFECT_GENERIC_AUTHORED_ELEMENT_REIMPORT_REQUEST& Request,
+		EFFECT_DOCUMENT_DESC& InOutDocument,
+		std::string& strOutError,
+		EFFECT_GENERIC_AUTHORED_REIMPORT_REPORT* pOutReport = nullptr);
 	/* Data-only migration used by both the Effect Tool and the offline
 	   materializer.  Existing authored transforms, generic resource bindings,
 	   and same-lane DDS overrides remain authoritative; Track A supplies the

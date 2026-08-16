@@ -4,8 +4,9 @@
 The builder traces every selected stage-002 source occurrence to its first-LOD
 Cascade emitter.  A carrier becomes visible only when its portable SourceRecipe,
 source Material profile, runtime resources, and (for Mesh) cooked geometry are
-all evidence-closed.  Unsupported Trail/Light and incomplete Dust carriers stay
-explicitly fail-closed.  This slice never writes Catalog or AnimEvent mappings.
+all evidence-closed.  AnimationTrail recipe/DDS data remains in a disabled v13
+quarantine for its required adapter; Light and incomplete Dust stay explicitly
+fail-closed.  This slice never writes Catalog or AnimEvent mappings.
 """
 
 from __future__ import annotations
@@ -51,6 +52,8 @@ from build_effect_source_material_contract import (  # noqa: E402
 from extract_umodel_material_dependencies import parse_material_dump  # noqa: E402
 from materialize_artist_31470_portable_particle_carriers import (  # noqa: E402
     MaterializeError,
+    SOURCE_ONLY_DISTRIBUTION_FIELDS,
+    SOURCE_ONLY_RECIPE_FIELDS,
     portable_recipe,
 )
 
@@ -150,6 +153,17 @@ EXPECTED_CARRIER_BLOCKERS = {
         "SOURCE_ANCHOR_NOT_EXPLICIT",
     ),
 }
+
+ANIMATION_TRAIL_NOTIFY_ID = "action-420633/stage-002/notify-004"
+ANIMATION_TRAIL_MODULE_CLASS = "particlemoduletypedataanimtrail"
+CASCADE_RIBBON_MODULE_CLASS = "particlemoduletypedataribbon"
+EXPECTED_SOURCE_ACTION_DISPLAY_NAME = "레이드 발탄_휠윈드"
+EXPECTED_CANARY_DISPLAY_NAME = (
+    f"{EXPECTED_SOURCE_ACTION_DISPLAY_NAME} | 420633 Active | Portable Canary"
+)
+DEFERRED_ANIMATION_TRAIL_PROFILE_ID = (
+    "valtan.animation-trail-required-adapter.v1"
+)
 
 
 @dataclass(frozen=True)
@@ -1118,6 +1132,112 @@ def _validate_fail_closed_source_evidence(
     raise ContractError(f"unexpected fail-closed source carrier: {carrier_id}")
 
 
+def _ordinary_deferred_animation_trail_recipe(
+    raw_recipe: dict[str, Any],
+) -> dict[str, Any]:
+    """Project exact Trail source data into a disabled ordinary-v13 quarantine.
+
+    Native-v14 identity/admission fields cannot legally cross the ordinary-v13
+    runtime boundary.  The source artifacts and their canonical SHA remain the
+    exact authority for those fields.  Everything the future AnimationTrail
+    adapter consumes from the Cascade emitter itself stays in this disabled
+    recipe: schedule, bursts, module identity/order, literals, and distribution
+    payloads.  Disabled is intentional -- generic particle playback must never
+    interpret AnimationTrail as Cascade Ribbon or Sprite execution.
+    """
+
+    staged = copy.deepcopy(raw_recipe)
+    for field in SOURCE_ONLY_RECIPE_FIELDS:
+        staged.pop(field, None)
+    staged["enabled"] = False
+    for module in staged.get("modules", []):
+        for distribution in module.get("distributions", []):
+            for field in SOURCE_ONLY_DISTRIBUTION_FIELDS:
+                distribution.pop(field, None)
+
+    classes = [
+        str(module.get("className") or "").casefold()
+        for module in staged.get("modules", [])
+    ]
+    if (
+        classes.count(ANIMATION_TRAIL_MODULE_CLASS) != 1
+        or CASCADE_RIBBON_MODULE_CLASS in classes
+    ):
+        raise ContractError(
+            "deferred AnimationTrail recipe lost its typed family boundary"
+        )
+    if any(field in staged for field in SOURCE_ONLY_RECIPE_FIELDS) or any(
+        field in distribution
+        for module in staged.get("modules", [])
+        for distribution in module.get("distributions", [])
+        for field in SOURCE_ONLY_DISTRIBUTION_FIELDS
+    ):
+        raise ContractError(
+            "deferred AnimationTrail recipe leaked native-v14 evidence"
+        )
+    return staged
+
+
+def _deferred_animation_trail_resources(
+    repository_root: Path,
+    cook: dict[str, Any],
+    carrier_id: str,
+    imported_resources: list[dict[str, Any]],
+) -> list[dict[str, str]]:
+    """Keep exact cooked DDS connections without admitting Trail execution."""
+
+    if not imported_resources:
+        raise ContractError(f"{carrier_id} lost AnimationTrail DDS bindings")
+    cooked_assets = cook.get("assets", [])
+    staged: list[dict[str, str]] = []
+    seen_slots: set[str] = set()
+    for resource in imported_resources:
+        slot_id = resource.get("slotId")
+        asset_id = resource.get("assetId")
+        if (
+            not isinstance(slot_id, str)
+            or not slot_id
+            or slot_id in seen_slots
+            or not isinstance(asset_id, str)
+            or not asset_id.startswith("Effect/")
+            or "\\" in asset_id
+            or ":" in asset_id
+        ):
+            raise ContractError(
+                f"{carrier_id} has unsafe/duplicate AnimationTrail resource identity"
+            )
+        relative = PurePosixPath(asset_id)
+        if (
+            relative.is_absolute()
+            or any(part in {"", ".", ".."} for part in relative.parts)
+            or relative.suffix.casefold() != ".dds"
+        ):
+            raise ContractError(
+                f"{carrier_id} has unsafe AnimationTrail DDS asset ID: {asset_id}"
+            )
+        matches = [
+            row
+            for row in cooked_assets
+            if row.get("runtimeAssetId") == asset_id
+        ]
+        if (
+            len(matches) != 1
+            or matches[0].get("status") not in {"COPIED", "COOKED"}
+            or not isinstance(matches[0].get("sha256"), str)
+        ):
+            raise ContractError(
+                f"{carrier_id} AnimationTrail DDS cook identity changed: {asset_id}"
+            )
+        runtime_path = repository_root / RUNTIME_RESOURCE_ROOT / relative
+        if raw_sha256(runtime_path) != matches[0]["sha256"]:
+            raise ContractError(
+                f"{carrier_id} AnimationTrail DDS file changed: {asset_id}"
+            )
+        seen_slots.add(slot_id)
+        staged.append({"slotId": slot_id, "assetId": asset_id})
+    return staged
+
+
 def _build_source_carriers(
     repository_root: Path,
     binding: dict[str, Any],
@@ -1273,6 +1393,7 @@ def _build_source_carriers(
                 f"{carrier['carrierId']} exact source Material binding changed"
             )
         material_row = material_rows[0]
+        deferred_recipe: dict[str, Any] | None = None
         if carrier["disposition"] == "VISIBLE_EXECUTABLE":
             if portable is None or material_row.get("resolutionStatus") != (
                 "RESOLVED_EXACT_SOURCE_PACKAGE"
@@ -1341,13 +1462,25 @@ def _build_source_carriers(
                 "renderProfile": "alpha_two_sided_depth_read",
                 "sourceProfile": {"enabled": False},
             }
-            resources = []
+            if occurrence["notifyId"] == ANIMATION_TRAIL_NOTIFY_ID:
+                deferred_recipe = _ordinary_deferred_animation_trail_recipe(
+                    raw_recipe
+                )
+                resources = _deferred_animation_trail_resources(
+                    repository_root,
+                    cook,
+                    carrier["carrierId"],
+                    imported_resources,
+                )
+            else:
+                resources = []
         derived.append(
             {
                 "occurrence": occurrence,
                 "carrier": carrier,
                 "detail": detail,
                 "portableRecipe": portable,
+                "deferredRecipe": deferred_recipe,
                 "material": material,
                 "resources": resources,
             }
@@ -1560,12 +1693,25 @@ def _build_element(
     admitted_bone = attachment["admission"] == "ADMITTED_EXPLICIT_RUNTIME_BONE"
     particle_path = _particle_reference(occurrence)
     visible = carrier["disposition"] == "VISIBLE_EXECUTABLE"
+    deferred_animation_trail = derived["deferredRecipe"] is not None
     emitter_leaf = carrier["sourceEmitterPath"].rsplit(".", 1)[-1]
     notify_leaf = occurrence["notifyId"].rsplit("/", 1)[-1]
+    disposition_label = (
+        "portable v13"
+        if visible
+        else "animtrail required"
+        if deferred_animation_trail
+        else "fail-closed"
+    )
+    material = copy.deepcopy(derived["material"])
+    if not visible:
+        material["execution"] = {
+            "enabled": False,
+            "failClosed": True,
+        }
     return {
         "id": carrier["carrierId"],
-        "displayName": f"{notify_leaf} | {emitter_leaf} | "
-        + ("portable v13" if visible else "fail-closed"),
+        "displayName": f"{notify_leaf} | {emitter_leaf} | {disposition_label}",
         "groupId": "valtan.whirlwind.420633.active",
         "sourceNode": (
             f"{occurrence['notifyId']}|{carrier['sourceEmitterNodeId']}|"
@@ -1574,7 +1720,7 @@ def _build_element(
         "visible": visible,
         "kind": _element_kind(occurrence, carrier),
         "resources": copy.deepcopy(derived["resources"]),
-        "material": copy.deepcopy(derived["material"]),
+        "material": material,
         "actionCueAttachment": {
             "enabled": admitted_bone,
             "follow": admitted_bone,
@@ -1596,6 +1742,8 @@ def _build_element(
         "sourceRecipe": (
             copy.deepcopy(derived["portableRecipe"])
             if visible
+            else copy.deepcopy(derived["deferredRecipe"])
+            if deferred_animation_trail
             else {
                 "enabled": False,
                 "rendererShape": "",
@@ -1613,6 +1761,8 @@ def _build_element(
             "profileId": (
                 "valtan.portable-authored-v13.v1"
                 if visible
+                else DEFERRED_ANIMATION_TRAIL_PROFILE_ID
+                if deferred_animation_trail
                 else "valtan.source-evidence-only.v1"
             ),
             "status": "reconstructed" if visible else "unresolved",
@@ -1637,7 +1787,7 @@ def build_canary(
         "schema": "lostark.effect-authoring",
         "version": 13,
         "effectAssetId": binding["effectAssetId"],
-        "displayName": "Valtan Whirlwind 420633 Active | Portable Canary",
+        "displayName": EXPECTED_CANARY_DISPLAY_NAME,
         "particleSystem": {
             "uniformScaleMultiplier": 1.0,
             "yawOffsetDegrees": 0.0,
@@ -1679,6 +1829,8 @@ def validate_canary(
         or document["modelCues"] != []
     ):
         raise ContractError("v13 canary identity changed")
+    if document["displayName"] != EXPECTED_CANARY_DISPLAY_NAME:
+        raise ContractError("v13 canary lost the main-merged Korean action name")
     if not 1 <= len(document["displayName"].encode("utf-8")) <= 64:
         raise ContractError("v13 canary displayName exceeds the codec limit")
     rows = document.get("elements")
@@ -1735,20 +1887,59 @@ def validate_canary(
                 f"v13 canary carrier violates positive lifetime: {carrier_id}"
             )
         visible = derived["carrier"]["disposition"] == "VISIBLE_EXECUTABLE"
+        deferred_animation_trail = derived["deferredRecipe"] is not None
         if (
             element["visible"] is not visible
-            or bool(element["resources"]) is not visible
+            or bool(element["resources"])
+            is not (visible or deferred_animation_trail)
             or element["sourceRecipe"]["enabled"] is not visible
             or element["material"]["sourceProfile"]["enabled"] is not visible
         ):
             raise ContractError(
                 f"v13 canary execution admission differs: {carrier_id}"
             )
+        if not visible and element["material"].get("execution") != {
+            "enabled": False,
+            "failClosed": True,
+        }:
+            raise ContractError(
+                f"v13 fail-closed material admission differs: {carrier_id}"
+            )
+        if deferred_animation_trail:
+            classes = [
+                str(module.get("className") or "").casefold()
+                for module in element["sourceRecipe"]["modules"]
+            ]
+            if (
+                element["kind"] != "trail"
+                or element["visible"] is not False
+                or element["sourceRecipe"]["enabled"] is not False
+                or classes.count(ANIMATION_TRAIL_MODULE_CLASS) != 1
+                or CASCADE_RIBBON_MODULE_CLASS in classes
+            ):
+                raise ContractError(
+                    f"v13 AnimationTrail quarantine differs: {carrier_id}"
+                )
+        elif not visible and (
+            element["resources"] != []
+            or element["sourceRecipe"]["modules"] != []
+        ):
+            raise ContractError(
+                f"v13 non-Trail fail-closed carrier leaked execution data: {carrier_id}"
+            )
         presentation = element["sourcePresentation"]
         if (
             presentation.get("enabled") is not True
             or presentation.get("status")
             != ("reconstructed" if visible else "unresolved")
+            or presentation.get("profileId")
+            != (
+                "valtan.portable-authored-v13.v1"
+                if visible
+                else DEFERRED_ANIMATION_TRAIL_PROFILE_ID
+                if deferred_animation_trail
+                else "valtan.source-evidence-only.v1"
+            )
         ):
             raise ContractError(
                 f"v13 canary source presentation admission differs: {carrier_id}"

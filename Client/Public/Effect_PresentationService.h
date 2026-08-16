@@ -21,6 +21,8 @@ class CValtan;
 struct EFFECT_SPAWN_DESC final
 {
     std::string strEffectAssetId;
+	std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN>
+		pProductAdmissionToken;
 	std::weak_ptr<CCharacter> pOwner;
 	std::weak_ptr<CValtan> pBossOwner;
     std::string strAnchorSlotId = "root";

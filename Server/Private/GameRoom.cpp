@@ -138,8 +138,7 @@ namespace
 		return message.iProtocolVersion == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_World_Id(message.eWorldId) &&
 			Is_Supported_Playable_Character_Class(message.eCharacterClass) &&
-			!message.strNickName.empty() &&
-			message.strNickName.size() <= MAX_NICKNAME_BYTES;
+			Is_Valid_PlayerNickname(message.strNickName);
 	}
 
 	bool Is_NewerSequence(
@@ -724,7 +723,45 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 				maximumWireSendMicroseconds,
 				sessionMetrics.iMaximumFrameSendMicroseconds);
 		}
-		std::cout << "[RoomPerf] World=" << static_cast<unsigned>(m_eWorldId)
+		const bool hasNewFailure =
+			metrics.iDrainLimitedTickCount >
+				m_LastRoomPerfLogSample.iDrainLimitedTickCount ||
+			metrics.iDroppedBestEffortCommandCount >
+				m_LastRoomPerfLogSample.iDroppedBestEffortCommandCount ||
+			metrics.iRejectedReliableCommandCount >
+				m_LastRoomPerfLogSample.iRejectedReliableCommandCount ||
+			metrics.iRejectedCleanupCommandCount >
+				m_LastRoomPerfLogSample.iRejectedCleanupCommandCount ||
+			metrics.iSnapshotEncodeFailureCount >
+				m_LastRoomPerfLogSample.iSnapshotEncodeFailureCount ||
+			metrics.iSnapshotEnqueueFailureCount >
+				m_LastRoomPerfLogSample.iSnapshotEnqueueFailureCount ||
+			snapshotDroppedCount > m_iLastRoomPerfSnapshotDroppedCount ||
+			reliableRejectedCount > m_iLastRoomPerfReliableRejectedCount ||
+			sendFailureCount > m_iLastRoomPerfWireSendFailureCount;
+		const bool hasCurrentPressure =
+			metrics.iLastTickMicroseconds >= 33333u ||
+			(metrics.iMaximumTickMicroseconds >= 33333u &&
+				metrics.iMaximumTickMicroseconds >
+					m_LastRoomPerfLogSample.iMaximumTickMicroseconds) ||
+			0u != metrics.iLastRemainingCommandCount ||
+			maximumCurrentOutboundFrames >= 64u ||
+			(maximumOutboundFrameHighWatermark >= 64u &&
+				maximumOutboundFrameHighWatermark >
+					m_iLastRoomPerfOutboundHighWatermark);
+		const bool isHeartbeat = 0u == (m_iServerTick % 1800u);
+		m_LastRoomPerfLogSample = metrics;
+		m_iLastRoomPerfSnapshotDroppedCount = snapshotDroppedCount;
+		m_iLastRoomPerfReliableRejectedCount = reliableRejectedCount;
+		m_iLastRoomPerfWireSendFailureCount = sendFailureCount;
+		m_iLastRoomPerfOutboundHighWatermark =
+			maximumOutboundFrameHighWatermark;
+		if (!hasNewFailure && !hasCurrentPressure && !isHeartbeat)
+			return;
+
+		std::cout << "[RoomPerf] Kind="
+			<< (hasNewFailure || hasCurrentPressure ? "anomaly" : "heartbeat")
+			<< " World=" << static_cast<unsigned>(m_eWorldId)
 			<< " Tick=" << m_iServerTick
 			<< " TickUs=" << metrics.iLastTickMicroseconds
 			<< " TickMaxUs=" << metrics.iMaximumTickMicroseconds

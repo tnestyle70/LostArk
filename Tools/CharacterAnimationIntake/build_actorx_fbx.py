@@ -103,6 +103,21 @@ def clear_scene() -> None:
     bpy.ops.object.delete(use_global=False)
 
 
+def maximum_bind_pose_matrix_error(armature) -> float:
+    """Return the largest POSE-vs-rest matrix element after Action detach."""
+    maximum = 0.0
+    for pose_bone in armature.pose.bones:
+        rest = pose_bone.bone.matrix_local
+        evaluated = pose_bone.matrix
+        for row in range(4):
+            for column in range(4):
+                maximum = max(
+                    maximum,
+                    abs(float(evaluated[row][column] - rest[row][column])),
+                )
+    return maximum
+
+
 def main() -> None:
     args = parse_args()
     psk_path = args.psk.resolve(strict=True)
@@ -165,7 +180,26 @@ def main() -> None:
         action.name = runtime_name
 
     animation_data = armature.animation_data_create()
-    animation_data.action = imported_actions[0]
+
+    # The FBX node transform is the WModel skeleton's rest transform.  Leaving
+    # an imported Action active here makes Blender export that Action's current
+    # frame as the FBX node transform while Assimp still writes the PSK-derived
+    # inverse-bind matrices.  The two bases then disagree before runtime skinning
+    # even starts.  Keep every Action in bpy.data for bake_anim_use_all_actions,
+    # but detach the live Action and let the depsgraph restore the PSK bind pose
+    # before the FBX exporter snapshots node transforms.  The armature must stay
+    # in POSE mode: REST mode would also force every baked Action to the bind pose
+    # and silently erase the animation.
+    armature.data.pose_position = "POSE"
+    animation_data.action = None
+    bpy.context.scene.frame_set(0)
+    bpy.context.view_layer.update()
+    bind_pose_matrix_error = maximum_bind_pose_matrix_error(armature)
+    if bind_pose_matrix_error > 1e-5:
+        raise RuntimeError(
+            "Detached ActorX armature did not return to its PSK bind pose: "
+            f"maximumMatrixError={bind_pose_matrix_error:.9g}"
+        )
 
     bpy.ops.object.select_all(action="DESELECT")
     armature.select_set(True)
@@ -227,6 +261,11 @@ def main() -> None:
             "pskBoneCount": len(psk_bones),
             "psaBoneCount": len(psa_bones),
             "missingPsaBones": missing_from_mesh,
+        },
+        "exportBindPose": {
+            "activeActionDetached": animation_data.action is None,
+            "armaturePosePosition": armature.data.pose_position,
+            "maximumMatrixError": bind_pose_matrix_error,
         },
         "animations": {
             "sequenceCount": len(sequences),

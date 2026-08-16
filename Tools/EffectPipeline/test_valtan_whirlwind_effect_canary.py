@@ -63,6 +63,14 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
             builder.pretty_json_bytes(actual),
             builder.pretty_json_bytes(self.document),
         )
+        self.assertEqual(
+            actual["displayName"],
+            "레이드 발탄_휠윈드 | 420633 Active | Portable Canary",
+        )
+        self.assertEqual(
+            builder.EXPECTED_SOURCE_ACTION_DISPLAY_NAME,
+            "레이드 발탄_휠윈드",
+        )
 
     def test_exact_stage_002_occurrences_and_fail_closed_channels_are_pinned(self) -> None:
         self.assertEqual(
@@ -167,10 +175,150 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
             row for row in self.document["elements"] if not row["visible"]
         ]
         self.assertEqual(len(hidden), 6)
-        self.assertTrue(all(row["resources"] == [] for row in hidden))
         self.assertTrue(
             all(row["sourceRecipe"]["enabled"] is False for row in hidden)
         )
+        self.assertTrue(
+            all(
+                row["material"].get("execution")
+                == {"enabled": False, "failClosed": True}
+                for row in hidden
+            )
+        )
+        self.assertTrue(
+            all(
+                row["detail"]["screenPost"]["enabled"] is False
+                for row in self.document["elements"]
+            )
+        )
+        self.assertNotIn(
+            builder.CASCADE_RIBBON_MODULE_CLASS,
+            {
+                module["className"].casefold()
+                for row in self.document["elements"]
+                for module in row["sourceRecipe"]["modules"]
+            },
+        )
+        non_trail = [
+            row
+            for row in hidden
+            if row["sourcePresentation"]["sourceEventId"]
+            != builder.ANIMATION_TRAIL_NOTIFY_ID
+        ]
+        self.assertEqual(len(non_trail), 3)
+        self.assertTrue(all(row["resources"] == [] for row in non_trail))
+        self.assertTrue(
+            all(row["sourceRecipe"]["modules"] == [] for row in non_trail)
+        )
+
+    def test_animation_trail_is_data_preserved_but_execution_quarantined(self) -> None:
+        deferred = [
+            row
+            for row in self.document["elements"]
+            if row["sourcePresentation"]["sourceEventId"]
+            == builder.ANIMATION_TRAIL_NOTIFY_ID
+        ]
+        mapped = {
+            row["carrierId"]: row
+            for row in self.binding["sourceOccurrences"][0]["admission"][
+                "carriers"
+            ]
+        }
+        self.assertEqual(len(deferred), 3)
+        self.assertEqual(
+            {
+                row["id"]: [
+                    (resource["slotId"], resource["assetId"])
+                    for resource in row["resources"]
+                ]
+                for row in deferred
+            },
+            {
+                "valtan.420633.notify004.emitter5259": [
+                    (
+                        "base",
+                        "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_006.dds",
+                    ),
+                    (
+                        "noise",
+                        "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_067.dds",
+                    ),
+                    (
+                        "mask",
+                        "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_023.dds",
+                    ),
+                ],
+                "valtan.420633.notify004.emitter5260": [
+                    (
+                        "mask",
+                        "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_003.dds",
+                    ),
+                    (
+                        "base",
+                        "Effect/Valtan/Textures/FX_TEX_03/fx_a_trail_003_ycl.dds",
+                    ),
+                    (
+                        "noise",
+                        "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_009.dds",
+                    ),
+                ],
+                "valtan.420633.notify004.emitter5258": [
+                    (
+                        "noise",
+                        "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_009.dds",
+                    ),
+                    (
+                        "mask",
+                        "Effect/Valtan/Textures/FX_TEX_00/fx_a_trail_011.dds",
+                    ),
+                    (
+                        "dissolve",
+                        "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+                    ),
+                    (
+                        "base",
+                        "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+                    ),
+                ],
+            },
+        )
+        for row in deferred:
+            recipe = row["sourceRecipe"]
+            classes = [
+                module["className"].casefold()
+                for module in recipe["modules"]
+            ]
+            expected = mapped[row["id"]]["sourceRecipe"]
+            self.assertFalse(row["visible"])
+            self.assertEqual(row["kind"], "trail")
+            self.assertFalse(recipe["enabled"])
+            self.assertEqual(
+                row["sourcePresentation"]["profileId"],
+                builder.DEFERRED_ANIMATION_TRAIL_PROFILE_ID,
+            )
+            self.assertEqual(
+                classes.count(builder.ANIMATION_TRAIL_MODULE_CLASS), 1
+            )
+            self.assertNotIn(builder.CASCADE_RIBBON_MODULE_CLASS, classes)
+            self.assertEqual(len(recipe["modules"]), expected["moduleCount"])
+            self.assertEqual(
+                sum(
+                    len(module["distributions"])
+                    for module in recipe["modules"]
+                ),
+                expected["distributionCount"],
+            )
+            self.assertFalse(row["material"]["sourceProfile"]["enabled"])
+            self.assertTrue(
+                all(
+                    (
+                        REPOSITORY_ROOT
+                        / builder.RUNTIME_RESOURCE_ROOT
+                        / resource["assetId"]
+                    ).is_file()
+                    for resource in row["resources"]
+                )
+            )
 
     def test_mapping_validator_rejects_count_or_fail_closed_resource_leaks(self) -> None:
         mutated = copy.deepcopy(self.mapping)

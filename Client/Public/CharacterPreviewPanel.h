@@ -4,10 +4,15 @@
 #include "Engine_Defines.h"
 
 #include <array>
+#include <unordered_set>
+#include <utility>
+
+NS_BEGIN(Engine)
+class CGameObject;
+NS_END
 
 NS_BEGIN(Client)
 
-class CPart_Body;
 struct ANIMATION_PREVIEW_ASSET;
 
 enum class CHARACTER_PREVIEW_LOCK_OWNER : uint8_t
@@ -31,7 +36,15 @@ enum class CHARACTER_PREVIEW_LOCK_OWNER : uint8_t
 class CCharacterPreviewPanel final
 {
 public:
+	CCharacterPreviewPanel(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext)
+		: m_pDevice{ std::move(pDevice) },
+		m_pContext{ std::move(pContext) }
+	{
+	}
 	~CCharacterPreviewPanel();
+	void On_LevelChanged();
 
 	// Draws the target selector. `isLocked` disables switching while the caller
 	// holds unsaved work, so a dirty document cannot lose its target.
@@ -56,7 +69,7 @@ public:
 	void Release(bool_t removeFromLayer);
 
 	bool_t Is_PreviewActive() const {
-		return !m_pPreviewBody.expired();
+		return !m_pPreviewObject.expired();
 	}
 
 	const string& Get_Status() const {
@@ -67,12 +80,20 @@ private:
 	bool_t Select_Asset(const ANIMATION_PREVIEW_ASSET& asset);
 
 private:
-	weak_ptr<CPart_Body> m_pPreviewBody;
+	ComPtr<ID3D11Device> m_pDevice;
+	ComPtr<ID3D11DeviceContext> m_pContext;
+	/* Playable targets hold a complete CCharacter, Valtan holds its complete
+	   product CValtan composition, and preview-only props hold CPart_Body. */
+	weak_ptr<Engine::CGameObject> m_pPreviewObject;
 	const ANIMATION_PREVIEW_ASSET* m_pPreviewAsset = nullptr;
 	uint32_t m_iPreviewLevelIndex = UINT32_MAX;
-	// The staged body is parented to this matrix, so it must outlive the body
-	// and never move once the asset is selected.
-	float4x4_t m_PreviewParentMatrix{};
+	/* Generic CPart_Body previews retain a raw parent pointer. The inactive slot
+	   is staged first and becomes active only after the new object validates, so
+	   a failed selection cannot move the previously committed body/root apart. */
+	array<float4x4_t, 2u> m_PreviewParentMatrices{};
+	size_t m_iPreviewParentMatrixIndex = 0u;
+	uint32_t m_iPreparedGenericPreviewLevelIndex = UINT32_MAX;
+	std::unordered_set<string> m_PreparedGenericPreviewAssetIds;
 	string m_Status;
 	array<bool_t, ETOI(CHARACTER_PREVIEW_LOCK_OWNER::END)> m_SessionLocks{};
 	array<string, ETOI(CHARACTER_PREVIEW_LOCK_OWNER::END)> m_SessionLockReasons{};

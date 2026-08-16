@@ -222,6 +222,21 @@ HRESULT CValtan::Render()
 	return S_OK;
 }
 
+bool_t CValtan::Try_Get_PresentationRootMatrix(float4x4_t* pOut) const
+{
+	if (nullptr == pOut || nullptr == m_pBodyVisualRootCom ||
+		nullptr == m_pTransformCom)
+	{
+		return false;
+	}
+
+	XMStoreFloat4x4(
+		pOut,
+		XMLoadFloat4x4(m_pBodyVisualRootCom->Get_WorldMatrixPtr()) *
+		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));
+	return true;
+}
+
 HRESULT CValtan::Ready_PartObjects()
 {
 	CBody_Valtan::BODY_VALTAN_DESC bodyDesc{};
@@ -233,24 +248,24 @@ HRESULT CValtan::Ready_PartObjects()
 	if (FAILED(__super::Add_PartObject(
 		m_iPrototypeLevelIndex,
 		TEXT("Prototype_GameObject_Body_Valtan"),
-		TEXT("Part_Body"),
+		BODY_PART_TAG,
 		&bodyDesc)))
 		return E_FAIL;
 
 	m_pBodyModelCom =
 		dynamic_pointer_cast<CModel>(
 			__super::Get_Component(
-				TEXT("Part_Body"),
+				BODY_PART_TAG,
 				TEXT("Com_Model")));
 
-	const shared_ptr<CTransform> pBodyVisualRoot =
+	m_pBodyVisualRootCom =
 		dynamic_pointer_cast<CTransform>(
 			__super::Get_Component(
-				TEXT("Part_Body"),
+				BODY_PART_TAG,
 				g_strTransformComTag));
 
 	if (nullptr == m_pBodyModelCom ||
-		nullptr == pBodyVisualRoot)
+		nullptr == m_pBodyVisualRootCom)
 		return E_FAIL;
 
 	CPart_Equipment::PART_EQUIPMENT_DESC weaponDesc{};
@@ -267,16 +282,16 @@ HRESULT CValtan::Ready_PartObjects()
 		m_pBodyModelCom;
 
 	weaponDesc.pSocketBoneName =
-		"b_wp_r_01";
+		WEAPON_SOCKET_BONE;
 
 	weaponDesc.pSocketRootMatrix =
-		pBodyVisualRoot->Get_WorldMatrixPtr();
+		m_pBodyVisualRootCom->Get_WorldMatrixPtr();
 	weaponDesc.strMaterialProfileId = "material.valtan.monster-base.v1";
 
 	return __super::Add_PartObject(
 		m_iPrototypeLevelIndex,
 		TEXT("Prototype_GameObject_Part_Equipment"),
-		TEXT("Part_Weapon_R"),
+		WEAPON_PART_TAG,
 		&weaponDesc);
 }
 

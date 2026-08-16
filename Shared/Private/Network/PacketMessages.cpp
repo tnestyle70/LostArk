@@ -11,6 +11,17 @@
 //writer가 일부만 기록한 뒤 실패하지 않도록 snapshot의 모든 state를 먼저 검증한다.
 namespace
 {
+	bool Is_Utf8Continuation(const std::uint8_t value) noexcept
+	{
+		return 0x80u == (value & 0xC0u);
+	}
+
+	bool Is_AsciiWhitespace(const char value) noexcept
+	{
+		return ' ' == value || '\t' == value || '\n' == value ||
+			'\r' == value || '\f' == value || '\v' == value;
+	}
+
     //유효한 애니메이션인지 검증
     bool Is_Valid_Locomotion(
         LostArk::Shared::PLAYER_LOCOMOTION_STATE state)
@@ -424,6 +435,90 @@ namespace
 	}
 }
 
+bool LostArk::Shared::Is_Valid_PlayerNickname(
+	const std::string_view nickname) noexcept
+{
+	if (nickname.empty() || nickname.size() > MAX_NICKNAME_BYTES ||
+		Is_AsciiWhitespace(nickname.front()) ||
+		Is_AsciiWhitespace(nickname.back()))
+	{
+		return false;
+	}
+
+	const auto* bytes = reinterpret_cast<const std::uint8_t*>(
+		nickname.data());
+	std::size_t offset = 0u;
+	while (offset < nickname.size())
+	{
+		const std::uint8_t first = bytes[offset];
+		std::uint32_t codePoint = 0u;
+		std::size_t length = 0u;
+
+		if (first <= 0x7Fu)
+		{
+			codePoint = first;
+			length = 1u;
+		}
+		else if (first >= 0xC2u && first <= 0xDFu)
+		{
+			if (offset + 1u >= nickname.size() ||
+				!Is_Utf8Continuation(bytes[offset + 1u]))
+			{
+				return false;
+			}
+			codePoint = ((first & 0x1Fu) << 6u) |
+				(bytes[offset + 1u] & 0x3Fu);
+			length = 2u;
+		}
+		else if (first >= 0xE0u && first <= 0xEFu)
+		{
+			if (offset + 2u >= nickname.size() ||
+				!Is_Utf8Continuation(bytes[offset + 1u]) ||
+				!Is_Utf8Continuation(bytes[offset + 2u]) ||
+				(0xE0u == first && bytes[offset + 1u] < 0xA0u) ||
+				(0xEDu == first && bytes[offset + 1u] > 0x9Fu))
+			{
+				return false;
+			}
+			codePoint = ((first & 0x0Fu) << 12u) |
+				((bytes[offset + 1u] & 0x3Fu) << 6u) |
+				(bytes[offset + 2u] & 0x3Fu);
+			length = 3u;
+		}
+		else if (first >= 0xF0u && first <= 0xF4u)
+		{
+			if (offset + 3u >= nickname.size() ||
+				!Is_Utf8Continuation(bytes[offset + 1u]) ||
+				!Is_Utf8Continuation(bytes[offset + 2u]) ||
+				!Is_Utf8Continuation(bytes[offset + 3u]) ||
+				(0xF0u == first && bytes[offset + 1u] < 0x90u) ||
+				(0xF4u == first && bytes[offset + 1u] > 0x8Fu))
+			{
+				return false;
+			}
+			codePoint = ((first & 0x07u) << 18u) |
+				((bytes[offset + 1u] & 0x3Fu) << 12u) |
+				((bytes[offset + 2u] & 0x3Fu) << 6u) |
+				(bytes[offset + 3u] & 0x3Fu);
+			length = 4u;
+		}
+		else
+		{
+			return false;
+		}
+
+		if (0u == codePoint || codePoint <= 0x1Fu ||
+			(codePoint >= 0x7Fu && codePoint <= 0x9Fu) ||
+			(codePoint >= 0xD800u && codePoint <= 0xDFFFu) ||
+			codePoint > 0x10FFFFu)
+		{
+			return false;
+		}
+		offset += length;
+	}
+	return true;
+}
+
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD& message)
 {
 	if (NETWORK_PROTOCOL_VERSION != message.iProtocolVersion ||
@@ -441,12 +536,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_ENTER_WORLD
         CHARACTER_CLASS_ID::END))
         return false;
 
-    //message의 nickname 검증
-    if (message.strNickName.empty())
-        return false;
-
-    if (message.strNickName.size() >
-        MAX_NICKNAME_BYTES)
+	if (!Is_Valid_PlayerNickname(message.strNickName))
         return false;
 
 	writer.Write_U16(message.iProtocolVersion);
@@ -490,7 +580,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, C2S_ENTER_WORLD& messa
         MAX_NICKNAME_BYTES))
         return false;
 
-    if (nickName.empty())
+	if (!Is_Valid_PlayerNickname(nickName))
         return false;
 
 	C2S_ENTER_WORLD decoded{};
@@ -637,9 +727,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer,
         static_cast<std::uint8_t>(CHARACTER_CLASS_ID::END))
         return false;
 
-    //Nickname이 비어있는지 검사
-    if (spawned.strNickName.empty() ||
-        spawned.strNickName.length() > MAX_NICKNAME_BYTES)
+	if (!Is_Valid_PlayerNickname(spawned.strNickName))
         return false;
 
     //position X/Y/Z가 finite인지 검사
@@ -732,7 +820,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader,
         return false;
     }
 
-    if (nickName.empty())
+	if (!Is_Valid_PlayerNickname(nickName))
         return false;
 
     if (!std::isfinite(positionX) ||

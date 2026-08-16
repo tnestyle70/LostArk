@@ -632,6 +632,19 @@ bool CNetworkManager::Try_Consume_ReplicationEvent(Client::CLIENT_REPLICATION_EV
 bool CNetworkManager::Enqueue_ReplicationEvent(
 	Client::CLIENT_REPLICATION_EVENT&& event)
 {
+	/* Loading levels do not own a CClientReplication consumer yet, while the
+	   admitted Server room continues to publish WORLD_SNAPSHOT at 30 Hz. Keep
+	   only the newest adjacent snapshot: spawn/despawn/destruction events stay
+	   as ordering barriers, but a cold level load can no longer fill the queue
+	   and disconnect with WSAENOBUFS before activation. */
+	if (Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT == event.eType &&
+		!m_ReplicationEvents.empty() &&
+		Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT ==
+			m_ReplicationEvents.back().eType)
+	{
+		m_ReplicationEvents.back() = std::move(event);
+		return true;
+	}
 	if (m_ReplicationEvents.size() >= MAX_REPLICATION_EVENT_QUEUE)
 	{
 		Fail_Protocol(WSAENOBUFS);
@@ -819,6 +832,19 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 				std::scoped_lock lock{
 				   m_InboundMutex
 				};
+				/* Level activation can synchronously prepare GPU resources before the
+				   main thread resumes Update().  Coalesce adjacent snapshots at the
+				   worker boundary as well as the parsed-event boundary so that cold
+				   loading cannot exhaust the raw frame queue.  Any lifecycle or
+				   destruction frame remains an ordering barrier. */
+				if (PACKET_TYPE::S2C_WORLD_SNAPSHOT == frame.ePacketType &&
+					!m_InboundFrames.empty() &&
+					PACKET_TYPE::S2C_WORLD_SNAPSHOT ==
+						m_InboundFrames.back().ePacketType)
+				{
+					m_InboundFrames.back() = std::move(frame);
+					continue;
+				}
 				if (m_InboundFrames.size() >= MAX_INBOUND_FRAME_QUEUE)
 				{
 					m_iLastErrorCode.store(WSAENOBUFS);

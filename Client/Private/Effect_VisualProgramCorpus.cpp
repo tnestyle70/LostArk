@@ -2118,6 +2118,8 @@ bool_t Client::CEffectVisualProgramCorpusCodec::Validate(
 				return false;
 			}
 			PreviousOccurrence = Row.Selector.strOccurrenceId;
+			if (Row.eFamily == EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON)
+				++iCascadeRibbonRows;
 			if (Row.eDisposition == EFFECT_VISUAL_PROGRAM_DISPOSITION::FAIL_CLOSED)
 			{
 				++iFailClosedRows;
@@ -2136,8 +2138,6 @@ bool_t Client::CEffectVisualProgramCorpusCodec::Validate(
 				return false;
 			}
 			++iProgramAdmitted;
-			if (Row.eFamily == EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON)
-				++iCascadeRibbonRows;
 			if (!SeenTargets.emplace(Row.TargetIdentity->strTargetElementId).second)
 			{
 				strOutError = "Visual-program admitted target is duplicate.";

@@ -6245,7 +6245,7 @@ bool_t Client::CEffectReconstructedSourceRuntimeFactory::Build_Document(
 					if (!bExactIdentity || !bExactResources || !bExactFields ||
 						!bExactDynamic || !Is_EffectFiniteProfileResourceContractSatisfied(
 							"effect.ue3.missiletrail-01.v1", true, true, true,
-							true, true))
+							true, true, true))
 					{
 						return Fail("the exact Artist missile-trail finite profile contract is invalid.");
 					}

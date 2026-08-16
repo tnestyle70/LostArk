@@ -11,11 +11,11 @@
     "innerSnapshotFollow": false
   },
   "source": {
-    "playerSkills": "Data/Balance/PlayerSkills.json",
-    "playerSkillsSha256": "973ee61450aa3af045108584fc984aa73d86ede5dd537b88792075bf0976a835",
-    "skillBindings": "Data/Animation/Authored/Artist/Artist.skillbindings.json",
-    "skillBindingsSha256": "725b65938b0259c895ac9c6821f000f74b7f7aec85a2d77e5b4efd22b7103f8a",
-    "animationNotify": "Data/Animation/Reference/Artist/Artist.animnotify",
+    "playerSkills": "C:/Users/user/Desktop/LostArk/Data/Balance/PlayerSkills.json",
+    "playerSkillsSha256": "5a852016791b7b6a170fba45aa3bb266e95114fe588db376574370be13647503",
+    "skillBindings": "C:/Users/user/Desktop/LostArk/Data/Animation/Authored/Artist/Artist.skillbindings.json",
+    "skillBindingsSha256": "bf7da092b893a40db8c4a066089313e3f2d7291d12cb68c005f6ddbfa26a0378",
+    "animationNotify": "C:/Users/user/Desktop/LostArk/Data/Animation/Reference/Artist/Artist.animnotify",
     "animationNotifySha256": "b8730b0602e85e73da7fd0856208c04d2805694d0368f46c3ac415046f55c6de"
   },
   "skills": [
@@ -1550,6 +1550,306 @@
       ]
     },
     {
+      "productSkillId": 31490,
+      "inputSlot": "D",
+      "skillKind": "ACTIVE",
+      "sourceSkillIds": [
+        31490
+      ],
+      "stages": [
+        {
+          "stageId": "skill.31490.stage.0",
+          "stageIndex": 0,
+          "sourceSkillIds": [
+            31490
+          ],
+          "timelineOffsetSeconds": 0.0,
+          "durationSeconds": 1.9667,
+          "clips": [
+            {
+              "clip": "sdm_sk_cloudtiger",
+              "stageClipIndex": 0,
+              "sequenceIndex": 0,
+              "sourceSkillId": 31490,
+              "sourceLine": 261,
+              "timelineOffsetSeconds": 0.0,
+              "lengthSeconds": 1.9667
+            }
+          ],
+          "sourceEventIds": [
+            "source-event-001",
+            "source-event-002",
+            "source-event-003",
+            "source-event-004",
+            "source-event-005",
+            "source-event-006",
+            "source-event-007",
+            "source-event-008",
+            "source-event-009",
+            "source-event-010",
+            "source-event-011",
+            "source-event-012",
+            "source-event-013",
+            "source-event-014",
+            "source-event-015"
+          ],
+          "sourceArtifacts": [
+            {
+              "sourceReceipt": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/ProductReceipts/skill.31490.product-source-receipt.json",
+                "sha256": "11a5d1e67945ae2eee63335119dfe64cffc7e7f7004119bd13715357e3c56e92"
+              },
+              "generatedSourceReceipt": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/skill.31490.source-receipt.json",
+                "sha256": "9e5dd887493022db8b2b072c612e2f120f8e4bff53261b5a1abc5c4e2c614a68"
+              },
+              "normalizedGraph": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Graphs/skill.31490.normalized-effect-graph.json",
+                "sha256": "18857cfe47596be470a0c1e7422bfc861599c5d127b1d647340e7790ebb9bc18"
+              },
+              "externalModuleClosure": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Modules/skill.31490.external-module-closure.json",
+                "sha256": "70198bc0b032ee27e2ade98eccdb6d9e2ce3ad752180b9163f97e3dbff062d7b"
+              },
+              "importedDocument": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Converted/effect.artist.skill.31490.imported.effect.json",
+                "sha256": "b080f8222ff0e14edd8208d0f59376dac303f4e2e2192368818d8f402ceb7a85",
+                "effectAssetId": "effect.artist.skill.31490.imported"
+              },
+              "conversionReceipt": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Converted/skill.31490.element-conversion-receipt.json",
+                "sha256": "d1481c15c2ff66599d8ce8e355c25b10cbbd77116a2fad3e8111edb2507c8122"
+              },
+              "artifactOrigin": "CURRENT_COMBAT_GENERATED_SOURCE_TRUTH",
+              "sourceSkillId": 31490
+            }
+          ],
+          "status": "AVAILABLE_WITH_BLOCKERS",
+          "blockers": [
+            {
+              "code": "UNRESOLVED_SOURCE_MATERIAL",
+              "count": 1,
+              "sourceMaterialPaths": [
+                "fx_m_mi_04.fx_mi.fx_d_de_master_01_47_tr"
+              ]
+            },
+            {
+              "code": "UNRESOLVED_RUNTIME_RESOURCE",
+              "count": 3,
+              "sourceObjectPaths": [
+                "fx_tex_05.fx_k_auraline_14",
+                "fx_tex_05.fx_m_noise_006_n",
+                "fx_tex_05.fx_m_spatter_001_xyclamp"
+              ]
+            },
+            {
+              "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+              "count": 16
+            },
+            {
+              "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+              "count": 72
+            }
+          ]
+        }
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "fx_m_mi_04.fx_mi.fx_d_de_master_01_47_tr"
+          ]
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 3,
+          "sourceObjectPaths": [
+            "fx_tex_05.fx_k_auraline_14",
+            "fx_tex_05.fx_m_noise_006_n",
+            "fx_tex_05.fx_m_spatter_001_xyclamp"
+          ]
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 16
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 72
+        }
+      ]
+    },
+    {
+      "productSkillId": 31950,
+      "inputSlot": "T",
+      "skillKind": "ACTIVE",
+      "sourceSkillIds": [
+        31950
+      ],
+      "stages": [
+        {
+          "stageId": "skill.31950.stage.0",
+          "stageIndex": 0,
+          "sourceSkillIds": [
+            31950
+          ],
+          "timelineOffsetSeconds": 0.0,
+          "durationSeconds": 2.0,
+          "clips": [
+            {
+              "clip": "sdm_sk_dragonrising_01",
+              "stageClipIndex": 0,
+              "sequenceIndex": 0,
+              "sourceSkillId": 31950,
+              "sourceLine": 395,
+              "timelineOffsetSeconds": 0.0,
+              "lengthSeconds": 2.0
+            }
+          ],
+          "sourceEventIds": [
+            "source-event-001",
+            "source-event-002",
+            "source-event-003",
+            "source-event-004",
+            "source-event-005",
+            "source-event-006",
+            "source-event-007",
+            "source-event-008",
+            "source-event-009",
+            "source-event-010",
+            "source-event-011"
+          ],
+          "sourceArtifacts": [
+            {
+              "sourceReceipt": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/ProductReceipts/skill.31950.product-source-receipt.json",
+                "sha256": "b5b99be8bd8d36cfa150105d4ebd5b27a138b0126fe5a450e150a3026c854cff"
+              },
+              "generatedSourceReceipt": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/skill.31950.source-receipt.json",
+                "sha256": "31230eb82b5a1242628d53af327da0eb3bd42cbfeea63a217ca865cd621534ee"
+              },
+              "normalizedGraph": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Graphs/skill.31950.normalized-effect-graph.json",
+                "sha256": "57b763ec0eb1af6af02c600bbe5223ee1e9e05e54cd2319233453efcbb41197a"
+              },
+              "externalModuleClosure": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Modules/skill.31950.external-module-closure.json",
+                "sha256": "6d7b86b403126bab18a83a401bb5b1bdcea324e87cce49558db144d6579039c2"
+              },
+              "importedDocument": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Converted/effect.artist.skill.31950.imported.effect.json",
+                "sha256": "41d536bfc5b22d15aa027c6d4a4b66809b1b0237136b03749b67e1f70b6d13b7",
+                "effectAssetId": "effect.artist.skill.31950.imported"
+              },
+              "conversionReceipt": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Converted/skill.31950.element-conversion-receipt.json",
+                "sha256": "24d17e713b9fab9b24cd94c2a87c0a17554d8e02131ed1bb58fd01dc28d4c69b"
+              },
+              "artifactOrigin": "CURRENT_COMBAT_GENERATED_SOURCE_TRUTH",
+              "sourceSkillId": 31950
+            }
+          ],
+          "status": "AVAILABLE_WITH_BLOCKERS",
+          "blockers": [
+            {
+              "code": "UNRESOLVED_SOURCE_MATERIAL",
+              "count": 2,
+              "sourceMaterialPaths": [
+                "enginematerials.defaultparticle",
+                "fx_m_mi_04.fx_o_de_fi_07_2_tr"
+              ]
+            },
+            {
+              "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+              "count": 1,
+              "statusCounts": {
+                "RESOLVED_UNIQUE_PATH": 1
+              }
+            },
+            {
+              "code": "UNRESOLVED_RUNTIME_RESOURCE",
+              "count": 11,
+              "sourceObjectPaths": [
+                "fx_sm_00.fm_c_square_001",
+                "fx_sm_00.fm_d_helix_031",
+                "fx_sm_00.fm_j_helixline_1",
+                "fx_tex_00.fx_a_hit_005",
+                "fx_tex_00.fx_a_trail_004",
+                "fx_tex_00.fx_a_trail_005_cl",
+                "fx_tex_03.fx_e_ring_001_cl",
+                "fx_tex_03.fx_e_ring_003",
+                "fx_tex_04.fx_j_flare_02_cl",
+                "fx_tex_05.fx_m_spatter_001_xyclamp",
+                "fx_tex_05.fx_m_water_01"
+              ]
+            },
+            {
+              "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+              "count": 5
+            },
+            {
+              "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+              "count": 11
+            },
+            {
+              "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+              "count": 9
+            }
+          ]
+        }
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 2,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle",
+            "fx_m_mi_04.fx_o_de_fi_07_2_tr"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 1,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 1
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 11,
+          "sourceObjectPaths": [
+            "fx_sm_00.fm_c_square_001",
+            "fx_sm_00.fm_d_helix_031",
+            "fx_sm_00.fm_j_helixline_1",
+            "fx_tex_00.fx_a_hit_005",
+            "fx_tex_00.fx_a_trail_004",
+            "fx_tex_00.fx_a_trail_005_cl",
+            "fx_tex_03.fx_e_ring_001_cl",
+            "fx_tex_03.fx_e_ring_003",
+            "fx_tex_04.fx_j_flare_02_cl",
+            "fx_tex_05.fx_m_spatter_001_xyclamp",
+            "fx_tex_05.fx_m_water_01"
+          ]
+        },
+        {
+          "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+          "count": 5
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 11
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 9
+        }
+      ]
+    },
+    {
       "productSkillId": 31910,
       "inputSlot": "V",
       "skillKind": "ACTIVE",
@@ -2022,19 +2322,193 @@
           "count": 77
         }
       ]
+    },
+    {
+      "productSkillId": 31050,
+      "inputSlot": "Z",
+      "skillKind": "ACTIVE",
+      "sourceSkillIds": [
+        31050
+      ],
+      "stages": [
+        {
+          "stageId": "skill.31050.stage.0",
+          "stageIndex": 0,
+          "sourceSkillIds": [
+            31050
+          ],
+          "timelineOffsetSeconds": 0.0,
+          "durationSeconds": 1.5,
+          "clips": [
+            {
+              "clip": "sdm_sk_harmonyofyin_01",
+              "stageClipIndex": 0,
+              "sequenceIndex": 0,
+              "sourceSkillId": 31050,
+              "sourceLine": 526,
+              "timelineOffsetSeconds": 0.0,
+              "lengthSeconds": 0.5
+            },
+            {
+              "clip": "sdm_sk_harmonyofyin_02",
+              "stageClipIndex": 1,
+              "sequenceIndex": 1,
+              "sourceSkillId": 31050,
+              "sourceLine": 536,
+              "timelineOffsetSeconds": 0.5,
+              "lengthSeconds": 1.0
+            }
+          ],
+          "sourceEventIds": [
+            "source-event-001",
+            "source-event-002",
+            "source-event-003",
+            "source-event-004",
+            "source-event-005",
+            "source-event-006",
+            "source-event-007",
+            "source-event-008",
+            "source-event-009",
+            "source-event-010",
+            "source-event-011",
+            "source-event-012",
+            "source-event-013",
+            "source-event-014",
+            "source-event-015",
+            "source-event-016",
+            "source-event-017",
+            "source-event-018",
+            "source-event-019",
+            "source-event-020",
+            "source-event-021",
+            "source-event-022",
+            "source-event-023",
+            "source-event-024",
+            "source-event-025",
+            "source-event-026"
+          ],
+          "sourceArtifacts": [
+            {
+              "sourceReceipt": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/ProductReceipts/skill.31050.product-source-receipt.json",
+                "sha256": "6045788c730dd739db64eb7d3e10725def4688657ac17fdf0481ac2d808c8dda"
+              },
+              "generatedSourceReceipt": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/skill.31050.source-receipt.json",
+                "sha256": "ba7d4b50e21d1b761dc411075e5d20f1f65b457de7630e05941791da78fb4ca7"
+              },
+              "normalizedGraph": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Graphs/skill.31050.normalized-effect-graph.json",
+                "sha256": "37eeb1cc5e21834e273636cfbf8c056d2be3c2a8362c1d4cd1bbe52a2dbb075c"
+              },
+              "externalModuleClosure": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Modules/skill.31050.external-module-closure.json",
+                "sha256": "a57a7187bc8c04177c2614fed419c5017ea43b108f3c1136931a9ce1f7577482"
+              },
+              "importedDocument": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Converted/effect.artist.skill.31050.imported.effect.json",
+                "sha256": "300fa2ad7b4c5a8e76c79ef911f855890f35431f6fd759eb01559f4980594023",
+                "effectAssetId": "effect.artist.skill.31050.imported"
+              },
+              "conversionReceipt": {
+                "path": "Data/Effects/Imported/Artist/CurrentCombat/Converted/skill.31050.element-conversion-receipt.json",
+                "sha256": "37bd3a980ec27f3b7b9d26ece591ca55ba76697f8d66fd607f3d124b17a95673"
+              },
+              "artifactOrigin": "CURRENT_COMBAT_GENERATED_SOURCE_TRUTH",
+              "sourceSkillId": 31050
+            }
+          ],
+          "status": "AVAILABLE_WITH_BLOCKERS",
+          "blockers": [
+            {
+              "code": "UNRESOLVED_SOURCE_MATERIAL",
+              "count": 1,
+              "sourceMaterialPaths": [
+                "enginematerials.defaultparticle"
+              ]
+            },
+            {
+              "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+              "count": 2,
+              "statusCounts": {
+                "RESOLVED_UNIQUE_PATH": 2
+              }
+            },
+            {
+              "code": "UNRESOLVED_RUNTIME_RESOURCE",
+              "count": 3,
+              "sourceObjectPaths": [
+                "fx_sm_00.fm_b_cylinder_002",
+                "fx_sm_00.fm_d_cylinder_004",
+                "fx_tex_high_03.fx_o_symbol_01"
+              ]
+            },
+            {
+              "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+              "count": 4
+            },
+            {
+              "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+              "count": 10
+            },
+            {
+              "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+              "count": 9
+            }
+          ]
+        }
+      ],
+      "status": "AVAILABLE_WITH_BLOCKERS",
+      "blockers": [
+        {
+          "code": "UNRESOLVED_SOURCE_MATERIAL",
+          "count": 1,
+          "sourceMaterialPaths": [
+            "enginematerials.defaultparticle"
+          ]
+        },
+        {
+          "code": "SOURCE_MATERIAL_NON_EXACT_PACKAGE",
+          "count": 2,
+          "statusCounts": {
+            "RESOLVED_UNIQUE_PATH": 2
+          }
+        },
+        {
+          "code": "UNRESOLVED_RUNTIME_RESOURCE",
+          "count": 3,
+          "sourceObjectPaths": [
+            "fx_sm_00.fm_b_cylinder_002",
+            "fx_sm_00.fm_d_cylinder_004",
+            "fx_tex_high_03.fx_o_symbol_01"
+          ]
+        },
+        {
+          "code": "IMPORTED_EMITTER_MISSING_RESOURCE",
+          "count": 4
+        },
+        {
+          "code": "IMPORTED_SOURCE_MATERIAL_RUNTIME_PENDING",
+          "count": 10
+        },
+        {
+          "code": "IMPORTED_SOURCE_RECIPE_RUNTIME_PENDING",
+          "count": 9
+        }
+      ]
     }
   ],
   "summary": {
-    "skillCount": 9,
-    "stageCount": 15,
-    "clipOccurrenceCount": 16,
+    "skillCount": 12,
+    "stageCount": 17,
+    "clipOccurrenceCount": 20,
     "numericAliasClipOccurrenceCount": 0,
     "readySkillCount": 0,
     "readyStageCount": 0,
     "blockedSkillCount": 0,
     "blockedStageCount": 0,
-    "availableWithBlockersSkillCount": 9,
-    "availableWithBlockersStageCount": 15
+    "availableWithBlockersSkillCount": 12,
+    "availableWithBlockersStageCount": 18
   },
   "sourceGraphExtraction": [
     {
@@ -2080,6 +2554,29 @@
         "decodedRawDistributionCount": 1868,
         "decodedInterpCurveCount": 3,
         "decodedInterpCurvePointCount": 8,
+        "opaqueSupportedDistributionStructCount": 0
+      }
+    },
+    {
+      "logicalPackage": "fx_pc_wgl_07",
+      "status": "EXTRACTED",
+      "physicalPackage": "C:\\ProgramData\\Smilegate\\Games\\LOSTARK\\EFGame\\ReleasePC\\Packages\\YGI3SWD3S9543D1EG9KMHS0TM.upk",
+      "graph": {
+        "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/ARTIST/all_bound_skills/current_combat_particle_graphs/FX_PC_WGL_07.particle-graph.json",
+        "sha256": "d8e98b593d5a35406cccf91c533f2820f557944c35be7145dd5ea1828c046797"
+      },
+      "summary": {
+        "graphObjectCount": 2139,
+        "particleSystemCount": 36,
+        "propertyErrorCount": 0,
+        "particleEmitterReferenceCount": 405,
+        "missingParticleEmitterTargetCount": 0,
+        "pointLightComponentCount": 1,
+        "pointLightComponentReferenceCount": 1,
+        "invalidPointLightComponentTargetCount": 0,
+        "decodedRawDistributionCount": 1423,
+        "decodedInterpCurveCount": 1,
+        "decodedInterpCurvePointCount": 2,
         "opaqueSupportedDistributionStructCount": 0
       }
     }

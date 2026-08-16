@@ -2,6 +2,7 @@
 
 #include "Level_Loading.h"
 
+#include "CharacterSelectionState.h"
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "LevelTransitionService.h"
@@ -185,6 +186,7 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 		return;
 
 	m_isFailureReported = true;
+	CCharacterSelectionState::Cancel_PendingCreation();
 	Cancel_LobbyCommand("target level loading failed");
 	/* The loader's live progress line names the stage that refused, and it is
 	the only record of it once the loading Level is torn down. */
