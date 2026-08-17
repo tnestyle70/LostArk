@@ -148,6 +148,19 @@
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Esther_GaugeFill",
+      "ownerClass": null,
+      "type": 0,
+      "rect": { "x": 23.2186012, "y": 140.007721, "width": 163, "height": 14 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/Esther/esther_gauge_fill_gold.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     }
   ]
 }

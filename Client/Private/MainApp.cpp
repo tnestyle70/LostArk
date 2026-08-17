@@ -855,11 +855,19 @@ void CMainApp::RenderCombatHUD()
 		}
 		m_pHUDRuntimeView->Render(strOwnerClass, 0);
 		RenderPlayerHealthManaBar();
-		/* Static Esther slots (portraits/frame/lock/track) draw generically here; the dynamic
-		gold fill is separate (RenderEstherGauge, called later) and doesn't touch these same
-		layers, so there's no double-draw risk like Boss UI had. */
+		/* Static Esther slots (portraits/frame/lock/track) draw generically here. GaugeFill and the
+		3 Ready glows are also authored as ordinary Tool-placeable slots (so they show up on the
+		canvas for placement), but their real gameplay visibility is gauge-state-driven, not
+		always-on -- force them hidden here and let RenderEstherGauge() (called later) draw the real
+		clipped fill / conditional glow instead, so there's no double-draw. */
 		if (nullptr != m_pEstherUIView)
+		{
+			m_pEstherUIView->Set_SlotVisible("Esther_GaugeFill", false);
+			m_pEstherUIView->Set_SlotVisible("Esther_Slot1_Ready", false);
+			m_pEstherUIView->Set_SlotVisible("Esther_Slot2_Ready", false);
+			m_pEstherUIView->Set_SlotVisible("Esther_Slot3_Ready", false);
 			m_pEstherUIView->Render("Default", 0);
+		}
 	}
 
 	/* Real gauge0/1/2 fill (target-rotation-masked track) and burn flourish are baked and wired;
@@ -1555,10 +1563,12 @@ void CMainApp::RenderEstherGauge()
 	const float fillRatio = (std::clamp)(
 		static_cast<float>(gauge) / static_cast<float>(maximum), 0.f, 1.f);
 
-	/* Esther_GaugeTrack's own rect (EstherUI.json, Tool-editable) drives both the static
-	background image (drawn generically by m_pEstherUIView->Render()) and this dynamic fill --
-	same UV-clip technique as the boss/player HP bars. Real pieces (frame/lock/gauge) traced from
-	the actual estherweaponskill.gfx + EFUI_ICONATLAS_E packages, not placeholder rects. */
+	/* Esther_GaugeTrack's own rect (EstherUI.json, Tool-editable) positions the static background
+	image (drawn generically by m_pEstherUIView->Render()) and the label below. Esther_GaugeFill is
+	a separate Tool-placeable slot (own rect, independently adjustable) whose static art is forced
+	hidden every frame (see the Set_SlotVisible calls above); this draws the real UV-clipped fill in
+	its place -- same technique as the boss/player HP bars. Real pieces (frame/lock/gauge) traced
+	from the actual estherweaponskill.gfx + EFUI_ICONATLAS_E packages, not placeholder rects. */
 	f32_t fTrackX = 0.f, fTrackY = 0.f, fTrackWidth = 0.f, fTrackHeight = 0.f;
 	if (!m_pEstherUIView->Get_SlotRect(
 		"Esther_GaugeTrack", fTrackX, fTrackY, fTrackWidth, fTrackHeight))
@@ -1571,15 +1581,26 @@ void CMainApp::RenderEstherGauge()
 	const ImVec2 barMax{
 		barMin.x + fTrackWidth * scaleX,
 		barMin.y + fTrackHeight * scaleY };
-	const float fillRight = barMin.x + (barMax.x - barMin.x) * fillRatio;
 	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-	if (fillRight > barMin.x)
+
+	f32_t fFillX = 0.f, fFillY = 0.f, fFillWidth = 0.f, fFillHeight = 0.f;
+	if (m_pEstherUIView->Get_SlotRect("Esther_GaugeFill", fFillX, fFillY, fFillWidth, fFillHeight))
 	{
-		if (ID3D11ShaderResourceView* pFillSRV =
-			m_pEstherUIView->Load_Texture("UI/Esther/esther_gauge_fill_gold.png"))
+		const ImVec2 fillMin{
+			pViewport->WorkPos.x + fFillX * scaleX,
+			pViewport->WorkPos.y + fFillY * scaleY };
+		const ImVec2 fillMax{
+			fillMin.x + fFillWidth * scaleX,
+			fillMin.y + fFillHeight * scaleY };
+		const float fillRight = fillMin.x + (fillMax.x - fillMin.x) * fillRatio;
+		if (fillRight > fillMin.x)
 		{
-			pDrawList->AddImage(pFillSRV, barMin, ImVec2(fillRight, barMax.y),
-				ImVec2(0.f, 0.f), ImVec2(fillRatio, 1.f));
+			if (ID3D11ShaderResourceView* pFillSRV =
+				m_pEstherUIView->Load_Texture("UI/Esther/esther_gauge_fill_gold.png"))
+			{
+				pDrawList->AddImage(pFillSRV, fillMin, ImVec2(fillRight, fillMax.y),
+					ImVec2(0.f, 0.f), ImVec2(fillRatio, 1.f));
+			}
 		}
 	}
 	if (gauge >= maximum)
