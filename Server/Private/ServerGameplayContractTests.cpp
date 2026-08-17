@@ -1913,6 +1913,77 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		!wasBlocked && std::abs(resolvedX - 143.f) < 0.001f,
 		"Preserve movement that passes outside the collision box");
 
+	{
+		/* Living monster and boss bodies block the player the same way, on the
+		XZ plane, with the player's own half extent added to the body radius. */
+		CServerCollisionSystem bodyCollision;
+		std::string bodyStatus;
+		tests.Require(bodyCollision.Initialize({}, bodyStatus),
+			"Initialize an empty collision system for body blocking");
+		bodyCollision.Set_BlockingBodies({ SERVER_BLOCKING_BODY{ 0.f, 3.f, 0.55f } });
+		SERVER_PLAYER walker{};
+		walker.fPositionX = 0.f;
+		walker.fPositionY = 0.f;
+		walker.fPositionZ = 0.f;
+		float bodyX = 0.f;
+		float bodyY = 0.f;
+		float bodyZ = 0.f;
+		bool bodyBlocked = false;
+		/* Dead-on: reach the combined radius (z = 2 minus the contact margin),
+		then the remaining 4 m of the step deflects to a fixed side at full
+		length instead of parking, so the walk keeps its goal. */
+		tests.Require(
+			bodyCollision.Resolve_PlayerMove(
+				walker, 0.f, 0.f, 6.f, bodyX, bodyY, bodyZ, bodyBlocked) &&
+			!bodyBlocked && bodyZ > 1.9f && bodyZ < 2.f &&
+			std::abs(bodyX - 4.f) < 0.01f,
+			"Deflect a dead-on walk into a monster body around its side at full speed");
+		tests.Require(
+			bodyCollision.Resolve_PlayerMove(
+				walker, 6.f, 0.f, 0.f, bodyX, bodyY, bodyZ, bodyBlocked) &&
+			!bodyBlocked && std::abs(bodyX - 6.f) < 0.001f,
+			"Preserve a player move that passes beside a monster body");
+		SERVER_PLAYER overlapped = walker;
+		overlapped.fPositionZ = 2.7f;
+		tests.Require(
+			bodyCollision.Resolve_PlayerMove(
+				overlapped, 0.f, 0.f, 0.f, bodyX, bodyY, bodyZ, bodyBlocked) &&
+			!bodyBlocked && std::abs(bodyZ) < 0.001f,
+			"Let a player already inside a body step away from its centre");
+		tests.Require(
+			bodyCollision.Resolve_PlayerMove(
+				overlapped, 0.f, 0.f, 3.f, bodyX, bodyY, bodyZ, bodyBlocked) &&
+			!bodyBlocked && std::abs(bodyZ - 2.7f) < 0.001f &&
+			std::abs(bodyX - 0.3f) < 0.001f,
+			"Turn a step toward the centre of a body the player is inside into a sideways step");
+		/* Off-centre approach: contact at z = 3 - sqrt(1 - 0.25), then the rest
+		of the step slides along the tangent, away from the body and past its
+		side, and the walk is not reported as blocked. */
+		SERVER_PLAYER slider = walker;
+		slider.fPositionX = -0.5f;
+		tests.Require(
+			bodyCollision.Resolve_PlayerMove(
+				slider, -0.5f, 0.f, 6.f, bodyX, bodyY, bodyZ, bodyBlocked) &&
+			!bodyBlocked && bodyX < -1.5f && bodyZ > 2.5f &&
+			std::sqrt(bodyX * bodyX + (bodyZ - 3.f) * (bodyZ - 3.f)) > 0.999f,
+			"Slide a player along a monster body instead of parking against it");
+		SERVER_PLAYER insideSlider = walker;
+		insideSlider.fPositionX = -0.3f;
+		insideSlider.fPositionZ = 2.7f;
+		tests.Require(
+			bodyCollision.Resolve_PlayerMove(
+				insideSlider, 0.3f, 0.f, 3.f, bodyX, bodyY, bodyZ, bodyBlocked) &&
+			!bodyBlocked &&
+			std::abs(bodyX - 0.174f) < 0.01f && std::abs(bodyZ - 2.226f) < 0.01f,
+			"Slide a player already inside a body along the tangent at full step length");
+		bodyCollision.Set_BlockingBodies({});
+		tests.Require(
+			bodyCollision.Resolve_PlayerMove(
+				walker, 0.f, 0.f, 6.f, bodyX, bodyY, bodyZ, bodyBlocked) &&
+			!bodyBlocked && std::abs(bodyZ - 6.f) < 0.001f,
+			"Clear body blocking when the tick has no living bodies");
+	}
+
 	CServerNavigation bernNavigation;
 	tests.Require(
 		bernNavigation.Load("LV_BER_BERNCASTLE"),

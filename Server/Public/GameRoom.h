@@ -281,6 +281,9 @@ namespace LostArk::Server
 		/* 1 unless the player is standing in the stance its identity gauge pays
 		for, which is the only thing that changes how fast anyone walks. */
 		float Resolve_StanceMoveSpeedScale(const SERVER_PLAYER& player) const;
+		/* Hands the living monster and boss bodies to the collision system so this
+		tick's player walks and root motion stop at them. */
+		void Refresh_PlayerBlockingBodies();
 		void Update_Players(float fixedDeltaSeconds);
 		void Update_WorldEntities(float fixedDeltaSeconds);
 
