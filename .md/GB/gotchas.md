@@ -170,3 +170,134 @@ git rev-list --left-right --count HEAD...origin/main
 
 개인 PC 경로, 실행 중인 세션 메모, 임시 예외는 `.md/GB/gotchas.local.md`에만 기록하고
 Git에 커밋하지 않는다.
+
+## 12. Effect 복원에서 비싸게 배운 것 (2026-08-17 실측)
+
+### 12.1 데이터가 맞아도 담을 그릇이 없으면 화면에 안 나온다
+
+Track A는 원본 추출과 매핑에 성공했다. 실패는 그 다음에 났다.
+`Data/Effects/Authored` 3,400 element 실측이다.
+
+```text
+source 소유 1,909 element 의 Detail 적용률
+  scale / maxParticles / particleLife / startSize / timingLife   100%
+  anchor 48%   position 39%
+  rotation 1%   color 0%   velocity 0%
+```
+
+정적인 축은 전부 정확히 들어갔다. 안 들어간 것은 **시간에 따라 변하는 축과 방향 축**이고,
+이유는 추출 실패가 아니라 `Detail` 스키마에 그 개념이 없어서다.
+
+`sourceRecipe.modules` 인구조사가 어디에 정보가 남았는지 말해준다.
+
+```text
+particlemodulesizemultiplylife     2259   수명에 따른 크기
+particlemodulecolorscaleoverlife   1982   수명에 따른 색·알파
+particlemodulelocation             1343   스폰 형태
+particlemoduleparameterdynamic     1361
+particlemodulecolor                1324
+particlemodulevelocity              580   초기 속도
+```
+
+**교훈**: 추출이 끝났다고 복원이 끝난 것이 아니다. 저작 스키마가 그 축을 표현할 수 있는지를
+추출 전에 확인한다. 표현할 수 없으면 추출한 값은 문서에 남아도 화면에 오지 않는다.
+
+### 12.2 재생 소유권이 저작 수치를 무효로 만든다
+
+`sourceRecipe.enabled`가 true면 재생이 원본 모듈을 따라가고 저작 `Detail`은 무시된다.
+`Effect_Playback.cpp:669` 외 6곳이 그 게이트다.
+
+```text
+Detail.Transform    게이트 없음   -> 크기·위치 튜닝은 먹는다
+Detail.Particle     게이트 있음   -> particle 수 튜닝은 안 먹는다
+```
+
+"어떤 스킬은 되고 어떤 스킬은 안 된다"의 정체가 이것이다. 스킬 차이가 아니라 **건드린 축의 차이**다.
+튜닝이 안 먹으면 먼저 이 플래그를 본다.
+
+### 12.3 제품이 보는 문서와 저작할 수 있는 문서가 달랐다
+
+같은 스킬에 문서가 네 갈래였다.
+
+```text
+.unified                 sourceRecipe 소유   <- runtime catalog 99개 중 98개가 이것
+.effect.json             저작 소유           <- catalog 에 없다
+.authored-baseline       저작 소유           <- catalog 에 없다
+.restoration-candidate   저작 소유           <- catalog 에 없다
+```
+
+저작 가능한 문서는 화면에 나오지 않고, 화면에 나오는 문서는 저작이 무시됐다.
+**저작 전에 그 문서가 runtime catalog 에 실려 있는지 확인한다.**
+
+### 12.4 중복 판정의 기준을 바꾸면 답이 뒤집힌다 (2026-08-17 재실측으로 교정)
+
+이 절은 원래 "Track A import 가 source occurrence 당 element 를 만들어 같은 시각 요소가
+5~6번씩 들어갔다"고 기록했고 `element 7,861 -> 3,042`, `210.9 MB -> 84.9 MB`를 근거로 삼았다.
+**그 수치는 잘못된 signature 의 산물이며 중복은 실재하지 않았다.** 되돌리기 `413e4e36`
+이후 같은 corpus 8,219 element 를 세 기준으로 다시 셌다.
+
+```text
+binding (slotId, assetId) 만          4,759   57.9%
+binding + transform                   4,003   48.7%
+element 전체 (id/displayName 제외)        6    0.1%
+```
+
+되돌린 규칙이 합쳤을 4,471쌍을 열어보면 detail.particle 11,855, sourceNode 4,449,
+detail.timing 2,847, detail.transform 1,386, 심지어 kind 109 가 서로 다르다. 한 텍스처를
+여러 위치·크기·입자수로 배치하는 것이 이펙트 구성 방식이므로 binding 기반 판정은 공간
+구조를 파괴한다. 워로드 17030 이 21 -> 9 로 줄고 손튜닝 하나가 사라진 것이 그 결과다.
+
+`NO_RESOURCES` 일괄 삭제도 틀렸다. light 44 중 28, screenPost 56 중 39 는 텍스처를
+바인딩하지 않는 것이 정상이다.
+
+**교훈**: 일괄 삭제 전에 무엇을 동일성의 기준으로 삼았는지 먼저 쓰고, 그 기준을 한 단계
+엄격하게 바꿨을 때 답이 얼마나 달라지는지 재본다. 두 수치의 차이가 크면 기준이 틀린 것이다.
+남은 진짜 중복 6개도 additive 로 겹쳐 그려지므로 지우면 그 element 밝기가 절반이 된다.
+
+### 12.4.1 소유권 flip 은 축별 게이트가 아니다
+
+`sourceRecipe.enabled = false` 는 `Effect_Playback.cpp` 28개 지점에서 시뮬레이터 전체를
+갈아탄다. 따라서 이식 도구가 "해석 못 하는 모듈은 건드리지 않는다"고 해도 flip 이후에는
+그 모듈이 실행되지 않으므로 보존이 아니라 삭제다.
+
+```text
+source 소유 particle 4,609
+   모든 모듈이 저작 스키마로 표현 가능      109   2.4%
+   최소 한 축을 잃음                     4,500  97.6%
+   주요 손실: parameterdynamic 3,058, cameraoffset 1,713, rotation 1,614,
+              meshrotation 1,161, orientationaxislock 1,023, subuv, orbit, acceleration
+```
+
+그리고 `Detail.Color.multiply` 와 `Detail.Transform` 은 source 소유 element 에서도 이미
+합성되어 먹는다(`Effect_Playback.cpp` ~4996 의 `ElementColor * Particle.vColor`). 막혀 있던
+것은 `Detail.Particle` 축뿐이다. 그래서 소유권을 내리는 대신 저작 배율을 원본 결과 위에
+곱하는 `Detail.Particle.sourceScale` 을 넣었다. 축이 더 필요하면 flip 이 아니라 같은 방식으로
+하나씩 추가한다. 상세는
+`.md/GB/08-17/2026-08-17_EFFECT_SOURCE_TRIM_AND_DEDUP_CORRECTION_RESULT.md`.
+
+### 12.5 원본 동일을 목표로 하면 스킬 수만큼 셰이더가 필요하다
+
+도화가 F만 화면이 나온 이유는 문서가 좋아서가 아니라 전용 셰이더 5벌을 사람이 썼기 때문이다.
+
+```text
+Shader_Artist31470RuntimeMaterial.hlsli         34 sample
+Shader_Artist31470Active003RibbonMaterial.hlsli  2
+Shader_Artist31470Active011OuterMaterial.hlsli   4
+Shader_Artist31470Active022DecalMaterial.hlsli   1
+Shader_Artist31470Diagnostic.hlsli               6
+```
+
+`g_SourceTexture0..6`을 실제로 샘플링하는 것은 이 파일들과 decal adapter 뿐이고,
+표준 경로 `Shader_EffectCommon.hlsli`는 이름 있는 5개만 샘플링한다.
+
+**교훈**: "원본과 동일"은 스킬 × family 마다 셰이더 한 벌을 요구한다. 그 비용을 감당할 수 없으면
+목표를 "원본에서 데이터만 얻고 표준 셰이더로 만든다"로 바꾼다. 1차가 도화가 F 하나에서
+멈춘 것이 그 증거다.
+
+### 12.6 판정자 없는 목표를 세우지 않는다
+
+`100% 복원`, `원본과 동일`은 판정할 oracle 이 없으면 완료를 선언할 수 없는 목표다.
+그런 목표는 진척감을 없애고, 그 자리를 커밋 수와 문서 수 같은 대체 지표가 채운다.
+
+목표를 쓰기 전에 **무엇을 보면 끝났다고 판정하는가**를 한 줄로 먼저 쓴다.
+그 판정자가 없으면 목표를 바꾼다. 화면에 변화 없는 작업이 이틀 연속이면 경보로 취급한다.

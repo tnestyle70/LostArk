@@ -1,0 +1,325 @@
+#include "ValtanPatternTree.h"
+
+#include "DataJson.h"
+#include "ProjectDataRoot.h"
+
+#include <algorithm>
+#include <fstream>
+#include <map>
+
+namespace
+{
+	using Client::DATA_JSON_TYPE;
+	using Client::DATA_JSON_VALUE;
+
+	bool Read_TextDocument(
+		const std::filesystem::path& Path,
+		std::string& OutText,
+		std::string& strOutError)
+	{
+		if (Path.empty())
+		{
+			strOutError = "path escaped the Data root";
+			return false;
+		}
+		std::ifstream Input(Path, std::ios::binary);
+		if (!Input)
+		{
+			strOutError = "could not open " + Path.string();
+			return false;
+		}
+		OutText.assign(std::istreambuf_iterator<char>(Input),
+			std::istreambuf_iterator<char>());
+		return true;
+	}
+
+	bool Parse_Document(
+		const std::filesystem::path& Relative,
+		DATA_JSON_VALUE& OutRoot,
+		std::string& strOutError)
+	{
+		std::string Text;
+		if (!Read_TextDocument(
+				Client::CProjectDataRoot::Resolve(Relative), Text, strOutError))
+		{
+			return false;
+		}
+		std::string ParseError;
+		if (!Client::CDataJson::Parse(Text, OutRoot, ParseError) ||
+			!OutRoot.Is_Object())
+		{
+			strOutError = Relative.generic_string() + ": " + ParseError;
+			return false;
+		}
+		return true;
+	}
+
+	std::string Read_String(
+		const DATA_JSON_VALUE& Object, const std::string_view Key)
+	{
+		const DATA_JSON_VALUE* pValue = Object.Find(Key);
+		return nullptr == pValue || DATA_JSON_TYPE::STRING != pValue->Get_Type() ?
+			std::string{} : pValue->Get_String();
+	}
+
+	double Read_Number(
+		const DATA_JSON_VALUE& Object, const std::string_view Key)
+	{
+		const DATA_JSON_VALUE* pValue = Object.Find(Key);
+		return nullptr == pValue || DATA_JSON_TYPE::NUMBER != pValue->Get_Type() ?
+			0.0 : pValue->Get_Number();
+	}
+}
+
+size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_StageCount() const
+{
+	size_t iCount = 0u;
+	for (const VALTAN_PATTERN_VIEW& Pattern : Gimmicks)
+		iCount += Pattern.Stages.size();
+	for (const VALTAN_PATTERN_VIEW& Pattern : Rotation)
+		iCount += Pattern.Stages.size();
+	return iCount;
+}
+
+size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_EffectCount() const
+{
+	size_t iCount = 0u;
+	const auto Count = [&iCount](const std::vector<VALTAN_PATTERN_VIEW>& Group)
+	{
+		for (const VALTAN_PATTERN_VIEW& Pattern : Group)
+		{
+			iCount += static_cast<size_t>(std::count_if(
+				Pattern.Stages.begin(), Pattern.Stages.end(),
+				[](const VALTAN_STAGE_VIEW& Stage)
+				{
+					return Stage.Has_Effect();
+				}));
+		}
+	};
+	Count(Gimmicks);
+	Count(Rotation);
+	return iCount;
+}
+
+std::string Client::CValtanPatternTree::Build_StageEffectAssetId(
+	const std::string& strPatternActionId,
+	const VALTAN_STAGE_VIEW& Stage)
+{
+	if (strPatternActionId.empty() || Stage.strActionId.empty())
+		return {};
+	/* valtan.attack.whirlwind -> whirlwind; the category is what the tree
+	   already shows, so it is not repeated inside the asset id. */
+	std::string strPattern = strPatternActionId;
+	size_t iCut = strPattern.find('.');
+	if (std::string::npos != iCut)
+	{
+		iCut = strPattern.find('.', iCut + 1u);
+		if (std::string::npos != iCut)
+			strPattern = strPattern.substr(iCut + 1u);
+	}
+	const std::string strPrefix = strPatternActionId + ".";
+	std::string strStage;
+	if (Stage.strActionId.starts_with(strPrefix) &&
+		Stage.strActionId.size() > strPrefix.size())
+	{
+		strStage = Stage.strActionId.substr(strPrefix.size());
+	}
+	else
+	{
+		strStage = Stage.strStageId;
+		std::transform(strStage.begin(), strStage.end(), strStage.begin(),
+			[](const unsigned char Character)
+			{
+				return '_' == Character ? '-' :
+					static_cast<char>(std::tolower(Character));
+			});
+	}
+	if (strPattern.empty() || strStage.empty())
+		return {};
+	return "effect.valtan." + strPattern + "." + strStage;
+}
+
+bool_t Client::CValtanPatternTree::Load(
+	VALTAN_PATTERN_TREE_VIEW& OutView,
+	std::string& strOutStatus)
+{
+	DATA_JSON_VALUE Encounter;
+	DATA_JSON_VALUE Bindings;
+	std::string Error;
+	if (!Parse_Document(std::filesystem::path(L"Encounters") / L"Valtan" /
+			L"ValtanEncounter.json", Encounter, Error))
+	{
+		strOutStatus = "Valtan encounter load failed: " + Error;
+		return false;
+	}
+	if (!Parse_Document(std::filesystem::path(L"Animation") / L"Authored" /
+			L"Valtan" / L"Valtan.patternbindings.json", Bindings, Error))
+	{
+		strOutStatus = "Valtan pattern bindings load failed: " + Error;
+		return false;
+	}
+
+	/* Effect bindings are optional: a freshly seeded stage document is not in
+	   patterneffects.json yet, and that must not fail the whole tree. */
+	std::map<std::string, std::pair<std::string, std::string>, std::less<>>
+		EffectByAction;
+	DATA_JSON_VALUE Effects;
+	if (Parse_Document(std::filesystem::path(L"Animation") / L"Authored" /
+			L"Valtan" / L"Valtan.patterneffects.json", Effects, Error))
+	{
+		const DATA_JSON_VALUE* pRows = Effects.Find("bindings");
+		if (nullptr != pRows && pRows->Is_Array())
+		{
+			for (const DATA_JSON_VALUE& Row : pRows->Get_Array())
+			{
+				if (!Row.Is_Object())
+					continue;
+				const std::string strAction = Read_String(Row, "actionId");
+				if (strAction.empty())
+					continue;
+				EffectByAction[strAction] = {
+					Read_String(Row, "effectAssetId"),
+					Read_String(Row, "effectDocument") };
+			}
+		}
+	}
+
+	std::map<std::string, std::string, std::less<>> ClipByAction;
+	const DATA_JSON_VALUE* pBindingRows = Bindings.Find("bindings");
+	if (nullptr == pBindingRows || !pBindingRows->Is_Array())
+	{
+		strOutStatus = "Valtan pattern bindings has no bindings array.";
+		return false;
+	}
+	for (const DATA_JSON_VALUE& Row : pBindingRows->Get_Array())
+	{
+		if (!Row.Is_Object())
+			continue;
+		const std::string strAction = Read_String(Row, "actionId");
+		if (!strAction.empty())
+			ClipByAction[strAction] = Read_String(Row, "clip");
+	}
+
+	const DATA_JSON_VALUE* pPatterns = Encounter.Find("patterns");
+	if (nullptr == pPatterns || !pPatterns->Is_Array())
+	{
+		strOutStatus = "Valtan encounter has no patterns array.";
+		return false;
+	}
+
+	VALTAN_PATTERN_TREE_VIEW Staged;
+	for (const DATA_JSON_VALUE& PatternValue : pPatterns->Get_Array())
+	{
+		if (!PatternValue.Is_Object())
+			continue;
+		VALTAN_PATTERN_VIEW Pattern;
+		Pattern.strPatternId = Read_String(PatternValue, "patternId");
+		Pattern.strDisplayName = Read_String(PatternValue, "displayName");
+		Pattern.strActionId = Read_String(PatternValue, "actionId");
+		Pattern.iMinimumHealthBar = static_cast<int32_t>(
+			Read_Number(PatternValue, "minimumHealthBar"));
+		Pattern.iMaximumHealthBar = static_cast<int32_t>(
+			Read_Number(PatternValue, "maximumHealthBar"));
+		Pattern.iTriggerHealthBar = static_cast<int32_t>(
+			Read_Number(PatternValue, "triggerHealthBar"));
+		if (Pattern.strPatternId.empty())
+			continue;
+
+		const DATA_JSON_VALUE* pStages = PatternValue.Find("stages");
+		if (nullptr != pStages && pStages->Is_Array())
+		{
+			for (const DATA_JSON_VALUE& StageValue : pStages->Get_Array())
+			{
+				if (!StageValue.Is_Object())
+					continue;
+				VALTAN_STAGE_VIEW Stage;
+				Stage.strStageId = Read_String(StageValue, "stageId");
+				Stage.strActionId = Read_String(StageValue, "actionId");
+				Stage.strStageKind = Read_String(StageValue, "stageKind");
+				Stage.iDurationMs = static_cast<uint32_t>(
+					Read_Number(StageValue, "durationMs"));
+				Stage.strHitShape = Read_String(StageValue, "hitShape");
+				Stage.fHitOuterRadius = static_cast<f32_t>(
+					Read_Number(StageValue, "hitOuterRadius"));
+				Stage.fHitInnerRadius = static_cast<f32_t>(
+					Read_Number(StageValue, "hitInnerRadius"));
+				Stage.fHitAngleDegrees = static_cast<f32_t>(
+					Read_Number(StageValue, "hitAngleDegrees"));
+				Stage.fHitLength = static_cast<f32_t>(
+					Read_Number(StageValue, "hitLength"));
+				Stage.fHitHalfWidth = static_cast<f32_t>(
+					Read_Number(StageValue, "hitHalfWidth"));
+				Stage.iHitCount = static_cast<uint32_t>(
+					Read_Number(StageValue, "hitCount"));
+				Stage.iHitIntervalMs = static_cast<uint32_t>(
+					Read_Number(StageValue, "hitIntervalMs"));
+				Stage.strServerDamageProfileId = Read_String(
+					StageValue, "serverDamageProfileId");
+				if (Stage.strActionId.empty())
+					continue;
+
+				const auto ClipIterator = ClipByAction.find(Stage.strActionId);
+				if (ClipIterator != ClipByAction.end())
+					Stage.strRuntimeClipName = ClipIterator->second;
+
+				const auto EffectIterator =
+					EffectByAction.find(Stage.strActionId);
+				if (EffectIterator != EffectByAction.end())
+				{
+					Stage.strEffectAssetId = EffectIterator->second.first;
+					if (!EffectIterator->second.second.empty())
+					{
+						Stage.EffectDocumentPath = CProjectDataRoot::Get() /
+							std::filesystem::path(
+								EffectIterator->second.second).lexically_normal();
+					}
+				}
+				/* A stage document seeded by the generator is not in
+				   patterneffects.json yet, so fall back to the naming rule
+				   and only accept it when the file is really on disk. */
+				if (Stage.strEffectAssetId.empty())
+				{
+					const std::string strCandidate = Build_StageEffectAssetId(
+						Pattern.strActionId, Stage);
+					const std::filesystem::path Candidate =
+						CProjectDataRoot::Resolve(
+							std::filesystem::path(L"Effects") / L"Authored" /
+							std::filesystem::path(
+								strCandidate + ".effect.json"));
+					std::error_code FileError;
+					if (!Candidate.empty() && std::filesystem::exists(
+							Candidate, FileError))
+					{
+						Stage.strEffectAssetId = strCandidate;
+						Stage.EffectDocumentPath = Candidate;
+					}
+				}
+				Pattern.Stages.push_back(std::move(Stage));
+			}
+		}
+		if (Pattern.Is_Gimmick())
+			Staged.Gimmicks.push_back(std::move(Pattern));
+		else
+			Staged.Rotation.push_back(std::move(Pattern));
+	}
+
+	if (Staged.Gimmicks.empty() && Staged.Rotation.empty())
+	{
+		strOutStatus = "Valtan encounter produced no patterns.";
+		return false;
+	}
+	/* Gimmicks read as a timeline down the health bar, so order them the way
+	   the fight actually presents them. */
+	std::sort(Staged.Gimmicks.begin(), Staged.Gimmicks.end(),
+		[](const VALTAN_PATTERN_VIEW& Left, const VALTAN_PATTERN_VIEW& Right)
+		{
+			return Left.iTriggerHealthBar > Right.iTriggerHealthBar;
+		});
+
+	OutView = std::move(Staged);
+	strOutStatus = "Valtan tree: " +
+		std::to_string(OutView.Get_PatternCount()) + " patterns, " +
+		std::to_string(OutView.Get_StageCount()) + " stages, " +
+		std::to_string(OutView.Get_EffectCount()) + " with an Effect.";
+	return true;
+}

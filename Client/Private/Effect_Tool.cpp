@@ -5182,6 +5182,21 @@ void Client::CEffect_Tool::Render_Detail(
 	ImGui::Text("%s %s %s%s", pSurface, "\xC2\xB7",
 		Get_EffectAuthoringFidelityLabel(eFidelity),
 		bModified ? " \xC2\xB7 Modified" : "");
+	/* Playback ignores the authored Detail while the source recipe owns the
+	   Element (Effect_Playback.cpp gates every module read on bEnabled), so
+	   without this the numbers below look editable and change nothing. */
+	if (Element.SourceRecipe.bEnabled)
+	{
+		ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+			"Source modules own playback: the values below are ignored.");
+		ImGui::TextDisabled(
+			"%zu source modules. Deleting this Element judges it as the source plays it, not as it would tune.",
+			Element.SourceRecipe.Modules.size());
+	}
+	else
+	{
+		ImGui::TextDisabled("Authored Detail owns playback.");
+	}
 	if (bModified)
 	{
 		ImGui::SameLine();
@@ -5679,8 +5694,41 @@ void Client::CEffect_Tool::Render_Detail(
 		}
 		ImGui::TreePop();
 	}
-	ImGui::SeparatorText("Compiler-owned Render Profile");
-	ImGui::TextDisabled("%s", Profile_Label(Element.Material.eRenderProfile));
+	/* The compiler derives the blend from the source material, but an Element
+	   authored by hand has no source material to derive it from and simply
+	   keeps the struct default of alpha two-sided. That default draws a glow
+	   texture as an opaque quad, so leaving it read-only on authored Elements
+	   locked the one control that fixes it. */
+	const bool_t bCompilerOwnsRenderProfile =
+		!Element.Material.strSourceMaterialPath.empty() ||
+		Element.Material.SourceMaterial.bEnabled ||
+		Element.Material.Execution.bEnabled;
+	ImGui::SeparatorText(bCompilerOwnsRenderProfile ?
+		"Compiler-owned Render Profile" : "Render Profile");
+	if (bCompilerOwnsRenderProfile)
+	{
+		ImGui::TextDisabled("%s", Profile_Label(Element.Material.eRenderProfile));
+		return;
+	}
+	static const char* const s_RenderProfileLabels[] =
+	{
+		"Opaque (back faces, depth write)",
+		"Alpha (two sided, depth read)",
+		"Additive (two sided, depth read)",
+		"Alpha (one sided, depth read)",
+		"Additive (one sided, depth read)"
+	};
+	int32_t iRenderProfile = static_cast<int32_t>(
+		Element.Material.eRenderProfile);
+	if (ImGui::Combo("Blend", &iRenderProfile, s_RenderProfileLabels,
+		IM_ARRAYSIZE(s_RenderProfileLabels)))
+	{
+		Element.Material.eRenderProfile =
+			static_cast<EFFECT_RENDER_PROFILE>(iRenderProfile);
+		bChanged = true;
+	}
+	ImGui::TextDisabled(
+		"Additive treats black as transparent, which is how glow and flare textures are drawn. Alpha needs the texture to carry its own alpha channel.");
 }
 
 void Client::CEffect_Tool::Render_TransformDetail(
@@ -6255,11 +6303,122 @@ void Client::CEffect_Tool::Render_KindDetail(
             "Start Size", Detail.Particle.vStartSize, 0.01f, 0.001f, 100.f);
         bChanged |= DragFloat2(
             "End Size", Detail.Particle.vEndSize, 0.01f, 0.f, 100.f);
+
+		/* Spawn volume and emission direction: the two axes the authored Detail
+		   could not express at all, so a ring that collapses inward or a mesh
+		   that flies along an arc had to stay owned by the source modules. */
+		ImGui::SeparatorText("Particle Spawn Volume");
+		EFFECT_PARTICLE_SPAWN_SHAPE_DESC& Shape = Detail.Particle.SpawnShape;
+		static const char* const s_SpawnShapeLabels[] =
+		{
+			"Point (Initial Position box)", "Sphere", "Ring (XZ)", "Box"
+		};
+		int32_t iSpawnShape = static_cast<int32_t>(Shape.eKind);
+		if (ImGui::Combo("Spawn Shape", &iSpawnShape, s_SpawnShapeLabels,
+			IM_ARRAYSIZE(s_SpawnShapeLabels)))
+		{
+			Shape.eKind = static_cast<EFFECT_PARTICLE_SPAWN_SHAPE>(iSpawnShape);
+			if (EFFECT_PARTICLE_SPAWN_SHAPE::SPHERE == Shape.eKind ||
+				EFFECT_PARTICLE_SPAWN_SHAPE::RING == Shape.eKind)
+			{
+				Shape.fRadius = (std::max)(0.001f, Shape.fRadius);
+			}
+			if (EFFECT_PARTICLE_SPAWN_SHAPE::BOX == Shape.eKind &&
+				Shape.vExtents.x <= 0.f && Shape.vExtents.y <= 0.f &&
+				Shape.vExtents.z <= 0.f)
+			{
+				Shape.vExtents = { 0.5f, 0.5f, 0.5f };
+			}
+			bChanged = true;
+		}
+		if (EFFECT_PARTICLE_SPAWN_SHAPE::POINT != Shape.eKind)
+		{
+			if (EFFECT_PARTICLE_SPAWN_SHAPE::BOX == Shape.eKind)
+			{
+				bChanged |= DragFloat3("Spawn Box Half Extents",
+					Shape.vExtents, 0.01f, 0.f, 1000.f);
+			}
+			else
+			{
+				const bool_t bRadiusChanged = ImGui::DragFloat("Spawn Radius",
+					&Shape.fRadius, 0.01f, 0.001f, 1000.f, "%.3f",
+					ImGuiSliderFlags_AlwaysClamp);
+				const bool_t bInnerChanged = ImGui::DragFloat(
+					"Spawn Inner Radius", &Shape.fInnerRadius, 0.01f, 0.f,
+					1000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+				if (bRadiusChanged || bInnerChanged)
+				{
+					Shape.fInnerRadius = (std::min)(
+						Shape.fInnerRadius, Shape.fRadius);
+					bChanged = true;
+				}
+				bChanged |= ImGui::DragFloat("Spawn Arc Degrees",
+					&Shape.fArcDegrees, 1.f, 0.001f, 360.f, "%.1f",
+					ImGuiSliderFlags_AlwaysClamp);
+			}
+			ImGui::TextDisabled(
+				"The shape offset is added on top of the Initial Position box.");
+		}
+
+		ImGui::SeparatorText("Particle Emission Direction");
+		EFFECT_PARTICLE_INITIAL_VELOCITY_DESC& Emission =
+			Detail.Particle.InitialVelocity;
+		static const char* const s_VelocityModeLabels[] =
+		{
+			"Fixed (Initial Velocity box)", "Outward", "Inward", "Cone (+Y)"
+		};
+		int32_t iVelocityMode = static_cast<int32_t>(Emission.eMode);
+		if (ImGui::Combo("Emission Mode", &iVelocityMode, s_VelocityModeLabels,
+			IM_ARRAYSIZE(s_VelocityModeLabels)))
+		{
+			Emission.eMode =
+				static_cast<EFFECT_PARTICLE_VELOCITY_MODE>(iVelocityMode);
+			bChanged = true;
+		}
+		if (EFFECT_PARTICLE_VELOCITY_MODE::FIXED != Emission.eMode)
+		{
+			if (DragFloat2("Emission Speed Min/Max", Emission.vSpeedRange,
+				0.01f, -1000.f, 1000.f))
+			{
+				Emission.vSpeedRange.y = (std::max)(
+					Emission.vSpeedRange.x, Emission.vSpeedRange.y);
+				bChanged = true;
+			}
+			if (EFFECT_PARTICLE_VELOCITY_MODE::CONE == Emission.eMode)
+			{
+				bChanged |= ImGui::DragFloat("Cone Half Angle Degrees",
+					&Emission.fConeAngleDegrees, 1.f, 0.f, 180.f, "%.1f",
+					ImGuiSliderFlags_AlwaysClamp);
+			}
+			ImGui::TextDisabled(
+				"Outward and Inward are radial about the Element origin and replace the Initial Velocity box.");
+		}
 		ImGui::EndDisabled();
 		if (bSourceParticleControlsReadOnly)
 		{
 			ImGui::TextDisabled(
 				"Read-only values above are evaluated from the compiler-owned SourceRecipe module stack.");
+
+			/* The trim is the authored answer to those read-only fields. It
+			   multiplies what the modules produce instead of replacing them, so
+			   the rotation, camera offset, sub-UV and DynamicParameter modules
+			   this Element also carries keep running. */
+			ImGui::SeparatorText("Source Trim");
+			EFFECT_PARTICLE_SOURCE_SCALE_DESC& Trim =
+				Detail.Particle.SourceScale;
+			bChanged |= ImGui::DragFloat("Count x", &Trim.fCount,
+				0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Size x", &Trim.fSize,
+				0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Life x", &Trim.fLifeTime,
+				0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::TextDisabled(
+				"Multiplies the source spawn rate, burst counts and particle ceiling, the source start size, and the source lifetime. 1.00 leaves the Element exactly as the source built it.");
+			if (!Trim.Is_Default() && ImGui::Button("Reset Source Trim"))
+			{
+				Trim = EFFECT_PARTICLE_SOURCE_SCALE_DESC{};
+				bChanged = true;
+			}
 		}
         bChanged |= ImGui::Checkbox("Particle Local Space",
             &Detail.Particle.bLocalSpace);
@@ -8460,8 +8619,13 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 					ImGui::GetContentRegionAvail().x - 54.f);
 				const bool_t bMarked = m_MarkedElementIds.contains(
 					Element.strElementId);
+				/* The row is where Elements get judged for deletion, so it has
+				   to say when what is on screen is the source playing rather
+				   than anything the authored values could change. */
 				const std::string RowLabel =
-					(bMarked ? "[x] " : "") + FriendlyAuthoringElementLabel(
+					std::string(bMarked ? "[x] " : "") +
+					(Element.SourceRecipe.bEnabled ? "(src) " : "") +
+					FriendlyAuthoringElementLabel(
 						eFamily, iOrdinal, Element);
 				if (ImGui::Selectable(RowLabel.c_str(), bSelected || bMarked,
 					0, ImVec2(fRowWidth, 0.f)))
@@ -8555,6 +8719,44 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 		}
 	}
 	ImGui::TreePop();
+}
+
+void Client::CEffect_Tool::Render_ValtanAuthoringOpenButton(
+	const std::filesystem::path& Path,
+	const std::string& strEffectAssetId)
+{
+	/* Both the pattern-mapped rows and the standalone saved rows open the same
+	   document, and both must stage the Valtan Model View target first so the
+	   Effect is authored against the body, armour and socketed axe. */
+	const bool_t bAlreadyActive = m_ActiveDocument.has_value() &&
+		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+		m_ActiveDocument->strEffectAssetId == strEffectAssetId;
+	ImGui::BeginDisabled(bAlreadyActive || Has_UnsavedWork());
+	if (ImGui::SmallButton("Open for Editing"))
+	{
+		const bool_t bValtanTargetReady =
+			nullptr != m_pCharacterPreviewPanel &&
+			(CAnimationTargetService::Resolve_AssetName() ==
+				VALTAN_ANIMATION_ASSET_NAME ||
+			 m_pCharacterPreviewPanel->Select_TargetAsset(
+				VALTAN_ANIMATION_ASSET_NAME));
+		if (!bValtanTargetReady)
+		{
+			m_strElementStatus =
+				"Saved Valtan Effect could not stage the Valtan Model View target.";
+		}
+		else
+		{
+			Try_LoadDocumentPath(Path,
+				EFFECT_DOCUMENT_SOURCE::AUTHORED, strEffectAssetId);
+		}
+	}
+	ImGui::EndDisabled();
+	if (bAlreadyActive)
+		ImGui::TextDisabled("Already open in Current Effect.");
+	else
+		ImGui::TextDisabled(
+			"Opens on Valtan; select the animation and b_effectroot/b_wp_r_01 pivot, then Play All.");
 }
 
 void Client::CEffect_Tool::Render_AllEffectsWindow()
@@ -8660,10 +8862,17 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			{
 				const BOSS_PATTERN_EFFECT_TREE_ROW& Row = BossEntry.Row;
 				const std::string Label =
-					"420633 | " + Row.strPatternId + " | " +
+					Row.strPatternId + " | " +
 					Row.strSemanticStageId + " | " +
 					Row.strRuntimeClipName;
 				Render_UnifiedEffectTree(BossEntry.Cache, Label);
+				/* A pattern-mapped row is excluded from Saved Valtan Authoring
+				   below, so without this it is the one Valtan Effect that has
+				   no editing entry point anywhere in the tool. */
+				ImGui::PushID(Row.strEffectAssetId.c_str());
+				Render_ValtanAuthoringOpenButton(
+					BossEntry.Cache.Path, Row.strEffectAssetId);
+				ImGui::PopID();
 				ImGui::TextDisabled(
 					"%s; editable/auditionable canary, Product mapping remains disabled.",
 					Row.strProductAdmissionStatus.c_str());
@@ -8702,33 +8911,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			ImGui::PushID(DataFile.strAssetId.c_str());
 			ImGui::TextWrapped("%s", DataFile.strAssetId.c_str());
 			ImGui::SameLine();
-			const bool_t bAlreadyActive = m_ActiveDocument.has_value() &&
-				EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
-				m_ActiveDocument->strEffectAssetId == DataFile.strAssetId;
-			ImGui::BeginDisabled(bAlreadyActive || Has_UnsavedWork());
-			if (ImGui::SmallButton("Open for Editing"))
-			{
-				const bool_t bValtanTargetReady =
-					nullptr != m_pCharacterPreviewPanel &&
-					(CAnimationTargetService::Resolve_AssetName() ==
-						VALTAN_ANIMATION_ASSET_NAME ||
-					 m_pCharacterPreviewPanel->Select_TargetAsset(
-						VALTAN_ANIMATION_ASSET_NAME));
-				if (!bValtanTargetReady)
-				{
-					m_strElementStatus =
-						"Saved Valtan Effect could not stage the Valtan Model View target.";
-				}
-				else
-				{
-					Try_LoadDocumentPath(DataFile.Path,
-						EFFECT_DOCUMENT_SOURCE::AUTHORED,
-						DataFile.strAssetId);
-				}
-			}
-			ImGui::EndDisabled();
-			ImGui::TextDisabled(
-				"Opens on Valtan; select the animation and b_effectroot/b_wp_r_01 pivot, then Play All.");
+				Render_ValtanAuthoringOpenButton(
+					DataFile.Path, DataFile.strAssetId);
 			ImGui::PopID();
 		}
 		if (0u == iSavedValtanAuthoringCount)

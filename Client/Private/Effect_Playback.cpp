@@ -685,6 +685,24 @@ namespace
 				Element, bSourceVisualProgramActive);
 	}
 
+	/* Detail.Particle.SourceScale.fCount applied to a particle count the source
+	   produced.  Only source-owned Elements consult it: an authored Element
+	   already owns iMaxParticles and iBurstCount outright, so scaling those
+	   again would apply the trim twice.  Rounds to nearest so a trim that lands
+	   above half still emits, and saturates rather than wrapping. */
+	uint32_t Scale_SourceCount(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const uint32_t iCount)
+	{
+		const f32_t fFactor = Element.Detail.Particle.SourceScale.fCount;
+		if (!Element.SourceRecipe.bEnabled || 1.f == fFactor || 0u == iCount)
+			return iCount;
+		const f64_t fScaled = std::round(
+			static_cast<f64_t>(iCount) * static_cast<f64_t>(fFactor));
+		return static_cast<uint32_t>((std::min)(
+			(std::max)(fScaled, 0.0), static_cast<f64_t>(UINT32_MAX)));
+	}
+
 	bool_t Is_GpuVisualOccurrence(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
@@ -2712,7 +2730,10 @@ bool_t Client::CEffectPlayback::Step(
 							Burst.iCountMinimum ? Burst.iCountMaximum :
 							Burst.iCountMinimum + Next_Random(State) %
 							(Burst.iCountMaximum - Burst.iCountMinimum + 1u);
-						Spawn_Particles(Element, State, iCount, RootWorld);
+						/* The random draw happens first either way, so trimming
+						   the burst does not shift the emitter random stream. */
+						Spawn_Particles(Element, State, Scale_SourceCount(
+							Element, iCount), RootWorld);
 					}
 					const EFFECT_SOURCE_MODULE_DESC* pSpawnModule =
 						Find_SourceModule(Element, "particlemodulespawn");
@@ -2731,7 +2752,8 @@ bool_t Client::CEffectPlayback::Step(
 						Evaluate_ModuleFloat(State, *pSpawnModule, "ratescale",
 							fEmitterTime, 1.f);
 					State.fSpawnAccumulator +=
-						(std::max)(0.f, fRate * fRateScale) * fFixedDelta;
+						(std::max)(0.f, fRate * fRateScale) * fFixedDelta *
+						Element.Detail.Particle.SourceScale.fCount;
 					const uint32_t iSpawnCount = static_cast<uint32_t>(
 						std::floor(State.fSpawnAccumulator));
 					State.fSpawnAccumulator -=
@@ -2906,8 +2928,12 @@ void Client::CEffectPlayback::Spawn_Particles(
 		Element, m_fSampleTimeSeconds, RootWorld);
 	const matrix_t InverseElementWorld = XMMatrixInverse(
 		nullptr, XMLoadFloat4x4(&ElementWorld));
-	const uint32_t iAvailable = Desc.iMaxParticles > State.Particles.size() ?
-		Desc.iMaxParticles - static_cast<uint32_t>(State.Particles.size()) : 0u;
+	/* The ceiling rises with the trim, otherwise asking for more particles would
+	   stop at the count the source was extracted with. */
+	const uint32_t iMaxParticles = Scale_SourceCount(
+		Element, Desc.iMaxParticles);
+	const uint32_t iAvailable = iMaxParticles > State.Particles.size() ?
+		iMaxParticles - static_cast<uint32_t>(State.Particles.size()) : 0u;
 	const uint32_t iSpawnCount = (std::min)(iCount, iAvailable);
 	for (uint32_t iParticle = 0u; iParticle < iSpawnCount; ++iParticle)
 	{
@@ -2939,23 +2965,23 @@ void Client::CEffectPlayback::Spawn_Particles(
 			Particle.fSpawnEmitterTimeSeconds = fEmitterTime;
 			Apply_SourceSpawnModules(
 				Element, State, Particle, fEmitterTime, ElementWorld);
+			/* Authored trim over what the modules just produced.  Scaling the
+			   base size here carries through Apply_SourceUpdateModules, which
+			   re-derives vSize from vBaseSize every step, and scaling the
+			   lifetime stretches the whole over-life evolution with it. */
+			if (!Desc.SourceScale.Is_Default())
+			{
+				Particle.vBaseSize = Scale3(
+					Particle.vBaseSize, Desc.SourceScale.fSize);
+				Particle.vSize = Particle.vBaseSize;
+				Particle.fLifeTimeSeconds *= Desc.SourceScale.fLifeTime;
+			}
 		}
 		else
 		{
-			Particle.vPosition = float3_t(
-				Random_Range(State, Desc.vInitialPositionMin.x,
-					Desc.vInitialPositionMax.x),
-				Random_Range(State, Desc.vInitialPositionMin.y,
-					Desc.vInitialPositionMax.y),
-				Random_Range(State, Desc.vInitialPositionMin.z,
-					Desc.vInitialPositionMax.z));
-			Particle.vVelocity = float3_t(
-				Random_Range(State, Desc.vInitialVelocityMin.x,
-					Desc.vInitialVelocityMax.x),
-				Random_Range(State, Desc.vInitialVelocityMin.y,
-					Desc.vInitialVelocityMax.y),
-				Random_Range(State, Desc.vInitialVelocityMin.z,
-					Desc.vInitialVelocityMax.z));
+			Particle.vPosition = Sample_AuthoredSpawnPosition(Desc, State);
+			Particle.vVelocity = Sample_AuthoredInitialVelocity(
+				Desc, State, Particle.vPosition);
 			Particle.vBaseSize = float3_t(
 				Desc.vStartSize.x, Desc.vStartSize.y,
 				0.5f * (Desc.vStartSize.x + Desc.vStartSize.y));
@@ -5245,6 +5271,131 @@ f32_t Client::CEffectPlayback::Random_Range(
 	const f32_t T = static_cast<f32_t>(Next_Random(State)) /
 		static_cast<f32_t>(UINT32_MAX);
 	return fMin + (fMax - fMin) * T;
+}
+
+float3_t Client::CEffectPlayback::Sample_AuthoredSpawnPosition(
+	const EFFECT_PARTICLE_DESC& Desc,
+	ELEMENT_STATE& State) const
+{
+	/* The min/max box is the only spawn volume the authored Detail had before
+	   spawnShape existed, so POINT has to keep drawing exactly the same three
+	   randoms in the same order.  The other kinds add the volume Cascade
+	   expressed through particlemodulelocationprimitive*, on top of that box so
+	   an authored offset still applies. */
+	const float3_t vBoxOffset(
+		Random_Range(State, Desc.vInitialPositionMin.x,
+			Desc.vInitialPositionMax.x),
+		Random_Range(State, Desc.vInitialPositionMin.y,
+			Desc.vInitialPositionMax.y),
+		Random_Range(State, Desc.vInitialPositionMin.z,
+			Desc.vInitialPositionMax.z));
+	const EFFECT_PARTICLE_SPAWN_SHAPE_DESC& Shape = Desc.SpawnShape;
+	if (EFFECT_PARTICLE_SPAWN_SHAPE::POINT == Shape.eKind)
+		return vBoxOffset;
+
+	const f32_t fArc = XMConvertToRadians(
+		std::clamp(Shape.fArcDegrees, 0.f, 360.f));
+	const f32_t fAngle = Random_Range(State, -0.5f * fArc, 0.5f * fArc);
+	switch (Shape.eKind)
+	{
+	case EFFECT_PARTICLE_SPAWN_SHAPE::SPHERE:
+	{
+		/* Uniform by volume between the inner shell and the radius: the cube root
+		   keeps particles from clustering at the centre. */
+		const f32_t fUnit = Random_Range(State, 0.f, 1.f);
+		const f32_t fInnerCube = Shape.fInnerRadius * Shape.fInnerRadius *
+			Shape.fInnerRadius;
+		const f32_t fOuterCube = Shape.fRadius * Shape.fRadius * Shape.fRadius;
+		const f32_t fRadius = std::cbrt(
+			fInnerCube + (fOuterCube - fInnerCube) * fUnit);
+		const f32_t fCosPolar = Random_Range(State, -1.f, 1.f);
+		const f32_t fSinPolar = std::sqrt(
+			(std::max)(0.f, 1.f - fCosPolar * fCosPolar));
+		return Add3(vBoxOffset, float3_t(
+			fRadius * fSinPolar * std::cos(fAngle),
+			fRadius * fCosPolar,
+			fRadius * fSinPolar * std::sin(fAngle)));
+	}
+	case EFFECT_PARTICLE_SPAWN_SHAPE::RING:
+	{
+		/* Uniform by area on the XZ annulus; the square root plays the same role
+		   the cube root plays for the sphere. */
+		const f32_t fUnit = Random_Range(State, 0.f, 1.f);
+		const f32_t fInnerSquare = Shape.fInnerRadius * Shape.fInnerRadius;
+		const f32_t fOuterSquare = Shape.fRadius * Shape.fRadius;
+		const f32_t fRadius = std::sqrt(
+			fInnerSquare + (fOuterSquare - fInnerSquare) * fUnit);
+		return Add3(vBoxOffset, float3_t(
+			fRadius * std::cos(fAngle), 0.f, fRadius * std::sin(fAngle)));
+	}
+	case EFFECT_PARTICLE_SPAWN_SHAPE::BOX:
+		return Add3(vBoxOffset, float3_t(
+			Random_Range(State, -Shape.vExtents.x, Shape.vExtents.x),
+			Random_Range(State, -Shape.vExtents.y, Shape.vExtents.y),
+			Random_Range(State, -Shape.vExtents.z, Shape.vExtents.z)));
+	case EFFECT_PARTICLE_SPAWN_SHAPE::POINT:
+	case EFFECT_PARTICLE_SPAWN_SHAPE::END:
+	default:
+		return vBoxOffset;
+	}
+}
+
+float3_t Client::CEffectPlayback::Sample_AuthoredInitialVelocity(
+	const EFFECT_PARTICLE_DESC& Desc,
+	ELEMENT_STATE& State,
+	const float3_t& vSpawnPosition) const
+{
+	const EFFECT_PARTICLE_INITIAL_VELOCITY_DESC& Emission = Desc.InitialVelocity;
+	if (EFFECT_PARTICLE_VELOCITY_MODE::FIXED == Emission.eMode)
+	{
+		return float3_t(
+			Random_Range(State, Desc.vInitialVelocityMin.x,
+				Desc.vInitialVelocityMax.x),
+			Random_Range(State, Desc.vInitialVelocityMin.y,
+				Desc.vInitialVelocityMax.y),
+			Random_Range(State, Desc.vInitialVelocityMin.z,
+				Desc.vInitialVelocityMax.z));
+	}
+
+	const f32_t fSpeed = Random_Range(
+		State, Emission.vSpeedRange.x, Emission.vSpeedRange.y);
+	float3_t vDirection{};
+	if (EFFECT_PARTICLE_VELOCITY_MODE::CONE == Emission.eMode)
+	{
+		/* The cone opens around the Element +Y axis, which is the axis the
+		   authored Transform rotation already aims. */
+		const f32_t fHalfAngle = XMConvertToRadians(
+			std::clamp(Emission.fConeAngleDegrees, 0.f, 180.f));
+		const f32_t fPolar = Random_Range(State, 0.f, fHalfAngle);
+		const f32_t fAzimuth = Random_Range(State, 0.f, XM_2PI);
+		const f32_t fSinPolar = std::sin(fPolar);
+		vDirection = float3_t(
+			fSinPolar * std::cos(fAzimuth),
+			std::cos(fPolar),
+			fSinPolar * std::sin(fAzimuth));
+	}
+	else
+	{
+		/* OUTWARD and INWARD are radial about the Element origin.  A particle that
+		   spawned exactly on the origin has no radial direction to inherit, so it
+		   takes a random one rather than silently emitting nothing. */
+		vDirection = vSpawnPosition;
+		if (DistanceSquared(vDirection, float3_t{}) <= 1.0e-12f)
+		{
+			const f32_t fCosPolar = Random_Range(State, -1.f, 1.f);
+			const f32_t fAzimuth = Random_Range(State, 0.f, XM_2PI);
+			const f32_t fSinPolar = std::sqrt(
+				(std::max)(0.f, 1.f - fCosPolar * fCosPolar));
+			vDirection = float3_t(
+				fSinPolar * std::cos(fAzimuth),
+				fCosPolar,
+				fSinPolar * std::sin(fAzimuth));
+		}
+		vDirection = Normalize3(vDirection);
+		if (EFFECT_PARTICLE_VELOCITY_MODE::INWARD == Emission.eMode)
+			vDirection = Scale3(vDirection, -1.f);
+	}
+	return Scale3(vDirection, fSpeed);
 }
 
 bool_t Client::CEffectPlayback::Is_Finished() const

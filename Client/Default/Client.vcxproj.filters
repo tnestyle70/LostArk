@@ -288,6 +288,9 @@
     <ClCompile Include="..\Private\Body_Valtan.cpp">
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\ValtanPatternTree.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\RuntimeAssetRoot.cpp">
       <Filter>03. Tools\00. Map</Filter>
     </ClCompile>
@@ -642,6 +645,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\Body_Valtan.h">
       <Filter>02.GameObjects\01. Boss</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\ValtanPatternTree.h">
+      <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\RuntimeAssetRoot.h">
       <Filter>03. Tools\00. Map</Filter>

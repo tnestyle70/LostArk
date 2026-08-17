@@ -3317,8 +3317,14 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 				(9u == Staged.iSourceMaterialProfile ?
 					LocalCrackSourceTextureIndex(TextureDesc.strName) :
 					LinearFlowSourceTextureIndex(TextureDesc.strName));
-			if (iIndex < 0 || TextureDesc.strAssetId.empty())
+			/* The profile index tables are authored data, so a name the table
+			   does not know about must not index past the SRV carrier. This
+			   ran unchecked and aborted the tool mid-authoring. */
+			if (iIndex < 0 || TextureDesc.strAssetId.empty() ||
+				static_cast<size_t>(iIndex) >= Staged.SourceTextures.size())
+			{
 				continue;
+			}
 			ComPtr<ID3D11ShaderResourceView> Texture;
 			if (FAILED(Load_SourceTexture(
 				TextureDesc, Texture, pSharedAssets)))
