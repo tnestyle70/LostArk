@@ -9,6 +9,12 @@
 
 #include <cmath>
 
+namespace
+{
+	constexpr f32_t HIT_FLASH_DURATION_SECONDS = 0.12f;
+	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
+}
+
 CNpc::CNpc(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
 	: CGameObject{ pDevice, pContext }
 {
@@ -97,6 +103,15 @@ bool_t CNpc::Apply_NetworkState(
 	return true;
 }
 
+void CNpc::Trigger_HitFlash()
+{
+	m_fHitFlashRemainingSeconds = HIT_FLASH_DURATION_SECONDS;
+	m_HitFlash.isEnabled = true;
+	m_HitFlash.vColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	m_HitFlash.fIntensity = HIT_FLASH_PEAK_INTENSITY;
+	m_HitFlash.usesSurfaceDetailMask = true;
+}
+
 void CNpc::Priority_Update(f32_t fTimeDelta)
 {
 }
@@ -104,6 +119,20 @@ void CNpc::Priority_Update(f32_t fTimeDelta)
 void CNpc::Update(f32_t fTimeDelta)
 {
 	m_pModelCom->Play_Animation(fTimeDelta);
+	if (m_fHitFlashRemainingSeconds > 0.f)
+	{
+		m_fHitFlashRemainingSeconds -= fTimeDelta;
+		if (m_fHitFlashRemainingSeconds <= 0.f)
+		{
+			m_fHitFlashRemainingSeconds = 0.f;
+			m_HitFlash = {};
+		}
+		else
+		{
+			m_HitFlash.fIntensity = HIT_FLASH_PEAK_INTENSITY *
+				(m_fHitFlashRemainingSeconds / HIT_FLASH_DURATION_SECONDS);
+		}
+	}
 }
 
 void CNpc::Late_Update(f32_t fTimeDelta)
@@ -126,7 +155,7 @@ HRESULT CNpc::Render()
 	for (uint32_t i = 0; i < iNumMeshes; ++i)
 	{
 		if (FAILED(Bind_DeferredMaterialInputs(
-				*m_pModelCom, m_pShaderCom, i)) ||
+				*m_pModelCom, m_pShaderCom, i, {}, &m_HitFlash)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
 			FAILED(m_pShaderCom->Begin(0)) ||

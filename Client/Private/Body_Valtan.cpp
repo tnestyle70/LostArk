@@ -27,6 +27,7 @@ HRESULT CBody_Valtan::Initialize(void* pArg)
 	const auto pDesc = static_cast<BODY_VALTAN_DESC*>(pArg);
 	m_pParentState = pDesc->pParentState;
 	m_iPrototypeLevelIndex = pDesc->iPrototypeLevelIndex;
+	m_pEmissiveOverride = pDesc->pEmissiveOverride;
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components()))
 		return E_FAIL;
 
@@ -77,7 +78,8 @@ HRESULT CBody_Valtan::Render()
 				"material.valtan.monster-base.v1",
 				m_pModelCom->Get_MaterialName(i));
 		if (FAILED(Bind_DeferredMaterialInputs(
-				*m_pModelCom, m_pShaderCom, i, Profile)) ||
+				*m_pModelCom, m_pShaderCom, i, Profile,
+				m_pEmissiveOverride)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
 				m_pShaderCom, "g_BoneMatrices", i)) ||
 			FAILED(m_pShaderCom->Begin(0)) ||

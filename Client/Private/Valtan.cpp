@@ -18,6 +18,8 @@ namespace
 {
 	constexpr f32_t VALTAN_SERVER_TICK_HZ = 30.f;
 	constexpr f32_t VALTAN_PRESENTATION_SEEK_EPSILON_SECONDS = 1.f / 120.f;
+	constexpr f32_t HIT_FLASH_DURATION_SECONDS = 0.12f;
+	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
 }
 
 CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
@@ -124,8 +126,31 @@ void CValtan::Priority_Update(f32_t fTimeDelta)
 	__super::Priority_Update(fTimeDelta);
 }
 
+void CValtan::Trigger_HitFlash()
+{
+	m_fHitFlashRemainingSeconds = HIT_FLASH_DURATION_SECONDS;
+	m_HitFlash.isEnabled = true;
+	m_HitFlash.vColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	m_HitFlash.fIntensity = HIT_FLASH_PEAK_INTENSITY;
+	m_HitFlash.usesSurfaceDetailMask = true;
+}
+
 void CValtan::Update(f32_t fTimeDelta)
 {
+	if (m_fHitFlashRemainingSeconds > 0.f)
+	{
+		m_fHitFlashRemainingSeconds -= fTimeDelta;
+		if (m_fHitFlashRemainingSeconds <= 0.f)
+		{
+			m_fHitFlashRemainingSeconds = 0.f;
+			m_HitFlash = {};
+		}
+		else
+		{
+			m_HitFlash.fIntensity = HIT_FLASH_PEAK_INTENSITY *
+				(m_fHitFlashRemainingSeconds / HIT_FLASH_DURATION_SECONDS);
+		}
+	}
 	if (m_isServerAuthoritative)
 	{
 		__super::Update(fTimeDelta);
@@ -244,6 +269,7 @@ HRESULT CValtan::Ready_PartObjects()
 	bodyDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
 	bodyDesc.pParentState = &m_iState;
 	bodyDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+	bodyDesc.pEmissiveOverride = &m_HitFlash;
 
 	if (FAILED(__super::Add_PartObject(
 		m_iPrototypeLevelIndex,
@@ -287,6 +313,7 @@ HRESULT CValtan::Ready_PartObjects()
 	weaponDesc.pSocketRootMatrix =
 		m_pBodyVisualRootCom->Get_WorldMatrixPtr();
 	weaponDesc.strMaterialProfileId = "material.valtan.monster-base.v1";
+	weaponDesc.pEmissiveOverride = &m_HitFlash;
 
 	return __super::Add_PartObject(
 		m_iPrototypeLevelIndex,

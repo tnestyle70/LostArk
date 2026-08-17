@@ -2,6 +2,7 @@
 
 #include "Client_Defines.h"
 #include "ContainerObject.h"
+#include "DeferredMaterialRenderUtils.h"
 #include "NavPathFollower.h"
 #include "Network/PacketMessages.h"
 
@@ -59,6 +60,7 @@ public:
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
 
+	void Trigger_HitFlash();
 	uint32_t Get_State() const { return m_iState; }
 	PATH_RESULT_CODE Get_PathResult() const { return m_PathFollower.Get_LastResult(); }
 	uint32_t Get_PathExpandedNodes() const { return m_PathFollower.Get_LastExpandedNodes(); }
@@ -104,6 +106,8 @@ private:
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	shared_ptr<CModel> m_pBodyModelCom = { nullptr };
 	shared_ptr<Engine::CTransform> m_pBodyVisualRootCom = { nullptr };
+	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
+	f32_t m_fHitFlashRemainingSeconds = { 0.f };
 	CNavPathFollower m_PathFollower;
 	uint32_t m_iPrototypeLevelIndex = {};
 	bool_t m_isServerAuthoritative = false;

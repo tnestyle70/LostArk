@@ -27,6 +27,10 @@ struct DEFERRED_EMISSIVE_OVERRIDE
 	bool_t isEnabled = false;
 	float4_t vColor = float4_t(1.f, 1.f, 1.f, 1.f);
 	f32_t fIntensity = 0.f;
+	/* false: diffuse luminance weights the whole surface (skill glow).
+	true: normal-map bump strength times specular lights only creases and
+	metal, so a hit flash keeps the silhouette readable. */
+	bool_t usesSurfaceDetailMask = false;
 };
 
 DEFERRED_MATERIAL_PROFILE Resolve_DeferredMaterialProfile(

@@ -15,6 +15,10 @@ float4 g_EmissiveColor = 1.f;
 uint g_HasFullSurfaceEmissiveOverride = 0;
 float4 g_FullSurfaceEmissiveColor = 1.f;
 float g_FullSurfaceEmissiveIntensity = 0.f;
+/* 0: diffuse luminance weights the whole surface (skill glow).
+   1: normal-map bump strength times specular weights only creases and
+   metal, so a hit flash reads the shape instead of washing it out. */
+uint g_FullSurfaceEmissiveMaskMode = 0;
 float g_SpecularIntensity = 1.f;
 float g_SpecularPower = 50.f;
 float2 g_UVScale = float2(1.f, 1.f);
@@ -155,11 +159,26 @@ PS_OUT PS_MAIN(VS_OUT input)
     }
     if (0 != g_HasFullSurfaceEmissiveOverride)
     {
-        const float textureDetail = saturate(
-            0.35f + dot(diffuse.rgb, float3(0.299f, 0.587f, 0.114f)) * 0.65f);
-        output.vEmissive.rgb +=
-            g_FullSurfaceEmissiveColor.rgb *
-            g_FullSurfaceEmissiveIntensity * textureDetail * diffuse.a;
+        if (1 == g_FullSurfaceEmissiveMaskMode)
+        {
+            /* Hit flash: only the silhouette rim glows, so the body keeps its
+               own colour and shading. */
+            const float3 cameraPosition =
+                -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+            const float3 toCamera =
+                normalize(cameraPosition - input.vWorldPos.xyz);
+            const float rim = pow(1.f - saturate(dot(normal, toCamera)), 3.f);
+            output.vEmissive.rgb += g_FullSurfaceEmissiveColor.rgb *
+                rim * g_FullSurfaceEmissiveIntensity * diffuse.a;
+        }
+        else
+        {
+            const float textureDetail = saturate(0.35f +
+                dot(diffuse.rgb, float3(0.299f, 0.587f, 0.114f)) * 0.65f);
+            output.vEmissive.rgb +=
+                g_FullSurfaceEmissiveColor.rgb *
+                g_FullSurfaceEmissiveIntensity * textureDetail * diffuse.a;
+        }
     }
     return output;
 }

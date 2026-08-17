@@ -72,6 +72,8 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 		pEmissiveOverride->vColor : float4_t(1.f, 1.f, 1.f, 1.f);
 	const f32_t fFullSurfaceEmissiveIntensity = hasValidOverride ?
 		pEmissiveOverride->fIntensity : 0.f;
+	const uint32_t iFullSurfaceEmissiveMaskMode =
+		hasValidOverride && pEmissiveOverride->usesSurfaceDetailMask ? 1u : 0u;
 	HRESULT hFirstBindFailure = S_OK;
 	const auto BindFailed = [&hFirstBindFailure](const HRESULT hResult)
 	{
@@ -111,6 +113,9 @@ HRESULT Client::Bind_DeferredMaterialInputs(
 		BindFailed(pShader->Bind_RawValue("g_FullSurfaceEmissiveIntensity",
 			&fFullSurfaceEmissiveIntensity,
 			sizeof(fFullSurfaceEmissiveIntensity))) ||
+		BindFailed(pShader->Bind_RawValue("g_FullSurfaceEmissiveMaskMode",
+			&iFullSurfaceEmissiveMaskMode,
+			sizeof(iFullSurfaceEmissiveMaskMode))) ||
 		(0u != iHasEmissive && BindFailed(Model.Bind_Material(
 			pShader, "g_EmissiveTexture", iMeshIndex, aiTextureType_EMISSIVE, 0))))
 	{

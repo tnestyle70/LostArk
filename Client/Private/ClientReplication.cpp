@@ -1177,6 +1177,31 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				entity);
 		}
 	}
+	for (const DAMAGE_EVENT& damageEvent : snapshot.DamageEvents)
+	{
+		if (!damageEvent.isOutgoing)
+			continue;
+		const auto hitEntity =
+			m_WorldEntities.find(damageEvent.iTargetNetEntityId);
+		if (hitEntity == m_WorldEntities.end())
+			continue;
+		if (WORLD_ENTITY_KIND::MONSTER == hitEntity->second.eKind)
+		{
+			if (const std::shared_ptr<CNpc> monster =
+				hitEntity->second.pNpc.lock())
+			{
+				monster->Trigger_HitFlash();
+			}
+		}
+		else if (WORLD_ENTITY_KIND::BOSS == hitEntity->second.eKind)
+		{
+			if (const std::shared_ptr<CValtan> boss =
+				hitEntity->second.pValtan.lock())
+			{
+				boss->Trigger_HitFlash();
+			}
+		}
+	}
 	CCombatHUDViewModel::Get().Apply_DamageEvents(
 		snapshot.iServerTick,
 		snapshot.DamageEvents);

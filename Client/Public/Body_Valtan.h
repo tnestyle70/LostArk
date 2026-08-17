@@ -10,6 +10,8 @@ NS_END
 
 NS_BEGIN(Client)
 
+struct DEFERRED_EMISSIVE_OVERRIDE;
+
 class CBody_Valtan final : public CPartObject
 {
 public:
@@ -17,6 +19,7 @@ public:
 	{
 		const uint32_t* pParentState = { nullptr };
 		uint32_t iPrototypeLevelIndex = {};
+		const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = { nullptr };
 	} BODY_VALTAN_DESC;
 
 private:
@@ -39,6 +42,7 @@ private:
 	shared_ptr<CModel> m_pModelCom = { nullptr };
 	const uint32_t* m_pParentState = { nullptr };
 	uint32_t m_iPrototypeLevelIndex = {};
+	const DEFERRED_EMISSIVE_OVERRIDE* m_pEmissiveOverride = { nullptr };
 
 private:
 	HRESULT Ready_Components();

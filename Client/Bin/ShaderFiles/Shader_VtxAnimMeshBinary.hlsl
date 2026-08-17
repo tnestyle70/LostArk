@@ -15,6 +15,10 @@ float g_EmissiveIntensity = 1.f;
 uint g_HasFullSurfaceEmissiveOverride = 0;
 float4 g_FullSurfaceEmissiveColor = 1.f;
 float g_FullSurfaceEmissiveIntensity = 0.f;
+/* 0: diffuse luminance weights the whole surface (skill glow).
+   1: normal-map bump strength times specular weights only creases and
+   metal, so a hit flash reads the shape instead of washing it out. */
+uint g_FullSurfaceEmissiveMaskMode = 0;
 /* The source game's dye contract: the mask's channels select colour regions
 of a mostly achromatic diffuse and each region multiplies its tint in. */
 Texture2D g_DyeMaskTexture;
@@ -106,8 +110,21 @@ PS_OUT Evaluate_Material(
     float3 normal = normalize(input.vNormal.xyz);
     if (0 != g_HasNormalTexture)
     {
-        float3 tangentNormal =
-            g_NormalTexture.Sample(LinearSampler, input.vTexcoord).xyz * 2.f - 1.f;
+        /* Monster normal maps ship as BC5 (RG only); a plain xyz decode reads
+           z = -1 and flips the normal into the surface. */
+        float4 encodedNormal =
+            g_NormalTexture.Sample(LinearSampler, input.vTexcoord);
+        float3 tangentNormal;
+        if (encodedNormal.b <= 0.0001f)
+        {
+            float2 tangentXY = encodedNormal.rg * 2.f - 1.f;
+            float tangentZ = sqrt(saturate(1.f - dot(tangentXY, tangentXY)));
+            tangentNormal = float3(tangentXY, tangentZ);
+        }
+        else
+        {
+            tangentNormal = normalize(encodedNormal.xyz * 2.f - 1.f);
+        }
         float3x3 tangentToWorld = float3x3(
             normalize(input.vTangent.xyz),
             normalize(input.vBinormal.xyz) * -1.f,
@@ -140,11 +157,26 @@ PS_OUT Evaluate_Material(
     }
     if (0 != g_HasFullSurfaceEmissiveOverride)
     {
-        const float textureDetail = saturate(
-            0.35f + dot(diffuse.rgb, float3(0.299f, 0.587f, 0.114f)) * 0.65f);
-        output.vEmissive.rgb +=
-            g_FullSurfaceEmissiveColor.rgb *
-            g_FullSurfaceEmissiveIntensity * textureDetail * diffuse.a;
+        if (1 == g_FullSurfaceEmissiveMaskMode)
+        {
+            /* Hit flash: only the silhouette rim glows, so the body keeps its
+               own colour and shading. */
+            const float3 cameraPosition =
+                -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+            const float3 toCamera =
+                normalize(cameraPosition - input.vWorldPos.xyz);
+            const float rim = pow(1.f - saturate(dot(normal, toCamera)), 3.f);
+            output.vEmissive.rgb += g_FullSurfaceEmissiveColor.rgb *
+                rim * g_FullSurfaceEmissiveIntensity * diffuse.a;
+        }
+        else
+        {
+            const float textureDetail = saturate(0.35f +
+                dot(diffuse.rgb, float3(0.299f, 0.587f, 0.114f)) * 0.65f);
+            output.vEmissive.rgb +=
+                g_FullSurfaceEmissiveColor.rgb *
+                g_FullSurfaceEmissiveIntensity * textureDetail * diffuse.a;
+        }
     }
     return output;
 }

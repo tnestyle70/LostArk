@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "DeferredMaterialRenderUtils.h"
 #include "GameObject.h"
 
 NS_BEGIN(Engine)
@@ -56,6 +57,7 @@ public:
 	bool_t Apply_NetworkState(
 		const float3_t& position,
 		f32_t yawDegrees);
+	void Trigger_HitFlash();
 #ifdef _DEBUG
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
@@ -74,6 +76,8 @@ private:
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
+	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
+	f32_t m_fHitFlashRemainingSeconds = { 0.f };
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = { false };
 #endif
