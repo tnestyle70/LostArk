@@ -221,6 +221,7 @@ HRESULT CLevel_CharacterSelect::Render()
 #endif
 	Render_SelectionPanel();
 	Render_ClassList();
+	Render_ArenaSpawnButtons();
 	return S_OK;
 }
 
@@ -1295,7 +1296,7 @@ namespace
 		{ 950.f, 280.f, 48.f, 0, "LanceMaster",     "\xeb\xac\xb4\xeb\x8f\x84\xea\xb0\x80(\xec\x97\xac)", "\xec\xb0\xbd\xec\x88\xa0\xec\x82\xac", "CategorySymbol_MartialW.png" },
 		{ 950.f, 280.f, 48.f, 1, "Gunslinger",      "\xed\x97\x8c\xed\x84\xb0(\xec\x97\xac)", "\xea\xb1\xb4\xec\x8a\xac\xeb\xa7\x81\xea\xb1\xb0", nullptr },
 		{ 950.f, 280.f, 48.f, 3, "Artist",          "\xec\x8a\xa4\xed\x8e\x98\xec\x85\x9c\xeb\xa6\xac\xec\x8a\xa4\xed\x8a\xb8(\xec\x97\xac)", "\xeb\x8f\x84\xed\x99\x94\xea\xb0\x80", "CategorySymbol_SpecialistF.png" },
-		{ 950.f, 280.f, 48.f, 4, "DimensionMaster", "\xec\x8a\xa4\xed\x8e\x98\xec\x85\x9c\xeb\xa6\xac\xec\x8a\xa4\xed\x8a\xb8(\xeb\x82\xa8)", "\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac", nullptr },
+		{ 950.f, 280.f, 48.f, 4, "DimensionMaster", "\xec\x8a\xa4\xed\x8e\x98\xec\x85\x9c\xeb\xa6\xac\xec\x8a\xa4\xed\x8a\xb8(\xeb\x82\xa8)", "\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac", "CategorySymbol_Specialist_M.png" },
 	};
 
 	constexpr f32_t REF_WIDTH = 1280.f;
@@ -1568,6 +1569,119 @@ void CLevel_CharacterSelect::Render_ClassList()
 				Request_ClassChange(Entry.iSupportedClassIndex);
 
 			fRowY = fThumbY + THUMB_H + THUMB_MARGIN_BOTTOM;
+		}
+	}
+}
+
+void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
+{
+	if (nullptr == m_pClassSelectView)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	const f32_t fScaleX = pViewport->WorkSize.x / REF_WIDTH;
+	const f32_t fScaleY = pViewport->WorkSize.y / REF_HEIGHT;
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+
+	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY) -> ImVec2
+	{
+		return ImVec2(
+			pViewport->WorkPos.x + fX * fScaleX,
+			pViewport->WorkPos.y + fY * fScaleY);
+	};
+
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	const bool_t bInteractable = MODE::SERVER_ARENA == m_eMode &&
+		!m_isCreateCharacterModalOpen &&
+		!Is_ClassPresentationPreparationPending() &&
+		!CLevelTransitionService::Is_Pending();
+
+	const auto Fn_HitTest = [&](f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
+		ImVec2& outTopLeft, ImVec2& outBotRight) -> bool_t
+	{
+		outTopLeft = Fn_ToScreen(fX, fY);
+		outBotRight = Fn_ToScreen(fX + fWidth, fY + fHeight);
+		return vMouse.x >= outTopLeft.x && vMouse.x < outBotRight.x &&
+			vMouse.y >= outTopLeft.y && vMouse.y < outBotRight.y;
+	};
+
+	/* ARENA_SPAWN_OPTIONS[1] (Mid Boss / Lugaru) has no button in this row -- only reachable
+	through the ImGui debug radio list -- so the middle button maps to option index 2 (Valtan),
+	not the array's own middle entry. */
+	struct SPAWN_BUTTON final { const char_t* pSlotId; const char_t* pHoverPath; size_t iOptionIndex; };
+	constexpr SPAWN_BUTTON SPAWN_BUTTONS[] =
+	{
+		{ "SpawnMonsterButton", "UI/ClassSelect/Common/SpawnMonsterButtonHover.png", 0u },
+		{ "BossSpawnButton", "UI/ClassSelect/Common/BossSpawnButtonHover.png", 2u },
+	};
+
+	for (const SPAWN_BUTTON& Button : SPAWN_BUTTONS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pClassSelectView->Get_SlotRect(Button.pSlotId, fX, fY, fWidth, fHeight))
+			continue;
+
+		ImVec2 vTopLeft, vBotRight;
+		const bool_t bHitTest = Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
+		const bool_t bHovered = bInteractable && bHitTest;
+
+		if (bHovered)
+		{
+			if (ID3D11ShaderResourceView* pHoverSRV =
+				m_pClassSelectView->Load_Texture(Button.pHoverPath))
+			{
+				pDrawList->AddImage(pHoverSRV, vTopLeft, vBotRight);
+			}
+		}
+
+		if (bHovered && bClicked)
+		{
+			m_iSelectedArenaSpawnIndex = Button.iOptionIndex;
+			Request_SelectedArenaSpawn();
+		}
+	}
+
+	/* SpawnCancelButton (rightmost): hover only. No despawn/revert command exists anywhere in
+	this codebase (IWorldEntityCommandSink only has Request_SpawnWorldEntity; Server's
+	ROOM_COMMAND_TYPE has no despawn entry) -- wiring a click here would mean inventing a new
+	Client/Server capability, which wasn't asked for. Leave it unbound until that command exists. */
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (m_pClassSelectView->Get_SlotRect("SpawnCancelButton", fX, fY, fWidth, fHeight))
+		{
+			ImVec2 vTopLeft, vBotRight;
+			if (bInteractable && Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight))
+			{
+				if (ID3D11ShaderResourceView* pHoverSRV = m_pClassSelectView->Load_Texture(
+					"UI/ClassSelect/Common/SpawnCancelButtonHover.png"))
+				{
+					pDrawList->AddImage(pHoverSRV, vTopLeft, vBotRight);
+				}
+			}
+		}
+	}
+
+	/* Back: same Fail_ServerArena() the ImGui "Back" button already calls. Not gated by
+	bInteractable -- an escape hatch should stay clickable through pending/preparing states, only
+	guarded against firing again mid-transition. */
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (m_pClassSelectView->Get_SlotRect("GoBackIcon", fX, fY, fWidth, fHeight))
+		{
+			ImVec2 vTopLeft, vBotRight;
+			const bool_t bHovered = !CLevelTransitionService::Is_Pending() &&
+				Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
+			if (bHovered)
+			{
+				if (ID3D11ShaderResourceView* pHoverSRV =
+					m_pClassSelectView->Load_Texture("UI/ClassSelect/Common/GoBackIconHover.png"))
+				{
+					pDrawList->AddImage(pHoverSRV, vTopLeft, vBotRight);
+				}
+			}
+			if (bHovered && bClicked)
+				Fail_ServerArena("Leaving Server Arena.");
 		}
 	}
 }

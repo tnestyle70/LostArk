@@ -83,6 +83,10 @@ private:
 	bool_t Enter_Stage(LOBBY_STAGE eStage);
 	void Render_SelectionPanel();
 	void Render_ClassList();
+	/* Real click/hover for GoBackIcon/SpawnMonsterButton/BossSpawnButton/SpawnCancelButton --
+	CHUDRuntimeView has no hit-test or hover of its own (see HUDRuntimeView.cpp), so this follows
+	the same hand-rolled mouse-vs-rect pattern Render_ClassList already uses for the class list. */
+	void Render_ArenaSpawnButtons();
 
 private:
 	static constexpr std::array<

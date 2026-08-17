@@ -66,6 +66,13 @@ private:
 	void Apply_LevelRequest();
 	HRESULT ReadyImGuiRuntime();
 	void RenderCombatHUD();
+	/* HealthBar/ManaBar's own JSON layer (HUD_Layout.json) is now just the dark empty-state
+	background ("Empty bar.png"/"Empty bar reverse.png"), always drawn full by the generic
+	CHUDRuntimeView::Render() pass. This draws the real colored fill ("HP Bar.png"/"MP Bar.png")
+	UV-clipped by current/maximum HP and resource on top of it, same technique as the boss bar's
+	fill -- CHUDRuntimeView::Render() never dynamically resized anything, so the bar previously
+	always showed full regardless of actual HP/MP. */
+	void RenderPlayerHealthManaBar();
 	void RenderBossHealthBar();
 	/* Boss title/HP/bar-count text. Split out from RenderBossHealthBar and called after
 	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason) -- CGameInstance::Draw_Text
@@ -116,6 +123,10 @@ private:
 	always-on top/bottom menu chrome (Screen UI) either, so it owns its own document/tab instead of
 	being folded into either. */
 	unique_ptr<CHUDRuntimeView> m_pBossUIView = { nullptr };
+	/* UI/Esther/EstherUI.json's runtime consumer (RenderEstherGauge) -- same reasoning as
+	m_pBossUIView: the Esther skill window is shared across every class, not tied to Combat HUD
+	or Screen UI, so it gets its own document/tab too. */
+	unique_ptr<CHUDRuntimeView> m_pEstherUIView = { nullptr };
 	/* Edge-detects the local player's stance so RenderCombatHUD only calls
 	CHUDRuntimeView::Play_KeyframeAnimation on an actual change (or the first frame a stance is
 	known at all), instead of re-triggering the icon's animation every frame. NONE never matches a
