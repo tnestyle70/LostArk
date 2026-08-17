@@ -2209,6 +2209,133 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		tests.Require(10000u == behindEntities[0].iCurrentHp && missEvents.empty(),
 			"Leave a target outside the authored hit shape untouched");
 	}
+	{
+		/* Knockback: only hits the source authored with a push move a monster,
+		scaled by its profile; the slide runs over the hit's own push window,
+		a zero-scale monster never moves, and a wall ends the slide early. */
+		const auto makeMonster = [&boss](const float knockbackScale)
+		{
+			SERVER_WORLD_ENTITY monster{};
+			monster.iNetEntityId = 910u;
+			monster.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+			monster.eAction = SERVER_ENTITY_ACTION::IDLE;
+			monster.strArchetypeId = "MONSTER_VALTAN_PADD_01";
+			monster.iCurrentHp = 100000;
+			monster.iMaximumHp = 100000;
+			/* 1.5 m in front of the attacker: inside 34120's 2.2 m and 34540's
+			3.2 m shapes even with a small monster body. */
+			monster.fPositionX = 151.f;
+			monster.fPositionY = boss.fPositionY;
+			monster.fPositionZ = -127.5f;
+			monster.fCollisionRadius = 0.6f;
+			monster.fHitKnockbackScale = knockbackScale;
+			return monster;
+		};
+		const auto hitWith = [&](const SKILL_ID skillId,
+			const PLAYER_STANCE_ID stance,
+			std::vector<SERVER_WORLD_ENTITY>& targets,
+			std::vector<DAMAGE_EVENT>& events)
+		{
+			SERVER_PLAYER attacker{};
+			attacker.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			attacker.eStance = stance;
+			attacker.iCurrentResource = 1000;
+			attacker.iMaximumResource = 1000;
+			attacker.fPositionX = 151.f;
+			attacker.fPositionY = 22.97f;
+			attacker.fPositionZ = -129.f;
+			C2S_USE_SKILL knockSkill = useSkill;
+			knockSkill.iSkillId = skillId;
+			knockSkill.iClientSequence = 5;
+			CPlayerSkillSystem knockSkills;
+			if (!knockSkills.Try_Start(attacker, knockSkill, catalog, 200))
+				return false;
+			for (std::uint32_t tick = 201; tick < 260; ++tick)
+				knockSkills.Update(attacker, targets, catalog, &navigation, nullptr,
+					1.f / 30.f, tick, events);
+			return true;
+		};
+		/* 34540 (short spear Q) is authored push=130 ms, pushr=1.0 m on its one
+		hit; 34120's three hits are authored push=0. */
+		const PLAYER_SKILL_DEFINITION* pushSkill = catalog.Find_Skill(34540);
+		tests.Require(
+			nullptr != pushSkill && 1u == pushSkill->Hits.size() &&
+			130u == pushSkill->Hits[0].iPushMs &&
+			std::fabs(pushSkill->Hits[0].fPushRange - 1.f) < 0.0001f &&
+			nullptr != talonStrike && 0u == talonStrike->Hits[0].iPushMs &&
+			0.f == talonStrike->Hits[0].fPushRange,
+			"Load the authored push window and range per hit shape from the gameplay bootstrap");
+
+		std::vector<SERVER_WORLD_ENTITY> unpushed{ makeMonster(1.f) };
+		std::vector<DAMAGE_EVENT> unpushedEvents;
+		const bool unpushedStarted = hitWith(34120,
+			PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR, unpushed, unpushedEvents);
+		tests.Require(
+			unpushedStarted && !unpushedEvents.empty() &&
+			0.f == unpushed[0].fKnockbackRemainingSeconds,
+			"Leave a monster unmoved by hits the source authored without a push");
+
+		std::vector<SERVER_WORLD_ENTITY> pushed{ makeMonster(1.f) };
+		std::vector<DAMAGE_EVENT> pushedEvents;
+		const bool pushedStarted = hitWith(34540,
+			PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR, pushed, pushedEvents);
+		tests.Require(
+			pushedStarted && !pushedEvents.empty() &&
+			std::fabs(pushed[0].fKnockbackRemainingSeconds - 0.13f) < 0.0001f &&
+			std::fabs(pushed[0].fKnockbackDirectionX) < 0.001f &&
+			pushed[0].fKnockbackDirectionZ > 0.999f,
+			"Arm a knockback away from the attacker on an authored push hit");
+		const float startX = pushed[0].fPositionX;
+		const float startZ = pushed[0].fPositionZ;
+		std::uint32_t knockbackTicks = 0;
+		while (CMonsterBrain::Advance_Knockback(pushed[0], navigation, 1.f / 30.f))
+		{
+			++knockbackTicks;
+			if (knockbackTicks > 30u)
+				break;
+		}
+		tests.Require(
+			4u == knockbackTicks &&
+			0.f == pushed[0].fKnockbackRemainingSeconds &&
+			std::fabs(pushed[0].fPositionX - startX) < 0.01f &&
+			std::fabs((pushed[0].fPositionZ - startZ) - 1.f) < 0.01f &&
+			SERVER_ENTITY_ACTION::IDLE == pushed[0].eAction,
+			"Slide the monster the authored push range over the push window and stop");
+
+		std::vector<SERVER_WORLD_ENTITY> immune{ makeMonster(0.f) };
+		std::vector<DAMAGE_EVENT> immuneEvents;
+		const bool immuneStarted = hitWith(34540,
+			PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR, immune, immuneEvents);
+		tests.Require(
+			immuneStarted && !immuneEvents.empty() &&
+			0.f == immune[0].fKnockbackRemainingSeconds &&
+			!CMonsterBrain::Advance_Knockback(immune[0], navigation, 1.f / 30.f) &&
+			151.f == immune[0].fPositionX &&
+			-127.5f == immune[0].fPositionZ,
+			"Leave a zero-scale monster in place when an authored push hit lands");
+
+		SERVER_WORLD_ENTITY walled = makeMonster(1.f);
+		walled.fPositionX = lastWalkableX - navCellSize * 0.5f;
+		walled.fPositionZ = boundaryProbeZ;
+		walled.fKnockbackDirectionX = 1.f;
+		walled.fKnockbackDirectionZ = 0.f;
+		walled.fKnockbackSpeed = 4.f / 0.13f;
+		walled.fKnockbackRemainingSeconds = 0.13f;
+		std::uint32_t walledTicks = 0;
+		while (CMonsterBrain::Advance_Knockback(walled, navigation, 1.f / 30.f))
+		{
+			++walledTicks;
+			if (walledTicks > 30u)
+				break;
+		}
+		SERVER_NAV_POINT walledPoint{};
+		tests.Require(
+			walledTicks >= 1u && walledTicks < 5u &&
+			0.f == walled.fKnockbackRemainingSeconds &&
+			walled.fPositionX < firstBlockedX &&
+			navigation.Sample_Position(walled.fPositionX, walled.fPositionZ, walledPoint),
+			"Stop a knockback at the non-walkable boundary and end the window");
+	}
 	C2S_USE_SKILL cooldownAttempt = useSkill;
 	cooldownAttempt.iClientSequence = 2;
 	tests.Require(!skills.Try_Start(player, cooldownAttempt, catalog, 70),
@@ -2867,7 +2994,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t6\t7\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t7\t7\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -2920,7 +3047,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t6\t7\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t7\t7\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -3005,13 +3132,13 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const std::string validSourceRow =
 			"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180";
 		tests.Require(
-			loadWithWallContactRows(6u, { validSourceRow }, { validWallRow }),
+			loadWithWallContactRows(7u, { validSourceRow }, { validWallRow }),
 			"Accept one exact ACTIVE axe wall-contact row");
 		tests.Require(
-			!loadWithWallContactRows(5u, { validSourceRow }, { validWallRow }),
+			!loadWithWallContactRows(6u, { validSourceRow }, { validWallRow }),
 			"Reject the obsolete gameplay bootstrap version before wall-contact load");
 		tests.Require(
-			!loadWithWallContactRows(6u, { validSourceRow }, {
+			!loadWithWallContactRows(7u, { validSourceRow }, {
 				"PATTERNWALLCONTACT\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.wrong" }),
 			"Reject a wall-contact row whose action does not exactly join its stage");
 		tests.Require(
@@ -3019,14 +3146,14 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				6u, { validSourceRow }, { validWallRow, validWallRow }),
 			"Reject duplicate axe wall-contact ownership atomically");
 		tests.Require(
-			!loadWithWallContactRows(6u, {}, {}),
+			!loadWithWallContactRows(7u, {}, {}),
 			"Reject a boss pattern with no compiled source timing row");
 		tests.Require(
 			!loadWithWallContactRows(
 				6u, { validSourceRow, validSourceRow }, {}),
 			"Reject duplicate source timing ownership atomically");
 		tests.Require(
-			!loadWithWallContactRows(6u, {
+			!loadWithWallContactRows(7u, {
 				"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t149\t350\t300\t180" }, {}),
 			"Reject a source cooldown whose 30 Hz tick conversion is inconsistent");
 		std::error_code cleanupError;
@@ -3069,7 +3196,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t6\t9\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t7\t9\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -3348,6 +3475,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			nullptr != monsterAnchor && nullptr != minibossAnchor &&
 			nullptr != monsterProfile && nullptr != minibossProfile,
 			"Load two Character Select spawn groups, anchors, and profiles");
+		tests.Require(
+			nullptr != monsterProfile && nullptr != minibossProfile &&
+			std::fabs(monsterProfile->fHitKnockbackScale - 1.f) < 0.0001f &&
+			0.f == minibossProfile->fHitKnockbackScale,
+			"Read the published hit knockback scale for the monster and the miniboss");
 
 		const auto hasImmediateEntry = [](
 			const SPAWN_GROUP_DEFINITION& group,

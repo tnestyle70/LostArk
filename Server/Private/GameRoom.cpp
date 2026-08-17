@@ -3372,6 +3372,7 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 	staged.iPatternActiveMs = profile.iAttackActiveMs;
 	staged.iPatternRecoveryMs = profile.iAttackRecoveryMs;
 	staged.iDeadDespawnMs = profile.iDeadDespawnMs;
+	staged.fHitKnockbackScale = profile.fHitKnockbackScale;
 
 	++m_iNextNetEntityId;
 	m_WorldEntities.push_back(std::move(staged));
@@ -3696,6 +3697,11 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		else if (entity.eKind == WORLD_BOOTSTRAP_KIND::MONSTER &&
 			m_ServerNavigation.Is_Loaded())
 		{
+			if (CMonsterBrain::Advance_Knockback(
+				entity, m_ServerNavigation, fixedDeltaSeconds))
+			{
+				continue;
+			}
 			m_MonsterBrain.Update(
 				entity,
 				m_Players,

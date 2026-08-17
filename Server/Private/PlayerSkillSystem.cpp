@@ -572,7 +572,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind) &&
 			SERVER_ENTITY_ACTION::DEAD != entity.eAction && 0u != entity.iCurrentHp;
 	};
-	const auto applyDamage = [&](SERVER_WORLD_ENTITY& target, const std::uint32_t rawDamage)
+	const auto applyDamage = [&](SERVER_WORLD_ENTITY& target,
+		const std::uint32_t rawDamage, const PLAYER_SKILL_HIT* pHit)
 	{
 		const std::uint32_t damage = WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind ?
 			CGameplayCatalog::Apply_Defense(rawDamage, target.iDefense) : rawDamage;
@@ -591,6 +592,36 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			damageEvent.fPositionZ = target.fPositionZ;
 			damageEvent.isOutgoing = true;
 			outDamageEvents.push_back(damageEvent);
+		}
+		/* Only hits the source authored with a push move the target, scaled by
+		the monster's own weight; 0 scale is super armour. */
+		const float pushDistance = nullptr == pHit || 0u == pHit->iPushMs ?
+			0.f : pHit->fPushRange * target.fHitKnockbackScale;
+		if (0u != damage && WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind &&
+			0.f != pushDistance && 0u != target.iCurrentHp)
+		{
+			/* Push straight away from the attacker (a negative range pulls it
+			closer); a target standing on the player moves along the aim. */
+			float directionX = target.fPositionX - player.fPositionX;
+			float directionZ = target.fPositionZ - player.fPositionZ;
+			const float length = std::sqrt(
+				directionX * directionX + directionZ * directionZ);
+			if (length < 0.0001f)
+			{
+				directionX = player.fSkillAimDirectionX;
+				directionZ = player.fSkillAimDirectionZ;
+			}
+			else
+			{
+				directionX /= length;
+				directionZ /= length;
+			}
+			const float durationSeconds =
+				static_cast<float>(pHit->iPushMs) * MILLISECONDS_TO_SECONDS;
+			target.fKnockbackDirectionX = directionX;
+			target.fKnockbackDirectionZ = directionZ;
+			target.fKnockbackSpeed = pushDistance / durationSeconds;
+			target.fKnockbackRemainingSeconds = durationSeconds;
 		}
 		if (0u == target.iCurrentHp)
 		{
@@ -663,7 +694,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 				if (0u != hit.iMaxTargets && targets.size() > hit.iMaxTargets)
 					targets.resize(hit.iMaxTargets);
 				for (auto& [distanceSquared, target] : targets)
-					applyDamage(*target, damageOfSubHit(subHitIndex));
+					applyDamage(*target, damageOfSubHit(subHitIndex), &hit);
 			}
 		}
 		if (allFired)
@@ -695,7 +726,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			}
 		}
 		if (nullptr != closestBoss)
-			applyDamage(*closestBoss, resolveRawDamage());
+			applyDamage(*closestBoss, resolveRawDamage(), nullptr);
 		player.hasAppliedSkillDamage = true;
 	}
 

@@ -1219,15 +1219,20 @@ function Format-HitShapes {
     $subHits = 0
     foreach ($hit in $Hits) {
         Assert-ExactProperties $hit @('timeMs','repeatCount','repeatMs','areaType','range','angle',
-            'height','offset','inner','maxTargets') 'hit shape'
+            'height','offset','inner','maxTargets','pushMs','pushRange') 'hit shape'
         Assert-JsonInteger $hit.timeMs "hit shape $SkillId timeMs" 0 $LimitMs
         Assert-JsonInteger $hit.repeatCount "hit shape $SkillId repeatCount" 1 64
         Assert-JsonInteger $hit.repeatMs "hit shape $SkillId repeatMs" 0 100000
         Assert-JsonInteger $hit.areaType "hit shape $SkillId areaType" 1 3
         Assert-JsonInteger $hit.angle "hit shape $SkillId angle" 0 360
         Assert-JsonInteger $hit.maxTargets "hit shape $SkillId maxTargets" 0 64
-        foreach ($field in @('range','height','offset','inner')) {
+        Assert-JsonInteger $hit.pushMs "hit shape $SkillId pushMs" 0 10000
+        foreach ($field in @('range','height','offset','inner','pushRange')) {
             Assert-JsonNumber $hit.$field "hit shape $SkillId $field"
+        }
+        if ([double]$hit.pushRange -lt -50.0 -or [double]$hit.pushRange -gt 50.0 -or
+            ([int]$hit.pushMs -eq 0 -and [double]$hit.pushRange -ne 0.0)) {
+            throw "Hit shape push is invalid: $SkillId"
         }
         $timeMs = [int]$hit.timeMs
         if ($timeMs -lt $previousMs) {
@@ -1242,14 +1247,16 @@ function Format-HitShapes {
             throw "Hit shape extent is invalid: $SkillId"
         }
         $subHits += [int]$hit.repeatCount
-        $packed.Add(('{0}:{1}:{2}:{3}:{4}:{5}:{6}:{7}:{8}:{9}' -f $timeMs,
+        $packed.Add(('{0}:{1}:{2}:{3}:{4}:{5}:{6}:{7}:{8}:{9}:{10}:{11}' -f $timeMs,
             [int]$hit.repeatCount, [int]$hit.repeatMs, [int]$hit.areaType,
             (Format-InvariantFloat $hit.range "hit shape $SkillId range"),
             [int]$hit.angle,
             (Format-InvariantFloat $hit.height "hit shape $SkillId height"),
             (Format-InvariantSignedFloat $hit.offset "hit shape $SkillId offset"),
             (Format-InvariantFloat $hit.inner "hit shape $SkillId inner"),
-            [int]$hit.maxTargets))
+            [int]$hit.maxTargets,
+            [int]$hit.pushMs,
+            (Format-InvariantSignedFloat $hit.pushRange "hit shape $SkillId pushRange")))
     }
     if ($subHits -gt 64) {
         throw "Hit shape sub-hit count exceeds 64: $SkillId"
@@ -1311,7 +1318,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t6`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t7`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

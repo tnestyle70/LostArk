@@ -17,7 +17,9 @@
           "height": 1.5,
           "offset": 0.0,
           "inner": 0.0,
-          "maxTargets": 0
+          "maxTargets": 0,
+          "pushMs": 30,
+          "pushRange": 0.4
         },
         {
           "timeMs": 525,
@@ -29,7 +31,9 @@
           "height": 1.0,
           "offset": 0.0,
           "inner": 0.0,
-          "maxTargets": 0
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
         },
         {
           "timeMs": 844,
@@ -41,7 +45,9 @@
           "height": 1.0,
           "offset": 0.0,
           "inner": 0.0,
-          "maxTargets": 0
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
         },
         {
           "timeMs": 1243,
@@ -53,7 +59,9 @@
           "height": 1.0,
           "offset": 0.0,
           "inner": 0.0,
-          "maxTargets": 0
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
         }
       ]
     }

@@ -28,6 +28,10 @@ namespace LostArk::Server
 		float fOffset = 0.f;
 		float fInner = 0.f;
 		std::uint32_t iMaxTargets = 0;
+		/* Official push on this hit: 0 ms means the target is not moved; the
+		range is metres away from the caster, negative pulling it closer. */
+		std::uint32_t iPushMs = 0;
+		float fPushRange = 0.f;
 	};
 
 	struct PLAYER_COMBO_STAGE final
