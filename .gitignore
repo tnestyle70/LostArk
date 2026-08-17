@@ -130,3 +130,12 @@ __pycache__/
 !/Tools/
 !/Tools/ModelAssetConverter/
 !/Tools/ModelAssetConverter/**
+
+# The negation above re-includes everything under the converter, which brought
+# back the interpreter cache that line 115 excludes for every other directory.
+/Tools/ModelAssetConverter/**/__pycache__/
+
+# Generated at the repository root by one-off extraction runs. These are
+# reproducible outputs, not source.
+/V5.*.generated.*.json
+/CON
