@@ -1695,8 +1695,8 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1720
 "wgl_sk_warspear" CANCEL startms=700 endms=1000 payload="입력캔슬" src=orig
 "wgl_sk_warspear" CANCEL startms=700 endms=1000 payload="이동캔슬" src=orig
 "wgl_sk_warspear" EFFECT startms=700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"wgl_att_battle_1_01" EFFECT startms=0 payload="effect.warlord.skill.17000.ba1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"wgl_att_battle_1_02" EFFECT startms=0 payload="effect.warlord.skill.17000.ba2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_att_battle_1_01" EFFECT startms=0 payload="effect.warlord.skill.17000.ba3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_att_battle_1_02" EFFECT startms=0 payload="effect.warlord.skill.17000.ba3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_att_battle_1_03" EFFECT startms=0 payload="effect.warlord.skill.17000.ba3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_bash" EFFECT startms=0 payload="effect.warlord.skill.17040.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_dashupperfire_01" EFFECT startms=0 payload="effect.warlord.skill.17080.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
