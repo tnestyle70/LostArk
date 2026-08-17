@@ -44,6 +44,18 @@ PLAN: `2026-08-17_MONSTER_HIT_FLASH_KNOCKBACK_PLAN.md`
 - BC5 노멀 디코드 수정으로 잡몹/루가루의 **평소 조명**도 바뀐다(이전엔 노멀 z가 −1로 뒤집힘). Valtan body는
   TGA(RGB)라 무관.
 
+## 3.1 후속 (2026-08-18 예정, 4직업 창술사·워로드·도화가·차원술사만)
+
+- **notify HIT가 없는 스킬은 셰이프가 안 붙는다.** 창술사 T 적룡필살 34650, ALT_V 마룡합일섬 34630, 단창 S
+  적룡포 34590 등은 원본 클립 notify에 HIT가 없어(CANCEL/EFFECT/SHAKE/SUPERARMOR만) `fill_animevents_hit_shapes.py`가
+  스탬프하지 못했고, `.animevents`·`hitshapes.json`에 없어 Server는 `maximumRange` 원형 단일 판정, Client
+  Debug 와이어는 표시 없음. 원본 `SkillEffect`(`.skilltiming`)에는 `timed=1 t=<ms> w=<ms>`와 셰이프가 명시돼
+  있으므로 스킬 시간 → clip 로컬 시간(skillbindings 순서·playMs·playRate 역산)으로 환산해 HIT 행을 생성하는
+  경로를 스크립트에 추가하고 4직업 `.animevents`를 재스탬프 → `build_hitshapes.py` → publish → contract-test.
+- 단창 R 유성강천 34570은 셰이프가 있으나 착지 clip `flm_sk_dragonupfly_02_re` 400~600 ms(box 1.8×1.5, 앞 1.0 m)
+  200 ms만 그려져 임팩트 이펙트에 가린다. Debug 와이어 최소 표시 시간(0.3~0.5 s)은 선택 항목.
+- 원작 push `PushMinRange≠PushMaxRange` 랜덤 롤(6.4만 행)과 `PushType` 0/1/2 의미는 미조사.
+
 ## 4. 커밋
 
 1. `feat(client): flash the silhouette rim of a monster or boss on a player hit` — G1 (Client + 셰이더 + PLAN)
