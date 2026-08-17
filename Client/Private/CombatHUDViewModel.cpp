@@ -312,6 +312,19 @@ void Client::CCombatHUDViewModel::Debug_Set_Boss_Preview(const bool enable)
 	m_Boss.iPatternStageIndex = 0u;
 }
 
+void Client::CCombatHUDViewModel::Debug_Set_Esther_Preview(const bool enable)
+{
+	if (!enable)
+	{
+		m_iEstherGaugeMaximum = 0u;
+		return;
+	}
+
+	m_Player.isValid = true;
+	m_iEstherGauge = 1000u;
+	m_iEstherGaugeMaximum = 1000u;
+}
+
 void Client::CCombatHUDViewModel::Apply_DamageEvents(
 	const std::uint32_t serverTick,
 	const std::vector<LostArk::Shared::DAMAGE_EVENT>& events)

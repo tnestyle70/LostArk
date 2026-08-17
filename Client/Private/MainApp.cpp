@@ -240,6 +240,8 @@ HRESULT CMainApp::Initialize()
 	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
 	m_pBossUIView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/BossUI/BossUI.json");
+	m_pEstherUIView = std::make_unique<CHUDRuntimeView>(
+		m_pDevice, m_pContext, L"UI/Esther/EstherUI.json");
 	m_pLobbyBackgroundView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/Lobby/Lobby_Layout.json",
 		CHUDRuntimeView::DRAW_TARGET::BACKGROUND);
@@ -852,6 +854,20 @@ void CMainApp::RenderCombatHUD()
 			PlayZXWipe("Yin_Skill_X_Wipe", pXSkill, bXReady);
 		}
 		m_pHUDRuntimeView->Render(strOwnerClass, 0);
+		RenderPlayerHealthManaBar();
+		/* Static Esther slots (portraits/frame/lock/track) draw generically here. GaugeFill and the
+		3 Ready glows are also authored as ordinary Tool-placeable slots (so they show up on the
+		canvas for placement), but their real gameplay visibility is gauge-state-driven, not
+		always-on -- force them hidden here and let RenderEstherGauge() (called later) draw the real
+		clipped fill / conditional glow instead, so there's no double-draw. */
+		if (nullptr != m_pEstherUIView)
+		{
+			m_pEstherUIView->Set_SlotVisible("Esther_GaugeFill", false);
+			m_pEstherUIView->Set_SlotVisible("Esther_Slot1_Ready", false);
+			m_pEstherUIView->Set_SlotVisible("Esther_Slot2_Ready", false);
+			m_pEstherUIView->Set_SlotVisible("Esther_Slot3_Ready", false);
+			m_pEstherUIView->Render("Default", 0);
+		}
 	}
 
 	/* Real gauge0/1/2 fill (target-rotation-masked track) and burn flourish are baked and wired;
@@ -863,6 +879,67 @@ void CMainApp::RenderCombatHUD()
 
 	if (nullptr != m_pSkillWindowView)
 		m_pSkillWindowView->Render(player.eCharacterClass);
+}
+
+void CMainApp::RenderPlayerHealthManaBar()
+{
+	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
+		return;
+	if (nullptr == m_pHUDRuntimeView)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+
+	const float healthRatio = (std::clamp)(
+		static_cast<float>(player.iCurrentHp) / static_cast<float>(player.iMaximumHp), 0.f, 1.f);
+	const float manaRatio = (std::clamp)(
+		static_cast<float>(player.iCurrentResource) / static_cast<float>(player.iMaximumResource), 0.f, 1.f);
+
+	f32_t fHpX = 0.f, fHpY = 0.f, fHpWidth = 0.f, fHpHeight = 0.f;
+	if (m_pHUDRuntimeView->Get_SlotRect("HealthBar", fHpX, fHpY, fHpWidth, fHpHeight))
+	{
+		if (ID3D11ShaderResourceView* pHpSRV = m_pHUDRuntimeView->Load_Texture("UI/HUD/Common/HP Bar.png"))
+		{
+			const ImVec2 vMin{
+				pViewport->WorkPos.x + fHpX * scaleX,
+				pViewport->WorkPos.y + fHpY * scaleY };
+			const ImVec2 vMax{
+				vMin.x + fHpWidth * scaleX,
+				vMin.y + fHpHeight * scaleY };
+			const float fBoundaryX = vMin.x + (vMax.x - vMin.x) * healthRatio;
+			if (healthRatio > 0.f)
+			{
+				pDrawList->AddImage(pHpSRV, vMin, ImVec2(fBoundaryX, vMax.y),
+					ImVec2(0.f, 0.f), ImVec2(healthRatio, 1.f));
+			}
+		}
+	}
+
+	f32_t fMpX = 0.f, fMpY = 0.f, fMpWidth = 0.f, fMpHeight = 0.f;
+	if (m_pHUDRuntimeView->Get_SlotRect("ManaBar", fMpX, fMpY, fMpWidth, fMpHeight))
+	{
+		if (ID3D11ShaderResourceView* pMpSRV = m_pHUDRuntimeView->Load_Texture("UI/HUD/Common/MP Bar.png"))
+		{
+			const ImVec2 vMin{
+				pViewport->WorkPos.x + fMpX * scaleX,
+				pViewport->WorkPos.y + fMpY * scaleY };
+			const ImVec2 vMax{
+				vMin.x + fMpWidth * scaleX,
+				vMin.y + fMpHeight * scaleY };
+			const float fBoundaryX = vMin.x + (vMax.x - vMin.x) * manaRatio;
+			if (manaRatio > 0.f)
+			{
+				pDrawList->AddImage(pMpSRV, vMin, ImVec2(fBoundaryX, vMax.y),
+					ImVec2(0.f, 0.f), ImVec2(manaRatio, 1.f));
+			}
+		}
+	}
 }
 
 void CMainApp::RenderLanceMasterIdentityGauge()
@@ -1435,9 +1512,9 @@ void CMainApp::RenderBossHealthBarText()
 		/* Same box-height-fit approach as the title: the slot's own height (set in the HUD
 		Layout Tool) is what determines the rendered digit height, not a hardcoded constant. */
 		const float2_t vHpMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_159"), strHpNumbers.c_str());
+			CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), strHpNumbers.c_str());
 		const f32_t fHpScale = (vHpMeasured.y > 0.f) ? (fHpTextHeight / vHpMeasured.y) : 1.f;
-		CGameInstance::Get().Draw_Text(TEXT("Font_159"), strHpNumbers.c_str(),
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strHpNumbers.c_str(),
 			float2_t(
 				(fHpTextX + fHpTextWidth * 0.5f) * textScaleX,
 				(fHpTextY + fHpTextHeight * 0.5f) * textScaleY),
@@ -1451,9 +1528,9 @@ void CMainApp::RenderBossHealthBarText()
 		{
 			const wstring strBarCount = L"X " + std::to_wstring(iBarsRemaining);
 			const float2_t vCountMeasured =
-				CGameInstance::Get().Measure_Text(TEXT("Font_159"), strBarCount.c_str());
+				CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), strBarCount.c_str());
 			const f32_t fCountScale = (vCountMeasured.y > 0.f) ? (fCountHeight / vCountMeasured.y) : 1.f;
-			CGameInstance::Get().Draw_Text(TEXT("Font_159"), strBarCount.c_str(),
+			CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strBarCount.c_str(),
 				float2_t(
 					(fCountX + fCountWidth * 0.5f) * textScaleX,
 					(fCountY + fCountHeight * 0.5f) * textScaleY),
@@ -1473,6 +1550,8 @@ void CMainApp::RenderEstherGauge()
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	if (!player.isValid)
 		return;
+	if (nullptr == m_pEstherUIView)
+		return;
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
 	if (nullptr == pViewport)
@@ -1484,28 +1563,72 @@ void CMainApp::RenderEstherGauge()
 	const float fillRatio = (std::clamp)(
 		static_cast<float>(gauge) / static_cast<float>(maximum), 0.f, 1.f);
 
-	const ImVec2 barMin{
-		pViewport->WorkPos.x + 20.f * scaleX,
-		pViewport->WorkPos.y + 56.f * scaleY };
-	const ImVec2 barMax{
-		pViewport->WorkPos.x + 280.f * scaleX,
-		pViewport->WorkPos.y + 68.f * scaleY };
-	const float fillRight = barMin.x + (barMax.x - barMin.x) * fillRatio;
-	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
-	pDrawList->AddRectFilled(
-		barMin, barMax, IM_COL32(20, 24, 34, 230), 3.f * uiScale);
-	if (fillRight > barMin.x)
+	/* Esther_GaugeTrack's own rect (EstherUI.json, Tool-editable) positions the static background
+	image (drawn generically by m_pEstherUIView->Render()) and the label below. Esther_GaugeFill is
+	a separate Tool-placeable slot (own rect, independently adjustable) whose static art is forced
+	hidden every frame (see the Set_SlotVisible calls above); this draws the real UV-clipped fill in
+	its place -- same technique as the boss/player HP bars. Real pieces (frame/lock/gauge) traced
+	from the actual estherweaponskill.gfx + EFUI_ICONATLAS_E packages, not placeholder rects. */
+	f32_t fTrackX = 0.f, fTrackY = 0.f, fTrackWidth = 0.f, fTrackHeight = 0.f;
+	if (!m_pEstherUIView->Get_SlotRect(
+		"Esther_GaugeTrack", fTrackX, fTrackY, fTrackWidth, fTrackHeight))
 	{
-		const bool_t isFull = gauge >= maximum;
-		pDrawList->AddRectFilled(
-			barMin,
-			ImVec2(fillRight, barMax.y),
-			isFull ? IM_COL32(120, 214, 255, 255) : IM_COL32(58, 128, 196, 255),
-			3.f * uiScale);
+		return;
 	}
-	pDrawList->AddRect(
-		barMin, barMax, IM_COL32(180, 220, 244, 255),
-		3.f * uiScale, 0, (std::max)(1.f, uiScale));
+	const ImVec2 barMin{
+		pViewport->WorkPos.x + fTrackX * scaleX,
+		pViewport->WorkPos.y + fTrackY * scaleY };
+	const ImVec2 barMax{
+		barMin.x + fTrackWidth * scaleX,
+		barMin.y + fTrackHeight * scaleY };
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+
+	f32_t fFillX = 0.f, fFillY = 0.f, fFillWidth = 0.f, fFillHeight = 0.f;
+	if (m_pEstherUIView->Get_SlotRect("Esther_GaugeFill", fFillX, fFillY, fFillWidth, fFillHeight))
+	{
+		const ImVec2 fillMin{
+			pViewport->WorkPos.x + fFillX * scaleX,
+			pViewport->WorkPos.y + fFillY * scaleY };
+		const ImVec2 fillMax{
+			fillMin.x + fFillWidth * scaleX,
+			fillMin.y + fFillHeight * scaleY };
+		const float fillRight = fillMin.x + (fillMax.x - fillMin.x) * fillRatio;
+		if (fillRight > fillMin.x)
+		{
+			if (ID3D11ShaderResourceView* pFillSRV =
+				m_pEstherUIView->Load_Texture("UI/Esther/esther_gauge_fill_gold.png"))
+			{
+				pDrawList->AddImage(pFillSRV, fillMin, ImVec2(fillRight, fillMax.y),
+					ImVec2(0.f, 0.f), ImVec2(fillRatio, 1.f));
+			}
+		}
+	}
+	if (gauge >= maximum)
+	{
+		ID3D11ShaderResourceView* pReadySRV =
+			m_pEstherUIView->Load_Texture("UI/Esther/esther_slot_ready.png");
+		if (nullptr != pReadySRV)
+		{
+			for (const char* pReadySlotId :
+				{ "Esther_Slot1_Ready", "Esther_Slot2_Ready", "Esther_Slot3_Ready" })
+			{
+				f32_t fReadyX = 0.f, fReadyY = 0.f, fReadyWidth = 0.f, fReadyHeight = 0.f;
+				if (!m_pEstherUIView->Get_SlotRect(
+					pReadySlotId, fReadyX, fReadyY, fReadyWidth, fReadyHeight))
+				{
+					continue;
+				}
+				const ImVec2 readyMin{
+					pViewport->WorkPos.x + fReadyX * scaleX,
+					pViewport->WorkPos.y + fReadyY * scaleY };
+				const ImVec2 readyMax{
+					readyMin.x + fReadyWidth * scaleX,
+					readyMin.y + fReadyHeight * scaleY };
+				pDrawList->AddImage(pReadySRV, readyMin, readyMax);
+			}
+		}
+	}
+
 	const char* pLabel = gauge >= maximum ?
 		"ESTHER READY  Ctrl+Z" : "ESTHER";
 	const ImVec2 labelSize = ImGui::CalcTextSize(pLabel);
@@ -1732,17 +1855,17 @@ void CMainApp::RenderCombatHUDText()
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	if (player.isValid && player.iMaximumHp > 0u && player.iMaximumResource > 0u)
 	{
-		const wstring hp = L"HP  " + std::to_wstring(player.iCurrentHp) +
+		const wstring hp = std::to_wstring(player.iCurrentHp) +
 			L" / " + std::to_wstring(player.iMaximumHp);
-		const wstring mana = L"MANA  " + std::to_wstring(player.iCurrentResource) +
+		const wstring mana = std::to_wstring(player.iCurrentResource) +
 			L" / " + std::to_wstring(player.iMaximumResource);
 		/* Positions/size follow the same 0.75 anchor-scale (around 673.675, 747.092) and -12
 		vertical shift applied to the whole bottom HUD in HUD_Layout.json -- these two labels
 		are drawn here in C++, not from that JSON, so they need the same transform by hand or
 		they drift off the now-smaller HP/mana bars. */
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), hp.c_str(),
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), hp.c_str(),
 			position(504.419f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), mana.c_str(),
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), mana.c_str(),
 			position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
 	}
 	/* Boss HP number/name/grade text moved into RenderBossHealthBar() -- the decompiled

@@ -1300,6 +1300,9 @@
     <None Include="..\..\Data\UI\BossUI\BossUI.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\Esther\EstherUI.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
