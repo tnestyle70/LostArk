@@ -685,6 +685,24 @@ namespace
 				Element, bSourceVisualProgramActive);
 	}
 
+	/* Detail.Particle.SourceScale.fCount applied to a particle count the source
+	   produced.  Only source-owned Elements consult it: an authored Element
+	   already owns iMaxParticles and iBurstCount outright, so scaling those
+	   again would apply the trim twice.  Rounds to nearest so a trim that lands
+	   above half still emits, and saturates rather than wrapping. */
+	uint32_t Scale_SourceCount(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const uint32_t iCount)
+	{
+		const f32_t fFactor = Element.Detail.Particle.SourceScale.fCount;
+		if (!Element.SourceRecipe.bEnabled || 1.f == fFactor || 0u == iCount)
+			return iCount;
+		const f64_t fScaled = std::round(
+			static_cast<f64_t>(iCount) * static_cast<f64_t>(fFactor));
+		return static_cast<uint32_t>((std::min)(
+			(std::max)(fScaled, 0.0), static_cast<f64_t>(UINT32_MAX)));
+	}
+
 	bool_t Is_GpuVisualOccurrence(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
@@ -2712,7 +2730,10 @@ bool_t Client::CEffectPlayback::Step(
 							Burst.iCountMinimum ? Burst.iCountMaximum :
 							Burst.iCountMinimum + Next_Random(State) %
 							(Burst.iCountMaximum - Burst.iCountMinimum + 1u);
-						Spawn_Particles(Element, State, iCount, RootWorld);
+						/* The random draw happens first either way, so trimming
+						   the burst does not shift the emitter random stream. */
+						Spawn_Particles(Element, State, Scale_SourceCount(
+							Element, iCount), RootWorld);
 					}
 					const EFFECT_SOURCE_MODULE_DESC* pSpawnModule =
 						Find_SourceModule(Element, "particlemodulespawn");
@@ -2731,7 +2752,8 @@ bool_t Client::CEffectPlayback::Step(
 						Evaluate_ModuleFloat(State, *pSpawnModule, "ratescale",
 							fEmitterTime, 1.f);
 					State.fSpawnAccumulator +=
-						(std::max)(0.f, fRate * fRateScale) * fFixedDelta;
+						(std::max)(0.f, fRate * fRateScale) * fFixedDelta *
+						Element.Detail.Particle.SourceScale.fCount;
 					const uint32_t iSpawnCount = static_cast<uint32_t>(
 						std::floor(State.fSpawnAccumulator));
 					State.fSpawnAccumulator -=
@@ -2906,8 +2928,12 @@ void Client::CEffectPlayback::Spawn_Particles(
 		Element, m_fSampleTimeSeconds, RootWorld);
 	const matrix_t InverseElementWorld = XMMatrixInverse(
 		nullptr, XMLoadFloat4x4(&ElementWorld));
-	const uint32_t iAvailable = Desc.iMaxParticles > State.Particles.size() ?
-		Desc.iMaxParticles - static_cast<uint32_t>(State.Particles.size()) : 0u;
+	/* The ceiling rises with the trim, otherwise asking for more particles would
+	   stop at the count the source was extracted with. */
+	const uint32_t iMaxParticles = Scale_SourceCount(
+		Element, Desc.iMaxParticles);
+	const uint32_t iAvailable = iMaxParticles > State.Particles.size() ?
+		iMaxParticles - static_cast<uint32_t>(State.Particles.size()) : 0u;
 	const uint32_t iSpawnCount = (std::min)(iCount, iAvailable);
 	for (uint32_t iParticle = 0u; iParticle < iSpawnCount; ++iParticle)
 	{
@@ -2939,6 +2965,17 @@ void Client::CEffectPlayback::Spawn_Particles(
 			Particle.fSpawnEmitterTimeSeconds = fEmitterTime;
 			Apply_SourceSpawnModules(
 				Element, State, Particle, fEmitterTime, ElementWorld);
+			/* Authored trim over what the modules just produced.  Scaling the
+			   base size here carries through Apply_SourceUpdateModules, which
+			   re-derives vSize from vBaseSize every step, and scaling the
+			   lifetime stretches the whole over-life evolution with it. */
+			if (!Desc.SourceScale.Is_Default())
+			{
+				Particle.vBaseSize = Scale3(
+					Particle.vBaseSize, Desc.SourceScale.fSize);
+				Particle.vSize = Particle.vBaseSize;
+				Particle.fLifeTimeSeconds *= Desc.SourceScale.fLifeTime;
+			}
 		}
 		else
 		{

@@ -229,18 +229,51 @@ Detail.Particle     게이트 있음   -> particle 수 튜닝은 안 먹는다
 저작 가능한 문서는 화면에 나오지 않고, 화면에 나오는 문서는 저작이 무시됐다.
 **저작 전에 그 문서가 runtime catalog 에 실려 있는지 확인한다.**
 
-### 12.4 import 는 distinct binding 단위로 만든다
+### 12.4 중복 판정의 기준을 바꾸면 답이 뒤집힌다 (2026-08-17 재실측으로 교정)
 
-Track A import 가 source occurrence 당 element 를 만들어 같은 시각 요소가 5~6번씩 들어갔다.
+이 절은 원래 "Track A import 가 source occurrence 당 element 를 만들어 같은 시각 요소가
+5~6번씩 들어갔다"고 기록했고 `element 7,861 -> 3,042`, `210.9 MB -> 84.9 MB`를 근거로 삼았다.
+**그 수치는 잘못된 signature 의 산물이며 중복은 실재하지 않았다.** 되돌리기 `413e4e36`
+이후 같은 corpus 8,219 element 를 세 기준으로 다시 셌다.
 
 ```text
-element 7,861 -> 3,042   중복 4,468 + 빈 것 351 제거
-크기 210.9 MB -> 84.9 MB
-lancemaster 34570.clip2  85% 중복
+binding (slotId, assetId) 만          4,759   57.9%
+binding + transform                   4,003   48.7%
+element 전체 (id/displayName 제외)        6    0.1%
 ```
 
-겹쳐 그려져 밝기가 누적되므로 중복을 걷으면 화면이 어두워진다. 그것은 버그가 아니라
-숨어 있던 밝기를 의도적인 값으로 바꿔야 하는 지점이다.
+되돌린 규칙이 합쳤을 4,471쌍을 열어보면 detail.particle 11,855, sourceNode 4,449,
+detail.timing 2,847, detail.transform 1,386, 심지어 kind 109 가 서로 다르다. 한 텍스처를
+여러 위치·크기·입자수로 배치하는 것이 이펙트 구성 방식이므로 binding 기반 판정은 공간
+구조를 파괴한다. 워로드 17030 이 21 -> 9 로 줄고 손튜닝 하나가 사라진 것이 그 결과다.
+
+`NO_RESOURCES` 일괄 삭제도 틀렸다. light 44 중 28, screenPost 56 중 39 는 텍스처를
+바인딩하지 않는 것이 정상이다.
+
+**교훈**: 일괄 삭제 전에 무엇을 동일성의 기준으로 삼았는지 먼저 쓰고, 그 기준을 한 단계
+엄격하게 바꿨을 때 답이 얼마나 달라지는지 재본다. 두 수치의 차이가 크면 기준이 틀린 것이다.
+남은 진짜 중복 6개도 additive 로 겹쳐 그려지므로 지우면 그 element 밝기가 절반이 된다.
+
+### 12.4.1 소유권 flip 은 축별 게이트가 아니다
+
+`sourceRecipe.enabled = false` 는 `Effect_Playback.cpp` 28개 지점에서 시뮬레이터 전체를
+갈아탄다. 따라서 이식 도구가 "해석 못 하는 모듈은 건드리지 않는다"고 해도 flip 이후에는
+그 모듈이 실행되지 않으므로 보존이 아니라 삭제다.
+
+```text
+source 소유 particle 4,609
+   모든 모듈이 저작 스키마로 표현 가능      109   2.4%
+   최소 한 축을 잃음                     4,500  97.6%
+   주요 손실: parameterdynamic 3,058, cameraoffset 1,713, rotation 1,614,
+              meshrotation 1,161, orientationaxislock 1,023, subuv, orbit, acceleration
+```
+
+그리고 `Detail.Color.multiply` 와 `Detail.Transform` 은 source 소유 element 에서도 이미
+합성되어 먹는다(`Effect_Playback.cpp` ~4996 의 `ElementColor * Particle.vColor`). 막혀 있던
+것은 `Detail.Particle` 축뿐이다. 그래서 소유권을 내리는 대신 저작 배율을 원본 결과 위에
+곱하는 `Detail.Particle.sourceScale` 을 넣었다. 축이 더 필요하면 flip 이 아니라 같은 방식으로
+하나씩 추가한다. 상세는
+`.md/GB/08-17/2026-08-17_EFFECT_SOURCE_TRIM_AND_DEDUP_CORRECTION_RESULT.md`.
 
 ### 12.5 원본 동일을 목표로 하면 스킬 수만큼 셰이더가 필요하다
 

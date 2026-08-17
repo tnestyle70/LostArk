@@ -4151,6 +4151,24 @@ namespace
 				Out.fConeAngleDegrees, strOutError);
 	}
 
+	bool_t Read_ParticleSourceScale(
+		const Client::DATA_JSON_VALUE& Particle,
+		Client::EFFECT_PARTICLE_SOURCE_SCALE_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pScale = Particle.Find("sourceScale");
+		if (nullptr == pScale)
+			return true;
+		if (!pScale->Is_Object())
+		{
+			strOutError = "Effect particle sourceScale is not an object.";
+			return false;
+		}
+		return Read_OptionalFloat(*pScale, "count", Out.fCount, strOutError) &&
+			Read_OptionalFloat(*pScale, "size", Out.fSize, strOutError) &&
+			Read_OptionalFloat(*pScale, "lifeTime", Out.fLifeTime, strOutError);
+	}
+
 	bool_t Read_V5Detail(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_DETAIL_DESC& Out,
@@ -4211,6 +4229,8 @@ namespace
 				strOutError) &&
 			Read_ParticleInitialVelocity(*pParticle,
 				Out.Particle.InitialVelocity, strOutError) &&
+			Read_ParticleSourceScale(*pParticle, Out.Particle.SourceScale,
+				strOutError) &&
 			Read_UInt(*pTrail, "maxPoints", Out.Trail.iMaxPoints, strOutError) &&
 			Read_Float(*pTrail, "pointLifeTimeSeconds", Out.Trail.fPointLifeTimeSeconds, strOutError) &&
 			Read_Float(*pTrail, "sampleIntervalSeconds", Out.Trail.fSampleIntervalSeconds, strOutError) &&
@@ -4361,6 +4381,16 @@ namespace
 			Write_Float2(Output, Detail.Particle.InitialVelocity.vSpeedRange);
 			Output << ", \"coneAngleDegrees\": "
 				<< Detail.Particle.InitialVelocity.fConeAngleDegrees << " }";
+		}
+		/* Untouched trim is the overwhelming majority, and omitting it keeps
+		   every document that predates the field byte-identical. */
+		if (!Detail.Particle.SourceScale.Is_Default())
+		{
+			Output << ", \"sourceScale\": { \"count\": "
+				<< Detail.Particle.SourceScale.fCount
+				<< ", \"size\": " << Detail.Particle.SourceScale.fSize
+				<< ", \"lifeTime\": " << Detail.Particle.SourceScale.fLifeTime
+				<< " }";
 		}
 		Output << " },\n"
 			<< "        \"trail\": { \"maxPoints\": " << Detail.Trail.iMaxPoints
@@ -5818,6 +5848,18 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Emission.fConeAngleDegrees <= 180.f &&
 			(EFFECT_PARTICLE_VELOCITY_MODE::FIXED == Emission.eMode ||
 				EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind);
+		/* The trim multiplies the source's own numbers, so zero or negative
+		   would erase the Element rather than adjust it, and the ceiling keeps a
+		   mistyped digit from asking the simulator for a million particles. */
+		const EFFECT_PARTICLE_SOURCE_SCALE_DESC& SourceScale =
+			D.Particle.SourceScale;
+		const bool_t bSourceScaleValid =
+			std::isfinite(SourceScale.fCount) &&
+			std::isfinite(SourceScale.fSize) &&
+			std::isfinite(SourceScale.fLifeTime) &&
+			SourceScale.fCount > 0.f && SourceScale.fCount <= 16.f &&
+			SourceScale.fSize > 0.f && SourceScale.fSize <= 16.f &&
+			SourceScale.fLifeTime > 0.f && SourceScale.fLifeTime <= 16.f;
 		const bool_t bTrailValid =
 			D.Trail.iMaxPoints >= 2u && D.Trail.iMaxPoints <= 512u &&
 			std::isfinite(D.Trail.fPointLifeTimeSeconds) && D.Trail.fPointLifeTimeSeconds > 0.f &&
@@ -5864,6 +5906,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 					0u != D.ScreenPost.iRandomSeed));
 		if (!bCommonValid || !bLerpValid || !bParticleValid ||
 			!bSpawnShapeValid || !bInitialVelocityValid ||
+			!bSourceScaleValid ||
 			!bTrailValid || !bAfterImageValid || !bLightValid ||
 			!bScreenPostValid)
 		{

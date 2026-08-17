@@ -5694,8 +5694,41 @@ void Client::CEffect_Tool::Render_Detail(
 		}
 		ImGui::TreePop();
 	}
-	ImGui::SeparatorText("Compiler-owned Render Profile");
-	ImGui::TextDisabled("%s", Profile_Label(Element.Material.eRenderProfile));
+	/* The compiler derives the blend from the source material, but an Element
+	   authored by hand has no source material to derive it from and simply
+	   keeps the struct default of alpha two-sided. That default draws a glow
+	   texture as an opaque quad, so leaving it read-only on authored Elements
+	   locked the one control that fixes it. */
+	const bool_t bCompilerOwnsRenderProfile =
+		!Element.Material.strSourceMaterialPath.empty() ||
+		Element.Material.SourceMaterial.bEnabled ||
+		Element.Material.Execution.bEnabled;
+	ImGui::SeparatorText(bCompilerOwnsRenderProfile ?
+		"Compiler-owned Render Profile" : "Render Profile");
+	if (bCompilerOwnsRenderProfile)
+	{
+		ImGui::TextDisabled("%s", Profile_Label(Element.Material.eRenderProfile));
+		return;
+	}
+	static const char* const s_RenderProfileLabels[] =
+	{
+		"Opaque (back faces, depth write)",
+		"Alpha (two sided, depth read)",
+		"Additive (two sided, depth read)",
+		"Alpha (one sided, depth read)",
+		"Additive (one sided, depth read)"
+	};
+	int32_t iRenderProfile = static_cast<int32_t>(
+		Element.Material.eRenderProfile);
+	if (ImGui::Combo("Blend", &iRenderProfile, s_RenderProfileLabels,
+		IM_ARRAYSIZE(s_RenderProfileLabels)))
+	{
+		Element.Material.eRenderProfile =
+			static_cast<EFFECT_RENDER_PROFILE>(iRenderProfile);
+		bChanged = true;
+	}
+	ImGui::TextDisabled(
+		"Additive treats black as transparent, which is how glow and flare textures are drawn. Alpha needs the texture to carry its own alpha channel.");
 }
 
 void Client::CEffect_Tool::Render_TransformDetail(
@@ -6365,6 +6398,27 @@ void Client::CEffect_Tool::Render_KindDetail(
 		{
 			ImGui::TextDisabled(
 				"Read-only values above are evaluated from the compiler-owned SourceRecipe module stack.");
+
+			/* The trim is the authored answer to those read-only fields. It
+			   multiplies what the modules produce instead of replacing them, so
+			   the rotation, camera offset, sub-UV and DynamicParameter modules
+			   this Element also carries keep running. */
+			ImGui::SeparatorText("Source Trim");
+			EFFECT_PARTICLE_SOURCE_SCALE_DESC& Trim =
+				Detail.Particle.SourceScale;
+			bChanged |= ImGui::DragFloat("Count x", &Trim.fCount,
+				0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Size x", &Trim.fSize,
+				0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Life x", &Trim.fLifeTime,
+				0.01f, 0.01f, 16.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::TextDisabled(
+				"Multiplies the source spawn rate, burst counts and particle ceiling, the source start size, and the source lifetime. 1.00 leaves the Element exactly as the source built it.");
+			if (!Trim.Is_Default() && ImGui::Button("Reset Source Trim"))
+			{
+				Trim = EFFECT_PARTICLE_SOURCE_SCALE_DESC{};
+				bChanged = true;
+			}
 		}
         bChanged |= ImGui::Checkbox("Particle Local Space",
             &Detail.Particle.bLocalSpace);

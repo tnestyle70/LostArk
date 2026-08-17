@@ -1269,6 +1269,20 @@ function Assert-EffectDetail(
         }
     }
 
+    # sourceScale is optional and multiplies what the source modules produce.
+    # Zero or negative would erase the Element rather than trim it, so the
+    # publisher refuses those the same way the codec does.
+    if ($null -ne $particle.PSObject.Properties['sourceScale']) {
+        $sourceScale = Get-RequiredProperty $particle 'sourceScale' Object
+        foreach ($factorName in @('count', 'size', 'lifeTime')) {
+            $factor = if ($null -ne $sourceScale.$factorName) {
+                Get-NumberValue $sourceScale $factorName $Label } else { 1.0 }
+            if ($factor -le 0 -or $factor -gt 16) {
+                throw "$Label particle sourceScale $factorName is out of range."
+            }
+        }
+    }
+
     $maxPoints = Get-IntegerValue $trail 'maxPoints' $Label
     $pointLife = Get-NumberValue $trail 'pointLifeTimeSeconds' $Label
     $sampleInterval = Get-NumberValue $trail 'sampleIntervalSeconds' $Label

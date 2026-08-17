@@ -533,6 +533,33 @@ struct EFFECT_PARTICLE_INITIAL_VELOCITY_DESC final
 	f32_t fConeAngleDegrees = 0.f;
 };
 
+/* Authored trim over a source-owned Element.
+
+   Clearing SourceRecipe.bEnabled is not a per-axis gate: it swaps the whole
+   simulator, and only 109 of the 4,609 source-owned particle Elements in the
+   corpus have a module stack the authored schema can express.  The other 4,500
+   carry rotation, mesh rotation, camera offset, sub-UV, orbit or a shader
+   dynamic parameter that the flip would silently stop running.
+
+   Transform and Color already compose over the source result, so the only axis
+   an author cannot reach on those Elements is the particle count, size and
+   lifetime.  These three factors multiply the source's own numbers instead of
+   replacing them, which leaves every module it does not understand running. */
+struct EFFECT_PARTICLE_SOURCE_SCALE_DESC final
+{
+	/* Scales the source spawn rate and burst count together. */
+	f32_t fCount = 1.f;
+	/* Scales the source start size on both axes. */
+	f32_t fSize = 1.f;
+	/* Scales the source particle lifetime. */
+	f32_t fLifeTime = 1.f;
+
+	bool_t Is_Default() const
+	{
+		return 1.f == fCount && 1.f == fSize && 1.f == fLifeTime;
+	}
+};
+
 struct EFFECT_PARTICLE_DESC final
 {
 	uint32_t iMaxParticles = 256u;
@@ -556,6 +583,8 @@ struct EFFECT_PARTICLE_DESC final
 	   omits them spawns exactly as it did before the fields existed. */
 	EFFECT_PARTICLE_SPAWN_SHAPE_DESC SpawnShape;
 	EFFECT_PARTICLE_INITIAL_VELOCITY_DESC InitialVelocity;
+	/* Read only while SourceRecipe.bEnabled; all ones means untouched. */
+	EFFECT_PARTICLE_SOURCE_SCALE_DESC SourceScale;
 };
 
 enum class EFFECT_SOURCE_LITERAL_KIND : uint8_t
