@@ -1,0 +1,9 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.valtan.entrance-whirlwind.windup",
+  "displayName": "VALTAN_ENTRANCE_WHIRLWIND / WINDUP",
+  "particleSystem": { "uniformScaleMultiplier": 1, "yawOffsetDegrees": 0, "directionYawDegrees": 0, "initialSpeedMultiplier": 1 },
+  "modelCues": [  ],
+  "elements": []
+}

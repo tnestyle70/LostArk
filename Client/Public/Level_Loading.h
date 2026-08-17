@@ -31,7 +31,7 @@ private:
 	void Cancel_LobbyCommand(const char_t* pReason);
 	void Retry_LobbyLoad();
 	HRESULT Ready_Layer_Chrome();
-	bool_t Advance_CharacterSelectEffectPreparation();
+	bool_t Advance_TargetEffectPreparation();
 
 private:
 	LEVEL m_eNextLevelID = LEVEL::END;

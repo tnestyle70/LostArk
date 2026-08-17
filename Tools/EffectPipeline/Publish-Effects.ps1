@@ -220,9 +220,14 @@ $supportedSourceRuntimeShaderProfiles = @(
     'effect.ue3.local-crack.v1',
     'effect.ue3.procedural-center-glow.v1',
     'effect.ue3.slice.v1',
+    'effect.ue3.glasshole-02.v1',
+    'effect.ue3.fluidninja-01.v1',
+    'effect.ue3.customparticle-01.v1',
+    'effect.ue3.crackholev2-01.v1',
     'effect.ue3.missiletrail-01.v1',
     'effect.ue3.missiletrail-two-emissive.v1',
-    'effect.ue3.watertrail-01.v1'
+    'effect.ue3.watertrail-01.v1',
+    'effect.ue3.simple-01.v1'
 )
 $supportedSourceDynamicParameterSemantics = @(
     'unbound', 'opacity', 'emissive', 'dissolve', 'uv_pan',
@@ -238,6 +243,18 @@ $supportedSourceSubUVModes = @(
     'none', 'psuvim_random', 'psuvim_linear_blend',
     'psuvim_linear_blend_random_flip_square'
 )
+$requiredSourceTextureRolesByShaderProfile = @{
+    'effect.ue3.slice.v1' = @('slice_flow_texture')
+    'effect.ue3.glasshole-02.v1' = @(
+        'aura_texture','cracknormal_tex','in_hole_texture')
+    'effect.ue3.fluidninja-01.v1' = @(
+        'diff_tex','flow_1_tex','flow_2_tex','mask_tex','opacity_tex')
+    # a_noise_01_tex is source-explicit None and therefore optional.
+    'effect.ue3.customparticle-01.v1' = @('diff_tex')
+    'effect.ue3.crackholev2-01.v1' = @(
+        '01.map_e','06.map_f','06.map','mask_noisemap',
+        'mask_tex_l','mask_tex_r')
+}
 
 if ($null -eq ('LostArk.EffectPipeline.StrictJsonObjectKeyScanner' -as [type])) {
     Add-Type -TypeDefinition @'
@@ -764,6 +781,142 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
             Assert-StableId $effectAssetId 'Authored animation EffectAssetId'
             [void]$effectIds.Add($effectAssetId)
         }
+    }
+
+    $valtanCuePath = [IO.Path]::GetFullPath((Join-Path $RootPath `
+        'Animation\Authored\Valtan\Valtan.patterneffectcues.json'))
+    $valtanCueDocument = Read-JsonDocument $valtanCuePath
+    Assert-ExactPropertyOrder $valtanCueDocument @(
+        'schema','formatVersion','ownerArchetypeId','cues') `
+        'Valtan pattern Effect cue document'
+    if ((Get-RequiredProperty $valtanCueDocument 'schema' String) -cne
+            'lostark.valtan-pattern-effect-cues' -or
+        [uint32](Get-RequiredProperty $valtanCueDocument 'formatVersion' `
+            Number) -ne 1 -or
+        (Get-RequiredProperty $valtanCueDocument 'ownerArchetypeId' String) -cne
+            'BOSS_VALTAN') {
+        throw 'Valtan pattern Effect cue document header is invalid.'
+    }
+
+    $encounterPath = [IO.Path]::GetFullPath((Join-Path $RootPath `
+        'Encounters\Valtan\ValtanEncounter.json'))
+    $encounter = Read-JsonDocument $encounterPath
+    $stageByActionId = [Collections.Generic.Dictionary[string,object]]::new(
+        [StringComparer]::Ordinal)
+    foreach ($pattern in @($encounter.patterns)) {
+        foreach ($stage in @($pattern.stages)) {
+            $actionId = [string]$stage.actionId
+            if ($stageByActionId.ContainsKey($actionId)) {
+                throw "Valtan encounter duplicates actionId: $actionId"
+            }
+            $stageByActionId.Add($actionId, [pscustomobject]@{
+                PatternId = [string]$pattern.patternId
+                StageId = [string]$stage.stageId
+                DurationMs = [uint32]$stage.durationMs
+            })
+        }
+    }
+
+    $valtanBindingIds = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal)
+    $valtanActionIds = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal)
+    $valtanEffectIds = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal)
+    foreach ($cue in @($valtanCueDocument.cues)) {
+        Assert-ExactPropertyOrder $cue @(
+            'bindingId','patternId','stageId','actionId','effectAssetId',
+            'anchorSlotId','followPolicy','stopPolicy','startMs','endMs',
+            'localTransform') 'Valtan pattern Effect cue'
+        Assert-ExactPropertyOrder $cue.localTransform @(
+            'position','rotationDegrees','scale') `
+            'Valtan pattern Effect cue localTransform'
+        $bindingId = Get-RequiredProperty $cue 'bindingId' String
+        $patternId = Get-RequiredProperty $cue 'patternId' String
+        $stageId = Get-RequiredProperty $cue 'stageId' String
+        $actionId = Get-RequiredProperty $cue 'actionId' String
+        $effectAssetId = Get-RequiredProperty $cue 'effectAssetId' String
+        Assert-StableId $bindingId 'Valtan pattern Effect bindingId'
+        Assert-StableId $actionId 'Valtan pattern Effect actionId'
+        Assert-StableId $effectAssetId 'Valtan pattern EffectAssetId'
+        if (-not $bindingId.StartsWith('cue.valtan.',
+                [StringComparison]::Ordinal) -or
+            -not $effectAssetId.StartsWith('effect.valtan.',
+                [StringComparison]::Ordinal) -or
+            -not $valtanBindingIds.Add($bindingId) -or
+            -not $valtanActionIds.Add($actionId) -or
+            -not $valtanEffectIds.Add($effectAssetId)) {
+            throw "Valtan pattern Effect cue identity is invalid or duplicated: $bindingId"
+        }
+        $stage = $null
+        if (-not $stageByActionId.TryGetValue($actionId, [ref]$stage) -or
+            $stage.PatternId -cne $patternId -or
+            $stage.StageId -cne $stageId) {
+            throw "Valtan pattern Effect cue does not join the encounter: $bindingId"
+        }
+        [uint32]$startMs = 0
+        [uint32]$endMs = 0
+        if (-not [uint32]::TryParse([string]$cue.startMs, [ref]$startMs) -or
+            -not [uint32]::TryParse([string]$cue.endMs, [ref]$endMs) -or
+            $startMs -gt $endMs -or $endMs -gt $stage.DurationMs -or
+            [string]$cue.anchorSlotId -cne 'root' -or
+            [string]$cue.followPolicy -cnotin @('follow','snapshot') -or
+            [string]$cue.stopPolicy -cne 'cue_end') {
+            throw "Valtan pattern Effect cue timing/policy is invalid: $bindingId"
+        }
+        foreach ($field in @('position','rotationDegrees','scale')) {
+            $values = @($cue.localTransform.$field)
+            if ($values.Count -ne 3) {
+                throw "Valtan cue transform field is not a float3: $bindingId $field"
+            }
+            foreach ($value in $values) {
+                $number = [double]$value
+                if ([double]::IsNaN($number) -or [double]::IsInfinity($number) -or
+                    ($field -ceq 'scale' -and $number -le 0.0)) {
+                    throw "Valtan cue transform field is invalid: $bindingId $field"
+                }
+            }
+        }
+        [void]$effectIds.Add($effectAssetId)
+    }
+
+    $authoredValtanEffectIds = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal)
+    $authoredRoot = Join-Path $RootPath 'Effects\Authored'
+    foreach ($path in @(Get-ChildItem -LiteralPath $authoredRoot `
+            -Filter 'effect.valtan.*.effect.json' -File | Sort-Object Name)) {
+        $document = Read-JsonDocument $path.FullName
+        $assetId = [string]$document.effectAssetId
+        if ($assetId -ceq 'effect.valtan.pattern.420633.active') {
+            continue
+        }
+        if (-not $authoredValtanEffectIds.Add($assetId)) {
+            throw "Duplicate authored Valtan EffectAssetId: $assetId"
+        }
+    }
+    # A Valtan document on disk without a cue is not automatically a defect:
+    # the Effect Tool's Create Effect writes an authoring-only draft for a
+    # silent stage, and those are contracted to stay out of the runtime
+    # catalog. What must never happen is a cue with no document, or a
+    # catalogued document that no cue plays.
+    $catalogValtanEffectIds = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal)
+    $sourceCatalogPath = Join-Path $RootPath 'Effects\EffectCatalog.json'
+    foreach ($entry in @((Read-JsonDocument $sourceCatalogPath).effects)) {
+        $entryAssetId = [string]$entry.effectAssetId
+        if ($entryAssetId.StartsWith('effect.valtan.',
+                [StringComparison]::Ordinal)) {
+            [void]$catalogValtanEffectIds.Add($entryAssetId)
+        }
+    }
+    $missingDocuments = @($valtanEffectIds | Where-Object {
+        -not $authoredValtanEffectIds.Contains($_) } | Sort-Object)
+    $cataloguedWithoutCue = @($catalogValtanEffectIds | Where-Object {
+        -not $valtanEffectIds.Contains($_) } | Sort-Object)
+    if ($missingDocuments.Count -gt 0 -or $cataloguedWithoutCue.Count -gt 0) {
+        throw ('Valtan Product cue/authored document set mismatch. ' +
+            "cataloguedWithoutCue=[$($cataloguedWithoutCue -join ', ')] " +
+            "withoutDocument=[$($missingDocuments -join ', ')]")
     }
     return ,$effectIds
 }
@@ -2156,6 +2309,20 @@ try {
 								[void](Get-RequiredProperty $switch 'value' Boolean)
 							}
 							if ($sourceProfileExecutionTarget -and
+								$requiredSourceTextureRolesByShaderProfile.ContainsKey(
+									$shaderProfileId)) {
+								foreach ($requiredName in @(
+									$requiredSourceTextureRolesByShaderProfile[
+										$shaderProfileId])) {
+									if (-not $resolvedSourceTextureNames.Contains(
+											$requiredName)) {
+										throw ("UE3 family profile '{0}' is missing Source Material texture '{1}' in {2}: {3}" -f
+											$shaderProfileId, $requiredName,
+											$effectAssetId, $elementId)
+									}
+								}
+							}
+							if ($sourceProfileExecutionTarget -and
 								$shaderProfileId -eq 'effect.ue3.linearflow-02.v1') {
 								foreach ($requiredName in @(
 									'diff_tex','diff_noise_tex','a_mask_tex','a_noise_01_tex',
@@ -2242,7 +2409,9 @@ try {
                     $slotProperty = if ($documentVersion -ge 6) { 'slotId' } else { 'slot' }
                     $slot = Get-RequiredProperty $binding $slotProperty String
                     $assetId = Get-RequiredProperty $binding 'assetId' String
-                    if ($slot -notin @('meshModel','base','noise','mask','emissive','dissolve') -or
+                    if ($slot -notin @(
+                            'meshModel','base','noise','mask','emissive',
+                            'dissolve','base2','mask2','noise2') -or
                         -not $claimedSlots.Add($slot)) {
                         throw "Invalid or duplicate resource slot in ${effectAssetId}: $slot"
                     }

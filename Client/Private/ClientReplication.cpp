@@ -5,6 +5,7 @@
 #include "Character.h"
 #include "CharacterCatalog.h"
 #include "CombatHUDViewModel.h"
+#include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "NetworkManager.h"
 #include "MonsterPresentationAssetService.h"
@@ -919,6 +920,7 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	}
 	if (const std::shared_ptr<CValtan> valtan = iter->second.pValtan.lock())
 	{
+		CEffectPresentationService::Stop_BossOwner(valtan);
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			m_Desc.iLayerLevelIndex,
 			m_Desc.strWorldEntityLayerTag,

@@ -42,6 +42,9 @@
 	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
@@ -128,7 +131,13 @@
     <ClInclude Include="..\Private\FourClassTrackAAuthoredMaterializer.h">
       <Filter>Private</Filter>
     </ClInclude>
+	<ClInclude Include="..\..\..\Client\Private\CharacterSelectArenaSpawnGate.h">
+	  <Filter>Client</Filter>
+	</ClInclude>
 	<ClInclude Include="..\..\..\Client\Public\Effect_DirectAuthoredSourceIndex.h">
+	  <Filter>Client</Filter>
+	</ClInclude>
+	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueDocument.h">
 	  <Filter>Client</Filter>
 	</ClInclude>
   </ItemGroup>

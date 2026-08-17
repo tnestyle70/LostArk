@@ -16,6 +16,9 @@ enum class EFFECT_MATERIAL_INPUT_SEMANTIC : uint8_t
 	MASK,
 	EMISSIVE,
 	DISSOLVE,
+	BASE2,
+	MASK2,
+	NOISE2,
 	END
 };
 
@@ -54,7 +57,7 @@ inline constexpr std::string_view
 inline constexpr std::string_view EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID =
 	"effect.ue3.watertrail-01.v1";
 
-inline constexpr std::array<std::string_view, 17u>
+inline constexpr std::array<std::string_view, 22u>
 	EFFECT_SOURCE_RUNTIME_SHADER_PROFILE_IDS = {{
 		"effect.ue3.reconstructed-standard.v1",
 		"effect.ue3.fallback-blocked.v1",
@@ -72,7 +75,22 @@ inline constexpr std::array<std::string_view, 17u>
 		EFFECT_MISSILETRAIL_TWO_EMISSIVE_RUNTIME_PROFILE_ID,
 		"effect.ue3.local-crack.v1",
 		"effect.ue3.procedural-center-glow.v1",
-		EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID
+		EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID,
+		"effect.ue3.glasshole-02.v1",
+		"effect.ue3.fluidninja-01.v1",
+		"effect.ue3.customparticle-01.v1",
+		"effect.ue3.crackholev2-01.v1",
+		"effect.ue3.simple-01.v1"
+	}};
+
+// fx_mm_simple_01_ad is the corpus' most-used parent: 359 grouped occurrences
+// across 74 documents and all four classes, every one of them a sprite binding
+// only `base`. The material itself is small - one emissive sample, an optional
+// UV-noise offset, a desaturation - so it needs a named lane set rather than the
+// substring guessing the grouped profile falls back on.
+inline constexpr std::array<std::string_view, 1u>
+	EFFECT_SIMPLE01_SOURCE_TEXTURE_NAMES = {{
+		"emissive_tex"
 	}};
 
 inline constexpr std::array<std::string_view, 7u>
@@ -168,6 +186,24 @@ inline constexpr std::array<std::string_view, 1u>
 	EFFECT_ARTIST_LIGHTFLARE01_SOURCE_TEXTURE_NAMES = {{
 		"lensflaretexture"
 	}};
+inline constexpr std::array<std::string_view, 3u>
+	EFFECT_GLASSHOLE02_SOURCE_TEXTURE_NAMES = {{
+		"aura_texture", "cracknormal_tex", "in_hole_texture"
+	}};
+inline constexpr std::array<std::string_view, 5u>
+	EFFECT_FLUIDNINJA01_SOURCE_TEXTURE_NAMES = {{
+		"diff_tex", "flow_1_tex", "flow_2_tex", "mask_tex",
+		"opacity_tex"
+	}};
+inline constexpr std::array<std::string_view, 2u>
+	EFFECT_CUSTOMPARTICLE01_SOURCE_TEXTURE_NAMES = {{
+		"diff_tex", "a_noise_01_tex"
+	}};
+inline constexpr std::array<std::string_view, 6u>
+	EFFECT_CRACKHOLEV2_SOURCE_TEXTURE_NAMES = {{
+		"01.map_e", "06.map_f", "06.map", "mask_noisemap",
+		"mask_tex_l", "mask_tex_r"
+	}};
 
 inline constexpr std::array<std::string_view, 23u>
 	EFFECT_SOURCE_DYNAMIC_PARAMETER_SEMANTICS = {{
@@ -221,6 +257,10 @@ enum class EFFECT_STRICT_TYPED_SOURCE_PROFILE : uint8_t
 	ARTIST_RING07,
 	ARTIST_RINGMASTER01,
 	ARTIST_LIGHTFLARE01,
+	GLASSHOLE02,
+	FLUIDNINJA01,
+	CUSTOMPARTICLE01,
+	CRACKHOLEV2,
 	END
 };
 
@@ -428,6 +468,34 @@ inline EFFECT_STRICT_TYPED_SOURCE_PROFILE Resolve_EffectStrictTypedSourceProfile
 	{
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_LIGHTFLARE01;
 	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::GLASSHOLE02;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.k.00.fx.m.fx.k.pa.fluidninja.01.tr.534340d78128" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_k_00.fx_m.fx_k_pa_fluidninja_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLUIDNINJA01;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.customparticle.01.ad.e6b959010967" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_j_00.fx_m.fx_j_pa_customparticle_01_ad")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::CUSTOMPARTICLE01;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.k.00.fx.m.fx.k.crackholev2.01.3aac97e0fcad" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_k_00.fx_m.fx_k_crackholev2_01")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::CRACKHOLEV2;
+	}
 	return EFFECT_STRICT_TYPED_SOURCE_PROFILE::NONE;
 }
 
@@ -439,7 +507,7 @@ inline constexpr std::array<std::string_view, 4u>
 		"psuvim_linear_blend_random_flip_square"
 	}};
 
-inline constexpr std::array<EFFECT_MATERIAL_INPUT_SLOT_DESC, 5u>
+inline constexpr std::array<EFFECT_MATERIAL_INPUT_SLOT_DESC, 8u>
 	EFFECT_STANDARD_MATERIAL_INPUTS = {{
 		{ "base", "Base", "g_BaseTexture",
 			EFFECT_MATERIAL_INPUT_SEMANTIC::BASE,
@@ -460,7 +528,19 @@ inline constexpr std::array<EFFECT_MATERIAL_INPUT_SLOT_DESC, 5u>
 		{ "dissolve", "Dissolve", "g_DissolveTexture",
 			EFFECT_MATERIAL_INPUT_SEMANTIC::DISSOLVE,
 			EFFECT_RESOURCE_FILE_KIND::TEXTURE,
-			EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE }
+			EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE },
+		{ "base2", "Base 2", "g_Base2Texture",
+			EFFECT_MATERIAL_INPUT_SEMANTIC::BASE2,
+			EFFECT_RESOURCE_FILE_KIND::TEXTURE,
+			EFFECT_RESOURCE_SLOT::BASE2_TEXTURE },
+		{ "mask2", "Mask 2", "g_Mask2Texture",
+			EFFECT_MATERIAL_INPUT_SEMANTIC::MASK2,
+			EFFECT_RESOURCE_FILE_KIND::TEXTURE,
+			EFFECT_RESOURCE_SLOT::MASK2_TEXTURE },
+		{ "noise2", "Noise 2", "g_Noise2Texture",
+			EFFECT_MATERIAL_INPUT_SEMANTIC::NOISE2,
+			EFFECT_RESOURCE_FILE_KIND::TEXTURE,
+			EFFECT_RESOURCE_SLOT::NOISE2_TEXTURE }
 	}};
 
 inline constexpr EFFECT_MATERIAL_TEMPLATE_DESC
@@ -1162,6 +1242,34 @@ inline bool_t Has_EffectArtistLensFlare01NamedTextureContract(
 {
 	return Has_EffectUniqueNamedTextureContract(
 		Source, EFFECT_ARTIST_LENSFLARE01_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectGlasshole02NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_GLASSHOLE02_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectFluidNinja01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_FLUIDNINJA01_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectCustomParticle01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return nullptr != Find_EffectUniqueNamedTexture(Source, "diff_tex") &&
+		Is_EffectNamedTextureLaneUnique(Source, "a_noise_01_tex");
+}
+
+inline bool_t Has_EffectCrackholeV2NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_CRACKHOLEV2_SOURCE_TEXTURE_NAMES);
 }
 
 inline bool_t Has_EffectArtistWorldOffset02NamedTextureContract(

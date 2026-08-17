@@ -673,11 +673,13 @@ void Client::CBalanceTool::RenderBossEditor()
 					else if (stage.hitShape == "CONE") hitShape = 3;
 					else if (stage.hitShape == "BOX") hitShape = 4;
 					else if (stage.hitShape == "CROSS") hitShape = 5;
+					else if (stage.hitShape == "SIX_DIRECTIONS") hitShape = 6;
 					if (ImGui::Combo("Collider", &hitShape,
-						"None\0Circle\0Ring\0Cone\0Box\0Cross\0"))
+						"None\0Circle\0Ring\0Cone\0Box\0Cross\0Six directions\0"))
 					{
 						static const char* shapes[] =
-							{ "NONE", "CIRCLE", "RING", "CONE", "BOX", "CROSS" };
+							{ "NONE", "CIRCLE", "RING", "CONE", "BOX", "CROSS",
+							  "SIX_DIRECTIONS" };
 						stage.hitShape = shapes[hitShape];
 						m_dirty = true;
 					}
@@ -691,12 +693,14 @@ void Client::CBalanceTool::RenderBossEditor()
 						MarkDirty(ImGui::DragFloat("Angle degrees", &stage.hitAngleDegrees,
 							1.f, 1.f, 360.f));
 					if (stage.hitShape == "CONE" || stage.hitShape == "BOX" ||
-						stage.hitShape == "CROSS")
+						stage.hitShape == "CROSS" ||
+						stage.hitShape == "SIX_DIRECTIONS")
 					{
 						MarkDirty(ImGui::DragFloat("Length", &stage.hitLength,
 							0.1f, 0.f, 1000.f));
 					}
-					if (stage.hitShape == "BOX" || stage.hitShape == "CROSS")
+					if (stage.hitShape == "BOX" || stage.hitShape == "CROSS" ||
+						stage.hitShape == "SIX_DIRECTIONS")
 						MarkDirty(ImGui::DragFloat("Half width", &stage.hitHalfWidth,
 							0.1f, 0.f, 1000.f));
 					if (stage.hitShape != "NONE")
@@ -914,6 +918,7 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			const bool cone = stage.hitShape == "CONE";
 			const bool box = stage.hitShape == "BOX";
 			const bool cross = stage.hitShape == "CROSS";
+			const bool sixDirections = stage.hitShape == "SIX_DIRECTIONS";
 			const bool validKind = stage.stageKind == "WINDUP" ||
 				stage.stageKind == "ACTIVE" || stage.stageKind == "RECOVERY";
 			const bool finiteGeometry = std::isfinite(stage.hitOuterRadius) &&
@@ -930,7 +935,7 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 					stage.hitOuterRadius > stage.hitInnerRadius :
 				(cone ? stage.hitAngleDegrees > 0.f &&
 					stage.hitAngleDegrees <= 360.f && stage.hitLength > 0.f :
-				((box || cross) ? stage.hitLength > 0.f &&
+				((box || cross || sixDirections) ? stage.hitLength > 0.f &&
 					stage.hitHalfWidth > 0.f : false))));
 			const bool validHit = none ?
 				(0u == stage.hitCount && 0u == stage.hitIntervalMs &&

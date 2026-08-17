@@ -53,6 +53,16 @@ namespace LostArk::Shared::CombatCollision
 		float halfLength,
 		float halfWidth) noexcept;
 
+	// Three centered strips at 0, 60 and 120 degrees form six radial arms.
+	[[nodiscard]] bool Circle_IntersectsSixDirections(
+		const BODY_CIRCLE_XZ& target,
+		float centerX,
+		float centerZ,
+		float forwardX,
+		float forwardZ,
+		float halfLength,
+		float halfWidth) noexcept;
+
 	// angleDegrees is the cone's full angle, not its half angle.
 	[[nodiscard]] bool Circle_IntersectsCone(
 		const BODY_CIRCLE_XZ& target,

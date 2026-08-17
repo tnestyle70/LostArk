@@ -12,33 +12,37 @@
   "modelCues": [],
   "elements": [
     {
-      "id": "par_n_rpbf_bodyfire_01",
-      "displayName": "par_n_rpbf_bodyfire_01",
+      "id": "par_n_rpbf_bodyfire_01.em00",
+      "displayName": "par_n_rpbf_bodyfire_01 / emitter 00",
       "groupId": "windup",
       "sourceNode": "",
       "visible": true,
       "kind": "particle",
       "resources": [
         {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_fluidtile_01.dds"
+        },
+        {
           "slotId": "noise",
           "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_014.dds"
         },
         {
-          "slotId": "base",
+          "slotId": "mask",
           "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_a_fire_020.dds"
         },
         {
-          "slotId": "mask",
-          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_noise_001.dds"
+          "slotId": "emissive",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_j_mirnoise_02.dds"
         },
         {
-          "slotId": "emissive",
-          "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_fluidtile_01.dds"
+          "slotId": "noise2",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_noise_001.dds"
         }
       ],
       "material": {
         "templateId": "effect.standard",
-        "sourceMaterialPath": "",
+        "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_turbpa_01_tr",
         "renderProfile": "alpha_two_sided_depth_read",
         "sourceProfile": {
           "enabled": false
@@ -91,9 +95,9 @@
             0
           ],
           "scale": [
-            0.00999999978,
-            0.00999999978,
-            0.00999999978
+            1.0,
+            1.0,
+            1.0
           ],
           "velocityPerSecond": [
             0,
@@ -145,7 +149,7 @@
         },
         "timing": {
           "startDelaySeconds": 0,
-          "lifeTimeSeconds": 5,
+          "lifeTimeSeconds": 1.3,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 1
         },
@@ -217,13 +221,13 @@
           "endEmissiveIntensity": 1
         },
         "particle": {
-          "maxParticles": 1,
+          "maxParticles": 8,
           "spawnRatePerSecond": 0,
-          "burstCount": 1,
+          "burstCount": 8,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            2,
-            2
+            0.6,
+            1.0
           ],
           "initialPositionMin": [
             0,
@@ -259,7 +263,7 @@
             1
           ],
           "localSpace": true,
-          "billboard": false
+          "billboard": true
         },
         "trail": {
           "maxPoints": 64,

@@ -505,6 +505,71 @@ try {
     Assert-PublishRejected 'Typed WaterTrail missing named noise texture' `
         $typedWaterBaseline
 
+    # Exact UE3 material-family profiles are executable only when every
+    # required named texture lane is closed. CustomParticle's unresolved
+    # a_noise_01_tex lane is intentionally optional and is not synthesized.
+    $ue3FamilyProfileFixtures = @(
+        [ordered]@{
+            profile = 'effect.ue3.slice.v1'
+            roles = @('slice_flow_texture')
+        },
+        [ordered]@{
+            profile = 'effect.ue3.glasshole-02.v1'
+            roles = @('aura_texture','cracknormal_tex','in_hole_texture')
+        },
+        [ordered]@{
+            profile = 'effect.ue3.fluidninja-01.v1'
+            roles = @(
+                'diff_tex','flow_1_tex','flow_2_tex','mask_tex','opacity_tex')
+        },
+        [ordered]@{
+            profile = 'effect.ue3.customparticle-01.v1'
+            roles = @('diff_tex')
+        },
+        [ordered]@{
+            profile = 'effect.ue3.crackholev2-01.v1'
+            roles = @(
+                '01.map_e','06.map_f','06.map','mask_noisemap',
+                'mask_tex_l','mask_tex_r')
+        }
+    )
+    foreach ($familyFixture in $ue3FamilyProfileFixtures) {
+        $familyElement = ($typedElement | ConvertTo-Json -Depth 100) |
+            ConvertFrom-Json
+        $familyElement.resources = @([ordered]@{
+            slotId = 'base'
+            assetId = 'Effect/Test/base.dds'
+        })
+        $familyElement.material.sourceProfile.runtimeShaderProfileId =
+            [string]$familyFixture.profile
+        $familyElement.material.sourceProfile.dynamicParameterSemantics = @(
+            'unbound','unbound','unbound','unbound')
+        $familyElement.material.sourceProfile.textures = @(
+            foreach ($role in @($familyFixture.roles)) {
+                [ordered]@{
+                    name = [string]$role
+                    sourceObjectPath = "fx.fixture.$role"
+                    assetId = 'Effect/Test/base.dds'
+                }
+            })
+        $document.elements = @($familyElement)
+        Write-Fixture $document $catalog
+        & $publisher -Mode Publish -DataRoot $dataRoot `
+            -ResourceRoot $resourceRoot -OutputPath $output
+        if ($LASTEXITCODE) {
+            throw "UE3 family profile publish failed: $($familyFixture.profile)"
+        }
+        $familyBaseline = [IO.File]::ReadAllBytes($output)
+        $missingRole = [string]@($familyFixture.roles)[-1]
+        $familyElement.material.sourceProfile.textures = @(
+            $familyElement.material.sourceProfile.textures | Where-Object {
+                $_.name -ne $missingRole })
+        Write-Fixture $document $catalog
+        Assert-PublishRejected `
+            "UE3 family profile missing named texture: $($familyFixture.profile)" `
+            $familyBaseline
+    }
+
     $document.elements = @($groupedElement)
     Write-Fixture $document $catalog
     & $publisher -Mode Publish -DataRoot $dataRoot `

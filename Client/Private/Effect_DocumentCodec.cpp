@@ -105,7 +105,8 @@ namespace
 	};
 	constexpr const char_t* SLOT_TOKENS[] =
 	{
-		"meshModel", "base", "noise", "mask", "emissive", "dissolve"
+		"meshModel", "base", "noise", "mask", "emissive", "dissolve",
+		"base2", "mask2", "noise2"
 	};
 	constexpr const char_t* PARTICLE_SPAWN_SHAPE_TOKENS[] =
 	{
@@ -4092,6 +4093,8 @@ namespace
 			Read_Bool(*pSprite, "billboard", Out.Sprite.bBillboard, strOutError) &&
 			Read_OptionalFloat(*pSprite, "billboardRollDegrees",
 				Out.Sprite.fBillboardRollDegrees, strOutError) &&
+			Read_OptionalFloat(*pSprite, "billboardRollDegreesPerSecond",
+				Out.Sprite.fBillboardRollDegreesPerSecond, strOutError) &&
 			Read_Array(*pDecal, "size", &Out.Decal.vSize.x, 2u, strOutError) &&
 			Read_Float(*pDecal, "depth", Out.Decal.fDepth, strOutError);
 	}
@@ -4164,9 +4167,17 @@ namespace
 			strOutError = "Effect particle sourceScale is not an object.";
 			return false;
 		}
+		/* The four trailing factors were added after documents already existed
+		   with the first three, so each one is optional and defaults to 1. */
 		return Read_OptionalFloat(*pScale, "count", Out.fCount, strOutError) &&
 			Read_OptionalFloat(*pScale, "size", Out.fSize, strOutError) &&
-			Read_OptionalFloat(*pScale, "lifeTime", Out.fLifeTime, strOutError);
+			Read_OptionalFloat(*pScale, "lifeTime", Out.fLifeTime, strOutError) &&
+			Read_OptionalFloat(*pScale, "speed", Out.fSpeed, strOutError) &&
+			Read_OptionalFloat(*pScale, "rotation", Out.fRotation,
+				strOutError) &&
+			Read_OptionalFloat(*pScale, "alpha", Out.fAlpha, strOutError) &&
+			Read_OptionalFloat(*pScale, "spawnDelay", Out.fSpawnDelay,
+				strOutError);
 	}
 
 	bool_t Read_V5Detail(
@@ -4300,6 +4311,8 @@ namespace
 		Write_Float3(Output, Detail.Mesh.vSourceTypeDataRotationDegrees);
 		Output << " },\n        \"sprite\": { \"billboard\": " << (Detail.Sprite.bBillboard ? "true" : "false")
 			<< ", \"billboardRollDegrees\": " << Detail.Sprite.fBillboardRollDegrees
+			<< ", \"billboardRollDegreesPerSecond\": "
+			<< Detail.Sprite.fBillboardRollDegreesPerSecond
 			<< " },\n        \"decal\": { \"size\": ";
 		Write_Float2(Output, Detail.Decal.vSize);
 		Output << ", \"depth\": " << Detail.Decal.fDepth << " },\n"
@@ -4390,6 +4403,11 @@ namespace
 				<< Detail.Particle.SourceScale.fCount
 				<< ", \"size\": " << Detail.Particle.SourceScale.fSize
 				<< ", \"lifeTime\": " << Detail.Particle.SourceScale.fLifeTime
+				<< ", \"speed\": " << Detail.Particle.SourceScale.fSpeed
+				<< ", \"rotation\": " << Detail.Particle.SourceScale.fRotation
+				<< ", \"alpha\": " << Detail.Particle.SourceScale.fAlpha
+				<< ", \"spawnDelay\": "
+				<< Detail.Particle.SourceScale.fSpawnDelay
 				<< " }";
 		}
 		Output << " },\n"
@@ -5788,6 +5806,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				 0.f == D.Mesh.vSourceTypeDataRotationDegrees.z)) &&
 			std::isfinite(D.Sprite.fBillboardRollDegrees) &&
 			std::abs(D.Sprite.fBillboardRollDegrees) <= 3600.f &&
+			std::isfinite(D.Sprite.fBillboardRollDegreesPerSecond) &&
+			std::abs(D.Sprite.fBillboardRollDegreesPerSecond) <= 3600.f &&
 			Is_Finite(D.Decal.vSize) && D.Decal.vSize.x > 0.f && D.Decal.vSize.y > 0.f &&
 			std::isfinite(D.Decal.fDepth) && D.Decal.fDepth > 0.f;
 		const bool_t bLerpValid =
@@ -5857,9 +5877,20 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			std::isfinite(SourceScale.fCount) &&
 			std::isfinite(SourceScale.fSize) &&
 			std::isfinite(SourceScale.fLifeTime) &&
+			std::isfinite(SourceScale.fSpeed) &&
+			std::isfinite(SourceScale.fRotation) &&
+			std::isfinite(SourceScale.fAlpha) &&
+			std::isfinite(SourceScale.fSpawnDelay) &&
 			SourceScale.fCount > 0.f && SourceScale.fCount <= 16.f &&
 			SourceScale.fSize > 0.f && SourceScale.fSize <= 16.f &&
-			SourceScale.fLifeTime > 0.f && SourceScale.fLifeTime <= 16.f;
+			SourceScale.fLifeTime > 0.f && SourceScale.fLifeTime <= 16.f &&
+			/* Speed and rotation may legitimately be reversed or stopped, so
+			   they allow zero and negative; the magnitude keeps the same
+			   ceiling as the other factors. */
+			SourceScale.fSpeed >= -16.f && SourceScale.fSpeed <= 16.f &&
+			SourceScale.fRotation >= -16.f && SourceScale.fRotation <= 16.f &&
+			SourceScale.fAlpha >= 0.f && SourceScale.fAlpha <= 16.f &&
+			SourceScale.fSpawnDelay >= 0.f && SourceScale.fSpawnDelay <= 16.f;
 		const bool_t bTrailValid =
 			D.Trail.iMaxPoints >= 2u && D.Trail.iMaxPoints <= 512u &&
 			std::isfinite(D.Trail.fPointLifeTimeSeconds) && D.Trail.fPointLifeTimeSeconds > 0.f &&
@@ -10854,7 +10885,8 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 		if (!ElementValue.Is_Object() ||
 			(bSourceContract && !Validate_ExactFields(ElementValue,
 				{ "id", "displayName", "groupId", "sourceNode", "visible",
-					"kind", "renderer", "resources", "material",
+					"kind", "renderer", "resources", "unboundResources",
+					"material",
 					"actionCueAttachment", "transformInheritance", "detail",
 					"sourceRecipe", "sourcePresentation" },
 				"Effect source-contract Element", strOutError)))
@@ -10958,6 +10990,28 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 			Binding.strSlotId = pSlot->Get_String();
 			Binding.strAssetId = pResourceId->Get_String();
 			Element.ResourceBindings.push_back(std::move(Binding));
+		}
+		/* Optional: the seeder records every source texture that did not fit a
+		   slot so the document keeps the full original reference list. */
+		if (const DATA_JSON_VALUE* pUnbound =
+			ElementValue.Find("unboundResources"))
+		{
+			if (!pUnbound->Is_Array())
+			{
+				strOutError = "Effect unboundResources must be an array.";
+				return false;
+			}
+			for (const DATA_JSON_VALUE& UnboundValue : pUnbound->Get_Array())
+			{
+				if (!UnboundValue.Is_String())
+				{
+					strOutError =
+						"Effect unboundResources entry must be a string.";
+					return false;
+				}
+				Element.UnboundSourceResources.push_back(
+					UnboundValue.Get_String());
+			}
 		}
 		const DATA_JSON_VALUE* pTemplateId = pMaterial->Find("templateId");
 		if (iSourceVersion >= 6u)
@@ -11185,7 +11239,20 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		}
 		if (!Element.ResourceBindings.empty())
 			Output << '\n';
-		Output << "      ],\n      \"material\": { \"templateId\": \""
+		Output << "      ],\n";
+		if (!Element.UnboundSourceResources.empty())
+		{
+			Output << "      \"unboundResources\": [";
+			for (size_t iUnbound = 0u;
+				iUnbound < Element.UnboundSourceResources.size(); ++iUnbound)
+			{
+				Output << (0u == iUnbound ? "\n" : ",\n")
+					<< "        \"" << CDataJson::Escape(
+						Element.UnboundSourceResources[iUnbound]) << "\"";
+			}
+			Output << "\n      ],\n";
+		}
+		Output << "      \"material\": { \"templateId\": \""
 			<< CDataJson::Escape(Element.Material.strTemplateId)
 			<< "\", \"sourceMaterialPath\": \""
 			<< CDataJson::Escape(Element.Material.strSourceMaterialPath)

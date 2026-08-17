@@ -76,6 +76,9 @@
     <Filter Include="96.DataFiles\Animation\Authored">
       <UniqueIdentifier>{5b0cbb5f-7b8c-4d74-9e9c-9605010cb53b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Animation\Authored\Valtan">
+      <UniqueIdentifier>{29249b04-68b3-43f4-9782-7d6435d7a9bb}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Animation\Reference">
       <UniqueIdentifier>{4402f87c-21c5-4861-a522-78384ae40740}</UniqueIdentifier>
     </Filter>
@@ -187,6 +190,9 @@
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\BalanceTool.cpp">
@@ -667,6 +673,9 @@
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h">
+      <Filter>03. Tools\04. Animation</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\BalanceTool.h">
       <Filter>03. Tools\03. UI</Filter>
     </ClInclude>
@@ -814,6 +823,9 @@
     <ClInclude Include="..\Public\CharacterSelectionState.h">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClInclude>
+	<ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h">
+	  <Filter>01.Levels\01. CharacterSelect</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\Level_CharacterSelect.h">
       <Filter>01.Levels\01. CharacterSelect</Filter>
     </ClInclude>
@@ -1011,6 +1023,9 @@
     </None>
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json">
       <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json">
+      <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
     </None>
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify">
       <Filter>96.DataFiles\Animation\Reference</Filter>
@@ -1368,6 +1383,12 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactSpriteBridge.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactLocalMeshBridge.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
@@ -1378,6 +1399,9 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectUe3MaterialFamilies.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectRuntimeMaterialPacket.hlsli">
@@ -1772,6 +1796,9 @@
     </Filter>
     <Filter Include="96.DataFiles\Effects\Contracts">
       <UniqueIdentifier>{5b20a7b1-e45d-5326-bed8-14bcf3f3d075}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\CookedShaders">
+      <UniqueIdentifier>{cdb4ba9e-4b23-4b55-b469-a188479558e4}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported">
       <UniqueIdentifier>{94b89e0f-c55f-4f0d-8d90-a6bd2b7a3d8e}</UniqueIdentifier>
@@ -3190,6 +3217,9 @@
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.targeted-current-combat-transaction.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Ue3MaterialFamilyProjection.receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-authored-import-batch.json">
@@ -5043,8 +5073,29 @@
     <None Include="..\..\Data\Effects\Contracts\effect-import-bases.v1.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Contracts\ue3-exact-cooked-shader-variants.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\ue3-material-family-registry.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\340169d8b9146fd280bbc1b509aa312e6afa71573dfe12cf4e89cb0136431ae3.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\7917664ff360df0f6305bf8d6c41a8c506872a62e09d26beb2b8fd8d7164d76c.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\9c4706c3b6a36cb5a5eac40d8e871f2b67351265cf211f624614c842f0334b8e.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\a04dc3d21a95d5f2299d6bc8d07f65bd7cde640be52ed0df362b4a71b0c680e6.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\CookedShaders\e2ba1c1ef87cdd52cc74a8e661f8613d0b17f2cc7b9b1d0d7ab6ed80ec6e775b.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
     </None>
     <None Include="..\..\Data\Effects\EffectCatalog.json">
       <Filter>96.DataFiles\Effects</Filter>

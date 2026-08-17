@@ -701,6 +701,24 @@ void LostArk::Server::CServerCollisionSystem::Collect_BossPatternHitContacts(
 					Obbs_Intersect(lateralAttack, wall);
 			}
 			break;
+		case BOSS_PATTERN_HIT_SHAPE::SIX_DIRECTIONS:
+			if (length > 0.f && halfWidth > 0.f)
+			{
+				const std::array<OBB_2D, 3u> attacks = {{
+					Make_AttackObb(
+						originX, originZ, yawDegrees, halfWidth, length),
+					Make_AttackObb(
+						originX, originZ, yawDegrees + 60.f, halfWidth, length),
+					Make_AttackObb(
+						originX, originZ, yawDegrees + 120.f, halfWidth, length)
+				}};
+				const OBB_2D wall = To_Obb(box);
+				intersects = std::any_of(
+					attacks.begin(), attacks.end(),
+					[&wall](const OBB_2D& attack)
+					{ return Obbs_Intersect(attack, wall); });
+			}
+			break;
 		case BOSS_PATTERN_HIT_SHAPE::NONE:
 		default:
 			break;

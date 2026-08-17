@@ -101,7 +101,8 @@ namespace LostArk::Server
 		RING,
 		CONE,
 		BOX,
-		CROSS
+		CROSS,
+		SIX_DIRECTIONS
 	};
 
 	enum class BOSS_PATTERN_STAGE_KIND

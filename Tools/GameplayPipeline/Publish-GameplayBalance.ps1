@@ -957,6 +957,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			'CONE' { $validShape = $angle -gt 0.0 -and $angle -le 180.0 -and $length -gt 0.0 -and $outer -eq 0.0 -and $inner -eq 0.0 -and $halfWidth -eq 0.0 }
 			'BOX' { $validShape = $length -gt 0.0 -and $halfWidth -gt 0.0 -and $outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 }
 			'CROSS' { $validShape = $length -gt 0.0 -and $halfWidth -gt 0.0 -and $outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 }
+			'SIX_DIRECTIONS' { $validShape = $length -gt 0.0 -and $halfWidth -gt 0.0 -and $outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 }
 			default { throw "Unknown pattern stage hit shape: $($pattern.patternId) stage $stageIndex" }
 		}
 		if ($shape -ne 'NONE') {

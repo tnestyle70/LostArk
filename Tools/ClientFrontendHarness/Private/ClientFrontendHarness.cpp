@@ -1,4 +1,5 @@
 #include "Client_Defines.h"
+#include "../../../Client/Private/CharacterSelectArenaSpawnGate.h"
 #include "FourClassTrackAAuthoredMaterializer.h"
 #include "ActionPresentationTimeline.h"
 #include "ActorCatalog.h"
@@ -39,6 +40,7 @@
 #include "EncounterPatternReference.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
+#include "ValtanPatternEffectCueDocument.h"
 #include "WorldDestructionDebrisPresentationDocument.h"
 #include "WorldDestructionDebrisPresentationRuntime.h"
 #include "WorldDestructionProjectionDocument.h"
@@ -4207,6 +4209,56 @@ namespace
 			runner.Require(false,
 				"Valtan Pattern Effect Rejects False Product Admission");
 		}
+
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT patternCueDocument;
+		const bool_t patternCuesLoaded =
+			CValtanPatternEffectCueDocument::Load_Source(
+				patternCueDocument, status);
+		std::unordered_set<std::string> patternCueBindings;
+		std::unordered_set<std::string> patternCueActions;
+		std::unordered_set<std::string> patternCueEffects;
+		bool_t patternCueIdentitiesExact = patternCuesLoaded &&
+			patternCueDocument.strOwnerArchetypeId == "BOSS_VALTAN" &&
+			patternCueDocument.Cues.size() == 99u;
+		for (const VALTAN_PATTERN_EFFECT_CUE& cue : patternCueDocument.Cues)
+		{
+			patternCueIdentitiesExact = patternCueIdentitiesExact &&
+				patternCueBindings.insert(cue.strBindingId).second &&
+				patternCueActions.insert(cue.strActionId).second &&
+				patternCueEffects.insert(cue.strEffectAssetId).second &&
+				cue.iStartMs < cue.iEndMs && 0u != cue.iStageDurationMs &&
+				cue.iEndMs <= cue.iStageDurationMs;
+		}
+		runner.Require(patternCueIdentitiesExact &&
+			patternCueBindings.size() == 99u &&
+			patternCueActions.size() == 99u &&
+			patternCueEffects.size() == 99u,
+			"Valtan Product Pattern Effect Cue Source Has 99 Unique Encounter-Qualified Bindings, Actions, And Effect Targets");
+
+		CEncounterPatternReference encounter;
+		const bool_t encounterLoaded = encounter.Load(CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Encounters") / L"Valtan" /
+			L"ValtanEncounter.json"), status);
+		const std::string patternCueText = Read_Text(
+			CValtanPatternEffectCueDocument::Resolve_Path());
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT preservedPatternCues =
+			patternCueDocument;
+		const std::string preservedFirstBinding =
+			preservedPatternCues.Cues.empty() ? std::string{} :
+			preservedPatternCues.Cues.front().strBindingId;
+		const std::string invalidPatternCueText =
+			patternCueText.empty() ? std::string{} :
+			patternCueText.substr(0u, patternCueText.find_last_of('}')) +
+			",\n  \"unexpected\": true\n}\n";
+		runner.Require(encounterLoaded && !invalidPatternCueText.empty() &&
+			!CValtanPatternEffectCueDocument::Parse_Text(
+				invalidPatternCueText, encounter, preservedPatternCues, status) &&
+			preservedPatternCues.Cues.size() ==
+				patternCueDocument.Cues.size() &&
+			!preservedPatternCues.Cues.empty() &&
+			preservedPatternCues.Cues.front().strBindingId ==
+				preservedFirstBinding,
+			"Valtan Pattern Effect Cue Parse Failure Preserves Prior Committed Document");
 
 	}
 
@@ -16284,6 +16336,142 @@ namespace
 		std::filesystem::remove(SourcePath, Error);
 	}
 
+	void Test_CharacterSelectValtanPrewarmGate(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+
+		CCharacterSelectArenaSpawnGate timedGate;
+		uint32_t serverRequestCount = 0u;
+		const bool_t prewarmDoesNotRequest = timedGate.Begin(true) &&
+			timedGate.Is_Preparing() &&
+			!timedGate.Try_ConsumeServerRequest();
+		const bool_t prewarmTimeoutIsRetryable = prewarmDoesNotRequest &&
+			timedGate.Mark_PrewarmFailed(true) && timedGate.Can_Retry() &&
+			timedGate.Get_State() ==
+				CHARACTER_SELECT_ARENA_SPAWN_GATE_STATE::
+					PREWARM_TIMED_OUT_RETRYABLE &&
+			!timedGate.Try_ConsumeServerRequest();
+		const bool_t retryRestarted = prewarmTimeoutIsRetryable &&
+			timedGate.Begin(true) && timedGate.Is_Preparing() &&
+			timedGate.Mark_PrewarmReady();
+		if (retryRestarted && timedGate.Try_ConsumeServerRequest())
+			++serverRequestCount;
+		const bool_t exactOneRequestAfterRetry = retryRestarted &&
+			1u == serverRequestCount &&
+			!timedGate.Try_ConsumeServerRequest() &&
+			timedGate.Is_RequestInFlight();
+		const bool_t responseTimeoutRestarts = exactOneRequestAfterRetry &&
+			timedGate.Mark_ResponseTimedOut() && timedGate.Can_Retry() &&
+			timedGate.Get_State() ==
+				CHARACTER_SELECT_ARENA_SPAWN_GATE_STATE::
+					RESPONSE_TIMED_OUT_RETRYABLE &&
+			timedGate.Begin(true) && timedGate.Mark_PrewarmReady();
+		if (responseTimeoutRestarts && timedGate.Try_ConsumeServerRequest())
+			++serverRequestCount;
+		const bool_t retryAlsoRequestsOnce = responseTimeoutRestarts &&
+			2u == serverRequestCount &&
+			!timedGate.Try_ConsumeServerRequest();
+		runner.Require(
+			CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT == 99u &&
+			CCharacterSelectArenaSpawnGate::PREWARM_TIMEOUT ==
+				std::chrono::seconds{ 30 } &&
+			prewarmDoesNotRequest && prewarmTimeoutIsRetryable &&
+			retryRestarted && exactOneRequestAfterRetry &&
+			responseTimeoutRestarts && retryAlsoRequestsOnce,
+			"Character Select Valtan Gate Sends Exactly One Request Only After 99-Target Prewarm And Restarts After Prewarm Or Response Timeout");
+
+		CCharacterSelectArenaSpawnGate immediateGate;
+		uint32_t immediateRequestCount = 0u;
+		const bool_t immediateReady = immediateGate.Begin(false) &&
+			!immediateGate.Is_Preparing();
+		if (immediateReady && immediateGate.Try_ConsumeServerRequest())
+			++immediateRequestCount;
+		runner.Require(immediateReady && 1u == immediateRequestCount &&
+			!immediateGate.Try_ConsumeServerRequest() &&
+			immediateGate.Is_RequestInFlight(),
+			"Character Select Non-Valtan Arena Spawn Keeps Its Immediate Exact-One Request Path");
+
+		std::string status;
+		CEffectProductPrewarmQueue queue;
+		queue.Reset_ForCatalogRevision(901u);
+		const std::vector<std::string> playerTargets =
+		{
+			"effect.player.current",
+			"effect.player.next"
+		};
+		std::string queuedId;
+		const bool_t playerQueueRegistered = queue.Enqueue(
+			playerTargets, status) &&
+			queue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED;
+		std::vector<std::string> bossTargets;
+		bossTargets.reserve(
+			CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT);
+		for (size_t index = 0u;
+			index < CCharacterSelectArenaSpawnGate::
+				PRODUCT_EFFECT_TARGET_COUNT;
+			++index)
+		{
+			bossTargets.push_back(
+				"effect.valtan.contract." + std::to_string(index));
+		}
+		bool_t bossTargetsPrepared = playerQueueRegistered &&
+			queue.Enqueue_Priority(bossTargets, status) &&
+			queue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED;
+		for (const std::string& bossTarget : bossTargets)
+		{
+			bossTargetsPrepared = bossTargetsPrepared &&
+				queue.Begin_Frame(queuedId) ==
+					EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+				queuedId == bossTarget &&
+				queue.Complete_Front(queuedId, true, status);
+		}
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE bossProbe =
+			queue.Get_TargetProbe(bossTargets, 901u);
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE preservedPlayerProbe =
+			queue.Get_TargetProbe(playerTargets, 901u);
+		CCharacterSelectArenaSpawnGate autoRequestGate;
+		uint32_t autoRequestCount = 0u;
+		const bool_t bossReadyBeforePlayerDrain =
+			autoRequestGate.Begin(true) && bossTargetsPrepared &&
+			bossProbe.bCatalogRevisionCurrent && bossProbe.bSettled &&
+			bossProbe.iTargetCount == 99u &&
+			bossProbe.iPreparedCount == 99u &&
+			0u == bossProbe.iFailedCount &&
+			0u == bossProbe.iUnavailableCount &&
+			bossProbe.iQueuePendingCount == playerTargets.size() &&
+			!Is_ProductPrewarmActivationReady(bossProbe) &&
+			preservedPlayerProbe.iPendingCount == playerTargets.size() &&
+			autoRequestGate.Mark_PrewarmReady();
+		if (bossReadyBeforePlayerDrain &&
+			autoRequestGate.Try_ConsumeServerRequest())
+		{
+			++autoRequestCount;
+		}
+		bool_t playerQueueDrained = bossReadyBeforePlayerDrain &&
+			1u == autoRequestCount &&
+			!autoRequestGate.Try_ConsumeServerRequest();
+		for (const std::string& playerTarget : playerTargets)
+		{
+			playerQueueDrained = playerQueueDrained &&
+				queue.Begin_Frame(queuedId) ==
+					EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+				queuedId == playerTarget &&
+				queue.Complete_Front(queuedId, true, status);
+		}
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE drainedPlayerProbe =
+			queue.Get_TargetProbe(playerTargets, 901u);
+		runner.Require(playerQueueRegistered && bossTargetsPrepared &&
+			bossReadyBeforePlayerDrain && playerQueueDrained &&
+			drainedPlayerProbe.bSettled &&
+			drainedPlayerProbe.iPreparedCount == playerTargets.size() &&
+			0u == drainedPlayerProbe.iQueuePendingCount &&
+			queue.Get_Probe().iTargetCount ==
+				bossTargets.size() + playerTargets.size(),
+			"Character Select Valtan Priority Prewarm Preserves Existing Player Cue Work And Auto-Requests Before That Background Queue Drains");
+	}
+
 	void Test_EffectIncrementalProductPrewarm(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -16437,6 +16625,19 @@ namespace
 		{
 			playerSkillOwners.emplace(skill.eCharacterClass, skill.iSkillId);
 		}
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT valtanCueDocument;
+		std::string valtanCueStatus;
+		const bool_t valtanCuesLoaded =
+			CValtanPatternEffectCueDocument::Load_Source(
+				valtanCueDocument, valtanCueStatus);
+		EFFECT_DIRECT_AUTHORED_BOSS_OWNER_MAP bossPatternOwners;
+		for (const VALTAN_PATTERN_EFFECT_CUE& cue : valtanCueDocument.Cues)
+		{
+			bossPatternOwners.emplace(cue.strEffectAssetId,
+				EFFECT_DIRECT_AUTHORED_BOSS_OWNER{
+					valtanCueDocument.strOwnerArchetypeId, cue.strPatternId,
+					cue.strStageId, cue.strActionId });
+		}
 		const std::filesystem::path sourceCatalogPath = repositoryRoot /
 			L"Data" / L"Effects" / L"EffectCatalog.json";
 		const std::filesystem::path authoredRoot = repositoryRoot /
@@ -16460,22 +16661,47 @@ namespace
 			});
 		}
 		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX sourceIndex;
-		const bool_t sourceIndexValid = playerSkillsLoaded && !sourceScanError &&
+		const bool_t sourceIndexValid = playerSkillsLoaded && valtanCuesLoaded &&
+			!sourceScanError &&
 			CEffectDirectAuthoredSourceIndex::Build(
 				sourceCatalogPath, authoredRoot, scannedSourceFiles,
-				playerSkillOwners, sourceIndex, sourceIndexStatus);
+				playerSkillOwners, bossPatternOwners,
+				sourceIndex, sourceIndexStatus);
 		std::set<std::string, std::less<>> directSourceIds;
+		size_t typedPlayerSourceCount = 0u;
+		size_t typedBossSourceCount = 0u;
 		bool_t sourceEntriesExact = sourceIndexValid &&
-			sourceIndex.iCatalogDirectCount == 101u &&
+			valtanCueDocument.Cues.size() == 99u &&
+			bossPatternOwners.size() == 99u &&
+			sourceIndex.iCatalogDirectCount == 200u &&
 			sourceIndex.iUnavailableCount == 0u &&
-			sourceIndex.Entries.size() == 101u;
+			sourceIndex.Entries.size() == 200u;
 		for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& entry :
 			sourceIndex.Entries)
 		{
 			std::error_code physicalError;
-			sourceEntriesExact = sourceEntriesExact &&
-				playerSkillOwners.contains(std::make_pair(
-					entry.eCharacterClass, entry.iSkillId)) &&
+			bool_t ownerExact = false;
+			if (EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL ==
+				entry.eOwnerKind)
+			{
+				++typedPlayerSourceCount;
+				ownerExact = playerSkillOwners.contains(std::make_pair(
+					entry.eCharacterClass, entry.iSkillId));
+			}
+			else if (EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_PATTERN ==
+				entry.eOwnerKind)
+			{
+				++typedBossSourceCount;
+				const auto owner =
+					bossPatternOwners.find(entry.strEffectAssetId);
+				ownerExact = bossPatternOwners.end() != owner &&
+					entry.strOwnerArchetypeId ==
+						owner->second.strOwnerArchetypeId &&
+					entry.strPatternId == owner->second.strPatternId &&
+					entry.strStageId == owner->second.strStageId &&
+					entry.strActionId == owner->second.strActionId;
+			}
+			sourceEntriesExact = sourceEntriesExact && ownerExact &&
 				directSourceIds.insert(entry.strEffectAssetId).second &&
 				std::filesystem::is_regular_file(entry.Path, physicalError) &&
 				!physicalError;
@@ -16487,7 +16713,8 @@ namespace
 		const bool_t malformedTopLevelPreserved =
 			!CEffectDirectAuthoredSourceIndex::Build(
 				sourceCatalogPath / L"missing", authoredRoot,
-				scannedSourceFiles, playerSkillOwners, preservedIndex,
+				scannedSourceFiles, playerSkillOwners, bossPatternOwners,
+				preservedIndex,
 				rejectedIndexStatus) &&
 			preservedIndex.iCatalogDirectCount == 77u &&
 			preservedIndex.Entries.size() == 1u &&
@@ -16539,7 +16766,8 @@ namespace
 				writeSourceIndexFixture(sourceIndexFixturePath, isolatedCatalog) &&
 				CEffectDirectAuthoredSourceIndex::Build(
 					sourceIndexFixturePath, authoredRoot, scannedSourceFiles,
-					playerSkillOwners, isolatedIndex, isolatedStatus) &&
+					playerSkillOwners, bossPatternOwners,
+					isolatedIndex, isolatedStatus) &&
 				isolatedIndex.iCatalogDirectCount == 2u &&
 				isolatedIndex.iUnavailableCount == 1u &&
 				isolatedIndex.Entries.size() == 1u &&
@@ -16557,7 +16785,8 @@ namespace
 				writeSourceIndexFixture(sourceIndexFixturePath, duplicateCatalog) &&
 				!CEffectDirectAuthoredSourceIndex::Build(
 					sourceIndexFixturePath, authoredRoot, scannedSourceFiles,
-					playerSkillOwners, duplicatePreserved, duplicateStatus) &&
+					playerSkillOwners, bossPatternOwners,
+					duplicatePreserved, duplicateStatus) &&
 				duplicatePreserved.iCatalogDirectCount == 88u &&
 				duplicatePreserved.Entries.size() == 1u &&
 				!duplicateStatus.empty();
@@ -16567,9 +16796,10 @@ namespace
 			sourceIndexFixturePath, sourceIndexFixtureError);
 		runner.Require(sourceEntriesExact &&
 			directSourceIds.size() == sourceIndex.Entries.size() &&
+			typedPlayerSourceCount == 101u && typedBossSourceCount == 99u &&
 			malformedTopLevelPreserved && isolatedRowPreservedValidCommit &&
 			duplicateTopLevelPreserved,
-			"All Effects Production Source Index Has 101 Unique Physical PlayerSkills-Owned Direct Documents, Isolates Unsafe Rows, And Preserves Its Prior Commit On Top-Level Failure");
+			"All Effects Production Source Index Has 101 Player-Skill And 99 Boss-Pattern Typed Physical Direct Documents, Isolates Unsafe Rows, And Preserves Its Prior Commit On Top-Level Failure");
 
 		const std::filesystem::path sourceCatalog = repositoryRoot /
 			L"Client" / L"Bin" / L"DataFiles" / L"Effect" /
@@ -16739,6 +16969,12 @@ namespace
 			"Loading Scanner Registers And Admits All 41 Unique Lance Product Cues Under The Current Null-Token Contract");
 		const std::vector<std::string> runtimeEffectIds =
 			CEffectCatalog::Get_EffectAssetIds();
+		const size_t valtanRuntimeEffectCount = static_cast<size_t>(
+			std::count_if(runtimeEffectIds.begin(), runtimeEffectIds.end(),
+				[](const std::string& effectAssetId)
+				{
+					return effectAssetId.starts_with("effect.valtan.");
+				}));
 		constexpr std::string_view inactiveAuthoringOnlyId =
 			"effect.artist.skill.31210.ba4.unified";
 		constexpr std::string_view firstId =
@@ -16762,12 +16998,13 @@ namespace
 				firstDocument.get() &&
 			CEffectCatalog::Find_VisualProjection_Loaded(
 				std::string(firstId)).get() == firstProjection.get();
-		runner.Require(catalogLoaded && runtimeEffectIds.size() == 99u &&
+		runner.Require(catalogLoaded && runtimeEffectIds.size() == 192u &&
+			valtanRuntimeEffectCount == 99u &&
 			CEffectCatalog::Contains(std::string(firstId)) &&
 			CEffectCatalog::Contains(std::string(secondId)) &&
 			!CEffectCatalog::Contains(std::string(inactiveAuthoringOnlyId)) &&
 			cacheOnlyIdentity,
-			"Published Animevent Product Set Has 99 Runtime Members, Excludes Authoring-Only Draft, And Cache-Only Lookup Never First-Use Loads JSON");
+			"Published Product Set Has 192 Runtime Members Including 99 Valtan Targets, Excludes Authoring-Only Draft, And Cache-Only Lookup Never First-Use Loads JSON");
 
 		SCOPED_WORKING_DIRECTORY workingDirectory;
 		const bool_t workingDirectoryReady = workingDirectory.Initialize(
@@ -28599,6 +28836,12 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--valtan-pattern-effects-fast")
+	{
+		Test_ValtanPatternBindingSchema(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--skill-binding-fast")
 	{
 		Test_ValtanPatternBindingSchema(runner);
@@ -28725,6 +28968,13 @@ int main(const int argc, char* argv[])
 		Mode == "--effect-loading-prewarm-fast")
 	{
 		Test_EffectIncrementalProductPrewarm(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--character-select-valtan-prewarm-fast")
+	{
+		Test_ValtanPatternBindingSchema(runner);
+		Test_CharacterSelectValtanPrewarmGate(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

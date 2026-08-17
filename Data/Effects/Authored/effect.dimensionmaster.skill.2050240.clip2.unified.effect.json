@@ -8272,7 +8272,7 @@
         "sourceProfile": {
           "enabled": true,
           "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2",
-          "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+          "runtimeShaderProfileId": "effect.ue3.glasshole-02.v1",
           "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr",
           "semanticStatus": "reconstructed_profile",
           "scalars": [
@@ -8466,7 +8466,39 @@
             "uv_pan",
             "unbound"
           ],
-          "subUVMode": "none"
+          "subUVMode": "none",
+          "textures": [
+            {
+              "name": "aura_texture",
+              "group": "",
+              "sourceObjectPath": "fx_tex_06.fx_j_dustparticle_tile_02",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_dustparticle_tile_02.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "ue3_property_or_class_default.v1"
+            },
+            {
+              "name": "cracknormal_tex",
+              "group": "cracknormal",
+              "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "ue3_property_or_class_default.v1"
+            },
+            {
+              "name": "in_hole_texture",
+              "group": "in",
+              "sourceObjectPath": "fx_tex_06.fx_m_cybernoise_02",
+              "assetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_cybernoise_02.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "srgb",
+              "samplingEvidence": "ue3_property_or_class_default.v1"
+            }
+          ]
         }
       },
       "actionCueAttachment": {

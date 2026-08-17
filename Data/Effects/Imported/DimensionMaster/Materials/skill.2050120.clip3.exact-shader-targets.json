@@ -1,0 +1,298 @@
+{
+  "schema": "lostark.effect-ue3-material-shader-map-targets",
+  "formatVersion": 3,
+  "identity": {
+    "characterClass": "DIMENSIONMASTER",
+    "skillId": 2050120,
+    "inputSlot": "W",
+    "clip": "clip3",
+    "effectAssetId": "effect.dimensionmaster.skill.2050120.clip3.unified"
+  },
+  "inputs": {
+    "officialRefShaderCache": {
+      "fileName": "EV2LG3OVEH3HGV7THTFFTM7TOKMCC.v974.upk",
+      "physicalByteSize": 245114448,
+      "rawSha256": "83609267d9476f393cfe793d3d8cd265535c3d855e2f1f79774c618f85ed6455",
+      "logicalByteSize": 919307435,
+      "packageVersion": 868,
+      "licenseeVersion": 16,
+      "packageGuidHex": "55c36cd9990cd4f5da3c8e4b2528b661",
+      "authority": "PINNED_OFFICIAL_V974",
+      "shaderCodeLayout": {
+        "platform": 4,
+        "groupCount": 111,
+        "descriptorCount": 265979,
+        "codeBlobCount": 247480,
+        "shaderCodeSectionEndLogicalOffset": 613360985
+      }
+    },
+    "sourcePackages": [
+      {
+        "fileName": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+        "physicalByteSize": 772322,
+        "rawSha256": "50ae877e62b4dadf60f64a7cbd12e767acfe90d050bd6782cc6b613b51a87be8",
+        "snapshot": "Effect_DIMENSIONMASTER_20260803_v3",
+        "officialManifest975Relationship": "EXACT_EXTRACTED_PAYLOAD",
+        "officialManifest975": {
+          "fileVersion": 969,
+          "sequence": 1845,
+          "extractedByteSize": 772322,
+          "extractedMd5": "051a84acdfb5ff45222d83921cb1fa7e"
+        }
+      },
+      {
+        "fileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+        "physicalByteSize": 527961,
+        "rawSha256": "a2a5f2d2c1649a8f27608a7411e5a693d21d883e6c9ded851d1ea5c09c15d8ea",
+        "snapshot": "Effect_DIMENSIONMASTER_20260803_v3",
+        "officialManifest975Relationship": "PINNED_SNAPSHOT_DRIFTED_FROM_EXTRACTED_PAYLOAD",
+        "officialManifest975": {
+          "fileVersion": 969,
+          "sequence": 1849,
+          "extractedByteSize": 527944,
+          "extractedMd5": "fe4bd45cdeafe1a754164ffd1f6d7a5d"
+        }
+      }
+    ]
+  },
+  "vertexFactoryPolicies": {
+    "SpriteParticle": {
+      "family": "PARTICLE_SPRITE",
+      "namePrefix": "fparticle",
+      "excludeNameContains": ["beamtrail"],
+      "passPixelShaderType": "tbasepasspixelshaderfnolightmappolicyskylight",
+      "selectionFidelity": "STRUCTURAL_PARTICLE_VF_FAMILY_WITHOUT_NATIVE_EMITTER_ABI",
+      "actualVfPassAdmission": false
+    },
+    "MeshParticle": {
+      "family": "LOCAL_MESH",
+      "vertexFactoryType": "flocalvertexfactory",
+      "passPixelShaderType": "tbasepasspixelshaderfnolightmappolicyskylight",
+      "selectionFidelity": "SOURCE_MESH_RENDERER_PLUS_STRUCTURAL_LOCALVF_WITHOUT_NATIVE_EMITTER_ABI",
+      "actualVfPassAdmission": false
+    }
+  },
+  "nativeShaderObjectBindingPolicy": {
+    "lookup": "SHADER_TYPE_FNAME_PLUS_SHADER_ID_IN_END_POINTER_WALKED_NATIVE_OBJECT_TABLE",
+    "bindingArrayDiscovery": "SCAN_OBJECT_FOR_SCALAR_VECTOR_TEXTURE_TRIPLES_WITHOUT_FIXED_OFFSET",
+    "closure": "UNIFORM_EXPRESSION_DENOMINATORS_WIRE_SHAPES_AND_DXBC_CB0_TEXTURE_SAMPLER_DECLARATIONS",
+    "candidateAdmission": "EXACTLY_ONE_STRUCTURAL_CLOSURE",
+    "nonMaterialSamplePairs": "PRESERVE_DISJOINT_ENGINE_ABI_PAIRS_AND_REJECT_REGISTER_CONFLICTS",
+    "actualVfPassAdmission": false,
+    "runtimeAdmission": false
+  },
+  "targets": [
+    {
+      "targetId": "dimensionmaster-w-glasshole-02",
+      "familyId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2",
+      "rendererType": "SpriteParticle",
+      "occurrenceIds": [
+        "authored.source-particle.40e1b48e2f0f88dcfeff1549",
+        "authored.source-particle.0a9e81858cb8604c16deeb56"
+      ],
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_glasshole_02_01_tr",
+      "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr",
+      "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "micObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr",
+      "micClassName": "materialinstanceconstant",
+      "baseMaterialIdHex": "bb634bf8d8a89d41adfd3342cc9145ca",
+      "staticParameterPolicy": "REQUIRE_MIC_NATIVE_FSTATICPARAMETERSET",
+      "expectedExportIndexZeroBased": 3127,
+      "expectedSerialSha256": "e0a1b1f3feb10effaed096b2b192b6bbe3bffe47ee6c129acaa018d1fb23b897",
+      "expectedPropertyStreamEnd": 3858,
+      "expectedStaticSwitchCount": 6,
+      "expectedStaticParameterSetRawSha256": "2312f4e3e7a208e25e7bbc30e21e902e858f89ac2895db2b72dc8ca9b4be2afd",
+      "expectedBaseMaterialRawHitCount": 7,
+      "expectedStatus": "EXACT_MATERIAL_SHADER_MAP",
+      "expectedMaterialMap": {
+        "logicalOffset": 917549496,
+        "logicalEndOffset": 917553810,
+        "vertexFactoryCount": 3
+      },
+      "expectedStructuralSelection": {
+        "vertexFactoryCandidateCount": 2,
+        "shaderType": "tbasepasspixelshaderfnolightmappolicyskylight",
+        "shaderIdHex": "377108e10f08cc488de94c405e789871",
+        "expectedDxbc": {
+          "byteSize": 7584,
+          "sha256": "e2ba1c1ef87cdd52cc74a8e661f8613d0b17f2cc7b9b1d0d7ab6ed80ec6e775b"
+        }
+      }
+    },
+    {
+      "targetId": "dimensionmaster-w-crackholev2-01",
+      "familyId": "ue3.material.fx.m.mi.k.00.fx.m.fx.k.crackholev2.01.3aac97e0fcad",
+      "rendererType": "SpriteParticle",
+      "occurrenceIds": [
+        "authored.source-particle.d4f1be245a9ac057550a4229"
+      ],
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_crackholev2_01_01",
+      "parentMaterialPath": "fx_m_mi_k_00.fx_m.fx_k_crackholev2_01",
+      "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "micObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01",
+      "micClassName": "materialinstanceconstant",
+      "baseMaterialIdHex": "26b6a1dbfee74a418a4876ac4ef7687a",
+      "staticParameterPolicy": "REQUIRE_MIC_NATIVE_FSTATICPARAMETERSET",
+      "expectedExportIndexZeroBased": 3012,
+      "expectedSerialSha256": "c06ac13e27c6608e8b285fb47676552302e296b598c271924489a7a09ca9d519",
+      "expectedPropertyStreamEnd": 5270,
+      "expectedStaticSwitchCount": 17,
+      "expectedStaticParameterSetRawSha256": "51724695f4269978b34cc2dc3623a16f60733c5839224ec50d8f815eb353127f",
+      "expectedBaseMaterialRawHitCount": 11,
+      "expectedStatus": "EXACT_MATERIAL_SHADER_MAP",
+      "expectedMaterialMap": {
+        "logicalOffset": 905951377,
+        "logicalEndOffset": 905956265,
+        "vertexFactoryCount": 6
+      },
+      "expectedStructuralSelection": {
+        "vertexFactoryCandidateCount": 4,
+        "shaderType": "tbasepasspixelshaderfnolightmappolicyskylight",
+        "shaderIdHex": "f007847cf5f8ad44942c1b631669c131",
+        "expectedDxbc": {
+          "byteSize": 5940,
+          "sha256": "a04dc3d21a95d5f2299d6bc8d07f65bd7cde640be52ed0df362b4a71b0c680e6"
+        }
+      }
+    },
+    {
+      "targetId": "dimensionmaster-w-fluidninja-01",
+      "familyId": "ue3.material.fx.m.mi.k.00.fx.m.fx.k.pa.fluidninja.01.tr.534340d78128",
+      "rendererType": "SpriteParticle",
+      "occurrenceIds": [
+        "authored.source-particle.5fb1a1b067b955f128fd25e0"
+      ],
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_fluidninja_01_07_tr",
+      "parentMaterialPath": "fx_m_mi_k_00.fx_m.fx_k_pa_fluidninja_01_tr",
+      "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "micObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr",
+      "micClassName": "materialinstanceconstant",
+      "baseMaterialIdHex": "627fa9642bae264fb3921dffeb6bb6b7",
+      "staticParameterPolicy": "REQUIRE_MIC_NATIVE_FSTATICPARAMETERSET",
+      "expectedExportIndexZeroBased": 3115,
+      "expectedSerialSha256": "ffa5b54b6f688d38f91d9ea0dedbe87432597d0b7ccfca459873a9d66c2ff17f",
+      "expectedPropertyStreamEnd": 4761,
+      "expectedStaticSwitchCount": 3,
+      "expectedStaticParameterSetRawSha256": "3bc274352e7ba048ba36c11383ad2fb47aa6f105cb483423250d20cff0afa222",
+      "expectedBaseMaterialRawHitCount": 7,
+      "expectedStatus": "EXACT_MATERIAL_SHADER_MAP",
+      "expectedMaterialMap": {
+        "logicalOffset": 872844808,
+        "logicalEndOffset": 872848641,
+        "vertexFactoryCount": 7
+      },
+      "expectedStructuralSelection": {
+        "vertexFactoryCandidateCount": 4,
+        "shaderType": "tbasepasspixelshaderfnolightmappolicyskylight",
+        "shaderIdHex": "692bbf41f335834f90217d007e7fe5f9",
+        "expectedDxbc": {
+          "byteSize": 4592,
+          "sha256": "9c4706c3b6a36cb5a5eac40d8e871f2b67351265cf211f624614c842f0334b8e"
+        }
+      }
+    },
+    {
+      "targetId": "dimensionmaster-w-customparticle-01",
+      "familyId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.customparticle.01.ad.e6b959010967",
+      "rendererType": "SpriteParticle",
+      "occurrenceIds": [
+        "authored.source-particle.dc486c58e3b368e683fa8f03"
+      ],
+      "sourceMaterialPath": "fx_m_mi_j_00.fx_mi.fx_j_pa_customparticle_01_06_ad",
+      "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_customparticle_01_ad",
+      "sourcePackageFileName": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+      "micObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad",
+      "micClassName": "materialinstanceconstant",
+      "baseMaterialIdHex": "d2f51aa37d6b3a4a9c19b5633c1e81ba",
+      "staticParameterPolicy": "REQUIRE_MIC_NATIVE_FSTATICPARAMETERSET",
+      "expectedExportIndexZeroBased": 5818,
+      "expectedSerialSha256": "8a872b4584c4fee377f2f7b402f6ae8b1b4a6471dce4011f11baba6802019d93",
+      "expectedPropertyStreamEnd": 2214,
+      "expectedStaticSwitchCount": 13,
+      "expectedStaticParameterSetRawSha256": "5c842dd993784fc687f9f8f16517079bebed2b4efd3a71ffabb2bb3e2f6311f3",
+      "expectedBaseMaterialRawHitCount": 19,
+      "expectedStatus": "EXACT_MATERIAL_SHADER_MAP",
+      "expectedMaterialMap": {
+        "logicalOffset": 889014114,
+        "logicalEndOffset": 889016908,
+        "vertexFactoryCount": 3
+      },
+      "expectedStructuralSelection": {
+        "vertexFactoryCandidateCount": 2,
+        "shaderType": "tbasepasspixelshaderfnolightmappolicyskylight",
+        "shaderIdHex": "19b7489e330ace469d3d823a77aa3f33",
+        "expectedDxbc": {
+          "byteSize": 4184,
+          "sha256": "340169d8b9146fd280bbc1b509aa312e6afa71573dfe12cf4e89cb0136431ae3"
+        }
+      }
+    },
+    {
+      "targetId": "dimensionmaster-w-spritewave-01-helix",
+      "familyId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.ad.caabbddf8b55",
+      "rendererType": "MeshParticle",
+      "occurrenceIds": [
+        "authored.source-particle.0d483237146fa5d618d39a7f",
+        "authored.source-particle.da2a381f72e08dbbe43e42f3",
+        "authored.source-particle.0b38a1bdf89659a65e1ed571",
+        "authored.source-particle.798b11b002a959023824d209"
+      ],
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_me_spritewave_01_45_ad",
+      "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_ad",
+      "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "micObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad",
+      "micClassName": "materialinstanceconstant",
+      "baseMaterialIdHex": "14aed7b23e72c045a3f00fdc2bfbee05",
+      "staticParameterPolicy": "REQUIRE_MIC_NATIVE_FSTATICPARAMETERSET",
+      "expectedExportIndexZeroBased": 2934,
+      "expectedSerialSha256": "87a331316810a55f0a5aa76f04f71c21201e1c21034ad4d24741f76ebc157a1a",
+      "expectedPropertyStreamEnd": 4070,
+      "expectedStaticSwitchCount": 19,
+      "expectedStaticParameterSetRawSha256": "32184027bd36977a87a2d9e387a46c60516220ed9053abceea9b0ec509b0b2bf",
+      "expectedBaseMaterialRawHitCount": 87,
+      "expectedStatus": "EXACT_MATERIAL_SHADER_MAP",
+      "expectedMaterialMap": {
+        "logicalOffset": 891666233,
+        "logicalEndOffset": 891672950,
+        "vertexFactoryCount": 7
+      },
+      "expectedStructuralSelection": {
+        "vertexFactoryCandidateCount": 1,
+        "shaderType": "tbasepasspixelshaderfnolightmappolicyskylight",
+        "shaderIdHex": "400c0d19dc79dd408f6933c0203464e3",
+        "expectedDxbc": {
+          "byteSize": 3060,
+          "sha256": "7917664ff360df0f6305bf8d6c41a8c506872a62e09d26beb2b8fd8d7164d76c"
+        }
+      }
+    },
+    {
+      "targetId": "dimensionmaster-w-slice-01",
+      "familyId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.slice.01.tr.afc439ecf232",
+      "rendererType": "SpriteParticle",
+      "occurrenceIds": [
+        "authored.source-particle.445823f15363035cab17dc91"
+      ],
+      "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_slice_01_02_tr",
+      "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_slice_01_tr",
+      "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+      "micObjectPath": "fx_mi.fx_k_pa_slice_01_02_tr",
+      "micClassName": "materialinstanceconstant",
+      "baseMaterialIdHex": "f49ffbfb01911043acee05efb2ac34b2",
+      "staticParameterPolicy": "BLOCK_IF_MIC_HAS_NO_NATIVE_STATIC_RESOURCE",
+      "expectedExportIndexZeroBased": 3345,
+      "expectedPropertyStreamEnd": 1445,
+      "expectedBaseMaterialRawHitCount": 7,
+      "expectedStatus": "BLOCKED_NO_EFFECTIVE_STATIC_SET_ABI_EVIDENCE"
+    }
+  ],
+  "summary": {
+    "targetCount": 6,
+    "occurrenceCount": 10,
+    "expectedExactCount": 5,
+    "expectedBlockedCount": 1,
+    "expectedExactDxbcCount": 5,
+    "expectedExactNativeBindingCount": 5,
+    "parentDefaultFallbackCount": 0
+  }
+}

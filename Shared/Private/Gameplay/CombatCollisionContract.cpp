@@ -1,7 +1,9 @@
 #include "Gameplay/CombatCollisionContract.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <limits>
 
 namespace
 {
@@ -253,6 +255,54 @@ bool LostArk::Shared::CombatCollision::Circle_IntersectsCross(
 	return WithinInclusiveRadius(
 		(std::min)(longitudinalDistanceSquared, lateralDistanceSquared),
 		target.fRadius);
+}
+
+bool LostArk::Shared::CombatCollision::Circle_IntersectsSixDirections(
+	const BODY_CIRCLE_XZ& target,
+	const float centerX,
+	const float centerZ,
+	const float forwardX,
+	const float forwardZ,
+	const float halfLength,
+	const float halfWidth) noexcept
+{
+	VECTOR2 forward{};
+	VECTOR2 right{};
+	if (!Is_Valid(target) || !IsFinite(centerX) || !IsFinite(centerZ) ||
+		!IsPositiveFinite(halfLength) || !IsPositiveFinite(halfWidth) ||
+		!NormalizeDirection(forwardX, forwardZ, forward, right))
+	{
+		return false;
+	}
+	const VECTOR2 delta{
+		static_cast<double>(target.fCenterX) - centerX,
+		static_cast<double>(target.fCenterZ) - centerZ
+	};
+	const double localForward = delta.x * forward.x + delta.z * forward.z;
+	const double localRight = delta.x * right.x + delta.z * right.z;
+	constexpr double COSINE_60 = 0.5;
+	constexpr double SINE_60 = 0.86602540378443864676;
+	constexpr std::array<double, 3u> STRIP_COSINES{
+		1.0, COSINE_60, COSINE_60
+	};
+	constexpr std::array<double, 3u> STRIP_SINES{
+		0.0, SINE_60, -SINE_60
+	};
+	double minimumDistanceSquared =
+		(std::numeric_limits<double>::max)();
+	for (std::size_t strip = 0u; strip < STRIP_COSINES.size(); ++strip)
+	{
+		const double along = localForward * STRIP_COSINES[strip] +
+			localRight * STRIP_SINES[strip];
+		const double across = -localForward * STRIP_SINES[strip] +
+			localRight * STRIP_COSINES[strip];
+		minimumDistanceSquared = (std::min)(
+			minimumDistanceSquared,
+			DistanceSquaredToLocalRectangle(
+				along, across,
+				-halfLength, halfLength, -halfWidth, halfWidth));
+	}
+	return WithinInclusiveRadius(minimumDistanceSquared, target.fRadius);
 }
 
 bool LostArk::Shared::CombatCollision::Circle_IntersectsCone(

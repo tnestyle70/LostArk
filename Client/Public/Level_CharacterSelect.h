@@ -10,6 +10,7 @@
 
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <optional>
 #include <vector>
 
@@ -18,6 +19,7 @@ NS_BEGIN(Client)
 class CCamera_Free;
 class CCharacter;
 class CHUDRuntimeView;
+class CCharacterSelectArenaSpawnGate;
 class IPlayerCommandSink;
 class IWorldEntityCommandSink;
 
@@ -69,6 +71,11 @@ private:
 	void Update_ServerArena();
 	bool_t Commit_ServerArena();
 	bool_t Request_SelectedArenaSpawn();
+	void Advance_ArenaSpawnRequest();
+	void Isolate_ValtanSpawnPreparationFailure(
+		const std::string& reason,
+		bool_t bTimedOut);
+	void Reset_ArenaSpawnRequest();
 	void Open_CreateCharacterModal();
 	bool_t Confirm_CreateCharacter();
 	void Cancel_CreateCharacter();
@@ -119,9 +126,13 @@ private:
 	std::chrono::steady_clock::time_point m_ConnectionDeadline{};
 	std::chrono::steady_clock::time_point m_ClassChangeDeadline{};
 	std::chrono::steady_clock::time_point m_ArenaSpawnRequestDeadline{};
+	std::chrono::steady_clock::time_point m_ValtanPrewarmDeadline{};
 	size_t m_iSelectedArenaSpawnIndex = 0;
+	std::optional<size_t> m_iArenaSpawnIntentIndex;
 	std::optional<size_t> m_iPendingArenaSpawnIndex;
 	std::array<bool_t, 3> m_ArenaSpawnAccepted{};
+	unique_ptr<CCharacterSelectArenaSpawnGate> m_pArenaSpawnGate;
+	std::vector<std::string> m_ValtanEffectPreparationTargets;
 	std::array<char_t,
 		LostArk::Shared::MAX_NICKNAME_BYTES + 1u> m_NicknameDraft{};
 	bool_t m_isCreateCharacterModalOpen = false;

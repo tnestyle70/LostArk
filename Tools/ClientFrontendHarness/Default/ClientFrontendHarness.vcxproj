@@ -117,6 +117,9 @@
 	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp">
 	  <Link>Client\AnimationSkillBindingDocument.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp">
+	  <Link>Client\ValtanPatternEffectCueDocument.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
 	  <Link>Client\CharacterSelectionState.cpp</Link>
 	</ClCompile>
@@ -222,8 +225,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Private\FourClassTrackAAuthoredMaterializer.h" />
+	<ClInclude Include="..\..\..\Client\Private\CharacterSelectArenaSpawnGate.h">
+	  <Link>Client\CharacterSelectArenaSpawnGate.h</Link>
+	</ClInclude>
 	<ClInclude Include="..\..\..\Client\Public\Effect_DirectAuthoredSourceIndex.h">
 	  <Link>Client\Effect_DirectAuthoredSourceIndex.h</Link>
+	</ClInclude>
+	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueDocument.h">
+	  <Link>Client\ValtanPatternEffectCueDocument.h</Link>
 	</ClInclude>
   </ItemGroup>
   <ItemGroup>
