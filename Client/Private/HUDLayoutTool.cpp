@@ -39,6 +39,9 @@ namespace
 		always-on top/bottom menu chrome (Screen UI), so it gets its own document instead of being
 		squeezed into either. */
 		{ "Boss UI",        "UI/BossUI/BossUI.json", "UI/BossUI/", false },
+		/* Esther skill-select window (3 portrait slots + shared charge gauge) -- shared across
+		classes like Boss UI, so its own document rather than squeezed into Combat HUD. */
+		{ "Esther UI",      "UI/Esther/EstherUI.json", "UI/Esther/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));
@@ -427,6 +430,19 @@ void Client::CHUDLayoutTool::Render()
 			CCombatHUDViewModel::Get().Debug_Set_Boss_Preview(m_bPreviewBossData);
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("Fakes a Valtan-shaped HUD_BOSS_STATE locally so the boss bar renders here without a live encounter.\nTurn off before testing real gameplay data.");
+	}
+
+	/* Debug-only iteration aid for the "Esther UI" document -- RenderEstherGauge() otherwise only
+	draws once the maximum is nonzero and the player is valid (a real Server gauge/snapshot), so
+	without this, placing the fill means walking into Valtan Arena as Sillian every time just to
+	see it. Never touches Server truth; only affects the local player/gauge state the Esther bar
+	reads from. */
+	if (0 == std::strcmp(g_Documents[m_iActiveDocument].szLabel, "Esther UI"))
+	{
+		if (ImGui::Checkbox("Preview Sample Gauge Data (Debug)", &m_bPreviewEstherData))
+			CCombatHUDViewModel::Get().Debug_Set_Esther_Preview(m_bPreviewEstherData);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Fakes a full Esther gauge locally so the fill/label/ready-glow render here without a live Server gauge.\nTurn off before testing real gameplay data.");
 	}
 
 	ImGui::SameLine();

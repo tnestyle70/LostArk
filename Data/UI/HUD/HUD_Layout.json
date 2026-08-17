@@ -394,7 +394,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Common/MP Bar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Common/Empty bar reverse.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
@@ -407,7 +407,7 @@
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
-        { "path": "UI/HUD/Common/HP Bar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+        { "path": "UI/HUD/Common/Empty bar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }

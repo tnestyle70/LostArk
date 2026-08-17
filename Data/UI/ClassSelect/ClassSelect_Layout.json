@@ -578,13 +578,39 @@
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
+      "id": "DimensionMaster_NameSymbol",
+      "ownerClass": "DimensionMaster",
+      "type": 5,
+      "rect": { "x": 13.5714264, "y": 191.285675, "width": 50, "height": 50 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/DimensionMaster/IdentitySymbol.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
       "id": "DimensionMaster_Description",
       "ownerClass": "DimensionMaster",
       "type": 0,
-      "rect": { "x": 15, "y": 540, "width": 210, "height": 55 },
+      "rect": { "x": 13.1842346, "y": 573.592041, "width": 210, "height": 55 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "DimensionMaster_IdentityID",
+      "ownerClass": "DimensionMaster",
+      "type": 0,
+      "rect": { "x": 62.5166893, "y": 478.787598, "width": 125, "height": 94 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/ClassSelect/DimensionMaster/NameID.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
       "shine": { "texture": null, "additive": false },
       "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },

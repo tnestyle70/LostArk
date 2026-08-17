@@ -163,6 +163,10 @@ private:
 	here without a live Valtan encounter. Debug-only; never written to the cfg. */
 	bool				m_bPreviewBossData = false;
 
+	/* "Esther UI" document only: stamps a sample gauge ratio so the fill/label render here without
+	a live Server gauge. Debug-only; never written to the cfg. */
+	bool				m_bPreviewEstherData = false;
+
 	bool_t				m_bMarqueeActive = false;
 	float				m_fMarqueeStartX = 0.f;
 	float				m_fMarqueeStartY = 0.f;

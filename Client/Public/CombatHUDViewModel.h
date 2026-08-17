@@ -107,6 +107,12 @@ namespace Client
 		take over normally the next time one arrives. Never touches Server truth. */
 		void Debug_Set_Boss_Preview(bool enable);
 
+		/* Debug-only: lets the HUD Layout Tool preview the Esther gauge fill/label with a sample
+		ratio without a live Valtan encounter. Enabling stamps a fixed sample gauge and marks the
+		player valid (RenderEstherGauge requires isValid); disabling zeroes the maximum, which is
+		all RenderEstherGauge checks to skip drawing. Never touches Server truth. */
+		void Debug_Set_Esther_Preview(bool enable);
+
 		const HUD_PLAYER_STATE& Get_Player() const { return m_Player; }
 		const HUD_BOSS_STATE& Get_Boss() const { return m_Boss; }
 		std::uint32_t Get_EstherGauge() const { return m_iEstherGauge; }
