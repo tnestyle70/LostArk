@@ -93,6 +93,56 @@ enum class EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND : uint8_t
 	END
 };
 
+/* Authoring-only carrier for a sealed UE3 cooked pixel-shader variant.  The
+   registration key is material identity, never a gameplay skill or occurrence
+   id, so the same sealed variant can be auditioned by every matching Effect. */
+enum class EFFECT_EXACT_PREVIEW_CARRIER : uint8_t
+{
+	SPRITE_PARTICLE,
+	LOCAL_MESH,
+	END
+};
+
+enum class EFFECT_EXACT_PREVIEW_OUTPUT_CONTRACT : uint8_t
+{
+	/* The admitted CustomParticle/Helix canary writes opacity into RGB while
+	   returning zero alpha.  ONE/ONE is therefore part of the sealed preview
+	   contract and must not inherit the family-lite SrcAlpha blend state. */
+	ADDITIVE_ONE_ONE_RT0_ZERO_ALPHA,
+	END
+};
+
+struct EFFECT_EXACT_PREVIEW_TEXTURE_BINDING_DESC final
+{
+	std::string strAssetId;
+	EFFECT_TEXTURE_COLOR_SPACE eColorSpace =
+		EFFECT_TEXTURE_COLOR_SPACE::LINEAR;
+	uint32_t iTextureRegister = UINT32_MAX;
+	uint32_t iSamplerRegister = UINT32_MAX;
+	EFFECT_MATERIAL_SAMPLER_DESC Sampler;
+};
+
+/* Non-owning install view produced by the cooked-shader sidecar loader.  The
+   renderer validates and owns every byte/resource before this call returns. */
+struct EFFECT_EXACT_PREVIEW_VARIANT_DESC final
+{
+	std::string strVariantKey;
+	std::string strSourceMaterialPath;
+	EFFECT_EXACT_PREVIEW_CARRIER eCarrier =
+		EFFECT_EXACT_PREVIEW_CARRIER::END;
+	EFFECT_EXACT_PREVIEW_OUTPUT_CONTRACT eOutputContract =
+		EFFECT_EXACT_PREVIEW_OUTPUT_CONTRACT::END;
+	std::span<const uint8_t> PixelShaderBytecode;
+	uint64_t iExpectedPixelShaderByteCount = 0u;
+	std::string strExpectedPixelShaderSha256;
+	std::vector<float4_t> CBuffer0Rows;
+	std::vector<EFFECT_EXACT_PREVIEW_TEXTURE_BINDING_DESC> TextureBindings;
+	/* Optional row/component whose sealed scalar is multiplied by a draw-local
+	   opacity scale. UINT32_MAX leaves the exact CB0 bytes untouched. */
+	uint32_t iExternalOpacityRow = UINT32_MAX;
+	uint32_t iExternalOpacityComponent = UINT32_MAX;
+};
+
 /* Object-local Tool preview control.  It never changes the immutable source
    document or evaluator scope; it only selects which already-evaluated Core
    renderer occurrences may reach their GPU draw carrier. */
@@ -189,12 +239,16 @@ class CEffectDocumentRenderer final
 public:
 	struct PREPARED_DOCUMENT;
 	struct PRODUCT_PREWARM_SESSION;
+	struct EXACT_PREVIEW_PROGRAM;
+	struct EXACT_PREVIEW_ELEMENT_PACKET;
 
 private:
 	struct ELEMENT_RESOURCE final
 	{
 		shared_ptr<Engine::CModel> pModel;
-		std::array<ComPtr<ID3D11ShaderResourceView>, 5> Textures;
+		/* One lane per EFFECT_RESOURCE_SLOT texture slot, indexed by
+		   slot - BASE_TEXTURE. Grew from 5 to 8 with base2/mask2/noise2. */
+		std::array<ComPtr<ID3D11ShaderResourceView>, 8> Textures;
 		std::array<ComPtr<ID3D11ShaderResourceView>, 7> SourceTextures;
 		uint32_t iSourceTextureMask = 0u;
 		uint32_t iSourceMaterialProfile = 0u;
@@ -267,6 +321,8 @@ private:
 		EFFECT_GROUPED_TRANSLUCENT_CONSTANTS GroupedConstants;
 		bool_t bSourceMaterialFallbackBlocked = false;
 		bool_t bOccurrenceVisualSuppressed = false;
+		std::shared_ptr<const EXACT_PREVIEW_ELEMENT_PACKET>
+			pExactPreviewPacket;
 	};
 	struct MODEL_CUE_RESOURCE final
 	{
@@ -301,6 +357,13 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext,
 		uint64_t iCatalogRevision,
 		const EFFECT_RENDER_PREWARM_TARGET& Target,
+		std::string& strOutError);
+	/* Main-thread authoring-preview registration. Empty Variants clears the
+	   device-local registry. Product preparation never enables this path. */
+	static bool_t Install_AuthoringExactPreviewVariants(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		std::span<const EFFECT_EXACT_PREVIEW_VARIANT_DESC> Variants,
 		std::string& strOutError);
 	static std::shared_ptr<const PREPARED_DOCUMENT> Find_Prepared(
 		uint64_t iCatalogRevision,
@@ -464,6 +527,14 @@ public:
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);
+	/* Must be enabled before Stage_Document. Clear() returns it to false. */
+	bool_t Set_AuthoringExactPreviewExecutionEnabled(
+		bool_t bEnabled,
+		std::string& strOutError);
+	bool_t Is_AuthoringExactPreviewExecutionEnabled() const
+	{
+		return m_bAuthoringExactPreviewExecutionEnabled;
+	}
 	bool_t Stage_ReconstructedRuntimeProgram(
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation,
@@ -539,6 +610,10 @@ private:
 		std::string& strOutError,
 		PREWARM_ASSET_CACHE* pSharedAssets = nullptr,
 		f32_t fModelPreScale = 1.f) const;
+	bool_t Stage_AuthoringExactPreviewPacket(
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_RESOURCE& InOutResource,
+		std::string& strOutError) const;
 	bool_t Stage_AuthoredMaterialExecution(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_RESOURCE& InOutResource,
@@ -628,6 +703,13 @@ private:
 		f32_t fAlphaScale = 1.f,
 		const float4x4_t* pWorldOverride = nullptr,
 		const float4_t* pDynamicParameter = nullptr);
+	HRESULT Render_AuthoringExactPreviewMesh(
+		const EFFECT_EVALUATED_ELEMENT& Element,
+		const ELEMENT_RESOURCE& Resource,
+		f32_t fAlphaScale,
+		const float4x4_t& World,
+		const float4x4_t& NormalMatrix,
+		const float4_t& DynamicParameter);
 	HRESULT Render_Rect(
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource,
@@ -639,6 +721,10 @@ private:
 	HRESULT Render_Particles(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		std::span<const EFFECT_EVALUATED_PARTICLE> Particles);
+	HRESULT Render_AuthoringExactPreviewParticles(
+		const EFFECT_ELEMENT_DESC& Source,
+		const ELEMENT_RESOURCE& Resource,
+		std::span<const Engine::VTXEFFECT_PARTICLE> Instances);
 	HRESULT Render_Trails(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		std::span<const EFFECT_EVALUATED_TRAIL> Trails);
@@ -686,6 +772,8 @@ private:
 	shared_ptr<Engine::CShader> m_pAnimatedModelShader;
 	shared_ptr<Engine::CShader> m_pRectShader;
 	shared_ptr<Engine::CShader> m_pParticleShader;
+	shared_ptr<Engine::CShader> m_pExactSpriteBridgeShader;
+	shared_ptr<Engine::CShader> m_pExactLocalMeshBridgeShader;
 	shared_ptr<Engine::CShader> m_pTrailShader;
 	shared_ptr<Engine::CShader> m_pDecalShader;
 	shared_ptr<Engine::CVIBuffer_Rect> m_pRect;
@@ -701,6 +789,8 @@ private:
 	std::vector<uint32_t> m_TrailIndexScratch;
 	ComPtr<ID3D11ShaderResourceView> m_pWhiteTexture;
 	ComPtr<ID3D11ShaderResourceView> m_pBlackTexture;
+	ComPtr<ID3D11BlendState> m_pExactPreviewAdditiveOneOneBlendState;
+	bool_t m_bAuthoringExactPreviewExecutionEnabled = false;
 	bool_t m_bReconstructedSourceRuntimeActive = false;
 	bool_t m_bSourceVisualProgramActive = false;
 	EFFECT_PREVIEW_SUBMISSION_ISOLATION m_PreviewSubmissionIsolation;

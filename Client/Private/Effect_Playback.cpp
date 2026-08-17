@@ -2951,10 +2951,13 @@ void Client::CEffectPlayback::Spawn_Particles(
 			Particle.vBaseColor = { 1.f, 1.f, 1.f, 1.f };
 			Particle.vColor = Particle.vBaseColor;
 			Particle.fLifeTimeSeconds = 0.f;
+			/* The trim slides the emitter's own delay so one Element can be
+			   pushed later inside the cue without editing the cue itself. */
 			const f32_t fEmitterElapsed = (std::max)(0.f,
 				m_fSampleTimeSeconds -
 				Element.Detail.Timing.fStartDelaySeconds -
-				Element.SourceRecipe.fEmitterDelaySeconds);
+				Element.SourceRecipe.fEmitterDelaySeconds *
+					Desc.SourceScale.fSpawnDelay);
 			const f32_t fEmitterDuration =
 				Element.SourceRecipe.fEmitterDurationSeconds > 0.f ?
 				Element.SourceRecipe.fEmitterDurationSeconds :
@@ -2975,6 +2978,23 @@ void Client::CEffectPlayback::Spawn_Particles(
 					Particle.vBaseSize, Desc.SourceScale.fSize);
 				Particle.vSize = Particle.vBaseSize;
 				Particle.fLifeTimeSeconds *= Desc.SourceScale.fLifeTime;
+				/* Velocity is scaled on both the live and the base copy so the
+				   update modules that re-derive from vBaseVelocity keep the
+				   trimmed speed instead of snapping back on the next step. */
+				Particle.vVelocity = Scale3(
+					Particle.vVelocity, Desc.SourceScale.fSpeed);
+				Particle.vBaseVelocity = Scale3(
+					Particle.vBaseVelocity, Desc.SourceScale.fSpeed);
+				/* The rate scales already exist for the modules' own use, so
+				   the trim multiplies them rather than the rate itself and the
+				   per-particle module output stays authoritative. */
+				Particle.vRotationRateScale = Scale3(
+					Particle.vRotationRateScale, Desc.SourceScale.fRotation);
+				Particle.vSourceMeshRotationRateScale = Scale3(
+					Particle.vSourceMeshRotationRateScale,
+					Desc.SourceScale.fRotation);
+				Particle.vBaseColor.w *= Desc.SourceScale.fAlpha;
+				Particle.vColor.w = Particle.vBaseColor.w;
 			}
 		}
 		else
@@ -5061,9 +5081,14 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 					}
 				}
 			}
+			/* A billboard is rebuilt from the camera each frame, so this roll is
+			   the only rotation it has. The authored rate turns the constant
+			   offset into an actual spin over the particle's own age. */
 			Evaluated.fSpriteRotationDegrees =
 				Particle.vRotationDegrees.z +
-				Element.Detail.Sprite.fBillboardRollDegrees;
+				Element.Detail.Sprite.fBillboardRollDegrees +
+				Element.Detail.Sprite.fBillboardRollDegreesPerSecond *
+					Particle.fAgeSeconds;
 			Evaluated.fCameraOffset = Particle.fCameraOffset;
 			Resolve_SourceSpritePresentation(Element,
 				Evaluated.eSpriteAlignment, Evaluated.vSpritePivot,

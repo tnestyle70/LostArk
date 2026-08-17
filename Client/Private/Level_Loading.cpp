@@ -14,6 +14,7 @@
 #include "NetworkManager.h"
 #include "ProjectDataRoot.h"
 #include "UI_Sprite.h"
+#include "ValtanPatternEffectCueDocument.h"
 
 #include <algorithm>
 #include <fstream>
@@ -77,16 +78,19 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 	}
 
 	bool_t bTargetPresentationReady = true;
-	if (m_pLoader->Finished() && LEVEL::CHARACTER_SELECT == m_eNextLevelID &&
+	if (m_pLoader->Finished() &&
+		(LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
+		 LEVEL::VALTAN_ARENA == m_eNextLevelID) &&
 		!m_isActivationRequested)
 	{
 		bTargetPresentationReady =
-			Advance_CharacterSelectEffectPreparation();
+			Advance_TargetEffectPreparation();
 	}
 
-	/* The worker owns the first 90%. Character Select uses the remaining 10% for
-	its selected-class Product targets after the worker finishes and does not
-	activate until the main-thread incremental prewarm queue has no resource work. */
+	/* The worker owns the first 90%. Character Select and Valtan Arena use the
+	remaining 10% for their selected-class/encounter Product targets after the
+	worker finishes and do not activate while the main-thread incremental
+	prewarm queue still has resource work. */
 	f32_t fTargetProgress = m_pLoader->Finished() ? 1.f : 0.9f;
 	if (m_pLoader->Finished() && !bTargetPresentationReady)
 	{
@@ -159,7 +163,8 @@ HRESULT CLevel_Loading::Render()
 	if (nullptr != viewport && nullptr != m_pLoader)
 	{
 		const std::string loadingStatus =
-			LEVEL::CHARACTER_SELECT == m_eNextLevelID &&
+			(LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
+			 LEVEL::VALTAN_ARENA == m_eNextLevelID) &&
 			m_pLoader->Finished() &&
 			!m_strEffectPreparationStatus.empty() ?
 			m_strEffectPreparationStatus : CLoader::Get_ActiveStatus();
@@ -210,15 +215,20 @@ HRESULT CLevel_Loading::Render()
 	return S_OK;
 }
 
-bool_t CLevel_Loading::Advance_CharacterSelectEffectPreparation()
+bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 {
-	if (LEVEL::CHARACTER_SELECT != m_eNextLevelID ||
+	const bool_t bCharacterSelect =
+		LEVEL::CHARACTER_SELECT == m_eNextLevelID;
+	const bool_t bValtanArena = LEVEL::VALTAN_ARENA == m_eNextLevelID;
+	if ((!bCharacterSelect && !bValtanArena) ||
 		m_isEffectPreparationComplete)
 	{
 		return true;
 	}
+	const std::string TargetLabel =
+		bCharacterSelect ? "CHARACTER SELECT" : "VALTAN ARENA";
 
-	const auto IsolateFailure = [this](const std::string& Status)
+	const auto IsolateFailure = [this, &TargetLabel](const std::string& Status)
 	{
 		m_isEffectPreparationRegistered = true;
 		m_EffectPreparationTargets.clear();
@@ -228,7 +238,7 @@ bool_t CLevel_Loading::Advance_CharacterSelectEffectPreparation()
 		m_iEffectPreparationFailedCount = 1u;
 		m_strEffectPreparationRegistrationFailure = Status;
 		m_strEffectPreparationStatus =
-			"CHARACTER SELECT: Effect preparation isolated: " + Status;
+			TargetLabel + ": Effect preparation isolated: " + Status;
 		OutputDebugStringA(("[Level_Loading] " +
 			m_strEffectPreparationStatus + "\n").c_str());
 		return false;
@@ -236,6 +246,7 @@ bool_t CLevel_Loading::Advance_CharacterSelectEffectPreparation()
 
 	if (!m_isEffectPreparationRegistered)
 	{
+		std::string Status;
 		using LostArk::Shared::CHARACTER_CLASS_ID;
 		CHARACTER_CLASS_ID SelectedClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		if (!CCharacterSelectionState::Try_Get_SelectedClass(SelectedClass) ||
@@ -244,7 +255,6 @@ bool_t CLevel_Loading::Advance_CharacterSelectEffectPreparation()
 		{
 			SelectedClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		}
-
 		const CHARACTER_SPEC* pSpec =
 			CCharacterCatalog::Find_Spec(SelectedClass);
 		if (nullptr == pSpec || nullptr == pSpec->pAssetName)
@@ -252,27 +262,53 @@ bool_t CLevel_Loading::Advance_CharacterSelectEffectPreparation()
 			return IsolateFailure(
 				"selected class has no animation asset spec.");
 		}
-
-		ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
-		std::string Status;
+		ANIMATION_EFFECT_CUE_DOCUMENT PlayerCueDocument;
+		std::vector<std::string> PlayerEffectAssetIds;
 		if (!CAnimationEffectCueDocument::Load_ForProductPrewarm(
-				pSpec->pAssetName, CueDocument, Status))
+				pSpec->pAssetName, PlayerCueDocument, Status) ||
+			!CEffectPresentationService::Queue_ProductCues_Priority(
+				PlayerCueDocument.Cues, PlayerEffectAssetIds, Status))
 		{
 			return IsolateFailure(Status);
 		}
-		if (!CEffectPresentationService::Queue_ProductCues_Priority(
-				CueDocument.Cues, m_EffectPreparationTargets, Status))
+		m_EffectPreparationTargets = std::move(PlayerEffectAssetIds);
+
+		if (bValtanArena)
 		{
-			return IsolateFailure(Status);
+			VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
+			if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
+					CueDocument, Status))
+			{
+				return IsolateFailure(Status);
+			}
+			std::vector<std::string> EffectAssetIds;
+			EffectAssetIds.reserve(CueDocument.Cues.size());
+			for (const VALTAN_PATTERN_EFFECT_CUE& Cue : CueDocument.Cues)
+				EffectAssetIds.push_back(Cue.strEffectAssetId);
+			std::vector<std::string> BossEffectAssetIds;
+			if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+					EffectAssetIds, BossEffectAssetIds, Status))
+			{
+				return IsolateFailure(Status);
+			}
+			m_EffectPreparationTargets.insert(
+				m_EffectPreparationTargets.end(),
+				BossEffectAssetIds.begin(), BossEffectAssetIds.end());
+			std::sort(m_EffectPreparationTargets.begin(),
+				m_EffectPreparationTargets.end());
+			m_EffectPreparationTargets.erase(std::unique(
+				m_EffectPreparationTargets.begin(),
+				m_EffectPreparationTargets.end()),
+				m_EffectPreparationTargets.end());
 		}
 
 		m_isEffectPreparationRegistered = true;
 		m_iEffectPreparationTargetCount = static_cast<uint32_t>(
 			m_EffectPreparationTargets.size());
 		m_strEffectPreparationStatus =
-			"CHARACTER SELECT: queued " +
+			TargetLabel + ": queued " +
 			std::to_string(m_iEffectPreparationTargetCount) +
-			" Product Effects for the selected class.";
+			" Product Effects for the target presentation.";
 	}
 
 	const EFFECT_PRODUCT_PREWARM_TARGET_PROBE Probe =
@@ -291,14 +327,14 @@ bool_t CLevel_Loading::Advance_CharacterSelectEffectPreparation()
 		if (!m_strEffectPreparationRegistrationFailure.empty())
 		{
 			m_strEffectPreparationStatus =
-				"CHARACTER SELECT: Effect preparation isolated; draining " +
+				TargetLabel + ": Effect preparation isolated; draining " +
 				std::to_string(Probe.iQueuePendingCount) +
 				" background Product Effect(s).";
 		}
 		else
 		{
 			m_strEffectPreparationStatus =
-				"CHARACTER SELECT: preparing Product Effects " +
+				TargetLabel + ": preparing Product Effects " +
 				std::to_string(m_iEffectPreparationPreparedCount +
 					m_iEffectPreparationFailedCount) + "/" +
 				std::to_string(m_iEffectPreparationTargetCount) +
@@ -314,23 +350,23 @@ bool_t CLevel_Loading::Advance_CharacterSelectEffectPreparation()
 	if (!m_strEffectPreparationRegistrationFailure.empty())
 	{
 		m_strEffectPreparationStatus =
-			"CHARACTER SELECT: Effect preparation isolated: " +
+			TargetLabel + ": Effect preparation isolated: " +
 			m_strEffectPreparationRegistrationFailure +
 			" Background Effect preparation drained; continuing.";
 	}
 	else if (0u != m_iEffectPreparationFailedCount)
 	{
 		m_strEffectPreparationStatus =
-			"CHARACTER SELECT: Product Effect preparation settled with " +
+			TargetLabel + ": Product Effect preparation settled with " +
 			std::to_string(m_iEffectPreparationFailedCount) +
 			" isolated failure(s); continuing.";
 	}
 	else
 	{
 		m_strEffectPreparationStatus =
-			"CHARACTER SELECT: prepared " +
+			TargetLabel + ": prepared " +
 			std::to_string(m_iEffectPreparationPreparedCount) +
-			" Product Effects for the selected class.";
+			" Product Effects for the target presentation.";
 	}
 	return true;
 }

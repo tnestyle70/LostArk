@@ -1647,6 +1647,22 @@ bool_t Client::CEffectPresentationService::Queue_ProductCues_Priority(
 	return true;
 }
 
+bool_t Client::CEffectPresentationService::Queue_ProductTargets_Priority(
+	const std::vector<std::string>& EffectAssetIds,
+	std::vector<std::string>& OutEffectAssetIds,
+	std::string& strOutStatus)
+{
+	std::vector<ANIMATION_EFFECT_CUE> Targets;
+	Targets.reserve(EffectAssetIds.size());
+	for (const std::string& EffectAssetId : EffectAssetIds)
+	{
+		Targets.emplace_back();
+		Targets.back().strEffectAssetId = EffectAssetId;
+	}
+	return Queue_ProductCues_Priority(
+		Targets, OutEffectAssetIds, strOutStatus);
+}
+
 Client::EFFECT_PRODUCT_PREWARM_TARGET_PROBE
 Client::CEffectPresentationService::Get_ProductCuePreparationProbe(
 	const std::vector<std::string>& EffectAssetIds)
@@ -2993,6 +3009,40 @@ void Client::CEffectPresentationService::Stop_Owner(
         if (g_ActiveEffects[iEffect].pOwner.lock() == pOwner)
             Remove_At(iEffect);
     }
+}
+
+Client::EFFECT_BOSS_ACTION_STOP_RESULT
+Client::CEffectPresentationService::Stop_BossAction(
+	const std::shared_ptr<CValtan>& pOwner,
+	const uint32_t iActionStartTick)
+{
+	EFFECT_BOSS_ACTION_STOP_RESULT Result;
+	if (nullptr == pOwner || 0u == iActionStartTick)
+		return Result;
+
+	const size_t iPendingBefore = g_PendingEffectSpawns.size();
+	g_PendingEffectSpawns.erase(std::remove_if(
+		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+		[&pOwner, iActionStartTick](const PENDING_EFFECT_SPAWN& Pending)
+		{
+			return Pending.Desc.pBossOwner.lock() == pOwner &&
+				Pending.Desc.iActionStartTick == iActionStartTick;
+		}), g_PendingEffectSpawns.end());
+	Result.iPendingStopped = static_cast<uint64_t>(
+		iPendingBefore - g_PendingEffectSpawns.size());
+
+	for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
+	{
+		const ACTIVE_EFFECT& Effect = g_ActiveEffects[iEffect];
+		if (Effect.pBossOwner.lock() != pOwner ||
+			Effect.iActionStartTick != iActionStartTick)
+		{
+			continue;
+		}
+		Remove_At(iEffect);
+		++Result.iActiveStopped;
+	}
+	return Result;
 }
 
 void Client::CEffectPresentationService::Stop_BossOwner(

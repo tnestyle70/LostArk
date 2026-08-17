@@ -6,24 +6,54 @@
       "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba1.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31000.ba1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba1.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31000.ba2",
       "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31000.ba2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba2.unified.effect.json"
     },
     {
       "effectAssetId": "effect.artist.skill.31000.ba3",
       "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba3.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31000.ba3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba3.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31000.ba4",
       "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31000.ba4.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba4.unified.effect.json"
     },
     {
       "effectAssetId": "effect.artist.skill.31200.authored-baseline",
       "authoringPath": "Effects/Authored/effect.artist.skill.31200.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31200.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31200.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31210.ba1",
       "authoringPath": "Effects/Authored/effect.artist.skill.31210.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31210.ba1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31210.ba1.unified.effect.json"
     },
     {
       "effectAssetId": "effect.artist.skill.31210.ba4",
@@ -34,12 +64,27 @@
       "authoringPath": "Effects/Authored/effect.artist.skill.31420.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31420.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31420.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31430.authored-baseline",
       "authoringPath": "Effects/Authored/effect.artist.skill.31430.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31430.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31430.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31460.authored-baseline",
       "authoringPath": "Effects/Authored/effect.artist.skill.31460.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31460.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31460.unified.effect.json"
     },
     {
       "effectAssetId": "effect.artist.skill.31470",
@@ -58,8 +103,18 @@
       "authoringPath": "Effects/Authored/effect.artist.skill.31480.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31480.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31480.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31910.authored-baseline",
       "authoringPath": "Effects/Authored/effect.artist.skill.31910.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31910.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31910.unified.effect.json"
     },
     {
       "effectAssetId": "effect.artist.skill.31930.authored-baseline.clip1",
@@ -68,6 +123,16 @@
     {
       "effectAssetId": "effect.artist.skill.31930.authored-baseline.clip2",
       "authoringPath": "Effects/Authored/effect.artist.skill.31930.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31930.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31930.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31930.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31930.clip2.unified.effect.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1",
@@ -83,6 +148,11 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba2.effect.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050010.ba3",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba3.effect.json"
     },
@@ -96,8 +166,18 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba4.effect.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba4.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba4.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050100.authored-baseline",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050100.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050100.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050100.unified.effect.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050120.authored-baseline.clip2",
@@ -106,6 +186,16 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050120.authored-baseline.clip3",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050120.authored-baseline.clip3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050120.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050120.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050120.clip3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050120.clip3.unified.effect.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050160.authored-baseline.clip2",
@@ -120,8 +210,28 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.authored-baseline.clip4.effect.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050160.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050160.clip3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.clip3.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050160.clip4.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.clip4.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050180.authored-baseline",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050180.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050180.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050180.unified.effect.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050210.authored-baseline",
@@ -137,8 +247,18 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050220.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050220.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050220.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050230.authored-baseline",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050230.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.unified.effect.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050240.authored-baseline.clip1",
@@ -149,16 +269,41 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.authored-baseline.clip2.effect.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050240.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050240.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.clip2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050500.authored-baseline",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050500.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050500.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050500.unified.effect.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050520.authored-baseline",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050520.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050520.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050520.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050540.authored-baseline",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050540.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050540.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050540.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34010.ba1",
@@ -174,12 +319,27 @@
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba2.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34010.ba2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34010.ba3",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba3.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34010.ba3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba3.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34010.ba4",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34010.ba4.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba4.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34040.authored-baseline.clip1",
@@ -190,8 +350,23 @@
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34040.authored-baseline.clip2.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34040.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34040.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34040.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34040.clip2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34090.authored-baseline",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34090.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34090.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34090.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34100.authored-baseline.clip1",
@@ -206,6 +381,21 @@
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.authored-baseline.clip3.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34100.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34100.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34100.clip3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.clip3.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34120.authored-baseline.clip1",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.authored-baseline.clip1.effect.json"
     },
@@ -218,44 +408,109 @@
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.authored-baseline.clip3.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34120.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34120.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34120.clip3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.clip3.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34140.ba1.clip1",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba1.clip1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34140.ba1.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba1.clip1.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34140.ba1.clip2",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba1.clip2.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34140.ba1.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba1.clip2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34140.ba2.clip2",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba2.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34140.ba2.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba2.clip2.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34160.ba1",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34160.ba1.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34160.ba1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34160.ba1.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34160.ba2",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34160.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34160.ba2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34160.ba2.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34510.ba1",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba1.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34510.ba1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba1.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34510.ba2",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34510.ba2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba2.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34510.ba3",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba3.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34510.ba3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba3.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34540.authored-baseline",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34540.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34540.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34540.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34550.authored-baseline",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34550.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34550.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34550.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34560.authored-baseline.clip2",
@@ -266,6 +521,16 @@
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34560.authored-baseline.clip3.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34560.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34560.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34560.clip3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34560.clip3.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34570.authored-baseline.clip1",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34570.authored-baseline.clip1.effect.json"
     },
@@ -274,24 +539,59 @@
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34570.authored-baseline.clip2.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34570.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34570.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34570.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34570.clip2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34580.ba1",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34580.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34580.ba1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34580.ba1.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34580.ba2",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34580.ba2.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34580.ba2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34580.ba2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34590.ba1",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34590.ba1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba1.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34590.ba2",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba2.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34590.ba2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34590.ba3",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34590.ba3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba3.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34610.authored-baseline.clip1",
@@ -304,6 +604,21 @@
     {
       "effectAssetId": "effect.lancemaster.skill.34610.authored-baseline.clip3",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34610.authored-baseline.clip3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34610.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34610.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34610.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34610.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34610.clip3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34610.clip3.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34630.authored-baseline.clip1",
@@ -322,6 +637,26 @@
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.authored-baseline.clip4.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34630.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34630.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34630.clip3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.clip3.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34630.clip4.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.clip4.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34650.authored-baseline.clip1",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34650.authored-baseline.clip1.effect.json"
     },
@@ -330,28 +665,563 @@
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34650.authored-baseline.clip2.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34650.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34650.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34650.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34650.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.arena-break-109.impact",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.arena-break-109.impact.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.arena-break-109.impact-hold",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.arena-break-109.impact-hold.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.arena-break-109.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.arena-break-109.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.arena-break-109.takeoff",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.arena-break-109.takeoff.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.arena-break-109.wide-reveal",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.arena-break-109.wide-reveal.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.arena-break-33.cutscene",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.arena-break-33.cutscene.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.arena-break-33.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.arena-break-33.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.armor-break-opening.charge",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.armor-break-opening.charge.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.backstep.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.backstep.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.backstep.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.backstep.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.bind-charge-smash.charge",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.bind-charge-smash.charge.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.bind-charge-smash.lock",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.bind-charge-smash.lock.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.bind-charge-smash.smash",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.bind-charge-smash.smash.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.center-grab-counter-64.center",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.center-grab-counter-64.center.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.center-grab-counter-64.counter",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.center-grab-counter-64.counter.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.center-grab-counter-64.failed-charge",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.center-grab-counter-64.failed-charge.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.center-grab-counter-64.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.center-grab-counter-64.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.charge-grab-roar.counter",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.charge-grab-roar.counter.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.charge-grab-roar.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.charge-grab-roar.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.charge-grab-roar.roar",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.charge-grab-roar.roar.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.dash-charge.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.dash-charge.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.dash-charge.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.dash-charge.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.dash-charge.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.dash-charge.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.down-smash.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.down-smash.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.down-smash.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.down-smash.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.down-smash.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.down-smash.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.earthquake-smash.delayed",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.earthquake-smash.delayed.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.earthquake-smash.impact",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.earthquake-smash.impact.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.earthquake-smash.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.earthquake-smash.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.earthquake-smash.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.earthquake-smash.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.entrance-whirlwind.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.entrance-whirlwind.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.entrance-whirlwind.sweep",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.entrance-whirlwind.sweep.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.fist-in-out.inner",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.fist-in-out.inner.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.fist-in-out.outer",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.fist-in-out.outer.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.fist-in-out.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.fist-in-out.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.floor-wipe-130.first-smash",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.first-smash.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.floor-wipe-130.interval",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.interval.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.floor-wipe-130.second-smash",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.second-smash.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.floor-wipe-130.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.four-pillars-105.takeoff",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.four-pillars-105.takeoff.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.four-pillars-105.target-cone",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.four-pillars-105.target-cone.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.four-slash.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.four-slash.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.four-slash.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.four-slash.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.four-slash.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.four-slash.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.front-back-front.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.front-back-front.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.front-back-front.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ghost-transition-15.four-directions",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.four-directions.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ghost-transition-15.ghost",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.ghost.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ghost-transition-15.ghost-appear",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.ghost-appear.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ghost-transition-15.inner",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.inner.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ghost-transition-15.portal-open",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.portal-open.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ghost-transition-15.tracking",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.tracking.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ground-wave-smash.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ground-wave-smash.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ground-wave-smash.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ground-wave-smash.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.high-jump.land",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.high-jump.land.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.high-jump.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.high-jump.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.high-jump.takeoff",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.high-jump.takeoff.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.imprison-roar.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.imprison-roar.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.imprison-roar.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.imprison-roar.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.imprison-roar.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.imprison-roar.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.jump-spin.jump",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.jump-spin.jump.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.jump-spin.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.jump-spin.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.jump-spin.spin",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.jump-spin.spin.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ledge-roar.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ledge-roar.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ledge-roar.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ledge-roar.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.ledge-roar.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.ledge-roar.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.magic-choice.inner",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.magic-choice.inner.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.magic-choice.outer",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.magic-choice.outer.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.magic-choice.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.magic-choice.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.magic-choice.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.magic-choice.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.magic-orb-stagger-76.shield",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.magic-orb-stagger-76.shield.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.magic-orb-stagger-76.window",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.magic-orb-stagger-76.window.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.parry.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.parry.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.parry.slash",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.parry.slash.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.parry.stance",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.parry.stance.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.portal-rush.finish",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.portal-rush.finish.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.portal-rush.portal",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.portal-rush.portal.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.portal-rush.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.portal-rush.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.portal-rush.rushes",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.portal-rush.rushes.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.red-blade-wave.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.red-blade-wave.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.red-blade-wave.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.red-blade-wave.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.red-blade-wave.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.red-blade-wave.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.stomp.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.stomp.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.stomp.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.stomp.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.stomp.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.stomp.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.super-smash.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.super-smash.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.super-smash.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.super-smash.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.swing.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.swing.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.swing.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.swing.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.swing.windup",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.swing.windup.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.triple-counter.first",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.first.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.triple-counter.first-fail",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.first-fail.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.triple-counter.second",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.second.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.triple-counter.second-fail",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.second-fail.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.triple-counter.third",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.third.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.triple-counter.third-fail",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.third-fail.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.whirlwind.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.whirlwind.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.whirlwind.recovery",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.whirlwind.recovery.effect.json"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17000.ba1",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17000.ba1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba1.unified.effect.json"
     },
     {
       "effectAssetId": "effect.warlord.skill.17000.ba2",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba2.effect.json"
     },
     {
+      "effectAssetId": "effect.warlord.skill.17000.ba2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17000.ba3",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17000.ba3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba3.unified.effect.json"
     },
     {
       "effectAssetId": "effect.warlord.skill.17030.authored-baseline",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17030.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.warlord.skill.17030.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17030.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17040.authored-baseline",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17040.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.warlord.skill.17040.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17040.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17060.authored-baseline",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17060.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17060.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17060.unified.effect.json"
     },
     {
       "effectAssetId": "effect.warlord.skill.17080.authored-baseline.clip1",
@@ -362,12 +1232,32 @@
       "authoringPath": "Effects/Authored/effect.warlord.skill.17080.authored-baseline.clip2.effect.json"
     },
     {
+      "effectAssetId": "effect.warlord.skill.17080.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17080.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17080.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17080.clip2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17090.authored-baseline",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17090.authored-baseline.effect.json"
     },
     {
+      "effectAssetId": "effect.warlord.skill.17090.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17090.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17100.authored-baseline",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17100.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17100.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17100.unified.effect.json"
     },
     {
       "effectAssetId": "effect.warlord.skill.17110.authored-baseline.clip2",
@@ -378,8 +1268,23 @@
       "authoringPath": "Effects/Authored/effect.warlord.skill.17110.authored-baseline.clip3.effect.json"
     },
     {
+      "effectAssetId": "effect.warlord.skill.17110.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17110.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17110.clip3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17110.clip3.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17140.authored-baseline",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17140.authored-baseline.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17140.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17140.unified.effect.json"
     },
     {
       "effectAssetId": "effect.warlord.skill.17170.authored-baseline.clip1",
@@ -394,16 +1299,46 @@
       "authoringPath": "Effects/Authored/effect.warlord.skill.17170.authored-baseline.clip3.effect.json"
     },
     {
+      "effectAssetId": "effect.warlord.skill.17170.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17170.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17170.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17170.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17170.clip3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17170.clip3.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17240.ba1",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba1.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17240.ba1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba1.unified.effect.json"
     },
     {
       "effectAssetId": "effect.warlord.skill.17240.ba2",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba2.effect.json"
     },
     {
+      "effectAssetId": "effect.warlord.skill.17240.ba2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17240.ba3",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba3.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17240.ba3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba3.unified.effect.json"
     },
     {
       "effectAssetId": "effect.warlord.skill.17250.authored-baseline.clip1",
@@ -412,6 +1347,16 @@
     {
       "effectAssetId": "effect.warlord.skill.17250.authored-baseline.clip2",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17250.authored-baseline.clip2.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17250.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17250.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.warlord.skill.17250.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17250.clip2.unified.effect.json"
     },
     {
       "effectAssetId": "effect.warlord.skill.17820.authored-baseline.clip1",
@@ -436,456 +1381,6 @@
     {
       "effectAssetId": "effect.warlord.skill.17820.authored-baseline.clip8",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17820.authored-baseline.clip8.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31000.ba1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31000.ba2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31000.ba3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31000.ba4.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba4.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31200.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31200.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31210.ba1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31210.ba1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31420.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31420.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31430.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31430.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31460.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31460.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31480.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31480.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31910.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31910.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31930.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31930.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.artist.skill.31930.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.artist.skill.31930.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050010.ba4.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050010.ba4.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050100.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050100.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050120.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050120.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050120.clip3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050120.clip3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050160.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050160.clip3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.clip3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050160.clip4.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050160.clip4.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050180.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050180.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050220.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050220.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050230.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050240.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050240.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050240.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050500.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050500.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050520.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050520.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.dimensionmaster.skill.2050540.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050540.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34010.ba2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34010.ba3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34010.ba4.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba4.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34040.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34040.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34040.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34040.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34090.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34090.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34100.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34100.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34100.clip3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.clip3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34120.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34120.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34120.clip3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.clip3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34140.ba1.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba1.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34140.ba1.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba1.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34140.ba2.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba2.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34160.ba1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34160.ba1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34160.ba2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34160.ba2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34510.ba1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34510.ba2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34510.ba3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34510.ba3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34540.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34540.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34550.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34550.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34560.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34560.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34560.clip3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34560.clip3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34570.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34570.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34570.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34570.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34580.ba1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34580.ba1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34580.ba2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34580.ba2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34590.ba1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34590.ba2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34590.ba3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34590.ba3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34610.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34610.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34610.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34610.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34610.clip3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34610.clip3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34630.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34630.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34630.clip3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.clip3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34630.clip4.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34630.clip4.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34650.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34650.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.lancemaster.skill.34650.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34650.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17000.ba1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17000.ba2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17000.ba3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17000.ba3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17030.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17030.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17040.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17040.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17060.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17060.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17080.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17080.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17080.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17080.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17090.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17090.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17100.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17100.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17110.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17110.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17110.clip3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17110.clip3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17140.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17140.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17170.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17170.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17170.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17170.clip2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17170.clip3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17170.clip3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17240.ba1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17240.ba2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba2.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17240.ba3.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17240.ba3.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17250.clip1.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17250.clip1.unified.effect.json"
-    },
-    {
-      "effectAssetId": "effect.warlord.skill.17250.clip2.unified",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.warlord.skill.17250.clip2.unified.effect.json"
     },
     {
       "effectAssetId": "effect.warlord.skill.17820.clip1.unified",

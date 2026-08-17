@@ -33843,7 +33843,7 @@
                                                 "actionId":  "valtan.mechanic.floor-wipe-130.first-smash",
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  800,
-                                                "hitShape":  "CROSS",
+                                                "hitShape":  "SIX_DIRECTIONS",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
                                                 "hitAngleDegrees":  0.0,
@@ -33921,7 +33921,7 @@
                                                 "actionId":  "valtan.mechanic.floor-wipe-130.first-smash",
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  800,
-                                                "hitShape":  "CROSS",
+                                                "hitShape":  "SIX_DIRECTIONS",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
                                                 "hitAngleDegrees":  0.0,
@@ -33977,7 +33977,7 @@
                                                 "serverDamageProfileId":  ""
                                             }
                                         ],
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",

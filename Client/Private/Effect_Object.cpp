@@ -176,6 +176,25 @@ bool_t Client::CEffectObject::Stage_Document(
 	return true;
 }
 
+bool_t Client::CEffectObject::Set_AuthoringExactPreviewExecutionEnabled(
+	const bool_t bEnabled,
+	std::string& strOutError)
+{
+	if (nullptr == m_pRenderer)
+	{
+		strOutError = "Effect renderer is unavailable.";
+		return false;
+	}
+	return m_pRenderer->Set_AuthoringExactPreviewExecutionEnabled(
+		bEnabled, strOutError);
+}
+
+bool_t Client::CEffectObject::Is_AuthoringExactPreviewExecutionEnabled() const
+{
+	return nullptr != m_pRenderer &&
+		m_pRenderer->Is_AuthoringExactPreviewExecutionEnabled();
+}
+
 bool_t Client::CEffectObject::Stage_PreparedDocument(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>

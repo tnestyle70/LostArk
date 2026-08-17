@@ -7,6 +7,7 @@
 #include "Camera_Free.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
+#include "CharacterSelectArenaSpawnGate.h"
 #include "CharacterSelectionState.h"
 #include "CharacterSpec.h"
 #include "CombatHUDViewModel.h"
@@ -23,6 +24,7 @@
 #include "NetworkWorldEntityCommandSink.h"
 #include "PlayableCharacterAssetService.h"
 #include "Transform.h"
+#include "ValtanPatternEffectCueDocument.h"
 #include "ValtanPresentationAssetService.h"
 
 #include <algorithm>
@@ -120,7 +122,8 @@ namespace
 CLevel_CharacterSelect::CLevel_CharacterSelect(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
-	: CLevel{ pDevice, pContext }
+	: CLevel{ pDevice, pContext },
+	m_pArenaSpawnGate{ std::make_unique<CCharacterSelectArenaSpawnGate>() }
 {
 }
 
@@ -180,7 +183,7 @@ HRESULT CLevel_CharacterSelect::Initialize()
 		CHUDRuntimeView::DRAW_TARGET::FOREGROUND);
 
 	m_eMode = MODE::CONNECTING;
-	m_iPendingArenaSpawnIndex.reset();
+	Reset_ArenaSpawnRequest();
 	m_ArenaSpawnAccepted.fill(false);
 	m_ConnectionDeadline =
 		std::chrono::steady_clock::now() + CONNECTION_TIMEOUT;
@@ -697,7 +700,7 @@ void CLevel_CharacterSelect::Update_ServerArena()
 		{
 			m_ArenaSpawnAccepted[optionIndex] = false;
 			m_strStatus = std::string{ "Server rejected " } +
-				option->pLabel + " spawn.";
+				option->pLabel + " spawn; retry is available.";
 		}
 		else
 		{
@@ -706,7 +709,20 @@ void CLevel_CharacterSelect::Update_ServerArena()
 				option->pLabel + " spawn.";
 		}
 		if (m_iPendingArenaSpawnIndex == optionIndex)
-			m_iPendingArenaSpawnIndex.reset();
+		{
+			if (LostArk::Shared::WORLD_ENTITY_SPAWN_RESULT::REJECTED ==
+				spawnResult.eResult)
+			{
+				m_pArenaSpawnGate->Mark_RequestFailed();
+				m_iPendingArenaSpawnIndex.reset();
+				m_iArenaSpawnIntentIndex.reset();
+				m_ValtanEffectPreparationTargets.clear();
+			}
+			else
+			{
+				Reset_ArenaSpawnRequest();
+			}
+		}
 	}
 	if (!m_Replication.Update())
 	{
@@ -754,14 +770,21 @@ void CLevel_CharacterSelect::Update_ServerArena()
 			ARENA_SPAWN_OPTIONS[index].pArchetypeId))
 		{
 			m_ArenaSpawnAccepted[index] = true;
-			if (m_iPendingArenaSpawnIndex == index)
-				m_iPendingArenaSpawnIndex.reset();
+			if (m_iPendingArenaSpawnIndex == index ||
+				m_iArenaSpawnIntentIndex == index)
+			{
+				Reset_ArenaSpawnRequest();
+			}
 		}
 	}
+	Advance_ArenaSpawnRequest();
 	if (m_iPendingArenaSpawnIndex.has_value() &&
 		std::chrono::steady_clock::now() >= m_ArenaSpawnRequestDeadline)
 	{
+		m_pArenaSpawnGate->Mark_ResponseTimedOut();
 		m_iPendingArenaSpawnIndex.reset();
+		m_iArenaSpawnIntentIndex.reset();
+		m_ValtanEffectPreparationTargets.clear();
 		m_strStatus =
 			"Arena spawn response timed out; retry is available.";
 	}
@@ -775,7 +798,7 @@ void CLevel_CharacterSelect::Fail_ServerArena(const string& reason)
 	m_Replication.Reset();
 	m_PlayerController.Set_LocalCharacter(nullptr);
 	m_eMode = MODE::RETURNING_TO_LOBBY;
-	m_iPendingArenaSpawnIndex.reset();
+	Reset_ArenaSpawnRequest();
 	m_iPendingClassIndex.reset();
 	m_iPendingClassChangeSequence = 0u;
 	Reset_ClassPresentationPreparation();
@@ -795,39 +818,179 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 		Is_ClassPresentationPreparationPending() ||
 		m_iSelectedArenaSpawnIndex >= ARENA_SPAWN_OPTIONS.size() ||
 		m_iPendingArenaSpawnIndex.has_value() ||
+		m_pArenaSpawnGate->Is_Busy() ||
 		m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex])
 	{
 		return false;
 	}
 	const ARENA_SPAWN_OPTION& option =
 		ARENA_SPAWN_OPTIONS[m_iSelectedArenaSpawnIndex];
+	if (!m_pArenaSpawnGate->Begin(option.requiresValtanPrewarm))
+		return false;
+	m_iArenaSpawnIntentIndex = m_iSelectedArenaSpawnIndex;
+
 	if (option.requiresValtanPrewarm)
 	{
-		m_strStatus = "Preparing Valtan presentation assets...";
-		if (FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
+		std::string Status;
+		if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
+				CueDocument, Status) ||
+			CueDocument.Cues.size() !=
+				CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT)
+		{
+			if (CueDocument.Cues.size() !=
+					CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT &&
+				!CueDocument.Cues.empty())
+			{
+				Status = "Valtan Product Effect cue contract expected " +
+					std::to_string(CCharacterSelectArenaSpawnGate::
+						PRODUCT_EFFECT_TARGET_COUNT) +
+					" targets, but loaded " +
+					std::to_string(CueDocument.Cues.size()) + ".";
+			}
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
+
+		std::vector<std::string> EffectAssetIds;
+		EffectAssetIds.reserve(CueDocument.Cues.size());
+		for (const VALTAN_PATTERN_EFFECT_CUE& Cue : CueDocument.Cues)
+			EffectAssetIds.push_back(Cue.strEffectAssetId);
+		if (!CEffectPresentationService::Queue_ProductTargets_Priority(
+				EffectAssetIds,
+				m_ValtanEffectPreparationTargets,
+				Status) ||
+			m_ValtanEffectPreparationTargets.size() !=
+				CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT)
+		{
+			if (m_ValtanEffectPreparationTargets.size() !=
+					CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT &&
+				!Status.empty())
+			{
+				Status += " Exact 99-target registration was not committed.";
+			}
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
+		m_ValtanPrewarmDeadline = std::chrono::steady_clock::now() +
+			CCharacterSelectArenaSpawnGate::PREWARM_TIMEOUT;
+		m_strStatus = "Priority-prewarming 99 Valtan Product Effects before "
+			"the Server spawn request.";
+		return true;
+	}
+
+	Advance_ArenaSpawnRequest();
+	return m_iPendingArenaSpawnIndex == m_iSelectedArenaSpawnIndex;
+}
+
+void CLevel_CharacterSelect::Advance_ArenaSpawnRequest()
+{
+	if (!m_iArenaSpawnIntentIndex.has_value() ||
+		*m_iArenaSpawnIntentIndex >= ARENA_SPAWN_OPTIONS.size())
+	{
+		return;
+	}
+	const size_t optionIndex = *m_iArenaSpawnIntentIndex;
+	const ARENA_SPAWN_OPTION& option = ARENA_SPAWN_OPTIONS[optionIndex];
+
+	if (m_pArenaSpawnGate->Is_Preparing())
+	{
+		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE Probe =
+			CEffectPresentationService::Get_ProductCuePreparationProbe(
+				m_ValtanEffectPreparationTargets);
+		if (Probe.bSettled)
+		{
+			const bool_t bAllTargetsPrepared =
+				Probe.iTargetCount == CCharacterSelectArenaSpawnGate::
+					PRODUCT_EFFECT_TARGET_COUNT &&
+				Probe.iPreparedCount == CCharacterSelectArenaSpawnGate::
+					PRODUCT_EFFECT_TARGET_COUNT &&
+				0u == Probe.iPendingCount && 0u == Probe.iFailedCount &&
+				0u == Probe.iUnavailableCount;
+			if (!bAllTargetsPrepared ||
+				!m_pArenaSpawnGate->Mark_PrewarmReady())
+			{
+				Isolate_ValtanSpawnPreparationFailure(
+					"One or more Valtan Product Effects failed closed during "
+					"priority prewarm.", false);
+				return;
+			}
+		}
+		else
+		{
+			if (std::chrono::steady_clock::now() >= m_ValtanPrewarmDeadline)
+			{
+				Isolate_ValtanSpawnPreparationFailure(
+					"Valtan Product Effect priority prewarm timed out after "
+					"30 seconds.", true);
+				return;
+			}
+			m_strStatus = "Priority-prewarming Valtan Product Effects " +
+				std::to_string(Probe.iPreparedCount) + "/" +
+				std::to_string(Probe.iTargetCount) +
+				" (boss pending " + std::to_string(Probe.iPendingCount) +
+				", total preserved queue pending " +
+				std::to_string(Probe.iQueuePendingCount) + ").";
+			return;
+		}
+	}
+
+	if (CHARACTER_SELECT_ARENA_SPAWN_GATE_STATE::REQUEST_READY !=
+		m_pArenaSpawnGate->Get_State())
+	{
+		return;
+	}
+	if (option.requiresValtanPrewarm &&
+		FAILED(CValtanPresentationAssetService::Ensure_Prototypes(
 			m_pDevice,
 			m_pContext,
 			ETOUI(LEVEL::CHARACTER_SELECT))))
-		{
-			m_strStatus =
-				"Valtan assets failed to prepare; no Server spawn was requested.";
-			return false;
-		}
-	}
-	if (nullptr == m_pWorldEntityCommandSink ||
-		!m_pWorldEntityCommandSink->Request_SpawnWorldEntity(
-			option.pStableId))
 	{
-		m_strStatus = std::string{ option.pLabel } +
-			" spawn request could not be sent.";
-		return false;
+		Isolate_ValtanSpawnPreparationFailure(
+			"Valtan prototypes failed to prepare after Product Effect prewarm.",
+			false);
+		return;
 	}
-	m_iPendingArenaSpawnIndex = m_iSelectedArenaSpawnIndex;
+
+	if (!m_pArenaSpawnGate->Try_ConsumeServerRequest())
+		return;
+	if (nullptr == m_pWorldEntityCommandSink ||
+		!m_pWorldEntityCommandSink->Request_SpawnWorldEntity(option.pStableId))
+	{
+		m_pArenaSpawnGate->Mark_RequestFailed();
+		m_iArenaSpawnIntentIndex.reset();
+		m_ValtanEffectPreparationTargets.clear();
+		m_strStatus = std::string{ option.pLabel } +
+			" spawn request could not be sent; retry is available.";
+		return;
+	}
+	m_iPendingArenaSpawnIndex = optionIndex;
 	m_ArenaSpawnRequestDeadline =
 		std::chrono::steady_clock::now() + ARENA_SPAWN_REQUEST_TIMEOUT;
 	m_strStatus = std::string{ option.pLabel } +
 		" spawn requested from Server.";
-	return true;
+}
+
+void CLevel_CharacterSelect::Isolate_ValtanSpawnPreparationFailure(
+	const std::string& reason,
+	const bool_t bTimedOut)
+{
+	m_pArenaSpawnGate->Mark_PrewarmFailed(bTimedOut);
+	m_iArenaSpawnIntentIndex.reset();
+	m_ValtanEffectPreparationTargets.clear();
+	m_strStatus = reason +
+		" No Server spawn was requested; retry is available.";
+	OutputDebugStringA((
+		"[Level_CharacterSelect] Valtan spawn preparation isolated: " +
+		m_strStatus + "\n").c_str());
+}
+
+void CLevel_CharacterSelect::Reset_ArenaSpawnRequest()
+{
+	m_pArenaSpawnGate->Reset();
+	m_iArenaSpawnIntentIndex.reset();
+	m_iPendingArenaSpawnIndex.reset();
+	m_ValtanEffectPreparationTargets.clear();
 }
 
 void CLevel_CharacterSelect::Open_CreateCharacterModal()
@@ -1026,6 +1189,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	{
 		ImGui::Separator();
 		ImGui::TextUnformatted("Server arena spawn");
+		ImGui::BeginDisabled(m_pArenaSpawnGate->Is_Busy());
 		for (size_t index = 0; index < ARENA_SPAWN_OPTIONS.size(); ++index)
 		{
 			if (ImGui::RadioButton(
@@ -1037,9 +1201,11 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 			if (index + 1u < ARENA_SPAWN_OPTIONS.size())
 				ImGui::SameLine();
 		}
+		ImGui::EndDisabled();
 		ImGui::BeginDisabled(
 			Is_ClassPresentationPreparationPending() ||
 			m_iPendingArenaSpawnIndex.has_value() ||
+			m_pArenaSpawnGate->Is_Busy() ||
 			m_ArenaSpawnAccepted[m_iSelectedArenaSpawnIndex]);
 		if (ImGui::Button("Spawn Selected"))
 			Request_SelectedArenaSpawn();
@@ -1048,6 +1214,14 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 			ImGui::SameLine(), ImGui::TextDisabled("Spawned");
 		else if (m_iPendingArenaSpawnIndex == m_iSelectedArenaSpawnIndex)
 			ImGui::SameLine(), ImGui::TextDisabled("Requested");
+		else if (m_pArenaSpawnGate->Is_Preparing() &&
+			m_iArenaSpawnIntentIndex == m_iSelectedArenaSpawnIndex)
+		{
+			ImGui::SameLine();
+			ImGui::TextDisabled("Prewarming 99 boss Effects");
+		}
+		else if (m_pArenaSpawnGate->Can_Retry())
+			ImGui::SameLine(), ImGui::TextDisabled("Retry available");
 #ifdef _DEBUG
 		if (ImGui::Checkbox(
 			"Show Combat Colliders",

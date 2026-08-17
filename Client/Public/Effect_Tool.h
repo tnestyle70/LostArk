@@ -10,6 +10,7 @@
 #include "EffectAuthoringTransfer.h"
 #include "Engine_Defines.h"
 #include "PlayerSkillCatalog.h"
+#include "ValtanPatternTree.h"
 
 #include <array>
 #include <filesystem>
@@ -318,7 +319,28 @@ private:
         const std::string& strKindCategory);
     void Render_ValtanAuthoringOpenButton(
         const std::filesystem::path& Path,
-        const std::string& strEffectAssetId);
+        const std::string& strEffectAssetId,
+        const std::string& strRuntimeClipName = std::string());
+	/* All Effects > Valtan draws phase -> pattern -> stage -> Effect. The
+	   phase band and the stage rows come from CValtanPatternTree; this layer
+	   only decides what is visible and what the buttons do. */
+	void Render_ValtanPatternTreeSection(const std::string& strSearch);
+	void Render_ValtanPatternNode(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const char_t* pGroupLabel,
+		const std::string& strSearch);
+	void Render_ValtanStageRow(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& Stage);
+	bool_t Matches_ValtanPatternSearch(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const std::string& strSearch) const;
+	bool_t Create_ValtanStageEffectDocument(
+		const VALTAN_PATTERN_VIEW& Pattern,
+		const VALTAN_STAGE_VIEW& Stage);
+	/* Stages state their own clip, so opening an Effect can stage the boss
+	   model and start that clip instead of leaving the person to find it. */
+	bool_t Play_ValtanStageClip(const std::string& strRuntimeClipName);
     void Render_Detail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TransformDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_ColorDetail(
@@ -399,6 +421,7 @@ private:
     bool_t Execute_PendingDocumentLoad(bool_t bSaveFirst);
     bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
 	bool_t Refresh_ValtanBossPatternEffects();
+	bool_t Refresh_ValtanPatternTree();
     bool_t Refresh_DataFiles();
     bool_t Refresh_ResourceCatalog();
     void Select_AuthoringDomain(const std::string& strDomainId);
@@ -411,6 +434,12 @@ private:
     bool_t Try_CommitDocument(EFFECT_DOCUMENT_DESC&& Staged);
     bool_t Try_SetPreviewFilter(EFFECT_PREVIEW_FILTER eFilter);
     bool_t Ensure_WorldPreviewObject();
+	bool_t Ensure_ExactCookedCanaryVariantsInstalled(std::string& strOutError);
+	bool_t Has_ExactCookedCanaryMaterial(
+		const EFFECT_DOCUMENT_DESC& Document) const;
+	bool_t Try_SetExactCookedCanaryEnabled(bool_t bEnabled);
+	void Reset_ExactCookedCanarySelection(std::string strReason);
+	void Invalidate_ExactCookedCanaryInstallation(std::string strReason);
 	bool_t Try_StartArtist31470FullPreview();
 	bool_t Try_ResetArtist31470PreviewIsolation();
 	bool_t Try_SetArtist31470PreviewFamilyIsolation(
@@ -616,6 +645,9 @@ private:
         std::string strError);
     void Clear_ActiveDocumentDrawableStatus();
     void Refresh_RuntimeEquivalence();
+    std::string Describe_ProductPlaybackAuthoredDivergence(
+        const std::string& strProductEffectAssetId);
+    const char_t* Runtime_SyncLabel() const;
     EFFECT_ELEMENT_DESC* Find_SelectedElement();
     const EFFECT_ELEMENT_DESC* Find_SelectedElement() const;
 	EFFECT_MODEL_CUE_DESC* Find_SelectedModelCue();
@@ -667,6 +699,15 @@ private:
     vector<size_t> m_VisibleResourceIndices;
     vector<EFFECT_SKILL_TREE_ENTRY> m_AllEffects;
 	std::vector<BOSS_PATTERN_EFFECT_TREE_ENTRY> m_ValtanBossPatternEffects;
+	/* Session state, rebuilt by Refresh. A failed reload keeps the previous
+	   tree so the window never empties on a transient read error. */
+	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternTree;
+	std::string m_strValtanPatternTreeStatus;
+	bool_t m_bValtanPatternTreeLoaded = false;
+	/* -1 shows every band; otherwise the index into m_ValtanPatternTree.Phases. */
+	int32_t m_iValtanPhaseFilter = -1;
+	bool_t m_bValtanRepeatRotationPerPhase = true;
+	bool_t m_bValtanOnlyStagesWithEffect = false;
     vector<EFFECT_DATA_FILE_ENTRY> m_DataFiles;
     vector<string> m_DataFileDomains;
     vector<ANIMATION_SKILL_CLIP> m_SynchronizedAnimationClips;
@@ -693,6 +734,7 @@ private:
 	   means the single m_strSelectedElementId is the delete target, which is
 	   the behaviour every other command still assumes. */
 	std::set<string, std::less<>> m_MarkedElementIds;
+	std::set<string, std::less<>> m_ExactCookedCanarySourceMaterials;
     string m_strSelectedElementGroupId;
 	string m_strSelectedModelCueId;
 	string m_strPreviewIsolationElementId;
@@ -771,6 +813,8 @@ private:
 	bool_t m_bValtanBossPatternTransformHistoryRequired = false;
 	bool_t m_bValtanBossPatternTransformHistoryActive = false;
 	bool_t m_bDocumentDirty = false;
+	bool_t m_bExactCookedCanaryEnabled = false;
+	bool_t m_bExactCookedCanaryVariantsInstalled = false;
 	bool_t m_bActiveDocumentDrawable = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;
     bool_t m_bResourceCatalogRefreshAttempted = false;
@@ -817,6 +861,8 @@ private:
     string m_strDetailStatus;
     string m_strResourceStatus;
     string m_strPreviewStatus;
+	string m_strExactCookedCanaryStatus =
+		"OFF: family-lite authoring preview remains active.";
     string m_strPreviewAnimationStatus;
     string m_strAnimationClipLabelStatus;
 };

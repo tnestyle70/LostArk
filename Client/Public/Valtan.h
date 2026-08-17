@@ -4,9 +4,12 @@
 #include "ContainerObject.h"
 #include "NavPathFollower.h"
 #include "Network/PacketMessages.h"
+#include "ValtanPatternEffectCueDocument.h"
 
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 NS_BEGIN(Engine)
 class CModel;
@@ -119,6 +122,13 @@ private:
 	corrupt document leaves this empty and every pattern falls back to the
 	catalog's generic clips; it never blocks the spawn. */
 	std::unordered_map<std::string, std::string> m_PatternClipByActionId;
+	/* Product presentation only: exact authoritative stage actionId -> Effect
+	   cues.  This map is replaced only after the cue document, encounter join,
+	   runtime catalog and root/bone anchors all validate.  Animation bindings
+	   are an independent optional presentation registry. */
+	std::unordered_map<std::string,
+		std::vector<VALTAN_PATTERN_EFFECT_CUE>> m_PatternEffectCuesByActionId;
+	std::unordered_set<std::string> m_SpawnedPatternEffectBindingIds;
 #ifdef _DEBUG
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };
@@ -128,6 +138,8 @@ private:
 	HRESULT Ready_PartObjects();
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();
+	void Load_PatternEffectCues();
+	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
 	PATH_RESULT_CODE Request_PathToTarget(fvector_t vGoalPosition);
 	void Set_ChaseState(bool_t isChasing);
 

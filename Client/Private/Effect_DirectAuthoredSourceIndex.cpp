@@ -40,7 +40,7 @@ namespace
 		return true;
 	}
 
-	bool_t Try_ParseOwner(const std::string_view strAssetId,
+	bool_t Try_ParsePlayerOwner(const std::string_view strAssetId,
 		LostArk::Shared::CHARACTER_CLASS_ID& eOutClass,
 		LostArk::Shared::SKILL_ID& iOutSkillId)
 	{
@@ -154,6 +154,7 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 	const std::filesystem::path& AuthoredRoot,
 	const std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE>& ScannedFiles,
 	const EFFECT_DIRECT_AUTHORED_OWNER_SET& ValidOwners,
+	const EFFECT_DIRECT_AUTHORED_BOSS_OWNER_MAP& ValidBossOwners,
 	EFFECT_DIRECT_AUTHORED_SOURCE_INDEX& InOutIndex,
 	std::string& strOutStatus)
 {
@@ -252,20 +253,39 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 
 		EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY Entry;
 		Entry.strEffectAssetId = strAssetId;
-		if (!Try_ParseOwner(strAssetId, Entry.eCharacterClass, Entry.iSkillId))
+		if (Try_ParsePlayerOwner(
+				strAssetId, Entry.eCharacterClass, Entry.iSkillId))
 		{
-			RecordUnavailable(
-				"direct authored Effect ID has no stable class/skill owner: " +
-				strAssetId);
-			continue;
+			Entry.eOwnerKind = EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL;
+			if (!ValidOwners.contains(
+					std::make_pair(Entry.eCharacterClass, Entry.iSkillId)))
+			{
+				RecordUnavailable(
+					"direct authored Effect ID has no PlayerSkills owner: " +
+					strAssetId);
+				continue;
+			}
 		}
-		if (!ValidOwners.contains(
-				std::make_pair(Entry.eCharacterClass, Entry.iSkillId)))
+		else
 		{
-			RecordUnavailable(
-				"direct authored Effect ID has no PlayerSkills owner: " +
-				strAssetId);
-			continue;
+			const auto BossOwner = ValidBossOwners.find(strAssetId);
+			if (ValidBossOwners.end() == BossOwner ||
+				BossOwner->second.strOwnerArchetypeId.empty() ||
+				BossOwner->second.strPatternId.empty() ||
+				BossOwner->second.strStageId.empty() ||
+				BossOwner->second.strActionId.empty())
+			{
+				RecordUnavailable(
+					"direct authored Effect ID has no stable player-skill or boss-pattern owner: " +
+					strAssetId);
+				continue;
+			}
+			Entry.eOwnerKind = EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_PATTERN;
+			Entry.strOwnerArchetypeId =
+				BossOwner->second.strOwnerArchetypeId;
+			Entry.strPatternId = BossOwner->second.strPatternId;
+			Entry.strStageId = BossOwner->second.strStageId;
+			Entry.strActionId = BossOwner->second.strActionId;
 		}
 
 		const std::string strAuthoringPath = pAuthoringPath->Get_String();
@@ -368,10 +388,13 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		[](const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Left,
 			const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& Right)
 		{
-			return std::tie(Left.eCharacterClass, Left.iSkillId,
-				Left.strEffectAssetId) <
-				std::tie(Right.eCharacterClass, Right.iSkillId,
-					Right.strEffectAssetId);
+			return std::tie(Left.eOwnerKind, Left.eCharacterClass,
+				Left.iSkillId, Left.strOwnerArchetypeId, Left.strPatternId,
+				Left.strStageId, Left.strActionId, Left.strEffectAssetId) <
+				std::tie(Right.eOwnerKind, Right.eCharacterClass,
+					Right.iSkillId, Right.strOwnerArchetypeId,
+					Right.strPatternId, Right.strStageId,
+					Right.strActionId, Right.strEffectAssetId);
 		});
 	strOutStatus = "Direct authored source index admitted " +
 		std::to_string(Staged.Entries.size()) + " / " +

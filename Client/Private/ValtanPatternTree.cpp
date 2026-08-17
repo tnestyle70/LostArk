@@ -101,6 +101,22 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_EffectCount() const
 	return iCount;
 }
 
+size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_EffectDocumentCount() const
+{
+	size_t iCount = 0u;
+	const auto Count = [&iCount](const std::vector<VALTAN_PATTERN_VIEW>& Group)
+	{
+		for (const VALTAN_PATTERN_VIEW& Pattern : Group)
+		{
+			for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
+				iCount += Stage.Effects.size();
+		}
+	};
+	Count(Gimmicks);
+	Count(Rotation);
+	return iCount;
+}
+
 std::string Client::CValtanPatternTree::Build_StageEffectAssetId(
 	const std::string& strPatternActionId,
 	const VALTAN_STAGE_VIEW& Stage)
@@ -264,23 +280,34 @@ bool_t Client::CValtanPatternTree::Load(
 
 				const auto EffectIterator =
 					EffectByAction.find(Stage.strActionId);
-				if (EffectIterator != EffectByAction.end())
+				if (EffectIterator != EffectByAction.end() &&
+					!EffectIterator->second.first.empty() &&
+					!EffectIterator->second.second.empty())
 				{
-					Stage.strEffectAssetId = EffectIterator->second.first;
-					if (!EffectIterator->second.second.empty())
-					{
-						Stage.EffectDocumentPath = CProjectDataRoot::Get() /
-							std::filesystem::path(
-								EffectIterator->second.second).lexically_normal();
-					}
+					VALTAN_STAGE_EFFECT_VIEW Bound;
+					Bound.strEffectAssetId = EffectIterator->second.first;
+					Bound.DocumentPath = CProjectDataRoot::Get() /
+						std::filesystem::path(
+							EffectIterator->second.second).lexically_normal();
+					Bound.eOrigin =
+						VALTAN_STAGE_EFFECT_ORIGIN::PATTERN_EFFECT_BINDING;
+					Stage.Effects.push_back(std::move(Bound));
 				}
 				/* A stage document seeded by the generator is not in
-				   patterneffects.json yet, so fall back to the naming rule
-				   and only accept it when the file is really on disk. */
-				if (Stage.strEffectAssetId.empty())
+				   patterneffects.json and never will be, because that schema
+				   requires per-binding source evidence. The naming rule is
+				   therefore always checked too, and both documents stay
+				   visible instead of one hiding the other. */
+				const std::string strCandidate = Build_StageEffectAssetId(
+					Pattern.strActionId, Stage);
+				const bool_t bCandidateAlreadyBound = std::any_of(
+					Stage.Effects.begin(), Stage.Effects.end(),
+					[&strCandidate](const VALTAN_STAGE_EFFECT_VIEW& Effect)
+					{
+						return Effect.strEffectAssetId == strCandidate;
+					});
+				if (!strCandidate.empty() && !bCandidateAlreadyBound)
 				{
-					const std::string strCandidate = Build_StageEffectAssetId(
-						Pattern.strActionId, Stage);
 					const std::filesystem::path Candidate =
 						CProjectDataRoot::Resolve(
 							std::filesystem::path(L"Effects") / L"Authored" /
@@ -290,8 +317,11 @@ bool_t Client::CValtanPatternTree::Load(
 					if (!Candidate.empty() && std::filesystem::exists(
 							Candidate, FileError))
 					{
-						Stage.strEffectAssetId = strCandidate;
-						Stage.EffectDocumentPath = Candidate;
+						VALTAN_STAGE_EFFECT_VIEW Seeded;
+						Seeded.strEffectAssetId = strCandidate;
+						Seeded.DocumentPath = Candidate;
+						Seeded.eOrigin = VALTAN_STAGE_EFFECT_ORIGIN::NAMING_RULE;
+						Stage.Effects.push_back(std::move(Seeded));
 					}
 				}
 				Pattern.Stages.push_back(std::move(Stage));
@@ -316,10 +346,87 @@ bool_t Client::CValtanPatternTree::Load(
 			return Left.iTriggerHealthBar > Right.iTriggerHealthBar;
 		});
 
+	/* A phase is the band of health bars that ends when its gimmick fires.
+	   The encounter document has no phase field, so this band is derived from
+	   triggerHealthBar and used only as a display grouping. */
+	int32_t iTopHealthBar = 0;
+	const auto RaiseTop = [&iTopHealthBar](
+		const std::vector<VALTAN_PATTERN_VIEW>& Group)
+	{
+		for (const VALTAN_PATTERN_VIEW& Pattern : Group)
+		{
+			iTopHealthBar = (std::max)(iTopHealthBar,
+				(std::max)(Pattern.iMaximumHealthBar, Pattern.iTriggerHealthBar));
+		}
+	};
+	RaiseTop(Staged.Gimmicks);
+	RaiseTop(Staged.Rotation);
+
+	uint32_t iPhaseNumber = 0u;
+	int32_t iBandTop = iTopHealthBar;
+	for (size_t iGimmick = 0u; iGimmick < Staged.Gimmicks.size(); ++iGimmick)
+	{
+		const VALTAN_PATTERN_VIEW& Gimmick = Staged.Gimmicks[iGimmick];
+		VALTAN_PHASE_VIEW Phase;
+		Phase.iPhaseNumber = ++iPhaseNumber;
+		Phase.iBandTopHealthBar = (std::max)(iBandTop, Gimmick.iTriggerHealthBar);
+		Phase.iBandBottomHealthBar = Gimmick.iTriggerHealthBar;
+		Phase.strGatePatternId = Gimmick.strPatternId;
+		Phase.iGateTriggerHealthBar = Gimmick.iTriggerHealthBar;
+		Phase.GimmickIndices.push_back(iGimmick);
+		Staged.Phases.push_back(std::move(Phase));
+		iBandTop = Gimmick.iTriggerHealthBar - 1;
+	}
+	if (iBandTop >= 1)
+	{
+		VALTAN_PHASE_VIEW Phase;
+		Phase.iPhaseNumber = ++iPhaseNumber;
+		Phase.iBandTopHealthBar = iBandTop;
+		Phase.iBandBottomHealthBar = 1;
+		Staged.Phases.push_back(std::move(Phase));
+	}
+
+	/* A rotation pattern belongs to every band its own bar range overlaps.
+	   Most are 1-160 and therefore appear in all of them; two are narrower
+	   and that is exactly the information the band grouping exposes. */
+	for (VALTAN_PHASE_VIEW& Phase : Staged.Phases)
+	{
+		for (size_t iRotation = 0u; iRotation < Staged.Rotation.size();
+			++iRotation)
+		{
+			const VALTAN_PATTERN_VIEW& Rotation = Staged.Rotation[iRotation];
+			if (Rotation.iMinimumHealthBar > Phase.iBandTopHealthBar ||
+				Rotation.iMaximumHealthBar < Phase.iBandBottomHealthBar)
+			{
+				continue;
+			}
+			Phase.RotationIndices.push_back(iRotation);
+		}
+	}
+
+	const std::string strIntroPatternId = Read_String(
+		Encounter, "introPatternId");
+	if (!strIntroPatternId.empty())
+	{
+		const auto Intro = std::find_if(
+			Staged.Rotation.begin(), Staged.Rotation.end(),
+			[&strIntroPatternId](const VALTAN_PATTERN_VIEW& Pattern)
+			{
+				return Pattern.strPatternId == strIntroPatternId;
+			});
+		if (Intro != Staged.Rotation.end())
+		{
+			Staged.iIntroRotationIndex = static_cast<size_t>(
+				std::distance(Staged.Rotation.begin(), Intro));
+		}
+	}
+
 	OutView = std::move(Staged);
 	strOutStatus = "Valtan tree: " +
+		std::to_string(OutView.Phases.size()) + " phases, " +
 		std::to_string(OutView.Get_PatternCount()) + " patterns, " +
 		std::to_string(OutView.Get_StageCount()) + " stages, " +
-		std::to_string(OutView.Get_EffectCount()) + " with an Effect.";
+		std::to_string(OutView.Get_EffectCount()) + " with an Effect (" +
+		std::to_string(OutView.Get_EffectDocumentCount()) + " documents).";
 	return true;
 }

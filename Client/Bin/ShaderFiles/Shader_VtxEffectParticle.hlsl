@@ -1,5 +1,6 @@
 #include "Shader_EffectCommon.hlsli"
 #include "Shader_Artist31470RuntimeMaterial.hlsli"
+#include "Shader_EffectUe3MaterialFamilies.hlsli"
 #include "Shader_Artist31470Diagnostic.hlsli"
 
 float4x4 g_ViewMatrix;
@@ -62,6 +63,13 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
     if (0u != g_RuntimeMaterialV2Enabled)
     {
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_SPRITEWAVE_TR)
+        {
+            return Shade_EffectUe3SpriteWaveTrParticle(
+                input.runtimeLocalUV, input.color,
+                input.dynamicParameter);
+        }
         return Shade_RuntimeMaterialV2Particle(
             input.runtimeLocalUV, input.runtimeSubUVTransform,
             input.runtimeSubUVTransformNext, input.particleData.y,

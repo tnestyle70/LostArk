@@ -1,0 +1,6145 @@
+{
+  "schema": "lostark.effect-ue3-source-value-uniform-evaluation-receipt",
+  "formatVersion": 1,
+  "identity": {
+    "characterClass": "DIMENSIONMASTER",
+    "skillId": 2050120,
+    "clipIndex": 3,
+    "stage": "G03_5_SOURCE_VALUE_UNIFORM_CB0_CLOSURE"
+  },
+  "scope": {
+    "stage": "G03_5_SOURCE_VALUE_UNIFORM_CB0_CLOSURE",
+    "classNeutralEvaluator": true,
+    "numericMaterialUniformSliceClosed": true,
+    "nativeScalarGroupPackingSourceClosed": false,
+    "texturesAndSamplersClosed": false,
+    "engineOwnedConstantRowsClosed": false,
+    "sourceValueReplayAdmission": false,
+    "actualVfPassAdmission": false,
+    "runtimeAdmission": false,
+    "visualAdmission": false
+  },
+  "inputs": {
+    "manifest": {
+      "repoRelativePath": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.source-value-uniform-evaluation.targets.json",
+      "rawSha256": "ab69a243fec97e678c77f1776167f5661245c476e6b042bbb344cd067a40f2f4"
+    },
+    "g03_3ExactMaterialMapReceipt": {
+      "repoRelativePath": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-material-maps.receipt.json",
+      "rawSha256": "6cb11cfd89e5d9ea0ab70f04634148b502a34183a734cf3cb52ee289081d43ad",
+      "receiptSha256": "d089a4058266792095408ea04595ba8c08e5958937048dc3e4f86b5e17d20b2e"
+    },
+    "evaluator": {
+      "repoRelativePath": "Tools/EffectPipeline/evaluate_ue3_material_uniform_expressions.py",
+      "rawSha256": "095061be212f735fd5f341e6bf8ee54906316bc913f572011b58caf4cf8646ed"
+    },
+    "officialEngineSource": {
+      "path": "C:/Users/user/Desktop/UnrealEngine/UnrealEngine/Engine/Source/Runtime/Engine/Private/Materials/MaterialUniformExpressions.h",
+      "repository": "EpicGames/UnrealEngine",
+      "tag": "5.7.4-release",
+      "commit": "260bb2e1c5610b31c63a36206eedd289409c5f11",
+      "physicalByteSize": 67259,
+      "rawSha256": "1cc5be054334c7cf632bb317ff8a6a8ef7cb029a71e1ef0663200ea756c57793",
+      "verifiedSemantics": {
+        "foldedMathOrdinal0": "ADD",
+        "foldedMathOrdinal2": "MUL",
+        "periodic": "FRACTIONAL",
+        "sine": "SIN_OR_COS_BY_SERIALIZED_BOOL"
+      },
+      "evidenceLinesOneBased": {
+        "foldedMathEnum": 1106,
+        "foldedMathAddOpcode": 1137,
+        "foldedMathMulOpcode": 1139,
+        "periodicClass": 1176,
+        "sineClass": 606
+      }
+    },
+    "sourcePackages": [
+      {
+        "fileName": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+        "physicalByteSize": 772322,
+        "rawSha256": "50ae877e62b4dadf60f64a7cbd12e767acfe90d050bd6782cc6b613b51a87be8"
+      },
+      {
+        "fileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+        "physicalByteSize": 527961,
+        "rawSha256": "a2a5f2d2c1649a8f27608a7411e5a693d21d883e6c9ded851d1ea5c09c15d8ea"
+      }
+    ]
+  },
+  "parameterIdentityAndPrecedence": {
+    "comparison": "FNAME_BASE_TEXT_CASEFOLD_PLUS_RAW_NUMBER",
+    "overridePrecedence": "BASE_EXPRESSION_DEFAULT_THEN_PARENT_TO_LEAF_MIC",
+    "duplicateWithinOneMic": "FAIL_CLOSED"
+  },
+  "targets": [
+    {
+      "targetId": "dimensionmaster-w-glasshole-02",
+      "familyId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2",
+      "rendererType": "SpriteParticle",
+      "status": "EXACT_SOURCE_VALUE_UNIFORM_CB0_CLOSURE",
+      "micHierarchyRootToLeaf": [
+        {
+          "objectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr",
+          "className": "materialinstanceconstant",
+          "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+          "exportIndexZeroBased": 3127,
+          "serialSha256": "e0a1b1f3feb10effaed096b2b192b6bbe3bffe47ee6c129acaa018d1fb23b897",
+          "propertyStreamStart": 4,
+          "propertyStreamEnd": 3858,
+          "scalarOverrides": [
+            {
+              "parameterName": "alpha_tile_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "alpha_tile_x",
+                "number": 0
+              },
+              "value": 0.4000000059604645
+            },
+            {
+              "parameterName": "alpha_tile_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "alpha_tile_y",
+                "number": 0
+              },
+              "value": 0.4000000059604645
+            },
+            {
+              "parameterName": "aura_pow",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "aura_pow",
+                "number": 0
+              },
+              "value": 2.0
+            },
+            {
+              "parameterName": "aura_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "aura_str",
+                "number": 0
+              },
+              "value": 5.0
+            },
+            {
+              "parameterName": "curve_power",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "curve_power",
+                "number": 0
+              },
+              "value": 2.0
+            },
+            {
+              "parameterName": "main_ucoord",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "main_ucoord",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "main_v_panner",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "main_v_panner",
+                "number": 0
+              },
+              "value": -0.800000011920929
+            },
+            {
+              "parameterName": "twist_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "twist_str",
+                "number": 0
+              },
+              "value": 0.10000000149011612
+            },
+            {
+              "parameterName": "uvnoise_pan",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "uvnoise_pan",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "uvnoise_utile",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "uvnoise_utile",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "uvnoise_vtile",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "uvnoise_vtile",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "cracknormal_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "cracknormal_str",
+                "number": 0
+              },
+              "value": -7.0
+            },
+            {
+              "parameterName": "cracknormal_tile_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "cracknormal_tile_x",
+                "number": 0
+              },
+              "value": 4.0
+            },
+            {
+              "parameterName": "cracknormal_tile_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "cracknormal_tile_y",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "edge_crack_desaturation",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "edge_crack_desaturation",
+                "number": 0
+              },
+              "value": 0.800000011920929
+            },
+            {
+              "parameterName": "time",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "time",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "distortionpower",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "distortionpower",
+                "number": 0
+              },
+              "value": 10.0
+            },
+            {
+              "parameterName": "distortionscale",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "distortionscale",
+                "number": 0
+              },
+              "value": -15.0
+            },
+            {
+              "parameterName": "in_hole_crackuv",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "in_hole_crackuv",
+                "number": 0
+              },
+              "value": 0.20000000298023224
+            },
+            {
+              "parameterName": "in_hole_desaturation",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "in_hole_desaturation",
+                "number": 0
+              },
+              "value": 0.30000001192092896
+            },
+            {
+              "parameterName": "in_hole_height",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "in_hole_height",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "in_hole_panx",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "in_hole_panx",
+                "number": 0
+              },
+              "value": 0.014999999664723873
+            },
+            {
+              "parameterName": "in_hole_pany",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "in_hole_pany",
+                "number": 0
+              },
+              "value": 0.02500000037252903
+            },
+            {
+              "parameterName": "in_hole_pow",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "in_hole_pow",
+                "number": 0
+              },
+              "value": 2.0
+            },
+            {
+              "parameterName": "in_hole_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "in_hole_str",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "scale",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "scale",
+                "number": 0
+              },
+              "value": 1.0
+            }
+          ],
+          "vectorOverrides": [
+            {
+              "parameterName": "aura_color",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "aura_color",
+                "number": 0
+              },
+              "value": [
+                2.0,
+                1.2000000476837158,
+                0.800000011920929,
+                1.0
+              ]
+            },
+            {
+              "parameterName": "in_hole_color",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "in_hole_color",
+                "number": 0
+              },
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            }
+          ],
+          "parentReference": -114,
+          "parentObjectPath": "fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr",
+          "parentClassName": "material"
+        }
+      ],
+      "terminalParentMaterial": {
+        "objectPath": "fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr",
+        "className": "material",
+        "sourcePackageFileName": null,
+        "referenceKind": "IMPORT"
+      },
+      "effectiveScalarOverrides": [
+        {
+          "parameterName": "alpha_tile_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "alpha_tile_x",
+            "number": 0
+          },
+          "value": 0.4000000059604645,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "alpha_tile_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "alpha_tile_y",
+            "number": 0
+          },
+          "value": 0.4000000059604645,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "aura_pow",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "aura_pow",
+            "number": 0
+          },
+          "value": 2.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "aura_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "aura_str",
+            "number": 0
+          },
+          "value": 5.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "cracknormal_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "cracknormal_str",
+            "number": 0
+          },
+          "value": -7.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "cracknormal_tile_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "cracknormal_tile_x",
+            "number": 0
+          },
+          "value": 4.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "cracknormal_tile_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "cracknormal_tile_y",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "curve_power",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "curve_power",
+            "number": 0
+          },
+          "value": 2.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "distortionpower",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "distortionpower",
+            "number": 0
+          },
+          "value": 10.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "distortionscale",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "distortionscale",
+            "number": 0
+          },
+          "value": -15.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "edge_crack_desaturation",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "edge_crack_desaturation",
+            "number": 0
+          },
+          "value": 0.800000011920929,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "in_hole_crackuv",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "in_hole_crackuv",
+            "number": 0
+          },
+          "value": 0.20000000298023224,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "in_hole_desaturation",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "in_hole_desaturation",
+            "number": 0
+          },
+          "value": 0.30000001192092896,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "in_hole_height",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "in_hole_height",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "in_hole_panx",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "in_hole_panx",
+            "number": 0
+          },
+          "value": 0.014999999664723873,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "in_hole_pany",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "in_hole_pany",
+            "number": 0
+          },
+          "value": 0.02500000037252903,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "in_hole_pow",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "in_hole_pow",
+            "number": 0
+          },
+          "value": 2.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "in_hole_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "in_hole_str",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "main_ucoord",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "main_ucoord",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "main_v_panner",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "main_v_panner",
+            "number": 0
+          },
+          "value": -0.800000011920929,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "scale",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "scale",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "time",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "time",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "twist_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "twist_str",
+            "number": 0
+          },
+          "value": 0.10000000149011612,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "uvnoise_pan",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "uvnoise_pan",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "uvnoise_utile",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "uvnoise_utile",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "uvnoise_vtile",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "uvnoise_vtile",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        }
+      ],
+      "effectiveVectorOverrides": [
+        {
+          "parameterName": "aura_color",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "aura_color",
+            "number": 0
+          },
+          "value": [
+            2.0,
+            1.2000000476837158,
+            0.800000011920929,
+            1.0
+          ],
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        },
+        {
+          "parameterName": "in_hole_color",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "in_hole_color",
+            "number": 0
+          },
+          "value": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_glasshole_02_01_tr"
+        }
+      ],
+      "uniformExpressionCounts": {
+        "pixelVectorExpressions": 13,
+        "pixelScalarExpressions": 56,
+        "pixelTexture2DExpressions": 7,
+        "textureCubeExpressions": 0,
+        "vertexVectorExpressions": 0,
+        "vertexScalarExpressions": 0,
+        "vertexTexture2DExpressions": 0,
+        "hullVectorExpressions": 0,
+        "hullScalarExpressions": 0,
+        "hullTexture2DExpressions": 0,
+        "domainVectorExpressions": 0,
+        "domainScalarExpressions": 0,
+        "domainTexture2DExpressions": 0
+      },
+      "sourceValueUniformEvaluation": {
+        "evaluationContext": {
+          "gameTimeSeconds": 0.0,
+          "realTimeSeconds": 0.0,
+          "floatSemantics": "IEEE754_FLOAT32_ROUND_AFTER_EACH_UNIFORM_EXPRESSION_OPERATION"
+        },
+        "pixelVectorExpressionValues": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645
+          ],
+          [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          [
+            4.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            2.0,
+            1.2000000476837158,
+            0.800000011920929,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "pixelScalarExpressionValues": [
+          0.0,
+          0.0,
+          0.0,
+          10.0,
+          2.5,
+          -15.0,
+          -7.5,
+          1.0,
+          0.014999999664723873,
+          0.02500000037252903,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.4000000059604645,
+          0.4000000059604645,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          -0.0,
+          0.0,
+          4.0,
+          0.0,
+          0.0,
+          -0.0,
+          0.0,
+          0.0,
+          0.0,
+          -7.0,
+          0.20000000298023224,
+          0.0,
+          2.0,
+          1.0,
+          0.30000001192092896,
+          0.0,
+          0.0,
+          1.0,
+          0.10000000149011612,
+          0.0,
+          2.0,
+          -0.800000011920929,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          2.0,
+          5.0,
+          -0.0,
+          0.0,
+          0.800000011920929
+        ],
+        "pixelVectorValuesSemanticSha256": "d4cde377ea7561bb6669309d621dc3194d05b11e0ab61d6344fa067319f52204",
+        "pixelScalarValuesSemanticSha256": "d17b04a48e8a33200fb9376b14ffdd440625e70eef89750d85286758ca4610a7",
+        "evaluationStats": {
+          "nodeTypeCounts": {
+            "fmaterialuniformexpressionvectorparameter": 3,
+            "fmaterialuniformexpressionappendvector": 10,
+            "fmaterialuniformexpressionfoldedmath": 52,
+            "fmaterialuniformexpressionscalarparameter": 55,
+            "fmaterialuniformexpressiontime": 39,
+            "fmaterialuniformexpressionperiodic": 22,
+            "fmaterialuniformexpressionconstant": 34
+          },
+          "foldedMathOperationOrdinalCounts": {
+            "2": 52
+          },
+          "scalarOverrideHitCount": 50,
+          "scalarDefaultHitCount": 5,
+          "vectorOverrideHitCount": 2,
+          "vectorDefaultHitCount": 1
+        },
+        "nativeCb0": {
+          "declaredFloat4Count": 22,
+          "materialBoundFloat4Count": 21,
+          "engineOrRendererUnboundFloat4Count": 1,
+          "materialRows": [
+            {
+              "slot": 1,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 0,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 2,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 1,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 3,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 2,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 4,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 3,
+              "value": [
+                0.4000000059604645,
+                0.4000000059604645,
+                0.4000000059604645,
+                0.4000000059604645
+              ]
+            },
+            {
+              "slot": 5,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 4,
+              "value": [
+                0.5,
+                0.5,
+                0.5,
+                0.5
+              ]
+            },
+            {
+              "slot": 6,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 5,
+              "value": [
+                4.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 7,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 6,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 8,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 7,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 9,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 8,
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 10,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 9,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 11,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 10,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 12,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 11,
+              "value": [
+                2.0,
+                1.2000000476837158,
+                0.800000011920929,
+                1.0
+              ]
+            },
+            {
+              "slot": 13,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 12,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 14,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                4,
+                5,
+                6,
+                7
+              ],
+              "value": [
+                2.5,
+                -15.0,
+                -7.5,
+                1.0
+              ]
+            },
+            {
+              "slot": 15,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                28,
+                29,
+                30,
+                31
+              ],
+              "value": [
+                0.0,
+                0.0,
+                -7.0,
+                0.20000000298023224
+              ]
+            },
+            {
+              "slot": 16,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                32,
+                33,
+                34,
+                35
+              ],
+              "value": [
+                0.0,
+                2.0,
+                1.0,
+                0.30000001192092896
+              ]
+            },
+            {
+              "slot": 17,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                36,
+                37,
+                38,
+                39
+              ],
+              "value": [
+                0.0,
+                0.0,
+                1.0,
+                0.10000000149011612
+              ]
+            },
+            {
+              "slot": 18,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                40,
+                41,
+                42,
+                43
+              ],
+              "value": [
+                0.0,
+                2.0,
+                -0.800000011920929,
+                1.0
+              ]
+            },
+            {
+              "slot": 19,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                44,
+                45,
+                46,
+                47
+              ],
+              "value": [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 20,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                48,
+                49,
+                50,
+                51
+              ],
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                2.0
+              ]
+            },
+            {
+              "slot": 21,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                52,
+                53,
+                54,
+                55
+              ],
+              "value": [
+                5.0,
+                -0.0,
+                0.0,
+                0.800000011920929
+              ]
+            }
+          ],
+          "allRows": [
+            {
+              "slot": 0,
+              "ownership": "ENGINE_OR_RENDERER_INPUT_UNBOUND_AT_G03_5",
+              "value": null
+            },
+            {
+              "slot": 1,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 2,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 3,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 4,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.4000000059604645,
+                0.4000000059604645,
+                0.4000000059604645,
+                0.4000000059604645
+              ]
+            },
+            {
+              "slot": 5,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.5,
+                0.5,
+                0.5,
+                0.5
+              ]
+            },
+            {
+              "slot": 6,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                4.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 7,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 8,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 9,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 10,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 11,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 12,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                2.0,
+                1.2000000476837158,
+                0.800000011920929,
+                1.0
+              ]
+            },
+            {
+              "slot": 13,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 14,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                2.5,
+                -15.0,
+                -7.5,
+                1.0
+              ]
+            },
+            {
+              "slot": 15,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                -7.0,
+                0.20000000298023224
+              ]
+            },
+            {
+              "slot": 16,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                2.0,
+                1.0,
+                0.30000001192092896
+              ]
+            },
+            {
+              "slot": 17,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                1.0,
+                0.10000000149011612
+              ]
+            },
+            {
+              "slot": 18,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                2.0,
+                -0.800000011920929,
+                1.0
+              ]
+            },
+            {
+              "slot": 19,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 20,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                2.0
+              ]
+            },
+            {
+              "slot": 21,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                5.0,
+                -0.0,
+                0.0,
+                0.800000011920929
+              ]
+            }
+          ],
+          "materialRowsSemanticSha256": "6600a1a2d04176958e081d4ba49acac6160069dcb376eaa2785f73f86206fe84"
+        }
+      },
+      "sourceValueUniformCb0ClosureAdmission": true,
+      "sourceValueReplayAdmission": false,
+      "actualVfPassAdmission": false,
+      "runtimeAdmission": false,
+      "visualAdmission": false
+    },
+    {
+      "targetId": "dimensionmaster-w-crackholev2-01",
+      "familyId": "ue3.material.fx.m.mi.k.00.fx.m.fx.k.crackholev2.01.3aac97e0fcad",
+      "rendererType": "SpriteParticle",
+      "status": "EXACT_SOURCE_VALUE_UNIFORM_CB0_CLOSURE",
+      "micHierarchyRootToLeaf": [
+        {
+          "objectPath": "fx_mi.fx_k_pa_crackholev2_01_01",
+          "className": "materialinstanceconstant",
+          "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+          "exportIndexZeroBased": 3012,
+          "serialSha256": "c06ac13e27c6608e8b285fb47676552302e296b598c271924489a7a09ca9d519",
+          "propertyStreamStart": 4,
+          "propertyStreamEnd": 5270,
+          "scalarOverrides": [
+            {
+              "parameterName": "04.str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "04.str",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "05.power",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "05.power",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "02.map_e_uvscale_r",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "02.map_e_uvscale_r",
+                "number": 0
+              },
+              "value": 2.0
+            },
+            {
+              "parameterName": "03.map_e_uvscale_g",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "03.map_e_uvscale_g",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "04.map_e_panning_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "04.map_e_panning_x",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "05.map_e_panning_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "05.map_e_panning_y",
+                "number": 0
+              },
+              "value": 0.10000000149011612
+            },
+            {
+              "parameterName": "07.map_f_uvscale_r",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "07.map_f_uvscale_r",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "08.map_f_uvscale_g",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "08.map_f_uvscale_g",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "09.map_f_panning_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "09.map_f_panning_x",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "10.map_f_panning_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "10.map_f_panning_y",
+                "number": 0
+              },
+              "value": 0.10000000149011612
+            },
+            {
+              "parameterName": "12.desaturation",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "12.desaturation",
+                "number": 0
+              },
+              "value": 1.0499999523162842
+            },
+            {
+              "parameterName": "15.emissiion_power",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "15.emissiion_power",
+                "number": 0
+              },
+              "value": 1.100000023841858
+            },
+            {
+              "parameterName": "16.emissiion_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "16.emissiion_str",
+                "number": 0
+              },
+              "value": 10.0
+            },
+            {
+              "parameterName": "02.depth",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "02.depth",
+                "number": 0
+              },
+              "value": -0.5
+            },
+            {
+              "parameterName": "03.innerthickness",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "03.innerthickness",
+                "number": 0
+              },
+              "value": -0.4000000059604645
+            },
+            {
+              "parameterName": "01_thickness",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "01_thickness",
+                "number": 0
+              },
+              "value": 0.05000000074505806
+            },
+            {
+              "parameterName": "01.depth",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "01.depth",
+                "number": 0
+              },
+              "value": -1.0
+            },
+            {
+              "parameterName": "02.curvartuer",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "02.curvartuer",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "03.circleradius_offset",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "03.circleradius_offset",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "21.uv_offset.x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "21.uv_offset.x",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "22.uv_offset.y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "22.uv_offset.y",
+                "number": 0
+              },
+              "value": -0.05000000074505806
+            },
+            {
+              "parameterName": "01.power",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "01.power",
+                "number": 0
+              },
+              "value": 1.5
+            },
+            {
+              "parameterName": "02.str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "02.str",
+                "number": 0
+              },
+              "value": 1.2000000476837158
+            },
+            {
+              "parameterName": "05.distort_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "05.distort_str",
+                "number": 0
+              },
+              "value": 0.4000000059604645
+            },
+            {
+              "parameterName": "07.map_d_uvscale_r",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "07.map_d_uvscale_r",
+                "number": 0
+              },
+              "value": 2.0
+            },
+            {
+              "parameterName": "08.map_d_uvscale_g",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "08.map_d_uvscale_g",
+                "number": 0
+              },
+              "value": 0.5
+            },
+            {
+              "parameterName": "09.map_d_panning_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "09.map_d_panning_x",
+                "number": 0
+              },
+              "value": 0.10000000149011612
+            },
+            {
+              "parameterName": "10.map_d_panning_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "10.map_d_panning_y",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "mask_noise_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_noise_str",
+                "number": 0
+              },
+              "value": 0.6000000238418579
+            },
+            {
+              "parameterName": "mask_noise_tile_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_noise_tile_x",
+                "number": 0
+              },
+              "value": 2.0
+            },
+            {
+              "parameterName": "mask_noise_tile_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_noise_tile_y",
+                "number": 0
+              },
+              "value": 0.4000000059604645
+            },
+            {
+              "parameterName": "mask_offset_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_offset_x",
+                "number": 0
+              },
+              "value": -0.05999999865889549
+            },
+            {
+              "parameterName": "mask_offset_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_offset_y",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "mask_pan_speed",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_pan_speed",
+                "number": 0
+              },
+              "value": 0.10000000149011612
+            }
+          ],
+          "vectorOverrides": [
+            {
+              "parameterName": "19.emission_color",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "19.emission_color",
+                "number": 0
+              },
+              "value": [
+                20.0,
+                11.94465160369873,
+                7.000000476837158,
+                1.0
+              ]
+            },
+            {
+              "parameterName": "20.base_color",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "20.base_color",
+                "number": 0
+              },
+              "value": [
+                0.04350000247359276,
+                0.05000000074505806,
+                0.04422846436500549,
+                1.0
+              ]
+            },
+            {
+              "parameterName": "02_round_color",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "02_round_color",
+                "number": 0
+              },
+              "value": [
+                100.0,
+                84.8740463256836,
+                80.0,
+                1.0
+              ]
+            }
+          ],
+          "parentReference": 13,
+          "parentObjectPath": "fx_m.fx_k_crackholev2_01",
+          "parentClassName": "material"
+        }
+      ],
+      "terminalParentMaterial": {
+        "objectPath": "fx_m.fx_k_crackholev2_01",
+        "className": "material",
+        "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+        "referenceKind": "EXPORT"
+      },
+      "effectiveScalarOverrides": [
+        {
+          "parameterName": "01.depth",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "01.depth",
+            "number": 0
+          },
+          "value": -1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "01.power",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "01.power",
+            "number": 0
+          },
+          "value": 1.5,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "01_thickness",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "01_thickness",
+            "number": 0
+          },
+          "value": 0.05000000074505806,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "02.curvartuer",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "02.curvartuer",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "02.depth",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "02.depth",
+            "number": 0
+          },
+          "value": -0.5,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "02.map_e_uvscale_r",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "02.map_e_uvscale_r",
+            "number": 0
+          },
+          "value": 2.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "02.str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "02.str",
+            "number": 0
+          },
+          "value": 1.2000000476837158,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "03.circleradius_offset",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "03.circleradius_offset",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "03.innerthickness",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "03.innerthickness",
+            "number": 0
+          },
+          "value": -0.4000000059604645,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "03.map_e_uvscale_g",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "03.map_e_uvscale_g",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "04.map_e_panning_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "04.map_e_panning_x",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "04.str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "04.str",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "05.distort_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "05.distort_str",
+            "number": 0
+          },
+          "value": 0.4000000059604645,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "05.map_e_panning_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "05.map_e_panning_y",
+            "number": 0
+          },
+          "value": 0.10000000149011612,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "05.power",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "05.power",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "07.map_d_uvscale_r",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "07.map_d_uvscale_r",
+            "number": 0
+          },
+          "value": 2.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "07.map_f_uvscale_r",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "07.map_f_uvscale_r",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "08.map_d_uvscale_g",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "08.map_d_uvscale_g",
+            "number": 0
+          },
+          "value": 0.5,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "08.map_f_uvscale_g",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "08.map_f_uvscale_g",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "09.map_d_panning_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "09.map_d_panning_x",
+            "number": 0
+          },
+          "value": 0.10000000149011612,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "09.map_f_panning_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "09.map_f_panning_x",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "10.map_d_panning_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "10.map_d_panning_y",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "10.map_f_panning_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "10.map_f_panning_y",
+            "number": 0
+          },
+          "value": 0.10000000149011612,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "12.desaturation",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "12.desaturation",
+            "number": 0
+          },
+          "value": 1.0499999523162842,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "15.emissiion_power",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "15.emissiion_power",
+            "number": 0
+          },
+          "value": 1.100000023841858,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "16.emissiion_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "16.emissiion_str",
+            "number": 0
+          },
+          "value": 10.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "21.uv_offset.x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "21.uv_offset.x",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "22.uv_offset.y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "22.uv_offset.y",
+            "number": 0
+          },
+          "value": -0.05000000074505806,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "mask_noise_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_noise_str",
+            "number": 0
+          },
+          "value": 0.6000000238418579,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "mask_noise_tile_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_noise_tile_x",
+            "number": 0
+          },
+          "value": 2.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "mask_noise_tile_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_noise_tile_y",
+            "number": 0
+          },
+          "value": 0.4000000059604645,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "mask_offset_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_offset_x",
+            "number": 0
+          },
+          "value": -0.05999999865889549,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "mask_offset_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_offset_y",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "mask_pan_speed",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_pan_speed",
+            "number": 0
+          },
+          "value": 0.10000000149011612,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        }
+      ],
+      "effectiveVectorOverrides": [
+        {
+          "parameterName": "02_round_color",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "02_round_color",
+            "number": 0
+          },
+          "value": [
+            100.0,
+            84.8740463256836,
+            80.0,
+            1.0
+          ],
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "19.emission_color",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "19.emission_color",
+            "number": 0
+          },
+          "value": [
+            20.0,
+            11.94465160369873,
+            7.000000476837158,
+            1.0
+          ],
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        },
+        {
+          "parameterName": "20.base_color",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "20.base_color",
+            "number": 0
+          },
+          "value": [
+            0.04350000247359276,
+            0.05000000074505806,
+            0.04422846436500549,
+            1.0
+          ],
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_crackholev2_01_01"
+        }
+      ],
+      "uniformExpressionCounts": {
+        "pixelVectorExpressions": 8,
+        "pixelScalarExpressions": 43,
+        "pixelTexture2DExpressions": 6,
+        "textureCubeExpressions": 0,
+        "vertexVectorExpressions": 0,
+        "vertexScalarExpressions": 0,
+        "vertexTexture2DExpressions": 0,
+        "hullVectorExpressions": 0,
+        "hullScalarExpressions": 0,
+        "hullTexture2DExpressions": 0,
+        "domainVectorExpressions": 0,
+        "domainScalarExpressions": 0,
+        "domainTexture2DExpressions": 0
+      },
+      "sourceValueUniformEvaluation": {
+        "evaluationContext": {
+          "gameTimeSeconds": 0.0,
+          "realTimeSeconds": 0.0,
+          "floatSemantics": "IEEE754_FLOAT32_ROUND_AFTER_EACH_UNIFORM_EXPRESSION_OPERATION"
+        },
+        "pixelVectorExpressionValues": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            100.0,
+            84.8740463256836,
+            80.0,
+            1.0
+          ],
+          [
+            2.0,
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            -0.05000000074505806,
+            -0.05000000074505806,
+            -0.05000000074505806
+          ],
+          [
+            20.0,
+            11.94465160369873,
+            7.000000476837158,
+            1.0
+          ],
+          [
+            0.04350000247359276,
+            0.05000000074505806,
+            0.04422846436500549,
+            1.0
+          ]
+        ],
+        "pixelScalarExpressionValues": [
+          0.05000000074505806,
+          0.10000000149011612,
+          0.0,
+          0.0,
+          -0.0,
+          0.0,
+          0.4000000059604645,
+          2.0,
+          0.0,
+          0.0,
+          0.6000000238418579,
+          0.0,
+          0.0,
+          0.0,
+          -0.05999999865889549,
+          -0.05999999865889549,
+          0.0,
+          2.0,
+          1.0,
+          0.10000000149011612,
+          2.0,
+          0.5,
+          -0.05000000074505806,
+          0.0,
+          -1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.4000000059604645,
+          0.10000000149011612,
+          0.0,
+          1.0,
+          1.0,
+          0.10000000149011612,
+          1.0499999523162842,
+          1.0,
+          1.100000023841858,
+          10.0,
+          1.5,
+          1.2000000476837158,
+          -0.4000000059604645,
+          -0.5,
+          1.0
+        ],
+        "pixelVectorValuesSemanticSha256": "5ad4185839ed86aa393be59b376149da023bdea881609fe503124f5079511acf",
+        "pixelScalarValuesSemanticSha256": "a918483debf947e141df82c79fcc6ad1d5a15563b9614ffdf14228349b4ec7e4",
+        "evaluationStats": {
+          "nodeTypeCounts": {
+            "fmaterialuniformexpressionvectorparameter": 4,
+            "fmaterialuniformexpressionappendvector": 4,
+            "fmaterialuniformexpressionscalarparameter": 51,
+            "fmaterialuniformexpressionperiodic": 7,
+            "fmaterialuniformexpressionfoldedmath": 22,
+            "fmaterialuniformexpressiontime": 12,
+            "fmaterialuniformexpressionconstant": 10
+          },
+          "foldedMathOperationOrdinalCounts": {
+            "2": 21,
+            "0": 1
+          },
+          "scalarOverrideHitCount": 51,
+          "scalarDefaultHitCount": 0,
+          "vectorOverrideHitCount": 3,
+          "vectorDefaultHitCount": 1
+        },
+        "nativeCb0": {
+          "declaredFloat4Count": 19,
+          "materialBoundFloat4Count": 18,
+          "engineOrRendererUnboundFloat4Count": 1,
+          "materialRows": [
+            {
+              "slot": 1,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 0,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 2,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 1,
+              "value": [
+                100.0,
+                84.8740463256836,
+                80.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 3,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 2,
+              "value": [
+                2.0,
+                0.4000000059604645,
+                0.4000000059604645,
+                0.4000000059604645
+              ]
+            },
+            {
+              "slot": 4,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 3,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 5,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 4,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 6,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 5,
+              "value": [
+                0.0,
+                -0.05000000074505806,
+                -0.05000000074505806,
+                -0.05000000074505806
+              ]
+            },
+            {
+              "slot": 7,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 6,
+              "value": [
+                20.0,
+                11.94465160369873,
+                7.000000476837158,
+                1.0
+              ]
+            },
+            {
+              "slot": 8,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 7,
+              "value": [
+                0.04350000247359276,
+                0.05000000074505806,
+                0.04422846436500549,
+                1.0
+              ]
+            },
+            {
+              "slot": 9,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "value": [
+                0.05000000074505806,
+                0.10000000149011612,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 10,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                8,
+                9,
+                10,
+                11
+              ],
+              "value": [
+                0.0,
+                0.0,
+                0.6000000238418579,
+                0.0
+              ]
+            },
+            {
+              "slot": 11,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                12,
+                13,
+                14,
+                15
+              ],
+              "value": [
+                0.0,
+                0.0,
+                -0.05999999865889549,
+                -0.05999999865889549
+              ]
+            },
+            {
+              "slot": 12,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                16,
+                17,
+                18,
+                19
+              ],
+              "value": [
+                0.0,
+                2.0,
+                1.0,
+                0.10000000149011612
+              ]
+            },
+            {
+              "slot": 13,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                20,
+                21,
+                22,
+                23
+              ],
+              "value": [
+                2.0,
+                0.5,
+                -0.05000000074505806,
+                0.0
+              ]
+            },
+            {
+              "slot": 14,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                24,
+                25,
+                26,
+                27
+              ],
+              "value": [
+                -1.0,
+                0.0,
+                1.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 15,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                28,
+                29,
+                30,
+                31
+              ],
+              "value": [
+                0.4000000059604645,
+                0.10000000149011612,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 16,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                32,
+                33,
+                34,
+                35
+              ],
+              "value": [
+                1.0,
+                0.10000000149011612,
+                1.0499999523162842,
+                1.0
+              ]
+            },
+            {
+              "slot": 17,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                36,
+                37,
+                38,
+                39
+              ],
+              "value": [
+                1.100000023841858,
+                10.0,
+                1.5,
+                1.2000000476837158
+              ]
+            },
+            {
+              "slot": 18,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                40,
+                41,
+                42
+              ],
+              "value": [
+                -0.4000000059604645,
+                -0.5,
+                1.0,
+                0.0
+              ]
+            }
+          ],
+          "allRows": [
+            {
+              "slot": 0,
+              "ownership": "ENGINE_OR_RENDERER_INPUT_UNBOUND_AT_G03_5",
+              "value": null
+            },
+            {
+              "slot": 1,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 2,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                100.0,
+                84.8740463256836,
+                80.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 3,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                2.0,
+                0.4000000059604645,
+                0.4000000059604645,
+                0.4000000059604645
+              ]
+            },
+            {
+              "slot": 4,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 5,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 6,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                -0.05000000074505806,
+                -0.05000000074505806,
+                -0.05000000074505806
+              ]
+            },
+            {
+              "slot": 7,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                20.0,
+                11.94465160369873,
+                7.000000476837158,
+                1.0
+              ]
+            },
+            {
+              "slot": 8,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.04350000247359276,
+                0.05000000074505806,
+                0.04422846436500549,
+                1.0
+              ]
+            },
+            {
+              "slot": 9,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.05000000074505806,
+                0.10000000149011612,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 10,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.6000000238418579,
+                0.0
+              ]
+            },
+            {
+              "slot": 11,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                -0.05999999865889549,
+                -0.05999999865889549
+              ]
+            },
+            {
+              "slot": 12,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                2.0,
+                1.0,
+                0.10000000149011612
+              ]
+            },
+            {
+              "slot": 13,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                2.0,
+                0.5,
+                -0.05000000074505806,
+                0.0
+              ]
+            },
+            {
+              "slot": 14,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                -1.0,
+                0.0,
+                1.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 15,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.4000000059604645,
+                0.10000000149011612,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 16,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                0.10000000149011612,
+                1.0499999523162842,
+                1.0
+              ]
+            },
+            {
+              "slot": 17,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.100000023841858,
+                10.0,
+                1.5,
+                1.2000000476837158
+              ]
+            },
+            {
+              "slot": 18,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                -0.4000000059604645,
+                -0.5,
+                1.0,
+                0.0
+              ]
+            }
+          ],
+          "materialRowsSemanticSha256": "3b091b1829d9e78454b48f28ce2176df9666bc710a7d2fe7246b3ba9d44bcb4a"
+        }
+      },
+      "sourceValueUniformCb0ClosureAdmission": true,
+      "sourceValueReplayAdmission": false,
+      "actualVfPassAdmission": false,
+      "runtimeAdmission": false,
+      "visualAdmission": false
+    },
+    {
+      "targetId": "dimensionmaster-w-fluidninja-01",
+      "familyId": "ue3.material.fx.m.mi.k.00.fx.m.fx.k.pa.fluidninja.01.tr.534340d78128",
+      "rendererType": "SpriteParticle",
+      "status": "EXACT_SOURCE_VALUE_UNIFORM_CB0_CLOSURE",
+      "micHierarchyRootToLeaf": [
+        {
+          "objectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr",
+          "className": "materialinstanceconstant",
+          "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+          "exportIndexZeroBased": 3115,
+          "serialSha256": "ffa5b54b6f688d38f91d9ea0dedbe87432597d0b7ccfca459873a9d66c2ff17f",
+          "propertyStreamStart": 4,
+          "propertyStreamEnd": 4761,
+          "scalarOverrides": [
+            {
+              "parameterName": "desaturation",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "desaturation",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "diff_pow",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "diff_pow",
+                "number": 0
+              },
+              "value": 1.600000023841858
+            },
+            {
+              "parameterName": "diff_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "diff_str",
+                "number": 0
+              },
+              "value": 2.0
+            },
+            {
+              "parameterName": "diff_u",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "diff_u",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "diff_v",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "diff_v",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "flow_1_offset_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_1_offset_x",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "flow_1_offset_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_1_offset_y",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "flow_1_pan_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_1_pan_x",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "flow_1_pan_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_1_pan_y",
+                "number": 0
+              },
+              "value": 0.6000000238418579
+            },
+            {
+              "parameterName": "flow_1_sizecontrol",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_1_sizecontrol",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "flow_1_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_1_str",
+                "number": 0
+              },
+              "value": 0.20000000298023224
+            },
+            {
+              "parameterName": "flow_1_tile_u",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_1_tile_u",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "flow_1_tile_v",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_1_tile_v",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "flow_2_offset_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_2_offset_x",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "flow_2_offset_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_2_offset_y",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "flow_2_pan_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_2_pan_x",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "flow_2_pan_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_2_pan_y",
+                "number": 0
+              },
+              "value": 0.30000001192092896
+            },
+            {
+              "parameterName": "flow_2_sizecontrol",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_2_sizecontrol",
+                "number": 0
+              },
+              "value": 0.6000000238418579
+            },
+            {
+              "parameterName": "flow_2_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_2_str",
+                "number": 0
+              },
+              "value": 0.25
+            },
+            {
+              "parameterName": "flow_2_tile_u",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_2_tile_u",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "flow_2_tile_v",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "flow_2_tile_v",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "mask_noisestr",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_noisestr",
+                "number": 0
+              },
+              "value": 0.20000000298023224
+            },
+            {
+              "parameterName": "mask_pow",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_pow",
+                "number": 0
+              },
+              "value": 1.2000000476837158
+            },
+            {
+              "parameterName": "mask_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_str",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "mask_u",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_u",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "mask_v",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_v",
+                "number": 0
+              },
+              "value": 0.5
+            },
+            {
+              "parameterName": "gra_pow",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "gra_pow",
+                "number": 0
+              },
+              "value": 2.0
+            },
+            {
+              "parameterName": "opacity_pow",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "opacity_pow",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "opacity_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "opacity_str",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "opacity_u",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "opacity_u",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "opacity_v",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "opacity_v",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "depth",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "depth",
+                "number": 0
+              },
+              "value": 0.10000000149011612
+            }
+          ],
+          "vectorOverrides": [
+            {
+              "parameterName": "color",
+              "parameterNameNumber": 2,
+              "parameterKey": {
+                "nameCasefold": "color",
+                "number": 2
+              },
+              "value": [
+                0.9084487557411194,
+                1.0,
+                0.8999999761581421,
+                1.0
+              ]
+            },
+            {
+              "parameterName": "color",
+              "parameterNameNumber": 3,
+              "parameterKey": {
+                "nameCasefold": "color",
+                "number": 3
+              },
+              "value": [
+                8.915242195129395,
+                10.0,
+                4.948843955993652,
+                1.0
+              ]
+            }
+          ],
+          "parentReference": 48,
+          "parentObjectPath": "fx_m.fx_k_pa_fluidninja_01_tr",
+          "parentClassName": "material"
+        }
+      ],
+      "terminalParentMaterial": {
+        "objectPath": "fx_m.fx_k_pa_fluidninja_01_tr",
+        "className": "material",
+        "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+        "referenceKind": "EXPORT"
+      },
+      "effectiveScalarOverrides": [
+        {
+          "parameterName": "depth",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "depth",
+            "number": 0
+          },
+          "value": 0.10000000149011612,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "desaturation",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "desaturation",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "diff_pow",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "diff_pow",
+            "number": 0
+          },
+          "value": 1.600000023841858,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "diff_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "diff_str",
+            "number": 0
+          },
+          "value": 2.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "diff_u",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "diff_u",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "diff_v",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "diff_v",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_1_offset_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_1_offset_x",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_1_offset_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_1_offset_y",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_1_pan_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_1_pan_x",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_1_pan_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_1_pan_y",
+            "number": 0
+          },
+          "value": 0.6000000238418579,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_1_sizecontrol",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_1_sizecontrol",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_1_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_1_str",
+            "number": 0
+          },
+          "value": 0.20000000298023224,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_1_tile_u",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_1_tile_u",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_1_tile_v",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_1_tile_v",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_2_offset_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_2_offset_x",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_2_offset_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_2_offset_y",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_2_pan_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_2_pan_x",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_2_pan_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_2_pan_y",
+            "number": 0
+          },
+          "value": 0.30000001192092896,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_2_sizecontrol",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_2_sizecontrol",
+            "number": 0
+          },
+          "value": 0.6000000238418579,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_2_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_2_str",
+            "number": 0
+          },
+          "value": 0.25,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_2_tile_u",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_2_tile_u",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "flow_2_tile_v",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "flow_2_tile_v",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "gra_pow",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "gra_pow",
+            "number": 0
+          },
+          "value": 2.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "mask_noisestr",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_noisestr",
+            "number": 0
+          },
+          "value": 0.20000000298023224,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "mask_pow",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_pow",
+            "number": 0
+          },
+          "value": 1.2000000476837158,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "mask_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_str",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "mask_u",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_u",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "mask_v",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_v",
+            "number": 0
+          },
+          "value": 0.5,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "opacity_pow",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "opacity_pow",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "opacity_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "opacity_str",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "opacity_u",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "opacity_u",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "opacity_v",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "opacity_v",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        }
+      ],
+      "effectiveVectorOverrides": [
+        {
+          "parameterName": "color",
+          "parameterNameNumber": 2,
+          "parameterKey": {
+            "nameCasefold": "color",
+            "number": 2
+          },
+          "value": [
+            0.9084487557411194,
+            1.0,
+            0.8999999761581421,
+            1.0
+          ],
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        },
+        {
+          "parameterName": "color",
+          "parameterNameNumber": 3,
+          "parameterKey": {
+            "nameCasefold": "color",
+            "number": 3
+          },
+          "value": [
+            8.915242195129395,
+            10.0,
+            4.948843955993652,
+            1.0
+          ],
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_pa_fluidninja_01_07_tr"
+        }
+      ],
+      "uniformExpressionCounts": {
+        "pixelVectorExpressions": 10,
+        "pixelScalarExpressions": 41,
+        "pixelTexture2DExpressions": 5,
+        "textureCubeExpressions": 0,
+        "vertexVectorExpressions": 0,
+        "vertexScalarExpressions": 0,
+        "vertexTexture2DExpressions": 0,
+        "hullVectorExpressions": 0,
+        "hullScalarExpressions": 0,
+        "hullTexture2DExpressions": 0,
+        "domainVectorExpressions": 0,
+        "domainScalarExpressions": 0,
+        "domainTexture2DExpressions": 0
+      },
+      "sourceValueUniformEvaluation": {
+        "evaluationContext": {
+          "gameTimeSeconds": 0.0,
+          "realTimeSeconds": 0.0,
+          "floatSemantics": "IEEE754_FLOAT32_ROUND_AFTER_EACH_UNIFORM_EXPRESSION_OPERATION"
+        },
+        "pixelVectorExpressionValues": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.9084487557411194,
+            1.0,
+            0.8999999761581421,
+            1.0
+          ],
+          [
+            8.915242195129395,
+            10.0,
+            4.948843955993652,
+            1.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            1.0,
+            0.5,
+            0.5,
+            0.5
+          ]
+        ],
+        "pixelScalarExpressionValues": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.6000000238418579,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.20000000298023224,
+          0.0,
+          0.0,
+          0.0,
+          0.30000001192092896,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.6000000238418579,
+          1.0,
+          1.0,
+          0.25,
+          0.0,
+          1.600000023841858,
+          2.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0,
+          0.20000000298023224,
+          1.2000000476837158,
+          1.0,
+          2.0,
+          0.10000000149011612
+        ],
+        "pixelVectorValuesSemanticSha256": "391c5921ce761f53ec88863399e86887dc23ccb42e129ba3a8130963b47054ec",
+        "pixelScalarValuesSemanticSha256": "0e2b803d52663e7e6071defebd61bfa71d977e81c100504e581a2cf634ce97ca",
+        "evaluationStats": {
+          "nodeTypeCounts": {
+            "fmaterialuniformexpressionvectorparameter": 3,
+            "fmaterialuniformexpressionappendvector": 7,
+            "fmaterialuniformexpressionscalarparameter": 62,
+            "fmaterialuniformexpressionfoldedmath": 20,
+            "fmaterialuniformexpressiontime": 13
+          },
+          "foldedMathOperationOrdinalCounts": {
+            "2": 12,
+            "0": 8
+          },
+          "scalarOverrideHitCount": 62,
+          "scalarDefaultHitCount": 0,
+          "vectorOverrideHitCount": 2,
+          "vectorDefaultHitCount": 1
+        },
+        "nativeCb0": {
+          "declaredFloat4Count": 19,
+          "materialBoundFloat4Count": 18,
+          "engineOrRendererUnboundFloat4Count": 1,
+          "materialRows": [
+            {
+              "slot": 1,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 0,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 2,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 1,
+              "value": [
+                0.9084487557411194,
+                1.0,
+                0.8999999761581421,
+                1.0
+              ]
+            },
+            {
+              "slot": 3,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 2,
+              "value": [
+                8.915242195129395,
+                10.0,
+                4.948843955993652,
+                1.0
+              ]
+            },
+            {
+              "slot": 4,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 3,
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 5,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 4,
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 6,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 5,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 7,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 6,
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 8,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 7,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 9,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 8,
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 10,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 9,
+              "value": [
+                1.0,
+                0.5,
+                0.5,
+                0.5
+              ]
+            },
+            {
+              "slot": 11,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                8,
+                9,
+                10,
+                11
+              ],
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 12,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                12,
+                13,
+                14,
+                15
+              ],
+              "value": [
+                1.0,
+                1.0,
+                0.20000000298023224,
+                0.0
+              ]
+            },
+            {
+              "slot": 13,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                20,
+                21,
+                22,
+                23
+              ],
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.6000000238418579
+              ]
+            },
+            {
+              "slot": 14,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                24,
+                25,
+                26,
+                27
+              ],
+              "value": [
+                1.0,
+                1.0,
+                0.25,
+                0.0
+              ]
+            },
+            {
+              "slot": 15,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                28,
+                29,
+                30,
+                31
+              ],
+              "value": [
+                1.600000023841858,
+                2.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 16,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                32,
+                33,
+                34,
+                35
+              ],
+              "value": [
+                1.0,
+                1.0,
+                0.5,
+                1.0
+              ]
+            },
+            {
+              "slot": 17,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                36,
+                37,
+                38,
+                39
+              ],
+              "value": [
+                0.20000000298023224,
+                1.2000000476837158,
+                1.0,
+                2.0
+              ]
+            },
+            {
+              "slot": 18,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                40
+              ],
+              "value": [
+                0.10000000149011612,
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "allRows": [
+            {
+              "slot": 0,
+              "ownership": "ENGINE_OR_RENDERER_INPUT_UNBOUND_AT_G03_5",
+              "value": null
+            },
+            {
+              "slot": 1,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 2,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.9084487557411194,
+                1.0,
+                0.8999999761581421,
+                1.0
+              ]
+            },
+            {
+              "slot": 3,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                8.915242195129395,
+                10.0,
+                4.948843955993652,
+                1.0
+              ]
+            },
+            {
+              "slot": 4,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 5,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 6,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 7,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 8,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 9,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 10,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                0.5,
+                0.5,
+                0.5
+              ]
+            },
+            {
+              "slot": 11,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 12,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                0.20000000298023224,
+                0.0
+              ]
+            },
+            {
+              "slot": 13,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                0.6000000238418579
+              ]
+            },
+            {
+              "slot": 14,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                0.25,
+                0.0
+              ]
+            },
+            {
+              "slot": 15,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.600000023841858,
+                2.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 16,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                0.5,
+                1.0
+              ]
+            },
+            {
+              "slot": 17,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.20000000298023224,
+                1.2000000476837158,
+                1.0,
+                2.0
+              ]
+            },
+            {
+              "slot": 18,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.10000000149011612,
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "materialRowsSemanticSha256": "27ff058c1d8aab55f0a6a958fa0e3faaee20343fbcce0fbc3b86757a22a9c86d"
+        }
+      },
+      "sourceValueUniformCb0ClosureAdmission": true,
+      "sourceValueReplayAdmission": false,
+      "actualVfPassAdmission": false,
+      "runtimeAdmission": false,
+      "visualAdmission": false
+    },
+    {
+      "targetId": "dimensionmaster-w-customparticle-01",
+      "familyId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.customparticle.01.ad.e6b959010967",
+      "rendererType": "SpriteParticle",
+      "status": "EXACT_SOURCE_VALUE_UNIFORM_CB0_CLOSURE",
+      "micHierarchyRootToLeaf": [
+        {
+          "objectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad",
+          "className": "materialinstanceconstant",
+          "sourcePackageFileName": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+          "exportIndexZeroBased": 5818,
+          "serialSha256": "8a872b4584c4fee377f2f7b402f6ae8b1b4a6471dce4011f11baba6802019d93",
+          "propertyStreamStart": 4,
+          "propertyStreamEnd": 2214,
+          "scalarOverrides": [
+            {
+              "parameterName": "desaturation",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "desaturation",
+                "number": 0
+              },
+              "value": 0.800000011920929
+            },
+            {
+              "parameterName": "diff_pow",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "diff_pow",
+                "number": 0
+              },
+              "value": 2.0
+            },
+            {
+              "parameterName": "diff_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "diff_str",
+                "number": 0
+              },
+              "value": 3.0
+            },
+            {
+              "parameterName": "diff_tile_u",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "diff_tile_u",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "diff_tile_v",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "diff_tile_v",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "mask_value",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "mask_value",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "a_noise_01_str",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "a_noise_01_str",
+                "number": 0
+              },
+              "value": 0.5
+            },
+            {
+              "parameterName": "a_noise_01_tile_u",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "a_noise_01_tile_u",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "a_noise_01_tile_v",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "a_noise_01_tile_v",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "cast_center",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "cast_center",
+                "number": 0
+              },
+              "value": 0.6000000238418579
+            },
+            {
+              "parameterName": "cast_dirinout",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "cast_dirinout",
+                "number": 0
+              },
+              "value": 150.0
+            },
+            {
+              "parameterName": "cast_fov",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "cast_fov",
+                "number": 0
+              },
+              "value": 0.30000001192092896
+            },
+            {
+              "parameterName": "cast_particle",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "cast_particle",
+                "number": 0
+              },
+              "value": 150.0
+            },
+            {
+              "parameterName": "cast_speed",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "cast_speed",
+                "number": 0
+              },
+              "value": 0.5
+            }
+          ],
+          "vectorOverrides": [
+            {
+              "parameterName": "diff_color",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "diff_color",
+                "number": 0
+              },
+              "value": [
+                1.0,
+                1.0,
+                2.0,
+                1.0
+              ]
+            }
+          ],
+          "parentReference": 66,
+          "parentObjectPath": "fx_m.fx_j_pa_customparticle_01_ad",
+          "parentClassName": "material"
+        }
+      ],
+      "terminalParentMaterial": {
+        "objectPath": "fx_m.fx_j_pa_customparticle_01_ad",
+        "className": "material",
+        "sourcePackageFileName": "ZHJ4TC4PCK4PR4J22HIXEYUXBU.upk",
+        "referenceKind": "EXPORT"
+      },
+      "effectiveScalarOverrides": [
+        {
+          "parameterName": "a_noise_01_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "a_noise_01_str",
+            "number": 0
+          },
+          "value": 0.5,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "a_noise_01_tile_u",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "a_noise_01_tile_u",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "a_noise_01_tile_v",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "a_noise_01_tile_v",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "cast_center",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "cast_center",
+            "number": 0
+          },
+          "value": 0.6000000238418579,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "cast_dirinout",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "cast_dirinout",
+            "number": 0
+          },
+          "value": 150.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "cast_fov",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "cast_fov",
+            "number": 0
+          },
+          "value": 0.30000001192092896,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "cast_particle",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "cast_particle",
+            "number": 0
+          },
+          "value": 150.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "cast_speed",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "cast_speed",
+            "number": 0
+          },
+          "value": 0.5,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "desaturation",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "desaturation",
+            "number": 0
+          },
+          "value": 0.800000011920929,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "diff_pow",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "diff_pow",
+            "number": 0
+          },
+          "value": 2.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "diff_str",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "diff_str",
+            "number": 0
+          },
+          "value": 3.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "diff_tile_u",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "diff_tile_u",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "diff_tile_v",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "diff_tile_v",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        },
+        {
+          "parameterName": "mask_value",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "mask_value",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        }
+      ],
+      "effectiveVectorOverrides": [
+        {
+          "parameterName": "diff_color",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "diff_color",
+            "number": 0
+          },
+          "value": [
+            1.0,
+            1.0,
+            2.0,
+            1.0
+          ],
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_j_pa_customparticle_01_06_ad"
+        }
+      ],
+      "uniformExpressionCounts": {
+        "pixelVectorExpressions": 4,
+        "pixelScalarExpressions": 30,
+        "pixelTexture2DExpressions": 3,
+        "textureCubeExpressions": 0,
+        "vertexVectorExpressions": 0,
+        "vertexScalarExpressions": 0,
+        "vertexTexture2DExpressions": 0,
+        "hullVectorExpressions": 0,
+        "hullScalarExpressions": 0,
+        "hullTexture2DExpressions": 0,
+        "domainVectorExpressions": 0,
+        "domainScalarExpressions": 0,
+        "domainTexture2DExpressions": 0
+      },
+      "sourceValueUniformEvaluation": {
+        "evaluationContext": {
+          "gameTimeSeconds": 0.0,
+          "realTimeSeconds": 0.0,
+          "floatSemantics": "IEEE754_FLOAT32_ROUND_AFTER_EACH_UNIFORM_EXPRESSION_OPERATION"
+        },
+        "pixelVectorExpressionValues": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            1.0,
+            1.0,
+            2.0,
+            1.0
+          ],
+          [
+            1.0,
+            -0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        ],
+        "pixelScalarExpressionValues": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.10000000149011612,
+          1.0,
+          1.0,
+          0.800000011920929,
+          3.0,
+          2.0,
+          0.30000001192092896,
+          0.0,
+          0.5,
+          150.0,
+          150.0,
+          0.6000000238418579,
+          0.0,
+          1.0,
+          0.0,
+          1.0,
+          -1.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "pixelVectorValuesSemanticSha256": "dd54a65647c8d1134e6bd0d2c960253eb66cee36da99518673eb797e139a15ab",
+        "pixelScalarValuesSemanticSha256": "a1f9ad9b4eddf98d98a26cfaebb9d3240f4ac1d2740c7ebce011d72ce88e7410",
+        "evaluationStats": {
+          "nodeTypeCounts": {
+            "fmaterialuniformexpressionvectorparameter": 2,
+            "fmaterialuniformexpressionappendvector": 2,
+            "fmaterialuniformexpressionsine": 7,
+            "fmaterialuniformexpressionfoldedmath": 11,
+            "fmaterialuniformexpressionscalarparameter": 33,
+            "fmaterialuniformexpressionconstant": 10,
+            "fmaterialuniformexpressiontime": 2
+          },
+          "foldedMathOperationOrdinalCounts": {
+            "2": 11
+          },
+          "scalarOverrideHitCount": 11,
+          "scalarDefaultHitCount": 22,
+          "vectorOverrideHitCount": 1,
+          "vectorDefaultHitCount": 1
+        },
+        "nativeCb0": {
+          "declaredFloat4Count": 13,
+          "materialBoundFloat4Count": 12,
+          "engineOrRendererUnboundFloat4Count": 1,
+          "materialRows": [
+            {
+              "slot": 1,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 0,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 2,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 1,
+              "value": [
+                1.0,
+                1.0,
+                2.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 3,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 2,
+              "value": [
+                1.0,
+                -0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 4,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 3,
+              "value": [
+                0.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 5,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "value": [
+                1.0,
+                1.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 6,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                4,
+                5,
+                6,
+                7
+              ],
+              "value": [
+                0.0,
+                0.10000000149011612,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 7,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                8,
+                9,
+                10,
+                11
+              ],
+              "value": [
+                0.800000011920929,
+                3.0,
+                2.0,
+                0.30000001192092896
+              ]
+            },
+            {
+              "slot": 8,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                12,
+                13,
+                14,
+                15
+              ],
+              "value": [
+                0.0,
+                0.5,
+                150.0,
+                150.0
+              ]
+            },
+            {
+              "slot": 9,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                16,
+                17,
+                18,
+                19
+              ],
+              "value": [
+                0.6000000238418579,
+                0.0,
+                1.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 10,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                20,
+                21,
+                22,
+                23
+              ],
+              "value": [
+                1.0,
+                -1.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 11,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                24,
+                25,
+                26,
+                27
+              ],
+              "value": [
+                0.0,
+                -0.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 12,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                28,
+                29
+              ],
+              "value": [
+                1.0,
+                1.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "allRows": [
+            {
+              "slot": 0,
+              "ownership": "ENGINE_OR_RENDERER_INPUT_UNBOUND_AT_G03_5",
+              "value": null
+            },
+            {
+              "slot": 1,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 2,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                2.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 3,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                -0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 4,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 5,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 6,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.10000000149011612,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 7,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.800000011920929,
+                3.0,
+                2.0,
+                0.30000001192092896
+              ]
+            },
+            {
+              "slot": 8,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.5,
+                150.0,
+                150.0
+              ]
+            },
+            {
+              "slot": 9,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.6000000238418579,
+                0.0,
+                1.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 10,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                -1.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 11,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                -0.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 12,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "materialRowsSemanticSha256": "aecb3e3ba843607fda869c8dd047641c2b903d849ebf7b4963fc4626b9785788"
+        }
+      },
+      "sourceValueUniformCb0ClosureAdmission": true,
+      "sourceValueReplayAdmission": false,
+      "actualVfPassAdmission": false,
+      "runtimeAdmission": false,
+      "visualAdmission": false
+    },
+    {
+      "targetId": "dimensionmaster-w-spritewave-01-helix",
+      "familyId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.ad.caabbddf8b55",
+      "rendererType": "MeshParticle",
+      "status": "EXACT_SOURCE_VALUE_UNIFORM_CB0_CLOSURE",
+      "micHierarchyRootToLeaf": [
+        {
+          "objectPath": "fx_mi.fx_k_me_spritewave_01_45_ad",
+          "className": "materialinstanceconstant",
+          "sourcePackageFileName": "ZHJ4TC4PCK4PY4J22HIXEYUXOU.upk",
+          "exportIndexZeroBased": 2934,
+          "serialSha256": "87a331316810a55f0a5aa76f04f71c21201e1c21034ad4d24741f76ebc157a1a",
+          "propertyStreamStart": 4,
+          "propertyStreamEnd": 4070,
+          "scalarOverrides": [
+            {
+              "parameterName": "disslovetex_01_panspeed_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "disslovetex_01_panspeed_x",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "disslovetex_01_panspeed_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "disslovetex_01_panspeed_y",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "disslovetex_01_tile_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "disslovetex_01_tile_x",
+                "number": 0
+              },
+              "value": 4.0
+            },
+            {
+              "parameterName": "disslovetex_01_tile_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "disslovetex_01_tile_y",
+                "number": 0
+              },
+              "value": 8.0
+            },
+            {
+              "parameterName": "dissolve_hardness",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "dissolve_hardness",
+                "number": 0
+              },
+              "value": 50.0
+            },
+            {
+              "parameterName": "dissolvetex_move_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "dissolvetex_move_x",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "dissolvetex_move_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "dissolvetex_move_y",
+                "number": 0
+              },
+              "value": -0.10000000149011612
+            },
+            {
+              "parameterName": "dissolvetex_rotator",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "dissolvetex_rotator",
+                "number": 0
+              },
+              "value": -6.28000020980835
+            },
+            {
+              "parameterName": "edge_thin",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "edge_thin",
+                "number": 0
+              },
+              "value": 1.149999976158142
+            },
+            {
+              "parameterName": "emissive_base",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "emissive_base",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "emissive_core_power",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "emissive_core_power",
+                "number": 0
+              },
+              "value": 3.0
+            },
+            {
+              "parameterName": "emissive_core_strength",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "emissive_core_strength",
+                "number": 0
+              },
+              "value": 7.0
+            },
+            {
+              "parameterName": "fresnel_power",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "fresnel_power",
+                "number": 0
+              },
+              "value": 1.2999999523162842
+            },
+            {
+              "parameterName": "maintex_alpha_strength",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "maintex_alpha_strength",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "maintex_dynamicpan_x_velue",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "maintex_dynamicpan_x_velue",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "maintex_dynamicpan_y_velue",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "maintex_dynamicpan_y_velue",
+                "number": 0
+              },
+              "value": 0.20000000298023224
+            },
+            {
+              "parameterName": "maintex_move_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "maintex_move_x",
+                "number": 0
+              },
+              "value": -0.6000000238418579
+            },
+            {
+              "parameterName": "maintex_move_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "maintex_move_y",
+                "number": 0
+              },
+              "value": -0.4000000059604645
+            },
+            {
+              "parameterName": "maintex_panspeed_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "maintex_panspeed_y",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "maintex_rotator",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "maintex_rotator",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "maintex_tile_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "maintex_tile_x",
+                "number": 0
+              },
+              "value": 2.0
+            },
+            {
+              "parameterName": "maintex_tile_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "maintex_tile_y",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "uv_noise_velue",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "uv_noise_velue",
+                "number": 0
+              },
+              "value": -0.30000001192092896
+            },
+            {
+              "parameterName": "uv_noisetex_pan_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "uv_noisetex_pan_x",
+                "number": 0
+              },
+              "value": 0.20000000298023224
+            },
+            {
+              "parameterName": "uv_noisetex_pan_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "uv_noisetex_pan_y",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "uv_noisetex_tile_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "uv_noisetex_tile_x",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "uv_noisetex_tile_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "uv_noisetex_tile_y",
+                "number": 0
+              },
+              "value": 1.0
+            },
+            {
+              "parameterName": "dynamic_uvnoise_x",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "dynamic_uvnoise_x",
+                "number": 0
+              },
+              "value": 0.0
+            },
+            {
+              "parameterName": "dynamic_uvnoise_y",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "dynamic_uvnoise_y",
+                "number": 0
+              },
+              "value": 1.0
+            }
+          ],
+          "vectorOverrides": [
+            {
+              "parameterName": "edge_color",
+              "parameterNameNumber": 0,
+              "parameterKey": {
+                "nameCasefold": "edge_color",
+                "number": 0
+              },
+              "value": [
+                55.0,
+                55.0,
+                55.0,
+                1.0
+              ]
+            }
+          ],
+          "parentReference": -131,
+          "parentObjectPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_ad",
+          "parentClassName": "material"
+        }
+      ],
+      "terminalParentMaterial": {
+        "objectPath": "fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_ad",
+        "className": "material",
+        "sourcePackageFileName": null,
+        "referenceKind": "IMPORT"
+      },
+      "effectiveScalarOverrides": [
+        {
+          "parameterName": "disslovetex_01_panspeed_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "disslovetex_01_panspeed_x",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "disslovetex_01_panspeed_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "disslovetex_01_panspeed_y",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "disslovetex_01_tile_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "disslovetex_01_tile_x",
+            "number": 0
+          },
+          "value": 4.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "disslovetex_01_tile_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "disslovetex_01_tile_y",
+            "number": 0
+          },
+          "value": 8.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "dissolve_hardness",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "dissolve_hardness",
+            "number": 0
+          },
+          "value": 50.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "dissolvetex_move_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "dissolvetex_move_x",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "dissolvetex_move_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "dissolvetex_move_y",
+            "number": 0
+          },
+          "value": -0.10000000149011612,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "dissolvetex_rotator",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "dissolvetex_rotator",
+            "number": 0
+          },
+          "value": -6.28000020980835,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "dynamic_uvnoise_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "dynamic_uvnoise_x",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "dynamic_uvnoise_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "dynamic_uvnoise_y",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "edge_thin",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "edge_thin",
+            "number": 0
+          },
+          "value": 1.149999976158142,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "emissive_base",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "emissive_base",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "emissive_core_power",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "emissive_core_power",
+            "number": 0
+          },
+          "value": 3.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "emissive_core_strength",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "emissive_core_strength",
+            "number": 0
+          },
+          "value": 7.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "fresnel_power",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "fresnel_power",
+            "number": 0
+          },
+          "value": 1.2999999523162842,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "maintex_alpha_strength",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "maintex_alpha_strength",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "maintex_dynamicpan_x_velue",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "maintex_dynamicpan_x_velue",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "maintex_dynamicpan_y_velue",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "maintex_dynamicpan_y_velue",
+            "number": 0
+          },
+          "value": 0.20000000298023224,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "maintex_move_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "maintex_move_x",
+            "number": 0
+          },
+          "value": -0.6000000238418579,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "maintex_move_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "maintex_move_y",
+            "number": 0
+          },
+          "value": -0.4000000059604645,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "maintex_panspeed_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "maintex_panspeed_y",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "maintex_rotator",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "maintex_rotator",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "maintex_tile_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "maintex_tile_x",
+            "number": 0
+          },
+          "value": 2.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "maintex_tile_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "maintex_tile_y",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "uv_noise_velue",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "uv_noise_velue",
+            "number": 0
+          },
+          "value": -0.30000001192092896,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "uv_noisetex_pan_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "uv_noisetex_pan_x",
+            "number": 0
+          },
+          "value": 0.20000000298023224,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "uv_noisetex_pan_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "uv_noisetex_pan_y",
+            "number": 0
+          },
+          "value": 0.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "uv_noisetex_tile_x",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "uv_noisetex_tile_x",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        },
+        {
+          "parameterName": "uv_noisetex_tile_y",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "uv_noisetex_tile_y",
+            "number": 0
+          },
+          "value": 1.0,
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        }
+      ],
+      "effectiveVectorOverrides": [
+        {
+          "parameterName": "edge_color",
+          "parameterNameNumber": 0,
+          "parameterKey": {
+            "nameCasefold": "edge_color",
+            "number": 0
+          },
+          "value": [
+            55.0,
+            55.0,
+            55.0,
+            1.0
+          ],
+          "sourceHierarchyIndex": 0,
+          "sourceObjectPath": "fx_mi.fx_k_me_spritewave_01_45_ad"
+        }
+      ],
+      "uniformExpressionCounts": {
+        "pixelVectorExpressions": 10,
+        "pixelScalarExpressions": 46,
+        "pixelTexture2DExpressions": 3,
+        "textureCubeExpressions": 0,
+        "vertexVectorExpressions": 0,
+        "vertexScalarExpressions": 0,
+        "vertexTexture2DExpressions": 0,
+        "hullVectorExpressions": 0,
+        "hullScalarExpressions": 0,
+        "hullTexture2DExpressions": 0,
+        "domainVectorExpressions": 0,
+        "domainScalarExpressions": 0,
+        "domainTexture2DExpressions": 0
+      },
+      "sourceValueUniformEvaluation": {
+        "evaluationContext": {
+          "gameTimeSeconds": 0.0,
+          "realTimeSeconds": 0.0,
+          "floatSemantics": "IEEE754_FLOAT32_ROUND_AFTER_EACH_UNIFORM_EXPRESSION_OPERATION"
+        },
+        "pixelVectorExpressionValues": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            1.0,
+            -0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            -0.6000000238418579,
+            -0.4000000059604645,
+            -0.4000000059604645,
+            -0.4000000059604645
+          ],
+          [
+            1.0,
+            -0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0007962742820382118,
+            0.9999997019767761,
+            -0.0,
+            -0.0
+          ],
+          [
+            -0.9999997019767761,
+            0.0007962742820382118,
+            1.0,
+            1.0
+          ],
+          [
+            55.0,
+            55.0,
+            55.0,
+            1.0
+          ]
+        ],
+        "pixelScalarExpressionValues": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          -0.0,
+          1.0,
+          0.0,
+          0.0,
+          2.0,
+          1.0,
+          0.0,
+          0.20000000298023224,
+          0.0,
+          0.0,
+          0.0,
+          -0.0,
+          1.0,
+          0.0,
+          0.20000000298023224,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          1.0,
+          -0.30000001192092896,
+          -0.4000000059604645,
+          -0.6000000238418579,
+          3.0,
+          7.0,
+          0.0,
+          0.0,
+          4.0,
+          8.0,
+          -6.28000020980835,
+          -1.5700000524520874,
+          -0.9999997019767761,
+          0.9999997019767761,
+          0.0007962742820382118,
+          0.0,
+          0.0,
+          -0.10000000149011612,
+          1.0,
+          50.0,
+          1.149999976158142,
+          1.2999999523162842,
+          1.0
+        ],
+        "pixelVectorValuesSemanticSha256": "98528833012db4a6d46def4b8a720c46d46fa7e2800b127c7446299684f371f9",
+        "pixelScalarValuesSemanticSha256": "7b4dda79cf5b08385976827fb05c07130fed38970f905a21a794955fa1ae76d8",
+        "evaluationStats": {
+          "nodeTypeCounts": {
+            "fmaterialuniformexpressionvectorparameter": 3,
+            "fmaterialuniformexpressionappendvector": 7,
+            "fmaterialuniformexpressionsine": 21,
+            "fmaterialuniformexpressionfoldedmath": 48,
+            "fmaterialuniformexpressionconstant": 48,
+            "fmaterialuniformexpressionscalarparameter": 59,
+            "fmaterialuniformexpressiontime": 1
+          },
+          "foldedMathOperationOrdinalCounts": {
+            "2": 48
+          },
+          "scalarOverrideHitCount": 57,
+          "scalarDefaultHitCount": 2,
+          "vectorOverrideHitCount": 1,
+          "vectorDefaultHitCount": 2
+        },
+        "nativeCb0": {
+          "declaredFloat4Count": 22,
+          "materialBoundFloat4Count": 20,
+          "engineOrRendererUnboundFloat4Count": 2,
+          "materialRows": [
+            {
+              "slot": 2,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 0,
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 3,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 1,
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 4,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 2,
+              "value": [
+                1.0,
+                -0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 5,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 3,
+              "value": [
+                0.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 6,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 4,
+              "value": [
+                -0.6000000238418579,
+                -0.4000000059604645,
+                -0.4000000059604645,
+                -0.4000000059604645
+              ]
+            },
+            {
+              "slot": 7,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 5,
+              "value": [
+                1.0,
+                -0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 8,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 6,
+              "value": [
+                0.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 9,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 7,
+              "value": [
+                0.0007962742820382118,
+                0.9999997019767761,
+                -0.0,
+                -0.0
+              ]
+            },
+            {
+              "slot": 10,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 8,
+              "value": [
+                -0.9999997019767761,
+                0.0007962742820382118,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 11,
+              "source": "PIXEL_VECTOR_EXPRESSION",
+              "expressionIndex": 9,
+              "value": [
+                55.0,
+                55.0,
+                55.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 12,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                4,
+                5,
+                6,
+                7
+              ],
+              "value": [
+                -0.0,
+                1.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 13,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                8,
+                9,
+                10,
+                11
+              ],
+              "value": [
+                2.0,
+                1.0,
+                0.0,
+                0.20000000298023224
+              ]
+            },
+            {
+              "slot": 14,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                16,
+                17,
+                18,
+                19
+              ],
+              "value": [
+                1.0,
+                0.0,
+                0.20000000298023224,
+                1.0
+              ]
+            },
+            {
+              "slot": 15,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                20,
+                21,
+                22,
+                23
+              ],
+              "value": [
+                1.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 16,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                24,
+                25,
+                26,
+                27
+              ],
+              "value": [
+                -0.30000001192092896,
+                -0.4000000059604645,
+                -0.6000000238418579,
+                3.0
+              ]
+            },
+            {
+              "slot": 17,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                28,
+                29,
+                30,
+                31
+              ],
+              "value": [
+                7.0,
+                0.0,
+                0.0,
+                4.0
+              ]
+            },
+            {
+              "slot": 18,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                32,
+                33,
+                34,
+                35
+              ],
+              "value": [
+                8.0,
+                -6.28000020980835,
+                -1.5700000524520874,
+                -0.9999997019767761
+              ]
+            },
+            {
+              "slot": 19,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                36,
+                37,
+                38,
+                39
+              ],
+              "value": [
+                0.9999997019767761,
+                0.0007962742820382118,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 20,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                40,
+                41,
+                42,
+                43
+              ],
+              "value": [
+                -0.10000000149011612,
+                1.0,
+                50.0,
+                1.149999976158142
+              ]
+            },
+            {
+              "slot": 21,
+              "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+              "expressionIndices": [
+                44,
+                45
+              ],
+              "value": [
+                1.2999999523162842,
+                1.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "allRows": [
+            {
+              "slot": 0,
+              "ownership": "ENGINE_OR_RENDERER_INPUT_UNBOUND_AT_G03_5",
+              "value": null
+            },
+            {
+              "slot": 1,
+              "ownership": "ENGINE_OR_RENDERER_INPUT_UNBOUND_AT_G03_5",
+              "value": null
+            },
+            {
+              "slot": 2,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 3,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 4,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                -0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 5,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 6,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                -0.6000000238418579,
+                -0.4000000059604645,
+                -0.4000000059604645,
+                -0.4000000059604645
+              ]
+            },
+            {
+              "slot": 7,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                -0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 8,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0,
+                1.0,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 9,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.0007962742820382118,
+                0.9999997019767761,
+                -0.0,
+                -0.0
+              ]
+            },
+            {
+              "slot": 10,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                -0.9999997019767761,
+                0.0007962742820382118,
+                1.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 11,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                55.0,
+                55.0,
+                55.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 12,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                -0.0,
+                1.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 13,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                2.0,
+                1.0,
+                0.0,
+                0.20000000298023224
+              ]
+            },
+            {
+              "slot": 14,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                0.0,
+                0.20000000298023224,
+                1.0
+              ]
+            },
+            {
+              "slot": 15,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.0,
+                0.0,
+                0.0,
+                1.0
+              ]
+            },
+            {
+              "slot": 16,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                -0.30000001192092896,
+                -0.4000000059604645,
+                -0.6000000238418579,
+                3.0
+              ]
+            },
+            {
+              "slot": 17,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                7.0,
+                0.0,
+                0.0,
+                4.0
+              ]
+            },
+            {
+              "slot": 18,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                8.0,
+                -6.28000020980835,
+                -1.5700000524520874,
+                -0.9999997019767761
+              ]
+            },
+            {
+              "slot": 19,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                0.9999997019767761,
+                0.0007962742820382118,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "slot": 20,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                -0.10000000149011612,
+                1.0,
+                50.0,
+                1.149999976158142
+              ]
+            },
+            {
+              "slot": 21,
+              "ownership": "MATERIAL_UNIFORM_EXPRESSION",
+              "value": [
+                1.2999999523162842,
+                1.0,
+                0.0,
+                0.0
+              ]
+            }
+          ],
+          "materialRowsSemanticSha256": "f4326715ff5edb5ac09a25e596eeb38b8e6fc74fc941ea8f56824b88cdd3774e"
+        }
+      },
+      "sourceValueUniformCb0ClosureAdmission": true,
+      "sourceValueReplayAdmission": false,
+      "actualVfPassAdmission": false,
+      "runtimeAdmission": false,
+      "visualAdmission": false
+    }
+  ],
+  "summary": {
+    "exactInputTargetCount": 5,
+    "sourceValueUniformCb0ClosureCount": 5,
+    "sourceValueReplayAdmissionCount": 0,
+    "actualVfPassAdmissionCount": 0,
+    "runtimeAdmissionCount": 0,
+    "visualAdmissionCount": 0,
+    "result": "PASS_G03_5_SOURCE_VALUE_UNIFORM_CB0_CLOSED_TEXTURE_SAMPLER_REPLAY_OPEN"
+  },
+  "decision": {
+    "foldedMathOrdinal0": "SOURCE_PROVEN_ADD",
+    "foldedMathOrdinal2": "SOURCE_PROVEN_MUL_AND_ARTIST_COOKED_CORROBORATED",
+    "sourceValueUniformCb0ClosureAdmission": true,
+    "sourceValueReplayAdmission": false,
+    "remainingBlockers": [
+      "NATIVE_SCALAR_GROUP_LANE_ORDER_AND_PADDING_SOURCE_ABI_NOT_PROVEN",
+      "PARENT_DEFAULT_AND_EFFECTIVE_TEXTURE_CLOSURE_INCOMPLETE",
+      "SOURCE_SAMPLER_FILTER_ADDRESS_AND_COLORSPACE_EVIDENCE_INCOMPLETE",
+      "ENGINE_OR_RENDERER_CB0_ROWS_AND_SCENE_DEPTH_INPUTS_NOT_SOURCE_CLOSED",
+      "ACTUAL_VF_PASS_ADMISSION_OPEN"
+    ],
+    "sliceExcluded": true,
+    "sliceSourceScaleSizePoint25Untouched": true,
+    "familyLiteFallbackPreserved": true
+  },
+  "receiptSha256": "3d8b6738fce8cf95a3ff974ef934a50a6a86c4b1c90c1bab42696c13ec1f8913"
+}

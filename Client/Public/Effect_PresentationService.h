@@ -68,6 +68,14 @@ struct EFFECT_SCENE_BUDGET_PROBE final
 	uint64_t iRejectedSpawnCount = 0u;
 };
 
+struct EFFECT_BOSS_ACTION_STOP_RESULT final
+{
+	uint64_t iPendingStopped = 0u;
+	uint64_t iActiveStopped = 0u;
+
+	bool operator==(const EFFECT_BOSS_ACTION_STOP_RESULT&) const = default;
+};
+
 /* Opaque process-local identities for the one immutable Artist F Core33 cache.
    The Tool and authoritative gameplay paths publish successful consumption
    receipts so an executable harness can prove that neither path rebuilt or
@@ -144,6 +152,13 @@ public:
         std::string& strOutStatus);
 	static bool_t Queue_ProductCues_Priority(
 		const std::vector<ANIMATION_EFFECT_CUE>& Cues,
+		std::vector<std::string>& OutEffectAssetIds,
+		std::string& strOutStatus);
+	/* Boss and other action-qualified presentation contracts are not clip cue
+	   documents.  This typed target-only entry point reuses the same priority
+	   preparation queue without fabricating animation clip ownership. */
+	static bool_t Queue_ProductTargets_Priority(
+		const std::vector<std::string>& EffectAssetIds,
 		std::vector<std::string>& OutEffectAssetIds,
 		std::string& strOutStatus);
 	static EFFECT_PRODUCT_PREWARM_TARGET_PROBE
@@ -319,6 +334,12 @@ public:
     static void Update(f32_t fTimeDelta);
     static void Synchronize_FollowAnchors();
     static void Stop_Owner(const std::shared_ptr<CCharacter>& pOwner);
+	/* A replicated boss stage owns every queued and active cue created from its
+	   non-zero actionStartTick.  Stage replacement/abort uses this exact scope;
+	   Stop_BossOwner remains reserved for death, despawn and level teardown. */
+	static EFFECT_BOSS_ACTION_STOP_RESULT Stop_BossAction(
+		const std::shared_ptr<CValtan>& pOwner,
+		uint32_t iActionStartTick);
 	static void Stop_BossOwner(const std::shared_ptr<CValtan>& pOwner);
     static void Clear_Level(uint32_t iLevelIndex);
     static void Clear_All();

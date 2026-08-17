@@ -29,6 +29,7 @@
     <ClInclude Include="..\Public\AnimationPreviewAssets.h" />
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
+    <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
     <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
     <ClInclude Include="..\Public\Animation_Tool.h" />
@@ -60,6 +61,7 @@
     <ClInclude Include="..\Public\AnimationEffectCueDocument.h" />
     <ClInclude Include="..\Public\Effect_PresentationService.h" />
     <ClInclude Include="..\Public\Effect_ProductPrewarmQueue.h" />
+	<ClInclude Include="..\Private\CharacterSelectArenaSpawnGate.h" />
     <ClInclude Include="..\Public\Level_CharacterSelect.h" />
     <ClInclude Include="..\Public\PlayableCharacterAssetService.h" />
     <ClInclude Include="..\Public\DeployPropRuntime.h" />
@@ -163,6 +165,7 @@
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
+    <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
     <ClCompile Include="..\Private\Character.cpp" />
@@ -302,6 +305,7 @@
     <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.skilltiming" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json" />
+    <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json" />
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json" />
@@ -427,10 +431,13 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshPreview.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectRectPreview.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactSpriteBridge.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactLocalMeshBridge.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl" />
     <None Include="..\Bin\ShaderFiles\Shader_Artist31470Diagnostic.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectUe3MaterialFamilies.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectRuntimeMaterialPacket.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectLocalDecalAdapter.hlsli" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
@@ -1007,6 +1014,7 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.source-material-contract.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.source-material-contract.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.targeted-current-combat-transaction.receipt.json" />
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Ue3MaterialFamilyProjection.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-authored-import-batch.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-restoration-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-targeted-current-combat-receipt.json" />
@@ -1624,7 +1632,14 @@
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip8\Warlord_skill_17820_authored-baseline_clip8_00.visual.wfx.json" />
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip8\Warlord_skill_17820_authored-baseline_clip8_01.visual.wfx.json" />
     <None Include="..\..\Data\Effects\Contracts\effect-import-bases.v1.json" />
+    <None Include="..\..\Data\Effects\Contracts\ue3-exact-cooked-shader-variants.v1.json" />
+    <None Include="..\..\Data\Effects\Contracts\ue3-material-family-registry.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json" />
+    <None Include="..\..\Data\Effects\CookedShaders\340169d8b9146fd280bbc1b509aa312e6afa71573dfe12cf4e89cb0136431ae3.dxbc" />
+    <None Include="..\..\Data\Effects\CookedShaders\7917664ff360df0f6305bf8d6c41a8c506872a62e09d26beb2b8fd8d7164d76c.dxbc" />
+    <None Include="..\..\Data\Effects\CookedShaders\9c4706c3b6a36cb5a5eac40d8e871f2b67351265cf211f624614c842f0334b8e.dxbc" />
+    <None Include="..\..\Data\Effects\CookedShaders\a04dc3d21a95d5f2299d6bc8d07f65bd7cde640be52ed0df362b4a71b0c680e6.dxbc" />
+    <None Include="..\..\Data\Effects\CookedShaders\e2ba1c1ef87cdd52cc74a8e661f8613d0b17f2cc7b9b1d0d7ab6ed80ec6e775b.dxbc" />
     <None Include="..\..\Data\Effects\EffectCatalog.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\ActionSource\Artist.skeletal-mesh-sockets.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Artist.combat-source-stage-manifest.json" />

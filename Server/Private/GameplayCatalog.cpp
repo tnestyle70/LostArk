@@ -169,6 +169,8 @@ namespace
 			output = BOSS_PATTERN_HIT_SHAPE::BOX;
 		else if ("CROSS" == value)
 			output = BOSS_PATTERN_HIT_SHAPE::CROSS;
+		else if ("SIX_DIRECTIONS" == value)
+			output = BOSS_PATTERN_HIT_SHAPE::SIX_DIRECTIONS;
 		else
 			return false;
 		return true;
@@ -1075,6 +1077,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 					break;
 				case BOSS_PATTERN_HIT_SHAPE::BOX:
 				case BOSS_PATTERN_HIT_SHAPE::CROSS:
+				case BOSS_PATTERN_HIT_SHAPE::SIX_DIRECTIONS:
 					validShape = stage.fHitLength > 0.f && stage.fHitHalfWidth > 0.f &&
 						0.f == stage.fHitOuterRadius &&
 						0.f == stage.fHitInnerRadius &&

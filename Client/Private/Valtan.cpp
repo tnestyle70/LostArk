@@ -5,6 +5,7 @@
 #include "AnimationSkillBindingDocument.h"
 #include "Body_Valtan.h"
 #include "Collider.h"
+#include "Effect_PresentationService.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Navigation.h"
@@ -12,7 +13,9 @@
 #include "Part_Equipment.h"
 #include "Transform.h"
 
+#include <algorithm>
 #include <cmath>
+#include <tuple>
 
 namespace
 {
@@ -82,6 +85,7 @@ HRESULT CValtan::Initialize(void* pArg)
 	if (FAILED(Ready_PartObjects()))
 		return E_FAIL;
 	Load_PatternBindings();
+	Load_PatternEffectCues();
 	return S_OK;
 }
 
@@ -117,6 +121,115 @@ void CValtan::Load_PatternBindings()
 		staged.emplace(binding.strActionId, binding.strClipName);
 	}
 	m_PatternClipByActionId = std::move(staged);
+}
+
+void CValtan::Load_PatternEffectCues()
+{
+	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT Document;
+	std::string Status;
+	if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
+			Document, Status))
+	{
+		OutputDebugStringA((
+			"[Client][Valtan] pattern Effect cues isolated: " + Status +
+			"\n").c_str());
+		return;
+	}
+
+	std::unordered_map<std::string,
+		std::vector<VALTAN_PATTERN_EFFECT_CUE>> Staged;
+	for (const VALTAN_PATTERN_EFFECT_CUE& Cue : Document.Cues)
+	{
+		if ("root" != Cue.strAnchorSlotId &&
+			(nullptr == m_pBodyModelCom ||
+			 !m_pBodyModelCom->Has_Bone(Cue.strAnchorSlotId.c_str())))
+		{
+			OutputDebugStringA((
+				"[Client][Valtan] pattern Effect cue anchor rejected: " +
+				Cue.strBindingId + "\n").c_str());
+			return;
+		}
+		Staged[Cue.strActionId].push_back(Cue);
+	}
+	for (auto& [ActionId, Cues] : Staged)
+	{
+		std::sort(Cues.begin(), Cues.end(),
+			[](const VALTAN_PATTERN_EFFECT_CUE& Left,
+				const VALTAN_PATTERN_EFFECT_CUE& Right)
+			{
+				return std::tie(Left.iStartMs, Left.strBindingId) <
+					std::tie(Right.iStartMs, Right.strBindingId);
+			});
+	}
+	m_PatternEffectCuesByActionId = std::move(Staged);
+	m_SpawnedPatternEffectBindingIds.clear();
+}
+
+void CValtan::Spawn_DuePatternEffectCues(const f32_t fActionAgeSeconds)
+{
+	if (!m_isServerAuthoritative ||
+		!std::isfinite(fActionAgeSeconds) || fActionAgeSeconds < 0.f ||
+		m_strServerPatternId.empty() || m_strServerActionId.empty() ||
+		0u == m_iServerActionStartTick || 0u == m_iServerPatternSequence)
+	{
+		return;
+	}
+	const auto Found =
+		m_PatternEffectCuesByActionId.find(m_strServerActionId);
+	if (m_PatternEffectCuesByActionId.end() == Found)
+		return;
+	const std::shared_ptr<CValtan> Owner =
+		std::static_pointer_cast<CValtan>(shared_from_this());
+	const f32_t fActionAgeMs = fActionAgeSeconds * 1000.f;
+	for (const VALTAN_PATTERN_EFFECT_CUE& Cue : Found->second)
+	{
+		if (Cue.strPatternId != m_strServerPatternId ||
+			Cue.iStageIndex != m_iServerPatternStageIndex ||
+			m_SpawnedPatternEffectBindingIds.contains(Cue.strBindingId) ||
+			fActionAgeMs + 0.01f < static_cast<f32_t>(Cue.iStartMs))
+		{
+			continue;
+		}
+		/* An accepted server occurrence gets one presentation attempt.  Retrying
+		   an isolated preparation/clone failure on every snapshot could duplicate
+		   a request whose pending commit already succeeded. */
+		m_SpawnedPatternEffectBindingIds.insert(Cue.strBindingId);
+		const f32_t fInitialSampleSeconds = (std::max)(0.f,
+			fActionAgeSeconds - static_cast<f32_t>(Cue.iStartMs) * 0.001f);
+		const uint32_t iCueDurationMs =
+			EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy ?
+			Cue.iEndMs - Cue.iStartMs : 0u;
+		if (EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy &&
+			fInitialSampleSeconds * 1000.f >=
+				static_cast<f32_t>(iCueDurationMs))
+		{
+			continue;
+		}
+
+		EFFECT_SPAWN_DESC Desc;
+		Desc.strEffectAssetId = Cue.strEffectAssetId;
+		Desc.pBossOwner = Owner;
+		Desc.strAnchorSlotId = Cue.strAnchorSlotId;
+		Desc.LocalTransform = Cue.LocalTransform;
+		Desc.eFollowPolicy = Cue.eFollowPolicy;
+		Desc.eStopPolicy = Cue.eStopPolicy;
+		Desc.iCueDurationMs = iCueDurationMs;
+		Desc.iActionStartTick = m_iServerActionStartTick;
+		Desc.iCueStartMs = Cue.iStartMs;
+		Desc.strOccurrenceId = "valtan:action-start:" +
+			std::to_string(m_iServerActionStartTick) + "/sequence:" +
+			std::to_string(m_iServerPatternSequence) + "/stage:" +
+			std::to_string(m_iServerPatternStageIndex) + "/binding:" +
+			Cue.strBindingId;
+		Desc.fInitialSampleTimeSeconds = fInitialSampleSeconds;
+		std::string Status;
+		if (!CEffectPresentationService::Spawn(Desc, Status))
+		{
+			OutputDebugStringA((
+				"[Client][Valtan] pattern Effect spawn isolated: " + Status +
+				"\n").c_str());
+		}
+	}
 }
 
 void CValtan::Priority_Update(f32_t fTimeDelta)
@@ -447,6 +560,9 @@ bool_t CValtan::Apply_NetworkState(
 	a row), so the stage's actionId is what marks a clip change there. */
 	const bool_t bAnimationEdgeChanged =
 		m_iState != nextState || patternEdgeChanged;
+	const bool_t bEnteredDead =
+		VALTAN_STATE::DEAD == nextState && m_iState != nextState;
+	const uint32_t iPreviousActionStartTick = m_iServerActionStartTick;
 	if (nullptr != m_pBodyModelCom &&
 		(bAnimationEdgeChanged ||
 		 (isPatternState && fActionAgeSeconds >
@@ -524,6 +640,18 @@ bool_t CValtan::Apply_NetworkState(
 		}
 	}
 
+	/* Every earlier validation/animation seek has succeeded, so this snapshot is
+	   accepted.  Retire the previous authoritative action before queuing any cue
+	   for the replacement edge.  This also removes A from the deferred queue when
+	   an A -> B backlog is consumed in one frame. */
+	if (0u != iPreviousActionStartTick &&
+		(patternEdgeChanged || !isPatternState))
+	{
+		CEffectPresentationService::Stop_BossAction(
+			std::static_pointer_cast<CValtan>(shared_from_this()),
+			iPreviousActionStartTick);
+	}
+
 	m_pTransformCom->Set_State(
 		STATE::POSITION,
 		XMVectorSet(position.x, position.y, position.z, 1.f));
@@ -550,6 +678,17 @@ bool_t CValtan::Apply_NetworkState(
 		m_iServerActionStartTick = 0u;
 		m_iServerPatternStageIndex = 0u;
 		m_fServerActionAgeSeconds = 0.f;
+	}
+	if (isPatternState)
+	{
+		if (patternEdgeChanged)
+			m_SpawnedPatternEffectBindingIds.clear();
+		Spawn_DuePatternEffectCues(fActionAgeSeconds);
+	}
+	else if (bEnteredDead)
+	{
+		CEffectPresentationService::Stop_BossOwner(
+			std::static_pointer_cast<CValtan>(shared_from_this()));
 	}
 	return true;
 }

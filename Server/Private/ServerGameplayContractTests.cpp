@@ -442,6 +442,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			findStage("VALTAN_SWING", "SWEEP");
 		const BOSS_PATTERN_STAGE_DEFINITION* downSmash =
 			findStage("VALTAN_DOWN_SMASH", "IMPACT");
+		const BOSS_PATTERN_STAGE_DEFINITION* floorWipe =
+			findStage("VALTAN_FLOOR_WIPE_130", "FIRST_SMASH");
 		const BOSS_PATTERN_STAGE_DEFINITION* roar =
 			findStage("VALTAN_IMPRISON_ROAR", "ROAR");
 		const auto findPattern = [patterns](
@@ -481,6 +483,12 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			downSmash->fHitHalfWidth >= 1.7f &&
 			nullptr != roar && !roar->bWallContact,
 			"Compile the down-smash and other allowlisted physical axe stages as wall contacts");
+		tests.Require(
+			nullptr != floorWipe && !floorWipe->bWallContact &&
+			BOSS_PATTERN_HIT_SHAPE::SIX_DIRECTIONS == floorWipe->eHitShape &&
+			floorWipe->fHitLength >= 13.9f &&
+			floorWipe->fHitHalfWidth >= 2.1f,
+			"Compile the 130 floor wipe as six Server-authoritative directions");
 		tests.Require(
 			everyPatternHasSourceTiming && nullptr != swingPattern &&
 			420601u == swingPattern->iSourcePrimaryActionId &&
@@ -1189,6 +1197,37 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			!Circle_IntersectsCross(
 				rotatedShapeMiss, 0.f, 0.f, 1.f, 1.f, 4.f, 0.5f),
 			"Evaluate a cross in its rotated basis");
+
+		constexpr float ROOT_THREE_OVER_TWO = 0.8660254f;
+		const std::array<BODY_CIRCLE_XZ, 6u> sixDirectionArms = {{
+			{ 0.f, 5.f, 0.2f },
+			{ 0.f, -5.f, 0.2f },
+			{ 5.f * ROOT_THREE_OVER_TWO, 2.5f, 0.2f },
+			{ -5.f * ROOT_THREE_OVER_TWO, -2.5f, 0.2f },
+			{ -5.f * ROOT_THREE_OVER_TWO, 2.5f, 0.2f },
+			{ 5.f * ROOT_THREE_OVER_TWO, -2.5f, 0.2f }
+		}};
+		const std::array<BODY_CIRCLE_XZ, 6u> sixDirectionGaps = {{
+			{ 2.5f, 5.f * ROOT_THREE_OVER_TWO, 0.2f },
+			{ -2.5f, -5.f * ROOT_THREE_OVER_TWO, 0.2f },
+			{ 5.f, 0.f, 0.2f },
+			{ -5.f, 0.f, 0.2f },
+			{ 2.5f, -5.f * ROOT_THREE_OVER_TWO, 0.2f },
+			{ -2.5f, 5.f * ROOT_THREE_OVER_TWO, 0.2f }
+		}};
+		const auto hitsSixDirections = [](const BODY_CIRCLE_XZ& body)
+		{
+			return Circle_IntersectsSixDirections(
+				body, 0.f, 0.f, 0.f, 1.f, 6.f, 0.5f);
+		};
+		tests.Require(
+			std::all_of(
+				sixDirectionArms.begin(), sixDirectionArms.end(),
+				hitsSixDirections) &&
+			std::none_of(
+				sixDirectionGaps.begin(), sixDirectionGaps.end(),
+				hitsSixDirections),
+			"Hit all six centered-strip arms and preserve all six angular gaps");
 	}
 	{
 		CServerNavigation navigation;
@@ -1727,6 +1766,35 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		tests.Require(
 			axeInitialized && coneHit && rearMiss && highMiss,
 			"Intersect a rotated wall with the Server axe cone while rejecting receiver, rear and high-Y false contacts");
+	}
+	{
+		WORLD_BOOTSTRAP_PLACEMENT armWall{};
+		armWall.strPlacementId = "collision.contract.six-directions.arm";
+		armWall.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX;
+		armWall.isEnabled = true;
+		armWall.fPositionX = 4.330127f;
+		armWall.fPositionY = 2.f;
+		armWall.fPositionZ = 2.5f;
+		armWall.fHalfExtentX = 0.2f;
+		armWall.fHalfExtentY = 0.5f;
+		armWall.fHalfExtentZ = 0.2f;
+		WORLD_BOOTSTRAP_PLACEMENT gapWall = armWall;
+		gapWall.strPlacementId = "collision.contract.six-directions.gap";
+		gapWall.fPositionX = 2.5f;
+		gapWall.fPositionZ = 4.330127f;
+		CServerCollisionSystem sixDirectionCollision;
+		std::vector<std::string> sixDirectionContacts;
+		std::string sixDirectionStatus;
+		const bool sixDirectionInitialized = sixDirectionCollision.Initialize(
+			{ armWall, gapWall }, sixDirectionStatus);
+		sixDirectionCollision.Collect_BossPatternHitContacts(
+			BOSS_PATTERN_HIT_SHAPE::SIX_DIRECTIONS,
+			0.f, 0.f, 0.f, 0.f, 1.5f,
+			0.f, 0.f, 0.f, 6.f, 0.5f, sixDirectionContacts);
+		tests.Require(
+			sixDirectionInitialized && 1u == sixDirectionContacts.size() &&
+			sixDirectionContacts.front() == armWall.strPlacementId,
+			"Project six-direction Server contacts onto an arm without filling its adjacent gap");
 	}
 	SERVER_BOSS_RECEIVER_HIT receiverHit{};
 	tests.Require(
@@ -2349,7 +2417,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		brain.Update(valtan, players, catalog, navigation, 0.1f, tick,
 			valtanDamageEvents);
 	tests.Require(781u == players.begin()->second.iCurrentHp,
-		"Apply the queued 115-bar Valtan circle hit once");
+		"Apply the queued 115-bar Valtan six-direction hit once");
 	tests.Require(
 		1u == valtanDamageEvents.size() &&
 		219u == valtanDamageEvents[0].iAmount &&

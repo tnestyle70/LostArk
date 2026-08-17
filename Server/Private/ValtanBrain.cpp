@@ -490,6 +490,15 @@ namespace
 				forwardZ,
 				boss.fPatternHitLength,
 				boss.fPatternHitHalfWidth);
+		case BOSS_PATTERN_HIT_SHAPE::SIX_DIRECTIONS:
+			return LostArk::Shared::CombatCollision::Circle_IntersectsSixDirections(
+				playerBody,
+				boss.fPositionX,
+				boss.fPositionZ,
+				forwardX,
+				forwardZ,
+				boss.fPatternHitLength,
+				boss.fPatternHitHalfWidth);
 		default:
 			return false;
 		}

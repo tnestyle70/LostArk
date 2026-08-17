@@ -65,6 +65,13 @@ enum class EFFECT_RESOURCE_SLOT : uint8_t
 	MASK_TEXTURE,
 	EMISSIVE_TEXTURE,
 	DISSOLVE_TEXTURE,
+	/* Second layer of the three slots the original Cascade materials actually
+	   duplicate: diff_tex1/diff_tex2, opacity_tex/alpha_tex and
+	   uv_noise_tex/uv_noise_01_tex. Appended after DISSOLVE_TEXTURE so the
+	   existing serialized slot token order stays stable. */
+	BASE2_TEXTURE,
+	MASK2_TEXTURE,
+	NOISE2_TEXTURE,
 	END
 };
 
@@ -456,6 +463,11 @@ struct EFFECT_SPRITE_DETAIL_DESC final
 {
 	bool_t bBillboard = true;
 	f32_t fBillboardRollDegrees = 0.f;
+	/* A billboard's world orientation is rebuilt from the camera every frame,
+	   so Detail.Transform rotation cannot reach it and the only rotation a
+	   billboarded quad has is this roll about the view axis. The constant above
+	   sets where it starts; this rate is what actually makes it spin. */
+	f32_t fBillboardRollDegreesPerSecond = 0.f;
 };
 
 struct EFFECT_DECAL_DETAIL_DESC final
@@ -553,10 +565,23 @@ struct EFFECT_PARTICLE_SOURCE_SCALE_DESC final
 	f32_t fSize = 1.f;
 	/* Scales the source particle lifetime. */
 	f32_t fLifeTime = 1.f;
+	/* Scales the source spawn velocity, so the burst reaches further or
+	   nearer without touching the modules that produced its direction. */
+	f32_t fSpeed = 1.f;
+	/* Scales the source rotation rate for both the sprite roll and the mesh
+	   particle spin. */
+	f32_t fRotation = 1.f;
+	/* Scales the source colour alpha. The RGB the modules chose is kept. */
+	f32_t fAlpha = 1.f;
+	/* Scales the emitter's own start delay, which slides this Element inside
+	   the cue without editing the cue. */
+	f32_t fSpawnDelay = 1.f;
 
 	bool_t Is_Default() const
 	{
-		return 1.f == fCount && 1.f == fSize && 1.f == fLifeTime;
+		return 1.f == fCount && 1.f == fSize && 1.f == fLifeTime &&
+			1.f == fSpeed && 1.f == fRotation && 1.f == fAlpha &&
+			1.f == fSpawnDelay;
 	}
 };
 
@@ -1011,6 +1036,11 @@ struct EFFECT_ELEMENT_DESC final
 	EFFECT_ELEMENT_KIND eKind = EFFECT_ELEMENT_KIND::END;
 	EFFECT_RENDERER_DESC Renderer;
 	std::vector<EFFECT_RESOURCE_BINDING_DESC> ResourceBindings;
+	/* Resources-relative ids the original emitter referenced but that did not
+	   fit the material template's slots. Kept so nothing the source declared
+	   is lost, and so the Tool can offer them as swap candidates. They are
+	   never bound or drawn on their own. */
+	std::vector<std::string> UnboundSourceResources;
 	EFFECT_MATERIAL_DESC Material;
 	EFFECT_ACTION_CUE_ATTACHMENT_DESC ActionCueAttachment;
 	EFFECT_TRANSFORM_INHERITANCE_DESC TransformInheritance;
