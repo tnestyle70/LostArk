@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -314,7 +315,7 @@ private:
         const std::string& strFilter,
         const std::string& strDomainId,
         const std::string& strCategory,
-        const std::string& strShapeCategory);
+        const std::string& strKindCategory);
     void Render_Detail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TransformDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_ColorDetail(
@@ -667,6 +668,7 @@ private:
     vector<string> m_DataFileDomains;
     vector<ANIMATION_SKILL_CLIP> m_SynchronizedAnimationClips;
     vector<string> m_AnimationClipDisplayLabels;
+    vector<string> m_AnimationClipSearchTokens;
     EFFECT_ELEMENT_KIND m_eSelectedEffectType = EFFECT_ELEMENT_KIND::MESH;
 	EFFECT_AUTHORING_FAMILY m_eSelectedAuthoringFamily =
 		EFFECT_AUTHORING_FAMILY::MESH;
@@ -684,6 +686,10 @@ private:
 	string m_strActiveDocumentBaselineCanonical;
     string m_strSelectedResourceSlotId = "meshModel";
     string m_strSelectedElementId;
+	/* Ctrl/Shift-clicking Element rows marks them for one bulk delete. Empty
+	   means the single m_strSelectedElementId is the delete target, which is
+	   the behaviour every other command still assumes. */
+	std::set<string, std::less<>> m_MarkedElementIds;
     string m_strSelectedElementGroupId;
 	string m_strSelectedModelCueId;
 	string m_strPreviewIsolationElementId;
@@ -716,8 +722,9 @@ private:
     string m_strResourceViewFilter;
     string m_strResourceViewDomainId;
     string m_strResourceViewCategory;
-    string m_strResourceViewShapeCategory;
+    string m_strResourceViewKindCategory;
     string m_strMeshShapeCategory = "All";
+    string m_strTextureKindCategory = "All";
 
     array<char_t, 129> m_NewAssetId{};
     array<char_t, 65> m_NewDisplayName{};
@@ -726,6 +733,7 @@ private:
     array<char_t, 129> m_ResourceCategory{};
     array<char_t, 129> m_AllEffectsSearch{};
     array<char_t, 129> m_DataFilesSearch{};
+    array<char_t, 129> m_AnimationClipFilter{};
     array<char_t, 129> m_PreviewAnchorBuffer{};
 	array<char_t, 257> m_ModelCueAssetIdDraft{};
 	array<char_t, 129> m_ModelCueClipNameDraft{};

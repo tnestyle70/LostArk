@@ -73,7 +73,15 @@ public:
         const std::string& strAnimationAssetId,
         const std::vector<std::string>& AvailableClips,
         ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
-        std::string& strOutStatus);
+        std::string& strOutStatus,
+        bool_t bFilterToAvailableClips = false);
+	static bool_t Load_FromText(
+		const std::string& strAnimationAssetId,
+		const std::string_view Text,
+		const std::vector<std::string>& AvailableClips,
+		ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
+		std::string& strOutStatus,
+		bool_t bFilterToAvailableClips = false);
 };
 
 NS_END

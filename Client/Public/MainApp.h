@@ -51,6 +51,10 @@ public:
 	void Update(f32_t fTimeDelta);
 	HRESULT Render();
 
+#ifdef _DEBUG
+	static void Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle);
+#endif
+
 private:
 	HRESULT Ready_Fonts();
 	HRESULT Ready_Prototype_For_Static();

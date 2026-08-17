@@ -11,6 +11,7 @@ headers, which is the same order Level_CharacterSelect.cpp uses. */
 #include "GameInstance.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
+#include "MainApp.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
 #include "ProjectDataRoot.h"
@@ -1152,7 +1153,7 @@ HRESULT CLevel_ValtanArena::Render()
 	m_PlayerNameplateView.Render(m_NameplatePlayers);
 
 #ifdef _DEBUG
-	SetWindowText(g_hWnd, TEXT("Valtan Arena Map"));
+	CMainApp::Update_DebugWindowTitleWithFps(TEXT("Valtan Arena Map"));
 #endif
 
 	return S_OK;
