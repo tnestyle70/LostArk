@@ -24,7 +24,7 @@ int main(const int argumentCount, char** arguments)
 	}
 	std::uint32_t automaticShutdownMilliseconds = 0;
 	std::uint32_t serverPort = 7777u;
-	std::string bindAddress = "0.0.0.0";
+	std::string bindAddress = "127.0.0.1";
 	bool hasSmokeTimeout = false;
 	bool hasBindAddress = false;
 	bool headless = false;

@@ -168,9 +168,12 @@ if (-not (Test-Path -LiteralPath $endpointPath)) {
 
 $endpoint = Get-Content -LiteralPath $endpointPath -Raw -Encoding UTF8 |
     ConvertFrom-Json
+# The shared LAN Server was retired by the team lead on 2026-08-17, so loopback
+# is now a supported endpoint rather than a misconfiguration. A concrete LAN
+# address still works unchanged for whenever a shared Server comes back.
 if ($endpoint.schema -ne 'lostark.team-lan-endpoint' -or
     [int]$endpoint.version -ne 1 -or
-    [string]$endpoint.serverBindAddress -ne '0.0.0.0' -or
+    [string]$endpoint.serverBindAddress -notin @('0.0.0.0', '127.0.0.1') -or
     [int]$endpoint.port -ne 7777) {
     throw 'Team LAN endpoint document has an unsupported contract.'
 }
@@ -181,10 +184,10 @@ if (-not [Net.IPAddress]::TryParse(
     [ref]$serverAddress) -or
     $serverAddress.AddressFamily -ne
         [Net.Sockets.AddressFamily]::InterNetwork -or
-    $serverAddress.Equals([Net.IPAddress]::Any) -or
-    $serverAddress.Equals([Net.IPAddress]::Loopback)) {
-    throw 'Team LAN serverHost must be one concrete non-loopback IPv4 address.'
+    $serverAddress.Equals([Net.IPAddress]::Any)) {
+    throw 'serverHost must be one concrete IPv4 address, and never 0.0.0.0.'
 }
+$isLoopbackEndpoint = $serverAddress.Equals([Net.IPAddress]::Loopback)
 
 $activeThrough = [DateTimeOffset]::MinValue
 if (-not [DateTimeOffset]::TryParse(
@@ -194,7 +197,10 @@ if (-not [DateTimeOffset]::TryParse(
     [ref]$activeThrough)) {
     throw 'Team LAN activeThroughKst is invalid.'
 }
-if (-not $AllowExpired -and [DateTimeOffset]::Now -gt $activeThrough) {
+# The expiry exists so a borrowed teammate's IP cannot silently outlive the
+# arrangement. A loopback endpoint borrows nothing, so it does not expire.
+if (-not $isLoopbackEndpoint -and -not $AllowExpired -and
+    [DateTimeOffset]::Now -gt $activeThrough) {
     throw (
         "The temporary team LAN endpoint expired at $activeThrough. " +
         'Update TeamLanEndpoint.json and the shared runtime contract before use.')
@@ -232,7 +238,9 @@ Set-ProjectUserProperty `
     -PropertyName 'LocalDebuggerEnvironment' `
     -Value "LOSTARK_SERVER_HOST=$serverHost"
 
-if ('server-host' -eq $effectiveRole) {
+# Loopback never leaves the machine, so it needs no inbound rule - and asking
+# for one would demand an elevated shell for nothing.
+if ('server-host' -eq $effectiveRole -and -not $isLoopbackEndpoint) {
     Sync-HostFirewall -Port $serverPort
 }
 

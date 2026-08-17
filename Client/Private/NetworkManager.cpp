@@ -73,7 +73,9 @@ CNetworkManager& CNetworkManager::Get()
 
 std::string CNetworkManager::Resolve_ServerHost()
 {
-	constexpr char DEFAULT_SERVER_HOST[] = "192.168.200.103";
+	/* The shared LAN Server was retired on 2026-08-17; each developer runs their
+	   own. LOSTARK_SERVER_HOST still wins for anyone pointing at a real host. */
+	constexpr char DEFAULT_SERVER_HOST[] = "127.0.0.1";
 	constexpr char SERVER_HOST_ENVIRONMENT[] = "LOSTARK_SERVER_HOST";
 	char configuredHost[64]{};
 	const DWORD configuredLength = ::GetEnvironmentVariableA(

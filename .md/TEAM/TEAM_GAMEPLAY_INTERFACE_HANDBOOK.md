@@ -35,7 +35,7 @@ Lobby는 `Test`, `Character Select`, `Valtan`, `Bern` 네 명령만 제공한다
 
 Character Select의 `Create Character`는 선택 class와 공통 validator를 통과한 1~32-byte UTF-8 nickname을 `CCharacterSelectionState`의 pending identity로 stage한다. Lobby가 그 exact identity로 Bern entry를 승인받고 loading resource, rendering profile, 실제 `Change_Level(BERN)`까지 성공한 뒤에만 created identity로 commit한다. 중간 실패는 pending만 취소하고 기존 created identity는 유지한다. created identity가 없는 direct Character Select, Training, Valtan entry는 process-local `Test-<process-id>` audition nickname을 사용한다. Server의 `SERVER_PLAYER::strNickName`과 world transfer가 session lifetime 동안 exact nickname을 보존하고 `S2C_PLAYER_SPAWNED`로 복제한다. nickname은 display text이며 player lookup, Party member ID, 고유성 검사 또는 Client 재실행 뒤 영구 저장에 사용하지 않는다. Bern과 Valtan은 `CClientReplication::Collect_PlayerViews`의 Server-replicated nickname과 weak character presentation을 `CWorldPlayerNameplateView`에 전달한다. projection, UTF-8 변환, font draw 실패는 gameplay와 replication을 건드리지 않고 해당 nameplate만 생략한다.
 
-2026-08-20 23:59 KST까지 팀 LAN 검증은 Server PC에서 `Framework.slnLaunch`의 `Server + Client` profile로 Server를 `0.0.0.0:7777`에 열고, 다른 PC는 Client project만 시작해 `192.168.200.103:7777`에 연결한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint와 만료일 정본이다. 각 에이전트는 세션 시작 시 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 `server-host` 또는 `client` 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다.
+공유 LAN Server는 2026-08-17 팀장 결정으로 폐지했다. 각자 자기 PC에서 `Framework.slnLaunch`의 `Server + Client` profile로 Server를 `127.0.0.1:7777`에 열고 Client도 같은 주소로 접속한다. `Tools/Network/TeamLanEndpoint.json`이 endpoint 정본이다. 각 에이전트는 세션 시작 시 `Tools/Network/Sync-TeamLanEndpoint.ps1`을 실행하고 출력된 역할에 맞는 target을 안내하며, 실제 `Ctrl+F5` 시작과 UI 조작은 사용자가 수행한다. loopback endpoint에는 만료일과 방화벽 규칙이 적용되지 않는다.
 
 ### 1.1 서로 다른 장소에서 Server와 Client 연결
 
@@ -43,8 +43,8 @@ Server와 Client가 같은 PC, 같은 LAN, 서로 다른 네트워크 중 어디
 
 | 실행 위치 | Server `--bind-address` | Client `LOSTARK_SERVER_HOST` |
 |---|---|---|
-| 현재 팀 LAN 검증 | `0.0.0.0` | `192.168.200.103` |
-| 같은 PC 격리 검증 | `127.0.0.1` 명시 | `127.0.0.1` 명시 |
+| 현재 기본 (각자 로컬) | `127.0.0.1` | `127.0.0.1` |
+| 같은 LAN의 공유 Server | `0.0.0.0` | Server PC의 사설 IPv4 |
 | 서로 다른 장소/네트워크 | `0.0.0.0` | Server PC의 VPN IPv4(권장) 또는 TCP 7777이 포트포워딩된 공인 endpoint |
 
 `192.168.x.x`, `10.x.x.x`, `172.16.x.x`~`172.31.x.x`는 사설 주소다. 서로 다른 장소의 Client는 Server PC의 Wi-Fi 사설 주소로 직접 접속할 수 없다. 팀 테스트는 두 PC를 같은 사설망처럼 연결하는 VPN 주소를 우선 사용한다. 공인 인터넷에 직접 노출해야 한다면 Server PC로 TCP `7777`을 포트포워딩하고 Windows Firewall의 인바운드 범위를 승인된 원격 주소로 제한한다.
@@ -71,10 +71,10 @@ Client project만 시작한다. 자동 판정이 예상과 다르면 IP 어댑�
 팀 계약을 갈라놓지 않는다.
 
 ```xml
-<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.200.103</LocalDebuggerEnvironment>
+<LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=127.0.0.1</LocalDebuggerEnvironment>
 ```
 
-`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 같은 LAN의 모든 Client와 Server PC의 Client는 `192.168.200.103`을 사용한다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
+`0.0.0.0`은 Server의 수신 주소일 뿐 Client 접속 주소로 사용하지 않는다. 현재 기본은 각자 자기 PC의 `127.0.0.1`이다. 주소를 바꾸면 `Tools/Network/TeamLanEndpoint.json`, Server/Client 코드 기본값, 공유 debugger 설정과 이 사용서를 같은 변경 단위에서 갱신하고 `Sync-TeamLanEndpoint.ps1`, NetworkProtocolHarness, Server contract test로 검증한다.
 
 현재 Server PC 주소가 실제 어댑터에 있는지는 다음 명령으로 확인한다.
 
