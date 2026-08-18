@@ -20,6 +20,7 @@ class CHUDRuntimeView;
 class CBalanceTool;
 class CCharacterPreviewPanel;
 class CSkillWindowView;
+class CInventoryView;
 class CChatWindowView;
 class CPartyWindowView;
 
@@ -73,6 +74,16 @@ private:
 	fill -- CHUDRuntimeView::Render() never dynamically resized anything, so the bar previously
 	always showed full regardless of actual HP/MP. */
 	void RenderPlayerHealthManaBar();
+	/* Draws whatever item icon is registered onto Item_1..4, and consumes any pending
+	CInventoryView drag-drop to register a new one. Called after m_pHUDRuntimeView->Render()
+	so the icon overlay lands on top of the already-drawn slot background. */
+	void Render_ItemQuickSlots();
+	/* Q/W/E/R/A/S/D/F, the right-side special-skill row (6/7/8/9/0 for now -- SpecialSkill_1..5;
+	SpecialSkill_6 has no assigned key label yet), and the item quick slots (1/2/3/4) each get
+	their bound key drawn into the pointed tab at the bottom of "Empty Slot.png"/"Empty Slot
+	2.png"'s own art. Called after EndFrame() like the other LOA-font text, for the same
+	z-order reason as Render_Text(). */
+	void RenderQuickSlotKeyLabels();
 	void RenderBossHealthBar();
 	/* Boss title/HP/bar-count text. Split out from RenderBossHealthBar and called after
 	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason) -- CGameInstance::Draw_Text
@@ -187,6 +198,16 @@ private:
 	/* Not _DEBUG-gated: K opens the skill window during real gameplay, in Release too. */
 	unique_ptr<CSkillWindowView> m_pSkillWindowView = { nullptr };
 	bool_t m_bKDown = false;
+	/* Not _DEBUG-gated: I opens the inventory during real gameplay, in Release too. */
+	unique_ptr<CInventoryView> m_pInventoryView = { nullptr };
+	bool_t m_bIDown = false;
+	/* Combat HUD's Item_1..4 quick slots (HUD_Layout.json). Which itemId each one holds is a
+	Client-local binding only, set by dragging an item out of CInventoryView and dropping it on
+	one of these four rects -- the Server has no concept of a quick slot, only an inventory by
+	item ID, so this doesn't survive reconnect and isn't sent anywhere on its own. */
+	string m_strItemQuickSlot[4];
+	bool_t m_bItemKeyDown[4] = {};
+	uint32_t m_iNextUseItemSequence = 1u;
 	/* Not _DEBUG-gated: Enter opens the chat input during real gameplay, in Release too. */
 	unique_ptr<CChatWindowView> m_pChatWindowView = { nullptr };
 	bool_t m_bEnterDown = false;
@@ -215,6 +236,15 @@ private:
 	string m_strRenderingStatus =
 		"Rendering profiles are loaded from the published runtime catalog.";
 	string m_strProfilerCaptureStatus;
+	/* Debug-only give-item panel. Index into CItemCatalog::Get_Items() and a
+	local, ever-incrementing request sequence -- the Server answers every
+	C2S_DEBUG_GIVE_ITEM with a fresh S2C_INVENTORY_SNAPSHOT, so a duplicate
+	sequence would only matter if this ever needed to correlate a specific
+	reply, which the replace-in-full display does not. */
+	int32_t m_iSelectedDebugItemIndex = 0;
+	uint32_t m_iNextDebugGiveItemSequence = 1;
+	bool_t m_bDebugItemCatalogLoaded = false;
+	string m_strDebugItemStatus;
 #endif
 
 public:

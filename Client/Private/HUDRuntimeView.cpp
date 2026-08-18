@@ -457,6 +457,21 @@ bool_t Client::CHUDRuntimeView::Set_SlotRotation(const string& strSlotId, f32_t 
 	return false;
 }
 
+bool_t Client::CHUDRuntimeView::Set_SlotPosition(const string& strSlotId, f32_t fX, f32_t fY)
+{
+	for (HUD_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strSlotId)
+			continue;
+
+		Slot.fX = fX;
+		Slot.fY = fY;
+		return true;
+	}
+
+	return false;
+}
+
 bool_t Client::CHUDRuntimeView::Set_SlotVisible(const string& strSlotId, bool_t bVisible)
 {
 	for (HUD_SLOT& Slot : m_Slots)

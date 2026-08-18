@@ -12,6 +12,7 @@
 #include "GameInstance.h"
 #include "HUDRuntimeView.h"
 #include "ImGuiLayer.h"
+#include "ItemCatalog.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "Level_Loading.h"
@@ -23,6 +24,7 @@
 #include "Presentation_Manager.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "InventoryView.h"
 #include "SkillWindowView.h"
 #include "UI_Sprite.h"
 
@@ -246,6 +248,7 @@ HRESULT CMainApp::Initialize()
 		m_pDevice, m_pContext, L"UI/Lobby/Lobby_Layout.json",
 		CHUDRuntimeView::DRAW_TARGET::BACKGROUND);
 	m_pSkillWindowView = std::make_unique<CSkillWindowView>(m_pDevice, m_pContext);
+	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice);
 
@@ -273,6 +276,40 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (kDown && !m_bKDown)
 			m_pSkillWindowView->Toggle();
 		m_bKDown = kDown;
+	}
+
+	/* Same reasoning/gating as K above: I is a normal gameplay keybind (the inventory), not
+	an F1/F6 tool-switch key. */
+	if (nullptr != m_pInventoryView && !ImGui::GetIO().WantTextInput)
+	{
+		const bool_t windowFocused =
+			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t iDown = windowFocused &&
+			0 != (GetAsyncKeyState(0x49 /* VK_I */) & 0x8000);
+		if (iDown && !m_bIDown)
+			m_pInventoryView->Toggle();
+		m_bIDown = iDown;
+	}
+
+	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
+	see Render_ItemQuickSlots). Same gating as K/I; the Server is the one that actually
+	validates ownership and applies the heal, this only ever sends the request. */
+	if (!ImGui::GetIO().WantTextInput)
+	{
+		constexpr int VIRTUAL_KEYS[4] = { 0x31, 0x32, 0x33, 0x34 }; // VK_1..VK_4
+		const bool_t windowFocused =
+			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		for (int32_t i = 0; i < 4; ++i)
+		{
+			const bool_t keyDown = windowFocused &&
+				0 != (GetAsyncKeyState(VIRTUAL_KEYS[i]) & 0x8000);
+			if (keyDown && !m_bItemKeyDown[i] && !m_strItemQuickSlot[i].empty())
+			{
+				CNetworkManager::Get().Send_UseItem(
+					m_iNextUseItemSequence++, m_strItemQuickSlot[i]);
+			}
+			m_bItemKeyDown[i] = keyDown;
+		}
 	}
 
 	/* Enter opens the chat input the same way K toggles the skill window: only while nothing
@@ -487,6 +524,9 @@ HRESULT CMainApp::Render()
 	RenderCombatHUDText();
 	RenderBossHealthBarText();
 	RenderDamageNumbers();
+	if (nullptr != m_pInventoryView)
+		m_pInventoryView->Render_Text();
+	RenderQuickSlotKeyLabels();
 
 	return CGameInstance::Get().Render_End();
 }
@@ -886,6 +926,121 @@ void CMainApp::RenderCombatHUD()
 
 	if (nullptr != m_pSkillWindowView)
 		m_pSkillWindowView->Render(player.eCharacterClass);
+	if (nullptr != m_pInventoryView)
+		m_pInventoryView->Render(CCombatHUDViewModel::Get().Get_Inventory().Items);
+	Render_ItemQuickSlots();
+}
+
+void CMainApp::RenderQuickSlotKeyLabels()
+{
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT))
+	{
+		return;
+	}
+	if (!CCombatHUDViewModel::Get().Get_Player().isValid)
+		return;
+	if (nullptr == m_pHUDRuntimeView)
+		return;
+
+	struct KEY_LABEL { const char* pSlotId; const wchar_t* pLabel; };
+	constexpr KEY_LABEL LABELS[] = {
+		{ "Skill_Q", L"Q" }, { "Skill_W", L"W" }, { "Skill_E", L"E" }, { "Skill_R", L"R" },
+		{ "Skill_A", L"A" }, { "Skill_S", L"S" }, { "Skill_D", L"D" }, { "Skill_F", L"F" },
+		{ "SpecialSkill_1", L"6" }, { "SpecialSkill_2", L"7" }, { "SpecialSkill_3", L"8" },
+		{ "SpecialSkill_4", L"9" }, { "SpecialSkill_5", L"0" },
+		{ "Item_1", L"1" }, { "Item_2", L"2" }, { "Item_3", L"3" }, { "Item_4", L"4" },
+	};
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	for (const KEY_LABEL& Label : LABELS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pHUDRuntimeView->Get_SlotRect(Label.pSlotId, fX, fY, fWidth, fHeight))
+			continue;
+
+		/* "Empty Slot.png"/"Empty Slot 2.png" are both 52x52 art with a solid pointed tab
+		filling roughly the bottom 30% (measured directly from the source pixels: transparent
+		above y~35, solid by y~38 of 52) -- this places the label centred in that tab instead
+		of the slot's own centre. */
+		const f32_t fLabelCenterX = fX + fWidth * 0.5f;
+		const f32_t fLabelCenterY = fY + fHeight * 0.87f;
+
+		/* YoonGasiIIM measured objectively bolder than YG760 (glyph opacity ratio 0.427 vs
+		0.407 for '8', 0.336 vs 0.306 for 'Q') -- same font already used for combat damage
+		numbers because it needs to read clearly at a glance too. */
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel);
+		const f32_t fScale = (vMeasured.y > 0.f) ?
+			(fHeight * 0.22f / vMeasured.y) : 1.f;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel,
+			float2_t(fLabelCenterX * textScaleX, fLabelCenterY * textScaleY),
+			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	}
+}
+
+void CMainApp::Render_ItemQuickSlots()
+{
+	if (nullptr == m_pHUDRuntimeView || nullptr == m_pInventoryView)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+	ImDrawList* pDrawList = ImGui::GetForegroundDrawList(pViewport);
+
+	constexpr const char* ITEM_SLOT_IDS[4] = { "Item_1", "Item_2", "Item_3", "Item_4" };
+
+	string strDroppedItemId;
+	float fDropX = 0.f, fDropY = 0.f;
+	if (m_pInventoryView->Try_Consume_ItemDrop(strDroppedItemId, fDropX, fDropY))
+	{
+		for (int32_t i = 0; i < 4; ++i)
+		{
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!m_pHUDRuntimeView->Get_SlotRect(ITEM_SLOT_IDS[i], fX, fY, fWidth, fHeight))
+				continue;
+			const float left = pViewport->WorkPos.x + fX * scaleX;
+			const float top = pViewport->WorkPos.y + fY * scaleY;
+			const float right = left + fWidth * scaleX;
+			const float bottom = top + fHeight * scaleY;
+			if (fDropX >= left && fDropX < right && fDropY >= top && fDropY < bottom)
+			{
+				m_strItemQuickSlot[i] = strDroppedItemId;
+				break;
+			}
+		}
+	}
+
+	for (int32_t i = 0; i < 4; ++i)
+	{
+		if (m_strItemQuickSlot[i].empty())
+			continue;
+		const ITEM_DEFINITION* pDefinition = CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
+		if (nullptr == pDefinition || pDefinition->strIconPath.empty())
+			continue;
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pHUDRuntimeView->Get_SlotRect(ITEM_SLOT_IDS[i], fX, fY, fWidth, fHeight))
+			continue;
+		const ImVec2 vMin(
+			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
+		const ImVec2 vMax(
+			vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
+		if (ID3D11ShaderResourceView* pIconSRV =
+			m_pHUDRuntimeView->Load_Texture(pDefinition->strIconPath))
+		{
+			pDrawList->AddImage(pIconSRV, vMin, vMax);
+		}
+	}
 }
 
 void CMainApp::RenderPlayerHealthManaBar()
@@ -2446,6 +2601,97 @@ void CMainApp::RenderDeveloperTools()
 			pProfiler->Set_Enabled(m_bProfilerVisible);
 		}
 	}
+	ImGui::SeparatorText("Inventory (Debug)");
+	if (!m_bDebugItemCatalogLoaded)
+	{
+		std::string catalogStatus;
+		Client::CItemCatalog::Load(catalogStatus);
+		m_bDebugItemCatalogLoaded = true;
+	}
+	const std::vector<Client::ITEM_DEFINITION>& debugItems =
+		Client::CItemCatalog::Get_Items();
+	CNetworkManager& debugNetworkManager = CNetworkManager::Get();
+	const bool_t canGiveItem = !debugItems.empty() &&
+		debugNetworkManager.Is_Connected() &&
+		LostArk::Shared::INVALID_PLAYER_ID !=
+			debugNetworkManager.Get_LocalPlayerId();
+	if (debugItems.empty())
+	{
+		ImGui::TextDisabled("Item catalog failed to load.");
+	}
+	else
+	{
+		if (m_iSelectedDebugItemIndex >=
+			static_cast<int32_t>(debugItems.size()))
+		{
+			m_iSelectedDebugItemIndex = 0;
+		}
+		const Client::ITEM_DEFINITION& selectedItem =
+			debugItems[m_iSelectedDebugItemIndex];
+		if (ImGui::BeginCombo("Item", selectedItem.strDisplayName.c_str()))
+		{
+			for (int32_t index = 0;
+				index < static_cast<int32_t>(debugItems.size()); ++index)
+			{
+				const bool_t isSelected = index == m_iSelectedDebugItemIndex;
+				if (ImGui::Selectable(
+					debugItems[index].strDisplayName.c_str(), isSelected))
+				{
+					m_iSelectedDebugItemIndex = index;
+				}
+				if (isSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::BeginDisabled(!canGiveItem);
+		if (ImGui::Button("Give"))
+		{
+			if (debugNetworkManager.Send_DebugGiveItem(
+				m_iNextDebugGiveItemSequence,
+				selectedItem.strItemId,
+				1u))
+			{
+				m_strDebugItemStatus = "Requested " + selectedItem.strDisplayName;
+				++m_iNextDebugGiveItemSequence;
+			}
+			else
+			{
+				m_strDebugItemStatus = "Give item request failed to send.";
+			}
+		}
+		ImGui::EndDisabled();
+		if (!canGiveItem)
+		{
+			ImGui::SameLine();
+			ImGui::TextDisabled("Connect and enter a world first.");
+		}
+		if (!m_strDebugItemStatus.empty())
+			ImGui::TextDisabled("%s", m_strDebugItemStatus.c_str());
+	}
+
+	ImGui::TextUnformatted("Current inventory (Server truth):");
+	const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& debugInventory =
+		Client::CCombatHUDViewModel::Get().Get_Inventory();
+	if (debugInventory.Items.empty())
+	{
+		ImGui::TextDisabled("(empty)");
+	}
+	else
+	{
+		for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item :
+			debugInventory.Items)
+		{
+			const Client::ITEM_DEFINITION* definition =
+				Client::CItemCatalog::Find_ById(item.strItemId);
+			ImGui::Text(
+				"%s x%u",
+				nullptr != definition ?
+					definition->strDisplayName.c_str() : item.strItemId.c_str(),
+				item.iQuantity);
+		}
+	}
+
 	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera");
 	ImGui::End();
 }

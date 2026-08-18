@@ -80,6 +80,10 @@ public:
 	slot doesn't exist. */
 	bool_t Set_SlotRotation(const string& strSlotId, f32_t fDegrees);
 	bool_t Set_SlotVisible(const string& strSlotId, bool_t bVisible);
+	/* Overrides a slot's authored top-left position at runtime -- for a window whose whole
+	panel the player can drag (the inventory's title-bar drag), where every one of its slots
+	needs to move together by the same delta each frame. No-op if the slot doesn't exist. */
+	bool_t Set_SlotPosition(const string& strSlotId, f32_t fX, f32_t fY);
 
 private:
 	struct TEXTURE_LAYER

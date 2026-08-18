@@ -5,6 +5,7 @@
 #include "ServerWorldEntity.h"
 #include "WorldBootstrap.h"
 #include "GameplayCatalog.h"
+#include "ItemCatalog.h"
 #include "PlayerSkillSystem.h"
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
@@ -148,6 +149,18 @@ namespace LostArk::Server
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t resetTick,
 			std::string& status);
+		// Debug-only. Validates the item against the loaded catalog and
+		// stacks it into the player's inventory, capped at maxStack.
+		void Handle_DebugGiveItem(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DEBUG_GIVE_ITEM& request);
+		// Validates the item is owned, is a consumable (iHealPercent > 0), and
+		// the player is alive; heals iMaximumHp * iHealPercent / 100, then
+		// decrements/removes the stack. HP reaches the Client through the next
+		// S2C_WORLD_SNAPSHOT tick like any other HP change; no separate result.
+		void Handle_UseItem(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_USE_ITEM& request);
 
 		bool Send_Accepted(
 			const std::shared_ptr<CClientSession>& session,
@@ -179,6 +192,13 @@ namespace LostArk::Server
 			const LostArk::Shared::C2S_CHANGE_CHARACTER_CLASS& request,
 			LostArk::Shared::CHARACTER_CLASS_CHANGE_RESULT result,
 			LostArk::Shared::CHARACTER_CLASS_ID activeClass);
+		// Single-session send: inventory is per-player state, not room-shared
+		// like S2C_WORLD_SNAPSHOT, so it never broadcasts.
+		bool Send_InventorySnapshot(
+			const std::shared_ptr<CClientSession>& session,
+			std::uint32_t requestSequence,
+			const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>&
+				inventory);
 		bool Send_Despawned(
 			const std::shared_ptr<CClientSession>& session,
 			LostArk::Shared::NET_ENTITY_ID netEntityId,
@@ -316,6 +336,7 @@ namespace LostArk::Server
 		LostArk::Shared::WORLD_ID m_eWorldId = LostArk::Shared::WORLD_ID::END;
 		CWorldBootstrap m_WorldBootstrap;
 		CGameplayCatalog m_GameplayCatalog;
+		CItemCatalog m_ItemCatalog;
 		CServerNavigation m_ServerNavigation;
 		CServerCollisionSystem m_ServerCollisionSystem;
 		CServerTriggerSystem m_ServerTriggerSystem;

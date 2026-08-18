@@ -171,6 +171,11 @@ bool Client::CClientReplication::Update()
 			allSucceeded = Apply_EncounterPropSync(
 				event.EncounterPropSync) && allSucceeded;
 			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::INVENTORY_SNAPSHOT:
+			allSucceeded = Apply_InventorySnapshot(
+				event.InventorySnapshot) && allSucceeded;
+			break;
 		}
 	}
 
@@ -218,6 +223,19 @@ bool Client::CClientReplication::Apply_EncounterPropSync(
 		return true;
 	}
 	m_EncounterPropState = sync;
+	return true;
+}
+
+bool Client::CClientReplication::Apply_InventorySnapshot(
+	const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& snapshot)
+{
+	/* Replace-in-full: the Server always answers with the whole current
+	   inventory, so the previous list is simply discarded. */
+	m_InventoryState = snapshot;
+	/* CCombatHUDViewModel is the level-agnostic singleton the F1 debug panel
+	   already reads through (CMainApp owns no per-level CClientReplication of
+	   its own), the same role it plays for Apply_LocalPlayer above. */
+	CCombatHUDViewModel::Get().Apply_Inventory(snapshot);
 	return true;
 }
 
@@ -1362,6 +1380,7 @@ void Client::CClientReplication::Reset_World()
 	m_WorldDestructionProjectionRuntime.Reset();
 	m_WorldDestructionLiveEvents.clear();
 	m_EncounterPropState = {};
+	m_InventoryState = {};
 	++m_iWorldDestructionPresentationGeneration;
 	if (0u == m_iWorldDestructionPresentationGeneration)
 		++m_iWorldDestructionPresentationGeneration;

@@ -11,9 +11,11 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $gameplayPublisher = Join-Path $PSScriptRoot 'Publish-GameplayBalance.ps1'
 $worldPublisher = Join-Path $repoRoot 'Tools\WorldPipeline\Publish-WorldGameplay.ps1'
+$itemPublisher = Join-Path $PSScriptRoot 'Publish-ItemCatalog.ps1'
 
 & $gameplayPublisher -Mode Validate
 & $worldPublisher -Mode Validate
+& $itemPublisher -Mode Validate
 if ($Mode -eq 'Validate') {
     Write-Output 'Balance runtime set Validate succeeded.'
     return
@@ -32,20 +34,24 @@ $stagingRelative = Join-Path $OutputRoot ".balance-runtime-set.staging.$transact
 $stagingRoot = Join-Path $repoRoot $stagingRelative
 $stagedGameplayRoot = Join-Path $stagingRoot 'Gameplay'
 $stagedWorldRoot = Join-Path $stagingRoot 'World'
+$stagedItemsRoot = Join-Path $stagingRoot 'Items'
 $promotions = [Collections.Generic.List[object]]::new()
 
 try {
     [IO.Directory]::CreateDirectory($stagedGameplayRoot) | Out-Null
     [IO.Directory]::CreateDirectory($stagedWorldRoot) | Out-Null
+    [IO.Directory]::CreateDirectory($stagedItemsRoot) | Out-Null
     & $gameplayPublisher -Mode Publish -OutputRoot (Join-Path $stagingRelative 'Gameplay')
     & $worldPublisher -Mode Publish -OutputRoot (Join-Path $stagingRelative 'World')
+    & $itemPublisher -Mode Publish -OutputRoot (Join-Path $stagingRelative 'Items')
 
     $targets = @(
         @{ Staged = Join-Path $stagedGameplayRoot 'Gameplay.bootstrap'; Destination = Join-Path $runtimeRoot 'Gameplay\Gameplay.bootstrap' },
         @{ Staged = Join-Path $stagedWorldRoot 'BERN.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\BERN.worldbootstrap' },
         @{ Staged = Join-Path $stagedWorldRoot 'VALTAN_ARENA.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\VALTAN_ARENA.worldbootstrap' },
         @{ Staged = Join-Path $stagedWorldRoot 'TRAINING_GROUND.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\TRAINING_GROUND.worldbootstrap' },
-        @{ Staged = Join-Path $stagedWorldRoot 'CHARACTER_SELECT_ARENA.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\CHARACTER_SELECT_ARENA.worldbootstrap' }
+        @{ Staged = Join-Path $stagedWorldRoot 'CHARACTER_SELECT_ARENA.worldbootstrap'; Destination = Join-Path $runtimeRoot 'World\CHARACTER_SELECT_ARENA.worldbootstrap' },
+        @{ Staged = Join-Path $stagedItemsRoot 'Items.bootstrap'; Destination = Join-Path $runtimeRoot 'Items\Items.bootstrap' }
     )
     foreach ($target in $targets) {
         if (-not [IO.File]::Exists($target.Staged)) {
@@ -80,7 +86,7 @@ try {
             [IO.File]::Delete($promotion.Rollback)
         }
     }
-    Write-Output 'Balance runtime set Publish succeeded: gameplay + 4 worlds.'
+    Write-Output 'Balance runtime set Publish succeeded: gameplay + 4 worlds + items.'
 }
 catch {
     $publishFailure = $_
