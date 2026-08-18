@@ -254,10 +254,10 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 		const std::string_view token{
 			packed.data() + cursor,
 			(std::string::npos == comma ? packed.size() : comma) - cursor };
-		std::string_view fields[12];
+		std::string_view fields[13];
 		std::size_t fieldCount = 0;
 		std::size_t start = 0;
-		while (fieldCount < 12)
+		while (fieldCount < 13)
 		{
 			const std::size_t colon = token.find(':', start);
 			fields[fieldCount++] = token.substr(start,
@@ -267,19 +267,20 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 			start = colon + 1;
 		}
 		PLAYER_SKILL_HIT hit{};
-		if (12u != fieldCount ||
+		if (13u != fieldCount ||
 			!ParseNumber(fields[0], hit.iTimeMs) ||
 			!ParseNumber(fields[1], hit.iRepeatCount) ||
 			!ParseNumber(fields[2], hit.iRepeatMs) ||
 			!ParseNumber(fields[3], hit.iAreaType) ||
 			!ParseNumber(fields[4], hit.fRange) ||
 			!ParseNumber(fields[5], hit.fAngleDegrees) ||
-			!ParseNumber(fields[6], hit.fHeight) ||
-			!ParseNumber(fields[7], hit.fOffset) ||
-			!ParseNumber(fields[8], hit.fInner) ||
-			!ParseNumber(fields[9], hit.iMaxTargets) ||
-			!ParseNumber(fields[10], hit.iPushMs) ||
-			!ParseNumber(fields[11], hit.fPushRange) ||
+			!ParseNumber(fields[6], hit.fWidth) ||
+			!ParseNumber(fields[7], hit.fHeight) ||
+			!ParseNumber(fields[8], hit.fOffset) ||
+			!ParseNumber(fields[9], hit.fInner) ||
+			!ParseNumber(fields[10], hit.iMaxTargets) ||
+			!ParseNumber(fields[11], hit.iPushMs) ||
+			!ParseNumber(fields[12], hit.fPushRange) ||
 			hit.iPushMs > 10000u ||
 			!std::isfinite(hit.fPushRange) ||
 			hit.fPushRange < -50.f || hit.fPushRange > 50.f ||
@@ -291,11 +292,14 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 			!std::isfinite(hit.fRange) || hit.fRange <= 0.f ||
 			!std::isfinite(hit.fAngleDegrees) || hit.fAngleDegrees < 0.f ||
 			hit.fAngleDegrees > 360.f ||
+			(3u != hit.iAreaType && 0.f != hit.fAngleDegrees) ||
+			!std::isfinite(hit.fWidth) || hit.fWidth < 0.f ||
+			(2u == hit.iAreaType) != (hit.fWidth > 0.f) ||
 			!std::isfinite(hit.fHeight) || hit.fHeight < 0.f ||
-			(1u == hit.iAreaType && hit.fHeight <= 0.f) ||
 			!std::isfinite(hit.fOffset) ||
 			!std::isfinite(hit.fInner) || hit.fInner < 0.f ||
 			hit.fInner >= hit.fRange ||
+			(2u == hit.iAreaType && 0.f != hit.fInner) ||
 			(!outHits.empty() && hit.iTimeMs < outHits.back().iTimeMs))
 		{
 			m_strStatus = "Skill hit shape is invalid";
@@ -395,7 +399,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 7u != version ||
+		!ParseNumber(header[1], version) || 8u != version ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";

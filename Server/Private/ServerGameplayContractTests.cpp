@@ -3133,7 +3133,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t7\t7\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t8\t7\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -3186,7 +3186,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t7\t7\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t8\t7\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -3271,13 +3271,13 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const std::string validSourceRow =
 			"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180";
 		tests.Require(
-			loadWithWallContactRows(7u, { validSourceRow }, { validWallRow }),
+			loadWithWallContactRows(8u, { validSourceRow }, { validWallRow }),
 			"Accept one exact ACTIVE axe wall-contact row");
 		tests.Require(
-			!loadWithWallContactRows(6u, { validSourceRow }, { validWallRow }),
+			!loadWithWallContactRows(7u, { validSourceRow }, { validWallRow }),
 			"Reject the obsolete gameplay bootstrap version before wall-contact load");
 		tests.Require(
-			!loadWithWallContactRows(7u, { validSourceRow }, {
+			!loadWithWallContactRows(8u, { validSourceRow }, {
 				"PATTERNWALLCONTACT\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.wrong" }),
 			"Reject a wall-contact row whose action does not exactly join its stage");
 		tests.Require(
@@ -3285,14 +3285,14 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				6u, { validSourceRow }, { validWallRow, validWallRow }),
 			"Reject duplicate axe wall-contact ownership atomically");
 		tests.Require(
-			!loadWithWallContactRows(7u, {}, {}),
+			!loadWithWallContactRows(8u, {}, {}),
 			"Reject a boss pattern with no compiled source timing row");
 		tests.Require(
 			!loadWithWallContactRows(
 				6u, { validSourceRow, validSourceRow }, {}),
 			"Reject duplicate source timing ownership atomically");
 		tests.Require(
-			!loadWithWallContactRows(7u, {
+			!loadWithWallContactRows(8u, {
 				"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t149\t350\t300\t180" }, {}),
 			"Reject a source cooldown whose 30 Hz tick conversion is inconsistent");
 		std::error_code cleanupError;
@@ -3335,7 +3335,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t7\t9\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t8\t9\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"

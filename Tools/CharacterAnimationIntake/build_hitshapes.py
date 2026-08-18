@@ -9,6 +9,9 @@ RESOURCES = os.path.join(REPO, 'Client', 'Bin', 'Resources')
 TICK_RATE = 30.0
 UNITS_TO_METERS = 0.01
 MAX_SUB_HITS = 64
+AREA_CIRCLE = 1
+AREA_BOX = 2
+AREA_FAN = 3
 
 
 def read_clip_ticks(wmodel_path):
@@ -72,13 +75,16 @@ def stage_hits(entries, clip_ticks, clip_hits, limit_ms, label):
             source_ms = min(source_ms, float(play_ms))
         for h in clip_hits.get(name, []):
             time_ms = elapsed_ms + h['startMs'] / rate
+            # Official AreaType: 1 circle/ring, 2 forward box whose AreaAngle
+            # is the width in cm, 3 fan whose AreaAngle is the sweep in degrees.
             out.append({
                 'timeMs': min(int(round(time_ms)), limit_ms),
                 'repeatCount': h['rep'],
                 'repeatMs': int(round(h['repMs'] / rate)),
                 'areaType': h['area'],
                 'range': round(h['ar'] * UNITS_TO_METERS, 2),
-                'angle': min(max(h['aa'], 0), 360),
+                'angle': min(max(h['aa'], 0), 360) if h['area'] == AREA_FAN else 0,
+                'width': round(h['aa'] * UNITS_TO_METERS, 2) if h['area'] == AREA_BOX else 0.0,
                 'height': round(h['ah'] * UNITS_TO_METERS, 2),
                 'offset': round(h['ax'] * UNITS_TO_METERS, 2),
                 'inner': round(h['arem'] * UNITS_TO_METERS, 2),
@@ -129,7 +135,7 @@ def build(asset):
             out.append({'skillId': skill_id, 'hits': hits})
     return {
         'schema': 'lostark.animation-hit-shapes',
-        'formatVersion': 1,
+        'formatVersion': 2,
         'animationAssetId': asset,
         'characterClass': bindings['characterClass'],
         'skills': out,

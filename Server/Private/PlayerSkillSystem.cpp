@@ -64,15 +64,14 @@ namespace
 		switch (hit.iAreaType)
 		{
 		case 1u:
+			return hit.fInner > 0.f ?
+				Circle_IntersectsRing(
+					target, originX, originZ, hit.fInner, hit.fRange) :
+				Circles_Overlap(CIRCLE_XZ{ originX, originZ, hit.fRange }, target);
+		case 2u:
 			return Circle_IntersectsForwardBox(
 				target, originX, originZ, forwardX, forwardZ,
-				hit.fRange, hit.fHeight * 0.5f);
-		case 2u:
-			return fullSweep ?
-				Circles_Overlap(CIRCLE_XZ{ originX, originZ, hit.fRange }, target) :
-				Circle_IntersectsCone(
-					target, originX, originZ, forwardX, forwardZ,
-					hit.fRange, hit.fAngleDegrees);
+				hit.fRange, hit.fWidth * 0.5f);
 		case 3u:
 		{
 			const bool inRing = hit.fInner > 0.f ?

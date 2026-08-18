@@ -21,9 +21,12 @@ namespace LostArk::Server
 		std::uint32_t iTimeMs = 0;
 		std::uint32_t iRepeatCount = 1;
 		std::uint32_t iRepeatMs = 0;
+		/* Official AreaType: 1 circle/ring (fRange, fInner), 2 forward box
+		(fRange length, fWidth), 3 fan (fRange, fAngleDegrees sweep, fInner). */
 		std::uint32_t iAreaType = 0;
 		float fRange = 0.f;
 		float fAngleDegrees = 0.f;
+		float fWidth = 0.f;
 		float fHeight = 0.f;
 		float fOffset = 0.f;
 		float fInner = 0.f;

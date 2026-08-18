@@ -1220,7 +1220,7 @@ function Format-HitShapes {
     $subHits = 0
     foreach ($hit in $Hits) {
         Assert-ExactProperties $hit @('timeMs','repeatCount','repeatMs','areaType','range','angle',
-            'height','offset','inner','maxTargets','pushMs','pushRange') 'hit shape'
+            'width','height','offset','inner','maxTargets','pushMs','pushRange') 'hit shape'
         Assert-JsonInteger $hit.timeMs "hit shape $SkillId timeMs" 0 $LimitMs
         Assert-JsonInteger $hit.repeatCount "hit shape $SkillId repeatCount" 1 64
         Assert-JsonInteger $hit.repeatMs "hit shape $SkillId repeatMs" 0 100000
@@ -1228,7 +1228,7 @@ function Format-HitShapes {
         Assert-JsonInteger $hit.angle "hit shape $SkillId angle" 0 360
         Assert-JsonInteger $hit.maxTargets "hit shape $SkillId maxTargets" 0 64
         Assert-JsonInteger $hit.pushMs "hit shape $SkillId pushMs" 0 10000
-        foreach ($field in @('range','height','offset','inner','pushRange')) {
+        foreach ($field in @('range','width','height','offset','inner','pushRange')) {
             Assert-JsonNumber $hit.$field "hit shape $SkillId $field"
         }
         if ([double]$hit.pushRange -lt -50.0 -or [double]$hit.pushRange -gt 50.0 -or
@@ -1243,15 +1243,23 @@ function Format-HitShapes {
         if ([int]$hit.repeatCount -gt 1 -and [int]$hit.repeatMs -le 0) {
             throw "Hit shape repeat needs a positive interval: $SkillId"
         }
+        # areaType 1 = circle/ring (range, inner), 2 = forward box (range = length,
+        # width), 3 = fan (range, angle sweep, inner); the other extents stay 0.
+        $areaType = [int]$hit.areaType
         if ([double]$hit.range -le 0.0 -or [double]$hit.inner -ge [double]$hit.range -or
-            ([int]$hit.areaType -eq 1 -and [double]$hit.height -le 0.0)) {
+            [double]$hit.width -lt 0.0 -or [double]$hit.height -lt 0.0 -or
+            ($areaType -eq 2 -and [double]$hit.width -le 0.0) -or
+            ($areaType -ne 2 -and [double]$hit.width -ne 0.0) -or
+            ($areaType -ne 3 -and [int]$hit.angle -ne 0) -or
+            ($areaType -eq 2 -and [double]$hit.inner -ne 0.0)) {
             throw "Hit shape extent is invalid: $SkillId"
         }
         $subHits += [int]$hit.repeatCount
-        $packed.Add(('{0}:{1}:{2}:{3}:{4}:{5}:{6}:{7}:{8}:{9}:{10}:{11}' -f $timeMs,
-            [int]$hit.repeatCount, [int]$hit.repeatMs, [int]$hit.areaType,
+        $packed.Add(('{0}:{1}:{2}:{3}:{4}:{5}:{6}:{7}:{8}:{9}:{10}:{11}:{12}' -f $timeMs,
+            [int]$hit.repeatCount, [int]$hit.repeatMs, $areaType,
             (Format-InvariantFloat $hit.range "hit shape $SkillId range"),
             [int]$hit.angle,
+            (Format-InvariantFloat $hit.width "hit shape $SkillId width"),
             (Format-InvariantFloat $hit.height "hit shape $SkillId height"),
             (Format-InvariantSignedFloat $hit.offset "hit shape $SkillId offset"),
             (Format-InvariantFloat $hit.inner "hit shape $SkillId inner"),
@@ -1273,7 +1281,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     Assert-ExactProperties $document @(
         'schema','formatVersion','animationAssetId','characterClass','skills') 'hit shape document'
     if ($document.schema -ne 'lostark.animation-hit-shapes' -or
-        [uint32]$document.formatVersion -ne 1) {
+        [uint32]$document.formatVersion -ne 2) {
         throw "Hit shape header is invalid: $($path.Name)"
     }
     foreach ($entry in @($document.skills)) {
@@ -1319,7 +1327,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t7`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t8`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
