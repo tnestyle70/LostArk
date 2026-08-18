@@ -5883,9 +5883,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  700,
+                        "sourceValue":  330,
                         "transform":  "identity",
-                        "resultValue":  700
+                        "resultValue":  330
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -7257,9 +7257,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1000,
+                        "sourceValue":  1200,
                         "transform":  "identity",
-                        "resultValue":  1000
+                        "resultValue":  1200
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10161,9 +10161,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1927,
+                        "sourceValue":  950,
                         "transform":  "identity",
-                        "resultValue":  1927
+                        "resultValue":  950
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11431,9 +11431,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1983,
+                        "sourceValue":  700,
                         "transform":  "identity",
-                        "resultValue":  1983
+                        "resultValue":  700
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11685,9 +11685,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1700,
+                        "sourceValue":  1047,
                         "transform":  "identity",
-                        "resultValue":  1700
+                        "resultValue":  1047
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -11939,9 +11939,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  3712,
+                        "sourceValue":  2858,
                         "transform":  "identity",
-                        "resultValue":  3712
+                        "resultValue":  2858
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -12447,9 +12447,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  4335,
+                        "sourceValue":  3950,
                         "transform":  "identity",
-                        "resultValue":  4335
+                        "resultValue":  3950
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -16113,9 +16113,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  3000,
+                        "sourceValue":  3400,
                         "transform":  "identity",
-                        "resultValue":  3000
+                        "resultValue":  3400
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -16367,9 +16367,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  1426,
+                        "sourceValue":  4633,
                         "transform":  "identity",
-                        "resultValue":  1426
+                        "resultValue":  4633
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -22263,11 +22263,11 @@
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
-                                       "policyId":  "animation-reference-timing-v1"
+                                       "policyId":  "animation-reference-hit-timing-v1"
                                    },
-                        "sourceValue":  600,
+                        "sourceValue":  322,
                         "transform":  "identity",
-                        "resultValue":  600
+                        "resultValue":  322
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
