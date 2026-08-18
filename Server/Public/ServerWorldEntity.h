@@ -103,6 +103,17 @@ namespace LostArk::Server
 		std::uint32_t iAttackPower = 0;
 		std::uint32_t iDefense = 0;
 		std::uint32_t iDeadDespawnMs = 0;
+		/* Multiplier on the authored push range of each player hit, from the
+		monster profile; 0 never moves. */
+		float fHitKnockbackScale = 0.f;
+		/* The knockback in flight: unit XZ direction away from the attacker,
+		metres per second (negative pulls closer), and how much of the authored
+		push window is left. A new hit restarts the window with its own
+		direction instead of stacking. */
+		float fKnockbackDirectionX = 0.f;
+		float fKnockbackDirectionZ = 0.f;
+		float fKnockbackSpeed = 0.f;
+		float fKnockbackRemainingSeconds = 0.f;
 		/* A raid Esther summon runs the room-owned appear/strike/leave timeline
 		in Update_WorldEntities instead of a brain, and despawns when the leave
 		stage ends rather than through the MONSTER dead sweep. */

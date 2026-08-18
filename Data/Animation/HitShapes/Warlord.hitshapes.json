@@ -20,7 +20,9 @@
               "height": 1.5,
               "offset": 0.2,
               "inner": 0.0,
-              "maxTargets": 0
+              "maxTargets": 0,
+              "pushMs": 100,
+              "pushRange": 0.1
             }
           ]
         },
@@ -37,7 +39,9 @@
               "height": 1.5,
               "offset": 0.2,
               "inner": 0.0,
-              "maxTargets": 0
+              "maxTargets": 0,
+              "pushMs": 150,
+              "pushRange": 0.3
             }
           ]
         },
@@ -54,7 +58,9 @@
               "height": 1.5,
               "offset": 0.2,
               "inner": 0.0,
-              "maxTargets": 0
+              "maxTargets": 0,
+              "pushMs": 150,
+              "pushRange": 0.3
             }
           ]
         }
@@ -73,7 +79,9 @@
           "height": 1.5,
           "offset": 0.3,
           "inner": 0.0,
-          "maxTargets": 0
+          "maxTargets": 0,
+          "pushMs": 120,
+          "pushRange": 0.5
         }
       ]
     },
@@ -90,7 +98,9 @@
           "height": 1.5,
           "offset": 0.3,
           "inner": 0.0,
-          "maxTargets": 0
+          "maxTargets": 0,
+          "pushMs": 70,
+          "pushRange": 0.7
         }
       ]
     },
@@ -110,7 +120,9 @@
               "height": 1.5,
               "offset": 0.0,
               "inner": 0.0,
-              "maxTargets": 0
+              "maxTargets": 0,
+              "pushMs": 10,
+              "pushRange": 0.1
             }
           ]
         }
@@ -129,7 +141,9 @@
           "height": 1.5,
           "offset": -0.1,
           "inner": 0.0,
-          "maxTargets": 0
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
         }
       ]
     },
@@ -146,7 +160,9 @@
           "height": 1.5,
           "offset": 0.0,
           "inner": 0.0,
-          "maxTargets": 0
+          "maxTargets": 0,
+          "pushMs": 120,
+          "pushRange": 0.3
         }
       ]
     }

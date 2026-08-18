@@ -191,3 +191,41 @@ void LostArk::Server::CMonsterBrain::Update(
 		Transition(monster, SERVER_ENTITY_ACTION::IDLE, serverTick);
 	}
 }
+
+bool LostArk::Server::CMonsterBrain::Advance_Knockback(
+	SERVER_WORLD_ENTITY& monster,
+	const CServerNavigation& navigation,
+	const float fixedDeltaSeconds)
+{
+	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f ||
+		monster.fKnockbackRemainingSeconds <= 0.f ||
+		SERVER_ENTITY_ACTION::DEAD == monster.eAction ||
+		0u == monster.iCurrentHp)
+	{
+		return false;
+	}
+	const float step = (std::min)(
+		fixedDeltaSeconds, monster.fKnockbackRemainingSeconds);
+	const float desiredX = monster.fPositionX +
+		monster.fKnockbackDirectionX * monster.fKnockbackSpeed * step;
+	const float desiredZ = monster.fPositionZ +
+		monster.fKnockbackDirectionZ * monster.fKnockbackSpeed * step;
+	SERVER_NAV_POINT reachable{ desiredX, monster.fPositionY, desiredZ };
+	bool wasClamped = false;
+	CPlayerSkillSystem::Clamp_StepToWalkable(
+		navigation,
+		monster.fPositionX,
+		monster.fPositionZ,
+		desiredX,
+		desiredZ,
+		reachable,
+		wasClamped);
+	monster.fPositionX = reachable.x;
+	monster.fPositionY = reachable.y;
+	monster.fPositionZ = reachable.z;
+	monster.fKnockbackRemainingSeconds = wasClamped ?
+		0.f : monster.fKnockbackRemainingSeconds - step;
+	/* Pattern timers keep running so a windup is not frozen by a hit. */
+	monster.fActionElapsedSeconds += fixedDeltaSeconds;
+	return true;
+}

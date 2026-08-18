@@ -361,6 +361,61 @@ bool LostArk::Server::CServerCollisionSystem::Is_PlayerSpawnClear(
 		});
 }
 
+void LostArk::Server::CServerCollisionSystem::Set_BlockingBodies(
+	std::vector<SERVER_BLOCKING_BODY> bodies)
+{
+	m_BlockingBodies.clear();
+	m_BlockingBodies.reserve(bodies.size());
+	for (const SERVER_BLOCKING_BODY& body : bodies)
+	{
+		if (std::isfinite(body.fX) && std::isfinite(body.fZ) &&
+			std::isfinite(body.fRadius) && body.fRadius > 0.f)
+		{
+			m_BlockingBodies.push_back(body);
+		}
+	}
+}
+
+bool LostArk::Server::CServerCollisionSystem::Sweep_PlayerAgainstBody(
+	const SERVER_PLAYER& player,
+	const float proposedX,
+	const float proposedZ,
+	const SERVER_BLOCKING_BODY& body,
+	float& outHitRatio)
+{
+	using namespace LostArk::Shared::WorldCollision;
+	const float combinedRadius = body.fRadius + PLAYER_HALF_EXTENT_X;
+	const float toBodyX = body.fX - player.fPositionX;
+	const float toBodyZ = body.fZ - player.fPositionZ;
+	const float deltaX = proposedX - player.fPositionX;
+	const float deltaZ = proposedZ - player.fPositionZ;
+	const float startDistanceSquared = toBodyX * toBodyX + toBodyZ * toBodyZ;
+	if (startDistanceSquared < combinedRadius * combinedRadius)
+	{
+		/* Already inside: block only the part of the step that closes in. */
+		if (deltaX * toBodyX + deltaZ * toBodyZ <= 0.f)
+			return false;
+		outHitRatio = 0.f;
+		return true;
+	}
+	const float lengthSquared = deltaX * deltaX + deltaZ * deltaZ;
+	if (lengthSquared <= SWEEP_EPSILON * SWEEP_EPSILON)
+		return false;
+	/* |S + tD - C|^2 = R^2, smallest t in [0, 1]. */
+	const float b = deltaX * toBodyX + deltaZ * toBodyZ;
+	if (b <= 0.f)
+		return false;
+	const float c = startDistanceSquared - combinedRadius * combinedRadius;
+	const float discriminant = b * b - lengthSquared * c;
+	if (discriminant < 0.f)
+		return false;
+	const float t = (b - std::sqrt(discriminant)) / lengthSquared;
+	if (t < 0.f || t > 1.f)
+		return false;
+	outHitRatio = t;
+	return true;
+}
+
 bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 	const SERVER_PLAYER& player,
 	const float proposedX,
@@ -381,7 +436,8 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 		return false;
 	}
 
-	float earliestHit = (std::numeric_limits<float>::max)();
+	constexpr float NO_HIT = (std::numeric_limits<float>::max)();
+	float earliestBoxHit = NO_HIT;
 	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
 	{
 		if (index >= m_PlayerBlocking.size() || !m_PlayerBlocking[index])
@@ -391,13 +447,26 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 		if (Sweep_PlayerAgainstBox(
 			player, proposedX, proposedY, proposedZ, box, hitRatio))
 		{
-			earliestHit = (std::min)(earliestHit, hitRatio);
+			earliestBoxHit = (std::min)(earliestBoxHit, hitRatio);
+		}
+	}
+	float earliestBodyHit = NO_HIT;
+	const SERVER_BLOCKING_BODY* hitBody = nullptr;
+	for (const SERVER_BLOCKING_BODY& body : m_BlockingBodies)
+	{
+		float hitRatio = 0.f;
+		if (Sweep_PlayerAgainstBody(player, proposedX, proposedZ, body, hitRatio) &&
+			hitRatio < earliestBodyHit)
+		{
+			earliestBodyHit = hitRatio;
+			hitBody = &body;
 		}
 	}
 
-	outWasBlocked = earliestHit != (std::numeric_limits<float>::max)();
-	if (!outWasBlocked)
+	const float earliestHit = (std::min)(earliestBoxHit, earliestBodyHit);
+	if (NO_HIT == earliestHit)
 	{
+		outWasBlocked = false;
 		outX = proposedX;
 		outY = proposedY;
 		outZ = proposedZ;
@@ -415,6 +484,82 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 	outX = player.fPositionX + deltaX * safeRatio;
 	outY = player.fPositionY + deltaY * safeRatio;
 	outZ = player.fPositionZ + deltaZ * safeRatio;
+	outWasBlocked = true;
+
+	/* A wall stops the step outright (its own contract and tests). A body
+	lets the rest of the step slide along its tangent: drop the part of the
+	remaining displacement that points into the body and sweep once more, so
+	a walk past a monster wraps around it instead of parking against it. */
+	if (nullptr == hitBody || earliestBoxHit <= earliestBodyHit)
+		return true;
+	const float remainingRatio = 1.f - safeRatio;
+	const float remainingX = deltaX * remainingRatio;
+	const float remainingZ = deltaZ * remainingRatio;
+	const float remainingLength = std::sqrt(
+		remainingX * remainingX + remainingZ * remainingZ);
+	if (remainingLength <= CONTACT_MARGIN)
+		return true;
+	float normalX = outX - hitBody->fX;
+	float normalZ = outZ - hitBody->fZ;
+	const float normalLength = std::sqrt(normalX * normalX + normalZ * normalZ);
+	if (normalLength <= SWEEP_EPSILON)
+		return true;
+	normalX /= normalLength;
+	normalZ /= normalLength;
+	/* Keep the step's full length along the tangent so a walk circles the
+	body at speed instead of crawling near its front; a dead-on step deflects
+	to a fixed side so it still gets around. */
+	const float tangentX = -normalZ;
+	const float tangentZ = normalX;
+	float along = remainingX * tangentX + remainingZ * tangentZ;
+	if (std::abs(along) <= SWEEP_EPSILON)
+		along = 1.f;
+	const float side = along < 0.f ? -1.f : 1.f;
+	const float slideX = tangentX * side * remainingLength;
+	const float slideZ = tangentZ * side * remainingLength;
+	const float slideLength = remainingLength;
+
+	SERVER_PLAYER contact = player;
+	contact.fPositionX = outX;
+	contact.fPositionY = outY;
+	contact.fPositionZ = outZ;
+	const float slideTargetX = outX + slideX;
+	const float slideTargetZ = outZ + slideZ;
+	float earliestSlideHit = NO_HIT;
+	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
+	{
+		if (index >= m_PlayerBlocking.size() || !m_PlayerBlocking[index])
+			continue;
+		float hitRatio = 0.f;
+		if (Sweep_PlayerAgainstBox(
+			contact, slideTargetX, outY, slideTargetZ,
+			m_CollisionBoxes[index], hitRatio))
+		{
+			earliestSlideHit = (std::min)(earliestSlideHit, hitRatio);
+		}
+	}
+	for (const SERVER_BLOCKING_BODY& body : m_BlockingBodies)
+	{
+		/* Tangent motion never re-enters the circle it slides on; testing it
+		again would only trip on rounding at the contact point. */
+		if (&body == hitBody)
+			continue;
+		float hitRatio = 0.f;
+		if (Sweep_PlayerAgainstBody(
+			contact, slideTargetX, slideTargetZ, body, hitRatio))
+		{
+			earliestSlideHit = (std::min)(earliestSlideHit, hitRatio);
+		}
+	}
+	const float slideRatio = NO_HIT == earliestSlideHit ? 1.f :
+		(std::max)(0.f, earliestSlideHit - CONTACT_MARGIN / slideLength);
+	if (slideRatio <= 0.f)
+		return true;
+	outX += slideX * slideRatio;
+	outZ += slideZ * slideRatio;
+	/* The player kept moving, so the walk goal stays alive; only a step
+	that could not slide at all reports as blocked. */
+	outWasBlocked = false;
 	return true;
 }
 

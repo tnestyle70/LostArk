@@ -34,6 +34,16 @@ namespace LostArk::Server
 		float fHitRatio = 1.f;
 	};
 
+	/* One living world entity body, on the XZ plane, that a player cannot
+	walk or root-motion into. The room rebuilds the list every tick from its
+	entities; the collision system never learns what the body belongs to. */
+	struct SERVER_BLOCKING_BODY final
+	{
+		float fX = 0.f;
+		float fZ = 0.f;
+		float fRadius = 0.f;
+	};
+
 	class CServerCollisionSystem final
 	{
 	public:
@@ -42,6 +52,7 @@ namespace LostArk::Server
 			std::string& outStatus);
 		bool Is_PlayerSpawnClear(
 			const WORLD_BOOTSTRAP_PLACEMENT& spawn) const;
+		void Set_BlockingBodies(std::vector<SERVER_BLOCKING_BODY> bodies);
 		bool Resolve_PlayerMove(
 			const SERVER_PLAYER& player,
 			float proposedX,
@@ -143,11 +154,21 @@ namespace LostArk::Server
 			float& outHitRatio);
 		static bool Is_ImpactReceiverPlacementId(
 			std::string_view placementId) noexcept;
+		/* XZ sweep of the player's body circle against one entity body. A
+		start already inside the combined radius only blocks motion toward the
+		body's centre, so a player a boss landed on can always step out. */
+		static bool Sweep_PlayerAgainstBody(
+			const SERVER_PLAYER& player,
+			float proposedX,
+			float proposedZ,
+			const SERVER_BLOCKING_BODY& body,
+			float& outHitRatio);
 
 	private:
 		std::vector<WORLD_BOOTSTRAP_PLACEMENT> m_CollisionBoxes;
 		std::vector<bool> m_PlayerBlocking;
 		std::vector<bool> m_ImpactReceiverEnabled;
+		std::vector<SERVER_BLOCKING_BODY> m_BlockingBodies;
 		std::uint64_t m_iRevision = 0u;
 	};
 }

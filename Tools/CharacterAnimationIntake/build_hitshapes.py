@@ -50,6 +50,8 @@ def read_hit_rows(asset):
             'ax': int(fields.get('ax', '0')),
             'arem': int(fields.get('arem', '0')),
             'maxt': int(fields.get('maxt', '0')),
+            'push': int(fields.get('push', '0')),
+            'pushr': int(fields.get('pushr', '0')),
         })
     for rows in hits.values():
         rows.sort(key=lambda h: h['startMs'])
@@ -81,6 +83,10 @@ def stage_hits(entries, clip_ticks, clip_hits, limit_ms, label):
                 'offset': round(h['ax'] * UNITS_TO_METERS, 2),
                 'inner': round(h['arem'] * UNITS_TO_METERS, 2),
                 'maxTargets': h['maxt'],
+                # Official push: duration in ms (0 = no push) and signed range,
+                # negative pulling the target toward the caster.
+                'pushMs': max(0, h['push']),
+                'pushRange': round(h['pushr'] * UNITS_TO_METERS, 2) if h['push'] > 0 else 0.0,
             })
         elapsed_ms += source_ms / rate
     out.sort(key=lambda h: h['timeMs'])

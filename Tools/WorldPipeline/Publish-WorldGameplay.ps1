@@ -199,7 +199,8 @@ function Get-MonsterProfiles {
         Assert-ExactProperties $profile @(
             'archetypeId','maxHp','attackPower','defense','collisionRadius',
             'engageRange','moveSpeed','attackRange','attackWindupMs',
-            'attackActiveMs','attackRecoveryMs','deadDespawnMs') 'monster profile'
+            'attackActiveMs','attackRecoveryMs','deadDespawnMs',
+            'hitKnockbackScale') 'monster profile'
         Assert-StableId $profile.archetypeId 'monster profile archetypeId'
         Assert-JsonInteger $profile.maxHp "$($profile.archetypeId) maxHp" 1 2000000000
         Assert-JsonInteger $profile.attackPower "$($profile.archetypeId) attackPower" 1 2000000000
@@ -212,6 +213,10 @@ function Get-MonsterProfiles {
         }
         foreach ($field in @('attackWindupMs','attackActiveMs','attackRecoveryMs','deadDespawnMs')) {
             Assert-JsonInteger $profile.$field "$($profile.archetypeId) $field" 1 600000
+        }
+        Assert-JsonNumber $profile.hitKnockbackScale "$($profile.archetypeId) hitKnockbackScale"
+        if ([double]$profile.hitKnockbackScale -lt 0.0 -or [double]$profile.hitKnockbackScale -gt 10.0) {
+            throw "Monster profile hitKnockbackScale is out of range: $($profile.archetypeId)"
         }
         if ($profiles.ContainsKey([string]$profile.archetypeId)) {
             throw "Duplicate monster profile: $($profile.archetypeId)"
@@ -353,10 +358,11 @@ function Convert-SpawnGroupsDocument {
             (Format-InvariantFloat $profile.moveSpeed),
             (Format-InvariantFloat $profile.attackRange),
             [string][uint32]$profile.attackWindupMs,[string][uint32]$profile.attackActiveMs,
-            [string][uint32]$profile.attackRecoveryMs,[string][uint32]$profile.deadDespawnMs) -join "`t"))
+            [string][uint32]$profile.attackRecoveryMs,[string][uint32]$profile.deadDespawnMs,
+            (Format-InvariantFloat $profile.hitKnockbackScale)) -join "`t"))
     }
     $lines = [Collections.Generic.List[string]]::new()
-    $lines.Add("LOSTARK_SPAWN_GROUP_BOOTSTRAP`t1`t$WorldId`t$AreaId`t$($document.revision)`t$($anchorRows.Count)`t$($groupIds.Count)`t$($profileRows.Count)")
+    $lines.Add("LOSTARK_SPAWN_GROUP_BOOTSTRAP`t2`t$WorldId`t$AreaId`t$($document.revision)`t$($anchorRows.Count)`t$($groupIds.Count)`t$($profileRows.Count)")
     foreach ($row in @($profileRows | Sort-Object)) { $lines.Add($row) }
     foreach ($row in @($anchorRows | Sort-Object)) { $lines.Add($row) }
     foreach ($row in $groupRows) { $lines.Add($row) }

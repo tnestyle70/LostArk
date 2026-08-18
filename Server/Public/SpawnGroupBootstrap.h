@@ -23,6 +23,9 @@ namespace LostArk::Server
 		std::uint32_t iAttackActiveMs = 0;
 		std::uint32_t iAttackRecoveryMs = 0;
 		std::uint32_t iDeadDespawnMs = 0;
+		/* Multiplier on the authored push range of each player hit; 0 means the
+		monster never moves (super armour). */
+		float fHitKnockbackScale = 0.f;
 	};
 
 	struct SPAWN_GROUP_ANCHOR final

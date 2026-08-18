@@ -599,6 +599,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	}
 
 	m_TickDamageEvents.clear();
+	Refresh_PlayerBlockingBodies();
 	Update_Players(fixedDeltaSeconds);
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
@@ -3372,6 +3373,7 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 	staged.iPatternActiveMs = profile.iAttackActiveMs;
 	staged.iPatternRecoveryMs = profile.iAttackRecoveryMs;
 	staged.iDeadDespawnMs = profile.iDeadDespawnMs;
+	staged.fHitKnockbackScale = profile.fHitKnockbackScale;
 
 	++m_iNextNetEntityId;
 	m_WorldEntities.push_back(std::move(staged));
@@ -3403,6 +3405,41 @@ float LostArk::Server::CGameRoom::Resolve_StanceMoveSpeedScale(
 		return 1.f;
 	}
 	return profile->fDefenseStanceMoveSpeedScale;
+}
+
+void LostArk::Server::CGameRoom::Refresh_PlayerBlockingBodies()
+{
+	std::vector<SERVER_BLOCKING_BODY> bodies;
+	bodies.reserve(m_WorldEntities.size());
+	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+	{
+		if (entity.isEstherSummon ||
+			SERVER_ENTITY_ACTION::DEAD == entity.eAction ||
+			0u == entity.iCurrentHp)
+		{
+			continue;
+		}
+		/* Same body the skill hit test uses: monsters carry their profile
+		radius, the boss reads its profile. */
+		float radius = entity.fCollisionRadius;
+		if (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind)
+		{
+			if (const BOSS_RUNTIME_PROFILE* bossProfile =
+				m_GameplayCatalog.Find_Boss(entity.strArchetypeId))
+			{
+				radius = bossProfile->fCollisionRadius;
+			}
+		}
+		else if (WORLD_BOOTSTRAP_KIND::MONSTER != entity.eKind)
+		{
+			continue;
+		}
+		if (radius <= 0.f)
+			continue;
+		bodies.push_back(SERVER_BLOCKING_BODY{
+			entity.fPositionX, entity.fPositionZ, radius });
+	}
+	m_ServerCollisionSystem.Set_BlockingBodies(std::move(bodies));
 }
 
 void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
@@ -3696,6 +3733,11 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 		else if (entity.eKind == WORLD_BOOTSTRAP_KIND::MONSTER &&
 			m_ServerNavigation.Is_Loaded())
 		{
+			if (CMonsterBrain::Advance_Knockback(
+				entity, m_ServerNavigation, fixedDeltaSeconds))
+			{
+				continue;
+			}
 			m_MonsterBrain.Update(
 				entity,
 				m_Players,
