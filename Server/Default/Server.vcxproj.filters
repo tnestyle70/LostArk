@@ -43,6 +43,7 @@
     <ClInclude Include="..\Public\SpawnGroupRuntime.h"><Filter>Public</Filter></ClInclude>
     <ClInclude Include="..\Public\MonsterBrain.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\GameplayCatalog.h"><Filter>Public</Filter></ClInclude>
+	<ClInclude Include="..\Public\ItemCatalog.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\PlayerSkillSystem.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ServerNavigation.h"><Filter>Public</Filter></ClInclude>
 	<ClInclude Include="..\Public\ValtanBrain.h"><Filter>Public</Filter></ClInclude>
@@ -81,6 +82,7 @@
     <ClCompile Include="..\Private\SpawnGroupRuntime.cpp"><Filter>Private</Filter></ClCompile>
     <ClCompile Include="..\Private\MonsterBrain.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\GameplayCatalog.cpp"><Filter>Private</Filter></ClCompile>
+	<ClCompile Include="..\Private\ItemCatalog.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\PlayerSkillSystem.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ServerNavigation.cpp"><Filter>Private</Filter></ClCompile>
 	<ClCompile Include="..\Private\ValtanBrain.cpp"><Filter>Private</Filter></ClCompile>

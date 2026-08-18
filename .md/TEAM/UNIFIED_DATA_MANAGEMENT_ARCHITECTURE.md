@@ -109,6 +109,7 @@ flowchart LR
 | `Data/Animation/Reference` | `.skilltiming/.clipmap/.animnotify/.clipseq` | `REFERENCE` |
 | `Data/Balance` | Player/Boss profile, skill, damage | `CURRENT`, formatVersion 2 |
 | `Data/Encounters` | Encounter authoring과 pattern 정의 | `PARTIAL`; Valtan 첫 pattern의 range/timing/damage만 publish, `states[]`는 runtime 미소비 |
+| `Data/Items` | Item catalog(`itemId`/`displayName`/`maxStack`) 정의 | `CURRENT`; Debug F1 give-item 슬라이스만 소비, drop/trade/stat 효과는 미구현 |
 | `Data/Maps/Imported` | 추출 catalog/shard 기준 | `CURRENT` |
 | `Data/Maps/Authoring` | MapTool visual/deploy placement 정본 | `CURRENT` |
 | `Data/Navigation` | nav source/paint/blocker 또는 uniform grid | `CURRENT` |

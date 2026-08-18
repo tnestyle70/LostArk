@@ -83,6 +83,18 @@ public:
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
 	bool Send_SpawnWorldEntity(std::string_view placementId);
+	/* Debug-only. The Server owns the truth; this only carries the request and
+	the answer arrives as an S2C_INVENTORY_SNAPSHOT replication event. */
+	bool Send_DebugGiveItem(
+		std::uint32_t requestSequence,
+		std::string_view itemId,
+		std::uint32_t quantity);
+	/* A consumable used from a quick slot. The Server owns the heal/decrement;
+	the answer arrives the same way -- an S2C_INVENTORY_SNAPSHOT replication
+	event, plus the next S2C_WORLD_SNAPSHOT tick for the new HP. */
+	bool Send_UseItem(
+		std::uint32_t requestSequence,
+		std::string_view itemId);
 	/* Debug Valtan pattern audition. The Server owns the verdict; this only
 	carries the request and hands back whatever it answered. */
 	bool Send_ValtanAudition(

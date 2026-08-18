@@ -21,7 +21,8 @@ namespace Client
 		WORLD_SNAPSHOT,
 		WORLD_DESTRUCTION_FULL_SYNC,
 		WORLD_DESTRUCTION_DELTA,
-		ENCOUNTER_PROP_SYNC
+		ENCOUNTER_PROP_SYNC,
+		INVENTORY_SNAPSHOT
 	};
 	//하나의 ordered_queue에 서로 다른 종류의 이벤트를 저장하기 위한 봉투
 	//spawn, despawn, snapshot을 서로 다른 queue에 넣지 않고, 하나의 queue가 tcp
@@ -41,5 +42,6 @@ namespace Client
 		LostArk::Shared::S2C_WORLD_DESTRUCTION_DELTA
 			WorldDestructionDelta;
 		LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC EncounterPropSync;
+		LostArk::Shared::S2C_INVENTORY_SNAPSHOT InventorySnapshot;
 	};
 }

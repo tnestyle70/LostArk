@@ -732,4 +732,64 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		S2C_VALTAN_AUDITION_RESULT& message);
+
+	// Debug-only inventory slice. itemId is a stable catalog ID, not a display
+	// string, so it shares the same bound a UI label never needs.
+	inline constexpr std::size_t MAX_ITEM_ID_BYTES = 64;
+	// One F1 debug session giving itself a handful of catalog items at a time
+	// is the whole current use case; a real inventory window is a separate
+	// vertical slice.
+	inline constexpr std::size_t MAX_INVENTORY_ITEMS = 64;
+
+	struct C2S_DEBUG_GIVE_ITEM
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::string strItemId;
+		std::uint32_t iQuantity = 1;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_DEBUG_GIVE_ITEM& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_DEBUG_GIVE_ITEM& message);
+
+	struct INVENTORY_ITEM_SNAPSHOT
+	{
+		std::string strItemId;
+		std::uint32_t iQuantity = 0;
+	};
+
+	// Replace-in-full, the same shape S2C_ENCOUNTER_PROP_SYNC uses: one message
+	// carries the whole current inventory, so a late joiner or a re-entering
+	// session is correct without replaying every past give.
+	struct S2C_INVENTORY_SNAPSHOT
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::vector<INVENTORY_ITEM_SNAPSHOT> Items;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_INVENTORY_SNAPSHOT& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_INVENTORY_SNAPSHOT& message);
+
+	// Which quick slot (Item_1..4) the use came from is purely a Client-local
+	// display/binding concern -- the Server only owns the inventory by item
+	// ID, so this carries no slot index.
+	struct C2S_USE_ITEM
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::string strItemId;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_USE_ITEM& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_USE_ITEM& message);
 }

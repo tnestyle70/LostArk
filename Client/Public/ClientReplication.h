@@ -155,6 +155,14 @@ namespace Client
 		{
 			return m_EncounterPropState;
 		}
+		/* Debug-only inventory slice. Replace-in-full, same as
+		   Get_EncounterPropState: the Server always answers with the whole
+		   current inventory, never a delta. */
+		const LostArk::Shared::S2C_INVENTORY_SNAPSHOT&
+		Get_InventoryState() const
+		{
+			return m_InventoryState;
+		}
 
 	private:
 		bool Create_Character(
@@ -182,6 +190,8 @@ namespace Client
 			const LostArk::Shared::S2C_WORLD_DESTRUCTION_DELTA& delta);
 		bool Apply_EncounterPropSync(
 			const LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC& sync);
+		bool Apply_InventorySnapshot(
+			const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& snapshot);
 		enum class CHARACTER_REPLACE_RESULT
 		{
 			REPLACED,
@@ -228,6 +238,7 @@ namespace Client
 		LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_DIAGNOSTICS
 			m_WorldDestructionDiagnostics{};
 		LostArk::Shared::S2C_ENCOUNTER_PROP_SYNC m_EncounterPropState{};
+		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_InventoryState{};
 #ifdef _DEBUG
 		bool_t m_isCombatColliderDebugVisible = false;
 		bool_t m_isSkillHitAreaDebugVisible = true;

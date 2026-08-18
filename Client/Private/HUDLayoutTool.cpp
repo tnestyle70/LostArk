@@ -42,6 +42,13 @@ namespace
 		/* Esther skill-select window (3 portrait slots + shared charge gauge) -- shared across
 		classes like Boss UI, so its own document rather than squeezed into Combat HUD. */
 		{ "Esther UI",      "UI/Esther/EstherUI.json", "UI/Esther/", false },
+		/* Inventory panel -- background/tabs/material icons and the real 10-column slot grid
+		traced from the actual inventory.gfx data (mainBag origin/slotSize/spacing), scaled from
+		its native 1920x1080 authoring canvas to this project's 1280x720 HUD reference. Slot cell
+		border art (ARKSlotBackgroundV2) lives in a separate shared component package that hasn't
+		been located yet, so the 30 Inventory_Slot_* markers are position-only (empty layers) for
+		now -- real slot border art is a follow-up, not fabricated here. */
+		{ "Inventory UI",   "UI/Inventory/InventoryUI.json", "UI/Inventory/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));

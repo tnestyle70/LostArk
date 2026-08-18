@@ -361,6 +361,28 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::VALTAN_AUDITION;
 		command.ValtanAudition = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DEBUG_GIVE_ITEM)
+	{
+		C2S_DEBUG_GIVE_ITEM request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DEBUG_GIVE_ITEM;
+		command.DebugGiveItem = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_USE_ITEM)
+	{
+		C2S_USE_ITEM request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::USE_ITEM;
+		command.UseItem = request;
+	}
 	else
 	{
 		Request_SessionClose(sessionId);

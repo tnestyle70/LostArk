@@ -303,6 +303,11 @@ LostArk::Server::CGameRoom::CGameRoom(
 		m_strStatus = m_GameplayCatalog.Get_Status();
 		return;
 	}
+	if (!m_ItemCatalog.Load())
+	{
+		m_strStatus = m_ItemCatalog.Get_Status();
+		return;
+	}
 	if (!m_SpawnGroupBootstrap.Load(worldId))
 	{
 		m_strStatus = m_SpawnGroupBootstrap.Get_Status();
@@ -585,6 +590,12 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			Handle_ValtanAudition(
 				command.iSessionId,
 				command.ValtanAudition);
+			break;
+		case ROOM_COMMAND_TYPE::DEBUG_GIVE_ITEM:
+			Handle_DebugGiveItem(command.iSessionId, command.DebugGiveItem);
+			break;
+		case ROOM_COMMAND_TYPE::USE_ITEM:
+			Handle_UseItem(command.iSessionId, command.UseItem);
 			break;
 		case ROOM_COMMAND_TYPE::LEAVE:
 			Leave(command.iSessionId, command.eLeaveReason);
@@ -883,6 +894,22 @@ bool LostArk::Server::CGameRoom::Join(
 		player.fPositionZ = projected.z;
 	}
 
+	// Debug/testing seed: every entering player starts with 500 of each HP
+	// potion tier, per explicit request, so trying the heal-on-use path
+	// doesn't need 500 separate F1 Give Item clicks first.
+	for (const char* potionId :
+		{ "POTION_HP_SMALL", "POTION_HP_MEDIUM", "POTION_HP_LARGE" })
+	{
+		const SERVER_ITEM_DEFINITION* potionDefinition =
+			m_ItemCatalog.Find_Item(potionId);
+		if (nullptr == potionDefinition)
+			continue;
+		INVENTORY_ITEM_SNAPSHOT seeded{};
+		seeded.strItemId = potionId;
+		seeded.iQuantity = (std::min)(500u, potionDefinition->iMaxStack);
+		player.Inventory.push_back(std::move(seeded));
+	}
+
 	++m_iNextPlayerId;
 	++m_iNextNetEntityId;
 	m_Players.emplace(player.iPlayerId, player);
@@ -891,6 +918,15 @@ bool LostArk::Server::CGameRoom::Join(
 	session->Bind_PlayerId(player.iPlayerId);
 
 	if (!Send_Accepted(session, player))
+	{
+		Rollback_Join(sessionId);
+		session->Request_Close();
+		return false;
+	}
+	// A re-entering session sees its existing inventory without needing to
+	// give itself an item first. iRequestSequence 0 marks this as the
+	// unsolicited entry snapshot rather than an answer to a give request.
+	if (!Send_InventorySnapshot(session, 0u, player.Inventory))
 	{
 		Rollback_Join(sessionId);
 		session->Request_Close();
@@ -1403,6 +1439,112 @@ void LostArk::Server::CGameRoom::Handle_ChangeCharacterClass(
 		Apply_CharacterClassChange(player, request);
 	if (!Send_CharacterClassChangeResult(
 		session, request, result, player.eCharacterClass))
+	{
+		session->Request_Close();
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_DebugGiveItem(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DEBUG_GIVE_ITEM& request)
+{
+	using namespace LostArk::Shared;
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (nullptr == session || sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+
+	SERVER_PLAYER& player = playerIter->second;
+	const SERVER_ITEM_DEFINITION* itemDefinition =
+		m_ItemCatalog.Find_Item(request.strItemId);
+	// An unknown item ID is rejected rather than silently dropped or
+	// substituted; the inventory is only ever a replace-in-full send, so a
+	// no-op reply carries no result to give a caller.
+	if (nullptr == itemDefinition)
+		return;
+
+	const auto existing = std::find_if(
+		player.Inventory.begin(), player.Inventory.end(),
+		[&request](const INVENTORY_ITEM_SNAPSHOT& item)
+		{
+			return item.strItemId == request.strItemId;
+		});
+	if (existing == player.Inventory.end())
+	{
+		INVENTORY_ITEM_SNAPSHOT item{};
+		item.strItemId = request.strItemId;
+		item.iQuantity = (std::min)(request.iQuantity, itemDefinition->iMaxStack);
+		if (player.Inventory.size() >= MAX_INVENTORY_ITEMS)
+			return;
+		player.Inventory.push_back(std::move(item));
+	}
+	else
+	{
+		const std::uint64_t stacked =
+			static_cast<std::uint64_t>(existing->iQuantity) +
+			static_cast<std::uint64_t>(request.iQuantity);
+		existing->iQuantity = static_cast<std::uint32_t>(
+			(std::min)(stacked, static_cast<std::uint64_t>(
+				itemDefinition->iMaxStack)));
+	}
+
+	if (!Send_InventorySnapshot(
+		session, request.iRequestSequence, player.Inventory))
+	{
+		session->Request_Close();
+	}
+}
+
+void LostArk::Server::CGameRoom::Handle_UseItem(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_USE_ITEM& request)
+{
+	using namespace LostArk::Shared;
+	const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (nullptr == session || sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+
+	SERVER_PLAYER& player = playerIter->second;
+	const SERVER_ITEM_DEFINITION* itemDefinition =
+		m_ItemCatalog.Find_Item(request.strItemId);
+	// Not owned, not a consumable, or already dead: no-op. A dead player using
+	// a heal potion would just resurrect them for free outside the real
+	// revive path, so this is deliberately excluded too.
+	if (nullptr == itemDefinition || 0u == itemDefinition->iHealPercent ||
+		0u == player.iCurrentHp)
+	{
+		return;
+	}
+
+	const auto existing = std::find_if(
+		player.Inventory.begin(), player.Inventory.end(),
+		[&request](const INVENTORY_ITEM_SNAPSHOT& item)
+		{
+			return item.strItemId == request.strItemId;
+		});
+	if (existing == player.Inventory.end() || 0u == existing->iQuantity)
+		return;
+
+	const std::uint64_t healAmount =
+		(static_cast<std::uint64_t>(player.iMaximumHp) *
+			static_cast<std::uint64_t>(itemDefinition->iHealPercent)) / 100u;
+	player.iCurrentHp = static_cast<std::uint32_t>((std::min)(
+		static_cast<std::uint64_t>(player.iMaximumHp),
+		static_cast<std::uint64_t>(player.iCurrentHp) + healAmount));
+
+	--existing->iQuantity;
+	if (0u == existing->iQuantity)
+		player.Inventory.erase(existing);
+
+	if (!Send_InventorySnapshot(
+		session, request.iRequestSequence, player.Inventory))
 	{
 		session->Request_Close();
 	}
@@ -2272,6 +2414,21 @@ bool LostArk::Server::CGameRoom::Send_WorldEntitySpawnResult(
 		session->Send_Frame(
 			PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT,
 			writer.Get_Buffer());
+}
+
+bool LostArk::Server::CGameRoom::Send_InventorySnapshot(
+	const std::shared_ptr<CClientSession>& session,
+	const std::uint32_t requestSequence,
+	const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& inventory)
+{
+	using namespace LostArk::Shared;
+	S2C_INVENTORY_SNAPSHOT message{};
+	message.iRequestSequence = requestSequence;
+	message.Items = inventory;
+	CPacketWriter writer;
+	return nullptr != session && Write_Message(writer, message) &&
+		session->Send_Frame(
+			PACKET_TYPE::S2C_INVENTORY_SNAPSHOT, writer.Get_Buffer());
 }
 
 bool LostArk::Server::CGameRoom::Send_ValtanAuditionResult(

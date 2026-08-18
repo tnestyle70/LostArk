@@ -103,5 +103,10 @@ namespace LostArk::Server
 		bool hasReleasedHold = false;
 		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t>
 			CooldownEndTickBySkillId;
+		// Debug-only inventory slice. Small owned list, stacked per itemId and
+		// capped at the catalog's maxStack; the Shared snapshot struct is
+		// reused directly since the wire shape and the server truth are the
+		// same {itemId, quantity} pair.
+		std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT> Inventory;
 	};
 }

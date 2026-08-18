@@ -44,6 +44,7 @@
 	<ClInclude Include="..\Public\WorldDestructionRuntime.h" />
 	<ClInclude Include="..\Public\WorldDestructionBootstrap.h" />
 	<ClInclude Include="..\Public\WorldDestructionBootstrapContractTests.h" />
+	<ClInclude Include="..\Public\ItemCatalog.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Private\ClientSession.cpp" />
@@ -68,6 +69,7 @@
 	<ClCompile Include="..\Private\WorldDestructionRuntime.cpp" />
 	<ClCompile Include="..\Private\WorldDestructionBootstrap.cpp" />
 	<ClCompile Include="..\Private\WorldDestructionBootstrapContractTests.cpp" />
+	<ClCompile Include="..\Private\ItemCatalog.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\Default\Shared.vcxproj">

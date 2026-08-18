@@ -1,0 +1,13 @@
+{
+  "schema": "lostark.item-catalog",
+  "formatVersion": 2,
+  "items": [
+    { "itemId": "POTION_HP_SMALL", "displayName": "체력 물약(소)", "maxStack": 999, "iconPath": "UI/Inventory/potion_red_1.png", "healPercent": 15 },
+    { "itemId": "POTION_HP_MEDIUM", "displayName": "체력 물약(중)", "maxStack": 999, "iconPath": "UI/Inventory/potion_red_2.png", "healPercent": 30 },
+    { "itemId": "POTION_HP_LARGE", "displayName": "체력 물약(대)", "maxStack": 999, "iconPath": "UI/Inventory/potion_red_3.png", "healPercent": 45 },
+    { "itemId": "MATERIAL_DESTRUCTION_STONE", "displayName": "파괴석", "maxStack": 9999, "iconPath": "", "healPercent": 0 },
+    { "itemId": "MATERIAL_GUARDIAN_STONE", "displayName": "수호석", "maxStack": 9999, "iconPath": "", "healPercent": 0 },
+    { "itemId": "MATERIAL_LEAPSTONE_TIER1", "displayName": "1단계 도약돌", "maxStack": 9999, "iconPath": "", "healPercent": 0 },
+    { "itemId": "CURRENCY_GOLD", "displayName": "골드", "maxStack": 999999999, "iconPath": "", "healPercent": 0 }
+  ]
+}

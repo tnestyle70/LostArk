@@ -101,6 +101,21 @@ namespace Client
 		}
 		void Reset_RuntimeState();
 
+		/* Debug-only inventory slice. CClientReplication pushes its
+		replace-in-full inventory state here the same way it pushes
+		Apply_LocalPlayer, so the level-agnostic F1 debug panel can read it
+		without reaching into whichever Level currently owns the live
+		CClientReplication instance. */
+		void Apply_Inventory(
+			const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& snapshot)
+		{
+			m_Inventory = snapshot;
+		}
+		const LostArk::Shared::S2C_INVENTORY_SNAPSHOT& Get_Inventory() const
+		{
+			return m_Inventory;
+		}
+
 		/* Debug-only: lets the HUD Layout Tool preview the boss bar with sample numbers without
 		requiring a live Valtan encounter (real Server snapshot). Enabling stamps fixed sample data
 		into m_Boss every call; disabling drops back to isValid=false so real Apply_Boss() snapshots
@@ -159,6 +174,7 @@ namespace Client
 		std::vector<HUD_DAMAGE_EVENT> m_DamageEvents;
 		std::uint32_t m_iEstherGauge = 0;
 		std::uint32_t m_iEstherGaugeMaximum = 0;
+		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_Inventory{};
 		std::string m_strStatus;
 	};
 }

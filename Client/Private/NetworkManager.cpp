@@ -541,6 +541,52 @@ bool CNetworkManager::Send_SpawnWorldEntity(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_DebugGiveItem(
+	const std::uint32_t requestSequence,
+	const std::string_view itemId,
+	const std::uint32_t quantity)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_DEBUG_GIVE_ITEM message{};
+	message.iRequestSequence = requestSequence;
+	message.strItemId = std::string{ itemId };
+	message.iQuantity = quantity;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DEBUG_GIVE_ITEM,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_UseItem(
+	const std::uint32_t requestSequence,
+	const std::string_view itemId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_USE_ITEM message{};
+	message.iRequestSequence = requestSequence;
+	message.strItemId = std::string{ itemId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_USE_ITEM,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_ValtanAudition(
 	const std::uint32_t requestSequence,
 	const LostArk::Shared::VALTAN_AUDITION_OPERATION operation,
@@ -1015,6 +1061,21 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 				m_LocalSpawn.eCharacterClass = result.eActiveClass;
 		}
 		m_CharacterClassChangeResults.push_back(std::move(result));
+		break;
+	}
+	case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:
+	{
+		S2C_INVENTORY_SNAPSHOT snapshot{};
+		if (!Read_Message(reader, snapshot) || 0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::INVENTORY_SNAPSHOT;
+		event.InventorySnapshot = std::move(snapshot);
+		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
 	//snapshot

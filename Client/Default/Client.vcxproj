@@ -80,6 +80,7 @@
     <ClInclude Include="..\Public\ClientReplicationEvent.h" />
     <ClInclude Include="..\Public\CombatHUDViewModel.h" />
     <ClInclude Include="..\Public\HUDRuntimeView.h" />
+    <ClInclude Include="..\Public\InventoryView.h" />
     <ClInclude Include="..\Public\SkillWindowView.h" />
     <ClInclude Include="..\Public\ChatWindowView.h" />
     <ClInclude Include="..\Public\PartyWindowView.h" />
@@ -123,6 +124,7 @@
     <ClInclude Include="..\Public\PlayerController.h" />
     <ClInclude Include="..\Public\PlayerCommandSink.h" />
     <ClInclude Include="..\Public\PlayerSkillCatalog.h" />
+    <ClInclude Include="..\Public\ItemCatalog.h" />
     <ClInclude Include="..\Public\NetworkPlayerCommandSink.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
     <ClInclude Include="..\Public\MapAssetCatalog.h" />
@@ -202,6 +204,7 @@
     <ClCompile Include="..\Private\ClientReplication.cpp" />
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
+    <ClCompile Include="..\Private\InventoryView.cpp" />
     <ClCompile Include="..\Private\SkillWindowView.cpp" />
     <ClCompile Include="..\Private\ChatWindowView.cpp" />
     <ClCompile Include="..\Private\PartyWindowView.cpp" />
@@ -243,6 +246,7 @@
     <ClCompile Include="..\Private\MainApp.cpp" />
     <ClCompile Include="..\Private\PlayerController.cpp" />
     <ClCompile Include="..\Private\PlayerSkillCatalog.cpp" />
+    <ClCompile Include="..\Private\ItemCatalog.cpp" />
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
     <ClCompile Include="..\Private\MapAssetCatalog.cpp" />
@@ -339,6 +343,7 @@
     <None Include="..\..\Data\Balance\PlayerProfiles.json" />
     <None Include="..\..\Data\Balance\MonsterProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerSkills.json" />
+    <None Include="..\..\Data\Items\ItemCatalog.json" />
     <None Include="..\..\Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json" />
@@ -411,6 +416,7 @@
     <None Include="..\..\Data\Navigation\LV_LUT_HEARTRB_ED.navsource" />
     <None Include="..\..\Data\UI\BossUI\BossUI.json" />
     <None Include="..\..\Data\UI\Esther\EstherUI.json" />
+    <None Include="..\..\Data\UI\Inventory\InventoryUI.json" />
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json" />
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json" />
     <None Include="..\..\Data\UI\Loading\LoadingLayout.json" />

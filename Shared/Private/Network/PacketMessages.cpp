@@ -114,6 +114,36 @@ namespace
 				}));
 	}
 
+	// Same character class as Is_Valid_StableId, but capped at the item ID's
+	// own, tighter wire bound instead of the general stable-ID bound.
+	bool Is_Valid_ItemId(const std::string& value)
+	{
+		return !value.empty() &&
+			value.size() <= LostArk::Shared::MAX_ITEM_ID_BYTES &&
+			std::all_of(value.begin(), value.end(), [](const unsigned char character)
+			{
+				return 0 != std::isalnum(character) || character == '_' ||
+					character == '-' || character == '.';
+			});
+	}
+
+	bool Is_Valid_InventoryItems(
+		const std::vector<LostArk::Shared::INVENTORY_ITEM_SNAPSHOT>& items)
+	{
+		for (std::size_t index = 0; index < items.size(); ++index)
+		{
+			const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& item = items[index];
+			if (!Is_Valid_ItemId(item.strItemId) || 0u == item.iQuantity)
+				return false;
+			for (std::size_t other = index + 1; other < items.size(); ++other)
+			{
+				if (items[other].strItemId == item.strItemId)
+					return false;
+			}
+		}
+		return true;
+	}
+
 	bool Is_Valid_WorldEntityKind(
 		const LostArk::Shared::WORLD_ENTITY_KIND kind)
 	{
@@ -2049,5 +2079,113 @@ bool LostArk::Shared::Read_Message(
 		static_cast<VALTAN_AUDITION_OPERATION>(rawOperation);
 	decoded.eResult = static_cast<VALTAN_AUDITION_RESULT>(rawResult);
 	message = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_DEBUG_GIVE_ITEM& message)
+{
+	if (0u == message.iRequestSequence || !Is_Valid_ItemId(message.strItemId) ||
+		0u == message.iQuantity)
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	if (!writer.Write_String(message.strItemId, MAX_ITEM_ID_BYTES))
+		return false;
+	writer.Write_U32(message.iQuantity);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_DEBUG_GIVE_ITEM& message)
+{
+	C2S_DEBUG_GIVE_ITEM decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(decoded.strItemId, MAX_ITEM_ID_BYTES) ||
+		!reader.Read_U32(decoded.iQuantity) ||
+		0u == decoded.iRequestSequence || !Is_Valid_ItemId(decoded.strItemId) ||
+		0u == decoded.iQuantity)
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_INVENTORY_SNAPSHOT& message)
+{
+	if (message.Items.size() > MAX_INVENTORY_ITEMS ||
+		!Is_Valid_InventoryItems(message.Items))
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	writer.Write_U16(static_cast<std::uint16_t>(message.Items.size()));
+	for (const INVENTORY_ITEM_SNAPSHOT& item : message.Items)
+	{
+		if (!writer.Write_String(item.strItemId, MAX_ITEM_ID_BYTES))
+			return false;
+		writer.Write_U32(item.iQuantity);
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_INVENTORY_SNAPSHOT& message)
+{
+	S2C_INVENTORY_SNAPSHOT decoded{};
+	std::uint16_t itemCount = 0;
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_U16(itemCount) || itemCount > MAX_INVENTORY_ITEMS)
+	{
+		return false;
+	}
+	decoded.Items.reserve(itemCount);
+	for (std::uint16_t index = 0; index < itemCount; ++index)
+	{
+		INVENTORY_ITEM_SNAPSHOT item{};
+		if (!reader.Read_String(item.strItemId, MAX_ITEM_ID_BYTES) ||
+			!reader.Read_U32(item.iQuantity))
+		{
+			return false;
+		}
+		decoded.Items.push_back(std::move(item));
+	}
+	if (!Is_Valid_InventoryItems(decoded.Items))
+		return false;
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_USE_ITEM& message)
+{
+	if (0u == message.iRequestSequence || !Is_Valid_ItemId(message.strItemId))
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	if (!writer.Write_String(message.strItemId, MAX_ITEM_ID_BYTES))
+		return false;
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_USE_ITEM& message)
+{
+	C2S_USE_ITEM decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(decoded.strItemId, MAX_ITEM_ID_BYTES) ||
+		0u == decoded.iRequestSequence || !Is_Valid_ItemId(decoded.strItemId))
+	{
+		return false;
+	}
+	message = std::move(decoded);
 	return true;
 }

@@ -5,7 +5,7 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 21;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 23;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -109,7 +109,20 @@ namespace LostArk::Shared
 		// a Release Server answers an explicit rejection instead of closing the
 		// session on an unknown frame; only a Debug Server ever accepts one.
 		C2S_VALTAN_AUDITION_REQUEST,
-		S2C_VALTAN_AUDITION_RESULT
+		S2C_VALTAN_AUDITION_RESULT,
+
+		// Debug-only inventory slice. The Server owns the truth; F1 Give Item
+		// requests one catalog item and the Server answers with the full
+		// current inventory, the same replace-in-full shape a late joiner or a
+		// re-entering session receives on world entry.
+		C2S_DEBUG_GIVE_ITEM,
+		S2C_INVENTORY_SNAPSHOT,
+
+		// A consumable used from a quick slot (Item_1..4). The Server validates
+		// ownership + heal amount and answers with the player's next
+		// S2C_WORLD_SNAPSHOT (HP) and an updated S2C_INVENTORY_SNAPSHOT
+		// (decremented count) -- no separate result message.
+		C2S_USE_ITEM
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -154,6 +167,9 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC:
 		case PACKET_TYPE::C2S_VALTAN_AUDITION_REQUEST:
 		case PACKET_TYPE::S2C_VALTAN_AUDITION_RESULT:
+		case PACKET_TYPE::C2S_DEBUG_GIVE_ITEM:
+		case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:
+		case PACKET_TYPE::C2S_USE_ITEM:
 			return true;
 		default:
 			return  false;
