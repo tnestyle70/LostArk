@@ -29,6 +29,7 @@
     <ClInclude Include="..\Public\AnimationPreviewAssets.h" />
     <ClInclude Include="..\Public\AnimationAuthoringBridge.h" />
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h" />
+	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h" />
     <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h" />
     <ClInclude Include="..\Public\BoneChainSimulation.h" />
     <ClInclude Include="..\Public\BalanceTool.h" />
@@ -165,6 +166,7 @@
     <ClCompile Include="..\Private\Animation_Tool.cpp" />
     <ClCompile Include="..\Private\AnimationAuthoringBridge.cpp" />
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp" />
+	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp" />
     <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp" />
     <ClCompile Include="..\Private\BoneChainSimulation.cpp" />
     <ClCompile Include="..\Private\BalanceTool.cpp" />
@@ -306,6 +308,7 @@
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.animevents" />
     <None Include="..\..\Data\Animation\Authored\Slayer\Slayer.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json" />
+	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json" />
     <None Include="..\..\Data\Animation\RootMotion\LanceMaster.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Warlord.rootmotion.json" />
     <None Include="..\..\Data\Animation\RootMotion\Artist.rootmotion.json" />

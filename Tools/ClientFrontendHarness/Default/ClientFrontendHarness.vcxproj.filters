@@ -42,6 +42,9 @@
 	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternPreviewDocument.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>

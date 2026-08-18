@@ -40,6 +40,7 @@
 #include "EncounterPatternReference.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
+#include "ValtanPatternPreviewDocument.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "WorldDestructionDebrisPresentationDocument.h"
 #include "WorldDestructionDebrisPresentationRuntime.h"
@@ -5736,7 +5737,8 @@ namespace
 		const bool_t duplicateMember = false,
 		const std::string_view suppressionAliasPlacementId =
 			"18177041425620847396",
-		const bool_t duplicateSuppressionAlias = false)
+		const bool_t duplicateSuppressionAlias = false,
+		const bool_t includeStateOnlyFloorGroup = false)
 	{
 		std::ostringstream text;
 		text << "{\"schema\":\"lostark.world-destruction-client-projection\",";
@@ -5745,7 +5747,15 @@ namespace
 		text << "\"combatRuntimeRevision\":\"" << revision << "\",";
 		if (includeUnknownRootKey)
 			text << "\"unknown\":true,";
-		text << "\"groups\":[{";
+		text << "\"groups\":[";
+		if (includeStateOnlyFloorGroup)
+		{
+			text << "{\"groupId\":\"destroyable.group.valtan.floor30.brick.7000000000000000002\",";
+			text << "\"mutationId\":\"mutation.valtan.floor30.brick.7000000000000000002.despawn\",";
+			text << "\"suppressionAliasPlacementIds\":[],";
+			text << "\"memberPlacementIds\":[\"7000000000000000002\"]},";
+		}
+		text << '{';
 		text << "\"groupId\":\"destroyable.group.valtan.wall.3705102\",";
 		text << "\"mutationId\":\"mutation.valtan.wall.3705102.break\",";
 		text << "\"suppressionAliasPlacementIds\":[\"";
@@ -5834,6 +5844,19 @@ namespace
 				"destroyable.group.valtan.wall.3705102") &&
 			presentation.Validate_Against(projection, status),
 			"World Destruction Debris Presentation Parses And Joins Projection");
+
+		CWorldDestructionProjectionDocument projectionWithStateOnlyFloor;
+		const bool_t stateOnlyFloorProjectionReady =
+			CWorldDestructionProjectionDocument::Parse_Text(
+				Make_WorldDestructionProjectionFixture(2u,
+					"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+					"9335938568718910930", false, false,
+					"18177041425620847396", false, true),
+				projectionWithStateOnlyFloor, status);
+		runner.Require(stateOnlyFloorProjectionReady &&
+			projectionWithStateOnlyFloor.Get_Groups().size() == 2u &&
+			presentation.Validate_Against(projectionWithStateOnlyFloor, status),
+			"World Destruction Debris Presentation Allows State Only Projection Groups");
 
 		LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE liveEvent{};
 		liveEvent.strGroupId = "destroyable.group.valtan.wall.3705102";
@@ -28626,6 +28649,373 @@ namespace
 			RejectsLegacyNativeFields(legacyDistributionEvidence),
 			"Legacy In-Memory Document Rejects Every Native V14 Evidence Family Before Serialization");
 	}
+
+	void Test_ValtanPatternPreview(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		const std::string Text = Read_Text(
+			CValtanPatternPreviewDocument::Resolve_Path());
+		const std::string ClipSequenceText = Read_Text(
+			CValtanPatternPreviewDocument::Resolve_ClipSequencePath("Valtan"));
+
+		const auto Collect_AvailableClips = [](
+			const std::string& Source,
+			std::vector<std::string>& OutClips)
+		{
+			std::set<std::string> UniqueClips;
+			std::istringstream Input(Source);
+			std::string Line;
+			while (std::getline(Input, Line))
+			{
+				constexpr std::string_view ClipsMarker = " clips=\"";
+				const size_t Marker = Line.find(ClipsMarker);
+				if (std::string::npos == Marker)
+					continue;
+				const size_t ListBegin = Marker + ClipsMarker.size();
+				const size_t ListEnd = Line.find('"', ListBegin);
+				if (std::string::npos == ListEnd || ListBegin == ListEnd)
+					return false;
+
+				const std::string List =
+					Line.substr(ListBegin, ListEnd - ListBegin);
+				size_t ClipBegin = 0u;
+				while (ClipBegin <= List.size())
+				{
+					const size_t ClipEnd = List.find(',', ClipBegin);
+					const std::string Clip = List.substr(
+						ClipBegin,
+						std::string::npos == ClipEnd ? std::string::npos :
+							ClipEnd - ClipBegin);
+					if (Clip.empty())
+						return false;
+					UniqueClips.insert(Clip);
+					if (std::string::npos == ClipEnd)
+						break;
+					ClipBegin = ClipEnd + 1u;
+				}
+			}
+			OutClips.assign(UniqueClips.begin(), UniqueClips.end());
+			return !OutClips.empty();
+		};
+
+		std::vector<std::string> AvailableClips;
+		const bool_t bCollectedClips = !ClipSequenceText.empty() &&
+			Collect_AvailableClips(ClipSequenceText, AvailableClips);
+
+		VALTAN_PATTERN_PREVIEW_DOCUMENT Document;
+		std::string Status;
+		const bool_t bParsed = !Text.empty() &&
+			CValtanPatternPreviewDocument::Parse_Text(Text, Document, Status);
+		VALTAN_PATTERN_PREVIEW_DOCUMENT ResolvedDocument;
+		const bool_t bResolved = bParsed && bCollectedClips &&
+			CValtanPatternPreviewDocument::Resolve_SourceSequences(
+				Document, "Valtan", AvailableClips, ResolvedDocument, Status);
+
+		bool_t bRowsOrdered = bResolved &&
+			67u == ResolvedDocument.Patterns.size();
+		if (bRowsOrdered)
+		{
+			for (size_t Index = 0u;
+				Index < ResolvedDocument.Patterns.size(); ++Index)
+				bRowsOrdered = bRowsOrdered &&
+					ResolvedDocument.Patterns[Index].iNumber == Index + 1u;
+		}
+		runner.Require(
+			bRowsOrdered,
+			"Valtan Pattern Preview V2 Resolves 67 Ordered Rows From Real Clipseq");
+
+		std::vector<VALTAN_PATTERN_PREVIEW_PLAY_ITEM> Playlist;
+		const bool_t bPlaylistBuilt = bResolved &&
+			CValtanPatternPreviewDocument::Build_Playlist(
+				ResolvedDocument, 1u, 67u, Playlist, Status);
+		std::array<bool_t, 68u> SeenPatterns{};
+		std::set<uint32_t> MarkerPatterns;
+		bool_t bPlaylistMetadataValid = bPlaylistBuilt && !Playlist.empty();
+		for (const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Item : Playlist)
+		{
+			bPlaylistMetadataValid = bPlaylistMetadataValid &&
+				Item.iPatternNumber >= 1u && Item.iPatternNumber <= 67u &&
+				Item.iStepNumber >= 1u &&
+				Item.iStepNumber <= Item.iStepCount;
+			if (Item.iPatternNumber < SeenPatterns.size())
+				SeenPatterns[Item.iPatternNumber] = true;
+			if (Item.bPatternMarker)
+			{
+				MarkerPatterns.insert(Item.iPatternNumber);
+				bPlaylistMetadataValid = bPlaylistMetadataValid &&
+					Item.strClipName.empty() && 0u == Item.iSourceActionId;
+			}
+			else
+			{
+				bPlaylistMetadataValid = bPlaylistMetadataValid &&
+					!Item.strClipName.empty() && 0u != Item.iSourceActionId &&
+					Item.iSequenceIndex >= 0 &&
+					Item.iSourceStepNumber >= 1u &&
+					Item.iSourceStepNumber <= Item.iSourceStepCount;
+			}
+		}
+		for (uint32_t iPattern = 1u; iPattern <= 67u; ++iPattern)
+			bPlaylistMetadataValid = bPlaylistMetadataValid &&
+				SeenPatterns[iPattern];
+		runner.Require(
+			bPlaylistMetadataValid &&
+			67u == Playlist.back().iPatternNumber,
+			"Valtan Source Playlist Reaches Pattern 67 Without Omitting A Row");
+		const std::set<uint32_t> ExpectedMarkerPatterns{
+			7u, 9u, 12u, 16u, 28u, 35u, 41u, 46u };
+		runner.Require(
+			bPlaylistBuilt && MarkerPatterns == ExpectedMarkerPatterns,
+			"Valtan Unresolved And Non-Animation Rows Use Exact Marker Set");
+
+		const auto Find_Pattern = [&ResolvedDocument](const uint32_t iNumber)
+			-> const VALTAN_PATTERN_PREVIEW_ENTRY*
+		{
+			if (0u == iNumber || iNumber > ResolvedDocument.Patterns.size())
+				return nullptr;
+			const VALTAN_PATTERN_PREVIEW_ENTRY& Pattern =
+				ResolvedDocument.Patterns[iNumber - 1u];
+			return Pattern.iNumber == iNumber ? &Pattern : nullptr;
+		};
+		const auto Sequence_Matches = [](
+			const VALTAN_PATTERN_PREVIEW_SOURCE_SEQUENCE_REF& Reference,
+			const uint32_t iAction,
+			const int32_t iSequence,
+			const uint32_t iRepeat,
+			const std::vector<std::string>& ExpectedClips)
+		{
+			return Reference.iSourceActionId == iAction &&
+				Reference.iSequenceIndex == iSequence &&
+				Reference.iRepeat == iRepeat &&
+				Reference.ResolvedClips == ExpectedClips &&
+				Reference.Is_Resolved();
+		};
+		const auto Playlist_Matches_ResolvedPattern = [&Playlist](
+			const VALTAN_PATTERN_PREVIEW_ENTRY& Pattern)
+		{
+			size_t iExpectedCount = 0u;
+			for (const VALTAN_PATTERN_PREVIEW_SOURCE_SEQUENCE_REF& Reference :
+				Pattern.Sequences)
+				iExpectedCount += Reference.ResolvedClips.size() *
+					static_cast<size_t>(Reference.iRepeat);
+
+			size_t iPatternItem = 0u;
+			for (const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Item : Playlist)
+			{
+				if (Item.iPatternNumber == Pattern.iNumber)
+					++iPatternItem;
+			}
+			if (iPatternItem != iExpectedCount)
+				return false;
+
+			size_t iStep = 0u;
+			for (const VALTAN_PATTERN_PREVIEW_SOURCE_SEQUENCE_REF& Reference :
+				Pattern.Sequences)
+			{
+				for (uint32_t iRepeat = 1u;
+					iRepeat <= Reference.iRepeat; ++iRepeat)
+				{
+					for (size_t iSourceStep = 0u;
+						iSourceStep < Reference.ResolvedClips.size(); ++iSourceStep)
+					{
+						const auto Found = std::find_if(
+							Playlist.begin(), Playlist.end(),
+							[&Pattern, &iStep](
+								const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Item)
+							{
+								return Item.iPatternNumber == Pattern.iNumber &&
+									Item.iStepNumber == iStep + 1u;
+							});
+						if (Playlist.end() == Found || Found->bPatternMarker ||
+							Found->iSourceActionId != Reference.iSourceActionId ||
+							Found->iSequenceIndex != Reference.iSequenceIndex ||
+							Found->iSequenceRepeatNumber != iRepeat ||
+							Found->iSequenceRepeatCount != Reference.iRepeat ||
+							Found->iSourceStepNumber != iSourceStep + 1u ||
+							Found->iSourceStepCount !=
+								Reference.ResolvedClips.size() ||
+							Found->strClipName !=
+								Reference.ResolvedClips[iSourceStep] ||
+							Found->iStepCount != iExpectedCount)
+							return false;
+						++iStep;
+					}
+				}
+			}
+			return iStep == iExpectedCount;
+		};
+
+		const std::vector<std::string> Pattern1Clips{
+			"mesh_att_battle_3_02" };
+		const std::vector<std::string> SingleDashClips{
+			"mesh_att_battle_4_01" };
+		const std::vector<std::string> Pattern4Clips{
+			"mesh_idle_battle_1", "mesh_att_battle_20_02",
+			"mesh_att_battle_20_03", "mesh_att_battle_20_04" };
+		const std::vector<std::string> Pattern21Clips{
+			"mesh_att_battle_12_01", "mesh_att_battle_12_02",
+			"mesh_att_battle_12_03" };
+		const std::vector<std::string> Pattern32Clips{
+			"mesh_idle_battle_1", "mesh_idle_battle_1",
+			"mesh_att_battle_16_01", "mesh_att_battle_16_02",
+			"mesh_att_battle_16_03", "mesh_att_battle_16_04",
+			"mesh_att_battle_16_05", "mesh_att_battle_20_03",
+			"mesh_att_battle_20_02", "mesh_att_battle_20_04",
+			"mesh_att_battle_16_01", "mesh_att_battle_16_02",
+			"mesh_att_battle_16_03", "mesh_att_battle_20_03",
+			"mesh_att_battle_20_04" };
+		const std::vector<std::string> Pattern48FirstClips{
+			"mesh_idle_battle_1", "mesh_idle_battle_1",
+			"mesh_att_battle_16_01", "mesh_att_battle_16_02",
+			"mesh_att_battle_16_03", "mesh_att_battle_16_04",
+			"mesh_att_battle_16_05", "mesh_att_battle_20_03",
+			"mesh_att_battle_20_02", "mesh_att_battle_20_04",
+			"mesh_att_battle_16_01", "mesh_att_battle_16_02",
+			"mesh_att_battle_16_03", "mesh_att_battle_20_03",
+			"mesh_att_battle_20_04" };
+		const std::vector<std::string> Pattern48SecondClips{
+			"mesh_att_battle_16_08", "mesh_att_battle_16_09",
+			"mesh_att_battle_16_10", "mesh_idle_battle_1" };
+
+		const VALTAN_PATTERN_PREVIEW_ENTRY* pPattern1 = Find_Pattern(1u);
+		const VALTAN_PATTERN_PREVIEW_ENTRY* pPattern4 = Find_Pattern(4u);
+		const VALTAN_PATTERN_PREVIEW_ENTRY* pPattern21 = Find_Pattern(21u);
+		const VALTAN_PATTERN_PREVIEW_ENTRY* pPattern32 = Find_Pattern(32u);
+		const VALTAN_PATTERN_PREVIEW_ENTRY* pPattern48 = Find_Pattern(48u);
+		const bool_t bExactSourceMappings =
+			nullptr != pPattern1 && 1u == pPattern1->Sequences.size() &&
+			Sequence_Matches(pPattern1->Sequences[0],
+				400422u, 0, 1u, Pattern1Clips) &&
+			nullptr != pPattern4 && 1u == pPattern4->Sequences.size() &&
+			Sequence_Matches(pPattern4->Sequences[0],
+				420633u, 4, 1u, Pattern4Clips) &&
+			nullptr != pPattern21 && 1u == pPattern21->Sequences.size() &&
+			Sequence_Matches(pPattern21->Sequences[0],
+				420629u, 1, 1u, Pattern21Clips) &&
+			nullptr != pPattern32 && 1u == pPattern32->Sequences.size() &&
+			Sequence_Matches(pPattern32->Sequences[0],
+				420616u, 4, 1u, Pattern32Clips) &&
+			nullptr != pPattern48 && 2u == pPattern48->Sequences.size() &&
+			Sequence_Matches(pPattern48->Sequences[0],
+				420658u, 4, 1u, Pattern48FirstClips) &&
+			Sequence_Matches(pPattern48->Sequences[1],
+				420659u, 1, 1u, Pattern48SecondClips);
+		const bool_t bExactPlaylistMappings = bExactSourceMappings &&
+			Playlist_Matches_ResolvedPattern(*pPattern1) &&
+			Playlist_Matches_ResolvedPattern(*pPattern4) &&
+			Playlist_Matches_ResolvedPattern(*pPattern21) &&
+			Playlist_Matches_ResolvedPattern(*pPattern32) &&
+			Playlist_Matches_ResolvedPattern(*pPattern48);
+		runner.Require(
+			bExactSourceMappings && bExactPlaylistMappings,
+			"Valtan Patterns 1 4 21 32 And 48 Preserve Exact Source Clip Order");
+
+		const std::array<uint32_t, 5u> SingleDashPatterns{
+			2u, 5u, 10u, 18u, 24u };
+		bool_t bSingleDashMappings = bResolved;
+		for (const uint32_t iPatternNumber : SingleDashPatterns)
+		{
+			const VALTAN_PATTERN_PREVIEW_ENTRY* pPattern =
+				Find_Pattern(iPatternNumber);
+			bSingleDashMappings = bSingleDashMappings && nullptr != pPattern &&
+				1u == pPattern->Sequences.size() &&
+				Sequence_Matches(pPattern->Sequences[0],
+					400424u, 0, 1u, SingleDashClips) &&
+				Playlist_Matches_ResolvedPattern(*pPattern);
+		}
+		runner.Require(
+			bSingleDashMappings,
+			"Valtan Dash Occurrences Play One Normal Dash Source Clip Once");
+
+		const VALTAN_PATTERN_PREVIEW_ENTRY* pPattern40 = Find_Pattern(40u);
+		const std::vector<std::string> Pattern40Clips{
+			"mesh_att_battle_8_01_start", "mesh_att_battle_8_01_loop",
+			"mesh_att_battle_8_01_end", "mesh_att_battle_8_01_loop" };
+		runner.Require(
+			nullptr != pPattern40 && 1u == pPattern40->Sequences.size() &&
+			Sequence_Matches(pPattern40->Sequences[0],
+				420610u, 2, 2u, Pattern40Clips) &&
+			Playlist_Matches_ResolvedPattern(*pPattern40),
+			"Valtan Pattern 40 Repeats The Whole Source Sequence Twice In Order");
+
+		runner.Require(
+			std::string::npos == Text.find("\"clips\"") &&
+			std::string::npos == Text.find("\"previewMs\"") &&
+			std::string::npos == Text.find("\"quick\"") &&
+			std::string::npos == Text.find("SOURCE_EXACT"),
+			"Valtan V2 Authored Rows Contain No Direct Clips Durations Or Exact Claim");
+
+		std::string WrongVersionText = Text;
+		const std::string VersionNeedle = "\"formatVersion\": 2";
+		const size_t VersionPosition = WrongVersionText.find(VersionNeedle);
+		if (std::string::npos != VersionPosition)
+			WrongVersionText.replace(
+				VersionPosition, VersionNeedle.size(), "\"formatVersion\": 1");
+		std::string DirectClipText = Text;
+		const size_t SequenceField = DirectClipText.find("\"sequences\"");
+		if (std::string::npos != SequenceField)
+			DirectClipText.insert(
+				SequenceField, "\"clips\":[\"mesh_idle_battle_1\"],");
+		VALTAN_PATTERN_PREVIEW_DOCUMENT WrongVersionOutput = Document;
+		VALTAN_PATTERN_PREVIEW_DOCUMENT DirectClipOutput = Document;
+		runner.Require(
+			bParsed && std::string::npos != VersionPosition &&
+			std::string::npos != SequenceField &&
+			!CValtanPatternPreviewDocument::Parse_Text(
+				WrongVersionText, WrongVersionOutput, Status) &&
+			WrongVersionOutput == Document &&
+			!CValtanPatternPreviewDocument::Parse_Text(
+				DirectClipText, DirectClipOutput, Status) &&
+			DirectClipOutput == Document,
+			"Valtan Pattern Preview Rejects Legacy Version And Direct Clips With Rollback");
+
+		if (bResolved)
+		{
+			VALTAN_PATTERN_PREVIEW_DOCUMENT WrongAction = Document;
+			WrongAction.Patterns.front().Sequences.front().iSourceActionId =
+				4294967295u;
+			VALTAN_PATTERN_PREVIEW_DOCUMENT WrongActionOutput = ResolvedDocument;
+			runner.Require(
+				!CValtanPatternPreviewDocument::Resolve_SourceSequences(
+					WrongAction, "Valtan", AvailableClips,
+					WrongActionOutput, Status) &&
+				WrongActionOutput == ResolvedDocument,
+				"Valtan Pattern Preview Rejects Missing Source Action With Rollback");
+
+			std::vector<std::string> MissingClipSet = AvailableClips;
+			const auto MissingClip = std::find(
+				MissingClipSet.begin(), MissingClipSet.end(),
+				"mesh_att_battle_3_02");
+			const bool_t bRemovedClip = MissingClipSet.end() != MissingClip;
+			if (bRemovedClip)
+				MissingClipSet.erase(MissingClip);
+			VALTAN_PATTERN_PREVIEW_DOCUMENT MissingClipOutput = ResolvedDocument;
+			runner.Require(
+				bRemovedClip &&
+				!CValtanPatternPreviewDocument::Resolve_SourceSequences(
+					Document, "Valtan", MissingClipSet,
+					MissingClipOutput, Status) &&
+				MissingClipOutput == ResolvedDocument,
+				"Valtan Pattern Preview Rejects Missing Model Clip With Rollback");
+
+			VALTAN_PATTERN_PREVIEW_DOCUMENT Reordered = Document;
+			std::swap(Reordered.Patterns[0], Reordered.Patterns[1]);
+			VALTAN_PATTERN_PREVIEW_DOCUMENT ReorderedOutput = ResolvedDocument;
+			runner.Require(
+				!CValtanPatternPreviewDocument::Resolve_SourceSequences(
+					Reordered, "Valtan", AvailableClips,
+					ReorderedOutput, Status) &&
+				ReorderedOutput == ResolvedDocument,
+				"Valtan Pattern Preview Rejects Reordered Numbers With Rollback");
+
+			std::vector<VALTAN_PATTERN_PREVIEW_PLAY_ITEM> Preserved =
+				Playlist;
+			runner.Require(
+				!CValtanPatternPreviewDocument::Build_Playlist(
+					ResolvedDocument, 67u, 1u, Preserved, Status) &&
+				Preserved == Playlist,
+				"Valtan Pattern Preview Invalid Range Preserves Prior Playlist");
+		}
+	}
 }
 
 int main(const int argc, char* argv[])
@@ -28839,6 +29229,12 @@ int main(const int argc, char* argv[])
 	if (Mode == "--valtan-pattern-effects-fast")
 	{
 		Test_ValtanPatternBindingSchema(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--valtan-pattern-preview-fast")
+	{
+		Test_ValtanPatternPreview(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -29288,6 +29684,7 @@ int main(const int argc, char* argv[])
 	Test_InvalidRequestsPreservePendingCommand(runner);
 	Test_SkillBindingSchema(runner);
 	Test_ValtanPatternBindingSchema(runner);
+	Test_ValtanPatternPreview(runner);
 	Test_ActionPresentationTimeline(runner);
 	Test_ValtanCinematicCameraEasing(runner);
 	Test_ValtanCinematicSkyCue(runner);

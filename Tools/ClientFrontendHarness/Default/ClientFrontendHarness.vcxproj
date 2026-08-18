@@ -117,6 +117,9 @@
 	<ClCompile Include="..\..\..\Client\Private\AnimationSkillBindingDocument.cpp">
 	  <Link>Client\AnimationSkillBindingDocument.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternPreviewDocument.cpp">
+	  <Link>Client\ValtanPatternPreviewDocument.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp">
 	  <Link>Client\ValtanPatternEffectCueDocument.cpp</Link>
 	</ClCompile>

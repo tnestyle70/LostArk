@@ -344,6 +344,13 @@ void CMainApp::Update(const f32_t fTimeDelta)
 #ifdef _DEBUG
 	if (nullptr != m_pMapTool)
 		m_pMapTool->Update(fTimeDelta);
+	if (nullptr != m_pAnimationTool)
+	{
+		m_pAnimationTool->Update(
+			fTimeDelta,
+			m_bDeveloperToolsVisible &&
+			DEBUG_TOOL::ANIMATION == m_eActiveDebugTool);
+	}
 	if (nullptr != m_pEffectTool)
 		m_pEffectTool->Update(fTimeDelta);
 #endif
