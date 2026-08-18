@@ -67,11 +67,13 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 
 	const f32_t fOffset = Shape.iAreaOffsetX * UNITS_TO_METERS;
 	const f32_t fRange = Shape.iAreaRange * UNITS_TO_METERS;
+	/* Official AreaType: 1 circle/ring, 2 forward box whose AreaAngle is the
+	width in cm, 3 fan whose AreaAngle is the sweep in degrees. */
 	switch (Shape.iAreaType)
 	{
-	case 1:
+	case 2:
 	{
-		const f32_t fHalfWidth = Shape.iAreaHeight * UNITS_TO_METERS * 0.5f;
+		const f32_t fHalfWidth = Shape.iAreaAngle * UNITS_TO_METERS * 0.5f;
 		const vector_t vNearL = XMVectorSetY(
 			vPosition + vLook * fOffset - vRight * fHalfWidth, fGroundY);
 		const vector_t vNearR = XMVectorSetY(
@@ -86,12 +88,13 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 		Draw_Segment(vFarL, vNearL);
 		break;
 	}
-	case 2:
+	case 1:
 	case 3:
 	{
-		const bool_t bFullSweep = Shape.iAreaAngle <= 0 || Shape.iAreaAngle >= 360;
+		const bool_t bFullSweep = 1 == Shape.iAreaType ||
+			Shape.iAreaAngle <= 0 || Shape.iAreaAngle >= 360;
 		const f32_t fHalfSweep = bFullSweep ? 180.f : Shape.iAreaAngle * 0.5f;
-		const f32_t fInner = 3 == Shape.iAreaType ? Shape.iAreaInner * UNITS_TO_METERS : 0.f;
+		const f32_t fInner = Shape.iAreaInner * UNITS_TO_METERS;
 		Draw_Arc(fOffset, fRange, -fHalfSweep, fHalfSweep);
 		if (fInner > 0.f)
 			Draw_Arc(fOffset, fInner, -fHalfSweep, fHalfSweep);

@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "Artist" 1031
+LOSTARK_ANIM_EVENTS 5 "Artist" 1044
 "sdm_att_battle_1_01" CANCEL startms=100 endms=920 payload="스킬선입력" src=orig
 "sdm_att_battle_1_01" CANCEL startms=100 endms=1020 payload="이동선입력" src=orig
 "sdm_att_battle_1_01" SOUND startms=250 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_3" src=orig
@@ -1030,3 +1030,16 @@ LOSTARK_ANIM_EVENTS 5 "Artist" 1031
 "sdm_sk_skykongkong_02" EFFECT startms=0 payload="effect.artist.skill.31210.ba4" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_super_pungnyudo_01" EFFECT startms=0 payload="effect.artist.skill.31930.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_super_pungnyudo_02" EFFECT startms=0 payload="effect.artist.skill.31930.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_att_battle_1_03" HIT startms=276 endms=349 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=320 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_att_battle_1_02" HIT startms=269 endms=342 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=320 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_att_battle_1_01" HIT startms=494 endms=567 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=320 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_att_battle_1_04" HIT startms=193 endms=266 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=320 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_inkpaddle" HIT startms=625 endms=625 rep=1 repms=0 fz=500 fzin=200 fzout=250 push=100 pushr=80 area=2 ar=500 aa=180 ah=150 ax=30 arem=0 maxt=0 src=orig
+"sdm_sk_skykongkong_01" HIT startms=600 endms=676 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_skykongkong_02" HIT startms=533 endms=609 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=1 ar=200 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_butterflydream" HIT startms=540 endms=540 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=100 pushr=40 area=2 ar=400 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_onestroke" HIT startms=1451 endms=1538 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=0 pushr=0 area=2 ar=600 aa=300 ah=250 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_cloudtiger" HIT startms=1000 endms=1000 rep=1 repms=0 fz=325 fzin=200 fzout=200 push=80 pushr=10 area=1 ar=150 aa=0 ah=150 ax=0 arem=0 maxt=1 src=orig
+"sdm_sk_pungnyudo" HIT startms=3400 endms=3400 rep=1 repms=0 fz=325 fzin=125 fzout=200 push=80 pushr=10 area=1 ar=400 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_inkshot" HIT startms=562 endms=562 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=210 pushr=130 area=3 ar=450 aa=110 ah=150 ax=0 arem=0 maxt=0 src=orig
+"sdm_sk_super_pungnyudo_02" HIT startms=2900 endms=2975 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=1 ar=500 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig

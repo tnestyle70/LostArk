@@ -21,9 +21,12 @@ namespace LostArk::Server
 		std::uint32_t iTimeMs = 0;
 		std::uint32_t iRepeatCount = 1;
 		std::uint32_t iRepeatMs = 0;
+		/* Official AreaType: 1 circle/ring (fRange, fInner), 2 forward box
+		(fRange length, fWidth), 3 fan (fRange, fAngleDegrees sweep, fInner). */
 		std::uint32_t iAreaType = 0;
 		float fRange = 0.f;
 		float fAngleDegrees = 0.f;
+		float fWidth = 0.f;
 		float fHeight = 0.f;
 		float fOffset = 0.f;
 		float fInner = 0.f;
@@ -32,6 +35,55 @@ namespace LostArk::Server
 		range is metres away from the caster, negative pulling it closer. */
 		std::uint32_t iPushMs = 0;
 		float fPushRange = 0.f;
+	};
+
+	enum class PLAYER_PROJECTILE_KIND : std::uint8_t
+	{
+		MISSILE,
+		FIXAREA,
+		GRENADE,
+		TRACE
+	};
+
+	/* One hit an object applies itself. A contact hit fires on each target the
+	shape overlaps while the object lives (iRepeatCount times per target,
+	iRepeatMs apart); a timed hit fires at iTimeMs after spawn (again
+	iRepeatCount/iRepeatMs) on everything the shape overlaps at that moment. The
+	shape origin and forward are the object's, not the caster's. */
+	struct PLAYER_PROJECTILE_HIT final
+	{
+		bool isContact = false;
+		PLAYER_SKILL_HIT Hit;
+	};
+
+	/* Where an object appears: on the caster, pushed fOffsetForward/fOffsetRight
+	metres along the facing (official AreaOrigin 0), or where the aim points,
+	clamped to fMaxDistance from the caster (AreaOrigin 1). */
+	enum class PLAYER_PROJECTILE_ORIGIN : std::uint8_t
+	{
+		CASTER,
+		AIM
+	};
+
+	/* An object a skill spawns at iTimeMs of its action, from the official
+	Projectile definition: a MISSILE flies along the aim at fSpeed until it has
+	travelled the aim distance clamped to [fMinDistance, fMaxDistance] (no cap
+	when the max is 0) or iLifeMs is spent; a FIXAREA stands at its origin for
+	iLifeMs. GRENADE and TRACE move like a MISSILE until their own motion is
+	modelled. */
+	struct PLAYER_SKILL_PROJECTILE final
+	{
+		std::uint32_t iTimeMs = 0;
+		PLAYER_PROJECTILE_KIND eKind = PLAYER_PROJECTILE_KIND::MISSILE;
+		PLAYER_PROJECTILE_ORIGIN eOrigin = PLAYER_PROJECTILE_ORIGIN::CASTER;
+		float fOffsetForward = 0.f;
+		float fOffsetRight = 0.f;
+		float fSpeed = 0.f;
+		float fMinDistance = 0.f;
+		float fMaxDistance = 0.f;
+		std::uint32_t iLifeMs = 0;
+		float fRadius = 0.f;
+		std::vector<PLAYER_PROJECTILE_HIT> Hits;
 	};
 
 	struct PLAYER_COMBO_STAGE final
@@ -44,6 +96,7 @@ namespace LostArk::Server
 		movement per stage instead of on one action-long curve. */
 		std::vector<PLAYER_ROOT_MOTION_SAMPLE> RootMotion;
 		std::vector<PLAYER_SKILL_HIT> Hits;
+		std::vector<PLAYER_SKILL_PROJECTILE> Projectiles;
 	};
 
 	struct PLAYER_SKILL_DEFINITION
@@ -74,6 +127,7 @@ namespace LostArk::Server
 		std::vector<PLAYER_COMBO_STAGE> ComboStages;
 		std::vector<PLAYER_ROOT_MOTION_SAMPLE> RootMotion;
 		std::vector<PLAYER_SKILL_HIT> Hits;
+		std::vector<PLAYER_SKILL_PROJECTILE> Projectiles;
 	};
 
 	struct BOSS_RUNTIME_PROFILE
@@ -271,6 +325,19 @@ namespace LostArk::Server
 			std::uint32_t hitCount,
 			std::uint32_t limitMs,
 			std::vector<PLAYER_SKILL_HIT>& outHits);
+		/* One "areaType:range:angle:width:height:offset:inner:maxTargets:pushMs:
+		pushRange" run, shared by caster hits and projectile hits. */
+		bool Parse_HitShapeExtent(
+			const std::string_view* fields,
+			PLAYER_SKILL_HIT& outHit);
+		/* One SKILLPROJ / SKILLSTAGEPROJ tail: index, spawn time, kind, motion and
+		the packed hit list. Appends in row order and rejects an out-of-order
+		spawn or index. */
+		bool Parse_SkillProjectile(
+			const std::vector<std::string_view>& fields,
+			std::size_t firstField,
+			std::uint32_t limitMs,
+			std::vector<PLAYER_SKILL_PROJECTILE>& outProjectiles);
 
 		std::unordered_map<LostArk::Shared::SKILL_ID, PLAYER_SKILL_DEFINITION>
 			m_Skills;

@@ -9,6 +9,9 @@ RESOURCES = os.path.join(REPO, 'Client', 'Bin', 'Resources')
 TICK_RATE = 30.0
 UNITS_TO_METERS = 0.01
 MAX_SUB_HITS = 64
+AREA_CIRCLE = 1
+AREA_BOX = 2
+AREA_FAN = 3
 
 
 def read_clip_ticks(wmodel_path):
@@ -58,6 +61,56 @@ def read_hit_rows(asset):
     return hits
 
 
+def read_projectile_rows(asset):
+    path = os.path.join(REPO, 'Data', 'Animation', 'Authored', asset, asset + '.projectiles.json')
+    if not os.path.exists(path):
+        return {}
+    document = json.load(io.open(path, encoding='utf-8'))
+    if document.get('schema') != 'lostark.animation-projectiles' or document.get('formatVersion') != 1:
+        raise SystemExit('%s: unexpected projectiles document header' % asset)
+    rows = {}
+    for entry in document['projectiles']:
+        rows.setdefault((int(entry['skillId']), entry['clip']), []).append(entry)
+    return rows
+
+
+MAX_PROJECTILES = 8
+
+
+def stage_projectiles(skill_id, entries, clip_ticks, projectile_rows, limit_ms, label):
+    """Every object the stage's clips spawn, in stage-local time; the object's own
+    hits keep their spawn-relative schedule and are not rescaled by playRate."""
+    out = []
+    elapsed_ms = 0.0
+    for entry in entries:
+        name = entry if isinstance(entry, str) else entry['clip']
+        play_ms = 0 if isinstance(entry, str) else int(entry.get('playMs', 0))
+        rate = 1.0 if isinstance(entry, str) else float(entry.get('playRate', 1.0))
+        source_ms = clip_ticks[name] / TICK_RATE * 1000.0
+        if play_ms:
+            source_ms = min(source_ms, float(play_ms))
+        for spawn in projectile_rows.get((skill_id, name), []):
+            spawn_ms = elapsed_ms + spawn['startMs'] / rate
+            out.append({
+                'timeMs': min(int(round(spawn_ms)), limit_ms),
+                'kind': spawn['kind'],
+                'origin': spawn['origin'],
+                'offsetForward': spawn['offsetForward'],
+                'offsetRight': spawn['offsetRight'],
+                'speed': spawn['speed'],
+                'minDistance': spawn['minDistance'],
+                'maxDistance': spawn['maxDistance'],
+                'lifeMs': spawn['lifeMs'],
+                'radius': spawn['radius'],
+                'hits': [{k: v for k, v in h.items() if k != 'sourcePk'} for h in spawn['hits']],
+            })
+        elapsed_ms += source_ms / rate
+    out.sort(key=lambda p: p['timeMs'])
+    if len(out) > MAX_PROJECTILES:
+        raise SystemExit('%s: more than %d projectiles' % (label, MAX_PROJECTILES))
+    return out
+
+
 def stage_hits(entries, clip_ticks, clip_hits, limit_ms, label):
     out = []
     elapsed_ms = 0.0
@@ -72,13 +125,16 @@ def stage_hits(entries, clip_ticks, clip_hits, limit_ms, label):
             source_ms = min(source_ms, float(play_ms))
         for h in clip_hits.get(name, []):
             time_ms = elapsed_ms + h['startMs'] / rate
+            # Official AreaType: 1 circle/ring, 2 forward box whose AreaAngle
+            # is the width in cm, 3 fan whose AreaAngle is the sweep in degrees.
             out.append({
                 'timeMs': min(int(round(time_ms)), limit_ms),
                 'repeatCount': h['rep'],
                 'repeatMs': int(round(h['repMs'] / rate)),
                 'areaType': h['area'],
                 'range': round(h['ar'] * UNITS_TO_METERS, 2),
-                'angle': min(max(h['aa'], 0), 360),
+                'angle': min(max(h['aa'], 0), 360) if h['area'] == AREA_FAN else 0,
+                'width': round(h['aa'] * UNITS_TO_METERS, 2) if h['area'] == AREA_BOX else 0.0,
                 'height': round(h['ah'] * UNITS_TO_METERS, 2),
                 'offset': round(h['ax'] * UNITS_TO_METERS, 2),
                 'inner': round(h['arem'] * UNITS_TO_METERS, 2),
@@ -103,6 +159,7 @@ def build(asset):
     balance = json.load(io.open(os.path.join(REPO, 'Data', 'Balance', 'PlayerSkills.json'), encoding='utf-8'))
     skills = {int(s['skillId']): s for s in balance['skills'] if s['characterClass'] == bindings['characterClass']}
     clip_hits = read_hit_rows(asset)
+    projectile_rows = read_projectile_rows(asset)
     out = []
     for binding in sorted(bindings['bindings'], key=lambda b: int(b['skillId'])):
         skill_id = int(binding['skillId'])
@@ -117,19 +174,30 @@ def build(asset):
                 raise SystemExit('%s %d: stage count mismatch' % (asset, skill_id))
             rows = []
             for index, group in enumerate(stages):
-                hits = stage_hits(group, clip_ticks, clip_hits, int(combo_stages[index]['actionDurationMs']),
-                                  '%s %d stage %d' % (asset, skill_id, index))
-                if hits:
-                    rows.append({'stageIndex': index, 'hits': hits})
+                label = '%s %d stage %d' % (asset, skill_id, index)
+                limit_ms = int(combo_stages[index]['actionDurationMs'])
+                hits = stage_hits(group, clip_ticks, clip_hits, limit_ms, label)
+                projectiles = stage_projectiles(skill_id, group, clip_ticks, projectile_rows, limit_ms, label)
+                if hits or projectiles:
+                    row = {'stageIndex': index, 'hits': hits}
+                    if projectiles:
+                        row['projectiles'] = projectiles
+                    rows.append(row)
             if rows:
                 out.append({'skillId': skill_id, 'stages': rows})
             continue
-        hits = stage_hits(stages[0], clip_ticks, clip_hits, int(skill['actionDurationMs']), '%s %d' % (asset, skill_id))
-        if hits:
-            out.append({'skillId': skill_id, 'hits': hits})
+        label = '%s %d' % (asset, skill_id)
+        limit_ms = int(skill['actionDurationMs'])
+        hits = stage_hits(stages[0], clip_ticks, clip_hits, limit_ms, label)
+        projectiles = stage_projectiles(skill_id, stages[0], clip_ticks, projectile_rows, limit_ms, label)
+        if hits or projectiles:
+            row = {'skillId': skill_id, 'hits': hits}
+            if projectiles:
+                row['projectiles'] = projectiles
+            out.append(row)
     return {
         'schema': 'lostark.animation-hit-shapes',
-        'formatVersion': 1,
+        'formatVersion': 3,
         'animationAssetId': asset,
         'characterClass': bindings['characterClass'],
         'skills': out,
@@ -150,7 +218,10 @@ def main(argv):
         old = io.open(path, encoding='utf-8').read() if os.path.exists(path) else None
         skill_count = len(document['skills'])
         hit_count = sum(len(s.get('hits', [])) + sum(len(st['hits']) for st in s.get('stages', [])) for s in document['skills'])
-        print('%s: %d skills, %d hits, %s' % (asset, skill_count, hit_count, 'unchanged' if old == text else 'changed'))
+        projectile_count = sum(len(s.get('projectiles', [])) + sum(len(st.get('projectiles', [])) for st in s.get('stages', []))
+                               for s in document['skills'])
+        print('%s: %d skills, %d hits, %d projectiles, %s' % (
+            asset, skill_count, hit_count, projectile_count, 'unchanged' if old == text else 'changed'))
         if old != text and not check:
             io.open(path, 'w', encoding='utf-8', newline='\n').write(text)
 

@@ -1258,15 +1258,142 @@ void CCharacter::Late_Update(f32_t fTimeDelta)
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
 	if (m_isSkillHitAreaDebugVisible)
+	{
+		Update_SkillProjectileDebug(fTimeDelta);
 		Draw_SkillHitAreaDebug();
+	}
+	else
+	{
+		m_DebugProjectiles.clear();
+	}
 #endif
 }
 
 #ifdef _DEBUG
-void CCharacter::Draw_SkillHitAreaDebug() const
+void CCharacter::Update_SkillProjectileDebug(const f32_t fTimeDelta)
 {
 	if (nullptr == m_pBodyModel || nullptr == m_pTransformCom ||
-		m_EffectCueDocument.Hits.empty())
+		m_EffectCueDocument.Projectiles.empty())
+	{
+		m_DebugProjectiles.clear();
+		return;
+	}
+	const uint32_t iAnimation = m_pBodyModel->Get_CurrentAnimIndex();
+	const char_t* pClipName = m_pBodyModel->Get_AnimationName(iAnimation);
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	const f32_t fTicksPerSecond =
+		m_pBodyModel->Get_AnimationTickPerSecond(iAnimation);
+	if (nullptr != pClipName && fTicksPerSecond > 0.f &&
+		m_pBodyModel->Get_AnimationProgress(iAnimation, fPosition, fDuration))
+	{
+		const f32_t fNowMs = fPosition * 1000.f / fTicksPerSecond;
+		/* A spawn is the clip clock crossing the cue's start; a clip change or a
+		seek backwards restarts the watch without firing. */
+		const bool_t bSameClip = m_strDebugProjectileClip == pClipName;
+		const f32_t fPreviousMs = bSameClip ? m_fDebugProjectileClipMs : -1.f;
+		if (bSameClip && fNowMs > fPreviousMs)
+		{
+			const matrix_t WorldRoot =
+				XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
+			const vector_t vPosition = WorldRoot.r[3];
+			const vector_t vLook =
+				XMVector3Normalize(XMVectorSetY(WorldRoot.r[2], 0.f));
+			for (size_t iCue = 0; iCue < m_EffectCueDocument.Projectiles.size(); ++iCue)
+			{
+				const ANIMATION_PROJECTILE_CUE& Cue =
+					m_EffectCueDocument.Projectiles[iCue];
+				const f32_t fStartMs = static_cast<f32_t>(Cue.iStartMs);
+				if (Cue.strClipName != pClipName ||
+					fPreviousMs >= fStartMs || fNowMs < fStartMs)
+				{
+					continue;
+				}
+				DEBUG_PROJECTILE_WIRE Wire{};
+				Wire.iCue = iCue;
+				Wire.fDirectionX = XMVectorGetX(vLook);
+				Wire.fDirectionZ = XMVectorGetZ(vLook);
+				Wire.fX = XMVectorGetX(vPosition);
+				Wire.fY = XMVectorGetY(vPosition);
+				Wire.fZ = XMVectorGetZ(vPosition);
+				Wire.fRemainingSeconds = static_cast<f32_t>(Cue.iLifeMs) * 0.001f;
+				if (1u == Cue.iOrigin && 1u == Cue.iKind)
+				{
+					/* The Server places an AIM area where the aim points; the
+					client has no aim here and shows the far end of its reach. */
+					Wire.fX += Wire.fDirectionX * Cue.fMaxDistance;
+					Wire.fZ += Wire.fDirectionZ * Cue.fMaxDistance;
+				}
+				else
+				{
+					const f32_t fRightX = Wire.fDirectionZ;
+					const f32_t fRightZ = -Wire.fDirectionX;
+					Wire.fX += Wire.fDirectionX * Cue.fOffsetForward +
+						fRightX * Cue.fOffsetRight;
+					Wire.fZ += Wire.fDirectionZ * Cue.fOffsetForward +
+						fRightZ * Cue.fOffsetRight;
+				}
+				if (1u == Cue.iKind)
+					Wire.fRemainingDistance = 0.f;
+				else
+					Wire.fRemainingDistance =
+						Cue.fMaxDistance > 0.f ? Cue.fMaxDistance : -1.f;
+				m_DebugProjectiles.push_back(Wire);
+			}
+		}
+		m_strDebugProjectileClip = pClipName;
+		m_fDebugProjectileClipMs = fNowMs;
+	}
+	for (size_t i = 0; i < m_DebugProjectiles.size();)
+	{
+		DEBUG_PROJECTILE_WIRE& Wire = m_DebugProjectiles[i];
+		const ANIMATION_PROJECTILE_CUE& Cue =
+			m_EffectCueDocument.Projectiles[Wire.iCue];
+		Wire.fRemainingSeconds -= fTimeDelta;
+		if (Cue.fSpeed > 0.f)
+		{
+			f32_t fStep = Cue.fSpeed * fTimeDelta;
+			if (Wire.fRemainingDistance >= 0.f)
+			{
+				fStep = (std::min)(fStep, Wire.fRemainingDistance);
+				Wire.fRemainingDistance -= fStep;
+			}
+			Wire.fX += Wire.fDirectionX * fStep;
+			Wire.fZ += Wire.fDirectionZ * fStep;
+		}
+		const bool_t bExpired = Wire.fRemainingSeconds <= 0.f ||
+			(Cue.fSpeed > 0.f && 0.f == Wire.fRemainingDistance);
+		if (bExpired)
+			m_DebugProjectiles.erase(m_DebugProjectiles.begin() + i);
+		else
+			++i;
+	}
+}
+
+void CCharacter::Draw_SkillHitAreaDebug() const
+{
+	if (nullptr == m_pBodyModel || nullptr == m_pTransformCom)
+		return;
+	constexpr uint32_t PROJECTILE_COLOR_RGBA =
+		255u | (170u << 8) | (30u << 16) | (255u << 24);
+	for (const DEBUG_PROJECTILE_WIRE& Wire : m_DebugProjectiles)
+	{
+		const vector_t vLook = XMVectorSet(Wire.fDirectionX, 0.f, Wire.fDirectionZ, 0.f);
+		const vector_t vRight = XMVector3Normalize(
+			XMVector3Cross(XMVectorSet(0.f, 1.f, 0.f, 0.f), vLook));
+		float4x4_t Root{};
+		XMStoreFloat4x4(&Root, XMMatrixSet(
+			XMVectorGetX(vRight), 0.f, XMVectorGetZ(vRight), 0.f,
+			0.f, 1.f, 0.f, 0.f,
+			Wire.fDirectionX, 0.f, Wire.fDirectionZ, 0.f,
+			Wire.fX, Wire.fY, Wire.fZ, 1.f));
+		for (const HIT_AREA_SHAPE& Shape :
+			m_EffectCueDocument.Projectiles[Wire.iCue].Shapes)
+		{
+			CHitAreaWire::Draw(Root, Shape, PROJECTILE_COLOR_RGBA);
+		}
+	}
+	if (m_EffectCueDocument.Hits.empty())
 		return;
 	const uint32_t iAnimation = m_pBodyModel->Get_CurrentAnimIndex();
 	const char_t* pClipName = m_pBodyModel->Get_AnimationName(iAnimation);
@@ -1280,11 +1407,14 @@ void CCharacter::Draw_SkillHitAreaDebug() const
 	const f32_t fNowMs = fPosition * 1000.f / fTicksPerSecond;
 	constexpr uint32_t ACTIVE_HIT_COLOR_RGBA =
 		255u | (70u << 8) | (60u << 16) | (255u << 24);
+	constexpr f32_t MIN_VISIBLE_HIT_WINDOW_MS = 300.f;
 	for (const ANIMATION_HIT_CUE& Hit : m_EffectCueDocument.Hits)
 	{
 		if (Hit.Shape.iAreaType <= 0 || Hit.strClipName != pClipName)
 			continue;
-		const f32_t fWidthMs = static_cast<f32_t>(Hit.iEndMs - Hit.iStartMs);
+		const f32_t fWidthMs = (std::max)(
+			static_cast<f32_t>(Hit.iEndMs - Hit.iStartMs),
+			MIN_VISIBLE_HIT_WINDOW_MS);
 		for (uint32_t iTick = 0u; iTick < Hit.iRepeatCount; ++iTick)
 		{
 			const f32_t fTickMs =

@@ -299,6 +299,14 @@
     <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\Warlord\Warlord.animevents" />
     <None Include="..\..\Data\Animation\Authored\Warlord\Warlord.skillbindings.json" />
+    <None Include="..\..\Data\Animation\Authored\Artist\Artist.projectiles.json" />
+    <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.projectiles.json" />
+    <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.projectiles.json" />
+    <None Include="..\..\Data\Animation\Authored\Warlord\Warlord.projectiles.json" />
+    <None Include="..\..\Data\Animation\Reference\Artist\Artist.projectiles" />
+    <None Include="..\..\Data\Animation\Reference\DimensionMaster\DimensionMaster.projectiles" />
+    <None Include="..\..\Data\Animation\Reference\LanceMaster\LanceMaster.projectiles" />
+    <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.projectiles" />
     <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.animnotify" />
     <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.clipmap" />
     <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.clipseq" />

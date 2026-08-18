@@ -1205,6 +1205,149 @@ foreach ($skill in @($skillDocument.skills)) {
     $skillDealsDamageById[[string]$skill.skillId] = -not [string]::IsNullOrEmpty([string]$skill.serverDamageProfileId)
 }
 
+function Assert-HitShapeExtent([object]$Hit, [string]$SkillId) {
+    Assert-JsonInteger $Hit.areaType "hit shape $SkillId areaType" 1 3
+    Assert-JsonInteger $Hit.angle "hit shape $SkillId angle" 0 360
+    Assert-JsonInteger $Hit.maxTargets "hit shape $SkillId maxTargets" 0 64
+    Assert-JsonInteger $Hit.pushMs "hit shape $SkillId pushMs" 0 10000
+    foreach ($field in @('range','width','height','offset','inner','pushRange')) {
+        Assert-JsonNumber $Hit.$field "hit shape $SkillId $field"
+    }
+    if ([double]$Hit.pushRange -lt -50.0 -or [double]$Hit.pushRange -gt 50.0 -or
+        ([int]$Hit.pushMs -eq 0 -and [double]$Hit.pushRange -ne 0.0)) {
+        throw "Hit shape push is invalid: $SkillId"
+    }
+    # areaType 1 = circle/ring (range, inner), 2 = forward box (range = length,
+    # width), 3 = fan (range, angle sweep, inner); the other extents stay 0.
+    $areaType = [int]$Hit.areaType
+    if ([double]$Hit.range -le 0.0 -or [double]$Hit.inner -ge [double]$Hit.range -or
+        [double]$Hit.width -lt 0.0 -or [double]$Hit.height -lt 0.0 -or
+        ($areaType -eq 2 -and [double]$Hit.width -le 0.0) -or
+        ($areaType -ne 2 -and [double]$Hit.width -ne 0.0) -or
+        ($areaType -ne 3 -and [int]$Hit.angle -ne 0) -or
+        ($areaType -eq 2 -and [double]$Hit.inner -ne 0.0)) {
+        throw "Hit shape extent is invalid: $SkillId"
+    }
+}
+
+function Format-HitShapeExtent([object]$Hit, [string]$SkillId) {
+    return ('{0}:{1}:{2}:{3}:{4}:{5}:{6}:{7}:{8}:{9}' -f [int]$Hit.areaType,
+        (Format-InvariantFloat $Hit.range "hit shape $SkillId range"),
+        [int]$Hit.angle,
+        (Format-InvariantFloat $Hit.width "hit shape $SkillId width"),
+        (Format-InvariantFloat $Hit.height "hit shape $SkillId height"),
+        (Format-InvariantSignedFloat $Hit.offset "hit shape $SkillId offset"),
+        (Format-InvariantFloat $Hit.inner "hit shape $SkillId inner"),
+        [int]$Hit.maxTargets,
+        [int]$Hit.pushMs,
+        (Format-InvariantSignedFloat $Hit.pushRange "hit shape $SkillId pushRange"))
+}
+
+$projectileKinds = @('MISSILE','FIXAREA','GRENADE','TRACE')
+
+function Format-Projectiles {
+    param(
+        [object[]]$Projectiles,
+        [string]$SkillId,
+        [uint32]$LimitMs
+    )
+
+    if ($Projectiles.Count -lt 1 -or $Projectiles.Count -gt 8) {
+        throw "Projectile count is invalid: $SkillId"
+    }
+    $rows = [Collections.Generic.List[string]]::new()
+    $previousMs = -1
+    $index = 0
+    foreach ($projectile in $Projectiles) {
+        Assert-ExactProperties $projectile @('timeMs','kind','origin','offsetForward','offsetRight',
+            'speed','minDistance','maxDistance','lifeMs','radius','hits') 'projectile'
+        Assert-JsonInteger $projectile.timeMs "projectile $SkillId timeMs" 0 $LimitMs
+        Assert-JsonInteger $projectile.lifeMs "projectile $SkillId lifeMs" 1 600000
+        foreach ($field in @('speed','minDistance','maxDistance','radius','offsetForward','offsetRight')) {
+            Assert-JsonNumber $projectile.$field "projectile $SkillId $field"
+        }
+        $kind = [string]$projectile.kind
+        if ($projectileKinds -notcontains $kind) {
+            throw "Projectile kind is invalid: $SkillId $kind"
+        }
+        # CASTER: on the caster, offset forward/right; AIM: where the aim points
+        $origin = [string]$projectile.origin
+        if ($origin -ne 'CASTER' -and $origin -ne 'AIM') {
+            throw "Projectile origin is invalid: $SkillId $origin"
+        }
+        if ([double]$projectile.offsetForward -lt -50.0 -or [double]$projectile.offsetForward -gt 50.0 -or
+            [double]$projectile.offsetRight -lt -50.0 -or [double]$projectile.offsetRight -gt 50.0) {
+            throw "Projectile offset is invalid: $SkillId"
+        }
+        # A fixed area does not move; every other kind needs a speed to travel.
+        if (($kind -eq 'FIXAREA') -ne ([double]$projectile.speed -eq 0.0) -or
+            [double]$projectile.speed -lt 0.0 -or [double]$projectile.speed -gt 1000.0 -or
+            [double]$projectile.minDistance -lt 0.0 -or
+            [double]$projectile.maxDistance -lt 0.0 -or
+            [double]$projectile.radius -lt 0.0) {
+            throw "Projectile motion is invalid: $SkillId"
+        }
+        $timeMs = [int]$projectile.timeMs
+        if ($timeMs -lt $previousMs) {
+            throw "Projectile spawn times are out of order: $SkillId"
+        }
+        $previousMs = $timeMs
+        $hits = @($projectile.hits)
+        if ($hits.Count -lt 1 -or $hits.Count -gt 16) {
+            throw "Projectile hit count is invalid: $SkillId"
+        }
+        $packed = [Collections.Generic.List[string]]::new()
+        $sawTimed = $false
+        $previousAtMs = -1
+        foreach ($hit in $hits) {
+            Assert-ExactProperties $hit @('trigger','atMs','count','everyMs','areaType','range','angle',
+                'width','height','offset','inner','maxTargets','pushMs','pushRange') 'projectile hit'
+            $trigger = [string]$hit.trigger
+            if ($trigger -ne 'CONTACT' -and $trigger -ne 'TIMED') {
+                throw "Projectile hit trigger is invalid: $SkillId"
+            }
+            Assert-JsonInteger $hit.atMs "projectile hit $SkillId atMs" 0 600000
+            Assert-JsonInteger $hit.count "projectile hit $SkillId count" 1 64
+            Assert-JsonInteger $hit.everyMs "projectile hit $SkillId everyMs" 0 100000
+            if (($trigger -eq 'CONTACT' -and [int]$hit.atMs -ne 0) -or
+                ([int]$hit.count -gt 1 -and [int]$hit.everyMs -le 0)) {
+                throw "Projectile hit schedule is invalid: $SkillId"
+            }
+            # contact hits lead, then timed hits in schedule order
+            if ($trigger -eq 'TIMED') {
+                if ([int]$hit.atMs -lt $previousAtMs) {
+                    throw "Projectile timed hits are out of order: $SkillId"
+                }
+                $previousAtMs = [int]$hit.atMs
+                $sawTimed = $true
+            }
+            elseif ($sawTimed) {
+                throw "Projectile contact hits must precede timed hits: $SkillId"
+            }
+            Assert-HitShapeExtent $hit $SkillId
+            $triggerCode = 1
+            if ($trigger -eq 'CONTACT') { $triggerCode = 0 }
+            $packed.Add(('{0}:{1}:{2}:{3}:{4}' -f $triggerCode,
+                [int]$hit.atMs, [int]$hit.count, [int]$hit.everyMs,
+                (Format-HitShapeExtent $hit $SkillId)))
+        }
+        $originCode = 1
+        if ($origin -eq 'CASTER') { $originCode = 0 }
+        $rows.Add((@(
+            $index, $timeMs, $kind, $originCode,
+            (Format-InvariantSignedFloat $projectile.offsetForward "projectile $SkillId offsetForward"),
+            (Format-InvariantSignedFloat $projectile.offsetRight "projectile $SkillId offsetRight"),
+            (Format-InvariantFloat $projectile.speed "projectile $SkillId speed"),
+            (Format-InvariantFloat $projectile.minDistance "projectile $SkillId minDistance"),
+            (Format-InvariantFloat $projectile.maxDistance "projectile $SkillId maxDistance"),
+            [int]$projectile.lifeMs,
+            (Format-InvariantFloat $projectile.radius "projectile $SkillId radius"),
+            $hits.Count, ($packed -join ',')) -join "`t"))
+        $index++
+    }
+    return $rows
+}
+
 function Format-HitShapes {
     param(
         [object[]]$Hits,
@@ -1220,21 +1363,11 @@ function Format-HitShapes {
     $subHits = 0
     foreach ($hit in $Hits) {
         Assert-ExactProperties $hit @('timeMs','repeatCount','repeatMs','areaType','range','angle',
-            'height','offset','inner','maxTargets','pushMs','pushRange') 'hit shape'
+            'width','height','offset','inner','maxTargets','pushMs','pushRange') 'hit shape'
         Assert-JsonInteger $hit.timeMs "hit shape $SkillId timeMs" 0 $LimitMs
         Assert-JsonInteger $hit.repeatCount "hit shape $SkillId repeatCount" 1 64
         Assert-JsonInteger $hit.repeatMs "hit shape $SkillId repeatMs" 0 100000
-        Assert-JsonInteger $hit.areaType "hit shape $SkillId areaType" 1 3
-        Assert-JsonInteger $hit.angle "hit shape $SkillId angle" 0 360
-        Assert-JsonInteger $hit.maxTargets "hit shape $SkillId maxTargets" 0 64
-        Assert-JsonInteger $hit.pushMs "hit shape $SkillId pushMs" 0 10000
-        foreach ($field in @('range','height','offset','inner','pushRange')) {
-            Assert-JsonNumber $hit.$field "hit shape $SkillId $field"
-        }
-        if ([double]$hit.pushRange -lt -50.0 -or [double]$hit.pushRange -gt 50.0 -or
-            ([int]$hit.pushMs -eq 0 -and [double]$hit.pushRange -ne 0.0)) {
-            throw "Hit shape push is invalid: $SkillId"
-        }
+        Assert-HitShapeExtent $hit $SkillId
         $timeMs = [int]$hit.timeMs
         if ($timeMs -lt $previousMs) {
             throw "Hit shape times are out of order: $SkillId"
@@ -1243,21 +1376,9 @@ function Format-HitShapes {
         if ([int]$hit.repeatCount -gt 1 -and [int]$hit.repeatMs -le 0) {
             throw "Hit shape repeat needs a positive interval: $SkillId"
         }
-        if ([double]$hit.range -le 0.0 -or [double]$hit.inner -ge [double]$hit.range -or
-            ([int]$hit.areaType -eq 1 -and [double]$hit.height -le 0.0)) {
-            throw "Hit shape extent is invalid: $SkillId"
-        }
         $subHits += [int]$hit.repeatCount
-        $packed.Add(('{0}:{1}:{2}:{3}:{4}:{5}:{6}:{7}:{8}:{9}:{10}:{11}' -f $timeMs,
-            [int]$hit.repeatCount, [int]$hit.repeatMs, [int]$hit.areaType,
-            (Format-InvariantFloat $hit.range "hit shape $SkillId range"),
-            [int]$hit.angle,
-            (Format-InvariantFloat $hit.height "hit shape $SkillId height"),
-            (Format-InvariantSignedFloat $hit.offset "hit shape $SkillId offset"),
-            (Format-InvariantFloat $hit.inner "hit shape $SkillId inner"),
-            [int]$hit.maxTargets,
-            [int]$hit.pushMs,
-            (Format-InvariantSignedFloat $hit.pushRange "hit shape $SkillId pushRange")))
+        $packed.Add(('{0}:{1}:{2}:{3}' -f $timeMs,
+            [int]$hit.repeatCount, [int]$hit.repeatMs, (Format-HitShapeExtent $hit $SkillId)))
     }
     if ($subHits -gt 64) {
         throw "Hit shape sub-hit count exceeds 64: $SkillId"
@@ -1273,7 +1394,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     Assert-ExactProperties $document @(
         'schema','formatVersion','animationAssetId','characterClass','skills') 'hit shape document'
     if ($document.schema -ne 'lostark.animation-hit-shapes' -or
-        [uint32]$document.formatVersion -ne 1) {
+        [uint32]$document.formatVersion -ne 3) {
         throw "Hit shape header is invalid: $($path.Name)"
     }
     foreach ($entry in @($document.skills)) {
@@ -1295,31 +1416,61 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
             }
             $seenStages = [Collections.Generic.HashSet[int]]::new()
             foreach ($stage in @($entry.stages)) {
-                Assert-ExactProperties $stage @('stageIndex','hits') 'hit shape stage'
+                $stageFields = @('stageIndex','hits')
+                if ($null -ne $stage.projectiles) { $stageFields += 'projectiles' }
+                Assert-ExactProperties $stage $stageFields 'hit shape stage'
                 $stageIndex = [int]$stage.stageIndex
                 if ($stageIndex -lt 0 -or $stageIndex -ge $stageDurations.Count -or
                     -not $seenStages.Add($stageIndex)) {
                     throw "Hit shape stage index is invalid or duplicated: $id"
                 }
                 $hits = @($stage.hits)
-                $packed = Format-HitShapes -Hits $hits -SkillId $id -LimitMs $stageDurations[$stageIndex]
-                $hitShapeRows.Add((@(
-                    'SKILLSTAGEHIT', $id, $stageIndex, $hits.Count, $packed) -join "`t"))
+                $projectiles = @()
+                if ($null -ne $stage.projectiles) { $projectiles = @($stage.projectiles) }
+                if ($hits.Count -eq 0 -and $projectiles.Count -eq 0) {
+                    throw "Hit shape stage has neither hits nor projectiles: $id"
+                }
+                if ($hits.Count -gt 0) {
+                    $packed = Format-HitShapes -Hits $hits -SkillId $id -LimitMs $stageDurations[$stageIndex]
+                    $hitShapeRows.Add((@(
+                        'SKILLSTAGEHIT', $id, $stageIndex, $hits.Count, $packed) -join "`t"))
+                }
+                if ($projectiles.Count -gt 0) {
+                    foreach ($row in @(Format-Projectiles -Projectiles $projectiles -SkillId $id `
+                            -LimitMs $stageDurations[$stageIndex])) {
+                        $hitShapeRows.Add((@('SKILLSTAGEPROJ', $id, $stageIndex, $row) -join "`t"))
+                    }
+                }
             }
             continue
         }
-        Assert-ExactProperties $entry @('skillId','hits') 'hit shape skill'
+        $skillFields = @('skillId','hits')
+        if ($null -ne $entry.projectiles) { $skillFields += 'projectiles' }
+        Assert-ExactProperties $entry $skillFields 'hit shape skill'
         if (@($skillStageDurationsById[$id]).Count -ne 0) {
             throw "A staged skill must carry per-stage hit shapes: $id"
         }
         $hits = @($entry.hits)
-        $packed = Format-HitShapes -Hits $hits -SkillId $id -LimitMs $skillDurationById[$id]
-        $hitShapeRows.Add((@('SKILLHIT', $id, $hits.Count, $packed) -join "`t"))
+        $projectiles = @()
+        if ($null -ne $entry.projectiles) { $projectiles = @($entry.projectiles) }
+        if ($hits.Count -eq 0 -and $projectiles.Count -eq 0) {
+            throw "Hit shape skill has neither hits nor projectiles: $id"
+        }
+        if ($hits.Count -gt 0) {
+            $packed = Format-HitShapes -Hits $hits -SkillId $id -LimitMs $skillDurationById[$id]
+            $hitShapeRows.Add((@('SKILLHIT', $id, $hits.Count, $packed) -join "`t"))
+        }
+        if ($projectiles.Count -gt 0) {
+            foreach ($row in @(Format-Projectiles -Projectiles $projectiles -SkillId $id `
+                    -LimitMs $skillDurationById[$id])) {
+                $hitShapeRows.Add((@('SKILLPROJ', $id, $row) -join "`t"))
+            }
+        }
     }
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t7`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t9`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
