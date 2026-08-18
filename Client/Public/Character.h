@@ -185,6 +185,23 @@ private:
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };
 	bool_t m_isSkillHitAreaDebugVisible = { true };
+	/* A client-side prediction of an object the current clip spawned, drawn
+	as a wire so the Server's projectile judgement can be seen; it moves along
+	the facing at the authored speed and dies at the authored distance/life. */
+	struct DEBUG_PROJECTILE_WIRE
+	{
+		size_t iCue = 0;
+		f32_t fX = 0.f;
+		f32_t fY = 0.f;
+		f32_t fZ = 0.f;
+		f32_t fDirectionX = 0.f;
+		f32_t fDirectionZ = 1.f;
+		f32_t fRemainingDistance = -1.f;
+		f32_t fRemainingSeconds = 0.f;
+	};
+	std::vector<DEBUG_PROJECTILE_WIRE> m_DebugProjectiles;
+	std::string m_strDebugProjectileClip;
+	f32_t m_fDebugProjectileClipMs = { 0.f };
 #endif
 
 	std::vector<CLIP_CHAIN> m_Chains;
@@ -265,6 +282,7 @@ private:
 	void Update_NetworkTransform(f32_t fTimeDelta);
 #ifdef _DEBUG
 	void Draw_SkillHitAreaDebug() const;
+	void Update_SkillProjectileDebug(f32_t fTimeDelta);
 #endif
 	bool_t Load_EffectCues();
 	void Reset_EffectCueCursor(std::uint32_t iActionStartTick);

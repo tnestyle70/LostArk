@@ -48,6 +48,122 @@ namespace
 		outLateral = samples.back().fLateral;
 	}
 
+	/* Lands one resolved hit on a monster or boss: defense, HP, the damage
+	event the snapshot ships, and the authored knockback away from sourceX/Z
+	(the caster for a caster hit, the object for a projectile hit). */
+	void ApplyPlayerHitDamage(
+		LostArk::Server::SERVER_WORLD_ENTITY& target,
+		const std::uint32_t rawDamage,
+		const LostArk::Server::PLAYER_SKILL_HIT* pHit,
+		const float sourceX,
+		const float sourceZ,
+		const float fallbackDirectionX,
+		const float fallbackDirectionZ,
+		const std::uint32_t serverTick,
+		std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
+	{
+		using namespace LostArk::Server;
+		const std::uint32_t damage = WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind ?
+			CGameplayCatalog::Apply_Defense(rawDamage, target.iDefense) : rawDamage;
+		target.iCurrentHp =
+			damage >= target.iCurrentHp ? 0u : target.iCurrentHp - damage;
+		/* A zero amount is not a hit and the snapshot writer rejects it; the
+		cap keeps one overfull tick from suppressing the whole snapshot. */
+		if (0u != damage &&
+			outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
+		{
+			LostArk::Shared::DAMAGE_EVENT damageEvent{};
+			damageEvent.iTargetNetEntityId = target.iNetEntityId;
+			damageEvent.iAmount = damage;
+			damageEvent.fPositionX = target.fPositionX;
+			damageEvent.fPositionY = target.fPositionY;
+			damageEvent.fPositionZ = target.fPositionZ;
+			damageEvent.isOutgoing = true;
+			outDamageEvents.push_back(damageEvent);
+		}
+		/* Only hits the source authored with a push move the target, scaled by
+		the monster's own weight; 0 scale is super armour. */
+		const float pushDistance = nullptr == pHit || 0u == pHit->iPushMs ?
+			0.f : pHit->fPushRange * target.fHitKnockbackScale;
+		if (0u != damage && WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind &&
+			0.f != pushDistance && 0u != target.iCurrentHp)
+		{
+			/* Push straight away from the source (a negative range pulls it
+			closer); a target standing on the source moves along the aim. */
+			float directionX = target.fPositionX - sourceX;
+			float directionZ = target.fPositionZ - sourceZ;
+			const float length = std::sqrt(
+				directionX * directionX + directionZ * directionZ);
+			if (length < 0.0001f)
+			{
+				directionX = fallbackDirectionX;
+				directionZ = fallbackDirectionZ;
+			}
+			else
+			{
+				directionX /= length;
+				directionZ /= length;
+			}
+			const float durationSeconds =
+				static_cast<float>(pHit->iPushMs) * MILLISECONDS_TO_SECONDS;
+			target.fKnockbackDirectionX = directionX;
+			target.fKnockbackDirectionZ = directionZ;
+			target.fKnockbackSpeed = pushDistance / durationSeconds;
+			target.fKnockbackRemainingSeconds = durationSeconds;
+		}
+		if (0u == target.iCurrentHp)
+		{
+			target.eAction = SERVER_ENTITY_ACTION::DEAD;
+			target.iActionStartTick = 0u == serverTick ? 1u : serverTick;
+			target.MovePath.clear();
+		}
+	}
+
+	LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ TargetBodyOf(
+		const LostArk::Server::CGameplayCatalog& catalog,
+		const LostArk::Server::SERVER_WORLD_ENTITY& entity)
+	{
+		using namespace LostArk::Server;
+		const BOSS_RUNTIME_PROFILE* bossProfile =
+			catalog.Find_Boss(entity.strArchetypeId);
+		const float targetRadius =
+			(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind ?
+				entity.fCollisionRadius :
+				(nullptr == bossProfile ? 0.f : bossProfile->fCollisionRadius));
+		return LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ{
+			entity.fPositionX, entity.fPositionZ, targetRadius };
+	}
+
+	bool IsDamageable(const LostArk::Server::SERVER_WORLD_ENTITY& entity)
+	{
+		using namespace LostArk::Server;
+		return (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind ||
+			WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind) &&
+			SERVER_ENTITY_ACTION::DEAD != entity.eAction && 0u != entity.iCurrentHp;
+	}
+
+	/* The share of a skill's total damage one sub-hit carries: cumulative
+	splits so the shares always sum to the whole, never below 1. */
+	std::uint32_t DamageOfSubHit(
+		const std::uint64_t totalDamage,
+		const std::uint32_t subHitTotal,
+		const std::uint32_t index)
+	{
+		const std::uint64_t total = (std::max)(1u, subHitTotal);
+		const std::uint64_t share =
+			totalDamage * (index + 1u) / total - totalDamage * index / total;
+		return static_cast<std::uint32_t>(share < 1u ? 1u : share);
+	}
+
+	std::uint32_t ProjectileSubHitCount(
+		const LostArk::Server::PLAYER_SKILL_PROJECTILE& projectile)
+	{
+		std::uint32_t count = 0;
+		for (const LostArk::Server::PLAYER_PROJECTILE_HIT& hit : projectile.Hits)
+			count += hit.Hit.iRepeatCount;
+		return count;
+	}
+
 	bool Hit_ShapeOverlaps(
 		const LostArk::Server::PLAYER_SKILL_HIT& hit,
 		const float casterX,
@@ -115,6 +231,16 @@ namespace
 		const float elapsedMs = player.fActionElapsedSeconds * 1000.f;
 		return elapsedMs >= static_cast<float>(stage.iInputOpenMs) &&
 			elapsedMs <= static_cast<float>(stage.iInputCloseMs);
+	}
+
+	float AimDistance(
+		const LostArk::Server::SERVER_PLAYER& player,
+		const float aimX,
+		const float aimZ)
+	{
+		const float deltaX = aimX - player.fPositionX;
+		const float deltaZ = aimZ - player.fPositionZ;
+		return std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
 	}
 
 	/* The aim arrives as a world point, so it is only a direction once the
@@ -185,6 +311,8 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 				command.fAimZ,
 				player.fBufferedComboAimX,
 				player.fBufferedComboAimZ);
+			player.fBufferedComboAimDistance =
+				AimDistance(player, command.fAimX, command.fAimZ);
 		}
 		return false;
 	}
@@ -222,8 +350,10 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	player.fActionElapsedSeconds = 0.f;
 	player.fSkillAimDirectionX = directionX;
 	player.fSkillAimDirectionZ = directionZ;
+	player.fSkillAimDistance = AimDistance(player, command.fAimX, command.fAimZ);
 	player.hasAppliedSkillDamage = false;
 	player.iAppliedHitMask = 0;
+	player.iSpawnedProjectileMask = 0;
 	player.iCurrentResource -= skill->iResourceCost;
 	player.iCurrentIdentity -= skill->iIdentityCost;
 	player.CooldownEndTickBySkillId.insert_or_assign(
@@ -307,6 +437,162 @@ void LostArk::Server::CPlayerSkillSystem::Update_Identity(
 	{
 		player.eStance = profile.eDefaultStance;
 		player.iIdentityAccumulator = 0u;
+	}
+}
+
+void LostArk::Server::CPlayerSkillSystem::Update_Projectiles(
+	SERVER_PLAYER& player,
+	std::vector<SERVER_WORLD_ENTITY>& worldEntities,
+	const CGameplayCatalog& catalog,
+	const float fixedDeltaSeconds,
+	const std::uint32_t serverTick,
+	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
+{
+	using namespace LostArk::Shared;
+	for (std::size_t index = 0; index < player.Projectiles.size();)
+	{
+		SERVER_SKILL_PROJECTILE& projectile = player.Projectiles[index];
+		const PLAYER_SKILL_DEFINITION* skill = catalog.Find_Skill(projectile.iSkillId);
+		const std::vector<PLAYER_SKILL_PROJECTILE>* definitions = nullptr;
+		if (nullptr != skill)
+		{
+			definitions = projectile.iStageIndex < skill->ComboStages.size() &&
+				!skill->ComboStages[projectile.iStageIndex].Projectiles.empty() ?
+				&skill->ComboStages[projectile.iStageIndex].Projectiles :
+				&skill->Projectiles;
+		}
+		if (nullptr == definitions ||
+			projectile.iProjectileIndex >= definitions->size())
+		{
+			player.Projectiles.erase(player.Projectiles.begin() + index);
+			continue;
+		}
+		const PLAYER_SKILL_PROJECTILE& definition =
+			(*definitions)[projectile.iProjectileIndex];
+
+		/* Move first, then judge at the new pose: a missile that reaches its
+		distance this tick still lands the hits at the point it stopped. */
+		projectile.fElapsedSeconds += fixedDeltaSeconds;
+		projectile.fRemainingSeconds -= fixedDeltaSeconds;
+		if (projectile.fSpeed > 0.f)
+		{
+			float step = projectile.fSpeed * fixedDeltaSeconds;
+			if (projectile.fRemainingDistance >= 0.f)
+			{
+				step = (std::min)(step, projectile.fRemainingDistance);
+				projectile.fRemainingDistance -= step;
+			}
+			projectile.fPositionX += projectile.fDirectionX * step;
+			projectile.fPositionZ += projectile.fDirectionZ * step;
+		}
+		const bool expired = projectile.fRemainingSeconds <= 0.f ||
+			(projectile.fSpeed > 0.f && 0.f == projectile.fRemainingDistance);
+
+		std::uint32_t subHitIndex = projectile.iSubHitBase;
+		std::uint64_t timedBit = 1ull;
+		for (std::size_t hitIndex = 0; hitIndex < definition.Hits.size(); ++hitIndex)
+		{
+			const PLAYER_PROJECTILE_HIT& hit = definition.Hits[hitIndex];
+			if (hit.isContact)
+			{
+				/* Every damageable body inside the shape right now takes the
+				next repeat it is owed; a target already at the count is done. */
+				for (SERVER_WORLD_ENTITY& entity : worldEntities)
+				{
+					if (!IsDamageable(entity) ||
+						!Hit_ShapeOverlaps(hit.Hit,
+							projectile.fPositionX, projectile.fPositionZ,
+							projectile.fDirectionX, projectile.fDirectionZ,
+							TargetBodyOf(catalog, entity)))
+					{
+						continue;
+					}
+					SERVER_PROJECTILE_CONTACT_MARK* mark = nullptr;
+					for (SERVER_PROJECTILE_CONTACT_MARK& existing : projectile.ContactMarks)
+					{
+						if (existing.iNetEntityId == entity.iNetEntityId &&
+							existing.iHitIndex == hitIndex)
+						{
+							mark = &existing;
+							break;
+						}
+					}
+					if (nullptr == mark)
+					{
+						SERVER_PROJECTILE_CONTACT_MARK fresh{};
+						fresh.iNetEntityId = entity.iNetEntityId;
+						fresh.iHitIndex = static_cast<std::uint8_t>(hitIndex);
+						projectile.ContactMarks.push_back(fresh);
+						mark = &projectile.ContactMarks.back();
+					}
+					if (mark->iAppliedCount >= hit.Hit.iRepeatCount ||
+						projectile.fElapsedSeconds < mark->fNextSeconds)
+					{
+						continue;
+					}
+					ApplyPlayerHitDamage(entity,
+						DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
+							subHitIndex + mark->iAppliedCount),
+						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
+						projectile.fDirectionX, projectile.fDirectionZ,
+						serverTick, outDamageEvents);
+					++mark->iAppliedCount;
+					mark->fNextSeconds = projectile.fElapsedSeconds +
+						static_cast<float>(hit.Hit.iRepeatMs) * MILLISECONDS_TO_SECONDS;
+				}
+				subHitIndex += hit.Hit.iRepeatCount;
+				continue;
+			}
+			/* A timed hit fires once per repeat on its own schedule from spawn,
+			on everything the shape covers at that moment; a missile that has
+			already stopped keeps firing where it stands until its life ends. */
+			for (std::uint32_t repeat = 0; repeat < hit.Hit.iRepeatCount;
+				++repeat, ++subHitIndex, timedBit <<= 1)
+			{
+				if (0u != (projectile.iAppliedTimedMask & timedBit))
+					continue;
+				const float fireSeconds = static_cast<float>(
+					hit.Hit.iTimeMs + hit.Hit.iRepeatMs * repeat) * MILLISECONDS_TO_SECONDS;
+				if (projectile.fElapsedSeconds < fireSeconds)
+					continue;
+				projectile.iAppliedTimedMask |= timedBit;
+				std::vector<std::pair<float, SERVER_WORLD_ENTITY*>> targets;
+				for (SERVER_WORLD_ENTITY& entity : worldEntities)
+				{
+					if (!IsDamageable(entity) ||
+						!Hit_ShapeOverlaps(hit.Hit,
+							projectile.fPositionX, projectile.fPositionZ,
+							projectile.fDirectionX, projectile.fDirectionZ,
+							TargetBodyOf(catalog, entity)))
+					{
+						continue;
+					}
+					const float deltaX = entity.fPositionX - projectile.fPositionX;
+					const float deltaZ = entity.fPositionZ - projectile.fPositionZ;
+					targets.emplace_back(deltaX * deltaX + deltaZ * deltaZ, &entity);
+				}
+				std::sort(targets.begin(), targets.end(),
+					[](const auto& left, const auto& right)
+					{
+						return left.first < right.first;
+					});
+				if (0u != hit.Hit.iMaxTargets && targets.size() > hit.Hit.iMaxTargets)
+					targets.resize(hit.Hit.iMaxTargets);
+				for (auto& [distanceSquared, target] : targets)
+				{
+					ApplyPlayerHitDamage(*target,
+						DamageOfSubHit(projectile.iTotalDamage, projectile.iSubHitTotal,
+							subHitIndex),
+						&hit.Hit, projectile.fPositionX, projectile.fPositionZ,
+						projectile.fDirectionX, projectile.fDirectionZ,
+						serverTick, outDamageEvents);
+				}
+			}
+		}
+		if (expired)
+			player.Projectiles.erase(player.Projectiles.begin() + index);
+		else
+			++index;
 	}
 }
 
@@ -411,6 +697,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.hasMoveGoal = false;
 		player.iComboStage = 0;
 		player.hasBufferedComboInput = false;
+		player.Projectiles.clear();
 		return;
 	}
 	if (const PLAYER_RUNTIME_PROFILE* identityProfile =
@@ -418,6 +705,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	{
 		Update_Identity(player, *identityProfile);
 	}
+	Update_Projectiles(player, worldEntities, catalog, fixedDeltaSeconds,
+		serverTick, outDamageEvents);
 	if (PLAYER_ACTION_STATE::SKILL != player.eAction)
 	{
 		(void)serverTick;
@@ -553,81 +842,24 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		!holdWithoutDamage && !counterWithoutDamage;
 	const std::vector<PLAYER_SKILL_HIT>& shapeHits = hasStage ?
 		skill->ComboStages[stageIndex].Hits : skill->Hits;
+	const std::vector<PLAYER_SKILL_PROJECTILE>& projectiles = hasStage ?
+		skill->ComboStages[stageIndex].Projectiles : skill->Projectiles;
 
 	const auto targetBodyOf = [&catalog](const SERVER_WORLD_ENTITY& entity)
 	{
-		const BOSS_RUNTIME_PROFILE* bossProfile =
-			catalog.Find_Boss(entity.strArchetypeId);
-		const float targetRadius =
-			(WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind ?
-				entity.fCollisionRadius :
-				(nullptr == bossProfile ? 0.f : bossProfile->fCollisionRadius));
-		return LostArk::Shared::CombatCollision::BODY_CIRCLE_XZ{
-			entity.fPositionX, entity.fPositionZ, targetRadius };
+		return TargetBodyOf(catalog, entity);
 	};
 	const auto isDamageable = [](const SERVER_WORLD_ENTITY& entity)
 	{
-		return (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind ||
-			WORLD_BOOTSTRAP_KIND::MONSTER == entity.eKind) &&
-			SERVER_ENTITY_ACTION::DEAD != entity.eAction && 0u != entity.iCurrentHp;
+		return IsDamageable(entity);
 	};
 	const auto applyDamage = [&](SERVER_WORLD_ENTITY& target,
 		const std::uint32_t rawDamage, const PLAYER_SKILL_HIT* pHit)
 	{
-		const std::uint32_t damage = WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind ?
-			CGameplayCatalog::Apply_Defense(rawDamage, target.iDefense) : rawDamage;
-		target.iCurrentHp =
-			damage >= target.iCurrentHp ? 0u : target.iCurrentHp - damage;
-		/* A zero amount is not a hit and the snapshot writer rejects it; the
-		cap keeps one overfull tick from suppressing the whole snapshot. */
-		if (0u != damage &&
-			outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
-		{
-			LostArk::Shared::DAMAGE_EVENT damageEvent{};
-			damageEvent.iTargetNetEntityId = target.iNetEntityId;
-			damageEvent.iAmount = damage;
-			damageEvent.fPositionX = target.fPositionX;
-			damageEvent.fPositionY = target.fPositionY;
-			damageEvent.fPositionZ = target.fPositionZ;
-			damageEvent.isOutgoing = true;
-			outDamageEvents.push_back(damageEvent);
-		}
-		/* Only hits the source authored with a push move the target, scaled by
-		the monster's own weight; 0 scale is super armour. */
-		const float pushDistance = nullptr == pHit || 0u == pHit->iPushMs ?
-			0.f : pHit->fPushRange * target.fHitKnockbackScale;
-		if (0u != damage && WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind &&
-			0.f != pushDistance && 0u != target.iCurrentHp)
-		{
-			/* Push straight away from the attacker (a negative range pulls it
-			closer); a target standing on the player moves along the aim. */
-			float directionX = target.fPositionX - player.fPositionX;
-			float directionZ = target.fPositionZ - player.fPositionZ;
-			const float length = std::sqrt(
-				directionX * directionX + directionZ * directionZ);
-			if (length < 0.0001f)
-			{
-				directionX = player.fSkillAimDirectionX;
-				directionZ = player.fSkillAimDirectionZ;
-			}
-			else
-			{
-				directionX /= length;
-				directionZ /= length;
-			}
-			const float durationSeconds =
-				static_cast<float>(pHit->iPushMs) * MILLISECONDS_TO_SECONDS;
-			target.fKnockbackDirectionX = directionX;
-			target.fKnockbackDirectionZ = directionZ;
-			target.fKnockbackSpeed = pushDistance / durationSeconds;
-			target.fKnockbackRemainingSeconds = durationSeconds;
-		}
-		if (0u == target.iCurrentHp)
-		{
-			target.eAction = SERVER_ENTITY_ACTION::DEAD;
-			target.iActionStartTick = 0u == serverTick ? 1u : serverTick;
-			target.MovePath.clear();
-		}
+		ApplyPlayerHitDamage(target, rawDamage, pHit,
+			player.fPositionX, player.fPositionZ,
+			player.fSkillAimDirectionX, player.fSkillAimDirectionZ,
+			serverTick, outDamageEvents);
 	};
 	const auto resolveRawDamage = [&]()
 	{
@@ -638,21 +870,87 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			catalog.Find_DamageRatePercent(skill->strDamageProfileId));
 	};
 
-	if (dealsDamage && !shapeHits.empty())
+	if (dealsDamage && (!shapeHits.empty() || !projectiles.empty()))
 	{
+		/* The caster's hits and every object's hits split one damage rate:
+		caster sub-hits are numbered first, then each projectile's in order. */
 		std::uint32_t subHitCount = 0;
 		for (const PLAYER_SKILL_HIT& hit : shapeHits)
 			subHitCount += hit.iRepeatCount;
+		const std::uint32_t casterSubHits = subHitCount;
+		for (const PLAYER_SKILL_PROJECTILE& projectile : projectiles)
+			subHitCount += ProjectileSubHitCount(projectile);
 		const std::uint64_t totalDamage = resolveRawDamage();
-		const std::uint64_t subHitTotal = (std::max)(1u, subHitCount);
+		const std::uint32_t subHitTotal = (std::max)(1u, subHitCount);
 		const auto damageOfSubHit = [&](const std::uint32_t index)
 		{
-			const std::uint64_t share =
-				totalDamage * (index + 1u) / subHitTotal -
-				totalDamage * index / subHitTotal;
-			return static_cast<std::uint32_t>(share < 1u ? 1u : share);
+			return DamageOfSubHit(totalDamage, subHitTotal, index);
 		};
 		const float elapsedMs = player.fActionElapsedSeconds * 1000.f;
+		std::uint32_t projectileSubHitBase = casterSubHits;
+		for (std::size_t index = 0; index < projectiles.size(); ++index)
+		{
+			const PLAYER_SKILL_PROJECTILE& definition = projectiles[index];
+			const std::uint16_t bit = static_cast<std::uint16_t>(1u << index);
+			const std::uint32_t subHitBase = projectileSubHitBase;
+			projectileSubHitBase += ProjectileSubHitCount(definition);
+			if (0u != (player.iSpawnedProjectileMask & bit) ||
+				elapsedMs < static_cast<float>(definition.iTimeMs))
+			{
+				continue;
+			}
+			player.iSpawnedProjectileMask |= bit;
+			SERVER_SKILL_PROJECTILE spawned{};
+			spawned.iSkillId = skill->iSkillId;
+			spawned.iStageIndex = static_cast<std::uint8_t>(hasStage ? stageIndex : 0u);
+			spawned.iProjectileIndex = static_cast<std::uint8_t>(index);
+			spawned.fDirectionX = player.fSkillAimDirectionX;
+			spawned.fDirectionZ = player.fSkillAimDirectionZ;
+			spawned.fSpeed = definition.fSpeed;
+			spawned.fRemainingSeconds =
+				static_cast<float>(definition.iLifeMs) * MILLISECONDS_TO_SECONDS;
+			spawned.iTotalDamage = totalDamage;
+			spawned.iSubHitTotal = subHitTotal;
+			spawned.iSubHitBase = subHitBase;
+			spawned.fPositionX = player.fPositionX;
+			spawned.fPositionY = player.fPositionY;
+			spawned.fPositionZ = player.fPositionZ;
+			/* An AIM origin lands where the aim points, no farther than the
+			definition allows; a CASTER origin sits on the caster pushed by the
+			authored forward/right offsets. A moving object still starts on the
+			caster: its aim only sets the direction. */
+			if (PLAYER_PROJECTILE_ORIGIN::AIM == definition.eOrigin &&
+				PLAYER_PROJECTILE_KIND::FIXAREA == definition.eKind)
+			{
+				const float distance = definition.fMaxDistance > 0.f ?
+					(std::min)(player.fSkillAimDistance, definition.fMaxDistance) :
+					player.fSkillAimDistance;
+				spawned.fPositionX += spawned.fDirectionX * distance;
+				spawned.fPositionZ += spawned.fDirectionZ * distance;
+			}
+			else
+			{
+				const float rightX = spawned.fDirectionZ;
+				const float rightZ = -spawned.fDirectionX;
+				spawned.fPositionX += spawned.fDirectionX * definition.fOffsetForward +
+					rightX * definition.fOffsetRight;
+				spawned.fPositionZ += spawned.fDirectionZ * definition.fOffsetForward +
+					rightZ * definition.fOffsetRight;
+			}
+			if (PLAYER_PROJECTILE_KIND::FIXAREA == definition.eKind)
+			{
+				spawned.fRemainingDistance = 0.f;
+			}
+			else
+			{
+				/* Flies the aim distance clamped to the definition's band; no
+				cap means it only stops when its life runs out. */
+				spawned.fRemainingDistance = definition.fMaxDistance > 0.f ?
+					(std::min)((std::max)(player.fSkillAimDistance,
+						definition.fMinDistance), definition.fMaxDistance) : -1.f;
+			}
+			player.Projectiles.push_back(std::move(spawned));
+		}
 		std::uint32_t subHitIndex = 0;
 		bool allFired = true;
 		for (const PLAYER_SKILL_HIT& hit : shapeHits)
@@ -761,6 +1059,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			{
 				player.fSkillAimDirectionX = player.fBufferedComboAimX;
 				player.fSkillAimDirectionZ = player.fBufferedComboAimZ;
+				player.fSkillAimDistance = player.fBufferedComboAimDistance;
 				player.fYawDegrees = std::atan2(
 					player.fBufferedComboAimX,
 					player.fBufferedComboAimZ) * RADIANS_TO_DEGREES;
@@ -771,6 +1070,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.fActionElapsedSeconds = 0.f;
 			player.hasAppliedSkillDamage = false;
 			player.iAppliedHitMask = 0;
+			player.iSpawnedProjectileMask = 0;
 			// The client treats a changed start tick as a new action edge, which
 			// is how it learns to play the next stage's clip.
 			player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
@@ -805,6 +1105,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.fActionElapsedSeconds = 0.f;
 			player.hasAppliedSkillDamage = false;
 			player.iAppliedHitMask = 0;
+			player.iSpawnedProjectileMask = 0;
 			player.iComboStage = 0;
 			player.hasBufferedComboInput = false;
 			player.hasReleasedHold = false;
@@ -843,6 +1144,7 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Counter(
 	player.fActionElapsedSeconds = 0.f;
 	player.hasAppliedSkillDamage = false;
 	player.iAppliedHitMask = 0;
+	player.iSpawnedProjectileMask = 0;
 	// A changed start tick is how the client learns to play the counter clip.
 	player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
 	return true;
@@ -893,6 +1195,7 @@ void LostArk::Server::CPlayerSkillSystem::Update_Aim(
 		player, command.fAimX, command.fAimZ, directionX, directionZ);
 	player.fSkillAimDirectionX = directionX;
 	player.fSkillAimDirectionZ = directionZ;
+	player.fSkillAimDistance = AimDistance(player, command.fAimX, command.fAimZ);
 	player.fYawDegrees =
 		std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
 }

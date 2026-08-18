@@ -1,5 +1,7 @@
 #include "AnimationEffectCueDocument.h"
 
+#include "DataJson.h"
+
 #include "Effect_Catalog.h"
 #include "ProjectDataRoot.h"
 
@@ -209,9 +211,166 @@ bool_t Client::CAnimationEffectCueDocument::Load(
 	const std::string Text{
 		std::istreambuf_iterator<char>(Input),
 		std::istreambuf_iterator<char>() };
-	return Load_FromText(
-		strAnimationAssetId, Text, AvailableClips, OutDocument,
-		strOutStatus, bFilterToAvailableClips);
+	ANIMATION_EFFECT_CUE_DOCUMENT Staged;
+	if (!Load_FromText(
+		strAnimationAssetId, Text, AvailableClips, Staged,
+		strOutStatus, bFilterToAvailableClips))
+	{
+		return false;
+	}
+	/* The projectile document is optional; when it exists it must parse, so a
+	broken one keeps the previous document instead of half a load. */
+	if (!Load_Projectiles(strAnimationAssetId, AvailableClips, Staged.Projectiles,
+		strOutStatus, bFilterToAvailableClips))
+	{
+		return false;
+	}
+	OutDocument = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CAnimationEffectCueDocument::Load_Projectiles(
+	const std::string& strAnimationAssetId,
+	const std::vector<std::string>& AvailableClips,
+	std::vector<ANIMATION_PROJECTILE_CUE>& OutProjectiles,
+	std::string& strOutStatus,
+	const bool_t bFilterToAvailableClips)
+{
+	OutProjectiles.clear();
+	const std::filesystem::path Relative =
+		std::filesystem::path(L"Animation") / L"Authored" /
+		std::filesystem::path(strAnimationAssetId) /
+		(std::filesystem::path(strAnimationAssetId).wstring() + L".projectiles.json");
+	const std::filesystem::path Path = CProjectDataRoot::Resolve(Relative);
+	std::ifstream Input(Path, std::ios::binary);
+	if (Path.empty() || !Input)
+		return true;
+	const std::string Text{
+		std::istreambuf_iterator<char>(Input),
+		std::istreambuf_iterator<char>() };
+	DATA_JSON_VALUE Root;
+	std::string Error;
+	if (!CDataJson::Parse(Text, Root, Error) || !Root.Is_Object())
+	{
+		strOutStatus = "Animation projectile document is not valid JSON: " + Error;
+		return false;
+	}
+	const DATA_JSON_VALUE* pSchema = Root.Find("schema");
+	const DATA_JSON_VALUE* pVersion = Root.Find("formatVersion");
+	const DATA_JSON_VALUE* pAsset = Root.Find("animationAssetId");
+	const DATA_JSON_VALUE* pRows = Root.Find("projectiles");
+	if (nullptr == pSchema || !pSchema->Is_String() ||
+		"lostark.animation-projectiles" != pSchema->Get_String() ||
+		nullptr == pVersion || !pVersion->Is_Number() || 1.0 != pVersion->Get_Number() ||
+		nullptr == pAsset || !pAsset->Is_String() ||
+		strAnimationAssetId != pAsset->Get_String() ||
+		nullptr == pRows || !pRows->Is_Array())
+	{
+		strOutStatus = "Animation projectile document header is invalid.";
+		return false;
+	}
+	const std::unordered_set<std::string> ClipSet(
+		AvailableClips.begin(), AvailableClips.end());
+	const auto Read_Number = [](const DATA_JSON_VALUE& Object, const char* pKey,
+		double& OutValue)
+	{
+		const DATA_JSON_VALUE* pValue = Object.Find(pKey);
+		if (nullptr == pValue || !pValue->Is_Number())
+			return false;
+		OutValue = pValue->Get_Number();
+		return std::isfinite(OutValue);
+	};
+	const auto To_Cm = [](const double Meters)
+	{
+		return static_cast<int32_t>(std::lround(Meters * 100.0));
+	};
+	std::vector<ANIMATION_PROJECTILE_CUE> Staged;
+	for (const DATA_JSON_VALUE& Row : pRows->Get_Array())
+	{
+		const DATA_JSON_VALUE* pClip = Row.Is_Object() ? Row.Find("clip") : nullptr;
+		const DATA_JSON_VALUE* pKind = Row.Is_Object() ? Row.Find("kind") : nullptr;
+		const DATA_JSON_VALUE* pOrigin = Row.Is_Object() ? Row.Find("origin") : nullptr;
+		const DATA_JSON_VALUE* pHits = Row.Is_Object() ? Row.Find("hits") : nullptr;
+		double StartMs = 0.0, Speed = 0.0, MinDistance = 0.0, MaxDistance = 0.0;
+		double LifeMs = 0.0, Radius = 0.0, OffsetForward = 0.0, OffsetRight = 0.0;
+		if (nullptr == pClip || !pClip->Is_String() ||
+			nullptr == pKind || !pKind->Is_String() ||
+			nullptr == pOrigin || !pOrigin->Is_String() ||
+			("CASTER" != pOrigin->Get_String() && "AIM" != pOrigin->Get_String()) ||
+			nullptr == pHits || !pHits->Is_Array() ||
+			!Read_Number(Row, "offsetForward", OffsetForward) ||
+			!Read_Number(Row, "offsetRight", OffsetRight) ||
+			!Read_Number(Row, "startMs", StartMs) || StartMs < 0.0 ||
+			!Read_Number(Row, "speed", Speed) || Speed < 0.0 ||
+			!Read_Number(Row, "minDistance", MinDistance) || MinDistance < 0.0 ||
+			!Read_Number(Row, "maxDistance", MaxDistance) || MaxDistance < 0.0 ||
+			!Read_Number(Row, "lifeMs", LifeMs) || LifeMs <= 0.0 ||
+			!Read_Number(Row, "radius", Radius) || Radius < 0.0)
+		{
+			strOutStatus = "Animation projectile row is invalid.";
+			return false;
+		}
+		ANIMATION_PROJECTILE_CUE Cue;
+		Cue.strClipName = pClip->Get_String();
+		const std::string& Kind = pKind->Get_String();
+		if ("MISSILE" == Kind) Cue.iKind = 0u;
+		else if ("FIXAREA" == Kind) Cue.iKind = 1u;
+		else if ("GRENADE" == Kind) Cue.iKind = 2u;
+		else if ("TRACE" == Kind) Cue.iKind = 3u;
+		else
+		{
+			strOutStatus = "Animation projectile kind is invalid.";
+			return false;
+		}
+		Cue.iOrigin = "AIM" == pOrigin->Get_String() ? 1u : 0u;
+		Cue.fOffsetForward = static_cast<f32_t>(OffsetForward);
+		Cue.fOffsetRight = static_cast<f32_t>(OffsetRight);
+		Cue.iStartMs = static_cast<uint32_t>(StartMs);
+		Cue.fSpeed = static_cast<f32_t>(Speed);
+		Cue.fMinDistance = static_cast<f32_t>(MinDistance);
+		Cue.fMaxDistance = static_cast<f32_t>(MaxDistance);
+		Cue.iLifeMs = static_cast<uint32_t>(LifeMs);
+		Cue.fRadius = static_cast<f32_t>(Radius);
+		for (const DATA_JSON_VALUE& Hit : pHits->Get_Array())
+		{
+			double AreaType = 0.0, Range = 0.0, Angle = 0.0, Width = 0.0;
+			double Height = 0.0, Offset = 0.0, Inner = 0.0;
+			if (!Hit.Is_Object() ||
+				!Read_Number(Hit, "areaType", AreaType) || AreaType < 1.0 || AreaType > 3.0 ||
+				!Read_Number(Hit, "range", Range) || Range <= 0.0 ||
+				!Read_Number(Hit, "angle", Angle) || Angle < 0.0 || Angle > 360.0 ||
+				!Read_Number(Hit, "width", Width) || Width < 0.0 ||
+				!Read_Number(Hit, "height", Height) || Height < 0.0 ||
+				!Read_Number(Hit, "offset", Offset) ||
+				!Read_Number(Hit, "inner", Inner) || Inner < 0.0)
+			{
+				strOutStatus = "Animation projectile hit is invalid.";
+				return false;
+			}
+			HIT_AREA_SHAPE Shape{};
+			Shape.iAreaType = static_cast<int32_t>(AreaType);
+			Shape.iAreaRange = To_Cm(Range);
+			/* The wire reads a box width and a fan sweep from the same field,
+			   as the official AreaAngle column does. */
+			Shape.iAreaAngle = 2 == Shape.iAreaType ?
+				To_Cm(Width) : static_cast<int32_t>(std::lround(Angle));
+			Shape.iAreaHeight = To_Cm(Height);
+			Shape.iAreaOffsetX = To_Cm(Offset);
+			Shape.iAreaInner = To_Cm(Inner);
+			Cue.Shapes.push_back(Shape);
+		}
+		if (bFilterToAvailableClips && !ClipSet.contains(Cue.strClipName))
+			continue;
+		if (!ClipSet.contains(Cue.strClipName))
+		{
+			strOutStatus = "Animation projectile row names an unknown clip: " +
+				Cue.strClipName;
+			return false;
+		}
+		Staged.push_back(std::move(Cue));
+	}
+	OutProjectiles = std::move(Staged);
+	return true;
 }
 
 bool_t Client::CAnimationEffectCueDocument::Load_FromText(

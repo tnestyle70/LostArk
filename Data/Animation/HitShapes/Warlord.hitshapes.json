@@ -1,6 +1,6 @@
 {
   "schema": "lostark.animation-hit-shapes",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "animationAssetId": "Warlord",
   "characterClass": "WARLORD",
   "skills": [
@@ -113,7 +113,7 @@
       "skillId": 17060,
       "hits": [
         {
-          "timeMs": 700,
+          "timeMs": 330,
           "repeatCount": 1,
           "repeatMs": 0,
           "areaType": 3,
@@ -218,7 +218,7 @@
       "skillId": 17140,
       "hits": [
         {
-          "timeMs": 1000,
+          "timeMs": 1200,
           "repeatCount": 1,
           "repeatMs": 0,
           "areaType": 1,

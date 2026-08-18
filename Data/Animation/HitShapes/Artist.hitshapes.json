@@ -1,6 +1,6 @@
 {
   "schema": "lostark.animation-hit-shapes",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "animationAssetId": "Artist",
   "characterClass": "ARTIST",
   "skills": [
@@ -192,6 +192,38 @@
           "pushMs": 0,
           "pushRange": 0.0
         }
+      ],
+      "projectiles": [
+        {
+          "timeMs": 695,
+          "kind": "FIXAREA",
+          "origin": "CASTER",
+          "offsetForward": 0.0,
+          "offsetRight": 0.0,
+          "speed": 0.0,
+          "minDistance": 7.0,
+          "maxDistance": 7.0,
+          "lifeMs": 6000,
+          "radius": 0.5,
+          "hits": [
+            {
+              "trigger": "TIMED",
+              "atMs": 500,
+              "count": 6,
+              "everyMs": 500,
+              "areaType": 2,
+              "range": 7.0,
+              "angle": 0,
+              "width": 3.0,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0,
+              "pushMs": 0,
+              "pushRange": 0.0
+            }
+          ]
+        }
       ]
     },
     {
@@ -219,8 +251,8 @@
       "hits": [
         {
           "timeMs": 540,
-          "repeatCount": 2,
-          "repeatMs": 500,
+          "repeatCount": 1,
+          "repeatMs": 0,
           "areaType": 2,
           "range": 4.0,
           "angle": 0,
@@ -229,8 +261,70 @@
           "offset": 0.0,
           "inner": 0.0,
           "maxTargets": 0,
-          "pushMs": 0,
-          "pushRange": 0.0
+          "pushMs": 100,
+          "pushRange": 0.4
+        }
+      ],
+      "projectiles": [
+        {
+          "timeMs": 543,
+          "kind": "FIXAREA",
+          "origin": "CASTER",
+          "offsetForward": 0.0,
+          "offsetRight": 0.0,
+          "speed": 0.0,
+          "minDistance": 7.0,
+          "maxDistance": 7.0,
+          "lifeMs": 5000,
+          "radius": 0.3,
+          "hits": [
+            {
+              "trigger": "TIMED",
+              "atMs": 300,
+              "count": 2,
+              "everyMs": 300,
+              "areaType": 2,
+              "range": 4.0,
+              "angle": 0,
+              "width": 2.5,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0,
+              "pushMs": 0,
+              "pushRange": 0.0
+            }
+          ]
+        },
+        {
+          "timeMs": 1150,
+          "kind": "FIXAREA",
+          "origin": "CASTER",
+          "offsetForward": 0.0,
+          "offsetRight": 0.0,
+          "speed": 0.0,
+          "minDistance": 7.0,
+          "maxDistance": 7.0,
+          "lifeMs": 5000,
+          "radius": 0.3,
+          "hits": [
+            {
+              "trigger": "TIMED",
+              "atMs": 300,
+              "count": 3,
+              "everyMs": 300,
+              "areaType": 2,
+              "range": 4.0,
+              "angle": 0,
+              "width": 2.5,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0,
+              "pushMs": 0,
+              "pushRange": 0.0
+            }
+          ]
         }
       ]
     },
@@ -252,25 +346,73 @@
           "pushMs": 0,
           "pushRange": 0.0
         }
+      ],
+      "projectiles": [
+        {
+          "timeMs": 1460,
+          "kind": "FIXAREA",
+          "origin": "CASTER",
+          "offsetForward": 0.0,
+          "offsetRight": 0.0,
+          "speed": 0.0,
+          "minDistance": 7.0,
+          "maxDistance": 7.0,
+          "lifeMs": 5000,
+          "radius": 0.5,
+          "hits": [
+            {
+              "trigger": "TIMED",
+              "atMs": 0,
+              "count": 6,
+              "everyMs": 700,
+              "areaType": 2,
+              "range": 6.0,
+              "angle": 0,
+              "width": 3.0,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0,
+              "pushMs": 80,
+              "pushRange": 0.1
+            }
+          ]
+        }
       ]
     },
     {
       "skillId": 31480,
-      "hits": [
+      "hits": [],
+      "projectiles": [
         {
-          "timeMs": 997,
-          "repeatCount": 2,
-          "repeatMs": 250,
-          "areaType": 2,
-          "range": 1.5,
-          "angle": 0,
-          "width": 3.5,
-          "height": 1.5,
-          "offset": 0.0,
-          "inner": 0.0,
-          "maxTargets": 0,
-          "pushMs": 80,
-          "pushRange": 0.3
+          "timeMs": 1000,
+          "kind": "MISSILE",
+          "origin": "AIM",
+          "offsetForward": 0.0,
+          "offsetRight": 0.0,
+          "speed": 9.0,
+          "minDistance": 3.0,
+          "maxDistance": 10.0,
+          "lifeMs": 30000,
+          "radius": 1.5,
+          "hits": [
+            {
+              "trigger": "CONTACT",
+              "atMs": 0,
+              "count": 2,
+              "everyMs": 250,
+              "areaType": 2,
+              "range": 1.5,
+              "angle": 0,
+              "width": 3.5,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0,
+              "pushMs": 80,
+              "pushRange": 0.3
+            }
+          ]
         }
       ]
     },
@@ -281,16 +423,48 @@
           "timeMs": 1000,
           "repeatCount": 1,
           "repeatMs": 0,
-          "areaType": 2,
+          "areaType": 1,
           "range": 1.5,
           "angle": 0,
-          "width": 2.5,
+          "width": 0.0,
           "height": 1.5,
           "offset": 0.0,
           "inner": 0.0,
-          "maxTargets": 0,
-          "pushMs": 0,
-          "pushRange": 0.0
+          "maxTargets": 1,
+          "pushMs": 80,
+          "pushRange": 0.1
+        }
+      ],
+      "projectiles": [
+        {
+          "timeMs": 1147,
+          "kind": "MISSILE",
+          "origin": "AIM",
+          "offsetForward": 0.0,
+          "offsetRight": 0.0,
+          "speed": 6.5,
+          "minDistance": 11.0,
+          "maxDistance": 11.0,
+          "lifeMs": 3000,
+          "radius": 1.5,
+          "hits": [
+            {
+              "trigger": "CONTACT",
+              "atMs": 0,
+              "count": 1,
+              "everyMs": 0,
+              "areaType": 2,
+              "range": 1.5,
+              "angle": 0,
+              "width": 2.5,
+              "height": 1.5,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0,
+              "pushMs": 0,
+              "pushRange": 0.0
+            }
+          ]
         }
       ]
     },
@@ -298,7 +472,7 @@
       "skillId": 31910,
       "hits": [
         {
-          "timeMs": 3000,
+          "timeMs": 3400,
           "repeatCount": 1,
           "repeatMs": 0,
           "areaType": 1,
@@ -318,7 +492,7 @@
       "skillId": 31930,
       "hits": [
         {
-          "timeMs": 1426,
+          "timeMs": 4633,
           "repeatCount": 1,
           "repeatMs": 0,
           "areaType": 1,
@@ -336,21 +510,37 @@
     },
     {
       "skillId": 31950,
-      "hits": [
+      "hits": [],
+      "projectiles": [
         {
-          "timeMs": 1700,
-          "repeatCount": 1,
-          "repeatMs": 0,
-          "areaType": 1,
-          "range": 3.0,
-          "angle": 0,
-          "width": 0.0,
-          "height": 2.0,
-          "offset": 0.0,
-          "inner": 0.0,
-          "maxTargets": 0,
-          "pushMs": 100,
-          "pushRange": 0.4
+          "timeMs": 600,
+          "kind": "FIXAREA",
+          "origin": "CASTER",
+          "offsetForward": 0.0,
+          "offsetRight": 0.0,
+          "speed": 0.0,
+          "minDistance": 7.0,
+          "maxDistance": 7.0,
+          "lifeMs": 5000,
+          "radius": 0.5,
+          "hits": [
+            {
+              "trigger": "TIMED",
+              "atMs": 1200,
+              "count": 1,
+              "everyMs": 1000,
+              "areaType": 1,
+              "range": 3.0,
+              "angle": 0,
+              "width": 0.0,
+              "height": 2.0,
+              "offset": 0.0,
+              "inner": 0.0,
+              "maxTargets": 0,
+              "pushMs": 100,
+              "pushRange": 0.4
+            }
+          ]
         }
       ]
     }

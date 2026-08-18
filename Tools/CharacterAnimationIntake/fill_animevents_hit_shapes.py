@@ -164,12 +164,49 @@ def load_json(*parts):
 
 
 CASTER_HIT_KEYS = (1, 2)
+SHAPE_IDENTITY = ('area', 'ar', 'aa', 'ah', 'ax', 'arem', 'rep', 'repms', 'push', 'pushr')
 
 
-def reference_shape(row):
-    hits = [h for h in row['hits'] if h['area'] > 0 and h['key'] in CASTER_HIT_KEYS]
+def shape_identity(h):
+    return tuple(max(1, int(h.get(k, 0))) if k == 'rep' else int(h.get(k, 0)) for k in SHAPE_IDENTITY)
+
+
+def load_projectile_shapes(asset):
+    """Shapes a spawned object (missile, fixed area...) applies itself, per skill,
+    from the reference .projectiles; the caster must not stamp those again."""
+    out = {}
+    path = os.path.join(REF, asset, asset + '.projectiles')
+    if not os.path.exists(path):
+        return out
+    # only the tripod-free chain (lowest clipseq group) spawns for the product
+    base_seq = {}
+    for line in read_lines(os.path.join(REF, asset, asset + '.clipseq'))[1:]:
+        m = re.match(r'^(\d+) "[^"]*" seq=(\d+)', line)
+        if m:
+            skill, seq = int(m.group(1)), int(m.group(2))
+            base_seq[skill] = min(base_seq.get(skill, seq), seq)
+    skill = None
+    for line in read_lines(path)[1:]:
+        m = re.match(r'^(\d+) "[^"]*" pk=\d+ kind=\w+ seq=(-?\d+)', line)
+        if m:
+            skill = int(m.group(1))
+            if int(m.group(2)) != base_seq.get(skill, int(m.group(2))):
+                skill = None
+            continue
+        m = re.match(r'^  e (.*)$', line.rstrip('\r'))
+        if m and skill is not None:
+            p = parse_pairs(m.group(1))
+            if int(p.get('area', '0')) > 0 and int(p.get('dmg', '0')) > 0:
+                out.setdefault(skill, set()).add(shape_identity(p))
+    return out
+
+
+def reference_shape(row, projectile_shapes):
+    hits = [h for h in row['hits'] if h['area'] > 0 and h['key'] in CASTER_HIT_KEYS and
+            shape_identity(h) not in projectile_shapes]
     if not hits:
-        return None, 'no caster-keyed shaped skilltiming row'
+        return None, 'no caster-keyed shaped skilltiming row' + (
+            ' (projectile applies the shape)' if projectile_shapes else '')
     timed = [h for h in hits if h['timed']]
     if len(set(h['t'] for h in timed)) > 1:
         return None, 'timed rows form a %d-step timeline' % len(set(h['t'] for h in timed))
@@ -207,6 +244,7 @@ def synthesize_timed_rows(asset, notify, timing):
     bindings = load_json('Data', 'Animation', 'Authored', asset, asset + '.skillbindings.json')
     balance = load_json('Data', 'Balance', 'PlayerSkills.json')
     skills = {int(s['skillId']): s for s in balance['skills'] if s['characterClass'] == bindings['characterClass']}
+    projectile_shapes = load_projectile_shapes(asset)
     generated = {}
     stamped = 0
     for binding in sorted(bindings['bindings'], key=lambda b: int(b['skillId'])):
@@ -220,7 +258,8 @@ def synthesize_timed_rows(asset, notify, timing):
         if any(notify.get(n) for n in names):
             continue
         ref = find_reference_row(timing, skill_id)
-        shape, reason = reference_shape(ref) if ref else (None, 'no skilltiming row')
+        shape, reason = (reference_shape(ref, projectile_shapes.get(skill_id, set()))
+                         if ref else (None, 'no skilltiming row'))
         if shape is None:
             print('%s %d: no HIT notify, left as range circle: %s' % (asset, skill_id, reason))
             continue
@@ -296,6 +335,10 @@ def rewrite(asset, generated, check):
         if mm and mm.group(1) in generated:
             first_index.setdefault(mm.group(1), len(kept))
             kept.append(None)
+        elif mm:
+            # every src=orig HIT row comes from this script or the tool's import
+            # of the same notifies; a clip that no longer generates any is stale
+            continue
         else:
             kept.append(line)
     out = []

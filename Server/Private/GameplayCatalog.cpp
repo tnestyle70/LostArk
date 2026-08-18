@@ -271,35 +271,10 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 			!ParseNumber(fields[0], hit.iTimeMs) ||
 			!ParseNumber(fields[1], hit.iRepeatCount) ||
 			!ParseNumber(fields[2], hit.iRepeatMs) ||
-			!ParseNumber(fields[3], hit.iAreaType) ||
-			!ParseNumber(fields[4], hit.fRange) ||
-			!ParseNumber(fields[5], hit.fAngleDegrees) ||
-			!ParseNumber(fields[6], hit.fWidth) ||
-			!ParseNumber(fields[7], hit.fHeight) ||
-			!ParseNumber(fields[8], hit.fOffset) ||
-			!ParseNumber(fields[9], hit.fInner) ||
-			!ParseNumber(fields[10], hit.iMaxTargets) ||
-			!ParseNumber(fields[11], hit.iPushMs) ||
-			!ParseNumber(fields[12], hit.fPushRange) ||
-			hit.iPushMs > 10000u ||
-			!std::isfinite(hit.fPushRange) ||
-			hit.fPushRange < -50.f || hit.fPushRange > 50.f ||
-			(0u == hit.iPushMs && 0.f != hit.fPushRange) ||
+			!Parse_HitShapeExtent(fields + 3, hit) ||
 			hit.iTimeMs > limitMs ||
 			0u == hit.iRepeatCount || hit.iRepeatCount > 64u ||
 			(hit.iRepeatCount > 1u && 0u == hit.iRepeatMs) ||
-			hit.iAreaType < 1u || hit.iAreaType > 3u ||
-			!std::isfinite(hit.fRange) || hit.fRange <= 0.f ||
-			!std::isfinite(hit.fAngleDegrees) || hit.fAngleDegrees < 0.f ||
-			hit.fAngleDegrees > 360.f ||
-			(3u != hit.iAreaType && 0.f != hit.fAngleDegrees) ||
-			!std::isfinite(hit.fWidth) || hit.fWidth < 0.f ||
-			(2u == hit.iAreaType) != (hit.fWidth > 0.f) ||
-			!std::isfinite(hit.fHeight) || hit.fHeight < 0.f ||
-			!std::isfinite(hit.fOffset) ||
-			!std::isfinite(hit.fInner) || hit.fInner < 0.f ||
-			hit.fInner >= hit.fRange ||
-			(2u == hit.iAreaType && 0.f != hit.fInner) ||
 			(!outHits.empty() && hit.iTimeMs < outHits.back().iTimeMs))
 		{
 			m_strStatus = "Skill hit shape is invalid";
@@ -316,6 +291,166 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 		m_strStatus = "Skill hit shape count does not match";
 		return false;
 	}
+	return true;
+}
+
+bool LostArk::Server::CGameplayCatalog::Parse_HitShapeExtent(
+	const std::string_view* fields,
+	PLAYER_SKILL_HIT& hit)
+{
+	return ParseNumber(fields[0], hit.iAreaType) &&
+		ParseNumber(fields[1], hit.fRange) &&
+		ParseNumber(fields[2], hit.fAngleDegrees) &&
+		ParseNumber(fields[3], hit.fWidth) &&
+		ParseNumber(fields[4], hit.fHeight) &&
+		ParseNumber(fields[5], hit.fOffset) &&
+		ParseNumber(fields[6], hit.fInner) &&
+		ParseNumber(fields[7], hit.iMaxTargets) &&
+		ParseNumber(fields[8], hit.iPushMs) &&
+		ParseNumber(fields[9], hit.fPushRange) &&
+		hit.iPushMs <= 10000u &&
+		std::isfinite(hit.fPushRange) &&
+		hit.fPushRange >= -50.f && hit.fPushRange <= 50.f &&
+		(0u != hit.iPushMs || 0.f == hit.fPushRange) &&
+		hit.iAreaType >= 1u && hit.iAreaType <= 3u &&
+		std::isfinite(hit.fRange) && hit.fRange > 0.f &&
+		std::isfinite(hit.fAngleDegrees) && hit.fAngleDegrees >= 0.f &&
+		hit.fAngleDegrees <= 360.f &&
+		(3u == hit.iAreaType || 0.f == hit.fAngleDegrees) &&
+		std::isfinite(hit.fWidth) && hit.fWidth >= 0.f &&
+		(2u == hit.iAreaType) == (hit.fWidth > 0.f) &&
+		std::isfinite(hit.fHeight) && hit.fHeight >= 0.f &&
+		std::isfinite(hit.fOffset) &&
+		std::isfinite(hit.fInner) && hit.fInner >= 0.f &&
+		hit.fInner < hit.fRange &&
+		(2u != hit.iAreaType || 0.f == hit.fInner) &&
+		hit.iMaxTargets <= 64u;
+}
+
+bool LostArk::Server::CGameplayCatalog::Parse_SkillProjectile(
+	const std::vector<std::string_view>& fields,
+	const std::size_t firstField,
+	const std::uint32_t limitMs,
+	std::vector<PLAYER_SKILL_PROJECTILE>& outProjectiles)
+{
+	/* index timeMs kind origin offsetForward offsetRight speed minDistance
+	maxDistance lifeMs radius hitCount hits */
+	std::uint32_t index = 0;
+	std::uint32_t origin = 0;
+	std::uint32_t hitCount = 0;
+	PLAYER_SKILL_PROJECTILE projectile{};
+	if (fields.size() != firstField + 13u ||
+		!ParseNumber(fields[firstField], index) ||
+		!ParseNumber(fields[firstField + 1u], projectile.iTimeMs) ||
+		!ParseNumber(fields[firstField + 3u], origin) || origin > 1u ||
+		!ParseNumber(fields[firstField + 4u], projectile.fOffsetForward) ||
+		!ParseNumber(fields[firstField + 5u], projectile.fOffsetRight) ||
+		!ParseNumber(fields[firstField + 6u], projectile.fSpeed) ||
+		!ParseNumber(fields[firstField + 7u], projectile.fMinDistance) ||
+		!ParseNumber(fields[firstField + 8u], projectile.fMaxDistance) ||
+		!ParseNumber(fields[firstField + 9u], projectile.iLifeMs) ||
+		!ParseNumber(fields[firstField + 10u], projectile.fRadius) ||
+		!ParseNumber(fields[firstField + 11u], hitCount) ||
+		!std::isfinite(projectile.fOffsetForward) ||
+		projectile.fOffsetForward < -50.f || projectile.fOffsetForward > 50.f ||
+		!std::isfinite(projectile.fOffsetRight) ||
+		projectile.fOffsetRight < -50.f || projectile.fOffsetRight > 50.f ||
+		index != outProjectiles.size() || index >= 8u ||
+		projectile.iTimeMs > limitMs ||
+		(!outProjectiles.empty() &&
+			projectile.iTimeMs < outProjectiles.back().iTimeMs) ||
+		0u == projectile.iLifeMs || projectile.iLifeMs > 600000u ||
+		!std::isfinite(projectile.fSpeed) || projectile.fSpeed < 0.f ||
+		projectile.fSpeed > 1000.f ||
+		!std::isfinite(projectile.fMinDistance) || projectile.fMinDistance < 0.f ||
+		!std::isfinite(projectile.fMaxDistance) || projectile.fMaxDistance < 0.f ||
+		!std::isfinite(projectile.fRadius) || projectile.fRadius < 0.f ||
+		hitCount < 1u || hitCount > 16u)
+	{
+		m_strStatus = "Skill projectile row is invalid";
+		return false;
+	}
+	projectile.eOrigin = 0u == origin ?
+		PLAYER_PROJECTILE_ORIGIN::CASTER : PLAYER_PROJECTILE_ORIGIN::AIM;
+	const std::string_view kind = fields[firstField + 2u];
+	if ("MISSILE" == kind)
+		projectile.eKind = PLAYER_PROJECTILE_KIND::MISSILE;
+	else if ("FIXAREA" == kind)
+		projectile.eKind = PLAYER_PROJECTILE_KIND::FIXAREA;
+	else if ("GRENADE" == kind)
+		projectile.eKind = PLAYER_PROJECTILE_KIND::GRENADE;
+	else if ("TRACE" == kind)
+		projectile.eKind = PLAYER_PROJECTILE_KIND::TRACE;
+	else
+	{
+		m_strStatus = "Skill projectile kind is invalid";
+		return false;
+	}
+	/* A fixed area is the one kind that does not move. */
+	if ((PLAYER_PROJECTILE_KIND::FIXAREA == projectile.eKind) !=
+		(0.f == projectile.fSpeed))
+	{
+		m_strStatus = "Skill projectile motion is invalid";
+		return false;
+	}
+	const std::string_view packed = fields[firstField + 12u];
+	std::size_t cursor = 0;
+	bool sawTimed = false;
+	while (cursor <= packed.size())
+	{
+		const std::size_t comma = packed.find(',', cursor);
+		const std::string_view token{
+			packed.data() + cursor,
+			(std::string::npos == comma ? packed.size() : comma) - cursor };
+		std::string_view hitFields[14];
+		std::size_t fieldCount = 0;
+		std::size_t start = 0;
+		while (fieldCount < 14)
+		{
+			const std::size_t colon = token.find(':', start);
+			hitFields[fieldCount++] = token.substr(start,
+				std::string_view::npos == colon ? std::string_view::npos : colon - start);
+			if (std::string_view::npos == colon)
+				break;
+			start = colon + 1;
+		}
+		PLAYER_PROJECTILE_HIT hit{};
+		std::uint32_t trigger = 0;
+		if (14u != fieldCount ||
+			!ParseNumber(hitFields[0], trigger) || trigger > 1u ||
+			!ParseNumber(hitFields[1], hit.Hit.iTimeMs) ||
+			!ParseNumber(hitFields[2], hit.Hit.iRepeatCount) ||
+			!ParseNumber(hitFields[3], hit.Hit.iRepeatMs) ||
+			!Parse_HitShapeExtent(hitFields + 4, hit.Hit) ||
+			hit.Hit.iTimeMs > 600000u ||
+			0u == hit.Hit.iRepeatCount || hit.Hit.iRepeatCount > 64u ||
+			(hit.Hit.iRepeatCount > 1u && 0u == hit.Hit.iRepeatMs))
+		{
+			m_strStatus = "Skill projectile hit is invalid";
+			return false;
+		}
+		hit.isContact = 0u == trigger;
+		/* contact hits lead at time 0, then timed hits in schedule order */
+		if ((hit.isContact && (0u != hit.Hit.iTimeMs || sawTimed)) ||
+			(!hit.isContact && !projectile.Hits.empty() &&
+				!projectile.Hits.back().isContact &&
+				hit.Hit.iTimeMs < projectile.Hits.back().Hit.iTimeMs))
+		{
+			m_strStatus = "Skill projectile hit order is invalid";
+			return false;
+		}
+		sawTimed = sawTimed || !hit.isContact;
+		projectile.Hits.push_back(hit);
+		if (std::string::npos == comma)
+			break;
+		cursor = comma + 1;
+	}
+	if (projectile.Hits.size() != hitCount)
+	{
+		m_strStatus = "Skill projectile hit count is invalid";
+		return false;
+	}
+	outProjectiles.push_back(std::move(projectile));
 	return true;
 }
 
@@ -399,7 +534,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 8u != version ||
+		!ParseNumber(header[1], version) || 9u != version ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";
@@ -635,6 +770,56 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				return false;
 			}
 			stage.Hits = std::move(hits);
+		}
+		else if (!fields.empty() && "SKILLPROJ" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			if (fields.size() < 2u || !ParseNumber(fields[1], ownerSkillId))
+			{
+				m_strStatus = "Skill projectile row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			if (owner == m_Skills.end() ||
+				owner->second.strDamageProfileId.empty() ||
+				LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE !=
+					owner->second.eSkillKind)
+			{
+				m_strStatus = "Skill projectile row does not follow its skill";
+				return false;
+			}
+			if (!Parse_SkillProjectile(fields, 2u,
+				owner->second.iActionDurationMs, owner->second.Projectiles))
+			{
+				return false;
+			}
+		}
+		else if (!fields.empty() && "SKILLSTAGEPROJ" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			std::uint32_t stageIndex = 0;
+			if (fields.size() < 3u || !ParseNumber(fields[1], ownerSkillId) ||
+				!ParseNumber(fields[2], stageIndex))
+			{
+				m_strStatus = "Skill stage projectile row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			if (owner == m_Skills.end() ||
+				owner->second.strDamageProfileId.empty() ||
+				stageIndex >= owner->second.ComboStages.size())
+			{
+				m_strStatus = "Skill stage projectile row does not follow its skill";
+				return false;
+			}
+			PLAYER_COMBO_STAGE& stage = owner->second.ComboStages[stageIndex];
+			if (!Parse_SkillProjectile(fields, 3u,
+				stage.iActionDurationMs, stage.Projectiles))
+			{
+				return false;
+			}
 		}
 		else if (!fields.empty() && "BOSS" == fields[0])
 		{

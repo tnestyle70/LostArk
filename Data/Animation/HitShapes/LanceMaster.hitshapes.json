@@ -1,6 +1,6 @@
 {
   "schema": "lostark.animation-hit-shapes",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "animationAssetId": "LanceMaster",
   "characterClass": "LANCE_MASTER",
   "skills": [
@@ -821,7 +821,7 @@
           "stageIndex": 2,
           "hits": [
             {
-              "timeMs": 600,
+              "timeMs": 322,
               "repeatCount": 1,
               "repeatMs": 0,
               "areaType": 2,
