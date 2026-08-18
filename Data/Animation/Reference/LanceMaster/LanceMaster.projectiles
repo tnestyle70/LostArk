@@ -1,0 +1,140 @@
+LOSTARK_PROJECTILES 1 "LanceMaster" 52
+34040 "긴 창_이연격" pk=340476 kind=FIXAREA seq=2 clip="flm_sk_sharpswing_02" t=0.2500 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=150 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=340471 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=38 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=3 repms=300 push=200 pushr=30 origin=0 self=0
+  e pk=340472 at=0.500 count=1 every=1.000 key=1 hittype=4 target=2 dmg=57 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=0 repms=0 push=310 pushr=80 origin=0 self=0
+34040 "긴 창_이연격" pk=340477 kind=FIXAREA seq=2 clip="flm_sk_sharpswing_02" t=0.2500 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=150 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=340471 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=38 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=3 repms=300 push=200 pushr=30 origin=0 self=0
+  e pk=340472 at=0.500 count=1 every=1.000 key=1 hittype=4 target=2 dmg=57 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=0 repms=0 push=310 pushr=80 origin=0 self=0
+34040 "긴 창_이연격" pk=340478 kind=FIXAREA seq=2 clip="flm_sk_sharpswing_02" t=0.2500 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=150 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=340471 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=38 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=3 repms=300 push=200 pushr=30 origin=0 self=0
+  e pk=340472 at=0.500 count=1 every=1.000 key=1 hittype=4 target=2 dmg=57 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=0 repms=0 push=310 pushr=80 origin=0 self=0
+34040 "긴 창_이연격" pk=340476 kind=FIXAREA seq=4 clip="flm_sk_sharpswing_custom_4" t=0.4620 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=150 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=340471 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=38 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=3 repms=300 push=200 pushr=30 origin=0 self=0
+  e pk=340472 at=0.500 count=1 every=1.000 key=1 hittype=4 target=2 dmg=57 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=0 repms=0 push=310 pushr=80 origin=0 self=0
+34040 "긴 창_이연격" pk=340477 kind=FIXAREA seq=4 clip="flm_sk_sharpswing_custom_4" t=0.4620 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=150 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=340471 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=38 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=3 repms=300 push=200 pushr=30 origin=0 self=0
+  e pk=340472 at=0.500 count=1 every=1.000 key=1 hittype=4 target=2 dmg=57 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=0 repms=0 push=310 pushr=80 origin=0 self=0
+34040 "긴 창_이연격" pk=340478 kind=FIXAREA seq=4 clip="flm_sk_sharpswing_custom_4" t=0.4620 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=150 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=340471 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=38 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=3 repms=300 push=200 pushr=30 origin=0 self=0
+  e pk=340472 at=0.500 count=1 every=1.000 key=1 hittype=4 target=2 dmg=57 area=3 ar=270 aa=120 ah=200 ax=-30 az=0 arem=0 maxt=0 rep=0 repms=0 push=310 pushr=80 origin=0 self=0
+34100 "긴 창_청룡출수" pk=341050 kind=FIXAREA seq=4 clip="flm_sk_cycloinclance_01" t=0.3536 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341054 at=0.000 count=6 every=0.150 key=1 hittype=4 target=2 dmg=87 area=2 ar=220 aa=270 ah=200 ax=-40 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=341055 at=1.250 count=1 every=0.000 key=1 hittype=4 target=2 dmg=150 area=2 ar=270 aa=200 ah=200 ax=70 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34100 "긴 창_청룡출수" pk=341051 kind=FIXAREA seq=4 clip="flm_sk_cycloinclance_01" t=0.3536 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341054 at=0.000 count=6 every=0.150 key=1 hittype=4 target=2 dmg=87 area=2 ar=220 aa=270 ah=200 ax=-40 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=341055 at=1.250 count=1 every=0.000 key=1 hittype=4 target=2 dmg=150 area=2 ar=270 aa=200 ah=200 ax=70 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34100 "긴 창_청룡출수" pk=341052 kind=FIXAREA seq=4 clip="flm_sk_cycloinclance_01" t=0.3536 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341054 at=0.000 count=6 every=0.150 key=1 hittype=4 target=2 dmg=87 area=2 ar=220 aa=270 ah=200 ax=-40 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=341056 at=1.540 count=1 every=0.000 key=1 hittype=5 target=2 dmg=150 area=3 ar=365 aa=110 ah=200 ax=55 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+34100 "긴 창_청룡출수" pk=341053 kind=FIXAREA seq=4 clip="flm_sk_cycloinclance_01" t=0.3536 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341054 at=0.000 count=6 every=0.150 key=1 hittype=4 target=2 dmg=87 area=2 ar=220 aa=270 ah=200 ax=-40 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=341056 at=1.540 count=1 every=0.000 key=1 hittype=5 target=2 dmg=150 area=3 ar=365 aa=110 ah=200 ax=55 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+34100 "긴 창_청룡출수" pk=341057 kind=FIXAREA seq=4 clip="flm_sk_cycloinclance_01" t=0.3536 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341072 at=0.000 count=6 every=0.150 key=1 hittype=4 target=2 dmg=87 area=2 ar=220 aa=338 ah=200 ax=-90 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=341055 at=1.250 count=1 every=0.000 key=1 hittype=4 target=2 dmg=150 area=2 ar=270 aa=200 ah=200 ax=70 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34100 "긴 창_청룡출수" pk=341058 kind=FIXAREA seq=4 clip="flm_sk_cycloinclance_01" t=0.3536 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341072 at=0.000 count=6 every=0.150 key=1 hittype=4 target=2 dmg=87 area=2 ar=220 aa=338 ah=200 ax=-90 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=341055 at=1.250 count=1 every=0.000 key=1 hittype=4 target=2 dmg=150 area=2 ar=270 aa=200 ah=200 ax=70 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34110 "긴 창_반월섬" pk=341180 kind=MISSILE seq=4 clip="flm_sk_crescentsweep" t=0.7470 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=40 mindist=30 maxdist=0 life=1.800 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341181 kind=MISSILE seq=4 clip="flm_sk_crescentsweep" t=0.7470 origin=1 ox=0 oy=0 scale=1.200 radius=50 height=40 mindist=30 maxdist=0 life=1.800 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341182 kind=MISSILE seq=4 clip="flm_sk_crescentsweep" t=0.7470 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=40 mindist=200 maxdist=500 life=1.800 speed=1400 layout=v2 accel=1 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341183 kind=MISSILE seq=4 clip="flm_sk_crescentsweep" t=0.7470 origin=1 ox=0 oy=0 scale=1.200 radius=50 height=40 mindist=200 maxdist=500 life=1.800 speed=1400 layout=v2 accel=1 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341185 kind=MISSILE seq=4 clip="flm_sk_crescentsweep" t=0.7470 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=40 mindist=30 maxdist=0 life=1.800 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341186 kind=MISSILE seq=4 clip="flm_sk_crescentsweep" t=0.7470 origin=1 ox=0 oy=0 scale=1.200 radius=50 height=40 mindist=30 maxdist=0 life=1.800 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341180 kind=MISSILE seq=5 clip="flm_sk_crescentsweep_custom_3" t=1.1000 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=40 mindist=30 maxdist=0 life=1.800 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341181 kind=MISSILE seq=5 clip="flm_sk_crescentsweep_custom_3" t=1.1000 origin=1 ox=0 oy=0 scale=1.200 radius=50 height=40 mindist=30 maxdist=0 life=1.800 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341182 kind=MISSILE seq=5 clip="flm_sk_crescentsweep_custom_3" t=1.1000 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=40 mindist=200 maxdist=500 life=1.800 speed=1400 layout=v2 accel=1 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341183 kind=MISSILE seq=5 clip="flm_sk_crescentsweep_custom_3" t=1.1000 origin=1 ox=0 oy=0 scale=1.200 radius=50 height=40 mindist=200 maxdist=500 life=1.800 speed=1400 layout=v2 accel=1 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341185 kind=MISSILE seq=5 clip="flm_sk_crescentsweep_custom_3" t=1.1000 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=40 mindist=30 maxdist=0 life=1.800 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34110 "긴 창_반월섬" pk=341186 kind=MISSILE seq=5 clip="flm_sk_crescentsweep_custom_3" t=1.1000 origin=1 ox=0 oy=0 scale=1.200 radius=50 height=40 mindist=30 maxdist=0 life=1.800 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=341184 at=0.200 count=5 every=0.300 key=1 hittype=5 target=2 dmg=72 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=2 repms=300 push=0 pushr=0 origin=0 self=0
+34120 "긴 창_연환섬" pk=341231 kind=FIXAREA seq=1 clip="flm_sk_threetalonstrike_01" t=0.4632 origin=0 ox=50 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=1.200 speed=0 layout=v2 accel=0 mesh="PC_FT_00.Mesh.PC_FT_00_SK"
+  e pk=341232 at=0.433 count=1 every=1.000 key=1 hittype=4 target=2 dmg=128 area=3 ar=220 aa=160 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=40 pushr=10 origin=0 self=0
+  e pk=341234 at=0.803 count=1 every=1.000 key=1 hittype=4 target=2 dmg=146 area=3 ar=220 aa=160 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34120 "긴 창_연환섬" pk=341235 kind=FIXAREA seq=1 clip="flm_sk_threetalonstrike_01" t=0.4632 origin=0 ox=50 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=1.200 speed=0 layout=v2 accel=0 mesh="PC_FT_00.Mesh.PC_FT_00_SK"
+  e pk=341238 at=0.433 count=1 every=1.000 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=50 az=30 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=341240 at=0.803 count=1 every=1.000 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=50 az=30 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+34120 "긴 창_연환섬" pk=341221 kind=MISSILE seq=2 clip="flm_sk_threetalonstrike_custom_2_02" t=0.4860 origin=1 ox=50 oy=0 scale=1.000 radius=150 height=50 mindist=800 maxdist=2000 life=3.000 speed=400 layout=v2 accel=1 mesh=""
+  e pk=341222 contact=1 key=1 hittype=4 target=2 dmg=428 area=1 ar=125 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=240 pushr=100 origin=0 self=0
+34120 "긴 창_연환섬" pk=341223 kind=MISSILE seq=3 clip="flm_sk_threetalonstrike_custom_3" t=0.3140 origin=1 ox=50 oy=0 scale=1.000 radius=150 height=50 mindist=1000 maxdist=1600 life=3.000 speed=400 layout=v2 accel=1 mesh=""
+  e pk=341226 contact=1 key=1 hittype=4 target=2 dmg=157 area=1 ar=125 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=25 origin=0 self=0
+34120 "긴 창_연환섬" pk=341224 kind=MISSILE seq=3 clip="flm_sk_threetalonstrike_custom_3" t=0.5742 origin=1 ox=50 oy=0 scale=1.000 radius=150 height=50 mindist=1000 maxdist=1600 life=3.000 speed=400 layout=v2 accel=1 mesh=""
+  e pk=341226 contact=1 key=1 hittype=4 target=2 dmg=157 area=1 ar=125 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=25 origin=0 self=0
+34120 "긴 창_연환섬" pk=341225 kind=MISSILE seq=3 clip="flm_sk_threetalonstrike_custom_3" t=0.8347 origin=1 ox=50 oy=0 scale=1.000 radius=150 height=50 mindist=1000 maxdist=1600 life=3.000 speed=400 layout=v2 accel=1 mesh=""
+  e pk=341226 contact=1 key=1 hittype=4 target=2 dmg=157 area=1 ar=125 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=25 origin=0 self=0
+34120 "긴 창_연환섬" pk=341227 kind=MISSILE seq=3 clip="flm_sk_threetalonstrike_custom_3" t=1.5500 origin=1 ox=50 oy=0 scale=1.000 radius=150 height=50 mindist=1000 maxdist=1600 life=3.000 speed=400 layout=v2 accel=1 mesh=""
+  e pk=341228 contact=1 key=1 hittype=4 target=2 dmg=201 area=1 ar=125 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 origin=0 self=0
+34130 "긴 창_질풍참" pk=341303 kind=FIXAREA seq=1 clip="flm_sk_ruffle_custom_4" t=0.4753 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341304 at=0.000 count=3 every=0.150 key=1 hittype=4 target=2 dmg=203 area=2 ar=530 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=1 repms=200 push=110 pushr=50 origin=0 self=0
+  e pk=341305 at=0.450 count=1 every=0.000 key=1 hittype=4 target=2 dmg=261 area=2 ar=540 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=-50 origin=0 self=0
+34130 "긴 창_질풍참" pk=341309 kind=FIXAREA seq=1 clip="flm_sk_ruffle_custom_4" t=0.4753 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341310 at=0.000 count=3 every=0.150 key=1 hittype=4 target=2 dmg=203 area=2 ar=530 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=1 repms=200 push=80 pushr=10 origin=0 self=0
+  e pk=341311 at=0.450 count=1 every=0.000 key=1 hittype=4 target=2 dmg=261 area=2 ar=540 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=-50 origin=0 self=0
+34130 "긴 창_질풍참" pk=341312 kind=FIXAREA seq=1 clip="flm_sk_ruffle_custom_4" t=0.4753 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341313 at=0.000 count=3 every=0.150 key=1 hittype=4 target=2 dmg=203 area=2 ar=530 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=1 repms=200 push=80 pushr=10 origin=0 self=0
+  e pk=341314 at=0.450 count=1 every=0.000 key=1 hittype=4 target=2 dmg=261 area=2 ar=540 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=-50 origin=0 self=0
+34130 "긴 창_질풍참" pk=341316 kind=FIXAREA seq=1 clip="flm_sk_ruffle_custom_4" t=0.4753 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341304 at=0.000 count=3 every=0.150 key=1 hittype=4 target=2 dmg=203 area=2 ar=530 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=1 repms=200 push=110 pushr=50 origin=0 self=0
+  e pk=341305 at=0.450 count=1 every=0.000 key=1 hittype=4 target=2 dmg=261 area=2 ar=540 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=-50 origin=0 self=0
+34130 "긴 창_질풍참" pk=341317 kind=FIXAREA seq=1 clip="flm_sk_ruffle_custom_4" t=0.4753 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341310 at=0.000 count=3 every=0.150 key=1 hittype=4 target=2 dmg=203 area=2 ar=530 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=1 repms=200 push=80 pushr=10 origin=0 self=0
+  e pk=341311 at=0.450 count=1 every=0.000 key=1 hittype=4 target=2 dmg=261 area=2 ar=540 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=-50 origin=0 self=0
+34130 "긴 창_질풍참" pk=341318 kind=FIXAREA seq=1 clip="flm_sk_ruffle_custom_4" t=0.4753 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341313 at=0.000 count=3 every=0.150 key=1 hittype=4 target=2 dmg=203 area=2 ar=530 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=1 repms=200 push=80 pushr=10 origin=0 self=0
+  e pk=341314 at=0.450 count=1 every=0.000 key=1 hittype=4 target=2 dmg=261 area=2 ar=540 aa=270 ah=150 ax=-10 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=-50 origin=0 self=0
+34140 "긴 창_선풍참혼" pk=341416 kind=FIXAREA seq=1 clip="flm_sk_chestdestruction_02" t=0.0894 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=341417 at=0.000 count=2 every=0.100 key=1 hittype=4 target=2 dmg=92 area=2 ar=220 aa=180 ah=150 ax=100 az=50 arem=0 maxt=0 rep=0 repms=0 push=10 pushr=40 origin=0 self=0
+  e pk=341418 at=0.350 count=1 every=0.000 key=1 hittype=4 target=2 dmg=111 area=2 ar=220 aa=200 ah=150 ax=150 az=50 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+  e pk=341419 at=0.600 count=2 every=0.200 key=1 hittype=4 target=2 dmg=92 area=3 ar=220 aa=240 ah=150 ax=200 az=50 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+  e pk=341420 at=1.100 count=1 every=0.000 key=1 hittype=4 target=2 dmg=147 area=3 ar=220 aa=240 ah=150 ax=230 az=50 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34140 "긴 창_선풍참혼" pk=341405 kind=MISSILE seq=3 clip="flm_sk_chestdestruction_01" t=0.4777 origin=1 ox=50 oy=0 scale=1.000 radius=150 height=50 mindist=300 maxdist=1400 life=3.000 speed=600 layout=v2 accel=1 mesh=""
+  e pk=341406 contact=1 key=1 hittype=4 target=2 dmg=111 area=1 ar=125 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34140 "긴 창_선풍참혼" pk=341409 kind=MISSILE seq=3 clip="flm_sk_chestdestruction_04" t=0.5997 origin=1 ox=50 oy=0 scale=1.000 radius=150 height=50 mindist=400 maxdist=1400 life=3.000 speed=600 layout=v2 accel=1 mesh=""
+  e pk=341410 contact=1 key=1 hittype=4 target=2 dmg=147 area=1 ar=125 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34140 "긴 창_선풍참혼" pk=341411 kind=MISSILE seq=3 clip="flm_sk_chestdestruction_04" t=0.7859 origin=1 ox=50 oy=0 scale=1.000 radius=150 height=50 mindist=500 maxdist=1400 life=3.000 speed=600 layout=v2 accel=1 mesh=""
+  e pk=341412 contact=1 key=1 hittype=4 target=2 dmg=147 area=1 ar=125 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34140 "긴 창_선풍참혼" pk=341413 kind=MISSILE seq=3 clip="flm_sk_chestdestruction_04" t=1.1260 origin=1 ox=50 oy=0 scale=1.000 radius=150 height=50 mindist=600 maxdist=1400 life=3.000 speed=600 layout=v2 accel=1 mesh=""
+  e pk=341414 contact=1 key=1 hittype=4 target=2 dmg=147 area=1 ar=125 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34170 "긴 창_청룡진" pk=341703 kind=FIXAREA seq=2 clip="flm_sk_pulverize_custom_6" t=0.6282 origin=1 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=341704 at=1.000 count=1 every=0.000 key=1 hittype=4 target=2 dmg=680 area=3 ar=192 aa=360 ah=250 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+34550 "짧은 창_사두룡격" pk=345560 kind=FIXAREA seq=2 clip="flm_sk_talonstrike_custom_6" t=0.0500 origin=0 ox=0 oy=0 scale=1.000 radius=25 height=25 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=345501 at=0.900 count=1 every=1.000 key=1 hittype=4 target=2 dmg=129 area=2 ar=370 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=0 repms=0 push=160 pushr=100 origin=0 self=0
+  e pk=345500 at=0.000 count=4 every=0.200 key=1 hittype=4 target=2 dmg=75 area=2 ar=350 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=2 repms=200 push=80 pushr=20 origin=0 self=0
+34550 "짧은 창_사두룡격" pk=345561 kind=FIXAREA seq=2 clip="flm_sk_talonstrike_custom_6" t=0.0500 origin=0 ox=0 oy=0 scale=1.000 radius=25 height=25 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=345501 at=0.765 count=1 every=1.000 key=1 hittype=4 target=2 dmg=129 area=2 ar=370 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=0 repms=0 push=160 pushr=100 origin=0 self=0
+  e pk=345500 at=0.000 count=4 every=0.170 key=1 hittype=4 target=2 dmg=75 area=2 ar=350 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=2 repms=200 push=80 pushr=20 origin=0 self=0
+34550 "짧은 창_사두룡격" pk=345562 kind=FIXAREA seq=2 clip="flm_sk_talonstrike_custom_6" t=0.0500 origin=0 ox=0 oy=0 scale=1.000 radius=25 height=25 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=345501 at=0.900 count=1 every=1.000 key=1 hittype=4 target=2 dmg=129 area=2 ar=370 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=0 repms=0 push=160 pushr=100 origin=0 self=0
+  e pk=345500 at=0.000 count=4 every=0.200 key=1 hittype=4 target=2 dmg=75 area=2 ar=350 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=2 repms=200 push=80 pushr=20 origin=0 self=0
+34550 "짧은 창_사두룡격" pk=345582 kind=FIXAREA seq=2 clip="flm_sk_talonstrike_custom_6" t=0.0500 origin=0 ox=0 oy=0 scale=1.000 radius=25 height=25 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=345501 at=0.900 count=1 every=1.000 key=1 hittype=4 target=2 dmg=129 area=2 ar=370 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=0 repms=0 push=160 pushr=100 origin=0 self=0
+  e pk=345500 at=0.000 count=4 every=0.200 key=1 hittype=4 target=2 dmg=75 area=2 ar=350 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=2 repms=200 push=80 pushr=20 origin=0 self=0
+34550 "짧은 창_사두룡격" pk=345583 kind=FIXAREA seq=2 clip="flm_sk_talonstrike_custom_6" t=0.0500 origin=0 ox=0 oy=0 scale=1.000 radius=25 height=25 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=345501 at=0.765 count=1 every=1.000 key=1 hittype=4 target=2 dmg=129 area=2 ar=370 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=0 repms=0 push=160 pushr=100 origin=0 self=0
+  e pk=345500 at=0.000 count=4 every=0.170 key=1 hittype=4 target=2 dmg=75 area=2 ar=350 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=2 repms=200 push=80 pushr=20 origin=0 self=0
+34550 "짧은 창_사두룡격" pk=345584 kind=FIXAREA seq=2 clip="flm_sk_talonstrike_custom_6" t=0.0500 origin=0 ox=0 oy=0 scale=1.000 radius=25 height=25 mindist=700 maxdist=700 life=2.000 speed=0 layout=v2 accel=0 mesh="FX_SM_01.FM_FLM_SK_01"
+  e pk=345501 at=0.900 count=1 every=1.000 key=1 hittype=4 target=2 dmg=129 area=2 ar=370 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=0 repms=0 push=160 pushr=100 origin=0 self=0
+  e pk=345500 at=0.000 count=4 every=0.200 key=1 hittype=4 target=2 dmg=75 area=2 ar=350 aa=180 ah=150 ax=-20 az=0 arem=0 maxt=0 rep=2 repms=200 push=80 pushr=20 origin=0 self=0
+34600 "연가창식: 은하유성탄" pk=346000 kind=GRENADE seq=0 clip="flm_sk_gaebolg" t=3.8551 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=25 mindist=2800 maxdist=2800 life=3.000 speed=1200 layout=v2 accel=0 mesh=""
+  e pk=346001 contact=1 key=1 hittype=4 target=2 dmg=1270 area=3 ar=220 aa=360 ah=150 ax=20 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+  e pk=346002 contact=1 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=150 ah=0 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=346004 contact=1 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=150 ah=0 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=346006 contact=1 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=150 ah=0 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=346008 contact=1 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=150 ah=0 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=346010 contact=1 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=150 ah=0 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=346012 contact=1 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=150 ah=0 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+34650 "초각성스킬_적룡필살" pk=346500 kind=MISSILE seq=4 clip="flm_sk_dragoncleave_02" t=0.2700 origin=1 ox=0 oy=0 scale=1.000 radius=100 height=100 mindist=1600 maxdist=1600 life=1.000 speed=700 layout=v2 accel=0 mesh=""
+  e pk=346501 contact=1 key=1 hittype=4 target=2 dmg=454 area=2 ar=200 aa=200 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0
+34650 "초각성스킬_적룡필살" pk=346502 kind=MISSILE seq=4 clip="flm_sk_dragoncleave_02" t=0.5500 origin=1 ox=0 oy=0 scale=1.000 radius=100 height=100 mindist=1600 maxdist=1600 life=1.000 speed=700 layout=v2 accel=0 mesh=""
+  e pk=346503 contact=1 key=1 hittype=4 target=2 dmg=454 area=2 ar=600 aa=160 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=110 pushr=50 origin=0 self=0

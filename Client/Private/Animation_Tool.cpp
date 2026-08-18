@@ -369,9 +369,9 @@ const char_t* Client::CAnimation_Tool::Area_Name(int32_t iAreaType)
 {
 	switch (iAreaType)
 	{
-	case 1:  return "box";
-	case 2:  return "fan";
-	case 3:  return "circle";
+	case 1:  return "circle";
+	case 2:  return "box";
+	case 3:  return "fan";
 	default: return "none";
 	}
 }
@@ -2308,13 +2308,17 @@ void Client::CAnimation_Tool::Render_HitDetail(ANIM_EVENT& evt)
 			if (ImGui::DragInt("range", &p.iAreaRange, 1.f, 0, 10000))
 				m_bDirty = true;
 
-			/* A box has no sweep angle; the game data leaves it at 0. */
+			/* The official AreaAngle column is the box width in cm and the fan
+			sweep in degrees; a circle leaves it at 0. */
 			if (1 != p.iAreaType)
 			{
 				ImGui::SameLine();
 				ImGui::SetNextItemWidth(110.f);
-				if (ImGui::DragInt("angle", &p.iAreaAngle, 1.f, 0, 720))
+				if (ImGui::DragInt(2 == p.iAreaType ? "width" : "angle",
+					&p.iAreaAngle, 1.f, 0, 2 == p.iAreaType ? 10000 : 720))
+				{
 					m_bDirty = true;
+				}
 			}
 
 			ImGui::SetNextItemWidth(110.f);
@@ -2325,7 +2329,7 @@ void Client::CAnimation_Tool::Render_HitDetail(ANIM_EVENT& evt)
 			if (ImGui::DragInt("offset X", &p.iAreaOffsetX, 1.f, -10000, 10000))
 				m_bDirty = true;
 
-			if (3 == p.iAreaType)
+			if (2 != p.iAreaType)
 			{
 				ImGui::SetNextItemWidth(110.f);
 				if (ImGui::DragInt("inner", &p.iAreaInner, 1.f, 0, 10000))

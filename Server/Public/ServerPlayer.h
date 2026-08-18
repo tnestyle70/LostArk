@@ -28,6 +28,44 @@ namespace LostArk::Server
 		bool isActive = false;
 	};
 
+	/* One projectile-hit target the object has already touched: a contact hit
+	fires iRepeatCount times per target, iRepeatMs apart, and never again. */
+	struct SERVER_PROJECTILE_CONTACT_MARK
+	{
+		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		std::uint8_t iHitIndex = 0;
+		std::uint8_t iAppliedCount = 0;
+		float fNextSeconds = 0.f;
+	};
+
+	/* A live object a skill spawned (missile, fixed area...). It outlives the
+	action that spawned it and is advanced by CPlayerSkillSystem::Update every
+	tick; the definition is looked up by skill/stage/index in the catalog so
+	nothing here points into it. Damage is a share of the skill's rate: the
+	object's hits continue the caster's sub-hit numbering. */
+	struct SERVER_SKILL_PROJECTILE
+	{
+		LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
+		std::uint8_t iStageIndex = 0;
+		std::uint8_t iProjectileIndex = 0;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+		float fDirectionX = 0.f;
+		float fDirectionZ = 1.f;
+		float fSpeed = 0.f;
+		// Metres still to travel; negative means unlimited (life-bound only).
+		float fRemainingDistance = -1.f;
+		float fRemainingSeconds = 0.f;
+		float fElapsedSeconds = 0.f;
+		std::uint64_t iTotalDamage = 0;
+		std::uint32_t iSubHitTotal = 1;
+		std::uint32_t iSubHitBase = 0;
+		std::uint64_t iAppliedTimedMask = 0;
+		std::vector<SERVER_PROJECTILE_CONTACT_MARK> ContactMarks;
+	};
+
 	struct SERVER_PLAYER
 	{
 		SESSION_ID iSessionId = INVALID_SESSION_ID;
@@ -89,8 +127,14 @@ namespace LostArk::Server
 		float fActionElapsedSeconds = 0.f;
 		float fSkillAimDirectionX = 0.f;
 		float fSkillAimDirectionZ = 1.f;
+		// Distance from the caster to the aim point the press carried, so an
+		// object that lands where the cursor points can be placed.
+		float fSkillAimDistance = 0.f;
 		bool hasAppliedSkillDamage = false;
 		std::uint64_t iAppliedHitMask = 0;
+		// Bit per projectile definition of the running stage already spawned.
+		std::uint16_t iSpawnedProjectileMask = 0;
+		std::vector<SERVER_SKILL_PROJECTILE> Projectiles;
 		// 1-based while a combo action runs, 0 otherwise.
 		std::uint8_t iComboStage = 0;
 		// Set by a press inside the open window, consumed when the stage ends.
@@ -99,6 +143,7 @@ namespace LostArk::Server
 		// follows the cursor instead of repeating the first stage's facing.
 		float fBufferedComboAimX = 0.f;
 		float fBufferedComboAimZ = 1.f;
+		float fBufferedComboAimDistance = 0.f;
 		// Set when a HOLD skill's key is let go, consumed when its loop ends.
 		bool hasReleasedHold = false;
 		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t>

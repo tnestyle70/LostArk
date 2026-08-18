@@ -1167,6 +1167,8 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.fSkillAimDirectionZ = 1.f;
 	player.hasAppliedSkillDamage = false;
 	player.iAppliedHitMask = 0;
+	player.iSpawnedProjectileMask = 0;
+	player.Projectiles.clear();
 	player.iComboStage = 0u;
 	player.hasBufferedComboInput = false;
 	player.CooldownEndTickBySkillId.clear();
@@ -1390,6 +1392,8 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.fSkillAimDirectionZ = 1.f;
 	staged.hasAppliedSkillDamage = false;
 	staged.iAppliedHitMask = 0;
+	staged.iSpawnedProjectileMask = 0;
+	staged.Projectiles.clear();
 	staged.iComboStage = 0u;
 	staged.hasBufferedComboInput = false;
 	staged.hasReleasedHold = false;

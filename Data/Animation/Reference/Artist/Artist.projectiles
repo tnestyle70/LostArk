@@ -1,0 +1,287 @@
+LOSTARK_PROJECTILES 1 "Artist" 95
+31145 "아크패시브_떠오르는 달" pk=311131 kind=FIXAREA seq=2 clip="sdm_sk_harmonyofyang" t=0.5532 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=311132 contact=1 key=2 hittype=5 target=2 dmg=500 area=1 ar=350 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31230 "옹달샘" pk=312300 kind=FIXAREA seq=1 clip="sdm_sk_pondofyin" t=0.5950 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=312303 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=5 origin=0 self=0
+  e pk=312350 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=989 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312302 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=180 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312305 kind=FIXAREA seq=1 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=312303 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=5 origin=0 self=0
+  e pk=312350 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=989 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312302 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=180 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312306 kind=FIXAREA seq=1 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=312303 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=5 origin=0 self=0
+  e pk=312350 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=989 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312302 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=180 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312307 kind=FIXAREA seq=1 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=312303 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=5 origin=0 self=0
+  e pk=312350 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=989 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312302 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=180 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312308 kind=FIXAREA seq=1 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=312311 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=234 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=15 origin=0 self=0
+  e pk=312312 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=989 area=1 ar=260 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312318 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=234 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312309 kind=FIXAREA seq=1 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=312311 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=234 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=15 origin=0 self=0
+  e pk=312312 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=989 area=1 ar=260 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312318 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=234 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312313 kind=FIXAREA seq=2 clip="sdm_sk_pondofyin_custom" t=0.5995 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312315 kind=FIXAREA seq=2 clip="sdm_sk_pondofyin_custom" t=0.5995 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312325 kind=FIXAREA seq=2 clip="sdm_sk_pondofyin_custom" t=0.5995 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312326 kind=FIXAREA seq=2 clip="sdm_sk_pondofyin_custom" t=0.5995 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312329 kind=FIXAREA seq=2 clip="sdm_sk_pondofyin_custom" t=0.5995 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312330 kind=FIXAREA seq=2 clip="sdm_sk_pondofyin_custom" t=0.5995 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312313 kind=FIXAREA seq=2 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312315 kind=FIXAREA seq=2 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312325 kind=FIXAREA seq=2 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312326 kind=FIXAREA seq=2 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312329 kind=FIXAREA seq=2 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312330 kind=FIXAREA seq=2 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+31230 "옹달샘" pk=312300 kind=FIXAREA seq=3 clip="sdm_sk_pondofyin" t=0.5950 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=312303 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=5 origin=0 self=0
+  e pk=312350 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=989 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312302 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=180 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312317 kind=FIXAREA seq=3 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+  e pk=312303 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=5 origin=0 self=0
+  e pk=312319 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=380 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=-35 origin=0 self=0
+  e pk=312320 at=4.900 count=1 every=0.000 key=2 hittype=5 target=2 dmg=609 area=1 ar=230 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312302 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=180 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312321 kind=FIXAREA seq=3 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+  e pk=312311 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=234 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=15 origin=0 self=0
+  e pk=312323 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=380 area=1 ar=260 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=-25 origin=0 self=0
+  e pk=312324 at=4.900 count=1 every=0.000 key=2 hittype=5 target=2 dmg=609 area=1 ar=299 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312318 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=234 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312327 kind=FIXAREA seq=3 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+  e pk=312303 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=5 origin=0 self=0
+  e pk=312320 at=4.900 count=1 every=0.000 key=2 hittype=5 target=2 dmg=609 area=1 ar=230 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312319 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=380 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=-35 origin=0 self=0
+  e pk=312302 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=180 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312328 kind=FIXAREA seq=3 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+  e pk=312311 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=234 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=15 origin=0 self=0
+  e pk=312323 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=380 area=1 ar=260 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=-25 origin=0 self=0
+  e pk=312324 at=4.900 count=1 every=0.000 key=2 hittype=5 target=2 dmg=609 area=1 ar=299 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312318 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=234 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312331 kind=FIXAREA seq=3 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+  e pk=312303 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=5 origin=0 self=0
+  e pk=312319 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=380 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=-35 origin=0 self=0
+  e pk=312320 at=4.900 count=1 every=0.000 key=2 hittype=5 target=2 dmg=609 area=1 ar=230 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312302 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=180 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31230 "옹달샘" pk=312332 kind=FIXAREA seq=3 clip="sdm_sk_pondofyin" t=0.5995 origin=0 ox=100 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=5.500 speed=0 layout=v2 accel=0 mesh="SK_SDM_CAR_00.Mesh.SK_SDM_CAR_00_SK"
+  e pk=312303 at=0.600 count=12 every=0.250 key=2 hittype=4 target=2 dmg=38 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=70 pushr=5 origin=0 self=0
+  e pk=312319 at=3.700 count=1 every=0.000 key=2 hittype=5 target=2 dmg=380 area=1 ar=200 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=-35 origin=0 self=0
+  e pk=312320 at=4.900 count=1 every=0.000 key=2 hittype=5 target=2 dmg=609 area=1 ar=230 aa=0 ah=400 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=312302 at=0.200 count=1 every=0.000 key=2 hittype=4 target=2 dmg=38 area=1 ar=180 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31410 "해우물" pk=314180 kind=FIXAREA seq=1 clip="sdm_sk_congenitalenergy" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=4.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314103 at=0.000 count=8 every=0.500 key=2 hittype=1 target=2 dmg=120 area=1 ar=325 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314185 at=0.000 count=8 every=0.500 key=7 hittype=1 target=7 dmg=0 area=1 ar=325 aa=0 ah=350 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314184 at=0.000 count=8 every=0.500 key=7 hittype=1 target=1 dmg=0 area=1 ar=325 aa=0 ah=350 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314181 at=0.000 count=8 every=0.500 key=7 hittype=1 target=1 dmg=0 area=1 ar=325 aa=0 ah=350 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314111 at=0.000 count=1 every=0.000 key=38 hittype=4 target=2 dmg=0 area=1 ar=325 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=55 origin=0 self=0
+31410 "해우물" pk=314182 kind=FIXAREA seq=1 clip="sdm_sk_congenitalenergy" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=4.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314103 at=0.000 count=8 every=0.500 key=2 hittype=1 target=2 dmg=120 area=1 ar=325 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314106 at=0.000 count=8 every=0.500 key=7 hittype=1 target=1 dmg=0 area=1 ar=325 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314185 at=0.000 count=8 every=0.500 key=7 hittype=1 target=7 dmg=0 area=1 ar=325 aa=0 ah=350 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314184 at=0.000 count=8 every=0.500 key=7 hittype=1 target=1 dmg=0 area=1 ar=325 aa=0 ah=350 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314181 at=0.000 count=8 every=0.500 key=7 hittype=1 target=1 dmg=0 area=1 ar=325 aa=0 ah=350 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314111 at=0.000 count=1 every=0.000 key=38 hittype=4 target=2 dmg=0 area=1 ar=325 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=55 origin=0 self=0
+31410 "해우물" pk=314183 kind=FIXAREA seq=1 clip="sdm_sk_congenitalenergy" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=4.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314103 at=0.000 count=8 every=0.500 key=2 hittype=1 target=2 dmg=120 area=1 ar=325 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314185 at=0.000 count=8 every=0.500 key=7 hittype=1 target=7 dmg=0 area=1 ar=325 aa=0 ah=350 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314184 at=0.000 count=8 every=0.500 key=7 hittype=1 target=1 dmg=0 area=1 ar=325 aa=0 ah=350 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314181 at=0.000 count=8 every=0.500 key=7 hittype=1 target=1 dmg=0 area=1 ar=325 aa=0 ah=350 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314111 at=0.000 count=1 every=0.000 key=38 hittype=4 target=2 dmg=0 area=1 ar=325 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=55 origin=0 self=0
+  e pk=314108 contact=1 key=2 hittype=5 target=2 dmg=961 area=1 ar=325 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31419 "해우물_Test" pk=314190 kind=FIXAREA seq=1 clip="sdm_sk_congenitalenergy" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=4.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314192 at=0.000 count=8 every=0.500 key=7 hittype=1 target=1 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314193 at=0.000 count=8 every=0.500 key=7 hittype=1 target=1 dmg=0 area=1 ar=250 aa=0 ah=350 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314191 at=0.000 count=8 every=0.500 key=2 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314194 at=0.000 count=1 every=0.000 key=38 hittype=4 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=55 origin=0 self=0
+31420 "난 치기" pk=314200 kind=FIXAREA seq=1 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=6.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314201 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=248 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31420 "난 치기" pk=314232 kind=FIXAREA seq=1 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=6.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314201 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=248 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314230 at=0.500 count=6 every=0.500 key=7 hittype=1 target=1 dmg=0 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+31420 "난 치기" pk=314233 kind=FIXAREA seq=1 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314201 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=248 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314230 at=0.500 count=6 every=0.500 key=7 hittype=1 target=1 dmg=0 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+31420 "난 치기" pk=314240 kind=FIXAREA seq=1 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314201 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=248 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31420 "난 치기" pk=314271 kind=FIXAREA seq=1 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314201 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=248 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314270 at=0.500 count=6 every=0.500 key=7 hittype=1 target=1 dmg=0 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314230 at=0.500 count=6 every=0.500 key=7 hittype=1 target=1 dmg=0 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+31420 "난 치기" pk=314274 kind=FIXAREA seq=1 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314201 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=248 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314270 at=0.500 count=6 every=0.500 key=7 hittype=1 target=1 dmg=0 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+  e pk=314230 at=0.500 count=6 every=0.500 key=7 hittype=1 target=1 dmg=0 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+31420 "난 치기" pk=314234 kind=FIXAREA seq=2 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314281 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=248 area=2 ar=850 aa=450 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314231 at=0.500 count=6 every=0.500 key=7 hittype=1 target=1 dmg=0 area=2 ar=850 aa=450 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+31420 "난 치기" pk=314235 kind=FIXAREA seq=2 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314281 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=248 area=2 ar=850 aa=450 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314231 at=0.500 count=6 every=0.500 key=7 hittype=1 target=1 dmg=0 area=2 ar=850 aa=450 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+31420 "난 치기" pk=314280 kind=FIXAREA seq=2 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314281 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=248 area=2 ar=850 aa=450 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31420 "난 치기" pk=314284 kind=FIXAREA seq=2 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314281 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=248 area=2 ar=850 aa=450 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31429 "난 치기_Test" pk=314290 kind=FIXAREA seq=1 clip="sdm_sk_fourgentlemen" t=0.6948 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314291 at=0.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=0 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+  e pk=314295 at=0.500 count=6 every=0.500 key=7 hittype=1 target=1 dmg=0 area=2 ar=700 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+31430 "흩뿌리기" pk=314380 kind=MISSILE seq=4 clip="sdm_sk_inkshot" t=0.5618 origin=0 ox=0 oy=0 scale=1.000 radius=100 height=100 mindist=1000 maxdist=1000 life=30.000 speed=600 layout=v2 accel=0 mesh=""
+  e pk=314381 contact=1 key=2 hittype=4 target=2 dmg=823 area=3 ar=450 aa=110 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=210 pushr=130 origin=0 self=0
+31430 "흩뿌리기" pk=314383 kind=MISSILE seq=4 clip="sdm_sk_inkshot" t=0.5618 origin=0 ox=0 oy=0 scale=1.000 radius=100 height=100 mindist=1000 maxdist=1000 life=30.000 speed=600 layout=v2 accel=0 mesh=""
+  e pk=314381 contact=1 key=2 hittype=4 target=2 dmg=823 area=3 ar=450 aa=110 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=210 pushr=130 origin=0 self=0
+  e pk=314360 contact=1 key=7 hittype=1 target=1 dmg=0 area=3 ar=450 aa=110 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31430 "흩뿌리기" pk=314384 kind=MISSILE seq=4 clip="sdm_sk_inkshot" t=0.5618 origin=0 ox=0 oy=0 scale=1.000 radius=100 height=100 mindist=1000 maxdist=1000 life=30.000 speed=600 layout=v2 accel=0 mesh=""
+  e pk=314381 contact=1 key=2 hittype=4 target=2 dmg=823 area=3 ar=450 aa=110 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=210 pushr=130 origin=0 self=0
+  e pk=314360 contact=1 key=7 hittype=1 target=1 dmg=0 area=3 ar=450 aa=110 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31440 "먹오름" pk=314400 kind=FIXAREA seq=1 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314403 at=1.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=142 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314404 at=1.500 count=6 every=0.500 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314402 at=1.000 count=1 every=0.000 key=2 hittype=1 target=2 dmg=142 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314404 at=1.000 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314401 at=0.500 count=1 every=0.000 key=2 hittype=4 target=2 dmg=142 area=1 ar=150 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=1 self=0
+  e pk=314404 at=0.500 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+31440 "먹오름" pk=314440 kind=FIXAREA seq=1 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314403 at=1.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=142 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314404 at=1.500 count=6 every=0.500 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314402 at=1.000 count=1 every=0.000 key=2 hittype=1 target=2 dmg=142 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314404 at=1.000 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314401 at=0.500 count=1 every=0.000 key=2 hittype=4 target=2 dmg=142 area=1 ar=150 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=1 self=0
+  e pk=314404 at=0.500 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+31440 "먹오름" pk=314470 kind=FIXAREA seq=1 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314475 at=1.500 count=6 every=0.500 key=2 hittype=4 target=2 dmg=142 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=1 self=0
+  e pk=314404 at=1.500 count=6 every=0.500 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314402 at=1.000 count=1 every=0.000 key=2 hittype=1 target=2 dmg=142 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314404 at=1.000 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314401 at=0.500 count=1 every=0.000 key=2 hittype=4 target=2 dmg=142 area=1 ar=150 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=1 self=0
+  e pk=314404 at=0.500 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+31440 "먹오름" pk=314474 kind=FIXAREA seq=1 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314475 at=1.500 count=6 every=0.500 key=2 hittype=4 target=2 dmg=142 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=1 self=0
+  e pk=314404 at=1.500 count=6 every=0.500 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314402 at=1.000 count=1 every=0.000 key=2 hittype=1 target=2 dmg=142 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314404 at=1.000 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314401 at=0.500 count=1 every=0.000 key=2 hittype=4 target=2 dmg=142 area=1 ar=150 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=1 self=0
+  e pk=314404 at=0.500 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+31440 "먹오름" pk=314480 kind=FIXAREA seq=1 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314403 at=1.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=142 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314404 at=1.500 count=6 every=0.500 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314402 at=1.000 count=1 every=0.000 key=2 hittype=1 target=2 dmg=142 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314404 at=1.000 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314401 at=0.500 count=1 every=0.000 key=2 hittype=4 target=2 dmg=142 area=1 ar=150 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=1 self=0
+  e pk=314404 at=0.500 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314488 at=3.900 count=1 every=0.000 key=2 hittype=5 target=2 dmg=910 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+31440 "먹오름" pk=314484 kind=FIXAREA seq=1 clip="sdm_sk_swampofbondage" t=0.6434 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314403 at=1.500 count=6 every=0.500 key=2 hittype=1 target=2 dmg=142 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314404 at=1.500 count=6 every=0.500 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314402 at=1.000 count=1 every=0.000 key=2 hittype=1 target=2 dmg=142 area=1 ar=200 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314404 at=1.000 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314401 at=0.500 count=1 every=0.000 key=2 hittype=4 target=2 dmg=142 area=1 ar=150 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=1 self=0
+  e pk=314404 at=0.500 count=1 every=0.000 key=7 hittype=1 target=2 dmg=0 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+  e pk=314488 at=3.900 count=1 every=0.000 key=2 hittype=5 target=2 dmg=910 area=1 ar=250 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=1 self=0
+31460 "호접몽" pk=314601 kind=FIXAREA seq=1 clip="sdm_sk_butterflydream" t=0.5428 origin=0 ox=0 oy=0 scale=1.000 radius=30 height=30 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314602 at=0.300 count=2 every=0.300 key=2 hittype=1 target=2 dmg=96 area=2 ar=400 aa=250 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=500 push=0 pushr=0 origin=0 self=0
+31460 "호접몽" pk=314661 kind=FIXAREA seq=1 clip="sdm_sk_butterflydream" t=0.5428 origin=0 ox=0 oy=0 scale=1.000 radius=30 height=30 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314602 at=0.300 count=2 every=0.300 key=2 hittype=1 target=2 dmg=96 area=2 ar=400 aa=250 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=500 push=0 pushr=0 origin=0 self=0
+31460 "호접몽" pk=314604 kind=FIXAREA seq=1 clip="sdm_sk_butterflydream" t=1.1496 origin=0 ox=0 oy=0 scale=1.000 radius=30 height=30 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314605 at=0.300 count=3 every=0.300 key=2 hittype=1 target=2 dmg=64 area=2 ar=400 aa=250 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=500 push=0 pushr=0 origin=0 self=0
+31460 "호접몽" pk=314662 kind=FIXAREA seq=1 clip="sdm_sk_butterflydream" t=1.1496 origin=0 ox=0 oy=0 scale=1.000 radius=30 height=30 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314605 at=0.300 count=3 every=0.300 key=2 hittype=1 target=2 dmg=64 area=2 ar=400 aa=250 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=500 push=0 pushr=0 origin=0 self=0
+31460 "호접몽" pk=314670 kind=TRACE seq=3 clip="sdm_sk_butterflydream" t=0.5428 origin=1 ox=0 oy=0 scale=1.000 radius=40 height=100 mindist=400 maxdist=400 life=5.000 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=314671 contact=1 key=2 hittype=4 target=2 dmg=239 area=1 ar=100 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31460 "호접몽" pk=314672 kind=TRACE seq=3 clip="sdm_sk_butterflydream" t=0.5428 origin=1 ox=0 oy=0 scale=1.000 radius=40 height=100 mindist=280 maxdist=280 life=5.000 speed=850 layout=v2 accel=0 mesh=""
+  e pk=314671 contact=1 key=2 hittype=4 target=2 dmg=239 area=1 ar=100 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31460 "호접몽" pk=314670 kind=TRACE seq=3 clip="sdm_sk_butterflydream" t=0.7020 origin=1 ox=0 oy=0 scale=1.000 radius=40 height=100 mindist=400 maxdist=400 life=5.000 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=314671 contact=1 key=2 hittype=4 target=2 dmg=239 area=1 ar=100 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31460 "호접몽" pk=314672 kind=TRACE seq=3 clip="sdm_sk_butterflydream" t=0.7020 origin=1 ox=0 oy=0 scale=1.000 radius=40 height=100 mindist=280 maxdist=280 life=5.000 speed=850 layout=v2 accel=0 mesh=""
+  e pk=314671 contact=1 key=2 hittype=4 target=2 dmg=239 area=1 ar=100 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31460 "호접몽" pk=314670 kind=TRACE seq=3 clip="sdm_sk_butterflydream" t=1.1496 origin=1 ox=0 oy=0 scale=1.000 radius=40 height=100 mindist=400 maxdist=400 life=5.000 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=314671 contact=1 key=2 hittype=4 target=2 dmg=239 area=1 ar=100 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31460 "호접몽" pk=314672 kind=TRACE seq=3 clip="sdm_sk_butterflydream" t=1.1496 origin=1 ox=0 oy=0 scale=1.000 radius=40 height=100 mindist=280 maxdist=280 life=5.000 speed=850 layout=v2 accel=0 mesh=""
+  e pk=314671 contact=1 key=2 hittype=4 target=2 dmg=239 area=1 ar=100 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31460 "호접몽" pk=314670 kind=TRACE seq=3 clip="sdm_sk_butterflydream" t=1.3017 origin=1 ox=0 oy=0 scale=1.000 radius=40 height=100 mindist=400 maxdist=400 life=5.000 speed=1000 layout=v2 accel=0 mesh=""
+  e pk=314671 contact=1 key=2 hittype=4 target=2 dmg=239 area=1 ar=100 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31460 "호접몽" pk=314672 kind=TRACE seq=3 clip="sdm_sk_butterflydream" t=1.3017 origin=1 ox=0 oy=0 scale=1.000 radius=40 height=100 mindist=280 maxdist=280 life=5.000 speed=850 layout=v2 accel=0 mesh=""
+  e pk=314671 contact=1 key=2 hittype=4 target=2 dmg=239 area=1 ar=100 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31460 "호접몽" pk=314680 kind=FIXAREA seq=4 clip="sdm_sk_butterflydream_custom_8" t=0.4760 origin=0 ox=0 oy=0 scale=1.000 radius=30 height=30 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314681 at=0.500 count=2 every=0.300 key=2 hittype=1 target=2 dmg=134 area=2 ar=400 aa=250 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=500 push=0 pushr=0 origin=0 self=0
+  e pk=314681 at=1.000 count=3 every=0.300 key=2 hittype=1 target=2 dmg=134 area=2 ar=400 aa=250 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=500 push=0 pushr=0 origin=0 self=0
+31460 "호접몽" pk=314682 kind=FIXAREA seq=4 clip="sdm_sk_butterflydream_custom_8" t=0.4760 origin=0 ox=0 oy=0 scale=1.000 radius=30 height=30 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314681 at=0.500 count=2 every=0.300 key=2 hittype=1 target=2 dmg=134 area=2 ar=400 aa=250 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=500 push=0 pushr=0 origin=0 self=0
+  e pk=314681 at=1.000 count=3 every=0.300 key=2 hittype=1 target=2 dmg=134 area=2 ar=400 aa=250 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=500 push=0 pushr=0 origin=0 self=0
+31470 "한획긋기" pk=310008 kind=FIXAREA seq=1 clip="sdm_sk_onestroke" t=1.4600 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314712 at=0.000 count=6 every=0.700 key=2 hittype=4 target=2 dmg=293 area=2 ar=600 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31470 "한획긋기" pk=310012 kind=FIXAREA seq=1 clip="sdm_sk_onestroke" t=1.4600 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314712 at=0.000 count=6 every=0.700 key=2 hittype=4 target=2 dmg=293 area=2 ar=600 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31470 "한획긋기" pk=310009 kind=FIXAREA seq=3 clip="sdm_sk_onestroke_custom_5" t=2.2000 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314713 at=0.000 count=6 every=0.700 key=2 hittype=4 target=2 dmg=293 area=2 ar=600 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31470 "한획긋기" pk=310010 kind=FIXAREA seq=4 clip="sdm_sk_onestroke_custom_6_04" t=0.6991 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314714 at=0.000 count=6 every=0.700 key=2 hittype=4 target=2 dmg=293 area=2 ar=600 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31470 "한획긋기" pk=310010 kind=FIXAREA seq=4 clip="sdm_sk_onestroke_custom_6_04" t=0.7000 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314714 at=0.000 count=6 every=0.700 key=2 hittype=4 target=2 dmg=293 area=2 ar=600 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31470 "한획긋기" pk=310011 kind=FIXAREA seq=4 clip="sdm_sk_onestroke_custom_6_04" t=0.7000 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314715 at=0.000 count=6 every=0.700 key=2 hittype=4 target=2 dmg=293 area=2 ar=600 aa=300 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=80 pushr=10 origin=0 self=0
+31480 "두루미나래" pk=314800 kind=MISSILE seq=1 clip="sdm_sk_flyinheaven" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=100 mindist=300 maxdist=1000 life=30.000 speed=900 layout=v2 accel=1 mesh="SK_SDM_RCC_00.Mesh.SK_SDM_RCC_00_SK_FX_01"
+  e pk=314801 contact=1 key=2 hittype=4 target=2 dmg=1760 area=2 ar=150 aa=350 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=250 push=80 pushr=30 origin=0 self=0
+31480 "두루미나래" pk=314840 kind=MISSILE seq=1 clip="sdm_sk_flyinheaven" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=100 mindist=300 maxdist=1000 life=30.000 speed=850 layout=v2 accel=1 mesh="SK_SDM_RCC_00.Mesh.SK_SDM_RCC_00_SK_FX_01"
+  e pk=314801 contact=1 key=2 hittype=4 target=2 dmg=1760 area=2 ar=150 aa=350 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=250 push=80 pushr=30 origin=0 self=0
+31480 "두루미나래" pk=314850 kind=MISSILE seq=1 clip="sdm_sk_flyinheaven" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=100 mindist=300 maxdist=1000 life=30.000 speed=850 layout=v2 accel=1 mesh="SK_SDM_RCC_00.Mesh.SK_SDM_RCC_00_SK_FX_01"
+  e pk=314801 contact=1 key=2 hittype=4 target=2 dmg=1760 area=2 ar=150 aa=350 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=250 push=80 pushr=30 origin=0 self=0
+31480 "두루미나래" pk=314870 kind=MISSILE seq=1 clip="sdm_sk_flyinheaven" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=100 mindist=300 maxdist=1000 life=30.000 speed=850 layout=v2 accel=1 mesh="SK_SDM_RCC_00.Mesh.SK_SDM_RCC_00_SK_FX_01"
+  e pk=314873 contact=1 key=2 hittype=4 target=2 dmg=880 area=2 ar=150 aa=350 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=250 push=80 pushr=30 origin=0 self=0
+31480 "두루미나래" pk=314871 kind=MISSILE seq=1 clip="sdm_sk_flyinheaven" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=100 mindist=300 maxdist=1000 life=30.000 speed=850 layout=v2 accel=1 mesh="SK_SDM_RCC_00.Mesh.SK_SDM_RCC_00_SK_FX_01"
+  e pk=314873 contact=1 key=2 hittype=4 target=2 dmg=880 area=2 ar=150 aa=350 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=250 push=80 pushr=30 origin=0 self=0
+31480 "두루미나래" pk=314872 kind=MISSILE seq=1 clip="sdm_sk_flyinheaven" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=100 mindist=300 maxdist=1000 life=30.000 speed=850 layout=v2 accel=1 mesh="SK_SDM_RCC_00.Mesh.SK_SDM_RCC_00_SK_FX_01"
+  e pk=314873 contact=1 key=2 hittype=4 target=2 dmg=880 area=2 ar=150 aa=350 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=250 push=80 pushr=30 origin=0 self=0
+31480 "두루미나래" pk=314886 kind=FIXAREA seq=2 clip="sdm_sk_flyinheaven_custom_8" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314880 at=0.000 count=5 every=0.300 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=5 self=0
+31480 "두루미나래" pk=314887 kind=FIXAREA seq=2 clip="sdm_sk_flyinheaven_custom_8" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314881 at=0.000 count=5 every=0.300 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=5 self=0
+31480 "두루미나래" pk=314888 kind=FIXAREA seq=2 clip="sdm_sk_flyinheaven_custom_8" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=314882 at=0.000 count=5 every=0.300 key=12 hittype=1 target=2 dmg=0 area=0 ar=0 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=5 self=0
+31489 "두루미나래_Test" pk=314890 kind=MISSILE seq=1 clip="sdm_sk_flyinheaven" t=1.0000 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=100 mindist=300 maxdist=1000 life=30.000 speed=850 layout=v2 accel=1 mesh="SK_SDM_RCC_00.Mesh.SK_SDM_RCC_00_SK_FX_01"
+  e pk=314891 contact=1 key=2 hittype=4 target=2 dmg=0 area=2 ar=150 aa=350 ah=150 ax=0 az=0 arem=0 maxt=0 rep=2 repms=250 push=80 pushr=30 origin=0 self=0
+31490 "범가르기" pk=314900 kind=MISSILE seq=1 clip="sdm_sk_cloudtiger" t=1.1466 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=150 mindist=1100 maxdist=1100 life=3.000 speed=650 layout=v2 accel=0 mesh="SK_SDM_TIG_00.Mesh.SK_SDM_TIG_00_SK"
+  e pk=314901 contact=1 key=2 hittype=6 target=2 dmg=1520 area=2 ar=150 aa=250 ah=150 ax=0 az=80 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31490 "범가르기" pk=314905 kind=MISSILE seq=1 clip="sdm_sk_cloudtiger" t=1.1466 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=150 mindist=1100 maxdist=1100 life=3.000 speed=650 layout=v2 accel=0 mesh="SK_SDM_TIG_00.Mesh.SK_SDM_TIG_00_SK"
+  e pk=314901 contact=1 key=2 hittype=6 target=2 dmg=1520 area=2 ar=150 aa=250 ah=150 ax=0 az=80 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31490 "범가르기" pk=314907 kind=MISSILE seq=1 clip="sdm_sk_cloudtiger" t=1.1466 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=150 mindist=1100 maxdist=1100 life=3.000 speed=650 layout=v2 accel=0 mesh="SK_SDM_TIG_00.Mesh.SK_SDM_TIG_00_SK"
+  e pk=314901 contact=1 key=2 hittype=6 target=2 dmg=1520 area=2 ar=150 aa=250 ah=150 ax=0 az=80 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31490 "범가르기" pk=314909 kind=MISSILE seq=1 clip="sdm_sk_cloudtiger" t=1.1466 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=150 mindist=1100 maxdist=1100 life=3.000 speed=650 layout=v2 accel=0 mesh="SK_SDM_TIG_00.Mesh.SK_SDM_TIG_00_SK"
+  e pk=314901 contact=1 key=2 hittype=6 target=2 dmg=1520 area=2 ar=150 aa=250 ah=150 ax=0 az=80 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31490 "범가르기" pk=314931 kind=MISSILE seq=2 clip="sdm_sk_cloudtiger" t=1.0697 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=150 mindist=900 maxdist=900 life=5.000 speed=650 layout=v2 accel=0 mesh="SK_SDM_TIG_00.Mesh.SK_SDM_TIG_00_SK"
+  e pk=314916 contact=1 key=2 hittype=6 target=2 dmg=760 area=2 ar=150 aa=250 ah=150 ax=0 az=80 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31490 "범가르기" pk=314935 kind=MISSILE seq=2 clip="sdm_sk_cloudtiger" t=1.0697 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=150 mindist=900 maxdist=900 life=5.000 speed=650 layout=v2 accel=0 mesh="SK_SDM_TIG_00.Mesh.SK_SDM_TIG_00_SK"
+  e pk=314916 contact=1 key=2 hittype=6 target=2 dmg=760 area=2 ar=150 aa=250 ah=150 ax=0 az=80 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31490 "범가르기" pk=314939 kind=MISSILE seq=2 clip="sdm_sk_cloudtiger" t=1.0697 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=150 mindist=900 maxdist=900 life=5.000 speed=650 layout=v2 accel=0 mesh="SK_SDM_TIG_00.Mesh.SK_SDM_TIG_00_SK"
+  e pk=314916 contact=1 key=2 hittype=6 target=2 dmg=760 area=2 ar=150 aa=250 ah=150 ax=0 az=80 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31490 "범가르기" pk=314918 kind=MISSILE seq=3 clip="sdm_sk_cloudtiger" t=1.0697 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=150 mindist=1100 maxdist=1100 life=5.000 speed=650 layout=v2 accel=0 mesh="SK_SDM_TIG_00.Mesh.SK_SDM_TIG_00_SK"
+  e pk=314924 contact=1 key=2 hittype=6 target=2 dmg=1520 area=2 ar=750 aa=250 ah=150 ax=0 az=80 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31490 "범가르기" pk=314919 kind=MISSILE seq=3 clip="sdm_sk_cloudtiger" t=1.0697 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=150 mindist=1100 maxdist=1100 life=5.000 speed=650 layout=v2 accel=0 mesh="SK_SDM_TIG_00.Mesh.SK_SDM_TIG_00_SK"
+  e pk=314924 contact=1 key=2 hittype=6 target=2 dmg=1520 area=2 ar=750 aa=250 ah=150 ax=0 az=80 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31490 "범가르기" pk=314920 kind=MISSILE seq=3 clip="sdm_sk_cloudtiger" t=1.0697 origin=1 ox=0 oy=0 scale=1.000 radius=150 height=150 mindist=1100 maxdist=1100 life=5.000 speed=650 layout=v2 accel=0 mesh="SK_SDM_TIG_00.Mesh.SK_SDM_TIG_00_SK"
+  e pk=314924 contact=1 key=2 hittype=6 target=2 dmg=1520 area=2 ar=750 aa=250 ah=150 ax=0 az=80 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+31940 "[초각성스킬]소떼몰이" pk=319401 kind=FIXAREA seq=2 clip="sdm_sk_bullherding_send" t=1.6000 origin=0 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=4.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=319406 at=0.000 count=3 every=0.700 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319402 at=0.200 count=3 every=0.700 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319404 at=0.250 count=3 every=0.700 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319403 at=0.400 count=3 every=0.700 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319405 at=0.450 count=3 every=0.700 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31940 "[초각성스킬]소떼몰이" pk=319421 kind=FIXAREA seq=3 clip="sdm_sk_bullherding_send" t=1.6000 origin=0 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=4.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=319406 at=0.000 count=5 every=0.350 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319402 at=0.200 count=5 every=0.350 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319404 at=0.250 count=5 every=0.350 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31940 "[초각성스킬]소떼몰이" pk=319411 kind=FIXAREA seq=5 clip="sdm_sk_bullherding_send" t=1.6000 origin=0 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=4.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=319416 at=0.000 count=4 every=0.500 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319412 at=0.100 count=4 every=0.500 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319413 at=0.300 count=3 every=0.500 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319414 at=0.200 count=4 every=0.500 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319415 at=0.400 count=3 every=0.500 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31940 "[초각성스킬]소떼몰이" pk=319401 kind=FIXAREA seq=6 clip="sdm_sk_bullherding_03" t=0.1000 origin=0 ox=0 oy=0 scale=1.000 radius=25 height=0 mindist=700 maxdist=700 life=4.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=319406 at=0.000 count=3 every=0.700 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319402 at=0.200 count=3 every=0.700 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319404 at=0.250 count=3 every=0.700 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319403 at=0.400 count=3 every=0.700 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+  e pk=319405 at=0.450 count=3 every=0.700 key=12 hittype=4 target=2 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=100 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0
+31950 "[초각성스킬]미르 새김" pk=319500 kind=FIXAREA seq=1 clip="sdm_sk_dragonrising_01" t=0.6000 origin=0 ox=0 oy=0 scale=1.000 radius=50 height=0 mindist=700 maxdist=700 life=5.000 speed=0 layout=v2 accel=0 mesh="SK_SDM_DRA_00.Mesh.SK_SDM_DRA_00_SK"
+  e pk=319502 at=1.200 count=1 every=1.000 key=2 hittype=4 target=2 dmg=100 area=1 ar=300 aa=0 ah=200 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=40 origin=0 self=0

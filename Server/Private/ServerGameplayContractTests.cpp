@@ -2495,6 +2495,148 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			navigation.Sample_Position(walled.fPositionX, walled.fPositionZ, walledPoint),
 			"Stop a knockback at the non-walkable boundary and end the window");
 	}
+	{
+		/* Projectiles: the Artist tiger (31490, official 314900) is a missile
+		that leaves the caster 1147 ms in, runs 11 m at 6.5 m/s and carries a
+		1.5 x 2.5 m box; the DimensionMaster nail (2050100, 20501001) is a
+		fixed area that stands 0.8 m in front of the caster (AreaOrigin 0,
+		AreaOffsetX 80) and fires its 1 m circle the moment it appears. */
+		const PLAYER_SKILL_DEFINITION* tigerSkill = catalog.Find_Skill(31490);
+		tests.Require(
+			nullptr != tigerSkill && 1u == tigerSkill->Projectiles.size() &&
+			PLAYER_PROJECTILE_KIND::MISSILE == tigerSkill->Projectiles[0].eKind &&
+			1147u == tigerSkill->Projectiles[0].iTimeMs &&
+			std::fabs(tigerSkill->Projectiles[0].fSpeed - 6.5f) < 0.001f &&
+			std::fabs(tigerSkill->Projectiles[0].fMaxDistance - 11.f) < 0.001f &&
+			3000u == tigerSkill->Projectiles[0].iLifeMs &&
+			1u == tigerSkill->Projectiles[0].Hits.size() &&
+			tigerSkill->Projectiles[0].Hits[0].isContact &&
+			2u == tigerSkill->Projectiles[0].Hits[0].Hit.iAreaType,
+			"Load the authored missile definition of a skill from the gameplay bootstrap");
+
+		const auto makeArtist = []()
+		{
+			SERVER_PLAYER artist{};
+			artist.eCharacterClass = CHARACTER_CLASS_ID::ARTIST;
+			artist.iCurrentHp = 1000;
+			artist.iMaximumHp = 1000;
+			artist.iCurrentResource = 1000;
+			artist.iMaximumResource = 1000;
+			artist.iCurrentIdentity = 1000;
+			artist.iMaximumIdentity = 1000;
+			artist.fPositionX = 151.f;
+			artist.fPositionY = 22.97f;
+			artist.fPositionZ = -129.f;
+			return artist;
+		};
+		const auto makeTargetAt = [&boss](const float distanceAhead)
+		{
+			SERVER_WORLD_ENTITY target = boss;
+			target.iNetEntityId = 930u;
+			target.iCurrentHp = 10000;
+			target.fPositionZ = -129.f + distanceAhead;
+			return target;
+		};
+
+		/* A target 8 m out with a 3 m body: the box (1.5 m long) reaches it
+		once the tiger has run 3.5 m, at 1147 + 3500 / 6.5 = 1685 ms. */
+		SERVER_PLAYER tigerCaster = makeArtist();
+		std::vector<SERVER_WORLD_ENTITY> tigerTargets{ makeTargetAt(8.f) };
+		C2S_USE_SKILL tigerCommand{};
+		tigerCommand.iClientSequence = 1;
+		tigerCommand.iSkillId = 31490;
+		tigerCommand.fAimX = tigerCaster.fPositionX;
+		tigerCommand.fAimZ = tigerCaster.fPositionZ + 8.f;
+		CPlayerSkillSystem tigerSkills;
+		std::vector<DAMAGE_EVENT> tigerEvents;
+		tests.Require(tigerSkills.Try_Start(tigerCaster, tigerCommand, catalog, 10),
+			"Approve the tiger skill aimed past a distant target");
+		std::uint32_t firstHitTick = 0;
+		for (std::uint32_t tick = 11; tick < 200; ++tick)
+		{
+			tigerSkills.Update(tigerCaster, tigerTargets, catalog, &navigation, nullptr,
+				1.f / 30.f, tick, tigerEvents);
+			if (0u == firstHitTick && !tigerEvents.empty())
+				firstHitTick = tick;
+			if (tick == 50u)
+			{
+				tests.Require(
+					tigerEvents.empty() && 1u == tigerCaster.Projectiles.size(),
+					"Spawn the missile at its authored time and land nothing before it arrives");
+			}
+		}
+		/* tick 10 = action start, spawn on tick 45 (elapsed 1.167 s), then 17
+		moves of 0.217 m to pass 3.5 m: tick 62, give or take one tick of float
+		accumulation. */
+		tests.Require(
+			1u == tigerEvents.size() && firstHitTick >= 61u && firstHitTick <= 63u &&
+			tigerTargets[0].iNetEntityId == tigerEvents[0].iTargetNetEntityId,
+			"Land the missile's contact hit once when its box reaches the target");
+		const std::uint32_t tigerRate = catalog.Find_DamageRatePercent(
+			tigerSkill->strDamageProfileId);
+		const PLAYER_RUNTIME_PROFILE* artistProfile =
+			catalog.Find_Player(CHARACTER_CLASS_ID::ARTIST);
+		const std::uint32_t tigerTotal = CGameplayCatalog::Resolve_Damage(
+			nullptr == artistProfile ? 0u : artistProfile->iAttackPower, tigerRate);
+		/* One caster hit and one missile hit share the rate: the missile lands
+		the second half. */
+		tests.Require(
+			tigerEvents[0].iAmount == tigerTotal - tigerTotal / 2u &&
+			10000u - tigerEvents[0].iAmount == tigerTargets[0].iCurrentHp,
+			"Split the skill rate between the caster hit and the missile hit");
+		tests.Require(
+			tigerCaster.Projectiles.empty() &&
+			PLAYER_ACTION_STATE::NONE == tigerCaster.eAction,
+			"Retire the missile after its authored distance while the caster is already free");
+
+		/* Behind the caster the tiger never turns: no hit, and the target keeps
+		its HP after the whole flight. */
+		SERVER_PLAYER missCaster = makeArtist();
+		std::vector<SERVER_WORLD_ENTITY> missTargets{ makeTargetAt(-8.f) };
+		CPlayerSkillSystem missSkills;
+		std::vector<DAMAGE_EVENT> missEvents;
+		tests.Require(missSkills.Try_Start(missCaster, tigerCommand, catalog, 10),
+			"Approve the tiger skill aimed away from a target behind the caster");
+		for (std::uint32_t tick = 11; tick < 200; ++tick)
+			missSkills.Update(missCaster, missTargets, catalog, &navigation, nullptr,
+				1.f / 30.f, tick, missEvents);
+		tests.Require(missEvents.empty() && 10000u == missTargets[0].iCurrentHp,
+			"Leave a target outside the missile's path untouched");
+
+		const PLAYER_SKILL_DEFINITION* nailSkill = catalog.Find_Skill(2050100);
+		tests.Require(
+			nullptr != nailSkill && 1u == nailSkill->Projectiles.size() &&
+			PLAYER_PROJECTILE_KIND::FIXAREA == nailSkill->Projectiles[0].eKind &&
+			PLAYER_PROJECTILE_ORIGIN::CASTER == nailSkill->Projectiles[0].eOrigin &&
+			std::fabs(nailSkill->Projectiles[0].fOffsetForward - 0.8f) < 0.001f &&
+			280u == nailSkill->Projectiles[0].iTimeMs &&
+			!nailSkill->Projectiles[0].Hits[0].isContact &&
+			0u == nailSkill->Projectiles[0].Hits[0].Hit.iTimeMs,
+			"Load the authored fixed-area definition of a skill from the gameplay bootstrap");
+		SERVER_PLAYER nailCaster = makeArtist();
+		nailCaster.eCharacterClass = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+		/* Aim 12 m out: the area still stands 0.8 m ahead, where a 3 m body
+		centred at 4 m touches its 1 m circle while a body at 9.5 m does not. */
+		std::vector<SERVER_WORLD_ENTITY> nailTargets{ makeTargetAt(4.f), makeTargetAt(9.5f) };
+		nailTargets[1].iNetEntityId = 931u;
+		C2S_USE_SKILL nailCommand{};
+		nailCommand.iClientSequence = 1;
+		nailCommand.iSkillId = 2050100;
+		nailCommand.fAimX = nailCaster.fPositionX;
+		nailCommand.fAimZ = nailCaster.fPositionZ + 12.f;
+		CPlayerSkillSystem nailSkills;
+		std::vector<DAMAGE_EVENT> nailEvents;
+		tests.Require(nailSkills.Try_Start(nailCaster, nailCommand, catalog, 10),
+			"Approve the nail skill aimed beyond the area's reach");
+		for (std::uint32_t tick = 11; tick < 40; ++tick)
+			nailSkills.Update(nailCaster, nailTargets, catalog, &navigation, nullptr,
+				1.f / 30.f, tick, nailEvents);
+		tests.Require(
+			1u == nailEvents.size() &&
+			nailTargets[0].iNetEntityId == nailEvents[0].iTargetNetEntityId &&
+			10000u == nailTargets[1].iCurrentHp,
+			"Drop the fixed area at the caster's authored offset and fire its timed hit there");
+	}
 	C2S_USE_SKILL cooldownAttempt = useSkill;
 	cooldownAttempt.iClientSequence = 2;
 	tests.Require(!skills.Try_Start(player, cooldownAttempt, catalog, 70),
@@ -3153,7 +3295,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t7\t7\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t9\t7\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -3212,7 +3354,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t7\t7\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t9\t7\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
@@ -3297,13 +3439,13 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const std::string validSourceRow =
 			"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180";
 		tests.Require(
-			loadWithWallContactRows(7u, { validSourceRow }, { validWallRow }),
+			loadWithWallContactRows(9u, { validSourceRow }, { validWallRow }),
 			"Accept one exact ACTIVE axe wall-contact row");
 		tests.Require(
-			!loadWithWallContactRows(6u, { validSourceRow }, { validWallRow }),
+			!loadWithWallContactRows(8u, { validSourceRow }, { validWallRow }),
 			"Reject the obsolete gameplay bootstrap version before wall-contact load");
 		tests.Require(
-			!loadWithWallContactRows(7u, { validSourceRow }, {
+			!loadWithWallContactRows(9u, { validSourceRow }, {
 				"PATTERNWALLCONTACT\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.wrong" }),
 			"Reject a wall-contact row whose action does not exactly join its stage");
 		tests.Require(
@@ -3311,14 +3453,14 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				6u, { validSourceRow }, { validWallRow, validWallRow }),
 			"Reject duplicate axe wall-contact ownership atomically");
 		tests.Require(
-			!loadWithWallContactRows(7u, {}, {}),
+			!loadWithWallContactRows(9u, {}, {}),
 			"Reject a boss pattern with no compiled source timing row");
 		tests.Require(
 			!loadWithWallContactRows(
 				6u, { validSourceRow, validSourceRow }, {}),
 			"Reject duplicate source timing ownership atomically");
 		tests.Require(
-			!loadWithWallContactRows(7u, {
+			!loadWithWallContactRows(9u, {
 				"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t149\t350\t300\t180" }, {}),
 			"Reject a source cooldown whose 30 Hz tick conversion is inconsistent");
 		std::error_code cleanupError;
@@ -3361,7 +3503,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t7\t9\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t9\t9\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"

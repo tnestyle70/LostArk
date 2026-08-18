@@ -1,0 +1,51 @@
+LOSTARK_PROJECTILES 1 "Warlord" 28
+17070 "라이징 스피어" pk=170761 kind=FIXAREA seq=4 clip="wgl_sk_risingspear_custom_8" t=0.1000 origin=0 ox=190 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=2.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=170750 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=134 area=1 ar=120 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 origin=0 self=0
+17070 "라이징 스피어" pk=170771 kind=FIXAREA seq=4 clip="wgl_sk_risingspear_custom_8" t=0.1000 origin=0 ox=190 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=2.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=170751 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=134 area=1 ar=120 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 origin=0 self=0
+17070 "라이징 스피어" pk=170781 kind=FIXAREA seq=4 clip="wgl_sk_risingspear_custom_8" t=0.1000 origin=0 ox=190 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=2.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=170752 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=134 area=1 ar=120 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 origin=0 self=0
+17070 "라이징 스피어" pk=170761 kind=FIXAREA seq=7 clip="wgl_sk_risingspear_custom_8" t=0.1000 origin=0 ox=190 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=2.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=170750 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=134 area=1 ar=120 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 origin=0 self=0
+17070 "라이징 스피어" pk=170771 kind=FIXAREA seq=7 clip="wgl_sk_risingspear_custom_8" t=0.1000 origin=0 ox=190 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=2.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=170751 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=134 area=1 ar=120 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 origin=0 self=0
+17070 "라이징 스피어" pk=170781 kind=FIXAREA seq=7 clip="wgl_sk_risingspear_custom_8" t=0.1000 origin=0 ox=190 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=2.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=170752 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=134 area=1 ar=120 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 origin=0 self=0
+17070 "라이징 스피어" pk=170761 kind=FIXAREA seq=8 clip="wgl_sk_risingspear_custom_8" t=0.1000 origin=0 ox=190 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=2.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=170750 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=134 area=1 ar=120 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 origin=0 self=0
+17070 "라이징 스피어" pk=170771 kind=FIXAREA seq=8 clip="wgl_sk_risingspear_custom_8" t=0.1000 origin=0 ox=190 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=2.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=170751 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=134 area=1 ar=120 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 origin=0 self=0
+17070 "라이징 스피어" pk=170781 kind=FIXAREA seq=8 clip="wgl_sk_risingspear_custom_8" t=0.1000 origin=0 ox=190 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=2.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=170752 at=0.000 count=1 every=1.000 key=1 hittype=4 target=2 dmg=134 area=1 ar=120 aa=0 ah=150 ax=50 az=0 arem=0 maxt=0 rep=0 repms=0 push=100 pushr=50 origin=0 self=0
+17110 "리프 어택" pk=171110 kind=FIXAREA seq=0 clip="wgl_sk_leap_attack_01" t=0.0300 origin=0 ox=0 oy=0 scale=45.112 radius=942 height=0 mindist=0 maxdist=0 life=0.000 speed=1 layout=v2 accel=0 mesh=""
+17110 "리프 어택" pk=171120 kind=FIXAREA seq=0 clip="wgl_sk_leap_attack_01" t=0.0300 origin=0 ox=0 oy=0 scale=1.000 radius=300 height=300 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171121 at=0.000 count=5 every=1.000 key=1 hittype=1 target=2 dmg=32 area=1 ar=300 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+17110 "리프 어택" pk=171130 kind=FIXAREA seq=0 clip="wgl_sk_leap_attack_01" t=0.0300 origin=0 ox=0 oy=0 scale=1.000 radius=300 height=300 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171131 at=0.500 count=1 every=1.000 key=1 hittype=7 target=2 dmg=139 area=1 ar=300 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 origin=0 self=0
+17110 "리프 어택" pk=171110 kind=FIXAREA seq=1 clip="wgl_sk_leap_custom_7_02" t=0.0300 origin=0 ox=0 oy=0 scale=45.112 radius=942 height=0 mindist=0 maxdist=0 life=0.000 speed=1 layout=v2 accel=0 mesh=""
+17110 "리프 어택" pk=171110 kind=FIXAREA seq=1 clip="wgl_sk_leap_attack_01" t=0.0300 origin=0 ox=0 oy=0 scale=45.112 radius=942 height=0 mindist=0 maxdist=0 life=0.000 speed=1 layout=v2 accel=0 mesh=""
+17110 "리프 어택" pk=171120 kind=FIXAREA seq=1 clip="wgl_sk_leap_custom_7_02" t=0.0300 origin=0 ox=0 oy=0 scale=1.000 radius=300 height=300 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171121 at=0.000 count=5 every=1.000 key=1 hittype=1 target=2 dmg=32 area=1 ar=300 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+17110 "리프 어택" pk=171120 kind=FIXAREA seq=1 clip="wgl_sk_leap_attack_01" t=0.0300 origin=0 ox=0 oy=0 scale=1.000 radius=300 height=300 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171121 at=0.000 count=5 every=1.000 key=1 hittype=1 target=2 dmg=32 area=1 ar=300 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+17110 "리프 어택" pk=171130 kind=FIXAREA seq=1 clip="wgl_sk_leap_custom_7_02" t=0.0300 origin=0 ox=0 oy=0 scale=1.000 radius=300 height=300 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171131 at=0.500 count=1 every=1.000 key=1 hittype=7 target=2 dmg=139 area=1 ar=300 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 origin=0 self=0
+17110 "리프 어택" pk=171130 kind=FIXAREA seq=1 clip="wgl_sk_leap_attack_01" t=0.0300 origin=0 ox=0 oy=0 scale=1.000 radius=300 height=300 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171131 at=0.500 count=1 every=1.000 key=1 hittype=7 target=2 dmg=139 area=1 ar=300 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 origin=0 self=0
+17110 "리프 어택" pk=171140 kind=FIXAREA seq=1 clip="wgl_sk_leap_custom_7_02" t=0.0300 origin=0 ox=0 oy=0 scale=45.112 radius=942 height=0 mindist=0 maxdist=0 life=0.000 speed=1 layout=v2 accel=0 mesh=""
+17110 "리프 어택" pk=171150 kind=FIXAREA seq=1 clip="wgl_sk_leap_custom_7_02" t=0.0300 origin=0 ox=0 oy=0 scale=1.000 radius=200 height=200 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171151 at=0.000 count=5 every=1.000 missing=1
+17110 "리프 어택" pk=171160 kind=FIXAREA seq=1 clip="wgl_sk_leap_custom_7_02" t=0.0300 origin=0 ox=0 oy=0 scale=1.000 radius=200 height=200 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171161 at=0.500 count=1 every=1.000 key=1 hittype=4 target=2 dmg=398 area=1 ar=450 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 origin=0 self=0
+17110 "리프 어택" pk=171160 kind=FIXAREA seq=2 clip="wgl_sk_leap_custom_8_03" t=0.1000 origin=0 ox=0 oy=0 scale=1.000 radius=200 height=200 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171161 at=0.500 count=1 every=1.000 key=1 hittype=4 target=2 dmg=398 area=1 ar=450 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 origin=0 self=0
+17110 "리프 어택" pk=171170 kind=FIXAREA seq=2 clip="wgl_sk_leap_custom_8_03" t=0.1000 origin=0 ox=0 oy=0 scale=45.112 radius=942 height=0 mindist=0 maxdist=0 life=0.000 speed=1 layout=v2 accel=0 mesh=""
+17110 "리프 어택" pk=171180 kind=FIXAREA seq=2 clip="wgl_sk_leap_custom_8_03" t=0.1000 origin=0 ox=0 oy=0 scale=1.000 radius=450 height=450 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171181 at=0.000 count=5 every=1.000 key=1 hittype=1 target=2 dmg=32 area=1 ar=450 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+17110 "리프 어택" pk=171190 kind=FIXAREA seq=2 clip="wgl_sk_leap_custom_8_03" t=0.1000 origin=0 ox=0 oy=0 scale=1.000 radius=450 height=450 mindist=0 maxdist=0 life=5.500 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171191 at=0.500 count=1 every=1.000 key=1 hittype=7 target=2 dmg=139 area=1 ar=450 aa=0 ah=150 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=120 pushr=30 origin=0 self=0
+17170 "가디언의 수호" pk=171700 kind=FIXAREA seq=0 clip="wgl_sk_guardianofprotection_attack" t=0.1300 origin=0 ox=0 oy=0 scale=1.000 radius=0 height=0 mindist=0 maxdist=0 life=11.000 speed=0 layout=v2 accel=0 mesh=""
+  e pk=171703 contact=1 key=12 hittype=1 target=1 dmg=0 area=0 ar=0 aa=0 ah=0 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=1
+17220 "심판의 창" pk=172201 kind=FIXAREA seq=0 clip="wgl_sk_judgmentspear_start" t=1.1500 origin=1 ox=0 oy=0 scale=45.112 radius=942 height=0 mindist=0 maxdist=0 life=0.000 speed=1 layout=v2 accel=0 mesh=""
+  e pk=172202 at=0.400 count=1 every=1.000 key=1 hittype=5 target=2 dmg=100 area=1 ar=300 aa=0 ah=300 ax=0 az=0 arem=0 maxt=0 rep=0 repms=0 push=0 pushr=0 origin=0 self=0
+17250 "수호의 맹세" pk=172500 kind=FIXAREA seq=1 clip="wgl_sk_super_guardianofprotection_02" t=1.0500 origin=0 ox=0 oy=0 scale=1.000 radius=700 height=700 mindist=0 maxdist=0 life=10.000 speed=0 layout=v2 accel=0 mesh=""

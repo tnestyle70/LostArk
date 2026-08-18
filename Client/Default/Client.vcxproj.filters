@@ -964,6 +964,30 @@
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.skillbindings.json">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Animation\Authored\Artist\Artist.projectiles.json">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.projectiles.json">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.projectiles.json">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Authored\Warlord\Warlord.projectiles.json">
+      <Filter>96.DataFiles\Animation\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\Artist\Artist.projectiles">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\DimensionMaster\DimensionMaster.projectiles">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\LanceMaster\LanceMaster.projectiles">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
+    <None Include="..\..\Data\Animation\Reference\Warlord\Warlord.projectiles">
+      <Filter>96.DataFiles\Animation\Reference</Filter>
+    </None>
     <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>

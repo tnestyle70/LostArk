@@ -66,6 +66,18 @@ namespace LostArk::Server
 			std::uint32_t serverTick,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const;
 
+		/* Advances every object the player's skills spawned: moves it, fires
+		its contact and timed hits, and drops it once its distance or life is
+		spent. Runs even when the player has no action, since a missile outlives
+		the clip that threw it. */
+		static void Update_Projectiles(
+			SERVER_PLAYER& player,
+			std::vector<SERVER_WORLD_ENTITY>& worldEntities,
+			const CGameplayCatalog& catalog,
+			float fixedDeltaSeconds,
+			std::uint32_t serverTick,
+			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents);
+
 		/* Root motion advances by clip delta, so it has to answer the same
 		question a walk step does: how far along this tick's displacement can the
 		player actually stand. Returns the reachable point, which is the start

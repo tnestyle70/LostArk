@@ -51,12 +51,35 @@ struct ANIMATION_HIT_CUE final
     HIT_AREA_SHAPE Shape{};
 };
 
+/* An object the clip spawns (from <Asset>.projectiles.json): where the Server
+   really judges the hits. The client only predicts it for the Debug wire; the
+   authoritative judgement, timing and damage stay on the Server. */
+struct ANIMATION_PROJECTILE_CUE final
+{
+    std::string strClipName;
+    uint32_t iStartMs = 0u;
+    /* 0 MISSILE, 1 FIXAREA, 2 GRENADE, 3 TRACE */
+    uint32_t iKind = 0u;
+    /* 0 on the caster (offset forward/right in metres), 1 at the aim point */
+    uint32_t iOrigin = 0u;
+    f32_t fOffsetForward = 0.f;
+    f32_t fOffsetRight = 0.f;
+    f32_t fSpeed = 0.f;
+    f32_t fMinDistance = 0.f;
+    f32_t fMaxDistance = 0.f;
+    uint32_t iLifeMs = 0u;
+    f32_t fRadius = 0.f;
+    /* Shapes the object applies, in the same cm units as HIT rows. */
+    std::vector<HIT_AREA_SHAPE> Shapes;
+};
+
 struct ANIMATION_EFFECT_CUE_DOCUMENT final
 {
     uint32_t iFormatVersion = 5u;
     std::string strAnimationAssetId;
     std::vector<ANIMATION_EFFECT_CUE> Cues;
     std::vector<ANIMATION_HIT_CUE> Hits;
+    std::vector<ANIMATION_PROJECTILE_CUE> Projectiles;
 };
 
 class CAnimationEffectCueDocument final
@@ -69,6 +92,16 @@ public:
         const std::string& strAnimationAssetId,
         ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
         std::string& strOutStatus);
+    /* Reads <Asset>.projectiles.json beside the event document. A missing file
+       is an empty list; a present but invalid one fails so the caller keeps its
+       previous document. */
+    static bool_t Load_Projectiles(
+        const std::string& strAnimationAssetId,
+        const std::vector<std::string>& AvailableClips,
+        std::vector<ANIMATION_PROJECTILE_CUE>& OutProjectiles,
+        std::string& strOutStatus,
+        bool_t bFilterToAvailableClips = false);
+
     static bool_t Load(
         const std::string& strAnimationAssetId,
         const std::vector<std::string>& AvailableClips,

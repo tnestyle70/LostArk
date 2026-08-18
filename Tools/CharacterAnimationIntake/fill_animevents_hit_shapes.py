@@ -2,7 +2,9 @@
 """usage:
   <blender-python> fill_animevents_hit_shapes.py <Asset> [<Asset> ...] [--check]
 """
-import io, os, re, struct, sys
+import io, json, os, re, struct, sys
+
+from build_hitshapes import read_clip_ticks, TICK_RATE
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 REF = os.path.join(REPO, 'Data', 'Animation', 'Reference')
@@ -107,6 +109,11 @@ def load_skilltiming(asset):
                     s[k] = int(p[k])
             if s['rep'] < 1:
                 s['rep'] = 1
+            s['timed'] = int(p.get('timed', '0'))
+            s['t'] = int(p.get('t', '0'))
+            s['g'] = int(p.get('g', '0'))
+            s['w'] = int(p.get('w', '0'))
+            s['key'] = int(p.get('key', '0'))
             row['hits'].append(s)
     return rows
 
@@ -152,6 +159,125 @@ def hit_row(clip, start, end, s):
                s['arem'], s['maxt']))
 
 
+def load_json(*parts):
+    return json.load(io.open(os.path.join(REPO, *parts), encoding='utf-8'))
+
+
+CASTER_HIT_KEYS = (1, 2)
+SHAPE_IDENTITY = ('area', 'ar', 'aa', 'ah', 'ax', 'arem', 'rep', 'repms', 'push', 'pushr')
+
+
+def shape_identity(h):
+    return tuple(max(1, int(h.get(k, 0))) if k == 'rep' else int(h.get(k, 0)) for k in SHAPE_IDENTITY)
+
+
+def load_projectile_shapes(asset):
+    """Shapes a spawned object (missile, fixed area...) applies itself, per skill,
+    from the reference .projectiles; the caster must not stamp those again."""
+    out = {}
+    path = os.path.join(REF, asset, asset + '.projectiles')
+    if not os.path.exists(path):
+        return out
+    # only the tripod-free chain (lowest clipseq group) spawns for the product
+    base_seq = {}
+    for line in read_lines(os.path.join(REF, asset, asset + '.clipseq'))[1:]:
+        m = re.match(r'^(\d+) "[^"]*" seq=(\d+)', line)
+        if m:
+            skill, seq = int(m.group(1)), int(m.group(2))
+            base_seq[skill] = min(base_seq.get(skill, seq), seq)
+    skill = None
+    for line in read_lines(path)[1:]:
+        m = re.match(r'^(\d+) "[^"]*" pk=\d+ kind=\w+ seq=(-?\d+)', line)
+        if m:
+            skill = int(m.group(1))
+            if int(m.group(2)) != base_seq.get(skill, int(m.group(2))):
+                skill = None
+            continue
+        m = re.match(r'^  e (.*)$', line.rstrip('\r'))
+        if m and skill is not None:
+            p = parse_pairs(m.group(1))
+            if int(p.get('area', '0')) > 0 and int(p.get('dmg', '0')) > 0:
+                out.setdefault(skill, set()).add(shape_identity(p))
+    return out
+
+
+def reference_shape(row, projectile_shapes):
+    hits = [h for h in row['hits'] if h['area'] > 0 and h['key'] in CASTER_HIT_KEYS and
+            shape_identity(h) not in projectile_shapes]
+    if not hits:
+        return None, 'no caster-keyed shaped skilltiming row' + (
+            ' (projectile applies the shape)' if projectile_shapes else '')
+    timed = [h for h in hits if h['timed']]
+    if len(set(h['t'] for h in timed)) > 1:
+        return None, 'timed rows form a %d-step timeline' % len(set(h['t'] for h in timed))
+    pool = timed or hits
+    base = [h for h in pool if h['g'] == 0]
+    return (base or pool)[0], None
+
+
+def locate_clip(entries, clip_ticks, time_ms, label):
+    elapsed = 0.0
+    last = None
+    for entry in entries:
+        name = entry if isinstance(entry, str) else entry['clip']
+        play_ms = 0 if isinstance(entry, str) else int(entry.get('playMs', 0))
+        rate = 1.0 if isinstance(entry, str) else float(entry.get('playRate', 1.0))
+        if name not in clip_ticks:
+            raise SystemExit('%s: clip %s is not in the body model' % (label, name))
+        source_ms = clip_ticks[name] / TICK_RATE * 1000.0
+        if play_ms:
+            source_ms = min(source_ms, float(play_ms))
+        duration = source_ms / rate
+        if elapsed <= time_ms < elapsed + duration:
+            return name, int(round((time_ms - elapsed) * rate))
+        last = (name, int(round(source_ms)))
+        elapsed += duration
+    print('%s: hitTimeMs %d is past the %d ms chain, clamped to the end of %s' % (
+        label, time_ms, int(round(elapsed)), last[0]))
+    return last
+
+
+def synthesize_timed_rows(asset, notify, timing):
+    catalog = load_json('Data', 'Actors', 'CharacterCatalog.json')
+    entry = next(c for c in catalog['characters'] if c['assetId'] == asset)
+    clip_ticks = read_clip_ticks(os.path.join(REPO, 'Client', 'Bin', 'Resources', *entry['bodyModel'].split('/')))
+    bindings = load_json('Data', 'Animation', 'Authored', asset, asset + '.skillbindings.json')
+    balance = load_json('Data', 'Balance', 'PlayerSkills.json')
+    skills = {int(s['skillId']): s for s in balance['skills'] if s['characterClass'] == bindings['characterClass']}
+    projectile_shapes = load_projectile_shapes(asset)
+    generated = {}
+    stamped = 0
+    for binding in sorted(bindings['bindings'], key=lambda b: int(b['skillId'])):
+        skill_id = int(binding['skillId'])
+        skill = skills.get(skill_id)
+        if skill is None or not skill.get('serverDamageProfileId'):
+            continue
+        entries = binding['clips']
+        stages = [list(e) for e in entries] if entries and isinstance(entries[0], list) else [list(entries)]
+        names = [e if isinstance(e, str) else e['clip'] for stage in stages for e in stage]
+        if any(notify.get(n) for n in names):
+            continue
+        ref = find_reference_row(timing, skill_id)
+        shape, reason = (reference_shape(ref, projectile_shapes.get(skill_id, set()))
+                         if ref else (None, 'no skilltiming row'))
+        if shape is None:
+            print('%s %d: no HIT notify, left as range circle: %s' % (asset, skill_id, reason))
+            continue
+        if skill['skillKind'] in ('COMBO', 'HOLD', 'COUNTER'):
+            targets = [(stages[i], int(st['hitTimeMs']), '%s %d stage %d' % (asset, skill_id, i))
+                       for i, st in enumerate(skill.get('comboStages') or []) if i < len(stages) and int(st['hitTimeMs']) > 0]
+        else:
+            targets = [(stages[0], int(skill['hitTimeMs']), '%s %d' % (asset, skill_id))]
+        for group, hit_ms, label in targets:
+            clip, start = locate_clip(group, clip_ticks, hit_ms, label)
+            row = hit_row(clip, start, start + shape['w'], shape)
+            rows = generated.setdefault(clip, [])
+            if row not in rows:
+                rows.append(row)
+                stamped += 1
+    return generated, stamped
+
+
 def build_rows(asset):
     notify, order = load_notify(asset)
     clipmap = load_clipmap(asset)
@@ -183,7 +309,10 @@ def build_rows(asset):
                     shaped += 1
             out.append(hit_row(clip, start, end, s))
         generated[clip] = out
-    return generated, shaped
+    synthesized, stamped = synthesize_timed_rows(asset, notify, timing)
+    for clip, rows in synthesized.items():
+        generated.setdefault(clip, []).extend(rows)
+    return generated, shaped, stamped
 
 
 def rewrite(asset, generated, check):
@@ -206,6 +335,10 @@ def rewrite(asset, generated, check):
         if mm and mm.group(1) in generated:
             first_index.setdefault(mm.group(1), len(kept))
             kept.append(None)
+        elif mm:
+            # every src=orig HIT row comes from this script or the tool's import
+            # of the same notifies; a clip that no longer generates any is stale
+            continue
         else:
             kept.append(line)
     out = []
@@ -241,9 +374,9 @@ def main(argv):
     if not assets:
         raise SystemExit(__doc__)
     for asset in assets:
-        generated, shaped = build_rows(asset)
-        print('%s: %d clips with HIT notifies, %d rows shaped from skilltiming' % (
-            asset, len(generated), shaped))
+        generated, shaped, stamped = build_rows(asset)
+        print('%s: %d clips with HIT rows, %d notify rows shaped from skilltiming, %d rows stamped at hitTimeMs' % (
+            asset, len(generated), shaped, stamped))
         rewrite(asset, generated, check)
 
 

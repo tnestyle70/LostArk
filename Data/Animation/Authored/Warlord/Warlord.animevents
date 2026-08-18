@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "Warlord" 1720
+LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_att_battle_1_01" CANCEL startms=0 endms=1000 payload="방어태세해제" src=orig
 "wgl_att_battle_1_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_1" src=orig
 "wgl_att_battle_1_01" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_Vox1_1" src=orig
@@ -1719,3 +1719,6 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1720
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=0 payload="effect.warlord.skill.17250.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_super_guardianofprotection_02" EFFECT startms=0 payload="effect.warlord.skill.17250.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_thunderbolt" EFFECT startms=0 payload="effect.warlord.skill.17140.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_firebullet" HIT startms=330 endms=330 rep=1 repms=0 fz=550 fzin=150 fzout=250 push=120 pushr=50 area=3 ar=380 aa=60 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"wgl_sk_shieldstamp" HIT startms=700 endms=700 rep=1 repms=0 fz=430 fzin=150 fzout=250 push=30 pushr=30 area=1 ar=230 aa=0 ah=150 ax=80 arem=0 maxt=0 src=orig
+"wgl_sk_thunderbolt" HIT startms=1200 endms=1200 rep=1 repms=0 fz=255 fzin=100 fzout=150 push=5 pushr=5 area=1 ar=300 aa=0 ah=250 ax=0 arem=0 maxt=0 src=orig

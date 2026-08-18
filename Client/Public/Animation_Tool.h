@@ -68,7 +68,8 @@ private:
 		int32_t iPushMs = {};
 		int32_t iPushRange = {};
 
-		/* 0 none, 1 box, 2 fan, 3 circle/ring (iAreaInner is the ring hole). */
+		/* 0 none, 1 circle/ring, 2 box (iAreaAngle is the width in cm), 3 fan
+		(iAreaAngle is the sweep in degrees); iAreaInner is the ring hole. */
 		int32_t iAreaType = {};
 		int32_t iAreaRange = {};
 		int32_t iAreaAngle = {};

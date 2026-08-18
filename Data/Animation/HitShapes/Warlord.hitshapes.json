@@ -1,6 +1,6 @@
 {
   "schema": "lostark.animation-hit-shapes",
-  "formatVersion": 1,
+  "formatVersion": 3,
   "animationAssetId": "Warlord",
   "characterClass": "WARLORD",
   "skills": [
@@ -16,7 +16,8 @@
               "repeatMs": 0,
               "areaType": 2,
               "range": 2.8,
-              "angle": 150,
+              "angle": 0,
+              "width": 1.5,
               "height": 1.5,
               "offset": 0.2,
               "inner": 0.0,
@@ -35,7 +36,8 @@
               "repeatMs": 200,
               "areaType": 2,
               "range": 3.0,
-              "angle": 180,
+              "angle": 0,
+              "width": 1.8,
               "height": 1.5,
               "offset": 0.2,
               "inner": 0.0,
@@ -54,7 +56,8 @@
               "repeatMs": 200,
               "areaType": 2,
               "range": 3.0,
-              "angle": 180,
+              "angle": 0,
+              "width": 1.8,
               "height": 1.5,
               "offset": 0.2,
               "inner": 0.0,
@@ -75,7 +78,8 @@
           "repeatMs": 200,
           "areaType": 2,
           "range": 3.5,
-          "angle": 170,
+          "angle": 0,
+          "width": 1.7,
           "height": 1.5,
           "offset": 0.3,
           "inner": 0.0,
@@ -95,12 +99,33 @@
           "areaType": 3,
           "range": 2.0,
           "angle": 120,
+          "width": 0.0,
           "height": 1.5,
           "offset": 0.3,
           "inner": 0.0,
           "maxTargets": 0,
           "pushMs": 70,
           "pushRange": 0.7
+        }
+      ]
+    },
+    {
+      "skillId": 17060,
+      "hits": [
+        {
+          "timeMs": 330,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 3,
+          "range": 3.8,
+          "angle": 60,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 120,
+          "pushRange": 0.5
         }
       ]
     },
@@ -116,7 +141,8 @@
               "repeatMs": 0,
               "areaType": 2,
               "range": 3.0,
-              "angle": 140,
+              "angle": 0,
+              "width": 1.4,
               "height": 1.5,
               "offset": 0.0,
               "inner": 0.0,
@@ -138,12 +164,33 @@
           "areaType": 3,
           "range": 4.5,
           "angle": 60,
+          "width": 0.0,
           "height": 1.5,
           "offset": -0.1,
           "inner": 0.0,
           "maxTargets": 0,
           "pushMs": 0,
           "pushRange": 0.0
+        }
+      ]
+    },
+    {
+      "skillId": 17100,
+      "hits": [
+        {
+          "timeMs": 700,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 2.3,
+          "angle": 0,
+          "width": 0.0,
+          "height": 1.5,
+          "offset": 0.8,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 30,
+          "pushRange": 0.3
         }
       ]
     },
@@ -157,12 +204,33 @@
           "areaType": 1,
           "range": 3.0,
           "angle": 0,
+          "width": 0.0,
           "height": 1.5,
           "offset": 0.0,
           "inner": 0.0,
           "maxTargets": 0,
           "pushMs": 120,
           "pushRange": 0.3
+        }
+      ]
+    },
+    {
+      "skillId": 17140,
+      "hits": [
+        {
+          "timeMs": 1200,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 3.0,
+          "angle": 0,
+          "width": 0.0,
+          "height": 2.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 5,
+          "pushRange": 0.05
         }
       ]
     }

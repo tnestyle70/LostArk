@@ -1,0 +1,7 @@
+{
+  "schema": "lostark.animation-projectiles",
+  "formatVersion": 1,
+  "animationAssetId": "LanceMaster",
+  "characterClass": "LANCE_MASTER",
+  "projectiles": []
+}
