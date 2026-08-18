@@ -192,6 +192,9 @@
     <ClCompile Include="..\Private\AnimationSkillBindingDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\ValtanPatternPreviewDocument.cpp">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\ValtanPatternEffectCueDocument.cpp">
       <Filter>03. Tools\04. Animation</Filter>
     </ClCompile>
@@ -673,6 +676,9 @@
     <ClInclude Include="..\Public\AnimationSkillBindingDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\ValtanPatternPreviewDocument.h">
+	  <Filter>03. Tools\04. Animation</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\ValtanPatternEffectCueDocument.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
@@ -1051,6 +1057,9 @@
     <None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patterneffectcues.json">
       <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
     </None>
+	<None Include="..\..\Data\Animation\Authored\Valtan\Valtan.patternpreview.json">
+	  <Filter>96.DataFiles\Animation\Authored\Valtan</Filter>
+	</None>
     <None Include="..\..\Data\Animation\Reference\Artist\Artist.animnotify">
       <Filter>96.DataFiles\Animation\Reference</Filter>
     </None>

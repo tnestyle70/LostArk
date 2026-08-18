@@ -165,6 +165,67 @@ Client::CAnimation_Tool::~CAnimation_Tool()
 			CHARACTER_PREVIEW_LOCK_OWNER::ANIMATION_TOOL, false, {});
 }
 
+void Client::CAnimation_Tool::Update(
+	const f32_t fTimeDelta,
+	const bool_t bIsActiveTool)
+{
+	if (!m_bValtanPatternPreviewPlaying)
+		return;
+
+	const shared_ptr<Engine::CModel> PreviewModel =
+		m_ValtanPatternPreviewModel.lock();
+	if (nullptr == PreviewModel ||
+		0u == m_iValtanPatternPreviewTargetGeneration ||
+		m_iValtanPatternPreviewTargetGeneration !=
+			CAnimationTargetService::Resolve_TargetGeneration() ||
+		CAnimationTargetService::Resolve_Model() != PreviewModel)
+	{
+		if (nullptr != PreviewModel)
+			PreviewModel->Set_AnimationSpeed(1.f);
+		Reset_ValtanPatternPreviewState(
+			"Pattern preview cancelled because the animation target changed.");
+		return;
+	}
+
+	if (!bIsActiveTool)
+	{
+		Stop_ValtanPatternPreview(
+			PreviewModel,
+			"Pattern preview stopped because Animation Tool was deactivated; idle restored.");
+		return;
+	}
+	if (m_bValtanPatternPreviewPaused ||
+		m_iValtanPatternPreviewItem >= m_ValtanPatternPreviewPlaylist.size())
+	{
+		return;
+	}
+
+	const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Item =
+		m_ValtanPatternPreviewPlaylist[m_iValtanPatternPreviewItem];
+	const char_t* pExpectedClip = Item.bPatternMarker ?
+		"mesh_idle_battle_1" : Item.strClipName.c_str();
+	const char_t* pCurrentClip = PreviewModel->Get_AnimationName(
+		PreviewModel->Get_CurrentAnimIndex());
+	if (nullptr == pCurrentClip ||
+		std::string_view{ pExpectedClip } != std::string_view{ pCurrentClip })
+	{
+		Stop_ValtanPatternPreview(
+			PreviewModel,
+			"Pattern preview stopped because another control replaced the current source clip; idle restored.");
+		return;
+	}
+
+	if (!std::isfinite(fTimeDelta) || fTimeDelta <= 0.f)
+		return;
+	m_fValtanPatternPreviewElapsedSeconds +=
+		fTimeDelta * m_fValtanPatternPreviewSpeed;
+	if (m_fValtanPatternPreviewElapsedSeconds >=
+		m_fValtanPatternPreviewItemDurationSeconds)
+	{
+		Advance_ValtanPatternPreview(PreviewModel);
+	}
+}
+
 shared_ptr<Engine::CModel> Client::CAnimation_Tool::Resolve_Model() const
 {
 	return CAnimationTargetService::Resolve_Model();
@@ -245,6 +306,19 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_bClipNotifyLoadAttempted = false;
 	m_bClipSeqLoadAttempted = false;
 	m_bSkillBindingLoadAttempted = false;
+	m_ValtanPatternPreviewDocument = {};
+	m_ValtanPatternPreviewPlaylist.clear();
+	m_bValtanPatternPreviewLoadAttempted = false;
+	m_bValtanPatternPreviewPlaying = false;
+	m_bValtanPatternPreviewPaused = false;
+	m_iValtanPatternPreviewSelected = 0;
+	m_iValtanPatternPreviewItem = 0u;
+	m_fValtanPatternPreviewElapsedSeconds = 0.f;
+	m_fValtanPatternPreviewItemDurationSeconds = 0.f;
+	m_fValtanPatternPreviewSpeed = 1.f;
+	m_strValtanPatternPreviewStatus.clear();
+	m_ValtanPatternPreviewModel.reset();
+	m_iValtanPatternPreviewTargetGeneration = 0u;
 }
 
 void Client::CAnimation_Tool::Render_TargetConflict()
@@ -524,7 +598,12 @@ void Client::CAnimation_Tool::Render()
 			pModel->Get_NumAnimations());
 		ImGui::TextDisabled(
 			"Playback-only preview: authored events and gameplay skill bindings are disabled.");
+		ImGui::BeginDisabled(m_bValtanPatternPreviewPlaying);
 		Render_Playback(pModel);
+		ImGui::EndDisabled();
+		if ("Valtan" == m_AssetName)
+			Render_ValtanPatternPreview(pModel);
+		ImGui::BeginDisabled(m_bValtanPatternPreviewPlaying);
 		Render_ClipChain(pModel);
 		Render_NotifyReference(pModel);
 		Render_HitAreaWires(pModel);
@@ -539,6 +618,7 @@ void Client::CAnimation_Tool::Render()
 			m_Filter,
 			sizeof(m_Filter));
 		Render_AnimationList(pModel);
+		ImGui::EndDisabled();
 		ImGui::End();
 		return;
 	}
@@ -742,6 +822,400 @@ void Client::CAnimation_Tool::Render_Playback(const shared_ptr<Engine::CModel>& 
 	ImGui::SameLine();
 	if (ImGui::Checkbox("Loop", &m_bLoop))
 		pModel->Set_Animation(iCurrentIndex, m_bLoop);
+}
+
+void Client::CAnimation_Tool::Render_ValtanPatternPreview(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	ImGui::SeparatorText("Valtan 1-67 Pattern Preview");
+	ImGui::TextWrapped(
+		"Review-only sequence resolved from Valtan.clipseq. Every source clip plays once, non-looping, for its full native model duration. Environment, movement, effects, and damage are not simulated here.");
+
+	if (!m_bValtanPatternPreviewLoadAttempted)
+	{
+		m_bValtanPatternPreviewLoadAttempted = true;
+		std::string status;
+		VALTAN_PATTERN_PREVIEW_DOCUMENT staged;
+		if (CValtanPatternPreviewDocument::Load(
+				"Valtan", Collect_ClipNames(pModel), staged, status))
+		{
+			m_ValtanPatternPreviewDocument = std::move(staged);
+			m_strValtanPatternPreviewStatus = status;
+		}
+		else
+		{
+			m_strValtanPatternPreviewStatus =
+				"Pattern preview unavailable; current animation preserved: " + status;
+		}
+	}
+
+	const bool_t bReady =
+		67u == m_ValtanPatternPreviewDocument.Patterns.size();
+	ImGui::BeginDisabled(!bReady);
+	if (ImGui::Button("Play All 1-67"))
+		Start_ValtanPatternPreview(pModel, 1u, 67u);
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(120.f);
+	if (ImGui::SliderFloat(
+			"Speed##ValtanPatternPreview",
+			&m_fValtanPatternPreviewSpeed,
+			0.5f,
+			3.f,
+			"%.1fx"))
+	{
+		if (m_bValtanPatternPreviewPlaying)
+			pModel->Set_AnimationSpeed(m_fValtanPatternPreviewSpeed);
+	}
+
+	const int32_t iPatternCount = static_cast<int32_t>(
+		m_ValtanPatternPreviewDocument.Patterns.size());
+	if (iPatternCount > 0)
+	{
+		m_iValtanPatternPreviewSelected = std::clamp(
+			m_iValtanPatternPreviewSelected, 0, iPatternCount - 1);
+	}
+	if (ImGui::Button("< Pattern") && m_iValtanPatternPreviewSelected > 0)
+	{
+		--m_iValtanPatternPreviewSelected;
+		Start_ValtanPatternPreview(
+			pModel,
+			static_cast<uint32_t>(m_iValtanPatternPreviewSelected + 1),
+			static_cast<uint32_t>(m_iValtanPatternPreviewSelected + 1));
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Play Selected") && iPatternCount > 0)
+	{
+		const uint32_t Number =
+			static_cast<uint32_t>(m_iValtanPatternPreviewSelected + 1);
+		Start_ValtanPatternPreview(pModel, Number, Number);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Pattern >") &&
+		m_iValtanPatternPreviewSelected + 1 < iPatternCount)
+	{
+		++m_iValtanPatternPreviewSelected;
+		Start_ValtanPatternPreview(
+			pModel,
+			static_cast<uint32_t>(m_iValtanPatternPreviewSelected + 1),
+			static_cast<uint32_t>(m_iValtanPatternPreviewSelected + 1));
+	}
+
+	ImGui::BeginDisabled(!m_bValtanPatternPreviewPlaying);
+	if (ImGui::Button(m_bValtanPatternPreviewPaused ? "Resume" : "Pause Sequence"))
+	{
+		m_bValtanPatternPreviewPaused = !m_bValtanPatternPreviewPaused;
+		pModel->Set_AnimPaused(m_bValtanPatternPreviewPaused);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Replay Step"))
+		Activate_ValtanPatternPreviewItem(pModel);
+	ImGui::SameLine();
+	if (ImGui::Button("Skip Step"))
+		Advance_ValtanPatternPreview(pModel);
+	ImGui::SameLine();
+	if (ImGui::Button("Stop"))
+		Stop_ValtanPatternPreview(pModel, "Pattern preview stopped; idle restored.");
+	ImGui::EndDisabled();
+	ImGui::EndDisabled();
+
+	if (m_bValtanPatternPreviewPlaying &&
+		m_iValtanPatternPreviewItem < m_ValtanPatternPreviewPlaylist.size())
+	{
+		const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Item =
+			m_ValtanPatternPreviewPlaylist[m_iValtanPatternPreviewItem];
+		m_iValtanPatternPreviewSelected = static_cast<int32_t>(
+			Item.iPatternNumber - 1u);
+	}
+
+	if (m_bValtanPatternPreviewPlaying &&
+		m_iValtanPatternPreviewItem < m_ValtanPatternPreviewPlaylist.size())
+	{
+		const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Item =
+			m_ValtanPatternPreviewPlaylist[m_iValtanPatternPreviewItem];
+		ImGui::Text(
+			"Now %02u  [%s]  step %u/%u  %s",
+			Item.iPatternNumber,
+			CValtanPatternPreviewDocument::Evidence_Name(Item.eEvidence),
+			Item.iStepNumber,
+			Item.iStepCount,
+			Item.bPatternMarker ? "(no body animation)" : Item.strClipName.c_str());
+		if (Item.bPatternMarker)
+		{
+			ImGui::TextDisabled("Source sequence: pattern marker only");
+		}
+		else
+		{
+			ImGui::Text(
+				"Source action %u  sequence %d  repeat %u/%u  source step %u/%u",
+				Item.iSourceActionId,
+				Item.iSequenceIndex,
+				Item.iSequenceRepeatNumber,
+				Item.iSequenceRepeatCount,
+				Item.iSourceStepNumber,
+				Item.iSourceStepCount);
+			ImGui::TextWrapped(
+				"%s  [%s]",
+				Item.strSequenceName.c_str(),
+				Item.strSequenceMode.c_str());
+		}
+		const f32_t Duration = (std::max)(
+			0.001f, m_fValtanPatternPreviewItemDurationSeconds);
+		ImGui::ProgressBar(
+			std::clamp(m_fValtanPatternPreviewElapsedSeconds / Duration, 0.f, 1.f),
+			ImVec2(-1.f, 0.f));
+		ImGui::TextWrapped("%s", Item.strPatternLabel.c_str());
+		ImGui::TextDisabled("%s", Item.strNote.c_str());
+	}
+	if (!m_strValtanPatternPreviewStatus.empty())
+		ImGui::TextWrapped("%s", m_strValtanPatternPreviewStatus.c_str());
+
+	if (bReady && iPatternCount > 0)
+	{
+		const VALTAN_PATTERN_PREVIEW_ENTRY& SelectedPattern =
+			m_ValtanPatternPreviewDocument.Patterns[
+				static_cast<std::size_t>(m_iValtanPatternPreviewSelected)];
+		ImGui::SeparatorText("Selected source sequences");
+		if (SelectedPattern.Sequences.empty())
+		{
+			ImGui::TextDisabled("No body-animation source sequence for this pattern.");
+		}
+		else
+		{
+			for (const VALTAN_PATTERN_PREVIEW_SOURCE_SEQUENCE_REF& Sequence :
+				SelectedPattern.Sequences)
+			{
+				ImGui::BulletText(
+					"action %u  sequence %d  repeat x%u  [%s]",
+					Sequence.iSourceActionId,
+					Sequence.iSequenceIndex,
+					Sequence.iRepeat,
+					Sequence.strSequenceMode.c_str());
+				ImGui::Indent();
+				ImGui::TextWrapped("%s", Sequence.strSequenceName.c_str());
+				ImGui::Unindent();
+			}
+		}
+	}
+
+	if (bReady)
+	{
+		const bool_t bListVisible = ImGui::BeginChild(
+			"##ValtanPatternPreviewList",
+			ImVec2(0.f, 260.f),
+			ImGuiChildFlags_Borders);
+		if (bListVisible)
+		{
+			for (int32_t Index = 0; Index < iPatternCount; ++Index)
+			{
+				const VALTAN_PATTERN_PREVIEW_ENTRY& Pattern =
+					m_ValtanPatternPreviewDocument.Patterns[Index];
+				char_t Label[512]{};
+				snprintf(
+					Label,
+					sizeof(Label),
+					"%02u  [%s]  %s",
+					Pattern.iNumber,
+					CValtanPatternPreviewDocument::Evidence_Name(Pattern.eEvidence),
+					Pattern.strLabel.c_str());
+				ImGui::PushID(Index);
+				if (ImGui::Selectable(
+						Label, Index == m_iValtanPatternPreviewSelected))
+				{
+					m_iValtanPatternPreviewSelected = Index;
+				}
+				if (ImGui::IsItemHovered())
+					ImGui::SetTooltip("%s", Pattern.strNote.c_str());
+				ImGui::PopID();
+			}
+		}
+		ImGui::EndChild();
+	}
+}
+
+bool_t Client::CAnimation_Tool::Start_ValtanPatternPreview(
+	const shared_ptr<Engine::CModel>& pModel,
+	const uint32_t iFirstPattern,
+	const uint32_t iLastPattern)
+{
+	if (nullptr == pModel || CAnimationTargetService::Resolve_Model() != pModel)
+	{
+		m_strValtanPatternPreviewStatus =
+			"Pattern preview start rejected because the animation target changed.";
+		return false;
+	}
+	std::vector<VALTAN_PATTERN_PREVIEW_PLAY_ITEM> staged;
+	std::string status;
+	if (!CValtanPatternPreviewDocument::Build_Playlist(
+			m_ValtanPatternPreviewDocument,
+			iFirstPattern,
+			iLastPattern,
+			staged,
+			status))
+	{
+		m_strValtanPatternPreviewStatus =
+			"Pattern preview start rejected; current pose preserved: " + status;
+		return false;
+	}
+
+	m_ValtanPatternPreviewPlaylist = std::move(staged);
+	m_iValtanPatternPreviewItem = 0u;
+	m_bValtanPatternPreviewPlaying = true;
+	m_bValtanPatternPreviewPaused = false;
+	m_fValtanPatternPreviewElapsedSeconds = 0.f;
+	m_ValtanPatternPreviewModel = pModel;
+	m_iValtanPatternPreviewTargetGeneration =
+		CAnimationTargetService::Resolve_TargetGeneration();
+	m_strValtanPatternPreviewStatus = status;
+	return Activate_ValtanPatternPreviewItem(pModel);
+}
+
+bool_t Client::CAnimation_Tool::Activate_ValtanPatternPreviewItem(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	constexpr f32_t PATTERN_MARKER_DURATION_SECONDS = 0.45f;
+	std::string skippedStatus;
+	const auto RecordSkip = [&skippedStatus](const std::string& reason)
+	{
+		if (!skippedStatus.empty())
+			skippedStatus += " ";
+		skippedStatus += reason;
+	};
+
+	while (m_bValtanPatternPreviewPlaying &&
+		m_iValtanPatternPreviewItem < m_ValtanPatternPreviewPlaylist.size())
+	{
+		const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Item =
+			m_ValtanPatternPreviewPlaylist[m_iValtanPatternPreviewItem];
+		m_fValtanPatternPreviewElapsedSeconds = 0.f;
+		m_fValtanPatternPreviewItemDurationSeconds = 0.f;
+		m_bValtanPatternPreviewPaused = false;
+
+		if (Item.bPatternMarker)
+		{
+			if (!pModel->Start_Animation("mesh_idle_battle_1", true))
+			{
+				RecordSkip(
+					"Skipped pattern marker because the idle clip is unavailable.");
+				++m_iValtanPatternPreviewItem;
+				continue;
+			}
+
+			m_bLoop = true;
+			m_fValtanPatternPreviewItemDurationSeconds =
+				PATTERN_MARKER_DURATION_SECONDS;
+			pModel->Set_AnimationSpeed(m_fValtanPatternPreviewSpeed);
+			m_strValtanPatternPreviewStatus = skippedStatus;
+			if (!m_strValtanPatternPreviewStatus.empty())
+				m_strValtanPatternPreviewStatus += " ";
+			m_strValtanPatternPreviewStatus +=
+				"Pattern " + std::to_string(Item.iPatternNumber) +
+				" step " + std::to_string(Item.iStepNumber) + "/" +
+				std::to_string(Item.iStepCount) +
+				" marker started for 450 ms.";
+			return true;
+		}
+
+		if (!pModel->Start_Animation(Item.strClipName.c_str(), false))
+		{
+			RecordSkip(
+				"Skipped unavailable clip without stopping Play All: " +
+				Item.strClipName + ".");
+			++m_iValtanPatternPreviewItem;
+			continue;
+		}
+
+		const uint32_t AnimationIndex = pModel->Get_CurrentAnimIndex();
+		f32_t Position = 0.f;
+		f32_t DurationTicks = 0.f;
+		const f32_t TickRate =
+			pModel->Get_AnimationTickPerSecond(AnimationIndex);
+		if (!std::isfinite(TickRate) || TickRate <= 0.f ||
+			!pModel->Get_AnimationProgress(
+				AnimationIndex, Position, DurationTicks) ||
+			!std::isfinite(DurationTicks) || DurationTicks <= 0.f)
+		{
+			RecordSkip(
+				"Skipped clip with invalid native duration without stopping Play All: " +
+				Item.strClipName + ".");
+			++m_iValtanPatternPreviewItem;
+			continue;
+		}
+
+		const f32_t NativeDurationSeconds = DurationTicks / TickRate;
+		if (!std::isfinite(NativeDurationSeconds) ||
+			NativeDurationSeconds <= 0.f)
+		{
+			RecordSkip(
+				"Skipped clip with invalid native duration without stopping Play All: " +
+				Item.strClipName + ".");
+			++m_iValtanPatternPreviewItem;
+			continue;
+		}
+
+		m_bLoop = false;
+		m_fValtanPatternPreviewItemDurationSeconds = NativeDurationSeconds;
+		pModel->Set_AnimationSpeed(m_fValtanPatternPreviewSpeed);
+		m_strValtanPatternPreviewStatus = skippedStatus;
+		if (!m_strValtanPatternPreviewStatus.empty())
+			m_strValtanPatternPreviewStatus += " ";
+		m_strValtanPatternPreviewStatus +=
+			"Pattern " + std::to_string(Item.iPatternNumber) +
+			" step " + std::to_string(Item.iStepNumber) + "/" +
+			std::to_string(Item.iStepCount) +
+			" started for its full native duration (" +
+			std::to_string(NativeDurationSeconds) + " s).";
+		return true;
+	}
+
+	if (!skippedStatus.empty())
+		skippedStatus += " ";
+	Stop_ValtanPatternPreview(
+		pModel, skippedStatus + "Pattern preview completed; idle restored.");
+	return false;
+}
+
+void Client::CAnimation_Tool::Advance_ValtanPatternPreview(
+	const shared_ptr<Engine::CModel>& pModel)
+{
+	if (!m_bValtanPatternPreviewPlaying)
+		return;
+	++m_iValtanPatternPreviewItem;
+	if (m_iValtanPatternPreviewItem >= m_ValtanPatternPreviewPlaylist.size())
+	{
+		Stop_ValtanPatternPreview(
+			pModel, "Pattern preview completed; idle restored.");
+		return;
+	}
+	Activate_ValtanPatternPreviewItem(pModel);
+}
+
+void Client::CAnimation_Tool::Stop_ValtanPatternPreview(
+	const shared_ptr<Engine::CModel>& pModel,
+	const std::string& status)
+{
+	if (nullptr != pModel)
+	{
+		m_bLoop = true;
+		pModel->Set_AnimationSpeed(1.f);
+		if (!pModel->Start_Animation("mesh_idle_battle_1", true))
+			pModel->Set_AnimPaused(true);
+	}
+	Reset_ValtanPatternPreviewState(status);
+}
+
+void Client::CAnimation_Tool::Reset_ValtanPatternPreviewState(
+	const std::string& status)
+{
+	m_bValtanPatternPreviewPlaying = false;
+	m_bValtanPatternPreviewPaused = false;
+	m_iValtanPatternPreviewItem = 0u;
+	m_fValtanPatternPreviewElapsedSeconds = 0.f;
+	m_fValtanPatternPreviewItemDurationSeconds = 0.f;
+	m_ValtanPatternPreviewPlaylist.clear();
+	m_strValtanPatternPreviewStatus = status;
+	m_bLoop = true;
+	m_ValtanPatternPreviewModel.reset();
+	m_iValtanPatternPreviewTargetGeneration = 0u;
 }
 
 /* The chains this clip belongs to. A skill plays its clips in a fixed order and

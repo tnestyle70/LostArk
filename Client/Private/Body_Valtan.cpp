@@ -47,7 +47,7 @@ void CBody_Valtan::Update(f32_t fTimeDelta)
 {
 	if (nullptr != m_pParentState &&
 		*m_pParentState != CValtan::VALTAN_STATE::DEAD)
-		m_pModelCom->Play_Animation(fTimeDelta);
+		m_pModelCom->Update_Animation(fTimeDelta);
 
 	__super::Update_CombinedWorldMatrix(
 		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr()));

@@ -692,6 +692,193 @@ Client::CDestructionSimulationRuntime::Get_ProjectAuthoredDebrisModelSpecs()
 			L"Prototype_Component_Model_DestructionWall_02311_Chunk11",
 			"Deploy/LV_LUT_HEARTRB_ED/DEPLOY_ITR_02311/fractured/DEPLOY_ITR_02311_CHUNK_11.wmodel",
 			1.f, "DEPLOY_ITR_02311", { -0.078028878f, 3.978823340f, 3.146037265f }
+		},
+		/* The arena floor owns no fractured mesh, so its collapse reuses the
+		   four Valtan rubble meshes already shipped for destruction debris. The
+		   twelve pivots per sector are measured median-radius nav cells of that
+		   sector's authored collapse region, spread over its angular span, so the
+		   rubble appears across the floor that is actually giving way instead of
+		   at the arena centre. The yaw180 twin of each sector reuses the same
+		   local pivots because its region is the 180-degree mirror. */
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk00",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { 13.970993000f, 0.250000000f, -4.773003000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk01",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { 14.470993000f, 0.250000000f, 1.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk02",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { 13.970993000f, 0.250000000f, 4.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk03",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { 13.470993000f, 0.250000000f, 5.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk04",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { 10.470993000f, 0.250000000f, 10.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk05",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { 5.970993000f, 0.250000000f, 13.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk06",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { 4.970993000f, 0.250000000f, 13.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk07",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { -0.029007000f, 0.250000000f, 14.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk08",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { -3.029007000f, 0.250000000f, 14.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk09",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { -8.529007000f, 0.250000000f, 12.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk10",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { -11.529007000f, 0.250000000f, 9.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_Rail_Chunk11",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "VALTAN_FLOOR_RAIL", { -13.529007000f, 0.250000000f, 5.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk00",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 11.470993000f, 0.250000000f, -2.773003000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk01",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 10.970993000f, 0.250000000f, -1.273003000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk02",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 11.470993000f, 0.250000000f, -0.273003000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk03",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 10.970993000f, 0.250000000f, 1.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk04",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 10.970993000f, 0.250000000f, 2.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk05",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 10.470993000f, 0.250000000f, 4.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk06",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 9.970993000f, 0.250000000f, 5.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk07",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 9.470993000f, 0.250000000f, 6.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk08",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 8.470993000f, 0.250000000f, 7.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk09",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 7.470993000f, 0.250000000f, 8.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk10",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 6.470993000f, 0.250000000f, 9.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickA_Chunk11",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_A", { 4.970993000f, 0.250000000f, 9.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk00",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { 4.470993000f, 0.250000000f, 10.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk01",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { 1.970993000f, 0.250000000f, 11.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk02",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { 0.470993000f, 0.250000000f, 11.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk03",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { -1.029007000f, 0.250000000f, 11.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk04",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { -2.529007000f, 0.250000000f, 10.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk05",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { -4.029007000f, 0.250000000f, 10.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk06",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { -5.529007000f, 0.250000000f, 9.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk07",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { -7.029007000f, 0.250000000f, 8.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk08",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { -8.029007000f, 0.250000000f, 8.226997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk09",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { -9.029007000f, 0.250000000f, 6.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk10",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { -10.029007000f, 0.250000000f, 4.726997000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk11",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "VALTAN_FLOOR_BRICK_B", { -10.529007000f, 0.250000000f, 3.226997000f }
 		}
 	};
 	return specs;

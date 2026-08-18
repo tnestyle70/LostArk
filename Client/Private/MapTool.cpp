@@ -2904,6 +2904,7 @@ bool_t Client::CMapTool::Ensure_DeployAuthoringPrototypes(
 			return false;
 		}
 		if (DEPLOY_PROP_MODEL_KIND::STATIC == asset.kind &&
+			!asset.fracturedPrototypeTag.empty() &&
 			!admitModel(
 				asset.fracturedPrototypeTag,
 				asset.fracturedResolvedPath,

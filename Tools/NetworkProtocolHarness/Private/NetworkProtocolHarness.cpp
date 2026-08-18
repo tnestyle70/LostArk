@@ -2399,12 +2399,13 @@ namespace
 		}
 
 		{
-			/* Wall attack and final-arena view are named Debug operations rather
-			than health-bar crossings. Both must round-trip with an empty bar and
-			reject any accidental health-bar payload. */
-			const std::array<VALTAN_AUDITION_OPERATION, 2u> barlessOperations{
+			/* Wall attack, final-arena view and break-every-wall are named Debug
+			operations rather than health-bar crossings. Each must round-trip with an
+			empty bar and reject any accidental health-bar payload. */
+			const std::array<VALTAN_AUDITION_OPERATION, 3u> barlessOperations{
 				VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK,
-				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA };
+				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA,
+				VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL };
 			for (std::size_t index = 0u; index < barlessOperations.size(); ++index)
 			{
 				C2S_VALTAN_AUDITION_REQUEST barless{};

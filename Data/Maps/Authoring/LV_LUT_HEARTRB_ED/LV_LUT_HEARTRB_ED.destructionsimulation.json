@@ -3764,6 +3764,234 @@
                                                           }
                                           }
                                       ]
+                     },
+                     {
+                         "profileId":  "destroyable.group.valtan.floor30.brick.7000000000000000002.preview",
+                         "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000002",
+                         "durationSeconds":  5,
+                         "previewGroundEnabled":  true,
+                         "previewGroundHeight":  20,
+                         "previewGroundHalfExtents":  [
+                                                          30,
+                                                          30
+                                                      ],
+                         "elements":  [
+                                          {
+                                              "elementId":  "debris.7000000000000000002",
+                                              "sourceRuntimePlacementId":  "7000000000000000002",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4,
+                                              "trigger":  {
+                                                              "kind":  "TIMELINE_TIME",
+                                                              "timeSeconds":  0,
+                                                              "receiverCollisionId":  ""
+                                                          }
+                                          }
+                                      ]
+                     },
+                     {
+                         "profileId":  "destroyable.group.valtan.floor30.brick.7000000000000000003.preview",
+                         "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000003",
+                         "durationSeconds":  5,
+                         "previewGroundEnabled":  true,
+                         "previewGroundHeight":  20,
+                         "previewGroundHalfExtents":  [
+                                                          30,
+                                                          30
+                                                      ],
+                         "elements":  [
+                                          {
+                                              "elementId":  "debris.7000000000000000003",
+                                              "sourceRuntimePlacementId":  "7000000000000000003",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4,
+                                              "trigger":  {
+                                                              "kind":  "TIMELINE_TIME",
+                                                              "timeSeconds":  0,
+                                                              "receiverCollisionId":  ""
+                                                          }
+                                          }
+                                      ]
+                     },
+                     {
+                         "profileId":  "destroyable.group.valtan.floor30.brick.7000000000000000006.preview",
+                         "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000006",
+                         "durationSeconds":  5,
+                         "previewGroundEnabled":  true,
+                         "previewGroundHeight":  20,
+                         "previewGroundHalfExtents":  [
+                                                          30,
+                                                          30
+                                                      ],
+                         "elements":  [
+                                          {
+                                              "elementId":  "debris.7000000000000000006",
+                                              "sourceRuntimePlacementId":  "7000000000000000006",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4,
+                                              "trigger":  {
+                                                              "kind":  "TIMELINE_TIME",
+                                                              "timeSeconds":  0,
+                                                              "receiverCollisionId":  ""
+                                                          }
+                                          }
+                                      ]
+                     },
+                     {
+                         "profileId":  "destroyable.group.valtan.floor30.brick.7000000000000000007.preview",
+                         "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000007",
+                         "durationSeconds":  5,
+                         "previewGroundEnabled":  true,
+                         "previewGroundHeight":  20,
+                         "previewGroundHalfExtents":  [
+                                                          30,
+                                                          30
+                                                      ],
+                         "elements":  [
+                                          {
+                                              "elementId":  "debris.7000000000000000007",
+                                              "sourceRuntimePlacementId":  "7000000000000000007",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4,
+                                              "trigger":  {
+                                                              "kind":  "TIMELINE_TIME",
+                                                              "timeSeconds":  0,
+                                                              "receiverCollisionId":  ""
+                                                          }
+                                          }
+                                      ]
+                     },
+                     {
+                         "profileId":  "destroyable.group.valtan.floor84.rail.7000000000000000001.preview",
+                         "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000001",
+                         "durationSeconds":  5,
+                         "previewGroundEnabled":  true,
+                         "previewGroundHeight":  20,
+                         "previewGroundHalfExtents":  [
+                                                          30,
+                                                          30
+                                                      ],
+                         "elements":  [
+                                          {
+                                              "elementId":  "debris.7000000000000000001",
+                                              "sourceRuntimePlacementId":  "7000000000000000001",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4,
+                                              "trigger":  {
+                                                              "kind":  "TIMELINE_TIME",
+                                                              "timeSeconds":  0,
+                                                              "receiverCollisionId":  ""
+                                                          }
+                                          }
+                                      ]
+                     },
+                     {
+                         "profileId":  "destroyable.group.valtan.floor84.rail.7000000000000000005.preview",
+                         "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000005",
+                         "durationSeconds":  5,
+                         "previewGroundEnabled":  true,
+                         "previewGroundHeight":  20,
+                         "previewGroundHalfExtents":  [
+                                                          30,
+                                                          30
+                                                      ],
+                         "elements":  [
+                                          {
+                                              "elementId":  "debris.7000000000000000005",
+                                              "sourceRuntimePlacementId":  "7000000000000000005",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4,
+                                              "trigger":  {
+                                                              "kind":  "TIMELINE_TIME",
+                                                              "timeSeconds":  0,
+                                                              "receiverCollisionId":  ""
+                                                          }
+                                          }
+                                      ]
                      }
                  ]
 }

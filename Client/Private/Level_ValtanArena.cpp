@@ -426,6 +426,8 @@ void CLevel_ValtanArena::Submit_Audition(
 		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK ==
 			operation ||
 		LostArk::Shared::VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA ==
+			operation ||
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL ==
 			operation;
 	const std::vector<uint32_t> bars =
 		Collect_AuditionHealthBars(m_ValtanEncounterReference);
@@ -667,16 +669,51 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		outerPlacementCount += group.MemberPlacementIds.size();
 	}
 
+	/* The arena floor collapses on its own health-bar patterns, so its sectors
+	are counted separately instead of being reported as interior walls that
+	reacted to the 109 collapse by mistake. */
+	static constexpr std::string_view FLOOR_STAGE_A_GROUP_PREFIX =
+		"destroyable.group.valtan.floor84.";
+	static constexpr std::string_view FLOOR_STAGE_B_GROUP_PREFIX =
+		"destroyable.group.valtan.floor30.";
 	size_t intactCount = 0u;
 	size_t breakingCount = 0u;
 	size_t fracturedCount = 0u;
 	size_t despawnedCount = 0u;
 	size_t interiorReactedCount = 0u;
+	size_t floorStageAIntact = 0u;
+	size_t floorStageABreaking = 0u;
+	size_t floorStageAGone = 0u;
+	size_t floorStageBIntact = 0u;
+	size_t floorStageBBreaking = 0u;
+	size_t floorStageBGone = 0u;
 	for (const LostArk::Shared::WORLD_DESTRUCTION_STATE_WIRE& group :
 		m_Replication.Get_WorldDestructionGroupStates())
 	{
-		if (!std::string_view(group.strGroupId).starts_with(
-			OUTER_RING_GROUP_PREFIX))
+		const std::string_view groupId(group.strGroupId);
+		const bool isStageA = groupId.starts_with(FLOOR_STAGE_A_GROUP_PREFIX);
+		const bool isStageB = groupId.starts_with(FLOOR_STAGE_B_GROUP_PREFIX);
+		if (isStageA || isStageB)
+		{
+			size_t& intactSlot = isStageA ? floorStageAIntact : floorStageBIntact;
+			size_t& breakingSlot =
+				isStageA ? floorStageABreaking : floorStageBBreaking;
+			size_t& goneSlot = isStageA ? floorStageAGone : floorStageBGone;
+			switch (group.eState)
+			{
+			case LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::INTACT:
+				++intactSlot;
+				break;
+			case LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::BREAKING:
+				++breakingSlot;
+				break;
+			default:
+				++goneSlot;
+				break;
+			}
+			continue;
+		}
+		if (!groupId.starts_with(OUTER_RING_GROUP_PREFIX))
 		{
 			if (LostArk::Shared::WORLD_DESTRUCTION_RUNTIME_STATE::INTACT !=
 				group.eState)
@@ -712,6 +749,16 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	ImGui::Text("109 outer enabled group count: %zu   Outer placement count: %zu",
 		outerGroupCount,
 		outerPlacementCount);
+	ImGui::Text(
+		"Floor Stage A (84): INTACT %zu | BREAKING %zu | GONE %zu   (expected 2)",
+		floorStageAIntact,
+		floorStageABreaking,
+		floorStageAGone);
+	ImGui::Text(
+		"Floor Stage B (30): INTACT %zu | BREAKING %zu | GONE %zu   (expected 4)",
+		floorStageBIntact,
+		floorStageBBreaking,
+		floorStageBGone);
 	if (0u != interiorReactedCount)
 	{
 		ImGui::TextColored(
@@ -810,6 +857,32 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		}
 	}
 	if (ImGui::Button(
+		"Reset + Play 84 (Floor Stage A / Outer Rail)", ImVec2(330.f, 0.f)))
+	{
+		const auto selected = std::find(bars.begin(), bars.end(), 84u);
+		if (selected != bars.end())
+		{
+			m_iSelectedAuditionBarIndex = static_cast<size_t>(
+				std::distance(bars.begin(), selected));
+			Submit_Audition(
+				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR);
+		}
+	}
+	if (ImGui::Button(
+		"Reset + Play 30 (Floor Stage B / Brick Ring)", ImVec2(330.f, 0.f)))
+	{
+		const auto selected = std::find(bars.begin(), bars.end(), 30u);
+		if (selected != bars.end())
+		{
+			m_iSelectedAuditionBarIndex = static_cast<size_t>(
+				std::distance(bars.begin(), selected));
+			Submit_Audition(
+				LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR);
+		}
+	}
+	ImGui::TextDisabled(
+		"Floor sectors stay walkable through BREAKING and turn NON-WALKABLE at the DESPAWNED commit tick.");
+	if (ImGui::Button(
 		"Reset + Play Attack (Down Smash / Ordinary Wall)",
 		ImVec2(330.f, 0.f)))
 	{
@@ -836,6 +909,14 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	}
 	ImGui::TextDisabled(
 		"Final Arena View uses the Server destruction transaction; wait about 0.3 seconds for BREAKING -> GONE.");
+	if (ImGui::Button(
+		"Reset + Break Every Wall (Keep Floor)", ImVec2(330.f, 0.f)))
+	{
+		Submit_Audition(
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL);
+	}
+	ImGui::TextDisabled(
+		"Same transaction without the floor, so 84 and 30 can then collapse with nothing standing above them.");
 	if (ImGui::Button(
 		"Reset + Play Sky + Pillar Cycle", ImVec2(300.f, 0.f)))
 	{
@@ -879,7 +960,30 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		Submit_Audition(
 			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR);
 	}
+	/* ARM then CROSS is the only pair that leaves the current destruction
+	alone, so whatever an earlier chapter already broke stays broken. */
+	if (ImGui::Button("Play Selected (Keep Broken)"))
+	{
+		if (m_iSelectedAuditionBarIndex >= bars.size())
+		{
+			m_strAuditionStatus =
+				"No authored health-bar pattern is selected.";
+		}
+		else
+		{
+			using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
+			const uint32_t selectedBar = bars[m_iSelectedAuditionBarIndex];
+			m_EnvironmentTimeline = {
+				{ OPERATION::ARM_HEALTH_BAR, selectedBar, false },
+				{ OPERATION::CROSS_HEALTH_BAR, selectedBar, true } };
+			m_iEnvironmentTimelineStep = 0u;
+			m_bEnvironmentTimelineWaiting = false;
+			m_bEnvironmentTimelinePatternStarted = false;
+		}
+	}
 	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"Keep Broken replays the selected bar without resetting walls, floor or props.");
 
 	if (!m_strAuditionStatus.empty())
 		ImGui::TextWrapped("%s", m_strAuditionStatus.c_str());
@@ -908,8 +1012,13 @@ void CLevel_ValtanArena::Update_WorldDestructionPresentation(
 		const WORLD_DESTRUCTION_DEBRIS_PROFILE* profile =
 			m_WorldDestructionDebrisPresentationDocument.Find_Group(
 				event.strGroupId);
-		if (nullptr == profile ||
-			profile->strMutationId != event.strMutationId)
+		if (nullptr == profile)
+		{
+			/* State-only groups (for example collapsing floor sectors) have no
+			debris recipe. Their persistent projection was already committed. */
+			continue;
+		}
+		if (profile->strMutationId != event.strMutationId)
 		{
 			OutputDebugStringA(
 				"[Level_ValtanArena][DestructionDebris] "

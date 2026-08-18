@@ -8,6 +8,7 @@ param(
     [string]$GameplayWorldPath = 'Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json',
     [string]$NavigationBlockersPath = 'Data/Navigation/LV_LUT_HEARTRB_ED.navblockers',
     [string]$DeployPlacementsPath = 'Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.deployplacements',
+    [string]$BaseNavGridPath = 'Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid',
     [string]$DebrisRecipeRoot = 'Data/Maps/Authoring/LV_LUT_HEARTRB_ED',
     [string]$CinematicCameraPath = 'Data/Encounters/Valtan/ValtanCinematicCamera.json',
     [string]$ServerOutputRoot = 'Server/Bin/DataFiles/World',
@@ -52,6 +53,23 @@ $expectedOuterGroupCount = 30
 $expectedOuterMemberCount = 30
 $expectedIndependentContactWallCount = 69
 $expectedProductGroupCount = 99
+# The arena floor is the opposite polarity of a wall: it is walkable while it is
+# intact and blocks once it collapses. Stage A drops the outer rail at 84 bars
+# and stage B drops the brick ring at 30, leaving the safe core untouched. The
+# two stages are separate sub-graphs so one can never reach the other's sectors.
+$floorGroupIdPrefix = 'destroyable.group.valtan.floor'
+$floorStageAGroupIdPrefix = 'destroyable.group.valtan.floor84.'
+$floorStageBGroupIdPrefix = 'destroyable.group.valtan.floor30.'
+$floorStageAPatternId = 'VALTAN_ARENA_BREAK_84'
+$floorStageAStageId = 'IMPACT'
+$floorStageAActionId = 'valtan.mechanic.arena-floor-84.impact'
+$floorStageAStageIndex = 1
+$floorStageBPatternId = 'VALTAN_ARENA_BREAK_33'
+$floorStageBStageId = 'LANDING'
+$floorStageBActionId = 'valtan.mechanic.arena-break-33.landing'
+$floorStageBStageIndex = 1
+$expectedFloorStageAGroupCount = 2
+$expectedFloorStageBGroupCount = 4
 # Every ring slab is its own emitter and the runtime derives this many rigid
 # fragments from the slab's authored debris recipe.
 $expectedFragmentsPerEmitter = 12
@@ -105,16 +123,58 @@ function Read-NavigationBlockerCatalog {
         if ($cursor + $cellCount -gt $lines.Count) {
             throw 'Navigation blocker cells are truncated.'
         }
+        # Floor collapse regions are validated cell by cell against the baked
+        # navgrid, so the exact cells are kept instead of only their count.
+        $cellKeys = [Collections.Generic.List[string]]::new()
+        for ($cellIndex = 0; $cellIndex -lt $cellCount; ++$cellIndex) {
+            $cellTokens = @(& $split $lines[$cursor + $cellIndex])
+            if ($cellTokens.Count -ne 2) {
+                throw 'Navigation blocker cell row is invalid.'
+            }
+            $cellKeys.Add("$([uint32]$cellTokens[0]),$([uint32]$cellTokens[1])")
+        }
         $cursor += $cellCount
         $regions[[string]$tokens[1]] = [pscustomobject]@{
             RegionId=[string]$tokens[1]
             ConditionId=[string]$tokens[2]
             ActivateWhenTrue=([string]$tokens[3] -eq '1')
             CellCount=$cellCount
+            CellKeys=$cellKeys
         }
     }
     if ($cursor -ne $lines.Count) { throw 'Navigation blocker document has trailing rows.' }
     return [pscustomobject]@{ Regions=$regions }
+}
+
+# A floor collapse region may only paint cells that the baked navgrid already
+# marks walkable. A cell that starts blocked would make the dynamic polarity
+# meaningless and hide an authoring mistake behind a correct-looking publish.
+function Test-BaseWalkableCell {
+    param([string]$CellKey)
+    if ($null -eq $script:BaseNavGrid) {
+        $resolved = Resolve-RepoPath $BaseNavGridPath
+        if (-not [IO.File]::Exists($resolved)) {
+            throw "Required base navigation grid is missing: $BaseNavGridPath"
+        }
+        $bytes = [IO.File]::ReadAllBytes($resolved)
+        if ($bytes.Length -lt 20) { throw 'Base navigation grid header is truncated.' }
+        $script:BaseNavGrid = [pscustomobject]@{
+            Width  = [BitConverter]::ToUInt32($bytes, 0)
+            Height = [BitConverter]::ToUInt32($bytes, 4)
+            Bytes  = $bytes
+        }
+        $expected = 20 + [long]$script:BaseNavGrid.Width * [long]$script:BaseNavGrid.Height * 5
+        if ($bytes.LongLength -ne $expected) {
+            throw 'Base navigation grid size does not match its header.'
+        }
+    }
+    $grid = $script:BaseNavGrid
+    $parts = $CellKey -split ','
+    if ($parts.Count -ne 2) { throw "Navigation cell key is invalid: $CellKey" }
+    $x = [int]$parts[0]
+    $z = [int]$parts[1]
+    if ($x -lt 0 -or $z -lt 0 -or $x -ge $grid.Width -or $z -ge $grid.Height) { return $false }
+    return $grid.Bytes[20 + $z * $grid.Width + $x] -eq 1
 }
 
 # A wall placement only fractures into pieces if its deploy asset owns a debris
@@ -434,6 +494,9 @@ function Compile-ValtanDebrisProfiles {
         $profileByGroupId[[string]$profile.groupId] = @($sortedEmitters)
     }
 
+    # Every canonical group owns exactly one debris simulation profile. A floor
+    # sector has no fractured mesh of its own, so its profile drives the shipped
+    # Valtan rubble meshes instead, and it is no longer exempt from coverage.
     if ($profileByGroupId.Count -ne $WorldGroupById.Count) {
         throw 'Destruction simulation must cover every canonical world destruction group exactly once.'
     }
@@ -560,7 +623,7 @@ function Compile-ValtanWorldDestruction {
         Assert-StableId $group.groupId 'groupId'
         Assert-UniqueId $groupIds ([string]$group.groupId) 'groupId'
         if ($group.initialState -cne 'INTACT' -or
-            $group.navPolarity -cnotin @('BLOCK_WHILE_INTACT','WALKABLE_WHILE_INTACT')) {
+            $group.navPolarity -cnotin @('BLOCK_WHILE_INTACT','BLOCK_WHILE_FRACTURED')) {
             throw "Group state or navigation polarity is invalid: $($group.groupId)"
         }
         $members = @($group.memberPlacementIds)
@@ -696,7 +759,33 @@ function Compile-ValtanWorldDestruction {
         $isEntranceGroup = ([string]$group.groupId).StartsWith(
             $entranceGroupIdPrefix, [StringComparison]::Ordinal)
         $isImpactBinding = $binding.triggerKind -ceq 'COLLISION_IMPACT'
-        $hasExpectedSchedule = if ($isContactBinding) {
+        $isFloorGroup = ([string]$group.groupId).StartsWith(
+            $floorGroupIdPrefix, [StringComparison]::Ordinal)
+        $hasExpectedSchedule = if ($isFloorGroup) {
+            # The floor collapses on the authored impact edge of its own health
+            # bar pattern and nothing else. A floor never breaks on contact and
+            # never carries a receiver, so both are refused here.
+            $isStageAGroup = ([string]$group.groupId).StartsWith(
+                $floorStageAGroupIdPrefix, [StringComparison]::Ordinal)
+            $isStageBGroup = ([string]$group.groupId).StartsWith(
+                $floorStageBGroupIdPrefix, [StringComparison]::Ordinal)
+            $expectedFloorPatternId = if ($isStageAGroup) { $floorStageAPatternId }
+                elseif ($isStageBGroup) { $floorStageBPatternId } else { $null }
+            $expectedFloorStageId = if ($isStageAGroup) { $floorStageAStageId }
+                elseif ($isStageBGroup) { $floorStageBStageId } else { $null }
+            $expectedFloorActionId = if ($isStageAGroup) { $floorStageAActionId }
+                elseif ($isStageBGroup) { $floorStageBActionId } else { $null }
+            $expectedFloorStageIndex = if ($isStageAGroup) { $floorStageAStageIndex }
+                elseif ($isStageBGroup) { $floorStageBStageIndex } else { -1 }
+            ($null -ne $expectedFloorPatternId) -and
+            ($binding.triggerKind -ceq 'STAGE_ENTER') -and
+            ([int]$binding.offsetMs -eq 0) -and
+            [string]::IsNullOrEmpty([string]$binding.receiverCollisionId) -and
+            ([string]$binding.patternId -ceq $expectedFloorPatternId) -and
+            ([string]$binding.stageId -ceq $expectedFloorStageId) -and
+            ([string]$resolvedStage.ActionId -ceq $expectedFloorActionId) -and
+            ([int]$resolvedStage.StageIndex -eq [int]$expectedFloorStageIndex)
+        } elseif ($isContactBinding) {
             # A contact break owns no schedule at all. Its whole contract is that
             # the receiver is one of this group's own authored collision boxes,
             # which is asserted below against the resolved source box list.
@@ -723,6 +812,13 @@ function Compile-ValtanWorldDestruction {
         }
         $groupKey = ([string]$group.groupId -split '\.')[-1]
         $navigationStateId = '-'
+        # A floor sector owns no collision box at all. It never blocks movement
+        # while it is intact and it is never an impact receiver, so requiring a
+        # wall's collision contract here would reject it for the wrong reason.
+        if ($isFloorGroup) {
+            $sourceCollisionIds = @()
+            $collisionStateId = ''
+        } else {
         if (-not $sourceCollisionIdsByGroup.ContainsKey([string]$group.groupId) -or
             @($sourceCollisionIdsByGroup[[string]$group.groupId]).Count -eq 0) {
             throw "Destruction group has no authored source collision boxes: $($group.groupId)"
@@ -749,6 +845,7 @@ function Compile-ValtanWorldDestruction {
                 throw "Multi-member destruction group does not own one collision parent: $($group.groupId)"
             }
             $collisionStateId = [string]$collisionParents[0]
+        }
         }
         if ($isContactBinding) {
             # The receiver has to be one of this group's own authored collision
@@ -796,8 +893,13 @@ function Compile-ValtanWorldDestruction {
                 throw "Destruction group references an unknown navigation region: $navRegionId"
             }
             $navRegion = $NavigationBlockers.Regions[$navRegionId]
-            if ([uint32]$navRegion.CellCount -eq 0 -or $navRegion.ActivateWhenTrue -or
-                $group.navPolarity -cne 'BLOCK_WHILE_INTACT') {
+            # A wall blocks while its condition is false and opens when it
+            # breaks. A floor is the mirror image, so the region has to activate
+            # on the true condition or the hole stays walkable.
+            $expectsActivateWhenTrue =
+                $group.navPolarity -ceq 'BLOCK_WHILE_FRACTURED'
+            if ([uint32]$navRegion.CellCount -eq 0 -or
+                [bool]$navRegion.ActivateWhenTrue -ne [bool]$expectsActivateWhenTrue) {
                 throw "Destruction navigation polarity is invalid: $navRegionId"
             }
             $navigationStateId = [string]$navRegion.ConditionId
@@ -819,7 +921,10 @@ function Compile-ValtanWorldDestruction {
                 GroupId = [string]$mutation.groupId
                 FinalState = [string]$mutation.targetState
                 BreakingTicks = Convert-ToTicks ([int]$mutation.breakingDurationMs) ([int]$Encounter.fixedTickHz)
-                CollisionStateId = $collisionStateId
+                # The Server bootstrap spells "no collision channel" as the dash
+                # marker, so a floor sector must never compile an empty column.
+                CollisionStateId = if ([string]::IsNullOrEmpty($collisionStateId)) {
+                    '-' } else { $collisionStateId }
                 NavigationStateId = $navigationStateId
             })
         }
@@ -909,6 +1014,75 @@ function Compile-ValtanWorldDestruction {
             throw "A contact binding must receive on its own wall collision box: $($binding.BindingId)"
         }
     }
+    # The two floor stages are their own reachable sub-graphs. Stage A drops the
+    # outer rail at 84 bars and stage B drops the brick ring at 30, and neither
+    # may reach a wall group, share a sector or repeat a navigation cell.
+    $floorBindings = @($serverBindings | Where-Object {
+        $_.TriggerKind -ceq 'STAGE' -and $_.ReceiverId -ceq '-' -and
+        (($_.PatternId -ceq $floorStageAPatternId -and $_.StageId -ceq $floorStageAStageId) -or
+         ($_.PatternId -ceq $floorStageBPatternId -and $_.StageId -ceq $floorStageBStageId))
+    })
+    $floorStageGroupIds = @{
+        $floorStageAGroupIdPrefix = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $floorStageBGroupIdPrefix = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    }
+    $floorMemberIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $floorCellOwners = @{}
+    foreach ($binding in $floorBindings) {
+        $reachedGroupId = [string]$mutationById[[string]$binding.MutationId].groupId
+        $reachedGroup = $groupById[$reachedGroupId]
+        if (-not $reachedGroupId.StartsWith($floorGroupIdPrefix, [StringComparison]::Ordinal)) {
+            throw "A floor collapse binding reaches a non-floor group: $reachedGroupId"
+        }
+        if ($reachedGroup.navPolarity -cne 'BLOCK_WHILE_FRACTURED') {
+            throw "A floor collapse group must use the fractured polarity: $reachedGroupId"
+        }
+        $stagePrefix = if ($reachedGroupId.StartsWith(
+            $floorStageAGroupIdPrefix, [StringComparison]::Ordinal)) {
+            $floorStageAGroupIdPrefix
+        } elseif ($reachedGroupId.StartsWith(
+            $floorStageBGroupIdPrefix, [StringComparison]::Ordinal)) {
+            $floorStageBGroupIdPrefix
+        } else {
+            throw "A floor collapse group uses an unknown stage prefix: $reachedGroupId"
+        }
+        $expectedPatternId = if ($stagePrefix -ceq $floorStageAGroupIdPrefix) {
+            $floorStageAPatternId } else { $floorStageBPatternId }
+        if ([string]$binding.PatternId -cne $expectedPatternId) {
+            throw "A floor sector is bound to the other stage's pattern: $reachedGroupId"
+        }
+        if (-not $floorStageGroupIds[$stagePrefix].Add($reachedGroupId)) {
+            throw "Two floor bindings reach the same sector: $reachedGroupId"
+        }
+        foreach ($memberId in @($reachedGroup.memberPlacementIds)) {
+            if (-not $floorMemberIds.Add([string]$memberId)) {
+                throw "A floor sector placement is claimed twice: $memberId"
+            }
+        }
+        $mutation = $mutationById[[string]$binding.MutationId]
+        if ($mutation.targetState -cne 'DESPAWNED') {
+            throw "A floor collapse mutation must end at DESPAWNED: $($mutation.mutationId)"
+        }
+        foreach ($navRegionId in @($reachedGroup.navigationRegionIds)) {
+            $region = $NavigationBlockers.Regions[$navRegionId]
+            foreach ($cellKey in @($region.CellKeys)) {
+                if ($floorCellOwners.ContainsKey($cellKey)) {
+                    throw "Floor sectors share navigation cell ${cellKey}: $reachedGroupId and $($floorCellOwners[$cellKey])"
+                }
+                $floorCellOwners[$cellKey] = $reachedGroupId
+                if (-not (Test-BaseWalkableCell $cellKey)) {
+                    throw "A floor collapse region paints a base non-walkable cell: $reachedGroupId $cellKey"
+                }
+            }
+        }
+    }
+    foreach ($contactBinding in $contactBindings) {
+        $contactGroupId = [string]$mutationById[[string]$contactBinding.MutationId].groupId
+        if ($contactGroupId.StartsWith($floorGroupIdPrefix, [StringComparison]::Ordinal)) {
+            throw "A collider contact binding must never target a floor sector: $contactGroupId"
+        }
+    }
+
     $outerFragmentActorCount = 0
     $outerGroupIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $outerMemberIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -931,9 +1105,22 @@ function Compile-ValtanWorldDestruction {
 
     if ($isProductCandidate) {
         if ($arenaBreakBindings.Count + $impactBindings.Count +
-            $entranceBindings.Count + $contactBindings.Count -ne
-            $enabledBindings.Count) {
-            throw 'Every enabled destruction binding must belong to the contact, entrance, 109 stage or 159 impact contract.'
+            $entranceBindings.Count + $contactBindings.Count +
+            $floorBindings.Count -ne $enabledBindings.Count) {
+            throw 'Every enabled destruction binding must belong to the contact, entrance, 109 stage, 159 impact or floor collapse contract.'
+        }
+        if ($floorBindings.Count -gt 0) {
+            if ($floorStageGroupIds[$floorStageAGroupIdPrefix].Count -ne $expectedFloorStageAGroupCount) {
+                throw "Floor stage A must reach exactly $expectedFloorStageAGroupCount outer rail sectors, not $($floorStageGroupIds[$floorStageAGroupIdPrefix].Count)."
+            }
+            if ($floorStageGroupIds[$floorStageBGroupIdPrefix].Count -ne $expectedFloorStageBGroupCount) {
+                throw "Floor stage B must reach exactly $expectedFloorStageBGroupCount brick ring sectors, not $($floorStageGroupIds[$floorStageBGroupIdPrefix].Count)."
+            }
+            foreach ($floorMemberId in $floorMemberIds) {
+                if ($outerMemberIds.Contains([string]$floorMemberId)) {
+                    throw "A floor sector is also a 109 ring slab: $floorMemberId"
+                }
+            }
         }
         if ($entranceBindings.Count -ne $expectedEntranceGroupCount -or
             $entranceGroupIds.Count -ne $expectedEntranceGroupCount -or
@@ -1152,6 +1339,10 @@ function Compile-ValtanWorldDestruction {
         Interior109BindingCount = $interior109BindingCount
         ImpactBindingCount = $impactBindings.Count
         ContactBindingCount = $contactBindings.Count
+        FloorBindingCount = $floorBindings.Count
+        FloorStageAGroupCount = $floorStageGroupIds[$floorStageAGroupIdPrefix].Count
+        FloorStageBGroupCount = $floorStageGroupIds[$floorStageBGroupIdPrefix].Count
+        FloorCellCount = $floorCellOwners.Count
     }
 }
 
@@ -1238,26 +1429,53 @@ function Invoke-ContractTests {
     # Every source wall is an independent group. The sixty-nine ordinary walls
     # own contact bindings; the thirty 109 outer walls are stage-only. The graph
     # also carries ten 159 impact bindings and two first-appearance bindings.
-    $expectedCanonicalGroupCount = $expectedProductGroupCount
+    $expectedFloorGroupCount =
+        $expectedFloorStageAGroupCount + $expectedFloorStageBGroupCount
+    $expectedCanonicalGroupCount =
+        $expectedProductGroupCount + $expectedFloorGroupCount
     $expectedCanonicalBindingCount =
         $expectedIndependentContactWallCount + $expectedOuterGroupCount +
-        $expectedImpactGroupCount + $expectedEntranceGroupCount
+        $expectedImpactGroupCount + $expectedEntranceGroupCount +
+        $expectedFloorGroupCount
     if ($canonical.OuterGroupCount -ne $expectedOuterGroupCount -or
         $canonical.OuterMemberCount -ne $expectedOuterMemberCount -or
         $canonical.OuterFragmentActorCount -ne $expectedFragmentActorCount -or
         $canonical.Interior109BindingCount -ne 0 -or
         $canonical.ImpactBindingCount -ne $expectedImpactGroupCount -or
         $canonical.ContactBindingCount -ne $expectedIndependentContactWallCount -or
+        $canonical.FloorBindingCount -ne $expectedFloorGroupCount -or
+        $canonical.FloorStageAGroupCount -ne $expectedFloorStageAGroupCount -or
+        $canonical.FloorStageBGroupCount -ne $expectedFloorStageBGroupCount -or
         $canonical.GroupCount -ne $expectedCanonicalGroupCount -or
         $canonical.BindingCount -ne $expectedCanonicalBindingCount -or
         $canonical.Revision -cnotmatch $revisionPattern) {
-        throw "Canonical source did not compile $expectedProductGroupCount independent walls, $expectedIndependentContactWallCount ordinary contact bindings and the exact 109/entrance/159 schedules."
+        throw "Canonical source did not compile $expectedProductGroupCount independent walls, $expectedIndependentContactWallCount ordinary contact bindings, $expectedFloorGroupCount floor collapse sectors and the exact 109/entrance/159 schedules."
     }
     $canonicalProjection = $canonical.ClientJson | ConvertFrom-Json
+	$canonicalPresentation = $canonical.PresentationJson | ConvertFrom-Json
     if ($canonicalProjection.formatVersion -ne 2 -or
         @($canonicalProjection.groups).Count -ne $expectedCanonicalGroupCount) {
         throw 'Canonical projection did not compile the exact formatVersion 2 group contract.'
     }
+	$projectionGroupIds = @($canonicalProjection.groups | ForEach-Object { [string]$_.groupId })
+	$presentationGroupIds = @($canonicalPresentation.profiles | ForEach-Object { [string]$_.groupId })
+	$projectionGroupIdSet = [Collections.Generic.HashSet[string]]::new(
+		[StringComparer]::Ordinal)
+	foreach ($groupId in $projectionGroupIds) { [void]$projectionGroupIdSet.Add($groupId) }
+	$projectionOnlyGroupIds = @($projectionGroupIds | Where-Object {
+		$_ -cnotin $presentationGroupIds
+	})
+	if ($canonicalPresentation.formatVersion -ne 1 -or
+		$presentationGroupIds.Count -ne $expectedCanonicalGroupCount -or
+		@($presentationGroupIds | Where-Object {
+			-not $projectionGroupIdSet.Contains($_)
+		}).Count -ne 0 -or
+		$projectionOnlyGroupIds.Count -ne 0 -or
+		@($presentationGroupIds | Where-Object {
+			$_.StartsWith($floorGroupIdPrefix, [StringComparison]::Ordinal)
+		}).Count -ne $expectedFloorGroupCount) {
+		throw 'Canonical debris presentation must cover every projection group, including every floor collapse sector.'
+	}
     $canonicalOuterGroups = @($canonicalProjection.groups | Where-Object {
         ([string]$_.groupId).StartsWith($outerGroupIdPrefix, [StringComparison]::Ordinal)
     })

@@ -2,7 +2,7 @@
     "schema":  "lostark.world-destruction-client-projection",
     "formatVersion":  2,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "combatRuntimeRevision":  "d281ea05446e5e68fb87ff7f1086a560b46c7f10616b2b4b75fc4eac5e77e6d8",
+    "combatRuntimeRevision":  "6346a7642c2032148ee97a9c1e4df60606c9fc64e2148fe09680fb659e565e3f",
     "groups":  [
                    {
                        "groupId":  "destroyable.group.valtan.entrance.frontwallA",
@@ -22,6 +22,66 @@
                                                         ],
                        "memberPlacementIds":  [
                                                   "12252498194881956917"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000002",
+                       "mutationId":  "mutation.valtan.floor30.brick.7000000000000000002.collapse",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "7000000000000000002"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000003",
+                       "mutationId":  "mutation.valtan.floor30.brick.7000000000000000003.collapse",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "7000000000000000003"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000006",
+                       "mutationId":  "mutation.valtan.floor30.brick.7000000000000000006.collapse",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "7000000000000000006"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000007",
+                       "mutationId":  "mutation.valtan.floor30.brick.7000000000000000007.collapse",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "7000000000000000007"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000001",
+                       "mutationId":  "mutation.valtan.floor84.rail.7000000000000000001.collapse",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "7000000000000000001"
+                                              ]
+                   },
+                   {
+                       "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000005",
+                       "mutationId":  "mutation.valtan.floor84.rail.7000000000000000005.collapse",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "7000000000000000005"
                                               ]
                    },
                    {

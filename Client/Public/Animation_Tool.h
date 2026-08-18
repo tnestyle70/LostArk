@@ -5,6 +5,7 @@
 #include "AnimationSkillBindingDocument.h"
 #include "AnimationEffectCueDocument.h"
 #include "CharacterPreviewPanel.h"
+#include "ValtanPatternPreviewDocument.h"
 
 #include <filesystem>
 #include <unordered_set>
@@ -169,6 +170,7 @@ public:
 		shared_ptr<CCharacterPreviewPanel> pPreviewPanel);
 	~CAnimation_Tool();
 
+	void Update(f32_t fTimeDelta, bool_t bIsActiveTool);
 	void Render();
 
 private:
@@ -182,6 +184,19 @@ private:
 	void Adopt_AssetName(const std::string& assetName);
 	void Render_TargetConflict();
 	void Render_Playback(const shared_ptr<Engine::CModel>& pModel);
+	void Render_ValtanPatternPreview(const shared_ptr<Engine::CModel>& pModel);
+	bool_t Start_ValtanPatternPreview(
+		const shared_ptr<Engine::CModel>& pModel,
+		uint32_t iFirstPattern,
+		uint32_t iLastPattern);
+	bool_t Activate_ValtanPatternPreviewItem(
+		const shared_ptr<Engine::CModel>& pModel);
+	void Advance_ValtanPatternPreview(
+		const shared_ptr<Engine::CModel>& pModel);
+	void Stop_ValtanPatternPreview(
+		const shared_ptr<Engine::CModel>& pModel,
+		const std::string& status);
+	void Reset_ValtanPatternPreviewState(const std::string& status);
 	void Render_ClipChain(const shared_ptr<Engine::CModel>& pModel);
 	void Render_NotifyReference(const shared_ptr<Engine::CModel>& pModel);
 	void Bind_ReferenceWire(const std::string& sourceKey);
@@ -282,6 +297,19 @@ private:
 	char m_Filter[128]{};
 	bool_t m_bLoop = true;
 	bool_t m_bShowHitAreas = true;
+	VALTAN_PATTERN_PREVIEW_DOCUMENT m_ValtanPatternPreviewDocument;
+	std::vector<VALTAN_PATTERN_PREVIEW_PLAY_ITEM> m_ValtanPatternPreviewPlaylist;
+	bool_t m_bValtanPatternPreviewLoadAttempted = false;
+	bool_t m_bValtanPatternPreviewPlaying = false;
+	bool_t m_bValtanPatternPreviewPaused = false;
+	int32_t m_iValtanPatternPreviewSelected = 0;
+	std::size_t m_iValtanPatternPreviewItem = 0u;
+	f32_t m_fValtanPatternPreviewElapsedSeconds = 0.f;
+	f32_t m_fValtanPatternPreviewItemDurationSeconds = 0.f;
+	f32_t m_fValtanPatternPreviewSpeed = 1.f;
+	std::string m_strValtanPatternPreviewStatus;
+	std::weak_ptr<Engine::CModel> m_ValtanPatternPreviewModel;
+	uint64_t m_iValtanPatternPreviewTargetGeneration = 0u;
 	/* Shared with Effect Tool through MainApp. This tool only contributes the
 	unsaved Animation document lock to that one preview session. */
 	shared_ptr<CCharacterPreviewPanel> m_pPreviewPanel;
