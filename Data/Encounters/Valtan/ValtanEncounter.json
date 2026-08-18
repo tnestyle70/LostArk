@@ -484,6 +484,22 @@
       ]
     },
     {
+      "patternId": "VALTAN_ARENA_BREAK_84",
+      "displayName": "84줄 외곽 바닥 붕괴",
+      "actionId": "valtan.mechanic.arena-floor-84",
+      "sourceActionIds": [420629],
+      "selectionMode": "HEALTH_BAR",
+      "minimumHealthBar": 0, "maximumHealthBar": 0,
+      "triggerHealthBar": 84, "triggerOrder": 1,
+      "selectionWeight": 0, "maximumConsecutiveUses": 0,
+      "minimumRange": 0.0, "maximumRange": 100.0,
+      "stages": [
+        { "stageId": "WINDUP", "actionId": "valtan.mechanic.arena-floor-84.windup", "stageKind": "WINDUP", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "IMPACT", "actionId": "valtan.mechanic.arena-floor-84.impact", "stageKind": "ACTIVE", "durationMs": 500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.arena-floor-84.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "" }
+      ]
+    },
+    {
       "patternId": "VALTAN_MAGIC_ORB_STAGGER_76",
       "displayName": "73줄 남북·동서 마력구 폭발",
       "actionId": "valtan.mechanic.magic-orb-stagger-76",

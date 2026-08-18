@@ -1954,7 +1954,9 @@ namespace
 			static_cast<std::uint8_t>(
 				VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK) == rawOperation ||
 			static_cast<std::uint8_t>(
-				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA) == rawOperation)
+				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA) == rawOperation ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL) == rawOperation)
 		{
 			return 0u == targetHealthBar;
 		}

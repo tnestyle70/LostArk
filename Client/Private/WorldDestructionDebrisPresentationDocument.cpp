@@ -381,20 +381,21 @@ bool_t Client::CWorldDestructionDebrisPresentationDocument::Validate_Against(
 	if (!m_isReady || !projection.Is_Ready() ||
 		m_strAreaId != projection.Get_AreaId() ||
 		m_strCombatRuntimeRevision != projection.Get_CombatRuntimeRevision() ||
-		m_Profiles.size() != projection.Get_Groups().size())
+		m_Profiles.size() > projection.Get_Groups().size())
 	{
 		outStatus = "World destruction debris presentation/projection header mismatch";
 		return false;
 	}
 
-	for (size_t profileIndex = 0u; profileIndex < m_Profiles.size(); ++profileIndex)
+	/* Persistent destruction projection owns every gameplay state. Debris is an
+	optional, one-shot presentation layer: state-only floor collapses deliberately
+	have no debris profile. Every profile that does exist still has to join one
+	projection group exactly and cover that group's members without guessing. */
+	for (const WORLD_DESTRUCTION_DEBRIS_PROFILE& profile : m_Profiles)
 	{
-		const WORLD_DESTRUCTION_DEBRIS_PROFILE& profile =
-			m_Profiles[profileIndex];
-		const WORLD_DESTRUCTION_PROJECTION_GROUP& group =
-			projection.Get_Groups()[profileIndex];
-		if (profile.strGroupId != group.strGroupId ||
-			profile.strMutationId != group.strMutationId)
+		const WORLD_DESTRUCTION_PROJECTION_GROUP* group =
+			projection.Find_Group(profile.strGroupId);
+		if (nullptr == group || profile.strMutationId != group->strMutationId)
 		{
 			outStatus = "World destruction debris presentation group mismatch: " +
 				profile.strGroupId;
@@ -415,8 +416,8 @@ bool_t Client::CWorldDestructionDebrisPresentationDocument::Validate_Against(
 		}
 		std::sort(projectedMembers.begin(), projectedMembers.end());
 		std::sort(suppressionAliases.begin(), suppressionAliases.end());
-		if (projectedMembers != group.MemberPlacementIds ||
-			suppressionAliases != group.SuppressionAliasPlacementIds)
+		if (projectedMembers != group->MemberPlacementIds ||
+			suppressionAliases != group->SuppressionAliasPlacementIds)
 		{
 			outStatus = "World destruction debris presentation coverage/alias mismatch: " +
 				profile.strGroupId;
@@ -424,8 +425,9 @@ bool_t Client::CWorldDestructionDebrisPresentationDocument::Validate_Against(
 		}
 	}
 
-	outStatus = "Validated world destruction debris presentation against " +
-		std::to_string(m_Profiles.size()) + " projection groups";
+	outStatus = "Validated " + std::to_string(m_Profiles.size()) +
+		" debris profiles against " +
+		std::to_string(projection.Get_Groups().size()) + " projection groups";
 	return true;
 }
 

@@ -2,7 +2,7 @@
     "schema":  "lostark.world-destruction-debris-presentation",
     "formatVersion":  1,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "combatRuntimeRevision":  "d281ea05446e5e68fb87ff7f1086a560b46c7f10616b2b4b75fc4eac5e77e6d8",
+    "combatRuntimeRevision":  "6346a7642c2032148ee97a9c1e4df60606c9fc64e2148fe09680fb659e565e3f",
     "profiles":  [
                      {
                          "groupId":  "destroyable.group.valtan.entrance.frontwallA",
@@ -51,6 +51,162 @@
                                                                 -0.53056
                                                             ],
                                               "speedMetersPerSecond":  5,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000002",
+                         "mutationId":  "mutation.valtan.floor30.brick.7000000000000000002.collapse",
+                         "bindingId":  "binding.valtan.floor30.brick.7000000000000000002",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "7000000000000000002",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000003",
+                         "mutationId":  "mutation.valtan.floor30.brick.7000000000000000003.collapse",
+                         "bindingId":  "binding.valtan.floor30.brick.7000000000000000003",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "7000000000000000003",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000006",
+                         "mutationId":  "mutation.valtan.floor30.brick.7000000000000000006.collapse",
+                         "bindingId":  "binding.valtan.floor30.brick.7000000000000000006",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "7000000000000000006",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000007",
+                         "mutationId":  "mutation.valtan.floor30.brick.7000000000000000007.collapse",
+                         "bindingId":  "binding.valtan.floor30.brick.7000000000000000007",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "7000000000000000007",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000001",
+                         "mutationId":  "mutation.valtan.floor84.rail.7000000000000000001.collapse",
+                         "bindingId":  "binding.valtan.floor84.rail.7000000000000000001",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "7000000000000000001",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
+                                              "gravityScale":  2,
+                                              "lifetimeSeconds":  4
+                                          }
+                                      ]
+                     },
+                     {
+                         "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000005",
+                         "mutationId":  "mutation.valtan.floor84.rail.7000000000000000005.collapse",
+                         "bindingId":  "binding.valtan.floor84.rail.7000000000000000005",
+                         "emitters":  [
+                                          {
+                                              "sourceRuntimePlacementId":  "7000000000000000005",
+                                              "suppressionAliasPlacementIds":  [
+
+                                                                               ],
+                                              "spawnOffset":  [
+                                                                  0,
+                                                                  0,
+                                                                  0
+                                                              ],
+                                              "direction":  [
+                                                                0,
+                                                                -1,
+                                                                0
+                                                            ],
+                                              "speedMetersPerSecond":  6,
                                               "gravityScale":  2,
                                               "lifetimeSeconds":  4
                                           }

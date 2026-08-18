@@ -6,6 +6,7 @@
 #include "Network/PacketWriter.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -106,6 +107,21 @@ namespace
 	constexpr const char* FINAL_ARENA_STAGE_ID = "IMPACT";
 	constexpr const char* FINAL_ARENA_ACTION_ID =
 		"valtan.mechanic.arena-break-109.impact";
+	/* The final arena is the arena after the whole shrink chain, so the Debug
+	   view also stages the two floor collapses. Stage A drops the outer rail at
+	   84 bars and stage B drops the brick ring at the 30-bar landing. */
+	constexpr const char* FINAL_ARENA_FLOOR_A_PATTERN_ID =
+		"VALTAN_ARENA_BREAK_84";
+	constexpr const char* FINAL_ARENA_FLOOR_A_STAGE_ID = "IMPACT";
+	constexpr const char* FINAL_ARENA_FLOOR_A_ACTION_ID =
+		"valtan.mechanic.arena-floor-84.impact";
+	constexpr std::uint32_t FINAL_ARENA_FLOOR_A_STAGE_INDEX = 1u;
+	constexpr const char* FINAL_ARENA_FLOOR_B_PATTERN_ID =
+		"VALTAN_ARENA_BREAK_33";
+	constexpr const char* FINAL_ARENA_FLOOR_B_STAGE_ID = "LANDING";
+	constexpr const char* FINAL_ARENA_FLOOR_B_ACTION_ID =
+		"valtan.mechanic.arena-break-33.landing";
+	constexpr std::uint32_t FINAL_ARENA_FLOOR_B_STAGE_INDEX = 1u;
 	/* A known ordinary wall used only by the Debug attack audition. The boss is
 	   kept six metres outside its centre so body contact cannot pre-empt the
 	   DOWN_SMASH hit pulse, while the player is projected onto the inner side. */
@@ -1691,10 +1707,15 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK == request.eOperation;
 		const bool isFinalArenaView =
 			VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA == request.eOperation;
+		/* The same staging without the floor stages, so the 84 and 30 collapses
+		   can afterwards be auditioned with every wall already gone. */
+		const bool isOpenArenaView =
+			VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL == request.eOperation;
+		const bool isArenaStagingView = isFinalArenaView || isOpenArenaView;
 		SERVER_WORLD_ENTITY* boss = Find_AuditionBoss();
 		if (nullptr == boss &&
 			(VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR == request.eOperation ||
-			 isPillarCyclePlay || isWallAttackPlay || isFinalArenaView))
+			 isPillarCyclePlay || isWallAttackPlay || isArenaStagingView))
 		{
 			(void)Activate_Encounter("boss.valtan.center");
 			boss = Find_AuditionBoss();
@@ -1736,7 +1757,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 		/* The pillar cycle names the mechanic, not a bar, so its own authored
 		pattern decides which crossing reproduces it. */
 		std::uint32_t targetHealthBar = request.iTargetHealthBar;
-		if (!isEntrancePlay && !isFinalArenaView)
+		if (!isEntrancePlay && !isArenaStagingView)
 		{
 			const auto authored = std::find_if(
 				patterns->begin(),
@@ -1762,7 +1783,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 		const bool isOneClickPlay =
 			VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR == request.eOperation ||
 			isEntrancePlay || isPillarCyclePlay || isWallAttackPlay ||
-			isFinalArenaView;
+			isArenaStagingView;
 		/* ARM/CROSS are diagnostics over the current encounter. PLAY is the
 		   repeatable user-facing audition: it resets the authoritative boss and
 		   destruction generation first, so a previous 159/80 run cannot make the
@@ -1778,7 +1799,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
 		}
 
-		if (isFinalArenaView)
+		if (isArenaStagingView)
 		{
 			std::string resetStatus;
 			const std::uint32_t resetTick =
@@ -1859,11 +1880,67 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 					outerAction, boss->iNetEntityId, outerPatternSequence,
 					resetTick, outerTransaction, resetStatus);
 			if (WORLD_DESTRUCTION_PREPARE_RESULT::READY != outerResult ||
-				!appendTransaction(outerTransaction) ||
-				stagedPairs.size() != graph.Groups.size())
+				!appendTransaction(outerTransaction))
 			{
 				m_strStatus = "Final arena outer-wall staging failed: " +
 					resetStatus;
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+
+			/* The floor sectors carry their own health-bar patterns, so each
+			   stage is prepared on its own pattern sequence. The final arena is
+			   only complete when every authored group has been staged once. */
+			const std::array<WORLD_DESTRUCTION_ACTION_TUPLE, 2u> floorActions{
+				WORLD_DESTRUCTION_ACTION_TUPLE{
+					FINAL_ARENA_FLOOR_A_PATTERN_ID,
+					FINAL_ARENA_FLOOR_A_STAGE_ID,
+					FINAL_ARENA_FLOOR_A_ACTION_ID,
+					FINAL_ARENA_FLOOR_A_STAGE_INDEX },
+				WORLD_DESTRUCTION_ACTION_TUPLE{
+					FINAL_ARENA_FLOOR_B_PATTERN_ID,
+					FINAL_ARENA_FLOOR_B_STAGE_ID,
+					FINAL_ARENA_FLOOR_B_ACTION_ID,
+					FINAL_ARENA_FLOOR_B_STAGE_INDEX } };
+			std::uint32_t floorPatternSequence = outerPatternSequence;
+			/* The open-arena view prepares the same two stages only to learn how
+			   many groups the floor owns. It never appends them, so the sectors stay
+			   INTACT and their own bars can still collapse them afterwards. */
+			std::size_t floorGroupCount = 0u;
+			for (const WORLD_DESTRUCTION_ACTION_TUPLE& floorAction : floorActions)
+			{
+				floorPatternSequence =
+					(std::numeric_limits<std::uint32_t>::max)() ==
+						floorPatternSequence ? 1u : floorPatternSequence + 1u;
+				WORLD_DESTRUCTION_TRANSACTION floorTransaction{};
+				const WORLD_DESTRUCTION_PREPARE_RESULT floorResult =
+					m_WorldDestructionRuntime.Prepare_StageTrigger(
+						floorAction, boss->iNetEntityId, floorPatternSequence,
+						resetTick, floorTransaction, resetStatus);
+				if (WORLD_DESTRUCTION_PREPARE_RESULT::READY != floorResult ||
+					(isFinalArenaView && !appendTransaction(floorTransaction)))
+				{
+					m_strStatus = "Final arena floor staging failed: " +
+						resetStatus;
+					return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+				}
+				floorGroupCount += floorTransaction.Transitions.size();
+			}
+
+			/* Checked before the subtraction so an unresolved floor can never wrap
+			   the unsigned coverage target into a passing value. */
+			if (0u == floorGroupCount ||
+				floorGroupCount >= graph.Groups.size())
+			{
+				m_strStatus = "Arena staging could not resolve the floor sectors.";
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+			const std::size_t expectedGroupCoverage = isFinalArenaView ?
+				graph.Groups.size() : graph.Groups.size() - floorGroupCount;
+			if (stagedPairs.size() != expectedGroupCoverage)
+			{
+				m_strStatus = isFinalArenaView ?
+					"Final arena staging did not cover every group." :
+					"Open arena staging did not cover every wall group.";
 				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
 			}
 

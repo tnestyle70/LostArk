@@ -1912,6 +1912,18 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		{
 			return placement.strPlacementId == "npc.bern.beda.guide";
 		});
+	const auto bernAylara = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == "npc.bern.aylara";
+		});
+	const auto bernValtanTrigger = std::find_if(
+		bernPlacements.begin(), bernPlacements.end(),
+		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
+		{
+			return placement.strPlacementId == "valtan";
+		});
 	const auto bernCollision = std::find_if(
 		bernPlacements.begin(), bernPlacements.end(),
 		[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -1920,7 +1932,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				"collision.bern.editor-proof";
 		});
 	tests.Require(
-		bernLoaded && bernPlacements.size() == 7u &&
+		bernLoaded && bernPlacements.size() == 9u &&
 		4u == static_cast<size_t>(std::count_if(
 			bernPlacements.begin(), bernPlacements.end(),
 			[](const WORLD_BOOTSTRAP_PLACEMENT& placement)
@@ -1931,9 +1943,17 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		bernNpc != bernPlacements.end() &&
 		WORLD_BOOTSTRAP_KIND::NPC == bernNpc->eKind &&
 		bernNpc->strArchetypeId == "NPC_BEDA" &&
+		bernAylara != bernPlacements.end() &&
+		WORLD_BOOTSTRAP_KIND::NPC == bernAylara->eKind &&
+		bernAylara->strArchetypeId == "NPC_AYLARA" &&
+		bernAylara->isEnabled &&
+		bernValtanTrigger != bernPlacements.end() &&
+		WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == bernValtanTrigger->eKind &&
+		bernValtanTrigger->isEnabled &&
+		1u == bernValtanTrigger->TriggerActions.size() &&
 		bernCollision != bernPlacements.end() &&
 		WORLD_BOOTSTRAP_KIND::COLLISION_BOX == bernCollision->eKind,
-		"Load Bern spawns, NPC_BEDA, trigger, and collision box");
+		"Load Bern spawns, both NPCs, both triggers, and collision box");
 	CServerCollisionSystem bernCollisionSystem;
 	std::string bernCollisionStatus;
 	tests.Require(
@@ -3150,6 +3170,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		CGameplayCatalog rollbackCatalog;
 		tests.Require(rollbackCatalog.Load(),
 			"Stage a valid gameplay catalog before rollback test");
+		const auto* committedPatterns =
+			rollbackCatalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		const size_t committedPatternCount =
+			nullptr != committedPatterns ? committedPatterns->size() : 0u;
 		SetEnvironmentVariableW(
 			L"LOSTARK_SERVER_DATA_ROOT", overCostRoot.c_str());
 		CGameplayCatalog overCostCatalog;
@@ -3159,7 +3183,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			!rollbackCatalog.Load() &&
 			nullptr != rollbackCatalog.Find_Skill(34010) &&
 			nullptr != rollbackCatalog.Find_BossPatterns("ENCOUNTER_VALTAN") &&
-			32u == rollbackCatalog.Find_BossPatterns("ENCOUNTER_VALTAN")->size(),
+			0u != committedPatternCount &&
+			committedPatternCount ==
+				rollbackCatalog.Find_BossPatterns("ENCOUNTER_VALTAN")->size(),
 			"Preserve the committed catalog after a corrupt replacement fails");
 		SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
 			0u == previousLength || previousLength >= std::size(previousRoot) ?
@@ -4885,20 +4911,53 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				});
 		tests.Require(
 			stagedFinalArena,
-			"Stage every independent wall as one Server-authoritative final-arena Debug transaction");
+			"Stage every independent wall and floor sector as one Server-authoritative final-arena Debug transaction");
 		for (std::uint32_t tick = 0u; tick < 9u; ++tick)
 			room.Tick(1.f / 30.f);
 		const std::vector<WORLD_DESTRUCTION_GROUP_STATE> finalArenaStates =
 			room.m_WorldDestructionRuntime.Get_GroupStates();
 		tests.Require(
-			99u == finalArenaStates.size() &&
+			105u == finalArenaStates.size() &&
 			std::all_of(
 				finalArenaStates.begin(), finalArenaStates.end(),
 				[](const WORLD_DESTRUCTION_GROUP_STATE& state)
 				{
 					return WORLD_DESTRUCTION_STATE::DESPAWNED == state.eState;
 				}),
-			"Commit all ninety-nine wall units to the disappeared final-arena state");
+			"Commit all ninety-nine walls and six floor sectors to the disappeared final-arena state");
+
+		/* The open-arena view resets first and then stages walls only, so the 84
+		and 30 collapses can still be auditioned with nothing standing above. */
+		C2S_VALTAN_AUDITION_REQUEST openArena{};
+		openArena.iRequestSequence = 11u;
+		openArena.eOperation = VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL;
+		openArena.iTargetHealthBar = 0u;
+		const bool acceptedOpenArena =
+			VALTAN_AUDITION_RESULT::QUEUED ==
+				room.Evaluate_ValtanAudition(
+					AUDITION_SESSION, openArena, reportedBar);
+		for (std::uint32_t tick = 0u; tick < 9u; ++tick)
+			room.Tick(1.f / 30.f);
+		const std::vector<WORLD_DESTRUCTION_GROUP_STATE> openArenaStates =
+			room.m_WorldDestructionRuntime.Get_GroupStates();
+		std::size_t removedWallCount = 0u;
+		std::size_t intactFloorCount = 0u;
+		for (const WORLD_DESTRUCTION_GROUP_STATE& state : openArenaStates)
+		{
+			if (0u == state.strGroupId.rfind(
+				"destroyable.group.valtan.floor", 0u))
+			{
+				if (WORLD_DESTRUCTION_STATE::INTACT == state.eState)
+					++intactFloorCount;
+				continue;
+			}
+			if (WORLD_DESTRUCTION_STATE::DESPAWNED == state.eState)
+				++removedWallCount;
+		}
+		tests.Require(
+			acceptedOpenArena && 105u == openArenaStates.size() &&
+			99u == removedWallCount && 6u == intactFloorCount,
+			"Remove every wall for the open-arena view while all six floor sectors stay intact");
 #endif
 
 		room.m_Players.clear();

@@ -86,15 +86,32 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		++publishedOuterGroupCount;
 		publishedOuterMemberCount += group.MemberPlacementIds.size();
 	}
+	/* Ninety-nine independent walls plus the six arena floor sectors: two outer
+	rail halves that drop at 84 bars and four brick sectors that drop at 30. The
+	floor sectors add one member each and never join the 109 outer ring. */
+	std::size_t publishedFloorGroupCount = 0u;
+	std::size_t publishedFloorMemberCount = 0u;
+	for (const WORLD_DESTRUCTION_GROUP_DESCRIPTOR& group :
+		publishedBootstrap.Get_DescriptorGraph().Groups)
+	{
+		if (0u != group.strGroupId.rfind("destroyable.group.valtan.floor", 0u))
+		{
+			continue;
+		}
+		++publishedFloorGroupCount;
+		publishedFloorMemberCount += group.MemberPlacementIds.size();
+	}
 	require(
-		99u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
-		99u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
-		111u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
-		107u == publishedMemberCount &&
+		105u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
+		105u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
+		117u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
+		113u == publishedMemberCount &&
 		30u == publishedOuterGroupCount &&
 		30u == publishedOuterMemberCount &&
+		6u == publishedFloorGroupCount &&
+		6u == publishedFloorMemberCount &&
 		publishedBootstrap.Get_CombatRuntimeRevision().size() == 64u,
-		"Load ninety-nine independent Valtan source-wall destruction units");
+		"Load ninety-nine independent walls and six Valtan floor collapse sectors");
 	CWorldDestructionRuntime publishedRuntime;
 	std::string publishedRuntimeStatus;
 	WORLD_DESTRUCTION_TRANSACTION publishedTransaction{};
@@ -143,6 +160,94 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 				publishedTransaction, publishedRuntimeStatus) &&
 		publishedTransaction.Transitions.empty(),
 		"Treat the repeated 109-bar impact edge as one idempotent no-op");
+
+	/* The 109 collapse opens the outer ring only. Every floor sector has to
+	survive it, otherwise the arena would lose its footing one whole health-bar
+	chain too early. */
+	{
+		std::size_t survivingFloorSectors = 0u;
+		for (const WORLD_DESTRUCTION_GROUP_STATE& state :
+			publishedRuntime.Get_GroupStates())
+		{
+			if (0u != state.strGroupId.rfind(
+				"destroyable.group.valtan.floor", 0u))
+			{
+				continue;
+			}
+			if (WORLD_DESTRUCTION_STATE::INTACT == state.eState)
+				++survivingFloorSectors;
+		}
+		require(
+			6u == survivingFloorSectors,
+			"Leave every floor sector INTACT when the 109 outer ring collapses");
+	}
+
+	/* Stage A is the two outer rail halves at 84 bars and stage B is the four
+	brick sectors at the 30-bar landing. Each stage has to reach its own sectors
+	and nothing else, and a floor sector owns no collision channel at all. */
+	{
+		const WORLD_DESTRUCTION_ACTION_TUPLE floorStageAAction{
+			"VALTAN_ARENA_BREAK_84",
+			"IMPACT",
+			"valtan.mechanic.arena-floor-84.impact",
+			1u };
+		const WORLD_DESTRUCTION_ACTION_TUPLE floorStageBAction{
+			"VALTAN_ARENA_BREAK_33",
+			"LANDING",
+			"valtan.mechanic.arena-break-33.landing",
+			1u };
+		const auto reachesOnly = [](
+			const WORLD_DESTRUCTION_TRANSACTION& transaction,
+			const char* prefix) -> bool
+			{
+				return std::all_of(
+					transaction.Transitions.begin(),
+					transaction.Transitions.end(),
+					[prefix](const WORLD_DESTRUCTION_STATE_TRANSITION& transition)
+					{
+						return transition.strCollisionStateId.empty() &&
+							!transition.strNavigationStateId.empty() &&
+							WORLD_DESTRUCTION_STATE::DESPAWNED ==
+								transition.eFinalState &&
+							0u == transition.strGroupId.rfind(prefix, 0u);
+					});
+			};
+
+		CWorldDestructionRuntime floorRuntime;
+		WORLD_DESTRUCTION_TRANSACTION floorTransaction{};
+		require(
+			floorRuntime.Initialize(
+				publishedBootstrap.Get_DescriptorGraph(),
+				publishedRuntimeStatus) &&
+			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+				floorRuntime.Prepare_StageTrigger(
+					floorStageAAction, 7001u, 90u, 600u,
+					floorTransaction, publishedRuntimeStatus) &&
+			2u == floorTransaction.Transitions.size() &&
+			reachesOnly(
+				floorTransaction, "destroyable.group.valtan.floor84.rail.") &&
+			floorRuntime.Commit(floorTransaction, publishedRuntimeStatus),
+			"Collapse only the two outer rail sectors at the 84-bar impact");
+
+		require(
+			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
+				floorRuntime.Prepare_StageTrigger(
+					floorStageBAction, 7001u, 91u, 900u,
+					floorTransaction, publishedRuntimeStatus) &&
+			4u == floorTransaction.Transitions.size() &&
+			reachesOnly(
+				floorTransaction, "destroyable.group.valtan.floor30.brick.") &&
+			floorRuntime.Commit(floorTransaction, publishedRuntimeStatus),
+			"Collapse only the four brick sectors at the 30-bar landing");
+
+		require(
+			WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST ==
+				floorRuntime.Prepare_StageTrigger(
+					floorStageAAction, 7001u, 90u, 1200u,
+					floorTransaction, publishedRuntimeStatus) &&
+			floorTransaction.Transitions.empty(),
+			"Treat a repeated floor collapse edge as one idempotent no-op");
+	}
 
 	CWorldDestructionRuntime contactRuntime;
 	require(

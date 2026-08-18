@@ -386,7 +386,13 @@ HRESULT CLoader::Ready_For_ValtanArena()
 		ETOUI(LEVEL::VALTAN_ARENA),
 		"NPC_59030")))
 	{
-		return E_FAIL;
+		/* The summon payload lives in the team-managed Resources folder, so a
+		machine that has not received it yet must still be able to enter the
+		raid. Only the Sillian presentation is isolated: the gauge, the Server
+		skill and every other arena contract are untouched. */
+		OutputDebugStringA(
+			"[Loader][NpcPresentation] VALTAN esther summon presentation is "
+			"unavailable (NPC_59030); the arena loads without it.\n");
 	}
 	Set_Status(TEXT("VALTAN: deploy environment prototypes"));
 	if (FAILED(Ready_DeployPropArea(
@@ -753,7 +759,10 @@ HRESULT CLoader::Ready_DeployPropArea(
 			return E_FAIL;
 		}
 
-		if (DEPLOY_PROP_MODEL_KIND::STATIC != asset.kind)
+		// A STATIC prop whose authored mutation ends at DESPAWNED owns no
+		// fractured mesh, so there is no second prototype to admit for it.
+		if (DEPLOY_PROP_MODEL_KIND::STATIC != asset.kind ||
+			asset.fracturedPrototypeTag.empty())
 			continue;
 		auto fracturedModel = CModel::Create(
 			m_pDevice,

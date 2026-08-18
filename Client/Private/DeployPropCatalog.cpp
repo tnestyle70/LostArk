@@ -113,8 +113,14 @@ bool_t CDeployPropCatalog::Load(
 		if (!fracturedPath.empty())
 			entry.fracturedResolvedPath = CRuntimeAssetRoot::Resolve(entry.fracturedRelativePath);
 
+		// A STATIC prop may omit its fractured model when the authored mutation
+		// ends at DESPAWNED, which is how the Valtan arena floor sectors are
+		// authored. The pair stays all-or-nothing so a half-declared row can
+		// never reach the runtime, and ANIM still refuses a fractured model.
+		const bool_t declaresFractured =
+			!fracturedPath.empty() || !fracturedPrototype.empty();
 		const bool_t requiresFractured =
-			entry.kind == DEPLOY_PROP_MODEL_KIND::STATIC;
+			entry.kind == DEPLOY_PROP_MODEL_KIND::STATIC && declaresFractured;
 		if (entry.id.empty() || entry.label.empty() || entry.evidence.empty() ||
 			entry.intactRelativePath.is_absolute() ||
 			entry.intactRelativePath.extension() != L".wmodel" ||
@@ -126,7 +132,9 @@ bool_t CDeployPropCatalog::Load(
 				entry.fracturedPrototypeTag.empty() ||
 				!IsInsideRoot(assetRoot, entry.fracturedResolvedPath) ||
 				!std::filesystem::is_regular_file(entry.fracturedResolvedPath))) ||
-			(!requiresFractured && (!fracturedPath.empty() || !fracturedPrototype.empty())) ||
+			(declaresFractured &&
+				(fracturedPath.empty() || fracturedPrototype.empty())) ||
+			(entry.kind == DEPLOY_PROP_MODEL_KIND::ANIM && declaresFractured) ||
 			!assetIds.insert(entry.id).second ||
 			!prototypeTags.insert(entry.intactPrototypeTag).second ||
 			(requiresFractured &&

@@ -671,6 +671,12 @@ namespace LostArk::Shared
 		// so the fully opened arena can be inspected without replaying 99 hits.
 		PLAY_WALL_ATTACK,
 		SHOW_FINAL_ARENA,
+		// The same Server destruction transaction as SHOW_FINAL_ARENA without
+		// the two floor stages. It reproduces the arena the recording shows at
+		// the 109 crossing: every wall already smashed while the floor is still
+		// whole, so the 84 and 30 collapses can then be auditioned with nothing
+		// standing above them.
+		BREAK_EVERY_WALL,
 		END
 	};
 

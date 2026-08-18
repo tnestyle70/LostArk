@@ -84,13 +84,13 @@ HRESULT CDeployPropObject::Initialize(void* pArg)
 	if (nullptr == pArg)
 		return E_FAIL;
 	const DEPLOY_PROP_DESC desc = *static_cast<DEPLOY_PROP_DESC*>(pArg);
+	// The catalog decides whether a STATIC prop owns a fractured model, so this
+	// object accepts an empty fractured tag and renders intact for that state.
 	if (desc.prototypeLevelIndex >= ETOUI(LEVEL::END) ||
 		0 == desc.placement.runtimePlacementId ||
 		desc.placement.assetId.empty() || desc.intactPrototypeTag.empty() ||
 		!std::isfinite(desc.placement.uniformScale) ||
-		desc.placement.uniformScale <= 0.000001f ||
-		(desc.modelKind == DEPLOY_PROP_MODEL_KIND::STATIC &&
-			desc.fracturedPrototypeTag.empty()))
+		desc.placement.uniformScale <= 0.000001f)
 		return E_FAIL;
 
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(desc)))
@@ -774,6 +774,7 @@ HRESULT CDeployPropObject::Ready_Components(const DEPLOY_PROP_DESC& desc)
 		return E_FAIL;
 
 	if (desc.modelKind == DEPLOY_PROP_MODEL_KIND::STATIC &&
+		!desc.fracturedPrototypeTag.empty() &&
 		FAILED(__super::Add_Component(
 			desc.prototypeLevelIndex, desc.fracturedPrototypeTag,
 			TEXT("Com_Model_Fractured"), m_pFracturedModelCom)))
