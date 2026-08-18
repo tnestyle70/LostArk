@@ -1280,11 +1280,14 @@ void CCharacter::Draw_SkillHitAreaDebug() const
 	const f32_t fNowMs = fPosition * 1000.f / fTicksPerSecond;
 	constexpr uint32_t ACTIVE_HIT_COLOR_RGBA =
 		255u | (70u << 8) | (60u << 16) | (255u << 24);
+	constexpr f32_t MIN_VISIBLE_HIT_WINDOW_MS = 300.f;
 	for (const ANIMATION_HIT_CUE& Hit : m_EffectCueDocument.Hits)
 	{
 		if (Hit.Shape.iAreaType <= 0 || Hit.strClipName != pClipName)
 			continue;
-		const f32_t fWidthMs = static_cast<f32_t>(Hit.iEndMs - Hit.iStartMs);
+		const f32_t fWidthMs = (std::max)(
+			static_cast<f32_t>(Hit.iEndMs - Hit.iStartMs),
+			MIN_VISIBLE_HIT_WINDOW_MS);
 		for (uint32_t iTick = 0u; iTick < Hit.iRepeatCount; ++iTick)
 		{
 			const f32_t fTickMs =

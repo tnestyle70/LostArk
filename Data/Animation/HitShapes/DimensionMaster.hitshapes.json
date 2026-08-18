@@ -5,6 +5,63 @@
   "characterClass": "DIMENSIONMASTER",
   "skills": [
     {
+      "skillId": 2050100,
+      "hits": [
+        {
+          "timeMs": 1190,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 1.0,
+          "angle": 0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 30,
+          "pushRange": 0.4
+        }
+      ]
+    },
+    {
+      "skillId": 2050120,
+      "hits": [
+        {
+          "timeMs": 1927,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 1.5,
+          "angle": 0,
+          "height": 3.0,
+          "offset": 0.5,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 10,
+          "pushRange": 0.1
+        }
+      ]
+    },
+    {
+      "skillId": 2050160,
+      "hits": [
+        {
+          "timeMs": 883,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 4.5,
+          "angle": 120,
+          "height": 1.8,
+          "offset": -2.25,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
+        }
+      ]
+    },
+    {
       "skillId": 2050210,
       "hits": [
         {
@@ -57,6 +114,101 @@
           "range": 3.0,
           "angle": 360,
           "height": 1.0,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
+        }
+      ]
+    },
+    {
+      "skillId": 2050220,
+      "hits": [
+        {
+          "timeMs": 1451,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 6.5,
+          "angle": 250,
+          "height": 2.0,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
+        }
+      ]
+    },
+    {
+      "skillId": 2050230,
+      "hits": [
+        {
+          "timeMs": 1983,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 3.0,
+          "angle": 0,
+          "height": 1.5,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 10,
+          "pushRange": 0.1
+        }
+      ]
+    },
+    {
+      "skillId": 2050240,
+      "hits": [
+        {
+          "timeMs": 1700,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 2,
+          "range": 5.0,
+          "angle": 200,
+          "height": 1.5,
+          "offset": -0.2,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
+        }
+      ]
+    },
+    {
+      "skillId": 2050500,
+      "hits": [
+        {
+          "timeMs": 3712,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 3.0,
+          "angle": 0,
+          "height": 4.0,
+          "offset": 0.0,
+          "inner": 0.0,
+          "maxTargets": 0,
+          "pushMs": 0,
+          "pushRange": 0.0
+        }
+      ]
+    },
+    {
+      "skillId": 2050540,
+      "hits": [
+        {
+          "timeMs": 4335,
+          "repeatCount": 1,
+          "repeatMs": 0,
+          "areaType": 1,
+          "range": 5.0,
+          "angle": 0,
+          "height": 4.0,
           "offset": 0.0,
           "inner": 0.0,
           "maxTargets": 0,

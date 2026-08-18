@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
+LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3134
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력끝" src=orig
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력없음" src=orig
 "flm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_04" src=orig
@@ -3130,3 +3130,6 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3131
 "flm_sk_threetalonstrike_01" EFFECT startms=0 payload="effect.lancemaster.skill.34120.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_threetalonstrike_02" EFFECT startms=0 payload="effect.lancemaster.skill.34120.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_threetalonstrike_03" EFFECT startms=0 payload="effect.lancemaster.skill.34120.clip3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"flm_sk_lastwhisper_end" HIT startms=600 endms=684 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=2 ar=800 aa=170 ah=150 ax=-20 arem=0 maxt=0 src=orig
+"flm_sk_super_squalllance_01" HIT startms=1445 endms=1521 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=2 ar=400 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig
+"flm_sk_dragoncleave_03" HIT startms=507 endms=572 rep=1 repms=0 fz=600 fzin=200 fzout=300 push=0 pushr=0 area=2 ar=260 aa=300 ah=200 ax=-150 arem=0 maxt=0 src=orig
