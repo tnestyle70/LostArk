@@ -49,6 +49,17 @@ namespace
 		been located yet, so the 30 Inventory_Slot_* markers are position-only (empty layers) for
 		now -- real slot border art is a follow-up, not fabricated here. */
 		{ "Inventory UI",   "UI/Inventory/InventoryUI.json", "UI/Inventory/", false },
+		/* Item enhancement (강화) window content, traced from the real itemupgrade.gfx via
+		ItemUpgradeWndContent's SymbolClassTag/PlaceObject placement matrices (native 1920x1080
+		canvas, scaled to this project's 1280x720 HUD reference). Panel background, the item
+		slot/frame/glow art, the success-chance gauge ring, and the option-button background are
+		real crops resolved through the DefineSubImage bitmapId->imageId chain (mostly from the
+		ItemUpgrade_I4 atlas -- not I30, which looks similar but is the wrong source page, see
+		reference_itemupgrade_gfx_extraction memory). Every other named field (list, combobox,
+		labels, cost/money, recipe list) is placed at its real x/y but still uses a visible
+		authoring marker image since its own bitmap skin hasn't been traced yet -- follow-up, not
+		fabricated here. */
+		{ "Item Upgrade",   "UI/ItemUpgrade/ItemUpgradeUI.json", "UI/ItemUpgrade/", false },
 	};
 
 	constexpr int32_t g_iDocumentCount = static_cast<int32_t>(sizeof(g_Documents) / sizeof(g_Documents[0]));

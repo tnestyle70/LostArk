@@ -1,0 +1,1045 @@
+{
+  "schema": "lostark.ui-layout",
+  "formatVersion": 1,
+  "resolution": {
+    "width": 1280,
+    "height": 720
+  },
+  "classes": [
+    "Default"
+  ],
+  "slots": [
+    {
+      "id": "ItemUpgrade_PanelBg",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 313.0,
+        "y": 102.0,
+        "width": 653.3333,
+        "height": 515.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_panel_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_FrameArt",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 550.3333,
+        "y": 102.0,
+        "width": 413.3333,
+        "height": 456.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_frame_art.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_GaugeRing",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 648.3333,
+        "y": 252.0,
+        "width": 218.0,
+        "height": 216.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_gauge_ring.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_TooltipBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 567.0,
+        "y": 114.6667,
+        "width": 21.3333,
+        "height": 21.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_ComboBox",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 321.0,
+        "y": 110.0,
+        "width": 224.0,
+        "height": 21.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_ItemList",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 321.0,
+        "y": 135.3333,
+        "width": 220.0,
+        "height": 406.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_Scrollbar",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 532.3333,
+        "y": 135.3333,
+        "width": 9.3333,
+        "height": 406.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_ItemSlot",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 731.6667,
+        "y": 162.6667,
+        "width": 60.0,
+        "height": 60.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_ItemNameLabel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 588.3333,
+        "y": 229.3333,
+        "width": 200.0,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_SetLevelLabel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 588.3333,
+        "y": 246.6667,
+        "width": 200.0,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_SelectDescLabel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 588.3333,
+        "y": 274.6667,
+        "width": 200.0,
+        "height": 26.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_BeforeOptionBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 605.6667,
+        "y": 304.6667,
+        "width": 148.0,
+        "height": 30.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_button_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_LimitOptionBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 681.6667,
+        "y": 304.6667,
+        "width": 148.0,
+        "height": 30.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_button_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_UpgradeOptionBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 757.3333,
+        "y": 304.6667,
+        "width": 148.0,
+        "height": 30.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_button_bg.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_UpgradeBtn",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 681.6667,
+        "y": 572.0,
+        "width": 93.3333,
+        "height": 26.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_CostDesc",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 599.6667,
+        "y": 514.6667,
+        "width": 100.0,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_Cost2Value",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 758.3333,
+        "y": 512.6667,
+        "width": 66.6667,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_CostValue",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 874.3333,
+        "y": 512.6667,
+        "width": 66.6667,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_MyMoneyDesc",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 599.6667,
+        "y": 534.6667,
+        "width": 100.0,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_MyMoney2Value",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 758.3333,
+        "y": 532.0,
+        "width": 66.6667,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_MyMoneyValue",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 874.3333,
+        "y": 532.0,
+        "width": 66.6667,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_UpgradeDescLabel",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 606.3333,
+        "y": 363.3333,
+        "width": 266.6667,
+        "height": 20.0
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_RecipeList",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 595.0,
+        "y": 426.6667,
+        "width": 333.3333,
+        "height": 86.6667
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    },
+    {
+      "id": "ItemUpgrade_LevelCaution",
+      "ownerClass": null,
+      "type": 0,
+      "rect": {
+        "x": 550.3333,
+        "y": 345.3333,
+        "width": 333.3333,
+        "height": 13.3333
+      },
+      "rotation": 0,
+      "stages": {
+        "baseFrom": 0,
+        "shineFrom": 1
+      },
+      "layers": [
+        {
+          "path": "UI/ItemUpgrade/itemupgrade_marker.png",
+          "hoverPath": null,
+          "tint": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "additive": false,
+          "flipX": false
+        }
+      ],
+      "shine": {
+        "texture": null,
+        "additive": false
+      },
+      "animation": {
+        "fps": 10,
+        "scale": 1,
+        "offset": {
+          "x": 0,
+          "y": 0
+        },
+        "frames": []
+      }
+    }
+  ]
+}
