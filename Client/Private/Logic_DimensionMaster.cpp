@@ -60,11 +60,17 @@ const CHARACTER_SPEC Spec_DimensionMaster =
 	nullptr,
 	0u,
 
+	/* The combined body has no separate down loop, so DOWN_LOOP stays null and
+	the land clip's final lying pose holds until the standup. */
 	{
 		"pc_sp_m_00_sk_idle_battle_1",
 		"pc_sp_m_00_sk_run_battle_1",
 		"pc_sp_m_00_sk_dmg_idle_1",
 		"pc_sp_m_00_sk_dead_1",
+		"pc_sp_m_00_sk_knockdown",
+		"pc_sp_m_00_sk_knockdown_land",
+		nullptr,
+		"pc_sp_m_00_sk_standup_1",
 	},
 
 	&Create_Logic,

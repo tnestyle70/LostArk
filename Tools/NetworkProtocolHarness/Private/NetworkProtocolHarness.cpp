@@ -1902,6 +1902,29 @@ namespace
 			testRunner.Require(
 				!Write_Message(triggerWithoutTickWriter, triggerWithoutTick),
 				"Reject Trigger Move Without Action Tick");
+
+			S2C_WORLD_SNAPSHOT knockdown = source;
+			knockdown.Players[1].eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
+			knockdown.Players[1].iSkillId = INVALID_SKILL_ID;
+			knockdown.Players[1].iActionStartTick = 77;
+			CPacketWriter knockdownWriter;
+			testRunner.Require(
+				Write_Message(knockdownWriter, knockdown),
+				"Writer Knockdown Player Snapshot");
+
+			S2C_WORLD_SNAPSHOT knockdownWithoutTick = knockdown;
+			knockdownWithoutTick.Players[1].iActionStartTick = 0;
+			CPacketWriter knockdownWithoutTickWriter;
+			testRunner.Require(
+				!Write_Message(knockdownWithoutTickWriter, knockdownWithoutTick),
+				"Reject Knockdown Without Action Tick");
+
+			S2C_WORLD_SNAPSHOT knockdownWithSkill = knockdown;
+			knockdownWithSkill.Players[1].iSkillId = 34010;
+			CPacketWriter knockdownWithSkillWriter;
+			testRunner.Require(
+				!Write_Message(knockdownWithSkillWriter, knockdownWithSkill),
+				"Reject Knockdown That Carries A Skill");
 		}
 
 		payload.pop_back();
@@ -1922,12 +1945,12 @@ namespace
 	void Test_WorldDestructionProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			21u == NETWORK_PROTOCOL_VERSION &&
+			24u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Protocol V21 Packet Types");
+			"World Destruction Protocol V24 Packet Types");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();

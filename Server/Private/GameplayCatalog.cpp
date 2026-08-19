@@ -91,6 +91,8 @@ namespace
 			output = PLAYER_SKILL_KIND::HOLD;
 		else if ("COUNTER" == value)
 			output = PLAYER_SKILL_KIND::COUNTER;
+		else if ("STANDUP" == value)
+			output = PLAYER_SKILL_KIND::STANDUP;
 		else
 			return false;
 		return true;
@@ -534,7 +536,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 9u != version ||
+		!ParseNumber(header[1], version) || 10u != version ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";
@@ -1005,7 +1007,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		{
 			BOSS_PATTERN_STAGE_DEFINITION stage{};
 			std::uint32_t stageIndex = 0u;
-			if (17u != fields.size() || !IsStableId(fields[1]) ||
+			std::uint32_t knockdownFlag = 0u;
+			if (21u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
 				!ParseNumber(fields[3], stageIndex) ||
 				!IsStableId(fields[4]) || !IsStableId(fields[5]) ||
@@ -1020,16 +1023,28 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[14], stage.iHitCount) ||
 				!ParseNumber(fields[15], stage.iHitIntervalMs) ||
 				("-" != fields[16] && !IsStableId(fields[16])) ||
+				!ParseNumber(fields[17], stage.fPushRangeM) ||
+				!ParseNumber(fields[18], stage.iPushMs) ||
+				!ParseNumber(fields[19], knockdownFlag) ||
+				!ParseNumber(fields[20], stage.iDownMs) ||
 				0u == stage.iDurationMs ||
 				!std::isfinite(stage.fHitOuterRadius) ||
 				!std::isfinite(stage.fHitInnerRadius) ||
 				!std::isfinite(stage.fHitAngleDegrees) ||
 				!std::isfinite(stage.fHitLength) ||
-				!std::isfinite(stage.fHitHalfWidth))
+				!std::isfinite(stage.fHitHalfWidth) ||
+				!std::isfinite(stage.fPushRangeM) ||
+				std::fabs(stage.fPushRangeM) > 20.f ||
+				knockdownFlag > 1u ||
+				(0.f != stage.fPushRangeM && 0u == stage.iPushMs) ||
+				(0.f == stage.fPushRangeM && 0u != stage.iPushMs) ||
+				(1u == knockdownFlag && 0u == stage.iDownMs) ||
+				(0u == knockdownFlag && 0u != stage.iDownMs))
 			{
 				m_strStatus = "Boss pattern stage row is invalid";
 				return false;
 			}
+			stage.bKnockdown = 1u == knockdownFlag;
 			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
 			if (m_BossPatterns.end() == ownerMap)
 			{

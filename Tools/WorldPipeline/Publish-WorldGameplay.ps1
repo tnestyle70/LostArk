@@ -200,7 +200,8 @@ function Get-MonsterProfiles {
             'archetypeId','maxHp','attackPower','defense','collisionRadius',
             'engageRange','moveSpeed','attackRange','attackWindupMs',
             'attackActiveMs','attackRecoveryMs','deadDespawnMs',
-            'hitKnockbackScale') 'monster profile'
+            'hitKnockbackScale','attackPushRangeM','attackPushMs',
+            'attackKnockdown','attackDownMs') 'monster profile'
         Assert-StableId $profile.archetypeId 'monster profile archetypeId'
         Assert-JsonInteger $profile.maxHp "$($profile.archetypeId) maxHp" 1 2000000000
         Assert-JsonInteger $profile.attackPower "$($profile.archetypeId) attackPower" 1 2000000000
@@ -217,6 +218,21 @@ function Get-MonsterProfiles {
         Assert-JsonNumber $profile.hitKnockbackScale "$($profile.archetypeId) hitKnockbackScale"
         if ([double]$profile.hitKnockbackScale -lt 0.0 -or [double]$profile.hitKnockbackScale -gt 10.0) {
             throw "Monster profile hitKnockbackScale is out of range: $($profile.archetypeId)"
+        }
+        Assert-JsonNumber $profile.attackPushRangeM "$($profile.archetypeId) attackPushRangeM"
+        foreach ($field in @('attackPushMs','attackDownMs')) {
+            Assert-JsonInteger $profile.$field "$($profile.archetypeId) $field" 0 600000
+        }
+        if ($profile.attackKnockdown -isnot [bool]) {
+            throw "Monster profile attackKnockdown must be a JSON Boolean: $($profile.archetypeId)"
+        }
+        $attackPushRangeM = [double]$profile.attackPushRangeM
+        if ([math]::Abs($attackPushRangeM) -gt 20.0 -or
+            ($attackPushRangeM -ne 0.0 -and [uint32]$profile.attackPushMs -eq 0) -or
+            ($attackPushRangeM -eq 0.0 -and [uint32]$profile.attackPushMs -ne 0) -or
+            ([bool]$profile.attackKnockdown -and [uint32]$profile.attackDownMs -eq 0) -or
+            (-not [bool]$profile.attackKnockdown -and [uint32]$profile.attackDownMs -ne 0)) {
+            throw "Monster profile attack push contract is invalid: $($profile.archetypeId)"
         }
         if ($profiles.ContainsKey([string]$profile.archetypeId)) {
             throw "Duplicate monster profile: $($profile.archetypeId)"
@@ -359,10 +375,14 @@ function Convert-SpawnGroupsDocument {
             (Format-InvariantFloat $profile.attackRange),
             [string][uint32]$profile.attackWindupMs,[string][uint32]$profile.attackActiveMs,
             [string][uint32]$profile.attackRecoveryMs,[string][uint32]$profile.deadDespawnMs,
-            (Format-InvariantFloat $profile.hitKnockbackScale)) -join "`t"))
+            (Format-InvariantFloat $profile.hitKnockbackScale),
+            (Format-InvariantFloat $profile.attackPushRangeM),
+            [string][uint32]$profile.attackPushMs,
+            $(if ([bool]$profile.attackKnockdown) { '1' } else { '0' }),
+            [string][uint32]$profile.attackDownMs) -join "`t"))
     }
     $lines = [Collections.Generic.List[string]]::new()
-    $lines.Add("LOSTARK_SPAWN_GROUP_BOOTSTRAP`t2`t$WorldId`t$AreaId`t$($document.revision)`t$($anchorRows.Count)`t$($groupIds.Count)`t$($profileRows.Count)")
+    $lines.Add("LOSTARK_SPAWN_GROUP_BOOTSTRAP`t3`t$WorldId`t$AreaId`t$($document.revision)`t$($anchorRows.Count)`t$($groupIds.Count)`t$($profileRows.Count)")
     foreach ($row in @($profileRows | Sort-Object)) { $lines.Add($row) }
     foreach ($row in @($anchorRows | Sort-Object)) { $lines.Add($row) }
     foreach ($row in $groupRows) { $lines.Add($row) }

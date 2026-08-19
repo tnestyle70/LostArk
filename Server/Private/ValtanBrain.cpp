@@ -304,6 +304,10 @@ namespace
 		boss.iPatternHitIntervalMs = stage.iHitIntervalMs;
 		boss.iAppliedPatternHitCount = 0u;
 		boss.bPatternWallContact = stage.bWallContact;
+		boss.fPatternPushRangeM = stage.fPushRangeM;
+		boss.iPatternPushMs = stage.iPushMs;
+		boss.bPatternKnockdown = stage.bKnockdown;
+		boss.iPatternDownMs = stage.iDownMs;
 		boss.eAction = ToServerAction(stage.eStageKind);
 		boss.fActionElapsedSeconds = 0.f;
 		boss.iActionStartTick = 0u == serverTick ? 1u : serverTick;
@@ -392,6 +396,10 @@ namespace
 		boss.iPatternHitCount = 0u;
 		boss.iAppliedPatternHitCount = 0u;
 		boss.bPatternWallContact = false;
+		boss.fPatternPushRangeM = 0.f;
+		boss.iPatternPushMs = 0u;
+		boss.bPatternKnockdown = false;
+		boss.iPatternDownMs = 0u;
 		Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
 	}
 
@@ -555,6 +563,18 @@ namespace
 				player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
 				player.hasMoveGoal = false;
 				player.MovePath.clear();
+			}
+			else
+			{
+				CPlayerSkillSystem::Arm_PlayerHitReaction(
+					player,
+					boss.fPositionX,
+					boss.fPositionZ,
+					boss.fPatternPushRangeM,
+					boss.iPatternPushMs,
+					boss.bPatternKnockdown,
+					boss.iPatternDownMs,
+					serverTick);
 			}
 		}
 	}

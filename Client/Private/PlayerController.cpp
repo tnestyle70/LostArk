@@ -297,6 +297,11 @@ void Client::CPlayerController::Poll_SkillSlots(
 		nullptr != character ? character->Get_Spec() : nullptr;
 	const LostArk::Shared::PLAYER_STANCE_ID stance =
 		CCombatHUDViewModel::Get().Get_Player().eStance;
+	/* While the server holds the player in KNOCKDOWN a slot press resolves to
+	its STANDUP skill, mirroring the admission rule the server applies. */
+	const bool_t isKnockedDown =
+		LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN ==
+		CCombatHUDViewModel::Get().Get_Player().eAction;
 
 	/* Two slots share one key (V and ALT_V), so every slot compares against the
 	state this frame started with and the new state is committed afterwards.
@@ -323,7 +328,7 @@ void Client::CPlayerController::Poll_SkillSlots(
 
 		/* An unbound slot is normal: a class simply has no skill there. */
 		const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
-			pSpec->eCharacterClass, slot.pInputSlot, stance);
+			pSpec->eCharacterClass, slot.pInputSlot, stance, isKnockedDown);
 		if (nullptr != pSkill)
 		{
 			outSkillId = pSkill->iSkillId;

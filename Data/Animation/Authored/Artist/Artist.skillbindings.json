@@ -100,6 +100,12 @@
       "clips": [
         "sdm_sk_spacing"
       ]
+    },
+    {
+      "skillId": 31030,
+      "clips": [
+        "sdm_sk_standup_normal_1"
+      ]
     }
   ]
 }

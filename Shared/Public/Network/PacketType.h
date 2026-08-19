@@ -5,7 +5,7 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 23;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 24;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -52,6 +52,9 @@ namespace LostArk::Shared
 		// Two stages whose advance is a hit taken, not a press: the first stage
 		// guards and the second is the counter it buys.
 		COUNTER = 3,
+		/* One clip that stands the player up out of KNOCKDOWN; startable in that
+		action state only and never anywhere else. */
+		STANDUP = 4,
 		END
 	};
 

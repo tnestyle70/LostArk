@@ -176,6 +176,18 @@ void LostArk::Server::CMonsterBrain::Update(
 					target->hasMoveGoal = false;
 					target->MovePath.clear();
 				}
+				else
+				{
+					CPlayerSkillSystem::Arm_PlayerHitReaction(
+						*target,
+						monster.fPositionX,
+						monster.fPositionZ,
+						monster.fAttackPushRangeM,
+						monster.iAttackPushMs,
+						monster.bAttackKnockdown,
+						monster.iAttackDownMs,
+						serverTick);
+				}
 			}
 			monster.hasAppliedPatternDamage = true;
 		}

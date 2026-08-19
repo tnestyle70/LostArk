@@ -66,6 +66,11 @@ namespace LostArk::Server
 		std::vector<SERVER_PROJECTILE_CONTACT_MARK> ContactMarks;
 	};
 
+	/* Get-up grace window after a knockdown ends: 2000 ms at the fixed 30 Hz
+	tick. Long enough to cover the stand-up roll and one step of breathing
+	room, short enough that staying in a boss pattern still punishes. */
+	inline constexpr std::uint32_t PLAYER_HIT_REACTION_GRACE_TICKS = 60;
+
 	struct SERVER_PLAYER
 	{
 		SESSION_ID iSessionId = INVALID_SESSION_ID;
@@ -96,6 +101,22 @@ namespace LostArk::Server
 		bool isCombatReady = true;
 		std::vector<SERVER_NAV_POINT> MovePath;
 		std::size_t iMovePathIndex = 0;
+		/* The knockback in flight from a boss pattern or monster attack: unit XZ
+		direction (a pull flips it toward the attacker when armed), metres per
+		second, and the remaining window. While a window or a knockdown is
+		active a new hit does not re-arm, so overlapping hits cannot stack. */
+		float fKnockbackDirectionX = 0.f;
+		float fKnockbackDirectionZ = 0.f;
+		float fKnockbackSpeed = 0.f;
+		float fKnockbackRemainingSeconds = 0.f;
+		/* KNOCKDOWN holds until this tick; move and skill commands are rejected
+		while it runs and the action returns to NONE when it expires. */
+		std::uint32_t iKnockdownEndTick = 0;
+		/* Get-up grace: until this tick no new hit reaction arms (damage still
+		lands), so a boss cannot chain the player from one knockdown straight
+		into the next. Set when a knockdown ends by expiry or by the STANDUP
+		skill. */
+		std::uint32_t iHitReactionGraceEndTick = 0;
 
 		std::uint32_t iCurrentHp = 1000;
 		std::uint32_t iMaximumHp = 1000;

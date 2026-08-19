@@ -1212,6 +1212,10 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.MovePath.clear();
 	player.iMovePathIndex = 0u;
 	player.TriggerMove = {};
+	player.fKnockbackRemainingSeconds = 0.f;
+	player.fKnockbackSpeed = 0.f;
+	player.iKnockdownEndTick = 0u;
+	player.iHitReactionGraceEndTick = 0u;
 	player.isCombatReady = false;
 	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
 }
@@ -1423,6 +1427,10 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.iCurrentSkillId = INVALID_SKILL_ID;
 	staged.iActionStartTick = 0u;
 	staged.TriggerMove = {};
+	staged.fKnockbackRemainingSeconds = 0.f;
+	staged.fKnockbackSpeed = 0.f;
+	staged.iKnockdownEndTick = 0u;
+	staged.iHitReactionGraceEndTick = 0u;
 	staged.fActionElapsedSeconds = 0.f;
 	staged.fSkillAimDirectionX = 0.f;
 	staged.fSkillAimDirectionZ = 1.f;
@@ -2170,6 +2178,10 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			player->second.MovePath.clear();
 			player->second.iMovePathIndex = 0u;
 			player->second.hasMoveGoal = false;
+			player->second.fKnockbackRemainingSeconds = 0.f;
+			player->second.fKnockbackSpeed = 0.f;
+			player->second.iKnockdownEndTick = 0u;
+			player->second.iHitReactionGraceEndTick = 0u;
 			if (!Has_EngagedAuditionPlayer(*boss))
 			{
 				boss->PendingPatternIds.clear();
@@ -3612,6 +3624,10 @@ bool LostArk::Server::CGameRoom::Spawn_Monster(
 	staged.iPatternRecoveryMs = profile.iAttackRecoveryMs;
 	staged.iDeadDespawnMs = profile.iDeadDespawnMs;
 	staged.fHitKnockbackScale = profile.fHitKnockbackScale;
+	staged.fAttackPushRangeM = profile.fAttackPushRangeM;
+	staged.iAttackPushMs = profile.iAttackPushMs;
+	staged.bAttackKnockdown = profile.bAttackKnockdown;
+	staged.iAttackDownMs = profile.iAttackDownMs;
 
 	++m_iNextNetEntityId;
 	m_WorldEntities.push_back(std::move(staged));
@@ -3692,6 +3708,19 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player, fixedDeltaSeconds))
 		{
 			continue;
+		}
+		Advance_PlayerKnockback(player, fixedDeltaSeconds);
+		if (LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction &&
+			static_cast<std::int32_t>(
+				updateTick - player.iKnockdownEndTick) >= 0)
+		{
+			player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+			player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
+			player.iActionStartTick = 0u;
+			player.fActionElapsedSeconds = 0.f;
+			player.iKnockdownEndTick = 0u;
+			player.iHitReactionGraceEndTick =
+				updateTick + PLAYER_HIT_REACTION_GRACE_TICKS;
 		}
 		m_PlayerSkillSystem.Update(
 			player,
@@ -3819,6 +3848,70 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			}
 			continue;
 		}
+	}
+}
+
+void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
+	SERVER_PLAYER& player, const float fixedDeltaSeconds)
+{
+	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f ||
+		player.fKnockbackRemainingSeconds <= 0.f)
+	{
+		return;
+	}
+	if (0u == player.iCurrentHp ||
+		LostArk::Shared::PLAYER_ACTION_STATE::DEAD == player.eAction)
+	{
+		player.fKnockbackRemainingSeconds = 0.f;
+		player.fKnockbackSpeed = 0.f;
+		return;
+	}
+	const float step = (std::min)(
+		fixedDeltaSeconds, player.fKnockbackRemainingSeconds);
+	const float desiredX = player.fPositionX +
+		player.fKnockbackDirectionX * player.fKnockbackSpeed * step;
+	const float desiredZ = player.fPositionZ +
+		player.fKnockbackDirectionZ * player.fKnockbackSpeed * step;
+	SERVER_NAV_POINT reachable{ desiredX, player.fPositionY, desiredZ };
+	bool wasClamped = false;
+	if (m_ServerNavigation.Is_Loaded())
+	{
+		CPlayerSkillSystem::Clamp_StepToWalkable(
+			m_ServerNavigation,
+			player.fPositionX,
+			player.fPositionZ,
+			desiredX,
+			desiredZ,
+			reachable,
+			wasClamped);
+	}
+	float resolvedX = player.fPositionX;
+	float resolvedY = player.fPositionY;
+	float resolvedZ = player.fPositionZ;
+	bool wasBlocked = false;
+	if (!m_ServerCollisionSystem.Resolve_PlayerMove(
+		player,
+		reachable.x,
+		reachable.y,
+		reachable.z,
+		resolvedX,
+		resolvedY,
+		resolvedZ,
+		wasBlocked))
+	{
+		player.fKnockbackRemainingSeconds = 0.f;
+		player.fKnockbackSpeed = 0.f;
+		return;
+	}
+	player.fPositionX = resolvedX;
+	player.fPositionY = resolvedY;
+	player.fPositionZ = resolvedZ;
+	player.fKnockbackRemainingSeconds = (wasClamped || wasBlocked) ?
+		0.f : player.fKnockbackRemainingSeconds - step;
+	if (player.fKnockbackRemainingSeconds <= 0.f)
+	{
+		player.fKnockbackRemainingSeconds = 0.f;
+		player.fKnockbackSpeed = 0.f;
 	}
 }
 

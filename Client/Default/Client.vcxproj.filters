@@ -1926,6 +1926,9 @@
     <Filter Include="96.DataFiles\Effects\Imported\DimensionMaster\Drafts">
       <UniqueIdentifier>{b8ebd09b-39ab-5d03-b59e-933bb55af970}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\DimensionMaster\Materials">
+      <UniqueIdentifier>{0a6f6a20-867d-587a-8f90-41645897a41d}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\DimensionMaster\Modules">
       <UniqueIdentifier>{4ab9b51a-e613-5e4c-9814-7e2272d6dc48}</UniqueIdentifier>
     </Filter>
@@ -2937,7 +2940,307 @@
     <None Include="..\..\Data\Effects\Authored\effect.test.winters3.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.arena-break-109.impact-hold.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.arena-break-109.impact.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.arena-break-109.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.arena-break-109.takeoff.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.arena-break-109.wide-reveal.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.arena-break-33.cutscene.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.arena-break-33.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.armor-break-opening.charge.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.backstep.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.backstep.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.bind-charge-smash.charge.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.bind-charge-smash.lock.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.bind-charge-smash.smash.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.center-grab-counter-64.center.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.center-grab-counter-64.counter.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.center-grab-counter-64.failed-charge.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.center-grab-counter-64.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.charge-grab-roar.counter.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.charge-grab-roar.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.charge-grab-roar.roar.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.dash-charge.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.dash-charge.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.dash-charge.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.down-smash.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.down-smash.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.down-smash.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.earthquake-smash.delayed.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.earthquake-smash.impact.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.earthquake-smash.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.earthquake-smash.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.entrance-whirlwind.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.entrance-whirlwind.sweep.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.entrance-whirlwind.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.inner.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.outer.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.fist-in-out.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.first-smash.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.interval.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.second-smash.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.four-pillars-105.takeoff.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.four-pillars-105.target-cone.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ghost-transition-15.four-directions.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ghost-transition-15.ghost-appear.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ghost-transition-15.ghost.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ghost-transition-15.inner.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ghost-transition-15.portal-open.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ghost-transition-15.tracking.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ground-wave-smash.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ground-wave-smash.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.land.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.takeoff.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.imprison-roar.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.imprison-roar.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.imprison-roar.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.jump-spin.jump.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.jump-spin.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.jump-spin.spin.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ledge-roar.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ledge-roar.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.ledge-roar.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.magic-choice.inner.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.magic-choice.outer.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.magic-choice.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.magic-choice.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.magic-orb-stagger-76.shield.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.magic-orb-stagger-76.window.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.parry.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.parry.slash.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.parry.stance.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.pattern.420633.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.finish.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.portal.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.portal-rush.rushes.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.super-smash.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.super-smash.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.swing.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.swing.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.swing.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.triple-counter.first-fail.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.triple-counter.first.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.triple-counter.second-fail.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.triple-counter.second.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.triple-counter.third-fail.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.triple-counter.third.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.whirlwind.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.whirlwind.recovery.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17000.ba1.effect.json">
@@ -3117,6 +3420,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17820.clip8.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\valtan.test.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\Artist.e-r-d-s-t-v-z.composition.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
     </None>
@@ -3276,9 +3582,6 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.targeted-current-combat-transaction.receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
     </None>
-    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Ue3MaterialFamilyProjection.receipt.json">
-      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
-    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\FourClassCombat.track-a-authored-import-batch.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
     </None>
@@ -3392,6 +3695,9 @@
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\lancemaster-artist.decal-inventory.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Ue3MaterialFamilyProjection.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Warlord\effect.warlord.skill.17000.ba1.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\Warlord</Filter>
@@ -5127,16 +5433,19 @@
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip8\Warlord_skill_17820_authored-baseline_clip8_01.visual.wfx.json">
       <Filter>96.DataFiles\Effects\Components\Warlord\skill.17820.authored-baseline.clip8</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Contracts\effect-family-manifest.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Contracts\effect-import-bases.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
     <None Include="..\..\Data\Effects\Contracts\ue3-exact-cooked-shader-variants.v1.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
     <None Include="..\..\Data\Effects\Contracts\ue3-material-family-registry.v1.json">
-      <Filter>96.DataFiles\Effects\Contracts</Filter>
-    </None>
-    <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
     <None Include="..\..\Data\Effects\CookedShaders\340169d8b9146fd280bbc1b509aa312e6afa71573dfe12cf4e89cb0136431ae3.dxbc">
@@ -5900,6 +6209,24 @@
     </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050540.imported-effect-draft.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Drafts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.exact-material-maps.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.exact-shader-targets.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.exact-texture-sampler-closure.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.source-value-uniform-evaluation.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.source-value-uniform-evaluation.targets.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.structural-fixed-input-replay.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Modules\skill.2050010.external-module-closure.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Modules</Filter>

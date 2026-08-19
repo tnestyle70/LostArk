@@ -8222,6 +8222,216 @@
       ]
     },
     {
+      "skillId": 34030,
+      "durationMs": 1100,
+      "samples": [
+        {
+          "timeMs": 0,
+          "forward": 0.0,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 33,
+          "forward": 0.0065,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 67,
+          "forward": 0.0342,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 100,
+          "forward": 0.0963,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 133,
+          "forward": 0.1762,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 167,
+          "forward": 0.3051,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 200,
+          "forward": 0.5793,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 233,
+          "forward": 0.8306,
+          "lateral": 0.0,
+          "up": -0.0037
+        },
+        {
+          "timeMs": 267,
+          "forward": 1.0701,
+          "lateral": 0.0,
+          "up": 0.0342
+        },
+        {
+          "timeMs": 300,
+          "forward": 1.2769,
+          "lateral": 0.0,
+          "up": 0.2257
+        },
+        {
+          "timeMs": 333,
+          "forward": 1.4395,
+          "lateral": 0.0,
+          "up": 0.367
+        },
+        {
+          "timeMs": 367,
+          "forward": 1.5957,
+          "lateral": 0.0,
+          "up": 0.4333
+        },
+        {
+          "timeMs": 400,
+          "forward": 1.7763,
+          "lateral": 0.0,
+          "up": 0.5809
+        },
+        {
+          "timeMs": 433,
+          "forward": 1.9933,
+          "lateral": 0.0,
+          "up": 0.7795
+        },
+        {
+          "timeMs": 467,
+          "forward": 2.2642,
+          "lateral": 0.0,
+          "up": 0.9786
+        },
+        {
+          "timeMs": 500,
+          "forward": 2.5771,
+          "lateral": 0.0,
+          "up": 1.0532
+        },
+        {
+          "timeMs": 533,
+          "forward": 2.8613,
+          "lateral": 0.0,
+          "up": 0.9248
+        },
+        {
+          "timeMs": 567,
+          "forward": 3.106,
+          "lateral": 0.0,
+          "up": 0.7311
+        },
+        {
+          "timeMs": 600,
+          "forward": 3.3308,
+          "lateral": 0.0,
+          "up": 0.531
+        },
+        {
+          "timeMs": 633,
+          "forward": 3.5425,
+          "lateral": 0.0,
+          "up": 0.3018
+        },
+        {
+          "timeMs": 667,
+          "forward": 3.7654,
+          "lateral": 0.0,
+          "up": 0.0527
+        },
+        {
+          "timeMs": 700,
+          "forward": 3.8527,
+          "lateral": 0.0,
+          "up": -0.006
+        },
+        {
+          "timeMs": 733,
+          "forward": 3.8742,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 767,
+          "forward": 3.8915,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 800,
+          "forward": 3.9082,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 833,
+          "forward": 3.9283,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 867,
+          "forward": 3.949,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 900,
+          "forward": 3.9626,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 933,
+          "forward": 3.9644,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 967,
+          "forward": 3.9596,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 1000,
+          "forward": 3.9544,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 1033,
+          "forward": 3.9554,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 1067,
+          "forward": 3.9672,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 1100,
+          "forward": 3.9852,
+          "lateral": 0.0,
+          "up": -0.0
+        }
+      ]
+    },
+    {
       "skillId": 34510,
       "stages": [
         {

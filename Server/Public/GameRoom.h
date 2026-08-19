@@ -305,6 +305,10 @@ namespace LostArk::Server
 		tick's player walks and root motion stop at them. */
 		void Refresh_PlayerBlockingBodies();
 		void Update_Players(float fixedDeltaSeconds);
+		/* Slides a hit player along the armed knockback window, clamped to
+		walkable floor and blocking bodies; a wall ends the window early. */
+		void Advance_PlayerKnockback(
+			SERVER_PLAYER& player, float fixedDeltaSeconds);
 		void Update_WorldEntities(float fixedDeltaSeconds);
 
 	private:

@@ -159,13 +159,18 @@ const CHARACTER_SPEC Spec_Warlord =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD -- FBX takes are "<armature>_<action>" and the
-	armature is named "wgl", so every clip carries that prefix. */
+	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP --
+	FBX takes are "<armature>_<action>" and the armature is named "wgl", so
+	every clip carries that prefix. */
 	{
 		"wgl_idle_battle_1",
 		"wgl_run_battle_1",
 		"wgl_dmg_idle_1",
 		"wgl_dead_1",
+		"wgl_knockdown",
+		"wgl_knockdown_land",
+		"wgl_down",
+		"wgl_standup_1",
 	},
 
 	&Create_Logic,
