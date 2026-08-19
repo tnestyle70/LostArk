@@ -1150,6 +1150,77 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Counter(
 	return true;
 }
 
+void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
+	SERVER_PLAYER& player,
+	const float sourceX,
+	const float sourceZ,
+	const float pushRangeM,
+	const std::uint32_t pushMs,
+	const bool knockdown,
+	const std::uint32_t downMs,
+	const std::uint32_t serverTick)
+{
+	using namespace LostArk::Shared;
+	if (0u == player.iCurrentHp ||
+		PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
+		PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
+		player.fKnockbackRemainingSeconds > 0.f)
+	{
+		return;
+	}
+	const bool hasPush =
+		0.f != pushRangeM && 0u != pushMs && std::isfinite(pushRangeM);
+	if (!hasPush && !knockdown)
+		return;
+	if (hasPush)
+	{
+		float directionX = player.fPositionX - sourceX;
+		float directionZ = player.fPositionZ - sourceZ;
+		const float length = std::sqrt(
+			directionX * directionX + directionZ * directionZ);
+		if (length > 0.0001f)
+		{
+			directionX /= length;
+			directionZ /= length;
+		}
+		else
+		{
+			/* The hit source stands exactly on the player, so away-from-source
+			has no direction; falling backwards along the facing reads right. */
+			const float yawRadians = player.fYawDegrees / RADIANS_TO_DEGREES;
+			directionX = -std::sin(yawRadians);
+			directionZ = -std::cos(yawRadians);
+		}
+		if (pushRangeM < 0.f)
+		{
+			directionX = -directionX;
+			directionZ = -directionZ;
+		}
+		const float windowSeconds =
+			static_cast<float>(pushMs) * MILLISECONDS_TO_SECONDS;
+		player.fKnockbackDirectionX = directionX;
+		player.fKnockbackDirectionZ = directionZ;
+		player.fKnockbackSpeed = std::fabs(pushRangeM) / windowSeconds;
+		player.fKnockbackRemainingSeconds = windowSeconds;
+	}
+	if (knockdown && 0u != downMs)
+	{
+		player.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
+		player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.iComboStage = 0u;
+		player.hasBufferedComboInput = false;
+		player.hasReleasedHold = false;
+		player.fActionElapsedSeconds = 0.f;
+		player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
+		player.iKnockdownEndTick =
+			player.iActionStartTick + MillisecondsToTicks(downMs);
+		player.hasMoveGoal = false;
+		player.MovePath.clear();
+		player.iMovePathIndex = 0;
+	}
+}
+
 void LostArk::Server::CPlayerSkillSystem::Release(
 	SERVER_PLAYER& player,
 	const LostArk::Shared::C2S_RELEASE_SKILL& command,

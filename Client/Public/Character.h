@@ -218,6 +218,11 @@ private:
 	bool_t m_hasNetworkState = { false };
 	LostArk::Shared::PLAYER_ACTION_STATE m_eNetworkAction =
 		LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+	/* The clip step of a replicated KNOCKDOWN: fall -> land -> lying loop, and
+	one standup after the server releases the action. Presentation only. */
+	enum class KNOCKDOWN_STEP : std::uint8_t
+	{ NONE, FALLING, LANDING, DOWN, STANDUP };
+	KNOCKDOWN_STEP m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 	LostArk::Shared::PLAYER_STANCE_ID m_eStance =
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 	std::uint32_t m_iLastNetworkActionStartTick = 0;
@@ -277,6 +282,9 @@ private:
 	/* Moves to the next clip once the current one ends, and drops back to idle
 	after the last. */
 	void Update_Chain();
+	/* Advances the knockdown clip step when its current clip ends: fall to
+	land, land to the lying loop, and standup back to locomotion. */
+	void Update_KnockdownPresentation();
 
 	//server snapshot interpolation
 	void Update_NetworkTransform(f32_t fTimeDelta);

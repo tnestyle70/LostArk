@@ -922,12 +922,17 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		Assert-ExactProperties $stage @(
 			'stageId','actionId','stageKind','durationMs','hitShape',
 			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength','hitHalfWidth',
-			'hitCount','hitIntervalMs','serverDamageProfileId') 'encounter pattern stage'
+			'hitCount','hitIntervalMs','serverDamageProfileId',
+			'pushRangeM','pushMs','knockdown','downMs') 'encounter pattern stage'
 		foreach ($field in @('stageId','actionId','stageKind','hitShape','serverDamageProfileId')) {
 			Assert-JsonString $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field"
 		}
-		foreach ($field in @('durationMs','hitCount','hitIntervalMs')) {
+		foreach ($field in @('durationMs','hitCount','hitIntervalMs','pushMs','downMs')) {
 			Assert-JsonInteger $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field" 0 ([uint32]::MaxValue)
+		}
+		Assert-JsonNumber $stage.pushRangeM "pattern $($pattern.patternId) stage $stageIndex pushRangeM"
+		if ($stage.knockdown -isnot [bool]) {
+			throw "Pattern stage knockdown must be a JSON Boolean: $($pattern.patternId) stage $stageIndex"
 		}
 		foreach ($field in @('hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength','hitHalfWidth')) {
 			Assert-JsonNumber $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field"
@@ -968,6 +973,18 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				$damageIds.Contains($damageProfile)
 		}
 		if (-not $validShape) { throw "Pattern stage hit contract is invalid: $($pattern.patternId) stage $stageIndex" }
+		$pushRangeM = [double]$stage.pushRangeM
+		$pushMs = [uint32]$stage.pushMs
+		$knockdown = [bool]$stage.knockdown
+		$downMs = [uint32]$stage.downMs
+		if ([math]::Abs($pushRangeM) -gt 20.0 -or
+			($pushRangeM -ne 0.0 -and $pushMs -eq 0) -or
+			($pushRangeM -eq 0.0 -and $pushMs -ne 0) -or
+			($knockdown -and $downMs -eq 0) -or
+			(-not $knockdown -and $downMs -ne 0) -or
+			($damageProfile.Length -eq 0 -and ($pushRangeM -ne 0.0 -or $knockdown))) {
+			throw "Pattern stage push contract is invalid: $($pattern.patternId) stage $stageIndex"
+		}
 		$patternRows.Add((@(
 			'PATTERNSTAGE', $encounterDocument.encounterId, $pattern.patternId, $stageIndex,
 			$stage.stageId, $stage.actionId, $stage.stageKind, [uint32]$stage.durationMs,
@@ -978,7 +995,11 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			(Format-InvariantFloat $length 'stage hitLength'),
 			(Format-InvariantFloat $halfWidth 'stage hitHalfWidth'),
 			$hitCount, $hitIntervalMs,
-			$(if ($damageProfile.Length -eq 0) { '-' } else { $damageProfile })) -join "`t"))
+			$(if ($damageProfile.Length -eq 0) { '-' } else { $damageProfile }),
+			(Format-InvariantSignedFloat $pushRangeM 'stage pushRangeM'),
+			$pushMs,
+			$(if ($knockdown) { 1 } else { 0 }),
+			$downMs) -join "`t"))
 	}
 }
 if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
@@ -1470,7 +1491,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t9`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t10`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

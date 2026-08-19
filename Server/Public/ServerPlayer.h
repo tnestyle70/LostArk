@@ -96,6 +96,17 @@ namespace LostArk::Server
 		bool isCombatReady = true;
 		std::vector<SERVER_NAV_POINT> MovePath;
 		std::size_t iMovePathIndex = 0;
+		/* The knockback in flight from a boss pattern or monster attack: unit XZ
+		direction (a pull flips it toward the attacker when armed), metres per
+		second, and the remaining window. While a window or a knockdown is
+		active a new hit does not re-arm, so overlapping hits cannot stack. */
+		float fKnockbackDirectionX = 0.f;
+		float fKnockbackDirectionZ = 0.f;
+		float fKnockbackSpeed = 0.f;
+		float fKnockbackRemainingSeconds = 0.f;
+		/* KNOCKDOWN holds until this tick; move and skill commands are rejected
+		while it runs and the action returns to NONE when it expires. */
+		std::uint32_t iKnockdownEndTick = 0;
 
 		std::uint32_t iCurrentHp = 1000;
 		std::uint32_t iMaximumHp = 1000;

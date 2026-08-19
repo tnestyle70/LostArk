@@ -136,13 +136,17 @@ const CHARACTER_SPEC Spec_LanceMaster =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD -- FBX takes are "<armature>_<action>", so the clips
-	carry the "flm_" prefix. */
+	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP --
+	FBX takes are "<armature>_<action>", so the clips carry the "flm_" prefix. */
 	{
 		"flm_idle_battle_1",
 		"flm_run_battle_1",
 		"flm_dmg_idle_1",
 		"flm_dead_1",
+		"flm_knockdown",
+		"flm_knockdown_land",
+		"flm_down",
+		"flm_standup_1",
 	},
 
 	&Create_Logic,

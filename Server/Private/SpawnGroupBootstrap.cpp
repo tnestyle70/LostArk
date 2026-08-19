@@ -111,7 +111,7 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 	std::uint32_t groupCount = 0;
 	std::uint32_t profileCount = 0;
 	if (8u != header.size() || "LOSTARK_SPAWN_GROUP_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 2u != version || header[2] != worldName ||
+		!ParseNumber(header[1], version) || 3u != version || header[2] != worldName ||
 		!ParseNumber(header[4], revision) || 0u == revision ||
 		!ParseNumber(header[5], anchorCount) || anchorCount > 128u ||
 		!ParseNumber(header[6], groupCount) || groupCount > 32u ||
@@ -135,7 +135,8 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 		if (!fields.empty() && "PROFILE" == fields[0])
 		{
 			MONSTER_RUNTIME_PROFILE profile;
-			if (14u != fields.size() ||
+			std::uint32_t attackKnockdownFlag = 0u;
+			if (18u != fields.size() ||
 				!ParseNumber(fields[2], profile.iMaxHp) || 0u == profile.iMaxHp ||
 				!ParseNumber(fields[3], profile.iAttackPower) ||
 				!ParseNumber(fields[4], profile.iDefense) ||
@@ -148,16 +149,28 @@ bool LostArk::Server::CSpawnGroupBootstrap::Load(
 				!ParseNumber(fields[11], profile.iAttackRecoveryMs) ||
 				!ParseNumber(fields[12], profile.iDeadDespawnMs) ||
 				!ParseNumber(fields[13], profile.fHitKnockbackScale) ||
+				!ParseNumber(fields[14], profile.fAttackPushRangeM) ||
+				!ParseNumber(fields[15], profile.iAttackPushMs) ||
+				!ParseNumber(fields[16], attackKnockdownFlag) ||
+				!ParseNumber(fields[17], profile.iAttackDownMs) ||
 				!std::isfinite(profile.fCollisionRadius) || profile.fCollisionRadius <= 0.f ||
 				!std::isfinite(profile.fEngageRange) || profile.fEngageRange <= 0.f ||
 				!std::isfinite(profile.fMoveSpeed) || profile.fMoveSpeed <= 0.f ||
 				!std::isfinite(profile.fAttackRange) || profile.fAttackRange <= 0.f ||
 				!std::isfinite(profile.fHitKnockbackScale) ||
-				profile.fHitKnockbackScale < 0.f)
+				profile.fHitKnockbackScale < 0.f ||
+				!std::isfinite(profile.fAttackPushRangeM) ||
+				std::fabs(profile.fAttackPushRangeM) > 20.f ||
+				attackKnockdownFlag > 1u ||
+				(0.f != profile.fAttackPushRangeM && 0u == profile.iAttackPushMs) ||
+				(0.f == profile.fAttackPushRangeM && 0u != profile.iAttackPushMs) ||
+				(1u == attackKnockdownFlag && 0u == profile.iAttackDownMs) ||
+				(0u == attackKnockdownFlag && 0u != profile.iAttackDownMs))
 			{
 				m_strStatus = "Spawn group monster profile row is invalid";
 				return false;
 			}
+			profile.bAttackKnockdown = 1u == attackKnockdownFlag;
 			profile.strArchetypeId = fields[1];
 			if (!stagedProfiles.emplace(profile.strArchetypeId, profile).second)
 			{

@@ -26,6 +26,12 @@ namespace LostArk::Server
 		/* Multiplier on the authored push range of each player hit; 0 means the
 		monster never moves (super armour). */
 		float fHitKnockbackScale = 0.f;
+		/* Player push of this monster's landed attack: metres over iAttackPushMs,
+		a negative range pulls the player toward the monster. */
+		float fAttackPushRangeM = 0.f;
+		std::uint32_t iAttackPushMs = 0;
+		bool bAttackKnockdown = false;
+		std::uint32_t iAttackDownMs = 0;
 	};
 
 	struct SPAWN_GROUP_ANCHOR final

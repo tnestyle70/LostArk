@@ -97,8 +97,12 @@ namespace
 			 (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == snapshot.eAction &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
+			 (LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN == snapshot.eAction &&
+				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
+				0 != snapshot.iActionStartTick) ||
 			 ((LostArk::Shared::PLAYER_ACTION_STATE::SKILL != snapshot.eAction &&
-				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != snapshot.eAction) &&
+				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != snapshot.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN != snapshot.eAction) &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID));
     }
 

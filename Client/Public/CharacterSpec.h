@@ -11,7 +11,11 @@ class CCharacter;
 
 /* Animation states every class has. Skill clips are not listed here: their count
 and ordering differ per class, so the logic addresses those by name itself. */
-enum class CHARACTER_ANIM { IDLE, RUN, HIT, DEAD, END };
+enum class CHARACTER_ANIM {
+	IDLE, RUN, HIT, DEAD,
+	KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
+	END
+};
 
 /* Per-class presentation behaviour. Input, network transport and gameplay truth
 stay outside this interface. One implementation per class keeps team ownership

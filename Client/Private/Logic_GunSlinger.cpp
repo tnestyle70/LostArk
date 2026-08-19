@@ -71,13 +71,18 @@ const CHARACTER_SPEC Spec_GunSlinger =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD -- FBX takes are "<armature>_<action>" and the
-	armature is named "gdh", so every clip carries that prefix. */
+	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP --
+	FBX takes are "<armature>_<action>" and the armature is named "gdh", so
+	every clip carries that prefix. */
 	{
 		"gdh_idle_battle_1",
 		"gdh_run_battle_1",
 		"gdh_dmg_idle_1",
 		"gdh_dead_1",
+		"gdh_knockdown",
+		"gdh_knockdown_land",
+		"gdh_down",
+		"gdh_standup_1",
 	},
 
 	&Create_Logic,

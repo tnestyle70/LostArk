@@ -16,7 +16,11 @@
       "attackActiveMs": 180,
       "attackRecoveryMs": 700,
       "deadDespawnMs": 1800,
-      "hitKnockbackScale": 1.0
+      "hitKnockbackScale": 1.0,
+      "attackPushRangeM": 0.5,
+      "attackPushMs": 150,
+      "attackKnockdown": false,
+      "attackDownMs": 0
     },
     {
       "archetypeId": "MONSTER_VALTAN_SJFC_00_4",
@@ -31,7 +35,11 @@
       "attackActiveMs": 200,
       "attackRecoveryMs": 760,
       "deadDespawnMs": 1900,
-      "hitKnockbackScale": 1.0
+      "hitKnockbackScale": 1.0,
+      "attackPushRangeM": 0.5,
+      "attackPushMs": 150,
+      "attackKnockdown": false,
+      "attackDownMs": 0
     },
     {
       "archetypeId": "MONSTER_VALTAN_0019_05",
@@ -46,7 +54,11 @@
       "attackActiveMs": 220,
       "attackRecoveryMs": 820,
       "deadDespawnMs": 2000,
-      "hitKnockbackScale": 1.0
+      "hitKnockbackScale": 1.0,
+      "attackPushRangeM": 0.6,
+      "attackPushMs": 150,
+      "attackKnockdown": false,
+      "attackDownMs": 0
     },
     {
       "archetypeId": "MINIBOSS_LUGARU",
@@ -61,7 +73,11 @@
       "attackActiveMs": 280,
       "attackRecoveryMs": 1050,
       "deadDespawnMs": 3000,
-      "hitKnockbackScale": 0.0
+      "hitKnockbackScale": 0.0,
+      "attackPushRangeM": 2.0,
+      "attackPushMs": 250,
+      "attackKnockdown": true,
+      "attackDownMs": 2000
     }
   ]
 }
