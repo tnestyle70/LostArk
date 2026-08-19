@@ -287,10 +287,16 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 		return false;
 	}
 
+	/* A STANDUP skill exists only to leave KNOCKDOWN: knocked down is the one
+	state it starts from and the one state it cannot be pressed outside of. */
+	const bool isStandup = PLAYER_SKILL_KIND::STANDUP == skill->eSkillKind;
+	if (isStandup != (PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction))
+		return false;
+
 	/* A combo is the only reason to accept input while an action runs, and only
 	for the same skill inside the stage's own window. Everything else keeps the
 	original guard, so no skill can be interrupted by another. */
-	if (PLAYER_ACTION_STATE::NONE != player.eAction)
+	if (!isStandup && PLAYER_ACTION_STATE::NONE != player.eAction)
 	{
 		const bool isComboContinuation =
 			PLAYER_SKILL_KIND::COMBO == skill->eSkillKind &&
@@ -343,6 +349,14 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	ResolveAimDirection(
 		player, command.fAimX, command.fAimZ, directionX, directionZ);
 
+	if (isStandup)
+	{
+		player.iKnockdownEndTick = 0u;
+		player.fKnockbackRemainingSeconds = 0.f;
+		player.fKnockbackSpeed = 0.f;
+		player.iHitReactionGraceEndTick =
+			actionStartTick + PLAYER_HIT_REACTION_GRACE_TICKS;
+	}
 	player.iLastSkillSequence = command.iClientSequence;
 	player.eAction = PLAYER_ACTION_STATE::SKILL;
 	player.iCurrentSkillId = command.iSkillId;
@@ -369,7 +383,8 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	player.iMovePathIndex = 0;
 	player.fYawDegrees = std::atan2(directionX, directionZ) * RADIANS_TO_DEGREES;
 	player.iComboStage =
-		PLAYER_SKILL_KIND::ACTIVE == skill->eSkillKind ? 0u : 1u;
+		PLAYER_SKILL_KIND::ACTIVE == skill->eSkillKind || isStandup ?
+		0u : 1u;
 	player.hasBufferedComboInput = false;
 	player.hasReleasedHold = false;
 	return true;
@@ -1165,7 +1180,9 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 		PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::TRIGGER_MOVE == player.eAction ||
 		PLAYER_ACTION_STATE::KNOCKDOWN == player.eAction ||
-		player.fKnockbackRemainingSeconds > 0.f)
+		player.fKnockbackRemainingSeconds > 0.f ||
+		static_cast<std::int32_t>(
+			player.iHitReactionGraceEndTick - serverTick) > 0)
 	{
 		return;
 	}

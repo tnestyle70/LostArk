@@ -2546,6 +2546,58 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			!downSkills.Try_Start(victim, downSkill, catalog, 315u),
 			"Reject a skill command while the player is knocked down");
 
+		const PLAYER_SKILL_DEFINITION* standup = catalog.Find_Skill(34030);
+		tests.Require(
+			nullptr != standup &&
+			PLAYER_SKILL_KIND::STANDUP == standup->eSkillKind &&
+			30000u == standup->iCooldownMs &&
+			!standup->RootMotion.empty() &&
+			standup->RootMotion.back().fForward > 3.5f,
+			"Load the official stand-up skill with its rolling root motion");
+		C2S_USE_SKILL standupCommand{};
+		standupCommand.iClientSequence = 10;
+		standupCommand.iSkillId = 34030;
+		standupCommand.fAimX = victim.fPositionX;
+		standupCommand.fAimZ = victim.fPositionZ - 5.f;
+		tests.Require(
+			downSkills.Try_Start(victim, standupCommand, catalog, 320u) &&
+			PLAYER_ACTION_STATE::SKILL == victim.eAction &&
+			34030u == victim.iCurrentSkillId &&
+			0u == victim.iComboStage &&
+			0u == victim.iKnockdownEndTick &&
+			0.f == victim.fKnockbackRemainingSeconds,
+			"Stand the knocked-down player up through the STANDUP skill");
+
+		SERVER_PLAYER standing{};
+		standing.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		standing.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+		standing.iCurrentHp = 5000;
+		standing.iMaximumHp = 5000;
+		standing.iCurrentResource = 1000;
+		standing.iMaximumResource = 1000;
+		C2S_USE_SKILL standingStandup = standupCommand;
+		standingStandup.iClientSequence = 1;
+		CPlayerSkillSystem standingSkills;
+		tests.Require(
+			!standingSkills.Try_Start(standing, standingStandup, catalog, 330u),
+			"Reject the STANDUP skill while the player is on its feet");
+
+		victim.eAction = PLAYER_ACTION_STATE::NONE;
+		victim.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
+		CPlayerSkillSystem::Arm_PlayerHitReaction(
+			victim, 10.f, 3.f, 2.f, 242u, true, 2000u, 330u);
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == victim.eAction &&
+			0.f == victim.fKnockbackRemainingSeconds &&
+			380u == victim.iHitReactionGraceEndTick,
+			"Hold the get-up grace so a hit cannot chain a second knockdown");
+		CPlayerSkillSystem::Arm_PlayerHitReaction(
+			victim, 10.f, 3.f, 2.f, 242u, true, 2000u, 385u);
+		tests.Require(
+			PLAYER_ACTION_STATE::KNOCKDOWN == victim.eAction &&
+			victim.fKnockbackRemainingSeconds > 0.f,
+			"Arm the hit reaction again once the get-up grace has passed");
+
 		const auto* valtanPatterns = catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
 		const BOSS_PATTERN_DEFINITION* swing = nullptr;
 		const BOSS_PATTERN_DEFINITION* roar = nullptr;

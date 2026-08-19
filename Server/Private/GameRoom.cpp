@@ -1215,6 +1215,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.fKnockbackRemainingSeconds = 0.f;
 	player.fKnockbackSpeed = 0.f;
 	player.iKnockdownEndTick = 0u;
+	player.iHitReactionGraceEndTick = 0u;
 	player.isCombatReady = false;
 	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
 }
@@ -1429,6 +1430,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.fKnockbackRemainingSeconds = 0.f;
 	staged.fKnockbackSpeed = 0.f;
 	staged.iKnockdownEndTick = 0u;
+	staged.iHitReactionGraceEndTick = 0u;
 	staged.fActionElapsedSeconds = 0.f;
 	staged.fSkillAimDirectionX = 0.f;
 	staged.fSkillAimDirectionZ = 1.f;
@@ -2179,6 +2181,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			player->second.fKnockbackRemainingSeconds = 0.f;
 			player->second.fKnockbackSpeed = 0.f;
 			player->second.iKnockdownEndTick = 0u;
+			player->second.iHitReactionGraceEndTick = 0u;
 			if (!Has_EngagedAuditionPlayer(*boss))
 			{
 				boss->PendingPatternIds.clear();
@@ -3716,6 +3719,8 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.iActionStartTick = 0u;
 			player.fActionElapsedSeconds = 0.f;
 			player.iKnockdownEndTick = 0u;
+			player.iHitReactionGraceEndTick =
+				updateTick + PLAYER_HIT_REACTION_GRACE_TICKS;
 		}
 		m_PlayerSkillSystem.Update(
 			player,

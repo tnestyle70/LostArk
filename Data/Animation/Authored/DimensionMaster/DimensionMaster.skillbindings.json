@@ -91,6 +91,12 @@
       "clips": [
         "pc_sp_m_00_sk_sk_moving_normal_1_04"
       ]
+    },
+    {
+      "skillId": 2050030,
+      "clips": [
+        "pc_sp_m_00_sk_sk_standup_normal_1_04"
+      ]
     }
   ]
 }

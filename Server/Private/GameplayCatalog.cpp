@@ -91,6 +91,8 @@ namespace
 			output = PLAYER_SKILL_KIND::HOLD;
 		else if ("COUNTER" == value)
 			output = PLAYER_SKILL_KIND::COUNTER;
+		else if ("STANDUP" == value)
+			output = PLAYER_SKILL_KIND::STANDUP;
 		else
 			return false;
 		return true;

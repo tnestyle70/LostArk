@@ -491,6 +491,7 @@ $playerSkillSlots = @(
 	'Q','W','E','R','A','S','D','F','T','X','Z','V','ALT_V','SPACE','LMB','RMB')
 $skillIds = [Collections.Generic.HashSet[uint32]]::new()
 $claimedSlotStances = @{}
+$claimedStandupSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $skillRows = [Collections.Generic.List[string]]::new()
 foreach ($skill in @($skillDocument.skills)) {
     Assert-ExactProperties $skill @(
@@ -533,18 +534,29 @@ foreach ($skill in @($skillDocument.skills)) {
 	}
     $id = [uint32]$skill.skillId
     $slotKey = "$($skill.characterClass):$($skill.inputSlot)"
-    $claimedStances = $claimedSlotStances[$slotKey]
-    if ($null -eq $claimedStances) {
-        $claimedStances = [Collections.Generic.List[string]]::new()
-        $claimedSlotStances[$slotKey] = $claimedStances
+    # A STANDUP skill shares its physical key with the slot's normal skill but is
+    # gated by the KNOCKDOWN action instead of a stance, so it claims its own
+    # per-slot domain rather than a stance.
+    if ([string]$skill.skillKind -eq 'STANDUP') {
+        if ($id -eq 0 -or -not $skillIds.Add($id) -or
+            -not $claimedStandupSlots.Add($slotKey)) {
+            throw "Duplicate skill ID or input slot: $id"
+        }
     }
-    $slotConflicts = $claimedStances | Where-Object {
-        $_ -eq $skill.requiredStance -or $_ -eq 'NONE' -or $skill.requiredStance -eq 'NONE'
+    else {
+        $claimedStances = $claimedSlotStances[$slotKey]
+        if ($null -eq $claimedStances) {
+            $claimedStances = [Collections.Generic.List[string]]::new()
+            $claimedSlotStances[$slotKey] = $claimedStances
+        }
+        $slotConflicts = $claimedStances | Where-Object {
+            $_ -eq $skill.requiredStance -or $_ -eq 'NONE' -or $skill.requiredStance -eq 'NONE'
+        }
+        if ($id -eq 0 -or -not $skillIds.Add($id) -or $null -ne $slotConflicts) {
+            throw "Duplicate skill ID or input slot: $id"
+        }
+        $claimedStances.Add([string]$skill.requiredStance)
     }
-    if ($id -eq 0 -or -not $skillIds.Add($id) -or $null -ne $slotConflicts) {
-        throw "Duplicate skill ID or input slot: $id"
-    }
-    $claimedStances.Add([string]$skill.requiredStance)
     if ($skill.characterClass -notin $supportedPlayerClasses -or $skill.inputSlot -notin $playerSkillSlots -or
         [uint32]$skill.actionDurationMs -eq 0 -or
         [uint32]$skill.hitTimeMs -gt [uint32]$skill.actionDurationMs -or
@@ -557,8 +569,15 @@ foreach ($skill in @($skillDocument.skills)) {
         throw "Player skill timing, class, slot, resource, or damage reference is invalid: $id"
     }
 	$skillKind = [string]$skill.skillKind
-	if ($skillKind -notin @('ACTIVE','COMBO','HOLD','COUNTER')) {
+	if ($skillKind -notin @('ACTIVE','COMBO','HOLD','COUNTER','STANDUP')) {
 		throw "Unknown skillKind: $id $skillKind"
+	}
+	if ($skillKind -eq 'STANDUP' -and (
+		$dealsDamage -or @($skill.comboStages).Count -ne 0 -or
+		[uint32]$skill.cooldownMs -eq 0 -or
+		[string]$skill.requiredStance -ne 'NONE' -or
+		[string]$skill.setsStance -ne 'NONE')) {
+		throw "STANDUP skill contract is invalid: $id"
 	}
 	$stages = @($skill.comboStages)
 	if ($skillKind -eq 'COUNTER') {
@@ -625,7 +644,7 @@ foreach ($skill in @($skillDocument.skills)) {
 			throw "Hold stage durations must sum to actionDurationMs: $id"
 		}
 	}
-	elseif ($skillKind -eq 'ACTIVE') {
+	elseif ($skillKind -eq 'ACTIVE' -or $skillKind -eq 'STANDUP') {
 		if ($stages.Count -ne 0) {
 			throw "ACTIVE skill must not carry comboStages: $id"
 		}

@@ -19,6 +19,12 @@
       ]
     },
     {
+      "skillId": 17025,
+      "clips": [
+        "wgl_sk_standup_normal_1"
+      ]
+    },
+    {
       "skillId": 17030,
       "clips": [
         "wgl_sk_pierceingspear"

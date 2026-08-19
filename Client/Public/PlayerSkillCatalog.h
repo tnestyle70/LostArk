@@ -58,12 +58,15 @@ namespace Client
 
 		/* The skill a class has on one quick slot, or nullptr when that class
 		leaves the slot empty. Slot names are the inputSlot strings in the balance
-		document, so a caller matches on "Q" or "ALT_V" rather than a key code. */
+		document, so a caller matches on "Q" or "ALT_V" rather than a key code.
+		While the replicated action is KNOCKDOWN the slot resolves to its STANDUP
+		skill instead of the normal one, mirroring the server's admission rule. */
 		static const PLAYER_SKILL_DEFINITION* Find_BySlot(
 			LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 			const std::string& inputSlot,
 			LostArk::Shared::PLAYER_STANCE_ID stance =
-				LostArk::Shared::PLAYER_STANCE_ID::NONE);
+				LostArk::Shared::PLAYER_STANCE_ID::NONE,
+			bool isKnockedDown = false);
 
 		static const PLAYER_SKILL_DEFINITION* Find_ById(
 			LostArk::Shared::SKILL_ID skillId);

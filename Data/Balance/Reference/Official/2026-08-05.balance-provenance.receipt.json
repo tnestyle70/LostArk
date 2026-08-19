@@ -44,11 +44,11 @@
                     ],
     "coverage":  {
                      "playerProfileCount":  6,
-                     "skillDefinitionCount":  90,
+                     "skillDefinitionCount":  94,
                      "damageProfileCount":  108,
                      "bossProfileCount":  1,
                      "encounterPatternCount":  33,
-                     "fieldEntryCount":  2588
+                     "fieldEntryCount":  2660
                  },
     "entries":  [
                     {
@@ -41278,6 +41278,1014 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "skillId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  34030,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  34030,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "characterClass",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "LANCE_MASTER",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "LANCE_MASTER",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "inputSlot",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "SPACE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "SPACE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "displayName",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "기상기",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "기상기",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "actionId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "lancemaster.skill.34030",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "lancemaster.skill.34030",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "skillKind",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "STANDUP",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "STANDUP",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "requiredStance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NONE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NONE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "setsStance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NONE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NONE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "cooldownMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  30000,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  30000,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1167,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1167,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "resourceCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "movementDistance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0.0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0.0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "maximumRange",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0.0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0.0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "serverDamageProfileId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "effectId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:34030",
+                        "targetField":  "comboStages.length",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "skillId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  17025,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  17025,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "characterClass",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "WARLORD",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "WARLORD",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "inputSlot",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "SPACE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "SPACE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "displayName",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "기상기",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "기상기",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "actionId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "warlord.skill.17025",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "warlord.skill.17025",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "skillKind",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "STANDUP",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "STANDUP",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "requiredStance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NONE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NONE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "setsStance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NONE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NONE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "cooldownMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  30000,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  30000,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1267,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1267,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "resourceCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "movementDistance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0.0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0.0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "maximumRange",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0.0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0.0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "serverDamageProfileId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "effectId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:17025",
+                        "targetField":  "comboStages.length",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "skillId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  31030,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  31030,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "characterClass",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "ARTIST",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "ARTIST",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "inputSlot",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "SPACE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "SPACE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "displayName",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "기상기",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "기상기",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "actionId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "artist.skill.31030",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "artist.skill.31030",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "skillKind",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "STANDUP",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "STANDUP",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "requiredStance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NONE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NONE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "setsStance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NONE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NONE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "cooldownMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  30000,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  30000,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1300,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1300,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "resourceCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "movementDistance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0.0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0.0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "maximumRange",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0.0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0.0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "serverDamageProfileId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "effectId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:31030",
+                        "targetField":  "comboStages.length",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "skillId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  2050030,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  2050030,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "characterClass",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "DIMENSIONMASTER",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "DIMENSIONMASTER",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "inputSlot",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "SPACE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "SPACE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "displayName",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "기상기",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "기상기",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "actionId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "dimensionmaster.skill.2050030",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "dimensionmaster.skill.2050030",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "skillKind",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "STANDUP",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "STANDUP",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "requiredStance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NONE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NONE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "setsStance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "NONE",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "NONE",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "cooldownMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  30000,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  30000,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "actionDurationMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  1100,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  1100,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "hitTimeMs",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "resourceCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "identityCost",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "movementDistance",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0.0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0.0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "maximumRange",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0.0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0.0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "serverDamageProfileId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "effectId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "",
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/PlayerSkills.json",
+                        "targetId":  "skill:2050030",
+                        "targetField":  "comboStages.length",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  0,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  0,
+                        "note":  "Stand-up skill authored from the official row: EFTable_Skill Cooltime 30000 and the sk_standup_normal clip length."
                     }
                 ]
 }
