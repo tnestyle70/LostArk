@@ -149,6 +149,55 @@ namespace LostArk::Server
 			SERVER_WORLD_ENTITY& boss,
 			std::uint32_t resetTick,
 			std::string& status);
+#ifdef _DEBUG
+		enum class VALTAN_ORDERED_AUDITION_PHASE : std::uint8_t
+		{
+			INACTIVE,
+			READY,
+			WAITING_PATTERN_START,
+			WAITING_PATTERN_FINISH,
+			PAUSE,
+			COMPLETED_HOLD,
+			FAILED_HOLD
+		};
+
+		struct VALTAN_ORDERED_AUDITION_STATE final
+		{
+			VALTAN_ORDERED_AUDITION_PHASE ePhase =
+				VALTAN_ORDERED_AUDITION_PHASE::INACTIVE;
+			SESSION_ID iOwnerSessionId = 0;
+			LostArk::Shared::PLAYER_ID iOwnerPlayerId =
+				LostArk::Shared::INVALID_PLAYER_ID;
+			LostArk::Shared::NET_ENTITY_ID iBossEntityId =
+				LostArk::Shared::INVALID_NET_ENTITY_ID;
+			std::size_t iStepIndex = 0u;
+			std::uint32_t iRepeatIndex = 0u;
+			std::uint32_t iExpectedPatternSequence = 0u;
+			std::uint32_t iPauseUntilTick = 0u;
+			std::uint32_t iHeldBossHp = 0u;
+			std::uint32_t iHeldBossHealthBar = 0u;
+			std::string strExpectedPatternId;
+		};
+
+		bool Stage_ValtanOrderedAuditionStart(
+			SESSION_ID sessionId,
+			const SERVER_WORLD_ENTITY& boss,
+			std::uint32_t startTick,
+			SERVER_PLAYER& outOwner,
+			std::string& status) const;
+		bool Start_ValtanOrderedAudition(
+			SESSION_ID sessionId,
+			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t startTick,
+			std::string& status);
+		void Stop_ValtanOrderedAudition();
+		bool Prepare_ValtanOrderedAuditionBeforeBrain(
+			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t updateTick);
+		void Restore_ValtanOrderedAuditionAfterBrain(
+			SERVER_WORLD_ENTITY& boss,
+			std::uint32_t updateTick);
+#endif
 		// Debug-only. Validates the item against the loaded catalog and
 		// stacks it into the player's inventory, capped at maxStack.
 		void Handle_DebugGiveItem(
@@ -304,6 +353,10 @@ namespace LostArk::Server
 		/* Hands the living monster and boss bodies to the collision system so this
 		tick's player walks and root motion stop at them. */
 		void Refresh_PlayerBlockingBodies();
+		bool Update_PlayerFall(
+			SERVER_PLAYER& player,
+			float fixedDeltaSeconds,
+			std::uint32_t updateTick);
 		void Update_Players(float fixedDeltaSeconds);
 		void Update_WorldEntities(float fixedDeltaSeconds);
 
@@ -376,5 +429,8 @@ namespace LostArk::Server
 		std::uint32_t m_iValtanAuditionArmedHealthBar = 0;
 		std::unordered_map<SESSION_ID, std::uint32_t>
 			m_ValtanAuditionSequenceBySessionId;
+#ifdef _DEBUG
+		VALTAN_ORDERED_AUDITION_STATE m_ValtanOrderedAudition;
+#endif
 	};
 }

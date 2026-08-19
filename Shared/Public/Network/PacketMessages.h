@@ -396,6 +396,12 @@ namespace LostArk::Shared
 		SKILL,
 		TRIGGER_MOVE,
 		DEAD,
+		/* The authored ground under the player was removed by a collapse. The
+		server owns the descent and the death tick; the snapshot carries only
+		this state and the position it already sends, so no field is added.
+		Appended after DEAD so every wire value that exists today keeps its
+		number. */
+		FALLING,
 		END
 	};
 
@@ -677,6 +683,11 @@ namespace LostArk::Shared
 		// whole, so the 84 and 30 collapses can then be auditioned with nothing
 		// standing above them.
 		BREAK_EVERY_WALL,
+		// Starts/stops the Server-authored 1..67 Debug occurrence ledger. The
+		// command carries no clip name or health bar; each executable occurrence
+		// resolves to one stable product pattern inside the Server catalog.
+		PLAY_ORDERED_1_67,
+		STOP_ORDERED_1_67,
 		END
 	};
 

@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <iostream>
 #include <limits>
+#include <set>
 #include <utility>
 
 namespace
@@ -100,6 +101,39 @@ namespace
 			degrees += 360.f;
 		return degrees;
 	}
+
+	/* An arena floor collapse drops the player for one and a half seconds and
+	then kills. The room steps at a fixed 30 Hz, so the deadline is 45 ticks
+	after the fall begins. Gravity is the plain metric constant: the descent
+	only presents a death the collapse already decided. */
+	constexpr float FALL_GRAVITY_METERS_PER_SECOND_SQUARED = 9.8f;
+	constexpr std::uint32_t FALL_DEATH_TICKS = 45u;
+
+	constexpr std::uint32_t Add_ServerTicksSkippingReservedZero(
+		const std::uint32_t startTick,
+		const std::uint32_t elapsedTicks)
+	{
+		constexpr std::uint64_t SERVER_TICK_CARDINALITY =
+			(static_cast<std::uint64_t>(
+				(std::numeric_limits<std::uint32_t>::max)()));
+		return static_cast<std::uint32_t>(
+			((static_cast<std::uint64_t>(startTick - 1u) + elapsedTicks) %
+				SERVER_TICK_CARDINALITY) + 1u);
+	}
+
+	static_assert(91u == Add_ServerTicksSkippingReservedZero(1u, 90u));
+	static_assert(90u == Add_ServerTicksSkippingReservedZero(
+		(std::numeric_limits<std::uint32_t>::max)(), 90u));
+	static_assert(1u == Add_ServerTicksSkippingReservedZero(
+		(std::numeric_limits<std::uint32_t>::max)() - 89u, 90u));
+
+	bool Has_ReachedServerTick(
+		const std::uint32_t currentTick,
+		const std::uint32_t targetTick)
+	{
+		return currentTick == targetTick ||
+			static_cast<std::int32_t>(currentTick - targetTick) > 0;
+	}
 #ifdef _DEBUG
 	constexpr std::uint32_t CHARACTER_SELECT_AUDITION_COOLDOWN_TICKS = 90u;
 	constexpr const char* WALL_ATTACK_PATTERN_ID = "VALTAN_DOWN_SMASH";
@@ -131,22 +165,59 @@ namespace
 	constexpr float WALL_ATTACK_BOSS_OFFSET_Z = -6.f;
 	constexpr float WALL_ATTACK_PLAYER_OFFSET_Z = 8.f;
 
-	constexpr std::uint32_t Add_ServerTicksSkippingReservedZero(
-		const std::uint32_t startTick,
-		const std::uint32_t elapsedTicks)
+	constexpr std::uint32_t VALTAN_ORDERED_AUDITION_TICK_HZ = 30u;
+
+	constexpr std::uint32_t To_OrderedAuditionPauseTicks(
+		const std::uint32_t milliseconds)
 	{
-		constexpr std::uint64_t SERVER_TICK_CARDINALITY =
-			(static_cast<std::uint64_t>((std::numeric_limits<std::uint32_t>::max)()));
 		return static_cast<std::uint32_t>(
-			((static_cast<std::uint64_t>(startTick - 1u) + elapsedTicks) %
-				SERVER_TICK_CARDINALITY) + 1u);
+			(static_cast<std::uint64_t>(milliseconds) *
+				VALTAN_ORDERED_AUDITION_TICK_HZ + 999u) / 1000u);
 	}
 
-	static_assert(91u == Add_ServerTicksSkippingReservedZero(1u, 90u));
-	static_assert(90u == Add_ServerTicksSkippingReservedZero(
-		(std::numeric_limits<std::uint32_t>::max)(), 90u));
-	static_assert(1u == Add_ServerTicksSkippingReservedZero(
-		(std::numeric_limits<std::uint32_t>::max)() - 89u, 90u));
+	void Freeze_OrderedAuditionPlayer(SERVER_PLAYER& player)
+	{
+		player.eAction = 0u == player.iCurrentHp ?
+			PLAYER_ACTION_STATE::DEAD : PLAYER_ACTION_STATE::NONE;
+		player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.iActionStartTick = 0u;
+		player.fFallVelocityY = 0.f;
+		player.iFallDeathTick = 0u;
+		player.fActionElapsedSeconds = 0.f;
+		player.fSkillAimDirectionX = 0.f;
+		player.fSkillAimDirectionZ = 1.f;
+		player.fSkillAimDistance = 0.f;
+		player.hasAppliedSkillDamage = false;
+		player.iAppliedHitMask = 0u;
+		player.iSpawnedProjectileMask = 0u;
+		player.Projectiles.clear();
+		player.iComboStage = 0u;
+		player.hasBufferedComboInput = false;
+		player.fBufferedComboAimX = 0.f;
+		player.fBufferedComboAimZ = 1.f;
+		player.fBufferedComboAimDistance = 0.f;
+		player.hasReleasedHold = false;
+		player.TriggerMove = {};
+		player.hasMoveGoal = false;
+		player.MovePath.clear();
+		player.iMovePathIndex = 0u;
+		player.isCombatReady = false;
+	}
+
+	void Prepare_OrderedAuditionPlayer(
+		SERVER_PLAYER& player,
+		const std::uint32_t actionTick)
+	{
+		Freeze_OrderedAuditionPlayer(player);
+		player.iCurrentHp = player.iMaximumHp;
+		player.iCurrentResource = player.iMaximumResource;
+		player.iResourceAccumulator = 0u;
+		player.iCurrentIdentity = player.iMaximumIdentity;
+		player.iIdentityAccumulator = 0u;
+		player.eAction = PLAYER_ACTION_STATE::NONE;
+		player.iActionStartTick = actionTick;
+		player.isCombatReady = true;
+	}
 #endif
 
 	bool Is_Valid_EnterWorld(const C2S_ENTER_WORLD& message)
@@ -393,6 +464,7 @@ LostArk::Server::CGameRoom::CGameRoom(
 			"pillar.valtan.slot02", "pillar.valtan.slot03" };
 		if (!m_EncounterPropRuntime.Initialize(pillarSet, m_strStatus, 1u))
 			return;
+		std::set<std::string> voidConditionIds;
 		for (const WORLD_DESTRUCTION_MUTATION_DESCRIPTOR& mutation :
 			m_WorldDestructionBootstrap.Get_DescriptorGraph().Mutations)
 		{
@@ -407,6 +479,16 @@ LostArk::Server::CGameRoom::CGameRoom(
 					mutation.strMutationId;
 				return;
 			}
+			/* The floor sectors are the only mutations that take ground away.
+			Navigation needs their conditions before any of them can flip, so the
+			set is handed over here and never rebuilt during combat. */
+			if (mutation.bRemovesGround)
+				voidConditionIds.insert(mutation.strNavigationStateId);
+		}
+		if (!m_ServerNavigation.Set_VoidConditions(
+			voidConditionIds, m_strStatus))
+		{
+			return;
 		}
 	}
 	if (!Initialize_WorldEntities())
@@ -632,7 +714,15 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
 	std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
-	m_ServerTriggerSystem.Evaluate_Entries(
+	bool evaluatePlayerTriggers = true;
+#ifdef _DEBUG
+	evaluatePlayerTriggers = WORLD_ID::VALTAN_ARENA != m_eWorldId ||
+		VALTAN_ORDERED_AUDITION_PHASE::INACTIVE ==
+			m_ValtanOrderedAudition.ePhase;
+#endif
+	if (evaluatePlayerTriggers)
+	{
+		m_ServerTriggerSystem.Evaluate_Entries(
 		m_Players,
 		updateTick,
 		transfers,
@@ -666,6 +756,7 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 			}
 			return false;
 		});
+	}
 	for (SERVER_WORLD_TRANSFER_REQUEST& transfer : transfers)
 	{
 		if (!m_PlayerIdBySessionId.contains(transfer.iSessionId))
@@ -998,6 +1089,14 @@ void LostArk::Server::CGameRoom::Leave(
 {
 	using namespace LostArk::Shared;
 
+#ifdef _DEBUG
+	if (sessionId == m_ValtanOrderedAudition.iOwnerSessionId &&
+		VALTAN_ORDERED_AUDITION_PHASE::INACTIVE !=
+			m_ValtanOrderedAudition.ePhase)
+	{
+		Stop_ValtanOrderedAudition();
+	}
+#endif
 	m_ValtanAuditionSequenceBySessionId.erase(sessionId);
 	const auto sessionPlayerIter = m_PlayerIdBySessionId.find(sessionId);
 	if (sessionPlayerIter == m_PlayerIdBySessionId.end())
@@ -1068,6 +1167,14 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	}
 
 	player.iLastMoveSequence = move.iClientSequence;
+#ifdef _DEBUG
+	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
+		VALTAN_ORDERED_AUDITION_PHASE::INACTIVE !=
+			m_ValtanOrderedAudition.ePhase)
+	{
+		return;
+	}
+#endif
 	if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
 		0u == player.iCurrentHp)
 	{
@@ -1121,6 +1228,15 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	const auto playerIter = m_Players.find(sessionIter->second);
 	if (playerIter == m_Players.end())
 		return;
+
+#ifdef _DEBUG
+	if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
+		VALTAN_ORDERED_AUDITION_PHASE::INACTIVE !=
+			m_ValtanOrderedAudition.ePhase)
+	{
+		return;
+	}
+#endif
 
 	const std::uint32_t actionStartTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
@@ -1189,6 +1305,29 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 		m_GameplayCatalog.Find_Player(player.eCharacterClass);
 	if (nullptr == profile)
 		return;
+	/* A fall kills the player over a hole. Reviving in place would drop them
+	again on the next tick, so a revive whose current cell is no longer walkable
+	returns to the spawn this player entered from. Every other death still
+	revives exactly where it happened. */
+	if (m_ServerNavigation.Is_Loaded() &&
+		!m_ServerNavigation.Is_PointWalkableExact(
+			player.fPositionX, player.fPositionZ))
+	{
+		const WORLD_BOOTSTRAP_PLACEMENT* spawn =
+			Find_Placement(player.strSpawnPlacementId);
+		SERVER_NAV_POINT projected{};
+		if (nullptr == spawn || !spawn->isEnabled ||
+			WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN != spawn->eKind ||
+			!m_ServerNavigation.Project_Point(
+				spawn->fPositionX, spawn->fPositionZ, projected))
+		{
+			return;
+		}
+		player.fPositionX = projected.x;
+		player.fPositionY = projected.y;
+		player.fPositionZ = projected.z;
+		player.fYawDegrees = spawn->fYawDegrees;
+	}
 	player.iCurrentHp = player.iMaximumHp;
 	player.iCurrentResource = player.iMaximumResource;
 	player.iResourceAccumulator = 0u;
@@ -1198,6 +1337,8 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.eStance = profile->eDefaultStance;
 	player.iCurrentSkillId = INVALID_SKILL_ID;
 	player.iActionStartTick = 0u;
+	player.fFallVelocityY = 0.f;
+	player.iFallDeathTick = 0u;
 	player.fActionElapsedSeconds = 0.f;
 	player.fSkillAimDirectionX = 0.f;
 	player.fSkillAimDirectionZ = 1.f;
@@ -1801,6 +1942,30 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 	m_ServerNavigation.Reset_RuntimeBlockers();
 	m_iNextWorldDestructionEventSequence = 1u;
 	m_iValtanAuditionArmedHealthBar = 0u;
+#ifdef _DEBUG
+	m_ValtanOrderedAudition = {};
+#endif
+	/* The reset put every floor sector back, so a body that was still falling
+	has solid ground under its own XZ again. */
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		if (LostArk::Shared::PLAYER_ACTION_STATE::FALLING != player.eAction)
+			continue;
+		player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;
+		player.iActionStartTick = 0u;
+		player.fFallVelocityY = 0.f;
+		player.iFallDeathTick = 0u;
+		SERVER_NAV_POINT ground{};
+		if (m_ServerNavigation.Is_Loaded() &&
+			m_ServerNavigation.Project_Point(
+				player.fPositionX, player.fPositionZ, ground))
+		{
+			player.fPositionX = ground.x;
+			player.fPositionY = ground.y;
+			player.fPositionZ = ground.z;
+		}
+	}
 	Invalidate_DynamicNavigationPaths();
 
 	for (const auto& [sessionId, playerId] : m_PlayerIdBySessionId)
@@ -1814,6 +1979,481 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 	status = "Valtan audition reset and full-sync completed";
 	return true;
 }
+
+#ifdef _DEBUG
+bool LostArk::Server::CGameRoom::Stage_ValtanOrderedAuditionStart(
+	const SESSION_ID sessionId,
+	const SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t startTick,
+	SERVER_PLAYER& outOwner,
+	std::string& status) const
+{
+	using namespace LostArk::Shared;
+	if (VALTAN_ORDERED_AUDITION_PHASE::INACTIVE !=
+		m_ValtanOrderedAudition.ePhase)
+	{
+		status = "Valtan ordered audition is already active";
+		return false;
+	}
+	if (WORLD_ID::VALTAN_ARENA != m_eWorldId || 0u == startTick ||
+		!m_WorldDestructionRuntime.Is_Initialized())
+	{
+		status = "Valtan ordered audition reset is unavailable";
+		return false;
+	}
+
+	const auto ownerId = m_PlayerIdBySessionId.find(sessionId);
+	if (m_PlayerIdBySessionId.end() == ownerId)
+	{
+		status = "Valtan ordered audition owner is unavailable";
+		return false;
+	}
+	const auto owner = m_Players.find(ownerId->second);
+	if (m_Players.end() == owner)
+	{
+		status = "Valtan ordered audition player is unavailable";
+		return false;
+	}
+	const WORLD_BOOTSTRAP_PLACEMENT* placement =
+		Find_Placement(boss.strPlacementId);
+	if (nullptr == placement ||
+		WORLD_BOOTSTRAP_KIND::BOSS != placement->eKind)
+	{
+		status = "Valtan ordered audition boss placement is unavailable";
+		return false;
+	}
+
+	const VALTAN_DEBUG_AUDITION_DEFINITION* definition =
+		m_GameplayCatalog.Find_ValtanDebugAudition(boss.strEncounterId);
+	const std::vector<BOSS_PATTERN_DEFINITION>* patterns =
+		m_GameplayCatalog.Find_BossPatterns(boss.strEncounterId);
+	if (nullptr == definition || 67u != definition->Steps.size() ||
+		nullptr == patterns)
+	{
+		status = "Valtan ordered audition catalog is unavailable";
+		return false;
+	}
+	for (std::size_t index = 0u; index < definition->Steps.size(); ++index)
+	{
+		const VALTAN_DEBUG_AUDITION_STEP& step = definition->Steps[index];
+		if (step.iOrdinal != index + 1u || step.iPauseAfterMs > 5000u ||
+			step.iTargetHealthBar > boss.iMaximumHealthBars)
+		{
+			status = "Valtan ordered audition catalog is invalid";
+			return false;
+		}
+		const bool isIdle =
+			VALTAN_DEBUG_AUDITION_MAPPING::MARKER == step.eMapping ||
+			VALTAN_DEBUG_AUDITION_MAPPING::UNRESOLVED == step.eMapping;
+		if (isIdle)
+		{
+			if (!step.strPatternId.empty() || 0u != step.iRepeat ||
+				0u == step.iPauseAfterMs)
+			{
+				status = "Valtan ordered audition idle step is invalid";
+				return false;
+			}
+			continue;
+		}
+		if (step.strPatternId.empty() || 0u == step.iRepeat ||
+			step.iRepeat > 4u ||
+			patterns->end() == std::find_if(
+				patterns->begin(), patterns->end(),
+				[&step](const BOSS_PATTERN_DEFINITION& pattern)
+				{
+					return pattern.strPatternId == step.strPatternId;
+				}))
+		{
+			status = "Valtan ordered audition pattern mapping is invalid";
+			return false;
+		}
+	}
+
+	CWorldDestructionRuntime stagedDestruction = m_WorldDestructionRuntime;
+	if (!stagedDestruction.Reset(status, startTick))
+		return false;
+	CEncounterPropRuntime stagedProps = m_EncounterPropRuntime;
+	if (m_EncounterPropRuntime.Is_Initialized() &&
+		!stagedProps.Reset(status, startTick))
+	{
+		return false;
+	}
+
+	SERVER_PLAYER stagedOwner = owner->second;
+	Prepare_OrderedAuditionPlayer(stagedOwner, startTick);
+	if (!m_ServerTriggerSystem.Place_PlayerAtValtanAuditionBait(
+		stagedOwner, startTick))
+	{
+		status = "Valtan ordered audition bait placement is unavailable";
+		return false;
+	}
+	outOwner = std::move(stagedOwner);
+	status = "Valtan ordered audition start preflight completed";
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Start_ValtanOrderedAudition(
+	const SESSION_ID sessionId,
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t startTick,
+	std::string& status)
+{
+	using namespace LostArk::Shared;
+	SERVER_PLAYER stagedOwner{};
+	if (!Stage_ValtanOrderedAuditionStart(
+		sessionId, boss, startTick, stagedOwner, status))
+	{
+		return false;
+	}
+	const PLAYER_ID ownerPlayerId = stagedOwner.iPlayerId;
+
+	if (!Reset_ValtanAuditionState(boss, startTick, status))
+		return false;
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		Freeze_OrderedAuditionPlayer(player);
+	}
+	SERVER_PLAYER& refreshedOwner = m_Players.at(ownerPlayerId);
+	refreshedOwner = std::move(stagedOwner);
+	m_ServerTriggerSystem.Remove_Player(refreshedOwner.iPlayerId);
+
+	boss.bIntroPatternConsumed = true;
+	boss.PendingPatternIds.clear();
+	boss.iCurrentHp = boss.iMaximumHp;
+	boss.iLastEvaluatedHealthBar = boss.iMaximumHealthBars;
+	m_iValtanAuditionArmedHealthBar = 0u;
+	m_ValtanOrderedAudition = {};
+	m_ValtanOrderedAudition.ePhase = VALTAN_ORDERED_AUDITION_PHASE::READY;
+	m_ValtanOrderedAudition.iOwnerSessionId = sessionId;
+	m_ValtanOrderedAudition.iOwnerPlayerId = refreshedOwner.iPlayerId;
+	m_ValtanOrderedAudition.iBossEntityId = boss.iNetEntityId;
+	m_ValtanOrderedAudition.iHeldBossHp = boss.iCurrentHp;
+	m_ValtanOrderedAudition.iHeldBossHealthBar = boss.iMaximumHealthBars;
+	status = "Valtan ordered audition queued at occurrence 1 of 67";
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Stop_ValtanOrderedAudition()
+{
+	if (SERVER_WORLD_ENTITY* boss = Find_AuditionBoss();
+		nullptr != boss &&
+		boss->iNetEntityId == m_ValtanOrderedAudition.iBossEntityId)
+	{
+		boss->PendingPatternIds.clear();
+	}
+	if (const auto owner = m_Players.find(
+		m_ValtanOrderedAudition.iOwnerPlayerId);
+		m_Players.end() != owner)
+	{
+		Freeze_OrderedAuditionPlayer(owner->second);
+	}
+	m_iPillarAuditionBreakTick = 0u;
+	m_bPillarAuditionCycleArmed = false;
+	m_ValtanOrderedAudition = {};
+	m_strStatus = "Valtan ordered audition stopped";
+}
+
+bool LostArk::Server::CGameRoom::Prepare_ValtanOrderedAuditionBeforeBrain(
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t updateTick)
+{
+	using namespace LostArk::Shared;
+	if (VALTAN_ORDERED_AUDITION_PHASE::INACTIVE ==
+		m_ValtanOrderedAudition.ePhase)
+	{
+		return true;
+	}
+	if (VALTAN_ORDERED_AUDITION_PHASE::COMPLETED_HOLD ==
+			m_ValtanOrderedAudition.ePhase ||
+		VALTAN_ORDERED_AUDITION_PHASE::FAILED_HOLD ==
+			m_ValtanOrderedAudition.ePhase)
+	{
+		return false;
+	}
+
+	const auto fail = [this, &boss](const char* reason)
+	{
+		boss.PendingPatternIds.clear();
+		m_iPillarAuditionBreakTick = 0u;
+		m_bPillarAuditionCycleArmed = false;
+		if (const auto owner = m_Players.find(
+			m_ValtanOrderedAudition.iOwnerPlayerId);
+			m_Players.end() != owner)
+		{
+			owner->second.isCombatReady = false;
+		}
+		m_ValtanOrderedAudition.ePhase =
+			VALTAN_ORDERED_AUDITION_PHASE::FAILED_HOLD;
+		m_strStatus = reason;
+	};
+	if (boss.iNetEntityId != m_ValtanOrderedAudition.iBossEntityId ||
+		0u == boss.iCurrentHp || SERVER_ENTITY_ACTION::DEAD == boss.eAction)
+	{
+		fail("Valtan ordered audition lost its boss");
+		return false;
+	}
+	const VALTAN_DEBUG_AUDITION_DEFINITION* definition =
+		m_GameplayCatalog.Find_ValtanDebugAudition(boss.strEncounterId);
+	if (nullptr == definition || 67u != definition->Steps.size())
+	{
+		fail("Valtan ordered audition catalog disappeared");
+		return false;
+	}
+	const auto owner = m_Players.find(m_ValtanOrderedAudition.iOwnerPlayerId);
+	if (m_Players.end() == owner ||
+		owner->second.iSessionId != m_ValtanOrderedAudition.iOwnerSessionId)
+	{
+		fail("Valtan ordered audition lost its driver player");
+		return false;
+	}
+	for (auto& [playerId, player] : m_Players)
+	{
+		(void)playerId;
+		Freeze_OrderedAuditionPlayer(player);
+	}
+	Prepare_OrderedAuditionPlayer(owner->second, updateTick);
+	m_ServerTriggerSystem.Remove_Player(owner->second.iPlayerId);
+	if (!m_ServerTriggerSystem.Place_PlayerAtValtanAuditionBait(
+		owner->second, updateTick))
+	{
+		fail("Valtan ordered audition could not restore its driver bait");
+		return false;
+	}
+	boss.iCurrentHp = m_ValtanOrderedAudition.iHeldBossHp;
+	boss.iLastEvaluatedHealthBar =
+		m_ValtanOrderedAudition.iHeldBossHealthBar;
+	boss.bIntroPatternConsumed = true;
+
+	for (;;)
+	{
+		switch (m_ValtanOrderedAudition.ePhase)
+		{
+		case VALTAN_ORDERED_AUDITION_PHASE::READY:
+		{
+			if (m_ValtanOrderedAudition.iStepIndex >= definition->Steps.size())
+			{
+				owner->second.isCombatReady = false;
+				m_iPillarAuditionBreakTick = 0u;
+				m_bPillarAuditionCycleArmed = false;
+				m_ValtanOrderedAudition.ePhase =
+					VALTAN_ORDERED_AUDITION_PHASE::COMPLETED_HOLD;
+				m_strStatus =
+					"Valtan ordered audition completed all 67 occurrences";
+				return false;
+			}
+			const VALTAN_DEBUG_AUDITION_STEP& step =
+				definition->Steps[m_ValtanOrderedAudition.iStepIndex];
+			if (0u != step.iTargetHealthBar)
+			{
+				const std::uint32_t targetHp =
+					CValtanBrain::Resolve_HealthBarHp(
+						boss, step.iTargetHealthBar);
+				if (0u == targetHp)
+				{
+					fail("Valtan ordered audition health bar is unavailable");
+					return false;
+				}
+				m_ValtanOrderedAudition.iHeldBossHp = targetHp;
+				m_ValtanOrderedAudition.iHeldBossHealthBar =
+					step.iTargetHealthBar;
+				boss.iCurrentHp = targetHp;
+				boss.iLastEvaluatedHealthBar = step.iTargetHealthBar;
+			}
+			const bool isIdle =
+				VALTAN_DEBUG_AUDITION_MAPPING::MARKER == step.eMapping ||
+				VALTAN_DEBUG_AUDITION_MAPPING::UNRESOLVED == step.eMapping;
+			if (isIdle)
+			{
+				++m_ValtanOrderedAudition.iStepIndex;
+				m_strStatus = "Valtan ordered audition preserved idle occurrence " +
+					std::to_string(step.iOrdinal) + " of 67";
+				const std::uint32_t pauseTicks =
+					To_OrderedAuditionPauseTicks(step.iPauseAfterMs);
+				if (0u == pauseTicks)
+				{
+					m_ValtanOrderedAudition.iPauseUntilTick = 0u;
+					m_ValtanOrderedAudition.ePhase =
+						VALTAN_ORDERED_AUDITION_PHASE::READY;
+					continue;
+				}
+				m_ValtanOrderedAudition.iPauseUntilTick =
+					Add_ServerTicksSkippingReservedZero(updateTick, pauseTicks);
+				m_ValtanOrderedAudition.ePhase =
+					VALTAN_ORDERED_AUDITION_PHASE::PAUSE;
+				return false;
+			}
+			if (SERVER_ENTITY_ACTION::IDLE != boss.eAction ||
+				!boss.strPatternId.empty() || !boss.PendingPatternIds.empty())
+			{
+				fail("Valtan ordered audition found an unexpected boss action");
+				return false;
+			}
+			m_ValtanOrderedAudition.strExpectedPatternId = step.strPatternId;
+			m_ValtanOrderedAudition.iExpectedPatternSequence =
+				(std::numeric_limits<std::uint32_t>::max)() ==
+					boss.iPatternSequence ? 1u : boss.iPatternSequence + 1u;
+			boss.PendingPatternIds.push_back(step.strPatternId);
+			m_ValtanOrderedAudition.ePhase =
+				VALTAN_ORDERED_AUDITION_PHASE::WAITING_PATTERN_START;
+			m_bPillarAuditionCycleArmed = PILLAR_PATTERN_ID == step.strPatternId;
+			m_strStatus = "Valtan ordered audition running occurrence " +
+				std::to_string(step.iOrdinal) + " of 67";
+			return true;
+		}
+		case VALTAN_ORDERED_AUDITION_PHASE::WAITING_PATTERN_START:
+			if (boss.iPatternSequence ==
+					m_ValtanOrderedAudition.iExpectedPatternSequence &&
+				boss.strPatternId ==
+					m_ValtanOrderedAudition.strExpectedPatternId)
+			{
+				m_ValtanOrderedAudition.ePhase =
+					VALTAN_ORDERED_AUDITION_PHASE::WAITING_PATTERN_FINISH;
+				return true;
+			}
+			if (boss.strPatternId.empty() &&
+				!boss.PendingPatternIds.empty() &&
+				boss.PendingPatternIds.front() ==
+					m_ValtanOrderedAudition.strExpectedPatternId)
+			{
+				return true;
+			}
+			fail("Valtan ordered audition pattern failed to start");
+			return false;
+		case VALTAN_ORDERED_AUDITION_PHASE::WAITING_PATTERN_FINISH:
+			if (boss.iPatternSequence ==
+					m_ValtanOrderedAudition.iExpectedPatternSequence &&
+				boss.strPatternId ==
+					m_ValtanOrderedAudition.strExpectedPatternId)
+			{
+				return true;
+			}
+			fail("Valtan ordered audition pattern identity changed");
+			return false;
+		case VALTAN_ORDERED_AUDITION_PHASE::PAUSE:
+			if (!Has_ReachedServerTick(
+				updateTick, m_ValtanOrderedAudition.iPauseUntilTick))
+			{
+				return false;
+			}
+			m_ValtanOrderedAudition.ePhase =
+				VALTAN_ORDERED_AUDITION_PHASE::READY;
+			continue;
+		case VALTAN_ORDERED_AUDITION_PHASE::COMPLETED_HOLD:
+		case VALTAN_ORDERED_AUDITION_PHASE::FAILED_HOLD:
+			return false;
+		case VALTAN_ORDERED_AUDITION_PHASE::INACTIVE:
+		default:
+			return true;
+		}
+	}
+}
+
+void LostArk::Server::CGameRoom::Restore_ValtanOrderedAuditionAfterBrain(
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t updateTick)
+{
+	if (VALTAN_ORDERED_AUDITION_PHASE::WAITING_PATTERN_START !=
+			m_ValtanOrderedAudition.ePhase &&
+		VALTAN_ORDERED_AUDITION_PHASE::WAITING_PATTERN_FINISH !=
+			m_ValtanOrderedAudition.ePhase)
+	{
+		return;
+	}
+	const VALTAN_DEBUG_AUDITION_DEFINITION* definition =
+		m_GameplayCatalog.Find_ValtanDebugAudition(boss.strEncounterId);
+	const auto owner = m_Players.find(m_ValtanOrderedAudition.iOwnerPlayerId);
+	if (nullptr == definition ||
+		m_ValtanOrderedAudition.iStepIndex >= definition->Steps.size() ||
+		m_Players.end() == owner)
+	{
+		boss.PendingPatternIds.clear();
+		m_iPillarAuditionBreakTick = 0u;
+		m_bPillarAuditionCycleArmed = false;
+		m_ValtanOrderedAudition.ePhase =
+			VALTAN_ORDERED_AUDITION_PHASE::FAILED_HOLD;
+		m_strStatus = "Valtan ordered audition lost runtime state";
+		return;
+	}
+	Prepare_OrderedAuditionPlayer(owner->second, updateTick);
+	m_ServerTriggerSystem.Remove_Player(owner->second.iPlayerId);
+	if (!m_ServerTriggerSystem.Place_PlayerAtValtanAuditionBait(
+		owner->second, updateTick))
+	{
+		owner->second.isCombatReady = false;
+		boss.PendingPatternIds.clear();
+		m_iPillarAuditionBreakTick = 0u;
+		m_bPillarAuditionCycleArmed = false;
+		m_ValtanOrderedAudition.ePhase =
+			VALTAN_ORDERED_AUDITION_PHASE::FAILED_HOLD;
+		m_strStatus = "Valtan ordered audition could not restore its driver";
+		return;
+	}
+	boss.iCurrentHp = m_ValtanOrderedAudition.iHeldBossHp;
+	boss.iLastEvaluatedHealthBar =
+		m_ValtanOrderedAudition.iHeldBossHealthBar;
+
+	const bool expectedSequence = boss.iPatternSequence ==
+		m_ValtanOrderedAudition.iExpectedPatternSequence;
+	const bool expectedPattern = boss.strPatternId ==
+		m_ValtanOrderedAudition.strExpectedPatternId;
+	if (expectedSequence && expectedPattern)
+	{
+		m_ValtanOrderedAudition.ePhase =
+			VALTAN_ORDERED_AUDITION_PHASE::WAITING_PATTERN_FINISH;
+		return;
+	}
+	if (!expectedSequence || !boss.strPatternId.empty())
+	{
+		owner->second.isCombatReady = false;
+		boss.PendingPatternIds.clear();
+		m_iPillarAuditionBreakTick = 0u;
+		m_bPillarAuditionCycleArmed = false;
+		m_ValtanOrderedAudition.ePhase =
+			VALTAN_ORDERED_AUDITION_PHASE::FAILED_HOLD;
+		m_strStatus = "Valtan ordered audition observed an unexpected pattern";
+		return;
+	}
+
+	const VALTAN_DEBUG_AUDITION_STEP& step =
+		definition->Steps[m_ValtanOrderedAudition.iStepIndex];
+	++m_ValtanOrderedAudition.iRepeatIndex;
+	const bool occurrenceCompleted =
+		m_ValtanOrderedAudition.iRepeatIndex >= step.iRepeat;
+	if (occurrenceCompleted)
+	{
+		++m_ValtanOrderedAudition.iStepIndex;
+		m_ValtanOrderedAudition.iRepeatIndex = 0u;
+	}
+	m_ValtanOrderedAudition.strExpectedPatternId.clear();
+	m_ValtanOrderedAudition.iExpectedPatternSequence = 0u;
+	m_ValtanOrderedAudition.iPauseUntilTick = 0u;
+	if (!occurrenceCompleted)
+	{
+		m_ValtanOrderedAudition.ePhase =
+			VALTAN_ORDERED_AUDITION_PHASE::READY;
+		m_strStatus = "Valtan ordered audition repeated occurrence " +
+			std::to_string(step.iOrdinal) + " of 67";
+		return;
+	}
+	const std::uint32_t pauseTicks =
+		To_OrderedAuditionPauseTicks(step.iPauseAfterMs);
+	if (0u == pauseTicks)
+	{
+		m_ValtanOrderedAudition.ePhase =
+			VALTAN_ORDERED_AUDITION_PHASE::READY;
+	}
+	else
+	{
+		m_ValtanOrderedAudition.iPauseUntilTick =
+			Add_ServerTicksSkippingReservedZero(updateTick, pauseTicks);
+		m_ValtanOrderedAudition.ePhase =
+			VALTAN_ORDERED_AUDITION_PHASE::PAUSE;
+	}
+	m_strStatus = "Valtan ordered audition completed occurrence " +
+		std::to_string(step.iOrdinal) + " of 67";
+}
+#endif
 
 LostArk::Shared::VALTAN_AUDITION_RESULT
 LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
@@ -1842,11 +2482,17 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 		}
 		const auto handled =
 			m_ValtanAuditionSequenceBySessionId.find(sessionId);
-		if (m_ValtanAuditionSequenceBySessionId.end() != handled &&
-			handled->second >= request.iRequestSequence)
+		if (0u == request.iRequestSequence ||
+			(m_ValtanAuditionSequenceBySessionId.end() != handled &&
+			 !Is_NewerSequence(request.iRequestSequence, handled->second)))
 		{
 			return VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED;
 		}
+		/* A verdict finishes this request identity, including a rejection. The
+		Client may retry the same sequence while its response is in flight; it
+		must never become executable later merely because room state changed. */
+		m_ValtanAuditionSequenceBySessionId.insert_or_assign(
+			sessionId, request.iRequestSequence);
 		const bool isPillarCyclePlay =
 			VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE == request.eOperation;
 		const bool isWallAttackPlay =
@@ -1858,16 +2504,72 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 		const bool isOpenArenaView =
 			VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL == request.eOperation;
 		const bool isArenaStagingView = isFinalArenaView || isOpenArenaView;
+		const bool isOrderedStart =
+			VALTAN_AUDITION_OPERATION::PLAY_ORDERED_1_67 == request.eOperation;
+		const bool isOrderedStop =
+			VALTAN_AUDITION_OPERATION::STOP_ORDERED_1_67 == request.eOperation;
+		if (VALTAN_ORDERED_AUDITION_PHASE::INACTIVE !=
+				m_ValtanOrderedAudition.ePhase &&
+			!isOrderedStop)
+		{
+			m_strStatus =
+				"Stop the active Valtan ordered audition before another operation";
+			return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+		}
+		if (isOrderedStop)
+		{
+			Stop_ValtanOrderedAudition();
+			return VALTAN_AUDITION_RESULT::QUEUED;
+		}
 		SERVER_WORLD_ENTITY* boss = Find_AuditionBoss();
+		if (nullptr == boss && isOrderedStart)
+		{
+			const WORLD_BOOTSTRAP_PLACEMENT* placement =
+				Find_Placement("boss.valtan.center");
+			SERVER_WORLD_ENTITY stagedBoss{};
+			SERVER_PLAYER stagedOwner{};
+			std::string preflightStatus;
+			const std::uint32_t startTick =
+				0u == m_iServerTick ? 1u : m_iServerTick;
+			if (nullptr == placement || placement->isEnabled ||
+				WORLD_BOOTSTRAP_KIND::BOSS != placement->eKind ||
+				!Build_WorldEntity(
+					*placement, m_iNextNetEntityId, stagedBoss) ||
+				!Stage_ValtanOrderedAuditionStart(
+					sessionId, stagedBoss, startTick,
+					stagedOwner, preflightStatus))
+			{
+				if (!preflightStatus.empty())
+					m_strStatus = std::move(preflightStatus);
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+		}
 		if (nullptr == boss &&
 			(VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR == request.eOperation ||
-			 isPillarCyclePlay || isWallAttackPlay || isArenaStagingView))
+			 VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE == request.eOperation ||
+			 isPillarCyclePlay || isWallAttackPlay || isArenaStagingView ||
+			 isOrderedStart))
 		{
 			(void)Activate_Encounter("boss.valtan.center");
 			boss = Find_AuditionBoss();
 		}
 		if (nullptr == boss)
 			return VALTAN_AUDITION_RESULT::REJECTED_NO_BOSS;
+		if (isOrderedStart)
+		{
+			std::string startStatus;
+			const std::uint32_t startTick =
+				0u == m_iServerTick ? 1u : m_iServerTick;
+			if (!Start_ValtanOrderedAudition(
+				sessionId, *boss, startTick, startStatus))
+			{
+				m_strStatus = std::move(startStatus);
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+			m_strStatus = std::move(startStatus);
+			currentHealthBar = CValtanBrain::Calculate_HealthBar(*boss);
+			return VALTAN_AUDITION_RESULT::QUEUED;
+		}
 
 		currentHealthBar = CValtanBrain::Calculate_HealthBar(*boss);
 		if (0u == boss->iCurrentHp ||
@@ -2982,6 +3684,9 @@ bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 	}
 	m_iPillarAuditionBreakTick = 0u;
 	m_bPillarAuditionCycleArmed = false;
+#ifdef _DEBUG
+	m_ValtanOrderedAudition = {};
+#endif
 	if (m_EncounterPropRuntime.Is_Initialized() &&
 		!m_EncounterPropRuntime.Reset(resetStatus, resetTick))
 	{
@@ -3049,7 +3754,9 @@ bool LostArk::Server::CGameRoom::Apply_EncounterPropStageEntry(
 	   schedules the shatter the product path has no owner for yet. */
 	if (m_bPillarAuditionCycleArmed)
 	{
-		m_iPillarAuditionBreakTick = serverTick + PILLAR_AUDITION_DWELL_TICKS;
+		m_iPillarAuditionBreakTick =
+			Add_ServerTicksSkippingReservedZero(
+				serverTick, PILLAR_AUDITION_DWELL_TICKS);
 		m_bPillarAuditionCycleArmed = false;
 	}
 	Broadcast_EncounterPropSync();
@@ -3064,7 +3771,7 @@ bool LostArk::Server::CGameRoom::Commit_DueEncounterProps(
 	bool broadcast = false;
 	std::string status;
 	if (0u != m_iPillarAuditionBreakTick &&
-		serverTick >= m_iPillarAuditionBreakTick)
+		Has_ReachedServerTick(serverTick, m_iPillarAuditionBreakTick))
 	{
 		m_iPillarAuditionBreakTick = 0u;
 		ENCOUNTER_PROP_TRANSACTION breakTransaction{};
@@ -3680,6 +4387,80 @@ void LostArk::Server::CGameRoom::Refresh_PlayerBlockingBodies()
 	m_ServerCollisionSystem.Set_BlockingBodies(std::move(bodies));
 }
 
+/* Owns the whole falling life cycle of one player inside one tick: it starts
+a fall when the authored ground under the player is gone, advances a running
+fall, and turns it into the ordinary death the revive path already
+understands. Returning true is what keeps trigger motion, skills and movement
+from running at all this tick. */
+bool LostArk::Server::CGameRoom::Update_PlayerFall(
+	SERVER_PLAYER& player,
+	const float fixedDeltaSeconds,
+	const std::uint32_t updateTick)
+{
+	using namespace LostArk::Shared;
+	if (PLAYER_ACTION_STATE::FALLING == player.eAction)
+	{
+		player.fFallVelocityY -=
+			FALL_GRAVITY_METERS_PER_SECOND_SQUARED * fixedDeltaSeconds;
+		player.fPositionY += player.fFallVelocityY * fixedDeltaSeconds;
+		/* Signed difference so a wrapped tick counter keeps ordering, the same
+		rule the cooldown deadlines use. */
+		const std::int32_t sinceDeadline = static_cast<std::int32_t>(
+			updateTick - player.iFallDeathTick);
+		if (!std::isfinite(player.fPositionY) || sinceDeadline >= 0)
+		{
+			player.iCurrentHp = 0u;
+			player.eAction = PLAYER_ACTION_STATE::DEAD;
+			player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
+			player.fFallVelocityY = 0.f;
+			player.iFallDeathTick = 0u;
+		}
+		return true;
+	}
+	if (!m_ServerNavigation.Is_Loaded() ||
+		0u == player.iCurrentHp ||
+		PLAYER_ACTION_STATE::DEAD == player.eAction ||
+		!m_ServerNavigation.Is_PointInVoidRegion(
+			player.fPositionX, player.fPositionZ))
+	{
+		return false;
+	}
+
+	player.eAction = PLAYER_ACTION_STATE::FALLING;
+	player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
+	const std::uint32_t deadline = player.iActionStartTick + FALL_DEATH_TICKS;
+	player.iFallDeathTick = 0u == deadline ? 1u : deadline;
+	player.fFallVelocityY = 0.f;
+	/* Everything the fall interrupts is cleared here instead of inside each
+	system, so no half-finished action can resume when the body lands dead. */
+	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.fActionElapsedSeconds = 0.f;
+	player.hasAppliedSkillDamage = false;
+	player.iAppliedHitMask = 0;
+	player.iSpawnedProjectileMask = 0;
+	player.Projectiles.clear();
+	player.iComboStage = 0u;
+	player.hasBufferedComboInput = false;
+	player.hasReleasedHold = false;
+	player.TriggerMove = {};
+	player.hasMoveGoal = false;
+	player.MovePath.clear();
+	player.iMovePathIndex = 0u;
+	/* Every boss and monster gate already refuses a player that is not combat
+	ready, so this one flag removes the falling body from acquisition and from
+	area damage without editing four separate target filters. */
+	player.isCombatReady = false;
+	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
+	/* The edge that opens the hole is also the first tick of the descent, so
+	the body integrates here instead of hanging one tick at the old height and
+	broadcasting a FALLING snapshot that has not moved. The deadline was just
+	set a full FALL_DEATH_TICKS away, so it cannot be due on this tick. */
+	player.fFallVelocityY -=
+		FALL_GRAVITY_METERS_PER_SECOND_SQUARED * fixedDeltaSeconds;
+	player.fPositionY += player.fFallVelocityY * fixedDeltaSeconds;
+	return true;
+}
+
 void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 {
 	const std::uint32_t updateTick =
@@ -3688,6 +4469,17 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 	for (auto& [playerId, player] : m_Players)
 	{
 		(void)playerId;
+#ifdef _DEBUG
+		if (LostArk::Shared::WORLD_ID::VALTAN_ARENA == m_eWorldId &&
+			VALTAN_ORDERED_AUDITION_PHASE::INACTIVE !=
+				m_ValtanOrderedAudition.ePhase)
+		{
+			Freeze_OrderedAuditionPlayer(player);
+			continue;
+		}
+#endif
+		if (Update_PlayerFall(player, fixedDeltaSeconds, updateTick))
+			continue;
 		if (m_ServerTriggerSystem.Update_PlayerMotion(
 			player, fixedDeltaSeconds))
 		{
@@ -3880,14 +4672,22 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			const float contactStartX = entity.fPositionX;
 			const float contactStartY = entity.fPositionY;
 			const float contactStartZ = entity.fPositionZ;
-			m_ValtanBrain.Update(
-				entity,
-				m_Players,
-				m_GameplayCatalog,
-				m_ServerNavigation,
-				fixedDeltaSeconds,
-				updateTick,
-				m_TickDamageEvents);
+			bool updateValtanBrain = true;
+#ifdef _DEBUG
+			updateValtanBrain = Prepare_ValtanOrderedAuditionBeforeBrain(
+				entity, updateTick);
+#endif
+			if (updateValtanBrain)
+			{
+				m_ValtanBrain.Update(
+					entity,
+					m_Players,
+					m_GameplayCatalog,
+					m_ServerNavigation,
+					fixedDeltaSeconds,
+					updateTick,
+					m_TickDamageEvents);
+			}
 			const bool stageChanged =
 				previousPatternSequence != entity.iPatternSequence ||
 				previousStageIndex != entity.iPatternStageIndex ||
@@ -3967,6 +4767,10 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					entity.fPositionZ = proposedZ;
 				}
 			}
+#ifdef _DEBUG
+			if (updateValtanBrain)
+				Restore_ValtanOrderedAuditionAfterBrain(entity, updateTick);
+#endif
 		}
 		else if (entity.eKind == WORLD_BOOTSTRAP_KIND::MONSTER &&
 			m_ServerNavigation.Is_Loaded())

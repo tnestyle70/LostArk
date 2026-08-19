@@ -196,7 +196,7 @@ bool LostArk::Server::CWorldDestructionBootstrap::Load_FromFile(
 	std::uint32_t bindingCount = 0u;
 	if (9u != header.size() ||
 		"LOSTARK_WORLD_DESTRUCTION_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 1u != version ||
+		!ParseNumber(header[1], version) || 2u != version ||
 		!Is_StableId(header[2]) || !Is_StableId(header[3]) ||
 		!Is_Revision(header[4]) ||
 		!ParseNumber(header[5], fixedTickHz) || 30u != fixedTickHz ||
@@ -296,14 +296,19 @@ bool LostArk::Server::CWorldDestructionBootstrap::Load_FromFile(
 		semanticPayload += line + "\n";
 		const std::vector<std::string_view> fields = SplitTabs(line);
 		WORLD_DESTRUCTION_MUTATION_DESCRIPTOR mutation;
-		if (7u != fields.size() || "M" != fields[0] ||
+		std::uint32_t removesGround = 0u;
+		if (8u != fields.size() || "M" != fields[0] ||
 			!Is_StableId(fields[1]) || !Is_StableId(fields[2]) ||
 			!ParseState(fields[3], mutation.eFinalState, false) ||
 			!ParseNumber(fields[4], mutation.iBreakingDurationTicks) ||
 			mutation.iBreakingDurationTicks >
 				static_cast<std::uint32_t>((std::numeric_limits<std::int32_t>::max)()) ||
 			("-" != fields[5] && !Is_StableId(fields[5])) ||
-			("-" != fields[6] && !Is_StableId(fields[6])))
+			("-" != fields[6] && !Is_StableId(fields[6])) ||
+			!ParseNumber(fields[7], removesGround) || 1u < removesGround ||
+			/* A hole is the navigation condition's cells. A mutation that claims
+			to remove ground without owning one has nothing to open. */
+			(0u != removesGround && "-" == fields[6]))
 		{
 			m_strStatus = "World destruction mutation row is invalid";
 			return false;
@@ -321,6 +326,7 @@ bool LostArk::Server::CWorldDestructionBootstrap::Load_FromFile(
 		previousMutationId = mutation.strMutationId;
 		if ("-" != fields[5]) mutation.strCollisionStateId = fields[5];
 		if ("-" != fields[6]) mutation.strNavigationStateId = fields[6];
+		mutation.bRemovesGround = 0u != removesGround;
 		stagedGraph.Mutations.emplace_back(std::move(mutation));
 	}
 

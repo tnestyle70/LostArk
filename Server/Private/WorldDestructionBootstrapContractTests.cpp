@@ -11,13 +11,13 @@
 namespace
 {
 	const char* VALID_BOOTSTRAP =
-		"LOSTARK_WORLD_DESTRUCTION_BOOTSTRAP\t1\tENCOUNTER_VALTAN\t"
-		"LV_LUT_HEARTRB_ED\tbabc172d2f7a2a73b44aaa76e22ddea60570f3e9362845addb5fad1adcb70511\t30\t1\t1\t1\n"
+		"LOSTARK_WORLD_DESTRUCTION_BOOTSTRAP\t2\tENCOUNTER_VALTAN\t"
+		"LV_LUT_HEARTRB_ED\t1d571860636803667901cfdd4b26c2aa8656be7cab129156bed62eb777149aab\t30\t1\t1\t1\n"
 		"G\tdestroyable.group.valtan.wall.3705102\tINTACT\t5\t"
 		"9335938568718910930\t9681544306002658031\t12037145985028191659\t"
 		"17280669848983777578\t18177041425620847396\n"
 		"M\tmutation.valtan.wall.3705102.break\t"
-		"destroyable.group.valtan.wall.3705102\tFRACTURED\t8\t-\t-\n"
+		"destroyable.group.valtan.wall.3705102\tFRACTURED\t8\t-\t-\t0\n"
 		"B\tbinding.valtan.wall.3705102.preview\t"
 		"mutation.valtan.wall.3705102.break\tSTAGE\tVALTAN_ARENA_BREAK_109\t"
 		"IMPACT\tvaltan.mechanic.arena-break-109.impact\t2\t-\n";
@@ -101,6 +101,30 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		++publishedFloorGroupCount;
 		publishedFloorMemberCount += group.MemberPlacementIds.size();
 	}
+	/* Only a floor sector takes ground away. A wall mutation clears an
+	obstacle beside the player, so claiming otherwise would drop somebody
+	inside standing geometry. Every ground-removing mutation must also own the
+	navigation condition whose cells are the hole. */
+	std::size_t publishedRemovedGroundCount = 0u;
+	bool publishedRemovedGroundIsFloorOnly = true;
+	for (const WORLD_DESTRUCTION_MUTATION_DESCRIPTOR& mutation :
+		publishedBootstrap.Get_DescriptorGraph().Mutations)
+	{
+		if (!mutation.bRemovesGround)
+			continue;
+		++publishedRemovedGroundCount;
+		if (0u != mutation.strGroupId.rfind(
+				"destroyable.group.valtan.floor", 0u) ||
+			mutation.strNavigationStateId.empty())
+		{
+			publishedRemovedGroundIsFloorOnly = false;
+		}
+	}
+	require(
+		6u == publishedRemovedGroundCount &&
+		publishedRemovedGroundIsFloorOnly,
+		"Declare removed ground on the six floor mutations and nowhere else");
+
 	require(
 		105u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
 		105u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
@@ -310,7 +334,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		bootstrap.Get_EncounterId() == "ENCOUNTER_VALTAN" &&
 		bootstrap.Get_FixedTickHz() == 30u &&
 		bootstrap.Get_CombatRuntimeRevision() ==
-			"babc172d2f7a2a73b44aaa76e22ddea60570f3e9362845addb5fad1adcb70511" &&
+			"1d571860636803667901cfdd4b26c2aa8656be7cab129156bed62eb777149aab" &&
 		1u == bootstrap.Get_DescriptorGraph().Groups.size() &&
 		1u == bootstrap.Get_DescriptorGraph().Mutations.size() &&
 		1u == bootstrap.Get_DescriptorGraph().Bindings.size(),
@@ -328,8 +352,8 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		bootstrap.Get_DescriptorGraph().Groups.size();
 	std::string invalidVersion = VALID_BOOTSTRAP;
 	Replace_First(invalidVersion,
-		"WORLD_DESTRUCTION_BOOTSTRAP\t1\t",
-		"WORLD_DESTRUCTION_BOOTSTRAP\t2\t");
+		"WORLD_DESTRUCTION_BOOTSTRAP\t2\t",
+		"WORLD_DESTRUCTION_BOOTSTRAP\t3\t");
 	Write_File(path, invalidVersion);
 	require(
 		!bootstrap.Load_FromFile(path) &&
@@ -339,7 +363,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 
 	std::string badRevision = VALID_BOOTSTRAP;
 	Replace_First(badRevision,
-		"babc172d2f7a2a73b44aaa76e22ddea60570f3e9362845addb5fad1adcb70511",
+		"1d571860636803667901cfdd4b26c2aa8656be7cab129156bed62eb777149aab",
 		"cabc172d2f7a2a73b44aaa76e22ddea60570f3e9362845addb5fad1adcb70511");
 	Write_File(path, badRevision);
 	require(
@@ -371,6 +395,35 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		!bootstrap.Load_FromFile(path) &&
 		bootstrap.Get_DescriptorGraph().Groups.size() == preservedGroupCount,
 		"Reject a dangling mutation group reference atomically");
+
+	/* A v1 document predates the removed-ground column. Guessing the flag
+	would silently decide which sectors a player can fall through, so the whole
+	document is refused and the last valid graph stays. */
+	std::string legacyVersion = VALID_BOOTSTRAP;
+	Replace_First(legacyVersion,
+		"WORLD_DESTRUCTION_BOOTSTRAP\t2\t",
+		"WORLD_DESTRUCTION_BOOTSTRAP\t1\t");
+	Replace_First(legacyVersion,
+		"FRACTURED\t8\t-\t-\t0\n",
+		"FRACTURED\t8\t-\t-\n");
+	Write_File(path, legacyVersion);
+	require(
+		!bootstrap.Load_FromFile(path) &&
+		bootstrap.Get_CombatRuntimeRevision() == preservedRevision &&
+		bootstrap.Get_DescriptorGraph().Groups.size() == preservedGroupCount,
+		"Reject a v1 bootstrap instead of guessing the removed-ground flag");
+
+	/* The hole is the cells of a navigation condition. A mutation that claims
+	to take ground away without owning one has nothing to open. */
+	std::string groundWithoutCondition = VALID_BOOTSTRAP;
+	Replace_First(groundWithoutCondition,
+		"FRACTURED\t8\t-\t-\t0\n",
+		"FRACTURED\t8\t-\t-\t1\n");
+	Write_File(path, groundWithoutCondition);
+	require(
+		!bootstrap.Load_FromFile(path) &&
+		bootstrap.Get_DescriptorGraph().Groups.size() == preservedGroupCount,
+		"Reject removed ground on a mutation without a navigation condition");
 
 	std::filesystem::remove_all(root, error);
 	return failures;

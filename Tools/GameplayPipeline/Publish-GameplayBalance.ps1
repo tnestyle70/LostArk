@@ -16,9 +16,11 @@ function Read-JsonDocument([string]$RelativePath) {
 }
 
 function Assert-ExactProperties([object]$Value, [string[]]$Expected, [string]$Context) {
-    $actual = @($Value.PSObject.Properties.Name | Sort-Object)
-    $expectedSorted = @($Expected | Sort-Object)
-    if (($actual -join "`n") -ne ($expectedSorted -join "`n")) {
+    [string[]]$actual = @($Value.PSObject.Properties.Name)
+    [string[]]$expectedSorted = @($Expected)
+    [Array]::Sort($actual, [StringComparer]::Ordinal)
+    [Array]::Sort($expectedSorted, [StringComparer]::Ordinal)
+    if (($actual -join "`n") -cne ($expectedSorted -join "`n")) {
         throw "$Context fields are invalid. expected=[$($expectedSorted -join ',')] actual=[$($actual -join ',')]"
     }
 }
@@ -71,6 +73,25 @@ function Assert-JsonNumber([object]$Value, [string]$Context) {
 
 function Assert-JsonString([object]$Value, [string]$Context) {
     if ($Value -isnot [string]) { throw "$Context must be a JSON string." }
+}
+
+function Assert-DisplayText(
+	[object]$Value,
+	[int]$MaximumBytes,
+	[string]$Context) {
+	Assert-JsonString $Value $Context
+	$text = [string]$Value
+	$hasInvalidControl = $false
+	foreach ($character in $text.ToCharArray()) {
+		if ([int]$character -lt 0x20 -and $character -ne "`t") {
+			$hasInvalidControl = $true
+			break
+		}
+	}
+	if ([string]::IsNullOrEmpty($text) -or $hasInvalidControl -or
+		[Text.Encoding]::UTF8.GetByteCount($text) -gt $MaximumBytes) {
+		throw "$Context is not bounded display text."
+	}
 }
 
 function Read-ValtanSkillTiming {
@@ -983,6 +1004,207 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 }
 if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
 
+# The Debug ordered audition is a Server occurrence ledger, not an animation
+# playlist. It may only name stable product pattern IDs. The Animation Tool
+# preview is joined by ordinal solely to prove that both review surfaces still
+# describe exactly the same 1..67 slots; none of its clip/source selectors are
+# published to the Server.
+$auditionDocument = Read-JsonDocument `
+	'Data/Encounters/Valtan/ValtanDebugAudition.json'
+Assert-ExactProperties $auditionDocument @(
+	'schema','formatVersion','authority','encounterId','sequenceId',
+	'sourcePreview','steps') 'Valtan Debug audition document'
+foreach ($field in @('schema','authority','encounterId','sequenceId','sourcePreview')) {
+	Assert-JsonString $auditionDocument.$field "Valtan Debug audition $field"
+}
+Assert-JsonInteger $auditionDocument.formatVersion `
+	'Valtan Debug audition formatVersion' 1 1
+Assert-StableId $auditionDocument.sequenceId `
+	'Valtan Debug audition sequenceId'
+if ([string]$auditionDocument.schema -cne `
+	'lostark.valtan-debug-audition' -or
+	[uint32]$auditionDocument.formatVersion -ne 1 -or
+	[string]$auditionDocument.authority -cne 'server' -or
+	[string]$auditionDocument.encounterId -cne `
+		[string]$encounterDocument.encounterId -or
+	[string]$auditionDocument.sourcePreview -cne `
+		'Data/Animation/Authored/Valtan/Valtan.patternpreview.json' -or
+	$auditionDocument.steps -isnot [Array] -or
+	@($auditionDocument.steps).Count -ne 67) {
+	throw 'Valtan Debug audition header is invalid.'
+}
+
+$previewDocument = Read-JsonDocument ([string]$auditionDocument.sourcePreview)
+Assert-ExactProperties $previewDocument @(
+	'schema','formatVersion','animationAssetId','patterns') `
+	'Valtan pattern preview joined by Debug audition'
+Assert-JsonString $previewDocument.schema 'Valtan pattern preview schema'
+Assert-JsonInteger $previewDocument.formatVersion `
+	'Valtan pattern preview formatVersion' 2 2
+Assert-JsonString $previewDocument.animationAssetId `
+	'Valtan pattern preview animationAssetId'
+if ([string]$previewDocument.schema -cne `
+	'lostark.valtan-pattern-preview' -or
+	[uint32]$previewDocument.formatVersion -ne 2 -or
+	[string]$previewDocument.animationAssetId -cne 'Valtan' -or
+	$previewDocument.patterns -isnot [Array] -or
+	@($previewDocument.patterns).Count -ne 67) {
+	throw 'Valtan pattern preview cannot be joined to the Debug audition.'
+}
+
+$auditionMappings =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$executableAuditionMappings =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($mapping in @(
+		'PRODUCT_DIRECT','PRODUCT_CANDIDATE','PRODUCT_PARTIAL',
+		'MARKER','UNRESOLVED')) {
+	[void]$auditionMappings.Add($mapping)
+}
+foreach ($mapping in @(
+		'PRODUCT_DIRECT','PRODUCT_CANDIDATE','PRODUCT_PARTIAL')) {
+	[void]$executableAuditionMappings.Add($mapping)
+}
+$previewConfidences =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($confidence in @(
+		'SOURCE_FAMILY_DIRECT','USER_CONFIRMED_FAMILY','CANDIDATE',
+		'COMPOSITE','UNRESOLVED','NO_ANIMATION')) {
+	[void]$previewConfidences.Add($confidence)
+}
+$auditionOccurrenceIds =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$patternById =
+	[Collections.Generic.Dictionary[string,object]]::new(
+		[StringComparer]::Ordinal)
+foreach ($pattern in @($encounterDocument.patterns)) {
+	$patternById.Add([string]$pattern.patternId, $pattern)
+}
+$auditionRows = [Collections.Generic.List[string]]::new()
+$auditionRows.Add((@(
+	'VALTANDEBUGSEQUENCE', $auditionDocument.encounterId,
+	$auditionDocument.sequenceId, 67) -join "`t"))
+$previousExplicitHealthBar = [uint32]0
+for ($index = 0; $index -lt 67; ++$index) {
+	$step = $auditionDocument.steps[$index]
+	$preview = $previewDocument.patterns[$index]
+	Assert-ExactProperties $step @(
+		'occurrenceId','ordinal','mapping','patternId','repeat',
+		'targetHealthBar','pauseAfterMs') 'Valtan Debug audition step'
+	foreach ($field in @('occurrenceId','mapping','patternId')) {
+		Assert-JsonString $step.$field "Valtan Debug audition step $field"
+	}
+	Assert-JsonInteger $step.ordinal 'Valtan Debug audition ordinal' 1 67
+	Assert-JsonInteger $step.repeat 'Valtan Debug audition repeat' 0 4
+	Assert-JsonInteger $step.targetHealthBar `
+		'Valtan Debug audition targetHealthBar' 0 $maximumHealthBars
+	Assert-JsonInteger $step.pauseAfterMs `
+		'Valtan Debug audition pauseAfterMs' 0 5000
+	Assert-ExactProperties $preview @(
+		'number','label','confidence','note','sequences') `
+		'Valtan pattern preview occurrence joined by Debug audition'
+	Assert-JsonInteger $preview.number 'Valtan pattern preview number' 1 67
+	Assert-DisplayText $preview.label 256 `
+		'Valtan pattern preview occurrence label'
+	Assert-JsonString $preview.confidence `
+		'Valtan pattern preview occurrence confidence'
+	Assert-DisplayText $preview.note 512 `
+		'Valtan pattern preview occurrence note'
+	if (-not $previewConfidences.Contains([string]$preview.confidence) -or
+		@($preview.sequences).Count -gt 16 -or
+		$preview.sequences -isnot [Array]) {
+		throw "Valtan pattern preview occurrence evidence is invalid: $($index + 1)"
+	}
+	$isPreviewMarker = [string]$preview.confidence -ceq 'UNRESOLVED' -or
+		[string]$preview.confidence -ceq 'NO_ANIMATION'
+	if ($isPreviewMarker -ne (@($preview.sequences).Count -eq 0)) {
+		throw "Valtan pattern preview marker evidence is invalid: $($index + 1)"
+	}
+	foreach ($selector in @($preview.sequences)) {
+		Assert-ExactProperties $selector @(
+			'sourceActionId','sequenceIndex','repeat') `
+			'Valtan pattern preview source selector joined by Debug audition'
+		Assert-JsonInteger $selector.sourceActionId `
+			'Valtan pattern preview sourceActionId' 1 ([uint32]::MaxValue)
+		Assert-JsonInteger $selector.sequenceIndex `
+			'Valtan pattern preview sequenceIndex' 0 ([int32]::MaxValue)
+		Assert-JsonInteger $selector.repeat `
+			'Valtan pattern preview repeat' 1 8
+	}
+
+	$expectedOrdinal = [uint32]($index + 1)
+	$expectedOccurrenceId = 'valtan.video.{0:D3}' -f $expectedOrdinal
+	$mapping = [string]$step.mapping
+	$patternId = [string]$step.patternId
+	if ([uint32]$step.ordinal -ne $expectedOrdinal -or
+		[uint32]$preview.number -ne $expectedOrdinal -or
+		[string]$step.occurrenceId -cne $expectedOccurrenceId -or
+		-not $auditionOccurrenceIds.Add([string]$step.occurrenceId) -or
+		-not $auditionMappings.Contains($mapping)) {
+		throw "Valtan Debug audition occurrence identity is invalid: $expectedOrdinal"
+	}
+
+	$isExecutable = $executableAuditionMappings.Contains($mapping)
+	if (($isExecutable -and @($preview.sequences).Count -eq 0) -or
+		(-not $isExecutable -and @($preview.sequences).Count -ne 0)) {
+		throw "Valtan Debug audition execution evidence is invalid: $expectedOrdinal"
+	}
+	$explicitHealthBar = [uint32]$step.targetHealthBar
+	if (0 -ne $explicitHealthBar) {
+		if (0 -eq $previousExplicitHealthBar -and 160 -ne $explicitHealthBar) {
+			throw 'Valtan Debug audition must begin from the recorded 160-bar state.'
+		}
+		$isRecordedGhostRecovery = 56 -eq $expectedOrdinal -and 14 -eq $previousExplicitHealthBar -and 40 -eq $explicitHealthBar
+		if (0 -ne $previousExplicitHealthBar -and $explicitHealthBar -gt $previousExplicitHealthBar -and -not $isRecordedGhostRecovery) {
+			throw "Valtan Debug audition health bars increase outside the 14-to-40 recovery: $expectedOrdinal"
+		}
+		$previousExplicitHealthBar = $explicitHealthBar
+	}
+	if ($isExecutable) {
+		Assert-StableId $patternId `
+			"Valtan Debug audition patternId $expectedOrdinal"
+		if ($patternId -ceq '-' -or
+			-not $patternById.ContainsKey($patternId) -or
+			[uint32]$step.repeat -lt 1 -or
+			[uint32]$step.pauseAfterMs -gt 5000) {
+			throw "Valtan Debug audition executable step is invalid: $expectedOrdinal"
+		}
+		if ($mapping -ceq 'PRODUCT_DIRECT' -and
+			[string]$preview.confidence -cnotin @(
+				'SOURCE_FAMILY_DIRECT','USER_CONFIRMED_FAMILY')) {
+			throw "Valtan Debug audition direct mapping exceeds preview confidence: $expectedOrdinal"
+		}
+		$ownerPattern = $patternById[$patternId]
+		if ([string]$ownerPattern.selectionMode -ceq 'HEALTH_BAR' -and
+			$mapping -cne 'PRODUCT_PARTIAL' -and
+			[uint32]$step.targetHealthBar -ne
+				[uint32]$ownerPattern.triggerHealthBar) {
+			throw "Valtan Debug audition health pattern bar is invalid: $expectedOrdinal"
+		}
+	}
+	else {
+		$expectedConfidence = if ($mapping -ceq 'MARKER') {
+			'NO_ANIMATION'
+		} else {
+			'UNRESOLVED'
+		}
+		if ($patternId.Length -ne 0 -or [uint32]$step.repeat -ne 0 -or
+			[uint32]$step.pauseAfterMs -lt 1 -or
+			[string]$preview.confidence -cne $expectedConfidence) {
+			throw "Valtan Debug audition non-executable step is invalid: $expectedOrdinal"
+		}
+	}
+
+	$auditionRows.Add((@(
+		'VALTANDEBUGSTEP', $auditionDocument.encounterId,
+		$auditionDocument.sequenceId, [uint32]$step.ordinal,
+		$step.occurrenceId, $mapping,
+		$(if ($patternId.Length -eq 0) { '-' } else { $patternId }),
+		[uint32]$step.repeat, [uint32]$step.targetHealthBar,
+		[uint32]$step.pauseAfterMs) -join "`t"))
+}
+$patternRows.AddRange($auditionRows)
+
 # Only an explicitly authored physical axe action may project its Server hit
 # volume onto breakable walls. Player damage shapes also describe roars, magic,
 # delayed waves and floor mechanics, so treating every ACTIVE hit as a weapon
@@ -1470,7 +1692,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t9`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t10`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
@@ -1495,4 +1717,4 @@ if ($Mode -eq 'Publish') {
 $patternCount = @($encounterDocument.patterns).Count
 $stageCount = @($encounterDocument.patterns | ForEach-Object { @($_.stages).Count } |
 	Measure-Object -Sum).Sum
-Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skills, $($damageRows.Count) damage profiles, $($bossRows.Count) bosses, $patternCount boss patterns, $stageCount pattern stages."
+Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skills, $($damageRows.Count) damage profiles, $($bossRows.Count) bosses, $patternCount boss patterns, $stageCount pattern stages, $($auditionDocument.steps.Count) Valtan Debug audition occurrences."

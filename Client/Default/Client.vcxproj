@@ -357,6 +357,7 @@
     <None Include="..\..\Data\Items\ItemCatalog.json" />
     <None Include="..\..\Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
+	<None Include="..\..\Data\Encounters\Valtan\ValtanDebugAudition.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWallContactActions.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWorldEvents.json" />

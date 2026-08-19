@@ -1902,6 +1902,44 @@ namespace
 			testRunner.Require(
 				!Write_Message(triggerWithoutTickWriter, triggerWithoutTick),
 				"Reject Trigger Move Without Action Tick");
+			/* A fall carries no skill and must carry the tick a late joiner seeks
+			the descent from, so both halves of that rule are pinned here. */
+			S2C_WORLD_SNAPSHOT falling = source;
+			falling.Players[1].eAction = PLAYER_ACTION_STATE::FALLING;
+			falling.Players[1].iActionStartTick = 31;
+			std::vector<std::uint8_t> fallingPayload;
+			S2C_WORLD_SNAPSHOT decodedFalling{};
+			bool fallingRoundTrip =
+				Build_WorldSnapshotPayload(falling, fallingPayload);
+			if (fallingRoundTrip)
+			{
+				CPacketReader fallingReader{ fallingPayload };
+				fallingRoundTrip = Read_Message(fallingReader, decodedFalling);
+			}
+			testRunner.Require(
+				fallingRoundTrip &&
+				2u == decodedFalling.Players.size() &&
+				decodedFalling.Players[1].eAction ==
+					PLAYER_ACTION_STATE::FALLING &&
+				decodedFalling.Players[1].iSkillId == INVALID_SKILL_ID &&
+				decodedFalling.Players[1].iActionStartTick == 31,
+				"Falling Player Snapshot Round Trip");
+
+			S2C_WORLD_SNAPSHOT fallingWithSkill = falling;
+			fallingWithSkill.Players[1].iSkillId = 34060;
+			std::vector<std::uint8_t> fallingWithSkillPayload;
+			testRunner.Require(
+				!Build_WorldSnapshotPayload(
+					fallingWithSkill, fallingWithSkillPayload),
+				"Reject A Falling Snapshot That Carries A Skill");
+
+			S2C_WORLD_SNAPSHOT fallingWithoutTick = falling;
+			fallingWithoutTick.Players[1].iActionStartTick = 0;
+			std::vector<std::uint8_t> fallingWithoutTickPayload;
+			testRunner.Require(
+				!Build_WorldSnapshotPayload(
+					fallingWithoutTick, fallingWithoutTickPayload),
+				"Reject A Falling Snapshot Without A Start Tick");
 		}
 
 		payload.pop_back();
@@ -1922,12 +1960,12 @@ namespace
 	void Test_WorldDestructionProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			21u == NETWORK_PROTOCOL_VERSION &&
+			24u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Protocol V21 Packet Types");
+			"World Destruction Protocol V24 Packet Types");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
@@ -2399,13 +2437,14 @@ namespace
 		}
 
 		{
-			/* Wall attack, final-arena view and break-every-wall are named Debug
-			operations rather than health-bar crossings. Each must round-trip with an
-			empty bar and reject any accidental health-bar payload. */
-			const std::array<VALTAN_AUDITION_OPERATION, 3u> barlessOperations{
+			/* Named Debug operations are not health-bar crossings. Each must
+			round-trip with an empty bar and reject any accidental bar payload. */
+			const std::array<VALTAN_AUDITION_OPERATION, 5u> barlessOperations{
 				VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK,
 				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA,
-				VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL };
+				VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL,
+				VALTAN_AUDITION_OPERATION::PLAY_ORDERED_1_67,
+				VALTAN_AUDITION_OPERATION::STOP_ORDERED_1_67 };
 			for (std::size_t index = 0u; index < barlessOperations.size(); ++index)
 			{
 				C2S_VALTAN_AUDITION_REQUEST barless{};
@@ -2422,13 +2461,13 @@ namespace
 					0u == barlessReader.Get_RemainingSize() &&
 					decodedBarless.eOperation == barless.eOperation &&
 					0u == decodedBarless.iTargetHealthBar,
-					"Valtan Wall And Final-View Auditions Round Trip Without A Bar");
+					"Valtan Named Debug Auditions Round Trip Without A Bar");
 
 				barless.iTargetHealthBar = 109u;
 				CPacketWriter barredWriter;
 				testRunner.Require(
 					!Write_Message(barredWriter, barless),
-					"Reject Valtan Wall And Final-View Auditions That Carry A Bar");
+					"Reject Valtan Named Debug Auditions That Carry A Bar");
 			}
 		}
 

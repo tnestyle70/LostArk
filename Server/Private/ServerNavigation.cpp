@@ -117,6 +117,7 @@ bool LostArk::Server::CServerNavigation::Load_RuntimeBlockers(
 	if (!std::filesystem::exists(path))
 	{
 		m_BlockCounts.assign(m_Walkable.size(), 0u);
+		m_VoidCounts.assign(m_Walkable.size(), 0u);
 		m_iRevision = 1u;
 		return true;
 	}
@@ -211,13 +212,19 @@ void LostArk::Server::CServerNavigation::Rebuild_InitialRuntimeBlockers() noexce
 		value = false;
 	}
 	m_BlockCounts.assign(m_Walkable.size(), 0u);
+	m_VoidCounts.assign(m_Walkable.size(), 0u);
 	for (const RUNTIME_BLOCKER_REGION& region : m_RuntimeBlockerRegions)
 	{
 		const bool conditionValue = m_ConditionValues[region.strConditionId];
 		if (conditionValue != region.bActivateWhenConditionTrue)
 			continue;
+		const bool isVoid = m_VoidConditionIds.contains(region.strConditionId);
 		for (const std::uint32_t cellIndex : region.CellIndices)
+		{
 			++m_BlockCounts[cellIndex];
+			if (isVoid)
+				++m_VoidCounts[cellIndex];
+		}
 	}
 	m_iRevision = 1u;
 }
@@ -493,6 +500,7 @@ bool LostArk::Server::CServerNavigation::Prepare_ConditionChanges(
 	outStage.iNextRevision = m_iRevision;
 	outStage.ConditionValues = m_ConditionValues;
 	outStage.BlockCounts = m_BlockCounts;
+	outStage.VoidCounts = m_VoidCounts;
 	std::set<std::string> changedIds;
 	for (const SERVER_NAVIGATION_CONDITION_CHANGE& change : changes)
 	{
@@ -517,9 +525,12 @@ bool LostArk::Server::CServerNavigation::Prepare_ConditionChanges(
 				change.bValue == region.bActivateWhenConditionTrue;
 			if (wasActive == willBeActive)
 				continue;
+			const bool isVoid =
+				m_VoidConditionIds.contains(region.strConditionId);
 			for (const std::uint32_t cellIndex : region.CellIndices)
 			{
 				std::uint16_t& count = outStage.BlockCounts[cellIndex];
+				std::uint16_t& voidCount = outStage.VoidCounts[cellIndex];
 				if (willBeActive)
 				{
 					if (count == (std::numeric_limits<std::uint16_t>::max)())
@@ -528,15 +539,19 @@ bool LostArk::Server::CServerNavigation::Prepare_ConditionChanges(
 						return false;
 					}
 					++count;
+					if (isVoid)
+						++voidCount;
 				}
 				else
 				{
-					if (0u == count)
+					if (0u == count || (isVoid && 0u == voidCount))
 					{
 						outStatus = "Navigation blocker count underflow";
 						return false;
 					}
 					--count;
+					if (isVoid)
+						--voidCount;
 				}
 			}
 		}
@@ -565,6 +580,7 @@ void LostArk::Server::CServerNavigation::Commit_ConditionChanges(
 		return;
 	m_ConditionValues = std::move(stage.ConditionValues);
 	m_BlockCounts = std::move(stage.BlockCounts);
+	m_VoidCounts = std::move(stage.VoidCounts);
 	m_iRevision = stage.iNextRevision;
 }
 
@@ -610,4 +626,83 @@ bool LostArk::Server::CServerNavigation::Is_PointWalkableExact(
 	const std::uint32_t cellZ = static_cast<std::uint32_t>(
 		std::floor((z - m_fOriginZ) / m_fCellSize));
 	return Is_CellWalkable(cellZ * m_iWidth + cellX);
+}
+
+/* Ties the destruction descriptor's ground-removal claim to the navigation
+data that owns the cells. It is the only place the two documents are
+cross-checked, and it fails the room instead of leaving a hole nobody can
+fall into. */
+bool LostArk::Server::CServerNavigation::Set_VoidConditions(
+	const std::set<std::string>& conditionIds,
+	std::string& outStatus)
+{
+	if (!Is_Loaded())
+	{
+		outStatus = "Server navigation is not loaded";
+		return false;
+	}
+	for (const std::string& conditionId : conditionIds)
+	{
+		if (!m_ConditionValues.contains(conditionId))
+		{
+			outStatus = "Unknown navigation void condition: " + conditionId;
+			return false;
+		}
+		bool hasRegion = false;
+		for (const RUNTIME_BLOCKER_REGION& region : m_RuntimeBlockerRegions)
+		{
+			if (region.strConditionId != conditionId)
+				continue;
+			hasRegion = true;
+			/* A hole appears when the condition becomes true. A region with the
+			opposite polarity is an obstacle that the same condition clears, and
+			calling it a hole would drop players into standing geometry. */
+			if (!region.bActivateWhenConditionTrue)
+			{
+				outStatus =
+					"Navigation void condition has obstacle polarity: " +
+					conditionId;
+				return false;
+			}
+		}
+		if (!hasRegion)
+		{
+			outStatus =
+				"Navigation void condition owns no region: " + conditionId;
+			return false;
+		}
+	}
+	m_VoidConditionIds = conditionIds;
+	Rebuild_InitialRuntimeBlockers();
+	outStatus = "Navigation void conditions accepted: " +
+		std::to_string(m_VoidConditionIds.size());
+	return true;
+}
+
+bool LostArk::Server::CServerNavigation::Is_CellVoid(
+	const std::uint32_t index) const
+{
+	return index < m_VoidCounts.size() && 0u != m_VoidCounts[index];
+}
+
+/* A collapsed sector marks its cells blocked and void on the same edge, so
+the projecting Resolve_Cell would answer with the nearest surviving floor and
+no body could ever be reported over a hole. The fall query reads the cell the
+body actually occupies, the same exact rule Is_PointWalkableExact uses. */
+bool LostArk::Server::CServerNavigation::Is_PointInVoidRegion(
+	const float x,
+	const float z) const
+{
+	if (!Is_Loaded() || !std::isfinite(x) || !std::isfinite(z) ||
+		x < m_fOriginX || z < m_fOriginZ ||
+		x >= m_fOriginX + static_cast<float>(m_iWidth) * m_fCellSize ||
+		z >= m_fOriginZ + static_cast<float>(m_iHeight) * m_fCellSize)
+	{
+		return false;
+	}
+	const std::uint32_t cellX = static_cast<std::uint32_t>(
+		std::floor((x - m_fOriginX) / m_fCellSize));
+	const std::uint32_t cellZ = static_cast<std::uint32_t>(
+		std::floor((z - m_fOriginZ) / m_fCellSize));
+	return Is_CellVoid(cellZ * m_iWidth + cellX);
 }

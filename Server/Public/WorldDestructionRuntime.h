@@ -55,6 +55,11 @@ namespace LostArk::Server
 		std::uint32_t iBreakingDurationTicks = 0u;
 		std::string strCollisionStateId;
 		std::string strNavigationStateId;
+		/* True when applying this mutation removes the ground the players stand
+		on instead of an obstacle beside them. Only a mutation that owns a
+		navigation condition may set it, because the hole is that condition's
+		cells. */
+		bool bRemovesGround = false;
 	};
 
 	struct WORLD_DESTRUCTION_BINDING_DESCRIPTOR final
