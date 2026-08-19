@@ -1375,6 +1375,9 @@
     <None Include="..\..\Data\UI\Inventory\InventoryUI.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\ItemUpgrade\ItemUpgradeUI.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
