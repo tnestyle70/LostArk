@@ -193,6 +193,37 @@ namespace
 			return false;
 		return true;
 	}
+
+	bool ParseValtanDebugAuditionMapping(
+		const std::string_view value,
+		LostArk::Server::VALTAN_DEBUG_AUDITION_MAPPING& output)
+	{
+		using LostArk::Server::VALTAN_DEBUG_AUDITION_MAPPING;
+		if ("PRODUCT_DIRECT" == value)
+			output = VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_DIRECT;
+		else if ("PRODUCT_CANDIDATE" == value)
+			output = VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_CANDIDATE;
+		else if ("PRODUCT_PARTIAL" == value)
+			output = VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_PARTIAL;
+		else if ("MARKER" == value)
+			output = VALTAN_DEBUG_AUDITION_MAPPING::MARKER;
+		else if ("UNRESOLVED" == value)
+			output = VALTAN_DEBUG_AUDITION_MAPPING::UNRESOLVED;
+		else
+			return false;
+		return true;
+	}
+
+	std::string BuildValtanDebugOccurrenceId(const std::uint32_t ordinal)
+	{
+		std::string result = "valtan.video.";
+		if (ordinal < 100u)
+			result.push_back('0');
+		if (ordinal < 10u)
+			result.push_back('0');
+		result += std::to_string(ordinal);
+		return result;
+	}
 }
 
 bool LostArk::Server::CGameplayCatalog::Parse_RootMotionSamples(
@@ -461,6 +492,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	using SKILL_MAP = decltype(m_Skills);
 	using BOSS_MAP = decltype(m_Bosses);
 	using PATTERN_MAP = decltype(m_BossPatterns);
+	using INTRO_MAP = decltype(m_IntroPatternIdByEncounter);
+	using AUDITION_MAP = decltype(m_ValtanDebugAuditions);
 	using PLAYER_MAP = decltype(m_Players);
 	using DAMAGE_MAP = decltype(m_DamageRatePercentByProfileId);
 	struct LOAD_ROLLBACK final
@@ -468,11 +501,15 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		SKILL_MAP& skills;
 		BOSS_MAP& bosses;
 		PATTERN_MAP& patterns;
+		INTRO_MAP& intros;
+		AUDITION_MAP& auditions;
 		PLAYER_MAP& players;
 		DAMAGE_MAP& damages;
 		SKILL_MAP previousSkills;
 		BOSS_MAP previousBosses;
 		PATTERN_MAP previousPatterns;
+		INTRO_MAP previousIntros;
+		AUDITION_MAP previousAuditions;
 		PLAYER_MAP previousPlayers;
 		DAMAGE_MAP previousDamages;
 		bool committed = false;
@@ -481,16 +518,22 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			SKILL_MAP& skillTarget,
 			BOSS_MAP& bossTarget,
 			PATTERN_MAP& patternTarget,
+			INTRO_MAP& introTarget,
+			AUDITION_MAP& auditionTarget,
 			PLAYER_MAP& playerTarget,
 			DAMAGE_MAP& damageTarget)
 			: skills(skillTarget)
 			, bosses(bossTarget)
 			, patterns(patternTarget)
+			, intros(introTarget)
+			, auditions(auditionTarget)
 			, players(playerTarget)
 			, damages(damageTarget)
 			, previousSkills(std::move(skillTarget))
 			, previousBosses(std::move(bossTarget))
 			, previousPatterns(std::move(patternTarget))
+			, previousIntros(std::move(introTarget))
+			, previousAuditions(std::move(auditionTarget))
 			, previousPlayers(std::move(playerTarget))
 			, previousDamages(std::move(damageTarget))
 		{
@@ -503,16 +546,21 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			skills = std::move(previousSkills);
 			bosses = std::move(previousBosses);
 			patterns = std::move(previousPatterns);
+			intros = std::move(previousIntros);
+			auditions = std::move(previousAuditions);
 			players = std::move(previousPlayers);
 			damages = std::move(previousDamages);
 		}
 	};
 	LOAD_ROLLBACK rollback{
-		m_Skills, m_Bosses, m_BossPatterns, m_Players,
+		m_Skills, m_Bosses, m_BossPatterns, m_IntroPatternIdByEncounter,
+		m_ValtanDebugAuditions, m_Players,
 		m_DamageRatePercentByProfileId };
 	m_Skills.clear();
 	m_Bosses.clear();
 	m_BossPatterns.clear();
+	m_IntroPatternIdByEncounter.clear();
+	m_ValtanDebugAuditions.clear();
 	m_Players.clear();
 	m_DamageRatePercentByProfileId.clear();
 
@@ -536,7 +584,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 10u != version ||
+		!ParseNumber(header[1], version) || 11u != version ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";
@@ -1106,6 +1154,77 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			}
 			stage.bWallContact = true;
 		}
+		else if (!fields.empty() && "VALTANDEBUGSEQUENCE" == fields[0])
+		{
+			std::uint32_t stepCount = 0u;
+			if (4u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) ||
+				!ParseNumber(fields[3], stepCount) || 67u != stepCount)
+			{
+				m_strStatus = "Valtan Debug audition sequence row is invalid";
+				return false;
+			}
+			VALTAN_DEBUG_AUDITION_DEFINITION definition{};
+			definition.strEncounterId = fields[1];
+			definition.strSequenceId = fields[2];
+			definition.Steps.resize(stepCount);
+			if (!m_ValtanDebugAuditions.emplace(
+				definition.strEncounterId, std::move(definition)).second)
+			{
+				m_strStatus = "Duplicate Valtan Debug audition sequence row";
+				return false;
+			}
+		}
+		else if (!fields.empty() && "VALTANDEBUGSTEP" == fields[0])
+		{
+			VALTAN_DEBUG_AUDITION_STEP step{};
+			if (10u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) ||
+				!ParseNumber(fields[3], step.iOrdinal) ||
+				!IsStableId(fields[4]) ||
+				!ParseValtanDebugAuditionMapping(fields[5], step.eMapping) ||
+				("-" != fields[6] && !IsStableId(fields[6])) ||
+				!ParseNumber(fields[7], step.iRepeat) ||
+				!ParseNumber(fields[8], step.iTargetHealthBar) ||
+				!ParseNumber(fields[9], step.iPauseAfterMs) ||
+				0u == step.iOrdinal || step.iOrdinal > 67u ||
+				step.iRepeat > 4u || step.iTargetHealthBar > 1000u ||
+				step.iPauseAfterMs > 5000u)
+			{
+				m_strStatus = "Valtan Debug audition step row is invalid";
+				return false;
+			}
+			const auto owner =
+				m_ValtanDebugAuditions.find(std::string(fields[1]));
+			if (m_ValtanDebugAuditions.end() == owner ||
+				owner->second.strSequenceId != fields[2] ||
+				owner->second.Steps.size() != 67u)
+			{
+				m_strStatus = "Valtan Debug audition step has no sequence owner";
+				return false;
+			}
+			const bool executable =
+				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_DIRECT == step.eMapping ||
+				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_CANDIDATE == step.eMapping ||
+				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_PARTIAL == step.eMapping;
+			if ((executable && ("-" == fields[6] || 0u == step.iRepeat)) ||
+				(!executable && ("-" != fields[6] || 0u != step.iRepeat ||
+					0u == step.iPauseAfterMs)))
+			{
+				m_strStatus = "Valtan Debug audition step mapping is invalid";
+				return false;
+			}
+			step.strOccurrenceId = fields[4];
+			step.strPatternId = "-" == fields[6] ? "" : std::string(fields[6]);
+			VALTAN_DEBUG_AUDITION_STEP& slot =
+				owner->second.Steps[step.iOrdinal - 1u];
+			if (0u != slot.iOrdinal)
+			{
+				m_strStatus = "Duplicate Valtan Debug audition step ordinal";
+				return false;
+			}
+			slot = std::move(step);
+		}
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
 			PLAYER_RUNTIME_PROFILE player{};
@@ -1165,6 +1284,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 
 	if (std::getline(input, line) || m_Skills.empty() || m_Players.empty() ||
 		m_Bosses.empty() || m_BossPatterns.empty() ||
+		m_ValtanDebugAuditions.empty() ||
 		m_DamageRatePercentByProfileId.empty())
 	{
 		m_strStatus = "Gameplay bootstrap has trailing rows or missing definitions";
@@ -1321,6 +1441,87 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			}
 		}
 	}
+	for (const auto& [encounterId, audition] : m_ValtanDebugAuditions)
+	{
+		const BOSS_RUNTIME_PROFILE* ownerBoss = nullptr;
+		std::size_t ownerBossCount = 0u;
+		for (const auto& [archetypeId, boss] : m_Bosses)
+		{
+			(void)archetypeId;
+			if (boss.strEncounterId != encounterId)
+				continue;
+			ownerBoss = &boss;
+			++ownerBossCount;
+		}
+		const auto patterns = m_BossPatterns.find(encounterId);
+		if (1u != ownerBossCount || nullptr == ownerBoss ||
+			m_BossPatterns.end() == patterns ||
+			audition.strEncounterId != encounterId ||
+			audition.strSequenceId.empty() || audition.Steps.size() != 67u)
+		{
+			m_strStatus = "Valtan Debug audition owner contract is invalid";
+			return false;
+		}
+		std::unordered_set<std::string> occurrenceIds;
+		std::uint32_t previousExplicitHealthBar = 0u;
+		for (std::size_t index = 0u; index < audition.Steps.size(); ++index)
+		{
+			const VALTAN_DEBUG_AUDITION_STEP& step = audition.Steps[index];
+			const bool executable =
+				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_DIRECT == step.eMapping ||
+				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_CANDIDATE == step.eMapping ||
+				VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_PARTIAL == step.eMapping;
+			if (step.iOrdinal != index + 1u ||
+				step.strOccurrenceId != BuildValtanDebugOccurrenceId(step.iOrdinal) ||
+				!occurrenceIds.insert(step.strOccurrenceId).second ||
+				step.iTargetHealthBar > ownerBoss->iMaximumHealthBars ||
+				(executable &&
+					(step.strPatternId.empty() || 0u == step.iRepeat)) ||
+				(!executable &&
+					(!step.strPatternId.empty() || 0u != step.iRepeat ||
+					 0u == step.iPauseAfterMs)))
+			{
+				m_strStatus = "Valtan Debug audition occurrence contract is invalid";
+				return false;
+			}
+			if (0u != step.iTargetHealthBar)
+			{
+				const bool isFirstRecordedBar =
+					0u == previousExplicitHealthBar &&
+					160u == step.iTargetHealthBar;
+				const bool isRecordedGhostRecovery =
+					56u == step.iOrdinal &&
+					14u == previousExplicitHealthBar &&
+					40u == step.iTargetHealthBar;
+				if ((0u == previousExplicitHealthBar && !isFirstRecordedBar) ||
+					(0u != previousExplicitHealthBar &&
+					 step.iTargetHealthBar > previousExplicitHealthBar &&
+					 !isRecordedGhostRecovery))
+				{
+					m_strStatus =
+						"Valtan Debug audition health trajectory is invalid";
+					return false;
+				}
+				previousExplicitHealthBar = step.iTargetHealthBar;
+			}
+			if (!executable)
+				continue;
+			const auto pattern = std::find_if(
+				patterns->second.begin(), patterns->second.end(),
+				[&step](const BOSS_PATTERN_DEFINITION& candidate)
+				{
+					return candidate.strPatternId == step.strPatternId;
+				});
+			if (patterns->second.end() == pattern ||
+				(BOSS_PATTERN_SELECTION::HEALTH_BAR == pattern->eSelection &&
+				 VALTAN_DEBUG_AUDITION_MAPPING::PRODUCT_PARTIAL != step.eMapping &&
+				 step.iTargetHealthBar != pattern->iTriggerHealthBar))
+			{
+				m_strStatus = "Valtan Debug audition pattern join is invalid";
+				return false;
+			}
+		}
+	}
 
 	rollback.committed = true;
 	m_strStatus = "Loaded gameplay bootstrap";
@@ -1357,6 +1558,14 @@ LostArk::Server::CGameplayCatalog::Find_BossPatterns(
 {
 	const auto iter = m_BossPatterns.find(encounterId);
 	return m_BossPatterns.end() == iter ? nullptr : &iter->second;
+}
+
+const LostArk::Server::VALTAN_DEBUG_AUDITION_DEFINITION*
+LostArk::Server::CGameplayCatalog::Find_ValtanDebugAudition(
+	const std::string& encounterId) const
+{
+	const auto iter = m_ValtanDebugAuditions.find(encounterId);
+	return m_ValtanDebugAuditions.end() == iter ? nullptr : &iter->second;
 }
 
 const std::string& LostArk::Server::CGameplayCatalog::Find_IntroPatternId(

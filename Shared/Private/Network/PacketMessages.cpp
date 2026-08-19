@@ -97,11 +97,17 @@ namespace
 			 (LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE == snapshot.eAction &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
+			 /* A fall is timed: the client seeks the descent from this tick when
+			 it joins late, so a FALLING snapshot without one is malformed. */
+			 (LostArk::Shared::PLAYER_ACTION_STATE::FALLING == snapshot.eAction &&
+				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
+				0 != snapshot.iActionStartTick) ||
 			 (LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN == snapshot.eAction &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
 			 ((LostArk::Shared::PLAYER_ACTION_STATE::SKILL != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::TRIGGER_MOVE != snapshot.eAction &&
+				LostArk::Shared::PLAYER_ACTION_STATE::FALLING != snapshot.eAction &&
 				LostArk::Shared::PLAYER_ACTION_STATE::KNOCKDOWN != snapshot.eAction) &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID));
     }
@@ -1990,7 +1996,11 @@ namespace
 			static_cast<std::uint8_t>(
 				VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA) == rawOperation ||
 			static_cast<std::uint8_t>(
-				VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL) == rawOperation)
+				VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL) == rawOperation ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::PLAY_ORDERED_1_67) == rawOperation ||
+			static_cast<std::uint8_t>(
+				VALTAN_AUDITION_OPERATION::STOP_ORDERED_1_67) == rawOperation)
 		{
 			return 0u == targetHealthBar;
 		}

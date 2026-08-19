@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,10 @@ namespace LostArk::Server
 		std::uint64_t iNextRevision = 0u;
 		std::map<std::string, bool> ConditionValues;
 		std::vector<std::uint16_t> BlockCounts;
+		/* Parallel to BlockCounts and staged in the same transaction: how many
+		active regions removed the ground under this cell, as opposed to putting
+		an obstacle on it. */
+		std::vector<std::uint16_t> VoidCounts;
 		bool bChanged = false;
 	};
 
@@ -57,6 +62,14 @@ namespace LostArk::Server
 		// blocker regions are still holding cells closed right now.
 		std::size_t Get_ActiveBlockerRegionCount() const;
 		bool Is_PointWalkableExact(float x, float z) const;
+		/* Declares which conditions open a hole rather than clear an obstacle.
+		Called once at room admission from the world destruction descriptor that
+		authored them; every id must already exist and every region that uses it
+		must block when the condition becomes true, or the room fails to load. */
+		bool Set_VoidConditions(
+			const std::set<std::string>& conditionIds,
+			std::string& outStatus);
+		bool Is_PointInVoidRegion(float x, float z) const;
 		std::uint64_t Get_Revision() const noexcept { return m_iRevision; }
 		bool Sample_Position(
 			float x,
@@ -84,6 +97,7 @@ namespace LostArk::Server
 		bool Resolve_Cell(float x, float z, std::uint32_t& outIndex) const;
 		SERVER_NAV_POINT Cell_ToPoint(std::uint32_t index) const;
 		bool Is_CellWalkable(std::uint32_t index) const;
+		bool Is_CellVoid(std::uint32_t index) const;
 		bool Load_RuntimeBlockers(const std::string& areaId);
 		void Rebuild_InitialRuntimeBlockers() noexcept;
 
@@ -98,6 +112,8 @@ namespace LostArk::Server
 		std::vector<RUNTIME_BLOCKER_REGION> m_RuntimeBlockerRegions;
 		std::map<std::string, bool> m_ConditionValues;
 		std::vector<std::uint16_t> m_BlockCounts;
+		std::set<std::string> m_VoidConditionIds;
+		std::vector<std::uint16_t> m_VoidCounts;
 		std::uint64_t m_iRevision = 0u;
 		std::string m_strStatus;
 	};

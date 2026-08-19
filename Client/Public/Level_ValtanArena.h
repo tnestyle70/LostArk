@@ -52,8 +52,24 @@ private:
 	typed requests and reports what the Server answered; it never starts a
 	pattern, moves the camera or breaks a wall on its own. */
 	void Render_AuditionPanel();
-	void Submit_Audition(
+	void Update_AuditionTransaction();
+	bool_t Submit_Audition(
 		LostArk::Shared::VALTAN_AUDITION_OPERATION operation);
+	void Request_OrderedAuditionStop(bool_t restartAfterStop);
+	struct AUDITION_PENDING_REQUEST final
+	{
+		uint32_t iSequence = 0u;
+		LostArk::Shared::VALTAN_AUDITION_OPERATION eOperation =
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::ARM_HEALTH_BAR;
+		uint32_t iTargetHealthBar = 0u;
+		uint64_t iLastSentAtMilliseconds = 0u;
+		uint32_t iRetryCount = 0u;
+
+		[[nodiscard]] bool_t Is_Active() const
+		{
+			return 0u != iSequence;
+		}
+	};
 	/* One ordered chapter run over the existing audition operations. It resets
 	once at the entrance and then only crosses the authored bars, so the
 	environment stays cumulative the way the recording shows it. */
@@ -101,7 +117,10 @@ private:
 #ifdef _DEBUG
 	size_t m_iSelectedAuditionBarIndex = 0u;
 	uint32_t m_iNextAuditionRequestSequence = 1u;
-	uint32_t m_iPendingAuditionRequestSequence = 0u;
+	AUDITION_PENDING_REQUEST m_PendingAuditionRequest;
+	bool_t m_bOrderedAuditionActive = false;
+	bool_t m_bStopAuditionQueued = false;
+	bool_t m_bRestartOrderedAfterStop = false;
 	std::string m_strAuditionStatus;
 	std::vector<ENVIRONMENT_TIMELINE_STEP> m_EnvironmentTimeline;
 	size_t m_iEnvironmentTimelineStep = 0u;

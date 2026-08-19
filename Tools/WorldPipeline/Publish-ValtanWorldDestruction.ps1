@@ -927,6 +927,12 @@ function Compile-ValtanWorldDestruction {
                 CollisionStateId = if ([string]::IsNullOrEmpty($collisionStateId)) {
                     '-' } else { $collisionStateId }
                 NavigationStateId = $navigationStateId
+                # BLOCK_WHILE_FRACTURED is the authored polarity that says the
+                # cells become impassable once the group is gone: the ground
+                # itself was taken away rather than an obstacle beside it.
+                # That is the only thing a player can fall through.
+                RemovesGround = if (
+                    $group.navPolarity -ceq 'BLOCK_WHILE_FRACTURED') { 1 } else { 0 }
             })
         }
         # A contact binding compiles with the empty marker in every schedule
@@ -1166,13 +1172,24 @@ function Compile-ValtanWorldDestruction {
         }
     }
 
+    # A hole is the cells of a navigation condition. A mutation that claims to
+    # take ground away without owning one has nothing to open, so it can never
+    # reach the Server as a fall region.
+    $removedGroundMutations = @(@($serverMutations) | Where-Object { [int]$_.RemovesGround -eq 1 })
+    foreach ($removedGroundMutation in $removedGroundMutations) {
+        if ([string]::IsNullOrEmpty([string]$removedGroundMutation.NavigationStateId) -or
+            [string]$removedGroundMutation.NavigationStateId -ceq '-') {
+            throw "A mutation that removes ground must own a navigation condition: $($removedGroundMutation.MutationId)"
+        }
+    }
+
     $semanticLines = [Collections.Generic.List[string]]::new()
     $semanticLines.Add("IDENTITY`t$expectedEncounterId`t$expectedAreaId`t$($Encounter.fixedTickHz)")
     foreach ($group in @(Sort-OrdinalByProperty @($serverGroups) 'GroupId')) {
         $semanticLines.Add((@('G',$group.GroupId,$group.InitialState,$group.Members.Count) + @($group.Members)) -join "`t")
     }
     foreach ($mutation in @(Sort-OrdinalByProperty @($serverMutations) 'MutationId')) {
-        $semanticLines.Add((@('M',$mutation.MutationId,$mutation.GroupId,$mutation.FinalState,$mutation.BreakingTicks,$mutation.CollisionStateId,$mutation.NavigationStateId)) -join "`t")
+        $semanticLines.Add((@('M',$mutation.MutationId,$mutation.GroupId,$mutation.FinalState,$mutation.BreakingTicks,$mutation.CollisionStateId,$mutation.NavigationStateId,$mutation.RemovesGround)) -join "`t")
     }
     foreach ($binding in @(Sort-OrdinalByProperty @($serverBindings) 'BindingId')) {
         $semanticLines.Add((@('B',$binding.BindingId,$binding.MutationId,$binding.TriggerKind,$binding.PatternId,$binding.StageId,$binding.ActionId,$binding.StageIndex,$binding.ReceiverId)) -join "`t")
@@ -1182,7 +1199,7 @@ function Compile-ValtanWorldDestruction {
     if ($revision -cnotmatch $revisionPattern) { throw 'Generated revision is invalid.' }
 
     $serverLines = [Collections.Generic.List[string]]::new()
-    $serverLines.Add("LOSTARK_WORLD_DESTRUCTION_BOOTSTRAP`t1`t$expectedEncounterId`t$expectedAreaId`t$revision`t$($Encounter.fixedTickHz)`t$($serverGroups.Count)`t$($serverMutations.Count)`t$($serverBindings.Count)")
+    $serverLines.Add("LOSTARK_WORLD_DESTRUCTION_BOOTSTRAP`t2`t$expectedEncounterId`t$expectedAreaId`t$revision`t$($Encounter.fixedTickHz)`t$($serverGroups.Count)`t$($serverMutations.Count)`t$($serverBindings.Count)")
     foreach ($line in $semanticLines | Select-Object -Skip 1) { $serverLines.Add($line) }
 
     $mutationByGroupId = @{}
@@ -1344,6 +1361,7 @@ function Compile-ValtanWorldDestruction {
         FloorStageAGroupCount = $floorStageGroupIds[$floorStageAGroupIdPrefix].Count
         FloorStageBGroupCount = $floorStageGroupIds[$floorStageBGroupIdPrefix].Count
         FloorCellCount = $floorCellOwners.Count
+        RemovedGroundMutationCount = $removedGroundMutations.Count
     }
 }
 
@@ -1447,6 +1465,7 @@ function Invoke-ContractTests {
         $canonical.FloorBindingCount -ne $expectedFloorGroupCount -or
         $canonical.FloorStageAGroupCount -ne $expectedFloorStageAGroupCount -or
         $canonical.FloorStageBGroupCount -ne $expectedFloorStageBGroupCount -or
+        $canonical.RemovedGroundMutationCount -ne $expectedFloorGroupCount -or
         $canonical.GroupCount -ne $expectedCanonicalGroupCount -or
         $canonical.BindingCount -ne $expectedCanonicalBindingCount -or
         $canonical.Revision -cnotmatch $revisionPattern) {

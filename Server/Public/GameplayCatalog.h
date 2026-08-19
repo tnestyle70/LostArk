@@ -247,6 +247,37 @@ namespace LostArk::Server
 		std::vector<BOSS_PATTERN_STAGE_DEFINITION> Stages;
 	};
 
+	enum class VALTAN_DEBUG_AUDITION_MAPPING : std::uint8_t
+	{
+		PRODUCT_DIRECT,
+		PRODUCT_CANDIDATE,
+		PRODUCT_PARTIAL,
+		MARKER,
+		UNRESOLVED
+	};
+
+	/* One preserved recording occurrence. Executable rows name a stable product
+	pattern and are still labelled by evidence strength; marker/unresolved rows
+	own only a bounded idle pause and never substitute an unrelated attack. */
+	struct VALTAN_DEBUG_AUDITION_STEP final
+	{
+		std::string strOccurrenceId;
+		std::string strPatternId;
+		VALTAN_DEBUG_AUDITION_MAPPING eMapping =
+			VALTAN_DEBUG_AUDITION_MAPPING::UNRESOLVED;
+		std::uint32_t iOrdinal = 0;
+		std::uint32_t iRepeat = 0;
+		std::uint32_t iTargetHealthBar = 0;
+		std::uint32_t iPauseAfterMs = 0;
+	};
+
+	struct VALTAN_DEBUG_AUDITION_DEFINITION final
+	{
+		std::string strEncounterId;
+		std::string strSequenceId;
+		std::vector<VALTAN_DEBUG_AUDITION_STEP> Steps;
+	};
+
 	struct PLAYER_RUNTIME_PROFILE
 	{
 		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
@@ -293,6 +324,8 @@ namespace LostArk::Server
 		const BOSS_RUNTIME_PROFILE* Find_Boss(
 			const std::string& archetypeId) const;
 		const std::vector<BOSS_PATTERN_DEFINITION>* Find_BossPatterns(
+			const std::string& encounterId) const;
+		const VALTAN_DEBUG_AUDITION_DEFINITION* Find_ValtanDebugAudition(
 			const std::string& encounterId) const;
 		/* Pattern the encounter plays exactly once when the boss first engages,
 		before any health-bar or weighted selection runs. Empty when unknown. */
@@ -350,6 +383,8 @@ namespace LostArk::Server
 		std::unordered_map<std::string, BOSS_RUNTIME_PROFILE> m_Bosses;
 		std::unordered_map<std::string, std::vector<BOSS_PATTERN_DEFINITION>>
 			m_BossPatterns;
+		std::unordered_map<std::string, VALTAN_DEBUG_AUDITION_DEFINITION>
+			m_ValtanDebugAuditions;
 		std::unordered_map<std::string, std::string> m_IntroPatternIdByEncounter;
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_RUNTIME_PROFILE> m_Players;

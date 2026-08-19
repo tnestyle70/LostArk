@@ -143,6 +143,12 @@ namespace LostArk::Server
 		LostArk::Shared::SKILL_ID iCurrentSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;
+		/* Live only while eAction is FALLING. The velocity integrates downward
+		from zero at the tick the ground disappeared, and the death tick is the
+		deadline that same tick scheduled. Neither is replicated: the client
+		reads the descent from the position the snapshot already carries. */
+		float fFallVelocityY = 0.f;
+		std::uint32_t iFallDeathTick = 0u;
 		SERVER_TRIGGER_MOVE TriggerMove;
 		std::uint32_t iLastSkillSequence = 0;
 		float fActionElapsedSeconds = 0.f;

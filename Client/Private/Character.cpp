@@ -1071,6 +1071,24 @@ bool_t CCharacter::Apply_NetworkAction(
 		}
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
+	else if (PLAYER_ACTION_STATE::FALLING == action)
+	{
+		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
+			return false;
+		if (m_eNetworkAction == action)
+			return true;
+		m_pChain = nullptr;
+		m_iChainStage = 0;
+		m_iChainStep = 0;
+		m_fActionPresentationSeconds = 0.f;
+		Commit_PendingClipChains();
+		/* No class owns a falling clip, so the damaged-idle loop plays while the
+		Server drives the body down. The descent itself is the replicated Y, not
+		an animation. */
+		Set_Animation(CHARACTER_ANIM::HIT, true);
+		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+		m_iEffectActionStartTick = 0u;
+	}
 	else if (PLAYER_ACTION_STATE::KNOCKDOWN == action)
 	{
 		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)

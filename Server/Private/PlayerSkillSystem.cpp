@@ -715,6 +715,10 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.Projectiles.clear();
 		return;
 	}
+	/* A falling player is still alive, so the guard above does not catch them.
+	The room owns the descent this tick; nothing here may advance. */
+	if (PLAYER_ACTION_STATE::FALLING == player.eAction)
+		return;
 	if (const PLAYER_RUNTIME_PROFILE* identityProfile =
 		catalog.Find_Player(player.eCharacterClass))
 	{

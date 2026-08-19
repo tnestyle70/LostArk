@@ -20,6 +20,7 @@ headers, which is the same order Level_CharacterSelect.cpp uses. */
 #include <algorithm>
 #include <array>
 #include <filesystem>
+#include <limits>
 #include <string_view>
 
 namespace
@@ -275,7 +276,8 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 			m_pMapLightPresentation->Get_Status() + "\n").c_str());
 	}
 
-	if (!m_Replication.Update())
+	const bool_t replicationUpdated = m_Replication.Update();
+	if (!replicationUpdated)
 	{
 		OutputDebugStringA(
 			"[Level_ValtanArena] Failed to apply replication event.\n");
@@ -334,6 +336,7 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	}
 
 #ifdef _DEBUG
+	Update_AuditionTransaction();
 	Render_AuditionPanel();
 	/* Driven outside the panel body so a collapsed window cannot stall a
 	chapter run that is already in flight. */
@@ -358,6 +361,23 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 #ifdef _DEBUG
 namespace
 {
+	constexpr uint64_t AUDITION_RETRY_INTERVAL_MILLISECONDS = 750u;
+	constexpr uint32_t AUDITION_MAX_RETRY_COUNT = 3u;
+
+	uint64_t Get_AuditionMonotonicMilliseconds()
+	{
+		return static_cast<uint64_t>(GetTickCount64());
+	}
+
+	bool_t Is_AuditionAccepted(
+		const LostArk::Shared::VALTAN_AUDITION_RESULT result)
+	{
+		using LostArk::Shared::VALTAN_AUDITION_RESULT;
+		return VALTAN_AUDITION_RESULT::ARMED == result ||
+			VALTAN_AUDITION_RESULT::QUEUED == result ||
+			VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED == result;
+	}
+
 	/* The bars this build can audition are exactly the encounter's authored
 	HEALTH_BAR thresholds, read from the same document the Server publishes
 	from. Nothing here is a second list to keep in step. */
@@ -391,7 +411,7 @@ namespace
 		case VALTAN_AUDITION_RESULT::QUEUED:
 			return "Reset complete. The Server queued the requested pattern or final-arena state.";
 		case VALTAN_AUDITION_RESULT::DUPLICATE_IGNORED:
-			return "Already handled that request; the boss did not move.";
+			return "Already handled that request; treating it as confirmed.";
 		case VALTAN_AUDITION_RESULT::REJECTED_RELEASE_BUILD:
 			return "Release Server: auditions are Debug-only.";
 		case VALTAN_AUDITION_RESULT::REJECTED_WRONG_WORLD:
@@ -414,9 +434,158 @@ namespace
 	}
 }
 
-void CLevel_ValtanArena::Submit_Audition(
+void CLevel_ValtanArena::Update_AuditionTransaction()
+{
+	using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
+
+	LostArk::Shared::S2C_VALTAN_AUDITION_RESULT result{};
+	while (CNetworkManager::Get().Try_Consume_ValtanAuditionResult(result))
+	{
+		if (!m_PendingAuditionRequest.Is_Active() ||
+			result.iRequestSequence != m_PendingAuditionRequest.iSequence)
+		{
+			continue;
+		}
+		if (result.eOperation != m_PendingAuditionRequest.eOperation ||
+			result.iTargetHealthBar !=
+				m_PendingAuditionRequest.iTargetHealthBar)
+		{
+			/* A sequence is not enough to identify a verdict. Keep waiting for
+			the exact echoed request instead of completing the wrong UI action. */
+			m_strAuditionStatus =
+				"Ignored a mismatched Server verdict; retrying the exact request.";
+			continue;
+		}
+
+		const AUDITION_PENDING_REQUEST completed =
+			m_PendingAuditionRequest;
+		m_PendingAuditionRequest = {};
+		const bool_t accepted = Is_AuditionAccepted(result.eResult);
+		m_strAuditionStatus = Describe_AuditionResult(result.eResult);
+
+		if (!accepted && !m_EnvironmentTimeline.empty())
+		{
+			/* One refused chapter stops the run. Continuing would audition the
+			later bars against an environment the Server never produced. */
+			m_EnvironmentTimeline.clear();
+			m_iEnvironmentTimelineStep = 0u;
+			m_bEnvironmentTimelineWaiting = false;
+			m_bEnvironmentTimelinePatternStarted = false;
+			m_strAuditionStatus += " Full environment timeline stopped.";
+		}
+
+		if (accepted && OPERATION::PLAY_ORDERED_1_67 == completed.eOperation)
+			m_bOrderedAuditionActive = true;
+		if (accepted && OPERATION::STOP_ORDERED_1_67 == completed.eOperation)
+			m_bOrderedAuditionActive = false;
+
+		if (OPERATION::STOP_ORDERED_1_67 == completed.eOperation)
+		{
+			const bool_t restart = m_bRestartOrderedAfterStop;
+			m_bStopAuditionQueued = false;
+			m_bRestartOrderedAfterStop = false;
+			if (accepted && restart &&
+				!Submit_Audition(OPERATION::PLAY_ORDERED_1_67))
+			{
+				m_strAuditionStatus =
+					"The ordered audition stopped, but its restart request could not be sent.";
+			}
+			else if (!accepted && restart)
+			{
+				m_strAuditionStatus +=
+					" Restart was cancelled because STOP was rejected.";
+			}
+			continue;
+		}
+
+		if (m_bStopAuditionQueued)
+		{
+			m_bStopAuditionQueued = false;
+			if (!Submit_Audition(OPERATION::STOP_ORDERED_1_67))
+			{
+				m_bRestartOrderedAfterStop = false;
+				m_strAuditionStatus =
+					"The queued STOP request could not be sent.";
+			}
+		}
+	}
+
+	if (!m_PendingAuditionRequest.Is_Active())
+		return;
+	const uint64_t now = Get_AuditionMonotonicMilliseconds();
+	if (now - m_PendingAuditionRequest.iLastSentAtMilliseconds <
+		AUDITION_RETRY_INTERVAL_MILLISECONDS)
+	{
+		return;
+	}
+
+	if (m_PendingAuditionRequest.iRetryCount >= AUDITION_MAX_RETRY_COUNT)
+	{
+		const AUDITION_PENDING_REQUEST timedOut = m_PendingAuditionRequest;
+		m_PendingAuditionRequest = {};
+		m_strAuditionStatus =
+			"Server verdict timed out after three bounded retries.";
+		if (!m_EnvironmentTimeline.empty())
+		{
+			m_EnvironmentTimeline.clear();
+			m_iEnvironmentTimelineStep = 0u;
+			m_bEnvironmentTimelineWaiting = false;
+			m_bEnvironmentTimelinePatternStarted = false;
+			m_strAuditionStatus += " Full environment timeline stopped.";
+		}
+		if (OPERATION::PLAY_ORDERED_1_67 == timedOut.eOperation)
+		{
+			/* The Server may have started it even though every verdict was lost.
+			Keep focused reset controls disabled until an explicit STOP is acked. */
+			m_bOrderedAuditionActive = true;
+		}
+		if (OPERATION::STOP_ORDERED_1_67 == timedOut.eOperation)
+		{
+			m_bStopAuditionQueued = false;
+			m_bRestartOrderedAfterStop = false;
+			m_strAuditionStatus +=
+				" Ordered state is uncertain; send STOP again before restarting.";
+			return;
+		}
+		if (m_bStopAuditionQueued)
+		{
+			m_bStopAuditionQueued = false;
+			if (!Submit_Audition(OPERATION::STOP_ORDERED_1_67))
+			{
+				m_bRestartOrderedAfterStop = false;
+				m_strAuditionStatus += " The queued STOP could not be sent.";
+			}
+		}
+		return;
+	}
+
+	++m_PendingAuditionRequest.iRetryCount;
+	m_PendingAuditionRequest.iLastSentAtMilliseconds = now;
+	const bool_t sent = CNetworkManager::Get().Send_ValtanAudition(
+		m_PendingAuditionRequest.iSequence,
+		m_PendingAuditionRequest.eOperation,
+		m_PendingAuditionRequest.iTargetHealthBar);
+	m_strAuditionStatus = sent ?
+		"Waiting for the Server verdict after a bounded retry..." :
+		"The bounded retry could not be sent; it will not retry immediately.";
+}
+
+bool_t CLevel_ValtanArena::Submit_Audition(
 	const LostArk::Shared::VALTAN_AUDITION_OPERATION operation)
 {
+	if (nullptr == m_Replication.Get_LocalCharacter())
+	{
+		m_strAuditionStatus =
+			"Wait for the local character snapshot before sending an audition.";
+		return false;
+	}
+	if (m_PendingAuditionRequest.Is_Active() || m_bStopAuditionQueued)
+	{
+		m_strAuditionStatus =
+			"Another audition transaction must finish before this request.";
+		return false;
+	}
+
 	/* These operations name an authored mechanic or a Debug state directly,
 	rather than a health-bar crossing, so they carry no target bar. */
 	const bool_t isBarless =
@@ -428,26 +597,72 @@ void CLevel_ValtanArena::Submit_Audition(
 		LostArk::Shared::VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA ==
 			operation ||
 		LostArk::Shared::VALTAN_AUDITION_OPERATION::BREAK_EVERY_WALL ==
+			operation ||
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_ORDERED_1_67 ==
+			operation ||
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::STOP_ORDERED_1_67 ==
 			operation;
 	const std::vector<uint32_t> bars =
 		Collect_AuditionHealthBars(m_ValtanEncounterReference);
 	if (!isBarless && m_iSelectedAuditionBarIndex >= bars.size())
 	{
 		m_strAuditionStatus = "No authored health-bar pattern is selected.";
+		return false;
+	}
+
+	const uint32_t sequence = 0u == m_iNextAuditionRequestSequence ?
+		1u : m_iNextAuditionRequestSequence;
+	const uint32_t targetHealthBar =
+		isBarless ? 0u : bars[m_iSelectedAuditionBarIndex];
+	if (!CNetworkManager::Get().Send_ValtanAudition(
+		sequence, operation, targetHealthBar))
+	{
+		m_strAuditionStatus = "Could not send the audition request.";
+		return false;
+	}
+	m_iNextAuditionRequestSequence =
+		(std::numeric_limits<uint32_t>::max)() == sequence ?
+		1u : sequence + 1u;
+	m_PendingAuditionRequest.iSequence = sequence;
+	m_PendingAuditionRequest.eOperation = operation;
+	m_PendingAuditionRequest.iTargetHealthBar = targetHealthBar;
+	m_PendingAuditionRequest.iLastSentAtMilliseconds =
+		Get_AuditionMonotonicMilliseconds();
+	m_PendingAuditionRequest.iRetryCount = 0u;
+	m_strAuditionStatus = "Waiting for the Server verdict...";
+	return true;
+}
+
+void CLevel_ValtanArena::Request_OrderedAuditionStop(
+	const bool_t restartAfterStop)
+{
+	using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
+	m_EnvironmentTimeline.clear();
+	m_iEnvironmentTimelineStep = 0u;
+	m_bEnvironmentTimelineWaiting = false;
+	m_bEnvironmentTimelinePatternStarted = false;
+	m_bRestartOrderedAfterStop = restartAfterStop;
+
+	if (m_PendingAuditionRequest.Is_Active())
+	{
+		if (OPERATION::STOP_ORDERED_1_67 ==
+			m_PendingAuditionRequest.eOperation)
+		{
+			m_strAuditionStatus = restartAfterStop ?
+				"Waiting for STOP before restarting the ordered audition..." :
+				"Waiting for the ordered STOP verdict...";
+			return;
+		}
+		m_bStopAuditionQueued = true;
+		m_strAuditionStatus = restartAfterStop ?
+			"STOP is queued; PLAY will follow only after its verdict." :
+			"STOP is queued behind the current audition transaction.";
 		return;
 	}
 
-	const uint32_t sequence = m_iNextAuditionRequestSequence;
-	if (!CNetworkManager::Get().Send_ValtanAudition(
-		sequence, operation,
-		isBarless ? 0u : bars[m_iSelectedAuditionBarIndex]))
-	{
-		m_strAuditionStatus = "Could not send the audition request.";
-		return;
-	}
-	++m_iNextAuditionRequestSequence;
-	m_iPendingAuditionRequestSequence = sequence;
-	m_strAuditionStatus = "Waiting for the Server verdict...";
+	m_bStopAuditionQueued = false;
+	if (!Submit_Audition(OPERATION::STOP_ORDERED_1_67))
+		m_bRestartOrderedAfterStop = false;
 }
 
 void CLevel_ValtanArena::Start_EnvironmentTimeline()
@@ -475,7 +690,8 @@ void CLevel_ValtanArena::Advance_EnvironmentTimeline(
 	const bool_t isBossPatternRunning)
 {
 	if (m_EnvironmentTimeline.empty() ||
-		0u != m_iPendingAuditionRequestSequence)
+		m_PendingAuditionRequest.Is_Active() || m_bStopAuditionQueued ||
+		m_bOrderedAuditionActive)
 	{
 		return;
 	}
@@ -522,9 +738,7 @@ void CLevel_ValtanArena::Advance_EnvironmentTimeline(
 		m_iSelectedAuditionBarIndex =
 			static_cast<size_t>(std::distance(bars.begin(), selected));
 	}
-	const uint32_t submitted = m_iNextAuditionRequestSequence;
-	Submit_Audition(step.eOperation);
-	if (submitted == m_iNextAuditionRequestSequence)
+	if (!Submit_Audition(step.eOperation))
 	{
 		/* The request never left, so the chapter run stops instead of silently
 		skipping the rest of the timeline. */
@@ -540,27 +754,6 @@ void CLevel_ValtanArena::Advance_EnvironmentTimeline(
 
 void CLevel_ValtanArena::Render_AuditionPanel()
 {
-	LostArk::Shared::S2C_VALTAN_AUDITION_RESULT result{};
-	while (CNetworkManager::Get().Try_Consume_ValtanAuditionResult(result))
-	{
-		if (result.iRequestSequence != m_iPendingAuditionRequestSequence)
-			continue;
-		m_iPendingAuditionRequestSequence = 0u;
-		m_strAuditionStatus = Describe_AuditionResult(result.eResult);
-		if (LostArk::Shared::VALTAN_AUDITION_RESULT::ARMED != result.eResult &&
-			LostArk::Shared::VALTAN_AUDITION_RESULT::QUEUED != result.eResult &&
-			!m_EnvironmentTimeline.empty())
-		{
-			/* One refused chapter stops the run. Continuing would audition the
-			later bars against an environment the Server never produced. */
-			m_EnvironmentTimeline.clear();
-			m_iEnvironmentTimelineStep = 0u;
-			m_bEnvironmentTimelineWaiting = false;
-			m_bEnvironmentTimelinePatternStarted = false;
-			m_strAuditionStatus += " Full environment timeline stopped.";
-		}
-	}
-
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	if (nullptr != viewport)
 	{
@@ -585,10 +778,8 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	{
 		ImGui::TextDisabled(
 			"No authored health-bar patterns were loaded for this encounter.");
-		ImGui::End();
-		return;
 	}
-	if (m_iSelectedAuditionBarIndex >= bars.size())
+	else if (m_iSelectedAuditionBarIndex >= bars.size())
 		m_iSelectedAuditionBarIndex = 0u;
 
 	ImGui::TextUnformatted(
@@ -836,8 +1027,29 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		ImGui::Text("  occurrence %u   epoch %u   set %s",
 			occurrence, props.iEncounterEpoch, props.strPropSetId.c_str());
 	}
-	const bool_t isBusy = 0u != m_iPendingAuditionRequestSequence;
-	ImGui::BeginDisabled(isBusy);
+	const bool_t hasLocalCharacter =
+		nullptr != m_Replication.Get_LocalCharacter();
+	const bool_t isTransactionBusy =
+		m_PendingAuditionRequest.Is_Active() || m_bStopAuditionQueued;
+	const bool_t focusedControlsDisabled = !hasLocalCharacter ||
+		isTransactionBusy || m_bOrderedAuditionActive ||
+		!m_EnvironmentTimeline.empty();
+	ImGui::SeparatorText("Ordered 1-67 audition");
+	ImGui::BeginDisabled(!hasLocalCharacter);
+	if (ImGui::Button(
+		"Restart 1-67 Ordered Audition", ImVec2(300.f, 0.f)))
+	{
+		Request_OrderedAuditionStop(true);
+	}
+	if (ImGui::Button("Stop Ordered Audition", ImVec2(300.f, 0.f)))
+	{
+		Request_OrderedAuditionStop(false);
+	}
+	ImGui::EndDisabled();
+	ImGui::TextDisabled(
+		"The first Debug frame with a replicated local character starts this once automatically.");
+	ImGui::SeparatorText("Focused audition controls");
+	ImGui::BeginDisabled(focusedControlsDisabled);
 	if (ImGui::Button(
 		"Reset + Play Entrance Whirlwind (Front Walls A/B)", ImVec2(300.f, 0.f)))
 	{
@@ -954,7 +1166,7 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	}
 
 	ImGui::Separator();
-	ImGui::BeginDisabled(isBusy);
+	ImGui::BeginDisabled(focusedControlsDisabled);
 	if (ImGui::Button("Reset + Play Selected"))
 	{
 		Submit_Audition(
