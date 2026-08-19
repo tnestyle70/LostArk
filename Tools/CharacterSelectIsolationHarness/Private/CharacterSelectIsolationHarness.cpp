@@ -435,6 +435,19 @@ namespace
 				*m_LatestWorldEntityIds.begin();
 		}
 
+		[[nodiscard]] bool Get_WorldEntityPosition(
+			const NET_ENTITY_ID entityId,
+			float& outX,
+			float& outZ) const
+		{
+			const auto iter = m_LatestWorldEntityPositions.find(entityId);
+			if (iter == m_LatestWorldEntityPositions.end())
+				return false;
+			outX = iter->second.first;
+			outZ = iter->second.second;
+			return true;
+		}
+
 	private:
 		template<typename MESSAGE>
 		bool Send_Message(
@@ -584,8 +597,14 @@ namespace
 					}
 				}
 				m_LatestWorldEntityIds.clear();
+				m_LatestWorldEntityPositions.clear();
 				for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
+				{
 					m_LatestWorldEntityIds.insert(entity.iNetEntityId);
+					m_LatestWorldEntityPositions.insert_or_assign(
+						entity.iNetEntityId,
+						std::pair{ entity.fPositionX, entity.fPositionZ });
+				}
 				m_iDamageEventCount += snapshot.DamageEvents.size();
 				for (const DAMAGE_EVENT& damage : snapshot.DamageEvents)
 				{
@@ -621,6 +640,8 @@ namespace
 		S2C_ENTER_ACCEPTED m_EnterAccepted{};
 		std::set<NET_ENTITY_ID> m_LatestPlayerEntityIds;
 		std::set<NET_ENTITY_ID> m_LatestWorldEntityIds;
+		std::map<NET_ENTITY_ID, std::pair<float, float>>
+			m_LatestWorldEntityPositions;
 		std::set<NET_ENTITY_ID> m_ObservedSpawnedPlayerEntityIds;
 		std::map<NET_ENTITY_ID, std::string>
 			m_ObservedSpawnedPlayerNicknames;
@@ -808,13 +829,43 @@ namespace
 
 		const NET_ENTITY_ID clientAMonsterId =
 			clientA->Get_FirstWorldEntityId();
+		float monsterX = 0.f;
+		float monsterZ = 0.f;
 		if (INVALID_NET_ENTITY_ID == clientAMonsterId ||
-			!clientA->Send_UseSkill(
-				1u, 34650u, 5.f, 7.f, error))
+			!clientA->Get_WorldEntityPosition(
+				clientAMonsterId, monsterX, monsterZ))
 		{
-			if (error.empty())
-				error = "client A did not expose a monster entity ID";
-				return false;
+			error = "client A did not expose a monster entity ID";
+			return false;
+		}
+		if (!clientA->Send_Move(1u, monsterX, monsterZ, error))
+			return false;
+		if (!Pump_Until(privateClients, timeout,
+			[&](std::string& probeError)
+			{
+				if (!Check_PrivateClient(*clientA, "client A", probeError) ||
+					!Check_PrivateClient(*clientB, "client B", probeError))
+				{
+					return PROBE_RESULT::FAIL;
+				}
+				if (clientB->Has_AnyWorldActivity())
+				{
+					probeError = "client B observed client A's entity or damage";
+					return PROBE_RESULT::FAIL;
+				}
+				const float deltaX = clientA->Get_OwnPositionX() - monsterX;
+				const float deltaZ = clientA->Get_OwnPositionZ() - monsterZ;
+				return deltaX * deltaX + deltaZ * deltaZ <= 4.f ?
+					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			},
+			"client A approach into 34650 hit reach", error))
+		{
+			return false;
+		}
+		if (!clientA->Send_UseSkill(
+			1u, 34650u, monsterX, monsterZ, error))
+		{
+			return false;
 		}
 		std::uint32_t clientADamageTick = 0;
 		if (!Pump_Until(privateClients, timeout,
