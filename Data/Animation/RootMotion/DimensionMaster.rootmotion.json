@@ -6266,6 +6266,204 @@
           "up": 0.0
         }
       ]
+    },
+    {
+      "skillId": 2050030,
+      "durationMs": 1033,
+      "samples": [
+        {
+          "timeMs": 0,
+          "forward": 0.0,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 33,
+          "forward": 0.0438,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 67,
+          "forward": 0.1216,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 100,
+          "forward": 0.1475,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 133,
+          "forward": 0.2107,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 167,
+          "forward": 0.267,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 200,
+          "forward": 0.3632,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 233,
+          "forward": 0.7565,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 267,
+          "forward": 2.3045,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 300,
+          "forward": 4.1586,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 333,
+          "forward": 3.9922,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 367,
+          "forward": 3.9936,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 400,
+          "forward": 3.9971,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 433,
+          "forward": 4.0061,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 467,
+          "forward": 4.0216,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 500,
+          "forward": 4.0395,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 533,
+          "forward": 4.0538,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 567,
+          "forward": 4.0604,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 600,
+          "forward": 4.0603,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 633,
+          "forward": 4.0568,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 667,
+          "forward": 4.0527,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 700,
+          "forward": 4.0491,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 733,
+          "forward": 4.045,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 767,
+          "forward": 4.0403,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 800,
+          "forward": 4.0358,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 833,
+          "forward": 4.0319,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 867,
+          "forward": 4.0291,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 900,
+          "forward": 4.0278,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 933,
+          "forward": 4.0275,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 967,
+          "forward": 4.028,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 1000,
+          "forward": 4.0288,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 1033,
+          "forward": 4.0296,
+          "lateral": 0.0,
+          "up": 0.0
+        }
+      ]
     }
   ]
 }

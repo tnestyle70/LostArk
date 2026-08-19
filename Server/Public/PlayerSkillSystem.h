@@ -40,6 +40,21 @@ namespace LostArk::Server
 			const CGameplayCatalog& catalog,
 			std::uint32_t serverTick);
 
+		/* Every source of landed player damage arms the authored hit reaction
+		here after applying its damage: a push window away from (or, for a
+		negative range, toward) the hit source, and optionally KNOCKDOWN until
+		downMs expires. A window or knockdown already running keeps the new hit
+		from re-arming, and DEAD or TRIGGER_MOVE players are never armed. */
+		static void Arm_PlayerHitReaction(
+			SERVER_PLAYER& player,
+			float sourceX,
+			float sourceZ,
+			float pushRangeM,
+			std::uint32_t pushMs,
+			bool knockdown,
+			std::uint32_t downMs,
+			std::uint32_t serverTick);
+
 		/* True while the player stands in a stance the identity gauge is paying
 		for, which is any stance other than the class default on a class that has
 		a gauge. Movement and the drain both key off this one answer. */

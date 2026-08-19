@@ -395,12 +395,13 @@ namespace LostArk::Shared
 		NONE,
 		SKILL,
 		TRIGGER_MOVE,
+		KNOCKDOWN,
 		DEAD,
 		/* The authored ground under the player was removed by a collapse. The
 		server owns the descent and the death tick; the snapshot carries only
 		this state and the position it already sends, so no field is added.
-		Appended after DEAD so every wire value that exists today keeps its
-		number. */
+		Appended last so it takes the newest wire value instead of renumbering
+		an existing one. */
 		FALLING,
 		END
 	};

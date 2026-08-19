@@ -850,6 +850,246 @@
       ]
     },
     {
+      "skillId": 17025,
+      "durationMs": 1267,
+      "samples": [
+        {
+          "timeMs": 0,
+          "forward": 0.0,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 33,
+          "forward": 0.0364,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 67,
+          "forward": 0.0691,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 100,
+          "forward": 0.1037,
+          "lateral": -0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 133,
+          "forward": 0.1458,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 167,
+          "forward": 0.2011,
+          "lateral": 0.0,
+          "up": 0.0067
+        },
+        {
+          "timeMs": 200,
+          "forward": 0.2728,
+          "lateral": 0.0,
+          "up": 0.0071
+        },
+        {
+          "timeMs": 233,
+          "forward": 0.3706,
+          "lateral": 0.0,
+          "up": 0.0075
+        },
+        {
+          "timeMs": 267,
+          "forward": 0.5106,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 300,
+          "forward": 0.7532,
+          "lateral": -0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 333,
+          "forward": 1.0324,
+          "lateral": 0.0,
+          "up": 0.0058
+        },
+        {
+          "timeMs": 367,
+          "forward": 1.2481,
+          "lateral": 0.0,
+          "up": 0.0211
+        },
+        {
+          "timeMs": 400,
+          "forward": 1.4684,
+          "lateral": 0.0,
+          "up": 0.1714
+        },
+        {
+          "timeMs": 433,
+          "forward": 1.7331,
+          "lateral": 0.0,
+          "up": 0.0169
+        },
+        {
+          "timeMs": 467,
+          "forward": 2.0266,
+          "lateral": 0.0,
+          "up": -0.0
+        },
+        {
+          "timeMs": 500,
+          "forward": 2.3719,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 533,
+          "forward": 2.6923,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 567,
+          "forward": 2.9057,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 600,
+          "forward": 3.0521,
+          "lateral": -0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 633,
+          "forward": 3.1642,
+          "lateral": 0.0,
+          "up": 0.0075
+        },
+        {
+          "timeMs": 667,
+          "forward": 3.26,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 700,
+          "forward": 3.3455,
+          "lateral": 0.0,
+          "up": 0.0066
+        },
+        {
+          "timeMs": 733,
+          "forward": 3.427,
+          "lateral": 0.0,
+          "up": 0.0
+        },
+        {
+          "timeMs": 767,
+          "forward": 3.5039,
+          "lateral": 0.0,
+          "up": 0.0039
+        },
+        {
+          "timeMs": 800,
+          "forward": 3.5699,
+          "lateral": 0.0,
+          "up": 0.0042
+        },
+        {
+          "timeMs": 833,
+          "forward": 3.623,
+          "lateral": 0.0,
+          "up": 0.0045
+        },
+        {
+          "timeMs": 867,
+          "forward": 3.6646,
+          "lateral": 0.0,
+          "up": 0.0048
+        },
+        {
+          "timeMs": 900,
+          "forward": 3.6986,
+          "lateral": 0.0,
+          "up": 0.0051
+        },
+        {
+          "timeMs": 933,
+          "forward": 3.7261,
+          "lateral": 0.0,
+          "up": 0.0054
+        },
+        {
+          "timeMs": 967,
+          "forward": 3.7483,
+          "lateral": 0.0,
+          "up": 0.0057
+        },
+        {
+          "timeMs": 1000,
+          "forward": 3.7663,
+          "lateral": 0.0,
+          "up": 0.005
+        },
+        {
+          "timeMs": 1033,
+          "forward": 3.781,
+          "lateral": 0.0,
+          "up": 0.0044
+        },
+        {
+          "timeMs": 1067,
+          "forward": 3.7931,
+          "lateral": 0.0,
+          "up": 0.0038
+        },
+        {
+          "timeMs": 1100,
+          "forward": 3.8035,
+          "lateral": 0.0,
+          "up": 0.0032
+        },
+        {
+          "timeMs": 1133,
+          "forward": 3.8128,
+          "lateral": 0.0,
+          "up": 0.0026
+        },
+        {
+          "timeMs": 1167,
+          "forward": 3.8219,
+          "lateral": 0.0,
+          "up": 0.002
+        },
+        {
+          "timeMs": 1200,
+          "forward": 3.8277,
+          "lateral": 0.0,
+          "up": 0.0014
+        },
+        {
+          "timeMs": 1233,
+          "forward": 3.8293,
+          "lateral": 0.0,
+          "up": 0.0008
+        },
+        {
+          "timeMs": 1267,
+          "forward": 3.831,
+          "lateral": 0.0,
+          "up": 0.0002
+        }
+      ]
+    },
+    {
       "skillId": 17030,
       "durationMs": 1833,
       "samples": [

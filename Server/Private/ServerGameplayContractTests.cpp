@@ -2550,6 +2550,144 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Stop a knockback at the non-walkable boundary and end the window");
 	}
 	{
+		/* Player hit reaction: an authored boss/monster push arms away from the
+		hit source over its own window, a negative range pulls toward it, a
+		FallDown hit holds KNOCKDOWN until downMs, a running window never
+		re-arms, and no command passes while the player is down. */
+		SERVER_PLAYER victim{};
+		victim.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		victim.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+		victim.iCurrentHp = 5000;
+		victim.iMaximumHp = 5000;
+		victim.iCurrentResource = 1000;
+		victim.iMaximumResource = 1000;
+		victim.fPositionX = 10.f;
+		victim.fPositionZ = 5.f;
+		CPlayerSkillSystem::Arm_PlayerHitReaction(
+			victim, 10.f, 3.f, 2.f, 242u, false, 0u, 300u);
+		tests.Require(
+			victim.fKnockbackDirectionZ > 0.999f &&
+			std::fabs(victim.fKnockbackDirectionX) < 0.001f &&
+			std::fabs(victim.fKnockbackRemainingSeconds - 0.242f) < 0.0001f &&
+			std::fabs(victim.fKnockbackSpeed - 2.f / 0.242f) < 0.001f &&
+			PLAYER_ACTION_STATE::NONE == victim.eAction,
+			"Arm a player push away from the hit source without a knockdown");
+		CPlayerSkillSystem::Arm_PlayerHitReaction(
+			victim, 10.f, 7.f, 2.f, 242u, true, 2000u, 301u);
+		tests.Require(
+			victim.fKnockbackDirectionZ > 0.999f &&
+			PLAYER_ACTION_STATE::NONE == victim.eAction,
+			"Keep a running push window from being re-armed by a second hit");
+		victim.fKnockbackRemainingSeconds = 0.f;
+		victim.fKnockbackSpeed = 0.f;
+		CPlayerSkillSystem::Arm_PlayerHitReaction(
+			victim, 10.f, 3.f, -2.4f, 97u, true, 2000u, 310u);
+		tests.Require(
+			victim.fKnockbackDirectionZ < -0.999f &&
+			std::fabs(victim.fKnockbackSpeed - 2.4f / 0.097f) < 0.001f &&
+			PLAYER_ACTION_STATE::KNOCKDOWN == victim.eAction &&
+			310u == victim.iActionStartTick &&
+			370u == victim.iKnockdownEndTick &&
+			LostArk::Shared::INVALID_SKILL_ID == victim.iCurrentSkillId,
+			"Pull the player toward the hit source and hold the authored knockdown");
+		C2S_USE_SKILL downSkill{};
+		downSkill.iClientSequence = 9;
+		downSkill.iSkillId = 34120;
+		downSkill.fAimX = 10.f;
+		downSkill.fAimZ = 50.f;
+		CPlayerSkillSystem downSkills;
+		tests.Require(
+			!downSkills.Try_Start(victim, downSkill, catalog, 315u),
+			"Reject a skill command while the player is knocked down");
+
+		const PLAYER_SKILL_DEFINITION* standup = catalog.Find_Skill(34030);
+		tests.Require(
+			nullptr != standup &&
+			PLAYER_SKILL_KIND::STANDUP == standup->eSkillKind &&
+			30000u == standup->iCooldownMs &&
+			!standup->RootMotion.empty() &&
+			standup->RootMotion.back().fForward > 3.5f,
+			"Load the official stand-up skill with its rolling root motion");
+		C2S_USE_SKILL standupCommand{};
+		standupCommand.iClientSequence = 10;
+		standupCommand.iSkillId = 34030;
+		standupCommand.fAimX = victim.fPositionX;
+		standupCommand.fAimZ = victim.fPositionZ - 5.f;
+		tests.Require(
+			downSkills.Try_Start(victim, standupCommand, catalog, 320u) &&
+			PLAYER_ACTION_STATE::SKILL == victim.eAction &&
+			34030u == victim.iCurrentSkillId &&
+			0u == victim.iComboStage &&
+			0u == victim.iKnockdownEndTick &&
+			0.f == victim.fKnockbackRemainingSeconds,
+			"Stand the knocked-down player up through the STANDUP skill");
+
+		SERVER_PLAYER standing{};
+		standing.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		standing.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+		standing.iCurrentHp = 5000;
+		standing.iMaximumHp = 5000;
+		standing.iCurrentResource = 1000;
+		standing.iMaximumResource = 1000;
+		C2S_USE_SKILL standingStandup = standupCommand;
+		standingStandup.iClientSequence = 1;
+		CPlayerSkillSystem standingSkills;
+		tests.Require(
+			!standingSkills.Try_Start(standing, standingStandup, catalog, 330u),
+			"Reject the STANDUP skill while the player is on its feet");
+
+		victim.eAction = PLAYER_ACTION_STATE::NONE;
+		victim.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
+		CPlayerSkillSystem::Arm_PlayerHitReaction(
+			victim, 10.f, 3.f, 2.f, 242u, true, 2000u, 330u);
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == victim.eAction &&
+			0.f == victim.fKnockbackRemainingSeconds &&
+			380u == victim.iHitReactionGraceEndTick,
+			"Hold the get-up grace so a hit cannot chain a second knockdown");
+		CPlayerSkillSystem::Arm_PlayerHitReaction(
+			victim, 10.f, 3.f, 2.f, 242u, true, 2000u, 385u);
+		tests.Require(
+			PLAYER_ACTION_STATE::KNOCKDOWN == victim.eAction &&
+			victim.fKnockbackRemainingSeconds > 0.f,
+			"Arm the hit reaction again once the get-up grace has passed");
+
+		const auto* valtanPatterns = catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		const BOSS_PATTERN_DEFINITION* swing = nullptr;
+		const BOSS_PATTERN_DEFINITION* roar = nullptr;
+		if (nullptr != valtanPatterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& pattern : *valtanPatterns)
+			{
+				if ("VALTAN_SWING" == pattern.strPatternId)
+					swing = &pattern;
+				if ("VALTAN_IMPRISON_ROAR" == pattern.strPatternId)
+					roar = &pattern;
+			}
+		}
+		const auto findActivePush = [](const BOSS_PATTERN_DEFINITION* pattern)
+			-> const BOSS_PATTERN_STAGE_DEFINITION*
+		{
+			if (nullptr == pattern)
+				return nullptr;
+			for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern->Stages)
+			{
+				if (!stage.strDamageProfileId.empty())
+					return &stage;
+			}
+			return nullptr;
+		};
+		const BOSS_PATTERN_STAGE_DEFINITION* swingHit = findActivePush(swing);
+		const BOSS_PATTERN_STAGE_DEFINITION* roarHit = findActivePush(roar);
+		tests.Require(
+			nullptr != swingHit && nullptr != roarHit &&
+			std::fabs(swingHit->fPushRangeM - 2.f) < 0.0001f &&
+			242u == swingHit->iPushMs && swingHit->bKnockdown &&
+			2000u == swingHit->iDownMs &&
+			roarHit->fPushRangeM < 0.f && roarHit->bKnockdown,
+			"Load the official swing push and the imprison-roar pull from the encounter");
+	}
+	{
 		/* Projectiles: the Artist tiger (31490, official 314900) is a missile
 		that leaves the caster 1147 ms in, runs 11 m at 6.5 m/s and carries a
 		1.5 x 2.5 m box; the DimensionMaster nail (2050100, 20501001) is a
@@ -3349,12 +3487,12 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t10\t75\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t11\t75\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
 				"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
-				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
+				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\t2\t242\t1\t2000\n"
 				"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 				"SKILL\t34120\tLANCE_MASTER\tQ\tlancemaster.skill.34120\t10000\t2266"
 				"\t1510\t2000\t0\t0\t8\tdamage.player.34120\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
@@ -3424,12 +3562,12 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t10\t75\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t11\t75\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
 					"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
-					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
+					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\t2\t242\t1\t2000\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020"
 					"\t8000\t900\t" << hitTimeMs << "\t242\t0\t6\t" << maximumRange <<
@@ -3485,7 +3623,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
-					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\n"
+					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\t2\t242\t1\t2000\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020\t8000\t900\t0\t242\t0\t6\t0\t\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
 				for (const std::string& row : sourceRows)
@@ -3576,12 +3714,12 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t10\t77\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t11\t77\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
 					"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
-					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34010\n"
+					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34010\t0\t0\t0\t0\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34010\tLANCE_MASTER\tLMB\tlancemaster.skill.34010"
 					"\t0\t1633\t470\t0\t0\t0\t3\tdamage.player.34010\tCOMBO"
@@ -3861,6 +3999,17 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			std::fabs(monsterProfile->fHitKnockbackScale - 1.f) < 0.0001f &&
 			0.f == minibossProfile->fHitKnockbackScale,
 			"Read the published hit knockback scale for the monster and the miniboss");
+		tests.Require(
+			nullptr != monsterProfile && nullptr != minibossProfile &&
+			std::fabs(monsterProfile->fAttackPushRangeM - 0.5f) < 0.0001f &&
+			150u == monsterProfile->iAttackPushMs &&
+			!monsterProfile->bAttackKnockdown &&
+			0u == monsterProfile->iAttackDownMs &&
+			std::fabs(minibossProfile->fAttackPushRangeM - 2.f) < 0.0001f &&
+			250u == minibossProfile->iAttackPushMs &&
+			minibossProfile->bAttackKnockdown &&
+			2000u == minibossProfile->iAttackDownMs,
+			"Read the published attack push and knockdown for the monster and the miniboss");
 
 		const auto hasImmediateEntry = [](
 			const SPAWN_GROUP_DEFINITION& group,

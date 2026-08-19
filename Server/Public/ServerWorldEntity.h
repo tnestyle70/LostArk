@@ -90,6 +90,12 @@ namespace LostArk::Server
 		std::uint32_t iPatternHitIntervalMs = 0;
 		std::uint32_t iAppliedPatternHitCount = 0;
 		bool bPatternWallContact = false;
+		/* Player push of the running pattern stage's hit; negative pulls toward
+		the boss. */
+		float fPatternPushRangeM = 0.f;
+		std::uint32_t iPatternPushMs = 0;
+		bool bPatternKnockdown = false;
+		std::uint32_t iPatternDownMs = 0;
 		std::uint32_t iActionStartTick = 0;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
@@ -106,6 +112,12 @@ namespace LostArk::Server
 		/* Multiplier on the authored push range of each player hit, from the
 		monster profile; 0 never moves. */
 		float fHitKnockbackScale = 0.f;
+		/* Player push of this monster's landed attack, from the monster profile;
+		negative pulls the player toward the monster. */
+		float fAttackPushRangeM = 0.f;
+		std::uint32_t iAttackPushMs = 0;
+		bool bAttackKnockdown = false;
+		std::uint32_t iAttackDownMs = 0;
 		/* The knockback in flight: unit XZ direction away from the attacker,
 		metres per second (negative pulls closer), and how much of the authored
 		push window is left. A new hit restarts the window with its own

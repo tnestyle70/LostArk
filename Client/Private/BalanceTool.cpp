@@ -365,7 +365,8 @@ bool Client::CBalanceTool::Reload()
 			if (!IsExactObject(stageValue, { "stageId", "actionId", "stageKind",
 				"durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
 				"hitAngleDegrees", "hitLength", "hitHalfWidth", "hitCount",
-				"hitIntervalMs", "serverDamageProfileId" }) ||
+				"hitIntervalMs", "serverDamageProfileId",
+				"pushRangeM", "pushMs", "knockdown", "downMs" }) ||
 				!ReadString(stageValue, "stageId", stage.stageId) ||
 				!ReadString(stageValue, "actionId", stage.actionId) ||
 				!ReadString(stageValue, "stageKind", stage.stageKind) ||
@@ -378,10 +379,17 @@ bool Client::CBalanceTool::Reload()
 				!ReadFloat(stageValue, "hitHalfWidth", stage.hitHalfWidth) ||
 				!ReadU32(stageValue, "hitCount", stage.hitCount) ||
 				!ReadU32(stageValue, "hitIntervalMs", stage.hitIntervalMs) ||
-				!ReadString(stageValue, "serverDamageProfileId", stage.damageProfileId))
+				!ReadString(stageValue, "serverDamageProfileId", stage.damageProfileId) ||
+				!ReadFloat(stageValue, "pushRangeM", stage.pushRangeM) ||
+				!ReadU32(stageValue, "pushMs", stage.pushMs) ||
+				!ReadU32(stageValue, "downMs", stage.downMs))
 			{
 				return false;
 			}
+			const DATA_JSON_VALUE* knockdownValue = stageValue.Find("knockdown");
+			if (nullptr == knockdownValue || !knockdownValue->Is_Boolean())
+				return false;
+			stage.knockdown = knockdownValue->Get_Boolean();
 			row.stages.push_back(std::move(stage));
 		}
 		patterns.push_back(std::move(row));
@@ -715,6 +723,13 @@ void Client::CBalanceTool::RenderBossEditor()
 							RenderBasis("Data/Balance/DamageProfiles.json",
 								"damage:" + stage.damageProfileId, "damageRatePercent");
 						}
+						MarkDirty(ImGui::DragFloat("Push range m (neg pulls)",
+							&stage.pushRangeM, 0.1f, -20.f, 20.f));
+						MarkDirty(EditU32("Push ms",
+							stage.pushMs, 0.f == stage.pushRangeM ? 0u : 1u, 600000u));
+						MarkDirty(ImGui::Checkbox("Knockdown", &stage.knockdown));
+						MarkDirty(EditU32("Down ms",
+							stage.downMs, stage.knockdown ? 1u : 0u, 600000u));
 					}
 					ImGui::TreePop();
 				}
@@ -1149,6 +1164,10 @@ bool Client::CBalanceTool::Save()
 				<< ", \"hitCount\": " << stage.hitCount
 				<< ", \"hitIntervalMs\": " << stage.hitIntervalMs
 				<< ", \"serverDamageProfileId\": " << Quote(stage.damageProfileId)
+				<< ", \"pushRangeM\": " << std::setprecision(9) << stage.pushRangeM
+				<< ", \"pushMs\": " << stage.pushMs
+				<< ", \"knockdown\": " << (stage.knockdown ? "true" : "false")
+				<< ", \"downMs\": " << stage.downMs
 				<< " }" << (stageIndex + 1u == p.stages.size() ? "\n" : ",\n");
 		}
 		encounter << "      ]\n    }"

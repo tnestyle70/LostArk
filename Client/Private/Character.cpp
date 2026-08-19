@@ -747,6 +747,38 @@ void CCharacter::Update_Chain()
 	Start_Clip(m_pChain->stages[m_iChainStage].clips[0]);
 }
 
+void CCharacter::Update_KnockdownPresentation()
+{
+	if (KNOCKDOWN_STEP::NONE == m_eKnockdownStep ||
+		KNOCKDOWN_STEP::DOWN == m_eKnockdownStep ||
+		!Is_ClipFinished())
+	{
+		return;
+	}
+	if (KNOCKDOWN_STEP::FALLING == m_eKnockdownStep)
+	{
+		if (Set_Animation(CHARACTER_ANIM::KNOCKDOWN_LAND, false))
+			m_eKnockdownStep = KNOCKDOWN_STEP::LANDING;
+		else
+			m_eKnockdownStep = KNOCKDOWN_STEP::DOWN;
+		return;
+	}
+	if (KNOCKDOWN_STEP::LANDING == m_eKnockdownStep)
+	{
+		/* A class without a lying loop holds the land clip's final pose. */
+		Set_Animation(CHARACTER_ANIM::DOWN_LOOP, true);
+		m_eKnockdownStep = KNOCKDOWN_STEP::DOWN;
+		return;
+	}
+	if (KNOCKDOWN_STEP::STANDUP == m_eKnockdownStep)
+	{
+		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+		Set_Animation(
+			m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+			true);
+	}
+}
+
 void CCharacter::Update_NetworkTransform(f32_t fTimeDelta)
 {
 	if (!m_hasNetworkState ||
@@ -984,6 +1016,7 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_pChain = nullptr;
 		m_iChainStage = 0;
 		m_iChainStep = 0;
+		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 		Commit_PendingClipChains();
 		m_iCurrentEffectSkillId = skillId;
 		Reset_EffectCueCursor(actionStartTick);
@@ -1025,11 +1058,13 @@ bool_t CCharacter::Apply_NetworkAction(
 		{
 			return true;
 		}
-		if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
+		if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction ||
+			PLAYER_ACTION_STATE::KNOCKDOWN == m_eNetworkAction)
 		{
 			m_pChain = nullptr;
 			m_iChainStage = 0;
 			m_iChainStep = 0;
+			m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 			m_fActionPresentationSeconds = 0.f;
 			Commit_PendingClipChains();
 			Set_Animation(CHARACTER_ANIM::RUN, true);
@@ -1054,11 +1089,33 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
 	}
+	else if (PLAYER_ACTION_STATE::KNOCKDOWN == action)
+	{
+		if (INVALID_SKILL_ID != skillId || 0u == actionStartTick)
+			return false;
+		if (m_eNetworkAction == action &&
+			m_iLastNetworkActionStartTick == actionStartTick)
+		{
+			return true;
+		}
+		m_pChain = nullptr;
+		m_iChainStage = 0;
+		m_iChainStep = 0;
+		m_fActionPresentationSeconds = 0.f;
+		Commit_PendingClipChains();
+		if (!Set_Animation(CHARACTER_ANIM::KNOCKDOWN, false))
+			Set_Animation(CHARACTER_ANIM::HIT, false);
+		m_eKnockdownStep = KNOCKDOWN_STEP::FALLING;
+		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
+		m_iEffectActionStartTick = 0u;
+		m_iLastNetworkActionStartTick = actionStartTick;
+	}
 	else if (PLAYER_ACTION_STATE::DEAD == action)
 	{
 		m_pChain = nullptr;
 		m_iChainStage = 0;
 		m_iChainStep = 0;
+		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 		m_fActionPresentationSeconds = 0.f;
 		Commit_PendingClipChains();
 		Set_Animation(CHARACTER_ANIM::DEAD, false);
@@ -1077,6 +1134,21 @@ bool_t CCharacter::Apply_NetworkAction(
 			true);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
+	}
+	else if (PLAYER_ACTION_STATE::KNOCKDOWN == m_eNetworkAction)
+	{
+		m_fActionPresentationSeconds = 0.f;
+		if (Set_Animation(CHARACTER_ANIM::STANDUP, false))
+		{
+			m_eKnockdownStep = KNOCKDOWN_STEP::STANDUP;
+		}
+		else
+		{
+			m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
+			Set_Animation(
+				m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
+				true);
+		}
 	}
 	Update_ActionEmissiveOverride(action, skillId);
 	m_eNetworkAction = action;
@@ -1235,6 +1307,7 @@ void CCharacter::Update(f32_t fTimeDelta)
 	/* A running chain owns the clip until it ends, so it advances before the logic
 	gets a say and Is_PlayingSkill() is already correct when the logic reads it. */
 	Update_Chain();
+	Update_KnockdownPresentation();
 
 	/* Class code may only update presentation. Input and gameplay commands are
 	owned by PlayerController and its command sink. */

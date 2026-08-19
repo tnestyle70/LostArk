@@ -74,13 +74,18 @@ const CHARACTER_SPEC Spec_Slayer =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD -- FBX takes are "<armature>_<action>" and the
-	armature is named "wbk", so every clip carries that prefix. */
+	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP --
+	FBX takes are "<armature>_<action>" and the armature is named "wbk", so
+	every clip carries that prefix. */
 	{
 		"wbk_idle_battle_1",
 		"wbk_run_battle_1",
 		"wbk_dmg_idle_1",
 		"wbk_dead_1",
+		"wbk_knockdown",
+		"wbk_knockdown_land",
+		"wbk_down",
+		"wbk_standup_1",
 	},
 
 	&Create_Logic,

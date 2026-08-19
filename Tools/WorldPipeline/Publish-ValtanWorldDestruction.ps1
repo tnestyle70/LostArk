@@ -584,7 +584,8 @@ function Compile-ValtanWorldDestruction {
             $expectedStageProperties = @(
                 'stageId','actionId','stageKind','durationMs','hitShape',
                 'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength',
-                'hitHalfWidth','hitCount','hitIntervalMs','serverDamageProfileId')
+                'hitHalfWidth','hitCount','hitIntervalMs','serverDamageProfileId',
+                'pushRangeM','pushMs','knockdown','downMs')
             Assert-ExactProperties -Value $stage -Expected $expectedStageProperties -Context "$($pattern.patternId) stage"
             Assert-StableId $stage.stageId "$($pattern.patternId) stageId"
             Assert-StableId $stage.actionId "$($pattern.patternId) actionId"

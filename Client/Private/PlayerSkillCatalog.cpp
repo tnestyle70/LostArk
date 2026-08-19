@@ -219,6 +219,8 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::HOLD;
 		else if ("COUNTER" == kindText)
 			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::COUNTER;
+		else if ("STANDUP" == kindText)
+			definition.eSkillKind = LostArk::Shared::PLAYER_SKILL_KIND::STANDUP;
 		else
 		{
 			outStatus = "PlayerSkills.json has an unknown skillKind";
@@ -244,7 +246,9 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 					definition.iComboStageCount > 8u)) ||
 			(LostArk::Shared::PLAYER_SKILL_KIND::HOLD == definition.eSkillKind &&
 				(0u == definition.iCooldownMs ||
-					3u != definition.iComboStageCount)))
+					3u != definition.iComboStageCount)) ||
+			(LostArk::Shared::PLAYER_SKILL_KIND::STANDUP == definition.eSkillKind &&
+				(0u == definition.iCooldownMs || 0u != definition.iComboStageCount)))
 		{
 			outStatus = "PlayerSkills.json has an invalid skill id, class, cooldown or slot";
 			return false;
@@ -254,10 +258,14 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		the input controller resolves a key press through exactly one skill, so a
 		duplicate would make the winner depend on document order. A stance-free
 		(NONE) binding claims the whole slot since nothing then distinguishes it
-		from a stance-specific one at resolve time. */
+		from a stance-specific one at resolve time. A STANDUP skill is resolved by
+		the KNOCKDOWN action instead of a stance, so it claims its own per-slot
+		domain next to the normal claims. */
 		const std::string slotKey =
 			std::to_string(static_cast<std::uint32_t>(definition.eCharacterClass)) +
-			":" + definition.strInputSlot;
+			":" + definition.strInputSlot +
+			(LostArk::Shared::PLAYER_SKILL_KIND::STANDUP ==
+				definition.eSkillKind ? "#STANDUP" : "");
 		std::vector<LostArk::Shared::PLAYER_STANCE_ID>& claimedStances =
 			claimedSlots[slotKey];
 		const bool slotConflicts = std::any_of(
@@ -301,10 +309,18 @@ Client::CPlayerSkillCatalog::Get_Skills()
 const Client::PLAYER_SKILL_DEFINITION* Client::CPlayerSkillCatalog::Find_BySlot(
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass,
 	const std::string& inputSlot,
-	const LostArk::Shared::PLAYER_STANCE_ID stance)
+	const LostArk::Shared::PLAYER_STANCE_ID stance,
+	const bool isKnockedDown)
 {
 	for (const PLAYER_SKILL_DEFINITION& definition : g_Skills)
 	{
+		/* A knocked-down player's press means the slot's STANDUP skill and
+		nothing else; on its feet the same key means everything but. */
+		if ((LostArk::Shared::PLAYER_SKILL_KIND::STANDUP ==
+			definition.eSkillKind) != isKnockedDown)
+		{
+			continue;
+		}
 		if (definition.eCharacterClass == characterClass &&
 			definition.strInputSlot == inputSlot &&
 			(LostArk::Shared::PLAYER_STANCE_ID::NONE ==

@@ -358,6 +358,10 @@ namespace LostArk::Server
 			float fixedDeltaSeconds,
 			std::uint32_t updateTick);
 		void Update_Players(float fixedDeltaSeconds);
+		/* Slides a hit player along the armed knockback window, clamped to
+		walkable floor and blocking bodies; a wall ends the window early. */
+		void Advance_PlayerKnockback(
+			SERVER_PLAYER& player, float fixedDeltaSeconds);
 		void Update_WorldEntities(float fixedDeltaSeconds);
 
 	private:

@@ -1940,6 +1940,29 @@ namespace
 				!Build_WorldSnapshotPayload(
 					fallingWithoutTick, fallingWithoutTickPayload),
 				"Reject A Falling Snapshot Without A Start Tick");
+
+			S2C_WORLD_SNAPSHOT knockdown = source;
+			knockdown.Players[1].eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
+			knockdown.Players[1].iSkillId = INVALID_SKILL_ID;
+			knockdown.Players[1].iActionStartTick = 77;
+			CPacketWriter knockdownWriter;
+			testRunner.Require(
+				Write_Message(knockdownWriter, knockdown),
+				"Writer Knockdown Player Snapshot");
+
+			S2C_WORLD_SNAPSHOT knockdownWithoutTick = knockdown;
+			knockdownWithoutTick.Players[1].iActionStartTick = 0;
+			CPacketWriter knockdownWithoutTickWriter;
+			testRunner.Require(
+				!Write_Message(knockdownWithoutTickWriter, knockdownWithoutTick),
+				"Reject Knockdown Without Action Tick");
+
+			S2C_WORLD_SNAPSHOT knockdownWithSkill = knockdown;
+			knockdownWithSkill.Players[1].iSkillId = 34010;
+			CPacketWriter knockdownWithSkillWriter;
+			testRunner.Require(
+				!Write_Message(knockdownWithSkillWriter, knockdownWithSkill),
+				"Reject Knockdown That Carries A Skill");
 		}
 
 		payload.pop_back();

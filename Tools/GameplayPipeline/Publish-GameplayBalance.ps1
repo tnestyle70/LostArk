@@ -512,6 +512,7 @@ $playerSkillSlots = @(
 	'Q','W','E','R','A','S','D','F','T','X','Z','V','ALT_V','SPACE','LMB','RMB')
 $skillIds = [Collections.Generic.HashSet[uint32]]::new()
 $claimedSlotStances = @{}
+$claimedStandupSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $skillRows = [Collections.Generic.List[string]]::new()
 foreach ($skill in @($skillDocument.skills)) {
     Assert-ExactProperties $skill @(
@@ -554,18 +555,29 @@ foreach ($skill in @($skillDocument.skills)) {
 	}
     $id = [uint32]$skill.skillId
     $slotKey = "$($skill.characterClass):$($skill.inputSlot)"
-    $claimedStances = $claimedSlotStances[$slotKey]
-    if ($null -eq $claimedStances) {
-        $claimedStances = [Collections.Generic.List[string]]::new()
-        $claimedSlotStances[$slotKey] = $claimedStances
+    # A STANDUP skill shares its physical key with the slot's normal skill but is
+    # gated by the KNOCKDOWN action instead of a stance, so it claims its own
+    # per-slot domain rather than a stance.
+    if ([string]$skill.skillKind -eq 'STANDUP') {
+        if ($id -eq 0 -or -not $skillIds.Add($id) -or
+            -not $claimedStandupSlots.Add($slotKey)) {
+            throw "Duplicate skill ID or input slot: $id"
+        }
     }
-    $slotConflicts = $claimedStances | Where-Object {
-        $_ -eq $skill.requiredStance -or $_ -eq 'NONE' -or $skill.requiredStance -eq 'NONE'
+    else {
+        $claimedStances = $claimedSlotStances[$slotKey]
+        if ($null -eq $claimedStances) {
+            $claimedStances = [Collections.Generic.List[string]]::new()
+            $claimedSlotStances[$slotKey] = $claimedStances
+        }
+        $slotConflicts = $claimedStances | Where-Object {
+            $_ -eq $skill.requiredStance -or $_ -eq 'NONE' -or $skill.requiredStance -eq 'NONE'
+        }
+        if ($id -eq 0 -or -not $skillIds.Add($id) -or $null -ne $slotConflicts) {
+            throw "Duplicate skill ID or input slot: $id"
+        }
+        $claimedStances.Add([string]$skill.requiredStance)
     }
-    if ($id -eq 0 -or -not $skillIds.Add($id) -or $null -ne $slotConflicts) {
-        throw "Duplicate skill ID or input slot: $id"
-    }
-    $claimedStances.Add([string]$skill.requiredStance)
     if ($skill.characterClass -notin $supportedPlayerClasses -or $skill.inputSlot -notin $playerSkillSlots -or
         [uint32]$skill.actionDurationMs -eq 0 -or
         [uint32]$skill.hitTimeMs -gt [uint32]$skill.actionDurationMs -or
@@ -578,8 +590,15 @@ foreach ($skill in @($skillDocument.skills)) {
         throw "Player skill timing, class, slot, resource, or damage reference is invalid: $id"
     }
 	$skillKind = [string]$skill.skillKind
-	if ($skillKind -notin @('ACTIVE','COMBO','HOLD','COUNTER')) {
+	if ($skillKind -notin @('ACTIVE','COMBO','HOLD','COUNTER','STANDUP')) {
 		throw "Unknown skillKind: $id $skillKind"
+	}
+	if ($skillKind -eq 'STANDUP' -and (
+		$dealsDamage -or @($skill.comboStages).Count -ne 0 -or
+		[uint32]$skill.cooldownMs -eq 0 -or
+		[string]$skill.requiredStance -ne 'NONE' -or
+		[string]$skill.setsStance -ne 'NONE')) {
+		throw "STANDUP skill contract is invalid: $id"
 	}
 	$stages = @($skill.comboStages)
 	if ($skillKind -eq 'COUNTER') {
@@ -646,7 +665,7 @@ foreach ($skill in @($skillDocument.skills)) {
 			throw "Hold stage durations must sum to actionDurationMs: $id"
 		}
 	}
-	elseif ($skillKind -eq 'ACTIVE') {
+	elseif ($skillKind -eq 'ACTIVE' -or $skillKind -eq 'STANDUP') {
 		if ($stages.Count -ne 0) {
 			throw "ACTIVE skill must not carry comboStages: $id"
 		}
@@ -943,12 +962,17 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		Assert-ExactProperties $stage @(
 			'stageId','actionId','stageKind','durationMs','hitShape',
 			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength','hitHalfWidth',
-			'hitCount','hitIntervalMs','serverDamageProfileId') 'encounter pattern stage'
+			'hitCount','hitIntervalMs','serverDamageProfileId',
+			'pushRangeM','pushMs','knockdown','downMs') 'encounter pattern stage'
 		foreach ($field in @('stageId','actionId','stageKind','hitShape','serverDamageProfileId')) {
 			Assert-JsonString $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field"
 		}
-		foreach ($field in @('durationMs','hitCount','hitIntervalMs')) {
+		foreach ($field in @('durationMs','hitCount','hitIntervalMs','pushMs','downMs')) {
 			Assert-JsonInteger $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field" 0 ([uint32]::MaxValue)
+		}
+		Assert-JsonNumber $stage.pushRangeM "pattern $($pattern.patternId) stage $stageIndex pushRangeM"
+		if ($stage.knockdown -isnot [bool]) {
+			throw "Pattern stage knockdown must be a JSON Boolean: $($pattern.patternId) stage $stageIndex"
 		}
 		foreach ($field in @('hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength','hitHalfWidth')) {
 			Assert-JsonNumber $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field"
@@ -989,6 +1013,18 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				$damageIds.Contains($damageProfile)
 		}
 		if (-not $validShape) { throw "Pattern stage hit contract is invalid: $($pattern.patternId) stage $stageIndex" }
+		$pushRangeM = [double]$stage.pushRangeM
+		$pushMs = [uint32]$stage.pushMs
+		$knockdown = [bool]$stage.knockdown
+		$downMs = [uint32]$stage.downMs
+		if ([math]::Abs($pushRangeM) -gt 20.0 -or
+			($pushRangeM -ne 0.0 -and $pushMs -eq 0) -or
+			($pushRangeM -eq 0.0 -and $pushMs -ne 0) -or
+			($knockdown -and $downMs -eq 0) -or
+			(-not $knockdown -and $downMs -ne 0) -or
+			($damageProfile.Length -eq 0 -and ($pushRangeM -ne 0.0 -or $knockdown))) {
+			throw "Pattern stage push contract is invalid: $($pattern.patternId) stage $stageIndex"
+		}
 		$patternRows.Add((@(
 			'PATTERNSTAGE', $encounterDocument.encounterId, $pattern.patternId, $stageIndex,
 			$stage.stageId, $stage.actionId, $stage.stageKind, [uint32]$stage.durationMs,
@@ -999,7 +1035,11 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			(Format-InvariantFloat $length 'stage hitLength'),
 			(Format-InvariantFloat $halfWidth 'stage hitHalfWidth'),
 			$hitCount, $hitIntervalMs,
-			$(if ($damageProfile.Length -eq 0) { '-' } else { $damageProfile })) -join "`t"))
+			$(if ($damageProfile.Length -eq 0) { '-' } else { $damageProfile }),
+			(Format-InvariantSignedFloat $pushRangeM 'stage pushRangeM'),
+			$pushMs,
+			$(if ($knockdown) { 1 } else { 0 }),
+			$downMs) -join "`t"))
 	}
 }
 if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
@@ -1692,7 +1732,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t10`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t11`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

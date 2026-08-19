@@ -187,6 +187,12 @@ namespace LostArk::Server
 		float fHitHalfWidth = 0.f;
 		std::uint32_t iHitCount = 0;
 		std::uint32_t iHitIntervalMs = 0;
+		/* Official player push of this stage's hit: metres over iPushMs, a
+		negative range pulls the player toward the boss. */
+		float fPushRangeM = 0.f;
+		std::uint32_t iPushMs = 0;
+		bool bKnockdown = false;
+		std::uint32_t iDownMs = 0;
 		/* This ACTIVE hit is a physical axe contact candidate. Damage hits that
 		are roars, magic, waves or floor mechanics deliberately leave this false. */
 		bool bWallContact = false;
