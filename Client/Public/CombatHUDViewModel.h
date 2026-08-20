@@ -72,6 +72,13 @@ namespace Client
 		LostArk::Shared::DAMAGE_EVENT Event;
 	};
 
+	struct HUD_ESTHER_CUTIN_REQUEST
+	{
+		std::uint32_t iGeneration = 0;
+		std::string strArchetypeId;
+		std::vector<std::string> Clips;
+	};
+
 	class CCombatHUDViewModel final
 	{
 	public:
@@ -98,6 +105,14 @@ namespace Client
 		{
 			m_iEstherGauge = gauge;
 			m_iEstherGaugeMaximum = gaugeMaximum;
+		}
+		void Apply_EstherCutinAction(
+			const std::string& archetypeId,
+			const std::vector<std::string>& clips)
+		{
+			++m_EstherCutinRequest.iGeneration;
+			m_EstherCutinRequest.strArchetypeId = archetypeId;
+			m_EstherCutinRequest.Clips = clips;
 		}
 		void Reset_RuntimeState();
 
@@ -134,6 +149,10 @@ namespace Client
 		std::uint32_t Get_EstherGaugeMaximum() const
 		{
 			return m_iEstherGaugeMaximum;
+		}
+		const HUD_ESTHER_CUTIN_REQUEST& Get_EstherCutinRequest() const
+		{
+			return m_EstherCutinRequest;
 		}
 		const std::vector<HUD_DAMAGE_EVENT>& Get_DamageEvents() const
 		{
@@ -174,6 +193,7 @@ namespace Client
 		std::vector<HUD_DAMAGE_EVENT> m_DamageEvents;
 		std::uint32_t m_iEstherGauge = 0;
 		std::uint32_t m_iEstherGaugeMaximum = 0;
+		HUD_ESTHER_CUTIN_REQUEST m_EstherCutinRequest;
 		LostArk::Shared::S2C_INVENTORY_SNAPSHOT m_Inventory{};
 		std::string m_strStatus;
 	};

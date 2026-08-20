@@ -115,7 +115,7 @@ namespace LostArk::Server
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_ESTHER_SKILL& useEstherSkill);
 		bool Spawn_EstherSummon(
-			const std::string& archetypeId,
+			const ESTHER_ROSTER_ENTRY& rosterEntry,
 			const SERVER_PLAYER& caster,
 			float aimX,
 			float aimZ);

@@ -251,6 +251,8 @@ namespace Client
 			std::string strArchetypeId;
 			std::string strEncounterId;
 			std::string strCurrentClip;
+			std::string strActiveActionId;
+			std::size_t iActionClipIndex = 0u;
 			f32_t fCollisionRadius = 0.f;
 			std::weak_ptr<CNpc> pNpc;
 			std::weak_ptr<CValtan> pValtan;

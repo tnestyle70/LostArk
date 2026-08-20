@@ -126,10 +126,11 @@ namespace LostArk::Server
 		float fKnockbackDirectionZ = 0.f;
 		float fKnockbackSpeed = 0.f;
 		float fKnockbackRemainingSeconds = 0.f;
-		/* A raid Esther summon runs the room-owned appear/strike/leave timeline
-		in Update_WorldEntities instead of a brain, and despawns when the leave
-		stage ends rather than through the MONSTER dead sweep. */
+		/* A raid Esther summon plays one roster-owned strike for iEstherStrikeMs
+		instead of running a brain, and despawns the moment it ends rather than
+		through the MONSTER dead sweep. */
 		bool isEstherSummon = false;
+		std::uint32_t iEstherStrikeMs = 0;
 		std::uint32_t iNextPathReplanTick = 0;
 		std::uint32_t iPhaseTwoHpPercent = 0;
 		bool hasAppliedPatternDamage = false;

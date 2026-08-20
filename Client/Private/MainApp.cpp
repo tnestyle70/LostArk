@@ -7,6 +7,7 @@
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
 #include "Effect_Catalog.h"
+#include "EstherCutinPresentationService.h"
 #include "Effect_Object.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
@@ -521,6 +522,7 @@ HRESULT CMainApp::Render()
 #endif
 		m_pImGuiLayer->EndFrame();
 	}
+	CEstherCutinPresentationService::Render(m_pDevice, m_pContext);
 	RenderCombatHUDText();
 	RenderBossHealthBarText();
 	RenderDamageNumbers();
@@ -1792,7 +1794,7 @@ void CMainApp::RenderEstherGauge()
 	}
 
 	const char* pLabel = gauge >= maximum ?
-		"ESTHER READY  Ctrl+Z" : "ESTHER";
+		"ESTHER READY  Ctrl+Z/X/C" : "ESTHER";
 	const ImVec2 labelSize = ImGui::CalcTextSize(pLabel);
 	const ImVec2 labelPos(
 		(barMin.x + barMax.x - labelSize.x) * 0.5f,
@@ -2690,6 +2692,56 @@ void CMainApp::RenderDeveloperTools()
 					definition->strDisplayName.c_str() : item.strItemId.c_str(),
 				item.iQuantity);
 		}
+	}
+
+	if (ImGui::CollapsingHeader("Esther Cutin (Debug)"))
+	{
+		ESTHER_CUTIN_TUNING& cutinTuning =
+			CEstherCutinPresentationService::Debug_Tuning();
+		ImGui::DragFloat("Model Yaw (deg)",
+			&cutinTuning.fModelYawDegrees, 1.f, -360.f, 360.f);
+		ImGui::DragFloat("Eye X / Height",
+			&cutinTuning.fEyeXPerHeight, 0.01f, -2.f, 2.f);
+		ImGui::DragFloat("Eye Y / Height",
+			&cutinTuning.fEyeYPerHeight, 0.01f, -1.f, 3.f);
+		ImGui::DragFloat("Distance / Height",
+			&cutinTuning.fDistancePerHeight, 0.02f, 0.3f, 6.f);
+		ImGui::DragFloat("Target Y / Height",
+			&cutinTuning.fAtYPerHeight, 0.01f, 0.f, 2.f);
+		ImGui::DragFloat("FOV (deg)",
+			&cutinTuning.fFovDegrees, 0.5f, 10.f, 90.f);
+		ImGui::DragFloat4("Rect X/Y/W/H (720p)",
+			&cutinTuning.fRectX, 2.f, -400.f, 1600.f);
+		if (ImGui::Button("Reset Tuning"))
+			CEstherCutinPresentationService::Debug_ResetTuning();
+		ImGui::TextDisabled(
+			"Preview replays the cutin only; prototypes must be loaded"
+			" (enter Valtan first).");
+		const auto previewButton = [](
+			const char_t* pLabel, const char_t* pArchetypeId)
+		{
+			if (ImGui::Button(pLabel))
+				CEstherCutinPresentationService::Debug_Preview(pArchetypeId);
+		};
+		previewButton("Preview Sillian", "NPC_59030");
+		ImGui::SameLine();
+		previewButton("Preview Wei", "NPC_58700");
+		ImGui::SameLine();
+		previewButton("Preview Bahuntur", "NPC_59060");
+		ImGui::Text(
+			"yaw %.1f  eye(%.2f, %.2f)  dist %.2f  target %.2f  fov %.1f",
+			cutinTuning.fModelYawDegrees,
+			cutinTuning.fEyeXPerHeight,
+			cutinTuning.fEyeYPerHeight,
+			cutinTuning.fDistancePerHeight,
+			cutinTuning.fAtYPerHeight,
+			cutinTuning.fFovDegrees);
+		ImGui::Text(
+			"rect (%.0f, %.0f, %.0f, %.0f)",
+			cutinTuning.fRectX,
+			cutinTuning.fRectY,
+			cutinTuning.fRectWidth,
+			cutinTuning.fRectHeight);
 	}
 
 	ImGui::TextDisabled("F1: Developer Tools  |  F6: Follow/Free Camera");

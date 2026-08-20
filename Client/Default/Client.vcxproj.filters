@@ -477,6 +477,9 @@
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\EstherCutinPresentationService.cpp">
+      <Filter>02.GameObjects\04. UI</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\HUDRuntimeView.cpp">
       <Filter>02.GameObjects\04. UI</Filter>
     </ClCompile>
@@ -807,6 +810,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\CombatHUDViewModel.h">
       <Filter>04. Network</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\EstherCutinPresentationService.h">
+      <Filter>02.GameObjects\04. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\HUDRuntimeView.h">
       <Filter>02.GameObjects\04. UI</Filter>

@@ -3650,28 +3650,28 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const std::string validSourceRow =
 			"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180";
 		tests.Require(
-			loadWithWallContactRows(10u, { validSourceRow }, { validWallRow }),
+			loadWithWallContactRows(11u, { validSourceRow }, { validWallRow }),
 			"Accept one exact ACTIVE axe wall-contact row");
 		tests.Require(
-			!loadWithWallContactRows(9u, { validSourceRow }, { validWallRow }),
+			!loadWithWallContactRows(10u, { validSourceRow }, { validWallRow }),
 			"Reject the obsolete gameplay bootstrap version before wall-contact load");
 		tests.Require(
-			!loadWithWallContactRows(10u, { validSourceRow }, {
+			!loadWithWallContactRows(11u, { validSourceRow }, {
 				"PATTERNWALLCONTACT\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.wrong" }),
 			"Reject a wall-contact row whose action does not exactly join its stage");
 		tests.Require(
 			!loadWithWallContactRows(
-				10u, { validSourceRow }, { validWallRow, validWallRow }),
+				11u, { validSourceRow }, { validWallRow, validWallRow }),
 			"Reject duplicate axe wall-contact ownership atomically");
 		tests.Require(
-			!loadWithWallContactRows(10u, {}, {}),
+			!loadWithWallContactRows(11u, {}, {}),
 			"Reject a boss pattern with no compiled source timing row");
 		tests.Require(
 			!loadWithWallContactRows(
-				10u, { validSourceRow, validSourceRow }, {}),
+				11u, { validSourceRow, validSourceRow }, {}),
 			"Reject duplicate source timing ownership atomically");
 		tests.Require(
-			!loadWithWallContactRows(10u, {
+			!loadWithWallContactRows(11u, {
 				"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t149\t350\t300\t180" }, {}),
 			"Reject a source cooldown whose 30 Hz tick conversion is inconsistent");
 		std::error_code cleanupError;
@@ -6658,20 +6658,43 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			1000u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
 			"Charge the shared gauge to full only while players occupy the room");
 
-		std::string archetypeId;
+		const ESTHER_ROSTER_ENTRY* pRosterEntry = nullptr;
 		const ESTHER_USE_REJECTION wrongSlot =
-			valtanRoom.m_EstherSkillSystem.Try_Consume(2u, archetypeId);
+			valtanRoom.m_EstherSkillSystem.Try_Consume(4u, pRosterEntry);
 		tests.Require(
 			ESTHER_USE_REJECTION::UNSUPPORTED_SLOT == wrongSlot &&
-			archetypeId.empty() &&
+			nullptr == pRosterEntry &&
 			1000u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
-			"Reject the unextracted Esther slots without touching the gauge");
+			"Reject an out-of-roster Esther slot without touching the gauge");
 
 		const ESTHER_USE_REJECTION disabledWorld =
-			bernRoom.m_EstherSkillSystem.Try_Consume(1u, archetypeId);
+			bernRoom.m_EstherSkillSystem.Try_Consume(1u, pRosterEntry);
 		tests.Require(
 			ESTHER_USE_REJECTION::DISABLED_WORLD == disabledWorld,
 			"Reject an Esther use outside the raid world");
+
+		const ESTHER_USE_REJECTION weiSlot =
+			valtanRoom.m_EstherSkillSystem.Try_Consume(2u, pRosterEntry);
+		tests.Require(
+			ESTHER_USE_REJECTION::NONE == weiSlot &&
+			nullptr != pRosterEntry &&
+			std::string("NPC_58700") == pRosterEntry->pArchetypeId &&
+			7100u == pRosterEntry->iStrikeMs &&
+			0u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
+			"Consume slot 2 into Wei's all-in-one clip timeline");
+
+		for (int tick = 0; tick < 200; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		pRosterEntry = nullptr;
+		const ESTHER_USE_REJECTION bahunturSlot =
+			valtanRoom.m_EstherSkillSystem.Try_Consume(3u, pRosterEntry);
+		tests.Require(
+			ESTHER_USE_REJECTION::NONE == bahunturSlot &&
+			nullptr != pRosterEntry &&
+			std::string("NPC_59060") == pRosterEntry->pArchetypeId &&
+			4100u == pRosterEntry->iStrikeMs &&
+			0u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
+			"Consume slot 3 into the Bahuntur summon with its authored strike length");
 
 		/* Handler path: an authenticated caster with a full gauge summons at
 		its own feet, aimed east, and the gauge drains to zero atomically. */
@@ -6717,12 +6740,14 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			nullptr != summon &&
 			0u == valtanRoom.m_EstherSkillSystem.Get_Gauge() &&
 			"NPC_59030" == summon->strArchetypeId &&
+			5300u == summon->iEstherStrikeMs &&
 			WORLD_BOOTSTRAP_KIND::NPC == summon->eKind &&
-			std::string(ESTHER_ACTION_APPEAR) == summon->strActionId &&
+			std::string(ESTHER_ACTION_STRIKE) == summon->strActionId &&
+			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == summon->eAction &&
 			std::abs(summon->fPositionX - caster.fPositionX) < 0.001f &&
 			std::abs(summon->fPositionZ - caster.fPositionZ) < 0.001f &&
 			std::abs(summon->fYawDegrees - 90.f) < 0.01f,
-			"Summon Sillian at the caster aimed at the cursor and drain the gauge");
+			"Summon Sillian straight into its all-in-one strike and drain the gauge");
 
 		valtanRoom.Handle_UseEstherSkill(casterSessionId, notFullUse);
 		std::size_t summonCount = 0u;
@@ -6735,38 +6760,56 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			1u == summonCount,
 			"Reject a second Esther use on the emptied gauge");
 
-		for (int tick = 0; tick < 25; ++tick)
-			valtanRoom.Update_WorldEntities(1.f / 30.f);
-		summon = findSummon();
-		tests.Require(
-			nullptr != summon &&
-			std::string(ESTHER_ACTION_STRIKE) == summon->strActionId &&
-			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == summon->eAction,
-			"Advance the summon from appear into the authored strike");
-
-		for (int tick = 0; tick < 97; ++tick)
-			valtanRoom.Update_WorldEntities(1.f / 30.f);
-		summon = findSummon();
-		const float leaveStartY =
-			nullptr != summon ? summon->fPositionY : 0.f;
-		tests.Require(
-			nullptr != summon &&
-			std::string(ESTHER_ACTION_LEAVE) == summon->strActionId &&
-			SERVER_ENTITY_ACTION::IDLE == summon->eAction,
-			"Advance the summon from the strike into the leave stage");
-
-		for (int tick = 0; tick < 30; ++tick)
-			valtanRoom.Update_WorldEntities(1.f / 30.f);
-		summon = findSummon();
-		tests.Require(
-			nullptr != summon && summon->fPositionY > leaveStartY + 2.f,
-			"Rise the summon skyward through the leave stage");
-
-		for (int tick = 0; tick < 20; ++tick)
+		for (int tick = 0; tick < 162; ++tick)
 			valtanRoom.Update_WorldEntities(1.f / 30.f);
 		tests.Require(
 			nullptr == findSummon(),
-			"Despawn the summon when the leave stage ends");
+			"Despawn Sillian the moment its clip ends without the skyward rise");
+
+		for (int tick = 0; tick < 200; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		LostArk::Shared::C2S_USE_ESTHER_SKILL bahunturUse{};
+		bahunturUse.iClientSequence = 3u;
+		bahunturUse.iSlotIndex = 3u;
+		bahunturUse.fAimX = 160.f;
+		bahunturUse.fAimZ = -120.f;
+		valtanRoom.Handle_UseEstherSkill(casterSessionId, bahunturUse);
+		SERVER_WORLD_ENTITY* bahunturSummon = findSummon();
+		tests.Require(
+			nullptr != bahunturSummon &&
+			"NPC_59060" == bahunturSummon->strArchetypeId &&
+			4100u == bahunturSummon->iEstherStrikeMs &&
+			std::string(ESTHER_ACTION_STRIKE) == bahunturSummon->strActionId &&
+			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == bahunturSummon->eAction,
+			"Spawn Bahuntur straight into the strike with no appear stage");
+
+		for (int tick = 0; tick < 126; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
+		tests.Require(
+			nullptr == findSummon(),
+			"Despawn Bahuntur the moment its clip ends without the skyward rise");
+
+		for (int tick = 0; tick < 200; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		LostArk::Shared::C2S_USE_ESTHER_SKILL weiUse{};
+		weiUse.iClientSequence = 2u;
+		weiUse.iSlotIndex = 2u;
+		weiUse.fAimX = 160.f;
+		weiUse.fAimZ = -120.f;
+		valtanRoom.Handle_UseEstherSkill(casterSessionId, weiUse);
+		SERVER_WORLD_ENTITY* weiSummon = findSummon();
+		tests.Require(
+			nullptr != weiSummon &&
+			"NPC_58700" == weiSummon->strArchetypeId &&
+			std::string(ESTHER_ACTION_STRIKE) == weiSummon->strActionId &&
+			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == weiSummon->eAction,
+			"Spawn Wei straight into the strike with no appear stage");
+
+		for (int tick = 0; tick < 216; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
+		tests.Require(
+			nullptr == findSummon(),
+			"Despawn Wei the moment its clip ends without the skyward rise");
 
 		valtanRoom.m_Players.clear();
 		valtanRoom.m_PlayerIdBySessionId.clear();

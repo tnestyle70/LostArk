@@ -247,7 +247,13 @@ namespace
 		{
 			const DATA_JSON_VALUE* pActionClips =
 				value.Is_Object() ? value.Find("actionClips") : nullptr;
-			const size_t expectedFields = nullptr != pActionClips ? 7u : 6u;
+			const DATA_JSON_VALUE* pCutinWindow =
+				value.Is_Object() ? value.Find("cutinWindow") : nullptr;
+			size_t expectedFields = 6u;
+			if (nullptr != pActionClips)
+				++expectedFields;
+			if (nullptr != pCutinWindow)
+				++expectedFields;
 			if (!value.Is_Object() ||
 				expectedFields != value.Get_Object().size())
 			{
@@ -286,13 +292,61 @@ namespace
 				for (const auto& [actionId, clip] :
 					pActionClips->Get_Object())
 				{
-					if (actionId.empty() ||
-						!clip.Is_String() || clip.Get_String().empty() ||
+					std::vector<std::string> chain;
+					if (clip.Is_String())
+					{
+						chain.push_back(clip.Get_String());
+					}
+					else if (clip.Is_Array())
+					{
+						for (const DATA_JSON_VALUE& element :
+							clip.Get_Array())
+						{
+							if (!element.Is_String() ||
+								element.Get_String().empty())
+							{
+								return false;
+							}
+							chain.push_back(element.Get_String());
+						}
+					}
+					if (actionId.empty() || chain.empty() ||
+						chain.front().empty() ||
 						!entry.actionClips.emplace(
-							actionId, clip.Get_String()).second)
+							actionId, std::move(chain)).second)
 					{
 						return false;
 					}
+				}
+			}
+			if (nullptr != pCutinWindow)
+			{
+				const DATA_JSON_VALUE* pStart =
+					pCutinWindow->Is_Object() ?
+					pCutinWindow->Find("startMs") : nullptr;
+				const DATA_JSON_VALUE* pEnd =
+					pCutinWindow->Is_Object() ?
+					pCutinWindow->Find("endMs") : nullptr;
+				if (nullptr == pActionClips ||
+					!pCutinWindow->Is_Object() ||
+					nullptr == pStart || !pStart->Is_Number() ||
+					pStart->Get_Number() < 0.0 ||
+					(nullptr != pEnd &&
+						(!pEnd->Is_Number() || pEnd->Get_Number() < 0.0)))
+				{
+					return false;
+				}
+				const size_t windowFields = nullptr != pEnd ? 2u : 1u;
+				if (windowFields != pCutinWindow->Get_Object().size())
+					return false;
+				entry.cutinStartMs =
+					static_cast<std::uint32_t>(pStart->Get_Number());
+				entry.cutinEndMs = nullptr != pEnd ?
+					static_cast<std::uint32_t>(pEnd->Get_Number()) : 0u;
+				if (0u != entry.cutinEndMs &&
+					entry.cutinEndMs <= entry.cutinStartMs)
+				{
+					return false;
 				}
 			}
 			staged.push_back(std::move(entry));
