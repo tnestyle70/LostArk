@@ -50,10 +50,10 @@ struct VALTAN_CINEMATIC_CAMERA_CUE final
 	std::vector<VALTAN_CINEMATIC_CAMERA_KEYFRAME> Keyframes;
 };
 
-/* The 105 sky is a timed presentation layer, never a skybox swap and never a
-   gameplay state: it turns on and off inside one authored stage and touches no
-   collision or navigation. Asset IDs stay empty here until the effect owner
-   supplies them, and an empty ID simply means that layer stays hidden. */
+/* The 109 sky is a timed presentation layer, never a skybox swap and never a
+   gameplay state: it turns on and off across the six authoritative transition
+   stages and touches no collision or navigation. The two stable asset IDs seed
+   the red-cloud and black-aperture presentation composites. */
 struct VALTAN_CINEMATIC_SKY_CUE final
 {
 	std::string strCueId;

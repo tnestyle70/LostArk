@@ -189,6 +189,79 @@ LostArk::Server::CEncounterPropRuntime::Prepare_Break(
 }
 
 LostArk::Server::ENCOUNTER_PROP_PREPARE_RESULT
+LostArk::Server::CEncounterPropRuntime::Prepare_BreakSlots(
+	const std::vector<std::string>& slotIds,
+	const std::uint32_t occurrenceSequence,
+	const std::uint32_t serverTick,
+	ENCOUNTER_PROP_TRANSACTION& transaction,
+	std::string& status) const
+{
+	transaction = ENCOUNTER_PROP_TRANSACTION{};
+	if (!m_bInitialized || 0u == serverTick || 0u == occurrenceSequence ||
+		slotIds.empty())
+	{
+		status = "Encounter prop partial break input is invalid";
+		return ENCOUNTER_PROP_PREPARE_RESULT::REJECTED;
+	}
+	if (!Is_ForwardTick(occurrenceSequence, m_iOccurrenceSequence))
+	{
+		status = "Encounter prop occurrence sequence went backwards";
+		return ENCOUNTER_PROP_PREPARE_RESULT::REJECTED;
+	}
+
+	transaction.iEncounterEpoch = m_iEncounterEpoch;
+	transaction.iCommitTick = serverTick;
+	transaction.iOccurrenceSequence = occurrenceSequence;
+	for (const std::string& slotId : slotIds)
+	{
+		/* A repeated id in one edge would stage the same slot twice and commit
+		   two version bumps for a single event. */
+		const bool duplicated = std::count(
+			slotIds.begin(), slotIds.end(), slotId) > 1;
+		if (duplicated)
+		{
+			status = "Encounter prop partial break names a slot twice: " + slotId;
+			return ENCOUNTER_PROP_PREPARE_RESULT::REJECTED;
+		}
+		const auto found = std::find_if(m_Slots.begin(), m_Slots.end(),
+			[&slotId](const ENCOUNTER_PROP_SLOT_STATE& candidate)
+			{ return candidate.strSlotId == slotId; });
+		if (m_Slots.end() == found)
+		{
+			status = "Encounter prop partial break names an unknown slot: " +
+				slotId;
+			return ENCOUNTER_PROP_PREPARE_RESULT::REJECTED;
+		}
+		/* Already shattered on this occurrence: the edge arrived twice, or a
+		   player skill got there first, and neither may emit a second event. */
+		if (ENCOUNTER_PROP_STATE::BREAKING == found->eState &&
+			found->iOccurrenceSequence == occurrenceSequence)
+		{
+			continue;
+		}
+		if (ENCOUNTER_PROP_STATE::INTACT != found->eState)
+		{
+			status = "Encounter prop slot is not raised: " + slotId;
+			return ENCOUNTER_PROP_PREPARE_RESULT::REJECTED;
+		}
+		ENCOUNTER_PROP_SLOT_STATE next = *found;
+		next.eState = ENCOUNTER_PROP_STATE::BREAKING;
+		next.iStateVersion = (std::numeric_limits<std::uint32_t>::max)() ==
+			found->iStateVersion ? 1u : found->iStateVersion + 1u;
+		next.iStateStartTick = serverTick;
+		next.iOccurrenceSequence = occurrenceSequence;
+		transaction.Slots.push_back(std::move(next));
+	}
+	if (transaction.Slots.empty())
+	{
+		status = "Encounter prop partial break is already applied";
+		return ENCOUNTER_PROP_PREPARE_RESULT::NO_CHANGE;
+	}
+	status = "Encounter prop partial break prepared";
+	return ENCOUNTER_PROP_PREPARE_RESULT::READY;
+}
+
+LostArk::Server::ENCOUNTER_PROP_PREPARE_RESULT
 LostArk::Server::CEncounterPropRuntime::Prepare_DueRemoval(
 	const std::uint32_t serverTick,
 	const std::uint32_t breakingTicks,
