@@ -23,8 +23,7 @@ public:
 	{
 		string strNickname;
 		/* Resources-relative path to that member's class symbol (ClassSelect's own
-		IdentitySymbol.png per class), or empty for a class with no symbol art yet
-		(DimensionMaster, same gap as Character Select). */
+		IdentitySymbol.png per class), or empty for a class with no symbol art. */
 		string strClassSymbolPath;
 		f32_t fHpRatio = 1.f;
 		bool_t isLeader = false;
