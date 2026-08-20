@@ -8745,38 +8745,37 @@ namespace
 		std::string ShaderSource;
 		if (!Read_File(ShaderPath, ShaderSource, OutError))
 			return false;
-		const size_t iExactMaskedPass =
-			ShaderSource.find("pass EffectModelCueMaskedExact");
+		const size_t iOpaquePass =
+			ShaderSource.find("pass EffectModelCueOpaque");
 		if (ShaderSource.find(
-				"Evaluate_Material(input, true, 0.333f)") == std::string::npos ||
-			iExactMaskedPass == std::string::npos ||
+				"Evaluate_Material(input, false, 0.f)") == std::string::npos ||
+			iOpaquePass == std::string::npos ||
 			ShaderSource.find("SetRasterizerState(RS_Default)",
-				iExactMaskedPass) == std::string::npos ||
-			ShaderSource.find("PS_MAIN_EFFECT_MODEL_CUE_MASKED",
-				iExactMaskedPass) == std::string::npos ||
+				iOpaquePass) == std::string::npos ||
+			ShaderSource.find("PS_MAIN_OPAQUE", iOpaquePass) ==
+				std::string::npos ||
 			ShaderSource.find("if (!alphaClip)") == std::string::npos ||
 			ShaderSource.find("diffuse.a = 1.f;",
 				ShaderSource.find("if (!alphaClip)")) == std::string::npos ||
-			ShaderSource.find("pass EffectModelCueOpaque") == std::string::npos)
+			ShaderSource.find("pass EffectModelCueTranslucent") ==
+				std::string::npos)
 		{
 			if (OutError.empty())
 				OutError =
-					"DimensionMaster T exact MASKED/OPAQUE shader contracts are missing.";
+					"DimensionMaster T OPAQUE character-surface shader contract is missing.";
 			return false;
 		}
 		const std::filesystem::path RendererPath = RepositoryRoot / L"Client" /
 			L"Private" / L"Effect_DocumentRenderer.cpp";
 		std::string RendererSource;
 		if (!Read_File(RendererPath, RendererSource, OutError) ||
-			RendererSource.find(
-				"effect.dimensionmaster.skill.2050500.unified") == std::string::npos ||
-			RendererSource.find("bUseDimensionSummonExactMask ? 3u") ==
+			RendererSource.find("EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE ?") ==
 				std::string::npos ||
 			RendererSource.find("2u : 0u") == std::string::npos)
 		{
 			if (OutError.empty())
 				OutError =
-					"DimensionMaster T exact pass predicate/fallback contract is missing.";
+					"DimensionMaster T typed OPAQUE pass selection is missing.";
 			return false;
 		}
 
@@ -8791,87 +8790,89 @@ namespace
 			return false;
 		}
 
-		EFFECT_DOCUMENT_DESC MaskedDocument = RoundTrip;
-		MaskedDocument.Elements.clear();
-		std::shared_ptr<Client::CEffectObject> MaskedObject =
-			std::dynamic_pointer_cast<Client::CEffectObject>(Prototype->Clone(nullptr));
-		if (nullptr == MaskedObject ||
-			!MaskedObject->Stage_Document(MaskedDocument, OutError))
-		{
-			if (OutError.empty())
-				OutError = "DimensionMaster T exact MASKED ModelCue stage failed.";
-			return false;
-		}
-		MaskedObject->Set_SampleTime(0.25f);
-		FOCUSED_DRAW_EVIDENCE MaskedEvidence;
-		const float3_t Target = Cue.LocalTransform.vPosition;
-		if (!Render_WithEvidence(MaskedObject, Scope, Target, std::nullopt,
-				true, MaskedEvidence, OutError))
-		{
-			OutError = "DimensionMaster T exact MASKED ModelCue draw failed: " +
-				OutError;
-			return false;
-		}
-		const uint64_t ExpectedPrimitives = ModelMetrics.iIndexCount / 3u;
-		if (MaskedEvidence.Pipeline.IAPrimitives != ExpectedPrimitives ||
-			nullptr == MaskedEvidence.PixelShader ||
-			0u == MaskedEvidence.iAlphaNonZeroPixelCount ||
-			MaskedEvidence.iAlphaOnePixelCount >
-				MaskedEvidence.iAlphaNonZeroPixelCount)
-		{
-			OutError =
-				"DimensionMaster T exact MASKED pass did not draw all four sections.";
-			return false;
-		}
-
-		EFFECT_DOCUMENT_DESC OpaqueDocument = MaskedDocument;
+		EFFECT_DOCUMENT_DESC OpaqueDocument = RoundTrip;
+		OpaqueDocument.Elements.clear();
 		OpaqueDocument.ModelCues.front().eAlphaMode =
 			Client::EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE;
-		const std::string OpaqueCanonical =
-			CEffectDocumentCodec::Serialize(OpaqueDocument);
-		EFFECT_DOCUMENT_DESC OpaqueRoundTrip;
-		if (!CEffectDocumentCodec::Parse(
-				OpaqueCanonical, OpaqueRoundTrip, OutError) ||
-			OpaqueRoundTrip.ModelCues.front().eAlphaMode !=
-				Client::EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE)
-		{
-			OutError = "DimensionMaster T OPAQUE contrast roundtrip failed: " +
-				OutError;
-			return false;
-		}
 		std::shared_ptr<Client::CEffectObject> OpaqueObject =
 			std::dynamic_pointer_cast<Client::CEffectObject>(Prototype->Clone(nullptr));
 		if (nullptr == OpaqueObject ||
-			!OpaqueObject->Stage_Document(OpaqueRoundTrip, OutError))
+			!OpaqueObject->Stage_Document(OpaqueDocument, OutError))
 		{
 			if (OutError.empty())
-				OutError = "DimensionMaster T OPAQUE contrast stage failed.";
+				OutError = "DimensionMaster T OPAQUE ModelCue stage failed.";
 			return false;
 		}
 		OpaqueObject->Set_SampleTime(0.25f);
 		FOCUSED_DRAW_EVIDENCE OpaqueEvidence;
-		if (!Render_WithEvidence(OpaqueObject, Scope, Target,
-				MaskedEvidence.iViewIndex, false, OpaqueEvidence, OutError))
+		const float3_t Target = Cue.LocalTransform.vPosition;
+		if (!Render_WithEvidence(OpaqueObject, Scope, Target, std::nullopt,
+				true, OpaqueEvidence, OutError))
 		{
-			OutError = "DimensionMaster T OPAQUE contrast draw failed: " + OutError;
+			OutError = "DimensionMaster T OPAQUE ModelCue draw failed: " +
+				OutError;
 			return false;
 		}
-		if (!Read_BackbufferAlpha(Scope.Get_Device(), Scope.Get_Context(),
-				OpaqueEvidence.iAlphaNonZeroPixelCount,
-				OpaqueEvidence.iAlphaOnePixelCount, OutError))
-		{
-			return false;
-		}
+		const uint64_t ExpectedPrimitives = ModelMetrics.iIndexCount / 3u;
 		if (OpaqueEvidence.Pipeline.IAPrimitives != ExpectedPrimitives ||
 			nullptr == OpaqueEvidence.PixelShader ||
-			OpaqueEvidence.PixelShader.Get() == MaskedEvidence.PixelShader.Get() ||
-			OpaqueEvidence.iAlphaNonZeroPixelCount <=
-				MaskedEvidence.iAlphaNonZeroPixelCount ||
+			0u == OpaqueEvidence.iAlphaNonZeroPixelCount ||
 			OpaqueEvidence.iAlphaOnePixelCount !=
 				OpaqueEvidence.iAlphaNonZeroPixelCount)
 		{
 			OutError =
-				"DimensionMaster T MASKED/OPAQUE pass selection or alpha coverage contrast changed.";
+				"DimensionMaster T OPAQUE pass did not draw all four sections.";
+			return false;
+		}
+
+		EFFECT_DOCUMENT_DESC MaskedDocument = OpaqueDocument;
+		MaskedDocument.ModelCues.front().eAlphaMode =
+			Client::EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE;
+		const std::string MaskedCanonical =
+			CEffectDocumentCodec::Serialize(MaskedDocument);
+		EFFECT_DOCUMENT_DESC MaskedRoundTrip;
+		if (!CEffectDocumentCodec::Parse(
+				MaskedCanonical, MaskedRoundTrip, OutError) ||
+			MaskedRoundTrip.ModelCues.front().eAlphaMode !=
+				Client::EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE)
+		{
+			OutError = "DimensionMaster T MASKED contrast roundtrip failed: " +
+				OutError;
+			return false;
+		}
+		std::shared_ptr<Client::CEffectObject> MaskedObject =
+			std::dynamic_pointer_cast<Client::CEffectObject>(Prototype->Clone(nullptr));
+		if (nullptr == MaskedObject ||
+			!MaskedObject->Stage_Document(MaskedRoundTrip, OutError))
+		{
+			if (OutError.empty())
+				OutError = "DimensionMaster T MASKED contrast stage failed.";
+			return false;
+		}
+		MaskedObject->Set_SampleTime(0.25f);
+		FOCUSED_DRAW_EVIDENCE MaskedEvidence;
+		if (!Render_WithEvidence(MaskedObject, Scope, Target,
+				OpaqueEvidence.iViewIndex, false, MaskedEvidence, OutError))
+		{
+			OutError = "DimensionMaster T MASKED contrast draw failed: " + OutError;
+			return false;
+		}
+		if (!Read_BackbufferAlpha(Scope.Get_Device(), Scope.Get_Context(),
+				MaskedEvidence.iAlphaNonZeroPixelCount,
+				MaskedEvidence.iAlphaOnePixelCount, OutError))
+		{
+			return false;
+		}
+		if (MaskedEvidence.Pipeline.IAPrimitives != ExpectedPrimitives ||
+			nullptr == MaskedEvidence.PixelShader ||
+			MaskedEvidence.PixelShader.Get() == OpaqueEvidence.PixelShader.Get() ||
+			MaskedEvidence.iAlphaNonZeroPixelCount >=
+				OpaqueEvidence.iAlphaNonZeroPixelCount ||
+			MaskedEvidence.iAlphaOnePixelCount >
+				MaskedEvidence.iAlphaNonZeroPixelCount)
+		{
+			OutError =
+				"DimensionMaster T OPAQUE/MASKED alpha coverage contrast changed.";
 			return false;
 		}
 		return true;

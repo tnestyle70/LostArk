@@ -100,14 +100,14 @@
           "attachment": {
             "sourceAnchorSlotId": "",
             "runtimeBoneName": "",
-            "admission": "FAIL_CLOSED_TRAIL_BINDING_UNRESOLVED"
+            "admission": "ADMITTED_BAKED_EDGE_HISTORY_GEOMETRY"
           },
           "admission": {
             "sourceIdentity": "EXACT",
-            "executableProjection": "FAIL_CLOSED",
+            "executableProjection": "TYPED_VISUAL_PROGRAM_V1",
             "carrierDenominator": 3,
-            "visibleExecutableCarrierCount": 0,
-            "failClosedCarrierCount": 3,
+            "visibleExecutableCarrierCount": 3,
+            "failClosedCarrierCount": 0,
             "carriers": [
               {
                 "carrierId": "valtan.420633.notify004.emitter5259",
@@ -123,15 +123,54 @@
                   "portableStatus": "FAIL_CLOSED_UNSUPPORTED_MODULE_FAMILY"
                 },
                 "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_d_pa_trail_07_05_tr",
-                "disposition": "FAIL_CLOSED",
-                "resources": [],
+                "disposition": "VISIBLE_EXECUTABLE",
+                "resources": [
+                  {
+                    "slotId": "base",
+                    "sourceObjectPath": "fx_tex_02.fx_d_atypical_006",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_006.dds",
+                    "sha256": "0eaf36a6b923cb1fdf6958716bf35598639251454b65aa90ba52a8ced7d2ee48"
+                  },
+                  {
+                    "slotId": "noise",
+                    "sourceObjectPath": "fx_tex_02.fx_d_atypical_067",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_067.dds",
+                    "sha256": "8264b8a2671205799a428e244fd2068ab1300efdea0cb0f3a504e1a0c5b6e4dd"
+                  },
+                  {
+                    "slotId": "mask",
+                    "sourceObjectPath": "fx_tex_02.fx_d_decal_023",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_023.dds",
+                    "sha256": "57b6cf34817250e634094deda330e6360d31c5b03b289fb61e607f6067052427"
+                  }
+                ],
                 "materialAdmission": {
-                  "status": "FAIL_CLOSED"
+                  "status": "ADMITTED_TYPED_BOUNDED_PROFILE",
+                  "profileId": "ue3.material.fx.m.fx.d.pa.trail.07.tr.af92be29bf18",
+                  "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+                  "parentMaterialPath": "fx_m.fx_d_pa_trail_07_tr",
+                  "semanticStatus": "BOUNDED_RECONSTRUCTION",
+                  "evidenceKind": "REPOSITORY_SOURCE_MATERIAL_EVIDENCE",
+                  "resourceEvidenceKind": "SOURCE_GRAPH_RUNTIME_COOK",
+                  "evidencePath": "Data/Effects/Imported/Valtan/Valtan.source-material-evidence.json",
+                  "evidenceSha256": "f650fdb92c4b5918dad307a293b4c8acda52ef57c527eaee1d18e3dce08506f5"
                 },
-                "blockers": [
-                  "ANIMATION_TRAIL_RUNTIME_BINDING_NOT_MATERIALIZED",
-                  "PORTABLE_V13_UNSUPPORTED_MODULE_PARTICLEMODULETYPEDATAANIMTRAIL"
-                ]
+                "typedSupplementalAdmission": {
+                  "status": "ADMITTED_BOUNDED",
+                  "family": "ANIMATION_TRAIL",
+                  "adapterId": "animation-trail-document-v12",
+                  "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+                  "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+                  "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+                  "historySourcePath": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+                  "historyArtifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+                  "historyLane": "EDGE_PAIR_STRIP",
+                  "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+                  "sourceGeometryFidelity": "SOURCE_BAKED_EDGE_GEOMETRY_EXACT",
+                  "runtimeFidelity": "BOUNDED_RECONSTRUCTION",
+                  "genericSourceRecipeEnabled": false
+                },
+                "blockers": []
               },
               {
                 "carrierId": "valtan.420633.notify004.emitter5260",
@@ -147,15 +186,54 @@
                   "portableStatus": "FAIL_CLOSED_UNSUPPORTED_MODULE_FAMILY"
                 },
                 "sourceMaterialPath": "fx_m_mi_00.fx_mi.fx_d_pa_atta_09_01_ad",
-                "disposition": "FAIL_CLOSED",
-                "resources": [],
+                "disposition": "VISIBLE_EXECUTABLE",
+                "resources": [
+                  {
+                    "slotId": "mask",
+                    "sourceObjectPath": "fx_tex_03.fx_e_fluid_003",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_003.dds",
+                    "sha256": "3339f6fd17e588fed6c11082a8a93a9b6dc55c49cb20f2a956dd6258f675a83f"
+                  },
+                  {
+                    "slotId": "base",
+                    "sourceObjectPath": "fx_tex_03.fx_a_trail_003_ycl",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_a_trail_003_ycl.dds",
+                    "sha256": "21a6683bdd504b6c1e63b006632dd962b5be4a519b56654fff2916b29a7ab8b0"
+                  },
+                  {
+                    "slotId": "noise",
+                    "sourceObjectPath": "fx_tex_02.fx_d_noise_009",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_009.dds",
+                    "sha256": "d5e63e9f023fb9f9ffb5dc2d32f80319102b91c94c5fe7c951177d161f963c9e"
+                  }
+                ],
                 "materialAdmission": {
-                  "status": "FAIL_CLOSED"
+                  "status": "ADMITTED_TYPED_BOUNDED_PROFILE",
+                  "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.ad.c509bec15c99",
+                  "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+                  "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_basic_01_ad",
+                  "semanticStatus": "BOUNDED_RECONSTRUCTION",
+                  "evidenceKind": "REPOSITORY_SOURCE_MATERIAL_EVIDENCE",
+                  "resourceEvidenceKind": "SOURCE_GRAPH_RUNTIME_COOK",
+                  "evidencePath": "Data/Effects/Imported/Valtan/Valtan.source-material-evidence.json",
+                  "evidenceSha256": "f650fdb92c4b5918dad307a293b4c8acda52ef57c527eaee1d18e3dce08506f5"
                 },
-                "blockers": [
-                  "ANIMATION_TRAIL_RUNTIME_BINDING_NOT_MATERIALIZED",
-                  "PORTABLE_V13_UNSUPPORTED_MODULE_PARTICLEMODULETYPEDATAANIMTRAIL"
-                ]
+                "typedSupplementalAdmission": {
+                  "status": "ADMITTED_BOUNDED",
+                  "family": "ANIMATION_TRAIL",
+                  "adapterId": "animation-trail-document-v12",
+                  "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+                  "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+                  "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+                  "historySourcePath": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+                  "historyArtifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+                  "historyLane": "EDGE_PAIR_STRIP",
+                  "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+                  "sourceGeometryFidelity": "SOURCE_BAKED_EDGE_GEOMETRY_EXACT",
+                  "runtimeFidelity": "BOUNDED_RECONSTRUCTION",
+                  "genericSourceRecipeEnabled": false
+                },
+                "blockers": []
               },
               {
                 "carrierId": "valtan.420633.notify004.emitter5258",
@@ -171,21 +249,63 @@
                   "portableStatus": "FAIL_CLOSED_UNSUPPORTED_MODULE_FAMILY"
                 },
                 "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_pa_ribbonmaster_03_04_tr",
-                "disposition": "FAIL_CLOSED",
-                "resources": [],
+                "disposition": "VISIBLE_EXECUTABLE",
+                "resources": [
+                  {
+                    "slotId": "noise",
+                    "sourceObjectPath": "fx_tex_01.fx_c_noise_009",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_009.dds",
+                    "sha256": "d9b2b59b2657fcfe333852ef2580492fcd1e7769af2d8d5096be47050cddc65e"
+                  },
+                  {
+                    "slotId": "mask",
+                    "sourceObjectPath": "fx_tex_00.fx_a_trail_011",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_a_trail_011.dds",
+                    "sha256": "ecf526f2f5849525d341e20549652736ec79ef173bdf65226f5aa314e6c89df9"
+                  },
+                  {
+                    "slotId": "dissolve",
+                    "sourceObjectPath": "fx_tex_02.fx_d_atypical_009",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+                    "sha256": "58a957a8d13005c12afb097c6c8d423d2c94872dfe8b76ab1d51dabbfe67749b"
+                  },
+                  {
+                    "slotId": "base",
+                    "sourceObjectPath": "fx_tex_02.fx_d_atypical_028",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+                    "sha256": "0cda1d83c6df738528a3e32c45fd72f76a6acddf0010c76170032ae4e3469933"
+                  }
+                ],
                 "materialAdmission": {
-                  "status": "FAIL_CLOSED"
+                  "status": "ADMITTED_TYPED_BOUNDED_PROFILE",
+                  "profileId": "ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.ribbonmaster.03.tr.0756c1188a57",
+                  "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+                  "parentMaterialPath": "fx_m_mi_m_00.fx_m.fx_m_pa_ribbonmaster_03_tr",
+                  "semanticStatus": "BOUNDED_RECONSTRUCTION",
+                  "evidenceKind": "REPOSITORY_SOURCE_MATERIAL_EVIDENCE",
+                  "resourceEvidenceKind": "SOURCE_GRAPH_RUNTIME_COOK",
+                  "evidencePath": "Data/Effects/Imported/Valtan/Valtan.source-material-evidence.json",
+                  "evidenceSha256": "f650fdb92c4b5918dad307a293b4c8acda52ef57c527eaee1d18e3dce08506f5"
                 },
-                "blockers": [
-                  "ANIMATION_TRAIL_RUNTIME_BINDING_NOT_MATERIALIZED",
-                  "PORTABLE_V13_UNSUPPORTED_MODULE_PARTICLEMODULETYPEDATAANIMTRAIL"
-                ]
+                "typedSupplementalAdmission": {
+                  "status": "ADMITTED_BOUNDED",
+                  "family": "ANIMATION_TRAIL",
+                  "adapterId": "animation-trail-document-v12",
+                  "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+                  "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+                  "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+                  "historySourcePath": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+                  "historyArtifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+                  "historyLane": "EDGE_PAIR_STRIP",
+                  "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+                  "sourceGeometryFidelity": "SOURCE_BAKED_EDGE_GEOMETRY_EXACT",
+                  "runtimeFidelity": "BOUNDED_RECONSTRUCTION",
+                  "genericSourceRecipeEnabled": false
+                },
+                "blockers": []
               }
             ],
-            "blockers": [
-              "ANIMATION_TRAIL_RUNTIME_BINDING_NOT_MATERIALIZED",
-              "PORTABLE_V13_UNSUPPORTED_MODULE_PARTICLEMODULETYPEDATAANIMTRAIL"
-            ]
+            "blockers": []
           }
         },
         {
@@ -212,10 +332,10 @@
           },
           "admission": {
             "sourceIdentity": "EXACT",
-            "executableProjection": "FAIL_CLOSED",
+            "executableProjection": "PORTABLE_AUTHORED_V13",
             "carrierDenominator": 2,
-            "visibleExecutableCarrierCount": 0,
-            "failClosedCarrierCount": 2,
+            "visibleExecutableCarrierCount": 2,
+            "failClosedCarrierCount": 0,
             "carriers": [
               {
                 "carrierId": "valtan.420633.notify005.emitter7034",
@@ -228,19 +348,37 @@
                   "moduleCount": 12,
                   "distributionCount": 22,
                   "sourceRecipeSha256": "3865865922ca8dbb5c2e2232e9597d8553bb9571cdc9e24568fff1b6529ed74d",
-                  "portableStatus": "PORTABLE_RECIPE_MATERIAL_BLOCKED",
+                  "portableStatus": "PORTABLE_AUTHORED_V13",
                   "portableRecipeSha256": "e44bd25a550fdcbb639628739af98f5f95093cbe77c1fcfec0022421ad3e581b"
                 },
                 "sourceMaterialPath": "fx_m_mi_01.fx_mi.fx_e_pa_fd_04_1_tr",
-                "disposition": "FAIL_CLOSED",
-                "resources": [],
+                "disposition": "VISIBLE_EXECUTABLE",
+                "resources": [
+                  {
+                    "slotId": "base",
+                    "sourceObjectPath": "fx_tex_03.fx_e_fluid_007",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_007.dds",
+                    "sha256": "703f91ed9e11b972fab48e96f6ecfda0db70730122142ea15f123d075384269b"
+                  },
+                  {
+                    "slotId": "dissolve",
+                    "sourceObjectPath": "fx_tex_03.fx_e_noise_008",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_noise_008.dds",
+                    "sha256": "138ec46d262c75b1b4d2619212a0d9b76e263cf6b97dc2122fcb261a32279f9d"
+                  }
+                ],
                 "materialAdmission": {
-                  "status": "FAIL_CLOSED"
+                  "status": "ADMITTED_RECONSTRUCTED_PROFILE",
+                  "profileId": "ue3.material.fx.mastermaterial.fx.mm.fx.mm.dissolve.01.tr.a799c9636783",
+                  "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
+                  "parentMaterialPath": "fx_mastermaterial.fx_mm.fx_mm_dissolve_01_tr",
+                  "semanticStatus": "RECONSTRUCTED_PROFILE",
+                  "evidenceKind": "REPOSITORY_SOURCE_MATERIAL_CONTRACT",
+                  "resourceEvidenceKind": "SOURCE_GRAPH_RUNTIME_COOK",
+                  "evidencePath": "Data/Effects/AuthoredCorrections/Generated/FourClassCombat.source-material-contract.json",
+                  "evidenceSha256": "40344b1623c95be54b41f2ec89de439815c988a5e4867dfa6037eac90a85dd26"
                 },
-                "blockers": [
-                  "SOURCE_DYNAMIC_PARAMETER_ABI_NOT_EVIDENCE_CLOSED",
-                  "SOURCE_MATERIAL_FINITE_PROFILE_NOT_EVIDENCE_CLOSED"
-                ]
+                "blockers": []
               },
               {
                 "carrierId": "valtan.420633.notify005.emitter7035",
@@ -253,25 +391,40 @@
                   "moduleCount": 13,
                   "distributionCount": 21,
                   "sourceRecipeSha256": "8e1ac410f3e0a56d25ade7c57bfb1a2d4f100ba0f36458e6c77e74a4f6675425",
-                  "portableStatus": "PORTABLE_RECIPE_MATERIAL_BLOCKED",
+                  "portableStatus": "PORTABLE_AUTHORED_V13",
                   "portableRecipeSha256": "2a4c643a9c10aa812ef7810f4568955fa76feba5448b09e7ffb096e7f12459b1"
                 },
                 "sourceMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
-                "disposition": "FAIL_CLOSED",
-                "resources": [],
+                "disposition": "VISIBLE_EXECUTABLE",
+                "resources": [
+                  {
+                    "slotId": "base",
+                    "sourceObjectPath": "fx_tex_00.fx_a_glow_009",
+                    "assetId": "Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_glow_009.dds",
+                    "sha256": "f0f56b8f25f444bcce33da6280faa5663139ca7a044474c5235784be8534daaf"
+                  },
+                  {
+                    "slotId": "noise",
+                    "sourceObjectPath": "fx_tex_high_00.fx_a_cloud_026",
+                    "assetId": "Effect/DimensionMaster/Textures/FX_TEX_HIGH_00/fx_a_cloud_026.dds",
+                    "sha256": "6e1603ac1601667ef4285746c486fe346bb2b29b6d4fa25ab0f202a25d29548b"
+                  }
+                ],
                 "materialAdmission": {
-                  "status": "FAIL_CLOSED"
+                  "status": "ADMITTED_RECONSTRUCTED_PROFILE",
+                  "profileId": "ue3.material.fx.m.mi.05.fx.m.fx.c.pa.aura.02.tr.6b6be3c64e52",
+                  "runtimeShaderProfileId": "effect.ue3.aura.v1",
+                  "parentMaterialPath": "fx_m_mi_05.fx_m.fx_c_pa_aura_02_tr",
+                  "semanticStatus": "RECONSTRUCTED_PROFILE",
+                  "evidenceKind": "REPOSITORY_SOURCE_MATERIAL_CONTRACT",
+                  "resourceEvidenceKind": "REPOSITORY_SHARED_RUNTIME_CONTRACT",
+                  "evidencePath": "Data/Effects/Imported/DimensionMaster/ActionSource/DimensionMaster.A.source-material-contract.json",
+                  "evidenceSha256": "29e41a378fb3957b3add37ed712f719a3ad125d72b46b4933a7f3a1e7c5b0e9a"
                 },
-                "blockers": [
-                  "SOURCE_MATERIAL_REQUIRED_RUNTIME_RESOURCES_NOT_COOKED_FOR_VALTAN"
-                ]
+                "blockers": []
               }
             ],
-            "blockers": [
-              "SOURCE_DYNAMIC_PARAMETER_ABI_NOT_EVIDENCE_CLOSED",
-              "SOURCE_MATERIAL_FINITE_PROFILE_NOT_EVIDENCE_CLOSED",
-              "SOURCE_MATERIAL_REQUIRED_RUNTIME_RESOURCES_NOT_COOKED_FOR_VALTAN"
-            ]
+            "blockers": []
           }
         },
         {
@@ -501,16 +654,16 @@
             "resolutionStatus": "ACTION_BOUND_SOURCE_SYSTEM"
           },
           "attachment": {
-            "sourceAnchorSlotId": "",
+            "sourceAnchorSlotId": "EndControl_01",
             "runtimeBoneName": "",
-            "admission": "FAIL_CLOSED_NO_EXPLICIT_SOURCE_ANCHOR"
+            "admission": "ADMITTED_INFERRED_BAKED_FIRST_EDGE"
           },
           "admission": {
             "sourceIdentity": "EXACT",
-            "executableProjection": "FAIL_CLOSED",
+            "executableProjection": "TYPED_VISUAL_PROGRAM_V1",
             "carrierDenominator": 1,
-            "visibleExecutableCarrierCount": 0,
-            "failClosedCarrierCount": 1,
+            "visibleExecutableCarrierCount": 1,
+            "failClosedCarrierCount": 0,
             "carriers": [
               {
                 "carrierId": "valtan.420633.notify009.emitter6823",
@@ -526,25 +679,30 @@
                   "portableStatus": "FAIL_CLOSED_INCOMPLETE_SOURCE_GRAPH"
                 },
                 "sourceMaterialPath": "enginematerials.defaultparticle",
-                "disposition": "FAIL_CLOSED",
+                "disposition": "VISIBLE_EXECUTABLE",
                 "resources": [],
                 "materialAdmission": {
-                  "status": "FAIL_CLOSED"
+                  "status": "NOT_APPLICABLE_LIGHT_PRESENTATION"
                 },
-                "blockers": [
-                  "LIGHT_SOURCE_GRAPH_EXTERNAL_MODULES_UNRESOLVED",
-                  "POINT_LIGHT_COMPONENT_NOT_DECODED",
-                  "PORTABLE_V13_UNSUPPORTED_MODULE_EFPARTICLEMODULETYPEDATALIGHT",
-                  "SOURCE_ANCHOR_NOT_EXPLICIT"
-                ]
+                "typedSupplementalAdmission": {
+                  "status": "ADMITTED_BOUNDED",
+                  "family": "LIGHT_PARTICLE",
+                  "adapterId": "light-particle-document-v12",
+                  "packetLayout": "LIGHT_BAKED_EDGE_ATTACHMENT_V1",
+                  "runtimeCarrier": "EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1",
+                  "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+                  "historySourcePath": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+                  "historyArtifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+                  "historyLane": "FIRST_EDGE",
+                  "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+                  "sourceGeometryFidelity": "ENDCONTROL_TO_FIRST_EDGE_INFERRED",
+                  "runtimeFidelity": "BOUNDED_RECONSTRUCTION",
+                  "genericSourceRecipeEnabled": false
+                },
+                "blockers": []
               }
             ],
-            "blockers": [
-              "LIGHT_SOURCE_GRAPH_EXTERNAL_MODULES_UNRESOLVED",
-              "POINT_LIGHT_COMPONENT_NOT_DECODED",
-              "PORTABLE_V13_UNSUPPORTED_MODULE_EFPARTICLEMODULETYPEDATALIGHT",
-              "SOURCE_ANCHOR_NOT_EXPLICIT"
-            ]
+            "blockers": []
           }
         }
       ],
@@ -597,17 +755,10 @@
         }
       ],
       "productAdmission": {
-        "status": "FAIL_CLOSED_NON_PRODUCT_CANARY",
-        "productCatalogMapped": false,
-        "animationEventMapped": false,
-        "blockers": [
-          "ANIMATION_EVENT_PRODUCT_MAPPING_NOT_INSTALLED",
-          "FAIL_CLOSED_PRESENTATION_OCCURRENCES_REMAIN",
-          "PRODUCT_CATALOG_MAPPING_NOT_INSTALLED",
-          "SOURCE_BRANCH_CONDITION_PAYLOAD_UNRESOLVED",
-          "SOURCE_MATERIAL_ADMISSION_INCOMPLETE",
-          "TYPED_TRAIL_LIGHT_RUNTIME_UNSUPPORTED"
-        ]
+        "status": "ADMITTED_PRODUCT",
+        "productCatalogMapped": true,
+        "animationEventMapped": true,
+        "blockers": []
       }
     }
   ]

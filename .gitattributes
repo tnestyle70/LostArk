@@ -67,4 +67,9 @@
 /Data/Effects/Imported/RawResourceInventory/R8.raw-resource-denominator.checkpoint.json text eol=lf
 /Data/Effects/Imported/RawResourceInventory/R8.raw-resource-inventory-v1.json text eol=lf
 
+# The LanceMaster BA4 legacy authoring document is the raw-byte base identity
+# for its visual-program overlay. Keep the pinned canonical LF bytes stable
+# across core.autocrlf=true worktrees.
+/Data/Effects/Authored/effect.lancemaster.skill.34010.ba4.effect.json text eol=lf
+
 

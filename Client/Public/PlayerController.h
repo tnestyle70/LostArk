@@ -18,6 +18,79 @@ namespace Client
 	class IPlayerCommandSink;
 	struct CHARACTER_SPEC;
 
+	/* Explicit movement/skill commands take ownership at the next server action
+	boundary.  A still-held LMB must not immediately auto-resend BA and steal that
+	ownership back; only a physical release rearms it.  Kept independent from
+	DirectInput so the edge contract is executable in the frontend harness. */
+	class CBASIC_ATTACK_RESEND_GATE final
+	{
+	public:
+		void Reset() { m_suppressUntilRelease = false; }
+		void Suppress_UntilRelease() { m_suppressUntilRelease = true; }
+		bool_t Observe_Button(const bool_t isDown)
+		{
+			if (!isDown)
+				m_suppressUntilRelease = false;
+			return isDown && m_suppressUntilRelease;
+		}
+
+	private:
+		bool_t m_suppressUntilRelease = false;
+	};
+
+	/* A tap submits only its first command. A physical hold waits long enough
+	for a normal click to finish before the first automatic continuation, then
+	repeats faster than every authored combo window. Input/UI blocking never
+	rearms the press; only the raw physical up edge does. */
+	class CBASIC_ATTACK_REPEAT_SCHEDULER final
+	{
+	public:
+		static constexpr std::chrono::milliseconds INITIAL_HOLD_DELAY{ 180 };
+		static constexpr std::chrono::milliseconds REPEAT_INTERVAL{ 100 };
+
+		void Reset()
+		{
+			m_hasSubmittedCurrentPress = false;
+			m_hasSubmittedAutoRepeat = false;
+			m_LastSubmittedAt = {};
+		}
+
+		bool_t Should_Submit(
+			const bool_t isPhysicallyDown,
+			const bool_t isCommandEligible,
+			const std::chrono::steady_clock::time_point now)
+		{
+			if (!isPhysicallyDown)
+			{
+				Reset();
+				return false;
+			}
+			if (!isCommandEligible)
+				return false;
+
+			if (!m_hasSubmittedCurrentPress)
+			{
+				m_hasSubmittedCurrentPress = true;
+				m_LastSubmittedAt = now;
+				return true;
+			}
+
+			const std::chrono::milliseconds interval =
+				m_hasSubmittedAutoRepeat ? REPEAT_INTERVAL : INITIAL_HOLD_DELAY;
+			if (now - m_LastSubmittedAt < interval)
+				return false;
+
+			m_hasSubmittedAutoRepeat = true;
+			m_LastSubmittedAt = now;
+			return true;
+		}
+
+	private:
+		bool_t m_hasSubmittedCurrentPress = false;
+		bool_t m_hasSubmittedAutoRepeat = false;
+		std::chrono::steady_clock::time_point m_LastSubmittedAt{};
+	};
+
 	class CPlayerController final
 	{
 	public:
@@ -97,8 +170,10 @@ namespace Client
 		/* A held basic attack has to keep asking: the combo buffer only takes a
 		press inside a window the server owns and the client is not told about, so
 		the press is repeated at a fixed rate instead of being predicted. */
-		bool_t m_wasLeftMouseDown = false;
-		std::chrono::steady_clock::time_point m_LastBasicAttackSentAt{};
+		LostArk::Shared::SKILL_ID m_iHeldBasicAttackSkillId =
+			LostArk::Shared::INVALID_SKILL_ID;
+		CBASIC_ATTACK_REPEAT_SCHEDULER m_BasicAttackRepeatScheduler;
+		CBASIC_ATTACK_RESEND_GATE m_BasicAttackResendGate;
 		bool_t m_allowCapturedKeyboardInput = false;
 		/* Esther edges are tracked apart from m_wasKeyDown: the quick-slot
 		table commits Z and X every frame, and a Ctrl press must not read as

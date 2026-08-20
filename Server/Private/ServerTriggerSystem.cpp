@@ -70,6 +70,7 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 		player.TriggerMove = {};
 		player.eAction = PLAYER_ACTION_STATE::NONE;
 		player.iActionStartTick = 0;
+		player.PendingCommand.Clear();
 		return false;
 	}
 	if (0u == player.iCurrentHp)
@@ -99,6 +100,7 @@ bool LostArk::Server::CServerTriggerSystem::Update_PlayerMotion(
 		move = {};
 		player.eAction = PLAYER_ACTION_STATE::NONE;
 		player.iActionStartTick = 0;
+		player.PendingCommand.Clear();
 	}
 	return true;
 }
@@ -284,6 +286,7 @@ bool LostArk::Server::CServerTriggerSystem::Begin_MovePlayer(
 	player.fActionElapsedSeconds = 0.f;
 	player.iComboStage = 0;
 	player.hasBufferedComboInput = false;
+	player.PendingCommand.Clear();
 	player.TriggerMove.fStartX = player.fPositionX;
 	player.TriggerMove.fStartY = player.fPositionY;
 	player.TriggerMove.fStartZ = player.fPositionZ;

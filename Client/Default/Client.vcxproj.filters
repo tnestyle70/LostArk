@@ -312,9 +312,6 @@
     <ClCompile Include="..\Private\DataJson.cpp">
       <Filter>96.DataFiles</Filter>
     </ClCompile>
-    <ClCompile Include="..\private\Effect_Tool.cpp">
-      <Filter>03. Tools\02. Effect</Filter>
-    </ClCompile>
     <ClCompile Include="..\Private\Effect_DocumentCodec.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -340,9 +337,6 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp">
-      <Filter>03. Tools\02. Effect</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Private\Effect_DirectAuthoredSourceIndex.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Effect_Object.cpp">
@@ -679,9 +673,6 @@
     <ClInclude Include="..\Public\DataJson.h">
       <Filter>96.DataFiles</Filter>
     </ClInclude>
-    <ClInclude Include="..\public\Effect_Tool.h">
-      <Filter>03. Tools\02. Effect</Filter>
-    </ClInclude>
     <ClInclude Include="..\Public\Animation_Tool.h">
       <Filter>03. Tools\04. Animation</Filter>
     </ClInclude>
@@ -911,9 +902,6 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_DocumentRenderer.h">
-      <Filter>03. Tools\02. Effect</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Public\Effect_DirectAuthoredSourceIndex.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_Object.h">
@@ -7148,9 +7136,6 @@
     </None>
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy.receipt.json">
       <Filter>96.DataFiles\Effects\Policies\Artist</Filter>
-    </None>
-    <None Include="..\..\Data\Effects\ProductCueApprovals.json">
-      <Filter>96.DataFiles\Effects</Filter>
     </None>
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\A\DimensionMaster.A.effect-resources.json">
       <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\A</Filter>

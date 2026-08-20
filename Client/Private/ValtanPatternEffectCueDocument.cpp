@@ -372,11 +372,6 @@ bool_t Client::CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 				Cue.strEffectAssetId;
 			return false;
 		}
-		if (!CEffectCatalog::Admit_ProductSpawn(
-				Cue.strEffectAssetId, nullptr, strOutStatus))
-		{
-			return false;
-		}
 	}
 	InOutDocument = std::move(Staged);
 	strOutStatus = "Loaded " + std::to_string(InOutDocument.Cues.size()) +

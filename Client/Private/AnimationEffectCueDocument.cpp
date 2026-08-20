@@ -150,36 +150,22 @@ bool_t Client::CAnimationEffectCueDocument::Load_ForProductPrewarm(
         return false;
     }
 
-    std::string Line;
-    if (!std::getline(Input, Line))
+    const std::string Text{
+        std::istreambuf_iterator<char>(Input),
+        std::istreambuf_iterator<char>() };
+    ANIMATION_EFFECT_CUE_DOCUMENT Staged;
+    std::vector<std::string> ReferencedClips;
+    if (!Load_FromText(
+            strAnimationAssetId, Text, {}, Staged, strOutStatus, false,
+            &ReferencedClips) ||
+        !Load_Projectiles(
+            strAnimationAssetId, ReferencedClips, Staged.Projectiles,
+            strOutStatus, false))
     {
-        strOutStatus = "Animation event document is empty.";
         return false;
     }
 
-    std::unordered_set<std::string> ReferencedClipSet;
-    std::vector<std::string> Tokens;
-    std::string Error;
-    while (std::getline(Input, Line))
-    {
-        if (Line.empty())
-            continue;
-        if (!Tokenize(Line, Tokens, Error) || Tokens.size() < 2u)
-        {
-            strOutStatus = Error.empty() ?
-                "Invalid animation event row while collecting referenced clips." :
-                Error;
-            return false;
-        }
-        if ("EFFECT" == Tokens[1] || "HIT" == Tokens[1])
-            ReferencedClipSet.insert(Tokens[0]);
-    }
-
-    std::vector<std::string> ReferencedClips(
-        ReferencedClipSet.begin(), ReferencedClipSet.end());
-    if (!Load(strAnimationAssetId, ReferencedClips, OutDocument, strOutStatus))
-        return false;
-
+    OutDocument = std::move(Staged);
     strOutStatus = "Loaded " + std::to_string(OutDocument.Cues.size()) +
         " admitted animation Effect cues for Product prewarm without a live model.";
     return true;
@@ -381,6 +367,20 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
 	std::string& strOutStatus,
 	const bool_t bFilterToAvailableClips)
 {
+	return Load_FromText(
+		strAnimationAssetId, Text, AvailableClips, OutDocument,
+		strOutStatus, bFilterToAvailableClips, nullptr);
+}
+
+bool_t Client::CAnimationEffectCueDocument::Load_FromText(
+	const std::string& strAnimationAssetId,
+	const std::string_view Text,
+	const std::vector<std::string>& AvailableClips,
+	ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
+	std::string& strOutStatus,
+	const bool_t bFilterToAvailableClips,
+	std::vector<std::string>* pOutReferencedClips)
+{
 	if (strAnimationAssetId.empty() || Text.empty())
 	{
 		strOutStatus = "Animation asset ID or event text is empty.";
@@ -413,8 +413,26 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
         return false;
     }
 
+    const bool_t bDiscoverReferencedClips =
+        nullptr != pOutReferencedClips;
+    if (bDiscoverReferencedClips &&
+        (!AvailableClips.empty() || bFilterToAvailableClips))
+    {
+        strOutStatus =
+            "Animation event clip discovery arguments are incompatible.";
+        return false;
+    }
     const std::unordered_set<std::string> ClipSet(
         AvailableClips.begin(), AvailableClips.end());
+    std::unordered_set<std::string> ReferencedClipSet;
+    const auto Is_AvailableClip =
+        [&ClipSet, &ReferencedClipSet, bDiscoverReferencedClips](
+            const std::string& ClipName)
+        {
+            return bDiscoverReferencedClips ?
+                ReferencedClipSet.contains(ClipName) :
+                ClipSet.contains(ClipName);
+        };
     std::unordered_set<std::string> Keys;
     ANIMATION_EFFECT_CUE_DOCUMENT Staged;
     Staged.iFormatVersion = Version;
@@ -432,10 +450,15 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
                 "Invalid animation event row." : Error;
             return false;
         }
+        if (bDiscoverReferencedClips &&
+            ("EFFECT" == Tokens[1] || "HIT" == Tokens[1]))
+        {
+            ReferencedClipSet.insert(Tokens[0]);
+        }
         if ("HIT" == Tokens[1])
         {
 			if (bFilterToAvailableClips &&
-				!ClipSet.contains(Tokens[0]))
+				!Is_AvailableClip(Tokens[0]))
 			{
 				continue;
 			}
@@ -480,7 +503,7 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
                 !Read_Int("ax", Hit.Shape.iAreaOffsetX) ||
                 !Read_Int("arem", Hit.Shape.iAreaInner) ||
                 Hit.iEndMs < Hit.iStartMs || Hit.iRepeatCount < 1u ||
-                !ClipSet.contains(Hit.strClipName))
+                !Is_AvailableClip(Hit.strClipName))
             {
                 strOutStatus = "Animation HIT row failed clip/time/shape validation.";
                 return false;
@@ -505,7 +528,7 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
             continue;
         }
 		if (bFilterToAvailableClips &&
-			!ClipSet.contains(Tokens[0]))
+			!Is_AvailableClip(Tokens[0]))
 		{
 			continue;
 		}
@@ -557,21 +580,13 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
         }
         if (!Read_Transform(Fields, Cue.LocalTransform) ||
             Cue.iEndMs < Cue.iStartMs || Cue.strAnchorSlotId.empty() ||
-            !ClipSet.contains(Cue.strClipName) ||
+            !Is_AvailableClip(Cue.strClipName) ||
             !CEffectCatalog::Contains(Cue.strEffectAssetId))
         {
             strOutStatus = "Animation EFFECT cue failed clip/effect/transform validation.";
             return false;
         }
-        if (!CEffectCatalog::Admit_ProductCue(strAnimationAssetId,
-                Cue.strClipName, Cue.iStartMs, Cue.strEffectAssetId,
-                Cue.pProductAdmissionToken, Error))
-        {
-            strOutStatus = "Animation EFFECT cue Product admission failed: " +
-                Error;
-            return false;
-        }
-        if (EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy &&
+		if (EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy &&
             Cue.iEndMs <= Cue.iStartMs)
         {
             strOutStatus = "cue_end requires endms greater than startms.";
@@ -601,6 +616,13 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
                 std::tie(Right.strClipName, Right.iStartMs,
                     Right.strEffectAssetId, Right.strAnchorSlotId);
         });
+    if (nullptr != pOutReferencedClips)
+    {
+        std::vector<std::string> ReferencedClips(
+            ReferencedClipSet.begin(), ReferencedClipSet.end());
+        std::sort(ReferencedClips.begin(), ReferencedClips.end());
+        *pOutReferencedClips = std::move(ReferencedClips);
+    }
     OutDocument = std::move(Staged);
     strOutStatus = "Loaded " + std::to_string(OutDocument.Cues.size()) +
         " admitted animation Effect cues.";

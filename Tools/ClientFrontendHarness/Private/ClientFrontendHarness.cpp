@@ -10,6 +10,7 @@
 #include "NetObjectRegistry.h"
 #include "WorldPlayerNameplateView.h"
 #include "AnimationSkillBindingDocument.h"
+#include "BalanceTool.h"
 #include "CharacterSelectionState.h"
 #include "CharacterCatalog.h"
 #include "CharacterSpec.h"
@@ -18,7 +19,6 @@
 #include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_DocumentRenderer.h"
-#include "Effect_DirectAuthoredSourceIndex.h"
 #include "Effect_Distribution.h"
 #include "Effect_Catalog.h"
 #include "Effect_MaterialTemplate.h"
@@ -29,12 +29,12 @@
 #include "Effect_ProductPrewarmQueue.h"
 #include "Effect_ReconstructedExecution.h"
 #include "Effect_RuntimeAuthority.h"
-#include "Effect_Tool.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "Camera.h"
 #include "GameInstance.h"
 #include "Level.h"
 #include "PlayerSkillCatalog.h"
+#include "PlayerController.h"
 #include "PlayableCharacterPreviewContract.h"
 #include "Presentation_Manager.h"
 #include "PresentationProvider.h"
@@ -4201,6 +4201,12 @@ namespace
 			!CValtanPatternAnimationBindingDocument::Parse_Text(
 				emptyChain, emptyChainDocument, status),
 			"Valtan Pattern Binding Rejects An Empty Clip Chain");
+		invalid = document;
+		invalid.Bindings[1].Clips.clear();
+		runner.Require(
+			!CValtanPatternAnimationBindingDocument::Validate(
+				invalid, "BOSS_VALTAN", clips, status),
+			"Valtan Pattern Binding Validation Rejects Empty Clip Chain");
 		runner.Require(
 			!CValtanPatternAnimationBindingDocument::Validate(
 				document, "BOSS_OTHER", clips, status),
@@ -4229,8 +4235,9 @@ namespace
 			"valtan.attack.whirlwind.active" == effectBinding->strActionId &&
 			"mesh_att_battle_20_03" == effectBinding->strRuntimeClipName &&
 			"b_effectroot" == effectBinding->strRuntimeBoneName &&
-			!effectBinding->bProductCatalogMapped &&
-			!effectBinding->bAnimationEventMapped,
+			effectBinding->strProductAdmissionStatus == "ADMITTED_PRODUCT" &&
+			effectBinding->bProductCatalogMapped &&
+			effectBinding->bAnimationEventMapped,
 			"Valtan Pattern Effect Parses Action Qualified Canary Mapping");
 
 		EFFECT_DOCUMENT_DESC valtanWhirlwindDocument;
@@ -4266,19 +4273,18 @@ namespace
 					invalidEffects, "BOSS_VALTAN", clips, status),
 				"Valtan Pattern Effect Rejects Missing Model Clip");
 			invalidEffects = effectDocument;
-			invalidEffects.Bindings.front().strProductAdmissionStatus =
-				"ADMITTED_PRODUCT";
+			invalidEffects.Bindings.front().bAnimationEventMapped = false;
 			runner.Require(
 				!CValtanPatternEffectBindingDocument::Validate(
 					invalidEffects, "BOSS_VALTAN", clips, status),
-				"Valtan Pattern Effect Rejects False Product Admission");
+				"Valtan Pattern Effect Rejects Incomplete Product Admission");
 		}
 		else
 		{
 			runner.Require(false,
 				"Valtan Pattern Effect Rejects Missing Model Clip");
 			runner.Require(false,
-				"Valtan Pattern Effect Rejects False Product Admission");
+				"Valtan Pattern Effect Rejects Incomplete Product Admission");
 		}
 
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT patternCueDocument;
@@ -8084,6 +8090,7 @@ namespace
 						"pc_sp_m_00_sk_sk_moving_normal_1_04" } }
 				};
 				bool_t exactRoster = expected.size() == parsed.Bindings.size();
+				bool_t basicAttackTrimMatches = false;
 				for (const EXPECTED_BINDING& row : expected)
 				{
 					const PLAYER_SKILL_DEFINITION* skill =
@@ -8098,6 +8105,13 @@ namespace
 					std::vector<std::string> boundClips;
 					if (binding != parsed.Bindings.end())
 					{
+						if (2050010u == row.iSkillId &&
+							!binding->Stages.empty() &&
+							!binding->Stages.front().Clips.empty())
+						{
+							basicAttackTrimMatches =
+								1400u == binding->Stages.front().Clips.front().iPlayMs;
+						}
 						for (const ANIMATION_SKILL_STAGE& stage : binding->Stages)
 						{
 							for (const ANIMATION_SKILL_CLIP& clip : stage.Clips)
@@ -8125,6 +8139,8 @@ namespace
 				}
 				runner.Require(exactRoster,
 					"DimensionMaster Trial Roster Joins Exact Slots Skills Clips And Effects");
+				runner.Require(basicAttackTrimMatches,
+					"DimensionMaster BA1 Binding Trims Presentation To 1400 Ms");
 			}
 			total += parsed.Bindings.size();
 		}
@@ -8216,6 +8232,127 @@ namespace
 			output << image.fAlpha << '|';
 		}
 		return output.str();
+	}
+
+	void Test_ValtanBakedEdgeVisualProgramCodec(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		SCOPED_ENVIRONMENT_VARIABLE RuntimeResourceRoot(
+			L"LOSTARK_RESOURCE_ROOT");
+		if (!RuntimeResourceRoot.Was_Defined() ||
+			RuntimeResourceRoot.Get_OriginalValue().empty())
+		{
+			const std::filesystem::path ResourceRoot =
+				(CProjectDataRoot::Get().parent_path() / L"Client" / L"Bin" /
+				 L"Resources").lexically_normal();
+			if (!RuntimeResourceRoot.Set(ResourceRoot.c_str()))
+			{
+				runner.Require(false,
+					"Valtan Baked Edge Codec Harness Resolves The Runtime Resource Root");
+				return;
+			}
+		}
+		const std::filesystem::path CorpusPath = CProjectDataRoot::Resolve(
+			L"Effects/VisualPrograms/effect-visual-program-runtime.v1.json");
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS> Corpus;
+		std::string Status;
+		const bool_t bLoaded = !CorpusPath.empty() &&
+			CEffectVisualProgramCorpusCodec::Load(CorpusPath, Corpus, Status) &&
+			nullptr != Corpus;
+		runner.Require(bLoaded,
+			"Production Visual Program Corpus Cpp Codec Accepts The Current Runtime Artifact");
+		if (!bLoaded)
+		{
+			std::cout << "[DETAIL] Valtan baked-edge corpus codec: " <<
+				Status << '\n';
+			return;
+		}
+
+		const auto Program = std::ranges::find_if(
+			Corpus->Programs, [](const EFFECT_VISUAL_PROGRAM& Candidate)
+			{
+				return Candidate.strEffectAssetId ==
+					"effect.valtan.pattern.420633.active";
+			});
+		if (Program == Corpus->Programs.end())
+		{
+			runner.Require(false,
+				"Valtan 420633 Visual Program Exists In The Production Corpus");
+			return;
+		}
+
+		const std::set<std::string> ExpectedTargets{
+			"valtan.420633.notify004.emitter5258",
+			"valtan.420633.notify004.emitter5259",
+			"valtan.420633.notify004.emitter5260" };
+		std::set<std::string> ActualTargets;
+		size_t iTrailCount = 0u;
+		size_t iLightCount = 0u;
+		bool_t bPacketSemanticsExact = true;
+		if (Program->BakedEdgeHistories.size() != 1u)
+		{
+			runner.Require(false,
+				"Valtan 420633 Owns Exactly One Baked Edge History");
+			return;
+		}
+		const auto& History = Program->BakedEdgeHistories.front();
+		for (const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental :
+			Program->SupplementalElements)
+		{
+			if (Supplemental.AnimationTrailPacket.has_value())
+			{
+				++iTrailCount;
+				const auto& Packet = *Supplemental.AnimationTrailPacket;
+				ActualTargets.emplace(Packet.strTargetElementId);
+				bPacketSemanticsExact = bPacketSemanticsExact &&
+					2u == Packet.iPacketVersion &&
+					Packet.strRuntimeCarrier ==
+						"EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1" &&
+					Packet.strSourceEventId ==
+						"action-420633/stage-002/notify-004" &&
+					Packet.strHistoryId == History.strHistoryId &&
+					Packet.strHistorySha256 == History.strHistorySha256 &&
+					Packet.Attachment.bEnabled == false &&
+					Packet.Attachment.bFollow == false &&
+					Packet.Attachment.strSourceAnchorSlotId.empty() &&
+					Packet.Attachment.strRuntimeAnchorSlotId.empty() &&
+					Packet.Attachment.strRuntimeBoneName.empty() &&
+					0.0 == Packet.Attachment.
+						fSnapshotRootSourceBasisYawDegrees &&
+					Packet.Attachment.vPosition ==
+						std::array<double, 3u>{ 0.0, 0.0, 0.0 } &&
+					Packet.Attachment.vRotationDegrees ==
+						std::array<double, 3u>{ 0.0, 0.0, 0.0 } &&
+					Packet.Attachment.vScale ==
+						std::array<double, 3u>{ 1.0, 1.0, 1.0 } &&
+					409u == Packet.Trail.iMaxPoints;
+			}
+			else if (Supplemental.BakedEdgeLightPacket.has_value())
+			{
+				++iLightCount;
+				const auto& Packet = *Supplemental.BakedEdgeLightPacket;
+				bPacketSemanticsExact = bPacketSemanticsExact &&
+					Packet.strHistoryId == History.strHistoryId &&
+					Packet.strHistorySha256 == History.strHistorySha256 &&
+					Packet.eLane ==
+						EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LANE::FIRST_EDGE;
+			}
+			else bPacketSemanticsExact = false;
+		}
+		const bool_t bExact = Program->VisualRows.empty() &&
+			Program->SupplementalElements.size() == 4u &&
+			Program->BakedEdgeHistories.size() == 1u &&
+			iTrailCount == 3u && iLightCount == 1u &&
+			ActualTargets == ExpectedTargets && bPacketSemanticsExact &&
+			History.strHistoryId ==
+				"valtan.420633.animnotify-trails-479.baked-edges" &&
+			History.strCoordinateBasis ==
+				"UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS" &&
+			History.iSampleCount == 409u && History.Samples.size() == 409u &&
+			std::abs(History.fSourceEndTimeSeconds - 3.20000004768372) < 1e-9 &&
+			std::abs(History.fPlaybackClampSeconds - 1.20000004768372) < 1e-9;
+		runner.Require(bExact,
+			"Valtan 420633 Keeps Three Detached Baked Edge Trails One First Edge Light And The Exact 409 Sample History");
 	}
 
 	void Test_SourceVisualProgramPlaybackAdmission(
@@ -9723,6 +9860,983 @@ namespace
 			"Effect Playback Preserves Source Module Order And Duplicate Occurrences");
 	}
 
+	void Test_EffectSourceRotationTrim(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		auto distribution = [](const std::string& path,
+			const float4_t& minimum, const float4_t& maximum,
+			const uint32_t components, const uint32_t operation = 1u)
+		{
+			EFFECT_DISTRIBUTION_DESC result;
+			result.strPropertyPath = path;
+			result.iComponentCount = components;
+			result.iOperation = operation;
+			result.vDefaultMinimum = minimum;
+			result.vDefaultMaximum = maximum;
+			return result;
+		};
+		auto sourceElement = [](const std::string& id)
+		{
+			EFFECT_ELEMENT_DESC element;
+			element.strElementId = id;
+			element.strDisplayName = id;
+			element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+			element.Detail.Timing.fLifeTimeSeconds = 2.f;
+			element.Detail.Particle.iMaxParticles = 16u;
+			element.Detail.Particle.fSpawnRatePerSecond = 0.f;
+			element.Detail.Particle.vLifeTimeSeconds = { 1.f, 1.f };
+			element.SourceRecipe.bEnabled = true;
+			element.SourceRecipe.strRendererShape = "sprite";
+			element.SourceRecipe.fEmitterDurationSeconds = 1.f;
+			element.SourceRecipe.iEmitterLoopCount = 1u;
+			return element;
+		};
+		auto lifetime = [&distribution]()
+		{
+			EFFECT_SOURCE_MODULE_DESC module;
+			module.strStableId = "lifetime";
+			module.strClassName = "particlemodulelifetime";
+			module.strObjectPath = "Harness.Lifetime";
+			module.Distributions.push_back(distribution(
+				"lifetime", { 1.f, 0.f, 0.f, 0.f },
+				{ 1.f, 0.f, 0.f, 0.f }, 1u));
+			return module;
+		};
+		float4x4_t identity{};
+		XMStoreFloat4x4(&identity, XMMatrixIdentity());
+		std::string status;
+
+		auto rotationElement = [&sourceElement, &lifetime, &distribution](
+			const std::string& id, const f32_t sourceScale,
+			const bool_t mesh, const f32_t initialTurns,
+			const f32_t rateTurnsPerSecond)
+		{
+			EFFECT_ELEMENT_DESC element = sourceElement(id);
+			element.Detail.Particle.SourceScale.fRotation = sourceScale;
+			element.Detail.Particle.bBillboard = !mesh;
+			element.SourceRecipe.strRendererShape = mesh ? "mesh" : "sprite";
+			element.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+			EFFECT_SOURCE_MODULE_DESC required;
+			required.strStableId = id + ".required";
+			required.strClassName = "particlemodulerequired";
+			required.strObjectPath = "Harness." + id + ".Required";
+			required.Distributions.push_back(distribution(
+				"spawnrate", float4_t{}, float4_t{}, 1u));
+			element.SourceRecipe.Modules.push_back(std::move(required));
+			EFFECT_SOURCE_MODULE_DESC spawn;
+			spawn.strStableId = id + ".spawn";
+			spawn.strClassName = "particlemodulespawn";
+			spawn.strObjectPath = "Harness." + id + ".Spawn";
+			spawn.Distributions.push_back(distribution(
+				"rate", float4_t{}, float4_t{}, 1u));
+			spawn.Distributions.push_back(distribution(
+				"ratescale", { 1.f, 0.f, 0.f, 0.f },
+				{ 1.f, 0.f, 0.f, 0.f }, 1u));
+			element.SourceRecipe.Modules.push_back(std::move(spawn));
+			element.SourceRecipe.Modules.push_back(lifetime());
+			if (0.f != initialTurns)
+			{
+				EFFECT_SOURCE_MODULE_DESC initial;
+				initial.strStableId = id + ".initial";
+				initial.strClassName = mesh ?
+					"particlemodulemeshrotation" : "particlemodulerotation";
+				initial.strObjectPath = "Harness." + id + ".Initial";
+				initial.Distributions.push_back(distribution(
+					"startrotation", { initialTurns, 0.f, 0.f, 0.f },
+					{ initialTurns, 0.f, 0.f, 0.f }, mesh ? 3u : 1u));
+				element.SourceRecipe.Modules.push_back(std::move(initial));
+			}
+			if (0.f != rateTurnsPerSecond)
+			{
+				EFFECT_SOURCE_MODULE_DESC rate;
+				rate.strStableId = id + ".rate";
+				rate.strClassName = mesh ?
+					"particlemodulemeshrotationrate" :
+					"particlemodulerotationrate";
+				rate.strObjectPath = "Harness." + id + ".Rate";
+				rate.Distributions.push_back(distribution(
+					"startrotationrate",
+					{ rateTurnsPerSecond, 0.f, 0.f, 0.f },
+					{ rateTurnsPerSecond, 0.f, 0.f, 0.f }, mesh ? 3u : 1u));
+				element.SourceRecipe.Modules.push_back(std::move(rate));
+			}
+			if (mesh)
+			{
+				element.ResourceBindings.push_back({
+					"meshModel",
+					"Effect/DimensionMaster/Meshes/bfm_q_crack_01.wmodel" });
+				EFFECT_SOURCE_MODULE_DESC typeData;
+				typeData.strStableId = id + ".typedata";
+				typeData.strClassName = "particlemoduletypedatamesh";
+				typeData.strObjectPath = "Harness." + id + ".TypeDataMesh";
+				element.SourceRecipe.Modules.push_back(std::move(typeData));
+			}
+			return element;
+		};
+
+		EFFECT_DOCUMENT_DESC rotationDocument;
+		rotationDocument.strEffectAssetId = "effect.source.rotation.trim.harness";
+		rotationDocument.strDisplayName = "Source Rotation Trim Harness";
+		rotationDocument.Elements.push_back(rotationElement(
+			"sprite.initial.identity", 1.f, false, -0.25f, 0.f));
+		rotationDocument.Elements.push_back(rotationElement(
+			"sprite.initial.double", 2.f, false, -0.25f, 0.f));
+		rotationDocument.Elements.push_back(rotationElement(
+			"sprite.initial.reverse", -1.f, false, -0.25f, 0.f));
+		rotationDocument.Elements.push_back(rotationElement(
+			"sprite.rate.identity", 1.f, false, 0.f, 0.25f));
+		rotationDocument.Elements.push_back(rotationElement(
+			"sprite.rate.double", 2.f, false, 0.f, 0.25f));
+		rotationDocument.Elements.push_back(rotationElement(
+			"mesh.initial.identity", 1.f, true, 0.125f, 0.f));
+		rotationDocument.Elements.push_back(rotationElement(
+			"mesh.initial.double", 2.f, true, 0.125f, 0.f));
+		rotationDocument.Elements.push_back(rotationElement(
+			"mesh.rate.identity", 1.f, true, 0.f, 0.25f));
+		rotationDocument.Elements.push_back(rotationElement(
+			"mesh.rate.double", 2.f, true, 0.f, 0.25f));
+		const std::filesystem::path rotationResourceRoot =
+			resourceRootEnvironment.Was_Defined() &&
+			!resourceRootEnvironment.Get_OriginalValue().empty() ?
+			std::filesystem::path(
+				resourceRootEnvironment.Get_OriginalValue()) :
+			CProjectDataRoot::Get().parent_path() /
+				L"Client" / L"Bin" / L"Resources";
+		resourceRootEnvironment.Set(rotationResourceRoot.c_str());
+		CEffectPlayback rotationPlayback;
+		const bool_t rotationStaged = rotationPlayback.Stage_Document(
+			rotationDocument, status);
+		if (!rotationStaged)
+			std::cout << "[DETAIL] Source rotation trim stage: " << status << '\n';
+		if (rotationStaged)
+			rotationPlayback.Seek(1.f / 60.f, identity);
+		const EFFECT_EVALUATED_FRAME& rotationFrame = rotationPlayback.Get_Frame();
+		auto findRotationParticle = [&rotationFrame](const std::string_view id)
+			-> const EFFECT_EVALUATED_PARTICLE*
+		{
+			const auto found = std::ranges::find_if(rotationFrame.Particles,
+				[id](const EFFECT_EVALUATED_PARTICLE& particle)
+				{
+					return nullptr != particle.pElement &&
+						particle.pElement->strElementId == id;
+				});
+			return found == rotationFrame.Particles.end() ? nullptr : &*found;
+		};
+		const EFFECT_EVALUATED_PARTICLE* pSpriteInitialIdentity =
+			findRotationParticle("sprite.initial.identity");
+		const EFFECT_EVALUATED_PARTICLE* pSpriteInitialDouble =
+			findRotationParticle("sprite.initial.double");
+		const EFFECT_EVALUATED_PARTICLE* pSpriteInitialReverse =
+			findRotationParticle("sprite.initial.reverse");
+		const EFFECT_EVALUATED_PARTICLE* pSpriteRateIdentity =
+			findRotationParticle("sprite.rate.identity");
+		const EFFECT_EVALUATED_PARTICLE* pSpriteRateDouble =
+			findRotationParticle("sprite.rate.double");
+		runner.Require(nullptr != pSpriteInitialIdentity &&
+			nullptr != pSpriteInitialDouble && nullptr != pSpriteInitialReverse &&
+			std::abs(pSpriteInitialIdentity->fSpriteRotationDegrees + 90.f) < 0.0001f &&
+			std::abs(pSpriteInitialDouble->fSpriteRotationDegrees + 180.f) < 0.0001f &&
+			std::abs(pSpriteInitialReverse->fSpriteRotationDegrees - 90.f) < 0.0001f,
+			"Effect Source Trim Scales Initial Sprite Rotation Once And Reverses It");
+		runner.Require(nullptr != pSpriteRateIdentity &&
+			nullptr != pSpriteRateDouble &&
+			std::abs(pSpriteRateIdentity->fSpriteRotationDegrees - 1.5f) < 0.0001f &&
+			std::abs(pSpriteRateDouble->fSpriteRotationDegrees - 3.f) < 0.0001f,
+			"Effect Source Trim Scales Sprite Rotation Rate After Update Reset Once");
+
+		auto sourceMeshRollDegrees = [](const EFFECT_EVALUATED_PARTICLE* particle)
+		{
+			return nullptr == particle ? 0.f : XMConvertToDegrees(
+				std::atan2(particle->World._32, particle->World._22));
+		};
+		const EFFECT_EVALUATED_PARTICLE* pMeshInitialIdentity =
+			findRotationParticle("mesh.initial.identity");
+		const EFFECT_EVALUATED_PARTICLE* pMeshInitialDouble =
+			findRotationParticle("mesh.initial.double");
+		const EFFECT_EVALUATED_PARTICLE* pMeshRateIdentity =
+			findRotationParticle("mesh.rate.identity");
+		const EFFECT_EVALUATED_PARTICLE* pMeshRateDouble =
+			findRotationParticle("mesh.rate.double");
+		runner.Require(nullptr != pMeshInitialIdentity &&
+			nullptr != pMeshInitialDouble &&
+			std::abs(sourceMeshRollDegrees(pMeshInitialIdentity) - 45.f) < 0.0001f &&
+			std::abs(sourceMeshRollDegrees(pMeshInitialDouble) - 90.f) < 0.0001f,
+			"Effect Source Trim Scales Initial Source Mesh Rotation Once");
+		runner.Require(nullptr != pMeshRateIdentity && nullptr != pMeshRateDouble &&
+			std::abs(sourceMeshRollDegrees(pMeshRateIdentity) - 1.5f) < 0.0001f &&
+			std::abs(sourceMeshRollDegrees(pMeshRateDouble) - 3.f) < 0.0001f,
+			"Effect Source Trim Scales Source Mesh Rotation Rate Once");
+
+		EFFECT_DOCUMENT_DESC rotationBoundary = rotationDocument;
+		rotationBoundary.Elements.front().Detail.Particle.SourceScale.fRotation =
+			360.f;
+		EFFECT_DOCUMENT_DESC rotationBoundaryRoundTrip;
+		const bool_t rotationBoundaryCodecRoundTrip =
+			CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(rotationBoundary),
+				rotationBoundaryRoundTrip, status) &&
+			!rotationBoundaryRoundTrip.Elements.empty() &&
+			rotationBoundaryRoundTrip.Elements.front().Detail.Particle.
+				SourceScale.fRotation == 360.f;
+		CEffectPlayback rotationBoundaryPlayback;
+		const bool_t rotationBoundaryStaged =
+			rotationBoundaryPlayback.Stage_Document(rotationBoundary, status);
+		if (rotationBoundaryStaged)
+			rotationBoundaryPlayback.Seek(1.f / 60.f, identity);
+		const size_t rotationBoundaryParticleCount =
+			rotationBoundaryPlayback.Get_Frame().Particles.size();
+		rotationBoundary.Elements.front().Detail.Particle.SourceScale.fRotation =
+			360.01f;
+		const bool_t rotationOverflowRejected =
+			!rotationBoundaryPlayback.Stage_Document(rotationBoundary, status);
+		rotationBoundary.Elements.front().Detail.Particle.SourceScale.fRotation =
+			std::numeric_limits<f32_t>::infinity();
+		const bool_t rotationNonFiniteRejected =
+			!rotationBoundaryPlayback.Stage_Document(rotationBoundary, status);
+		runner.Require(rotationBoundaryCodecRoundTrip && rotationBoundaryStaged &&
+			rotationOverflowRejected &&
+			rotationNonFiniteRejected &&
+			rotationBoundaryPlayback.Get_Frame().Particles.size() ==
+				rotationBoundaryParticleCount,
+			"Effect Source Rotation Boundary Accepts 360 Rejects Overflow And Nonfinite Without Replacing Frame");
+
+	}
+
+	void Test_DimensionMasterRSourceOccurrenceContract(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view EFFECT_ID =
+			"effect.dimensionmaster.skill.2050180.unified";
+		constexpr std::string_view PARTICLE_MASTER_MATERIAL =
+			"fx_m_mi_w_00.mi.fx_w_pa_master_01_05_dt_tr";
+		constexpr std::string_view SPRITEWAVE_MATERIAL =
+			"fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_05_tr";
+		constexpr std::string_view HELIX_ID =
+			"authored.source-particle.98639f5f2e65e0f0193c09fe";
+		constexpr std::string_view HELIX_MATERIAL =
+			"fx_m_mi_w_00.mi.fx_w_me_master_02_243_dt_tr";
+		constexpr std::array<std::string_view, 3u> PARTICLE_MASTER_IDS = {{
+			"authored.source-particle.1827b45c2ca593ef046cf19a",
+			"authored.source-particle.3d37c9d7cc96e563a4fe1b55",
+			"authored.source-particle.f8534d1e810568b7ce3b7ee2"
+		}};
+		struct SLASH_EXPECTATION final
+		{
+			std::string_view strElementId;
+			f32_t fTimeSeconds;
+			uint32_t iCount;
+		};
+		constexpr std::array<SLASH_EXPECTATION, 3u> SLASHES = {{
+			{ "authored.source-particle.cc4d20091ad0ed409617f51f", 0.5f, 1u },
+			{ "authored.source-particle.333341329ff3992ea8c7f0a1", 0.7f, 1u },
+			{ "authored.source-particle.f2e42e062ca87d93f0a477e3", 1.05f, 3u }
+		}};
+		constexpr std::array<f32_t, 3u> PARTICLE_MASTER_TIMES = {{
+			0.5f, 0.7f, 1.05f
+		}};
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path ResourceRoot =
+			ResourceRootEnvironment.Was_Defined() &&
+			!ResourceRootEnvironment.Get_OriginalValue().empty() ?
+				std::filesystem::path(
+					ResourceRootEnvironment.Get_OriginalValue()) :
+				CProjectDataRoot::Get().parent_path() /
+					L"Client" / L"Bin" / L"Resources";
+		std::error_code ResourceError;
+		const bool_t bResourceRootReady =
+			std::filesystem::is_directory(ResourceRoot, ResourceError) &&
+			!ResourceError && ResourceRootEnvironment.Set(ResourceRoot.c_str());
+		runner.Require(bResourceRootReady,
+			"DimensionMaster R Resolves The Production Resource Root");
+		if (!bResourceRootReady)
+			return;
+
+		const std::filesystem::path DocumentPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050180."
+			L"unified.effect.json");
+		EFFECT_DOCUMENT_DESC Document;
+		std::string Status;
+		const bool_t bLoaded = !DocumentPath.empty() &&
+			CEffectDocumentCodec::Load(DocumentPath, Document, Status);
+		runner.Require(bLoaded && Document.strEffectAssetId == EFFECT_ID,
+			"DimensionMaster R Loads The Exact 2050180 Authored Document");
+		if (!bLoaded || Document.strEffectAssetId != EFFECT_ID)
+		{
+			std::cout << "[DM-R] load status=" << Status << " path=" <<
+				DocumentPath.string() << '\n';
+			return;
+		}
+
+		const auto FindUniqueElement = [&Document](const std::string_view strId)
+			-> const EFFECT_ELEMENT_DESC*
+		{
+			const size_t iCount = std::ranges::count_if(Document.Elements,
+				[strId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == strId;
+				});
+			if (1u != iCount)
+				return nullptr;
+			const auto Found = std::ranges::find_if(Document.Elements,
+				[strId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == strId;
+				});
+			return Found == Document.Elements.end() ? nullptr : &*Found;
+		};
+		const auto BindingMatches = [](const EFFECT_ELEMENT_DESC& Element,
+			const std::string_view strSlot, const std::string_view strAsset)
+		{
+			return 1u == std::ranges::count_if(Element.ResourceBindings,
+				[strSlot, strAsset](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == strSlot &&
+						Binding.strAssetId == strAsset;
+				});
+		};
+		const auto AssetExists = [&ResourceRoot](const std::string_view strAsset)
+		{
+			const std::filesystem::path Relative =
+				std::filesystem::path(strAsset).lexically_normal();
+			if (Relative.empty() || Relative.is_absolute() ||
+				Relative.has_root_name() ||
+				std::ranges::any_of(Relative,
+					[](const std::filesystem::path& Part)
+					{
+						return Part == L"..";
+					}))
+			{
+				return false;
+			}
+			std::error_code Error;
+			return std::filesystem::is_regular_file(
+				ResourceRoot / Relative, Error) && !Error;
+		};
+		const auto FindModule = [](const EFFECT_ELEMENT_DESC& Element,
+			const std::string_view strClass) -> const EFFECT_SOURCE_MODULE_DESC*
+		{
+			if (1u != std::ranges::count_if(Element.SourceRecipe.Modules,
+				[strClass](const EFFECT_SOURCE_MODULE_DESC& Module)
+				{
+					return Module.strClassName == strClass;
+				}))
+			{
+				return nullptr;
+			}
+			const auto Found = std::ranges::find_if(Element.SourceRecipe.Modules,
+				[strClass](const EFFECT_SOURCE_MODULE_DESC& Module)
+				{
+					return Module.strClassName == strClass;
+				});
+			return Found == Element.SourceRecipe.Modules.end() ? nullptr : &*Found;
+		};
+		const auto HasNumberLiteral = [](const EFFECT_SOURCE_MODULE_DESC& Module,
+			const std::string_view strPath, const f64_t fExpected)
+		{
+			return 1u == std::ranges::count_if(Module.Literals,
+				[strPath, fExpected](const EFFECT_SOURCE_LITERAL_DESC& Literal)
+				{
+					return Literal.strPropertyPath == strPath &&
+						Literal.eKind == EFFECT_SOURCE_LITERAL_KIND::NUMBER &&
+						std::abs(Literal.fNumber - fExpected) <= 0.000001;
+				});
+		};
+		const auto FindScalar = [](const EFFECT_SOURCE_MATERIAL_DESC& Source,
+			const std::string_view strName) -> const EFFECT_NAMED_FLOAT_DESC*
+		{
+			if (1u != std::ranges::count_if(Source.Scalars,
+				[strName](const EFFECT_NAMED_FLOAT_DESC& Scalar)
+				{
+					return Scalar.strName == strName;
+				}))
+			{
+				return nullptr;
+			}
+			const auto Found = std::ranges::find_if(Source.Scalars,
+				[strName](const EFFECT_NAMED_FLOAT_DESC& Scalar)
+				{
+					return Scalar.strName == strName;
+				});
+			return Found == Source.Scalars.end() ? nullptr : &*Found;
+		};
+
+		std::array<const EFFECT_ELEMENT_DESC*, PARTICLE_MASTER_IDS.size()>
+			ParticleMasterRows{};
+		bool_t bParticleMasterExact = true;
+		for (size_t iRow = 0u; iRow < PARTICLE_MASTER_IDS.size(); ++iRow)
+		{
+			const EFFECT_ELEMENT_DESC* pElement =
+				FindUniqueElement(PARTICLE_MASTER_IDS[iRow]);
+			ParticleMasterRows[iRow] = pElement;
+			if (nullptr == pElement)
+			{
+				bParticleMasterExact = false;
+				continue;
+			}
+			const EFFECT_SOURCE_MATERIAL_DESC& Source =
+				pElement->Material.SourceMaterial;
+			const EFFECT_NAMED_TEXTURE_DESC* pMapC =
+				Find_EffectUniqueNamedTexture(Source, "21.map_c");
+			const EFFECT_NAMED_TEXTURE_DESC* pMapD =
+				Find_EffectUniqueNamedTexture(Source, "06.map");
+			const EFFECT_NAMED_TEXTURE_DESC* pMapE =
+				Find_EffectUniqueNamedTexture(Source, "02.map_e");
+			const EFFECT_NAMED_TEXTURE_DESC* pMapF =
+				Find_EffectUniqueNamedTexture(Source, "12.map_f");
+			bParticleMasterExact = bParticleMasterExact && pElement->bVisible &&
+				pElement->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				pElement->SourceRecipe.strRendererShape == "sprite" &&
+				std::abs(pElement->Detail.Timing.fStartDelaySeconds -
+					PARTICLE_MASTER_TIMES[iRow]) <= 0.00001f &&
+				pElement->SourceRecipe.Bursts.size() == 1u &&
+				pElement->SourceRecipe.Bursts.front().iCountMinimum == 4u &&
+				pElement->SourceRecipe.Bursts.front().iCountMaximum == 4u &&
+				pElement->Material.strSourceMaterialPath ==
+					PARTICLE_MASTER_MATERIAL &&
+				Resolve_EffectStrictTypedSourceProfile(
+					pElement->Material.strSourceMaterialPath, Source) ==
+						EFFECT_STRICT_TYPED_SOURCE_PROFILE::PARTICLE_MASTER_01 &&
+				Has_EffectParticleMasterNamedTextureContract(Source) &&
+				Source.Textures.size() == 4u && nullptr != pMapC &&
+				pMapC->strAssetId ==
+					"Effect/DimensionMaster/Textures/FX_TEX_00/"
+					"fx_a_cloud_021.dds" &&
+				nullptr != pMapD && pMapD->strAssetId ==
+					"Effect/DimensionMaster/Textures/FX_TEX_02/"
+					"fx_d_noise_009.dds" &&
+				nullptr != pMapE && pMapE->strAssetId ==
+					"Effect/DimensionMaster/Textures/FX_TEX_04/"
+					"fx_i_noise_03.dds" &&
+				nullptr != pMapF && pMapF->strAssetId ==
+					"Effect/DimensionMaster/Textures/FX_TEX_06/"
+					"fx_j_environment_tile_02.dds" &&
+				BindingMatches(*pElement, "base",
+					"Effect/DimensionMaster/Textures/FX_TEX_04/"
+					"fx_i_noise_03.dds") &&
+				BindingMatches(*pElement, "noise",
+					"Effect/DimensionMaster/Textures/FX_TEX_02/"
+					"fx_d_noise_009.dds") &&
+				BindingMatches(*pElement, "mask",
+					"Effect/DimensionMaster/Textures/FX_TEX_06/"
+					"fx_j_environment_tile_02.dds") &&
+				BindingMatches(*pElement, "emissive",
+					"Effect/DimensionMaster/Textures/FX_TEX_00/"
+					"fx_a_cloud_021.dds") &&
+				AssetExists(pMapC->strAssetId) && AssetExists(pMapD->strAssetId) &&
+				AssetExists(pMapE->strAssetId) && AssetExists(pMapF->strAssetId);
+		}
+		runner.Require(bParticleMasterExact,
+			"DimensionMaster R ParticleMaster Rows Restore Map-C Coverage And E-D-F-C Role Ownership");
+
+		std::array<const EFFECT_ELEMENT_DESC*, SLASHES.size()> SlashRows{};
+		bool_t bSlashRowsExact = true;
+		for (size_t iSlash = 0u; iSlash < SLASHES.size(); ++iSlash)
+		{
+			const SLASH_EXPECTATION& Expected = SLASHES[iSlash];
+			const EFFECT_ELEMENT_DESC* pElement =
+				FindUniqueElement(Expected.strElementId);
+			SlashRows[iSlash] = pElement;
+			if (nullptr == pElement)
+			{
+				bSlashRowsExact = false;
+				continue;
+			}
+			const EFFECT_SOURCE_MATERIAL_DESC& Source =
+				pElement->Material.SourceMaterial;
+			const EFFECT_NAMED_TEXTURE_DESC* pCarrier =
+				Resolve_EffectSpriteWaveCarrierTexture(Source);
+			const EFFECT_NAMED_TEXTURE_DESC* pEmissive =
+				Find_EffectUniqueNamedTexture(Source, "emissivetex02");
+			const EFFECT_NAMED_FLOAT_DESC* pSphere =
+				FindScalar(Source, "spheremask_strength");
+			const EFFECT_NAMED_FLOAT_DESC* pSphereMinimum =
+				FindScalar(Source, "spheremask_strength_min");
+			const EFFECT_NAMED_FLOAT_DESC* pSphereMaximum =
+				FindScalar(Source, "spheremask_strength_max");
+			const EFFECT_SOURCE_MODULE_DESC* pSpawn =
+				FindModule(*pElement, "particlemodulespawn");
+			const bool_t bThisSlashExact = pElement->bVisible &&
+				pElement->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				pElement->SourceRecipe.strRendererShape == "mesh" &&
+				std::abs(pElement->Detail.Timing.fStartDelaySeconds -
+					Expected.fTimeSeconds) <= 0.00001f &&
+				pElement->SourceRecipe.Bursts.size() == 1u &&
+				pElement->SourceRecipe.Bursts.front().iCountMinimum ==
+					Expected.iCount &&
+				pElement->SourceRecipe.Bursts.front().iCountMaximum ==
+					Expected.iCount &&
+				nullptr != pSpawn && HasNumberLiteral(*pSpawn,
+					"burstlist[0].count", Expected.iCount) &&
+				pElement->Material.strSourceMaterialPath == SPRITEWAVE_MATERIAL &&
+				Resolve_EffectStrictTypedSourceProfile(
+					pElement->Material.strSourceMaterialPath, Source) ==
+						EFFECT_STRICT_TYPED_SOURCE_PROFILE::SPRITEWAVE_01 &&
+				Has_EffectSpriteWaveNamedTextureContract(Source) &&
+				Source.Textures.size() == 8u && nullptr != pCarrier &&
+				pCarrier->strName == "maintex" && pCarrier->strAssetId ==
+					"Effect/DimensionMaster/Textures/FX_TEX_05/"
+					"fx_m_trail_007.dds" &&
+				nullptr != pEmissive && pEmissive->strAssetId ==
+					"Effect/DimensionMaster/Textures/FX_TEX_05/"
+					"fx_m_noise_008.dds" &&
+				nullptr != pSphere && nullptr != pSphereMinimum &&
+				nullptr != pSphereMaximum &&
+				std::abs(pSphere->fValue - 1.5f) <= 0.00001f &&
+				std::abs(pSphereMinimum->fValue) <= 0.00001f &&
+				std::abs(pSphereMaximum->fValue - 10.f) <= 0.00001f &&
+				BindingMatches(*pElement, "meshModel",
+					"Effect/DimensionMaster/Meshes/fm_h_swing_05.wmodel") &&
+				BindingMatches(*pElement, "base",
+					"Effect/DimensionMaster/Textures/FX_TEX_05/"
+					"fx_m_trail_007.dds") &&
+				BindingMatches(*pElement, "dissolve",
+					"Effect/DimensionMaster/Textures/FX_TEX_04/"
+					"fx_i_atypical_03_1_ycl.dds") &&
+				BindingMatches(*pElement, "noise",
+					"Effect/DimensionMaster/Textures/FX_TEX_02/"
+					"fx_d_noise_030.dds") &&
+				!pElement->Material.Execution.bEnabled &&
+				pElement->Material.Execution.bFailClosed &&
+				pElement->Material.Execution.bAuthoringApproximate &&
+				AssetExists("Effect/DimensionMaster/Meshes/fm_h_swing_05.wmodel") &&
+				AssetExists(pCarrier->strAssetId) &&
+				AssetExists(pEmissive->strAssetId);
+			bSlashRowsExact = bSlashRowsExact && bThisSlashExact;
+			if (!bThisSlashExact)
+			{
+				std::cout << "[DM-R-SLASH] id=" << pElement->strElementId <<
+					" start=" << pElement->Detail.Timing.fStartDelaySeconds <<
+					" sourceTime=" <<
+					pElement->SourcePresentation.fSourceTimeSeconds <<
+					" bursts=" << pElement->SourceRecipe.Bursts.size() <<
+					" count=" << (pElement->SourceRecipe.Bursts.empty() ? 0u :
+						pElement->SourceRecipe.Bursts.front().iCountMinimum) <<
+					" profile=" << static_cast<uint32_t>(
+						Resolve_EffectStrictTypedSourceProfile(
+							pElement->Material.strSourceMaterialPath, Source)) <<
+					" lanes=" << Source.Textures.size() << " contract=" <<
+					Has_EffectSpriteWaveNamedTextureContract(Source) <<
+					" spawn=" << (nullptr != pSpawn) << " literal=" <<
+					(nullptr != pSpawn && HasNumberLiteral(
+						*pSpawn, "burstlist[0].count", Expected.iCount)) <<
+					" execution=" << pElement->Material.Execution.bEnabled << ',' <<
+					pElement->Material.Execution.bFailClosed << ',' <<
+					pElement->Material.Execution.bAuthoringApproximate <<
+					" carrier=" << (nullptr == pCarrier ? std::string{} :
+						pCarrier->strAssetId) << " emissive=" <<
+					(nullptr == pEmissive ? std::string{} : pEmissive->strAssetId) <<
+					'\n';
+			}
+		}
+		runner.Require(bSlashRowsExact,
+			"DimensionMaster R Keeps Three Exact SpriteWave Mesh Occurrences At 0.5 0.7 1.05 Seconds With 1 1 3 Bursts");
+
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		struct PARTICLE_SAMPLE final
+		{
+			bool_t bStaged = false;
+			std::vector<float4x4_t> Worlds;
+		};
+		const auto SampleElement = [&Document, &Identity](
+			const EFFECT_ELEMENT_DESC& Element, const f32_t fTimeSeconds)
+		{
+			PARTICLE_SAMPLE Sample;
+			EFFECT_DOCUMENT_DESC Isolated = Document;
+			Isolated.ModelCues.clear();
+			Isolated.Elements.assign(1u, Element);
+			CEffectPlayback Playback;
+			std::string Error;
+			Sample.bStaged = Playback.Stage_Document(Isolated, Error);
+			if (!Sample.bStaged)
+			{
+				std::cout << "[DM-R] playback stage id=" << Element.strElementId <<
+					" status=" << Error << '\n';
+				return Sample;
+			}
+			Playback.Seek(fTimeSeconds, Identity);
+			for (const EFFECT_EVALUATED_PARTICLE& Particle :
+				Playback.Get_Frame().Particles)
+			{
+				if (nullptr != Particle.pElement &&
+					Particle.pElement->strElementId == Element.strElementId)
+				{
+					Sample.Worlds.push_back(Particle.World);
+				}
+			}
+			return Sample;
+		};
+		bool_t bPlaybackCountsExact = bSlashRowsExact;
+		for (size_t iSlash = 0u;
+			bPlaybackCountsExact && iSlash < SLASHES.size(); ++iSlash)
+		{
+			const PARTICLE_SAMPLE Sample = SampleElement(*SlashRows[iSlash],
+				SLASHES[iSlash].fTimeSeconds + 1.f / 60.f);
+			bPlaybackCountsExact = Sample.bStaged &&
+				Sample.Worlds.size() == SLASHES[iSlash].iCount;
+		}
+		runner.Require(bPlaybackCountsExact,
+			"DimensionMaster R Playback Emits One One Three Slash Mesh Instances Without Duplicating The Shared Effect");
+
+		const EFFECT_ELEMENT_DESC* pHelix = FindUniqueElement(HELIX_ID);
+		bool_t bHelixSourceExact = nullptr != pHelix;
+		const EFFECT_SOURCE_MODULE_DESC* pMeshRotation = nullptr;
+		const EFFECT_SOURCE_MODULE_DESC* pMeshRotationRate = nullptr;
+		const EFFECT_SOURCE_MODULE_DESC* pTypeData = nullptr;
+		if (nullptr != pHelix)
+		{
+			pMeshRotation = FindModule(*pHelix, "particlemodulemeshrotation");
+			pMeshRotationRate = FindModule(
+				*pHelix, "particlemodulemeshrotationrate");
+			pTypeData = FindModule(*pHelix, "particlemoduletypedatamesh");
+			const EFFECT_DISTRIBUTION_DESC* pInitialDistribution =
+				nullptr == pMeshRotation ? nullptr :
+					([pMeshRotation]() -> const EFFECT_DISTRIBUTION_DESC*
+					{
+						const auto Found = std::ranges::find_if(
+							pMeshRotation->Distributions,
+							[](const EFFECT_DISTRIBUTION_DESC& Distribution)
+							{
+								return Distribution.strPropertyPath ==
+									"startrotation";
+							});
+						return Found == pMeshRotation->Distributions.end() ?
+							nullptr : &*Found;
+					})();
+			const EFFECT_DISTRIBUTION_DESC* pRateDistribution =
+				nullptr == pMeshRotationRate ? nullptr :
+					([pMeshRotationRate]() -> const EFFECT_DISTRIBUTION_DESC*
+					{
+						const auto Found = std::ranges::find_if(
+							pMeshRotationRate->Distributions,
+							[](const EFFECT_DISTRIBUTION_DESC& Distribution)
+							{
+								return Distribution.strPropertyPath ==
+									"startrotationrate";
+							});
+						return Found == pMeshRotationRate->Distributions.end() ?
+							nullptr : &*Found;
+					})();
+			bHelixSourceExact = pHelix->bVisible &&
+				pHelix->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				pHelix->SourceRecipe.strRendererShape == "mesh" &&
+				pHelix->Material.strSourceMaterialPath == HELIX_MATERIAL &&
+				BindingMatches(*pHelix, "meshModel",
+					"Effect/DimensionMaster/Meshes/fm_d_helix_015_1.wmodel") &&
+				BindingMatches(*pHelix, "base",
+					"Effect/DimensionMaster/Textures/FX_TEX_02/"
+					"fx_d_atypical_042_1_cl.dds") &&
+				BindingMatches(*pHelix, "noise",
+					"Effect/DimensionMaster/Textures/FX_TEX_00/"
+					"fx_a_fluid_003.dds") &&
+				BindingMatches(*pHelix, "mask",
+					"Effect/DimensionMaster/Textures/FX_TEX_05/"
+					"fx_l_spiderline_01.dds") &&
+				BindingMatches(*pHelix, "emissive",
+					"Effect/DimensionMaster/Textures/FX_TEX_05/"
+					"fx_k_auraline_04.dds") &&
+				BindingMatches(*pHelix, "dissolve",
+					"Effect/DimensionMaster/Textures/FX_TEX_00/"
+					"fx_b_atypical_004.dds") &&
+				std::abs(pHelix->Detail.Timing.fStartDelaySeconds - 0.01f) <=
+					0.00001f &&
+				pHelix->SourceRecipe.Bursts.size() == 1u &&
+				pHelix->SourceRecipe.Bursts.front().iCountMinimum == 3u &&
+				pHelix->SourceRecipe.Bursts.front().iCountMaximum == 3u &&
+				nullptr != pMeshRotation && nullptr != pMeshRotationRate &&
+				nullptr != pTypeData && nullptr != pInitialDistribution &&
+				pInitialDistribution->LookupTable.size() == 14u &&
+				std::abs(pInitialDistribution->LookupTable[0u] + 0.2f) <=
+					0.00001f &&
+				std::abs(pInitialDistribution->LookupTable[1u] - 0.2f) <=
+					0.00001f &&
+				std::abs(pInitialDistribution->LookupTable[2u] - 0.975f) <=
+					0.00001f &&
+				nullptr != pRateDistribution &&
+				pRateDistribution->LookupTable.size() == 8u &&
+				std::abs(pRateDistribution->LookupTable[1u] - 1.f) <=
+					0.00001f &&
+				std::abs(pRateDistribution->LookupTable[2u] - 1.f) <=
+					0.00001f &&
+				HasNumberLiteral(*pTypeData, "pitch", -90.0) &&
+				std::abs(pHelix->Detail.Mesh.
+					vSourceTypeDataRotationDegrees.x) <= 0.00001f &&
+				std::abs(pHelix->Detail.Mesh.
+					vSourceTypeDataRotationDegrees.y + 90.f) <= 0.00001f &&
+				std::abs(pHelix->Detail.Mesh.
+					vSourceTypeDataRotationDegrees.z) <= 0.00001f &&
+				std::abs(pHelix->Detail.Transform.
+					vRevolutionDegreesPerSecond.x) <= 0.00001f &&
+				std::abs(pHelix->Detail.Transform.
+					vRevolutionDegreesPerSecond.y) <= 0.00001f &&
+				std::abs(pHelix->Detail.Transform.
+					vRevolutionDegreesPerSecond.z) <= 0.00001f &&
+				pHelix->Detail.Particle.bLocalSpace &&
+				!pHelix->Detail.Particle.bBillboard &&
+				!Has_EffectParticleMasterNamedTextureContract(
+					pHelix->Material.SourceMaterial);
+		}
+		runner.Require(bHelixSourceExact,
+			"DimensionMaster R Helix Preserves Source Mesh Rotation Rate And Applies The TypeData Minus-90 Pitch Once Without Synthetic Revolution");
+
+		if (bHelixSourceExact)
+		{
+			const PARTICLE_SAMPLE Early = SampleElement(*pHelix, 0.02f);
+			const PARTICLE_SAMPLE Late = SampleElement(*pHelix, 0.06f);
+			EFFECT_ELEMENT_DESC ZeroTypeData = *pHelix;
+			ZeroTypeData.Detail.Mesh.vSourceTypeDataRotationDegrees = {};
+			const PARTICLE_SAMPLE Zero = SampleElement(ZeroTypeData, 0.02f);
+			const auto BasisDifference = [](const float4x4_t& Left,
+				const float4x4_t& Right)
+			{
+				return std::abs(Left._11 - Right._11) +
+					std::abs(Left._12 - Right._12) +
+					std::abs(Left._13 - Right._13) +
+					std::abs(Left._21 - Right._21) +
+					std::abs(Left._22 - Right._22) +
+					std::abs(Left._23 - Right._23) +
+					std::abs(Left._31 - Right._31) +
+					std::abs(Left._32 - Right._32) +
+					std::abs(Left._33 - Right._33);
+			};
+			const bool_t bPlaybackRotationExact = Early.bStaged && Late.bStaged &&
+				Zero.bStaged && Early.Worlds.size() == 3u &&
+				Late.Worlds.size() == 3u && Zero.Worlds.size() == 3u &&
+				BasisDifference(Early.Worlds.front(), Zero.Worlds.front()) >
+					0.001f &&
+				BasisDifference(Early.Worlds.front(), Late.Worlds.front()) >
+					0.001f &&
+				std::abs(Early.Worlds.front()._41 - Zero.Worlds.front()._41) <=
+					0.00001f &&
+				std::abs(Early.Worlds.front()._42 - Zero.Worlds.front()._42) <=
+					0.00001f &&
+				std::abs(Early.Worlds.front()._43 - Zero.Worlds.front()._43) <=
+					0.00001f;
+			runner.Require(bPlaybackRotationExact,
+				"DimensionMaster R Playback Keeps Three Helices And Separates Source Spin From TypeData Axis Correction");
+		}
+
+		EFFECT_ELEMENT_DESC FilenameOnlyControl =
+			nullptr != ParticleMasterRows.front() ?
+				*ParticleMasterRows.front() : EFFECT_ELEMENT_DESC{};
+		bool_t bFilenameOnlyControlReady =
+			nullptr != ParticleMasterRows.front();
+		if (bFilenameOnlyControlReady)
+		{
+			FilenameOnlyControl.strElementId += ".filename-only-control";
+			EFFECT_NAMED_TEXTURE_DESC FluidTile =
+				FilenameOnlyControl.Material.SourceMaterial.Textures.front();
+			FluidTile.strName = "generic.base";
+			FluidTile.strAssetId =
+				"Effect/DimensionMaster/Textures/FX_TEX_05/"
+				"fx_k_fluidtile_01.dds";
+			EFFECT_NAMED_TEXTURE_DESC MirNoise =
+				FilenameOnlyControl.Material.SourceMaterial.Textures.back();
+			MirNoise.strName = "generic.mask";
+			MirNoise.strAssetId =
+				"Effect/DimensionMaster/Textures/FX_TEX_04/"
+				"fx_j_mirnoise_01.dds";
+			FilenameOnlyControl.Material.SourceMaterial.Textures = {
+				FluidTile, MirNoise };
+			for (EFFECT_RESOURCE_BINDING_DESC& Binding :
+				FilenameOnlyControl.ResourceBindings)
+			{
+				if (Binding.strSlotId == "base")
+					Binding.strAssetId = FluidTile.strAssetId;
+				else if (Binding.strSlotId == "mask")
+					Binding.strAssetId = MirNoise.strAssetId;
+			}
+			bFilenameOnlyControlReady = AssetExists(FluidTile.strAssetId) &&
+				AssetExists(MirNoise.strAssetId) &&
+				Resolve_EffectStrictTypedSourceProfile(
+					FilenameOnlyControl.Material.strSourceMaterialPath,
+					FilenameOnlyControl.Material.SourceMaterial) ==
+						EFFECT_STRICT_TYPED_SOURCE_PROFILE::PARTICLE_MASTER_01 &&
+				!Has_EffectParticleMasterNamedTextureContract(
+					FilenameOnlyControl.Material.SourceMaterial) &&
+				!Has_EffectSpriteWaveNamedTextureContract(
+					FilenameOnlyControl.Material.SourceMaterial);
+		}
+		runner.Require(bFilenameOnlyControlReady,
+			"DimensionMaster FluidTile And MirNoise Filenames Alone Cannot Activate A Typed Boundary Evaluator");
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		Status.clear();
+		const bool_t bWorkingDirectoryReady = WorkingDirectory.Initialize(
+			CProjectDataRoot::Get().parent_path() / L"Client" / L"Default",
+			Status);
+		runner.Require(bWorkingDirectoryReady,
+			"DimensionMaster R Uses The Canonical Client Working Directory");
+		if (!bWorkingDirectoryReady)
+			return;
+
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		Status.clear();
+		const bool_t bEngineReady = EngineScope.Initialize(Status);
+		if (!bEngineReady)
+			std::cout << "[DM-R] WARP initialization=" << Status << '\n';
+		runner.Require(bEngineReady,
+			"DimensionMaster R Initializes The Existing Hidden WARP Renderer");
+		if (!bEngineReady)
+			return;
+
+		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		const auto RenderWitness = [&](const EFFECT_ELEMENT_DESC& Element,
+			const f32_t fSampleTime, const uint32_t iExpectedProfile,
+			const uint32_t iExpectedTextureMask,
+			const size_t iExpectedParticles, const std::string_view strLabel)
+		{
+			EFFECT_DOCUMENT_DESC Isolated = Document;
+			Isolated.strEffectAssetId += ".harness." + std::string(strLabel);
+			Isolated.ModelCues.clear();
+			Isolated.Elements.assign(1u, Element);
+			CEffectPlayback Playback;
+			CEffectDocumentRenderer Renderer(Device, Context);
+			std::string Error;
+			const bool_t bStaged = SUCCEEDED(Renderer.Initialize()) &&
+				Playback.Stage_Document(Isolated, Error) &&
+				Renderer.Stage_Document(Isolated, Error);
+			if (!bStaged)
+			{
+				std::cout << "[DM-R-RENDER] label=" << strLabel <<
+					" stage=" << Error << '\n';
+				return false;
+			}
+			Playback.Seek(fSampleTime, Identity);
+			const size_t iParticles = Playback.Get_Frame().Particles.size();
+			HRESULT hRender = E_FAIL;
+			if (EngineScope.Begin_Frame(Error))
+			{
+				hRender = Renderer.Render(Playback.Get_Frame());
+				Context->Flush();
+			}
+			const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+				Renderer.Get_LastRenderSubmissionStats();
+			const auto Occurrence = std::ranges::find_if(Stats.Occurrences,
+				[&Element](const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row)
+				{
+					return Row.strElementId == Element.strElementId;
+				});
+			const bool_t bExact = iParticles == iExpectedParticles &&
+				SUCCEEDED(hRender) && S_OK == Device->GetDeviceRemovedReason() &&
+				Stats.bCompleted && Stats.bCommitted &&
+				Occurrence != Stats.Occurrences.end() &&
+				Occurrence->iSourceMaterialProfile == iExpectedProfile &&
+				Occurrence->iSourceTextureMask == iExpectedTextureMask &&
+				0u < Occurrence->iSubmitted &&
+				Occurrence->iIssuedDrawCallCount > 0u &&
+				!Occurrence->bSourceMaterialFallbackBlocked;
+			std::cout << "[DM-R-RENDER] label=" << strLabel <<
+				" particles=" << iParticles << " profile=" <<
+				(Occurrence == Stats.Occurrences.end() ? UINT32_MAX :
+					Occurrence->iSourceMaterialProfile) << " mask=0x" <<
+				std::hex << (Occurrence == Stats.Occurrences.end() ? 0u :
+					Occurrence->iSourceTextureMask) << std::dec << " submitted=" <<
+				(Occurrence == Stats.Occurrences.end() ? 0u :
+					Occurrence->iSubmitted) << " status=" <<
+				(bExact ? "COMMITTED" : Error) << '\n';
+			return bExact;
+		};
+
+		const bool_t bParticleMasterRendered = bParticleMasterExact &&
+			RenderWitness(*ParticleMasterRows.front(),
+				PARTICLE_MASTER_TIMES.front() + 1.f / 60.f,
+				19u, 0x39u, 4u, "particle-master-map-c");
+		runner.Require(bParticleMasterRendered,
+			"DimensionMaster R ParticleMaster Commits Profile 19 With Map-C Warp E F Lanes");
+		const bool_t bSpriteWaveRendered = bSlashRowsExact &&
+			RenderWitness(*SlashRows.back(), SLASHES.back().fTimeSeconds +
+				1.f / 60.f, 20u, 0x3fu, 3u, "spritewave-third-slash");
+		runner.Require(bSpriteWaveRendered,
+			"DimensionMaster R Third Slash Commits Three Meshes Through Profile 20 Maintex Dissolve Emissive Sphere Mask");
+		const bool_t bFilenameOnlyGeneric = bFilenameOnlyControlReady &&
+			RenderWitness(FilenameOnlyControl,
+				PARTICLE_MASTER_TIMES.front() + 1.f / 60.f,
+				6u, 0u, 4u, "filename-only-square-control");
+		runner.Require(bFilenameOnlyGeneric,
+			"DimensionMaster Generic FluidTile MirNoise Square Control Remains On Grouped Profile 6");
+		CEffectDocumentRenderer::Clear_Prepared_Catalog();
+	}
+
+	void Test_BasicAttackExplicitCommandResendGate(TEST_RUNNER& runner)
+	{
+		using Client::CBASIC_ATTACK_RESEND_GATE;
+		using Client::CBASIC_ATTACK_REPEAT_SCHEDULER;
+		using CLOCK = std::chrono::steady_clock;
+		using namespace std::chrono_literals;
+
+		CBASIC_ATTACK_RESEND_GATE gate;
+		runner.Require(
+			!gate.Observe_Button(true),
+			"Fresh LMB Press Is Armed Before Explicit Command");
+
+		gate.Suppress_UntilRelease();
+		runner.Require(
+			gate.Observe_Button(true) && gate.Observe_Button(true),
+			"Explicit Command Suppresses Every Held LMB Auto-Resend");
+		runner.Require(
+			!gate.Observe_Button(false) && !gate.Observe_Button(true),
+			"Physical LMB Release Then Repress Rearms Basic Attack");
+
+		gate.Suppress_UntilRelease();
+		gate.Reset();
+		runner.Require(
+			!gate.Observe_Button(true),
+			"Controller Reset Clears Basic Attack Resend Suppression");
+
+		CBASIC_ATTACK_REPEAT_SCHEDULER tap;
+		const CLOCK::time_point start{};
+		const bool_t tapSubmittedImmediately =
+			tap.Should_Submit(true, true, start);
+		const bool_t tapDidNotAutoRepeat =
+			!tap.Should_Submit(true, true, start + 179ms);
+		const bool_t tapReleasedWithoutSubmission =
+			!tap.Should_Submit(false, true, start + 179ms);
+		runner.Require(
+			tapSubmittedImmediately && tapDidNotAutoRepeat &&
+			tapReleasedWithoutSubmission,
+			"Basic Attack Tap Submits BA1 Once Before Initial Hold Delay");
+
+		const bool_t repeatedClickSubmittedImmediately =
+			tap.Should_Submit(true, true, start + 180ms);
+		runner.Require(
+			repeatedClickSubmittedImmediately,
+			"Physical Release Then Repeated Click Submits Immediately");
+
+		CBASIC_ATTACK_REPEAT_SCHEDULER held;
+		const bool_t heldInitial = held.Should_Submit(true, true, start);
+		const bool_t heldWaited =
+			!held.Should_Submit(true, true, start + 179ms);
+		const bool_t heldFirstRepeat =
+			held.Should_Submit(true, true, start + 180ms);
+		const bool_t heldRepeatWaited =
+			!held.Should_Submit(true, true, start + 279ms);
+		const bool_t heldSecondRepeat =
+			held.Should_Submit(true, true, start + 280ms);
+		runner.Require(
+			heldInitial && heldWaited && heldFirstRepeat &&
+			heldRepeatWaited && heldSecondRepeat,
+			"Held LMB Uses 180ms Initial Delay Then 100ms Continuations");
+
+		CBASIC_ATTACK_REPEAT_SCHEDULER blocked;
+		const bool_t blockedInitial = blocked.Should_Submit(true, true, start);
+		const bool_t filteredFrameDidNotSubmit =
+			!blocked.Should_Submit(true, false, start + 100ms);
+		const bool_t unblockDidNotLookLikeRepress =
+			!blocked.Should_Submit(true, true, start + 110ms);
+		const bool_t rawHoldStillReachedRepeat =
+			blocked.Should_Submit(true, true, start + 180ms);
+		runner.Require(
+			blockedInitial && filteredFrameDidNotSubmit &&
+			unblockDidNotLookLikeRepress && rawHoldStillReachedRepeat,
+			"UI Block Preserves Raw Physical Hold Without False Release Or Repress");
+	}
+
 	void Test_EffectExactSourceSemantics(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -9992,6 +11106,7 @@ namespace
 		runner.Require(basisExact,
 			"Effect Source Position And EPAL Z Use UE3 To Client Basis Once");
 
+		Test_EffectSourceRotationTrim(runner);
 		EFFECT_DOCUMENT_DESC cylinderSpinDocument;
 		cylinderSpinDocument.strEffectAssetId =
 			"effect.cylinder.spin.source.harness";
@@ -11469,117 +12584,52 @@ namespace
 				L"Client" / L"Bin" / L"Resources";
 		resourceRootEnvironment.Set(resourceRoot.c_str());
 
-		const std::filesystem::path baselinePath = CProjectDataRoot::Resolve(
-			L"Effects/Authored/effect.dimensionmaster.skill.2050500."
-			L"authored-baseline.effect.json");
-		const std::filesystem::path sourcePath = CProjectDataRoot::Resolve(
-			L"Effects/Authored/effect.dimensionmaster.skill.2050500.effect.json");
 		std::string status;
-		EFFECT_DOCUMENT_DESC baseline;
-		EFFECT_DOCUMENT_DESC source;
-		const bool_t baselineLoaded = !baselinePath.empty() &&
-			CEffectDocumentCodec::Load(baselinePath, baseline, status);
-		if (!baselineLoaded)
-		{
-			std::cout << "[DETAIL] DimensionMaster T baseline load: " <<
-				status << '\n';
-		}
-		status.clear();
-		const bool_t sourceLoaded = !sourcePath.empty() &&
-			CEffectDocumentCodec::Load(sourcePath, source, status);
-		if (!sourceLoaded)
-		{
-			std::cout << "[DETAIL] DimensionMaster T summon source load: " <<
-				status << '\n';
-		}
-
-		const std::string baselineCanonicalBefore = baselineLoaded ?
-			CEffectDocumentCodec::Serialize(baseline) : std::string{};
-		const std::string sourceCanonicalBefore = sourceLoaded ?
-			CEffectDocumentCodec::Serialize(source) : std::string{};
-		const EFFECT_MODEL_CUE_DESC* pSummon = sourceLoaded &&
-			source.ModelCues.size() == 1u ? &source.ModelCues.front() : nullptr;
-		const bool_t inputsExact = baselineLoaded && sourceLoaded &&
-			baseline.strEffectAssetId ==
-				"effect.dimensionmaster.skill.2050500.authored-baseline" &&
-			baseline.Elements.size() == 35u && baseline.ModelCues.empty() &&
-			source.strEffectAssetId == "effect.dimensionmaster.skill.2050500" &&
-			nullptr != pSummon && pSummon->strCueId == "dimension_summon" &&
-			pSummon->strModelAssetId ==
-				"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel" &&
-			pSummon->strClipName ==
-				"sk_swp_dms_00_sk_sk_dimensionprison";
-		runner.Require(inputsExact,
-			"Track C DimensionMaster T Loads Exact Baseline And Summon Migration Inputs");
-
-		EFFECT_DOCUMENT_DESC candidate;
-		if (inputsExact)
-		{
-			candidate = baseline;
-			candidate.strEffectAssetId =
-				"effect.dimensionmaster.skill.2050500.unified";
-			candidate.strDisplayName = "DimensionMaster T Unified";
-			candidate.ModelCues.assign(1u, *pSummon);
-		}
-
-		status.clear();
-		const bool_t candidateDrawable = inputsExact &&
-			CEffectDocumentCodec::Validate_Drawable(candidate, status);
-		if (!candidateDrawable && inputsExact)
-		{
-			std::cout << "[DETAIL] DimensionMaster T unified validation: " <<
-				status << '\n';
-		}
-		const std::string candidateCanonical = candidateDrawable ?
-			CEffectDocumentCodec::Serialize(candidate) : std::string{};
-		EFFECT_DOCUMENT_DESC roundTrip;
-		status.clear();
-		const bool_t canonicalRoundTrip = candidateDrawable &&
-			CEffectDocumentCodec::Parse(candidateCanonical, roundTrip, status) &&
-			CEffectDocumentCodec::Validate_Drawable(roundTrip, status) &&
-			CEffectDocumentCodec::Serialize(roundTrip) == candidateCanonical;
 		const std::filesystem::path materializedPath = CProjectDataRoot::Resolve(
 			L"Effects/Authored/effect.dimensionmaster.skill.2050500."
 			L"unified.effect.json");
 		EFFECT_DOCUMENT_DESC materialized;
 		status.clear();
-		const bool_t materializedExact = canonicalRoundTrip &&
-			!materializedPath.empty() &&
+		const bool_t materializedLoaded = !materializedPath.empty() &&
 			CEffectDocumentCodec::Load(materializedPath, materialized, status) &&
-			CEffectDocumentCodec::Validate_Drawable(materialized, status) &&
-			CEffectDocumentCodec::Serialize(materialized) == candidateCanonical;
+			CEffectDocumentCodec::Validate_Drawable(materialized, status);
+		const std::string materializedCanonical = materializedLoaded ?
+			CEffectDocumentCodec::Serialize(materialized) : std::string{};
+		EFFECT_DOCUMENT_DESC materializedRoundTrip;
+		status.clear();
+		const bool_t materializedExact = materializedLoaded &&
+			CEffectDocumentCodec::Parse(materializedCanonical,
+				materializedRoundTrip, status) &&
+			CEffectDocumentCodec::Validate_Drawable(materializedRoundTrip, status) &&
+			CEffectDocumentCodec::Serialize(materializedRoundTrip) ==
+				materializedCanonical;
 		runner.Require(materializedExact,
-			"Track C DimensionMaster T Materialized Unified Document Is Exact Canonical Candidate");
-		if (!materializedExact && canonicalRoundTrip)
+			"Track C DimensionMaster T Materialized Unified Document Round Trips Canonically");
+		if (!materializedExact && materializedLoaded)
 		{
 			std::cout << "[DETAIL] DimensionMaster T materialized unified: " <<
 				status << " path=" << materializedPath.string() << '\n';
 		}
 
-		std::vector<std::string> baselineResources;
 		std::vector<std::string> unifiedResources;
-		if (inputsExact)
+		if (materializedExact)
 			CEffectDocumentCodec::Collect_ResourceAssetIds(
-				baseline, baselineResources);
-		if (canonicalRoundTrip)
-			CEffectDocumentCodec::Collect_ResourceAssetIds(
-				roundTrip, unifiedResources);
+				materializedRoundTrip, unifiedResources);
 		const auto SortUnique = [](std::vector<std::string>& Values)
 		{
 			std::sort(Values.begin(), Values.end());
 			Values.erase(std::unique(Values.begin(), Values.end()), Values.end());
 		};
-		SortUnique(baselineResources);
 		SortUnique(unifiedResources);
-		std::vector<std::string> expectedUnifiedResources = baselineResources;
-		if (nullptr != pSummon)
-			expectedUnifiedResources.push_back(pSummon->strModelAssetId);
-		SortUnique(expectedUnifiedResources);
+		constexpr std::string_view SUMMON_MODEL_ASSET =
+			"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel";
+		const bool_t hasSummonDependency = std::ranges::find(
+			unifiedResources, SUMMON_MODEL_ASSET) != unifiedResources.end();
 
 		CEffectPlayback committedPlayback;
 		status.clear();
-		const bool_t playbackStaged = canonicalRoundTrip &&
-			committedPlayback.Stage_Document(roundTrip, status);
+		const bool_t playbackStaged = materializedExact &&
+			committedPlayback.Stage_Document(materializedRoundTrip, status);
 		float4x4_t root{};
 		XMStoreFloat4x4(&root, XMMatrixIdentity());
 		if (playbackStaged)
@@ -11588,23 +12638,31 @@ namespace
 			Snapshot_EffectFrame(committedPlayback.Get_Frame()) : std::string{};
 		const f32_t committedDuration = playbackStaged ?
 			committedPlayback.Get_DurationSeconds() : 0.f;
-		const bool_t unifiedContract = canonicalRoundTrip && playbackStaged &&
-			roundTrip.strEffectAssetId ==
+		const bool_t unifiedContract = materializedExact && playbackStaged &&
+			materializedRoundTrip.strEffectAssetId ==
 				"effect.dimensionmaster.skill.2050500.unified" &&
-			roundTrip.Elements.size() == 35u &&
-			roundTrip.ModelCues.size() == 1u &&
-			roundTrip.ModelCues.front().strCueId == "dimension_summon" &&
-			unifiedResources == expectedUnifiedResources &&
+			!materializedRoundTrip.Elements.empty() &&
+			materializedRoundTrip.ModelCues.size() == 1u &&
+			materializedRoundTrip.ModelCues.front().bVisible &&
+			materializedRoundTrip.ModelCues.front().strCueId ==
+				"dimension_summon" &&
+			materializedRoundTrip.ModelCues.front().strModelAssetId ==
+				SUMMON_MODEL_ASSET &&
+			materializedRoundTrip.ModelCues.front().strClipName ==
+				"sk_swp_dms_00_sk_sk_dimensionprison" &&
+			materializedRoundTrip.ModelCues.front().eAlphaMode ==
+				EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE &&
+			hasSummonDependency &&
 			committedDuration >=
-				roundTrip.ModelCues.front().fStartDelaySeconds +
-				roundTrip.ModelCues.front().fDurationSeconds;
+				materializedRoundTrip.ModelCues.front().fStartDelaySeconds +
+				materializedRoundTrip.ModelCues.front().fDurationSeconds;
 		runner.Require(unifiedContract,
 			"Track C DimensionMaster T Builds One Canonical Unified Drawable With Exact Resources And Playback");
-		if (!unifiedContract && inputsExact)
+		if (!unifiedContract && materializedExact)
 		{
 			std::cout << "[DETAIL] DimensionMaster T unified playback: " <<
-				status << " resources=" << unifiedResources.size() << '/' <<
-				expectedUnifiedResources.size() << " duration=" <<
+				status << " resources=" << unifiedResources.size() <<
+				" summonDependency=" << hasSummonDependency << " duration=" <<
 				committedDuration << '\n';
 		}
 
@@ -11618,32 +12676,30 @@ namespace
 			const bool_t playbackRejected =
 				!committedPlayback.Stage_Document(Invalid, playbackStatus);
 			return validationRejected && playbackRejected && playbackStaged &&
-				candidateCanonical == CEffectDocumentCodec::Serialize(roundTrip) &&
+				materializedCanonical ==
+					CEffectDocumentCodec::Serialize(materializedRoundTrip) &&
 				committedFrame ==
 					Snapshot_EffectFrame(committedPlayback.Get_Frame()) &&
-				committedDuration == committedPlayback.Get_DurationSeconds() &&
-				baselineCanonicalBefore ==
-					CEffectDocumentCodec::Serialize(baseline) &&
-				sourceCanonicalBefore == CEffectDocumentCodec::Serialize(source);
+				committedDuration == committedPlayback.Get_DurationSeconds();
 		};
 
-		EFFECT_DOCUMENT_DESC duplicateCue = roundTrip;
-		if (canonicalRoundTrip)
+		EFFECT_DOCUMENT_DESC duplicateCue = materializedRoundTrip;
+		if (materializedExact)
 			duplicateCue.ModelCues.push_back(duplicateCue.ModelCues.front());
-		runner.Require(canonicalRoundTrip &&
+		runner.Require(materializedExact &&
 			RejectsAndPreserves(std::move(duplicateCue)),
 			"Track C DimensionMaster T Duplicate Cue Rejection Preserves Committed Playback And Documents");
 
-		EFFECT_DOCUMENT_DESC missingSummonWModel = roundTrip;
-		if (canonicalRoundTrip)
+		EFFECT_DOCUMENT_DESC missingSummonWModel = materializedRoundTrip;
+		if (materializedExact)
 			missingSummonWModel.ModelCues.front().strModelAssetId.clear();
-		runner.Require(canonicalRoundTrip &&
+		runner.Require(materializedExact &&
 			RejectsAndPreserves(std::move(missingSummonWModel)),
 			"Track C DimensionMaster T Missing Summon WModel Rejection Preserves Committed Playback And Documents");
-		runner.Require(inputsExact &&
-			baselineCanonicalBefore == CEffectDocumentCodec::Serialize(baseline) &&
-			sourceCanonicalBefore == CEffectDocumentCodec::Serialize(source),
-			"Track C DimensionMaster T Migration Leaves Both Input Documents Unchanged");
+		runner.Require(materializedExact &&
+			materializedCanonical ==
+				CEffectDocumentCodec::Serialize(materializedRoundTrip),
+			"Track C DimensionMaster T Rejection Checks Leave The Materialized Document Unchanged");
 		resourceRootEnvironment.Restore();
 	}
 
@@ -11688,7 +12744,7 @@ namespace
 		const bool_t bExactComposite = bDocumentLoaded &&
 			Unified.strEffectAssetId ==
 				"effect.dimensionmaster.skill.2050500.unified" &&
-			iParticleCount == 81u && iDecalCount == 2u &&
+			!Unified.Elements.empty() &&
 			nullptr != pSummon && pSummon->bVisible &&
 			pSummon->strCueId == "dimension_summon" &&
 			pSummon->strModelAssetId ==
@@ -11703,7 +12759,7 @@ namespace
 				iDecalCount << " modelCue=" << Unified.ModelCues.size() << '\n';
 		}
 		runner.Require(bExactComposite,
-			"DimensionMaster T Isolation Loads The Exact ModelCue1 Particle81 Decal2 Composite");
+			"DimensionMaster T Isolation Loads One Character-Surface Summon ModelCue");
 		if (!bExactComposite)
 			return;
 
@@ -11900,41 +12956,62 @@ namespace
 
 		EFFECT_DOCUMENT_DESC ModelCueOnly = Unified;
 		ModelCueOnly.Elements.clear();
-		EFFECT_DOCUMENT_DESC OpaqueModelCueOnly = ModelCueOnly;
-		OpaqueModelCueOnly.ModelCues.front().eAlphaMode =
+		EFFECT_DOCUMENT_DESC GenericMaskedContrastModelCueOnly = ModelCueOnly;
+		GenericMaskedContrastModelCueOnly.strEffectAssetId =
+			"effect.harness.dimensionmaster.skill.2050500.generic-masked";
+		EFFECT_DOCUMENT_DESC OpaqueContrastModelCueOnly = ModelCueOnly;
+		OpaqueContrastModelCueOnly.ModelCues.front().eAlphaMode =
 			EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE;
 		EFFECT_DOCUMENT_DESC ElementsOnly = Unified;
 		ElementsOnly.ModelCues.clear();
 		CEffectPlayback ModelCuePlayback;
-		CEffectPlayback OpaqueModelCuePlayback;
+		CEffectPlayback GenericMaskedContrastModelCuePlayback;
+		CEffectPlayback OpaqueContrastModelCuePlayback;
 		CEffectPlayback ElementsPlayback;
+		CEffectPlayback FullPlayAllPlayback;
 		CEffectDocumentRenderer ModelCueRenderer(Device, Context);
-		CEffectDocumentRenderer OpaqueModelCueRenderer(Device, Context);
+		CEffectDocumentRenderer GenericMaskedContrastModelCueRenderer(
+			Device, Context);
+		CEffectDocumentRenderer OpaqueContrastModelCueRenderer(Device, Context);
 		CEffectDocumentRenderer ElementsRenderer(Device, Context);
+		CEffectDocumentRenderer FullPlayAllRenderer(Device, Context);
 		Status.clear();
 		const bool_t bIsolationStaged =
 			SUCCEEDED(ModelCueRenderer.Initialize()) &&
-			SUCCEEDED(OpaqueModelCueRenderer.Initialize()) &&
+			SUCCEEDED(GenericMaskedContrastModelCueRenderer.Initialize()) &&
+			SUCCEEDED(OpaqueContrastModelCueRenderer.Initialize()) &&
 			SUCCEEDED(ElementsRenderer.Initialize()) &&
+			SUCCEEDED(FullPlayAllRenderer.Initialize()) &&
 			ModelCuePlayback.Stage_Document(ModelCueOnly, Status) &&
 			ModelCueRenderer.Stage_Document(ModelCueOnly, Status) &&
-			OpaqueModelCuePlayback.Stage_Document(OpaqueModelCueOnly, Status) &&
-			OpaqueModelCueRenderer.Stage_Document(OpaqueModelCueOnly, Status) &&
+			GenericMaskedContrastModelCuePlayback.Stage_Document(
+				GenericMaskedContrastModelCueOnly, Status) &&
+			GenericMaskedContrastModelCueRenderer.Stage_Document(
+				GenericMaskedContrastModelCueOnly, Status) &&
+			OpaqueContrastModelCuePlayback.Stage_Document(
+				OpaqueContrastModelCueOnly, Status) &&
+			OpaqueContrastModelCueRenderer.Stage_Document(
+				OpaqueContrastModelCueOnly, Status) &&
 			ElementsPlayback.Stage_Document(ElementsOnly, Status) &&
-			ElementsRenderer.Stage_Document(ElementsOnly, Status);
+			ElementsRenderer.Stage_Document(ElementsOnly, Status) &&
+			FullPlayAllPlayback.Stage_Document(Unified, Status) &&
+			FullPlayAllRenderer.Stage_Document(Unified, Status);
 		if (!bIsolationStaged)
 			std::cout << "[DETAIL] DimensionMaster T isolation stage: " <<
 				Status << '\n';
 		runner.Require(bIsolationStaged,
-			"DimensionMaster T Stages ModelCue-Only And Elements-Only Through The Ordinary Runtime");
+			"DimensionMaster T Stages ModelCue-Only Elements-Only And Full Play-All Through The Ordinary Runtime");
 		if (!bIsolationStaged)
 			return;
 
 		float4x4_t Identity{};
 		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
 		ModelCuePlayback.Seek(SAMPLE_TIME_SECONDS, Identity);
-		OpaqueModelCuePlayback.Seek(SAMPLE_TIME_SECONDS, Identity);
+		GenericMaskedContrastModelCuePlayback.Seek(
+			SAMPLE_TIME_SECONDS, Identity);
+		OpaqueContrastModelCuePlayback.Seek(SAMPLE_TIME_SECONDS, Identity);
 		ElementsPlayback.Seek(SAMPLE_TIME_SECONDS, Identity);
+		FullPlayAllPlayback.Seek(SAMPLE_TIME_SECONDS, Identity);
 
 		struct COLOR_FOOTPRINT final
 		{
@@ -11945,11 +13022,15 @@ namespace
 			uint32_t iMaxY = 0u;
 			bool_t bTouchesFrameBorder = false;
 			ComPtr<ID3D11PixelShader> PixelShader;
+			D3D11_QUERY_DATA_PIPELINE_STATISTICS Pipeline{};
 		};
 		const auto CaptureColorFootprint = [&Device, &Context](
 			COLOR_FOOTPRINT& OutFootprint, std::string& strOutError)
 		{
+			const D3D11_QUERY_DATA_PIPELINE_STATISTICS Pipeline =
+				OutFootprint.Pipeline;
 			OutFootprint = {};
+			OutFootprint.Pipeline = Pipeline;
 			ComPtr<ID3D11RenderTargetView> TargetView;
 			Context->OMGetRenderTargets(1u, TargetView.GetAddressOf(), nullptr);
 			ComPtr<ID3D11Resource> TargetResource;
@@ -12027,15 +13108,48 @@ namespace
 		{
 			std::string Error;
 			HRESULT hRender = E_FAIL;
-			if (EngineScope.Begin_Frame(Error))
+			D3D11_QUERY_DESC QueryDesc{};
+			QueryDesc.Query = D3D11_QUERY_PIPELINE_STATISTICS;
+			ComPtr<ID3D11Query> PipelineQuery;
+			const bool_t bQueryCreated = SUCCEEDED(
+				Device->CreateQuery(&QueryDesc, &PipelineQuery)) &&
+				nullptr != PipelineQuery;
+			if (!bQueryCreated)
+				Error = "DimensionMaster T pipeline query creation failed.";
+			if (bQueryCreated && EngineScope.Begin_Frame(Error))
 			{
+				Context->Begin(PipelineQuery.Get());
 				hRender = Renderer.Render(Frame);
+				Context->End(PipelineQuery.Get());
 				Context->Flush();
+			}
+			bool_t bPipelineCaptured = false;
+			if (bQueryCreated && SUCCEEDED(hRender))
+			{
+				const ULONGLONG Deadline = GetTickCount64() + 5000u;
+				for (;;)
+				{
+					const HRESULT hQuery = Context->GetData(PipelineQuery.Get(),
+						&OutFootprint.Pipeline,
+						sizeof(OutFootprint.Pipeline), 0u);
+					if (S_OK == hQuery)
+					{
+						bPipelineCaptured = true;
+						break;
+					}
+					if (FAILED(hQuery) || GetTickCount64() >= Deadline)
+					{
+						Error = "DimensionMaster T pipeline query failed or timed out.";
+						break;
+					}
+					SwitchToThread();
+				}
 			}
 			const HRESULT hDevice = Device->GetDeviceRemovedReason();
 			const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
 				Renderer.Get_LastRenderSubmissionStats();
-			const bool_t bCaptured = SUCCEEDED(hRender) && S_OK == hDevice &&
+			const bool_t bCaptured = bPipelineCaptured &&
+				SUCCEEDED(hRender) && S_OK == hDevice &&
 				Stats.bCompleted && Stats.bCommitted &&
 				CaptureColorFootprint(OutFootprint, Error);
 			if (bCaptured)
@@ -12047,48 +13161,95 @@ namespace
 				',' << OutFootprint.iMinY << '-' << OutFootprint.iMaxX << ',' <<
 				OutFootprint.iMaxY << " border=" <<
 				OutFootprint.bTouchesFrameBorder << " status=" <<
-				(bCaptured ? "COMMITTED" : Error) << '\n';
+				(bCaptured ? "COMMITTED" : Error) << " iaPrimitives=" <<
+				OutFootprint.Pipeline.IAPrimitives << " psInvocations=" <<
+				OutFootprint.Pipeline.PSInvocations << '\n';
 			return bCaptured;
 		};
 
 		COLOR_FOOTPRINT ModelCueFootprint;
-		COLOR_FOOTPRINT OpaqueModelCueFootprint;
+		COLOR_FOOTPRINT GenericMaskedContrastModelCueFootprint;
+		COLOR_FOOTPRINT OpaqueContrastModelCueFootprint;
 		COLOR_FOOTPRINT ElementsFootprint;
+		COLOR_FOOTPRINT FullPlayAllFootprint;
 		const bool_t bModelCueRendered = RenderIsolated(
 			"MODEL_CUE", ModelCueRenderer, ModelCuePlayback.Get_Frame(),
 			ModelCueFootprint);
-		const bool_t bOpaqueModelCueRendered = RenderIsolated(
-			"MODEL_CUE_OPAQUE_CONTRAST", OpaqueModelCueRenderer,
-			OpaqueModelCuePlayback.Get_Frame(), OpaqueModelCueFootprint);
+		const bool_t bGenericMaskedContrastModelCueRendered = RenderIsolated(
+			"MODEL_CUE_GENERIC_MASKED_CONTRAST",
+			GenericMaskedContrastModelCueRenderer,
+			GenericMaskedContrastModelCuePlayback.Get_Frame(),
+			GenericMaskedContrastModelCueFootprint);
+		const bool_t bOpaqueContrastModelCueRendered = RenderIsolated(
+			"MODEL_CUE_OPAQUE_CONTRAST", OpaqueContrastModelCueRenderer,
+			OpaqueContrastModelCuePlayback.Get_Frame(),
+			OpaqueContrastModelCueFootprint);
 		const bool_t bElementsRendered = RenderIsolated(
 			"ELEMENTS", ElementsRenderer, ElementsPlayback.Get_Frame(),
 			ElementsFootprint);
+		const bool_t bFullPlayAllRendered = RenderIsolated(
+			"FULL_PLAY_ALL", FullPlayAllRenderer,
+			FullPlayAllPlayback.Get_Frame(), FullPlayAllFootprint);
 		const EFFECT_GPU_RENDER_SUBMISSION_STATS& ModelCueStats =
 			ModelCueRenderer.Get_LastRenderSubmissionStats();
 		const EFFECT_GPU_RENDER_SUBMISSION_STATS& ElementsStats =
 			ElementsRenderer.Get_LastRenderSubmissionStats();
+		const EFFECT_GPU_RENDER_SUBMISSION_STATS& FullPlayAllStats =
+			FullPlayAllRenderer.Get_LastRenderSubmissionStats();
 		uint64_t iModelCueConfigured = 0u;
 		uint64_t iElementSubmitted = 0u;
 		for (const EFFECT_GPU_RENDER_FAMILY_STATS& Family : ModelCueStats.Families)
 			iModelCueConfigured += Family.iConfigured;
 		for (const EFFECT_GPU_RENDER_FAMILY_STATS& Family : ElementsStats.Families)
 			iElementSubmitted += Family.iSubmitted;
+		uint64_t iFullPlayAllElementSubmitted = 0u;
+		for (const EFFECT_GPU_RENDER_FAMILY_STATS& Family :
+			FullPlayAllStats.Families)
+		{
+			iFullPlayAllElementSubmitted += Family.iSubmitted;
+		}
 		const bool_t bLanesSeparated = bModelCueRendered && bElementsRendered &&
 			0u < ModelCueFootprint.iPixelCount &&
 			0u == ElementsFootprint.iPixelCount &&
 			0u == iModelCueConfigured && 0u == iElementSubmitted &&
 			ModelCueStats.Occurrences.empty() &&
-			ElementsStats.Occurrences.size() == 63u;
+			ElementsStats.Occurrences.size() == ElementsOnly.Elements.size();
 		runner.Require(bLanesSeparated,
 			"DimensionMaster T Initial 0s Isolation Proves The Visible Shape Is ModelCue-Owned And Elements Are Quiescent");
-		const bool_t bExactMaskCoverage = bOpaqueModelCueRendered &&
+		const bool_t bFullPlayAllSingleSubmit = bFullPlayAllRendered &&
+			FullPlayAllFootprint.iPixelCount == ModelCueFootprint.iPixelCount &&
+			FullPlayAllFootprint.iMinX == ModelCueFootprint.iMinX &&
+			FullPlayAllFootprint.iMinY == ModelCueFootprint.iMinY &&
+			FullPlayAllFootprint.iMaxX == ModelCueFootprint.iMaxX &&
+			FullPlayAllFootprint.iMaxY == ModelCueFootprint.iMaxY &&
+			FullPlayAllFootprint.Pipeline.IAVertices ==
+				ModelCueFootprint.Pipeline.IAVertices &&
+			FullPlayAllFootprint.Pipeline.IAPrimitives ==
+				ModelCueFootprint.Pipeline.IAPrimitives &&
+			FullPlayAllFootprint.Pipeline.VSInvocations ==
+				ModelCueFootprint.Pipeline.VSInvocations &&
+			FullPlayAllFootprint.Pipeline.PSInvocations ==
+				ModelCueFootprint.Pipeline.PSInvocations &&
+			0u == iFullPlayAllElementSubmitted &&
+			FullPlayAllStats.Occurrences.size() == Unified.Elements.size();
+		runner.Require(bFullPlayAllSingleSubmit,
+			"DimensionMaster T Full Play-All Matches One ModelCue Draw Without A Second Preview Or Element Submit At 0s");
+		const bool_t bCharacterSurfaceCutout =
+			bGenericMaskedContrastModelCueRendered &&
+			bOpaqueContrastModelCueRendered &&
 			nullptr != ModelCueFootprint.PixelShader &&
-			nullptr != OpaqueModelCueFootprint.PixelShader &&
+			nullptr != GenericMaskedContrastModelCueFootprint.PixelShader &&
+			nullptr != OpaqueContrastModelCueFootprint.PixelShader &&
 			ModelCueFootprint.PixelShader.Get() !=
-				OpaqueModelCueFootprint.PixelShader.Get() &&
-			OpaqueModelCueFootprint.iPixelCount > ModelCueFootprint.iPixelCount;
-		runner.Require(bExactMaskCoverage,
-			"DimensionMaster T Exact 0.333 MASKED Pass Has Distinct PS And Lower Coverage Than OPAQUE Contrast");
+				GenericMaskedContrastModelCueFootprint.PixelShader.Get() &&
+			ModelCueFootprint.PixelShader.Get() !=
+				OpaqueContrastModelCueFootprint.PixelShader.Get() &&
+			ModelCueFootprint.iPixelCount <=
+				GenericMaskedContrastModelCueFootprint.iPixelCount &&
+			ModelCueFootprint.iPixelCount <
+				OpaqueContrastModelCueFootprint.iPixelCount;
+		runner.Require(bCharacterSurfaceCutout,
+			"DimensionMaster T Uses Its Exact Source Mask Pass Instead Of The Generic Character Or Opaque Pass");
 
 		std::string strBorderOwner = "NONE_AFTER_RETIME";
 		if (ModelCueFootprint.bTouchesFrameBorder &&
@@ -12111,6 +13272,118 @@ namespace
 			fUnsupportedMaterialCueTime << '\n';
 		runner.Require(strBorderOwner == "MODEL_CUE",
 			"DimensionMaster T Initial 0s Border Occupancy Is Owned Only By The ModelCue Lane");
+
+		constexpr std::string_view DIMENSIONMASTER_D_SLICE_ID =
+			"authored.source-particle.cd12d28ee975a182b849dae0";
+		const std::filesystem::path DimensionMasterDPath =
+			CProjectDataRoot::Resolve(
+				L"Effects/Authored/effect.dimensionmaster.skill.2050240."
+				L"clip2.unified.effect.json");
+		EFFECT_DOCUMENT_DESC DimensionMasterD;
+		Status.clear();
+		const bool_t bDimensionMasterDLoaded = !DimensionMasterDPath.empty() &&
+			CEffectDocumentCodec::Load(DimensionMasterDPath,
+				DimensionMasterD, Status);
+		const auto DimensionMasterDTarget = std::ranges::find_if(
+			DimensionMasterD.Elements,
+			[](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == DIMENSIONMASTER_D_SLICE_ID;
+			});
+		EFFECT_DOCUMENT_DESC DimensionMasterDExact = DimensionMasterD;
+		DimensionMasterDExact.ModelCues.clear();
+		DimensionMasterDExact.Elements.erase(std::remove_if(
+			DimensionMasterDExact.Elements.begin(),
+			DimensionMasterDExact.Elements.end(),
+			[](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId != DIMENSIONMASTER_D_SLICE_ID;
+			}), DimensionMasterDExact.Elements.end());
+		CEffectPlayback DimensionMasterDPlayback;
+		CEffectDocumentRenderer DimensionMasterDRenderer(Device, Context);
+		Status.clear();
+		const bool_t bDimensionMasterDStaged = bDimensionMasterDLoaded &&
+			DimensionMasterDTarget != DimensionMasterD.Elements.end() &&
+			DimensionMasterDExact.Elements.size() == 1u &&
+			SUCCEEDED(DimensionMasterDRenderer.Initialize()) &&
+			DimensionMasterDPlayback.Stage_Document(
+				DimensionMasterDExact, Status) &&
+			DimensionMasterDRenderer.Stage_Document(
+				DimensionMasterDExact, Status);
+		if (bDimensionMasterDStaged)
+		{
+			DimensionMasterDPlayback.Seek(
+				DimensionMasterDExact.Elements.front().Detail.Timing.
+					fStartDelaySeconds + 0.01f,
+				Identity);
+		}
+		COLOR_FOOTPRINT DimensionMasterDFootprint;
+		const bool_t bDimensionMasterDRendered = bDimensionMasterDStaged &&
+			RenderIsolated("DIMENSIONMASTER_D_SLICE",
+				DimensionMasterDRenderer,
+				DimensionMasterDPlayback.Get_Frame(),
+				DimensionMasterDFootprint);
+		const EFFECT_GPU_RENDER_SUBMISSION_STATS& DimensionMasterDStats =
+			DimensionMasterDRenderer.Get_LastRenderSubmissionStats();
+		const auto DimensionMasterDOccurrence = std::ranges::find_if(
+			DimensionMasterDStats.Occurrences,
+			[](const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Occurrence)
+			{
+				return Occurrence.strElementId == DIMENSIONMASTER_D_SLICE_ID;
+			});
+		const bool_t bDimensionMasterDUsesSlice = bDimensionMasterDRendered &&
+			DimensionMasterDOccurrence != DimensionMasterDStats.Occurrences.end() &&
+			DimensionMasterDOccurrence->iSourceMaterialProfile == 12u &&
+			DimensionMasterDOccurrence->iIssuedDrawCallCount > 0u;
+		runner.Require(bDimensionMasterDUsesSlice,
+			"DimensionMaster D Exact Noise Card Routes Through Slice Profile 12");
+
+		EFFECT_DOCUMENT_DESC DimensionMasterDWrongId = DimensionMasterDExact;
+		if (DimensionMasterDWrongId.Elements.size() == 1u)
+		{
+			DimensionMasterDWrongId.Elements.front().strElementId =
+				"authored.source-particle.ffffffffffffffffffffffff";
+		}
+		CEffectPlayback DimensionMasterDWrongPlayback;
+		CEffectDocumentRenderer DimensionMasterDWrongRenderer(Device, Context);
+		Status.clear();
+		const bool_t bDimensionMasterDWrongStaged =
+			DimensionMasterDWrongId.Elements.size() == 1u &&
+			SUCCEEDED(DimensionMasterDWrongRenderer.Initialize()) &&
+			DimensionMasterDWrongPlayback.Stage_Document(
+				DimensionMasterDWrongId, Status) &&
+			DimensionMasterDWrongRenderer.Stage_Document(
+				DimensionMasterDWrongId, Status);
+		if (bDimensionMasterDWrongStaged)
+		{
+			DimensionMasterDWrongPlayback.Seek(
+				DimensionMasterDWrongId.Elements.front().Detail.Timing.
+					fStartDelaySeconds + 0.01f,
+				Identity);
+		}
+		COLOR_FOOTPRINT DimensionMasterDWrongFootprint;
+		const bool_t bDimensionMasterDWrongRendered =
+			bDimensionMasterDWrongStaged && RenderIsolated(
+				"DIMENSIONMASTER_D_WRONG_ID",
+				DimensionMasterDWrongRenderer,
+				DimensionMasterDWrongPlayback.Get_Frame(),
+				DimensionMasterDWrongFootprint);
+		const EFFECT_GPU_RENDER_SUBMISSION_STATS& DimensionMasterDWrongStats =
+			DimensionMasterDWrongRenderer.Get_LastRenderSubmissionStats();
+		const auto DimensionMasterDWrongOccurrence = std::ranges::find_if(
+			DimensionMasterDWrongStats.Occurrences,
+			[](const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Occurrence)
+			{
+				return Occurrence.strElementId ==
+					"authored.source-particle.ffffffffffffffffffffffff";
+			});
+		const bool_t bDimensionMasterDWrongIdFailsClosed =
+			bDimensionMasterDWrongRendered &&
+			DimensionMasterDWrongOccurrence !=
+				DimensionMasterDWrongStats.Occurrences.end() &&
+			DimensionMasterDWrongOccurrence->iSourceMaterialProfile == 6u;
+		runner.Require(bDimensionMasterDWrongIdFailsClosed,
+			"DimensionMaster D Slice Contract Rejects A Wrong Stable Element Identity");
 		for (const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Occurrence :
 			ElementsStats.Occurrences)
 		{
@@ -15218,42 +16491,19 @@ namespace
 		CEffectDocumentRenderer::Clear_Prepared_Catalog();
 	}
 
-	void Test_ValtanEffectToolBossPatternStage(TEST_RUNNER& runner)
+	void Test_ValtanBossPatternStage(TEST_RUNNER& runner)
 	{
 		using namespace Client;
-		using LostArk::Shared::CHARACTER_CLASS_ID;
-		std::set<CHARACTER_CLASS_ID> PlayerOwners;
-		size_t iValtanOwnerCount = 0u;
-		for (const EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION& Owner :
-			EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS)
+		SCOPED_ENVIRONMENT_VARIABLE RuntimeResourceRoot(
+			L"LOSTARK_RESOURCE_ROOT");
+		if (!RuntimeResourceRoot.Was_Defined() ||
+			RuntimeResourceRoot.Get_OriginalValue().empty())
 		{
-			if (EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS ==
-				Owner.eKind)
-			{
-				if (CHARACTER_CLASS_ID::END != Owner.eCharacterClass)
-					PlayerOwners.insert(Owner.eCharacterClass);
-				continue;
-			}
-			if (EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS ==
-				Owner.eKind &&
-				CHARACTER_CLASS_ID::END == Owner.eCharacterClass &&
-				Owner.strLabel == "Valtan")
-			{
-				++iValtanOwnerCount;
-			}
+			const std::filesystem::path ResourceRoot =
+				(CProjectDataRoot::Get().parent_path() / L"Client" / L"Bin" /
+				 L"Resources").lexically_normal();
+			RuntimeResourceRoot.Set(ResourceRoot.c_str());
 		}
-		const std::set<CHARACTER_CLASS_ID> ExpectedPlayerOwners = {
-			CHARACTER_CLASS_ID::LANCE_MASTER,
-			CHARACTER_CLASS_ID::GUNSLINGER,
-			CHARACTER_CLASS_ID::SLAYER,
-			CHARACTER_CLASS_ID::ARTIST,
-			CHARACTER_CLASS_ID::DIMENSIONMASTER,
-			CHARACTER_CLASS_ID::WARLORD };
-		runner.Require(
-			EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS.size() == 7u &&
-			PlayerOwners == ExpectedPlayerOwners &&
-			iValtanOwnerCount == 1u,
-			"Effect Tool All Effects Owner Selector Keeps Six Player Classes And Adds Valtan Exactly Once Without CHARACTER_CLASS Mutation");
 		const std::filesystem::path BindingPath = CProjectDataRoot::Resolve(
 			L"Animation/Authored/Valtan/Valtan.patterneffects.json");
 		const std::filesystem::path EffectPath = CProjectDataRoot::Resolve(
@@ -15270,7 +16520,7 @@ namespace
 		BOSS_PATTERN_EFFECT_TREE_STAGE ValidStage;
 		std::string Status;
 		const bool_t bValidStaged =
-			CValtanPatternEffectBindingDocument::Stage_ValtanEffectToolTree(
+			CValtanPatternEffectBindingDocument::Stage_ValtanPatternTree(
 				BindingText, CProjectDataRoot::Get(), ValidStage, Status);
 		const BOSS_PATTERN_EFFECT_TREE_ROW* pRow =
 			bValidStaged && ValidStage.Rows.size() == 1u ?
@@ -15284,10 +16534,9 @@ namespace
 			pRow->strEffectAssetId == "effect.valtan.pattern.420633.active" &&
 			pRow->strRuntimeClipName == "mesh_att_battle_20_03" &&
 			pRow->strRuntimeBoneName == "b_effectroot" &&
-			pRow->strProductAdmissionStatus ==
-				"FAIL_CLOSED_NON_PRODUCT_CANARY" &&
-			!pRow->bProductCatalogMapped &&
-			!pRow->bAnimationEventMapped &&
+			pRow->strProductAdmissionStatus == "ADMITTED_PRODUCT" &&
+			pRow->bProductCatalogMapped &&
+			pRow->bAnimationEventMapped &&
 			pRow->Path.lexically_normal() == EffectPath.lexically_normal();
 		if (!bValidExact)
 		{
@@ -15295,7 +16544,7 @@ namespace
 				Status << " rows=" << ValidStage.Rows.size() << '\n';
 		}
 		runner.Require(bValidExact,
-			"Valtan Boss Patterns Production Seam Stages 420633 Exactly Once With Exact Non-Product Identity");
+			"Valtan Boss Patterns Production Seam Stages 420633 Exactly Once With Product-Admitted Identity");
 
 		EFFECT_DOCUMENT_DESC ValtanDocument;
 		std::string PlaybackStatus;
@@ -15399,10 +16648,10 @@ namespace
 			}
 		}
 		runner.Require(
-			ExpectedFollowElements.size() == 3u &&
+			ExpectedFollowElements.size() == 5u &&
 			RootOnlyEvaluated.empty() && bAnchoredSweep &&
 			AnchoredEvaluated == ExpectedFollowElements,
-			"Valtan 420633 Ordinary Preview Requires And Consumes Exact B_EffectRoot Transform History For All Three Visible Follow Carriers");
+			"Valtan 420633 Ordinary Preview Requires And Consumes Exact B_EffectRoot Transform History For Five Portable Follow Carriers");
 
 		const std::string PreservedAnchoredFrame = bAnchoredSweep ?
 			Snapshot_EffectFrame(AnchoredPlayback.Get_Frame()) : std::string{};
@@ -15525,7 +16774,7 @@ namespace
 			BOSS_PATTERN_EFFECT_TREE_STAGE Stage = MakeSentinel();
 			std::string Error;
 			return !Text.empty() &&
-				!CValtanPatternEffectBindingDocument::Stage_ValtanEffectToolTree(
+				!CValtanPatternEffectBindingDocument::Stage_ValtanPatternTree(
 					Text, DataRoot, Stage, Error) && IsSentinel(Stage);
 		};
 
@@ -17812,7 +19061,7 @@ namespace
 			0u == bossProbe.iFailedCount &&
 			0u == bossProbe.iUnavailableCount &&
 			bossProbe.iQueuePendingCount == playerTargets.size() &&
-			!Is_ProductPrewarmActivationReady(bossProbe) &&
+			Is_ProductPrewarmTargetActivationReady(bossProbe) &&
 			preservedPlayerProbe.iPendingCount == playerTargets.size() &&
 			autoRequestGate.Mark_PrewarmReady();
 		if (bossReadyBeforePlayerDrain &&
@@ -17841,6 +19090,477 @@ namespace
 			queue.Get_Probe().iTargetCount ==
 				bossTargets.size() + playerTargets.size(),
 			"Character Select Valtan Priority Prewarm Preserves Existing Player Cue Work And Auto-Requests Before That Background Queue Drains");
+	}
+
+	void Test_EffectRuntimeCatalogMigration(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+
+		const std::filesystem::path repositoryRoot =
+			CProjectDataRoot::Get().parent_path();
+		const std::filesystem::path sourceCatalog = repositoryRoot /
+			L"Client" / L"Bin" / L"DataFiles" / L"Effect" /
+			L"EffectCatalog.runtime.json";
+		const std::filesystem::path sourceVisualPrograms =
+			sourceCatalog.parent_path() / L"EffectVisualPrograms.runtime.json";
+		const std::filesystem::path sourceAuthored =
+			sourceCatalog.parent_path() / L"Authored";
+		const std::filesystem::path fixtureRoot =
+			std::filesystem::temp_directory_path() /
+			(L"LostArkEffectCatalogMigration-" +
+			 std::to_wstring(GetCurrentProcessId()));
+		const std::filesystem::path stagedCatalog = fixtureRoot /
+			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
+		const std::filesystem::path stagedVisualPrograms =
+			stagedCatalog.parent_path() / L"EffectVisualPrograms.runtime.json";
+		const std::filesystem::path stagedAuthored =
+			stagedCatalog.parent_path() / L"Authored";
+		const auto ExtendedWindowsPath = [](const std::filesystem::path& path)
+		{
+			const std::wstring absolute =
+				std::filesystem::absolute(path).lexically_normal().native();
+			return absolute.starts_with(L"\\\\?\\") ?
+				std::filesystem::path(absolute) :
+				std::filesystem::path(L"\\\\?\\" + absolute);
+		};
+		const auto WriteText = [](const std::filesystem::path& path,
+			const std::string& text)
+		{
+			std::ofstream output(path, std::ios::binary | std::ios::trunc);
+			output.write(text.data(), static_cast<std::streamsize>(text.size()));
+			return output.good();
+		};
+
+		std::error_code error;
+		std::filesystem::remove_all(ExtendedWindowsPath(fixtureRoot), error);
+		error.clear();
+		std::filesystem::create_directories(
+			ExtendedWindowsPath(stagedAuthored), error);
+		if (!error)
+		{
+			std::filesystem::copy_file(
+				sourceVisualPrograms, stagedVisualPrograms,
+				std::filesystem::copy_options::overwrite_existing, error);
+		}
+		if (!error)
+		{
+			for (std::filesystem::recursive_directory_iterator Iterator(
+					sourceAuthored, error), End;
+				!error && Iterator != End; Iterator.increment(error))
+			{
+				const std::filesystem::directory_entry& Entry = *Iterator;
+				const std::filesystem::path Relative = std::filesystem::relative(
+					Entry.path(), sourceAuthored, error);
+				if (error)
+					break;
+				const std::filesystem::path Destination = ExtendedWindowsPath(
+					stagedAuthored / Relative);
+				if (Entry.is_directory(error))
+				{
+					std::filesystem::create_directories(Destination, error);
+				}
+				else if (!error && Entry.is_regular_file(error))
+				{
+					std::filesystem::create_directories(
+						Destination.parent_path(), error);
+					if (!error)
+					{
+						std::filesystem::copy_file(
+							ExtendedWindowsPath(Entry.path()), Destination,
+							std::filesystem::copy_options::overwrite_existing,
+							error);
+					}
+				}
+			}
+		}
+
+		const std::string sourceCatalogText = Read_Text(sourceCatalog);
+		DATA_JSON_VALUE sourceRoot;
+		std::string parseStatus;
+		DATA_JSON_PARSE_LIMITS limits;
+		limits.iMaximumBytes = 256u * 1024u * 1024u;
+		limits.iMaximumDepth = 64u;
+		limits.iMaximumValues = 3'000'000u;
+		const bool_t sourceParsed = !error &&
+			CDataJson::Parse(sourceCatalogText, sourceRoot, parseStatus, limits) &&
+			sourceRoot.Is_Object();
+		const std::string sourceVisualProgramsText =
+			Read_Text(sourceVisualPrograms);
+		DATA_JSON_VALUE sourceVisualProgramRoot;
+		std::string visualProgramParseStatus;
+		const bool_t sourceVisualProgramsParsed = CDataJson::Parse(
+			sourceVisualProgramsText, sourceVisualProgramRoot,
+			visualProgramParseStatus, limits) &&
+			sourceVisualProgramRoot.Is_Object();
+		const auto BuildIsolatedVisualProgramSidecar =
+			[&sourceVisualProgramRoot]()
+		{
+				const DATA_JSON_VALUE* programsValue =
+					sourceVisualProgramRoot.Find("programs");
+				const DATA_JSON_VALUE* denominatorsValue =
+					sourceVisualProgramRoot.Find("denominators");
+				const DATA_JSON_VALUE* canariesValue =
+					sourceVisualProgramRoot.Find("extensionCanaries");
+				if (nullptr == programsValue || !programsValue->Is_Array() ||
+					programsValue->Get_Array().empty() ||
+					nullptr == denominatorsValue || !denominatorsValue->Is_Object() ||
+					nullptr == canariesValue || !canariesValue->Is_Array())
+				{
+					return std::string{};
+				}
+
+				for (const DATA_JSON_VALUE& program : programsValue->Get_Array())
+				{
+					const DATA_JSON_VALUE* projection =
+						program.Find("projectionKind");
+					const DATA_JSON_VALUE* visualRows =
+						program.Find("visualRows");
+					const DATA_JSON_VALUE* supplementalElements =
+						program.Find("supplementalElements");
+					if (nullptr == projection || !projection->Is_String() ||
+						nullptr == visualRows || !visualRows->Is_Array() ||
+						nullptr == supplementalElements ||
+						!supplementalElements->Is_Array())
+					{
+						continue;
+					}
+
+					const bool_t overlay = projection->Get_String() ==
+						"SOURCE_RECIPE_OVERLAY_V1";
+					uint32_t admittedRows = 0u;
+					uint32_t cascadeRows = 0u;
+					uint32_t failClosedRows = 0u;
+					for (const DATA_JSON_VALUE& row : visualRows->Get_Array())
+					{
+						const DATA_JSON_VALUE* disposition = row.Find("disposition");
+						const DATA_JSON_VALUE* family = row.Find("family");
+						if (nullptr != disposition && disposition->Is_String())
+						{
+							if (disposition->Get_String() == "ADMITTED_BOUNDED")
+								++admittedRows;
+							else if (disposition->Get_String() == "FAIL_CLOSED")
+								++failClosedRows;
+						}
+						if (nullptr != family && family->Is_String() &&
+							family->Get_String() == "CASCADE_RIBBON")
+						{
+							++cascadeRows;
+						}
+					}
+
+					uint32_t supplementalCascade = 0u;
+					uint32_t supplementalTrails = 0u;
+					uint32_t supplementalLights = 0u;
+					for (const DATA_JSON_VALUE& element :
+						supplementalElements->Get_Array())
+					{
+						const DATA_JSON_VALUE* family = element.Find("family");
+						if (nullptr == family || !family->Is_String())
+							continue;
+						if (family->Get_String() == "CASCADE_RIBBON")
+							++supplementalCascade;
+						else if (family->Get_String() == "ANIMATION_TRAIL")
+							++supplementalTrails;
+						else if (family->Get_String() == "LIGHT_PARTICLE")
+							++supplementalLights;
+					}
+
+					DATA_JSON_VALUE::OBJECT denominators =
+						denominatorsValue->Get_Object();
+					const auto SetCount = [&denominators](
+						const char* name, const uint32_t count)
+					{
+						const auto found = denominators.find(name);
+						if (found == denominators.end())
+							return false;
+						found->second = DATA_JSON_VALUE::Number(
+							static_cast<double>(count));
+						return true;
+					};
+					if (!SetCount("programCount", 1u) ||
+						!SetCount("sourceRecipeOverlayProgramCount", overlay ? 1u : 0u) ||
+						!SetCount("adapterPacketProgramCount", overlay ? 0u : 1u) ||
+						!SetCount("visualRowCount", static_cast<uint32_t>(
+							visualRows->Get_Array().size())) ||
+						!SetCount("sourceRecipeOverlayCount",
+							overlay ? admittedRows : 0u) ||
+						!SetCount("localDecalAdapterPacketCount",
+							overlay ? 0u : admittedRows) ||
+						!SetCount("cascadeRibbonVisualRowCount", cascadeRows) ||
+						!SetCount("supplementalElementCount", static_cast<uint32_t>(
+							supplementalElements->Get_Array().size())) ||
+						!SetCount("artistFCascadeRibbonElementCount",
+							supplementalCascade) ||
+						!SetCount("animationTrailElementCount", supplementalTrails) ||
+						!SetCount("bakedEdgeLightElementCount", supplementalLights) ||
+						!SetCount("failClosedCount", failClosedRows) ||
+						!SetCount("extensionCanaryCount", static_cast<uint32_t>(
+							canariesValue->Get_Array().size())) ||
+						!SetCount("productMutationCount", 0u))
+					{
+						return std::string{};
+					}
+
+					DATA_JSON_VALUE::OBJECT root =
+						sourceVisualProgramRoot.Get_Object();
+					root["programs"] = DATA_JSON_VALUE::Array(
+						DATA_JSON_VALUE::ARRAY{ program });
+					root["denominators"] = DATA_JSON_VALUE::Object(
+						std::move(denominators),
+						denominatorsValue->Get_ObjectInsertionOrder());
+					root.erase("artifactSha256");
+					const std::string artifactSha =
+						CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+							CEffectRuntimeAuthorityCodec::Serialize_CanonicalJson(
+								DATA_JSON_VALUE::Object(root)));
+					root.emplace("artifactSha256",
+						DATA_JSON_VALUE::String(artifactSha));
+					const std::string candidate =
+						CEffectRuntimeAuthorityCodec::Serialize_PrettyJson(
+							DATA_JSON_VALUE::Object(std::move(root),
+								sourceVisualProgramRoot.Get_ObjectInsertionOrder()));
+					std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS> parsed;
+					std::string status;
+					if (CEffectVisualProgramCorpusCodec::Parse(
+							candidate, parsed, status) && nullptr != parsed)
+					{
+						return candidate;
+					}
+				}
+				return std::string{};
+			};
+		const std::string isolatedVisualProgramSidecar =
+			sourceVisualProgramsParsed ?
+			BuildIsolatedVisualProgramSidecar() : std::string{};
+		const bool_t isolatedVisualProgramStaged =
+			!isolatedVisualProgramSidecar.empty() &&
+			WriteText(stagedVisualPrograms, isolatedVisualProgramSidecar);
+		const DATA_JSON_VALUE* sourceEffects = sourceParsed ?
+			sourceRoot.Find("effects") : nullptr;
+		std::string targetEffectId;
+		std::string targetDocumentPath;
+		std::string controlEffectId;
+		std::string controlDocumentPath;
+		if (nullptr != sourceEffects && sourceEffects->Is_Array())
+		{
+			for (const DATA_JSON_VALUE& Entry : sourceEffects->Get_Array())
+			{
+				const DATA_JSON_VALUE* payload = Entry.Find("payloadKind");
+				const DATA_JSON_VALUE* effectId = Entry.Find("effectAssetId");
+				const DATA_JSON_VALUE* documentPath =
+					Entry.Find("authoredDocumentPath");
+				if (nullptr == payload || !payload->Is_String() ||
+					payload->Get_String() != "DIRECT_AUTHORED_DOCUMENT_V13" ||
+					nullptr == effectId || !effectId->Is_String() ||
+					nullptr == documentPath || !documentPath->Is_String())
+				{
+					continue;
+				}
+				if (targetEffectId.empty())
+				{
+					targetEffectId = effectId->Get_String();
+					targetDocumentPath = documentPath->Get_String();
+				}
+				else
+				{
+					controlEffectId = effectId->Get_String();
+					controlDocumentPath = documentPath->Get_String();
+					break;
+				}
+			}
+		}
+
+		const auto BuildCatalog = [&sourceRoot, &targetEffectId](
+			const std::string& documentPath,
+			const bool_t bLegacySixField)
+		{
+			const DATA_JSON_VALUE* effectsValue = sourceRoot.Find("effects");
+			if (targetEffectId.empty() || nullptr == effectsValue ||
+				!effectsValue->Is_Array())
+			{
+				return std::string{};
+			}
+
+			DATA_JSON_VALUE::ARRAY effects = effectsValue->Get_Array();
+			bool_t replaced = false;
+			for (DATA_JSON_VALUE& Entry : effects)
+			{
+				const DATA_JSON_VALUE* effectId = Entry.Find("effectAssetId");
+				if (nullptr == effectId || !effectId->Is_String() ||
+					effectId->Get_String() != targetEffectId)
+				{
+					continue;
+				}
+
+				DATA_JSON_VALUE::OBJECT row;
+				std::vector<std::string> order{
+					"payloadKind", "effectAssetId", "authoringFormatVersion",
+					"authoredDocumentPath" };
+				row.emplace("payloadKind", DATA_JSON_VALUE::String(
+					"DIRECT_AUTHORED_DOCUMENT_V13"));
+				row.emplace("effectAssetId",
+					DATA_JSON_VALUE::String(targetEffectId));
+				row.emplace("authoringFormatVersion", DATA_JSON_VALUE::Number(13.0));
+				row.emplace("authoredDocumentPath",
+					DATA_JSON_VALUE::String(documentPath));
+				if (bLegacySixField)
+				{
+					const std::string prefix =
+						"Authored/" + targetEffectId + ".";
+					const std::string contentSha =
+						documentPath.size() >= prefix.size() + 64u ?
+						documentPath.substr(prefix.size(), 64u) :
+						std::string(64u, '0');
+					row.emplace("contentSha256",
+						DATA_JSON_VALUE::String(contentSha));
+					row.emplace("dependencies", DATA_JSON_VALUE::Array({}));
+					order.push_back("contentSha256");
+					order.push_back("dependencies");
+				}
+				Entry = DATA_JSON_VALUE::Object(std::move(row), std::move(order));
+				replaced = true;
+				break;
+			}
+			if (!replaced)
+				return std::string{};
+
+			DATA_JSON_VALUE::OBJECT rootObject = sourceRoot.Get_Object();
+			rootObject["effects"] = DATA_JSON_VALUE::Array(std::move(effects));
+			return CEffectRuntimeAuthorityCodec::Serialize_PrettyJson(
+				DATA_JSON_VALUE::Object(
+					std::move(rootObject), sourceRoot.Get_ObjectInsertionOrder()));
+		};
+
+		const std::string minimalCatalogText =
+			BuildCatalog(targetDocumentPath, false);
+		const std::string legacyCatalogText =
+			BuildCatalog(targetDocumentPath, true);
+		const std::string unsafeCatalogText =
+			BuildCatalog("../" + targetDocumentPath, false);
+		const std::string malformedHashCatalogText = BuildCatalog(
+			"Authored/" + targetEffectId + ".abc.effect.json", false);
+		const std::string mismatchedIdentityCatalogText =
+			BuildCatalog(controlDocumentPath, false);
+		const bool_t fixtureReady = sourceParsed && sourceVisualProgramsParsed &&
+			isolatedVisualProgramStaged && !targetEffectId.empty() &&
+			!controlEffectId.empty() && !minimalCatalogText.empty() &&
+			!legacyCatalogText.empty() && !unsafeCatalogText.empty() &&
+			!malformedHashCatalogText.empty() &&
+			!mismatchedIdentityCatalogText.empty() &&
+			std::filesystem::is_regular_file(stagedVisualPrograms, error) && !error;
+		runner.Require(fixtureReady,
+			"Effect Catalog Migration Fixture Stages Runtime Sidecar And Direct Documents");
+
+		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		SCOPED_ENVIRONMENT_VARIABLE catalogFixtureEnvironment(
+			L"LOSTARK_EFFECT_RUNTIME_CATALOG_FIXTURE");
+		const std::filesystem::path resourceRoot =
+			resourceRootEnvironment.Was_Defined() &&
+			!resourceRootEnvironment.Get_OriginalValue().empty() ?
+			std::filesystem::path(resourceRootEnvironment.Get_OriginalValue()) :
+			repositoryRoot / L"Client" / L"Bin" / L"Resources";
+		const bool_t resourceEnvironmentSet = fixtureReady &&
+			std::filesystem::is_directory(resourceRoot, error) && !error &&
+			resourceRootEnvironment.Set(resourceRoot.c_str());
+		const bool_t fixtureEnvironmentSet = resourceEnvironmentSet &&
+			catalogFixtureEnvironment.Set(stagedCatalog.c_str());
+		CEffectCatalog::Clear();
+		std::string status;
+		const bool_t legacyLoaded = fixtureEnvironmentSet &&
+			WriteText(stagedCatalog, legacyCatalogText) &&
+			CEffectCatalog::Load(status);
+		const auto legacyDocument = legacyLoaded ?
+			CEffectCatalog::Find(targetEffectId) : nullptr;
+		const uint64_t legacyRevision = CEffectCatalog::Get_RuntimeRevision();
+		if (!legacyLoaded || nullptr == legacyDocument)
+		{
+			std::cout << "[DETAIL] catalog migration legacy load=" <<
+				legacyLoaded << " status=" << status << " catalogStatus=" <<
+				CEffectCatalog::Get_Status() << " target=" << targetEffectId <<
+				" path=" << targetDocumentPath << '\n';
+		}
+		runner.Require(legacyLoaded && nullptr != legacyDocument &&
+			legacyDocument->strEffectAssetId == targetEffectId &&
+			legacyDocument->iLoadedFormatVersion == 13u &&
+			0u != legacyRevision,
+			"Effect Catalog Runtime Accepts Transitional Six-Field Direct Row Without Integrity Revalidation");
+
+		const bool_t minimalLoaded = legacyLoaded &&
+			WriteText(stagedCatalog, minimalCatalogText) &&
+			CEffectCatalog::Load(status);
+		const auto minimalDocument = minimalLoaded ?
+			CEffectCatalog::Find(targetEffectId) : nullptr;
+		const uint64_t minimalRevision = CEffectCatalog::Get_RuntimeRevision();
+		const std::string minimalStatus = CEffectCatalog::Get_Status();
+		if (!minimalLoaded || nullptr == minimalDocument)
+		{
+			std::cout << "[DETAIL] catalog migration four-field load=" <<
+				minimalLoaded << " status=" << status << " catalogStatus=" <<
+				minimalStatus << " target=" << targetEffectId << " path=" <<
+				targetDocumentPath << '\n';
+		}
+		runner.Require(minimalLoaded && nullptr != minimalDocument &&
+			minimalDocument->strEffectAssetId == targetEffectId &&
+			minimalDocument->iLoadedFormatVersion == 13u &&
+			minimalRevision == legacyRevision + 1u,
+			"Effect Catalog Runtime Accepts Published Four-Field Direct Row");
+
+		const auto RejectsAndPreserves = [&](const std::string& invalidCatalog)
+		{
+			std::string failureStatus;
+			return minimalLoaded && WriteText(stagedCatalog, invalidCatalog) &&
+				!CEffectCatalog::Load(failureStatus) && !failureStatus.empty() &&
+				CEffectCatalog::Get_RuntimeRevision() == minimalRevision &&
+				CEffectCatalog::Get_Status() == minimalStatus &&
+				CEffectCatalog::Find_Loaded(targetEffectId).get() ==
+					minimalDocument.get();
+		};
+		const bool_t unsafePathRejected =
+			RejectsAndPreserves(unsafeCatalogText);
+		const bool_t malformedHashRejected =
+			RejectsAndPreserves(malformedHashCatalogText);
+		const bool_t mismatchedPathIdentityRejected =
+			RejectsAndPreserves(mismatchedIdentityCatalogText);
+		runner.Require(unsafePathRejected && malformedHashRejected &&
+			mismatchedPathIdentityRejected,
+			"Effect Catalog Rejects Escaped, Non-64-Hex, And Cross-Effect Paths While Preserving Revision Status And Document Identity");
+
+		const std::filesystem::path stagedTargetDocument =
+			stagedCatalog.parent_path() /
+			std::filesystem::path(targetDocumentPath);
+		const std::filesystem::path stagedControlDocument =
+			stagedCatalog.parent_path() /
+			std::filesystem::path(controlDocumentPath);
+		const std::string wrongIdentityDocument =
+			Read_Text(ExtendedWindowsPath(stagedControlDocument));
+		const bool_t identityFixtureLoaded = minimalLoaded &&
+			WriteText(stagedCatalog, minimalCatalogText) &&
+			!wrongIdentityDocument.empty() &&
+			WriteText(ExtendedWindowsPath(stagedTargetDocument), wrongIdentityDocument) &&
+			CEffectCatalog::Load(status);
+		const uint64_t identityRevision = CEffectCatalog::Get_RuntimeRevision();
+		const auto controlDocument = identityFixtureLoaded ?
+			CEffectCatalog::Find(controlEffectId) : nullptr;
+		const auto rejectedIdentityDocument = identityFixtureLoaded ?
+			CEffectCatalog::Find(targetEffectId) : nullptr;
+		const std::string identityFailureStatus = CEffectCatalog::Get_Status();
+		runner.Require(identityFixtureLoaded && nullptr != controlDocument &&
+			nullptr == rejectedIdentityDocument &&
+			CEffectCatalog::Get_RuntimeRevision() == identityRevision &&
+			CEffectCatalog::Find_Loaded(controlEffectId).get() ==
+				controlDocument.get() &&
+			CEffectCatalog::Find_Loaded(targetEffectId) == nullptr &&
+			identityFailureStatus.find("identity") != std::string::npos,
+			"Effect Catalog Lazy Document Identity Failure Preserves Revision And Other Committed Documents With A Diagnostic Status");
+
+		CEffectCatalog::Clear();
+		catalogFixtureEnvironment.Restore();
+		resourceRootEnvironment.Restore();
+		error.clear();
+		std::filesystem::remove_all(ExtendedWindowsPath(fixtureRoot), error);
+		runner.Require(!error,
+			"Effect Catalog Migration Fixture Cleans Its Temporary Runtime Root");
 	}
 
 	void Test_EffectIncrementalProductPrewarm(TEST_RUNNER& runner)
@@ -17919,12 +19639,12 @@ namespace
 				{ "current.a", "current.b", "current.a" }, 71u);
 		const EFFECT_PRODUCT_PREWARM_QUEUE_PROBE backgroundProbe =
 			priorityQueue.Get_Probe();
-		const bool_t activationBlockedByBackground =
-			!Is_ProductPrewarmActivationReady(currentTargetProbe);
+		const bool_t activationReadyWithBackground =
+			Is_ProductPrewarmTargetActivationReady(currentTargetProbe);
 		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE isolatedFailureProbe =
 			priorityQueue.Get_TargetProbe({}, 71u);
-		const bool_t isolatedFailureBlockedByBackground =
-			!Is_ProductPrewarmActivationReady(
+		const bool_t isolatedFailureReadyWithBackground =
+			Is_ProductPrewarmTargetActivationReady(
 				isolatedFailureProbe, true);
 		const bool_t staleWorkPreservedBehindCurrent =
 			priorityQueue.Begin_Frame(queuedId) ==
@@ -17938,13 +19658,13 @@ namespace
 		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE drainedTargetProbe =
 			priorityQueue.Get_TargetProbe(
 				{ "current.a", "current.b" }, 71u);
-		const bool_t activationReadyAfterQueueDrain =
-			Is_ProductPrewarmActivationReady(drainedTargetProbe);
+		const bool_t activationRemainsReadyAfterQueueDrain =
+			Is_ProductPrewarmTargetActivationReady(drainedTargetProbe);
 		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE
 			drainedIsolatedFailureProbe =
 				priorityQueue.Get_TargetProbe({}, 71u);
-		const bool_t isolatedFailureReadyAfterQueueDrain =
-			Is_ProductPrewarmActivationReady(
+		const bool_t isolatedFailureRemainsReadyAfterQueueDrain =
+			Is_ProductPrewarmTargetActivationReady(
 				drainedIsolatedFailureProbe, true);
 		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE staleRevisionProbe =
 			priorityQueue.Get_TargetProbe(
@@ -17967,210 +19687,23 @@ namespace
 			currentTargetProbe.iUnavailableCount == 0u &&
 			currentTargetProbe.iQueuePendingCount == 2u &&
 			backgroundProbe.iPendingCount == 2u &&
-			activationBlockedByBackground &&
-			isolatedFailureBlockedByBackground &&
+			activationReadyWithBackground &&
+			isolatedFailureReadyWithBackground &&
 			staleWorkPreservedBehindCurrent &&
-			activationReadyAfterQueueDrain &&
-			isolatedFailureReadyAfterQueueDrain &&
+			activationRemainsReadyAfterQueueDrain &&
+			isolatedFailureRemainsReadyAfterQueueDrain &&
 			!staleRevisionProbe.bCatalogRevisionCurrent &&
 			!staleRevisionProbe.bSettled &&
-			!Is_ProductPrewarmActivationReady(staleRevisionProbe, true) &&
+			!Is_ProductPrewarmTargetActivationReady(
+				staleRevisionProbe, true) &&
 			invalidPriorityPreserved,
-			"Product Prewarm Priority Moves Current Class Ahead Of Stale Work And Shared Activation Gate Drains All Pending Work Before Normal Or Isolated-Failure Commit");
+			"Product Prewarm Target Activation Ignores Unrelated Pending Work But Still Requires The Current Catalog Revision");
 		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
 			L"LOSTARK_RESOURCE_ROOT");
 		SCOPED_ENVIRONMENT_VARIABLE runtimeCatalogFixtureEnvironment(
 			L"LOSTARK_EFFECT_RUNTIME_CATALOG_FIXTURE");
 		const std::filesystem::path repositoryRoot =
 			CProjectDataRoot::Get().parent_path();
-
-		/* All Effects authoring is indexed from the source catalog rather than
-		   the retired Track-A batch or the runtime Product tree.  Keep this
-		   fixture metadata-only so opening the list does not decode 101 documents. */
-		std::string sourceIndexStatus;
-		const bool_t playerSkillsLoaded =
-			CPlayerSkillCatalog::Load(sourceIndexStatus);
-		EFFECT_DIRECT_AUTHORED_OWNER_SET playerSkillOwners;
-		for (const PLAYER_SKILL_DEFINITION& skill :
-			CPlayerSkillCatalog::Get_Skills())
-		{
-			playerSkillOwners.emplace(skill.eCharacterClass, skill.iSkillId);
-		}
-		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT valtanCueDocument;
-		std::string valtanCueStatus;
-		const bool_t valtanCuesLoaded =
-			CValtanPatternEffectCueDocument::Load_Source(
-				valtanCueDocument, valtanCueStatus);
-		EFFECT_DIRECT_AUTHORED_BOSS_OWNER_MAP bossPatternOwners;
-		for (const VALTAN_PATTERN_EFFECT_CUE& cue : valtanCueDocument.Cues)
-		{
-			bossPatternOwners.emplace(cue.strEffectAssetId,
-				EFFECT_DIRECT_AUTHORED_BOSS_OWNER{
-					valtanCueDocument.strOwnerArchetypeId, cue.strPatternId,
-					cue.strStageId, cue.strActionId });
-		}
-		const std::filesystem::path sourceCatalogPath = repositoryRoot /
-			L"Data" / L"Effects" / L"EffectCatalog.json";
-		const std::filesystem::path authoredRoot = repositoryRoot /
-			L"Data" / L"Effects" / L"Authored";
-		std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE> scannedSourceFiles;
-		std::error_code sourceScanError;
-		for (std::filesystem::recursive_directory_iterator iterator(
-				authoredRoot, sourceScanError), end;
-			!sourceScanError && iterator != end;
-			iterator.increment(sourceScanError))
-		{
-			if (!iterator->is_regular_file(sourceScanError) || sourceScanError)
-				continue;
-			constexpr std::string_view effectSuffix = ".effect.json";
-			const std::string filename = iterator->path().filename().string();
-			if (!filename.ends_with(effectSuffix))
-				continue;
-			scannedSourceFiles.push_back({
-				filename.substr(0u, filename.size() - effectSuffix.size()),
-				iterator->path()
-			});
-		}
-		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX sourceIndex;
-		const bool_t sourceIndexValid = playerSkillsLoaded && valtanCuesLoaded &&
-			!sourceScanError &&
-			CEffectDirectAuthoredSourceIndex::Build(
-				sourceCatalogPath, authoredRoot, scannedSourceFiles,
-				playerSkillOwners, bossPatternOwners,
-				sourceIndex, sourceIndexStatus);
-		std::set<std::string, std::less<>> directSourceIds;
-		size_t typedPlayerSourceCount = 0u;
-		size_t typedBossSourceCount = 0u;
-		bool_t sourceEntriesExact = sourceIndexValid &&
-			valtanCueDocument.Cues.size() == 99u &&
-			bossPatternOwners.size() == 99u &&
-			sourceIndex.iCatalogDirectCount == 200u &&
-			sourceIndex.iUnavailableCount == 0u &&
-			sourceIndex.Entries.size() == 200u;
-		for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& entry :
-			sourceIndex.Entries)
-		{
-			std::error_code physicalError;
-			bool_t ownerExact = false;
-			if (EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL ==
-				entry.eOwnerKind)
-			{
-				++typedPlayerSourceCount;
-				ownerExact = playerSkillOwners.contains(std::make_pair(
-					entry.eCharacterClass, entry.iSkillId));
-			}
-			else if (EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_PATTERN ==
-				entry.eOwnerKind)
-			{
-				++typedBossSourceCount;
-				const auto owner =
-					bossPatternOwners.find(entry.strEffectAssetId);
-				ownerExact = bossPatternOwners.end() != owner &&
-					entry.strOwnerArchetypeId ==
-						owner->second.strOwnerArchetypeId &&
-					entry.strPatternId == owner->second.strPatternId &&
-					entry.strStageId == owner->second.strStageId &&
-					entry.strActionId == owner->second.strActionId;
-			}
-			sourceEntriesExact = sourceEntriesExact && ownerExact &&
-				directSourceIds.insert(entry.strEffectAssetId).second &&
-				std::filesystem::is_regular_file(entry.Path, physicalError) &&
-				!physicalError;
-		}
-		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX preservedIndex;
-		preservedIndex.iCatalogDirectCount = 77u;
-		preservedIndex.Entries.push_back({});
-		std::string rejectedIndexStatus;
-		const bool_t malformedTopLevelPreserved =
-			!CEffectDirectAuthoredSourceIndex::Build(
-				sourceCatalogPath / L"missing", authoredRoot,
-				scannedSourceFiles, playerSkillOwners, bossPatternOwners,
-				preservedIndex,
-				rejectedIndexStatus) &&
-			preservedIndex.iCatalogDirectCount == 77u &&
-			preservedIndex.Entries.size() == 1u &&
-			!rejectedIndexStatus.empty();
-		const std::filesystem::path sourceIndexFixturePath =
-			std::filesystem::temp_directory_path() /
-			(L"LostArkEffectSourceIndex-" +
-			 std::to_wstring(GetCurrentProcessId()) + L".json");
-		const auto writeSourceIndexFixture = [](
-			const std::filesystem::path& path, const std::string& text)
-		{
-			std::ofstream output(path, std::ios::binary | std::ios::trunc);
-			output.write(text.data(), static_cast<std::streamsize>(text.size()));
-			return output.good();
-		};
-		const auto sourceIndexRow = [](const std::string& assetId,
-			const std::string& authoringPath)
-		{
-			return std::string("{\"effectAssetId\":\"") +
-				CDataJson::Escape(assetId) +
-				"\",\"payloadKind\":\"DIRECT_AUTHORED_DOCUMENT_V13\","
-				"\"authoringPath\":\"" +
-				CDataJson::Escape(authoringPath) + "\"}";
-		};
-		bool_t isolatedRowPreservedValidCommit = false;
-		bool_t duplicateTopLevelPreserved = false;
-		if (sourceIndexValid && !sourceIndex.Entries.empty())
-		{
-			const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& validEntry =
-				sourceIndex.Entries.front();
-			const std::string validRelativePath = validEntry.Path.lexically_relative(
-				repositoryRoot / L"Data").generic_string();
-			std::string isolatedAssetId = validEntry.strEffectAssetId;
-			isolatedAssetId.erase(isolatedAssetId.size() -
-				std::string_view(".unified").size());
-			isolatedAssetId += ".escape.unified";
-			const std::string validRow = sourceIndexRow(
-				validEntry.strEffectAssetId, validRelativePath);
-			const std::string isolatedRow = sourceIndexRow(
-				isolatedAssetId,
-				"Effects/Authored/../escape/" + isolatedAssetId +
-					".effect.json");
-			const std::string isolatedCatalog =
-				"{\"formatVersion\":1,\"effects\":[" + validRow + "," +
-				isolatedRow + "]}";
-			EFFECT_DIRECT_AUTHORED_SOURCE_INDEX isolatedIndex;
-			std::string isolatedStatus;
-			isolatedRowPreservedValidCommit =
-				writeSourceIndexFixture(sourceIndexFixturePath, isolatedCatalog) &&
-				CEffectDirectAuthoredSourceIndex::Build(
-					sourceIndexFixturePath, authoredRoot, scannedSourceFiles,
-					playerSkillOwners, bossPatternOwners,
-					isolatedIndex, isolatedStatus) &&
-				isolatedIndex.iCatalogDirectCount == 2u &&
-				isolatedIndex.iUnavailableCount == 1u &&
-				isolatedIndex.Entries.size() == 1u &&
-				isolatedIndex.Entries.front().strEffectAssetId ==
-					validEntry.strEffectAssetId;
-
-			const std::string duplicateCatalog =
-				"{\"formatVersion\":1,\"effects\":[" + validRow + "," +
-				validRow + "]}";
-			EFFECT_DIRECT_AUTHORED_SOURCE_INDEX duplicatePreserved;
-			duplicatePreserved.iCatalogDirectCount = 88u;
-			duplicatePreserved.Entries.push_back({});
-			std::string duplicateStatus;
-			duplicateTopLevelPreserved =
-				writeSourceIndexFixture(sourceIndexFixturePath, duplicateCatalog) &&
-				!CEffectDirectAuthoredSourceIndex::Build(
-					sourceIndexFixturePath, authoredRoot, scannedSourceFiles,
-					playerSkillOwners, bossPatternOwners,
-					duplicatePreserved, duplicateStatus) &&
-				duplicatePreserved.iCatalogDirectCount == 88u &&
-				duplicatePreserved.Entries.size() == 1u &&
-				!duplicateStatus.empty();
-		}
-		std::error_code sourceIndexFixtureError;
-		std::filesystem::remove(
-			sourceIndexFixturePath, sourceIndexFixtureError);
-		runner.Require(sourceEntriesExact &&
-			directSourceIds.size() == sourceIndex.Entries.size() &&
-			typedPlayerSourceCount == 101u && typedBossSourceCount == 99u &&
-			malformedTopLevelPreserved && isolatedRowPreservedValidCommit &&
-			duplicateTopLevelPreserved,
-			"All Effects Production Source Index Has 101 Player-Skill And 99 Boss-Pattern Typed Physical Direct Documents, Isolates Unsafe Rows, And Preserves Its Prior Commit On Top-Level Failure");
 
 		const std::filesystem::path sourceCatalog = repositoryRoot /
 			L"Client" / L"Bin" / L"DataFiles" / L"Effect" /
@@ -18305,39 +19838,20 @@ namespace
 			std::cout << "[DETAIL] Lance loading scanner: " <<
 				lanceCueStatus << '\n';
 		std::set<std::string, std::less<>> lanceCueIds;
-		size_t lanceManagedTokenCount = 0u;
-		size_t lanceNullTokenCount = 0u;
-		bool_t lanceSpawnAdmissionsValid = lanceCuesLoaded;
 		for (const ANIMATION_EFFECT_CUE& cue : lanceCueDocument.Cues)
-		{
 			lanceCueIds.insert(cue.strEffectAssetId);
-			if (nullptr == cue.pProductAdmissionToken)
-				++lanceNullTokenCount;
-			else
-				++lanceManagedTokenCount;
-			std::string admissionStatus;
-			lanceSpawnAdmissionsValid = lanceSpawnAdmissionsValid &&
-				CEffectCatalog::Admit_ProductSpawn(
-					cue.strEffectAssetId, cue.pProductAdmissionToken,
-					admissionStatus);
-		}
 		const bool_t lanceCueContractExact = lanceCuesLoaded &&
 			lanceCueDocument.Cues.size() == 41u &&
-			lanceCueIds.size() == 41u &&
-			lanceManagedTokenCount == 0u &&
-			lanceNullTokenCount == 41u &&
-			lanceSpawnAdmissionsValid;
+			lanceCueIds.size() == 41u;
 		if (!lanceCueContractExact)
 		{
 			std::cout << "[DETAIL] Lance cue contract loaded=" <<
 				lanceCuesLoaded << " cues=" << lanceCueDocument.Cues.size() <<
-				" unique=" << lanceCueIds.size() << " managed=" <<
-				lanceManagedTokenCount << " null=" << lanceNullTokenCount <<
-				" spawnAdmissions=" << lanceSpawnAdmissionsValid <<
+				" unique=" << lanceCueIds.size() <<
 				" status=" << lanceCueStatus << '\n';
 		}
 		runner.Require(lanceCueContractExact,
-			"Loading Scanner Registers And Admits All 41 Unique Lance Product Cues Under The Current Null-Token Contract");
+			"Loading Scanner Registers All 41 Unique Lance Product Cues Without Admission Tokens");
 		const std::vector<std::string> runtimeEffectIds =
 			CEffectCatalog::Get_EffectAssetIds();
 		const size_t valtanRuntimeEffectCount = static_cast<size_t>(
@@ -18579,1720 +20093,6 @@ namespace
 		error.clear();
 		std::filesystem::remove_all(fixtureRoot, error);
 		runtimeCatalogFixtureEnvironment.Restore();
-		resourceRootEnvironment.Restore();
-	}
-
-	void Test_EffectAssemblyRuntimeCatalog(
-		TEST_RUNNER& runner,
-		const bool_t bCheckFailedReloadRollback = true,
-		const bool_t bLoadOnly = false)
-	{
-		using namespace Client;
-		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
-			L"LOSTARK_RESOURCE_ROOT");
-		wchar_t moduleBuffer[32768]{};
-		const DWORD moduleLength = GetModuleFileNameW(
-			nullptr, moduleBuffer, static_cast<DWORD>(std::size(moduleBuffer)));
-		const std::filesystem::path moduleDirectory =
-			0u == moduleLength || moduleLength >= std::size(moduleBuffer) ?
-			std::filesystem::path{} :
-			std::filesystem::path(moduleBuffer).parent_path();
-		const std::filesystem::path repositoryRoot =
-			CProjectDataRoot::Get().parent_path();
-		const std::filesystem::path sourceCatalog = repositoryRoot /
-			L"Client" / L"Bin" / L"DataFiles" / L"Effect" /
-			L"EffectCatalog.runtime.json";
-		const std::filesystem::path stagedCatalog = moduleDirectory /
-			L"DataFiles" / L"Effect" / L"EffectCatalog.runtime.json";
-		const std::filesystem::path sourceVisualPrograms = repositoryRoot /
-			L"Data" / L"Effects" / L"VisualPrograms" /
-			L"effect-visual-program-runtime.v1.json";
-		const std::filesystem::path stagedVisualPrograms =
-			stagedCatalog.parent_path() / L"EffectVisualPrograms.runtime.json";
-		const std::filesystem::path sourceProductCueAdmissions =
-			sourceCatalog.parent_path() /
-			L"EffectProductCueAdmissions.runtime.json";
-		const std::filesystem::path stagedProductCueAdmissions =
-			stagedCatalog.parent_path() /
-			L"EffectProductCueAdmissions.runtime.json";
-		const std::filesystem::path sourceSealedAuthoredDocuments =
-			sourceCatalog.parent_path() / L"Authored";
-		const std::filesystem::path stagedSealedAuthoredDocuments =
-			stagedCatalog.parent_path() / L"Authored";
-		std::error_code error;
-		std::filesystem::create_directories(stagedCatalog.parent_path(), error);
-		error.clear();
-		std::filesystem::copy_file(sourceCatalog, stagedCatalog,
-			std::filesystem::copy_options::overwrite_existing, error);
-		if (!error)
-		{
-			std::filesystem::copy_file(sourceVisualPrograms, stagedVisualPrograms,
-				std::filesystem::copy_options::overwrite_existing, error);
-		}
-		if (!error)
-		{
-			if (bLoadOnly)
-			{
-				std::filesystem::remove(stagedProductCueAdmissions, error);
-			}
-			else
-			{
-				std::filesystem::copy_file(sourceProductCueAdmissions,
-					stagedProductCueAdmissions,
-					std::filesystem::copy_options::overwrite_existing, error);
-			}
-		}
-		if (!error)
-		{
-			std::filesystem::create_directories(
-				stagedSealedAuthoredDocuments, error);
-		}
-		if (!error)
-		{
-			std::filesystem::copy(sourceSealedAuthoredDocuments,
-				stagedSealedAuthoredDocuments,
-				std::filesystem::copy_options::recursive |
-					std::filesystem::copy_options::overwrite_existing, error);
-		}
-		const std::filesystem::path resourceRoot =
-			resourceRootEnvironment.Was_Defined() &&
-			!resourceRootEnvironment.Get_OriginalValue().empty() ?
-			std::filesystem::path(resourceRootEnvironment.Get_OriginalValue()) :
-			repositoryRoot / L"Client" / L"Bin" / L"Resources";
-		resourceRootEnvironment.Set(resourceRoot.c_str());
-
-		CEffectCatalog::Clear();
-		std::string status;
-		EFFECT_BUILD_CONTRACT buildContract;
-		std::string buildContractStatus;
-		const bool_t buildContractLoaded =
-			Load_FourClassEffectBuildContract(
-				buildContract, buildContractStatus);
-		const ULONGLONG catalogLoadBeginMs = GetTickCount64();
-		const bool_t loaded = !error && CEffectCatalog::Load(status);
-		const ULONGLONG catalogLoadElapsedMs =
-			GetTickCount64() - catalogLoadBeginMs;
-		if (!loaded)
-			std::cout << "[DETAIL] Effect runtime catalog: " << status << '\n';
-		if (bLoadOnly)
-		{
-			const ULONGLONG firstUseBeginMs = GetTickCount64();
-			const auto DirectAuthoredArtistF = loaded ? CEffectCatalog::Find(
-				"effect.artist.skill.31470.unified") : nullptr;
-			const ULONGLONG firstUseElapsedMs =
-				GetTickCount64() - firstUseBeginMs;
-			std::cout << "[DETAIL] Effect catalog metadata load ms="
-				<< catalogLoadElapsedMs << " first direct document ms="
-				<< firstUseElapsedMs << '\n';
-			runner.Require(loaded && nullptr != DirectAuthoredArtistF &&
-				DirectAuthoredArtistF->strEffectAssetId ==
-					"effect.artist.skill.31470.unified" &&
-				CEffectCatalog::Contains(
-					"effect.artist.skill.31470.unified"),
-				"Effect Runtime Catalog Stages Sealed Metadata And First-Use Loads One Direct Authored Document");
-			return;
-		}
-		const std::vector<std::string> effectIds =
-			CEffectCatalog::Get_EffectAssetIds();
-		constexpr std::string_view DirectAuthoredArtistFId =
-			"effect.artist.skill.31470.unified";
-		const std::shared_ptr<const EFFECT_DOCUMENT_DESC> directAuthoredArtistF =
-			CEffectCatalog::Find(std::string(DirectAuthoredArtistFId));
-		runner.Require(loaded && nullptr != directAuthoredArtistF &&
-			nullptr == CEffectCatalog::Find_Assembly(
-				std::string(DirectAuthoredArtistFId)) &&
-			directAuthoredArtistF->iLoadedFormatVersion == 13u &&
-			directAuthoredArtistF->strEffectAssetId == DirectAuthoredArtistFId &&
-			directAuthoredArtistF->Elements.size() == 33u &&
-			CEffectDocumentCodec::Validate_Drawable(*directAuthoredArtistF, status),
-			"Artist F Direct Authored V13 Catalog Commits The Drawable Ordinary Document Without An Assembly Authority");
-
-		struct PRODUCT_CUE_ADMISSION_CASE final
-		{
-			const char_t* pCueId = nullptr;
-			LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass =
-				LostArk::Shared::CHARACTER_CLASS_ID::END;
-			const char_t* pInputSlot = nullptr;
-			uint32_t iSkillId = 0u;
-			uint32_t iStageIndex = 0u;
-			const char_t* pAnimationAssetId = nullptr;
-			const char_t* pClipName = nullptr;
-			const char_t* pEffectAssetId = nullptr;
-			const char_t* pRollbackEffectAssetId = nullptr;
-		};
-		constexpr std::array<PRODUCT_CUE_ADMISSION_CASE, 5u>
-			ProductCueAdmissionCases = {{
-				{ "artist.skill.31470.stage-0",
-					LostArk::Shared::CHARACTER_CLASS_ID::ARTIST,
-					"F", 31470u, 0u, "Artist",
-					"sdm_sk_onestroke",
-					"effect.artist.skill.31470.unified",
-					"effect.artist.skill.31470" },
-				{ "dimensionmaster.skill.2050010.stage-0",
-					LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
-					"LMB", 2050010u, 0u, "DimensionMaster",
-					"pc_sp_m_00_sk_att_battle_1_01",
-					"effect.dimensionmaster.skill.2050010.ba1.unified",
-					"effect.dimensionmaster.skill.2050010.ba1" },
-				{ "dimensionmaster.skill.2050010.stage-2",
-					LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
-					"LMB", 2050010u, 2u, "DimensionMaster",
-					"pc_sp_m_00_sk_att_battle_1_03",
-					"effect.dimensionmaster.skill.2050010.ba3.unified",
-					"effect.dimensionmaster.skill.2050010.ba3" },
-				{ "dimensionmaster.skill.2050210.stage-0",
-					LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
-					"A", 2050210u, 0u, "DimensionMaster",
-					"pc_sp_m_00_sk_sk_willowrend",
-					"effect.dimensionmaster.skill.2050210.unified",
-					"effect.dimensionmaster.skill.2050210.authored-baseline" },
-				{ "lancemaster.skill.34010.stage-0",
-					LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
-					"LMB", 34010u, 0u, "LanceMaster",
-					"flm_att_identity1_1_01",
-					"effect.lancemaster.skill.34010.ba1.unified",
-					"effect.lancemaster.skill.34010.ba1" }
-			}};
-		std::vector<ANIMATION_EFFECT_CUE> productCues;
-		productCues.reserve(ProductCueAdmissionCases.size());
-		bool_t bProductCueAdmissionsExact = loaded;
-		for (const PRODUCT_CUE_ADMISSION_CASE& TestCase :
-			ProductCueAdmissionCases)
-		{
-			const auto admission = CEffectCatalog::Find_ProductCueAdmission(
-				TestCase.pAnimationAssetId, TestCase.pClipName, 0u,
-				TestCase.pEffectAssetId);
-			const auto document = CEffectCatalog::Find(
-				TestCase.pEffectAssetId);
-			std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN> token;
-			std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN> wrongToken;
-			std::string admissionStatus;
-			const bool_t bCueAdmitted = CEffectCatalog::Admit_ProductCue(
-				TestCase.pAnimationAssetId, TestCase.pClipName, 0u,
-				TestCase.pEffectAssetId, token, admissionStatus);
-			const bool_t bWrongCueRejected =
-				!CEffectCatalog::Admit_ProductCue(TestCase.pAnimationAssetId,
-					TestCase.pClipName, 1u, TestCase.pEffectAssetId,
-					wrongToken, admissionStatus) && nullptr == wrongToken;
-			const bool_t bEmptySpawnRejected =
-				!CEffectCatalog::Admit_ProductSpawn(TestCase.pEffectAssetId,
-					nullptr, admissionStatus);
-			const bool_t bTokenSpawnAdmitted =
-				CEffectCatalog::Admit_ProductSpawn(TestCase.pEffectAssetId,
-					token, admissionStatus);
-			const bool_t bBindingAdmitted =
-				CEffectCatalog::Validate_ProductCueBinding(
-					TestCase.pEffectAssetId, token, TestCase.eCharacterClass,
-					TestCase.pInputSlot, TestCase.iSkillId,
-					TestCase.iStageIndex, admissionStatus);
-			const bool_t bSlotDriftRejected =
-				!CEffectCatalog::Validate_ProductCueBinding(
-					TestCase.pEffectAssetId, token, TestCase.eCharacterClass,
-					std::string(TestCase.pInputSlot) + ".drift",
-					TestCase.iSkillId, TestCase.iStageIndex, admissionStatus);
-			const bool_t bStageDriftRejected =
-				!CEffectCatalog::Validate_ProductCueBinding(
-					TestCase.pEffectAssetId, token, TestCase.eCharacterClass,
-					TestCase.pInputSlot, TestCase.iSkillId,
-					TestCase.iStageIndex + 1u, admissionStatus);
-			const bool_t bBindingStatePreserved =
-				CEffectCatalog::Validate_ProductCueBinding(
-					TestCase.pEffectAssetId, token, TestCase.eCharacterClass,
-					TestCase.pInputSlot, TestCase.iSkillId,
-					TestCase.iStageIndex, admissionStatus);
-			const bool_t bRollbackRemainsUnmanaged =
-				CEffectCatalog::Admit_ProductSpawn(
-					TestCase.pRollbackEffectAssetId, nullptr, admissionStatus);
-			const bool_t bObservedApproximate = nullptr != admission &&
-				0u != admission->iApproximateElementCount;
-			bProductCueAdmissionsExact = bProductCueAdmissionsExact &&
-				nullptr != admission && nullptr != document && bCueAdmitted &&
-				nullptr != token && bWrongCueRejected && bEmptySpawnRejected &&
-				bTokenSpawnAdmitted && bBindingAdmitted && bSlotDriftRejected &&
-				bStageDriftRejected && bBindingStatePreserved &&
-				bRollbackRemainsUnmanaged &&
-				admission->strCueId == TestCase.pCueId &&
-				admission->strInputSlot == TestCase.pInputSlot &&
-				admission->iSkillId == TestCase.iSkillId &&
-				admission->iStageIndex == TestCase.iStageIndex &&
-				admission->strEffectAssetId == TestCase.pEffectAssetId &&
-				admission->strRollbackEffectAssetId ==
-					TestCase.pRollbackEffectAssetId &&
-				admission->strApprovalCeiling ==
-					"PRODUCT_APPROVED_APPROXIMATE" &&
-				admission->Provenance.strDecision ==
-					"EXPLICIT_USER_OPT_IN" &&
-				token->Get_ApprovalId() == TestCase.pCueId &&
-				admission->iElementCount == document->Elements.size() &&
-				admission->iElementCount == admission->iFullElementCount +
-					admission->iApproximateElementCount +
-					admission->iHardSuppressedElementCount &&
-				(bObservedApproximate ==
-				 (admission->eAdmissionClass ==
-					EFFECT_PRODUCT_CUE_ADMISSION_CLASS::
-						PRODUCT_APPROVED_APPROXIMATE)) &&
-				CEffectCatalog::Get_ProductCueAdmissions(
-					TestCase.pEffectAssetId).size() == 1u;
-			ANIMATION_EFFECT_CUE cue;
-			cue.strClipName = TestCase.pClipName;
-			cue.strEffectAssetId = TestCase.pEffectAssetId;
-			cue.pProductAdmissionToken = std::move(token);
-			productCues.push_back(std::move(cue));
-		}
-		bProductCueAdmissionsExact = bProductCueAdmissionsExact &&
-			productCues.size() == ProductCueAdmissionCases.size() &&
-			!CEffectCatalog::Admit_ProductSpawn(
-				ProductCueAdmissionCases[1].pEffectAssetId,
-				productCues.front().pProductAdmissionToken, status) &&
-			CEffectCatalog::Get_Status().find(
-				"PRODUCT_APPROVED_FULL=") != std::string::npos &&
-			CEffectCatalog::Get_Status().find(
-				"PRODUCT_APPROVED_APPROXIMATE=") != std::string::npos;
-		runner.Require(bProductCueAdmissionsExact,
-			"Product Cue Admission Joins Five Exact Tuples And Requires The Matching Spawn Token Without Disguising Approximate Exactness");
-
-		const auto admissionSnapshot = CEffectCatalog::Capture_Runtime();
-		const auto originalToken = productCues.front().pProductAdmissionToken;
-		const std::string originalEffectId =
-			productCues.front().strEffectAssetId;
-		const std::string originalRuntimeCatalog = Read_Text(stagedCatalog);
-		const std::string originalAdmissionSidecar =
-			Read_Text(stagedProductCueAdmissions);
-		const auto WriteExactText = [](const std::filesystem::path& Path,
-			const std::string& Text)
-		{
-			std::ofstream Output(Path, std::ios::binary | std::ios::trunc);
-			Output.write(Text.data(), static_cast<std::streamsize>(Text.size()));
-			Output.close();
-			return Output.good();
-		};
-		const bool_t bIdenticalReloaded = CEffectCatalog::Load(status);
-		const bool_t bOriginalSurvivedIdenticalReload = bIdenticalReloaded &&
-			CEffectCatalog::Admit_ProductSpawn(
-				originalEffectId, originalToken, status);
-		const uint64_t iIdenticalRevision =
-			CEffectCatalog::Get_RuntimeRevision();
-		error.clear();
-		const bool_t bRequiredSidecarRemoved =
-			std::filesystem::remove(stagedProductCueAdmissions, error) && !error;
-		const bool_t bMissingAdmissionSidecarRejected =
-			bRequiredSidecarRemoved && !CEffectCatalog::Load(status);
-		const bool_t bMissingAdmissionReasonExact =
-			bMissingAdmissionSidecarRejected && status.find(
-				"requires EffectProductCueAdmissions.runtime.json") !=
-				std::string::npos;
-		const bool_t bOriginalPreservedAfterMissingAdmission =
-			bMissingAdmissionSidecarRejected &&
-			iIdenticalRevision == CEffectCatalog::Get_RuntimeRevision() &&
-			CEffectCatalog::Admit_ProductSpawn(
-				originalEffectId, originalToken, status);
-		const bool_t bSidecarRestoredAfterMissing =
-			WriteExactText(stagedProductCueAdmissions,
-				originalAdmissionSidecar);
-		runner.Require(bMissingAdmissionReasonExact &&
-			bOriginalPreservedAfterMissingAdmission &&
-			bSidecarRestoredAfterMissing,
-			"Marker-Bearing Effect Catalog Rejects A Missing Product Admission Sidecar And Preserves The Prior Runtime");
-
-		std::string changedAdmissionSidecar = originalAdmissionSidecar;
-		constexpr std::string_view ScopeBefore =
-			"\"scope\": \"Artist F 31470 current Product control\"";
-		constexpr std::string_view ScopeAfter =
-			"\"scope\": \"Artist F 31470 changed approval fixture\"";
-		const size_t scopeOffset = changedAdmissionSidecar.find(ScopeBefore);
-		if (std::string::npos != scopeOffset)
-		{
-			changedAdmissionSidecar.replace(
-				scopeOffset, ScopeBefore.size(), ScopeAfter);
-		}
-		const bool_t bChangedSidecarWritten =
-			bSidecarRestoredAfterMissing && std::string::npos != scopeOffset &&
-			WriteExactText(stagedProductCueAdmissions,
-				changedAdmissionSidecar);
-		const bool_t bTamperedReloadRejected = bChangedSidecarWritten &&
-			!CEffectCatalog::Load(status);
-		const bool_t bTamperedProvenanceReasonExact =
-			bTamperedReloadRejected && status.find(
-				"receipt provenance diverges from its source policy") !=
-				std::string::npos;
-		const bool_t bOriginalPreservedAfterRejectedTamper =
-			bTamperedReloadRejected && CEffectCatalog::Admit_ProductSpawn(
-				originalEffectId, originalToken, status);
-		const bool_t bSnapshotRestored = CEffectCatalog::Restore_Runtime(
-			admissionSnapshot, status);
-		const bool_t bOriginalReadmittedAfterRestore = bSnapshotRestored &&
-			CEffectCatalog::Admit_ProductSpawn(
-				originalEffectId, originalToken, status);
-		const bool_t bOriginalSidecarRestored =
-			WriteExactText(stagedProductCueAdmissions,
-				originalAdmissionSidecar);
-		const bool_t bOriginalReloaded = bOriginalReadmittedAfterRestore &&
-			bOriginalSidecarRestored &&
-			CEffectCatalog::Load(status);
-		const bool_t bOriginalSurvivedLaterIdenticalReload = bOriginalReloaded &&
-			CEffectCatalog::Admit_ProductSpawn(
-				originalEffectId, originalToken, status);
-		const bool_t bFinalRestored = CEffectCatalog::Restore_Runtime(
-			admissionSnapshot, status);
-		const bool_t bOriginalFinalReadmitted = bFinalRestored &&
-			CEffectCatalog::Admit_ProductSpawn(
-				originalEffectId, originalToken, status);
-		runner.Require(bIdenticalReloaded &&
-			bOriginalSurvivedIdenticalReload && bTamperedReloadRejected &&
-			bTamperedProvenanceReasonExact &&
-			bOriginalPreservedAfterRejectedTamper && bSnapshotRestored &&
-			bOriginalReadmittedAfterRestore && bOriginalReloaded &&
-			bOriginalSurvivedLaterIdenticalReload && bFinalRestored &&
-			bOriginalFinalReadmitted,
-			"Product Cue Admission Token Survives Identical Reload While Tampered Provenance Fails Closed And Preserves The Prior Runtime");
-
-		CEffectDocumentRenderer::Clear_Prepared_Catalog();
-		SCOPED_WORKING_DIRECTORY productCueWorkingDirectory;
-		const bool_t bProductCueWorkingDirectoryReady =
-			productCueWorkingDirectory.Initialize(
-				Resolve_ClientWorkingDirectory(), status);
-		ComPtr<ID3D11Device> productCueDevice;
-		ComPtr<ID3D11DeviceContext> productCueContext;
-		D3D_FEATURE_LEVEL productCueFeatureLevel{};
-		const bool_t bProductCueDeviceReady =
-			bProductCueWorkingDirectoryReady && SUCCEEDED(D3D11CreateDevice(
-			nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0u, nullptr, 0u,
-			D3D11_SDK_VERSION, &productCueDevice, &productCueFeatureLevel,
-			&productCueContext)) && nullptr != productCueDevice &&
-			nullptr != productCueContext;
-		std::vector<EFFECT_RENDER_PREWARM_TARGET> productCueTargets;
-		productCueTargets.reserve(productCues.size());
-		for (const ANIMATION_EFFECT_CUE& cue : productCues)
-		{
-			const auto document = CEffectCatalog::Find(cue.strEffectAssetId);
-			const auto projection =
-				CEffectCatalog::Find_VisualProjection(cue.strEffectAssetId);
-			if (nullptr == document ||
-				(nullptr != projection &&
-				 projection->Get_DocumentShared().get() != document.get()))
-			{
-				productCueTargets.clear();
-				break;
-			}
-			productCueTargets.push_back(
-				{ cue.strEffectAssetId, document, projection });
-		}
-		const bool_t bFiveCanariesPrewarmed = bProductCueDeviceReady &&
-			productCueTargets.size() == productCues.size() &&
-			CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
-				productCueDevice, productCueContext,
-				CEffectCatalog::Get_RuntimeRevision(), productCueTargets, status);
-		bool_t bFiveCanariesPrepared = bFiveCanariesPrewarmed;
-		for (const EFFECT_RENDER_PREWARM_TARGET& target : productCueTargets)
-		{
-			bFiveCanariesPrepared = bFiveCanariesPrepared &&
-				nullptr != CEffectDocumentRenderer::Find_Prepared(
-					CEffectCatalog::Get_RuntimeRevision(), target.strEffectAssetId,
-					*target.pDocument, target.pVisualProgramProjection);
-		}
-		if (!bFiveCanariesPrewarmed)
-		{
-			std::cout << "[DETAIL] Product cue prewarm: " << status << '\n';
-		}
-		runner.Require(bFiveCanariesPrepared,
-			"Five Product Canary Cues Prewarm Through The Existing Renderer Transaction Before Clip Payload Switch");
-		CEffectDocumentRenderer::Clear_Prepared_Catalog();
-
-		constexpr std::string_view ProductApproximateFixtureEffectId =
-			"effect.harness.product-approved-approximate";
-		constexpr std::string_view ProductApproximateFixtureCueId =
-			"harness.product-approved-approximate.stage-0";
-		constexpr std::string_view ProductApproximateFixtureAnimation =
-			"HarnessProductAdmission";
-		constexpr std::string_view ProductApproximateFixtureClip =
-			"product_approved_approximate_fixture";
-		const auto QuoteJson = [](const std::string_view Value)
-		{
-			return std::string("\"") + CDataJson::Escape(Value) + "\"";
-		};
-		const auto SortAdmissions = [](std::vector<EFFECT_PRODUCT_CUE_ADMISSION>&
-			Admissions)
-		{
-			std::sort(Admissions.begin(), Admissions.end(),
-				[](const EFFECT_PRODUCT_CUE_ADMISSION& Left,
-					const EFFECT_PRODUCT_CUE_ADMISSION& Right)
-				{
-					return Left.strCueId < Right.strCueId;
-				});
-		};
-		const auto WriteProvenanceJson = [&QuoteJson](std::ostringstream& Output,
-			const EFFECT_PRODUCT_CUE_PROVENANCE& Provenance)
-		{
-			Output << "{\"decision\":" << QuoteJson(Provenance.strDecision)
-				<< ",\"approvedAtKst\":" <<
-				QuoteJson(Provenance.strApprovedAtKst)
-				<< ",\"sourceThreadId\":" <<
-				QuoteJson(Provenance.strSourceThreadId)
-				<< ",\"scope\":" << QuoteJson(Provenance.strScope) << '}';
-		};
-		const auto BuildSourcePolicyJson = [&QuoteJson, &WriteProvenanceJson](
-			const std::string_view DecisionSetId,
-			const std::vector<EFFECT_PRODUCT_CUE_ADMISSION>& Admissions)
-		{
-			std::ostringstream Output;
-			Output << "{\"schema\":\"lostark.effect-product-cue-approval-policy\","
-				"\"formatVersion\":1,\"decisionSetId\":" <<
-				QuoteJson(DecisionSetId) <<
-				",\"defaultAdmission\":\"DENY\",\"approvals\":[";
-			for (size_t Index = 0u; Index < Admissions.size(); ++Index)
-			{
-				if (0u != Index)
-					Output << ',';
-				const EFFECT_PRODUCT_CUE_ADMISSION& Admission = Admissions[Index];
-				Output << "{\"cueId\":" << QuoteJson(Admission.strCueId)
-					<< ",\"approvalCeiling\":" <<
-					QuoteJson(Admission.strApprovalCeiling)
-					<< ",\"animationAssetId\":" <<
-					QuoteJson(Admission.strAnimationAssetId)
-					<< ",\"characterClass\":" <<
-					QuoteJson(Admission.strCharacterClass)
-					<< ",\"inputSlot\":" << QuoteJson(Admission.strInputSlot)
-					<< ",\"skillId\":" << Admission.iSkillId
-					<< ",\"stageIndex\":" << Admission.iStageIndex
-					<< ",\"clipName\":" << QuoteJson(Admission.strClipName)
-					<< ",\"startMs\":" << Admission.iStartMs
-					<< ",\"effectAssetId\":" <<
-					QuoteJson(Admission.strEffectAssetId)
-					<< ",\"rollbackEffectAssetId\":" <<
-					QuoteJson(Admission.strRollbackEffectAssetId)
-					<< ",\"effectContentSha256\":" <<
-					QuoteJson(Admission.strEffectContentSha256)
-					<< ",\"provenance\":";
-				WriteProvenanceJson(Output, Admission.Provenance);
-				Output << '}';
-			}
-			Output << "]}";
-			return Output.str();
-		};
-		const auto BuildAdmissionSidecarJson =
-			[&QuoteJson, &WriteProvenanceJson](
-				const std::string_view RuntimeCatalogSha256,
-				const std::string_view SourcePolicySha256,
-				const std::string_view SourcePolicyUtf8Json,
-				const std::string_view DecisionSetId,
-				const std::vector<EFFECT_PRODUCT_CUE_ADMISSION>& Admissions)
-		{
-			std::ostringstream Output;
-			Output << "{\"schema\":\"lostark.effect-product-cue-admissions\","
-				"\"formatVersion\":1,\"runtimeCatalogSha256\":" <<
-				QuoteJson(RuntimeCatalogSha256)
-				<< ",\"sourcePolicySha256\":" << QuoteJson(SourcePolicySha256)
-				<< ",\"sourcePolicyUtf8Json\":" <<
-				QuoteJson(SourcePolicyUtf8Json)
-				<< ",\"decisionSetId\":" << QuoteJson(DecisionSetId)
-				<< ",\"admissionMode\":\"EXPLICIT_CUE_OPT_IN_ONLY\","
-				"\"approvals\":[";
-			for (size_t Index = 0u; Index < Admissions.size(); ++Index)
-			{
-				if (0u != Index)
-					Output << ',';
-				const EFFECT_PRODUCT_CUE_ADMISSION& Admission = Admissions[Index];
-				Output << "{\"cueId\":" << QuoteJson(Admission.strCueId)
-					<< ",\"admission\":" << QuoteJson(
-						Get_EffectProductCueAdmissionClassLabel(
-							Admission.eAdmissionClass))
-					<< ",\"approvalCeiling\":" <<
-					QuoteJson(Admission.strApprovalCeiling)
-					<< ",\"observedExactness\":" <<
-					QuoteJson(Admission.strObservedExactness)
-					<< ",\"characterClass\":" <<
-					QuoteJson(Admission.strCharacterClass)
-					<< ",\"inputSlot\":" << QuoteJson(Admission.strInputSlot)
-					<< ",\"skillId\":" << Admission.iSkillId
-					<< ",\"stageIndex\":" << Admission.iStageIndex
-					<< ",\"animationAssetId\":" <<
-					QuoteJson(Admission.strAnimationAssetId)
-					<< ",\"clipName\":" << QuoteJson(Admission.strClipName)
-					<< ",\"startMs\":" << Admission.iStartMs
-					<< ",\"effectAssetId\":" <<
-					QuoteJson(Admission.strEffectAssetId)
-					<< ",\"rollbackEffectAssetId\":" <<
-					QuoteJson(Admission.strRollbackEffectAssetId)
-					<< ",\"effectContentSha256\":" <<
-					QuoteJson(Admission.strEffectContentSha256)
-					<< ",\"approximateElementCount\":" <<
-					Admission.iApproximateElementCount
-					<< ",\"hardSuppressedElementCount\":" <<
-					Admission.iHardSuppressedElementCount
-					<< ",\"provenance\":";
-				WriteProvenanceJson(Output, Admission.Provenance);
-				Output << '}';
-			}
-			Output << "]}";
-			return Output.str();
-		};
-		const auto FindJsonObjectEnd = [](const std::string& Text,
-			const size_t iObjectBegin)
-		{
-			if (iObjectBegin >= Text.size() || Text[iObjectBegin] != '{')
-				return std::string::npos;
-			size_t iDepth = 0u;
-			bool_t bInString = false;
-			bool_t bEscaped = false;
-			for (size_t Index = iObjectBegin; Index < Text.size(); ++Index)
-			{
-				const char Character = Text[Index];
-				if (bInString)
-				{
-					if (bEscaped)
-						bEscaped = false;
-					else if ('\\' == Character)
-						bEscaped = true;
-					else if ('"' == Character)
-						bInString = false;
-					continue;
-				}
-				if ('"' == Character)
-					bInString = true;
-				else if ('{' == Character)
-					++iDepth;
-				else if ('}' == Character && 0u != iDepth && 0u == --iDepth)
-					return Index + 1u;
-			}
-			return std::string::npos;
-		};
-		const auto FindJsonStringEnd = [](const std::string& Text,
-			const size_t iValueBegin)
-		{
-			bool_t bEscaped = false;
-			for (size_t Index = iValueBegin; Index < Text.size(); ++Index)
-			{
-				if (bEscaped)
-				{
-					bEscaped = false;
-					continue;
-				}
-				if ('\\' == Text[Index])
-					bEscaped = true;
-				else if ('"' == Text[Index])
-					return Index;
-			}
-			return std::string::npos;
-		};
-		const auto BuildFixtureCatalog =
-			[&](const std::string_view AuthoredDocumentUtf8,
-				const std::string_view AuthoredDocumentSha256,
-				const std::string_view SourcePolicySha256,
-				std::string& OutCatalog)
-		{
-			const std::string BaseEffectId =
-				ProductCueAdmissionCases[1].pEffectAssetId;
-			const std::string EntryMarker =
-				"{\"payloadKind\":\"DIRECT_AUTHORED_DOCUMENT_V13\","
-				"\"effectAssetId\":\"" + BaseEffectId + "\"";
-			const size_t iEntryBegin = originalRuntimeCatalog.find(EntryMarker);
-			const size_t iEntryEnd = std::string::npos == iEntryBegin ?
-				std::string::npos :
-				FindJsonObjectEnd(originalRuntimeCatalog, iEntryBegin);
-			if (std::string::npos == iEntryBegin ||
-				std::string::npos == iEntryEnd ||
-				originalRuntimeCatalog.find(ProductApproximateFixtureEffectId) !=
-					std::string::npos)
-			{
-				return false;
-			}
-
-			std::string Entry = originalRuntimeCatalog.substr(
-				iEntryBegin, iEntryEnd - iEntryBegin);
-			const std::string EffectField =
-				"\"effectAssetId\":\"" + BaseEffectId + "\"";
-			const size_t iEffectField = Entry.find(EffectField);
-			const std::string ContentPrefix = "\"contentSha256\":\"";
-			const size_t iContentPrefix = Entry.find(ContentPrefix);
-			const size_t iContentBegin = std::string::npos == iContentPrefix ?
-				std::string::npos : iContentPrefix + ContentPrefix.size();
-			const std::string DocumentPrefix = "\"authoredDocumentUtf8\":\"";
-			const size_t iDocumentPrefix = Entry.find(DocumentPrefix);
-			const size_t iDocumentBegin = std::string::npos == iDocumentPrefix ?
-				std::string::npos : iDocumentPrefix + DocumentPrefix.size();
-			const size_t iDocumentEnd = std::string::npos == iDocumentBegin ?
-				std::string::npos : FindJsonStringEnd(Entry, iDocumentBegin);
-			if (std::string::npos == iEffectField ||
-				std::string::npos == iContentBegin ||
-				iContentBegin + 64u >= Entry.size() ||
-				Entry[iContentBegin + 64u] != '"' ||
-				std::string::npos == iDocumentEnd)
-			{
-				return false;
-			}
-			Entry.replace(iDocumentBegin, iDocumentEnd - iDocumentBegin,
-				CDataJson::Escape(AuthoredDocumentUtf8));
-			Entry.replace(iContentBegin, 64u, AuthoredDocumentSha256);
-			Entry.replace(iEffectField, EffectField.size(),
-				"\"effectAssetId\":" + QuoteJson(
-					ProductApproximateFixtureEffectId));
-
-			OutCatalog = originalRuntimeCatalog;
-			size_t iRootEnd = OutCatalog.find_last_not_of(" \t\r\n");
-			if (std::string::npos == iRootEnd || '}' != OutCatalog[iRootEnd] ||
-				0u == iRootEnd || ']' != OutCatalog[iRootEnd - 1u])
-			{
-				return false;
-			}
-			OutCatalog.insert(iRootEnd - 1u, "," + Entry);
-
-			const std::string PolicyPrefix =
-				"\"productCuePolicySha256\":\"";
-			const size_t iPolicyPrefix = OutCatalog.find(PolicyPrefix);
-			if (std::string::npos != iPolicyPrefix)
-			{
-				const size_t iPolicyBegin = iPolicyPrefix + PolicyPrefix.size();
-				if (iPolicyBegin + 64u >= OutCatalog.size() ||
-					OutCatalog[iPolicyBegin + 64u] != '"')
-				{
-					return false;
-				}
-				OutCatalog.replace(iPolicyBegin, 64u, SourcePolicySha256);
-			}
-			else
-			{
-				const std::string RequiredMarker =
-					"\"productCueAdmissionsRequired\":true,";
-				const size_t iRequiredMarker = OutCatalog.find(RequiredMarker);
-				if (std::string::npos == iRequiredMarker)
-					return false;
-				OutCatalog.insert(iRequiredMarker + RequiredMarker.size(),
-					PolicyPrefix + std::string(SourcePolicySha256) + "\",");
-			}
-			return true;
-		};
-		const auto BuildFixtureFiles = [&](const std::string_view DecisionSetId,
-			const std::string_view AuthoredDocumentUtf8,
-			const std::vector<EFFECT_PRODUCT_CUE_ADMISSION>& Admissions,
-			std::string& OutCatalog, std::string& OutSidecar)
-		{
-			const std::string DocumentSha256 =
-				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
-					AuthoredDocumentUtf8);
-			const std::string SourcePolicy = BuildSourcePolicyJson(
-				DecisionSetId, Admissions);
-			const std::string SourcePolicySha256 =
-				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(SourcePolicy);
-			if (DocumentSha256.empty() || SourcePolicySha256.empty() ||
-				!BuildFixtureCatalog(AuthoredDocumentUtf8, DocumentSha256,
-					SourcePolicySha256, OutCatalog))
-			{
-				return false;
-			}
-			const std::string CatalogSha256 =
-				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(OutCatalog);
-			OutSidecar = BuildAdmissionSidecarJson(CatalogSha256,
-				SourcePolicySha256, SourcePolicy, DecisionSetId, Admissions);
-			return !CatalogSha256.empty() && !OutSidecar.empty();
-		};
-
-		std::vector<EFFECT_PRODUCT_CUE_ADMISSION> CurrentFullAdmissions;
-		CurrentFullAdmissions.reserve(ProductCueAdmissionCases.size());
-		bool_t bFixtureInputsReady = loaded &&
-			!originalRuntimeCatalog.empty() && !originalAdmissionSidecar.empty();
-		for (const PRODUCT_CUE_ADMISSION_CASE& TestCase :
-			ProductCueAdmissionCases)
-		{
-			const auto Admission = CEffectCatalog::Find_ProductCueAdmission(
-				TestCase.pAnimationAssetId, TestCase.pClipName, 0u,
-				TestCase.pEffectAssetId);
-			bFixtureInputsReady = bFixtureInputsReady && nullptr != Admission &&
-				Admission->eAdmissionClass ==
-					EFFECT_PRODUCT_CUE_ADMISSION_CLASS::PRODUCT_APPROVED_FULL;
-			if (nullptr != Admission)
-				CurrentFullAdmissions.push_back(*Admission);
-		}
-		SortAdmissions(CurrentFullAdmissions);
-		const auto FixtureBaseDocument = CEffectCatalog::Find(
-			ProductCueAdmissionCases[1].pEffectAssetId);
-		bFixtureInputsReady = bFixtureInputsReady &&
-			CurrentFullAdmissions.size() == ProductCueAdmissionCases.size() &&
-			nullptr != FixtureBaseDocument &&
-			nullptr == CEffectCatalog::Find_VisualProjection(
-				ProductCueAdmissionCases[1].pEffectAssetId);
-
-		EFFECT_DOCUMENT_DESC ApproximateFixtureDocument;
-		std::string ApproximateElementId;
-		if (bFixtureInputsReady)
-		{
-			for (size_t ElementIndex = 0u;
-				ElementIndex < FixtureBaseDocument->Elements.size(); ++ElementIndex)
-			{
-				const EFFECT_ELEMENT_DESC& SourceElement =
-					FixtureBaseDocument->Elements[ElementIndex];
-				if (!SourceElement.bVisible ||
-					SourceElement.Material.Execution.bFailClosed ||
-					!SourceElement.Material.SourceMaterial.bEnabled)
-				{
-					continue;
-				}
-				EFFECT_DOCUMENT_DESC Probe = *FixtureBaseDocument;
-				Probe.strEffectAssetId = ProductApproximateFixtureEffectId;
-				Probe.strDisplayName =
-					"Temporary Product-approved Approximate harness fixture";
-				EFFECT_MATERIAL_EXECUTION_DESC& Execution =
-					Probe.Elements[ElementIndex].Material.Execution;
-				Execution = EFFECT_MATERIAL_EXECUTION_DESC{};
-				Execution.bFailClosed = true;
-				Execution.bAuthoringApproximate = true;
-				std::string ValidationStatus;
-				if (!CEffectDocumentCodec::Validate_Drawable(
-						Probe, ValidationStatus))
-				{
-					continue;
-				}
-				ApproximateElementId =
-					Probe.Elements[ElementIndex].strElementId;
-				ApproximateFixtureDocument = std::move(Probe);
-				break;
-			}
-		}
-		uint32_t iFixtureFullCount = 0u;
-		uint32_t iFixtureApproximateCount = 0u;
-		uint32_t iFixtureHardCount = 0u;
-		if (!ApproximateElementId.empty())
-		{
-			for (const EFFECT_ELEMENT_DESC& Element :
-				ApproximateFixtureDocument.Elements)
-			{
-				if (Element.Material.Execution.bAuthoringApproximate)
-					++iFixtureApproximateCount;
-				else if (Element.Material.Execution.bFailClosed)
-					++iFixtureHardCount;
-				else
-					++iFixtureFullCount;
-			}
-		}
-		const std::string ApproximateDocumentUtf8 =
-			ApproximateElementId.empty() ? std::string{} :
-			CEffectDocumentCodec::Serialize(ApproximateFixtureDocument);
-		EFFECT_DOCUMENT_DESC ApproximateRoundTrip;
-		bFixtureInputsReady = bFixtureInputsReady &&
-			!ApproximateElementId.empty() && 1u == iFixtureApproximateCount &&
-			iFixtureFullCount + iFixtureApproximateCount + iFixtureHardCount ==
-				ApproximateFixtureDocument.Elements.size() &&
-			CEffectDocumentCodec::Parse(ApproximateDocumentUtf8,
-				ApproximateRoundTrip, status) &&
-			CEffectDocumentCodec::Serialize(ApproximateRoundTrip) ==
-				ApproximateDocumentUtf8;
-
-		EFFECT_PRODUCT_CUE_ADMISSION ApproximateFixtureAdmission;
-		ApproximateFixtureAdmission.strCueId = ProductApproximateFixtureCueId;
-		ApproximateFixtureAdmission.eAdmissionClass =
-			EFFECT_PRODUCT_CUE_ADMISSION_CLASS::PRODUCT_APPROVED_APPROXIMATE;
-		ApproximateFixtureAdmission.strApprovalCeiling =
-			"PRODUCT_APPROVED_APPROXIMATE";
-		ApproximateFixtureAdmission.strObservedExactness =
-			"AUTHORING_APPROXIMATE";
-		ApproximateFixtureAdmission.strCharacterClass = "DIMENSIONMASTER";
-		ApproximateFixtureAdmission.strInputSlot = "LMB";
-		ApproximateFixtureAdmission.iSkillId = 2050010u;
-		ApproximateFixtureAdmission.iStageIndex = 0u;
-		ApproximateFixtureAdmission.strAnimationAssetId =
-			ProductApproximateFixtureAnimation;
-		ApproximateFixtureAdmission.strClipName =
-			ProductApproximateFixtureClip;
-		ApproximateFixtureAdmission.iStartMs = 0u;
-		ApproximateFixtureAdmission.strEffectAssetId =
-			ProductApproximateFixtureEffectId;
-		ApproximateFixtureAdmission.strRollbackEffectAssetId =
-			ProductCueAdmissionCases[1].pRollbackEffectAssetId;
-		ApproximateFixtureAdmission.strEffectContentSha256 =
-			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
-				ApproximateDocumentUtf8);
-		ApproximateFixtureAdmission.iElementCount =
-			static_cast<uint32_t>(ApproximateFixtureDocument.Elements.size());
-		ApproximateFixtureAdmission.iFullElementCount = iFixtureFullCount;
-		ApproximateFixtureAdmission.iApproximateElementCount =
-			iFixtureApproximateCount;
-		ApproximateFixtureAdmission.iHardSuppressedElementCount =
-			iFixtureHardCount;
-		ApproximateFixtureAdmission.Provenance.strDecision =
-			"EXPLICIT_USER_OPT_IN";
-		ApproximateFixtureAdmission.Provenance.strApprovedAtKst = "2026-08-15";
-		ApproximateFixtureAdmission.Provenance.strSourceThreadId =
-			"01a00345-84c6-7ec0-9459-33a075d6b631";
-		ApproximateFixtureAdmission.Provenance.strScope =
-			"Temporary harness-only Product-approved Approximate cue";
-
-		std::vector<EFFECT_PRODUCT_CUE_ADMISSION> ApproximateAdmissions =
-			CurrentFullAdmissions;
-		ApproximateAdmissions.push_back(ApproximateFixtureAdmission);
-		SortAdmissions(ApproximateAdmissions);
-		std::string FixtureCatalog;
-		std::string FixtureSidecar;
-		const bool_t bApproximateFilesBuilt = bFixtureInputsReady &&
-			BuildFixtureFiles("harness.product-approved-approximate.v1",
-				ApproximateDocumentUtf8, ApproximateAdmissions,
-				FixtureCatalog, FixtureSidecar);
-		const bool_t bApproximateFilesWritten = bApproximateFilesBuilt &&
-			WriteExactText(stagedCatalog, FixtureCatalog) &&
-			WriteExactText(stagedProductCueAdmissions, FixtureSidecar);
-		const bool_t bApproximateCatalogLoaded = bApproximateFilesWritten &&
-			CEffectCatalog::Load(status);
-		const std::string ApproximateLoadStatus = status;
-		const auto LoadedApproximateAdmission =
-			CEffectCatalog::Find_ProductCueAdmission(
-				std::string(ProductApproximateFixtureAnimation),
-				std::string(ProductApproximateFixtureClip), 0u,
-				std::string(ProductApproximateFixtureEffectId));
-		std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN>
-			ApproximateToken;
-		const bool_t bApproximateTokenIssued = bApproximateCatalogLoaded &&
-			CEffectCatalog::Admit_ProductCue(
-				std::string(ProductApproximateFixtureAnimation),
-				std::string(ProductApproximateFixtureClip), 0u,
-				std::string(ProductApproximateFixtureEffectId),
-				ApproximateToken, status);
-		std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN>
-			WrongApproximateToken;
-		const bool_t bApproximateExactTupleRequired =
-			!CEffectCatalog::Admit_ProductCue(
-				std::string(ProductApproximateFixtureAnimation),
-				std::string(ProductApproximateFixtureClip) + ".drift", 0u,
-				std::string(ProductApproximateFixtureEffectId),
-				WrongApproximateToken, status) && nullptr == WrongApproximateToken;
-		const bool_t bApproximateSpawnAdmitted =
-			CEffectCatalog::Admit_ProductSpawn(
-				std::string(ProductApproximateFixtureEffectId),
-				ApproximateToken, status);
-		const bool_t bApproximateBindingAdmitted =
-			CEffectCatalog::Validate_ProductCueBinding(
-				std::string(ProductApproximateFixtureEffectId), ApproximateToken,
-				LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER,
-				"LMB", 2050010u, 0u, status);
-		bool_t bFiveFullAdmissionsRemainSeparate = bApproximateCatalogLoaded;
-		for (size_t Index = 0u; Index < ProductCueAdmissionCases.size(); ++Index)
-		{
-			const PRODUCT_CUE_ADMISSION_CASE& TestCase =
-				ProductCueAdmissionCases[Index];
-			const auto Admission = CEffectCatalog::Find_ProductCueAdmission(
-				TestCase.pAnimationAssetId, TestCase.pClipName, 0u,
-				TestCase.pEffectAssetId);
-			bFiveFullAdmissionsRemainSeparate =
-				bFiveFullAdmissionsRemainSeparate && nullptr != Admission &&
-				Admission->eAdmissionClass ==
-					EFFECT_PRODUCT_CUE_ADMISSION_CLASS::PRODUCT_APPROVED_FULL &&
-				CEffectCatalog::Admit_ProductSpawn(TestCase.pEffectAssetId,
-					productCues[Index].pProductAdmissionToken, status);
-		}
-		const auto ApproximateRuntimeDocument = CEffectCatalog::Find(
-			std::string(ProductApproximateFixtureEffectId));
-		const uint64_t iApproximateRevision =
-			CEffectCatalog::Get_RuntimeRevision();
-		std::vector<EFFECT_RENDER_PREWARM_TARGET> ApproximateTargets;
-		if (nullptr != ApproximateRuntimeDocument)
-		{
-			ApproximateTargets.push_back({
-				std::string(ProductApproximateFixtureEffectId),
-				ApproximateRuntimeDocument, nullptr });
-		}
-		const bool_t bApproximatePrewarmed = bProductCueDeviceReady &&
-			1u == ApproximateTargets.size() &&
-			CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
-				productCueDevice, productCueContext, iApproximateRevision,
-				ApproximateTargets, status) &&
-			nullptr != CEffectDocumentRenderer::Find_Prepared(
-				iApproximateRevision,
-				std::string(ProductApproximateFixtureEffectId),
-				*ApproximateRuntimeDocument, nullptr);
-		if (!bApproximateCatalogLoaded || !bApproximatePrewarmed)
-		{
-			std::cout << "[DETAIL] Product-approved Approximate fixture load: "
-				<< ApproximateLoadStatus << " prewarm=" << status << '\n';
-		}
-		runner.Require(bApproximateCatalogLoaded &&
-			nullptr != LoadedApproximateAdmission &&
-			LoadedApproximateAdmission->eAdmissionClass ==
-				EFFECT_PRODUCT_CUE_ADMISSION_CLASS::
-					PRODUCT_APPROVED_APPROXIMATE &&
-			LoadedApproximateAdmission->iApproximateElementCount == 1u &&
-			LoadedApproximateAdmission->strObservedExactness ==
-				"AUTHORING_APPROXIMATE" && bApproximateTokenIssued &&
-			bApproximateExactTupleRequired && bApproximateSpawnAdmitted &&
-			bApproximateBindingAdmitted && bFiveFullAdmissionsRemainSeparate &&
-			bApproximatePrewarmed,
-			"Temporary Product-Approved Approximate Cue Loads As A Sixth Explicit Receipt And Prewarms Through The Existing Renderer");
-
-		std::string UnapprovedCatalog;
-		std::string UnapprovedSidecar;
-		const bool_t bUnapprovedFilesBuilt = bFixtureInputsReady &&
-			BuildFixtureFiles("harness.unapproved-approximate.v1",
-				ApproximateDocumentUtf8, CurrentFullAdmissions,
-				UnapprovedCatalog, UnapprovedSidecar);
-		const bool_t bUnapprovedFilesWritten = bUnapprovedFilesBuilt &&
-			WriteExactText(stagedCatalog, UnapprovedCatalog) &&
-			WriteExactText(stagedProductCueAdmissions, UnapprovedSidecar);
-		const bool_t bUnapprovedApproximateRejected =
-			bUnapprovedFilesWritten && !CEffectCatalog::Load(status);
-		const bool_t bUnapprovedReasonExact =
-			bUnapprovedApproximateRejected && status.find(
-				"Approximate direct-authored Effect lacks explicit cue admission") !=
-				std::string::npos;
-		const bool_t bApproximateStatePreservedAfterUnapproved =
-			bUnapprovedApproximateRejected &&
-			iApproximateRevision == CEffectCatalog::Get_RuntimeRevision() &&
-			CEffectCatalog::Admit_ProductSpawn(
-				std::string(ProductApproximateFixtureEffectId),
-				ApproximateToken, status);
-		runner.Require(bUnapprovedReasonExact &&
-			bApproximateStatePreservedAfterUnapproved,
-			"Unapproved Approximate Direct-Authored Effect Is Denied Without Replacing The Product-Approved Runtime");
-
-		EFFECT_DOCUMENT_DESC HardFixtureDocument = ApproximateFixtureDocument;
-		for (EFFECT_ELEMENT_DESC& Element : HardFixtureDocument.Elements)
-		{
-			if (Element.strElementId != ApproximateElementId)
-				continue;
-			Element.bVisible = true;
-			Element.Material.Execution = EFFECT_MATERIAL_EXECUTION_DESC{};
-			Element.Material.Execution.bFailClosed = true;
-			break;
-		}
-		const std::string HardDocumentUtf8 = ApproximateElementId.empty() ?
-			std::string{} : CEffectDocumentCodec::Serialize(HardFixtureDocument);
-		EFFECT_PRODUCT_CUE_ADMISSION HardFixtureAdmission =
-			ApproximateFixtureAdmission;
-		HardFixtureAdmission.eAdmissionClass =
-			EFFECT_PRODUCT_CUE_ADMISSION_CLASS::PRODUCT_APPROVED_FULL;
-		HardFixtureAdmission.strObservedExactness = "FULL";
-		HardFixtureAdmission.strEffectContentSha256 =
-			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(HardDocumentUtf8);
-		HardFixtureAdmission.iFullElementCount = iFixtureFullCount;
-		HardFixtureAdmission.iApproximateElementCount = 0u;
-		HardFixtureAdmission.iHardSuppressedElementCount = iFixtureHardCount + 1u;
-		HardFixtureAdmission.Provenance.strScope =
-			"Harness visible Hard rejection fixture";
-		std::vector<EFFECT_PRODUCT_CUE_ADMISSION> HardAdmissions =
-			CurrentFullAdmissions;
-		HardAdmissions.push_back(std::move(HardFixtureAdmission));
-		SortAdmissions(HardAdmissions);
-		std::string HardCatalog;
-		std::string HardSidecar;
-		const bool_t bHardFilesBuilt = bFixtureInputsReady &&
-			BuildFixtureFiles("harness.visible-hard-rejection.v1",
-				HardDocumentUtf8, HardAdmissions, HardCatalog, HardSidecar);
-		const bool_t bHardFilesWritten = bHardFilesBuilt &&
-			WriteExactText(stagedCatalog, HardCatalog) &&
-			WriteExactText(stagedProductCueAdmissions, HardSidecar);
-		const bool_t bVisibleHardRejected = bHardFilesWritten &&
-			!CEffectCatalog::Load(status);
-		const bool_t bVisibleHardReasonExact = bVisibleHardRejected &&
-			status.find("Hard fail-closed authored Element cannot be made visible") !=
-				std::string::npos;
-		const bool_t bApproximateStatePreservedAfterHard =
-			bVisibleHardRejected &&
-			iApproximateRevision == CEffectCatalog::Get_RuntimeRevision() &&
-			CEffectCatalog::Admit_ProductSpawn(
-				std::string(ProductApproximateFixtureEffectId),
-				ApproximateToken, status);
-		runner.Require(bVisibleHardReasonExact &&
-			bApproximateStatePreservedAfterHard,
-			"Visible Hard Fail-Closed Effect Remains Product-Denied And Preserves The Prior Runtime");
-
-		const bool_t bOriginalFixtureFilesRestored =
-			WriteExactText(stagedCatalog, originalRuntimeCatalog) &&
-			WriteExactText(stagedProductCueAdmissions,
-				originalAdmissionSidecar);
-		const bool_t bOriginalRuntimeRestored =
-			CEffectCatalog::Restore_Runtime(admissionSnapshot, status);
-		const bool_t bOriginalRuntimeReadmitted = bOriginalRuntimeRestored &&
-			CEffectCatalog::Admit_ProductSpawn(
-				originalEffectId, originalToken, status) &&
-			!CEffectCatalog::Contains(
-				std::string(ProductApproximateFixtureEffectId));
-		runner.Require(bOriginalFixtureFilesRestored &&
-			bOriginalRuntimeReadmitted,
-			"Temporary Product Admission Fixtures Restore The Original Catalog And Runtime Snapshot");
-		CEffectDocumentRenderer::Clear_Prepared_Catalog();
-
-		const std::vector<std::string> visualProgramIds =
-			CEffectCatalog::Get_VisualProgramAssetIds();
-		size_t iVisualProjectionCount = 0u;
-		size_t iAdapterOnlyProgramCount = 0u;
-		bool_t bVisualProgramJoinExact = loaded &&
-			visualProgramIds.size() == 13u;
-		for (const std::string& visualEffectId : visualProgramIds)
-		{
-			const std::shared_ptr<const EFFECT_VISUAL_PROGRAM> visualProgram =
-				CEffectCatalog::Find_VisualProgram(visualEffectId);
-			const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-				visualProjection =
-					CEffectCatalog::Find_VisualProjection(visualEffectId);
-			if (nullptr != visualProjection)
-			{
-				const std::shared_ptr<const EFFECT_DOCUMENT_DESC> visualDocument =
-					CEffectCatalog::Find(visualEffectId);
-				++iVisualProjectionCount;
-				bVisualProgramJoinExact = bVisualProgramJoinExact &&
-					nullptr != visualProgram && visualProjection->Is_Valid() &&
-					visualProjection->Get_DocumentShared().get() ==
-						visualDocument.get() &&
-					visualProjection->Get_ProgramSha256() ==
-						visualProgram->strProgramSha256;
-			}
-			else
-			{
-				const std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>
-					reconstructed =
-						CEffectCatalog::Find_RuntimeProgramEntry(visualEffectId);
-				const bool_t bAdapterOnly = nullptr != visualProgram &&
-					visualProgram->eProjectionKind ==
-						EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1 &&
-					nullptr != reconstructed;
-				if (bAdapterOnly)
-					++iAdapterOnlyProgramCount;
-				bVisualProgramJoinExact =
-					bVisualProgramJoinExact && bAdapterOnly;
-			}
-		}
-		runner.Require(bVisualProgramJoinExact &&
-			iVisualProjectionCount == 12u && iAdapterOnlyProgramCount == 1u,
-			"Effect Runtime Atomically Joins Thirteen Visual Programs As Twelve BA Projections And One Reconstructed Adapter");
-		const std::shared_ptr<const
-			EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> lanceBaProjection =
-			CEffectCatalog::Find_VisualProjection(
-				"effect.lancemaster.skill.34010.ba1");
-		runner.Require(nullptr != lanceBaProjection &&
-			Resolve_ProductCueDocumentSource(
-				nullptr != lanceBaProjection) ==
-				EFFECT_DOCUMENT_SOURCE::RUNTIME_VISUAL_PROGRAM &&
-			Resolve_ProductCueDocumentSource(false) ==
-				EFFECT_DOCUMENT_SOURCE::AUTHORED,
-			"Effect Tool Product Cue Selects The Exact BA Visual Projection And Retains Authored Fallback Without A Program");
-
-		struct ELEMENT_PRESET_CASE final
-		{
-			std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-				pProjection;
-			EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST Request;
-			EFFECT_ELEMENT_KIND eTargetKind = EFFECT_ELEMENT_KIND::END;
-			bool_t bSupplemental = false;
-		};
-		std::optional<ELEMENT_PRESET_CASE> firstVisualPreset;
-		std::optional<ELEMENT_PRESET_CASE> secondPreset;
-		std::optional<ELEMENT_PRESET_CASE> unsupportedPreset;
-		const auto IsGenericPresetKind = [](const EFFECT_ELEMENT_KIND eKind)
-		{
-			return eKind == EFFECT_ELEMENT_KIND::MESH ||
-				eKind == EFFECT_ELEMENT_KIND::SPRITE ||
-				eKind == EFFECT_ELEMENT_KIND::PARTICLE ||
-				eKind == EFFECT_ELEMENT_KIND::DECAL ||
-				eKind == EFFECT_ELEMENT_KIND::TRAIL;
-		};
-		const auto FindExactTarget = [](const EFFECT_DOCUMENT_DESC& Document,
-			const std::string_view ElementId) -> const EFFECT_ELEMENT_DESC*
-		{
-			const EFFECT_ELEMENT_DESC* pFound = nullptr;
-			for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
-			{
-				if (Element.strElementId != ElementId)
-					continue;
-				if (nullptr != pFound)
-					return nullptr;
-				pFound = &Element;
-			}
-			return pFound;
-		};
-		for (const std::string& visualEffectId : visualProgramIds)
-		{
-			const auto projection =
-				CEffectCatalog::Find_VisualProjection(visualEffectId);
-			if (nullptr == projection)
-				continue;
-			const auto visualProgram =
-				CEffectCatalog::Find_VisualProgram(visualEffectId);
-			if (nullptr != visualProgram && !unsupportedPreset.has_value())
-			{
-				for (const EFFECT_VISUAL_PROGRAM_ROW& Row :
-					visualProgram->VisualRows)
-				{
-					if (Row.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE &&
-						Row.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::SCREEN_POST)
-					{
-						continue;
-					}
-					ELEMENT_PRESET_CASE Candidate;
-					Candidate.pProjection = projection;
-					Candidate.Request.strEffectAssetId =
-						Row.Selector.strEffectAssetId;
-					Candidate.Request.strOccurrenceId =
-						Row.Selector.strOccurrenceId;
-					Candidate.Request.strRowSha256 = Row.strRowSha256;
-					Candidate.Request.strTargetElementId =
-						Row.TargetIdentity.has_value() ?
-							Row.TargetIdentity->strTargetElementId :
-							"unsupported.target.element.harness";
-					Candidate.Request.strSourceRecordId =
-						Row.SourceIdentity.strSourceRecordId;
-					unsupportedPreset = std::move(Candidate);
-					break;
-				}
-			}
-			for (const EFFECT_VISUAL_PROGRAM_ROW& Row :
-				projection->Get_AdmittedRows())
-			{
-				if (!Row.TargetIdentity.has_value())
-					continue;
-				const EFFECT_ELEMENT_DESC* pTarget = FindExactTarget(
-					projection->Get_Document(),
-					Row.TargetIdentity->strTargetElementId);
-				if (nullptr == pTarget)
-					continue;
-				ELEMENT_PRESET_CASE Candidate;
-				Candidate.pProjection = projection;
-				Candidate.Request.strEffectAssetId =
-					Row.Selector.strEffectAssetId;
-				Candidate.Request.strOccurrenceId =
-					Row.Selector.strOccurrenceId;
-				Candidate.Request.strRowSha256 = Row.strRowSha256;
-				Candidate.Request.strTargetElementId =
-					Row.TargetIdentity->strTargetElementId;
-				Candidate.Request.strSourceRecordId =
-					Row.SourceIdentity.strSourceRecordId;
-				Candidate.eTargetKind = pTarget->eKind;
-				if (IsGenericPresetKind(pTarget->eKind))
-				{
-					if (!firstVisualPreset.has_value())
-						firstVisualPreset = Candidate;
-					else if (!secondPreset.has_value() &&
-						Candidate.Request.strTargetElementId !=
-							firstVisualPreset->Request.strTargetElementId)
-					{
-						secondPreset = Candidate;
-					}
-				}
-			}
-			for (const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental :
-				projection->Get_AdmittedSupplementalElements())
-			{
-				const EFFECT_ELEMENT_DESC* pTarget = FindExactTarget(
-					projection->Get_Document(),
-					Supplemental.TargetIdentity.strTargetElementId);
-				if (nullptr == pTarget)
-					continue;
-				ELEMENT_PRESET_CASE Candidate;
-				Candidate.pProjection = projection;
-				Candidate.Request.strEffectAssetId =
-					Supplemental.Selector.strEffectAssetId;
-				Candidate.Request.strOccurrenceId =
-					Supplemental.Selector.strOccurrenceId;
-				Candidate.Request.strRowSha256 = Supplemental.strRowSha256;
-				Candidate.Request.strTargetElementId =
-					Supplemental.TargetIdentity.strTargetElementId;
-				Candidate.Request.strSourceRecordId =
-					Supplemental.strSourceRecordId;
-				Candidate.eTargetKind = pTarget->eKind;
-				Candidate.bSupplemental = true;
-				if (IsGenericPresetKind(pTarget->eKind) &&
-					(!firstVisualPreset.has_value() ||
-					 Candidate.Request.strTargetElementId !=
-						 firstVisualPreset->Request.strTargetElementId))
-				{
-					secondPreset = Candidate;
-				}
-			}
-		}
-
-		const auto PresetStageSnapshot = [](
-			const EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_STAGE& Stage)
-		{
-			EFFECT_DOCUMENT_DESC SnapshotDocument;
-			SnapshotDocument.strEffectAssetId =
-				"effect.harness.element-preset.snapshot";
-			SnapshotDocument.strDisplayName = "Element preset snapshot";
-			SnapshotDocument.Elements.push_back(Stage.Element);
-			return Stage.Identity.strEffectAssetId + "\n" +
-				Stage.Identity.strOccurrenceId + "\n" +
-				Stage.Identity.strRowSha256 + "\n" +
-				Stage.Identity.strTargetElementId + "\n" +
-				Stage.Identity.strSourceRecordId + "\n" +
-				std::to_string(static_cast<uint32_t>(Stage.eSourceFamily)) + "\n" +
-				(Stage.bSupplemental ? "supplemental\n" : "visual\n") +
-				(nullptr == Stage.pProjection ? std::string{} :
-				 Stage.pProjection->Get_AdmissionTokenSha256()) + "\n" +
-				CEffectDocumentCodec::Serialize(SnapshotDocument);
-		};
-		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_STAGE presetStage;
-		const bool_t bNormalPresetBuilt = firstVisualPreset.has_value() &&
-			CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
-				firstVisualPreset->pProjection, firstVisualPreset->Request,
-				presetStage, status) && presetStage.Is_Valid() &&
-			!presetStage.bSupplemental &&
-			presetStage.Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
-			!presetStage.Element.SourceRecipe.bEnabled &&
-			presetStage.Identity.strTargetElementId ==
-				firstVisualPreset->Request.strTargetElementId;
-		const std::string firstPresetSnapshot = bNormalPresetBuilt ?
-			PresetStageSnapshot(presetStage) : std::string{};
-		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST staleRequest =
-			firstVisualPreset.has_value() ? firstVisualPreset->Request :
-				EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST{};
-		staleRequest.strRowSha256 = staleRequest.strRowSha256 ==
-			std::string(64u, '0') ? std::string(64u, '1') :
-				std::string(64u, '0');
-		const bool_t bStaleShaPreserved = bNormalPresetBuilt &&
-			!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
-				firstVisualPreset->pProjection, staleRequest, presetStage, status) &&
-			PresetStageSnapshot(presetStage) == firstPresetSnapshot;
-		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST wrongSourceRequest =
-			firstVisualPreset.has_value() ? firstVisualPreset->Request :
-				EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST{};
-		wrongSourceRequest.strSourceRecordId =
-			"wrong.source.record.harness";
-		const bool_t bWrongSourcePreserved = bStaleShaPreserved &&
-			!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
-				firstVisualPreset->pProjection, wrongSourceRequest,
-				presetStage, status) &&
-			PresetStageSnapshot(presetStage) == firstPresetSnapshot;
-		EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST missingTargetRequest =
-			firstVisualPreset.has_value() ? firstVisualPreset->Request :
-				EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST{};
-		missingTargetRequest.strTargetElementId =
-			"missing.target.element.harness";
-		const bool_t bMissingTargetPreserved = bWrongSourcePreserved &&
-			!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
-				firstVisualPreset->pProjection, missingTargetRequest,
-				presetStage, status) &&
-			PresetStageSnapshot(presetStage) == firstPresetSnapshot;
-		const bool_t bUnsupportedPreserved = bMissingTargetPreserved &&
-			unsupportedPreset.has_value() &&
-			!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
-				unsupportedPreset->pProjection, unsupportedPreset->Request,
-				presetStage, status) &&
-			PresetStageSnapshot(presetStage) == firstPresetSnapshot;
-		const bool_t bSecondValidReplaced = bUnsupportedPreserved &&
-			secondPreset.has_value() &&
-			CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
-				secondPreset->pProjection, secondPreset->Request,
-				presetStage, status) && presetStage.Is_Valid() &&
-			presetStage.bSupplemental == secondPreset->bSupplemental &&
-			presetStage.Identity.strTargetElementId ==
-				secondPreset->Request.strTargetElementId &&
-			PresetStageSnapshot(presetStage) != firstPresetSnapshot;
-		const std::string secondPresetSnapshot = bSecondValidReplaced ?
-			PresetStageSnapshot(presetStage) : std::string{};
-		const bool_t bSecondStagePreserved = bSecondValidReplaced &&
-			!CEffectVisualProgramCorpusCodec::Build_ElementAuthoringPresetStage(
-				secondPreset->pProjection, staleRequest, presetStage, status) &&
-			PresetStageSnapshot(presetStage) == secondPresetSnapshot;
-		if (!(bNormalPresetBuilt && bStaleShaPreserved &&
-			bWrongSourcePreserved && bMissingTargetPreserved &&
-			bUnsupportedPreserved && bSecondValidReplaced &&
-			bSecondStagePreserved))
-		{
-			std::cout << "[DETAIL] Element preset stage normal=" <<
-				bNormalPresetBuilt << " stale=" << bStaleShaPreserved <<
-				" source=" << bWrongSourcePreserved << " target=" <<
-				bMissingTargetPreserved << " unsupported=" <<
-				bUnsupportedPreserved << " second=" << bSecondValidReplaced <<
-				" second-preserved=" << bSecondStagePreserved <<
-				" status=" << status << '\n';
-		}
-		runner.Require(bNormalPresetBuilt && bStaleShaPreserved &&
-			bWrongSourcePreserved && bMissingTargetPreserved &&
-			bUnsupportedPreserved && bSecondValidReplaced &&
-			bSecondStagePreserved,
-			"Element Preset Stage Validates Exact Visual And Supplemental Identity And Preserves Prior Output On Every Rejection");
-
-		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-			authoringProjection;
-		const EFFECT_VISUAL_PROGRAM_ROW* pAuthoringRow = nullptr;
-		const EFFECT_ELEMENT_DESC* pAuthoringElement = nullptr;
-		for (const std::string& visualEffectId : visualProgramIds)
-		{
-			const auto candidate =
-				CEffectCatalog::Find_VisualProjection(visualEffectId);
-			if (nullptr == candidate)
-				continue;
-			for (const EFFECT_VISUAL_PROGRAM_ROW& row :
-				candidate->Get_AdmittedRows())
-			{
-				if (!row.bTuningEligibleTransform ||
-					!row.TargetIdentity.has_value())
-				{
-					continue;
-				}
-				const auto element = std::find_if(
-					candidate->Get_Document().Elements.begin(),
-					candidate->Get_Document().Elements.end(),
-					[&row](const EFFECT_ELEMENT_DESC& value)
-					{
-						return value.strElementId ==
-							row.TargetIdentity->strTargetElementId;
-					});
-				if (element == candidate->Get_Document().Elements.end())
-					continue;
-				authoringProjection = candidate;
-				pAuthoringRow = &row;
-				pAuthoringElement = &*element;
-				break;
-			}
-			if (nullptr != pAuthoringRow)
-				break;
-		}
-
-		EFFECT_OCCURRENCE_TUNING_DOCUMENT visualTuning;
-		if (nullptr != authoringProjection && nullptr != pAuthoringRow &&
-			nullptr != pAuthoringElement)
-		{
-			visualTuning.strEffectAssetId =
-				authoringProjection->Get_EffectAssetId();
-			EFFECT_OCCURRENCE_TUNING_ENTRY visualEntry;
-			visualEntry.strOccurrenceId =
-				pAuthoringRow->Selector.strOccurrenceId;
-			visualEntry.strSourceOccurrenceRowSha256 =
-				pAuthoringRow->strRowSha256;
-			visualEntry.EffectiveLocalTransform.vPosition =
-				pAuthoringElement->Detail.Transform.vPosition;
-			visualEntry.EffectiveLocalTransform.vRotationDegrees =
-				pAuthoringElement->Detail.Transform.vRotationDegrees;
-			visualEntry.EffectiveLocalTransform.vScale =
-				pAuthoringElement->Detail.Transform.vScale;
-			visualEntry.EffectiveLocalTransform.vPosition.x +=
-				visualEntry.EffectiveLocalTransform.vPosition.x < 999.f ?
-					0.125f : -0.125f;
-			visualTuning.Entries.push_back(std::move(visualEntry));
-		}
-		EFFECT_DOCUMENT_DESC tunedVisualDocument = nullptr == authoringProjection ?
-			EFFECT_DOCUMENT_DESC{} : authoringProjection->Get_Document();
-		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-			tunedVisualProjection;
-		const bool_t bVisualTuningResealed = nullptr != authoringProjection &&
-			CEffectOccurrenceTuningCodec::Validate_AgainstProjection(
-				visualTuning, *authoringProjection, status) &&
-			CEffectOccurrenceTuningCodec::Apply_ToProjectedDocument(
-				tunedVisualDocument, *authoringProjection, visualTuning, status) &&
-			CEffectVisualProgramCorpusCodec::Derive_TransformTunedProjection(
-				*authoringProjection, tunedVisualDocument,
-				tunedVisualProjection, status) &&
-			nullptr != tunedVisualProjection && tunedVisualProjection->Is_Valid() &&
-			tunedVisualProjection->Get_AdmissionTokenSha256() !=
-				authoringProjection->Get_AdmissionTokenSha256();
-		auto preservedVisualProjection = tunedVisualProjection;
-		EFFECT_DOCUMENT_DESC nonTransformMutation = tunedVisualDocument;
-		nonTransformMutation.strDisplayName += " forbidden";
-		const bool_t bNonTransformRejected = bVisualTuningResealed &&
-			!CEffectVisualProgramCorpusCodec::Derive_TransformTunedProjection(
-				*authoringProjection, nonTransformMutation,
-				preservedVisualProjection, status) &&
-			preservedVisualProjection.get() == tunedVisualProjection.get();
-		EFFECT_OCCURRENCE_TUNING_DOCUMENT staleVisualTuning = visualTuning;
-		if (!staleVisualTuning.Entries.empty())
-		{
-			staleVisualTuning.Entries.front().strSourceOccurrenceRowSha256 =
-				std::string(64u, '0');
-		}
-		const bool_t bStaleVisualRejected = nullptr != authoringProjection &&
-			!CEffectOccurrenceTuningCodec::Validate_AgainstProjection(
-				staleVisualTuning, *authoringProjection, status);
-		const std::filesystem::path visualTuningPath =
-			std::filesystem::temp_directory_path() /
-			("lostark-visual-occurrence-tuning-" +
-			 std::to_string(GetCurrentProcessId()) + ".json");
-		std::error_code visualTuningError;
-		std::filesystem::remove(visualTuningPath, visualTuningError);
-		EFFECT_OCCURRENCE_TUNING_DOCUMENT loadedVisualTuning;
-		const bool_t bVisualTuningSaved = nullptr != authoringProjection &&
-			CEffectOccurrenceTuningCodec::Save_AtomicIfUnchanged(
-				visualTuningPath, visualTuning, *authoringProjection, {}, status) &&
-			CEffectOccurrenceTuningCodec::Load(
-				visualTuningPath, loadedVisualTuning, status) &&
-			CEffectOccurrenceTuningCodec::Serialize(loadedVisualTuning) ==
-				CEffectOccurrenceTuningCodec::Serialize(visualTuning);
-		std::filesystem::remove(visualTuningPath, visualTuningError);
-		runner.Require(bVisualTuningResealed && bNonTransformRejected &&
-			bStaleVisualRejected && bVisualTuningSaved,
-			"Stable Visual Occurrence Transform Tuning Reseals Immutable Token Rejects Other Fields And Saves Atomically");
-
-		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-			supplementalProjection;
-		const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT* pSupplementalRow = nullptr;
-		const EFFECT_ELEMENT_DESC* pSupplementalElement = nullptr;
-		for (const std::string& visualEffectId : visualProgramIds)
-		{
-			const auto candidate =
-				CEffectCatalog::Find_VisualProjection(visualEffectId);
-			if (nullptr == candidate)
-				continue;
-			for (const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& row :
-				candidate->Get_AdmittedSupplementalElements())
-			{
-				if (!row.bTuningEligibleTransform)
-					continue;
-				const auto element = std::find_if(
-					candidate->Get_Document().Elements.begin(),
-					candidate->Get_Document().Elements.end(),
-					[&row](const EFFECT_ELEMENT_DESC& value)
-					{
-						return value.strElementId ==
-							row.TargetIdentity.strTargetElementId;
-					});
-				if (element == candidate->Get_Document().Elements.end())
-					continue;
-				supplementalProjection = candidate;
-				pSupplementalRow = &row;
-				pSupplementalElement = &*element;
-				break;
-			}
-			if (nullptr != pSupplementalRow)
-				break;
-		}
-		EFFECT_OCCURRENCE_TUNING_DOCUMENT supplementalTuning;
-		if (nullptr != supplementalProjection && nullptr != pSupplementalRow &&
-			nullptr != pSupplementalElement)
-		{
-			supplementalTuning.strEffectAssetId =
-				supplementalProjection->Get_EffectAssetId();
-			EFFECT_OCCURRENCE_TUNING_ENTRY entry;
-			entry.strOccurrenceId = pSupplementalRow->Selector.strOccurrenceId;
-			entry.strSourceOccurrenceRowSha256 = pSupplementalRow->strRowSha256;
-			entry.EffectiveLocalTransform.vPosition =
-				pSupplementalElement->Detail.Transform.vPosition;
-			entry.EffectiveLocalTransform.vRotationDegrees =
-				pSupplementalElement->Detail.Transform.vRotationDegrees;
-			entry.EffectiveLocalTransform.vScale =
-				pSupplementalElement->Detail.Transform.vScale;
-			entry.EffectiveLocalTransform.vPosition.y +=
-				entry.EffectiveLocalTransform.vPosition.y < 999.f ? 0.125f : -0.125f;
-			supplementalTuning.Entries.push_back(std::move(entry));
-		}
-		EFFECT_DOCUMENT_DESC supplementalTunedDocument =
-			nullptr == supplementalProjection ? EFFECT_DOCUMENT_DESC{} :
-				supplementalProjection->Get_Document();
-		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-			supplementalTunedProjection;
-		const bool_t bSupplementalTuningResealed =
-			nullptr != supplementalProjection &&
-			CEffectOccurrenceTuningCodec::Validate_AgainstProjection(
-				supplementalTuning, *supplementalProjection, status) &&
-			CEffectOccurrenceTuningCodec::Apply_ToProjectedDocument(
-				supplementalTunedDocument, *supplementalProjection,
-				supplementalTuning, status) &&
-			CEffectVisualProgramCorpusCodec::Derive_TransformTunedProjection(
-				*supplementalProjection, supplementalTunedDocument,
-				supplementalTunedProjection, status) &&
-			nullptr != supplementalTunedProjection &&
-			supplementalTunedProjection->Is_Valid();
-		runner.Require(bSupplementalTuningResealed,
-			"AnimationTrail Supplemental Stable Occurrence Uses The Same Transform Override And Immutable Reseal Contract");
-		const std::set<std::string> actualEffectIdSet(
-			effectIds.begin(), effectIds.end());
-		std::set<std::string> contractEffectIds;
-		for (const auto& entry : buildContract.Effects)
-			contractEffectIds.insert(entry.first);
-		std::set<std::string> directAuthoredProductEffectIds;
-		for (const PRODUCT_CUE_ADMISSION_CASE& TestCase :
-			ProductCueAdmissionCases)
-		{
-			directAuthoredProductEffectIds.insert(TestCase.pEffectAssetId);
-			contractEffectIds.insert(TestCase.pEffectAssetId);
-		}
-		bool_t hierarchyComplete = loaded && buildContractLoaded &&
-			actualEffectIdSet == contractEffectIds &&
-			effectIds.size() ==
-				buildContract.iEffectCount + directAuthoredProductEffectIds.size();
-		bool_t playbackStageComplete = loaded;
-		size_t stagedEffectCount = 0u;
-		size_t assemblyEmitterCount = 0u;
-		std::set<std::string> componentIds;
-		for (const std::string& effectId : effectIds)
-		{
-			const std::shared_ptr<const EFFECT_ASSEMBLY_DESC> assembly =
-				CEffectCatalog::Find_Assembly(effectId);
-			const std::shared_ptr<const EFFECT_DOCUMENT_DESC> document =
-				CEffectCatalog::Find(effectId);
-			const bool_t bDirectAuthored =
-				directAuthoredProductEffectIds.contains(effectId);
-			hierarchyComplete = hierarchyComplete && nullptr != document &&
-				(bDirectAuthored ?
-					nullptr == assembly && document->iLoadedFormatVersion == 13u :
-					nullptr != assembly && !assembly->ComponentCues.empty());
-			const auto expectedBuild = buildContract.Effects.find(effectId);
-			if (!bDirectAuthored)
-			{
-				hierarchyComplete = hierarchyComplete &&
-					expectedBuild != buildContract.Effects.end() &&
-					nullptr != assembly &&
-					assembly->ComponentCues.size() ==
-						expectedBuild->second.iComponentCount;
-			}
-			size_t effectEmitterCount = 0u;
-			if (nullptr != document)
-			{
-				CEffectPlayback playback;
-				std::string playbackStatus;
-				const std::shared_ptr<const
-					EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> projection =
-						CEffectCatalog::Find_VisualProjection(effectId);
-				std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
-					prepared;
-				const bool_t staged = nullptr == projection ?
-					playback.Stage_Document(*document, playbackStatus) :
-					(CEffectPlayback::Prepare_DocumentResources(
-						projection->Get_Document(), prepared, playbackStatus) &&
-					 playback.Stage_PrevalidatedVisualProgramDocument(
-						projection, prepared, playbackStatus));
-				playbackStageComplete = playbackStageComplete && staged;
-				if (staged)
-					++stagedEffectCount;
-				else
-					std::cout << "[DETAIL] Runtime playback stage " << effectId
-						<< ": " << playbackStatus << '\n';
-			}
-			if (bDirectAuthored)
-				continue;
-			if (nullptr == assembly)
-				continue;
-			for (const EFFECT_COMPONENT_CUE_DESC& cue : assembly->ComponentCues)
-			{
-				const std::shared_ptr<const EFFECT_COMPONENT_DESC> component =
-					CEffectCatalog::Find_Component(cue.strComponentAssetId);
-				hierarchyComplete = hierarchyComplete && nullptr != component &&
-					!component->Emitters.empty() &&
-					component->Emitters.size() ==
-						component->Document.Elements.size();
-				if (nullptr != component)
-					effectEmitterCount += component->Emitters.size();
-				hierarchyComplete = hierarchyComplete &&
-					componentIds.insert(cue.strComponentAssetId).second;
-			}
-			hierarchyComplete = hierarchyComplete &&
-				expectedBuild != buildContract.Effects.end() &&
-				effectEmitterCount == expectedBuild->second.iEmitterCount;
-			assemblyEmitterCount += effectEmitterCount;
-		}
-		const std::vector<std::string> catalogComponentIds =
-			CEffectCatalog::Get_ComponentAssetIds();
-		const std::set<std::string> catalogComponentIdSet(
-			catalogComponentIds.begin(), catalogComponentIds.end());
-		if (!buildContractLoaded ||
-			effectIds.size() !=
-				buildContract.iEffectCount + ProductCueAdmissionCases.size() ||
-			catalogComponentIds.size() != buildContract.iComponentCount ||
-			assemblyEmitterCount != buildContract.iEmitterCount)
-		{
-			std::cout << "[DETAIL] Effect build contract: " <<
-				buildContractStatus << " effects=" << effectIds.size() << '/' <<
-				buildContract.iEffectCount << " components=" <<
-				catalogComponentIds.size() << '/' << buildContract.iComponentCount <<
-				" emitters=" << assemblyEmitterCount << '/' <<
-				buildContract.iEmitterCount << '\n';
-		}
-		runner.Require(
-			hierarchyComplete && componentIds == catalogComponentIdSet &&
-			catalogComponentIds.size() == buildContract.iComponentCount &&
-			assemblyEmitterCount == buildContract.iEmitterCount,
-			"Four-Class Effect Runtime Matches Generated Assembly Component Emitter Contract");
-		runner.Require(playbackStageComplete &&
-			stagedEffectCount ==
-				buildContract.iEffectCount + ProductCueAdmissionCases.size(),
-			"Effect Runtime Stages Every Legacy Product Document And Five Product-Approved Direct V13 Documents");
-		bool_t componentStageComplete = true;
-		size_t stagedComponentCount = 0u;
-		for (const std::string& componentId : catalogComponentIds)
-		{
-			const std::shared_ptr<const EFFECT_COMPONENT_DESC> component =
-				CEffectCatalog::Find_Component(componentId);
-			CEffectPlayback playback;
-			std::string playbackStatus;
-			const bool_t staged = nullptr != component &&
-				playback.Stage_Document(component->Document, playbackStatus);
-			componentStageComplete = componentStageComplete && staged;
-			if (staged)
-				++stagedComponentCount;
-			else
-				std::cout << "[DETAIL] WFX component stage " << componentId
-					<< ": " << playbackStatus << '\n';
-		}
-		runner.Require(!catalogComponentIds.empty() && componentStageComplete &&
-			stagedComponentCount == catalogComponentIds.size(),
-			"Data Files Stages Every Current WFX Component");
-
-		if (bCheckFailedReloadRollback)
-		{
-			const uint64_t revision = CEffectCatalog::Get_RuntimeRevision();
-			/* Which effect survives does not matter; that the committed set
-			survives does. Naming one here ties the rollback check to whatever
-			the authored rollout happens to call that skill. */
-			const std::string committedId = effectIds.empty() ?
-				std::string{} : effectIds.front();
-			const std::string committedVisualId = visualProgramIds.empty() ?
-				std::string{} : visualProgramIds.front();
-			const std::shared_ptr<const EFFECT_VISUAL_PROGRAM>
-				committedVisualProgram = committedVisualId.empty() ? nullptr :
-					CEffectCatalog::Find_VisualProgram(committedVisualId);
-			const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-				committedVisualProjection = committedVisualId.empty() ? nullptr :
-					CEffectCatalog::Find_VisualProjection(committedVisualId);
-			const std::string ValidVisualProgramText =
-				Read_Text(stagedVisualPrograms);
-			std::filesystem::remove(stagedVisualPrograms, error);
-			const bool_t bMissingVisualRejected =
-				!CEffectCatalog::Load(status) &&
-				revision == CEffectCatalog::Get_RuntimeRevision() &&
-				CEffectCatalog::Find_VisualProgram(committedVisualId).get() ==
-					committedVisualProgram.get() &&
-				CEffectCatalog::Find_VisualProjection(committedVisualId).get() ==
-					committedVisualProjection.get();
-			{
-				std::ofstream invalidVisual(stagedVisualPrograms,
-					std::ios::binary | std::ios::trunc);
-				invalidVisual << "{";
-			}
-			const bool_t bInvalidVisualRejected =
-				!CEffectCatalog::Load(status) &&
-				revision == CEffectCatalog::Get_RuntimeRevision() &&
-				CEffectCatalog::Find_VisualProgram(committedVisualId).get() ==
-					committedVisualProgram.get() &&
-				CEffectCatalog::Find_VisualProjection(committedVisualId).get() ==
-					committedVisualProjection.get();
-			bool_t bVisualRestored = false;
-			{
-				std::ofstream restoreVisual(stagedVisualPrograms,
-					std::ios::binary | std::ios::trunc);
-				restoreVisual.write(ValidVisualProgramText.data(),
-					static_cast<std::streamsize>(ValidVisualProgramText.size()));
-				bVisualRestored = restoreVisual.good();
-			}
-			runner.Require(!committedVisualId.empty() &&
-				!ValidVisualProgramText.empty() && bMissingVisualRejected &&
-				bInvalidVisualRejected && bVisualRestored,
-				"Effect Runtime Missing Or Invalid Required Visual Sidecar Preserves Prior Atomic Snapshot");
-			std::ifstream input(stagedCatalog, std::ios::binary);
-			std::string invalid{
-				std::istreambuf_iterator<char>(input),
-				std::istreambuf_iterator<char>() };
-			const std::string marker = "\"formatVersion\":";
-			const size_t markerIndex = invalid.find(marker);
-			if (std::string::npos != markerIndex &&
-				markerIndex + marker.size() < invalid.size())
-			{
-				invalid[markerIndex + marker.size()] = '9';
-			}
-			std::ofstream output(stagedCatalog,
-				std::ios::binary | std::ios::trunc);
-			output.write(invalid.data(), static_cast<std::streamsize>(invalid.size()));
-			output.close();
-			const bool_t rejected = !CEffectCatalog::Load(status);
-			runner.Require(
-				std::string::npos != markerIndex && rejected &&
-				revision == CEffectCatalog::Get_RuntimeRevision() &&
-				!committedId.empty() && CEffectCatalog::Contains(committedId),
-				"Effect Runtime Invalid Catalog Preserves Committed Assembly State");
-		}
-
-		CEffectCatalog::Clear();
-		error.clear();
-		std::filesystem::remove(stagedCatalog, error);
-		error.clear();
-		std::filesystem::remove(stagedVisualPrograms, error);
-		error.clear();
-		std::filesystem::remove(stagedProductCueAdmissions, error);
-		const bool_t bStagedAdmissionSidecarCleaned = !error &&
-			!std::filesystem::exists(stagedProductCueAdmissions, error) && !error;
-		runner.Require(bStagedAdmissionSidecarCleaned,
-			"Effect Runtime Harness Removes Its Staged Product Admission Sidecar");
 		resourceRootEnvironment.Restore();
 	}
 
@@ -22050,8 +21850,6 @@ namespace
 		runner.Require(ProductSpawnRejected,
 			"Artist 31470 Reconstructed Product Spawn Remains Fail Closed");
 
-		const std::shared_ptr<const CEffectCatalog::RUNTIME_SNAPSHOT> SnapshotA =
-			CEffectCatalog::Capture_Runtime();
 		const bool_t LoadedB = WriteCatalog(CatalogText) &&
 			CEffectCatalog::Load(Status);
 		const uint64_t RevisionB = CEffectCatalog::Get_RuntimeRevision();
@@ -22089,28 +21887,6 @@ namespace
 			!ExecutionPlanA->Get_Program()->Admission.bRuntimeExecution &&
 			!ExecutionPlanB->Get_Program()->Admission.bRuntimeExecution,
 			"Artist 31470 Typed Plan Reload Produces Independent A B Identity And Preserves Generation A");
-
-		const std::shared_ptr<const CEffectCatalog::RUNTIME_SNAPSHOT> SnapshotB =
-			CEffectCatalog::Capture_Runtime();
-		CEffectCatalog::Clear();
-		const bool_t ClearLifetime = nullptr ==
-			CEffectCatalog::Find_RuntimeProgramEntry(EffectId) &&
-			nullptr == CEffectCatalog::Find_ReconstructedRuntimeProgram(EffectId) &&
-			ProgramA->Emitters.size() == 35u && ProgramB->Emitters.size() == 35u;
-		const bool_t RestoredB = CEffectCatalog::Restore_Runtime(
-			SnapshotB, Status) && CEffectCatalog::Get_RuntimeRevision() == RevisionB &&
-			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == EntryB.get() &&
-			CEffectCatalog::Find_ReconstructedRuntimeProgram(EffectId).get() ==
-				ProgramB.get();
-		const bool_t RestoredAForAttacks = RestoredB &&
-			CEffectCatalog::Restore_Runtime(SnapshotA, Status) &&
-			CEffectCatalog::Get_RuntimeRevision() == RevisionA &&
-			CEffectCatalog::Find_RuntimeProgramEntry(EffectId).get() == EntryA.get() &&
-			CEffectCatalog::Find_ReconstructedRuntimeProgram(EffectId).get() ==
-				ProgramA.get() &&
-			CEffectCatalog::Get_ComponentAssetIds().size() == 555u;
-		runner.Require(ClearLifetime && RestoredB && RestoredAForAttacks,
-			"Artist 31470 Catalog Snapshot Restore And Clear Preserve External Program Lifetimes");
 
 		const auto RejectsAndPreserves = [&](const std::string& MutatedCatalog,
 			const char* pEvidence,
@@ -30633,6 +30409,12 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--effect-valtan-baked-edge-codec-fast")
+	{
+		Test_ValtanBakedEdgeVisualProgramCodec(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--effect-source-visual-program" &&
 		argc > 3 && nullptr != argv[2] && nullptr != argv[3])
 	{
@@ -30651,6 +30433,37 @@ int main(const int argc, char* argv[])
 	if (Mode == "--effect-portable-event-fast")
 	{
 		Test_EffectPortableSpawnEventRoutes(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-source-rotation-fast")
+	{
+		Test_EffectSourceRotationTrim(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-dm-r-boundary-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_DimensionMasterRSourceOccurrenceContract(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--balance-authoring-fast")
+	{
+		std::string status;
+		const bool passed =
+			Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(status);
+		runner.Require(passed,
+			"Balance Tool Current Authoring Read-Only Round Trip");
+		std::cout << "[DETAIL] " << status << '\n';
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--player-command-buffer-fast")
+	{
+		Test_BasicAttackExplicitCommandResendGate(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -30687,7 +30500,7 @@ int main(const int argc, char* argv[])
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_RejectedSkillTypedMaterialSlices(runner);
-		Test_ValtanEffectToolBossPatternStage(runner);
+		Test_ValtanBossPatternStage(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -30732,14 +30545,13 @@ int main(const int argc, char* argv[])
 		Test_AuthoringOverrideOwnership(runner);
 		Test_ActionPresentationTimeline(runner);
 		Test_RealSkillBindingDocuments(runner);
-		Test_EffectAssemblyRuntimeCatalog(runner, false);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
 	if (Mode == "--effect-catalog-load-fast")
 	{
 		std::cout << std::unitbuf;
-		Test_EffectAssemblyRuntimeCatalog(runner, false, true);
+		Test_EffectRuntimeCatalogMigration(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -31061,7 +30873,6 @@ int main(const int argc, char* argv[])
 	Test_EffectAllEffectsAuthoringJoin(runner);
 	Test_EffectDraftAtomicSave(runner);
 	Test_EffectOccurrenceTuningCodec(runner);
-	Test_EffectAssemblyRuntimeCatalog(runner);
 
 	std::cout << "failures : " << runner.iFailureCount << '\n';
 	return 0 == runner.iFailureCount ? 0 : 1;

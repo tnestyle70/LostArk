@@ -332,9 +332,57 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	const CGameplayCatalog& catalog,
 	const std::uint32_t actionStartTick) const
 {
+	return Try_StartInternal(
+		player, command, catalog, actionStartTick, false);
+}
+
+bool LostArk::Server::CPlayerSkillSystem::Try_StartPending(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_USE_SKILL& command,
+	const CGameplayCatalog& catalog,
+	const std::uint32_t actionStartTick) const
+{
+	return Try_StartInternal(
+		player, command, catalog, actionStartTick, true);
+}
+
+bool LostArk::Server::CPlayerSkillSystem::Try_StagePendingSkill(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_USE_SKILL& command,
+	const CGameplayCatalog& catalog) const
+{
+	using namespace LostArk::Shared;
+	const PLAYER_SKILL_DEFINITION* running =
+		catalog.Find_Skill(player.iCurrentSkillId);
+	const PLAYER_SKILL_DEFINITION* requested =
+		catalog.Find_Skill(command.iSkillId);
+	if (PLAYER_ACTION_STATE::SKILL != player.eAction ||
+		nullptr == running || PLAYER_SKILL_KIND::COMBO != running->eSkillKind ||
+		command.iSkillId == player.iCurrentSkillId ||
+		!IsNewerSequence(command.iClientSequence, player.iLastSkillSequence) ||
+		nullptr == requested || requested->eCharacterClass != player.eCharacterClass ||
+		0u == player.iCurrentHp ||
+		!std::isfinite(command.fAimX) || !std::isfinite(command.fAimZ))
+	{
+		return false;
+	}
+
+	player.iLastSkillSequence = command.iClientSequence;
+	player.PendingCommand.Set_Skill(command);
+	return true;
+}
+
+bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
+	SERVER_PLAYER& player,
+	const LostArk::Shared::C2S_USE_SKILL& command,
+	const CGameplayCatalog& catalog,
+	const std::uint32_t actionStartTick,
+	const bool sequenceAlreadyConsumed) const
+{
 	using namespace LostArk::Shared;
 	const PLAYER_SKILL_DEFINITION* skill = catalog.Find_Skill(command.iSkillId);
-	if (!IsNewerSequence(command.iClientSequence, player.iLastSkillSequence) ||
+	if ((!sequenceAlreadyConsumed &&
+			!IsNewerSequence(command.iClientSequence, player.iLastSkillSequence)) ||
 		nullptr == skill || skill->eCharacterClass != player.eCharacterClass ||
 		0u == player.iCurrentHp ||
 		!std::isfinite(command.fAimX) || !std::isfinite(command.fAimZ) ||
@@ -414,7 +462,8 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 		player.iHitReactionGraceEndTick =
 			actionStartTick + PLAYER_HIT_REACTION_GRACE_TICKS;
 	}
-	player.iLastSkillSequence = command.iClientSequence;
+	if (!sequenceAlreadyConsumed)
+		player.iLastSkillSequence = command.iClientSequence;
 	player.eAction = PLAYER_ACTION_STATE::SKILL;
 	player.iCurrentSkillId = command.iSkillId;
 	player.iActionStartTick = 0u == actionStartTick ? 1u : actionStartTick;
@@ -444,6 +493,7 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 		0u : 1u;
 	player.hasBufferedComboInput = false;
 	player.hasReleasedHold = false;
+	player.PendingCommand.Clear();
 	return true;
 }
 
@@ -769,6 +819,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.hasMoveGoal = false;
 		player.iComboStage = 0;
 		player.hasBufferedComboInput = false;
+		player.PendingCommand.Clear();
 		player.Projectiles.clear();
 		return;
 	}
@@ -816,6 +867,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.iActionStartTick = 0;
 		player.iComboStage = 0;
 		player.hasBufferedComboInput = false;
+		player.PendingCommand.Clear();
 		return;
 	}
 	player.fActionElapsedSeconds += fixedDeltaSeconds;
@@ -835,6 +887,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	const std::uint32_t hitMs = hasStage ?
 		skill->ComboStages[stageIndex].iHitTimeMs :
 		skill->iHitTimeMs;
+	const std::uint32_t comboAdvanceMs = hasStage ?
+		skill->ComboStages[stageIndex].iComboAdvanceMs : durationMs;
 	const float durationSeconds =
 		static_cast<float>(durationMs) * MILLISECONDS_TO_SECONDS;
 	float stepForward = 0.f;
@@ -1070,7 +1124,11 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 					applyDamage(*target, damageOfSubHit(subHitIndex), &hit);
 			}
 		}
-		if (allFired)
+		const std::uint16_t expectedProjectileMask = projectiles.empty() ? 0u :
+			static_cast<std::uint16_t>((1u << projectiles.size()) - 1u);
+		if (allFired &&
+			(player.iSpawnedProjectileMask & expectedProjectileMask) ==
+				expectedProjectileMask)
 			player.hasAppliedSkillDamage = true;
 	}
 	else if (dealsDamage &&
@@ -1117,16 +1175,27 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			: player.hasBufferedComboInput &&
 				static_cast<std::size_t>(player.iComboStage) <
 					skill->ComboStages.size());
-	/* A buffered press cancels the rest of the clip once the hit has landed,
-	which is what makes a combo read as fast. Every stage's hit time is inside
-	its own input window, so cutting here never drops damage. */
-	const bool cancelsIntoNextStage =
-		!isHold && hasNextStage && player.hasAppliedSkillDamage;
+	const bool isCombo = PLAYER_SKILL_KIND::COMBO == skill->eSkillKind;
+	const bool reachedComboBoundary = isCombo &&
+		player.fActionElapsedSeconds >=
+			static_cast<float>(comboAdvanceMs) * MILLISECONDS_TO_SECONDS;
+	const bool stageDamageComplete = !dealsDamage || player.hasAppliedSkillDamage;
+	const bool hasPendingExplicit =
+		PLAYER_PENDING_COMMAND_KIND::NONE != player.PendingCommand.eKind;
+	/* comboAdvanceMs is only the buffered BA continuation boundary. MOVE/SKILL
+	keeps the current animation locked through its full authored duration. */
+	const bool commitsPendingExplicit = hasPendingExplicit && stageDamageComplete &&
+		player.fActionElapsedSeconds >= durationSeconds;
+	/* hitTimeMs only owns damage. A buffered continuation waits for the authored
+	combo boundary, keeping the current stage's presentation/root motion intact. */
+	const bool advancesBufferedCombo =
+		reachedComboBoundary && stageDamageComplete &&
+		hasNextStage && !hasPendingExplicit;
 
-	if (cancelsIntoNextStage || holdLeavesLoop ||
+	if (advancesBufferedCombo || commitsPendingExplicit || holdLeavesLoop ||
 		player.fActionElapsedSeconds >= durationSeconds)
 	{
-		if (hasNextStage)
+		if (!commitsPendingExplicit && hasNextStage)
 		{
 			/* The press that bought this stage aimed somewhere, and that is where
 			the stage plays: facing and root motion both turn to it. A hold
@@ -1185,6 +1254,8 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.iComboStage = 0;
 			player.hasBufferedComboInput = false;
 			player.hasReleasedHold = false;
+			/* A pending explicit command deliberately survives this action reset;
+			GameRoom consumes it immediately after Update from the final position. */
 		}
 	}
 }
@@ -1217,6 +1288,7 @@ bool LostArk::Server::CPlayerSkillSystem::Try_Counter(
 	}
 	player.iComboStage = 2u;
 	player.hasBufferedComboInput = false;
+	player.PendingCommand.Clear();
 	player.fActionElapsedSeconds = 0.f;
 	player.hasAppliedSkillDamage = false;
 	player.iAppliedHitMask = 0;
@@ -1251,6 +1323,7 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 		0.f != pushRangeM && 0u != pushMs && std::isfinite(pushRangeM);
 	if (!hasPush && !knockdown)
 		return;
+	player.PendingCommand.Clear();
 	if (hasPush)
 	{
 		float directionX = player.fPositionX - sourceX;
@@ -1288,6 +1361,7 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 		player.iCurrentSkillId = INVALID_SKILL_ID;
 		player.iComboStage = 0u;
 		player.hasBufferedComboInput = false;
+		player.PendingCommand.Clear();
 		player.hasReleasedHold = false;
 		player.fActionElapsedSeconds = 0.f;
 		player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
@@ -1312,8 +1386,10 @@ void LostArk::Server::CPlayerSkillSystem::Release(
 	}
 	const PLAYER_SKILL_DEFINITION* skill =
 		catalog.Find_Skill(player.iCurrentSkillId);
-	if (nullptr == skill || PLAYER_SKILL_KIND::HOLD != skill->eSkillKind)
+	if (nullptr == skill || PLAYER_SKILL_KIND::HOLD != skill->eSkillKind ||
+		!IsNewerSequence(command.iClientSequence, player.iLastSkillSequence))
 		return;
+	player.iLastSkillSequence = command.iClientSequence;
 	player.hasReleasedHold = true;
 }
 

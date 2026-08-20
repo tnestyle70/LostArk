@@ -12,7 +12,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 12u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 13u;
 
 	struct PLAYER_ROOT_MOTION_SAMPLE
 	{
@@ -95,6 +95,8 @@ namespace LostArk::Server
 	{
 		std::uint32_t iActionDurationMs = 0;
 		std::uint32_t iHitTimeMs = 0;
+		// Damage and presentation/action transition are separate clocks.
+		std::uint32_t iComboAdvanceMs = 0;
 		std::uint32_t iInputOpenMs = 0;
 		std::uint32_t iInputCloseMs = 0;
 		/* A stage advance resets the action clock, so a staged skill owns its

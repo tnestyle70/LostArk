@@ -27,6 +27,8 @@ float4 g_DyeDiffuseColor = 1.f;
 float4 g_DyeRegionA = 1.f;
 float4 g_DyeRegionB = 1.f;
 float4 g_DyeRegionC = 1.f;
+float4 g_EffectModelCueColorMultiply = 1.f;
+float g_EffectModelCueOpacity = 1.f;
 matrix g_BoneMatrices[512];
 
 struct VS_IN
@@ -196,6 +198,17 @@ PS_OUT PS_MAIN_EFFECT_MODEL_CUE_MASKED(VS_OUT input)
     return Evaluate_Material(input, true, 0.333f);
 }
 
+float4 PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT(VS_OUT input) : SV_TARGET0
+{
+    float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+    diffuse.rgb *= g_EffectModelCueColorMultiply.rgb;
+    diffuse.a = saturate(
+        diffuse.a * g_EffectModelCueColorMultiply.a * g_EffectModelCueOpacity);
+    if (diffuse.a <= 0.f)
+        discard;
+    return diffuse;
+}
+
 void PS_MAIN_SHADOW(VS_OUT input)
 {
     float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
@@ -297,6 +310,19 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_MASKED();
+    }
+
+    /* Source translucent skeletal projectiles render after scene lighting.
+       They write only SceneHDR, keep depth read-only, and preserve the source
+       diffuse alpha plus the model-cue opacity/tint contract. */
+    pass EffectModelCueTranslucent
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_TRANSLUCENT();
     }
 
     pass ScreenCutin

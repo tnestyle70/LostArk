@@ -193,6 +193,7 @@ namespace
 		player.Projectiles.clear();
 		player.iComboStage = 0u;
 		player.hasBufferedComboInput = false;
+		player.PendingCommand.Clear();
 		player.fBufferedComboAimX = 0.f;
 		player.fBufferedComboAimZ = 1.f;
 		player.fBufferedComboAimDistance = 0.f;
@@ -1186,8 +1187,32 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
 		0u == player.iCurrentHp)
 	{
+		if (0u != player.iCurrentHp && Is_BufferableComboAction(player))
+			player.PendingCommand.Set_Move(move);
 		return;
 	}
+	(void)Commit_MoveGoal(player, move.fGoalX, move.fGoalZ);
+}
+
+bool LostArk::Server::CGameRoom::Is_BufferableComboAction(
+	const SERVER_PLAYER& player) const
+{
+	if (LostArk::Shared::PLAYER_ACTION_STATE::SKILL != player.eAction ||
+		0u == player.iCurrentHp)
+	{
+		return false;
+	}
+	const PLAYER_SKILL_DEFINITION* skill =
+		m_GameplayCatalog.Find_Skill(player.iCurrentSkillId);
+	return nullptr != skill &&
+		LostArk::Shared::PLAYER_SKILL_KIND::COMBO == skill->eSkillKind;
+}
+
+bool LostArk::Server::CGameRoom::Commit_MoveGoal(
+	SERVER_PLAYER& player,
+	const float goalX,
+	const float goalZ)
+{
 	player.MovePath.clear();
 	player.iMovePathIndex = 0;
 	if (m_ServerNavigation.Is_Loaded())
@@ -1195,19 +1220,19 @@ void LostArk::Server::CGameRoom::Handle_Move(
 		if (!m_ServerNavigation.Find_Path(
 			player.fPositionX,
 			player.fPositionZ,
-			move.fGoalX,
-			move.fGoalZ,
+			goalX,
+			goalZ,
 			player.MovePath))
 		{
 			player.hasMoveGoal = false;
-			return;
+			return false;
 		}
 		Smooth_MovePath(
 			m_ServerNavigation,
 			player.fPositionX,
 			player.fPositionZ,
-			move.fGoalX,
-			move.fGoalZ,
+			goalX,
+			goalZ,
 			player.MovePath);
 		const SERVER_NAV_POINT& goal = player.MovePath.back();
 		player.fMoveGoalX = goal.x;
@@ -1215,11 +1240,54 @@ void LostArk::Server::CGameRoom::Handle_Move(
 	}
 	else
 	{
-		player.fMoveGoalX = move.fGoalX;
-		player.fMoveGoalZ = move.fGoalZ;
+		player.fMoveGoalX = goalX;
+		player.fMoveGoalZ = goalZ;
 	}
 	player.hasMoveGoal = true;
 	player.isCombatReady = true;
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Commit_PendingPlayerCommand(
+	SERVER_PLAYER& player,
+	const std::uint32_t actionStartTick)
+{
+	if (PLAYER_PENDING_COMMAND_KIND::NONE == player.PendingCommand.eKind)
+		return;
+
+	const SERVER_PENDING_PLAYER_COMMAND pending = player.PendingCommand;
+	player.PendingCommand.Clear();
+	player.hasBufferedComboInput = false;
+	if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction ||
+		0u == player.iCurrentHp)
+	{
+		return;
+	}
+
+	if (PLAYER_PENDING_COMMAND_KIND::MOVE == pending.eKind)
+	{
+		if (std::isfinite(pending.fX) && std::isfinite(pending.fZ) &&
+			std::abs(pending.fX) <= MAX_ABS_MOVE_GOAL &&
+			std::abs(pending.fZ) <= MAX_ABS_MOVE_GOAL)
+		{
+			(void)Commit_MoveGoal(player, pending.fX, pending.fZ);
+		}
+		return;
+	}
+
+	if (PLAYER_PENDING_COMMAND_KIND::SKILL == pending.eKind)
+	{
+		LostArk::Shared::C2S_USE_SKILL command{};
+		command.iClientSequence = pending.iClientSequence;
+		command.iSkillId = pending.iSkillId;
+		command.fAimX = pending.fX;
+		command.fAimZ = pending.fZ;
+		if (m_PlayerSkillSystem.Try_StartPending(
+				player, command, m_GameplayCatalog, actionStartTick))
+		{
+			player.isCombatReady = true;
+		}
+	}
 }
 
 void LostArk::Server::CGameRoom::Handle_UseSkill(
@@ -1262,6 +1330,12 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		playerIter->second.iResourceAccumulator = 0u;
 	}
 #endif
+	if (m_PlayerSkillSystem.Try_StagePendingSkill(
+			playerIter->second, useSkill, m_GameplayCatalog))
+	{
+		playerIter->second.isCombatReady = true;
+		return;
+	}
 	// A valid but currently unavailable skill is rejected as gameplay state;
 	// malformed payloads are already closed at the ServerApp packet boundary.
 	if (m_PlayerSkillSystem.Try_Start(
@@ -1356,6 +1430,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.Projectiles.clear();
 	player.iComboStage = 0u;
 	player.hasBufferedComboInput = false;
+	player.PendingCommand.Clear();
 	player.CooldownEndTickBySkillId.clear();
 	player.hasMoveGoal = false;
 	player.MovePath.clear();
@@ -1593,6 +1668,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.Projectiles.clear();
 	staged.iComboStage = 0u;
 	staged.hasBufferedComboInput = false;
+	staged.PendingCommand.Clear();
 	staged.hasReleasedHold = false;
 	staged.CooldownEndTickBySkillId.clear();
 	staged.isCombatReady = true;
@@ -2094,6 +2170,7 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 		player.iActionStartTick = 0u;
 		player.fFallVelocityY = 0.f;
 		player.iFallDeathTick = 0u;
+		player.PendingCommand.Clear();
 		SERVER_NAV_POINT ground{};
 		if (m_ServerNavigation.Is_Loaded() &&
 			m_ServerNavigation.Project_Point(
@@ -3006,6 +3083,9 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			player->second.iCurrentSkillId = INVALID_SKILL_ID;
 			player->second.iActionStartTick = resetTick;
 			player->second.fActionElapsedSeconds = 0.f;
+			player->second.iComboStage = 0u;
+			player->second.hasBufferedComboInput = false;
+			player->second.PendingCommand.Clear();
 			player->second.TriggerMove = {};
 			player->second.MovePath.clear();
 			player->second.iMovePathIndex = 0u;
@@ -4612,6 +4692,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 	player.Projectiles.clear();
 	player.iComboStage = 0u;
 	player.hasBufferedComboInput = false;
+	player.PendingCommand.Clear();
 	player.hasReleasedHold = false;
 	player.TriggerMove = {};
 	player.hasMoveGoal = false;
@@ -4668,6 +4749,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			player.iKnockdownEndTick = 0u;
 			player.iHitReactionGraceEndTick =
 				updateTick + PLAYER_HIT_REACTION_GRACE_TICKS;
+			player.PendingCommand.Clear();
 		}
 		m_PlayerSkillSystem.Update(
 			player,
@@ -4678,6 +4760,11 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			fixedDeltaSeconds,
 			updateTick,
 			m_TickDamageEvents);
+		if (LostArk::Shared::PLAYER_ACTION_STATE::NONE == player.eAction &&
+			PLAYER_PENDING_COMMAND_KIND::NONE != player.PendingCommand.eKind)
+		{
+			Commit_PendingPlayerCommand(player, updateTick);
+		}
 		if (LostArk::Shared::PLAYER_ACTION_STATE::NONE != player.eAction)
 			continue;
 		if (!player.hasMoveGoal)

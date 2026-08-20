@@ -53,7 +53,6 @@
     <ClInclude Include="..\Public\Effect_Playback.h" />
     <ClInclude Include="..\Public\Effect_LightPresentation.h" />
     <ClInclude Include="..\Public\Effect_DocumentRenderer.h" />
-    <ClInclude Include="..\Public\Effect_DirectAuthoredSourceIndex.h" />
     <ClInclude Include="..\Public\Effect_Object.h" />
     <ClInclude Include="..\Public\Effect_ThumbnailCache.h" />
     <ClInclude Include="..\Public\Effect_Catalog.h" />
@@ -118,7 +117,6 @@
     <ClInclude Include="..\Public\ValtanPatternTree.h" />
     <ClInclude Include="..\public\Camera_Free.h" />
     <ClInclude Include="..\Public\Client_Defines.h" />
-    <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\Public\HUDLayoutTool.h" />
     <ClInclude Include="..\Public\Level_Loading.h" />
     <ClInclude Include="..\public\Loader.h" />
@@ -187,7 +185,6 @@
     <ClCompile Include="..\Private\Effect_Playback.cpp" />
     <ClCompile Include="..\Private\Effect_LightPresentation.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp" />
-    <ClCompile Include="..\Private\Effect_DirectAuthoredSourceIndex.cpp" />
     <ClCompile Include="..\Private\Effect_Object.cpp" />
     <ClCompile Include="..\Private\Effect_ThumbnailCache.cpp" />
     <ClCompile Include="..\Private\Effect_Catalog.cpp" />
@@ -243,7 +240,6 @@
     <ClCompile Include="..\Private\Body_Valtan.cpp" />
     <ClCompile Include="..\Private\ValtanPatternTree.cpp" />
     <ClCompile Include="..\private\Camera_Free.cpp" />
-    <ClCompile Include="..\private\Effect_Tool.cpp" />
     <ClCompile Include="..\Private\HUDLayoutTool.cpp" />
     <ClCompile Include="..\Private\Level_Loading.cpp" />
     <ClCompile Include="..\private\Loader.cpp" />
@@ -2321,7 +2317,6 @@
     <None Include="..\..\Data\Effects\Imported\Warlord\skill.17000.source-receipt.json" />
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy-source.json" />
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy.receipt.json" />
-    <None Include="..\..\Data\Effects\ProductCueApprovals.json" />
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\A\DimensionMaster.A.effect-resources.json" />
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\ALT_V\DimensionMaster.ALT_V.effect-resources.json" />
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\D\DimensionMaster.D.effect-resources.json" />

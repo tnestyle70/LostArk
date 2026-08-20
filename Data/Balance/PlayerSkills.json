@@ -84,12 +84,14 @@
         {
           "actionDurationMs": 2300,
           "hitTimeMs": 500,
+          "comboAdvanceMs": 1350,
           "inputOpenMs": 1302,
           "inputCloseMs": 2300
         },
         {
           "actionDurationMs": 1400,
           "hitTimeMs": 250,
+          "comboAdvanceMs": 1400,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -117,12 +119,14 @@
         {
           "actionDurationMs": 2118,
           "hitTimeMs": 450,
+          "comboAdvanceMs": 601,
           "inputOpenMs": 299,
           "inputCloseMs": 2118
         },
         {
           "actionDurationMs": 2033,
           "hitTimeMs": 400,
+          "comboAdvanceMs": 2033,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -390,24 +394,28 @@
         {
           "actionDurationMs": 1633,
           "hitTimeMs": 470,
+          "comboAdvanceMs": 470,
           "inputOpenMs": 329,
           "inputCloseMs": 658
         },
         {
           "actionDurationMs": 1367,
           "hitTimeMs": 356,
+          "comboAdvanceMs": 356,
           "inputOpenMs": 330,
           "inputCloseMs": 554
         },
         {
           "actionDurationMs": 1533,
           "hitTimeMs": 451,
+          "comboAdvanceMs": 451,
           "inputOpenMs": 396,
           "inputCloseMs": 752
         },
         {
           "actionDurationMs": 1567,
           "hitTimeMs": 500,
+          "comboAdvanceMs": 1567,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -615,18 +623,21 @@
         {
           "actionDurationMs": 1000,
           "hitTimeMs": 121,
+          "comboAdvanceMs": 121,
           "inputOpenMs": 75,
           "inputCloseMs": 360
         },
         {
           "actionDurationMs": 1600,
           "hitTimeMs": 260,
+          "comboAdvanceMs": 260,
           "inputOpenMs": 371,
           "inputCloseMs": 718
         },
         {
           "actionDurationMs": 1767,
           "hitTimeMs": 761,
+          "comboAdvanceMs": 1767,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -814,24 +825,28 @@
         {
           "actionDurationMs": 1800,
           "hitTimeMs": 360,
+          "comboAdvanceMs": 360,
           "inputOpenMs": 200,
           "inputCloseMs": 470
         },
         {
           "actionDurationMs": 1600,
           "hitTimeMs": 278,
+          "comboAdvanceMs": 278,
           "inputOpenMs": 200,
           "inputCloseMs": 420
         },
         {
           "actionDurationMs": 1567,
           "hitTimeMs": 429,
+          "comboAdvanceMs": 429,
           "inputOpenMs": 200,
           "inputCloseMs": 600
         },
         {
           "actionDurationMs": 1867,
           "hitTimeMs": 501,
+          "comboAdvanceMs": 1867,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -899,18 +914,21 @@
         {
           "actionDurationMs": 634,
           "hitTimeMs": 0,
+          "comboAdvanceMs": 0,
           "inputOpenMs": 160,
           "inputCloseMs": 320
         },
         {
           "actionDurationMs": 634,
           "hitTimeMs": 0,
+          "comboAdvanceMs": 0,
           "inputOpenMs": 160,
           "inputCloseMs": 320
         },
         {
           "actionDurationMs": 634,
           "hitTimeMs": 0,
+          "comboAdvanceMs": 634,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -1038,12 +1056,14 @@
         {
           "actionDurationMs": 2000,
           "hitTimeMs": 0,
+          "comboAdvanceMs": 2000,
           "inputOpenMs": 0,
           "inputCloseMs": 1200
         },
         {
           "actionDurationMs": 1300,
           "hitTimeMs": 350,
+          "comboAdvanceMs": 1300,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -1071,18 +1091,21 @@
         {
           "actionDurationMs": 700,
           "hitTimeMs": 0,
+          "comboAdvanceMs": 700,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         },
         {
           "actionDurationMs": 1000,
           "hitTimeMs": 0,
+          "comboAdvanceMs": 1000,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         },
         {
           "actionDurationMs": 1200,
           "hitTimeMs": 322,
+          "comboAdvanceMs": 1200,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -1110,18 +1133,21 @@
         {
           "actionDurationMs": 1000,
           "hitTimeMs": 300,
+          "comboAdvanceMs": 300,
           "inputOpenMs": 200,
           "inputCloseMs": 700
         },
         {
           "actionDurationMs": 933,
           "hitTimeMs": 200,
+          "comboAdvanceMs": 600,
           "inputOpenMs": 200,
           "inputCloseMs": 600
         },
         {
           "actionDurationMs": 1334,
           "hitTimeMs": 300,
+          "comboAdvanceMs": 1334,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -1249,12 +1275,14 @@
         {
           "actionDurationMs": 1800,
           "hitTimeMs": 250,
+          "comboAdvanceMs": 250,
           "inputOpenMs": 200,
           "inputCloseMs": 1800
         },
         {
           "actionDurationMs": 1700,
           "hitTimeMs": 120,
+          "comboAdvanceMs": 1700,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -1382,18 +1410,21 @@
         {
           "actionDurationMs": 1000,
           "hitTimeMs": 0,
+          "comboAdvanceMs": 1000,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         },
         {
           "actionDurationMs": 900,
           "hitTimeMs": 0,
+          "comboAdvanceMs": 900,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         },
         {
           "actionDurationMs": 1100,
           "hitTimeMs": 900,
+          "comboAdvanceMs": 1100,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -1501,24 +1532,28 @@
         {
           "actionDurationMs": 1233,
           "hitTimeMs": 276,
+          "comboAdvanceMs": 276,
           "inputOpenMs": 157,
           "inputCloseMs": 434
         },
         {
           "actionDurationMs": 1233,
           "hitTimeMs": 269,
+          "comboAdvanceMs": 269,
           "inputOpenMs": 200,
           "inputCloseMs": 540
         },
         {
           "actionDurationMs": 1333,
           "hitTimeMs": 494,
+          "comboAdvanceMs": 494,
           "inputOpenMs": 100,
           "inputCloseMs": 920
         },
         {
           "actionDurationMs": 1267,
           "hitTimeMs": 193,
+          "comboAdvanceMs": 1267,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -1606,18 +1641,21 @@
         {
           "actionDurationMs": 2934,
           "hitTimeMs": 600,
+          "comboAdvanceMs": 600,
           "inputOpenMs": 300,
           "inputCloseMs": 2934
         },
         {
           "actionDurationMs": 1867,
           "hitTimeMs": 600,
+          "comboAdvanceMs": 600,
           "inputOpenMs": 300,
           "inputCloseMs": 1867
         },
         {
           "actionDurationMs": 533,
           "hitTimeMs": 533,
+          "comboAdvanceMs": 533,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }
@@ -1720,7 +1758,7 @@
       "movementDistance": 0.0,
       "maximumRange": 6.0,
       "serverDamageProfileId": "damage.player.31950",
-      "effectId": "",
+      "effectId": "effect.artist.skill.31950.unified",
       "comboStages": []
     },
     {
@@ -1800,7 +1838,7 @@
       "movementDistance": 0.0,
       "maximumRange": 0.0,
       "serverDamageProfileId": "",
-      "effectId": "",
+      "effectId": "effect.artist.skill.31050.clip1.unified",
       "comboStages": []
     },
     {
@@ -1853,7 +1891,7 @@
       "requiredStance": "NONE",
       "setsStance": "NONE",
       "cooldownMs": 0,
-      "actionDurationMs": 4000,
+      "actionDurationMs": 1400,
       "hitTimeMs": 100,
       "resourceCost": 0,
       "identityCost": 0,
@@ -1863,26 +1901,30 @@
       "effectId": "effect.dimensionmaster.skill.2050010",
       "comboStages": [
         {
-          "actionDurationMs": 4000,
+          "actionDurationMs": 1400,
           "hitTimeMs": 100,
-          "inputOpenMs": 400,
-          "inputCloseMs": 1200
+          "comboAdvanceMs": 1400,
+          "inputOpenMs": 100,
+          "inputCloseMs": 510
         },
         {
           "actionDurationMs": 1500,
           "hitTimeMs": 43,
-          "inputOpenMs": 200,
-          "inputCloseMs": 900
+          "comboAdvanceMs": 1500,
+          "inputOpenMs": 0,
+          "inputCloseMs": 410
         },
         {
           "actionDurationMs": 1067,
           "hitTimeMs": 28,
+          "comboAdvanceMs": 1067,
           "inputOpenMs": 200,
-          "inputCloseMs": 800
+          "inputCloseMs": 1067
         },
         {
           "actionDurationMs": 1700,
-          "hitTimeMs": 33,
+          "hitTimeMs": 335,
+          "comboAdvanceMs": 1700,
           "inputOpenMs": 0,
           "inputCloseMs": 0
         }

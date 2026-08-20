@@ -6,16 +6,18 @@
 #include <cstddef>
 #include <filesystem>
 #include <limits>
+#include <optional>
 #include <string>
 #include <vector>
 
 NS_BEGIN(Client)
 
-/* Where a stage's Effect document came from. A stage can carry both: the
-   evidence-backed binding for the 420633 canary and the seeded document that
-   the naming rule finds on disk. Neither hides the other. */
+/* Where a stage's editable Effect document came from. Product cue identity is
+   authoritative for authoring; the evidence binding is recorded on that same
+   row when it agrees. The naming rule is only a fallback for a cue-less stage. */
 enum class VALTAN_STAGE_EFFECT_ORIGIN : uint8_t
 {
+	PRODUCT_CUE,
 	PATTERN_EFFECT_BINDING,
 	NAMING_RULE,
 	END
@@ -30,6 +32,21 @@ struct VALTAN_STAGE_EFFECT_VIEW final
 	   never decode JSON just to draw a row. */
 	uint32_t iElementCount = 0u;
 	bool_t bParsed = false;
+	bool_t bPatternEffectBinding = false;
+};
+
+struct VALTAN_PRODUCT_EFFECT_CUE_VIEW final
+{
+	std::string strBindingId;
+	std::string strPatternId;
+	std::string strStageId;
+	std::string strActionId;
+	std::string strEffectAssetId;
+	std::string strAnchorSlotId;
+	std::string strFollowPolicy;
+	std::string strStopPolicy;
+	uint32_t iStartMs = 0u;
+	uint32_t iEndMs = 0u;
 };
 
 /* The stage is where a Valtan pattern actually becomes work: it owns the
@@ -55,10 +72,17 @@ struct VALTAN_STAGE_VIEW final
 	uint32_t iHitIntervalMs = 0u;
 	std::string strServerDamageProfileId;
 
+	/* The source binding may be one clip or an ordered sequence. The legacy
+	   first-name view remains populated only for callers that have not yet
+	   adopted the sequence contract. */
+	std::vector<std::string> RuntimeClipNames;
 	std::string strRuntimeClipName;
+	std::optional<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ProductCue;
 	std::vector<VALTAN_STAGE_EFFECT_VIEW> Effects;
 
 	bool_t Has_Effect() const { return !Effects.empty(); }
+	bool_t Has_ClipBinding() const { return !RuntimeClipNames.empty(); }
+	bool_t Has_ProductCue() const { return ProductCue.has_value(); }
 	bool_t Has_HitShape() const
 	{
 		return !strHitShape.empty() && "NONE" != strHitShape;
@@ -116,6 +140,8 @@ struct VALTAN_PATTERN_TREE_VIEW final
 	size_t Get_StageCount() const;
 	size_t Get_EffectCount() const;
 	size_t Get_EffectDocumentCount() const;
+	size_t Get_ClipBoundStageCount() const;
+	size_t Get_ProductCueStageCount() const;
 };
 
 /* Read-only join of ValtanEncounter.json, Valtan.patternbindings.json and
