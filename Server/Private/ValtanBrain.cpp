@@ -302,6 +302,7 @@ namespace
 		boss.fPatternHitHalfWidth = stage.fHitHalfWidth;
 		boss.iPatternHitCount = stage.iHitCount;
 		boss.iPatternHitIntervalMs = stage.iHitIntervalMs;
+		boss.iPatternHitDelayMs = stage.iHitDelayMs;
 		boss.iAppliedPatternHitCount = 0u;
 		boss.bPatternWallContact = stage.bWallContact;
 		boss.fPatternPushRangeM = stage.fPushRangeM;
@@ -394,6 +395,7 @@ namespace
 		boss.fPatternForcedMotionSpeed = 0.f;
 		boss.ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
 		boss.iPatternHitCount = 0u;
+		boss.iPatternHitDelayMs = 0u;
 		boss.iAppliedPatternHitCount = 0u;
 		boss.bPatternWallContact = false;
 		boss.fPatternPushRangeM = 0.f;
@@ -743,7 +745,8 @@ void LostArk::Server::CValtanBrain::Update(
 	Advance_ArenaBreakLeap(boss);
 	while (boss.iAppliedPatternHitCount < boss.iPatternHitCount &&
 		boss.fActionElapsedSeconds * 1000.f >=
-			static_cast<float>(boss.iAppliedPatternHitCount *
+			static_cast<float>(boss.iPatternHitDelayMs +
+				boss.iAppliedPatternHitCount *
 				boss.iPatternHitIntervalMs))
 	{
 		ApplyPatternHit(boss, players, catalog, serverTick, outDamageEvents);

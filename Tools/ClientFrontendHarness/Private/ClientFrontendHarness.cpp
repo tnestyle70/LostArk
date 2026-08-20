@@ -4105,7 +4105,8 @@ namespace
 			"{\"actionId\":\"valtan.attack.whirlwind.windup\","
 			"\"clip\":\"mesh_att_battle_20_02\"},"
 			"{\"actionId\":\"valtan.attack.whirlwind.active\","
-			"\"clip\":\"mesh_att_battle_20_03\"},"
+			"\"clip\":[\"mesh_att_battle_20_03\",\"mesh_att_battle_20_04\","
+			"\"mesh_att_battle_20_03\"]},"
 			"{\"actionId\":\"valtan.attack.whirlwind.recovery\","
 			"\"clip\":\"mesh_att_battle_20_04\"}]}";
 		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT document;
@@ -4116,8 +4117,12 @@ namespace
 			CValtanPatternAnimationBindingDocument::Validate(
 				document, "BOSS_VALTAN", clips, status) &&
 			3u == document.Bindings.size() &&
-			"mesh_att_battle_20_03" == document.Bindings[1].strClipName,
-			"Valtan Pattern Binding Parses And Joins Exact Model Clips");
+			1u == document.Bindings[0].Clips.size() &&
+			3u == document.Bindings[1].Clips.size() &&
+			"mesh_att_battle_20_03" == document.Bindings[1].Clips[0] &&
+			"mesh_att_battle_20_04" == document.Bindings[1].Clips[1] &&
+			"mesh_att_battle_20_03" == document.Bindings[1].Clips[2],
+			"Valtan Pattern Binding Parses Single Clips And Ordered Chains");
 
 		auto invalid = document;
 		invalid.Bindings[2].strActionId = invalid.Bindings[1].strActionId;
@@ -4126,11 +4131,22 @@ namespace
 				invalid, "BOSS_VALTAN", clips, status),
 			"Valtan Pattern Binding Rejects Duplicate Action Identity");
 		invalid = document;
-		invalid.Bindings[1].strClipName = "missing_clip";
+		invalid.Bindings[1].Clips[1] = "missing_clip";
 		runner.Require(
 			!CValtanPatternAnimationBindingDocument::Validate(
 				invalid, "BOSS_VALTAN", clips, status),
-			"Valtan Pattern Binding Rejects Missing Model Clip");
+			"Valtan Pattern Binding Rejects Missing Model Clip In A Chain");
+		const std::string emptyChain =
+			"{\"schema\":\"lostark.valtan-pattern-bindings\","
+			"\"formatVersion\":1,\"bossArchetypeId\":\"BOSS_VALTAN\","
+			"\"bindings\":["
+			"{\"actionId\":\"valtan.attack.whirlwind.active\","
+			"\"clip\":[]}]}";
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT emptyChainDocument;
+		runner.Require(
+			!CValtanPatternAnimationBindingDocument::Parse_Text(
+				emptyChain, emptyChainDocument, status),
+			"Valtan Pattern Binding Rejects An Empty Clip Chain");
 		runner.Require(
 			!CValtanPatternAnimationBindingDocument::Validate(
 				document, "BOSS_OTHER", clips, status),

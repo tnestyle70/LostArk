@@ -21,7 +21,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <span>
 #include <tuple>
+#include <vector>
 
 namespace
 {
@@ -267,11 +269,11 @@ void CValtan::Load_PatternBindings()
 		OutputDebugStringA(message.c_str());
 		return;
 	}
-	std::unordered_map<std::string, std::string> staged;
+	std::unordered_map<std::string, std::vector<std::string>> staged;
 	for (const Client::BOSS_PATTERN_ANIMATION_BINDING& binding :
 		document.Bindings)
 	{
-		staged.emplace(binding.strActionId, binding.strClipName);
+		staged.emplace(binding.strActionId, binding.Clips);
 	}
 	m_PatternClipByActionId = std::move(staged);
 }
@@ -777,41 +779,109 @@ bool_t CValtan::Apply_NetworkState(
 		default:
 			return false;
 		}
-		if (isPatternState && !actionId.empty())
+		if (!isPatternState)
 		{
-			const auto bound =
-				m_PatternClipByActionId.find(std::string(actionId));
-			if (bound != m_PatternClipByActionId.end())
-				pClip = &bound->second;
-		}
-		if (bAnimationEdgeChanged &&
-			!m_pBodyModelCom->Start_Animation(pClip->c_str(), true))
-		{
-			return false;
-		}
-		if (isPatternState)
-		{
-			const uint32_t iAnimation =
-				m_pBodyModelCom->Get_CurrentAnimIndex();
-			f32_t fTrackPosition = 0.f;
-			f32_t fTrackDuration = 0.f;
-			const f32_t fTicksPerSecond =
-				m_pBodyModelCom->Get_AnimationTickPerSecond(iAnimation);
-			if (!m_pBodyModelCom->Get_AnimationProgress(
-					iAnimation, fTrackPosition, fTrackDuration) ||
-				!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f ||
-				!std::isfinite(fTrackDuration) || fTrackDuration <= 0.f)
+			if (bAnimationEdgeChanged &&
+				!m_pBodyModelCom->Start_Animation(pClip->c_str(), true))
 			{
 				return false;
 			}
-			const Client::ACTION_PRESENTATION_CLIP_TIMING Timing{
-				fTrackDuration / fTicksPerSecond, 0u, 1.f, true };
+		}
+		else
+		{
+			/* The stage plays its authored clip chain once, each clip picking
+			up where the previous ended, mirroring the source action's
+			sequence; the last clip loops out any stage remainder the way the
+			old single-clip stage did. A one-clip chain reproduces the old
+			behavior exactly. */
+			std::span<const std::string> ClipChain(pClip, 1u);
+			if (!actionId.empty())
+			{
+				const auto bound =
+					m_PatternClipByActionId.find(std::string(actionId));
+				if (bound != m_PatternClipByActionId.end() &&
+					!bound->second.empty())
+				{
+					ClipChain = std::span<const std::string>(
+						bound->second.data(), bound->second.size());
+				}
+			}
+			const auto findAnimationIndex =
+				[this](const std::string& clipName) -> int32_t
+			{
+				const uint32_t iCount =
+					m_pBodyModelCom->Get_NumAnimations();
+				for (uint32_t index = 0u; index < iCount; ++index)
+				{
+					const char_t* pName =
+						m_pBodyModelCom->Get_AnimationName(index);
+					if (nullptr != pName && clipName == pName)
+						return static_cast<int32_t>(index);
+				}
+				return -1;
+			};
+			std::vector<Client::ACTION_PRESENTATION_CLIP_TIMING> Timings;
+			std::vector<uint32_t> AnimationIndices;
+			Timings.reserve(ClipChain.size());
+			AnimationIndices.reserve(ClipChain.size());
+			for (const std::string& clipName : ClipChain)
+			{
+				const int32_t iAnimation = findAnimationIndex(clipName);
+				if (iAnimation < 0)
+					return false;
+				f32_t fTrackPosition = 0.f;
+				f32_t fTrackDuration = 0.f;
+				const f32_t fTicksPerSecond =
+					m_pBodyModelCom->Get_AnimationTickPerSecond(
+						static_cast<uint32_t>(iAnimation));
+				if (!m_pBodyModelCom->Get_AnimationProgress(
+						static_cast<uint32_t>(iAnimation),
+						fTrackPosition, fTrackDuration) ||
+					!std::isfinite(fTicksPerSecond) ||
+					fTicksPerSecond <= 0.f ||
+					!std::isfinite(fTrackDuration) || fTrackDuration <= 0.f)
+				{
+					return false;
+				}
+				Timings.push_back({
+					fTrackDuration / fTicksPerSecond, 0u, 1.f, false });
+				AnimationIndices.push_back(
+					static_cast<uint32_t>(iAnimation));
+			}
+			Timings.back().bLoop = true;
 			Client::ACTION_PRESENTATION_SAMPLE Sample;
 			if (!Client::CActionPresentationTimeline::Resolve_Sample(
 					std::span<const Client::ACTION_PRESENTATION_CLIP_TIMING>(
-						&Timing, 1u), fActionAgeSeconds, Sample) ||
+						Timings.data(), Timings.size()),
+					fActionAgeSeconds, Sample) ||
+				Sample.iClipIndex >= AnimationIndices.size())
+			{
+				return false;
+			}
+			const uint32_t iTargetAnimation =
+				AnimationIndices[Sample.iClipIndex];
+			const bool_t bIsLastChainClip =
+				Sample.iClipIndex + 1u == AnimationIndices.size();
+			if (bAnimationEdgeChanged ||
+				m_pBodyModelCom->Get_CurrentAnimIndex() != iTargetAnimation)
+			{
+				if (!m_pBodyModelCom->Start_Animation(
+					ClipChain[Sample.iClipIndex].c_str(), bIsLastChainClip))
+				{
+					return false;
+				}
+			}
+			else
+			{
+				m_pBodyModelCom->Set_Animation(
+					iTargetAnimation, bIsLastChainClip);
+			}
+			const f32_t fTicksPerSecond =
+				m_pBodyModelCom->Get_AnimationTickPerSecond(
+					iTargetAnimation);
+			if (!std::isfinite(fTicksPerSecond) || fTicksPerSecond <= 0.f ||
 				!m_pBodyModelCom->Set_AnimTrackPosition(
-					iAnimation,
+					iTargetAnimation,
 					Sample.fClipSourceTimeSeconds * fTicksPerSecond))
 			{
 				return false;

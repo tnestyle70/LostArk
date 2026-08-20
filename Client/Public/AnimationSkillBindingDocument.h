@@ -95,13 +95,15 @@ namespace Client
 			std::string& outStatus);
 	};
 
-	/* Boss actions are not PlayerSkills. Their authored animation document maps a
-	stable boss-owned action ID to one clip; gameplay pattern timing remains in
-	the encounter document. */
+	/* Boss actions are not PlayerSkills. Their authored animation document maps
+	a stable boss-owned action ID to an ordered clip chain that plays once
+	within the stage, mirroring the source action's sequence; gameplay pattern
+	timing remains in the encounter document. A one-clip chain is the plain
+	single-clip stage. */
 	struct BOSS_PATTERN_ANIMATION_BINDING
 	{
 		std::string strActionId;
-		std::string strClipName;
+		std::vector<std::string> Clips;
 
 		bool operator==(const BOSS_PATTERN_ANIMATION_BINDING&) const = default;
 	};

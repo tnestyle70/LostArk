@@ -124,11 +124,12 @@ private:
 	uint32_t m_iServerPatternSequence = 0u;
 	uint32_t m_iServerPatternStageIndex = 0u;
 	f32_t m_fServerActionAgeSeconds = 0.f;
-	/* Presentation only: pattern stage actionId -> original clip, from
-	Data/Animation/Authored/Valtan/Valtan.patternbindings.json. A missing or
-	corrupt document leaves this empty and every pattern falls back to the
-	catalog's generic clips; it never blocks the spawn. */
-	std::unordered_map<std::string, std::string> m_PatternClipByActionId;
+	/* Presentation only: pattern stage actionId -> ordered original clip
+	chain, from Data/Animation/Authored/Valtan/Valtan.patternbindings.json. A
+	missing or corrupt document leaves this empty and every pattern falls back
+	to the catalog's generic clips; it never blocks the spawn. */
+	std::unordered_map<std::string, std::vector<std::string>>
+		m_PatternClipByActionId;
 	/* Product presentation only: exact authoritative stage actionId -> Effect
 	   cues.  This map is replaced only after the cue document, encounter join,
 	   runtime catalog and root/bone anchors all validate.  Animation bindings

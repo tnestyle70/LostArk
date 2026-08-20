@@ -262,7 +262,8 @@ bool_t Client::CEncounterPatternReference::Load(
 					"stageId", "actionId", "stageKind", "durationMs",
 					"hitShape", "hitOuterRadius", "hitInnerRadius",
 					"hitAngleDegrees", "hitLength", "hitHalfWidth",
-					"hitCount", "hitIntervalMs", "serverDamageProfileId",
+					"hitCount", "hitIntervalMs", "hitDelayMs",
+					"serverDamageProfileId",
 					"pushRangeM", "pushMs", "knockdown", "downMs" }))
 			{
 				outStatus = "Encounter stage has unexpected properties: " +

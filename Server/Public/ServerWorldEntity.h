@@ -88,6 +88,7 @@ namespace LostArk::Server
 		float fPatternHitHalfWidth = 0.f;
 		std::uint32_t iPatternHitCount = 0;
 		std::uint32_t iPatternHitIntervalMs = 0;
+		std::uint32_t iPatternHitDelayMs = 0;
 		std::uint32_t iAppliedPatternHitCount = 0;
 		bool bPatternWallContact = false;
 		/* Player push of the running pattern stage's hit; negative pulls toward
