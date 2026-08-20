@@ -10,5 +10,7 @@ namespace Client
 	public:
 		bool Request_SpawnWorldEntity(
 			std::string_view placementId) override;
+		bool Request_DespawnAllWorldEntities(
+			std::uint32_t requestSequence) override;
 	};
 }

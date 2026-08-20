@@ -27,6 +27,10 @@ IMGUI_IMPL_API bool     ImGui_ImplWin32_InitForOpenGL(void* hwnd);
 IMGUI_IMPL_API void     ImGui_ImplWin32_Shutdown();
 IMGUI_IMPL_API void     ImGui_ImplWin32_NewFrame();
 
+// Live (uncommitted) IME composition text for the currently focused input -- lets the app render
+// it inline in its own widget instead of relying on the OS's own floating composition window.
+IMGUI_IMPL_API const wchar_t* ImGui_ImplWin32_GetImeCompositionString();
+
 // Win32 message handler your application needs to call.
 // - Intentionally commented out in a '#if 0' block to avoid dragging dependencies on <windows.h> from this helper.
 // - You should COPY the line below into your .cpp code to forward declare the function and then you can call it.

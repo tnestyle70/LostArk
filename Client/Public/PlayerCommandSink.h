@@ -4,6 +4,7 @@
 #include "Network/PacketMessages.h"
 
 #include <cstdint>
+#include <string>
 
 namespace Client
 {
@@ -47,6 +48,12 @@ public:
 	virtual bool Request_ChangeCharacterClass(
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass) = 0;
+	// Bern's Valtan-entry confirm window's confirm button. npcPlacementId names
+	// which guide NPC the player right-clicked (npc.bern.beda.guide /
+	// npc.bern.aylara).
+	virtual bool Request_ConfirmNpcEntry(
+		std::uint32_t clientSequence,
+		const std::string& npcPlacementId) = 0;
 };
 
 }

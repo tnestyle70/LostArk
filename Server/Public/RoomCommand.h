@@ -26,6 +26,8 @@ namespace LostArk::Server
 		VALTAN_AUDITION,
 		DEBUG_GIVE_ITEM,
 		USE_ITEM,
+		DESPAWN_ALL_WORLD_ENTITIES,
+		CONFIRM_NPC_ENTRY,
 		LEAVE
 	};
 
@@ -56,6 +58,8 @@ namespace LostArk::Server
 
 		LostArk::Shared::C2S_DEBUG_GIVE_ITEM DebugGiveItem;
 		LostArk::Shared::C2S_USE_ITEM UseItem;
+		LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES DespawnAllWorldEntities;
+		LostArk::Shared::C2S_CONFIRM_NPC_ENTRY ConfirmNpcEntry;
 
 		LostArk::Shared::PLAYER_DESPAWN_REASON eLeaveReason =
 			LostArk::Shared::PLAYER_DESPAWN_REASON::DISCONNECTED;

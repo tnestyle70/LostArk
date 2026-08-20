@@ -210,6 +210,21 @@ namespace LostArk::Server
 		void Handle_UseItem(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_ITEM& request);
+		// Debug Character Select Arena "되돌리기" -- despawns every world entity the
+		// debug spawn buttons created in this room (Broadcast_WorldEntityDespawned per
+		// entity) and resets the spawn group runtime so the same groups can be
+		// re-activated. CHARACTER_SELECT_ARENA only; no-op reply for anything else.
+		void Handle_DespawnAllWorldEntities(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES& request);
+		// Bern's Valtan-entry confirm window (right-click a guide NPC). Replaces the
+		// old automatic changeLevel triggerBox OBB fire: validates the requesting
+		// player is still near the named guide NPC world entity, alive, and idle,
+		// then stages the same SERVER_WORLD_TRANSFER_REQUEST the trigger used to
+		// build. BERN only; no-op for anything else.
+		void Handle_ConfirmNpcEntry(
+			SESSION_ID sessionId,
+			const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request);
 
 		bool Send_Accepted(
 			const std::shared_ptr<CClientSession>& session,

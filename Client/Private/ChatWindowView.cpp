@@ -3,6 +3,7 @@
 #include "ChatWindowView.h"
 
 #include "GameInstance.h"
+#include "ImGuiLayer.h"
 #include "UITextureCache.h"
 
 #include <cstdio>
@@ -217,6 +218,30 @@ void Client::CChatWindowView::Render()
 		const bool_t submitted = ImGui::InputText(
 			"##ChatInput", m_InputBuffer, INPUT_BUFFER_SIZE,
 			ImGuiInputTextFlags_EnterReturnsTrue);
+		/* Real games never show Windows' own floating IME composition box -- they draw the
+		still-composing (uncommitted) text inline themselves, right after what's already typed.
+		WM_IME_SETCONTEXT (imgui_impl_win32.cpp) already suppresses the OS box; this is the other
+		half, same technique as CLevel_CharacterSelect::Render_CreateCharacterModal. */
+		if (ImGui::IsItemActive())
+		{
+			const wchar_t* pComposition = Engine::CImGuiLayer::Get_ImeCompositionString();
+			if (nullptr != pComposition && L'\0' != pComposition[0])
+			{
+				const ImVec2 vCommittedSize = ImGui::CalcTextSize(m_InputBuffer);
+				const ImVec2 vCompositionPos(
+					vInputMin.x + 6.f * fScaleX + vCommittedSize.x,
+					vInputMin.y + 4.f * fScaleY);
+				char compositionUtf8[64] = {};
+				::WideCharToMultiByte(CP_UTF8, 0, pComposition, -1,
+					compositionUtf8, sizeof(compositionUtf8), nullptr, nullptr);
+				const ImVec2 vCompositionSize = ImGui::CalcTextSize(compositionUtf8);
+				pDrawList->AddText(vCompositionPos, IM_COL32(255, 255, 255, 255), compositionUtf8);
+				pDrawList->AddLine(
+					ImVec2(vCompositionPos.x, vCompositionPos.y + vCompositionSize.y),
+					ImVec2(vCompositionPos.x + vCompositionSize.x, vCompositionPos.y + vCompositionSize.y),
+					IM_COL32(255, 255, 255, 200));
+			}
+		}
 		ImGui::PopItemWidth();
 		ImGui::PopStyleColor(3);
 

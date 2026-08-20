@@ -175,3 +175,8 @@ bool_t CImGuiLayer::HandleWindowMessage(HWND hWnd, UINT message, WPARAM wParam, 
 
 	return 0 != ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam);
 }
+
+const wchar_t* CImGuiLayer::Get_ImeCompositionString()
+{
+	return ImGui_ImplWin32_GetImeCompositionString();
+}

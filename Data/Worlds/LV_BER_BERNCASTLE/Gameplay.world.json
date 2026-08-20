@@ -2,7 +2,7 @@
   "schema": "lostark.world-gameplay",
   "formatVersion": 5,
   "areaId": "LV_BER_BERNCASTLE",
-  "revision": 129,
+  "revision": 131,
   "placements": [
     {
       "placementId": "collision.bern.editor-proof",

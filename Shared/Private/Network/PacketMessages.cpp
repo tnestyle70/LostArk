@@ -2205,3 +2205,61 @@ bool LostArk::Shared::Read_Message(
 	message = std::move(decoded);
 	return true;
 }
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_DESPAWN_ALL_WORLD_ENTITIES& message)
+{
+	if (0u == message.iRequestSequence)
+		return false;
+	writer.Write_U32(message.iRequestSequence);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_DESPAWN_ALL_WORLD_ENTITIES& message)
+{
+	C2S_DESPAWN_ALL_WORLD_ENTITIES decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		0u == decoded.iRequestSequence)
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const C2S_CONFIRM_NPC_ENTRY& message)
+{
+	if (0u == message.iRequestSequence || message.strNpcPlacementId.empty() ||
+		message.strNpcPlacementId.size() > MAX_NPC_PLACEMENT_ID_BYTES)
+	{
+		return false;
+	}
+	writer.Write_U32(message.iRequestSequence);
+	if (!writer.Write_String(
+		message.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES))
+	{
+		return false;
+	}
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	C2S_CONFIRM_NPC_ENTRY& message)
+{
+	C2S_CONFIRM_NPC_ENTRY decoded{};
+	if (!reader.Read_U32(decoded.iRequestSequence) ||
+		!reader.Read_String(
+			decoded.strNpcPlacementId, MAX_NPC_PLACEMENT_ID_BYTES) ||
+		0u == decoded.iRequestSequence || decoded.strNpcPlacementId.empty())
+	{
+		return false;
+	}
+	message = std::move(decoded);
+	return true;
+}

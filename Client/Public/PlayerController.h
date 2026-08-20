@@ -34,12 +34,17 @@ namespace Client
 
 		void Update(bool_t gameplayCommandsEnabled);
 
+		/* Cursor -> world ray unprojected against the groundY plane. Public+static
+		because it touches no member state (screen cursor, viewport and view/proj
+		come straight from CGameInstance) -- Level_Bern reuses this same math to
+		test a right-click against a stationary NPC's position instead of
+		duplicating the unproject/plane-intersect code a second time. */
+		static bool_t Try_PickGroundPlane(
+			f32_t groundY,
+			float3_t& outPosition);
+
 	private:
 		//실질적인 navigation picking을 통한 이동으로 교체
-		bool_t Try_PickGroundPlane(
-			f32_t groundY,
-			float3_t& outPosition) const;
-
 		bool_t Should_SendMoveGoal(
 			bool_t wasRightMouseDown,
 			f32_t characterX,
