@@ -2089,6 +2089,21 @@ def build_document(
                 event,
                 emitter.object_path,
             )
+        else:
+            # Even when no typed source-presentation evaluator is enabled, the
+            # base occurrence must retain the same stable cue/time identity as
+            # its duplicated occurrences.  Leaving these fields at the default
+            # silently detached occurrence zero (for example FoldCut's first
+            # 0.50 s sword wave) from its animation notify provenance.
+            source_presentation["sourceObjectPath"] = emitter.object_path
+            source_presentation["sourceActionCueId"] = str(
+                event.get("sourceActionCueId") or ""
+            )
+            source_presentation["sourceEventId"] = str(
+                event.get("eventId") or ""
+            )
+            source_presentation["sourceOccurrenceIndex"] = 0
+            source_presentation["sourceTimeSeconds"] = event_time
 
         element_ids = []
         should_emit_base = True

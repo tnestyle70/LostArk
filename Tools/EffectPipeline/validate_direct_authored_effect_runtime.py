@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate direct authored v13 Effect rows without changing derived authority.
+"""Validate minimal direct-authored v13 Effect rows and their documents.
 
 The established derived-artifact validator remains the authority for compiled,
 legacy, and reconstructed runtime rows.  This adapter validates the additive
@@ -10,7 +10,6 @@ the unchanged remainder to that validator.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import importlib.util
 import json
 from pathlib import Path, PurePosixPath
@@ -30,12 +29,8 @@ DIRECT_ENTRY_KEYS = (
     "effectAssetId",
     "authoringFormatVersion",
     "authoredDocumentPath",
-    "contentSha256",
-    "dependencies",
 )
-DEPENDENCY_KEYS = ("assetId", "sha256")
 STABLE_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
-SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 class ContractError(RuntimeError):
@@ -76,12 +71,6 @@ def _require_exact_order(value: Any, keys: tuple[str, ...], label: str) -> None:
         raise ContractError(f"{label} fields or order are invalid")
 
 
-def _require_sha(value: Any, label: str) -> str:
-    if not isinstance(value, str) or SHA256_PATTERN.fullmatch(value) is None:
-        raise ContractError(f"{label} must be a lowercase SHA-256")
-    return value
-
-
 def _require_stable_id(value: Any, label: str) -> str:
     if (
         not isinstance(value, str)
@@ -92,41 +81,37 @@ def _require_stable_id(value: Any, label: str) -> str:
     return value
 
 
-def _validate_dependency_asset_id(value: Any, previous: str) -> str:
-    if not isinstance(value, str):
-        raise ContractError("direct authored dependency assetId must be a string")
-    path = PurePosixPath(value)
-    if (
-        len(value) > 1024
-        or not value.startswith(("Effect/", "Character/"))
-        or "\\" in value
-        or ":" in value
-        or "//" in value
-        or path.is_absolute()
-        or any(part in ("", ".", "..") for part in path.parts)
-        or any(ord(character) < 0x20 or ord(character) == 0x7F for character in value)
-        or value <= previous
-    ):
-        raise ContractError(
-            "direct authored dependency ID is unsafe, duplicate, or unsorted"
-        )
-    return value
-
-
 def _load_sealed_authored_document(
     runtime_catalog_path: Path,
     authored_document_path: Any,
     effect_id: str,
-    content_sha: str,
 ) -> dict[str, Any]:
-    expected_path = f"Authored/{effect_id}.{content_sha}.effect.json"
-    if authored_document_path != expected_path:
+    if not isinstance(authored_document_path, str):
+        raise ContractError("direct authored runtime document path must be a string")
+    relative_path = PurePosixPath(authored_document_path)
+    sealed_name_pattern = re.compile(
+        rf"^{re.escape(effect_id)}\.[0-9a-f]{{64}}\.effect\.json$"
+    )
+    if (
+        len(authored_document_path) > 1024
+        or "\\" in authored_document_path
+        or ":" in authored_document_path
+        or "//" in authored_document_path
+        or relative_path.is_absolute()
+        or tuple(relative_path.parts[:1]) != ("Authored",)
+        or len(relative_path.parts) != 2
+        or any(part in ("", ".", "..") for part in relative_path.parts)
+        or sealed_name_pattern.fullmatch(relative_path.name) is None
+        or any(
+            ord(character) < 0x20 or ord(character) == 0x7F
+            for character in authored_document_path
+        )
+    ):
         raise ContractError(
-            "direct authored runtime document path is not the sealed canonical path"
+            "direct authored runtime document path is unsafe or does not match its ID"
         )
 
     catalog_root = runtime_catalog_path.resolve(strict=False).parent
-    relative_path = PurePosixPath(expected_path)
     candidate = catalog_root.joinpath(*relative_path.parts)
     try:
         resolved = candidate.resolve(strict=True)
@@ -162,8 +147,6 @@ def _load_sealed_authored_document(
         ) from exc
     if authored_bytes.startswith(b"\xef\xbb\xbf"):
         raise ContractError("direct authored runtime document must be UTF-8 without BOM")
-    if hashlib.sha256(authored_bytes).hexdigest() != content_sha:
-        raise ContractError("direct authored runtime document hash mismatch")
     try:
         authored = json.loads(
             authored_bytes.decode("utf-8"), object_pairs_hook=_object_no_duplicates
@@ -198,33 +181,11 @@ def validate_direct_entry(
     if type(version) is not int or version != AUTHORING_VERSION:
         raise ContractError("direct authored runtime authoring version is invalid")
 
-    content_sha = _require_sha(
-        entry["contentSha256"], "direct authored runtime contentSha256"
-    )
     _load_sealed_authored_document(
         runtime_catalog_path,
         entry["authoredDocumentPath"],
         effect_id,
-        content_sha,
     )
-
-    dependencies = entry["dependencies"]
-    if not isinstance(dependencies, list):
-        raise ContractError("direct authored runtime dependencies are invalid")
-    previous_asset_id = ""
-    for index, dependency in enumerate(dependencies):
-        _require_exact_order(
-            dependency,
-            DEPENDENCY_KEYS,
-            f"direct authored dependency[{index}]",
-        )
-        previous_asset_id = _validate_dependency_asset_id(
-            dependency["assetId"], previous_asset_id
-        )
-        _require_sha(
-            dependency["sha256"],
-            f"direct authored dependency[{index}].sha256",
-        )
 
 
 def _load_derived_validator() -> Any:
@@ -254,43 +215,12 @@ def validate_runtime_catalog(
         "components",
         "effects",
     )
-    admission_keys = (
-        "schema",
-        "formatVersion",
-        "productCueAdmissionsRequired",
-        "productCuePolicySha256",
-        "components",
-        "effects",
-    )
-    sidecar_admission_keys = (
-        "schema",
-        "formatVersion",
-        "visualProgramSidecarRequired",
-        "productCueAdmissionsRequired",
-        "productCuePolicySha256",
-        "components",
-        "effects",
-    )
-    if root_keys not in (
-        plain_keys,
-        sidecar_plain_keys,
-        admission_keys,
-        sidecar_admission_keys,
-    ):
+    if root_keys not in (plain_keys, sidecar_plain_keys):
         raise ContractError("runtime catalog fields or order are invalid")
     if "visualProgramSidecarRequired" in value and type(
         value["visualProgramSidecarRequired"]
     ) is not bool:
         raise ContractError("runtime catalog visual-program sidecar marker is invalid")
-    if root_keys in (admission_keys, sidecar_admission_keys) and value[
-        "productCueAdmissionsRequired"
-    ] is not True:
-        raise ContractError("runtime catalog Product cue admission marker is invalid")
-    if root_keys in (admission_keys, sidecar_admission_keys):
-        _require_sha(
-            value["productCuePolicySha256"],
-            "runtime catalog productCuePolicySha256",
-        )
     if value["schema"] != RUNTIME_SCHEMA:
         raise ContractError("runtime catalog schema mismatch")
     version = value["formatVersion"]

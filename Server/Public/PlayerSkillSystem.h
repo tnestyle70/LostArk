@@ -20,6 +20,20 @@ namespace LostArk::Server
 			const CGameplayCatalog& catalog,
 			std::uint32_t actionStartTick) const;
 
+		/* A different skill pressed during a COMBO consumes its sequence and is
+		copied as the one pending explicit intent. Costs/cooldown are rechecked only
+		when the stage boundary commits it. */
+		bool Try_StagePendingSkill(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_USE_SKILL& command,
+			const CGameplayCatalog& catalog) const;
+
+		bool Try_StartPending(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_USE_SKILL& command,
+			const CGameplayCatalog& catalog,
+			std::uint32_t actionStartTick) const;
+
 		void Release(
 			SERVER_PLAYER& player,
 			const LostArk::Shared::C2S_RELEASE_SKILL& command,
@@ -105,5 +119,13 @@ namespace LostArk::Server
 			float desiredZ,
 			SERVER_NAV_POINT& outPoint,
 			bool& outWasClamped);
+
+	private:
+		bool Try_StartInternal(
+			SERVER_PLAYER& player,
+			const LostArk::Shared::C2S_USE_SKILL& command,
+			const CGameplayCatalog& catalog,
+			std::uint32_t actionStartTick,
+			bool sequenceAlreadyConsumed) const;
 	};
 }

@@ -7,7 +7,7 @@
 
 모든 세션은 `AGENTS.md`, `CLAUDE.md`, `.md/GB/gotchas.md`, 있으면
 `.md/GB/gotchas.local.md`, `.md/TEAM/README.md`, 대응 PLAN/RESULT를 먼저 읽는다.
-Artist F, Effect Tool, Character Select와 Client의 시각 결과는 사용자만 직접 조작하고 최종 visual fidelity를 판정한다.
+Artist F, Character Select와 Client Effect의 시각 결과는 사용자만 직접 조작하고 최종 visual fidelity를 판정한다.
 에이전트는 Client나 UI를 자율적으로 실행·조작하지 않고 화면 캡처·스크린샷 생성을 하지 않으며 visual fidelity를 대신 판정하지 않는다.
 사용자가 대화에 첨부한 스크린샷이나 이미지 분석을 요청하면 에이전트는 반드시 열람·분석해 관찰 결과와 가능한 occurrence 진단을 보고한다.
 빌드와 구조화된 진단, 실행 준비 후 사용자가 누를 경로를 전달하고 멈추며, 사용자 서면 판정 전에는
@@ -159,6 +159,8 @@ Test-NetConnection <SERVER_REACHABLE_IPV4> -Port 7777
 
 `CPlayerController`는 edge input, quick slot, sequence, aim만 만든다. `(class, inputSlot) -> skill ID`는 `CPlayerSkillCatalog`가 `Data/Balance/PlayerSkills.json`에서 해석한다. `IPlayerCommandSink`가 전송 구현을 숨기므로 Controller에서 `CNetworkManager`를 include하지 않는다. Character를 직접 이동하거나 `Play_Skill`을 호출하지 않는다.
 
+LMB COMBO는 `comboStages[].hitTimeMs`, `comboAdvanceMs`, `actionDurationMs`를 구분한다. `hitTimeMs`는 damage 발생 시점이고 `comboAdvanceMs`는 현재 stage의 필수 caster hit/projectile spawn이 끝난 뒤 buffered BA가 다음 stage로 갈 수 있는 시점이다. LMB release는 재생 중인 stage를 자르지 않고 아직 commit되지 않은 continuation만 취소한다. COMBO 중 도착한 MOVE/SKILL은 Server가 값으로 하나만 보관하고 buffered continuation을 막은 채 현재 애니메이션의 `actionDurationMs`까지 유지한 뒤 최신 명시 command를 commit한다. 명시 command가 수락된 뒤 Client는 실제 LMB up/re-press 전까지 100ms BA resend를 억제한다.
+
 스킬 서버 흐름은 다음과 같다.
 
 ```text
@@ -228,28 +230,23 @@ Animation Tool은 Scene Character의 현재 model에 실제 존재하는 clip만
 `clip-local animevent effectref=asset -> Effect catalog/prewarm`으로 이어지는 경로다. `PlayerSkills.effectId`를 복원 결과로 바꾸거나
 다른 class/skill 문서를 fallback으로 복사하지 않는다. 현재 Product target 정본은 publisher가 네 class
 animevent의 `effectref=asset` 집합으로 선택해 runtime catalog에 commit한 ID membership이다.
-`Data/Effects/ProductCueApprovals.json`과 `EffectProductCueAdmissions.runtime.json`은 현재 publisher가
-소비하지 않는 rollback evidence이며, null admission token을 미완성 판정이나 준비 제외 조건으로 쓰지
-않는다. authoring-only 문서는 Effect Tool에서 계속 편집할 수 있지만 runtime membership이 없으므로
-Character Select 준비 대상이 아니다.
-
-Effect Tool의 `Saved Unified Effects` 목록은 source `EffectCatalog.json`의
-`DIRECT_AUTHORED_DOCUMENT_V13` row를 stable class/skill ID로 `PlayerSkills.json`에 join한 결과다.
-폐기된 FourClass Track-A batch와 runtime Product tree는 목록 정본이 아니며, Product cue refresh가
-실패해도 saved authored 목록은 유지한다. 목록/검색/펼치기는 metadata와 cache-only projection만 읽고,
-사용자가 Open 또는 Play를 누를 때 한 문서만 decode한다.
+Debug Effect Tool, selected Save Hot Reload, Product cue approval/admission token과 두 sidecar는 제거되었다.
+authoring-only 문서는 runtime membership이 없으므로 Character Select 준비 대상이 아니다. 제품 Effect는
+source `EffectCatalog.json`의 Product row와 clip-local `effectref=asset` cue를 명시적 전체 publisher가
+runtime catalog로 만든 결과만 재생한다.
 
 Character는 cue/anchor/HIT metadata를 먼저 commit하고 Product ID만 revision별 queue에 등록한다.
 등록 frame에는 resource 작업을 하지 않으며 다음 frame부터 main thread가 target 하나씩 parse,
 drawable validation, budget 산정과 GPU 준비를 수행한다. 성공한 target만 prepared로 commit하고 실패한
-target 하나만 같은 revision에서 격리한다. Effect Tool의 명시적 Publish/Reload는 전체 Product target의
-동기 batch transaction과 runtime rollback을 유지한다.
-Character Select Loading은 worker 완료 뒤 선택 class target을 queue 앞에 놓고 기존 background pending까지
-전부 끝난 뒤에만 activation을 요청한다. activation 전 progress는 100% 미만으로 유지한다. prepared
-Product attach는 exact catalog revision/document/projection identity와 shared immutable document를 사용해
-전체 document copy와 재검증을 반복하지 않으며, revision 0 Tool stage는 기존 owned-copy 계약을 유지한다.
+target 하나만 같은 revision에서 격리한다. Character Select Loading은 worker 시작과 함께 선택 class target을
+priority queue에 놓아 map/model loading과 준비를 겹친다. activation은 선택 target의 현재 revision 상태만
+확인하고 unrelated background pending을 기다리지 않는다. prepared Product attach는 catalog
+revision/document identity와 shared immutable document를 재사용한다.
+
+Source Trim `rotation`은 source module이 만든 initial sprite/source-mesh rotation과 source rotation-rate에 정확히 한 번 적용한다. authoring/codec/publisher 범위는 finite `[-360, 360]`이며 authored billboard roll lane은 별도 값으로 유지한다.
+
 Character Select 내부 class 변경은 Server snapshot의 stable entity/class generation을 stage하고 새 class
-Product target 및 global queue drain 뒤에만 presentation을 교체한다. 준비 중 입력은 차단되고 기존
+Product target이 settle된 뒤에만 presentation을 교체한다. 준비 중 입력은 차단되고 기존
 character는 유지되며, replacement transaction 실패는 Character Select 입력 정지 대신 Lobby로 복귀한다.
 
 ## 6. UI와 밸런스 데이터
@@ -286,14 +283,14 @@ damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI�
 | 파일 | 수정하는 값 | 주 소비자 |
 |---|---|---|
 | `Data/Balance/PlayerProfiles.json` | class별 max HP/resource/move speed, 기본 stance가 아닌 stance의 이동 배율, identity 게이지 최대치와 충전·소모 속도 | Server spawn, HUD snapshot |
-| `Data/Balance/PlayerSkills.json` | slot, 이름, `skillKind`, cooldown, action/hit time, cost, 이동 거리, range, damage 참조, `effectId`, `comboStages` | Server skill, UI definition, Effect presentation |
+| `Data/Balance/PlayerSkills.json` | slot, 이름, `skillKind`, cooldown, action/hit/`comboAdvanceMs`, cost, 이동 거리, range, damage 참조, `effectId`, `comboStages` | Server skill, UI definition, Effect presentation |
 | `Data/Balance/DamageProfiles.json` | attack power에 곱하는 damage rate percent | Server 판정, UI 예상 표시 |
 | `Data/Balance/BossProfiles.json` | boss HP, engage range, speed, phase threshold | Server boss, UI 이름 |
 | `Data/Encounters/Valtan/ValtanEncounter.json` | state/action/pattern timing/range/damage 참조 | Server Valtan brain |
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet, socket, Character, boss GameObject를 직접 조회하지 않는다.
 
-Debug F1 `Balance Tool`은 다섯 class와 발탄을 선택해 stats/movement/skill/combo/pattern을 편집하고,
+Debug F1 `Balance Tool`은 여섯 class와 발탄을 선택해 stats/movement/skill/combo/pattern을 편집하고,
 field provenance와 Server snapshot/damage event를 같은 화면에서 검증한다. Save는 authoring JSON을
 staging한 뒤 변경 field를 `PROJECT_TUNED`로 동기화하고 publisher Validate를 수행한다. Publish 후
 Server 재시작이 필요하며 runtime Hot Reload 버튼은 없다. 세부 작업법은
@@ -477,8 +474,8 @@ source placement 하나가 Wall Mesh Emitter 하나이고 runtime이 stable frag
 MapTool은 All Fragments/Solo Emitter/Solo Fragment와 60 Hz deterministic seek를 제공한다. 이 결과는
 Server truth가 아니며 Client PhysX pose를 Server로 보내지 않는다. preview ground도 editor support일 뿐
 `Gameplay.world.json collisionBox`가 아니다. persistent FRACTURED full sync는 과거 debris를 재생하지
-않고, live event만 one-shot mesh debris/effect cue를 만든다. Effect Tool private type과 active document를
-MapTool 또는 제품 runtime에 의존시키지 않는다. 상세 작업법은 `MAP_DESTRUCTION_PHYSX_HANDOFF.md`를
+않고, live event만 one-shot mesh debris/effect cue를 만든다. 삭제된 Effect editor private type이나
+active document를 MapTool 또는 제품 runtime에 의존시키지 않는다. 상세 작업법은 `MAP_DESTRUCTION_PHYSX_HANDOFF.md`를
 따른다.
 
 Map/Encounter 담당자가 좌표를 수정하면 navigation publish가 활성 playerSpawn/boss 좌표의 walkable cell과 높이 오차를 검사한다. 생성된 Server bootstrap/navgrid를 직접 편집하지 않는다.
@@ -489,11 +486,12 @@ Area별 optional layer와 현재 Bern/Valtan/Training 데이터 보유 현황은
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-GameplayBalance.ps1 -Mode Validate
+powershell -ExecutionPolicy Bypass -File Tools/GameplayPipeline/Publish-ItemCatalog.ps1 -Mode Validate
 powershell -ExecutionPolicy Bypass -File Tools/WorldPipeline/Publish-WorldGameplay.ps1 -Mode Validate
 powershell -ExecutionPolicy Bypass -File Tools/NavigationPipeline/Publish-ServerNavigation.ps1 -Mode Validate
 ```
 
-세 publisher는 parse → validate → stage → commit을 따른다. unknown field, schema/version 오류, 중복 stable ID, 잘못된 참조, non-finite 위치, navigation 밖 spawn을 정상값으로 보정해 숨기지 않고 실패시킨다.
+네 publisher는 parse → validate → stage → commit을 따른다. unknown field, schema/version 오류, 중복 stable ID, 잘못된 참조, non-finite 위치, navigation 밖 spawn을 정상값으로 보정해 숨기지 않고 실패시킨다.
 
 새 스킬을 추가할 때는 다음을 함께 변경한다.
 

@@ -13,7 +13,6 @@ NS_END
 NS_BEGIN(Client)
 
 class CMapTool;
-class CEffect_Tool;
 class CAnimation_Tool;
 class CHUDLayoutTool;
 class CHUDRuntimeView;
@@ -34,7 +33,6 @@ private:
 		NONE,
 		MAP,
 		ANIMATION,
-		EFFECT,
 		RENDERING,
 		UI,
 		BALANCE
@@ -229,7 +227,6 @@ private:
 
 #ifdef _DEBUG
 	unique_ptr<CMapTool> m_pMapTool = { nullptr };
-	unique_ptr<CEffect_Tool> m_pEffectTool = { nullptr };
 	unique_ptr<CAnimation_Tool> m_pAnimationTool = { nullptr };
 	shared_ptr<CCharacterPreviewPanel> m_pCharacterPreviewPanel = { nullptr };
 	unique_ptr<CHUDLayoutTool> m_pHUDLayoutTool = { nullptr };

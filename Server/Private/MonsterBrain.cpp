@@ -173,6 +173,8 @@ void LostArk::Server::CMonsterBrain::Update(
 				{
 					target->eAction = LostArk::Shared::PLAYER_ACTION_STATE::DEAD;
 					target->iActionStartTick = 0u == serverTick ? 1u : serverTick;
+					target->hasBufferedComboInput = false;
+					target->PendingCommand.Clear();
 					target->hasMoveGoal = false;
 					target->MovePath.clear();
 				}

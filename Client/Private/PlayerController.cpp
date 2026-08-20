@@ -47,10 +47,6 @@ namespace
 
 	constexpr size_t SlotKeyCount = sizeof(SlotKeys) / sizeof(SlotKeys[0]);
 
-	/* Tighter than the narrowest combo window the balance data declares (183 ms
-	on the Artist third basic-attack stage), so a held button cannot skip one. */
-	constexpr std::chrono::milliseconds BASIC_ATTACK_RESEND_INTERVAL{ 100 };
-
 	constexpr std::chrono::milliseconds MOVE_GOAL_RESEND_INTERVAL{ 50 };
 	constexpr f32_t MOVE_GOAL_DEADZONE_RADIUS = 0.5f;
 	constexpr f32_t MOVE_GOAL_RESEND_EPSILON = 0.25f;
@@ -70,8 +66,9 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_wasKeyDown.fill(false);
 	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	m_byHeldKeyCode = 0;
-	m_wasLeftMouseDown = false;
-	m_LastBasicAttackSentAt = {};
+	m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
+	m_BasicAttackRepeatScheduler.Reset();
+	m_BasicAttackResendGate.Reset();
 	m_LastMoveGoalSentAt = {};
 	m_LastSentMoveGoal = {};
 	m_LastSkillAimSentAt = {};
@@ -88,8 +85,9 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 	m_wasKeyDown.fill(false);
 	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	m_byHeldKeyCode = 0;
-	m_wasLeftMouseDown = false;
-	m_LastBasicAttackSentAt = {};
+	m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
+	m_BasicAttackRepeatScheduler.Reset();
+	m_BasicAttackResendGate.Reset();
 	m_LastMoveGoalSentAt = {};
 	m_LastSentMoveGoal = {};
 	m_LastSkillAimSentAt = {};
@@ -143,6 +141,9 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 			{
 				m_LastMoveGoalSentAt = std::chrono::steady_clock::now();
 				m_LastSentMoveGoal = goal;
+				/* Poll_BasicAttack runs later this frame.  Its current physical
+				state either keeps this suppression (held) or clears it (up). */
+				m_BasicAttackResendGate.Suppress_UntilRelease();
 				++m_iNextMoveSequence;
 				if (0 == m_iNextMoveSequence)
 					m_iNextMoveSequence = 1;
@@ -194,6 +195,14 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 				aim.x,
 				aim.z))
 			{
+				const bool_t requestedBasicAttack =
+					requestedSkillId == m_iHeldBasicAttackSkillId;
+				/* Poll_BasicAttack has already observed this frame.  Suppress only
+				when an explicit skill won while LMB is physically still held. */
+				const bool_t isBasicAttackPhysicallyHeld =
+					0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
+				if (!requestedBasicAttack && isBasicAttackPhysicallyHeld)
+					m_BasicAttackResendGate.Suppress_UntilRelease();
 				++m_iNextActionSequence;
 				if (0 == m_iNextActionSequence)
 					m_iNextActionSequence = 1;
@@ -370,36 +379,40 @@ void Client::CPlayerController::Poll_BasicAttack(
 	LostArk::Shared::SKILL_ID& outSkillId,
 	const bool_t commandSuppressed)
 {
-	const bool_t isDown =
-		!CGameInstance::Get().IsMouseInputBlocked() &&
+	const bool_t isPhysicallyDown =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
+	const bool_t isGameplayDown =
 		0 != (CGameInstance::Get().Get_DIMouseState(DIM::LB) & 0x80);
-	if (!isDown)
+	const bool_t resendSuppressed =
+		m_BasicAttackResendGate.Observe_Button(isPhysicallyDown);
+	if (!isPhysicallyDown)
 	{
-		m_wasLeftMouseDown = false;
+		(void)m_BasicAttackRepeatScheduler.Should_Submit(false, false, {});
+		m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
 		return;
 	}
 
-	const bool_t wasDown = m_wasLeftMouseDown;
-	m_wasLeftMouseDown = true;
-	if (commandSuppressed || nullptr == pSpec ||
-		LostArk::Shared::INVALID_SKILL_ID != outSkillId)
+	const bool_t commandEligible =
+		isGameplayDown && !commandSuppressed && !resendSuppressed && nullptr != pSpec &&
+		LostArk::Shared::INVALID_SKILL_ID == outSkillId;
+	if (!commandEligible)
 	{
+		(void)m_BasicAttackRepeatScheduler.Should_Submit(
+			true, false, std::chrono::steady_clock::now());
 		return;
 	}
-
-	/* The first press goes out immediately; holding repeats on an interval
-	narrower than the tightest combo window in the data (183 ms), so a held
-	button always lands at least one press inside it. */
-	const auto now = std::chrono::steady_clock::now();
-	if (wasDown && now - m_LastBasicAttackSentAt < BASIC_ATTACK_RESEND_INTERVAL)
-		return;
 
 	const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
 		pSpec->eCharacterClass, "LMB", stance);
 	if (nullptr == pSkill)
 		return;
+	if (!m_BasicAttackRepeatScheduler.Should_Submit(
+			true, true, std::chrono::steady_clock::now()))
+	{
+		return;
+	}
 
-	m_LastBasicAttackSentAt = now;
+	m_iHeldBasicAttackSkillId = pSkill->iSkillId;
 	outSkillId = pSkill->iSkillId;
 }
 

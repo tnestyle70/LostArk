@@ -14,8 +14,6 @@
     { "patternId": "VALTAN_SUPER_SMASH", "stageId": "IMPACTS", "actionId": "valtan.attack.super-smash.active" },
     { "patternId": "VALTAN_SWING", "stageId": "SWEEP", "actionId": "valtan.attack.swing.active" },
     { "patternId": "VALTAN_WHIRLWIND", "stageId": "SPIN", "actionId": "valtan.attack.whirlwind.active" },
-    { "patternId": "VALTAN_WHIRLWIND", "stageId": "SPIN_2", "actionId": "valtan.attack.whirlwind.active-2" },
-    { "patternId": "VALTAN_WHIRLWIND", "stageId": "SPIN_3", "actionId": "valtan.attack.whirlwind.active-3" },
     { "patternId": "VALTAN_PARRY", "stageId": "COUNTER_SLASH", "actionId": "valtan.reactive.parry.slash" }
   ]
 }

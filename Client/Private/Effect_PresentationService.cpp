@@ -238,12 +238,6 @@ namespace
 					Cue.strEffectAssetId;
 				return false;
 			}
-			if (!Client::CEffectCatalog::Admit_ProductSpawn(
-					Cue.strEffectAssetId, Cue.pProductAdmissionToken,
-					strOutStatus))
-			{
-				return false;
-			}
 			if (CurrentTargetIds.insert(Cue.strEffectAssetId).second)
 				CurrentTargets.push_back(Cue.strEffectAssetId);
 		}
@@ -1776,52 +1770,6 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 		g_strStatus + "\n").c_str());
 }
 
-bool_t Client::CEffectPresentationService::Reprepare_ProductTargets(
-    ComPtr<ID3D11Device> pDevice,
-    ComPtr<ID3D11DeviceContext> pContext,
-    const std::vector<std::string>& AdditionalEffectAssetIds,
-    std::string& strOutStatus)
-{
-	std::set<std::string, std::less<>> StagedTargets;
-	for (const std::string& EffectId : g_ProductPrewarmQueue.Get_Targets())
-	{
-		if (CEffectCatalog::Contains(EffectId))
-			StagedTargets.insert(EffectId);
-	}
-    for (const std::string& EffectId : AdditionalEffectAssetIds)
-    {
-		if (EffectId.empty() || !CEffectCatalog::Contains(EffectId))
-		{
-			strOutStatus =
-				"Additional Effect prewarm target is absent from the runtime catalog: " +
-				EffectId;
-            g_strStatus = strOutStatus;
-            return false;
-        }
-        StagedTargets.insert(EffectId);
-    }
-	CEffectProductPrewarmQueue StagedQueue = g_ProductPrewarmQueue;
-	StagedQueue.Reset_ForCatalogRevision(CEffectCatalog::Get_RuntimeRevision());
-	std::string QueueStatus;
-	if (!StagedQueue.Commit_AllPrepared(StagedTargets, QueueStatus))
-	{
-		strOutStatus = QueueStatus;
-		g_strStatus = strOutStatus;
-		return false;
-	}
-    if (!Prepare_TargetSet(
-        std::move(pDevice), std::move(pContext), StagedTargets, strOutStatus))
-    {
-        g_strStatus = "Reloaded Effect prewarm failed; previous cache preserved: " +
-            strOutStatus;
-        strOutStatus = g_strStatus;
-        return false;
-    }
-	g_ProductPrewarmQueue = std::move(StagedQueue);
-    g_strStatus = strOutStatus;
-    return true;
-}
-
 bool_t Client::CEffectPresentationService::Build_SourceBoneAnchorWorld(
 	const EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC& Desc,
 	float4x4_t& OutWorld)
@@ -2539,12 +2487,6 @@ bool_t Client::CEffectPresentationService::Spawn(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
-	if (!CEffectCatalog::Admit_ProductSpawn(Desc.strEffectAssetId,
-			Desc.pProductAdmissionToken, strOutStatus))
-	{
-		g_strStatus = strOutStatus;
-		return false;
-	}
 	if (!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
 		Desc.strEffectAssetId, strOutStatus))
 	{
@@ -2672,12 +2614,6 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
-	if (!CEffectCatalog::Admit_ProductSpawn(Desc.strEffectAssetId,
-			Desc.pProductAdmissionToken, strOutStatus))
-	{
-		g_strStatus = strOutStatus;
-		return false;
-	}
 	if (!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
 		Desc.strEffectAssetId, strOutStatus))
 	{

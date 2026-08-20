@@ -102,6 +102,12 @@ namespace LostArk::Server
 		void Handle_Move(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_MOVE& move);
+		[[nodiscard]] bool Is_BufferableComboAction(
+			const SERVER_PLAYER& player) const;
+		[[nodiscard]] bool Commit_MoveGoal(
+			SERVER_PLAYER& player, float goalX, float goalZ);
+		void Commit_PendingPlayerCommand(
+			SERVER_PLAYER& player, std::uint32_t actionStartTick);
 		void Handle_UseSkill(
 			SESSION_ID sessionId,
 			const LostArk::Shared::C2S_USE_SKILL& useSkill);

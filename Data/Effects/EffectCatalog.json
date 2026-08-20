@@ -38,6 +38,16 @@
       "authoringPath": "Effects/Authored/effect.artist.skill.31000.ba4.unified.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31050.clip1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31050.clip1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31050.clip2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31050.clip2.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31200.authored-baseline",
       "authoringPath": "Effects/Authored/effect.artist.skill.31200.authored-baseline.effect.json"
     },
@@ -58,6 +68,11 @@
     {
       "effectAssetId": "effect.artist.skill.31210.ba4",
       "authoringPath": "Effects/Authored/effect.artist.skill.31210.ba4.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31210.ba4.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31210.ba4.unified.effect.json"
     },
     {
       "effectAssetId": "effect.artist.skill.31420.authored-baseline",
@@ -133,6 +148,11 @@
       "effectAssetId": "effect.artist.skill.31930.clip2.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.artist.skill.31930.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.artist.skill.31950.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31950.unified.effect.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050010.ba1",
@@ -1055,6 +1075,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.parry.stance.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.pattern.420633.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.portal-rush.finish",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.portal-rush.finish.effect.json"
@@ -1158,11 +1183,6 @@
       "effectAssetId": "effect.valtan.triple-counter.third-fail",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.triple-counter.third-fail.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.whirlwind.active",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.whirlwind.active.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.whirlwind.recovery",

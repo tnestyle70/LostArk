@@ -42,10 +42,11 @@ struct EFFECT_PRODUCT_PREWARM_TARGET_PROBE final
 	bool bSettled = false;
 };
 
-/* Loading and in-level presentation switches share this gate.  An isolated
-   target-registration failure may continue, but never across a stale catalog
-   revision or while any Product resource work remains queued. */
-bool Is_ProductPrewarmActivationReady(
+/* Loading and in-level presentation switches share this target-set gate.
+   Activation depends only on the requested targets settling under the current
+   catalog revision. iQueuePendingCount is diagnostic background work and must
+   never serialize one selected target behind unrelated Product targets. */
+bool Is_ProductPrewarmTargetActivationReady(
 	const EFFECT_PRODUCT_PREWARM_TARGET_PROBE& Probe,
 	bool bTargetRegistrationFailureIsolated = false);
 

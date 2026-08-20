@@ -22,8 +22,6 @@ class CValtan;
 struct EFFECT_SPAWN_DESC final
 {
     std::string strEffectAssetId;
-	std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN>
-		pProductAdmissionToken;
 	std::weak_ptr<CCharacter> pOwner;
 	std::weak_ptr<CValtan> pBossOwner;
     std::string strAnchorSlotId = "root";
@@ -169,11 +167,6 @@ public:
 	static void Advance_ProductCuePreparation(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
-    static bool_t Reprepare_ProductTargets(
-        ComPtr<ID3D11Device> pDevice,
-        ComPtr<ID3D11DeviceContext> pContext,
-        const std::vector<std::string>& AdditionalEffectAssetIds,
-        std::string& strOutStatus);
     static bool_t Spawn(
         const EFFECT_SPAWN_DESC& Desc,
         std::string& strOutStatus);

@@ -613,12 +613,13 @@ foreach ($skill in @($skillDocument.skills)) {
 		for ($stageIndex = 0; $stageIndex -lt 2; $stageIndex++) {
 			$stage = $stages[$stageIndex]
 			Assert-ExactProperties $stage @(
-				'actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs') 'counter stage'
-			foreach ($stageField in @('actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs')) {
+				'actionDurationMs','hitTimeMs','comboAdvanceMs','inputOpenMs','inputCloseMs') 'counter stage'
+			foreach ($stageField in @('actionDurationMs','hitTimeMs','comboAdvanceMs','inputOpenMs','inputCloseMs')) {
 				Assert-JsonInteger $stage.$stageField "skill $id stage $stageIndex $stageField" 0 ([uint32]::MaxValue)
 			}
 			if ([uint32]$stage.actionDurationMs -eq 0 -or
-				[uint32]$stage.hitTimeMs -gt [uint32]$stage.actionDurationMs) {
+				[uint32]$stage.hitTimeMs -gt [uint32]$stage.comboAdvanceMs -or
+				[uint32]$stage.comboAdvanceMs -gt [uint32]$stage.actionDurationMs) {
 				throw "Counter stage timing is invalid: $id stage $stageIndex"
 			}
 			if ($stageIndex -eq 0) {
@@ -647,12 +648,13 @@ foreach ($skill in @($skillDocument.skills)) {
 		for ($stageIndex = 0; $stageIndex -lt 3; $stageIndex++) {
 			$stage = $stages[$stageIndex]
 			Assert-ExactProperties $stage @(
-				'actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs') 'hold stage'
-			foreach ($stageField in @('actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs')) {
+				'actionDurationMs','hitTimeMs','comboAdvanceMs','inputOpenMs','inputCloseMs') 'hold stage'
+			foreach ($stageField in @('actionDurationMs','hitTimeMs','comboAdvanceMs','inputOpenMs','inputCloseMs')) {
 				Assert-JsonInteger $stage.$stageField "skill $id stage $stageIndex $stageField" 0 ([uint32]::MaxValue)
 			}
 			if ([uint32]$stage.actionDurationMs -eq 0 -or
-				[uint32]$stage.hitTimeMs -gt [uint32]$stage.actionDurationMs -or
+				[uint32]$stage.hitTimeMs -gt [uint32]$stage.comboAdvanceMs -or
+				[uint32]$stage.comboAdvanceMs -gt [uint32]$stage.actionDurationMs -or
 				[uint32]$stage.inputOpenMs -ne 0 -or [uint32]$stage.inputCloseMs -ne 0) {
 				throw "Hold stage timing is invalid: $id stage $stageIndex"
 			}
@@ -680,16 +682,18 @@ foreach ($skill in @($skillDocument.skills)) {
 		for ($stageIndex = 0; $stageIndex -lt $stages.Count; $stageIndex++) {
 			$stage = $stages[$stageIndex]
 			Assert-ExactProperties $stage @(
-				'actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs') 'combo stage'
-			foreach ($stageField in @('actionDurationMs','hitTimeMs','inputOpenMs','inputCloseMs')) {
+				'actionDurationMs','hitTimeMs','comboAdvanceMs','inputOpenMs','inputCloseMs') 'combo stage'
+			foreach ($stageField in @('actionDurationMs','hitTimeMs','comboAdvanceMs','inputOpenMs','inputCloseMs')) {
 				Assert-JsonInteger $stage.$stageField "skill $id stage $stageIndex $stageField" 0 ([uint32]::MaxValue)
 			}
 			if ([uint32]$stage.actionDurationMs -eq 0 -or
-				[uint32]$stage.hitTimeMs -gt [uint32]$stage.actionDurationMs) {
+				[uint32]$stage.hitTimeMs -gt [uint32]$stage.comboAdvanceMs -or
+				[uint32]$stage.comboAdvanceMs -gt [uint32]$stage.actionDurationMs) {
 				throw "Combo stage timing is invalid: $id stage $stageIndex"
 			}
 			if ($stageIndex -eq $stages.Count - 1) {
-				if ([uint32]$stage.inputOpenMs -ne 0 -or [uint32]$stage.inputCloseMs -ne 0) {
+				if ([uint32]$stage.comboAdvanceMs -ne [uint32]$stage.actionDurationMs -or
+					[uint32]$stage.inputOpenMs -ne 0 -or [uint32]$stage.inputCloseMs -ne 0) {
 					throw "Final combo stage must not open an input window: $id"
 				}
 			}
@@ -714,6 +718,7 @@ foreach ($skill in @($skillDocument.skills)) {
 		$skillRows.Add((@(
 			'SKILLSTAGE', $id, $stageIndex,
 			[uint32]$stage.actionDurationMs, [uint32]$stage.hitTimeMs,
+			[uint32]$stage.comboAdvanceMs,
 			[uint32]$stage.inputOpenMs, [uint32]$stage.inputCloseMs) -join "`t"))
 	}
 }
@@ -1500,10 +1505,15 @@ Assert-BalanceProvenance $playerDocument $skillDocument $damageDocument $bossDoc
 
 $skillDurationById = @{}
 $skillStageDurationsById = @{}
+$skillStageAdvanceById = @{}
+$skillKindById = @{}
 foreach ($skill in @($skillDocument.skills)) {
     $skillDurationById[[string]$skill.skillId] = [uint32]$skill.actionDurationMs
     $skillStageDurationsById[[string]$skill.skillId] = @(
         @($skill.comboStages) | ForEach-Object { [uint32]$_.actionDurationMs })
+    $skillStageAdvanceById[[string]$skill.skillId] = @(
+        @($skill.comboStages) | ForEach-Object { [uint32]$_.comboAdvanceMs })
+    $skillKindById[[string]$skill.skillId] = [string]$skill.skillKind
 }
 
 function Format-RootMotionSamples {
@@ -1568,10 +1578,16 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
                     -not $seenStages.Add($stageIndex)) {
                     throw "Root motion stage index is invalid or duplicated: $id"
                 }
+                Assert-JsonInteger $stage.durationMs `
+                    "root motion $id stage $stageIndex durationMs" 1 ([uint32]::MaxValue)
+                $authoredDurationMs = [uint32]$stage.durationMs
+                if ($authoredDurationMs -gt [uint32]$stageDurations[$stageIndex]) {
+                    throw "Root motion stage duration exceeds gameplay duration: $id stage $stageIndex"
+                }
                 $samples = @($stage.samples)
                 $packed = Format-RootMotionSamples `
                     -Samples $samples -SkillId $id `
-                    -LimitMs $stageDurations[$stageIndex]
+                    -LimitMs $authoredDurationMs
                 $rootMotionRows.Add((@(
                     'SKILLSTAGEROOTMOTION', $id, $stageIndex,
                     $samples.Count, $packed) -join "`t"))
@@ -1582,9 +1598,15 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
         if (@($skillStageDurationsById[$id]).Count -ne 0) {
             throw "A staged skill must carry per-stage root motion: $id"
         }
+        Assert-JsonInteger $entry.durationMs `
+            "root motion $id durationMs" 1 ([uint32]::MaxValue)
+        $authoredDurationMs = [uint32]$entry.durationMs
+        if ($authoredDurationMs -gt [uint32]$skillDurationById[$id]) {
+            throw "Root motion duration exceeds gameplay duration: $id"
+        }
         $samples = @($entry.samples)
         $packed = Format-RootMotionSamples `
-            -Samples $samples -SkillId $id -LimitMs $skillDurationById[$id]
+            -Samples $samples -SkillId $id -LimitMs $authoredDurationMs
         $rootMotionRows.Add((@(
             'SKILLROOTMOTION', $id, $samples.Count, $packed) -join "`t"))
     }
@@ -1766,6 +1788,12 @@ function Format-HitShapes {
         if ([int]$hit.repeatCount -gt 1 -and [int]$hit.repeatMs -le 0) {
             throw "Hit shape repeat needs a positive interval: $SkillId"
         }
+        [uint64]$lastFireMs = [uint64][uint32]$hit.timeMs +
+            ([uint64][uint32]$hit.repeatCount - 1) *
+            [uint64][uint32]$hit.repeatMs
+        if ($lastFireMs -gt [uint64]$LimitMs) {
+            throw "Hit shape repeat exceeds its action/stage duration: $SkillId"
+        }
         $subHits += [int]$hit.repeatCount
         $packed.Add(('{0}:{1}:{2}:{3}' -f $timeMs,
             [int]$hit.repeatCount, [int]$hit.repeatMs, (Format-HitShapeExtent $hit $SkillId)))
@@ -1820,6 +1848,28 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
                 if ($hits.Count -eq 0 -and $projectiles.Count -eq 0) {
                     throw "Hit shape stage has neither hits nor projectiles: $id"
                 }
+                if ($skillKindById[$id] -eq 'COMBO') {
+                    [uint64]$latestRequiredFireMs = 0
+                    foreach ($hit in $hits) {
+                        [uint64]$lastFireMs = [uint64][uint32]$hit.timeMs +
+                            ([uint64][uint32]$hit.repeatCount - 1) *
+                            [uint64][uint32]$hit.repeatMs
+                        if ($lastFireMs -gt $latestRequiredFireMs) {
+                            $latestRequiredFireMs = $lastFireMs
+                        }
+                    }
+                    foreach ($projectile in $projectiles) {
+                        [uint64]$spawnMs = [uint64][uint32]$projectile.timeMs
+                        if ($spawnMs -gt $latestRequiredFireMs) {
+                            $latestRequiredFireMs = $spawnMs
+                        }
+                    }
+                    [uint64]$comboAdvanceMs =
+                        [uint64][uint32]$skillStageAdvanceById[$id][$stageIndex]
+                    if ($comboAdvanceMs -lt $latestRequiredFireMs) {
+                        throw "comboAdvanceMs precedes the last caster hit/projectile spawn: $id stage $stageIndex advance=$comboAdvanceMs required=$latestRequiredFireMs"
+                    }
+                }
                 if ($hits.Count -gt 0) {
                     $packed = Format-HitShapes -Hits $hits -SkillId $id -LimitMs $stageDurations[$stageIndex]
                     $hitShapeRows.Add((@(
@@ -1860,7 +1910,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t12`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t13`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

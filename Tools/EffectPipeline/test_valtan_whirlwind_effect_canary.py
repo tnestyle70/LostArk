@@ -105,13 +105,18 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
             row for row in self.document["elements"] if row["visible"]
         ]
         self.assertEqual(len(self.document["elements"]), 9)
-        self.assertEqual(len(visible), 3)
-        self.assertTrue(
-            all(
+        self.assertEqual(len(visible), 5)
+        self.assertEqual(
+            Counter(
                 row["sourcePresentation"]["sourceEventId"]
-                == "action-420633/stage-002/notify-006"
                 for row in visible
-            )
+            ),
+            Counter(
+                {
+                    "action-420633/stage-002/notify-005": 2,
+                    "action-420633/stage-002/notify-006": 3,
+                }
+            ),
         )
 
     def test_first_lod_denominator_and_portable_admission_are_quantified(self) -> None:
@@ -135,7 +140,7 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
                 carrier["disposition"] == "VISIBLE_EXECUTABLE"
                 for carrier in carriers
             ),
-            3,
+            9,
         )
         self.assertEqual(
             sum(carrier["sourceRecipe"]["moduleCount"] for carrier in carriers),
@@ -155,7 +160,7 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
         ]
         self.assertEqual(
             [row["sourceRecipe"]["rendererShape"] for row in visible],
-            ["sprite", "mesh", "mesh"],
+            ["sprite", "sprite", "sprite", "mesh", "mesh"],
         )
         self.assertEqual(
             [
@@ -163,6 +168,8 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
                 for row in visible
             ],
             [
+                "effect.ue3.grouped-translucent.v1",
+                "effect.ue3.aura.v1",
                 "effect.ue3.grouped-translucent.v1",
                 "effect.ue3.missiletrail-01.v1",
                 "effect.ue3.missiletrail-01.v1",
@@ -174,14 +181,13 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
         hidden = [
             row for row in self.document["elements"] if not row["visible"]
         ]
-        self.assertEqual(len(hidden), 6)
+        self.assertEqual(len(hidden), 4)
         self.assertTrue(
             all(row["sourceRecipe"]["enabled"] is False for row in hidden)
         )
         self.assertTrue(
             all(
-                row["material"].get("execution")
-                == {"enabled": False, "failClosed": True}
+                "execution" not in row["material"]
                 for row in hidden
             )
         )
@@ -199,16 +205,16 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
                 for module in row["sourceRecipe"]["modules"]
             },
         )
-        non_trail = [
+        typed_light = [
             row
             for row in hidden
             if row["sourcePresentation"]["sourceEventId"]
             != builder.ANIMATION_TRAIL_NOTIFY_ID
         ]
-        self.assertEqual(len(non_trail), 3)
-        self.assertTrue(all(row["resources"] == [] for row in non_trail))
+        self.assertEqual(len(typed_light), 1)
+        self.assertTrue(all(row["resources"] == [] for row in typed_light))
         self.assertTrue(
-            all(row["sourceRecipe"]["modules"] == [] for row in non_trail)
+            all(row["sourceRecipe"]["modules"] == [] for row in typed_light)
         )
 
     def test_animation_trail_is_data_preserved_but_execution_quarantined(self) -> None:
@@ -294,7 +300,7 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
             self.assertFalse(recipe["enabled"])
             self.assertEqual(
                 row["sourcePresentation"]["profileId"],
-                builder.DEFERRED_ANIMATION_TRAIL_PROFILE_ID,
+                builder.TYPED_ANIMATION_TRAIL_PROFILE_ID,
             )
             self.assertEqual(
                 classes.count(builder.ANIMATION_TRAIL_MODULE_CLASS), 1
@@ -308,7 +314,7 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
                 ),
                 expected["distributionCount"],
             )
-            self.assertFalse(row["material"]["sourceProfile"]["enabled"])
+            self.assertTrue(row["material"]["sourceProfile"]["enabled"])
             self.assertTrue(
                 all(
                     (
@@ -331,17 +337,17 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
             validator.validate_mapping(mutated, self.schema)
 
         mutated = copy.deepcopy(self.mapping)
-        hidden = mutated["bindings"][0]["sourceOccurrences"][1][
+        admission = mutated["bindings"][0]["sourceOccurrences"][1][
             "admission"
-        ]["carriers"][0]
-        hidden["resources"] = [
-            {
-                "slotId": "base",
-                "sourceObjectPath": "fx_tex_03.fx_e_fluid_007",
-                "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_007.dds",
-                "sha256": "703f91ed9e11b972fab48e96f6ecfda0db70730122142ea15f123d075384269b",
-            }
         ]
+        hidden = admission["carriers"][0]
+        hidden["disposition"] = "FAIL_CLOSED"
+        hidden["blockers"] = ["TEST_BLOCKER"]
+        hidden["materialAdmission"] = {"status": "FAIL_CLOSED"}
+        admission["visibleExecutableCarrierCount"] = 1
+        admission["failClosedCarrierCount"] = 1
+        admission["executableProjection"] = "PARTIAL_PORTABLE_AUTHORED_V13"
+        admission["blockers"] = ["TEST_BLOCKER"]
         with self.assertRaisesRegex(
             validator.ContractError, "fail-closed carrier leaked executable data"
         ):

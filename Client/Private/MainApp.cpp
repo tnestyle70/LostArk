@@ -35,7 +35,6 @@
 #include "Animation_Tool.h"
 #include "BalanceTool.h"
 #include "CharacterPreviewPanel.h"
-#include "Effect_Tool.h"
 #include "HUDLayoutTool.h"
 #include "MapEditorWorkspaceService.h"
 #include "MapTool.h"
@@ -391,8 +390,6 @@ void CMainApp::Update(const f32_t fTimeDelta)
 			m_bDeveloperToolsVisible &&
 			DEBUG_TOOL::ANIMATION == m_eActiveDebugTool);
 	}
-	if (nullptr != m_pEffectTool)
-		m_pEffectTool->Update(fTimeDelta);
 #endif
 
 	// 현재 Level의 Update가 끝난 뒤에만 기존 Level을 파괴한다.
@@ -490,10 +487,6 @@ HRESULT CMainApp::Render()
 			case DEBUG_TOOL::ANIMATION:
 				if (nullptr != m_pAnimationTool)
 					m_pAnimationTool->Render();
-				break;
-			case DEBUG_TOOL::EFFECT:
-				if (nullptr != m_pEffectTool)
-					m_pEffectTool->Render();
 				break;
 			case DEBUG_TOOL::RENDERING:
 				RenderRenderingWorkbench();
@@ -2595,15 +2588,6 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 			m_pAnimationTool = make_unique<CAnimation_Tool>(
 				m_pCharacterPreviewPanel);
 		break;
-	case DEBUG_TOOL::EFFECT:
-		if (nullptr == m_pCharacterPreviewPanel)
-			m_pCharacterPreviewPanel =
-				make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
-		if (nullptr == m_pEffectTool)
-			m_pEffectTool =
-				make_unique<CEffect_Tool>(
-					m_pDevice, m_pContext, m_pCharacterPreviewPanel);
-		break;
 	case DEBUG_TOOL::RENDERING:
 		if (!m_bRenderQualityDraftInitialized)
 		{
@@ -2677,8 +2661,6 @@ void CMainApp::RenderDeveloperTools()
 		"Animation Tool",
 		DEBUG_TOOL::ANIMATION,
 		true);
-	toolButton("Effect Tool", DEBUG_TOOL::EFFECT, true);
-	ImGui::SameLine();
 	toolButton("Rendering Workbench", DEBUG_TOOL::RENDERING, true);
 	ImGui::SameLine();
 	toolButton("HUD Layout Tool", DEBUG_TOOL::UI, true);
@@ -3242,7 +3224,6 @@ void CMainApp::Free()
 	if (Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler())
 		pProfiler->Set_Enabled(false);
 	m_pAnimationTool.reset();
-	m_pEffectTool.reset();
 	if (nullptr != m_pCharacterPreviewPanel)
 		m_pCharacterPreviewPanel->Release(true);
 	m_pCharacterPreviewPanel.reset();

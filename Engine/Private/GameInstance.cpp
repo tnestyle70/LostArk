@@ -254,6 +254,30 @@ int8_t CGameInstance::Get_DIMouseState(DIM eMouse)
 	return m_pInput_Device->Get_DIMouseState(eMouse);
 }
 
+int8_t CGameInstance::Get_DIMouseStateRaw(DIM eMouse) const
+{
+	int virtualKey = 0;
+	switch (eMouse)
+	{
+	case DIM::LB:
+		virtualKey = VK_LBUTTON;
+		break;
+	case DIM::RB:
+		virtualKey = VK_RBUTTON;
+		break;
+	case DIM::WHEEL:
+		virtualKey = VK_MBUTTON;
+		break;
+	default:
+		return 0;
+	}
+	/* The filtered DirectInput accessor deliberately returns zero while UI owns
+	the mouse. Physical release detection must observe the OS button state without
+	changing that gameplay-input filter. */
+	return 0 != (GetAsyncKeyState(virtualKey) & 0x8000) ?
+		static_cast<int8_t>(0x80) : 0;
+}
+
 int32_t CGameInstance::Get_DIMouseMove(DIMM eMouseState)
 {
 	return m_pInput_Device->Get_DIMouseMove(eMouseState);

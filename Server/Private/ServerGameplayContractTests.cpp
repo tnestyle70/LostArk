@@ -1357,6 +1357,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			player.iLastSkillSequence = 8u;
 			player.hasMoveGoal = true;
 			player.CooldownEndTickBySkillId.emplace(34120u, 100u);
+			C2S_MOVE pendingBeforeClassChange{};
+			pendingBeforeClassChange.iClientSequence = 8u;
+			pendingBeforeClassChange.fGoalX = 20.f;
+			pendingBeforeClassChange.fGoalZ = -10.f;
+			player.PendingCommand.Set_Move(pendingBeforeClassChange);
 
 			C2S_CHANGE_CHARACTER_CLASS request{};
 			request.iClientSequence = 1u;
@@ -1371,6 +1376,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				8u == player.iLastSkillSequence &&
 				PLAYER_ACTION_STATE::NONE == player.eAction &&
 				INVALID_SKILL_ID == player.iCurrentSkillId &&
+				PLAYER_PENDING_COMMAND_KIND::NONE == player.PendingCommand.eKind &&
 				!player.hasMoveGoal && player.CooldownEndTickBySkillId.empty() &&
 				player.iCurrentHp == player.iMaximumHp &&
 				player.iCurrentResource == player.iMaximumResource,
@@ -1483,14 +1489,28 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	for (const BASIC_ATTACK_CONTRACT& contract : BASIC_ATTACKS)
 	{
 		const PLAYER_SKILL_DEFINITION* combo = catalog.Find_Skill(contract.skillId);
+		bool stageTimingsValid = nullptr != combo &&
+			combo->ComboStages.size() == contract.stageCount;
+		if (stageTimingsValid)
+		{
+			for (const PLAYER_COMBO_STAGE& stage : combo->ComboStages)
+			{
+				stageTimingsValid = stageTimingsValid &&
+					stage.iHitTimeMs <= stage.iComboAdvanceMs &&
+					stage.iComboAdvanceMs <= stage.iActionDurationMs;
+			}
+			stageTimingsValid = stageTimingsValid &&
+				combo->ComboStages.back().iComboAdvanceMs ==
+					combo->ComboStages.back().iActionDurationMs;
+		}
 		tests.Require(
 			nullptr != combo &&
 			combo->eCharacterClass == contract.characterClass &&
 			combo->strInputSlot == "LMB" &&
 			PLAYER_SKILL_KIND::COMBO == combo->eSkillKind &&
-			combo->ComboStages.size() == contract.stageCount &&
+			stageTimingsValid &&
 			0u == combo->ComboStages.back().iInputCloseMs,
-			"Resolve playable basic attack combo");
+			"Resolve playable basic attack combo with explicit stage boundaries");
 		tests.Require(
 			nullptr != combo &&
 			0u != catalog.Find_DamageRatePercent(combo->strDamageProfileId),
@@ -1515,6 +1535,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			comboSystem.Try_Start(comboPlayer, press, catalog, 10) &&
 			1u == comboPlayer.iComboStage,
 			"Approve playable basic attack first stage");
+		SERVER_PLAYER tappedPlayer = comboPlayer;
 
 		const PLAYER_COMBO_STAGE& firstStage = combo->ComboStages.front();
 		comboPlayer.fActionElapsedSeconds =
@@ -1526,8 +1547,30 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			comboPlayer.hasBufferedComboInput,
 			"Buffer playable basic attack inside its input window");
 
+		/* COMBO uses another USE_SKILL as its continuation. A mouse-up packet is
+		HOLD-only and must not consume sequence or revoke a repeated click/hold. */
+		C2S_RELEASE_SKILL release{};
+		release.iClientSequence = 3u;
+		release.iSkillId = contract.skillId;
+		comboSystem.Release(comboPlayer, release, catalog);
+		tests.Require(
+			comboPlayer.hasBufferedComboInput &&
+			2u == comboPlayer.iLastSkillSequence &&
+			1u == comboPlayer.iComboStage,
+			"Ignore COMBO mouse-up without consuming its continuation sequence");
+
 		std::vector<SERVER_WORLD_ENTITY> noTargets;
 		std::vector<DAMAGE_EVENT> noDamageEvents;
+		tappedPlayer.fActionElapsedSeconds =
+			static_cast<float>(firstStage.iActionDurationMs - 1u) * 0.001f;
+		comboSystem.Update(
+			tappedPlayer, noTargets, catalog, nullptr, nullptr,
+			0.002f, 12u, noDamageEvents);
+		tests.Require(
+			PLAYER_ACTION_STATE::NONE == tappedPlayer.eAction &&
+			0u == tappedPlayer.iComboStage,
+			"End a one-command basic attack at stage one without auto continuation");
+
 		for (std::uint32_t tick = 12;
 			tick < 132 && comboPlayer.iComboStage < 2u;
 			++tick)
@@ -1556,10 +1599,411 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		wrongClassPlayer.iCurrentResource = 1000;
 		wrongClassPlayer.iMaximumResource = 1000;
 		CPlayerSkillSystem wrongClassSystem;
+			tests.Require(
+				!wrongClassSystem.Try_Start(
+					wrongClassPlayer, press, catalog, 10),
+				"Reject another class's basic attack");
+	}
+	{
+		const PLAYER_SKILL_DEFINITION* warlordBasicAttack =
+			catalog.Find_Skill(17000u);
+		bool preservedRepeatedStageDamage = nullptr != warlordBasicAttack &&
+			warlordBasicAttack->ComboStages.size() == 3u &&
+			600u == warlordBasicAttack->ComboStages[1].iComboAdvanceMs &&
+			warlordBasicAttack->ComboStages[1].Hits.size() == 1u &&
+			3u == warlordBasicAttack->ComboStages[1].Hits.front().iRepeatCount;
+		if (preservedRepeatedStageDamage)
+		{
+			SERVER_PLAYER player{};
+			player.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
+			player.eStance = PLAYER_STANCE_ID::WARLORD_NORMAL;
+			player.iCurrentHp = 1000u;
+			player.iMaximumHp = 1000u;
+			player.iCurrentResource = 1000u;
+			player.iMaximumResource = 1000u;
+			C2S_USE_SKILL command{};
+			command.iClientSequence = 1u;
+			command.iSkillId = 17000u;
+			command.fAimX = 4.f;
+			command.fAimZ = 0.f;
+			CPlayerSkillSystem skills;
+			preservedRepeatedStageDamage =
+				skills.Try_Start(player, command, catalog, 80u);
+			player.iComboStage = 2u;
+			player.fActionElapsedSeconds = 0.199f;
+			player.hasBufferedComboInput = true;
+			player.hasAppliedSkillDamage = false;
+			player.iAppliedHitMask = 0u;
+
+			SERVER_WORLD_ENTITY target{};
+			target.iNetEntityId = 701u;
+			target.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+			target.eAction = SERVER_ENTITY_ACTION::IDLE;
+			target.strArchetypeId = "BOSS_VALTAN";
+			target.iCurrentHp = 100000u;
+			target.iMaximumHp = 100000u;
+			target.fPositionX = 1.f;
+			target.fCollisionRadius = 1.f;
+			std::vector<SERVER_WORLD_ENTITY> targets{ target };
+			std::vector<DAMAGE_EVENT> events;
+			skills.Update(player, targets, catalog, nullptr, nullptr,
+				0.002f, 81u, events);
+			const bool heldAfterFirst = 2u == player.iComboStage &&
+				1u == events.size() && !player.hasAppliedSkillDamage;
+			skills.Update(player, targets, catalog, nullptr, nullptr,
+				0.2f, 82u, events);
+			const bool heldAfterSecond = 2u == player.iComboStage &&
+				2u == events.size() && !player.hasAppliedSkillDamage;
+			skills.Update(player, targets, catalog, nullptr, nullptr,
+				0.2f, 83u, events);
+			preservedRepeatedStageDamage = preservedRepeatedStageDamage &&
+				heldAfterFirst && heldAfterSecond && 3u == events.size() &&
+				3u == player.iComboStage;
+		}
+		tests.Require(preservedRepeatedStageDamage,
+			"Preserve all repeated Warlord BA hits before combo boundary advance");
+	}
+	{
+		const PLAYER_SKILL_DEFINITION* lanceBasicAttack =
+			catalog.Find_Skill(34010u);
+		bool explicitWaitedForAnimation = nullptr != lanceBasicAttack &&
+			lanceBasicAttack->ComboStages.size() == 4u &&
+			470u == lanceBasicAttack->ComboStages.front().iComboAdvanceMs &&
+			1633u == lanceBasicAttack->ComboStages.front().iActionDurationMs;
+		if (explicitWaitedForAnimation)
+		{
+			SERVER_PLAYER player{};
+			player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			player.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+			player.iCurrentHp = 1000u;
+			player.iMaximumHp = 1000u;
+			player.iCurrentResource = 1000u;
+			player.iMaximumResource = 1000u;
+			C2S_USE_SKILL command{};
+			command.iClientSequence = 1u;
+			command.iSkillId = 34010u;
+			command.fAimX = 4.f;
+			command.fAimZ = 0.f;
+			CPlayerSkillSystem skills;
+			explicitWaitedForAnimation =
+				skills.Try_Start(player, command, catalog, 90u);
+			player.fActionElapsedSeconds = 0.4f;
+			command.iClientSequence = 2u;
+			skills.Try_Start(player, command, catalog, 91u);
+			C2S_MOVE pendingMove{};
+			pendingMove.iClientSequence = 1u;
+			pendingMove.fGoalX = 5.f;
+			pendingMove.fGoalZ = 0.f;
+			player.PendingCommand.Set_Move(pendingMove);
+
+			std::vector<SERVER_WORLD_ENTITY> noTargets;
+			std::vector<DAMAGE_EVENT> noDamageEvents;
+			player.fActionElapsedSeconds = 0.469f;
+			skills.Update(player, noTargets, catalog, nullptr, nullptr,
+				0.002f, 92u, noDamageEvents);
+			const bool ignoredEarlyComboBoundary =
+				PLAYER_ACTION_STATE::SKILL == player.eAction &&
+				1u == player.iComboStage && player.hasBufferedComboInput &&
+				PLAYER_PENDING_COMMAND_KIND::MOVE == player.PendingCommand.eKind;
+			player.fActionElapsedSeconds = 1.632f;
+			skills.Update(player, noTargets, catalog, nullptr, nullptr,
+				0.002f, 93u, noDamageEvents);
+			explicitWaitedForAnimation = explicitWaitedForAnimation &&
+				ignoredEarlyComboBoundary &&
+				PLAYER_ACTION_STATE::NONE == player.eAction &&
+				0u == player.iComboStage &&
+				PLAYER_PENDING_COMMAND_KIND::MOVE == player.PendingCommand.eKind;
+		}
+		tests.Require(explicitWaitedForAnimation,
+			"Commit explicit command after one full BA animation, not its early combo boundary");
+	}
+	{
+		const PLAYER_SKILL_DEFINITION* dimensionMasterBasicAttack =
+			catalog.Find_Skill(2050010u);
+		constexpr std::array<std::uint32_t, 4u> expectedDurationMs =
+			{ 1400u, 1500u, 1067u, 1700u };
+		constexpr std::array<std::uint32_t, 4u> expectedHitMs =
+			{ 100u, 43u, 28u, 335u };
+		constexpr std::array<std::uint32_t, 4u> expectedOpenMs =
+			{ 100u, 0u, 200u, 0u };
+		constexpr std::array<std::uint32_t, 4u> expectedCloseMs =
+			{ 510u, 410u, 1067u, 0u };
+		bool exactDimensionMasterTiming =
+			nullptr != dimensionMasterBasicAttack &&
+			1400u == dimensionMasterBasicAttack->iActionDurationMs &&
+			100u == dimensionMasterBasicAttack->iHitTimeMs &&
+			dimensionMasterBasicAttack->ComboStages.size() ==
+				expectedDurationMs.size();
+		if (exactDimensionMasterTiming)
+		{
+			for (std::size_t index = 0u; index < expectedDurationMs.size(); ++index)
+			{
+				const PLAYER_COMBO_STAGE& stage =
+					dimensionMasterBasicAttack->ComboStages[index];
+				exactDimensionMasterTiming = exactDimensionMasterTiming &&
+					stage.iActionDurationMs == expectedDurationMs[index] &&
+					stage.iHitTimeMs == expectedHitMs[index] &&
+					stage.iComboAdvanceMs == expectedDurationMs[index] &&
+					stage.iInputOpenMs == expectedOpenMs[index] &&
+					stage.iInputCloseMs == expectedCloseMs[index];
+			}
+			exactDimensionMasterTiming = exactDimensionMasterTiming &&
+				!dimensionMasterBasicAttack->ComboStages.front().RootMotion.empty() &&
+				1400u == dimensionMasterBasicAttack->ComboStages.front().
+					RootMotion.back().iTimeMs;
+		}
+		tests.Require(exactDimensionMasterTiming,
+			"Resolve exact DimensionMaster BA timings and 1400 ms root-motion trim");
+
+		if (nullptr != dimensionMasterBasicAttack)
+		{
+			CPlayerSkillSystem skills;
+			std::vector<SERVER_WORLD_ENTITY> noTargets;
+			std::vector<DAMAGE_EVENT> noDamageEvents;
+			auto makePlayer = []()
+			{
+				SERVER_PLAYER player{};
+				player.eCharacterClass = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+				player.iCurrentHp = 1000u;
+				player.iMaximumHp = 1000u;
+				player.iCurrentResource = 1000u;
+				player.iMaximumResource = 1000u;
+				return player;
+			};
+			C2S_USE_SKILL basicAttack{};
+			basicAttack.iClientSequence = 1u;
+			basicAttack.iSkillId = 2050010u;
+			basicAttack.fAimX = 1.f;
+			basicAttack.fAimZ = 0.f;
+
+			SERVER_PLAYER tapped = makePlayer();
+			const bool tappedStarted =
+				skills.Try_Start(tapped, basicAttack, catalog, 100u);
+			tapped.fActionElapsedSeconds = 1.399f;
+			skills.Update(tapped, noTargets, catalog, nullptr, nullptr,
+				0.f, 101u, noDamageEvents);
+			const bool tappedStayedInBa1 =
+				PLAYER_ACTION_STATE::SKILL == tapped.eAction &&
+				1u == tapped.iComboStage;
+			skills.Update(tapped, noTargets, catalog, nullptr, nullptr,
+				0.002f, 102u, noDamageEvents);
+			tests.Require(
+				tappedStarted && tappedStayedInBa1 &&
+				PLAYER_ACTION_STATE::NONE == tapped.eAction &&
+				0u == tapped.iComboStage,
+				"Keep a tapped DimensionMaster BA in BA1 until 1400 ms then end it");
+
+			SERVER_PLAYER held = makePlayer();
+			basicAttack.iClientSequence = 1u;
+			const bool heldStarted =
+				skills.Try_Start(held, basicAttack, catalog, 110u);
+			bool heldChainedEveryStage = heldStarted;
+			std::uint32_t heldTick = 111u;
+			for (std::size_t stageIndex = 0u;
+				heldChainedEveryStage &&
+				stageIndex + 1u < dimensionMasterBasicAttack->ComboStages.size();
+				++stageIndex)
+			{
+				const PLAYER_COMBO_STAGE& stage =
+					dimensionMasterBasicAttack->ComboStages[stageIndex];
+				held.fActionElapsedSeconds = static_cast<float>(
+					stage.iInputOpenMs + stage.iInputCloseMs) * 0.0005f;
+				basicAttack.iClientSequence =
+					static_cast<std::uint32_t>(stageIndex) + 2u;
+				skills.Try_Start(
+					held, basicAttack, catalog, heldTick++);
+				heldChainedEveryStage = heldChainedEveryStage &&
+					held.hasBufferedComboInput;
+
+				held.fActionElapsedSeconds =
+					static_cast<float>(stage.iComboAdvanceMs - 1u) * 0.001f;
+				skills.Update(held, noTargets, catalog, nullptr, nullptr,
+					0.f, heldTick++, noDamageEvents);
+				heldChainedEveryStage = heldChainedEveryStage &&
+					PLAYER_ACTION_STATE::SKILL == held.eAction &&
+					held.iComboStage == stageIndex + 1u;
+				skills.Update(held, noTargets, catalog, nullptr, nullptr,
+					0.002f, heldTick++, noDamageEvents);
+				heldChainedEveryStage = heldChainedEveryStage &&
+					PLAYER_ACTION_STATE::SKILL == held.eAction &&
+					held.iComboStage == stageIndex + 2u;
+			}
+			tests.Require(
+				heldChainedEveryStage && 4u == held.iComboStage,
+				"Advance held DimensionMaster BA through BA2 BA3 BA4 at each full boundary");
+		}
+	}
+	{
+		const PLAYER_SKILL_DEFINITION* pendingSkillDefinition =
+			catalog.Find_Skill(2050120u);
+		SERVER_PLAYER player{};
+		player.eCharacterClass = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+		player.iCurrentHp = 1000u;
+		player.iMaximumHp = 1000u;
+		player.iCurrentResource = 1000u;
+		player.iMaximumResource = 1000u;
+		CPlayerSkillSystem skills;
+		C2S_USE_SKILL basicAttack{};
+		basicAttack.iClientSequence = 1u;
+		basicAttack.iSkillId = 2050010u;
+		basicAttack.fAimX = 1.f;
+		basicAttack.fAimZ = 0.f;
+		const bool started = skills.Try_Start(player, basicAttack, catalog, 200u);
+		player.fActionElapsedSeconds = 0.2f;
+		basicAttack.iClientSequence = 2u;
+		skills.Try_Start(player, basicAttack, catalog, 201u);
+
+		C2S_USE_SKILL firstExplicit{};
+		firstExplicit.iClientSequence = 3u;
+		firstExplicit.iSkillId = 2050100u;
+		firstExplicit.fAimX = 2.f;
+		firstExplicit.fAimZ = 0.f;
+		C2S_USE_SKILL latestExplicit = firstExplicit;
+		latestExplicit.iClientSequence = 4u;
+		latestExplicit.iSkillId = 2050120u;
+		const std::uint32_t resourceBeforePending = player.iCurrentResource;
+		const auto cooldownsBeforePending = player.CooldownEndTickBySkillId;
+		const bool firstStaged =
+			skills.Try_StagePendingSkill(player, firstExplicit, catalog);
+		const bool latestStaged =
+			skills.Try_StagePendingSkill(player, latestExplicit, catalog);
+		firstExplicit.iClientSequence = 3u;
+		const bool staleRejected =
+			!skills.Try_StagePendingSkill(player, firstExplicit, catalog);
 		tests.Require(
-			!wrongClassSystem.Try_Start(
-				wrongClassPlayer, press, catalog, 10),
-			"Reject another class's basic attack");
+			started && firstStaged && latestStaged && staleRejected &&
+			PLAYER_PENDING_COMMAND_KIND::SKILL == player.PendingCommand.eKind &&
+			2050120u == player.PendingCommand.iSkillId &&
+			4u == player.iLastSkillSequence && player.hasBufferedComboInput &&
+			resourceBeforePending == player.iCurrentResource &&
+			cooldownsBeforePending == player.CooldownEndTickBySkillId,
+			"Stage only the latest explicit skill without spending gameplay costs");
+
+		std::vector<SERVER_WORLD_ENTITY> noTargets;
+		std::vector<DAMAGE_EVENT> noDamageEvents;
+		player.fActionElapsedSeconds = 1.399f;
+		skills.Update(player, noTargets, catalog, nullptr, nullptr,
+			0.f, 202u, noDamageEvents);
+		const bool explicitWaitedForBoundary =
+			PLAYER_ACTION_STATE::SKILL == player.eAction &&
+			1u == player.iComboStage && player.hasBufferedComboInput;
+		skills.Update(player, noTargets, catalog, nullptr, nullptr,
+			0.002f, 203u, noDamageEvents);
+		const bool explicitWonAtBoundary =
+			PLAYER_ACTION_STATE::NONE == player.eAction &&
+			0u == player.iComboStage && !player.hasBufferedComboInput &&
+			PLAYER_PENDING_COMMAND_KIND::SKILL == player.PendingCommand.eKind;
+		const bool pendingStarted =
+			skills.Try_StartPending(player, latestExplicit, catalog, 204u);
+		tests.Require(
+			explicitWaitedForBoundary && explicitWonAtBoundary && pendingStarted &&
+			PLAYER_ACTION_STATE::SKILL == player.eAction &&
+			2050120u == player.iCurrentSkillId &&
+			PLAYER_PENDING_COMMAND_KIND::NONE == player.PendingCommand.eKind &&
+			nullptr != pendingSkillDefinition &&
+			resourceBeforePending - pendingSkillDefinition->iResourceCost ==
+				player.iCurrentResource &&
+			player.CooldownEndTickBySkillId.contains(2050120u),
+			"Commit the latest explicit skill before buffered BA and spend costs once");
+
+		C2S_MOVE pendingMove{};
+		pendingMove.iClientSequence = 1u;
+		pendingMove.fGoalX = 3.f;
+		pendingMove.fGoalZ = 4.f;
+		player.PendingCommand.Set_Move(pendingMove);
+		CPlayerSkillSystem::Arm_PlayerHitReaction(
+			player, 0.f, 0.f, 1.f, 100u, false, 0u, 1000u);
+		tests.Require(
+			PLAYER_PENDING_COMMAND_KIND::NONE == player.PendingCommand.eKind,
+			"Clear pending explicit command on forced movement");
+	}
+	{
+		CGameRoom room{ WORLD_ID::CHARACTER_SELECT_ARENA };
+		const WORLD_BOOTSTRAP_PLACEMENT* spawn =
+			room.Is_Ready() ? room.Find_AvailablePlayerSpawn() : nullptr;
+		bool stagedAndCommittedMove = false;
+		bool failedPendingSkillWasIsolated = false;
+		if (nullptr != spawn)
+		{
+			constexpr SESSION_ID sessionId = 88001u;
+			SERVER_PLAYER player{};
+			player.iSessionId = sessionId;
+			player.iPlayerId = 88002u;
+			player.iNetEntityId = 88003u;
+			player.eCharacterClass = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+			player.iCurrentHp = 1000u;
+			player.iMaximumHp = 1000u;
+			player.iCurrentResource = 1000u;
+			player.iMaximumResource = 1000u;
+			player.fPositionX = spawn->fPositionX;
+			player.fPositionY = spawn->fPositionY;
+			player.fPositionZ = spawn->fPositionZ;
+			room.m_Players.emplace(player.iPlayerId, player);
+			room.m_PlayerIdBySessionId.emplace(sessionId, player.iPlayerId);
+			SERVER_PLAYER& live = room.m_Players.at(player.iPlayerId);
+
+			C2S_USE_SKILL basicAttack{};
+			basicAttack.iClientSequence = 1u;
+			basicAttack.iSkillId = 2050010u;
+			basicAttack.fAimX = live.fPositionX + 1.f;
+			basicAttack.fAimZ = live.fPositionZ;
+			const bool roomAttackStarted = room.m_PlayerSkillSystem.Try_Start(
+				live, basicAttack, room.m_GameplayCatalog, 300u);
+			live.fActionElapsedSeconds = 0.2f;
+			basicAttack.iClientSequence = 2u;
+			room.m_PlayerSkillSystem.Try_Start(
+				live, basicAttack, room.m_GameplayCatalog, 301u);
+			const std::size_t cooldownCountBeforePending =
+				live.CooldownEndTickBySkillId.size();
+			C2S_MOVE move{};
+			move.iClientSequence = 1u;
+			move.fGoalX = spawn->fPositionX;
+			move.fGoalZ = spawn->fPositionZ;
+			room.Handle_Move(sessionId, move);
+			C2S_USE_SKILL pendingSkill{};
+			pendingSkill.iClientSequence = 3u;
+			pendingSkill.iSkillId = 2050100u;
+			pendingSkill.fAimX = live.fPositionX + 2.f;
+			pendingSkill.fAimZ = live.fPositionZ;
+			room.Handle_UseSkill(sessionId, pendingSkill);
+			move.iClientSequence = 2u;
+			room.Handle_Move(sessionId, move);
+			const bool latestMoveReplacedSkill =
+				PLAYER_PENDING_COMMAND_KIND::MOVE == live.PendingCommand.eKind &&
+				2u == live.PendingCommand.iClientSequence &&
+				2u == live.iLastMoveSequence &&
+				1000u == live.iCurrentResource &&
+				cooldownCountBeforePending ==
+					live.CooldownEndTickBySkillId.size() &&
+				!live.CooldownEndTickBySkillId.contains(2050100u);
+			live.fActionElapsedSeconds = 1.399f;
+			std::vector<SERVER_WORLD_ENTITY> noTargets;
+			std::vector<DAMAGE_EVENT> noDamageEvents;
+			room.m_PlayerSkillSystem.Update(
+				live, noTargets, room.m_GameplayCatalog, nullptr, nullptr,
+				0.002f, 302u, noDamageEvents);
+			room.Commit_PendingPlayerCommand(live, 302u);
+			stagedAndCommittedMove = roomAttackStarted && latestMoveReplacedSkill &&
+				PLAYER_PENDING_COMMAND_KIND::NONE == live.PendingCommand.eKind &&
+				PLAYER_ACTION_STATE::NONE == live.eAction &&
+				0u == live.iComboStage && live.hasMoveGoal;
+
+			SERVER_PLAYER invalidPending = live;
+			invalidPending.hasMoveGoal = false;
+			invalidPending.MovePath.clear();
+			invalidPending.iCurrentResource = 0u;
+			invalidPending.PendingCommand.Set_Skill(pendingSkill);
+			room.Commit_PendingPlayerCommand(invalidPending, 303u);
+			failedPendingSkillWasIsolated =
+				PLAYER_PENDING_COMMAND_KIND::NONE ==
+					invalidPending.PendingCommand.eKind &&
+				PLAYER_ACTION_STATE::NONE == invalidPending.eAction &&
+				0u == invalidPending.iCurrentResource;
+		}
+		tests.Require(stagedAndCommittedMove,
+			"Keep latest MOVE during BA and commit it from the boundary position");
+		tests.Require(failedPendingSkillWasIsolated,
+			"Discard only a pending skill that fails boundary revalidation");
 	}
 	tests.Require(nullptr != catalog.Find_Player(CHARACTER_CLASS_ID::LANCE_MASTER),
 		"Resolve LanceMaster player profile");
@@ -3353,16 +3797,16 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			34010u == comboPlayer.iCurrentSkillId,
 			"Reject a different skill during a combo");
 
-		/* Stage one is 1633 ms long but its hit lands at 470 ms, so a buffered
-		press has to cut in there rather than waiting out the clip. 20 ticks is
-		about 667 ms: past the hit, nowhere near the full duration. */
+		/* This legacy stage authors comboAdvanceMs at its 470 ms hit, preserving
+		the established cadence while the new field lets other stages keep their
+		presentation longer. Twenty ticks is about 667 ms, past that boundary. */
 		for (std::uint32_t tick = 17; tick < 37; ++tick)
 			comboSkills.Update(comboPlayer, comboEntities, catalog, nullptr,
 				nullptr, 1.f / 30.f, tick, comboDamageEvents);
 		tests.Require(
 			2u == comboPlayer.iComboStage &&
 			PLAYER_ACTION_STATE::SKILL == comboPlayer.eAction,
-			"Cancel into the next combo stage once the hit has landed");
+			"Advance at the authored legacy combo boundary");
 
 		/* Nothing is buffered now, so stage two has to run its whole 1367 ms
 		instead of cutting at its hit. */
@@ -3948,7 +4392,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t12\t75\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t13\t75\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
@@ -4023,7 +4467,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t12\t75\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t13\t75\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
@@ -4142,7 +4586,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t149\t350\t300\t180" }, {}),
 			"Reject a source cooldown whose 30 Hz tick conversion is inconsistent");
 
-		const auto loadWithStageRow = [&wallContactRoot](
+		const auto loadWithPatternStageRow = [&wallContactRoot](
 			const std::string& stageRow)
 		{
 			std::error_code prepareError;
@@ -4178,15 +4622,15 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			return loaded;
 		};
 		tests.Require(
-			loadWithStageRow(
+			loadWithPatternStageRow(
 				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t600\tdamage.player.34120\t2\t242\t1\t2000"),
 			"Accept a stage whose first hit lands at its authored contact delay");
 		tests.Require(
-			!loadWithStageRow(
+			!loadWithPatternStageRow(
 				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t1000\tdamage.player.34120\t2\t242\t1\t2000"),
 			"Reject a hit delay at or beyond its stage duration");
 		tests.Require(
-			!loadWithStageRow(
+			!loadWithPatternStageRow(
 				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tWINDUP\tvaltan.test.active\tWINDUP\t1000\tNONE\t0\t0\t0\t0\t0\t0\t0\t600\t-\t0\t0\t0\t0"),
 			"Reject a hit delay on a stage without a hit shape");
 		std::error_code cleanupError;
@@ -4220,7 +4664,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const fs::path stageRoot =
 			fs::temp_directory_path() / L"LostArkStageRootMotionContractTest";
 		std::error_code stagePrepareError;
-		const auto loadWithStageRow = [&](const char* stageIndex)
+		const auto loadWithStageRow = [&](
+			const char* stageIndex, const char* comboAdvanceMs)
 		{
 			fs::remove_all(stageRoot, stagePrepareError);
 			fs::create_directories(stageRoot / L"Gameplay");
@@ -4229,7 +4674,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t12\t77\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t13\t78\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
@@ -4239,7 +4684,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					"SKILL\t34010\tLANCE_MASTER\tLMB\tlancemaster.skill.34010"
 					"\t0\t1633\t470\t0\t0\t0\t3\tdamage.player.34010\tCOMBO"
 					"\tLANCE_MASTER_LONG_SPEAR\tNONE\n"
-					"SKILLSTAGE\t34010\t0\t1633\t470\t329\t658\n"
+					"SKILLSTAGE\t34010\t0\t1633\t470\t" << comboAdvanceMs <<
+					"\t329\t658\n"
+					"SKILLSTAGE\t34010\t1\t1367\t356\t1367\t0\t0\n"
 					"SKILLSTAGEROOTMOTION\t34010\t" << stageIndex <<
 					"\t2\t0:0:0,1600:1.5:0\n";
 				Write_ValidValtanDebugAuditionRows(bootstrap);
@@ -4257,10 +4704,14 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					nullptr : previous);
 			return loaded;
 		};
-		tests.Require(loadWithStageRow("0"),
+		tests.Require(loadWithStageRow("0", "470"),
 			"Accept a root motion row that names an existing combo stage");
-		tests.Require(!loadWithStageRow("1"),
+		tests.Require(!loadWithStageRow("2", "470"),
 			"Reject a root motion row past the last combo stage");
+		tests.Require(!loadWithStageRow("0", "469"),
+			"Reject a combo boundary before its damage time atomically");
+		tests.Require(!loadWithStageRow("0", "1634"),
+			"Reject a combo boundary after its stage duration atomically");
 		std::error_code stageCleanupError;
 		fs::remove_all(stageRoot, stageCleanupError);
 	}
@@ -4431,7 +4882,14 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		tests.Require(holdPlayer.fSkillAimDirectionZ < -0.99f,
 			"Ignore an aim update naming a skill that is not running");
 
-		holdPlayer.hasReleasedHold = true;
+		C2S_RELEASE_SKILL chargeRelease{};
+		chargeRelease.iClientSequence = 2u;
+		chargeRelease.iSkillId = 34590u;
+		holdSkills.Release(holdPlayer, chargeRelease, catalog);
+		tests.Require(
+			holdPlayer.hasReleasedHold &&
+			2u == holdPlayer.iLastSkillSequence,
+			"Consume release for HOLD while COMBO release remains unsupported");
 		C2S_UPDATE_SKILL_AIM releasedAim = turnedAim;
 		releasedAim.iClientSequence = 4;
 		releasedAim.fAimX = 1.f;

@@ -2,12 +2,11 @@
 
 #include <algorithm>
 
-bool Client::Is_ProductPrewarmActivationReady(
+bool Client::Is_ProductPrewarmTargetActivationReady(
 	const EFFECT_PRODUCT_PREWARM_TARGET_PROBE& Probe,
 	const bool bTargetRegistrationFailureIsolated)
 {
 	return Probe.bCatalogRevisionCurrent &&
-		0u == Probe.iQueuePendingCount &&
 		(Probe.bSettled || bTargetRegistrationFailureIsolated);
 }
 
@@ -235,8 +234,8 @@ Client::CEffectProductPrewarmQueue::Get_TargetProbe(
 	/* Unavailable targets are terminal presentation failures for the current
 	   revision. They must be visible in the probe, but must not hold a Level
 	   transition forever. bSettled describes only the requested target set;
-	   loading callers must also require iQueuePendingCount == 0 before activation.
-	   A stale queue revision is not terminal because the regular main-frame
+	   iQueuePendingCount remains diagnostic and includes unrelated background
+	   work. A stale queue revision is not terminal because the regular main-frame
 	   advance will rebase it before the next probe. */
 	Probe.bSettled = Probe.bCatalogRevisionCurrent &&
 		0u == Probe.iPendingCount;

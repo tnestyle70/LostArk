@@ -348,6 +348,9 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillHits(
 			hit.iTimeMs > limitMs ||
 			0u == hit.iRepeatCount || hit.iRepeatCount > 64u ||
 			(hit.iRepeatCount > 1u && 0u == hit.iRepeatMs) ||
+			static_cast<std::uint64_t>(hit.iTimeMs) +
+				static_cast<std::uint64_t>(hit.iRepeatCount - 1u) *
+					hit.iRepeatMs > limitMs ||
 			(!outHits.empty() && hit.iTimeMs < outHits.back().iTimeMs))
 		{
 			m_strStatus = "Skill hit shape is invalid";
@@ -706,16 +709,20 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				LostArk::Shared::INVALID_SKILL_ID;
 			std::uint32_t stageIndex = 0;
 			PLAYER_COMBO_STAGE stage{};
-			if (7u != fields.size() ||
+			if (8u != fields.size() ||
 				!ParseNumber(fields[1], ownerSkillId) ||
 				!ParseNumber(fields[2], stageIndex) ||
 				!ParseNumber(fields[3], stage.iActionDurationMs) ||
 				!ParseNumber(fields[4], stage.iHitTimeMs) ||
-				!ParseNumber(fields[5], stage.iInputOpenMs) ||
-				!ParseNumber(fields[6], stage.iInputCloseMs) ||
+				!ParseNumber(fields[5], stage.iComboAdvanceMs) ||
+				!ParseNumber(fields[6], stage.iInputOpenMs) ||
+				!ParseNumber(fields[7], stage.iInputCloseMs) ||
 				0u == stage.iActionDurationMs ||
-				stage.iHitTimeMs > stage.iActionDurationMs ||
-				stage.iInputCloseMs > stage.iActionDurationMs)
+				stage.iHitTimeMs > stage.iComboAdvanceMs ||
+				stage.iComboAdvanceMs > stage.iActionDurationMs ||
+				stage.iInputCloseMs > stage.iActionDurationMs ||
+				(0u == stage.iInputCloseMs ? 0u != stage.iInputOpenMs :
+					stage.iInputOpenMs >= stage.iInputCloseMs))
 			{
 				m_strStatus = "Combo stage row is invalid";
 				return false;
@@ -1430,6 +1437,49 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	for (const auto& [skillId, skill] : m_Skills)
 	{
 		(void)skillId;
+		const bool isCombo = LostArk::Shared::PLAYER_SKILL_KIND::COMBO ==
+			skill.eSkillKind;
+		const bool validStageCount = isCombo ?
+			(skill.ComboStages.size() >= 2u && skill.ComboStages.size() <= 8u) :
+			(LostArk::Shared::PLAYER_SKILL_KIND::HOLD == skill.eSkillKind ?
+				skill.ComboStages.size() == 3u :
+				(LostArk::Shared::PLAYER_SKILL_KIND::COUNTER == skill.eSkillKind ?
+					skill.ComboStages.size() == 2u : skill.ComboStages.empty()));
+		if (!validStageCount ||
+			(isCombo &&
+				(skill.ComboStages.back().iComboAdvanceMs !=
+					skill.ComboStages.back().iActionDurationMs ||
+				 0u != skill.ComboStages.back().iInputOpenMs ||
+				 0u != skill.ComboStages.back().iInputCloseMs)))
+		{
+			m_strStatus = "Player skill stage contract is invalid";
+			return false;
+		}
+		if (isCombo)
+		{
+			for (const PLAYER_COMBO_STAGE& stage : skill.ComboStages)
+			{
+				std::uint64_t latestRequiredFireMs = 0u;
+				for (const PLAYER_SKILL_HIT& hit : stage.Hits)
+				{
+					latestRequiredFireMs = (std::max)(latestRequiredFireMs,
+						static_cast<std::uint64_t>(hit.iTimeMs) +
+						static_cast<std::uint64_t>(hit.iRepeatCount - 1u) *
+							hit.iRepeatMs);
+				}
+				for (const PLAYER_SKILL_PROJECTILE& projectile : stage.Projectiles)
+				{
+					latestRequiredFireMs = (std::max)(latestRequiredFireMs,
+						static_cast<std::uint64_t>(projectile.iTimeMs));
+				}
+				if (stage.iComboAdvanceMs < latestRequiredFireMs)
+				{
+					m_strStatus =
+						"Player combo boundary precedes a hit or projectile spawn";
+					return false;
+				}
+			}
+		}
 		if (!skill.strDamageProfileId.empty() &&
 			0u == Find_DamageRatePercent(skill.strDamageProfileId))
 		{
