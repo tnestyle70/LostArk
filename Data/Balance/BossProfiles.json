@@ -12,7 +12,11 @@
       "collisionRadius": 3.0,
       "engageDistance": 20.0,
       "moveSpeed": 2.6,
-      "phaseTwoHpPercent": 50
+      "phaseTwoHpPercent": 68,
+      "armorPlates": [
+        { "plateIndex": 0, "durability": 4000, "defense": 50 },
+        { "plateIndex": 1, "durability": 4000, "defense": 50 }
+      ]
     }
   ]
 }

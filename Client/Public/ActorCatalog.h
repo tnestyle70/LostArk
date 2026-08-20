@@ -40,6 +40,10 @@ struct BOSS_ACTOR_ENTRY final
 	std::string visualAssetId;
 	std::string bodyModel;
 	std::string weaponModel;
+	/* Skinned armour pieces the boss wears on the body rig. They share the
+	body skeleton, so they carry no animation of their own, and the order
+	here is the order the parts attach. */
+	std::vector<std::string> armorModels;
 	std::string animationSetId;
 	std::string serverProfileId;
 	std::string clientPresentationId;

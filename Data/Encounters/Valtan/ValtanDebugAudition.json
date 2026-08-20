@@ -24,7 +24,7 @@
     { "occurrenceId": "valtan.video.016", "ordinal": 16, "mapping": "UNRESOLVED", "patternId": "", "repeat": 0, "targetHealthBar": 0, "pauseAfterMs": 450 },
     { "occurrenceId": "valtan.video.017", "ordinal": 17, "mapping": "PRODUCT_DIRECT", "patternId": "VALTAN_FOUR_SLASH", "repeat": 1, "targetHealthBar": 0, "pauseAfterMs": 250 },
     { "occurrenceId": "valtan.video.018", "ordinal": 18, "mapping": "PRODUCT_CANDIDATE", "patternId": "VALTAN_DASH_CHARGE", "repeat": 1, "targetHealthBar": 0, "pauseAfterMs": 250 },
-    { "occurrenceId": "valtan.video.019", "ordinal": 19, "mapping": "PRODUCT_DIRECT", "patternId": "VALTAN_FLOOR_WIPE_130", "repeat": 1, "targetHealthBar": 115, "pauseAfterMs": 250 },
+    { "occurrenceId": "valtan.video.019", "ordinal": 19, "mapping": "PRODUCT_DIRECT", "patternId": "VALTAN_FLOOR_WIPE_130", "repeat": 1, "targetHealthBar": 130, "pauseAfterMs": 250 },
     { "occurrenceId": "valtan.video.020", "ordinal": 20, "mapping": "PRODUCT_DIRECT", "patternId": "VALTAN_FOUR_SLASH", "repeat": 1, "targetHealthBar": 0, "pauseAfterMs": 250 },
     { "occurrenceId": "valtan.video.021", "ordinal": 21, "mapping": "PRODUCT_DIRECT", "patternId": "VALTAN_ARENA_BREAK_109", "repeat": 1, "targetHealthBar": 109, "pauseAfterMs": 250 },
     { "occurrenceId": "valtan.video.022", "ordinal": 22, "mapping": "PRODUCT_CANDIDATE", "patternId": "VALTAN_EARTHQUAKE_SMASH", "repeat": 1, "targetHealthBar": 0, "pauseAfterMs": 250 },

@@ -3417,6 +3417,18 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iCurrentHp = entity.iCurrentHp;
 		snapshot.iMaximumHp = entity.iMaximumHp;
 		snapshot.iPhase = entity.iPhase;
+		/* Presentation only needs to know which plates came off, not how much
+		durability is left, so the wire carries one bit per authored plate. */
+		for (const SERVER_BOSS_ARMOR_PLATE_STATE& plate : entity.ArmorPlates)
+		{
+			if (0u == plate.iRemainingDurability &&
+				plate.iPlateIndex <
+					LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES)
+			{
+				snapshot.iBrokenArmorMask |= static_cast<std::uint8_t>(
+					1u << plate.iPlateIndex);
+			}
+		}
 		message.Entities.push_back(std::move(snapshot));
 	}
 	message.DamageEvents = m_TickDamageEvents;
@@ -3599,6 +3611,18 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 		staged.fEngageDistance = profile->fEngageDistance;
 		staged.fMoveSpeed = profile->fMoveSpeed;
 		staged.iPhaseTwoHpPercent = profile->iPhaseTwoHpPercent;
+		/* Every plate starts intact. A boss with no authored plates keeps an
+		empty list and therefore no mitigation, which is the pre-armour rule. */
+		staged.ArmorPlates.clear();
+		staged.ArmorPlates.reserve(profile->ArmorPlates.size());
+		for (const BOSS_ARMOR_PLATE& plate : profile->ArmorPlates)
+		{
+			SERVER_BOSS_ARMOR_PLATE_STATE state{};
+			state.iPlateIndex = plate.iPlateIndex;
+			state.iRemainingDurability = plate.iDurability;
+			state.iDefense = plate.iDefense;
+			staged.ArmorPlates.push_back(state);
+		}
 		if (m_ServerNavigation.Is_Loaded())
 		{
 			SERVER_NAV_POINT projected{};
@@ -4841,17 +4865,17 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 						m_isReady = false;
 						return;
 					}
-					if (triggered)
+					/* The stun follows the collision, not the wall. A charge into a
+					   receiver whose wall is already gone, or that no destruction
+					   binding claims, still stops the boss dead. */
+					if (!m_ValtanBrain.Complete_ImpactStage(
+						entity, m_GameplayCatalog, updateTick) ||
+						!Apply_WorldDestructionStageEntry(entity, updateTick))
 					{
-						if (!m_ValtanBrain.Complete_ImpactStage(
-							entity, m_GameplayCatalog, updateTick) ||
-							!Apply_WorldDestructionStageEntry(entity, updateTick))
-						{
-							m_strStatus =
-								"Valtan impact stage transition failed";
-							m_isReady = false;
-							return;
-						}
+						m_strStatus =
+							"Valtan impact stage transition failed";
+						m_isReady = false;
+						return;
 					}
 				}
 				else

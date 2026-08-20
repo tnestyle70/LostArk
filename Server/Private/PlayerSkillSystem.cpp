@@ -48,6 +48,49 @@ namespace
 		outLateral = samples.back().fLateral;
 	}
 
+	/* What a boss's intact plates are worth to Apply_Defense right now. A boss
+	with no plates left, or none authored, returns zero and therefore takes the
+	same raw damage it took before armour existed. */
+	std::uint32_t Sum_IntactArmorDefense(
+		const LostArk::Server::SERVER_WORLD_ENTITY& target)
+	{
+		/* The catalog bounds a boss to four plates of at most 10000 defense each,
+		so this sum cannot leave the 32-bit range the formula takes. */
+		std::uint32_t total = 0u;
+		for (const auto& plate : target.ArmorPlates)
+		{
+			if (0u != plate.iRemainingDurability)
+				total += plate.iDefense;
+		}
+		return total;
+	}
+
+	/* Spends one hit's damage on the front-most plate that is still intact, in
+	authored order. A window breaks at most one plate: the moment a plate comes
+	off the window closes, so stripping the boss costs one opening per plate
+	rather than one burst. */
+	void Consume_ArmorDurability(
+		LostArk::Server::SERVER_WORLD_ENTITY& target,
+		const std::uint32_t damage)
+	{
+		if (0u == damage)
+			return;
+		for (auto& plate : target.ArmorPlates)
+		{
+			if (0u == plate.iRemainingDurability)
+				continue;
+			plate.iRemainingDurability =
+				damage >= plate.iRemainingDurability ?
+				0u : plate.iRemainingDurability - damage;
+			if (0u == plate.iRemainingDurability)
+			{
+				target.bPatternGroggy = false;
+				target.bPendingArmorBreakReaction = true;
+			}
+			return;
+		}
+	}
+
 	/* Lands one resolved hit on a monster or boss: defense, HP, the damage
 	event the snapshot ships, and the authored knockback away from sourceX/Z
 	(the caster for a caster hit, the object for a projectile hit). */
@@ -63,10 +106,24 @@ namespace
 		std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
 	{
 		using namespace LostArk::Server;
-		const std::uint32_t damage = WORLD_BOOTSTRAP_KIND::MONSTER == target.eKind ?
-			CGameplayCatalog::Apply_Defense(rawDamage, target.iDefense) : rawDamage;
+		/* An invulnerable pattern absorbs the hit whole. Emitting nothing is the
+		point: no HP moves and no damage number appears, so the raid can see the
+		mechanic has to be answered rather than outraced. */
+		if (target.bPatternInvulnerable)
+			return;
+		/* A monster mitigates with its profile defense; a boss mitigates with the
+		plates it is still wearing. Both go through the one server formula. */
+		const std::uint32_t defense =
+			WORLD_BOOTSTRAP_KIND::BOSS == target.eKind ?
+			Sum_IntactArmorDefense(target) : target.iDefense;
+		const std::uint32_t damage =
+			CGameplayCatalog::Apply_Defense(rawDamage, defense);
 		target.iCurrentHp =
 			damage >= target.iCurrentHp ? 0u : target.iCurrentHp - damage;
+		/* Armour only comes apart in the window the boss is stunned in, so a
+		player has to open that window before any damage counts against it. */
+		if (target.bPatternGroggy)
+			Consume_ArmorDurability(target, damage);
 		/* A zero amount is not a hit and the snapshot writer rejects it; the
 		cap keeps one overfull tick from suppressing the whole snapshot. */
 		if (0u != damage &&

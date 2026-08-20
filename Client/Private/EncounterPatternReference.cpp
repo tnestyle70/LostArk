@@ -115,6 +115,14 @@ namespace
 			std::isfinite(value->Get_Number());
 	}
 
+	bool_t Is_Boolean(
+		const DATA_JSON_VALUE& parent,
+		const char_t* key)
+	{
+		const DATA_JSON_VALUE* value = parent.Find(key);
+		return nullptr != value && value->Is_Boolean();
+	}
+
 	bool_t Is_FiniteNumberArray(
 		const DATA_JSON_VALUE& parent,
 		const char_t* key)
@@ -198,9 +206,10 @@ bool_t Client::CEncounterPatternReference::Load(
 		if (!Is_ExactObjectWithOptional(entry, {
 				"patternId", "displayName", "actionId", "sourceActionIds",
 				"selectionMode", "minimumHealthBar", "maximumHealthBar",
-				"triggerHealthBar", "triggerOrder", "selectionWeight",
-				"maximumConsecutiveUses", "minimumRange", "maximumRange",
-				"stages" },
+				"triggerHealthBar", "triggerOrder", "armorRequirement",
+				"phaseRequirement", "invulnerableWhileRunning",
+				"selectionWeight", "maximumConsecutiveUses", "minimumRange",
+				"maximumRange", "stages" },
 				{ "serverMotion" }))
 		{
 			outStatus = "Encounter pattern has unexpected properties";
@@ -209,6 +218,8 @@ bool_t Client::CEncounterPatternReference::Load(
 
 		ENCOUNTER_PATTERN_REFERENCE pattern;
 		uint32_t ignored = 0u;
+		std::string armorRequirement;
+		std::string phaseRequirement;
 		if (!Read_String(entry, "patternId", false, pattern.patternId) ||
 			!Read_String(entry, "displayName", false, pattern.displayName) ||
 			!Read_String(entry, "actionId", false, pattern.actionId) ||
@@ -219,6 +230,17 @@ bool_t Client::CEncounterPatternReference::Load(
 			!Read_Unsigned(entry, "triggerHealthBar", 1000u,
 				pattern.iTriggerHealthBar) ||
 			!Read_Unsigned(entry, "triggerOrder", 1000u, ignored) ||
+			!Read_String(entry, "armorRequirement", false,
+				armorRequirement) ||
+			(armorRequirement != "ANY" &&
+				armorRequirement != "ARMORED" &&
+				armorRequirement != "STRIPPED") ||
+			!Read_String(entry, "phaseRequirement", false,
+				phaseRequirement) ||
+			(phaseRequirement != "ANY" &&
+				phaseRequirement != "PHASE_ONE" &&
+				phaseRequirement != "PHASE_TWO") ||
+			!Is_Boolean(entry, "invulnerableWhileRunning") ||
 			!Read_Unsigned(entry, "selectionWeight", 1000u, ignored) ||
 			!Read_Unsigned(entry, "maximumConsecutiveUses", 1000u, ignored) ||
 			!Is_FiniteNumber(entry, "minimumRange") ||

@@ -9,6 +9,11 @@
 
 namespace LostArk::Server
 {
+	/* The only gameplay bootstrap version this build reads. The publisher
+	stamps it and the loader refuses anything else, so a bump has to travel
+	through both sides at once instead of leaving one of them behind. */
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 11u;
+
 	struct PLAYER_ROOT_MOTION_SAMPLE
 	{
 		std::uint32_t iTimeMs = 0;
@@ -130,6 +135,18 @@ namespace LostArk::Server
 		std::vector<PLAYER_SKILL_PROJECTILE> Projectiles;
 	};
 
+	/* One authored destructible piece of a boss. iPlateIndex is the authored
+	order, dense from zero, and is also the index of the client part that wears
+	it, so a broken plate stays identifiable without a second ID space.
+	iDurability is a damage pool, not a hit count: it only drains inside a
+	GROGGY stage. iDefense feeds Apply_Defense while the plate is intact. */
+	struct BOSS_ARMOR_PLATE
+	{
+		std::uint32_t iPlateIndex = 0;
+		std::uint32_t iDurability = 0;
+		std::uint32_t iDefense = 0;
+	};
+
 	struct BOSS_RUNTIME_PROFILE
 	{
 		std::string strArchetypeId;
@@ -144,12 +161,35 @@ namespace LostArk::Server
 		float fEngageDistance = 0.f;
 		float fMoveSpeed = 0.f;
 		std::uint32_t iPhaseTwoHpPercent = 0;
+		/* Empty for a boss that wears no armour, which then takes raw damage
+		exactly as it did before plates existed. */
+		std::vector<BOSS_ARMOR_PLATE> ArmorPlates;
 	};
 
 	enum class BOSS_PATTERN_SELECTION
 	{
 		NORMAL,
 		HEALTH_BAR
+	};
+
+	/* Which armour state a weighted pattern is offered in. A boss that wears no
+	plates at all counts as stripped, so ANY is the only requirement that keeps
+	an encounter without armour behaving exactly as it did before. */
+	enum class BOSS_PATTERN_ARMOR_REQUIREMENT
+	{
+		ANY,
+		ARMORED,
+		STRIPPED
+	};
+
+	/* Which phase a weighted pattern is offered in. The boss advances to phase
+	two on its authored HP threshold, which the encounter lines up with the
+	health bar its transition mechanic fires on. */
+	enum class BOSS_PATTERN_PHASE_REQUIREMENT
+	{
+		ANY,
+		PHASE_ONE,
+		PHASE_TWO
 	};
 
 	enum class BOSS_PATTERN_HIT_SHAPE
@@ -167,8 +207,24 @@ namespace LostArk::Server
 	{
 		WINDUP,
 		ACTIVE,
-		RECOVERY
+		RECOVERY,
+		/* The boss is stunned and open: this is the only stage in which armour
+		durability drains. It replicates as PATTERN_ACTIVE, so the client keeps
+		playing the authored action for the stage and needs no new wire state. */
+		GROGGY,
+		/* The reaction as a plate comes off, entered only when durability
+		actually reached zero. It replicates as PATTERN_RECOVERY. */
+		PART_BREAK
 	};
+
+	/* A stage the clock must never walk into. These exist to be entered by one
+	specific event the fight produces -- a wall impact, a plate breaking -- so a
+	pattern that never produces it falls through to the stage behind. */
+	inline bool Is_EventEnteredStage(const BOSS_PATTERN_STAGE_KIND kind)
+	{
+		return BOSS_PATTERN_STAGE_KIND::GROGGY == kind ||
+			BOSS_PATTERN_STAGE_KIND::PART_BREAK == kind;
+	}
 
 	struct BOSS_PATTERN_STAGE_DEFINITION
 	{
@@ -196,6 +252,10 @@ namespace LostArk::Server
 		/* This ACTIVE hit is a physical axe contact candidate. Damage hits that
 		are roars, magic, waves or floor mechanics deliberately leave this false. */
 		bool bWallContact = false;
+		/* The boss drives forward through this stage at the pattern's authored
+		maximumRange over the stage duration, and meeting an impact receiver ends
+		the stage early into the GROGGY stage that must follow it. */
+		bool bChargeImpact = false;
 	};
 
 	enum class BOSS_PATTERN_MOTION_KIND : std::uint8_t
@@ -225,6 +285,14 @@ namespace LostArk::Server
 		std::string strActionId;
 		BOSS_PATTERN_MOTION Motion;
 		BOSS_PATTERN_SELECTION eSelection = BOSS_PATTERN_SELECTION::NORMAL;
+		BOSS_PATTERN_ARMOR_REQUIREMENT eArmorRequirement =
+			BOSS_PATTERN_ARMOR_REQUIREMENT::ANY;
+		BOSS_PATTERN_PHASE_REQUIREMENT ePhaseRequirement =
+			BOSS_PATTERN_PHASE_REQUIREMENT::ANY;
+		/* The boss cannot be damaged for as long as this pattern runs. The wipe
+		is the case that needs it: the raid is meant to answer the mechanic, not
+		race it down mid-cast. */
+		bool bInvulnerableWhileRunning = false;
 		std::uint32_t iMinimumHealthBar = 0;
 		std::uint32_t iMaximumHealthBar = 0;
 		std::uint32_t iTriggerHealthBar = 0;

@@ -48,6 +48,14 @@
       "clip": "mesh_att_battle_4_01"
     },
     {
+      "actionId": "valtan.attack.dash-charge.groggy",
+      "clip": "mesh_dmg_parts_loop_1"
+    },
+    {
+      "actionId": "valtan.attack.dash-charge.part-break",
+      "clip": "mesh_dmg_parts_end_1"
+    },
+    {
       "actionId": "valtan.attack.dash-charge.recovery",
       "clip": "mesh_att_battle_4_02"
     },
@@ -334,6 +342,10 @@
     {
       "actionId": "valtan.mechanic.armor-break-opening.groggy",
       "clip": "mesh_dmg_parts_loop_1"
+    },
+    {
+      "actionId": "valtan.mechanic.armor-break-opening.part-break",
+      "clip": "mesh_dmg_parts_end_1"
     },
     {
       "actionId": "valtan.mechanic.armor-break-opening.recovery",

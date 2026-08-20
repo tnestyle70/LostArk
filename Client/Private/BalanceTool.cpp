@@ -328,7 +328,9 @@ bool Client::CBalanceTool::Reload()
 		const DATA_JSON_VALUE* stages = Field(value, "stages", DATA_JSON_TYPE::ARRAY);
 		if (!IsExactObject(value, { "patternId", "displayName", "actionId", "sourceActionIds",
 			"selectionMode", "minimumHealthBar", "maximumHealthBar",
-			"triggerHealthBar", "triggerOrder", "selectionWeight", "maximumConsecutiveUses",
+			"triggerHealthBar", "triggerOrder", "armorRequirement",
+			"phaseRequirement", "invulnerableWhileRunning",
+			"selectionWeight", "maximumConsecutiveUses",
 			"minimumRange", "maximumRange", "stages" }) ||
 			nullptr == sourceActions || sourceActions->Get_Array().empty() ||
 			nullptr == stages || stages->Get_Array().empty() ||
@@ -340,6 +342,16 @@ bool Client::CBalanceTool::Reload()
 			!ReadU32(value, "maximumHealthBar", row.maximumHealthBar) ||
 			!ReadU32(value, "triggerHealthBar", row.triggerHealthBar) ||
 			!ReadU32(value, "triggerOrder", row.triggerOrder) ||
+			!ReadString(value, "armorRequirement", row.armorRequirement) ||
+			(row.armorRequirement != "ANY" &&
+				row.armorRequirement != "ARMORED" &&
+				row.armorRequirement != "STRIPPED") ||
+			!ReadString(value, "phaseRequirement", row.phaseRequirement) ||
+			(row.phaseRequirement != "ANY" &&
+				row.phaseRequirement != "PHASE_ONE" &&
+				row.phaseRequirement != "PHASE_TWO") ||
+			nullptr == Field(value, "invulnerableWhileRunning",
+				DATA_JSON_TYPE::BOOLEAN) ||
 			!ReadU32(value, "selectionWeight", row.selectionWeight) ||
 			!ReadU32(value, "maximumConsecutiveUses", row.maximumConsecutiveUses) ||
 			!ReadFloat(value, "minimumRange", row.minimumRange) ||
@@ -392,6 +404,9 @@ bool Client::CBalanceTool::Reload()
 			stage.knockdown = knockdownValue->Get_Boolean();
 			row.stages.push_back(std::move(stage));
 		}
+		row.invulnerableWhileRunning =
+			Field(value, "invulnerableWhileRunning",
+				DATA_JSON_TYPE::BOOLEAN)->Get_Boolean();
 		patterns.push_back(std::move(row));
 	}
 	for (const DATA_JSON_VALUE& value : stateArray->Get_Array())
@@ -1143,6 +1158,12 @@ bool Client::CBalanceTool::Save()
 			<< ",\n      \"maximumHealthBar\": " << p.maximumHealthBar
 			<< ",\n      \"triggerHealthBar\": " << p.triggerHealthBar
 			<< ",\n      \"triggerOrder\": " << p.triggerOrder
+			<< ",\n      \"armorRequirement\": "
+			<< Quote(p.armorRequirement)
+			<< ",\n      \"phaseRequirement\": "
+			<< Quote(p.phaseRequirement)
+			<< ",\n      \"invulnerableWhileRunning\": "
+			<< (p.invulnerableWhileRunning ? "true" : "false")
 			<< ",\n      \"selectionWeight\": " << p.selectionWeight
 			<< ",\n      \"maximumConsecutiveUses\": " << p.maximumConsecutiveUses
 			<< ",\n      \"minimumRange\": " << std::setprecision(9) << p.minimumRange

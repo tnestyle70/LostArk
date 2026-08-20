@@ -237,6 +237,11 @@ namespace LostArk::Shared
 	// One tick applies at most one player hit and one boss hit per actor, so this
 	// bounds a 30 Hz frame rather than a fight.
 	inline constexpr std::size_t MAX_DAMAGE_EVENTS = 64;
+	/* A world entity wears at most this many destructible armour plates, one
+	bit each in WORLD_ENTITY_SNAPSHOT::iBrokenArmorMask. The Server catalog and
+	the Client parts that wear them read this same bound, so a plate can never
+	be authored that the wire cannot name. */
+	inline constexpr std::uint8_t MAX_WORLD_ENTITY_ARMOR_PLATES = 4;
 	// Matches the publisher's 2..8 comboStages bound.
 	inline constexpr std::uint8_t MAX_COMBO_STAGES = 8;
 	using SKILL_ID = std::uint32_t;
@@ -473,6 +478,11 @@ namespace LostArk::Shared
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
 		std::uint8_t iPhase = 1;
+		/* Bit i is set once authored armour plate i has been destroyed. The
+		server owns the durability that breaks it; presentation only hides the
+		part wearing that index. Zero means every plate is still on, which is
+		also what an entity that wears no armour sends. */
+		std::uint8_t iBrokenArmorMask = 0;
 	};
 	// One resolved hit. HP in the snapshots above is a level, so a client that
 	// only sees levels cannot tell 500 damage from two 250s inside one tick, and

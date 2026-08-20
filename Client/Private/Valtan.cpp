@@ -25,6 +25,17 @@ namespace
 	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
 }
 
+wstring_t CValtan::Build_ArmorModelPrototypeTag(const size_t iArmorIndex)
+{
+	return TEXT("Prototype_Component_Model_ValtanArmor_") +
+		std::to_wstring(iArmorIndex);
+}
+
+wstring_t CValtan::Build_ArmorPartTag(const size_t iArmorIndex)
+{
+	return TEXT("Part_Armor_") + std::to_wstring(iArmorIndex);
+}
+
 CValtan::CValtan(ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CContainerObject { pDevice, pContext }
@@ -428,11 +439,90 @@ HRESULT CValtan::Ready_PartObjects()
 	weaponDesc.strMaterialProfileId = "material.valtan.monster-base.v1";
 	weaponDesc.pEmissiveOverride = &m_HitFlash;
 
-	return __super::Add_PartObject(
+	if (FAILED(__super::Add_PartObject(
 		m_iPrototypeLevelIndex,
 		TEXT("Prototype_GameObject_Part_Equipment"),
 		WEAPON_PART_TAG,
-		&weaponDesc);
+		&weaponDesc)))
+		return E_FAIL;
+
+	Ready_ArmorParts();
+	return S_OK;
+}
+
+/* The shoulder and arm plates are authored on the body rig, so they are
+skinned parts: no socket bone, and the body model owns the bone palette
+they render with. Breaking a plate later only has to hide its part.
+
+A plate is presentation, so a missing or unreadable one is isolated to
+itself: the boss still spawns and fights without it. Only the plates that
+actually attached are recorded. */
+void CValtan::Ready_ArmorParts()
+{
+	m_ArmorPartTags.clear();
+	const BOSS_ACTOR_ENTRY* pActor = CActorCatalog::Find_Boss("BOSS_VALTAN");
+	if (nullptr == pActor)
+		return;
+
+	const size_t armorCount = (std::min)(
+		pActor->armorModels.size(),
+		static_cast<size_t>(MAX_ARMOR_PART_COUNT));
+	m_ArmorPartTags.reserve(armorCount);
+	for (size_t armorIndex = 0u; armorIndex < armorCount; ++armorIndex)
+	{
+		CPart_Equipment::PART_EQUIPMENT_DESC armorDesc{};
+
+		armorDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
+		armorDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
+		armorDesc.strModelTag = Build_ArmorModelPrototypeTag(armorIndex);
+		armorDesc.strShaderTag =
+			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+		armorDesc.pSkeletonModel = m_pBodyModelCom;
+		/* nullptr keeps the piece skinned to the body skeleton. */
+		armorDesc.pSocketBoneName = nullptr;
+		armorDesc.pSocketRootMatrix =
+			m_pBodyVisualRootCom->Get_WorldMatrixPtr();
+		armorDesc.strMaterialProfileId =
+			"material.valtan.monster-base.v1";
+		armorDesc.pEmissiveOverride = &m_HitFlash;
+
+		wstring_t armorPartTag = Build_ArmorPartTag(armorIndex);
+		if (FAILED(__super::Add_PartObject(
+			m_iPrototypeLevelIndex,
+			TEXT("Prototype_GameObject_Part_Equipment"),
+			armorPartTag,
+			&armorDesc)))
+		{
+			/* One unreadable plate must not cost the boss its spawn. */
+			OutputDebugStringA(("[Client][Valtan] armour part " +
+				std::to_string(armorIndex) + " failed to attach.\n").c_str());
+			continue;
+		}
+		m_ArmorPartTags.push_back(std::move(armorPartTag));
+	}
+	OutputDebugStringA(("[Client][Valtan] armour parts attached: " +
+		std::to_string(m_ArmorPartTags.size()) + " / catalog " +
+		std::to_string(pActor->armorModels.size()) + "\n").c_str());
+}
+
+/* The Server owns which plates are gone, so this only mirrors the mask onto
+the parts that actually attached. A plate whose model failed to load has no
+tag here and is skipped, the same isolation Ready_ArmorParts uses. */
+void CValtan::Apply_ArmorBreakState(const uint8_t iBrokenArmorMask)
+{
+	if (m_iAppliedArmorBreakMask == iBrokenArmorMask)
+		return;
+	for (size_t armorIndex = 0u;
+		armorIndex < m_ArmorPartTags.size(); ++armorIndex)
+	{
+		const auto pPart = dynamic_cast<CPart_Equipment*>(
+			__super::Find_PartObject(m_ArmorPartTags[armorIndex].c_str()));
+		if (nullptr == pPart)
+			continue;
+		const uint8_t plateBit = static_cast<uint8_t>(1u << armorIndex);
+		pPart->Set_Visible(0u == (iBrokenArmorMask & plateBit));
+	}
+	m_iAppliedArmorBreakMask = iBrokenArmorMask;
 }
 
 HRESULT CValtan::Ready_Components(const f32_t collisionRadius)
@@ -500,7 +590,8 @@ bool_t CValtan::Apply_NetworkState(
 	const uint32_t iServerTick,
 	const uint32_t iActionStartTick,
 	const uint32_t iPatternSequence,
-	const uint32_t iPatternStageIndex)
+	const uint32_t iPatternStageIndex,
+	const uint8_t iBrokenArmorMask)
 {
 	if (!m_isServerAuthoritative || nullptr == m_pTransformCom ||
 		!std::isfinite(position.x) || !std::isfinite(position.y) ||
@@ -508,6 +599,7 @@ bool_t CValtan::Apply_NetworkState(
 	{
 		return false;
 	}
+	Apply_ArmorBreakState(iBrokenArmorMask);
 
 	uint32_t nextState = VALTAN_STATE::IDLE;
 	switch (action)

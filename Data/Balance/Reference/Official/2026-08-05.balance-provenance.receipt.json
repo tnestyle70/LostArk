@@ -48,7 +48,7 @@
                      "damageProfileCount":  108,
                      "bossProfileCount":  1,
                      "encounterPatternCount":  33,
-                     "fieldEntryCount":  2660
+                     "fieldEntryCount":  2760
                  },
     "entries":  [
                     {
@@ -63,6 +63,41 @@
                         "sourceValue":  "BOSS_VALTAN",
                         "transform":  "identity",
                         "resultValue":  "BOSS_VALTAN"
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/BossProfiles.json",
+                        "targetId":  "boss:BOSS_VALTAN",
+                        "targetField":  "armorPlates",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-plates-v1"
+                                   },
+                        "sourceValue":  [
+                                            {
+                                                "plateIndex":  0,
+                                                "durability":  4000,
+                                                "defense":  50
+                                            },
+                                            {
+                                                "plateIndex":  1,
+                                                "durability":  4000,
+                                                "defense":  50
+                                            }
+                                        ],
+                        "transform":  "identity",
+                        "resultValue":  [
+                                            {
+                                                "plateIndex":  0,
+                                                "durability":  4000,
+                                                "defense":  50
+                                            },
+                                            {
+                                                "plateIndex":  1,
+                                                "durability":  4000,
+                                                "defense":  50
+                                            }
+                                        ]
                     },
                     {
                         "targetDocument":  "Data/Balance/BossProfiles.json",
@@ -193,9 +228,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "project-valtan-phase-threshold-v1"
                                    },
-                        "sourceValue":  50,
+                        "sourceValue":  68,
                         "transform":  "identity",
-                        "resultValue":  50
+                        "resultValue":  68
                     },
                     {
                         "targetDocument":  "Data/Balance/DamageProfiles.json",
@@ -29800,6 +29835,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
+                        "targetField":  "patterns[27].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
+                        "targetField":  "patterns[27].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
+                        "targetField":  "patterns[27].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARENA_BREAK_109",
                         "targetField":  "patterns[27].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -30262,6 +30336,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
+                        "targetField":  "patterns[31].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
+                        "targetField":  "patterns[31].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
+                        "targetField":  "patterns[31].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARENA_BREAK_33",
                         "targetField":  "patterns[31].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -30616,6 +30729,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARENA_BREAK_84",
+                        "targetField":  "patterns[28].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARENA_BREAK_84",
+                        "targetField":  "patterns[28].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARENA_BREAK_84",
+                        "targetField":  "patterns[28].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARENA_BREAK_84",
                         "targetField":  "patterns[28].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -30932,6 +31084,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ARMOR_BREAK_OPENING",
+                        "targetField":  "patterns[23].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARMOR_BREAK_OPENING",
+                        "targetField":  "patterns[23].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARMOR_BREAK_OPENING",
+                        "targetField":  "patterns[23].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ARMOR_BREAK_OPENING",
                         "targetField":  "patterns[23].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -31125,7 +31316,7 @@
                                             {
                                                 "stageId":  "GROGGY",
                                                 "actionId":  "valtan.mechanic.armor-break-opening.groggy",
-                                                "stageKind":  "ACTIVE",
+                                                "stageKind":  "GROGGY",
                                                 "durationMs":  5000,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
@@ -31146,6 +31337,25 @@
                                                 "actionId":  "valtan.mechanic.armor-break-opening.recovery",
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  1200,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0.0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0
+                                            },
+                                            {
+                                                "stageId":  "PART_BREAK",
+                                                "actionId":  "valtan.mechanic.armor-break-opening.part-break",
+                                                "stageKind":  "PART_BREAK",
+                                                "durationMs":  1400,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -31185,7 +31395,7 @@
                                             {
                                                 "stageId":  "GROGGY",
                                                 "actionId":  "valtan.mechanic.armor-break-opening.groggy",
-                                                "stageKind":  "ACTIVE",
+                                                "stageKind":  "GROGGY",
                                                 "durationMs":  5000,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
@@ -31206,6 +31416,25 @@
                                                 "actionId":  "valtan.mechanic.armor-break-opening.recovery",
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  1200,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0.0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0
+                                            },
+                                            {
+                                                "stageId":  "PART_BREAK",
+                                                "actionId":  "valtan.mechanic.armor-break-opening.part-break",
+                                                "stageKind":  "PART_BREAK",
+                                                "durationMs":  1400,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -31250,6 +31479,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  1,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_BACKSTEP_ATTACK",
+                        "targetField":  "patterns[17].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_BACKSTEP_ATTACK",
+                        "targetField":  "patterns[17].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_BACKSTEP_ATTACK",
+                        "targetField":  "patterns[17].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -31568,6 +31836,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_BIND_CHARGE_SMASH",
+                        "targetField":  "patterns[10].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_BIND_CHARGE_SMASH",
+                        "targetField":  "patterns[10].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_BIND_CHARGE_SMASH",
+                        "targetField":  "patterns[10].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -31926,6 +32233,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
+                        "targetField":  "patterns[30].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
+                        "targetField":  "patterns[30].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_CENTER_GRAB_COUNTER_64",
+                        "targetField":  "patterns[30].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -32324,6 +32670,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_CHARGE_GRAB_ROAR",
+                        "targetField":  "patterns[15].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_CHARGE_GRAB_ROAR",
+                        "targetField":  "patterns[15].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_CHARGE_GRAB_ROAR",
+                        "targetField":  "patterns[15].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_CHARGE_GRAB_ROAR",
                         "targetField":  "patterns[15].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -32682,6 +33067,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_DASH_CHARGE",
+                        "targetField":  "patterns[3].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_DASH_CHARGE",
+                        "targetField":  "patterns[3].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "PHASE_ONE",
+                        "transform":  "identity",
+                        "resultValue":  "PHASE_ONE"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_DASH_CHARGE",
+                        "targetField":  "patterns[3].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ARMORED",
+                        "transform":  "identity",
+                        "resultValue":  "ARMORED"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_DASH_CHARGE",
                         "targetField":  "patterns[3].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -32886,10 +33310,48 @@
                                                 "downMs":  1000
                                             },
                                             {
+                                                "stageId":  "GROGGY",
+                                                "actionId":  "valtan.attack.dash-charge.groggy",
+                                                "stageKind":  "GROGGY",
+                                                "durationMs":  5000,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0.0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0
+                                            },
+                                            {
                                                 "stageId":  "RECOVERY",
                                                 "actionId":  "valtan.attack.dash-charge.recovery",
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  900,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0.0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0
+                                            },
+                                            {
+                                                "stageId":  "PART_BREAK",
+                                                "actionId":  "valtan.attack.dash-charge.part-break",
+                                                "stageKind":  "PART_BREAK",
+                                                "durationMs":  1400,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -32946,10 +33408,48 @@
                                                 "downMs":  1000
                                             },
                                             {
+                                                "stageId":  "GROGGY",
+                                                "actionId":  "valtan.attack.dash-charge.groggy",
+                                                "stageKind":  "GROGGY",
+                                                "durationMs":  5000,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0.0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0
+                                            },
+                                            {
                                                 "stageId":  "RECOVERY",
                                                 "actionId":  "valtan.attack.dash-charge.recovery",
                                                 "stageKind":  "RECOVERY",
                                                 "durationMs":  900,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0.0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0
+                                            },
+                                            {
+                                                "stageId":  "PART_BREAK",
+                                                "actionId":  "valtan.attack.dash-charge.part-break",
+                                                "stageKind":  "PART_BREAK",
+                                                "durationMs":  1400,
                                                 "hitShape":  "NONE",
                                                 "hitOuterRadius":  0.0,
                                                 "hitInnerRadius":  0.0,
@@ -32994,6 +33494,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_DOWN_SMASH",
+                        "targetField":  "patterns[1].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_DOWN_SMASH",
+                        "targetField":  "patterns[1].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_DOWN_SMASH",
+                        "targetField":  "patterns[1].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -33312,6 +33851,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_EARTHQUAKE_SMASH",
+                        "targetField":  "patterns[4].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_EARTHQUAKE_SMASH",
+                        "targetField":  "patterns[4].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_EARTHQUAKE_SMASH",
+                        "targetField":  "patterns[4].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -33672,6 +34250,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
+                        "targetField":  "patterns[26].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_ENTRANCE_WHIRLWIND",
                         "targetField":  "patterns[26].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -33984,6 +34601,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FIST_IN_OUT",
+                        "targetField":  "patterns[20].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FIST_IN_OUT",
+                        "targetField":  "patterns[20].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FIST_IN_OUT",
+                        "targetField":  "patterns[20].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -34338,6 +34994,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FLOOR_WIPE_130",
+                        "targetField":  "patterns[24].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  true,
+                        "transform":  "identity",
+                        "resultValue":  true
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FLOOR_WIPE_130",
+                        "targetField":  "patterns[24].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FLOOR_WIPE_130",
+                        "targetField":  "patterns[24].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -34712,9 +35407,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  115,
+                        "sourceValue":  130,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  115,
+                        "resultValue":  130,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -34730,6 +35425,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  1,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_PILLARS_105",
+                        "targetField":  "patterns[25].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_PILLARS_105",
+                        "targetField":  "patterns[25].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_PILLARS_105",
+                        "targetField":  "patterns[25].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -35088,6 +35822,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
+                        "targetField":  "patterns[7].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FOUR_SLASH",
                         "targetField":  "patterns[7].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -35400,6 +36173,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FRONT_BACK_FRONT",
+                        "targetField":  "patterns[19].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FRONT_BACK_FRONT",
+                        "targetField":  "patterns[19].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_FRONT_BACK_FRONT",
+                        "targetField":  "patterns[19].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -35718,6 +36530,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
+                        "targetField":  "patterns[32].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
+                        "targetField":  "patterns[32].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_GHOST_TRANSITION_15",
+                        "targetField":  "patterns[32].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -36210,6 +37061,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_GROUND_WAVE_SMASH",
+                        "targetField":  "patterns[11].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_GROUND_WAVE_SMASH",
+                        "targetField":  "patterns[11].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_GROUND_WAVE_SMASH",
+                        "targetField":  "patterns[11].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_GROUND_WAVE_SMASH",
                         "targetField":  "patterns[11].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -36522,6 +37412,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_HIGH_JUMP",
+                        "targetField":  "patterns[8].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_HIGH_JUMP",
+                        "targetField":  "patterns[8].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_HIGH_JUMP",
+                        "targetField":  "patterns[8].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -36880,6 +37809,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_IMPRISON_ROAR",
+                        "targetField":  "patterns[2].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_IMPRISON_ROAR",
+                        "targetField":  "patterns[2].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_IMPRISON_ROAR",
+                        "targetField":  "patterns[2].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_IMPRISON_ROAR",
                         "targetField":  "patterns[2].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -37192,6 +38160,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_JUMP_SPIN",
+                        "targetField":  "patterns[13].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_JUMP_SPIN",
+                        "targetField":  "patterns[13].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_JUMP_SPIN",
+                        "targetField":  "patterns[13].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -37552,6 +38559,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_LEDGE_ROAR",
+                        "targetField":  "patterns[21].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_LEDGE_ROAR",
+                        "targetField":  "patterns[21].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_LEDGE_ROAR",
+                        "targetField":  "patterns[21].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_LEDGE_ROAR",
                         "targetField":  "patterns[21].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -37864,6 +38910,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_MAGIC_CHOICE",
+                        "targetField":  "patterns[6].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_MAGIC_CHOICE",
+                        "targetField":  "patterns[6].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_MAGIC_CHOICE",
+                        "targetField":  "patterns[6].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -38222,6 +39307,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
+                        "targetField":  "patterns[29].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
+                        "targetField":  "patterns[29].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
+                        "targetField":  "patterns[29].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_MAGIC_ORB_STAGGER_76",
                         "targetField":  "patterns[29].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -38540,6 +39664,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_PARRY",
+                        "targetField":  "patterns[5].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_PARRY",
+                        "targetField":  "patterns[5].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_PARRY",
+                        "targetField":  "patterns[5].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_PARRY",
                         "targetField":  "patterns[5].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -38854,6 +40017,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_PORTAL_RUSH",
+                        "targetField":  "patterns[14].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_PORTAL_RUSH",
+                        "targetField":  "patterns[14].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_PORTAL_RUSH",
+                        "targetField":  "patterns[14].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -39212,6 +40414,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_RED_BLADE_WAVE",
+                        "targetField":  "patterns[18].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_RED_BLADE_WAVE",
+                        "targetField":  "patterns[18].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_RED_BLADE_WAVE",
+                        "targetField":  "patterns[18].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_RED_BLADE_WAVE",
                         "targetField":  "patterns[18].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -39528,6 +40769,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_STOMP",
+                        "targetField":  "patterns[9].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_STOMP",
+                        "targetField":  "patterns[9].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_STOMP",
+                        "targetField":  "patterns[9].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_STOMP",
                         "targetField":  "patterns[9].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -39840,6 +41120,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_SUPER_SMASH",
+                        "targetField":  "patterns[12].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_SUPER_SMASH",
+                        "targetField":  "patterns[12].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_SUPER_SMASH",
+                        "targetField":  "patterns[12].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -40166,6 +41485,45 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_SWING",
+                        "targetField":  "patterns[0].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_SWING",
+                        "targetField":  "patterns[0].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_SWING",
+                        "targetField":  "patterns[0].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_SWING",
                         "targetField":  "patterns[0].actionId",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -40480,6 +41838,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_TRIPLE_COUNTER",
+                        "targetField":  "patterns[22].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_TRIPLE_COUNTER",
+                        "targetField":  "patterns[22].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_TRIPLE_COUNTER",
+                        "targetField":  "patterns[22].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -40962,6 +42359,45 @@
                         "transform":  "Balance Tool authored override",
                         "resultValue":  0,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_WHIRLWIND",
+                        "targetField":  "patterns[16].invulnerableWhileRunning",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-invulnerable-mechanic-v1"
+                                   },
+                        "sourceValue":  false,
+                        "transform":  "identity",
+                        "resultValue":  false
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_WHIRLWIND",
+                        "targetField":  "patterns[16].phaseRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-phase-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_WHIRLWIND",
+                        "targetField":  "patterns[16].armorRequirement",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "project-valtan-armor-gated-selection-v1"
+                                   },
+                        "sourceValue":  "ANY",
+                        "transform":  "identity",
+                        "resultValue":  "ANY"
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",

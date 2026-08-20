@@ -181,7 +181,9 @@ namespace
 			std::isfinite(snapshot.fYawDegrees) &&
 			0 != snapshot.iMaximumHp &&
 			snapshot.iCurrentHp <= snapshot.iMaximumHp &&
-			0 != snapshot.iPhase;
+			0 != snapshot.iPhase &&
+			snapshot.iBrokenArmorMask <
+				(1u << LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES);
 	}
 
 	// A zero amount is not a hit, so it must not reach presentation as one; the
@@ -1554,6 +1556,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(entity.iCurrentHp);
 		writer.Write_U32(entity.iMaximumHp);
 		writer.Write_U8(entity.iPhase);
+		writer.Write_U8(entity.iBrokenArmorMask);
 	}
 	for (const DAMAGE_EVENT& damage : message.DamageEvents)
 	{
@@ -1692,7 +1695,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(entity.iPatternStageIndex) ||
 			!reader.Read_U32(entity.iCurrentHp) ||
 			!reader.Read_U32(entity.iMaximumHp) ||
-			!reader.Read_U8(entity.iPhase))
+			!reader.Read_U8(entity.iPhase) ||
+			!reader.Read_U8(entity.iBrokenArmorMask))
 		{
 			return false;
 		}
