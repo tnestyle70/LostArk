@@ -340,6 +340,10 @@ def validate_mapping_semantics(mapping: dict[str, Any]) -> None:
                 carrier["disposition"] == "VISIBLE_EXECUTABLE"
                 for carrier in carriers
             )
+            typed_count = sum(
+                "typedSupplementalAdmission" in carrier
+                for carrier in carriers
+            )
             blocked_count = len(carriers) - visible_count
             if (
                 len(carriers) != denominator
@@ -358,8 +362,10 @@ def validate_mapping_semantics(mapping: dict[str, Any]) -> None:
             expected_projection = (
                 "FAIL_CLOSED"
                 if visible_count == 0
+                else "TYPED_VISUAL_PROGRAM_V1"
+                if visible_count == denominator and typed_count == denominator
                 else "PORTABLE_AUTHORED_V13"
-                if visible_count == denominator
+                if visible_count == denominator and typed_count == 0
                 else "PARTIAL_PORTABLE_AUTHORED_V13"
             )
             if admission["executableProjection"] != expected_projection:
@@ -398,6 +404,7 @@ def validate_mapping_semantics(mapping: dict[str, Any]) -> None:
                 recipe = carrier["sourceRecipe"]
                 material = carrier["materialAdmission"]
                 resources = carrier["resources"]
+                typed = carrier.get("typedSupplementalAdmission")
                 resource_slots = [resource["slotId"] for resource in resources]
                 if len(resource_slots) != len(set(resource_slots)):
                     raise ContractError(
@@ -409,17 +416,77 @@ def validate_mapping_semantics(mapping: dict[str, Any]) -> None:
                         f"{carrier_label}.resources[{resource_index}].assetId",
                     )
                 if carrier["disposition"] == "VISIBLE_EXECUTABLE":
-                    if (
-                        carrier_blockers
-                        or recipe["portableStatus"] != "PORTABLE_AUTHORED_V13"
-                        or "portableRecipeSha256" not in recipe
-                        or material["status"]
-                        != "ADMITTED_RECONSTRUCTED_PROFILE"
-                        or not resources
-                    ):
+                    if carrier_blockers:
                         raise ContractError(
-                            f"{carrier_label} visible admission evidence is incomplete"
+                            f"{carrier_label} executable admission retains blockers"
                         )
+                    if typed is not None:
+                        if (
+                            recipe["portableStatus"] not in {
+                                "FAIL_CLOSED_UNSUPPORTED_MODULE_FAMILY",
+                                "FAIL_CLOSED_INCOMPLETE_SOURCE_GRAPH",
+                            }
+                            or "portableRecipeSha256" in recipe
+                            or typed["status"] != "ADMITTED_BOUNDED"
+                            or typed["genericSourceRecipeEnabled"] is not False
+                            or typed["runtimeFidelity"] != "BOUNDED_RECONSTRUCTION"
+                        ):
+                            raise ContractError(
+                                f"{carrier_label} typed supplemental evidence is incomplete"
+                            )
+                        validate_repository_path(
+                            typed["historySourcePath"],
+                            f"{carrier_label}.typedSupplementalAdmission.historySourcePath",
+                        )
+                        if typed["family"] == "ANIMATION_TRAIL":
+                            if (
+                                carrier["rendererShape"] != "sprite"
+                                or typed["adapterId"]
+                                != "animation-trail-document-v12"
+                                or typed["packetLayout"]
+                                != "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1"
+                                or typed["runtimeCarrier"]
+                                != "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1"
+                                or typed["historyLane"] != "EDGE_PAIR_STRIP"
+                                or typed["sourceGeometryFidelity"]
+                                != "SOURCE_BAKED_EDGE_GEOMETRY_EXACT"
+                                or material["status"]
+                                != "ADMITTED_TYPED_BOUNDED_PROFILE"
+                                or not resources
+                            ):
+                                raise ContractError(
+                                    f"{carrier_label} AnimationTrail typed admission is incomplete"
+                                )
+                        elif (
+                            typed["family"] != "LIGHT_PARTICLE"
+                            or carrier["rendererShape"] != "light"
+                            or typed["adapterId"]
+                            != "light-particle-document-v12"
+                            or typed["packetLayout"]
+                            != "LIGHT_BAKED_EDGE_ATTACHMENT_V1"
+                            or typed["runtimeCarrier"]
+                            != "EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1"
+                            or typed["historyLane"] != "FIRST_EDGE"
+                            or typed["sourceGeometryFidelity"]
+                            != "ENDCONTROL_TO_FIRST_EDGE_INFERRED"
+                            or material["status"]
+                            != "NOT_APPLICABLE_LIGHT_PRESENTATION"
+                            or resources
+                        ):
+                            raise ContractError(
+                                f"{carrier_label} Point Light typed admission is incomplete"
+                            )
+                    else:
+                        if (
+                            recipe["portableStatus"] != "PORTABLE_AUTHORED_V13"
+                            or "portableRecipeSha256" not in recipe
+                            or material["status"]
+                            != "ADMITTED_RECONSTRUCTED_PROFILE"
+                            or not resources
+                        ):
+                            raise ContractError(
+                                f"{carrier_label} portable admission evidence is incomplete"
+                            )
                     required_material_fields = {
                         "profileId",
                         "runtimeShaderProfileId",
@@ -429,15 +496,16 @@ def validate_mapping_semantics(mapping: dict[str, Any]) -> None:
                         "evidencePath",
                         "evidenceSha256",
                     }
-                    if not required_material_fields.issubset(material):
-                        raise ContractError(
-                            f"{carrier_label} visible material evidence is incomplete"
+                    if typed is None or material["status"] == "ADMITTED_TYPED_BOUNDED_PROFILE":
+                        if not required_material_fields.issubset(material):
+                            raise ContractError(
+                                f"{carrier_label} executable material evidence is incomplete"
+                            )
+                        validate_repository_path(
+                            material["evidencePath"],
+                            f"{carrier_label}.materialAdmission.evidencePath",
                         )
-                    validate_repository_path(
-                        material["evidencePath"],
-                        f"{carrier_label}.materialAdmission.evidencePath",
-                    )
-                    if carrier["rendererShape"] == "mesh":
+                    if typed is None and carrier["rendererShape"] == "mesh":
                         geometry = carrier.get("geometryEvidence")
                         if (
                             geometry is None
@@ -464,14 +532,53 @@ def validate_mapping_semantics(mapping: dict[str, Any]) -> None:
                         not carrier_blockers
                         or material != {"status": "FAIL_CLOSED"}
                         or resources
+                        or typed is not None
                         or "geometryEvidence" in carrier
                     ):
                         raise ContractError(
                             f"{carrier_label} fail-closed carrier leaked executable data"
                         )
-        blockers = binding["productAdmission"]["blockers"]
+            attachment = row["attachment"]
+            if attachment["admission"] == "ADMITTED_BAKED_EDGE_HISTORY_GEOMETRY":
+                if (
+                    row["sourceType"] != "Trails"
+                    or attachment["sourceAnchorSlotId"]
+                    or attachment["runtimeBoneName"]
+                    or typed_count != denominator
+                ):
+                    raise ContractError(
+                        f"{label} {row['notifyId']} baked-edge attachment is invalid"
+                    )
+            elif attachment["admission"] == "ADMITTED_INFERRED_BAKED_FIRST_EDGE":
+                if (
+                    row["sourceType"] != "PlayParticleEffect"
+                    or attachment["sourceAnchorSlotId"] != "EndControl_01"
+                    or attachment["runtimeBoneName"]
+                    or typed_count != denominator
+                ):
+                    raise ContractError(
+                        f"{label} {row['notifyId']} inferred first-edge attachment is invalid"
+                    )
+        product_admission = binding["productAdmission"]
+        blockers = product_admission["blockers"]
         if blockers != sorted(blockers):
             raise ContractError(f"{label} product blockers must be sorted")
+        if product_admission["status"] == "ADMITTED_PRODUCT":
+            if (
+                product_admission["productCatalogMapped"] is not True
+                or product_admission["animationEventMapped"] is not True
+                or blockers
+            ):
+                raise ContractError(
+                    f"{label} admitted Product mapping is incomplete"
+                )
+        elif (
+            product_admission["status"] != "FAIL_CLOSED_NON_PRODUCT_CANARY"
+            or product_admission["productCatalogMapped"] is not False
+            or product_admission["animationEventMapped"] is not False
+            or not blockers
+        ):
+            raise ContractError(f"{label} fail-closed Product mapping is incomplete")
 
     if bindings:
         first = bindings[0]

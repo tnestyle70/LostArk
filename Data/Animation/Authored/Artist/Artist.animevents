@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "Artist" 1044
+LOSTARK_ANIM_EVENTS 5 "Artist" 1047
 "sdm_att_battle_1_01" CANCEL startms=100 endms=920 payload="스킬선입력" src=orig
 "sdm_att_battle_1_01" CANCEL startms=100 endms=1020 payload="이동선입력" src=orig
 "sdm_att_battle_1_01" SOUND startms=250 payload="PC_YINYANGSHI_F.PC_YinYangShi_F_Att_Battle1_3" src=orig
@@ -1027,7 +1027,10 @@ LOSTARK_ANIM_EVENTS 5 "Artist" 1044
 "sdm_sk_onestroke" EFFECT startms=0 payload="effect.artist.skill.31470.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_pungnyudo" EFFECT startms=0 payload="effect.artist.skill.31910.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_skykongkong_01" EFFECT startms=0 payload="effect.artist.skill.31210.ba1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"sdm_sk_skykongkong_02" EFFECT startms=0 payload="effect.artist.skill.31210.ba4" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_skykongkong_02" EFFECT startms=0 payload="effect.artist.skill.31210.ba4.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_dragonrising_01" EFFECT startms=0 payload="effect.artist.skill.31950.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_harmonyofyin_01" EFFECT startms=0 payload="effect.artist.skill.31050.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"sdm_sk_harmonyofyin_02" EFFECT startms=0 payload="effect.artist.skill.31050.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_super_pungnyudo_01" EFFECT startms=0 payload="effect.artist.skill.31930.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_sk_super_pungnyudo_02" EFFECT startms=0 payload="effect.artist.skill.31930.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "sdm_att_battle_1_03" HIT startms=276 endms=349 rep=1 repms=0 fz=450 fzin=200 fzout=250 push=0 pushr=0 area=2 ar=320 aa=250 ah=150 ax=0 arem=0 maxt=0 src=orig

@@ -388,95 +388,10 @@ private:
 		m_pPreparation;
 };
 
-enum class EFFECT_PRODUCT_CUE_ADMISSION_CLASS : uint8_t
-{
-	PRODUCT_APPROVED_FULL,
-	PRODUCT_APPROVED_APPROXIMATE,
-	END
-};
-
-inline const char_t* Get_EffectProductCueAdmissionClassLabel(
-	const EFFECT_PRODUCT_CUE_ADMISSION_CLASS eAdmissionClass)
-{
-	switch (eAdmissionClass)
-	{
-	case EFFECT_PRODUCT_CUE_ADMISSION_CLASS::PRODUCT_APPROVED_FULL:
-		return "PRODUCT_APPROVED_FULL";
-	case EFFECT_PRODUCT_CUE_ADMISSION_CLASS::PRODUCT_APPROVED_APPROXIMATE:
-		return "PRODUCT_APPROVED_APPROXIMATE";
-	case EFFECT_PRODUCT_CUE_ADMISSION_CLASS::END:
-	default:
-		return "DENY";
-	}
-}
-
-struct EFFECT_PRODUCT_CUE_PROVENANCE final
-{
-	std::string strDecision;
-	std::string strApprovedAtKst;
-	std::string strSourceThreadId;
-	std::string strScope;
-};
-
-struct EFFECT_PRODUCT_CUE_ADMISSION final
-{
-	std::string strCueId;
-	EFFECT_PRODUCT_CUE_ADMISSION_CLASS eAdmissionClass =
-		EFFECT_PRODUCT_CUE_ADMISSION_CLASS::END;
-	std::string strApprovalCeiling;
-	std::string strObservedExactness;
-	std::string strCharacterClass;
-	std::string strInputSlot;
-	uint32_t iSkillId = 0u;
-	uint32_t iStageIndex = 0u;
-	std::string strAnimationAssetId;
-	std::string strClipName;
-	uint32_t iStartMs = 0u;
-	std::string strEffectAssetId;
-	std::string strRollbackEffectAssetId;
-	std::string strEffectContentSha256;
-	uint32_t iElementCount = 0u;
-	uint32_t iFullElementCount = 0u;
-	uint32_t iApproximateElementCount = 0u;
-	uint32_t iHardSuppressedElementCount = 0u;
-	EFFECT_PRODUCT_CUE_PROVENANCE Provenance;
-};
-
-class EFFECT_PRODUCT_CUE_ADMISSION_TOKEN final
-{
-public:
-	const std::string& Get_ApprovalId() const { return m_strApprovalId; }
-
-private:
-	friend class CEffectCatalog;
-	EFFECT_PRODUCT_CUE_ADMISSION_TOKEN(
-		std::string strAdmissionKey,
-		std::string strAdmissionIdentity,
-		const EFFECT_PRODUCT_CUE_ADMISSION& Admission)
-		: m_strAdmissionKey(std::move(strAdmissionKey)),
-		  m_strAdmissionIdentity(std::move(strAdmissionIdentity)),
-		  m_strApprovalId(Admission.strCueId),
-		  m_strEffectAssetId(Admission.strEffectAssetId)
-	{
-	}
-
-private:
-	std::string m_strAdmissionKey;
-	std::string m_strAdmissionIdentity;
-	std::string m_strApprovalId;
-	std::string m_strEffectAssetId;
-};
-
 class CEffectCatalog final
 {
 public:
-    struct RUNTIME_SNAPSHOT;
-
     static bool_t Load(std::string& strOutStatus);
-    static std::shared_ptr<const RUNTIME_SNAPSHOT> Capture_Runtime();
-    static bool_t Restore_Runtime(
-        std::shared_ptr<const RUNTIME_SNAPSHOT> pSnapshot,
-        std::string& strOutStatus);
     static std::shared_ptr<const EFFECT_DOCUMENT_DESC> Find(
         const std::string& strEffectAssetId);
 	/* Cache-only lookup used by Product spawn.  It never parses a sealed
@@ -499,9 +414,8 @@ public:
 		Find_VisualProgram(const std::string& strEffectAssetId);
 	static std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		Find_VisualProjection(const std::string& strEffectAssetId);
-	/* Cache-only projection lookup for passive Tool rendering.  Explicit
-	   authoring/play commands may use Find_VisualProjection() to request one
-	   document load, but drawing a collapsed/expanded list must not do so. */
+	/* Cache-only projection lookup used by runtime presentation paths that
+	   must not trigger document I/O. */
 	static std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		Find_VisualProjection_Loaded(const std::string& strEffectAssetId);
 	static bool_t Prepare_ReconstructedRuntimeProgram(
@@ -510,41 +424,14 @@ public:
 			OutPreparation,
 		std::string& strOutError);
     static bool_t Contains(const std::string& strEffectAssetId);
+	static bool_t Is_DirectAuthoredDocument(
+		const std::string& strEffectAssetId);
 	static bool_t Contains_RuntimeAuthority(
 		const std::string& strEffectAssetId);
 	static bool_t Contains_ReconstructedRuntimeProgram(
 		const std::string& strEffectAssetId);
 	static bool_t Is_ReconstructedRuntimeProgramAssetId(
 		const std::string& strEffectAssetId);
-	static bool_t Is_ProductManagedEffect(
-		const std::string& strEffectAssetId);
-	static bool_t Admit_ProductCue(
-		const std::string& strAnimationAssetId,
-		const std::string& strClipName,
-		uint32_t iStartMs,
-		const std::string& strEffectAssetId,
-		std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN>& OutToken,
-		std::string& strOutError);
-	static bool_t Admit_ProductSpawn(
-		const std::string& strEffectAssetId,
-		std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN> pToken,
-		std::string& strOutError);
-	static bool_t Validate_ProductCueBinding(
-		const std::string& strEffectAssetId,
-		std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN> pToken,
-		LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass,
-		const std::string& strInputSlot,
-		uint32_t iSkillId,
-		uint32_t iStageIndex,
-		std::string& strOutError);
-	static std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>
-		Find_ProductCueAdmission(
-			const std::string& strAnimationAssetId,
-			const std::string& strClipName,
-			uint32_t iStartMs,
-			const std::string& strEffectAssetId);
-	static std::vector<std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>>
-		Get_ProductCueAdmissions(const std::string& strEffectAssetId);
     static std::vector<std::string> Get_EffectAssetIds();
     static std::vector<std::string> Get_ComponentAssetIds();
 	static std::vector<std::string> Get_RuntimeAuthorityAssetIds();

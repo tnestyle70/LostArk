@@ -2821,7 +2821,7 @@
       "patternId": "VALTAN_WHIRLWIND",
       "stageId": "SPIN",
       "actionId": "valtan.attack.whirlwind.active",
-      "effectAssetId": "effect.valtan.whirlwind.active",
+      "effectAssetId": "effect.valtan.pattern.420633.active",
       "anchorSlotId": "root",
       "followPolicy": "follow",
       "stopPolicy": "cue_end",

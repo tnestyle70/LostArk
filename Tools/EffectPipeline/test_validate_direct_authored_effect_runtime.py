@@ -45,17 +45,17 @@ def install_sealed_document(
     runtime_catalog_path: Path,
     payload: bytes,
     effect_id: str = EFFECT_ID,
-) -> tuple[str, str, Path]:
+) -> tuple[str, Path]:
     content_sha = hashlib.sha256(payload).hexdigest()
     relative_path = f"Authored/{effect_id}.{content_sha}.effect.json"
     destination = runtime_catalog_path.parent / relative_path
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(payload)
-    return relative_path, content_sha, destination
+    return relative_path, destination
 
 
 def make_catalog(runtime_catalog_path: Path) -> dict[str, object]:
-    authored_path, content_sha, _ = install_sealed_document(
+    authored_path, _ = install_sealed_document(
         runtime_catalog_path, make_authored_payload()
     )
     return {
@@ -76,11 +76,6 @@ def make_catalog(runtime_catalog_path: Path) -> dict[str, object]:
                 "effectAssetId": EFFECT_ID,
                 "authoringFormatVersion": 13,
                 "authoredDocumentPath": authored_path,
-                "contentSha256": content_sha,
-                "dependencies": [
-                    {"assetId": "Effect/Fixture/base.dds", "sha256": "a" * 64},
-                    {"assetId": "Effect/Fixture/mesh.wmodel", "sha256": "b" * 64},
-                ],
             },
         ],
     }
@@ -101,39 +96,30 @@ class DirectAuthoredRuntimeValidatorTests(unittest.TestCase):
             make_catalog(self.runtime_catalog_path), self.runtime_catalog_path
         )
 
-        plain = make_catalog(self.runtime_catalog_path)
+        marked = make_catalog(self.runtime_catalog_path)
         marked = {
-            "schema": plain["schema"],
-            "formatVersion": plain["formatVersion"],
-            "productCueAdmissionsRequired": True,
-            "productCuePolicySha256": "c" * 64,
-            "components": plain["components"],
-            "effects": plain["effects"],
+            "schema": marked["schema"],
+            "formatVersion": marked["formatVersion"],
+            "obsoleteIntegrityRequired": True,
+            "obsoleteIntegrityDigest": "c" * 64,
+            "components": marked["components"],
+            "effects": marked["effects"],
         }
-        validator.validate_runtime_catalog(marked, self.runtime_catalog_path)
-
-        marked["productCueAdmissionsRequired"] = False
-        with self.assertRaisesRegex(validator.ContractError, "marker is invalid"):
+        with self.assertRaisesRegex(validator.ContractError, "fields or order"):
             validator.validate_runtime_catalog(marked, self.runtime_catalog_path)
 
-    def test_version_dependency_duplicate_and_order_fail_closed(self) -> None:
+    def test_version_extra_field_duplicate_and_order_fail_closed(self) -> None:
         mutations: list[dict[str, object]] = []
 
         wrong_version = copy.deepcopy(make_catalog(self.runtime_catalog_path))
         wrong_version["effects"][1]["authoringFormatVersion"] = 12
         mutations.append(wrong_version)
 
-        unsafe_path = copy.deepcopy(make_catalog(self.runtime_catalog_path))
-        unsafe_path["effects"][1]["dependencies"][0]["assetId"] = (
-            "Effect/Fixture/../base.dds"
+        extra_integrity_fields = copy.deepcopy(
+            make_catalog(self.runtime_catalog_path)
         )
-        mutations.append(unsafe_path)
-
-        duplicate_dependency = copy.deepcopy(make_catalog(self.runtime_catalog_path))
-        duplicate_dependency["effects"][1]["dependencies"][1]["assetId"] = (
-            "Effect/Fixture/base.dds"
-        )
-        mutations.append(duplicate_dependency)
+        extra_integrity_fields["effects"][1]["contentSha256"] = "a" * 64
+        mutations.append(extra_integrity_fields)
 
         duplicate_effect = copy.deepcopy(make_catalog(self.runtime_catalog_path))
         duplicate_effect["effects"][0]["effectAssetId"] = EFFECT_ID
@@ -154,7 +140,7 @@ class DirectAuthoredRuntimeValidatorTests(unittest.TestCase):
                         mutation, self.runtime_catalog_path
                     )
 
-    def test_missing_escape_wrong_path_and_hash_drift_are_rejected_without_repair(self) -> None:
+    def test_missing_escape_and_wrong_path_are_rejected_without_repair(self) -> None:
         catalog = make_catalog(self.runtime_catalog_path)
         direct = catalog["effects"][1]
         sealed_path = self.runtime_catalog_path.parent / direct["authoredDocumentPath"]
@@ -174,7 +160,7 @@ class DirectAuthoredRuntimeValidatorTests(unittest.TestCase):
             mutated["effects"][1]["authoredDocumentPath"] = invalid_path
             with self.subTest(path=invalid_path):
                 with self.assertRaisesRegex(
-                    validator.ContractError, "sealed canonical path"
+                    validator.ContractError, "unsafe or does not match"
                 ):
                     validator.validate_runtime_catalog(
                         mutated, self.runtime_catalog_path
@@ -183,19 +169,17 @@ class DirectAuthoredRuntimeValidatorTests(unittest.TestCase):
 
         drifted_payload = sealed_payload + b" "
         sealed_path.write_bytes(drifted_payload)
-        with self.assertRaisesRegex(validator.ContractError, "hash mismatch"):
-            validator.validate_runtime_catalog(catalog, self.runtime_catalog_path)
+        validator.validate_runtime_catalog(catalog, self.runtime_catalog_path)
         self.assertEqual(drifted_payload, sealed_path.read_bytes())
 
     def test_identity_bom_duplicate_property_and_cli_crlf_are_rejected(self) -> None:
         wrong_identity = make_catalog(self.runtime_catalog_path)
         direct = wrong_identity["effects"][1]
-        relative_path, content_sha, _ = install_sealed_document(
+        relative_path, _ = install_sealed_document(
             self.runtime_catalog_path,
             make_authored_payload("effect.fixture.wrong"),
         )
         direct["authoredDocumentPath"] = relative_path
-        direct["contentSha256"] = content_sha
         with self.assertRaisesRegex(validator.ContractError, "identity mismatch"):
             validator.validate_runtime_catalog(
                 wrong_identity, self.runtime_catalog_path
@@ -203,11 +187,10 @@ class DirectAuthoredRuntimeValidatorTests(unittest.TestCase):
 
         bom_catalog = make_catalog(self.runtime_catalog_path)
         direct = bom_catalog["effects"][1]
-        relative_path, content_sha, _ = install_sealed_document(
+        relative_path, _ = install_sealed_document(
             self.runtime_catalog_path, b"\xef\xbb\xbf" + make_authored_payload()
         )
         direct["authoredDocumentPath"] = relative_path
-        direct["contentSha256"] = content_sha
         with self.assertRaisesRegex(validator.ContractError, "without BOM"):
             validator.validate_runtime_catalog(bom_catalog, self.runtime_catalog_path)
 
@@ -216,11 +199,10 @@ class DirectAuthoredRuntimeValidatorTests(unittest.TestCase):
         duplicate_payload = make_authored_payload().replace(
             b'  "version": 13,', b'  "version": 13,\n  "version": 13,'
         )
-        relative_path, content_sha, _ = install_sealed_document(
+        relative_path, _ = install_sealed_document(
             self.runtime_catalog_path, duplicate_payload
         )
         direct["authoredDocumentPath"] = relative_path
-        direct["contentSha256"] = content_sha
         with self.assertRaisesRegex(validator.ContractError, "duplicate JSON property"):
             validator.validate_runtime_catalog(
                 duplicate_catalog, self.runtime_catalog_path

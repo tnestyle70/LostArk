@@ -87,6 +87,10 @@ struct EFFECT_EVALUATED_TRAIL_POINT final
 	   current connected trail.  It is independent of point eviction and is
 	   suitable for a later typed tiling-distance consumer. */
 	f32_t fCumulativeDistance = 0.f;
+	/* Source TypeDataRibbon width after StartSize and every admitted size
+	   distribution have been evaluated for this point. Zero means that the
+	   legacy authored start/end-width carrier remains authoritative. */
+	f32_t fSourceWidth = 0.f;
 	/* Only lanes selected by the corresponding mask were evaluated from staged
 	   source distributions or an explicit authored execution carrier. Unselected
 	   color/dynamic lanes are identity/zero placeholders. Source provenance is
@@ -97,10 +101,19 @@ struct EFFECT_EVALUATED_TRAIL_POINT final
 	uint32_t iDynamicParameterComponentMask = 0u;
 };
 
+struct EFFECT_EVALUATED_TRAIL_EDGE_PAIR final
+{
+	float3_t vFirstEdgeWorld{};
+	float3_t vControlPointWorld{};
+	float3_t vSecondEdgeWorld{};
+	EFFECT_EVALUATED_TRAIL_POINT Payload;
+};
+
 struct EFFECT_EVALUATED_TRAIL final
 {
 	const EFFECT_ELEMENT_DESC* pElement = nullptr;
 	std::vector<EFFECT_EVALUATED_TRAIL_POINT> Points;
+	std::vector<EFFECT_EVALUATED_TRAIL_EDGE_PAIR> EdgePairs;
 };
 
 struct EFFECT_EVALUATED_AFTERIMAGE final
@@ -480,6 +493,14 @@ private:
 		ELEMENT_STATE& State,
 		f32_t fFixedDelta,
 		const float4x4_t& RootWorld);
+	bool_t Build_BakedAnimationTrail(
+		const EFFECT_ELEMENT_DESC& Element,
+		const float4x4_t& RootWorld,
+		EFFECT_EVALUATED_TRAIL& OutTrail) const;
+	bool_t Evaluate_BakedEdgeLightWorldPosition(
+		const EFFECT_ELEMENT_DESC& Element,
+		const float4x4_t& RootWorld,
+		float3_t& vOutWorldPosition) const;
 	void Sample_AfterImages(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State,

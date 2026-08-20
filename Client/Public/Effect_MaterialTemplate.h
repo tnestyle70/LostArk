@@ -92,6 +92,10 @@ inline constexpr std::array<std::string_view, 1u>
 	EFFECT_SIMPLE01_SOURCE_TEXTURE_NAMES = {{
 		"emissive_tex"
 	}};
+inline constexpr std::array<std::string_view, 3u>
+	EFFECT_SIMPLE02_SOURCE_TEXTURE_NAMES = {{
+		"emissive_tex", "uv_noise_tex", "emissive_tex_02"
+	}};
 
 inline constexpr std::array<std::string_view, 7u>
 	EFFECT_LINEARFLOW_SOURCE_TEXTURE_NAMES = {{
@@ -110,6 +114,14 @@ inline constexpr std::array<std::string_view, 3u>
 inline constexpr std::array<std::string_view, 2u>
 	EFFECT_WATERTRAIL_SOURCE_TEXTURE_NAMES = {{
 		"maintex", "uv_noise_tex"
+	}};
+inline constexpr std::array<std::string_view, 5u>
+	EFFECT_MAKEFLOW_MESH_SOURCE_TEXTURE_NAMES = {{
+		"opacity_tex", "diff_tex1", "diff_tex2", "color_tex", "flowtex"
+	}};
+inline constexpr std::array<std::string_view, 4u>
+	EFFECT_MAKEFLOW03_SPRITE_SOURCE_TEXTURE_NAMES = {{
+		"diff_tex1", "diff_tex2", "color_tex", "mask_tex"
 	}};
 inline constexpr std::array<std::string_view, 5u>
 	EFFECT_MISSILETRAIL_SOURCE_TEXTURE_NAMES = {{
@@ -238,7 +250,9 @@ enum class EFFECT_STRICT_TYPED_SOURCE_PROFILE : uint8_t
 	MISSILETRAIL,
 	WATERTRAIL,
 	LINEARFLOW_02,
+	MAKEFLOW_02,
 	MAKEFLOW_03,
+	MAKEFLOW_03_SPRITE,
 	RING_01,
 	PARTICLETRAIL_01,
 	PARTICLE_MASTER_01,
@@ -257,6 +271,9 @@ enum class EFFECT_STRICT_TYPED_SOURCE_PROFILE : uint8_t
 	ARTIST_RING07,
 	ARTIST_RINGMASTER01,
 	ARTIST_LIGHTFLARE01,
+	FLOWRIBBON01,
+	SIMPLE01,
+	SIMPLE02,
 	GLASSHOLE02,
 	FLUIDNINJA01,
 	CUSTOMPARTICLE01,
@@ -287,9 +304,7 @@ inline EFFECT_STRICT_TYPED_SOURCE_PROFILE Resolve_EffectStrictTypedSourceProfile
 	{
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MISSILETRAIL;
 	}
-	if (strSourceMaterialPath ==
-			"fx_m_mi_01.fx_mi.fx_h_me_watertrail_01_2_tr" &&
-		Source.strProfileId ==
+	if (Source.strProfileId ==
 			"ue3.material.fx.m.mi.03.fx.m.fx.m.me.watertrail.01.tr.afa4aeba0c50" &&
 		Source.strParentMaterialPath ==
 			"fx_m_mi_03.fx_m.fx_m_me_watertrail_01_tr")
@@ -305,16 +320,26 @@ inline EFFECT_STRICT_TYPED_SOURCE_PROFILE Resolve_EffectStrictTypedSourceProfile
 	{
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::LINEARFLOW_02;
 	}
-	if ((strSourceMaterialPath ==
-			"fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_03_10_tr" ||
-		 strSourceMaterialPath ==
-			"fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_03_06_tr") &&
-		Source.strProfileId ==
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.02.fx.m.fx.k.me.makeflow.02.tr.5059859991f8" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_02.fx_m.fx_k_me_makeflow_02_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MAKEFLOW_02;
+	}
+	if (Source.strProfileId ==
 			"ue3.material.fx.m.mi.k.00.fx.m.fx.k.me.makeflow.03.tr.6e5c0dd36299" &&
 		Source.strParentMaterialPath ==
 			"fx_m_mi_k_00.fx_m.fx_k_me_makeflow_03_tr")
 	{
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MAKEFLOW_03;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.k.00.fx.m.fx.k.pa.makeflow.03.tr.fdf195f33a6c" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_k_00.fx_m.fx_k_pa_makeflow_03_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MAKEFLOW_03_SPRITE;
 	}
 	if (strSourceMaterialPath ==
 			"fx_m_mi_s_00.fx_mi.fx_s_pa_ring_01_1_ts_tr" &&
@@ -425,8 +450,10 @@ inline EFFECT_STRICT_TYPED_SOURCE_PROFILE Resolve_EffectStrictTypedSourceProfile
 	{
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_WORLDOFFSET02;
 	}
-	if (strSourceMaterialPath ==
-			"fx_m_mi_o_00.fx_mi.fx_o_me_fd_01_3_ts_tr" &&
+	if ((strSourceMaterialPath ==
+			"fx_m_mi_o_00.fx_mi.fx_o_me_fd_01_3_ts_tr" ||
+		 strSourceMaterialPath ==
+			"fx_m_mi_w_00.mi.fx_w_pa_fd_01_3_tr") &&
 		Source.strProfileId ==
 			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.fluid.01.tr.99f00cf3e57f" &&
 		Source.strParentMaterialPath ==
@@ -467,6 +494,30 @@ inline EFFECT_STRICT_TYPED_SOURCE_PROFILE Resolve_EffectStrictTypedSourceProfile
 			"bfx_m_mi_00.bfx_m.bfx_c_pa_lightflare_01_ddt_ad")
 	{
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_LIGHTFLARE01;
+	}
+	if ((strSourceMaterialPath ==
+			"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr" ||
+		 strSourceMaterialPath ==
+			"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr") &&
+		Source.strProfileId ==
+			"ue3.material.fx.m.fx.k.flowrib.01.tr.0ca247309b89" &&
+		Source.strParentMaterialPath == "fx_m.fx_k_flowrib_01_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWRIBBON01;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2" &&
+		Source.strParentMaterialPath ==
+			"fx_mastermaterial.fx_mm.fx_mm_simple_01_ad")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::SIMPLE01;
+	}
+	if (Source.strProfileId ==
+			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.02.tr.68704f814ab0" &&
+		Source.strParentMaterialPath ==
+			"fx_mastermaterial.fx_mm.fx_mm_simple_02_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::SIMPLE02;
 	}
 	if (Source.strProfileId ==
 			"ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2" &&
@@ -1147,6 +1198,56 @@ inline bool_t Has_EffectParticleMasterNamedTextureContract(
 	return bHasAlphaCarrier && bHasEmission;
 }
 
+inline bool_t Has_EffectSimple01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_SIMPLE01_SOURCE_TEXTURE_NAMES) &&
+		Is_EffectNamedTextureLaneUnique(Source, "uv_noise_tex");
+}
+
+inline bool_t Has_EffectSimple02NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_SIMPLE02_SOURCE_TEXTURE_NAMES);
+}
+
+inline bool_t Has_EffectMakeFlowMeshNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_MAKEFLOW_MESH_SOURCE_TEXTURE_NAMES);
+}
+
+inline const EFFECT_NAMED_TEXTURE_DESC* Resolve_EffectMakeFlow03SpriteFlowTexture(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	if (!Is_EffectNamedTextureLaneUnique(Source, "flowtex") ||
+		!Is_EffectNamedTextureLaneUnique(Source, "umodel_dependency"))
+	{
+		return nullptr;
+	}
+	const EFFECT_NAMED_TEXTURE_DESC* pNamedFlow =
+		Find_EffectUniqueNamedTexture(Source, "flowtex");
+	const EFFECT_NAMED_TEXTURE_DESC* pDependencyFlow =
+		Find_EffectUniqueNamedTexture(Source, "umodel_dependency");
+	/* The parent graph owns one non-parameter flow texture.  A materialized
+	   role may call it flowtex; legacy source evidence exposes the same single
+	   dependency lane.  Exactly one representation is required so an unrelated
+	   dependency can never be selected by ordering. */
+	return (nullptr != pNamedFlow) != (nullptr != pDependencyFlow) ?
+		(nullptr != pNamedFlow ? pNamedFlow : pDependencyFlow) : nullptr;
+}
+
+inline bool_t Has_EffectMakeFlow03SpriteNamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_MAKEFLOW03_SPRITE_SOURCE_TEXTURE_NAMES) &&
+		nullptr != Resolve_EffectMakeFlow03SpriteFlowTexture(Source);
+}
+
 inline const EFFECT_NAMED_TEXTURE_DESC* Resolve_EffectSpriteWaveCarrierTexture(
 	const EFFECT_SOURCE_MATERIAL_DESC& Source)
 {
@@ -1392,7 +1493,7 @@ inline bool_t Has_EffectLocalCrackNamedTextureContract(
 inline bool_t Has_EffectWaterTrailNamedTextureContract(
 	const EFFECT_SOURCE_MATERIAL_DESC& Source)
 {
-	return Has_EffectNamedTextureContract(
+	return Has_EffectUniqueNamedTextureContract(
 		Source, EFFECT_WATERTRAIL_SOURCE_TEXTURE_NAMES);
 }
 

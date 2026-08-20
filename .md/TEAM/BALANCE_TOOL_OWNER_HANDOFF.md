@@ -5,7 +5,7 @@
 
 ## 1. 지금 바로 기억할 결론
 
-Debug Client에서 `F1 -> Balance Tool`을 열면 왼쪽에서 다섯 character 또는 Valtan을 고르고,
+Debug Client에서 `F1 -> Balance Tool`을 열면 왼쪽에서 여섯 character 또는 Valtan을 고르고,
 가운데에서 수치를 편집하고, 오른쪽에서 실제 Server snapshot과 최근 damage event를 확인할 수 있다.
 스킬 기준은 level 10이다. 단, 원본 table이 SecondaryKey 1만 가진 fixed basic/awakening definition은
 명시적으로 level 1 row를 사용하며 Tool에서 source level을 바꾸지 않는다.
@@ -92,7 +92,9 @@ level 10이 없을 때 후보 전체의 SecondaryKey가 `{1}`인 fixed definitio
 - `Basic stats`: HP, 공격력, 방어력, resource pool/regen
 - `Movement`: 이동 속도
 - `Skills`: input slot별 cooldown, resource cost, damage rate, action/hit time, range, skill movement
-- `Basic attack combo stages`: BA 단계별 duration/hit/input open/input close
+- `Staged action timing`: COMBO/HOLD/COUNTER 단계별 duration/hit/`comboAdvanceMs`/input open/input close
+
+COMBO의 `hitTimeMs`는 damage 시점이고 `comboAdvanceMs`는 필수 caster hit와 projectile spawn이 끝난 뒤 buffered BA가 다음 stage로 갈 수 있는 가장 이른 시점이다. pending MOVE/SKILL은 이 전진을 막고 현재 `actionDurationMs`가 끝날 때 commit된다. 마지막 stage는 `comboAdvanceMs == actionDurationMs`와 닫힌 input window를 유지한다. Balance Tool은 현행 94개 skill의 `ACTIVE/COMBO/HOLD/COUNTER/STANDUP`, player identity 필드, skill `identityCost`, Valtan `introPatternId/serverMotion`을 함께 무손실로 보존해야 한다.
 
 Animation clip 선택은 Balance Tool이 아니라 Animation Tool에서 한다. Balance Tool의 combo stage 수와
 Animation Tool의 BA clip 수는 같아야 하며, 실제 stage 진행은 Server snapshot `iComboStage`가 정한다.

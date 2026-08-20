@@ -892,6 +892,13 @@ def prepare_bind_pose_export(armature):
     armature.data.pose_position = "POSE"
     armature.animation_data_create()
     armature.animation_data.action = None
+    # Befzz's ActorX PSA importer writes the last evaluated pose directly to
+    # PoseBone transforms while constructing Actions.  Detaching the preview
+    # Action therefore does not necessarily restore the PSK bind pose.  Reset
+    # the local pose basis explicitly, then keep the matrix comparison below
+    # as the fail-closed proof that the export really returned to rest.
+    for pose_bone in armature.pose.bones:
+        pose_bone.matrix_basis.identity()
     bpy.context.scene.frame_set(bpy.context.scene.frame_start)
     bpy.context.view_layer.update()
 

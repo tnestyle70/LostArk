@@ -35,9 +35,9 @@ from typing import Any, Iterable
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
-EFFECT_TOOLS = REPOSITORY_ROOT / "Tools" / "EffectPipeline"
+EFFECT_PIPELINE_ROOT = REPOSITORY_ROOT / "Tools" / "EffectPipeline"
 LEVEL_TOOLS = REPOSITORY_ROOT / "Tools" / "LevelPlacementExtractor"
-for path in (EFFECT_TOOLS, LEVEL_TOOLS):
+for path in (EFFECT_PIPELINE_ROOT, LEVEL_TOOLS):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 

@@ -329,6 +329,7 @@ private:
 		shared_ptr<Engine::CModel> pModel;
 		uint32_t iAnimationIndex = 0u;
 		f32_t fTicksPerSecond = 0.f;
+		f32_t fDurationSeconds = 0.f;
 	};
 
 public:

@@ -487,15 +487,14 @@ bool_t CLevel_CharacterSelect::Advance_DeferredClassPresentation()
 		CLASS_PRESENTATION_PREPARATION_STATE::
 			REGISTRATION_FAILURE_ISOLATED ==
 		m_eClassPresentationPreparationState;
-	if (!Is_ProductPrewarmActivationReady(
+	if (!Is_ProductPrewarmTargetActivationReady(
 			Probe, bRegistrationFailureIsolated))
 	{
 		if (bRegistrationFailureIsolated)
 		{
-			m_strStatus = std::string(
-				"Class Effect preparation was isolated; draining ") +
-				std::to_string(Probe.iQueuePendingCount) +
-				" queued Product Effect(s) before presentation commit.";
+			m_strStatus =
+				"Class Effect preparation was isolated; waiting for the "
+				"current Product Effect catalog revision before presentation commit.";
 		}
 		else
 		{
@@ -507,7 +506,7 @@ bool_t CLevel_CharacterSelect::Advance_DeferredClassPresentation()
 				std::to_string(Probe.iTargetCount) +
 				" (selected pending " +
 				std::to_string(Probe.iPendingCount) +
-				", queue pending " +
+				", background pending " +
 				std::to_string(Probe.iQueuePendingCount) + ").";
 		}
 		return true;

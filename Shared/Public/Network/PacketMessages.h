@@ -293,8 +293,8 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_USE_SKILL& message);
 
-	// A HOLD skill leaves its loop when the player lets the key go. The server
-	// still owns when the action ends; this only reports the input edge.
+	// A HOLD skill leaves its loop when the player lets the key go. COMBO input
+	// uses discrete/repeated USE_SKILL commands and does not consume mouse-up.
 	struct C2S_RELEASE_SKILL
 	{
 		std::uint32_t iClientSequence = 0;
