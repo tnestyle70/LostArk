@@ -4,6 +4,7 @@
 #include "Effect_DocumentCodec.h"
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_VisualProgramCorpus.h"
+#include "ProjectDataRoot.h"
 #include <algorithm>
 #include <array>
 #include <cfloat>
@@ -51,6 +52,7 @@ namespace
 			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>, std::less<>>
 		g_VisualProjections;
     uint64_t g_iRuntimeRevision = 0u;
+	uint32_t g_iCatalogOwnerThreadId = 0u;
     std::string g_strStatus = "Effect catalog has not been loaded.";
 
     std::filesystem::path Get_ModuleDirectory()
@@ -165,6 +167,74 @@ namespace
 		if (Mismatch.first != Root.end())
 			return false;
 		OutPath = Candidate;
+		return true;
+	}
+
+	bool Resolve_DebugDirectAuthoredDocumentPath(
+		const std::string& EffectAssetId,
+		const std::filesystem::path& AuthoredPath,
+		std::filesystem::path& OutPath,
+		std::string& strOutError)
+	{
+		OutPath.clear();
+		if (EffectAssetId.empty() || AuthoredPath.empty() ||
+			!AuthoredPath.is_absolute() ||
+			AuthoredPath.filename() !=
+				std::filesystem::path(EffectAssetId + ".effect.json"))
+		{
+			strOutError =
+				"Debug direct authored replacement path or filename is invalid.";
+			return false;
+		}
+
+		const std::filesystem::path AuthoredRoot = Client::CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Effects") / L"Authored");
+		std::error_code Error;
+		const std::filesystem::path CanonicalRoot =
+			std::filesystem::weakly_canonical(AuthoredRoot, Error);
+		if (Error || CanonicalRoot.empty() ||
+			!std::filesystem::is_directory(CanonicalRoot, Error) || Error)
+		{
+			strOutError = "Debug direct authored root is unavailable.";
+			return false;
+		}
+		const std::filesystem::path CanonicalPath =
+			std::filesystem::weakly_canonical(AuthoredPath, Error);
+		if (Error || CanonicalPath.empty() ||
+			!std::filesystem::is_regular_file(CanonicalPath, Error) || Error)
+		{
+			strOutError = "Debug direct authored document is unavailable.";
+			return false;
+		}
+		const std::filesystem::path ExpectedPath =
+			std::filesystem::weakly_canonical(
+				CanonicalRoot / (EffectAssetId + ".effect.json"), Error);
+		if (Error || ExpectedPath.empty() ||
+			!std::filesystem::equivalent(
+				CanonicalPath, ExpectedPath, Error) || Error)
+		{
+			strOutError =
+				"Debug direct authored document escaped its exact authoring path.";
+			return false;
+		}
+
+		OutPath = CanonicalPath;
+		strOutError.clear();
+		return true;
+	}
+
+	bool Validate_DebugCatalogOwnerThread(std::string& strOutError)
+	{
+		const uint32_t CurrentThreadId =
+			static_cast<uint32_t>(GetCurrentThreadId());
+		if (0u == g_iCatalogOwnerThreadId ||
+			CurrentThreadId != g_iCatalogOwnerThreadId)
+		{
+			strOutError =
+				"Debug direct authored replacement must run on the catalog owner/main thread.";
+			return false;
+		}
+		strOutError.clear();
 		return true;
 	}
 
@@ -3890,6 +3960,7 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 	g_VisualPrograms = std::move(StagedVisualPrograms);
 	g_VisualProjections = std::move(StagedVisualProjections);
 	g_iRuntimeRevision = iStagedCatalogRevision;
+	g_iCatalogOwnerThreadId = static_cast<uint32_t>(GetCurrentThreadId());
 	const size_t iLazyDirectDocumentCount = std::count_if(
 		g_DirectAuthoredSources.begin(), g_DirectAuthoredSources.end(),
 		[](const auto& Entry)
@@ -3911,6 +3982,300 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
     strOutStatus = g_strStatus;
 	StatusGuard.bCommitted = true;
     return true;
+}
+
+bool_t Client::CEffectCatalog::Stage_DebugDirectAuthoredReplacement(
+	const std::string& strEffectAssetId,
+	const std::filesystem::path& AuthoredPath,
+	std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT>& OutCandidate,
+	std::string& strOutStatus)
+{
+	OutCandidate.reset();
+#if !defined(_DEBUG)
+	(void)strEffectAssetId;
+	(void)AuthoredPath;
+	strOutStatus =
+		"Direct authored runtime replacement is available only in a Debug Client.";
+	return false;
+#else
+	if (!Validate_DebugCatalogOwnerThread(strOutStatus) ||
+		0u == g_iRuntimeRevision || strEffectAssetId.empty())
+	{
+		if (strOutStatus.empty())
+			strOutStatus = "Effect runtime catalog is not loaded.";
+		return false;
+	}
+
+	const auto SourceIterator =
+		g_DirectAuthoredSources.find(strEffectAssetId);
+	if (SourceIterator == g_DirectAuthoredSources.end() ||
+		nullptr == SourceIterator->second ||
+		g_Assemblies.contains(strEffectAssetId) ||
+		g_RuntimeAuthorities.contains(strEffectAssetId) ||
+		g_RuntimeProgramEntries.contains(strEffectAssetId) ||
+		Is_ReconstructedRuntimeProgramAssetId(strEffectAssetId))
+	{
+		strOutStatus =
+			"Debug replacement target is not one direct-authored runtime Effect.";
+		return false;
+	}
+
+	std::filesystem::path CanonicalAuthoredPath;
+	if (!Resolve_DebugDirectAuthoredDocumentPath(
+			strEffectAssetId, AuthoredPath, CanonicalAuthoredPath, strOutStatus))
+	{
+		return false;
+	}
+
+	DIRECT_AUTHORED_RUNTIME_SOURCE CandidateSource;
+	CandidateSource.DocumentPath = std::move(CanonicalAuthoredPath);
+	EFFECT_DOCUMENT_DESC ParsedDocument;
+	std::string Error;
+	if (!Parse_DirectAuthoredRuntimeDocument(
+			strEffectAssetId, CandidateSource, ParsedDocument, Error))
+	{
+		strOutStatus = "Debug direct authored document rejected: " + Error;
+		return false;
+	}
+
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> StagedDocument =
+		std::make_shared<const EFFECT_DOCUMENT_DESC>(std::move(ParsedDocument));
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		StagedProjection;
+	const auto ProgramIterator = g_VisualPrograms.find(strEffectAssetId);
+	if (ProgramIterator != g_VisualPrograms.end())
+	{
+		if (nullptr == g_pVisualProgramCorpus ||
+			nullptr == ProgramIterator->second ||
+			!CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
+				*g_pVisualProgramCorpus, *StagedDocument,
+				StagedProjection, Error) || nullptr == StagedProjection ||
+			!StagedProjection->Is_Valid() ||
+			StagedProjection->Get_EffectAssetId() != strEffectAssetId ||
+			StagedProjection->Get_ProjectionKind() !=
+				ProgramIterator->second->eProjectionKind ||
+			StagedProjection->Get_DocumentShared().get() == nullptr)
+		{
+			strOutStatus =
+				"Debug direct authored visual projection rejected: " +
+				(Error.empty() ? std::string("invalid projection identity") : Error);
+			return false;
+		}
+		StagedDocument = StagedProjection->Get_DocumentShared();
+	}
+
+	const auto PreviousDocument = g_Effects.find(strEffectAssetId);
+	const auto PreviousProjection = g_VisualProjections.find(strEffectAssetId);
+	const bool_t bHadPreviousDocument = PreviousDocument != g_Effects.end();
+	const bool_t bHadPreviousProjection =
+		PreviousProjection != g_VisualProjections.end();
+	if ((bHadPreviousProjection && !bHadPreviousDocument) ||
+		(ProgramIterator != g_VisualPrograms.end() &&
+		 bHadPreviousDocument && !bHadPreviousProjection) ||
+		(ProgramIterator == g_VisualPrograms.end() && bHadPreviousProjection))
+	{
+		strOutStatus =
+			"Loaded direct-authored document/projection state is inconsistent.";
+		return false;
+	}
+
+	std::shared_ptr<EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT> Staged(
+		new EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT());
+	Staged->m_strEffectAssetId = strEffectAssetId;
+	Staged->m_iRuntimeRevision = g_iRuntimeRevision;
+	Staged->m_iStagingThreadId =
+		static_cast<uint32_t>(GetCurrentThreadId());
+	Staged->m_ExpectedSealedSourcePath =
+		SourceIterator->second->DocumentPath;
+	Staged->m_bHadPreviousDocument = bHadPreviousDocument;
+	Staged->m_bHadPreviousVisualProjection = bHadPreviousProjection;
+	if (bHadPreviousDocument)
+		Staged->m_pPreviousDocument = PreviousDocument->second;
+	if (bHadPreviousProjection)
+		Staged->m_pPreviousVisualProjection = PreviousProjection->second;
+	Staged->m_pDocument = std::move(StagedDocument);
+	Staged->m_pVisualProjection = std::move(StagedProjection);
+	Staged->m_strPreviousCatalogStatus = g_strStatus;
+	OutCandidate = std::move(Staged);
+	strOutStatus = "Staged direct-authored runtime replacement for " +
+		strEffectAssetId + " at existing catalog revision " +
+		std::to_string(g_iRuntimeRevision) + ".";
+	return true;
+#endif
+}
+
+bool_t Client::CEffectCatalog::Commit_DebugDirectAuthoredReplacement(
+	const std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT>&
+		pCandidate,
+	std::string& strOutStatus)
+{
+#if !defined(_DEBUG)
+	(void)pCandidate;
+	strOutStatus =
+		"Direct authored runtime replacement is available only in a Debug Client.";
+	return false;
+#else
+	if (!Validate_DebugCatalogOwnerThread(strOutStatus) ||
+		nullptr == pCandidate || nullptr == pCandidate->m_pDocument ||
+		pCandidate->m_strEffectAssetId.empty() ||
+		pCandidate->m_iStagingThreadId !=
+			static_cast<uint32_t>(GetCurrentThreadId()) ||
+		pCandidate->m_iRuntimeRevision != g_iRuntimeRevision ||
+		pCandidate->m_pDocument->strEffectAssetId !=
+			pCandidate->m_strEffectAssetId)
+	{
+		if (strOutStatus.empty())
+			strOutStatus =
+				"Debug direct authored replacement candidate is stale or invalid.";
+		return false;
+	}
+
+	const std::string& EffectAssetId = pCandidate->m_strEffectAssetId;
+	const auto SourceIterator = g_DirectAuthoredSources.find(EffectAssetId);
+	if (SourceIterator == g_DirectAuthoredSources.end() ||
+		nullptr == SourceIterator->second ||
+		SourceIterator->second->DocumentPath !=
+			pCandidate->m_ExpectedSealedSourcePath)
+	{
+		strOutStatus =
+			"Debug direct authored replacement source metadata changed after staging.";
+		return false;
+	}
+
+	const auto CurrentDocument = g_Effects.find(EffectAssetId);
+	const auto CurrentProjection = g_VisualProjections.find(EffectAssetId);
+	const bool_t bHasCurrentDocument = CurrentDocument != g_Effects.end();
+	const bool_t bHasCurrentProjection =
+		CurrentProjection != g_VisualProjections.end();
+	if (bHasCurrentDocument != pCandidate->m_bHadPreviousDocument ||
+		(bHasCurrentDocument && CurrentDocument->second.get() !=
+			pCandidate->m_pPreviousDocument.get()) ||
+		bHasCurrentProjection !=
+			pCandidate->m_bHadPreviousVisualProjection ||
+		(bHasCurrentProjection && CurrentProjection->second.get() !=
+			pCandidate->m_pPreviousVisualProjection.get()))
+	{
+		strOutStatus =
+			"Debug direct authored runtime pointers changed after staging.";
+		return false;
+	}
+
+	if (pCandidate->m_bHadPreviousDocument)
+		CurrentDocument->second = pCandidate->m_pDocument;
+	else if (!g_Effects.emplace(
+			EffectAssetId, pCandidate->m_pDocument).second)
+	{
+		strOutStatus =
+			"Debug direct authored document commit identity became duplicate.";
+		return false;
+	}
+
+	if (nullptr != pCandidate->m_pVisualProjection)
+	{
+		if (pCandidate->m_bHadPreviousVisualProjection)
+			CurrentProjection->second = pCandidate->m_pVisualProjection;
+		else if (!g_VisualProjections.emplace(
+				EffectAssetId, pCandidate->m_pVisualProjection).second)
+		{
+			if (pCandidate->m_bHadPreviousDocument)
+				g_Effects.find(EffectAssetId)->second =
+					pCandidate->m_pPreviousDocument;
+			else
+				g_Effects.erase(EffectAssetId);
+			strOutStatus =
+				"Debug direct authored projection commit identity became duplicate.";
+			return false;
+		}
+	}
+
+	g_strStatus = "Debug hot-reloaded direct-authored Effect " +
+		EffectAssetId + " at unchanged catalog revision " +
+		std::to_string(g_iRuntimeRevision) +
+		"; active occurrences retained their previous document.";
+	strOutStatus = g_strStatus;
+	return true;
+#endif
+}
+
+bool_t Client::CEffectCatalog::Restore_DebugDirectAuthoredReplacement(
+	const std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT>&
+		pCandidate,
+	std::string& strOutStatus)
+{
+#if !defined(_DEBUG)
+	(void)pCandidate;
+	strOutStatus =
+		"Direct authored runtime replacement is available only in a Debug Client.";
+	return false;
+#else
+	if (!Validate_DebugCatalogOwnerThread(strOutStatus) ||
+		nullptr == pCandidate || nullptr == pCandidate->m_pDocument ||
+		pCandidate->m_iStagingThreadId !=
+			static_cast<uint32_t>(GetCurrentThreadId()) ||
+		pCandidate->m_iRuntimeRevision != g_iRuntimeRevision)
+	{
+		if (strOutStatus.empty())
+			strOutStatus =
+				"Debug direct authored restore candidate is stale or invalid.";
+		return false;
+	}
+
+	const std::string& EffectAssetId = pCandidate->m_strEffectAssetId;
+	const auto SourceIterator = g_DirectAuthoredSources.find(EffectAssetId);
+	const auto CurrentDocument = g_Effects.find(EffectAssetId);
+	const auto CurrentProjection = g_VisualProjections.find(EffectAssetId);
+	const bool_t bHasCurrentProjection =
+		CurrentProjection != g_VisualProjections.end();
+	if (SourceIterator == g_DirectAuthoredSources.end() ||
+		nullptr == SourceIterator->second ||
+		SourceIterator->second->DocumentPath !=
+			pCandidate->m_ExpectedSealedSourcePath ||
+		CurrentDocument == g_Effects.end() ||
+		CurrentDocument->second.get() != pCandidate->m_pDocument.get() ||
+		bHasCurrentProjection !=
+			(nullptr != pCandidate->m_pVisualProjection) ||
+		(bHasCurrentProjection && CurrentProjection->second.get() !=
+			pCandidate->m_pVisualProjection.get()))
+	{
+		strOutStatus =
+			"Debug direct authored replacement cannot restore changed runtime pointers.";
+		return false;
+	}
+
+	if (pCandidate->m_bHadPreviousDocument)
+		CurrentDocument->second = pCandidate->m_pPreviousDocument;
+	else
+		g_Effects.erase(CurrentDocument);
+
+	if (pCandidate->m_bHadPreviousVisualProjection)
+	{
+		if (bHasCurrentProjection)
+			CurrentProjection->second =
+				pCandidate->m_pPreviousVisualProjection;
+		else if (!g_VisualProjections.emplace(
+				EffectAssetId,
+				pCandidate->m_pPreviousVisualProjection).second)
+		{
+			if (pCandidate->m_bHadPreviousDocument)
+				g_Effects.find(EffectAssetId)->second = pCandidate->m_pDocument;
+			else
+				g_Effects.emplace(EffectAssetId, pCandidate->m_pDocument);
+			strOutStatus =
+				"Debug direct authored previous projection restore became duplicate.";
+			return false;
+		}
+	}
+	else if (bHasCurrentProjection)
+	{
+		g_VisualProjections.erase(CurrentProjection);
+	}
+
+	g_strStatus = pCandidate->m_strPreviousCatalogStatus;
+	strOutStatus = "Restored previous direct-authored runtime pointers for " +
+		EffectAssetId + " at catalog revision " +
+		std::to_string(g_iRuntimeRevision) + ".";
+	return true;
+#endif
 }
 
 std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>
@@ -4303,5 +4668,6 @@ void Client::CEffectCatalog::Clear()
 	g_pVisualProgramCorpus.reset();
 	g_VisualPrograms.clear();
 	g_VisualProjections.clear();
+	g_iCatalogOwnerThreadId = 0u;
     g_strStatus = "Effect catalog cleared.";
 }
