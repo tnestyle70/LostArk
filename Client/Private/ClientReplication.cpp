@@ -7,6 +7,7 @@
 #include "CombatHUDViewModel.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
+#include "Model.h"
 #include "NetworkManager.h"
 #include "MonsterPresentationAssetService.h"
 #include "Npc.h"
@@ -497,6 +498,12 @@ void Client::CClientReplication::Set_SkillHitAreaDebugVisible(
 		if (nullptr != character)
 			character->Set_SkillHitAreaDebugVisible(isVisible);
 	}
+	for (auto& [netEntityId, presentation] : m_WorldEntities)
+	{
+		(void)netEntityId;
+		if (std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
+			valtan->Set_PatternHitAreaDebugVisible(isVisible);
+	}
 }
 #endif
 
@@ -752,6 +759,27 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		presentation.strEncounterId = spawned.strEncounterId;
 		presentation.fCollisionRadius = spawned.fCollisionRadius;
 		presentation.pNpc = npc;
+		/* An entity that spawns mid-action (a raid Esther summon) must show
+		its action clip from the very first rendered frame; waiting for the
+		next snapshot leaves it one interval in the idle pose at the caster's
+		feet before the clip teleports it into its authored entrance. */
+		const auto spawnActionClip =
+			actor->actionClips.find(spawned.strActionId);
+		if (spawnActionClip != actor->actionClips.end() &&
+			npc->Set_Animation(
+				spawnActionClip->second.front().c_str(), false))
+		{
+			presentation.strActiveActionId = spawned.strActionId;
+			presentation.iActionClipIndex = 0u;
+			presentation.strCurrentClip = spawnActionClip->second.front();
+			if (const std::shared_ptr<Engine::CModel> model =
+				npc->Get_Model())
+			{
+				model->Play_Animation(0.f);
+			}
+			CCombatHUDViewModel::Get().Apply_EstherCutinAction(
+				spawned.strArchetypeId, spawnActionClip->second);
+		}
 #ifdef _DEBUG
 		npc->Set_CombatColliderDebugVisible(
 			m_isCombatColliderDebugVisible);
@@ -905,6 +933,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 #ifdef _DEBUG
 	valtan->Set_CombatColliderDebugVisible(
 		m_isCombatColliderDebugVisible);
+	valtan->Set_PatternHitAreaDebugVisible(
+		m_isSkillHitAreaDebugVisible);
 #endif
 	const auto [iter, inserted] = m_WorldEntities.emplace(
 		spawned.iNetEntityId,
@@ -1097,27 +1127,66 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				continue;
 			}
 			/* Server-driven NPC actions (raid Esther summons). An action the
-			catalog maps plays once; anything else stands in the idle clip, so
-			a plain placement NPC without actionClips never switches at all. */
+			catalog maps plays its clip chain once, each clip starting when the
+			previous finishes; anything else stands in the idle clip, so a
+			plain placement NPC without actionClips never switches at all. */
 			const NPC_ACTOR_ENTRY* actor =
 				CActorCatalog::Find_Npc(iter->second.strArchetypeId);
 			if (nullptr == actor || actor->actionClips.empty())
 				continue;
-			const std::string* clip = &actor->idleClip;
-			bool_t loop = true;
 			const auto actionClip =
 				actor->actionClips.find(entity.strActionId);
-			if (actionClip != actor->actionClips.end())
+			if (actionClip == actor->actionClips.end())
 			{
-				clip = &actionClip->second;
-				loop = false;
+				iter->second.strActiveActionId.clear();
+				iter->second.iActionClipIndex = 0u;
+				if (iter->second.strCurrentClip != actor->idleClip)
+				{
+					if (!npc->Set_Animation(actor->idleClip.c_str(), true))
+						allSucceeded = false;
+					else
+						iter->second.strCurrentClip = actor->idleClip;
+				}
+				continue;
 			}
-			if (iter->second.strCurrentClip != *clip)
+			const std::vector<std::string>& chain = actionClip->second;
+			if (iter->second.strActiveActionId != entity.strActionId)
 			{
-				if (!npc->Set_Animation(clip->c_str(), loop))
+				if (!npc->Set_Animation(chain.front().c_str(), false))
+				{
 					allSucceeded = false;
-				else
-					iter->second.strCurrentClip = *clip;
+					continue;
+				}
+				iter->second.strActiveActionId = entity.strActionId;
+				iter->second.iActionClipIndex = 0u;
+				iter->second.strCurrentClip = chain.front();
+				CCombatHUDViewModel::Get().Apply_EstherCutinAction(
+					iter->second.strArchetypeId, chain);
+			}
+			else if (iter->second.iActionClipIndex + 1u < chain.size())
+			{
+				const std::shared_ptr<Engine::CModel> model =
+					npc->Get_Model();
+				f32_t position = 0.f;
+				f32_t duration = 0.f;
+				if (nullptr != model &&
+					model->Get_AnimationProgress(
+						model->Get_CurrentAnimIndex(),
+						position, duration) &&
+					duration > 0.f && position >= duration)
+				{
+					const std::string& next =
+						chain[iter->second.iActionClipIndex + 1u];
+					if (!npc->Set_Animation(next.c_str(), false))
+					{
+						allSucceeded = false;
+					}
+					else
+					{
+						++iter->second.iActionClipIndex;
+						iter->second.strCurrentClip = next;
+					}
+				}
 			}
 		}
 		else if (WORLD_ENTITY_KIND::MONSTER == iter->second.eKind)

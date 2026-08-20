@@ -11283,7 +11283,8 @@ void Client::CEffect_Tool::Refresh_AnimationClipLabels(
         for (const BOSS_PATTERN_ANIMATION_BINDING& Binding :
             Bindings.Bindings)
         {
-            ActionsByClip[Binding.strClipName].push_back(Binding.strActionId);
+            for (const std::string& ClipName : Binding.Clips)
+                ActionsByClip[ClipName].push_back(Binding.strActionId);
         }
         size_t iLabeledClipCount = 0u;
         for (uint32_t iAnimation = 0u;
@@ -20782,8 +20783,10 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 							BossBinding->strActionId;
 					});
 				if (AnimationBinding == AnimationBindings.Bindings.end() ||
-					AnimationBinding->strClipName !=
-						BossBinding->strRuntimeClipName)
+					AnimationBinding->Clips.end() == std::find(
+						AnimationBinding->Clips.begin(),
+						AnimationBinding->Clips.end(),
+						BossBinding->strRuntimeClipName))
 				{
 					m_strPreviewAnimationStatus =
 						"Valtan Effect action/clip binding drifted; preview failed closed.";

@@ -169,6 +169,11 @@ namespace LostArk::Shared
 		std::string strArchetypeId;
 		std::string strEncounterId;
 		std::string strPlacementId;
+		/* The entity's action at the spawn moment, same id space as the
+		snapshot's strActionId. An entity that spawns mid-action (a raid Esther
+		summon) presents its clip from its very first frame instead of standing
+		one snapshot interval in the idle clip. Empty = spawns idle. */
+		std::string strActionId;
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;

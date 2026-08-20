@@ -37,19 +37,25 @@ void LostArk::Server::CEstherSkillSystem::Reset()
 LostArk::Server::ESTHER_USE_REJECTION
 LostArk::Server::CEstherSkillSystem::Try_Consume(
 	const std::uint8_t slotIndex,
-	std::string& outArchetypeId)
+	const ESTHER_ROSTER_ENTRY*& outEntry)
 {
 	if (!m_isEnabled)
 		return ESTHER_USE_REJECTION::DISABLED_WORLD;
-	// Valtan roster order is Sillian, Wei, Bahuntur. Only Sillian's summon
-	// assets are cooked; the other two slots stay rejected until their
-	// extraction lands and must not fall back to slot 1.
-	if (1u != slotIndex)
+	const ESTHER_ROSTER_ENTRY* pEntry = nullptr;
+	for (const ESTHER_ROSTER_ENTRY& entry : ESTHER_ROSTER)
+	{
+		if (entry.iSlotIndex == slotIndex)
+		{
+			pEntry = &entry;
+			break;
+		}
+	}
+	if (nullptr == pEntry)
 		return ESTHER_USE_REJECTION::UNSUPPORTED_SLOT;
 	if (m_iGauge < GAUGE_MAXIMUM)
 		return ESTHER_USE_REJECTION::GAUGE_NOT_FULL;
 
 	Reset();
-	outArchetypeId = "NPC_59030";
+	outEntry = pEntry;
 	return ESTHER_USE_REJECTION::NONE;
 }

@@ -380,19 +380,24 @@ HRESULT CLoader::Ready_For_ValtanArena()
 	the frame the caster presses the key. This list mirrors the server's
 	CEstherSkillSystem roster and moves into a data contract with it. */
 	Set_Status(TEXT("VALTAN: esther summon presentation"));
-	if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
-		m_pDevice,
-		m_pContext,
-		ETOUI(LEVEL::VALTAN_ARENA),
-		"NPC_59030")))
+	for (const char* pEstherArchetypeId :
+		{ "NPC_59030", "NPC_58700", "NPC_59060" })
 	{
-		/* The summon payload lives in the team-managed Resources folder, so a
-		machine that has not received it yet must still be able to enter the
-		raid. Only the Sillian presentation is isolated: the gauge, the Server
-		skill and every other arena contract are untouched. */
-		OutputDebugStringA(
-			"[Loader][NpcPresentation] VALTAN esther summon presentation is "
-			"unavailable (NPC_59030); the arena loads without it.\n");
+		if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+			m_pDevice,
+			m_pContext,
+			ETOUI(LEVEL::VALTAN_ARENA),
+			pEstherArchetypeId)))
+		{
+			/* The summon payload lives in the team-managed Resources folder, so
+			a machine that has not received it yet must still be able to enter
+			the raid. Only that summon's presentation is isolated: the gauge,
+			the Server skill and every other arena contract are untouched. */
+			OutputDebugStringA(
+				(std::string("[Loader][NpcPresentation] VALTAN esther summon "
+					"presentation is unavailable (") + pEstherArchetypeId +
+					"); the arena loads without it.\n").c_str());
+		}
 	}
 	Set_Status(TEXT("VALTAN: deploy environment prototypes"));
 	if (FAILED(Ready_DeployPropArea(

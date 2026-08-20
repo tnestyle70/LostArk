@@ -203,6 +203,55 @@ void PS_MAIN_SHADOW(VS_OUT input)
         discard;
 }
 
+float3 g_CutinLightDirection = float3(-0.45f, -0.75f, 0.35f);
+
+float4 PS_MAIN_SCREEN_CUTIN(VS_OUT input) : SV_TARGET0
+{
+    float4 diffuse = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+    if (diffuse.a < 0.3f)
+        discard;
+
+    float3 normal = normalize(input.vNormal.xyz);
+    if (0 != g_HasNormalTexture)
+    {
+        float4 encodedNormal =
+            g_NormalTexture.Sample(LinearSampler, input.vTexcoord);
+        float3 tangentNormal;
+        if (encodedNormal.b <= 0.0001f)
+        {
+            float2 tangentXY = encodedNormal.rg * 2.f - 1.f;
+            float tangentZ = sqrt(saturate(1.f - dot(tangentXY, tangentXY)));
+            tangentNormal = float3(tangentXY, tangentZ);
+        }
+        else
+        {
+            tangentNormal = normalize(encodedNormal.xyz * 2.f - 1.f);
+        }
+        float3x3 tangentToWorld = float3x3(
+            normalize(input.vTangent.xyz),
+            normalize(input.vBinormal.xyz) * -1.f,
+            normal);
+        normal = normalize(mul(tangentNormal, tangentToWorld));
+    }
+
+    const float3 cameraPosition =
+        -mul((float3x3)g_ViewMatrix, g_ViewMatrix[3].xyz);
+    const float3 toCamera = normalize(cameraPosition - input.vWorldPos.xyz);
+    const float3 light = normalize(-g_CutinLightDirection);
+    const float diffuseLight = saturate(dot(normal, light));
+    const float hemisphere = 0.38f + saturate(normal.y) * 0.18f;
+    const float rim = pow(1.f - saturate(dot(normal, toCamera)), 3.f) * 0.12f;
+
+    float3 color = diffuse.rgb * (hemisphere + diffuseLight * 0.72f) + rim;
+    if (0 != g_HasEmissiveTexture)
+    {
+        float3 emissive =
+            g_EmissiveTexture.Sample(LinearSampler, input.vTexcoord).rgb;
+        color += emissive * g_EmissiveColor.rgb * g_EmissiveIntensity;
+    }
+    return float4(color, 1.f);
+}
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -248,5 +297,15 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_EFFECT_MODEL_CUE_MASKED();
+    }
+
+    pass ScreenCutin
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_SCREEN_CUTIN();
     }
 }

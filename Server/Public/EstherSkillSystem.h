@@ -13,19 +13,28 @@ namespace LostArk::Server
 	contract). Numbers live here as constants until the real charge mechanic is
 	decided and promoted into a Data/Balance contract. */
 
-	// Timeline the room drives on the summoned entity. The server only speaks
-	// these semantic stage ids; the client maps them to clips through the
+	// The one semantic action the room drives on the summoned entity. The
+	// server only speaks this id; the client maps it to clips through the
 	// NpcCatalog actionClips contract.
-	inline constexpr const char* ESTHER_ACTION_APPEAR = "esther.appear";
 	inline constexpr const char* ESTHER_ACTION_STRIKE = "esther.strike";
-	inline constexpr const char* ESTHER_ACTION_LEAVE = "esther.leave";
 
-	inline constexpr std::uint32_t ESTHER_APPEAR_MS = 800u;
-	// npc_att_battle_7_01 measures 94 frames at 30 fps.
-	inline constexpr std::uint32_t ESTHER_STRIKE_MS = 3200u;
-	inline constexpr std::uint32_t ESTHER_LEAVE_MS = 1500u;
-	// World units per second the summon rises during the leave stage.
-	inline constexpr float ESTHER_LEAVE_RISE_PER_SECOND = 12.f;
+	/* Valtan roster order is Sillian, Wei, Bahuntur. Every summon's authored
+	clip carries its own entrance and exit (Sillian
+	npc_evt1_sk_swordofchampion_bk 157 frames at 30 fps, Wei npc_sk_dochul 213,
+	Bahuntur npc_sk_breathofarcturus 121), so the summon spawns straight into
+	the strike and despawns the moment its clip ends. */
+	struct ESTHER_ROSTER_ENTRY
+	{
+		std::uint8_t iSlotIndex;
+		const char* pArchetypeId;
+		std::uint32_t iStrikeMs;
+	};
+	inline constexpr ESTHER_ROSTER_ENTRY ESTHER_ROSTER[] =
+	{
+		{ 1u, "NPC_59030", 5300u },
+		{ 2u, "NPC_58700", 7100u },
+		{ 3u, "NPC_59060", 4100u },
+	};
 
 	enum class ESTHER_USE_REJECTION : std::uint8_t
 	{
@@ -55,11 +64,12 @@ namespace LostArk::Server
 		void Reset();
 
 		/* Validates a slot against the world roster and the full-gauge rule.
-		On NONE the gauge has been consumed to zero and outArchetypeId names
-		the summon the room must spawn. Never partially consumes. */
+		On NONE the gauge has been consumed to zero and outEntry names the
+		roster row (summon archetype and stage timeline) the room must spawn.
+		Never partially consumes. */
 		[[nodiscard]] ESTHER_USE_REJECTION Try_Consume(
 			std::uint8_t slotIndex,
-			std::string& outArchetypeId);
+			const ESTHER_ROSTER_ENTRY*& outEntry);
 
 	private:
 		static constexpr std::uint32_t GAUGE_MAXIMUM = 1000u;

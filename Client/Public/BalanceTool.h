@@ -96,6 +96,7 @@ private:
 		float hitHalfWidth = 0.f;
 		std::uint32_t hitCount = 0;
 		std::uint32_t hitIntervalMs = 0;
+		std::uint32_t hitDelayMs = 0;
 		std::string damageProfileId;
 		float pushRangeM = 0.f;
 		std::uint32_t pushMs = 0;

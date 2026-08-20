@@ -810,6 +810,7 @@ namespace
 		source.strArchetypeId = "BOSS_VALTAN";
 		source.strEncounterId = "ENCOUNTER_VALTAN";
 		source.strPlacementId = "boss_valtan_1";
+		source.strActionId = "esther.strike";
 		source.fPositionX = 151.25f;
 		source.fPositionY = 22.97f;
 		source.fPositionZ = -121.75f;
@@ -831,6 +832,7 @@ namespace
 			decoded.strArchetypeId == source.strArchetypeId &&
 			decoded.strEncounterId == source.strEncounterId &&
 			decoded.strPlacementId == source.strPlacementId &&
+			decoded.strActionId == source.strActionId &&
 			decoded.fPositionX == source.fPositionX &&
 			decoded.fYawDegrees == source.fYawDegrees &&
 			decoded.fCollisionRadius == source.fCollisionRadius,
@@ -857,6 +859,18 @@ namespace
 		testRunner.Require(
 			Write_Message(emptyPlacementWriter, invalid),
 			"Allow Dynamic Spawn Without Placement ID");
+		invalid = source;
+		invalid.strActionId = "../esther.strike";
+		CPacketWriter invalidActionWriter;
+		testRunner.Require(
+			!Write_Message(invalidActionWriter, invalid),
+			"Reject Unstable World Spawn Action ID");
+		invalid = source;
+		invalid.strActionId.clear();
+		CPacketWriter emptyActionWriter;
+		testRunner.Require(
+			Write_Message(emptyActionWriter, invalid),
+			"Allow Idle Spawn Without Action ID");
 		invalid = source;
 		invalid.fCollisionRadius = 0.f;
 		CPacketWriter zeroRadiusWriter;
@@ -1983,12 +1997,12 @@ namespace
 	void Test_WorldDestructionProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			24u == NETWORK_PROTOCOL_VERSION &&
+			28u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Protocol V24 Packet Types");
+			"World Destruction Protocol V28 Packet Types");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
