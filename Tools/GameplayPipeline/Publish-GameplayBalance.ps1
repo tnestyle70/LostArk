@@ -749,7 +749,7 @@ $bossRows = [Collections.Generic.List[string]]::new()
 foreach ($boss in @($bossDocument.bosses)) {
 	Assert-ExactProperties $boss @(
 		'archetypeId','encounterId','displayName','maximumHp','maximumHealthBars','attackPower','collisionRadius',
-		'engageDistance','moveSpeed','phaseTwoHpPercent') 'boss profile'
+		'engageDistance','moveSpeed','phaseTwoHpPercent','armorPlates') 'boss profile'
 	foreach ($stringField in @('archetypeId','encounterId','displayName')) {
 		Assert-JsonString $boss.$stringField "boss $stringField"
 	}
@@ -783,6 +783,26 @@ foreach ($boss in @($bossDocument.bosses)) {
         (Format-InvariantFloat $boss.engageDistance 'boss engageDistance'),
         (Format-InvariantFloat $boss.moveSpeed 'boss moveSpeed'),
         [uint32]$boss.phaseTwoHpPercent) -join "`t"))
+	# A plate is a destructible piece of this boss: it mitigates while intact and
+	# only loses durability inside a GROGGY stage. plateIndex is also the client
+	# part order, so it must stay dense and start at zero.
+	$plates = @($boss.armorPlates)
+	if ($plates.Count -gt 4) {
+		throw "Boss declares more armour plates than the client can wear: $($boss.archetypeId)"
+	}
+	for ($plateIndex = 0; $plateIndex -lt $plates.Count; $plateIndex++) {
+		$plate = $plates[$plateIndex]
+		Assert-ExactProperties $plate @('plateIndex','durability','defense') 'boss armour plate'
+		Assert-JsonInteger $plate.plateIndex 'boss armour plateIndex' 0 3
+		Assert-JsonInteger $plate.durability 'boss armour durability' 1 ([uint32]::MaxValue)
+		Assert-JsonInteger $plate.defense 'boss armour defense' 1 10000
+		if ([uint32]$plate.plateIndex -ne $plateIndex) {
+			throw "Boss armour plateIndex must be dense and ordered: $($boss.archetypeId)"
+		}
+		$bossRows.Add((@(
+			'BOSSARMOR', $boss.archetypeId, [uint32]$plate.plateIndex,
+			[uint32]$plate.durability, [uint32]$plate.defense) -join "`t"))
+	}
 }
 
 $encounterDocument = Read-JsonDocument 'Data/Encounters/Valtan/ValtanEncounter.json'
@@ -825,6 +845,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 	$patternProperties = @(
 		'patternId','displayName','actionId','sourceActionIds','selectionMode',
 		'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
+		'armorRequirement','phaseRequirement','invulnerableWhileRunning',
 		'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',
 		'stages')
 	$hasServerMotion = $null -ne $pattern.PSObject.Properties['serverMotion']
@@ -874,6 +895,26 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				[double][uint32]$encounterDocument.fixedTickHz) / 1000.0)
 	}
 	$selectionMode = [string]$pattern.selectionMode
+	Assert-JsonString $pattern.armorRequirement "pattern armorRequirement"
+	$armorRequirement = [string]$pattern.armorRequirement
+	if ($armorRequirement -cnotin @('ANY','ARMORED','STRIPPED')) {
+		throw "Pattern armorRequirement is invalid: $($pattern.patternId)"
+	}
+	if ($selectionMode -ne 'NORMAL' -and $armorRequirement -cne 'ANY') {
+		throw "Only a weighted pattern may require an armour state: $($pattern.patternId)"
+	}
+	Assert-JsonString $pattern.phaseRequirement "pattern phaseRequirement"
+	$phaseRequirement = [string]$pattern.phaseRequirement
+	if ($phaseRequirement -cnotin @('ANY','PHASE_ONE','PHASE_TWO')) {
+		throw "Pattern phaseRequirement is invalid: $($pattern.patternId)"
+	}
+	if ($selectionMode -ne 'NORMAL' -and $phaseRequirement -cne 'ANY') {
+		throw "Only a weighted pattern may require a phase: $($pattern.patternId)"
+	}
+	if ($pattern.invulnerableWhileRunning -isnot [bool]) {
+		throw "Pattern invulnerableWhileRunning must be a JSON Boolean: $($pattern.patternId)"
+	}
+	$invulnerable = $(if ([bool]$pattern.invulnerableWhileRunning) { 1 } else { 0 })
 	if ($selectionMode -eq 'NORMAL') {
 		if ([uint32]$pattern.minimumHealthBar -lt 1 -or
 			[uint32]$pattern.maximumHealthBar -lt [uint32]$pattern.minimumHealthBar -or
@@ -900,7 +941,8 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		[uint32]$pattern.selectionWeight, [uint32]$pattern.maximumConsecutiveUses,
 		(Format-InvariantFloat $pattern.minimumRange "pattern minimumRange"),
 		(Format-InvariantFloat $pattern.maximumRange "pattern maximumRange"),
-		@($pattern.stages).Count) -join "`t"))
+		@($pattern.stages).Count, $armorRequirement,
+		$phaseRequirement, $invulnerable) -join "`t"))
 	# sourceActionIds[0] is the pattern entry skill. The remaining IDs are
 	# continuations/variants and are still checked above, but only the entry
 	# skill owns selection cooldown/range/approach/turn metadata.
@@ -962,12 +1004,12 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		Assert-ExactProperties $stage @(
 			'stageId','actionId','stageKind','durationMs','hitShape',
 			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength','hitHalfWidth',
-			'hitCount','hitIntervalMs','serverDamageProfileId',
+			'hitCount','hitIntervalMs','hitDelayMs','serverDamageProfileId',
 			'pushRangeM','pushMs','knockdown','downMs') 'encounter pattern stage'
 		foreach ($field in @('stageId','actionId','stageKind','hitShape','serverDamageProfileId')) {
 			Assert-JsonString $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field"
 		}
-		foreach ($field in @('durationMs','hitCount','hitIntervalMs','pushMs','downMs')) {
+		foreach ($field in @('durationMs','hitCount','hitIntervalMs','hitDelayMs','pushMs','downMs')) {
 			Assert-JsonInteger $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field" 0 ([uint32]::MaxValue)
 		}
 		Assert-JsonNumber $stage.pushRangeM "pattern $($pattern.patternId) stage $stageIndex pushRangeM"
@@ -980,7 +1022,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		Assert-StableId $stage.stageId 'pattern stageId'
 		Assert-StableId $stage.actionId 'pattern stage actionId'
 		if (-not $stageIds.Add([string]$stage.stageId) -or [uint32]$stage.durationMs -eq 0 -or
-			[string]$stage.stageKind -notin @('WINDUP','ACTIVE','RECOVERY')) {
+			[string]$stage.stageKind -notin @('WINDUP','ACTIVE','RECOVERY','GROGGY','PART_BREAK')) {
 			throw "Pattern stage identity is invalid: $($pattern.patternId) stage $stageIndex"
 		}
 		$shape = [string]$stage.hitShape
@@ -991,12 +1033,13 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		$halfWidth = [double]$stage.hitHalfWidth
 		$hitCount = [uint32]$stage.hitCount
 		$hitIntervalMs = [uint32]$stage.hitIntervalMs
+		$hitDelayMs = [uint32]$stage.hitDelayMs
 		$damageProfile = [string]$stage.serverDamageProfileId
 		$zeroShape = $outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 -and
 			$length -eq 0.0 -and $halfWidth -eq 0.0
 		$validShape = $false
 		switch ($shape) {
-			'NONE' { $validShape = $zeroShape -and $hitCount -eq 0 -and $hitIntervalMs -eq 0 -and $damageProfile.Length -eq 0 }
+			'NONE' { $validShape = $zeroShape -and $hitCount -eq 0 -and $hitIntervalMs -eq 0 -and $hitDelayMs -eq 0 -and $damageProfile.Length -eq 0 }
 			'CIRCLE' { $validShape = $outer -gt 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 -and $length -eq 0.0 -and $halfWidth -eq 0.0 }
 			'RING' { $validShape = $outer -gt $inner -and $inner -gt 0.0 -and $angle -eq 0.0 -and $length -eq 0.0 -and $halfWidth -eq 0.0 }
 			'CONE' { $validShape = $angle -gt 0.0 -and $angle -le 180.0 -and $length -gt 0.0 -and $outer -eq 0.0 -and $inner -eq 0.0 -and $halfWidth -eq 0.0 }
@@ -1034,7 +1077,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			(Format-InvariantFloat $angle 'stage hitAngleDegrees'),
 			(Format-InvariantFloat $length 'stage hitLength'),
 			(Format-InvariantFloat $halfWidth 'stage hitHalfWidth'),
-			$hitCount, $hitIntervalMs,
+			$hitCount, $hitIntervalMs, $hitDelayMs,
 			$(if ($damageProfile.Length -eq 0) { '-' } else { $damageProfile }),
 			(Format-InvariantSignedFloat $pushRangeM 'stage pushRangeM'),
 			$pushMs,
@@ -1322,6 +1365,91 @@ foreach ($wallContact in @($wallContactDocument.actions)) {
 		'PATTERNWALLCONTACT', $encounterDocument.encounterId,
 		$ownerPattern.patternId, [uint32]$stageIndex,
 		$contactStage.stageId, $contactStage.actionId) -join "`t"))
+}
+
+# A charge stage drives the boss forward until it meets an impact receiver, and
+# the collision ends the stage early instead of the clock. That is what turns a
+# wall into a stun, so it is authored per stage rather than inferred from a
+# pattern name the Server would have to hard-code.
+$chargeImpactDocument = Read-JsonDocument `
+	'Data/Encounters/Valtan/ValtanChargeImpactActions.json'
+Assert-ExactProperties $chargeImpactDocument @(
+	'schema','formatVersion','encounterId','bossArchetypeId','actions') `
+	'Valtan charge impact document'
+Assert-JsonString $chargeImpactDocument.schema 'Valtan charge impact schema'
+Assert-JsonInteger $chargeImpactDocument.formatVersion `
+	'Valtan charge impact formatVersion' 1 1
+Assert-JsonString $chargeImpactDocument.encounterId `
+	'Valtan charge impact encounterId'
+Assert-JsonString $chargeImpactDocument.bossArchetypeId `
+	'Valtan charge impact bossArchetypeId'
+if ([string]$chargeImpactDocument.schema -cne `
+	'lostark.valtan-charge-impact-actions' -or
+	[uint32]$chargeImpactDocument.formatVersion -ne 1 -or
+	[string]$chargeImpactDocument.encounterId -cne `
+		[string]$encounterDocument.encounterId -or
+	[string]$chargeImpactDocument.bossArchetypeId -cne `
+		[string]$encounterDocument.bossArchetypeId -or
+	$chargeImpactDocument.actions -isnot [Array] -or
+	@($chargeImpactDocument.actions).Count -eq 0 -or
+	@($chargeImpactDocument.actions).Count -gt 16) {
+	throw 'Valtan charge impact document header is invalid.'
+}
+$chargeImpactActionIds =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($chargeImpact in @($chargeImpactDocument.actions)) {
+	Assert-ExactProperties $chargeImpact @('patternId','stageId','actionId') `
+		'Valtan charge impact action'
+	foreach ($field in @('patternId','stageId','actionId')) {
+		Assert-JsonString $chargeImpact.$field "Valtan charge impact $field"
+		Assert-StableId ([string]$chargeImpact.$field) "Valtan charge impact $field"
+	}
+	$chargeActionId = [string]$chargeImpact.actionId
+	if (-not $chargeImpactActionIds.Add($chargeActionId)) {
+		throw "Valtan charge impact action is duplicated: $chargeActionId"
+	}
+	$chargeOwners = @($encounterDocument.patterns | Where-Object {
+		[string]$_.patternId -ceq [string]$chargeImpact.patternId })
+	if ($chargeOwners.Count -ne 1) {
+		throw "Valtan charge impact pattern is missing: $($chargeImpact.patternId)"
+	}
+	$chargeOwner = $chargeOwners[0]
+	$chargeStageIndex = -1
+	for ($candidateIndex = 0;
+		$candidateIndex -lt @($chargeOwner.stages).Count; ++$candidateIndex) {
+		$candidate = $chargeOwner.stages[$candidateIndex]
+		if ([string]$candidate.stageId -ceq [string]$chargeImpact.stageId -and
+			[string]$candidate.actionId -ceq $chargeActionId) {
+			if ($chargeStageIndex -ne -1) {
+				throw "Valtan charge impact stage is duplicated: $chargeActionId"
+			}
+			$chargeStageIndex = $candidateIndex
+		}
+	}
+	if ($chargeStageIndex -lt 0) {
+		throw "Valtan charge impact stage/action join failed: $chargeActionId"
+	}
+	# The stun the charge opens is the next stage. The PART_BREAK stage replaces
+	# the ordinary recovery when a plate comes off, so it only has to exist once
+	# in the pattern; the clock never walks into it.
+	$groggyIndex = $chargeStageIndex + 1
+	$partBreakCount = @($chargeOwner.stages | Where-Object {
+		[string]$_.stageKind -ceq 'PART_BREAK' }).Count
+	if ($groggyIndex -ge @($chargeOwner.stages).Count -or
+		[string]$chargeOwner.stages[$groggyIndex].stageKind -cne 'GROGGY') {
+		throw "Valtan charge impact stage is not followed by a GROGGY stage: $chargeActionId"
+	}
+	if ($partBreakCount -ne 1) {
+		throw "Valtan charge impact pattern needs exactly one PART_BREAK stage: $chargeActionId"
+	}
+	if ([double]$chargeOwner.maximumRange -le 0.0) {
+		throw "Valtan charge impact pattern has no travel distance: $chargeActionId"
+	}
+	$patternRows.Add((@(
+		'PATTERNSTAGECHARGE', $encounterDocument.encounterId,
+		$chargeOwner.patternId, [uint32]$chargeStageIndex,
+		$chargeOwner.stages[$chargeStageIndex].stageId,
+		$chargeOwner.stages[$chargeStageIndex].actionId) -join "`t"))
 }
 
 # The intro pattern runs exactly once per encounter epoch, before normal
@@ -1732,7 +1860,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t11`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t12`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
@@ -1757,4 +1885,4 @@ if ($Mode -eq 'Publish') {
 $patternCount = @($encounterDocument.patterns).Count
 $stageCount = @($encounterDocument.patterns | ForEach-Object { @($_.stages).Count } |
 	Measure-Object -Sum).Sum
-Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skills, $($damageRows.Count) damage profiles, $($bossRows.Count) bosses, $patternCount boss patterns, $stageCount pattern stages, $($auditionDocument.steps.Count) Valtan Debug audition occurrences."
+Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skills, $($damageRows.Count) damage profiles, $($bossIds.Count) bosses, $($bossRows.Count - $bossIds.Count) boss armour plates, $patternCount boss patterns, $stageCount pattern stages, $($auditionDocument.steps.Count) Valtan Debug audition occurrences."

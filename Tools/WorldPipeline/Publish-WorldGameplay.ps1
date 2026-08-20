@@ -157,6 +157,7 @@ function Get-EncounterProfiles {
 			$patternProperties = @(
 				'patternId','displayName','actionId','sourceActionIds','selectionMode',
 				'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
+				'armorRequirement','phaseRequirement','invulnerableWhileRunning',
 				'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',
 				'stages')
 			if ($null -ne $pattern.PSObject.Properties['serverMotion']) {

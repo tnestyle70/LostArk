@@ -328,7 +328,9 @@ bool Client::CBalanceTool::Reload()
 		const DATA_JSON_VALUE* stages = Field(value, "stages", DATA_JSON_TYPE::ARRAY);
 		if (!IsExactObject(value, { "patternId", "displayName", "actionId", "sourceActionIds",
 			"selectionMode", "minimumHealthBar", "maximumHealthBar",
-			"triggerHealthBar", "triggerOrder", "selectionWeight", "maximumConsecutiveUses",
+			"triggerHealthBar", "triggerOrder", "armorRequirement",
+			"phaseRequirement", "invulnerableWhileRunning",
+			"selectionWeight", "maximumConsecutiveUses",
 			"minimumRange", "maximumRange", "stages" }) ||
 			nullptr == sourceActions || sourceActions->Get_Array().empty() ||
 			nullptr == stages || stages->Get_Array().empty() ||
@@ -340,6 +342,16 @@ bool Client::CBalanceTool::Reload()
 			!ReadU32(value, "maximumHealthBar", row.maximumHealthBar) ||
 			!ReadU32(value, "triggerHealthBar", row.triggerHealthBar) ||
 			!ReadU32(value, "triggerOrder", row.triggerOrder) ||
+			!ReadString(value, "armorRequirement", row.armorRequirement) ||
+			(row.armorRequirement != "ANY" &&
+				row.armorRequirement != "ARMORED" &&
+				row.armorRequirement != "STRIPPED") ||
+			!ReadString(value, "phaseRequirement", row.phaseRequirement) ||
+			(row.phaseRequirement != "ANY" &&
+				row.phaseRequirement != "PHASE_ONE" &&
+				row.phaseRequirement != "PHASE_TWO") ||
+			nullptr == Field(value, "invulnerableWhileRunning",
+				DATA_JSON_TYPE::BOOLEAN) ||
 			!ReadU32(value, "selectionWeight", row.selectionWeight) ||
 			!ReadU32(value, "maximumConsecutiveUses", row.maximumConsecutiveUses) ||
 			!ReadFloat(value, "minimumRange", row.minimumRange) ||
@@ -365,7 +377,7 @@ bool Client::CBalanceTool::Reload()
 			if (!IsExactObject(stageValue, { "stageId", "actionId", "stageKind",
 				"durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
 				"hitAngleDegrees", "hitLength", "hitHalfWidth", "hitCount",
-				"hitIntervalMs", "serverDamageProfileId",
+				"hitIntervalMs", "hitDelayMs", "serverDamageProfileId",
 				"pushRangeM", "pushMs", "knockdown", "downMs" }) ||
 				!ReadString(stageValue, "stageId", stage.stageId) ||
 				!ReadString(stageValue, "actionId", stage.actionId) ||
@@ -379,6 +391,7 @@ bool Client::CBalanceTool::Reload()
 				!ReadFloat(stageValue, "hitHalfWidth", stage.hitHalfWidth) ||
 				!ReadU32(stageValue, "hitCount", stage.hitCount) ||
 				!ReadU32(stageValue, "hitIntervalMs", stage.hitIntervalMs) ||
+				!ReadU32(stageValue, "hitDelayMs", stage.hitDelayMs) ||
 				!ReadString(stageValue, "serverDamageProfileId", stage.damageProfileId) ||
 				!ReadFloat(stageValue, "pushRangeM", stage.pushRangeM) ||
 				!ReadU32(stageValue, "pushMs", stage.pushMs) ||
@@ -392,6 +405,9 @@ bool Client::CBalanceTool::Reload()
 			stage.knockdown = knockdownValue->Get_Boolean();
 			row.stages.push_back(std::move(stage));
 		}
+		row.invulnerableWhileRunning =
+			Field(value, "invulnerableWhileRunning",
+				DATA_JSON_TYPE::BOOLEAN)->Get_Boolean();
 		patterns.push_back(std::move(row));
 	}
 	for (const DATA_JSON_VALUE& value : stateArray->Get_Array())
@@ -716,6 +732,8 @@ void Client::CBalanceTool::RenderBossEditor()
 						MarkDirty(EditU32("Hit count", stage.hitCount, 1u, 100u));
 						MarkDirty(EditU32("Hit interval ms", stage.hitIntervalMs,
 							1u == stage.hitCount ? 0u : 1u, 600000u));
+						MarkDirty(EditU32("Hit delay ms", stage.hitDelayMs,
+							0u, 600000u));
 						std::uint32_t* rate = FindDamageRate(stage.damageProfileId);
 						if (nullptr != rate)
 						{
@@ -954,10 +972,12 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 					stage.hitHalfWidth > 0.f : false))));
 			const bool validHit = none ?
 				(0u == stage.hitCount && 0u == stage.hitIntervalMs &&
+					0u == stage.hitDelayMs &&
 					stage.damageProfileId.empty()) :
 				(stage.hitCount > 0u &&
 					(1u == stage.hitCount ? 0u == stage.hitIntervalMs :
 						stage.hitIntervalMs > 0u) &&
+					stage.hitDelayMs < stage.durationMs &&
 					static_cast<std::uint64_t>(stage.hitCount - 1u) *
 						stage.hitIntervalMs < stage.durationMs &&
 					nullptr != FindDamageRate(stage.damageProfileId));
@@ -1143,6 +1163,12 @@ bool Client::CBalanceTool::Save()
 			<< ",\n      \"maximumHealthBar\": " << p.maximumHealthBar
 			<< ",\n      \"triggerHealthBar\": " << p.triggerHealthBar
 			<< ",\n      \"triggerOrder\": " << p.triggerOrder
+			<< ",\n      \"armorRequirement\": "
+			<< Quote(p.armorRequirement)
+			<< ",\n      \"phaseRequirement\": "
+			<< Quote(p.phaseRequirement)
+			<< ",\n      \"invulnerableWhileRunning\": "
+			<< (p.invulnerableWhileRunning ? "true" : "false")
 			<< ",\n      \"selectionWeight\": " << p.selectionWeight
 			<< ",\n      \"maximumConsecutiveUses\": " << p.maximumConsecutiveUses
 			<< ",\n      \"minimumRange\": " << std::setprecision(9) << p.minimumRange
@@ -1163,6 +1189,7 @@ bool Client::CBalanceTool::Save()
 				<< ", \"hitHalfWidth\": " << stage.hitHalfWidth
 				<< ", \"hitCount\": " << stage.hitCount
 				<< ", \"hitIntervalMs\": " << stage.hitIntervalMs
+				<< ", \"hitDelayMs\": " << stage.hitDelayMs
 				<< ", \"serverDamageProfileId\": " << Quote(stage.damageProfileId)
 				<< ", \"pushRangeM\": " << std::setprecision(9) << stage.pushRangeM
 				<< ", \"pushMs\": " << stage.pushMs

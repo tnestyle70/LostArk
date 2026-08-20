@@ -88,6 +88,10 @@ struct VALTAN_PATTERN_PREVIEW_PLAY_ITEM final
 	uint32_t iStepNumber = 0u;
 	uint32_t iStepCount = 0u;
 	bool_t bPatternMarker = false;
+	/* Source stage playback length from the .animnotify header, seconds. Zero
+	means play the clip's full native model duration; shorter cuts the clip
+	early and longer loops it, the way the source stage drives it. */
+	f32_t fAuthoredDurationSeconds = 0.f;
 
 	bool operator==(const VALTAN_PATTERN_PREVIEW_PLAY_ITEM&) const = default;
 };

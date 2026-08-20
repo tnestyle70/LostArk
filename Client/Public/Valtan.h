@@ -28,6 +28,13 @@ public:
 	static constexpr const tchar_t* WEAPON_PART_TAG = TEXT("Part_Weapon_R");
 	static constexpr const char_t* WEAPON_SOCKET_BONE = "b_wp_r_01";
 	static constexpr f32_t MODEL_VIEW_SCALE = 1.f;
+	/* Armour parts are authored on the body rig, so they are skinned parts
+	with no socket bone. The index is the authored order in BossCatalog and it
+	is the same index the snapshot names a broken plate by. */
+	static constexpr uint32_t MAX_ARMOR_PART_COUNT =
+		LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES;
+	static wstring_t Build_ArmorModelPrototypeTag(size_t iArmorIndex);
+	static wstring_t Build_ArmorPartTag(size_t iArmorIndex);
 
 	typedef struct tagValtanDesc : public CContainerObject::CONTAINEROBJECT_DESC
 	{
@@ -87,12 +94,16 @@ public:
 		uint32_t iServerTick,
 		uint32_t iActionStartTick,
 		uint32_t iPatternSequence,
-		uint32_t iPatternStageIndex);
+		uint32_t iPatternStageIndex,
+		uint8_t iBrokenArmorMask);
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 #ifdef _DEBUG
 	void Set_NavigationDebugVisible(bool_t isVisible) { m_isNavigationDebugVisible = isVisible; }
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
+	}
+	void Set_PatternHitAreaDebugVisible(bool_t isVisible) {
+		m_isPatternHitAreaDebugVisible = isVisible;
 	}
 #endif
 
@@ -109,6 +120,12 @@ private:
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	shared_ptr<CModel> m_pBodyModelCom = { nullptr };
 	shared_ptr<Engine::CTransform> m_pBodyVisualRootCom = { nullptr };
+	/* Attached armour part tags in authored order. Empty when the boss
+	wears none. */
+	vector<wstring_t> m_ArmorPartTags;
+	/* Last mask this presentation applied, so a steady snapshot does not walk
+	the part list every tick. */
+	uint8_t m_iAppliedArmorBreakMask = 0u;
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
 	CNavPathFollower m_PathFollower;
@@ -121,11 +138,12 @@ private:
 	uint32_t m_iServerPatternSequence = 0u;
 	uint32_t m_iServerPatternStageIndex = 0u;
 	f32_t m_fServerActionAgeSeconds = 0.f;
-	/* Presentation only: pattern stage actionId -> original clip, from
-	Data/Animation/Authored/Valtan/Valtan.patternbindings.json. A missing or
-	corrupt document leaves this empty and every pattern falls back to the
-	catalog's generic clips; it never blocks the spawn. */
-	std::unordered_map<std::string, std::string> m_PatternClipByActionId;
+	/* Presentation only: pattern stage actionId -> ordered original clip
+	chain, from Data/Animation/Authored/Valtan/Valtan.patternbindings.json. A
+	missing or corrupt document leaves this empty and every pattern falls back
+	to the catalog's generic clips; it never blocks the spawn. */
+	std::unordered_map<std::string, std::vector<std::string>>
+		m_PatternClipByActionId;
 	/* Product presentation only: exact authoritative stage actionId -> Effect
 	   cues.  This map is replaced only after the cue document, encounter join,
 	   runtime catalog and root/bone anchors all validate.  Animation bindings
@@ -134,16 +152,41 @@ private:
 		std::vector<VALTAN_PATTERN_EFFECT_CUE>> m_PatternEffectCuesByActionId;
 	std::unordered_set<std::string> m_SpawnedPatternEffectBindingIds;
 #ifdef _DEBUG
+	/* Display copy of the encounter stage hit shapes, keyed by the snapshot's
+	   stage actionId. The Server owns the judgment; this only mirrors it as a
+	   wire, exactly like the player skill hit area debug. */
+	struct PATTERN_HIT_AREA_DEBUG
+	{
+		std::string strHitShape;
+		f32_t fOuterRadius = 0.f;
+		f32_t fInnerRadius = 0.f;
+		f32_t fAngleDegrees = 0.f;
+		f32_t fLength = 0.f;
+		f32_t fHalfWidth = 0.f;
+		uint32_t iHitCount = 0u;
+		uint32_t iHitIntervalMs = 0u;
+	};
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };
+	bool_t m_isPatternHitAreaDebugVisible = { true };
+	std::unordered_map<std::string, PATTERN_HIT_AREA_DEBUG>
+		m_PatternHitAreaByActionId;
 #endif
 
 private:
 	HRESULT Ready_PartObjects();
+	void Ready_ArmorParts();
+	/* Hides exactly the plates the Server reports broken. Presentation never
+	decides this: a plate comes off because durability reached zero. */
+	void Apply_ArmorBreakState(uint8_t iBrokenArmorMask);
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();
 	void Load_PatternEffectCues();
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
+#ifdef _DEBUG
+	void Load_PatternHitAreaDebug();
+	void Draw_PatternHitAreaDebug() const;
+#endif
 	PATH_RESULT_CODE Request_PathToTarget(fvector_t vGoalPosition);
 	void Set_ChaseState(bool_t isChasing);
 

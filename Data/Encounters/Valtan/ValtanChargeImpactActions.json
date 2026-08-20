@@ -1,0 +1,10 @@
+{
+  "schema": "lostark.valtan-charge-impact-actions",
+  "formatVersion": 1,
+  "encounterId": "ENCOUNTER_VALTAN",
+  "bossArchetypeId": "BOSS_VALTAN",
+  "actions": [
+    { "patternId": "VALTAN_ARMOR_BREAK_OPENING", "stageId": "WALL_CHARGE", "actionId": "valtan.mechanic.armor-break-opening.charge" },
+    { "patternId": "VALTAN_DASH_CHARGE", "stageId": "CHARGE", "actionId": "valtan.attack.dash-charge.active" }
+  ]
+}

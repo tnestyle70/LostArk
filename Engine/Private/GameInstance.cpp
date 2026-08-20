@@ -559,7 +559,13 @@ bool_t CGameInstance::isIn_Frustum_InWorldSpace(fvector_t vWorldPoint, f32_t fRa
 }
 
 void CGameInstance::Release_Engine()
-{	
+{
+	/* A level can restore a presentation camera from its destructor. Keep the
+	   pipeline, frustum and renderer alive until that teardown has completed;
+	   otherwise CCamera::End_PresentationOverride writes its final view/proj
+	   matrices through an already-destroyed CPipeLine. This also joins a
+	   Loading level's worker before any service it may still reference. */
+	m_pLevel_Manager.reset();
 	m_pProfiler.reset();
 	m_pFrustum.reset();
 	m_pShadow.reset();
@@ -569,8 +575,6 @@ void CGameInstance::Release_Engine()
 	m_pLight_Manager.reset();
 	m_pPipeLine.reset();
 	m_pRenderer.reset();
-	/* ���� Loading Level�� ������ Loader �����带 ���� �����Ų��. */
-	m_pLevel_Manager.reset();
 	m_pObject_Manager.reset();
 	m_pPhysics_Manager.reset();
 	m_pPrototype_Manager.reset();

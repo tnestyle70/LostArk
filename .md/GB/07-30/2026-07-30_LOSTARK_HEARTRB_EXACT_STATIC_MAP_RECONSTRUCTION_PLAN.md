@@ -2378,3 +2378,168 @@ v1 호환은 기존 `BG_RAD_VALTAN_A.mapplacements`를 별도 테스트 복사�
 6. 파괴 전/후 asset과 encounter event를 연결한다.
 
 이 후속 gate가 끝나기 전에는 “발탄 맵 전체 gameplay 복원 완료”라고 기록하지 않는다. 그러나 같은 `areaId -> Catalog -> placement/document -> layer` 계약을 사용하므로 아브렐슈드, 일리아칸, 카멘, 카오스 던전 시작 마을, 대륙·퀘스트 성벽도 exact ImportTable/ExportTable 근거로 반복할 수 있다.
+
+## 7. 2026-08-20 사용자 참조 사진 복구 적용 계획
+
+### 현재 실제 반영 상태와 이번 경계
+
+사용자가 제공한 두 장의 기준 사진은 제품 UI나 영상 자막을 복제하는 지시가 아니라, 발탄
+아레나의 지형·조명·안개층·카메라 구도를 비교하는 시각 참고 자료다. 이번 변경은 기존
+Server 권위 패턴·벽/바닥 파괴·collision/navigation을 바꾸지 않고 다음 다섯 항목만 닫는다.
+
+1. 별도 추출본 `LV_LUT_HEARTRB_ED_LAND01` Landscape component 6개는 메인 아레나에
+   병합하지 않는다. 사용자 실행 화면에서 이 6개가 검은색·갈색 직사각형 판으로 기존 바닥과
+   폐허를 덮는 회귀가 확인됐으므로, authoring/runtime 메인 placement에서 정확히 6개만 제거하고
+   기존 13,186개 source baseline을 보존한다.
+2. 발탄 전용 rendering profile을 사진의 차가운 청회색 저조도 방향으로 1차 보정하고 shadow
+   focus를 실제 아레나 중심으로 옮긴다. 이 수치는 자동 visual PASS가 아니라 사용자 육안 조정의
+   시작값이다.
+3. Debug F1 Valtan audition panel에 사진 1의 탑다운과 사진 2의 외곽 전경을 반복 비교하는
+   presentation-only 카메라를 추가한다. 새 전역 단축키를 만들지 않고 F6와 Server cinematic의
+   기존 소유권을 보존한다.
+4. 탑다운 기준 뷰에서 기존 `VALTAN_PHASE_SPACEHOLE` proxy 3개만 임시 표시하고 종료 시 authored
+   hidden 상태로 원자적으로 복원한다. 이 proxy는 exact texture/position을 쓰지만 원본 UE3
+   ParticleSystem topology는 아니므로 제품 완성 효과로 승격하지 않는다.
+5. 사진의 후방 네 철탑은 SL04 source 조립체의 상부, 하부 받침과 체인이 원본 transform에서
+   함께 맞물리는 attachment를 보존한다. 상부 47개씩만 올리는 phase registration은 약 `11.54m`
+   seam으로 구조물을 분리하므로 사용하지 않는다. source 188개를 원본 위치에서 표시하고 tower
+   overlay와 tower visibility override를 만들지 않는다.
+
+원본 SL04의 volume cloud 27개와 탑 fire particle은 source component까지 확인됐지만, 현재
+strict Effect runtime에 `VOLUME_CLOUD` evaluator와 q_firesh 3-layer material closure가 없어 이번
+변경에 근사 quad나 잘못된 material을 넣지 않는다. 이 항목은 아래 후속 Gate로 남긴다.
+
+### 수정 파일과 한 줄 책임
+
+| 구분 | 절대 경로 | 책임 |
+|---|---|---|
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapplacements` | Landscape 6행이 없고 rear source 188개를 original transform/visible로 보존한 13,186 source baseline |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.maplights.json` | 후방 4개와 station11 light를 source Y/provenance로 복원 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Data/Maps/MapCatalog.json` | HeartRB 기대 placement 수를 실제 13,186으로 동기화 |
+| 생성 갱신 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.mapplacements` | publisher가 만든 동일 13,186행 runtime 문서 |
+| 생성 갱신 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.maplights.json` | publisher가 만든 source-exact light runtime 문서 |
+| 추가 | `C:/Users/USER/source/졸업팀폴/LostArk/Tools/LevelPlacementExtractor/heartrb_valtan_tower_phase_registration.json` | 4×47 source ID와 원본 attachment/light 정본, tower overlay 0개 |
+| 추가 | `C:/Users/USER/source/졸업팀폴/LostArk/Tools/LevelPlacementExtractor/sync_valtan_tower_phase_registration.py` | placement source 복원과 overlay/visibility/light 4문서 transactional sync |
+| 추가 | `C:/Users/USER/source/졸업팀폴/LostArk/Tools/LevelPlacementExtractor/test_sync_valtan_tower_phase_registration.py` | exact join, idempotence, drift, rollback 회귀 6개 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Tools/LevelPlacementExtractor/heartrb_valtan_core_overlay.json` | 기존 phase proxy 6개만 보존하고 tower overlay 제거 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Tools/LevelPlacementExtractor/heartrb_environment_runtime.json` | tower override 0개, 기존 atmosphere visibility override 2개만 보존 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Data/Rendering/Authored/RenderingProfiles.json` | 발탄 전용 냉색/저조도/arena-centered shadow authoring |
+| 생성 갱신 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json` | rendering publisher 출력 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Public/MapPlacementRuntime.h` | Debug sourceLevel visibility transaction 선언 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Private/MapPlacementRuntime.cpp` | 정확히 3개 proxy가 모두 있을 때만 표시하고 실패 시 authored flag rollback |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Public/Level_ValtanArena.h` | Debug reference camera 상태와 복원 API 선언 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Private/Level_ValtanArena.cpp` | 두 기준 pose, F1 버튼, F6/Server cinematic/exit 복원 연결 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Tools/ClientFrontendHarness/Private/ClientFrontendHarness.cpp` | Debug-only, 단일 camera owner, proxy rollback, 금지 hotkey 회귀 |
+| 추가 | `C:/Users/USER/source/졸업팀폴/LostArk/.md/GB/08-20/2026-08-20_VALTAN_REFERENCE_ARENA_VISUAL_RESTORE_RESULT.md` | 실제 검증과 수동 visual 경계 |
+
+### Landscape 회귀 복구 계약
+
+Landscape 제거 뒤 source baseline과 최종 authoring/runtime placement 문서는 모두 `13,186`행이다.
+tower registration overlay는 0개이며 source placement 수에 아무것도 더하지 않는다.
+`LV_LUT_HEARTRB_ED_LAND01:landscape:export:` source ID가 한 줄도 없어야 한다. 별도
+`LV_LUT_HEARTRB_ED_LANDSCAPE.mapassets/.mapplacements`와 6개 WModel은 추출 조사 자료로
+유지하지만 제품 메인 문서에 병합하지 않는다. asset catalog의 기존 275개 정의도 그대로 두고,
+미배치 asset이라는 이유만으로 물리 리소스를 삭제하지 않는다.
+
+이 회귀는 사진에서 표시한 1~4번 외곽 탑 복구와 별개의 문제다. 검은 판 제거를 탑 복구로
+간주하지 않는다. 또한 SL04와 SL00 floor 높이 차이만으로 상부 tower 47개를 독립 이동해서는
+안 된다. 상부, 하부 받침과 체인은 source transform에서 이미 한 조립체로 붙어 있으며 상부만
+`+10.6108742m` 올린 이전 registration은 약 `11.54m` seam으로 네 탑을 공중에 분리했다.
+
+### 후방 네 철탑 source attachment 계약
+
+`heartrb_valtan_tower_phase_registration.json`은 `pointlight_106/21/104/102` 네 station에서
+원본 SL04 상부 조립체 47개씩을 exact source ID로 열거한다. 이 목록은 Y offset 대상이 아니라
+원본 attachment를 보존해야 하는 회귀 감시 집합이다. sync 결과는 다음과 같다.
+
+1. source 188개는 원본 provenance/transform을 보존하고 `visible=1`로 둔다.
+2. `VALTAN_TOWER_REGISTERED` overlay는 0개다. Y offset과 저 ID 복제 placement를 만들지 않는다.
+3. tower visibility override는 0개다. environment runtime의 전체 override는 기존 atmosphere용
+   2개만 남고, core overlay manifest는 기존 phase proxy 6개만 남는다.
+4. 후방 4개와 전방 우측 `pointlight_11` light는 모두 `Y=24.734033m`를 유지하며 maplight
+   provenance는 `SOURCE_INSTANCE_EXACT_FALLOFF_INFERRED`다.
+5. source scene 재생성 뒤 sync를 다시 실행해 이 원본 attachment를 복원한 다음 Map publisher로
+   13,186행 runtime을 갱신한다.
+
+### 발탄 rendering profile 교체 블록
+
+```json
+{
+  "profileId": "scene.valtan.cool-low-key.v1",
+  "exposureMultiplier": 1.55,
+  "bloomIntensityMultiplier": 0.85,
+  "light": {
+    "type": "directional",
+    "direction": [0.35, -1, 0.25, 0],
+    "diffuse": [0.24, 0.28, 0.34, 1],
+    "ambient": [0.16, 0.21, 0.28, 1],
+    "specular": [0.12, 0.15, 0.2, 1]
+  },
+  "shadow": {
+    "enabled": true,
+    "focus": [156, 24, -122],
+    "distance": 220,
+    "orthographicWidth": 260,
+    "orthographicHeight": 260,
+    "near": 0.5,
+    "far": 520,
+    "depthBias": 0.00260000001,
+    "normalBias": 0.0340000018,
+    "strength": 0.86
+  }
+}
+```
+
+### Debug reference camera와 proxy visibility 계약
+
+`CLevel_ValtanArena`는 Debug에서만 owner `0x56414C54414E5246`을 사용한다. 탑다운 pose는
+`eye=(156.03,132,-111)`, `lookAt=(156.03,23,-122.06)`, FOV 48도이고 외곽 pose는
+`eye=(156.03,96,-18)`, 같은 lookAt, FOV 54도다. `Begin_ReferenceCamera`는 Server cinematic이
+활성일 때 거부하고 기존 follow 요청/target을 저장한 뒤 `Begin_PresentationOverride`와
+`Apply_PresentationPose`만 호출한다. 네트워크, audition request, gameplay state는 호출하지 않는다.
+
+탑다운은 `Set_DebugSourceLevelVisible("VALTAN_PHASE_SPACEHOLE", true, 3)`이 성공한 뒤에만
+카메라를 적용한다. 외곽, Restore, F6, Server cinematic 선점, disconnect와 level exit는
+`Restore_DebugSourceLevelVisibility(..., 3)`로 각 record의 authored `visible`을 복원한다.
+세 placement 중 하나라도 없거나 visibility 적용이 실패하면 부분 표시를 남기지 않는다.
+
+사용자 1280px 캡처에서 F1 패널이 약 160px 폭인데 180px짜리 Top Down/Exterior 버튼을
+`SameLine`에 놓아 Exterior 전체가 화면 밖으로 잘린 사실을 확인했다. 세 reference action은
+`GetContentRegionAvail().x` 폭의 세로 행으로 렌더한다. Exterior는 철탑을 만드는 기능이 아니라,
+source attachment를 유지한 후방 네 station과 다섯째 station을 비교하는 pose다. focused 하네스는
+source original/visible 188개, tower overlay/override 0개, core phase proxy 6개, 다섯 light의 source
+Y/provenance, rigid-core asset의 catalog/WModel closure와 버튼 사이 `SameLine` 부재를 검사해야 한다.
+
+### 프로젝트 등록
+
+신규 C++ 파일이 없으므로 `.vcxproj`와 `.vcxproj.filters` 등록은 없다. authoring JSON과 runtime
+DataFiles는 기존 `<None>` 및 publisher 경로를 재사용한다.
+
+### 적용·검증 순서
+
+1. Landscape merge unit test가 기존 11개 baseline으로 통과하고 메인 문서의 LAND01 source 행이
+   0개인지 검사한다.
+2. tower attachment sync와 check-only를 실행해 rear source original/visible 188개, tower overlay와
+   visibility override 0개, core proxy 6개, 다섯 light의 source Y/provenance를 고정한다.
+3. `Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED`를 실행해 275 assets / 13,186 placements와
+   authoring/runtime 일치를 고정한다.
+4. rendering profile `Validate`, `Publish`를 순서대로 실행한다.
+5. `ClientFrontendHarness --valtan-camera-fast`에서 reference camera/phase proxy와 tower
+   registration 계약을 검사한다.
+6. Client x64 Debug/Release를 빌드하고 `git diff --check`를 실행한다.
+7. 사용자가 Server와 Client를 직접 실행해 `Lobby -> Valtan -> F1 -> Reference Top Down`과
+   `Reference Exterior`를 기준 사진과 비교한다. 에이전트는 Client를 자율 실행하거나 visual PASS를
+   선언하지 않는다.
+
+정정된 source attachment 계약의 실행 증거와 사용자 육안 판정 경계는 대응 RESULT에 기록한다.
+2026-08-21 분리 회귀 스크린샷은 확인했지만 복구 뒤 새 스크린샷 재확인은 아직 대기 상태다.
+
+### 후속 source-exact atmosphere Gate
+
+SL04 volume cloud 27개를 제품에 넣기 전에 strict `VOLUME_CLOUD` typed profile/evaluator, PNG normal
+exact cooker와 receipt를 먼저 닫는다. 그 뒤에만 `<AreaId>.mapambientfx.json`에 source component
+stable ID/transform/template을 저장하고 world-owner persistent Effect loader를
+`parse -> validate -> stage -> commit/rollback -> level cleanup`으로 연결한다. 탑 fire는 q_firesh
+3-layer dissolve/basic material evaluator가 모두 exact admission된 뒤 상단 5개 point light 인접 source
+component부터 연결한다. 이 Gate 전에는 CloudPlane 2개와 maplight 22개 구성이 baseline이며,
+후방 tower light 4개를 포함한 모든 light가 source 위치와 provenance를 유지한다.

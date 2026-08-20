@@ -130,6 +130,10 @@ private:
 		clip naming by the extractor -- the game data has no such field. */
 		std::string sMode;
 		std::vector<std::string> clips;
+		/* Per-step playback seconds from the source stage's unconditional
+		handover notify, aligned with clips; empty when the sidecar is absent
+		or misaligned. */
+		std::vector<f32_t> cuts;
 	};
 
 	/* One hit of a .skilltiming row. v2 files spell these out on "hit" lines; a
@@ -185,6 +189,11 @@ private:
 	void Render_TargetConflict();
 	void Render_Playback(const shared_ptr<Engine::CModel>& pModel);
 	void Render_ValtanPatternPreview(const shared_ptr<Engine::CModel>& pModel);
+	void Render_ValtanPatternReferenceWindow(
+		const shared_ptr<Engine::CModel>& pModel);
+	bool_t Start_ValtanSequencePreview(
+		const shared_ptr<Engine::CModel>& pModel,
+		std::size_t iSequenceIndex);
 	bool_t Start_ValtanPatternPreview(
 		const shared_ptr<Engine::CModel>& pModel,
 		uint32_t iFirstPattern,
@@ -244,6 +253,7 @@ private:
 	bool_t Load_ClipMap();
 	bool_t Load_ClipNotify();
 	bool_t Load_ClipSeq();
+	void Load_ClipCuts();
 	bool_t Load_SkillBindings(
 		const shared_ptr<Engine::CModel>& pModel,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
@@ -310,6 +320,9 @@ private:
 	std::string m_strValtanPatternPreviewStatus;
 	std::weak_ptr<Engine::CModel> m_ValtanPatternPreviewModel;
 	uint64_t m_iValtanPatternPreviewTargetGeneration = 0u;
+	char_t m_ValtanPatternFilter[128]{};
+	int32_t m_iValtanSequenceSelected = -1;
+	bool_t m_bValtanRaidSequencesOnly = false;
 	/* Shared with Effect Tool through MainApp. This tool only contributes the
 	unsaved Animation document lock to that one preview session. */
 	shared_ptr<CCharacterPreviewPanel> m_pPreviewPanel;

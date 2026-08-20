@@ -57,19 +57,20 @@ void CPart_Equipment::Update(f32_t fTimeDelta)
 	matrix_t ChildMatrix = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
 
 	/* A socketed piece rides one bone, and that bone's matrix already carries the
-	body's pre-transform. A skinned piece adds nothing here: its deformation lives
-	entirely in the bone palette bound at render time. */
+	body's pre-transform. A skinned piece adds no bone of its own: its deformation
+	lives entirely in the bone palette bound at render time. Either way the piece
+	still has to land in the frame the body model is drawn in. */
 	if (nullptr != m_pSocketBoneName)
 	{
 		ChildMatrix =
 			XMMatrixRotationY(XMConvertToRadians(m_fSocketYawDegrees)) *
 			ChildMatrix;
 		ChildMatrix = ChildMatrix * m_pSkeletonModelCom->Get_BoneMatrix(m_pSocketBoneName);
+	}
 
-		if (nullptr != m_pSocketRootMatrix)
-		{
-			ChildMatrix = ChildMatrix * XMLoadFloat4x4(m_pSocketRootMatrix);
-		}
+	if (nullptr != m_pSocketRootMatrix)
+	{
+		ChildMatrix = ChildMatrix * XMLoadFloat4x4(m_pSocketRootMatrix);
 	}
 
 	__super::Update_CombinedWorldMatrix(ChildMatrix);

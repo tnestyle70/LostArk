@@ -678,6 +678,7 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 		return false;
 	}
 
+	constexpr std::size_t MAX_BOSS_PATTERN_CHAIN_CLIPS = 16u;
 	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT staged;
 	staged.strBossArchetypeId = boss->Get_String();
 	for (const DATA_JSON_VALUE& value : bindings->Get_Array())
@@ -689,16 +690,35 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 		}
 		const DATA_JSON_VALUE* actionId = Required(
 			value, "actionId", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* clip = Required(
-			value, "clip", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* clip = value.Find("clip");
+		std::vector<std::string> chain;
+		if (nullptr != clip && clip->Is_String())
+		{
+			chain.push_back(clip->Get_String());
+		}
+		else if (nullptr != clip && clip->Is_Array())
+		{
+			for (const DATA_JSON_VALUE& element : clip->Get_Array())
+			{
+				if (!element.Is_String() ||
+					!Is_StableToken(element.Get_String()))
+				{
+					outStatus =
+						"Boss pattern binding chain clip is invalid.";
+					return false;
+				}
+				chain.push_back(element.Get_String());
+			}
+		}
 		if (nullptr == actionId || !Is_StableToken(actionId->Get_String()) ||
-			nullptr == clip || !Is_StableToken(clip->Get_String()))
+			chain.empty() || chain.size() > MAX_BOSS_PATTERN_CHAIN_CLIPS ||
+			!Is_StableToken(chain.front()))
 		{
 			outStatus = "Boss pattern binding row is invalid.";
 			return false;
 		}
 		staged.Bindings.push_back({
-			actionId->Get_String(), clip->Get_String() });
+			actionId->Get_String(), std::move(chain) });
 	}
 
 	outDocument = std::move(staged);
@@ -723,15 +743,24 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Validate(
 	for (const BOSS_PATTERN_ANIMATION_BINDING& binding : document.Bindings)
 	{
 		if (!Is_StableToken(binding.strActionId) ||
-			!Is_StableToken(binding.strClipName) ||
-			!claimedActions.insert(binding.strActionId).second ||
-			availableClips.end() == std::find(
-				availableClips.begin(), availableClips.end(),
-				binding.strClipName))
+			binding.Clips.empty() ||
+			!claimedActions.insert(binding.strActionId).second)
 		{
 			outStatus =
 				"Boss pattern binding has a duplicate action or missing model clip.";
 			return false;
+		}
+		for (const std::string& clipName : binding.Clips)
+		{
+			if (!Is_StableToken(clipName) ||
+				availableClips.end() == std::find(
+					availableClips.begin(), availableClips.end(),
+					clipName))
+			{
+				outStatus =
+					"Boss pattern binding has a duplicate action or missing model clip.";
+				return false;
+			}
 		}
 	}
 	outStatus = "Validated " + std::to_string(document.Bindings.size()) +

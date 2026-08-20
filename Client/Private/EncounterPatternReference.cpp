@@ -115,6 +115,25 @@ namespace
 			std::isfinite(value->Get_Number());
 	}
 
+	bool_t Is_Boolean(
+		const DATA_JSON_VALUE& parent,
+		const char_t* key)
+	{
+		const DATA_JSON_VALUE* value = parent.Find(key);
+		return nullptr != value && value->Is_Boolean();
+	}
+
+	bool_t Read_Float(
+		const DATA_JSON_VALUE& parent,
+		const char_t* key,
+		f32_t& outValue)
+	{
+		if (!Is_FiniteNumber(parent, key))
+			return false;
+		outValue = static_cast<f32_t>(parent.Find(key)->Get_Number());
+		return true;
+	}
+
 	bool_t Is_FiniteNumberArray(
 		const DATA_JSON_VALUE& parent,
 		const char_t* key)
@@ -198,9 +217,10 @@ bool_t Client::CEncounterPatternReference::Load(
 		if (!Is_ExactObjectWithOptional(entry, {
 				"patternId", "displayName", "actionId", "sourceActionIds",
 				"selectionMode", "minimumHealthBar", "maximumHealthBar",
-				"triggerHealthBar", "triggerOrder", "selectionWeight",
-				"maximumConsecutiveUses", "minimumRange", "maximumRange",
-				"stages" },
+				"triggerHealthBar", "triggerOrder", "armorRequirement",
+				"phaseRequirement", "invulnerableWhileRunning",
+				"selectionWeight", "maximumConsecutiveUses", "minimumRange",
+				"maximumRange", "stages" },
 				{ "serverMotion" }))
 		{
 			outStatus = "Encounter pattern has unexpected properties";
@@ -209,6 +229,8 @@ bool_t Client::CEncounterPatternReference::Load(
 
 		ENCOUNTER_PATTERN_REFERENCE pattern;
 		uint32_t ignored = 0u;
+		std::string armorRequirement;
+		std::string phaseRequirement;
 		if (!Read_String(entry, "patternId", false, pattern.patternId) ||
 			!Read_String(entry, "displayName", false, pattern.displayName) ||
 			!Read_String(entry, "actionId", false, pattern.actionId) ||
@@ -219,6 +241,17 @@ bool_t Client::CEncounterPatternReference::Load(
 			!Read_Unsigned(entry, "triggerHealthBar", 1000u,
 				pattern.iTriggerHealthBar) ||
 			!Read_Unsigned(entry, "triggerOrder", 1000u, ignored) ||
+			!Read_String(entry, "armorRequirement", false,
+				armorRequirement) ||
+			(armorRequirement != "ANY" &&
+				armorRequirement != "ARMORED" &&
+				armorRequirement != "STRIPPED") ||
+			!Read_String(entry, "phaseRequirement", false,
+				phaseRequirement) ||
+			(phaseRequirement != "ANY" &&
+				phaseRequirement != "PHASE_ONE" &&
+				phaseRequirement != "PHASE_TWO") ||
+			!Is_Boolean(entry, "invulnerableWhileRunning") ||
 			!Read_Unsigned(entry, "selectionWeight", 1000u, ignored) ||
 			!Read_Unsigned(entry, "maximumConsecutiveUses", 1000u, ignored) ||
 			!Is_FiniteNumber(entry, "minimumRange") ||
@@ -251,7 +284,8 @@ bool_t Client::CEncounterPatternReference::Load(
 					"stageId", "actionId", "stageKind", "durationMs",
 					"hitShape", "hitOuterRadius", "hitInnerRadius",
 					"hitAngleDegrees", "hitLength", "hitHalfWidth",
-					"hitCount", "hitIntervalMs", "serverDamageProfileId",
+					"hitCount", "hitIntervalMs", "hitDelayMs",
+					"serverDamageProfileId",
 					"pushRangeM", "pushMs", "knockdown", "downMs" }))
 			{
 				outStatus = "Encounter stage has unexpected properties: " +
@@ -260,7 +294,6 @@ bool_t Client::CEncounterPatternReference::Load(
 			}
 
 			ENCOUNTER_STAGE_REFERENCE stage;
-			uint32_t stageIgnored = 0u;
 			if (!Read_String(stageEntry, "stageId", false, stage.stageId) ||
 				!Read_String(stageEntry, "actionId", false, stage.actionId) ||
 				!Read_String(stageEntry, "stageKind", false,
@@ -268,16 +301,20 @@ bool_t Client::CEncounterPatternReference::Load(
 				!Read_Unsigned(stageEntry, "durationMs",
 					MAX_STAGE_DURATION_MS, stage.iDurationMs) ||
 				!Read_String(stageEntry, "hitShape", false, stage.hitShape) ||
-				!Read_Unsigned(stageEntry, "hitCount", 1000u, stageIgnored) ||
+				!Read_Unsigned(stageEntry, "hitCount", 1000u,
+					stage.iHitCount) ||
 				!Read_Unsigned(stageEntry, "hitIntervalMs",
-					MAX_STAGE_DURATION_MS, stageIgnored) ||
+					MAX_STAGE_DURATION_MS, stage.iHitIntervalMs) ||
 				!Read_String(stageEntry, "serverDamageProfileId", true,
 					stage.serverDamageProfileId) ||
-				!Is_FiniteNumber(stageEntry, "hitOuterRadius") ||
-				!Is_FiniteNumber(stageEntry, "hitInnerRadius") ||
-				!Is_FiniteNumber(stageEntry, "hitAngleDegrees") ||
-				!Is_FiniteNumber(stageEntry, "hitLength") ||
-				!Is_FiniteNumber(stageEntry, "hitHalfWidth"))
+				!Read_Float(stageEntry, "hitOuterRadius",
+					stage.fHitOuterRadius) ||
+				!Read_Float(stageEntry, "hitInnerRadius",
+					stage.fHitInnerRadius) ||
+				!Read_Float(stageEntry, "hitAngleDegrees",
+					stage.fHitAngleDegrees) ||
+				!Read_Float(stageEntry, "hitLength", stage.fHitLength) ||
+				!Read_Float(stageEntry, "hitHalfWidth", stage.fHitHalfWidth))
 			{
 				outStatus = "Encounter stage field is invalid: " +
 					pattern.patternId;

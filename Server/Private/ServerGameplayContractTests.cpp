@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests.h"
+﻿#include "ServerGameplayContractTests.h"
 
 #include "ClientSession.h"
 #include "EncounterPropRuntime.h"
@@ -445,7 +445,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	using namespace LostArk::Shared;
 	TESTS tests{};
 	CGameplayCatalog catalog;
-	tests.Require(catalog.Load(), "Load gameplay balance bootstrap");
+	const bool catalogLoaded = catalog.Load();
+	if (!catalogLoaded)
+		std::cout << "[STATUS] " << catalog.Get_Status() << std::endl;
+	tests.Require(catalogLoaded, "Load gameplay balance bootstrap");
 	{
 		const VALTAN_DEBUG_AUDITION_DEFINITION* audition =
 			catalog.Find_ValtanDebugAudition("ENCOUNTER_VALTAN");
@@ -578,15 +581,15 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			}
 		}
 		tests.Require(
-			everyDamagingStageResolves && 46u == damagingStageCount &&
-			72u == authoredHitPulseCount &&
+			everyDamagingStageResolves && 48u == damagingStageCount &&
+			71u == authoredHitPulseCount &&
 			700u == catalog.Find_DamageRatePercent(
 				"damage.valtan.arena-destroy-109") &&
 			450u == catalog.Find_DamageRatePercent(
 				"damage.valtan.six-direction-130") &&
 			900u == catalog.Find_DamageRatePercent(
 				"damage.valtan.ghost-transition-15"),
-			"Resolve all 46 Valtan hit stages and 72 pulses through project-tuned damage profiles");
+			"Resolve all 48 Valtan hit stages and 71 pulses through project-tuned damage profiles");
 	}
 	{
 		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
@@ -1936,6 +1939,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	impactMotionBoss.strActionId =
 		"valtan.mechanic.armor-break-opening.charge";
 	impactMotionBoss.eAction = SERVER_ENTITY_ACTION::PATTERN_WINDUP;
+	/* The authored stage, not the pattern name, is what makes a stage charge.
+	Enter_PatternStage copies this out of the catalog in production. */
+	impactMotionBoss.bPatternChargeImpact = true;
 	impactMotionBoss.fPositionX = 150.f;
 	impactMotionBoss.fPositionZ = -133.f;
 	impactMotionBoss.fYawDegrees = 90.f;
@@ -1954,8 +1960,24 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		impactMotionBrain.Complete_ImpactStage(
 			impactMotionBoss, catalog, 500u) &&
 		impactMotionBoss.strPatternStageId == "GROGGY" &&
+		impactMotionBoss.bPatternGroggy &&
+		!impactMotionBoss.bPatternChargeImpact &&
 		0.f == impactMotionBoss.fPatternForcedMotionSpeed,
 		"Advance the authoritative charge action to GROGGY only after impact");
+	SERVER_WORLD_ENTITY plainStageBoss = impactMotionBoss;
+	plainStageBoss.strPatternStageId = "WALL_CHARGE";
+	plainStageBoss.iPatternStageIndex = 0u;
+	plainStageBoss.bPatternChargeImpact = false;
+	plainStageBoss.fPatternForcedMotionSpeed = 30.f;
+	float plainProposedX = 0.f;
+	float plainProposedZ = 0.f;
+	tests.Require(
+		!impactMotionBrain.Try_BuildImpactMotion(
+			plainStageBoss, 1.f / 30.f, plainProposedX, plainProposedZ) &&
+		!impactMotionBrain.Complete_ImpactStage(
+			plainStageBoss, catalog, 500u) &&
+		plainStageBoss.strPatternStageId == "WALL_CHARGE",
+		"Leave a stage the encounter never authored as a charge without impact motion");
 
 	CWorldBootstrap bernWorld;
 	const bool bernLoaded = bernWorld.Load(WORLD_ID::BERN);
@@ -2399,6 +2421,445 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		damageEvents[0].isOutgoing &&
 		entities[0].iNetEntityId == damageEvents[0].iTargetNetEntityId,
 		"Emit one outgoing damage event per authored hit summing to the profile rate");
+	{
+		/* Armour is server state. It mitigates every incoming hit while a plate is
+		intact and only loses durability inside a GROGGY stage, so the numbers here
+		come from the published bootstrap and the same skill path the arena runs. */
+		const BOSS_RUNTIME_PROFILE* armorProfile = catalog.Find_Boss("BOSS_VALTAN");
+		tests.Require(
+			nullptr != armorProfile &&
+			2u == armorProfile->ArmorPlates.size() &&
+			0u == armorProfile->ArmorPlates[0].iPlateIndex &&
+			1u == armorProfile->ArmorPlates[1].iPlateIndex &&
+			4000u == armorProfile->ArmorPlates[0].iDurability &&
+			4000u == armorProfile->ArmorPlates[1].iDurability &&
+			50u == armorProfile->ArmorPlates[0].iDefense &&
+			50u == armorProfile->ArmorPlates[1].iDefense,
+			"Load Valtan's two authored armour plates from the gameplay bootstrap");
+
+		std::uint32_t armorSequence = 10u;
+		const auto strikeArmoredBoss =
+			[&](const bool groggy,
+				const std::uint32_t firstDurability,
+				const std::uint32_t secondDurability,
+				SERVER_WORLD_ENTITY& outBoss) -> std::uint32_t
+		{
+			SERVER_PLAYER armorPlayer{};
+			armorPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			armorPlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+			armorPlayer.iCurrentResource = 1000;
+			armorPlayer.iMaximumResource = 1000;
+			armorPlayer.fPositionX = 151.f;
+			armorPlayer.fPositionY = 22.97f;
+			armorPlayer.fPositionZ = -129.f;
+			SERVER_WORLD_ENTITY armored = boss;
+			armored.bPatternGroggy = groggy;
+			armored.ArmorPlates.clear();
+			for (const BOSS_ARMOR_PLATE& plate : armorProfile->ArmorPlates)
+			{
+				SERVER_BOSS_ARMOR_PLATE_STATE state{};
+				state.iPlateIndex = plate.iPlateIndex;
+				state.iDefense = plate.iDefense;
+				state.iRemainingDurability = 0u == plate.iPlateIndex ?
+					firstDurability : secondDurability;
+				armored.ArmorPlates.push_back(state);
+			}
+			std::vector<SERVER_WORLD_ENTITY> armorEntities{ armored };
+			C2S_USE_SKILL armorSkill = useSkill;
+			armorSkill.iClientSequence = ++armorSequence;
+			CPlayerSkillSystem armorSkills;
+			armorSkills.Try_Start(armorPlayer, armorSkill, catalog, 10);
+			std::vector<DAMAGE_EVENT> armorEvents;
+			for (std::uint32_t tick = 11; tick < 70; ++tick)
+			{
+				armorSkills.Update(armorPlayer, armorEntities, catalog,
+					&navigation, nullptr, 1.f / 30.f, tick, armorEvents);
+			}
+			outBoss = armorEntities[0];
+			return armored.iCurrentHp - armorEntities[0].iCurrentHp;
+		};
+
+		SERVER_WORLD_ENTITY strippedBoss{};
+		const std::uint32_t strippedDamage =
+			strikeArmoredBoss(false, 0u, 0u, strippedBoss);
+		SERVER_WORLD_ENTITY halfArmoredBoss{};
+		const std::uint32_t halfArmoredDamage =
+			strikeArmoredBoss(false, 0u, 4000u, halfArmoredBoss);
+		SERVER_WORLD_ENTITY fullyArmoredBoss{};
+		const std::uint32_t fullyArmoredDamage =
+			strikeArmoredBoss(false, 4000u, 4000u, fullyArmoredBoss);
+		tests.Require(
+			361u == strippedDamage &&
+			fullyArmoredDamage < halfArmoredDamage &&
+			halfArmoredDamage < strippedDamage,
+			"Mitigate a boss hit by each intact plate and by nothing once all break");
+		{
+			/* An invulnerable pattern absorbs the hit whole: no HP moves and no
+			damage event reaches the snapshot, so the raid can see the mechanic
+			has to be answered rather than outraced. */
+			SERVER_PLAYER immunePlayer{};
+			immunePlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			immunePlayer.eStance = PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR;
+			immunePlayer.iCurrentResource = 1000;
+			immunePlayer.iMaximumResource = 1000;
+			immunePlayer.fPositionX = 151.f;
+			immunePlayer.fPositionY = 22.97f;
+			immunePlayer.fPositionZ = -129.f;
+			SERVER_WORLD_ENTITY immuneBoss = boss;
+			immuneBoss.bPatternInvulnerable = true;
+			std::vector<SERVER_WORLD_ENTITY> immuneEntities{ immuneBoss };
+			C2S_USE_SKILL immuneSkill = useSkill;
+			immuneSkill.iClientSequence = 41;
+			CPlayerSkillSystem immuneSkills;
+			immuneSkills.Try_Start(immunePlayer, immuneSkill, catalog, 10);
+			std::vector<DAMAGE_EVENT> immuneEvents;
+			for (std::uint32_t tick = 11; tick < 70; ++tick)
+			{
+				immuneSkills.Update(immunePlayer, immuneEntities, catalog,
+					&navigation, nullptr, 1.f / 30.f, tick, immuneEvents);
+			}
+			tests.Require(
+				immuneBoss.iCurrentHp == immuneEntities[0].iCurrentHp &&
+				immuneEvents.empty(),
+				"Absorb every player hit while an invulnerable pattern runs");
+		}
+		tests.Require(
+			4000u == fullyArmoredBoss.ArmorPlates[0].iRemainingDurability &&
+			4000u == fullyArmoredBoss.ArmorPlates[1].iRemainingDurability,
+			"Leave armour durability untouched by damage outside a groggy stage");
+
+		SERVER_WORLD_ENTITY groggyBoss{};
+		const std::uint32_t groggyDamage =
+			strikeArmoredBoss(true, 4000u, 4000u, groggyBoss);
+		tests.Require(
+			groggyDamage == fullyArmoredDamage &&
+			4000u - groggyDamage ==
+				groggyBoss.ArmorPlates[0].iRemainingDurability &&
+			4000u == groggyBoss.ArmorPlates[1].iRemainingDurability,
+			"Spend groggy damage on the front plate only, at the mitigated amount");
+
+		SERVER_WORLD_ENTITY brokenBoss{};
+		(void)strikeArmoredBoss(true, 1u, 4000u, brokenBoss);
+		tests.Require(
+			0u == brokenBoss.ArmorPlates[0].iRemainingDurability &&
+			4000u == brokenBoss.ArmorPlates[1].iRemainingDurability &&
+			brokenBoss.bPendingArmorBreakReaction &&
+			!brokenBoss.bPatternGroggy,
+			"Break one plate per groggy window, close it, and queue the part-break reaction");
+	}
+
+	{
+		/* The charge is authored per stage now, so the opening mechanic and the
+		repeatable dash run the same code. Both must carry the flag and both must
+		hand off to a GROGGY stage, because that stun is what opens armour. */
+		const auto* chargePatterns = catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		const auto findChargeStage =
+			[&](const char* patternId) -> const BOSS_PATTERN_STAGE_DEFINITION*
+		{
+			if (nullptr == chargePatterns)
+				return nullptr;
+			for (const BOSS_PATTERN_DEFINITION& pattern : *chargePatterns)
+			{
+				if (pattern.strPatternId != patternId)
+					continue;
+				for (std::size_t index = 0; index < pattern.Stages.size(); ++index)
+				{
+					if (!pattern.Stages[index].bChargeImpact)
+						continue;
+					return index + 1u < pattern.Stages.size() &&
+						BOSS_PATTERN_STAGE_KIND::GROGGY ==
+							pattern.Stages[index + 1u].eStageKind ?
+						&pattern.Stages[index] : nullptr;
+				}
+			}
+			return nullptr;
+		};
+		const BOSS_PATTERN_STAGE_DEFINITION* openingCharge =
+			findChargeStage("VALTAN_ARMOR_BREAK_OPENING");
+		const BOSS_PATTERN_STAGE_DEFINITION* dashCharge =
+			findChargeStage("VALTAN_DASH_CHARGE");
+		tests.Require(
+			nullptr != openingCharge && nullptr != dashCharge &&
+			openingCharge->strStageId == "WALL_CHARGE" &&
+			dashCharge->strStageId == "CHARGE",
+			"Load a charge stage backed by a groggy stage for both the opening and the dash");
+
+		std::uint32_t chargeStageCount = 0u;
+		std::uint32_t groggyStageCount = 0u;
+		if (nullptr != chargePatterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& pattern : *chargePatterns)
+			{
+				for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
+				{
+					if (stage.bChargeImpact)
+						++chargeStageCount;
+					if (BOSS_PATTERN_STAGE_KIND::GROGGY == stage.eStageKind)
+						++groggyStageCount;
+				}
+			}
+		}
+		tests.Require(
+			2u == chargeStageCount && 2u == groggyStageCount,
+			"Author exactly one groggy stage behind each of the two charge stages");
+
+		/* The dash repeats, so a fight can open more than one window and strip
+		more than one plate; the scripted opening alone never could. */
+		const BOSS_PATTERN_DEFINITION* dashPattern = nullptr;
+		if (nullptr != chargePatterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& pattern : *chargePatterns)
+			{
+				if (pattern.strPatternId == "VALTAN_DASH_CHARGE")
+					dashPattern = &pattern;
+			}
+		}
+		tests.Require(
+			nullptr != dashPattern &&
+			BOSS_PATTERN_SELECTION::NORMAL == dashPattern->eSelection &&
+			0u != dashPattern->iSelectionWeight &&
+			dashPattern->fMaximumRange > 0.f,
+			"Keep the armour-opening dash a repeatable weighted pattern with travel distance");
+	}
+
+	{
+		/* A plate coming off is its own beat: the boss plays the source's
+		part-destruction reaction instead of the ordinary recovery. The clock must
+		never reach that stage, or a charge that hit nothing would play it too. */
+		const auto* reactionPatterns =
+			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		std::uint32_t partBreakStageCount = 0u;
+		bool everyPartBreakIsLast = true;
+		bool everyChargePatternHasOne = true;
+		if (nullptr != reactionPatterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& pattern : *reactionPatterns)
+			{
+				std::uint32_t patternPartBreaks = 0u;
+				bool hasCharge = false;
+				for (std::size_t index = 0; index < pattern.Stages.size(); ++index)
+				{
+					if (pattern.Stages[index].bChargeImpact)
+						hasCharge = true;
+					if (BOSS_PATTERN_STAGE_KIND::PART_BREAK !=
+						pattern.Stages[index].eStageKind)
+					{
+						continue;
+					}
+					++patternPartBreaks;
+					++partBreakStageCount;
+					if (index + 1u != pattern.Stages.size())
+						everyPartBreakIsLast = false;
+				}
+				if (hasCharge && 1u != patternPartBreaks)
+					everyChargePatternHasOne = false;
+			}
+		}
+		tests.Require(
+			2u == partBreakStageCount && everyPartBreakIsLast &&
+			everyChargePatternHasOne,
+			"Author one trailing part-break reaction for each charge pattern");
+		tests.Require(
+			Is_EventEnteredStage(BOSS_PATTERN_STAGE_KIND::GROGGY) &&
+			Is_EventEnteredStage(BOSS_PATTERN_STAGE_KIND::PART_BREAK) &&
+			!Is_EventEnteredStage(BOSS_PATTERN_STAGE_KIND::WINDUP) &&
+			!Is_EventEnteredStage(BOSS_PATTERN_STAGE_KIND::ACTIVE) &&
+			!Is_EventEnteredStage(BOSS_PATTERN_STAGE_KIND::RECOVERY),
+			"Keep the stun and the part-break reaction out of the pattern clock");
+	}
+
+	{
+		/* A weighted pattern can require an armour state, and only a weighted one:
+		a scripted health-bar mechanic gated on armour would silently vanish from a
+		fight that depends on it. */
+		const auto* gatePatterns = catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		const BOSS_PATTERN_DEFINITION* dashPattern = nullptr;
+		bool everyScriptedPatternIsUngated = true;
+		std::uint32_t gatedCount = 0u;
+		if (nullptr != gatePatterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& pattern : *gatePatterns)
+			{
+				if (BOSS_PATTERN_ARMOR_REQUIREMENT::ANY !=
+					pattern.eArmorRequirement)
+				{
+					++gatedCount;
+					if (BOSS_PATTERN_SELECTION::NORMAL != pattern.eSelection)
+						everyScriptedPatternIsUngated = false;
+				}
+				if (pattern.strPatternId == "VALTAN_DASH_CHARGE")
+					dashPattern = &pattern;
+			}
+		}
+		tests.Require(
+			nullptr != dashPattern &&
+			BOSS_PATTERN_ARMOR_REQUIREMENT::ARMORED ==
+				dashPattern->eArmorRequirement &&
+			1u == gatedCount && everyScriptedPatternIsUngated,
+			"Offer the armour-opening dash only while a plate is still on");
+
+		/* The gate reads live plate state, so the same boss stops meeting an
+		ARMORED requirement the moment its last plate breaks, and a boss that
+		wears no plates at all reads as stripped rather than as armoured. */
+		SERVER_WORLD_ENTITY gateBoss{};
+		gateBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		gateBoss.strArchetypeId = "BOSS_VALTAN";
+		gateBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		const BOSS_RUNTIME_PROFILE* gateProfile =
+			catalog.Find_Boss("BOSS_VALTAN");
+		if (nullptr != gateProfile)
+		{
+			for (const BOSS_ARMOR_PLATE& plate : gateProfile->ArmorPlates)
+			{
+				SERVER_BOSS_ARMOR_PLATE_STATE state{};
+				state.iPlateIndex = plate.iPlateIndex;
+				state.iDefense = plate.iDefense;
+				state.iRemainingDurability = plate.iDurability;
+				gateBoss.ArmorPlates.push_back(state);
+			}
+		}
+		SERVER_WORLD_ENTITY halfGateBoss = gateBoss;
+		halfGateBoss.ArmorPlates[0].iRemainingDurability = 0u;
+		SERVER_WORLD_ENTITY strippedGateBoss = gateBoss;
+		for (SERVER_BOSS_ARMOR_PLATE_STATE& plate : strippedGateBoss.ArmorPlates)
+			plate.iRemainingDurability = 0u;
+		SERVER_WORLD_ENTITY plainGateBoss = gateBoss;
+		plainGateBoss.ArmorPlates.clear();
+		using ARMOR_REQUIREMENT = BOSS_PATTERN_ARMOR_REQUIREMENT;
+		tests.Require(
+			2u == gateBoss.ArmorPlates.size() &&
+			CValtanBrain::Is_ArmorRequirementMet(
+				gateBoss, ARMOR_REQUIREMENT::ARMORED) &&
+			CValtanBrain::Is_ArmorRequirementMet(
+				halfGateBoss, ARMOR_REQUIREMENT::ARMORED) &&
+			!CValtanBrain::Is_ArmorRequirementMet(
+				strippedGateBoss, ARMOR_REQUIREMENT::ARMORED) &&
+			!CValtanBrain::Is_ArmorRequirementMet(
+				plainGateBoss, ARMOR_REQUIREMENT::ARMORED),
+			"Meet an ARMORED requirement only while some plate is still on");
+		tests.Require(
+			!CValtanBrain::Is_ArmorRequirementMet(
+				gateBoss, ARMOR_REQUIREMENT::STRIPPED) &&
+			CValtanBrain::Is_ArmorRequirementMet(
+				strippedGateBoss, ARMOR_REQUIREMENT::STRIPPED) &&
+			CValtanBrain::Is_ArmorRequirementMet(
+				plainGateBoss, ARMOR_REQUIREMENT::STRIPPED) &&
+			CValtanBrain::Is_ArmorRequirementMet(
+				gateBoss, ARMOR_REQUIREMENT::ANY) &&
+			CValtanBrain::Is_ArmorRequirementMet(
+				strippedGateBoss, ARMOR_REQUIREMENT::ANY),
+			"Read a boss with no plate left, and one with none authored, as stripped");
+		SERVER_WORLD_ENTITY phaseOneBoss{};
+		phaseOneBoss.iPhase = 1u;
+		SERVER_WORLD_ENTITY phaseTwoBoss{};
+		phaseTwoBoss.iPhase = 2u;
+		using PHASE_REQUIREMENT = BOSS_PATTERN_PHASE_REQUIREMENT;
+		tests.Require(
+			CValtanBrain::Is_PhaseRequirementMet(
+				phaseOneBoss, PHASE_REQUIREMENT::PHASE_ONE) &&
+			!CValtanBrain::Is_PhaseRequirementMet(
+				phaseOneBoss, PHASE_REQUIREMENT::PHASE_TWO) &&
+			!CValtanBrain::Is_PhaseRequirementMet(
+				phaseTwoBoss, PHASE_REQUIREMENT::PHASE_ONE) &&
+			CValtanBrain::Is_PhaseRequirementMet(
+				phaseTwoBoss, PHASE_REQUIREMENT::PHASE_TWO) &&
+			CValtanBrain::Is_PhaseRequirementMet(
+				phaseOneBoss, PHASE_REQUIREMENT::ANY) &&
+			CValtanBrain::Is_PhaseRequirementMet(
+				phaseTwoBoss, PHASE_REQUIREMENT::ANY),
+			"Offer a phase-gated pattern only in the phase it names");
+
+		/* The threshold has to name the bar its own transition mechanic fires on,
+		or the boss would keep offering phase-one patterns long past the cutscene. */
+		SERVER_WORLD_ENTITY thresholdBoss{};
+		thresholdBoss.iMaximumHp = 60000u;
+		thresholdBoss.iMaximumHealthBars = 160u;
+		const BOSS_RUNTIME_PROFILE* thresholdProfile =
+			catalog.Find_Boss("BOSS_VALTAN");
+		const auto* thresholdPatterns =
+			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		std::uint32_t transitionBar = 0u;
+		if (nullptr != thresholdPatterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& pattern : *thresholdPatterns)
+			{
+				if (pattern.strPatternId == "VALTAN_ARENA_BREAK_109")
+					transitionBar = pattern.iTriggerHealthBar;
+			}
+		}
+		thresholdBoss.iCurrentHp = nullptr == thresholdProfile ? 0u :
+			static_cast<std::uint32_t>(
+				static_cast<std::uint64_t>(thresholdBoss.iMaximumHp) *
+				thresholdProfile->iPhaseTwoHpPercent / 100u);
+		tests.Require(
+			nullptr != thresholdProfile && 0u != transitionBar &&
+			0u != thresholdBoss.iCurrentHp &&
+			transitionBar ==
+				CValtanBrain::Calculate_HealthBar(thresholdBoss),
+			"Advance to phase two on the bar the authored transition mechanic fires on");
+
+		/* The wipe is the one mechanic the raid has to answer instead of racing
+		down, so it is the only pattern authored invulnerable and it fires on the
+		bar its own name carries. */
+		const BOSS_PATTERN_DEFINITION* wipePattern = nullptr;
+		std::uint32_t invulnerableCount = 0u;
+		if (nullptr != thresholdPatterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& pattern : *thresholdPatterns)
+			{
+				if (pattern.bInvulnerableWhileRunning)
+					++invulnerableCount;
+				if (pattern.strPatternId == "VALTAN_FLOOR_WIPE_130")
+					wipePattern = &pattern;
+			}
+		}
+		tests.Require(
+			nullptr != wipePattern && wipePattern->bInvulnerableWhileRunning &&
+			130u == wipePattern->iTriggerHealthBar && 1u == invulnerableCount,
+			"Fire the invulnerable wipe on bar 130 and author no other invulnerable pattern");
+
+		/* Its second smash is arena wide and lethal to any authored player pool,
+		which is what makes it a wipe rather than a large hit. */
+		const std::uint32_t wipeRate = catalog.Find_DamageRatePercent(
+			"damage.valtan.omnidirectional-wipe-130");
+		const BOSS_RUNTIME_PROFILE* wipeBoss = catalog.Find_Boss("BOSS_VALTAN");
+		std::uint32_t toughestPlayerHp = 0u;
+		for (const CHARACTER_CLASS_ID characterClass : {
+				CHARACTER_CLASS_ID::LANCE_MASTER,
+				CHARACTER_CLASS_ID::GUNSLINGER,
+				CHARACTER_CLASS_ID::SLAYER,
+				CHARACTER_CLASS_ID::ARTIST,
+				CHARACTER_CLASS_ID::DIMENSIONMASTER })
+		{
+			const PLAYER_RUNTIME_PROFILE* playerProfile =
+				catalog.Find_Player(characterClass);
+			if (nullptr != playerProfile)
+			{
+				toughestPlayerHp = (std::max)(
+					toughestPlayerHp, playerProfile->iMaximumHp);
+			}
+		}
+		const BOSS_PATTERN_STAGE_DEFINITION* wipeSmash = nullptr;
+		if (nullptr != wipePattern)
+		{
+			for (const BOSS_PATTERN_STAGE_DEFINITION& stage : wipePattern->Stages)
+			{
+				if (stage.strDamageProfileId ==
+					"damage.valtan.omnidirectional-wipe-130")
+				{
+					wipeSmash = &stage;
+				}
+			}
+		}
+		tests.Require(
+			nullptr != wipeBoss && nullptr != wipeSmash && 0u != wipeRate &&
+			0u != toughestPlayerHp &&
+			BOSS_PATTERN_HIT_SHAPE::CIRCLE == wipeSmash->eHitShape &&
+			wipeSmash->fHitOuterRadius >= 100.f &&
+			CGameplayCatalog::Resolve_Damage(wipeBoss->iAttackPower, wipeRate) >
+				toughestPlayerHp,
+			"Reach the whole arena with a wipe hit that outdamages the toughest player pool");
+	}
 	{
 		SERVER_PLAYER missPlayer{};
 		missPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
@@ -2941,10 +3402,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	test entity carries the archetype the room would have stamped on it. */
 	valtan.strArchetypeId = "BOSS_VALTAN";
 	valtan.strEncounterId = "ENCOUNTER_VALTAN";
-	valtan.iCurrentHp = 43125;
+	valtan.iCurrentHp = 48750;
 	valtan.iMaximumHp = 60000;
 	valtan.iMaximumHealthBars = 160;
-	valtan.iLastEvaluatedHealthBar = 116;
+	valtan.iLastEvaluatedHealthBar = 131;
 	valtan.iPhaseTwoHpPercent = 50;
 	valtan.iPhase = 1;
 	valtan.fPositionX = 151.f;
@@ -2952,7 +3413,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	valtan.fPositionZ = -122.f;
 	valtan.fEngageDistance = 35.f;
 	valtan.fMoveSpeed = 3.f;
-	/* This fixture asserts the observed 115-bar mechanic, so the encounter intro is
+	/* This fixture asserts the observed 130-bar mechanic, so the encounter intro is
 	staged as already consumed exactly as a Debug audition reset does. */
 	valtan.bIntroPatternConsumed = true;
 	CValtanBrain brain;
@@ -2969,21 +3430,21 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		brain.Update(valtan, players, catalog, navigation, 0.1f, tick,
 			valtanDamageEvents);
 	tests.Require(781u == players.begin()->second.iCurrentHp,
-		"Apply the queued 115-bar Valtan six-direction hit once");
+		"Apply the queued 130-bar Valtan six-direction hit once");
 	tests.Require(
 		1u == valtanDamageEvents.size() &&
 		219u == valtanDamageEvents[0].iAmount &&
 		!valtanDamageEvents[0].isOutgoing &&
 		players.begin()->second.iNetEntityId ==
 			valtanDamageEvents[0].iTargetNetEntityId,
-		"Emit one incoming damage event for the 115-bar boss hit");
+		"Emit one incoming damage event for the 130-bar boss hit");
 	tests.Require(
 		"VALTAN_FLOOR_WIPE_130" == valtan.strPatternId &&
 		valtan.PendingPatternIds.empty() &&
 		1u == valtan.TriggeredPatternIds.size() &&
 		1u == valtan.iPatternSequence &&
 		1u == valtan.iPatternStageIndex,
-		"Queue and advance the staged 115-bar scripted mechanic");
+		"Queue and advance the staged 130-bar scripted mechanic");
 	valtan.iCurrentHp = 30000;
 	brain.Update(valtan, players, catalog, navigation, 0.1f, 141,
 		valtanDamageEvents);
@@ -3487,12 +3948,12 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t11\t75\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t12\t75\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
-				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
 				"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
-				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\t2\t242\t1\t2000\n"
+				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t0\tdamage.player.34120\t2\t242\t1\t2000\n"
 				"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 				"SKILL\t34120\tLANCE_MASTER\tQ\tlancemaster.skill.34120\t10000\t2266"
 				"\t1510\t2000\t0\t0\t8\tdamage.player.34120\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
@@ -3562,12 +4023,12 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t11\t75\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t12\t75\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
-					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
 					"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
-					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\t2\t242\t1\t2000\n"
+					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t0\tdamage.player.34120\t2\t242\t1\t2000\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020"
 					"\t8000\t900\t" << hitTimeMs << "\t242\t0\t6\t" << maximumRange <<
@@ -3622,8 +4083,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					 sourceRows.size() + wallRows.size()) << "\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
-					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
-					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34120\t2\t242\t1\t2000\n"
+					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
+					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t0\tdamage.player.34120\t2\t242\t1\t2000\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020\t8000\t900\t0\t242\t0\t6\t0\t\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
 				for (const std::string& row : sourceRows)
@@ -3650,30 +4111,84 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const std::string validSourceRow =
 			"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180";
 		tests.Require(
-			loadWithWallContactRows(10u, { validSourceRow }, { validWallRow }),
+			loadWithWallContactRows(
+				GAMEPLAY_BOOTSTRAP_VERSION, { validSourceRow }, { validWallRow }),
 			"Accept one exact ACTIVE axe wall-contact row");
 		tests.Require(
-			!loadWithWallContactRows(9u, { validSourceRow }, { validWallRow }),
+			!loadWithWallContactRows(
+				GAMEPLAY_BOOTSTRAP_VERSION - 1u,
+				{ validSourceRow }, { validWallRow }),
 			"Reject the obsolete gameplay bootstrap version before wall-contact load");
 		tests.Require(
-			!loadWithWallContactRows(10u, { validSourceRow }, {
+			!loadWithWallContactRows(GAMEPLAY_BOOTSTRAP_VERSION,
+				{ validSourceRow }, {
 				"PATTERNWALLCONTACT\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.wrong" }),
 			"Reject a wall-contact row whose action does not exactly join its stage");
 		tests.Require(
 			!loadWithWallContactRows(
-				10u, { validSourceRow }, { validWallRow, validWallRow }),
+				GAMEPLAY_BOOTSTRAP_VERSION,
+				{ validSourceRow }, { validWallRow, validWallRow }),
 			"Reject duplicate axe wall-contact ownership atomically");
 		tests.Require(
-			!loadWithWallContactRows(10u, {}, {}),
+			!loadWithWallContactRows(GAMEPLAY_BOOTSTRAP_VERSION, {}, {}),
 			"Reject a boss pattern with no compiled source timing row");
 		tests.Require(
 			!loadWithWallContactRows(
-				10u, { validSourceRow, validSourceRow }, {}),
+				GAMEPLAY_BOOTSTRAP_VERSION,
+				{ validSourceRow, validSourceRow }, {}),
 			"Reject duplicate source timing ownership atomically");
 		tests.Require(
-			!loadWithWallContactRows(10u, {
+			!loadWithWallContactRows(GAMEPLAY_BOOTSTRAP_VERSION, {
 				"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t149\t350\t300\t180" }, {}),
 			"Reject a source cooldown whose 30 Hz tick conversion is inconsistent");
+
+		const auto loadWithStageRow = [&wallContactRoot](
+			const std::string& stageRow)
+		{
+			std::error_code prepareError;
+			fs::remove_all(wallContactRoot, prepareError);
+			fs::create_directories(wallContactRoot / L"Gameplay");
+			{
+				std::ofstream bootstrap(
+					wallContactRoot / L"Gameplay" / L"Gameplay.bootstrap",
+					std::ios::binary);
+				bootstrap << "LOSTARK_GAMEPLAY_BOOTSTRAP\t" <<
+					GAMEPLAY_BOOTSTRAP_VERSION << "\t" <<
+					(7u + VALID_VALTAN_DEBUG_AUDITION_ROW_COUNT) << "\n"
+					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
+					"DAMAGE\tdamage.player.34120\t361\n"
+					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
+					"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
+					<< stageRow << "\n"
+					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
+					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020\t8000\t900\t0\t242\t0\t6\t0\t\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n";
+				Write_ValidValtanDebugAuditionRows(bootstrap);
+			}
+			wchar_t previous[32768]{};
+			const DWORD previousLength = GetEnvironmentVariableW(
+				L"LOSTARK_SERVER_DATA_ROOT", previous,
+				static_cast<DWORD>(std::size(previous)));
+			SetEnvironmentVariableW(
+				L"LOSTARK_SERVER_DATA_ROOT", wallContactRoot.c_str());
+			CGameplayCatalog stageCatalog;
+			const bool loaded = stageCatalog.Load();
+			SetEnvironmentVariableW(L"LOSTARK_SERVER_DATA_ROOT",
+				0u == previousLength || previousLength >= std::size(previous) ?
+					nullptr : previous);
+			return loaded;
+		};
+		tests.Require(
+			loadWithStageRow(
+				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t600\tdamage.player.34120\t2\t242\t1\t2000"),
+			"Accept a stage whose first hit lands at its authored contact delay");
+		tests.Require(
+			!loadWithStageRow(
+				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t1000\tdamage.player.34120\t2\t242\t1\t2000"),
+			"Reject a hit delay at or beyond its stage duration");
+		tests.Require(
+			!loadWithStageRow(
+				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tWINDUP\tvaltan.test.active\tWINDUP\t1000\tNONE\t0\t0\t0\t0\t0\t0\t0\t600\t-\t0\t0\t0\t0"),
+			"Reject a hit delay on a stage without a hit shape");
 		std::error_code cleanupError;
 		fs::remove_all(wallContactRoot, cleanupError);
 	}
@@ -3714,12 +4229,12 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t11\t77\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t12\t77\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
-					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\n"
+					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
 					"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
-					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\tdamage.player.34010\t0\t0\t0\t0\n"
+					"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t0\tdamage.player.34010\t0\t0\t0\t0\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34010\tLANCE_MASTER\tLMB\tlancemaster.skill.34010"
 					"\t0\t1633\t470\t0\t0\t0\t3\tdamage.player.34010\tCOMBO"
@@ -3751,7 +4266,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	}
 
 	{
-		/* 절룡세 guards, and a hit taken inside that window is what buys the
+		/* ?덈！??guards, and a hit taken inside that window is what buys the
 		counter: no press advances it and the guard itself lands nothing. */
 		SERVER_PLAYER counterPlayer{};
 		counterPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
@@ -5167,7 +5682,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 						"VALTAN_FLOOR_WIPE_130" == patternId ||
 						"VALTAN_FOUR_PILLARS_105" == patternId;
 				}),
-			"Leave the 159, 115 and 100 bar patterns unqueued by a 109-bar audition");
+			"Leave the 159, 130 and 100 bar patterns unqueued by a 109-bar audition");
 		tests.Require(
 			nullptr != auditionBoss &&
 			"VALTAN_ARENA_BREAK_109" ==
@@ -5772,7 +6287,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
 		constexpr SESSION_ID SESSION = 4254u;
 		constexpr PLAYER_ID PLAYER = 89u;
-		constexpr std::uint32_t MAX_ORDERED_TICKS = 9000u;
+		constexpr std::uint32_t MAX_ORDERED_TICKS = 27000u;
 
 		SERVER_PLAYER player{};
 		player.iSessionId = SESSION;
@@ -5817,13 +6332,16 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			}
 		}
 
+		/* 9, 12, 16, 35 and 46 now name a product pattern, so only the three rows
+		   with no body motion at all stay idle: 7 has no user record, 28 is a
+		   phase readout and 41 is a cutscene. */
 		const std::vector<std::uint32_t> exactIdleOrdinals
 		{
-			7u, 9u, 12u, 16u, 28u, 35u, 41u, 46u
+			7u, 28u, 41u
 		};
 		const bool ledgerShapeIsExact = nullptr != definition &&
 			67u == definition->Steps.size() &&
-			61u == expectedPatternIds.size() &&
+			66u == expectedPatternIds.size() &&
 			exactIdleOrdinals == expectedIdleOrdinals &&
 			2 == std::count(
 				expectedOrdinals.begin(), expectedOrdinals.end(), 40u) &&
@@ -5881,7 +6399,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			propEpochBeforeStart != runPropEpoch &&
 			2u == initialFloorStates[0u] &&
 			4u == initialFloorStates[3u],
-			"Ordered full run stages the exact 61-start and 8-idle ledger in one fresh arena");
+			"Ordered full run stages the exact 66-start and 3-idle ledger in one fresh arena");
 
 		std::vector<std::uint32_t> observedOrdinals;
 		std::vector<std::uint32_t> observedRepeatIndices;
@@ -6060,9 +6578,12 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		boss = room.Find_AuditionBoss();
 		const std::array<std::size_t, 6u> finalFloorStates =
 			countFloorStates();
+		/* Pattern sequence numbers, not occurrence ordinals: filling 9, 12, 16,
+		   35 and 46 inserts five executions ahead of the pillar occurrences at
+		   25, 33 and 49, so each cycle shifts by the count that precedes it. */
 		const std::vector<std::uint32_t> exactPillarSequences
 		{
-			21u, 28u, 43u
+			24u, 31u, 48u
 		};
 		bool pillarCyclesExact = pillarStatesConsistent &&
 			exactPillarSequences == pillarPatternSequences &&
@@ -6084,7 +6605,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			expectedOrdinals == observedOrdinals &&
 			expectedRepeatIndices == observedRepeatIndices &&
 			expectedPatternIds == observedPatternIds &&
-			61u == observedPatternIds.size() &&
+			66u == observedPatternIds.size() &&
 			2 == std::count(
 				observedOrdinals.begin(), observedOrdinals.end(), 40u) &&
 			2 == std::count(
@@ -6092,8 +6613,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		tests.Require(
 			expandedStartsExact && idleEdgesExact &&
 			expectedIdleOrdinals == observedIdleOrdinals &&
-			8u == observedIdleOrdinals.size(),
-			"Ordered full run executes exactly 61 stable starts, two repeats each at 40 and 43, and eight idle rows");
+			3u == observedIdleOrdinals.size(),
+			"Ordered full run executes exactly 66 stable starts, two repeats each at 40 and 43, and three idle rows");
 		tests.Require(
 			14u == healthAt55 && 40u == healthAt56,
 			"Ordered full run restores Valtan from 14 to 40 bars between occurrences 55 and 56");
@@ -6114,7 +6635,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				room.m_ValtanOrderedAudition.ePhase &&
 			67u == room.m_ValtanOrderedAudition.iStepIndex &&
 			0u == room.m_ValtanOrderedAudition.iRepeatIndex &&
-			firstPatternSequence + 61u == boss->iPatternSequence &&
+			firstPatternSequence + 66u == boss->iPatternSequence &&
 			SERVER_ENTITY_ACTION::IDLE == boss->eAction &&
 			boss->strPatternId.empty() && boss->PendingPatternIds.empty() &&
 			room.m_ValtanOrderedAudition.strExpectedPatternId.empty() &&
@@ -6658,20 +7179,43 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			1000u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
 			"Charge the shared gauge to full only while players occupy the room");
 
-		std::string archetypeId;
+		const ESTHER_ROSTER_ENTRY* pRosterEntry = nullptr;
 		const ESTHER_USE_REJECTION wrongSlot =
-			valtanRoom.m_EstherSkillSystem.Try_Consume(2u, archetypeId);
+			valtanRoom.m_EstherSkillSystem.Try_Consume(4u, pRosterEntry);
 		tests.Require(
 			ESTHER_USE_REJECTION::UNSUPPORTED_SLOT == wrongSlot &&
-			archetypeId.empty() &&
+			nullptr == pRosterEntry &&
 			1000u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
-			"Reject the unextracted Esther slots without touching the gauge");
+			"Reject an out-of-roster Esther slot without touching the gauge");
 
 		const ESTHER_USE_REJECTION disabledWorld =
-			bernRoom.m_EstherSkillSystem.Try_Consume(1u, archetypeId);
+			bernRoom.m_EstherSkillSystem.Try_Consume(1u, pRosterEntry);
 		tests.Require(
 			ESTHER_USE_REJECTION::DISABLED_WORLD == disabledWorld,
 			"Reject an Esther use outside the raid world");
+
+		const ESTHER_USE_REJECTION weiSlot =
+			valtanRoom.m_EstherSkillSystem.Try_Consume(2u, pRosterEntry);
+		tests.Require(
+			ESTHER_USE_REJECTION::NONE == weiSlot &&
+			nullptr != pRosterEntry &&
+			std::string("NPC_58700") == pRosterEntry->pArchetypeId &&
+			7100u == pRosterEntry->iStrikeMs &&
+			0u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
+			"Consume slot 2 into Wei's all-in-one clip timeline");
+
+		for (int tick = 0; tick < 200; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		pRosterEntry = nullptr;
+		const ESTHER_USE_REJECTION bahunturSlot =
+			valtanRoom.m_EstherSkillSystem.Try_Consume(3u, pRosterEntry);
+		tests.Require(
+			ESTHER_USE_REJECTION::NONE == bahunturSlot &&
+			nullptr != pRosterEntry &&
+			std::string("NPC_59060") == pRosterEntry->pArchetypeId &&
+			4100u == pRosterEntry->iStrikeMs &&
+			0u == valtanRoom.m_EstherSkillSystem.Get_Gauge(),
+			"Consume slot 3 into the Bahuntur summon with its authored strike length");
 
 		/* Handler path: an authenticated caster with a full gauge summons at
 		its own feet, aimed east, and the gauge drains to zero atomically. */
@@ -6717,12 +7261,14 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			nullptr != summon &&
 			0u == valtanRoom.m_EstherSkillSystem.Get_Gauge() &&
 			"NPC_59030" == summon->strArchetypeId &&
+			5300u == summon->iEstherStrikeMs &&
 			WORLD_BOOTSTRAP_KIND::NPC == summon->eKind &&
-			std::string(ESTHER_ACTION_APPEAR) == summon->strActionId &&
+			std::string(ESTHER_ACTION_STRIKE) == summon->strActionId &&
+			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == summon->eAction &&
 			std::abs(summon->fPositionX - caster.fPositionX) < 0.001f &&
 			std::abs(summon->fPositionZ - caster.fPositionZ) < 0.001f &&
 			std::abs(summon->fYawDegrees - 90.f) < 0.01f,
-			"Summon Sillian at the caster aimed at the cursor and drain the gauge");
+			"Summon Sillian straight into its all-in-one strike and drain the gauge");
 
 		valtanRoom.Handle_UseEstherSkill(casterSessionId, notFullUse);
 		std::size_t summonCount = 0u;
@@ -6735,38 +7281,56 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			1u == summonCount,
 			"Reject a second Esther use on the emptied gauge");
 
-		for (int tick = 0; tick < 25; ++tick)
-			valtanRoom.Update_WorldEntities(1.f / 30.f);
-		summon = findSummon();
-		tests.Require(
-			nullptr != summon &&
-			std::string(ESTHER_ACTION_STRIKE) == summon->strActionId &&
-			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == summon->eAction,
-			"Advance the summon from appear into the authored strike");
-
-		for (int tick = 0; tick < 97; ++tick)
-			valtanRoom.Update_WorldEntities(1.f / 30.f);
-		summon = findSummon();
-		const float leaveStartY =
-			nullptr != summon ? summon->fPositionY : 0.f;
-		tests.Require(
-			nullptr != summon &&
-			std::string(ESTHER_ACTION_LEAVE) == summon->strActionId &&
-			SERVER_ENTITY_ACTION::IDLE == summon->eAction,
-			"Advance the summon from the strike into the leave stage");
-
-		for (int tick = 0; tick < 30; ++tick)
-			valtanRoom.Update_WorldEntities(1.f / 30.f);
-		summon = findSummon();
-		tests.Require(
-			nullptr != summon && summon->fPositionY > leaveStartY + 2.f,
-			"Rise the summon skyward through the leave stage");
-
-		for (int tick = 0; tick < 20; ++tick)
+		for (int tick = 0; tick < 162; ++tick)
 			valtanRoom.Update_WorldEntities(1.f / 30.f);
 		tests.Require(
 			nullptr == findSummon(),
-			"Despawn the summon when the leave stage ends");
+			"Despawn Sillian the moment its clip ends without the skyward rise");
+
+		for (int tick = 0; tick < 200; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		LostArk::Shared::C2S_USE_ESTHER_SKILL bahunturUse{};
+		bahunturUse.iClientSequence = 3u;
+		bahunturUse.iSlotIndex = 3u;
+		bahunturUse.fAimX = 160.f;
+		bahunturUse.fAimZ = -120.f;
+		valtanRoom.Handle_UseEstherSkill(casterSessionId, bahunturUse);
+		SERVER_WORLD_ENTITY* bahunturSummon = findSummon();
+		tests.Require(
+			nullptr != bahunturSummon &&
+			"NPC_59060" == bahunturSummon->strArchetypeId &&
+			4100u == bahunturSummon->iEstherStrikeMs &&
+			std::string(ESTHER_ACTION_STRIKE) == bahunturSummon->strActionId &&
+			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == bahunturSummon->eAction,
+			"Spawn Bahuntur straight into the strike with no appear stage");
+
+		for (int tick = 0; tick < 126; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
+		tests.Require(
+			nullptr == findSummon(),
+			"Despawn Bahuntur the moment its clip ends without the skyward rise");
+
+		for (int tick = 0; tick < 200; ++tick)
+			valtanRoom.m_EstherSkillSystem.Update(1.f / 30.f, true);
+		LostArk::Shared::C2S_USE_ESTHER_SKILL weiUse{};
+		weiUse.iClientSequence = 2u;
+		weiUse.iSlotIndex = 2u;
+		weiUse.fAimX = 160.f;
+		weiUse.fAimZ = -120.f;
+		valtanRoom.Handle_UseEstherSkill(casterSessionId, weiUse);
+		SERVER_WORLD_ENTITY* weiSummon = findSummon();
+		tests.Require(
+			nullptr != weiSummon &&
+			"NPC_58700" == weiSummon->strArchetypeId &&
+			std::string(ESTHER_ACTION_STRIKE) == weiSummon->strActionId &&
+			SERVER_ENTITY_ACTION::PATTERN_ACTIVE == weiSummon->eAction,
+			"Spawn Wei straight into the strike with no appear stage");
+
+		for (int tick = 0; tick < 216; ++tick)
+			valtanRoom.Update_WorldEntities(1.f / 30.f);
+		tests.Require(
+			nullptr == findSummon(),
+			"Despawn Wei the moment its clip ends without the skyward rise");
 
 		valtanRoom.m_Players.clear();
 		valtanRoom.m_PlayerIdBySessionId.clear();

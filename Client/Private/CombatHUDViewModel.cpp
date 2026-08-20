@@ -353,5 +353,6 @@ void Client::CCombatHUDViewModel::Reset_RuntimeState()
 	m_DamageEvents.clear();
 	m_iEstherGauge = 0;
 	m_iEstherGaugeMaximum = 0;
+	m_EstherCutinRequest = {};
 	m_Inventory = {};
 }

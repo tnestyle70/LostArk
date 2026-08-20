@@ -16,11 +16,6 @@ namespace
 	constexpr float DEGREES_TO_RADIANS = 0.0174532925f;
 	constexpr float MILLISECONDS_TO_SECONDS = 0.001f;
 	constexpr float PATH_POINT_STOP_DISTANCE = 0.1f;
-	constexpr const char* ARMOR_BREAK_PATTERN_ID =
-		"VALTAN_ARMOR_BREAK_OPENING";
-	constexpr const char* ARMOR_BREAK_STAGE_ID = "WALL_CHARGE";
-	constexpr const char* ARMOR_BREAK_ACTION_ID =
-		"valtan.mechanic.armor-break-opening.charge";
 	constexpr const char* ARENA_BREAK_PATTERN_ID = "VALTAN_ARENA_BREAK_109";
 	constexpr const char* ARENA_BREAK_TAKEOFF_STAGE_ID = "TAKEOFF";
 	constexpr const char* ARENA_BREAK_DROP_STAGE_ID = "DROP";
@@ -188,6 +183,10 @@ namespace
 		{
 			if (BOSS_PATTERN_SELECTION::NORMAL != pattern.eSelection ||
 				pattern.strPatternId == introPatternId ||
+				!CValtanBrain::Is_ArmorRequirementMet(
+					boss, pattern.eArmorRequirement) ||
+				!CValtanBrain::Is_PhaseRequirementMet(
+					boss, pattern.ePhaseRequirement) ||
 				currentHealthBar < pattern.iMinimumHealthBar ||
 				currentHealthBar > pattern.iMaximumHealthBar ||
 				targetDistance < pattern.fMinimumRange ||
@@ -268,6 +267,22 @@ namespace
 			currentHealthBar, targetDistance, serverTick);
 	}
 
+	/* A GROGGY stage is the stun a charge earns by meeting a wall, so only an
+	impact may enter it. A charge that runs its full travel without hitting
+	anything falls through to the recovery behind the stun instead. */
+	std::uint32_t NextClockStageIndex(
+		const BOSS_PATTERN_DEFINITION& pattern,
+		const std::uint32_t currentStageIndex)
+	{
+		std::uint32_t next = currentStageIndex + 1u;
+		while (next < pattern.Stages.size() &&
+			Is_EventEnteredStage(pattern.Stages[next].eStageKind))
+		{
+			++next;
+		}
+		return next;
+	}
+
 	SERVER_ENTITY_ACTION ToServerAction(const BOSS_PATTERN_STAGE_KIND kind)
 	{
 		switch (kind)
@@ -278,6 +293,15 @@ namespace
 			return SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
 		case BOSS_PATTERN_STAGE_KIND::RECOVERY:
 			return SERVER_ENTITY_ACTION::PATTERN_RECOVERY;
+		case BOSS_PATTERN_STAGE_KIND::PART_BREAK:
+			/* The boss is reacting, not attacking, so it replicates as the
+			recovery the client already renders for that. */
+			return SERVER_ENTITY_ACTION::PATTERN_RECOVERY;
+		case BOSS_PATTERN_STAGE_KIND::GROGGY:
+			/* The stage still plays its authored action, so it replicates as the
+			same active stage the client already renders. Only the server needs to
+			know this one is the armour-break window. */
+			return SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
 		default:
 			return SERVER_ENTITY_ACTION::PATTERN_WINDUP;
 		}
@@ -302,12 +326,16 @@ namespace
 		boss.fPatternHitHalfWidth = stage.fHitHalfWidth;
 		boss.iPatternHitCount = stage.iHitCount;
 		boss.iPatternHitIntervalMs = stage.iHitIntervalMs;
+		boss.iPatternHitDelayMs = stage.iHitDelayMs;
 		boss.iAppliedPatternHitCount = 0u;
 		boss.bPatternWallContact = stage.bWallContact;
 		boss.fPatternPushRangeM = stage.fPushRangeM;
 		boss.iPatternPushMs = stage.iPushMs;
 		boss.bPatternKnockdown = stage.bKnockdown;
 		boss.iPatternDownMs = stage.iDownMs;
+		boss.bPatternGroggy =
+			BOSS_PATTERN_STAGE_KIND::GROGGY == stage.eStageKind;
+		boss.bPatternChargeImpact = stage.bChargeImpact;
 		boss.eAction = ToServerAction(stage.eStageKind);
 		boss.fActionElapsedSeconds = 0.f;
 		boss.iActionStartTick = 0u == serverTick ? 1u : serverTick;
@@ -340,6 +368,7 @@ namespace
 		const std::uint32_t serverTick)
 	{
 		boss.strPatternId = pattern.strPatternId;
+		boss.bPatternInvulnerable = pattern.bInvulnerableWhileRunning;
 		boss.fPatternMinimumRange = pattern.fMinimumRange;
 		boss.fPatternMaximumRange = pattern.fMaximumRange;
 		StartPatternCooldown(boss, pattern, serverTick);
@@ -394,12 +423,17 @@ namespace
 		boss.fPatternForcedMotionSpeed = 0.f;
 		boss.ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
 		boss.iPatternHitCount = 0u;
+		boss.iPatternHitDelayMs = 0u;
 		boss.iAppliedPatternHitCount = 0u;
 		boss.bPatternWallContact = false;
 		boss.fPatternPushRangeM = 0.f;
 		boss.iPatternPushMs = 0u;
 		boss.bPatternKnockdown = false;
 		boss.iPatternDownMs = 0u;
+		boss.bPatternGroggy = false;
+		boss.bPatternChargeImpact = false;
+		boss.bPatternInvulnerable = false;
+		boss.bPendingArmorBreakReaction = false;
 		Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
 	}
 
@@ -713,10 +747,7 @@ void LostArk::Server::CValtanBrain::Update(
 		const float deltaZ = target->fPositionZ - boss.fPositionZ;
 		boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 		BeginPattern(boss, *selected, serverTick);
-		if (boss.strPatternId == ARMOR_BREAK_PATTERN_ID &&
-			boss.strPatternStageId == ARMOR_BREAK_STAGE_ID &&
-			boss.strActionId == ARMOR_BREAK_ACTION_ID &&
-			0u != boss.iPatternStageDurationMs)
+		if (boss.bPatternChargeImpact && 0u != boss.iPatternStageDurationMs)
 		{
 			const float durationSeconds =
 				static_cast<float>(boss.iPatternStageDurationMs) *
@@ -739,11 +770,32 @@ void LostArk::Server::CValtanBrain::Update(
 		return;
 	}
 
+	/* A plate coming off replaces the pattern's ordinary recovery, so the
+	reaction is the pattern's own PART_BREAK stage rather than whatever
+	happens to sit behind the stun. */
+	if (boss.bPendingArmorBreakReaction)
+	{
+		boss.bPendingArmorBreakReaction = false;
+		for (std::uint32_t reactionIndex = 0u;
+			reactionIndex < currentPattern->Stages.size(); ++reactionIndex)
+		{
+			if (BOSS_PATTERN_STAGE_KIND::PART_BREAK !=
+				currentPattern->Stages[reactionIndex].eStageKind)
+			{
+				continue;
+			}
+			EnterPatternStage(
+				boss, currentPattern->Stages[reactionIndex],
+				reactionIndex, serverTick);
+			return;
+		}
+	}
 	boss.fActionElapsedSeconds += fixedDeltaSeconds;
 	Advance_ArenaBreakLeap(boss);
 	while (boss.iAppliedPatternHitCount < boss.iPatternHitCount &&
 		boss.fActionElapsedSeconds * 1000.f >=
-			static_cast<float>(boss.iAppliedPatternHitCount *
+			static_cast<float>(boss.iPatternHitDelayMs +
+				boss.iAppliedPatternHitCount *
 				boss.iPatternHitIntervalMs))
 	{
 		ApplyPatternHit(boss, players, catalog, serverTick, outDamageEvents);
@@ -756,7 +808,8 @@ void LostArk::Server::CValtanBrain::Update(
 		return;
 	}
 
-	const std::uint32_t nextStageIndex = boss.iPatternStageIndex + 1u;
+	const std::uint32_t nextStageIndex =
+		NextClockStageIndex(*currentPattern, boss.iPatternStageIndex);
 	if (nextStageIndex >= currentPattern->Stages.size())
 	{
 		FinishPattern(boss, serverTick);
@@ -766,16 +819,48 @@ void LostArk::Server::CValtanBrain::Update(
 		boss, currentPattern->Stages[nextStageIndex], nextStageIndex, serverTick);
 }
 
+bool LostArk::Server::CValtanBrain::Is_ArmorRequirementMet(
+	const SERVER_WORLD_ENTITY& boss,
+	const BOSS_PATTERN_ARMOR_REQUIREMENT requirement)
+{
+	if (BOSS_PATTERN_ARMOR_REQUIREMENT::ANY == requirement)
+		return true;
+	bool wearsAnyPlate = false;
+	for (const SERVER_BOSS_ARMOR_PLATE_STATE& plate : boss.ArmorPlates)
+	{
+		if (0u != plate.iRemainingDurability)
+		{
+			wearsAnyPlate = true;
+			break;
+		}
+	}
+	return BOSS_PATTERN_ARMOR_REQUIREMENT::ARMORED == requirement ?
+		wearsAnyPlate : !wearsAnyPlate;
+}
+
+bool LostArk::Server::CValtanBrain::Is_PhaseRequirementMet(
+	const SERVER_WORLD_ENTITY& boss,
+	const BOSS_PATTERN_PHASE_REQUIREMENT requirement)
+{
+	switch (requirement)
+	{
+	case BOSS_PATTERN_PHASE_REQUIREMENT::ANY:
+		return true;
+	case BOSS_PATTERN_PHASE_REQUIREMENT::PHASE_ONE:
+		return 1u == boss.iPhase;
+	case BOSS_PATTERN_PHASE_REQUIREMENT::PHASE_TWO:
+		return boss.iPhase >= 2u;
+	}
+	return false;
+}
+
 bool LostArk::Server::CValtanBrain::Try_BuildImpactMotion(
 	const SERVER_WORLD_ENTITY& boss,
 	const float fixedDeltaSeconds,
 	float& outProposedX,
 	float& outProposedZ) const
 {
-	if (boss.strPatternId != ARMOR_BREAK_PATTERN_ID ||
-		boss.strPatternStageId != ARMOR_BREAK_STAGE_ID ||
-		boss.strActionId != ARMOR_BREAK_ACTION_ID ||
-		SERVER_ENTITY_ACTION::PATTERN_WINDUP != boss.eAction ||
+	if (!boss.bPatternChargeImpact ||
 		!std::isfinite(boss.fPatternForcedMotionSpeed) ||
 		boss.fPatternForcedMotionSpeed <= 0.f ||
 		!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
@@ -794,12 +879,8 @@ bool LostArk::Server::CValtanBrain::Complete_ImpactStage(
 	const CGameplayCatalog& catalog,
 	const std::uint32_t serverTick) const
 {
-	if (boss.strPatternId != ARMOR_BREAK_PATTERN_ID ||
-		boss.strPatternStageId != ARMOR_BREAK_STAGE_ID ||
-		boss.strActionId != ARMOR_BREAK_ACTION_ID)
-	{
+	if (!boss.bPatternChargeImpact)
 		return false;
-	}
 	const auto* patterns = catalog.Find_BossPatterns(boss.strEncounterId);
 	const BOSS_PATTERN_DEFINITION* pattern = nullptr;
 	if (nullptr != patterns)

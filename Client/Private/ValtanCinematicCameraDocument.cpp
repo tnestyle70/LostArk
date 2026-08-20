@@ -15,12 +15,25 @@ namespace
 	using namespace Client;
 
 	constexpr const char_t* SCHEMA = "lostark.encounter-cinematic-camera";
-	constexpr uint32_t FORMAT_VERSION = 2u;
+	constexpr uint32_t FORMAT_VERSION = 3u;
 	constexpr f32_t MAX_SHAKE_AMPLITUDE = 2.f;
 	constexpr uint32_t MAX_SHAKE_DURATION_MS = 1000u;
 	constexpr uint32_t MAX_CUE_COUNT = 32u;
 	constexpr uint32_t MAX_KEYFRAME_COUNT = 64u;
 	constexpr f32_t MAX_WORLD_COORDINATE = 100000.f;
+	constexpr size_t MAX_SKY_ASSET_ID_LENGTH = 128u;
+
+	bool_t Is_StablePresentationAssetId(const std::string_view value)
+	{
+		return !value.empty() && value.size() <= MAX_SKY_ASSET_ID_LENGTH &&
+			std::all_of(value.begin(), value.end(), [](const char_t character)
+			{
+				return (character >= 'a' && character <= 'z') ||
+					(character >= 'A' && character <= 'Z') ||
+					(character >= '0' && character <= '9') ||
+					'_' == character || '-' == character || '.' == character;
+			});
+	}
 
 	bool_t Is_ExactObject(
 		const DATA_JSON_VALUE& value,
@@ -388,19 +401,16 @@ bool_t Client::CValtanCinematicCameraDocument::Parse_Text(
 			outStatus = "Duplicate cinematic sky encounter tuple";
 			return false;
 		}
-		/* The effect owner supplies the layer assets. An empty ID is authored
-		   intent, not an error: that layer simply stays hidden. */
-		const DATA_JSON_VALUE* cloudAsset = cueValue.Find("redCloudAssetId");
-		const DATA_JSON_VALUE* apertureAsset =
-			cueValue.Find("blackApertureAssetId");
-		if (nullptr == cloudAsset || !cloudAsset->Is_String() ||
-			nullptr == apertureAsset || !apertureAsset->Is_String())
+		if (!Read_String(cueValue, "redCloudAssetId",
+				cue.strRedCloudAssetId) ||
+			!Read_String(cueValue, "blackApertureAssetId",
+				cue.strBlackApertureAssetId) ||
+			!Is_StablePresentationAssetId(cue.strRedCloudAssetId) ||
+			!Is_StablePresentationAssetId(cue.strBlackApertureAssetId))
 		{
-			outStatus = "Cinematic sky asset slots must be strings";
+			outStatus = "Cinematic sky asset IDs must be stable non-path IDs";
 			return false;
 		}
-		cue.strRedCloudAssetId = cloudAsset->Get_String();
-		cue.strBlackApertureAssetId = apertureAsset->Get_String();
 
 		const auto readUnitScalar = [&cueValue](
 			const char_t* key, const f32_t maximum, f32_t& outValue)

@@ -40,6 +40,9 @@ public:
 		const char_t* pSocketBoneName = { nullptr };
 		f32_t fSocketYawDegrees = 0.f;
 
+		/* The frame the body model itself is drawn in. Both kinds of piece are
+		placed in it, so a body that yaws its model does not leave its pieces
+		behind. */
 		const float4x4_t* pSocketRootMatrix = { nullptr };
 		string strMaterialProfileId;
 		const DEFERRED_EMISSIVE_OVERRIDE* pEmissiveOverride = { nullptr };

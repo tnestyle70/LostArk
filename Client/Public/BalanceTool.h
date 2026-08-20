@@ -96,6 +96,7 @@ private:
 		float hitHalfWidth = 0.f;
 		std::uint32_t hitCount = 0;
 		std::uint32_t hitIntervalMs = 0;
+		std::uint32_t hitDelayMs = 0;
 		std::string damageProfileId;
 		float pushRangeM = 0.f;
 		std::uint32_t pushMs = 0;
@@ -110,6 +111,14 @@ private:
 		std::string actionId;
 		std::vector<std::uint32_t> sourceActionIds;
 		std::string selectionMode;
+		/* ANY, ARMORED or STRIPPED. The Server offers a weighted pattern only in
+		the matching armour state, so the tool has to round-trip it or a save
+		would silently drop the gate. */
+		std::string armorRequirement;
+		/* ANY, PHASE_ONE or PHASE_TWO, round-tripped for the same reason. */
+		std::string phaseRequirement;
+		/* The boss cannot be damaged while this pattern runs. */
+		bool invulnerableWhileRunning = false;
 		std::uint32_t minimumHealthBar = 0;
 		std::uint32_t maximumHealthBar = 0;
 		std::uint32_t triggerHealthBar = 0;

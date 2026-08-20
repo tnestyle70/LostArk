@@ -40,6 +40,10 @@ struct BOSS_ACTOR_ENTRY final
 	std::string visualAssetId;
 	std::string bodyModel;
 	std::string weaponModel;
+	/* Skinned armour pieces the boss wears on the body rig. They share the
+	body skeleton, so they carry no animation of their own, and the order
+	here is the order the parts attach. */
+	std::vector<std::string> armorModels;
 	std::string animationSetId;
 	std::string serverProfileId;
 	std::string clientPresentationId;
@@ -55,10 +59,18 @@ struct NPC_ACTOR_ENTRY final
 	std::string animationSetId;
 	std::string idleClip;
 	std::string runtimeStatus;
-	/* Optional server action id -> clip name mapping for NPC entities the
-	server drives through snapshot actions (raid Esther summons). Actions not
-	listed here present with idleClip. */
-	std::map<std::string, std::string, std::less<>> actionClips;
+	/* Optional server action id -> ordered clip chain for NPC entities the
+	server drives through snapshot actions (raid Esther summons). Each clip
+	plays once and the next starts when it finishes, mirroring the source
+	action's stage list. Actions not listed here present with idleClip. */
+	std::map<std::string, std::vector<std::string>, std::less<>> actionClips;
+	/* Optional screen-cutin visibility window in milliseconds from the strike
+	clip's start. The start seeds from the source EpicSkill SkillDecoDelayTime
+	minus its 500ms cast offset; the end is a visual-tuning value because the
+	source cutin length lives in the undecoded epicskill.gfx timeline. An end
+	of 0 shows until the clip chain finishes. */
+	std::uint32_t cutinStartMs = 0;
+	std::uint32_t cutinEndMs = 0;
 };
 
 struct MONSTER_ACTOR_ENTRY final

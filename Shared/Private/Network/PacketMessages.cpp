@@ -181,7 +181,9 @@ namespace
 			std::isfinite(snapshot.fYawDegrees) &&
 			0 != snapshot.iMaximumHp &&
 			snapshot.iCurrentHp <= snapshot.iMaximumHp &&
-			0 != snapshot.iPhase;
+			0 != snapshot.iPhase &&
+			snapshot.iBrokenArmorMask <
+				(1u << LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES);
 	}
 
 	// A zero amount is not a hit, so it must not reach presentation as one; the
@@ -903,6 +905,7 @@ bool LostArk::Shared::Write_Message(
 		!Is_Valid_StableId(spawned.strArchetypeId, false) ||
 		!Is_Valid_StableId(spawned.strEncounterId, true) ||
 		!Is_Valid_StableId(spawned.strPlacementId, true) ||
+		!Is_Valid_StableId(spawned.strActionId, true) ||
 		!std::isfinite(spawned.fPositionX) ||
 		!std::isfinite(spawned.fPositionY) ||
 		!std::isfinite(spawned.fPositionZ) ||
@@ -922,7 +925,9 @@ bool LostArk::Shared::Write_Message(
 		!writer.Write_String(
 		spawned.strEncounterId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!writer.Write_String(
-		spawned.strPlacementId, MAX_STABLE_NETWORK_ID_BYTES))
+		spawned.strPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(
+		spawned.strActionId, MAX_STABLE_NETWORK_ID_BYTES))
 	{
 		return false;
 	}
@@ -948,6 +953,8 @@ bool LostArk::Shared::Read_Message(
 			decoded.strEncounterId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!reader.Read_String(
 			decoded.strPlacementId, MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(
+			decoded.strActionId, MAX_STABLE_NETWORK_ID_BYTES) ||
 		!reader.Read_F32(decoded.fPositionX) ||
 		!reader.Read_F32(decoded.fPositionY) ||
 		!reader.Read_F32(decoded.fPositionZ) ||
@@ -962,6 +969,7 @@ bool LostArk::Shared::Read_Message(
 		!Is_Valid_StableId(decoded.strArchetypeId, false) ||
 		!Is_Valid_StableId(decoded.strEncounterId, true) ||
 		!Is_Valid_StableId(decoded.strPlacementId, true) ||
+		!Is_Valid_StableId(decoded.strActionId, true) ||
 		!std::isfinite(decoded.fPositionX) ||
 		!std::isfinite(decoded.fPositionY) ||
 		!std::isfinite(decoded.fPositionZ) ||
@@ -1554,6 +1562,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(entity.iCurrentHp);
 		writer.Write_U32(entity.iMaximumHp);
 		writer.Write_U8(entity.iPhase);
+		writer.Write_U8(entity.iBrokenArmorMask);
 	}
 	for (const DAMAGE_EVENT& damage : message.DamageEvents)
 	{
@@ -1692,7 +1701,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(entity.iPatternStageIndex) ||
 			!reader.Read_U32(entity.iCurrentHp) ||
 			!reader.Read_U32(entity.iMaximumHp) ||
-			!reader.Read_U8(entity.iPhase))
+			!reader.Read_U8(entity.iPhase) ||
+			!reader.Read_U8(entity.iBrokenArmorMask))
 		{
 			return false;
 		}

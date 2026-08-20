@@ -1436,26 +1436,28 @@ void LostArk::Server::CGameRoom::Handle_UseEstherSkill(
 	if (LostArk::Shared::INVALID_NET_ENTITY_ID == m_iNextNetEntityId)
 		return;
 
-	std::string archetypeId;
+	const ESTHER_ROSTER_ENTRY* pRosterEntry = nullptr;
 	if (ESTHER_USE_REJECTION::NONE != m_EstherSkillSystem.Try_Consume(
-		useEstherSkill.iSlotIndex, archetypeId))
+		useEstherSkill.iSlotIndex, pRosterEntry) || nullptr == pRosterEntry)
 	{
 		return;
 	}
 	Spawn_EstherSummon(
-		archetypeId,
+		*pRosterEntry,
 		playerIter->second,
 		useEstherSkill.fAimX,
 		useEstherSkill.fAimZ);
 }
 
 bool LostArk::Server::CGameRoom::Spawn_EstherSummon(
-	const std::string& archetypeId,
+	const ESTHER_ROSTER_ENTRY& rosterEntry,
 	const SERVER_PLAYER& caster,
 	const float aimX,
 	const float aimZ)
 {
-	if (archetypeId.empty() ||
+	if (nullptr == rosterEntry.pArchetypeId ||
+		'\0' == rosterEntry.pArchetypeId[0] ||
+		0u == rosterEntry.iStrikeMs ||
 		LostArk::Shared::INVALID_NET_ENTITY_ID == m_iNextNetEntityId)
 	{
 		return false;
@@ -1476,15 +1478,17 @@ bool LostArk::Server::CGameRoom::Spawn_EstherSummon(
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
 
+	const std::string archetypeId = rosterEntry.pArchetypeId;
 	SERVER_WORLD_ENTITY staged{};
 	staged.iNetEntityId = m_iNextNetEntityId;
 	staged.strPlacementId =
 		"esther." + archetypeId + "." + std::to_string(staged.iNetEntityId);
 	staged.strArchetypeId = archetypeId;
 	staged.eKind = WORLD_BOOTSTRAP_KIND::NPC;
-	staged.eAction = SERVER_ENTITY_ACTION::IDLE;
-	staged.strActionId = ESTHER_ACTION_APPEAR;
+	staged.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
+	staged.strActionId = ESTHER_ACTION_STRIKE;
 	staged.isEstherSummon = true;
+	staged.iEstherStrikeMs = rosterEntry.iStrikeMs;
 	staged.fPositionX = caster.fPositionX;
 	staged.fPositionY = caster.fPositionY;
 	staged.fPositionZ = caster.fPositionZ;
@@ -3213,6 +3217,7 @@ bool LostArk::Server::CGameRoom::Send_WorldEntitySpawned(
 	message.strArchetypeId = entity.strArchetypeId;
 	message.strEncounterId = entity.strEncounterId;
 	message.strPlacementId = entity.strPlacementId;
+	message.strActionId = entity.strActionId;
 	message.fPositionX = entity.fPositionX;
 	message.fPositionY = entity.fPositionY;
 	message.fPositionZ = entity.fPositionZ;
@@ -3543,6 +3548,18 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.iCurrentHp = entity.iCurrentHp;
 		snapshot.iMaximumHp = entity.iMaximumHp;
 		snapshot.iPhase = entity.iPhase;
+		/* Presentation only needs to know which plates came off, not how much
+		durability is left, so the wire carries one bit per authored plate. */
+		for (const SERVER_BOSS_ARMOR_PLATE_STATE& plate : entity.ArmorPlates)
+		{
+			if (0u == plate.iRemainingDurability &&
+				plate.iPlateIndex <
+					LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES)
+			{
+				snapshot.iBrokenArmorMask |= static_cast<std::uint8_t>(
+					1u << plate.iPlateIndex);
+			}
+		}
 		message.Entities.push_back(std::move(snapshot));
 	}
 	message.DamageEvents = m_TickDamageEvents;
@@ -3725,6 +3742,18 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 		staged.fEngageDistance = profile->fEngageDistance;
 		staged.fMoveSpeed = profile->fMoveSpeed;
 		staged.iPhaseTwoHpPercent = profile->iPhaseTwoHpPercent;
+		/* Every plate starts intact. A boss with no authored plates keeps an
+		empty list and therefore no mitigation, which is the pre-armour rule. */
+		staged.ArmorPlates.clear();
+		staged.ArmorPlates.reserve(profile->ArmorPlates.size());
+		for (const BOSS_ARMOR_PLATE& plate : profile->ArmorPlates)
+		{
+			SERVER_BOSS_ARMOR_PLATE_STATE state{};
+			state.iPlateIndex = plate.iPlateIndex;
+			state.iRemainingDurability = plate.iDurability;
+			state.iDefense = plate.iDefense;
+			staged.ArmorPlates.push_back(state);
+		}
 		if (m_ServerNavigation.Is_Loaded())
 		{
 			SERVER_NAV_POINT projected{};
@@ -4843,32 +4872,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 	{
 		if (entity.isEstherSummon)
 		{
-			/* Room-owned appear -> strike -> leave timeline. Stage exits are
-			duration-driven; the leave stage additionally rises straight up so
-			the summon departs skyward before the sweep below despawns it. */
+			/* The clip carries its own entrance and exit; the room only clocks
+			the strike so the sweep below despawns it the moment it ends. */
 			entity.fActionElapsedSeconds += fixedDeltaSeconds;
-			const float elapsedMs = entity.fActionElapsedSeconds * 1000.f;
-			if (ESTHER_ACTION_APPEAR == entity.strActionId &&
-				elapsedMs >= static_cast<float>(ESTHER_APPEAR_MS))
-			{
-				entity.eAction = SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
-				entity.strActionId = ESTHER_ACTION_STRIKE;
-				entity.fActionElapsedSeconds = 0.f;
-				entity.iActionStartTick = updateTick;
-			}
-			else if (ESTHER_ACTION_STRIKE == entity.strActionId &&
-				elapsedMs >= static_cast<float>(ESTHER_STRIKE_MS))
-			{
-				entity.eAction = SERVER_ENTITY_ACTION::IDLE;
-				entity.strActionId = ESTHER_ACTION_LEAVE;
-				entity.fActionElapsedSeconds = 0.f;
-				entity.iActionStartTick = updateTick;
-			}
-			else if (ESTHER_ACTION_LEAVE == entity.strActionId)
-			{
-				entity.fPositionY +=
-					ESTHER_LEAVE_RISE_PER_SECOND * fixedDeltaSeconds;
-			}
 			continue;
 		}
 		if (entity.eKind == WORLD_BOOTSTRAP_KIND::BOSS &&
@@ -4967,17 +4973,17 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 						m_isReady = false;
 						return;
 					}
-					if (triggered)
+					/* The stun follows the collision, not the wall. A charge into a
+					   receiver whose wall is already gone, or that no destruction
+					   binding claims, still stops the boss dead. */
+					if (!m_ValtanBrain.Complete_ImpactStage(
+						entity, m_GameplayCatalog, updateTick) ||
+						!Apply_WorldDestructionStageEntry(entity, updateTick))
 					{
-						if (!m_ValtanBrain.Complete_ImpactStage(
-							entity, m_GameplayCatalog, updateTick) ||
-							!Apply_WorldDestructionStageEntry(entity, updateTick))
-						{
-							m_strStatus =
-								"Valtan impact stage transition failed";
-							m_isReady = false;
-							return;
-						}
+						m_strStatus =
+							"Valtan impact stage transition failed";
+						m_isReady = false;
+						return;
 					}
 				}
 				else
@@ -5018,9 +5024,8 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				iter->fActionElapsedSeconds * 1000.f >=
 					static_cast<float>(iter->iDeadDespawnMs)) ||
 			(iter->isEstherSummon &&
-				ESTHER_ACTION_LEAVE == iter->strActionId &&
 				iter->fActionElapsedSeconds * 1000.f >=
-					static_cast<float>(ESTHER_LEAVE_MS));
+					static_cast<float>(iter->iEstherStrikeMs));
 		if (!shouldDespawn)
 		{
 			++iter;
