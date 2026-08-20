@@ -19698,6 +19698,43 @@ namespace
 				staleRevisionProbe, true) &&
 			invalidPriorityPreserved,
 			"Product Prewarm Target Activation Ignores Unrelated Pending Work But Still Requires The Current Catalog Revision");
+
+		CEffectProductPrewarmQueue hotReloadQueue;
+		hotReloadQueue.Reset_ForCatalogRevision(81u);
+		const bool_t hotReloadSeeded = hotReloadQueue.Enqueue(
+			{ "failed.old", "hot.target", "unrelated.next" }, status) &&
+			hotReloadQueue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED &&
+			hotReloadQueue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+			queuedId == "failed.old" &&
+			hotReloadQueue.Complete_Front(queuedId, false, status);
+		const bool_t failedTargetRecovered = hotReloadSeeded &&
+			hotReloadQueue.Commit_HotReloadPrepared("failed.old", status);
+		const bool_t pendingTargetPromoted = failedTargetRecovered &&
+			hotReloadQueue.Commit_HotReloadPrepared("hot.target", status);
+		const EFFECT_PRODUCT_PREWARM_QUEUE_PROBE hotReloadProbe =
+			hotReloadQueue.Get_Probe();
+		const bool_t unrelatedOrderPreserved = pendingTargetPromoted &&
+			hotReloadQueue.Begin_Frame(queuedId) ==
+				EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY &&
+			queuedId == "unrelated.next";
+		const EFFECT_PRODUCT_PREWARM_QUEUE_PROBE beforeInvalidHotReload =
+			hotReloadQueue.Get_Probe();
+		const bool_t invalidHotReloadPreserved =
+			!hotReloadQueue.Commit_HotReloadPrepared("", status) &&
+			hotReloadQueue.Get_Probe().iTargetCount ==
+				beforeInvalidHotReload.iTargetCount &&
+			hotReloadQueue.Get_Probe().iPendingCount ==
+				beforeInvalidHotReload.iPendingCount;
+		runner.Require(failedTargetRecovered && pendingTargetPromoted &&
+			unrelatedOrderPreserved && invalidHotReloadPreserved &&
+			hotReloadProbe.iCatalogRevision == 81u &&
+			hotReloadProbe.iTargetCount == 3u &&
+			hotReloadProbe.iPendingCount == 1u &&
+			hotReloadProbe.iPreparedCount == 2u &&
+			hotReloadProbe.iFailedCount == 0u,
+			"Product Prewarm Hot Reload Promotes Only The Selected Pending Or Failed Target And Preserves Unrelated FIFO State");
 		SCOPED_ENVIRONMENT_VARIABLE resourceRootEnvironment(
 			L"LOSTARK_RESOURCE_ROOT");
 		SCOPED_ENVIRONMENT_VARIABLE runtimeCatalogFixtureEnvironment(
@@ -19891,6 +19928,55 @@ namespace
 			cacheOnlyIdentity,
 			"Published Product Set Has 192 Runtime Members Including 99 Valtan Targets, Excludes Authoring-Only Draft, And Cache-Only Lookup Never First-Use Loads JSON");
 
+		const uint64_t beforeDirectAuthoredReplacementRevision =
+			CEffectCatalog::Get_RuntimeRevision();
+		const std::filesystem::path firstAuthoredPath =
+			std::filesystem::absolute(repositoryRoot / L"Data" / L"Effects" /
+				L"Authored" /
+				(std::string(firstId) + ".effect.json"));
+		std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT>
+			directAuthoredCandidate;
+		const bool_t directAuthoredStaged = nullptr != firstDocument &&
+			CEffectCatalog::Stage_DebugDirectAuthoredReplacement(
+				std::string(firstId), firstAuthoredPath,
+				directAuthoredCandidate, status);
+		const bool_t stagePreservedCatalog = directAuthoredStaged &&
+			nullptr != directAuthoredCandidate &&
+			directAuthoredCandidate->Get_RuntimeRevision() ==
+				beforeDirectAuthoredReplacementRevision &&
+			directAuthoredCandidate->Get_DocumentShared().get() !=
+				firstDocument.get() &&
+			CEffectCatalog::Get_RuntimeRevision() ==
+				beforeDirectAuthoredReplacementRevision &&
+			CEffectCatalog::Find_Loaded(std::string(firstId)).get() ==
+				firstDocument.get() &&
+			CEffectCatalog::Find_VisualProjection_Loaded(
+				std::string(firstId)).get() == firstProjection.get();
+		const bool_t directAuthoredCommitted = stagePreservedCatalog &&
+			CEffectCatalog::Commit_DebugDirectAuthoredReplacement(
+				directAuthoredCandidate, status);
+		const bool_t selectedIdentityCommitted = directAuthoredCommitted &&
+			CEffectCatalog::Get_RuntimeRevision() ==
+				beforeDirectAuthoredReplacementRevision &&
+			CEffectCatalog::Find_Loaded(std::string(firstId)).get() ==
+				directAuthoredCandidate->Get_DocumentShared().get() &&
+			CEffectCatalog::Find_VisualProjection_Loaded(
+				std::string(firstId)).get() ==
+				directAuthoredCandidate->Get_VisualProjection().get();
+		const bool_t directAuthoredRestored = selectedIdentityCommitted &&
+			CEffectCatalog::Restore_DebugDirectAuthoredReplacement(
+				directAuthoredCandidate, status);
+		const bool_t exactIdentityRestored = directAuthoredRestored &&
+			CEffectCatalog::Get_RuntimeRevision() ==
+				beforeDirectAuthoredReplacementRevision &&
+			CEffectCatalog::Find_Loaded(std::string(firstId)).get() ==
+				firstDocument.get() &&
+			CEffectCatalog::Find_VisualProjection_Loaded(
+				std::string(firstId)).get() == firstProjection.get();
+		runner.Require(stagePreservedCatalog && selectedIdentityCommitted &&
+			exactIdentityRestored,
+			"Direct-Authored Debug Replacement Stages Without Mutation, Commits One Same-Revision Identity, And Restores The Exact Previous Catalog Pointers");
+
 		SCOPED_WORKING_DIRECTORY workingDirectory;
 		const bool_t workingDirectoryReady = workingDirectory.Initialize(
 			Resolve_ClientWorkingDirectory(), status);
@@ -20066,6 +20152,63 @@ namespace
 				afterSecond.iCatalogCommitCount &&
 			afterZeroRevision.iPreparedDocumentCount == 2u,
 			"Incremental Renderer Preserves Prior Identity, Reuses Duplicate, Rolls Back Invalid Target, And Commits One New Document");
+
+		auto replacementDocument = nullptr == firstDocument ? nullptr :
+			std::make_shared<EFFECT_DOCUMENT_DESC>(*firstDocument);
+		if (nullptr != replacementDocument)
+			replacementDocument->strDisplayName += " | selected hot reload";
+		const EFFECT_RENDER_PREWARM_PROBE beforeReplacement =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		const bool_t selectedReplaced = nullptr != replacementDocument &&
+			nullptr == firstProjection &&
+			CEffectDocumentRenderer::Replace_VisualProgramTarget(
+				device, context, revision,
+				{ std::string(firstId), replacementDocument, nullptr }, status);
+		const auto oldIdentityAfterReplacement = nullptr == firstDocument ?
+			nullptr : CEffectDocumentRenderer::Find_Prepared(
+				revision, std::string(firstId), *firstDocument, firstProjection);
+		const auto replacementPrepared = nullptr == replacementDocument ?
+			nullptr : CEffectDocumentRenderer::Find_Prepared(
+				revision, std::string(firstId), *replacementDocument, nullptr);
+		const auto secondAfterReplacement = nullptr == secondDocument ? nullptr :
+			CEffectDocumentRenderer::Find_Prepared(
+				revision, std::string(secondId), *secondDocument, secondProjection);
+		const EFFECT_RENDER_PREWARM_PROBE afterReplacement =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+
+		auto rejectedReplacement = nullptr == replacementDocument ? nullptr :
+			std::make_shared<EFFECT_DOCUMENT_DESC>(*replacementDocument);
+		if (nullptr != rejectedReplacement)
+			rejectedReplacement->Elements.clear();
+		const bool_t invalidReplacementRejected =
+			nullptr != rejectedReplacement &&
+			!CEffectDocumentRenderer::Replace_VisualProgramTarget(
+				device, context, revision,
+				{ std::string(firstId), rejectedReplacement, nullptr }, status);
+		const auto replacementAfterFailure =
+			nullptr == replacementDocument ? nullptr :
+				CEffectDocumentRenderer::Find_Prepared(
+					revision, std::string(firstId), *replacementDocument, nullptr);
+		const auto secondAfterFailure = nullptr == secondDocument ? nullptr :
+			CEffectDocumentRenderer::Find_Prepared(
+				revision, std::string(secondId), *secondDocument, secondProjection);
+		const EFFECT_RENDER_PREWARM_PROBE afterReplacementFailure =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		runner.Require(selectedReplaced && nullptr == oldIdentityAfterReplacement &&
+			nullptr != replacementPrepared &&
+			replacementPrepared.get() != firstPreparedIdentity.get() &&
+			nullptr != firstPreparedIdentity &&
+			secondAfterReplacement.get() == secondPreparedIdentity.get() &&
+			invalidReplacementRejected &&
+			replacementAfterFailure.get() == replacementPrepared.get() &&
+			secondAfterFailure.get() == secondPreparedIdentity.get() &&
+			afterReplacement.iCatalogCommitCount ==
+				beforeReplacement.iCatalogCommitCount + 1u &&
+			afterReplacement.iPreparedDocumentCount == 2u &&
+			afterReplacementFailure.iCatalogCommitCount ==
+				afterReplacement.iCatalogCommitCount &&
+			afterReplacementFailure.iPreparedDocumentCount == 2u,
+			"Selected Product Renderer Replacement Swaps One Identity, Preserves Active Shared Handles And Other Targets, And Rolls Back Invalid Candidates");
 
 		CEffectDocumentRenderer::Clear_Prepared_Catalog();
 		const EFFECT_RENDER_PREWARM_PROBE beforeStaleAttach =

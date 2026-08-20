@@ -13243,6 +13243,136 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 	return true;
 }
 
+bool_t Client::CEffectDocumentRenderer::Replace_VisualProgramTarget(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const uint64_t iCatalogRevision,
+	const EFFECT_RENDER_PREWARM_TARGET& Target,
+	std::string& strOutError)
+{
+	const std::string& EffectId = Target.strEffectAssetId;
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC>& Document =
+		Target.pDocument;
+	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+		Projection = Target.pVisualProgramProjection;
+	if (nullptr == pDevice || nullptr == pContext || 0u == iCatalogRevision ||
+		EffectId.empty() || nullptr == Document ||
+		EffectId != Document->strEffectAssetId ||
+		(nullptr != Projection &&
+			(!Projection->Is_Valid() ||
+			 Projection->Get_EffectAssetId() != EffectId ||
+			 Projection->Get_DocumentShared().get() != Document.get())) ||
+		nullptr == Acquire_RendererCore(pDevice, pContext))
+	{
+		strOutError = "Effect Product replacement target is invalid.";
+		return false;
+	}
+
+	const PREPARED_KEY CandidateKey{
+		iCatalogRevision, EffectId, Build_ResourceSignature(*Document),
+		nullptr == Projection ? std::string{} :
+			Projection->Get_AdmissionTokenSha256() };
+	PREWARM_ASSET_CACHE StagedSharedAssets;
+	uint64_t iStagedFromGeneration = 0u;
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		iStagedFromGeneration = g_iPreparedCatalogGeneration;
+		if (g_pPreparedDevice != pDevice.Get() ||
+			g_iPreparedCatalogRevision != iCatalogRevision ||
+			nullptr == g_pProductPrewarmSession ||
+			g_pProductPrewarmSession->pDevice != pDevice.Get() ||
+			g_pProductPrewarmSession->pContext != pContext.Get() ||
+			g_pProductPrewarmSession->iCatalogRevision != iCatalogRevision)
+		{
+			strOutError =
+				"Effect Product replacement has no matching prepared session.";
+			return false;
+		}
+		StagedSharedAssets = g_pProductPrewarmSession->SharedAssets;
+	}
+
+	CEffectDocumentRenderer Loader(pDevice, pContext);
+	std::shared_ptr<const PREPARED_DOCUMENT> Candidate;
+	if (!Loader.Build_PreparedDocument(
+			iCatalogRevision, EffectId, *Document, &StagedSharedAssets,
+			Candidate, strOutError, nullptr, Projection, Document))
+	{
+		return false;
+	}
+	auto StagedSession = std::make_shared<PRODUCT_PREWARM_SESSION>();
+	StagedSession->pDevice = pDevice.Get();
+	StagedSession->pContext = pContext.Get();
+	StagedSession->iCatalogRevision = iCatalogRevision;
+	StagedSession->SharedAssets = std::move(StagedSharedAssets);
+
+	{
+		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
+		if (g_iPreparedCatalogGeneration != iStagedFromGeneration ||
+			g_pPreparedDevice != pDevice.Get() ||
+			g_iPreparedCatalogRevision != iCatalogRevision ||
+			nullptr == g_pProductPrewarmSession ||
+			g_pProductPrewarmSession->pDevice != pDevice.Get() ||
+			g_pProductPrewarmSession->pContext != pContext.Get() ||
+			g_pProductPrewarmSession->iCatalogRevision != iCatalogRevision)
+		{
+			strOutError =
+				"Effect Product prepared cache changed during replacement staging.";
+			return false;
+		}
+
+		auto StagedDocuments = g_PreparedEffectDocuments;
+		auto StagedByIdentity = g_PreparedEffectDocumentsByIdentity;
+		for (auto Iterator = StagedDocuments.begin();
+			Iterator != StagedDocuments.end();)
+		{
+			if (Iterator->first.iCatalogRevision == iCatalogRevision &&
+				Iterator->first.strEffectAssetId == EffectId)
+			{
+				Iterator = StagedDocuments.erase(Iterator);
+			}
+			else
+			{
+				++Iterator;
+			}
+		}
+		for (auto Iterator = StagedByIdentity.begin();
+			Iterator != StagedByIdentity.end();)
+		{
+			const std::shared_ptr<const PREPARED_DOCUMENT>& Prepared =
+				Iterator->second;
+			if (nullptr != Prepared &&
+				Prepared->iCatalogRevision == iCatalogRevision &&
+				Prepared->strEffectAssetId == EffectId)
+			{
+				Iterator = StagedByIdentity.erase(Iterator);
+			}
+			else
+			{
+				++Iterator;
+			}
+		}
+		if (!StagedDocuments.emplace(CandidateKey, Candidate).second ||
+			!StagedByIdentity.emplace(Document.get(), Candidate).second)
+		{
+			strOutError =
+				"Effect Product replacement candidate identity is duplicate.";
+			return false;
+		}
+
+		g_PreparedEffectDocuments = std::move(StagedDocuments);
+		g_PreparedEffectDocumentsByIdentity = std::move(StagedByIdentity);
+		g_pProductPrewarmSession = std::move(StagedSession);
+		++g_iPreparedCatalogGeneration;
+		++g_EffectRenderPrewarmProbe.iCatalogCommitCount;
+		g_EffectRenderPrewarmProbe.iCatalogRevision = iCatalogRevision;
+		g_EffectRenderPrewarmProbe.iPreparedDocumentCount =
+			static_cast<uint32_t>(g_PreparedEffectDocuments.size());
+	}
+	strOutError = "Replaced prepared Product Effect target " + EffectId +
+		" for catalog revision " + std::to_string(iCatalogRevision) + ".";
+	return true;
+}
+
 bool_t Client::CEffectDocumentRenderer::Prepare_ReconstructedSourceRuntime(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,

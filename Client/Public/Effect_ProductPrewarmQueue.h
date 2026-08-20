@@ -71,6 +71,12 @@ public:
 	bool Commit_AllPrepared(
 		const std::set<std::string, std::less<>>& EffectAssetIds,
 		std::string& strOutStatus);
+	/* Same-revision selected-Effect hot reload.  Removes only this ID from any
+	   pending/failed state and commits it prepared without disturbing unrelated
+	   FIFO order or target state. */
+	bool Commit_HotReloadPrepared(
+		const std::string& strEffectAssetId,
+		std::string& strOutStatus);
 	bool Is_Prepared(const std::string& strEffectAssetId) const;
 	uint64_t Get_CatalogRevision() const;
 	const std::set<std::string, std::less<>>& Get_Targets() const;

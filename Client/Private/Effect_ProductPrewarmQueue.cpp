@@ -174,6 +174,27 @@ bool Client::CEffectProductPrewarmQueue::Commit_AllPrepared(
 	return true;
 }
 
+bool Client::CEffectProductPrewarmQueue::Commit_HotReloadPrepared(
+	const std::string& strEffectAssetId,
+	std::string& strOutStatus)
+{
+	if (0u == m_iCatalogRevision || strEffectAssetId.empty())
+	{
+		strOutStatus =
+			"Effect Product hot-reload prepared target is invalid.";
+		return false;
+	}
+
+	m_Targets.insert(strEffectAssetId);
+	m_Pending.erase(std::remove(
+		m_Pending.begin(), m_Pending.end(), strEffectAssetId), m_Pending.end());
+	m_PendingIds.erase(strEffectAssetId);
+	m_FailedIds.erase(strEffectAssetId);
+	m_PreparedIds.insert(strEffectAssetId);
+	strOutStatus = "Committed selected Product Effect target as hot-reload prepared.";
+	return true;
+}
+
 bool Client::CEffectProductPrewarmQueue::Is_Prepared(
 	const std::string& strEffectAssetId) const
 {

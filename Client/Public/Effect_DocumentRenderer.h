@@ -359,6 +359,17 @@ public:
 		uint64_t iCatalogRevision,
 		const EFFECT_RENDER_PREWARM_TARGET& Target,
 		std::string& strOutError);
+	/* Main-thread-only authoring handoff.  The candidate is fully prepared
+	   before the cache lock is reacquired, then every prepared entry for only
+	   this Effect ID/revision is replaced in one commit.  Existing EffectObject
+	   instances retain their shared prepared document; only subsequent lookups
+	   can observe the candidate.  Failure leaves the prior cache untouched. */
+	static bool_t Replace_VisualProgramTarget(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		uint64_t iCatalogRevision,
+		const EFFECT_RENDER_PREWARM_TARGET& Target,
+		std::string& strOutError);
 	/* Main-thread authoring-preview registration. Empty Variants clears the
 	   device-local registry. Product preparation never enables this path. */
 	static bool_t Install_AuthoringExactPreviewVariants(

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <array>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <string>
@@ -388,10 +389,75 @@ private:
 		m_pPreparation;
 };
 
+/* Debug authoring hot reload is a two-resource transaction: the catalog
+   document identity and its optional visual-program projection must move
+   together.  Staging is read-only.  Presentation may prepare the returned
+   immutable candidate, commit these pointers, and restore the exact previous
+   pointers if its own same-revision renderer replacement fails. */
+class EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT final
+{
+public:
+	const std::string& Get_EffectAssetId() const
+	{
+		return m_strEffectAssetId;
+	}
+	uint64_t Get_RuntimeRevision() const
+	{
+		return m_iRuntimeRevision;
+	}
+	const std::shared_ptr<const EFFECT_DOCUMENT_DESC>& Get_DocumentShared() const
+	{
+		return m_pDocument;
+	}
+	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
+		Get_VisualProjection() const
+	{
+		return m_pVisualProjection;
+	}
+
+private:
+	friend class CEffectCatalog;
+	EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT() = default;
+
+private:
+	std::string m_strEffectAssetId;
+	uint64_t m_iRuntimeRevision = 0u;
+	uint32_t m_iStagingThreadId = 0u;
+	std::filesystem::path m_ExpectedSealedSourcePath;
+	bool_t m_bHadPreviousDocument = false;
+	bool_t m_bHadPreviousVisualProjection = false;
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> m_pPreviousDocument;
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		m_pPreviousVisualProjection;
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> m_pDocument;
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		m_pVisualProjection;
+	std::string m_strPreviousCatalogStatus;
+};
+
 class CEffectCatalog final
 {
 public:
     static bool_t Load(std::string& strOutStatus);
+	/* Debug/main-thread only. Stage performs parse/identity/path/projection
+	   validation without mutating the loaded catalog. Commit keeps the global
+	   runtime revision unchanged so unrelated prepared targets remain valid.
+	   Active occurrences retain their old shared document; only later lookups
+	   observe the replacement. */
+	static bool_t Stage_DebugDirectAuthoredReplacement(
+		const std::string& strEffectAssetId,
+		const std::filesystem::path& AuthoredPath,
+		std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT>&
+			OutCandidate,
+		std::string& strOutStatus);
+	static bool_t Commit_DebugDirectAuthoredReplacement(
+		const std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT>&
+			pCandidate,
+		std::string& strOutStatus);
+	static bool_t Restore_DebugDirectAuthoredReplacement(
+		const std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT>&
+			pCandidate,
+		std::string& strOutStatus);
     static std::shared_ptr<const EFFECT_DOCUMENT_DESC> Find(
         const std::string& strEffectAssetId);
 	/* Cache-only lookup used by Product spawn.  It never parses a sealed

@@ -9,6 +9,7 @@
 #include "Effect_ReconstructedExecution.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -167,6 +168,30 @@ public:
 	static void Advance_ProductCuePreparation(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
+	/* Commits one already-staged catalog candidate into the Product GPU cache.
+	   The catalog revision and every unrelated prepared target remain unchanged.
+	   Active occurrences retain their old shared resources; the candidate and
+	   its budget are used by subsequent spawns only. */
+	static bool_t Replace_ProductPreparedTarget(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		uint64_t iCatalogRevision,
+		const std::string& strEffectAssetId,
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pVisualProgramProjection,
+		std::string& strOutStatus);
+	/* Save-time Debug transaction for exactly one direct-authored Effect.  The
+	   catalog stages and commits the new immutable document at the same runtime
+	   revision, then the renderer/queue/budget selected-target caches are
+	   replaced.  Any preparation failure restores the old catalog pointers and
+	   leaves the old prepared target available. */
+	static bool_t Reload_SelectedProductEffect(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const std::string& strEffectAssetId,
+		const std::filesystem::path& AuthoredPath,
+		std::string& strOutStatus);
     static bool_t Spawn(
         const EFFECT_SPAWN_DESC& Desc,
         std::string& strOutStatus);

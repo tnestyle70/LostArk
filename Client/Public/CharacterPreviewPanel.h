@@ -18,18 +18,21 @@ struct ANIMATION_PREVIEW_ASSET;
 enum class CHARACTER_PREVIEW_LOCK_OWNER : uint8_t
 {
 	ANIMATION_TOOL,
+	EFFECT_TOOL,
 	END
 };
 
-// Owns the one debug preview character used by animation authoring.
+// Owns the one debug preview character every authoring tool looks at.
 //
 // This lifecycle used to live inside CAnimation_Tool, which made the preview a
-// private implementation detail.  The panel owns creation, teardown and level
-// scoping and publishes the result through CAnimationTargetService instead of
+// private detail of one tool even though Effect authoring needs the same target.
+// MainApp shares one panel between tools. The panel owns creation, teardown and
+// level scoping; it publishes the result
+// through CAnimationTargetService so tools read one contract instead of
 // searching a level/layer/part by convention.
 //
 // The panel deliberately does not own clip playback, animation events or effect
-// assets. Those stay with animation authoring.
+// assets. Those stay with the tool that authors them.
 class CCharacterPreviewPanel final
 {
 public:

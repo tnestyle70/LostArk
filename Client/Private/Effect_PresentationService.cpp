@@ -1767,7 +1767,131 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 		"Product Effect incremental prewarm failed closed for " + EffectId +
 		": " + PrepareStatus;
 	OutputDebugStringA(("[Client][EffectPresentation] " +
-		g_strStatus + "\n").c_str());
+			g_strStatus + "\n").c_str());
+}
+
+bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const uint64_t iCatalogRevision,
+	const std::string& strEffectAssetId,
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument,
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+		pVisualProgramProjection,
+	std::string& strOutStatus)
+{
+	if (nullptr == pDevice || nullptr == pContext ||
+		0u == iCatalogRevision || strEffectAssetId.empty() ||
+		nullptr == pDocument ||
+		pDocument->strEffectAssetId != strEffectAssetId ||
+		CEffectCatalog::Get_RuntimeRevision() != iCatalogRevision ||
+		g_ProductPrewarmQueue.Get_CatalogRevision() != iCatalogRevision ||
+		(nullptr != pVisualProgramProjection &&
+			(!pVisualProgramProjection->Is_Valid() ||
+			 pVisualProgramProjection->Get_EffectAssetId() != strEffectAssetId ||
+			 pVisualProgramProjection->Get_DocumentShared().get() !=
+				pDocument.get())))
+	{
+		strOutStatus =
+			"Selected Effect prepared replacement arguments are invalid.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+
+	EFFECT_SCENE_BUDGET_COST CandidateBudget;
+	if (!Estimate_DocumentBudget(*pDocument, CandidateBudget, strOutStatus))
+	{
+		strOutStatus = "Selected Effect budget admission failed for " +
+			strEffectAssetId + ": " + strOutStatus;
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	CEffectProductPrewarmQueue StagedPrewarmQueue = g_ProductPrewarmQueue;
+	std::string QueueStatus;
+	if (!StagedPrewarmQueue.Commit_HotReloadPrepared(
+			strEffectAssetId, QueueStatus))
+	{
+		strOutStatus = QueueStatus;
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	auto StagedBudgetCosts = g_ProductEffectBudgetCosts;
+	StagedBudgetCosts.insert_or_assign(strEffectAssetId, CandidateBudget);
+	if (!CEffectDocumentRenderer::Replace_VisualProgramTarget(
+			std::move(pDevice), std::move(pContext), iCatalogRevision,
+			{ strEffectAssetId, std::move(pDocument),
+				std::move(pVisualProgramProjection) }, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+
+	g_ProductPrewarmQueue = std::move(StagedPrewarmQueue);
+	g_ProductEffectBudgetCosts = std::move(StagedBudgetCosts);
+	g_strStatus = strOutStatus;
+	return true;
+}
+
+bool_t Client::CEffectPresentationService::Reload_SelectedProductEffect(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext,
+	const std::string& strEffectAssetId,
+	const std::filesystem::path& AuthoredPath,
+	std::string& strOutStatus)
+{
+	std::shared_ptr<const EFFECT_DEBUG_DIRECT_AUTHORED_REPLACEMENT> Candidate;
+	if (!CEffectCatalog::Stage_DebugDirectAuthoredReplacement(
+			strEffectAssetId, AuthoredPath, Candidate, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	if (nullptr == Candidate ||
+		Candidate->Get_EffectAssetId() != strEffectAssetId ||
+		Candidate->Get_RuntimeRevision() == 0u ||
+		nullptr == Candidate->Get_DocumentShared() ||
+		Candidate->Get_DocumentShared()->strEffectAssetId != strEffectAssetId)
+	{
+		strOutStatus =
+			"Selected Effect catalog replacement candidate is invalid.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	if (!CEffectCatalog::Commit_DebugDirectAuthoredReplacement(
+			Candidate, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
+
+	std::string ReplaceStatus;
+	if (Replace_ProductPreparedTarget(
+			std::move(pDevice), std::move(pContext),
+			Candidate->Get_RuntimeRevision(), Candidate->Get_EffectAssetId(),
+			Candidate->Get_DocumentShared(), Candidate->Get_VisualProjection(),
+			ReplaceStatus))
+	{
+		strOutStatus = "Hot reloaded selected Effect for subsequent spawns: " +
+			strEffectAssetId + ". " + ReplaceStatus;
+		g_strStatus = strOutStatus;
+		return true;
+	}
+
+	std::string RestoreStatus;
+	const bool_t bRestored =
+		CEffectCatalog::Restore_DebugDirectAuthoredReplacement(
+			Candidate, RestoreStatus);
+	strOutStatus = "Selected Effect GPU replacement failed: " + ReplaceStatus;
+	if (!bRestored)
+	{
+		strOutStatus += " Catalog rollback also failed: " + RestoreStatus;
+	}
+	else
+	{
+		strOutStatus += " Previous catalog document and prepared target were preserved.";
+	}
+	g_strStatus = strOutStatus;
+	return false;
 }
 
 bool_t Client::CEffectPresentationService::Build_SourceBoneAnchorWorld(
