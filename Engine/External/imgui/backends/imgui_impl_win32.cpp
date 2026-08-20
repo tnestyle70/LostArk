@@ -102,6 +102,7 @@
 #include <windowsx.h> // GET_X_LPARAM(), GET_Y_LPARAM()
 #include <tchar.h>
 #include <dwmapi.h>
+#include <imm.h>
 
 // Using XInput for gamepad (will load DLL dynamically)
 #ifndef IMGUI_IMPL_WIN32_DISABLE_GAMEPAD
@@ -127,6 +128,12 @@ static void ImGui_ImplWin32_InitMultiViewportSupport(bool platform_has_own_dc);
 static void ImGui_ImplWin32_ShutdownMultiViewportSupport();
 static void ImGui_ImplWin32_UpdateMonitors();
 static bool ImGui_ImplWin32_IsDpiAwarenessPerMonitorAwareV2();
+static void ImGui_ImplWin32_PlatformSetImeData(ImGuiContext* ctx, ImGuiViewport* viewport, ImGuiPlatformImeData* data);
+
+// Live (uncommitted) IME composition text -- see WM_IME_COMPOSITION handling and
+// ImGui_ImplWin32_GetImeCompositionString(). One global buffer is fine: this backend only ever
+// drives a single HWND/context.
+static wchar_t g_ImeCompositionBuffer[128] = {};
 
 struct ImGui_ImplWin32_Data
 {
@@ -178,6 +185,35 @@ static void ImGui_ImplWin32_UpdateKeyboardCodePage(ImGuiIO& io)
         bd->KeyboardCodePage = CP_ACP; // Fallback to default ANSI code page when fails.
 }
 
+// Notify the OS IME (Input Method Editor, e.g. the Korean/Japanese/Chinese composition and
+// candidate window) where the active text input caret actually is. Without this, Windows falls
+// back to its own default placement heuristic for the composition/candidate popup, which reads
+// as an oversized window in the wrong spot instead of tracking the real widget it's typing into.
+static void ImGui_ImplWin32_PlatformSetImeData(ImGuiContext*, ImGuiViewport* viewport, ImGuiPlatformImeData* data)
+{
+    HWND hwnd = (HWND)viewport->PlatformHandle;
+    if (hwnd == nullptr)
+        return;
+
+    ::ImmAssociateContextEx(hwnd, nullptr, data->WantVisible ? IACE_DEFAULT : 0);
+
+    if (HIMC himc = ::ImmGetContext(hwnd))
+    {
+        COMPOSITIONFORM composition_form = {};
+        composition_form.ptCurrentPos.x = (LONG)(data->InputPos.x - viewport->Pos.x);
+        composition_form.ptCurrentPos.y = (LONG)(data->InputPos.y - viewport->Pos.y);
+        composition_form.dwStyle = CFS_FORCE_POSITION;
+        ::ImmSetCompositionWindow(himc, &composition_form);
+
+        CANDIDATEFORM candidate_form = {};
+        candidate_form.dwStyle = CFS_CANDIDATEPOS;
+        candidate_form.ptCurrentPos.x = (LONG)(data->InputPos.x - viewport->Pos.x);
+        candidate_form.ptCurrentPos.y = (LONG)(data->InputPos.y - viewport->Pos.y + data->InputLineHeight);
+        ::ImmSetCandidateWindow(himc, &candidate_form);
+        ::ImmReleaseContext(hwnd, himc);
+    }
+}
+
 static bool ImGui_ImplWin32_InitEx(void* hwnd, bool platform_has_own_dc)
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -212,6 +248,8 @@ static bool ImGui_ImplWin32_InitEx(void* hwnd, bool platform_has_own_dc)
     // Our mouse update function expect PlatformHandle to be filled for the main viewport
     ImGuiViewport* main_viewport = ImGui::GetMainViewport();
     main_viewport->PlatformHandle = main_viewport->PlatformHandleRaw = (void*)bd->hWnd;
+
+    ImGui::GetPlatformIO().Platform_SetImeDataFn = ImGui_ImplWin32_PlatformSetImeData;
 
     // Be aware that GetPropA()/SetPropA() may be accessed from other processes.
     // So as we store a pointer in IMGUI_CONTEXT we need to make sure we only call GetPropA() on windows owned by our process.
@@ -255,6 +293,11 @@ IMGUI_IMPL_API bool     ImGui_ImplWin32_InitForOpenGL(void* hwnd)
 {
     // OpenGL needs CS_OWNDC
     return ImGui_ImplWin32_InitEx(hwnd, true);
+}
+
+const wchar_t* ImGui_ImplWin32_GetImeCompositionString()
+{
+    return g_ImeCompositionBuffer;
 }
 
 void    ImGui_ImplWin32_Shutdown()
@@ -912,13 +955,53 @@ IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandlerEx(HWND hwnd, UINT msg, WPA
             io.AddInputCharacter(wch);
         }
         return 0;
+    case WM_IME_SETCONTEXT:
+        // Suppress the OS's own floating composition/candidate window -- ImGui_ImplWin32_PlatformSetImeData
+        // already repositions it correctly, but for a simple Hangul-style composition (no candidate list
+        // needed) the default box still renders as an oversized, out-of-place popup. Clearing these two
+        // "show UI" bits before forwarding to DefWindowProc keeps the IME context (and WM_IME_CHAR/
+        // WM_IME_COMPOSITION composing/committing text) fully working, just without the OS drawing its
+        // own box; ImGui's InputText already shows what's been typed so far via the widget itself.
+        lParam &= ~(ISC_SHOWUICOMPOSITIONWINDOW | ISC_SHOWUIALLCANDIDATEWINDOW);
+        return ::DefWindowProcW(hwnd, msg, wParam, lParam);
     case WM_IME_COMPOSITION:
     {
+        // Capture the live (not-yet-committed) composition string ourselves, so the app can draw
+        // it inline in its own widget instead of depending on the OS's own composition window
+        // (which WM_IME_SETCONTEXT above just suppressed).
+        if (lParam & GCS_COMPSTR)
+        {
+            if (HIMC himc = ::ImmGetContext(hwnd))
+            {
+                LONG bytes = ::ImmGetCompositionStringW(himc, GCS_COMPSTR, nullptr, 0);
+                if (bytes > 0)
+                {
+                    size_t maxLen = IM_ARRAYSIZE(g_ImeCompositionBuffer) - 1;
+                    size_t wantLen = (size_t)bytes / sizeof(wchar_t);
+                    size_t len = (wantLen < maxLen) ? wantLen : maxLen;
+                    ::ImmGetCompositionStringW(himc, GCS_COMPSTR, g_ImeCompositionBuffer, (DWORD)(len * sizeof(wchar_t)));
+                    g_ImeCompositionBuffer[len] = L'\0';
+                }
+                else
+                {
+                    g_ImeCompositionBuffer[0] = L'\0';
+                }
+                ::ImmReleaseContext(hwnd, himc);
+            }
+        }
         // Handling WM_IME_COMPOSITION ensure that WM_IME_CHAR value is correct even for MBCS apps.
-        // (see #9099, #3653 and https://stackoverflow.com/questions/77450354 topics) 
+        // (see #9099, #3653 and https://stackoverflow.com/questions/77450354 topics)
         LRESULT result = ::DefWindowProcW(hwnd, msg, wParam, lParam);
-        return (lParam & GCS_RESULTSTR) ? 1 : result;
+        if (lParam & GCS_RESULTSTR)
+        {
+            g_ImeCompositionBuffer[0] = L'\0'; // Composed characters were just committed via WM_IME_CHAR.
+            return 1;
+        }
+        return result;
     }
+    case WM_IME_ENDCOMPOSITION:
+        g_ImeCompositionBuffer[0] = L'\0'; // Composition cancelled (e.g. Esc, focus lost) with nothing committed.
+        return ::DefWindowProcW(hwnd, msg, wParam, lParam);
     case WM_IME_CHAR:
         if (::IsWindowUnicode(hwnd) == FALSE)
         {
@@ -1063,6 +1146,9 @@ static bool ImGui_ImplWin32_IsDpiAwarenessPerMonitorAwareV2()
 
 #if defined(_MSC_VER) && !defined(NOGDI)
 #pragma comment(lib, "gdi32")   // Link with gdi32.lib for GetDeviceCaps(). MinGW will require linking with '-lgdi32'
+#endif
+#if defined(_MSC_VER)
+#pragma comment(lib, "imm32")   // Link with imm32.lib for Imm*() IME positioning calls. MinGW will require linking with '-limm32'
 #endif
 
 float ImGui_ImplWin32_GetDpiScaleForMonitor(void* monitor)

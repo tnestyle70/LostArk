@@ -45,13 +45,22 @@ HRESULT CLevel_Loading::Initialize(
 	m_eNextLevelID = eNextLevelID;
 	m_iLobbyCommandToken = lobbyCommandToken;
 
-	/* No per-scenario text source exists yet, so every target level shows the same
-	placeholder (Bern's) title/tip for now. Written as \x escapes -- this source file has no
-	BOM and the project builds without /utf-8, so literal Korean text here would be misread as
-	CP949. Title: "Bern Castle". Tip: "Bern Castle is the capital of Bern, where many races
-	live mixed together." */
-	m_strTitleText = L"\xBCA0\xB978 \xC131";
-	m_strTipText = L"\xBCA0\xB978 \xC131\xC740 \xC5EC\xB7EC \xC885\xC871\xC774 \xD568\xAED8 \xC11E\xC5EC \xC788\xB294, \xBCA0\xB978\xC758 \xC218\xB3C4\xC785\xB2C8\xB2E4.";
+	/* No per-scenario text source exists yet, so every target level shows a fixed
+	placeholder title/tip. Written as \x escapes -- this source file has no BOM and the
+	project builds without /utf-8, so literal Korean text here would be misread as CP949.
+	Valtan Arena: "Revived Heart of the Beast" / "From the Revived Heart of the Beast, the
+	howls of beasts can be heard." Everything else keeps Bern's placeholder: "Bern Castle" /
+	"Bern Castle is the capital of Bern, where many races live mixed together." */
+	if (LEVEL::VALTAN_ARENA == m_eNextLevelID)
+	{
+		m_strTitleText = L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5";
+		m_strTipText = L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5\xC5D0\xC11C \xC9D0\xC2B9\xB4E4\xC758 \xC6B8\xBD80\xC9D6\xC74C\xC774 \xB4E4\xB824\xC635\xB2C8\xB2E4.";
+	}
+	else
+	{
+		m_strTitleText = L"\xBCA0\xB978 \xC131";
+		m_strTipText = L"\xBCA0\xB978 \xC131\xC740 \xC5EC\xB7EC \xC885\xC871\xC774 \xD568\xAED8 \xC11E\xC5EC \xC788\xB294, \xBCA0\xB978\xC758 \xC218\xB3C4\xC785\xB2C8\xB2E4.";
+	}
 
 	if (FAILED(Ready_Layer_Chrome()))
 		return E_FAIL;
@@ -471,6 +480,12 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 			if (nullptr != pPath && pPath->Is_String())
 				strTexturePath = pPath->Get_String();
 		}
+
+		/* Valtan Arena reuses every other chrome slot from the shared JSON as-is; only its
+		Background art is swapped here instead of forking a second layout document for one
+		texture path. */
+		if ("Background" == strId && LEVEL::VALTAN_ARENA == m_eNextLevelID)
+			strTexturePath = "UI/Loading/Loading_Background_Valtan.png";
 
 		/* Texture-less slots (empty "layers") are position-only markers the HUD Layout Tool
 		can still drag -- pull text draw positions from them instead of creating a sprite. */

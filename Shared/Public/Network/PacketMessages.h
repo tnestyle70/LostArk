@@ -815,4 +815,41 @@ namespace LostArk::Shared
 	bool Read_Message(
 		CPacketReader& reader,
 		C2S_USE_ITEM& message);
+
+	// Debug Character Select Arena "되돌리기" -- despawns every world entity the
+	// debug spawn buttons created in this session's room. No payload beyond the
+	// sequence number; the Server owns which entities exist.
+	struct C2S_DESPAWN_ALL_WORLD_ENTITIES
+	{
+		std::uint32_t iRequestSequence = 0;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_DESPAWN_ALL_WORLD_ENTITIES& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_DESPAWN_ALL_WORLD_ENTITIES& message);
+
+	// A stable Gameplay.world.json npc placement ID, not a display string, so it
+	// shares the same bound C2S_USE_ITEM's itemId never needs.
+	inline constexpr std::size_t MAX_NPC_PLACEMENT_ID_BYTES = 64;
+
+	// Bern's confirm-to-enter window fires this when the player presses the
+	// window's confirm button. strNpcPlacementId names which guide NPC the
+	// player talked to (npc.bern.beda.guide / npc.bern.aylara); the Server
+	// re-validates the requesting player is still near that NPC before
+	// building the same world transfer the old automatic trigger used.
+	struct C2S_CONFIRM_NPC_ENTRY
+	{
+		std::uint32_t iRequestSequence = 0;
+		std::string strNpcPlacementId;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const C2S_CONFIRM_NPC_ENTRY& message);
+	bool Read_Message(
+		CPacketReader& reader,
+		C2S_CONFIRM_NPC_ENTRY& message);
 }

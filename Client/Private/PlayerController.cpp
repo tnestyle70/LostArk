@@ -471,7 +471,7 @@ bool_t Client::CPlayerController::Should_SendMoveGoal(
 }
 
 bool_t Client::CPlayerController::Try_PickGroundPlane(
-	f32_t groundY, float3_t & outPosition) const
+	f32_t groundY, float3_t & outPosition)
 {
 	//현재 마우스 위치에서 world ray를 만들고, 지정된 Y 평면과 교차시킨다
 	//추후 navigation 사용해서 피킹과 스킬 사용에 따른 collider와도 연동을 시킨다.

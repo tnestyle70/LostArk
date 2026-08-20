@@ -979,6 +979,11 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	{
 		m_ValtanPresentationState = {};
 	}
+	/* Apply_Boss only fires while the BOSS-kind entity is still present in a snapshot, so once it
+	stops appearing (despawned) nothing ever tells the boss health bar HUD it's gone -- clear it
+	explicitly here instead of leaving stale HP on screen. */
+	if (LostArk::Shared::WORLD_ENTITY_KIND::BOSS == iter->second.eKind)
+		CCombatHUDViewModel::Get().Clear_Boss();
 	m_WorldEntities.erase(iter);
 	return true;
 }

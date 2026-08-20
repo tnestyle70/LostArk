@@ -1387,6 +1387,9 @@
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>
+    <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json">
+      <Filter>96.DataFiles\UI</Filter>
+    </None>
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json">
       <Filter>96.DataFiles\UI</Filter>
     </None>

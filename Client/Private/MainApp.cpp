@@ -16,6 +16,8 @@
 #include "ItemCatalog.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
+#include "Level_Bern.h"
+#include "Level_CharacterSelect.h"
 #include "Level_Loading.h"
 #include "LobbyCommandService.h"
 #include "NetworkManager.h"
@@ -423,6 +425,7 @@ HRESULT CMainApp::Render()
 			ETOUI(LEVEL::LOBBY) == CGameInstance::Get().Get_CurrentLevelID())
 		{
 			m_pLobbyBackgroundView->Render("", 0);
+			Render_LobbyButtons();
 		}
 	#ifdef _DEBUG
 		const HUD_PLAYER_STATE& hudPlayer =
@@ -529,6 +532,17 @@ HRESULT CMainApp::Render()
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Render_Text();
 	RenderQuickSlotKeyLabels();
+	RenderLobbyButtonText();
+	if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
+	{
+		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
+			pCharacterSelect->Render_ArenaSpawnLabels();
+	}
+	if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
+	{
+		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+			pBern->Render_ValtanEntryModalText();
+	}
 
 	return CGameInstance::Get().Render_End();
 }
@@ -576,21 +590,6 @@ void CMainApp::RenderCombatHUD()
 			const char_t* pLabel =
 				LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == player.eStance ?
 					"wild" : "focus";
-			/* TEMP DIAGNOSTIC (2026-08-14): the icon shows nothing at spawn, shows the glaive
-			briefly after a stance press, then silently reverts to the short spear ~1-2s later,
-			with eStance itself never changing -- logging every actual trigger of this edge so the
-			next repro shows, in the VS Output window, whether Play_KeyframeAnimation is really
-			only firing once per real stance change or is somehow re-firing on its own. Remove once
-			the icon is confirmed stable. */
-			{
-				char pDebugLine[256];
-				sprintf_s(pDebugLine,
-					"[LanceIdStance] eStance %d -> %d label=%s time=%.2f\n",
-					static_cast<int32_t>(m_ePreviousHudStance),
-					static_cast<int32_t>(player.eStance),
-					pLabel, ImGui::GetTime());
-				OutputDebugStringA(pDebugLine);
-			}
 			m_pHUDRuntimeView->Play_KeyframeAnimation("Lance_Id_Stance", pLabel);
 		}
 		/* Warlord's defense-mode toggle (Z: skill 17800 WARLORD_NORMAL->WARLORD_DEFENSE, 17810
@@ -908,8 +907,13 @@ void CMainApp::RenderCombatHUD()
 		3 Ready glows are also authored as ordinary Tool-placeable slots (so they show up on the
 		canvas for placement), but their real gameplay visibility is gauge-state-driven, not
 		always-on -- force them hidden here and let RenderEstherGauge() (called later) draw the real
-		clipped fill / conditional glow instead, so there's no double-draw. */
-		if (nullptr != m_pEstherUIView)
+		clipped fill / conditional glow instead, so there's no double-draw. Esther is a Valtan raid
+		mechanic -- RenderEstherGauge() already skips outside VALTAN_ARENA, but this static frame is
+		a separate draw call reached by RenderCombatHUD's own broader level gate (which includes
+		CHARACTER_SELECT for HP/mana/skill icons), so it needs the same VALTAN_ARENA-only check or
+		the empty portrait frame keeps showing there. */
+		if (nullptr != m_pEstherUIView &&
+			ETOUI(LEVEL::VALTAN_ARENA) == currentLevel)
 		{
 			m_pEstherUIView->Set_SlotVisible("Esther_GaugeFill", false);
 			m_pEstherUIView->Set_SlotVisible("Esther_Slot1_Ready", false);
@@ -952,6 +956,7 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	constexpr KEY_LABEL LABELS[] = {
 		{ "Skill_Q", L"Q" }, { "Skill_W", L"W" }, { "Skill_E", L"E" }, { "Skill_R", L"R" },
 		{ "Skill_A", L"A" }, { "Skill_S", L"S" }, { "Skill_D", L"D" }, { "Skill_F", L"F" },
+		{ "Skill_T", L"T" },
 		{ "SpecialSkill_1", L"6" }, { "SpecialSkill_2", L"7" }, { "SpecialSkill_3", L"8" },
 		{ "SpecialSkill_4", L"9" }, { "SpecialSkill_5", L"0" },
 		{ "Item_1", L"1" }, { "Item_2", L"2" }, { "Item_3", L"3" }, { "Item_4", L"4" },
@@ -986,6 +991,87 @@ void CMainApp::RenderQuickSlotKeyLabels()
 			float2_t(fLabelCenterX * textScaleX, fLabelCenterY * textScaleY),
 			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	}
+}
+
+void CMainApp::Render_LobbyButtons()
+{
+	if (nullptr == m_pLobbyBackgroundView)
+		return;
+
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pLobbyBackgroundView->Get_SlotRect(
+		"Lobby_CreateCharacterButton", fX, fY, fWidth, fHeight))
+	{
+		return;
+	}
+
+	const ImVec2 vMin(
+		pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
+	const ImVec2 vMax(vMin.x + fWidth * scaleX, vMin.y + fHeight * scaleY);
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const bool_t bHovered = vMouse.x >= vMin.x && vMouse.x < vMax.x &&
+		vMouse.y >= vMin.y && vMouse.y < vMax.y;
+
+	if (bHovered)
+	{
+		/* Base idle art is already drawn by the generic m_pLobbyBackgroundView->Render("", 0)
+		pass above; this draws the real hover art directly on top of it (same rect, fully opaque),
+		matching how CInventoryView::Render_CategoryTabs swaps hover art manually. */
+		if (ID3D11ShaderResourceView* pHoverSRV = m_pLobbyBackgroundView->Load_Texture(
+			"UI/Lobby/create_character_button_hover.png"))
+		{
+			ImGui::GetForegroundDrawList(pViewport)->AddImage(pHoverSRV, vMin, vMax);
+		}
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+			CLobbyCommandService::Request(LOBBY_STAGE::CHARACTER_SELECT);
+	}
+}
+
+void CMainApp::RenderLobbyButtonText()
+{
+	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
+		return;
+	if (nullptr == m_pLobbyBackgroundView)
+		return;
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pLobbyBackgroundView->Get_SlotRect(
+		"Lobby_CreateCharacterButton", fX, fY, fWidth, fHeight))
+	{
+		return;
+	}
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	const f32_t fCenterX = fX + fWidth * 0.5f;
+	const f32_t fCenterY = fY + fHeight * 0.5f;
+
+	/* Font_YoonGasiIIM -- same real LostArk source font already used for the inventory title and
+	HUD key labels (see RenderQuickSlotKeyLabels), picked for real readability over YG760.
+	Written as \x-escaped UTF-16 code units (not raw UTF-8 source bytes) -- this file has no BOM,
+	so MSVC's source-encoding fallback mangles literal non-ASCII bytes in string literals into
+	garbage code points at compile time (matches InventoryView.cpp's existing "\xC18C\xC9C0\xD488"
+	pattern for "소지품"). */
+	const wchar_t* pLabel = L"\xCE90\xB9AD\xD130 \xC0DD\xC131"; // "캐릭터 생성"
+	const float2_t vMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+	/* 6-glyph label on a narrow 142px button -- height-only scaling (like the single-glyph HUD
+	key labels) ran the text past the button's own edges, so this also caps by width. */
+	const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * 0.32f / vMeasured.y) : 1.f;
+	const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.8f / vMeasured.x) : 1.f;
+	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+		float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 }
 
 void CMainApp::Render_ItemQuickSlots()
@@ -1125,20 +1211,6 @@ void CMainApp::RenderLanceMasterIdentityGauge()
 	{
 		fSegmentValue[i] = (std::min)(SEGMENT_MAX, (std::max)(0.f, fRemaining));
 		fRemaining -= SEGMENT_MAX;
-	}
-
-	// TEMP DIAGNOSTIC: raw identity + resolved per-segment values, once/sec.
-	{
-		static double s_dLastLog = -1.0;
-		const double dNow = ImGui::GetTime();
-		if (dNow - s_dLastLog > 1.0)
-		{
-			s_dLastLog = dNow;
-			char szBuf[192];
-			sprintf_s(szBuf, "[GAUGE-VALUE-DIAG] iCurrentIdentity=%u iMaximumIdentity=%u seg0=%.1f seg1=%.1f seg2=%.1f\n",
-				player.iCurrentIdentity, player.iMaximumIdentity, fSegmentValue[0], fSegmentValue[1], fSegmentValue[2]);
-			OutputDebugStringA(szBuf);
-		}
 	}
 
 	/* target.rotation = maxDegree * (value/100) confirmed straight from the decompiled
@@ -1705,6 +1777,12 @@ void CMainApp::RenderBossHealthBarText()
 
 void CMainApp::RenderEstherGauge()
 {
+	/* Esther's skill-select window is a Valtan raid mechanic -- Character Select's live Server
+	room can still populate a nonzero gauge maximum for the selected class, which drew this
+	window there too even though there is no raid encounter to use it against. */
+	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		return;
+
 	const uint32_t maximum =
 		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
 	if (0u == maximum)
@@ -1845,6 +1923,8 @@ void CMainApp::RenderSkillIcons()
 		{ 34120, "UI/Skill/LanceMaster/34120_ChainSlash.png" },
 		{ 34110, "UI/Skill/LanceMaster/34110_HalfMoonSlash.png" },
 		{ 34150, "UI/Skill/LanceMaster/34150_RagingDragonSlash.png" },
+		/* LanceMaster -- T */
+		{ 34650, "UI/Skill/LanceMaster/34650_DeadlyRedDragon.png" },
 		/* LanceMaster -- Short Spear (no D/F skill in that stance) */
 		{ 34540, "UI/Skill/LanceMaster/34540_SpiralingSpear.png" },
 		{ 34550, "UI/Skill/LanceMaster/34550_4HeadedDragon.png" },
@@ -1863,6 +1943,8 @@ void CMainApp::RenderSkillIcons()
 		{ 17040, "UI/Skill/Warlord/17040_Bash.png" },
 		{ 17100, "UI/Skill/Warlord/17100_ShieldShock.png" },
 		{ 17140, "UI/Skill/Warlord/17140_GuardiansLightning.png" },
+		/* Warlord -- T */
+		{ 17240, "UI/Skill/Warlord/17240_FullBarrelCannon.png" },
 		/* Warlord -- V (awakening) */
 		{ 17170, "UI/Skill/Warlord/17170_GuardiansProtection.png" },
 		/* Artist */
@@ -1874,6 +1956,8 @@ void CMainApp::RenderSkillIcons()
 		{ 31420, "UI/Skill/Artist/31420_OrchidStrike.png" },
 		{ 31490, "UI/Skill/Artist/31490_TigerSlash.png" },
 		{ 31470, "UI/Skill/Artist/31470_OneStroke.png" },
+		/* Artist -- T */
+		{ 31950, "UI/Skill/Artist/31950_DragonEngraving.png" },
 		/* Artist -- V (awakening) */
 		{ 31910, "UI/Skill/Artist/31910_DreamPeachGarden.png" },
 		/* DimensionMaster */
@@ -1885,11 +1969,13 @@ void CMainApp::RenderSkillIcons()
 		{ 2050220, "UI/Skill/DimensionMaster/2050220_PointPierce.png" },
 		{ 2050240, "UI/Skill/DimensionMaster/2050240_BoundaryBreak.png" },
 		{ 2050230, "UI/Skill/DimensionMaster/2050230_TimeShatter.png" },
+		/* DimensionMaster -- T */
+		{ 2050500, "UI/Skill/DimensionMaster/2050500_KarmaBoundary.png" },
 		/* DimensionMaster -- V (awakening) */
 		{ 2050520, "UI/Skill/DimensionMaster/2050520_TimeShackles.png" },
 	};
 
-	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "V" };
+	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
 	constexpr f32_t REF_WIDTH = 1280.f;
 	constexpr f32_t REF_HEIGHT = 720.f;
@@ -1969,7 +2055,7 @@ void CMainApp::RenderQuickSlot()
 	if (skillWindowOpen)
 		return;
 
-	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "V" };
+	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
 	uint32_t iSlotIndex = 0;
 	for (const char* pInputSlot : INPUT_SLOTS)
@@ -2269,6 +2355,23 @@ HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
 			{
 				return E_FAIL;
 			}
+		}
+	}
+
+	/* Valtan Arena's own loading background: Level_Loading::Ready_Layer_Chrome swaps the
+	Background slot's texture path to this one at runtime (LEVEL::VALTAN_ARENA only), so it
+	never appears in LoadingLayout.json's own layers and the scan above never finds it --
+	register it explicitly or its CUI_Sprite clone fails to find a texture prototype. */
+	{
+		constexpr wchar_t VALTAN_LOADING_BACKGROUND[] = L"UI/Loading/Loading_Background_Valtan.png";
+		const filesystem::path resolvedPath =
+			CRuntimeAssetRoot::Resolve(VALTAN_LOADING_BACKGROUND);
+		if (!resolvedPath.empty() &&
+			FAILED(CGameInstance::Get().Add_Prototype(
+				ETOUI(LEVEL::STATIC), VALTAN_LOADING_BACKGROUND,
+				CTexture::Create(m_pDevice, m_pContext, resolvedPath.c_str(), 1))))
+		{
+			return E_FAIL;
 		}
 	}
 
