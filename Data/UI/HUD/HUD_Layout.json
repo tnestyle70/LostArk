@@ -1201,7 +1201,7 @@
       "id": "Skill_V",
       "ownerClass": null,
       "type": 7,
-      "rect": { "x": 428.641479, "y": 664.130615, "width": 34.5, "height": 34.5 },
+      "rect": { "x": 379.887878, "y": 660.4823, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [
@@ -1215,7 +1215,7 @@
       "id": "Skill_V_Flash",
       "ownerClass": null,
       "type": 9,
-      "rect": { "x": 427.212799, "y": 665.559204, "width": 34.5, "height": 34.5 },
+      "rect": { "x": 378.459198, "y": 661.910889, "width": 34.5, "height": 34.5 },
       "rotation": 0,
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
@@ -1223,6 +1223,59 @@
       "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
+    },
+    {
+      "id": "Skill_T",
+      "ownerClass": null,
+      "type": 7,
+      "rect": { "x": 431.751892, "y": 661.477295, "width": 34.5, "height": 34.5 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/Common/Slot Bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false },
+        { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Skill_T_Flash",
+      "ownerClass": null,
+      "type": 9,
+      "rect": { "x": 431.751892, "y": 661.477295, "width": 34.5, "height": 34.5 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] },
+      "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
+      "keyframeAnimationScale": 0.724900007
+    },
+    {
+      "id": "Skill_V_Edge1",
+      "ownerClass": null,
+      "type": 7,
+      "rect": { "x": 375.012878, "y": 655.6073, "width": 44.25, "height": 44.25 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/Common/V skill edge 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
+    },
+    {
+      "id": "Skill_V_Edge2",
+      "ownerClass": null,
+      "type": 7,
+      "rect": { "x": 371.637878, "y": 652.6073, "width": 51, "height": 50.25 },
+      "rotation": 0,
+      "stages": { "baseFrom": 0, "shineFrom": 1 },
+      "layers": [
+        { "path": "UI/HUD/Common/V skill edge 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
+      ],
+      "shine": { "texture": null, "additive": false },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [] }
     },
     {
       "id": "Skill_Z",

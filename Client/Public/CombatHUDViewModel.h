@@ -87,6 +87,12 @@ namespace Client
 		void Apply_Boss(
 			const std::string& archetypeId,
 			const LostArk::Shared::WORLD_ENTITY_SNAPSHOT& snapshot);
+		/* Apply_Boss only runs while a BOSS-kind entity is still present in the current
+		S2C_WORLD_SNAPSHOT, so despawning it (it simply stops appearing in future snapshots) never
+		calls Apply_Boss again -- m_Boss stayed isValid with stale HP forever, so the boss health
+		bar HUD never disappeared. CClientReplication::Apply_WorldEntityDespawn calls this
+		explicitly for a despawned BOSS-kind entity instead. */
+		void Clear_Boss() { m_Boss = {}; }
 		void Apply_DamageEvents(
 			std::uint32_t serverTick,
 			const std::vector<LostArk::Shared::DAMAGE_EVENT>& events);

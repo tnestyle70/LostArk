@@ -88,3 +88,11 @@ bool Client::CNetworkPlayerCommandSink::Request_ChangeCharacterClass(
 	return CNetworkManager::Get().Send_ChangeCharacterClass(
 		clientSequence, characterClass);
 }
+
+bool Client::CNetworkPlayerCommandSink::Request_ConfirmNpcEntry(
+	const std::uint32_t clientSequence,
+	const std::string& npcPlacementId)
+{
+	return CNetworkManager::Get().Send_ConfirmNpcEntry(
+		clientSequence, npcPlacementId);
+}

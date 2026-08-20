@@ -88,6 +88,24 @@ private:
 	the same hand-rolled mouse-vs-rect pattern Render_ClassList already uses for the class list. */
 	void Render_ArenaSpawnButtons();
 
+public:
+	/* SpawnMonsterButton/BossSpawnButton/SpawnCancelButton's small labels ("몬스터 소환"/"보스
+	소환"/"되돌리기"). CGameInstance::Draw_Text submits immediately, but Render_ArenaSpawnButtons'
+	hover art is composited later inside CImGuiLayer::EndFrame(), so this must run after EndFrame
+	(same reason CMainApp::RenderQuickSlotKeyLabels is split out from RenderCombatHUD) --
+	m_pClassSelectView is private to this level, so CMainApp reaches it through Get_Active()
+	instead of a second CHUDRuntimeView of its own. */
+	void Render_ArenaSpawnLabels();
+	static CLevel_CharacterSelect* Get_Active() { return s_pActiveInstance; }
+	/* Real click for CreateCharacterButton (Render_ArenaSpawnButtons) can't call
+	Open_CreateCharacterModal() directly -- ImGui::OpenPopup() resolves against the *current*
+	window's ID stack, and Render_ArenaSpawnButtons runs after Render_SelectionPanel's
+	ImGui::Begin("Character Select")/End() has already closed, outside any window. Calling it
+	there opened a popup ID that Render_CreateCharacterModal's BeginPopupModal (still inside that
+	window) never matched, so nothing appeared. This flag lets Render_SelectionPanel make the real
+	call itself, from the same window the modal is checked in. */
+	void Request_CreateCharacterButtonClick() { m_hasCreateCharacterButtonClick = true; }
+
 private:
 	static constexpr std::array<
 		LostArk::Shared::CHARACTER_CLASS_ID, 6> SUPPORTED_CLASSES =
@@ -107,6 +125,7 @@ private:
 	size_t m_iSelectedClassIndex = 0;
 	std::optional<size_t> m_iPendingClassIndex;
 	std::uint32_t m_iNextClassChangeSequence = 1u;
+	std::uint32_t m_iNextDespawnRequestSequence = 1u;
 	std::uint32_t m_iPendingClassChangeSequence = 0u;
 	CLASS_PRESENTATION_PREPARATION_STATE
 		m_eClassPresentationPreparationState =
@@ -140,12 +159,14 @@ private:
 	std::array<char_t,
 		LostArk::Shared::MAX_NICKNAME_BYTES + 1u> m_NicknameDraft{};
 	bool_t m_isCreateCharacterModalOpen = false;
+	bool_t m_hasCreateCharacterButtonClick = false;
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = false;
 	bool_t m_isSkillHitAreaDebugVisible = true;
 #endif
 	string m_strStatus =
 		"Waiting for the Lobby-approved Server character.";
+	static CLevel_CharacterSelect* s_pActiveInstance;
 
 public:
 	static unique_ptr<CLevel_CharacterSelect> Create(

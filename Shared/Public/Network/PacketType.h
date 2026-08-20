@@ -5,7 +5,7 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 25;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 27;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -125,7 +125,22 @@ namespace LostArk::Shared
 		// ownership + heal amount and answers with the player's next
 		// S2C_WORLD_SNAPSHOT (HP) and an updated S2C_INVENTORY_SNAPSHOT
 		// (decremented count) -- no separate result message.
-		C2S_USE_ITEM
+		C2S_USE_ITEM,
+
+		// Debug Character Select Arena "되돌리기" (revert) button -- despawns every
+		// world entity the debug spawn buttons (Monster/Mid Boss/Valtan) created in
+		// this room. The Server broadcasts one S2C_WORLD_ENTITY_DESPAWNED per removed
+		// entity (already-wired machinery, previously only defined and never called)
+		// -- no separate result message.
+		C2S_DESPAWN_ALL_WORLD_ENTITIES,
+
+		// Bern's two Valtan-entry guide NPCs (npc.bern.beda.guide, npc.bern.aylara)
+		// right-click open a client-local confirm window; this fires only when the
+		// player presses that window's confirm button. The Server re-validates
+		// proximity to the named NPC and answers with the same
+		// S2C_ENTER_ACCEPTED/S2C_ENTER_REJECTED world-transfer flow the old
+		// automatic changeLevel triggerBox used -- no separate result message.
+		C2S_CONFIRM_NPC_ENTRY
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -173,6 +188,8 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_DEBUG_GIVE_ITEM:
 		case PACKET_TYPE::S2C_INVENTORY_SNAPSHOT:
 		case PACKET_TYPE::C2S_USE_ITEM:
+		case PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES:
+		case PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY:
 			return true;
 		default:
 			return  false;

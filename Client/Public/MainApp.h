@@ -84,6 +84,16 @@ private:
 	2.png"'s own art. Called after EndFrame() like the other LOA-font text, for the same
 	z-order reason as Render_Text(). */
 	void RenderQuickSlotKeyLabels();
+	/* Lobby's real "캐릭터 생성" button -- screen-space hit test against
+	Lobby_CreateCharacterButton's rect (Lobby_Layout.json), submitting
+	CLobbyCommandService::Request(LOBBY_STAGE::CHARACTER_SELECT) on click, same typed command the
+	ImGui "Character Select" button already uses. The image itself is drawn by the existing
+	m_pLobbyBackgroundView->Render("", 0) generic pass; this only adds hover feedback + the hit
+	test. Called alongside that Render() call, before EndFrame(). */
+	void Render_LobbyButtons();
+	/* White "캐릭터 생성" label for Lobby_CreateCharacterButton. Called after EndFrame() like the
+	other LOA-font text, same z-order reason as RenderQuickSlotKeyLabels. */
+	void RenderLobbyButtonText();
 	void RenderBossHealthBar();
 	/* Boss title/HP/bar-count text. Split out from RenderBossHealthBar and called after
 	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason) -- CGameInstance::Draw_Text
@@ -144,12 +154,13 @@ private:
 	real stance, so the very first Render sees an edge and plays the arrival pose. */
 	LostArk::Shared::PLAYER_STANCE_ID m_ePreviousHudStance =
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
-	/* RenderQuickSlot edge-detects "skill just used" per Q..F slot as a ready-to-not-ready
+	/* RenderQuickSlot edge-detects "skill just used" per Q..V slot as a ready-to-not-ready
 	transition. iCooldownEndTick itself can't be compared directly across frames: for a ready
 	skill CombatHUDViewModel defaults it to the current (ever-increasing) serverTick rather than
 	a fixed sentinel, so a raw "did it grow" check fires every single frame. Index order matches
-	RenderQuickSlot's own INPUT_SLOTS. */
-	bool_t m_bPreviousQuickSlotReady[9] = { true, true, true, true, true, true, true, true, true };
+	RenderQuickSlot's own INPUT_SLOTS (Q W E R A S D F T V). */
+	bool_t m_bPreviousQuickSlotReady[10] =
+		{ true, true, true, true, true, true, true, true, true, true };
 	/* RenderLanceMasterIdentityGauge edge-detects each of the 3 identity segments reaching 100 to
 	trigger the real extracted gauge0/1/2 highLightMc "burn" flourish (Lance_Id_GaugeBurn0/1/2)
 	exactly once per fill, not every frame it stays full. */

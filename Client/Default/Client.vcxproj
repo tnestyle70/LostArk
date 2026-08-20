@@ -431,6 +431,7 @@
     <None Include="..\..\Data\UI\Inventory\InventoryUI.json" />
     <None Include="..\..\Data\UI\ItemUpgrade\ItemUpgradeUI.json" />
     <None Include="..\..\Data\UI\ClassSelect\ClassSelect_Layout.json" />
+    <None Include="..\..\Data\UI\Bern\BernValtanEntry_Layout.json" />
     <None Include="..\..\Data\UI\HUD\HUD_Layout.json" />
     <None Include="..\..\Data\UI\Loading\LoadingLayout.json" />
     <None Include="..\..\Data\UI\Lobby\Lobby_Layout.json" />
