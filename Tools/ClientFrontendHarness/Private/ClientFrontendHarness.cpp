@@ -31,7 +31,9 @@
 #include "Effect_RuntimeAuthority.h"
 #include "Effect_Tool.h"
 #include "Effect_VisualProgramCorpus.h"
+#include "Camera.h"
 #include "GameInstance.h"
+#include "Level.h"
 #include "PlayerSkillCatalog.h"
 #include "PlayableCharacterPreviewContract.h"
 #include "Presentation_Manager.h"
@@ -62,6 +64,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <map>
@@ -985,6 +988,57 @@ namespace
 		bool_t m_bEngineInitialized = false;
 		ComPtr<ID3D11Device> m_pDevice;
 		ComPtr<ID3D11DeviceContext> m_pContext;
+	};
+
+	class SHUTDOWN_CAMERA_PROBE final : public Engine::CCamera
+	{
+	public:
+		SHUTDOWN_CAMERA_PROBE(
+			ComPtr<ID3D11Device> pDevice,
+			ComPtr<ID3D11DeviceContext> pContext) :
+			CCamera(std::move(pDevice), std::move(pContext))
+		{
+		}
+
+		shared_ptr<Engine::CPrototype> Clone(void*) override
+		{
+			return nullptr;
+		}
+	};
+
+	class SHUTDOWN_LEVEL_PROBE final : public Engine::CLevel
+	{
+	public:
+		SHUTDOWN_LEVEL_PROBE(
+			ComPtr<ID3D11Device> pDevice,
+			ComPtr<ID3D11DeviceContext> pContext,
+			shared_ptr<SHUTDOWN_CAMERA_PROBE> pCamera,
+			const uint64_t ownerId,
+			bool_t* pDestroyed,
+			bool_t* pCameraRestored) :
+			CLevel(std::move(pDevice), std::move(pContext)),
+			m_pCamera(std::move(pCamera)),
+			m_iOwnerId(ownerId),
+			m_pDestroyed(pDestroyed),
+			m_pCameraRestored(pCameraRestored)
+		{
+		}
+
+		~SHUTDOWN_LEVEL_PROBE() override
+		{
+			const bool_t restored = nullptr != m_pCamera &&
+				m_pCamera->End_PresentationOverride(m_iOwnerId);
+			if (nullptr != m_pCameraRestored)
+				*m_pCameraRestored = restored;
+			if (nullptr != m_pDestroyed)
+				*m_pDestroyed = true;
+		}
+
+	private:
+		shared_ptr<SHUTDOWN_CAMERA_PROBE> m_pCamera;
+		uint64_t m_iOwnerId = 0u;
+		bool_t* m_pDestroyed = nullptr;
+		bool_t* m_pCameraRestored = nullptr;
 	};
 
 	bool_t Is_CommittedFirstRender(
@@ -5384,7 +5438,7 @@ namespace
 	}
 
 	std::string Make_ValtanCameraFixture(
-		const uint32_t formatVersion = 2u,
+		const uint32_t formatVersion = 3u,
 		const bool_t includeUnknownRootKey = false,
 		const bool_t duplicateTuple = false)
 	{
@@ -5422,6 +5476,31 @@ namespace
 		return text.str();
 	}
 
+	std::string Make_ValtanSkyFixture(
+		const std::string_view redCloudAssetId,
+		const std::string_view blackApertureAssetId)
+	{
+		std::string text = Make_ValtanCameraFixture();
+		const std::string emptyArray = "\"skyCues\":[]";
+		const size_t offset = text.find(emptyArray);
+		if (std::string::npos == offset)
+			return {};
+		std::ostringstream sky;
+		sky << "\"skyCues\":[{";
+		sky << "\"cueId\":\"fixture.sky.valtan.109\",";
+		sky << "\"patternId\":\"VALTAN_ARENA_BREAK_109\",";
+		sky << "\"stageId\":\"WIDE_REVEAL\",";
+		sky << "\"stageLocalStartMs\":0,\"stageLocalEndMs\":2000,";
+		sky << "\"redCloudAssetId\":\"" << redCloudAssetId << "\",";
+		sky << "\"blackApertureAssetId\":\"" <<
+			blackApertureAssetId << "\",";
+		sky << "\"cloudOpacityStart\":0.2,\"cloudOpacityEnd\":1,";
+		sky << "\"apertureScaleStart\":0.4,\"apertureScaleEnd\":1,";
+		sky << "\"cloudRotationDegreesPerSecond\":12}]";
+		text.replace(offset, emptyArray.size(), sky.str());
+		return text;
+	}
+
 	std::string Make_ValtanCameraEasingFixture(
 		const char_t* easing,
 		const f32_t shakeAmplitude,
@@ -5429,7 +5508,7 @@ namespace
 	{
 		std::ostringstream text;
 		text << "{\"schema\":\"lostark.encounter-cinematic-camera\",";
-		text << "\"formatVersion\":2,";
+		text << "\"formatVersion\":3,";
 		text << "\"encounterId\":\"ENCOUNTER_VALTAN\",";
 		text << "\"provenance\":\"PROJECT_AUTHORED\",";
 		text << "\"cues\":[{\"cueId\":\"fixture.valtan.easing\",";
@@ -5462,14 +5541,232 @@ namespace
 					"Encounters/Valtan/ValtanCinematicCamera.json"),
 				encounter, error);
 		runner.Require(
-			documentLoaded && !document.Get_SkyCues().empty(),
-			"Valtan Sky Cues Load From The Camera Document");
+			documentLoaded && 6u == document.Get_SkyCues().size(),
+			"Valtan 109 Sky Loads One Cue For Every Transition Stage");
+
+		struct EXPECTED_SKY_LAYER_POLICY final
+		{
+			std::string_view strAssetId;
+			VALTAN_CINEMATIC_SKY_LAYER_PROFILE eProfile;
+			bool_t isVisible;
+			f32_t fAbsoluteUniformScale;
+			bool_t scalesWithAperture;
+		};
+		constexpr std::array<EXPECTED_SKY_LAYER_POLICY,
+			CValtanCinematicCameraController::SKY_LAYER_POLICY_COUNT>
+			EXPECTED_SKY_LAYER_POLICIES = {{
+				{ "VALTAN_PHASE_CHAOS_CLOUD",
+					VALTAN_CINEMATIC_SKY_LAYER_PROFILE::RED_CLOUD_DISC,
+					true, 2.75f, false },
+				{ "VALTAN_PHASE_CHAOS_ELECTRIC",
+					VALTAN_CINEMATIC_SKY_LAYER_PROFILE::NONE,
+					false, 1.f, false },
+				{ "VALTAN_PHASE_CHAOS_RING",
+					VALTAN_CINEMATIC_SKY_LAYER_PROFILE::RED_RING,
+					true, 2.45f, false },
+				{ "VALTAN_PHASE_SPACEHOLE_CLOUD",
+					VALTAN_CINEMATIC_SKY_LAYER_PROFILE::RED_CLOUD_DISC,
+					true, 2.25f, false },
+				{ "VALTAN_PHASE_SPACEHOLE_CORE",
+					VALTAN_CINEMATIC_SKY_LAYER_PROFILE::DARK_APERTURE,
+					true, 1.90f, true },
+				{ "VALTAN_PHASE_SPACEHOLE_STREAK",
+					VALTAN_CINEMATIC_SKY_LAYER_PROFILE::NONE,
+					false, 1.f, false }
+			}};
+		const auto& layerPolicies =
+			CValtanCinematicCameraController::Get_SkyLayerPolicies();
+		const VALTAN_CINEMATIC_SKY_PRESENTATION_FRAME& presentationFrame =
+			CValtanCinematicCameraController::Get_SkyPresentationFrame();
+		size_t visiblePolicyCount = 0u;
+		f32_t minimumVisibleHeight = (std::numeric_limits<f32_t>::max)();
+		f32_t maximumVisibleHeight = (std::numeric_limits<f32_t>::lowest)();
+		float3_t firstVisibleCenter{};
+		bool_t hasVisibleCenter = false;
+		bool_t policiesAreBounded = true;
+		for (const VALTAN_CINEMATIC_SKY_LAYER_POLICY& policy : layerPolicies)
+		{
+			policiesAreBounded = policiesAreBounded &&
+				std::isfinite(policy.fAbsoluteUniformScale) &&
+				std::isfinite(policy.fOpacityMultiplier) &&
+				std::isfinite(policy.fRotationMultiplier) &&
+				policy.fAbsoluteUniformScale >=
+					CValtanCinematicCameraController::
+						SKY_MIN_ABSOLUTE_UNIFORM_SCALE &&
+				policy.fAbsoluteUniformScale <=
+					CValtanCinematicCameraController::
+						SKY_MAX_ABSOLUTE_UNIFORM_SCALE &&
+				policy.fOpacityMultiplier >= 0.f &&
+				policy.fOpacityMultiplier <= 1.f &&
+				policy.isPresentationVisible ==
+					(VALTAN_CINEMATIC_SKY_LAYER_PROFILE::NONE != policy.eProfile);
+			if (!policy.isPresentationVisible)
+				continue;
+
+			++visiblePolicyCount;
+			const float3_t center(
+				presentationFrame.vAnchor.x,
+				presentationFrame.vAnchor.y,
+				presentationFrame.vAnchor.z);
+			if (hasVisibleCenter)
+			{
+				policiesAreBounded = policiesAreBounded &&
+					std::abs(center.x - firstVisibleCenter.x) < 0.000001f &&
+					std::abs(center.z - firstVisibleCenter.z) < 0.000001f;
+			}
+			else
+			{
+				firstVisibleCenter = center;
+				hasVisibleCenter = true;
+			}
+			minimumVisibleHeight = (std::min)(minimumVisibleHeight, center.y);
+			maximumVisibleHeight = (std::max)(maximumVisibleHeight, center.y);
+		}
+		const bool_t exactPolicySet =
+			layerPolicies.size() == EXPECTED_SKY_LAYER_POLICIES.size() &&
+			std::all_of(EXPECTED_SKY_LAYER_POLICIES.begin(),
+				EXPECTED_SKY_LAYER_POLICIES.end(),
+				[&layerPolicies](const EXPECTED_SKY_LAYER_POLICY& expected)
+				{
+					return 1u == static_cast<size_t>(std::count_if(
+						layerPolicies.begin(), layerPolicies.end(),
+						[&expected](
+							const VALTAN_CINEMATIC_SKY_LAYER_POLICY& policy)
+						{
+							return policy.strAssetId == expected.strAssetId &&
+								policy.eProfile == expected.eProfile &&
+								policy.isPresentationVisible == expected.isVisible &&
+								std::abs(policy.fAbsoluteUniformScale -
+									expected.fAbsoluteUniformScale) < 0.000001f &&
+								policy.scalesWithAperture ==
+									expected.scalesWithAperture;
+						}));
+				});
+		const bool_t sourceCuesResolveVisiblePolicies = documentLoaded &&
+			std::all_of(document.Get_SkyCues().begin(),
+				document.Get_SkyCues().end(),
+				[](const VALTAN_CINEMATIC_SKY_CUE& cue)
+				{
+					const VALTAN_CINEMATIC_SKY_LAYER_POLICY* red =
+						CValtanCinematicCameraController::Find_SkyLayerPolicy(
+							cue.strRedCloudAssetId);
+					const VALTAN_CINEMATIC_SKY_LAYER_POLICY* aperture =
+						CValtanCinematicCameraController::Find_SkyLayerPolicy(
+							cue.strBlackApertureAssetId);
+					return nullptr != red && red->isPresentationVisible &&
+						VALTAN_CINEMATIC_SKY_LAYER_PROFILE::NONE != red->eProfile &&
+						nullptr != aperture && aperture->isPresentationVisible &&
+						VALTAN_CINEMATIC_SKY_LAYER_PROFILE::NONE != aperture->eProfile;
+				});
+		const f32_t facingLength = std::sqrt(
+			presentationFrame.vFacingQuaternion.x *
+				presentationFrame.vFacingQuaternion.x +
+			presentationFrame.vFacingQuaternion.y *
+				presentationFrame.vFacingQuaternion.y +
+			presentationFrame.vFacingQuaternion.z *
+				presentationFrame.vFacingQuaternion.z +
+			presentationFrame.vFacingQuaternion.w *
+				presentationFrame.vFacingQuaternion.w);
+		runner.Require(
+			exactPolicySet && policiesAreBounded && 4u == visiblePolicyCount &&
+			hasVisibleCenter &&
+			maximumVisibleHeight - minimumVisibleHeight < 0.000001f &&
+			std::isfinite(presentationFrame.vAnchor.x) &&
+			std::isfinite(presentationFrame.vAnchor.y) &&
+			std::isfinite(presentationFrame.vAnchor.z) &&
+			std::abs(presentationFrame.vAnchor.x - 156.03f) < 0.000001f &&
+			std::abs(presentationFrame.vAnchor.y - 74.f) < 0.000001f &&
+			std::abs(presentationFrame.vAnchor.z + 122.06f) < 0.000001f &&
+			std::isfinite(facingLength) && std::abs(facingLength - 1.f) < 0.001f &&
+			sourceCuesResolveVisiblePolicies,
+			"Valtan 109 Sky Policy Admits Four Bounded Concentric Masked Layers");
+		runner.Require(
+			nullptr == CValtanCinematicCameraController::Find_SkyLayerPolicy({}) &&
+			nullptr == CValtanCinematicCameraController::Find_SkyLayerPolicy(
+				"VALTAN_PHASE_CHAOS_UNKNOWN") &&
+			nullptr == CValtanCinematicCameraController::Find_SkyLayerPolicy(
+				"Map/ValtanPhase/VALTAN_PHASE_CHAOS_CLOUD"),
+			"Valtan 109 Sky Policy Rejects Unknown Or Path-Like Asset IDs");
+
+		const std::filesystem::path binaryMeshShaderPath =
+			CProjectDataRoot::Get().parent_path() /
+			L"Client" / L"Bin" / L"ShaderFiles" / L"Shader_VtxMeshBinary.hlsl";
+		std::string binaryMeshShader = Read_Text(binaryMeshShaderPath);
+		binaryMeshShader.erase(std::remove(
+			binaryMeshShader.begin(), binaryMeshShader.end(), '\r'),
+			binaryMeshShader.end());
+		const auto branchMasksFinalAlpha = [&binaryMeshShader](
+			const std::string_view branchToken,
+			const std::string_view nextBranchToken)
+		{
+			const size_t branch = binaryMeshShader.find(branchToken);
+			const size_t branchEnd = std::string::npos == branch ?
+				std::string::npos : binaryMeshShader.find(nextBranchToken, branch);
+			const size_t radialEdge = std::string::npos == branch ?
+				std::string::npos : binaryMeshShader.find(
+					"PresentationVortexRadialEdgeMask(input.vRawTexcoord)", branch);
+			const size_t finalAlpha = std::string::npos == radialEdge ?
+				std::string::npos : binaryMeshShader.find("color.a = saturate(", radialEdge);
+			return std::string::npos != branch && std::string::npos != branchEnd &&
+				std::string::npos != radialEdge && std::string::npos != finalAlpha &&
+				radialEdge < branchEnd && finalAlpha < branchEnd;
+		};
+		const VALTAN_CINEMATIC_SKY_LAYER_POLICY* electricPolicy =
+			CValtanCinematicCameraController::Find_SkyLayerPolicy(
+				"VALTAN_PHASE_CHAOS_ELECTRIC");
+		const VALTAN_CINEMATIC_SKY_LAYER_POLICY* streakPolicy =
+			CValtanCinematicCameraController::Find_SkyLayerPolicy(
+				"VALTAN_PHASE_SPACEHOLE_STREAK");
+		runner.Require(
+			binaryMeshShader.find("float2 vRawTexcoord : TEXCOORD3") !=
+				std::string::npos &&
+			binaryMeshShader.find("float PresentationVortexRadialEdgeMask(") !=
+				std::string::npos &&
+			branchMasksFinalAlpha("if (1 == g_PresentationVortexProfile",
+				"else if (2 == g_PresentationVortexProfile") &&
+			branchMasksFinalAlpha("else if (2 == g_PresentationVortexProfile",
+				"else if (3 == g_PresentationVortexProfile") &&
+			branchMasksFinalAlpha("else if (3 == g_PresentationVortexProfile",
+				"\n    else\n") &&
+			nullptr != electricPolicy && !electricPolicy->isPresentationVisible &&
+			electricPolicy->eProfile == VALTAN_CINEMATIC_SKY_LAYER_PROFILE::NONE &&
+			nullptr != streakPolicy && !streakPolicy->isPresentationVisible &&
+			streakPolicy->eProfile == VALTAN_CINEMATIC_SKY_LAYER_PROFILE::NONE,
+			"Valtan 109 Sky Shader Radially Masks Every Visible Typed Profile");
+
+		const auto hasExactSkyCue = [&document](
+			const uint32_t stageIndex,
+			const char_t* stageActionId)
+		{
+			const VALTAN_CINEMATIC_SKY_CUE* cue = document.Find_SkyCue(
+				"VALTAN_ARENA_BREAK_109", stageIndex, stageActionId);
+			return nullptr != cue &&
+				cue->strRedCloudAssetId == "VALTAN_PHASE_CHAOS_CLOUD" &&
+				cue->strBlackApertureAssetId ==
+					"VALTAN_PHASE_SPACEHOLE_CORE";
+		};
+		runner.Require(
+			documentLoaded &&
+			hasExactSkyCue(0u,
+				"valtan.mechanic.arena-break-109.takeoff") &&
+			hasExactSkyCue(1u,
+				"valtan.mechanic.arena-break-109.drop") &&
+			hasExactSkyCue(2u,
+				"valtan.mechanic.arena-break-109.impact") &&
+			hasExactSkyCue(3u,
+				"valtan.mechanic.arena-break-109.impact-hold") &&
+			hasExactSkyCue(4u,
+				"valtan.mechanic.arena-break-109.wide-reveal") &&
+			hasExactSkyCue(5u,
+				"valtan.mechanic.arena-break-109.recovery"),
+			"Valtan 109 Sky Resolves Stable Cloud And Aperture Seed IDs");
 
 		CValtanCinematicCameraController controller;
 		const bool_t initialized = documentLoaded &&
 			controller.Initialize(&document, encounter.Get_FixedTickHz());
 
-		const auto sampleSky = [&](
+		const auto makeInput = [](
+			const char_t* stageId,
 			const char_t* stageActionId,
 			const uint32_t stageIndex,
 			const f32_t seconds)
@@ -5477,49 +5774,265 @@ namespace
 			VALTAN_CINEMATIC_CAMERA_INPUT input{};
 			input.isValid = true;
 			input.iNetEntityId = 91u;
-			input.strPatternId = "VALTAN_FOUR_PILLARS_105";
+			input.strPatternId = "VALTAN_ARENA_BREAK_109";
+			input.strStageId = stageId;
 			input.strStageActionId = stageActionId;
-			input.iPatternSequence = 1u;
+			input.iPatternSequence = 7u;
 			input.iStageIndex = stageIndex;
 			input.iActionStartTick = 100u;
 			input.iServerTick =
 				100u + static_cast<uint32_t>(seconds * 30.f + 0.5f);
-			return controller.Resolve_SkyState(input);
+			return input;
 		};
 
-		/* Before its authored window the layer is simply not on. */
-		const VALTAN_CINEMATIC_SKY_STATE early = sampleSky(
-			"valtan.mechanic.four-pillars-105.takeoff", 0u, 0.1f);
-		const VALTAN_CINEMATIC_SKY_STATE rising = sampleSky(
-			"valtan.mechanic.four-pillars-105.takeoff", 0u, 1.5f);
+		VALTAN_CINEMATIC_CAMERA_INPUT takeoffInput = makeInput(
+			"TAKEOFF", "valtan.mechanic.arena-break-109.takeoff", 0u, 0.f);
+		const VALTAN_CINEMATIC_SKY_STATE takeoff =
+			controller.Resolve_SkyState(takeoffInput, 0.f);
 		runner.Require(
-			initialized && !early.isActive && rising.isActive &&
-			rising.fCloudOpacity > 0.5f,
-			"Valtan Sky Cloud Rises Only Inside Its Authored Stage Window");
+			initialized && takeoff.isActive &&
+			takeoff.strRedCloudAssetId == "VALTAN_PHASE_CHAOS_CLOUD" &&
+			takeoff.strBlackApertureAssetId ==
+				"VALTAN_PHASE_SPACEHOLE_CORE" &&
+			std::abs(takeoff.fCloudOpacity) < 0.000001f &&
+			takeoff.fApertureScale > 0.f,
+			"Valtan 109 Sky Begins With A Dark Aperture And Cloud Fade In");
 
-		const VALTAN_CINEMATIC_SKY_STATE aperture = sampleSky(
-			"valtan.mechanic.four-pillars-105.yellow-zone", 1u, 0.85f);
+		VALTAN_CINEMATIC_CAMERA_INPUT takeoffEndInput = makeInput(
+			"TAKEOFF", "valtan.mechanic.arena-break-109.takeoff", 0u, 0.9f);
+		const VALTAN_CINEMATIC_SKY_STATE takeoffEnd =
+			controller.Resolve_SkyState(takeoffEndInput, 0.f);
+		VALTAN_CINEMATIC_CAMERA_INPUT dropStartInput = makeInput(
+			"DROP", "valtan.mechanic.arena-break-109.drop", 1u, 0.f);
+		const VALTAN_CINEMATIC_SKY_STATE dropStart =
+			controller.Resolve_SkyState(dropStartInput, 0.f);
 		runner.Require(
-			aperture.isActive && aperture.fApertureScale > 0.8f &&
-			aperture.fCloudRotationDegrees > 0.f,
-			"Valtan Sky Aperture Opens On The Authored Stage");
+			takeoffEnd.isActive && dropStart.isActive &&
+			std::abs(takeoffEnd.fCloudRotationDegrees -
+				dropStart.fCloudRotationDegrees) < 0.000001f,
+			"Valtan 109 Sky Rotation Is Continuous Across Stage Cues");
 
-		const VALTAN_CINEMATIC_SKY_STATE cleared = sampleSky(
-			"valtan.mechanic.four-pillars-105.recovery", 3u, 0.99f);
+		VALTAN_CINEMATIC_CAMERA_INPUT delayedTakeoffInput = takeoffEndInput;
+		const VALTAN_CINEMATIC_SKY_STATE delayedTakeoff =
+			controller.Resolve_SkyState(delayedTakeoffInput, 0.1f);
+		runner.Require(
+			delayedTakeoff.isActive &&
+			std::abs(delayedTakeoff.fCloudOpacity -
+				takeoffEnd.fCloudOpacity) < 0.000001f &&
+			std::abs(delayedTakeoff.fApertureScale -
+				takeoffEnd.fApertureScale) < 0.000001f,
+			"Valtan 109 Sky Holds The Cue End Until The Next Authoritative Stage");
+
+		VALTAN_CINEMATIC_CAMERA_INPUT dropInput = makeInput(
+			"DROP", "valtan.mechanic.arena-break-109.drop", 1u, 0.5f);
+		const VALTAN_CINEMATIC_SKY_STATE lateDrop =
+			controller.Resolve_SkyState(dropInput, 0.f);
+		const VALTAN_CINEMATIC_SKY_STATE duplicateDrop =
+			controller.Resolve_SkyState(dropInput, 0.05f);
+		const VALTAN_CINEMATIC_SKY_STATE boundedDrop =
+			controller.Resolve_SkyState(dropInput, 1.f);
+		runner.Require(
+			lateDrop.isActive && lateDrop.fCloudOpacity > 0.9f &&
+			duplicateDrop.fCloudOpacity > lateDrop.fCloudOpacity &&
+			duplicateDrop.fCloudRotationDegrees >
+				lateDrop.fCloudRotationDegrees &&
+			boundedDrop.fCloudOpacity > duplicateDrop.fCloudOpacity &&
+			boundedDrop.fCloudOpacity < 0.999f,
+			"Valtan 109 Sky Duplicate Snapshot Uses Bounded Local Interpolation");
+
+		/* A newer snapshot is always authoritative, even when bounded local
+		   interpolation had already drawn slightly farther ahead. */
+		dropInput.iServerTick = 116u;
+		const VALTAN_CINEMATIC_SKY_STATE authoritativeDrop =
+			controller.Resolve_SkyState(dropInput, 0.f);
+		runner.Require(
+			authoritativeDrop.isActive &&
+			authoritativeDrop.fCloudOpacity < boundedDrop.fCloudOpacity &&
+			authoritativeDrop.fCloudOpacity > lateDrop.fCloudOpacity,
+			"Valtan 109 Sky New Snapshot Seeks Authoritative Stage Age");
+
+		VALTAN_CINEMATIC_CAMERA_INPUT noCameraInput = dropInput;
+		noCameraInput.strPatternId = "VALTAN_FOUR_PILLARS_105";
+		noCameraInput.strStageId = "TAKEOFF";
+		noCameraInput.strStageActionId =
+			"valtan.mechanic.four-pillars-105.takeoff";
+		noCameraInput.iStageIndex = 0u;
+		VALTAN_CINEMATIC_CAMERA_POSE noCameraPose{};
+		runner.Require(
+			!controller.Update(noCameraInput, 0.f, noCameraPose) &&
+			controller.Get_LastSkyState().isActive &&
+			controller.Get_LastSkyState().strCueId ==
+				authoritativeDrop.strCueId,
+			"Valtan Missing Camera Cue Does Not Reset Active Sky State");
+
+		VALTAN_CINEMATIC_CAMERA_INPUT recoveryInput = makeInput(
+			"RECOVERY", "valtan.mechanic.arena-break-109.recovery", 5u,
+			0.833333f);
+		const VALTAN_CINEMATIC_SKY_STATE cleared =
+			controller.Resolve_SkyState(recoveryInput, 0.f);
 		runner.Require(
 			cleared.isActive && cleared.fCloudOpacity < 0.1f &&
 			cleared.fApertureScale < 0.1f,
-			"Valtan Sky Clears Back To The Storm Sky");
+			"Valtan 109 Sky Clears Back To The Arena Sky During Recovery");
 
-		/* A pattern that authors no sky window must leave the layer off, and a
-		   reset must not keep the last state alive. */
-		const VALTAN_CINEMATIC_SKY_STATE wrongPattern = sampleSky(
-			"valtan.mechanic.arena-break-109.impact", 2u, 0.1f);
-		controller.Reset();
+		/* Missing sky authorship resets only the sky clock. It must not tear down
+		   an independently active cinematic camera on the same controller. */
+		VALTAN_CINEMATIC_CAMERA_INPUT cameraInput = makeInput(
+			"WIDE_REVEAL",
+			"valtan.mechanic.arena-break-109.wide-reveal", 4u, 0.5f);
+		VALTAN_CINEMATIC_CAMERA_POSE pose{};
+		const bool_t cameraActive = controller.Update(cameraInput, 0.f, pose);
+		VALTAN_CINEMATIC_CAMERA_INPUT wrongPattern = cameraInput;
+		wrongPattern.strPatternId = "VALTAN_ARENA_BREAK_33";
+		wrongPattern.strStageId = "CUTSCENE";
+		wrongPattern.strStageActionId =
+			"valtan.mechanic.arena-break-33.cutscene";
+		wrongPattern.iStageIndex = 0u;
+		const VALTAN_CINEMATIC_SKY_STATE missingSky =
+			controller.Resolve_SkyState(wrongPattern, 0.f);
 		runner.Require(
-			!wrongPattern.isActive &&
+			cameraActive && controller.Is_Active() && !missingSky.isActive &&
 			!controller.Get_LastSkyState().isActive,
-			"Valtan Sky Stays Off For Unauthored Stages And After Reset");
+			"Valtan Sky Reset Is Isolated From The Cinematic Camera");
+		controller.Reset();
+		const VALTAN_CINEMATIC_SKY_LAYER_POLICY* resetCloudPolicy =
+			CValtanCinematicCameraController::Find_SkyLayerPolicy(
+				"VALTAN_PHASE_CHAOS_CLOUD");
+		const VALTAN_CINEMATIC_SKY_LAYER_POLICY* resetAperturePolicy =
+			CValtanCinematicCameraController::Find_SkyLayerPolicy(
+				"VALTAN_PHASE_SPACEHOLE_CORE");
+		runner.Require(
+			!controller.Is_Active() &&
+			!controller.Get_LastSkyState().isActive &&
+			nullptr != resetCloudPolicy && resetCloudPolicy->isPresentationVisible &&
+			nullptr != resetAperturePolicy &&
+			resetAperturePolicy->isPresentationVisible,
+			"Valtan Sky Reset Clears Runtime State Without Mutating Its Typed Source Policy");
+
+		CValtanCinematicCameraDocument preserved;
+		const bool_t stableFixtureParsed = encounterLoaded &&
+			CValtanCinematicCameraDocument::Parse_Text(
+				Make_ValtanSkyFixture("VALTAN_PHASE_CHAOS_CLOUD",
+					"VALTAN_PHASE_SPACEHOLE_CORE"),
+				encounter, preserved, status);
+		const auto rejectsAndPreserves = [&encounter, &preserved](
+			const std::string& candidate)
+		{
+			std::string error;
+			return !CValtanCinematicCameraDocument::Parse_Text(
+				candidate, encounter, preserved, error) && !error.empty() &&
+				preserved.Is_Ready() && preserved.Get_SkyCues().size() == 1u &&
+				preserved.Get_SkyCues().front().strRedCloudAssetId ==
+					"VALTAN_PHASE_CHAOS_CLOUD" &&
+				preserved.Get_SkyCues().front().strBlackApertureAssetId ==
+					"VALTAN_PHASE_SPACEHOLE_CORE";
+		};
+		runner.Require(
+			stableFixtureParsed &&
+			rejectsAndPreserves(Make_ValtanSkyFixture(
+				"", "VALTAN_PHASE_SPACEHOLE_CORE")) &&
+			rejectsAndPreserves(Make_ValtanSkyFixture(
+				"Map/ValtanPhase/CHAOS_CLOUD",
+				"VALTAN_PHASE_SPACEHOLE_CORE")) &&
+			rejectsAndPreserves(Make_ValtanSkyFixture(
+				"VALTAN_PHASE_CHAOS_CLOUD", "C:SPACEHOLE")) &&
+			rejectsAndPreserves(Make_ValtanSkyFixture(
+				std::string(129u, 'A'), "VALTAN_PHASE_SPACEHOLE_CORE")),
+			"Valtan Sky Rejects Empty Path Or Oversized Asset IDs Transactionally");
+	}
+
+	void Test_EngineShutdownKeepsCameraPipelineAlive(TEST_RUNNER& runner)
+	{
+		const std::filesystem::path sourcePath =
+			CProjectDataRoot::Get().parent_path() /
+			L"Engine" / L"Private" / L"GameInstance.cpp";
+		const std::string source = Read_Text(sourcePath);
+		const size_t releaseBegin = source.find(
+			"void CGameInstance::Release_Engine()");
+		const size_t releaseEnd = std::string::npos == releaseBegin ?
+			std::string::npos : source.find(
+				"m_pGraphic_Device.reset();", releaseBegin);
+		const size_t levelReset = std::string::npos == releaseBegin ?
+			std::string::npos : source.find(
+				"m_pLevel_Manager.reset();", releaseBegin);
+		const auto findReset = [&source, releaseBegin](const char_t* pReset)
+		{
+			return std::string::npos == releaseBegin ?
+				std::string::npos : source.find(pReset, releaseBegin);
+		};
+		const size_t profilerReset = findReset("m_pProfiler.reset();");
+		const size_t frustumReset = findReset("m_pFrustum.reset();");
+		const size_t pipelineReset = findReset("m_pPipeLine.reset();");
+		const size_t rendererReset = findReset("m_pRenderer.reset();");
+		const size_t objectReset = findReset("m_pObject_Manager.reset();");
+		const size_t physicsReset = findReset("m_pPhysics_Manager.reset();");
+		const size_t prototypeReset = findReset("m_pPrototype_Manager.reset();");
+
+		runner.Require(
+			std::string::npos != releaseBegin &&
+			std::string::npos != releaseEnd &&
+			std::string::npos != levelReset &&
+			std::string::npos != profilerReset &&
+			std::string::npos != frustumReset &&
+			std::string::npos != pipelineReset &&
+			std::string::npos != rendererReset &&
+			std::string::npos != objectReset &&
+			std::string::npos != physicsReset &&
+			std::string::npos != prototypeReset &&
+			levelReset < profilerReset && levelReset < frustumReset &&
+			levelReset < pipelineReset && levelReset < rendererReset &&
+			levelReset < objectReset && levelReset < physicsReset &&
+			levelReset < prototypeReset && pipelineReset < releaseEnd,
+			"Engine Shutdown Destroys The Active Level Before Its Dependencies");
+
+		constexpr uint64_t OWNER_ID = 109u;
+		bool_t levelDestroyed = false;
+		bool_t cameraRestored = false;
+		bool_t engineInitialized = false;
+		bool_t cameraInitialized = false;
+		bool_t overrideApplied = false;
+		bool_t levelInstalled = false;
+		shared_ptr<SHUTDOWN_CAMERA_PROBE> pCamera;
+		std::string status;
+		{
+			HEADLESS_ENGINE_RENDER_SCOPE engineScope;
+			engineInitialized = engineScope.Initialize(status);
+			if (engineInitialized)
+			{
+				pCamera = std::make_shared<SHUTDOWN_CAMERA_PROBE>(
+					engineScope.Get_Device(), engineScope.Get_Context());
+				Engine::CCamera::CAMERA_DESC desc{};
+				desc.vEye = float3_t(0.f, 2.f, -5.f);
+				desc.vAt = float3_t(0.f, 1.f, 0.f);
+				desc.fFovy = 60.f;
+				desc.fNear = 0.1f;
+				desc.fFar = 100.f;
+				cameraInitialized = nullptr != pCamera &&
+					SUCCEEDED(pCamera->Initialize(&desc));
+				overrideApplied = cameraInitialized &&
+					pCamera->Begin_PresentationOverride(OWNER_ID) &&
+					pCamera->Apply_PresentationPose(
+						OWNER_ID,
+						float3_t(1.f, 3.f, -4.f),
+						float3_t(0.f, 2.f, 0.f), 42.f);
+				if (overrideApplied)
+				{
+					auto pLevel = std::make_unique<SHUTDOWN_LEVEL_PROBE>(
+						engineScope.Get_Device(), engineScope.Get_Context(),
+						pCamera, OWNER_ID, &levelDestroyed, &cameraRestored);
+					levelInstalled = SUCCEEDED(
+						Engine::CGameInstance::Get().Change_Level(
+							ETOUI(Client::LEVEL::VALTAN_ARENA),
+							std::move(pLevel)));
+				}
+			}
+		}
+		runner.Require(
+			engineInitialized && cameraInitialized && overrideApplied &&
+			levelInstalled && levelDestroyed && cameraRestored &&
+			nullptr != pCamera &&
+			!pCamera->Is_PresentationOverrideActive(),
+			"Engine Shutdown Restores An Active Cinematic Camera Before Releasing Services");
 	}
 
 	void Test_ValtanCinematicCameraEasing(TEST_RUNNER& runner)
@@ -5663,6 +6176,198 @@ namespace
 				"valtan.mechanic.arena-break-33.cutscene"),
 			"Valtan Camera Loads Every Exact Encounter Tuple");
 
+		const VALTAN_CINEMATIC_CAMERA_CUE* takeoffCue = actual.Find_Cue(
+			"VALTAN_ARENA_BREAK_109", 0u,
+			"valtan.mechanic.arena-break-109.takeoff");
+		const VALTAN_CINEMATIC_CAMERA_CUE* dropCue = actual.Find_Cue(
+			"VALTAN_ARENA_BREAK_109", 1u,
+			"valtan.mechanic.arena-break-109.drop");
+		const VALTAN_CINEMATIC_CAMERA_CUE* impactCue = actual.Find_Cue(
+			"VALTAN_ARENA_BREAK_109", 2u,
+			"valtan.mechanic.arena-break-109.impact");
+		const VALTAN_CINEMATIC_SKY_PRESENTATION_FRAME& skyFrame =
+			CValtanCinematicCameraController::Get_SkyPresentationFrame();
+		const VALTAN_CINEMATIC_SKY_LAYER_POLICY* focalRingPolicy =
+			CValtanCinematicCameraController::Find_SkyLayerPolicy(
+				"VALTAN_PHASE_CHAOS_RING");
+		const auto lookAnchored = [&skyFrame](
+			const VALTAN_CINEMATIC_CAMERA_CUE* cue)
+		{
+			return nullptr != cue && std::all_of(
+				cue->Keyframes.begin(), cue->Keyframes.end(),
+				[&skyFrame](const VALTAN_CINEMATIC_CAMERA_KEYFRAME& frame)
+				{
+					return std::abs(frame.vLookAt.x - skyFrame.vAnchor.x) < 0.001f &&
+						std::abs(frame.vLookAt.z - skyFrame.vAnchor.z) < 0.001f;
+				});
+		};
+		const auto looksSkyward = [](const VALTAN_CINEMATIC_CAMERA_CUE* cue)
+		{
+			return nullptr != cue && std::all_of(
+				cue->Keyframes.begin(), cue->Keyframes.end(),
+				[](const VALTAN_CINEMATIC_CAMERA_KEYFRAME& frame)
+				{
+					return frame.vLookAt.y > frame.vEye.y + 30.f;
+				});
+		};
+		const auto posesMatch = [](
+			const VALTAN_CINEMATIC_CAMERA_KEYFRAME& left,
+			const VALTAN_CINEMATIC_CAMERA_KEYFRAME& right)
+		{
+			return std::abs(left.vEye.x - right.vEye.x) < 0.001f &&
+				std::abs(left.vEye.y - right.vEye.y) < 0.001f &&
+				std::abs(left.vEye.z - right.vEye.z) < 0.001f &&
+				std::abs(left.vLookAt.x - right.vLookAt.x) < 0.001f &&
+				std::abs(left.vLookAt.y - right.vLookAt.y) < 0.001f &&
+				std::abs(left.vLookAt.z - right.vLookAt.z) < 0.001f &&
+				std::abs(left.fFovYDegrees - right.fFovYDegrees) < 0.001f;
+		};
+		const bool_t skywardThenImpactReturn = nullptr != takeoffCue &&
+			nullptr != dropCue && nullptr != impactCue &&
+			takeoffCue->Keyframes.size() >= 2u &&
+			dropCue->Keyframes.size() >= 3u &&
+			impactCue->Keyframes.size() >= 2u &&
+			looksSkyward(takeoffCue) && looksSkyward(dropCue) &&
+			posesMatch(dropCue->Keyframes.back(),
+				impactCue->Keyframes.front()) &&
+			impactCue->Keyframes.back().vLookAt.y <
+				impactCue->Keyframes.back().vEye.y;
+		runner.Require(
+			skywardThenImpactReturn && lookAnchored(takeoffCue) &&
+			lookAnchored(dropCue) && lookAnchored(impactCue),
+			"Valtan 109 Camera Looks Skyward Then Returns To The Anchor On Impact");
+
+		const auto isCompositionComfortablyFramed =
+			[&skyFrame, focalRingPolicy](
+			const VALTAN_CINEMATIC_CAMERA_POSE& sampledPose)
+		{
+			/* Every proxy plane is a 10.24-world-unit square after its audited
+			   512-unit source half-span and the Loader's 0.01 pre-transform.
+			   Use the crisp red ring as the focal composition radius; its equivalent-
+			   area NDC radius accounts for the 16:9 projection without depending
+			   on an LFS model or a live viewport. */
+			constexpr f32_t AUDITED_PROXY_PLANE_HALF_SPAN = 5.12f;
+			constexpr f32_t VIEWPORT_ASPECT = 16.f / 9.f;
+			constexpr f32_t MAX_CENTRAL_FRAME_FRACTION = 0.25f;
+			constexpr f32_t MIN_PROJECTED_RADIUS = 0.45f;
+			constexpr f32_t MAX_PROJECTED_RADIUS = 0.75f;
+			if (!std::isfinite(sampledPose.vEye.x) ||
+				!std::isfinite(sampledPose.vEye.y) ||
+				!std::isfinite(sampledPose.vEye.z) ||
+				!std::isfinite(sampledPose.vLookAt.x) ||
+				!std::isfinite(sampledPose.vLookAt.y) ||
+				!std::isfinite(sampledPose.vLookAt.z) ||
+				!std::isfinite(sampledPose.fFovYDegrees) ||
+				sampledPose.fFovYDegrees < 38.f ||
+				sampledPose.fFovYDegrees > 42.f ||
+				nullptr == focalRingPolicy ||
+				!focalRingPolicy->isPresentationVisible ||
+				focalRingPolicy->eProfile !=
+					VALTAN_CINEMATIC_SKY_LAYER_PROFILE::RED_RING ||
+				!std::isfinite(focalRingPolicy->fAbsoluteUniformScale))
+			{
+				return false;
+			}
+
+			const matrix_t view = XMMatrixLookAtLH(
+				XMLoadFloat3(&sampledPose.vEye),
+				XMLoadFloat3(&sampledPose.vLookAt),
+				XMVectorSet(0.f, 1.f, 0.f, 0.f));
+			const f32_t halfFovRadians =
+				XMConvertToRadians(sampledPose.fFovYDegrees * 0.5f);
+			const f32_t projectionScale = std::tan(halfFovRadians);
+			if (!std::isfinite(projectionScale) || projectionScale <= 0.f)
+				return false;
+
+			float3_t viewCenter{};
+			XMStoreFloat3(&viewCenter, XMVector3TransformCoord(
+				XMLoadFloat3(&skyFrame.vAnchor), view));
+			if (!std::isfinite(viewCenter.x) ||
+				!std::isfinite(viewCenter.y) ||
+				!std::isfinite(viewCenter.z) || viewCenter.z <= 0.1f)
+			{
+				return false;
+			}
+
+			const f32_t projectedX = viewCenter.x /
+				(viewCenter.z * projectionScale * VIEWPORT_ASPECT);
+			const f32_t projectedY = viewCenter.y /
+				(viewCenter.z * projectionScale);
+			const f32_t verticalRadius =
+				focalRingPolicy->fAbsoluteUniformScale *
+				AUDITED_PROXY_PLANE_HALF_SPAN /
+				(viewCenter.z * projectionScale);
+			const f32_t horizontalRadius = verticalRadius / VIEWPORT_ASPECT;
+			const f32_t projectedRadius =
+				std::sqrt(verticalRadius * horizontalRadius);
+			return std::isfinite(projectedX) && std::isfinite(projectedY) &&
+				std::isfinite(projectedRadius) &&
+				std::abs(projectedX) <= MAX_CENTRAL_FRAME_FRACTION &&
+				std::abs(projectedY) <= MAX_CENTRAL_FRAME_FRACTION &&
+				projectedRadius >= MIN_PROJECTED_RADIUS &&
+				projectedRadius <= MAX_PROJECTED_RADIUS;
+		};
+		const auto stageFramesComposition = [&](
+			const VALTAN_CINEMATIC_CAMERA_CUE* cue,
+			const char_t* stageId,
+			const char_t* stageActionId,
+			const uint32_t stageIndex,
+			const uint32_t durationTick)
+		{
+			constexpr uint32_t FIXED_TICK_HZ = 30u;
+			if (!actualLoaded || nullptr == cue ||
+				encounter.Get_FixedTickHz() != FIXED_TICK_HZ ||
+				cue->iDurationMs * FIXED_TICK_HZ != durationTick * 1000u ||
+				cue->Keyframes.empty() ||
+				cue->Keyframes.back().iTimeMs != cue->iDurationMs)
+			{
+				return false;
+			}
+
+			CValtanCinematicCameraController frameController;
+			if (!frameController.Initialize(&actual, FIXED_TICK_HZ))
+				return false;
+			VALTAN_CINEMATIC_CAMERA_INPUT frameInput{};
+			frameInput.isValid = true;
+			frameInput.iNetEntityId = 109u;
+			frameInput.strPatternId = "VALTAN_ARENA_BREAK_109";
+			frameInput.strStageId = stageId;
+			frameInput.strStageActionId = stageActionId;
+			frameInput.iPatternSequence = 109u;
+			frameInput.iStageIndex = stageIndex;
+			frameInput.iActionStartTick = 1000u;
+
+			for (uint32_t tick = 0u; tick <= durationTick; ++tick)
+			{
+				VALTAN_CINEMATIC_CAMERA_POSE sampledPose{};
+				if (tick == durationTick)
+				{
+					/* Update retires a cue exactly at its duration. The validated
+					   final keyframe is that authoritative endpoint and the next
+					   stage's frame zero, so include it explicitly. */
+					const auto& endpoint = cue->Keyframes.back();
+					sampledPose = { endpoint.vEye, endpoint.vLookAt,
+						endpoint.fFovYDegrees };
+				}
+				else
+				{
+					frameInput.iServerTick = frameInput.iActionStartTick + tick;
+					if (!frameController.Update(frameInput, 0.f, sampledPose))
+						return false;
+				}
+				if (!isCompositionComfortablyFramed(sampledPose))
+					return false;
+			}
+			return true;
+		};
+		const bool_t skyCompositionHolds = stageFramesComposition(
+			takeoffCue, "TAKEOFF",
+			"valtan.mechanic.arena-break-109.takeoff", 0u, 27u) &&
+			stageFramesComposition(dropCue, "DROP",
+				"valtan.mechanic.arena-break-109.drop", 1u, 21u);
+		runner.Require(skyCompositionHolds,
+			"Valtan 109 Camera Keeps The Typed Sky Composition Central And Readably Sized");
+
 		CValtanCinematicCameraDocument preserved;
 		const bool_t baseline = encounterLoaded &&
 			CValtanCinematicCameraDocument::Parse_Text(
@@ -5679,13 +6384,14 @@ namespace
 				preserved.Get_Cues().front().strCueId == before;
 		};
 		runner.Require(baseline &&
-			rejectsAndPreserves(Make_ValtanCameraFixture(3u)),
-			"Valtan Camera Rejects Unknown Version Transactionally");
+			rejectsAndPreserves(Make_ValtanCameraFixture(2u)) &&
+			rejectsAndPreserves(Make_ValtanCameraFixture(4u)),
+			"Valtan Camera Rejects Obsolete And Unknown Versions Transactionally");
 		runner.Require(baseline && rejectsAndPreserves(
-			Make_ValtanCameraFixture(2u, true)),
+			Make_ValtanCameraFixture(3u, true)),
 			"Valtan Camera Rejects Unknown Key Transactionally");
 		runner.Require(baseline && rejectsAndPreserves(
-			Make_ValtanCameraFixture(2u, false, true)),
+			Make_ValtanCameraFixture(3u, false, true)),
 			"Valtan Camera Rejects Duplicate Encounter Tuple Transactionally");
 
 		CValtanCinematicCameraController controller;
@@ -5726,6 +6432,632 @@ namespace
 		controller.Reset();
 		runner.Require(!controller.Is_Active(),
 			"Valtan Camera Reset Ends Presentation State");
+	}
+
+	void Test_ValtanReferenceCameraSourceContract(TEST_RUNNER& runner)
+	{
+		const std::filesystem::path repositoryRoot =
+			Client::CProjectDataRoot::Get().parent_path();
+		const std::string source = Read_Text(repositoryRoot /
+			"Client" / "Private" / "Level_ValtanArena.cpp");
+		const std::string header = Read_Text(repositoryRoot /
+			"Client" / "Public" / "Level_ValtanArena.h");
+		const std::string mapRuntimeSource = Read_Text(repositoryRoot /
+			"Client" / "Private" / "MapPlacementRuntime.cpp");
+		const std::string mapRuntimeHeader = Read_Text(repositoryRoot /
+			"Client" / "Public" / "MapPlacementRuntime.h");
+		const std::string mapPlacements = Read_Text(repositoryRoot /
+			"Client" / "Bin" / "DataFiles" / "Map" /
+			"LV_LUT_HEARTRB_ED.mapplacements");
+		const std::string authoredMapPlacements = Read_Text(repositoryRoot /
+			"Data" / "Maps" / "Authoring" / "LV_LUT_HEARTRB_ED" /
+			"LV_LUT_HEARTRB_ED.mapplacements");
+		const std::string mapAssets = Read_Text(repositoryRoot /
+			"Client" / "Bin" / "DataFiles" / "Map" /
+			"LV_LUT_HEARTRB_ED.mapassets");
+		const std::string mapLights = Read_Text(repositoryRoot /
+			"Client" / "Bin" / "DataFiles" / "Map" /
+			"LV_LUT_HEARTRB_ED.maplights.json");
+		const std::string authoredMapLights = Read_Text(repositoryRoot /
+			"Data" / "Maps" / "Authoring" / "LV_LUT_HEARTRB_ED" /
+			"LV_LUT_HEARTRB_ED.maplights.json");
+
+		const auto isDebugScoped = [](const std::string& text,
+			const std::string_view needle)
+		{
+			const size_t position = text.find(needle);
+			if (std::string::npos == position)
+				return false;
+			const size_t debugBegin = text.rfind("#ifdef _DEBUG", position);
+			const size_t debugEnd = text.find("#endif", position);
+			return std::string::npos != debugBegin &&
+				std::string::npos != debugEnd && debugBegin < position &&
+				position < debugEnd;
+		};
+		const size_t referenceBegin = source.find(
+			"bool_t CLevel_ValtanArena::Begin_ReferenceCamera");
+		const size_t auditionBegin = source.find(
+			"void CLevel_ValtanArena::Update_AuditionTransaction");
+		const std::string referenceImplementation =
+			std::string::npos != referenceBegin &&
+			std::string::npos != auditionBegin && referenceBegin < auditionBegin ?
+				source.substr(referenceBegin, auditionBegin - referenceBegin) :
+				std::string{};
+
+		runner.Require(
+			!source.empty() && !header.empty() &&
+			isDebugScoped(source,
+				"bool_t CLevel_ValtanArena::Begin_ReferenceCamera") &&
+			isDebugScoped(source, "Reference Top Down") &&
+			isDebugScoped(source, "Reference Exterior") &&
+			isDebugScoped(header, "Begin_ReferenceCamera") &&
+			isDebugScoped(header, "m_bReferenceCameraApplied"),
+			"Valtan Reference Views And State Stay Debug Only");
+
+		const size_t topDownButton = source.find("Reference Top Down");
+		const size_t exteriorButton = source.find(
+			"Reference Exterior (Arena Towers)");
+		const size_t responsiveWidth = std::string::npos == topDownButton ?
+			std::string::npos :
+			source.rfind("ImGui::GetContentRegionAvail().x", topDownButton);
+		const std::string buttonGap =
+			std::string::npos != topDownButton &&
+			std::string::npos != exteriorButton &&
+			topDownButton < exteriorButton ?
+				source.substr(topDownButton,
+					exteriorButton - topDownButton) : std::string{};
+		runner.Require(
+			std::string::npos != responsiveWidth &&
+			std::string::npos != exteriorButton &&
+			buttonGap.find("ImGui::SameLine()") == std::string::npos,
+			"Valtan Exterior Tower View Stays Visible In A Narrow Debug Panel");
+
+		struct TOWER_STATION_REPRESENTATIVE final
+		{
+			std::string_view placementId;
+			std::string_view sourceExport;
+		};
+		const std::array<TOWER_STATION_REPRESENTATIVE, 5>
+			towerRepresentatives = {{
+				{ "16607808932384341195", "SL04:export:2842" },
+				{ "17340363601769171092", "SL04:export:3990" },
+				{ "12792519784808763156", "SL04:export:4281" },
+				{ "15813727945424250256", "SL04:export:4401" },
+				{ "12059080955363256336", "SL04:export:4544" }
+			}};
+		constexpr std::string_view TOWER_REPRESENTATIVE_ASSET =
+			"MAP_70B41719DECE_BG_ATM_LOGHILL_CONSTRUCTPROP04_SM_OLD_02";
+		const auto countRepresentative = [&TOWER_REPRESENTATIVE_ASSET](
+			const std::string& document,
+			const TOWER_STATION_REPRESENTATIVE& representative)
+		{
+			size_t count = 0u;
+			std::istringstream lines(document);
+			for (std::string line; std::getline(lines, line);)
+			{
+				if (line.find(representative.placementId) != std::string::npos &&
+					line.find(representative.sourceExport) != std::string::npos &&
+					line.find(TOWER_REPRESENTATIVE_ASSET) != std::string::npos &&
+					line.ends_with(" 1"))
+				{
+					++count;
+				}
+			}
+			return count;
+		};
+		const bool_t exactTowerStations = std::all_of(
+			towerRepresentatives.begin(), towerRepresentatives.end(),
+			[&](const TOWER_STATION_REPRESENTATIVE& representative)
+			{
+				return 1u == countRepresentative(
+					authoredMapPlacements, representative) &&
+					1u == countRepresentative(mapPlacements, representative);
+			});
+		runner.Require(exactTowerStations,
+			"Valtan Five Source Tower Station Representatives Stay Visible Without Duplicates");
+
+		struct MAP_PLACEMENT_CONTRACT_ROW final
+		{
+			uint64_t placementId = 0u;
+			std::string sourcePlacementId;
+			std::string sourceLevel;
+			std::string transformSource;
+			std::string assetId;
+			std::array<double, 3u> position{};
+			std::array<double, 4u> quaternion{};
+			std::array<double, 3u> scale{};
+			bool_t visible = false;
+		};
+		const auto parsePlacementDocument = [](
+			const std::string& document,
+			std::vector<MAP_PLACEMENT_CONTRACT_ROW>& outRows)
+		{
+			outRows.clear();
+			std::istringstream lines(document);
+			std::string headerLine;
+			if (!std::getline(lines, headerLine))
+				return false;
+			std::istringstream headerStream(headerLine);
+			std::string magic;
+			std::string areaId;
+			uint32_t formatVersion = 0u;
+			size_t declaredCount = 0u;
+			if (!(headerStream >> magic >> formatVersion >> std::quoted(areaId) >>
+				declaredCount) ||
+				magic != "LOSTARK_MAP_PLACEMENTS" || formatVersion != 2u ||
+				areaId != "LV_LUT_HEARTRB_ED")
+			{
+				return false;
+			}
+			headerStream >> std::ws;
+			if (!headerStream.eof())
+				return false;
+
+			outRows.reserve(declaredCount);
+			for (std::string line; std::getline(lines, line);)
+			{
+				MAP_PLACEMENT_CONTRACT_ROW row;
+				uint32_t visible = 0u;
+				std::istringstream rowStream(line);
+				if (!(rowStream >> row.placementId >>
+					std::quoted(row.sourcePlacementId) >>
+					std::quoted(row.sourceLevel) >>
+					std::quoted(row.transformSource) >>
+					std::quoted(row.assetId) >>
+					row.position[0] >> row.position[1] >> row.position[2] >>
+					row.quaternion[0] >> row.quaternion[1] >>
+					row.quaternion[2] >> row.quaternion[3] >>
+					row.scale[0] >> row.scale[1] >> row.scale[2] >> visible) ||
+					visible > 1u)
+				{
+					return false;
+				}
+				rowStream >> std::ws;
+				if (!rowStream.eof())
+					return false;
+				row.visible = 0u != visible;
+				outRows.push_back(std::move(row));
+			}
+			return outRows.size() == declaredCount;
+		};
+
+		struct TOWER_EXPORT_RANGE final
+		{
+			uint32_t first = 0u;
+			uint32_t last = 0u;
+		};
+		struct TOWER_REGISTRATION_STATION final
+		{
+			std::string_view stationId;
+			std::vector<TOWER_EXPORT_RANGE> exportRanges;
+		};
+		const std::array<TOWER_REGISTRATION_STATION, 4u>
+			towerRegistrationStations = {{
+				{ "pointlight_106", {
+					{ 2876u, 2885u }, { 2888u, 2890u }, { 2892u, 2892u },
+					{ 2895u, 2899u }, { 2926u, 2941u }, { 3962u, 3967u },
+					{ 3970u, 3971u }, { 3992u, 3995u } } },
+				{ "pointlight_21", {
+					{ 2756u, 2760u }, { 2763u, 2763u }, { 2765u, 2765u },
+					{ 2768u, 2773u }, { 2776u, 2781u }, { 2784u, 2785u },
+					{ 2818u, 2839u }, { 2844u, 2847u } } },
+				{ "pointlight_104", {
+					{ 4169u, 4193u }, { 4196u, 4198u }, { 4200u, 4200u },
+					{ 4203u, 4208u }, { 4211u, 4216u }, { 4258u, 4259u },
+					{ 4283u, 4286u } } },
+				{ "pointlight_102", {
+					{ 4440u, 4453u }, { 4456u, 4457u }, { 4472u, 4483u },
+					{ 4485u, 4485u }, { 4489u, 4494u }, { 4497u, 4502u },
+					{ 4521u, 4522u }, { 4552u, 4555u } } }
+			}};
+		struct EXPECTED_TOWER_COMPONENT final
+		{
+			size_t stationIndex = 0u;
+			std::string sourcePlacementId;
+		};
+		std::vector<EXPECTED_TOWER_COMPONENT> expectedTowerComponents;
+		std::set<std::string, std::less<>> expectedTowerSourceIds;
+		bool_t expectedTowerShape = true;
+		for (size_t stationIndex = 0u;
+			stationIndex < towerRegistrationStations.size(); ++stationIndex)
+		{
+			const TOWER_REGISTRATION_STATION& station =
+				towerRegistrationStations[stationIndex];
+			const size_t before = expectedTowerComponents.size();
+			for (const TOWER_EXPORT_RANGE& range : station.exportRanges)
+			{
+				if (range.first > range.last)
+				{
+					expectedTowerShape = false;
+					continue;
+				}
+				for (uint32_t sourceExport = range.first;
+					sourceExport <= range.last; ++sourceExport)
+				{
+					const std::string sourcePlacementId =
+						"LV_LUT_HEARTRB_ED_SL04:export:" +
+						std::to_string(sourceExport);
+					expectedTowerShape = expectedTowerShape &&
+						expectedTowerSourceIds.emplace(sourcePlacementId).second;
+					expectedTowerComponents.push_back({ stationIndex,
+						sourcePlacementId });
+				}
+			}
+			expectedTowerShape = expectedTowerShape &&
+				expectedTowerComponents.size() - before == 47u;
+		}
+		expectedTowerShape = expectedTowerShape &&
+			expectedTowerComponents.size() == 188u;
+
+		const auto validateTowerAttachment = [
+			&expectedTowerComponents, &expectedTowerSourceIds](
+			const std::vector<MAP_PLACEMENT_CONTRACT_ROW>& rows)
+		{
+			constexpr std::string_view SOURCE_LEVEL =
+				"LV_LUT_HEARTRB_ED_SL04";
+			constexpr std::string_view REGISTERED_LEVEL =
+				"VALTAN_TOWER_REGISTERED";
+			constexpr std::string_view REGISTRATION_PREFIX =
+				"tower-registration:";
+			constexpr std::string_view INNER_REAR_LEVEL =
+				"VALTAN_INNER_REAR_TOWERS";
+			constexpr std::string_view INNER_REAR_PREFIX =
+				"inner-rear-tower:";
+			constexpr uint64_t IMPORTED_ID_MASK = 1ull << 63u;
+			std::map<std::string, const MAP_PLACEMENT_CONTRACT_ROW*, std::less<>>
+				sourceRows;
+			size_t registeredCount = 0u;
+			for (const MAP_PLACEMENT_CONTRACT_ROW& row : rows)
+			{
+				if (row.sourceLevel == SOURCE_LEVEL &&
+					expectedTowerSourceIds.find(row.sourcePlacementId) !=
+						expectedTowerSourceIds.end() &&
+					!sourceRows.emplace(row.sourcePlacementId, &row).second)
+				{
+					return false;
+				}
+				if (row.sourceLevel == REGISTERED_LEVEL ||
+					row.sourcePlacementId.starts_with(REGISTRATION_PREFIX))
+					++registeredCount;
+				if (row.sourceLevel == INNER_REAR_LEVEL ||
+					row.sourcePlacementId.starts_with(INNER_REAR_PREFIX))
+				{
+					return false;
+				}
+			}
+			if (sourceRows.size() != 188u || registeredCount != 0u)
+			{
+				return false;
+			}
+
+			std::array<size_t, 4u> stationCounts{};
+			for (const EXPECTED_TOWER_COMPONENT& expected :
+				expectedTowerComponents)
+			{
+				const auto sourceIter = sourceRows.find(expected.sourcePlacementId);
+				if (sourceRows.end() == sourceIter)
+				{
+					return false;
+				}
+				const MAP_PLACEMENT_CONTRACT_ROW& sourceRow =
+					*sourceIter->second;
+				if (!sourceRow.visible ||
+					(sourceRow.transformSource != "actor" &&
+						sourceRow.transformSource != "component") ||
+					0u == (sourceRow.placementId & IMPORTED_ID_MASK))
+				{
+					return false;
+				}
+				++stationCounts[expected.stationIndex];
+			}
+			return std::all_of(stationCounts.begin(), stationCounts.end(),
+				[](const size_t count) { return 47u == count; });
+		};
+
+		std::vector<MAP_PLACEMENT_CONTRACT_ROW> authoredPlacementRows;
+		std::vector<MAP_PLACEMENT_CONTRACT_ROW> runtimePlacementRows;
+		const bool_t placementDocumentsParsed = parsePlacementDocument(
+			authoredMapPlacements, authoredPlacementRows) &&
+			parsePlacementDocument(mapPlacements, runtimePlacementRows);
+		runner.Require(
+			placementDocumentsParsed &&
+			authoredMapPlacements == mapPlacements,
+			"Valtan Source Attached Tower Placements Publish Identically To Runtime");
+		runner.Require(
+			expectedTowerShape && placementDocumentsParsed &&
+			validateTowerAttachment(authoredPlacementRows) &&
+			validateTowerAttachment(runtimePlacementRows),
+			"Valtan Four Outer Source Towers Keep 47 Exact Components Visible And Unchanged");
+		runner.Require(
+			placementDocumentsParsed && authoredPlacementRows.size() == 13186u &&
+			runtimePlacementRows.size() == 13186u,
+			"Valtan Placement Documents Retain The 13186 Row Source Contract");
+
+		const auto countStation11Overlays = [](
+			const std::vector<MAP_PLACEMENT_CONTRACT_ROW>& rows)
+		{
+			return static_cast<size_t>(std::count_if(rows.begin(), rows.end(),
+				[](const MAP_PLACEMENT_CONTRACT_ROW& row)
+				{
+					return row.sourceLevel == "VALTAN_TOWER_REGISTERED" &&
+						row.sourcePlacementId.starts_with(
+							"tower-registration:pointlight_11:");
+				}));
+		};
+		runner.Require(
+			placementDocumentsParsed &&
+			0u == countStation11Overlays(authoredPlacementRows) &&
+			0u == countStation11Overlays(runtimePlacementRows) &&
+			1u == countRepresentative(
+				authoredMapPlacements, towerRepresentatives[3]) &&
+			1u == countRepresentative(mapPlacements, towerRepresentatives[3]),
+			"Valtan Front Right Tower 11 Stays Source Visible Without A Registered Overlay");
+
+		struct EXPECTED_TOWER_LIGHT final
+		{
+			std::string_view lightId;
+			std::string_view sourceObjectId;
+			std::array<double, 3u> position{};
+		};
+		const std::array<EXPECTED_TOWER_LIGHT, 5u> expectedTowerLights = {{
+			{ "light.valtan.tower.pointlight_102_lc",
+				"SL04:export:733:pointlight_102_lc",
+				{ 203.460606, 24.734033, -127.571465 } },
+			{ "light.valtan.tower.pointlight_104_lc",
+				"SL04:export:735:pointlight_104_lc",
+				{ 187.751602, 24.734033, -158.425654 } },
+			{ "light.valtan.tower.pointlight_106_lc",
+				"SL04:export:737:pointlight_106_lc",
+				{ 135.54498, 24.734033, -159.7375 } },
+			{ "light.valtan.tower.pointlight_21_lc",
+				"SL04:export:750:pointlight_21_lc",
+				{ 161.8354, 24.734033, -168.356855 } },
+			{ "light.valtan.tower.pointlight_11_lc",
+				"SL04:export:739:pointlight_11_lc",
+				{ 191.995703, 24.734033, -99.211338 } }
+		}};
+		const auto validateTowerLights = [&expectedTowerLights](
+			const std::string& document)
+		{
+			Client::DATA_JSON_VALUE root;
+			std::string error;
+			if (!Client::CDataJson::Parse(document, root, error) ||
+				!root.Is_Object())
+			{
+				return false;
+			}
+			const Client::DATA_JSON_VALUE* schema = root.Find("schema");
+			const Client::DATA_JSON_VALUE* formatVersion =
+				root.Find("formatVersion");
+			const Client::DATA_JSON_VALUE* areaId = root.Find("areaId");
+			const Client::DATA_JSON_VALUE* provenance = root.Find("provenance");
+			const Client::DATA_JSON_VALUE* lights = root.Find("lights");
+			if (nullptr == schema || !schema->Is_String() ||
+				schema->Get_String() != "lostark.map-light-presentation" ||
+				nullptr == formatVersion || !formatVersion->Is_Number() ||
+				formatVersion->Get_Number() != 1.0 ||
+				nullptr == areaId || !areaId->Is_String() ||
+				areaId->Get_String() != "LV_LUT_HEARTRB_ED" ||
+				nullptr == provenance || !provenance->Is_String() ||
+				provenance->Get_String() !=
+					"SOURCE_INSTANCE_EXACT_FALLOFF_INFERRED" ||
+				nullptr == lights || !lights->Is_Array() ||
+				lights->Get_Array().size() != 22u)
+			{
+				return false;
+			}
+
+			std::map<std::string, const Client::DATA_JSON_VALUE*, std::less<>>
+				lightRows;
+			for (const Client::DATA_JSON_VALUE& light : lights->Get_Array())
+			{
+				const Client::DATA_JSON_VALUE* lightId = light.Find("lightId");
+				if (!light.Is_Object() || nullptr == lightId ||
+					!lightId->Is_String() ||
+					!lightRows.emplace(lightId->Get_String(), &light).second)
+				{
+					return false;
+				}
+			}
+			const auto numberMatches = [](const Client::DATA_JSON_VALUE& object,
+				const char_t* name, const double expected)
+			{
+				const Client::DATA_JSON_VALUE* value = object.Find(name);
+				return nullptr != value && value->Is_Number() &&
+					std::isfinite(value->Get_Number()) &&
+					std::abs(value->Get_Number() - expected) <= 0.000000001;
+			};
+			const auto vectorMatches = [](
+				const Client::DATA_JSON_VALUE* value,
+				const auto& expected)
+			{
+				if (nullptr == value || !value->Is_Array() ||
+					value->Get_Array().size() != expected.size())
+				{
+					return false;
+				}
+				for (size_t index = 0u; index < expected.size(); ++index)
+				{
+					const Client::DATA_JSON_VALUE& component =
+						value->Get_Array()[index];
+					if (!component.Is_Number() ||
+						!std::isfinite(component.Get_Number()) ||
+						std::abs(component.Get_Number() - expected[index]) >
+							0.000000001)
+					{
+						return false;
+					}
+				}
+				return true;
+			};
+			constexpr std::array<double, 4u> TOWER_LIGHT_COLOR = {
+				1.0, 0.1450980392156863, 0.0, 1.0 };
+			for (const EXPECTED_TOWER_LIGHT& expected : expectedTowerLights)
+			{
+				const auto lightIter = lightRows.find(expected.lightId);
+				if (lightRows.end() == lightIter)
+					return false;
+				const Client::DATA_JSON_VALUE& light = *lightIter->second;
+				const Client::DATA_JSON_VALUE* sourceLevel =
+					light.Find("sourceLevel");
+				const Client::DATA_JSON_VALUE* sourceObjectId =
+					light.Find("sourceObjectId");
+				if (nullptr == sourceLevel || !sourceLevel->Is_String() ||
+					sourceLevel->Get_String() != "LV_LUT_HEARTRB_ED_SL04" ||
+					nullptr == sourceObjectId || !sourceObjectId->Is_String() ||
+					sourceObjectId->Get_String() != expected.sourceObjectId ||
+					!vectorMatches(light.Find("position"), expected.position) ||
+					!vectorMatches(light.Find("color"), TOWER_LIGHT_COLOR) ||
+					!numberMatches(light, "radiusMeters", 9.0) ||
+					!numberMatches(light, "falloffExponent", 2.0) ||
+					!numberMatches(light, "brightness", 6.0))
+				{
+					return false;
+				}
+			}
+			return true;
+		};
+		runner.Require(
+			!authoredMapLights.empty() && authoredMapLights == mapLights &&
+			validateTowerLights(authoredMapLights) &&
+			validateTowerLights(mapLights),
+			"Valtan Five Tower Lights Stay At Their Source Attached Heights");
+
+		const std::array<std::string_view, 9> towerCoreAssets = {
+			"MAP_70B41719DECE_BG_ATM_LOGHILL_CONSTRUCTPROP04_SM_OLD_02",
+			"MAP_C4CFAB19E961_BG_FAT_OCASTLE_PILLAR01A_SM",
+			"MAP_A61C89974747_BG_FAT_OCASTLE_PILLAR02_SM",
+			"MAP_6DC3E61F82D2_BG_FAT_SHCLIFF_CASTLECOLUMN01_SM_02",
+			"MAP_5334EAC715F3_BG_ATM_LOGHILL_CONSTRUCTPROP04_SM_OLD_01",
+			"MAP_CB88BE1A816A_BG_ATM_ETC_RUINS03D_SM_ESY",
+			"MAP_845CF9B729CA_BG_FAT_ETC_CARGOBOX01_SM_04",
+			"MAP_E50FD40CB69F_BG_FAT_OCASTLE_PILLAR03_SM_KEM",
+			"MAP_E3D29E2C4C9F_BG_RAD_DRLANDS_ROCK01C_SM" };
+		const bool_t towerCoreClosure = std::all_of(
+			towerCoreAssets.begin(), towerCoreAssets.end(),
+			[&](const std::string_view assetId)
+			{
+				const std::string catalogNeedle =
+					"\"" + std::string(assetId) + "\"";
+				const size_t catalogRow = mapAssets.find(catalogNeedle);
+				const size_t catalogRowEnd = std::string::npos == catalogRow ?
+					std::string::npos : mapAssets.find('\n', catalogRow);
+				const std::string row =
+					std::string::npos != catalogRow &&
+					std::string::npos != catalogRowEnd ?
+						mapAssets.substr(catalogRow,
+							catalogRowEnd - catalogRow) : std::string{};
+				const std::filesystem::path model = repositoryRoot /
+					"Client" / "Bin" / "Resources" / "Map" /
+					"LV_LUT_HEARTRB_ED" / std::string(assetId) /
+					(std::string(assetId) + ".wmodel");
+				return row.find(" Opaque Back ") != std::string::npos &&
+					std::filesystem::is_regular_file(model);
+			});
+		runner.Require(towerCoreClosure,
+			"Valtan Tower Core Catalog And WModel Closure Stay Present");
+
+		const bool_t usesSinglePresentationOwner =
+			referenceImplementation.find("Begin_PresentationOverride") !=
+				std::string::npos &&
+			referenceImplementation.find("Apply_PresentationPose") !=
+				std::string::npos &&
+			referenceImplementation.find("End_PresentationOverride") !=
+				std::string::npos &&
+			referenceImplementation.find("CNetworkManager") ==
+				std::string::npos &&
+			referenceImplementation.find("Submit_Audition") ==
+				std::string::npos;
+		runner.Require(usesSinglePresentationOwner,
+			"Valtan Reference Views Reuse Camera Presentation Without Gameplay Authority");
+
+		const size_t updateCamera = source.find(
+			"void CLevel_ValtanArena::Update_CinematicCamera");
+		const size_t serverPreemption = std::string::npos == updateCamera ?
+			std::string::npos :
+			source.find("End_ReferenceCamera(false);", updateCamera);
+		const size_t serverOwnerBegin = std::string::npos == updateCamera ?
+			std::string::npos :
+			source.find("Begin_PresentationOverride", updateCamera);
+		runner.Require(
+			std::string::npos != serverPreemption &&
+			std::string::npos != serverOwnerBegin &&
+			serverPreemption < serverOwnerBegin,
+			"Valtan Server Cinematic Preempts Debug Reference Camera");
+
+		const std::array<std::string_view, 10> forbiddenFunctionKeys = {
+			"DIK_F2", "DIK_F3", "DIK_F4", "DIK_F5", "DIK_F7",
+			"DIK_F8", "DIK_F9", "DIK_F10", "DIK_F11", "DIK_F12" };
+		const bool_t noNewGlobalShortcut = std::all_of(
+			forbiddenFunctionKeys.begin(), forbiddenFunctionKeys.end(),
+			[&source](const std::string_view key)
+			{
+				return std::string::npos == source.find(key);
+			});
+		runner.Require(
+			noNewGlobalShortcut &&
+			referenceImplementation.find("Get_DIKeyPressed(DIK_F6)") !=
+				std::string::npos &&
+			referenceImplementation.find("End_ReferenceCamera(true)") !=
+				std::string::npos,
+			"Valtan Reference Camera Preserves F6 As The Only User Camera Toggle");
+
+		const size_t mapOverrideBegin = mapRuntimeSource.find(
+			"bool_t CMapPlacementRuntime::Set_DebugSourceLevelVisible");
+		const size_t mapOverrideEnd = mapRuntimeSource.find(
+			"bool_t CMapPlacementRuntime::Is_BatchEligible");
+		const std::string mapOverrideImplementation =
+			std::string::npos != mapOverrideBegin &&
+			std::string::npos != mapOverrideEnd &&
+			mapOverrideBegin < mapOverrideEnd ?
+				mapRuntimeSource.substr(
+					mapOverrideBegin, mapOverrideEnd - mapOverrideBegin) :
+				std::string{};
+		runner.Require(
+			isDebugScoped(mapRuntimeSource,
+				"bool_t CMapPlacementRuntime::Set_DebugSourceLevelVisible") &&
+			isDebugScoped(mapRuntimeHeader,
+				"Set_DebugSourceLevelVisible") &&
+			mapOverrideImplementation.find(
+				"entry.record.sourceLevel == sourceLevel") !=
+				std::string::npos &&
+			mapOverrideImplementation.find("Set_RuntimeVisible") !=
+				std::string::npos &&
+			mapOverrideImplementation.find("Prototype") ==
+				std::string::npos,
+			"Valtan Reference Phase Proxy Uses Debug Stable SourceLevel Visibility");
+
+		runner.Require(
+			source.find(
+				"\"VALTAN_PHASE_SPACEHOLE\"") != std::string::npos &&
+			referenceImplementation.find(
+				"REFERENCE_CAMERA_VIEW::TOP_DOWN == view") !=
+				std::string::npos &&
+			referenceImplementation.find(
+				"Set_ReferencePhaseProxyVisible(showSpaceHole)") !=
+				std::string::npos &&
+			referenceImplementation.find(
+				"Set_ReferencePhaseProxyVisible(false)") !=
+				std::string::npos,
+			"Valtan Top Down Shows SpaceHole And Every Exit Restores Baseline");
+
+		size_t spaceHoleCount = 0u;
+		size_t hiddenSpaceHoleCount = 0u;
+		std::istringstream placementLines(mapPlacements);
+		for (std::string line; std::getline(placementLines, line);)
+		{
+			if (line.find("\"VALTAN_PHASE_SPACEHOLE\"") ==
+				std::string::npos)
+			{
+				continue;
+			}
+			++spaceHoleCount;
+			if (line.ends_with(" 0"))
+				++hiddenSpaceHoleCount;
+		}
+		runner.Require(
+			3u == spaceHoleCount && spaceHoleCount == hiddenSpaceHoleCount,
+			"Valtan SpaceHole SourceLevel Has Exactly Three Authored Hidden Proxies");
 	}
 
 	std::string Make_WorldDestructionProjectionFixture(
@@ -28761,8 +30093,11 @@ namespace
 			bPlaylistMetadataValid &&
 			67u == Playlist.back().iPatternNumber,
 			"Valtan Source Playlist Reaches Pattern 67 Without Omitting A Row");
+		/* 9, 12, 16, 35 and 46 carry authored source sequences now, so only the
+		three rows that legitimately have no body motion stay markers: 7 has no
+		user record at all, 28 is a phase readout and 41 is a cutscene. */
 		const std::set<uint32_t> ExpectedMarkerPatterns{
-			7u, 9u, 12u, 16u, 28u, 35u, 41u, 46u };
+			7u, 28u, 41u };
 		runner.Require(
 			bPlaylistBuilt && MarkerPatterns == ExpectedMarkerPatterns,
 			"Valtan Unresolved And Non-Animation Rows Use Exact Marker Set");
@@ -29248,9 +30583,11 @@ int main(const int argc, char* argv[])
 	}
 	if (Mode == "--valtan-camera-fast")
 	{
+		Test_EngineShutdownKeepsCameraPipelineAlive(runner);
 		Test_ValtanCinematicCamera(runner);
 		Test_ValtanCinematicCameraEasing(runner);
 		Test_ValtanCinematicSkyCue(runner);
+		Test_ValtanReferenceCameraSourceContract(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -29686,9 +31023,11 @@ int main(const int argc, char* argv[])
 	Test_ValtanPatternBindingSchema(runner);
 	Test_ValtanPatternPreview(runner);
 	Test_ActionPresentationTimeline(runner);
+	Test_EngineShutdownKeepsCameraPipelineAlive(runner);
 	Test_ValtanCinematicCameraEasing(runner);
 	Test_ValtanCinematicSkyCue(runner);
 	Test_ValtanCinematicCamera(runner);
+	Test_ValtanReferenceCameraSourceContract(runner);
 	Test_WorldDestructionProjection(runner);
 	Test_WorldDestructionDebrisBudget(runner);
 	Test_WorldDestructionDebrisPresentation(runner);

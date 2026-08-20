@@ -581,15 +581,15 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			}
 		}
 		tests.Require(
-			everyDamagingStageResolves && 46u == damagingStageCount &&
-			72u == authoredHitPulseCount &&
+			everyDamagingStageResolves && 48u == damagingStageCount &&
+			71u == authoredHitPulseCount &&
 			700u == catalog.Find_DamageRatePercent(
 				"damage.valtan.arena-destroy-109") &&
 			450u == catalog.Find_DamageRatePercent(
 				"damage.valtan.six-direction-130") &&
 			900u == catalog.Find_DamageRatePercent(
 				"damage.valtan.ghost-transition-15"),
-			"Resolve all 46 Valtan hit stages and 72 pulses through project-tuned damage profiles");
+			"Resolve all 48 Valtan hit stages and 71 pulses through project-tuned damage profiles");
 	}
 	{
 		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
@@ -6284,13 +6284,16 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			}
 		}
 
+		/* 9, 12, 16, 35 and 46 now name a product pattern, so only the three rows
+		   with no body motion at all stay idle: 7 has no user record, 28 is a
+		   phase readout and 41 is a cutscene. */
 		const std::vector<std::uint32_t> exactIdleOrdinals
 		{
-			7u, 9u, 12u, 16u, 28u, 35u, 41u, 46u
+			7u, 28u, 41u
 		};
 		const bool ledgerShapeIsExact = nullptr != definition &&
 			67u == definition->Steps.size() &&
-			61u == expectedPatternIds.size() &&
+			66u == expectedPatternIds.size() &&
 			exactIdleOrdinals == expectedIdleOrdinals &&
 			2 == std::count(
 				expectedOrdinals.begin(), expectedOrdinals.end(), 40u) &&
@@ -6348,7 +6351,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			propEpochBeforeStart != runPropEpoch &&
 			2u == initialFloorStates[0u] &&
 			4u == initialFloorStates[3u],
-			"Ordered full run stages the exact 61-start and 8-idle ledger in one fresh arena");
+			"Ordered full run stages the exact 66-start and 3-idle ledger in one fresh arena");
 
 		std::vector<std::uint32_t> observedOrdinals;
 		std::vector<std::uint32_t> observedRepeatIndices;
@@ -6527,9 +6530,12 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		boss = room.Find_AuditionBoss();
 		const std::array<std::size_t, 6u> finalFloorStates =
 			countFloorStates();
+		/* Pattern sequence numbers, not occurrence ordinals: filling 9, 12, 16,
+		   35 and 46 inserts five executions ahead of the pillar occurrences at
+		   25, 33 and 49, so each cycle shifts by the count that precedes it. */
 		const std::vector<std::uint32_t> exactPillarSequences
 		{
-			21u, 28u, 43u
+			24u, 31u, 48u
 		};
 		bool pillarCyclesExact = pillarStatesConsistent &&
 			exactPillarSequences == pillarPatternSequences &&
@@ -6551,7 +6557,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			expectedOrdinals == observedOrdinals &&
 			expectedRepeatIndices == observedRepeatIndices &&
 			expectedPatternIds == observedPatternIds &&
-			61u == observedPatternIds.size() &&
+			66u == observedPatternIds.size() &&
 			2 == std::count(
 				observedOrdinals.begin(), observedOrdinals.end(), 40u) &&
 			2 == std::count(
@@ -6559,8 +6565,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		tests.Require(
 			expandedStartsExact && idleEdgesExact &&
 			expectedIdleOrdinals == observedIdleOrdinals &&
-			8u == observedIdleOrdinals.size(),
-			"Ordered full run executes exactly 61 stable starts, two repeats each at 40 and 43, and eight idle rows");
+			3u == observedIdleOrdinals.size(),
+			"Ordered full run executes exactly 66 stable starts, two repeats each at 40 and 43, and three idle rows");
 		tests.Require(
 			14u == healthAt55 && 40u == healthAt56,
 			"Ordered full run restores Valtan from 14 to 40 bars between occurrences 55 and 56");
@@ -6581,7 +6587,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				room.m_ValtanOrderedAudition.ePhase &&
 			67u == room.m_ValtanOrderedAudition.iStepIndex &&
 			0u == room.m_ValtanOrderedAudition.iRepeatIndex &&
-			firstPatternSequence + 61u == boss->iPatternSequence &&
+			firstPatternSequence + 66u == boss->iPatternSequence &&
 			SERVER_ENTITY_ACTION::IDLE == boss->eAction &&
 			boss->strPatternId.empty() && boss->PendingPatternIds.empty() &&
 			room.m_ValtanOrderedAudition.strExpectedPatternId.empty() &&
