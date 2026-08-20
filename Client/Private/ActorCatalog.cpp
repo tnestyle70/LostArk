@@ -196,6 +196,7 @@ namespace
 				return false;
 			BOSS_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
+			const DATA_JSON_VALUE* pArmor = value.Find("armorModels");
 			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
 				!ReadRequiredString(value, "visualAssetId", entry.visualAssetId) ||
 				!ReadRequiredString(value, "bodyModel", entry.bodyModel) ||
@@ -214,11 +215,19 @@ namespace
 				!IsResourceId(entry.bodyModel) ||
 				!IsResourceId(entry.weaponModel) ||
 				!IsResourceId(entry.animationSetId) ||
+				nullptr == pArmor || !pArmor->Is_Array() ||
+				pArmor->Get_Array().size() > 4u ||
 				!archetypes.insert(entry.archetypeId).second ||
 				(entry.presentationStatus != "complete" &&
 				 entry.presentationStatus != "fallback"))
 			{
 				return false;
+			}
+			for (const DATA_JSON_VALUE& armor : pArmor->Get_Array())
+			{
+				if (!armor.Is_String() || !IsResourceId(armor.Get_String()))
+					return false;
+				entry.armorModels.push_back(armor.Get_String());
 			}
 			staged.push_back(std::move(entry));
 		}

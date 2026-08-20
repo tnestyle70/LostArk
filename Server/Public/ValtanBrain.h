@@ -24,6 +24,20 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t healthBar);
 
+		/* Whether a weighted pattern is offered in this boss's current armour
+		state. A boss with no authored plates reads as stripped, so an encounter
+		that never had armour keeps offering exactly what it did before. */
+		[[nodiscard]] static bool Is_ArmorRequirementMet(
+			const SERVER_WORLD_ENTITY& boss,
+			BOSS_PATTERN_ARMOR_REQUIREMENT requirement);
+
+		/* Whether a weighted pattern is offered in this boss's current phase.
+		The phase itself is advanced from the authored HP threshold, so this only
+		reads the state and never decides when it changes. */
+		[[nodiscard]] static bool Is_PhaseRequirementMet(
+			const SERVER_WORLD_ENTITY& boss,
+			BOSS_PATTERN_PHASE_REQUIREMENT requirement);
+
 		/* outDamageEvents collects the hits this pattern tick lands on players so
 		the room can ship the amounts in the same tick's snapshot. */
 		void Update(

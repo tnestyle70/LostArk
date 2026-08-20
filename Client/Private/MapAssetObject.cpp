@@ -7,6 +7,7 @@
 
 #include "MapAssetRenderUtils.h"
 
+#include <algorithm>
 #include <cmath>
 
 CMapAssetObject::CMapAssetObject(ComPtr<ID3D11Device> pDevice,
@@ -53,6 +54,9 @@ HRESULT CMapAssetObject::Initialize(void* pArg)
 	m_bApplyBottomCenter = desc.applyBottomCenter;
 	m_bVisible = desc.visible;
 	m_RenderProfile = desc.renderProfile;
+	m_fPresentationOpacityMultiplier = 1.f;
+	Set_PresentationVortexProfile(
+		PRESENTATION_VORTEX_PROFILE::NONE, 0.f);
 
 	/*CModel이 로드하며 만든 local AABB를 한 번만 bounding sphere로 변환한다.*/
 	Ready_CullBounds();
@@ -94,8 +98,10 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 
 	if (!m_bVisible)
 		return;
+	const MAP_ASSET_RENDER_PROFILE effectiveProfile =
+		Get_EffectiveRenderProfile();
 	if (MAP_ASSET_RENDER_MODE::DEFERRED ==
-		m_RenderProfile.renderMode &&
+		effectiveProfile.renderMode &&
 		CGameInstance::Get().Is_ShadowLightEnabled())
 	{
 		/* Shadow visibility follows authored placement visibility, not the
@@ -107,7 +113,7 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 	//해당 Asset이 Background인지 여부 체크, sky background는 카메라를 따라 움직이기 때문에,
 	//Frustum Culling에서 제외
 	const bool_t bBackground =
-		m_RenderProfile.renderMode ==
+		effectiveProfile.renderMode ==
 		MAP_ASSET_RENDER_MODE::BACKGROUND;
 
 	//Sky/BackGround는 카메라를 따라 움직이므로 일반적인 world-space Frustum 대상에서 제외
@@ -126,10 +132,10 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 
 	RENDERGROUP renderGroup = RENDERGROUP::NONBLEND;
 
-	if (m_RenderProfile.renderMode == MAP_ASSET_RENDER_MODE::TRANSLUCENT ||
-		m_RenderProfile.renderMode == MAP_ASSET_RENDER_MODE::ADDITIVE)
+	if (effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::TRANSLUCENT ||
+		effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::ADDITIVE)
 		renderGroup = RENDERGROUP::BLEND;
-	else if (m_RenderProfile.renderMode == MAP_ASSET_RENDER_MODE::BACKGROUND)
+	else if (effectiveProfile.renderMode == MAP_ASSET_RENDER_MODE::BACKGROUND)
 		renderGroup = RENDERGROUP::PRIORITY;
 
 	CGameInstance::Get().Add_RenderObject(
@@ -139,46 +145,69 @@ void CMapAssetObject::Late_Update(f32_t fTimeDelta)
 
 HRESULT CMapAssetObject::Render()
 {
-	if (FAILED(Bind_ShaderResources()))
-		return E_FAIL;
+	/* Late_Update may already have queued this object when a presentation cue
+	   hides it. Re-check at draw time so the previous frame cannot leak through. */
+	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f)
+		return S_OK;
 
-	const uint32_t passIndex =
-		Select_ShaderPass();
-
-	for (uint32_t meshIndex = 0; meshIndex < m_pModelCom->Get_NumMeshes(); ++meshIndex)
+	HRESULT renderResult = Bind_ShaderResources();
+	if (SUCCEEDED(renderResult))
 	{
-		if (FAILED(
-			CMapAssetRenderUtils::Bind_Material(
-				m_pModelCom, m_pShaderCom, meshIndex, m_RenderProfile, m_fElapsedTime)) ||
+		MAP_ASSET_RENDER_PROFILE presentationProfile =
+			Get_EffectiveRenderProfile();
+		const uint32_t passIndex = CMapAssetRenderUtils::Select_Pass(
+			presentationProfile, m_bMirrored);
+		presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
 
-			FAILED(m_pShaderCom->Begin(passIndex)) ||
-
-			FAILED(m_pModelCom->Render(meshIndex)))
+		for (uint32_t meshIndex = 0;
+			meshIndex < m_pModelCom->Get_NumMeshes(); ++meshIndex)
 		{
-			return E_FAIL;
+			if (FAILED(
+				CMapAssetRenderUtils::Bind_Material(
+					m_pModelCom, m_pShaderCom, meshIndex,
+					presentationProfile, m_fElapsedTime)) ||
+
+				FAILED(m_pShaderCom->Begin(passIndex)) ||
+
+				FAILED(m_pModelCom->Render(meshIndex)))
+			{
+				renderResult = E_FAIL;
+				break;
+			}
 		}
 	}
-	return S_OK;
+
+	/* CShader clones share one FX11 effect. Reset even after a failed bind or
+	   draw so a later character, prop or ordinary map asset cannot inherit the
+	   presentation-only branch. */
+	const HRESULT resetResult = Reset_PresentationVortexShaderResources();
+	return FAILED(renderResult) ? renderResult : resetResult;
 }
 
 HRESULT CMapAssetObject::Render_Shadow()
 {
 	constexpr uint32_t STATIC_SHADOW_PASS_BASE = 12u;
-	if (MAP_ASSET_RENDER_MODE::DEFERRED != m_RenderProfile.renderMode)
+	if (!m_bVisible || m_fPresentationOpacityMultiplier <= 0.f)
+		return S_OK;
+	MAP_ASSET_RENDER_PROFILE presentationProfile =
+		Get_EffectiveRenderProfile();
+	if (MAP_ASSET_RENDER_MODE::DEFERRED != presentationProfile.renderMode)
 		return S_OK;
 	if (FAILED(Bind_ShadowShaderResources()))
 		return E_FAIL;
 
-	const uint32_t iCullPass = Select_ShaderPass();
+	const uint32_t iCullPass = CMapAssetRenderUtils::Select_Pass(
+		presentationProfile, m_bMirrored);
 	if (iCullPass > 2u)
 		return E_UNEXPECTED;
+	presentationProfile.opacity *= m_fPresentationOpacityMultiplier;
 
 	for (uint32_t iMesh = 0;
 		iMesh < m_pModelCom->Get_NumMeshes(); ++iMesh)
 	{
 		if (FAILED(CMapAssetRenderUtils::Bind_Material(
 				m_pModelCom, m_pShaderCom, iMesh,
-				m_RenderProfile, m_fElapsedTime)) ||
+				presentationProfile, m_fElapsedTime)) ||
 			FAILED(m_pShaderCom->Begin(
 				STATIC_SHADOW_PASS_BASE + iCullPass)) ||
 			FAILED(m_pModelCom->Render(iMesh)))
@@ -189,10 +218,74 @@ HRESULT CMapAssetObject::Render_Shadow()
 	return S_OK;
 }
 
-uint32_t CMapAssetObject::Select_ShaderPass() const
+void CMapAssetObject::Set_PresentationOpacityMultiplier(
+	const f32_t multiplier)
 {
-	return CMapAssetRenderUtils::Select_Pass(
-		m_RenderProfile, m_bMirrored);
+	/* A corrupt presentation value must fail closed instead of reaching the
+	   shader as NaN. Valid callers may only attenuate authored opacity. */
+	m_fPresentationOpacityMultiplier = std::isfinite(multiplier) ?
+		(std::clamp)(multiplier, 0.f, 1.f) : 0.f;
+}
+
+void CMapAssetObject::Set_PresentationVortexProfile(
+	const PRESENTATION_VORTEX_PROFILE profile,
+	const f32_t strength)
+{
+	const bool_t validProfile =
+		PRESENTATION_VORTEX_PROFILE::NONE == profile ||
+		PRESENTATION_VORTEX_PROFILE::DARK_APERTURE == profile ||
+		PRESENTATION_VORTEX_PROFILE::RED_RING == profile ||
+		PRESENTATION_VORTEX_PROFILE::RED_CLOUD_DISC == profile;
+	if (!validProfile || !std::isfinite(strength))
+	{
+		m_ePresentationVortexProfile =
+			PRESENTATION_VORTEX_PROFILE::NONE;
+		m_fPresentationVortexStrength = 0.f;
+		return;
+	}
+	const f32_t boundedStrength =
+		(std::clamp)(strength, 0.f, 1.f);
+	if (PRESENTATION_VORTEX_PROFILE::NONE == profile ||
+		boundedStrength <= 0.f)
+	{
+		m_ePresentationVortexProfile =
+			PRESENTATION_VORTEX_PROFILE::NONE;
+		m_fPresentationVortexStrength = 0.f;
+		return;
+	}
+	m_ePresentationVortexProfile = profile;
+	m_fPresentationVortexStrength = boundedStrength;
+}
+
+MAP_ASSET_RENDER_PROFILE CMapAssetObject::Get_EffectiveRenderProfile() const
+{
+	MAP_ASSET_RENDER_PROFILE profile = m_RenderProfile;
+	if (!std::isfinite(m_fPresentationVortexStrength) ||
+		m_fPresentationVortexStrength <= 0.f)
+	{
+		return profile;
+	}
+	if (PRESENTATION_VORTEX_PROFILE::DARK_APERTURE ==
+		m_ePresentationVortexProfile)
+	{
+		/* Additive blending cannot remove light. The aperture uses the same
+		   authored texture/opacity but must alpha-blend a dark procedural color. */
+		profile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT;
+	}
+	else if (PRESENTATION_VORTEX_PROFILE::RED_RING ==
+		m_ePresentationVortexProfile)
+	{
+		profile.renderMode = MAP_ASSET_RENDER_MODE::ADDITIVE;
+	}
+	else if (PRESENTATION_VORTEX_PROFILE::RED_CLOUD_DISC ==
+		m_ePresentationVortexProfile)
+	{
+		/* The cloud discs must retain their dark burgundy body. Additive blending
+		   would turn the source texture into the bright blue/red square that this
+		   presentation profile is specifically meant to suppress. */
+		profile.renderMode = MAP_ASSET_RENDER_MODE::TRANSLUCENT;
+	}
+	return profile;
 }
 
 void CMapAssetObject::Set_PlacementTransform(const float3_t& position,
@@ -257,10 +350,51 @@ HRESULT CMapAssetObject::Bind_ShaderResources()
 		FAILED(CGameInstance::Get().Bind_Transform(
 			m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
 		FAILED(CGameInstance::Get().Bind_Transform(
-			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)))
+			m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)) ||
+		FAILED(Bind_PresentationVortexShaderResources(
+			m_ePresentationVortexProfile,
+			m_fPresentationVortexStrength)))
 		return E_FAIL;
 
 	return S_OK;
+}
+
+HRESULT CMapAssetObject::Bind_PresentationVortexShaderResources(
+	const PRESENTATION_VORTEX_PROFILE profile,
+	const f32_t strength)
+{
+	if (nullptr == m_pShaderCom)
+		return E_FAIL;
+
+	const bool_t validProfile =
+		PRESENTATION_VORTEX_PROFILE::NONE == profile ||
+		PRESENTATION_VORTEX_PROFILE::DARK_APERTURE == profile ||
+		PRESENTATION_VORTEX_PROFILE::RED_RING == profile ||
+		PRESENTATION_VORTEX_PROFILE::RED_CLOUD_DISC == profile;
+	const PRESENTATION_VORTEX_PROFILE boundedProfile =
+		validProfile && std::isfinite(strength) && strength > 0.f ?
+		profile : PRESENTATION_VORTEX_PROFILE::NONE;
+	const f32_t boundedStrength =
+		PRESENTATION_VORTEX_PROFILE::NONE == boundedProfile ? 0.f :
+		(std::clamp)(strength, 0.f, 1.f);
+	const uint32_t rawProfile =
+		static_cast<uint32_t>(boundedProfile);
+
+	/* Strength is written first. Even if the profile write fails, resetting
+	   strength to zero disables both procedural shader branches. */
+	const HRESULT strengthResult = m_pShaderCom->Bind_RawValue(
+		"g_PresentationVortexStrength",
+		&boundedStrength, sizeof(boundedStrength));
+	const HRESULT profileResult = m_pShaderCom->Bind_RawValue(
+		"g_PresentationVortexProfile",
+		&rawProfile, sizeof(rawProfile));
+	return FAILED(strengthResult) || FAILED(profileResult) ? E_FAIL : S_OK;
+}
+
+HRESULT CMapAssetObject::Reset_PresentationVortexShaderResources()
+{
+	return Bind_PresentationVortexShaderResources(
+		PRESENTATION_VORTEX_PROFILE::NONE, 0.f);
 }
 
 HRESULT CMapAssetObject::Bind_ShadowShaderResources()

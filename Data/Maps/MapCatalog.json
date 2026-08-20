@@ -37,7 +37,7 @@
       "navigationBlockers": "Data/Navigation/LV_LUT_HEARTRB_ED.navblockers",
       "navigationRuntime": "Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
       "gameplayDocument": "Data/Worlds/LV_LUT_HEARTRB_ED/Gameplay.world.json",
-      "placementCount": 13192,
+      "placementCount": 13186,
       "assetCount": 275,
       "runtimeAssetRoot": "Map/LV_LUT_HEARTRB_ED"
     },

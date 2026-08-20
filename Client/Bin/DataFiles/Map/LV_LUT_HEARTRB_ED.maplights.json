@@ -8,220 +8,418 @@
       "lightId": "light.valtan.tower.pointlight_102_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:733:pointlight_102_lc",
-      "position": [203.460606, 24.734033, -127.571465],
+      "position": [
+        203.460606,
+        24.734033,
+        -127.571465
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_104_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:735:pointlight_104_lc",
-      "position": [187.751602, 24.734033, -158.425654],
+      "position": [
+        187.751602,
+        24.734033,
+        -158.425654
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_21_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:750:pointlight_21_lc",
-      "position": [161.835400, 24.734033, -168.356855],
+      "position": [
+        161.8354,
+        24.734033,
+        -168.356855
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_106_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:737:pointlight_106_lc",
-      "position": [135.544980, 24.734033, -159.737500],
+      "position": [
+        135.54498,
+        24.734033,
+        -159.7375
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_11_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:739:pointlight_11_lc",
-      "position": [191.995703, 24.734033, -99.211338],
+      "position": [
+        191.995703,
+        24.734033,
+        -99.211338
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_64_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:768:pointlight_64_lc",
-      "position": [188.291309, 14.172728, -123.240234],
+      "position": [
+        188.291309,
+        14.172728,
+        -123.240234
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_5_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:767:pointlight_5_lc",
-      "position": [196.451973, -1.394727, -127.035703],
+      "position": [
+        196.451973,
+        -1.394727,
+        -127.035703
+      ],
       "radiusMeters": 20.48,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 2.5
     },
     {
       "lightId": "light.valtan.tower.pointlight_103_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:734:pointlight_103_lc",
-      "position": [198.301699, -16.068151, -123.891680],
+      "position": [
+        198.301699,
+        -16.068151,
+        -123.89168
+      ],
       "radiusMeters": 10.24,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 2.5
     },
     {
       "lightId": "light.valtan.tower.pointlight_98_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:780:pointlight_98_lc",
-      "position": [187.936191, -35.772830, -122.317480],
+      "position": [
+        187.936191,
+        -35.77283,
+        -122.31748
+      ],
       "radiusMeters": 20.48,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 3.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_24_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:753:pointlight_24_lc",
-      "position": [176.511172, 10.832922, -143.720859],
+      "position": [
+        176.511172,
+        10.832922,
+        -143.720859
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_25_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:754:pointlight_25_lc",
-      "position": [173.250137, 10.832922, -145.604990],
+      "position": [
+        173.250137,
+        10.832922,
+        -145.60499
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_27_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:756:pointlight_27_lc",
-      "position": [180.038984, -1.394727, -150.643105],
+      "position": [
+        180.038984,
+        -1.394727,
+        -150.643105
+      ],
       "radiusMeters": 20.48,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 2.5
     },
     {
       "lightId": "light.valtan.tower.pointlight_28_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:757:pointlight_28_lc",
-      "position": [183.363691, -21.762295, -150.889150],
+      "position": [
+        183.363691,
+        -21.762295,
+        -150.88915
+      ],
       "radiusMeters": 20.48,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 2.5
     },
     {
       "lightId": "light.valtan.tower.pointlight_29_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:758:pointlight_29_lc",
-      "position": [136.400566, 13.365049, -151.214629],
+      "position": [
+        136.400566,
+        13.365049,
+        -151.214629
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_68_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:770:pointlight_68_lc",
-      "position": [131.826855, -1.394727, -159.343447],
+      "position": [
+        131.826855,
+        -1.394727,
+        -159.343447
+      ],
       "radiusMeters": 20.48,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 2.5
     },
     {
       "lightId": "light.valtan.tower.pointlight_105_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:736:pointlight_105_lc",
-      "position": [137.638096, -1.394727, -151.278281],
+      "position": [
+        137.638096,
+        -1.394727,
+        -151.278281
+      ],
       "radiusMeters": 20.48,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 2.5
     },
     {
       "lightId": "light.valtan.tower.pointlight_22_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:751:pointlight_22_lc",
-      "position": [137.706982, -21.762295, -151.423994],
+      "position": [
+        137.706982,
+        -21.762295,
+        -151.423994
+      ],
       "radiusMeters": 20.48,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 2.5
     },
     {
       "lightId": "light.valtan.tower.pointlight_30_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:760:pointlight_30_lc",
-      "position": [182.656191, 14.172728, -101.204268],
+      "position": [
+        182.656191,
+        14.172728,
+        -101.204268
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_15_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:743:pointlight_15_lc",
-      "position": [184.628574, -1.394727, -100.711621],
+      "position": [
+        184.628574,
+        -1.394727,
+        -100.711621
+      ],
       "radiusMeters": 20.48,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 2.5
     },
     {
       "lightId": "light.valtan.tower.pointlight_26_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:755:pointlight_26_lc",
-      "position": [158.904902, 13.365049, -153.888477],
+      "position": [
+        158.904902,
+        13.365049,
+        -153.888477
+      ],
       "radiusMeters": 9.0,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 6.0
     },
     {
       "lightId": "light.valtan.tower.pointlight_0_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:732:pointlight_0_lc",
-      "position": [160.520391, -1.394727, -161.196641],
+      "position": [
+        160.520391,
+        -1.394727,
+        -161.196641
+      ],
       "radiusMeters": 20.48,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 2.5
     },
     {
       "lightId": "light.valtan.tower.pointlight_20_lc",
       "sourceLevel": "LV_LUT_HEARTRB_ED_SL04",
       "sourceObjectId": "SL04:export:749:pointlight_20_lc",
-      "position": [162.287881, -21.762295, -160.083994],
+      "position": [
+        162.287881,
+        -21.762295,
+        -160.083994
+      ],
       "radiusMeters": 20.48,
       "falloffExponent": 2.0,
-      "color": [1.0, 0.1450980392156863, 0.0, 1.0],
+      "color": [
+        1.0,
+        0.1450980392156863,
+        0.0,
+        1.0
+      ],
       "brightness": 2.5
     }
   ]

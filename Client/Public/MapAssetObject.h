@@ -14,6 +14,17 @@ NS_BEGIN(Client)
 class CMapAssetObject final : public CGameObject
 {
 public:
+	/* Narrowly scoped runtime treatments for the masked Valtan proxy planes.
+	   NONE remains the invariant for every ordinary map asset. */
+	enum class PRESENTATION_VORTEX_PROFILE : uint32_t
+	{
+		NONE = 0u,
+		DARK_APERTURE = 1u,
+		RED_RING = 2u,
+		RED_CLOUD_DISC = 3u,
+		END
+	};
+
 	struct MAP_ASSET_DESC : public CGameObject::GAMEOBJECT_DESC
 	{
 		uint32_t prototypeLevelIndex = ETOUI(LEVEL::DEVELOPMENT);
@@ -49,10 +60,13 @@ public:
 	const float3_t& Get_SignedScale() const { return m_vSignedScale; }
 	bool_t Is_Visible() const { return m_bVisible; }
 	bool_t Is_Mirrored() const { return m_bMirrored; }
-
 	void Set_PlacementTransform(const float3_t& position,
 		const float4_t& rotationQuaternion, const float3_t& signedScale);
 	void Set_Visible(bool_t visible) { m_bVisible = visible; }
+	void Set_PresentationOpacityMultiplier(f32_t multiplier);
+	void Set_PresentationVortexProfile(
+		PRESENTATION_VORTEX_PROFILE profile,
+		f32_t strength);
 
 private:
 	uint64_t m_iPlacementId = {};
@@ -73,6 +87,12 @@ private:
 	f32_t m_fWorldCullRadius = {};
 
 	MAP_ASSET_RENDER_PROFILE m_RenderProfile;
+	/* Runtime presentation may fade a placement without mutating the authored
+	   catalog profile shared by every occurrence of the asset. */
+	f32_t m_fPresentationOpacityMultiplier = 1.f;
+	PRESENTATION_VORTEX_PROFILE m_ePresentationVortexProfile =
+		PRESENTATION_VORTEX_PROFILE::NONE;
+	f32_t m_fPresentationVortexStrength = 0.f;
 	f32_t m_fElapsedTime = {};
 
 	shared_ptr<CShader> m_pShaderCom = { nullptr };
@@ -83,13 +103,17 @@ private:
 		const std::wstring& modelPrototypeTag);
 	HRESULT Bind_ShaderResources();
 	HRESULT Bind_ShadowShaderResources();
+	HRESULT Bind_PresentationVortexShaderResources(
+		PRESENTATION_VORTEX_PROFILE profile,
+		f32_t strength);
+	HRESULT Reset_PresentationVortexShaderResources();
 	//Frustum Culling
 	void Ready_CullBounds();
 	void Update_WorldCullBounds();
 
 	float3_t Compute_WorldOrigin(const float3_t& placementPosition,
 		const float4_t& rotationQuaternion, const float3_t& signedScale) const;
-	uint32_t Select_ShaderPass() const;
+	MAP_ASSET_RENDER_PROFILE Get_EffectiveRenderProfile() const;
 
 public:
 	static unique_ptr<CMapAssetObject> Create(ComPtr<ID3D11Device> pDevice,

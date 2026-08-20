@@ -188,7 +188,7 @@ int wmain(const int iArgumentCount, wchar_t* pArguments[])
 			"SOURCE_INSTANCE_EXACT_FALLOFF_INFERRED" ||
 		22u != MapLights.Get_Lights().size())
 	{
-		return Fail("Valtan source-instance map light document did not load");
+		return Fail("Valtan project-authored map light document did not load");
 	}
 	const MAP_POINT_LIGHT_RECORD& FirstTowerLight =
 		MapLights.Get_Lights().front();

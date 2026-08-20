@@ -15,6 +15,8 @@
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldPlayerNameplateView.h"
 
+#include <array>
+
 NS_BEGIN(Engine)
 class CTransform;
 NS_END
@@ -24,6 +26,7 @@ NS_BEGIN(Client)
 class CCamera_Free;
 class CCharacter;
 class IPlayerCommandSink;
+class CMapAssetObject;
 
 class CLevel_ValtanArena final : public CLevel
 {
@@ -42,15 +45,33 @@ public:
 private:
 	HRESULT Ready_Layer_Camera(const wstring_t& strLayerTag);
 	bool_t Ready_CinematicCamera();
+	bool_t Ready_ValtanSkyPresentation(std::string& outStatus);
 	bool_t Bind_CameraToLocalCharacter();
 	void Update_CinematicCamera(f32_t fTimeDelta);
+	void Apply_ValtanSkyPresentation(
+		const VALTAN_CINEMATIC_SKY_STATE& state);
+	void Reset_ValtanSkyPresentation();
+	void Clear_ValtanSkyPresentation();
+	void End_CinematicCameraOverride();
 	void End_CinematicCamera();
 	void Update_WorldDestructionPresentation(f32_t fTimeDelta);
 	bool_t Apply_EncounterPropPresentation();
 #ifdef _DEBUG
+	enum class REFERENCE_CAMERA_VIEW : uint8_t
+	{
+		NONE,
+		TOP_DOWN,
+		EXTERIOR
+	};
+	bool_t Begin_ReferenceCamera(REFERENCE_CAMERA_VIEW view);
+	bool_t Set_ReferencePhaseProxyVisible(bool_t visible);
+	void Update_ReferenceCamera();
+	void End_ReferenceCamera(bool_t toggleFollowRequested);
+	const char_t* Get_ReferenceCameraViewName() const;
 	/* Debug audition of an authored health-bar pattern. The panel only submits
 	typed requests and reports what the Server answered; it never starts a
-	pattern, moves the camera or breaks a wall on its own. */
+	pattern or breaks a wall on its own. Reference-view buttons below are a
+	separate presentation-only camera aid and never submit gameplay state. */
 	void Render_AuditionPanel();
 	void Update_AuditionTransaction();
 	bool_t Submit_Audition(
@@ -98,9 +119,27 @@ private:
 	CEncounterPatternReference m_ValtanEncounterReference;
 	CValtanCinematicCameraDocument m_ValtanCinematicCameraDocument;
 	CValtanCinematicCameraController m_ValtanCinematicCameraController;
-	/* Presentation-only 105 sky layer state. It never reaches collision or
-	   navigation; the asset slots stay empty until the effect owner fills them. */
+	/* The Server-owned pattern clock only selects this presentation. The six
+	   cached map objects never participate in collision or navigation. */
 	VALTAN_CINEMATIC_SKY_STATE m_ValtanSkyState;
+	struct VALTAN_SKY_PRESENTATION_LAYER final
+	{
+		shared_ptr<CMapAssetObject> pObject;
+		std::string strAssetId;
+		uint64_t iPlacementId = 0u;
+		float3_t vBasePosition = {};
+		float4_t vBaseRotationQuaternion = float4_t(0.f, 0.f, 0.f, 1.f);
+		float3_t vBaseSignedScale = float3_t(1.f, 1.f, 1.f);
+		bool_t bBaseVisible = false;
+		VALTAN_CINEMATIC_SKY_LAYER_POLICY Policy;
+	};
+	static constexpr size_t VALTAN_SKY_LAYER_COUNT = 3u;
+	std::array<VALTAN_SKY_PRESENTATION_LAYER, VALTAN_SKY_LAYER_COUNT>
+		m_ValtanRedCloudLayers{};
+	std::array<VALTAN_SKY_PRESENTATION_LAYER, VALTAN_SKY_LAYER_COUNT>
+		m_ValtanBlackApertureLayers{};
+	std::string m_strValtanRedCloudSeedAssetId;
+	std::string m_strValtanBlackApertureSeedAssetId;
 	CWorldDestructionProjectionDocument m_WorldDestructionProjectionDocument;
 	CWorldDestructionDebrisPresentationDocument
 		m_WorldDestructionDebrisPresentationDocument;
@@ -115,6 +154,12 @@ private:
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPlayerController m_PlayerController;
 #ifdef _DEBUG
+	weak_ptr<CTransform> m_pReferenceCameraRestoreTarget;
+	bool_t m_bReferenceCameraRestoreFollowRequested = false;
+	bool_t m_bReferenceCameraApplied = false;
+	bool_t m_bReferenceSpaceHoleVisible = false;
+	REFERENCE_CAMERA_VIEW m_eReferenceCameraView =
+		REFERENCE_CAMERA_VIEW::NONE;
 	size_t m_iSelectedAuditionBarIndex = 0u;
 	uint32_t m_iNextAuditionRequestSequence = 1u;
 	AUDITION_PENDING_REQUEST m_PendingAuditionRequest;

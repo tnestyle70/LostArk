@@ -24,6 +24,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 18, "maximumConsecutiveUses": 2,
       "minimumRange": 0.0, "maximumRange": 9.0,
       "stages": [
@@ -40,6 +43,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 18, "maximumConsecutiveUses": 2,
       "minimumRange": 0.0, "maximumRange": 10.0,
       "stages": [
@@ -56,6 +62,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 6, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 18.0,
       "stages": [
@@ -72,12 +81,17 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ARMORED",
+      "phaseRequirement": "PHASE_ONE",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 30, "maximumConsecutiveUses": 2,
       "minimumRange": 5.0, "maximumRange": 20.0,
       "stages": [
         { "stageId": "WINDUP", "actionId": "valtan.attack.dash-charge.windup", "stageKind": "WINDUP", "durationMs": 600, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
         { "stageId": "CHARGE", "actionId": "valtan.attack.dash-charge.active", "stageKind": "ACTIVE", "durationMs": 500, "hitShape": "BOX", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 10.0, "hitHalfWidth": 2.5, "hitCount": 1, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "damage.valtan.dash-charge", "pushRangeM": 2.0, "pushMs": 150, "knockdown": true, "downMs": 1000 },
-        { "stageId": "RECOVERY", "actionId": "valtan.attack.dash-charge.recovery", "stageKind": "RECOVERY", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
+        { "stageId": "GROGGY", "actionId": "valtan.attack.dash-charge.groggy", "stageKind": "GROGGY", "durationMs": 5000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "RECOVERY", "actionId": "valtan.attack.dash-charge.recovery", "stageKind": "RECOVERY", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "PART_BREAK", "actionId": "valtan.attack.dash-charge.part-break", "stageKind": "PART_BREAK", "durationMs": 1400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
     {
@@ -88,6 +102,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 16, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 14.0,
       "stages": [
@@ -105,6 +122,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 6, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 12.0,
       "stages": [
@@ -121,6 +141,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 8, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 18.0,
       "stages": [
@@ -138,6 +161,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 12, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 10.0,
       "stages": [
@@ -154,6 +180,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 14, "maximumConsecutiveUses": 1,
       "minimumRange": 2.0, "maximumRange": 18.0,
       "stages": [
@@ -171,6 +200,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 10, "maximumConsecutiveUses": 2,
       "minimumRange": 0.0, "maximumRange": 9.0,
       "stages": [
@@ -187,6 +219,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 6, "maximumConsecutiveUses": 1,
       "minimumRange": 3.0, "maximumRange": 18.0,
       "stages": [
@@ -204,6 +239,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 12, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 16.0,
       "stages": [
@@ -220,6 +258,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 5, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 15.0,
       "stages": [
@@ -236,6 +277,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 18, "maximumConsecutiveUses": 1,
       "minimumRange": 2.0, "maximumRange": 18.0,
       "stages": [
@@ -253,6 +297,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 8, "maximumConsecutiveUses": 1,
       "minimumRange": 4.0, "maximumRange": 22.0,
       "stages": [
@@ -270,6 +317,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 6, "maximumConsecutiveUses": 1,
       "minimumRange": 3.0, "maximumRange": 18.0,
       "stages": [
@@ -287,11 +337,16 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 20, "maximumConsecutiveUses": 2,
       "minimumRange": 0.0, "maximumRange": 12.0,
       "stages": [
         { "stageId": "WINDUP", "actionId": "valtan.attack.whirlwind.windup", "stageKind": "WINDUP", "durationMs": 1333, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "SPIN", "actionId": "valtan.attack.whirlwind.active", "stageKind": "ACTIVE", "durationMs": 2133, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 4, "hitIntervalMs": 533, "hitDelayMs": 0, "serverDamageProfileId": "damage.valtan.circular-spin", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "SPIN", "actionId": "valtan.attack.whirlwind.active", "stageKind": "ACTIVE", "durationMs": 533, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "damage.valtan.circular-spin", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "SPIN_2", "actionId": "valtan.attack.whirlwind.active-2", "stageKind": "ACTIVE", "durationMs": 533, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "damage.valtan.circular-spin", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "SPIN_3", "actionId": "valtan.attack.whirlwind.active-3", "stageKind": "ACTIVE", "durationMs": 533, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "damage.valtan.circular-spin", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
         { "stageId": "RECOVERY", "actionId": "valtan.attack.whirlwind.recovery", "stageKind": "RECOVERY", "durationMs": 1467, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
@@ -303,6 +358,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 10, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 10.0,
       "stages": [
@@ -319,6 +377,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 9, "maximumConsecutiveUses": 1,
       "minimumRange": 4.0, "maximumRange": 22.0,
       "stages": [
@@ -335,6 +396,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 20, "maximumConsecutiveUses": 2,
       "minimumRange": 0.0, "maximumRange": 10.0,
       "stages": [
@@ -351,6 +415,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 14, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 16.0,
       "stages": [
@@ -368,6 +435,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 90,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 8, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 18.0,
       "stages": [
@@ -384,6 +454,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 30, "maximumHealthBar": 90,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 4, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 18.0,
       "stages": [
@@ -404,12 +477,16 @@
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
       "triggerHealthBar": 159, "triggerOrder": 1,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
         { "stageId": "WALL_CHARGE", "actionId": "valtan.mechanic.armor-break-opening.charge", "stageKind": "WINDUP", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "GROGGY", "actionId": "valtan.mechanic.armor-break-opening.groggy", "stageKind": "ACTIVE", "durationMs": 5000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.armor-break-opening.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
+        { "stageId": "GROGGY", "actionId": "valtan.mechanic.armor-break-opening.groggy", "stageKind": "GROGGY", "durationMs": 5000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "RECOVERY", "actionId": "valtan.mechanic.armor-break-opening.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "PART_BREAK", "actionId": "valtan.mechanic.armor-break-opening.part-break", "stageKind": "PART_BREAK", "durationMs": 1400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "hitDelayMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
     {
@@ -419,7 +496,10 @@
       "sourceActionIds": [420630],
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
-      "triggerHealthBar": 115, "triggerOrder": 1,
+      "triggerHealthBar": 130, "triggerOrder": 1,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": true,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -438,6 +518,9 @@
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
       "triggerHealthBar": 100, "triggerOrder": 1,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -455,6 +538,9 @@
       "selectionMode": "NORMAL",
       "minimumHealthBar": 1, "maximumHealthBar": 160,
       "triggerHealthBar": 0, "triggerOrder": 0,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 1, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -471,6 +557,9 @@
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
       "triggerHealthBar": 109, "triggerOrder": 1,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "serverMotion": { "kind": "LEAP_TO_ANCHOR", "anchorId": "anchor.valtan.arena-break-109.landing", "landingPosition": [156.03, 22.99751, -122.06], "apexHeight": 12.0 },
@@ -491,6 +580,9 @@
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
       "triggerHealthBar": 84, "triggerOrder": 1,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -507,6 +599,9 @@
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
       "triggerHealthBar": 73, "triggerOrder": 1,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -523,6 +618,9 @@
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
       "triggerHealthBar": 62, "triggerOrder": 1,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -541,6 +639,9 @@
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
       "triggerHealthBar": 30, "triggerOrder": 1,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
@@ -558,6 +659,9 @@
       "selectionMode": "HEALTH_BAR",
       "minimumHealthBar": 0, "maximumHealthBar": 0,
       "triggerHealthBar": 14, "triggerOrder": 1,
+      "armorRequirement": "ANY",
+      "phaseRequirement": "ANY",
+      "invulnerableWhileRunning": false,
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [

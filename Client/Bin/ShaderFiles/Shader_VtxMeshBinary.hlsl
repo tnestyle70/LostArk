@@ -26,6 +26,11 @@ float2 g_UVOffset = float2(0.f, 0.f);
 float g_Opacity = 1.f;
 float g_OpacityPower = 1.f;
 float4 g_ColorTint = 1.f;
+/* Presentation-only Valtan vortex treatment. 0=none, 1=dark aperture,
+   2=red ring, 3=masked red cloud disc. The map-object path binds its bounded
+   state per draw and restores profile 0/strength 0 before returning. */
+uint g_PresentationVortexProfile = 0;
+float g_PresentationVortexStrength = 0.f;
 /* The source game's dye contract: the mask's channels select colour regions
 of a mostly achromatic diffuse and each region multiplies its tint in. */
 Texture2D g_DyeMaskTexture;
@@ -53,6 +58,8 @@ struct VS_OUT
     float2 vTexcoord : TEXCOORD0;
     float4 vWorldPos : TEXCOORD1;
     float4 vProjPos : TEXCOORD2;
+    /* Radial masks must remain centered while the authored texture pans. */
+    float2 vRawTexcoord : TEXCOORD3;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -78,6 +85,7 @@ VS_OUT VS_MAIN(VS_IN input)
     output.vTexcoord = input.vTexcoord * g_UVScale + g_UVOffset;
     output.vWorldPos = mul(float4(input.vPosition, 1.f), g_WorldMatrix);
     output.vProjPos = output.vPosition;
+    output.vRawTexcoord = input.vTexcoord;
     return output;
 }
 
@@ -188,10 +196,25 @@ struct PS_OUT_FORWARD
     float4 vColor : SV_TARGET0;
 };
 
+float PresentationVortexRadial(float2 rawTexcoord)
+{
+    return length(rawTexcoord - float2(0.5f, 0.5f)) * 2.f;
+}
+
+float PresentationVortexRadialEdgeMask(float2 rawTexcoord)
+{
+    /* Every midpoint and corner of the source square is exactly transparent.
+       The authored texture may pan, but the silhouette stays camera-centred. */
+    const float radial = PresentationVortexRadial(rawTexcoord);
+    return 1.f - smoothstep(0.86f, 1.f, radial);
+}
+
 PS_OUT_FORWARD PS_MAIN_ALPHA(VS_OUT input)
 {
     PS_OUT_FORWARD output;
-    float4 color = g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+    const float4 textureColor =
+        g_DiffuseTexture.Sample(LinearSampler, input.vTexcoord);
+    float4 color = textureColor;
     color.rgb *= g_ColorTint.rgb;
     float opacityMask = 1.f;
     if (0 != g_HasOpacityTexture)
@@ -202,8 +225,98 @@ PS_OUT_FORWARD PS_MAIN_ALPHA(VS_OUT input)
             opacitySample, float3(0.299f, 0.587f, 0.114f))),
             g_OpacityPower);
     }
-    color.a = saturate(
+    const float authoredAlpha = saturate(
         color.a * opacityMask * g_Opacity * g_ColorTint.a);
+
+    const float vortexStrength = saturate(g_PresentationVortexStrength);
+    if (1 == g_PresentationVortexProfile && vortexStrength > 0.f)
+    {
+        /* A nearly black alpha-blended disc is required to remove light from
+           the arena sky. The soft burgundy shoulder retains cloud detail. */
+        const float radial = PresentationVortexRadial(input.vRawTexcoord);
+        const float radialEdge =
+            PresentationVortexRadialEdgeMask(input.vRawTexcoord);
+        const float core = 1.f - smoothstep(0.18f, 0.72f, radial);
+        const float shoulder =
+            smoothstep(0.14f, 0.38f, radial) *
+            (1.f - smoothstep(0.66f, 0.94f, radial));
+        const float textureDetail = saturate(dot(
+            textureColor.rgb, float3(0.299f, 0.587f, 0.114f)) * 1.35f);
+        const float radialMask =
+            saturate(core + shoulder * 0.42f) *
+            lerp(0.72f, 1.f, textureDetail) * radialEdge;
+        const float rimBlend = smoothstep(0.16f, 0.92f, radial);
+        color.rgb = lerp(
+            float3(0.004f, 0.001f, 0.003f),
+            float3(0.075f, 0.004f, 0.012f), rimBlend) *
+            lerp(0.72f, 1.f, textureDetail);
+        /* The procedural disc owns its silhouette. Diffuse/opacity texture
+           alpha may contain a hollow center and must not erase the aperture. */
+        const float apertureOpacity = saturate(
+            g_Opacity * g_ColorTint.a);
+        color.a = saturate(
+            apertureOpacity * 2.2f * radialMask * vortexStrength);
+    }
+    else if (2 == g_PresentationVortexProfile && vortexStrength > 0.f)
+    {
+        /* Preserve the panning source texture as moving breakup, but form the
+           overall ring from the unpanned UV so its center never drifts. */
+        const float2 centeredUV = input.vRawTexcoord - float2(0.5f, 0.5f);
+        const float radial = PresentationVortexRadial(input.vRawTexcoord);
+        const float radialEdge =
+            PresentationVortexRadialEdgeMask(input.vRawTexcoord);
+        const float annulus =
+            smoothstep(0.25f, 0.43f, radial) *
+            (1.f - smoothstep(0.72f, 0.94f, radial));
+        const float safeAngleX = radial > 0.00001f ?
+            centeredUV.x : 1.f;
+        const float angle = atan2(centeredUV.y, safeAngleX);
+        const float angularBreak =
+            abs(sin(angle * 7.f + radial * 19.f));
+        const float textureDetail = saturate(dot(
+            textureColor.rgb, float3(0.299f, 0.587f, 0.114f)) * 1.6f);
+        const float brokenMask = smoothstep(
+            0.18f, 0.72f,
+            textureDetail * 0.72f + angularBreak * 0.28f);
+        const float ringMask = annulus * brokenMask * radialEdge;
+        color.rgb = float3(0.46f, 0.008f, 0.022f) *
+            lerp(0.42f, 0.88f, textureDetail);
+        color.a = saturate(
+            g_Opacity * g_ColorTint.a * 0.9f * ringMask * vortexStrength);
+    }
+    else if (3 == g_PresentationVortexProfile && vortexStrength > 0.f)
+    {
+        /* Generic cloud tiles are useful only as moving breakup. A procedural
+           burgundy disc owns the colour and circular silhouette. */
+        const float2 centeredUV = input.vRawTexcoord - float2(0.5f, 0.5f);
+        const float radial = PresentationVortexRadial(input.vRawTexcoord);
+        const float radialEdge =
+            PresentationVortexRadialEdgeMask(input.vRawTexcoord);
+        const float safeAngleX = radial > 0.00001f ? centeredUV.x : 1.f;
+        const float angle = atan2(centeredUV.y, safeAngleX);
+        const float textureDetail = saturate(dot(
+            textureColor.rgb, float3(0.299f, 0.587f, 0.114f)));
+        const float spiral = 0.5f + 0.5f *
+            sin(angle * 5.f - radial * 19.f + textureDetail * 3.f);
+        const float breakup = smoothstep(
+            0.12f, 0.88f, textureDetail * 0.68f + spiral * 0.32f);
+        const float hollowShoulder = lerp(
+            0.32f, 1.f, smoothstep(0.12f, 0.46f, radial));
+        const float cloudMask = radialEdge * hollowShoulder *
+            lerp(0.34f, 0.92f, breakup);
+        const float burgundy = saturate(
+            breakup * 0.62f + spiral * 0.22f + (1.f - radial) * 0.16f);
+        color.rgb = lerp(
+            float3(0.012f, 0.0005f, 0.002f),
+            float3(0.16f, 0.005f, 0.018f), burgundy);
+        color.a = saturate(
+            g_Opacity * g_ColorTint.a * 0.82f * cloudMask * vortexStrength);
+    }
+    else
+    {
+        /* NONE deliberately remains the original map-material path. */
+        color.a = authoredAlpha;
+    }
     if (color.a < 0.001f)
         discard;
     output.vColor = color;

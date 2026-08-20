@@ -325,6 +325,93 @@ class MapToolSceneCompileTests(unittest.TestCase):
         self.assertEqual(arguments.placements_dir, [Path("first"), Path("second")])
         self.assertEqual(arguments.expect_output_assets, 7)
 
+    def test_overlay_reuses_exact_asset_while_visibility_override_hides_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            asset_manifest = root / "assets.json"
+            runtime_manifest = root / "runtime.json"
+            overlay_manifest = root / "overlay.json"
+            render_profile_manifest = root / "render-profile.json"
+            runtime_root = root / "runtime"
+            placements_directory = root / "placements"
+            runtime_root.mkdir()
+
+            asset = self.asset("asset_a")
+            self.write_json(asset_manifest, {"areaId": "TEST", "assets": [asset]})
+            self.write_json(
+                runtime_manifest,
+                {
+                    "areaId": "TEST",
+                    "assets": [{"assetId": "asset_a", "model": "asset_a.wmodel"}],
+                },
+            )
+            (runtime_root / "asset_a.wmodel").write_bytes(b"WMOD-a")
+            self.write_json(
+                placements_directory / "source.placements.json",
+                {
+                    "schemaVersion": 1,
+                    "propertyErrors": [],
+                    "placements": [self.placement("source_a", "asset_a", "SOURCE")],
+                },
+            )
+            self.write_json(
+                overlay_manifest,
+                {
+                    "schemaVersion": 1,
+                    "areaId": "TEST",
+                    "assets": [],
+                    "placements": [
+                        {
+                            "placementId": 7,
+                            "sourcePlacementId": "registration:source_a",
+                            "sourceLevel": "REGISTERED",
+                            "transformSource": "overlay",
+                            "assetId": "asset_a",
+                            "position": [0.0, 10.0, 0.0],
+                            "quaternion": [0.0, 0.0, 0.0, 1.0],
+                            "scale": [1.0, 1.0, 1.0],
+                            "visible": True,
+                        }
+                    ],
+                },
+            )
+            self.write_json(
+                render_profile_manifest,
+                {
+                    "schemaVersion": 1,
+                    "areaId": "TEST",
+                    "profiles": [],
+                    "visibilityOverrides": [
+                        {"sourcePlacementId": "source_a", "visible": False}
+                    ],
+                },
+            )
+
+            arguments = self.arguments(
+                root,
+                asset_manifest,
+                runtime_manifest,
+                runtime_root,
+                placements_directory,
+            )
+            arguments.overlay_manifest = overlay_manifest
+            arguments.render_profile_manifest = render_profile_manifest
+            arguments.expect_assets = 1
+            arguments.expect_source_placements = 1
+            arguments.expect_overlay_assets = 0
+            arguments.expect_overlay_placements = 1
+            arguments.expect_output_placements = 2
+            receipt = compile_scene(arguments)
+
+            lines = arguments.placement_output.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(lines[0], 'LOSTARK_MAP_PLACEMENTS 2 "TEST" 2')
+            self.assertTrue(next(line for line in lines if '"source_a"' in line).endswith(" 0"))
+            self.assertTrue(
+                next(line for line in lines if '"registration:source_a"' in line).endswith(" 1")
+            )
+            self.assertEqual(receipt["visibilityOverrideCount"], 1)
+            self.assertEqual(receipt["overlayPlacementCount"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

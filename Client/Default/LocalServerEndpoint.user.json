@@ -1,0 +1,6 @@
+{
+  "schema": "lostark.local-server-endpoint",
+  "formatVersion": 1,
+  "enabled": true,
+  "host": "127.0.0.1"
+}

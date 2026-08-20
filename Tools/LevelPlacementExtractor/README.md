@@ -194,6 +194,29 @@ Catalog v4의 emissive intensity는 asset별 render profile이 소유한다. cra
 `0.35`를 모든 맵 자산에 전역 적용하지 않는다. 같은 G-buffer MRT를 쓰는 모든 일반
 writer는 emissive target에 0을 기록해 뒤쪽 발광이 전경을 뚫는 현상을 막는다.
 
+## 발탄 후방 타워 source 접합 보존
+
+`LV_LUT_HEARTRB_ED_SL04`의 후방 고딕 타워 상부는 같은 source 조립체의 하부·체인과
+원본 높이에서 맞물린다. SL00/SL04 floor 차이 `10.6108742m`를 상부 47개씩에만 적용하면
+하부는 제자리에 남고 상부가 공중에 분리된다. 다음 도구는 manifest에 고정된 후방 4개
+station의 47개씩, 총 188개를 원본 placement와 exact join하고 잘못된 phase registration을
+제거한다. 원본 188개는 source transform에서 `visible=1`, 등록 overlay와 hidden override는
+0개, 대응 point light 4개는 source Y `24.734033`을 유지한다. 전방 control station인
+`pointlight_11`도 변경하지 않는다.
+
+```powershell
+python Tools\LevelPlacementExtractor\sync_valtan_tower_phase_registration.py
+python Tools\LevelPlacementExtractor\sync_valtan_tower_phase_registration.py --check-only
+
+powershell -ExecutionPolicy Bypass -File Tools\MapPipeline\Publish-MapAuthoring.ps1 `
+  -AreaId LV_LUT_HEARTRB_ED
+```
+
+source attachment sync 단독 baseline은 placement `13,186`, 등록 overlay `0`, 원본 visible
+`188`이다. `heartrb_valtan_tower_phase_registration.json`에 없는 source placement를 반경이나
+asset 이름으로 추측해 추가하지 않는다. 과거 `PROJECT_AUTHORED_RIM` 136개 box나
+Landscape 6개를 타워 대용으로 다시 병합하지 않는다.
+
 ## MapTool commit 이후에도 남는 검증 경계
 
 정적 Map과 Deploy visual layer의 parse/validate/stage/commit은 구현됐다. 다만 아래

@@ -145,26 +145,26 @@
     },
     {
       "profileId": "scene.valtan.cool-low-key.v1",
-      "exposureMultiplier": 2.3499999,
-      "bloomIntensityMultiplier": 0.995000005,
+      "exposureMultiplier": 1.55,
+      "bloomIntensityMultiplier": 0.85,
       "light": {
         "type": "directional",
-        "direction": [0.5, -1, 0.5, 0],
-        "diffuse": [0.100000001, 0.100000001, 0.100000001, 1],
-        "ambient": [0.444999993, 0.414999992, 0.224999994, 1],
-        "specular": [0, 0, 0, 1]
+        "direction": [0.35, -1, 0.25, 0],
+        "diffuse": [0.24, 0.28, 0.34, 1],
+        "ambient": [0.16, 0.21, 0.28, 1],
+        "specular": [0.12, 0.15, 0.2, 1]
       },
       "shadow": {
         "enabled": true,
-        "focus": [80, 16, -72],
-        "distance": 180,
-        "orthographicWidth": 220,
-        "orthographicHeight": 220,
+        "focus": [156, 24, -122],
+        "distance": 220,
+        "orthographicWidth": 260,
+        "orthographicHeight": 260,
         "near": 0.5,
-        "far": 450,
+        "far": 520,
         "depthBias": 0.00260000001,
         "normalBias": 0.0340000018,
-        "strength": 0.805000007
+        "strength": 0.86
       }
     }
   ]

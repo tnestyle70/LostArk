@@ -69,8 +69,22 @@ namespace LostArk::Server
 			std::uint32_t serverTick,
 			ENCOUNTER_PROP_TRANSACTION& transaction,
 			std::string& status) const;
-		/* Shatter every raised slot of the current occurrence. */
+		/* Shatter every raised slot of the current occurrence. Slots already
+		   shattered on an earlier edge of the same occurrence are skipped, so
+		   this doubles as the sweep that retires whatever a pattern left
+		   standing when it ends. */
 		ENCOUNTER_PROP_PREPARE_RESULT Prepare_Break(
+			std::uint32_t occurrenceSequence,
+			std::uint32_t serverTick,
+			ENCOUNTER_PROP_TRANSACTION& transaction,
+			std::string& status) const;
+		/* Shatter only the named slots of the current occurrence. The original
+		   breaks the four pillars two at a time on two separate stage edges, and
+		   a player skill can shatter a single pillar early, so the caller names
+		   which slots this edge owns. Slot IDs are the stored identity; a vector
+		   index would break the moment the authored set is reordered. */
+		ENCOUNTER_PROP_PREPARE_RESULT Prepare_BreakSlots(
+			const std::vector<std::string>& slotIds,
 			std::uint32_t occurrenceSequence,
 			std::uint32_t serverTick,
 			ENCOUNTER_PROP_TRANSACTION& transaction,

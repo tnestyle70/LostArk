@@ -17,6 +17,10 @@ namespace
 	/* Mirror of the publisher's $maximumDamageRatePercent: a rate only one side
 	accepts would make Validate and Load disagree about the same document. */
 	constexpr std::uint32_t MAXIMUM_DAMAGE_RATE_PERCENT = 100000u;
+	/* The wire names one plate per bit, so a boss cannot wear more than the
+	snapshot can carry. The publisher rejects a larger authored count. */
+	constexpr std::size_t MAXIMUM_BOSS_ARMOR_PLATES =
+		LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES;
 
 	std::filesystem::path Resolve_DataRoot()
 	{
@@ -154,6 +158,38 @@ namespace
 		return true;
 	}
 
+	bool ParseBossPatternArmorRequirement(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_ARMOR_REQUIREMENT& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_ARMOR_REQUIREMENT;
+		if ("ANY" == value)
+			output = BOSS_PATTERN_ARMOR_REQUIREMENT::ANY;
+		else if ("ARMORED" == value)
+			output = BOSS_PATTERN_ARMOR_REQUIREMENT::ARMORED;
+		else if ("STRIPPED" == value)
+			output = BOSS_PATTERN_ARMOR_REQUIREMENT::STRIPPED;
+		else
+			return false;
+		return true;
+	}
+
+	bool ParseBossPatternPhaseRequirement(
+		const std::string_view value,
+		LostArk::Server::BOSS_PATTERN_PHASE_REQUIREMENT& output)
+	{
+		using LostArk::Server::BOSS_PATTERN_PHASE_REQUIREMENT;
+		if ("ANY" == value)
+			output = BOSS_PATTERN_PHASE_REQUIREMENT::ANY;
+		else if ("PHASE_ONE" == value)
+			output = BOSS_PATTERN_PHASE_REQUIREMENT::PHASE_ONE;
+		else if ("PHASE_TWO" == value)
+			output = BOSS_PATTERN_PHASE_REQUIREMENT::PHASE_TWO;
+		else
+			return false;
+		return true;
+	}
+
 	bool ParseBossPatternHitShape(
 		const std::string_view value,
 		LostArk::Server::BOSS_PATTERN_HIT_SHAPE& output)
@@ -189,6 +225,10 @@ namespace
 			output = BOSS_PATTERN_STAGE_KIND::ACTIVE;
 		else if ("RECOVERY" == value)
 			output = BOSS_PATTERN_STAGE_KIND::RECOVERY;
+		else if ("GROGGY" == value)
+			output = BOSS_PATTERN_STAGE_KIND::GROGGY;
+		else if ("PART_BREAK" == value)
+			output = BOSS_PATTERN_STAGE_KIND::PART_BREAK;
 		else
 			return false;
 		return true;
@@ -584,7 +624,8 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	std::uint32_t version = 0;
 	std::uint32_t rowCount = 0;
 	if (3u != header.size() || "LOSTARK_GAMEPLAY_BOOTSTRAP" != header[0] ||
-		!ParseNumber(header[1], version) || 12u != version ||
+		!ParseNumber(header[1], version) ||
+		GAMEPLAY_BOOTSTRAP_VERSION != version ||
 		!ParseNumber(header[2], rowCount) || 0u == rowCount || rowCount > 4096u)
 	{
 		m_strStatus = "Gameplay bootstrap header is invalid";
@@ -903,10 +944,40 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				return false;
 			}
 		}
+		else if (!fields.empty() && "BOSSARMOR" == fields[0])
+		{
+			BOSS_ARMOR_PLATE plate{};
+			if (5u != fields.size() || !IsStableId(fields[1]) ||
+				!ParseNumber(fields[2], plate.iPlateIndex) ||
+				!ParseNumber(fields[3], plate.iDurability) ||
+				!ParseNumber(fields[4], plate.iDefense) ||
+				0u == plate.iDurability || 0u == plate.iDefense ||
+				plate.iDefense > 10000u)
+			{
+				m_strStatus = "Boss armour plate row is invalid";
+				return false;
+			}
+			const auto owner = m_Bosses.find(std::string(fields[1]));
+			if (m_Bosses.end() == owner)
+			{
+				m_strStatus = "Boss armour plate has no boss profile";
+				return false;
+			}
+			/* Dense and ordered so the index is a stable slot the client can
+			match to its own part order instead of a search. */
+			if (plate.iPlateIndex != owner->second.ArmorPlates.size() ||
+				owner->second.ArmorPlates.size() >= MAXIMUM_BOSS_ARMOR_PLATES)
+			{
+				m_strStatus = "Boss armour plate index is out of order";
+				return false;
+			}
+			owner->second.ArmorPlates.push_back(plate);
+		}
 		else if (!fields.empty() && "PATTERN" == fields[0])
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			if (14u != fields.size() || !IsStableId(fields[1]) ||
+			std::uint32_t invulnerableFlag = 0u;
+			if (17u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!ParseBossPatternSelection(fields[4], pattern.eSelection) ||
 				!ParseNumber(fields[5], pattern.iMinimumHealthBar) ||
@@ -918,6 +989,12 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[11], pattern.fMinimumRange) ||
 				!ParseNumber(fields[12], pattern.fMaximumRange) ||
 				!ParseNumber(fields[13], pattern.iExpectedStageCount) ||
+				!ParseBossPatternArmorRequirement(
+					fields[14], pattern.eArmorRequirement) ||
+				!ParseBossPatternPhaseRequirement(
+					fields[15], pattern.ePhaseRequirement) ||
+				!ParseNumber(fields[16], invulnerableFlag) ||
+				invulnerableFlag > 1u ||
 				!std::isfinite(pattern.fMinimumRange) ||
 				!std::isfinite(pattern.fMaximumRange) ||
 				pattern.fMinimumRange < 0.f ||
@@ -928,6 +1005,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				m_strStatus = "Boss pattern row is invalid";
 				return false;
 			}
+			pattern.bInvulnerableWhileRunning = 1u == invulnerableFlag;
 			pattern.strEncounterId = fields[1];
 			pattern.strPatternId = fields[2];
 			pattern.strActionId = fields[3];
@@ -1157,6 +1235,48 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				return false;
 			}
 			stage.bWallContact = true;
+		}
+		/* Sorted after PATTERNSTAGE by the publisher, exactly like
+		PATTERNWALLCONTACT, so the stage it refines already exists here. */
+		else if (!fields.empty() && "PATTERNSTAGECHARGE" == fields[0])
+		{
+			std::uint32_t stageIndex = 0u;
+			if (6u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !ParseNumber(fields[3], stageIndex) ||
+				!IsStableId(fields[4]) || !IsStableId(fields[5]))
+			{
+				m_strStatus = "Boss pattern charge-impact row is invalid";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap)
+			{
+				m_strStatus = "Boss pattern charge-impact has no encounter";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner ||
+				stageIndex + 1u >= owner->Stages.size())
+			{
+				m_strStatus = "Boss pattern charge-impact has no stage owner";
+				return false;
+			}
+			BOSS_PATTERN_STAGE_DEFINITION& stage = owner->Stages[stageIndex];
+			/* The stun is the next stage. Without it a charge would stop at the
+			wall and simply keep running its own clock. */
+			if (stage.strStageId != fields[4] ||
+				stage.strActionId != fields[5] || stage.bChargeImpact ||
+				BOSS_PATTERN_STAGE_KIND::GROGGY !=
+					owner->Stages[stageIndex + 1u].eStageKind ||
+				owner->fMaximumRange <= 0.f)
+			{
+				m_strStatus = "Boss pattern charge-impact join is invalid";
+				return false;
+			}
+			stage.bChargeImpact = true;
 		}
 		else if (!fields.empty() && "VALTANDEBUGSEQUENCE" == fields[0])
 		{

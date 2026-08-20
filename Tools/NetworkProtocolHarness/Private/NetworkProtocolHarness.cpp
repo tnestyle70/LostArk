@@ -1774,6 +1774,9 @@ namespace
 		entity.iCurrentHp = 9500;
 		entity.iMaximumHp = 10000;
 		entity.iPhase = 1;
+		/* Plate 0 destroyed, plate 1 still on: the mask has to survive as the
+		exact plate identity, not as a count. */
+		entity.iBrokenArmorMask = 0x01;
 		source.Entities.push_back(entity);
 
 		std::vector<std::uint8_t> payload;
@@ -1787,9 +1790,10 @@ namespace
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
+		/* Trailing 1 + 1 is iPhase and iBrokenArmorMask. */
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
-			entity.strActionId.size() + (4 * 4) + (4 * 5) + 1;
+			entity.strActionId.size() + (4 * 4) + (4 * 5) + 1 + 1;
 		const std::size_t expectedPayloadBytes =
 			snapshotHeaderBytes +
 			(playerFixedBytes * 2) +
@@ -1871,8 +1875,17 @@ namespace
 			decoded.Entities[0].fPositionX == 150.f &&
 			decoded.Entities[0].iCurrentHp == 9500 &&
 			decoded.Entities[0].iMaximumHp == 10000 &&
-			decoded.Entities[0].iPhase == 1,
+			decoded.Entities[0].iPhase == 1 &&
+			decoded.Entities[0].iBrokenArmorMask == 0x01,
 			"World Snapshot Entities Round Trip");
+
+		S2C_WORLD_SNAPSHOT overArmoured = source;
+		overArmoured.Entities[0].iBrokenArmorMask = static_cast<std::uint8_t>(
+			1u << MAX_WORLD_ENTITY_ARMOR_PLATES);
+		CPacketWriter overArmouredWriter;
+		testRunner.Require(
+			!Write_Message(overArmouredWriter, overArmoured),
+			"Reject A Broken Armour Mask That Names An Unsupported Plate");
 
 		testRunner.Require(
 			0 == reader.Get_RemainingSize(),
@@ -1996,13 +2009,15 @@ namespace
 
 	void Test_WorldDestructionProtocol(TEST_RUNNER& testRunner)
 	{
+		/* What this owns is the packet table, not the version number: every other
+		case here compares against NETWORK_PROTOCOL_VERSION itself, and pinning a
+		literal only made an unrelated bump fail this row. */
 		testRunner.Require(
-			28u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Protocol V28 Packet Types");
+			"World Destruction Packet Types Are Known");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();

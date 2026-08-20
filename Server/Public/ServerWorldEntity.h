@@ -17,6 +17,17 @@ namespace LostArk::Server
 		std::uint32_t iReadyTick = 0;
 	};
 
+	/* The live state of one authored boss armour plate. iPlateIndex is copied
+	from the profile and never changes, so it stays the slot a broken plate is
+	named by. iRemainingDurability only falls inside a GROGGY stage and stops at
+	zero; iDefense stops counting toward mitigation at that moment. */
+	struct SERVER_BOSS_ARMOR_PLATE_STATE final
+	{
+		std::uint32_t iPlateIndex = 0;
+		std::uint32_t iRemainingDurability = 0;
+		std::uint32_t iDefense = 0;
+	};
+
 	enum class SERVER_ENTITY_ACTION
 	{
 		IDLE,
@@ -97,6 +108,20 @@ namespace LostArk::Server
 		std::uint32_t iPatternPushMs = 0;
 		bool bPatternKnockdown = false;
 		std::uint32_t iPatternDownMs = 0;
+		/* True only while a GROGGY stage runs. Set by the stage transition, so
+		it clears itself when the pattern moves on or is interrupted. */
+		bool bPatternGroggy = false;
+		/* True while a charge stage drives the boss forward. Meeting an impact
+		receiver ends that stage early into the GROGGY stage behind it. */
+		bool bPatternChargeImpact = false;
+		/* True for as long as an authored invulnerable pattern runs. Player hits
+		resolve to nothing while it is set, so the raid answers the mechanic
+		instead of outracing it. Cleared when the pattern ends. */
+		bool bPatternInvulnerable = false;
+		/* Raised by the hit that took a plate to zero durability. The brain owns
+		stage transitions, so it consumes this on its next tick and enters the
+		PART_BREAK stage; the damage path never moves the boss itself. */
+		bool bPendingArmorBreakReaction = false;
 		std::uint32_t iActionStartTick = 0;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
@@ -134,6 +159,9 @@ namespace LostArk::Server
 		std::uint32_t iEstherStrikeMs = 0;
 		std::uint32_t iNextPathReplanTick = 0;
 		std::uint32_t iPhaseTwoHpPercent = 0;
+		/* Staged from the boss profile at spawn, in authored plate order. Empty
+		for every entity that wears no armour. */
+		std::vector<SERVER_BOSS_ARMOR_PLATE_STATE> ArmorPlates;
 		bool hasAppliedPatternDamage = false;
 		std::string strLastPatternId;
 		std::uint32_t iConsecutivePatternUses = 0;
