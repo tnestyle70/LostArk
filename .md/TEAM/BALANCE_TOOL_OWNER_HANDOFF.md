@@ -19,7 +19,7 @@ F1 Balance Tool draft
 -> 바뀐 field만 PROJECT_TUNED로 분류
 -> Publish-BalanceRuntimeSet.ps1 -Mode Validate
 -> Publish Server Data
--> gameplay bootstrap + world bootstrap 4종을 한 rollback set으로 promotion
+-> gameplay bootstrap + world bootstrap 4종 + item bootstrap 1종을 한 rollback set으로 promotion
 -> Server.exe 재시작
 -> Server snapshot / damage event로 실측
 ```
@@ -40,7 +40,7 @@ F1 Balance Tool draft
 | 재추출기 | `Tools/GameplayPipeline/Export-OfficialBalanceReceipt.py` |
 | Tool 편집 후 receipt 동기화 | `Tools/GameplayPipeline/Update-BalanceProvenanceReceipt.ps1` |
 | domain 검증·cook | `Tools/GameplayPipeline/Publish-GameplayBalance.ps1`, `Tools/WorldPipeline/Publish-WorldGameplay.ps1` |
-| Balance/World 통합 promotion | `Tools/GameplayPipeline/Publish-BalanceRuntimeSet.ps1` |
+| Balance/World/Items 통합 promotion | `Tools/GameplayPipeline/Publish-BalanceRuntimeSet.ps1` |
 
 Server가 읽는 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`은 생성물이다. 직접 편집하지 않는다.
 
