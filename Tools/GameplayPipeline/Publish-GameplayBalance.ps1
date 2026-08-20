@@ -1004,12 +1004,12 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		Assert-ExactProperties $stage @(
 			'stageId','actionId','stageKind','durationMs','hitShape',
 			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength','hitHalfWidth',
-			'hitCount','hitIntervalMs','serverDamageProfileId',
+			'hitCount','hitIntervalMs','hitDelayMs','serverDamageProfileId',
 			'pushRangeM','pushMs','knockdown','downMs') 'encounter pattern stage'
 		foreach ($field in @('stageId','actionId','stageKind','hitShape','serverDamageProfileId')) {
 			Assert-JsonString $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field"
 		}
-		foreach ($field in @('durationMs','hitCount','hitIntervalMs','pushMs','downMs')) {
+		foreach ($field in @('durationMs','hitCount','hitIntervalMs','hitDelayMs','pushMs','downMs')) {
 			Assert-JsonInteger $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field" 0 ([uint32]::MaxValue)
 		}
 		Assert-JsonNumber $stage.pushRangeM "pattern $($pattern.patternId) stage $stageIndex pushRangeM"
@@ -1033,12 +1033,13 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		$halfWidth = [double]$stage.hitHalfWidth
 		$hitCount = [uint32]$stage.hitCount
 		$hitIntervalMs = [uint32]$stage.hitIntervalMs
+		$hitDelayMs = [uint32]$stage.hitDelayMs
 		$damageProfile = [string]$stage.serverDamageProfileId
 		$zeroShape = $outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 -and
 			$length -eq 0.0 -and $halfWidth -eq 0.0
 		$validShape = $false
 		switch ($shape) {
-			'NONE' { $validShape = $zeroShape -and $hitCount -eq 0 -and $hitIntervalMs -eq 0 -and $damageProfile.Length -eq 0 }
+			'NONE' { $validShape = $zeroShape -and $hitCount -eq 0 -and $hitIntervalMs -eq 0 -and $hitDelayMs -eq 0 -and $damageProfile.Length -eq 0 }
 			'CIRCLE' { $validShape = $outer -gt 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0 -and $length -eq 0.0 -and $halfWidth -eq 0.0 }
 			'RING' { $validShape = $outer -gt $inner -and $inner -gt 0.0 -and $angle -eq 0.0 -and $length -eq 0.0 -and $halfWidth -eq 0.0 }
 			'CONE' { $validShape = $angle -gt 0.0 -and $angle -le 180.0 -and $length -gt 0.0 -and $outer -eq 0.0 -and $inner -eq 0.0 -and $halfWidth -eq 0.0 }
@@ -1076,7 +1077,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			(Format-InvariantFloat $angle 'stage hitAngleDegrees'),
 			(Format-InvariantFloat $length 'stage hitLength'),
 			(Format-InvariantFloat $halfWidth 'stage hitHalfWidth'),
-			$hitCount, $hitIntervalMs,
+			$hitCount, $hitIntervalMs, $hitDelayMs,
 			$(if ($damageProfile.Length -eq 0) { '-' } else { $damageProfile }),
 			(Format-InvariantSignedFloat $pushRangeM 'stage pushRangeM'),
 			$pushMs,
@@ -1859,7 +1860,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t11`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t12`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

@@ -377,7 +377,7 @@ bool Client::CBalanceTool::Reload()
 			if (!IsExactObject(stageValue, { "stageId", "actionId", "stageKind",
 				"durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
 				"hitAngleDegrees", "hitLength", "hitHalfWidth", "hitCount",
-				"hitIntervalMs", "serverDamageProfileId",
+				"hitIntervalMs", "hitDelayMs", "serverDamageProfileId",
 				"pushRangeM", "pushMs", "knockdown", "downMs" }) ||
 				!ReadString(stageValue, "stageId", stage.stageId) ||
 				!ReadString(stageValue, "actionId", stage.actionId) ||
@@ -391,6 +391,7 @@ bool Client::CBalanceTool::Reload()
 				!ReadFloat(stageValue, "hitHalfWidth", stage.hitHalfWidth) ||
 				!ReadU32(stageValue, "hitCount", stage.hitCount) ||
 				!ReadU32(stageValue, "hitIntervalMs", stage.hitIntervalMs) ||
+				!ReadU32(stageValue, "hitDelayMs", stage.hitDelayMs) ||
 				!ReadString(stageValue, "serverDamageProfileId", stage.damageProfileId) ||
 				!ReadFloat(stageValue, "pushRangeM", stage.pushRangeM) ||
 				!ReadU32(stageValue, "pushMs", stage.pushMs) ||
@@ -731,6 +732,8 @@ void Client::CBalanceTool::RenderBossEditor()
 						MarkDirty(EditU32("Hit count", stage.hitCount, 1u, 100u));
 						MarkDirty(EditU32("Hit interval ms", stage.hitIntervalMs,
 							1u == stage.hitCount ? 0u : 1u, 600000u));
+						MarkDirty(EditU32("Hit delay ms", stage.hitDelayMs,
+							0u, 600000u));
 						std::uint32_t* rate = FindDamageRate(stage.damageProfileId);
 						if (nullptr != rate)
 						{
@@ -969,10 +972,12 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 					stage.hitHalfWidth > 0.f : false))));
 			const bool validHit = none ?
 				(0u == stage.hitCount && 0u == stage.hitIntervalMs &&
+					0u == stage.hitDelayMs &&
 					stage.damageProfileId.empty()) :
 				(stage.hitCount > 0u &&
 					(1u == stage.hitCount ? 0u == stage.hitIntervalMs :
 						stage.hitIntervalMs > 0u) &&
+					stage.hitDelayMs < stage.durationMs &&
 					static_cast<std::uint64_t>(stage.hitCount - 1u) *
 						stage.hitIntervalMs < stage.durationMs &&
 					nullptr != FindDamageRate(stage.damageProfileId));
@@ -1184,6 +1189,7 @@ bool Client::CBalanceTool::Save()
 				<< ", \"hitHalfWidth\": " << stage.hitHalfWidth
 				<< ", \"hitCount\": " << stage.hitCount
 				<< ", \"hitIntervalMs\": " << stage.hitIntervalMs
+				<< ", \"hitDelayMs\": " << stage.hitDelayMs
 				<< ", \"serverDamageProfileId\": " << Quote(stage.damageProfileId)
 				<< ", \"pushRangeM\": " << std::setprecision(9) << stage.pushRangeM
 				<< ", \"pushMs\": " << stage.pushMs

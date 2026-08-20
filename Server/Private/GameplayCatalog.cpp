@@ -1134,7 +1134,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			BOSS_PATTERN_STAGE_DEFINITION stage{};
 			std::uint32_t stageIndex = 0u;
 			std::uint32_t knockdownFlag = 0u;
-			if (21u != fields.size() || !IsStableId(fields[1]) ||
+			if (22u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) ||
 				!ParseNumber(fields[3], stageIndex) ||
 				!IsStableId(fields[4]) || !IsStableId(fields[5]) ||
@@ -1148,12 +1148,16 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				!ParseNumber(fields[13], stage.fHitHalfWidth) ||
 				!ParseNumber(fields[14], stage.iHitCount) ||
 				!ParseNumber(fields[15], stage.iHitIntervalMs) ||
-				("-" != fields[16] && !IsStableId(fields[16])) ||
-				!ParseNumber(fields[17], stage.fPushRangeM) ||
-				!ParseNumber(fields[18], stage.iPushMs) ||
-				!ParseNumber(fields[19], knockdownFlag) ||
-				!ParseNumber(fields[20], stage.iDownMs) ||
+				!ParseNumber(fields[16], stage.iHitDelayMs) ||
+				("-" != fields[17] && !IsStableId(fields[17])) ||
+				!ParseNumber(fields[18], stage.fPushRangeM) ||
+				!ParseNumber(fields[19], stage.iPushMs) ||
+				!ParseNumber(fields[20], knockdownFlag) ||
+				!ParseNumber(fields[21], stage.iDownMs) ||
 				0u == stage.iDurationMs ||
+				(BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape &&
+					0u != stage.iHitDelayMs) ||
+				stage.iHitDelayMs >= stage.iDurationMs ||
 				!std::isfinite(stage.fHitOuterRadius) ||
 				!std::isfinite(stage.fHitInnerRadius) ||
 				!std::isfinite(stage.fHitAngleDegrees) ||
@@ -1191,7 +1195,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			stage.strStageId = fields[4];
 			stage.strActionId = fields[5];
 			stage.strDamageProfileId =
-				"-" == fields[16] ? "" : std::string(fields[16]);
+				"-" == fields[17] ? "" : std::string(fields[17]);
 			owner->Stages.push_back(std::move(stage));
 		}
 		else if (!fields.empty() && "PATTERNWALLCONTACT" == fields[0])

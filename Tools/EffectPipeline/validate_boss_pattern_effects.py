@@ -44,6 +44,7 @@ FORBIDDEN_GAMEPLAY_FIELDS = {
     "hitHalfWidth",
     "hitCount",
     "hitIntervalMs",
+    "hitDelayMs",
     "serverDamageProfileId",
     "pushRangeM",
     "pushMs",

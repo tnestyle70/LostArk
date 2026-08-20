@@ -20,6 +20,13 @@ struct ENCOUNTER_STAGE_REFERENCE final
 	uint32_t iDurationMs = 0;
 	uint32_t iStartOffsetMs = 0;
 	std::string hitShape;
+	f32_t fHitOuterRadius = 0.f;
+	f32_t fHitInnerRadius = 0.f;
+	f32_t fHitAngleDegrees = 0.f;
+	f32_t fHitLength = 0.f;
+	f32_t fHitHalfWidth = 0.f;
+	uint32_t iHitCount = 0;
+	uint32_t iHitIntervalMs = 0;
 	std::string serverDamageProfileId;
 };
 

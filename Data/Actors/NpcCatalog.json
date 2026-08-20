@@ -546,8 +546,33 @@
       "idleClip": "npc_idle_battle_1",
       "runtimeStatus": "supported",
       "actionClips": {
-        "esther.strike": "npc_att_battle_7_01"
-      }
+        "esther.strike": "npc_evt1_sk_swordofchampion_bk"
+      },
+      "cutinWindow": { "startMs": 0, "endMs": 3400 }
+    },
+    {
+      "archetypeId": "NPC_58700",
+      "clientPresentationId": "npc.58700.client.v1",
+      "modelAssetId": "Character/NPC/Npc_58700/Npc_58700.wmodel",
+      "animationSetId": "Character/NPC/AnimSets/NP_DPWI_00/NP_DPWI_00.wmodel",
+      "idleClip": "npc_idle_battle_1",
+      "runtimeStatus": "supported",
+      "actionClips": {
+        "esther.strike": "npc_sk_dochul"
+      },
+      "cutinWindow": { "startMs": 2300 }
+    },
+    {
+      "archetypeId": "NPC_59060",
+      "clientPresentationId": "npc.59060.client.v1",
+      "modelAssetId": "Character/NPC/Npc_59060/Npc_59060.wmodel",
+      "animationSetId": "Character/NPC/AnimSets/MN_YOBR_00/MN_YOBR_00.wmodel",
+      "idleClip": "npc_idle_battle_1",
+      "runtimeStatus": "supported",
+      "actionClips": {
+        "esther.strike": "npc_sk_breathofarcturus"
+      },
+      "cutinWindow": { "startMs": 1500 }
     }
   ]
 }

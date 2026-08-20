@@ -12,7 +12,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 11u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 12u;
 
 	struct PLAYER_ROOT_MOTION_SAMPLE
 	{
@@ -243,6 +243,9 @@ namespace LostArk::Server
 		float fHitHalfWidth = 0.f;
 		std::uint32_t iHitCount = 0;
 		std::uint32_t iHitIntervalMs = 0;
+		/* Stage-relative time of the first hit, matching the authored clip's
+		contact frame; further hits step by iHitIntervalMs from here. */
+		std::uint32_t iHitDelayMs = 0;
 		/* Official player push of this stage's hit: metres over iPushMs, a
 		negative range pulls the player toward the boss. */
 		float fPushRangeM = 0.f;

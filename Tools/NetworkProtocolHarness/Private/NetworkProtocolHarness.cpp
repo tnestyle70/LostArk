@@ -810,6 +810,7 @@ namespace
 		source.strArchetypeId = "BOSS_VALTAN";
 		source.strEncounterId = "ENCOUNTER_VALTAN";
 		source.strPlacementId = "boss_valtan_1";
+		source.strActionId = "esther.strike";
 		source.fPositionX = 151.25f;
 		source.fPositionY = 22.97f;
 		source.fPositionZ = -121.75f;
@@ -831,6 +832,7 @@ namespace
 			decoded.strArchetypeId == source.strArchetypeId &&
 			decoded.strEncounterId == source.strEncounterId &&
 			decoded.strPlacementId == source.strPlacementId &&
+			decoded.strActionId == source.strActionId &&
 			decoded.fPositionX == source.fPositionX &&
 			decoded.fYawDegrees == source.fYawDegrees &&
 			decoded.fCollisionRadius == source.fCollisionRadius,
@@ -857,6 +859,18 @@ namespace
 		testRunner.Require(
 			Write_Message(emptyPlacementWriter, invalid),
 			"Allow Dynamic Spawn Without Placement ID");
+		invalid = source;
+		invalid.strActionId = "../esther.strike";
+		CPacketWriter invalidActionWriter;
+		testRunner.Require(
+			!Write_Message(invalidActionWriter, invalid),
+			"Reject Unstable World Spawn Action ID");
+		invalid = source;
+		invalid.strActionId.clear();
+		CPacketWriter emptyActionWriter;
+		testRunner.Require(
+			Write_Message(emptyActionWriter, invalid),
+			"Allow Idle Spawn Without Action ID");
 		invalid = source;
 		invalid.fCollisionRadius = 0.f;
 		CPacketWriter zeroRadiusWriter;
