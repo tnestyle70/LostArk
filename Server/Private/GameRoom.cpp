@@ -695,6 +695,14 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 		case ROOM_COMMAND_TYPE::USE_ITEM:
 			Handle_UseItem(command.iSessionId, command.UseItem);
 			break;
+		case ROOM_COMMAND_TYPE::DESPAWN_ALL_WORLD_ENTITIES:
+			Handle_DespawnAllWorldEntities(
+				command.iSessionId, command.DespawnAllWorldEntities);
+			break;
+		case ROOM_COMMAND_TYPE::CONFIRM_NPC_ENTRY:
+			Handle_ConfirmNpcEntry(
+				command.iSessionId, command.ConfirmNpcEntry);
+			break;
 		case ROOM_COMMAND_TYPE::LEAVE:
 			Leave(command.iSessionId, command.eLeaveReason);
 			break;
@@ -1717,6 +1725,124 @@ void LostArk::Server::CGameRoom::Handle_UseItem(
 	{
 		session->Request_Close();
 	}
+}
+
+void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_DESPAWN_ALL_WORLD_ENTITIES& request)
+{
+	using namespace LostArk::Shared;
+	(void)request;
+	// Same room gating as Handle_SpawnWorldEntity -- this debug revert only makes
+	// sense for the Character Select Arena's own spawn buttons.
+	if (WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId ||
+		!m_PlayerIdBySessionId.contains(sessionId))
+	{
+		return;
+	}
+
+	// Character Select Arena's own placements have no statically-enabled
+	// MONSTER/BOSS entries (confirmed: only 4 disabled playerSpawn + one disabled
+	// BOSS_VALTAN), so everything currently in m_WorldEntities here was created by
+	// the debug spawn buttons -- safe to despawn all of it unconditionally.
+	for (const SERVER_WORLD_ENTITY& entity : m_WorldEntities)
+		Broadcast_WorldEntityDespawned(entity.iNetEntityId);
+	m_WorldEntities.clear();
+
+	// Reset spawn group state (DORMANT) too, so the same group can be activated
+	// again -- Handle_SpawnWorldEntity's Is_ActiveOrCompleted check would otherwise
+	// keep refusing a re-spawn after this revert. Same call
+	// Reset_ReplayableArenaWhenEmpty already uses for the equivalent "room is
+	// empty" reset, just without that gate.
+	std::string resetStatus;
+	if (!m_SpawnGroupRuntime.Initialize(m_SpawnGroupBootstrap, resetStatus))
+		m_strStatus = std::move(resetStatus);
+}
+
+void LostArk::Server::CGameRoom::Handle_ConfirmNpcEntry(
+	const SESSION_ID sessionId,
+	const LostArk::Shared::C2S_CONFIRM_NPC_ENTRY& request)
+{
+	using namespace LostArk::Shared;
+	// Mirrors the two disabled changeLevel triggerBox placements
+	// (trigger.bern.to-valtan / valtan) in Data/Worlds/LV_BER_BERNCASTLE/
+	// Gameplay.world.json -- both guide NPCs currently lead to the same target.
+	struct VALTAN_ENTRY_GUIDE_NPC
+	{
+		const char* pNpcPlacementId;
+		WORLD_ID eTargetWorldId;
+	};
+	static constexpr VALTAN_ENTRY_GUIDE_NPC VALTAN_ENTRY_GUIDE_NPCS[] =
+	{
+		{ "npc.bern.beda.guide", WORLD_ID::VALTAN_ARENA },
+		{ "npc.bern.aylara", WORLD_ID::VALTAN_ARENA },
+	};
+	// Same footprint as the old trigger boxes' largest half extent (2m), so
+	// standing where the box used to be still reaches the NPC.
+	constexpr float INTERACTION_RADIUS = 3.f;
+
+	if (WORLD_ID::BERN != m_eWorldId)
+		return;
+
+	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
+	if (sessionIter == m_PlayerIdBySessionId.end())
+		return;
+	const auto playerIter = m_Players.find(sessionIter->second);
+	if (playerIter == m_Players.end())
+		return;
+	const SERVER_PLAYER& player = playerIter->second;
+	if (0u == player.iCurrentHp || PLAYER_ACTION_STATE::NONE != player.eAction)
+		return;
+
+	const auto guideIter = std::find_if(
+		std::begin(VALTAN_ENTRY_GUIDE_NPCS), std::end(VALTAN_ENTRY_GUIDE_NPCS),
+		[&request](const VALTAN_ENTRY_GUIDE_NPC& guide)
+		{
+			return request.strNpcPlacementId == guide.pNpcPlacementId;
+		});
+	if (std::end(VALTAN_ENTRY_GUIDE_NPCS) == guideIter)
+		return;
+
+	const auto entityIter = std::find_if(
+		m_WorldEntities.begin(), m_WorldEntities.end(),
+		[&request](const SERVER_WORLD_ENTITY& entity)
+		{
+			return WORLD_BOOTSTRAP_KIND::NPC == entity.eKind &&
+				entity.strPlacementId == request.strNpcPlacementId;
+		});
+	if (m_WorldEntities.end() == entityIter)
+		return;
+
+	const float deltaX = player.fPositionX - entityIter->fPositionX;
+	const float deltaZ = player.fPositionZ - entityIter->fPositionZ;
+	if (deltaX * deltaX + deltaZ * deltaZ >
+		INTERACTION_RADIUS * INTERACTION_RADIUS)
+	{
+		return;
+	}
+
+	if (INVALID_SESSION_ID == player.iSessionId ||
+		CHARACTER_CLASS_ID::END == player.eCharacterClass ||
+		player.strNickName.empty())
+	{
+		return;
+	}
+
+	const bool alreadyStaged = std::any_of(
+		m_PendingWorldTransfers.begin(), m_PendingWorldTransfers.end(),
+		[sessionId](const SERVER_WORLD_TRANSFER_REQUEST& pending)
+		{
+			return pending.iSessionId == sessionId;
+		});
+	if (alreadyStaged)
+		return;
+
+	SERVER_WORLD_TRANSFER_REQUEST transfer{};
+	transfer.iSessionId = player.iSessionId;
+	transfer.eTargetWorldId = guideIter->eTargetWorldId;
+	transfer.eCharacterClass = player.eCharacterClass;
+	transfer.strNickName = player.strNickName;
+	m_PendingWorldTransfers.push_back(std::move(transfer));
 }
 
 void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(

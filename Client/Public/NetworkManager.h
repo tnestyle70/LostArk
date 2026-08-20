@@ -83,6 +83,18 @@ public:
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass);
 	bool Send_SpawnWorldEntity(std::string_view placementId);
+	/* Debug Character Select Arena "되돌리기". The Server owns which entities exist;
+	this only carries the request, and the answer arrives as one
+	S2C_WORLD_ENTITY_DESPAWNED per removed entity through the normal
+	replication event queue -- no separate result message. */
+	bool Send_DespawnAllWorldEntities(std::uint32_t requestSequence);
+	/* Bern's Valtan-entry confirm window's confirm button. The Server re-validates
+	proximity to the named guide NPC and answers through the same
+	S2C_ENTER_ACCEPTED/S2C_ENTER_REJECTED world-transfer flow the old automatic
+	changeLevel trigger used -- no separate result message. */
+	bool Send_ConfirmNpcEntry(
+		std::uint32_t requestSequence,
+		std::string_view npcPlacementId);
 	/* Debug-only. The Server owns the truth; this only carries the request and
 	the answer arrives as an S2C_INVENTORY_SNAPSHOT replication event. */
 	bool Send_DebugGiveItem(

@@ -13,6 +13,7 @@
 #include "CombatHUDViewModel.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
+#include "ImGuiLayer.h"
 #include "HUDRuntimeView.h"
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
@@ -119,16 +120,21 @@ namespace
 	}
 }
 
+CLevel_CharacterSelect* CLevel_CharacterSelect::s_pActiveInstance = nullptr;
+
 CLevel_CharacterSelect::CLevel_CharacterSelect(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CLevel{ pDevice, pContext },
 	m_pArenaSpawnGate{ std::make_unique<CCharacterSelectArenaSpawnGate>() }
 {
+	s_pActiveInstance = this;
 }
 
 CLevel_CharacterSelect::~CLevel_CharacterSelect()
 {
+	if (this == s_pActiveInstance)
+		s_pActiveInstance = nullptr;
 	CAnimationTargetService::Unbind(m_pActiveCharacter);
 	CNetworkManager::Get().Close_ServerConnection();
 	m_Replication.Reset();
@@ -1054,27 +1060,142 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 {
 	if (!m_isCreateCharacterModalOpen)
 		return;
+	if (nullptr == m_pClassSelectView)
+		return;
 
-	if (!ImGui::BeginPopupModal(
+	ImGuiViewport* pViewport = ImGui::GetMainViewport();
+	if (nullptr == pViewport)
+		return;
+	const float scaleX = pViewport->WorkSize.x / 1280.f;
+	const float scaleY = pViewport->WorkSize.y / 720.f;
+	const auto Fn_ToScreen = [&](f32_t fX, f32_t fY) -> ImVec2
+	{
+		return ImVec2(
+			pViewport->WorkPos.x + fX * scaleX, pViewport->WorkPos.y + fY * scaleY);
+	};
+
+	/* Real "캐릭터 이름 입력" panel art instead of ImGui's own modal chrome -- the popup window
+	is stretched over the whole viewport (NoBackground so it stays invisible) purely as an input
+	surface/dim-behind host; every visible pixel is either our own image or the real
+	ImGui::InputText widget positioned exactly over CreateCharacterModal_TextBox's art. */
+	ImGui::SetNextWindowPos(pViewport->WorkPos);
+	ImGui::SetNextWindowSize(pViewport->WorkSize);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
+	const bool_t isOpen = ImGui::BeginPopupModal(
 		"Create Character",
 		nullptr,
-		ImGuiWindowFlags_AlwaysAutoResize |
-		ImGuiWindowFlags_NoSavedSettings))
-	{
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground |
+		ImGuiWindowFlags_NoSavedSettings);
+	ImGui::PopStyleVar();
+	if (!isOpen)
 		return;
+
+	ImDrawList* pDrawList = ImGui::GetWindowDrawList();
+
+	f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
+	if (m_pClassSelectView->Get_SlotRect(
+		"CreateCharacterModal_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
+	{
+		if (ID3D11ShaderResourceView* pSRV = m_pClassSelectView->Load_Texture(
+			"UI/ClassSelect/Common/CreateCharacterModalPanel.png"))
+		{
+			pDrawList->AddImage(pSRV,
+				Fn_ToScreen(fPanelX, fPanelY),
+				Fn_ToScreen(fPanelX + fPanelW, fPanelY + fPanelH));
+		}
 	}
 
-	ImGui::TextUnformatted("Enter a nickname for Bern.");
-	const bool_t confirmFromEnter = ImGui::InputText(
-		"Nickname",
-		m_NicknameDraft.data(),
-		m_NicknameDraft.size(),
-		ImGuiInputTextFlags_EnterReturnsTrue);
+	f32_t fBoxX = 0.f, fBoxY = 0.f, fBoxW = 0.f, fBoxH = 0.f;
+	const bool_t hasTextBox = m_pClassSelectView->Get_SlotRect(
+		"CreateCharacterModal_TextBox", fBoxX, fBoxY, fBoxW, fBoxH);
+	if (hasTextBox)
+	{
+		if (ID3D11ShaderResourceView* pSRV = m_pClassSelectView->Load_Texture(
+			"UI/ClassSelect/Common/CreateCharacterModalTextBox.png"))
+		{
+			pDrawList->AddImage(pSRV,
+				Fn_ToScreen(fBoxX, fBoxY), Fn_ToScreen(fBoxX + fBoxW, fBoxY + fBoxH));
+		}
+	}
 
-	const bool_t confirmFromButton =
-		ImGui::Button("Create and Enter Bern");
-	ImGui::SameLine();
-	const bool_t cancel = ImGui::Button("Cancel");
+	const ImVec2 vMouse = ImGui::GetMousePos();
+	const bool_t bClicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	const auto Fn_HitTest = [&](f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
+		ImVec2& outTopLeft, ImVec2& outBotRight) -> bool_t
+	{
+		outTopLeft = Fn_ToScreen(fX, fY);
+		outBotRight = Fn_ToScreen(fX + fWidth, fY + fHeight);
+		return vMouse.x >= outTopLeft.x && vMouse.x < outBotRight.x &&
+			vMouse.y >= outTopLeft.y && vMouse.y < outBotRight.y;
+	};
+
+	bool_t confirmFromButton = false;
+	bool_t cancel = false;
+	struct MODAL_BUTTON { const char_t* pSlotId; bool_t* pOutClicked; };
+	const MODAL_BUTTON MODAL_BUTTONS[] =
+	{
+		{ "CreateCharacterModal_ConfirmButton", &confirmFromButton },
+		{ "CreateCharacterModal_CancelButton", &cancel },
+	};
+	for (const MODAL_BUTTON& Button : MODAL_BUTTONS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pClassSelectView->Get_SlotRect(Button.pSlotId, fX, fY, fWidth, fHeight))
+			continue;
+		ImVec2 vTopLeft, vBotRight;
+		const bool_t bHovered = Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
+		const char_t* pPath = bHovered ?
+			"UI/ClassSelect/Common/NormalButtonHover.png" :
+			"UI/ClassSelect/Common/NormalButton.png";
+		if (ID3D11ShaderResourceView* pSRV = m_pClassSelectView->Load_Texture(pPath))
+			pDrawList->AddImage(pSRV, vTopLeft, vBotRight);
+		if (bHovered && bClicked)
+			*Button.pOutClicked = true;
+	}
+
+	/* Real nickname entry -- ImGui::InputText already handles Korean IME/caret correctly (this
+	is unchanged from before), just repositioned with a transparent frame directly over the real
+	text box art instead of drawing its own default widget chrome. */
+	bool_t confirmFromEnter = false;
+	if (hasTextBox)
+	{
+		ImGui::SetCursorScreenPos(Fn_ToScreen(fBoxX + 8.f, fBoxY + 4.f));
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.f, 0.f, 0.f, 0.f));
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.f, 0.f, 0.f, 0.f));
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 1.f, 1.f, 1.f));
+		ImGui::PushItemWidth((fBoxW - 16.f) * scaleX);
+		confirmFromEnter = ImGui::InputText(
+			"##Nickname", m_NicknameDraft.data(), m_NicknameDraft.size(),
+			ImGuiInputTextFlags_EnterReturnsTrue);
+		/* Real games never show Windows' own floating IME composition box -- they draw the
+		still-composing (uncommitted) text inline themselves, right after what's already typed.
+		WM_IME_SETCONTEXT already suppresses the OS box; this is the other half. */
+		if (ImGui::IsItemActive())
+		{
+			const wchar_t* pComposition = Engine::CImGuiLayer::Get_ImeCompositionString();
+			if (nullptr != pComposition && L'\0' != pComposition[0])
+			{
+				const ImVec2 vCommittedSize = ImGui::CalcTextSize(m_NicknameDraft.data());
+				const ImVec2 vBoxTextOrigin = Fn_ToScreen(fBoxX + 8.f, fBoxY + 4.f);
+				const ImVec2 vCompositionPos(
+					vBoxTextOrigin.x + vCommittedSize.x, vBoxTextOrigin.y);
+				char compositionUtf8[64] = {};
+				::WideCharToMultiByte(CP_UTF8, 0, pComposition, -1,
+					compositionUtf8, sizeof(compositionUtf8), nullptr, nullptr);
+				const ImVec2 vCompositionSize = ImGui::CalcTextSize(compositionUtf8);
+				pDrawList->AddText(vCompositionPos, IM_COL32(255, 255, 255, 255), compositionUtf8);
+				pDrawList->AddLine(
+					ImVec2(vCompositionPos.x, vCompositionPos.y + vCompositionSize.y),
+					ImVec2(vCompositionPos.x + vCompositionSize.x, vCompositionPos.y + vCompositionSize.y),
+					IM_COL32(255, 255, 255, 200));
+			}
+		}
+		ImGui::PopItemWidth();
+		ImGui::PopStyleColor(4);
+	}
 
 	if (cancel)
 	{
@@ -1152,6 +1273,12 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 	{
 		ImGui::End();
 		return;
+	}
+
+	if (m_hasCreateCharacterButtonClick)
+	{
+		m_hasCreateCharacterButtonClick = false;
+		Open_CreateCharacterModal();
 	}
 
 	ImGui::TextUnformatted("Server-authorized Character Select");
@@ -1363,7 +1490,13 @@ namespace
 
 void CLevel_CharacterSelect::Render_ClassList()
 {
-	if (nullptr == m_pClassSelectView)
+	/* MODE::SERVER_ARENA is the real "scene has finished transitioning" signal --
+	Commit_ServerArena only sets it once the Server-replicated local character has
+	actually spawned and bound to the camera. Drawing this panel any earlier (still
+	MODE::CONNECTING, still waiting on that network round trip) put the fully-formed
+	side panels on screen while the arena itself had not finished settling, which read
+	as the UI arriving before the scene transition had actually completed. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
 		return;
 
 	const string strSelectedClass = m_iSelectedClassIndex < SUPPORTED_CLASSES.size()
@@ -1376,6 +1509,17 @@ void CLevel_CharacterSelect::Render_ClassList()
 		}()
 		: string{};
 
+	/* Create Character modal's 4 slots (Panel/TextBox/Confirm/Cancel) are drawn entirely by
+	Render_CreateCharacterModal() -- hover-aware, gated on m_isCreateCharacterModalOpen, and with
+	the real InputText overlay positioned relative to them. Left un-hidden, this generic per-slot
+	pass drew all 4 every frame regardless of whether the modal was open, and did so *after*
+	Render_CreateCharacterModal() already ran (Render_SelectionPanel -> Render_ClassList order),
+	so its plain re-draw of TextBox landed on top of the already-submitted InputText -- same
+	double-draw problem Esther_GaugeFill/Ready glows solve the same way. */
+	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_Panel", false);
+	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_TextBox", false);
+	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_ConfirmButton", false);
+	m_pClassSelectView->Set_SlotVisible("CreateCharacterModal_CancelButton", false);
 	m_pClassSelectView->Render(strSelectedClass, 0);
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
@@ -1575,7 +1719,11 @@ void CLevel_CharacterSelect::Render_ClassList()
 
 void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 {
-	if (nullptr == m_pClassSelectView)
+	/* Same MODE::SERVER_ARENA gate as Render_ClassList -- these debug spawn buttons and the
+	Create Character button are gameplay-tied and meaningless (their click handlers all touch
+	m_pWorldEntityCommandSink/m_pPlayerCommandSink, which are only useful once the arena has
+	actually admitted the local character) before the scene has really finished transitioning. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
 		return;
 
 	ImGuiViewport* pViewport = ImGui::GetMainViewport();
@@ -1642,22 +1790,59 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 		}
 	}
 
-	/* SpawnCancelButton (rightmost): hover only. No despawn/revert command exists anywhere in
-	this codebase (IWorldEntityCommandSink only has Request_SpawnWorldEntity; Server's
-	ROOM_COMMAND_TYPE has no despawn entry) -- wiring a click here would mean inventing a new
-	Client/Server capability, which wasn't asked for. Leave it unbound until that command exists. */
+	/* SpawnCancelButton (rightmost, "되돌리기"): despawns every world entity the two buttons to
+	its left created in this room -- C2S_DESPAWN_ALL_WORLD_ENTITIES, mirroring how the other two
+	buttons already call Request_SelectedArenaSpawn/IWorldEntityCommandSink. */
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (m_pClassSelectView->Get_SlotRect("SpawnCancelButton", fX, fY, fWidth, fHeight))
 		{
 			ImVec2 vTopLeft, vBotRight;
-			if (bInteractable && Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight))
+			const bool_t bHovered = bInteractable &&
+				Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
+			if (bHovered)
 			{
 				if (ID3D11ShaderResourceView* pHoverSRV = m_pClassSelectView->Load_Texture(
 					"UI/ClassSelect/Common/SpawnCancelButtonHover.png"))
 				{
 					pDrawList->AddImage(pHoverSRV, vTopLeft, vBotRight);
 				}
+				if (bClicked && nullptr != m_pWorldEntityCommandSink)
+				{
+					m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(
+						m_iNextDespawnRequestSequence++);
+					/* Request_SelectedArenaSpawn refuses to resend once
+					m_ArenaSpawnAccepted[index] is true (see its own gate check) -- that flag only
+					meant "don't ask the Server to spawn something it already told us exists", but
+					never got cleared on despawn, so re-spawning either option silently no-op'd
+					after a revert even though the Server-side entity was really gone. */
+					m_ArenaSpawnAccepted.fill(false);
+				}
+			}
+		}
+	}
+
+	/* CreateCharacterButton: real image button for the same Open_CreateCharacterModal() the
+	ImGui "Create Character" button already calls (Render_SelectionPanel), gated the same way
+	(bInteractable already covers isConnecting/isReturning/transitionPending via MODE::SERVER_ARENA
+	and the other two checks; m_iPendingClassIndex is the one condition bInteractable doesn't
+	already include). */
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (m_pClassSelectView->Get_SlotRect("CreateCharacterButton", fX, fY, fWidth, fHeight))
+		{
+			ImVec2 vTopLeft, vBotRight;
+			const bool_t bHovered = bInteractable && !m_iPendingClassIndex.has_value() &&
+				Fn_HitTest(fX, fY, fWidth, fHeight, vTopLeft, vBotRight);
+			if (bHovered)
+			{
+				if (ID3D11ShaderResourceView* pHoverSRV = m_pClassSelectView->Load_Texture(
+					"UI/ClassSelect/Common/CreateCharacterButtonHover.png"))
+				{
+					pDrawList->AddImage(pHoverSRV, vTopLeft, vBotRight);
+				}
+				if (bClicked)
+					Request_CreateCharacterButtonClick();
 			}
 		}
 	}
@@ -1682,6 +1867,126 @@ void CLevel_CharacterSelect::Render_ArenaSpawnButtons()
 			}
 			if (bHovered && bClicked)
 				Fail_ServerArena("Leaving Server Arena.");
+		}
+	}
+}
+
+void CLevel_CharacterSelect::Render_ArenaSpawnLabels()
+{
+	/* Same MODE::SERVER_ARENA gate as Render_ClassList/Render_ArenaSpawnButtons -- these are
+	just the text captions for that same button art, so they must disappear and reappear
+	together with it instead of floating on screen without their buttons underneath. */
+	if (nullptr == m_pClassSelectView || MODE::SERVER_ARENA != m_eMode)
+		return;
+
+	struct SPAWN_LABEL { const char_t* pSlotId; const wchar_t* pLabel; };
+	constexpr SPAWN_LABEL LABELS[] = {
+		/* "몬스터 소환" */ { "SpawnMonsterButton", L"\xBAAC\xC2A4\xD130 \xC18C\xD658" },
+		/* "보스 소환" */   { "BossSpawnButton",    L"\xBCF4\xC2A4 \xC18C\xD658" },
+		/* "되돌리기" */    { "SpawnCancelButton",  L"\xB418\xB3CC\xB9AC\xAE30" },
+	};
+
+	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vViewportSize.x / 1280.f;
+	const float textScaleY = vViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	for (const SPAWN_LABEL& Label : LABELS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pClassSelectView->Get_SlotRect(Label.pSlotId, fX, fY, fWidth, fHeight))
+			continue;
+
+		const f32_t fLabelCenterX = fX + fWidth * 0.5f;
+
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel);
+		/* "작게" -- small label under a 70px icon, so cap by height too (same lesson as the
+		Lobby button label: height-only scaling on a wide multi-glyph string runs it too big).
+		Width cap tightened from 1.3x to 0.75x icon width -- the icons themselves sit only ~63px
+		apart center-to-center (real extracted rects), so the wider cap let neighboring labels'
+		edges overlap and read as one run-on string. */
+		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
+			(fHeight * 0.2f / vMeasured.y) : 1.f;
+		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
+			(fWidth * 0.75f / vMeasured.x) : 1.f;
+		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+		/* Centered anchor like every other Draw_Text call in this codebase (see
+		RenderQuickSlotKeyLabels), offset down by half the scaled glyph height so the label sits
+		just under the icon instead of straddling its bottom edge. */
+		const f32_t fLabelCenterY =
+			fY + fHeight + 4.f + vMeasured.y * fScale * 0.5f;
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel,
+			float2_t(fLabelCenterX * textScaleX, fLabelCenterY * textScaleY),
+			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	}
+
+	/* CreateCharacterButton: label centered inside the button itself (Lobby's
+	Lobby_CreateCharacterButton uses the same "\xCE90..." literal/font for the same text). */
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (m_pClassSelectView->Get_SlotRect("CreateCharacterButton", fX, fY, fWidth, fHeight))
+		{
+			const wchar_t* pLabel = L"\xCE90\xB9AD\xD130 \xC0DD\xC131"; // "캐릭터 생성"
+			const float2_t vMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+			const f32_t fScaleByHeight = (vMeasured.y > 0.f) ?
+				(fHeight * 0.32f / vMeasured.y) : 1.f;
+			const f32_t fScaleByWidth = (vMeasured.x > 0.f) ?
+				(fWidth * 0.8f / vMeasured.x) : 1.f;
+			const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+				float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+				Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+		}
+	}
+
+	/* Create Character modal text -- real Draw_Text same as everything else above, since the
+	modal's own ImGui popup (Render_CreateCharacterModal) only draws the panel/box/button images
+	and the real InputText widget; this still has to be the LOA-font pass called after EndFrame. */
+	if (m_isCreateCharacterModalOpen)
+	{
+		const auto Fn_DrawCentered = [&](f32_t fCenterX, f32_t fCenterY, const wchar_t* pLabel,
+			f32_t fTargetHeight, const fvector_t& vColor)
+		{
+			const float2_t vMeasured =
+				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+			const f32_t fScale = (vMeasured.y > 0.f) ? (fTargetHeight / vMeasured.y) : 1.f;
+			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+				float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+				vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+		};
+
+		f32_t fPanelX = 0.f, fPanelY = 0.f, fPanelW = 0.f, fPanelH = 0.f;
+		if (m_pClassSelectView->Get_SlotRect(
+			"CreateCharacterModal_Panel", fPanelX, fPanelY, fPanelW, fPanelH))
+		{
+			const f32_t fPanelCenterX = fPanelX + fPanelW * 0.5f;
+			/* Real divider line sits at 43/131 of the panel art's own height (measured from the
+			source pixels) -- subtitle goes just above it, inside the panel. Title sits clearly
+			above the panel's own top edge instead (fLineY-based offset put it only 3px below
+			fPanelY, overlapping the panel art). */
+			const f32_t fLineY = fPanelY + fPanelH * (43.f / 131.f);
+			Fn_DrawCentered(fPanelCenterX, fPanelY - 20.f,
+				L"\xCE90\xB9AD\xD130 \xC774\xB984 \xC785\xB825", // "캐릭터 이름 입력"
+				22.f, Colors::White);
+			Fn_DrawCentered(fPanelCenterX, fLineY - 15.f,
+				L"\xD55C\xAE00, \xC601\xBB38, \xC22B\xC790 12\xC790\xAE4C\xC9C0 \xC785\xB825 \xAC00\xB2A5", // "한글, 영문, 숫자 12자까지 입력 가능"
+				15.f, Colors::Gold);
+		}
+
+		struct MODAL_BUTTON_LABEL { const char_t* pSlotId; const wchar_t* pLabel; };
+		const MODAL_BUTTON_LABEL BUTTON_LABELS[] = {
+			{ "CreateCharacterModal_ConfirmButton", L"\xD655\xC778" }, // "확인"
+			{ "CreateCharacterModal_CancelButton", L"\xCDE8\xC18C" },  // "취소"
+		};
+		for (const MODAL_BUTTON_LABEL& Label : BUTTON_LABELS)
+		{
+			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+			if (!m_pClassSelectView->Get_SlotRect(Label.pSlotId, fX, fY, fWidth, fHeight))
+				continue;
+			Fn_DrawCentered(fX + fWidth * 0.5f, fY + fHeight * 0.5f, Label.pLabel,
+				fHeight * 0.32f, Colors::White);
 		}
 	}
 }

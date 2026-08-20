@@ -10,8 +10,7 @@ Client::CPartyWindowView::CPartyWindowView(ComPtr<ID3D11Device> pDevice)
 	, m_strPartyTitle{ "\xed\x8c\x8c\xed\x8b\xb0" }
 {
 	/* UI-only seed roster (no party Shared protocol yet) so the layout can be checked against
-	the reference visually. Includes one DimensionMaster entry to exercise the no-symbol-art
-	fallback the same way Character Select already does. */
+	the reference visually. */
 	m_Members.push_back(PARTY_MEMBER{
 		"\xed\x95\x9c\xeb\xb6\x93\xed\x94\xbd\xed\x95\x98\xec\x86\x8c",
 		"UI/ClassSelect/Warlord/IdentitySymbol.png", 1.f, true });
@@ -23,7 +22,7 @@ Client::CPartyWindowView::CPartyWindowView(ComPtr<ID3D11Device> pDevice)
 		"UI/ClassSelect/Artist/IdentitySymbol.png", 1.f, false });
 	m_Members.push_back(PARTY_MEMBER{
 		"\xec\xb0\xa8\xec\x9b\x90\xec\x88\xa0\xec\x82\xac\xeb\x8b\x98",
-		"", 1.f, false });
+		"UI/ClassSelect/DimensionMaster/IdentitySymbol.png", 1.f, false });
 }
 
 Client::CPartyWindowView::~CPartyWindowView()

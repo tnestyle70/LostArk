@@ -46,6 +46,9 @@ public:
 	bool Request_ChangeCharacterClass(
 		std::uint32_t clientSequence,
 		LostArk::Shared::CHARACTER_CLASS_ID characterClass) override;
+	bool Request_ConfirmNpcEntry(
+		std::uint32_t clientSequence,
+		const std::string& npcPlacementId) override;
 
 private:
 	static std::atomic_uint32_t s_iLiveInstanceCount;

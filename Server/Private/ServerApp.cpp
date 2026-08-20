@@ -383,6 +383,28 @@ void LostArk::Server::CServerApp::On_SessionFrame(
 		command.eType = ROOM_COMMAND_TYPE::USE_ITEM;
 		command.UseItem = request;
 	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES)
+	{
+		C2S_DESPAWN_ALL_WORLD_ENTITIES request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::DESPAWN_ALL_WORLD_ENTITIES;
+		command.DespawnAllWorldEntities = request;
+	}
+	else if (frame.ePacketType == PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY)
+	{
+		C2S_CONFIRM_NPC_ENTRY request{};
+		if (!Read_Message(reader, request) || 0u != reader.Get_RemainingSize())
+		{
+			Request_SessionClose(sessionId);
+			return;
+		}
+		command.eType = ROOM_COMMAND_TYPE::CONFIRM_NPC_ENTRY;
+		command.ConfirmNpcEntry = request;
+	}
 	else
 	{
 		Request_SessionClose(sessionId);

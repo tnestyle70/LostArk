@@ -541,6 +541,48 @@ bool CNetworkManager::Send_SpawnWorldEntity(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_DespawnAllWorldEntities(
+	const std::uint32_t requestSequence)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_DESPAWN_ALL_WORLD_ENTITIES message{};
+	message.iRequestSequence = requestSequence;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_DESPAWN_ALL_WORLD_ENTITIES,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
+bool CNetworkManager::Send_ConfirmNpcEntry(
+	const std::uint32_t requestSequence,
+	const std::string_view npcPlacementId)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+
+	C2S_CONFIRM_NPC_ENTRY message{};
+	message.iRequestSequence = requestSequence;
+	message.strNpcPlacementId = std::string{ npcPlacementId };
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY,
+		payloadWriter.Get_Buffer(),
+		frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_DebugGiveItem(
 	const std::uint32_t requestSequence,
 	const std::string_view itemId,
