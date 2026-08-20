@@ -162,6 +162,9 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentRenderer.cpp">
 	  <Link>Client\Effect_DocumentRenderer.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp">
+	  <Link>Client\Effect_DirectAuthoredSourceIndex.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_ProductPrewarmQueue.cpp">
 	  <Link>Client\Effect_ProductPrewarmQueue.cpp</Link>
 	</ClCompile>
@@ -204,10 +207,6 @@
 	<ClCompile Include="..\..\..\Client\Private\DataJson.cpp">
 	  <Link>Client\DataJson.cpp</Link>
 	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\BalanceTool.cpp">
-	  <PreprocessorDefinitions>LOSTARK_BALANCE_TOOL_CONTRACT_TEST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-	  <Link>Client\BalanceTool.cpp</Link>
-	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\LobbyCommandService.cpp">
 	  <Link>Client\LobbyCommandService.cpp</Link>
 	</ClCompile>
@@ -231,6 +230,9 @@
     <ClInclude Include="..\Private\FourClassTrackAAuthoredMaterializer.h" />
 	<ClInclude Include="..\..\..\Client\Private\CharacterSelectArenaSpawnGate.h">
 	  <Link>Client\CharacterSelectArenaSpawnGate.h</Link>
+	</ClInclude>
+	<ClInclude Include="..\..\..\Client\Public\Effect_DirectAuthoredSourceIndex.h">
+	  <Link>Client\Effect_DirectAuthoredSourceIndex.h</Link>
 	</ClInclude>
 	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueDocument.h">
 	  <Link>Client\ValtanPatternEffectCueDocument.h</Link>

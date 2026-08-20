@@ -718,7 +718,7 @@ Server skill을 임시로 채운 완전한 draft를 만들고 Dirty 상태로 �
 Lance Master    Q W E R A S T V ALT_V + LMB(4단)
 Gunslinger      Q W E R A S D F T V ALT_V + LMB(3단)
 Slayer          Q W E R A S D F V ALT_V + LMB(4단)
-Artist          Q W E R A S T V Z ALT_V + LMB(4단)
+Artist          Q W E R A S V ALT_V + LMB(4단)
 DimensionMaster Q W E R A S D F T V ALT_V + LMB(4단)
 ```
 

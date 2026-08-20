@@ -215,7 +215,6 @@ struct EFFECT_VISUAL_PROGRAM_TRAIL_ATTACHMENT final
 	std::string strSourceAnchorSlotId;
 	std::string strRuntimeAnchorSlotId;
 	std::string strRuntimeBoneName;
-	double fSnapshotRootSourceBasisYawDegrees = 0.0;
 	std::array<double, 3u> vPosition{};
 	std::array<double, 3u> vRotationDegrees{};
 	std::array<double, 3u> vScale{ 1.0, 1.0, 1.0 };
@@ -230,29 +229,6 @@ struct EFFECT_VISUAL_PROGRAM_TRAIL_GEOMETRY final
 	double fStartWidth = 0.0;
 	double fEndWidth = 0.0;
 	bool_t bFaceCamera = false;
-};
-
-struct EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE final
-{
-	double fRelativeTimeSeconds = 0.0;
-	std::array<double, 3u> vFirstEdgeUE3Cm{};
-	std::array<double, 3u> vControlPointUE3Cm{};
-	std::array<double, 3u> vSecondEdgeUE3Cm{};
-};
-
-struct EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY final
-{
-	std::string strHistoryId;
-	std::string strSourceKind;
-	std::string strSourceArtifactPath;
-	std::string strSourceArtifactRawSha256;
-	std::string strCoordinateBasis;
-	double fSourceEndTimeSeconds = 0.0;
-	double fPlaybackClampSeconds = 0.0;
-	uint32_t iSampleCount = 0u;
-	std::vector<EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE> Samples;
-	std::string strSamplesSha256;
-	std::string strHistorySha256;
 };
 
 struct EFFECT_VISUAL_PROGRAM_CASCADE_RIBBON_PACKET final
@@ -301,53 +277,6 @@ struct EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_PACKET final
 	EFFECT_VISUAL_PROGRAM_TRAIL_TIMING TargetTiming;
 	EFFECT_VISUAL_PROGRAM_TRAIL_ATTACHMENT Attachment;
 	EFFECT_VISUAL_PROGRAM_TRAIL_GEOMETRY Trail;
-	std::string strHistoryId;
-	std::string strHistorySha256;
-	double fPlaybackClampSeconds = 0.0;
-	std::string strCoordinateBasis;
-	std::vector<std::string> PreservedLimitations;
-	std::string strPacketSha256;
-};
-
-enum class EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LANE : uint8_t
-{
-	FIRST_EDGE,
-	END,
-};
-
-struct EFFECT_VISUAL_PROGRAM_LIGHT_PROFILE final
-{
-	bool_t bEnabled = false;
-	std::string strProfileId;
-	std::string strStatus;
-	double fRange = 0.0;
-	double fIntensity = 0.0;
-	std::array<double, 4u> vColor{};
-	std::array<double, 4u> vAmbient{};
-	double fFalloffExponent = 0.0;
-};
-
-struct EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LIGHT_PACKET final
-{
-	uint32_t iPacketVersion = 0u;
-	std::string strAdapterId;
-	bool_t bBoundedSemanticReplay = false;
-	bool_t bNativeExecution = false;
-	std::string strRuntimeCarrier;
-	std::string strSourceEventId;
-	std::string strSourceEventRecordSha256;
-	std::string strTargetElementId;
-	std::string strHistoryId;
-	std::string strHistorySha256;
-	EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LANE eLane =
-		EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LANE::END;
-	double fActiveStartSeconds = 0.0;
-	double fActiveDurationSeconds = 0.0;
-	double fActiveEndSeconds = 0.0;
-	double fHistoryPlaybackClampSeconds = 0.0;
-	std::string strCoordinateBasis;
-	std::string strAttachmentEvidenceStatus;
-	EFFECT_VISUAL_PROGRAM_LIGHT_PROFILE TargetLight;
 	std::vector<std::string> PreservedLimitations;
 	std::string strPacketSha256;
 };
@@ -394,8 +323,6 @@ struct EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT final
 		CascadeRibbonPacket;
 	std::optional<EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_PACKET>
 		AnimationTrailPacket;
-	std::optional<EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LIGHT_PACKET>
-		BakedEdgeLightPacket;
 	std::vector<std::string> AdmissionBlockers;
 	std::string strRowSha256;
 };
@@ -414,8 +341,6 @@ struct EFFECT_VISUAL_PROGRAM final
 	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pProjectedDocument;
 	std::vector<EFFECT_VISUAL_PROGRAM_ROW> VisualRows;
 	std::vector<EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT> SupplementalElements;
-	std::vector<EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY>
-		BakedEdgeHistories;
 	std::string strProgramSha256;
 };
 
@@ -434,7 +359,6 @@ struct EFFECT_VISUAL_PROGRAM_CORPUS final
 	uint32_t iDeclaredSupplementalElementCount = 0u;
 	uint32_t iDeclaredArtistCascadeRibbonElementCount = 0u;
 	uint32_t iDeclaredAnimationTrailElementCount = 0u;
-	uint32_t iDeclaredBakedEdgeLightElementCount = 0u;
 	uint32_t iDeclaredFailClosedCount = 0u;
 	uint32_t iDeclaredExtensionCanaryCount = 0u;
 	std::vector<EFFECT_VISUAL_PROGRAM> Programs;
@@ -483,13 +407,6 @@ public:
 	{
 		return m_AdmittedSupplementalElements;
 	}
-	const std::vector<EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY>&
-	Get_BakedEdgeHistories() const
-	{
-		return m_BakedEdgeHistories;
-	}
-	const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY*
-	Find_BakedEdgeHistory(std::string_view strHistoryId) const;
 	const EFFECT_VISUAL_PROGRAM_ROW* Find_RowByOccurrenceId(
 		std::string_view strOccurrenceId) const;
 	const EFFECT_VISUAL_PROGRAM_ROW* Find_RowByTargetElementId(
@@ -521,8 +438,6 @@ private:
 	std::vector<EFFECT_VISUAL_PROGRAM_ROW> m_AdmittedRows;
 	std::vector<EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT>
 		m_AdmittedSupplementalElements;
-	std::vector<EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY>
-		m_BakedEdgeHistories;
 };
 
 struct EFFECT_VISUAL_PROGRAM_ELEMENT_PRESET_REQUEST final

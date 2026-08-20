@@ -42,8 +42,8 @@
     },
     "programs": {
       "type": "array",
-      "minItems": 14,
-      "maxItems": 14,
+      "minItems": 13,
+      "maxItems": 13,
       "items": { "$ref": "#/$defs/program" }
     },
     "extensionCanaries": {
@@ -66,23 +66,21 @@
         "supplementalElementCount",
         "artistFCascadeRibbonElementCount",
         "animationTrailElementCount",
-        "bakedEdgeLightElementCount",
         "failClosedCount",
         "extensionCanaryCount",
         "productMutationCount"
       ],
       "properties": {
-        "programCount": { "const": 14 },
-        "sourceRecipeOverlayProgramCount": { "const": 13 },
+        "programCount": { "const": 13 },
+        "sourceRecipeOverlayProgramCount": { "const": 12 },
         "adapterPacketProgramCount": { "const": 1 },
         "visualRowCount": { "const": 135 },
         "sourceRecipeOverlayCount": { "const": 66 },
         "localDecalAdapterPacketCount": { "const": 2 },
         "cascadeRibbonVisualRowCount": { "const": 4 },
-        "supplementalElementCount": { "const": 9 },
+        "supplementalElementCount": { "const": 5 },
         "artistFCascadeRibbonElementCount": { "const": 1 },
-        "animationTrailElementCount": { "const": 7 },
-        "bakedEdgeLightElementCount": { "const": 1 },
+        "animationTrailElementCount": { "const": 4 },
         "failClosedCount": { "const": 67 },
         "extensionCanaryCount": { "const": 2 },
         "productMutationCount": { "const": 0 }
@@ -118,18 +116,6 @@
     "sha256": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
-    },
-    "vec3": {
-      "type": "array",
-      "minItems": 3,
-      "maxItems": 3,
-      "items": { "type": "number" }
-    },
-    "vec4": {
-      "type": "array",
-      "minItems": 4,
-      "maxItems": 4,
-      "items": { "type": "number" }
     },
     "nullableSha256": {
       "oneOf": [
@@ -629,15 +615,14 @@
         "selector", "selectorSha256", "family", "adapterId", "packetLayout",
         "fidelity", "disposition", "tuningEligibleTransform", "sourceIdentity",
         "targetIdentity", "schedule", "resourcePacket", "cascadeRibbonPacket",
-        "animationTrailPacket", "bakedEdgeLightPacket", "admissionBlockers",
-        "rowSha256"
+        "animationTrailPacket", "admissionBlockers", "rowSha256"
       ],
       "properties": {
         "selector": { "$ref": "#/$defs/selector" },
         "selectorSha256": { "$ref": "#/$defs/sha256" },
-        "family": { "enum": ["CASCADE_RIBBON", "ANIMATION_TRAIL", "LIGHT_PARTICLE"] },
+        "family": { "enum": ["CASCADE_RIBBON", "ANIMATION_TRAIL"] },
         "adapterId": { "$ref": "#/$defs/stableId" },
-        "packetLayout": { "enum": ["CASCADE_RIBBON_TYPED_PACKET_V1", "ANIMATION_TRAIL_ELEMENT_V1", "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1", "LIGHT_BAKED_EDGE_ATTACHMENT_V1"] },
+        "packetLayout": { "enum": ["CASCADE_RIBBON_TYPED_PACKET_V1", "ANIMATION_TRAIL_ELEMENT_V1"] },
         "fidelity": { "const": "BOUNDED_RECONSTRUCTION" },
         "disposition": { "const": "ADMITTED_BOUNDED" },
         "tuningEligibleTransform": { "const": true },
@@ -675,107 +660,8 @@
             { "type": "null" }
           ]
         },
-        "bakedEdgeLightPacket": {
-          "oneOf": [
-            { "$ref": "#/$defs/bakedEdgeLightPacket" },
-            { "type": "null" }
-          ]
-        },
         "admissionBlockers": { "const": [] },
         "rowSha256": { "$ref": "#/$defs/sha256" }
-      }
-    },
-    "bakedEdgeSample": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "relativeTimeSeconds", "firstEdgeUE3Cm", "controlPointUE3Cm",
-        "secondEdgeUE3Cm"
-      ],
-      "properties": {
-        "relativeTimeSeconds": { "type": "number", "minimum": 0 },
-        "firstEdgeUE3Cm": { "$ref": "#/$defs/vec3" },
-        "controlPointUE3Cm": { "$ref": "#/$defs/vec3" },
-        "secondEdgeUE3Cm": { "$ref": "#/$defs/vec3" }
-      }
-    },
-    "lightProfile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "enabled", "profileId", "status", "range", "intensity", "color",
-        "ambient", "falloffExponent"
-      ],
-      "properties": {
-        "enabled": { "const": true },
-        "profileId": { "const": "light.point.reconstructed.v1" },
-        "status": { "const": "reconstructed_profile" },
-        "range": { "type": "number", "exclusiveMinimum": 0 },
-        "intensity": { "type": "number", "minimum": 0 },
-        "color": { "$ref": "#/$defs/vec4" },
-        "ambient": { "$ref": "#/$defs/vec4" },
-        "falloffExponent": { "type": "number", "exclusiveMinimum": 0 }
-      }
-    },
-    "bakedEdgeLightPacket": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "packetVersion", "adapterId", "boundedSemanticReplay", "nativeExecution",
-        "runtimeCarrier", "sourceEventId", "sourceEventRecordSha256",
-        "targetElementId", "historyId", "historySha256", "lane",
-        "activeStartSeconds", "activeDurationSeconds", "activeEndSeconds",
-        "historyPlaybackClampSeconds", "coordinateBasis",
-        "attachmentEvidenceStatus", "targetLight", "preservedLimitations",
-        "packetSha256"
-      ],
-      "properties": {
-        "packetVersion": { "const": 1 },
-        "adapterId": { "const": "light-particle-document-v12" },
-        "boundedSemanticReplay": { "const": true },
-        "nativeExecution": { "const": false },
-        "runtimeCarrier": { "const": "EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1" },
-        "sourceEventId": { "type": "string", "minLength": 1 },
-        "sourceEventRecordSha256": { "$ref": "#/$defs/sha256" },
-        "targetElementId": { "$ref": "#/$defs/stableId" },
-        "historyId": { "$ref": "#/$defs/stableId" },
-        "historySha256": { "$ref": "#/$defs/sha256" },
-        "lane": { "const": "FIRST_EDGE" },
-        "activeStartSeconds": { "type": "number", "minimum": 0 },
-        "activeDurationSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "activeEndSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "historyPlaybackClampSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "coordinateBasis": { "const": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS" },
-        "attachmentEvidenceStatus": { "const": "SIBLING_TEMPLATE_INFERRED" },
-        "targetLight": { "$ref": "#/$defs/lightProfile" },
-        "preservedLimitations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/stableId" } },
-        "packetSha256": { "$ref": "#/$defs/sha256" }
-      }
-    },
-    "bakedEdgeHistory": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "historyId", "sourceKind", "sourceArtifactPath",
-        "sourceArtifactRawSha256", "coordinateBasis", "sourceEndTimeSeconds",
-        "playbackClampSeconds", "sampleCount", "samples", "samplesSha256",
-        "historySha256"
-      ],
-      "properties": {
-        "historyId": { "$ref": "#/$defs/stableId" },
-        "sourceKind": { "const": "UE3_ANIMTRAIL_BAKED_EDGE_HISTORY_V1" },
-        "sourceArtifactPath": { "type": "string", "minLength": 1 },
-        "sourceArtifactRawSha256": { "$ref": "#/$defs/sha256" },
-        "coordinateBasis": { "const": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS" },
-        "sourceEndTimeSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "playbackClampSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "sampleCount": { "const": 409 },
-        "samples": {
-          "type": "array", "minItems": 409, "maxItems": 409,
-          "items": { "$ref": "#/$defs/bakedEdgeSample" }
-        },
-        "samplesSha256": { "$ref": "#/$defs/sha256" },
-        "historySha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "baseDocumentIdentity": {
@@ -801,12 +687,7 @@
         "projectedDocumentTypedCodecSha256",
         "visualRows",
         "supplementalElements",
-        "bakedEdgeHistories",
         "programSha256"
-      ],
-      "anyOf": [
-        { "properties": { "visualRows": { "minItems": 1 } } },
-        { "properties": { "supplementalElements": { "minItems": 1 } } }
       ],
       "properties": {
         "effectAssetId": { "$ref": "#/$defs/stableId" },
@@ -835,16 +716,12 @@
           "projectedDocumentTypedCodecSha256": { "$ref": "#/$defs/nullableSha256" },
         "visualRows": {
           "type": "array",
+          "minItems": 1,
           "items": { "$ref": "#/$defs/runtimeRow" }
         },
         "supplementalElements": {
           "type": "array",
           "items": { "$ref": "#/$defs/runtimeSupplementalElement" }
-        },
-        "bakedEdgeHistories": {
-          "type": "array",
-          "maxItems": 1,
-          "items": { "$ref": "#/$defs/bakedEdgeHistory" }
         },
         "programSha256": { "$ref": "#/$defs/sha256" }
       }

@@ -239,76 +239,6 @@ namespace
 		return X * X + Y * Y + Z * Z;
 	}
 
-	bool_t Interpolate_BakedEdgeHistorySample(
-		const Client::EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY& History,
-		const double fTimeSeconds,
-		Client::EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE& Out)
-	{
-		if (History.Samples.empty() || !std::isfinite(fTimeSeconds) ||
-			fTimeSeconds < History.Samples.front().fRelativeTimeSeconds - 1e-9 ||
-			fTimeSeconds > History.Samples.back().fRelativeTimeSeconds + 1e-9)
-			return false;
-		const auto Upper = std::lower_bound(
-			History.Samples.begin(), History.Samples.end(), fTimeSeconds,
-			[](const auto& Sample, const double Time)
-			{
-				return Sample.fRelativeTimeSeconds < Time;
-			});
-		if (Upper == History.Samples.begin())
-		{
-			Out = *Upper;
-			return true;
-		}
-		if (Upper == History.Samples.end())
-		{
-			Out = History.Samples.back();
-			return true;
-		}
-		if (std::abs(Upper->fRelativeTimeSeconds - fTimeSeconds) <= 1e-9)
-		{
-			Out = *Upper;
-			return true;
-		}
-		const auto& Lower = *(Upper - 1);
-		const double fSpan = Upper->fRelativeTimeSeconds -
-			Lower.fRelativeTimeSeconds;
-		if (!(fSpan > 0.0))
-			return false;
-		const double fRatio = std::clamp(
-			(fTimeSeconds - Lower.fRelativeTimeSeconds) / fSpan, 0.0, 1.0);
-		Client::EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE Staged;
-		Staged.fRelativeTimeSeconds = fTimeSeconds;
-		for (size_t iAxis = 0u; iAxis < 3u; ++iAxis)
-		{
-			Staged.vFirstEdgeUE3Cm[iAxis] = Lower.vFirstEdgeUE3Cm[iAxis] +
-				(Upper->vFirstEdgeUE3Cm[iAxis] -
-				 Lower.vFirstEdgeUE3Cm[iAxis]) * fRatio;
-			Staged.vControlPointUE3Cm[iAxis] = Lower.vControlPointUE3Cm[iAxis] +
-				(Upper->vControlPointUE3Cm[iAxis] -
-				 Lower.vControlPointUE3Cm[iAxis]) * fRatio;
-			Staged.vSecondEdgeUE3Cm[iAxis] = Lower.vSecondEdgeUE3Cm[iAxis] +
-				(Upper->vSecondEdgeUE3Cm[iAxis] -
-				 Lower.vSecondEdgeUE3Cm[iAxis]) * fRatio;
-		}
-		Out = std::move(Staged);
-		return true;
-	}
-
-	float3_t Transform_BakedEdgeUE3Cm(
-		const std::array<double, 3u>& Source,
-		const matrix_t& WorldMatrix)
-	{
-		const float3_t SourceUE3Cm(
-			static_cast<f32_t>(Source[0]),
-			static_cast<f32_t>(Source[1]),
-			static_cast<f32_t>(Source[2]));
-		const float3_t Local = UE3_CentimetersToClient(SourceUE3Cm);
-		float3_t World{};
-		XMStoreFloat3(&World, XMVector3TransformCoord(
-			XMLoadFloat3(&Local), WorldMatrix));
-		return World;
-	}
-
 	float3_t Get_Translation(const float4x4_t& Matrix)
 	{
 		return float3_t(Matrix._41, Matrix._42, Matrix._43);
@@ -581,9 +511,6 @@ namespace
 			Packet.strSourceAnchorSlotId == Target.strSourceAnchorSlotId &&
 			Packet.strRuntimeAnchorSlotId == Target.strRuntimeAnchorSlotId &&
 			Packet.strRuntimeBoneName == Target.strRuntimeBoneName &&
-			Nearly_EqualTrailValue(
-				Packet.fSnapshotRootSourceBasisYawDegrees,
-				Target.fSnapshotRootSourceBasisYawDegrees) &&
 			Matches3(Packet.vPosition,
 				Target.SocketLocalTransform.vPosition) &&
 			Matches3(Packet.vRotationDegrees,
@@ -689,16 +616,7 @@ namespace
 		}
 		const Client::EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_PACKET& Packet =
 			*Supplemental.AnimationTrailPacket;
-		const bool_t bLegacyPacket = 1u == Packet.iPacketVersion &&
-			Packet.strRuntimeCarrier == "EFFECT_TYPED_ANIMATION_TRAIL_V1";
-		const bool_t bBakedEdgePacket = 2u == Packet.iPacketVersion &&
-			Packet.strRuntimeCarrier ==
-				"EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1" &&
-			!Packet.strHistoryId.empty() && !Packet.strHistorySha256.empty() &&
-			Packet.fPlaybackClampSeconds > 0.0 &&
-			Packet.strCoordinateBasis ==
-				"UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS";
-		if ((!bLegacyPacket && !bBakedEdgePacket) ||
+		if (0u == Packet.iPacketVersion ||
 			Packet.strAdapterId != Supplemental.strAdapterId ||
 			!Packet.bBoundedSemanticReplay || Packet.bNativeExecution ||
 			Packet.strRuntimeCarrier.empty() ||
@@ -716,8 +634,6 @@ namespace
 				Supplemental.fSourceTimelineSeconds) ||
 			!Nearly_EqualTrailValue(Packet.fDurationSeconds,
 				Supplemental.fDurationSeconds) ||
-			(bBakedEdgePacket && !Nearly_EqualTrailValue(
-				Packet.fPlaybackClampSeconds, Packet.fDurationSeconds)) ||
 			!Matches_TrailTiming(Packet.TargetTiming, Target.Detail.Timing) ||
 			!Matches_TrailAttachment(Packet.Attachment,
 				Target.ActionCueAttachment) ||
@@ -725,80 +641,6 @@ namespace
 		{
 			strOutError =
 				"AnimationTrail immutable notify packet does not match its projected Trail target.";
-			return false;
-		}
-		return true;
-	}
-
-	bool_t Validate_BakedEdgeLightPacket(
-		const Client::EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental,
-		const Client::EFFECT_ELEMENT_DESC& Target,
-		std::string& strOutError)
-	{
-		if (!Supplemental.BakedEdgeLightPacket.has_value() ||
-			Supplemental.CascadeRibbonPacket.has_value() ||
-			Supplemental.AnimationTrailPacket.has_value() ||
-			Target.eKind != Client::EFFECT_ELEMENT_KIND::LIGHT ||
-			!Target.bVisible || Target.SourceRecipe.bEnabled ||
-			!Target.SourceRecipe.Modules.empty())
-		{
-			strOutError =
-				"Baked-edge Light target or immutable packet is invalid.";
-			return false;
-		}
-		const Client::EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LIGHT_PACKET& Packet =
-			*Supplemental.BakedEdgeLightPacket;
-		const auto& Profile = Packet.TargetLight;
-		const auto Matches4 = [](const std::array<double, 4u>& Left,
-			const float4_t& Right)
-		{
-			return Nearly_EqualTrailValue(Left[0u], Right.x) &&
-				Nearly_EqualTrailValue(Left[1u], Right.y) &&
-				Nearly_EqualTrailValue(Left[2u], Right.z) &&
-				Nearly_EqualTrailValue(Left[3u], Right.w);
-		};
-		if (1u != Packet.iPacketVersion ||
-			Packet.strAdapterId != Supplemental.strAdapterId ||
-			!Packet.bBoundedSemanticReplay || Packet.bNativeExecution ||
-			Packet.strRuntimeCarrier !=
-				"EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1" ||
-			Packet.strSourceEventId != Supplemental.strSourceEventId ||
-			Packet.strSourceEventRecordSha256.empty() ||
-			Packet.strTargetElementId != Target.strElementId ||
-			Packet.strTargetElementId !=
-				Supplemental.TargetIdentity.strTargetElementId ||
-			Packet.strPacketSha256.empty() ||
-			Packet.eLane !=
-				Client::EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LANE::FIRST_EDGE ||
-			!Nearly_EqualTrailValue(Packet.fActiveStartSeconds,
-				Supplemental.fLocalTimeSeconds) ||
-			!Nearly_EqualTrailValue(Packet.fActiveDurationSeconds,
-				Supplemental.fDurationSeconds) ||
-			!Nearly_EqualTrailValue(Packet.fActiveEndSeconds,
-				Packet.fActiveStartSeconds + Packet.fActiveDurationSeconds) ||
-			!Nearly_EqualTrailValue(Packet.fActiveStartSeconds,
-				Target.Detail.Timing.fStartDelaySeconds) ||
-			!Nearly_EqualTrailValue(Packet.fActiveDurationSeconds,
-				Target.Detail.Timing.fLifeTimeSeconds) ||
-			!Profile.bEnabled ||
-			Profile.strProfileId != "light.point.reconstructed.v1" ||
-			Profile.strStatus != "reconstructed_profile" ||
-			!Target.Detail.Light.bEnabled ||
-			Target.Detail.Light.eProfile !=
-				Client::EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1 ||
-			Target.Detail.Light.eStatus !=
-				Client::EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE ||
-			!Nearly_EqualTrailValue(Profile.fRange,
-				Target.Detail.Light.fRange) ||
-			!Nearly_EqualTrailValue(Profile.fIntensity,
-				Target.Detail.Light.fIntensity) ||
-			!Matches4(Profile.vColor, Target.Detail.Light.vColor) ||
-			!Matches4(Profile.vAmbient, Target.Detail.Light.vAmbient) ||
-			!Nearly_EqualTrailValue(Profile.fFalloffExponent,
-				Target.Detail.Light.fFalloffExponent))
-		{
-			strOutError =
-				"Baked-edge Light packet does not match its projected target.";
 			return false;
 		}
 		return true;
@@ -1986,48 +1828,17 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedVisualProgramDocument(
 		if (pProjection->Get_ProjectionKind() ==
 			EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1)
 		{
-			bool_t bSupplementalValid = false;
-			if (Supplemental.eFamily ==
-				EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL &&
-				Supplemental.AnimationTrailPacket.has_value())
-			{
-				const auto& Packet = *Supplemental.AnimationTrailPacket;
-				const auto* const pHistory = 2u == Packet.iPacketVersion ?
-					pProjection->Find_BakedEdgeHistory(Packet.strHistoryId) : nullptr;
-				const bool_t bHistoryValid = 1u == Packet.iPacketVersion ||
-					(nullptr != pHistory &&
-					 pHistory->strHistorySha256 == Packet.strHistorySha256 &&
-					 pHistory->strCoordinateBasis == Packet.strCoordinateBasis &&
-					 Nearly_EqualTrailValue(pHistory->fPlaybackClampSeconds,
-						 Packet.fPlaybackClampSeconds));
-				bSupplementalValid = bHistoryValid &&
-					Validate_AnimationTrailPacket(
-						Supplemental, *pTarget, strOutError);
-			}
-			else if (Supplemental.eFamily ==
-				EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE &&
-				Supplemental.BakedEdgeLightPacket.has_value())
-			{
-				const auto& Packet = *Supplemental.BakedEdgeLightPacket;
-				const auto* const pHistory =
-					pProjection->Find_BakedEdgeHistory(Packet.strHistoryId);
-				const bool_t bHistoryValid = nullptr != pHistory &&
-					pHistory->strHistorySha256 == Packet.strHistorySha256 &&
-					pHistory->strCoordinateBasis == Packet.strCoordinateBasis &&
-					Nearly_EqualTrailValue(pHistory->fPlaybackClampSeconds,
-						Packet.fHistoryPlaybackClampSeconds);
-				bSupplementalValid = bHistoryValid &&
-					Validate_BakedEdgeLightPacket(
-						Supplemental, *pTarget, strOutError);
-			}
-			if (!bSupplementalValid ||
+			if (Supplemental.eFamily !=
+					EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL ||
+				!Validate_AnimationTrailPacket(
+					Supplemental, *pTarget, strOutError) ||
 				!SourceVisualTargetElementIds.emplace(
 					Supplemental.TargetIdentity.strTargetElementId).second)
 			{
 				if (strOutError.empty())
 				{
 					strOutError =
-						"Baked-edge supplemental target closure is invalid.";
+						"AnimationTrail supplemental target closure is invalid.";
 				}
 				return false;
 			}
@@ -3174,14 +2985,13 @@ void Client::CEffectPlayback::Spawn_Particles(
 					Particle.vVelocity, Desc.SourceScale.fSpeed);
 				Particle.vBaseVelocity = Scale3(
 					Particle.vBaseVelocity, Desc.SourceScale.fSpeed);
-				/* Source rotation modules have already converted UE3 turns to
-				   degrees.  Scale their initial sprite and mesh results exactly
-				   once here; update rates are scaled at their integration sites
-				   after per-frame module scales have been rebuilt. */
-				Particle.vRotationDegrees = Scale3(
-					Particle.vRotationDegrees, Desc.SourceScale.fRotation);
-				Particle.vSourceMeshRotationDegrees = Scale3(
-					Particle.vSourceMeshRotationDegrees,
+				/* The rate scales already exist for the modules' own use, so
+				   the trim multiplies them rather than the rate itself and the
+				   per-particle module output stays authoritative. */
+				Particle.vRotationRateScale = Scale3(
+					Particle.vRotationRateScale, Desc.SourceScale.fRotation);
+				Particle.vSourceMeshRotationRateScale = Scale3(
+					Particle.vSourceMeshRotationRateScale,
 					Desc.SourceScale.fRotation);
 				Particle.vBaseColor.w *= Desc.SourceScale.fAlpha;
 				Particle.vColor.w = Particle.vBaseColor.w;
@@ -4418,8 +4228,7 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 			Particle.vSourceMeshRotationDegrees = Add3(
 				Particle.vSourceMeshRotationDegrees,
 				Scale3(Evaluate_ModuleVector(State, Module, "rotrate",
-					fNormalizedAge, float3_t{}), 360.f * fFixedDelta *
-						Element.Detail.Particle.SourceScale.fRotation));
+					fNormalizedAge, float3_t{}), 360.f * fFixedDelta));
 		}
 		else if (SourceClass_Matches(Module, "particlemodulecameraoffset"))
 		{
@@ -4507,16 +4316,13 @@ void Client::CEffectPlayback::Apply_SourceUpdateModules(
 		}
 	}
 
-	const f32_t fSourceRotationScale =
-		Element.Detail.Particle.SourceScale.fRotation;
 	Particle.vRotationDegrees = Add3(Particle.vRotationDegrees,
 		Scale3(Multiply3(Particle.vRotationRateDegreesPerSecond,
-			Particle.vRotationRateScale), fFixedDelta * fSourceRotationScale));
+			Particle.vRotationRateScale), fFixedDelta));
 	Particle.vSourceMeshRotationDegrees = Add3(
 		Particle.vSourceMeshRotationDegrees,
 		Scale3(Multiply3(Particle.vSourceMeshRotationRateDegreesPerSecond,
-			Particle.vSourceMeshRotationRateScale),
-			fFixedDelta * fSourceRotationScale));
+			Particle.vSourceMeshRotationRateScale), fFixedDelta));
 }
 
 void Client::CEffectPlayback::Sample_Trail(
@@ -4527,7 +4333,6 @@ void Client::CEffectPlayback::Sample_Trail(
 {
 	bool_t bCascadeRibbon = false;
 	bool_t bAnimationTrail = false;
-	bool_t bBakedEdgeAnimationTrail = false;
 	if (Is_SourceVisualProgramElementAdmitted(Element))
 	{
 		/* Reconstructed Artist and admitted BA documents share this consumer.
@@ -4553,24 +4358,9 @@ void Client::CEffectPlayback::Sample_Trail(
 			bAnimationTrail = nullptr != pSupplemental &&
 				pSupplemental->eFamily ==
 					EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL;
-			bBakedEdgeAnimationTrail = bAnimationTrail &&
-				pSupplemental->AnimationTrailPacket.has_value() &&
-				2u == pSupplemental->AnimationTrailPacket->iPacketVersion;
 		}
 	}
 	const bool_t bSourceVisualTrail = bCascadeRibbon || bAnimationTrail;
-	const bool_t bFlowRibbon01 = bCascadeRibbon &&
-		Resolve_EffectStrictTypedSourceProfile(
-			Element.Material.strSourceMaterialPath,
-			Element.Material.SourceMaterial) ==
-			EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWRIBBON01;
-	if (bBakedEdgeAnimationTrail)
-	{
-		State.TrailPoints.clear();
-		State.fTrailSampleAccumulator = 0.f;
-		State.fTrailCumulativeDistance = 0.f;
-		return;
-	}
 	constexpr f32_t SOURCE_VISUAL_RIBBON_TIME_EPSILON_SECONDS = 1e-6f;
 	const auto EvaluateDeterministicFloat = [&Element](
 		const char_t* pModuleClass,
@@ -4594,156 +4384,26 @@ void Client::CEffectPlayback::Sample_Trail(
 		fOutValue = fValue;
 		return true;
 	};
-	const auto EvaluateDeterministicVector = [&Element](
-		const char_t* pModuleClass,
-		const std::string_view PropertyPath,
-		const f32_t fTime,
-		const float3_t& Fallback,
-		float3_t& vOutValue)
-	{
-		const EFFECT_SOURCE_MODULE_DESC* pModule =
-			Find_SourceModule(Element, pModuleClass);
-		const EFFECT_DISTRIBUTION_DESC* pDistribution =
-			Find_SourceDistribution(pModule, PropertyPath);
-		if (nullptr == pDistribution || 1u != pDistribution->iOperation)
-			return false;
-		const bool_t bImplicitIdentity =
-			pDistribution->LookupTable.empty() && pDistribution->Keys.empty() &&
-			pDistribution->vDefaultMinimum.x == 0.f &&
-			pDistribution->vDefaultMinimum.y == 0.f &&
-			pDistribution->vDefaultMinimum.z == 0.f &&
-			pDistribution->vDefaultMaximum.x == 0.f &&
-			pDistribution->vDefaultMaximum.y == 0.f &&
-			pDistribution->vDefaultMaximum.z == 0.f;
-		if (bImplicitIdentity)
-		{
-			vOutValue = Fallback;
-			return true;
-		}
-		const float4_t Value = CEffectDistribution::Evaluate(
-			*pDistribution, fTime, float4_t{});
-		if (!std::isfinite(Value.x) || !std::isfinite(Value.y) ||
-			!std::isfinite(Value.z))
-		{
-			return false;
-		}
-		vOutValue = { Value.x, Value.y, Value.z };
-		return true;
-	};
-	const auto EvaluateIdentityFloat = [&Element](
-		const char_t* pModuleClass,
-		const std::string_view PropertyPath,
-		const f32_t fTime,
-		const f32_t fFallback,
-		f32_t& fOutValue)
-	{
-		const EFFECT_SOURCE_MODULE_DESC* pModule =
-			Find_SourceModule(Element, pModuleClass);
-		const EFFECT_DISTRIBUTION_DESC* pDistribution =
-			Find_SourceDistribution(pModule, PropertyPath);
-		if (nullptr == pDistribution || 1u != pDistribution->iOperation)
-			return false;
-		if (Uses_ImplicitAlphaIdentity(*pDistribution, PropertyPath))
-		{
-			fOutValue = fFallback;
-			return true;
-		}
-		const f32_t fValue = CEffectDistribution::Evaluate(
-			*pDistribution, fTime, float4_t{}).x;
-		if (!std::isfinite(fValue))
-			return false;
-		fOutValue = fValue;
-		return true;
-	};
-	const auto UpdatePointPayload = [this, &Element, bFlowRibbon01,
-		&EvaluateDeterministicFloat, &EvaluateDeterministicVector,
-		&EvaluateIdentityFloat](
+	const auto UpdatePointPayload = [this, &Element, &EvaluateDeterministicFloat](
 		EFFECT_EVALUATED_TRAIL_POINT& Point)
 	{
 		Point.vSourceColor = { 1.f, 1.f, 1.f, 1.f };
 		Point.vDynamicParameter = {};
-		Point.fSourceWidth = 0.f;
 		Point.iSourceColorComponentMask = 0u;
 		Point.iDynamicParameterComponentMask = 0u;
 
-		if (bFlowRibbon01)
+		f32_t fStartAlpha = 0.f;
+		f32_t fAlphaScale = 0.f;
+		if (EvaluateDeterministicFloat(
+				"particlemodulecolor", "startalpha", 0.f, fStartAlpha) &&
+			EvaluateDeterministicFloat("particlemodulecolorscaleoverlife",
+				"alphascaleoverlife", Point.fNormalizedAge, fAlphaScale) &&
+			std::isfinite(fStartAlpha * fAlphaScale))
 		{
-			float3_t StartColor{};
-			float3_t ColorScale{};
-			f32_t fStartAlpha = 0.f;
-			f32_t fAlphaScale = 0.f;
-			const bool_t bColorExact = EvaluateDeterministicVector(
-				"particlemodulecolor", "startcolor", 0.f,
-				float3_t(1.f, 1.f, 1.f), StartColor) &&
-				EvaluateDeterministicVector(
-					"particlemodulecolorscaleoverlife", "colorscaleoverlife",
-					Point.fNormalizedAge, float3_t(1.f, 1.f, 1.f),
-					ColorScale) &&
-				EvaluateIdentityFloat(
-					"particlemodulecolor", "startalpha", 0.f, 1.f,
-					fStartAlpha) &&
-				EvaluateIdentityFloat("particlemodulecolorscaleoverlife",
-					"alphascaleoverlife", Point.fNormalizedAge, 1.f,
-					fAlphaScale);
-			if (bColorExact)
-			{
-				Point.vSourceColor = {
-					StartColor.x * ColorScale.x,
-					StartColor.y * ColorScale.y,
-					StartColor.z * ColorScale.z,
-					fStartAlpha * fAlphaScale };
-				if (std::isfinite(Point.vSourceColor.x) &&
-					std::isfinite(Point.vSourceColor.y) &&
-					std::isfinite(Point.vSourceColor.z) &&
-					std::isfinite(Point.vSourceColor.w))
-				{
-					Point.iSourceColorComponentMask = 0x0fu;
-				}
-			}
-
-			float3_t StartSize{};
-			float3_t WidthScale(1.f, 1.f, 1.f);
-			if (EvaluateDeterministicVector(
-					"particlemodulesize", "startsize", 0.f, float3_t{},
-					StartSize))
-			{
-				const auto ApplyWidthScale = [&EvaluateDeterministicVector,
-					&WidthScale](const char_t* pClass, const char_t* pProperty,
-					const f32_t fTime)
-				{
-					float3_t Scale{};
-					if (EvaluateDeterministicVector(
-							pClass, pProperty, fTime,
-							float3_t(1.f, 1.f, 1.f), Scale))
-					{
-						WidthScale = Multiply3(WidthScale, Scale);
-					}
-				};
-				ApplyWidthScale("particlemodulesizescalebytime",
-					"sizescalebytime", Point.fNormalizedAge *
-						Element.Detail.Trail.fPointLifeTimeSeconds);
-				ApplyWidthScale("particlemodulesizescale", "sizescale",
-					Point.fNormalizedAge);
-				ApplyWidthScale("particlemodulesizemultiplylife",
-					"lifemultiplier", Point.fNormalizedAge);
-				Point.fSourceWidth = std::abs(StartSize.x * WidthScale.x) * 0.01f;
-			}
+			Point.vSourceColor.w = fStartAlpha * fAlphaScale;
+			Point.iSourceColorComponentMask = 1u << 3u;
 		}
-		else
-		{
-			f32_t fStartAlpha = 0.f;
-			f32_t fAlphaScale = 0.f;
-			if (EvaluateDeterministicFloat(
-					"particlemodulecolor", "startalpha", 0.f, fStartAlpha) &&
-				EvaluateDeterministicFloat("particlemodulecolorscaleoverlife",
-					"alphascaleoverlife", Point.fNormalizedAge, fAlphaScale) &&
-				std::isfinite(fStartAlpha * fAlphaScale))
-			{
-				Point.vSourceColor.w = fStartAlpha * fAlphaScale;
-				Point.iSourceColorComponentMask = 1u << 3u;
-			}
-		}
-		if (!bFlowRibbon01 && !Element.SourceRecipe.bEnabled &&
+		else if (!Element.SourceRecipe.bEnabled &&
 			Element.Material.Execution.bEnabled &&
 			Element.Material.Execution.eBackend ==
 				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
@@ -4872,153 +4532,6 @@ void Client::CEffectPlayback::Sample_Trail(
 	State.TrailPoints.push_back(std::move(Point));
 	while (State.TrailPoints.size() > Element.Detail.Trail.iMaxPoints)
 		State.TrailPoints.erase(State.TrailPoints.begin());
-}
-
-bool_t Client::CEffectPlayback::Build_BakedAnimationTrail(
-	const EFFECT_ELEMENT_DESC& Element,
-	const float4x4_t& RootWorld,
-	EFFECT_EVALUATED_TRAIL& OutTrail) const
-{
-	if (nullptr == m_pSourceVisualProgramProjection)
-		return false;
-	const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT* const pSupplemental =
-		m_pSourceVisualProgramProjection->
-			Find_SupplementalElementByTargetElementId(Element.strElementId);
-	if (nullptr == pSupplemental ||
-		pSupplemental->eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL ||
-		!pSupplemental->AnimationTrailPacket.has_value() ||
-		2u != pSupplemental->AnimationTrailPacket->iPacketVersion)
-	{
-		return false;
-	}
-	const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_PACKET& Packet =
-		*pSupplemental->AnimationTrailPacket;
-	const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY* const pHistory =
-		m_pSourceVisualProgramProjection->Find_BakedEdgeHistory(
-			Packet.strHistoryId);
-	OutTrail = {};
-	OutTrail.pElement = &Element;
-	if (nullptr == pHistory || pHistory->Samples.size() < 2u ||
-		pHistory->strHistorySha256 != Packet.strHistorySha256)
-	{
-		return true;
-	}
-
-	const double fLocalTime = static_cast<double>(m_fSampleTimeSeconds) -
-		Packet.fLocalTimeSeconds;
-	if (fLocalTime < 0.0 ||
-		fLocalTime > Packet.fPlaybackClampSeconds + 1e-6)
-		return true;
-	const double fClampedTime = (std::min)(
-		fLocalTime, Packet.fPlaybackClampSeconds);
-	const auto Upper = std::upper_bound(
-		pHistory->Samples.begin(), pHistory->Samples.end(), fClampedTime,
-		[](const double Time, const auto& Sample)
-		{
-			return Time < Sample.fRelativeTimeSeconds;
-		});
-	const size_t iCompleteSampleCount = static_cast<size_t>(
-		std::distance(pHistory->Samples.begin(), Upper));
-	OutTrail.EdgePairs.reserve(iCompleteSampleCount + 1u);
-	const float4x4_t ElementWorld = Evaluate_ElementWorld(
-		Element, m_fSampleTimeSeconds, RootWorld);
-	const matrix_t WorldMatrix = XMLoadFloat4x4(&ElementWorld);
-	const auto AppendSample = [this, &Element, &OutTrail, &WorldMatrix,
-		fClampedTime](
-		const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE& Sample)
-	{
-		EFFECT_EVALUATED_TRAIL_EDGE_PAIR Pair;
-		Pair.vFirstEdgeWorld = Transform_BakedEdgeUE3Cm(
-			Sample.vFirstEdgeUE3Cm, WorldMatrix);
-		Pair.vControlPointWorld = Transform_BakedEdgeUE3Cm(
-			Sample.vControlPointUE3Cm, WorldMatrix);
-		Pair.vSecondEdgeWorld = Transform_BakedEdgeUE3Cm(
-			Sample.vSecondEdgeUE3Cm, WorldMatrix);
-		Pair.Payload.vWorldPosition = Pair.vControlPointWorld;
-		const double fPointLifeTime = (std::max)(1e-6,
-			static_cast<double>(Element.Detail.Trail.fPointLifeTimeSeconds));
-		Pair.Payload.fNormalizedAge = static_cast<f32_t>((std::min)(
-			0.999999, (std::max)(0.0,
-				(fClampedTime - Sample.fRelativeTimeSeconds) / fPointLifeTime)));
-		if (!OutTrail.EdgePairs.empty())
-		{
-			const float3_t& Previous =
-				OutTrail.EdgePairs.back().vControlPointWorld;
-			const f32_t fDistance = std::sqrt(DistanceSquared(
-				Pair.vControlPointWorld, Previous));
-			if (std::isfinite(fDistance))
-			{
-				Pair.Payload.fCumulativeDistance =
-					OutTrail.EdgePairs.back().Payload.fCumulativeDistance +
-					fDistance;
-			}
-		}
-		const EFFECT_COLOR_DESC Color = Evaluate_Color(
-			Element, Pair.Payload.fNormalizedAge);
-		Pair.Payload.vSourceColor.w = (std::max)(0.f,
-			Color.vColorMultiply.w) *
-			(1.f - Pair.Payload.fNormalizedAge);
-		Pair.Payload.iSourceColorComponentMask = 0x08u;
-		OutTrail.EdgePairs.push_back(std::move(Pair));
-	};
-
-	for (size_t iSample = 0u; iSample < iCompleteSampleCount; ++iSample)
-		AppendSample(pHistory->Samples[iSample]);
-	if (Upper != pHistory->Samples.end() && iCompleteSampleCount > 0u)
-	{
-		const auto& Previous = pHistory->Samples[iCompleteSampleCount - 1u];
-		if (fClampedTime > Previous.fRelativeTimeSeconds + 1e-9)
-		{
-			EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE Interpolated;
-			if (Interpolate_BakedEdgeHistorySample(
-					*pHistory, fClampedTime, Interpolated))
-				AppendSample(Interpolated);
-		}
-	}
-	return true;
-}
-
-bool_t Client::CEffectPlayback::Evaluate_BakedEdgeLightWorldPosition(
-	const EFFECT_ELEMENT_DESC& Element,
-	const float4x4_t& RootWorld,
-	float3_t& vOutWorldPosition) const
-{
-	if (nullptr == m_pSourceVisualProgramProjection)
-		return false;
-	const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT* const pSupplemental =
-		m_pSourceVisualProgramProjection->
-			Find_SupplementalElementByTargetElementId(Element.strElementId);
-	if (nullptr == pSupplemental ||
-		pSupplemental->eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE ||
-		!pSupplemental->BakedEdgeLightPacket.has_value())
-		return false;
-	const EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LIGHT_PACKET& Packet =
-		*pSupplemental->BakedEdgeLightPacket;
-	const double fActionTimeSeconds = static_cast<double>(m_fSampleTimeSeconds);
-	if (fActionTimeSeconds < Packet.fActiveStartSeconds - 1e-6 ||
-		fActionTimeSeconds > Packet.fActiveEndSeconds + 1e-6 ||
-		Packet.eLane != EFFECT_VISUAL_PROGRAM_BAKED_EDGE_LANE::FIRST_EDGE)
-		return false;
-	const EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_HISTORY* const pHistory =
-		m_pSourceVisualProgramProjection->Find_BakedEdgeHistory(
-			Packet.strHistoryId);
-	if (nullptr == pHistory ||
-		pHistory->strHistorySha256 != Packet.strHistorySha256 ||
-		pHistory->strCoordinateBasis != Packet.strCoordinateBasis)
-		return false;
-	EFFECT_VISUAL_PROGRAM_ANIMATION_TRAIL_EDGE_SAMPLE Sample;
-	const double fHistoryTimeSeconds = (std::min)(
-		fActionTimeSeconds, Packet.fHistoryPlaybackClampSeconds);
-	if (!Interpolate_BakedEdgeHistorySample(
-			*pHistory, fHistoryTimeSeconds, Sample))
-		return false;
-	const float4x4_t ElementWorld = Evaluate_ElementWorld(
-		Element, m_fSampleTimeSeconds, RootWorld);
-	vOutWorldPosition = Transform_BakedEdgeUE3Cm(
-		Sample.vFirstEdgeUE3Cm, XMLoadFloat4x4(&ElementWorld));
-	return std::isfinite(vOutWorldPosition.x) &&
-		std::isfinite(vOutWorldPosition.y) &&
-		std::isfinite(vOutWorldPosition.z);
 }
 
 void Client::CEffectPlayback::Sample_AfterImages(
@@ -5398,25 +4911,9 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 				"alphascaleoverlife", T, fStableRandom, 1.f);
 			EFFECT_EVALUATED_LIGHT Light;
 			Light.pElement = &Element;
-			const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT* const
-				pLightSupplemental = nullptr != m_pSourceVisualProgramProjection ?
-					m_pSourceVisualProgramProjection->
-						Find_SupplementalElementByTargetElementId(
-							Element.strElementId) : nullptr;
-			const bool_t bBakedEdgeLight = nullptr != pLightSupplemental &&
-				pLightSupplemental->BakedEdgeLightPacket.has_value();
-			if (bBakedEdgeLight)
-			{
-				if (!Evaluate_BakedEdgeLightWorldPosition(
-						Element, RootWorld, Light.vWorldPosition))
-					continue;
-			}
-			else
-			{
-				XMStoreFloat3(&Light.vWorldPosition, XMVector3TransformCoord(
-					XMLoadFloat3(&Element.Detail.Particle.vInitialPositionMin),
-					XMLoadFloat4x4(&World)));
-			}
+			XMStoreFloat3(&Light.vWorldPosition, XMVector3TransformCoord(
+				XMLoadFloat3(&Element.Detail.Particle.vInitialPositionMin),
+				XMLoadFloat4x4(&World)));
 			Light.fRange = Element.Detail.Light.fRange;
 			Light.fIntensity = Element.Detail.Light.fIntensity *
 				(std::max)(0.f, fAlpha) *
@@ -5631,19 +5128,8 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 			}
 		}
 
-		EFFECT_EVALUATED_TRAIL BakedTrail;
-		if (Build_BakedAnimationTrail(Element, RootWorld, BakedTrail))
-		{
-			if (BakedTrail.EdgePairs.size() >= 2u)
-				m_Frame.Trails.push_back(std::move(BakedTrail));
-		}
-		else if (!State.TrailPoints.empty())
-		{
-			EFFECT_EVALUATED_TRAIL Trail;
-			Trail.pElement = &Element;
-			Trail.Points = State.TrailPoints;
-			m_Frame.Trails.push_back(std::move(Trail));
-		}
+		if (!State.TrailPoints.empty())
+			m_Frame.Trails.push_back({ &Element, State.TrailPoints });
 
 		for (const AFTERIMAGE_STATE& AfterImage : State.AfterImages)
 		{

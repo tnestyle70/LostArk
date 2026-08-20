@@ -1604,7 +1604,7 @@ bool_t Client::CEffectCascadeCompiler::Compile_SourceInspection(
 	Append_Blocker(Staged->Blockers, "SOURCE_TYPED_DISTRIBUTION_ADAPTER_PENDING");
 	Append_Blocker(Staged->Blockers, "SIX_RENDERER_CONSUMERS_PENDING");
 	Append_Blocker(Staged->Blockers, "GEOMETRY_SCALE_CONSUMER_PENDING");
-		Append_Blocker(Staged->Blockers, "PREPARED_REVISION_PENDING");
+	Append_Blocker(Staged->Blockers, "EFFECT_TOOL_PREPARED_REVISION_PENDING");
 	Append_Blocker(Staged->Blockers,
 		"CANONICAL_DOCUMENT_CHECKSUM_NOT_AUTHENTICATION");
 	Append_Blocker(Staged->Blockers, "SELF_CONSISTENT_UNAUTHENTICATED");

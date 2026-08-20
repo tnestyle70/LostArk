@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Build and verify the product-admitted v13 Valtan Whirlwind Effect canary.
+"""Build and verify the non-product v13 Valtan Whirlwind Effect canary.
 
 The builder traces every selected stage-002 source occurrence to its first-LOD
 Cascade emitter.  A carrier becomes visible only when its portable SourceRecipe,
 source Material profile, runtime resources, and (for Mesh) cooked geometry are
-all evidence-closed.  Generic source-recipe execution remains disabled for the
-three AnimationTrail carriers and the Point Light carrier: the visual-program
-supplemental owns their baked edge geometry/attachment while the authored
-document keeps a hidden, transactionally validated target row.
+all evidence-closed.  AnimationTrail recipe/DDS data remains in a disabled v13
+quarantine for its required adapter; Light and incomplete Dust stay explicitly
+fail-closed.  This slice never writes Catalog or AnimEvent mappings.
 """
 
 from __future__ import annotations
@@ -125,10 +124,8 @@ EXPECTED_GRAPH_ROOTS = {
 }
 EXPECTED_BRANCH_CONDITION_ID = "action-420633/stage-001/notify-004"
 EXPECTED_CARRIER_DENOMINATOR = 9
-EXPECTED_PRODUCT_EXECUTABLE_CARRIER_COUNT = 9
-EXPECTED_BASE_VISIBLE_CARRIER_COUNT = 5
-EXPECTED_TYPED_SUPPLEMENTAL_CARRIER_COUNT = 4
-EXPECTED_FAIL_CLOSED_CARRIER_COUNT = 0
+EXPECTED_VISIBLE_CARRIER_COUNT = 3
+EXPECTED_FAIL_CLOSED_CARRIER_COUNT = 6
 EXPECTED_CARRIER_BLOCKERS = {
     "valtan.420633.notify004.emitter5259": (
         "ANIMATION_TRAIL_RUNTIME_BINDING_NOT_MATERIALIZED",
@@ -141,6 +138,13 @@ EXPECTED_CARRIER_BLOCKERS = {
     "valtan.420633.notify004.emitter5258": (
         "ANIMATION_TRAIL_RUNTIME_BINDING_NOT_MATERIALIZED",
         "PORTABLE_V13_UNSUPPORTED_MODULE_PARTICLEMODULETYPEDATAANIMTRAIL",
+    ),
+    "valtan.420633.notify005.emitter7034": (
+        "SOURCE_DYNAMIC_PARAMETER_ABI_NOT_EVIDENCE_CLOSED",
+        "SOURCE_MATERIAL_FINITE_PROFILE_NOT_EVIDENCE_CLOSED",
+    ),
+    "valtan.420633.notify005.emitter7035": (
+        "SOURCE_MATERIAL_REQUIRED_RUNTIME_RESOURCES_NOT_COOKED_FOR_VALTAN",
     ),
     "valtan.420633.notify009.emitter6823": (
         "LIGHT_SOURCE_GRAPH_EXTERNAL_MODULES_UNRESOLVED",
@@ -160,28 +164,6 @@ EXPECTED_CANARY_DISPLAY_NAME = (
 DEFERRED_ANIMATION_TRAIL_PROFILE_ID = (
     "valtan.animation-trail-required-adapter.v1"
 )
-TYPED_ANIMATION_TRAIL_PROFILE_ID = (
-    "valtan.animation-trail-baked-edge-history.v1"
-)
-TYPED_LIGHT_PROFILE_ID = "valtan.light-baked-first-edge.v1"
-EXPECTED_BAKED_EDGE_HISTORY_ID = (
-    "valtan.420633.animnotify-trails-479.baked-edges"
-)
-EXPECTED_BAKED_EDGE_HISTORY_ARTIFACT_SHA256 = (
-    "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64"
-)
-EXPECTED_BAKED_EDGE_SAMPLE_COUNT = 409
-EXPECTED_BAKED_EDGE_CLAMP_SECONDS = 1.2000000476837158
-EXPECTED_LIGHT_PROFILE = {
-    "enabled": False,
-    "profileId": "light.point.reconstructed.v1",
-    "status": "reconstructed_profile",
-    "range": 2.0,
-    "intensity": 10.0,
-    "color": [1.0, 1.0, 1.0, 1.0],
-    "ambient": [0.0, 0.0, 0.0, 1.0],
-    "falloffExponent": 2.0,
-}
 
 
 @dataclass(frozen=True)
@@ -830,67 +812,6 @@ def _validate_visible_resources(
     imported_pairs = {
         (row["slotId"], row["assetId"]) for row in imported_resources
     }
-    resource_evidence_kind = carrier["materialAdmission"].get(
-        "resourceEvidenceKind", "SOURCE_GRAPH_RUNTIME_COOK"
-    )
-    if resource_evidence_kind == "REPOSITORY_SHARED_RUNTIME_CONTRACT":
-        admission = carrier["materialAdmission"]
-        evidence_path = repository_root / admission["evidencePath"]
-        if raw_sha256(evidence_path) != admission["evidenceSha256"]:
-            raise ContractError(
-                f"{carrier['carrierId']} shared Material contract SHA-256 changed"
-            )
-        contract = load_json(evidence_path)
-        identity = _one(
-            contract.get("materialIdentities", []),
-            lambda row: str(row.get("sourceMaterialPath", "")).casefold()
-            == carrier["sourceMaterialPath"].casefold(),
-            f"shared source Material identity {carrier['sourceMaterialPath']}",
-        )
-        required_pairs = {
-            (row["slotId"], row["assetId"])
-            for row in identity.get("requiredRuntimeBindings", [])
-        }
-        referenced_leaves = {
-            str(value).casefold().rsplit(".", 1)[-1]
-            for value in identity.get("referencedTextures", [])
-        }
-        referenced_sources = {
-            str(row.get("sourceObjectPath", "")).casefold()
-            for row in identity.get("sourceTextureRoleDiagnostics", [])
-            if str(row.get("sourceObjectPath", ""))
-            .casefold()
-            .rsplit(".", 1)[-1]
-            in referenced_leaves
-        }
-        mapped_sources = {
-            str(row["sourceObjectPath"]).casefold()
-            for row in carrier["resources"]
-        }
-        if (
-            imported_pairs
-            or mapped_pairs != required_pairs
-            or mapped_sources != referenced_sources
-        ):
-            raise ContractError(
-                f"{carrier['carrierId']} shared runtime resource contract changed"
-            )
-        for resource in carrier["resources"]:
-            runtime_path = (
-                repository_root
-                / RUNTIME_RESOURCE_ROOT
-                / PurePosixPath(resource["assetId"])
-            )
-            if raw_sha256(runtime_path) != resource["sha256"]:
-                raise ContractError(
-                    f"{carrier['carrierId']} shared runtime resource changed: "
-                    f"{resource['assetId']}"
-                )
-        return
-    if resource_evidence_kind != "SOURCE_GRAPH_RUNTIME_COOK":
-        raise ContractError(
-            f"{carrier['carrierId']} has an unknown resource evidence kind"
-        )
     if carrier["rendererShape"] == "mesh":
         allowed_extra = {
             (row["slotId"], row["assetId"])
@@ -1043,25 +964,15 @@ def _source_profile_from_repository_contract(
         "subUVMode": "none",
     }
     render_state = identity.get("renderState", {})
-    blend_mode = render_state.get("blendMode")
     if (
-        blend_mode not in {"BLEND_Additive", "BLEND_Translucent"}
+        render_state.get("blendMode") != "BLEND_Additive"
         or render_state.get("twoSided") is not False
         or render_state.get("disableDepthTest") is not False
     ):
         raise ContractError(
             f"{carrier['carrierId']} source Material render state changed"
         )
-    profile["subUVMode"] = (
-        "psuvim_linear_blend_random_flip_square"
-        if admission["runtimeShaderProfileId"] == "effect.ue3.aura.v1"
-        else "none"
-    )
-    return profile, (
-        "additive_one_sided_depth_read"
-        if blend_mode == "BLEND_Additive"
-        else "alpha_one_sided_depth_read"
-    )
+    return profile, "additive_one_sided_depth_read"
 
 
 def _source_profile_from_parent_props(
@@ -1140,197 +1051,6 @@ def _source_profile_from_parent_props(
             f"{carrier['carrierId']} missile-trail DynamicParameter ABI changed"
         )
     return profile, "alpha_one_sided_depth_read"
-
-
-def _validate_typed_history(
-    repository_root: Path, carrier: dict[str, Any]
-) -> dict[str, Any]:
-    typed = carrier.get("typedSupplementalAdmission")
-    if not isinstance(typed, dict):
-        raise ContractError(
-            f"{carrier['carrierId']} lost typed supplemental admission"
-        )
-    history_path = repository_root / typed["historySourcePath"]
-    history = load_json(history_path)
-    artifact_sha = history.get("artifactSha256")
-    canonical_payload = copy.deepcopy(history)
-    canonical_payload.pop("artifactSha256", None)
-    if (
-        typed["historyId"] != EXPECTED_BAKED_EDGE_HISTORY_ID
-        or typed["historyArtifactSha256"]
-        != EXPECTED_BAKED_EDGE_HISTORY_ARTIFACT_SHA256
-        or artifact_sha != typed["historyArtifactSha256"]
-        or canonical_sha256(canonical_payload) != artifact_sha
-        or history.get("schema") != "lostark.valtan-baked-edge-history"
-        or history.get("formatVersion") != 1
-        or history.get("historyId") != typed["historyId"]
-        or history.get("sampleCount") != EXPECTED_BAKED_EDGE_SAMPLE_COUNT
-        or len(history.get("samples", [])) != EXPECTED_BAKED_EDGE_SAMPLE_COUNT
-        or history.get("playback", {}).get("clampSeconds")
-        != EXPECTED_BAKED_EDGE_CLAMP_SECONDS
-        or history.get("playback", {}).get("coordinateBasis")
-        != typed["coordinateBasis"]
-    ):
-        raise ContractError(
-            f"{carrier['carrierId']} baked edge history identity changed"
-        )
-    return history
-
-
-def _source_profile_from_valtan_material_evidence(
-    repository_root: Path,
-    carrier: dict[str, Any],
-) -> tuple[dict[str, Any], str]:
-    admission = carrier["materialAdmission"]
-    evidence_path = repository_root / admission["evidencePath"]
-    if raw_sha256(evidence_path) != admission["evidenceSha256"]:
-        raise ContractError(
-            f"{carrier['carrierId']} Valtan Material evidence SHA-256 changed"
-        )
-    evidence = load_json(evidence_path)
-    identity = _one(
-        evidence.get("materials", []),
-        lambda row: str(row.get("sourceMaterialPath", "")).casefold()
-        == carrier["sourceMaterialPath"].casefold(),
-        f"Valtan source Material evidence {carrier['sourceMaterialPath']}",
-    )
-    parent_declaration = identity.get("parentDeclaration")
-    if (
-        evidence.get("schema") != "lostark.valtan-source-material-evidence"
-        or evidence.get("formatVersion") != 1
-        or identity.get("packageResolutionStatus")
-        != "RESOLVED_EXACT_SOURCE_PACKAGE"
-        or identity.get("parentMaterialPath")
-        != admission["parentMaterialPath"]
-        or stable_profile_id(admission["parentMaterialPath"])
-        != admission["profileId"]
-        or admission["runtimeShaderProfileId"]
-        != "effect.ue3.grouped-translucent.v1"
-        or admission["semanticStatus"] != "BOUNDED_RECONSTRUCTION"
-        or not isinstance(parent_declaration, dict)
-        or parent_declaration.get("evidenceStatus")
-        != "SOURCE_MATERIAL_PROPS"
-        or identity.get("blockers")
-    ):
-        raise ContractError(
-            f"{carrier['carrierId']} bounded Material profile identity changed"
-        )
-    render_state = parent_declaration.get("renderState", {})
-    blend_mode = render_state.get("blendMode")
-    if (
-        blend_mode not in {"BLEND_Additive", "BLEND_Translucent"}
-        or render_state.get("twoSided") is not False
-        or render_state.get("disableDepthTest") is not False
-        or parent_declaration.get("expressionCoverage", {}).get(
-            "topologyStatus"
-        )
-        != "NON_NULL_ENTRIES_PRESENT"
-    ):
-        raise ContractError(
-            f"{carrier['carrierId']} bounded Material render state changed"
-        )
-
-    selected = {
-        "materialEvidence": parent_declaration,
-        "textures": identity.get("instanceTextures", []),
-        "scalars": identity.get("instanceScalars", []),
-        "vectors": identity.get("instanceVectors", []),
-        "static_switches": identity.get("instanceStaticSwitches", []),
-    }
-    parameters = merged_source_parameters(selected, {})
-    resource_by_source = {
-        row["sourceObjectPath"].casefold(): row["assetId"]
-        for row in carrier["resources"]
-    }
-    textures: list[dict[str, Any]] = []
-    for row in parameters.get("textures", []):
-        normalized = normalize_texture_parameter(row)
-        asset_id = resource_by_source.get(
-            normalized["sourceObjectPath"].casefold()
-        )
-        if asset_id is None:
-            continue
-        normalized["assetId"] = asset_id
-        textures.append(normalized)
-    if {
-        row["assetId"] for row in textures
-    } != {
-        row["assetId"] for row in carrier["resources"]
-    }:
-        raise ContractError(
-            f"{carrier['carrierId']} bounded Material texture closure changed"
-        )
-    profile = {
-        "enabled": True,
-        "profileId": admission["profileId"],
-        "runtimeShaderProfileId": admission["runtimeShaderProfileId"],
-        "parentMaterialPath": admission["parentMaterialPath"],
-        "semanticStatus": "reconstructed_profile",
-        "textures": textures,
-        "scalars": [
-            normalize_scalar_parameter(row)
-            for row in parameters.get("scalars", [])
-        ],
-        "vectors": [
-            normalize_vector_parameter(row)
-            for row in parameters.get("vectors", [])
-        ],
-        "staticSwitches": [
-            normalize_switch_parameter(row)
-            for row in parameters.get("staticSwitches", [])
-        ],
-        # Baked edge geometry owns trail placement.  Source dynamic lanes are
-        # preserved in the disabled generic recipe but are not guessed into
-        # this bounded grouped-translucent material executor.
-        "dynamicParameterSemantics": ["unbound"] * 4,
-        "subUVMode": "none",
-    }
-    return profile, (
-        "additive_one_sided_depth_read"
-        if blend_mode == "BLEND_Additive"
-        else "alpha_one_sided_depth_read"
-    )
-
-
-def _validate_typed_source_evidence(
-    carrier: dict[str, Any],
-    system: dict[str, Any],
-    raw_recipe: dict[str, Any],
-) -> None:
-    classes = {
-        str(module.get("className") or "").casefold()
-        for module in raw_recipe["modules"]
-    }
-    family = carrier["typedSupplementalAdmission"]["family"]
-    if family == "ANIMATION_TRAIL":
-        if ANIMATION_TRAIL_MODULE_CLASS not in classes:
-            raise ContractError(
-                f"{carrier['carrierId']} lost AnimationTrail type evidence"
-            )
-        return
-    if family == "LIGHT_PARTICLE":
-        unresolved = system["unresolvedExternalReferences"]
-        external_modules = [
-            row
-            for row in unresolved
-            if row.get("reason") == "external_graph_package_not_loaded"
-            and row.get("property") == "modules"
-        ]
-        point_lights = [
-            row for row in unresolved if row.get("property") == "pointlightcomponent"
-        ]
-        if (
-            "efparticlemoduletypedatalight" not in classes
-            or len(external_modules) != 6
-            or len(point_lights) != 1
-        ):
-            raise ContractError(
-                f"{carrier['carrierId']} typed Light source evidence changed"
-            )
-        return
-    raise ContractError(
-        f"{carrier['carrierId']} has an unknown typed supplemental family"
-    )
 
 
 def _validate_fail_closed_source_evidence(
@@ -1674,62 +1394,7 @@ def _build_source_carriers(
             )
         material_row = material_rows[0]
         deferred_recipe: dict[str, Any] | None = None
-        typed = carrier.get("typedSupplementalAdmission")
-        if carrier["disposition"] == "VISIBLE_EXECUTABLE" and typed is not None:
-            _validate_typed_history(repository_root, carrier)
-            _validate_typed_source_evidence(carrier, system, raw_recipe)
-            if typed["genericSourceRecipeEnabled"] is not False:
-                raise ContractError(
-                    f"{carrier['carrierId']} enabled its generic typed recipe"
-                )
-            if typed["family"] == "ANIMATION_TRAIL":
-                _validate_action_catalog_asset(
-                    action_catalog,
-                    carrier["sourceMaterialPath"],
-                    system_id,
-                    "material",
-                )
-                _validate_visible_resources(
-                    repository_root,
-                    source_root,
-                    cook,
-                    action_catalog,
-                    system_id,
-                    carrier,
-                    imported_resources,
-                )
-                deferred_recipe = _ordinary_deferred_animation_trail_recipe(
-                    raw_recipe
-                )
-                source_profile, render_profile = (
-                    _source_profile_from_valtan_material_evidence(
-                        repository_root, carrier
-                    )
-                )
-                material = {
-                    "templateId": "effect.standard",
-                    "sourceMaterialPath": carrier["sourceMaterialPath"],
-                    "renderProfile": render_profile,
-                    "sourceProfile": source_profile,
-                }
-                resources = [
-                    {"slotId": row["slotId"], "assetId": row["assetId"]}
-                    for row in carrier["resources"]
-                ]
-            elif typed["family"] == "LIGHT_PARTICLE":
-                detail["light"] = copy.deepcopy(EXPECTED_LIGHT_PROFILE)
-                material = {
-                    "templateId": "effect.standard",
-                    "sourceMaterialPath": carrier["sourceMaterialPath"],
-                    "renderProfile": "alpha_two_sided_depth_read",
-                    "sourceProfile": {"enabled": False},
-                }
-                resources = []
-            else:
-                raise ContractError(
-                    f"{carrier['carrierId']} has an unknown typed family"
-                )
-        elif carrier["disposition"] == "VISIBLE_EXECUTABLE":
+        if carrier["disposition"] == "VISIBLE_EXECUTABLE":
             if portable is None or material_row.get("resolutionStatus") != (
                 "RESOLVED_EXACT_SOURCE_PACKAGE"
             ):
@@ -1760,12 +1425,7 @@ def _build_source_carriers(
                     )
                 )
                 source_profile["dynamicParameterSemantics"] = (
-                    ["unbound"] * 4
-                    if carrier["materialAdmission"]["runtimeShaderProfileId"]
-                    == "effect.ue3.aura.v1"
-                    else dynamic_parameter_semantics(
-                        {"sourceRecipe": portable}
-                    )
+                    dynamic_parameter_semantics({"sourceRecipe": portable})
                 )
             else:
                 source_profile, render_profile = _source_profile_from_parent_props(
@@ -2032,23 +1692,19 @@ def _build_element(
     attachment = occurrence["attachment"]
     admitted_bone = attachment["admission"] == "ADMITTED_EXPLICIT_RUNTIME_BONE"
     particle_path = _particle_reference(occurrence)
-    executable = carrier["disposition"] == "VISIBLE_EXECUTABLE"
-    typed = carrier.get("typedSupplementalAdmission")
-    visible = executable and typed is None
+    visible = carrier["disposition"] == "VISIBLE_EXECUTABLE"
     deferred_animation_trail = derived["deferredRecipe"] is not None
     emitter_leaf = carrier["sourceEmitterPath"].rsplit(".", 1)[-1]
     notify_leaf = occurrence["notifyId"].rsplit("/", 1)[-1]
     disposition_label = (
         "portable v13"
         if visible
-        else "typed trail"
-        if typed is not None and typed["family"] == "ANIMATION_TRAIL"
-        else "typed light"
-        if typed is not None and typed["family"] == "LIGHT_PARTICLE"
+        else "animtrail required"
+        if deferred_animation_trail
         else "fail-closed"
     )
     material = copy.deepcopy(derived["material"])
-    if not executable:
+    if not visible:
         material["execution"] = {
             "enabled": False,
             "failClosed": True,
@@ -2105,15 +1761,11 @@ def _build_element(
             "profileId": (
                 "valtan.portable-authored-v13.v1"
                 if visible
-                else TYPED_ANIMATION_TRAIL_PROFILE_ID
-                if typed is not None and typed["family"] == "ANIMATION_TRAIL"
-                else TYPED_LIGHT_PROFILE_ID
-                if typed is not None and typed["family"] == "LIGHT_PARTICLE"
                 else DEFERRED_ANIMATION_TRAIL_PROFILE_ID
                 if deferred_animation_trail
                 else "valtan.source-evidence-only.v1"
             ),
-            "status": "reconstructed" if executable else "unresolved",
+            "status": "reconstructed" if visible else "unresolved",
             "sourceObjectPath": particle_path,
             "sourceActionCueId": binding["actionId"],
             "sourceEventId": occurrence["notifyId"],
@@ -2234,34 +1886,26 @@ def validate_canary(
             raise ContractError(
                 f"v13 canary carrier violates positive lifetime: {carrier_id}"
             )
-        executable = (
-            derived["carrier"]["disposition"] == "VISIBLE_EXECUTABLE"
-        )
-        typed = derived["carrier"].get("typedSupplementalAdmission")
-        visible = executable and typed is None
+        visible = derived["carrier"]["disposition"] == "VISIBLE_EXECUTABLE"
         deferred_animation_trail = derived["deferredRecipe"] is not None
-        expected_resources = visible or (
-            typed is not None and typed["family"] == "ANIMATION_TRAIL"
-        )
-        expected_material_profile = expected_resources
         if (
             element["visible"] is not visible
-            or bool(element["resources"]) is not expected_resources
+            or bool(element["resources"])
+            is not (visible or deferred_animation_trail)
             or element["sourceRecipe"]["enabled"] is not visible
-            or element["material"]["sourceProfile"]["enabled"]
-            is not expected_material_profile
+            or element["material"]["sourceProfile"]["enabled"] is not visible
         ):
             raise ContractError(
                 f"v13 canary execution admission differs: {carrier_id}"
             )
-        if not executable and element["material"].get("execution") != {
+        if not visible and element["material"].get("execution") != {
             "enabled": False,
             "failClosed": True,
         }:
             raise ContractError(
                 f"v13 fail-closed material admission differs: {carrier_id}"
             )
-        if typed is not None and typed["family"] == "ANIMATION_TRAIL":
+        if deferred_animation_trail:
             classes = [
                 str(module.get("className") or "").casefold()
                 for module in element["sourceRecipe"]["modules"]
@@ -2270,30 +1914,13 @@ def validate_canary(
                 element["kind"] != "trail"
                 or element["visible"] is not False
                 or element["sourceRecipe"]["enabled"] is not False
-                or "execution" in element["material"]
-                or element["material"]["sourceProfile"].get(
-                    "runtimeShaderProfileId"
-                )
-                != "effect.ue3.grouped-translucent.v1"
                 or classes.count(ANIMATION_TRAIL_MODULE_CLASS) != 1
                 or CASCADE_RIBBON_MODULE_CLASS in classes
             ):
                 raise ContractError(
-                    f"v13 typed AnimationTrail target differs: {carrier_id}"
+                    f"v13 AnimationTrail quarantine differs: {carrier_id}"
                 )
-        elif typed is not None and typed["family"] == "LIGHT_PARTICLE":
-            if (
-                element["kind"] != "light"
-                or element["visible"] is not False
-                or element["sourceRecipe"]["enabled"] is not False
-                or element["sourceRecipe"]["modules"] != []
-                or element["detail"]["light"] != EXPECTED_LIGHT_PROFILE
-                or "execution" in element["material"]
-            ):
-                raise ContractError(
-                    f"v13 typed Light target differs: {carrier_id}"
-                )
-        elif not executable and (
+        elif not visible and (
             element["resources"] != []
             or element["sourceRecipe"]["modules"] != []
         ):
@@ -2304,15 +1931,11 @@ def validate_canary(
         if (
             presentation.get("enabled") is not True
             or presentation.get("status")
-            != ("reconstructed" if executable else "unresolved")
+            != ("reconstructed" if visible else "unresolved")
             or presentation.get("profileId")
             != (
                 "valtan.portable-authored-v13.v1"
                 if visible
-                else TYPED_ANIMATION_TRAIL_PROFILE_ID
-                if typed is not None and typed["family"] == "ANIMATION_TRAIL"
-                else TYPED_LIGHT_PROFILE_ID
-                if typed is not None and typed["family"] == "LIGHT_PARTICLE"
                 else DEFERRED_ANIMATION_TRAIL_PROFILE_ID
                 if deferred_animation_trail
                 else "valtan.source-evidence-only.v1"
@@ -2323,33 +1946,19 @@ def validate_canary(
             )
     if seen != set(expected_by_id):
         raise ContractError("v13 canary exact carrier set changed")
-    base_visible_count = sum(row["visible"] is True for row in rows)
-    typed_count = sum(
-        "typedSupplementalAdmission" in row["carrier"]
-        for row in source_carriers
-    )
-    executable_count = sum(
-        row["carrier"]["disposition"] == "VISIBLE_EXECUTABLE"
-        for row in source_carriers
-    )
-    fail_closed_count = len(rows) - executable_count
+    visible_count = sum(row["visible"] is True for row in rows)
     if (
-        executable_count != EXPECTED_PRODUCT_EXECUTABLE_CARRIER_COUNT
-        or base_visible_count != EXPECTED_BASE_VISIBLE_CARRIER_COUNT
-        or typed_count != EXPECTED_TYPED_SUPPLEMENTAL_CARRIER_COUNT
-        or fail_closed_count != EXPECTED_FAIL_CLOSED_CARRIER_COUNT
+        visible_count != EXPECTED_VISIBLE_CARRIER_COUNT
+        or len(rows) - visible_count != EXPECTED_FAIL_CLOSED_CARRIER_COUNT
     ):
-        raise ContractError(
-            "v13 canary base-visible/typed/fail-closed denominator changed"
-        )
+        raise ContractError("v13 canary visible/fail-closed denominator changed")
     admission = binding["productAdmission"]
     if (
-        admission["status"] != "ADMITTED_PRODUCT"
-        or admission["productCatalogMapped"] is not True
-        or admission["animationEventMapped"] is not True
-        or admission["blockers"]
+        admission["status"] != "FAIL_CLOSED_NON_PRODUCT_CANARY"
+        or admission["productCatalogMapped"] is not False
+        or admission["animationEventMapped"] is not False
     ):
-        raise ContractError("v13 canary Product mapping admission differs")
+        raise ContractError("v13 canary was accidentally promoted to product mapping")
 
 
 def write_transactionally(document: dict[str, Any], output_path: Path) -> None:
@@ -2444,9 +2053,7 @@ def main() -> int:
         f"[valtan-whirlwind-canary] PASS: {verb} "
         f"{document['effectAssetId']} v{document['version']} "
         f"with {sum(row['visible'] for row in document['elements'])}/"
-        f"{len(document['elements'])} base-visible carriers and "
-        f"{EXPECTED_TYPED_SUPPLEMENTAL_CARRIER_COUNT} typed supplemental "
-        "carriers; product mapping admitted"
+        f"{len(document['elements'])} visible source carriers; product mapping blocked"
     )
     return 0
 

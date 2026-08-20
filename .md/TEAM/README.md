@@ -18,7 +18,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 
 ## 모든 세션의 사용자 전용 화면 검증 경계
 
-- Artist F, Character Select와 모든 Client Effect 시각 결과는 사용자가 직접 조작하고 최종 visual fidelity를 판정한다.
+- Artist F, Effect Tool, Character Select와 모든 Client 시각 결과는 사용자가 직접 조작하고 최종 visual fidelity를 판정한다.
 - 에이전트는 Client나 UI를 자율적으로 실행·조작하지 않고 화면 캡처·스크린샷 생성을 하지 않으며, visual fidelity를 대신 판정하지 않는다.
 - 사용자가 대화에 첨부한 스크린샷이나 이미지 분석을 요청하면 에이전트는 반드시 열람·분석하고 관찰 결과와 가능한 결함 위치를 보고한다.
 - 에이전트는 빌드, 구조화된 로그와 수치 진단, 실행 준비까지만 수행한 뒤 사용자가 직접 누를 경로를 전달하고 멈춘다.

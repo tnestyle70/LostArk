@@ -69,39 +69,6 @@ namespace
 		return nullptr == pValue || DATA_JSON_TYPE::NUMBER != pValue->Get_Type() ?
 			0.0 : pValue->Get_Number();
 	}
-
-	bool Read_ClipSequence(
-		const DATA_JSON_VALUE& Object,
-		std::vector<std::string>& OutClips)
-	{
-		OutClips.clear();
-		const DATA_JSON_VALUE* pValue = Object.Find("clip");
-		if (nullptr == pValue)
-			return false;
-		if (DATA_JSON_TYPE::STRING == pValue->Get_Type())
-		{
-			if (pValue->Get_String().empty())
-				return false;
-			OutClips.push_back(pValue->Get_String());
-			return true;
-		}
-		if (!pValue->Is_Array() || pValue->Get_Array().empty() ||
-			pValue->Get_Array().size() > 16u)
-		{
-			return false;
-		}
-		for (const DATA_JSON_VALUE& Clip : pValue->Get_Array())
-		{
-			if (DATA_JSON_TYPE::STRING != Clip.Get_Type() ||
-				Clip.Get_String().empty())
-			{
-				OutClips.clear();
-				return false;
-			}
-			OutClips.push_back(Clip.Get_String());
-		}
-		return true;
-	}
 }
 
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_StageCount() const
@@ -143,46 +110,6 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_EffectDocumentCount() const
 		{
 			for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
 				iCount += Stage.Effects.size();
-		}
-	};
-	Count(Gimmicks);
-	Count(Rotation);
-	return iCount;
-}
-
-size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ClipBoundStageCount() const
-{
-	size_t iCount = 0u;
-	const auto Count = [&iCount](const std::vector<VALTAN_PATTERN_VIEW>& Group)
-	{
-		for (const VALTAN_PATTERN_VIEW& Pattern : Group)
-		{
-			iCount += static_cast<size_t>(std::count_if(
-				Pattern.Stages.begin(), Pattern.Stages.end(),
-				[](const VALTAN_STAGE_VIEW& Stage)
-				{
-					return Stage.Has_ClipBinding();
-				}));
-		}
-	};
-	Count(Gimmicks);
-	Count(Rotation);
-	return iCount;
-}
-
-size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ProductCueStageCount() const
-{
-	size_t iCount = 0u;
-	const auto Count = [&iCount](const std::vector<VALTAN_PATTERN_VIEW>& Group)
-	{
-		for (const VALTAN_PATTERN_VIEW& Pattern : Group)
-		{
-			iCount += static_cast<size_t>(std::count_if(
-				Pattern.Stages.begin(), Pattern.Stages.end(),
-				[](const VALTAN_STAGE_VIEW& Stage)
-				{
-					return Stage.Has_ProductCue();
-				}));
 		}
 	};
 	Count(Gimmicks);
@@ -234,7 +161,6 @@ bool_t Client::CValtanPatternTree::Load(
 {
 	DATA_JSON_VALUE Encounter;
 	DATA_JSON_VALUE Bindings;
-	DATA_JSON_VALUE Cues;
 	std::string Error;
 	if (!Parse_Document(std::filesystem::path(L"Encounters") / L"Valtan" /
 			L"ValtanEncounter.json", Encounter, Error))
@@ -246,12 +172,6 @@ bool_t Client::CValtanPatternTree::Load(
 			L"Valtan" / L"Valtan.patternbindings.json", Bindings, Error))
 	{
 		strOutStatus = "Valtan pattern bindings load failed: " + Error;
-		return false;
-	}
-	if (!Parse_Document(std::filesystem::path(L"Animation") / L"Authored" /
-			L"Valtan" / L"Valtan.patterneffectcues.json", Cues, Error))
-	{
-		strOutStatus = "Valtan Product Effect cue load failed: " + Error;
 		return false;
 	}
 
@@ -280,7 +200,7 @@ bool_t Client::CValtanPatternTree::Load(
 		}
 	}
 
-	std::map<std::string, std::vector<std::string>, std::less<>> ClipsByAction;
+	std::map<std::string, std::string, std::less<>> ClipByAction;
 	const DATA_JSON_VALUE* pBindingRows = Bindings.Find("bindings");
 	if (nullptr == pBindingRows || !pBindingRows->Is_Array())
 	{
@@ -292,61 +212,8 @@ bool_t Client::CValtanPatternTree::Load(
 		if (!Row.Is_Object())
 			continue;
 		const std::string strAction = Read_String(Row, "actionId");
-		std::vector<std::string> Clips;
-		if (strAction.empty() || !Read_ClipSequence(Row, Clips))
-		{
-			strOutStatus = "Valtan pattern binding has an invalid actionId or clip sequence.";
-			return false;
-		}
-		if (!ClipsByAction.emplace(strAction, std::move(Clips)).second)
-		{
-			strOutStatus = "Duplicate Valtan pattern binding actionId: " + strAction;
-			return false;
-		}
-	}
-
-	std::map<std::string, VALTAN_PRODUCT_EFFECT_CUE_VIEW, std::less<>>
-		CueByAction;
-	const DATA_JSON_VALUE* pCueRows = Cues.Find("cues");
-	if (nullptr == pCueRows || !pCueRows->Is_Array())
-	{
-		strOutStatus = "Valtan Product Effect cues has no cues array.";
-		return false;
-	}
-	for (const DATA_JSON_VALUE& Row : pCueRows->Get_Array())
-	{
-		if (!Row.Is_Object())
-		{
-			strOutStatus = "Valtan Product Effect cue row is not an object.";
-			return false;
-		}
-		VALTAN_PRODUCT_EFFECT_CUE_VIEW Cue;
-		Cue.strBindingId = Read_String(Row, "bindingId");
-		Cue.strPatternId = Read_String(Row, "patternId");
-		Cue.strStageId = Read_String(Row, "stageId");
-		Cue.strActionId = Read_String(Row, "actionId");
-		Cue.strEffectAssetId = Read_String(Row, "effectAssetId");
-		Cue.strAnchorSlotId = Read_String(Row, "anchorSlotId");
-		Cue.strFollowPolicy = Read_String(Row, "followPolicy");
-		Cue.strStopPolicy = Read_String(Row, "stopPolicy");
-		Cue.iStartMs = static_cast<uint32_t>(Read_Number(Row, "startMs"));
-		Cue.iEndMs = static_cast<uint32_t>(Read_Number(Row, "endMs"));
-		if (Cue.strBindingId.empty() || Cue.strPatternId.empty() ||
-			Cue.strStageId.empty() || Cue.strActionId.empty() ||
-			Cue.strEffectAssetId.empty() || Cue.strAnchorSlotId.empty() ||
-			Cue.strFollowPolicy.empty() || Cue.strStopPolicy.empty() ||
-			Cue.iEndMs <= Cue.iStartMs)
-		{
-			strOutStatus = "Valtan Product Effect cue has an invalid stable tuple.";
-			return false;
-		}
-		const std::string strAction = Cue.strActionId;
-		if (!CueByAction.emplace(strAction, std::move(Cue)).second)
-		{
-			strOutStatus = "Duplicate Valtan Product Effect cue actionId: " +
-				strAction;
-			return false;
-		}
+		if (!strAction.empty())
+			ClipByAction[strAction] = Read_String(Row, "clip");
 	}
 
 	const DATA_JSON_VALUE* pPatterns = Encounter.Find("patterns");
@@ -407,43 +274,9 @@ bool_t Client::CValtanPatternTree::Load(
 				if (Stage.strActionId.empty())
 					continue;
 
-				const auto ClipIterator = ClipsByAction.find(Stage.strActionId);
-				if (ClipIterator != ClipsByAction.end())
-				{
-					Stage.RuntimeClipNames = ClipIterator->second;
-					Stage.strRuntimeClipName = Stage.RuntimeClipNames.front();
-				}
-
-				const auto CueIterator = CueByAction.find(Stage.strActionId);
-				if (CueIterator != CueByAction.end())
-				{
-					if (CueIterator->second.strPatternId != Pattern.strPatternId ||
-						CueIterator->second.strStageId != Stage.strStageId)
-					{
-						strOutStatus =
-							"Valtan Product Effect cue pattern/stage tuple changed for " +
-							Stage.strActionId + ".";
-						return false;
-					}
-					Stage.ProductCue = CueIterator->second;
-					const std::filesystem::path ProductDocument =
-						CProjectDataRoot::Resolve(
-							std::filesystem::path(L"Effects") / L"Authored" /
-							std::filesystem::path(
-								CueIterator->second.strEffectAssetId +
-								".effect.json"));
-					std::error_code FileError;
-					if (!ProductDocument.empty() && std::filesystem::exists(
-							ProductDocument, FileError))
-					{
-						VALTAN_STAGE_EFFECT_VIEW Product;
-						Product.strEffectAssetId =
-							CueIterator->second.strEffectAssetId;
-						Product.DocumentPath = ProductDocument;
-						Product.eOrigin = VALTAN_STAGE_EFFECT_ORIGIN::PRODUCT_CUE;
-						Stage.Effects.push_back(std::move(Product));
-					}
-				}
+				const auto ClipIterator = ClipByAction.find(Stage.strActionId);
+				if (ClipIterator != ClipByAction.end())
+					Stage.strRuntimeClipName = ClipIterator->second;
 
 				const auto EffectIterator =
 					EffectByAction.find(Stage.strActionId);
@@ -451,62 +284,44 @@ bool_t Client::CValtanPatternTree::Load(
 					!EffectIterator->second.first.empty() &&
 					!EffectIterator->second.second.empty())
 				{
-					const auto Existing = std::find_if(
-						Stage.Effects.begin(), Stage.Effects.end(),
-						[&EffectIterator](const VALTAN_STAGE_EFFECT_VIEW& Effect)
-						{
-							return Effect.strEffectAssetId ==
-								EffectIterator->second.first;
-						});
-					if (Existing != Stage.Effects.end())
-					{
-						Existing->bPatternEffectBinding = true;
-					}
-					else
-					{
-						VALTAN_STAGE_EFFECT_VIEW Bound;
-						Bound.strEffectAssetId = EffectIterator->second.first;
-						Bound.DocumentPath = CProjectDataRoot::Get() /
-							std::filesystem::path(
-								EffectIterator->second.second).lexically_normal();
-						Bound.eOrigin =
-							VALTAN_STAGE_EFFECT_ORIGIN::PATTERN_EFFECT_BINDING;
-						Bound.bPatternEffectBinding = true;
-						Stage.Effects.push_back(std::move(Bound));
-					}
+					VALTAN_STAGE_EFFECT_VIEW Bound;
+					Bound.strEffectAssetId = EffectIterator->second.first;
+					Bound.DocumentPath = CProjectDataRoot::Get() /
+						std::filesystem::path(
+							EffectIterator->second.second).lexically_normal();
+					Bound.eOrigin =
+						VALTAN_STAGE_EFFECT_ORIGIN::PATTERN_EFFECT_BINDING;
+					Stage.Effects.push_back(std::move(Bound));
 				}
-
-				/* Product cues own the authoring entry. The naming rule is only
-				   a fallback for a stage that has no Product cue, so the old
-				   whirlwind seed cannot appear beside the admitted 420633 row. */
-				if (!Stage.Has_ProductCue())
-				{
-					const std::string strCandidate = Build_StageEffectAssetId(
-						Pattern.strActionId, Stage);
-					const bool_t bCandidateAlreadyBound = std::any_of(
-						Stage.Effects.begin(), Stage.Effects.end(),
-						[&strCandidate](const VALTAN_STAGE_EFFECT_VIEW& Effect)
-						{
-							return Effect.strEffectAssetId == strCandidate;
-						});
-					if (!strCandidate.empty() && !bCandidateAlreadyBound)
+				/* A stage document seeded by the generator is not in
+				   patterneffects.json and never will be, because that schema
+				   requires per-binding source evidence. The naming rule is
+				   therefore always checked too, and both documents stay
+				   visible instead of one hiding the other. */
+				const std::string strCandidate = Build_StageEffectAssetId(
+					Pattern.strActionId, Stage);
+				const bool_t bCandidateAlreadyBound = std::any_of(
+					Stage.Effects.begin(), Stage.Effects.end(),
+					[&strCandidate](const VALTAN_STAGE_EFFECT_VIEW& Effect)
 					{
-						const std::filesystem::path Candidate =
-							CProjectDataRoot::Resolve(
-								std::filesystem::path(L"Effects") / L"Authored" /
-								std::filesystem::path(
-									strCandidate + ".effect.json"));
-						std::error_code FileError;
-						if (!Candidate.empty() && std::filesystem::exists(
-								Candidate, FileError))
-						{
-							VALTAN_STAGE_EFFECT_VIEW Seeded;
-							Seeded.strEffectAssetId = strCandidate;
-							Seeded.DocumentPath = Candidate;
-							Seeded.eOrigin =
-								VALTAN_STAGE_EFFECT_ORIGIN::NAMING_RULE;
-							Stage.Effects.push_back(std::move(Seeded));
-						}
+						return Effect.strEffectAssetId == strCandidate;
+					});
+				if (!strCandidate.empty() && !bCandidateAlreadyBound)
+				{
+					const std::filesystem::path Candidate =
+						CProjectDataRoot::Resolve(
+							std::filesystem::path(L"Effects") / L"Authored" /
+							std::filesystem::path(
+								strCandidate + ".effect.json"));
+					std::error_code FileError;
+					if (!Candidate.empty() && std::filesystem::exists(
+							Candidate, FileError))
+					{
+						VALTAN_STAGE_EFFECT_VIEW Seeded;
+						Seeded.strEffectAssetId = strCandidate;
+						Seeded.DocumentPath = Candidate;
+						Seeded.eOrigin = VALTAN_STAGE_EFFECT_ORIGIN::NAMING_RULE;
+						Stage.Effects.push_back(std::move(Seeded));
 					}
 				}
 				Pattern.Stages.push_back(std::move(Stage));
@@ -611,8 +426,6 @@ bool_t Client::CValtanPatternTree::Load(
 		std::to_string(OutView.Phases.size()) + " phases, " +
 		std::to_string(OutView.Get_PatternCount()) + " patterns, " +
 		std::to_string(OutView.Get_StageCount()) + " stages, " +
-		std::to_string(OutView.Get_ClipBoundStageCount()) + " clip-bound, " +
-		std::to_string(OutView.Get_ProductCueStageCount()) + " Product cues, " +
 		std::to_string(OutView.Get_EffectCount()) + " with an Effect (" +
 		std::to_string(OutView.Get_EffectDocumentCount()) + " documents).";
 	return true;

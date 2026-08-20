@@ -109,7 +109,7 @@ flowchart LR
 | `Data/Animation/Reference` | `.skilltiming/.clipmap/.animnotify/.clipseq` | `REFERENCE` |
 | `Data/Balance` | Player/Boss profile, skill, damage | `CURRENT`, formatVersion 2 |
 | `Data/Encounters` | Encounter authoring과 pattern 정의 | `PARTIAL`; Valtan 첫 pattern의 range/timing/damage만 publish, `states[]`는 runtime 미소비 |
-| `Data/Items` | Item catalog(`itemId`/`displayName`/`maxStack`/`iconPath`/`healPercent`) 정의 | `CURRENT`; Server inventory, Debug give-item, quick-slot consumable이 소비하며 drop/trade/equipment는 미구현 |
+| `Data/Items` | Item catalog(`itemId`/`displayName`/`maxStack`) 정의 | `CURRENT`; Debug F1 give-item 슬라이스만 소비, drop/trade/stat 효과는 미구현 |
 | `Data/Maps/Imported` | 추출 catalog/shard 기준 | `CURRENT` |
 | `Data/Maps/Authoring` | MapTool visual/deploy placement 정본 | `CURRENT` |
 | `Data/Navigation` | nav source/paint/blocker 또는 uniform grid | `CURRENT` |
@@ -871,16 +871,15 @@ Validate/Publish → Server 재기동이다. Hot Reload는 다음 전체가
 ```text
 Publish-GameplayBalance.ps1
 Publish-WorldGameplay.ps1
-Publish-ItemCatalog.ps1
-Publish-BalanceRuntimeSet.ps1   # 위 세 domain의 Server output 6종 통합 promotion
+Publish-BalanceRuntimeSet.ps1   # 위 두 domain의 Server output 5종 통합 promotion
 Publish-ServerNavigation.ps1
 Publish-MapAuthoring.ps1
 ```
 
-각 publisher의 domain parser는 유지한다. 현재 `Publish-BalanceRuntimeSet.ps1`은 gameplay bootstrap 1종,
-world bootstrap 4종과 item bootstrap 1종을 sibling staging에 만든 뒤 한 rollback set으로 promotion한다.
-중간/마지막 failure injection은 저장소 내 임시 OutputRoot에 기존 runtime 6개를 복사한 뒤
-`Publish-BalanceRuntimeSet.ps1 -Mode Publish -FailureAfterPromote <n>`을 직접 실행해 기존 6개 hash 복원과 transaction 잔재 0건을 검증한다. Navigation, Client
+각 publisher의 domain parser는 유지한다. 현재 `Publish-BalanceRuntimeSet.ps1`은 gameplay bootstrap 1종과
+world bootstrap 4종을 sibling staging에 만든 뒤 한 rollback set으로 promotion한다. 중간/마지막 failure
+injection은 저장소 내 임시 OutputRoot에 기존 runtime 5개를 복사한 뒤
+`Publish-BalanceRuntimeSet.ps1 -Mode Publish -FailureAfterPromote <n>`을 직접 실행해 기존 5개 hash 복원과 transaction 잔재 0건을 검증한다. Navigation, Client
 presentation, UI/effect까지 포함한 전체 data generation은 아래 목표 orchestrator 범위로 남는다.
 
 ### 16.2 목표 publish 순서
@@ -929,7 +928,7 @@ publisher transaction journal + writer lock
 5. Server/Client handshake와 snapshot revision이 다른 generation 조합을 거부한다.
 6. writer lock은 동시 publisher 두 개를 거부한다. stale lock 복구도 journal/owner process 검증을 거친다.
 
-현재 Balance+World+Items Server output 6종의 process-local rollback transaction은 구현됐다. 그러나 navigation과
+현재 Balance+World Server output 5종의 process-local rollback transaction은 구현됐다. 그러나 navigation과
 Client output, crash-recovery journal/revision handshake까지 포함한 generation 계약은 아직 아니므로 “전체
 Client/Server set atomic”을 PASS로 기록하지 않는다.
 

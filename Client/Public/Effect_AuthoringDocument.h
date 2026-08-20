@@ -553,9 +553,10 @@ struct EFFECT_PARTICLE_INITIAL_VELOCITY_DESC final
    carry rotation, mesh rotation, camera offset, sub-UV, orbit or a shader
    dynamic parameter that the flip would silently stop running.
 
-   These factors multiply the source's own count, size, lifetime, velocity,
-   rotation, alpha and emitter delay instead of replacing the source recipe,
-   which leaves every module the authored schema does not understand running. */
+   Transform and Color already compose over the source result, so the only axis
+   an author cannot reach on those Elements is the particle count, size and
+   lifetime.  These three factors multiply the source's own numbers instead of
+   replacing them, which leaves every module it does not understand running. */
 struct EFFECT_PARTICLE_SOURCE_SCALE_DESC final
 {
 	/* Scales the source spawn rate and burst count together. */
@@ -567,8 +568,8 @@ struct EFFECT_PARTICLE_SOURCE_SCALE_DESC final
 	/* Scales the source spawn velocity, so the burst reaches further or
 	   nearer without touching the modules that produced its direction. */
 	f32_t fSpeed = 1.f;
-	/* Scales source-owned initial rotation and update rotation rates for both
-	   the sprite roll and the mesh particle spin. */
+	/* Scales the source rotation rate for both the sprite roll and the mesh
+	   particle spin. */
 	f32_t fRotation = 1.f;
 	/* Scales the source colour alpha. The RGB the modules chose is kept. */
 	f32_t fAlpha = 1.f;
@@ -1280,7 +1281,6 @@ enum class EFFECT_MODEL_CUE_ALPHA_MODE : uint8_t
 {
 	OPAQUE_SURFACE,
 	MASKED_SURFACE,
-	TRANSLUCENT_SURFACE,
 	END
 };
 
@@ -1294,11 +1294,8 @@ struct EFFECT_MODEL_CUE_DESC final
 	EFFECT_TRANSFORM_DESC LocalTransform;
 	float3_t vAssetPreScale = { 1.f, 1.f, 1.f };
 	float3_t vAssetPreRotationDegrees = { 0.f, 0.f, 0.f };
-	float4_t vColorMultiply = { 1.f, 1.f, 1.f, 1.f };
-	f32_t fOpacity = 1.f;
 	EFFECT_MODEL_CUE_ALPHA_MODE eAlphaMode =
 		EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE;
-	bool_t bHoldLastFrame = false;
 	bool_t bVisible = true;
 };
 

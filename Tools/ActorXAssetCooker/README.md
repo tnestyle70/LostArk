@@ -109,8 +109,7 @@ PowerShell wrapper는 결과를 런타임 폴더가 아닌 별도 staging 패키
 `-BakeFrameRate`는 `모든 PSA sequence가 하나의 AnimRate를 공유해야 한다`는 검사를 대신해
 지정한 rate 하나로 굽는다. frame span은 그대로 보존되므로 clip별 원본 rate는 반드시
 `Tools/ModelAssetConverter/retime_wmodel_from_psa.py`로 되돌린다. 이 도구는 `--psa`를 여러 번
-받아 여러 PSA로 조립한 AnimSet도 처리하며, float32 값이 실제로 달라진 clip을
-`changedAnimationCount`로 센다. 옵션을 쓰지 않으면 multi-rate PSA는 지금처럼 실패한다.
+받아 여러 PSA로 조립한 AnimSet도 처리한다. 옵션을 쓰지 않으면 multi-rate PSA는 지금처럼 실패한다.
 
 `-AllowBoneOrderRemap`은 PSA `BONENAMES`가 PSK bone의 순열일 때만 통과시킨다. 이름 집합과
 개수가 정확히 같아야 하며 누락·추가·중복이 하나라도 있으면 기존처럼 실패한다. PSA importer와
@@ -156,8 +155,6 @@ Wrapper는 다음 조건을 모두 통과해야 패키지를 최종 staging 이�
 
 - Blender 종료 코드가 0이고 FBX와 JSON report가 존재한다.
 - PSK에서 Armature 한 개, Bone 한 개 이상, 가중치가 있는 Mesh가 생성된다.
-- PSA importer가 마지막 pose 값을 Bone에 남겨도 export 직전에 모든
-  `PoseBone.matrix_basis`를 identity로 초기화하고 PSK bind pose 행렬과 다시 비교한다.
 - PSA `BONENAMES`와 PSK Armature의 Bone 이름·개수·순서가 정확히 같다.
 - 모든 PSA sequence의 raw-frame 범위가 연속이고, `ANIMKEYS`가 모든
   frame·bone을 빠짐없이 포함한다. `SCALEKEYS` chunk가 있으면 같은 조건으로

@@ -7,7 +7,7 @@
     {
       "skillId": 2050010,
       "clips": [
-        [ { "clip": "pc_sp_m_00_sk_att_battle_1_01", "playMs": 1400 } ],
+        [ "pc_sp_m_00_sk_att_battle_1_01" ],
         [ "pc_sp_m_00_sk_att_battle_1_02" ],
         [ "pc_sp_m_00_sk_att_battle_1_03" ],
         [ "pc_sp_m_00_sk_att_battle_1_04" ]

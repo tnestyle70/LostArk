@@ -209,7 +209,7 @@ namespace Client
 			const std::vector<std::string>& availableClips,
 			BOSS_PATTERN_EFFECT_BINDING_DOCUMENT& outDocument,
 			std::string& outStatus);
-		static bool_t Stage_ValtanPatternTree(
+		static bool_t Stage_ValtanEffectToolTree(
 			std::string_view text,
 			const std::filesystem::path& projectDataRoot,
 			BOSS_PATTERN_EFFECT_TREE_STAGE& outStage,

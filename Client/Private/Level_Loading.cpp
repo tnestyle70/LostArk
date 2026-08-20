@@ -66,18 +66,7 @@ HRESULT CLevel_Loading::Initialize(
 		return E_FAIL;
 
 	m_pLoader = CLoader::Create(m_pDevice, m_pContext, m_eNextLevelID);
-	if (nullptr == m_pLoader)
-		return E_FAIL;
-
-	/* The target class/encounter is already fixed at this point and the loader
-	   worker is live. Register its priority Product targets now so the regular
-	   main-frame preparation step overlaps the remaining level load. */
-	if (LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
-		LEVEL::VALTAN_ARENA == m_eNextLevelID)
-	{
-		Advance_TargetEffectPreparation();
-	}
-	return S_OK;
+	return nullptr == m_pLoader ? E_FAIL : S_OK;
 }
 
 void CLevel_Loading::Update(const f32_t fTimeDelta)
@@ -98,7 +87,8 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 	}
 
 	bool_t bTargetPresentationReady = true;
-	if ((LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
+	if (m_pLoader->Finished() &&
+		(LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
 		 LEVEL::VALTAN_ARENA == m_eNextLevelID) &&
 		!m_isActivationRequested)
 	{
@@ -106,8 +96,10 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 			Advance_TargetEffectPreparation();
 	}
 
-	/* The worker owns the first 90%. Selected Product targets prepare alongside
-	   it and use the remaining 10% only when they outlive the worker. */
+	/* The worker owns the first 90%. Character Select and Valtan Arena use the
+	remaining 10% for their selected-class/encounter Product targets after the
+	worker finishes and do not activate while the main-thread incremental
+	prewarm queue still has resource work. */
 	f32_t fTargetProgress = m_pLoader->Finished() ? 1.f : 0.9f;
 	if (m_pLoader->Finished() && !bTargetPresentationReady)
 	{
@@ -118,6 +110,9 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 			0u == m_iEffectPreparationTargetCount ? 0.f :
 			static_cast<f32_t>(iSettledCount) /
 			static_cast<f32_t>(m_iEffectPreparationTargetCount);
+		/* Even when the selected set is complete, stale/background targets may
+		   still be draining.  Keep a visible final gap until activation is truly
+		   ready instead of presenting a stuck 100% loading bar. */
 		fTargetProgress = 0.9f + 0.09f * (min)(1.f, fPreparationRatio);
 	}
 	m_fDisplayProgress += (fTargetProgress - m_fDisplayProgress) * (min)(1.f, fTimeDelta * 2.5f);
@@ -329,21 +324,21 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		CEffectPresentationService::Get_ProductCuePreparationProbe(
 			m_EffectPreparationTargets);
 	m_iEffectPreparationTargetCount = Probe.iTargetCount;
-	m_iEffectPreparationPendingCount = Probe.iPendingCount;
+	m_iEffectPreparationPendingCount = Probe.iQueuePendingCount;
 	m_iEffectPreparationPreparedCount = Probe.iPreparedCount;
 	m_iEffectPreparationFailedCount =
 		Probe.iFailedCount + Probe.iUnavailableCount +
 		(m_strEffectPreparationRegistrationFailure.empty() ? 0u : 1u);
-	const bool_t bActivationReady =
-		Is_ProductPrewarmTargetActivationReady(
-			Probe, !m_strEffectPreparationRegistrationFailure.empty());
+	const bool_t bActivationReady = Is_ProductPrewarmActivationReady(
+		Probe, !m_strEffectPreparationRegistrationFailure.empty());
 	if (!bActivationReady)
 	{
 		if (!m_strEffectPreparationRegistrationFailure.empty())
 		{
 			m_strEffectPreparationStatus =
-				TargetLabel + ": Effect preparation isolated; waiting for "
-				"the current Product Effect catalog revision.";
+				TargetLabel + ": Effect preparation isolated; draining " +
+				std::to_string(Probe.iQueuePendingCount) +
+				" background Product Effect(s).";
 		}
 		else
 		{
@@ -354,7 +349,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 				std::to_string(m_iEffectPreparationTargetCount) +
 				" (selected pending " +
 				std::to_string(Probe.iPendingCount) +
-				", background pending " +
+				", queue pending " +
 				std::to_string(Probe.iQueuePendingCount) + ").";
 		}
 		return false;
@@ -366,7 +361,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		m_strEffectPreparationStatus =
 			TargetLabel + ": Effect preparation isolated: " +
 			m_strEffectPreparationRegistrationFailure +
-			" Continuing without blocking on unrelated Effect work.";
+			" Background Effect preparation drained; continuing.";
 	}
 	else if (0u != m_iEffectPreparationFailedCount)
 	{

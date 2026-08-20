@@ -71,50 +71,6 @@ namespace LostArk::Server
 	room, short enough that staying in a boss pattern still punishes. */
 	inline constexpr std::uint32_t PLAYER_HIT_REACTION_GRACE_TICKS = 60;
 
-	enum class PLAYER_PENDING_COMMAND_KIND : std::uint8_t
-	{
-		NONE,
-		MOVE,
-		SKILL
-	};
-
-	/* One explicit intent accepted while a COMBO stage owns the action.  Packet
-	payloads are copied by value; arrival order, not unrelated MOVE/SKILL sequence
-	spaces, makes the latest explicit intent replace the previous one. */
-	struct SERVER_PENDING_PLAYER_COMMAND
-	{
-		PLAYER_PENDING_COMMAND_KIND eKind = PLAYER_PENDING_COMMAND_KIND::NONE;
-		std::uint32_t iClientSequence = 0u;
-		LostArk::Shared::SKILL_ID iSkillId =
-			LostArk::Shared::INVALID_SKILL_ID;
-		float fX = 0.f;
-		float fZ = 0.f;
-
-		void Clear()
-		{
-			*this = {};
-		}
-
-		void Set_Move(const LostArk::Shared::C2S_MOVE& move)
-		{
-			Clear();
-			eKind = PLAYER_PENDING_COMMAND_KIND::MOVE;
-			iClientSequence = move.iClientSequence;
-			fX = move.fGoalX;
-			fZ = move.fGoalZ;
-		}
-
-		void Set_Skill(const LostArk::Shared::C2S_USE_SKILL& skill)
-		{
-			Clear();
-			eKind = PLAYER_PENDING_COMMAND_KIND::SKILL;
-			iClientSequence = skill.iClientSequence;
-			iSkillId = skill.iSkillId;
-			fX = skill.fAimX;
-			fZ = skill.fAimZ;
-		}
-	};
-
 	struct SERVER_PLAYER
 	{
 		SESSION_ID iSessionId = INVALID_SESSION_ID;
@@ -215,7 +171,6 @@ namespace LostArk::Server
 		float fBufferedComboAimX = 0.f;
 		float fBufferedComboAimZ = 1.f;
 		float fBufferedComboAimDistance = 0.f;
-		SERVER_PENDING_PLAYER_COMMAND PendingCommand;
 		// Set when a HOLD skill's key is let go, consumed when its loop ends.
 		bool hasReleasedHold = false;
 		std::unordered_map<LostArk::Shared::SKILL_ID, std::uint32_t>

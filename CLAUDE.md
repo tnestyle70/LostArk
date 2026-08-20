@@ -9,7 +9,7 @@ LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.
 
 모든 세션은 작업 전에 `AGENTS.md`, 이 문서, `.md/GB/gotchas.md`, 있으면
 `.md/GB/gotchas.local.md`, `.md/TEAM/README.md`, 대응 PLAN/RESULT를 읽는다. Artist F와
-Client Effect 결과의 화면 조작·판정은 사용자 전용이며 아래 경계를 따른다.
+Effect Tool의 화면 조작·판정은 사용자 전용이며 아래 경계를 따른다.
 
 ## 프로젝트 개요
 
@@ -227,7 +227,7 @@ Server는 `CHARACTER_SELECT_ARENA` 진입 session마다 독립된 `CGameRoom` si
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.
 
-Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster, Warlord 여섯 slot이 보이며 여섯 class 모두 Client Loader/Spec과 Server player profile까지 연결되어 Bern/Valtan/Training 입장 계약을 사용한다. 실제 runtime payload는 팀장이 관리하는 `Client/Bin/Resources` 물리 폴더를 사용한다. DimensionMaster는 combined body `.wmodel`과 `WP_WSWP_M_06` L/S/P/E 네 정적 기본 무기 파츠를 사용하고, Warlord는 body가 얼굴과 눈만 그려 머리카락이 별도 equipment 파츠이고 총창과 방패 두 무기를 함께 든다. 나머지 네 class는 body/equipment/weapon 형식이다. 여섯 class의 quick slot과 LMB 평타는 `Data/Balance/PlayerSkills.json`의 Server 계약으로 연결된다. ACTIVE 슬롯은 Lance Master `Q W E R A S T V ALT_V`, Gunslinger `Q W E R A S D F T V ALT_V`, Slayer `Q W E R A S D F V ALT_V`, Artist `Q W E R A S T V Z ALT_V`, DimensionMaster `Q W E R A S D F T V ALT_V`, Warlord `Q W E R A S D F T X V ALT_V`다. Artist는 `Z` 저무는 달을 사용하고, Warlord는 `X` 전장의 방패와 `Z` 방어 태세 전환을 사용한다. LMB COMBO skillId는 각각 `34010/38000/45000/31000/2050010/17000`이다. 입력과 HUD는 실제 class 정의만 노출하고 누락 class를 Lance Master로 대체하지 않는다. 제품 Character presentation은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 skillId → ordered model clips를 사용한다. `Data/Animation/Reference`의 clip/notify/chain/timing 문서와 `.skilltiming/.clipmap/.animnotify/.clipseq`는 저작 참고용 read-only이며 runtime 정본이 아니다.
+Lobby에는 Lance Master, Gunslinger, Slayer, Artist, DimensionMaster, Warlord 여섯 slot이 보이며 여섯 class 모두 Client Loader/Spec과 Server player profile까지 연결되어 Bern/Valtan/Training 입장 계약을 사용한다. 실제 runtime payload는 팀장이 관리하는 `Client/Bin/Resources` 물리 폴더를 사용한다. DimensionMaster는 combined body `.wmodel`과 `WP_WSWP_M_06` L/S/P/E 네 정적 기본 무기 파츠를 사용하고, Warlord는 body가 얼굴과 눈만 그려 머리카락이 별도 equipment 파츠이고 총창과 방패 두 무기를 함께 든다. 나머지 네 class는 body/equipment/weapon 형식이다. 여섯 class의 quick slot과 LMB 평타는 `Data/Balance/PlayerSkills.json`의 Server 계약으로 연결된다. ACTIVE 슬롯은 Lance Master `Q W E R A S T V ALT_V`, Gunslinger `Q W E R A S D F T V ALT_V`, Slayer `Q W E R A S D F V ALT_V`, Artist `Q W E R A S V ALT_V`, DimensionMaster `Q W E R A S D F T V ALT_V`, Warlord `Q W E R A S D F T X V ALT_V`다. `X`와 `Z` 방어 태세 전환은 Warlord만 사용한다. LMB COMBO skillId는 각각 `34010/38000/45000/31000/2050010/17000`이다. 입력과 HUD는 실제 class 정의만 노출하고 누락 class를 Lance Master로 대체하지 않는다. 제품 Character presentation은 `Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 skillId → ordered model clips를 사용한다. `Data/Animation/Reference`의 clip/notify/chain/timing 문서와 `.skilltiming/.clipmap/.animnotify/.clipseq`는 저작 참고용 read-only이며 runtime 정본이 아니다.
 
 Area Loader는 여섯 class binary를 전부 선로드하지 않는다. `CPlayableCharacterAssetService`가 선택 class를 먼저 admission하고 `CClientReplication`이 다른 class의 최초 spawn을 받을 때 같은 경로로 한 번만 추가한다. 이 경계를 우회하는 두 번째 model loader나 silent fallback을 만들지 않는다.
 
@@ -262,22 +262,36 @@ snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encou
 field의 provenance를 `PROJECT_TUNED`로 동기화한 뒤 Validate한다. `Publish Server Data` 뒤 Server를
 재시작해야 적용된다. Tool이 실행 중 Server 구조체나 Client HUD 값만 덮어쓰는 hot reload는 없다.
 
-Debug `Effect Tool`과 All Effects/Save Hot Reload 경로는 제거되었다. 제품 Effect 선택 정본은
-`PlayerSkills.inputSlot -> skillId -> skillbindings clip -> clip-local animevent effectref=asset`이며,
-runtime 재생은 계속 `CEffectCatalog -> CEffectPresentationService -> CEffectObject` 한 경로만 사용한다.
-저작 변경은 `Data/Effects/Authored`와 source catalog에서 수행하고
-`Tools/EffectPipeline/Publish-Effects.ps1`의 명시적 전체 publish로 runtime data를 만든다. Client 내부의
-selected publish, catalog rollback snapshot, approval/admission token 및 Save Hot Reload는 사용하지 않는다.
-runtime direct row는 effect ID, authoring version과 Resources 내부 document path만 소유한다. 문서 경로,
-크기, JSON schema/type/range와 GPU resource stage 실패 격리는 유지하지만 content/dependency SHA equality를
-Client 시작과 Character Select에서 다시 계산하지 않는다.
+F1의 `Effect Tool`은 `Data/Balance/PlayerSkills.json`의 class/input slot과
+`Data/Animation/Authored/<Asset>/<Asset>.skillbindings.json`의 clip ownership을 결합한 뒤,
+해당 clip의 실제 `effectref=asset` animevent가 가리키는 Authored Effect만 All Effects의
+`Active Product Cue`로 재생한다. `PlayerSkills.effectId`나 Imported source 이름을 제품 Effect로
+추측하지 않는다. cue가 없는 행은 fail-closed하며 Source/Imported는 별도 진단 정보로만 표시한다.
+All Effects의 `Saved Unified Effects` 목록 정본은 폐기된 Track-A import batch나 runtime Product tree가
+아니라 source `Data/Effects/EffectCatalog.json`의 `DIRECT_AUTHORED_DOCUMENT_V13` row와
+`PlayerSkills.json` owner join이다. 목록 렌더는 ID/path와 이미 로드된 projection만 조회하고, JSON
+decode는 사용자가 해당 문서의 Open 또는 Play를 명시했을 때만 수행한다.
+저작 문서는 `lostark.effect-authoring` v12로 저장하며 Element display/group/source/visible,
+Material Template ID, stable resource slot ID를 소유한다. 원본 추출 근거와 HLSL 구현이 없는 custom
+Template/slot은 등록하지 않는다. All Effects의 Product 행과 Data Files의 Authored 행은 같은 완성
+Effect Document를 여는 두 진입점이며, Product Play는 cue의 clip/timing/anchor/local transform과
+follow/stop 정책을 보존한다. 여러 시각 파츠의 조합 단위는
+별도 Effect 중첩이 아니라 한 Document 안의 Mesh/Sprite/Particle/Decal/Trail Element다. Effect Detail의
+연속 수치는 drag 중 local draft만 world preview에 live-stage하고 Apply에서만 active Document에 commit한다.
+분류와 Solo 재생에서는 standalone Mesh, Cascade Mesh Particle, standalone Sprite, Cascade Sprite
+Particle을 서로 구분한다. Sprite `-90도` 보정은 필요한 Authored element에만 저장하며 전역 런타임
+보정으로 넣지 않는다. Debug의 `Publish + Reload Product Test`는 현재 선택한 실제 Product cue의 clean
+Authored 문서만 class-scoped builder와 기존 publisher를 거쳐 transactional Runtime Catalog reload한다.
+저작 UI는 runtime Published 목록을 편집하지 않으며, 제품 재생은 계속 `CEffectCatalog ->
+CEffectPresentationService -> CEffectObject` 경로를 사용한다. publish는
+`Tools/EffectPipeline/Publish-Effects.ps1`만 수행한다.
 
-#### Artist F와 Effect 화면 검증은 사용자 전용
+#### Artist F와 Effect Tool 화면 검증은 사용자 전용
 
-- 에이전트는 Client UI를 자율적으로 실행·조작하지 않고 화면을 직접 캡처하거나 스크린샷을 만들지 않으며, visual fidelity를 대신 판정하지 않는다.
+- 에이전트는 Client나 Effect Tool UI를 자율적으로 실행·조작하지 않고 화면을 직접 캡처하거나 스크린샷을 만들지 않으며, visual fidelity를 대신 판정하지 않는다.
 - 사용자가 대화에 첨부한 스크린샷이나 이미지를 분석해 달라고 요청하면 에이전트는 반드시 열람·분석해 형태·색·타이밍·밀도·궤적의 관찰 결과와 가능한 occurrence 진단을 보고한다.
 - 에이전트가 수행하는 자동 검증은 빌드, 구조화된 로그, draw/resource/shader 수치 진단까지다. 최종 화면 판정은 사용자가 실제 Client에서 직접 수행한다.
-- 에이전트는 실행 준비 후 Server CMD/Client 상태와 사용자가 직접 확인할 class/skill 경로를 전달하고 멈춘다.
+- 에이전트는 실행 준비 후 Server CMD/Client 상태와 `F1 -> Effect Tool -> All Effects -> Artist -> Restore/Full F`처럼 사용자가 누를 경로만 전달하고 멈춘다.
 - 사용자의 서면 판정이 없으면 `manual first pixel`, `eye smoke`, `visual PASS`, occurrence 승인을 완료로 기록하지 않는다.
 - 일반적인 완성·복원 요청은 Client/UI 자율 실행·조작이나 화면 캡처를 허가하지 않는다. 요청받은 사용자 첨부 이미지 분석은 진단 입력이며 최종 visual PASS나 단독 admission 증거가 아니다.
 
@@ -285,20 +299,23 @@ Client 시작과 Character Select에서 다시 계산하지 않는다.
 `effectref=asset` cue가 clip-local Authored 문서를 가리키며 Character가 이미 적용하는 `playMs`,
 `playRate`, loop와 late snapshot catch-up을 그대로 사용한다. Product target 정본은 publisher가 네
 class animevent에서 선택해 runtime catalog에 실은 `effectref=asset` ID membership이다. authoring-only
-문서는 runtime catalog와 Character 준비 queue에는 들어오지 않는다.
+문서는 Effect Tool에서 편집할 수 있지만 runtime catalog와 Character 준비 queue에는 들어오지 않는다.
 
 Character 초기화는 cue/anchor/HIT metadata를 검증·commit하고 target ID만 process-global queue에
 등록한다. 등록 frame은 resource 작업을 양보하고, 이후 `CMainApp` main-thread frame seam이 target을
 최대 하나씩 JSON parse/drawable validation/budget/GPU prepared-cache commit한다. 실패 target만 같은
 catalog revision에서 fail-closed하며 이미 준비한 target과 다음 target은 보존한다. 전투 중 Product
 Spawn은 cache-only catalog lookup과 준비된 bundle만 사용하고 shader compile, model/DDS/vector-field
-로드를 수행하지 않는다. prepared miss는 동기 fallback 없이 해당 cue만 거부한다.
-Character Select는 Loader 시작과 함께 선택 class cue를 priority queue에 등록해 map/model load와 Effect
-CPU 준비를 겹친다. activation은 현재 catalog revision의 선택 target만 terminal인지 확인하며 무관한
-background pending은 진입을 막지 않는다. Product prepared record는 catalog document를 immutable shared
-ownership으로 유지하며 Playback/Renderer attach는 revision/document identity를 재사용한다.
+로드를 수행하지 않는다. prepared miss는 동기 fallback 없이 거부한다. Effect Tool의 명시적
+Publish/Reload는 기존 전체 target batch transaction과 rollback을 계속 사용한다.
+Character Select는 Loader worker가 일반 resource load를 끝낸 뒤 선택 class cue를 queue 앞에 등록하고,
+선택 class 및 기존 background pending이 모두 terminal 상태가 될 때까지 Loading Level에 머문다.
+따라서 Character Select 활성화 뒤에는 incremental JSON/GPU 준비가 계속되지 않는다. Product prepared
+record는 catalog document를 immutable shared ownership으로 유지하며 Playback/Renderer attach는 exact
+revision/document/projection pointer identity를 재사용한다. Tool의 revision 0 editable stage는 기존
+owned-copy와 signature validation을 유지한다.
 Character Select 내부의 Server 승인 class 변경도 local snapshot을 stable generation으로 stage하고 새 class
-Product cue target이 settle된 뒤에만 기존 character replacement transaction을 commit한다. 준비 중
+Product cue와 global queue가 settle된 뒤에만 기존 character replacement transaction을 commit한다. 준비 중
 gameplay와 class/stage/create 입력은 차단하며 replacement 실패는 입력 정지 대신 Lobby 복귀로 격리한다.
 
 Debug Lobby의 `Test`는 기존 Server 승인을 받은 뒤 새 제품 Level을 추가하지 않고 `LEVEL::DEVELOPMENT`를 격리된 Map Editor workspace로 연다. F1은 모든 Level에서 Developer Tools 표시만 토글하고 Map Tool 버튼도 Level을 전환하지 않는다. editor 모드에서는 수련장 런타임, 캐릭터, 네트워크 복제를 올리지 않으며 Character Select, Bern, Valtan, 원본 Training Map(`LV_SHS_RCARENA_D`)을 `Data/Maps/MapCatalog.json`의 정확한 source 경로로 stage 후 commit한다. 저장 대상은 `Data` authoring 문서뿐이고 `Client/Bin/DataFiles` 런타임 문서는 publisher만 교체한다. Area별 저장 정책과 맵 담당자 절차는 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 따른다.
@@ -418,8 +435,7 @@ ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하�
 
 - 셰이더: `../Bin/ShaderFiles/Shader_*.hlsl`
 - 프로젝트 데이터: `CProjectDataRoot::Resolve()`로 `Data/` 정본을 해석한다.
-- 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. Server pre-build의 `Publish-GameplayBalance.ps1`이 수치 runtime bootstrap을 생성한다.
-- 아이템: `Data/Items/ItemCatalog.json`이 정본이다. Server pre-build의 `Publish-ItemCatalog.ps1`이 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하고 `CItemCatalog`이 이를 필수 로드한다. `Server/Bin` 생성물을 커밋하거나 Server가 authoring JSON을 직접 읽게 하지 않는다.
+- 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. Server pre-build의 `Publish-GameplayBalance.ps1`만 runtime bootstrap을 생성한다.
 - Git 관리 대상 `Data` 원본은 `Client.vcxproj`에서 `96.DataFiles`의 `None` 항목으로 보인다. 이는 탐색용 링크이며 runtime 복사나 두 번째 정본이 아니다.
 - 현재 밸런스 검증은 JSON publish 후 Server 재기동과 `dev.training.ground` smoke로 수행한다. 무중단 Hot Reload는 아직 활성화하지 않으며 revision과 Server tick-boundary commit 없이 Client만 재읽지 않는다. 상세 계약은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 - 서버 길찾기: `Data/Navigation`이 정본이다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 사용하며 `Publish-ServerNavigation.ps1`이 Client/Server runtime `.navgrid`를 결정적으로 생성한다. gameplay spawn/boss의 walkable cell·높이 정합성도 같은 publish에서 검사한다.

@@ -1023,7 +1023,7 @@ bool_t Client::CValtanPatternEffectBindingDocument::Load(
 	return true;
 }
 
-bool_t Client::CValtanPatternEffectBindingDocument::Stage_ValtanPatternTree(
+bool_t Client::CValtanPatternEffectBindingDocument::Stage_ValtanEffectToolTree(
 	const std::string_view text,
 	const std::filesystem::path& projectDataRoot,
 	BOSS_PATTERN_EFFECT_TREE_STAGE& outStage,

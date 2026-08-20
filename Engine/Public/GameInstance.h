@@ -43,7 +43,6 @@ public: /* For.Input_Device */
 	int8_t Get_DIKeyStateRaw(uint8_t byKeyID) const;
 	bool_t Get_DIKeyPressedRaw(uint8_t byKeyID) const;
 	int8_t	Get_DIMouseState(DIM eMouse);
-	int8_t Get_DIMouseStateRaw(DIM eMouse) const;
 	int32_t	Get_DIMouseMove(DIMM eMouseState);
 	void SetInputBlocked(bool_t bKeyboardBlocked, bool_t bMouseBlocked);
 	void SetMouseButtonBlocked(DIM eMouse, bool_t blocked);

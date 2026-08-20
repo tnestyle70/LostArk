@@ -194,17 +194,6 @@ try {
             "LOSTARK_ANIM_EVENTS 5 `"$animationAssetId`" $($eventRows.Count)`n" +
             (($eventRows -join "`n") + $(if ($eventRows.Count) { "`n" } else { '' }))))
     }
-    Write-Utf8 (Join-Path $dataRoot `
-        'Animation\Authored\Valtan\Valtan.patterneffectcues.json') ((
-        [ordered]@{
-            schema = 'lostark.valtan-pattern-effect-cues'
-            formatVersion = 1
-            ownerArchetypeId = 'BOSS_VALTAN'
-            cues = @()
-        } | ConvertTo-Json -Depth 10) + "`n")
-    Write-Utf8 (Join-Path $dataRoot `
-        'Encounters\Valtan\ValtanEncounter.json') ((
-        [ordered]@{ patterns = @() } | ConvertTo-Json -Depth 10) + "`n")
     [IO.Directory]::CreateDirectory($effectResource) | Out-Null
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'base.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'blankwhite.dds'), [byte[]](1,2,3,4))
@@ -320,87 +309,6 @@ try {
     Write-Utf8 $assemblyPath (($invalidAssembly | ConvertTo-Json -Depth 40) + "`n")
     Assert-ValidateRejected 'Overlong Effect Assembly displayName' $baseline
     Write-Fixture $document $catalog
-
-    $document.elements[0].detail.particle | Add-Member `
-        -NotePropertyName sourceScale -NotePropertyValue ([ordered]@{
-            count = 16.0
-            size = 16.0
-            lifeTime = 16.0
-            speed = -16.0
-            rotation = 360.0
-            alpha = 0.0
-            spawnDelay = 0.0
-        }) -Force
-    Write-Fixture $document $catalog
-    & $publisher -Mode Publish -DataRoot $dataRoot `
-        -ResourceRoot $resourceRoot -OutputPath $output
-    if ($LASTEXITCODE) { throw 'Boundary Source Trim publish failed.' }
-    $sourceScaleBaseline = [IO.File]::ReadAllBytes($output)
-
-    $document.elements[0].detail.particle.sourceScale.count = 0.0
-    Write-Fixture $document $catalog
-    Assert-PublishRejected 'Source Trim nonpositive count' $sourceScaleBaseline
-    $document.elements[0].detail.particle.sourceScale.count = 16.0
-
-    $document.elements[0].detail.particle.sourceScale.size = 0.0
-    Write-Fixture $document $catalog
-    Assert-PublishRejected 'Source Trim nonpositive size' $sourceScaleBaseline
-    $document.elements[0].detail.particle.sourceScale.size = 16.0
-
-    $document.elements[0].detail.particle.sourceScale.lifeTime = 16.01
-    Write-Fixture $document $catalog
-    Assert-PublishRejected 'Source Trim lifetime overflow' $sourceScaleBaseline
-    $document.elements[0].detail.particle.sourceScale.lifeTime = 16.0
-
-    $document.elements[0].detail.particle.sourceScale.rotation = 360.01
-    Write-Fixture $document $catalog
-    Assert-PublishRejected 'Source Trim rotation overflow' $sourceScaleBaseline
-    $document.elements[0].detail.particle.sourceScale.rotation = 360.0
-
-    $document.elements[0].detail.particle.sourceScale.speed = -16.01
-    Write-Fixture $document $catalog
-    Assert-PublishRejected 'Source Trim speed overflow' $sourceScaleBaseline
-    $document.elements[0].detail.particle.sourceScale.speed = -16.0
-
-    $document.elements[0].detail.particle.sourceScale.alpha = -0.01
-    Write-Fixture $document $catalog
-    Assert-PublishRejected 'Source Trim negative alpha' $sourceScaleBaseline
-    $document.elements[0].detail.particle.sourceScale.alpha = 0.0
-
-    $document.elements[0].detail.particle.sourceScale.spawnDelay = 16.01
-    Write-Fixture $document $catalog
-    Assert-PublishRejected 'Source Trim delay overflow' $sourceScaleBaseline
-    $document.elements[0].detail.particle.sourceScale.spawnDelay = 0.0
-
-    Write-Fixture $document $catalog
-    foreach ($path in @($authoringPath, $componentPath)) {
-        $text = [IO.File]::ReadAllText($path, $utf8NoBomStrict)
-        $nonFinite = [regex]::Replace(
-            $text, '"rotation"\s*:\s*360(?:\.0+)?',
-            '"rotation": 1e309', 1)
-        if ($nonFinite -ceq $text) {
-            throw "Source Trim non-finite fixture did not find rotation: $path"
-        }
-        Write-Utf8 $path $nonFinite
-    }
-    $nonFiniteAssembly = Get-Content -LiteralPath $assemblyPath `
-        -Raw -Encoding UTF8 | ConvertFrom-Json
-    $nonFiniteAssembly.sourceDocumentFileSha256 =
-        Get-CanonicalTrackedTextSha256 $authoringPath
-    Write-Utf8 $assemblyPath `
-        (($nonFiniteAssembly | ConvertTo-Json -Depth 40) + "`n")
-    Assert-PublishRejected 'Source Trim non-finite rotation' $sourceScaleBaseline
-
-    $document.elements[0].detail.particle.PSObject.Properties.Remove(
-        'sourceScale')
-    Write-Fixture $document $catalog
-    & $publisher -Mode Publish -DataRoot $dataRoot `
-        -ResourceRoot $resourceRoot -OutputPath $output
-    if ($LASTEXITCODE) { throw 'Source Trim fixture restore failed.' }
-    if ([Convert]::ToBase64String($baseline) -ne
-        [Convert]::ToBase64String([IO.File]::ReadAllBytes($output))) {
-        throw 'Source Trim fixture restore changed the baseline catalog.'
-    }
 
     $document.version = 7
     $document['modelCues'] = @([ordered]@{
@@ -718,18 +626,6 @@ try {
         -ResourceRoot $resourceRoot -OutputPath $output
     if ($LASTEXITCODE) { throw 'Valid G3 authoring overrides publish failed.' }
     $overrideBaseline = [IO.File]::ReadAllBytes($output)
-
-    $directRuntime = Get-Content -LiteralPath $output -Raw -Encoding UTF8 |
-        ConvertFrom-Json
-    $directRuntimeRow = @($directRuntime.effects | Where-Object {
-        [string]$_.effectAssetId -ceq $effectId })
-    if ($directRuntimeRow.Count -ne 1 -or
-        (@($directRuntimeRow[0].PSObject.Properties.Name) -join '|') -cne
-            ('payloadKind|effectAssetId|authoringFormatVersion|' +
-                'authoredDocumentPath')) {
-        throw 'Direct authored runtime row is not the minimal four-field contract.'
-    }
-    $directRuntime = $null
 
     $sourceProfileBackup = ($groupedElement.material.sourceProfile |
         ConvertTo-Json -Depth 30) | ConvertFrom-Json

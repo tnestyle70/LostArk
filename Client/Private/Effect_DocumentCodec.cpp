@@ -92,7 +92,7 @@ namespace
 	};
 	constexpr const char_t* MODEL_CUE_ALPHA_MODE_TOKENS[] =
 	{
-		"OPAQUE", "MASKED", "TRANSLUCENT"
+		"OPAQUE", "MASKED"
 	};
 	constexpr const char_t* SOURCE_COVERAGE_STATUS_TOKENS[] =
 	{
@@ -356,17 +356,6 @@ namespace
 			return false;
 		OutValue = pValue->Get_Boolean();
 		return true;
-	}
-
-	bool_t Read_OptionalBool(
-		const Client::DATA_JSON_VALUE& Object,
-		const char_t* pName,
-		bool_t& OutValue,
-		std::string& strOutError)
-	{
-		if (nullptr == Object.Find(pName))
-			return true;
-		return Read_Bool(Object, pName, OutValue, strOutError);
 	}
 
 	bool_t Read_String(
@@ -3968,13 +3957,8 @@ namespace
 				&Out.LocalTransform.vPosition.x, 3u, strOutError) &&
 			Read_Array(*pLocal, "rotationDegrees",
 				&Out.LocalTransform.vRotationDegrees.x, 3u, strOutError) &&
-			Read_OptionalArray(*pLocal, "revolutionDegreesPerSecond",
-				&Out.LocalTransform.vRevolutionDegreesPerSecond.x, 3u,
-				strOutError) &&
 			Read_Array(*pLocal, "scale",
 				&Out.LocalTransform.vScale.x, 3u, strOutError) &&
-			Read_OptionalArray(*pLocal, "velocityPerSecond",
-				&Out.LocalTransform.vVelocityPerSecond.x, 3u, strOutError) &&
 			Read_Array(*pPre, "scale",
 				&Out.vAssetPreScale.x, 3u, strOutError) &&
 			Read_Array(*pPre, "rotationDegrees",
@@ -4021,11 +4005,8 @@ namespace
 
 	bool_t Is_SafeModelCueAssetIdInternal(const std::string& strAssetId)
 	{
-		const bool_t bAllowedRoot =
-			0u == strAssetId.rfind("Character/", 0u) ||
-			0u == strAssetId.rfind("Effect/", 0u);
 		if (strAssetId.empty() || strAssetId.size() > MAX_RESOURCE_ID_BYTES ||
-			!bAllowedRoot ||
+			0u != strAssetId.rfind("Character/", 0u) ||
 			std::string::npos != strAssetId.find('\\') ||
 			std::string::npos != strAssetId.find(':'))
 		{
@@ -5352,12 +5333,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Is_Finite(Cue.vAssetPreScale) &&
 			Cue.vAssetPreScale.x > 0.f && Cue.vAssetPreScale.y > 0.f &&
 			Cue.vAssetPreScale.z > 0.f &&
-			Is_Finite(Cue.vAssetPreRotationDegrees) &&
-			Is_Finite(Cue.LocalTransform.vRevolutionDegreesPerSecond) &&
-			Is_Finite(Cue.LocalTransform.vVelocityPerSecond) &&
-			Is_Finite(Cue.vColorMultiply) &&
-			std::isfinite(Cue.fOpacity) && Cue.fOpacity >= 0.f &&
-			Cue.fOpacity <= 1.f;
+			Is_Finite(Cue.vAssetPreRotationDegrees);
 		if (!Is_StableId(Cue.strCueId) ||
 			!ModelCueIds.insert(Cue.strCueId).second ||
 			Cue.strClipName.empty() || Cue.strClipName.size() > 128u ||
@@ -5892,9 +5868,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Emission.fConeAngleDegrees <= 180.f &&
 			(EFFECT_PARTICLE_VELOCITY_MODE::FIXED == Emission.eMode ||
 				EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind);
-		/* The trim multiplies the source's own numbers. Count, size and lifetime
-		   stay positive; speed and rotation may intentionally stop or reverse;
-		   alpha and delay may be zero. Ceilings reject accidental extreme input. */
+		/* The trim multiplies the source's own numbers, so zero or negative
+		   would erase the Element rather than adjust it, and the ceiling keeps a
+		   mistyped digit from asking the simulator for a million particles. */
 		const EFFECT_PARTICLE_SOURCE_SCALE_DESC& SourceScale =
 			D.Particle.SourceScale;
 		const bool_t bSourceScaleValid =
@@ -5909,10 +5885,10 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			SourceScale.fSize > 0.f && SourceScale.fSize <= 16.f &&
 			SourceScale.fLifeTime > 0.f && SourceScale.fLifeTime <= 16.f &&
 			/* Speed and rotation may legitimately be reversed or stopped, so
-			   they allow zero and negative. Rotation is a source-angle/rate
-			   multiplier and therefore has the wider authoring range. */
+			   they allow zero and negative; the magnitude keeps the same
+			   ceiling as the other factors. */
 			SourceScale.fSpeed >= -16.f && SourceScale.fSpeed <= 16.f &&
-			SourceScale.fRotation >= -360.f && SourceScale.fRotation <= 360.f &&
+			SourceScale.fRotation >= -16.f && SourceScale.fRotation <= 16.f &&
 			SourceScale.fAlpha >= 0.f && SourceScale.fAlpha <= 16.f &&
 			SourceScale.fSpawnDelay >= 0.f && SourceScale.fSpawnDelay <= 16.f;
 		const bool_t bTrailValid =
@@ -10851,7 +10827,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 				(bSourceContract && !Validate_ExactFields(CueValue,
 					{ "cueId", "modelAssetId", "clipName",
 						"startDelaySeconds", "durationSeconds", "alphaMode",
-						"opacity", "colorMultiply", "holdLastFrame", "visible",
+						"visible",
 						"localTransform", "assetPreTransform" },
 					"Effect source-contract Model Cue", strOutError)))
 			{
@@ -10873,12 +10849,6 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 					Cue.fStartDelaySeconds, strOutError) ||
 				!Read_Float(CueValue, "durationSeconds",
 					Cue.fDurationSeconds, strOutError) ||
-				!Read_OptionalFloat(CueValue, "opacity", Cue.fOpacity,
-					strOutError) ||
-				!Read_OptionalArray(CueValue, "colorMultiply",
-					&Cue.vColorMultiply.x, 4u, strOutError) ||
-				!Read_OptionalBool(CueValue, "holdLastFrame",
-					Cue.bHoldLastFrame, strOutError) ||
 				!Read_ModelCueTransform(CueValue, Cue, strOutError))
 			{
 				if (strOutError.empty())
@@ -11225,11 +11195,6 @@ std::string Client::CEffectDocumentCodec::Serialize(
 			<< CDataJson::Escape(Cue.strClipName)
 			<< "\", \"startDelaySeconds\": " << Cue.fStartDelaySeconds
 			<< ", \"durationSeconds\": " << Cue.fDurationSeconds
-			<< ", \"opacity\": " << Cue.fOpacity
-			<< ", \"colorMultiply\": ";
-		Write_Float4(Output, Cue.vColorMultiply);
-		Output << ", \"holdLastFrame\": "
-			<< (Cue.bHoldLastFrame ? "true" : "false")
 			<< ", \"alphaMode\": \""
 			<< MODEL_CUE_ALPHA_MODE_TOKENS[static_cast<size_t>(Cue.eAlphaMode)]
 			<< "\""
@@ -11238,12 +11203,8 @@ std::string Client::CEffectDocumentCodec::Serialize(
 		Write_Float3(Output, Cue.LocalTransform.vPosition);
 		Output << ", \"rotationDegrees\": ";
 		Write_Float3(Output, Cue.LocalTransform.vRotationDegrees);
-		Output << ", \"revolutionDegreesPerSecond\": ";
-		Write_Float3(Output, Cue.LocalTransform.vRevolutionDegreesPerSecond);
 		Output << ", \"scale\": ";
 		Write_Float3(Output, Cue.LocalTransform.vScale);
-		Output << ", \"velocityPerSecond\": ";
-		Write_Float3(Output, Cue.LocalTransform.vVelocityPerSecond);
 		Output << " },\n      \"assetPreTransform\": { \"scale\": ";
 		Write_Float3(Output, Cue.vAssetPreScale);
 		Output << ", \"rotationDegrees\": ";

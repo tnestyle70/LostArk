@@ -215,7 +215,6 @@
   </Target>
 	<Target Name="PublishGameplayRuntime" BeforeTargets="ClCompile">
 		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\GameplayPipeline\Publish-GameplayBalance.ps1&quot; -Mode Publish" />
-		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\GameplayPipeline\Publish-ItemCatalog.ps1&quot; -Mode Publish" />
 		<Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\..\Tools\NavigationPipeline\Publish-ServerNavigation.ps1&quot; -Mode Publish" />
 	</Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

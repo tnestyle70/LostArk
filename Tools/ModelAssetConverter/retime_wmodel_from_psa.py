@@ -261,7 +261,7 @@ def retime_wmodel(
         "afterSha256": sha256_bytes(after),
         "animationCount": len(clips),
         "changedAnimationCount": sum(
-            row["previousTicksPerSecond"] != row["sourceAnimRate"]
+            abs(row["previousTicksPerSecond"] - row["sourceAnimRate"]) > 1e-5
             for row in clips
         ),
         "sourceRateRestorationComplete": True,
@@ -279,7 +279,7 @@ def retime_wmodel(
 
 def validate_retime_receipt(
     wmodel_path: Path,
-    psa_paths: Sequence[Path],
+    psa_path: Path,
     receipt_path: Path,
     runtime_prefix: str = "pc_sp_m_00_sk_",
     expected_source_sha256: str | None = None,
@@ -287,11 +287,6 @@ def validate_retime_receipt(
     expected_after_sha256: str | None = None,
     expected_ticks_per_second: float | None = None,
 ) -> dict[str, Any]:
-    if isinstance(psa_paths, Path):
-        psa_paths = [psa_paths]
-    psa_paths = list(psa_paths)
-    if not psa_paths:
-        raise ValueError("At least one PSA is required")
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     if (
         receipt.get("schema") != "lostark.wmodel-animation-retime-receipt"
@@ -301,7 +296,7 @@ def validate_retime_receipt(
     ):
         raise ValueError("WModel retime receipt header is invalid")
 
-    source_bytes = psa_paths[0].read_bytes()
+    source_bytes = psa_path.read_bytes()
     runtime_bytes = wmodel_path.read_bytes()
     source_sha256 = sha256_bytes(source_bytes)
     runtime_sha256 = sha256_bytes(runtime_bytes)
@@ -326,21 +321,7 @@ def validate_retime_receipt(
     if expected_after_sha256 is not None and runtime_sha256 != expected_after_sha256.lower():
         raise ValueError("Deployed WModel bytes do not match the expected after identity")
 
-    receipt_source_files = receipt.get("sourcePsaFiles")
-    if not isinstance(receipt_source_files, list) or len(receipt_source_files) != len(psa_paths):
-        raise ValueError("WModel retime receipt PSA file set is invalid")
-    source: list[dict[str, Any]] = []
-    for path, receipt_file in zip(psa_paths, receipt_source_files, strict=True):
-        path_sha256 = sha256_bytes(path.read_bytes())
-        if (
-            not isinstance(receipt_file, dict)
-            or str(receipt_file.get("sha256") or "").lower() != path_sha256
-        ):
-            raise ValueError("PSA file bytes do not match the WModel retime receipt")
-        for entry in read_psa_animation_infos(path):
-            entry = dict(entry)
-            entry["index"] = len(source)
-            source.append(entry)
+    source = read_psa_animation_infos(psa_path)
     runtime = read_wmodel_animation_sections(runtime_bytes)
     source_runtime_order = sorted(
         source,
@@ -383,7 +364,7 @@ def validate_retime_receipt(
         previous_rate = float(clip.get("previousTicksPerSecond", -1.0))
         if not math.isfinite(previous_rate) or previous_rate <= 0.0:
             raise ValueError(f"WModel retime receipt previous rate is invalid for {psa['name']}")
-        changed_count += previous_rate != source_rate
+        changed_count += abs(previous_rate - source_rate) > 1e-5
         observed_rates.append(float(wmodel["ticksPerSecond"]))
 
     if receipt.get("changedAnimationCount") != changed_count:

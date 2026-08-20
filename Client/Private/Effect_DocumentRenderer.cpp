@@ -601,16 +601,6 @@ namespace
 			Source, "diff_backcolor", { 0.f, 0.f, 0.f, 0.f });
 	}
 
-	void Build_MakeFlow03SpriteConstants(
-		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
-		std::array<float4_t, 8u>& Parameters)
-	{
-		Build_MakeFlowConstants(Source, Parameters);
-		Parameters[7] = {
-			SourceScalar(Source, "mask_tile_u", 1.f),
-			SourceScalar(Source, "mask_tile_v", 1.f), 0.f, 0.f };
-	}
-
 	void Build_ParticleTrailConstants(
 		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
 		std::array<float4_t, 8u>& Parameters)
@@ -1006,69 +996,6 @@ namespace
 		Parameters[5] = { 0.f, 0.f, 0.f, 0.f };
 		Parameters[6] = { 0.f, 0.f, 0.f, 0.f };
 		Parameters[7] = { 0.f, 0.f, 0.f, 0.f };
-	}
-
-	void Build_Simple02Constants(
-		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
-		std::array<float4_t, 8u>& Parameters,
-		float4_t& vEmissiveColor)
-	{
-		Build_Simple01Constants(Source, Parameters);
-		Parameters[1].w = SourceScalar(
-			Source, "emissive_tex_02_intensity", 1.f);
-		vEmissiveColor = SourceVector(
-			Source, "emissive_color&intensity", { 1.f, 1.f, 1.f, 1.f });
-	}
-
-	void Build_MmFluid01SpriteConstants(
-		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
-		std::array<float4_t, 8u>& Parameters)
-	{
-		auto S = [&Source](const std::string_view Name, const f32_t Fallback)
-		{
-			return SourceScalar(Source, Name, Fallback);
-		};
-		Parameters[0] = { S("transition_tiling", 1.f),
-			S("transition_panning_x", 0.f),
-			S("transition_panning_y", 0.f),
-			S("transition thickness", 0.2f) };
-		Parameters[1] = { S("transition direction", 0.f),
-			S("transition line thickness", 1.f),
-			S("emissive_line_intensity", 1.f),
-			S("emissive_intensity", 1.f) };
-		Parameters[2] = { S("emissive_uv_scale_x", 1.f),
-			S("emissive_uv_scale_y", 1.f),
-			S("emissive_desaturation", 0.f),
-			S("total_scale", 1.f) };
-		Parameters[3] = { S("fresnel_power", 1.f),
-			S("distortion_intensity", 0.f), 0.f, 0.f };
-	}
-
-	void Build_FlowRibbon01Constants(
-		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
-		const std::string_view strSourceMaterialPath,
-		std::array<float4_t, 8u>& Parameters)
-	{
-		auto S = [&Source](const std::string_view Name, const f32_t Fallback)
-		{
-			return SourceScalar(Source, Name, Fallback);
-		};
-		Parameters[0] = { S("maintex_ucoord", 1.f),
-			S("maintex_vcoord", 1.f), S("maintex_pos_v", 0.f),
-			S("maintex_str", 1.f) };
-		Parameters[1] = { S("flow_ucoord", 1.f),
-			S("flow_vcoord", 1.f), S("colormap_coord_x", 1.f),
-			S("colormap_coord_y", 1.f) };
-		Parameters[2] = { S("colormap_des", 0.f),
-			S("colormap_power", 1.f), S("colormap_str", 1.f),
-			strSourceMaterialPath ==
-				"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr" ? 3.f : 1.f };
-		Parameters[3] = SourceVector(Source, "colormap_color",
-			float4_t(1.f, 1.f, 1.f, 1.f));
-		/* These two lanes are exact constant ParticleModuleParameterDynamic
-		   distributions for every occurrence admitted by the FlowRibbon carrier.
-		   The varying dissolve/distort lanes remain per-point payload. */
-		Parameters[4] = { 0.02f, 1.f, 0.f, 0.f };
 	}
 
 	bool_t Has_LinearFlowSourceTextureContract(
@@ -1745,14 +1672,7 @@ namespace
 			return 13u;
 		if (Source.strRuntimeShaderProfileId ==
 			Client::EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID)
-		{
-			return SourceMaterialIdentityMatches(Source,
-				"ue3.material.fx.m.mi.03.fx.m.fx.m.me.watertrail.01.tr.afa4aeba0c50",
-				"fx_m_mi_03.fx_m.fx_m_me_watertrail_01_tr") &&
-				Source.StaticSwitches.empty() &&
-				Client::Has_EffectWaterTrailNamedTextureContract(Source) ?
-				14u : UINT32_MAX;
-		}
+			return 14u;
 		if (Source.strRuntimeShaderProfileId ==
 			Client::EFFECT_MISSILETRAIL_TWO_EMISSIVE_RUNTIME_PROFILE_ID)
 			return 15u;
@@ -1789,8 +1709,8 @@ namespace
 			return SourceMaterialIdentityMatches(Source,
 				"ue3.material.fx.mastermaterial.fx.mm.fx.mm.simple.01.ad.9b97b139cca2",
 				"fx_mastermaterial.fx_mm.fx_mm_simple_01_ad") &&
-				Source.StaticSwitches.empty() &&
-				Client::Has_EffectSimple01NamedTextureContract(Source) ?
+				Client::Has_EffectUniqueNamedTextureContract(Source,
+					Client::EFFECT_SIMPLE01_SOURCE_TEXTURE_NAMES) ?
 				33u : UINT32_MAX;
 		return UINT32_MAX;
 	}
@@ -1817,162 +1737,6 @@ namespace
 				return Texture.strName == strName &&
 					Texture.strAssetId == strAssetId;
 			}) == 1;
-	}
-
-	bool_t Is_FlowRibbon01TrailContract(
-		const Client::EFFECT_ELEMENT_DESC& Element)
-	{
-		if (Element.eKind != Client::EFFECT_ELEMENT_KIND::TRAIL ||
-			Element.SourceRecipe.strRendererShape != "ribbon" ||
-			Element.Material.eRenderProfile !=
-				Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
-			!SourceMaterialIdentityMatches(Element.Material.SourceMaterial,
-				"ue3.material.fx.m.fx.k.flowrib.01.tr.0ca247309b89",
-				"fx_m.fx_k_flowrib_01_tr"))
-		{
-			return false;
-		}
-		const auto HasUniqueModule = [&Element](const std::string_view ClassName)
-		{
-			return std::ranges::count_if(Element.SourceRecipe.Modules,
-				[ClassName](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
-				{
-					return Module.strClassName == ClassName;
-				}) == 1;
-		};
-		if (!HasUniqueModule("particlemodulesize") ||
-			!HasUniqueModule("particlemodulecolor") ||
-			!HasUniqueModule("particlemodulecolorscaleoverlife") ||
-			!HasUniqueModule("particlemoduleparameterdynamic") ||
-			!HasUniqueModule("particlemoduletypedataribbon"))
-		{
-			return false;
-		}
-		const auto Dynamic = std::ranges::find_if(Element.SourceRecipe.Modules,
-			[](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
-			{
-				return Module.strClassName == "particlemoduleparameterdynamic";
-			});
-		static constexpr std::array<std::string_view, 4u> DYNAMIC_NAMES = {{
-			"x_tiling", "y_tiling", "dissolve", "disort"
-		}};
-		for (size_t iLane = 0u; iLane < DYNAMIC_NAMES.size(); ++iLane)
-		{
-			const std::string Property = "dynamicparams[" +
-				std::to_string(iLane) + "].paramname";
-			if (std::ranges::count_if(Dynamic->Literals,
-				[&Property, iLane](const Client::EFFECT_SOURCE_LITERAL_DESC& Literal)
-				{
-					return Literal.strPropertyPath == Property &&
-						Literal.eKind ==
-							Client::EFFECT_SOURCE_LITERAL_KIND::STRING &&
-						Literal.strString == DYNAMIC_NAMES[iLane];
-				}) != 1)
-			{
-				return false;
-			}
-		}
-
-		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source =
-			Element.Material.SourceMaterial;
-		if (Element.Material.strSourceMaterialPath ==
-			"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr")
-		{
-			return Element.ResourceBindings.size() == 3u &&
-				Source.Textures.size() == 3u &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
-					"Effect/Artist/Textures/fx_i_atypical_03_ycl.dds") &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
-					"Effect/Artist/Textures/fx_l_environment_001.dds") &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::MASK_TEXTURE,
-					"Effect/Artist/Textures/fx_d_noise_002.dds") &&
-				NamedTextureMatches(Source, "tex_main",
-					"Effect/Artist/Textures/fx_i_atypical_03_ycl.dds") &&
-				NamedTextureMatches(Source, "colormap",
-					"Effect/Artist/Textures/fx_l_environment_001.dds") &&
-				NamedTextureMatches(Source, "flowtex",
-					"Effect/Artist/Textures/fx_d_noise_002.dds");
-		}
-		return Element.Material.strSourceMaterialPath ==
-				"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr" &&
-			Element.ResourceBindings.size() == 2u && Source.Textures.size() == 2u &&
-			BindingMatches(Element, Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
-				"Effect/Artist/Textures/fx_k_auraline_02.dds") &&
-			BindingMatches(Element, Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
-				"Effect/Artist/Textures/fx_d_noise_002.dds") &&
-			NamedTextureMatches(Source, "tex_main",
-				"Effect/Artist/Textures/fx_k_auraline_02.dds") &&
-			NamedTextureMatches(Source, "flowtex",
-				"Effect/Artist/Textures/fx_d_noise_002.dds");
-	}
-
-	bool_t Is_DimensionMasterDBoundarySpriteWaveContract(
-		const Client::EFFECT_ELEMENT_DESC& Element)
-	{
-		return Element.strElementId ==
-				"authored.source-particle.03ae2d86558a1627f9d867e7" &&
-			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
-			Element.SourceRecipe.strRendererShape == "sprite" &&
-			Element.ResourceBindings.size() == 3u &&
-			SourceMaterialIdentityMatches(Element.Material.SourceMaterial,
-				"ue3.material.fx.m.mi.m.00.fx.m.fx.m.pa.spritewave.01.tr.21401ca3cd92",
-				"fx_m_mi_m_00.fx_m.fx_m_pa_spritewave_01_tr") &&
-			Element.Material.strSourceMaterialPath ==
-				"fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_106_tr" &&
-			BindingMatches(Element,
-				Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
-				"Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_tilelinenoise_01.dds") &&
-			BindingMatches(Element,
-				Client::EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE,
-				"Effect/DimensionMaster/Textures/FX_TEX_06/fx_w_atypical_016_xcl.dds") &&
-			BindingMatches(Element,
-				Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
-				"Effect/DimensionMaster/Textures/FX_TEX_05/fx_m_noise_001.dds");
-	}
-
-	bool_t Is_DimensionMasterDBoundaryParticleMasterContract(
-		const Client::EFFECT_ELEMENT_DESC& Element)
-	{
-		const bool_t bExactDimensionMasterDOccurrence =
-			Element.strElementId ==
-				"authored.source-particle.20e58ca3740942649576b818" ||
-			Element.strElementId ==
-				"authored.source-particle.cd12d28ee975a182b849dae0" ||
-			Element.strElementId ==
-				"authored.source-particle.1d400b300d15f98b78e45a92";
-		if (!bExactDimensionMasterDOccurrence ||
-			Element.eKind != Client::EFFECT_ELEMENT_KIND::PARTICLE ||
-			Element.SourceRecipe.strRendererShape != "sprite" ||
-			Element.ResourceBindings.size() != 4u ||
-			!SourceMaterialIdentityMatches(Element.Material.SourceMaterial,
-				"ue3.material.fx.m.mi.00.fx.m.fx.d.pa.master.01.tr.47fde102a56b",
-				"fx_m_mi_00.fx_m.fx_d_pa_master_01_tr") ||
-			!BindingMatches(Element,
-				Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
-				"Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_noise_03.dds") ||
-			!BindingMatches(Element,
-				Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
-				"Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_009.dds") ||
-			!BindingMatches(Element,
-				Client::EFFECT_RESOURCE_SLOT::MASK_TEXTURE,
-				"Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_environment_tile_02.dds"))
-		{
-			return false;
-		}
-		const bool_t bMaster04 = Element.Material.strSourceMaterialPath ==
-				"fx_m_mi_w_00.mi.fx_w_pa_master_01_04_dt_tr" &&
-			BindingMatches(Element,
-				Client::EFFECT_RESOURCE_SLOT::EMISSIVE_TEXTURE,
-				"Effect/DimensionMaster/Textures/FX_TEX_04/fx_j_flowsmoke_01_cl.dds");
-		const bool_t bMaster05 = Element.Material.strSourceMaterialPath ==
-				"fx_m_mi_w_00.mi.fx_w_pa_master_01_05_dt_tr" &&
-			BindingMatches(Element,
-				Client::EFFECT_RESOURCE_SLOT::EMISSIVE_TEXTURE,
-				"Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_cloud_021.dds");
-		return bMaster04 || bMaster05;
 	}
 
 	bool_t Is_FamilyProfileCarrierContractSatisfied(
@@ -2010,80 +1774,16 @@ namespace
 			Client::EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ;
 	}
 
-	bool_t Is_StrictParticleShapeCarrierContractSatisfied(
-		const Client::EFFECT_ELEMENT_DESC& Element,
-		const std::string_view strRequiredShape)
-	{
-		if (Element.eKind != Client::EFFECT_ELEMENT_KIND::PARTICLE ||
-			Element.SourceRecipe.strRendererShape != strRequiredShape)
-		{
-			return false;
-		}
-		const Client::EFFECT_RESOURCE_BINDING_DESC* pMesh =
-			Find_Binding(Element, Client::EFFECT_RESOURCE_SLOT::MESH_MODEL);
-		return strRequiredShape == "mesh" ?
-			(nullptr != pMesh && !pMesh->strAssetId.empty()) : nullptr == pMesh;
-	}
-
-	bool_t Is_StrictParticleBlendCarrierContractSatisfied(
-		const Client::EFFECT_ELEMENT_DESC& Element,
-		const bool_t bAdditive)
-	{
-		if (!Is_StrictParticleShapeCarrierContractSatisfied(Element, "sprite") &&
-			!Is_StrictParticleShapeCarrierContractSatisfied(Element, "mesh"))
-		{
-			return false;
-		}
-		if (bAdditive)
-		{
-			return Element.Material.eRenderProfile ==
-					Client::EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ ||
-				Element.Material.eRenderProfile ==
-					Client::EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ;
-		}
-		return Element.Material.eRenderProfile ==
-				Client::EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ ||
-			Element.Material.eRenderProfile ==
-				Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
-	}
-
-	bool_t Is_StrictTwoSidedAlphaMeshCarrierContractSatisfied(
-		const Client::EFFECT_ELEMENT_DESC& Element)
-	{
-		return Is_StrictParticleShapeCarrierContractSatisfied(Element, "mesh") &&
-			Element.Material.eRenderProfile ==
-				Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
-	}
-
 	uint32_t EffectiveSourceMaterialProfileIndex(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
 		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source =
 			Element.Material.SourceMaterial;
 		const uint32_t iStoredProfile = SourceMaterialProfileIndex(Source);
-		if (14u == iStoredProfile)
-		{
-			return Is_StrictTwoSidedAlphaMeshCarrierContractSatisfied(Element) &&
-				Source.StaticSwitches.empty() &&
-				Client::Has_EffectWaterTrailNamedTextureContract(Source) ?
-				14u : UINT32_MAX;
-		}
 		if (iStoredProfile >= 29u && iStoredProfile <= 33u)
 		{
-			if (33u == iStoredProfile &&
-				!Is_StrictParticleShapeCarrierContractSatisfied(Element, "sprite"))
-			{
-				return UINT32_MAX;
-			}
 			return Is_FamilyProfileCarrierContractSatisfied(
 				Element, iStoredProfile) ? iStoredProfile : UINT32_MAX;
-		}
-		if (6u == iStoredProfile &&
-			Client::Resolve_EffectStrictTypedSourceProfile(
-				Element.Material.strSourceMaterialPath, Source) ==
-				Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWRIBBON01)
-		{
-			return Is_FlowRibbon01TrailContract(Element) ? 35u : UINT32_MAX;
 		}
 		if (6u != iStoredProfile ||
 			Element.eKind != Client::EFFECT_ELEMENT_KIND::PARTICLE ||
@@ -2091,15 +1791,6 @@ namespace
 			 Element.SourceRecipe.strRendererShape != "sprite"))
 		{
 			return iStoredProfile;
-		}
-		if (Is_DimensionMasterDBoundarySpriteWaveContract(Element) ||
-			Is_DimensionMasterDBoundaryParticleMasterContract(Element))
-		{
-			/* These exact DimensionMaster-D cards lost only their named texture
-			   lanes during Effect Tool compaction. Their opaque DDS alpha cannot
-			   define coverage, so reuse the already bounded Slice evaluator used
-			   by the W Voronoi card instead of exposing grouped profile 6. */
-			return 12u;
 		}
 
 		switch (Client::Resolve_EffectStrictTypedSourceProfile(
@@ -2139,9 +1830,15 @@ namespace
 			}
 			break;
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::WATERTRAIL:
-			if (Is_StrictTwoSidedAlphaMeshCarrierContractSatisfied(Element) &&
-				Source.StaticSwitches.empty() &&
-				Client::Has_EffectWaterTrailNamedTextureContract(Source))
+			if (BindingMatches(Element,
+					Client::EFFECT_RESOURCE_SLOT::MESH_MODEL,
+					"Effect/DimensionMaster/Meshes/fm_h_swing_03.wmodel") &&
+				BindingMatches(Element,
+					Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
+					"Effect/DimensionMaster/Textures/FX_TEX_04/fx_h_wave_01.dds") &&
+				BindingMatches(Element,
+					Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
+					"Effect/DimensionMaster/Textures/FX_TEX_00/fx_a_noise_011.dds"))
 			{
 				return 14u;
 			}
@@ -2165,30 +1862,36 @@ namespace
 				return 11u;
 			}
 			break;
-		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::MAKEFLOW_02:
-			if (Is_StrictTwoSidedAlphaMeshCarrierContractSatisfied(Element) &&
-				Source.StaticSwitches.empty() &&
-				Client::Has_EffectMakeFlowMeshNamedTextureContract(Source))
-			{
-				return 36u;
-			}
-			break;
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::MAKEFLOW_03:
-			if (Is_StrictTwoSidedAlphaMeshCarrierContractSatisfied(Element) &&
-				Source.StaticSwitches.empty() &&
-				Client::Has_EffectMakeFlowMeshNamedTextureContract(Source))
+			if (Element.SourceRecipe.strRendererShape == "mesh" &&
+				Element.ResourceBindings.size() == 4u &&
+				BindingMatches(Element,
+					Client::EFFECT_RESOURCE_SLOT::MESH_MODEL,
+					"Effect/DimensionMaster/Meshes/fm_h_swing_01.wmodel") &&
+				BindingMatches(Element,
+					Client::EFFECT_RESOURCE_SLOT::MASK_TEXTURE,
+					"Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds"))
 			{
-				return 16u;
-			}
-			break;
-		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::MAKEFLOW_03_SPRITE:
-			if (Is_StrictParticleShapeCarrierContractSatisfied(Element, "sprite") &&
-				Element.Material.eRenderProfile ==
-					Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ &&
-				Source.StaticSwitches.empty() &&
-				Client::Has_EffectMakeFlow03SpriteNamedTextureContract(Source))
-			{
-				return 37u;
+				const bool_t bMakeFlow10 =
+					Element.Material.strSourceMaterialPath ==
+						"fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_03_10_tr" &&
+					BindingMatches(Element,
+						Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
+						"Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_auraline_16.dds") &&
+					BindingMatches(Element,
+						Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
+						"Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_caustictile_01.dds");
+				const bool_t bMakeFlow06 =
+					Element.Material.strSourceMaterialPath ==
+						"fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_03_06_tr" &&
+					BindingMatches(Element,
+						Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
+						"Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_trail_up_01.dds") &&
+					BindingMatches(Element,
+						Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
+						"Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_caustictile_01.dds");
+				if (bMakeFlow10 || bMakeFlow06)
+					return 16u;
 			}
 			break;
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::RING_01:
@@ -2234,17 +1937,11 @@ namespace
 			}
 			break;
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::PARTICLE_MASTER_01:
-			if (Source.StaticSwitches.empty() &&
-				Is_StrictParticleBlendCarrierContractSatisfied(Element,
-					Source.strParentMaterialPath.ends_with("_ad")) &&
-				Client::Has_EffectParticleMasterNamedTextureContract(Source))
+			if (Client::Has_EffectParticleMasterNamedTextureContract(Source))
 				return 19u;
 			break;
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::SPRITEWAVE_01:
-			if (Source.StaticSwitches.empty() &&
-				Is_StrictParticleBlendCarrierContractSatisfied(Element,
-					Source.strParentMaterialPath.ends_with("_ad")) &&
-				Client::Has_EffectSpriteWaveNamedTextureContract(Source))
+			if (Client::Has_EffectSpriteWaveNamedTextureContract(Source))
 				return 20u;
 			break;
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::PARTICLETRAIL_SINGLE_ALPHA:
@@ -2288,47 +1985,6 @@ namespace
 			if (Element.SourceRecipe.strRendererShape == "sprite" &&
 				Client::Has_EffectArtistLensFlare01NamedTextureContract(Source))
 				return 28u;
-			break;
-		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_MM_FLUID01:
-			/* The source family spans mesh and sprite carriers with four role
-			   sets. Admit only the exact two-lane sprite child used by the two
-			   DimensionMaster F occurrences; the mesh variants remain on their
-			   existing fail-closed/grouped boundary. */
-			if (Element.SourceRecipe.strRendererShape == "sprite" &&
-				Element.ResourceBindings.size() == 2u &&
-				Element.Material.strSourceMaterialPath ==
-					"fx_m_mi_w_00.mi.fx_w_pa_fd_01_3_tr" &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
-					"Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_cloud_035.dds") &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::EMISSIVE_TEXTURE,
-					"Effect/DimensionMaster/Textures/FX_TEX_HIGH_03/fx_o_glass_01.dds"))
-			{
-				return 34u;
-			}
-			break;
-		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWRIBBON01:
-			/* Trail carriers are resolved before the particle-only grouped branch. */
-			break;
-		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::SIMPLE01:
-			if (Is_StrictParticleShapeCarrierContractSatisfied(Element, "sprite") &&
-				Is_StrictParticleBlendCarrierContractSatisfied(Element, true) &&
-				Source.StaticSwitches.empty() &&
-				Client::Has_EffectSimple01NamedTextureContract(Source))
-			{
-				return 33u;
-			}
-			break;
-		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::SIMPLE02:
-			if (Is_StrictParticleShapeCarrierContractSatisfied(Element, "sprite") &&
-				Element.Material.eRenderProfile ==
-					Client::EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ &&
-				Source.StaticSwitches.empty() &&
-				Client::Has_EffectSimple02NamedTextureContract(Source))
-			{
-				return 38u;
-			}
 			break;
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::GLASSHOLE02:
 			return Is_FamilyProfileCarrierContractSatisfied(Element, 29u) &&
@@ -2419,7 +2075,7 @@ namespace
 			if (strParameterName == "noise_pan") return 25u;
 			if (strParameterName == "noise_velue") return 26u;
 		}
-		else if (16u == iProfile || 36u == iProfile)
+		else if (16u == iProfile)
 		{
 			if (strParameterName == "flow_str") return 27u;
 			if (strParameterName == "opacity_pan_v") return 28u;
@@ -2468,13 +2124,6 @@ namespace
 				strParameterName == "param3" ||
 				strParameterName == "param4") return 47u;
 		}
-		else if (34u == iProfile)
-		{
-			if (strParameterName == "trasition_speed(0~1.5)") return 48u;
-			if (strParameterName == "alpha_power(1~)") return 49u;
-			if (strParameterName == "fresnel_alpha(1~)") return 50u;
-			if (strParameterName == "param4") return 51u;
-		}
 		return 0u;
 	}
 
@@ -2486,7 +2135,7 @@ namespace
 		if (15u != iProfile && 14u != iProfile && 11u != iProfile &&
 			16u != iProfile && 18u != iProfile && 19u != iProfile &&
 			20u != iProfile && 21u != iProfile && 23u != iProfile &&
-			24u != iProfile && 26u != iProfile && 34u != iProfile)
+			24u != iProfile && 26u != iProfile)
 			return false;
 		std::array<uint32_t, 4u> Staged{};
 		std::array<bool_t, 4u> Seen{};
@@ -3502,13 +3151,10 @@ namespace
 	uint64_t Build_ResourceSignature(
 		const Client::EFFECT_DOCUMENT_DESC& Document)
 	{
-		/* Product documents are immutable for one catalog revision.  Their
-		   address and stable asset id already form the exact in-process cache
-		   identity; serializing multi-megabyte JSON here repeated work performed
-		   by the catalog parser on every prewarm target. */
-		uint64_t Hash = static_cast<uint64_t>(
-			reinterpret_cast<uintptr_t>(&Document));
-		for (const unsigned char Byte : Document.strEffectAssetId)
+		const std::string Canonical =
+			Client::CEffectDocumentCodec::Serialize(Document);
+		uint64_t Hash = 1469598103934665603ull;
+		for (const unsigned char Byte : Canonical)
 		{
 			Hash ^= static_cast<uint64_t>(Byte);
 			Hash *= 1099511628211ull;
@@ -4462,32 +4108,6 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		Build_Simple01Constants(
 			SourceMaterial, Staged.TypedTrailParameters);
 	}
-	else if (34u == Staged.iSourceMaterialProfile)
-	{
-		Build_MmFluid01SpriteConstants(
-			SourceMaterial, Staged.TypedTrailParameters);
-	}
-	else if (35u == Staged.iSourceMaterialProfile)
-	{
-		Build_FlowRibbon01Constants(SourceMaterial,
-			Element.Material.strSourceMaterialPath,
-			Staged.TypedTrailParameters);
-	}
-	else if (36u == Staged.iSourceMaterialProfile)
-	{
-		Build_MakeFlowConstants(
-			SourceMaterial, Staged.TypedTrailParameters);
-	}
-	else if (37u == Staged.iSourceMaterialProfile)
-	{
-		Build_MakeFlow03SpriteConstants(
-			SourceMaterial, Staged.TypedTrailParameters);
-	}
-	else if (38u == Staged.iSourceMaterialProfile)
-	{
-		Build_Simple02Constants(SourceMaterial,
-			Staged.TypedTrailParameters, Staged.vSourceVector0);
-	}
 	for (size_t iSemantic = 0u;
 		iSemantic < Staged.DynamicParameterSemantics.size(); ++iSemantic)
 	{
@@ -4653,17 +4273,28 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		if (!StageExactLinearSourceTextures(LINEARFLOW_TEXTURES))
 			return E_FAIL;
 	}
-	else if (14u == Staged.iSourceMaterialProfile)
+	else if (16u == Staged.iSourceMaterialProfile)
 	{
-		if (!StageRequiredNamedTextureContract(
-			Client::EFFECT_WATERTRAIL_SOURCE_TEXTURE_NAMES))
-			return E_FAIL;
-	}
-	else if (16u == Staged.iSourceMaterialProfile ||
-		36u == Staged.iSourceMaterialProfile)
-	{
-		if (!StageRequiredNamedTextureContract(
-			Client::EFFECT_MAKEFLOW_MESH_SOURCE_TEXTURE_NAMES))
+		static constexpr std::array<std::string_view, 5u> MAKEFLOW_10_TEXTURES = {{
+			"Effect/DimensionMaster/Textures/FX_TEX_01/fx_c_atypical_007_cl.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_auraline_16.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_caustictile_01.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_05/fx_l_environment_001.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds"
+		}};
+		static constexpr std::array<std::string_view, 5u> MAKEFLOW_06_TEXTURES = {{
+			"Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_trail_up_01.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_trail_up_01.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_05/fx_k_caustictile_01.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_05/fx_l_environment_001.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_noise_002.dds"
+		}};
+		const std::span<const std::string_view> Textures =
+			Element.Material.strSourceMaterialPath ==
+				"fx_m_mi_o_00.fx_mi.fx_o_me_makeflow_03_10_tr" ?
+			std::span<const std::string_view>(MAKEFLOW_10_TEXTURES) :
+			std::span<const std::string_view>(MAKEFLOW_06_TEXTURES);
+		if (!StageExactLinearSourceTextures(Textures))
 			return E_FAIL;
 	}
 	else if (17u == Staged.iSourceMaterialProfile)
@@ -4860,55 +4491,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	else if (33u == Staged.iSourceMaterialProfile)
 	{
 		if (!StageRequiredNamedTextureContract(
-				Client::EFFECT_SIMPLE01_SOURCE_TEXTURE_NAMES) ||
-			!StageNamedSourceTexture(1u,
-				Client::Find_EffectUniqueNamedTexture(
-					SourceMaterial, "uv_noise_tex"), false))
-			return E_FAIL;
-	}
-	else if (34u == Staged.iSourceMaterialProfile)
-	{
-		static constexpr std::array<std::string_view, 2u>
-			MM_FLUID01_SPRITE_TEXTURES = {{
-				"Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_cloud_035.dds",
-				"Effect/DimensionMaster/Textures/FX_TEX_HIGH_03/fx_o_glass_01.dds"
-			}};
-		if (!StageExactLinearSourceTextures(MM_FLUID01_SPRITE_TEXTURES))
-			return E_FAIL;
-	}
-	else if (35u == Staged.iSourceMaterialProfile)
-	{
-		const bool_t bColorMapVariant =
-			Element.Material.strSourceMaterialPath ==
-				"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr";
-		if (!StageNamedSourceTexture(0u,
-				Client::Find_EffectUniqueNamedTexture(
-					SourceMaterial, "tex_main"), true) ||
-			(bColorMapVariant && !StageNamedSourceTexture(1u,
-				Client::Find_EffectUniqueNamedTexture(
-					SourceMaterial, "colormap"), true)) ||
-			!StageNamedSourceTexture(bColorMapVariant ? 2u : 1u,
-				Client::Find_EffectUniqueNamedTexture(
-					SourceMaterial, "flowtex"), true))
-		{
-			return E_FAIL;
-		}
-	}
-	else if (37u == Staged.iSourceMaterialProfile)
-	{
-		if (!StageRequiredNamedTextureContract(
-				Client::EFFECT_MAKEFLOW03_SPRITE_SOURCE_TEXTURE_NAMES) ||
-			!StageNamedSourceTexture(4u,
-				Client::Resolve_EffectMakeFlow03SpriteFlowTexture(
-					SourceMaterial), true))
-		{
-			return E_FAIL;
-		}
-	}
-	else if (38u == Staged.iSourceMaterialProfile)
-	{
-		if (!StageRequiredNamedTextureContract(
-			Client::EFFECT_SIMPLE02_SOURCE_TEXTURE_NAMES))
+			Client::EFFECT_SIMPLE01_SOURCE_TEXTURE_NAMES))
 			return E_FAIL;
 	}
 	if (8u == Staged.iSourceMaterialProfile ||
@@ -4972,15 +4555,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		return E_FAIL;
 	}
 	const bool_t bStrictTypedApproximateProfile =
-		14u == Staged.iSourceMaterialProfile ||
-		16u == Staged.iSourceMaterialProfile ||
-		(Staged.iSourceMaterialProfile >= 19u &&
-		 Staged.iSourceMaterialProfile <= 32u) ||
-		33u == Staged.iSourceMaterialProfile ||
-		34u == Staged.iSourceMaterialProfile ||
-		35u == Staged.iSourceMaterialProfile ||
-		(Staged.iSourceMaterialProfile >= 36u &&
-		 Staged.iSourceMaterialProfile <= 38u);
+		Staged.iSourceMaterialProfile >= 19u &&
+		Staged.iSourceMaterialProfile <= 32u;
 	Staged.bSourceMaterialFallbackBlocked = !Element.Material.Execution.bEnabled &&
 		((!bStrictTypedApproximateProfile &&
 			Is_SourceMaterialFallbackBlocked(Element, Staged.GroupedConstants)) ||
@@ -4993,11 +4569,6 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		(11u == Staged.iSourceMaterialProfile &&
 			Staged.iSourceTextureMask !=
 				(1u << Client::EFFECT_LINEARFLOW_SOURCE_TEXTURE_NAMES.size()) - 1u) ||
-		(14u == Staged.iSourceMaterialProfile &&
-			(Staged.iSourceTextureMask & 0x3u) != 0x3u) ||
-		((16u == Staged.iSourceMaterialProfile ||
-		  36u == Staged.iSourceMaterialProfile) &&
-			(Staged.iSourceTextureMask & 0x1fu) != 0x1fu) ||
 		(19u == Staged.iSourceMaterialProfile &&
 			(0u == (Staged.iSourceTextureMask & 0x7u) ||
 			 0u == (Staged.iSourceTextureMask & 0x30u))) ||
@@ -5028,21 +4599,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		(32u == Staged.iSourceMaterialProfile &&
 			(Staged.iSourceTextureMask & 0x3fu) != 0x3fu) ||
 		(33u == Staged.iSourceMaterialProfile &&
-			(Staged.iSourceTextureMask & 0x1u) != 0x1u) ||
-		(34u == Staged.iSourceMaterialProfile &&
-			(Staged.iSourceTextureMask & 0x3u) != 0x3u) ||
-		(35u == Staged.iSourceMaterialProfile &&
-			(Staged.iSourceTextureMask &
-				(Element.Material.strSourceMaterialPath ==
-					"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr" ?
-					0x7u : 0x3u)) !=
-				(Element.Material.strSourceMaterialPath ==
-					"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr" ?
-					0x7u : 0x3u)) ||
-		(37u == Staged.iSourceMaterialProfile &&
-			(Staged.iSourceTextureMask & 0x1fu) != 0x1fu) ||
-		(38u == Staged.iSourceMaterialProfile &&
-			(Staged.iSourceTextureMask & 0x7u) != 0x7u));
+			(Staged.iSourceTextureMask & 0x1u) != 0x1u));
 	OutResource = std::move(Staged);
 	return S_OK;
 }
@@ -5897,8 +5454,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 		!Model->Get_AnimationProgress(
 			iAnimation, fPosition, fDurationTicks) ||
 		!std::isfinite(fDurationTicks) || fDurationTicks <= 0.f ||
-		(!Cue.bHoldLastFrame &&
-		 Cue.fDurationSeconds > fDurationTicks / fTicksPerSecond + 0.001f))
+		Cue.fDurationSeconds > fDurationTicks / fTicksPerSecond + 0.001f)
 	{
 		strOutError = "Animated Model Cue duration exceeds its source clip: " +
 			Cue.strCueId;
@@ -5911,7 +5467,6 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ModelCueResource(
 	OutResource.pModel = std::move(Model);
 	OutResource.iAnimationIndex = iAnimation;
 	OutResource.fTicksPerSecond = fTicksPerSecond;
-	OutResource.fDurationSeconds = fDurationTicks / fTicksPerSecond;
 	return S_OK;
 }
 
@@ -15076,8 +14631,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 		Resource.Textures, EFFECT_RESOURCE_SLOT::NOISE2_TEXTURE) ? 1u : 0u;
 	const uint32_t iDistortionOnBase =
 		Element.Detail.Color.bDistortionOnBaseMaterial ? 1u : 0u;
-	if ((pShader == m_pParticleShader || pShader == m_pMeshShader ||
-		 pShader == m_pTrailShader) &&
+	if ((pShader == m_pParticleShader || pShader == m_pMeshShader) &&
 		(BindFailed(pShader->Bind_RawValue("g_SourceMaterialProfile",
 			&Resource.iSourceMaterialProfile,
 			sizeof(Resource.iSourceMaterialProfile))) ||
@@ -16016,14 +15570,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		CGameInstance::Get().Get_CamPosition());
 	for (const EFFECT_EVALUATED_TRAIL& Trail : Trails)
 	{
-		const bool_t bBakedEdgeHistory = Trail.EdgePairs.size() >= 2u;
-		if (nullptr == Trail.pElement ||
-			(!bBakedEdgeHistory && Trail.Points.size() < 2u))
+		if (nullptr == Trail.pElement || Trail.Points.size() < 2u)
 			continue;
-		if (bBakedEdgeHistory && !Trail.Points.empty())
-			return Fail_RenderOperation(
-				"Trail carries both centerline and baked-edge geometry.",
-				E_INVALIDARG, true);
 		const ELEMENT_RESOURCE* pResource =
 			Find_Resource(Trail.pElement->strElementId);
 		if (nullptr == pResource)
@@ -16032,23 +15580,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		if (pResource->bSourceMaterialFallbackBlocked ||
 			pResource->bOccurrenceVisualSuppressed)
 			continue;
-		const bool_t bRuntimeMaterialV2Ribbon =
+		const bool_t bTypedArtistRibbon =
 			0u != pResource->iRuntimeMaterialV2Enabled &&
 			9u == pResource->iRuntimeMaterialV2Opcode;
-		const bool_t bTypedArtistRibbon =
-			bRuntimeMaterialV2Ribbon && !bBakedEdgeHistory;
-		const bool_t bFlowRibbon01 =
-			35u == pResource->iSourceMaterialProfile && !bBakedEdgeHistory;
-		const bool_t bTypedSourceRibbon =
-			bTypedArtistRibbon || bFlowRibbon01;
-		if (35u == pResource->iSourceMaterialProfile && bBakedEdgeHistory)
-		{
-			return Fail_RenderOperation(
-				"FlowRibbon01 cannot consume baked-edge AnimationTrail geometry.",
-				E_INVALIDARG, true);
-		}
 		if (0u != pResource->iRuntimeMaterialV2Enabled &&
-			!bRuntimeMaterialV2Ribbon)
+			!bTypedArtistRibbon)
 		{
 			return Fail_RenderOperation(
 				"Trail RuntimeMaterialV2 opcode is invalid.", E_INVALIDARG, true);
@@ -16070,30 +15606,22 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				"Trail typed tiling/tessellation contract is invalid.",
 				E_INVALIDARG, true);
 		}
-		if (bFlowRibbon01 &&
-			(!std::isfinite(fTilingDistance) || fTilingDistance <= 0.f ||
-			 !std::isfinite(fTessellationStep) || fTessellationStep <= 0.f))
-		{
-			return Fail_RenderOperation(
-				"FlowRibbon01 tiling/tessellation contract is invalid.",
-				E_INVALIDARG, true);
-		}
 
 		std::vector<EFFECT_EVALUATED_TRAIL_POINT>& TessellatedPoints =
 			m_TrailPointScratch;
 		TessellatedPoints.clear();
 		std::span<const EFFECT_EVALUATED_TRAIL_POINT> RenderPoints(
 			Trail.Points.data(), Trail.Points.size());
-		if (bTypedSourceRibbon)
+		if (bTypedArtistRibbon)
 		{
-			const auto ValidatePoint = [pResource, &Trail, bFlowRibbon01](
+			const auto ValidatePoint = [pResource, &Trail](
 				const EFFECT_EVALUATED_TRAIL_POINT& Point)
 			{
 				const uint32_t iColorMask =
 					Point.iSourceColorComponentMask & 0x0fu;
 				const uint32_t iDynamicMask =
 					Point.iDynamicParameterComponentMask & 0x0fu;
-				const bool_t bArtistCarrierContract =
+				const bool_t bCarrierContract =
 					Trail.pElement->SourceRecipe.bEnabled ?
 					(iColorMask == 0x08u && iDynamicMask == 0x0fu) :
 					((iColorMask &
@@ -16102,15 +15630,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					 (iDynamicMask &
 						pResource->iRuntimeMaterialV2DynamicConsumedMask) ==
 							pResource->iRuntimeMaterialV2DynamicConsumedMask);
-				const bool_t bFlowCarrierContract =
-					iColorMask == 0x0fu && iDynamicMask == 0x0fu &&
-					std::abs(Point.vSourceColor.x - Point.vSourceColor.y) <= 1e-4f &&
-					std::abs(Point.vSourceColor.x - Point.vSourceColor.z) <= 1e-4f &&
-					std::abs(Point.vDynamicParameter.x - 0.02f) <= 1e-5f &&
-					std::abs(Point.vDynamicParameter.y - 1.f) <= 1e-5f &&
-					std::isfinite(Point.fSourceWidth) && Point.fSourceWidth >= 0.f;
-				return (bFlowRibbon01 ? bFlowCarrierContract :
-					bArtistCarrierContract) &&
+				return bCarrierContract &&
 					std::isfinite(Point.vWorldPosition.x) &&
 					std::isfinite(Point.vWorldPosition.y) &&
 					std::isfinite(Point.vWorldPosition.z) &&
@@ -16118,9 +15638,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					Point.fNormalizedAge >= 0.f && Point.fNormalizedAge < 1.f &&
 					std::isfinite(Point.fCumulativeDistance) &&
 					Point.fCumulativeDistance >= 0.f &&
-					std::isfinite(Point.vSourceColor.x) &&
-					std::isfinite(Point.vSourceColor.y) &&
-					std::isfinite(Point.vSourceColor.z) &&
 					std::isfinite(Point.vSourceColor.w) &&
 					std::isfinite(Point.vDynamicParameter.x) &&
 					std::isfinite(Point.vDynamicParameter.y) &&
@@ -16175,8 +15692,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					Point.fCumulativeDistance = PreviousPoint.fCumulativeDistance +
 						(NextPoint.fCumulativeDistance -
 							PreviousPoint.fCumulativeDistance) * fRatio;
-					Point.fSourceWidth = PreviousPoint.fSourceWidth +
-						(NextPoint.fSourceWidth - PreviousPoint.fSourceWidth) * fRatio;
 					XMStoreFloat4(&Point.vSourceColor,
 						XMVectorLerp(XMLoadFloat4(&PreviousPoint.vSourceColor),
 							XMLoadFloat4(&NextPoint.vSourceColor), fRatio));
@@ -16200,74 +15715,20 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		std::vector<uint32_t>& Indices = m_TrailIndexScratch;
 		Vertices.clear();
 		Indices.clear();
-		const size_t iGeometryPointCount = bBakedEdgeHistory ?
-			Trail.EdgePairs.size() : RenderPoints.size();
-		if (Vertices.capacity() < iGeometryPointCount * 2u)
-			Vertices.reserve(iGeometryPointCount * 2u);
-		if (Indices.capacity() < (iGeometryPointCount - 1u) * 6u)
-			Indices.reserve((iGeometryPointCount - 1u) * 6u);
-		if (bBakedEdgeHistory)
-		{
-			for (size_t iPair = 0u; iPair < Trail.EdgePairs.size(); ++iPair)
-			{
-				const EFFECT_EVALUATED_TRAIL_EDGE_PAIR& Pair =
-					Trail.EdgePairs[iPair];
-				const EFFECT_EVALUATED_TRAIL_POINT& Point = Pair.Payload;
-				const auto IsFinite3 = [](const float3_t& Value)
-				{
-					return std::isfinite(Value.x) && std::isfinite(Value.y) &&
-						std::isfinite(Value.z);
-				};
-				if (!IsFinite3(Pair.vFirstEdgeWorld) ||
-					!IsFinite3(Pair.vControlPointWorld) ||
-					!IsFinite3(Pair.vSecondEdgeWorld) ||
-					!std::isfinite(Point.fNormalizedAge) ||
-					Point.fNormalizedAge < 0.f || Point.fNormalizedAge >= 1.f ||
-					!std::isfinite(Point.fCumulativeDistance) ||
-					Point.fCumulativeDistance < 0.f)
-				{
-					return Fail_RenderOperation(
-						"Baked-edge AnimationTrail geometry is invalid.",
-						E_INVALIDARG, true);
-				}
-				if (bRuntimeMaterialV2Ribbon)
-				{
-					const uint32_t iColorMask =
-						Point.iSourceColorComponentMask & 0x0fu;
-					const uint32_t iDynamicMask =
-						Point.iDynamicParameterComponentMask & 0x0fu;
-					if ((iColorMask &
-							pResource->iRuntimeMaterialV2ParticleColorConsumedMask) !=
-						pResource->iRuntimeMaterialV2ParticleColorConsumedMask ||
-						(iDynamicMask &
-							pResource->iRuntimeMaterialV2DynamicConsumedMask) !=
-						pResource->iRuntimeMaterialV2DynamicConsumedMask)
-					{
-						return Fail_RenderOperation(
-							"Baked-edge AnimationTrail material carrier is incomplete.",
-							E_INVALIDARG, true);
-					}
-				}
-				const f32_t U = fTilingDistance > 0.f ?
-					Point.fCumulativeDistance / fTilingDistance :
-					static_cast<f32_t>(iPair);
-				const float4_t Color = bRuntimeMaterialV2Ribbon ?
-					float4_t(1.f, 1.f, 1.f, Point.vSourceColor.w) :
-					float4_t(1.f, 1.f, 1.f, 1.f - Point.fNormalizedAge);
-				Vertices.push_back({ Pair.vFirstEdgeWorld, float2_t(U, 0.f), Color });
-				Vertices.push_back({ Pair.vSecondEdgeWorld, float2_t(U, 1.f), Color });
-			}
-		}
-		else for (size_t iPoint = 0u; iPoint < RenderPoints.size(); ++iPoint)
+		if (Vertices.capacity() < RenderPoints.size() * 2u)
+			Vertices.reserve(RenderPoints.size() * 2u);
+		if (Indices.capacity() < (RenderPoints.size() - 1u) * 6u)
+			Indices.reserve((RenderPoints.size() - 1u) * 6u);
+		for (size_t iPoint = 0u; iPoint < RenderPoints.size(); ++iPoint)
 		{
 			const EFFECT_EVALUATED_TRAIL_POINT& Point = RenderPoints[iPoint];
-			if (bTypedSourceRibbon)
+			if (bTypedArtistRibbon)
 			{
 				const uint32_t iColorMask =
 					Point.iSourceColorComponentMask & 0x0fu;
 				const uint32_t iDynamicMask =
 					Point.iDynamicParameterComponentMask & 0x0fu;
-				const bool_t bArtistCarrierContract =
+				const bool_t bCarrierContract =
 					Trail.pElement->SourceRecipe.bEnabled ?
 					(iColorMask == 0x08u && iDynamicMask == 0x0fu) :
 					((iColorMask &
@@ -16276,15 +15737,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					 (iDynamicMask &
 						pResource->iRuntimeMaterialV2DynamicConsumedMask) ==
 							pResource->iRuntimeMaterialV2DynamicConsumedMask);
-				const bool_t bFlowCarrierContract =
-					iColorMask == 0x0fu && iDynamicMask == 0x0fu &&
-					std::isfinite(Point.fSourceWidth) && Point.fSourceWidth >= 0.f &&
-					std::abs(Point.vSourceColor.x - Point.vSourceColor.y) <= 1e-4f &&
-					std::abs(Point.vSourceColor.x - Point.vSourceColor.z) <= 1e-4f &&
-					std::abs(Point.vDynamicParameter.x - 0.02f) <= 1e-5f &&
-					std::abs(Point.vDynamicParameter.y - 1.f) <= 1e-5f;
-				if (!(bFlowRibbon01 ? bFlowCarrierContract :
-						bArtistCarrierContract) ||
+				if (!bCarrierContract ||
 					!std::isfinite(Point.fCumulativeDistance) ||
 					Point.fCumulativeDistance < 0.f ||
 					!std::isfinite(Point.vSourceColor.w) ||
@@ -16322,20 +15775,16 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				continue;
 			}
 			const f32_t Age = Point.fNormalizedAge;
-			const f32_t Width = bFlowRibbon01 ? Point.fSourceWidth :
-				Trail.pElement->Detail.Trail.fStartWidth +
+			const f32_t Width = Trail.pElement->Detail.Trail.fStartWidth +
 				(Trail.pElement->Detail.Trail.fEndWidth -
 					Trail.pElement->Detail.Trail.fStartWidth) * Age;
 			const vector_t HalfSide = Side * (Width * 0.5f);
-			const f32_t U = bTypedSourceRibbon ?
+			const f32_t U = bTypedArtistRibbon ?
 				Point.fCumulativeDistance / fTilingDistance :
 				static_cast<f32_t>(iPoint);
-			const float4_t Color = bFlowRibbon01 ?
-				float4_t(Point.vSourceColor.x, Point.vDynamicParameter.z,
-					Point.vDynamicParameter.w, Point.vSourceColor.w) :
-				(bTypedArtistRibbon ?
-					float4_t(1.f, 1.f, 1.f, Point.vSourceColor.w) :
-					float4_t(1.f, 1.f, 1.f, 1.f - Age));
+			const float4_t Color = bTypedArtistRibbon ?
+				float4_t(1.f, 1.f, 1.f, Point.vSourceColor.w) :
+				float4_t(1.f, 1.f, 1.f, 1.f - Age);
 			Vertices.push_back({ To_Float3(Position - HalfSide),
 				float2_t(U, 0.f), Color });
 			Vertices.push_back({ To_Float3(Position + HalfSide),
@@ -16454,41 +15903,25 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 				"Animated model-cue resource contract is missing.", E_FAIL, true);
 		}
 		Engine::CModel& Model = *Resource->second.pModel;
-		const f32_t fAnimationTime = Cue.bHoldLastFrame ?
-			(std::min)(fLocalTime, Resource->second.fDurationSeconds) :
-			fLocalTime;
 		if (!Model.Set_AnimTrackPosition(Resource->second.iAnimationIndex,
-			fAnimationTime * Resource->second.fTicksPerSecond))
+			fLocalTime * Resource->second.fTicksPerSecond))
 		{
 			return Fail_RenderOperation(
 				"Animated model-cue track position is invalid.", E_FAIL, true);
 		}
 		Model.Play_Animation(0.f);
 		const EFFECT_TRANSFORM_DESC& Transform = Cue.LocalTransform;
-		const float3_t Position = {
-			Transform.vPosition.x + Transform.vVelocityPerSecond.x * fLocalTime,
-			Transform.vPosition.y + Transform.vVelocityPerSecond.y * fLocalTime,
-			Transform.vPosition.z + Transform.vVelocityPerSecond.z * fLocalTime };
-		const float3_t Rotation = {
-			Transform.vRotationDegrees.x +
-				Transform.vRevolutionDegreesPerSecond.x * fLocalTime,
-			Transform.vRotationDegrees.y +
-				Transform.vRevolutionDegreesPerSecond.y * fLocalTime,
-			Transform.vRotationDegrees.z +
-				Transform.vRevolutionDegreesPerSecond.z * fLocalTime };
 		const matrix_t Local =
 			XMMatrixScaling(Transform.vScale.x, Transform.vScale.y,
 				Transform.vScale.z) *
 			XMMatrixRotationRollPitchYaw(
-				XMConvertToRadians(Rotation.x),
-				XMConvertToRadians(Rotation.y),
-				XMConvertToRadians(Rotation.z)) *
-			XMMatrixTranslation(Position.x, Position.y, Position.z);
+				XMConvertToRadians(Transform.vRotationDegrees.x),
+				XMConvertToRadians(Transform.vRotationDegrees.y),
+				XMConvertToRadians(Transform.vRotationDegrees.z)) *
+			XMMatrixTranslation(Transform.vPosition.x,
+				Transform.vPosition.y, Transform.vPosition.z);
 		float4x4_t World{};
 		XMStoreFloat4x4(&World, Local * XMLoadFloat4x4(&Frame.RootWorld));
-		/* Preserve the source monster_dead_msk_high_realpbr 0.333 cutoff only
-		   for the exact Dimension Summon identity.  Generic MASKED cues keep
-		   the character pass, while OPAQUE and TRANSLUCENT remain separate. */
 		const bool_t bUseDimensionSummonExactMask =
 			Document.strEffectAssetId ==
 				"effect.dimensionmaster.skill.2050500.unified" &&
@@ -16512,17 +15945,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 		if (FAILED(hResult))
 			return Fail_RenderOperation(
 				"Animated model-cue bind failed: g_ProjMatrix.", hResult);
-		hResult = m_pAnimatedModelShader->Bind_RawValue(
-			"g_EffectModelCueColorMultiply", &Cue.vColorMultiply,
-			sizeof(Cue.vColorMultiply));
-		if (FAILED(hResult))
-			return Fail_RenderOperation(
-				"Animated model-cue bind failed: color multiply.", hResult);
-		hResult = m_pAnimatedModelShader->Bind_RawValue(
-			"g_EffectModelCueOpacity", &Cue.fOpacity, sizeof(Cue.fOpacity));
-		if (FAILED(hResult))
-			return Fail_RenderOperation(
-				"Animated model-cue bind failed: opacity.", hResult);
 		for (uint32_t iMesh = 0u; iMesh < Model.Get_NumMeshes(); ++iMesh)
 		{
 			hResult = Bind_DeferredMaterialInputs(
@@ -16537,14 +15959,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 				return Fail_RenderOperation(
 					"Animated model-cue bone bind failed at mesh " +
 					std::to_string(iMesh) + ".", hResult);
-			uint32_t iPass = bUseDimensionSummonExactMask ? 3u :
+			const uint32_t iPass = bUseDimensionSummonExactMask ? 3u :
 				(Cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE ?
 					2u : 0u);
-			if (Cue.eAlphaMode ==
-				EFFECT_MODEL_CUE_ALPHA_MODE::TRANSLUCENT_SURFACE)
-			{
-				iPass = 4u;
-			}
 			hResult = m_pAnimatedModelShader->Begin(iPass);
 			if (FAILED(hResult))
 				return Fail_RenderOperation(

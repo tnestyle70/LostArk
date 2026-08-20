@@ -5,10 +5,13 @@
 #include "HitAreaWire.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 NS_BEGIN(Client)
+
+class EFFECT_PRODUCT_CUE_ADMISSION_TOKEN;
 
 enum class EFFECT_FOLLOW_POLICY : uint8_t
 {
@@ -34,6 +37,8 @@ struct ANIMATION_EFFECT_CUE final
     EFFECT_TRANSFORM_DESC LocalTransform{};
 	EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
 	EFFECT_STOP_POLICY eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+	std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN>
+		pProductAdmissionToken;
 };
 
 struct ANIMATION_HIT_CUE final
@@ -80,9 +85,9 @@ struct ANIMATION_EFFECT_CUE_DOCUMENT final
 class CAnimationEffectCueDocument final
 {
 public:
-    /* Loading-level path. It discovers referenced clips while parsing the
-       authored rows once, so no live CModel or second animevents read is
-       required just to register Product prewarm targets. */
+    /* Loading-level path. It discovers every clip referenced by the authored
+       event rows and then delegates all parsing/admission validation to Load(),
+       so no live CModel is required just to register Product prewarm targets. */
     static bool_t Load_ForProductPrewarm(
         const std::string& strAnimationAssetId,
         ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
@@ -110,16 +115,6 @@ public:
 		ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
 		std::string& strOutStatus,
 		bool_t bFilterToAvailableClips = false);
-
-private:
-	static bool_t Load_FromText(
-		const std::string& strAnimationAssetId,
-		const std::string_view Text,
-		const std::vector<std::string>& AvailableClips,
-		ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
-		std::string& strOutStatus,
-		bool_t bFilterToAvailableClips,
-		std::vector<std::string>* pOutReferencedClips);
 };
 
 NS_END

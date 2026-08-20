@@ -4,6 +4,7 @@
 #include "Effect_DocumentCodec.h"
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_VisualProgramCorpus.h"
+#include "Network/PacketMessages.h"
 #include <algorithm>
 #include <array>
 #include <cfloat>
@@ -21,6 +22,8 @@ namespace
 	struct DIRECT_AUTHORED_RUNTIME_SOURCE final
 	{
 		std::filesystem::path DocumentPath;
+		std::string strContentSha256;
+		std::map<std::string, std::string, std::less<>> Dependencies;
 	};
 
     std::map<std::string,
@@ -50,6 +53,12 @@ namespace
 		std::shared_ptr<const
 			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>, std::less<>>
 		g_VisualProjections;
+	std::map<std::string,
+		std::shared_ptr<const Client::EFFECT_PRODUCT_CUE_ADMISSION>,
+		std::less<>> g_ProductCueAdmissions;
+	std::map<std::string,
+		std::vector<std::shared_ptr<const Client::EFFECT_PRODUCT_CUE_ADMISSION>>,
+		std::less<>> g_ProductCueAdmissionsByEffect;
     uint64_t g_iRuntimeRevision = 0u;
     std::string g_strStatus = "Effect catalog has not been loaded.";
 
@@ -111,25 +120,18 @@ namespace
             });
     }
 
-	bool Is_DirectAuthoredDocumentPath(
+	bool Is_SealedDirectAuthoredDocumentPath(
 		const std::string_view Value,
-		const std::string_view EffectAssetId)
+		const std::string_view EffectAssetId,
+		const std::string_view ContentSha256)
 	{
-		if (EffectAssetId.empty())
-			return false;
-		const std::string Prefix =
-			"Authored/" + std::string(EffectAssetId) + ".";
-		constexpr std::string_view Suffix = ".effect.json";
-		if (Value.size() != Prefix.size() + 64u + Suffix.size() ||
-			0u != Value.compare(0u, Prefix.size(), Prefix) ||
-			0u != Value.compare(Value.size() - Suffix.size(),
-				Suffix.size(), Suffix))
+		if (EffectAssetId.empty() || !Is_LowerHexSha256(
+				std::string(ContentSha256)))
 		{
 			return false;
 		}
-
-		return Is_LowerHexSha256(std::string(
-			Value.substr(Prefix.size(), 64u)));
+		return Value == "Authored/" + std::string(EffectAssetId) + "." +
+			std::string(ContentSha256) + ".effect.json";
 	}
 
 	bool Resolve_SealedDirectAuthoredDocumentPath(
@@ -173,6 +175,13 @@ namespace
 	{
 		return RuntimeCatalogPath.parent_path() /
 			L"EffectVisualPrograms.runtime.json";
+	}
+
+	std::filesystem::path Find_ProductCueAdmissionSidecar(
+		const std::filesystem::path& RuntimeCatalogPath)
+	{
+		return RuntimeCatalogPath.parent_path() /
+			L"EffectProductCueAdmissions.runtime.json";
 	}
 
 	bool Is_NormalizedOccurrenceTuningSourcePath(const std::string_view Value)
@@ -2887,6 +2896,680 @@ namespace
 		return true;
 	}
 
+	bool Is_ProductBoundedString(const std::string& Value)
+	{
+		return !Value.empty() && Value.size() <= 512u;
+	}
+
+	bool Read_ProductU32(const Client::DATA_JSON_VALUE& Object,
+		const char* pName, uint32_t& iOutValue)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Required(
+			Object, pName, Client::DATA_JSON_TYPE::NUMBER);
+		if (nullptr == pValue || pValue->Was_FloatingPointToken() ||
+			!std::isfinite(pValue->Get_Number()) ||
+			pValue->Get_Number() != std::floor(pValue->Get_Number()) ||
+			pValue->Get_Number() < 0.0 ||
+			pValue->Get_Number() > static_cast<double>(UINT32_MAX))
+		{
+			return false;
+		}
+		iOutValue = static_cast<uint32_t>(pValue->Get_Number());
+		return true;
+	}
+
+	bool Is_ProductStableId(const std::string& Value)
+	{
+		return Is_ProductBoundedString(Value) &&
+			std::all_of(Value.begin(), Value.end(), [](const char Character)
+			{
+				return (Character >= 'a' && Character <= 'z') ||
+					(Character >= 'A' && Character <= 'Z') ||
+					(Character >= '0' && Character <= '9') ||
+					Character == '_' || Character == '-' || Character == '.';
+			});
+	}
+
+	std::string Build_ProductCueAdmissionKey(
+		const std::string& strAnimationAssetId,
+		const std::string& strClipName,
+		const uint32_t iStartMs,
+		const std::string& strEffectAssetId)
+	{
+		return strAnimationAssetId + "\n" + strClipName + "\n" +
+			std::to_string(iStartMs) + "\n" + strEffectAssetId;
+	}
+
+	const char_t* ProductCueCharacterClassLabel(
+		const LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass)
+	{
+		using LostArk::Shared::CHARACTER_CLASS_ID;
+		switch (eCharacterClass)
+		{
+		case CHARACTER_CLASS_ID::LANCE_MASTER: return "LANCE_MASTER";
+		case CHARACTER_CLASS_ID::GUNSLINGER: return "GUNSLINGER";
+		case CHARACTER_CLASS_ID::SLAYER: return "SLAYER";
+		case CHARACTER_CLASS_ID::ARTIST: return "ARTIST";
+		case CHARACTER_CLASS_ID::DIMENSIONMASTER: return "DIMENSIONMASTER";
+		case CHARACTER_CLASS_ID::WARLORD: return "WARLORD";
+		case CHARACTER_CLASS_ID::END:
+		default: return nullptr;
+		}
+	}
+
+	void Append_ProductCueAdmissionIdentityPart(
+		std::string& Target, const std::string_view Value)
+	{
+		Target += std::to_string(Value.size());
+		Target.push_back(':');
+		Target.append(Value.data(), Value.size());
+	}
+
+	std::string Build_ProductCueAdmissionIdentity(
+		const Client::EFFECT_PRODUCT_CUE_ADMISSION& Admission)
+	{
+		std::string Projection;
+		Projection.reserve(1024u);
+		const auto Append = [&Projection](const std::string_view Value)
+		{
+			Append_ProductCueAdmissionIdentityPart(Projection, Value);
+		};
+		Append(Admission.strCueId);
+		Append(std::to_string(static_cast<uint32_t>(Admission.eAdmissionClass)));
+		Append(Admission.strApprovalCeiling);
+		Append(Admission.strObservedExactness);
+		Append(Admission.strCharacterClass);
+		Append(Admission.strInputSlot);
+		Append(std::to_string(Admission.iSkillId));
+		Append(std::to_string(Admission.iStageIndex));
+		Append(Admission.strAnimationAssetId);
+		Append(Admission.strClipName);
+		Append(std::to_string(Admission.iStartMs));
+		Append(Admission.strEffectAssetId);
+		Append(Admission.strRollbackEffectAssetId);
+		Append(Admission.strEffectContentSha256);
+		Append(std::to_string(Admission.iElementCount));
+		Append(std::to_string(Admission.iFullElementCount));
+		Append(std::to_string(Admission.iApproximateElementCount));
+		Append(std::to_string(Admission.iHardSuppressedElementCount));
+		Append(Admission.Provenance.strDecision);
+		Append(Admission.Provenance.strApprovedAtKst);
+		Append(Admission.Provenance.strSourceThreadId);
+		Append(Admission.Provenance.strScope);
+		return Client::CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Projection);
+	}
+
+	bool Count_ProductAdmissionElements(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		uint32_t& iOutFullCount,
+		uint32_t& iOutApproximateCount,
+		uint32_t& iOutHardSuppressedCount,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		if (Document.Elements.size() > UINT32_MAX)
+		{
+			strOutError = "Product-managed Effect element count exceeds uint32.";
+			return false;
+		}
+		iOutFullCount = 0u;
+		iOutApproximateCount = 0u;
+		iOutHardSuppressedCount = 0u;
+		for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			const EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+				Element.Material.Execution;
+			if (Execution.bAuthoringApproximate)
+			{
+				if (!Execution.bFailClosed)
+				{
+					strOutError =
+						"Product-managed approximate carrier is not fail-closed tagged: " +
+						Element.strElementId;
+					return false;
+				}
+				++iOutApproximateCount;
+			}
+			else if (Execution.bFailClosed)
+			{
+				if (Execution.bEnabled || Element.bVisible)
+				{
+					strOutError =
+						"Product-managed hard carrier is not suppressed: " +
+						Element.strElementId;
+					return false;
+				}
+				++iOutHardSuppressedCount;
+			}
+			else
+			{
+				++iOutFullCount;
+			}
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool Load_ProductCueAdmissionSidecar(
+		const std::filesystem::path& SidecarPath,
+		const std::string& strRuntimeCatalogUtf8,
+		const bool_t bSidecarRequired,
+		const std::string& strExpectedPolicySha256,
+		const std::map<std::string,
+			std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>,
+			std::less<>>& Effects,
+		const std::map<std::string,
+			std::shared_ptr<const Client::EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>,
+			std::less<>>& RuntimeProgramEntries,
+		const std::map<std::string, std::string, std::less<>>&
+			DirectAuthoredContentShaByEffect,
+		std::map<std::string,
+			std::shared_ptr<const Client::EFFECT_PRODUCT_CUE_ADMISSION>,
+			std::less<>>& OutAdmissions,
+		std::map<std::string,
+			std::vector<std::shared_ptr<const
+				Client::EFFECT_PRODUCT_CUE_ADMISSION>>, std::less<>>&
+			OutAdmissionsByEffect,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		OutAdmissions.clear();
+		OutAdmissionsByEffect.clear();
+		if (!bSidecarRequired)
+		{
+			/* Direct authored Product uses the document's three-way execution
+			   state directly: Full and authoring-approximate carriers execute,
+			   while hard fail-closed carriers remain suppressed.  An older
+			   admission sidecar may remain beside the catalog as inert rollback
+			   evidence, but it is no longer a runtime authority.  The publisher
+			   validates all three states; startup keeps direct documents sealed
+			   and loads only the cues that are actually prepared. */
+			strOutError.clear();
+			return true;
+		}
+		if (!std::filesystem::is_regular_file(SidecarPath))
+		{
+			strOutError =
+				"Typed Effect runtime catalog requires EffectProductCueAdmissions.runtime.json.";
+			return false;
+		}
+		if (!bSidecarRequired ||
+			!Is_LowerHexSha256(strExpectedPolicySha256))
+		{
+			strOutError =
+				"Product cue admission sidecar is present without a catalog policy marker.";
+			return false;
+		}
+
+		std::ifstream Input(SidecarPath, std::ios::binary);
+		if (!Input)
+		{
+			strOutError = "Product cue admission sidecar could not be opened.";
+			return false;
+		}
+		const std::string Text{
+			std::istreambuf_iterator<char>(Input),
+			std::istreambuf_iterator<char>() };
+		DATA_JSON_VALUE Root;
+		DATA_JSON_PARSE_LIMITS Limits;
+		Limits.iMaximumBytes = 4u * 1024u * 1024u;
+		Limits.iMaximumDepth = 16u;
+		Limits.iMaximumValues = 100'000u;
+		if (!CDataJson::Parse(Text, Root, strOutError, Limits) ||
+			!Has_ExactOrderedKeys(Root, {
+				"schema", "formatVersion", "runtimeCatalogSha256",
+				"sourcePolicySha256", "sourcePolicyUtf8Json", "decisionSetId",
+				"admissionMode", "approvals" }))
+		{
+			if (strOutError.empty())
+				strOutError = "Product cue admission root fields or order are invalid.";
+			return false;
+		}
+		const DATA_JSON_VALUE* pSchema = Required(
+			Root, "schema", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pRuntimeCatalogSha = Required(
+			Root, "runtimeCatalogSha256", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pSourcePolicySha = Required(
+			Root, "sourcePolicySha256", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pSourcePolicyText = Required(
+			Root, "sourcePolicyUtf8Json", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pDecisionSetId = Required(
+			Root, "decisionSetId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pAdmissionMode = Required(
+			Root, "admissionMode", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pApprovals = Required(
+			Root, "approvals", DATA_JSON_TYPE::ARRAY);
+		uint32_t iFormatVersion = 0u;
+		if (nullptr == pSchema ||
+			pSchema->Get_String() != "lostark.effect-product-cue-admissions" ||
+			!Read_ProductU32(Root, "formatVersion", iFormatVersion) ||
+			1u != iFormatVersion || nullptr == pRuntimeCatalogSha ||
+			!Is_LowerHexSha256(pRuntimeCatalogSha->Get_String()) ||
+			pRuntimeCatalogSha->Get_String() !=
+				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+					strRuntimeCatalogUtf8) ||
+			nullptr == pSourcePolicySha ||
+			!Is_LowerHexSha256(pSourcePolicySha->Get_String()) ||
+			pSourcePolicySha->Get_String() != strExpectedPolicySha256 ||
+			nullptr == pSourcePolicyText ||
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				pSourcePolicyText->Get_String()) != strExpectedPolicySha256 ||
+			nullptr == pDecisionSetId ||
+			!Is_ProductStableId(pDecisionSetId->Get_String()) ||
+			nullptr == pAdmissionMode ||
+			pAdmissionMode->Get_String() != "EXPLICIT_CUE_OPT_IN_ONLY" ||
+			nullptr == pApprovals || pApprovals->Get_Array().empty() ||
+			pApprovals->Get_Array().size() > 4096u)
+		{
+			strOutError = "Product cue admission header or catalog hash is invalid.";
+			return false;
+		}
+
+		DATA_JSON_VALUE PolicyRoot;
+		DATA_JSON_PARSE_LIMITS PolicyLimits;
+		PolicyLimits.iMaximumBytes = 1024u * 1024u;
+		PolicyLimits.iMaximumDepth = 16u;
+		PolicyLimits.iMaximumValues = 50'000u;
+		std::string PolicyError;
+		if (!CDataJson::Parse(pSourcePolicyText->Get_String(), PolicyRoot,
+				PolicyError, PolicyLimits) ||
+			!Has_ExactOrderedKeys(PolicyRoot, { "schema", "formatVersion",
+				"decisionSetId", "defaultAdmission", "approvals" }))
+		{
+			strOutError = "Product cue embedded source policy is invalid: " +
+				PolicyError;
+			return false;
+		}
+		const DATA_JSON_VALUE* pPolicySchema = Required(
+			PolicyRoot, "schema", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pPolicyDecisionSetId = Required(
+			PolicyRoot, "decisionSetId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pPolicyDefaultAdmission = Required(
+			PolicyRoot, "defaultAdmission", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pPolicyApprovals = Required(
+			PolicyRoot, "approvals", DATA_JSON_TYPE::ARRAY);
+		uint32_t iPolicyFormatVersion = 0u;
+		if (nullptr == pPolicySchema ||
+			pPolicySchema->Get_String() !=
+				"lostark.effect-product-cue-approval-policy" ||
+			!Read_ProductU32(PolicyRoot, "formatVersion",
+				iPolicyFormatVersion) || 1u != iPolicyFormatVersion ||
+			nullptr == pPolicyDecisionSetId ||
+			pPolicyDecisionSetId->Get_String() != pDecisionSetId->Get_String() ||
+			nullptr == pPolicyDefaultAdmission ||
+			pPolicyDefaultAdmission->Get_String() != "DENY" ||
+			nullptr == pPolicyApprovals ||
+			pPolicyApprovals->Get_Array().size() !=
+				pApprovals->Get_Array().size())
+		{
+			strOutError =
+				"Product cue embedded source policy header does not match its receipt.";
+			return false;
+		}
+		std::map<std::string, const DATA_JSON_VALUE*, std::less<>>
+			PolicyApprovalByCueId;
+		for (const DATA_JSON_VALUE& PolicyValue :
+			pPolicyApprovals->Get_Array())
+		{
+			if (!Has_ExactOrderedKeys(PolicyValue, {
+					"cueId", "approvalCeiling", "animationAssetId",
+					"characterClass", "inputSlot", "skillId", "stageIndex",
+					"clipName", "startMs", "effectAssetId",
+					"rollbackEffectAssetId", "effectContentSha256",
+					"provenance" }))
+			{
+				strOutError =
+					"Product cue source policy approval fields or order are invalid.";
+				return false;
+			}
+			const DATA_JSON_VALUE* pPolicyCueId = Required(
+				PolicyValue, "cueId", DATA_JSON_TYPE::STRING);
+			if (nullptr == pPolicyCueId ||
+				!Is_ProductStableId(pPolicyCueId->Get_String()) ||
+				!PolicyApprovalByCueId.emplace(
+					pPolicyCueId->Get_String(), &PolicyValue).second)
+			{
+				strOutError =
+					"Product cue source policy approval identity is invalid or duplicate.";
+				return false;
+			}
+		}
+
+		std::string strPreviousCueId;
+		std::map<std::string, std::string, std::less<>> EffectOwners;
+		std::set<std::string, std::less<>> CueOwners;
+		std::set<std::string, std::less<>> CandidateEffectIds;
+		std::set<std::string, std::less<>> RollbackEffectIds;
+		for (const DATA_JSON_VALUE& Value : pApprovals->Get_Array())
+		{
+			if (!Has_ExactOrderedKeys(Value, {
+				"cueId", "admission", "approvalCeiling", "observedExactness",
+				"characterClass", "inputSlot", "skillId", "stageIndex",
+				"animationAssetId", "clipName", "startMs", "effectAssetId",
+				"rollbackEffectAssetId", "effectContentSha256",
+				"approximateElementCount", "hardSuppressedElementCount",
+				"provenance" }))
+			{
+				strOutError =
+					"Product cue admission fields or order are invalid.";
+				return false;
+			}
+			const DATA_JSON_VALUE* pCueId = Required(
+				Value, "cueId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pAdmission = Required(
+				Value, "admission", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pApprovalCeiling = Required(
+				Value, "approvalCeiling", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pObservedExactness = Required(
+				Value, "observedExactness", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pCharacterClass = Required(
+				Value, "characterClass", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pInputSlot = Required(
+				Value, "inputSlot", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pAnimationAssetId = Required(
+				Value, "animationAssetId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pClipName = Required(
+				Value, "clipName", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pEffectAssetId = Required(
+				Value, "effectAssetId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pRollbackEffectAssetId = Required(
+				Value, "rollbackEffectAssetId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pContentSha = Required(
+				Value, "effectContentSha256", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pProvenance = Required(
+				Value, "provenance", DATA_JSON_TYPE::OBJECT);
+			uint32_t iSkillId = 0u;
+			uint32_t iStageIndex = 0u;
+			uint32_t iStartMs = 0u;
+			uint32_t iApproximateCount = 0u;
+			uint32_t iHardCount = 0u;
+			if (nullptr == pCueId || !Is_ProductStableId(pCueId->Get_String()) ||
+				(!strPreviousCueId.empty() &&
+				 pCueId->Get_String() <= strPreviousCueId) ||
+				nullptr == pAdmission ||
+				(pAdmission->Get_String() != "PRODUCT_APPROVED_FULL" &&
+				 pAdmission->Get_String() !=
+					"PRODUCT_APPROVED_APPROXIMATE") ||
+				nullptr == pApprovalCeiling ||
+				pApprovalCeiling->Get_String() !=
+					"PRODUCT_APPROVED_APPROXIMATE" ||
+				nullptr == pObservedExactness ||
+				(pObservedExactness->Get_String() != "FULL" &&
+				 pObservedExactness->Get_String() !=
+					"AUTHORING_APPROXIMATE") ||
+				nullptr == pCharacterClass ||
+				!Is_ProductStableId(pCharacterClass->Get_String()) ||
+				nullptr == pInputSlot ||
+				!Is_ProductStableId(pInputSlot->Get_String()) ||
+				!Read_ProductU32(Value, "skillId", iSkillId) ||
+				!Read_ProductU32(Value, "stageIndex", iStageIndex) ||
+				iStageIndex > 255u || nullptr == pAnimationAssetId ||
+				!Is_ProductStableId(pAnimationAssetId->Get_String()) ||
+				nullptr == pClipName ||
+				!Is_ProductBoundedString(pClipName->Get_String()) ||
+				!Read_ProductU32(Value, "startMs", iStartMs) ||
+				nullptr == pEffectAssetId ||
+				!Is_ProductStableId(pEffectAssetId->Get_String()) ||
+				nullptr == pRollbackEffectAssetId ||
+				!Is_ProductStableId(pRollbackEffectAssetId->Get_String()) ||
+				pEffectAssetId->Get_String() ==
+					pRollbackEffectAssetId->Get_String() ||
+				nullptr == pContentSha ||
+				!Is_LowerHexSha256(pContentSha->Get_String()) ||
+				!Read_ProductU32(Value, "approximateElementCount",
+					iApproximateCount) ||
+				!Read_ProductU32(Value, "hardSuppressedElementCount",
+					iHardCount) ||
+				nullptr == pProvenance ||
+				!Has_ExactOrderedKeys(*pProvenance, {
+					"decision", "approvedAtKst", "sourceThreadId", "scope" }))
+			{
+				strOutError =
+					"Product cue admission identity or counts are invalid.";
+				return false;
+			}
+
+			const DATA_JSON_VALUE* pDecision = Required(
+				*pProvenance, "decision", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pApprovedAtKst = Required(
+				*pProvenance, "approvedAtKst", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pSourceThreadId = Required(
+				*pProvenance, "sourceThreadId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pScope = Required(
+				*pProvenance, "scope", DATA_JSON_TYPE::STRING);
+			if (nullptr == pDecision ||
+				pDecision->Get_String() != "EXPLICIT_USER_OPT_IN" ||
+				nullptr == pApprovedAtKst ||
+				!Is_ProductBoundedString(pApprovedAtKst->Get_String()) ||
+				nullptr == pSourceThreadId ||
+				!Is_ProductBoundedString(pSourceThreadId->Get_String()) ||
+				nullptr == pScope ||
+				!Is_ProductBoundedString(pScope->Get_String()))
+			{
+				strOutError = "Product cue admission provenance is invalid.";
+				return false;
+			}
+
+			const auto PolicyIterator =
+				PolicyApprovalByCueId.find(pCueId->Get_String());
+			if (PolicyApprovalByCueId.end() == PolicyIterator)
+			{
+				strOutError =
+					"Product cue receipt approval is absent from its source policy: " +
+					pCueId->Get_String();
+				return false;
+			}
+			const DATA_JSON_VALUE& PolicyValue = *PolicyIterator->second;
+			const auto PolicyStringEquals = [&PolicyValue](
+				const char* pName, const std::string& Expected)
+			{
+				const DATA_JSON_VALUE* pValue = Required(
+					PolicyValue, pName, DATA_JSON_TYPE::STRING);
+				return nullptr != pValue && pValue->Get_String() == Expected;
+			};
+			uint32_t iPolicySkillId = 0u;
+			uint32_t iPolicyStageIndex = 0u;
+			uint32_t iPolicyStartMs = 0u;
+			const DATA_JSON_VALUE* pPolicyProvenance = Required(
+				PolicyValue, "provenance", DATA_JSON_TYPE::OBJECT);
+			if (!PolicyStringEquals("approvalCeiling",
+					pApprovalCeiling->Get_String()) ||
+				!PolicyStringEquals("animationAssetId",
+					pAnimationAssetId->Get_String()) ||
+				!PolicyStringEquals("characterClass",
+					pCharacterClass->Get_String()) ||
+				!PolicyStringEquals("inputSlot", pInputSlot->Get_String()) ||
+				!Read_ProductU32(PolicyValue, "skillId", iPolicySkillId) ||
+				iPolicySkillId != iSkillId ||
+				!Read_ProductU32(PolicyValue, "stageIndex",
+					iPolicyStageIndex) || iPolicyStageIndex != iStageIndex ||
+				!PolicyStringEquals("clipName", pClipName->Get_String()) ||
+				!Read_ProductU32(PolicyValue, "startMs", iPolicyStartMs) ||
+				iPolicyStartMs != iStartMs ||
+				!PolicyStringEquals("effectAssetId",
+					pEffectAssetId->Get_String()) ||
+				!PolicyStringEquals("rollbackEffectAssetId",
+					pRollbackEffectAssetId->Get_String()) ||
+				!PolicyStringEquals("effectContentSha256",
+					pContentSha->Get_String()) ||
+				nullptr == pPolicyProvenance ||
+				!Has_ExactOrderedKeys(*pPolicyProvenance, {
+					"decision", "approvedAtKst", "sourceThreadId", "scope" }))
+			{
+				strOutError =
+					"Product cue receipt approval diverges from its source policy: " +
+					pCueId->Get_String();
+				return false;
+			}
+			for (const char* pField :
+				{ "decision", "approvedAtKst", "sourceThreadId", "scope" })
+			{
+				const DATA_JSON_VALUE* pPolicyField = Required(
+					*pPolicyProvenance, pField, DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* pReceiptField = Required(
+					*pProvenance, pField, DATA_JSON_TYPE::STRING);
+				if (nullptr == pPolicyField || nullptr == pReceiptField ||
+					pPolicyField->Get_String() != pReceiptField->Get_String())
+				{
+					strOutError =
+						"Product cue receipt provenance diverges from its source policy: " +
+						pCueId->Get_String();
+					return false;
+				}
+			}
+
+			const auto ContentShaIterator =
+				DirectAuthoredContentShaByEffect.find(
+					pEffectAssetId->Get_String());
+			const auto EffectIterator = Effects.find(
+				pEffectAssetId->Get_String());
+			if (ContentShaIterator ==
+					DirectAuthoredContentShaByEffect.end() ||
+				EffectIterator == Effects.end() ||
+				(!Effects.contains(pRollbackEffectAssetId->Get_String()) &&
+				 !RuntimeProgramEntries.contains(
+					pRollbackEffectAssetId->Get_String())) ||
+				ContentShaIterator->second != pContentSha->Get_String())
+			{
+				strOutError =
+					"Product cue admission target, rollback, or authored hash is missing: " +
+					pCueId->Get_String();
+				return false;
+			}
+			uint32_t iFullCount = 0u;
+			uint32_t iComputedApproximateCount = 0u;
+			uint32_t iComputedHardCount = 0u;
+			if (!Count_ProductAdmissionElements(*EffectIterator->second,
+					iFullCount, iComputedApproximateCount, iComputedHardCount,
+					strOutError) ||
+				iComputedApproximateCount != iApproximateCount ||
+				iComputedHardCount != iHardCount)
+			{
+				if (strOutError.empty())
+					strOutError =
+						"Product cue admission element counts drifted: " +
+						pCueId->Get_String();
+				return false;
+			}
+			const bool_t bApproximate = 0u != iApproximateCount;
+			if ((bApproximate &&
+				 (pAdmission->Get_String() !=
+					"PRODUCT_APPROVED_APPROXIMATE" ||
+				  pObservedExactness->Get_String() !=
+					"AUTHORING_APPROXIMATE")) ||
+				(!bApproximate &&
+				 (pAdmission->Get_String() != "PRODUCT_APPROVED_FULL" ||
+				  pObservedExactness->Get_String() != "FULL")))
+			{
+				strOutError =
+					"Product cue admission exactness does not match its runtime document: " +
+					pCueId->Get_String();
+				return false;
+			}
+
+			auto Admission = std::make_shared<EFFECT_PRODUCT_CUE_ADMISSION>();
+			Admission->strCueId = pCueId->Get_String();
+			Admission->eAdmissionClass = bApproximate ?
+				EFFECT_PRODUCT_CUE_ADMISSION_CLASS::
+					PRODUCT_APPROVED_APPROXIMATE :
+				EFFECT_PRODUCT_CUE_ADMISSION_CLASS::PRODUCT_APPROVED_FULL;
+			Admission->strApprovalCeiling = pApprovalCeiling->Get_String();
+			Admission->strObservedExactness =
+				pObservedExactness->Get_String();
+			Admission->strCharacterClass = pCharacterClass->Get_String();
+			Admission->strInputSlot = pInputSlot->Get_String();
+			Admission->iSkillId = iSkillId;
+			Admission->iStageIndex = iStageIndex;
+			Admission->strAnimationAssetId =
+				pAnimationAssetId->Get_String();
+			Admission->strClipName = pClipName->Get_String();
+			Admission->iStartMs = iStartMs;
+			Admission->strEffectAssetId = pEffectAssetId->Get_String();
+			Admission->strRollbackEffectAssetId =
+				pRollbackEffectAssetId->Get_String();
+			CandidateEffectIds.emplace(Admission->strEffectAssetId);
+			RollbackEffectIds.emplace(Admission->strRollbackEffectAssetId);
+			Admission->strEffectContentSha256 = pContentSha->Get_String();
+			Admission->iElementCount =
+				static_cast<uint32_t>(EffectIterator->second->Elements.size());
+			Admission->iFullElementCount = iFullCount;
+			Admission->iApproximateElementCount = iApproximateCount;
+			Admission->iHardSuppressedElementCount = iHardCount;
+			Admission->Provenance.strDecision = pDecision->Get_String();
+			Admission->Provenance.strApprovedAtKst =
+				pApprovedAtKst->Get_String();
+			Admission->Provenance.strSourceThreadId =
+				pSourceThreadId->Get_String();
+			Admission->Provenance.strScope = pScope->Get_String();
+
+			const std::string Key = Build_ProductCueAdmissionKey(
+				Admission->strAnimationAssetId, Admission->strClipName,
+				Admission->iStartMs, Admission->strEffectAssetId);
+			const std::string Owner = Admission->strAnimationAssetId + "\n" +
+				Admission->strClipName + "\n" +
+				std::to_string(Admission->iStartMs);
+			if (!CueOwners.emplace(Owner).second)
+			{
+				strOutError =
+					"Physical Product cue has multiple admissions: " +
+					Admission->strCueId;
+				return false;
+			}
+			const auto [OwnerIterator, bOwnerInserted] = EffectOwners.emplace(
+				Admission->strEffectAssetId, Owner);
+			if ((!bOwnerInserted && OwnerIterator->second != Owner) ||
+				OutAdmissions.contains(Key))
+			{
+				strOutError =
+					"Product cue admission tuple or managed Effect owner is duplicate: " +
+					Admission->strCueId;
+				return false;
+			}
+			std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION> Committed =
+				std::move(Admission);
+			const std::string CommittedEffectId = Committed->strEffectAssetId;
+			OutAdmissions.emplace(Key, Committed);
+			OutAdmissionsByEffect[CommittedEffectId].push_back(
+				std::move(Committed));
+			strPreviousCueId = pCueId->Get_String();
+		}
+
+		for (const std::string& CandidateEffectId : CandidateEffectIds)
+		{
+			if (RollbackEffectIds.contains(CandidateEffectId))
+			{
+				strOutError =
+					"Product cue candidate and rollback sets overlap: " +
+					CandidateEffectId;
+				return false;
+			}
+		}
+
+		for (const auto& [EffectId, ContentSha] :
+			DirectAuthoredContentShaByEffect)
+		{
+			(void)ContentSha;
+			uint32_t iFullCount = 0u;
+			uint32_t iApproximateCount = 0u;
+			uint32_t iHardCount = 0u;
+			if (!Count_ProductAdmissionElements(*Effects.at(EffectId),
+					iFullCount, iApproximateCount, iHardCount, strOutError))
+			{
+				return false;
+			}
+			if (0u != iApproximateCount &&
+				!OutAdmissionsByEffect.contains(EffectId))
+			{
+				strOutError =
+					"Approximate direct-authored Effect lacks explicit cue admission: " +
+					EffectId;
+				return false;
+			}
+		}
+		strOutError.clear();
+		return true;
+	}
+
 	bool Read_Float(const Client::DATA_JSON_VALUE& Object,
 		const char* pName, f32_t& fOutValue)
 	{
@@ -3284,14 +3967,17 @@ namespace
 		const std::string Text{
 			std::istreambuf_iterator<char>(Input),
 			std::istreambuf_iterator<char>() };
-		if (Text.size() != FileBytes)
+		if (Text.size() != FileBytes ||
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Text) !=
+				Source.strContentSha256)
 		{
-			strOutError = "sealed authored document read was incomplete";
+			strOutError = "sealed authored document content hash drifted";
 			return false;
 		}
 
 		EFFECT_DOCUMENT_DESC Document;
 		if (!CEffectDocumentCodec::Parse(Text, Document, strOutError) ||
+			!CEffectDocumentCodec::Validate_Drawable(Document, strOutError) ||
 			Document.bSourceContract ||
 			Document.iLoadedFormatVersion != EFFECT_AUTHORING_FORMAT_VERSION ||
 			Document.strEffectAssetId != EffectAssetId)
@@ -3301,6 +3987,22 @@ namespace
 				strOutError =
 					"sealed authored document identity or drawable admission mismatched";
 			}
+			return false;
+		}
+
+		std::vector<std::string> DocumentDependencies;
+		CEffectDocumentCodec::Collect_ResourceAssetIds(
+			Document, DocumentDependencies);
+		if (DocumentDependencies.size() != Source.Dependencies.size() ||
+			!std::equal(DocumentDependencies.begin(), DocumentDependencies.end(),
+				Source.Dependencies.begin(),
+				[](const std::string& AssetId, const auto& Dependency)
+				{
+					return AssetId == Dependency.first;
+				}))
+		{
+			strOutError =
+				"sealed authored document dependency set mismatched its catalog row";
 			return false;
 		}
 
@@ -3371,6 +4073,39 @@ namespace
 	}
 }
 
+struct Client::CEffectCatalog::RUNTIME_SNAPSHOT final
+{
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC>, std::less<>> Effects;
+	std::map<std::string,
+		std::shared_ptr<const DIRECT_AUTHORED_RUNTIME_SOURCE>, std::less<>>
+		DirectAuthoredSources;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_ASSEMBLY_DESC>, std::less<>> Assemblies;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_COMPONENT_DESC>, std::less<>> Components;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_COMPILED_RUNTIME_DOCUMENT>, std::less<>>
+		RuntimeAuthorities;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_RUNTIME_PROGRAM_CATALOG_ENTRY>, std::less<>>
+		RuntimeProgramEntries;
+	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS> pVisualProgramCorpus;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM>, std::less<>> VisualPrograms;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>,
+		std::less<>> VisualProjections;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>, std::less<>>
+		ProductCueAdmissions;
+	std::map<std::string,
+		std::vector<std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>>,
+		std::less<>> ProductCueAdmissionsByEffect;
+	uint64_t iRuntimeRevision = 0u;
+	std::string strStatus;
+};
+
 bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 {
 	struct STATUS_ROLLBACK_GUARD final
@@ -3421,8 +4156,16 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		Root, "components", DATA_JSON_TYPE::ARRAY);
     const DATA_JSON_VALUE* pEffects = Required(
         Root, "effects", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* pProductCueAdmissionsRequired =
+		Root.Find("productCueAdmissionsRequired");
+	const DATA_JSON_VALUE* pProductCuePolicySha =
+		Root.Find("productCuePolicySha256");
 	const DATA_JSON_VALUE* pVisualProgramSidecarRequired =
 		Root.Find("visualProgramSidecarRequired");
+	const bool_t bVisualProgramSidecarRequired =
+		nullptr == pVisualProgramSidecarRequired ? true :
+		pVisualProgramSidecarRequired->Is_Boolean() &&
+		pVisualProgramSidecarRequired->Get_Boolean();
 	const bool_t bVisualProgramSidecarMarkerValid =
 		nullptr == pVisualProgramSidecarRequired ||
 		pVisualProgramSidecarRequired->Is_Boolean();
@@ -3430,6 +4173,19 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		!pVersion->Was_FloatingPointToken();
     const bool_t bLegacyCatalog = bIntegralCatalogVersion &&
 		2.0 == pVersion->Get_Number();
+	const bool_t bProductCueAdmissionsRequired =
+		nullptr != pProductCueAdmissionsRequired &&
+		pProductCueAdmissionsRequired->Is_Boolean() &&
+		pProductCueAdmissionsRequired->Get_Boolean() &&
+		nullptr != pProductCuePolicySha &&
+		pProductCuePolicySha->Is_String() &&
+		Is_LowerHexSha256(pProductCuePolicySha->Get_String()) &&
+		(Has_ExactOrderedKeys(Root, { "schema", "formatVersion",
+			"productCueAdmissionsRequired", "productCuePolicySha256",
+			"components", "effects" }) ||
+		 Has_ExactOrderedKeys(Root, { "schema", "formatVersion",
+			"visualProgramSidecarRequired", "productCueAdmissionsRequired",
+			"productCuePolicySha256", "components", "effects" }));
 	const bool_t bPlainDerivedCatalog =
 		Has_ExactOrderedKeys(Root,
 			{ "schema", "formatVersion", "components", "effects" }) ||
@@ -3439,7 +4195,7 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		3.0 == pVersion->Get_Number() && nullptr != pSchema &&
 		pSchema->Get_String() == "lostark.effect-runtime-catalog" &&
 		bVisualProgramSidecarMarkerValid &&
-		bPlainDerivedCatalog;
+		(bPlainDerivedCatalog || bProductCueAdmissionsRequired);
     if ((!bLegacyCatalog && !bDerivedCatalog) ||
 		nullptr == pComponents || nullptr == pEffects)
     {
@@ -3471,6 +4227,14 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 	std::map<std::string,
 		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>,
 		std::less<>> StagedVisualProjections;
+	std::map<std::string, std::string, std::less<>>
+		StagedDirectAuthoredContentShaByEffect;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>, std::less<>>
+		StagedProductCueAdmissions;
+	std::map<std::string,
+		std::vector<std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>>,
+		std::less<>> StagedProductCueAdmissionsByEffect;
 	if (UINT64_MAX == g_iRuntimeRevision)
 	{
 		strOutStatus = "Effect runtime catalog revision is exhausted.";
@@ -3555,13 +4319,9 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 				"DIRECT_AUTHORED_DOCUMENT_V13";
 		if (bDirectAuthoredPayload)
 		{
-			const bool_t bMinimalEntry = Has_ExactOrderedKeys(Entry, {
+			if (!Has_ExactOrderedKeys(Entry, {
 				"payloadKind", "effectAssetId", "authoringFormatVersion",
-				"authoredDocumentPath" });
-			const bool_t bLegacyEntry = Has_ExactOrderedKeys(Entry, {
-				"payloadKind", "effectAssetId", "authoringFormatVersion",
-				"authoredDocumentPath", "contentSha256", "dependencies" });
-			if (!bMinimalEntry && !bLegacyEntry)
+				"authoredDocumentPath", "contentSha256", "dependencies" }))
 			{
 				strOutStatus =
 					"Effect direct authored runtime entry fields or order are invalid.";
@@ -3572,23 +4332,68 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 				Entry, "authoringFormatVersion", DATA_JSON_TYPE::NUMBER);
 			const DATA_JSON_VALUE* pAuthoredDocumentPath = Required(
 				Entry, "authoredDocumentPath", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pContentSha = Required(
+				Entry, "contentSha256", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* pDependencies = Required(
+				Entry, "dependencies", DATA_JSON_TYPE::ARRAY);
 			if (nullptr == pAssetId || pAssetId->Get_String().empty() ||
 				nullptr == pAuthoringVersion ||
 				pAuthoringVersion->Was_FloatingPointToken() ||
 				pAuthoringVersion->Get_Number() !=
 					static_cast<double>(EFFECT_AUTHORING_FORMAT_VERSION) ||
 				nullptr == pAuthoredDocumentPath ||
-				!Is_DirectAuthoredDocumentPath(
-					pAuthoredDocumentPath->Get_String(), pAssetId->Get_String()) ||
+				nullptr == pContentSha ||
+				!Is_LowerHexSha256(pContentSha->Get_String()) ||
+				!Is_SealedDirectAuthoredDocumentPath(
+					pAuthoredDocumentPath->Get_String(), pAssetId->Get_String(),
+					pContentSha->Get_String()) ||
+				nullptr == pDependencies ||
 				Staged.contains(pAssetId->Get_String()) ||
 				StagedDirectAuthoredSources.contains(pAssetId->Get_String()) ||
 				StagedRuntimeAuthorities.contains(pAssetId->Get_String()) ||
 				StagedRuntimeProgramEntries.contains(pAssetId->Get_String()))
 			{
 				strOutStatus =
-					"Effect direct authored runtime entry has an invalid identity or path.";
+					"Effect direct authored runtime entry has an invalid identity or content hash.";
 				g_strStatus = strOutStatus;
 				return false;
+			}
+
+			std::map<std::string, std::string, std::less<>> Dependencies;
+			std::string PreviousDependencyId;
+			for (const DATA_JSON_VALUE& Dependency :
+				pDependencies->Get_Array())
+			{
+				if (!Has_ExactOrderedKeys(Dependency, { "assetId", "sha256" }))
+				{
+					strOutStatus =
+						"Effect direct authored dependency fields or order are invalid.";
+					g_strStatus = strOutStatus;
+					return false;
+				}
+				const DATA_JSON_VALUE* pDependencyId = Required(
+					Dependency, "assetId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* pDependencySha = Required(
+					Dependency, "sha256", DATA_JSON_TYPE::STRING);
+				if (nullptr == pDependencyId ||
+					(!CEffectDocumentCodec::Is_SafeResourceAssetId(
+						pDependencyId->Get_String()) &&
+					 !CEffectDocumentCodec::Is_SafeModelCueAssetId(
+						pDependencyId->Get_String())) ||
+					nullptr == pDependencySha ||
+					!Is_LowerHexSha256(pDependencySha->Get_String()) ||
+					(!PreviousDependencyId.empty() &&
+					 pDependencyId->Get_String() <= PreviousDependencyId) ||
+					!Dependencies.emplace(
+						pDependencyId->Get_String(),
+						pDependencySha->Get_String()).second)
+				{
+					strOutStatus =
+						"Effect direct authored dependency is unsafe, duplicate, or unsorted.";
+					g_strStatus = strOutStatus;
+					return false;
+				}
+				PreviousDependencyId = pDependencyId->Get_String();
 			}
 
 			std::filesystem::path SealedPath;
@@ -3608,8 +4413,12 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 			}
 			auto Source = std::make_shared<DIRECT_AUTHORED_RUNTIME_SOURCE>();
 			Source->DocumentPath = std::move(SealedPath);
+			Source->strContentSha256 = pContentSha->Get_String();
+			Source->Dependencies = std::move(Dependencies);
 			if (!StagedDirectAuthoredSources.emplace(
-					pAssetId->Get_String(), std::move(Source)).second)
+					pAssetId->Get_String(), std::move(Source)).second ||
+				!StagedDirectAuthoredContentShaByEffect.emplace(
+					pAssetId->Get_String(), pContentSha->Get_String()).second)
 			{
 				strOutStatus =
 					"Duplicate direct authored EffectAssetId in runtime catalog: " +
@@ -3765,10 +4574,43 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
         }
     }
 
-	// A formatVersion 3 catalog and its visual-program sidecar are one
-	// transaction.  The legacy marker remains parse-compatible, but it is not
-	// runtime authority: false must never discard an otherwise valid sidecar.
-	if (bDerivedCatalog)
+	if (bProductCueAdmissionsRequired)
+	{
+		for (const auto& [EffectId, Source] : StagedDirectAuthoredSources)
+		{
+			EFFECT_DOCUMENT_DESC Document;
+			if (nullptr == Source || !Parse_DirectAuthoredRuntimeDocument(
+					EffectId, *Source, Document, Error) ||
+				!Staged.emplace(EffectId,
+					std::make_shared<const EFFECT_DOCUMENT_DESC>(
+						std::move(Document))).second)
+			{
+				if (Error.empty())
+					Error = "duplicate or missing sealed authored document";
+				strOutStatus =
+					"Effect Product admission preload failed for " + EffectId +
+					": " + Error;
+				g_strStatus = strOutStatus;
+				return false;
+			}
+		}
+	}
+
+	if (!Load_ProductCueAdmissionSidecar(
+			Find_ProductCueAdmissionSidecar(Path), Text,
+			bProductCueAdmissionsRequired,
+			bProductCueAdmissionsRequired ?
+				pProductCuePolicySha->Get_String() : std::string{}, Staged,
+			StagedRuntimeProgramEntries,
+			StagedDirectAuthoredContentShaByEffect,
+			StagedProductCueAdmissions,
+			StagedProductCueAdmissionsByEffect, Error))
+	{
+		strOutStatus = "Effect Product cue admission sidecar rejected: " + Error;
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	if (bVisualProgramSidecarRequired)
 	{
 		if (!CEffectVisualProgramCorpusCodec::Load(
 				VisualProgramPath, StagedVisualProgramCorpus,
@@ -3889,7 +4731,30 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 	g_pVisualProgramCorpus = std::move(StagedVisualProgramCorpus);
 	g_VisualPrograms = std::move(StagedVisualPrograms);
 	g_VisualProjections = std::move(StagedVisualProjections);
+	g_ProductCueAdmissions = std::move(StagedProductCueAdmissions);
+	g_ProductCueAdmissionsByEffect =
+		std::move(StagedProductCueAdmissionsByEffect);
 	g_iRuntimeRevision = iStagedCatalogRevision;
+	size_t iProductApprovedFullCount = 0u;
+	size_t iProductApprovedApproximateCount = 0u;
+	uint64_t iHardSuppressedElementCount = 0u;
+	for (const auto& [Key, Admission] : g_ProductCueAdmissions)
+	{
+		(void)Key;
+		if (Admission->eAdmissionClass ==
+			EFFECT_PRODUCT_CUE_ADMISSION_CLASS::PRODUCT_APPROVED_FULL)
+		{
+			++iProductApprovedFullCount;
+		}
+		else if (Admission->eAdmissionClass ==
+			EFFECT_PRODUCT_CUE_ADMISSION_CLASS::
+				PRODUCT_APPROVED_APPROXIMATE)
+		{
+			++iProductApprovedApproximateCount;
+		}
+		iHardSuppressedElementCount +=
+			Admission->iHardSuppressedElementCount;
+	}
 	const size_t iLazyDirectDocumentCount = std::count_if(
 		g_DirectAuthoredSources.begin(), g_DirectAuthoredSources.end(),
 		[](const auto& Entry)
@@ -3907,10 +4772,66 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		" matched visual programs, and " +
 		std::to_string(g_VisualProjections.size()) +
 		" committed visual projections; sealed direct documents pending first "
-		"use=" + std::to_string(iLazyDirectDocumentCount) + ").";
+		"use=" + std::to_string(iLazyDirectDocumentCount) +
+		"; Product cue admissions: " +
+		"PRODUCT_APPROVED_FULL=" +
+		std::to_string(iProductApprovedFullCount) + ", " +
+		"PRODUCT_APPROVED_APPROXIMATE=" +
+		std::to_string(iProductApprovedApproximateCount) + ", " +
+		"hard-suppressed elements=" +
+		std::to_string(iHardSuppressedElementCount) + ").";
     strOutStatus = g_strStatus;
 	StatusGuard.bCommitted = true;
     return true;
+}
+
+std::shared_ptr<const Client::CEffectCatalog::RUNTIME_SNAPSHOT>
+Client::CEffectCatalog::Capture_Runtime()
+{
+	auto Snapshot = std::make_shared<RUNTIME_SNAPSHOT>();
+	Snapshot->Effects = g_Effects;
+	Snapshot->DirectAuthoredSources = g_DirectAuthoredSources;
+	Snapshot->Assemblies = g_Assemblies;
+	Snapshot->Components = g_Components;
+	Snapshot->RuntimeAuthorities = g_RuntimeAuthorities;
+	Snapshot->RuntimeProgramEntries = g_RuntimeProgramEntries;
+	Snapshot->pVisualProgramCorpus = g_pVisualProgramCorpus;
+	Snapshot->VisualPrograms = g_VisualPrograms;
+	Snapshot->VisualProjections = g_VisualProjections;
+	Snapshot->ProductCueAdmissions = g_ProductCueAdmissions;
+	Snapshot->ProductCueAdmissionsByEffect =
+		g_ProductCueAdmissionsByEffect;
+	Snapshot->iRuntimeRevision = g_iRuntimeRevision;
+	Snapshot->strStatus = g_strStatus;
+	return Snapshot;
+}
+
+bool_t Client::CEffectCatalog::Restore_Runtime(
+	std::shared_ptr<const RUNTIME_SNAPSHOT> pSnapshot,
+	std::string& strOutStatus)
+{
+	if (nullptr == pSnapshot)
+	{
+		strOutStatus = "Effect runtime rollback snapshot is missing.";
+		return false;
+	}
+	g_Effects = pSnapshot->Effects;
+	g_DirectAuthoredSources = pSnapshot->DirectAuthoredSources;
+	g_Assemblies = pSnapshot->Assemblies;
+	g_Components = pSnapshot->Components;
+	g_RuntimeAuthorities = pSnapshot->RuntimeAuthorities;
+	g_RuntimeProgramEntries = pSnapshot->RuntimeProgramEntries;
+	g_pVisualProgramCorpus = pSnapshot->pVisualProgramCorpus;
+	g_VisualPrograms = pSnapshot->VisualPrograms;
+	g_VisualProjections = pSnapshot->VisualProjections;
+	g_ProductCueAdmissions = pSnapshot->ProductCueAdmissions;
+	g_ProductCueAdmissionsByEffect =
+		pSnapshot->ProductCueAdmissionsByEffect;
+	g_iRuntimeRevision = pSnapshot->iRuntimeRevision;
+	g_strStatus = pSnapshot->strStatus;
+	strOutStatus = "Restored Effect runtime catalog revision " +
+		std::to_string(g_iRuntimeRevision) + ".";
+	return true;
 }
 
 std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC>
@@ -4199,12 +5120,6 @@ bool_t Client::CEffectCatalog::Contains(const std::string& strEffectAssetId)
 		g_DirectAuthoredSources.contains(strEffectAssetId);
 }
 
-bool_t Client::CEffectCatalog::Is_DirectAuthoredDocument(
-	const std::string& strEffectAssetId)
-{
-	return g_DirectAuthoredSources.contains(strEffectAssetId);
-}
-
 bool_t Client::CEffectCatalog::Contains_RuntimeAuthority(
 	const std::string& strEffectAssetId)
 {
@@ -4223,6 +5138,154 @@ bool_t Client::CEffectCatalog::Is_ReconstructedRuntimeProgramAssetId(
 	const std::string& strEffectAssetId)
 {
 	return strEffectAssetId == "effect.artist.skill.31470";
+}
+
+bool_t Client::CEffectCatalog::Is_ProductManagedEffect(
+	const std::string& strEffectAssetId)
+{
+	return g_ProductCueAdmissionsByEffect.contains(strEffectAssetId);
+}
+
+bool_t Client::CEffectCatalog::Admit_ProductCue(
+	const std::string& strAnimationAssetId,
+	const std::string& strClipName,
+	const uint32_t iStartMs,
+	const std::string& strEffectAssetId,
+	std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN>& OutToken,
+	std::string& strOutError)
+{
+	OutToken.reset();
+	if (!Is_ProductManagedEffect(strEffectAssetId))
+	{
+		strOutError.clear();
+		return true;
+	}
+	const std::string Key = Build_ProductCueAdmissionKey(strAnimationAssetId,
+		strClipName, iStartMs, strEffectAssetId);
+	const auto Iterator = g_ProductCueAdmissions.find(Key);
+	if (g_ProductCueAdmissions.end() == Iterator)
+	{
+		strOutError =
+			"Product-managed Effect cue is outside its explicit admission: " +
+			strAnimationAssetId + "/" + strClipName + "/" +
+			std::to_string(iStartMs) + "/" + strEffectAssetId;
+		return false;
+	}
+	OutToken = std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN>(
+		new EFFECT_PRODUCT_CUE_ADMISSION_TOKEN(Key,
+			Build_ProductCueAdmissionIdentity(*Iterator->second),
+			*Iterator->second));
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectCatalog::Admit_ProductSpawn(
+	const std::string& strEffectAssetId,
+	std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN> pToken,
+	std::string& strOutError)
+{
+	if (!Is_ProductManagedEffect(strEffectAssetId))
+	{
+		if (nullptr != pToken)
+		{
+			strOutError =
+				"Product Effect spawn token targets an unmanaged or stale Effect.";
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
+	if (nullptr == pToken || pToken->m_strEffectAssetId != strEffectAssetId)
+	{
+		strOutError =
+			"Product-managed Effect spawn requires a current admission token: " +
+			strEffectAssetId;
+		return false;
+	}
+	const auto Iterator =
+		g_ProductCueAdmissions.find(pToken->m_strAdmissionKey);
+	if (g_ProductCueAdmissions.end() == Iterator ||
+		Build_ProductCueAdmissionIdentity(*Iterator->second) !=
+			pToken->m_strAdmissionIdentity ||
+		Iterator->second->strCueId != pToken->m_strApprovalId ||
+		Iterator->second->strEffectAssetId != strEffectAssetId)
+	{
+		strOutError =
+			"Product-managed Effect spawn token no longer matches its admission: " +
+			strEffectAssetId;
+		return false;
+	}
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectCatalog::Validate_ProductCueBinding(
+	const std::string& strEffectAssetId,
+	std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION_TOKEN> pToken,
+	const LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass,
+	const std::string& strInputSlot,
+	const uint32_t iSkillId,
+	const uint32_t iStageIndex,
+	std::string& strOutError)
+{
+	if (nullptr == pToken)
+	{
+		if (Is_ProductManagedEffect(strEffectAssetId))
+		{
+			strOutError =
+				"Product-managed Effect binding requires an admission token: " +
+				strEffectAssetId;
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
+	if (!Admit_ProductSpawn(strEffectAssetId, pToken, strOutError))
+		return false;
+
+	const auto Iterator =
+		g_ProductCueAdmissions.find(pToken->m_strAdmissionKey);
+	const char_t* pCharacterClass =
+		ProductCueCharacterClassLabel(eCharacterClass);
+	if (g_ProductCueAdmissions.end() == Iterator ||
+		nullptr == pCharacterClass ||
+		Iterator->second->strCharacterClass != pCharacterClass ||
+		Iterator->second->strInputSlot != strInputSlot ||
+		Iterator->second->iSkillId != iSkillId ||
+		Iterator->second->iStageIndex != iStageIndex)
+	{
+		strOutError =
+			"Product cue admission no longer matches its PlayerSkills + skillbindings owner: " +
+			strEffectAssetId;
+		return false;
+	}
+	strOutError.clear();
+	return true;
+}
+
+std::shared_ptr<const Client::EFFECT_PRODUCT_CUE_ADMISSION>
+Client::CEffectCatalog::Find_ProductCueAdmission(
+	const std::string& strAnimationAssetId,
+	const std::string& strClipName,
+	const uint32_t iStartMs,
+	const std::string& strEffectAssetId)
+{
+	const auto Iterator = g_ProductCueAdmissions.find(
+		Build_ProductCueAdmissionKey(strAnimationAssetId, strClipName,
+			iStartMs, strEffectAssetId));
+	return g_ProductCueAdmissions.end() == Iterator ? nullptr :
+		Iterator->second;
+}
+
+std::vector<std::shared_ptr<const Client::EFFECT_PRODUCT_CUE_ADMISSION>>
+Client::CEffectCatalog::Get_ProductCueAdmissions(
+	const std::string& strEffectAssetId)
+{
+	const auto Iterator =
+		g_ProductCueAdmissionsByEffect.find(strEffectAssetId);
+	return g_ProductCueAdmissionsByEffect.end() == Iterator ?
+		std::vector<std::shared_ptr<const EFFECT_PRODUCT_CUE_ADMISSION>>{} :
+		Iterator->second;
 }
 
 std::vector<std::string> Client::CEffectCatalog::Get_EffectAssetIds()
@@ -4303,5 +5366,7 @@ void Client::CEffectCatalog::Clear()
 	g_pVisualProgramCorpus.reset();
 	g_VisualPrograms.clear();
 	g_VisualProjections.clear();
+	g_ProductCueAdmissions.clear();
+	g_ProductCueAdmissionsByEffect.clear();
     g_strStatus = "Effect catalog cleared.";
 }

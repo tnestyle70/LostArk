@@ -595,8 +595,6 @@ namespace
 				player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::DEAD;
 				player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
 				player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
-				player.hasBufferedComboInput = false;
-				player.PendingCommand.Clear();
 				player.hasMoveGoal = false;
 				player.MovePath.clear();
 			}

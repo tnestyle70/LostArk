@@ -3,7 +3,7 @@ param(
     [ValidateSet('Validate', 'Publish')]
     [string]$Mode = 'Validate',
     [string]$OutputRoot = 'Server/Bin/DataFiles',
-    [ValidateRange(0, 6)]
+    [ValidateRange(0, 5)]
     [int]$FailureAfterPromote = 0
 )
 

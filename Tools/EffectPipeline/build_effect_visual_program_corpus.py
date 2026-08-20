@@ -62,31 +62,6 @@ WARLORD_CANARY_RELATIVE_PATH = (
 VALTAN_CANARY_RELATIVE_PATH = (
     "Data/Effects/Imported/Valtan/Valtan.effect-resource-catalog.json"
 )
-VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH = (
-    "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
-)
-VALTAN_WHIRLWIND_HISTORY_RELATIVE_PATH = (
-    "Data/Effects/Imported/Valtan/"
-    "Valtan.420633.whirlwind-baked-edge-history.v1.json"
-)
-VALTAN_WHIRLWIND_EFFECT_ASSET_ID = "effect.valtan.pattern.420633.active"
-VALTAN_WHIRLWIND_HISTORY_ID = (
-    "valtan.420633.animnotify-trails-479.baked-edges"
-)
-VALTAN_WHIRLWIND_TRAIL_TARGET_IDS = (
-    "valtan.420633.notify004.emitter5259",
-    "valtan.420633.notify004.emitter5260",
-    "valtan.420633.notify004.emitter5258",
-)
-VALTAN_WHIRLWIND_LIGHT_TARGET_ID = "valtan.420633.notify009.emitter6823"
-VALTAN_WHIRLWIND_LIGHT_SOURCE_EVENT_ID = (
-    "action-420633/stage-002/notify-009"
-)
-VALTAN_WHIRLWIND_LIGHT_ACTIVE_START_SECONDS = 0.07953999936580658
-VALTAN_WHIRLWIND_LIGHT_ACTIVE_DURATION_SECONDS = 1.120460033416748
-VALTAN_WHIRLWIND_HISTORY_ARTIFACT_SHA256 = (
-    "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64"
-)
 DEFAULT_OUTPUT_RELATIVE_PATH = (
     "Data/Effects/VisualPrograms/effect-visual-program-corpus.v1.json"
 )
@@ -101,12 +76,9 @@ EXPECTED_SCHEDULE_COUNT = 35
 EXPECTED_BA_ROW_COUNT = 133
 EXPECTED_LOCAL_DECAL_ROW_COUNT = 2
 EXPECTED_VISUAL_ROW_COUNT = 135
-EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 9
+EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 5
 EXPECTED_CASCADE_RIBBON_VISUAL_ROW_COUNT = 4
-EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 7
-EXPECTED_LANCE_ANIMATION_TRAIL_ELEMENT_COUNT = 4
-EXPECTED_VALTAN_ANIMATION_TRAIL_ELEMENT_COUNT = 3
-EXPECTED_VALTAN_BAKED_EDGE_LIGHT_ELEMENT_COUNT = 1
+EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 4
 EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT = 1
 EXPECTED_LEGACY_COUNT = 66
 EXPECTED_FAIL_CLOSED_COUNT = 67
@@ -350,17 +322,7 @@ def _adapter_contracts() -> list[dict[str, Any]]:
                 "NONE",
             ]
         elif adapter_id == "animation-trail-document-v12":
-            packet_layouts = [
-                "ANIMATION_TRAIL_ELEMENT_V1",
-                "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
-                "NONE",
-            ]
-        elif adapter_id == "light-particle-document-v12":
-            packet_layouts = [
-                "EFFECT_DOCUMENT_ELEMENT_V12",
-                "LIGHT_BAKED_EDGE_ATTACHMENT_V1",
-                "NONE",
-            ]
+            packet_layouts = ["ANIMATION_TRAIL_ELEMENT_V1", "NONE"]
         contracts.append(
             {
                 "adapterId": adapter_id,
@@ -419,11 +381,6 @@ def _find_record(document: dict[str, Any], relative_path: str, record_id: str) -
         ]
     elif "document" in document and isinstance(document.get("document"), dict):
         matches = [row for row in document["document"].get("elements", []) if row.get("id") == record_id]
-    elif (
-        document.get("schema") == "lostark.valtan-baked-edge-history"
-        and document.get("historyId") == record_id
-    ):
-        matches = [document]
     else:
         matches = [row for row in document.get("elements", []) if row.get("id") == record_id]
     _require(len(matches) == 1, f"payload record join is not unique: {relative_path}/{record_id}")
@@ -434,9 +391,6 @@ def _record_sha(record: dict[str, Any]) -> str:
     if "rowSha256" in record:
         _verify_seal(record, "rowSha256", "sealed payload record")
         return record["rowSha256"]
-    if "artifactSha256" in record:
-        _verify_seal(record, "artifactSha256", "sealed payload artifact")
-        return record["artifactSha256"]
     return canonical_json_sha256(record)
 
 
@@ -922,10 +876,7 @@ def _build_animation_trail_supplemental_elements(
         item for item in _require_list(source_document.get("timeline", {}).get("events"), "Lance timeline events")
         if isinstance(item, dict) and item.get("sourceType") == "Trails"
     ]
-    _require(
-        len(events) == EXPECTED_LANCE_ANIMATION_TRAIL_ELEMENT_COUNT,
-        "Lance AnimationTrail notify denominator changed",
-    )
+    _require(len(events) == EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT, "Lance AnimationTrail notify denominator changed")
     result: list[dict[str, Any]] = []
     for event in events:
         stage_index = event.get("clipSequenceIndex")
@@ -974,7 +925,7 @@ def _build_animation_trail_supplemental_elements(
             "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_V1",
             "sourceNotifyType": "Trails",
             "sourceEventId": event_id,
-            "sourceEventRecordSha256": _record_sha(source_record),
+            "sourceEventRecordSha256": canonical_json_sha256(source_record),
             "sourceAsset": _require_string(event.get("sourceAsset"), "AnimationTrail sourceAsset"),
             "clip": _require_string(event.get("clip"), "AnimationTrail clip"),
             "localTimeSeconds": event.get("localTimeSeconds"),
@@ -1023,377 +974,11 @@ def _build_animation_trail_supplemental_elements(
             "resourcePacket": sorted(resources, key=lambda item: (item["slotId"], item["assetId"])),
             "cascadeRibbonPacket": None,
             "animationTrailPacket": packet,
-            "bakedEdgeLightPacket": None,
             "admissionBlockers": [],
         }
         _seal_row(row, "rowSha256")
         result.append(row)
     return result
-
-
-def _build_valtan_baked_edge_histories(
-    repository_root: Path,
-    input_registry: dict[str, dict[str, Any]],
-) -> list[dict[str, Any]]:
-    source_path = VALTAN_WHIRLWIND_HISTORY_RELATIVE_PATH
-    receipt_path = repository_root / source_path
-    receipt = load_json(receipt_path)
-    _merge_input_artifact(
-        input_registry,
-        _input_artifact(
-            repository_root,
-            source_path,
-            ["VALTAN_ANIMATION_TRAIL_BAKED_EDGE_HISTORY"],
-        ),
-    )
-    _expect_keys(
-        receipt,
-        [
-            "schema", "formatVersion", "historyId", "source", "playback",
-            "sampleCount", "samples", "artifactSha256",
-        ],
-        "Valtan baked-edge receipt",
-    )
-    _verify_seal(receipt, "artifactSha256", "Valtan baked-edge receipt")
-    _require(
-        receipt.get("schema") == "lostark.valtan-baked-edge-history"
-        and receipt.get("formatVersion") == 1
-        and receipt.get("historyId") == VALTAN_WHIRLWIND_HISTORY_ID
-        and receipt.get("artifactSha256")
-            == VALTAN_WHIRLWIND_HISTORY_ARTIFACT_SHA256,
-        "Valtan baked-edge receipt identity changed",
-    )
-    source = _require_dict(receipt.get("source"), "Valtan baked-edge source")
-    outer = _require_dict(source.get("outerEfData"), "Valtan baked-edge outer")
-    history_export = _require_dict(
-        source.get("historyExport"), "Valtan baked-edge history export"
-    )
-    playback = _require_dict(
-        receipt.get("playback"), "Valtan baked-edge playback"
-    )
-    samples = copy.deepcopy(
-        _require_list(receipt.get("samples"), "Valtan baked-edge samples")
-    )
-    _require(
-        source.get("physicalPackageSha256")
-            == "09c7968667dbedb43feb3bed18a1985a470f8a8848c468d5baf6bf0980314e91"
-        and outer.get("exportIndex") == 77
-        and outer.get("exportRef") == 78
-        and outer.get("serialSha256")
-            == "1d20a4726a1228aa0b89aa94739e776622c39792dfaa2273c0e733278812e7d2"
-        and outer.get("trailDefaultExportRef") == 36
-        and history_export.get("exportIndex") == 35
-        and history_export.get("exportRef") == 36
-        and history_export.get("serialSha256")
-            == "195754a1ae68a1ba026b31c3617c145ea6a0511cb237ac6653e41e45821ea81b"
-        and history_export.get("particleSystemObjectPath")
-            == "FX_BS_01.Trail.Par_N_MRHG_Trail_01"
-        and receipt.get("sampleCount") == len(samples) == 409
-        and playback.get("interpolation") == "LINEAR_TIME_CLAMPED"
-        and playback.get("coordinateBasis")
-            == "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
-        "Valtan baked-edge source seal changed",
-    )
-    source_end = float(history_export.get("sourceEndTimeSeconds"))
-    playback_clamp = float(playback.get("clampSeconds"))
-    _require(
-        abs(source_end - 3.200000047683716) <= 1e-7
-        and abs(playback_clamp - 1.2000000476837158) <= 1e-7
-        and float(samples[0].get("relativeTimeSeconds")) == 0.0
-        and float(samples[-1].get("relativeTimeSeconds")) >= playback_clamp,
-        "Valtan baked-edge time domain changed",
-    )
-    history = {
-        "historyId": VALTAN_WHIRLWIND_HISTORY_ID,
-        "sourceKind": "UE3_ANIMTRAIL_BAKED_EDGE_HISTORY_V1",
-        "sourceArtifactPath": source_path,
-        "sourceArtifactRawSha256": raw_sha256(receipt_path),
-        "coordinateBasis": playback["coordinateBasis"],
-        "sourceEndTimeSeconds": source_end,
-        "playbackClampSeconds": playback_clamp,
-        "sampleCount": len(samples),
-        "samples": samples,
-        "samplesSha256": canonical_json_sha256(samples),
-    }
-    _seal_row(history, "historySha256")
-    return [history]
-
-
-def _build_valtan_animation_trail_supplemental_elements(
-    repository_root: Path,
-    input_registry: dict[str, dict[str, Any]],
-    baked_edge_history: dict[str, Any],
-) -> list[dict[str, Any]]:
-    source_path = VALTAN_WHIRLWIND_HISTORY_RELATIVE_PATH
-    source_payload, source_record = _payload_ref(
-        repository_root, source_path, VALTAN_WHIRLWIND_HISTORY_ID
-    )
-    target_path = VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH
-    _merge_input_artifact(
-        input_registry,
-        _input_artifact(
-            repository_root,
-            target_path,
-            ["VALTAN_ANIMATION_TRAIL_TARGET_ELEMENTS"],
-        ),
-    )
-    playback_clamp = float(baked_edge_history["playbackClampSeconds"])
-    result: list[dict[str, Any]] = []
-    for target_id in VALTAN_WHIRLWIND_TRAIL_TARGET_IDS:
-        target_payload, target_record = _payload_ref(
-            repository_root, target_path, target_id
-        )
-        target_timing, target_contract = _trail_target_packet(target_record)
-        source_recipe = _require_dict(
-            target_record.get("sourceRecipe"), "Valtan AnimationTrail sourceRecipe"
-        )
-        module_classes = {
-            str(module.get("className", "")).casefold()
-            for module in _require_list(
-                source_recipe.get("modules"), "Valtan AnimationTrail modules"
-            )
-            if isinstance(module, dict)
-        }
-        _require(
-            target_record.get("kind") == "trail"
-            and source_recipe.get("enabled") is False
-            and "particlemoduletypedataanimtrail" in module_classes
-            and abs(float(target_timing.get("startDelaySeconds"))) <= 5e-5
-            and float(target_timing.get("lifeTimeSeconds")) + 5e-5
-                >= playback_clamp,
-            f"Valtan AnimationTrail target contract changed: {target_id}",
-        )
-        target_timing["lifeTimeSeconds"] = playback_clamp
-        target_contract["trail"]["maxPoints"] = int(
-            baked_edge_history["sampleCount"]
-        )
-        target_contract["trail"]["pointLifeTimeSeconds"] = playback_clamp
-        history_samples = _require_list(
-            baked_edge_history.get("samples"), "Valtan baked-edge samples"
-        )
-        target_contract["trail"]["sampleIntervalSeconds"] = (
-            float(history_samples[1]["relativeTimeSeconds"])
-            - float(history_samples[0]["relativeTimeSeconds"])
-        )
-        target_contract["trail"]["minimumDistance"] = 0.0
-        target_contract["trail"]["faceCamera"] = False
-        resources = []
-        for resource_value in _require_list(
-            target_record.get("resources"), "Valtan AnimationTrail resources"
-        ):
-            resource = _require_dict(
-                resource_value, "Valtan AnimationTrail resource"
-            )
-            resources.append(
-                _resource_role(
-                    repository_root,
-                    _require_string(
-                        resource.get("slotId"), "Valtan AnimationTrail slot"
-                    ),
-                    _require_string(
-                        resource.get("assetId"), "Valtan AnimationTrail asset"
-                    ),
-                    "TARGET_DOCUMENT_REFERENCE",
-                    require_payload=True,
-                )
-            )
-        _require(resources, f"Valtan AnimationTrail has no resources: {target_id}")
-        packet = {
-            "packetVersion": 2,
-            "adapterId": "animation-trail-document-v12",
-            "boundedSemanticReplay": True,
-            "nativeExecution": False,
-            "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
-            "sourceNotifyType": "Trails",
-            "sourceEventId": "action-420633/stage-002/notify-004",
-            "sourceEventRecordSha256": _record_sha(source_record),
-            "sourceAsset": (
-                "MN_RPBF_00_AnimNotify_Trails."
-                "MN_RPBF_00_420621_0_3_0.animnotify_trails_479"
-            ),
-            "clip": "mesh_att_battle_20_03",
-            "localTimeSeconds": 0.0,
-            "globalTimeSeconds": 0.0,
-            "durationSeconds": playback_clamp,
-            "targetElementId": target_id,
-            "targetTiming": target_timing,
-            "attachment": target_contract["attachment"],
-            "trail": target_contract["trail"],
-            "historyId": baked_edge_history["historyId"],
-            "historySha256": baked_edge_history["historySha256"],
-            "playbackClampSeconds": playback_clamp,
-            "coordinateBasis": baked_edge_history["coordinateBasis"],
-            "preservedLimitations": [
-                "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
-            ],
-        }
-        _seal_row(packet, "packetSha256")
-        selector = {
-            "effectAssetId": VALTAN_WHIRLWIND_EFFECT_ASSET_ID,
-            "occurrenceId": _supplemental_occurrence_id(
-                VALTAN_WHIRLWIND_EFFECT_ASSET_ID,
-                target_id,
-                "ANIMATION_TRAIL",
-            ),
-        }
-        row = {
-            "selector": selector,
-            "selectorSha256": canonical_json_sha256(selector),
-            "provenance": {
-                "scope": "VALTAN_PATTERN_ANIMATION_TRAIL",
-                "actionId": 420633,
-                "stageIndex": 2,
-                "sourceStableId": target_id,
-            },
-            "schedule": {
-                "stageId": "valtan.pattern.420633.active",
-                "sourceEventId": "action-420633/stage-002/notify-004",
-                "sourceTimelineSeconds": 0.0,
-                "localTimeSeconds": 0.0,
-                "durationSeconds": playback_clamp,
-            },
-            "sourcePayload": source_payload,
-            "targetPayload": target_payload,
-            "family": "ANIMATION_TRAIL",
-            "adapterId": "animation-trail-document-v12",
-            "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
-            "fidelity": "BOUNDED_RECONSTRUCTION",
-            "disposition": "ADMITTED_BOUNDED",
-            "tuningEligibleTransform": True,
-            "resourcePacket": sorted(
-                resources, key=lambda item: (item["slotId"], item["assetId"])
-            ),
-            "cascadeRibbonPacket": None,
-            "animationTrailPacket": packet,
-            "bakedEdgeLightPacket": None,
-            "admissionBlockers": [],
-        }
-        _seal_row(row, "rowSha256")
-        result.append(row)
-    return result
-
-
-def _build_valtan_baked_edge_light_supplemental_element(
-    repository_root: Path,
-    input_registry: dict[str, dict[str, Any]],
-    baked_edge_history: dict[str, Any],
-) -> dict[str, Any]:
-    target_path = VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH
-    _merge_input_artifact(
-        input_registry,
-        _input_artifact(
-            repository_root,
-            target_path,
-            ["VALTAN_BAKED_EDGE_LIGHT_TARGET_ELEMENT"],
-        ),
-    )
-    target_payload, target_record = _payload_ref(
-        repository_root, target_path, VALTAN_WHIRLWIND_LIGHT_TARGET_ID
-    )
-    detail = _require_dict(target_record.get("detail"), "Valtan Light detail")
-    timing = _require_dict(detail.get("timing"), "Valtan Light timing")
-    light = copy.deepcopy(_require_dict(detail.get("light"), "Valtan Light profile"))
-    source_recipe = _require_dict(
-        target_record.get("sourceRecipe"), "Valtan Light sourceRecipe"
-    )
-    source_presentation = _require_dict(
-        target_record.get("sourcePresentation"), "Valtan Light sourcePresentation"
-    )
-    expected_light = {
-        "enabled": False,
-        "profileId": "light.point.reconstructed.v1",
-        "status": "reconstructed_profile",
-        "range": 2.0,
-        "intensity": 10.0,
-        "color": [1.0, 1.0, 1.0, 1.0],
-        "ambient": [0.0, 0.0, 0.0, 1.0],
-        "falloffExponent": 2.0,
-    }
-    active_start = VALTAN_WHIRLWIND_LIGHT_ACTIVE_START_SECONDS
-    active_duration = VALTAN_WHIRLWIND_LIGHT_ACTIVE_DURATION_SECONDS
-    active_end = active_start + active_duration
-    history_clamp = float(baked_edge_history["playbackClampSeconds"])
-    _require(
-        target_record.get("kind") == "light"
-        and target_record.get("visible") is False
-        and source_recipe.get("enabled") is False
-        and source_recipe.get("modules") == []
-        and light == expected_light
-        and source_presentation.get("sourceEventId")
-            == VALTAN_WHIRLWIND_LIGHT_SOURCE_EVENT_ID
-        and source_presentation.get("sourceObjectPath")
-            == "FX_CM_02.Light.Par_MP_Light_05_L"
-        and abs(float(timing.get("startDelaySeconds")) - active_start) <= 5e-5
-        and abs(float(timing.get("lifeTimeSeconds")) - active_duration) <= 5e-5
-        and active_end <= history_clamp + 5e-5,
-        "Valtan baked-edge Light target contract changed",
-    )
-    target_light = copy.deepcopy(light)
-    target_light["enabled"] = True
-    packet = {
-        "packetVersion": 1,
-        "adapterId": "light-particle-document-v12",
-        "boundedSemanticReplay": True,
-        "nativeExecution": False,
-        "runtimeCarrier": "EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1",
-        "sourceEventId": VALTAN_WHIRLWIND_LIGHT_SOURCE_EVENT_ID,
-        "sourceEventRecordSha256": _record_sha(target_record),
-        "targetElementId": VALTAN_WHIRLWIND_LIGHT_TARGET_ID,
-        "historyId": baked_edge_history["historyId"],
-        "historySha256": baked_edge_history["historySha256"],
-        "lane": "FIRST_EDGE",
-        "activeStartSeconds": active_start,
-        "activeDurationSeconds": active_duration,
-        "activeEndSeconds": active_end,
-        "historyPlaybackClampSeconds": history_clamp,
-        "coordinateBasis": baked_edge_history["coordinateBasis"],
-        "attachmentEvidenceStatus": "SIBLING_TEMPLATE_INFERRED",
-        "targetLight": target_light,
-        "preservedLimitations": [
-            "FIRST_EDGE_SOCKET_ATTACHMENT_INFERRED_FROM_SIBLING_TEMPLATE"
-        ],
-    }
-    _seal_row(packet, "packetSha256")
-    selector = {
-        "effectAssetId": VALTAN_WHIRLWIND_EFFECT_ASSET_ID,
-        "occurrenceId": _supplemental_occurrence_id(
-            VALTAN_WHIRLWIND_EFFECT_ASSET_ID,
-            VALTAN_WHIRLWIND_LIGHT_TARGET_ID,
-            "LIGHT_PARTICLE",
-        ),
-    }
-    row = {
-        "selector": selector,
-        "selectorSha256": canonical_json_sha256(selector),
-        "provenance": {
-            "scope": "VALTAN_PATTERN_BAKED_EDGE_LIGHT",
-            "actionId": 420633,
-            "stageIndex": 2,
-            "sourceStableId": VALTAN_WHIRLWIND_LIGHT_TARGET_ID,
-        },
-        "schedule": {
-            "stageId": "valtan.pattern.420633.active",
-            "sourceEventId": VALTAN_WHIRLWIND_LIGHT_SOURCE_EVENT_ID,
-            "sourceTimelineSeconds": active_start,
-            "localTimeSeconds": active_start,
-            "durationSeconds": active_duration,
-        },
-        "sourcePayload": copy.deepcopy(target_payload),
-        "targetPayload": target_payload,
-        "family": "LIGHT_PARTICLE",
-        "adapterId": "light-particle-document-v12",
-        "packetLayout": "LIGHT_BAKED_EDGE_ATTACHMENT_V1",
-        "fidelity": "BOUNDED_RECONSTRUCTION",
-        "disposition": "ADMITTED_BOUNDED",
-        "tuningEligibleTransform": True,
-        "resourcePacket": [],
-        "cascadeRibbonPacket": None,
-        "animationTrailPacket": None,
-        "bakedEdgeLightPacket": packet,
-        "admissionBlockers": [],
-    }
-    _seal_row(row, "rowSha256")
-    return row
 
 
 def _find_typed_module(
@@ -1503,7 +1088,6 @@ def _build_artist_cascade_ribbon_supplemental_element(
         "resourcePacket": [],
         "cascadeRibbonPacket": packet,
         "animationTrailPacket": None,
-        "bakedEdgeLightPacket": None,
         "admissionBlockers": [],
     }
     _seal_row(row, "rowSha256")
@@ -1513,27 +1097,9 @@ def _build_artist_cascade_ribbon_supplemental_element(
 def _build_supplemental_elements(
     repository_root: Path,
     input_registry: dict[str, dict[str, Any]],
-    baked_edge_histories: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     result = _build_animation_trail_supplemental_elements(
         repository_root, input_registry
-    )
-    _require(
-        len(baked_edge_histories) == 1,
-        "Valtan baked-edge history denominator changed",
-    )
-    valtan_rows = _build_valtan_animation_trail_supplemental_elements(
-        repository_root, input_registry, baked_edge_histories[0]
-    )
-    _require(
-        len(valtan_rows) == EXPECTED_VALTAN_ANIMATION_TRAIL_ELEMENT_COUNT,
-        "Valtan AnimationTrail supplemental denominator changed",
-    )
-    result.extend(valtan_rows)
-    result.append(
-        _build_valtan_baked_edge_light_supplemental_element(
-            repository_root, input_registry, baked_edge_histories[0]
-        )
     )
     result.append(
         _build_artist_cascade_ribbon_supplemental_element(
@@ -1773,11 +1339,8 @@ def build_corpus(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
     rows = _build_ba_rows(repository_root, admission, input_registry)
     rows.extend(_build_local_decal_rows(repository_root, input_registry))
     rows.sort(key=lambda row: (row["selector"]["effectAssetId"], row["selector"]["occurrenceId"]))
-    baked_edge_histories = _build_valtan_baked_edge_histories(
-        repository_root, input_registry
-    )
     supplemental_elements = _build_supplemental_elements(
-        repository_root, input_registry, baked_edge_histories
+        repository_root, input_registry
     )
     canaries = _build_extension_canaries(repository_root, input_registry, adapter_contracts)
     corpus = {
@@ -1795,7 +1358,6 @@ def build_corpus(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
         "presentationSchedules": schedules,
         "visualRows": rows,
         "supplementalElements": supplemental_elements,
-        "bakedEdgeHistories": baked_edge_histories,
         "denominators": {
             "stageCount": EXPECTED_STAGE_COUNT,
             "presentationScheduleCount": EXPECTED_SCHEDULE_COUNT,
@@ -1806,7 +1368,6 @@ def build_corpus(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
             "supplementalElementCount": EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT,
             "artistFCascadeRibbonElementCount": EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
             "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
-            "bakedEdgeLightElementCount": EXPECTED_VALTAN_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
             "admittedBoundedCount": EXPECTED_ADMITTED_COUNT,
             "failClosedCount": EXPECTED_FAIL_CLOSED_COUNT,
             "legacyApproximationCount": EXPECTED_LEGACY_COUNT,
@@ -1864,7 +1425,7 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
         [
             "schema", "formatVersion", "corpusId", "contractRole", "selectorContract",
             "adapterContracts", "inputArtifacts", "extensionCanaries", "presentationSchedules",
-            "visualRows", "supplementalElements", "bakedEdgeHistories", "denominators",
+            "visualRows", "supplementalElements", "denominators",
             "transactionPolicy", "artifactSha256",
         ],
         "corpus",
@@ -1942,41 +1503,6 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
         _require(bool(row_ids) and not schedule_source_rows.intersection(row_ids), f"presentation schedule source-row overlap: {schedule_id}")
         schedule_source_rows.update(row_ids)
 
-    baked_edge_histories = _require_list(
-        corpus.get("bakedEdgeHistories"), "bakedEdgeHistories"
-    )
-    _require(
-        len(baked_edge_histories) == 1,
-        "baked-edge history denominator changed",
-    )
-    history = _require_dict(
-        baked_edge_histories[0], "bakedEdgeHistories[0]"
-    )
-    _expect_keys(
-        history,
-        [
-            "historyId", "sourceKind", "sourceArtifactPath",
-            "sourceArtifactRawSha256", "coordinateBasis",
-            "sourceEndTimeSeconds", "playbackClampSeconds", "sampleCount",
-            "samples", "samplesSha256", "historySha256",
-        ],
-        "bakedEdgeHistories[0]",
-    )
-    _verify_seal(history, "historySha256", "bakedEdgeHistories[0]")
-    history_samples = _require_list(history.get("samples"), "history samples")
-    _require(
-        history.get("historyId") == VALTAN_WHIRLWIND_HISTORY_ID
-        and history.get("sourceKind")
-            == "UE3_ANIMTRAIL_BAKED_EDGE_HISTORY_V1"
-        and history.get("coordinateBasis")
-            == "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
-        and history.get("sampleCount") == len(history_samples) == 409
-        and canonical_json_sha256(history_samples) == history.get("samplesSha256")
-        and raw_sha256(repository_root / history["sourceArtifactPath"])
-            == history.get("sourceArtifactRawSha256"),
-        "baked-edge history closure is stale",
-    )
-
     supplemental = _require_list(
         corpus.get("supplementalElements"), "supplementalElements"
     )
@@ -2006,7 +1532,6 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
                 "packetLayout", "fidelity", "disposition",
                 "tuningEligibleTransform", "resourcePacket",
                 "cascadeRibbonPacket", "animationTrailPacket",
-                "bakedEdgeLightPacket",
                 "admissionBlockers", "rowSha256",
             ],
             f"supplementalElements[{index}]",
@@ -2041,7 +1566,7 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
             "supplemental targetPayload",
         )
         _require(
-            target_record.get("kind") in {"trail", "light"} and
+            target_record.get("kind") == "trail" and
             item.get("disposition") == "ADMITTED_BOUNDED" and
             item.get("fidelity") == "BOUNDED_RECONSTRUCTION" and
             item.get("tuningEligibleTransform") is True and
@@ -2051,42 +1576,19 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
         family = item.get("family")
         if family == "ANIMATION_TRAIL":
             _require(item.get("cascadeRibbonPacket") is None, "AnimationTrail contains a Cascade packet")
-            _require(item.get("bakedEdgeLightPacket") is None, "AnimationTrail contains a Light packet")
             packet = _require_dict(item.get("animationTrailPacket"), "AnimationTrail packet")
             _verify_seal(packet, "packetSha256", "AnimationTrail packet")
-            if packet.get("packetVersion") == 2:
-                _require(
-                    item.get("packetLayout")
-                        == "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1"
-                    and item.get("fidelity") == "BOUNDED_RECONSTRUCTION"
-                    and source_record.get("historyId") == packet.get("historyId")
-                    and _record_sha(source_record)
-                        == packet.get("sourceEventRecordSha256")
-                    and packet.get("historyId") == history.get("historyId")
-                    and packet.get("historySha256")
-                        == history.get("historySha256")
-                    and packet.get("coordinateBasis")
-                        == history.get("coordinateBasis")
-                    and packet.get("playbackClampSeconds")
-                        == history.get("playbackClampSeconds")
-                    and target_record.get("id") == packet.get("targetElementId"),
-                    "Valtan AnimationTrail baked-edge packet is stale",
-                )
-            else:
-                _require(
-                    packet.get("packetVersion") == 1
-                    and item.get("packetLayout") == "ANIMATION_TRAIL_ELEMENT_V1"
-                    and source_record.get("eventId") == packet.get("sourceEventId")
-                    and source_record.get("sourceType") == "Trails"
-                    and source_record.get("sourceAsset") == packet.get("sourceAsset")
-                    and canonical_json_sha256(source_record)
-                        == packet.get("sourceEventRecordSha256")
-                    and target_record.get("id") == packet.get("targetElementId"),
-                    "AnimationTrail source notify/target packet is stale",
-                )
-        elif family == "CASCADE_RIBBON":
+            _require(
+                source_record.get("eventId") == packet.get("sourceEventId") and
+                source_record.get("sourceType") == "Trails" and
+                source_record.get("sourceAsset") == packet.get("sourceAsset") and
+                canonical_json_sha256(source_record) == packet.get("sourceEventRecordSha256") and
+                target_record.get("id") == packet.get("targetElementId"),
+                "AnimationTrail source notify/target packet is stale",
+            )
+        else:
+            _require(family == "CASCADE_RIBBON", "unknown supplemental family")
             _require(item.get("animationTrailPacket") is None, "CascadeRibbon contains AnimationTrail packet")
-            _require(item.get("bakedEdgeLightPacket") is None, "CascadeRibbon contains Light packet")
             packet = _require_dict(item.get("cascadeRibbonPacket"), "CascadeRibbon packet")
             _verify_seal(packet, "packetSha256", "CascadeRibbon packet")
             target_recipe = _require_dict(target_record.get("sourceRecipe"), "CascadeRibbon target SourceRecipe")
@@ -2096,49 +1598,6 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
                 canonical_json_sha256(target_recipe) == packet.get("sourceRecipeSha256") and
                 canonical_json_sha256(target_recipe.get("modules", [])) == packet.get("moduleClosureSha256"),
                 "CascadeRibbon target recipe packet is stale",
-            )
-        else:
-            _require(family == "LIGHT_PARTICLE", "unknown supplemental family")
-            _require(
-                item.get("cascadeRibbonPacket") is None
-                and item.get("animationTrailPacket") is None,
-                "Baked-edge Light contains another supplemental packet",
-            )
-            packet = _require_dict(
-                item.get("bakedEdgeLightPacket"), "baked-edge Light packet"
-            )
-            _verify_seal(packet, "packetSha256", "baked-edge Light packet")
-            source_presentation = _require_dict(
-                source_record.get("sourcePresentation"),
-                "baked-edge Light source presentation",
-            )
-            _require(
-                target_record.get("kind") == "light"
-                and target_record.get("id") == packet.get("targetElementId")
-                and source_record == target_record
-                and source_presentation.get("sourceEventId")
-                    == packet.get("sourceEventId")
-                and _record_sha(source_record)
-                    == packet.get("sourceEventRecordSha256")
-                and item.get("packetLayout")
-                    == "LIGHT_BAKED_EDGE_ATTACHMENT_V1"
-                and packet.get("runtimeCarrier")
-                    == "EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1"
-                and packet.get("historyId") == history.get("historyId")
-                and packet.get("historySha256") == history.get("historySha256")
-                and packet.get("lane") == "FIRST_EDGE"
-                and packet.get("historyPlaybackClampSeconds")
-                    == history.get("playbackClampSeconds")
-                and packet.get("coordinateBasis")
-                    == history.get("coordinateBasis")
-                and packet.get("attachmentEvidenceStatus")
-                    == "SIBLING_TEMPLATE_INFERRED"
-                and abs(
-                    float(packet.get("activeStartSeconds"))
-                    + float(packet.get("activeDurationSeconds"))
-                    - float(packet.get("activeEndSeconds"))
-                ) <= 5e-5,
-                "Valtan baked-edge Light packet is stale",
             )
         for resource_index, resource_value in enumerate(item.get("resourcePacket", [])):
             _validate_resource(
@@ -2150,8 +1609,7 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
         supplemental_counts[family] += 1
     _require(
         supplemental_counts["ANIMATION_TRAIL"] == EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT and
-        supplemental_counts["CASCADE_RIBBON"] == EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT and
-        supplemental_counts["LIGHT_PARTICLE"] == EXPECTED_VALTAN_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
+        supplemental_counts["CASCADE_RIBBON"] == EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
         "supplemental family denominator changed",
     )
 
@@ -2372,8 +1830,7 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
         "cascadeRibbonVisualRowCount": EXPECTED_CASCADE_RIBBON_VISUAL_ROW_COUNT,
         "supplementalElementCount": EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT,
         "artistFCascadeRibbonElementCount": EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
-            "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
-            "bakedEdgeLightElementCount": EXPECTED_VALTAN_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
+        "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
         "admittedBoundedCount": EXPECTED_ADMITTED_COUNT,
         "failClosedCount": EXPECTED_FAIL_CLOSED_COUNT,
         "legacyApproximationCount": EXPECTED_LEGACY_COUNT,

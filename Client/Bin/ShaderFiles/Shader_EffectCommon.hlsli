@@ -907,8 +907,7 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         // reflection lane.  Vertex/ParticleColor remains the final tint; the
         // dynamic dissolve channel is direct visibility, never generic
         // inverse opacity, so the source value 1 stays visible.
-        clip((g_SourceTextureMask & 0x3u) == 0x3u &&
-            g_TypedTrailParameters[6].y < 0.5f ?
+        clip(0 != g_HasNoise && g_TypedTrailParameters[6].y < 0.5f ?
             1.f : -1.f);
         const float alphaPan = Source_DynamicParameterValue(
             dynamicParameter, 19u, 0.f);
@@ -922,7 +921,7 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
             abs(g_TypedTrailParameters[3].xy), float2(0.01f, 0.01f)) +
             (g_TypedTrailParameters[3].zw + float2(noisePan, 0.f)) *
                 g_EffectLocalTime;
-        const float4 noise = Sample_SourceTexture1(noiseUV);
+        const float4 noise = g_NoiseTexture.Sample(LinearSampler, noiseUV);
         const float noiseStrength = clamp(
             g_TypedTrailParameters[4].x + dynamicNoiseStrength,
             -4.f, 4.f);
@@ -932,7 +931,7 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
                 g_TypedTrailParameters[1].zw + float2(0.f, alphaPan)) *
                 g_EffectLocalTime;
         mainUV += (noise.rg * 2.f - 1.f) * noiseStrength * 0.02f;
-        const float4 mainSample = Sample_SourceTexture0(mainUV);
+        const float4 mainSample = g_BaseTexture.Sample(LinearSampler, mainUV);
         const float3 mainColor = Desaturate_SourceColor(
             max(mainSample.rgb, float3(0.f, 0.f, 0.f)),
             g_TypedTrailParameters[2].z);
@@ -951,13 +950,11 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
             max(g_TypedTrailParameters[4].y, 0.f)) *
             dissolveVisibility * edgeFeather;
     }
-    else if (16 == g_SourceMaterialProfile || 36 == g_SourceMaterialProfile)
+    else if (16 == g_SourceMaterialProfile)
     {
-        // fx_k_me_makeflow_02/03: opacity, two diffuse lanes, color, and flow
-        // are independent named inputs. The distinct profile numbers preserve
-        // parent identity while sharing this bounded translated equation.
-        // diff_backcolor is a diffuse fallback, never the final tint;
-        // ParticleColor remains the chroma carrier.
+        // fx_k_me_makeflow_03: opacity, two diffuse lanes, color, and flow
+        // are independent named inputs. diff_backcolor is a diffuse fallback,
+        // never the final tint; ParticleColor remains the chroma carrier.
         clip(g_SourceTextureMask == 0x1fu ? 1.f : -1.f);
         const float flowStrength = Source_DynamicParameterValue(
             dynamicParameter, 27u, 1.f);
@@ -1827,8 +1824,6 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         // separate: uv_panning moves the emissive sample, uv_noise_panning moves
         // only the noise lookup, and the grouped fallback collapsed both into a
         // single pan that scrolled artwork the source keeps still.
-        clip(g_SourceTextureMask == 0x1u || g_SourceTextureMask == 0x3u ?
-            1.f : -1.f);
         const float2 emissivePan =
             g_TypedTrailParameters[0].xy * g_EffectLocalTime;
         const float2 noisePan =
@@ -1838,8 +1833,7 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         const float desaturation = saturate(g_TypedTrailParameters[1].z);
 
         float2 emissiveUV = localUV + emissivePan;
-        if (0u != (g_SourceTextureMask & 0x2u) &&
-            abs(noiseIntensity) > 1.0e-5f)
+        if (0 != g_HasNoise && abs(noiseIntensity) > 1.0e-5f)
         {
             const float2 noiseUV = localUV * noiseTile + noisePan;
             emissiveUV += (Sample_SourceTexture1(noiseUV).rg * 2.f - 1.f) *
@@ -1863,198 +1857,6 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
 
         output.SceneColor.rgb = emissiveColor;
     }
-    else if (34 == g_SourceMaterialProfile)
-    {
-        // Bounded sprite reconstruction for the exact DimensionMaster-F child
-        // of fx_mm_fluid_01. The source parent noise closure and native pass ABI
-        // are not recovered, so this profile deliberately admits only its two
-        // evidenced sprite lanes. Transition luminance and a radial envelope
-        // own coverage; opaque BC DDS alpha must never expose the full quad.
-        clip((g_SourceTextureMask & 0x3u) == 0x3u ? 1.f : -1.f);
-
-        const float transitionSpeed = Source_DynamicParameterValue(
-            dynamicParameter, 48u, 0.f);
-        const float alphaPower = max(abs(Source_DynamicParameterValue(
-            dynamicParameter, 49u, 1.f)), 0.01f);
-        const float fresnelAlpha = max(abs(Source_DynamicParameterValue(
-            dynamicParameter, 50u, 1.f)), 0.01f);
-
-        const float2 transitionUV = uv * max(
-            abs(g_TypedTrailParameters[0].x), 0.01f) +
-            g_TypedTrailParameters[0].yz * g_EffectLocalTime;
-        const float3 transitionColor = Sample_SourceTexture0(transitionUV).rgb;
-        const float transitionCarrier = saturate(dot(transitionColor,
-            float3(0.299f, 0.587f, 0.114f)));
-        // The source lane is authored as 0..1.5, not normalized opacity. Keep
-        // the bounded reconstruction inside a useful 0..0.9 carrier range so
-        // its current 1.0..1.3 curves cannot collapse the whole card to zero.
-        const float threshold = saturate(
-            abs(transitionSpeed) / 1.5f * 0.8f +
-            g_TypedTrailParameters[1].x * 0.1f);
-        const float transitionSoftness = max(
-            abs(g_TypedTrailParameters[0].w), 1.f / 255.f);
-        const float fillGate = smoothstep(
-            threshold - transitionSoftness,
-            threshold + transitionSoftness, transitionCarrier);
-        const float lineWidth = max(
-            abs(g_TypedTrailParameters[1].y) * transitionSoftness,
-            1.f / 255.f);
-        const float lineGate = saturate(
-            1.f - abs(transitionCarrier - threshold) / lineWidth);
-
-        const float2 centeredUV = localUV - float2(0.5f, 0.5f);
-        const float radialEnvelope = pow(saturate(
-            1.f - smoothstep(0.38f, 0.5f, length(centeredUV))),
-            fresnelAlpha);
-        shape = pow(saturate(max(fillGate, lineGate)), alphaPower) *
-            radialEnvelope;
-
-        const float2 emissiveUV = uv * max(
-            abs(g_TypedTrailParameters[2].xy), float2(0.01f, 0.01f));
-        const float3 emissiveSample = Desaturate_SourceColor(
-            Sample_SourceTexture1(emissiveUV).rgb,
-            saturate(g_TypedTrailParameters[2].z));
-        const float lineIntensity = max(g_TypedTrailParameters[1].z, 0.f);
-        const float emissiveIntensity = max(g_TypedTrailParameters[1].w, 0.f);
-        const float totalScale = max(g_TypedTrailParameters[2].w, 0.f);
-        output.SceneColor.rgb =
-            (emissiveSample * emissiveIntensity +
-             transitionColor * lineGate * lineIntensity) * totalScale;
-    }
-    else if (35 == g_SourceMaterialProfile)
-    {
-        // Class-neutral, bounded reconstruction of fx_k_flowrib_01_tr.  The
-        // exact source particle curves are supplied per trail point; this
-        // evaluator owns only the evidenced texture roles and scalar graph
-        // boundary.  It does not claim the unrecovered native UE3/DXBC ABI.
-        const uint variant = (uint)round(g_TypedTrailParameters[2].w);
-        const uint requiredTextureMask = 3u == variant ? 0x7u : 0x3u;
-        clip(g_SourceTextureMask == requiredTextureMask ? 1.f : -1.f);
-
-        const float xTiling = max(abs(dynamicParameter.x), 0.0001f);
-        const float yTiling = max(abs(dynamicParameter.y), 0.0001f);
-        const float2 flowUV = float2(
-            sourceUV.x * g_TypedTrailParameters[1].x * xTiling,
-            localUV.y * g_TypedTrailParameters[1].y * yTiling);
-        const float2 flowSample = 3u == variant ?
-            Sample_SourceTexture2(flowUV).rg :
-            Sample_SourceTexture1(flowUV).rg;
-        const float2 flowOffset = (flowSample * 2.f - 1.f) *
-            dynamicParameter.w;
-        const float2 mainUV = float2(
-            sourceUV.x * g_TypedTrailParameters[0].x * xTiling,
-            localUV.y * g_TypedTrailParameters[0].y * yTiling +
-                g_TypedTrailParameters[0].z) + flowOffset;
-        const float3 mainSample = Sample_SourceTexture0(mainUV).rgb;
-        const float mainCarrier = max(0.f, dot(mainSample,
-            float3(0.299f, 0.587f, 0.114f))) *
-            max(g_TypedTrailParameters[0].w, 0.f);
-
-        // Source dissolve is authored in the same 0.7..5/3 intensity domain
-        // as the amplified carrier, not as normalized generic opacity.
-        const float dissolveSoftness = max(0.05f,
-            0.05f * max(dynamicParameter.z, 1.f));
-        shape = smoothstep(dynamicParameter.z - dissolveSoftness,
-            dynamicParameter.z + dissolveSoftness, mainCarrier);
-
-        if (3u == variant)
-        {
-            const float2 colorMapUV = mainUV *
-                g_TypedTrailParameters[1].zw;
-            float3 colorMap = Sample_SourceTexture1(colorMapUV).rgb;
-            colorMap = Desaturate_SourceColor(colorMap,
-                g_TypedTrailParameters[2].x);
-            colorMap = pow(max(colorMap, 0.f),
-                max(g_TypedTrailParameters[2].y, 0.01f));
-            output.SceneColor.rgb = colorMap *
-                g_TypedTrailParameters[3].rgb *
-                max(g_TypedTrailParameters[2].z, 0.f) * mainCarrier;
-        }
-        else
-        {
-            output.SceneColor.rgb = mainSample * mainCarrier;
-        }
-    }
-    else if (37 == g_SourceMaterialProfile)
-    {
-        // Bounded sprite carrier for fx_k_pa_makeflow_03. The parent has no
-        // opacity texture: its named mask owns coverage and its one exact
-        // dependency/flow lane only perturbs UVs. Missing or ambiguous roles
-        // are rejected before this shader is selected.
-        clip(g_SourceTextureMask == 0x1fu ? 1.f : -1.f);
-        const float2 flowUV = uv * max(abs(g_TypedTrailParameters[3].xy),
-            float2(0.01f, 0.01f)) + g_TypedTrailParameters[3].zw *
-            g_EffectLocalTime;
-        const float4 flow = Sample_SourceTexture4(flowUV);
-        const float2 flowVector = (flow.rg * 2.f - 1.f) * clamp(
-            g_TypedTrailParameters[0].w * 0.02f, -0.12f, 0.12f);
-        const float2 maskUV = uv * max(abs(g_TypedTrailParameters[7].xy),
-            float2(0.01f, 0.01f)) + flowVector;
-        const float4 maskSample = Sample_SourceTexture3(maskUV);
-        // Cooked mask DDS alpha is frequently a storage-opaque channel.  The
-        // parent names this lane mask_tex, so RGB luminance is the bounded
-        // coverage carrier; accepting alpha would turn the whole card opaque.
-        const float maskCarrier = dot(maskSample.rgb,
-            float3(0.299f, 0.587f, 0.114f));
-        const float edgeDistance = min(
-            min(localUV.x, 1.f - localUV.x),
-            min(localUV.y, 1.f - localUV.y));
-        shape = pow(saturate(maskCarrier),
-            max(abs(g_TypedTrailParameters[4].y), 0.01f)) *
-            saturate(edgeDistance * 64.f);
-
-        const float2 diff1UV = uv * max(abs(g_TypedTrailParameters[1].xy),
-            float2(0.01f, 0.01f)) + g_TypedTrailParameters[1].zw *
-            g_EffectLocalTime + flowVector;
-        const float2 diff2UV = uv * max(abs(g_TypedTrailParameters[2].xy),
-            float2(0.01f, 0.01f)) + g_TypedTrailParameters[2].zw *
-            g_EffectLocalTime - flowVector;
-        float3 diffuse = lerp(Sample_SourceTexture0(diff1UV).rgb,
-            Sample_SourceTexture1(diff2UV).rgb,
-            saturate(flow.r + g_TypedTrailParameters[4].z));
-        diffuse = Desaturate_SourceColor(diffuse,
-            g_TypedTrailParameters[5].z);
-        diffuse = pow(saturate(diffuse),
-            max(abs(g_TypedTrailParameters[5].y), 0.01f)) *
-            max(g_TypedTrailParameters[5].x, 0.f);
-        const float3 colorTexture = Desaturate_SourceColor(
-            Sample_SourceTexture2(uv).rgb, g_TypedTrailParameters[6].z);
-        output.SceneColor.rgb = pow(saturate(diffuse * colorTexture),
-            max(abs(g_TypedTrailParameters[6].y), 0.01f)) *
-            max(g_TypedTrailParameters[6].x, 0.f);
-        output.Distortion.xy = (flow.rg * 2.f - 1.f) *
-            max(g_TypedTrailParameters[4].w, 0.f) * 0.01f * shape *
-            distortionScale;
-    }
-    else if (38 == g_SourceMaterialProfile)
-    {
-        // Bounded fx_mm_simple_02_tr ground-sprite evaluator. The parent
-        // evidence closes two emissive roles plus UV noise; recipe size and
-        // rotation curves remain particle state rather than shader constants.
-        clip(g_SourceTextureMask == 0x7u ? 1.f : -1.f);
-        const float2 emissivePan =
-            g_TypedTrailParameters[0].xy * g_EffectLocalTime;
-        const float2 noiseUV = localUV * max(
-            abs(g_TypedTrailParameters[1].x), 0.01f) +
-            g_TypedTrailParameters[0].zw * g_EffectLocalTime;
-        const float2 noiseOffset =
-            (Sample_SourceTexture1(noiseUV).rg * 2.f - 1.f) *
-            clamp(g_TypedTrailParameters[1].y, -0.25f, 0.25f);
-        const float2 emissiveUV = localUV + emissivePan + noiseOffset;
-        const float3 primary = Desaturate_SourceColor(
-            Sample_SourceTexture0(emissiveUV).rgb,
-            saturate(g_TypedTrailParameters[1].z));
-        const float3 secondary = Sample_SourceTexture2(emissiveUV).rgb *
-            max(g_TypedTrailParameters[1].w, 0.f);
-        const float carrier = saturate(dot(max(primary, 0.f),
-            float3(0.299f, 0.587f, 0.114f)));
-        const float2 centered = localUV - float2(0.5f, 0.5f);
-        const float envelope = saturate(
-            1.f - smoothstep(0.42f, 0.5f, length(centered)));
-        shape = carrier * envelope;
-        output.SceneColor.rgb = (primary + secondary) *
-            max(g_SourceVector0.rgb, float3(0.f, 0.f, 0.f));
-    }
 
     float4 color = (g_ColorMultiply + g_ColorOffset) * vertexColor;
     if (3 != g_SourceMaterialProfile && 4 != g_SourceMaterialProfile &&
@@ -2071,21 +1873,11 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         26 != g_SourceMaterialProfile && 27 != g_SourceMaterialProfile &&
         28 != g_SourceMaterialProfile && 29 != g_SourceMaterialProfile &&
         30 != g_SourceMaterialProfile && 31 != g_SourceMaterialProfile &&
-        32 != g_SourceMaterialProfile && 33 != g_SourceMaterialProfile &&
-        34 != g_SourceMaterialProfile && 35 != g_SourceMaterialProfile &&
-        36 != g_SourceMaterialProfile && 37 != g_SourceMaterialProfile &&
-        38 != g_SourceMaterialProfile)
+        32 != g_SourceMaterialProfile && 33 != g_SourceMaterialProfile)
         output.SceneColor.rgb = color.rgb;
     else
     {
         float3 colorModulator = color.rgb;
-        if (35 == g_SourceMaterialProfile)
-        {
-            // Trail COLOR.g/b transport dissolve/distort. Only COLOR.r is the
-            // evidenced grayscale HDR source curve; preserve common tint.
-            colorModulator = vertexColor.r *
-                (g_ColorMultiply + g_ColorOffset).rgb;
-        }
         if (19 == g_SourceMaterialProfile || 20 == g_SourceMaterialProfile)
         {
             // Cooked ParticleColor curves may be signed or cross exact zero.
@@ -2102,7 +1894,6 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         }
         output.SceneColor.rgb *= colorModulator;
         if (11 == g_SourceMaterialProfile || 16 == g_SourceMaterialProfile ||
-            36 == g_SourceMaterialProfile ||
             17 == g_SourceMaterialProfile || 18 == g_SourceMaterialProfile)
         {
             const float peakRadiance = max(output.SceneColor.r,
@@ -2111,17 +1902,13 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         }
     }
     output.SceneColor.rgb *= lighting * g_EmissiveIntensity * emissive;
-    if ((g_SourceMaterialProfile >= 19 && g_SourceMaterialProfile <= 32) ||
-        34 == g_SourceMaterialProfile ||
-        (g_SourceMaterialProfile >= 37 && g_SourceMaterialProfile <= 38))
+    if (g_SourceMaterialProfile >= 19 && g_SourceMaterialProfile <= 32)
     {
         const float peakRadiance = max(output.SceneColor.r,
             max(output.SceneColor.g, output.SceneColor.b));
         output.SceneColor.rgb /= 1.f + peakRadiance;
     }
-    const float profileOpacity =
-        (9 == g_SourceMaterialProfile || 35 == g_SourceMaterialProfile) ?
-            1.f : opacity;
+    const float profileOpacity = 9 == g_SourceMaterialProfile ? 1.f : opacity;
     output.SceneColor.a = saturate(color.a * shape * profileOpacity);
     clip(output.SceneColor.a - g_ColorClip);
     return output;

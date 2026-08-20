@@ -240,6 +240,14 @@
       "clip": "mesh_att_battle_20_03"
     },
     {
+      "actionId": "valtan.attack.whirlwind.active-2",
+      "clip": "mesh_att_battle_20_03"
+    },
+    {
+      "actionId": "valtan.attack.whirlwind.active-3",
+      "clip": "mesh_att_battle_20_03"
+    },
+    {
       "actionId": "valtan.attack.whirlwind.recovery",
       "clip": "mesh_att_battle_20_04"
     },

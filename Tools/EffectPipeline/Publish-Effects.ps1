@@ -8,7 +8,8 @@ param(
         'None',
         'AfterBackupMove',
         'AfterCommitMove',
-        'AfterSidecarCommitMove')]
+        'AfterSidecarCommitMove',
+        'AfterAdmissionSidecarCommitMove')]
     [string]$TestFaultInjection = 'None'
 )
 
@@ -30,6 +31,11 @@ $visualProgramSourcePath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
     'Effects\VisualPrograms\effect-visual-program-runtime.v1.json'))
 $visualProgramOutputPath = [IO.Path]::GetFullPath((Join-Path `
     (Split-Path -Parent $OutputPath) 'EffectVisualPrograms.runtime.json'))
+$productCuePolicyPath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
+    'Effects\ProductCueApprovals.json'))
+$productCueRuntimeOutputPath = [IO.Path]::GetFullPath((Join-Path `
+    (Split-Path -Parent $OutputPath) `
+    'EffectProductCueAdmissions.runtime.json'))
 $catalogPath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
     'Effects\EffectCatalog.json'))
 
@@ -99,13 +105,49 @@ function Assert-RegularPublishDirectory(
     }
 }
 
+function Assert-ProductCuePolicyContinuity(
+    [bool]$HasProductCuePolicy,
+    [string]$RuntimeCatalogPath,
+    [string]$AdmissionReceiptPath) {
+    if ($HasProductCuePolicy) {
+        return
+    }
+    if (Test-Path -LiteralPath $AdmissionReceiptPath -PathType Leaf) {
+        throw ('Existing Product cue admission receipt cannot be preserved ' +
+            'without its source ProductCueApprovals.json policy.')
+    }
+    if (-not (Test-Path -LiteralPath $RuntimeCatalogPath -PathType Leaf)) {
+        return
+    }
+    $existingRuntimeCatalog = Read-JsonDocument $RuntimeCatalogPath
+    try {
+        $marker = $existingRuntimeCatalog.PSObject.Properties[
+            'productCueAdmissionsRequired']
+        if ($null -ne $marker -and
+            [bool](Get-RequiredProperty $existingRuntimeCatalog `
+                'productCueAdmissionsRequired' Boolean)) {
+            throw ('Existing runtime catalog requires Product cue admissions ' +
+                'and cannot be replaced without its source ' +
+                'ProductCueApprovals.json policy.')
+        }
+    }
+    finally {
+        $existingRuntimeCatalog = $null
+    }
+}
+
 $derivedOutputPaths = @(
     [pscustomobject]@{ Path = $OutputPath; Label = 'Effect catalog output' },
     [pscustomobject]@{
         Path = $visualProgramOutputPath
         Label = 'Effect visual-program output'
+    },
+    [pscustomobject]@{
+        Path = $productCueRuntimeOutputPath
+        Label = 'Product cue admission output'
     })
-$sourceAliases = @($catalogPath, $visualProgramSourcePath)
+$sourceAliases = @(
+    $catalogPath, $visualProgramSourcePath, $productCuePolicyPath)
 foreach ($derivedOutput in $derivedOutputPaths) {
     Assert-SafeDerivedOutputPath $derivedOutput.Path $derivedOutput.Label `
         $sourceAliases @($DataRoot, $ResourceRoot)
@@ -119,8 +161,12 @@ if ($Mode -ceq 'Publish') {
 if ($visualProgramSourcePath.Equals(
         $visualProgramOutputPath, [StringComparison]::OrdinalIgnoreCase) -or
     $OutputPath.Equals(
-        $visualProgramOutputPath, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'Effect catalog and visual-program output paths must be distinct.'
+        $visualProgramOutputPath, [StringComparison]::OrdinalIgnoreCase) -or
+    $productCueRuntimeOutputPath.Equals(
+        $visualProgramOutputPath, [StringComparison]::OrdinalIgnoreCase) -or
+    $productCueRuntimeOutputPath.Equals(
+        $OutputPath, [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'Effect catalog, visual-program, and Product cue receipt paths must be distinct.'
 }
 if ($TestFaultInjection -cne 'None') {
     if ($Mode -cne 'Publish') {
@@ -129,7 +175,9 @@ if ($TestFaultInjection -cne 'None') {
     $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd(
         [IO.Path]::DirectorySeparatorChar,
         [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-    foreach ($testPath in @($DataRoot, $OutputPath, $visualProgramOutputPath)) {
+    foreach ($testPath in @(
+            $DataRoot, $OutputPath, $visualProgramOutputPath,
+            $productCueRuntimeOutputPath)) {
         $normalizedTestPath = [IO.Path]::GetFullPath($testPath)
         if (-not $normalizedTestPath.StartsWith(
                 $temporaryRoot, [StringComparison]::OrdinalIgnoreCase)) {
@@ -154,6 +202,8 @@ $effectDocumentCompactTool = Join-Path $PSScriptRoot `
     'compact_effect_document.py'
 $visualProgramRuntimeTool = Join-Path $PSScriptRoot `
     'build_effect_visual_program_runtime.py'
+$productCueAdmissionTool = Join-Path $PSScriptRoot `
+    'product_cue_admission.py'
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
 $supportedSourceRuntimeShaderProfiles = @(
     'effect.ue3.reconstructed-standard.v1',
@@ -837,6 +887,9 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
             -Filter 'effect.valtan.*.effect.json' -File | Sort-Object Name)) {
         $document = Read-JsonDocument $path.FullName
         $assetId = [string]$document.effectAssetId
+        if ($assetId -ceq 'effect.valtan.pattern.420633.active') {
+            continue
+        }
         if (-not $authoredValtanEffectIds.Add($assetId)) {
             throw "Duplicate authored Valtan EffectAssetId: $assetId"
         }
@@ -1059,6 +1112,27 @@ function Invoke-VisualProgramArtifactCheck([string]$Path) {
         --repository-root $repoRoot --output $Path --artifact-check
     if ($LASTEXITCODE -ne 0) {
         throw "Effect visual-program sidecar validation failed with exit code $LASTEXITCODE."
+    }
+}
+
+function Invoke-ProductCueAdmissionBuild(
+    [string]$RuntimeCatalogPath,
+    [string]$ReceiptOutputPath) {
+    if (-not [IO.File]::Exists($productCueAdmissionTool)) {
+        throw "Missing Product cue admission validator: $productCueAdmissionTool"
+    }
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        throw 'Python is required to validate Product cue admissions.'
+    }
+    & $python.Source -B $productCueAdmissionTool `
+        --repository-root $repoRoot `
+        --data-root $DataRoot `
+        build-runtime-receipt `
+        --runtime-catalog $RuntimeCatalogPath `
+        --output $ReceiptOutputPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Product cue admission validation failed with exit code $LASTEXITCODE."
     }
 }
 
@@ -1349,32 +1423,14 @@ function Assert-EffectDetail(
     }
 
     # sourceScale is optional and multiplies what the source modules produce.
-    # Keep these ranges identical to Effect_DocumentCodec: count, size and
-    # lifetime must stay positive; speed/rotation may stop or reverse their
-    # source axes; alpha and delay may be zero but not negative.
+    # Zero or negative would erase the Element rather than trim it, so the
+    # publisher refuses those the same way the codec does.
     if ($null -ne $particle.PSObject.Properties['sourceScale']) {
         $sourceScale = Get-RequiredProperty $particle 'sourceScale' Object
         foreach ($factorName in @('count', 'size', 'lifeTime')) {
             $factor = if ($null -ne $sourceScale.$factorName) {
                 Get-NumberValue $sourceScale $factorName $Label } else { 1.0 }
             if ($factor -le 0 -or $factor -gt 16) {
-                throw "$Label particle sourceScale $factorName is out of range."
-            }
-        }
-        $speed = if ($null -ne $sourceScale.speed) {
-            Get-NumberValue $sourceScale 'speed' $Label } else { 1.0 }
-        if ($speed -lt -16 -or $speed -gt 16) {
-            throw "$Label particle sourceScale speed is out of range."
-        }
-        $rotation = if ($null -ne $sourceScale.rotation) {
-            Get-NumberValue $sourceScale 'rotation' $Label } else { 1.0 }
-        if ($rotation -lt -360 -or $rotation -gt 360) {
-            throw "$Label particle sourceScale rotation is out of range."
-        }
-        foreach ($factorName in @('alpha', 'spawnDelay')) {
-            $factor = if ($null -ne $sourceScale.$factorName) {
-                Get-NumberValue $sourceScale $factorName $Label } else { 1.0 }
-            if ($factor -lt 0 -or $factor -gt 16) {
                 throw "$Label particle sourceScale $factorName is out of range."
             }
         }
@@ -1428,10 +1484,7 @@ function Resolve-SafeResource([string]$AssetId) {
 }
 
 function Resolve-SafeModelCueResource([string]$AssetId) {
-    $allowedRoot = $AssetId.StartsWith(
-        'Character/', [StringComparison]::Ordinal) -or
-        $AssetId.StartsWith('Effect/', [StringComparison]::Ordinal)
-    if (-not $allowedRoot -or
+    if (-not $AssetId.StartsWith('Character/', [StringComparison]::Ordinal) -or
         $AssetId.Contains('\') -or $AssetId.Contains(':') -or
         [IO.Path]::IsPathRooted($AssetId) -or
         [IO.Path]::GetExtension($AssetId) -cne '.wmodel') {
@@ -1675,9 +1728,60 @@ finally {
     $visualProgramSourceDocument = $null
 }
 
+# Unified Product cues no longer require a cue-by-cue approval sidecar.
+# Full and authoring-approximate Elements share the ordinary authored runtime;
+# hard fail-closed Elements remain suppressed by the document itself.  Keep
+# the older policy files inert as rollback evidence instead of making them a
+# second admission authority.
+$hasProductCuePolicy = $false
+$productCuePolicySha256 = ''
+$productApprovedApproximateIds =
+    [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $activeProductEffectIds = Get-ActiveProductEffectIds $DataRoot
 if ($activeProductEffectIds.Count -lt 1) {
     throw 'Authored animation Product Effect cue set is empty.'
+}
+if ($hasProductCuePolicy) {
+    $productCuePolicy = Read-JsonDocument $productCuePolicyPath
+    try {
+        Assert-ExactPropertyOrder $productCuePolicy @(
+            'schema', 'formatVersion', 'decisionSetId',
+            'defaultAdmission', 'approvals') 'Product cue approval policy'
+        if ((Get-RequiredProperty $productCuePolicy 'schema' String) -cne
+                'lostark.effect-product-cue-approval-policy' -or
+            [int](Get-RequiredProperty $productCuePolicy `
+                'formatVersion' Number) -ne 1 -or
+            (Get-RequiredProperty $productCuePolicy `
+                'defaultAdmission' String) -cne 'DENY') {
+            throw 'Product cue approval policy header is invalid.'
+        }
+        [void](Get-RequiredProperty $productCuePolicy 'decisionSetId' String)
+        foreach ($approval in @(Get-RequiredProperty $productCuePolicy `
+                'approvals' Array)) {
+            Assert-ExactPropertyOrder $approval @(
+                'cueId', 'approvalCeiling', 'animationAssetId',
+                'characterClass', 'inputSlot', 'skillId', 'stageIndex',
+                'clipName', 'startMs', 'effectAssetId',
+                'rollbackEffectAssetId', 'effectContentSha256',
+                'provenance') 'Product cue approval'
+            $cueId = Get-RequiredProperty $approval 'cueId' String
+            $approvalCeiling = Get-RequiredProperty $approval `
+                'approvalCeiling' String
+            $approvedEffectAssetId = Get-RequiredProperty $approval `
+                'effectAssetId' String
+            Assert-StableId $cueId 'Product cue approval ID'
+            Assert-StableId $approvedEffectAssetId `
+                'Product cue approved EffectAssetId'
+            if ($approvalCeiling -cne 'PRODUCT_APPROVED_APPROXIMATE' -or
+                -not $productApprovedApproximateIds.Add(
+                    $approvedEffectAssetId)) {
+                throw "Product cue approval is unsupported or duplicates an Effect target: $cueId"
+            }
+        }
+    }
+    finally {
+        $productCuePolicy = $null
+    }
 }
 
 $assemblyById = [Collections.Generic.Dictionary[string,object]]::new(
@@ -2741,6 +2845,8 @@ try {
                     effectAssetId = $effectAssetId
                     authoringFormatVersion = $documentVersion
                     authoredDocumentPath = $runtimeAuthoredRelativePath
+                    contentSha256 = $sealedSha
+                    dependencies = $dependencyRows
                 })
                 $hasDerivedRuntime = $true
                 continue
@@ -2841,6 +2947,10 @@ try {
     $runtimeComponents = @($runtimeComponentsById.GetEnumerator() |
         Sort-Object Key | ForEach-Object { $_.Value })
     $sortedRuntimeEffects = @($runtimeEffects | Sort-Object effectAssetId)
+    $visualProgramSidecarRequired = @(
+        $visualProgramSourceDocument.programs | Where-Object {
+            $activeProductEffectIds.Contains([string]$_.effectAssetId)
+        }).Count -gt 0
     if ($hasDerivedRuntime) {
         $runtimeOutputEffects = @($sortedRuntimeEffects | ForEach-Object {
             if ([string]$_.payloadKind -cin @(
@@ -2860,11 +2970,25 @@ try {
                 }
             }
         })
-        $runtime = [ordered]@{
-            schema = 'lostark.effect-runtime-catalog'
-            formatVersion = 3
-            components = $runtimeComponents
-            effects = $runtimeOutputEffects
+        $runtime = if ($hasProductCuePolicy) {
+            [ordered]@{
+                schema = 'lostark.effect-runtime-catalog'
+                formatVersion = 3
+                visualProgramSidecarRequired = $visualProgramSidecarRequired
+                productCueAdmissionsRequired = $true
+                productCuePolicySha256 = $productCuePolicySha256
+                components = $runtimeComponents
+                effects = $runtimeOutputEffects
+            }
+        }
+        else {
+            [ordered]@{
+                schema = 'lostark.effect-runtime-catalog'
+                formatVersion = 3
+                visualProgramSidecarRequired = $visualProgramSidecarRequired
+                components = $runtimeComponents
+                effects = $runtimeOutputEffects
+            }
         }
     }
     else {
@@ -2882,14 +3006,43 @@ try {
         throw ("Effect runtime catalog exceeds the Client byte limit: " +
             "$runtimeCatalogUtf8Bytes > $runtimeCatalogMaximumBytes")
     }
-    if ($Mode -ceq 'Validate') {
-        if ($hasDerivedRuntime) {
-            Invoke-EffectRuntimeCatalogValidationBundle `
-                $json $directAuthoredRuntimeFilesByPath
+    if ($Mode -eq 'Validate') {
+        if ($hasDerivedRuntime -or $hasProductCuePolicy) {
+            $validationId = [Guid]::NewGuid().ToString('N')
+            $validationPath = Join-Path ([IO.Path]::GetTempPath()) `
+                ("LostArkEffectCatalogV3-" + $validationId + '.json')
+            $admissionValidationPath = Join-Path ([IO.Path]::GetTempPath()) `
+                ("LostArkEffectProductCueAdmissions-" + $validationId + '.json')
+            try {
+                [IO.File]::WriteAllText(
+                    $validationPath, $json + "`n", $utf8NoBom)
+                if ($hasDerivedRuntime) {
+                    Invoke-EffectRuntimeCatalogValidationBundle `
+                        $json $directAuthoredRuntimeFilesByPath
+                }
+                if ($hasProductCuePolicy) {
+                    Invoke-ProductCueAdmissionBuild `
+                        $validationPath $admissionValidationPath
+                    $admissionValidation = Read-JsonDocument `
+                        $admissionValidationPath
+                    $admissionValidation = $null
+                }
+            }
+            finally {
+                if ([IO.File]::Exists($validationPath)) {
+                    Remove-Item -LiteralPath $validationPath -Force
+                }
+                if ([IO.File]::Exists($admissionValidationPath)) {
+                    Remove-Item -LiteralPath $admissionValidationPath -Force
+                }
+            }
         }
         Write-Host (
             "PASS: validated $($runtimeEffects.Count) Effect catalog entries " +
-            "and $($visualProgramSourcePath) visual-program sidecar.")
+            "and $($visualProgramSourcePath) visual-program sidecar" +
+            $(if ($hasProductCuePolicy) {
+                ' with explicit Product cue admissions.'
+            } else { '.' }))
         return
     }
 
@@ -2901,6 +3054,10 @@ try {
     $visualProgramTemporary =
         "$visualProgramOutputPath.$transactionId.tmp"
     $visualProgramBackup = "$visualProgramOutputPath.$transactionId.bak"
+    $productCueAdmissionTemporary =
+        "$productCueRuntimeOutputPath.$transactionId.tmp"
+    $productCueAdmissionBackup =
+        "$productCueRuntimeOutputPath.$transactionId.bak"
     $transactionLockPath = Join-Path $directory `
         '.Publish-Effects.transaction.lock'
     $transactionLock = $null
@@ -2922,6 +3079,10 @@ try {
             Assert-RegularPublishDestination `
                 $derivedOutput.Path $derivedOutput.Label
         }
+        if ($hasProductCuePolicy) {
+            Assert-ProductCuePolicyContinuity $true `
+                $OutputPath $productCueRuntimeOutputPath
+        }
         [IO.File]::WriteAllText(
             $temporary, $json + "`n", $utf8NoBom)
         [IO.File]::WriteAllBytes(
@@ -2937,6 +3098,24 @@ try {
         if ($hasDerivedRuntime) {
             Invoke-EffectRuntimeCatalogValidationBundle `
                 $json $directAuthoredRuntimeFilesByPath
+        }
+        if ($hasProductCuePolicy) {
+            Invoke-ProductCueAdmissionBuild `
+                $temporary $productCueAdmissionTemporary
+            $stagedProductCueAdmissions = Read-JsonDocument `
+                $productCueAdmissionTemporary
+            try {
+                if ((Get-RequiredProperty $stagedProductCueAdmissions `
+                        'schema' String) -cne
+                        'lostark.effect-product-cue-admissions' -or
+                    [int](Get-RequiredProperty $stagedProductCueAdmissions `
+                        'formatVersion' Number) -ne 1) {
+                    throw 'Generated Product cue admission receipt header is invalid.'
+                }
+            }
+            finally {
+                $stagedProductCueAdmissions = $null
+            }
         }
         $roundTrip = Read-JsonDocument $temporary
         try {
@@ -3048,11 +3227,21 @@ try {
                     $authoredDocumentPath = Get-RequiredProperty $entry `
                         'authoredDocumentPath' String
                     $sealedRecord = $null
-                    if ($authoredDocumentPath -cne
+                    if ((Get-RequiredProperty $entry 'contentSha256' String) -cne
+                            [string]$expected.contentSha256 -or
+                        $authoredDocumentPath -cne
                             [string]$expected.authoredDocumentPath -or
                         -not $directAuthoredRuntimeFilesByPath.TryGetValue(
-                            $authoredDocumentPath, [ref]$sealedRecord)) {
+                            $authoredDocumentPath, [ref]$sealedRecord) -or
+                        @(Get-RequiredProperty $entry 'dependencies' Array).Count -ne
+                            @($expected.dependencies).Count) {
                         throw "Direct authored runtime catalog entry failed round-trip validation: $id"
+                    }
+                    $sealedSourceBytes = Read-PinnedDirectAuthoredBytes `
+                        $sealedRecord
+                    if ((Get-Sha256Hex $sealedSourceBytes) -cne
+                            [string]$expected.contentSha256) {
+                        throw "Direct authored source bytes failed round-trip validation: $id"
                     }
                 }
                 elseif ($payloadKind -ceq 'LEGACY_ASSEMBLY_V1') {
@@ -3076,10 +3265,15 @@ try {
         $hadDestination = Test-Path -LiteralPath $OutputPath -PathType Leaf
         $hadVisualProgramDestination = Test-Path -LiteralPath `
             $visualProgramOutputPath -PathType Leaf
+        $hadProductCueAdmissionDestination = $hasProductCuePolicy -and
+            (Test-Path -LiteralPath $productCueRuntimeOutputPath `
+                -PathType Leaf)
         $destinationBackedUp = $false
         $visualProgramDestinationBackedUp = $false
+        $productCueAdmissionDestinationBackedUp = $false
         $newDestinationCommitted = $false
         $newVisualProgramDestinationCommitted = $false
+        $newProductCueAdmissionDestinationCommitted = $false
         $authoredOutputRoot = [IO.Path]::GetFullPath((Join-Path `
             $directory 'Authored'))
         Assert-SafeDerivedOutputPath $authoredOutputRoot `
@@ -3190,6 +3384,11 @@ try {
                     -Destination $visualProgramBackup
                 $visualProgramDestinationBackedUp = $true
             }
+            if ($hadProductCueAdmissionDestination) {
+                Move-Item -LiteralPath $productCueRuntimeOutputPath `
+                    -Destination $productCueAdmissionBackup
+                $productCueAdmissionDestinationBackedUp = $true
+            }
             if ($TestFaultInjection -ceq 'AfterBackupMove') {
                 throw 'Injected Effect publisher failure after pair backup move.'
             }
@@ -3204,11 +3403,23 @@ try {
             if ($TestFaultInjection -ceq 'AfterSidecarCommitMove') {
                 throw 'Injected Effect publisher failure after sidecar commit move.'
             }
+            if ($hasProductCuePolicy) {
+                Move-Item -LiteralPath $productCueAdmissionTemporary `
+                    -Destination $productCueRuntimeOutputPath
+                $newProductCueAdmissionDestinationCommitted = $true
+            }
+            if ($TestFaultInjection -ceq
+                    'AfterAdmissionSidecarCommitMove') {
+                throw 'Injected Effect publisher failure after Product cue admission sidecar commit move.'
+            }
         }
         catch {
             $publishFailure = $_
             $rollbackFailures = [Collections.Generic.List[string]]::new()
             foreach ($committedPath in @(
+                    $(if ($newProductCueAdmissionDestinationCommitted) {
+                        $productCueRuntimeOutputPath
+                    }),
                     $(if ($newVisualProgramDestinationCommitted) {
                         $visualProgramOutputPath
                     }),
@@ -3236,6 +3447,11 @@ try {
                         BackedUp = $visualProgramDestinationBackedUp
                         Backup = $visualProgramBackup
                         Destination = $visualProgramOutputPath
+                    },
+                    [pscustomobject]@{
+                        BackedUp = $productCueAdmissionDestinationBackedUp
+                        Backup = $productCueAdmissionBackup
+                        Destination = $productCueRuntimeOutputPath
                     })) {
                 if (-not $restore.BackedUp -or
                     -not (Test-Path -LiteralPath $restore.Backup `
@@ -3276,7 +3492,11 @@ try {
             }
             throw $publishFailure
         }
-        foreach ($committedBackup in @($backup, $visualProgramBackup)) {
+        foreach ($committedBackup in @(
+                $backup, $visualProgramBackup,
+                $(if ($hasProductCuePolicy) {
+                    $productCueAdmissionBackup
+                }))) {
             if ([string]::IsNullOrWhiteSpace([string]$committedBackup) -or
                 -not (Test-Path -LiteralPath $committedBackup `
                     -PathType Leaf)) {
@@ -3301,6 +3521,9 @@ try {
             if (Test-Path -LiteralPath $visualProgramTemporary) {
                 Remove-Item -LiteralPath $visualProgramTemporary -Force
             }
+            if (Test-Path -LiteralPath $productCueAdmissionTemporary) {
+                Remove-Item -LiteralPath $productCueAdmissionTemporary -Force
+            }
         }
         finally {
             if ($null -ne $transactionLock) {
@@ -3310,7 +3533,10 @@ try {
     }
     Write-Host (
         "PASS: published $($runtimeEffects.Count) Effects, " +
-        "$($runtimeComponents.Count) Components and visual-program sidecar " +
+        "$($runtimeComponents.Count) Components, visual-program sidecar" +
+        $(if ($hasProductCuePolicy) {
+            ', and Product cue admission receipt '
+        } else { ' ' }) +
         "to $directory")
 }
 finally {

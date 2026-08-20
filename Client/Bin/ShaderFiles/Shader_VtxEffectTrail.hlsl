@@ -48,15 +48,6 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         clip(-1.f);
         return output;
     }
-    if (35u == g_SourceMaterialProfile)
-    {
-        const float4 sourceColor = float4(
-            input.color.r, input.color.r, input.color.r, input.color.a);
-        const float4 dynamicParameter = float4(
-            g_TypedTrailParameters[4].xy, input.color.g, input.color.b);
-        return Shade_EffectParticleUV(input.uv, input.runtimeUV,
-            float3(1.f, 1.f, 1.f), sourceColor, dynamicParameter);
-    }
     return Shade_Effect(input.uv, float3(1.f, 1.f, 1.f), input.color);
 }
 

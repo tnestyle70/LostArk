@@ -16,7 +16,6 @@
     "presentationSchedules",
     "visualRows",
     "supplementalElements",
-    "bakedEdgeHistories",
     "denominators",
     "transactionPolicy",
     "artifactSha256"
@@ -87,15 +86,9 @@
     },
     "supplementalElements": {
       "type": "array",
-      "minItems": 9,
-      "maxItems": 9,
+      "minItems": 5,
+      "maxItems": 5,
       "items": { "$ref": "#/$defs/supplementalElement" }
-    },
-    "bakedEdgeHistories": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 1,
-      "items": { "$ref": "#/$defs/bakedEdgeHistory" }
     },
     "denominators": {
       "type": "object",
@@ -110,7 +103,6 @@
         "supplementalElementCount",
         "artistFCascadeRibbonElementCount",
         "animationTrailElementCount",
-        "bakedEdgeLightElementCount",
         "admittedBoundedCount",
         "failClosedCount",
         "legacyApproximationCount",
@@ -124,10 +116,9 @@
         "combatBaVisualRowCount": { "const": 133 },
         "artistFLocalDecalVisualRowCount": { "const": 2 },
         "cascadeRibbonVisualRowCount": { "const": 4 },
-        "supplementalElementCount": { "const": 9 },
+        "supplementalElementCount": { "const": 5 },
         "artistFCascadeRibbonElementCount": { "const": 1 },
-        "animationTrailElementCount": { "const": 7 },
-        "bakedEdgeLightElementCount": { "const": 1 },
+        "animationTrailElementCount": { "const": 4 },
         "admittedBoundedCount": { "const": 68 },
         "failClosedCount": { "const": 67 },
         "legacyApproximationCount": { "const": 66 },
@@ -659,18 +650,6 @@
         "productMutation": { "const": false }
       }
     },
-    "vec3": {
-      "type": "array",
-      "minItems": 3,
-      "maxItems": 3,
-      "items": { "type": "number" }
-    },
-    "vec4": {
-      "type": "array",
-      "minItems": 4,
-      "maxItems": 4,
-      "items": { "type": "number" }
-    },
     "transform3": {
       "type": "object",
       "additionalProperties": false,
@@ -719,7 +698,7 @@
         "faceCamera": { "type": "boolean" }
       }
     },
-    "animationTrailPacketV1": {
+    "animationTrailPacket": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -749,143 +728,6 @@
         "trail": { "$ref": "#/$defs/trailGeometry" },
         "preservedLimitations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/stableId" } },
         "packetSha256": { "$ref": "#/$defs/sha256" }
-      }
-    },
-    "animationTrailPacketV2": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "packetVersion", "adapterId", "boundedSemanticReplay", "nativeExecution",
-        "runtimeCarrier", "sourceNotifyType", "sourceEventId",
-        "sourceEventRecordSha256", "sourceAsset", "clip", "localTimeSeconds",
-        "globalTimeSeconds", "durationSeconds", "targetElementId", "targetTiming",
-        "attachment", "trail", "historyId", "historySha256",
-        "playbackClampSeconds", "coordinateBasis", "preservedLimitations",
-        "packetSha256"
-      ],
-      "properties": {
-        "packetVersion": { "const": 2 },
-        "adapterId": { "const": "animation-trail-document-v12" },
-        "boundedSemanticReplay": { "const": true },
-        "nativeExecution": { "const": false },
-        "runtimeCarrier": { "const": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1" },
-        "sourceNotifyType": { "const": "Trails" },
-        "sourceEventId": { "type": "string", "minLength": 1 },
-        "sourceEventRecordSha256": { "$ref": "#/$defs/sha256" },
-        "sourceAsset": { "type": "string", "minLength": 1 },
-        "clip": { "$ref": "#/$defs/stableId" },
-        "localTimeSeconds": { "type": "number", "minimum": 0 },
-        "globalTimeSeconds": { "type": "number", "minimum": 0 },
-        "durationSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "targetElementId": { "$ref": "#/$defs/stableId" },
-        "targetTiming": { "$ref": "#/$defs/trailTiming" },
-        "attachment": { "$ref": "#/$defs/trailAttachment" },
-        "trail": { "$ref": "#/$defs/trailGeometry" },
-        "historyId": { "$ref": "#/$defs/stableId" },
-        "historySha256": { "$ref": "#/$defs/sha256" },
-        "playbackClampSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "coordinateBasis": { "const": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS" },
-        "preservedLimitations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/stableId" } },
-        "packetSha256": { "$ref": "#/$defs/sha256" }
-      }
-    },
-    "animationTrailPacket": {
-      "oneOf": [
-        { "$ref": "#/$defs/animationTrailPacketV1" },
-        { "$ref": "#/$defs/animationTrailPacketV2" }
-      ]
-    },
-    "lightProfile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "enabled", "profileId", "status", "range", "intensity", "color",
-        "ambient", "falloffExponent"
-      ],
-      "properties": {
-        "enabled": { "const": true },
-        "profileId": { "const": "light.point.reconstructed.v1" },
-        "status": { "const": "reconstructed_profile" },
-        "range": { "type": "number", "exclusiveMinimum": 0 },
-        "intensity": { "type": "number", "minimum": 0 },
-        "color": { "$ref": "#/$defs/vec4" },
-        "ambient": { "$ref": "#/$defs/vec4" },
-        "falloffExponent": { "type": "number", "exclusiveMinimum": 0 }
-      }
-    },
-    "bakedEdgeLightPacket": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "packetVersion", "adapterId", "boundedSemanticReplay", "nativeExecution",
-        "runtimeCarrier", "sourceEventId", "sourceEventRecordSha256",
-        "targetElementId", "historyId", "historySha256", "lane",
-        "activeStartSeconds", "activeDurationSeconds", "activeEndSeconds",
-        "historyPlaybackClampSeconds", "coordinateBasis",
-        "attachmentEvidenceStatus", "targetLight", "preservedLimitations",
-        "packetSha256"
-      ],
-      "properties": {
-        "packetVersion": { "const": 1 },
-        "adapterId": { "const": "light-particle-document-v12" },
-        "boundedSemanticReplay": { "const": true },
-        "nativeExecution": { "const": false },
-        "runtimeCarrier": { "const": "EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1" },
-        "sourceEventId": { "type": "string", "minLength": 1 },
-        "sourceEventRecordSha256": { "$ref": "#/$defs/sha256" },
-        "targetElementId": { "$ref": "#/$defs/stableId" },
-        "historyId": { "$ref": "#/$defs/stableId" },
-        "historySha256": { "$ref": "#/$defs/sha256" },
-        "lane": { "const": "FIRST_EDGE" },
-        "activeStartSeconds": { "type": "number", "minimum": 0 },
-        "activeDurationSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "activeEndSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "historyPlaybackClampSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "coordinateBasis": { "const": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS" },
-        "attachmentEvidenceStatus": { "const": "SIBLING_TEMPLATE_INFERRED" },
-        "targetLight": { "$ref": "#/$defs/lightProfile" },
-        "preservedLimitations": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/stableId" } },
-        "packetSha256": { "$ref": "#/$defs/sha256" }
-      }
-    },
-    "bakedEdgeSample": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "relativeTimeSeconds", "firstEdgeUE3Cm", "controlPointUE3Cm",
-        "secondEdgeUE3Cm"
-      ],
-      "properties": {
-        "relativeTimeSeconds": { "type": "number", "minimum": 0 },
-        "firstEdgeUE3Cm": { "$ref": "#/$defs/vec3" },
-        "controlPointUE3Cm": { "$ref": "#/$defs/vec3" },
-        "secondEdgeUE3Cm": { "$ref": "#/$defs/vec3" }
-      }
-    },
-    "bakedEdgeHistory": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "historyId", "sourceKind", "sourceArtifactPath",
-        "sourceArtifactRawSha256", "coordinateBasis", "sourceEndTimeSeconds",
-        "playbackClampSeconds", "sampleCount", "samples", "samplesSha256",
-        "historySha256"
-      ],
-      "properties": {
-        "historyId": { "$ref": "#/$defs/stableId" },
-        "sourceKind": { "const": "UE3_ANIMTRAIL_BAKED_EDGE_HISTORY_V1" },
-        "sourceArtifactPath": { "type": "string", "minLength": 1 },
-        "sourceArtifactRawSha256": { "$ref": "#/$defs/sha256" },
-        "coordinateBasis": { "const": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS" },
-        "sourceEndTimeSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "playbackClampSeconds": { "type": "number", "exclusiveMinimum": 0 },
-        "sampleCount": { "const": 409 },
-        "samples": {
-          "type": "array", "minItems": 409, "maxItems": 409,
-          "items": { "$ref": "#/$defs/bakedEdgeSample" }
-        },
-        "samplesSha256": { "$ref": "#/$defs/sha256" },
-        "historySha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "cascadeRibbonPacket": {
@@ -934,7 +776,6 @@
         "sourcePayload", "targetPayload", "family", "adapterId",
         "packetLayout", "fidelity", "disposition", "tuningEligibleTransform",
         "resourcePacket", "cascadeRibbonPacket", "animationTrailPacket",
-        "bakedEdgeLightPacket",
         "admissionBlockers", "rowSha256"
       ],
       "properties": {
@@ -944,16 +785,15 @@
         "schedule": { "type": "object" },
         "sourcePayload": { "$ref": "#/$defs/payloadRef" },
         "targetPayload": { "$ref": "#/$defs/payloadRef" },
-        "family": { "enum": ["CASCADE_RIBBON", "ANIMATION_TRAIL", "LIGHT_PARTICLE"] },
+        "family": { "enum": ["CASCADE_RIBBON", "ANIMATION_TRAIL"] },
         "adapterId": { "$ref": "#/$defs/stableId" },
-        "packetLayout": { "enum": ["CASCADE_RIBBON_TYPED_PACKET_V1", "ANIMATION_TRAIL_ELEMENT_V1", "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1", "LIGHT_BAKED_EDGE_ATTACHMENT_V1"] },
+        "packetLayout": { "enum": ["CASCADE_RIBBON_TYPED_PACKET_V1", "ANIMATION_TRAIL_ELEMENT_V1"] },
         "fidelity": { "const": "BOUNDED_RECONSTRUCTION" },
         "disposition": { "const": "ADMITTED_BOUNDED" },
         "tuningEligibleTransform": { "const": true },
         "resourcePacket": { "type": "array", "items": { "$ref": "#/$defs/resourceRole" } },
         "cascadeRibbonPacket": { "oneOf": [{ "$ref": "#/$defs/cascadeRibbonPacket" }, { "type": "null" }] },
         "animationTrailPacket": { "oneOf": [{ "$ref": "#/$defs/animationTrailPacket" }, { "type": "null" }] },
-        "bakedEdgeLightPacket": { "oneOf": [{ "$ref": "#/$defs/bakedEdgeLightPacket" }, { "type": "null" }] },
         "admissionBlockers": { "const": [] },
         "rowSha256": { "$ref": "#/$defs/sha256" }
       }

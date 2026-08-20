@@ -55,23 +55,17 @@ RUNTIME_VERSION = 1
 RUNTIME_ID = "effect.visual-program-runtime.v1"
 CONTRACT_ROLE = "GENERIC_VISUAL_PROGRAM_RUNTIME_SIDECAR_STAGE_INPUT"
 
-EXPECTED_PROGRAM_COUNT = 14
-EXPECTED_BA_PROGRAM_COUNT = 13
+EXPECTED_PROGRAM_COUNT = 13
+EXPECTED_BA_PROGRAM_COUNT = 12
 EXPECTED_ADAPTER_PROGRAM_COUNT = 1
 EXPECTED_ROW_COUNT = 135
 EXPECTED_OVERLAY_COUNT = 66
 EXPECTED_LOCAL_PACKET_COUNT = 2
 EXPECTED_FAIL_CLOSED_COUNT = 67
 EXPECTED_CASCADE_RIBBON_ROW_COUNT = 4
-EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 9
+EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 5
 EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT = 1
-EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 7
-EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT = 1
-
-VALTAN_WHIRLWIND_EFFECT_ASSET_ID = "effect.valtan.pattern.420633.active"
-VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH = (
-    "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
-)
+EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 4
 
 LOCAL_DECAL_PROGRAM_RELATIVE_PATH = phase1.RUNTIME_PROGRAM_RELATIVE_PATH
 LOCAL_DECAL_RECEIPT_RELATIVE_PATH = phase1.LOCAL_DECAL_RECEIPT_RELATIVE_PATH
@@ -494,118 +488,36 @@ def project_ba_document(
             )
         target_element["sourceRecipe"] = projected_source_recipe
     for supplemental in supplemental_elements or []:
-        family = supplemental.get("family")
         _require(
-            family in {"ANIMATION_TRAIL", "LIGHT_PARTICLE"} and
+            supplemental.get("family") == "ANIMATION_TRAIL" and
             supplemental.get("disposition") == "ADMITTED_BOUNDED",
-            "BA supplemental projection contains an unsupported row",
+            "BA supplemental projection contains a non-AnimationTrail row",
         )
         target_payload = _require_dict(
-            supplemental.get("targetPayload"), "supplemental targetPayload"
+            supplemental.get("targetPayload"), "AnimationTrail targetPayload"
         )
         target = copy.deepcopy(_load_payload_record(repository_root, target_payload))
-        source_target = copy.deepcopy(target)
-        target_id = _require_string(target.get("id"), "supplemental target ID")
-        _require(target_id not in seen_targets, f"duplicate supplemental target: {target_id}")
-        existing = [
-            (index, item)
-            for index, item in enumerate(staged.get("elements", []))
-            if isinstance(item, dict) and item.get("id") == target_id
-        ]
-        source_recipe = _require_dict(
-            target.get("sourceRecipe"), "supplemental target SourceRecipe"
-        )
-        if family == "LIGHT_PARTICLE":
-            packet = _require_dict(
-                supplemental.get("bakedEdgeLightPacket"),
-                "baked-edge Light packet",
-            )
-            _require(
-                supplemental.get("packetLayout")
-                    == "LIGHT_BAKED_EDGE_ATTACHMENT_V1"
-                and target.get("kind") == "light"
-                and target.get("visible") is False
-                and source_recipe.get("enabled") is False
-                and source_recipe.get("modules") == []
-                and len(existing) == 1
-                and existing[0][1] == source_target,
-                "baked-edge Light base target identity changed",
-            )
-            target_light = copy.deepcopy(
-                _require_dict(packet.get("targetLight"), "targetLight")
-            )
-            base_light = copy.deepcopy(_require_dict(
-                target.get("detail", {}).get("light"),
-                "baked-edge Light base profile",
-            ))
-            base_light["enabled"] = True
-            _require(
-                base_light == target_light
-                and target_light.get("enabled") is True,
-                "baked-edge Light projected profile diverged from quarantine",
-            )
-            target["visible"] = True
-            target["detail"]["timing"]["startDelaySeconds"] = packet.get(
-                "activeStartSeconds"
-            )
-            target["detail"]["timing"]["lifeTimeSeconds"] = packet.get(
-                "activeDurationSeconds"
-            )
-            target["detail"]["light"] = target_light
-            staged["elements"][existing[0][0]] = target
-            seen_targets.add(target_id)
-            continue
-        packet = _require_dict(
-            supplemental.get("animationTrailPacket"),
-            "AnimationTrail packet",
-        )
-        baked_edge = (
-            supplemental.get("packetLayout")
-            == "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1"
-        )
         target["detail"]["trail"].setdefault("tilingDistanceWorldUnits", 0.0)
         target["detail"]["trail"].setdefault(
             "distanceTessellationStepWorldUnits", 0.0
         )
-        if baked_edge:
-            module_classes = {
-                str(module.get("className", "")).casefold()
-                for module in _require_list(
-                    source_recipe.get("modules"),
-                    "baked AnimationTrail source modules",
-                )
-                if isinstance(module, dict)
-            }
-            _require(
-                target.get("kind") == "trail"
-                and source_recipe.get("enabled") is False
-                and "particlemoduletypedataanimtrail" in module_classes
-                and len(existing) == 1
-                and existing[0][1] == source_target,
-                "baked AnimationTrail base target identity changed",
-            )
-            target["visible"] = True
-            target["sourceRecipe"]["modules"] = []
-            target["detail"]["timing"] = copy.deepcopy(
-                _require_dict(packet.get("targetTiming"), "targetTiming")
-            )
-            target["detail"]["trail"].update(copy.deepcopy(
-                _require_dict(packet.get("trail"), "baked AnimationTrail trail")
-            ))
-            staged["elements"][existing[0][0]] = target
-        else:
-            _require(
-                target.get("kind") == "trail"
-                and source_recipe.get("enabled") is False
-                and source_recipe.get("modules") == [],
-                "AnimationTrail target is not a bounded authored trail",
-            )
-            _require(
-                not existing,
-                f"AnimationTrail target already exists: {target_id}",
-            )
-            staged["elements"].append(target)
+        target_id = _require_string(target.get("id"), "AnimationTrail target ID")
+        _require(target_id not in seen_targets, f"duplicate supplemental target: {target_id}")
+        _require(
+            target.get("kind") == "trail" and
+            target.get("sourceRecipe", {}).get("enabled") is False and
+            target.get("sourceRecipe", {}).get("modules") == [],
+            "AnimationTrail target is not a bounded authored trail",
+        )
+        _require(
+            not any(
+                isinstance(item, dict) and item.get("id") == target_id
+                for item in staged.get("elements", [])
+            ),
+            f"AnimationTrail target already exists: {target_id}",
+        )
         seen_targets.add(target_id)
+        staged["elements"].append(target)
     staged["elements"].sort(key=lambda item: item["id"])
     _require(bool(seen_targets), f"BA projection has no admitted overlay: {effect_asset_id}")
     validate_standard_document(staged, effect_asset_id)
@@ -995,7 +907,6 @@ def _runtime_supplemental_element(
         "resourcePacket": copy.deepcopy(phase1.get("resourcePacket", [])),
         "cascadeRibbonPacket": copy.deepcopy(phase1.get("cascadeRibbonPacket")),
         "animationTrailPacket": copy.deepcopy(phase1.get("animationTrailPacket")),
-        "bakedEdgeLightPacket": copy.deepcopy(phase1.get("bakedEdgeLightPacket")),
         "admissionBlockers": copy.deepcopy(phase1.get("admissionBlockers", [])),
     }
     _seal(row, "rowSha256")
@@ -1018,27 +929,16 @@ def _build_programs(
     supplemental_grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in corpus["supplementalElements"]:
         supplemental_grouped[row["selector"]["effectAssetId"]].append(row)
-    histories_by_id = {
-        history["historyId"]: history
-        for history in _require_list(
-            corpus.get("bakedEdgeHistories"), "corpus.bakedEdgeHistories"
-        )
-    }
-    effect_asset_ids = sorted(set(grouped) | set(supplemental_grouped))
-    local_program = None
-    local_receipt = None
-    if "effect.artist.skill.31470" in effect_asset_ids:
-        local_program = load_json(repository_root / LOCAL_DECAL_PROGRAM_RELATIVE_PATH)
-        local_receipt = load_json(repository_root / LOCAL_DECAL_RECEIPT_RELATIVE_PATH)
-        _verify_seal(local_program, "programSha256", "LocalDecal runtime program")
+    local_program = load_json(repository_root / LOCAL_DECAL_PROGRAM_RELATIVE_PATH)
+    local_receipt = load_json(repository_root / LOCAL_DECAL_RECEIPT_RELATIVE_PATH)
+    _verify_seal(local_program, "programSha256", "LocalDecal runtime program")
     programs = []
     typed_codec_jobs: list[tuple[dict[str, Any], Path, Path]] = []
     projected_temporary_directory = tempfile.TemporaryDirectory(
         prefix="effect-visual-program-typed-codec-"
     )
     projected_temporary_root = Path(projected_temporary_directory.name)
-    for effect_asset_id in effect_asset_ids:
-        rows = grouped.get(effect_asset_id, [])
+    for effect_asset_id, rows in sorted(grouped.items()):
         runtime_rows = [
             _runtime_row(
                 row,
@@ -1053,27 +953,6 @@ def _build_programs(
             _runtime_supplemental_element(row) for row in supplemental_source
         ]
         runtime_supplemental.sort(key=lambda row: row["selector"]["occurrenceId"])
-        referenced_history_ids = sorted(
-            {
-                packet["historyId"]
-                for source in supplemental_source
-                for packet in [source.get("animationTrailPacket")]
-                if isinstance(packet, dict) and packet.get("packetVersion") == 2
-            }
-            | {
-                packet["historyId"]
-                for source in supplemental_source
-                for packet in [source.get("bakedEdgeLightPacket")]
-                if isinstance(packet, dict)
-            }
-        )
-        runtime_histories = [
-            copy.deepcopy(_require_dict(
-                histories_by_id.get(history_id),
-                f"baked-edge history {history_id}",
-            ))
-            for history_id in referenced_history_ids
-        ]
         if effect_asset_id == "effect.artist.skill.31470":
             _require(len(rows) == EXPECTED_LOCAL_PACKET_COUNT, "Artist F LocalDecal packet count changed")
             program = {
@@ -1086,19 +965,13 @@ def _build_programs(
                 "projectedDocumentTypedCodecSha256": None,
                 "visualRows": runtime_rows,
                 "supplementalElements": runtime_supplemental,
-                "bakedEdgeHistories": runtime_histories,
             }
         else:
-            if effect_asset_id == VALTAN_WHIRLWIND_EFFECT_ASSET_ID:
-                path_text = VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH
-                path = repository_root / PurePosixPath(path_text)
-                expected_raw = raw_sha256(path)
-            else:
-                stage = _require_dict(stages.get(effect_asset_id), f"BA stage {effect_asset_id}")
-                current = _require_dict(stage.get("currentProduct"), "stage.currentProduct")
-                path_text = _require_string(current.get("authoringPath"), "authoringPath")
-                path = repository_root / PurePosixPath(path_text)
-                expected_raw = _require_sha(current.get("authoringRawSha256"), "authoringRawSha256")
+            stage = _require_dict(stages.get(effect_asset_id), f"BA stage {effect_asset_id}")
+            current = _require_dict(stage.get("currentProduct"), "stage.currentProduct")
+            path_text = _require_string(current.get("authoringPath"), "authoringPath")
+            path = repository_root / PurePosixPath(path_text)
+            expected_raw = _require_sha(current.get("authoringRawSha256"), "authoringRawSha256")
             _require(raw_sha256(path) == expected_raw, f"BA base document raw SHA changed: {effect_asset_id}")
             base = load_json(path)
             validate_standard_document(base, effect_asset_id)
@@ -1119,7 +992,6 @@ def _build_programs(
                 "projectedDocumentTypedCodecSha256": "0" * 64,
                 "visualRows": runtime_rows,
                 "supplementalElements": runtime_supplemental,
-                "bakedEdgeHistories": runtime_histories,
             }
             projected_path = projected_temporary_root / (
                 effect_asset_id + ".projected.effect.json"
@@ -1146,10 +1018,7 @@ def _build_programs(
     for program in programs:
         _seal(program, "programSha256")
     projected_temporary_directory.cleanup()
-    _require(
-        len(programs) == EXPECTED_PROGRAM_COUNT,
-        "visual runtime program count changed",
-    )
+    _require(len(programs) == EXPECTED_PROGRAM_COUNT, "visual runtime program count changed")
     return programs
 
 
@@ -1200,7 +1069,6 @@ def build_runtime(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
             "supplementalElementCount": EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT,
             "artistFCascadeRibbonElementCount": EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
             "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
-            "bakedEdgeLightElementCount": EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
             "failClosedCount": EXPECTED_FAIL_CLOSED_COUNT,
             "extensionCanaryCount": 2,
             "productMutationCount": 0,
@@ -1224,18 +1092,6 @@ def _phase1_by_selector(corpus: dict[str, Any]) -> dict[tuple[str, str], dict[st
         selector = row["selector"]
         key = (selector["effectAssetId"], selector["occurrenceId"])
         _require(key not in result, f"duplicate phase1 selector: {key}")
-        result[key] = row
-    return result
-
-
-def _phase1_supplemental_by_selector(
-    corpus: dict[str, Any],
-) -> dict[tuple[str, str], dict[str, Any]]:
-    result = {}
-    for row in corpus["supplementalElements"]:
-        selector = row["selector"]
-        key = (selector["effectAssetId"], selector["occurrenceId"])
-        _require(key not in result, f"duplicate phase1 supplemental selector: {key}")
         result[key] = row
     return result
 
@@ -1284,13 +1140,6 @@ def validate_runtime(
     _require(adapters == corpus["adapterContracts"], "runtime adapter allowlist diverged from phase1")
     adapter_by_id = {row["adapterId"]: row for row in adapters}
     source_by_selector = _phase1_by_selector(corpus)
-    supplemental_by_selector = _phase1_supplemental_by_selector(corpus)
-    phase1_histories = {
-        history["historyId"]: history
-        for history in _require_list(
-            corpus.get("bakedEdgeHistories"), "corpus.bakedEdgeHistories"
-        )
-    }
     local_program = load_json(repository_root / LOCAL_DECAL_PROGRAM_RELATIVE_PATH)
     local_receipt = load_json(repository_root / LOCAL_DECAL_RECEIPT_RELATIVE_PATH)
     _verify_seal(local_program, "programSha256", "LocalDecal runtime program")
@@ -1299,7 +1148,6 @@ def validate_runtime(
     _require(programs == sorted(programs, key=lambda row: row["effectAssetId"]), "runtime programs are not deterministic")
     seen_effects: set[str] = set()
     seen_selectors: set[tuple[str, str]] = set()
-    seen_supplemental_selectors: set[tuple[str, str]] = set()
     counts = Counter()
     admission = load_json(repository_root / ADMISSION_RELATIVE_PATH)
     stages = {stage.get("productEffectAssetId"): stage for stage in admission.get("stages", []) if isinstance(stage, dict)}
@@ -1311,7 +1159,7 @@ def validate_runtime(
                 "effectAssetId", "projectionKind", "baseDocumentIdentity",
                 "projectedDocument", "projectedDocumentCanonicalByteCount",
                 "projectedDocumentSha256", "projectedDocumentTypedCodecSha256",
-                "visualRows", "supplementalElements", "bakedEdgeHistories",
+                "visualRows", "supplementalElements",
                 "programSha256",
             ],
             f"programs[{program_index}]",
@@ -1323,13 +1171,6 @@ def validate_runtime(
         rows = _require_list(program.get("visualRows"), "program.visualRows")
         supplemental = _require_list(
             program.get("supplementalElements"), "program.supplementalElements"
-        )
-        histories = _require_list(
-            program.get("bakedEdgeHistories"), "program.bakedEdgeHistories"
-        )
-        _require(
-            rows or supplemental,
-            f"runtime program has no executable rows: {effect_asset_id}",
         )
         _require(rows == sorted(rows, key=lambda row: row["selector"]["occurrenceId"]), f"program rows are not deterministic: {effect_asset_id}")
         for row_index, row_value in enumerate(rows):
@@ -1416,95 +1257,29 @@ def validate_runtime(
                 item.get("admissionBlockers") == [],
                 "runtime supplemental selector/admission is invalid",
             )
-            supplemental_key = (
-                selector["effectAssetId"], selector["occurrenceId"]
-            )
-            _require(
-                supplemental_key not in seen_supplemental_selectors,
-                f"duplicate runtime supplemental selector: {supplemental_key}",
-            )
-            seen_supplemental_selectors.add(supplemental_key)
-            source_supplemental = supplemental_by_selector.get(supplemental_key)
-            _require(
-                source_supplemental is not None
-                and item == _runtime_supplemental_element(source_supplemental),
-                f"runtime supplemental identity diverged from phase1: {supplemental_key}",
-            )
             if item.get("family") == "ANIMATION_TRAIL":
                 _require(
                     item.get("adapterId") == "animation-trail-document-v12" and
-                    item.get("packetLayout") in {
-                        "ANIMATION_TRAIL_ELEMENT_V1",
-                        "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
-                    } and
+                    item.get("packetLayout") == "ANIMATION_TRAIL_ELEMENT_V1" and
                     item.get("cascadeRibbonPacket") is None and
-                    item.get("bakedEdgeLightPacket") is None and
                     isinstance(item.get("animationTrailPacket"), dict),
                     "AnimationTrail runtime packet is invalid",
                 )
-            elif item.get("family") == "CASCADE_RIBBON":
+            else:
                 _require(
+                    item.get("family") == "CASCADE_RIBBON" and
                     item.get("adapterId") == "cascade-ribbon-document-v12" and
                     item.get("packetLayout") == "CASCADE_RIBBON_TYPED_PACKET_V1" and
                     isinstance(item.get("cascadeRibbonPacket"), dict) and
-                    item.get("animationTrailPacket") is None and
-                    item.get("bakedEdgeLightPacket") is None,
+                    item.get("animationTrailPacket") is None,
                     "CascadeRibbon supplemental packet is invalid",
                 )
-            else:
-                packet = item.get("bakedEdgeLightPacket")
-                _require(
-                    item.get("family") == "LIGHT_PARTICLE" and
-                    item.get("adapterId") == "light-particle-document-v12" and
-                    item.get("packetLayout") == "LIGHT_BAKED_EDGE_ATTACHMENT_V1" and
-                    item.get("cascadeRibbonPacket") is None and
-                    item.get("animationTrailPacket") is None and
-                    isinstance(packet, dict) and
-                    packet.get("runtimeCarrier")
-                        == "EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1" and
-                    packet.get("lane") == "FIRST_EDGE",
-                    "baked-edge Light supplemental packet is invalid",
-                )
             counts[("supplemental", item.get("family"))] += 1
-        _require(
-            histories == sorted(histories, key=lambda row: row["historyId"]),
-            f"runtime baked-edge histories are not deterministic: {effect_asset_id}",
-        )
-        referenced_history_ids = {
-            item["animationTrailPacket"]["historyId"]
-            for item in supplemental
-            if item.get("packetLayout")
-                == "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1"
-        } | {
-            item["bakedEdgeLightPacket"]["historyId"]
-            for item in supplemental
-            if item.get("packetLayout") == "LIGHT_BAKED_EDGE_ATTACHMENT_V1"
-        }
-        history_ids = set()
-        for history in histories:
-            history_id = _require_string(
-                history.get("historyId"), "runtime baked-edge historyId"
-            )
-            _require(
-                history_id not in history_ids
-                and phase1_histories.get(history_id) == history,
-                f"runtime baked-edge history diverged from phase1: {history_id}",
-            )
-            history_ids.add(history_id)
-        _require(
-            history_ids == referenced_history_ids,
-            f"runtime baked-edge history reference closure changed: {effect_asset_id}",
-        )
         if program.get("projectionKind") == "SOURCE_RECIPE_OVERLAY_V1":
             counts[("program", "overlay")] += 1
-            if effect_asset_id == VALTAN_WHIRLWIND_EFFECT_ASSET_ID:
-                base_path = repository_root / PurePosixPath(
-                    VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH
-                )
-            else:
-                stage = _require_dict(stages.get(effect_asset_id), f"BA stage {effect_asset_id}")
-                current = _require_dict(stage.get("currentProduct"), "stage.currentProduct")
-                base_path = repository_root / PurePosixPath(current["authoringPath"])
+            stage = _require_dict(stages.get(effect_asset_id), f"BA stage {effect_asset_id}")
+            current = _require_dict(stage.get("currentProduct"), "stage.currentProduct")
+            base_path = repository_root / PurePosixPath(current["authoringPath"])
             base = load_json(base_path)
             expected_base_identity = {
                 "rawSha256": raw_sha256(base_path),
@@ -1568,12 +1343,6 @@ def validate_runtime(
                 "adapter-only runtime program boundary changed",
             )
     _require(len(seen_selectors) == EXPECTED_ROW_COUNT == len(source_by_selector), "runtime selector closure changed")
-    _require(
-        len(seen_supplemental_selectors)
-            == EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT
-            == len(supplemental_by_selector),
-        "runtime supplemental selector closure changed",
-    )
     _require(counts[("program", "overlay")] == EXPECTED_BA_PROGRAM_COUNT, "BA overlay program count changed")
     _require(counts[("program", "adapter")] == EXPECTED_ADAPTER_PROGRAM_COUNT, "adapter program count changed")
     _require(counts[("projection", "overlay")] == EXPECTED_OVERLAY_COUNT, "SourceRecipe overlay count changed")
@@ -1582,7 +1351,6 @@ def validate_runtime(
     _require(counts[("family", "CASCADE_RIBBON")] == EXPECTED_CASCADE_RIBBON_ROW_COUNT, "CascadeRibbon row count changed")
     _require(counts[("supplemental", "CASCADE_RIBBON")] == EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT, "Artist CascadeRibbon supplemental count changed")
     _require(counts[("supplemental", "ANIMATION_TRAIL")] == EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT, "AnimationTrail supplemental count changed")
-    _require(counts[("supplemental", "LIGHT_PARTICLE")] == EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT, "baked-edge Light supplemental count changed")
     canaries = _require_list(runtime.get("extensionCanaries"), "extensionCanaries")
     _require(len(canaries) == 2, "extension canary count changed")
     for canary in canaries:
@@ -1600,7 +1368,6 @@ def validate_runtime(
         "supplementalElementCount": EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT,
         "artistFCascadeRibbonElementCount": EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
         "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
-        "bakedEdgeLightElementCount": EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
         "failClosedCount": EXPECTED_FAIL_CLOSED_COUNT,
         "extensionCanaryCount": 2,
         "productMutationCount": 0,
@@ -1665,7 +1432,7 @@ def validate_published_artifact(runtime: dict[str, Any]) -> None:
                 "projectedDocument", "projectedDocumentCanonicalByteCount",
                 "projectedDocumentSha256",
                 "projectedDocumentTypedCodecSha256", "visualRows",
-                "supplementalElements", "bakedEdgeHistories", "programSha256",
+                "supplementalElements", "programSha256",
             ],
             f"programs[{program_index}]",
         )
@@ -1738,14 +1505,6 @@ def validate_published_artifact(runtime: dict[str, Any]) -> None:
             program.get("supplementalElements"),
             "program.supplementalElements",
         )
-        histories = _require_list(
-            program.get("bakedEdgeHistories"),
-            "program.bakedEdgeHistories",
-        )
-        _require(
-            rows or supplemental,
-            f"runtime publish program has no executable rows: {effect_asset_id}",
-        )
         _require(
             supplemental == sorted(
                 supplemental,
@@ -1782,65 +1541,6 @@ def validate_published_artifact(runtime: dict[str, Any]) -> None:
             )
             seen_selectors.add(key)
             counts[("supplemental", item.get("family"))] += 1
-            packet = item.get("animationTrailPacket")
-            if item.get("packetLayout") == "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1":
-                _verify_seal(
-                    _require_dict(packet, "runtime publish baked-edge packet"),
-                    "packetSha256",
-                    "runtime publish baked-edge packet",
-                )
-            elif item.get("packetLayout") == "LIGHT_BAKED_EDGE_ATTACHMENT_V1":
-                _verify_seal(
-                    _require_dict(
-                        item.get("bakedEdgeLightPacket"),
-                        "runtime publish baked-edge Light packet",
-                    ),
-                    "packetSha256",
-                    "runtime publish baked-edge Light packet",
-                )
-
-        referenced_history_ids = {
-            item["animationTrailPacket"]["historyId"]
-            for item in supplemental
-            if item.get("packetLayout")
-                == "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1"
-        } | {
-            item["bakedEdgeLightPacket"]["historyId"]
-            for item in supplemental
-            if item.get("packetLayout") == "LIGHT_BAKED_EDGE_ATTACHMENT_V1"
-        }
-        history_ids = set()
-        for history_value in histories:
-            history = _require_dict(
-                history_value, "runtime publish baked-edge history"
-            )
-            _verify_seal(
-                history,
-                "historySha256",
-                "runtime publish baked-edge history",
-            )
-            history_id = _require_stable_id(
-                history.get("historyId"), "runtime publish historyId"
-            )
-            samples = _require_list(
-                history.get("samples"), "runtime publish baked-edge samples"
-            )
-            _require(
-                history_id not in history_ids
-                and history.get("sourceKind")
-                    == "UE3_ANIMTRAIL_BAKED_EDGE_HISTORY_V1"
-                and history.get("coordinateBasis")
-                    == "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
-                and history.get("sampleCount") == len(samples) == 409
-                and canonical_json_sha256(samples)
-                    == history.get("samplesSha256"),
-                "runtime publish baked-edge history closure changed",
-            )
-            history_ids.add(history_id)
-        _require(
-            history_ids == referenced_history_ids,
-            f"runtime publish baked-edge history reference changed: {effect_asset_id}",
-        )
 
     canaries = _require_list(
         runtime.get("extensionCanaries"), "extensionCanaries"
@@ -1864,7 +1564,6 @@ def validate_published_artifact(runtime: dict[str, Any]) -> None:
         "artistFCascadeRibbonElementCount":
             EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
         "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
-        "bakedEdgeLightElementCount": EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
         "failClosedCount": EXPECTED_FAIL_CLOSED_COUNT,
         "extensionCanaryCount": 2,
         "productMutationCount": 0,
@@ -1892,8 +1591,6 @@ def validate_published_artifact(runtime: dict[str, Any]) -> None:
         == EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT
         and counts[("supplemental", "ANIMATION_TRAIL")]
         == EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT
-        and counts[("supplemental", "LIGHT_PARTICLE")]
-        == EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT
         and len(canaries) == 2,
         "runtime publish internal denominators changed",
     )

@@ -1,27 +1,22 @@
-#if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
 #include "imgui.h"
-#endif
 
 #include "BalanceTool.h"
 
+#include "CombatHUDViewModel.h"
 #include "DataJson.h"
 #include "PlayerCommandSink.h"
 #include "ProjectDataRoot.h"
-#if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
-#include "CombatHUDViewModel.h"
-#endif
 
 #include <Windows.h>
 #include <algorithm>
-#include <charconv>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <io.h>
 #include <limits>
 #include <sstream>
-#include <unordered_set>
 
 namespace
 {
@@ -76,12 +71,12 @@ namespace
 		return true;
 	}
 
-	bool ReadDouble(const DATA_JSON_VALUE& object, const char* name, double& output)
+	bool ReadFloat(const DATA_JSON_VALUE& object, const char* name, float& output)
 	{
 		const DATA_JSON_VALUE* value = Field(object, name, DATA_JSON_TYPE::NUMBER);
 		if (nullptr == value)
 			return false;
-		output = value->Get_Number();
+		output = static_cast<float>(value->Get_Number());
 		return std::isfinite(output);
 	}
 
@@ -103,7 +98,6 @@ namespace
 			ReadU32(root, "formatVersion", actualVersion) && actualVersion == version;
 	}
 
-	#if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
 	bool EditU32(const char* label, std::uint32_t& value,
 		const std::uint32_t minimum, const std::uint32_t maximum)
 	{
@@ -113,31 +107,9 @@ namespace
 		return changed;
 	}
 
-	bool EditDouble(const char* label, double& value, const float speed,
-		const double minimum, const double maximum, const char* format = "%.3f")
-	{
-		const bool changed = ImGui::DragScalar(
-			label, ImGuiDataType_Double, &value, speed, &minimum, &maximum, format);
-		value = (std::clamp)(value, minimum, maximum);
-		return changed;
-	}
-	#endif
-
 	std::string Quote(const std::string& value)
 	{
 		return "\"" + CDataJson::Escape(value) + "\"";
-	}
-
-	std::string FormatJsonNumber(double value)
-	{
-		if (0.0 == value)
-			value = 0.0;
-		char buffer[64]{};
-		const auto converted = std::to_chars(
-			buffer, buffer + sizeof(buffer), value, std::chars_format::general);
-		if (std::errc{} != converted.ec)
-			return "0";
-		return std::string(buffer, converted.ptr);
 	}
 
 	bool DurableWrite(const std::filesystem::path& path,
@@ -222,8 +194,7 @@ bool Client::CBalanceTool::Reload()
 		!IsExactObject(bossRoot, { "schema", "formatVersion", "bosses" }) ||
 		!HasSchemaVersion(bossRoot, "lostark.boss-profiles", 3u) ||
 		!IsExactObject(encounterRoot, { "schema", "formatVersion", "encounterId",
-			"bossArchetypeId", "authority", "fixedTickHz", "introPatternId",
-			"states", "patterns" }) ||
+			"bossArchetypeId", "authority", "fixedTickHz", "states", "patterns" }) ||
 		!HasSchemaVersion(encounterRoot, "lostark.encounter-profile", 3u) ||
 		!IsExactObject(receiptRoot, { "schema", "formatVersion", "sourceBuildId",
 			"referenceSkillLevel", "extractorSha256", "sourceFiles", "coverage", "entries" }) ||
@@ -260,26 +231,14 @@ bool Client::CBalanceTool::Reload()
 		PLAYER_EDIT row{};
 		if (!IsExactObject(value, { "characterClass", "maximumHp", "maximumResource",
 			"resourceRegenPerSecond", "attackPower", "defense", "moveSpeed",
-			"defenseStanceMoveSpeedScale", "maximumIdentity",
-			"identityRegenPerSecond", "identityDrainPerSecond",
-			"identityStanceSwitchCost", "identityCyclic", "defaultStance" }) ||
+			"defaultStance" }) ||
 			!ReadString(value, "characterClass", row.characterClass) ||
 			!ReadU32(value, "maximumHp", row.maximumHp) ||
 			!ReadU32(value, "maximumResource", row.maximumResource) ||
 			!ReadU32(value, "resourceRegenPerSecond", row.resourceRegenPerSecond) ||
 			!ReadU32(value, "attackPower", row.attackPower) ||
 			!ReadU32(value, "defense", row.defense) ||
-			!ReadDouble(value, "moveSpeed", row.moveSpeed) ||
-			!ReadDouble(value, "defenseStanceMoveSpeedScale",
-				row.defenseStanceMoveSpeedScale) ||
-			!ReadU32(value, "maximumIdentity", row.maximumIdentity) ||
-			!ReadU32(value, "identityRegenPerSecond",
-				row.identityRegenPerSecond) ||
-			!ReadU32(value, "identityDrainPerSecond",
-				row.identityDrainPerSecond) ||
-			!ReadU32(value, "identityStanceSwitchCost",
-				row.identityStanceSwitchCost) ||
-			!ReadU32(value, "identityCyclic", row.identityCyclic) ||
+			!ReadFloat(value, "moveSpeed", row.moveSpeed) ||
 			!ReadString(value, "defaultStance", row.defaultStance))
 		{
 			m_status = "Reload failed: invalid player profile.";
@@ -293,7 +252,7 @@ bool Client::CBalanceTool::Reload()
 		const DATA_JSON_VALUE* stagesValue = Field(value, "comboStages", DATA_JSON_TYPE::ARRAY);
 		if (!IsExactObject(value, { "skillId", "characterClass", "inputSlot", "displayName",
 			"actionId", "skillKind", "cooldownMs", "actionDurationMs", "hitTimeMs",
-			"resourceCost", "identityCost", "movementDistance", "maximumRange", "serverDamageProfileId",
+			"resourceCost", "movementDistance", "maximumRange", "serverDamageProfileId",
 			"effectId", "requiredStance", "setsStance", "comboStages" }) ||
 			!ReadU32(value, "skillId", row.skillId) ||
 			!ReadString(value, "characterClass", row.characterClass) ||
@@ -305,9 +264,8 @@ bool Client::CBalanceTool::Reload()
 			!ReadU32(value, "actionDurationMs", row.actionDurationMs) ||
 			!ReadU32(value, "hitTimeMs", row.hitTimeMs) ||
 			!ReadU32(value, "resourceCost", row.resourceCost) ||
-			!ReadU32(value, "identityCost", row.identityCost) ||
-			!ReadDouble(value, "movementDistance", row.movementDistance) ||
-			!ReadDouble(value, "maximumRange", row.maximumRange) ||
+			!ReadFloat(value, "movementDistance", row.movementDistance) ||
+			!ReadFloat(value, "maximumRange", row.maximumRange) ||
 			!ReadString(value, "serverDamageProfileId", row.damageProfileId) ||
 			!ReadString(value, "effectId", row.effectId) ||
 			!ReadString(value, "requiredStance", row.requiredStance) ||
@@ -321,10 +279,9 @@ bool Client::CBalanceTool::Reload()
 		{
 			COMBO_STAGE_EDIT stage{};
 			if (!IsExactObject(stageValue, { "actionDurationMs", "hitTimeMs",
-				"comboAdvanceMs", "inputOpenMs", "inputCloseMs" }) ||
+				"inputOpenMs", "inputCloseMs" }) ||
 				!ReadU32(stageValue, "actionDurationMs", stage.actionDurationMs) ||
 				!ReadU32(stageValue, "hitTimeMs", stage.hitTimeMs) ||
-				!ReadU32(stageValue, "comboAdvanceMs", stage.comboAdvanceMs) ||
 				!ReadU32(stageValue, "inputOpenMs", stage.inputOpenMs) ||
 				!ReadU32(stageValue, "inputCloseMs", stage.inputCloseMs))
 			{
@@ -356,9 +313,9 @@ bool Client::CBalanceTool::Reload()
 			!ReadU32(value, "maximumHp", row.maximumHp) ||
 			!ReadU32(value, "maximumHealthBars", row.maximumHealthBars) ||
 			!ReadU32(value, "attackPower", row.attackPower) ||
-			!ReadDouble(value, "collisionRadius", row.collisionRadius) ||
-			!ReadDouble(value, "engageDistance", row.engageDistance) ||
-			!ReadDouble(value, "moveSpeed", row.moveSpeed) ||
+			!ReadFloat(value, "collisionRadius", row.collisionRadius) ||
+			!ReadFloat(value, "engageDistance", row.engageDistance) ||
+			!ReadFloat(value, "moveSpeed", row.moveSpeed) ||
 			!ReadU32(value, "phaseTwoHpPercent", row.phaseTwoHpPercent))
 			return false;
 		bosses.push_back(std::move(row));
@@ -369,22 +326,12 @@ bool Client::CBalanceTool::Reload()
 		const DATA_JSON_VALUE* sourceActions =
 			Field(value, "sourceActionIds", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* stages = Field(value, "stages", DATA_JSON_TYPE::ARRAY);
-		const DATA_JSON_VALUE* serverMotion = value.Find("serverMotion");
-		const bool hasServerMotion = nullptr != serverMotion;
-		const bool hasExactPatternFields = hasServerMotion ?
-			IsExactObject(value, { "patternId", "displayName", "actionId", "sourceActionIds",
-				"selectionMode", "minimumHealthBar", "maximumHealthBar",
-				"triggerHealthBar", "triggerOrder", "armorRequirement",
-				"phaseRequirement", "invulnerableWhileRunning",
-				"selectionWeight", "maximumConsecutiveUses",
-				"minimumRange", "maximumRange", "serverMotion", "stages" }) :
-			IsExactObject(value, { "patternId", "displayName", "actionId", "sourceActionIds",
-				"selectionMode", "minimumHealthBar", "maximumHealthBar",
-				"triggerHealthBar", "triggerOrder", "armorRequirement",
-				"phaseRequirement", "invulnerableWhileRunning",
-				"selectionWeight", "maximumConsecutiveUses",
-				"minimumRange", "maximumRange", "stages" });
-		if (!hasExactPatternFields ||
+		if (!IsExactObject(value, { "patternId", "displayName", "actionId", "sourceActionIds",
+			"selectionMode", "minimumHealthBar", "maximumHealthBar",
+			"triggerHealthBar", "triggerOrder", "armorRequirement",
+			"phaseRequirement", "invulnerableWhileRunning",
+			"selectionWeight", "maximumConsecutiveUses",
+			"minimumRange", "maximumRange", "stages" }) ||
 			nullptr == sourceActions || sourceActions->Get_Array().empty() ||
 			nullptr == stages || stages->Get_Array().empty() ||
 			!ReadString(value, "patternId", row.patternId) ||
@@ -407,41 +354,9 @@ bool Client::CBalanceTool::Reload()
 				DATA_JSON_TYPE::BOOLEAN) ||
 			!ReadU32(value, "selectionWeight", row.selectionWeight) ||
 			!ReadU32(value, "maximumConsecutiveUses", row.maximumConsecutiveUses) ||
-			!ReadDouble(value, "minimumRange", row.minimumRange) ||
-			!ReadDouble(value, "maximumRange", row.maximumRange))
+			!ReadFloat(value, "minimumRange", row.minimumRange) ||
+			!ReadFloat(value, "maximumRange", row.maximumRange))
 			return false;
-		if (hasServerMotion)
-		{
-			if (!serverMotion->Is_Object())
-				return false;
-			const DATA_JSON_VALUE* landingPosition =
-				Field(*serverMotion, "landingPosition", DATA_JSON_TYPE::ARRAY);
-			if (!IsExactObject(*serverMotion,
-				{ "kind", "anchorId", "landingPosition", "apexHeight" }) ||
-				!ReadString(*serverMotion, "kind", row.serverMotion.kind) ||
-				!ReadString(*serverMotion, "anchorId", row.serverMotion.anchorId) ||
-				nullptr == landingPosition ||
-				3u != landingPosition->Get_Array().size() ||
-				!landingPosition->Get_Array()[0].Is_Number() ||
-				!landingPosition->Get_Array()[1].Is_Number() ||
-				!landingPosition->Get_Array()[2].Is_Number() ||
-				!ReadDouble(*serverMotion, "apexHeight", row.serverMotion.apexHeight))
-			{
-				return false;
-			}
-			row.serverMotion.landingX =
-				landingPosition->Get_Array()[0].Get_Number();
-			row.serverMotion.landingY =
-				landingPosition->Get_Array()[1].Get_Number();
-			row.serverMotion.landingZ =
-				landingPosition->Get_Array()[2].Get_Number();
-			row.serverMotion.enabled =
-				std::isfinite(row.serverMotion.landingX) &&
-				std::isfinite(row.serverMotion.landingY) &&
-				std::isfinite(row.serverMotion.landingZ);
-			if (!row.serverMotion.enabled)
-				return false;
-		}
 		for (const DATA_JSON_VALUE& sourceAction : sourceActions->Get_Array())
 		{
 			if (!sourceAction.Is_Number() ||
@@ -469,16 +384,16 @@ bool Client::CBalanceTool::Reload()
 				!ReadString(stageValue, "stageKind", stage.stageKind) ||
 				!ReadU32(stageValue, "durationMs", stage.durationMs) ||
 				!ReadString(stageValue, "hitShape", stage.hitShape) ||
-				!ReadDouble(stageValue, "hitOuterRadius", stage.hitOuterRadius) ||
-				!ReadDouble(stageValue, "hitInnerRadius", stage.hitInnerRadius) ||
-				!ReadDouble(stageValue, "hitAngleDegrees", stage.hitAngleDegrees) ||
-				!ReadDouble(stageValue, "hitLength", stage.hitLength) ||
-				!ReadDouble(stageValue, "hitHalfWidth", stage.hitHalfWidth) ||
+				!ReadFloat(stageValue, "hitOuterRadius", stage.hitOuterRadius) ||
+				!ReadFloat(stageValue, "hitInnerRadius", stage.hitInnerRadius) ||
+				!ReadFloat(stageValue, "hitAngleDegrees", stage.hitAngleDegrees) ||
+				!ReadFloat(stageValue, "hitLength", stage.hitLength) ||
+				!ReadFloat(stageValue, "hitHalfWidth", stage.hitHalfWidth) ||
 				!ReadU32(stageValue, "hitCount", stage.hitCount) ||
 				!ReadU32(stageValue, "hitIntervalMs", stage.hitIntervalMs) ||
 				!ReadU32(stageValue, "hitDelayMs", stage.hitDelayMs) ||
 				!ReadString(stageValue, "serverDamageProfileId", stage.damageProfileId) ||
-				!ReadDouble(stageValue, "pushRangeM", stage.pushRangeM) ||
+				!ReadFloat(stageValue, "pushRangeM", stage.pushRangeM) ||
 				!ReadU32(stageValue, "pushMs", stage.pushMs) ||
 				!ReadU32(stageValue, "downMs", stage.downMs))
 			{
@@ -512,12 +427,10 @@ bool Client::CBalanceTool::Reload()
 	std::string encounterId;
 	std::string bossArchetypeId;
 	std::string authority;
-	std::string introPatternId;
 	std::uint32_t fixedTickHz = 0;
 	if (!ReadString(encounterRoot, "encounterId", encounterId) ||
 		!ReadString(encounterRoot, "bossArchetypeId", bossArchetypeId) ||
 		!ReadString(encounterRoot, "authority", authority) ||
-		!ReadString(encounterRoot, "introPatternId", introPatternId) ||
 		!ReadU32(encounterRoot, "fixedTickHz", fixedTickHz))
 		return false;
 	for (const DATA_JSON_VALUE& value : receiptArray->Get_Array())
@@ -543,7 +456,6 @@ bool Client::CBalanceTool::Reload()
 	m_encounterId = std::move(encounterId);
 	m_encounterBossArchetypeId = std::move(bossArchetypeId);
 	m_encounterAuthority = std::move(authority);
-	m_encounterIntroPatternId = std::move(introPatternId);
 	m_fixedTickHz = fixedTickHz;
 	m_basisByField = std::move(bases);
 	m_selectedPlayer = (std::min)(m_selectedPlayer,
@@ -571,57 +483,6 @@ const std::uint32_t* Client::CBalanceTool::FindDamageRate(
 	return m_damageProfiles.end() == found ? nullptr : &found->damageRatePercent;
 }
 
-void Client::CBalanceTool::NormalizePatternStagePush(PATTERN_STAGE_EDIT& stage)
-{
-	if (stage.damageProfileId.empty())
-	{
-		stage.pushRangeM = 0.0;
-		stage.pushMs = 0u;
-		stage.knockdown = false;
-		stage.downMs = 0u;
-		return;
-	}
-	if (0.0 == stage.pushRangeM)
-		stage.pushMs = 0u;
-	else if (0u == stage.pushMs)
-		stage.pushMs = 1u;
-	if (!stage.knockdown)
-		stage.downMs = 0u;
-	else if (0u == stage.downMs)
-		stage.downMs = 1u;
-}
-
-void Client::CBalanceTool::NormalizePatternStageForShape(
-	PATTERN_STAGE_EDIT& stage)
-{
-	const bool none = "NONE" == stage.hitShape;
-	const bool circle = "CIRCLE" == stage.hitShape;
-	const bool ring = "RING" == stage.hitShape;
-	const bool cone = "CONE" == stage.hitShape;
-	const bool boxLike = "BOX" == stage.hitShape ||
-		"CROSS" == stage.hitShape || "SIX_DIRECTIONS" == stage.hitShape;
-
-	if (!circle && !ring)
-		stage.hitOuterRadius = 0.0;
-	if (!ring)
-		stage.hitInnerRadius = 0.0;
-	if (!cone)
-		stage.hitAngleDegrees = 0.0;
-	if (!cone && !boxLike)
-		stage.hitLength = 0.0;
-	if (!boxLike)
-		stage.hitHalfWidth = 0.0;
-	if (none)
-	{
-		stage.hitCount = 0u;
-		stage.hitIntervalMs = 0u;
-		stage.hitDelayMs = 0u;
-		stage.damageProfileId.clear();
-	}
-	NormalizePatternStagePush(stage);
-}
-
-#if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
 void Client::CBalanceTool::RenderBasis(const std::string& document,
 	const std::string& targetId, const std::string& field) const
 {
@@ -654,31 +515,8 @@ void Client::CBalanceTool::RenderPlayerEditor()
 	MarkDirty(EditU32("Resource / sec", player.resourceRegenPerSecond, 1u, player.maximumResource));
 	RenderBasis("Data/Balance/PlayerProfiles.json", profileTarget, "resourceRegenPerSecond");
 	ImGui::SeparatorText("Movement");
-	MarkDirty(EditDouble("Move speed", player.moveSpeed, 0.01f, 0.01, 100.0, "%.2f"));
+	MarkDirty(ImGui::DragFloat("Move speed", &player.moveSpeed, 0.01f, 0.01f, 100.f, "%.2f"));
 	RenderBasis("Data/Balance/PlayerProfiles.json", profileTarget, "moveSpeed");
-	MarkDirty(EditDouble("Defense stance speed scale",
-		player.defenseStanceMoveSpeedScale, 0.01f, 0.01, 1.0, "%.2f"));
-	RenderBasis("Data/Balance/PlayerProfiles.json", profileTarget,
-		"defenseStanceMoveSpeedScale");
-	ImGui::SeparatorText("Identity");
-	MarkDirty(EditU32("Maximum identity", player.maximumIdentity, 0u, 1000000u));
-	RenderBasis("Data/Balance/PlayerProfiles.json", profileTarget,
-		"maximumIdentity");
-	MarkDirty(EditU32("Identity / sec", player.identityRegenPerSecond,
-		0u, player.maximumIdentity));
-	RenderBasis("Data/Balance/PlayerProfiles.json", profileTarget,
-		"identityRegenPerSecond");
-	MarkDirty(EditU32("Identity drain / sec", player.identityDrainPerSecond,
-		0u, player.maximumIdentity));
-	RenderBasis("Data/Balance/PlayerProfiles.json", profileTarget,
-		"identityDrainPerSecond");
-	MarkDirty(EditU32("Stance switch identity cost",
-		player.identityStanceSwitchCost, 0u, player.maximumIdentity));
-	RenderBasis("Data/Balance/PlayerProfiles.json", profileTarget,
-		"identityStanceSwitchCost");
-	MarkDirty(EditU32("Cyclic identity", player.identityCyclic, 0u, 1u));
-	RenderBasis("Data/Balance/PlayerProfiles.json", profileTarget,
-		"identityCyclic");
 	ImGui::SeparatorText("Skills");
 	for (SKILL_EDIT& skill : m_skills)
 	{
@@ -693,13 +531,10 @@ void Client::CBalanceTool::RenderPlayerEditor()
 			ImGui::TextDisabled("skillId %u | %s | %s", skill.skillId,
 				skill.skillKind.c_str(), skill.actionId.c_str());
 			MarkDirty(EditU32("Cooldown ms", skill.cooldownMs,
-				skill.skillKind == "COMBO" ? 0u : 1u, 600000u));
+				skill.skillKind == "ACTIVE" ? 1u : 0u, 600000u));
 			RenderBasis("Data/Balance/PlayerSkills.json", target, "cooldownMs");
 			MarkDirty(EditU32("Resource cost", skill.resourceCost, 0u, player.maximumResource));
 			RenderBasis("Data/Balance/PlayerSkills.json", target, "resourceCost");
-			MarkDirty(EditU32("Identity cost", skill.identityCost,
-				0u, player.maximumIdentity));
-			RenderBasis("Data/Balance/PlayerSkills.json", target, "identityCost");
 			std::uint32_t* damageRate = FindDamageRate(skill.damageProfileId);
 			if (nullptr != damageRate)
 			{
@@ -713,11 +548,9 @@ void Client::CBalanceTool::RenderPlayerEditor()
 			}
 			MarkDirty(EditU32("Action duration ms", skill.actionDurationMs, 1u, 600000u));
 			MarkDirty(EditU32("Hit time ms", skill.hitTimeMs, 0u, skill.actionDurationMs));
-			MarkDirty(EditDouble("Maximum range", skill.maximumRange,
-				0.1f, 0.1, 1000.0));
-			MarkDirty(EditDouble("Skill movement distance", skill.movementDistance,
-				0.1f, 0.0, 1000.0));
-			if (!skill.comboStages.empty() && ImGui::TreeNode("Staged action timing"))
+			MarkDirty(ImGui::DragFloat("Maximum range", &skill.maximumRange, 0.1f, 0.1f, 1000.f));
+			MarkDirty(ImGui::DragFloat("Skill movement distance", &skill.movementDistance, 0.1f, 0.f, 1000.f));
+			if (!skill.comboStages.empty() && ImGui::TreeNode("Basic attack combo stages"))
 			{
 				for (std::size_t index = 0; index < skill.comboStages.size(); ++index)
 				{
@@ -726,8 +559,6 @@ void Client::CBalanceTool::RenderPlayerEditor()
 					ImGui::SeparatorText(("Stage " + std::to_string(index + 1u)).c_str());
 					MarkDirty(EditU32("Duration", stage.actionDurationMs, 1u, 600000u));
 					MarkDirty(EditU32("Hit", stage.hitTimeMs, 0u, stage.actionDurationMs));
-					MarkDirty(EditU32("Combo advance", stage.comboAdvanceMs,
-						stage.hitTimeMs, stage.actionDurationMs));
 					MarkDirty(EditU32("Input open", stage.inputOpenMs, 0u, stage.actionDurationMs));
 					MarkDirty(EditU32("Input close", stage.inputCloseMs, 0u, stage.actionDurationMs));
 					ImGui::PopID();
@@ -755,13 +586,11 @@ void Client::CBalanceTool::RenderBossEditor()
 	RenderBasis("Data/Balance/BossProfiles.json", target, "maximumHealthBars");
 	MarkDirty(EditU32("Attack power", boss.attackPower, 1u, 1000000u));
 	RenderBasis("Data/Balance/BossProfiles.json", target, "attackPower");
-	MarkDirty(EditDouble("Collision radius", boss.collisionRadius,
-		0.1f, 0.1, 100.0));
+	MarkDirty(ImGui::DragFloat("Collision radius", &boss.collisionRadius, 0.1f, 0.1f, 100.f));
 	ImGui::SeparatorText("Detection and movement");
-	MarkDirty(EditDouble("Engage distance", boss.engageDistance,
-		0.1f, 0.1, 1000.0));
+	MarkDirty(ImGui::DragFloat("Engage distance", &boss.engageDistance, 0.1f, 0.1f, 1000.f));
 	RenderBasis("Data/Balance/BossProfiles.json", target, "engageDistance");
-	MarkDirty(EditDouble("Move speed", boss.moveSpeed, 0.01f, 0.01, 100.0));
+	MarkDirty(ImGui::DragFloat("Move speed", &boss.moveSpeed, 0.01f, 0.01f, 100.f));
 	RenderBasis("Data/Balance/BossProfiles.json", target, "moveSpeed");
 	ImGui::SeparatorText("Phase");
 	MarkDirty(EditU32("Phase 2 HP %", boss.phaseTwoHpPercent, 1u, 99u));
@@ -841,10 +670,8 @@ void Client::CBalanceTool::RenderBossEditor()
 						liveHealthBar > pattern.triggerHealthBar ? "ARMED" : "REACHED",
 						pattern.triggerOrder);
 			}
-			MarkDirty(EditDouble("Minimum range", pattern.minimumRange,
-				0.1f, 0.0, 1000.0));
-			MarkDirty(EditDouble("Maximum range", pattern.maximumRange,
-				0.1f, 0.0, 1000.0));
+			MarkDirty(ImGui::DragFloat("Minimum range", &pattern.minimumRange, 0.1f, 0.f, 1000.f));
+			MarkDirty(ImGui::DragFloat("Maximum range", &pattern.maximumRange, 0.1f, 0.f, 1000.f));
 			ImGui::SeparatorText("Server stages");
 			for (std::size_t stageIndex = 0;
 				stageIndex < pattern.stages.size(); ++stageIndex)
@@ -878,29 +705,28 @@ void Client::CBalanceTool::RenderBossEditor()
 							{ "NONE", "CIRCLE", "RING", "CONE", "BOX", "CROSS",
 							  "SIX_DIRECTIONS" };
 						stage.hitShape = shapes[hitShape];
-						NormalizePatternStageForShape(stage);
 						m_dirty = true;
 					}
 					if (stage.hitShape == "CIRCLE" || stage.hitShape == "RING")
-						MarkDirty(EditDouble("Outer radius", stage.hitOuterRadius,
-							0.1f, 0.0, 1000.0));
+						MarkDirty(ImGui::DragFloat("Outer radius", &stage.hitOuterRadius,
+							0.1f, 0.f, 1000.f));
 					if (stage.hitShape == "RING")
-						MarkDirty(EditDouble("Inner radius", stage.hitInnerRadius,
-							0.1f, 0.0, 1000.0));
+						MarkDirty(ImGui::DragFloat("Inner radius", &stage.hitInnerRadius,
+							0.1f, 0.f, 1000.f));
 					if (stage.hitShape == "CONE")
-						MarkDirty(EditDouble("Angle degrees", stage.hitAngleDegrees,
-							1.f, 1.0, 180.0));
+						MarkDirty(ImGui::DragFloat("Angle degrees", &stage.hitAngleDegrees,
+							1.f, 1.f, 360.f));
 					if (stage.hitShape == "CONE" || stage.hitShape == "BOX" ||
 						stage.hitShape == "CROSS" ||
 						stage.hitShape == "SIX_DIRECTIONS")
 					{
-						MarkDirty(EditDouble("Length", stage.hitLength,
-							0.1f, 0.0, 1000.0));
+						MarkDirty(ImGui::DragFloat("Length", &stage.hitLength,
+							0.1f, 0.f, 1000.f));
 					}
 					if (stage.hitShape == "BOX" || stage.hitShape == "CROSS" ||
 						stage.hitShape == "SIX_DIRECTIONS")
-						MarkDirty(EditDouble("Half width", stage.hitHalfWidth,
-							0.1f, 0.0, 1000.0));
+						MarkDirty(ImGui::DragFloat("Half width", &stage.hitHalfWidth,
+							0.1f, 0.f, 1000.f));
 					if (stage.hitShape != "NONE")
 					{
 						MarkDirty(EditU32("Hit count", stage.hitCount, 1u, 100u));
@@ -915,21 +741,11 @@ void Client::CBalanceTool::RenderBossEditor()
 							RenderBasis("Data/Balance/DamageProfiles.json",
 								"damage:" + stage.damageProfileId, "damageRatePercent");
 						}
-						const bool pushRangeChanged = EditDouble(
-							"Push range m (neg pulls)", stage.pushRangeM,
-							0.1f, -20.0, 20.0);
-						if (pushRangeChanged)
-						{
-							NormalizePatternStagePush(stage);
-							m_dirty = true;
-						}
+						MarkDirty(ImGui::DragFloat("Push range m (neg pulls)",
+							&stage.pushRangeM, 0.1f, -20.f, 20.f));
 						MarkDirty(EditU32("Push ms",
-							stage.pushMs, 0.0 == stage.pushRangeM ? 0u : 1u, 600000u));
-						if (ImGui::Checkbox("Knockdown", &stage.knockdown))
-						{
-							NormalizePatternStagePush(stage);
-							m_dirty = true;
-						}
+							stage.pushMs, 0.f == stage.pushRangeM ? 0u : 1u, 600000u));
+						MarkDirty(ImGui::Checkbox("Knockdown", &stage.knockdown));
 						MarkDirty(EditU32("Down ms",
 							stage.downMs, stage.knockdown ? 1u : 0u, 600000u));
 					}
@@ -1017,13 +833,12 @@ void Client::CBalanceTool::RenderLiveVerification()
 	ImGui::SeparatorText("Apply policy");
 	ImGui::TextWrapped("Save updates Data authoring and provenance. Publish validates and cooks the Server bootstrap. Restart Server to apply; live hot reload is intentionally disabled.");
 }
-#endif
 
 bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 {
-	if (m_players.size() != 6u || m_skills.size() != 94u ||
-		m_damageProfiles.size() != 108u || m_bosses.size() != 1u ||
-		m_patterns.size() != 33u)
+	if (m_players.size() != 6u || m_skills.size() != 90u ||
+		m_damageProfiles.size() != 108u || m_bosses.empty() ||
+		m_patterns.size() != 31u)
 	{
 		status = "Draft object counts are incomplete.";
 		return false;
@@ -1034,131 +849,51 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			value == "LANCE_MASTER_SHORT_SPEAR" || value == "WARLORD_NORMAL" ||
 			value == "WARLORD_DEFENSE";
 	};
-	std::uint32_t maximumPlayerResource = 0u;
-	std::uint32_t maximumPlayerIdentity = 0u;
 	for (const PLAYER_EDIT& player : m_players)
 	{
 		if (0u == player.maximumHp || 0u == player.maximumResource ||
 			0u == player.resourceRegenPerSecond || 0u == player.attackPower ||
 			0u == player.defense || player.resourceRegenPerSecond > player.maximumResource ||
 			!std::isfinite(player.moveSpeed) || player.moveSpeed <= 0.f ||
-			!std::isfinite(player.defenseStanceMoveSpeedScale) ||
-			player.defenseStanceMoveSpeedScale <= 0.f ||
-			player.defenseStanceMoveSpeedScale > 1.f ||
-			player.identityCyclic > 1u ||
-			player.identityStanceSwitchCost > player.maximumIdentity ||
-			(0u == player.maximumIdentity &&
-				(0u != player.identityRegenPerSecond ||
-				 0u != player.identityDrainPerSecond ||
-				 0u != player.identityStanceSwitchCost ||
-				 0u != player.identityCyclic)) ||
-			(0u != player.identityCyclic &&
-				(0u == player.identityRegenPerSecond ||
-				 0u != player.identityDrainPerSecond ||
-				 0u != player.identityStanceSwitchCost)) ||
 			!isKnownStance(player.defaultStance))
 		{
 			status = "Player draft is invalid: " + player.characterClass;
 			return false;
 		}
-		maximumPlayerResource = (std::max)(
-			maximumPlayerResource, player.maximumResource);
-		maximumPlayerIdentity = (std::max)(
-			maximumPlayerIdentity, player.maximumIdentity);
 	}
-	std::unordered_set<std::uint32_t> skillIds;
-	std::unordered_set<std::string> classesWithIdentityCost;
 	for (const SKILL_EDIT& skill : m_skills)
 	{
 		const bool dealsDamage = !skill.damageProfileId.empty();
-		const bool isActive = "ACTIVE" == skill.skillKind;
-		const bool isCombo = "COMBO" == skill.skillKind;
-		const bool isHold = "HOLD" == skill.skillKind;
-		const bool isCounter = "COUNTER" == skill.skillKind;
-		const bool isStandup = "STANDUP" == skill.skillKind;
 		if (0u == skill.skillId || 0u == skill.actionDurationMs ||
-			!skillIds.insert(skill.skillId).second ||
-			skill.characterClass.empty() || skill.inputSlot.empty() ||
-			skill.displayName.empty() || skill.actionId.empty() ||
 			skill.hitTimeMs > skill.actionDurationMs ||
-			skill.resourceCost > maximumPlayerResource ||
-			skill.identityCost > maximumPlayerIdentity ||
 			!std::isfinite(skill.maximumRange) ||
 			!std::isfinite(skill.movementDistance) || skill.movementDistance < 0.f ||
 			(dealsDamage && (nullptr == FindDamageRate(skill.damageProfileId) ||
 				skill.maximumRange <= 0.f)) ||
 			(!dealsDamage && (skill.maximumRange != 0.f || 0u != skill.hitTimeMs)) ||
-			!(isActive || isCombo || isHold || isCounter || isStandup) ||
-			((isActive || isStandup) &&
+			(skill.skillKind == "ACTIVE" &&
 				(0u == skill.cooldownMs || !skill.comboStages.empty())) ||
-			(isStandup && (dealsDamage || "NONE" != skill.requiredStance ||
-				"NONE" != skill.setsStance)) ||
-			(isCombo &&
+			(skill.skillKind == "COMBO" &&
 				(skill.comboStages.size() < 2u || skill.comboStages.size() > 8u)) ||
-			(isHold && (0u == skill.cooldownMs || 3u != skill.comboStages.size())) ||
-			(isCounter && (0u == skill.cooldownMs || 2u != skill.comboStages.size())) ||
+			(skill.skillKind != "ACTIVE" && skill.skillKind != "COMBO") ||
 			!isKnownStance(skill.requiredStance) || !isKnownStance(skill.setsStance))
 		{
 			status = "Skill draft is invalid: " + std::to_string(skill.skillId);
 			return false;
 		}
-		if (0u != skill.identityCost)
-			classesWithIdentityCost.insert(skill.characterClass);
-
-		std::uint64_t stagedDurationMs = 0u;
 		for (std::size_t index = 0; index < skill.comboStages.size(); ++index)
 		{
 			const COMBO_STAGE_EDIT& stage = skill.comboStages[index];
-			const bool basicTimingInvalid = 0u == stage.actionDurationMs ||
-				stage.hitTimeMs > stage.comboAdvanceMs ||
-				stage.comboAdvanceMs > stage.actionDurationMs;
-			const bool comboWindowInvalid = isCombo &&
-				((index + 1u < skill.comboStages.size() &&
+			if (0u == stage.actionDurationMs || stage.hitTimeMs > stage.actionDurationMs ||
+				(index + 1u < skill.comboStages.size() &&
 					(stage.inputOpenMs >= stage.inputCloseMs ||
 						stage.inputCloseMs > stage.actionDurationMs)) ||
 				(index + 1u == skill.comboStages.size() &&
-					(stage.comboAdvanceMs != stage.actionDurationMs ||
-					 0u != stage.inputOpenMs || 0u != stage.inputCloseMs)));
-			const bool holdStageInvalid = isHold &&
-				(0u != stage.inputOpenMs || 0u != stage.inputCloseMs ||
-					((index + 1u == skill.comboStages.size()) !=
-						(0u != stage.hitTimeMs)));
-			const bool counterStageInvalid = isCounter &&
-				((0u == index &&
-					(0u != stage.hitTimeMs ||
-					 stage.inputOpenMs >= stage.inputCloseMs ||
-					 stage.inputCloseMs > stage.actionDurationMs)) ||
-				 (1u == index &&
-					(0u == stage.hitTimeMs || 0u != stage.inputOpenMs ||
-					 0u != stage.inputCloseMs)));
-			if (basicTimingInvalid || comboWindowInvalid ||
-				holdStageInvalid || counterStageInvalid)
+					(0u != stage.inputOpenMs || 0u != stage.inputCloseMs)))
 			{
-				status = "Staged skill draft is invalid: " +
-					std::to_string(skill.skillId);
+				status = "Combo draft is invalid: " + std::to_string(skill.skillId);
 				return false;
 			}
-			stagedDurationMs += stage.actionDurationMs;
-		}
-		if (isHold && stagedDurationMs != skill.actionDurationMs)
-		{
-			status = "Hold stage duration sum is invalid: " +
-				std::to_string(skill.skillId);
-			return false;
-		}
-	}
-	for (const PLAYER_EDIT& player : m_players)
-	{
-		if (0u != player.maximumIdentity &&
-			0u == player.identityDrainPerSecond &&
-			0u == player.identityStanceSwitchCost &&
-			0u == player.identityCyclic &&
-			classesWithIdentityCost.end() ==
-				classesWithIdentityCost.find(player.characterClass))
-		{
-			status = "Player identity gauge has no spending path: " +
-				player.characterClass;
-			return false;
 		}
 	}
 	for (const DAMAGE_EDIT& damage : m_damageProfiles)
@@ -1183,22 +918,8 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			return false;
 		}
 	}
-	if (m_encounterId.empty() || m_encounterBossArchetypeId.empty() ||
-		"server" != m_encounterAuthority || 30u != m_fixedTickHz ||
-		m_encounterIntroPatternId.empty() ||
-		m_encounterBossArchetypeId != m_bosses.front().archetypeId ||
-		m_encounterId != m_bosses.front().encounterId)
-	{
-		status = "Encounter draft header is invalid.";
-		return false;
-	}
-	std::unordered_set<std::string> patternIds;
-	std::unordered_set<std::string> serverMotionAnchorIds;
-	bool foundIntroPattern = false;
 	for (const PATTERN_EDIT& pattern : m_patterns)
 	{
-		foundIntroPattern = foundIntroPattern ||
-			pattern.patternId == m_encounterIntroPatternId;
 		const bool normal = pattern.selectionMode == "NORMAL";
 		const bool healthBar = pattern.selectionMode == "HEALTH_BAR";
 		const bool validSelection = normal ?
@@ -1212,9 +933,7 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 				pattern.triggerHealthBar <= m_bosses[m_selectedBoss].maximumHealthBars &&
 				pattern.triggerOrder > 0u && 0u == pattern.selectionWeight &&
 				0u == pattern.maximumConsecutiveUses);
-		if (pattern.patternId.empty() ||
-			!patternIds.insert(pattern.patternId).second ||
-			pattern.displayName.empty() ||
+		if (pattern.patternId.empty() || pattern.displayName.empty() ||
 			pattern.actionId.empty() || pattern.sourceActionIds.empty() ||
 			pattern.stages.empty() || !validSelection ||
 			!std::isfinite(pattern.minimumRange) || pattern.minimumRange < 0.f ||
@@ -1222,25 +941,6 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 			pattern.maximumRange <= pattern.minimumRange)
 		{
 			status = "Pattern draft is invalid: " + pattern.patternId;
-			return false;
-		}
-		if (pattern.serverMotion.enabled &&
-			("LEAP_TO_ANCHOR" != pattern.serverMotion.kind ||
-			 pattern.serverMotion.anchorId.empty() ||
-			 !serverMotionAnchorIds.insert(
-				 pattern.serverMotion.anchorId).second ||
-			 !std::isfinite(pattern.serverMotion.landingX) ||
-			 !std::isfinite(pattern.serverMotion.landingY) ||
-			 !std::isfinite(pattern.serverMotion.landingZ) ||
-			 std::abs(pattern.serverMotion.landingX) > 100000.f ||
-			 std::abs(pattern.serverMotion.landingY) > 100000.f ||
-			 std::abs(pattern.serverMotion.landingZ) > 100000.f ||
-			 !std::isfinite(pattern.serverMotion.apexHeight) ||
-			 pattern.serverMotion.apexHeight <= 0.f ||
-			 pattern.serverMotion.apexHeight > 200.f))
-		{
-			status = "Pattern server motion draft is invalid: " +
-				pattern.patternId;
 			return false;
 		}
 		for (const PATTERN_STAGE_EDIT& stage : pattern.stages)
@@ -1260,24 +960,16 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 				std::isfinite(stage.hitLength) &&
 				std::isfinite(stage.hitHalfWidth);
 			const bool validGeometry = none ?
-				(0.0 == stage.hitOuterRadius && 0.0 == stage.hitInnerRadius &&
-					0.0 == stage.hitAngleDegrees && 0.0 == stage.hitLength &&
-					0.0 == stage.hitHalfWidth) :
-				(circle ? stage.hitOuterRadius > 0.0 &&
-					0.0 == stage.hitInnerRadius && 0.0 == stage.hitAngleDegrees &&
-					0.0 == stage.hitLength && 0.0 == stage.hitHalfWidth :
-				(ring ? stage.hitInnerRadius > 0.0 &&
-					stage.hitOuterRadius > stage.hitInnerRadius &&
-					0.0 == stage.hitAngleDegrees && 0.0 == stage.hitLength &&
-					0.0 == stage.hitHalfWidth :
-				(cone ? stage.hitAngleDegrees > 0.0 &&
-					stage.hitAngleDegrees <= 180.0 && stage.hitLength > 0.0 &&
-					0.0 == stage.hitOuterRadius && 0.0 == stage.hitInnerRadius &&
-					0.0 == stage.hitHalfWidth :
-				((box || cross || sixDirections) ? stage.hitLength > 0.0 &&
-					stage.hitHalfWidth > 0.0 && 0.0 == stage.hitOuterRadius &&
-					0.0 == stage.hitInnerRadius &&
-					0.0 == stage.hitAngleDegrees : false))));
+				(0.f == stage.hitOuterRadius && 0.f == stage.hitInnerRadius &&
+					0.f == stage.hitAngleDegrees && 0.f == stage.hitLength &&
+					0.f == stage.hitHalfWidth) :
+				(circle ? stage.hitOuterRadius > 0.f :
+				(ring ? stage.hitInnerRadius > 0.f &&
+					stage.hitOuterRadius > stage.hitInnerRadius :
+				(cone ? stage.hitAngleDegrees > 0.f &&
+					stage.hitAngleDegrees <= 360.f && stage.hitLength > 0.f :
+				((box || cross || sixDirections) ? stage.hitLength > 0.f &&
+					stage.hitHalfWidth > 0.f : false))));
 			const bool validHit = none ?
 				(0u == stage.hitCount && 0u == stage.hitIntervalMs &&
 					0u == stage.hitDelayMs &&
@@ -1289,26 +981,14 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 					static_cast<std::uint64_t>(stage.hitCount - 1u) *
 						stage.hitIntervalMs < stage.durationMs &&
 					nullptr != FindDamageRate(stage.damageProfileId));
-			const bool validPush = std::isfinite(stage.pushRangeM) &&
-				std::abs(stage.pushRangeM) <= 20.0 &&
-				((0.0 == stage.pushRangeM) == (0u == stage.pushMs)) &&
-				(stage.knockdown == (0u != stage.downMs)) &&
-				(!stage.damageProfileId.empty() ||
-					(0.0 == stage.pushRangeM && !stage.knockdown));
 			if (stage.stageId.empty() || stage.actionId.empty() || !validKind ||
-				0u == stage.durationMs || !finiteGeometry || !validGeometry ||
-				!validHit || !validPush)
+				0u == stage.durationMs || !finiteGeometry || !validGeometry || !validHit)
 			{
 				status = "Pattern stage draft is invalid: " + pattern.patternId +
 					"/" + stage.stageId;
 				return false;
 			}
 		}
-	}
-	if (!foundIntroPattern)
-	{
-		status = "Encounter intro pattern does not exist.";
-		return false;
 	}
 	status = "Draft validation passed.";
 	return true;
@@ -1358,14 +1038,8 @@ bool Client::CBalanceTool::RunPipeline(const wchar_t* scriptName,
 	return succeeded;
 }
 
-bool Client::CBalanceTool::Save(
-	SERIALIZED_DRAFT_DOCUMENTS* const readOnlyCapture)
+bool Client::CBalanceTool::Save()
 {
-	if (nullptr == readOnlyCapture && !m_dirty)
-	{
-		m_status = "No balance changes to save; authoring bytes were left untouched.";
-		return true;
-	}
 	std::string status;
 	if (!ValidateDraft(status))
 	{
@@ -1383,14 +1057,7 @@ bool Client::CBalanceTool::Save(
 			<< ",\n      \"resourceRegenPerSecond\": " << p.resourceRegenPerSecond
 			<< ",\n      \"attackPower\": " << p.attackPower
 			<< ",\n      \"defense\": " << p.defense
-			<< ",\n      \"moveSpeed\": " << FormatJsonNumber(p.moveSpeed)
-			<< ",\n      \"defenseStanceMoveSpeedScale\": "
-			<< FormatJsonNumber(p.defenseStanceMoveSpeedScale)
-			<< ",\n      \"maximumIdentity\": " << p.maximumIdentity
-			<< ",\n      \"identityRegenPerSecond\": " << p.identityRegenPerSecond
-			<< ",\n      \"identityDrainPerSecond\": " << p.identityDrainPerSecond
-			<< ",\n      \"identityStanceSwitchCost\": " << p.identityStanceSwitchCost
-			<< ",\n      \"identityCyclic\": " << p.identityCyclic
+			<< ",\n      \"moveSpeed\": " << std::setprecision(9) << p.moveSpeed
 			<< ",\n      \"defaultStance\": " << Quote(p.defaultStance) << "\n    }"
 			<< (i + 1u == m_players.size() ? "\n" : ",\n");
 	}
@@ -1422,9 +1089,8 @@ bool Client::CBalanceTool::Save(
 			<< ",\n      \"actionDurationMs\": " << s.actionDurationMs
 			<< ",\n      \"hitTimeMs\": " << s.hitTimeMs
 			<< ",\n      \"resourceCost\": " << s.resourceCost
-			<< ",\n      \"identityCost\": " << s.identityCost
-			<< ",\n      \"movementDistance\": " << FormatJsonNumber(s.movementDistance)
-			<< ",\n      \"maximumRange\": " << FormatJsonNumber(s.maximumRange)
+			<< ",\n      \"movementDistance\": " << std::setprecision(9) << s.movementDistance
+			<< ",\n      \"maximumRange\": " << s.maximumRange
 			<< ",\n      \"serverDamageProfileId\": " << Quote(s.damageProfileId)
 			<< ",\n      \"effectId\": " << Quote(s.effectId)
 			<< ",\n      \"requiredStance\": " << Quote(s.requiredStance)
@@ -1436,7 +1102,6 @@ bool Client::CBalanceTool::Save(
 			const COMBO_STAGE_EDIT& stage = s.comboStages[stageIndex];
 			skills << "        { \"actionDurationMs\": " << stage.actionDurationMs
 				<< ", \"hitTimeMs\": " << stage.hitTimeMs
-				<< ", \"comboAdvanceMs\": " << stage.comboAdvanceMs
 				<< ", \"inputOpenMs\": " << stage.inputOpenMs
 				<< ", \"inputCloseMs\": " << stage.inputCloseMs << " }"
 				<< (stageIndex + 1u == s.comboStages.size() ? "\n" : ",\n");
@@ -1456,9 +1121,9 @@ bool Client::CBalanceTool::Save(
 			<< ",\n      \"maximumHp\": " << b.maximumHp
 			<< ",\n      \"maximumHealthBars\": " << b.maximumHealthBars
 			<< ",\n      \"attackPower\": " << b.attackPower
-			<< ",\n      \"collisionRadius\": " << FormatJsonNumber(b.collisionRadius)
-			<< ",\n      \"engageDistance\": " << FormatJsonNumber(b.engageDistance)
-			<< ",\n      \"moveSpeed\": " << FormatJsonNumber(b.moveSpeed)
+			<< ",\n      \"collisionRadius\": " << std::setprecision(9) << b.collisionRadius
+			<< ",\n      \"engageDistance\": " << b.engageDistance
+			<< ",\n      \"moveSpeed\": " << b.moveSpeed
 			<< ",\n      \"phaseTwoHpPercent\": " << b.phaseTwoHpPercent << "\n    }"
 			<< (i + 1u == m_bosses.size() ? "\n" : ",\n");
 	}
@@ -1469,9 +1134,7 @@ bool Client::CBalanceTool::Save(
 		<< "\n  \"encounterId\": " << Quote(m_encounterId)
 		<< ",\n  \"bossArchetypeId\": " << Quote(m_encounterBossArchetypeId)
 		<< ",\n  \"authority\": " << Quote(m_encounterAuthority)
-		<< ",\n  \"fixedTickHz\": " << m_fixedTickHz
-		<< ",\n  \"introPatternId\": " << Quote(m_encounterIntroPatternId)
-		<< ",\n  \"states\": [\n";
+		<< ",\n  \"fixedTickHz\": " << m_fixedTickHz << ",\n  \"states\": [\n";
 	for (std::size_t i = 0; i < m_encounterStates.size(); ++i)
 	{
 		const ENCOUNTER_STATE_EDIT& state = m_encounterStates[i];
@@ -1508,22 +1171,9 @@ bool Client::CBalanceTool::Save(
 			<< (p.invulnerableWhileRunning ? "true" : "false")
 			<< ",\n      \"selectionWeight\": " << p.selectionWeight
 			<< ",\n      \"maximumConsecutiveUses\": " << p.maximumConsecutiveUses
-			<< ",\n      \"minimumRange\": " << FormatJsonNumber(p.minimumRange)
-			<< ",\n      \"maximumRange\": " << FormatJsonNumber(p.maximumRange);
-		if (p.serverMotion.enabled)
-		{
-			encounter << ",\n      \"serverMotion\": {\n"
-				<< "        \"kind\": " << Quote(p.serverMotion.kind)
-				<< ",\n        \"anchorId\": " << Quote(p.serverMotion.anchorId)
-				<< ",\n        \"landingPosition\": ["
-				<< FormatJsonNumber(p.serverMotion.landingX) << ", "
-				<< FormatJsonNumber(p.serverMotion.landingY) << ", "
-				<< FormatJsonNumber(p.serverMotion.landingZ)
-				<< "],\n        \"apexHeight\": "
-				<< FormatJsonNumber(p.serverMotion.apexHeight)
-				<< "\n      }";
-		}
-		encounter << ",\n      \"stages\": [\n";
+			<< ",\n      \"minimumRange\": " << std::setprecision(9) << p.minimumRange
+			<< ",\n      \"maximumRange\": " << p.maximumRange
+			<< ",\n      \"stages\": [\n";
 		for (std::size_t stageIndex = 0; stageIndex < p.stages.size(); ++stageIndex)
 		{
 			const PATTERN_STAGE_EDIT& stage = p.stages[stageIndex];
@@ -1532,16 +1182,16 @@ bool Client::CBalanceTool::Save(
 				<< ", \"stageKind\": " << Quote(stage.stageKind)
 				<< ", \"durationMs\": " << stage.durationMs
 				<< ", \"hitShape\": " << Quote(stage.hitShape)
-				<< ", \"hitOuterRadius\": " << FormatJsonNumber(stage.hitOuterRadius)
-				<< ", \"hitInnerRadius\": " << FormatJsonNumber(stage.hitInnerRadius)
-				<< ", \"hitAngleDegrees\": " << FormatJsonNumber(stage.hitAngleDegrees)
-				<< ", \"hitLength\": " << FormatJsonNumber(stage.hitLength)
-				<< ", \"hitHalfWidth\": " << FormatJsonNumber(stage.hitHalfWidth)
+				<< ", \"hitOuterRadius\": " << std::setprecision(9) << stage.hitOuterRadius
+				<< ", \"hitInnerRadius\": " << stage.hitInnerRadius
+				<< ", \"hitAngleDegrees\": " << stage.hitAngleDegrees
+				<< ", \"hitLength\": " << stage.hitLength
+				<< ", \"hitHalfWidth\": " << stage.hitHalfWidth
 				<< ", \"hitCount\": " << stage.hitCount
 				<< ", \"hitIntervalMs\": " << stage.hitIntervalMs
 				<< ", \"hitDelayMs\": " << stage.hitDelayMs
 				<< ", \"serverDamageProfileId\": " << Quote(stage.damageProfileId)
-				<< ", \"pushRangeM\": " << FormatJsonNumber(stage.pushRangeM)
+				<< ", \"pushRangeM\": " << std::setprecision(9) << stage.pushRangeM
 				<< ", \"pushMs\": " << stage.pushMs
 				<< ", \"knockdown\": " << (stage.knockdown ? "true" : "false")
 				<< ", \"downMs\": " << stage.downMs
@@ -1551,15 +1201,6 @@ bool Client::CBalanceTool::Save(
 			<< (i + 1u == m_patterns.size() ? "\n" : ",\n");
 	}
 	encounter << "  ]\n}\n";
-	if (nullptr != readOnlyCapture)
-	{
-		readOnlyCapture->players = players.str();
-		readOnlyCapture->skills = skills.str();
-		readOnlyCapture->damage = damage.str();
-		readOnlyCapture->bosses = bosses.str();
-		readOnlyCapture->encounter = encounter.str();
-		return true;
-	}
 
 	struct WRITE final { std::filesystem::path relative; std::string text; };
 	const std::vector<WRITE> writes{
@@ -1664,478 +1305,6 @@ bool Client::CBalanceTool::Save(
 	return true;
 }
 
-#if defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
-bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
-	std::string& status)
-{
-	CBalanceTool tool(nullptr);
-	std::string validationStatus;
-	if (!tool.Reload() || !tool.ValidateDraft(validationStatus))
-	{
-		status = "Balance Tool could not load/validate current authoring: " +
-			(tool.m_status.empty() ? validationStatus : tool.m_status);
-		return false;
-	}
-
-	SERIALIZED_DRAFT_DOCUMENTS serialized;
-	if (!tool.Save(&serialized))
-	{
-		status = "Balance Tool read-only serialization failed: " + tool.m_status;
-		return false;
-	}
-	const auto parseRoot = [&status](const std::string& text,
-		DATA_JSON_VALUE& root, const char* name)
-	{
-		std::string parseStatus;
-		if (!CDataJson::Parse(text, root, parseStatus) || !root.Is_Object())
-		{
-			status = std::string(name) + " serialization is invalid JSON: " +
-				parseStatus;
-			return false;
-		}
-		return true;
-	};
-
-	DATA_JSON_VALUE playerRoot;
-	DATA_JSON_VALUE skillRoot;
-	DATA_JSON_VALUE damageRoot;
-	DATA_JSON_VALUE bossRoot;
-	DATA_JSON_VALUE encounterRoot;
-	if (!parseRoot(serialized.players, playerRoot, "PlayerProfiles") ||
-		!parseRoot(serialized.skills, skillRoot, "PlayerSkills") ||
-		!parseRoot(serialized.damage, damageRoot, "DamageProfiles") ||
-		!parseRoot(serialized.bosses, bossRoot, "BossProfiles") ||
-		!parseRoot(serialized.encounter, encounterRoot, "ValtanEncounter"))
-	{
-		return false;
-	}
-
-	const auto semanticallyEqual = [](const auto& self,
-		const DATA_JSON_VALUE& left, const DATA_JSON_VALUE& right) -> bool
-	{
-		if (left.Get_Type() != right.Get_Type())
-			return false;
-		switch (left.Get_Type())
-		{
-		case DATA_JSON_TYPE::NULL_VALUE:
-			return true;
-		case DATA_JSON_TYPE::BOOLEAN:
-			return left.Get_Boolean() == right.Get_Boolean();
-		case DATA_JSON_TYPE::NUMBER:
-			return left.Get_Number() == right.Get_Number();
-		case DATA_JSON_TYPE::STRING:
-			return left.Get_String() == right.Get_String();
-		case DATA_JSON_TYPE::ARRAY:
-		{
-			if (left.Get_Array().size() != right.Get_Array().size())
-				return false;
-			for (std::size_t index = 0u; index < left.Get_Array().size(); ++index)
-			{
-				if (!self(self, left.Get_Array()[index], right.Get_Array()[index]))
-					return false;
-			}
-			return true;
-		}
-		case DATA_JSON_TYPE::OBJECT:
-		{
-			if (left.Get_Object().size() != right.Get_Object().size())
-				return false;
-			for (const auto& [key, value] : left.Get_Object())
-			{
-				const DATA_JSON_VALUE* other = right.Find(key);
-				if (nullptr == other || !self(self, value, *other))
-					return false;
-			}
-			return true;
-		}
-		default:
-			return false;
-		}
-	};
-	DATA_JSON_VALUE originalPlayerRoot;
-	DATA_JSON_VALUE originalSkillRoot;
-	DATA_JSON_VALUE originalDamageRoot;
-	DATA_JSON_VALUE originalBossRoot;
-	DATA_JSON_VALUE originalEncounterRoot;
-	std::string readStatus;
-	if (!ReadJson(L"Balance/PlayerProfiles.json", originalPlayerRoot, readStatus) ||
-		!ReadJson(L"Balance/PlayerSkills.json", originalSkillRoot, readStatus) ||
-		!ReadJson(L"Balance/DamageProfiles.json", originalDamageRoot, readStatus) ||
-		!ReadJson(L"Balance/BossProfiles.json", originalBossRoot, readStatus) ||
-		!ReadJson(L"Encounters/Valtan/ValtanEncounter.json",
-			originalEncounterRoot, readStatus) ||
-		!semanticallyEqual(semanticallyEqual, originalPlayerRoot, playerRoot) ||
-		!semanticallyEqual(semanticallyEqual, originalSkillRoot, skillRoot) ||
-		!semanticallyEqual(semanticallyEqual, originalDamageRoot, damageRoot) ||
-		!semanticallyEqual(semanticallyEqual, originalBossRoot, bossRoot) ||
-		!semanticallyEqual(semanticallyEqual, originalEncounterRoot, encounterRoot))
-	{
-		status = "Balance Tool serializer did not preserve all five authoring documents: " +
-			readStatus;
-		return false;
-	}
-
-	const DATA_JSON_VALUE* players =
-		Field(playerRoot, "players", DATA_JSON_TYPE::ARRAY);
-	const DATA_JSON_VALUE* skills =
-		Field(skillRoot, "skills", DATA_JSON_TYPE::ARRAY);
-	const DATA_JSON_VALUE* patterns =
-		Field(encounterRoot, "patterns", DATA_JSON_TYPE::ARRAY);
-	if (nullptr == players || players->Get_Array().size() != 6u ||
-		nullptr == skills || skills->Get_Array().size() != 94u ||
-		nullptr == patterns || patterns->Get_Array().size() != 33u)
-	{
-		status = "Balance Tool round-trip changed current object counts.";
-		return false;
-	}
-
-	for (std::size_t index = 0; index < tool.m_players.size(); ++index)
-	{
-		const PLAYER_EDIT& expected = tool.m_players[index];
-		const DATA_JSON_VALUE& actual = players->Get_Array()[index];
-		double stanceScale = 0.0;
-		std::uint32_t maximumIdentity = 0u;
-		std::uint32_t regen = 0u;
-		std::uint32_t drain = 0u;
-		std::uint32_t switchCost = 0u;
-		std::uint32_t cyclic = 0u;
-		if (!ReadDouble(actual, "defenseStanceMoveSpeedScale", stanceScale) ||
-			!ReadU32(actual, "maximumIdentity", maximumIdentity) ||
-			!ReadU32(actual, "identityRegenPerSecond", regen) ||
-			!ReadU32(actual, "identityDrainPerSecond", drain) ||
-			!ReadU32(actual, "identityStanceSwitchCost", switchCost) ||
-			!ReadU32(actual, "identityCyclic", cyclic) ||
-			stanceScale != expected.defenseStanceMoveSpeedScale ||
-			maximumIdentity != expected.maximumIdentity ||
-			regen != expected.identityRegenPerSecond ||
-			drain != expected.identityDrainPerSecond ||
-			switchCost != expected.identityStanceSwitchCost ||
-			cyclic != expected.identityCyclic)
-		{
-			status = "Balance Tool round-trip changed player identity fields.";
-			return false;
-		}
-	}
-
-	std::size_t activeCount = 0u;
-	std::size_t comboCount = 0u;
-	std::size_t holdCount = 0u;
-	std::size_t counterCount = 0u;
-	std::size_t standupCount = 0u;
-	bool artistMoonCost = false;
-	bool artistSunCost = false;
-	for (std::size_t index = 0; index < tool.m_skills.size(); ++index)
-	{
-		const SKILL_EDIT& expected = tool.m_skills[index];
-		const DATA_JSON_VALUE& actual = skills->Get_Array()[index];
-		std::uint32_t skillId = 0u;
-		std::uint32_t identityCost = 0u;
-		const DATA_JSON_VALUE* stages =
-			Field(actual, "comboStages", DATA_JSON_TYPE::ARRAY);
-		if (!ReadU32(actual, "skillId", skillId) || skillId != expected.skillId ||
-			!ReadU32(actual, "identityCost", identityCost) ||
-			identityCost != expected.identityCost || nullptr == stages ||
-			stages->Get_Array().size() != expected.comboStages.size())
-		{
-			status = "Balance Tool round-trip changed skill identity/stage fields.";
-			return false;
-		}
-		for (std::size_t stageIndex = 0;
-			stageIndex < expected.comboStages.size(); ++stageIndex)
-		{
-			std::uint32_t comboAdvanceMs = 0u;
-			if (!ReadU32(stages->Get_Array()[stageIndex], "comboAdvanceMs",
-				comboAdvanceMs) ||
-				comboAdvanceMs != expected.comboStages[stageIndex].comboAdvanceMs)
-			{
-				status = "Balance Tool round-trip changed comboAdvanceMs.";
-				return false;
-			}
-		}
-		activeCount += "ACTIVE" == expected.skillKind ? 1u : 0u;
-		comboCount += "COMBO" == expected.skillKind ? 1u : 0u;
-		holdCount += "HOLD" == expected.skillKind ? 1u : 0u;
-		counterCount += "COUNTER" == expected.skillKind ? 1u : 0u;
-		standupCount += "STANDUP" == expected.skillKind ? 1u : 0u;
-		artistMoonCost = artistMoonCost ||
-			(31110u == expected.skillId && 33u == identityCost);
-		artistSunCost = artistSunCost ||
-			(31050u == expected.skillId && 66u == identityCost);
-	}
-	if (76u != activeCount || 11u != comboCount || 2u != holdCount ||
-		1u != counterCount || 4u != standupCount ||
-		!artistMoonCost || !artistSunCost)
-	{
-		status = "Balance Tool did not preserve all skill kinds/identity costs.";
-		return false;
-	}
-
-	std::string introPatternId;
-	if (!ReadString(encounterRoot, "introPatternId", introPatternId) ||
-		introPatternId != tool.m_encounterIntroPatternId)
-	{
-		status = "Balance Tool round-trip changed introPatternId.";
-		return false;
-	}
-	std::size_t serverMotionCount = 0u;
-	for (std::size_t index = 0; index < tool.m_patterns.size(); ++index)
-	{
-		const PATTERN_EDIT& expected = tool.m_patterns[index];
-		const DATA_JSON_VALUE* motion =
-			patterns->Get_Array()[index].Find("serverMotion");
-		if (expected.serverMotion.enabled)
-		{
-			++serverMotionCount;
-			if (nullptr == motion || !motion->Is_Object())
-			{
-				status = "Balance Tool round-trip changed serverMotion.";
-				return false;
-			}
-			std::string kind;
-			std::string anchorId;
-			double apexHeight = 0.0;
-			const DATA_JSON_VALUE* landing =
-				Field(*motion, "landingPosition", DATA_JSON_TYPE::ARRAY);
-			const bool exactLanding = nullptr != landing &&
-				3u == landing->Get_Array().size() &&
-				landing->Get_Array()[0].Is_Number() &&
-				landing->Get_Array()[1].Is_Number() &&
-				landing->Get_Array()[2].Is_Number() &&
-				landing->Get_Array()[0].Get_Number() == expected.serverMotion.landingX &&
-				landing->Get_Array()[1].Get_Number() == expected.serverMotion.landingY &&
-				landing->Get_Array()[2].Get_Number() == expected.serverMotion.landingZ;
-			if (!ReadString(*motion, "kind", kind) ||
-				!ReadString(*motion, "anchorId", anchorId) ||
-				!ReadDouble(*motion, "apexHeight", apexHeight) ||
-				!exactLanding ||
-				kind != expected.serverMotion.kind ||
-				anchorId != expected.serverMotion.anchorId ||
-				apexHeight != expected.serverMotion.apexHeight)
-			{
-				status = "Balance Tool round-trip changed serverMotion.";
-				return false;
-			}
-		}
-		else if (nullptr != motion)
-		{
-			status = "Balance Tool invented an optional serverMotion.";
-			return false;
-		}
-	}
-	if (1u != serverMotionCount)
-	{
-		status = "Balance Tool did not preserve the one authored serverMotion.";
-		return false;
-	}
-
-	std::size_t normalizedPatternIndex = tool.m_patterns.size();
-	std::size_t normalizedStageIndex = 0u;
-	for (std::size_t patternIndex = 0u;
-		patternIndex < tool.m_patterns.size(); ++patternIndex)
-	{
-		for (std::size_t stageIndex = 0u;
-			stageIndex < tool.m_patterns[patternIndex].stages.size(); ++stageIndex)
-		{
-			const PATTERN_STAGE_EDIT& candidate =
-				tool.m_patterns[patternIndex].stages[stageIndex];
-			if ("NONE" != candidate.hitShape && !candidate.damageProfileId.empty())
-			{
-				normalizedPatternIndex = patternIndex;
-				normalizedStageIndex = stageIndex;
-				break;
-			}
-		}
-		if (normalizedPatternIndex != tool.m_patterns.size())
-			break;
-	}
-	if (normalizedPatternIndex == tool.m_patterns.size())
-	{
-		status = "Balance Tool normalization test could not find a damage stage.";
-		return false;
-	}
-	PATTERN_STAGE_EDIT& normalizedStage =
-		tool.m_patterns[normalizedPatternIndex].stages[normalizedStageIndex];
-	const PATTERN_STAGE_EDIT originalStage = normalizedStage;
-	normalizedStage.hitShape = "CONE";
-	normalizedStage.hitOuterRadius = 123.0;
-	normalizedStage.hitInnerRadius = 45.0;
-	normalizedStage.hitAngleDegrees = 73.25;
-	normalizedStage.hitLength = 4.75;
-	normalizedStage.hitHalfWidth = 67.0;
-	NormalizePatternStageForShape(normalizedStage);
-	normalizedStage.pushRangeM = 0.0;
-	normalizedStage.pushMs = 999u;
-	normalizedStage.knockdown = false;
-	normalizedStage.downMs = 999u;
-	NormalizePatternStagePush(normalizedStage);
-	SERIALIZED_DRAFT_DOCUMENTS normalizedDocuments;
-	if (!tool.Save(&normalizedDocuments))
-	{
-		status = "A publisher-compatible collider/push edit was rejected: " +
-			tool.m_status;
-		return false;
-	}
-	DATA_JSON_VALUE normalizedEncounter;
-	if (!parseRoot(normalizedDocuments.encounter, normalizedEncounter,
-		"Normalized ValtanEncounter"))
-	{
-		return false;
-	}
-	const DATA_JSON_VALUE* normalizedPatterns =
-		Field(normalizedEncounter, "patterns", DATA_JSON_TYPE::ARRAY);
-	const DATA_JSON_VALUE* normalizedStages = nullptr;
-	if (nullptr != normalizedPatterns &&
-		normalizedPatternIndex < normalizedPatterns->Get_Array().size())
-	{
-		normalizedStages = Field(
-			normalizedPatterns->Get_Array()[normalizedPatternIndex],
-			"stages", DATA_JSON_TYPE::ARRAY);
-	}
-	double outer = -1.0;
-	double inner = -1.0;
-	double angle = -1.0;
-	double length = -1.0;
-	double halfWidth = -1.0;
-	double pushRange = -1.0;
-	std::uint32_t hitDelayMs =
-		(std::numeric_limits<std::uint32_t>::max)();
-	std::uint32_t pushMs = 1u;
-	std::uint32_t downMs = 1u;
-	const DATA_JSON_VALUE* normalizedStageValue =
-		nullptr != normalizedStages &&
-		normalizedStageIndex < normalizedStages->Get_Array().size() ?
-		&normalizedStages->Get_Array()[normalizedStageIndex] : nullptr;
-	const DATA_JSON_VALUE* knockdownValue = nullptr == normalizedStageValue ?
-		nullptr : normalizedStageValue->Find("knockdown");
-	const bool normalizedRoundTrip = nullptr != normalizedStageValue &&
-		ReadDouble(*normalizedStageValue, "hitOuterRadius", outer) &&
-		ReadDouble(*normalizedStageValue, "hitInnerRadius", inner) &&
-		ReadDouble(*normalizedStageValue, "hitAngleDegrees", angle) &&
-		ReadDouble(*normalizedStageValue, "hitLength", length) &&
-		ReadDouble(*normalizedStageValue, "hitHalfWidth", halfWidth) &&
-		ReadU32(*normalizedStageValue, "hitDelayMs", hitDelayMs) &&
-		ReadDouble(*normalizedStageValue, "pushRangeM", pushRange) &&
-		ReadU32(*normalizedStageValue, "pushMs", pushMs) &&
-		ReadU32(*normalizedStageValue, "downMs", downMs) &&
-		nullptr != knockdownValue && knockdownValue->Is_Boolean() &&
-		0.0 == outer && 0.0 == inner && 73.25 == angle &&
-		4.75 == length && 0.0 == halfWidth && 0.0 == pushRange &&
-		hitDelayMs == originalStage.hitDelayMs &&
-		0u == pushMs && !knockdownValue->Get_Boolean() && 0u == downMs;
-	PATTERN_STAGE_EDIT noneStage = originalStage;
-	noneStage.hitShape = "NONE";
-	noneStage.hitOuterRadius = 1.0;
-	noneStage.hitInnerRadius = 1.0;
-	noneStage.hitAngleDegrees = 1.0;
-	noneStage.hitLength = 1.0;
-	noneStage.hitHalfWidth = 1.0;
-	noneStage.hitDelayMs = 1u;
-	noneStage.pushRangeM = 1.0;
-	noneStage.pushMs = 1u;
-	noneStage.knockdown = true;
-	noneStage.downMs = 1u;
-	NormalizePatternStageForShape(noneStage);
-	const bool noneWasCleared = 0.0 == noneStage.hitOuterRadius &&
-		0.0 == noneStage.hitInnerRadius && 0.0 == noneStage.hitAngleDegrees &&
-		0.0 == noneStage.hitLength && 0.0 == noneStage.hitHalfWidth &&
-		0u == noneStage.hitCount && 0u == noneStage.hitIntervalMs &&
-		0u == noneStage.hitDelayMs && noneStage.damageProfileId.empty() &&
-		0.0 == noneStage.pushRangeM &&
-		0u == noneStage.pushMs && !noneStage.knockdown && 0u == noneStage.downMs;
-	PATTERN_STAGE_EDIT pairedPush = originalStage;
-	pairedPush.pushRangeM = 1.0;
-	pairedPush.pushMs = 0u;
-	pairedPush.knockdown = true;
-	pairedPush.downMs = 0u;
-	NormalizePatternStagePush(pairedPush);
-	const bool pushWasPaired = 1u == pairedPush.pushMs && 1u == pairedPush.downMs;
-	PATTERN_STAGE_EDIT hiddenGeometry = originalStage;
-	hiddenGeometry.hitShape = "CIRCLE";
-	hiddenGeometry.hitOuterRadius = 2.0;
-	hiddenGeometry.hitInnerRadius = 0.0;
-	hiddenGeometry.hitAngleDegrees = 45.0;
-	hiddenGeometry.hitLength = 0.0;
-	hiddenGeometry.hitHalfWidth = 0.0;
-	normalizedStage = hiddenGeometry;
-	const bool hiddenGeometryRejected = !tool.ValidateDraft(validationStatus);
-	PATTERN_STAGE_EDIT unpairedPush = originalStage;
-	unpairedPush.pushRangeM = 0.0;
-	unpairedPush.pushMs = 50u;
-	normalizedStage = unpairedPush;
-	const bool unpairedPushRejected = !tool.ValidateDraft(validationStatus);
-	normalizedStage = originalStage;
-	if (!normalizedRoundTrip || !noneWasCleared || !pushWasPaired ||
-		!hiddenGeometryRejected || !unpairedPushRejected)
-	{
-		status = "Balance Tool collider/push normalization did not round-trip exactly.";
-		return false;
-	}
-
-	auto dimensionMaster = std::find_if(tool.m_skills.begin(), tool.m_skills.end(),
-		[](const SKILL_EDIT& skill) { return 2050010u == skill.skillId; });
-	if (tool.m_skills.end() == dimensionMaster ||
-		dimensionMaster->comboStages.empty())
-	{
-		status = "DimensionMaster BA was absent from the Balance Tool draft.";
-		return false;
-	}
-	dimensionMaster->comboStages.front().comboAdvanceMs = 1300u;
-	SERIALIZED_DRAFT_DOCUMENTS edited;
-	if (!tool.Save(&edited))
-	{
-		status = "A valid comboAdvanceMs edit was rejected.";
-		return false;
-	}
-	DATA_JSON_VALUE editedSkillRoot;
-	if (!parseRoot(edited.skills, editedSkillRoot, "Edited PlayerSkills"))
-		return false;
-	const DATA_JSON_VALUE* editedSkills =
-		Field(editedSkillRoot, "skills", DATA_JSON_TYPE::ARRAY);
-	bool foundEditedAdvance = false;
-	if (nullptr != editedSkills)
-	{
-		for (const DATA_JSON_VALUE& value : editedSkills->Get_Array())
-		{
-			std::uint32_t skillId = 0u;
-			if (!ReadU32(value, "skillId", skillId) || 2050010u != skillId)
-				continue;
-			const DATA_JSON_VALUE* stages =
-				Field(value, "comboStages", DATA_JSON_TYPE::ARRAY);
-			std::uint32_t advance = 0u;
-			foundEditedAdvance = nullptr != stages && !stages->Get_Array().empty() &&
-				ReadU32(stages->Get_Array().front(), "comboAdvanceMs", advance) &&
-				1300u == advance;
-			break;
-		}
-	}
-	if (!foundEditedAdvance)
-	{
-		status = "A valid comboAdvanceMs edit was not serialized.";
-		return false;
-	}
-	dimensionMaster->comboStages.front().comboAdvanceMs =
-		dimensionMaster->comboStages.front().hitTimeMs - 1u;
-	if (tool.ValidateDraft(validationStatus))
-	{
-		status = "An invalid comboAdvanceMs edit was accepted.";
-		return false;
-	}
-
-	status = "Balance Tool read-only round-trip preserved 6 players, 94 skills, "
-		"108 damage profiles, 1 boss, 33 patterns, identityCost, all skill kinds, "
-		"comboAdvanceMs, introPatternId, and serverMotion.";
-	return true;
-}
-#else
-bool Client::CBalanceTool::Run_ReadOnlyRoundTripContractTest(
-	std::string& status)
-{
-	status = "Balance Tool read-only contract test is harness-only.";
-	return false;
-}
-#endif
-
-#if !defined(LOSTARK_BALANCE_TOOL_CONTRACT_TEST)
 void Client::CBalanceTool::Render()
 {
 	if (!m_open)
@@ -2202,4 +1371,3 @@ void Client::CBalanceTool::Render()
 	ImGui::EndChild();
 	ImGui::End();
 }
-#endif
