@@ -566,6 +566,71 @@ bool_t CMapPlacementRuntime::Set_RuntimeVisible(
 	return false;
 }
 
+#ifdef _DEBUG
+bool_t CMapPlacementRuntime::Set_DebugSourceLevelVisible(
+	const std::string& sourceLevel,
+	const bool_t visible,
+	const size_t expectedPlacementCount)
+{
+	if (sourceLevel.empty() || 0u == expectedPlacementCount)
+		return false;
+
+	std::vector<MAP_RUNTIME_PLACED_ENTRY*> matches;
+	for (MAP_RUNTIME_PLACED_ENTRY& entry : m_Placements)
+	{
+		if (entry.record.sourceLevel == sourceLevel)
+			matches.push_back(&entry);
+	}
+	if (matches.size() != expectedPlacementCount)
+		return false;
+
+	for (MAP_RUNTIME_PLACED_ENTRY* entry : matches)
+	{
+		if (nullptr == entry || !Set_RuntimeVisible(*entry, visible))
+		{
+			/* The Debug override is all-or-baseline. A partial proxy group is
+			more misleading than no proxy, so restore every authored flag. */
+			for (MAP_RUNTIME_PLACED_ENTRY* rollback : matches)
+			{
+				if (nullptr != rollback)
+					(void)Set_RuntimeVisible(
+						*rollback, rollback->record.visible);
+			}
+			return false;
+		}
+	}
+	return true;
+}
+
+bool_t CMapPlacementRuntime::Restore_DebugSourceLevelVisibility(
+	const std::string& sourceLevel,
+	const size_t expectedPlacementCount)
+{
+	if (sourceLevel.empty() || 0u == expectedPlacementCount)
+		return false;
+
+	std::vector<MAP_RUNTIME_PLACED_ENTRY*> matches;
+	for (MAP_RUNTIME_PLACED_ENTRY& entry : m_Placements)
+	{
+		if (entry.record.sourceLevel == sourceLevel)
+			matches.push_back(&entry);
+	}
+	if (matches.size() != expectedPlacementCount)
+		return false;
+
+	bool_t restored = true;
+	for (MAP_RUNTIME_PLACED_ENTRY* entry : matches)
+	{
+		if (nullptr == entry ||
+			!Set_RuntimeVisible(*entry, entry->record.visible))
+		{
+			restored = false;
+		}
+	}
+	return restored;
+}
+#endif
+
 bool_t CMapPlacementRuntime::Is_BatchEligible(
 	const MAP_ASSET_ENTRY& asset)
 {

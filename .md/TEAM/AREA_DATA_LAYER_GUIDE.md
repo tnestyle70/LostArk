@@ -25,7 +25,7 @@ LevelCatalog scenario
 | Area | Visual | Gameplay | Navigation | 추가 데이터 |
 |---|---|---|---|---|
 | `LV_BER_BERNCASTLE` | shard-set, 50,017 placements | class-neutral player spawn 4 | MapTool source/paint bootstrap 허용, Server 제품 navgrid 없음 | NPC/trigger/collision authoring, boss 없음 |
-| `LV_LUT_HEARTRB_ED` | 275 assets / 13,192 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, tower-aligned source-instance point light 22, BossProfile, ValtanEncounter |
+| `LV_LUT_HEARTRB_ED` | 275 assets / 13,186 placements | player spawn 4 + `BOSS_VALTAN` 1 | 62×63, `Data/Navigation/LV_LUT_HEARTRB_ED.*` | deploy pair, source-exact outer towers, map point light 22, BossProfile, ValtanEncounter |
 | `LV_DEV_TRAINING_GROUND` | RCArena 10 assets / 18 placements | class-neutral player spawn 4 | uniform 32×32 | NPC/boss/monster/trigger 없음 |
 | `LV_LOBBY_CLASSSELECT_SL00` | 55 assets / 803 placements | class-neutral player spawn 4 | Server uniform 42×60 + MapTool source/paint bootstrap | Character Select Arena gameplay + monster/Lugaru SpawnGroups |
 | `LV_SHS_RCARENA_D` | 302 assets / 7,856 placements | 없음 | 없음 | 원본 Training Map 편집 대상 |
@@ -107,17 +107,43 @@ asset이 실제 `Client/Bin/Resources`에 있을 때만 commit하며, 하나라�
 Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이 오래 응답하지 않을 수
 있다. 중복 선택은 하지 말고 status가 commit될 때까지 기다린다.
 
-Valtan 외곽의 기존 다섯 철탑은 새 조립물이 아니다. 13,192개 imported baseline에 보존된 SL04 exact
+Valtan 외곽의 기존 다섯 철탑은 새 조립물이 아니다. 13,186개 source baseline에 보존된 SL04 exact
 반복 구조이며, 각 철탑 core는 같은 9개 asset의 106개 placement로 이루어진다. 다섯 station을 rigid
-registration한 RMS는
-약 0.000025~0.000058m이고 cooked core 외형은 약 10.09×44.97×8.16m다. 따라서
+registration한 RMS는 약 0.000025~0.000058m이고 cooked core 외형은 약 10.09×44.97×8.16m다. 따라서
 `MAP_0AEF815A33D8_BG_LUT_LUTOMB_STRUCTURE06_SM_OLD` 한 종류를 돌려 배치한 136개
 `PROJECT_AUTHORED_RIM` overlay는 원본 철탑 복원이 아니며 제거된 상태를 유지한다.
 
-철탑 주변의 SL04 PointLight는 총 22개를 source-instance 데이터로 복구했다. 높이 기준 상단 5개와
+후방 네 station의 상부 component는 같은 SL04 조립체의 하부·체인과 원본 transform에서 맞물린다.
+SL00 floor와 SL04 floor의 높이 차이를 상부에만 적용하면 하부는 제자리에 남고 상부 47개씩이
+`10.6108742m` 떠서 조립체가 분리된다. 따라서 정본
+`Tools/LevelPlacementExtractor/heartrb_valtan_tower_phase_registration.json`은 후방 네 station의
+component를 47개씩, 총 188개 stable source ID로 고정하되 registration을 비활성화하고 전방 우측
+`pointlight_11` station을 불변 control로 소유한다.
+
+`sync_valtan_tower_phase_registration.py`는 이 계약을 다음 네 authoring 입력에 한 transaction으로
+동기화한다.
+
+- 원본 SL04 source 188개는 provenance와 원본 transform을 보존하고 `visible=1`로 둔다.
+- 잘못된 `VALTAN_TOWER_REGISTERED` overlay 188개와 해당 환경 hidden override 188개를 제거한다.
+- `heartrb_valtan_core_overlay.json`에는 phase proxy 6개만, `heartrb_environment_runtime.json`에는
+  원래의 visibility override 2개만 유지한다.
+- 후방 light 4개도 source Y `24.734033m`로 복원하고 control station light와 나머지 light는 유지한다.
+
+따라서 HeartRB의 현재 제품 정본은 source baseline `13,186` placements다. base scene을
+재생성하거나 tower attachment manifest를 바꾼 뒤에는 source attachment sync를 먼저 실행하고,
+그 다음 `Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED`로 runtime 문서를 교체한다.
+별도 조사 문서
+`LV_LUT_HEARTRB_ED_LANDSCAPE.mapplacements`의 LAND01 component 6개는 메인 아레나 좌표계에
+직접 병합하면 검은색·갈색 직사각형 판으로 입구 바닥을 덮으므로 제품 문서에 넣지 않는다.
+`MapCatalog.json`의 수치가 다른 과거 결과서와 충돌하면 메인 authoring/runtime의 동일 hash와
+`Publish-MapAuthoring.ps1` 검증 결과를 우선한다.
+
+철탑 주변의 SL04 PointLight는 총 22개다. 높이 기준 상단 5개와
 중·하단 17개이며, 공통 color는 RGB `(255,37,0)`, falloff는 source class 기본값 `2`다. radius는
 `9m`, `10.24m`, `20.48m`, brightness는 `2.5`, `3`, `6`의 source 값을 행별로 보존한다.
-위치·색·반경·밝기는 source instance exact다. falloff `2`는 source 행에 없으며
+색·반경·밝기와 위치는 source instance 값이다. 후방 tower light
+`pointlight_106/21/104/102`와 `pointlight_11`은 모두 source Y `24.734033m`를 유지한다.
+따라서 maplight 문서 provenance는 `SOURCE_INSTANCE_EXACT_FALLOFF_INFERRED`다. falloff `2`는 source 행에 없으며
 current-revision `Engine.Default__PointLightComponent`의 상속 기본값을 사용한 inference다.
 22개를 특정 철탑 station에 묶는 것은 반복 geometry와 world position 정렬을 근거로 한 inference이고,
 source가 parent/slot 연결을 직접 제공한 것은 아니다.
@@ -209,7 +235,7 @@ optional proxy 누락 때문에 Valtan Area, DeployProp 편집, World Destructio
 ### Valtan MapTool Area 진입 실패 점검
 
 `git pull`은 Git 제외 대상인 `Client/Bin/Resources`를 복구하지 않는다. Valtan Area catalog는
-275 map asset / 13,192 map placement와 위 Deploy 9/85를 strict validation하므로, 팀 runtime pack의
+275 map asset / 13,186 map placement와 위 Deploy 9/85를 strict validation하므로, 팀 runtime pack의
 `Map/LV_LUT_HEARTRB_ED` 파일을 물리 Resources 폴더에 준비해야 한다. 서로 다른 worktree의 EXE를
 실행할 때는 그 EXE가 읽는 `Data`, `ShaderFiles`, `Resources` 루트가 달라질 수 있으므로 실행 경로를
 먼저 확인하고, 공유 Resources를 쓸 때는 process-local `LOSTARK_RESOURCE_ROOT`로 명시한다.

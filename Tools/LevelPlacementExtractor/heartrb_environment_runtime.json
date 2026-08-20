@@ -33,77 +33,159 @@
       "assetId": "MAP_3CC7E67937A0_BG_LUT_ZAMOUNT_CLOUDPLANE_SM_OLD",
       "renderMode": "Alpha",
       "cullMode": "None",
-      "uvScale": [2.0, 2.5],
-      "uvSpeed": [0.015, 0.0],
+      "uvScale": [
+        2.0,
+        2.5
+      ],
+      "uvSpeed": [
+        0.015,
+        0.0
+      ],
       "opacity": 0.65,
       "opacityPower": 5.0,
-      "colorTint": [1.0, 0.92, 0.88, 1.0]
+      "colorTint": [
+        1.0,
+        0.92,
+        0.88,
+        1.0
+      ]
     },
     {
       "assetId": "MAP_EDDEDF2CF6A1_SKY_MIRROR_SM",
       "renderMode": "Sky",
       "cullMode": "None",
-      "colorTint": [0.12, 0.14, 0.18, 1.0]
+      "colorTint": [
+        0.12,
+        0.14,
+        0.18,
+        1.0
+      ]
     },
     {
       "assetId": "VALTAN_PHASE_SPACEHOLE_CLOUD",
       "renderMode": "Additive",
       "cullMode": "None",
-      "uvScale": [1.0, 1.0],
-      "uvSpeed": [0.006, -0.004],
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "uvSpeed": [
+        0.006,
+        -0.004
+      ],
       "opacity": 0.28,
       "opacityPower": 5.0,
-      "colorTint": [0.35, 0.5, 0.8, 1.0]
+      "colorTint": [
+        0.35,
+        0.5,
+        0.8,
+        1.0
+      ]
     },
     {
       "assetId": "VALTAN_PHASE_SPACEHOLE_CORE",
       "renderMode": "Additive",
       "cullMode": "None",
-      "uvScale": [1.0, 1.0],
-      "uvSpeed": [-0.012, 0.008],
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "uvSpeed": [
+        -0.012,
+        0.008
+      ],
       "opacity": 0.38,
       "opacityPower": 2.5,
-      "colorTint": [0.4, 0.9, 1.8, 1.0]
+      "colorTint": [
+        0.4,
+        0.9,
+        1.8,
+        1.0
+      ]
     },
     {
       "assetId": "VALTAN_PHASE_SPACEHOLE_STREAK",
       "renderMode": "Additive",
       "cullMode": "None",
-      "uvScale": [1.0, 2.0],
-      "uvSpeed": [0.0, -0.025],
+      "uvScale": [
+        1.0,
+        2.0
+      ],
+      "uvSpeed": [
+        0.0,
+        -0.025
+      ],
       "opacity": 0.3,
       "opacityPower": 4.0,
-      "colorTint": [0.4, 0.9, 1.8, 1.0]
+      "colorTint": [
+        0.4,
+        0.9,
+        1.8,
+        1.0
+      ]
     },
     {
       "assetId": "VALTAN_PHASE_CHAOS_RING",
       "renderMode": "Additive",
       "cullMode": "None",
-      "uvScale": [1.0, 1.0],
-      "uvSpeed": [0.012, 0.0],
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "uvSpeed": [
+        0.012,
+        0.0
+      ],
       "opacity": 0.48,
       "opacityPower": 4.0,
-      "colorTint": [1.5, 0.08, 0.12, 1.0]
+      "colorTint": [
+        1.5,
+        0.08,
+        0.12,
+        1.0
+      ]
     },
     {
       "assetId": "VALTAN_PHASE_CHAOS_CLOUD",
       "renderMode": "Alpha",
       "cullMode": "None",
-      "uvScale": [1.5, 1.5],
-      "uvSpeed": [-0.008, 0.006],
+      "uvScale": [
+        1.5,
+        1.5
+      ],
+      "uvSpeed": [
+        -0.008,
+        0.006
+      ],
       "opacity": 0.3,
       "opacityPower": 5.0,
-      "colorTint": [0.35, 0.05, 0.08, 1.0]
+      "colorTint": [
+        0.35,
+        0.05,
+        0.08,
+        1.0
+      ]
     },
     {
       "assetId": "VALTAN_PHASE_CHAOS_ELECTRIC",
       "renderMode": "Additive",
       "cullMode": "None",
-      "uvScale": [1.0, 1.0],
-      "uvSpeed": [0.025, -0.015],
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "uvSpeed": [
+        0.025,
+        -0.015
+      ],
       "opacity": 0.4,
       "opacityPower": 3.0,
-      "colorTint": [1.2, 0.12, 0.18, 1.0]
+      "colorTint": [
+        1.2,
+        0.12,
+        0.18,
+        1.0
+      ]
     }
   ],
   "visibilityOverrides": [
