@@ -9,6 +9,12 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "Navigation.h"
+#ifdef _DEBUG
+#include "EncounterPatternReference.h"
+#include "HitAreaWire.h"
+#include "ProjectDataRoot.h"
+#include <filesystem>
+#endif
 
 #include "Part_Equipment.h"
 #include "Transform.h"
@@ -88,8 +94,153 @@ HRESULT CValtan::Initialize(void* pArg)
 		return E_FAIL;
 	Load_PatternBindings();
 	Load_PatternEffectCues();
+#ifdef _DEBUG
+	if (m_isServerAuthoritative)
+		Load_PatternHitAreaDebug();
+#endif
 	return S_OK;
 }
+
+#ifdef _DEBUG
+void CValtan::Load_PatternHitAreaDebug()
+{
+	m_PatternHitAreaByActionId.clear();
+	CEncounterPatternReference encounter;
+	std::string status;
+	if (!encounter.Load(CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Encounters") / L"Valtan" /
+			L"ValtanEncounter.json"), status))
+	{
+		OutputDebugStringA((
+			"[Client][Valtan] pattern hit area debug isolated: " + status +
+			"\n").c_str());
+		return;
+	}
+	for (const ENCOUNTER_PATTERN_REFERENCE& pattern : encounter.Get_Patterns())
+	{
+		for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern.stages)
+		{
+			if (stage.actionId.empty() || stage.hitShape.empty() ||
+				"NONE" == stage.hitShape || 0u == stage.iHitCount)
+			{
+				continue;
+			}
+			PATTERN_HIT_AREA_DEBUG area{};
+			area.strHitShape = stage.hitShape;
+			area.fOuterRadius = stage.fHitOuterRadius;
+			area.fInnerRadius = stage.fHitInnerRadius;
+			area.fAngleDegrees = stage.fHitAngleDegrees;
+			area.fLength = stage.fHitLength;
+			area.fHalfWidth = stage.fHitHalfWidth;
+			area.iHitCount = stage.iHitCount;
+			area.iHitIntervalMs = stage.iHitIntervalMs;
+			m_PatternHitAreaByActionId.emplace(
+				stage.actionId, std::move(area));
+		}
+	}
+}
+
+void CValtan::Draw_PatternHitAreaDebug() const
+{
+	if (nullptr == m_pTransformCom || m_strServerActionId.empty())
+		return;
+	const auto iter = m_PatternHitAreaByActionId.find(m_strServerActionId);
+	if (m_PatternHitAreaByActionId.end() == iter)
+		return;
+	const PATTERN_HIT_AREA_DEBUG& area = iter->second;
+
+	/* The server applies hit k when the stage age crosses k * hitIntervalMs;
+	   mirror each of those instants with the same minimum visible window the
+	   player skill hit debug uses. */
+	constexpr f32_t MIN_VISIBLE_HIT_WINDOW_MS = 300.f;
+	const f32_t fAgeMs = m_fServerActionAgeSeconds * 1000.f;
+	bool_t isHitWindow = false;
+	for (uint32_t iTick = 0u; iTick < area.iHitCount; ++iTick)
+	{
+		const f32_t fTickMs =
+			static_cast<f32_t>(iTick * area.iHitIntervalMs);
+		if (fAgeMs >= fTickMs && fAgeMs <= fTickMs + MIN_VISIBLE_HIT_WINDOW_MS)
+		{
+			isHitWindow = true;
+			break;
+		}
+	}
+	if (!isHitWindow)
+		return;
+
+	constexpr uint32_t PATTERN_HIT_COLOR_RGBA =
+		255u | (60u << 8) | (200u << 16) | (255u << 24);
+	constexpr f32_t METERS_TO_UNITS = 100.f;
+	const matrix_t World =
+		XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
+	const vector_t vPosition = World.r[3];
+	const vector_t vLook = XMVector3Normalize(XMVectorSetY(World.r[2], 0.f));
+
+	const auto ToUnits = [](const f32_t fMeters)
+	{
+		return static_cast<int32_t>(fMeters * METERS_TO_UNITS + 0.5f);
+	};
+	const auto Draw_WithYawOffset = [&](const f32_t fYawOffsetDegrees,
+		const HIT_AREA_SHAPE& Shape)
+	{
+		const vector_t vRotatedLook = XMVector3Rotate(vLook,
+			XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f),
+				XMConvertToRadians(fYawOffsetDegrees)));
+		const vector_t vRight = XMVector3Normalize(XMVector3Cross(
+			XMVectorSet(0.f, 1.f, 0.f, 0.f), vRotatedLook));
+		float4x4_t Root{};
+		XMStoreFloat4x4(&Root, XMMatrixSet(
+			XMVectorGetX(vRight), 0.f, XMVectorGetZ(vRight), 0.f,
+			0.f, 1.f, 0.f, 0.f,
+			XMVectorGetX(vRotatedLook), 0.f, XMVectorGetZ(vRotatedLook), 0.f,
+			XMVectorGetX(vPosition), XMVectorGetY(vPosition),
+			XMVectorGetZ(vPosition), 1.f));
+		CHitAreaWire::Draw(Root, Shape, PATTERN_HIT_COLOR_RGBA);
+	};
+
+	HIT_AREA_SHAPE Shape{};
+	if ("CIRCLE" == area.strHitShape || "RING" == area.strHitShape)
+	{
+		Shape.iAreaType = 1;
+		Shape.iAreaRange = ToUnits(area.fOuterRadius);
+		Shape.iAreaInner = ToUnits(area.fInnerRadius);
+		Draw_WithYawOffset(0.f, Shape);
+	}
+	else if ("CONE" == area.strHitShape)
+	{
+		Shape.iAreaType = 3;
+		Shape.iAreaRange = ToUnits(area.fLength);
+		Shape.iAreaAngle = static_cast<int32_t>(area.fAngleDegrees + 0.5f);
+		Draw_WithYawOffset(0.f, Shape);
+	}
+	else if ("BOX" == area.strHitShape)
+	{
+		Shape.iAreaType = 2;
+		Shape.iAreaRange = ToUnits(area.fLength);
+		Shape.iAreaAngle = ToUnits(area.fHalfWidth * 2.f);
+		Draw_WithYawOffset(0.f, Shape);
+	}
+	else if ("CROSS" == area.strHitShape ||
+		"SIX_DIRECTIONS" == area.strHitShape)
+	{
+		/* The server tests centered strips spanning [-length, +length] along
+		   each strip axis and +-halfWidth across: forward and right for CROSS,
+		   forward and the two 60-degree diagonals for SIX_DIRECTIONS. */
+		Shape.iAreaType = 2;
+		Shape.iAreaOffsetX = -ToUnits(area.fLength);
+		Shape.iAreaRange = ToUnits(area.fLength * 2.f);
+		Shape.iAreaAngle = ToUnits(area.fHalfWidth * 2.f);
+		Draw_WithYawOffset(0.f, Shape);
+		if ("CROSS" == area.strHitShape)
+			Draw_WithYawOffset(90.f, Shape);
+		else
+		{
+			Draw_WithYawOffset(60.f, Shape);
+			Draw_WithYawOffset(-60.f, Shape);
+		}
+	}
+}
+#endif
 
 void CValtan::Load_PatternBindings()
 {
@@ -352,6 +503,8 @@ void CValtan::Late_Update(f32_t fTimeDelta)
 		CGameInstance::Get().Add_DebugComponent(m_pNavigationCom);
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
+	if (m_isPatternHitAreaDebugVisible)
+		Draw_PatternHitAreaDebug();
 #endif
 }
 

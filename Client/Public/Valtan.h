@@ -94,6 +94,9 @@ public:
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
 		m_isCombatColliderDebugVisible = isVisible;
 	}
+	void Set_PatternHitAreaDebugVisible(bool_t isVisible) {
+		m_isPatternHitAreaDebugVisible = isVisible;
+	}
 #endif
 
 private:
@@ -134,8 +137,25 @@ private:
 		std::vector<VALTAN_PATTERN_EFFECT_CUE>> m_PatternEffectCuesByActionId;
 	std::unordered_set<std::string> m_SpawnedPatternEffectBindingIds;
 #ifdef _DEBUG
+	/* Display copy of the encounter stage hit shapes, keyed by the snapshot's
+	   stage actionId. The Server owns the judgment; this only mirrors it as a
+	   wire, exactly like the player skill hit area debug. */
+	struct PATTERN_HIT_AREA_DEBUG
+	{
+		std::string strHitShape;
+		f32_t fOuterRadius = 0.f;
+		f32_t fInnerRadius = 0.f;
+		f32_t fAngleDegrees = 0.f;
+		f32_t fLength = 0.f;
+		f32_t fHalfWidth = 0.f;
+		uint32_t iHitCount = 0u;
+		uint32_t iHitIntervalMs = 0u;
+	};
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };
+	bool_t m_isPatternHitAreaDebugVisible = { true };
+	std::unordered_map<std::string, PATTERN_HIT_AREA_DEBUG>
+		m_PatternHitAreaByActionId;
 #endif
 
 private:
@@ -144,6 +164,10 @@ private:
 	void Load_PatternBindings();
 	void Load_PatternEffectCues();
 	void Spawn_DuePatternEffectCues(f32_t fActionAgeSeconds);
+#ifdef _DEBUG
+	void Load_PatternHitAreaDebug();
+	void Draw_PatternHitAreaDebug() const;
+#endif
 	PATH_RESULT_CODE Request_PathToTarget(fvector_t vGoalPosition);
 	void Set_ChaseState(bool_t isChasing);
 

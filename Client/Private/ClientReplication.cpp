@@ -497,6 +497,12 @@ void Client::CClientReplication::Set_SkillHitAreaDebugVisible(
 		if (nullptr != character)
 			character->Set_SkillHitAreaDebugVisible(isVisible);
 	}
+	for (auto& [netEntityId, presentation] : m_WorldEntities)
+	{
+		(void)netEntityId;
+		if (std::shared_ptr<CValtan> valtan = presentation.pValtan.lock())
+			valtan->Set_PatternHitAreaDebugVisible(isVisible);
+	}
 }
 #endif
 
@@ -905,6 +911,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 #ifdef _DEBUG
 	valtan->Set_CombatColliderDebugVisible(
 		m_isCombatColliderDebugVisible);
+	valtan->Set_PatternHitAreaDebugVisible(
+		m_isSkillHitAreaDebugVisible);
 #endif
 	const auto [iter, inserted] = m_WorldEntities.emplace(
 		spawned.iNetEntityId,
