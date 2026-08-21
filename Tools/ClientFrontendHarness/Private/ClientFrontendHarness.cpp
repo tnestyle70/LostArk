@@ -28,6 +28,7 @@
 #include "Effect_MaterialTemplate.h"
 #include "Effect_Tool.h"
 #include "Effect_Object.h"
+#include "Effect_ScreenOverlayPresentation.h"
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_Playback.h"
 #include "Effect_PresentationService.h"
@@ -45,6 +46,8 @@
 #include "PresentationProvider.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
+#include "Shader.h"
+#include "VIBuffer_Rect.h"
 #include "EncounterPatternReference.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
@@ -36776,6 +36779,596 @@ namespace
 			"DimensionMaster Q Voronoi And Slash Rotate As One Rigid Local-Space Pair With Cast Yaw");
 	}
 
+	void Test_EffectScreenOverlayPresentation(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace Engine;
+		// This canary exercises the production Effect11 pass without starting Client UI.
+
+		struct TEMP_FIXTURE_ROOT final
+		{
+			std::filesystem::path Path;
+			~TEMP_FIXTURE_ROOT()
+			{
+				std::error_code Error;
+				std::filesystem::remove_all(Path, Error);
+			}
+		};
+
+		const std::filesystem::path FixtureRoot =
+			std::filesystem::temp_directory_path() /
+			("lostark-effect-screen-overlay-" +
+			 std::to_string(GetCurrentProcessId()) + "-" +
+			 std::to_string(GetTickCount64()));
+		TEMP_FIXTURE_ROOT FixtureCleanup{ FixtureRoot };
+		const std::filesystem::path TextureDirectory =
+			FixtureRoot / L"Effect" / L"Harness";
+		std::error_code FixtureError;
+		const bool_t bFixtureDirectoryReady =
+			std::filesystem::create_directories(
+				TextureDirectory, FixtureError) && !FixtureError;
+		runner.Require(bFixtureDirectoryReady,
+			"Screen Overlay Harness Creates An Isolated Runtime Texture Root");
+		if (!bFixtureDirectoryReady)
+			return;
+
+		const auto WriteRgbaDds = [](const std::filesystem::path& Path,
+			const uint8_t Red, const uint8_t Green, const uint8_t Blue,
+			const uint8_t Alpha)
+		{
+			std::array<uint32_t, 32u> Header{};
+			Header[0u] = 0x20534444u;
+			Header[1u] = 124u;
+			Header[2u] = 0x0000100fu;
+			Header[3u] = 2u;
+			Header[4u] = 2u;
+			Header[5u] = 8u;
+			Header[7u] = 1u;
+			Header[19u] = 32u;
+			Header[20u] = 0x00000041u;
+			Header[22u] = 32u;
+			Header[23u] = 0x000000ffu;
+			Header[24u] = 0x0000ff00u;
+			Header[25u] = 0x00ff0000u;
+			Header[26u] = 0xff000000u;
+			Header[27u] = 0x00001000u;
+			const uint32_t Pixel = static_cast<uint32_t>(Red) |
+				(static_cast<uint32_t>(Green) << 8u) |
+				(static_cast<uint32_t>(Blue) << 16u) |
+				(static_cast<uint32_t>(Alpha) << 24u);
+			const std::array<uint32_t, 4u> Pixels = {
+				Pixel, Pixel, Pixel, Pixel };
+			std::ofstream Output(Path, std::ios::binary | std::ios::trunc);
+			Output.write(reinterpret_cast<const char_t*>(Header.data()),
+				static_cast<std::streamsize>(sizeof(Header)));
+			Output.write(reinterpret_cast<const char_t*>(Pixels.data()),
+				static_cast<std::streamsize>(sizeof(Pixels)));
+			Output.flush();
+			return Output.good();
+		};
+		const bool_t bTexturesReady =
+			WriteRgbaDds(TextureDirectory / L"red.dds",
+				255u, 0u, 0u, 255u) &&
+			WriteRgbaDds(TextureDirectory / L"green.dds",
+				0u, 255u, 0u, 255u) &&
+			WriteRgbaDds(TextureDirectory / L"gray.dds",
+				128u, 128u, 128u, 255u);
+		runner.Require(bTexturesReady,
+			"Screen Overlay Harness Writes Deterministic RGBA DDS Fixtures");
+		if (!bTexturesReady)
+			return;
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const bool_t bResourceRootReady =
+			ResourceRootEnvironment.Set(FixtureRoot.c_str());
+		runner.Require(bResourceRootReady,
+			"Screen Overlay Harness Uses Only Its Resources-relative Fixture Root");
+		if (!bResourceRootReady)
+			return;
+
+		ComPtr<ID3D11Device> Device;
+		ComPtr<ID3D11DeviceContext> Context;
+		D3D_FEATURE_LEVEL FeatureLevel = D3D_FEATURE_LEVEL_11_0;
+		const D3D_FEATURE_LEVEL RequestedLevels[] = {
+			D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0 };
+		const HRESULT hDevice = D3D11CreateDevice(
+			nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0u,
+			RequestedLevels, static_cast<UINT>(std::size(RequestedLevels)),
+			D3D11_SDK_VERSION, &Device, &FeatureLevel, &Context);
+		ComPtr<IDXGIDevice> DxgiDevice;
+		ComPtr<IDXGIAdapter> Adapter;
+		DXGI_ADAPTER_DESC AdapterDesc{};
+		const bool_t bWarpReady = SUCCEEDED(hDevice) && Device && Context &&
+			SUCCEEDED(Device.As(&DxgiDevice)) && DxgiDevice &&
+			SUCCEEDED(DxgiDevice->GetAdapter(&Adapter)) && Adapter &&
+			SUCCEEDED(Adapter->GetDesc(&AdapterDesc)) &&
+			AdapterDesc.VendorId == 0x1414u && AdapterDesc.DeviceId == 0x008cu;
+		runner.Require(bWarpReady,
+			"Screen Overlay Harness Initializes The Microsoft WARP Adapter");
+		if (!bWarpReady)
+			return;
+
+		const std::string ValidJson = R"json({
+"schema":"lostark.effect-screen-overlay",
+"formatVersion":1,
+"provenance":"PROJECT_TUNED",
+"presentationId":"effect.harness.screen-overlay.ordered",
+"overlays":[
+  {
+    "id":"green.second","sourceOrder":20,
+    "textureAssetId":"Effect/Harness/green.dds",
+    "colorSpace":"linear","coverageChannel":"a",
+    "sampler":{"filter":"linear","address":"wrap"},
+    "timing":{"startSeconds":0,"lifetimeSeconds":1,"alphaStart":0.5,"alphaEnd":0.5},
+    "transform":{"position":[0.5,0.5],"scale":[0.8,0.8],"rotationDegrees":-5,"angularVelocityDegreesPerSecond":-10,"uvDriftPerSecond":[0,0.05]},
+    "tint":[1,1,1,1]
+  },
+  {
+    "id":"red.first","sourceOrder":10,
+    "textureAssetId":"Effect/Harness/red.dds",
+    "colorSpace":"linear","coverageChannel":"a",
+    "sampler":{"filter":"point","address":"clamp"},
+    "timing":{"startSeconds":0,"lifetimeSeconds":1,"alphaStart":0.75,"alphaEnd":0.25},
+    "transform":{"position":[0.5,0.5],"scale":[0.8,0.8],"rotationDegrees":10,"angularVelocityDegreesPerSecond":20,"uvDriftPerSecond":[0.1,0]},
+    "tint":[1,1,1,1]
+  }
+]})json";
+		const auto ReplaceFirst = [](std::string Source,
+			const std::string_view From, const std::string_view To)
+		{
+			const size_t Position = Source.find(From);
+			if (Position != std::string::npos)
+				Source.replace(Position, From.size(), To);
+			return Source;
+		};
+
+		const shared_ptr<CEffectScreenOverlayPresentation> Presentation =
+			CEffectScreenOverlayPresentation::Create(Device);
+		std::string Status;
+		const bool_t bValidCommitted = Presentation &&
+			Presentation->Stage_AndCommit(ValidJson, Status) &&
+			Presentation->Get_CommittedGeneration() == 1u &&
+			Presentation->Get_PresentationId() ==
+				"effect.harness.screen-overlay.ordered" &&
+			Presentation->Get_PreparedOverlayCount() == 2u &&
+			!Presentation->Is_Playing();
+		runner.Require(bValidCommitted,
+			"Screen Overlay Parse Validate Stage Commit Publishes One Typed Generation");
+		if (!bValidCommitted)
+			return;
+
+		const bool_t bStarted = S_OK == Presentation->Start() &&
+			S_OK == Presentation->Update(0.25f);
+		const uint64_t PreservedGeneration =
+			Presentation->Get_CommittedGeneration();
+		const std::string PreservedId = Presentation->Get_PresentationId();
+		const size_t PreservedCount = Presentation->Get_PreparedOverlayCount();
+		const f32_t PreservedElapsed = Presentation->Get_ElapsedSeconds();
+		const auto RejectsWithoutMutation = [&](const std::string& Json)
+		{
+			Status.clear();
+			return !Presentation->Stage_AndCommit(Json, Status) &&
+				!Status.empty() &&
+				Presentation->Get_CommittedGeneration() == PreservedGeneration &&
+				Presentation->Get_PresentationId() == PreservedId &&
+				Presentation->Get_PreparedOverlayCount() == PreservedCount &&
+				Presentation->Get_ElapsedSeconds() == PreservedElapsed &&
+				Presentation->Is_Playing();
+		};
+		const bool_t bInvalidRollback = bStarted &&
+			RejectsWithoutMutation(ReplaceFirst(
+				ValidJson, "\"formatVersion\":1", "\"formatVersion\":2")) &&
+			RejectsWithoutMutation(ReplaceFirst(
+				ValidJson, "\"provenance\":\"PROJECT_TUNED\"",
+				"\"provenance\":\"SOURCE_EXACT\"")) &&
+			RejectsWithoutMutation(ReplaceFirst(
+				ValidJson, "Effect/Harness/green.dds",
+				"Effect/Harness/missing.dds")) &&
+			RejectsWithoutMutation(ReplaceFirst(
+				ValidJson, "\"coverageChannel\":\"a\"",
+				"\"coverageChannel\":\"invalid\""));
+		runner.Require(bInvalidRollback,
+			"Screen Overlay Invalid Version Provenance Resource And Channel Preserve The Live Commit");
+
+		CPresentation_Manager& Manager = CPresentation_Manager::Get();
+		Manager.Clear_Frame();
+		Manager.Set_ScreenOverlaysEnabled(true);
+		const HRESULT hQueue = Presentation->Queue_Frame();
+		const HRESULT hSubmit = Manager.Submit_FrameProviders();
+		const auto Ordered = Manager.Get_ScreenOverlays();
+		const PRESENTATION_SUBMISSION_STATS OrderedStats =
+			Manager.Get_LastSubmissionStats();
+		const bool_t bTypedOrderedSubmission = S_OK == hQueue &&
+			S_OK == hSubmit && OrderedStats.bCompleted &&
+			OrderedStats.bCommitted && OrderedStats.iProviderFailures == 0u &&
+			OrderedStats.ScreenOverlays.iConfigured == 2u &&
+			OrderedStats.ScreenOverlays.iExpected == 2u &&
+			OrderedStats.ScreenOverlays.iAccepted == 2u &&
+			Ordered.size() == 2u && Ordered[0u].iSourceOrder == 10u &&
+			Ordered[1u].iSourceOrder == 20u &&
+			std::abs(Ordered[0u].fSampleTimeSeconds - 0.25f) < 0.0001f &&
+			std::abs(Ordered[0u].fAlpha - 0.625f) < 0.0001f &&
+			Ordered[0u].eColorSpace ==
+				PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::LINEAR &&
+			Ordered[0u].eCoverageChannel ==
+				PRESENTATION_SCREEN_OVERLAY_CHANNEL::A &&
+			Ordered[0u].eFilter ==
+				PRESENTATION_SCREEN_OVERLAY_FILTER::POINT &&
+			Ordered[0u].eAddress ==
+				PRESENTATION_SCREEN_OVERLAY_ADDRESS::CLAMP &&
+			Ordered[1u].eFilter ==
+				PRESENTATION_SCREEN_OVERLAY_FILTER::LINEAR &&
+			Ordered[1u].eAddress ==
+				PRESENTATION_SCREEN_OVERLAY_ADDRESS::WRAP;
+		runner.Require(bTypedOrderedSubmission,
+			"Screen Overlay Submission Preserves Typed Sampling Lifetime Transform And Source Order");
+
+		struct PIXEL_CAPTURE final
+		{
+			uint64_t iNonzeroRgbPixels = 0u;
+			uint8_t iCenterRed = 0u;
+			uint8_t iCenterGreen = 0u;
+			uint8_t iCenterBlue = 0u;
+		};
+		constexpr uint32_t WIDTH = 64u;
+		constexpr uint32_t HEIGHT = 64u;
+		const auto RenderOverlays = [&](const vector<
+			PRESENTATION_SCREEN_OVERLAY_DESC>& Overlays,
+			PIXEL_CAPTURE& OutCapture, std::string& strOutError)
+		{
+			OutCapture = {};
+			const std::filesystem::path ShaderPath =
+				Resolve_ClientWorkingDirectory().parent_path().parent_path() /
+				L"Engine" / L"Bin" / L"ShaderFiles" /
+				L"Shader_Deferred.hlsl";
+			unique_ptr<CShader> Shader = CShader::Create(
+				Device, Context, ShaderPath.c_str(),
+				VTXTEX::Elements, VTXTEX::iNumElements);
+			unique_ptr<CVIBuffer_Rect> Rect =
+				CVIBuffer_Rect::Create(Device, Context);
+			if (!Shader || !Rect)
+			{
+				strOutError = "Screen overlay shader or rect creation failed.";
+				return false;
+			}
+
+			D3D11_TEXTURE2D_DESC TargetDesc{};
+			TargetDesc.Width = WIDTH;
+			TargetDesc.Height = HEIGHT;
+			TargetDesc.MipLevels = 1u;
+			TargetDesc.ArraySize = 1u;
+			TargetDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			TargetDesc.SampleDesc.Count = 1u;
+			TargetDesc.Usage = D3D11_USAGE_DEFAULT;
+			TargetDesc.BindFlags =
+				D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+			std::array<ComPtr<ID3D11Texture2D>, 2u> Targets;
+			std::array<ComPtr<ID3D11RenderTargetView>, 2u> TargetViews;
+			std::array<ComPtr<ID3D11ShaderResourceView>, 2u> TargetSrvs;
+			for (size_t Index = 0u; Index < Targets.size(); ++Index)
+			{
+				if (FAILED(Device->CreateTexture2D(
+						&TargetDesc, nullptr, &Targets[Index])) ||
+					FAILED(Device->CreateRenderTargetView(
+						Targets[Index].Get(), nullptr, &TargetViews[Index])) ||
+					FAILED(Device->CreateShaderResourceView(
+						Targets[Index].Get(), nullptr, &TargetSrvs[Index])))
+				{
+					strOutError = "Screen overlay ping-pong target creation failed.";
+					return false;
+				}
+			}
+			const float4_t Clear(0.f, 0.f, 0.f, 1.f);
+			Context->ClearRenderTargetView(TargetViews[0u].Get(), &Clear.x);
+			Context->ClearRenderTargetView(TargetViews[1u].Get(), &Clear.x);
+			D3D11_VIEWPORT Viewport{};
+			Viewport.Width = static_cast<f32_t>(WIDTH);
+			Viewport.Height = static_cast<f32_t>(HEIGHT);
+			Viewport.MaxDepth = 1.f;
+			Context->RSSetViewports(1u, &Viewport);
+			float4x4_t World;
+			float4x4_t View;
+			float4x4_t Proj;
+			XMStoreFloat4x4(&World, XMMatrixScaling(
+				static_cast<f32_t>(WIDTH), static_cast<f32_t>(HEIGHT), 1.f));
+			XMStoreFloat4x4(&View, XMMatrixIdentity());
+			XMStoreFloat4x4(&Proj, XMMatrixOrthographicLH(
+				static_cast<f32_t>(WIDTH), static_cast<f32_t>(HEIGHT), 0.f, 1.f));
+
+			for (size_t Index = 0u; Index < Overlays.size(); ++Index)
+			{
+				const PRESENTATION_SCREEN_POST_PLAN_STEP Step =
+					Build_PresentationScreenOverlayPlanStep(0u, Index);
+				ID3D11ShaderResourceView* NullSrvs[
+					D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+				Context->PSSetShaderResources(
+					0u, static_cast<UINT>(std::size(NullSrvs)), NullSrvs);
+				ID3D11RenderTargetView* Destination =
+					TargetViews[Step.iDestinationTarget].Get();
+				Context->OMSetRenderTargets(1u, &Destination, nullptr);
+				Context->ClearRenderTargetView(Destination, &Clear.x);
+				const PRESENTATION_SCREEN_OVERLAY_DESC& Overlay =
+					Overlays[Index];
+				const uint32_t Coverage =
+					static_cast<uint32_t>(Overlay.eCoverageChannel);
+				const uint32_t Filter = static_cast<uint32_t>(Overlay.eFilter);
+				const uint32_t Address = static_cast<uint32_t>(Overlay.eAddress);
+				if (FAILED(Shader->Bind_Texture("g_PostProcessTexture",
+						TargetSrvs[Step.iSourceTarget])) ||
+					FAILED(Shader->Bind_Texture("g_PresentationOverlayTexture",
+						Overlay.pTexture)) ||
+					FAILED(Shader->Bind_RawValue("g_fPresentationTime",
+						&Overlay.fSampleTimeSeconds,
+						sizeof(Overlay.fSampleTimeSeconds))) ||
+					FAILED(Shader->Bind_RawValue(
+						"g_vPresentationOverlayPosition", &Overlay.vPosition,
+						sizeof(Overlay.vPosition))) ||
+					FAILED(Shader->Bind_RawValue(
+						"g_vPresentationOverlayScale", &Overlay.vScale,
+						sizeof(Overlay.vScale))) ||
+					FAILED(Shader->Bind_RawValue(
+						"g_fPresentationOverlayRotationDegrees",
+						&Overlay.fRotationDegrees,
+						sizeof(Overlay.fRotationDegrees))) ||
+					FAILED(Shader->Bind_RawValue(
+						"g_fPresentationOverlayAngularVelocityDegreesPerSecond",
+						&Overlay.fAngularVelocityDegreesPerSecond,
+						sizeof(Overlay.fAngularVelocityDegreesPerSecond))) ||
+					FAILED(Shader->Bind_RawValue(
+						"g_vPresentationOverlayUvDriftPerSecond",
+						&Overlay.vUvDriftPerSecond,
+						sizeof(Overlay.vUvDriftPerSecond))) ||
+					FAILED(Shader->Bind_RawValue(
+						"g_vPresentationOverlayTint", &Overlay.vTint,
+						sizeof(Overlay.vTint))) ||
+					FAILED(Shader->Bind_RawValue(
+						"g_fPresentationOverlayAlpha", &Overlay.fAlpha,
+						sizeof(Overlay.fAlpha))) ||
+					FAILED(Shader->Bind_RawValue(
+						"g_iPresentationOverlayCoverageChannel", &Coverage,
+						sizeof(Coverage))) ||
+					FAILED(Shader->Bind_RawValue(
+						"g_iPresentationOverlayFilter", &Filter,
+						sizeof(Filter))) ||
+					FAILED(Shader->Bind_RawValue(
+						"g_iPresentationOverlayAddress", &Address,
+						sizeof(Address))) ||
+					FAILED(Shader->Bind_Matrix("g_WorldMatrix", &World)) ||
+					FAILED(Shader->Bind_Matrix("g_ViewMatrix", &View)) ||
+					FAILED(Shader->Bind_Matrix("g_ProjMatrix", &Proj)) ||
+					FAILED(Shader->Begin(
+						PRESENTATION_TEXTURED_OVERLAY_PASS_INDEX)) ||
+					FAILED(Rect->Bind_Resources()) || FAILED(Rect->Render()))
+				{
+					strOutError = "Screen overlay pass 14 submission failed.";
+					return false;
+				}
+			}
+			Context->Flush();
+			const uint32_t FinalTarget =
+				PresentationScreenCompositionFinalTarget(0u, Overlays.size());
+			D3D11_TEXTURE2D_DESC StagingDesc = TargetDesc;
+			StagingDesc.Usage = D3D11_USAGE_STAGING;
+			StagingDesc.BindFlags = 0u;
+			StagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			ComPtr<ID3D11Texture2D> Staging;
+			if (FAILED(Device->CreateTexture2D(
+					&StagingDesc, nullptr, &Staging)))
+			{
+				strOutError = "Screen overlay readback texture creation failed.";
+				return false;
+			}
+			Context->CopyResource(Staging.Get(), Targets[FinalTarget].Get());
+			D3D11_MAPPED_SUBRESOURCE Mapped{};
+			if (FAILED(Context->Map(
+					Staging.Get(), 0u, D3D11_MAP_READ, 0u, &Mapped)))
+			{
+				strOutError = "Screen overlay readback map failed.";
+				return false;
+			}
+			for (uint32_t Y = 0u; Y < HEIGHT; ++Y)
+			{
+				const uint8_t* Row = static_cast<const uint8_t*>(Mapped.pData) +
+					static_cast<size_t>(Y) * Mapped.RowPitch;
+				for (uint32_t X = 0u; X < WIDTH; ++X)
+				{
+					const uint8_t* Pixel = Row + static_cast<size_t>(X) * 4u;
+					if (0u != (Pixel[0u] | Pixel[1u] | Pixel[2u]))
+						++OutCapture.iNonzeroRgbPixels;
+					if (X == WIDTH / 2u && Y == HEIGHT / 2u)
+					{
+						OutCapture.iCenterRed = Pixel[0u];
+						OutCapture.iCenterGreen = Pixel[1u];
+						OutCapture.iCenterBlue = Pixel[2u];
+					}
+				}
+			}
+			Context->Unmap(Staging.Get(), 0u);
+			strOutError.clear();
+			return S_OK == Device->GetDeviceRemovedReason();
+		};
+
+		PIXEL_CAPTURE OrderedCapture;
+		Status.clear();
+		const bool_t bOrderedPixels = bTypedOrderedSubmission &&
+			RenderOverlays(Ordered, OrderedCapture, Status) &&
+			OrderedCapture.iNonzeroRgbPixels > 0u &&
+			OrderedCapture.iCenterGreen > OrderedCapture.iCenterRed &&
+			OrderedCapture.iCenterRed > 0u;
+		std::cout << "[SCREEN-OVERLAY] ordered pixels=" <<
+			OrderedCapture.iNonzeroRgbPixels << " center=" <<
+			static_cast<uint32_t>(OrderedCapture.iCenterRed) << ',' <<
+			static_cast<uint32_t>(OrderedCapture.iCenterGreen) << ',' <<
+			static_cast<uint32_t>(OrderedCapture.iCenterBlue) <<
+			" status=" << (bOrderedPixels ? "COMMITTED" : Status) << '\n';
+		runner.Require(bOrderedPixels,
+			"Screen Overlay Executes Ordered Pass 14 Draws With Nonzero WARP Pixels");
+
+		const auto BuildGrayJson = [](const std::string_view PresentationId,
+			const std::string_view ColorSpace)
+		{
+			std::ostringstream Json;
+			Json << "{\"schema\":\"lostark.effect-screen-overlay\",";
+			Json << "\"formatVersion\":1,\"provenance\":\"PROJECT_TUNED\",";
+			Json << "\"presentationId\":\"" <<
+				PresentationId << "\",\"overlays\":[{";
+			Json << "\"id\":\"gray\",\"sourceOrder\":1,";
+			Json << "\"textureAssetId\":\"Effect/Harness/gray.dds\",";
+			Json << "\"colorSpace\":\"" << ColorSpace <<
+				"\",\"coverageChannel\":\"a\",";
+			Json << "\"sampler\":{\"filter\":\"point\",\"address\":\"clamp\"},";
+			Json << "\"timing\":{\"startSeconds\":0,\"lifetimeSeconds\":1,";
+			Json << "\"alphaStart\":1,\"alphaEnd\":1},";
+			Json << "\"transform\":{\"position\":[0.5,0.5],\"scale\":[1,1],";
+			Json << "\"rotationDegrees\":0,\"angularVelocityDegreesPerSecond\":0,";
+			Json << "\"uvDriftPerSecond\":[0,0]},\"tint\":[1,1,1,1]}]}";
+			return Json.str();
+		};
+		const auto StageOne = [&](const std::string& Json,
+			vector<PRESENTATION_SCREEN_OVERLAY_DESC>& Out)
+		{
+			Manager.Clear_Frame();
+			const shared_ptr<CEffectScreenOverlayPresentation> Candidate =
+				CEffectScreenOverlayPresentation::Create(Device);
+			Status.clear();
+			if (!Candidate || !Candidate->Stage_AndCommit(Json, Status) ||
+				S_OK != Candidate->Start() || S_OK != Candidate->Queue_Frame() ||
+				S_OK != Manager.Submit_FrameProviders())
+			{
+				return false;
+			}
+			Out = Manager.Get_ScreenOverlays();
+			return Out.size() == 1u;
+		};
+		vector<PRESENTATION_SCREEN_OVERLAY_DESC> LinearGray;
+		vector<PRESENTATION_SCREEN_OVERLAY_DESC> SrgbGray;
+		PIXEL_CAPTURE LinearCapture;
+		PIXEL_CAPTURE SrgbCapture;
+		const bool_t bColorSpaces = StageOne(BuildGrayJson(
+				"effect.harness.overlay.linear", "linear"), LinearGray) &&
+			StageOne(BuildGrayJson(
+				"effect.harness.overlay.srgb", "srgb"), SrgbGray) &&
+			LinearGray[0u].eColorSpace ==
+				PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::LINEAR &&
+			SrgbGray[0u].eColorSpace ==
+				PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::SRGB &&
+			RenderOverlays(LinearGray, LinearCapture, Status) &&
+			RenderOverlays(SrgbGray, SrgbCapture, Status) &&
+			LinearCapture.iCenterRed > SrgbCapture.iCenterRed * 3u / 2u &&
+			SrgbCapture.iCenterRed > 0u;
+		std::cout << "[SCREEN-OVERLAY] linear/srgb center=" <<
+			static_cast<uint32_t>(LinearCapture.iCenterRed) << '/' <<
+			static_cast<uint32_t>(SrgbCapture.iCenterRed) << '\n';
+		runner.Require(bColorSpaces,
+			"Screen Overlay Linear And SRGB SRVs Produce Distinct WARP Radiance");
+
+		class INVALID_OVERLAY_PROVIDER final : public IPresentationProvider
+		{
+		public:
+			void Begin_PresentationSubmission() override
+			{
+				m_eScope = PRESENTATION_FAILURE_SCOPE::NONE;
+			}
+			HRESULT Submit_Presentation() override
+			{
+				CPresentation_Manager& PresentationManager =
+					CPresentation_Manager::Get();
+				PresentationManager.Register_ProviderScreenOverlayExpectation(1u, 1u);
+				PRESENTATION_SCREEN_OVERLAY_DESC Invalid;
+				const HRESULT Result =
+					PresentationManager.Add_ScreenOverlay(Invalid);
+				m_eScope = PresentationManager.Get_LastFailureScope();
+				return Result;
+			}
+			bool_t Is_PresentationFailureIsolated() const override
+			{
+				return true;
+			}
+			PRESENTATION_FAILURE_SCOPE Get_PresentationFailureScope() const override
+			{
+				return m_eScope;
+			}
+		private:
+			PRESENTATION_FAILURE_SCOPE m_eScope =
+				PRESENTATION_FAILURE_SCOPE::NONE;
+		};
+
+		Manager.Clear_Frame();
+		const shared_ptr<INVALID_OVERLAY_PROVIDER> InvalidProvider =
+			std::make_shared<INVALID_OVERLAY_PROVIDER>();
+		const bool_t bQueuedForRollback =
+			S_OK == Presentation->Queue_Frame() &&
+			S_OK == Manager.Add_FrameProvider(InvalidProvider);
+		const HRESULT hRollback = Manager.Submit_FrameProviders();
+		const PRESENTATION_SUBMISSION_STATS RollbackStats =
+			Manager.Get_LastSubmissionStats();
+		const bool_t bProviderRollback = bQueuedForRollback &&
+			S_FALSE == hRollback && RollbackStats.bCompleted &&
+			!RollbackStats.bCommitted &&
+			RollbackStats.iProviderFailures == 1u &&
+			Manager.Get_ScreenOverlays().empty() &&
+			Manager.Get_LastFailureScope() ==
+				PRESENTATION_FAILURE_SCOPE::LOCAL_PROVIDER_CONTRACT &&
+			S_OK == Presentation->Queue_Frame() &&
+			S_OK == Manager.Submit_FrameProviders() &&
+			Manager.Get_ScreenOverlays().size() == 2u;
+		runner.Require(bProviderRollback,
+			"Screen Overlay Invalid Provider Rolls Back The Whole Frame And Next Frame Recovers");
+
+		Manager.Clear_Frame();
+		Manager.Set_ScreenOverlaysEnabled(false);
+		const bool_t bSuppressedWithoutMutation =
+			S_OK == Presentation->Queue_Frame() &&
+			S_FALSE == Manager.Submit_FrameProviders() &&
+			Manager.Get_LastSubmissionStats().bCommitted &&
+			Manager.Get_LastSubmissionStats().ScreenOverlays.iSuppressed == 2u &&
+			Manager.Get_ScreenOverlays().empty();
+		Manager.Set_ScreenOverlaysEnabled(true);
+		runner.Require(bSuppressedWithoutMutation,
+			"Screen Overlay Disable Switch Suppresses Only Its Typed Presentation Channel");
+
+		Manager.Clear_Frame();
+		const bool_t bCancelClears = S_OK == Presentation->Queue_Frame();
+		Presentation->Cancel();
+		const bool_t bCancelledFrame = bCancelClears &&
+			S_OK == Manager.Submit_FrameProviders() &&
+			Manager.Get_ScreenOverlays().empty() &&
+			Manager.Get_LastScreenOverlayCount() == 0u;
+		const bool_t bLifetimeClears = S_OK == Presentation->Start() &&
+			S_FALSE == Presentation->Update(1.f) &&
+			!Presentation->Is_Playing() &&
+			S_FALSE == Presentation->Queue_Frame();
+		Manager.Clear_Frame();
+		const bool_t bStopClears = S_OK == Presentation->Start() &&
+			S_OK == Presentation->Queue_Frame();
+		Presentation->Stop();
+		const bool_t bStoppedFrame = bStopClears &&
+			S_OK == Manager.Submit_FrameProviders() &&
+			Manager.Get_ScreenOverlays().empty();
+		runner.Require(bCancelledFrame && bLifetimeClears && bStoppedFrame,
+			"Screen Overlay Cancel Stop And Lifetime Expiry Leave No Queued Draws");
+
+		const PRESENTATION_SCREEN_POST_PLAN_STEP OverlayAfterThreePosts =
+			Build_PresentationScreenOverlayPlanStep(3u, 0u);
+		const PRESENTATION_SCREEN_POST_PLAN_STEP SecondOverlayAfterThreePosts =
+			Build_PresentationScreenOverlayPlanStep(3u, 1u);
+		const bool_t bPostContractUnchanged =
+			static_cast<uint32_t>(DEFERRED::PRESENTATION_RGB_NOISE) == 9u &&
+			static_cast<uint32_t>(DEFERRED::PRESENTATION_ZOOM_BLUR) == 10u &&
+			static_cast<uint32_t>(DEFERRED::PRESENTATION_FILM_NOISE) == 11u &&
+			OverlayAfterThreePosts.iSourceTarget == 1u &&
+			OverlayAfterThreePosts.iDestinationTarget == 0u &&
+			SecondOverlayAfterThreePosts.iSourceTarget == 0u &&
+			SecondOverlayAfterThreePosts.iDestinationTarget == 1u &&
+			PresentationScreenCompositionFinalTarget(3u, 2u) == 1u;
+		runner.Require(bPostContractUnchanged,
+			"Screen Overlay Appends After Unchanged RGBNoise ZoomBlur And FilmNoise Passes");
+
+		Manager.Clear_Frame();
+		Manager.Set_ScreenOverlaysEnabled(true);
+	}
+
 	void Test_EffectStandardColorV1(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -37542,6 +38135,14 @@ int main(const int argc, char* argv[])
 		SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
 	TEST_RUNNER runner{};
 	const std::string Mode = argc > 1 && nullptr != argv[1] ? argv[1] : "";
+	if (Mode == "--effect-screen-overlay-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_EffectScreenOverlayPresentation(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--effect-standard-color-v1-fast")
 	{
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
