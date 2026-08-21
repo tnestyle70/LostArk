@@ -1,0 +1,296 @@
+{
+  "schema": "lostark.effect-document-drawable-sweep",
+  "formatVersion": 1,
+  "resourceRoot": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources",
+  "sampleRateHz": 60,
+  "documents": [
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.dash-charge.windup.project-authored-overlay.effect.json",
+      "effectAssetId": "effect.valtan.dash-charge.windup",
+      "durationSeconds": 0.600000024,
+      "sampleCount": 38,
+      "visibleElementCount": 2,
+      "preparedElementCount": 2,
+      "drawnElementCount": 2,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "project-dash-forward-line",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 38,
+          "attemptedSamples": 36,
+          "submittedDraws": 36,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 36
+        },
+        {
+          "elementId": "project-dash-forward-pulse",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 38,
+          "attemptedSamples": 30,
+          "submittedDraws": 30,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 30
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.windup.project-authored-overlay.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.windup",
+      "durationSeconds": 1.39999998,
+      "sampleCount": 86,
+      "visibleElementCount": 2,
+      "preparedElementCount": 2,
+      "drawnElementCount": 2,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "project-donut-outer-boundary",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 86,
+          "attemptedSamples": 84,
+          "submittedDraws": 84,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 84
+        },
+        {
+          "elementId": "project-donut-inner-growing-boundary",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 86,
+          "attemptedSamples": 84,
+          "submittedDraws": 84,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 84
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.inner.project-authored-overlay.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.inner",
+      "durationSeconds": 0.699999988,
+      "sampleCount": 44,
+      "visibleElementCount": 1,
+      "preparedElementCount": 1,
+      "drawnElementCount": 1,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "project-donut-inner-impact",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 44,
+          "attemptedSamples": 42,
+          "submittedDraws": 42,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 42
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.outer.project-authored-overlay.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.outer",
+      "durationSeconds": 0.800000012,
+      "sampleCount": 50,
+      "visibleElementCount": 1,
+      "preparedElementCount": 1,
+      "drawnElementCount": 1,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "project-donut-outer-impact",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 50,
+          "attemptedSamples": 48,
+          "submittedDraws": 48,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 48
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.floor-wipe-130.windup.project-authored-overlay.effect.json",
+      "effectAssetId": "effect.valtan.floor-wipe-130.windup",
+      "durationSeconds": 1.79999995,
+      "sampleCount": 110,
+      "visibleElementCount": 1,
+      "preparedElementCount": 1,
+      "drawnElementCount": 1,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "project-floor-six-direction-center-guide",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 110,
+          "attemptedSamples": 108,
+          "submittedDraws": 108,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 108
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.floor-wipe-130.first-smash.project-authored-overlay.effect.json",
+      "effectAssetId": "effect.valtan.floor-wipe-130.first-smash",
+      "durationSeconds": 0.800000012,
+      "sampleCount": 50,
+      "visibleElementCount": 1,
+      "preparedElementCount": 1,
+      "drawnElementCount": 1,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "project-floor-six-direction-center-impact",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 50,
+          "attemptedSamples": 45,
+          "submittedDraws": 45,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 45
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.airborne.project-authored-overlay.effect.json",
+      "effectAssetId": "effect.valtan.high-jump.airborne",
+      "durationSeconds": 1.72000003,
+      "sampleCount": 106,
+      "visibleElementCount": 3,
+      "preparedElementCount": 3,
+      "drawnElementCount": 3,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "project-axe-beat-01-target-decal",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 106,
+          "attemptedSamples": 38,
+          "submittedDraws": 38,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 38
+        },
+        {
+          "elementId": "project-axe-beat-02-target-decal",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 106,
+          "attemptedSamples": 38,
+          "submittedDraws": 38,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 38
+        },
+        {
+          "elementId": "project-axe-beat-03-target-decal",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 106,
+          "attemptedSamples": 38,
+          "submittedDraws": 38,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 38
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.land.project-authored-overlay.effect.json",
+      "effectAssetId": "effect.valtan.high-jump.land",
+      "durationSeconds": 1,
+      "sampleCount": 62,
+      "visibleElementCount": 1,
+      "preparedElementCount": 1,
+      "drawnElementCount": 1,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "project-high-jump-landing-wave",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 62,
+          "attemptedSamples": 60,
+          "submittedDraws": 60,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 60
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.front-back-front.active.project-authored-overlay.effect.json",
+      "effectAssetId": "effect.valtan.front-back-front.active",
+      "durationSeconds": 3.32399988,
+      "sampleCount": 202,
+      "visibleElementCount": 6,
+      "preparedElementCount": 6,
+      "drawnElementCount": 6,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "project-three-hit-slash-01",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 202,
+          "attemptedSamples": 27,
+          "submittedDraws": 26,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 26
+        },
+        {
+          "elementId": "project-three-hit-slash-02",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 202,
+          "attemptedSamples": 27,
+          "submittedDraws": 27,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 27
+        },
+        {
+          "elementId": "project-three-hit-slash-03",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 202,
+          "attemptedSamples": 27,
+          "submittedDraws": 26,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 26
+        },
+        {
+          "elementId": "project-three-hit-down-smash-decal",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 202,
+          "attemptedSamples": 60,
+          "submittedDraws": 60,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 60
+        },
+        {
+          "elementId": "project-three-hit-down-smash-wave",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 202,
+          "attemptedSamples": 54,
+          "submittedDraws": 54,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 54
+        },
+        {
+          "elementId": "project-three-hit-down-smash-shockwave",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 202,
+          "attemptedSamples": 43,
+          "submittedDraws": 43,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 43
+        }
+      ]
+    }
+  ]
+}

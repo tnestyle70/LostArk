@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-project-authored-priority-projection-receipt.schema.json",
+  "title": "Valtan project-authored priority canonical projection receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "ownerArchetypeId",
+    "transactionStatus",
+    "inputs",
+    "policy",
+    "closure",
+    "targets",
+    "canonicalOutputs",
+    "highJumpAirbornePatch",
+    "whirlwindCanary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-project-authored-priority-projection-receipt"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "ownerArchetypeId": {
+      "const": "BOSS_VALTAN"
+    },
+    "transactionStatus": {
+      "const": "COMMITTED"
+    },
+    "inputs": {
+      "$ref": "#/$defs/inputs"
+    },
+    "policy": {
+      "$ref": "#/$defs/policy"
+    },
+    "closure": {
+      "$ref": "#/$defs/closure"
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "$ref": "#/$defs/target"
+      }
+    },
+    "canonicalOutputs": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "items": {
+        "$ref": "#/$defs/output"
+      }
+    },
+    "highJumpAirbornePatch": {
+      "$ref": "#/$defs/highJump"
+    },
+    "whirlwindCanary": {
+      "$ref": "#/$defs/whirlwind"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[a-z0-9]+(?:[._:-][a-z0-9]+)*$"
+    },
+    "repoPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)[.][.](?:/|$))[^\\\\]+$"
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patchPlanPath",
+        "patchPlanSha256",
+        "drawableSweepPath",
+        "drawableSweepSha256",
+        "drawableResourceRoot",
+        "drawableProofPath",
+        "drawableProofSha256"
+      ],
+      "properties": {
+        "patchPlanPath": {
+          "$ref": "#/$defs/repoPath"
+        },
+        "patchPlanSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "drawableSweepPath": {
+          "$ref": "#/$defs/repoPath"
+        },
+        "drawableSweepSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "drawableResourceRoot": {
+          "type": "string",
+          "minLength": 3,
+          "pattern": "^(?:[A-Za-z]:/|/)"
+        },
+        "drawableProofPath": {
+          "$ref": "#/$defs/repoPath"
+        },
+        "drawableProofSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reconcileMode",
+        "existingElementMutation",
+        "identityDrift",
+        "legacyGenericElementDeletion",
+        "failureAction"
+      ],
+      "properties": {
+        "reconcileMode": {
+          "const": "APPEND_MISSING_PRESERVE_EXISTING"
+        },
+        "existingElementMutation": {
+          "const": "FORBIDDEN"
+        },
+        "identityDrift": {
+          "const": "SOURCE_REBASE_REQUIRED"
+        },
+        "legacyGenericElementDeletion": {
+          "const": "FORBIDDEN"
+        },
+        "failureAction": {
+          "const": "ROLLBACK_ALL_OUTPUTS"
+        }
+      }
+    },
+    "closure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateDocumentCount",
+        "projectedElementCount",
+        "highJumpCatalogRowCount",
+        "highJumpCueRowCount",
+        "unresolvedProjectileCount"
+      ],
+      "properties": {
+        "candidateDocumentCount": {
+          "const": 9
+        },
+        "projectedElementCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "highJumpCatalogRowCount": {
+          "const": 1
+        },
+        "highJumpCueRowCount": {
+          "const": 1
+        },
+        "unresolvedProjectileCount": {
+          "const": 3
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "overlayDocumentPath",
+        "overlayDocumentSha256",
+        "targetAuthoringPath",
+        "projectedElementIds",
+        "finalDocumentSha256"
+      ],
+      "properties": {
+        "effectAssetId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "overlayDocumentPath": {
+          "$ref": "#/$defs/repoPath"
+        },
+        "overlayDocumentSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "targetAuthoringPath": {
+          "$ref": "#/$defs/repoPath"
+        },
+        "projectedElementIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "finalDocumentSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role", "sha256"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/repoPath"
+        },
+        "role": {
+          "enum": [
+            "AUTHORED_EFFECT_DOCUMENT",
+            "EFFECT_CATALOG",
+            "VALTAN_CUE_DOCUMENT"
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "highJump": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documentSha256",
+        "catalogRowSha256",
+        "cueRowSha256",
+        "unresolvedProjectileIds"
+      ],
+      "properties": {
+        "documentSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "catalogRowSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "cueRowSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "unresolvedProjectileIds": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^project-authored:valtan\\.high-jump\\.airborne\\.beat-[0-9]{2}\\.axe$"
+          }
+        }
+      }
+    },
+    "fileCanary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/repoPath"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "whirlwind": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "catalogRowSha256", "cueRowsSha256"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/fileCanary"
+          }
+        },
+        "catalogRowSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "cueRowsSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}

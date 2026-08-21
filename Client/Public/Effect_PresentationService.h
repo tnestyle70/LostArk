@@ -163,6 +163,12 @@ public:
 	static EFFECT_PRODUCT_PREWARM_TARGET_PROBE
 		Get_ProductCuePreparationProbe(
 			const std::vector<std::string>& EffectAssetIds);
+	/* Natural late-join scheduling consults only metadata committed with the
+	   prepared Product target.  It never loads or stages an Effect from a boss
+	   snapshot callback. */
+	static bool_t Try_Get_PreparedProductDurationSeconds(
+		const std::string& strEffectAssetId,
+		f32_t& fOutDurationSeconds);
 	/* Called once from the main thread.  It consumes at most one queued
 	   document and performs no work on the registration frame. */
 	static void Advance_ProductCuePreparation(
@@ -171,7 +177,7 @@ public:
 	/* Commits one already-staged catalog candidate into the Product GPU cache.
 	   The catalog revision and every unrelated prepared target remain unchanged.
 	   Active occurrences retain their old shared resources; the candidate and
-	   its budget are used by subsequent spawns only. */
+	   its budget/duration receipts are used by subsequent spawns only. */
 	static bool_t Replace_ProductPreparedTarget(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext,
@@ -183,7 +189,7 @@ public:
 		std::string& strOutStatus);
 	/* Save-time Debug transaction for exactly one direct-authored Effect.  The
 	   catalog stages and commits the new immutable document at the same runtime
-	   revision, then the renderer/queue/budget selected-target caches are
+	   revision, then the renderer/queue/budget/duration selected-target caches are
 	   replaced.  Any preparation failure restores the old catalog pointers and
 	   leaves the old prepared target available. */
 	static bool_t Reload_SelectedProductEffect(

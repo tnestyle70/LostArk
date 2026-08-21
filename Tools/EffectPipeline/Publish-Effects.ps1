@@ -742,10 +742,133 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
     if ((Get-RequiredProperty $valtanCueDocument 'schema' String) -cne
             'lostark.valtan-pattern-effect-cues' -or
         [uint32](Get-RequiredProperty $valtanCueDocument 'formatVersion' `
-            Number) -ne 1 -or
+            Number) -ne 2 -or
         (Get-RequiredProperty $valtanCueDocument 'ownerArchetypeId' String) -cne
             'BOSS_VALTAN') {
         throw 'Valtan pattern Effect cue document header is invalid.'
+    }
+
+    $valtanPatternBindingPath = [IO.Path]::GetFullPath((Join-Path $RootPath `
+        'Animation\Authored\Valtan\Valtan.patternbindings.json'))
+    $valtanPatternBindingDocument = Read-JsonDocument $valtanPatternBindingPath
+    Assert-ExactPropertyOrder $valtanPatternBindingDocument @(
+        'schema','formatVersion','bossArchetypeId','bindings') `
+        'Valtan pattern binding document'
+    if ((Get-RequiredProperty $valtanPatternBindingDocument 'schema' String) -cne
+            'lostark.valtan-pattern-bindings' -or
+        [uint32](Get-RequiredProperty $valtanPatternBindingDocument `
+            'formatVersion' Number) -ne 2 -or
+        (Get-RequiredProperty $valtanPatternBindingDocument `
+            'bossArchetypeId' String) -cne 'BOSS_VALTAN') {
+        throw 'Valtan pattern binding document header is invalid.'
+    }
+    $valtanBindingActionIds = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal)
+    $valtanClipOccurrences = `
+        [Collections.Generic.Dictionary[string,object]]::new(
+            [StringComparer]::Ordinal)
+    $valtanClipDurationPath = [IO.Path]::GetFullPath((Join-Path $RootPath `
+        'Animation\Reference\Valtan\Valtan.animnotify'))
+    if (-not [IO.File]::Exists($valtanClipDurationPath)) {
+        throw "Valtan animation duration reference is missing: $valtanClipDurationPath"
+    }
+    $valtanClipDurationsMs = `
+        [Collections.Generic.Dictionary[string,double]]::new(
+            [StringComparer]::Ordinal)
+    foreach ($line in [IO.File]::ReadAllLines($valtanClipDurationPath)) {
+        $match = [regex]::Match($line,
+            '^"(?<clip>[A-Za-z0-9_.-]+)"\s+skill=[0-9]+\s+len=(?<seconds>[0-9]+(?:\.[0-9]+)?)\s+')
+        if (-not $match.Success) {
+            continue
+        }
+        [double]$durationSeconds = 0.0
+        if (-not [double]::TryParse(
+                $match.Groups['seconds'].Value,
+                [Globalization.NumberStyles]::Float,
+                [Globalization.CultureInfo]::InvariantCulture,
+                [ref]$durationSeconds) -or
+            [double]::IsNaN($durationSeconds) -or
+            [double]::IsInfinity($durationSeconds) -or
+            $durationSeconds -le 0.0) {
+            throw "Valtan animation duration is invalid: $line"
+        }
+        $clipName = $match.Groups['clip'].Value
+        if ($valtanClipDurationsMs.ContainsKey($clipName)) {
+            throw "Valtan animation duration duplicates clip: $clipName"
+        }
+        $valtanClipDurationsMs.Add($clipName, $durationSeconds * 1000.0)
+    }
+    $valtanMappingBases = @(
+        'CURRENT_PRODUCT_BASELINE',
+        'PATTERN_PR_REFERENCE',
+        'ANIMATION_PR_127',
+        'SOURCE_REVIEWED_DELTA',
+        'PROJECT_AUTHORED',
+        'LEGACY_V1_MIGRATION')
+    foreach ($binding in @($valtanPatternBindingDocument.bindings)) {
+        Assert-ExactPropertyOrder $binding @('actionId','clips') `
+            'Valtan pattern binding'
+        $bindingActionId = Get-RequiredProperty $binding 'actionId' String
+        Assert-StableId $bindingActionId 'Valtan pattern binding actionId'
+        if (-not $valtanBindingActionIds.Add($bindingActionId)) {
+            throw "Duplicate Valtan pattern binding actionId: $bindingActionId"
+        }
+        $clips = @(Get-RequiredProperty $binding 'clips' Array)
+        if ($clips.Count -eq 0) {
+            throw "Valtan pattern binding has no clips: $bindingActionId"
+        }
+        [double]$priorWallMs = 0.0
+        for ($clipIndex = 0; $clipIndex -lt $clips.Count; ++$clipIndex) {
+            $clip = $clips[$clipIndex]
+            Assert-ExactPropertyOrder $clip @(
+                'clipOccurrenceId','clip','mappingBasis','sourceStartMs',
+                'playMs','playRate','loop') 'Valtan pattern clip occurrence'
+            $clipOccurrenceId = Get-RequiredProperty `
+                $clip 'clipOccurrenceId' String
+            $clipName = Get-RequiredProperty $clip 'clip' String
+            $mappingBasis = Get-RequiredProperty $clip 'mappingBasis' String
+            Assert-StableId $clipOccurrenceId `
+                'Valtan pattern clipOccurrenceId'
+            Assert-StableId $clipName 'Valtan pattern clip'
+            Assert-StableId $mappingBasis 'Valtan pattern mappingBasis'
+            $clipSourceStartMs = Get-IntegerValue `
+                $clip 'sourceStartMs' 'Valtan pattern clip occurrence'
+            $clipPlayMs = Get-IntegerValue `
+                $clip 'playMs' 'Valtan pattern clip occurrence'
+            $clipPlayRate = Get-NumberValue `
+                $clip 'playRate' 'Valtan pattern clip occurrence'
+            $clipLoop = Get-RequiredProperty $clip 'loop' Boolean
+            [double]$modelDurationMs = 0.0
+            if (-not $valtanClipDurationsMs.TryGetValue(
+                    $clipName, [ref]$modelDurationMs) -or
+                $mappingBasis -cnotin $valtanMappingBases -or
+                $clipSourceStartMs -lt 0 -or $clipSourceStartMs -gt 60000 -or
+                $clipPlayMs -lt 0 -or $clipPlayMs -gt 60000 -or
+                $clipPlayRate -lt 0.05 -or $clipPlayRate -gt 16.0 -or
+                $clipSourceStartMs -ge $modelDurationMs -or
+                ([bool]$clipLoop -and $clipIndex + 1 -ne $clips.Count) -or
+                $valtanClipOccurrences.ContainsKey($clipOccurrenceId)) {
+                throw "Valtan pattern clip occurrence is invalid or duplicated: $clipOccurrenceId"
+            }
+            [double]$sourceDurationMs = $modelDurationMs - $clipSourceStartMs
+            if ($clipPlayMs -gt 0) {
+                $sourceDurationMs = [Math]::Min(
+                    $sourceDurationMs, [double]$clipPlayMs)
+            }
+            if ($sourceDurationMs -le 0.0) {
+                throw "Valtan pattern clip source segment is empty: $clipOccurrenceId"
+            }
+            $valtanClipOccurrences.Add($clipOccurrenceId, [pscustomobject]@{
+                ActionId = $bindingActionId
+                SourceStartMs = $clipSourceStartMs
+                SourceEndMs = $clipSourceStartMs + $sourceDurationMs
+                PlayMs = $clipPlayMs
+                PlayRate = $clipPlayRate
+                PriorWallMs = $priorWallMs
+                Loop = [bool]$clipLoop
+            })
+            $priorWallMs += $sourceDurationMs / $clipPlayRate
+        }
     }
 
     $encounterPath = [IO.Path]::GetFullPath((Join-Path $RootPath `
@@ -769,49 +892,93 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
 
     $valtanBindingIds = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
-    $valtanActionIds = [Collections.Generic.HashSet[string]]::new(
+    $valtanOccurrenceIds = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
     $valtanEffectIds = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
     foreach ($cue in @($valtanCueDocument.cues)) {
         Assert-ExactPropertyOrder $cue @(
-            'bindingId','patternId','stageId','actionId','effectAssetId',
-            'anchorSlotId','followPolicy','stopPolicy','startMs','endMs',
+            'bindingId','occurrenceId','patternId','stageId','actionId',
+            'clipOccurrenceId','effectAssetId','anchorSlotId','followPolicy',
+            'stopPolicy','repeatPolicy','sourceStartMs','sourceEndMs',
             'localTransform') 'Valtan pattern Effect cue'
         Assert-ExactPropertyOrder $cue.localTransform @(
             'position','rotationDegrees','scale') `
             'Valtan pattern Effect cue localTransform'
         $bindingId = Get-RequiredProperty $cue 'bindingId' String
+        $occurrenceId = Get-RequiredProperty $cue 'occurrenceId' String
         $patternId = Get-RequiredProperty $cue 'patternId' String
         $stageId = Get-RequiredProperty $cue 'stageId' String
         $actionId = Get-RequiredProperty $cue 'actionId' String
+        $clipOccurrenceId = Get-RequiredProperty `
+            $cue 'clipOccurrenceId' String
         $effectAssetId = Get-RequiredProperty $cue 'effectAssetId' String
         Assert-StableId $bindingId 'Valtan pattern Effect bindingId'
+        Assert-StableId $occurrenceId 'Valtan pattern Effect occurrenceId'
         Assert-StableId $actionId 'Valtan pattern Effect actionId'
+        Assert-StableId $clipOccurrenceId `
+            'Valtan pattern Effect clipOccurrenceId'
         Assert-StableId $effectAssetId 'Valtan pattern EffectAssetId'
         if (-not $bindingId.StartsWith('cue.valtan.',
                 [StringComparison]::Ordinal) -or
             -not $effectAssetId.StartsWith('effect.valtan.',
                 [StringComparison]::Ordinal) -or
             -not $valtanBindingIds.Add($bindingId) -or
-            -not $valtanActionIds.Add($actionId) -or
-            -not $valtanEffectIds.Add($effectAssetId)) {
+            -not $valtanOccurrenceIds.Add($occurrenceId)) {
             throw "Valtan pattern Effect cue identity is invalid or duplicated: $bindingId"
         }
+        [void]$valtanEffectIds.Add($effectAssetId)
         $stage = $null
         if (-not $stageByActionId.TryGetValue($actionId, [ref]$stage) -or
             $stage.PatternId -cne $patternId -or
             $stage.StageId -cne $stageId) {
             throw "Valtan pattern Effect cue does not join the encounter: $bindingId"
         }
-        [uint32]$startMs = 0
-        [uint32]$endMs = 0
-        if (-not [uint32]::TryParse([string]$cue.startMs, [ref]$startMs) -or
-            -not [uint32]::TryParse([string]$cue.endMs, [ref]$endMs) -or
-            $startMs -gt $endMs -or $endMs -gt $stage.DurationMs -or
+        $clipOccurrence = $null
+        if (-not $valtanClipOccurrences.TryGetValue(
+                $clipOccurrenceId, [ref]$clipOccurrence) -or
+            $clipOccurrence.ActionId -cne $actionId) {
+            throw "Valtan pattern Effect cue does not join its clip occurrence: $bindingId"
+        }
+        $sourceStartMs = Get-IntegerValue `
+            $cue 'sourceStartMs' 'Valtan pattern Effect cue'
+        $sourceEndProperty = $cue.PSObject.Properties['sourceEndMs']
+        if ($null -eq $sourceEndProperty) {
+            throw "Valtan pattern Effect cue has no sourceEndMs: $bindingId"
+        }
+        $sourceEndMs = $null
+        if ($null -ne $sourceEndProperty.Value) {
+            $sourceEndMs = Get-IntegerValue `
+                $cue 'sourceEndMs' 'Valtan pattern Effect cue'
+        }
+        $repeatPolicy = Get-RequiredProperty $cue 'repeatPolicy' String
+        $stopPolicy = Get-RequiredProperty $cue 'stopPolicy' String
+        [double]$cueStartWallMs = $clipOccurrence.PriorWallMs +
+            (($sourceStartMs - $clipOccurrence.SourceStartMs) /
+                $clipOccurrence.PlayRate)
+        [double]$cueEndWallMs = $cueStartWallMs
+        if ($null -ne $sourceEndMs) {
+            $cueEndWallMs = $clipOccurrence.PriorWallMs +
+                (($sourceEndMs - $clipOccurrence.SourceStartMs) /
+                    $clipOccurrence.PlayRate)
+        }
+        if ($sourceStartMs -lt $clipOccurrence.SourceStartMs -or
+            $sourceStartMs -ge $clipOccurrence.SourceEndMs -or
+            ($null -ne $sourceEndMs -and
+                ($sourceEndMs -le $sourceStartMs -or
+                    $sourceEndMs -gt $clipOccurrence.SourceEndMs)) -or
+            [double]::IsNaN($cueStartWallMs) -or
+            [double]::IsInfinity($cueStartWallMs) -or
+            $cueStartWallMs -lt 0.0 -or
+            $cueStartWallMs -ge $stage.DurationMs -or
+            (-not $clipOccurrence.Loop -and
+                $cueEndWallMs -gt $stage.DurationMs) -or
+            ($null -eq $sourceEndMs -and $stopPolicy -cne 'natural') -or
+            ($null -ne $sourceEndMs -and $stopPolicy -cne 'cue_end') -or
             [string]$cue.anchorSlotId -cne 'root' -or
             [string]$cue.followPolicy -cnotin @('follow','snapshot') -or
-            [string]$cue.stopPolicy -cne 'cue_end') {
+            $repeatPolicy -cnotin @('once','each_loop') -or
+            ($repeatPolicy -ceq 'each_loop' -and -not $clipOccurrence.Loop)) {
             throw "Valtan pattern Effect cue timing/policy is invalid: $bindingId"
         }
         foreach ($field in @('position','rotationDegrees','scale')) {

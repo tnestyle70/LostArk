@@ -1,12 +1,16 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "AnimationSkillBindingDocument.h"
 #include "ContainerObject.h"
 #include "DeferredMaterialRenderUtils.h"
 #include "NavPathFollower.h"
 #include "Network/PacketMessages.h"
 #include "ValtanPatternEffectCueDocument.h"
 
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
@@ -20,6 +24,160 @@ class CCollider;
 NS_END
 
 NS_BEGIN(Client)
+
+inline constexpr size_t VALTAN_MAX_PATTERN_EFFECT_OCCURRENCES_PER_SCAN = 256u;
+
+struct VALTAN_PATTERN_EFFECT_OCCURRENCE_SCAN_DESC final
+{
+	f32_t fPreviousActionAgeSeconds = 0.f;
+	f32_t fCurrentActionAgeSeconds = 0.f;
+	f32_t fFirstOccurrenceWallSeconds = 0.f;
+	f32_t fLoopWallDurationSeconds = 0.f;
+	f32_t fPlaybackRate = 1.f;
+	f32_t fLiveSourceDurationSeconds = 0.f;
+	bool_t bHasPreviousActionAge = false;
+	bool_t bEachLoop = false;
+};
+
+struct VALTAN_PATTERN_EFFECT_OCCURRENCE_SAMPLE final
+{
+	uint64_t iLoopEpoch = 0u;
+	f32_t fOccurrenceWallSeconds = 0.f;
+	f32_t fInitialSampleSeconds = 0.f;
+};
+
+/* Resolves only occurrences crossed by the accepted snapshot interval.  A
+   first snapshot has no previous edge, so it catches up every occurrence that
+   is still naturally live.  Large loop jumps retain the latest 256 live
+   epochs deterministically instead of walking unbounded history. */
+inline bool_t Resolve_ValtanPatternEffectOccurrenceScan(
+	const VALTAN_PATTERN_EFFECT_OCCURRENCE_SCAN_DESC& Desc,
+	std::vector<VALTAN_PATTERN_EFFECT_OCCURRENCE_SAMPLE>& OutSamples)
+{
+	OutSamples.clear();
+	constexpr double EpsilonSeconds = 0.00001;
+	const auto IsFiniteNonNegative = [](const f32_t fValue)
+	{
+		return std::isfinite(fValue) && fValue >= 0.f;
+	};
+	if (!IsFiniteNonNegative(Desc.fCurrentActionAgeSeconds) ||
+		!IsFiniteNonNegative(Desc.fFirstOccurrenceWallSeconds) ||
+		!std::isfinite(Desc.fPlaybackRate) || Desc.fPlaybackRate <= 0.f ||
+		!IsFiniteNonNegative(Desc.fLiveSourceDurationSeconds) ||
+		(Desc.bHasPreviousActionAge &&
+			(!IsFiniteNonNegative(Desc.fPreviousActionAgeSeconds) ||
+			 static_cast<double>(Desc.fPreviousActionAgeSeconds) >
+				static_cast<double>(Desc.fCurrentActionAgeSeconds) +
+				EpsilonSeconds)) ||
+		(Desc.bEachLoop &&
+			(!std::isfinite(Desc.fLoopWallDurationSeconds) ||
+			 Desc.fLoopWallDurationSeconds <= 0.f)))
+	{
+		return false;
+	}
+	if (Desc.fLiveSourceDurationSeconds <= 0.f)
+		return true;
+
+	const double Current = static_cast<double>(
+		Desc.fCurrentActionAgeSeconds);
+	const double First = static_cast<double>(
+		Desc.fFirstOccurrenceWallSeconds);
+	const double PlaybackRate = static_cast<double>(Desc.fPlaybackRate);
+	const double LiveSourceDuration = static_cast<double>(
+		Desc.fLiveSourceDurationSeconds);
+	if (Current + EpsilonSeconds < First)
+		return true;
+
+	const auto AppendIfLive = [&](const uint64_t iEpoch,
+		const double fOccurrenceWallSeconds)
+	{
+		const f32_t fInitialSampleSeconds = static_cast<f32_t>((std::max)(
+			0.0, (Current - fOccurrenceWallSeconds) * PlaybackRate));
+		if (!std::isfinite(fInitialSampleSeconds) ||
+			fInitialSampleSeconds >= Desc.fLiveSourceDurationSeconds)
+		{
+			return;
+		}
+		OutSamples.push_back({ iEpoch,
+			static_cast<f32_t>(fOccurrenceWallSeconds),
+			fInitialSampleSeconds });
+	};
+
+	if (!Desc.bEachLoop)
+	{
+		if (Desc.bHasPreviousActionAge &&
+			static_cast<double>(Desc.fPreviousActionAgeSeconds) +
+				EpsilonSeconds >= First)
+		{
+			return true;
+		}
+		AppendIfLive(0u, First);
+		return true;
+	}
+
+	const double Loop = static_cast<double>(Desc.fLoopWallDurationSeconds);
+	const double UpperQuotient = std::floor(
+		(Current + EpsilonSeconds - First) / Loop);
+	if (!std::isfinite(UpperQuotient) || UpperQuotient < 0.0 ||
+		UpperQuotient >= static_cast<double>(
+			(std::numeric_limits<uint64_t>::max)()))
+	{
+		return false;
+	}
+	const uint64_t iUpperEpoch = static_cast<uint64_t>(UpperQuotient);
+	uint64_t iLowerEpoch = 0u;
+	if (Desc.bHasPreviousActionAge)
+	{
+		const double Previous = (std::min)(Current,
+			static_cast<double>(Desc.fPreviousActionAgeSeconds));
+		if (Previous + EpsilonSeconds >= First)
+		{
+			const double PreviousQuotient = std::floor(
+				(Previous + EpsilonSeconds - First) / Loop);
+			if (!std::isfinite(PreviousQuotient) || PreviousQuotient < 0.0 ||
+				PreviousQuotient >= static_cast<double>(
+					(std::numeric_limits<uint64_t>::max)()))
+			{
+				return true;
+			}
+			iLowerEpoch = static_cast<uint64_t>(PreviousQuotient) + 1u;
+		}
+	}
+
+	/* initialSample < liveDuration is equivalent to occurrence wall time being
+	   strictly newer than this threshold.  Deriving the first live epoch avoids
+	   an O(snapshot-age / loop-duration) scan. */
+	const double LiveThreshold = Current - LiveSourceDuration / PlaybackRate;
+	if (LiveThreshold >= First)
+	{
+		const double LiveQuotient = std::floor(
+			(LiveThreshold - First) / Loop);
+		if (!std::isfinite(LiveQuotient) || LiveQuotient < 0.0 ||
+			LiveQuotient >= static_cast<double>(
+				(std::numeric_limits<uint64_t>::max)()))
+		{
+			return true;
+		}
+		iLowerEpoch = (std::max)(iLowerEpoch,
+			static_cast<uint64_t>(LiveQuotient) + 1u);
+	}
+	if (iLowerEpoch > iUpperEpoch)
+		return true;
+
+	const uint64_t iLatestBoundedEpoch =
+		iUpperEpoch >= VALTAN_MAX_PATTERN_EFFECT_OCCURRENCES_PER_SCAN - 1u ?
+		iUpperEpoch -
+			(VALTAN_MAX_PATTERN_EFFECT_OCCURRENCES_PER_SCAN - 1u) : 0u;
+	iLowerEpoch = (std::max)(iLowerEpoch, iLatestBoundedEpoch);
+	OutSamples.reserve(static_cast<size_t>(iUpperEpoch - iLowerEpoch + 1u));
+	for (uint64_t iEpoch = iLowerEpoch;; ++iEpoch)
+	{
+		AppendIfLive(iEpoch, First + static_cast<double>(iEpoch) * Loop);
+		if (iEpoch == iUpperEpoch)
+			break;
+	}
+	return true;
+}
 
 class CValtan final : public CContainerObject
 {
@@ -142,7 +300,8 @@ private:
 	chain, from Data/Animation/Authored/Valtan/Valtan.patternbindings.json. A
 	missing or corrupt document leaves this empty and every pattern falls back
 	to the catalog's generic clips; it never blocks the spawn. */
-	std::unordered_map<std::string, std::vector<std::string>>
+	std::unordered_map<std::string,
+		std::vector<BOSS_PATTERN_ANIMATION_CLIP>>
 		m_PatternClipByActionId;
 	/* Product presentation only: exact authoritative stage actionId -> Effect
 	   cues.  This map is replaced only after the cue document, encounter join,
@@ -150,7 +309,9 @@ private:
 	   are an independent optional presentation registry. */
 	std::unordered_map<std::string,
 		std::vector<VALTAN_PATTERN_EFFECT_CUE>> m_PatternEffectCuesByActionId;
-	std::unordered_set<std::string> m_SpawnedPatternEffectBindingIds;
+	std::unordered_set<std::string> m_AttemptedPatternEffectOccurrenceKeys;
+	bool_t m_bPatternEffectCueScanAgeValid = false;
+	f32_t m_fPatternEffectCueScanAgeSeconds = 0.f;
 #ifdef _DEBUG
 	/* Display copy of the encounter stage hit shapes, keyed by the snapshot's
 	   stage actionId. The Server owns the judgment; this only mirrors it as a

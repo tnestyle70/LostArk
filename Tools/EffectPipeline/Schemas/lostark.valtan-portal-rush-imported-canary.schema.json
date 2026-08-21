@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-portal-rush-imported-canary.schema.json",
+  "title": "Valtan Portal Rush immutable imported candidate receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "patternId",
+    "mode",
+    "sourceSelectionManifest",
+    "sourceProjectionSha256",
+    "excluded",
+    "documents",
+    "summary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-portal-rush-imported-canary"
+    },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "patternId": { "const": "VALTAN_PORTAL_RUSH" },
+    "mode": {
+      "const": "IMMUTABLE_IMPORTED_CANDIDATES_AND_REPORT_ONLY_RECONCILE"
+    },
+    "sourceSelectionManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sourceProjectionSha256": { "$ref": "#/$defs/sha256" },
+    "excluded": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["clipOccurrenceId", "disposition"],
+        "properties": {
+          "clipOccurrenceId": { "type": "string", "minLength": 1 },
+          "disposition": { "const": "SOURCE_TIMING_REVIEW_REQUIRED" }
+        }
+      }
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "clipOccurrenceId",
+          "sourceStageIndex",
+          "gameplayActionId",
+          "effectAssetId",
+          "candidateDocumentPath",
+          "candidateDocumentSha256",
+          "sourceOccurrenceCount",
+          "sourceOccurrenceFullKeys",
+          "sourceElementKeys",
+          "executableElementCount",
+          "catalogDisposition",
+          "catalogRow",
+          "cueDisposition",
+          "cueRow",
+          "authoredDocumentPath",
+          "authoredDocumentSha256",
+          "reconcile"
+        ],
+        "properties": {
+          "clipOccurrenceId": { "type": "string", "minLength": 1 },
+          "sourceStageIndex": { "type": "integer", "minimum": 0 },
+          "gameplayActionId": { "type": "string", "minLength": 1 },
+          "effectAssetId": { "type": "string", "minLength": 1 },
+          "candidateDocumentPath": { "type": "string", "minLength": 1 },
+          "candidateDocumentSha256": { "$ref": "#/$defs/sha256" },
+          "sourceOccurrenceCount": { "type": "integer", "minimum": 1 },
+          "sourceOccurrenceFullKeys": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "sourceElementKeys": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "sourceNode", "fullSourceKey"],
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "sourceNode": { "type": "string", "minLength": 1 },
+                "fullSourceKey": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "executableElementCount": { "type": "integer", "minimum": 1 },
+          "catalogDisposition": { "const": "REUSE_EXISTING_NO_MUTATION" },
+          "catalogRow": { "type": "object" },
+          "cueDisposition": { "const": "REUSE_EXISTING_V2_NO_MUTATION" },
+          "cueRow": { "type": "object" },
+          "authoredDocumentPath": { "type": "string", "minLength": 1 },
+          "authoredDocumentSha256": { "$ref": "#/$defs/sha256" },
+          "reconcile": { "type": "object" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "candidateDocumentCount",
+        "clipOccurrenceCount",
+        "sourceOccurrenceCount",
+        "executableElementCount",
+        "preservedAuthoredElementCount",
+        "missingOnlyAddElementCount",
+        "deletedElementCount",
+        "sourceRebaseRequiredCount",
+        "excludedTimingReviewClipCount"
+      ],
+      "properties": {
+        "candidateDocumentCount": { "const": 3 },
+        "clipOccurrenceCount": { "const": 3 },
+        "sourceOccurrenceCount": { "type": "integer", "minimum": 1 },
+        "executableElementCount": { "type": "integer", "minimum": 1 },
+        "preservedAuthoredElementCount": { "type": "integer", "minimum": 0 },
+        "missingOnlyAddElementCount": { "type": "integer", "minimum": 1 },
+        "deletedElementCount": { "const": 0 },
+        "sourceRebaseRequiredCount": { "type": "integer", "minimum": 0 },
+        "excludedTimingReviewClipCount": { "const": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

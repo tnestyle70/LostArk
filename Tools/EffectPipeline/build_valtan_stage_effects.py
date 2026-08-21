@@ -1,4 +1,4 @@
-"""Seed Authored Effect documents for every Valtan pattern stage.
+"""Audit the retired clip-aggregate Valtan Effect projection.
 
 The join is the stage actionId. ValtanEncounter.json owns the stage list and
 its hit shape, Valtan.patternbindings.json maps the stage actionId to a model
@@ -13,10 +13,15 @@ dropped 269 of 457 candidates and this one drops none: textures beyond the
 template's slots are recorded on the Element as unboundResources so the
 document still names every asset the original referenced.
 
-Nothing here restores numbers that the source did not state. Family, mesh and
-texture slots come from the original graph; the stage's own durationMs sets
-the Element lifetime because the encounter document states it; everything
-else stays at a neutral, *visible* default for hand tuning.
+This module is retained because the part-break audit and historical tests use
+its parsing helpers.  It is no longer a canonical writer.  A clip name does
+not select a source action branch, notify occurrence, emitter occurrence or
+LOD/module occurrence, and writing its aggregate would overwrite hand tuning.
+
+The canonical source inventory is built by
+``build_valtan_source_occurrence_inventory.py``.  This command only reports
+what the retired projection *would* have aggregated; it never writes Authored
+documents, Product cues, the Effect catalog, or deletes files.
 """
 
 import argparse
@@ -131,6 +136,24 @@ def write_json_atomic(path, value):
 def normalize_clip(name):
     lowered = name.lower()
     return lowered[5:] if lowered.startswith("mesh_") else lowered
+
+
+def legacy_binding_clips(binding):
+    """Flatten v1/v2 binding shapes for the report-only legacy audit."""
+    raw = binding.get("clips")
+    if raw is None:
+        raw = binding.get("clip")
+    if isinstance(raw, (str, dict)):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+    result = []
+    for value in raw:
+        clip = value if isinstance(value, str) else value.get("clip", "") \
+            if isinstance(value, dict) else ""
+        if clip:
+            result.append(clip)
+    return result
 
 
 def index_resources():
@@ -558,20 +581,13 @@ def migrate_existing(write):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--write", action="store_true",
-                        help="write documents; otherwise report only")
-    parser.add_argument("--prune", action="store_true",
-                        help="delete stale effect.valtan.* documents that this "
-                             "run no longer produces")
-    parser.add_argument("--migrate-existing", action="store_true",
-                        help="patch renderProfile and mesh modelPreScale on "
-                             "the already-authored documents instead of "
-                             "reseeding them from source")
-    args = parser.parse_args()
-
-    if args.migrate_existing:
-        return migrate_existing(args.write)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--audit-legacy",
+        action="store_true",
+        help="explicitly select the report-only retired clip aggregate",
+    )
+    parser.parse_args()
 
     encounter = read_json(os.path.join(
         DATA, "Encounters", "Valtan", "ValtanEncounter.json"))
@@ -587,7 +603,9 @@ def main():
     element_template = skeleton["elements"][0]
 
     materials = {row["materialId"]: row for row in evidence["materials"]}
-    clip_by_action = {b["actionId"]: b["clip"] for b in bindings["bindings"]}
+    clips_by_action = {
+        b["actionId"]: legacy_binding_clips(b) for b in bindings["bindings"]
+    }
 
     systems_by_clip = collections.defaultdict(list)
     for system in catalog["sourceSystems"]:
@@ -604,13 +622,18 @@ def main():
         pattern_action = pattern["actionId"]
         for stage in pattern["stages"]:
             stages_total += 1
-            clip = clip_by_action.get(stage["actionId"])
-            if not clip:
+            clips = clips_by_action.get(stage["actionId"], [])
+            if not clips:
                 stages_without_clip += 1
                 continue
             elements = []
             seen = set()
-            for system in systems_by_clip.get(normalize_clip(clip), []):
+            stage_systems = []
+            for clip in clips:
+                stage_systems.extend(
+                    systems_by_clip.get(normalize_clip(clip), [])
+                )
+            for system in stage_systems:
                 for node, ordinal, textures, mesh, path in emitter_rows(
                         system, materials, resources):
                     if not textures and mesh is None:
@@ -661,7 +684,8 @@ def main():
                 "{} / {}".format(pattern["patternId"], stage["stageId"])
             document["elements"] = elements
             documents.append((asset_id, pattern["patternId"],
-                              stage["stageId"], stage["actionId"], clip,
+                              stage["stageId"], stage["actionId"],
+                              ",".join(clips),
                               stage.get("durationMs", 0), document))
 
     element_count = sum(len(d[6]["elements"]) for d in documents)
@@ -676,41 +700,10 @@ def main():
         f"{slot}={slot_use[slot]}" for slot in
         ["meshModel"] + TEXTURE_SLOTS if slot_use[slot]))
 
-    if not args.write:
-        for asset_id, pat, st, _action, clip, _duration, doc in documents[:10]:
-            print(f"  {asset_id:52} {pat:30} {st:16} "
-                  f"elements={len(doc['elements'])}")
-        print("\n(dry run; pass --write to emit)")
-        return 0
-
-    written = {asset_id for asset_id, _p, _s, _a, _c, _du, _d in documents}
-    for asset_id, _pat, _st, _action, _clip, _duration, document in documents:
-        path = os.path.join(OUT_DIR, asset_id + ".effect.json")
-        write_json_atomic(path, document)
-    print(f"\nwrote {len(documents)} documents to {OUT_DIR}")
-
-    cue_document = build_cue_document(documents)
-    write_json_atomic(CUE_DOCUMENT, cue_document)
-    print(f"wrote {len(cue_document['cues'])} Product cues to {CUE_DOCUMENT}")
-
-    source_effect_catalog = read_json(EFFECT_CATALOG)
-    staged_effect_catalog = sync_effect_catalog(
-        source_effect_catalog, documents)
-    write_json_atomic(EFFECT_CATALOG, staged_effect_catalog)
-    print(f"synchronized {len(documents)} Valtan rows in {EFFECT_CATALOG}")
-
-    if args.prune:
-        removed = 0
-        for name in sorted(os.listdir(OUT_DIR)):
-            if not name.startswith("effect.valtan.") or \
-                    not name.endswith(".effect.json"):
-                continue
-            asset_id = name[:-len(".effect.json")]
-            if asset_id in written or asset_id in PROTECTED_ASSET_IDS:
-                continue
-            os.remove(os.path.join(OUT_DIR, name))
-            removed += 1
-        print(f"pruned {removed} stale documents")
+    for asset_id, pat, st, _action, clip, _duration, doc in documents[:10]:
+        print(f"  {asset_id:52} {pat:30} {st:16} "
+              f"clips={clip} elements={len(doc['elements'])}")
+    print("\nlegacy audit only; canonical writer is disabled")
     return 0
 
 
