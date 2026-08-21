@@ -250,6 +250,7 @@ EFFECT_PS_OUT Shade_EffectUe3Glasshole02K01Particle(
    slices.  Artist D uses its own additive SpriteWave child contract. */
 static const uint
     RUNTIME_MATERIAL_V2_UE3_SPRITEWAVE_AD_NO_EMISSIVE = 18u;
+static const uint RUNTIME_MATERIAL_V2_UE3_DRAGON_PH_MASKED_MESH = 19u;
 
 EFFECT_PS_OUT Shade_EffectUe3SpriteWaveTrParticle(
     float2 localUV,
@@ -438,6 +439,163 @@ EFFECT_PS_OUT Shade_EffectUe3SpriteWaveAdditiveNoEmissiveParticle(
     }
 
     /* BS_EffectAdditive applies SrcAlpha to SceneColor.rgb exactly once. */
+    output.SceneColor = float4(radiance, coverage);
+    output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+    return output;
+}
+
+bool EffectUe3DragonPhMaskedPacketIsValid()
+{
+    return g_RuntimeMaterialV2Enabled == 1u &&
+        g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_DRAGON_PH_MASKED_MESH &&
+        g_RuntimeMaterialV2TextureLaneCount == 5u &&
+        g_RuntimeMaterialV2TextureMask == 0x1fu &&
+        g_SourceTextureMask == 0x1fu &&
+        g_RuntimeMaterialV2DynamicConsumedMask == 0x08u &&
+        g_RuntimeMaterialV2DynamicSuppressedMask == 0x07u &&
+        g_RuntimeMaterialV2ParticleColorPolicy == 2u &&
+        g_RuntimeMaterialV2ParticleColorConsumedMask == 0x0fu &&
+        g_RuntimeMaterialV2ParticleColorSuppressedMask == 0u &&
+        g_RuntimeMaterialV2ScalarCount == 25u &&
+        g_RuntimeMaterialV2VectorCount == 3u &&
+        g_RuntimeMaterialV2InputCount == 25u &&
+        all(g_RuntimeMaterialV2InputConsumedMask ==
+            uint2(0x01ffffffu, 0u)) &&
+        all(g_RuntimeMaterialV2InputSuppressedMask == uint2(0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentConsumedMask ==
+            uint3(0x07u, 0x07u, 0x07u)) &&
+        all(g_RuntimeMaterialV2VectorComponentSuppressedMask ==
+            uint3(0x08u, 0x08u, 0x08u)) &&
+        g_RuntimeMaterialV2StaticInputCount == 23u &&
+        g_RuntimeMaterialV2StaticSelectedMask == 0x0013b74fu &&
+        g_RuntimeMaterialV2StaticConsumedMask == 0x007fffffu &&
+        g_RuntimeMaterialV2StaticSuppressedMask == 0u &&
+        g_RuntimeMaterialV2RenderInputCount == 6u &&
+        g_RuntimeMaterialV2RenderConsumedMask == 0x2fu &&
+        g_RuntimeMaterialV2RenderSuppressedMask == 0x10u;
+}
+
+EFFECT_PS_OUT Shade_EffectUe3DragonPhMaskedMesh(
+    float2 localUV,
+    float3 worldPosition,
+    float3 geometryNormal,
+    float3 tangent,
+    float3 binormal,
+    float3 cameraPosition,
+    float4 particleColor,
+    float4 dynamicParameter)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    if (!EffectUe3DragonPhMaskedPacketIsValid())
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float4 b0 = g_RuntimeMaterialV2ScalarBlocks[0];
+    const float4 b1 = g_RuntimeMaterialV2ScalarBlocks[1];
+    const float4 b2 = g_RuntimeMaterialV2ScalarBlocks[2];
+    const float4 b3 = g_RuntimeMaterialV2ScalarBlocks[3];
+    const float4 b4 = g_RuntimeMaterialV2ScalarBlocks[4];
+    const float4 b5 = g_RuntimeMaterialV2ScalarBlocks[5];
+    const float4 b6 = g_RuntimeMaterialV2ScalarBlocks[6];
+    const float4 diffuseColor = g_RuntimeMaterialV2Vectors[0];
+    const float4 specularColor = g_RuntimeMaterialV2Vectors[1];
+    const float4 emissionColor = g_RuntimeMaterialV2Vectors[2];
+    if (!all(isfinite(float4(localUV, g_EffectLocalTime,
+            g_RuntimeMaterialV2NormalizedLife))) ||
+        !all(isfinite(float4(worldPosition, 1.f))) ||
+        !all(isfinite(float4(geometryNormal, 1.f))) ||
+        !all(isfinite(float4(tangent, 1.f))) ||
+        !all(isfinite(float4(binormal, 1.f))) ||
+        !all(isfinite(float4(cameraPosition, 1.f))) ||
+        !all(isfinite(particleColor)) || !all(isfinite(dynamicParameter)) ||
+        !all(isfinite(b0)) || !all(isfinite(b1)) || !all(isfinite(b2)) ||
+        !all(isfinite(b3)) || !all(isfinite(b4)) || !all(isfinite(b5)) ||
+        !all(isfinite(b6)) || !all(isfinite(diffuseColor)) ||
+        !all(isfinite(specularColor)) || !all(isfinite(emissionColor)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    /* The recovered t1/s4 alpha lane is the only moving UV.  Normal,
+       emission, diffuse and specular keep their independent stationary UVs;
+       they are never folded into Detail.UV's single pan. */
+    const float2 normalUV = localUV * max(abs(b0.xy), 0.0001f) +
+        b0.zw * g_EffectLocalTime;
+    const float2 alphaUV = localUV * max(abs(b1.yz), 0.0001f) +
+        float2(b1.w, b2.x) * g_EffectLocalTime;
+    const float2 emissionUV = localUV * max(abs(float2(b2.w, b3.x)), 0.0001f);
+    const float2 diffuseUV = localUV * max(abs(b3.zw), 0.0001f);
+    const float2 specularUV = localUV * max(abs(b4.zw), 0.0001f);
+
+    const float2 encodedNormal = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, normalUV).rg * 2.f - 1.f;
+    const float2 normalXY = clamp(encodedNormal * b1.x, -0.999f, 0.999f);
+    const float normalZ = sqrt(saturate(1.f - dot(normalXY, normalXY)));
+    const float3 mappedNormal = normalize(
+        normalize(tangent) * normalXY.x +
+        normalize(binormal) * normalXY.y +
+        normalize(geometryNormal) * normalZ);
+
+    /* Static switch 21.invert is sealed in the packet mask.  Dynamic W is a
+       dissolve threshold; ParticleColor alpha remains a separate lifetime
+       envelope and normalized life is deliberately not folded into either. */
+    const float alphaR = g_SourceTexture1.Sample(
+        g_RuntimeMaterialV2Sampler1, alphaUV).r;
+    const float invertedAlpha = pow(saturate(1.f - alphaR),
+        max(abs(b2.z), 0.0001f));
+    const float dissolveThreshold = 1.f - saturate(dynamicParameter.w);
+    const float dissolveGate = saturate(
+        (invertedAlpha - dissolveThreshold) * max(abs(b2.y), 0.0001f));
+    const float coverage = dissolveGate * saturate(particleColor.a);
+
+    const float3 diffuseSample = Desaturate_SourceColor(
+        max(g_SourceTexture3.Sample(
+            g_RuntimeMaterialV2Sampler3, diffuseUV).rgb, 0.f), b4.x);
+    const float3 emissionSample = max(g_SourceTexture2.Sample(
+        g_RuntimeMaterialV2Sampler2, emissionUV).rgb, 0.f);
+    const float3 specularSample = Desaturate_SourceColor(
+        max(g_SourceTexture4.Sample(
+            g_RuntimeMaterialV2Sampler4, specularUV).rgb, 0.f), b5.y);
+
+    const float3 sourceLightDirection = normalize(float3(0.35f, 0.55f, 0.76f));
+    const float fakeLight = pow(saturate(dot(mappedNormal,
+        sourceLightDirection)), max(abs(b5.w), 0.0001f)) * max(b6.x, 0.f);
+    const float3 viewDirection = normalize(cameraPosition - worldPosition);
+    const float3 halfDirection = normalize(sourceLightDirection + viewDirection);
+    const float specularLobe = pow(saturate(dot(mappedNormal, halfDirection)),
+        max(abs(b5.z) * 8.f, 0.0001f));
+
+    const float3 diffuseRadiance = diffuseSample * max(diffuseColor.rgb, 0.f) *
+        max(b4.y, 0.f) * (0.2f + fakeLight);
+    const float emissionLuminance = dot(
+        emissionSample, float3(0.299f, 0.587f, 0.114f));
+    const float3 emissionRadiance = emissionLuminance *
+        max(emissionColor.rgb, 0.f) * max(b3.y, 0.f);
+    const float specularMask = pow(saturate(dot(specularSample,
+        float3(0.299f, 0.587f, 0.114f))), max(abs(b5.z), 0.0001f));
+    const float3 specularRadiance = max(specularColor.rgb, 0.f) *
+        max(b5.x, 0.f) * specularMask * specularLobe;
+
+    const float3 particleMagnitude = abs(particleColor.rgb);
+    const float peakParticleMagnitude = max(particleMagnitude.r,
+        max(particleMagnitude.g, particleMagnitude.b));
+    const float3 particleModulator = peakParticleMagnitude > 0.0001f ?
+        particleMagnitude : float3(1.f, 1.f, 1.f);
+    float3 radiance = particleModulator *
+        (diffuseRadiance + emissionRadiance + specularRadiance);
+    const float peakRadiance = max(radiance.r, max(radiance.g, radiance.b));
+    radiance /= 1.f + peakRadiance;
+
+    if (!all(isfinite(float4(radiance, coverage))))
+    {
+        clip(-1.f);
+        return output;
+    }
+    clip(coverage - max(g_ColorClip, 1.f / 255.f));
     output.SceneColor = float4(radiance, coverage);
     output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
     return output;

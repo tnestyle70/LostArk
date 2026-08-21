@@ -1442,6 +1442,347 @@ namespace
 		return true;
 	}
 
+	constexpr uint32_t LANCE_DRAGON_MASKED_OPCODE = 19u;
+
+	struct LANCE_DRAGON_MASKED_ROW final
+	{
+		std::string_view strElementId;
+		std::string_view strSourceNode;
+		std::string_view strMeshAssetId;
+		std::string_view strSourceMaterialPath;
+		std::string_view strDynamicModuleStableId;
+		bool_t bBody;
+	};
+
+	constexpr std::array<LANCE_DRAGON_MASKED_ROW, 12u>
+		LANCE_DRAGON_MASKED_ROWS = {{
+		{ "authored.source-particle.2b0f00d91a20ba785ba034ec",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip1.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_14",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", true },
+		{ "authored.source-particle.71ac47f40d13b3a7ca6ed561",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip1.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_15",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+		{ "authored.source-particle.aa3beb2d7ebbe4922f6df595",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip1.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_start.particlespriteemitter_3",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", true },
+		{ "authored.source-particle.237b5cd9d1fafb4b95b41212",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip1.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_start.particlespriteemitter_4",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+		{ "authored.source-particle.6542736b94e7b9cd8ed5f2fd",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip2.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_14.event_source-event-033",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", true },
+		{ "authored.source-particle.85571ac576a68cc3ff037cae",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip2.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_15.event_source-event-033",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+		{ "authored.source-particle.92af24faaaeb30c6ac77d37c",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip3.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_14.event_source-event-048",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", true },
+		{ "authored.source-particle.80d7156c29e9bf140631ad2e",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip3.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_15.event_source-event-048",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+		{ "authored.source-particle.538fe0779d0718d30b68ef11",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip4.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_end.particlespriteemitter_0",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_FS_AV_08:export:509@ref:5", true },
+		{ "authored.source-particle.50385d998091ed0e55a047f8",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip4.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_end.particlespriteemitter_1",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+		{ "authored.source-particle.0a019ebaff2bb55941d23ab8",
+			"authored-source-particle:effect.lancemaster.skill.34650.clip1.unified|source:effect.lance_master.skill.34650.imported|element:fx_pc_flm_08.par_t_flm_dragoncleave_01_wpcast_01_s.particlespriteemitter_14",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", true },
+		{ "authored.source-particle.65b74589de96c3f44e625f24",
+			"authored-source-particle:effect.lancemaster.skill.34650.clip1.unified|source:effect.lance_master.skill.34650.imported|element:fx_pc_flm_08.par_t_flm_dragoncleave_01_wpcast_01_s.particlespriteemitter_15",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+	}};
+
+	constexpr std::array<std::string_view, 25u> LANCE_DRAGON_SCALAR_NAMES = {{
+		"02.n.uvscale.x", "03.n.uvscale.y", "05.n.panning.x",
+		"06.n.panning.y", "11.normalmap.str", "02.map_a_uvscale_r",
+		"03.map_a_uvscale_g", "04.map_a_panning_x", "05.map_a_panning_y",
+		"36.str", "37.power", "03.emap_uv.x.scale", "04.emap_uv.y.scale",
+		"15.emissiion_power", "02.uvscale.x", "03.uvscale.y",
+		"91.desaturation", "92.emissiion_power", "05.specmap_uvscale.x",
+		"06.specmap_uvscale.y", "02.specmap_str", "07.desaturation",
+		"08.specmap_power", "05.power", "06.str",
+	}};
+
+	constexpr std::array<f32_t, 25u> LANCE_DRAGON_SCALAR_VALUES = {{
+		1.f, 1.f, 0.f, 0.f, 1.5f, 10.f, 10.f, 0.f, -0.125f, 10.f,
+		1.f, 1.f, 1.f, 0.1f, 1.f, 1.f, 0.f, 1.f, 1.f, 1.f, 0.25f,
+		0.f, 1.2f, 2.f, 1.f,
+	}};
+
+	const LANCE_DRAGON_MASKED_ROW* Find_LanceDragonMaskedRow(
+		const std::string_view strElementId)
+	{
+		const auto Iterator = std::ranges::find_if(
+			LANCE_DRAGON_MASKED_ROWS,
+			[strElementId](const LANCE_DRAGON_MASKED_ROW& Row)
+			{
+				return Row.strElementId == strElementId;
+			});
+		return Iterator == LANCE_DRAGON_MASKED_ROWS.end() ? nullptr : &*Iterator;
+	}
+
+	bool_t Has_LanceDragonDynamicModule(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strExpectedStableId)
+	{
+		size_t iMatchCount = 0u;
+		for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (Module.strClassName != "particlemoduleparameterdynamic")
+				continue;
+			++iMatchCount;
+			if (Module.strStableId != strExpectedStableId ||
+				Module.Distributions.size() != 4u)
+			{
+				return false;
+			}
+			for (size_t i = 0u; i < Module.Distributions.size(); ++i)
+			{
+				const Client::EFFECT_DISTRIBUTION_DESC& Distribution =
+					Module.Distributions[i];
+				if (Distribution.strPropertyPath !=
+						"dynamicparams[" + std::to_string(i) + "].paramvalue" ||
+					Distribution.LookupTable.size() != 4u ||
+					!std::ranges::all_of(Distribution.LookupTable,
+						[](const f32_t fValue) { return fValue == 1.f; }))
+				{
+					return false;
+				}
+			}
+		}
+		return iMatchCount == 1u;
+	}
+
+	bool_t Is_LanceDragonLane(
+		const Client::EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane,
+		const uint32_t iIndex,
+		const std::string_view strRole,
+		const std::string_view strAssetId,
+		const std::string_view strChannel)
+	{
+		return Lane.strLaneId == "lane." + std::to_string(iIndex) &&
+			Lane.strRole == strRole && Lane.strAssetId == strAssetId &&
+			Lane.iTextureRegister == iIndex &&
+			Lane.iSamplerRegister == 5u + iIndex &&
+			Lane.strSourceChannel == strChannel &&
+			Lane.eColorSpace == Client::EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+			Is_ArtistDBlackTigerSampler(Lane.Sampler);
+	}
+
+	bool_t Validate_LanceDragonMaskedExecution(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError)
+	{
+		const auto NearlyEqual = [](const f32_t fLeft, const f32_t fRight)
+		{
+			return std::abs(fLeft - fRight) <= 0.0001f;
+		};
+		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+			Element.Material.Execution;
+		const LANCE_DRAGON_MASKED_ROW* pRow =
+			Find_LanceDragonMaskedRow(Element.strElementId);
+		if (nullptr == pRow)
+		{
+			if (Execution.bEnabled &&
+				Execution.eBackend ==
+					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Execution.iOpcode == LANCE_DRAGON_MASKED_OPCODE)
+			{
+				strOutError =
+					"Lance dragon opcode escaped its exact occurrence allowlist: " +
+					Element.strElementId;
+				return false;
+			}
+			return true;
+		}
+
+		constexpr std::string_view PARENT_MATERIAL =
+			"fx_m_mi_00.fx_m.fx_d_me_master_01_ph_msk";
+		constexpr std::string_view PROFILE_ID =
+			"ue3.material.fx.m.mi.00.fx.m.fx.d.me.master.01.ph.msk.8230663740c0";
+		const std::string_view strNormal = pRow->bBody ?
+			"Effect/LanceMaster/Textures/sk_flm_gdr_01_n.dds" :
+			"Effect/LanceMaster/Textures/sk_flm_gdr_02_n.dds";
+		constexpr std::string_view strAlpha =
+			"Effect/LanceMaster/Textures/fx_d_noise_043.dds";
+		const std::string_view strEmission = pRow->bBody ?
+			"Effect/LanceMaster/Textures/sk_flm_gdr_01_e.dds" :
+			"Effect/LanceMaster/Textures/sk_flm_gdr_02_e.dds";
+		const std::string_view strDiffuse = pRow->bBody ?
+			"Effect/LanceMaster/Textures/sk_flm_gdr_01_d.dds" :
+			"Effect/LanceMaster/Textures/sk_flm_gdr_02_d.dds";
+		const std::string_view strSpecular = pRow->bBody ?
+			"Effect/LanceMaster/Textures/fx_d_atypical_010.dds" :
+			"Effect/LanceMaster/Textures/sk_flm_gdr_02_s.dds";
+
+		const bool_t bCarrier = Element.bVisible &&
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.strSourceNode == pRow->strSourceNode &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "mesh" &&
+			Element.ResourceBindings.size() == 6u &&
+			Element.ResourceBindings[0u].strSlotId == "meshModel" &&
+			Element.ResourceBindings[0u].strAssetId == pRow->strMeshAssetId &&
+			Element.ResourceBindings[1u].strSlotId == "base" &&
+			Element.ResourceBindings[1u].strAssetId == strDiffuse &&
+			Element.ResourceBindings[2u].strSlotId == "dissolve" &&
+			Element.ResourceBindings[2u].strAssetId == strAlpha &&
+			Element.ResourceBindings[3u].strSlotId == "noise" &&
+			Element.ResourceBindings[3u].strAssetId == strNormal &&
+			Element.ResourceBindings[4u].strSlotId == "mask" &&
+			Element.ResourceBindings[4u].strAssetId == strSpecular &&
+			Element.ResourceBindings[5u].strSlotId == "emissive" &&
+			Element.ResourceBindings[5u].strAssetId == strEmission &&
+			Has_LanceDragonDynamicModule(
+				Element, pRow->strDynamicModuleStableId);
+		const bool_t bMaterial =
+			Element.Material.strTemplateId == "effect.standard" &&
+			Element.Material.strSourceMaterialPath ==
+				pRow->strSourceMaterialPath &&
+			Element.Material.eRenderProfile ==
+				Client::EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			Element.Material.SourceMaterial.strProfileId == PROFILE_ID &&
+			Element.Material.SourceMaterial.strParentMaterialPath ==
+				PARENT_MATERIAL;
+
+		const bool_t bPacket = Execution.bEnabled && !Execution.bFailClosed &&
+			!Execution.bAuthoringApproximate && Execution.iVersion == 1u &&
+			Execution.eBackend ==
+				Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			Execution.iOpcode == LANCE_DRAGON_MASKED_OPCODE &&
+			Execution.iPassIndex == 3u &&
+			Execution.strRasterizerState == "RS_Default" &&
+			Execution.strDepthStencilState == "DSS_ReadOnly" &&
+			Execution.strBlendState == "BS_EffectAlpha" &&
+			Execution.iStencilReference == 0u &&
+			Execution.iTextureLaneCount == 5u &&
+			Execution.iTextureMask == 0x1fu &&
+			Execution.TextureLanes.size() == 5u &&
+			Is_LanceDragonLane(Execution.TextureLanes[0u], 0u,
+				"normal_map", strNormal, "RG") &&
+			Is_LanceDragonLane(Execution.TextureLanes[1u], 1u,
+				"alpha_map", strAlpha, "R") &&
+			Is_LanceDragonLane(Execution.TextureLanes[2u], 2u,
+				"emission_map", strEmission, "RGB") &&
+			Is_LanceDragonLane(Execution.TextureLanes[3u], 3u,
+				"diffuse_map", strDiffuse, "RGB") &&
+			Is_LanceDragonLane(Execution.TextureLanes[4u], 4u,
+				"specular_map", strSpecular, "RGB");
+		const bool_t bMasks = Execution.iDynamicConsumedMask == 0x08u &&
+			Execution.iDynamicSuppressedMask == 0x07u &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0x0fu &&
+			Execution.iParticleColorSuppressedMask == 0u &&
+			Execution.iScalarCount == 25u && Execution.iVectorCount == 3u &&
+			Execution.iInputCount == 25u &&
+			Execution.InputConsumedMask ==
+				std::array<uint32_t, 2u>{ 0x01ffffffu, 0u } &&
+			Execution.InputSuppressedMask ==
+				std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0x07u, 0x07u, 0x07u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0x08u, 0x08u, 0x08u } &&
+			Execution.iStaticInputCount == 23u &&
+			Execution.iStaticSelectedMask == 0x0013b74fu &&
+			Execution.iStaticConsumedMask == 0x007fffffu &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 6u &&
+			Execution.iRenderConsumedMask == 0x2fu &&
+			Execution.iRenderSuppressedMask == 0x10u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+
+		bool_t bScalars = Execution.Scalars.size() ==
+			LANCE_DRAGON_SCALAR_VALUES.size();
+		for (size_t i = 0u; bScalars && i < Execution.Scalars.size(); ++i)
+		{
+			const Client::EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar =
+				Execution.Scalars[i];
+			bScalars = Scalar.strName == LANCE_DRAGON_SCALAR_NAMES[i] &&
+				Scalar.iPackedIndex == i &&
+				NearlyEqual(Scalar.fValue, LANCE_DRAGON_SCALAR_VALUES[i]);
+		}
+		bool_t bVectors = Execution.Vectors.size() == 3u;
+		if (bVectors)
+		{
+			const auto& Diffuse = Execution.Vectors[0u];
+			const auto& Specular = Execution.Vectors[1u];
+			const auto& Emission = Execution.Vectors[2u];
+			bVectors = Diffuse.strName == "93.emissiion_color" &&
+				Diffuse.iPackedIndex == 0u &&
+				NearlyEqual(Diffuse.vValue.x, 1.f) &&
+				NearlyEqual(Diffuse.vValue.y, 1.f) &&
+				NearlyEqual(Diffuse.vValue.z, 1.f) &&
+				NearlyEqual(Diffuse.vValue.w, 1.f) &&
+				Specular.strName == "09.specmap_color" &&
+				Specular.iPackedIndex == 1u &&
+				NearlyEqual(Specular.vValue.x, 5.f) &&
+				NearlyEqual(Specular.vValue.y, 2.5f) &&
+				NearlyEqual(Specular.vValue.z, 0.75f) &&
+				NearlyEqual(Specular.vValue.w, 1.f) &&
+				Emission.strName == "19.emissiion_color" &&
+				Emission.iPackedIndex == 2u &&
+				NearlyEqual(Emission.vValue.x, 10.f) &&
+				NearlyEqual(Emission.vValue.y, 0.f) &&
+				NearlyEqual(Emission.vValue.z, 0.f) &&
+				NearlyEqual(Emission.vValue.w, 1.f);
+		}
+
+		if (!bCarrier || !bMaterial || !bPacket || !bMasks ||
+			!bScalars || !bVectors)
+		{
+			const std::string_view strChangedSection = !bCarrier ? "carrier" :
+				!bMaterial ? "material" : !bPacket ? "packet" :
+				!bMasks ? "masks" : !bScalars ? "scalars" : "vectors";
+			strOutError =
+				"Lance dragon exact typed contract changed (" +
+				std::string(strChangedSection) + "): " +
+				Element.strElementId;
+			if (!bMaterial)
+			{
+				strOutError += " [template=" + Element.Material.strTemplateId +
+					", source=" + Element.Material.strSourceMaterialPath +
+					", renderProfile=" + std::to_string(static_cast<uint32_t>(
+						Element.Material.eRenderProfile)) +
+					", enabled=" + std::to_string(
+						Element.Material.SourceMaterial.bEnabled ? 1u : 0u) +
+					", profile=" + Element.Material.SourceMaterial.strProfileId +
+					", parent=" +
+					Element.Material.SourceMaterial.strParentMaterialPath + "]";
+			}
+			return false;
+		}
+		return true;
+	}
+
 	bool_t Is_SourceMaterialFallbackBlocked(
 		const Client::EFFECT_ELEMENT_DESC& Element,
 		const Client::EFFECT_GROUPED_TRANSLUCENT_CONSTANTS& GroupedConstants)
@@ -1853,13 +2194,13 @@ namespace
 				A.strSourceNode != B.strSourceNode || A.eKind != B.eKind ||
 				A.Renderer.eType != B.Renderer.eType ||
 				A.Renderer.eSourceSpace != B.Renderer.eSourceSpace ||
+				A.SourceRecipe.bEnabled != B.SourceRecipe.bEnabled ||
+				A.SourceRecipe.strRendererShape !=
+					B.SourceRecipe.strRendererShape ||
 				A.Material.strTemplateId != B.Material.strTemplateId ||
 				A.Material.strSourceMaterialPath !=
 					B.Material.strSourceMaterialPath ||
 				A.Material.eRenderProfile != B.Material.eRenderProfile ||
-				A.SourceRecipe.bEnabled != B.SourceRecipe.bEnabled ||
-				A.SourceRecipe.strRendererShape !=
-					B.SourceRecipe.strRendererShape ||
 				!Same_MaterialExecutionResourceSignature(
 					A.Material.Execution, B.Material.Execution) ||
 				!Client::Is_EffectSourceMaterialStagingSignatureEqual(
@@ -5498,6 +5839,8 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 	PREWARM_ASSET_CACHE* pSharedAssets) const
 {
 	const EFFECT_MATERIAL_EXECUTION_DESC& Execution = Element.Material.Execution;
+	if (!Validate_LanceDragonMaskedExecution(Element, strOutError))
+		return false;
 	if (!Validate_ArtistDBlackTigerStrokeExecution(Element, strOutError))
 		return false;
 	if (!Execution.bEnabled)
@@ -16359,9 +16702,13 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		0u != Resource.iRuntimeMaterialV2Enabled &&
 		(3u == Resource.iRuntimeMaterialV2Opcode ||
 			8u == Resource.iRuntimeMaterialV2Opcode);
+	const bool_t bLanceDragonMaskedReplay =
+		0u != Resource.iRuntimeMaterialV2Enabled &&
+		LANCE_DRAGON_MASKED_OPCODE == Resource.iRuntimeMaterialV2Opcode;
 	const bool_t bFlow02RecoveredEquation =
 		7u == Resource.iArtistVisualV4Opcode;
-	if ((bMainSourceReplay || bFlow02RecoveredEquation) &&
+	if ((bMainSourceReplay || bLanceDragonMaskedReplay ||
+		bFlow02RecoveredEquation) &&
 		nullptr == pDynamicParameter)
 	{
 		// These source occurrences carry ParameterDynamic.  UE3's missing
@@ -16404,6 +16751,26 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		// Particle alpha is multiplicative in both recovered opacity programs.
 		// Dynamic X is a UV offset and Dynamic Z is a dissolve threshold, so
 		// neither lane is a valid CPU zero-pixel predicate.
+		if (Element.Color.vColorMultiply.w <= 0.f)
+			return S_FALSE;
+	}
+	if (bLanceDragonMaskedReplay)
+	{
+		if (!std::isfinite(DynamicParameter.x) ||
+			!std::isfinite(DynamicParameter.y) ||
+			!std::isfinite(DynamicParameter.z) ||
+			!std::isfinite(DynamicParameter.w) ||
+			!std::isfinite(Element.Color.vColorMultiply.x) ||
+			!std::isfinite(Element.Color.vColorMultiply.y) ||
+			!std::isfinite(Element.Color.vColorMultiply.z) ||
+			!std::isfinite(Element.Color.vColorMultiply.w))
+		{
+			return Fail_RenderOperation(
+				"Lance dragon typed mesh carrier is non-finite.",
+				E_INVALIDARG, true);
+		}
+		/* Dynamic W owns dissolve while ParticleColor alpha owns the lifetime
+		   envelope.  Only the latter has a texture-independent zero predicate. */
 		if (Element.Color.vColorMultiply.w <= 0.f)
 			return S_FALSE;
 	}

@@ -9,7 +9,7 @@ Fluid01 추가 checkpoint는 기준 `b705abb7`, 격리 브랜치 `codex/dm-fluid
 
 이 문서는 마스터 PLAN의 실제 반영 상태만 기록한다. 도화가·워로드·창술사·차원술사
 전체 복원은 아직 진행 중이며, 이 버전에서는 family inventory, action-facing, opt-in standard
-color/coverage 수직 슬라이스를 구현했다.
+color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했다.
 
 ## 1. 자동 완료된 범위
 
@@ -215,7 +215,31 @@ color/coverage 수직 슬라이스를 구현했다.
 - 이 단위는 Product authored 문서와 runtime catalog를 수정하지 않았다. 위 Product particle 행은
   이미 ordinary portable source carrier로 spawn/update를 실행하므로 이번 변경을 신규 Product
   admission이나 도화가 V attractor 완성으로 승격하지 않는다.
+### 1.15 창술사 `34630/34650` dragon masked class-neutral family
 
+- `34630` clip1~4와 `34650` clip1의 기존 Product 문서에서 body 6행/head 6행, 정확히 12행만
+  selective materialize했다. 비대상 top-level element JSON byte와 대상의 material/resources 외 필드는
+  보존하며 동일 입력 재실행은 byte-idempotent다.
+- source parent `fx_m_mi_00.fx_m.fx_d_me_master_01_ph_msk`, body/head child, 12 stable ID,
+  sourceNode, body/head WModel, ParameterDynamic stable ID와 render packet을 exact allowlist로 봉인했다.
+  allowlist 밖 opcode 19와 sourceNode/rendererShape/renderProfile/resource/lane/scalar drift는 fail-close한다.
+- RuntimeMaterialV2 opcode 19는 normal RG, alpha R, emission RGB, diffuse RGB, specular RGB 다섯
+  `linear/wrap` lane을 독립 소비한다. normal/emission/diffuse/specular UV는 고정이고 alpha UV만
+  `10x10`, `panY=-0.125/s`다.
+- DynamicParameter W는 dissolve threshold, ParticleColor alpha는 별도 lifetime envelope다.
+  normalized life만 바꿔 dissolve를 재적용하지 않는다. focused WARP readback에서 body 386픽셀,
+  head 312픽셀, alpha-pan signature 변화, 32개 공통 stationary radiance 픽셀, Dynamic-W 변화,
+  ParticleColor alpha 감쇠와 normalized-life 불변을 확인했다.
+- disabled native source profile의 parent/profile 증거를 codec이 버리던 공백을 닫았다. minimal
+  `{enabled:false}`는 기존처럼 유지하고, `profileId`가 있는 disabled evidence는 parse/serialize에서
+  보존해 Tool roundtrip 뒤에도 parent allowlist가 유지된다.
+- 복원된 native pixel DXBC는 deferred five-MRT이고 source mesh VF/native binding array가 닫히지
+  않았다. 따라서 이 구현은 `TYPED_HLSL_SEMANTIC_REPLAY/PARTIAL/AUTHORING_ONLY/PENDING`이며,
+  one-sided alpha explicit clip/depth-read SceneColor replay를 source masked depth-write/GBuffer와
+  동일하다고 주장하지 않는다.
+- 팀 관리 runtime 입력 중 body spec은
+  `Effect/LanceMaster/Textures/fx_d_atypical_010.dds` SHA-256 `93fa9c93...`, head spec은
+  `Effect/LanceMaster/Textures/sk_flm_gdr_02_s.dds` SHA-256 `a626399c...`다. DDS는 커밋하지 않는다.
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -269,6 +293,11 @@ color/coverage 수직 슬라이스를 구현했다.
 | Debug/Release `--effect-source-circle-vortex-fast` | 각 6/6 PASS; 7-count/260cm/radial velocity, 30/60/120FPS Vortex trajectory, strict reject/rollback, Dimension F와 Artist V canary PASS |
 | Debug/Release `--effect-source-null-cdo-size-fast` | 각 2/2 PASS |
 | Debug 전체 `--effect-executor-fast` 보조 실행 | 신규 CircleSurface/Vortex 6 assertions는 PASS. 격리 worktree에 Git 비관리 `Client/Bin/Resources`가 없어 기존 resource-dependent 항목들이 실패했으므로 전체 회귀 PASS로 기록하지 않음 |
+| Lance dragon selective materializer | 8 tests PASS, `--check` PASS, artifact SHA-256 `94b4f972...` |
+| Debug `--effect-dragon-flow-fast` | 15 checks PASS; body 386/head 312 RGB pixels, alpha-pan/Dynamic-W/lifetime 분리 PASS |
+| Release `--effect-dragon-flow-fast` | 15 checks PASS; Debug와 같은 pixels/sums/signatures, failures 0 |
+| Lance dragon failed restage | second sourceNode malformed reject, 이전 body/head draw와 RGBA readback byte 보존 PASS |
+| Lance dragon Client Debug/Release | 각 compile/link/FXC errors 0 PASS; Client/UI 미실행 |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -296,6 +325,9 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 - screen-space textured shard overlay의 renderer와 rollback 계약은 닫혔지만 아직 synthetic canary다.
   다음 단위는 exact shard texture/role과 F/W Product timing·ownership을 typed descriptor로 연결하고,
   RGBNoise/ZoomBlur와의 실제 ordered composition을 sealed runtime에서 검증해야 한다.
+- Lance dragon opcode 19의 다섯 Product 문서도 sealed runtime catalog publish와 사용자 first-pixel
+  승인이 남아 있다. `34610`과 Artist T는 같은 용이라는 이유만으로 이 exact variant에 admission하지
+  않았다.
 - full Effect publisher Validate는 현재 main의 `effect.valtan.red-blade-wave.active` 중복 소유자
   검증에서 중단된다. 이 세션은 해당 Valtan 데이터를 수정하지 않았다.
 - 이 기준점의 전체 EffectPipeline Python suite는 Valtan canonical occurrence 기대값 `128` 대 실제
@@ -307,7 +339,7 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 
 ## 4. 다음 구현 단위
 
-1. Lance/Artist dragon의 독립 UV·dissolve typed family와 실제 12 occurrence admission을 완료한다.
-2. F raw 69행의 sphere/hemisphere/world shard/light/RGBNoise/ZoomBlur를 role-select하고 screen-overlay Product timing에 연결한다.
-3. Fluid01 mesh와 W의 동일 exact variant cohort를 carrier별 admission하고 Artist T ribbon·V attractor/camera family를 닫는다.
-4. full Effect publisher transaction, 전체 Debug/Release focused harness 뒤 사용자가 실제 Client 화면을 판정한다.
+1. 도화가 T ribbon, 도화가 V attractor/camera, 차원 F Product screen-overlay 연결을 닫는다.
+2. Fluid01 mesh와 W/J-child, 창술사 `34610` 등 source-evidence가 닫힌 exact variant를 carrier별로 확장한다.
+3. 외부 발탄 작업의 통합 상태가 안정된 뒤 이 세션의 authored/source catalog를 한 번의 Effect publisher transaction으로 sealed runtime에 반영한다.
+4. 전체 Debug/Release·publisher·focused harness 뒤 사용자가 실제 Client 화면을 판정한다.
