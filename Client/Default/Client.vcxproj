@@ -941,6 +941,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.armor-break-opening.part-break.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.backstep.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.backstep.windup.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.backstep.windup.trails.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.bind-charge-smash.charge.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.bind-charge-smash.lock.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.bind-charge-smash.smash.effect.json" />
@@ -974,11 +975,16 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.floor-wipe-130.windup.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.four-pillars-105.takeoff.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.four-pillars-105.target-cone.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.active.clip-02.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.windup.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.active.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.auxiliary-source-wave.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.recovery.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.source-wave-01.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.source-wave-02.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.source-wave-03.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.windup.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ghost-transition-15.four-directions.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ghost-transition-15.ghost-appear.effect.json" />
@@ -988,6 +994,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ghost-transition-15.tracking.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ground-wave-smash.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ground-wave-smash.windup.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.airborne.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.land.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.takeoff.effect.json" />
@@ -997,6 +1004,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.jump-spin.jump.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.jump-spin.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.jump-spin.spin.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.jump-spin.spin.trails.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ledge-roar.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ledge-roar.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ledge-roar.windup.effect.json" />
@@ -1023,6 +1031,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.windup.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.super-smash.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.super-smash.windup.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.swing.active.clip-02.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.swing.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.swing.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.swing.windup.effect.json" />
@@ -2239,6 +2248,9 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34640.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-denominator.checkpoint.json" />
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-inventory-v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof\Valtan.front-back-front-source-waves.drawable-proof.v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof\Valtan.front-back-front-source-waves.drawable-sweep.v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\Valtan.front-back-front-source-wave-application-receipt.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\Valtan.front-back-front-source-wave-candidates.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\effect.valtan.front-back-front.auxiliary-source-wave.source-wave-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\effect.valtan.front-back-front.source-wave-01.source-wave-candidate.effect.json" />
@@ -2251,6 +2263,7 @@
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\DrawableProof\Valtan.project-authored-priority.drawable-proof.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\DrawableProof\Valtan.project-authored-priority.drawable-sweep.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\Valtan.project-authored-priority.patch-plan.v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\Valtan.project-authored-priority.projection-receipt.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.dash-charge.windup.project-authored-overlay.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.floor-wipe-130.first-smash.project-authored-overlay.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.floor-wipe-130.windup.project-authored-overlay.effect.json" />
@@ -2261,6 +2274,9 @@
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.magic-choice.outer.project-authored-overlay.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.magic-choice.windup.project-authored-overlay.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\README.md" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\DrawableProof\Valtan.reviewed-source-families.drawable-proof.v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\DrawableProof\Valtan.reviewed-source-families.drawable-sweep.v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\Valtan.reviewed-source-family-application-receipt.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\Valtan.reviewed-source-family-candidates.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.arena-break-109.impact.reviewed-source-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.arena-break-109.takeoff.reviewed-source-candidate.effect.json" />
@@ -2275,7 +2291,6 @@
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.floor-wipe-130.windup.reviewed-source-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.four-slash.active.reviewed-source-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.four-slash.recovery.reviewed-source-candidate.effect.json" />
-    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.front-back-front.active.reviewed-source-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.ghost-transition-15.tracking.reviewed-source-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.ground-wave-smash.active.reviewed-source-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.high-jump.land.reviewed-source-candidate.effect.json" />
@@ -2299,6 +2314,14 @@
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.super-smash.windup.reviewed-source-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.triple-counter.first.reviewed-source-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.whirlwind.recovery.reviewed-source-candidate.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\DrawableProof\Valtan.safe-reviewed-gaps.drawable-proof.v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\DrawableProof\Valtan.safe-reviewed-gaps.drawable-sweep.v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\Valtan.safe-reviewed-gap-application-receipt.v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\Valtan.safe-reviewed-gap-candidates.v1.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\effect.valtan.backstep.windup.trails.safe-gap-candidate.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\effect.valtan.four-slash.active.clip-02.safe-gap-candidate.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\effect.valtan.jump-spin.spin.trails.safe-gap-candidate.effect.json" />
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\effect.valtan.swing.active.clip-02.safe-gap-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.420633.whirlwind-baked-edge-history.v1.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.action-particle-resource-catalog.json" />
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.basebuff-effect-source.json" />

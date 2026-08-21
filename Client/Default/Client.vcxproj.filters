@@ -2001,6 +2001,9 @@
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves">
       <UniqueIdentifier>{2a5603a2-7e38-5d94-b9a6-b1e347709926}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof">
+      <UniqueIdentifier>{fcba7dbd-86ea-507c-86a3-561ef7eba554}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\PortalRush">
       <UniqueIdentifier>{50784b42-5eaa-56fe-94bb-adb964fa0dbc}</UniqueIdentifier>
     </Filter>
@@ -2012,6 +2015,15 @@
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies">
       <UniqueIdentifier>{2b774a3a-3224-5945-ab81-b3c62204ea5a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies\DrawableProof">
+      <UniqueIdentifier>{55940a98-4097-5d3b-90c3-17c5a8d965fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\SafeReviewedGaps">
+      <UniqueIdentifier>{188984ad-558a-5bb9-bab4-a6fa1b853806}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\SafeReviewedGaps\DrawableProof">
+      <UniqueIdentifier>{87912e41-993a-5a4d-b645-3d6f2f1a0fb1}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Warlord">
       <UniqueIdentifier>{8c257d50-0dab-5f2c-8bb2-eb3db8d8b0e6}</UniqueIdentifier>
@@ -3018,6 +3030,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.backstep.windup.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.backstep.windup.trails.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.bind-charge-smash.charge.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3117,6 +3132,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.four-pillars-105.target-cone.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.active.clip-02.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.active.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3129,7 +3147,19 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.active.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.auxiliary-source-wave.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.recovery.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.source-wave-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.source-wave-02.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.source-wave-03.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.windup.effect.json">
@@ -3159,6 +3189,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ground-wave-smash.windup.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.airborne.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.high-jump.land.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3184,6 +3217,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.jump-spin.spin.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.jump-spin.spin.trails.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.ledge-roar.active.effect.json">
@@ -3262,6 +3298,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.super-smash.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.swing.active.clip-02.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.swing.active.effect.json">
@@ -6912,6 +6951,15 @@
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-inventory-v1.json">
       <Filter>96.DataFiles\Effects\Imported\RawResourceInventory</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof\Valtan.front-back-front-source-waves.drawable-proof.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof\Valtan.front-back-front-source-waves.drawable-sweep.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\Valtan.front-back-front-source-wave-application-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\Valtan.front-back-front-source-wave-candidates.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves</Filter>
     </None>
@@ -6948,6 +6996,9 @@
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\Valtan.project-authored-priority.patch-plan.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\Valtan.project-authored-priority.projection-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.dash-charge.windup.project-authored-overlay.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
     </None>
@@ -6977,6 +7028,15 @@
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\README.md">
       <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\DrawableProof\Valtan.reviewed-source-families.drawable-proof.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\DrawableProof\Valtan.reviewed-source-families.drawable-sweep.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\Valtan.reviewed-source-family-application-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\Valtan.reviewed-source-family-candidates.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
@@ -7018,9 +7078,6 @@
       <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.four-slash.recovery.reviewed-source-candidate.effect.json">
-      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
-    </None>
-    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.front-back-front.active.reviewed-source-candidate.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.ghost-transition-15.tracking.reviewed-source-candidate.effect.json">
@@ -7091,6 +7148,30 @@
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.whirlwind.recovery.reviewed-source-candidate.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\DrawableProof\Valtan.safe-reviewed-gaps.drawable-proof.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\SafeReviewedGaps\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\DrawableProof\Valtan.safe-reviewed-gaps.drawable-sweep.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\SafeReviewedGaps\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\Valtan.safe-reviewed-gap-application-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\SafeReviewedGaps</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\Valtan.safe-reviewed-gap-candidates.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\SafeReviewedGaps</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\effect.valtan.backstep.windup.trails.safe-gap-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\SafeReviewedGaps</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\effect.valtan.four-slash.active.clip-02.safe-gap-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\SafeReviewedGaps</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\effect.valtan.jump-spin.spin.trails.safe-gap-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\SafeReviewedGaps</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\SafeReviewedGaps\effect.valtan.swing.active.clip-02.safe-gap-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\SafeReviewedGaps</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.420633.whirlwind-baked-edge-history.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
