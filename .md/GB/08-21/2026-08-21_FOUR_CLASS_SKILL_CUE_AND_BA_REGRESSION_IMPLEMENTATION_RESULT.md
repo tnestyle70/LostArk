@@ -50,3 +50,16 @@
 - Git에 추가된 실행 데이터는 publisher가 만든 sealed Effect JSON 13개다.
 
 Client 화면과 Effect 모양의 최종 판정은 사용자가 Character Select와 All Effects에서 수행한다. Esther 구현은 이 변경에 포함하지 않았으며 main 병합 뒤 새 브랜치에서 계속한다.
+
+## 6. All Effects 편집 진입 후속 복구
+
+- Valtan occurrence 트리를 합친 뒤 캐릭터 Product cue 행이 `Play Full Effect`와 VisualProgram만 표시하고, direct-authored 편집 진입은 별도 `Saved Unified Effects` 하위로 밀린 UI 회귀를 수정했다.
+- 각 `Skill -> Stage/BA` Product cue가 exact `DIRECT_AUTHORED_DOCUMENT_V13` 문서와 공용 Unified Effect family 트리를 직접 표시한다.
+- 공용 편집 버튼 이름을 `Open Editor`로 통일했으며, 해당 버튼은 기존 atomic Save와 same-revision Product hot reload 경로를 그대로 사용한다.
+- 비정상·누락 authored identity는 임의 문서를 열지 않고 Product cue 행에서 unavailable 사유를 표시한다.
+- `Effect_Tool.cpp`는 커진 translation unit만 `/bigobj`로 컴파일하며 다른 Client 파일의 컴파일 옵션은 바꾸지 않았다.
+- Debug/Release `ClCompile`: 오류 0, C1128 재발 0.
+- 최신 ClientFrontendHarness Debug build: 오류 0.
+- `--effect-tool-preview-fast`: failures 0.
+- `--effect-incremental-prewarm-fast`: failures 0.
+- 새 Debug Client 링크와 화면 확인은 실행 중이던 11:18 구버전 Client를 사용자가 종료한 뒤 수행하는 수동 경계다.
