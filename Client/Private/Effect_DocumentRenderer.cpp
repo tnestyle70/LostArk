@@ -5068,6 +5068,151 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 			Element.strElementId;
 		return false;
 	}
+	if (Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+		Execution.iOpcode == 16u)
+	{
+		static constexpr std::array<std::string_view, 3u> LANE_IDS = {{
+			"lane.0", "lane.1", "lane.2"
+		}};
+		static constexpr std::array<std::string_view, 3u> LANE_ROLES = {{
+			"aura_texture", "cracknormal_tex", "in_hole_texture"
+		}};
+		static constexpr std::array<std::string_view, 3u> LANE_ASSETS = {{
+			"Effect/DimensionMaster/Textures/FX_TEX_06/"
+				"fx_j_dustparticle_tile_02.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_06/"
+				"fx_j_normal_bc5_09.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_06/"
+				"fx_m_cybernoise_02.dds"
+		}};
+		static constexpr std::array<std::string_view, 3u> LANE_CHANNELS = {{
+			"RGBA", "RG", "RGB"
+		}};
+		static constexpr std::array<EFFECT_TEXTURE_COLOR_SPACE, 3u>
+			LANE_COLOR_SPACES = {{
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB,
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB
+			}};
+		static constexpr std::array<std::string_view, 32u> SCALAR_NAMES = {{
+			"alpha_tile_x", "alpha_tile_y", "alpha_offsetx", "alpha_offsety",
+			"aura_str", "aura_pow", "curve_power", "twist_str",
+			"main_ucoord", "main_v_coord", "main_tex_upanner", "main_v_panner",
+			"uvnoise_utile", "uvnoise_vtile", "uvnoise_pan", "in_hole_crackuv",
+			"in_hole_panx", "in_hole_pany", "in_hole_pow", "in_hole_str",
+			"in_hole_desaturation", "distortionpower", "distortionscale", "scale",
+			"cracknormal_tile_x", "cracknormal_tile_y", "cracknormal_str",
+			"edge_crack_desaturation", "edge_line", "edge_size", "time",
+			"in_hole_height"
+		}};
+		static constexpr std::array<f32_t, 32u> SCALAR_VALUES = {{
+			0.400000006f, 0.400000006f, 0.5f, 0.5f,
+			5.f, 2.f, 2.f, 0.100000001f,
+			1.f, 0.f, 0.f, -0.800000012f,
+			1.f, 1.f, 0.f, 0.200000003f,
+			0.0149999997f, 0.0250000004f, 2.f, 1.f,
+			0.300000012f, 10.f, -15.f, 1.f,
+			4.f, 0.f, -7.f, 0.800000012f,
+			4.f, 2.f, 0.f, 0.f
+		}};
+		const auto NearlyEqual = [](const f32_t Left, const f32_t Right)
+		{
+			return std::abs(Left - Right) <= 1.0e-6f *
+				(std::max)({ 1.f, std::abs(Left), std::abs(Right) });
+		};
+		bool_t bGlassholeContractValid =
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "sprite" &&
+			Element.Material.strSourceMaterialPath ==
+				"fx_m_mi_k_00.fx_mi.fx_k_pa_glasshole_02_01_tr" &&
+			Execution.iTextureLaneCount == 3u && Execution.iTextureMask == 0x7u &&
+			Execution.TextureLanes.size() == LANE_IDS.size() &&
+			Execution.iDynamicConsumedMask == 0x1u &&
+			Execution.iDynamicSuppressedMask == 0xeu &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0xfu &&
+			Execution.iParticleColorSuppressedMask == 0u &&
+			Execution.iScalarCount == SCALAR_NAMES.size() &&
+			Execution.Scalars.size() == SCALAR_NAMES.size() &&
+			Execution.iVectorCount == 2u && Execution.Vectors.size() == 2u &&
+			Execution.iInputCount == 34u &&
+			Execution.InputConsumedMask == std::array<uint32_t, 2u>{
+				0x77ff8cbfu, 0x3u } &&
+			Execution.InputSuppressedMask == std::array<uint32_t, 2u>{
+				0x88007340u, 0u } &&
+			Execution.VectorComponentConsumedMask == std::array<uint32_t, 3u>{
+				0x7u, 0x7u, 0u } &&
+			Execution.VectorComponentSuppressedMask == std::array<uint32_t, 3u>{
+				0x8u, 0x8u, 0u } &&
+			Execution.iStaticInputCount == 6u &&
+			Execution.iStaticSelectedMask == 0x24u &&
+			Execution.iStaticConsumedMask == 0x3fu &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 6u &&
+			Execution.iRenderConsumedMask == 0x2fu &&
+			Execution.iRenderSuppressedMask == 0x10u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+		for (size_t i = 0u; bGlassholeContractValid && i < LANE_IDS.size(); ++i)
+		{
+			const EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane =
+				Execution.TextureLanes[i];
+			bGlassholeContractValid =
+				Lane.strLaneId == LANE_IDS[i] && Lane.strRole == LANE_ROLES[i] &&
+				Lane.strAssetId == LANE_ASSETS[i] &&
+				Lane.iTextureRegister == i && Lane.iSamplerRegister == 5u + i &&
+				Lane.strSourceChannel == LANE_CHANNELS[i] &&
+				Lane.eColorSpace == LANE_COLOR_SPACES[i] &&
+				Lane.Sampler.eFilter == EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR &&
+				Lane.Sampler.eAddressU ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.eAddressV ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.eAddressW ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.fMipLodBias == 0.f &&
+				Lane.Sampler.iMaxAnisotropy == 1u &&
+				Lane.Sampler.eComparison ==
+					EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER &&
+				Lane.Sampler.vBorderColor.x == 0.f &&
+				Lane.Sampler.vBorderColor.y == 0.f &&
+				Lane.Sampler.vBorderColor.z == 0.f &&
+				Lane.Sampler.vBorderColor.w == 0.f &&
+				Lane.Sampler.fMinLod == 0.f &&
+				Lane.Sampler.fMaxLod == (std::numeric_limits<f32_t>::max)();
+		}
+		for (size_t i = 0u; bGlassholeContractValid && i < SCALAR_NAMES.size(); ++i)
+		{
+			const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar =
+				Execution.Scalars[i];
+			bGlassholeContractValid = Scalar.strName == SCALAR_NAMES[i] &&
+				Scalar.iPackedIndex == i &&
+				NearlyEqual(Scalar.fValue, SCALAR_VALUES[i]);
+		}
+		if (bGlassholeContractValid)
+		{
+			const EFFECT_MATERIAL_VECTOR_PARAMETER_DESC& Aura = Execution.Vectors[0];
+			const EFFECT_MATERIAL_VECTOR_PARAMETER_DESC& Inner = Execution.Vectors[1];
+			bGlassholeContractValid =
+				Aura.strName == "aura_color" && Aura.iPackedIndex == 0u &&
+				NearlyEqual(Aura.vValue.x, 2.f) &&
+				NearlyEqual(Aura.vValue.y, 1.20000005f) &&
+				NearlyEqual(Aura.vValue.z, 0.800000012f) &&
+				NearlyEqual(Aura.vValue.w, 1.f) &&
+				Inner.strName == "in_hole_color" && Inner.iPackedIndex == 1u &&
+				NearlyEqual(Inner.vValue.x, 1.f) &&
+				NearlyEqual(Inner.vValue.y, 1.f) &&
+				NearlyEqual(Inner.vValue.z, 1.f) &&
+				NearlyEqual(Inner.vValue.w, 1.f);
+		}
+		if (!bGlassholeContractValid)
+		{
+			strOutError = "Glasshole02 K01 opcode 16 packet is not the admitted "
+				"carrier/material/render tuple: " + Element.strElementId;
+			return false;
+		}
+	}
 	const uint32_t iSelectedPass = Select_Pass(Element.Material.eRenderProfile);
 	if (iSelectedPass == UINT32_MAX || Execution.iPassIndex != iSelectedPass ||
 		Execution.iStencilReference != 0u)

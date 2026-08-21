@@ -1,0 +1,44 @@
+{
+  "schema": "lostark.effect-glasshole02-k01-semantic-replay-receipt",
+  "formatVersion": 1,
+  "effectAssetId": "effect.dimensionmaster.skill.2050120.clip3.unified",
+  "elementId": "authored.source-particle.40e1b48e2f0f88dcfeff1549",
+  "sourceNode": "authored-source-particle:effect.dimensionmaster.skill.2050120.clip3.unified|source:effect.dimensionmaster.skill.2050120.imported|element:fx_pc_swp_05.par_k_swp_tentdevider_atk_00_01.particlespriteemitter_47",
+  "familyTuple": {
+    "carrierVariantId": "carrier.cascade-sprite.source-v1",
+    "materialVariantId": "material.glasshole02.sprite.k01.semantic-v1",
+    "renderVariantId": "render.particle.alpha-two-sided-depth-read.mrt2-v1",
+    "compositionVariantId": "composition.dimensionmaster.2050120.clip3.source-v1"
+  },
+  "provenance": "SOURCE_EXACT",
+  "evidence": "PARTIAL",
+  "runtimeExecutor": "TYPED_HLSL_SEMANTIC_REPLAY",
+  "runtimeAdmission": "AUTHORING_ONLY",
+  "productJoin": "AUTHORED_NOT_PUBLISHED",
+  "userReview": "PENDING",
+  "runtimeMaterial": {
+    "backend": "runtimeMaterialV2",
+    "opcode": 16,
+    "packetSha256": "d633cbf034cffe94e1280324db381e5742d65cf71bc9790f922fc40ab29a2962",
+    "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_glasshole_02_01_tr",
+    "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr",
+    "profileId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2",
+    "effectiveStaticParameterSetSha256": "126881131d06544eff5f47c996bae29975b64dda72346c14c0b7e28b17025d9f",
+    "resourceSha256": {
+      "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_dustparticle_tile_02.dds": "57f00863a0be5449b1c0c5b07d9d44055f1cc1fc043bac481b83810e2c995c8f",
+      "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds": "75829aa6ea4c6f8a4bd3c2f646dac2ce08071af06052d3b048e5c558d6f30f44",
+      "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_cybernoise_02.dds": "389d6a10a5f3d321a1c085e42a9ac9cd6d2c82366cfc8c24690626610efe70b3"
+    }
+  },
+  "nativeOracle": {
+    "variantKeySha256": "1065b5004b127da3e2c7a0342a0f5c7405514337a56cac2bd22edce6c718d3cf",
+    "pixelShaderSha256": "e2ba1c1ef87cdd52cc74a8e661f8613d0b17f2cc7b9b1d0d7ab6ed80ec6e775b",
+    "runtimeAdmission": false,
+    "blockers": [
+      "NATIVE_EMITTER_VERTEX_FACTORY_ABI_UNPROVEN",
+      "NATIVE_SIX_SLOT_MRT_ABI_UNSUPPORTED",
+      "SOURCE_SAMPLER_ABI_UNPROVEN"
+    ]
+  },
+  "artifactSha256": "9da0e298477799159ad5d7c731724ea61b1bf698b686acfec652f6f1fb085f52"
+}

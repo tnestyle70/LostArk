@@ -773,6 +773,13 @@ registration과 runtime resource existence를 한 변경 단위로 닫는다.
 
 같은 parent 이름이어도 child/static set/carrier/role lane이 다르면 서로 다른 variant다.
 
+현재 첫 canary는 W `2050120.clip3`의 K-child occurrence
+`authored.source-particle.40e1b48e2f0f88dcfeff1549` 하나다. 복원된 profile-29 식을
+class-neutral RuntimeMaterialV2 opcode 16으로 옮기고 aura RGBA/sRGB, crack normal RG/linear,
+inner-hole RGB/sRGB lane과 sampler/static/render mask를 exact tuple로 고정한다. 실제 VF/pass가
+닫히지 않은 six-slot native DXBC는 oracle-only로 유지한다. A/D의 J-child 두 occurrence는 같은 parent
+이름만으로 승격하지 않고 effective static set을 별도로 닫을 때까지 기존 경로에 남긴다.
+
 ### G07. dragon flow와 궁극기 rollout
 
 Artist T의 fallback-blocked TypeDataRibbon을 먼저 typed CascadeRibbon으로 projection해 existing carrier
@@ -1103,10 +1110,10 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G00 inventory | `AUTO_PASS` | 22 occurrence family-first contract, builder check, focused 23 tests | 해당 없음 | first Product family executor |
 | G01 Tool/save | `IMPLEMENTED` | Warlord 17090 retained subset Save/Load 7/7, invalid identity/mesh/recipe rollback | 미실행 | Light/Post/Ribbon subtype Tool tree |
 | G02 join | `IMPLEMENTED` | Artist D effectref + source catalog + 56-row authored closure focused PASS | 미실행 | full publisher/runtime sealed join |
-| G03 shader variants | `EVIDENCE_PARTIAL` | F/W existing oracle | 미실행 | sampler/VF/pass/Product admission |
+| G03 shader variants | `IMPLEMENTED` | Glasshole02 K01 opcode 16 exact tuple admission, malformed packet rollback, WARP draw | 미실행 | Fluid/dragon variants와 native VF/pass evidence |
 | G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R, Warlord T, Lance E cone donor focused PASS | 미실행 | runtime full publish, S light choice |
 | G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결 | 미실행 | D/T asset lineage |
-| G06 glass/crack | `EVIDENCE_PARTIAL` | 5 cooked DXBC, Product consumer inventory | 미실행 | typed variants/screen overlay |
+| G06 glass/crack | `IMPLEMENTED` | W2050120 K-child typed canary + 3 DDS lane/WARP evidence, J-child fail-closed | 미실행 | Fluid01, J-child static set, screen overlay |
 | G07 dragon/ultimate | `EVIDENCE_PARTIAL` | Lance mesh/material cohort | 미실행 | independent UV/material execution |
 | G08 Artist V | `EVIDENCE_PARTIAL` | source timing/module audit | 미실행 | attractor/camera channel |
 | G09 Dimension gameplay | `EVIDENCE_PARTIAL` | current command/snapshot audit | 미실행 | approved target replication |

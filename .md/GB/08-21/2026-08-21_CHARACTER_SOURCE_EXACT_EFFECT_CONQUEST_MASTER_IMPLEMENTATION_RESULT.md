@@ -78,6 +78,21 @@
 - donor의 `97.25deg` Y rotation과 local scale은 첫 화면 기준값이며, 사용자가 Effect Tool에서
   해당 독립 occurrence만 후속 튜닝할 수 있다.
 
+### 1.8 Glasshole02 첫 class-neutral family canary
+
+- 차원 W `2050120.clip3`의 exact K-child SpriteParticle
+  `authored.source-particle.40e1b48e2f0f88dcfeff1549` 한 건만 RuntimeMaterialV2 opcode 16으로
+  승격했다.
+- aura `RGBA/sRGB`, crack normal `RG/linear`, inner-hole `RGB/sRGB` 세 lane과 각각의
+  linear/wrap sampler, 32 scalar, 2 vector, dynamic/particle/static/render mask를 exact execution
+  tuple로 봉인했다.
+- 기존 bounded Glasshole02 profile-29 수식을 class-neutral HLSL family로 옮겼다. exact cooked
+  DXBC는 실제 SpriteParticle VF와 six-slot MRT/sampler ABI가 닫히지 않았으므로 oracle-only다.
+- A `2050210`과 D `2050240.clip2`의 J-child는 같은 parent 이름만으로 승격하지 않았다. 두
+  occurrence는 effective static set을 별도로 회수할 때까지 기존 reconstructed profile을 유지한다.
+- opcode 16 packet의 carrier/material/resource/channel/color-space/sampler/scalar/mask가 하나라도
+  다르면 staging에서 occurrence를 거부하고 직전 prepared document를 보존한다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -97,6 +112,9 @@
 | Debug/Release Client after subset codec change | 각 errors 0 PASS |
 | Artist A/D/R + Warlord T focused contracts | 17 tests PASS, 각 materializer `--check` PASS |
 | Lance E W-cone selective donor | 4 tests, `--check`, authored codec parse PASS |
+| Glasshole02 K01 materializer | 6 tests, `--check`, Debug authored codec parse PASS |
+| Debug Glasshole02 K01 HLSL/Client | shader compile + Client errors 0 PASS |
+| Debug/Release `--effect-glass-family-fast` | 각 11 PASS; draw 1, issued 1, RGB pixels 283, semantic-channel reject/rollback PASS |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -108,6 +126,8 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
   세 행은 `AUTHORING_ONLY/AUTHORED_NOT_PUBLISHED`이다.
 - 도화가 D effectref/source catalog와 A/R, 워로드 T authored 변경도 full publish 전에는
   checked-in sealed runtime catalog에서 실행되지 않는다.
+- Glasshole02 opcode 16 authored packet도 checked-in runtime catalog가 pre-promotion sealed document를
+  가리키므로 현재 `AUTHORING_ONLY/AUTHORED_NOT_PUBLISHED`이다.
 - full Effect publisher Validate는 현재 main의 `effect.valtan.red-blade-wave.active` 중복 소유자
   검증에서 중단된다. 이 세션은 해당 Valtan 데이터를 수정하지 않았다.
 - 실제 Client의 동/서/남/북 cast 방향, 검격 형태·타이밍·색감은 사용자 화면 판정 대기다.

@@ -64,6 +64,13 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     if (0u != g_RuntimeMaterialV2Enabled)
     {
         if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_GLASSHOLE02_SPRITE_K01)
+        {
+            return Shade_EffectUe3Glasshole02K01Particle(
+                input.runtimeLocalUV, input.color,
+                input.dynamicParameter);
+        }
+        if (g_RuntimeMaterialV2Opcode ==
             RUNTIME_MATERIAL_V2_UE3_SPRITEWAVE_TR)
         {
             return Shade_EffectUe3SpriteWaveTrParticle(
