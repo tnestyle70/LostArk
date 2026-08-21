@@ -12653,6 +12653,537 @@ namespace
 			"Effect Explicit Zero StartSize Does Not Use The Detail Fallback");
 	}
 
+	void Test_SourceCircleVortexFamily(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		const auto NumberLiteral = [](const std::string& PropertyPath,
+			const f64_t Value)
+		{
+			EFFECT_SOURCE_LITERAL_DESC Result;
+			Result.strPropertyPath = PropertyPath;
+			Result.eKind = EFFECT_SOURCE_LITERAL_KIND::NUMBER;
+			Result.fNumber = Value;
+			return Result;
+		};
+		const auto BooleanLiteral = [](const std::string& PropertyPath,
+			const bool_t Value)
+		{
+			EFFECT_SOURCE_LITERAL_DESC Result;
+			Result.strPropertyPath = PropertyPath;
+			Result.eKind = EFFECT_SOURCE_LITERAL_KIND::BOOLEAN;
+			Result.bBoolean = Value;
+			return Result;
+		};
+		const auto ConstantDistribution = [](const std::string& PropertyPath,
+			const uint32_t iComponentCount, const float4_t& Value)
+		{
+			EFFECT_DISTRIBUTION_DESC Result;
+			Result.strPropertyPath = PropertyPath;
+			Result.iComponentCount = iComponentCount;
+			Result.iOperation = 1u;
+			Result.vDefaultMinimum = Value;
+			Result.vDefaultMaximum = Value;
+			return Result;
+		};
+		const auto MakeCircle = [&](const uint32_t iSplitCount,
+			const bool_t bVelocity)
+		{
+			EFFECT_SOURCE_MODULE_DESC Result;
+			Result.strStableId = "harness.circle";
+			Result.strClassName =
+				"efparticlemodulelocationcirclesurface";
+			Result.strObjectPath = "Harness.CircleSurface";
+			Result.Literals = {
+				NumberLiteral("splitcirclecount", iSplitCount),
+				BooleanLiteral("velocity", bVelocity)
+			};
+			Result.Distributions = {
+				ConstantDistribution("startlocation", 3u, {}),
+				ConstantDistribution("startradius", 1u,
+					{ 260.f, 0.f, 0.f, 0.f }),
+				ConstantDistribution("startrot", 1u, {}),
+				ConstantDistribution("velocityscale", 1u,
+					{ 1.f, 0.f, 0.f, 0.f })
+			};
+			return Result;
+		};
+		const auto MakeVortex = [&](const f32_t fPower)
+		{
+			EFFECT_SOURCE_MODULE_DESC Result;
+			Result.strStableId = "harness.vortex";
+			Result.strClassName = "efparticlemodulevortex";
+			Result.strObjectPath = "Harness.Vortex";
+			Result.Literals = { NumberLiteral("power", fPower) };
+			Result.Distributions = {
+				ConstantDistribution("poweracceleration", 1u,
+					{ 1.f, 0.f, 0.f, 0.f })
+			};
+			return Result;
+		};
+		const auto MakeElement = [&](const uint32_t iBurstCount,
+			const uint32_t iSplitCount, const bool_t bVortex)
+		{
+			EFFECT_ELEMENT_DESC Element;
+			Element.strElementId = bVortex ?
+				"circle.vortex" : "circle.only";
+			Element.strDisplayName = Element.strElementId;
+			Element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+			Element.Detail.Timing.fLifeTimeSeconds = 1.f;
+			Element.Detail.Particle.iMaxParticles = 32u;
+			Element.Detail.Particle.vLifeTimeSeconds = { 1.f, 1.f };
+			Element.Detail.Particle.iRandomSeed = 41u;
+			Element.SourceRecipe.bEnabled = true;
+			Element.SourceRecipe.strRendererShape = "sprite";
+			Element.SourceRecipe.fEmitterDurationSeconds = 1.f;
+			Element.SourceRecipe.iEmitterLoopCount = 1u;
+			Element.SourceRecipe.Bursts.push_back(
+				{ 0.f, iBurstCount, iBurstCount });
+			EFFECT_SOURCE_MODULE_DESC Lifetime;
+			Lifetime.strStableId = "harness.lifetime";
+			Lifetime.strClassName = "particlemodulelifetime";
+			Lifetime.strObjectPath = "Harness.Lifetime";
+			Lifetime.Distributions = {
+				ConstantDistribution("lifetime", 1u,
+					{ 1.f, 0.f, 0.f, 0.f })
+			};
+			EFFECT_SOURCE_MODULE_DESC Required;
+			Required.strStableId = "harness.required";
+			Required.strClassName = "particlemodulerequired";
+			Required.strObjectPath = "Harness.Required";
+			Required.Distributions = {
+				ConstantDistribution("spawnrate", 1u, {})
+			};
+			EFFECT_SOURCE_MODULE_DESC Spawn;
+			Spawn.strStableId = "harness.spawn";
+			Spawn.strClassName = "particlemodulespawn";
+			Spawn.strObjectPath = "Harness.Spawn";
+			Spawn.Distributions = {
+				ConstantDistribution("rate", 1u, {}),
+				ConstantDistribution("ratescale", 1u, {})
+			};
+			Element.SourceRecipe.Modules = { std::move(Required),
+				std::move(Lifetime), MakeCircle(iSplitCount, true),
+				std::move(Spawn) };
+			if (bVortex)
+				Element.SourceRecipe.Modules.push_back(MakeVortex(6000.f));
+			return Element;
+		};
+		const auto MakeDocument = [&](const uint32_t iBurstCount,
+			const uint32_t iSplitCount, const bool_t bVortex)
+		{
+			EFFECT_DOCUMENT_DESC Document;
+			Document.strEffectAssetId = bVortex ?
+				"effect.source.circle-vortex.harness" :
+				"effect.source.circle.harness";
+			Document.strDisplayName = Document.strEffectAssetId;
+			Document.Elements.push_back(
+				MakeElement(iBurstCount, iSplitCount, bVortex));
+			return Document;
+		};
+
+		std::string Status;
+		const EFFECT_SOURCE_MODULE_DESC Circle = MakeCircle(7u, true);
+		const EFFECT_SOURCE_MODULE_DESC Vortex = MakeVortex(6000.f);
+		const bool_t bStrictClassesAdmitted =
+			CEffectPlayback::Validate_ReconstructedSourceModuleExecution(
+				Circle, Status) &&
+			CEffectPlayback::Validate_ReconstructedSourceModuleExecution(
+				Vortex, Status);
+		runner.Require(bStrictClassesAdmitted,
+			"CircleSurface And Vortex Enter The Strict Class-Neutral Source Executor Allowlist");
+
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		CEffectPlayback CirclePlayback;
+		const bool_t bCircleStaged = CirclePlayback.Stage_Document(
+			MakeDocument(7u, 7u, false), Status);
+		if (bCircleStaged)
+			CirclePlayback.Update(1.f / 60.f, Identity);
+		bool_t bCircleGeometryExact = bCircleStaged &&
+			CirclePlayback.Get_Frame().Particles.size() == 7u;
+		for (const EFFECT_EVALUATED_PARTICLE& Particle :
+			CirclePlayback.Get_Frame().Particles)
+		{
+			const f32_t fRadius = std::sqrt(
+				Particle.World._41 * Particle.World._41 +
+				Particle.World._43 * Particle.World._43);
+			const f32_t fSpeed = std::sqrt(
+				Particle.vWorldVelocity.x * Particle.vWorldVelocity.x +
+				Particle.vWorldVelocity.z * Particle.vWorldVelocity.z);
+			f32_t fTurns = std::atan2(-Particle.World._43,
+				Particle.World._41) / XM_2PI;
+			if (fTurns < 0.f)
+				fTurns += 1.f;
+			const f32_t fSector = fTurns * 7.f;
+			bCircleGeometryExact = bCircleGeometryExact &&
+				std::abs(fRadius - (2.6f + 2.6f / 60.f)) < 0.0001f &&
+				std::abs(fSpeed - 2.6f) < 0.0001f &&
+				std::abs(fSector - std::round(fSector)) < 0.0001f &&
+				std::abs(Particle.World._42) < 0.0001f;
+		}
+		if (!bCircleGeometryExact)
+		{
+			std::cout << "[DETAIL] circle staged=" << bCircleStaged
+				<< " particles=" << CirclePlayback.Get_Frame().Particles.size()
+				<< " status=" << Status << '\n';
+			for (const EFFECT_EVALUATED_PARTICLE& Particle :
+				CirclePlayback.Get_Frame().Particles)
+			{
+				std::cout << "[DETAIL] circle position="
+					<< Particle.World._41 << ',' << Particle.World._42 << ','
+					<< Particle.World._43 << " velocity="
+					<< Particle.vWorldVelocity.x << ','
+					<< Particle.vWorldVelocity.y << ','
+					<< Particle.vWorldVelocity.z << '\n';
+			}
+		}
+		runner.Require(bCircleGeometryExact,
+			"CircleSurface Emits Seven Radius-260cm Quantized Particles With Radial Velocity");
+
+		struct TRAJECTORY_SAMPLE final
+		{
+			bool_t bStaged = false;
+			float3_t vPosition{};
+			float3_t vVelocity{};
+		};
+		const auto SampleTrajectory = [&](const uint32_t iFramesPerSecond,
+			const bool_t bVortex)
+		{
+			TRAJECTORY_SAMPLE Sample;
+			CEffectPlayback Playback;
+			EFFECT_DOCUMENT_DESC Document = MakeDocument(1u, 1u, bVortex);
+			Sample.bStaged = Playback.Stage_Document(Document, Status);
+			if (!Sample.bStaged)
+				return Sample;
+			const uint32_t iFrameCount = iFramesPerSecond / 6u;
+			for (uint32_t iFrame = 0u; iFrame < iFrameCount; ++iFrame)
+				Playback.Update(1.f / static_cast<f32_t>(iFramesPerSecond),
+					Identity);
+			if (Playback.Get_Frame().Particles.size() != 1u)
+			{
+				Sample.bStaged = false;
+				return Sample;
+			}
+			const EFFECT_EVALUATED_PARTICLE& Particle =
+				Playback.Get_Frame().Particles.front();
+			Sample.vPosition = {
+				Particle.World._41, Particle.World._42, Particle.World._43 };
+			Sample.vVelocity = Particle.vWorldVelocity;
+			return Sample;
+		};
+		const TRAJECTORY_SAMPLE Vortex30 = SampleTrajectory(30u, true);
+		const TRAJECTORY_SAMPLE Vortex60 = SampleTrajectory(60u, true);
+		const TRAJECTORY_SAMPLE Vortex120 = SampleTrajectory(120u, true);
+		const TRAJECTORY_SAMPLE Radial60 = SampleTrajectory(60u, false);
+		const auto Same3 = [](const float3_t& Left, const float3_t& Right)
+		{
+			return std::abs(Left.x - Right.x) < 0.00001f &&
+				std::abs(Left.y - Right.y) < 0.00001f &&
+				std::abs(Left.z - Right.z) < 0.00001f;
+		};
+		const bool_t bVortexTrajectoryExact = Vortex30.bStaged &&
+			Vortex60.bStaged && Vortex120.bStaged && Radial60.bStaged &&
+			Same3(Vortex30.vPosition, Vortex60.vPosition) &&
+			Same3(Vortex60.vPosition, Vortex120.vPosition) &&
+			Same3(Vortex30.vVelocity, Vortex60.vVelocity) &&
+			Same3(Vortex60.vVelocity, Vortex120.vVelocity) &&
+			Vortex60.vPosition.z > Radial60.vPosition.z + 0.1f &&
+			Vortex60.vVelocity.z > Radial60.vVelocity.z + 1.f;
+		if (!bVortexTrajectoryExact)
+		{
+			const auto PrintSample = [](const char* pName,
+				const TRAJECTORY_SAMPLE& Sample)
+			{
+				std::cout << "[DETAIL] " << pName << " staged="
+					<< Sample.bStaged << " position=" << Sample.vPosition.x
+					<< ',' << Sample.vPosition.y << ',' << Sample.vPosition.z
+					<< " velocity=" << Sample.vVelocity.x << ','
+					<< Sample.vVelocity.y << ',' << Sample.vVelocity.z << '\n';
+			};
+			PrintSample("vortex30", Vortex30);
+			PrintSample("vortex60", Vortex60);
+			PrintSample("vortex120", Vortex120);
+			PrintSample("radial60", Radial60);
+			std::cout << "[DETAIL] vortex status=" << Status << '\n';
+		}
+		runner.Require(bVortexTrajectoryExact,
+			"Vortex Adds A Deterministic Tangential Fixed-Step Trajectory At 30 60 And 120 FPS");
+
+		CEffectPlayback CommittedPlayback;
+		const bool_t bCommitted = CommittedPlayback.Stage_Document(
+			MakeDocument(1u, 1u, true), Status);
+		if (bCommitted)
+			CommittedPlayback.Seek(3.f / 60.f, Identity);
+		const std::string CommittedFrame =
+			Snapshot_EffectFrame(CommittedPlayback.Get_Frame());
+		EFFECT_SOURCE_MODULE_DESC Unknown = Circle;
+		Unknown.strClassName = "efparticlemoduleunknown";
+		EFFECT_SOURCE_MODULE_DESC MalformedCircle = Circle;
+		MalformedCircle.Literals.front().fNumber = 7.5;
+		EFFECT_SOURCE_MODULE_DESC WrongWidthVortex = Vortex;
+		WrongWidthVortex.Distributions.front().iComponentCount = 2u;
+		EFFECT_SOURCE_MODULE_DESC MalformedVortex = Vortex;
+		MalformedVortex.Distributions.clear();
+		const auto ReplaceModule = [](EFFECT_DOCUMENT_DESC& Document,
+			const std::string_view SourceClass,
+			const EFFECT_SOURCE_MODULE_DESC& Replacement)
+		{
+			if (Document.Elements.size() != 1u)
+				return false;
+			auto& Modules = Document.Elements.front().SourceRecipe.Modules;
+			const auto Found = std::ranges::find_if(Modules,
+				[SourceClass](const EFFECT_SOURCE_MODULE_DESC& Module)
+				{
+					return Module.strClassName == SourceClass;
+				});
+			if (Found == Modules.end())
+				return false;
+			*Found = Replacement;
+			return true;
+		};
+		EFFECT_DOCUMENT_DESC UnknownDocument = MakeDocument(1u, 1u, true);
+		EFFECT_DOCUMENT_DESC MalformedCircleDocument = UnknownDocument;
+		EFFECT_DOCUMENT_DESC MalformedVortexDocument = UnknownDocument;
+		const bool_t bFailureDocumentsBuilt =
+			ReplaceModule(UnknownDocument,
+				"efparticlemodulelocationcirclesurface", Unknown) &&
+			ReplaceModule(MalformedCircleDocument,
+				"efparticlemodulelocationcirclesurface", MalformedCircle) &&
+			ReplaceModule(MalformedVortexDocument,
+				"efparticlemodulevortex", MalformedVortex);
+		const bool_t bStrictFailureTransactional = bCommitted &&
+			bFailureDocumentsBuilt &&
+			!CEffectPlayback::Validate_ReconstructedSourceModuleExecution(
+				Unknown, Status) && !Status.empty() &&
+			!CEffectPlayback::Validate_ReconstructedSourceModuleExecution(
+				MalformedCircle, Status) && !Status.empty() &&
+			!CEffectPlayback::Validate_ReconstructedSourceModuleExecution(
+				WrongWidthVortex, Status) && !Status.empty() &&
+			!CEffectPlayback::Validate_ReconstructedSourceModuleExecution(
+				MalformedVortex, Status) && !Status.empty() &&
+			!CommittedPlayback.Stage_Document(UnknownDocument, Status) &&
+			!Status.empty() &&
+			Snapshot_EffectFrame(CommittedPlayback.Get_Frame()) == CommittedFrame &&
+			!CommittedPlayback.Stage_Document(MalformedCircleDocument, Status) &&
+			!Status.empty() &&
+			Snapshot_EffectFrame(CommittedPlayback.Get_Frame()) == CommittedFrame &&
+			!CommittedPlayback.Stage_Document(MalformedVortexDocument, Status) &&
+			!Status.empty() &&
+			Snapshot_EffectFrame(CommittedPlayback.Get_Frame()) == CommittedFrame;
+		if (!bStrictFailureTransactional)
+			std::cout << "[DETAIL] transactional committed=" << bCommitted
+				<< " status=" << Status << '\n';
+		runner.Require(bStrictFailureTransactional,
+			"Strict Source Admission Rejects Unknown And Malformed Circle Vortex Modules Without Mutating Committed Playback");
+
+		const auto LoadRawDocument = [](const std::filesystem::path& Path,
+			DATA_JSON_VALUE& OutRoot, std::string& OutStatus)
+		{
+			std::ifstream Input(Path, std::ios::binary);
+			if (Path.empty() || !Input)
+			{
+				OutStatus = "source evidence document could not be opened";
+				return false;
+			}
+			std::string Text{ std::istreambuf_iterator<char_t>(Input),
+				std::istreambuf_iterator<char_t>() };
+			if (Text.starts_with("\xEF\xBB\xBF"))
+				Text.erase(0u, 3u);
+			DATA_JSON_PARSE_LIMITS Limits;
+			Limits.iMaximumBytes = 64u * 1024u * 1024u;
+			Limits.iMaximumDepth = 64u;
+			Limits.iMaximumValues = 3'000'000u;
+			return CDataJson::Parse(Text, OutRoot, OutStatus, Limits) &&
+				OutRoot.Is_Object();
+		};
+		const auto FindRawArrayObject = [](const DATA_JSON_VALUE* pArray,
+			const std::string_view Field, const std::string_view Value) ->
+			const DATA_JSON_VALUE*
+		{
+			if (nullptr == pArray || !pArray->Is_Array())
+				return nullptr;
+			const auto Found = std::ranges::find_if(pArray->Get_Array(),
+				[Field, Value](const DATA_JSON_VALUE& Entry)
+				{
+					const DATA_JSON_VALUE* pField = Entry.Is_Object() ?
+						Entry.Find(Field) : nullptr;
+					return nullptr != pField && pField->Is_String() &&
+						pField->Get_String() == Value;
+				});
+			return Found == pArray->Get_Array().end() ? nullptr : &*Found;
+		};
+		const auto CountRawArrayObjects = [](const DATA_JSON_VALUE* pArray,
+			const std::string_view Field, const std::string_view Value)
+		{
+			if (nullptr == pArray || !pArray->Is_Array())
+				return size_t{ 0u };
+			return static_cast<size_t>(std::ranges::count_if(
+				pArray->Get_Array(), [Field, Value](const DATA_JSON_VALUE& Entry)
+				{
+					const DATA_JSON_VALUE* pField = Entry.Is_Object() ?
+						Entry.Find(Field) : nullptr;
+					return nullptr != pField && pField->Is_String() &&
+						pField->Get_String() == Value;
+				}));
+		};
+		const auto NumberFieldEquals = [](const DATA_JSON_VALUE* pObject,
+			const std::string_view Field, const double Value)
+		{
+			const DATA_JSON_VALUE* pField = nullptr == pObject ||
+				!pObject->Is_Object() ? nullptr : pObject->Find(Field);
+			return nullptr != pField && pField->Is_Number() &&
+				pField->Get_Number() == Value;
+		};
+		const auto BooleanFieldEquals = [](const DATA_JSON_VALUE* pObject,
+			const std::string_view Field, const bool_t Value)
+		{
+			const DATA_JSON_VALUE* pField = nullptr == pObject ||
+				!pObject->Is_Object() ? nullptr : pObject->Find(Field);
+			return nullptr != pField && pField->Is_Boolean() &&
+				pField->Get_Boolean() == Value;
+		};
+		const auto FindRawModuleChild = [&FindRawArrayObject](
+			const DATA_JSON_VALUE* pModule, const std::string_view ArrayName,
+			const std::string_view PropertyPath) -> const DATA_JSON_VALUE*
+		{
+			const DATA_JSON_VALUE* pArray = nullptr == pModule ||
+				!pModule->Is_Object() ? nullptr : pModule->Find(ArrayName);
+			return FindRawArrayObject(pArray, "propertyPath", PropertyPath);
+		};
+		const auto DistributionHasComponents = [&FindRawModuleChild,
+			&NumberFieldEquals](const DATA_JSON_VALUE* pModule,
+			const std::string_view PropertyPath, const uint32_t iComponents)
+		{
+			return NumberFieldEquals(FindRawModuleChild(pModule,
+				"distributions", PropertyPath), "componentCount", iComponents);
+		};
+		const auto LiteralNumberEquals = [&FindRawModuleChild,
+			&NumberFieldEquals](const DATA_JSON_VALUE* pModule,
+			const std::string_view PropertyPath, const double Value)
+		{
+			return NumberFieldEquals(FindRawModuleChild(pModule,
+				"literals", PropertyPath), "value", Value);
+		};
+		const auto LiteralBooleanEquals = [&FindRawModuleChild,
+			&BooleanFieldEquals](const DATA_JSON_VALUE* pModule,
+			const std::string_view PropertyPath, const bool_t Value)
+		{
+			return BooleanFieldEquals(FindRawModuleChild(pModule,
+				"literals", PropertyPath), "value", Value);
+		};
+		const auto DistributionTableIs = [&FindRawModuleChild](
+			const DATA_JSON_VALUE* pModule, const std::string_view PropertyPath,
+			const size_t iCount, const double Value)
+		{
+			const DATA_JSON_VALUE* pDistribution = FindRawModuleChild(pModule,
+				"distributions", PropertyPath);
+			const DATA_JSON_VALUE* pTable = nullptr == pDistribution ? nullptr :
+				pDistribution->Find("lookupTable");
+			return nullptr != pTable && pTable->Is_Array() &&
+				pTable->Get_Array().size() == iCount &&
+				std::ranges::all_of(pTable->Get_Array(), [Value](
+					const DATA_JSON_VALUE& Entry)
+				{
+					return Entry.Is_Number() && Entry.Get_Number() == Value;
+				});
+		};
+
+		DATA_JSON_VALUE DimensionF;
+		const std::filesystem::path DimensionFPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050230.unified."
+			L"effect.json");
+		const bool_t bDimensionFLoaded = !DimensionFPath.empty() &&
+			LoadRawDocument(DimensionFPath, DimensionF, Status);
+		constexpr std::string_view DimensionFElementId =
+			"authored.source-particle.0f7aa9cd0601769f9e51f5cc";
+		const DATA_JSON_VALUE* pDimensionElements = bDimensionFLoaded ?
+			DimensionF.Find("elements") : nullptr;
+		const DATA_JSON_VALUE* pDimensionF = FindRawArrayObject(
+			pDimensionElements, "id", DimensionFElementId);
+		const DATA_JSON_VALUE* pDimensionRecipe = nullptr == pDimensionF ?
+			nullptr : pDimensionF->Find("sourceRecipe");
+		const DATA_JSON_VALUE* pDimensionBursts =
+			nullptr == pDimensionRecipe ? nullptr :
+			pDimensionRecipe->Find("bursts");
+		const DATA_JSON_VALUE* pDimensionModules =
+			nullptr == pDimensionRecipe ? nullptr :
+			pDimensionRecipe->Find("modules");
+		const DATA_JSON_VALUE* pDimensionFCircle = FindRawArrayObject(
+			pDimensionModules, "stableId", "FX_PC_SWP_03:export:58@ref:11");
+		const DATA_JSON_VALUE* pDimensionFVortex = FindRawArrayObject(
+			pDimensionModules, "stableId", "FX_PC_SWP_03:export:184@ref:12");
+		const DATA_JSON_VALUE* pDimensionBurst = nullptr == pDimensionBursts ||
+			!pDimensionBursts->Is_Array() ||
+			pDimensionBursts->Get_Array().size() != 1u ? nullptr :
+			&pDimensionBursts->Get_Array().front();
+		const bool_t bDimensionFCanaryExact = nullptr != pDimensionF &&
+			NumberFieldEquals(pDimensionBurst, "countMinimum", 7.0) &&
+			NumberFieldEquals(pDimensionBurst, "countMaximum", 7.0) &&
+			CountRawArrayObjects(pDimensionModules, "className",
+				"efparticlemodulelocationcirclesurface") == 1u &&
+			CountRawArrayObjects(pDimensionModules, "className",
+				"efparticlemodulevortex") == 1u &&
+			LiteralNumberEquals(pDimensionFCircle, "splitcirclecount", 7.0) &&
+			LiteralBooleanEquals(pDimensionFCircle, "velocity", true) &&
+			DistributionHasComponents(pDimensionFCircle, "startlocation", 3u) &&
+			DistributionHasComponents(pDimensionFCircle, "startradius", 1u) &&
+			DistributionHasComponents(pDimensionFCircle, "startrot", 1u) &&
+			DistributionHasComponents(pDimensionFCircle, "velocityscale", 1u) &&
+			DistributionTableIs(pDimensionFCircle, "startradius", 4u, 260.0) &&
+			DistributionHasComponents(pDimensionFVortex,
+				"poweracceleration", 1u);
+		if (!bDimensionFCanaryExact)
+			std::cout << "[DETAIL] dimension-f loaded=" << bDimensionFLoaded
+				<< " path=" << DimensionFPath.string() << " element="
+				<< (nullptr != pDimensionF) << " circle="
+				<< (nullptr != pDimensionFCircle) << " vortex="
+				<< (nullptr != pDimensionFVortex) << " status=" << Status << '\n';
+		runner.Require(bDimensionFCanaryExact,
+			"DimensionMaster F Fragment 0f7aa Keeps Its Exact CircleSurface Seven-Burst And Vortex Evidence");
+
+		DATA_JSON_VALUE ArtistV;
+		const std::filesystem::path ArtistVPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.artist.skill.31910.unified.effect.json");
+		const bool_t bArtistVLoaded = !ArtistVPath.empty() &&
+			LoadRawDocument(ArtistVPath, ArtistV, Status);
+		constexpr std::array<std::pair<std::string_view, std::string_view>, 3u>
+			ArtistVCanaries = {{
+				{ "authored.source-particle.b67cec9212f4d6c2c838d496",
+				  "FX_PC_SDM_06:export:130@ref:12" },
+				{ "authored.source-particle.bdce66573d49210d95e1d19f",
+				  "FX_PC_SDM_06:export:131@ref:8" },
+				{ "authored.source-particle.657ad9658fb77904387f0ec3",
+				  "FX_PC_SDM_06:export:132@ref:9" }
+			}};
+		const DATA_JSON_VALUE* pArtistElements = bArtistVLoaded ?
+			ArtistV.Find("elements") : nullptr;
+		bool_t bArtistVCanariesExact = bArtistVLoaded;
+		for (const auto& [ElementId, StableModuleId] : ArtistVCanaries)
+		{
+			const DATA_JSON_VALUE* pElement = FindRawArrayObject(
+				pArtistElements, "id", ElementId);
+			const DATA_JSON_VALUE* pRecipe = nullptr == pElement ? nullptr :
+				pElement->Find("sourceRecipe");
+			const DATA_JSON_VALUE* pModules = nullptr == pRecipe ? nullptr :
+				pRecipe->Find("modules");
+			const DATA_JSON_VALUE* pVortex = FindRawArrayObject(
+				pModules, "stableId", StableModuleId);
+			const DATA_JSON_VALUE* pClass = nullptr == pVortex ? nullptr :
+				pVortex->Find("className");
+			bArtistVCanariesExact = bArtistVCanariesExact &&
+				CountRawArrayObjects(pModules, "stableId", StableModuleId) == 1u &&
+				nullptr != pClass && pClass->Is_String() &&
+				pClass->Get_String() == "efparticlemodulevortex" &&
+				DistributionHasComponents(pVortex, "poweracceleration", 1u);
+		}
+		if (!bArtistVCanariesExact)
+			std::cout << "[DETAIL] artist-v loaded=" << bArtistVLoaded
+				<< " path=" << ArtistVPath.string() << " status=" << Status
+				<< '\n';
+		runner.Require(bArtistVCanariesExact,
+			"Artist V Keeps Three Exact Vortex Source Rows As Evidence-Only Family Canaries");
+	}
+
 	void Test_EffectExactSourceSemantics(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -39680,6 +40211,14 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--effect-source-circle-vortex-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_SourceCircleVortexFamily(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--effect-tool-preview-fast")
 	{
 		Client::CEffectCatalog::Clear();
@@ -39785,6 +40324,7 @@ int main(const int argc, char* argv[])
 		Test_EffectTypedPresentation(runner);
 		Test_EffectSourceModuleOccurrenceOrder(runner);
 		Test_EffectNullCdoStartSizeFallback(runner);
+		Test_SourceCircleVortexFamily(runner);
 		Test_EffectExactSourceSemantics(runner);
 		Test_DimensionMasterSpriteImageFlipAuthority(runner);
 		Test_DimensionMasterSourceSemanticAssets(runner);

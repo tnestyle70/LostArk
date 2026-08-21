@@ -465,6 +465,16 @@ source object/combined-mesh lineage 재감사
 generic 초기속도만으로 중앙 집결을 완성할 수 없다. 먼저 exact yellow-wisp occurrence의 source module
 curve를 재구성한다. source가 target seek를 직접 요구할 때만 공용 attractor atom을 추가한다.
 
+그 선행 계약으로 class-neutral reconstructed source seam은
+`efparticlemodulelocationcirclesurface`와 `efparticlemodulevortex`를 exact class로 admission한다.
+`SourceClass_Matches`의 `ef` prefix 및 `_seeded` suffix 정규화를 그대로 공유하되, CircleSurface는
+`startLocation/startRadius/startRot/velocityScale` 네 distribution과 `splitCircleCount`, `surfaceAxis`,
+`bHalfMode`, `bNegativeAxis`, `velocity`, `bEnabled`를 typed validation한다. Vortex는 scalar
+`powerAcceleration` distribution과 optional `power/bEnabled`를 검증한다. 예상하지 않은 distribution,
+잘못된 component count, fractional split, unknown class는 stage 전에 fail-close하고 기존 playback을
+보존한다. 이 seam은 이미 portable source carrier로 재생되는 Product 행을 새로 publish/admit하는
+경로가 아니라, reconstructed plan의 strict module whitelist 공백을 닫는 공용 실행 계약이다.
+
 공용 atom의 계약:
 
 ```text
@@ -837,6 +847,10 @@ source timeline의 early distortion/FOV/light와 late `3.0/3.2/3.4s` burst를 oc
 노란 wisp의 spawn cylinder/orbit/velocity curve를 먼저 재생하고, 부족한 target-seek 동작만 CAP-05로
 구현한다.
 
+첫 source atom canary는 차원 F `authored.source-particle.0f7aa9cd0601769f9e51f5cc`의 7-burst,
+260cm CircleSurface와 Vortex, 도화가 V의 stable vortex 세 행이다. 원본 JSON row는 evidence-only로
+고정하고 Product authored 문서나 runtime catalog를 이 단계에서 변경하지 않는다.
+
 camera/post/light/overlay submission은 source order가 deterministic해야 하며 effect stop, death,
 disconnect, class/level change 뒤 한 frame 안에 제거된다. 다른 effect의 presentation을 clear하지 않는다.
 
@@ -1016,6 +1030,8 @@ Shared packet을 바꾸면 writer/reader, NetworkProtocolHarness, Server contrac
 - spline degenerate/zero-length path rejection
 - arc-length U invariance under segment subdivision
 - deterministic seed and fixed-step replay
+- CircleSurface 7-count/260cm radius/quantized sector/radial velocity와 Vortex 30/60/120FPS fixed-step trajectory
+- unknown/fractional/wrong-width/missing source module의 fail-close 및 기존 playback rollback
 - attractor convergence/overshoot/cancel tests
 - model animation clip/bone matrices and orientation-to-velocity
 - root yaw 0/90/180/-90과 직전 반대 presentation yaw에서 authoritative action edge
@@ -1155,7 +1171,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결, D tiger 12행 typed family | 미실행 | E runtime frame 확인, T asset lineage |
 | G06 glass/crack | `IMPLEMENTED` | W2050120 K-child + F2050230 Fluid01 two-row + screen-overlay v1 synthetic WARP/rollback | 미실행 | Fluid01 mesh, J-child static set, 차원 F/W Product overlay·refraction |
 | G07 dragon/ultimate | `EVIDENCE_PARTIAL` | Lance mesh/material cohort | 미실행 | independent UV/material execution |
-| G08 Artist V | `EVIDENCE_PARTIAL` | source timing/module audit | 미실행 | attractor/camera channel |
+| G08 Artist V | `EVIDENCE_PARTIAL` | CircleSurface/Vortex strict executor, Dimension F 7-burst와 Artist V vortex 3행 canary Debug/Release PASS | 미실행 | attractor/camera channel |
 | G09 Dimension gameplay | `EVIDENCE_PARTIAL` | current command/snapshot audit | 미실행 | approved target replication |
 | G10 publish | `PLANNED` | 미실행 | 미실행 | preceding Gs |
 | G11 visual/golden | `PLANNED` | 미실행 | 사용자 대기 | 실제 관찰 |

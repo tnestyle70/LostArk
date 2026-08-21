@@ -1350,10 +1350,159 @@ namespace
 		return true;
 	}
 
-	bool_t Is_ReconstructedSourceModuleSupported(
-		const Client::EFFECT_SOURCE_MODULE_DESC& Module)
+	bool_t Validate_ReconstructedSourceLiteral(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view PropertyPath,
+		const Client::EFFECT_SOURCE_LITERAL_KIND ExpectedKind,
+		std::string& strOutError)
 	{
-		static constexpr std::array<std::string_view, 32u> Supported = {
+		const size_t Count = std::ranges::count_if(Module.Literals,
+			[PropertyPath](const Client::EFFECT_SOURCE_LITERAL_DESC& Literal)
+			{
+				return Literal.strPropertyPath == PropertyPath;
+			});
+		if (Count > 1u)
+		{
+			strOutError = "duplicate source literal: " +
+				std::string(PropertyPath);
+			return false;
+		}
+		const Client::EFFECT_SOURCE_LITERAL_DESC* pLiteral =
+			Find_SourceLiteral(Module, PropertyPath);
+		if (nullptr == pLiteral)
+			return true;
+		if (pLiteral->eKind != ExpectedKind)
+		{
+			strOutError = "source literal kind mismatches: " +
+				std::string(PropertyPath);
+			return false;
+		}
+		if (ExpectedKind == Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER &&
+			!std::isfinite(pLiteral->fNumber))
+		{
+			strOutError = "source numeric literal is non-finite: " +
+				std::string(PropertyPath);
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_ReconstructedSourceDistribution(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view PropertyPath,
+		const uint32_t iExpectedComponentCount,
+		std::string& strOutError)
+	{
+		if (1u != std::ranges::count_if(Module.Distributions,
+			[PropertyPath](const Client::EFFECT_DISTRIBUTION_DESC& Distribution)
+			{
+				return Distribution.strPropertyPath == PropertyPath;
+			}))
+		{
+			strOutError = "source distribution is missing or duplicate: " +
+				std::string(PropertyPath);
+			return false;
+		}
+		const Client::EFFECT_DISTRIBUTION_DESC* pDistribution =
+			Find_SourceDistribution(&Module, PropertyPath);
+		if (nullptr == pDistribution ||
+			pDistribution->iComponentCount != iExpectedComponentCount)
+		{
+			strOutError = "source distribution component count mismatches: " +
+				std::string(PropertyPath);
+			return false;
+		}
+		std::string DistributionError;
+		if (!Client::CEffectDistribution::Validate(
+				*pDistribution, DistributionError))
+		{
+			strOutError = "source distribution is malformed: " +
+				std::string(PropertyPath) + ": " + DistributionError;
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_ReconstructedCircleSurface(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		if (Module.Distributions.size() != 4u)
+		{
+			strOutError =
+				"CircleSurface has an unconsumed or missing distribution.";
+			return false;
+		}
+		for (const std::string_view BooleanPath : {
+				std::string_view("benabled"), std::string_view("bhalfmode"),
+				std::string_view("bnegativeaxis"), std::string_view("velocity") })
+		{
+			if (!Validate_ReconstructedSourceLiteral(Module, BooleanPath,
+					EFFECT_SOURCE_LITERAL_KIND::BOOLEAN, strOutError))
+				return false;
+		}
+		if (!Validate_ReconstructedSourceLiteral(Module, "splitcirclecount",
+				EFFECT_SOURCE_LITERAL_KIND::NUMBER, strOutError) ||
+			!Validate_ReconstructedSourceLiteral(Module, "surfaceaxis",
+				EFFECT_SOURCE_LITERAL_KIND::STRING, strOutError))
+		{
+			return false;
+		}
+		const EFFECT_SOURCE_LITERAL_DESC* pSplit =
+			Find_SourceLiteral(Module, "splitcirclecount");
+		if (nullptr != pSplit && (pSplit->fNumber < 0.0 ||
+			pSplit->fNumber > 4096.0 ||
+			std::floor(pSplit->fNumber) != pSplit->fNumber))
+		{
+			strOutError =
+				"CircleSurface splitCircleCount must be an integer in [0,4096].";
+			return false;
+		}
+		const std::string_view SurfaceAxis =
+			SourceString(Module, "surfaceaxis");
+		if (!SurfaceAxis.empty() &&
+			SurfaceAxis != "pmlcs_circle_axis_xy" &&
+			SurfaceAxis != "pmlcs_circle_axis_yz" &&
+			SurfaceAxis != "pmlcs_circle_axis_zx")
+		{
+			strOutError = "CircleSurface surfaceAxis is unsupported.";
+			return false;
+		}
+		return Validate_ReconstructedSourceDistribution(
+				Module, "startlocation", 3u, strOutError) &&
+			Validate_ReconstructedSourceDistribution(
+				Module, "startradius", 1u, strOutError) &&
+			Validate_ReconstructedSourceDistribution(
+				Module, "startrot", 1u, strOutError) &&
+			Validate_ReconstructedSourceDistribution(
+				Module, "velocityscale", 1u, strOutError);
+	}
+
+	bool_t Validate_ReconstructedVortex(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		if (Module.Distributions.size() != 1u)
+		{
+			strOutError = "Vortex has an unconsumed or missing distribution.";
+			return false;
+		}
+		return Validate_ReconstructedSourceLiteral(Module, "benabled",
+				EFFECT_SOURCE_LITERAL_KIND::BOOLEAN, strOutError) &&
+			Validate_ReconstructedSourceLiteral(Module, "power",
+				EFFECT_SOURCE_LITERAL_KIND::NUMBER, strOutError) &&
+			Validate_ReconstructedSourceDistribution(
+				Module, "poweracceleration", 1u, strOutError);
+	}
+
+	bool_t Validate_ReconstructedSourceModuleExecutionContract(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		std::string& strOutError)
+	{
+		strOutError.clear();
+		static constexpr std::array<std::string_view, 34u> Supported = {
 			"particlemoduleacceleration",
 			"particlemodulecameraoffset",
 			"particlemodulecolor",
@@ -1361,6 +1510,7 @@ namespace
 			"particlemodulecolorscaleoverlife",
 			"particlemodulelifetime",
 			"particlemodulelocation",
+			"particlemodulelocationcirclesurface",
 			"particlemodulelocationdirect",
 			"particlemodulelocationonground",
 			"particlemodulelocationprimitivecylinder",
@@ -1385,13 +1535,28 @@ namespace
 			"particlemoduletypedatamesh",
 			"particlemoduletypedataribbon",
 			"particlemodulevelocity",
-			"particlemodulevelocityoverlifetime"
+			"particlemodulevelocityoverlifetime",
+			"particlemodulevortex"
 		};
-		return std::ranges::any_of(Supported,
+		const bool_t bSupported = std::ranges::any_of(Supported,
 			[&Module](const std::string_view ClassName)
 			{
 				return SourceClass_Matches(Module, ClassName);
 			});
+		if (!bSupported)
+		{
+			strOutError = "source module class is not in the strict executor allowlist";
+			return false;
+		}
+		if (SourceClass_Matches(Module,
+				"particlemodulelocationcirclesurface"))
+		{
+			return Validate_ReconstructedCircleSurface(Module, strOutError);
+		}
+		if (SourceClass_Matches(Module, "particlemodulevortex"))
+			return Validate_ReconstructedVortex(Module, strOutError);
+		strOutError.clear();
+		return true;
 	}
 
 	bool_t Try_ResolveReconstructedParameter(
@@ -1594,12 +1759,19 @@ namespace
 				if (PlanModuleIt == Plan.Get_Modules().end() ||
 					PlanModuleIt->second.strExactSourceClass !=
 						SourceModule.strClassName ||
-					!Is_ReconstructedSourceModuleSupported(SourceModule) ||
 					PlanModuleIt->second.DistributionIds.size() !=
 						SourceModule.Distributions.size())
 				{
 					return Reject_ReconstructedSourceRuntime(strOutError,
 						"source module class or distribution order is unsupported");
+				}
+				std::string ModuleExecutionError;
+				if (!Validate_ReconstructedSourceModuleExecutionContract(
+						SourceModule, ModuleExecutionError))
+				{
+					return Reject_ReconstructedSourceRuntime(strOutError,
+						"source module execution contract is unsupported: " +
+						ModuleExecutionError);
 				}
 				++ModuleCount;
 				if (SourceClass_Matches(
@@ -1707,6 +1879,14 @@ namespace
 		return true;
 	}
 
+}
+
+bool_t Client::CEffectPlayback::Validate_ReconstructedSourceModuleExecution(
+	const EFFECT_SOURCE_MODULE_DESC& Module,
+	std::string& strOutError)
+{
+	return Validate_ReconstructedSourceModuleExecutionContract(
+		Module, strOutError);
 }
 
 struct Client::CEffectPlayback::PREPARED_RESOURCES final

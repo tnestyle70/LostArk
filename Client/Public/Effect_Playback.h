@@ -288,6 +288,11 @@ private:
 	};
 
 public:
+	/* Shared strict gate used by reconstructed-plan staging and focused
+	   execution-contract harnesses.  It performs no runtime mutation. */
+	static bool_t Validate_ReconstructedSourceModuleExecution(
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		std::string& strOutError);
 	static bool_t Prepare_DocumentResources(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_RESOURCES>& OutPrepared,
