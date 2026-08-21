@@ -397,12 +397,13 @@ per-shard deterministic seed and depth order
 spawn/life/color/alpha/dissolve curves
 SceneColor refraction sample and tint
 HDR before/after tone-map placement proven by source pass
-global ScreenPost enable switch and cancel-safe clear
+independent ScreenOverlay enable switch and cancel-safe clear
 ```
 
 Engine은 generic screen overlay composite primitive와 ping-pong target만 소유한다. Client Effect 문서는
-LostArk profile ID, DDS binding, curves와 occurrence를 소유한다. 한 overlay의 resource/pass 실패는 해당
-overlay만 격리하고 기존 scene과 다른 presentation channel을 유지한다.
+LostArk profile ID, DDS binding, curves와 occurrence를 소유한다. 한 overlay의 resource/pass 실패는 부분
+commit하지 않고 해당 staged document 또는 overlay frame transaction 전체를 rollback하며, 직전 committed
+presentation, 기존 scene과 다른 presentation channel은 유지한다.
 
 차원 F raw source가 가진 `fx_d_fragment_005` world shard와 RGBNoise 2 + ZoomBlur 1은 먼저 exact
 occurrence로 복원한다. 화면 textured shard가 raw source occurrence에 없다면 사용자 원본 화면을 근거로
@@ -410,6 +411,20 @@ occurrence로 복원한다. 화면 textured shard가 raw source occurrence에 �
 
 이 capability가 닫히면 차원 W/A/D와 `2050550` 등 Glasshole/WindowCrack 소비자를 inventory 순서로
 확대한다.
+
+첫 bounded vertical slice는 `lostark.effect-screen-overlay` format v1으로 고정한다. v1은 한 행마다
+필수 `provenance=PROJECT_TUNED`, Resources-relative `Effect/.../*.dds`, linear/sRGB SRV, 명시적
+R/G/B/A coverage, point/linear와
+clamp/wrap sampler, start/lifetime alpha envelope, normalized position/scale, rotation/angular velocity,
+UV drift, tint와 stable source order를 소유한다. Client는 DDS까지 모두 stage한 뒤 generation을 한 번에
+commit하고, Engine presentation manager는 기존 Light/ScreenPost와 분리된 channel로 frame transaction을
+구성한다. Renderer는 기존 RGBNoise/ZoomBlur/FilmNoise가 끝난 scene ping-pong 뒤에 stable source order로
+textured pass를 합성하고 그 뒤의 bloom/tone map 경로는 유지한다.
+
+이 v1은 synthetic canary로 먼저 닫는 `PROJECT_TUNED/TYPED_PRESENTATION` capability다. 차원 F/W Product
+occurrence, source-exact native DXBC, normal/noise/mask 다중 lane, scene-color refraction, dissolve/seed/depth
+curve는 실제 소비자 근거와 함께 후속 revision에서 admission한다. 따라서 v1 자동 PASS만으로 차원 F의
+화면 파편이나 CAP-03 전체를 source-exact 복원 완료로 올리지 않는다.
 
 ### CAP-04. Dragon flow와 arc-length UV
 
@@ -1113,7 +1128,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G03 shader variants | `IMPLEMENTED` | Glasshole02 K01 opcode 16 exact tuple admission, malformed packet rollback, WARP draw | 미실행 | Fluid/dragon variants와 native VF/pass evidence |
 | G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R/S, Warlord T, Lance E cone donor focused PASS | 미실행 | runtime full publish, S 사용자 화면 튜닝 |
 | G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결 | 미실행 | D/T asset lineage |
-| G06 glass/crack | `IMPLEMENTED` | W2050120 K-child typed canary + 3 DDS lane/WARP evidence, J-child fail-closed | 미실행 | Fluid01, J-child static set, screen overlay |
+| G06 glass/crack | `IMPLEMENTED` | W2050120 K-child typed canary + screen-overlay v1 synthetic WARP/rollback evidence | 미실행 | Fluid01, J-child static set, 차원 F Product overlay/refraction |
 | G07 dragon/ultimate | `EVIDENCE_PARTIAL` | Lance mesh/material cohort | 미실행 | independent UV/material execution |
 | G08 Artist V | `EVIDENCE_PARTIAL` | source timing/module audit | 미실행 | attractor/camera channel |
 | G09 Dimension gameplay | `EVIDENCE_PARTIAL` | current command/snapshot audit | 미실행 | approved target replication |

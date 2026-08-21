@@ -13,6 +13,7 @@ texture2D   g_EmissiveTexture;
 texture2D   g_LightDepthTexture;
 texture2D   g_SceneHDRTexture;
 texture2D   g_PostProcessTexture;
+texture2D   g_PresentationOverlayTexture;
 texture2D   g_BloomTexture;
 texture2D   g_DistortionTexture;
 texture2D   g_SSAOTexture;
@@ -49,6 +50,16 @@ float       g_fPresentationSecondaryIntensity;
 float       g_fPresentationFrequency;
 uint        g_iPresentationSeed;
 float4      g_vPresentationTint;
+float2      g_vPresentationOverlayPosition;
+float2      g_vPresentationOverlayScale;
+float       g_fPresentationOverlayRotationDegrees;
+float       g_fPresentationOverlayAngularVelocityDegreesPerSecond;
+float2      g_vPresentationOverlayUvDriftPerSecond;
+float4      g_vPresentationOverlayTint;
+float       g_fPresentationOverlayAlpha;
+uint        g_iPresentationOverlayCoverageChannel;
+uint        g_iPresentationOverlayFilter;
+uint        g_iPresentationOverlayAddress;
 
 /* Post effects must not wrap energy from one screen edge to the opposite edge. */
 sampler PostProcessSampler = sampler_state
@@ -57,6 +68,38 @@ sampler PostProcessSampler = sampler_state
     AddressU = CLAMP;
     AddressV = CLAMP;
     AddressW = CLAMP;
+};
+
+sampler PresentationOverlayPointClampSampler = sampler_state
+{
+    Filter = MIN_MAG_MIP_POINT;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    AddressW = CLAMP;
+};
+
+sampler PresentationOverlayPointWrapSampler = sampler_state
+{
+    Filter = MIN_MAG_MIP_POINT;
+    AddressU = WRAP;
+    AddressV = WRAP;
+    AddressW = WRAP;
+};
+
+sampler PresentationOverlayLinearClampSampler = sampler_state
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = CLAMP;
+    AddressV = CLAMP;
+    AddressW = CLAMP;
+};
+
+sampler PresentationOverlayLinearWrapSampler = sampler_state
+{
+    Filter = MIN_MAG_MIP_LINEAR;
+    AddressU = WRAP;
+    AddressV = WRAP;
+    AddressW = WRAP;
 };
 
 sampler ShadowSampler = sampler_state
@@ -685,6 +728,77 @@ PS_OUT_BACKBUFFER PS_MAIN_FILM_NOISE(PS_IN In)
     return Out;
 }
 
+float4 Sample_PresentationOverlay(float2 vTexcoord)
+{
+	float4 vSample = float4(0.f, 0.f, 0.f, 0.f);
+    if (0u == g_iPresentationOverlayFilter)
+    {
+        if (0u == g_iPresentationOverlayAddress)
+            vSample = g_PresentationOverlayTexture.Sample(
+                PresentationOverlayPointClampSampler, vTexcoord);
+		else
+			vSample = g_PresentationOverlayTexture.Sample(
+				PresentationOverlayPointWrapSampler, vTexcoord);
+    }
+	else if (0u == g_iPresentationOverlayAddress)
+		vSample = g_PresentationOverlayTexture.Sample(
+			PresentationOverlayLinearClampSampler, vTexcoord);
+	else
+		vSample = g_PresentationOverlayTexture.Sample(
+			PresentationOverlayLinearWrapSampler, vTexcoord);
+	return vSample;
+}
+
+float Select_PresentationOverlayCoverage(float4 vSample)
+{
+	float fCoverage = vSample.a;
+    if (0u == g_iPresentationOverlayCoverageChannel)
+		fCoverage = vSample.r;
+	else if (1u == g_iPresentationOverlayCoverageChannel)
+		fCoverage = vSample.g;
+	else if (2u == g_iPresentationOverlayCoverageChannel)
+		fCoverage = vSample.b;
+	return fCoverage;
+}
+
+PS_OUT_BACKBUFFER PS_MAIN_TEXTURED_OVERLAY(PS_IN In)
+{
+    PS_OUT_BACKBUFFER Out;
+    float3 vSource = Sanitize_HDR(g_PostProcessTexture.Sample(
+        PostProcessSampler, In.vTexcoord).rgb);
+    float fRotation = radians(-(
+        g_fPresentationOverlayRotationDegrees +
+        g_fPresentationOverlayAngularVelocityDegreesPerSecond *
+            g_fPresentationTime));
+    float fCos = cos(fRotation);
+    float fSin = sin(fRotation);
+    float2 vCentered = In.vTexcoord - g_vPresentationOverlayPosition;
+    float2 vRotated = float2(
+        vCentered.x * fCos - vCentered.y * fSin,
+        vCentered.x * fSin + vCentered.y * fCos);
+    float2 vCard = vRotated /
+        max(g_vPresentationOverlayScale, float2(0.00001f, 0.00001f)) + 0.5f;
+    bool bInside = all(vCard >= float2(0.f, 0.f)) &&
+        all(vCard <= float2(1.f, 1.f));
+    if (!bInside)
+    {
+        Out.vBackBuffer = float4(vSource, 1.f);
+        return Out;
+    }
+    float2 vOverlayUv = vCard +
+        g_vPresentationOverlayUvDriftPerSecond * g_fPresentationTime;
+    float4 vOverlay = Sample_PresentationOverlay(vOverlayUv);
+    float fCoverage = saturate(
+        Select_PresentationOverlayCoverage(vOverlay));
+    float fAlpha = saturate(fCoverage *
+        g_fPresentationOverlayAlpha * g_vPresentationOverlayTint.a);
+    float3 vRadiance = Sanitize_HDR(
+        vOverlay.rgb * g_vPresentationOverlayTint.rgb);
+    Out.vBackBuffer = float4(Sanitize_HDR(
+        lerp(vSource, vRadiance, fAlpha)), 1.f);
+    return Out;
+}
+
 /* Hable(Uncharted 2) 필름 커브. 씬 컬러는 선형이고 1을 넘을 수 있다. */
 float3 Tonemap_Hable(float3 vColor)
 {
@@ -927,6 +1041,16 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SSAO_BLUR();
+    }
+
+    pass PresentationTexturedOverlay
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_ZNone, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_TEXTURED_OVERLAY();
     }
 
 }

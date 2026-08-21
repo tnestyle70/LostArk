@@ -141,6 +141,28 @@ color/coverage 수직 슬라이스를 구현했다.
 - fidelity는 `TYPED_SOURCE_RECONSTRUCTION/PARTIAL/PENDING`이다. native DXBC 실행 또는 원본
   shader source-exact 복원으로 기록하지 않았고 사용자 first-pixel 판정도 아직 대기다.
 
+### 1.12 typed textured screen-overlay v1 capability
+
+- 기존 RGBNoise, ZoomBlur, FilmNoise의 profile/pass 번호와 수식을 바꾸지 않고 별도
+  `ScreenOverlays` presentation channel을 추가했다. Manager는 frame마다 overlay expectation,
+  accepted/suppressed/failed 통계를 독립적으로 계산하며 provider 하나가 잘못된 SRV/typed descriptor를
+  제출하면 전체 overlay frame을 rollback하고 다음 frame에서 정상 복구한다.
+- Renderer는 기존 ScreenPost가 끝난 scene ping-pong 뒤에 `PresentationTexturedOverlay` pass 14를
+  stable `sourceOrder` 순서로 실행한다. 결과 target parity는 ScreenPost 수와 overlay 수를 함께 계산하고,
+  overlay가 0행이면 기존 final target과 완전히 같다.
+- Client `CEffectScreenOverlayPresentation`은 `lostark.effect-screen-overlay` format v1 JSON을
+  parse → validate → DDS stage → atomic generation commit 순으로 처리한다. asset ID는 Resources-relative
+  `Effect/.../*.dds`만 허용하고 `provenance=PROJECT_TUNED`를 필수로 요구한다. linear/sRGB view,
+  R/G/B/A coverage availability, point/linear,
+  clamp/wrap, start/lifetime alpha, position/scale/rotation/angular velocity/UV drift/tint를 typed field로
+  봉인한다.
+- invalid version, missing asset, 알 수 없는 coverage/sampler, SRV color-space/channel 불일치는 기존
+  committed presentation과 재생 clock을 유지한다. `Cancel`, `Stop`, lifetime expiry와 overlay enable
+  suppression은 이미 queue된 provider가 있어도 다음 submission에서 0 draw로 정리된다.
+- 이 수직 슬라이스는 synthetic DDS canary를 첫 소비자로 둔 `PROJECT_TUNED/TYPED_PRESENTATION`이다.
+  차원 F/W Product occurrence와 원본 화면 유리 파편은 아직 연결하지 않았고 source-exact native DXBC,
+  refraction, normal/noise/mask/dissolve 다중 lane도 후속 revision 경계다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -175,6 +197,17 @@ color/coverage 수직 슬라이스를 구현했다.
 | Artist D product join verifier | 5 tests PASS, authored/cue/catalog closure PASS |
 | Debug Artist D WARP focused harness | opcode allowlist/channel negative, child5/6 draw, sparse coverage, alpha/life/warp sensitivity 전부 PASS |
 | Debug Client integration build | 외부 격리 OutDir/IntDir, errors 0 PASS |
+| Debug/Release Engine → UpdateLib → ClientFrontendHarness, screen-overlay v1 | 각 errors 0 PASS |
+| Debug/Release `--effect-screen-overlay-fast` | 각 13/13 PASS, failures 0 |
+| screen-overlay ordered WARP draw | 각 RGB pixel 2968, center `80/128/0` PASS |
+| screen-overlay linear/sRGB ABI | 각 center red `128/55` PASS |
+| screen-overlay transaction/fail-close | invalid version/provenance/resource/channel preserve, invalid provider rollback/recovery PASS |
+| screen-overlay clear/suppression | disable, queued cancel, stop, lifetime expiry 모두 0 draw PASS |
+| overlay 이후 Debug/Release `--effect-standard-color-v1-fast` | 각 failures 0 PASS |
+| screen-overlay Engine ABI 이후 Debug/Release Client | 각 errors 0 PASS, UI 미실행 |
+| Debug/Release Shared + NetworkProtocolHarness build/run | 각 errors 0, failures 0 PASS |
+| Debug/Release Server build | 각 errors 0 PASS |
+| Debug/Release Server `--contract-test` | Debug 22건, Release 11건 FAIL. 모두 기존 Valtan scripted mechanic/rotation/charge/root-motion/floor-collapse 계열이며 overlay 완료 증거로 승격하지 않음 |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -189,6 +222,11 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
   renderer admission은 준비됐지만 sealed catalog publish와 사용자 first-pixel 승인은 별도다.
 - Glasshole02 opcode 16 authored packet도 checked-in runtime catalog가 pre-promotion sealed document를
   가리키므로 현재 `AUTHORING_ONLY/AUTHORED_NOT_PUBLISHED`이다.
+- screen-overlay v1은 synthetic canary만 소비한다. 차원 F/W Product effectref/catalog/occurrence에는
+  아직 연결하지 않았고, 실제 화면 유리 파편과 refraction 품질은 사용자 visual 판정 전이다.
+- Server contract-test는 이 변경이 건드리지 않은 Valtan scripted mechanic과 floor-collapse 기준선에서
+  Debug 22건, Release 11건 실패했다. Server 빌드 자체는 양 configuration 모두 통과했지만 이 실행을
+  회귀 PASS로 기록하지 않는다.
 - full Effect publisher Validate는 현재 main의 `effect.valtan.red-blade-wave.active` 중복 소유자
   검증에서 중단된다. 이 세션은 해당 Valtan 데이터를 수정하지 않았다.
 - 실제 Client의 동/서/남/북 cast 방향, 검격 형태·타이밍·색감은 사용자 화면 판정 대기다.

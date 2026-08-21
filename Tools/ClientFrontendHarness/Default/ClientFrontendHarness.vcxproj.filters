@@ -120,6 +120,9 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_ProductPrewarmQueue.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_ScreenOverlayPresentation.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\AnimationEffectCueDocument.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
