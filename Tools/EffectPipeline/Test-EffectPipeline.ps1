@@ -1588,6 +1588,7 @@ finally {
 
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $pythonContractTests = @(
+    'Tools.EffectPipeline.test_apply_lancemaster_34560_w_cone_donor',
     'Tools.EffectPipeline.test_apply_artist_31210_symbol_decal',
     'Tools.EffectPipeline.test_apply_artist_31460_slash_noise_override',
     'Tools.EffectPipeline.test_apply_warlord_17240_screen_noise_and_decals',

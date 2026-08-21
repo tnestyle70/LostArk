@@ -69,6 +69,15 @@
 - 네 행은 `fx_k_turtlediff_02` base와 원본 noise/mask/emissive/dissolve lane, 0.12초 start,
   2초 life, 4.5 크기, source recipe identity를 보존한다.
 
+### 1.7 창술사 E `34560` cone donor
+
+- W `34550`에서 사용자가 기준으로 지정한 `fm_d_cone_005` occurrence
+  `authored.source-particle.622ad9be48bb849d36fa5b81`를 exact donor로 봉인했다.
+- E clip3의 기존 네 행은 deep-equal로 유지하고, impact 시점 0.3초에 donor carrier/material/source
+  recipe 한 행만 `DONOR_TRANSPLANT`로 append했다.
+- donor의 `97.25deg` Y rotation과 local scale은 첫 화면 기준값이며, 사용자가 Effect Tool에서
+  해당 독립 occurrence만 후속 튜닝할 수 있다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -87,6 +96,7 @@
 | Debug/Release Warlord authored subset save | 각 7/7 PASS |
 | Debug/Release Client after subset codec change | 각 errors 0 PASS |
 | Artist A/D/R + Warlord T focused contracts | 17 tests PASS, 각 materializer `--check` PASS |
+| Lance E W-cone selective donor | 4 tests, `--check`, authored codec parse PASS |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
