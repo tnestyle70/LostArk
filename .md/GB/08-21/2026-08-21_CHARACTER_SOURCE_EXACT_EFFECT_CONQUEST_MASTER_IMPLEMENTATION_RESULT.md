@@ -40,6 +40,16 @@
 - 현재 admission은 ACTIVE 스킬만 대상이다. HOLD action은 Server-latched historical facing
   field가 추가되기 전에 이 모드로 승격하지 않는다.
 
+### 1.4 워로드 A `17090` authored subset save
+
+- immutable Track-A 증거는 계속 Mesh 14/Sprite 2와 chain06 8/chain07 4를 정확히 검증한다.
+- 일반 authored Load/Save에서는 exact count를 강제하지 않고, 남겨 둔 chain 행 각각의 stable ID,
+  mesh, material profile, source recipe, 회전과 DynamicParameter identity를 검증한다.
+- 따라서 Effect Tool에서 합법적인 네 행 subset을 저장하면 atomic temporary reload가 더 이상
+  원본 12행 cardinality를 이유로 거부하지 않는다.
+- 중복 ID, source allowlist 밖 ID, 알 수 없는 mesh, 변조된 burst recipe는 저장을 거부하고 기존
+  디스크 문서를 그대로 유지한다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -55,6 +65,8 @@
 | Release Engine → UpdateLib → ClientFrontendHarness | PASS |
 | Release `--effect-action-facing-fast` | 8/8 PASS |
 | Release Client | exit 0, errors 0, 00:09:28.08 |
+| Debug/Release Warlord authored subset save | 각 7/7 PASS |
+| Debug/Release Client after subset codec change | 각 errors 0 PASS |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -75,6 +87,5 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 1. 도화가 A 8행 `uv_noise_velue=0` semantic override
 2. 도화가 D effectref/catalog/runtime join
 3. 도화가 R true LocalDecal + revolution/fade
-4. 워로드 A source subset save 계약
-5. 워로드 T RGBNoise 제거 + exact decal 4행 selective restore
-6. typed color/coverage family를 기반으로 glass/dragon/attractor 고난도 family 구현
+4. 워로드 T RGBNoise 제거 + exact decal 4행 selective restore
+5. typed color/coverage family를 기반으로 glass/dragon/attractor 고난도 family 구현
