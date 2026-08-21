@@ -22,6 +22,7 @@
 #include "Effect_Distribution.h"
 #include "Effect_Catalog.h"
 #include "Effect_MaterialTemplate.h"
+#include "Effect_Tool.h"
 #include "Effect_Object.h"
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_Playback.h"
@@ -13148,6 +13149,38 @@ namespace
 
 		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
 		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		constexpr const wchar_t* DIMENSIONMASTER_T_MRT =
+			L"MRT_HarnessDimensionMasterTGameObject";
+		constexpr std::array<const wchar_t*, 5u> DimensionMasterTTargetTags = {{
+			L"Target_HarnessDimensionMasterTDiffuse",
+			L"Target_HarnessDimensionMasterTNormal",
+			L"Target_HarnessDimensionMasterTDepth",
+			L"Target_HarnessDimensionMasterTPickPos",
+			L"Target_HarnessDimensionMasterTEmissive",
+		}};
+		constexpr std::array<DXGI_FORMAT, 5u> DimensionMasterTTargetFormats = {{
+			DXGI_FORMAT_R8G8B8A8_UNORM,
+			DXGI_FORMAT_R16G16B16A16_UNORM,
+			DXGI_FORMAT_R32G32B32A32_FLOAT,
+			DXGI_FORMAT_R32G32B32A32_FLOAT,
+			DXGI_FORMAT_R16G16B16A16_FLOAT,
+		}};
+		bool_t bGameObjectMrtReady = true;
+		for (size_t i = 0u; i < DimensionMasterTTargetTags.size(); ++i)
+		{
+			bGameObjectMrtReady = bGameObjectMrtReady && SUCCEEDED(
+				CGameInstance::Get().Add_RenderTarget(
+					DimensionMasterTTargetTags[i], 320u, 180u,
+					DimensionMasterTTargetFormats[i],
+					float4_t(0.f, 0.f, 0.f, 0.f))) &&
+				SUCCEEDED(CGameInstance::Get().Add_MRT(
+					DIMENSIONMASTER_T_MRT,
+					DimensionMasterTTargetTags[i]));
+		}
+		runner.Require(bGameObjectMrtReady,
+			"DimensionMaster T Isolation Creates The Production Five-Target Character GBuffer Contract");
+		if (!bGameObjectMrtReady)
+			return;
 		const matrix_t ModelPreTransform =
 			XMMatrixScaling(pSummon->vAssetPreScale.x,
 				pSummon->vAssetPreScale.y, pSummon->vAssetPreScale.z) *
@@ -13275,6 +13308,14 @@ namespace
 			"DimensionMaster T Stages ModelCue-Only Elements-Only And Full Play-All Through The Ordinary Runtime");
 		if (!bIsolationStaged)
 			return;
+		const bool_t bExactLaneRouting =
+			ModelCueRenderer.Has_NonBlendModelCues() &&
+			!GenericMaskedContrastModelCueRenderer.Has_NonBlendModelCues() &&
+			!OpaqueContrastModelCueRenderer.Has_NonBlendModelCues() &&
+			!ElementsRenderer.Has_NonBlendModelCues() &&
+			FullPlayAllRenderer.Has_NonBlendModelCues();
+		runner.Require(bExactLaneRouting,
+			"DimensionMaster T Routes Only The Exact Character-Surface Summon Identity To NONBLEND");
 
 		float4x4_t Identity{};
 		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
@@ -13288,6 +13329,7 @@ namespace
 		struct COLOR_FOOTPRINT final
 		{
 			uint64_t iPixelCount = 0u;
+			uint32_t iBoundRenderTargetCount = 0u;
 			uint32_t iMinX = UINT32_MAX;
 			uint32_t iMinY = UINT32_MAX;
 			uint32_t iMaxX = 0u;
@@ -13301,8 +13343,11 @@ namespace
 		{
 			const D3D11_QUERY_DATA_PIPELINE_STATISTICS Pipeline =
 				OutFootprint.Pipeline;
+			const uint32_t iBoundRenderTargetCount =
+				OutFootprint.iBoundRenderTargetCount;
 			OutFootprint = {};
 			OutFootprint.Pipeline = Pipeline;
+			OutFootprint.iBoundRenderTargetCount = iBoundRenderTargetCount;
 			ComPtr<ID3D11RenderTargetView> TargetView;
 			Context->OMGetRenderTargets(1u, TargetView.GetAddressOf(), nullptr);
 			ComPtr<ID3D11Resource> TargetResource;
@@ -13373,13 +13418,22 @@ namespace
 			return true;
 		};
 
+		enum class ISOLATED_RENDER_LANE
+		{
+			BLEND_DOCUMENT,
+			NONBLEND_CHARACTER,
+			NONBLEND_THEN_BLEND,
+		};
 		const auto RenderIsolated = [&](const char_t* pLabel,
 			CEffectDocumentRenderer& Renderer,
 			const EFFECT_EVALUATED_FRAME& Frame,
-			COLOR_FOOTPRINT& OutFootprint)
+			COLOR_FOOTPRINT& OutFootprint,
+			const ISOLATED_RENDER_LANE eLane =
+				ISOLATED_RENDER_LANE::BLEND_DOCUMENT)
 		{
 			std::string Error;
 			HRESULT hRender = E_FAIL;
+			bool_t bMrtBegun = false;
 			D3D11_QUERY_DESC QueryDesc{};
 			QueryDesc.Query = D3D11_QUERY_PIPELINE_STATISTICS;
 			ComPtr<ID3D11Query> PipelineQuery;
@@ -13390,10 +13444,45 @@ namespace
 				Error = "DimensionMaster T pipeline query creation failed.";
 			if (bQueryCreated && EngineScope.Begin_Frame(Error))
 			{
-				Context->Begin(PipelineQuery.Get());
-				hRender = Renderer.Render(Frame);
-				Context->End(PipelineQuery.Get());
-				Context->Flush();
+				if (eLane != ISOLATED_RENDER_LANE::BLEND_DOCUMENT)
+				{
+					bMrtBegun = SUCCEEDED(CGameInstance::Get().Begin_MRT(
+						DIMENSIONMASTER_T_MRT));
+					if (!bMrtBegun)
+						Error = "DimensionMaster T five-target MRT begin failed.";
+				}
+				if (eLane == ISOLATED_RENDER_LANE::BLEND_DOCUMENT ||
+					bMrtBegun)
+				{
+					std::array<ID3D11RenderTargetView*,
+						D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> BoundTargets{};
+					Context->OMGetRenderTargets(
+						static_cast<UINT>(BoundTargets.size()),
+						BoundTargets.data(), nullptr);
+					for (ID3D11RenderTargetView* pTarget : BoundTargets)
+					{
+						if (nullptr == pTarget)
+							continue;
+						++OutFootprint.iBoundRenderTargetCount;
+						pTarget->Release();
+					}
+					Context->Begin(PipelineQuery.Get());
+					if (eLane == ISOLATED_RENDER_LANE::BLEND_DOCUMENT)
+					{
+						hRender = Renderer.Render(Frame);
+					}
+					else
+					{
+						hRender = Renderer.Render_NonBlendModelCues(Frame);
+						if (SUCCEEDED(hRender) &&
+							eLane == ISOLATED_RENDER_LANE::NONBLEND_THEN_BLEND)
+						{
+							hRender = Renderer.Render(Frame);
+						}
+					}
+					Context->End(PipelineQuery.Get());
+					Context->Flush();
+				}
 			}
 			bool_t bPipelineCaptured = false;
 			if (bQueryCreated && SUCCEEDED(hRender))
@@ -13420,33 +13509,48 @@ namespace
 			const HRESULT hDevice = Device->GetDeviceRemovedReason();
 			const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
 				Renderer.Get_LastRenderSubmissionStats();
+			const bool_t bNeedsDocumentStats =
+				eLane != ISOLATED_RENDER_LANE::NONBLEND_CHARACTER;
 			const bool_t bCaptured = bPipelineCaptured &&
 				SUCCEEDED(hRender) && S_OK == hDevice &&
-				Stats.bCompleted && Stats.bCommitted &&
+				(!bNeedsDocumentStats ||
+					(Stats.bCompleted && Stats.bCommitted)) &&
 				CaptureColorFootprint(OutFootprint, Error);
 			if (bCaptured)
 				Context->PSGetShader(
 					OutFootprint.PixelShader.ReleaseAndGetAddressOf(), nullptr, nullptr);
+			bool_t bFinalCaptured = bCaptured;
+			if (bMrtBegun && FAILED(CGameInstance::Get().End_MRT()))
+			{
+				Error = "DimensionMaster T five-target MRT end failed.";
+				bFinalCaptured = false;
+			}
 			std::cout << "[DM-T-ISOLATION] lane=" << pLabel <<
 				" sample=" << SAMPLE_TIME_SECONDS << " pixels=" <<
-				OutFootprint.iPixelCount << " bounds=" << OutFootprint.iMinX <<
-				',' << OutFootprint.iMinY << '-' << OutFootprint.iMaxX << ',' <<
-				OutFootprint.iMaxY << " border=" <<
-				OutFootprint.bTouchesFrameBorder << " status=" <<
-				(bCaptured ? "COMMITTED" : Error) << " iaPrimitives=" <<
-				OutFootprint.Pipeline.IAPrimitives << " psInvocations=" <<
-				OutFootprint.Pipeline.PSInvocations << '\n';
-			return bCaptured;
+					OutFootprint.iPixelCount << " bounds=" << OutFootprint.iMinX <<
+					',' << OutFootprint.iMinY << '-' << OutFootprint.iMaxX << ',' <<
+					OutFootprint.iMaxY << " border=" <<
+					OutFootprint.bTouchesFrameBorder << " renderTargets=" <<
+					OutFootprint.iBoundRenderTargetCount << " status=" <<
+						(bFinalCaptured ? "COMMITTED" : Error) << " iaPrimitives=" <<
+					OutFootprint.Pipeline.IAPrimitives << " psInvocations=" <<
+					OutFootprint.Pipeline.PSInvocations << '\n';
+			return bFinalCaptured;
 		};
 
 		COLOR_FOOTPRINT ModelCueFootprint;
+		COLOR_FOOTPRINT ModelCueBlendExclusionFootprint;
 		COLOR_FOOTPRINT GenericMaskedContrastModelCueFootprint;
 		COLOR_FOOTPRINT OpaqueContrastModelCueFootprint;
 		COLOR_FOOTPRINT ElementsFootprint;
 		COLOR_FOOTPRINT FullPlayAllFootprint;
 		const bool_t bModelCueRendered = RenderIsolated(
-			"MODEL_CUE", ModelCueRenderer, ModelCuePlayback.Get_Frame(),
-			ModelCueFootprint);
+			"MODEL_CUE_NONBLEND_CHARACTER", ModelCueRenderer,
+			ModelCuePlayback.Get_Frame(), ModelCueFootprint,
+			ISOLATED_RENDER_LANE::NONBLEND_CHARACTER);
+		const bool_t bModelCueBlendExcluded = RenderIsolated(
+			"MODEL_CUE_BLEND_EXCLUSION", ModelCueRenderer,
+			ModelCuePlayback.Get_Frame(), ModelCueBlendExclusionFootprint);
 		const bool_t bGenericMaskedContrastModelCueRendered = RenderIsolated(
 			"MODEL_CUE_GENERIC_MASKED_CONTRAST",
 			GenericMaskedContrastModelCueRenderer,
@@ -13461,7 +13565,8 @@ namespace
 			ElementsFootprint);
 		const bool_t bFullPlayAllRendered = RenderIsolated(
 			"FULL_PLAY_ALL", FullPlayAllRenderer,
-			FullPlayAllPlayback.Get_Frame(), FullPlayAllFootprint);
+			FullPlayAllPlayback.Get_Frame(), FullPlayAllFootprint,
+			ISOLATED_RENDER_LANE::NONBLEND_THEN_BLEND);
 		const EFFECT_GPU_RENDER_SUBMISSION_STATS& ModelCueStats =
 			ModelCueRenderer.Get_LastRenderSubmissionStats();
 		const EFFECT_GPU_RENDER_SUBMISSION_STATS& ElementsStats =
@@ -13480,15 +13585,21 @@ namespace
 		{
 			iFullPlayAllElementSubmitted += Family.iSubmitted;
 		}
-		const bool_t bLanesSeparated = bModelCueRendered && bElementsRendered &&
+		const bool_t bLanesSeparated = bExactLaneRouting &&
+			bModelCueRendered && bModelCueBlendExcluded && bElementsRendered &&
 			0u < ModelCueFootprint.iPixelCount &&
+			ModelCueFootprint.iBoundRenderTargetCount == 5u &&
+			0u == ModelCueBlendExclusionFootprint.iPixelCount &&
+			0u == ModelCueBlendExclusionFootprint.Pipeline.IAPrimitives &&
+			ModelCueBlendExclusionFootprint.iBoundRenderTargetCount == 1u &&
 			0u == ElementsFootprint.iPixelCount &&
 			0u == iModelCueConfigured && 0u == iElementSubmitted &&
 			ModelCueStats.Occurrences.empty() &&
 			ElementsStats.Occurrences.size() == ElementsOnly.Elements.size();
 		runner.Require(bLanesSeparated,
-			"DimensionMaster T Initial 0s Isolation Proves The Visible Shape Is ModelCue-Owned And Elements Are Quiescent");
+			"DimensionMaster T Initial 0s Isolation Proves The Exact Summon Draws Only In The Five-Target NONBLEND Lane");
 		const bool_t bFullPlayAllSingleSubmit = bFullPlayAllRendered &&
+			FullPlayAllFootprint.iBoundRenderTargetCount == 5u &&
 			FullPlayAllFootprint.iPixelCount == ModelCueFootprint.iPixelCount &&
 			FullPlayAllFootprint.iMinX == ModelCueFootprint.iMinX &&
 			FullPlayAllFootprint.iMinY == ModelCueFootprint.iMinY &&
@@ -13505,23 +13616,23 @@ namespace
 			0u == iFullPlayAllElementSubmitted &&
 			FullPlayAllStats.Occurrences.size() == Unified.Elements.size();
 		runner.Require(bFullPlayAllSingleSubmit,
-			"DimensionMaster T Full Play-All Matches One ModelCue Draw Without A Second Preview Or Element Submit At 0s");
+			"DimensionMaster T Full Play-All Matches One NONBLEND Summon Draw Without A BLEND Double-Submit At 0s");
 		const bool_t bCharacterSurfaceCutout =
 			bGenericMaskedContrastModelCueRendered &&
 			bOpaqueContrastModelCueRendered &&
 			nullptr != ModelCueFootprint.PixelShader &&
 			nullptr != GenericMaskedContrastModelCueFootprint.PixelShader &&
 			nullptr != OpaqueContrastModelCueFootprint.PixelShader &&
-			ModelCueFootprint.PixelShader.Get() !=
+			ModelCueFootprint.PixelShader.Get() ==
 				GenericMaskedContrastModelCueFootprint.PixelShader.Get() &&
 			ModelCueFootprint.PixelShader.Get() !=
 				OpaqueContrastModelCueFootprint.PixelShader.Get() &&
-			ModelCueFootprint.iPixelCount <=
+			ModelCueFootprint.iPixelCount ==
 				GenericMaskedContrastModelCueFootprint.iPixelCount &&
 			ModelCueFootprint.iPixelCount <
 				OpaqueContrastModelCueFootprint.iPixelCount;
 		runner.Require(bCharacterSurfaceCutout,
-			"DimensionMaster T Uses Its Exact Source Mask Pass Instead Of The Generic Character Or Opaque Pass");
+			"DimensionMaster T Uses The Same Animated Character Mask Pass As Generic Character Surfaces");
 
 		std::string strBorderOwner = "NONE_AFTER_RETIME";
 		if (ModelCueFootprint.bTouchesFrameBorder &&
@@ -30697,6 +30808,118 @@ namespace
 			"Effect Tool Preview Rejects An Unmapped Authored BA Document Without Replacing The Prior Selection");
 	}
 
+	void Test_EffectToolWarlordHoldPhaseFamily(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+		constexpr SKILL_ID FULL_BARREL_SKILL_ID = 17240u;
+		constexpr std::array<std::string_view, 5u> PHASE_CLIPS = {{
+			"wgl_sk_eternalcyclone_01",
+			"wgl_sk_eternalcyclone_02",
+			"wgl_sk_eternalcyclone_03",
+			"wgl_sk_eternalcyclone_04",
+			"wgl_sk_eternalcyclone_07"
+		}};
+		constexpr std::array<std::string_view, 3u> PRODUCT_EFFECTS = {{
+			"effect.warlord.skill.17240.ba1.unified",
+			"effect.warlord.skill.17240.ba2.unified",
+			"effect.warlord.skill.17240.ba3.unified"
+		}};
+
+		std::string Status;
+		const bool_t bCatalogLoaded = CPlayerSkillCatalog::Load(Status);
+		const PLAYER_SKILL_DEFINITION* pSkill = bCatalogLoaded ?
+			CPlayerSkillCatalog::Find_ById(FULL_BARREL_SKILL_ID) : nullptr;
+		runner.Require(nullptr != pSkill &&
+			pSkill->eCharacterClass == CHARACTER_CLASS_ID::WARLORD &&
+			pSkill->strInputSlot == "T" &&
+			pSkill->eSkillKind == PLAYER_SKILL_KIND::HOLD &&
+			3u == pSkill->iComboStageCount,
+			"Effect Tool Warlord Full Barrel Uses T And Three Server HOLD Phases");
+		if (nullptr == pSkill)
+			return;
+
+		ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+		const bool_t bBindingParsed =
+			CAnimationSkillBindingDocument::Parse_Text(
+				Read_Text(CAnimationSkillBindingDocument::Resolve_Path("Warlord")),
+				Bindings, Status);
+		const auto Binding = std::find_if(Bindings.Bindings.begin(),
+			Bindings.Bindings.end(), [](const ANIMATION_SKILL_BINDING& Candidate)
+			{
+				return FULL_BARREL_SKILL_ID == Candidate.iSkillId;
+			});
+		const bool_t bExactHoldChain = bBindingParsed &&
+			Binding != Bindings.Bindings.end() && 3u == Binding->Stages.size() &&
+			1u == Binding->Stages[0u].Clips.size() &&
+			Binding->Stages[0u].Clips[0u].strClipName == PHASE_CLIPS[0u] &&
+			3u == Binding->Stages[1u].Clips.size() &&
+			Binding->Stages[1u].Clips[0u].strClipName == PHASE_CLIPS[1u] &&
+			300u == Binding->Stages[1u].Clips[0u].iPlayMs &&
+			Binding->Stages[1u].Clips[1u].strClipName == PHASE_CLIPS[2u] &&
+			300u == Binding->Stages[1u].Clips[1u].iPlayMs &&
+			Binding->Stages[1u].Clips[2u].strClipName == PHASE_CLIPS[3u] &&
+			0u == Binding->Stages[1u].Clips[2u].iPlayMs &&
+			1u == Binding->Stages[2u].Clips.size() &&
+			Binding->Stages[2u].Clips[0u].strClipName == PHASE_CLIPS[4u];
+		runner.Require(bExactHoldChain,
+			"Effect Tool Warlord HOLD Family Preserves Start Charge Chain And Release Clips");
+		if (!bExactHoldChain)
+			return;
+
+		constexpr std::array<EFFECT_TOOL_SKILL_PHASE_ROLE, 3u> PHASE_ROLES = {{
+			EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_START,
+			EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_CHARGE,
+			EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_RELEASE
+		}};
+		bool_t bPhaseRolesExact = true;
+		for (size_t iStage = 0u; iStage < PHASE_ROLES.size(); ++iStage)
+		{
+			bPhaseRolesExact = bPhaseRolesExact &&
+				Resolve_EffectToolSkillPhaseRole(PLAYER_SKILL_KIND::HOLD,
+					iStage, PHASE_ROLES.size()) == PHASE_ROLES[iStage];
+		}
+		runner.Require(bPhaseRolesExact &&
+			EffectToolSkillPhaseRoleLabel(PHASE_ROLES[0u]) == "Hold Start" &&
+			EffectToolSkillPhaseRoleLabel(PHASE_ROLES[1u]) == "Hold Charge" &&
+			EffectToolSkillPhaseRoleLabel(PHASE_ROLES[2u]) == "Hold Release" &&
+			Resolve_EffectToolSkillPhaseRole(
+				PLAYER_SKILL_KIND::COMBO, 2u, 4u) ==
+					EFFECT_TOOL_SKILL_PHASE_ROLE::BASIC_ATTACK &&
+			Resolve_EffectToolSkillPhaseRole(
+				PLAYER_SKILL_KIND::ACTIVE, 0u, 1u) ==
+					EFFECT_TOOL_SKILL_PHASE_ROLE::EFFECT,
+			"Effect Tool Labels Warlord HOLD Family Start Charge Release Instead Of BA");
+
+		const std::filesystem::path CuePath = CProjectDataRoot::Resolve(
+			L"Animation/Authored/Warlord/Warlord.animevents");
+		const std::string CueText = Read_Text(CuePath);
+		constexpr std::array<std::string_view, 3u> PRODUCT_CLIPS = {{
+			PHASE_CLIPS[0u], PHASE_CLIPS[1u], PHASE_CLIPS[4u]
+		}};
+		bool_t bPhaseCuesExact = !CueText.empty();
+		for (size_t iStage = 0u; iStage < PRODUCT_EFFECTS.size(); ++iStage)
+		{
+			const std::string Needle = "\"" +
+				std::string(PRODUCT_CLIPS[iStage]) +
+				"\" EFFECT startms=0 payload=\"" +
+				std::string(PRODUCT_EFFECTS[iStage]) +
+				"\" effectref=asset anchor=\"root\" follow=follow "
+				"stop=natural";
+			size_t iMatches = 0u;
+			for (size_t iPosition = 0u;
+				std::string::npos !=
+					(iPosition = CueText.find(Needle, iPosition));
+				iPosition += Needle.size())
+			{
+				++iMatches;
+			}
+			bPhaseCuesExact = bPhaseCuesExact && 1u == iMatches;
+		}
+		runner.Require(bPhaseCuesExact,
+			"Effect Tool Warlord HOLD Family Keeps Three Phase Local Product Cues");
+	}
+
 	void Test_DimensionMasterAVoronoiCastDirectionContract(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -31240,6 +31463,7 @@ int main(const int argc, char* argv[])
 	if (Mode == "--effect-tool-preview-fast")
 	{
 		Test_EffectToolPlayerPreviewCueResolution(runner);
+		Test_EffectToolWarlordHoldPhaseFamily(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

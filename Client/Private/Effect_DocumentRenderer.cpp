@@ -236,6 +236,20 @@ namespace
 		}
 	}
 
+	bool_t Is_DimensionSummonCharacterSurfaceCue(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		const Client::EFFECT_MODEL_CUE_DESC& Cue)
+	{
+		return Document.strEffectAssetId ==
+				"effect.dimensionmaster.skill.2050500.unified" &&
+			Cue.strCueId == "dimension_summon" &&
+			Cue.strModelAssetId ==
+				"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel" &&
+			Cue.strClipName == "sk_swp_dms_00_sk_sk_dimensionprison" &&
+			Cue.eAlphaMode ==
+				Client::EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE;
+	}
+
 	template <size_t Size>
 	int32_t NamedSourceTextureIndex(
 		const std::array<std::string_view, Size>& Names,
@@ -16474,12 +16488,57 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 	return bSubmitted ? S_OK : S_FALSE;
 }
 
-HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
+bool_t Client::CEffectDocumentRenderer::Has_NonBlendModelCues() const
+{
+	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
+	return std::ranges::any_of(Document.ModelCues,
+		[&Document](const EFFECT_MODEL_CUE_DESC& Cue)
+		{
+			return Is_DimensionSummonCharacterSurfaceCue(Document, Cue);
+		});
+}
+
+HRESULT Client::CEffectDocumentRenderer::Render_NonBlendModelCues(
 	const EFFECT_EVALUATED_FRAME& Frame)
+{
+	m_strRenderFailureDetail.clear();
+	m_bLastRenderFailureObjectLocal = false;
+	if (!Has_NonBlendModelCues())
+		return S_FALSE;
+	std::string GateStatus;
+	if (!m_bSourceVisualProgramActive &&
+		!m_ReconstructedRuntimeBoundary.Admit_Render(GateStatus))
+	{
+		m_strStatus = std::move(GateStatus);
+		m_bLastRenderFailureObjectLocal = true;
+		return E_FAIL;
+	}
+	const HRESULT hResult = Render_ModelCues(Frame, true);
+	if (FAILED(hResult))
+	{
+		m_strStatus = "Effect non-blend animated model-cue rendering failed.";
+		if (!m_strRenderFailureDetail.empty())
+			m_strStatus += " Operation: " + m_strRenderFailureDetail;
+	}
+	else
+	{
+		m_strStatus =
+			"Effect non-blend animated model-cue rendering completed.";
+	}
+	return hResult;
+}
+
+HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
+	const EFFECT_EVALUATED_FRAME& Frame,
+	const bool_t bNonBlendCharacterSurfaceOnly)
 {
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
 	{
+		const bool_t bCharacterSurface =
+			Is_DimensionSummonCharacterSurfaceCue(Document, Cue);
+		if (bCharacterSurface != bNonBlendCharacterSurfaceOnly)
+			continue;
 		const f32_t fLocalTime =
 			Frame.fSampleTimeSeconds - Cue.fStartDelaySeconds;
 		if (!Cue.bVisible || fLocalTime < 0.f ||
@@ -16527,17 +16586,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 			XMMatrixTranslation(Position.x, Position.y, Position.z);
 		float4x4_t World{};
 		XMStoreFloat4x4(&World, Local * XMLoadFloat4x4(&Frame.RootWorld));
-		/* Preserve the source monster_dead_msk_high_realpbr 0.333 cutoff only
-		   for the exact Dimension Summon identity.  Generic MASKED cues keep
-		   the character pass, while OPAQUE and TRANSLUCENT remain separate. */
-		const bool_t bUseDimensionSummonExactMask =
-			Document.strEffectAssetId ==
-				"effect.dimensionmaster.skill.2050500.unified" &&
-			Cue.strCueId == "dimension_summon" &&
-			Cue.strModelAssetId ==
-				"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel" &&
-			Cue.strClipName == "sk_swp_dms_00_sk_sk_dimensionprison" &&
-			Cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE;
 		HRESULT hResult = m_pAnimatedModelShader->Bind_Matrix(
 			"g_WorldMatrix", &World);
 		if (FAILED(hResult))
@@ -16578,9 +16626,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 				return Fail_RenderOperation(
 					"Animated model-cue bone bind failed at mesh " +
 					std::to_string(iMesh) + ".", hResult);
-			uint32_t iPass = bUseDimensionSummonExactMask ? 3u :
-				(Cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE ?
-					2u : 0u);
+			uint32_t iPass =
+				Cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE ?
+					2u : 0u;
 			if (Cue.eAlphaMode ==
 				EFFECT_MODEL_CUE_ALPHA_MODE::TRANSLUCENT_SURFACE)
 			{
@@ -17202,7 +17250,7 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 	{
 		return FailFrame(std::move(GateStatus), E_FAIL, true);
 	}
-	const HRESULT hModelCueResult = Render_ModelCues(Frame);
+	const HRESULT hModelCueResult = Render_ModelCues(Frame, false);
 	if (FAILED(hModelCueResult))
 	{
 		return FailFrame(
