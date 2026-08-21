@@ -921,6 +921,47 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Validate(
 	return true;
 }
 
+bool_t Client::CValtanPatternAnimationBindingDocument::Validate_RequiredActions(
+	const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
+	const std::vector<std::string>& requiredActionIds,
+	std::string& outStatus)
+{
+	if (requiredActionIds.empty() || requiredActionIds.size() > 512u)
+	{
+		outStatus = "Boss pattern required-action contract is empty or oversized.";
+		return false;
+	}
+
+	std::unordered_set<std::string> boundActions;
+	for (const BOSS_PATTERN_ANIMATION_BINDING& binding : document.Bindings)
+	{
+		if (!Is_StableToken(binding.strActionId) ||
+			!boundActions.insert(binding.strActionId).second)
+		{
+			outStatus =
+				"Boss pattern required-action contract found a duplicate binding.";
+			return false;
+		}
+	}
+
+	std::unordered_set<std::string> requiredActions;
+	for (const std::string& actionId : requiredActionIds)
+	{
+		if (!Is_StableToken(actionId) ||
+			!requiredActions.insert(actionId).second ||
+			!boundActions.contains(actionId))
+		{
+			outStatus =
+				"Boss pattern binding is missing or repeats a required action.";
+			return false;
+		}
+	}
+
+	outStatus = "Validated " + std::to_string(requiredActions.size()) +
+		" required boss pattern action binding(s).";
+	return true;
+}
+
 bool_t Client::CValtanPatternAnimationBindingDocument::Load(
 	const std::string_view animationAssetId,
 	const std::string_view expectedBossArchetypeId,

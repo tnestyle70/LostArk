@@ -100,10 +100,24 @@ source 문서를, 제품 Level은 runtime 문서를 읽고 둘 다 기존 `CPres
 경로에 제출한다. 이 레이어는 Client 시각 표현 전용이며 Server gameplay 판정이나 광원 충돌을 만들지 않는다.
 Valtan은 catalog가 이 pair를 선언하므로 누락·손상을 정상적인 생략으로 취급하지 않고 Area stage를 실패시킨다.
 
-Valtan DeployProp은 Development MapTool에서 source catalog 9 asset / 85 placement를
-`CDeployPropRuntime` 한 경로로 stage한다. Area 전환은 catalog가 요구하는 모든 Map/Deploy runtime
+Valtan DeployProp은 Development MapTool에서 source catalog 12 asset / 151 placement를
+`CDeployPropRuntime` 한 경로로 stage한다. Deploy asset catalog는 format version 2이며 각 asset의
+`emissiveIntensity`와 `deferredEmissiveOverlay(0|1)`를 저장한다. placement 문서는 format version 1을
+유지하므로 기존 stable placement ID와 Transform 계약은 바뀌지 않는다. 현재
+`VALTAN_FLOOR_BRICK_A/B`만 각각 `0.35/1`을 사용하고 나머지 Deploy asset은 `1/0`이다.
+Area 전환은 catalog가 요구하는 모든 Map/Deploy runtime
 asset이 실제 `Client/Bin/Resources`에 있을 때만 commit하며, 하나라도 없으면 이전 Area를 보존하고
 누락된 Resources-relative asset ID를 workspace status에 표시한다.
+
+`VALTAN_FLOOR_BRICK_A/B`의 material index 1 균열 마스크는 일반 불투명 draw 뒤,
+`MRT_GameObject`가 끝나기 직전 `DEFERRED_OVERLAY`에서 pass 15로 Target Emissive에만 기록한다.
+이 전용 순서는 뒤의 Map draw가 발광 target을 0으로 덮는 문제를 막고, base pass의 같은 발광은
+억제해 중복 합성을 피한다. depth는 read-only이고 작은 음수 bias만 사용하므로 바닥 Transform,
+collision, navigation, Server 상태는 바꾸지 않는다. A/B가 붕괴 상태에서 `DESPAWNED`되면 같은
+`CDeployPropObject`가 overlay queue에도 들어가지 않아 발광도 함께 사라진다. 사용 texture는
+`bg_rad_valtan_crack_floor01_em_reconstruction.png`이며 원본 MIC에는 authored emissive가 없어서
+`VIDEO_MATCH_RECONSTRUCTION`으로 관리한다.
+
 Bern 50,017 placements는 현재 동기 stage이므로 Area 선택 직후 창이 오래 응답하지 않을 수
 있다. 중복 선택은 하지 말고 status가 commit될 때까지 기다린다.
 

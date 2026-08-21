@@ -2,7 +2,7 @@
     "schema":  "lostark.world-destruction-client-projection",
     "formatVersion":  2,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "combatRuntimeRevision":  "7dc81a3a414defc2a11770d3f1b3232de5a96af91cd7aa2ffb4af99d71b37e46",
+    "combatRuntimeRevision":  "dadebf29992417667cddf7378a03fa000c2cbf7dfa1e6dc553fa326e894037ee",
     "groups":  [
                    {
                        "groupId":  "destroyable.group.valtan.entrance.frontwallA",
@@ -65,6 +65,16 @@
                                               ]
                    },
                    {
+                       "groupId":  "destroyable.group.valtan.floor30.rail.7000000000000000005",
+                       "mutationId":  "mutation.valtan.floor30.rail.7000000000000000005.collapse",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "7000000000000000005"
+                                              ]
+                   },
+                   {
                        "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000001",
                        "mutationId":  "mutation.valtan.floor84.rail.7000000000000000001.collapse",
                        "suppressionAliasPlacementIds":  [
@@ -75,313 +85,333 @@
                                               ]
                    },
                    {
-                       "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000005",
-                       "mutationId":  "mutation.valtan.floor84.rail.7000000000000000005.collapse",
-                       "suppressionAliasPlacementIds":  [
-
-                                                        ],
-                       "memberPlacementIds":  [
-                                                  "7000000000000000005"
-                                              ]
-                   },
-                   {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000001",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000001.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000001"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000001"
+                                                  "1090000000000001",
+                                                  "1091000000000001"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000002",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000002.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000002"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000002"
+                                                  "1090000000000002",
+                                                  "1091000000000002"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000003",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000003.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000003"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000003"
+                                                  "1090000000000003",
+                                                  "1091000000000003"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000004",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000004.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000004"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000004"
+                                                  "1090000000000004",
+                                                  "1091000000000004"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000005",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000005.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000005"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000005"
+                                                  "1090000000000005",
+                                                  "1091000000000005"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000006",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000006.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000006"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000006"
+                                                  "1090000000000006",
+                                                  "1091000000000006"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000007",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000007.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000007"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000007"
+                                                  "1090000000000007",
+                                                  "1091000000000007"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000008",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000008.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000008"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000008"
+                                                  "1090000000000008",
+                                                  "1091000000000008"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000009",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000009.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000009"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000009"
+                                                  "1090000000000009",
+                                                  "1091000000000009"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000010",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000010.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000010"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000010"
+                                                  "1090000000000010",
+                                                  "1091000000000010"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000011",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000011.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000011"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000011"
+                                                  "1090000000000011",
+                                                  "1091000000000011"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000012",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000012.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000012"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000012"
+                                                  "1090000000000012",
+                                                  "1091000000000012"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000013",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000013.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000013"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000013"
+                                                  "1090000000000013",
+                                                  "1091000000000013"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000014",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000014.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000014"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000014"
+                                                  "1090000000000014",
+                                                  "1091000000000014"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000015",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000015.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000015"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000015"
+                                                  "1090000000000015",
+                                                  "1091000000000015"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000016",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000016.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000016"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000016"
+                                                  "1090000000000016",
+                                                  "1091000000000016"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000017",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000017.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000017"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000017"
+                                                  "1090000000000017",
+                                                  "1091000000000017"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000018",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000018.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000018"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000018"
+                                                  "1090000000000018",
+                                                  "1091000000000018"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000019",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000019.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000019"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000019"
+                                                  "1090000000000019",
+                                                  "1091000000000019"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000020",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000020.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000020"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000020"
+                                                  "1090000000000020",
+                                                  "1091000000000020"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000021",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000021.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000021"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000021"
+                                                  "1090000000000021",
+                                                  "1091000000000021"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000022",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000022.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000022"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000022"
+                                                  "1090000000000022",
+                                                  "1091000000000022"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000023",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000023.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000023"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000023"
+                                                  "1090000000000023",
+                                                  "1091000000000023"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000024",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000024.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000024"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000024"
+                                                  "1090000000000024",
+                                                  "1091000000000024"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000025",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000025.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000025"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000025"
+                                                  "1090000000000025",
+                                                  "1091000000000025"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000026",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000026.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000026"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000026"
+                                                  "1090000000000026",
+                                                  "1091000000000026"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000027",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000027.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000027"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000027"
+                                                  "1090000000000027",
+                                                  "1091000000000027"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000028",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000028.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000028"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000028"
+                                                  "1090000000000028",
+                                                  "1091000000000028"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000029",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000029.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000029"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000029"
+                                                  "1090000000000029",
+                                                  "1091000000000029"
                                               ]
                    },
                    {
                        "groupId":  "destroyable.group.valtan.outerwall109.1090000000000030",
                        "mutationId":  "mutation.valtan.outerwall109.1090000000000030.despawn",
                        "suppressionAliasPlacementIds":  [
-
+                                                            "1091000000000030"
                                                         ],
                        "memberPlacementIds":  [
-                                                  "1090000000000030"
+                                                  "1090000000000030",
+                                                  "1091000000000030"
                                               ]
                    },
                    {

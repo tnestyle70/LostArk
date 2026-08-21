@@ -126,6 +126,12 @@ def main() -> int:
         "Data/Balance/PlayerSkills.json": read_json(project_root / "Data/Balance/PlayerSkills.json"),
         "Data/Balance/DamageProfiles.json": read_json(project_root / "Data/Balance/DamageProfiles.json"),
         "Data/Balance/BossProfiles.json": read_json(project_root / "Data/Balance/BossProfiles.json"),
+        "Data/Balance/ValtanBossParts.json": read_json(
+            project_root / "Data/Balance/ValtanBossParts.json"
+        ),
+        "Data/Encounters/Valtan/ValtanCombatObjects.json": read_json(
+            project_root / "Data/Encounters/Valtan/ValtanCombatObjects.json"
+        ),
         "Data/Encounters/Valtan/ValtanEncounter.json": read_json(
             project_root / "Data/Encounters/Valtan/ValtanEncounter.json"
         ),
@@ -237,6 +243,9 @@ def main() -> int:
             ("hitTimeMs", "animation-reference-hit-timing-v1"),
             ("movementDistance", "server-movement-admission-v1"),
             ("serverDamageProfileId", "project-damage-profile-link-v1"),
+            ("staggerDamage", "boss-landed-hit-stagger-v1"),
+            ("partDamage", "boss-landed-hit-part-damage-v1"),
+            ("counterPower", "boss-counter-power-v1"),
             ("effectId", "project-effect-binding-v1"),
         ):
             add(skills_path, target_id, field, skill[field], "PROJECT_TUNED",
@@ -331,6 +340,41 @@ def main() -> int:
             source_cell("Npc", npc, "MoveSpeed", database_hashes["Npc"]),
             npc["MoveSpeed"], "MoveSpeed / 100")
 
+    boss_part_path = "Data/Balance/ValtanBossParts.json"
+    boss_part_document = documents[boss_part_path]
+    boss_part_root = f"boss-parts:{boss_part_document['bossArchetypeId']}"
+    add(boss_part_path, boss_part_root, "bossArchetypeId",
+        boss_part_document["bossArchetypeId"], "PROJECT_TUNED",
+        project_source("valtan-boss-part-owner-v1"),
+        boss_part_document["bossArchetypeId"], "identity")
+    add(boss_part_path, boss_part_root, "parts.length",
+        len(boss_part_document["parts"]), "PROJECT_TUNED",
+        project_source("valtan-boss-part-count-v1"),
+        len(boss_part_document["parts"]), "identity")
+    for part in boss_part_document["parts"]:
+        target_id = f"boss-part:{part['partId']}"
+        for field, value in part.items():
+            add(boss_part_path, target_id, field, value, "PROJECT_TUNED",
+                project_source("valtan-boss-part-runtime-v1"), value, "identity")
+
+    combat_object_path = "Data/Encounters/Valtan/ValtanCombatObjects.json"
+    combat_object_document = documents[combat_object_path]
+    combat_object_root = f"combat-objects:{combat_object_document['encounterId']}"
+    add(combat_object_path, combat_object_root, "encounterId",
+        combat_object_document["encounterId"], "PROJECT_TUNED",
+        project_source("valtan-combat-object-owner-v1"),
+        combat_object_document["encounterId"], "identity")
+    add(combat_object_path, combat_object_root, "objects.length",
+        len(combat_object_document["objects"]), "PROJECT_TUNED",
+        project_source("valtan-combat-object-count-v1"),
+        len(combat_object_document["objects"]), "identity")
+    for combat_object in combat_object_document["objects"]:
+        target_id = f"combat-object:{combat_object['combatObjectArchetypeId']}"
+        for field, value in combat_object.items():
+            add(combat_object_path, target_id, field, value, "PROJECT_TUNED",
+                project_source("valtan-combat-object-runtime-v1"), value,
+                "identity")
+
     encounter_path = "Data/Encounters/Valtan/ValtanEncounter.json"
     encounter = documents[encounter_path]
     root_id = f"encounter:{encounter['encounterId']}"
@@ -375,6 +419,8 @@ def main() -> int:
             "skillDefinitionCount": len(documents[skills_path]["skills"]),
             "damageProfileCount": len(documents[damage_path]["profiles"]),
             "bossProfileCount": len(documents[boss_path]["bosses"]),
+            "bossPartCount": len(boss_part_document["parts"]),
+            "bossCombatObjectCount": len(combat_object_document["objects"]),
             "encounterPatternCount": len(encounter["patterns"]),
             "fieldEntryCount": len(entries),
         },

@@ -79,6 +79,8 @@ bool_t CDeployPropRuntime::Load(
 		desc.modelKind = asset->kind;
 		desc.intactPrototypeTag = asset->intactPrototypeTag;
 		desc.fracturedPrototypeTag = asset->fracturedPrototypeTag;
+		desc.emissiveIntensity = asset->emissiveIntensity;
+		desc.deferredEmissiveOverlay = asset->deferredEmissiveOverlay;
 
 		shared_ptr<CGameObject> gameObject;
 		if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(

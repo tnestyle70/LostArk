@@ -16,9 +16,17 @@ namespace LostArk::Shared
 	using NET_ENTITY_ID =
 		std::uint32_t;
 
+	// Room-owned combat objects use their own monotonic identity space.  They
+	// are not actors and must never be interpreted as NET_ENTITY_ID values.
+	using COMBAT_OBJECT_ID =
+		std::uint64_t;
+
 	inline constexpr PLAYER_ID
 		INVALID_PLAYER_ID = 0;
 
 	inline constexpr NET_ENTITY_ID
 		INVALID_NET_ENTITY_ID = 0;
+
+	inline constexpr COMBAT_OBJECT_ID
+		INVALID_COMBAT_OBJECT_ID = 0;
 }

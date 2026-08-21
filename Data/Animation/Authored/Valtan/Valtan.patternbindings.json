@@ -199,7 +199,7 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.attack.dash-charge.recovery.clip.01",
-          "clip": "mesh_att_battle_4_02",
+          "clip": "mesh_idle_battle_1",
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
@@ -283,6 +283,20 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.reactive.parry.slash.clip.01",
+          "clip": "mesh_att_battle_9_01_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.reactive.parry.normal-slash",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.parry.normal-slash.clip.01",
           "clip": "mesh_att_battle_9_01_loop",
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
@@ -651,6 +665,24 @@
           "sourceStartMs": 0,
           "playMs": 0,
           "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.super-smash.active.clip.02",
+          "clip": "mesh_att_battle_12_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.super-smash.active.clip.03",
+          "clip": "mesh_att_battle_12_04",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
           "loop": true
         }
       ]
@@ -661,6 +693,15 @@
         {
           "clipOccurrenceId": "valtan.attack.super-smash.recovery.clip.01",
           "clip": "mesh_att_battle_12_05",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.super-smash.recovery.clip.02",
+          "clip": "mesh_att_battle_12_04",
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,
@@ -1510,6 +1551,48 @@
       ]
     },
     {
+      "actionId": "valtan.mechanic.arena-floor-84.windup",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-floor-84.windup.clip.01",
+          "clip": "mesh_att_battle_2_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.arena-floor-84.impact",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-floor-84.impact.clip.01",
+          "clip": "mesh_att_battle_2_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.arena-floor-84.recovery",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-floor-84.recovery.clip.01",
+          "clip": "mesh_att_battle_2_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
       "actionId": "valtan.mechanic.magic-orb-stagger-76.shield",
       "clips": [
         {
@@ -1529,6 +1612,34 @@
         {
           "clipOccurrenceId": "valtan.mechanic.magic-orb-stagger-76.window.clip.01",
           "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.magic-orb-stagger-76.groggy",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.magic-orb-stagger-76.groggy.clip.01",
+          "clip": "mesh_dmg_parts_loop_1",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
+    },
+    {
+      "actionId": "valtan.mechanic.magic-orb-stagger-76.wipe",
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.magic-orb-stagger-76.wipe.clip.01",
+          "clip": "mesh_att_battle_5_02_end",
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,

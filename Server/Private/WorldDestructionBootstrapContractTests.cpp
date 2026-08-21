@@ -70,9 +70,10 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 	{
 		publishedMemberCount += group.MemberPlacementIds.size();
 	}
-	/* The enabled product graph is thirty independent 109 outer-ring walls and
-	sixty-nine ordinary contact walls. The outer ring owns only its 109 stage
-	binding; attack/body contact must never remove it. */
+	/* The enabled product graph is thirty independent 109 outer-ring source
+	groups, each with one bound visual filler, and sixty-nine ordinary contact
+	walls. The outer ring owns only its 109 stage binding; attack/body contact
+	must never remove it. */
 	std::size_t publishedOuterGroupCount = 0u;
 	std::size_t publishedOuterMemberCount = 0u;
 	for (const WORLD_DESTRUCTION_GROUP_DESCRIPTOR& group :
@@ -86,9 +87,10 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		++publishedOuterGroupCount;
 		publishedOuterMemberCount += group.MemberPlacementIds.size();
 	}
-	/* Ninety-nine independent walls plus the six arena floor sectors: two outer
-	rail halves that drop at 84 bars and four brick sectors that drop at 30. The
-	floor sectors add one member each and never join the 109 outer ring. */
+	/* Ninety-nine independent wall groups plus the six arena floor sectors: two
+	outer rail halves that drop at 84 bars and four brick sectors that drop at 30.
+	The thirty 109 groups each add one bound filler member; floor sectors still
+	add one member each and never join the 109 outer ring. */
 	std::size_t publishedFloorGroupCount = 0u;
 	std::size_t publishedFloorMemberCount = 0u;
 	for (const WORLD_DESTRUCTION_GROUP_DESCRIPTOR& group :
@@ -129,9 +131,9 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 		105u == publishedBootstrap.Get_DescriptorGraph().Groups.size() &&
 		105u == publishedBootstrap.Get_DescriptorGraph().Mutations.size() &&
 		117u == publishedBootstrap.Get_DescriptorGraph().Bindings.size() &&
-		113u == publishedMemberCount &&
+		143u == publishedMemberCount &&
 		30u == publishedOuterGroupCount &&
-		30u == publishedOuterMemberCount &&
+		60u == publishedOuterMemberCount &&
 		6u == publishedFloorGroupCount &&
 		6u == publishedFloorMemberCount &&
 		publishedBootstrap.Get_CombatRuntimeRevision().size() == 64u,
@@ -165,7 +167,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 					0u == transition.strGroupId.rfind(
 						"destroyable.group.valtan.outerwall109.", 0u);
 			}) &&
-		30u == std::accumulate(
+		60u == std::accumulate(
 			publishedTransaction.Transitions.begin(),
 			publishedTransaction.Transitions.end(),
 			std::size_t{ 0u },
@@ -176,7 +178,7 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 			}) &&
 		publishedRuntime.Commit(
 			publishedTransaction, publishedRuntimeStatus),
-		"Prepare and commit thirty independent 109-bar outer ring walls in one batch");
+		"Prepare and commit thirty 109-bar groups with sixty outer ring placements in one batch");
 	require(
 		WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST ==
 			publishedRuntime.Prepare_StageTrigger(

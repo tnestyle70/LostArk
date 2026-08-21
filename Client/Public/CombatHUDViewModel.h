@@ -58,6 +58,13 @@ namespace Client
 		std::uint32_t iMaximumHp = 0;
 		std::uint32_t iMaximumHealthBars = 0;
 		std::uint8_t iPhase = 1;
+		std::uint32_t iBossCombatStateRevision = 0;
+		std::uint32_t iAlivePartMask = 0;
+		std::uint16_t iBossCombatFlags = 0;
+		std::uint32_t iCurrentStagger = 0;
+		std::uint32_t iMaximumStagger = 0;
+		std::uint32_t iCurrentShield = 0;
+		std::uint32_t iMaximumShield = 0;
 		LostArk::Shared::WORLD_ENTITY_ACTION eAction =
 			LostArk::Shared::WORLD_ENTITY_ACTION::IDLE;
 		std::string strActionId;

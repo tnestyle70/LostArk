@@ -6,6 +6,8 @@
 #include "Shader.h"
 #include "VIBuffer_Rect.h"
 
+#include <Windows.h>
+
 #include <bit>
 #include <cstddef>
 #include <cstdint>
@@ -36,6 +38,56 @@ namespace
 	constexpr f32_t ARTIST_POINT_LIGHT_POSITION_X = 1.25f;
 	constexpr f32_t ARTIST_POINT_LIGHT_POSITION_Y = -2.5f;
 	constexpr f32_t ARTIST_POINT_LIGHT_POSITION_Z = 3.75f;
+
+	bool_t ResolveRepositoryRoot(
+		const int iArgumentCount,
+		wchar_t* pArguments[],
+		std::filesystem::path& OutRepositoryRoot)
+	{
+		if (2 == iArgumentCount && nullptr != pArguments[1] &&
+			L'\0' != pArguments[1][0])
+		{
+			OutRepositoryRoot = std::filesystem::path(pArguments[1]);
+			return true;
+		}
+		if (1 != iArgumentCount)
+			return false;
+
+		wchar_t ModulePath[32768]{};
+		const DWORD iModulePathLength = GetModuleFileNameW(
+			nullptr,
+			ModulePath,
+			static_cast<DWORD>(std::size(ModulePath)));
+		if (0u == iModulePathLength ||
+			iModulePathLength >= std::size(ModulePath))
+		{
+			return false;
+		}
+
+		std::filesystem::path Candidate =
+			std::filesystem::path(ModulePath).parent_path();
+		for (uint32_t iDepth = 0u; iDepth < 4u; ++iDepth)
+			Candidate = Candidate.parent_path();
+
+		std::error_code Error;
+		Candidate = std::filesystem::weakly_canonical(Candidate, Error);
+		if (Error || Candidate.empty())
+			return false;
+
+		const std::filesystem::path MapLightsPath = Candidate / L"Data" /
+			L"Maps" / L"Authoring" / L"LV_LUT_HEARTRB_ED" /
+			L"LV_LUT_HEARTRB_ED.maplights.json";
+		const std::filesystem::path DeferredShaderPath = Candidate / L"Engine" /
+			L"Bin" / L"ShaderFiles" / L"Shader_Deferred.hlsl";
+		if (!std::filesystem::is_regular_file(MapLightsPath, Error) || Error)
+			return false;
+		Error.clear();
+		if (!std::filesystem::is_regular_file(DeferredShaderPath, Error) || Error)
+			return false;
+
+		OutRepositoryRoot = std::move(Candidate);
+		return true;
+	}
 
 	LIGHT_DESC MakeValidPointLight()
 	{
@@ -174,9 +226,9 @@ namespace
 
 int wmain(const int iArgumentCount, wchar_t* pArguments[])
 {
-	if (2 != iArgumentCount)
-		return Fail("expected the repository root argument");
-	const std::filesystem::path RepoRoot(pArguments[1]);
+	std::filesystem::path RepoRoot;
+	if (!ResolveRepositoryRoot(iArgumentCount, pArguments, RepoRoot))
+		return Fail("expected one repository root argument or the canonical harness output layout");
 	const std::filesystem::path MapLightsPath = RepoRoot / L"Data" / L"Maps" /
 		L"Authoring" / L"LV_LUT_HEARTRB_ED" /
 		L"LV_LUT_HEARTRB_ED.maplights.json";

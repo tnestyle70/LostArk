@@ -126,8 +126,14 @@
 	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
 	  <Link>Client\CharacterSelectionState.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\CombatHUDViewModel.cpp">
+	  <Link>Client\CombatHUDViewModel.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\ActorCatalog.cpp">
 	  <Link>Client\ActorCatalog.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\CombatObjectProjectionRuntime.cpp">
+	  <Link>Client\CombatObjectProjectionRuntime.cpp</Link>
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\CharacterCatalog.cpp">
 	  <Link>Client\CharacterCatalog.cpp</Link>
@@ -161,6 +167,9 @@
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_DocumentRenderer.cpp">
 	  <Link>Client\Effect_DocumentRenderer.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\Effect_DirectAuthoredSourceIndex.cpp">
+	  <Link>Client\Effect_DirectAuthoredSourceIndex.cpp</Link>
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\Effect_ProductPrewarmQueue.cpp">
 	  <Link>Client\Effect_ProductPrewarmQueue.cpp</Link>
@@ -231,6 +240,9 @@
     <ClInclude Include="..\Private\FourClassTrackAAuthoredMaterializer.h" />
 	<ClInclude Include="..\..\..\Client\Private\CharacterSelectArenaSpawnGate.h">
 	  <Link>Client\CharacterSelectArenaSpawnGate.h</Link>
+	</ClInclude>
+	<ClInclude Include="..\..\..\Client\Public\Effect_DirectAuthoredSourceIndex.h">
+	  <Link>Client\Effect_DirectAuthoredSourceIndex.h</Link>
 	</ClInclude>
 	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueDocument.h">
 	  <Link>Client\ValtanPatternEffectCueDocument.h</Link>

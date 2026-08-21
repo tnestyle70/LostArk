@@ -164,6 +164,12 @@ namespace Client
 			std::string_view expectedBossArchetypeId,
 			const std::vector<std::string>& availableClips,
 			std::string& outStatus);
+		/* A feature slice can require newly introduced replicated action IDs
+		without making the Client parser own Server encounter timing. */
+		static bool_t Validate_RequiredActions(
+			const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& document,
+			const std::vector<std::string>& requiredActionIds,
+			std::string& outStatus);
 		static bool_t Load(
 			std::string_view animationAssetId,
 			std::string_view expectedBossArchetypeId,

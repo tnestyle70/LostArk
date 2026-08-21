@@ -340,6 +340,55 @@ void PS_MAIN_SHADOW(VS_OUT input)
         discard;
 }
 
+struct PS_OUT_DEFERRED_EMISSIVE_OVERLAY
+{
+    float3 vEmissive : SV_TARGET4;
+};
+
+PS_OUT_DEFERRED_EMISSIVE_OVERLAY PS_MAIN_DEFERRED_EMISSIVE_OVERLAY(
+    VS_OUT input)
+{
+    clip((float)g_HasEmissiveTexture - 0.5f);
+
+    const float3 emissive = g_EmissiveTexture.Sample(
+        LinearSampler, input.vTexcoord).rgb;
+    clip(max(emissive.r, max(emissive.g, emissive.b)) - (1.f / 255.f));
+
+    PS_OUT_DEFERRED_EMISSIVE_OVERLAY output;
+    output.vEmissive =
+        emissive * g_EmissiveColor.rgb * g_EmissiveIntensity;
+    return output;
+}
+
+/* The source crack mesh is nearly coplanar with the intact arena stone.
+   A one-unit negative bias makes only this read-only overlay win equal-depth
+   comparisons without moving the authored world transform. */
+RasterizerState RS_DeferredEmissiveOverlay
+{
+    FillMode = Solid;
+    CullMode = Back;
+    FrontCounterClockwise = false;
+    DepthBias = -1;
+    DepthBiasClamp = 0.f;
+    SlopeScaledDepthBias = -1.f;
+};
+
+/* MRT_GameObject binds five targets. Preserve the finished opaque G-buffer
+   and update RGB of Target_Emissive only. */
+BlendState BS_DeferredEmissiveOverlay
+{
+    BlendEnable[0] = false;
+    BlendEnable[1] = false;
+    BlendEnable[2] = false;
+    BlendEnable[3] = false;
+    BlendEnable[4] = false;
+    RenderTargetWriteMask[0] = 0x00;
+    RenderTargetWriteMask[1] = 0x00;
+    RenderTargetWriteMask[2] = 0x00;
+    RenderTargetWriteMask[3] = 0x00;
+    RenderTargetWriteMask[4] = 0x07;
+};
+
 technique11 DefaultTechnique
 {
     pass DefaultPass
@@ -476,5 +525,15 @@ technique11 DefaultTechnique
         VertexShader = compile vs_5_0 VS_MAIN();
         GeometryShader = NULL;
         PixelShader = compile ps_5_0 PS_MAIN_SHADOW();
+    }
+    pass DeferredEmissiveOverlayPass
+    {
+        SetRasterizerState(RS_DeferredEmissiveOverlay);
+        SetDepthStencilState(DSS_ReadOnly, 0);
+        SetBlendState(BS_DeferredEmissiveOverlay,
+            float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = compile vs_5_0 VS_MAIN();
+        GeometryShader = NULL;
+        PixelShader = compile ps_5_0 PS_MAIN_DEFERRED_EMISSIVE_OVERLAY();
     }
 }

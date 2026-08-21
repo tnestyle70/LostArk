@@ -59,6 +59,9 @@ private:
 		std::string displayName;
 		std::string actionId;
 		std::string skillKind;
+		std::uint32_t staggerDamage = 0;
+		std::uint32_t partDamage = 0;
+		std::uint32_t counterPower = 0;
 		std::uint32_t cooldownMs = 0;
 		std::uint32_t actionDurationMs = 0;
 		std::uint32_t hitTimeMs = 0;

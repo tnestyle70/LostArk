@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Network/NetworkIds.h"
+#include "BossCombatRuntime.h"
 #include "GameplayCatalog.h"
 #include "WorldBootstrap.h"
 #include "ServerNavigation.h"
@@ -85,12 +86,18 @@ namespace LostArk::Server
 		first engage. A late joiner never replays it, and only a room-empty or
 		Debug reset clears the ledger. */
 		bool bIntroPatternConsumed = false;
+		/* The Debug ordered audition replays an authored 1-67 list and requires an
+		empty queue between steps, so product pattern follow-ups must not be
+		queued while it drives the boss. */
+		bool bScriptedPatternPlayback = false;
 		std::uint32_t iPatternTelegraphMs = 0;
 		std::uint32_t iPatternActiveMs = 0;
 		std::uint32_t iPatternRecoveryMs = 0;
 		std::uint32_t iPatternSequence = 0;
 		std::uint32_t iPatternStageIndex = 0;
 		std::uint32_t iPatternStageDurationMs = 0;
+		BOSS_PATTERN_STAGE_MOTION_KIND ePatternStageMotionKind =
+			BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
 		BOSS_PATTERN_HIT_SHAPE ePatternHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
 		float fPatternHitOuterRadius = 0.f;
 		float fPatternHitInnerRadius = 0.f;
@@ -128,6 +135,7 @@ namespace LostArk::Server
 		std::uint32_t iMaximumHealthBars = 1;
 		std::uint32_t iLastEvaluatedHealthBar = 1;
 		std::uint8_t iPhase = 1;
+		SERVER_BOSS_COMBAT_STATE BossCombat;
 		float fEngageDistance = 0.f;
 		float fMoveSpeed = 0.f;
 		float fCollisionRadius = 0.f;
@@ -164,12 +172,28 @@ namespace LostArk::Server
 		std::vector<SERVER_BOSS_ARMOR_PLATE_STATE> ArmorPlates;
 		bool hasAppliedPatternDamage = false;
 		std::string strLastPatternId;
+		/* Cursor into the authored rotation of the span the boss is in. It is
+		kept per span so a scripted mechanic that interrupts the stretch does
+		not restart the list, and it resets when the boss enters a new span. */
+		std::string strRotationId;
+		std::uint32_t iRotationStepIndex = 0;
 		std::uint32_t iConsecutivePatternUses = 0;
 		std::vector<SERVER_BOSS_PATTERN_COOLDOWN> PatternCooldowns;
 		std::vector<std::string> PendingPatternIds;
 		std::vector<std::string> TriggeredPatternIds;
 		LostArk::Shared::NET_ENTITY_ID iTargetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		/* The authored pattern target is distinct from the nearest entity used to
+		keep the encounter engaged. LOCK policies preserve this ID until the
+		pattern ends; TRACK is the only policy allowed to replace it each tick. */
+		LostArk::Shared::NET_ENTITY_ID iPatternTargetEntityId =
+			LostArk::Shared::INVALID_NET_ENTITY_ID;
+		/* LOCK target policies keep the last valid server position for stage
+		actions that occur after the selected player leaves or becomes invalid. */
+		bool bHasPatternTargetLastPosition = false;
+		float fPatternTargetLastPositionX = 0.f;
+		float fPatternTargetLastPositionY = 0.f;
+		float fPatternTargetLastPositionZ = 0.f;
 		float fLastPathGoalX = 0.f;
 		float fLastPathGoalZ = 0.f;
 		std::vector<SERVER_NAV_POINT> MovePath;

@@ -30,6 +30,18 @@ class MapToolLandscapeMergeTests(unittest.TestCase):
         )
 
     @staticmethod
+    def authored_placement_row(
+        runtime_id: int,
+        source_id: str,
+        asset_id: str,
+        transform_source: str,
+    ) -> str:
+        return (
+            f'{runtime_id} "{source_id}" "EDITOR" '
+            f'"{transform_source}" "{asset_id}" 0 0 0 0 0 0 1 1 1 1 1'
+        )
+
+    @staticmethod
     def write_document(path: Path, magic: str, version: int, area_id: str, rows) -> None:
         path.write_text(
             f'{magic} {version} "{area_id}" {len(rows)}\n'
@@ -218,6 +230,45 @@ class MapToolLandscapeMergeTests(unittest.TestCase):
                 [self.placement_row("land:1", "LAND", "actor")],
             )
             with self.assertRaisesRegex(MapDocumentMergeError, "transformSource=component"):
+                merge_landscape(args)
+
+    def test_current_authoring_id_domains_are_accepted_in_base_document(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            args = self.fixture(Path(temporary))
+            rows = [self.placement_row("base:1", "BASE")]
+            rows.extend(
+                self.authored_placement_row(index, f"authored:{index}", "BASE", source)
+                for index, source in enumerate(
+                    ("editor", "legacy", "overlay"), start=1
+                )
+            )
+            self.write_document(
+                args.base_placements,
+                "LOSTARK_MAP_PLACEMENTS",
+                2,
+                "TEST",
+                rows,
+            )
+            args.expect_output_placements = 5
+
+            result = merge_landscape(args)
+
+            self.assertEqual(result["addedPlacementCount"], 1)
+            self.assertEqual(result["outputPlacementCount"], 5)
+
+    def test_unknown_base_transform_source_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            args = self.fixture(Path(temporary))
+            self.write_document(
+                args.base_placements,
+                "LOSTARK_MAP_PLACEMENTS",
+                2,
+                "TEST",
+                [self.placement_row("base:1", "BASE", "generated")],
+            )
+            with self.assertRaisesRegex(
+                MapDocumentMergeError, "unsupported placement transform source"
+            ):
                 merge_landscape(args)
 
     def test_missing_runtime_model_is_rejected(self):

@@ -4,6 +4,7 @@
 
 #include "AnimationEffectCueDocument.h"
 #include "AnimationTargetService.h"
+#include "ActorCatalog.h"
 #include "Camera_Free.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
@@ -847,10 +848,28 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 			return false;
 		}
 
+		const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
+			CueDocument.strOwnerArchetypeId);
+		if (nullptr == pBossActor ||
+			pBossActor->combatObjectVisuals.size() !=
+				CCharacterSelectArenaSpawnGate::
+					PRODUCT_COMBAT_OBJECT_EFFECT_TARGET_COUNT)
+		{
+			Status = nullptr == pBossActor ? CActorCatalog::Get_Status() :
+				"Valtan BossCatalog must declare exactly two combat-object visuals.";
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
 		std::vector<std::string> EffectAssetIds;
-		EffectAssetIds.reserve(CueDocument.Cues.size());
+		EffectAssetIds.reserve(CueDocument.Cues.size() +
+			pBossActor->combatObjectVisuals.size());
 		for (const VALTAN_PATTERN_EFFECT_CUE& Cue : CueDocument.Cues)
 			EffectAssetIds.push_back(Cue.strEffectAssetId);
+		for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
+			pBossActor->combatObjectVisuals)
+		{
+			EffectAssetIds.push_back(Visual.effectAssetId);
+		}
 		if (!CEffectPresentationService::Queue_ProductTargets_Priority(
 				EffectAssetIds,
 				m_ValtanEffectPreparationTargets,
