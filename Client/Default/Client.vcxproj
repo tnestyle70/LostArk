@@ -1118,6 +1118,7 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31470.occurrence-tuning.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31490.role-manifest.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31490.unified.role-materialization.receipt.json" />
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31910.wisp-attractor.materialization.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.role-manifest.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.unified.role-materialization.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\DimensionMaster\effect.dimensionmaster.skill.2050210.authored-baseline.correction.json" />

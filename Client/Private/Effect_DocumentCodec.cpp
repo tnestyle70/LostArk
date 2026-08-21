@@ -116,6 +116,10 @@ namespace
 	{
 		"fixed", "outward", "inward", "cone"
 	};
+	constexpr const char_t* PARTICLE_ATTRACTOR_TARGET_SPACE_TOKENS[] =
+	{
+		"rootLocal", "elementLocal"
+	};
 	constexpr const char_t* PROFILE_TOKENS[] =
 	{
 		"opaque_back_depth_write",
@@ -4561,6 +4565,45 @@ namespace
 				Out.fConeAngleDegrees, strOutError);
 	}
 
+	bool_t Read_ParticleTargetAttractor(
+		const Client::DATA_JSON_VALUE& Particle,
+		Client::EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& Out,
+		std::string& strOutError)
+	{
+		const Client::DATA_JSON_VALUE* pAttractor =
+			Particle.Find("targetAttractor");
+		if (nullptr == pAttractor)
+			return true;
+		const Client::DATA_JSON_VALUE* pTargetSpace = nullptr;
+		if (!pAttractor->Is_Object() ||
+			nullptr == (pTargetSpace = pAttractor->Find("targetSpace")) ||
+			!pTargetSpace->Is_String() ||
+			!Parse_Token(pTargetSpace->Get_String(),
+				PARTICLE_ATTRACTOR_TARGET_SPACE_TOKENS,
+				std::size(PARTICLE_ATTRACTOR_TARGET_SPACE_TOKENS),
+				Out.eTargetSpace))
+		{
+			strOutError =
+				"Effect particle targetAttractor targetSpace is invalid.";
+			return false;
+		}
+		return Read_Bool(*pAttractor, "enabled", Out.bEnabled, strOutError) &&
+			Read_Array(*pAttractor, "targetOffset", &Out.vTargetOffset.x, 3u,
+				strOutError) &&
+			Read_Array(*pAttractor, "activeNormalized",
+				&Out.vActiveNormalized.x, 2u, strOutError) &&
+			Read_Float(*pAttractor, "radialAcceleration",
+				Out.fRadialAcceleration, strOutError) &&
+			Read_Float(*pAttractor, "tangentialAcceleration",
+				Out.fTangentialAcceleration, strOutError) &&
+			Read_Float(*pAttractor, "maximumSpeed", Out.fMaximumSpeed,
+				strOutError) &&
+			Read_Float(*pAttractor, "convergenceRadius",
+				Out.fConvergenceRadius, strOutError) &&
+			Read_Float(*pAttractor, "arrivalDamping", Out.fArrivalDamping,
+				strOutError);
+	}
+
 	bool_t Read_ParticleSourceScale(
 		const Client::DATA_JSON_VALUE& Particle,
 		Client::EFFECT_PARTICLE_SOURCE_SCALE_DESC& Out,
@@ -4647,6 +4690,8 @@ namespace
 				strOutError) &&
 			Read_ParticleInitialVelocity(*pParticle,
 				Out.Particle.InitialVelocity, strOutError) &&
+			Read_ParticleTargetAttractor(*pParticle,
+				Out.Particle.TargetAttractor, strOutError) &&
 			Read_ParticleSourceScale(*pParticle, Out.Particle.SourceScale,
 				strOutError) &&
 			Read_UInt(*pTrail, "maxPoints", Out.Trail.iMaxPoints, strOutError) &&
@@ -4801,6 +4846,29 @@ namespace
 			Write_Float2(Output, Detail.Particle.InitialVelocity.vSpeedRange);
 			Output << ", \"coneAngleDegrees\": "
 				<< Detail.Particle.InitialVelocity.fConeAngleDegrees << " }";
+		}
+		if (!Detail.Particle.TargetAttractor.Is_Default())
+		{
+			const EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& Attractor =
+				Detail.Particle.TargetAttractor;
+			Output << ", \"targetAttractor\": { \"enabled\": "
+				<< (Attractor.bEnabled ? "true" : "false")
+				<< ", \"targetSpace\": \""
+				<< PARTICLE_ATTRACTOR_TARGET_SPACE_TOKENS[
+					static_cast<size_t>(Attractor.eTargetSpace)]
+				<< "\", \"targetOffset\": ";
+			Write_Float3(Output, Attractor.vTargetOffset);
+			Output << ", \"activeNormalized\": ";
+			Write_Float2(Output, Attractor.vActiveNormalized);
+			Output << ", \"radialAcceleration\": "
+				<< Attractor.fRadialAcceleration
+				<< ", \"tangentialAcceleration\": "
+				<< Attractor.fTangentialAcceleration
+				<< ", \"maximumSpeed\": " << Attractor.fMaximumSpeed
+				<< ", \"convergenceRadius\": "
+				<< Attractor.fConvergenceRadius
+				<< ", \"arrivalDamping\": "
+				<< Attractor.fArrivalDamping << " }";
 		}
 		/* Untouched trim is the overwhelming majority, and omitting it keeps
 		   every document that predates the field byte-identical. */
@@ -6355,6 +6423,37 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			Emission.fConeAngleDegrees <= 180.f &&
 			(EFFECT_PARTICLE_VELOCITY_MODE::FIXED == Emission.eMode ||
 				EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind);
+		const EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& Attractor =
+			D.Particle.TargetAttractor;
+		const bool_t bTargetAttractorValid =
+			Attractor.eTargetSpace <
+				EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::END &&
+			Is_Finite(Attractor.vTargetOffset) &&
+			std::abs(Attractor.vTargetOffset.x) <= 1000.f &&
+			std::abs(Attractor.vTargetOffset.y) <= 1000.f &&
+			std::abs(Attractor.vTargetOffset.z) <= 1000.f &&
+			Is_Finite(Attractor.vActiveNormalized) &&
+			std::isfinite(Attractor.fRadialAcceleration) &&
+			std::isfinite(Attractor.fTangentialAcceleration) &&
+			std::isfinite(Attractor.fMaximumSpeed) &&
+			std::isfinite(Attractor.fConvergenceRadius) &&
+			std::isfinite(Attractor.fArrivalDamping) &&
+			Attractor.vActiveNormalized.x >= 0.f &&
+			Attractor.vActiveNormalized.y > Attractor.vActiveNormalized.x &&
+			Attractor.vActiveNormalized.y <= 1.f &&
+			Attractor.fRadialAcceleration >= 0.f &&
+			Attractor.fRadialAcceleration <= 10000.f &&
+			Attractor.fTangentialAcceleration >= -10000.f &&
+			Attractor.fTangentialAcceleration <= 10000.f &&
+			Attractor.fMaximumSpeed > 0.f &&
+			Attractor.fMaximumSpeed <= 1000.f &&
+			Attractor.fConvergenceRadius > 0.f &&
+			Attractor.fConvergenceRadius <= 1000.f &&
+			Attractor.fArrivalDamping >= 0.f &&
+			Attractor.fArrivalDamping <= 1000.f &&
+			(!Attractor.bEnabled ||
+				EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind) &&
+			(Attractor.bEnabled || Attractor.Is_Default());
 		/* The trim multiplies the source's own numbers. Count, size and lifetime
 		   stay positive; speed and rotation may intentionally stop or reverse;
 		   alpha and delay may be zero. Ceilings reject accidental extreme input. */
@@ -6424,6 +6523,7 @@ bool_t Client::CEffectDocumentCodec::Validate(
 					0u != D.ScreenPost.iRandomSeed));
 		if (!bCommonValid || !bLerpValid || !bParticleValid ||
 			!bSpawnShapeValid || !bInitialVelocityValid ||
+			!bTargetAttractorValid ||
 			!bSourceScaleValid ||
 			!bTrailValid || !bAfterImageValid || !bLightValid ||
 			!bScreenPostValid)

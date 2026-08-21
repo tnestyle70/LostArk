@@ -10756,6 +10756,368 @@ namespace
 			"Ordinary Authored TypeDataMesh Rejects Raw Sprite Leakage And Preserves Staged Frame");
 	}
 
+	void Test_EffectTargetAttractorFamily(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		EFFECT_DOCUMENT_DESC document;
+		document.strEffectAssetId = "effect.target-attractor.harness";
+		document.strDisplayName = "Target Attractor Harness";
+		EFFECT_ELEMENT_DESC particle;
+		particle.strElementId = "attractor.particle";
+		particle.strDisplayName = "Attractor Particle";
+		particle.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+		particle.Detail.Timing.fLifeTimeSeconds = 2.f;
+		particle.Detail.Transform.vPosition = { 1.f, 0.f, 0.f };
+		particle.Detail.Particle.iMaxParticles = 1u;
+		particle.Detail.Particle.fSpawnRatePerSecond = 0.f;
+		particle.Detail.Particle.iBurstCount = 1u;
+		particle.Detail.Particle.iRandomSeed = 31910u;
+		particle.Detail.Particle.vLifeTimeSeconds = { 2.f, 2.f };
+		particle.Detail.Particle.vInitialPositionMin = { 2.f, 0.f, 0.f };
+		particle.Detail.Particle.vInitialPositionMax = { 2.f, 0.f, 0.f };
+		particle.Detail.Particle.vInitialVelocityMin = { 0.f, 0.f, 0.f };
+		particle.Detail.Particle.vInitialVelocityMax = { 0.f, 0.f, 0.f };
+		particle.Detail.Particle.vAcceleration = {};
+		particle.Detail.Particle.vStartSize = { 0.2f, 0.2f };
+		particle.Detail.Particle.vEndSize = { 0.2f, 0.2f };
+		EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& attractor =
+			particle.Detail.Particle.TargetAttractor;
+		attractor.bEnabled = true;
+		attractor.eTargetSpace =
+			EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::ROOT_LOCAL;
+		attractor.vTargetOffset = {};
+		attractor.vActiveNormalized = { 0.f, 0.9f };
+		attractor.fRadialAcceleration = 24.f;
+		attractor.fTangentialAcceleration = 3.f;
+		attractor.fMaximumSpeed = 7.f;
+		attractor.fConvergenceRadius = 0.05f;
+		attractor.fArrivalDamping = 6.f;
+		document.Elements.push_back(particle);
+
+		std::string status;
+		const std::string serialized = CEffectDocumentCodec::Serialize(document);
+		EFFECT_DOCUMENT_DESC roundTripped;
+		const bool_t bRoundTrip = CEffectDocumentCodec::Parse(
+			serialized, roundTripped, status) &&
+			CEffectDocumentCodec::Serialize(roundTripped) == serialized &&
+			serialized.find("\"targetAttractor\"") != std::string::npos &&
+			roundTripped.Elements.size() == 1u &&
+			roundTripped.Elements.front().Detail.Particle.TargetAttractor.bEnabled;
+		runner.Require(bRoundTrip,
+			"Target Attractor Codec Round Trips The Explicit Motion Contract");
+
+		float4x4_t root{};
+		XMStoreFloat4x4(&root, XMMatrixTranslation(5.f, 0.f, 7.f));
+		struct ATTRACTOR_SAMPLE final
+		{
+			bool_t bSucceeded = false;
+			std::string strFrame;
+			float3_t vPosition{};
+		};
+		const auto Simulate = [&roundTripped, &root](
+			const uint32_t iFramesPerSecond, const f32_t fSeconds)
+		{
+			ATTRACTOR_SAMPLE result;
+			CEffectPlayback playback;
+			std::string localStatus;
+			if (!playback.Stage_Document(roundTripped, localStatus))
+			{
+				result.strFrame = "STAGE-FAILED:" + localStatus;
+				return result;
+			}
+			const uint32_t iFrameCount = static_cast<uint32_t>(
+				std::lround(fSeconds * static_cast<f32_t>(iFramesPerSecond)));
+			const f32_t fDelta = 1.f /
+				static_cast<f32_t>(iFramesPerSecond);
+			for (uint32_t iFrame = 0u; iFrame < iFrameCount; ++iFrame)
+				playback.Update(fDelta, root);
+			EFFECT_PARTICLE_RUNTIME_PROBE probe;
+			result.bSucceeded = playback.Query_ParticleRuntimeProbe(
+				"attractor.particle", probe) &&
+				probe.iActiveParticleCount == 1u;
+			result.vPosition = probe.vFirstWorldPosition;
+			result.strFrame = Snapshot_EffectFrame(playback.Get_Frame());
+			return result;
+		};
+		const ATTRACTOR_SAMPLE mid30 = Simulate(30u, 0.5f);
+		const ATTRACTOR_SAMPLE mid60 = Simulate(60u, 0.5f);
+		const ATTRACTOR_SAMPLE mid120 = Simulate(120u, 0.5f);
+		const ATTRACTOR_SAMPLE final30 = Simulate(30u, 1.7f);
+		const ATTRACTOR_SAMPLE final60 = Simulate(60u, 1.7f);
+		const ATTRACTOR_SAMPLE final120 = Simulate(120u, 1.7f);
+		const auto DistanceToRoot = [](const float3_t& position)
+		{
+			const f32_t x = position.x - 5.f;
+			const f32_t y = position.y;
+			const f32_t z = position.z - 7.f;
+			return std::sqrt(x * x + y * y + z * z);
+		};
+		const bool_t bFixedStepDeterministic =
+			mid30.bSucceeded && mid60.bSucceeded && mid120.bSucceeded &&
+			final30.bSucceeded && final60.bSucceeded && final120.bSucceeded &&
+			mid30.strFrame == mid60.strFrame &&
+			mid60.strFrame == mid120.strFrame &&
+			final30.strFrame == final60.strFrame &&
+			final60.strFrame == final120.strFrame;
+		runner.Require(bFixedStepDeterministic,
+			"Target Attractor Is Bit Stable At 30 60 And 120 FPS");
+		const bool_t bCurvesAndConverges = mid60.bSucceeded &&
+			DistanceToRoot(mid60.vPosition) < 3.f &&
+			DistanceToRoot(mid60.vPosition) > 0.05f &&
+			std::abs(mid60.vPosition.z - 7.f) > 0.001f &&
+			final60.bSucceeded &&
+			DistanceToRoot(final60.vPosition) <= 0.0501f;
+		if (!bCurvesAndConverges)
+		{
+			std::cout << "[DIAGNOSTIC] target-attractor mid=("
+				<< mid60.vPosition.x << "," << mid60.vPosition.y << ","
+				<< mid60.vPosition.z << ") distance="
+				<< DistanceToRoot(mid60.vPosition) << " final=("
+				<< final60.vPosition.x << "," << final60.vPosition.y << ","
+				<< final60.vPosition.z << ") distance="
+				<< DistanceToRoot(final60.vPosition) << std::endl;
+		}
+		runner.Require(bCurvesAndConverges,
+			"Target Attractor Preserves Tangential Motion Then Captures The Effect Root Radius");
+
+		const std::filesystem::path artistVPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.artist.skill.31910.unified.effect.json");
+		EFFECT_DOCUMENT_DESC artistV;
+		const bool_t bArtistVLoaded = !artistVPath.empty() &&
+			CEffectDocumentCodec::Load(artistVPath, artistV, status);
+		EFFECT_DOCUMENT_DESC artistVWithoutAttractor = artistV;
+		EFFECT_ELEMENT_DESC* pArtistVWisp = nullptr;
+		EFFECT_ELEMENT_DESC* pArtistVBaselineWisp = nullptr;
+		for (EFFECT_ELEMENT_DESC& element : artistV.Elements)
+		{
+			if (element.strElementId ==
+				"authored.source-particle.b637bf78a795c9584bfe596a")
+			{
+				pArtistVWisp = &element;
+				break;
+			}
+		}
+		for (EFFECT_ELEMENT_DESC& element : artistVWithoutAttractor.Elements)
+		{
+			if (element.strElementId ==
+				"authored.source-particle.b637bf78a795c9584bfe596a")
+			{
+				pArtistVBaselineWisp = &element;
+				break;
+			}
+		}
+		if (nullptr != pArtistVBaselineWisp)
+		{
+			pArtistVBaselineWisp->Detail.Particle.TargetAttractor =
+				EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC{};
+		}
+		CEffectPlayback artistVPlayback;
+		CEffectPlayback artistVBaselinePlayback;
+		const bool_t bArtistVStaged = bArtistVLoaded &&
+			nullptr != pArtistVWisp && nullptr != pArtistVBaselineWisp &&
+			pArtistVWisp->Detail.Particle.TargetAttractor.bEnabled &&
+			artistVPlayback.Stage_Document(artistV, status) &&
+			artistVBaselinePlayback.Stage_Document(
+				artistVWithoutAttractor, status);
+		if (bArtistVStaged)
+		{
+			artistVPlayback.Seek(0.25f, root);
+			artistVBaselinePlayback.Seek(0.25f, root);
+		}
+		EFFECT_PARTICLE_RUNTIME_PROBE artistVProbe;
+		EFFECT_PARTICLE_RUNTIME_PROBE artistVBaselineProbe;
+		const auto MeasureCohortRadius = [&DistanceToRoot](
+			const EFFECT_EVALUATED_FRAME& frame)
+		{
+			std::pair<uint32_t, f32_t> result{};
+			for (const EFFECT_EVALUATED_PARTICLE& evaluated : frame.Particles)
+			{
+				if (nullptr == evaluated.pElement || evaluated.pElement->strElementId !=
+					"authored.source-particle.b637bf78a795c9584bfe596a")
+				{
+					continue;
+				}
+				const float3_t worldPosition = {
+					evaluated.World._41, evaluated.World._42, evaluated.World._43 };
+				++result.first;
+				result.second = (std::max)(
+					result.second, DistanceToRoot(worldPosition));
+			}
+			return result;
+		};
+		const auto artistVCohort = MeasureCohortRadius(
+			artistVPlayback.Get_Frame());
+		const bool_t bArtistVRuntime = bArtistVStaged &&
+			artistVPlayback.Query_ParticleRuntimeProbe(
+				"authored.source-particle.b637bf78a795c9584bfe596a",
+				artistVProbe) &&
+			artistVBaselinePlayback.Query_ParticleRuntimeProbe(
+				"authored.source-particle.b637bf78a795c9584bfe596a",
+				artistVBaselineProbe) &&
+			artistVProbe.iActiveParticleCount == 14u &&
+			artistVBaselineProbe.iActiveParticleCount == 14u &&
+			artistVCohort.first == 14u && artistVCohort.second <= 0.05f;
+		if (!bArtistVRuntime)
+		{
+			std::cout << "[DIAGNOSTIC] artist-v-attractor loaded="
+				<< bArtistVLoaded << " staged=" << bArtistVStaged
+				<< " active=" << artistVProbe.iActiveParticleCount << "/"
+				<< artistVBaselineProbe.iActiveParticleCount << " distance="
+				<< DistanceToRoot(artistVProbe.vFirstWorldPosition) << "/"
+				<< DistanceToRoot(artistVBaselineProbe.vFirstWorldPosition)
+				<< " cohort=" << artistVCohort.first
+				<< " maxRadius=" << artistVCohort.second
+				<< " status=" << status << std::endl;
+		}
+		runner.Require(bArtistVRuntime,
+			"Artist V Restored Wisp Cohort Captures All Fourteen Source Particles At The Root");
+
+		EFFECT_DOCUMENT_DESC sourceCurveBaseline = artistVWithoutAttractor;
+		sourceCurveBaseline.Elements.clear();
+		if (nullptr != pArtistVBaselineWisp)
+			sourceCurveBaseline.Elements.push_back(*pArtistVBaselineWisp);
+		EFFECT_DOCUMENT_DESC sourceCurveNeutral = sourceCurveBaseline;
+		if (!sourceCurveNeutral.Elements.empty())
+		{
+			EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& neutral =
+				sourceCurveNeutral.Elements.front().Detail.Particle.TargetAttractor;
+			neutral.bEnabled = true;
+			neutral.eTargetSpace =
+				EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::ROOT_LOCAL;
+			neutral.vTargetOffset = { 100.f, 0.f, 0.f };
+			neutral.vActiveNormalized = { 0.f, 1.f };
+			neutral.fRadialAcceleration = 0.f;
+			neutral.fTangentialAcceleration = 0.f;
+			neutral.fMaximumSpeed = 1000.f;
+			neutral.fConvergenceRadius = 0.001f;
+			neutral.fArrivalDamping = 0.f;
+		}
+		CEffectPlayback sourceCurveBaselinePlayback;
+		CEffectPlayback sourceCurveNeutralPlayback;
+		const bool_t bSourceCurveStaged =
+			!sourceCurveBaseline.Elements.empty() &&
+			sourceCurveBaselinePlayback.Stage_Document(
+				sourceCurveBaseline, status) &&
+			sourceCurveNeutralPlayback.Stage_Document(sourceCurveNeutral, status);
+		if (bSourceCurveStaged)
+		{
+			sourceCurveBaselinePlayback.Seek(0.25f, root);
+			sourceCurveNeutralPlayback.Seek(0.25f, root);
+		}
+		runner.Require(bSourceCurveStaged &&
+			Snapshot_EffectFrame(sourceCurveBaselinePlayback.Get_Frame()) ==
+				Snapshot_EffectFrame(sourceCurveNeutralPlayback.Get_Frame()),
+			"Target Attractor Keeps VelocityOverLife As A Transient Source Scale");
+
+		EFFECT_DOCUMENT_DESC elementLocal = roundTripped;
+		elementLocal.Elements.front().Detail.Particle.TargetAttractor.eTargetSpace =
+			EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::ELEMENT_LOCAL;
+		CEffectPlayback elementLocalPlayback;
+		const bool_t bElementLocalStaged =
+			elementLocalPlayback.Stage_Document(elementLocal, status);
+		if (bElementLocalStaged)
+			elementLocalPlayback.Seek(1.5f, root);
+		EFFECT_PARTICLE_RUNTIME_PROBE elementLocalProbe;
+		const bool_t bElementLocalTarget = bElementLocalStaged &&
+			elementLocalPlayback.Query_ParticleRuntimeProbe(
+				"attractor.particle", elementLocalProbe) &&
+			elementLocalProbe.iActiveParticleCount == 1u &&
+			std::abs(elementLocalProbe.vFirstWorldPosition.x - 6.f) <= 0.0501f &&
+			std::abs(elementLocalProbe.vFirstWorldPosition.z - 7.f) <= 0.0501f;
+		runner.Require(bElementLocalTarget,
+			"Target Attractor Distinguishes Shared Effect Root And Element Local Centres");
+
+		EFFECT_DOCUMENT_DESC transformed = roundTripped;
+		transformed.Elements.front().Detail.Transform.vRotationDegrees =
+			{ 35.f, 20.f, 10.f };
+		transformed.Elements.front().Detail.Transform.vScale = { 2.f, 3.f, 4.f };
+		transformed.Elements.front().Detail.Particle.TargetAttractor.
+			fRadialAcceleration = 120.f;
+		transformed.Elements.front().Detail.Particle.TargetAttractor.
+			fMaximumSpeed = 20.f;
+		CEffectPlayback transformedPlayback;
+		const bool_t bTransformedStaged =
+			transformedPlayback.Stage_Document(transformed, status);
+		if (bTransformedStaged)
+			transformedPlayback.Seek(1.7f, root);
+		EFFECT_PARTICLE_RUNTIME_PROBE transformedProbe;
+		const bool_t bWorldMetric = bTransformedStaged &&
+			transformedPlayback.Query_ParticleRuntimeProbe(
+				"attractor.particle", transformedProbe) &&
+			DistanceToRoot(transformedProbe.vFirstWorldPosition) <= 0.0501f;
+		runner.Require(bWorldMetric,
+			"Target Attractor Uses World Metrics Across Pitch And Non Uniform Scale");
+
+		EFFECT_DOCUMENT_DESC movingElement = roundTripped;
+		movingElement.Elements.front().Detail.Particle.bLocalSpace = false;
+		movingElement.Elements.front().Detail.Particle.TargetAttractor.eTargetSpace =
+			EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::ELEMENT_LOCAL;
+		movingElement.Elements.front().Detail.LinearLerp.bPosition = true;
+		movingElement.Elements.front().Detail.LinearLerp.vEndPosition =
+			{ 2.f, 0.f, 0.f };
+		CEffectPlayback movingElementPlayback;
+		const bool_t bMovingElementStaged =
+			movingElementPlayback.Stage_Document(movingElement, status);
+		if (bMovingElementStaged)
+			movingElementPlayback.Seek(1.5f, root);
+		EFFECT_PARTICLE_RUNTIME_PROBE movingElementProbe;
+		const bool_t bMovingElementTarget = bMovingElementStaged &&
+			movingElementPlayback.Query_ParticleRuntimeProbe(
+				"attractor.particle", movingElementProbe) &&
+			movingElementProbe.vFirstWorldPosition.x > 6.f;
+		runner.Require(bMovingElementTarget,
+			"Element Local Attractor Follows The Current Element For Non Local Particles");
+
+		CEffectPlayback transactionalPlayback;
+		const bool_t bTransactionalStaged =
+			transactionalPlayback.Stage_Document(roundTripped, status);
+		if (bTransactionalStaged)
+			transactionalPlayback.Seek(0.5f, root);
+		const std::string beforeInvalid =
+			Snapshot_EffectFrame(transactionalPlayback.Get_Frame());
+		EFFECT_DOCUMENT_DESC invalid = roundTripped;
+		invalid.Elements.front().Detail.Particle.TargetAttractor.
+			vActiveNormalized = { 0.8f, 0.2f };
+		const bool_t bInvalidPreserves = bTransactionalStaged &&
+			!transactionalPlayback.Stage_Document(invalid, status) &&
+			!status.empty() && beforeInvalid ==
+				Snapshot_EffectFrame(transactionalPlayback.Get_Frame());
+		runner.Require(bInvalidPreserves,
+			"Target Attractor Invalid Interval Rejects Transactionally And Preserves Playback");
+		EFFECT_DOCUMENT_DESC invalidOffset = roundTripped;
+		invalidOffset.Elements.front().Detail.Particle.TargetAttractor.
+			vTargetOffset = { 1001.f, 0.f, 0.f };
+		const bool_t bInvalidOffsetPreserves =
+			!transactionalPlayback.Stage_Document(invalidOffset, status) &&
+			!status.empty() && beforeInvalid ==
+				Snapshot_EffectFrame(transactionalPlayback.Get_Frame());
+		runner.Require(bInvalidOffsetPreserves,
+			"Target Attractor Rejects Oversized Finite Offsets And Preserves Playback");
+
+		std::string invalidToken = serialized;
+		const std::string validToken = "\"targetSpace\": \"rootLocal\"";
+		const size_t tokenOffset = invalidToken.find(validToken);
+		if (tokenOffset != std::string::npos)
+		{
+			invalidToken.replace(tokenOffset, validToken.size(),
+				"\"targetSpace\": \"screenGuess\"");
+		}
+		EFFECT_DOCUMENT_DESC preserved = roundTripped;
+		const std::string preservedBytes =
+			CEffectDocumentCodec::Serialize(preserved);
+		const bool_t bUnknownTokenPreserves =
+			tokenOffset != std::string::npos &&
+			!CEffectDocumentCodec::Parse(invalidToken, preserved, status) &&
+			!status.empty() &&
+			CEffectDocumentCodec::Serialize(preserved) == preservedBytes;
+		runner.Require(bUnknownTokenPreserves,
+			"Target Attractor Unknown Target Space Fails Closed Without Replacing Parsed State");
+
+		transactionalPlayback.Reset();
+		runner.Require(transactionalPlayback.Get_Frame().Particles.empty(),
+			"Target Attractor Stop Reset Clears Every Converging Particle");
+	}
+
 	void Test_EffectFixedStepTransformHistory(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -40900,6 +41262,14 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--effect-target-attractor-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_EffectTargetAttractorFamily(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--effect-tool-preview-fast")
 	{
 		Client::CEffectCatalog::Clear();
@@ -41006,6 +41376,7 @@ int main(const int argc, char* argv[])
 		Test_EffectSourceModuleOccurrenceOrder(runner);
 		Test_EffectNullCdoStartSizeFallback(runner);
 		Test_SourceCircleVortexFamily(runner);
+		Test_EffectTargetAttractorFamily(runner);
 		Test_EffectExactSourceSemantics(runner);
 		Test_DimensionMasterSpriteImageFlipAuthority(runner);
 		Test_DimensionMasterSourceSemanticAssets(runner);

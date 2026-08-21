@@ -240,6 +240,31 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 - 팀 관리 runtime 입력 중 body spec은
   `Effect/LanceMaster/Textures/fx_d_atypical_010.dds` SHA-256 `93fa9c93...`, head spec은
   `Effect/LanceMaster/Textures/sk_flm_gdr_02_s.dds` SHA-256 `a626399c...`다. DDS는 커밋하지 않는다.
+
+### 1.16 도화가 V reviewed wisp cohort와 TargetAttractor
+
+- 도화가 V `31910`의 현재 손튜닝 41행 canonical hash를 보존하고, sealed donor와 Track-A receipt,
+  `PALE_YELLOW_RED_ORBIT` role allowlist가 모두 일치하는 source particle 다섯 행만 앞에 삽입했다.
+  결과는 46행이며 기존 41행은 canonical deep-equal이다. historical donor의 추가 decal은 복원하지 않았다.
+- source occurrence/recipe/resource는 `SOURCE_EVIDENCE_DONOR_TRANSPLANT`, 중앙 집결 motion은
+  `PROJECT_TUNED`로 분리했다. emitter17 `b637bf78...` 한 행만 14 source particle을 대상으로
+  root-local centre, normalized active interval, signed tangential/radial acceleration, maximum speed,
+  convergence radius와 arrival damping을 사용한다. runtime catalog publish와 사용자 승인은 아직 대기다.
+- codec은 nested `targetAttractor`를 optional/default-omitted로 parse/serialize하고 particle-only,
+  finite range, ±1000m target offset, ordered interval, known target-space를 검증한다. 실패는 기존
+  parsed/staged state를 보존한다.
+  Effect Tool에는 source module 편집과 구분되는 PROJECT_TUNED attractor controls를 추가했다.
+- playback은 source module velocity와 매 step의 transient VelocityOverLife scale을 그대로 둔 채 별도
+  world-space steering velocity를 합성한다. acceleration/speed/radius와 world +Y tangent는 Element pitch와
+  비균일 scale에 종속되지 않으며, `ELEMENT_LOCAL`은 non-local particle도 현재 ElementWorld를 추종한다.
+  마지막 radial step에서는 tangent를 제거해 capture radius 바깥의 영구 공전을 막는다.
+- materializer는 receipt와 모든 evidence를 Product write 전에 검증하고, invalid receipt는 destination bytes를
+  보존한다. fresh 41→46 삽입은 기존 41행 raw array tail과 indentation까지 보존한다.
+- synthetic 하네스는 30/60/120FPS bit-stable frame, tangential curve와 centre capture, transient source
+  velocity scale 불변, root/element target-space, pitch·비균일 scale, moving Element target, oversized offset
+  rollback과 Reset clear를 검증한다. 실제 Product 행도 Resource root를 read-only로 지정해 source burst
+  14개 전부가 0.25초 시점에 root 5cm 안으로 capture되는 것을 확인했다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -298,6 +323,10 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 | Release `--effect-dragon-flow-fast` | 15 checks PASS; Debug와 같은 pixels/sums/signatures, failures 0 |
 | Lance dragon failed restage | second sourceNode malformed reject, 이전 body/head draw와 RGBA readback byte 보존 PASS |
 | Lance dragon Client Debug/Release | 각 compile/link/FXC errors 0 PASS; Client/UI 미실행 |
+| Artist V wisp selective materializer | 8 tests PASS, `--check` PASS; invalid receipt write-before-validate와 raw-tail indentation regression 포함 |
+| Debug `--effect-target-attractor-fast` | 12/12 PASS; 30/60/120FPS 동일 frame, VelocityOverLife 불변, world metric, moving Element, actual V source burst 14 전원 capture, invalid parse/stage rollback, Reset clear |
+| Release `--effect-target-attractor-fast` | Debug와 동일한 12/12 PASS, failures 0 |
+| Artist V attractor 이후 Debug/Release Client | 각 errors 0 PASS; Release warnings 2173은 기존 FXC/C4819/DirectXTK 계열, Client/UI 미실행 |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -319,9 +348,9 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
   회귀 PASS로 기록하지 않는다.
 - Fluid01 opcode 17도 현재 authored 두 행과 renderer/harness까지의 vertical slice다. checked-in sealed
   runtime catalog publish와 사용자 Client 화면 판정 전에는 `COMPLETE`로 올리지 않는다.
-- CircleSurface/Vortex strict seam은 reconstructed module validation 기반일 뿐 도화가 V attractor,
-  camera/post/light composition이나 Product publish를 구현하지 않았다. Product exact 행은 canary로만
-  읽었으며 authored 문서와 catalog는 변경하지 않았다.
+- CircleSurface/Vortex strict seam과 도화가 V root-local attractor 실행/authoring은 닫혔다. 다만 V의
+  camera/post/light composition, checked-in sealed runtime publish와 사용자 화면 판정은 구현 완료로
+  올리지 않는다. attractor는 원본 module exact가 아니라 명시적 `PROJECT_TUNED` layer다.
 - screen-space textured shard overlay의 renderer와 rollback 계약은 닫혔지만 아직 synthetic canary다.
   다음 단위는 exact shard texture/role과 F/W Product timing·ownership을 typed descriptor로 연결하고,
   RGBNoise/ZoomBlur와의 실제 ordered composition을 sealed runtime에서 검증해야 한다.

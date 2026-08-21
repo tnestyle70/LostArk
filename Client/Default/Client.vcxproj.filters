@@ -3582,6 +3582,9 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31490.unified.role-materialization.receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
     </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31910.wisp-attractor.materialization.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
+    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.role-manifest.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Artist</Filter>
     </None>

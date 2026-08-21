@@ -585,6 +585,17 @@ enum class EFFECT_PARTICLE_VELOCITY_MODE : uint8_t
 	END
 };
 
+/* The attractor is an authored motion layer, not a recovered Cascade module.
+   ROOT_LOCAL lets several independently transformed occurrences converge on
+   one effect/caster centre. ELEMENT_LOCAL keeps a self-contained carrier
+   centred on its own authored transform. */
+enum class EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE : uint8_t
+{
+	ROOT_LOCAL,
+	ELEMENT_LOCAL,
+	END
+};
+
 struct EFFECT_PARTICLE_SPAWN_SHAPE_DESC final
 {
 	EFFECT_PARTICLE_SPAWN_SHAPE eKind = EFFECT_PARTICLE_SPAWN_SHAPE::POINT;
@@ -607,6 +618,39 @@ struct EFFECT_PARTICLE_INITIAL_VELOCITY_DESC final
 	float2_t vSpeedRange = { 0.f, 0.f };
 	/* Half-angle of the CONE around the Element +Y axis, in degrees. */
 	f32_t fConeAngleDegrees = 0.f;
+};
+
+struct EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC final
+{
+	bool_t bEnabled = false;
+	EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE eTargetSpace =
+		EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::ROOT_LOCAL;
+	/* Metres in the selected target space. */
+	float3_t vTargetOffset = { 0.f, 0.f, 0.f };
+	/* Particle-normalized active interval. */
+	float2_t vActiveNormalized = { 0.f, 1.f };
+	/* World metres per second squared. Tangential acceleration is signed around
+	   world +Y, independent of Element pitch and non-uniform scale. */
+	f32_t fRadialAcceleration = 0.f;
+	f32_t fTangentialAcceleration = 0.f;
+	/* World metres per second; required and positive while enabled. */
+	f32_t fMaximumSpeed = 1.f;
+	/* World-metre radius. Entering it captures the particle at the target. */
+	f32_t fConvergenceRadius = 0.05f;
+	/* Per-second damping, weighted by the physically derived braking radius. */
+	f32_t fArrivalDamping = 0.f;
+
+	bool_t Is_Default() const
+	{
+		return !bEnabled &&
+			eTargetSpace ==
+				EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::ROOT_LOCAL &&
+			vTargetOffset.x == 0.f && vTargetOffset.y == 0.f &&
+			vTargetOffset.z == 0.f && vActiveNormalized.x == 0.f &&
+			vActiveNormalized.y == 1.f && fRadialAcceleration == 0.f &&
+			fTangentialAcceleration == 0.f && fMaximumSpeed == 1.f &&
+			fConvergenceRadius == 0.05f && fArrivalDamping == 0.f;
+	}
 };
 
 /* Authored trim over a source-owned Element.
@@ -671,6 +715,7 @@ struct EFFECT_PARTICLE_DESC final
 	   omits them spawns exactly as it did before the fields existed. */
 	EFFECT_PARTICLE_SPAWN_SHAPE_DESC SpawnShape;
 	EFFECT_PARTICLE_INITIAL_VELOCITY_DESC InitialVelocity;
+	EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC TargetAttractor;
 	/* Read only while SourceRecipe.bEnabled; all ones means untouched. */
 	EFFECT_PARTICLE_SOURCE_SCALE_DESC SourceScale;
 };

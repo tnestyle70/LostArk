@@ -487,6 +487,16 @@ deterministic seed/fixed-step behavior
 stop/cancel/death/level-change clear
 ```
 
+첫 Product 소비자는 도화가 V `31910`의 reviewed `PALE_YELLOW_RED_ORBIT` 일곱 행으로 고정한다.
+현재 손튜닝 41행을 canonical hash로 보존한 채 sealed donor와 Track-A receipt에서 누락된 particle
+다섯 행만 selective insert하고, unreviewed decal은 복원하지 않는다. source occurrence/recipe/resource는
+`SOURCE_EVIDENCE_DONOR_TRANSPLANT`, 실제 중앙 집결 motion은 `PROJECT_TUNED`로 서로 다른 provenance를
+기록한다. root-local attractor는 source update가 계산한 velocity와 일시적인 VelocityOverLife scale을
+변형하지 않고 별도 world-space steering velocity를 합성한다. radial/tangential acceleration, maximum
+speed와 convergence radius는 Element pitch·비균일 scale과 무관한 world metric이며, tangent는 world +Y를
+축으로 삼는다. 최종 radial step에서 tangent를 제거해 capture radius 바깥을 영구 공전하지 않게 하고,
+invalid interval/space/value/±1000m를 넘는 offset은 기존 staged playback을 보존한 채 fail-close한다.
+
 distortion은 material/render MRT, PointLight와 ScreenPost는 presentation carrier, SHAKE/FOV는 composition
 camera channel로 각각 분리한다. FOV/shake는 exclusive cinematic camera override를 직접 점유하지 않는다.
 Animation cue가 source timing을 소유한 SHAKE를 typed additive camera impulse/FOV envelope로 materialize하고,
@@ -863,6 +873,14 @@ source timeline의 early distortion/FOV/light와 late `3.0/3.2/3.4s` burst를 oc
 260cm CircleSurface와 Vortex, 도화가 V의 stable vortex 세 행이다. 원본 JSON row는 evidence-only로
 고정하고 Product authored 문서나 runtime catalog를 이 단계에서 변경하지 않는다.
 
+두 번째 단위는 V의 reviewed wisp cohort를 41→46행으로 selective materialize하고, emitter17
+`b637bf78...`의 14 source particle에만 root-local attractor를 적용한다. 나머지 기존 41행은 deep-equal,
+donor five rows는 targetAttractor 외 source row와 deep-equal이어야 한다. Debug/Release 하네스는
+30/60/120FPS bit-stable frame, radial+tangential trajectory, transient VelocityOverLife 불변,
+root/element target-space 차이, pitch·비균일 scale world metric, moving Element target, 실제 Product
+14-particle 전원 5cm 이내 capture, invalid restage rollback과 Reset clear를 검증한다. 이 단계의 authored 변경은
+full publisher 전까지 `AUTHORED_NOT_PUBLISHED`, 사용자 화면 승인 전까지 `PENDING`이다.
+
 camera/post/light/overlay submission은 source order가 deterministic해야 하며 effect stop, death,
 disconnect, class/level change 뒤 한 frame 안에 제거된다. 다른 effect의 presentation을 clear하지 않는다.
 
@@ -1183,7 +1201,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결, D tiger 12행 typed family | 미실행 | E runtime frame 확인, T asset lineage |
 | G06 glass/crack | `IMPLEMENTED` | W2050120 K-child + F2050230 Fluid01 two-row + screen-overlay v1 synthetic WARP/rollback | 미실행 | Fluid01 mesh, J-child static set, 차원 F/W Product overlay·refraction |
 | G07 dragon/ultimate | `IMPLEMENTED` | Lance 34630/34650 exact 12행 opcode 19, body/head WARP draw, alpha-pan/Dynamic-W/lifetime/rollback PASS | 미실행 | 34610·Artist T·교차 class exact variant admission |
-| G08 Artist V | `EVIDENCE_PARTIAL` | CircleSurface/Vortex strict executor, Dimension F 7-burst와 Artist V vortex 3행 canary Debug/Release PASS | 미실행 | attractor/camera channel |
+| G08 Artist V | `IMPLEMENTED` | CircleSurface/Vortex strict executor + reviewed 7-row wisp cohort + world-metric 14-particle attractor, materializer 8 tests와 Debug/Release focused 12/12 PASS | 미실행 | full publish, camera/post/light channel |
 | G09 Dimension gameplay | `EVIDENCE_PARTIAL` | current command/snapshot audit | 미실행 | approved target replication |
 | G10 publish | `PLANNED` | 미실행 | 미실행 | preceding Gs |
 | G11 visual/golden | `PLANNED` | 미실행 | 사용자 대기 | 실제 관찰 |

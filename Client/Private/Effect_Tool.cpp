@@ -7444,6 +7444,72 @@ void Client::CEffect_Tool::Render_KindDetail(
 				bChanged = true;
 			}
 		}
+
+		ImGui::SeparatorText("Particle Target Attractor");
+		EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& Attractor =
+			Detail.Particle.TargetAttractor;
+		bool_t bAttractorEnabled = Attractor.bEnabled;
+		if (ImGui::Checkbox("Enable Target Attractor", &bAttractorEnabled))
+		{
+			if (bAttractorEnabled)
+			{
+				Attractor.bEnabled = true;
+				if (Attractor.fRadialAcceleration == 0.f)
+					Attractor.fRadialAcceleration = 8.f;
+			}
+			else
+			{
+				Attractor = EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC{};
+			}
+			bChanged = true;
+		}
+		if (Attractor.bEnabled)
+		{
+			static const char* const s_AttractorTargetSpaceLabels[] =
+			{
+				"Effect Root Local", "Element Local"
+			};
+			int32_t iTargetSpace = static_cast<int32_t>(
+				Attractor.eTargetSpace);
+			if (ImGui::Combo("Target Space", &iTargetSpace,
+				s_AttractorTargetSpaceLabels,
+				IM_ARRAYSIZE(s_AttractorTargetSpaceLabels)))
+			{
+				Attractor.eTargetSpace =
+					static_cast<EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE>(
+						iTargetSpace);
+				bChanged = true;
+			}
+			bChanged |= DragFloat3("Target Offset",
+				Attractor.vTargetOffset, 0.01f, -1000.f, 1000.f);
+			if (DragFloat2("Active Normalized Min/Max",
+				Attractor.vActiveNormalized, 0.01f, 0.f, 1.f))
+			{
+				Attractor.vActiveNormalized.x = std::clamp(
+					Attractor.vActiveNormalized.x, 0.f, 0.999f);
+				Attractor.vActiveNormalized.y = std::clamp(
+					Attractor.vActiveNormalized.y,
+					Attractor.vActiveNormalized.x + 0.001f, 1.f);
+				bChanged = true;
+			}
+			bChanged |= ImGui::DragFloat("Radial Acceleration",
+				&Attractor.fRadialAcceleration, 0.1f, 0.f, 10000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Tangential Acceleration",
+				&Attractor.fTangentialAcceleration, 0.1f, -10000.f,
+				10000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Maximum Speed",
+				&Attractor.fMaximumSpeed, 0.1f, 0.001f, 1000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Convergence Radius",
+				&Attractor.fConvergenceRadius, 0.01f, 0.001f, 1000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Arrival Damping",
+				&Attractor.fArrivalDamping, 0.1f, 0.f, 1000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::TextDisabled(
+				"Authored PROJECT_TUNED motion layer. SourceRecipe modules run first; this layer then steers the effective velocity toward the selected centre.");
+		}
         bChanged |= ImGui::Checkbox("Particle Local Space",
             &Detail.Particle.bLocalSpace);
 		if (ImGui::IsItemHovered())
