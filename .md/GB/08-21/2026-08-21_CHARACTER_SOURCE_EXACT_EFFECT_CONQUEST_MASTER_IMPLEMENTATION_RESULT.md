@@ -78,6 +78,16 @@
 - donor의 `97.25deg` Y rotation과 local scale은 첫 화면 기준값이며, 사용자가 Effect Tool에서
   해당 독립 occurrence만 후속 튜닝할 수 있다.
 
+### 1.8 도화가 S `31420` 풀끝 소멸
+
+- 기존 source-owned particle 한 행은 canonical identity까지 그대로 보존했다.
+- `PROJECT_TUNED` Sprite 두 행만 독립 append했다. body는 `fx_o_grass_04`를 coverage(mask),
+  `fx_o_grass_03`을 dissolve로 사용하고 tip은 두 역할을 교차해 DXT1의 고정 alpha를 색 alpha로
+  오해하지 않는다.
+- tip은 기존 S의 `fx_d_fluid_007` emissive texture와 HDR intensity `6 -> 0`을 사용한다.
+  실제 PointLight는 추가하지 않았고, body/tip의 alpha·emissive·dissolve가 절대 시각
+  `1.5318s`에 함께 종료된다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -97,6 +107,7 @@
 | Debug/Release Client after subset codec change | 각 errors 0 PASS |
 | Artist A/D/R + Warlord T focused contracts | 17 tests PASS, 각 materializer `--check` PASS |
 | Lance E W-cone selective donor | 4 tests, `--check`, authored codec parse PASS |
+| Artist S grass-tip selective materializer | 7 tests PASS, `--check` PASS, 4 DDS SHA-256 PASS, Debug/Release codec SHA `03e4e9f8...` 일치 |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -106,7 +117,7 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 
 - checked-in runtime catalog는 아직 차원 A의 기존 9행 sealed document를 가리킨다. 신규
   세 행은 `AUTHORING_ONLY/AUTHORED_NOT_PUBLISHED`이다.
-- 도화가 D effectref/source catalog와 A/R, 워로드 T authored 변경도 full publish 전에는
+- 도화가 D effectref/source catalog와 A/R/S, 워로드 T authored 변경도 full publish 전에는
   checked-in sealed runtime catalog에서 실행되지 않는다.
 - full Effect publisher Validate는 현재 main의 `effect.valtan.red-blade-wave.active` 중복 소유자
   검증에서 중단된다. 이 세션은 해당 Valtan 데이터를 수정하지 않았다.
