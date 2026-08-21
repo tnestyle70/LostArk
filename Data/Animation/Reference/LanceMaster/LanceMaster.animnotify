@@ -8,15 +8,15 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_O_JustGuard_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_O_JustGuard_03" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
-  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.4000 d=0.1000 kind=SOUND src=AKEvent asset="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard2_Male_Jump1_1" label="" win=NONE
-  n t=0.5000 d=4.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5000 d=4.5000 kind=SHAKE src=ViewShake asset="dur=4.5;in=0;out=0.2;x=1,70;y=1,70;z=1.5,80;fov=0,0" label="" win=NONE
 "flm_att_battle_compete_1_start" skill=34900 len=1.0000 name="격돌(맞대결) 스킬"
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0010 d=0.0000 kind=SOUND src=AKEvent asset="PC_COMMON_DUAL.PC_Common_Dual1_1" label="" win=NONE
   n t=0.0010 d=0.9990 kind=SOUND src=AKEvent asset="PC_COMMON_DUAL.PC_Common_Dual1_Fighter_F_Vox1_1" label="" win=NONE
   n t=0.6693 d=0.3307 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_L_FBM_CF_Shield_01_S" label="" win=NONE
-  n t=0.6693 d=0.2151 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6693 d=0.2151 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0.1;x=7,60;y=7,60;z=8,70;fov=0,0" label="" win=NONE
   n t=0.6737 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_L_WGL_CF_Shield_Dust_01" label="" win=NONE
   n t=0.6737 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_1_S" label="" win=NONE
   n t=0.6743 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -34,7 +34,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_J_GuardHolding_02" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_J_RGBNoise_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_J_GuardHolding_03" label="" win=NONE
-  n t=0.0000 d=0.4005 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.4005 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=8,60;y=8,60;z=10,70;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.1667 kind=SOUND src=AKEvent asset="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" label="" win=NONE
   n t=0.0515 d=0.1002 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4943 d=1.5057 kind=CANCEL src=InputTiming asset="" label="입력캔슬" win=ANY_CANCEL
@@ -53,7 +53,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_O_JustGuard_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_Confront_00.Par_O_JustGuard_03" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
-  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.5000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.0000 d=2.0000 kind=SOUND src=AKEvent asset="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" label="" win=NONE
   n t=0.0000 d=1.2667 kind=SOUND src=AKEvent asset="PC_COMMON_PERFECTGUARD.PC_LanceMaster_F_PerfectGuard1_Vox1_1" label="" win=NONE
   n t=0.1800 d=1.8200 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
@@ -73,7 +73,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5207 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_PyungMTrail_01" label="" win=NONE
   n t=0.5468 d=0.0961 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.5916 d=1.0417 kind=CANCEL src=InputTiming asset="" label="" win=NONE
-  n t=0.5921 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5921 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.05;in=0;out=0;x=1,2;y=1,2;z=1,2;fov=0.3,5" label="" win=NONE
   n t=0.6464 d=0.2032 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.6533 d=0.9800 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.8987 d=0.7346 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -89,7 +89,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4376 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_PyungMTrail_01" label="" win=NONE
   n t=0.4498 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4502 d=0.1021 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4517 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4517 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.05;in=0;out=0;x=1,2;y=1,2;z=1,2;fov=0.3,5" label="" win=NONE
   n t=0.5000 d=0.8666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.5010 d=0.8656 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.5484 d=0.1559 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -103,7 +103,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4506 d=0.3011 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.4666 d=0.3018 kind=EFFECT src=Trails asset="FX_PC_FLM_01.Par_M_FLM_Trail_03" label="" win=NONE
   n t=0.4906 d=0.2250 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Ribbon_02" label="" win=NONE
-  n t=0.5446 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5446 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.05;in=0;out=0;x=1,2;y=1,2;z=1,2;fov=0.3,5" label="" win=NONE
   n t=0.5447 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5502 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_PyungMTrail_01" label="" win=NONE
   n t=0.5504 d=0.1058 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -124,7 +124,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4257 d=0.4520 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Ribbon_02" label="" win=NONE
   n t=0.4626 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4673 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_PyungMTrail_01" label="" win=NONE
-  n t=0.4699 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4699 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.05;in=0;out=0;x=1,2;y=1,2;z=1,2;fov=0.3,5" label="" win=NONE
   n t=0.5000 d=1.0666 kind=CANCEL src=InputTiming asset="" label="[회피캔슬]" win=DODGE_CANCEL
   n t=0.5000 d=0.3006 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.5000 d=0.0000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_Att_Battle1_4" label="" win=NONE
@@ -139,7 +139,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0340 d=0.5993 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_Att_Battle2_1" label="" win=NONE
   n t=0.0800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_ShortNormal_Atk_01" label="" win=NONE
   n t=0.0800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.0800 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0800 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=1,2;y=1,2;z=1,2;fov=0.3,5" label="" win=NONE
   n t=0.1202 d=0.0905 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1659 d=0.4674 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.1838 d=0.4495 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -152,7 +152,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0330 d=0.6003 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_Att_Battle2_1" label="" win=NONE
   n t=0.0800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_ShortNormal_Atk_01" label="" win=NONE
-  n t=0.0800 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0800 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=1,2;y=1,2;z=1,2;fov=0.3,5" label="" win=NONE
   n t=0.1202 d=0.0943 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1502 d=0.4831 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.1734 d=0.4599 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -165,7 +165,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0260 d=0.6073 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_Att_Battle2_1" label="" win=NONE
   n t=0.0800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_ShortNormal_Atk_01" label="" win=NONE
-  n t=0.0800 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0800 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=1,2;y=1,2;z=1,2;fov=0.3,5" label="" win=NONE
   n t=0.1111 d=0.0943 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1975 d=0.1055 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.1996 d=0.4337 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -208,7 +208,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.1978 d=0.7666 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.1978 d=0.8587 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.1978 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_03" label="" win=NONE
-  n t=0.2020 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2020 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=1,60;y=1,60;z=1,60;fov=0,0" label="" win=NONE
   n t=0.3180 d=1.0486 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Assult1_FX000_2" label="" win=NONE
   n t=0.3500 d=0.0504 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3500 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
@@ -225,7 +225,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5958 d=0.1608 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_01" label="" win=NONE
   n t=0.5958 d=0.1608 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_01" label="" win=NONE
   n t=0.6009 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_DashUp_01" label="" win=NONE
-  n t=0.6052 d=0.1212 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6052 d=0.1212 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=0,80;y=0,80;z=10,40;fov=0,0" label="" win=NONE
   n t=0.6104 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_Dash_01" label="" win=NONE
   n t=0.6104 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_MovingDust_01" label="" win=NONE
   n t=0.6104 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_Dash_01" label="" win=NONE
@@ -244,7 +244,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.1937 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_FickAtt_01" label="" win=NONE
   n t=0.1973 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_1" label="" win=NONE
   n t=0.1978 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_03" label="" win=NONE
-  n t=0.2020 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2020 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=1,60;y=1,60;z=1,60;fov=0,0" label="" win=NONE
   n t=0.2048 d=0.8366 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.2064 d=0.9533 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.3150 d=1.2183 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Assult1_FX007_2" label="" win=NONE
@@ -264,7 +264,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5958 d=0.1608 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_01" label="" win=NONE
   n t=0.5958 d=0.1608 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_01" label="" win=NONE
   n t=0.6009 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_DashUp_01" label="" win=NONE
-  n t=0.6052 d=0.1212 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6052 d=0.1212 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=0,80;y=0,80;z=10,40;fov=0,0" label="" win=NONE
   n t=0.6104 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_MovingDust_01" label="" win=NONE
   n t=0.6104 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_Dash_01" label="" win=NONE
   n t=0.6104 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_Dash_01" label="" win=NONE
@@ -305,7 +305,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.9305 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_82" label="" win=NONE
   n t=0.9305 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_83" label="" win=NONE
   n t=0.9305 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_FKick_Atk_83" label="" win=NONE
-  n t=0.9559 d=0.1211 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9559 d=0.1211 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.15;x=0,80;y=0,80;z=15,40;fov=0,0" label="" win=NONE
   n t=1.0000 d=0.3000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.0024 d=0.1379 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.2000 d=0.6333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -321,7 +321,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4676 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_02" label="" win=NONE
   n t=0.4712 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.4712 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_6" label="" win=NONE
-  n t=0.4712 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4712 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=3,65;y=3,65;z=3,65;fov=0,0" label="" win=NONE
   n t=0.4730 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.4777 d=0.0839 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4866 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_04" label="" win=NONE
@@ -342,7 +342,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5760 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_02_2" label="" win=NONE
   n t=0.5983 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.6000 d=0.9666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
-  n t=0.6002 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6002 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=3,50;y=3,50;z=3,50;fov=0,0" label="" win=NONE
   n t=0.6012 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8454 d=0.7212 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "flm_sk_chestdestruction_03" skill=34140 len=1.3333 name="긴 창_선풍참혼"
@@ -355,7 +355,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0010 d=1.8820 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_Vox1_2" label="" win=NONE
   n t=0.0988 d=0.0507 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.1800 d=1.4667 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_FX000_4" label="" win=NONE
-  n t=0.2828 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2828 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=5,70;y=3,70;z=3,70;fov=0,0" label="" win=NONE
   n t=0.2969 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_3" label="" win=NONE
   n t=0.2969 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_05" label="" win=NONE
   n t=0.2982 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
@@ -369,14 +369,14 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5969 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_6" label="" win=NONE
   n t=0.5969 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.5983 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
-  n t=0.5990 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5990 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=3,70;y=3,70;z=3,70;fov=0,0" label="" win=NONE
   n t=0.5997 d=0.0503 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.6277 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_02" label="" win=NONE
   n t=0.6800 d=1.2333 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ChestDestruction1_FX000_4" label="" win=NONE
   n t=0.7500 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.7786 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.7786 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_6" label="" win=NONE
-  n t=0.7791 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7791 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=3,70;y=3,70;z=3,70;fov=0,0" label="" win=NONE
   n t=0.7829 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.7859 d=0.0507 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.8057 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_04" label="" win=NONE
@@ -384,7 +384,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=1.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_7" label="" win=NONE
   n t=1.1000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=1.1050 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.1050 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=4,70;y=4,70;z=4,70;fov=0,0" label="" win=NONE
   n t=1.1052 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=1.1156 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_04" label="" win=NONE
   n t=1.1260 d=0.0509 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -402,7 +402,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4666 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_9" label="" win=NONE
   n t=0.4666 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.4666 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_8" label="" win=NONE
-  n t=0.4671 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4671 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=4,70;y=4,70;z=4,70;fov=0,0" label="" win=NONE
   n t=0.4689 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.4777 d=0.1044 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4938 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_04" label="" win=NONE
@@ -414,7 +414,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.0798 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_9" label="" win=NONE
   n t=1.0798 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=1.0798 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_01_8" label="" win=NONE
-  n t=1.0819 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0819 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.05;x=4,70;y=4,70;z=4,70;fov=0,0" label="" win=NONE
   n t=1.0850 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=1.0986 d=0.1100 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.1108 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_ChestDestruction_Dust_02" label="" win=NONE
@@ -469,7 +469,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Atk_06" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.3000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=4,50;y=4,50;z=4,50;fov=0,0" label="" win=NONE
   n t=0.3500 d=0.3000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.3898 d=0.0574 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Mana_01" label="" win=NONE
@@ -497,7 +497,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Atk_06" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.3000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=4,50;y=4,50;z=4,50;fov=0,0" label="" win=NONE
   n t=0.3500 d=0.3000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Mana_01" label="" win=NONE
   n t=0.5022 d=0.1108 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -513,7 +513,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Dust_00" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Atk_00" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.8000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=4,50;y=4,50;z=4,50;fov=0,0" label="" win=NONE
   n t=0.9077 d=0.0846 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CounterAttack_Mana_01" label="" win=NONE
   n t=1.1000 d=0.6333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -536,7 +536,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=1.1856 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0300 d=0.0000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0500 d=1.4000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX000_1" label="" win=NONE
-  n t=0.0817 d=0.4783 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0817 d=0.4783 kind=SHAKE src=ViewShake asset="dur=0.5;in=0.01;out=0.01;x=0,0;y=0,0;z=1,200;fov=0,0" label="" win=NONE
   n t=0.0964 d=0.6197 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Spark_06" label="" win=NONE
   n t=0.0964 d=0.6197 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_02" label="" win=NONE
   n t=0.0964 d=0.6197 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_02" label="" win=NONE
@@ -577,7 +577,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.7350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.7383 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7383 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.01;out=0.1;x=0,0;y=0,0;z=5,80;fov=0,0" label="" win=NONE
   n t=0.7470 d=0.1080 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.7470 d=0.1080 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.7470 d=0.1080 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -601,7 +601,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=1.4105 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0300 d=0.0000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0500 d=1.4000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX300_1" label="" win=NONE
-  n t=0.0818 d=0.8279 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0818 d=0.8279 kind=SHAKE src=ViewShake asset="dur=0.82;in=0.01;out=0.01;x=0,0;y=0,0;z=1,200;fov=0,0" label="" win=NONE
   n t=0.0965 d=0.9771 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Spark_06" label="" win=NONE
   n t=0.0965 d=0.9741 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_02" label="" win=NONE
   n t=0.0965 d=0.9741 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_02" label="" win=NONE
@@ -623,7 +623,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.8672 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Decal_01" label="" win=NONE
   n t=1.0000 d=0.3000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.0000 d=0.8667 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX000_2" label="" win=NONE
-  n t=1.0697 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0697 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.01;out=0.1;x=0,0;y=0,0;z=5,80;fov=0,0" label="" win=NONE
   n t=1.0702 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Sasun_MTrail_04" label="" win=NONE
   n t=1.0702 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Spark_04" label="" win=NONE
   n t=1.0702 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -656,7 +656,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_Vox2_1" label="" win=NONE
   n t=0.0000 d=1.4113 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0500 d=1.4000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX300_1" label="" win=NONE
-  n t=0.0818 d=0.8279 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0818 d=0.8279 kind=SHAKE src=ViewShake asset="dur=0.82;in=0.01;out=0.01;x=0,0;y=0,0;z=1,200;fov=0,0" label="" win=NONE
   n t=0.0965 d=0.9741 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_02" label="" win=NONE
   n t=0.0965 d=0.9771 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Spark_06" label="" win=NONE
   n t=0.0965 d=0.9741 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_02" label="" win=NONE
@@ -678,7 +678,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.8672 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Decal_01" label="" win=NONE
   n t=1.0000 d=0.3000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.0000 d=0.8667 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX000_2" label="" win=NONE
-  n t=1.0697 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0697 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.01;out=0.1;x=0,0;y=0,0;z=5,80;fov=0,0" label="" win=NONE
   n t=1.0702 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_03" label="" win=NONE
   n t=1.0702 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_01" label="" win=NONE
   n t=1.0702 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -702,7 +702,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3464 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_01" label="" win=NONE
   n t=0.3464 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_01" label="" win=NONE
   n t=0.3464 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Sasun_UpImpact_01" label="" win=NONE
-  n t=0.3464 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3464 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.01;out=0.1;x=0,0;y=0,0;z=3,50;fov=0,0" label="" win=NONE
   n t=0.3470 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Decal_02" label="" win=NONE
   n t=0.3473 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3473 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -766,7 +766,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.7231 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0000 d=1.2085 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0500 d=1.4000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CrescentSweep1_FX000_1" label="" win=NONE
-  n t=0.0819 d=0.6300 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0819 d=0.6300 kind=SHAKE src=ViewShake asset="dur=0.63;in=0.01;out=0.01;x=0,0;y=0,0;z=1,200;fov=0,0" label="" win=NONE
   n t=0.0949 d=1.1137 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.0964 d=0.6197 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_02" label="" win=NONE
   n t=0.0964 d=0.6197 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_02" label="" win=NONE
@@ -794,7 +794,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.7166 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7166 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Sasun_MTrail_04" label="" win=NONE
   n t=0.7166 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.7171 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7171 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.01;out=0.1;x=0,0;y=0,0;z=5,80;fov=0,0" label="" win=NONE
   n t=0.7174 d=0.1077 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.7174 d=0.1077 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.7176 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Spark_01" label="" win=NONE
@@ -908,7 +908,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.3900 d=0.0848 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.3900 d=0.0848 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.3900 d=0.0848 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.3919 d=0.2507 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.3919 d=0.2507 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0;x=0,50;y=0,50;z=9,50;fov=0,0" label="" win=NONE
   n t=1.3920 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_HurricaneDust_01" label="" win=NONE
   n t=1.4000 d=0.3000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.4053 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_DragonSwing_02" label="" win=NONE
@@ -1023,7 +1023,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4123 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
   n t=0.4123 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
   n t=0.4123 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
-  n t=0.4424 d=0.2514 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4424 d=0.2514 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0;x=0,50;y=0,50;z=9,50;fov=0,0" label="" win=NONE
   n t=0.4437 d=0.1063 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.5000 d=1.5333 kind=CANCEL src=InputTiming asset="" label="회피기캔슬(테스트)" win=DODGE_CANCEL
   n t=1.2000 d=0.8333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1113,7 +1113,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.8866 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8866 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8866 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.8988 d=0.2518 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8988 d=0.2518 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0;x=0,50;y=0,50;z=9,50;fov=0,0" label="" win=NONE
   n t=0.9129 d=0.0849 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.9167 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.9167 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1275,7 +1275,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=2.8951 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
   n t=2.8951 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
   n t=2.8951 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
-  n t=2.8984 d=0.2517 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.8984 d=0.2517 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0;x=0,50;y=0,50;z=9,50;fov=0,0" label="" win=NONE
   n t=2.9000 d=0.0849 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=2.9000 d=0.0849 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=2.9000 d=0.0849 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -1296,7 +1296,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3489 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3489 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CyclonicLance_Shoulder_00" label="" win=NONE
   n t=0.3489 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CyclonicLance_Shoulder_03" label="" win=NONE
-  n t=0.3495 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3495 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=15,20;y=15,20;z=0,0;fov=0,0" label="" win=NONE
   n t=0.3536 d=0.0359 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3536 d=0.0359 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3536 d=0.0359 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -1319,7 +1319,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3000 d=0.8000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_dome_00" label="" win=NONE
   n t=0.3000 d=0.8000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CyclonicLance_Atk_03" label="" win=NONE
   n t=0.3000 d=0.8000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_dome_37" label="" win=NONE
-  n t=0.3059 d=0.8477 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3059 d=0.8477 kind=SHAKE src=ViewShake asset="dur=0.8;in=0.01;out=0.1;x=0.7,70;y=0.7,70;z=0.7,70;fov=0,0" label="" win=NONE
   n t=0.3083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.3083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.3083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
@@ -1346,15 +1346,15 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4791 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Trail_00" label="" win=NONE
   n t=0.4825 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Trail_03" label="" win=NONE
   n t=0.5350 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5755 d=0.0843 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5755 d=0.0843 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=4,50;y=4,50;z=15,50;fov=0,0" label="" win=NONE
   n t=0.5769 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5786 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Hit_00" label="" win=NONE
-  n t=0.5788 d=0.0839 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.5788 d=0.0839 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5788 d=0.0839 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=4,50;y=4,50;z=15,50;fov=0,0" label="" win=NONE
+  n t=0.5788 d=0.0839 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=4,50;y=4,50;z=15,50;fov=0,0" label="" win=NONE
   n t=0.5791 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Hit_03" label="" win=NONE
   n t=0.5792 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5792 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.5805 d=0.0839 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5805 d=0.0839 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=4,50;y=4,50;z=15,50;fov=0,0" label="" win=NONE
   n t=0.5808 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Hit_03" label="" win=NONE
   n t=0.5808 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Hit_00" label="" win=NONE
   n t=0.5809 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1382,10 +1382,10 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.7601 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Hit_38" label="" win=NONE
   n t=0.7601 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Hit_38" label="" win=NONE
   n t=0.7601 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Hit_38" label="" win=NONE
-  n t=0.7623 d=0.0841 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7623 d=0.0841 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=4,50;y=4,50;z=15,50;fov=0,0" label="" win=NONE
   n t=0.7634 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7657 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.7693 d=0.0841 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7693 d=0.0841 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=4,50;y=4,50;z=15,50;fov=0,0" label="" win=NONE
   n t=0.7745 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.7745 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=1.3900 d=0.5767 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1403,14 +1403,14 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4757 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Trail_00" label="" win=NONE
   n t=0.4757 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Trail_00" label="" win=NONE
   n t=0.5350 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.5755 d=0.0843 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.5755 d=0.0843 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5755 d=0.0843 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=4,50;y=4,50;z=15,50;fov=0,0" label="" win=NONE
+  n t=0.5755 d=0.0843 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=4,50;y=4,50;z=15,50;fov=0,0" label="" win=NONE
   n t=0.5769 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5769 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5786 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Hit_00" label="" win=NONE
   n t=0.5786 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Hit_00" label="" win=NONE
-  n t=0.5788 d=0.0839 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.5788 d=0.0839 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5788 d=0.0839 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=4,50;y=4,50;z=15,50;fov=0,0" label="" win=NONE
+  n t=0.5788 d=0.0839 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=4,50;y=4,50;z=15,50;fov=0,0" label="" win=NONE
   n t=0.5792 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5792 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5808 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_Dragon_Hit_03" label="" win=NONE
@@ -1429,7 +1429,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CyclonicLance_Atk_07_03" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_CyclonicLance_Atk_07" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_CyclonicLance_Atk_07_03" label="" win=NONE
-  n t=0.2500 d=0.1500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2500 d=0.1500 kind=SHAKE src=ViewShake asset="dur=1.7;in=0.01;out=0.2;x=1,80;y=1,80;z=0.7,80;fov=0,0" label="" win=NONE
   n t=0.3000 d=0.1000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_MotionBlur_V_02" label="" win=NONE
   n t=0.3000 d=0.1000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_M_FilmNoise_Zaxis_03" label="" win=NONE
   n t=0.3000 d=0.1000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_MP_DustLoop_01" label="" win=NONE
@@ -1453,7 +1453,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4000 d=0.0000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.4000 d=0.0000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.4000 d=0.0000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.2;x=3,50;y=3,50;z=3,50;fov=0,0" label="" win=NONE
   n t=1.2000 d=0.6000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CyclonicLance2_FX007_3" label="" win=NONE
   n t=1.2500 d=0.0000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_CyclonicLance2_FX007_2" label="" win=NONE
 "flm_sk_cycloinclance_custom_4_start" skill=34100 len=0.5333 name="긴 창_청룡출수"
@@ -1525,7 +1525,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.9525 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_DownwardHit_01_3" label="" win=NONE
   n t=0.9525 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_DownwardHit_01_2" label="" win=NONE
   n t=0.9525 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_DownwardHit_01_4" label="" win=NONE
-  n t=0.9674 d=0.1210 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9674 d=0.1210 kind=SHAKE src=ViewShake asset="dur=0.4;in=0;out=0.05;x=1,50;y=1,50;z=7,50;fov=0,0" label="" win=NONE
   n t=0.9739 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_Critical_01" label="" win=NONE
   n t=0.9739 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_Critical_01" label="" win=NONE
   n t=0.9739 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_D_FLM_Critical_01" label="" win=NONE
@@ -1552,7 +1552,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" label="" win=NONE
   n t=0.0000 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
   n t=0.0000 d=0.7333 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_08.Par_T_FLM_DragonCleave_01_WpCast_01" label="" win=NONE
-  n t=0.0000 d=0.7333 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.7333 kind=SHAKE src=ViewShake asset="dur=0.7;in=0;out=0.1;x=0,60;y=0,60;z=0,60;fov=15,1" label="" win=NONE
   n t=0.0000 d=0.7333 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonCleave1_FX000_1" label="" win=NONE
   n t=0.0000 d=0.7333 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonCleave1_Vox1" label="" win=NONE
   n t=0.0000 d=0.7333 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonCleave1_FX000_2" label="" win=NONE
@@ -1576,7 +1576,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2700 d=0.1000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.2700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_08.Par_T_FLM_DragonCleave_01_01" label="" win=NONE
   n t=0.2700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2700 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2700 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=6,60;y=6,60;z=6,60;fov=0,0" label="" win=NONE
   n t=0.2700 d=0.3967 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonCleave1_FX000_3" label="" win=NONE
   n t=0.2700 d=0.3967 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonCleave1_FX000_4" label="" win=NONE
   n t=0.5500 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -1597,7 +1597,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5000 d=1.2000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_08.Par_T_FLM_DragonCleave_00_03" label="" win=NONE
   n t=0.5000 d=1.2000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_08.Par_T_FLM_DragonCleave_00_02" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
-  n t=0.5000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.7;in=0;out=0.2;x=6,70;y=6,70;z=6,70;fov=0,0" label="" win=NONE
   n t=0.5900 d=0.5000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.6000 d=0.2000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.1000 d=0.6000 kind=CANCEL src=InputTiming asset="" label="회피기 캔슬" win=DODGE_CANCEL
@@ -1624,9 +1624,9 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_01_2" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_01_3" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
   n t=0.3980 d=0.0709 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.1452 d=0.4548 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -1662,9 +1662,9 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_01_2" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_01_3" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
@@ -1706,9 +1706,9 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_02_2" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_02_3" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=10,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=10,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=10,50;fov=0,0" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
@@ -1753,9 +1753,9 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_01_2" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_01_3" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
@@ -1774,9 +1774,9 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Atk_01_2" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Atk_01_3" label="" win=NONE
-  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=2,50;y=2,50;z=10,50;fov=0,0" label="" win=NONE
+  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=2,50;y=2,50;z=10,50;fov=0,0" label="" win=NONE
+  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=2,50;y=2,50;z=10,50;fov=0,0" label="" win=NONE
   n t=1.6002 d=0.4998 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.7000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "flm_sk_dragonkick_custom_7" skill=34090 len=1.6667 name="긴 창_철량추"
@@ -1784,9 +1784,9 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.4000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Spark_01_2" label="" win=NONE
   n t=0.0000 d=0.4000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Spark_01_1" label="" win=NONE
   n t=0.0000 d=0.4000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Spark_01_3" label="" win=NONE
-  n t=0.0000 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.0000 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.0000 d=0.4000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0.01;out=0.01;x=0,0;y=0,0;z=0.5,100;fov=0,0" label="" win=NONE
+  n t=0.0000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0.01;out=0.01;x=0,0;y=0,0;z=0.5,100;fov=0,0" label="" win=NONE
+  n t=0.0000 d=0.4000 kind=SHAKE src=ViewShake asset="dur=0.4;in=0.01;out=0.01;x=0,0;y=0,0;z=0.5,100;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.4083 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=1.4083 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0010 d=0.0000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonKick1_FX007_1" label="" win=NONE
@@ -1806,9 +1806,9 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_02_1" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Kick_02_3" label="" win=NONE
-  n t=0.3747 d=0.3000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.3000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.3000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3747 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=10,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=10,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.3000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=10,50;fov=0,0" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Wind_01_1" label="" win=NONE
@@ -1840,9 +1840,9 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_2" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3747 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Trail_01_3" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
+  n t=0.3747 d=0.1204 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=7,50;fov=0,0" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3980 d=0.0707 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.0000 d=0.0000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonKick1_FX008_1" label="" win=NONE
@@ -1858,9 +1858,9 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Atk_01_3" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Dragon_Atk_01_1" label="" win=NONE
-  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=2,50;y=2,50;z=10,50;fov=0,0" label="" win=NONE
+  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=2,50;y=2,50;z=10,50;fov=0,0" label="" win=NONE
+  n t=1.3500 d=0.3500 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=2,50;y=2,50;z=10,50;fov=0,0" label="" win=NONE
   n t=1.6002 d=0.4998 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.7000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "flm_sk_dragonsweep_01" skill=34640 len=0.9333 name="초각성스킬_맹룡난무"
@@ -1868,7 +1868,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" label="" win=NONE
   n t=0.0000 d=0.3000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_FilmNoise_01" label="" win=NONE
-  n t=0.0000 d=0.5333 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.5333 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.4;x=0,60;y=0,60;z=0,60;fov=-20,1" label="" win=NONE
   n t=0.0000 d=0.9333 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.9333 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0000 d=0.9333 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
@@ -1881,7 +1881,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4200 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4294 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_Swing_00_00" label="" win=NONE
-  n t=0.4339 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4339 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.145;in=0;out=0.14;x=8,85;y=8,85;z=8,85;fov=0,0" label="" win=NONE
   n t=0.4343 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_Dust_00_04" label="" win=NONE
   n t=0.4352 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_Wind_00_01" label="" win=NONE
   n t=0.4358 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -1893,7 +1893,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.6125 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_Dust_00_04" label="" win=NONE
   n t=0.6125 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_Swing_00_03" label="" win=NONE
   n t=0.6125 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.6248 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6248 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.145;in=0;out=0.14;x=8,85;y=8,85;z=8,85;fov=0,0" label="" win=NONE
 "flm_sk_dragonsweep_02" skill=34640 len=2.2333 name="초각성스킬_맹룡난무"
   n t=0.0000 d=2.2333 kind=CANCEL src=InputTiming asset="" label="회피기 캔슬" win=DODGE_CANCEL
   n t=0.0000 d=2.2333 kind=CANCEL src=InputTiming asset="" label="연가심공" win=OTHER
@@ -1908,7 +1908,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_SuperGabolg_Dust_00_03" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_Shine_00_00" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_WPFlare_00_00" label="" win=NONE
-  n t=0.5000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.2;x=14,75;y=14,75;z=14,75;fov=0,0" label="" win=NONE
   n t=0.7500 d=1.1333 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonDancing1_Vox1_2" label="" win=NONE
   n t=0.8900 d=1.2333 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonDancing1_FX000_4" label="" win=NONE
   n t=0.9000 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -1916,7 +1916,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.9031 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.9108 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.9108 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_Deacl_00_01" label="" win=NONE
-  n t=0.9108 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9108 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.8;in=0;out=0.8;x=5,75;y=5,75;z=5,75;fov=0,0" label="" win=NONE
   n t=0.9204 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_Dust_00_01" label="" win=NONE
   n t=0.9204 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_Wind_00_00" label="" win=NONE
   n t=0.9244 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_DragonSweep_Dust_00_03" label="" win=NONE
@@ -1947,7 +1947,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5014 d=0.4986 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Ribbon_01" label="" win=NONE
   n t=0.5014 d=0.4986 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Ribbon_01" label="" win=NONE
   n t=0.5014 d=0.4986 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Ribbon_01" label="" win=NONE
-  n t=0.7461 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7461 d=0.0000 kind=SHAKE src=ViewShake asset="dur=1.6;in=0.05;out=1.24;x=0,60;y=0,60;z=0,60;fov=15,1" label="" win=NONE
 "flm_sk_dragonupfly_02_re" skill=34570 len=0.6333 name="짧은 창_유성강천"
   n t=0.0000 d=0.6333 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.0000 d=0.6333 kind=CANCEL src=InputTiming asset="" label="연가심공" win=OTHER
@@ -1972,7 +1972,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0970 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_02_sine" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_CastSphere_01" label="" win=NONE
   n t=0.0000 d=0.3974 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Ribbon_01" label="" win=NONE
-  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=1.4;in=0.35;out=1;x=0,60;y=0,60;z=0,60;fov=-25,1" label="" win=NONE
   n t=0.0000 d=0.6333 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonUpFly1_FX007_2" label="" win=NONE
   n t=0.0000 d=0.6333 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.6333 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
@@ -2001,7 +2001,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4550 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4550 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4550 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4550 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4550 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,0;y=0,0;z=7,80;fov=0,0" label="" win=NONE
   n t=0.5000 d=0.1333 kind=CANCEL src=InputTiming asset="" label="회피기 및 절룡세 캔슬" win=DODGE_CANCEL
 "flm_sk_dragonupfly_03_re" skill=34570 len=1.0333 name="짧은 창_유성강천"
   n t=0.0000 d=0.2800 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -2035,7 +2035,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0970 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_02_sine" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_CastSphere_01" label="" win=NONE
   n t=0.0000 d=0.5445 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Ribbon_01" label="" win=NONE
-  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=1.4;in=0.6;out=1;x=0,60;y=0,60;z=0,60;fov=-25,1" label="" win=NONE
   n t=0.0000 d=0.9333 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonUpFly1_FX007_2" label="" win=NONE
   n t=0.0000 d=0.9333 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.9333 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
@@ -2060,7 +2060,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5476 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_SuAtt_07_00" label="" win=NONE
   n t=0.5476 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_SuAtt_07_00" label="" win=NONE
   n t=0.5476 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_SuAtt_07_00" label="" win=NONE
-  n t=0.5535 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5535 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,0;y=0,0;z=13,80;fov=0,0" label="" win=NONE
   n t=0.5570 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5570 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.5570 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -2104,7 +2104,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0970 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_02_sine" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_CastSphere_01" label="" win=NONE
   n t=0.0000 d=0.3974 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Ribbon_01" label="" win=NONE
-  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=1.4;in=0.35;out=1;x=0,60;y=0,60;z=0,60;fov=-25,1" label="" win=NONE
   n t=0.0000 d=0.5667 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_DragonUpFly1_FX007_2" label="" win=NONE
   n t=0.0000 d=0.5667 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=0.5667 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
@@ -2132,7 +2132,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4550 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4550 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4550 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4550 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4550 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,0;y=0,0;z=7,80;fov=0,0" label="" win=NONE
   n t=0.5000 d=0.0667 kind=CANCEL src=InputTiming asset="" label="회피기 및 절룡세 캔슬" win=DODGE_CANCEL
 "flm_sk_dragonupfly_custom_8_02" skill=34570 len=1.8667 name="짧은 창_유성강천"
   n t=0.0000 d=1.8667 kind=CANCEL src=InputTiming asset="" label="회피기 및 절룡세 캔슬" win=DODGE_CANCEL
@@ -2156,7 +2156,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.7800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Decal.Par_M_Crack_Decal_01" label="" win=NONE
   n t=0.7800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_SuAtt_08_02" label="" win=NONE
   n t=0.7800 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.7800 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.7800 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,0;y=0,0;z=13,80;fov=0,0" label="" win=NONE
   n t=0.7850 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7850 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.7850 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -2169,7 +2169,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
 "flm_sk_gaebolg" skill=34600 len=5.6000 name="연가창식: 은하유성탄"
   n t=0.0000 d=5.6000 kind=CANCEL src=InputTiming asset="" label="연가심공" win=OTHER
   n t=0.0000 d=4.1159 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_GaebolgTarget_01" label="" win=NONE
-  n t=0.0000 d=1.1000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=1.1000 kind=SHAKE src=ViewShake asset="dur=1;in=0.1;out=1;x=0,60;y=0,60;z=0,60;fov=-20,1" label="" win=NONE
   n t=0.0000 d=1.8000 kind=SOUND src=AKEvent asset="PC_COMMON.PC_Common_FX_Ultimate1" label="" win=NONE
   n t=0.0000 d=4.8402 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=4.8472 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
@@ -2184,7 +2184,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.2600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.2727 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=1.4000 d=3.1000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_GaeBlog1_FX000_3" label="" win=NONE
-  n t=1.5513 d=2.3647 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.5513 d=2.3647 kind=SHAKE src=ViewShake asset="dur=2.3;in=1;out=0.1;x=0,0;y=0,0;z=1,80;fov=0,0" label="" win=NONE
   n t=2.3000 d=3.1000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_GaeBlog1_Vox1_2" label="" win=NONE
   n t=3.3500 d=2.2000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_GaeBlog1_FX000_4" label="" win=NONE
   n t=3.6950 d=1.0345 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
@@ -2226,10 +2226,10 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_HurricaneSwing_01_4" label="" win=NONE
   n t=0.0600 d=0.5500 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
-  n t=0.0600 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.0600 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.0600 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.0600 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.38;in=0;out=0.15;x=2,80;y=2,80;z=1.2,80;fov=0,0" label="" win=NONE
+  n t=0.0600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.38;in=0;out=0.15;x=2,80;y=2,80;z=1.2,80;fov=0,0" label="" win=NONE
+  n t=0.0600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.38;in=0;out=0.15;x=2,80;y=2,80;z=1.2,80;fov=0,0" label="" win=NONE
+  n t=0.0600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.38;in=0;out=0.15;x=2,80;y=2,80;z=1.2,80;fov=0,0" label="" win=NONE
   n t=0.0610 d=0.7390 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_HurricaneSwing1_FX000_2" label="" win=NONE
   n t=0.0610 d=0.7390 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_HurricaneSwing1_FX000_2" label="" win=NONE
   n t=0.0610 d=0.7390 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_HurricaneSwing1_FX307_2" label="" win=NONE
@@ -2261,10 +2261,10 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3300 d=0.5000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.3300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_HurricaneSwing_02_4" label="" win=NONE
-  n t=0.3300 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3300 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3300 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3300 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3300 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.38;in=0;out=0.15;x=2,80;y=2,80;z=3.5,100;fov=0,0" label="" win=NONE
+  n t=0.3300 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.38;in=0;out=0.15;x=2,80;y=2,80;z=3.5,100;fov=0,0" label="" win=NONE
+  n t=0.3300 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.38;in=0;out=0.15;x=2,80;y=2,80;z=3.5,100;fov=0,0" label="" win=NONE
+  n t=0.3300 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.38;in=0;out=0.15;x=2,80;y=2,80;z=3.5,100;fov=0,0" label="" win=NONE
   n t=0.3994 d=0.1037 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4972 d=0.9694 kind=CANCEL src=InputTiming asset="" label="회피기캔슬(테스트)" win=DODGE_CANCEL
   n t=0.8000 d=0.6667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2284,10 +2284,10 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.7200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_HurricaneSwing_03_1" label="" win=NONE
   n t=0.7200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_HurricaneSwing_03_2" label="" win=NONE
   n t=0.8000 d=0.8667 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_HurricaneSwing1_Vox1_3" label="" win=NONE
-  n t=0.8194 d=0.3500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.8194 d=0.3500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.8194 d=0.3500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.8194 d=0.3500 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8194 d=0.3500 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=2,50;y=2,50;z=10,50;fov=0,0" label="" win=NONE
+  n t=0.8194 d=0.3500 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=2,50;y=2,50;z=10,50;fov=0,0" label="" win=NONE
+  n t=0.8194 d=0.3500 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=2,50;y=2,50;z=10,50;fov=0,0" label="" win=NONE
+  n t=0.8194 d=0.3500 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.15;x=2,50;y=2,50;z=10,50;fov=0,0" label="" win=NONE
   n t=0.8211 d=0.1133 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.8300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_HurricaneAtk_01_1" label="" win=NONE
@@ -2313,7 +2313,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=1.2000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_LastWhisper1_FX040_4" label="" win=NONE
   n t=0.0000 d=0.8124 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.1000 d=1.1000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_LastWhisper1_Vox1_2" label="" win=NONE
-  n t=0.3220 d=0.2585 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3220 d=0.2585 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=15,50;y=15,50;z=20,50;fov=1.5,0" label="" win=NONE
   n t=0.3240 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3240 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3240 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -2340,7 +2340,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=2.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_hitZone_02" label="" win=NONE
   n t=0.0000 d=2.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_ChehuCast_05" label="" win=NONE
   n t=0.0000 d=2.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_hitZone_02" label="" win=NONE
-  n t=0.0000 d=2.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=2.0000 kind=SHAKE src=ViewShake asset="dur=2;in=1;out=0;x=0.6,70;y=0.6,70;z=0.6,70;fov=0,0" label="" win=NONE
   n t=0.0000 d=2.0000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_LastWhisper1_FX000_2" label="" win=NONE
   n t=0.0000 d=2.0000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_LastWhisper1_FX050_3" label="" win=NONE
   n t=0.0000 d=2.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
@@ -2376,7 +2376,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=1.2000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_LastWhisper1_FX040_4" label="" win=NONE
   n t=0.0000 d=0.8124 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.1000 d=1.1000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_LastWhisper1_Vox1_2" label="" win=NONE
-  n t=0.3220 d=0.2585 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3220 d=0.2585 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=15,50;y=15,50;z=20,50;fov=1.5,0" label="" win=NONE
   n t=0.3238 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_ChehuSphereEnd_01" label="" win=NONE
   n t=0.3240 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3240 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -2441,7 +2441,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=1.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_06.Par_V_FLM_ChehuCast_06" label="" win=NONE
   n t=0.0000 d=1.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_hitZone_01" label="" win=NONE
   n t=0.0000 d=1.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_hitZone_02" label="" win=NONE
-  n t=0.0000 d=1.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=1.5000 kind=SHAKE src=ViewShake asset="dur=1.8;in=1.7;out=0.1;x=1,60;y=1,60;z=1,60;fov=5,1" label="" win=NONE
   n t=0.0000 d=1.5000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_LastWhisper1_FX000_2" label="" win=NONE
   n t=0.0000 d=1.5000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_LastWhisper1_FX000_3" label="" win=NONE
   n t=0.0000 d=1.2020 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
@@ -2543,7 +2543,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_24" label="" win=NONE
   n t=0.3000 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.3000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.3;x=4,50;y=4,50;z=4,50;fov=0,0" label="" win=NONE
   n t=0.3019 d=0.0689 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4000 d=0.0800 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.5500 d=0.0689 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -2586,7 +2586,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_27" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_PenetrationLunge_Atk_247" label="" win=NONE
-  n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.6;in=0;out=0.2;x=6,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=0.2300 d=0.2500 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_PenetrationLunge1_Vox1_1" label="" win=NONE
   n t=0.3000 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.3019 d=0.0689 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -2628,7 +2628,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.1750 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_07" label="" win=NONE
   n t=1.1750 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=1.1782 d=0.0848 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.2000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=1,50;y=1,50;z=6,60;fov=0,0" label="" win=NONE
   n t=1.2000 d=0.9000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Pulverize1_FX000_2" label="" win=NONE
   n t=1.6000 d=0.5000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.7000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2642,7 +2642,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2000 d=1.1000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Pulverize1_FX000_2" label="" win=NONE
   n t=0.2004 d=0.5568 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.2004 d=0.4592 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
-  n t=0.2550 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2550 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=1,50;y=1,50;z=6,60;fov=0,0" label="" win=NONE
   n t=0.2637 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_05_L" label="" win=NONE
   n t=0.2637 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_Pulverize_R_01_01" label="" win=NONE
   n t=0.2637 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_02.Par_O_FLM_Pulverize_Dust_01" label="" win=NONE
@@ -2683,33 +2683,33 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4966 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.4966 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Atk_01_1" label="" win=NONE
   n t=0.4966 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.4966 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4966 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=0,0;y=0,0;z=5,50;fov=0,0" label="" win=NONE
   n t=0.5000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.5000 d=1.8692 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_RiseUp1_FX000_3" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.1;x=0,0;y=0,0;z=2,80;fov=0,0" label="" win=NONE
   n t=0.7500 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.7732 d=0.0464 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.1;x=0,0;y=0,0;z=2,80;fov=0,0" label="" win=NONE
   n t=0.9500 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.9803 d=0.0736 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.0200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=1.0200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=1.0200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=1.0200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=1.0200 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.1;x=0,0;y=0,0;z=2,80;fov=0,0" label="" win=NONE
   n t=1.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=1.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=1.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=1.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=1.1500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.1500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.1;x=0,0;y=0,0;z=2,80;fov=0,0" label="" win=NONE
   n t=1.2000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.2048 d=1.1050 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.2048 d=1.1077 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2721,7 +2721,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=1.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=1.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=1.3200 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.3200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.1;x=0,0;y=0,0;z=2,80;fov=0,0" label="" win=NONE
   n t=1.3500 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.9000 d=0.7666 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_RiseUp1_FX000_4" label="" win=NONE
   n t=2.3000 d=0.3666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2747,7 +2747,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.6016 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_1" label="" win=NONE
   n t=0.6016 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_02_1" label="" win=NONE
   n t=0.6016 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.6016 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6016 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0.001;out=0.1;x=0,0;y=0,0;z=12,50;fov=0,0" label="" win=NONE
   n t=0.6837 d=0.7163 kind=CANCEL src=InputTiming asset="" label="회피기캔슬(테스트)" win=DODGE_CANCEL
   n t=0.8000 d=0.6000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.9000 d=0.5000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2764,16 +2764,16 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_03_1" label="" win=NONE
   n t=0.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_1" label="" win=NONE
-  n t=0.3200 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.3200 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.001;out=0.1;x=0,0;y=0,0;z=10,60;fov=0,0" label="" win=NONE
+  n t=0.3200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.001;out=0.1;x=0,0;y=0,0;z=10,60;fov=0,0" label="" win=NONE
   n t=0.3500 d=0.4000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.3800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_03_1" label="" win=NONE
   n t=0.3800 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.3878 d=0.0751 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.4600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_03_1" label="" win=NONE
-  n t=0.4600 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.4600 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.001;out=0.1;x=0,0;y=0,0;z=10,60;fov=0,0" label="" win=NONE
+  n t=0.4600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0.001;out=0.1;x=0,0;y=0,0;z=10,60;fov=0,0" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.5000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_03_1" label="" win=NONE
   n t=0.5068 d=0.0861 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -2809,7 +2809,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4039 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.4039 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Atk_01_1" label="" win=NONE
   n t=0.4039 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.4039 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4039 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=0,0;y=0,0;z=9,50;fov=0,0" label="" win=NONE
   n t=0.5556 d=0.0465 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.6444 d=0.7585 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.6444 d=0.7585 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2836,33 +2836,33 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4966 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.4966 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Atk_02_1" label="" win=NONE
   n t=0.4966 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.4966 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4966 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=0,0;y=0,0;z=5,50;fov=0,0" label="" win=NONE
   n t=0.5000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.5000 d=1.8692 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_RiseUp1_FX000_3" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.1;x=0,0;y=0,0;z=2,80;fov=0,0" label="" win=NONE
   n t=0.7500 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.7732 d=0.0464 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.1;x=0,0;y=0,0;z=2,80;fov=0,0" label="" win=NONE
   n t=0.9500 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.9803 d=0.0736 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.0200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=1.0200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=1.0200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=1.0200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
-  n t=1.0200 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.1;x=0,0;y=0,0;z=2,80;fov=0,0" label="" win=NONE
   n t=1.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=1.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=1.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=1.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
-  n t=1.1500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.1500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.1;x=0,0;y=0,0;z=2,80;fov=0,0" label="" win=NONE
   n t=1.2000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.2024 d=1.1057 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.2024 d=1.1057 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2874,7 +2874,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
   n t=1.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=1.3200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_RiseUp_Trail_01_1" label="" win=NONE
-  n t=1.3200 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.3200 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0.01;out=0.1;x=0,0;y=0,0;z=2,80;fov=0,0" label="" win=NONE
   n t=1.3500 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=2.0000 d=0.6667 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_RiseUp1_FX000_4" label="" win=NONE
   n t=2.3000 d=0.3667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -2892,7 +2892,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0010 d=0.9990 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Ruffle1_FX000_2" label="" win=NONE
-  n t=0.0946 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0946 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=2,50;y=2,50;z=1.5,60;fov=0,0" label="" win=NONE
   n t=0.0966 d=0.0300 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.0968 d=0.9032 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.1000 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
@@ -2945,7 +2945,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.1923 d=0.9134 kind=CANCEL src=InputTiming asset="" label="[선이]" win=MOVE_PRE
   n t=0.1940 d=0.7131 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.4500 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.4698 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4698 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,50;fov=0,0" label="" win=NONE
   n t=0.4700 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.4700 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.4700 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
@@ -2996,7 +2996,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_Re_08_02" label="" win=NONE
   n t=0.0000 d=0.2068 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_01" label="" win=NONE
-  n t=0.0946 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0946 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,50;fov=0,0" label="" win=NONE
   n t=0.1000 d=0.1000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.1015 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_00.Dust.Par_D_Dust_001_pr" label="" win=NONE
   n t=0.1114 d=0.0301 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -3110,7 +3110,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_ArcaneBolter_Trail_004" label="" win=NONE
   n t=0.0350 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_ArcaneBolter_Trail_004" label="" win=NONE
   n t=0.0800 d=0.6200 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Ruffle1_Vox1_2" label="" win=NONE
-  n t=0.0946 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0946 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=0,0;y=0,0;z=3,60;fov=0,0" label="" win=NONE
   n t=0.0951 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_03" label="" win=NONE
   n t=0.0951 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_01_03" label="" win=NONE
   n t=0.0951 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_HurricaneSwing_08_03" label="" win=NONE
@@ -3169,7 +3169,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3059 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.3059 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.3059 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.3072 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3072 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.1;in=0;out=0;x=8,40;y=8,40;z=0,0;fov=0,0" label="" win=NONE
   n t=0.3225 d=0.0497 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3261 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_02" label="" win=NONE
   n t=0.4008 d=0.1992 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -3196,7 +3196,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2446 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_02" label="" win=NONE
   n t=0.2446 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_02" label="" win=NONE
   n t=0.2451 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.2469 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2469 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.05;in=0;out=0;x=0,0;y=0,0;z=10,50;fov=0,0" label="" win=NONE
   n t=0.2508 d=0.0569 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4481 d=0.4519 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.5000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -3226,7 +3226,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4333 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Twoatt_04_2" label="" win=NONE
   n t=0.4333 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.4333 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Twoatt_04_3" label="" win=NONE
-  n t=0.4341 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4341 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=0,0;y=0,0;z=12,20;fov=0,0" label="" win=NONE
   n t=0.4620 d=0.1011 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4620 d=0.1011 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4620 d=0.1011 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -3253,7 +3253,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4000 d=1.1000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_FX148_2" label="" win=NONE
   n t=0.4000 d=1.1000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_FX248_2" label="" win=NONE
   n t=0.4000 d=1.1000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SharpSwing1_FX348_2" label="" win=NONE
-  n t=0.4983 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4983 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0;x=0,0;y=0,0;z=7,50;fov=0,0" label="" win=NONE
   n t=0.4985 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Twoatt_08_1" label="" win=NONE
   n t=0.4985 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Twoatt_08_2" label="" win=NONE
   n t=0.4985 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_Twoatt_08_3" label="" win=NONE
@@ -3267,7 +3267,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_BS_04.State.Par_J_ExMove_01" label="" win=NONE
   n t=0.0000 d=1.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Weapon_00" label="" win=NONE
-  n t=0.0000 d=1.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=1.5000 kind=SHAKE src=ViewShake asset="dur=1.2;in=0.15;out=1.1;x=0,60;y=0,60;z=0,60;fov=-20,1" label="" win=NONE
   n t=0.0000 d=1.5000 kind=SOUND src=AKEvent asset="PC_COMMON.PC_Common_FX_Ultimate1" label="" win=NONE
   n t=0.0000 d=1.5000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=1.5000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
@@ -3279,11 +3279,11 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Spear_00" label="" win=NONE
   n t=0.9000 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=6,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=0.9500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_00" label="" win=NONE
   n t=0.9834 d=0.0506 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Pull_00" label="" win=NONE
-  n t=1.3000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.3000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=4,50;y=4,50;z=4,50;fov=0,0" label="" win=NONE
   n t=1.3015 d=0.0504 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.4147 d=0.0853 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "flm_sk_squalllance_02" skill=34610 len=3.3667 name="연가창식: 적룡질풍격"
@@ -3300,7 +3300,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.1500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_02" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_02" label="" win=NONE
   n t=0.2000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
   n t=0.2436 d=0.0506 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_02" label="" win=NONE
@@ -3309,7 +3309,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.7500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_02" label="" win=NONE
   n t=0.8000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_02" label="" win=NONE
   n t=0.8000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.8000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
   n t=0.8445 d=0.0507 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_02" label="" win=NONE
   n t=1.0000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
@@ -3318,11 +3318,11 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Swing_02" label="" win=NONE
   n t=1.3500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_02" label="" win=NONE
   n t=1.3500 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=1.3500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.3500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=5,50;fov=0,0" label="" win=NONE
   n t=1.3820 d=0.0507 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.7500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Spear_01" label="" win=NONE
   n t=1.7500 d=1.5000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_01" label="" win=NONE
-  n t=1.7500 d=1.5000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.7500 d=1.5000 kind=SHAKE src=ViewShake asset="dur=1.5;in=1;out=0;x=4,60;y=4,60;z=4,60;fov=0,0" label="" win=NONE
   n t=1.8000 d=1.5666 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Spear_02" label="" win=NONE
   n t=1.8000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.8068 d=0.0510 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -3354,7 +3354,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_02" label="" win=NONE
   n t=0.6000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_00.Par_K_FLM_SquallLance_Dust_02" label="" win=NONE
-  n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.5;in=0;out=0.2;x=6,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=0.6457 d=0.9209 kind=CANCEL src=InputTiming asset="" label="회피기 및 절룡세 캔슬" win=DODGE_CANCEL
   n t=1.2000 d=0.3667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.3000 d=0.2667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -3376,10 +3376,10 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1" label="" win=NONE
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Atk_03_1" label="" win=NONE
   n t=0.4000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=7,40;fov=0,0" label="" win=NONE
+  n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=7,40;fov=0,0" label="" win=NONE
+  n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=7,40;fov=0,0" label="" win=NONE
+  n t=0.4000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=7,40;fov=0,0" label="" win=NONE
   n t=0.4001 d=0.1039 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4001 d=0.1039 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1" label="" win=NONE
@@ -3411,8 +3411,8 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Atk_04_1" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1" label="" win=NONE
-  n t=0.1000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.1000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=7,40;fov=0,0" label="" win=NONE
+  n t=0.1000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=7,40;fov=0,0" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1" label="" win=NONE
   n t=0.1200 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1" label="" win=NONE
   n t=0.3000 d=0.5333 kind=CANCEL src=InputTiming asset="" label="평타 캔슬" win=COMBO_CANCEL
@@ -3429,7 +3429,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Shoulder_01_1" label="" win=NONE
   n t=0.2500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=15,20;y=15,20;z=0,0;fov=0,0" label="" win=NONE
   n t=0.3467 d=0.3533 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.3997 d=0.3003 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.5000 d=0.2000 kind=CANCEL src=InputTiming asset="" label="회피기 및 절룡세 캔슬" win=DODGE_CANCEL
@@ -3452,16 +3452,16 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0631 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Atk_02_1" label="" win=NONE
   n t=0.0631 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.0631 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1" label="" win=NONE
-  n t=0.0631 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.0631 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0631 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=4,40;fov=0,0" label="" win=NONE
+  n t=0.0631 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=4,40;fov=0,0" label="" win=NONE
   n t=0.2200 d=0.5466 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Stab1_FX040_1" label="" win=NONE
   n t=0.2931 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Atk_02_1" label="" win=NONE
   n t=0.2931 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2931 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Atk_02_1" label="" win=NONE
   n t=0.2931 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2931 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1" label="" win=NONE
-  n t=0.2931 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.2931 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2931 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=4,40;fov=0,0" label="" win=NONE
+  n t=0.2931 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=4,40;fov=0,0" label="" win=NONE
   n t=0.4000 d=0.3666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "flm_sk_stab_custom_4_03_1" skill=34540 len=0.9333 name="짧은 창_나선창"
   n t=0.0000 d=0.9333 kind=CANCEL src=InputTiming asset="" label="회피기 및 절룡세 캔슬" win=DODGE_CANCEL
@@ -3477,8 +3477,8 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.1556 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Atk_02_2" label="" win=NONE
   n t=0.1556 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.1556 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_01_1" label="" win=NONE
-  n t=0.1556 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.1556 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1556 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=7,40;fov=0,0" label="" win=NONE
+  n t=0.1556 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,30;y=0,30;z=7,40;fov=0,0" label="" win=NONE
   n t=0.1755 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1" label="" win=NONE
   n t=0.1755 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Dust_01_1" label="" win=NONE
   n t=0.3000 d=0.6333 kind=CANCEL src=InputTiming asset="" label="평타 캔슬" win=COMBO_CANCEL
@@ -3498,8 +3498,8 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_03" label="" win=NONE
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_Atk_05_1" label="" win=NONE
   n t=0.5500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_Stab_EdgeAtk_02_1" label="" win=NONE
-  n t=0.5500 d=0.2380 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=0.5500 d=0.2380 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5500 d=0.2380 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.1;x=2,55;y=2,55;z=5,55;fov=0,0" label="" win=NONE
+  n t=0.5500 d=0.2380 kind=SHAKE src=ViewShake asset="dur=0.35;in=0;out=0.1;x=2,55;y=2,55;z=5,55;fov=0,0" label="" win=NONE
   n t=0.5500 d=0.6833 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_Stab1_FX007_2" label="" win=NONE
   n t=0.7000 d=0.5333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.8000 d=0.4333 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -3538,7 +3538,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.2509 d=0.0501 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3400 d=1.2667 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" label="" win=NONE
   n t=0.3400 d=1.3667 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" label="" win=NONE
@@ -3556,7 +3556,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
-  n t=0.5291 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5291 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.6350 d=1.1983 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" label="" win=NONE
   n t=0.6350 d=1.1983 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" label="" win=NONE
   n t=0.6350 d=1.1983 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" label="" win=NONE
@@ -3567,14 +3567,14 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
-  n t=0.8089 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8089 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.9650 d=0.7933 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_2" label="" win=NONE
   n t=0.9650 d=0.8683 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_2" label="" win=NONE
   n t=0.9650 d=0.8683 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_2" label="" win=NONE
-  n t=1.1281 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.1281 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=1.1607 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=1.1621 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=1.1621 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
@@ -3609,7 +3609,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.2509 d=0.0501 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3400 d=0.6600 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" label="" win=NONE
   n t=0.3400 d=0.6600 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" label="" win=NONE
@@ -3625,7 +3625,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
-  n t=0.5291 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5291 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.6000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.6000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.6350 d=0.3650 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" label="" win=NONE
@@ -3638,7 +3638,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
-  n t=0.8089 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8089 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -3654,7 +3654,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=1.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
 "flm_sk_strongrotational_custom_7" skill=34060 len=1.6000 name="긴 창_열공참"
   n t=0.0000 d=1.6000 kind=CANCEL src=InputTiming asset="" label="연가심공" win=OTHER
   n t=0.0000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_ComCustomizing_02" label="" win=NONE
@@ -3677,7 +3677,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.2509 d=0.0501 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3400 d=1.2600 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" label="" win=NONE
   n t=0.3400 d=1.2600 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" label="" win=NONE
@@ -3693,7 +3693,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
-  n t=0.5291 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5291 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.6350 d=0.9650 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" label="" win=NONE
   n t=0.6350 d=0.9650 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" label="" win=NONE
   n t=0.6350 d=0.9650 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" label="" win=NONE
@@ -3705,7 +3705,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
-  n t=0.8089 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8089 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -3733,7 +3733,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.2509 d=0.0501 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3400 d=0.6600 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" label="" win=NONE
   n t=0.3400 d=0.6600 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" label="" win=NONE
@@ -3749,7 +3749,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.5179 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
-  n t=0.5291 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5291 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.6000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.6000 d=0.4000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.6350 d=0.3650 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" label="" win=NONE
@@ -3762,7 +3762,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.8083 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
-  n t=0.8089 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8089 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.8131 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -3791,7 +3791,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.2800 d=1.2600 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" label="" win=NONE
   n t=0.2800 d=1.3667 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" label="" win=NONE
   n t=0.2800 d=1.5667 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" label="" win=NONE
@@ -3802,7 +3802,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4398 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_04" label="" win=NONE
   n t=0.4398 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_05" label="" win=NONE
   n t=0.4398 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_01" label="" win=NONE
-  n t=0.4432 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4432 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.4442 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4462 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.4515 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
@@ -3817,7 +3817,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.6841 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.6858 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.6858 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
-  n t=0.6882 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6882 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.6888 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -3829,7 +3829,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.9161 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_04" label="" win=NONE
   n t=0.9161 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_01" label="" win=NONE
   n t=0.9161 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_05" label="" win=NONE
-  n t=0.9195 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9195 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.9215 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.9215 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.9232 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
@@ -3843,7 +3843,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.1600 d=1.1300 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" label="" win=NONE
   n t=1.1600 d=1.1400 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" label="" win=NONE
   n t=1.1600 d=1.1400 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" label="" win=NONE
-  n t=1.1630 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.1630 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=1.1646 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_04" label="" win=NONE
   n t=1.1646 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_05" label="" win=NONE
   n t=1.1646 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_01" label="" win=NONE
@@ -3856,7 +3856,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.3800 d=0.9000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_2" label="" win=NONE
   n t=1.3800 d=0.9200 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_2" label="" win=NONE
   n t=1.3800 d=0.9200 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_2" label="" win=NONE
-  n t=1.3947 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.3947 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=1.3983 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_04" label="" win=NONE
   n t=1.3983 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_05" label="" win=NONE
   n t=1.3983 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_01" label="" win=NONE
@@ -3876,7 +3876,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.6560 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=1.6560 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.6561 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_05" label="" win=NONE
-  n t=1.6585 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.6585 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=1.6592 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=1.6640 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=1.8043 d=0.4957 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -3908,7 +3908,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2048 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2087 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.2800 d=0.7200 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" label="" win=NONE
   n t=0.2800 d=0.7200 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" label="" win=NONE
   n t=0.2800 d=0.7200 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" label="" win=NONE
@@ -3919,7 +3919,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4398 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_04" label="" win=NONE
   n t=0.4398 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_05" label="" win=NONE
   n t=0.4398 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_01" label="" win=NONE
-  n t=0.4432 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4432 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.4442 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.4462 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.4515 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
@@ -3934,7 +3934,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.6841 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.6858 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.6858 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
-  n t=0.6882 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.6882 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.6888 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.6906 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -3946,7 +3946,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.9161 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_04" label="" win=NONE
   n t=0.9161 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_01" label="" win=NONE
   n t=0.9161 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_MTrail_05" label="" win=NONE
-  n t=0.9195 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9195 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=0.9215 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.9215 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
   n t=0.9232 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_01.Par_M_FLM_dust_01" label="" win=NONE
@@ -3986,9 +3986,9 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.0000 d=0.0000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.0000 d=0.0000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.0000 d=0.0000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=1.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
-  n t=1.0000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
+  n t=1.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
+  n t=1.0000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0.1;x=0,0;y=0,0;z=3,80;fov=0,0" label="" win=NONE
   n t=1.0000 d=0.0000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX000_1" label="" win=NONE
   n t=1.0000 d=0.0000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX040_1" label="" win=NONE
   n t=1.0000 d=0.0000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_StrongRotational1_FX050_1" label="" win=NONE
@@ -4025,7 +4025,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_10.Par_K_FLM_Succession_Trail_01_01" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_02" label="" win=NONE
   n t=0.2000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_10.Par_K_FLM_Succession_Wind_02" label="" win=NONE
-  n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=5,60;y=5,60;z=5,60;fov=0,0" label="" win=NONE
   n t=0.2005 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.2100 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_10.Par_K_FLM_Succession_Dust_02" label="" win=NONE
   n t=0.6000 d=0.6000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -4047,11 +4047,11 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3340 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_SuperGaBolg_Re_Matinee_Dist_00_01" label="" win=NONE
   n t=0.3340 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_SuperGaBolg_RE_ExMove_00_00" label="" win=NONE
   n t=0.3370 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_SuperGabolg_Dust_RE_00_03" label="" win=NONE
-  n t=0.3418 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3418 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.25;x=4,55;y=4,55;z=4,55;fov=0,0" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_SuperGabolg_Dust_00_02_RE" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_SuperGabolg_Dust_00_05" label="" win=NONE
   n t=0.9000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_SuperGabolg_Dust_00_03_RE" label="" win=NONE
-  n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.7;in=0;out=0.6;x=20,60;y=20,60;z=0,0;fov=0,0" label="" win=NONE
   n t=0.9037 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_SuperGaBolg_ULTON_Jump_00_01" label="" win=NONE
   n t=0.9043 d=0.6624 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_SuperGaBolg_Jump_00_01" label="" win=NONE
 "flm_sk_super_gabolg_02_re" skill=34620 len=2.2667 name="초각성기_연가창식: 은하비섬창"
@@ -4083,7 +4083,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_Post.FX_Par.Par_C_ZoomBlur_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_Light_00_01" label="" win=NONE
   n t=0.3000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_07.Par_X_FLM_SuperGaBolg_Black_00_01" label="" win=NONE
-  n t=0.3000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=1.2;in=0;out=1.1;x=12,60;y=12,60;z=12,60;fov=0,0" label="" win=NONE
   n t=0.4000 d=2.0667 kind=CANCEL src=InputTiming asset="" label="회피기 캔슬" win=DODGE_CANCEL
   n t=0.7900 d=1.6767 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.7900 d=1.6767 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -4107,24 +4107,24 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.0900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Atk_01" label="" win=NONE
   n t=1.0900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Dust_01" label="" win=NONE
   n t=1.0900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=1.0900 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.0900 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=6,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=1.0946 d=0.0000 kind=EFFECT src=TrailGhostEffect asset="" label="" win=NONE
   n t=1.1021 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.4435 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Atk_02" label="" win=NONE
   n t=1.4435 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Dust_04" label="" win=NONE
   n t=1.4435 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=1.4435 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.4435 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=6,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=1.4800 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.8500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Dust_02" label="" win=NONE
   n t=1.8500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Atk_03" label="" win=NONE
   n t=1.8500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=1.8500 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.8500 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=6,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=1.8600 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=2.0000 d=0.2333 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Wp_Loop" label="" win=NONE
   n t=2.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Atk_03" label="" win=NONE
   n t=2.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Atk_Local_01" label="" win=NONE
   n t=2.1000 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=2.1000 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=2.1000 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=6,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=2.1300 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
 "flm_sk_super_squalllance_02" skill=34630 len=2.2000 name="초각성기_연가창식: 마룡합일섬"
   n t=0.0000 d=2.2000 kind=CANCEL src=InputTiming asset="" label="연가심공" win=OTHER
@@ -4136,11 +4136,11 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4733 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Dust_03" label="" win=NONE
   n t=0.4940 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Atk_05" label="" win=NONE
   n t=0.4940 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.4940 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4940 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=7,70;y=7,70;z=7,70;fov=0,0" label="" win=NONE
   n t=0.5400 d=0.0500 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.9750 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Impact_01" label="" win=NONE
   n t=0.9777 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Dust_06" label="" win=NONE
-  n t=0.9777 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.9777 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.2;x=6,50;y=6,50;z=6,50;fov=0,0" label="" win=NONE
   n t=0.9780 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Symbol_02" label="" win=NONE
   n t=1.0900 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=2.0300 d=0.1700 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_SuperSquallLance1_FX000_3" label="" win=NONE
@@ -4157,7 +4157,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=1.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Horse_Loop" label="" win=NONE
   n t=0.0000 d=0.9000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_Loop" label="" win=NONE
   n t=0.0000 d=1.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Atk_04_2" label="" win=NONE
-  n t=0.0000 d=1.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.0000 d=1.0000 kind=SHAKE src=ViewShake asset="dur=1;in=0;out=0;x=5,50;y=5,50;z=6,60;fov=0,0" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmor asset="" label="" win=NONE
   n t=0.0000 d=1.0000 kind=SUPERARMOR src=SuperArmorPVP asset="" label="" win=NONE
   n t=0.0013 d=0.9987 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_09.Par_S_FLM_SuperLance_Horse_Move_01" label="" win=NONE
@@ -4205,7 +4205,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.9000 d=1.5666 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_FX000_3" label="" win=NONE
   n t=1.3000 d=0.9333 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_Vox1_2" label="" win=NONE
   n t=1.3982 d=0.1044 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=1.3992 d=0.1214 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.3992 d=0.1214 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=10,50;fov=0,0" label="" win=NONE
   n t=1.4000 d=0.1500 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=1.4073 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_Dust_02" label="" win=NONE
   n t=1.4160 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
@@ -4230,7 +4230,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.0000 d=1.1000 kind=CANCEL src=InputTiming asset="" label="연가심공" win=OTHER
   n t=0.0000 d=1.1000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_TalonStrike1_FX040_4" label="" win=NONE
   n t=0.1000 d=0.2000 kind=HIT src=ParticleHit asset="" label="" win=NONE
-  n t=0.1446 d=0.1348 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.1446 d=0.1348 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=10,50;fov=0,0" label="" win=NONE
   n t=0.1498 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_02" label="" win=NONE
   n t=0.1498 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_03.Par_N_FLM_SpearAuraRad_Re_32" label="" win=NONE
   n t=0.1500 d=0.1000 kind=EFFECT src=Effect asset="" label="" win=NONE
@@ -4267,7 +4267,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.2523 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2523 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
   n t=0.2523 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01" label="" win=NONE
-  n t=0.2523 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.2523 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.3;in=0;out=0.1;x=0,80;y=0,80;z=12,30;fov=0,0" label="" win=NONE
   n t=0.6000 d=0.5667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.7000 d=0.4667 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "flm_sk_talonstrike_custom_6" skill=34550 len=0.5667 name="짧은 창_사두룡격"
@@ -4330,7 +4330,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4632 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_01_1" label="" win=NONE
   n t=0.4632 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.4632 d=0.0736 kind=EFFECT src=Effect asset="" label="" win=NONE
-  n t=0.4632 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4632 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=0,0;y=0,0;z=5,50;fov=0,0" label="" win=NONE
   n t=0.5000 d=1.0000 kind=CANCEL src=InputTiming asset="" label="회피기캔슬(테스트)" win=DODGE_CANCEL
   n t=0.9000 d=0.6000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=0.9000 d=0.6000 kind=CANCEL src=InputTiming asset="" label="" win=NONE
@@ -4345,7 +4345,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5000 d=0.3000 kind=HIT src=ParticleHit asset="" label="" win=NONE
   n t=0.5293 d=0.0734 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.5293 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.5300 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5300 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=0,0;y=0,0;z=6,50;fov=0,0" label="" win=NONE
   n t=0.5314 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_01_2" label="" win=NONE
   n t=0.5820 d=0.9180 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "flm_sk_threetalonstrike_03" skill=34120 len=1.8667 name="긴 창_연환섬"
@@ -4361,14 +4361,14 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4331 d=0.1448 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.4331 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_01_2" label="" win=NONE
   n t=0.4331 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.4331 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4331 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.2;in=0;out=0;x=0,0;y=0,0;z=7,50;fov=0,0" label="" win=NONE
   n t=0.5700 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Wind_01_2" label="" win=NONE
   n t=0.5900 d=0.5000 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_Vox1_3" label="" win=NONE
   n t=0.6100 d=1.2566 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX000_3_03" label="" win=NONE
   n t=0.8030 d=0.1452 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.8030 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.8030 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_01_2" label="" win=NONE
-  n t=0.8030 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8030 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=0,0;y=0,0;z=7,50;fov=0,0" label="" win=NONE
   n t=1.0500 d=0.8166 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.2000 d=0.6666 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "flm_sk_threetalonstrike_custom_2_01" skill=34120 len=1.2000 name="긴 창_연환섬"
@@ -4419,7 +4419,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.4860 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_05_1" label="" win=NONE
   n t=0.4860 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.4860 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_02_1" label="" win=NONE
-  n t=0.4860 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.4860 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=0,0;y=0,0;z=12,50;fov=0,0" label="" win=NONE
   n t=0.8500 d=0.6167 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.0011 d=0.4656 kind=CANCEL src=InputTiming asset="" label="" win=NONE
 "flm_sk_threetalonstrike_custom_3" skill=34120 len=2.2667 name="긴 창_연환섬"
@@ -4434,7 +4434,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.3002 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.3002 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_03_1" label="" win=NONE
   n t=0.3002 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
-  n t=0.3002 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.3002 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=0,0;y=0,0;z=5,50;fov=0,0" label="" win=NONE
   n t=0.3008 d=0.0960 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3140 d=0.1028 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.3842 d=1.8825 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX000_3_02" label="" win=NONE
@@ -4446,7 +4446,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.5600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_06_1" label="" win=NONE
   n t=0.5600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.5600 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_03_1" label="" win=NONE
-  n t=0.5600 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.5600 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=0,0;y=0,0;z=6,50;fov=0,0" label="" win=NONE
   n t=0.5742 d=0.0960 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=0.6591 d=1.2000 kind=CANCEL src=InputTiming asset="" label="[선스]" win=SKILL_PRE
   n t=0.6600 d=1.6067 kind=SOUND src=AKEvent asset="PC_LANCEMASTER_F.PC_LanceMaster_F_SK_ThreeTalonStrike1_FX000_3_03" label="" win=NONE
@@ -4458,7 +4458,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=0.8300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_06_1" label="" win=NONE
   n t=0.8300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=0.8300 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_03_1" label="" win=NONE
-  n t=0.8300 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=0.8300 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.15;in=0;out=0;x=0,0;y=0,0;z=7,50;fov=0,0" label="" win=NONE
   n t=0.8347 d=0.0983 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Wind_01_2" label="" win=NONE
   n t=1.4500 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Wind_01_2" label="" win=NONE
@@ -4472,7 +4472,7 @@ LOSTARK_ANIM_NOTIFY 1 "LanceMaster" 144
   n t=1.5359 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_06_2" label="" win=NONE
   n t=1.5359 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_CM_02.Light.Par_MP_Light_01_sine" label="" win=NONE
   n t=1.5359 d=0.0000 kind=EFFECT src=PlayParticleEffect asset="FX_PC_FLM_04.Par_S_FLM_TTStrike_Trail_03_2" label="" win=NONE
-  n t=1.5359 d=0.0000 kind=SHAKE src=ViewShake asset="" label="" win=NONE
+  n t=1.5359 d=0.0000 kind=SHAKE src=ViewShake asset="dur=0.25;in=0;out=0.1;x=3,10;y=3,10;z=12,50;fov=0,0" label="" win=NONE
   n t=1.5500 d=0.1091 kind=EFFECT src=Effect asset="" label="" win=NONE
   n t=1.8478 d=0.4189 kind=CANCEL src=InputTiming asset="" label="" win=NONE
   n t=1.9500 d=0.3167 kind=CANCEL src=InputTiming asset="" label="" win=NONE

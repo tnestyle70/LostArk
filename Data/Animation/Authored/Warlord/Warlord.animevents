@@ -7,7 +7,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_att_battle_1_01" CANCEL startms=200 endms=700 payload="[선콤]" src=orig
 "wgl_att_battle_1_01" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_2" src=orig
 "wgl_att_battle_1_01" HIT startms=300 endms=486 rep=1 repms=0 fz=425 fzin=125 fzout=200 push=100 pushr=10 area=2 ar=280 aa=150 ah=150 ax=20 arem=0 maxt=0 src=orig
-"wgl_att_battle_1_01" SHAKE startms=326 payload="" src=orig
+"wgl_att_battle_1_01" SHAKE startms=326 payload="dur=0.15;in=0;out=0;x=2,50;y=2,50;z=2,50;fov=0,0" src=orig
 "wgl_att_battle_1_01" EFFECT startms=330 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_att_battle_1_01" EFFECT startms=330 payload="FX_PC_WGL_06.Par_O_WGL_NormalAtk_01_01" src=orig
 "wgl_att_battle_1_01" EFFECT startms=340 payload="" src=orig
@@ -23,7 +23,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_att_battle_1_02" CANCEL startms=200 endms=600 payload="[선콤]" src=orig
 "wgl_att_battle_1_02" HIT startms=200 endms=386 rep=3 repms=200 fz=475 fzin=125 fzout=200 push=150 pushr=30 area=2 ar=300 aa=180 ah=150 ax=20 arem=0 maxt=0 src=orig
 "wgl_att_battle_1_02" SOUND startms=200 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_2" src=orig
-"wgl_att_battle_1_02" SHAKE startms=237 payload="" src=orig
+"wgl_att_battle_1_02" SHAKE startms=237 payload="dur=0.15;in=0;out=0;x=2,50;y=2,50;z=2,50;fov=0,0" src=orig
 "wgl_att_battle_1_02" EFFECT startms=240 payload="FX_PC_WGL_06.Par_O_WGL_NormalAtk_01_01" src=orig
 "wgl_att_battle_1_02" EFFECT startms=240 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_att_battle_1_02" EFFECT startms=250 payload="" src=orig
@@ -38,7 +38,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_att_battle_1_03" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_1" src=orig
 "wgl_att_battle_1_03" SOUND startms=250 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_3" src=orig
 "wgl_att_battle_1_03" HIT startms=300 endms=486 rep=3 repms=200 fz=475 fzin=125 fzout=200 push=150 pushr=30 area=2 ar=300 aa=180 ah=150 ax=20 arem=0 maxt=0 src=orig
-"wgl_att_battle_1_03" SHAKE startms=331 payload="" src=orig
+"wgl_att_battle_1_03" SHAKE startms=331 payload="dur=0.2;in=0;out=0;x=2,50;y=2,50;z=2,50;fov=0,0" src=orig
 "wgl_att_battle_1_03" EFFECT startms=340 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_att_battle_1_03" EFFECT startms=340 payload="FX_PC_WGL_06.Par_O_WGL_NormalAtk_02_01" src=orig
 "wgl_att_battle_1_03" EFFECT startms=350 payload="" src=orig
@@ -53,14 +53,14 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_01" src=orig
 "wgl_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
 "wgl_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
-"wgl_att_battle_compete_1_loop" SHAKE startms=0 payload="" src=orig
+"wgl_att_battle_compete_1_loop" SHAKE startms=0 payload="dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "wgl_att_battle_compete_1_loop" SOUND startms=400 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard2_Male_Jump1_1" src=orig
-"wgl_att_battle_compete_1_loop" SHAKE startms=500 payload="" src=orig
+"wgl_att_battle_compete_1_loop" SHAKE startms=500 payload="dur=4.5;in=0;out=0.2;x=1,70;y=1,70;z=1.5,80;fov=0,0" src=orig
 "wgl_att_battle_compete_1_start" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "wgl_att_battle_compete_1_start" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_1" src=orig
 "wgl_att_battle_compete_1_start" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_Warrior_M_Vox1_1" src=orig
 "wgl_att_battle_compete_1_start" EFFECT startms=669 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_S" src=orig
-"wgl_att_battle_compete_1_start" SHAKE startms=669 payload="" src=orig
+"wgl_att_battle_compete_1_start" SHAKE startms=669 payload="dur=0.1;in=0;out=0.1;x=7,60;y=7,60;z=8,70;fov=0,0" src=orig
 "wgl_att_battle_compete_1_start" EFFECT startms=674 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_Dust_01" src=orig
 "wgl_att_battle_compete_1_start" EFFECT startms=674 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_1_S" src=orig
 "wgl_att_battle_compete_1_start" EFFECT startms=674 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -77,7 +77,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_02" src=orig
 "wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "wgl_att_battle_compete_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_03" src=orig
-"wgl_att_battle_compete_1_success" SHAKE startms=0 payload="" src=orig
+"wgl_att_battle_compete_1_success" SHAKE startms=0 payload="dur=0.4;in=0;out=0.2;x=8,60;y=8,60;z=10,70;fov=0,0" src=orig
 "wgl_att_battle_compete_1_success" SOUND startms=0 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" src=orig
 "wgl_att_battle_compete_1_success" EFFECT startms=52 payload="" src=orig
 "wgl_att_battle_compete_1_success" CANCEL startms=494 endms=2000 payload="입력캔슬" src=orig
@@ -89,7 +89,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_att_battle_guide_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_01" src=orig
 "wgl_att_battle_guide_1_success" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
 "wgl_att_battle_guide_1_success" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
-"wgl_att_battle_guide_1_success" SHAKE startms=0 payload="" src=orig
+"wgl_att_battle_guide_1_success" SHAKE startms=0 payload="dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "wgl_att_battle_guide_1_success" SOUND startms=0 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" src=orig
 "wgl_att_battle_guide_1_success" SOUND startms=0 payload="PC_COMMON_PERFECTGUARD.PC_GunLancer_M_PerfectGuard1_Vox1_1" src=orig
 "wgl_att_battle_guide_1_success" CANCEL startms=180 endms=2000 payload="[회피캔슬]" src=orig
@@ -110,7 +110,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_bash" EFFECT startms=256 payload="FX_BS_01.Trail.Par_A_Trail_007" src=orig
 "wgl_sk_bash" EFFECT startms=297 payload="FX_CM_00.Dust.Par_E_UnderDust_13_3" src=orig
 "wgl_sk_bash" HIT startms=300 endms=500 rep=1 repms=0 fz=470 fzin=150 fzout=250 push=70 pushr=70 area=3 ar=200 aa=120 ah=150 ax=30 arem=0 maxt=0 src=orig
-"wgl_sk_bash" SHAKE startms=314 payload="" src=orig
+"wgl_sk_bash" SHAKE startms=314 payload="dur=0.15;in=0;out=0.05;x=5,40;y=5,40;z=5,50;fov=0,0" src=orig
 "wgl_sk_bash" EFFECT startms=319 payload="fx_pc_wgl_02.Par_N_Bash_04_LOC_INT" src=orig
 "wgl_sk_bash" EFFECT startms=320 payload="" src=orig
 "wgl_sk_bash" EFFECT startms=320 payload="FX_PC_WGL_02.Par_N_ShieldAtk_02" src=orig
@@ -137,7 +137,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_changestinger_02-1" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
 "wgl_sk_changestinger_02-1" EFFECT startms=0 payload="fx_pc_wgl_05.Par_U_WGL_ChargeStinger_Cast_07_LOC_INT" src=orig
 "wgl_sk_changestinger_02-1" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_ElecTrail_02" src=orig
-"wgl_sk_changestinger_02-1" SHAKE startms=0 payload="" src=orig
+"wgl_sk_changestinger_02-1" SHAKE startms=0 payload="dur=1;in=0.2;out=0;x=0.75,100;y=0.75,100;z=0.75,100;fov=0,0" src=orig
 "wgl_sk_changestinger_02-1" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX007_2_2" src=orig
 "wgl_sk_changestinger_02-1" SUPERARMOR startms=0 endms=500 payload="" src=orig
 "wgl_sk_changestinger_02-1" EFFECT startms=500 payload="FX_PC_WGL_01.Par_L_WGL_StingerExp_03" src=orig
@@ -151,7 +151,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_changestinger_02-2" EFFECT startms=0 payload="FX_PC_WGL_01.Par_L_WGL_StingerIn_05_1" src=orig
 "wgl_sk_changestinger_02-2" EFFECT startms=0 payload="FX_PC_WGL_05.Par_U_WGL_ElecTrail_02" src=orig
 "wgl_sk_changestinger_02-2" EFFECT startms=0 payload="FX_PC_WGL_01.Par_L_WGL_StingerFlare_01" src=orig
-"wgl_sk_changestinger_02-2" SHAKE startms=0 payload="" src=orig
+"wgl_sk_changestinger_02-2" SHAKE startms=0 payload="dur=1;in=0.2;out=0;x=0.75,100;y=0.75,100;z=0.75,100;fov=0,0" src=orig
 "wgl_sk_changestinger_02-2" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX007_2_3" src=orig
 "wgl_sk_changestinger_02-2" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "wgl_sk_changestinger_02-2" EFFECT startms=799 payload="FX_PC_WGL_05.Par_U_WGL_ChargeStinger_Cast_02_1" src=orig
@@ -195,7 +195,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_changestinger_04" EFFECT startms=37 payload="FX_PC_WGL_05.Par_U_WGL_Stinger_01_5" src=orig
 "wgl_sk_changestinger_04" EFFECT startms=38 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "wgl_sk_changestinger_04" EFFECT startms=38 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"wgl_sk_changestinger_04" SHAKE startms=40 payload="" src=orig
+"wgl_sk_changestinger_04" SHAKE startms=40 payload="dur=0.3;in=0;out=0.2;x=6,50;y=6,50;z=15,50;fov=0,0" src=orig
 "wgl_sk_changestinger_04" EFFECT startms=50 payload="" src=orig
 "wgl_sk_changestinger_04" EFFECT startms=66 payload="FX_CM_00.Dust.Par_L_SideDust_01" src=orig
 "wgl_sk_changestinger_04" EFFECT startms=110 payload="FX_PC_WGL_01.Par_L_WGL_Stinger_05_2" src=orig
@@ -211,7 +211,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_changestinger_custom_1" EFFECT startms=269 payload="FX_PC_WGL_05.Par_U_WGL_ChargeStinger_Elec_Cast_01" src=orig
 "wgl_sk_changestinger_custom_1" EFFECT startms=270 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
 "wgl_sk_changestinger_custom_1" EFFECT startms=272 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
-"wgl_sk_changestinger_custom_1" SHAKE startms=272 payload="" src=orig
+"wgl_sk_changestinger_custom_1" SHAKE startms=272 payload="dur=0.3;in=0.15;out=0;x=1,55;y=1,55;z=2,55;fov=0,0" src=orig
 "wgl_sk_changestinger_custom_1" EFFECT startms=293 payload="FX_PC_WGL_05.Par_U_WGL_ElecTrail_02" src=orig
 "wgl_sk_changestinger_custom_1" EFFECT startms=298 payload="FX_PC_WGL_05.Par_U_WGL_StingerCharge_07_2" src=orig
 "wgl_sk_changestinger_custom_1" EFFECT startms=310 payload="fx_pc_wgl_05.Par_U_WGL_ChargeStinger_Cast_Elec_01_LOC_INT" src=orig
@@ -227,11 +227,11 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_changestinger_custom_2" EFFECT startms=37 payload="FX_PC_WGL_05.Par_U_WGL_Stinger_01_2" src=orig
 "wgl_sk_changestinger_custom_2" EFFECT startms=38 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "wgl_sk_changestinger_custom_2" EFFECT startms=38 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"wgl_sk_changestinger_custom_2" SHAKE startms=40 payload="" src=orig
+"wgl_sk_changestinger_custom_2" SHAKE startms=40 payload="dur=0.2;in=0;out=0.1;x=6,50;y=6,50;z=20,50;fov=0,0" src=orig
 "wgl_sk_changestinger_custom_2" EFFECT startms=50 payload="" src=orig
 "wgl_sk_changestinger_custom_2" EFFECT startms=66 payload="FX_CM_00.Dust.Par_L_SideDust_01" src=orig
 "wgl_sk_changestinger_custom_2" SOUND startms=265 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_FX008_5" src=orig
-"wgl_sk_changestinger_custom_2" SHAKE startms=286 payload="" src=orig
+"wgl_sk_changestinger_custom_2" SHAKE startms=286 payload="dur=0.3;in=0;out=0;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "wgl_sk_changestinger_custom_2" EFFECT startms=295 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
 "wgl_sk_changestinger_custom_2" EFFECT startms=295 payload="fx_pc_wgl_10.Par_K_WGL_ChargeStinger_LastCharge_01" src=orig
 "wgl_sk_changestinger_custom_2" EFFECT startms=295 payload="fx_pc_wgl_10.Par_K_WGL_ChargeStingerExp_01_01" src=orig
@@ -255,7 +255,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_counterspear_attack02" SOUND startms=250 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_CounterSpear1_FX000_3" src=orig
 "wgl_sk_counterspear_attack02" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_counterspear_attack02" HIT startms=300 endms=500 rep=1 repms=0 fz=520 fzin=150 fzout=250 push=120 pushr=120 area=2 ar=320 aa=200 ah=150 ax=0 arem=0 maxt=0 src=orig
-"wgl_sk_counterspear_attack02" SHAKE startms=300 payload="" src=orig
+"wgl_sk_counterspear_attack02" SHAKE startms=300 payload="dur=0.3;in=0;out=0.2;x=7,50;y=7,50;z=7,50;fov=0,0" src=orig
 "wgl_sk_counterspear_attack02" EFFECT startms=340 payload="fx_pc_wgl_00.Par_D_CounterSpear_06_LOC_INT" src=orig
 "wgl_sk_counterspear_attack02" EFFECT startms=340 payload="fx_pc_wgl_00.Par_D_CounterSpear_05" src=orig
 "wgl_sk_counterspear_attack02" EFFECT startms=340 payload="fx_pc_wgl_00.Par_D_CounterSpear_55_LOC_INT" src=orig
@@ -283,7 +283,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_counterspear_custom_1" EFFECT startms=350 payload="" src=orig
 "wgl_sk_counterspear_custom_1" EFFECT startms=350 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_counterspear_custom_1" EFFECT startms=350 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
-"wgl_sk_counterspear_custom_1" SHAKE startms=350 payload="" src=orig
+"wgl_sk_counterspear_custom_1" SHAKE startms=350 payload="dur=0.3;in=0;out=0.2;x=9,50;y=9,50;z=9,50;fov=0,0" src=orig
 "wgl_sk_counterspear_custom_1" CANCEL startms=450 endms=1800 payload="[회피캔슬]" src=orig
 "wgl_sk_counterspear_custom_1" CANCEL startms=1003 endms=1800 payload="입력캔슬" src=orig
 "wgl_sk_counterspear_custom_1" CANCEL startms=1204 endms=1800 payload="이동캔슬" src=orig
@@ -311,7 +311,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_dashupperfire_01" CANCEL startms=200 endms=650 payload="[선콤]" src=orig
 "wgl_sk_dashupperfire_01" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "wgl_sk_dashupperfire_01" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
-"wgl_sk_dashupperfire_01" SHAKE startms=200 payload="" src=orig
+"wgl_sk_dashupperfire_01" SHAKE startms=200 payload="dur=0.2;in=0.1;out=0.2;x=2,50;y=2,50;z=2,50;fov=0,0" src=orig
 "wgl_sk_dashupperfire_01" HIT startms=250 endms=450 rep=1 repms=0 fz=335 fzin=125 fzout=200 push=10 pushr=10 area=2 ar=300 aa=140 ah=150 ax=0 arem=0 maxt=0 src=orig
 "wgl_sk_dashupperfire_01" EFFECT startms=270 payload="" src=orig
 "wgl_sk_dashupperfire_01" EFFECT startms=290 payload="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" src=orig
@@ -330,7 +330,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_dashupperfire_02" EFFECT startms=126 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "wgl_sk_dashupperfire_02" EFFECT startms=137 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
 "wgl_sk_dashupperfire_02" EFFECT startms=140 payload="" src=orig
-"wgl_sk_dashupperfire_02" SHAKE startms=140 payload="" src=orig
+"wgl_sk_dashupperfire_02" SHAKE startms=140 payload="dur=0.3;in=0;out=0.1;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "wgl_sk_dashupperfire_02" CANCEL startms=240 endms=1700 payload="[회피캔슬]" src=orig
 "wgl_sk_dashupperfire_02" EFFECT startms=293 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
 "wgl_sk_dashupperfire_02" CANCEL startms=600 endms=1700 payload="입력캔슬" src=orig
@@ -345,7 +345,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_dashupperfire_custom_2" CANCEL startms=200 endms=650 payload="[선콤]" src=orig
 "wgl_sk_dashupperfire_custom_2" EFFECT startms=200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "wgl_sk_dashupperfire_custom_2" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
-"wgl_sk_dashupperfire_custom_2" SHAKE startms=200 payload="" src=orig
+"wgl_sk_dashupperfire_custom_2" SHAKE startms=200 payload="dur=0.2;in=0.1;out=0.2;x=2,50;y=2,50;z=2,50;fov=0,0" src=orig
 "wgl_sk_dashupperfire_custom_2" HIT startms=250 endms=450 rep=1 repms=0 fz=335 fzin=125 fzout=200 push=10 pushr=10 area=2 ar=300 aa=140 ah=150 ax=0 arem=0 maxt=0 src=orig
 "wgl_sk_dashupperfire_custom_2" EFFECT startms=270 payload="" src=orig
 "wgl_sk_dashupperfire_custom_2" EFFECT startms=290 payload="FX_BS_01.Trail.Par_O_WGL_DUFTrail_01_01" src=orig
@@ -364,7 +364,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_dashupperfire_custom_7" EFFECT startms=300 payload="FX_PC_WGL_06.Par_O_WGL_DUF_04_02_LOC_INT" src=orig
 "wgl_sk_dashupperfire_custom_7" EFFECT startms=350 payload="" src=orig
 "wgl_sk_dashupperfire_custom_7" EFFECT startms=350 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
-"wgl_sk_dashupperfire_custom_7" SHAKE startms=352 payload="" src=orig
+"wgl_sk_dashupperfire_custom_7" SHAKE startms=352 payload="dur=0.35;in=0;out=0.1;x=0,50;y=0,50;z=8,50;fov=0,0" src=orig
 "wgl_sk_dashupperfire_custom_7" EFFECT startms=361 payload="FX_PC_WGL_06.Par_O_WGL_DUF_06_01_LOC_INT" src=orig
 "wgl_sk_dashupperfire_custom_7" EFFECT startms=361 payload="FX_PC_WGL_06.Par_O_WGL_DUF_05_01" src=orig
 "wgl_sk_dashupperfire_custom_7" EFFECT startms=361 payload="FX_PC_WGL_06.Par_O_WGL_DUF_06_02_LOC_INT" src=orig
@@ -385,7 +385,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_dashupperfire_custom_8" EFFECT startms=126 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "wgl_sk_dashupperfire_custom_8" EFFECT startms=137 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
 "wgl_sk_dashupperfire_custom_8" EFFECT startms=140 payload="" src=orig
-"wgl_sk_dashupperfire_custom_8" SHAKE startms=140 payload="" src=orig
+"wgl_sk_dashupperfire_custom_8" SHAKE startms=140 payload="dur=0.3;in=0;out=0.1;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "wgl_sk_dashupperfire_custom_8" CANCEL startms=200 endms=1020 payload="[선이]" src=orig
 "wgl_sk_dashupperfire_custom_8" EFFECT startms=250 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
 "wgl_sk_dashupperfire_custom_8" SOUND startms=300 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_DashUpper1_FX000_2" src=orig
@@ -393,7 +393,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_dashupperfire_custom_8" EFFECT startms=434 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "wgl_sk_dashupperfire_custom_8" EFFECT startms=434 payload="FX_PC_WGL_06.Par_O_WGL_DUF_01_02" src=orig
 "wgl_sk_dashupperfire_custom_8" EFFECT startms=435 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
-"wgl_sk_dashupperfire_custom_8" SHAKE startms=438 payload="" src=orig
+"wgl_sk_dashupperfire_custom_8" SHAKE startms=438 payload="dur=0.3;in=0;out=0.1;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "wgl_sk_dashupperfire_custom_8" EFFECT startms=440 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
 "wgl_sk_dashupperfire_custom_8" EFFECT startms=440 payload="" src=orig
 "wgl_sk_dashupperfire_custom_8" CANCEL startms=540 endms=1200 payload="[회피캔슬]" src=orig
@@ -424,7 +424,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_eternalcyclone_01" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_eternalcyclone_01" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
 "wgl_sk_eternalcyclone_01" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
-"wgl_sk_eternalcyclone_01" SHAKE startms=0 payload="" src=orig
+"wgl_sk_eternalcyclone_01" SHAKE startms=0 payload="dur=0.5;in=0;out=0.4;x=0,60;y=0,60;z=0,60;fov=-20,1" src=orig
 "wgl_sk_eternalcyclone_01" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "wgl_sk_eternalcyclone_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_Vox2_1" src=orig
 "wgl_sk_eternalcyclone_01" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX000_1" src=orig
@@ -439,7 +439,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_eternalcyclone_02" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_eternalcyclone_02" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Dust_01" src=orig
 "wgl_sk_eternalcyclone_02" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wp_00" src=orig
-"wgl_sk_eternalcyclone_02" SHAKE startms=0 payload="" src=orig
+"wgl_sk_eternalcyclone_02" SHAKE startms=0 payload="dur=0.6;in=0;out=0;x=2,20;y=2,20;z=2,20;fov=0,0" src=orig
 "wgl_sk_eternalcyclone_02" SUPERARMOR startms=0 endms=300 payload="" src=orig
 "wgl_sk_eternalcyclone_02" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX000_2" src=orig
 "wgl_sk_eternalcyclone_03" CANCEL startms=0 endms=300 payload="회전동기화" src=orig
@@ -449,7 +449,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_eternalcyclone_03" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Dust_01" src=orig
 "wgl_sk_eternalcyclone_03" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_BCast_01" src=orig
 "wgl_sk_eternalcyclone_03" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wp_00" src=orig
-"wgl_sk_eternalcyclone_03" SHAKE startms=0 payload="" src=orig
+"wgl_sk_eternalcyclone_03" SHAKE startms=0 payload="dur=0.6;in=0;out=0;x=2,40;y=2,40;z=2,40;fov=0,0" src=orig
 "wgl_sk_eternalcyclone_03" SUPERARMOR startms=0 endms=300 payload="" src=orig
 "wgl_sk_eternalcyclone_03" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX001_2" src=orig
 "wgl_sk_eternalcyclone_04" CANCEL startms=0 endms=300 payload="회전동기화" src=orig
@@ -460,7 +460,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_eternalcyclone_04" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wp_01" src=orig
 "wgl_sk_eternalcyclone_04" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Cast_01" src=orig
 "wgl_sk_eternalcyclone_04" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_BCast_02" src=orig
-"wgl_sk_eternalcyclone_04" SHAKE startms=0 payload="" src=orig
+"wgl_sk_eternalcyclone_04" SHAKE startms=0 payload="dur=0.6;in=0;out=0;x=2,60;y=2,60;z=2,60;fov=0,0" src=orig
 "wgl_sk_eternalcyclone_04" SUPERARMOR startms=0 endms=300 payload="" src=orig
 "wgl_sk_eternalcyclone_04" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX002_2" src=orig
 "wgl_sk_eternalcyclone_05" CANCEL startms=0 endms=1000 payload="회전동기화" src=orig
@@ -473,7 +473,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_eternalcyclone_05" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wp_02" src=orig
 "wgl_sk_eternalcyclone_05" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_BCast_03" src=orig
 "wgl_sk_eternalcyclone_05" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
-"wgl_sk_eternalcyclone_05" SHAKE startms=0 payload="" src=orig
+"wgl_sk_eternalcyclone_05" SHAKE startms=0 payload="dur=1;in=0;out=0.1;x=3,60;y=3,60;z=3,60;fov=0,0" src=orig
 "wgl_sk_eternalcyclone_05" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "wgl_sk_eternalcyclone_05" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_EternalCyclone1_FX003_2" src=orig
 "wgl_sk_eternalcyclone_06" CANCEL startms=0 endms=420 payload="" src=orig
@@ -493,7 +493,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Shot_01" src=orig
 "wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Side_01" src=orig
 "wgl_sk_eternalcyclone_06" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wind_01" src=orig
-"wgl_sk_eternalcyclone_06" SHAKE startms=120 payload="" src=orig
+"wgl_sk_eternalcyclone_06" SHAKE startms=120 payload="dur=0.4;in=0;out=0.2;x=11,55;y=11,55;z=11,55;fov=0,0" src=orig
 "wgl_sk_eternalcyclone_06" CANCEL startms=200 endms=1100 payload="[회피캔슬]" src=orig
 "wgl_sk_eternalcyclone_06" CANCEL startms=400 endms=1100 payload="" src=orig
 "wgl_sk_eternalcyclone_06" CANCEL startms=800 endms=1100 payload="" src=orig
@@ -513,7 +513,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Shot_01" src=orig
 "wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Side_01_Fail" src=orig
 "wgl_sk_eternalcyclone_07" EFFECT startms=120 payload="FX_PC_WGL_07.Par_S_WGL_Cyclone_Wind_01_Fail" src=orig
-"wgl_sk_eternalcyclone_07" SHAKE startms=120 payload="" src=orig
+"wgl_sk_eternalcyclone_07" SHAKE startms=120 payload="dur=0.4;in=0;out=0.2;x=11,55;y=11,55;z=11,55;fov=0,0" src=orig
 "wgl_sk_eternalcyclone_07" CANCEL startms=200 endms=1100 payload="[회피캔슬]" src=orig
 "wgl_sk_eternalcyclone_07" CANCEL startms=400 endms=1100 payload="" src=orig
 "wgl_sk_eternalcyclone_07" CANCEL startms=800 endms=1100 payload="" src=orig
@@ -523,7 +523,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_fire1_attack" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_4" src=orig
 "wgl_sk_fire1_attack" SUPERARMOR startms=0 endms=702 payload="" src=orig
 "wgl_sk_fire1_attack" EFFECT startms=44 payload="FX_PC_WGL_06.Par_O_WGL_CannonShotFail_01" src=orig
-"wgl_sk_fire1_attack" SHAKE startms=70 payload="" src=orig
+"wgl_sk_fire1_attack" SHAKE startms=70 payload="dur=0.4;in=0;out=0.2;x=9,35;y=9,35;z=9,35;fov=0,0" src=orig
 "wgl_sk_fire1_attack" EFFECT startms=78 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
 "wgl_sk_fire1_attack" EFFECT startms=78 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_fire1_attack" EFFECT startms=80 payload="" src=orig
@@ -543,7 +543,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_fire1_attack_re" EFFECT startms=44 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
 "wgl_sk_fire1_attack_re" EFFECT startms=44 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
 "wgl_sk_fire1_attack_re" EFFECT startms=50 payload="" src=orig
-"wgl_sk_fire1_attack_re" SHAKE startms=70 payload="" src=orig
+"wgl_sk_fire1_attack_re" SHAKE startms=70 payload="dur=0.4;in=0;out=0.2;x=11,55;y=11,55;z=11,55;fov=0,0" src=orig
 "wgl_sk_fire1_attack_re" EFFECT startms=72 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_Dust_01" src=orig
 "wgl_sk_fire1_attack_re" CANCEL startms=150 endms=1100 payload="[회피캔슬]" src=orig
 "wgl_sk_fire1_attack_re" CANCEL startms=550 endms=1100 payload="입력캔슬" src=orig
@@ -555,7 +555,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_fire1_loop" EFFECT startms=0 payload="fx_pc_wgl_00.Par_H_ItemFX-08_01_1" src=orig
 "wgl_sk_fire1_loop" EFFECT startms=0 payload="FX_PC_WGL_06.Par_O_WGL_CannonShot_Gain_01" src=orig
 "wgl_sk_fire1_loop" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_08" src=orig
-"wgl_sk_fire1_loop" SHAKE startms=0 payload="" src=orig
+"wgl_sk_fire1_loop" SHAKE startms=0 payload="dur=1.5;in=0.3;out=0.3;x=0.7,100;y=0.7,100;z=0.7,100;fov=0,0" src=orig
 "wgl_sk_fire1_loop" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_2" src=orig
 "wgl_sk_fire1_loop" SUPERARMOR startms=0 endms=1067 payload="" src=orig
 "wgl_sk_fire1_loop" EFFECT startms=2 payload="fx_pc_wgl_00.Par_D_PiercingSpear_00" src=orig
@@ -570,7 +570,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_fire3_attack" CANCEL startms=0 endms=1867 payload="진격태세" src=orig
 "wgl_sk_fire3_attack" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_BurstConnon1_FX000_3" src=orig
 "wgl_sk_fire3_attack" SUPERARMOR startms=0 endms=1307 payload="" src=orig
-"wgl_sk_fire3_attack" SHAKE startms=11 payload="" src=orig
+"wgl_sk_fire3_attack" SHAKE startms=11 payload="dur=0.25;in=0;out=0.1;x=8,50;y=8,50;z=8,50;fov=0,0" src=orig
 "wgl_sk_fire3_attack" EFFECT startms=17 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_02" src=orig
 "wgl_sk_fire3_attack" EFFECT startms=17 payload="FX_PC_WGL_06.Par_O_WGL_BustCannon_01_01" src=orig
 "wgl_sk_fire3_attack" EFFECT startms=17 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
@@ -622,7 +622,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_firebullet" CANCEL startms=202 endms=903 payload="[선이]" src=orig
 "wgl_sk_firebullet" EFFECT startms=325 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "wgl_sk_firebullet" EFFECT startms=325 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
-"wgl_sk_firebullet" SHAKE startms=325 payload="" src=orig
+"wgl_sk_firebullet" SHAKE startms=325 payload="dur=0.3;in=0;out=0.1;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "wgl_sk_firebullet" EFFECT startms=328 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
 "wgl_sk_firebullet" EFFECT startms=328 payload="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01" src=orig
 "wgl_sk_firebullet" EFFECT startms=330 payload="" src=orig
@@ -635,7 +635,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_firebullet_custom1_002" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX000_1" src=orig
 "wgl_sk_firebullet_custom1_002" CANCEL startms=201 endms=1010 payload="[선스]" src=orig
 "wgl_sk_firebullet_custom1_002" CANCEL startms=302 endms=1208 payload="[선이]" src=orig
-"wgl_sk_firebullet_custom1_002" SHAKE startms=350 payload="" src=orig
+"wgl_sk_firebullet_custom1_002" SHAKE startms=350 payload="dur=0.2;in=0;out=0.1;x=4,50;y=4,50;z=6,50;fov=0,0" src=orig
 "wgl_sk_firebullet_custom1_002" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX040_2" src=orig
 "wgl_sk_firebullet_custom1_002" EFFECT startms=357 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
 "wgl_sk_firebullet_custom1_002" EFFECT startms=357 payload="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01" src=orig
@@ -644,7 +644,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_firebullet_custom1_002" EFFECT startms=361 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
 "wgl_sk_firebullet_custom1_002" SOUND startms=380 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_Vox1_2" src=orig
 "wgl_sk_firebullet_custom1_002" EFFECT startms=432 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
-"wgl_sk_firebullet_custom1_002" SHAKE startms=600 payload="" src=orig
+"wgl_sk_firebullet_custom1_002" SHAKE startms=600 payload="dur=0.3;in=0;out=0.1;x=6,50;y=6,50;z=8,50;fov=0,0" src=orig
 "wgl_sk_firebullet_custom1_002" EFFECT startms=629 payload="FX_PC_WGL_06.Par_O_WGL_DUF_03_01" src=orig
 "wgl_sk_firebullet_custom1_002" EFFECT startms=629 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "wgl_sk_firebullet_custom1_002" EFFECT startms=630 payload="" src=orig
@@ -667,7 +667,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_firebullet_custom2_003" EFFECT startms=768 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
 "wgl_sk_firebullet_custom2_003" EFFECT startms=769 payload="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_01" src=orig
 "wgl_sk_firebullet_custom2_003" EFFECT startms=769 payload="FX_PC_WGL_06.Par_O_WGL_FireBullet_01_02" src=orig
-"wgl_sk_firebullet_custom2_003" SHAKE startms=769 payload="" src=orig
+"wgl_sk_firebullet_custom2_003" SHAKE startms=769 payload="dur=0.3;in=0;out=0.1;x=6,50;y=6,50;z=8,50;fov=0,0" src=orig
 "wgl_sk_firebullet_custom2_003" SOUND startms=790 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_FX000_2" src=orig
 "wgl_sk_firebullet_custom2_003" SOUND startms=790 payload="PC_GUNLANCER_M.PC_GunLancer_M_Sk_FireBullet1_Vox2_2" src=orig
 "wgl_sk_firebullet_custom2_003" EFFECT startms=800 payload="" src=orig
@@ -696,19 +696,19 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_guardianofprotection_attack" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_GuardianOfProtection1_Vox1_2" src=orig
 "wgl_sk_guardianofprotection_attack" EFFECT startms=130 payload="" src=orig
 "wgl_sk_guardianofprotection_attack" EFFECT startms=160 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"wgl_sk_guardianofprotection_attack" SHAKE startms=160 payload="" src=orig
+"wgl_sk_guardianofprotection_attack" SHAKE startms=160 payload="dur=0.5;in=0.1;out=0.3;x=7,80;y=7,80;z=7,80;fov=0,0" src=orig
 "wgl_sk_guardianofprotection_attack" CANCEL startms=500 endms=1167 payload="[회피캔슬]" src=orig
 "wgl_sk_guardianofprotection_attack" CANCEL startms=700 endms=1167 payload="입력캔슬" src=orig
 "wgl_sk_guardianofprotection_attack" CANCEL startms=900 endms=1167 payload="이동캔슬" src=orig
 "wgl_sk_guardianofprotection_loop" CANCEL startms=0 endms=1333 payload="방어태세해제" src=orig
 "wgl_sk_guardianofprotection_loop" EFFECT startms=0 payload="fx_pc_wgl_00.Par_D_GProtection_06" src=orig
 "wgl_sk_guardianofprotection_loop" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"wgl_sk_guardianofprotection_loop" SHAKE startms=0 payload="" src=orig
+"wgl_sk_guardianofprotection_loop" SHAKE startms=0 payload="dur=0.9;in=0;out=0.3;x=2,70;y=2,70;z=2,70;fov=0,0" src=orig
 "wgl_sk_guardianofprotection_loop" SUPERARMOR startms=0 endms=1333 payload="" src=orig
 "wgl_sk_guardianofprotection_loop" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_GuardianOfProtection1_FX000_1" src=orig
 "wgl_sk_guardianofprotection_loop" CANCEL startms=600 endms=600 payload="" src=orig
 "wgl_sk_guardianofprotection_start" CANCEL startms=0 endms=1167 payload="방어태세해제" src=orig
-"wgl_sk_guardianofprotection_start" SHAKE startms=0 payload="" src=orig
+"wgl_sk_guardianofprotection_start" SHAKE startms=0 payload="dur=1.17;in=0.001;out=0.83;x=0,0;y=0,0;z=0,0;fov=-30,1" src=orig
 "wgl_sk_guardianofprotection_start" SOUND startms=0 payload="PC_COMMON.PC_Common_FX_Ultimate1" src=orig
 "wgl_sk_guardianofprotection_start" SUPERARMOR startms=0 endms=1167 payload="" src=orig
 "wgl_sk_guardianofprotection_start" EFFECT startms=144 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -745,7 +745,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_judgmentspear_start" CANCEL startms=0 endms=1867 payload="방어태세해제" src=orig
 "wgl_sk_judgmentspear_start" EFFECT startms=0 payload="FX_BS_04.State.Par_J_ExMove_01" src=orig
 "wgl_sk_judgmentspear_start" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"wgl_sk_judgmentspear_start" SHAKE startms=0 payload="" src=orig
+"wgl_sk_judgmentspear_start" SHAKE startms=0 payload="dur=0.85;in=0.001;out=0.6;x=0,0;y=0,0;z=0,0;fov=-30,1" src=orig
 "wgl_sk_judgmentspear_start" SOUND startms=0 payload="PC_COMMON.PC_Common_FX_Ultimate1" src=orig
 "wgl_sk_judgmentspear_start" SUPERARMOR startms=0 endms=1867 payload="" src=orig
 "wgl_sk_judgmentspear_start" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_JudgementOfSpear1_Vox1_1" src=orig
@@ -790,7 +790,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_leap_attack_01" SUPERARMOR startms=0 endms=670 payload="" src=orig
 "wgl_sk_leap_attack_01" SUPERARMOR startms=0 endms=671 payload="" src=orig
 "wgl_sk_leap_attack_01" EFFECT startms=30 payload="" src=orig
-"wgl_sk_leap_attack_01" SHAKE startms=33 payload="" src=orig
+"wgl_sk_leap_attack_01" SHAKE startms=33 payload="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=7,50;fov=0,0" src=orig
 "wgl_sk_leap_attack_01" CANCEL startms=130 endms=967 payload="[회피캔슬]" src=orig
 "wgl_sk_leap_attack_01" CANCEL startms=500 endms=967 payload="" src=orig
 "wgl_sk_leap_attack_01" CANCEL startms=500 endms=700 payload="" src=orig
@@ -830,7 +830,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_leap_custom_7_02" SUPERARMOR startms=0 endms=505 payload="" src=orig
 "wgl_sk_leap_custom_7_02" SUPERARMOR startms=0 endms=510 payload="" src=orig
 "wgl_sk_leap_custom_7_02" EFFECT startms=30 payload="" src=orig
-"wgl_sk_leap_custom_7_02" SHAKE startms=33 payload="" src=orig
+"wgl_sk_leap_custom_7_02" SHAKE startms=33 payload="dur=0.3;in=0;out=0.2;x=4,50;y=4,50;z=7,50;fov=0,0" src=orig
 "wgl_sk_leap_custom_7_02" CANCEL startms=130 endms=733 payload="[회피캔슬]" src=orig
 "wgl_sk_leap_custom_7_02" CANCEL startms=400 endms=733 payload="입력캔슬" src=orig
 "wgl_sk_leap_custom_7_02" CANCEL startms=500 endms=734 payload="이동캔슬" src=orig
@@ -841,7 +841,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_leap_custom_8_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX008_1" src=orig
 "wgl_sk_leap_custom_8_01" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "wgl_sk_leap_custom_8_01" EFFECT startms=200 payload="FX_PC_WGL_09.Par_M_LeapAttack_Dust_Costom_08" src=orig
-"wgl_sk_leap_custom_8_01" SHAKE startms=300 payload="" src=orig
+"wgl_sk_leap_custom_8_01" SHAKE startms=300 payload="dur=0.1;in=0;out=0.1;x=1,50;y=1,50;z=4,50;fov=0,0" src=orig
 "wgl_sk_leap_custom_8_01" SOUND startms=700 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_LeapAttack1_FX000_1" src=orig
 "wgl_sk_leap_custom_8_01" EFFECT startms=850 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "wgl_sk_leap_custom_8_01" EFFECT startms=900 payload="" src=orig
@@ -870,7 +870,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_leap_custom_8_03" EFFECT startms=100 payload="FX_PC_WGL_09.Par_M_LeapAttack_Exp_00" src=orig
 "wgl_sk_leap_custom_8_03" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_leap_custom_8_03" HIT startms=100 endms=300 rep=1 repms=0 fz=620 fzin=200 fzout=300 push=120 pushr=30 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig
-"wgl_sk_leap_custom_8_03" SHAKE startms=100 payload="" src=orig
+"wgl_sk_leap_custom_8_03" SHAKE startms=100 payload="dur=0.6;in=0.1;out=0.2;x=1,50;y=1,50;z=10,50;fov=0,0" src=orig
 "wgl_sk_leap_custom_8_03" CANCEL startms=500 endms=1933 payload="[회피캔슬]" src=orig
 "wgl_sk_leap_custom_8_03" CANCEL startms=700 endms=1933 payload="입력캔슬" src=orig
 "wgl_sk_leap_custom_8_03" CANCEL startms=792 endms=1934 payload="이동캔슬" src=orig
@@ -909,7 +909,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_01_1" src=orig
 "wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_02_3" src=orig
 "wgl_sk_nellasia" EFFECT startms=336 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_01_3" src=orig
-"wgl_sk_nellasia" SHAKE startms=366 payload="" src=orig
+"wgl_sk_nellasia" SHAKE startms=366 payload="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=5,50;fov=0,0" src=orig
 "wgl_sk_nellasia" EFFECT startms=370 payload="" src=orig
 "wgl_sk_nellasia" CANCEL startms=470 endms=1500 payload="[회피캔슬]" src=orig
 "wgl_sk_nellasia" SOUND startms=520 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_Nellasia1_FX100_1" src=orig
@@ -917,7 +917,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_nellasia" EFFECT startms=580 payload="FX_PC_WGL_03.Par_Y_WGL_Nelasia_03_1" src=orig
 "wgl_sk_nellasia" CANCEL startms=600 endms=1500 payload="이동캔슬" src=orig
 "wgl_sk_nellasia" CANCEL startms=600 endms=1500 payload="입력캔슬" src=orig
-"wgl_sk_nellasia" SHAKE startms=697 payload="" src=orig
+"wgl_sk_nellasia" SHAKE startms=697 payload="dur=0.3;in=0;out=0.2;x=2,40;y=2,40;z=2,40;fov=0,0" src=orig
 "wgl_sk_pierceingspear" CANCEL startms=0 endms=1833 payload="진격태세" src=orig
 "wgl_sk_pierceingspear" SOUND startms=70 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_FX000_1" src=orig
 "wgl_sk_pierceingspear" SOUND startms=70 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_PierceSpear1_Vox1_1" src=orig
@@ -933,7 +933,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_pierceingspear" EFFECT startms=550 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_01_LOC_INT" src=orig
 "wgl_sk_pierceingspear" EFFECT startms=550 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_02_LOC_INT" src=orig
 "wgl_sk_pierceingspear" EFFECT startms=550 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_04_LOC_INT" src=orig
-"wgl_sk_pierceingspear" SHAKE startms=558 payload="" src=orig
+"wgl_sk_pierceingspear" SHAKE startms=558 payload="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=5,50;fov=0,0" src=orig
 "wgl_sk_pierceingspear" EFFECT startms=600 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_01" src=orig
 "wgl_sk_pierceingspear" EFFECT startms=600 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_02" src=orig
 "wgl_sk_pierceingspear" CANCEL startms=640 endms=1833 payload="[회피캔슬]" src=orig
@@ -954,7 +954,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_pierceingspear_custom_1" EFFECT startms=699 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_03_LOC_INT" src=orig
 "wgl_sk_pierceingspear_custom_1" EFFECT startms=699 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_05_LOC_INT" src=orig
 "wgl_sk_pierceingspear_custom_1" EFFECT startms=700 payload="" src=orig
-"wgl_sk_pierceingspear_custom_1" SHAKE startms=716 payload="" src=orig
+"wgl_sk_pierceingspear_custom_1" SHAKE startms=716 payload="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=5,50;fov=0,0" src=orig
 "wgl_sk_pierceingspear_custom_1" EFFECT startms=720 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_04" src=orig
 "wgl_sk_pierceingspear_custom_1" CANCEL startms=1000 endms=1667 payload="입력캔슬" src=orig
 "wgl_sk_pierceingspear_custom_1" CANCEL startms=1200 endms=1667 payload="이동캔슬" src=orig
@@ -972,7 +972,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_pierceingspear_custom_3" EFFECT startms=600 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_pierceingspear_custom_3" EFFECT startms=620 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_02_01_LOC_INT" src=orig
 "wgl_sk_pierceingspear_custom_3" EFFECT startms=620 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_02_02_LOC_INT" src=orig
-"wgl_sk_pierceingspear_custom_3" SHAKE startms=645 payload="" src=orig
+"wgl_sk_pierceingspear_custom_3" SHAKE startms=645 payload="dur=0.4;in=0;out=0.1;x=6,40;y=6,40;z=0,0;fov=0,0" src=orig
 "wgl_sk_pierceingspear_custom_3" EFFECT startms=650 payload="" src=orig
 "wgl_sk_pierceingspear_custom_3" EFFECT startms=650 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_03" src=orig
 "wgl_sk_pierceingspear_custom_3" EFFECT startms=700 payload="" src=orig
@@ -986,7 +986,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_pierceingspear_custom_37" EFFECT startms=241 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "wgl_sk_pierceingspear_custom_37" EFFECT startms=241 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_pierceingspear_custom_37" EFFECT startms=261 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_02_01_LOC_INT" src=orig
-"wgl_sk_pierceingspear_custom_37" SHAKE startms=276 payload="" src=orig
+"wgl_sk_pierceingspear_custom_37" SHAKE startms=276 payload="dur=0.4;in=0;out=0.1;x=6,40;y=6,40;z=0,0;fov=0,0" src=orig
 "wgl_sk_pierceingspear_custom_37" EFFECT startms=291 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_03" src=orig
 "wgl_sk_pierceingspear_custom_37" EFFECT startms=300 payload="" src=orig
 "wgl_sk_pierceingspear_custom_37" EFFECT startms=350 payload="" src=orig
@@ -1001,7 +1001,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_pierceingspear_custom_7" EFFECT startms=438 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_pierceingspear_custom_7" EFFECT startms=439 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_01_03_LOC_INT" src=orig
 "wgl_sk_pierceingspear_custom_7" EFFECT startms=440 payload="" src=orig
-"wgl_sk_pierceingspear_custom_7" SHAKE startms=456 payload="" src=orig
+"wgl_sk_pierceingspear_custom_7" SHAKE startms=456 payload="dur=0.3;in=0;out=0.2;x=5,50;y=5,50;z=5,50;fov=0,0" src=orig
 "wgl_sk_pierceingspear_custom_7" EFFECT startms=460 payload="FX_PC_WGL_06.Par_O_WGL_PiercingSpear_Dust_04" src=orig
 "wgl_sk_pierceingspear_custom_7" CANCEL startms=540 endms=1400 payload="[회피캔슬]" src=orig
 "wgl_sk_pierceingspear_custom_7" CANCEL startms=700 endms=1400 payload="입력캔슬" src=orig
@@ -1022,7 +1022,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_risingspear_01" EFFECT startms=500 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_02_LOC_INT" src=orig
 "wgl_sk_risingspear_01" EFFECT startms=500 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_03_LOC_INT" src=orig
 "wgl_sk_risingspear_01" EFFECT startms=500 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_04_LOC_INT" src=orig
-"wgl_sk_risingspear_01" SHAKE startms=500 payload="" src=orig
+"wgl_sk_risingspear_01" SHAKE startms=500 payload="dur=0.1;in=0;out=0;x=5,50;y=5,50;z=5,50;fov=0,0" src=orig
 "wgl_sk_risingspear_01" CANCEL startms=600 endms=667 payload="[회피캔슬]" src=orig
 "wgl_sk_risingspear_02" CANCEL startms=0 endms=1433 payload="[회피캔슬]" src=orig
 "wgl_sk_risingspear_02" CANCEL startms=0 endms=506 payload="[선스]" src=orig
@@ -1039,7 +1039,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_risingspear_02" EFFECT startms=90 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_04_LOC_INT" src=orig
 "wgl_sk_risingspear_02" EFFECT startms=100 payload="" src=orig
 "wgl_sk_risingspear_02" EFFECT startms=100 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
-"wgl_sk_risingspear_02" SHAKE startms=100 payload="" src=orig
+"wgl_sk_risingspear_02" SHAKE startms=100 payload="dur=0.3;in=0;out=0.1;x=6,50;y=6,50;z=8,50;fov=0,0" src=orig
 "wgl_sk_risingspear_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_3" src=orig
 "wgl_sk_risingspear_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX050_3" src=orig
 "wgl_sk_risingspear_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX060_3" src=orig
@@ -1068,7 +1068,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_risingspear_custom_1_01" EFFECT startms=700 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_03_LOC_INT" src=orig
 "wgl_sk_risingspear_custom_1_01" EFFECT startms=700 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_04_LOC_INT" src=orig
 "wgl_sk_risingspear_custom_1_01" EFFECT startms=700 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_01_LOC_INT" src=orig
-"wgl_sk_risingspear_custom_1_01" SHAKE startms=700 payload="" src=orig
+"wgl_sk_risingspear_custom_1_01" SHAKE startms=700 payload="dur=0.1;in=0;out=0;x=5,50;y=5,50;z=5,50;fov=0,0" src=orig
 "wgl_sk_risingspear_custom_1_02" CANCEL startms=0 endms=605 payload="[선이]" src=orig
 "wgl_sk_risingspear_custom_1_02" CANCEL startms=0 endms=506 payload="[선스]" src=orig
 "wgl_sk_risingspear_custom_1_02" CANCEL startms=0 endms=1233 payload="[회피캔슬]" src=orig
@@ -1084,7 +1084,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_risingspear_custom_1_02" EFFECT startms=90 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_02_04_LOC_INT" src=orig
 "wgl_sk_risingspear_custom_1_02" EFFECT startms=100 payload="" src=orig
 "wgl_sk_risingspear_custom_1_02" EFFECT startms=100 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
-"wgl_sk_risingspear_custom_1_02" SHAKE startms=100 payload="" src=orig
+"wgl_sk_risingspear_custom_1_02" SHAKE startms=100 payload="dur=0.3;in=0;out=0.1;x=6,50;y=6,50;z=8,50;fov=0,0" src=orig
 "wgl_sk_risingspear_custom_1_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX040_3" src=orig
 "wgl_sk_risingspear_custom_1_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX050_3" src=orig
 "wgl_sk_risingspear_custom_1_02" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX060_3" src=orig
@@ -1107,7 +1107,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_03_LOC_INT" src=orig
 "wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_01_04_LOC_INT" src=orig
 "wgl_sk_risingspear_custom_3" EFFECT startms=350 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_01_LOC_INT" src=orig
-"wgl_sk_risingspear_custom_3" SHAKE startms=350 payload="" src=orig
+"wgl_sk_risingspear_custom_3" SHAKE startms=350 payload="dur=0.1;in=0;out=0;x=5,50;y=5,50;z=5,50;fov=0,0" src=orig
 "wgl_sk_risingspear_custom_3" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX067_3" src=orig
 "wgl_sk_risingspear_custom_3" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX057_3" src=orig
 "wgl_sk_risingspear_custom_3" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_RisingSpear1_FX007_3" src=orig
@@ -1115,7 +1115,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_risingspear_custom_7" CANCEL startms=0 endms=667 payload="[회피캔슬]" src=orig
 "wgl_sk_risingspear_custom_7" CANCEL startms=0 endms=667 payload="진격태세" src=orig
 "wgl_sk_risingspear_custom_7" CANCEL startms=159 endms=667 payload="[선스]" src=orig
-"wgl_sk_risingspear_custom_7" SHAKE startms=198 payload="" src=orig
+"wgl_sk_risingspear_custom_7" SHAKE startms=198 payload="dur=0.4;in=0;out=0.1;x=0,0;y=0,0;z=8,70;fov=0,0" src=orig
 "wgl_sk_risingspear_custom_7" EFFECT startms=199 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_01_LOC_INT" src=orig
 "wgl_sk_risingspear_custom_7" EFFECT startms=199 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_02_LOC_INT" src=orig
 "wgl_sk_risingspear_custom_7" EFFECT startms=199 payload="FX_PC_WGL_06.Par_O_WGL_RisingSpear_04_03_LOC_INT" src=orig
@@ -1142,7 +1142,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_roaring" EFFECT startms=329 payload="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WBK_MC_01" src=orig
 "wgl_sk_roaring" EFFECT startms=329 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "wgl_sk_roaring" EFFECT startms=345 payload="FX_PC_WGL_04.Par_R_WGL_Roar_00_01" src=orig
-"wgl_sk_roaring" SHAKE startms=352 payload="" src=orig
+"wgl_sk_roaring" SHAKE startms=352 payload="dur=0.25;in=0;out=0.1;x=0,80;y=0,80;z=7,80;fov=0,0" src=orig
 "wgl_sk_roaring" EFFECT startms=400 payload="" src=orig
 "wgl_sk_roaring" EFFECT startms=400 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_roaring" CANCEL startms=500 endms=1233 payload="[회피캔슬]" src=orig
@@ -1154,7 +1154,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shielddash_attack" SOUND startms=100 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_4" src=orig
 "wgl_sk_shielddash_attack" HIT startms=200 endms=400 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=170 aa=160 ah=150 ax=40 arem=0 maxt=1 src=orig
 "wgl_sk_shielddash_attack" CANCEL startms=201 endms=604 payload="[선스]" src=orig
-"wgl_sk_shielddash_attack" SHAKE startms=211 payload="" src=orig
+"wgl_sk_shielddash_attack" SHAKE startms=211 payload="dur=0.2;in=0;out=0;x=5,50;y=5,50;z=5,50;fov=0,0" src=orig
 "wgl_sk_shielddash_attack" SOUND startms=224 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_Vox2_2" src=orig
 "wgl_sk_shielddash_attack" EFFECT startms=250 payload="" src=orig
 "wgl_sk_shielddash_attack" CANCEL startms=301 endms=807 payload="[선이]" src=orig
@@ -1172,7 +1172,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shielddash_custom02-1" SUPERARMOR startms=0 endms=500 payload="" src=orig
 "wgl_sk_shielddash_custom02-1" EFFECT startms=1 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Wp_02" src=orig
 "wgl_sk_shielddash_custom02-1" EFFECT startms=100 payload="" src=orig
-"wgl_sk_shielddash_custom02-1" SHAKE startms=100 payload="" src=orig
+"wgl_sk_shielddash_custom02-1" SHAKE startms=100 payload="dur=0.4;in=0;out=0;x=7,60;y=7,60;z=7,60;fov=0,0" src=orig
 "wgl_sk_shielddash_custom02-1" CANCEL startms=200 endms=500 payload="[선스]" src=orig
 "wgl_sk_shielddash_custom02-1" CANCEL startms=200 endms=500 payload="[선이]" src=orig
 "wgl_sk_shielddash_fail" CANCEL startms=0 endms=320 payload="[선스]" src=orig
@@ -1213,7 +1213,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shielddash_run_re" HIT startms=200 endms=300 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=170 aa=160 ah=150 ax=40 arem=0 maxt=1 src=orig
 "wgl_sk_shielddash_run_re" HIT startms=800 endms=900 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=170 aa=160 ah=150 ax=40 arem=0 maxt=1 src=orig
 "wgl_sk_shielddash_run_re" HIT startms=933 endms=933 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=2 ar=170 aa=160 ah=150 ax=40 arem=0 maxt=1 src=orig
-"wgl_sk_shielddash_run_re" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shielddash_run_re" SHAKE startms=0 payload="dur=0.9;in=0.5;out=0;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "wgl_sk_shielddash_run_re" SUPERARMOR startms=0 endms=933 payload="" src=orig
 "wgl_sk_shielddash_run_re" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_Vox1_1" src=orig
 "wgl_sk_shielddash_run_re" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldDash1_FX000_1" src=orig
@@ -1225,7 +1225,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shielddash_start" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
 "wgl_sk_shielddash_start" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "wgl_sk_shielddash_start" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Body_01" src=orig
-"wgl_sk_shielddash_start" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shielddash_start" SHAKE startms=0 payload="dur=0.5;in=0;out=0.4;x=0,60;y=0,60;z=0,60;fov=-20,1" src=orig
 "wgl_sk_shielddash_start" SUPERARMOR startms=0 endms=600 payload="" src=orig
 "wgl_sk_shielddash_start" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_Vox1_1" src=orig
 "wgl_sk_shielddash_start" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_FX000_1" src=orig
@@ -1234,7 +1234,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shielddash_start" EFFECT startms=250 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "wgl_sk_shielddash_start" EFFECT startms=250 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Body_02" src=orig
 "wgl_sk_shielddash_start" EFFECT startms=250 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"wgl_sk_shielddash_start" SHAKE startms=250 payload="" src=orig
+"wgl_sk_shielddash_start" SHAKE startms=250 payload="dur=0.4;in=0;out=0;x=7,60;y=7,60;z=7,60;fov=0,0" src=orig
 "wgl_sk_shielddash_start" SOUND startms=250 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_QuakeShield1_FX000_2" src=orig
 "wgl_sk_shielddash_start" EFFECT startms=300 payload="FX_PC_WGL_07.Par_S_WGL_QakeShield_Atk_01" src=orig
 "wgl_sk_shielddash_start" CANCEL startms=500 endms=600 payload="" src=orig
@@ -1253,16 +1253,16 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldofbattlefield_02" EFFECT startms=0 payload="" src=orig
 "wgl_sk_shieldofbattlefield_02" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "wgl_sk_shieldofbattlefield_03" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wgl_sk_shieldofbattlefield_03" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03" SHAKE startms=0 payload="dur=0.5;in=0;out=0.2;x=0,0;y=0,0;z=7,50;fov=0,0" src=orig
 "wgl_sk_shieldofbattlefield_03" SUPERARMOR startms=0 endms=4900 payload="" src=orig
 "wgl_sk_shieldofbattlefield_03" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_2" src=orig
 "wgl_sk_shieldofbattlefield_03" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_Vox1_2" src=orig
 "wgl_sk_shieldofbattlefield_03" EFFECT startms=100 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "wgl_sk_shieldofbattlefield_03" EFFECT startms=100 payload="FX_PC_WGL_01.Par_O_WGL_Protect_01" src=orig
 "wgl_sk_shieldofbattlefield_03" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_3" src=orig
-"wgl_sk_shieldofbattlefield_03" SHAKE startms=488 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03" SHAKE startms=488 payload="dur=4.4;in=0;out=0;x=1,80;y=1,80;z=1,80;fov=0,0" src=orig
 "wgl_sk_shieldofbattlefield_03_re" HIT startms=0 endms=200 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=0 ar=0 aa=0 ah=0 ax=0 arem=0 maxt=0 src=orig
-"wgl_sk_shieldofbattlefield_03_re" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03_re" SHAKE startms=0 payload="dur=0.5;in=0;out=0.2;x=0,0;y=0,0;z=7,50;fov=0,0" src=orig
 "wgl_sk_shieldofbattlefield_03_re" SUPERARMOR startms=0 endms=767 payload="" src=orig
 "wgl_sk_shieldofbattlefield_03_re" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_2" src=orig
 "wgl_sk_shieldofbattlefield_03_re" SOUND startms=1 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_Vox1_2" src=orig
@@ -1275,7 +1275,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldofbattlefield_03_re" EFFECT startms=150 payload="" src=orig
 "wgl_sk_shieldofbattlefield_03_re" EFFECT startms=200 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectGather_01" src=orig
 "wgl_sk_shieldofbattlefield_03_re" SOUND startms=350 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_3" src=orig
-"wgl_sk_shieldofbattlefield_03_re" SHAKE startms=488 payload="" src=orig
+"wgl_sk_shieldofbattlefield_03_re" SHAKE startms=488 payload="dur=4.4;in=0;out=0;x=1,80;y=1,80;z=1,80;fov=0,0" src=orig
 "wgl_sk_shieldofbattlefield_04_1" CANCEL startms=0 endms=1000 payload="[회피캔슬]" src=orig
 "wgl_sk_shieldofbattlefield_04_1" CANCEL startms=0 endms=1000 payload="입력캔슬" src=orig
 "wgl_sk_shieldofbattlefield_04_1" CANCEL startms=0 endms=1000 payload="이동캔슬" src=orig
@@ -1297,7 +1297,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldofbattlefield_04_3" SOUND startms=400 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ChargeStinger1_Vox1_2" src=orig
 "wgl_sk_shieldofbattlefield_04_3" SOUND startms=500 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldOfBattleField1_FX000_6" src=orig
 "wgl_sk_shieldofbattlefield_04_3" EFFECT startms=528 payload="FX_CM_02.Light.Par_MP_Light_07" src=orig
-"wgl_sk_shieldofbattlefield_04_3" SHAKE startms=532 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_3" SHAKE startms=532 payload="dur=0.5;in=0;out=0.2;x=7,50;y=7,50;z=7,50;fov=0,0" src=orig
 "wgl_sk_shieldofbattlefield_04_3" EFFECT startms=550 payload="" src=orig
 "wgl_sk_shieldofbattlefield_04_3" EFFECT startms=550 payload="FX_PC_WGL_01.Par_O_WGL_Protect_02" src=orig
 "wgl_sk_shieldofbattlefield_04_3" EFFECT startms=552 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
@@ -1310,7 +1310,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldofbattlefield_04_re" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectGather_01" src=orig
 "wgl_sk_shieldofbattlefield_04_re" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectShield_01" src=orig
 "wgl_sk_shieldofbattlefield_04_re" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_ProtectShield_04" src=orig
-"wgl_sk_shieldofbattlefield_04_re" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shieldofbattlefield_04_re" SHAKE startms=0 payload="dur=4.13;in=0;out=0;x=1,80;y=1,80;z=1,80;fov=0,0" src=orig
 "wgl_sk_shieldofbattlefield_04_re" SUPERARMOR startms=0 endms=4133 payload="" src=orig
 "wgl_sk_shieldshove_att01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_Vox1_1" src=orig
 "wgl_sk_shieldshove_att01" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_FX000_1" src=orig
@@ -1321,7 +1321,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldshove_att01" CANCEL startms=201 endms=805 payload="[선이]" src=orig
 "wgl_sk_shieldshove_att01" EFFECT startms=212 payload="" src=orig
 "wgl_sk_shieldshove_att01" HIT startms=250 endms=450 rep=1 repms=0 fz=520 fzin=150 fzout=250 push=120 pushr=50 area=2 ar=230 aa=200 ah=150 ax=0 arem=0 maxt=0 src=orig
-"wgl_sk_shieldshove_att01" SHAKE startms=257 payload="" src=orig
+"wgl_sk_shieldshove_att01" SHAKE startms=257 payload="dur=0.2;in=0;out=0;x=6,40;y=6,40;z=8,80;fov=0,0" src=orig
 "wgl_sk_shieldshove_att01" EFFECT startms=290 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "wgl_sk_shieldshove_att01" EFFECT startms=292 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "wgl_sk_shieldshove_att01" EFFECT startms=296 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_att_01_1" src=orig
@@ -1339,7 +1339,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldshove_att02" CANCEL startms=100 endms=402 payload="[선콤]" src=orig
 "wgl_sk_shieldshove_att02" EFFECT startms=212 payload="" src=orig
 "wgl_sk_shieldshove_att02" HIT startms=250 endms=450 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=1 aa=0 ah=700 ax=0 arem=0 maxt=0 src=orig
-"wgl_sk_shieldshove_att02" SHAKE startms=257 payload="" src=orig
+"wgl_sk_shieldshove_att02" SHAKE startms=257 payload="dur=0.2;in=0;out=0;x=4,30;y=4,30;z=5,50;fov=0,0" src=orig
 "wgl_sk_shieldshove_att02" EFFECT startms=281 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_Swing_01" src=orig
 "wgl_sk_shieldshove_att02" EFFECT startms=290 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "wgl_sk_shieldshove_att02" EFFECT startms=291 payload="fx_pc_wgl_00.Par_J_ShockDust_1" src=orig
@@ -1350,7 +1350,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldshove_att02" EFFECT startms=300 payload="" src=orig
 "wgl_sk_shieldshove_att02" EFFECT startms=300 payload="FX_PC_WGL_05.Par_U_WGL_Hit_ShieldPush_HIt_01" src=orig
 "wgl_sk_shieldshove_att02" EFFECT startms=300 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_att_01_1" src=orig
-"wgl_sk_shieldshove_att02" SHAKE startms=300 payload="" src=orig
+"wgl_sk_shieldshove_att02" SHAKE startms=300 payload="dur=0.15;in=0;out=0;x=5,50;y=5,50;z=5,50;fov=0,0" src=orig
 "wgl_sk_shieldshove_att02" EFFECT startms=306 payload="FX_PC_WGL_05.Par_U_WGL_Hit_ShieldPush_HIt_01" src=orig
 "wgl_sk_shieldshove_att02" EFFECT startms=306 payload="FX_PC_WGL_05.Par_U_WGL_ShieldPush_att_01_1" src=orig
 "wgl_sk_shieldshove_att02" CANCEL startms=350 endms=1067 payload="" src=orig
@@ -1362,7 +1362,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldshove_att03" EFFECT startms=361 payload="fx_pc_wgl_00.Par_J_Focus_01" src=orig
 "wgl_sk_shieldshove_att03" CANCEL startms=501 endms=1508 payload="[선스]" src=orig
 "wgl_sk_shieldshove_att03" CANCEL startms=606 endms=1599 payload="[선이]" src=orig
-"wgl_sk_shieldshove_att03" SHAKE startms=672 payload="" src=orig
+"wgl_sk_shieldshove_att03" SHAKE startms=672 payload="dur=0.3;in=0;out=0.2;x=3,50;y=3,50;z=3,50;fov=0,0" src=orig
 "wgl_sk_shieldshove_att03" HIT startms=684 endms=748 rep=1 repms=0 fz=0 fzin=0 fzout=0 push=0 pushr=0 area=1 ar=1 aa=0 ah=700 ax=0 arem=0 maxt=0 src=orig
 "wgl_sk_shieldshove_att03" EFFECT startms=698 payload="" src=orig
 "wgl_sk_shieldshove_att03" EFFECT startms=699 payload="fx_pc_wgl_00.Par_J_shieldAtk_03" src=orig
@@ -1378,7 +1378,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldshove_custom01" CANCEL startms=500 endms=1733 payload="[회피캔슬]" src=orig
 "wgl_sk_shieldshove_custom01" SOUND startms=600 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_Vox1_2" src=orig
 "wgl_sk_shieldshove_custom01" HIT startms=850 endms=1050 rep=1 repms=0 fz=520 fzin=150 fzout=250 push=120 pushr=50 area=2 ar=230 aa=200 ah=150 ax=0 arem=0 maxt=0 src=orig
-"wgl_sk_shieldshove_custom01" SHAKE startms=870 payload="" src=orig
+"wgl_sk_shieldshove_custom01" SHAKE startms=870 payload="dur=0.3;in=0;out=0;x=6,40;y=6,40;z=8,80;fov=0,0" src=orig
 "wgl_sk_shieldshove_custom01" EFFECT startms=895 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_shieldshove_custom01" SOUND startms=895 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldShove1_FX000_4" src=orig
 "wgl_sk_shieldshove_custom01" EFFECT startms=900 payload="" src=orig
@@ -1399,7 +1399,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldstamp" EFFECT startms=590 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
 "wgl_sk_shieldstamp" EFFECT startms=590 payload="FX_PC_WGL_04.Par_R_WGL_ShieldStamp_05_02" src=orig
 "wgl_sk_shieldstamp" EFFECT startms=590 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"wgl_sk_shieldstamp" SHAKE startms=590 payload="" src=orig
+"wgl_sk_shieldstamp" SHAKE startms=590 payload="dur=0.3;in=0;out=0.2;x=4,40;y=4,40;z=4,40;fov=0,0" src=orig
 "wgl_sk_shieldstamp" EFFECT startms=600 payload="" src=orig
 "wgl_sk_shieldstamp" CANCEL startms=700 endms=1433 payload="[회피캔슬]" src=orig
 "wgl_sk_shieldstamp" CANCEL startms=945 endms=1433 payload="" src=orig
@@ -1417,7 +1417,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldstamp_custom_1_attack" EFFECT startms=30 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_shieldstamp_custom_1_attack" EFFECT startms=30 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "wgl_sk_shieldstamp_custom_1_attack" EFFECT startms=30 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
-"wgl_sk_shieldstamp_custom_1_attack" SHAKE startms=30 payload="" src=orig
+"wgl_sk_shieldstamp_custom_1_attack" SHAKE startms=30 payload="dur=0.3;in=0;out=0.15;x=5,40;y=5,40;z=7,40;fov=0,0" src=orig
 "wgl_sk_shieldstamp_custom_1_attack" CANCEL startms=130 endms=867 payload="[회피캔슬]" src=orig
 "wgl_sk_shieldstamp_custom_1_attack" CANCEL startms=300 endms=668 payload="입력캔슬" src=orig
 "wgl_sk_shieldstamp_custom_1_attack" CANCEL startms=598 endms=867 payload="이동캔슬" src=orig
@@ -1425,7 +1425,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_shieldstamp_custom_1_jump" EFFECT startms=0 payload="FX_CM_00.Dust.Par_D_Dust_007_pr" src=orig
 "wgl_sk_shieldstamp_custom_1_jump" EFFECT startms=0 payload="fx_pc_wgl_11.Par_J_WGL_ShieldShock_08_02" src=orig
 "wgl_sk_shieldstamp_custom_1_jump" EFFECT startms=0 payload="" src=orig
-"wgl_sk_shieldstamp_custom_1_jump" SHAKE startms=0 payload="" src=orig
+"wgl_sk_shieldstamp_custom_1_jump" SHAKE startms=0 payload="dur=0.55;in=0.2;out=0.4;x=0,1;y=0,1;z=0,1;fov=10,1" src=orig
 "wgl_sk_shieldstamp_custom_1_jump" SUPERARMOR startms=0 endms=567 payload="" src=orig
 "wgl_sk_shieldstamp_custom_1_jump" SOUND startms=10 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ShieldStamp1_FX000_1" src=orig
 "wgl_sk_shieldstamp_custom_1_jump" CANCEL startms=73 endms=567 payload="[선이]" src=orig
@@ -1438,7 +1438,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_spearshot_01" HIT startms=400 endms=600 rep=1 repms=0 fz=550 fzin=150 fzout=250 push=150 pushr=70 area=2 ar=400 aa=170 ah=150 ax=-20 arem=0 maxt=0 src=orig
 "wgl_sk_spearshot_01" EFFECT startms=425 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_01" src=orig
 "wgl_sk_spearshot_01" EFFECT startms=425 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_04_01" src=orig
-"wgl_sk_spearshot_01" SHAKE startms=425 payload="" src=orig
+"wgl_sk_spearshot_01" SHAKE startms=425 payload="dur=0.3;in=0;out=0.2;x=3,55;y=3,55;z=3,55;fov=0,0" src=orig
 "wgl_sk_spearshot_01" EFFECT startms=450 payload="" src=orig
 "wgl_sk_spearshot_01" EFFECT startms=460 payload="FX_PC_WGL_03.Par_Y_WGL_Spearshot_02_01" src=orig
 "wgl_sk_spearshot_01" CANCEL startms=550 endms=2400 payload="[회피캔슬]" src=orig
@@ -1462,7 +1462,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_spearshot_02" EFFECT startms=0 payload="FX_CM_00.Dust.Par_MP_Dust_-X_High_01" src=orig
 "wgl_sk_spearshot_02" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_SpearShot_wp_01_1" src=orig
 "wgl_sk_spearshot_02" EFFECT startms=0 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
-"wgl_sk_spearshot_02" SHAKE startms=0 payload="" src=orig
+"wgl_sk_spearshot_02" SHAKE startms=0 payload="dur=0.4;in=0;out=0.2;x=4,55;y=4,55;z=5,55;fov=0,0" src=orig
 "wgl_sk_spearshot_02" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX000_4" src=orig
 "wgl_sk_spearshot_02" SUPERARMOR startms=0 endms=705 payload="" src=orig
 "wgl_sk_spearshot_02" SUPERARMOR startms=0 endms=704 payload="" src=orig
@@ -1487,7 +1487,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_spearshot_custom_1_2" SUPERARMOR startms=0 endms=267 payload="" src=orig
 "wgl_sk_spearshot_custom_1_2" EFFECT startms=33 payload="FX_PC_WGL_03.Par_Y_WGL_Spearshot_02_01" src=orig
 "wgl_sk_spearshot_custom_1_2" EFFECT startms=50 payload="" src=orig
-"wgl_sk_spearshot_custom_1_2" SHAKE startms=50 payload="" src=orig
+"wgl_sk_spearshot_custom_1_2" SHAKE startms=50 payload="dur=0.3;in=0;out=0.2;x=3,55;y=3,55;z=3,55;fov=0,0" src=orig
 "wgl_sk_spearshot_custom_1_3" CANCEL startms=0 endms=604 payload="[선이]" src=orig
 "wgl_sk_spearshot_custom_1_3" CANCEL startms=0 endms=402 payload="[선스]" src=orig
 "wgl_sk_spearshot_custom_1_3" CANCEL startms=0 endms=1167 payload="[회피캔슬]" src=orig
@@ -1500,7 +1500,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="FX_CM_00.Dust.Par_H_FireBulletDust_01_01" src=orig
 "wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_SpearShot_wp_01_1" src=orig
 "wgl_sk_spearshot_custom_1_3" EFFECT startms=0 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
-"wgl_sk_spearshot_custom_1_3" SHAKE startms=0 payload="" src=orig
+"wgl_sk_spearshot_custom_1_3" SHAKE startms=0 payload="dur=0.4;in=0;out=0.2;x=4,55;y=4,55;z=5,55;fov=0,0" src=orig
 "wgl_sk_spearshot_custom_1_3" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX007_2" src=orig
 "wgl_sk_spearshot_custom_1_3" SUPERARMOR startms=0 endms=602 payload="" src=orig
 "wgl_sk_spearshot_custom_1_3" SUPERARMOR startms=0 endms=606 payload="" src=orig
@@ -1516,7 +1516,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_spearshot_custom_2_1" EFFECT startms=600 payload="" src=orig
 "wgl_sk_spearshot_custom_2_1" EFFECT startms=600 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_01" src=orig
 "wgl_sk_spearshot_custom_2_1" EFFECT startms=600 payload="FX_PC_WGL_01.Par_K_WGL_SpearShot_Atk_04_01" src=orig
-"wgl_sk_spearshot_custom_2_1" SHAKE startms=600 payload="" src=orig
+"wgl_sk_spearshot_custom_2_1" SHAKE startms=600 payload="dur=0.3;in=0;out=0.2;x=3,55;y=3,55;z=3,55;fov=0,0" src=orig
 "wgl_sk_spearshot_custom_2_1" EFFECT startms=630 payload="FX_PC_WGL_03.Par_Y_WGL_Spearshot_02_01" src=orig
 "wgl_sk_spearshot_custom_2_2" CANCEL startms=0 endms=450 payload="" src=orig
 "wgl_sk_spearshot_custom_2_2" CANCEL startms=0 endms=500 payload="진격태세" src=orig
@@ -1540,7 +1540,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="FX_PC_WGL_03.Par_Y_WGL_SpearShot_wp_01_1" src=orig
 "wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="FX_PC_WGL_01.Par_E_Reload_01" src=orig
 "wgl_sk_spearshot_custom_2_3" EFFECT startms=0 payload="FX_PC_WGL_08.Par_W_WGL_SpearShot_01_2" src=orig
-"wgl_sk_spearshot_custom_2_3" SHAKE startms=0 payload="" src=orig
+"wgl_sk_spearshot_custom_2_3" SHAKE startms=0 payload="dur=0.4;in=0;out=0.2;x=4,55;y=4,55;z=5,55;fov=0,0" src=orig
 "wgl_sk_spearshot_custom_2_3" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_SpearShot1_FX008_5" src=orig
 "wgl_sk_spearshot_custom_2_3" SUPERARMOR startms=0 endms=707 payload="" src=orig
 "wgl_sk_spearshot_custom_2_3" SUPERARMOR startms=0 endms=705 payload="" src=orig
@@ -1569,7 +1569,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=38 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=38 payload="FX_PC_SMW_12.Par_S_SMW_ExMove_01" src=orig
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=38 payload="FX_PC_WGL_08.Par_W_WGL_ExMove_01" src=orig
-"wgl_sk_super_guardianofprotection_01" SHAKE startms=253 payload="" src=orig
+"wgl_sk_super_guardianofprotection_01" SHAKE startms=253 payload="dur=1;in=0;out=0;x=2,60;y=2,60;z=2,80;fov=0,0" src=orig
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=346 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SDenergy" src=orig
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=354 payload="FX_PC_WGL_08.Par_W_WGL_ShieldSy_01" src=orig
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=363 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -1578,7 +1578,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=524 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=525 payload="FX_Post.FX_Par.Par_C_ZoomBlur_03" src=orig
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=697 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_00" src=orig
-"wgl_sk_super_guardianofprotection_01" SHAKE startms=790 payload="" src=orig
+"wgl_sk_super_guardianofprotection_01" SHAKE startms=790 payload="dur=0.25;in=0;out=0.12;x=0,80;y=0,80;z=5,70;fov=0,0" src=orig
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=800 payload="" src=orig
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=873 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_01" src=orig
 "wgl_sk_super_guardianofprotection_01" EFFECT startms=897 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_SD_00" src=orig
@@ -1609,7 +1609,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_super_guardianofprotection_02" EFFECT startms=1050 payload="" src=orig
 "wgl_sk_super_guardianofprotection_02" EFFECT startms=1064 payload="FX_PC_WGL_08.Par_W_WGL_SuperGProtection_HitG_Cam" src=orig
 "wgl_sk_super_guardianofprotection_02" EFFECT startms=1069 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"wgl_sk_super_guardianofprotection_02" SHAKE startms=1090 payload="" src=orig
+"wgl_sk_super_guardianofprotection_02" SHAKE startms=1090 payload="dur=0.7;in=0;out=0.4;x=6,60;y=6,60;z=5,75;fov=0,0" src=orig
 "wgl_sk_super_guardianofprotection_02" CANCEL startms=1200 endms=2433 payload="[회피캔슬]" src=orig
 "wgl_sk_super_guardianofprotection_02" CANCEL startms=1600 endms=2433 payload="입력캔슬" src=orig
 "wgl_sk_super_guardianofprotection_02" CANCEL startms=1600 endms=2433 payload="이동캔슬" src=orig
@@ -1623,7 +1623,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_super_judgmentspear_01" EFFECT startms=10 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_11" src=orig
 "wgl_sk_super_judgmentspear_01" EFFECT startms=10 payload="FX_CM_02.Light.Par_MP_Light_01_Loop" src=orig
 "wgl_sk_super_judgmentspear_01" EFFECT startms=200 payload="FX_PC_WBKF_04.Par_R_WBKF_ExMove_01" src=orig
-"wgl_sk_super_judgmentspear_01" SHAKE startms=1051 payload="" src=orig
+"wgl_sk_super_judgmentspear_01" SHAKE startms=1051 payload="dur=0.4;in=0;out=0.3;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "wgl_sk_super_judgmentspear_01" EFFECT startms=1063 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_04_02-3" src=orig
 "wgl_sk_super_judgmentspear_01" EFFECT startms=1064 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_02-2" src=orig
 "wgl_sk_super_judgmentspear_01" EFFECT startms=1648 payload="FX_PC_WGL_04.Par_R_WGL_KayangelSpear_12" src=orig
@@ -1658,7 +1658,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_thunderbolt" EFFECT startms=335 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "wgl_sk_thunderbolt" EFFECT startms=335 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "wgl_sk_thunderbolt" EFFECT startms=335 payload="FX_PC_WGL_05.Par_U_WGL_GuardianLight_Light_Cast_01" src=orig
-"wgl_sk_thunderbolt" SHAKE startms=335 payload="" src=orig
+"wgl_sk_thunderbolt" SHAKE startms=335 payload="dur=0.2;in=0;out=0;x=4,50;y=4,50;z=4,50;fov=0,0" src=orig
 "wgl_sk_thunderbolt" SOUND startms=370 payload="PC_GUNLANCER_M.PC_GunLancer_M_SK_ThunderBolt1_Vox1_1" src=orig
 "wgl_sk_thunderbolt" EFFECT startms=430 payload="FX_PC_WGL_05.Par_U_WGL_GuardianLightning_Cast_Wp_01" src=orig
 "wgl_sk_thunderbolt" CANCEL startms=700 endms=1700 payload="[선스]" src=orig
@@ -1670,7 +1670,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_thunderbolt" EFFECT startms=1200 payload="FX_Post.FX_Par.Par_C_FilmNoise_01" src=orig
 "wgl_sk_thunderbolt" EFFECT startms=1200 payload="fx_cm_01.Distortion.Par_MP_ConcaveDis_Z_01" src=orig
 "wgl_sk_thunderbolt" EFFECT startms=1200 payload="FX_PC_WGL_07.Par_S_WGL_GuardianLightning_02" src=orig
-"wgl_sk_thunderbolt" SHAKE startms=1200 payload="" src=orig
+"wgl_sk_thunderbolt" SHAKE startms=1200 payload="dur=0.4;in=0;out=0.2;x=4,60;y=4,60;z=6,80;fov=0,0" src=orig
 "wgl_sk_thunderbolt" EFFECT startms=1202 payload="FX_PC_WGL_07.Par_S_WGL_GuardianLightning_Cross_01" src=orig
 "wgl_sk_thunderbolt" EFFECT startms=1300 payload="FX_PC_WGL_01.Par_O_WGL_LOG_Item_02_01" src=orig
 "wgl_sk_thunderbolt" EFFECT startms=1300 payload="FX_PC_WGL_01.Par_O_WGL_LOG_Item_02_02" src=orig
@@ -1689,7 +1689,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_warspear" EFFECT startms=600 payload="fx_cm_01.Distortion_oneLayer.Par_MP_ConcaveDisOL_WBK_MC_01" src=orig
 "wgl_sk_warspear" EFFECT startms=600 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "wgl_sk_warspear" EFFECT startms=600 payload="fx_pc_wgl_10.Par_K_WGL_Flare_02" src=orig
-"wgl_sk_warspear" SHAKE startms=600 payload="" src=orig
+"wgl_sk_warspear" SHAKE startms=600 payload="dur=0.25;in=0;out=0.1;x=0,80;y=0,80;z=7,80;fov=0,0" src=orig
 "wgl_sk_warspear" EFFECT startms=650 payload="" src=orig
 "wgl_sk_warspear" EFFECT startms=650 payload="fx_pc_wgl_10.Par_R_WGL_Warspear_Roar_01" src=orig
 "wgl_sk_warspear" CANCEL startms=700 endms=1000 payload="입력캔슬" src=orig
