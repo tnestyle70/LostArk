@@ -6,8 +6,8 @@
 최종 화면 판정자: 사용자
 
 이 문서는 마스터 PLAN의 실제 반영 상태만 기록한다. 도화가·워로드·창술사·차원술사
-전체 복원은 아직 진행 중이며, 이 버전에서는 family inventory와 action-facing 첫 수직 슬라이스를
-구현했다.
+전체 복원은 아직 진행 중이며, 이 버전에서는 family inventory, action-facing, opt-in standard
+color/coverage 수직 슬라이스를 구현했다.
 
 ## 1. 자동 완료된 범위
 
@@ -88,6 +88,26 @@
   실제 PointLight는 추가하지 않았고, body/tip의 alpha·emissive·dissolve가 절대 시각
   `1.5318s`에 함께 종료된다.
 
+### 1.10 opt-in `effect.standard_color_v1`
+
+- 기존 generic effect 의미를 바꾸지 않고 `standardColorV1` backend를 명시적으로 선택한
+  sprite-backed PARTICLE, DECAL, TRAIL만 새 계약에 admission한다.
+- packet version/opcode, base-radiance/coverage/dissolve lane, source channel, linear/sRGB,
+  sampler, carrier-alpha lifetime, base-radiance emissive, missing-lane fail-close를 typed packet으로
+  봉인했다.
+- GPU ABI는 `Header={packetVersion=1, opcode=1, laneCount, textureMask}`,
+  `BaseCoverage={baseLane, baseChannel, coverageLane, coverageChannel}`,
+  `Dissolve={mode, lane, channel, missingLanePolicy}`,
+  `Policies={emissiveMode, lifetimeEnvelope, requiredMask, boundMask}`,
+  `Scalars.x=dissolveSoftness`다. 나머지 scalar 성분과 generic packed input은 0이어야 한다.
+- required lane은 실제 texture/SRV format과 sampler readback까지 일치해야 commit된다. 따라서
+  BC1/DXT1의 존재하지 않는 alpha를 coverage로 선언하거나 default SRV로 대체하는 경로는
+  기존 prepared stage를 보존한 채 해당 stage만 실패한다.
+- 전용 `Shader_EffectStandardColorV1.hlsli`가 세 carrier에서 같은 식을 소비한다. legacy
+  `Shader_EffectCommon.hlsli`와 generic backend는 수정하지 않았다.
+- 아직 Product occurrence를 이 family로 migration하지 않았다. class별 source-exact material은
+  사용자 화면 판정과 occurrence admission을 거쳐 별도 변경으로 연결한다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -108,6 +128,13 @@
 | Artist A/D/R + Warlord T focused contracts | 17 tests PASS, 각 materializer `--check` PASS |
 | Lance E W-cone selective donor | 4 tests, `--check`, authored codec parse PASS |
 | Artist S grass-tip selective materializer | 7 tests PASS, `--check` PASS, 4 DDS SHA-256 PASS, Debug/Release codec SHA `03e4e9f8...` 일치 |
+| Debug `--effect-standard-color-v1-fast` codec + WARP | failures 0 |
+| Release `--effect-standard-color-v1-fast` codec + WARP | failures 0 |
+| StandardColorV1 carrier draw | PARTICLE/DECAL/TRAIL nonzero pixels PASS |
+| StandardColorV1 semantic matrix | R-vs-A, linear-vs-sRGB, base-radiance emissive PASS |
+| StandardColorV1 envelope closure | lifetime/dissolve independence PASS |
+| StandardColorV1 BC1 fail-close | R coverage draw, unavailable A rejection, prior stage preservation PASS |
+| StandardColorV1 Debug/Release Client | errors 0 PASS |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -128,4 +155,6 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 ## 4. 다음 구현 단위
 
 1. full Effect publish blocker 해소 뒤 authored/source catalog를 sealed runtime으로 transaction publish
-2. typed color/coverage family를 기반으로 glass/dragon/attractor 고난도 family 구현
+2. 검증된 `effect.standard_color_v1`에 source-evidence가 닫힌 occurrence를 opt-in migration
+3. Fluid01, 도화가 D tiger, screen overlay, dragon, attractor의 class-neutral family 구현
+4. 전체 Debug/Release·publisher·focused harness 뒤 사용자 화면 판정

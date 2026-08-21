@@ -146,7 +146,28 @@ namespace
 	};
 	constexpr const char_t* MATERIAL_EXECUTION_BACKEND_TOKENS[] =
 	{
-		"generic", "runtimeMaterialV2", "artistVisualV4", "localDecal"
+		"generic", "runtimeMaterialV2", "artistVisualV4", "localDecal",
+		"standardColorV1"
+	};
+	constexpr const char_t* STANDARD_COLOR_CHANNEL_TOKENS[] =
+	{
+		"invalid", "R", "G", "B", "A", "RGB"
+	};
+	constexpr const char_t* STANDARD_COLOR_EMISSIVE_MODE_TOKENS[] =
+	{
+		"none", "baseRadiance"
+	};
+	constexpr const char_t* STANDARD_COLOR_LIFETIME_ENVELOPE_TOKENS[] =
+	{
+		"invalid", "carrierAlpha"
+	};
+	constexpr const char_t* STANDARD_COLOR_DISSOLVE_MODE_TOKENS[] =
+	{
+		"none", "laneThreshold"
+	};
+	constexpr const char_t* STANDARD_COLOR_MISSING_LANE_POLICY_TOKENS[] =
+	{
+		"invalid", "failClosed"
 	};
 	constexpr const char_t* MATERIAL_TEXTURE_FILTER_TOKENS[] =
 	{
@@ -1084,6 +1105,117 @@ namespace
 			<< ", \"maxLod\": " << Sampler.fMaxLod << " }";
 	}
 
+	bool_t Read_StandardColorV1(
+		const Client::DATA_JSON_VALUE& Value,
+		Client::EFFECT_STANDARD_COLOR_V1_DESC& Out,
+		std::string& strOutError)
+	{
+		if (!Validate_ExactFields(Value,
+			{ "packetVersion", "baseRadianceLaneId", "baseRadianceChannel",
+				"coverageLaneId", "coverageChannel", "emissiveMode",
+				"lifetimeEnvelope", "dissolveMode", "dissolveLaneId",
+				"dissolveChannel", "dissolveSoftness", "missingLanePolicy" },
+			"Effect StandardColorV1 packet", strOutError))
+		{
+			return false;
+		}
+		const Client::DATA_JSON_VALUE* pBaseChannel = Find_Field(
+			Value, "baseRadianceChannel", Client::DATA_JSON_TYPE::STRING,
+			strOutError);
+		const Client::DATA_JSON_VALUE* pCoverageChannel = Find_Field(
+			Value, "coverageChannel", Client::DATA_JSON_TYPE::STRING,
+			strOutError);
+		const Client::DATA_JSON_VALUE* pEmissiveMode = Find_Field(
+			Value, "emissiveMode", Client::DATA_JSON_TYPE::STRING, strOutError);
+		const Client::DATA_JSON_VALUE* pLifetimeEnvelope = Find_Field(
+			Value, "lifetimeEnvelope", Client::DATA_JSON_TYPE::STRING,
+			strOutError);
+		const Client::DATA_JSON_VALUE* pDissolveMode = Find_Field(
+			Value, "dissolveMode", Client::DATA_JSON_TYPE::STRING, strOutError);
+		const Client::DATA_JSON_VALUE* pDissolveChannel = Find_Field(
+			Value, "dissolveChannel", Client::DATA_JSON_TYPE::STRING,
+			strOutError);
+		const Client::DATA_JSON_VALUE* pMissingLanePolicy = Find_Field(
+			Value, "missingLanePolicy", Client::DATA_JSON_TYPE::STRING,
+			strOutError);
+		return nullptr != pBaseChannel && nullptr != pCoverageChannel &&
+			nullptr != pEmissiveMode && nullptr != pLifetimeEnvelope &&
+			nullptr != pDissolveMode && nullptr != pDissolveChannel &&
+			nullptr != pMissingLanePolicy &&
+			Read_UInt(Value, "packetVersion", Out.iPacketVersion, strOutError) &&
+			Read_String(Value, "baseRadianceLaneId",
+				Out.strBaseRadianceLaneId, strOutError) &&
+			Parse_Token(pBaseChannel->Get_String(),
+				STANDARD_COLOR_CHANNEL_TOKENS,
+				std::size(STANDARD_COLOR_CHANNEL_TOKENS),
+				Out.eBaseRadianceChannel) &&
+			Read_String(Value, "coverageLaneId", Out.strCoverageLaneId,
+				strOutError) &&
+			Parse_Token(pCoverageChannel->Get_String(),
+				STANDARD_COLOR_CHANNEL_TOKENS,
+				std::size(STANDARD_COLOR_CHANNEL_TOKENS),
+				Out.eCoverageChannel) &&
+			Parse_Token(pEmissiveMode->Get_String(),
+				STANDARD_COLOR_EMISSIVE_MODE_TOKENS,
+				std::size(STANDARD_COLOR_EMISSIVE_MODE_TOKENS),
+				Out.eEmissiveMode) &&
+			Parse_Token(pLifetimeEnvelope->Get_String(),
+				STANDARD_COLOR_LIFETIME_ENVELOPE_TOKENS,
+				std::size(STANDARD_COLOR_LIFETIME_ENVELOPE_TOKENS),
+				Out.eLifetimeEnvelope) &&
+			Parse_Token(pDissolveMode->Get_String(),
+				STANDARD_COLOR_DISSOLVE_MODE_TOKENS,
+				std::size(STANDARD_COLOR_DISSOLVE_MODE_TOKENS),
+				Out.eDissolveMode) &&
+			Read_String(Value, "dissolveLaneId", Out.strDissolveLaneId,
+				strOutError) &&
+			Parse_Token(pDissolveChannel->Get_String(),
+				STANDARD_COLOR_CHANNEL_TOKENS,
+				std::size(STANDARD_COLOR_CHANNEL_TOKENS),
+				Out.eDissolveChannel) &&
+			Read_Float(Value, "dissolveSoftness", Out.fDissolveSoftness,
+				strOutError) &&
+			Parse_Token(pMissingLanePolicy->Get_String(),
+				STANDARD_COLOR_MISSING_LANE_POLICY_TOKENS,
+				std::size(STANDARD_COLOR_MISSING_LANE_POLICY_TOKENS),
+				Out.eMissingLanePolicy);
+	}
+
+	void Write_StandardColorV1(
+		std::ostringstream& Output,
+		const Client::EFFECT_STANDARD_COLOR_V1_DESC& Packet)
+	{
+		Output << "{ \"packetVersion\": " << Packet.iPacketVersion
+			<< ", \"baseRadianceLaneId\": \""
+			<< Client::CDataJson::Escape(Packet.strBaseRadianceLaneId)
+			<< "\", \"baseRadianceChannel\": \""
+			<< STANDARD_COLOR_CHANNEL_TOKENS[
+				static_cast<size_t>(Packet.eBaseRadianceChannel)]
+			<< "\", \"coverageLaneId\": \""
+			<< Client::CDataJson::Escape(Packet.strCoverageLaneId)
+			<< "\", \"coverageChannel\": \""
+			<< STANDARD_COLOR_CHANNEL_TOKENS[
+				static_cast<size_t>(Packet.eCoverageChannel)]
+			<< "\", \"emissiveMode\": \""
+			<< STANDARD_COLOR_EMISSIVE_MODE_TOKENS[
+				static_cast<size_t>(Packet.eEmissiveMode)]
+			<< "\", \"lifetimeEnvelope\": \""
+			<< STANDARD_COLOR_LIFETIME_ENVELOPE_TOKENS[
+				static_cast<size_t>(Packet.eLifetimeEnvelope)]
+			<< "\", \"dissolveMode\": \""
+			<< STANDARD_COLOR_DISSOLVE_MODE_TOKENS[
+				static_cast<size_t>(Packet.eDissolveMode)]
+			<< "\", \"dissolveLaneId\": \""
+			<< Client::CDataJson::Escape(Packet.strDissolveLaneId)
+			<< "\", \"dissolveChannel\": \""
+			<< STANDARD_COLOR_CHANNEL_TOKENS[
+				static_cast<size_t>(Packet.eDissolveChannel)]
+			<< "\", \"dissolveSoftness\": " << Packet.fDissolveSoftness
+			<< ", \"missingLanePolicy\": \""
+			<< STANDARD_COLOR_MISSING_LANE_POLICY_TOKENS[
+				static_cast<size_t>(Packet.eMissingLanePolicy)] << "\" }";
+	}
+
 	bool_t Read_MaterialExecution(
 		const Client::DATA_JSON_VALUE& Value,
 		Client::EFFECT_MATERIAL_EXECUTION_DESC& Out,
@@ -1152,7 +1284,7 @@ namespace
 				"staticSelectedMask", "staticConsumedMask",
 				"staticSuppressedMask", "renderInputCount",
 				"renderConsumedMask", "renderSuppressedMask", "scalars",
-				"vectors", "artistParameters", "colors" },
+				"vectors", "artistParameters", "colors", "standardColor" },
 			"Effect authored Material execution",
 			strOutError))
 		{
@@ -1173,6 +1305,8 @@ namespace
 			strOutError);
 		const Client::DATA_JSON_VALUE* pColors = Find_Field(
 			Value, "colors", Client::DATA_JSON_TYPE::ARRAY, strOutError);
+		const Client::DATA_JSON_VALUE* pStandardColor =
+			Value.Find("standardColor");
 		if (nullptr == pBackend || nullptr == pRenderState ||
 			nullptr == pTextureLanes || nullptr == pScalars ||
 			nullptr == pVectors || nullptr == pArtistParameters ||
@@ -1233,6 +1367,21 @@ namespace
 			!Read_UInt(Value, "renderSuppressedMask", Out.iRenderSuppressedMask,
 				strOutError))
 		{
+			return false;
+		}
+		if (nullptr != pStandardColor &&
+			(!pStandardColor->Is_Object() ||
+			 !Read_StandardColorV1(
+				 *pStandardColor, Out.StandardColorV1, strOutError)))
+		{
+			return false;
+		}
+		const bool_t bStandardColorBackend = Out.eBackend ==
+			Client::EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
+		if (bStandardColorBackend != (nullptr != pStandardColor))
+		{
+			strOutError =
+				"Effect StandardColorV1 packet presence does not match its backend.";
 			return false;
 		}
 
@@ -1388,8 +1537,14 @@ namespace
 			Write_MaterialSampler(Output, Lane.Sampler);
 			Output << " }";
 		}
-		Output << "], \"dynamicConsumedMask\": "
-			<< Execution.iDynamicConsumedMask
+		Output << "]";
+		if (Execution.eBackend ==
+			Client::EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1)
+		{
+			Output << ", \"standardColor\": ";
+			Write_StandardColorV1(Output, Execution.StandardColorV1);
+		}
+		Output << ", \"dynamicConsumedMask\": " << Execution.iDynamicConsumedMask
 			<< ", \"dynamicSuppressedMask\": "
 			<< Execution.iDynamicSuppressedMask
 			<< ", \"particleColorPolicy\": "
@@ -1455,6 +1610,228 @@ namespace
 		Output << "] }";
 	}
 
+	bool_t Is_DefaultStandardColorV1(
+		const Client::EFFECT_STANDARD_COLOR_V1_DESC& Packet)
+	{
+		return 0u == Packet.iPacketVersion &&
+			Packet.strBaseRadianceLaneId.empty() &&
+			Packet.eBaseRadianceChannel ==
+				Client::EFFECT_STANDARD_COLOR_CHANNEL::INVALID &&
+			Packet.strCoverageLaneId.empty() &&
+			Packet.eCoverageChannel ==
+				Client::EFFECT_STANDARD_COLOR_CHANNEL::INVALID &&
+			Packet.eEmissiveMode ==
+				Client::EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE &&
+			Packet.eLifetimeEnvelope ==
+				Client::EFFECT_STANDARD_COLOR_LIFETIME_ENVELOPE::INVALID &&
+			Packet.eDissolveMode ==
+				Client::EFFECT_STANDARD_COLOR_DISSOLVE_MODE::NONE &&
+			Packet.strDissolveLaneId.empty() &&
+			Packet.eDissolveChannel ==
+				Client::EFFECT_STANDARD_COLOR_CHANNEL::INVALID &&
+			0.f == Packet.fDissolveSoftness &&
+			Packet.eMissingLanePolicy ==
+				Client::EFFECT_STANDARD_COLOR_MISSING_LANE_POLICY::INVALID;
+	}
+
+	std::string_view StandardColorChannelCharacters(
+		const Client::EFFECT_STANDARD_COLOR_CHANNEL eChannel)
+	{
+		switch (eChannel)
+		{
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::R:
+			return "R";
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::G:
+			return "G";
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::B:
+			return "B";
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::A:
+			return "A";
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::RGB:
+			return "RGB";
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::INVALID:
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::END:
+		default:
+			return {};
+		}
+	}
+
+	bool_t Is_CanonicalStandardColorSourceChannel(
+		const std::string_view strChannel)
+	{
+		if (strChannel.empty() || strChannel.size() > 4u)
+			return false;
+		size_t iPrevious = 0u;
+		bool_t bFirst = true;
+		for (const char_t Character : strChannel)
+		{
+			const size_t iPosition = std::string_view("RGBA").find(Character);
+			if (iPosition == std::string_view::npos ||
+				(!bFirst && iPosition <= iPrevious))
+			{
+				return false;
+			}
+			iPrevious = iPosition;
+			bFirst = false;
+		}
+		return true;
+	}
+
+	bool_t StandardColorLaneContainsChannel(
+		const Client::EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane,
+		const Client::EFFECT_STANDARD_COLOR_CHANNEL eChannel)
+	{
+		const std::string_view Required =
+			StandardColorChannelCharacters(eChannel);
+		return !Required.empty() && std::all_of(
+			Required.begin(), Required.end(), [&Lane](const char_t Character)
+			{
+				return Lane.strSourceChannel.find(Character) != std::string::npos;
+			});
+	}
+
+	bool_t Validate_StandardColorV1Execution(
+		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		const bool_t bStandard = Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
+		if (!bStandard)
+		{
+			if (!Is_DefaultStandardColorV1(Execution.StandardColorV1))
+			{
+				strOutError =
+					"Non-StandardColor backend carries a StandardColorV1 packet.";
+				return false;
+			}
+			return true;
+		}
+
+		const EFFECT_STANDARD_COLOR_V1_DESC& Packet =
+			Execution.StandardColorV1;
+		const auto AllZero = [](const auto& Values)
+		{
+			return std::all_of(Values.begin(), Values.end(),
+				[](const uint32_t Value) { return 0u == Value; });
+		};
+		if (1u != Execution.iVersion || 1u != Execution.iOpcode ||
+			1u != Packet.iPacketVersion || 0u == Execution.iTextureLaneCount ||
+			0u != Execution.iDynamicConsumedMask ||
+			0u != Execution.iDynamicSuppressedMask ||
+			0u != Execution.iParticleColorPolicy ||
+			0u != Execution.iParticleColorConsumedMask ||
+			0u != Execution.iParticleColorSuppressedMask ||
+			0u != Execution.iScalarCount || 0u != Execution.iVectorCount ||
+			0u != Execution.iInputCount ||
+			!AllZero(Execution.InputConsumedMask) ||
+			!AllZero(Execution.InputSuppressedMask) ||
+			!AllZero(Execution.VectorComponentConsumedMask) ||
+			!AllZero(Execution.VectorComponentSuppressedMask) ||
+			0u != Execution.iStaticInputCount ||
+			0u != Execution.iStaticSelectedMask ||
+			0u != Execution.iStaticConsumedMask ||
+			0u != Execution.iStaticSuppressedMask ||
+			0u != Execution.iRenderInputCount ||
+			0u != Execution.iRenderConsumedMask ||
+			0u != Execution.iRenderSuppressedMask ||
+			!Execution.Scalars.empty() || !Execution.Vectors.empty() ||
+			!Execution.ArtistParameters.empty() || !Execution.Colors.empty() ||
+			Packet.eBaseRadianceChannel < EFFECT_STANDARD_COLOR_CHANNEL::R ||
+			(Packet.eBaseRadianceChannel != EFFECT_STANDARD_COLOR_CHANNEL::R &&
+			 Packet.eBaseRadianceChannel != EFFECT_STANDARD_COLOR_CHANNEL::G &&
+			 Packet.eBaseRadianceChannel != EFFECT_STANDARD_COLOR_CHANNEL::B &&
+			 Packet.eBaseRadianceChannel != EFFECT_STANDARD_COLOR_CHANNEL::RGB) ||
+			Packet.eCoverageChannel < EFFECT_STANDARD_COLOR_CHANNEL::R ||
+			Packet.eCoverageChannel > EFFECT_STANDARD_COLOR_CHANNEL::A ||
+			Packet.eEmissiveMode >= EFFECT_STANDARD_COLOR_EMISSIVE_MODE::END ||
+			Packet.eLifetimeEnvelope !=
+				EFFECT_STANDARD_COLOR_LIFETIME_ENVELOPE::CARRIER_ALPHA ||
+			Packet.eDissolveMode >= EFFECT_STANDARD_COLOR_DISSOLVE_MODE::END ||
+			Packet.eMissingLanePolicy !=
+				EFFECT_STANDARD_COLOR_MISSING_LANE_POLICY::FAIL_CLOSED ||
+			!std::isfinite(Packet.fDissolveSoftness) ||
+			Packet.fDissolveSoftness < 0.f || Packet.fDissolveSoftness > 1.f)
+		{
+			strOutError = "StandardColorV1 packet identity or hidden state is invalid.";
+			return false;
+		}
+
+		const auto FindLane = [&Execution](const std::string_view strLaneId,
+			size_t& iOutIndex) -> const EFFECT_MATERIAL_TEXTURE_LANE_DESC*
+		{
+			for (size_t iLane = 0u; iLane < Execution.TextureLanes.size(); ++iLane)
+			{
+				if (Execution.TextureLanes[iLane].strLaneId == strLaneId)
+				{
+					iOutIndex =
+						Execution.TextureLanes[iLane].iTextureRegister;
+					return &Execution.TextureLanes[iLane];
+				}
+			}
+			return nullptr;
+		};
+		size_t iBaseLane = 0u;
+		size_t iCoverageLane = 0u;
+		const EFFECT_MATERIAL_TEXTURE_LANE_DESC* pBaseLane = FindLane(
+			Packet.strBaseRadianceLaneId, iBaseLane);
+		const EFFECT_MATERIAL_TEXTURE_LANE_DESC* pCoverageLane = FindLane(
+			Packet.strCoverageLaneId, iCoverageLane);
+		if (nullptr == pBaseLane || nullptr == pCoverageLane ||
+			!Is_CanonicalStandardColorSourceChannel(pBaseLane->strSourceChannel) ||
+			!Is_CanonicalStandardColorSourceChannel(
+				pCoverageLane->strSourceChannel) ||
+			!StandardColorLaneContainsChannel(
+				*pBaseLane, Packet.eBaseRadianceChannel) ||
+			!StandardColorLaneContainsChannel(
+				*pCoverageLane, Packet.eCoverageChannel) ||
+			(Packet.eCoverageChannel != EFFECT_STANDARD_COLOR_CHANNEL::A &&
+			 pCoverageLane->eColorSpace != EFFECT_TEXTURE_COLOR_SPACE::LINEAR))
+		{
+			strOutError = "StandardColorV1 base-radiance or coverage lane is invalid.";
+			return false;
+		}
+
+		uint32_t iRequiredMask = (1u << iBaseLane) | (1u << iCoverageLane);
+		if (Packet.eDissolveMode == EFFECT_STANDARD_COLOR_DISSOLVE_MODE::NONE)
+		{
+			if (!Packet.strDissolveLaneId.empty() ||
+				Packet.eDissolveChannel != EFFECT_STANDARD_COLOR_CHANNEL::INVALID ||
+				0.f != Packet.fDissolveSoftness)
+			{
+				strOutError = "Disabled StandardColorV1 dissolve carries hidden state.";
+				return false;
+			}
+		}
+		else
+		{
+			size_t iDissolveLane = 0u;
+			const EFFECT_MATERIAL_TEXTURE_LANE_DESC* pDissolveLane = FindLane(
+				Packet.strDissolveLaneId, iDissolveLane);
+			if (nullptr == pDissolveLane ||
+				Packet.eDissolveChannel < EFFECT_STANDARD_COLOR_CHANNEL::R ||
+				Packet.eDissolveChannel > EFFECT_STANDARD_COLOR_CHANNEL::A ||
+				!Is_CanonicalStandardColorSourceChannel(
+					pDissolveLane->strSourceChannel) ||
+				!StandardColorLaneContainsChannel(
+					*pDissolveLane, Packet.eDissolveChannel) ||
+				(Packet.eDissolveChannel != EFFECT_STANDARD_COLOR_CHANNEL::A &&
+				 pDissolveLane->eColorSpace != EFFECT_TEXTURE_COLOR_SPACE::LINEAR))
+			{
+				strOutError = "StandardColorV1 dissolve lane is invalid.";
+				return false;
+			}
+			iRequiredMask |= 1u << iDissolveLane;
+		}
+		if (iRequiredMask != Execution.iTextureMask)
+		{
+			strOutError =
+				"StandardColorV1 texture mask contains an unreferenced or missing lane.";
+			return false;
+		}
+		return true;
+	}
+
 	bool_t Validate_MaterialExecution(
 		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution,
 		std::string& strOutError)
@@ -1482,6 +1859,7 @@ namespace
 				0u != Execution.iStencilReference ||
 				0u != Execution.iTextureLaneCount ||
 				0u != Execution.iTextureMask || !Execution.TextureLanes.empty() ||
+				!Is_DefaultStandardColorV1(Execution.StandardColorV1) ||
 				0u != Execution.iDynamicConsumedMask ||
 				0u != Execution.iDynamicSuppressedMask ||
 				0u != Execution.iParticleColorPolicy ||
@@ -1569,7 +1947,9 @@ namespace
 						}));
 			const bool_t bChannelRequired =
 				Execution.eBackend ==
-					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL;
+					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL ||
+				Execution.eBackend ==
+					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
 			const Client::EFFECT_MATERIAL_SAMPLER_DESC& Sampler = Lane.Sampler;
 			const bool_t bLaneIdStable = Is_StableId(Lane.strLaneId);
 			const bool_t bRoleStable = Is_StableId(Lane.strRole);
@@ -1777,7 +2157,7 @@ namespace
 			strOutError = "Authored Artist Visual parameter or color is invalid.";
 			return false;
 		}
-		return true;
+		return Validate_StandardColorV1Execution(Execution, strOutError);
 	}
 
 	bool_t Read_SourceAdmission(
@@ -5491,6 +5871,40 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			strOutError))
 		{
 			strOutError += " Element: " + Element.strElementId + ".";
+			return false;
+		}
+		const bool_t bStandardColorBackend =
+			Element.Material.Execution.bEnabled &&
+			Element.Material.Execution.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
+		const bool_t bStandardColorTemplate =
+			Element.Material.strTemplateId == EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID;
+		if (bStandardColorBackend != bStandardColorTemplate ||
+			(bStandardColorBackend &&
+			 (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
+			  Element.eKind != EFFECT_ELEMENT_KIND::DECAL &&
+			  Element.eKind != EFFECT_ELEMENT_KIND::TRAIL)) ||
+			(bStandardColorBackend &&
+			 (Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+			  Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END)) ||
+			(bStandardColorBackend && !Element.ResourceBindings.empty()) ||
+			(bStandardColorBackend && Element.Material.SourceMaterial.bEnabled) ||
+			(bStandardColorBackend &&
+			 Element.Material.eRenderProfile ==
+				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE) ||
+			(bStandardColorBackend &&
+			 Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			 Element.SourceRecipe.bEnabled &&
+			 Element.SourceRecipe.strRendererShape != "sprite") ||
+			(bStandardColorBackend &&
+			 (0.f != Element.Detail.Color.fDistortionIntensity ||
+			  Element.Detail.Color.bDistortionOnBaseMaterial ||
+			  0.f != Element.Detail.Color.fRadialTime ||
+			  0.f != Element.Detail.Color.fRadialIntensity)))
+		{
+			strOutError =
+				"StandardColorV1 template, carrier, or generic-only state is invalid: " +
+				Element.strElementId + ".";
 			return false;
 		}
 		const bool_t bAuthoringExecutionTarget =

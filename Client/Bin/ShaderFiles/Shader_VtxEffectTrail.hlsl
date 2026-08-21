@@ -1,5 +1,6 @@
 #include "Shader_EffectCommon.hlsli"
 #include "Shader_Artist31470RuntimeMaterial.hlsli"
+#include "Shader_EffectStandardColorV1.hlsli"
 #include "Shader_Artist31470Active003RibbonMaterial.hlsli"
 
 float4x4 g_WorldMatrix;
@@ -35,6 +36,10 @@ VS_OUT VS_MAIN(VS_IN input)
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
+    if (0u != g_StandardColorV1Enabled)
+    {
+        return Shade_EffectStandardColorV1(input.uv, input.color);
+    }
     if (0u != g_RuntimeMaterialV2Enabled)
     {
         if (g_RuntimeMaterialV2Opcode ==

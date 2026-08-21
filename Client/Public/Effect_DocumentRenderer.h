@@ -290,6 +290,13 @@ private:
 		uint32_t iRuntimeMaterialV2RenderInputCount = 0u;
 		uint32_t iRuntimeMaterialV2RenderConsumedMask = 0u;
 		uint32_t iRuntimeMaterialV2RenderSuppressedMask = 0u;
+		uint32_t iStandardColorV1Enabled = 0u;
+		std::array<uint32_t, 4u> StandardColorV1Header{};
+		std::array<uint32_t, 4u> StandardColorV1BaseCoverage{};
+		std::array<uint32_t, 4u> StandardColorV1Dissolve{};
+		std::array<uint32_t, 4u> StandardColorV1Policies{};
+		float4_t vStandardColorV1Scalars{};
+		EFFECT_STANDARD_COLOR_V1_DESC StandardColorV1;
 		/* Artist F V4 is a finite, occurrence-admitted visual program.  It
 		   deliberately owns a separate opcode namespace from RuntimeMaterialV2;
 		   SourceTextures remain the shared typed SRV carrier. */
