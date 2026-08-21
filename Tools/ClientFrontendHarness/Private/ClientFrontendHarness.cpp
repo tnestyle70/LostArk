@@ -36715,6 +36715,759 @@ namespace
 		runner.Require(bQYawRigid,
 			"DimensionMaster Q Voronoi And Slash Rotate As One Rigid Local-Space Pair With Cast Yaw");
 	}
+
+	void Test_EffectStandardColorV1(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+
+		struct TEMP_FIXTURE_ROOT final
+		{
+			std::filesystem::path Path;
+			~TEMP_FIXTURE_ROOT()
+			{
+				std::error_code Error;
+				std::filesystem::remove_all(Path, Error);
+			}
+		};
+
+		const std::filesystem::path FixtureRoot =
+			std::filesystem::temp_directory_path() /
+			("lostark-effect-standard-color-v1-" +
+			 std::to_string(GetCurrentProcessId()) + "-" +
+			 std::to_string(GetTickCount64()));
+		TEMP_FIXTURE_ROOT FixtureCleanup{ FixtureRoot };
+		const std::filesystem::path TextureDirectory =
+			FixtureRoot / L"Effect" / L"Harness";
+		std::error_code FixtureError;
+		const bool_t bFixtureDirectoryReady =
+			std::filesystem::create_directories(
+				TextureDirectory, FixtureError) && !FixtureError;
+		runner.Require(bFixtureDirectoryReady,
+			"StandardColorV1 Harness Creates An Isolated Runtime Texture Root");
+		if (!bFixtureDirectoryReady)
+			return;
+
+		const auto WriteRgbaDds = [](const std::filesystem::path& Path,
+			const uint8_t Red, const uint8_t Green, const uint8_t Blue,
+			const uint8_t Alpha)
+		{
+			std::array<uint32_t, 32u> Header{};
+			Header[0u] = 0x20534444u;
+			Header[1u] = 124u;
+			Header[2u] = 0x0000100fu;
+			Header[3u] = 2u;
+			Header[4u] = 2u;
+			Header[5u] = 8u;
+			Header[7u] = 1u;
+			Header[19u] = 32u;
+			Header[20u] = 0x00000041u;
+			Header[22u] = 32u;
+			Header[23u] = 0x000000ffu;
+			Header[24u] = 0x0000ff00u;
+			Header[25u] = 0x00ff0000u;
+			Header[26u] = 0xff000000u;
+			Header[27u] = 0x00001000u;
+			const uint32_t Pixel = static_cast<uint32_t>(Red) |
+				(static_cast<uint32_t>(Green) << 8u) |
+				(static_cast<uint32_t>(Blue) << 16u) |
+				(static_cast<uint32_t>(Alpha) << 24u);
+			const std::array<uint32_t, 4u> Pixels = {
+				Pixel, Pixel, Pixel, Pixel };
+			std::ofstream Output(Path, std::ios::binary | std::ios::trunc);
+			Output.write(reinterpret_cast<const char_t*>(Header.data()),
+				static_cast<std::streamsize>(sizeof(Header)));
+			Output.write(reinterpret_cast<const char_t*>(Pixels.data()),
+				static_cast<std::streamsize>(sizeof(Pixels)));
+			Output.flush();
+			return Output.good();
+		};
+		const auto WriteBc1Dds = [](const std::filesystem::path& Path)
+		{
+			std::array<uint32_t, 32u> Header{};
+			Header[0u] = 0x20534444u;
+			Header[1u] = 124u;
+			Header[2u] = 0x00081007u;
+			Header[3u] = 4u;
+			Header[4u] = 4u;
+			Header[5u] = 8u;
+			Header[7u] = 1u;
+			Header[19u] = 32u;
+			Header[20u] = 0x00000004u;
+			Header[21u] = 0x31545844u;
+			Header[27u] = 0x00001000u;
+			const std::array<uint8_t, 8u> Block = {
+				0xffu, 0xffu, 0x00u, 0x00u,
+				0x00u, 0x00u, 0x00u, 0x00u };
+			std::ofstream Output(Path, std::ios::binary | std::ios::trunc);
+			Output.write(reinterpret_cast<const char_t*>(Header.data()),
+				static_cast<std::streamsize>(sizeof(Header)));
+			Output.write(reinterpret_cast<const char_t*>(Block.data()),
+				static_cast<std::streamsize>(sizeof(Block)));
+			Output.flush();
+			return Output.good();
+		};
+
+		const std::filesystem::path RgbaPath =
+			TextureDirectory / L"standard_color_rgba.dds";
+		const std::filesystem::path DissolvePath =
+			TextureDirectory / L"standard_color_dissolve.dds";
+		const std::filesystem::path Bc1Path =
+			TextureDirectory / L"standard_color_bc1.dds";
+		const bool_t bTexturesReady =
+			WriteRgbaDds(RgbaPath, 128u, 64u, 32u, 32u) &&
+			WriteRgbaDds(DissolvePath, 96u, 0u, 0u, 255u) &&
+			WriteBc1Dds(Bc1Path);
+		runner.Require(bTexturesReady,
+			"StandardColorV1 Harness Writes Deterministic RGBA And DXT1 DDS Fixtures");
+		if (!bTexturesReady)
+			return;
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const bool_t bResourceRootReady =
+			ResourceRootEnvironment.Set(FixtureRoot.c_str());
+		runner.Require(bResourceRootReady,
+			"StandardColorV1 Harness Points Runtime Resolution At Only Its Isolated Fixtures");
+		if (!bResourceRootReady)
+			return;
+
+		const auto BuildDocument = [](
+			const EFFECT_ELEMENT_KIND eKind,
+			const EFFECT_STANDARD_COLOR_CHANNEL eCoverageChannel,
+			const EFFECT_TEXTURE_COLOR_SPACE eBaseColorSpace,
+			const EFFECT_STANDARD_COLOR_EMISSIVE_MODE eEmissiveMode,
+			const bool_t bDissolve,
+			const std::string_view strSuffix)
+		{
+			EFFECT_DOCUMENT_DESC Document;
+			Document.strEffectAssetId =
+				"effect.harness.standard-color-v1." + std::string(strSuffix);
+			Document.strDisplayName = "StandardColorV1 Harness";
+			EFFECT_ELEMENT_DESC Element;
+			Element.strElementId = "standard-color-v1." +
+				std::string(strSuffix);
+			Element.strDisplayName = "StandardColorV1";
+			Element.eKind = eKind;
+			Element.Material.strTemplateId =
+				std::string(EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID);
+			Element.Material.eRenderProfile =
+				EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
+			EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+				Element.Material.Execution;
+			Execution.bEnabled = true;
+			Execution.eBackend =
+				EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
+			Execution.iOpcode = 1u;
+			Execution.iPassIndex = 1u;
+			Execution.strRasterizerState = "RS_Cull_None";
+			Execution.strDepthStencilState = "DSS_ReadOnly";
+			Execution.strBlendState = "BS_EffectAlpha";
+
+			EFFECT_MATERIAL_TEXTURE_LANE_DESC BaseLane;
+			BaseLane.strLaneId = "lane.base";
+			BaseLane.strRole = "baseRadiance";
+			BaseLane.strAssetId =
+				"Effect/Harness/standard_color_rgba.dds";
+			BaseLane.iTextureRegister = 0u;
+			BaseLane.iSamplerRegister = 5u;
+			BaseLane.strSourceChannel = "RGBA";
+			BaseLane.eColorSpace = eBaseColorSpace;
+			Execution.TextureLanes.push_back(BaseLane);
+			if (bDissolve)
+			{
+				EFFECT_MATERIAL_TEXTURE_LANE_DESC DissolveLane;
+				DissolveLane.strLaneId = "lane.dissolve";
+				DissolveLane.strRole = "dissolve";
+				DissolveLane.strAssetId =
+					"Effect/Harness/standard_color_dissolve.dds";
+				DissolveLane.iTextureRegister = 1u;
+				DissolveLane.iSamplerRegister = 6u;
+				DissolveLane.strSourceChannel = "R";
+				DissolveLane.eColorSpace = EFFECT_TEXTURE_COLOR_SPACE::LINEAR;
+				Execution.TextureLanes.push_back(DissolveLane);
+			}
+			Execution.iTextureLaneCount = static_cast<uint32_t>(
+				Execution.TextureLanes.size());
+			Execution.iTextureMask =
+				(1u << Execution.iTextureLaneCount) - 1u;
+			EFFECT_STANDARD_COLOR_V1_DESC& Packet = Execution.StandardColorV1;
+			Packet.iPacketVersion = 1u;
+			Packet.strBaseRadianceLaneId = "lane.base";
+			Packet.eBaseRadianceChannel = EFFECT_STANDARD_COLOR_CHANNEL::RGB;
+			Packet.strCoverageLaneId = "lane.base";
+			Packet.eCoverageChannel = eCoverageChannel;
+			Packet.eEmissiveMode = eEmissiveMode;
+			Packet.eLifetimeEnvelope =
+				EFFECT_STANDARD_COLOR_LIFETIME_ENVELOPE::CARRIER_ALPHA;
+			Packet.eDissolveMode = bDissolve ?
+				EFFECT_STANDARD_COLOR_DISSOLVE_MODE::LANE_THRESHOLD :
+				EFFECT_STANDARD_COLOR_DISSOLVE_MODE::NONE;
+			if (bDissolve)
+			{
+				Packet.strDissolveLaneId = "lane.dissolve";
+				Packet.eDissolveChannel = EFFECT_STANDARD_COLOR_CHANNEL::R;
+			}
+			Packet.eMissingLanePolicy =
+				EFFECT_STANDARD_COLOR_MISSING_LANE_POLICY::FAIL_CLOSED;
+
+			Element.Detail.Timing.fLifeTimeSeconds = 1.f;
+			Element.Detail.Timing.fDissolveStartNormalized =
+				bDissolve ? 0.f : 1.f;
+			Element.Detail.Transform.vPosition = { 0.f, 1.f, 0.f };
+			Element.Detail.Particle.iMaxParticles = 1u;
+			Element.Detail.Particle.fSpawnRatePerSecond = 0.f;
+			Element.Detail.Particle.iBurstCount = 1u;
+			Element.Detail.Particle.vLifeTimeSeconds = { 1.f, 1.f };
+			Element.Detail.Particle.vInitialVelocityMin = { 0.f, 0.f, 0.f };
+			Element.Detail.Particle.vInitialVelocityMax = { 0.f, 0.f, 0.f };
+			Element.Detail.Particle.vAcceleration = { 0.f, 0.f, 0.f };
+			Element.Detail.Particle.vStartSize = { 2.f, 2.f };
+			Element.Detail.Particle.vEndSize = { 2.f, 2.f };
+			Element.Detail.Particle.bBillboard = false;
+			Element.Detail.Decal.vSize = { 5000.f, 5000.f };
+			Element.Detail.Decal.fDepth = 5000.f;
+			Element.Detail.Trail.fStartWidth = 2.f;
+			Element.Detail.Trail.fEndWidth = 2.f;
+			Element.Detail.Trail.bFaceCamera = true;
+			Document.Elements.push_back(std::move(Element));
+			return Document;
+		};
+
+		const std::array<EFFECT_ELEMENT_KIND, 3u> CarrierKinds = {{
+			EFFECT_ELEMENT_KIND::PARTICLE,
+			EFFECT_ELEMENT_KIND::DECAL,
+			EFFECT_ELEMENT_KIND::TRAIL }};
+		bool_t bCarrierCodecExact = true;
+		for (size_t iCarrier = 0u; iCarrier < CarrierKinds.size(); ++iCarrier)
+		{
+			const std::string Suffix = "codec." + std::to_string(iCarrier);
+			const EFFECT_DOCUMENT_DESC Document = BuildDocument(
+				CarrierKinds[iCarrier], EFFECT_STANDARD_COLOR_CHANNEL::A,
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE, false, Suffix);
+			std::string Status;
+			const std::string Canonical =
+				CEffectDocumentCodec::Serialize(Document);
+			EFFECT_DOCUMENT_DESC RoundTrip;
+			bCarrierCodecExact = bCarrierCodecExact &&
+				CEffectDocumentCodec::Validate_Drawable(Document, Status) &&
+				Canonical.find("\"backend\": \"standardColorV1\"") !=
+					std::string::npos &&
+				Canonical.find("\"standardColor\":") != std::string::npos &&
+				CEffectDocumentCodec::Parse(Canonical, RoundTrip, Status) &&
+				CEffectDocumentCodec::Serialize(RoundTrip) == Canonical &&
+				RoundTrip.Elements.size() == 1u &&
+				RoundTrip.Elements.front().Renderer.eType ==
+					EFFECT_RENDERER_TYPE::END &&
+				RoundTrip.Elements.front().Material.Execution.StandardColorV1.
+					eCoverageChannel == EFFECT_STANDARD_COLOR_CHANNEL::A;
+		}
+		runner.Require(bCarrierCodecExact,
+			"StandardColorV1 Codec Round Trips Particle Decal And Trail With Runtime-V13 Carriers");
+
+		EFFECT_DOCUMENT_DESC Legacy;
+		Legacy.strEffectAssetId = "effect.harness.standard-color-v1.legacy";
+		Legacy.strDisplayName = "Legacy Generic Control";
+		EFFECT_ELEMENT_DESC LegacySprite;
+		LegacySprite.strElementId = "legacy.generic.sprite";
+		LegacySprite.strDisplayName = "Legacy Generic Sprite";
+		LegacySprite.eKind = EFFECT_ELEMENT_KIND::SPRITE;
+		LegacySprite.ResourceBindings.push_back({
+			"base", "Effect/Harness/standard_color_rgba.dds" });
+		Legacy.Elements.push_back(LegacySprite);
+		std::string Status;
+		const std::string LegacyCanonical =
+			CEffectDocumentCodec::Serialize(Legacy);
+		EFFECT_DOCUMENT_DESC LegacyRoundTrip;
+		const bool_t bLegacyUnchanged =
+			CEffectDocumentCodec::Validate_Drawable(Legacy, Status) &&
+			LegacyCanonical.find("standardColor") == std::string::npos &&
+			CEffectDocumentCodec::Parse(
+				LegacyCanonical, LegacyRoundTrip, Status) &&
+			CEffectDocumentCodec::Serialize(LegacyRoundTrip) == LegacyCanonical &&
+			LegacyRoundTrip.Elements.front().Material.Execution.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::GENERIC;
+		runner.Require(bLegacyUnchanged,
+			"StandardColorV1 Opt In Leaves Legacy Generic Codec Bytes And Backend Unchanged");
+
+		const EFFECT_DOCUMENT_DESC Valid = BuildDocument(
+			EFFECT_ELEMENT_KIND::PARTICLE, EFFECT_STANDARD_COLOR_CHANNEL::A,
+			EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+			EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE, false, "negative");
+		const auto IsRejected = [&Status](const EFFECT_DOCUMENT_DESC& Candidate)
+		{
+			Status.clear();
+			return !CEffectDocumentCodec::Validate_Drawable(Candidate, Status) &&
+				!Status.empty();
+		};
+		EFFECT_DOCUMENT_DESC MissingLane = Valid;
+		MissingLane.Elements.front().Material.Execution.StandardColorV1.
+			strCoverageLaneId = "lane.missing";
+		EFFECT_DOCUMENT_DESC NonCanonicalChannel = Valid;
+		NonCanonicalChannel.Elements.front().Material.Execution.TextureLanes.
+			front().strSourceChannel = "ARGB";
+		EFFECT_DOCUMENT_DESC SrgbScalarCoverage = BuildDocument(
+			EFFECT_ELEMENT_KIND::PARTICLE, EFFECT_STANDARD_COLOR_CHANNEL::R,
+			EFFECT_TEXTURE_COLOR_SPACE::SRGB,
+			EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE, false, "bad-srgb");
+		EFFECT_DOCUMENT_DESC UnreferencedLane = Valid;
+		EFFECT_MATERIAL_TEXTURE_LANE_DESC ExtraLane =
+			UnreferencedLane.Elements.front().Material.Execution.TextureLanes.front();
+		ExtraLane.strLaneId = "lane.extra";
+		ExtraLane.strRole = "extra";
+		ExtraLane.iTextureRegister = 1u;
+		ExtraLane.iSamplerRegister = 6u;
+		UnreferencedLane.Elements.front().Material.Execution.TextureLanes.
+			push_back(ExtraLane);
+		UnreferencedLane.Elements.front().Material.Execution.iTextureLaneCount = 2u;
+		UnreferencedLane.Elements.front().Material.Execution.iTextureMask = 3u;
+		EFFECT_DOCUMENT_DESC TemplateMismatch = Valid;
+		TemplateMismatch.Elements.front().Material.strTemplateId =
+			std::string(EFFECT_STANDARD_MATERIAL_TEMPLATE_ID);
+		EFFECT_DOCUMENT_DESC WrongCarrier = Valid;
+		WrongCarrier.Elements.front().eKind = EFFECT_ELEMENT_KIND::MESH;
+		EFFECT_DOCUMENT_DESC NativeRendererLeak = Valid;
+		NativeRendererLeak.Elements.front().Renderer.eType =
+			EFFECT_RENDERER_TYPE::SPRITE_PARTICLE;
+		NativeRendererLeak.Elements.front().Renderer.eSourceSpace =
+			EFFECT_SOURCE_SPACE::CLIENT_METERS_V1;
+		EFFECT_DOCUMENT_DESC MissingPhysicalAsset = Valid;
+		MissingPhysicalAsset.Elements.front().Material.Execution.TextureLanes.
+			front().strAssetId = "Effect/Harness/missing.dds";
+		const bool_t bNegativeClosure = IsRejected(MissingLane) &&
+			IsRejected(NonCanonicalChannel) && IsRejected(SrgbScalarCoverage) &&
+			IsRejected(UnreferencedLane) && IsRejected(TemplateMismatch) &&
+			IsRejected(WrongCarrier) && IsRejected(NativeRendererLeak) &&
+			IsRejected(MissingPhysicalAsset);
+		runner.Require(bNegativeClosure,
+			"StandardColorV1 Codec Fails Closed On Missing Noncanonical Extra Mismatched Or Missing-File Lanes");
+
+		EFFECT_DOCUMENT_DESC VersionMutation = Valid;
+		VersionMutation.Elements.front().Material.Execution.StandardColorV1.
+			iPacketVersion = 2u;
+		EFFECT_DOCUMENT_DESC Preserved = Valid;
+		Preserved.strEffectAssetId =
+			"effect.harness.standard-color-v1.preserved";
+		const std::string PreservedBefore =
+			CEffectDocumentCodec::Serialize(Preserved);
+		Status.clear();
+		const bool_t bParseRollback =
+			!CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(VersionMutation),
+				Preserved, Status) &&
+			CEffectDocumentCodec::Serialize(Preserved) == PreservedBefore;
+		runner.Require(bParseRollback,
+			"StandardColorV1 Invalid Packet Version Preserves The Prior Codec Document");
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		Status.clear();
+		const bool_t bWorkingDirectoryReady = WorkingDirectory.Initialize(
+			Resolve_ClientWorkingDirectory(), Status);
+		runner.Require(bWorkingDirectoryReady,
+			"StandardColorV1 WARP Uses The Canonical Client Working Directory");
+		if (!bWorkingDirectoryReady)
+			return;
+
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		Status.clear();
+		const bool_t bEngineReady = EngineScope.Initialize(Status);
+		if (!bEngineReady)
+			std::cout << "[STANDARD-COLOR-V1] WARP=" << Status << '\n';
+		runner.Require(bEngineReady,
+			"StandardColorV1 Initializes The Shared Hidden Microsoft WARP Renderer");
+		if (!bEngineReady)
+			return;
+		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+
+		struct COLOR_CAPTURE final
+		{
+			uint64_t iPixelCount = 0u;
+			uint64_t iRedSum = 0u;
+			uint64_t iGreenSum = 0u;
+			uint64_t iBlueSum = 0u;
+			uint64_t iAlphaSum = 0u;
+		};
+		const auto CaptureColor = [&Device, &Context](
+			COLOR_CAPTURE& Out, std::string& strOutError)
+		{
+			Out = {};
+			ComPtr<ID3D11RenderTargetView> TargetView;
+			Context->OMGetRenderTargets(1u, TargetView.GetAddressOf(), nullptr);
+			ComPtr<ID3D11Resource> TargetResource;
+			ComPtr<ID3D11Texture2D> TargetTexture;
+			if (!TargetView)
+			{
+				strOutError = "StandardColorV1 target is not bound.";
+				return false;
+			}
+			TargetView->GetResource(TargetResource.GetAddressOf());
+			if (!TargetResource || FAILED(TargetResource.As(&TargetTexture)) ||
+				!TargetTexture)
+			{
+				strOutError = "StandardColorV1 target is not a texture.";
+				return false;
+			}
+			D3D11_TEXTURE2D_DESC TargetDesc{};
+			TargetTexture->GetDesc(&TargetDesc);
+			if (TargetDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+				TargetDesc.SampleDesc.Count != 1u)
+			{
+				strOutError = "StandardColorV1 target format changed.";
+				return false;
+			}
+			D3D11_TEXTURE2D_DESC StagingDesc = TargetDesc;
+			StagingDesc.BindFlags = 0u;
+			StagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			StagingDesc.MiscFlags = 0u;
+			StagingDesc.Usage = D3D11_USAGE_STAGING;
+			ComPtr<ID3D11Texture2D> Staging;
+			if (FAILED(Device->CreateTexture2D(
+				&StagingDesc, nullptr, &Staging)) || !Staging)
+			{
+				strOutError = "StandardColorV1 staging texture failed.";
+				return false;
+			}
+			Context->CopyResource(Staging.Get(), TargetTexture.Get());
+			D3D11_MAPPED_SUBRESOURCE Mapped{};
+			if (FAILED(Context->Map(
+				Staging.Get(), 0u, D3D11_MAP_READ, 0u, &Mapped)))
+			{
+				strOutError = "StandardColorV1 staging map failed.";
+				return false;
+			}
+			for (uint32_t y = 0u; y < TargetDesc.Height; ++y)
+			{
+				const uint8_t* pRow = static_cast<const uint8_t*>(Mapped.pData) +
+					static_cast<size_t>(y) * Mapped.RowPitch;
+				for (uint32_t x = 0u; x < TargetDesc.Width; ++x)
+				{
+					const uint8_t* pPixel = pRow + static_cast<size_t>(x) * 4u;
+					if (0u != (pPixel[0u] | pPixel[1u] |
+						pPixel[2u] | pPixel[3u]))
+					{
+						++Out.iPixelCount;
+					}
+					Out.iRedSum += pPixel[0u];
+					Out.iGreenSum += pPixel[1u];
+					Out.iBlueSum += pPixel[2u];
+					Out.iAlphaSum += pPixel[3u];
+				}
+			}
+			Context->Unmap(Staging.Get(), 0u);
+			strOutError.clear();
+			return true;
+		};
+
+		struct RENDER_RESULT final
+		{
+			bool_t bCommitted = false;
+			bool_t bDrew = false;
+			EFFECT_GPU_RENDER_FAMILY_STATS Family;
+			COLOR_CAPTURE Color;
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+			EFFECT_GPU_RENDER_CARRIER eCarrier =
+				EFFECT_GPU_RENDER_CARRIER::END;
+			uint64_t iSamplerBindCount = 0u;
+			uint64_t iIssuedDrawCallCount = 0u;
+			uint32_t iSourceTextureMask = 0u;
+#endif
+		};
+		const auto FamilyForKind = [](const EFFECT_ELEMENT_KIND eKind)
+		{
+			switch (eKind)
+			{
+			case EFFECT_ELEMENT_KIND::PARTICLE:
+				return EFFECT_GPU_RENDER_FAMILY::SPRITE;
+			case EFFECT_ELEMENT_KIND::DECAL:
+				return EFFECT_GPU_RENDER_FAMILY::DECAL;
+			case EFFECT_ELEMENT_KIND::TRAIL:
+				return EFFECT_GPU_RENDER_FAMILY::RIBBON;
+			default:
+				return EFFECT_GPU_RENDER_FAMILY::END;
+			}
+		};
+		const auto BuildFrame = [](const EFFECT_DOCUMENT_DESC& Document,
+			const f32_t fSampleTime, const f32_t fCarrierAlpha)
+		{
+			EFFECT_EVALUATED_FRAME Frame;
+			Frame.fSampleTimeSeconds = fSampleTime;
+			XMStoreFloat4x4(&Frame.RootWorld, XMMatrixIdentity());
+			const EFFECT_ELEMENT_DESC& Element = Document.Elements.front();
+			Frame.GpuOccurrences.push_back({ &Element, true, 1u });
+			if (Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+			{
+				EFFECT_EVALUATED_PARTICLE Particle;
+				Particle.pElement = &Element;
+				XMStoreFloat4x4(&Particle.World,
+					XMMatrixScaling(2.f, 2.f, 1.f) *
+					XMMatrixTranslation(0.f, 1.f, 0.f));
+				Particle.Color = { 1.f, 1.f, 1.f, fCarrierAlpha };
+				Particle.fNormalizedLife = 1.f - fCarrierAlpha;
+				Frame.Particles.push_back(Particle);
+			}
+			else if (Element.eKind == EFFECT_ELEMENT_KIND::DECAL)
+			{
+				EFFECT_EVALUATED_ELEMENT Decal;
+				Decal.pElement = &Element;
+				XMStoreFloat4x4(&Decal.World, XMMatrixIdentity());
+				Decal.Color = Element.Detail.Color;
+				Decal.Color.vColorMultiply.w = fCarrierAlpha;
+				Decal.fLocalTimeSeconds = fSampleTime;
+				Decal.fNormalizedLife = fSampleTime;
+				Frame.Elements.push_back(Decal);
+			}
+			else if (Element.eKind == EFFECT_ELEMENT_KIND::TRAIL)
+			{
+				EFFECT_EVALUATED_TRAIL Trail;
+				Trail.pElement = &Element;
+				for (uint32_t iPoint = 0u; iPoint < 3u; ++iPoint)
+				{
+					EFFECT_EVALUATED_TRAIL_POINT Point;
+					Point.vWorldPosition = {
+						static_cast<f32_t>(iPoint) - 1.f, 1.f, 0.f };
+					Point.fNormalizedAge = 1.f - fCarrierAlpha;
+					Point.fCumulativeDistance = static_cast<f32_t>(iPoint);
+					Trail.Points.push_back(Point);
+				}
+				Frame.Trails.push_back(std::move(Trail));
+			}
+			return Frame;
+		};
+		const auto RenderPrepared = [&](CEffectDocumentRenderer& Renderer,
+			const EFFECT_DOCUMENT_DESC& Document, const f32_t fSampleTime,
+			const f32_t fCarrierAlpha, RENDER_RESULT& Out)
+		{
+			Out = {};
+			std::string Error;
+			const EFFECT_EVALUATED_FRAME Frame = BuildFrame(
+				Document, fSampleTime, fCarrierAlpha);
+			HRESULT hRender = E_FAIL;
+			if (EngineScope.Begin_Frame(Error))
+			{
+				hRender = Renderer.Render(Frame);
+				Context->Flush();
+			}
+			const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+				Renderer.Get_LastRenderSubmissionStats();
+			const EFFECT_GPU_RENDER_FAMILY eFamily =
+				FamilyForKind(Document.Elements.front().eKind);
+			if (eFamily < EFFECT_GPU_RENDER_FAMILY::END)
+				Out.Family = Stats.Families[static_cast<size_t>(eFamily)];
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+			const auto Occurrence = std::find_if(
+				Stats.Occurrences.begin(), Stats.Occurrences.end(),
+				[&Document](const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row)
+				{
+					return Row.strElementId ==
+						Document.Elements.front().strElementId;
+				});
+			if (Occurrence != Stats.Occurrences.end())
+			{
+				Out.eCarrier = Occurrence->eCarrier;
+				Out.iSamplerBindCount = Occurrence->iSamplerBindCount;
+				Out.iIssuedDrawCallCount = Occurrence->iIssuedDrawCallCount;
+				Out.iSourceTextureMask = Occurrence->iSourceTextureMask;
+			}
+#endif
+			Out.bCommitted = SUCCEEDED(hRender) &&
+				S_OK == Device->GetDeviceRemovedReason() &&
+				Stats.bCompleted && Stats.bCommitted &&
+				CaptureColor(Out.Color, Error);
+			Out.bDrew = Out.bCommitted && 0u < Out.Family.iSubmitted;
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+			Out.bDrew = Out.bDrew && 0u < Out.iIssuedDrawCallCount &&
+				0u < Out.iSamplerBindCount;
+#endif
+			std::cout << "[STANDARD-COLOR-V1] id=" <<
+				Document.strEffectAssetId << " committed=" << Out.bCommitted <<
+				" submitted=" << Out.Family.iSubmitted << " pixels=" <<
+				Out.Color.iPixelCount << " rgba=" << Out.Color.iRedSum << ',' <<
+				Out.Color.iGreenSum << ',' << Out.Color.iBlueSum << ',' <<
+				Out.Color.iAlphaSum << " status=" <<
+				(Out.bCommitted ? "COMMITTED" : Error) << '\n';
+			return Out.bCommitted;
+		};
+		const auto RenderWitness = [&](const EFFECT_DOCUMENT_DESC& Document,
+			const f32_t fSampleTime, const f32_t fCarrierAlpha,
+			RENDER_RESULT& Out)
+		{
+			CEffectDocumentRenderer Renderer(Device, Context);
+			std::string Error;
+			const bool_t bStaged = SUCCEEDED(Renderer.Initialize()) &&
+				Renderer.Stage_Document(Document, Error);
+			if (!bStaged)
+			{
+				std::cout << "[STANDARD-COLOR-V1] stage id=" <<
+					Document.strEffectAssetId << " status=" << Error << '\n';
+				Out = {};
+				return false;
+			}
+			return RenderPrepared(
+				Renderer, Document, fSampleTime, fCarrierAlpha, Out);
+		};
+		const auto RgbSum = [](const RENDER_RESULT& Result)
+		{
+			return Result.Color.iRedSum + Result.Color.iGreenSum +
+				Result.Color.iBlueSum;
+		};
+
+		const EFFECT_DOCUMENT_DESC ParticleDocument = BuildDocument(
+			EFFECT_ELEMENT_KIND::PARTICLE, EFFECT_STANDARD_COLOR_CHANNEL::A,
+			EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+			EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE, false, "warp.particle");
+		const EFFECT_DOCUMENT_DESC DecalDocument = BuildDocument(
+			EFFECT_ELEMENT_KIND::DECAL, EFFECT_STANDARD_COLOR_CHANNEL::A,
+			EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+			EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE, false, "warp.decal");
+		const EFFECT_DOCUMENT_DESC TrailDocument = BuildDocument(
+			EFFECT_ELEMENT_KIND::TRAIL, EFFECT_STANDARD_COLOR_CHANNEL::A,
+			EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+			EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE, false, "warp.trail");
+		RENDER_RESULT ParticleResult;
+		RENDER_RESULT DecalResult;
+		RENDER_RESULT TrailResult;
+		const bool_t bThreeCarriersDraw =
+			RenderWitness(ParticleDocument, 0.25f, 1.f, ParticleResult) &&
+			RenderWitness(DecalDocument, 0.25f, 1.f, DecalResult) &&
+			RenderWitness(TrailDocument, 0.25f, 1.f, TrailResult) &&
+			ParticleResult.bDrew && DecalResult.bDrew && TrailResult.bDrew &&
+			0u < ParticleResult.Color.iPixelCount &&
+			0u < DecalResult.Color.iPixelCount &&
+			0u < TrailResult.Color.iPixelCount;
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+		const bool_t bCarrierKindsExact =
+			ParticleResult.eCarrier ==
+				EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE &&
+			DecalResult.eCarrier == EFFECT_GPU_RENDER_CARRIER::DECAL_RECT &&
+			TrailResult.eCarrier ==
+				EFFECT_GPU_RENDER_CARRIER::RIBBON_DYNAMIC_TRAIL &&
+			ParticleResult.iSourceTextureMask == 1u &&
+			DecalResult.iSourceTextureMask == 1u &&
+			TrailResult.iSourceTextureMask == 1u;
+#else
+		const bool_t bCarrierKindsExact = false;
+#endif
+		runner.Require(bThreeCarriersDraw && bCarrierKindsExact,
+			"StandardColorV1 Submits Nonzero WARP Pixels Through SpriteParticle Decal And Trail Carriers");
+
+		const EFFECT_DOCUMENT_DESC CoverageRDocument = BuildDocument(
+			EFFECT_ELEMENT_KIND::PARTICLE, EFFECT_STANDARD_COLOR_CHANNEL::R,
+			EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+			EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE, false, "warp.coverage-r");
+		RENDER_RESULT CoverageRResult;
+		const bool_t bCoverageRRendered = RenderWitness(
+			CoverageRDocument, 0.25f, 1.f, CoverageRResult);
+		const uint64_t iCoverageASum = RgbSum(ParticleResult);
+		const uint64_t iCoverageRSum = RgbSum(CoverageRResult);
+		runner.Require(bCoverageRRendered && CoverageRResult.bDrew &&
+			iCoverageASum > 0u && iCoverageRSum > iCoverageASum * 2u,
+			"StandardColorV1 Explicit R Coverage Is Distinct From Alpha Coverage On The Same RGBA DDS");
+
+		const EFFECT_DOCUMENT_DESC SrgbDocument = BuildDocument(
+			EFFECT_ELEMENT_KIND::PARTICLE, EFFECT_STANDARD_COLOR_CHANNEL::A,
+			EFFECT_TEXTURE_COLOR_SPACE::SRGB,
+			EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE, false, "warp.srgb");
+		RENDER_RESULT SrgbResult;
+		const bool_t bSrgbRendered = RenderWitness(
+			SrgbDocument, 0.25f, 1.f, SrgbResult);
+		runner.Require(bSrgbRendered && SrgbResult.bDrew &&
+			RgbSum(ParticleResult) > RgbSum(SrgbResult) * 2u,
+			"StandardColorV1 SRGB Lane Decodes Differently From Its Linear View While Alpha Coverage Stays Explicit");
+
+		EFFECT_DOCUMENT_DESC EmissiveNone = ParticleDocument;
+		EmissiveNone.strEffectAssetId =
+			"effect.harness.standard-color-v1.warp.emissive-none";
+		EmissiveNone.Elements.front().strElementId = "emissive.none";
+		EmissiveNone.Elements.front().Detail.Color.fEmissiveIntensity = 2.f;
+		EFFECT_DOCUMENT_DESC EmissiveBase = EmissiveNone;
+		EmissiveBase.strEffectAssetId =
+			"effect.harness.standard-color-v1.warp.emissive-base";
+		EmissiveBase.Elements.front().strElementId = "emissive.base";
+		EmissiveBase.Elements.front().Material.Execution.StandardColorV1.
+			eEmissiveMode = EFFECT_STANDARD_COLOR_EMISSIVE_MODE::BASE_RADIANCE;
+		RENDER_RESULT EmissiveNoneResult;
+		RENDER_RESULT EmissiveBaseResult;
+		const bool_t bEmissiveRendered = RenderWitness(
+			EmissiveNone, 0.25f, 1.f, EmissiveNoneResult) &&
+			RenderWitness(EmissiveBase, 0.25f, 1.f, EmissiveBaseResult);
+		runner.Require(bEmissiveRendered && EmissiveNoneResult.bDrew &&
+			EmissiveBaseResult.bDrew &&
+			RgbSum(EmissiveBaseResult) > RgbSum(EmissiveNoneResult) * 3u / 2u &&
+			EmissiveBase.Elements.front().Material.Execution.
+				iTextureLaneCount == 1u,
+			"StandardColorV1 Base Radiance Emissive Works Without An Emissive Texture Lane");
+
+		RENDER_RESULT LifetimeHighResult;
+		RENDER_RESULT LifetimeLowResult;
+		const bool_t bLifetimeRendered = RenderWitness(
+			ParticleDocument, 0.25f, 0.75f, LifetimeHighResult) &&
+			RenderWitness(ParticleDocument, 0.25f, 0.25f, LifetimeLowResult);
+		runner.Require(bLifetimeRendered && LifetimeHighResult.bDrew &&
+			LifetimeLowResult.bDrew &&
+			RgbSum(LifetimeHighResult) > RgbSum(LifetimeLowResult) * 2u,
+			"StandardColorV1 Lifetime Envelope Reads Only The Carrier Alpha At A Fixed Dissolve State");
+
+		const EFFECT_DOCUMENT_DESC DissolveDocument = BuildDocument(
+			EFFECT_ELEMENT_KIND::PARTICLE, EFFECT_STANDARD_COLOR_CHANNEL::A,
+			EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+			EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE, true, "warp.dissolve");
+		RENDER_RESULT DissolveOpenResult;
+		RENDER_RESULT DissolveClosedResult;
+		const bool_t bDissolveRendered = RenderWitness(
+			DissolveDocument, 0.25f, 0.75f, DissolveOpenResult) &&
+			RenderWitness(
+				DissolveDocument, 0.75f, 0.75f, DissolveClosedResult);
+		runner.Require(bDissolveRendered && DissolveOpenResult.bDrew &&
+			DissolveClosedResult.bDrew &&
+			0u < DissolveOpenResult.Color.iPixelCount &&
+			0u == DissolveClosedResult.Color.iPixelCount,
+			"StandardColorV1 Dissolve Threshold Changes Coverage While The Lifetime Carrier Remains Fixed");
+
+		EFFECT_DOCUMENT_DESC Bc1R = CoverageRDocument;
+		Bc1R.strEffectAssetId =
+			"effect.harness.standard-color-v1.warp.bc1-r";
+		Bc1R.Elements.front().strElementId = "bc1.coverage.r";
+		Bc1R.Elements.front().Material.Execution.TextureLanes.front().strAssetId =
+			"Effect/Harness/standard_color_bc1.dds";
+		Bc1R.Elements.front().Material.Execution.TextureLanes.front().
+			strSourceChannel = "RGB";
+		EFFECT_DOCUMENT_DESC Bc1A = Bc1R;
+		Bc1A.strEffectAssetId =
+			"effect.harness.standard-color-v1.warp.bc1-a";
+		Bc1A.Elements.front().strElementId = "bc1.coverage.a";
+		Bc1A.Elements.front().Material.Execution.TextureLanes.front().
+			strSourceChannel = "RGBA";
+		Bc1A.Elements.front().Material.Execution.StandardColorV1.
+			eCoverageChannel = EFFECT_STANDARD_COLOR_CHANNEL::A;
+		Status.clear();
+		const bool_t bBc1CodecAdmitsDeclaredContract =
+			CEffectDocumentCodec::Validate_Drawable(Bc1R, Status) &&
+			CEffectDocumentCodec::Validate_Drawable(Bc1A, Status);
+		RENDER_RESULT Bc1RResult;
+		const bool_t bBc1RRendered = RenderWitness(
+			Bc1R, 0.25f, 1.f, Bc1RResult);
+		CEffectDocumentRenderer TransactionRenderer(Device, Context);
+		Status.clear();
+		const bool_t bTransactionInitialized =
+			SUCCEEDED(TransactionRenderer.Initialize()) &&
+			TransactionRenderer.Stage_Document(Bc1R, Status);
+		Status.clear();
+		const bool_t bBc1ARejectedBySrv = bTransactionInitialized &&
+			!TransactionRenderer.Stage_Document(Bc1A, Status) &&
+			Status.find("channel/color-space") != std::string::npos;
+		RENDER_RESULT PreservedBc1RResult;
+		const bool_t bPriorStagePreserved = bBc1ARejectedBySrv &&
+			RenderPrepared(TransactionRenderer, Bc1R, 0.25f, 1.f,
+				PreservedBc1RResult) && PreservedBc1RResult.bDrew &&
+			0u < PreservedBc1RResult.Color.iPixelCount;
+		runner.Require(bBc1CodecAdmitsDeclaredContract && bBc1RRendered &&
+			Bc1RResult.bDrew && 0u < Bc1RResult.Color.iPixelCount &&
+			bBc1ARejectedBySrv && bPriorStagePreserved,
+			"StandardColorV1 DXT1 Uses Explicit R Coverage And Rejects Declared Alpha Without A Default SRV Fallback");
+
+		CEffectDocumentRenderer::Clear_Prepared_Catalog();
+	}
 }
 
 int main(const int argc, char* argv[])
@@ -36729,6 +37482,14 @@ int main(const int argc, char* argv[])
 		SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
 	TEST_RUNNER runner{};
 	const std::string Mode = argc > 1 && nullptr != argv[1] ? argv[1] : "";
+	if (Mode == "--effect-standard-color-v1-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_EffectStandardColorV1(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--effect-document-codec-sha")
 	{
 		if (argc <= 2)

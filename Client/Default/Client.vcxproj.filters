@@ -1494,6 +1494,9 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectRuntimeMaterialPacket.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
+    <None Include="..\Bin\ShaderFiles\Shader_EffectStandardColorV1.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
     <None Include="..\Bin\ShaderFiles\Shader_EffectLocalDecalAdapter.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>

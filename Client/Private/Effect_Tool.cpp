@@ -336,6 +336,8 @@ namespace
 			return "ArtistVisualV4";
 		case Client::EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL:
 			return "LocalDecal";
+		case Client::EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1:
+			return "StandardColorV1";
 		case Client::EFFECT_MATERIAL_EXECUTION_BACKEND::END:
 		default:
 			return "Invalid";
@@ -17534,6 +17536,7 @@ bool_t Client::CEffect_Tool::Ensure_ArtistFMaterialExecutionSnapshots()
 		case EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL:
 			++iLocalDecalCount;
 			break;
+		case EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1:
 		case EFFECT_MATERIAL_EXECUTION_BACKEND::GENERIC:
 		case EFFECT_MATERIAL_EXECUTION_BACKEND::END:
 		default:

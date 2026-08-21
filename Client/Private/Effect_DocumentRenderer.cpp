@@ -1324,6 +1324,157 @@ namespace
 		return true;
 	}
 
+	bool_t Same_StandardColorV1(
+		const Client::EFFECT_STANDARD_COLOR_V1_DESC& Left,
+		const Client::EFFECT_STANDARD_COLOR_V1_DESC& Right)
+	{
+		return Left.iPacketVersion == Right.iPacketVersion &&
+			Left.strBaseRadianceLaneId == Right.strBaseRadianceLaneId &&
+			Left.eBaseRadianceChannel == Right.eBaseRadianceChannel &&
+			Left.strCoverageLaneId == Right.strCoverageLaneId &&
+			Left.eCoverageChannel == Right.eCoverageChannel &&
+			Left.eEmissiveMode == Right.eEmissiveMode &&
+			Left.eLifetimeEnvelope == Right.eLifetimeEnvelope &&
+			Left.eDissolveMode == Right.eDissolveMode &&
+			Left.strDissolveLaneId == Right.strDissolveLaneId &&
+			Left.eDissolveChannel == Right.eDissolveChannel &&
+			Left.fDissolveSoftness == Right.fDissolveSoftness &&
+			Left.eMissingLanePolicy == Right.eMissingLanePolicy;
+	}
+
+	uint32_t StandardColorChannelMask(
+		const Client::EFFECT_STANDARD_COLOR_CHANNEL eChannel)
+	{
+		switch (eChannel)
+		{
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::R:
+			return 0x01u;
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::G:
+			return 0x02u;
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::B:
+			return 0x04u;
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::A:
+			return 0x08u;
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::RGB:
+			return 0x07u;
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::INVALID:
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::END:
+		default:
+			return 0u;
+		}
+	}
+
+	uint32_t StandardColorSourceChannelMask(const std::string_view strChannel)
+	{
+		uint32_t iMask = 0u;
+		for (const char_t Character : strChannel)
+		{
+			switch (Character)
+			{
+			case 'R': iMask |= 0x01u; break;
+			case 'G': iMask |= 0x02u; break;
+			case 'B': iMask |= 0x04u; break;
+			case 'A': iMask |= 0x08u; break;
+			default: return 0u;
+			}
+		}
+		return iMask;
+	}
+
+	uint32_t StandardColorSrvChannelMask(const DXGI_FORMAT eFormat)
+	{
+		switch (eFormat)
+		{
+		case DXGI_FORMAT_A8_UNORM:
+			return 0x08u;
+
+		case DXGI_FORMAT_R8_UNORM:
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_R8_UINT:
+		case DXGI_FORMAT_R8_SINT:
+		case DXGI_FORMAT_R16_UNORM:
+		case DXGI_FORMAT_R16_SNORM:
+		case DXGI_FORMAT_R16_UINT:
+		case DXGI_FORMAT_R16_SINT:
+		case DXGI_FORMAT_R16_FLOAT:
+		case DXGI_FORMAT_R32_UINT:
+		case DXGI_FORMAT_R32_SINT:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_BC4_UNORM:
+		case DXGI_FORMAT_BC4_SNORM:
+			return 0x01u;
+
+		case DXGI_FORMAT_R8G8_UNORM:
+		case DXGI_FORMAT_R8G8_SNORM:
+		case DXGI_FORMAT_R8G8_UINT:
+		case DXGI_FORMAT_R8G8_SINT:
+		case DXGI_FORMAT_R16G16_UNORM:
+		case DXGI_FORMAT_R16G16_SNORM:
+		case DXGI_FORMAT_R16G16_UINT:
+		case DXGI_FORMAT_R16G16_SINT:
+		case DXGI_FORMAT_R16G16_FLOAT:
+		case DXGI_FORMAT_R32G32_UINT:
+		case DXGI_FORMAT_R32G32_SINT:
+		case DXGI_FORMAT_R32G32_FLOAT:
+		case DXGI_FORMAT_BC5_UNORM:
+		case DXGI_FORMAT_BC5_SNORM:
+			return 0x03u;
+
+		case DXGI_FORMAT_R32G32B32_UINT:
+		case DXGI_FORMAT_R32G32B32_SINT:
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+		case DXGI_FORMAT_R11G11B10_FLOAT:
+		case DXGI_FORMAT_B5G6R5_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+		case DXGI_FORMAT_BC1_UNORM:
+		case DXGI_FORMAT_BC1_UNORM_SRGB:
+		case DXGI_FORMAT_BC6H_UF16:
+		case DXGI_FORMAT_BC6H_SF16:
+			return 0x07u;
+
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R10G10B10A2_UINT:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_B5G5R5A1_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+		case DXGI_FORMAT_BC2_UNORM:
+		case DXGI_FORMAT_BC2_UNORM_SRGB:
+		case DXGI_FORMAT_BC3_UNORM:
+		case DXGI_FORMAT_BC3_UNORM_SRGB:
+		case DXGI_FORMAT_BC7_UNORM:
+		case DXGI_FORMAT_BC7_UNORM_SRGB:
+			return 0x0fu;
+
+		default:
+			return 0u;
+		}
+	}
+
+	bool_t Is_StandardColorSrgbFormat(const DXGI_FORMAT eFormat)
+	{
+		return eFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_B8G8R8X8_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_BC1_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_BC2_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_BC3_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_BC7_UNORM_SRGB;
+	}
+
 	bool_t Same_MaterialExecutionResourceSignature(
 		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Left,
 		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Right)
@@ -1341,6 +1492,8 @@ namespace
 			Left.iStencilReference == Right.iStencilReference &&
 			Left.iTextureLaneCount == Right.iTextureLaneCount &&
 			Left.iTextureMask == Right.iTextureMask &&
+			Same_StandardColorV1(
+				Left.StandardColorV1, Right.StandardColorV1) &&
 			Left.iDynamicConsumedMask == Right.iDynamicConsumedMask &&
 			Left.iDynamicSuppressedMask == Right.iDynamicSuppressedMask &&
 			Left.iParticleColorPolicy == Right.iParticleColorPolicy &&
@@ -5062,7 +5215,14 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 		(Execution.eBackend ==
 			EFFECT_MATERIAL_EXECUTION_BACKEND::ARTIST_VISUAL_V4 &&
 		 Element.eKind != EFFECT_ELEMENT_KIND::MESH &&
-		 Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE))
+		 Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE) ||
+		(Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+		 ((Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+		   Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END) ||
+		  (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
+		   Element.eKind != EFFECT_ELEMENT_KIND::DECAL &&
+		   Element.eKind != EFFECT_ELEMENT_KIND::TRAIL))))
 	{
 		strOutError = "Authored material backend has no matching renderer carrier: " +
 			Element.strElementId;
@@ -5213,6 +5373,23 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 			return false;
 		}
 	}
+	const bool_t bStandardColorV1 = Execution.eBackend ==
+		EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
+	if ((bStandardColorV1 &&
+		 (Element.Material.strTemplateId != EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID ||
+		  Execution.iOpcode != 1u ||
+		  Execution.StandardColorV1.iPacketVersion != 1u ||
+		  !Element.ResourceBindings.empty() ||
+		  Element.Material.SourceMaterial.bEnabled ||
+		  Element.Material.eRenderProfile ==
+			EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE)) ||
+		(!bStandardColorV1 &&
+		 Element.Material.strTemplateId == EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID))
+	{
+		strOutError = "StandardColorV1 admission identity is invalid: " +
+			Element.strElementId;
+		return false;
+	}
 	const uint32_t iSelectedPass = Select_Pass(Element.Material.eRenderProfile);
 	if (iSelectedPass == UINT32_MAX || Execution.iPassIndex != iSelectedPass ||
 		Execution.iStencilReference != 0u)
@@ -5278,6 +5455,13 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 	Resource.SourceTextures.fill(nullptr);
 	Resource.RuntimeMaterialV2Samplers.fill(nullptr);
 	Resource.MaterialExecutionLanes.fill(std::nullopt);
+	Resource.iStandardColorV1Enabled = 0u;
+	Resource.StandardColorV1Header = {};
+	Resource.StandardColorV1BaseCoverage = {};
+	Resource.StandardColorV1Dissolve = {};
+	Resource.StandardColorV1Policies = {};
+	Resource.vStandardColorV1Scalars = {};
+	Resource.StandardColorV1 = {};
 	Resource.iSourceTextureMask = 0u;
 	Resource.iSourceTextureClampUMask = 0u;
 	Resource.iSourceTextureClampVMask = 0u;
@@ -5289,8 +5473,9 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 			Lane.iSamplerRegister != 5u + Lane.iTextureRegister ||
 			Lane.strLaneId.empty() || Lane.strRole.empty() ||
 			Lane.strAssetId.empty() ||
-			(Execution.eBackend ==
-				EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL &&
+			((Execution.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL ||
+			  bStandardColorV1) &&
 			 Lane.strSourceChannel.empty()) ||
 			(!Lane.strSourceChannel.empty() &&
 			 (Lane.strSourceChannel.size() > 4u ||
@@ -5319,6 +5504,27 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 			strOutError = "Authored material DDS stage failed: " +
 				Lane.strAssetId;
 			return false;
+		}
+		if (bStandardColorV1)
+		{
+			D3D11_SHADER_RESOURCE_VIEW_DESC SrvDesc{};
+			Resource.SourceTextures[iLane]->GetDesc(&SrvDesc);
+			const uint32_t iDeclaredChannelMask =
+				StandardColorSourceChannelMask(Lane.strSourceChannel);
+			const uint32_t iAvailableChannelMask =
+				StandardColorSrvChannelMask(SrvDesc.Format);
+			const bool_t bExpectedSrgb = Lane.eColorSpace ==
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB;
+			if (0u == iDeclaredChannelMask || 0u == iAvailableChannelMask ||
+				(iDeclaredChannelMask & iAvailableChannelMask) !=
+					iDeclaredChannelMask ||
+				Is_StandardColorSrgbFormat(SrvDesc.Format) != bExpectedSrgb)
+			{
+				strOutError =
+					"StandardColorV1 DDS channel/color-space contract changed: " +
+					Lane.strLaneId;
+				return false;
+			}
 		}
 		D3D11_SAMPLER_DESC D3dSampler{};
 		if (!Try_ToD3dSampler(Lane.Sampler, D3dSampler) ||
@@ -5482,6 +5688,101 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 		Resource.iRuntimeMaterialV2TextureLaneCount = 0u;
 		Resource.iRuntimeMaterialV2TextureMask = 0u;
 	}
+	else if (bStandardColorV1)
+	{
+		const EFFECT_STANDARD_COLOR_V1_DESC& Packet =
+			Execution.StandardColorV1;
+		const auto FindLane = [&Execution](const std::string_view strLaneId,
+			uint32_t& iOutLane)
+		{
+			for (uint32_t iLane = 0u;
+				iLane < Execution.TextureLanes.size(); ++iLane)
+			{
+				if (Execution.TextureLanes[iLane].strLaneId == strLaneId)
+				{
+					iOutLane =
+						Execution.TextureLanes[iLane].iTextureRegister;
+					return true;
+				}
+			}
+			return false;
+		};
+		uint32_t iBaseLane = UINT32_MAX;
+		uint32_t iCoverageLane = UINT32_MAX;
+		uint32_t iDissolveLane = UINT32_MAX;
+		const uint32_t iBaseChannel = static_cast<uint32_t>(
+			Packet.eBaseRadianceChannel);
+		const uint32_t iCoverageChannel = static_cast<uint32_t>(
+			Packet.eCoverageChannel);
+		const bool_t bHasDissolve = Packet.eDissolveMode ==
+			EFFECT_STANDARD_COLOR_DISSOLVE_MODE::LANE_THRESHOLD;
+		if (!Execution.ArtistParameters.empty() || !Execution.Colors.empty() ||
+			Execution.iScalarCount != 0u || Execution.iVectorCount != 0u ||
+			!Execution.Scalars.empty() || !Execution.Vectors.empty() ||
+			!FindLane(Packet.strBaseRadianceLaneId, iBaseLane) ||
+			!FindLane(Packet.strCoverageLaneId, iCoverageLane) ||
+			(bHasDissolve &&
+			 !FindLane(Packet.strDissolveLaneId, iDissolveLane)) ||
+			iBaseLane >= Execution.iTextureLaneCount ||
+			iCoverageLane >= Execution.iTextureLaneCount ||
+			(bHasDissolve && iDissolveLane >= Execution.iTextureLaneCount) ||
+			0u == StandardColorChannelMask(Packet.eBaseRadianceChannel) ||
+			0u == StandardColorChannelMask(Packet.eCoverageChannel) ||
+			(bHasDissolve &&
+			 0u == StandardColorChannelMask(Packet.eDissolveChannel)) ||
+			Packet.eLifetimeEnvelope !=
+				EFFECT_STANDARD_COLOR_LIFETIME_ENVELOPE::CARRIER_ALPHA ||
+			Packet.eMissingLanePolicy !=
+				EFFECT_STANDARD_COLOR_MISSING_LANE_POLICY::FAIL_CLOSED ||
+			Packet.eEmissiveMode >=
+				EFFECT_STANDARD_COLOR_EMISSIVE_MODE::END ||
+			Packet.eDissolveMode >= EFFECT_STANDARD_COLOR_DISSOLVE_MODE::END ||
+			!std::isfinite(Packet.fDissolveSoftness) ||
+			Packet.fDissolveSoftness < 0.f || Packet.fDissolveSoftness > 1.f)
+		{
+			strOutError = "StandardColorV1 typed packet cannot be staged: " +
+				Element.strElementId;
+			return false;
+		}
+		const uint32_t iRequiredMask = (1u << iBaseLane) |
+			(1u << iCoverageLane) |
+			(bHasDissolve ? (1u << iDissolveLane) : 0u);
+		if (iRequiredMask != Execution.iTextureMask ||
+			(!bHasDissolve &&
+			 (!Packet.strDissolveLaneId.empty() ||
+			  Packet.eDissolveChannel != EFFECT_STANDARD_COLOR_CHANNEL::INVALID ||
+			  Packet.fDissolveSoftness != 0.f)))
+		{
+			strOutError = "StandardColorV1 required-lane closure changed: " +
+				Element.strElementId;
+			return false;
+		}
+
+		Resource.iArtistVisualV4Opcode = 0u;
+		Resource.iArtistVisualV4TextureMask = 0u;
+		Resource.iRuntimeMaterialV2Enabled = 0u;
+		Resource.iRuntimeMaterialV2Opcode = 0u;
+		Resource.iRuntimeMaterialV2TextureLaneCount = 0u;
+		Resource.iRuntimeMaterialV2TextureMask = 0u;
+		Resource.iStandardColorV1Enabled = 1u;
+		Resource.StandardColorV1Header = {
+			Packet.iPacketVersion, Execution.iOpcode,
+			Execution.iTextureLaneCount, Execution.iTextureMask };
+		Resource.StandardColorV1BaseCoverage = {
+			iBaseLane, iBaseChannel, iCoverageLane, iCoverageChannel };
+		Resource.StandardColorV1Dissolve = {
+			static_cast<uint32_t>(Packet.eDissolveMode),
+			bHasDissolve ? iDissolveLane : UINT32_MAX,
+			static_cast<uint32_t>(Packet.eDissolveChannel),
+			static_cast<uint32_t>(Packet.eMissingLanePolicy) };
+		Resource.StandardColorV1Policies = {
+			static_cast<uint32_t>(Packet.eEmissiveMode),
+			static_cast<uint32_t>(Packet.eLifetimeEnvelope),
+			iRequiredMask, Resource.iSourceTextureMask };
+		Resource.vStandardColorV1Scalars = {
+			Packet.fDissolveSoftness, 0.f, 0.f, 0.f };
+		Resource.StandardColorV1 = Packet;
+	}
 	else
 	{
 		if (!Execution.ArtistParameters.empty() || !Execution.Colors.empty())
@@ -5509,25 +5810,30 @@ bool_t Client::CEffectDocumentRenderer::Build_MaterialExecutionSnapshot(
 	OutSnapshot = {};
 	const bool_t bRuntime = 0u != Resource.iRuntimeMaterialV2Enabled;
 	const bool_t bArtist = 0u != Resource.iArtistVisualV4Opcode;
-	if (!bRuntime && !bArtist)
+	const bool_t bStandard = 0u != Resource.iStandardColorV1Enabled;
+	const uint32_t iBackendCount = static_cast<uint32_t>(bRuntime) +
+		static_cast<uint32_t>(bArtist) + static_cast<uint32_t>(bStandard);
+	if (0u == iBackendCount)
 		return false;
-	if (bRuntime && bArtist)
+	if (1u != iBackendCount)
 	{
-		strOutError = "Prepared material selected two typed backends: " +
+		strOutError = "Prepared material selected multiple typed backends: " +
 			Element.strElementId;
 		return false;
 	}
 	EFFECT_MATERIAL_EXECUTION_DESC Staged;
 	Staged.bEnabled = true;
 	Staged.iVersion = 1u;
-	Staged.eBackend = bArtist ?
-		EFFECT_MATERIAL_EXECUTION_BACKEND::ARTIST_VISUAL_V4 :
+	Staged.eBackend = bStandard ?
+		EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 :
+		(bArtist ? EFFECT_MATERIAL_EXECUTION_BACKEND::ARTIST_VISUAL_V4 :
 		(Element.eKind == EFFECT_ELEMENT_KIND::DECAL &&
 		 Resource.iRuntimeMaterialV2Opcode == 14u ?
 			EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL :
-			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2);
-	Staged.iOpcode = bArtist ? Resource.iArtistVisualV4Opcode :
-		Resource.iRuntimeMaterialV2Opcode;
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2));
+	Staged.iOpcode = bStandard ? Resource.StandardColorV1Header[1u] :
+		(bArtist ? Resource.iArtistVisualV4Opcode :
+			Resource.iRuntimeMaterialV2Opcode);
 	Staged.iPassIndex = Select_Pass(Element.Material.eRenderProfile);
 	Staged.iStencilReference = 0u;
 	switch (Element.Material.eRenderProfile)
@@ -5563,10 +5869,15 @@ bool_t Client::CEffectDocumentRenderer::Build_MaterialExecutionSnapshot(
 			Element.strElementId;
 		return false;
 	}
-	Staged.iTextureMask = bArtist ? Resource.iArtistVisualV4TextureMask :
-		Resource.iRuntimeMaterialV2TextureMask;
+	Staged.iTextureMask = bStandard ? Resource.StandardColorV1Header[3u] :
+		(bArtist ? Resource.iArtistVisualV4TextureMask :
+			Resource.iRuntimeMaterialV2TextureMask);
 	Staged.iTextureLaneCount = std::popcount(Staged.iTextureMask);
-	if ((!bArtist && Staged.iTextureLaneCount !=
+	if ((bStandard &&
+		 (Resource.StandardColorV1Header[0u] != 1u ||
+		  Resource.StandardColorV1Header[1u] != 1u ||
+		  Resource.StandardColorV1Header[2u] != Staged.iTextureLaneCount)) ||
+		(!bArtist && !bStandard && Staged.iTextureLaneCount !=
 			Resource.iRuntimeMaterialV2TextureLaneCount) ||
 		Staged.iTextureLaneCount > Resource.MaterialExecutionLanes.size() ||
 		Staged.iTextureMask != (Staged.iTextureLaneCount == 0u ? 0u :
@@ -5586,6 +5897,60 @@ bool_t Client::CEffectDocumentRenderer::Build_MaterialExecutionSnapshot(
 			return false;
 		}
 		Staged.TextureLanes.push_back(*Resource.MaterialExecutionLanes[iLane]);
+	}
+	if (bStandard)
+	{
+		Staged.StandardColorV1 = Resource.StandardColorV1;
+		const EFFECT_STANDARD_COLOR_V1_DESC& Packet = Staged.StandardColorV1;
+		const bool_t bHasDissolve = Packet.eDissolveMode ==
+			EFFECT_STANDARD_COLOR_DISSOLVE_MODE::LANE_THRESHOLD;
+		const auto FindLaneRegister = [&Staged](
+			const std::string_view strLaneId, uint32_t& iOutRegister)
+		{
+			const auto Iterator = std::find_if(Staged.TextureLanes.begin(),
+				Staged.TextureLanes.end(), [strLaneId](const auto& Lane)
+				{ return Lane.strLaneId == strLaneId; });
+			if (Iterator == Staged.TextureLanes.end())
+				return false;
+			iOutRegister = Iterator->iTextureRegister;
+			return true;
+		};
+		uint32_t iExpectedBaseLane = UINT32_MAX;
+		uint32_t iExpectedCoverageLane = UINT32_MAX;
+		uint32_t iExpectedDissolveLane = UINT32_MAX;
+		if (!FindLaneRegister(
+				Packet.strBaseRadianceLaneId, iExpectedBaseLane) ||
+			!FindLaneRegister(Packet.strCoverageLaneId, iExpectedCoverageLane) ||
+			(bHasDissolve && !FindLaneRegister(
+				Packet.strDissolveLaneId, iExpectedDissolveLane)) ||
+			Resource.StandardColorV1BaseCoverage[0u] != iExpectedBaseLane ||
+			Resource.StandardColorV1BaseCoverage[1u] !=
+				static_cast<uint32_t>(Packet.eBaseRadianceChannel) ||
+			Resource.StandardColorV1BaseCoverage[2u] != iExpectedCoverageLane ||
+			Resource.StandardColorV1BaseCoverage[3u] !=
+				static_cast<uint32_t>(Packet.eCoverageChannel) ||
+			Resource.StandardColorV1Dissolve[0u] !=
+				static_cast<uint32_t>(Packet.eDissolveMode) ||
+			Resource.StandardColorV1Dissolve[1u] != iExpectedDissolveLane ||
+			Resource.StandardColorV1Dissolve[2u] !=
+				static_cast<uint32_t>(Packet.eDissolveChannel) ||
+			Resource.StandardColorV1Dissolve[3u] !=
+				static_cast<uint32_t>(Packet.eMissingLanePolicy) ||
+			Resource.StandardColorV1Policies[0u] !=
+				static_cast<uint32_t>(Packet.eEmissiveMode) ||
+			Resource.StandardColorV1Policies[1u] !=
+				static_cast<uint32_t>(Packet.eLifetimeEnvelope) ||
+			Resource.StandardColorV1Policies[2u] != Staged.iTextureMask ||
+			Resource.StandardColorV1Policies[3u] != Staged.iTextureMask ||
+			Resource.vStandardColorV1Scalars.x != Packet.fDissolveSoftness ||
+			Resource.vStandardColorV1Scalars.y != 0.f ||
+			Resource.vStandardColorV1Scalars.z != 0.f ||
+			Resource.vStandardColorV1Scalars.w != 0.f)
+		{
+			strOutError = "Prepared StandardColorV1 GPU packet changed: " +
+				Element.strElementId;
+			return false;
+		}
 	}
 	Staged.iDynamicConsumedMask = Resource.iRuntimeMaterialV2DynamicConsumedMask;
 	Staged.iDynamicSuppressedMask = Resource.iRuntimeMaterialV2DynamicSuppressedMask;
@@ -15208,6 +15573,32 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			"Material bind failed: RuntimeMaterialV2 vector block.",
 			hFirstBindFailure);
 	}
+	const bool_t bStandardColorV1Shader = pShader == m_pParticleShader ||
+		pShader == m_pDecalShader || pShader == m_pTrailShader;
+	if (bStandardColorV1Shader &&
+		(BindFailed(pShader->Bind_RawValue("g_StandardColorV1Enabled",
+			&Resource.iStandardColorV1Enabled,
+			sizeof(Resource.iStandardColorV1Enabled))) ||
+		 BindFailed(pShader->Bind_RawValue("g_StandardColorV1Header",
+			Resource.StandardColorV1Header.data(),
+			sizeof(Resource.StandardColorV1Header))) ||
+		 BindFailed(pShader->Bind_RawValue("g_StandardColorV1BaseCoverage",
+			Resource.StandardColorV1BaseCoverage.data(),
+			sizeof(Resource.StandardColorV1BaseCoverage))) ||
+		 BindFailed(pShader->Bind_RawValue("g_StandardColorV1Dissolve",
+			Resource.StandardColorV1Dissolve.data(),
+			sizeof(Resource.StandardColorV1Dissolve))) ||
+		 BindFailed(pShader->Bind_RawValue("g_StandardColorV1Policies",
+			Resource.StandardColorV1Policies.data(),
+			sizeof(Resource.StandardColorV1Policies))) ||
+		 BindFailed(pShader->Bind_RawValue("g_StandardColorV1Scalars",
+			&Resource.vStandardColorV1Scalars,
+			sizeof(Resource.vStandardColorV1Scalars)))))
+	{
+		return Fail_RenderOperation(
+			"Material bind failed: StandardColorV1 packet.",
+			hFirstBindFailure);
+	}
 	const std::string_view strSourceSubUVMode = SourceLiteralString(
 		Element, "interpolationmethod");
 	const uint32_t iSourceSubUVColumns = static_cast<uint32_t>((std::max)(
@@ -15837,17 +16228,20 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	Record_TestShaderPassApplication();
 #endif
 	PIXEL_SHADER_SAMPLER_SCOPE SamplerScope(m_pContext.Get());
-	if (0u != Resource.iRuntimeMaterialV2Enabled &&
-		0u != Resource.iRuntimeMaterialV2TextureLaneCount)
+	if ((0u != Resource.iRuntimeMaterialV2Enabled &&
+		 0u != Resource.iRuntimeMaterialV2TextureLaneCount) ||
+		0u != Resource.iStandardColorV1Enabled)
 	{
 		const size_t iSamplerCount = static_cast<size_t>(
-			Resource.iRuntimeMaterialV2TextureLaneCount);
+			0u != Resource.iStandardColorV1Enabled ?
+				Resource.StandardColorV1Header[2u] :
+				Resource.iRuntimeMaterialV2TextureLaneCount);
 		if (iSamplerCount > Resource.RuntimeMaterialV2Samplers.size() ||
 			!SamplerScope.Apply(std::span<const ComPtr<ID3D11SamplerState>>(
 				Resource.RuntimeMaterialV2Samplers.data(), iSamplerCount)))
 		{
 			return Fail_RenderOperation(
-				"Decal RuntimeMaterialV2 sampler apply failed.", E_FAIL,
+				"Decal typed material sampler apply failed.", E_FAIL,
 				SamplerScope.Was_LastFailureContractInvalid());
 		}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
@@ -16173,12 +16567,15 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	PIXEL_SHADER_SAMPLER_SCOPE SamplerScope(m_pContext.Get());
 	if ((0u != pResource->iRuntimeMaterialV2Enabled &&
 		0u != pResource->iRuntimeMaterialV2TextureLaneCount) ||
-		0u != pResource->iArtistVisualV4Opcode)
+		0u != pResource->iArtistVisualV4Opcode ||
+		0u != pResource->iStandardColorV1Enabled)
 	{
 		const size_t iSamplerCount = static_cast<size_t>(
-			0u != pResource->iRuntimeMaterialV2Enabled ?
+			0u != pResource->iStandardColorV1Enabled ?
+				pResource->StandardColorV1Header[2u] :
+			(0u != pResource->iRuntimeMaterialV2Enabled ?
 				pResource->iRuntimeMaterialV2TextureLaneCount :
-				std::popcount(pResource->iArtistVisualV4TextureMask));
+				std::popcount(pResource->iArtistVisualV4TextureMask)));
 		if (iSamplerCount > pResource->RuntimeMaterialV2Samplers.size() ||
 			!SamplerScope.Apply(std::span<const ComPtr<ID3D11SamplerState>>(
 				pResource->RuntimeMaterialV2Samplers.data(), iSamplerCount)))
@@ -16235,6 +16632,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		const bool_t bRuntimeMaterialV2Ribbon =
 			0u != pResource->iRuntimeMaterialV2Enabled &&
 			9u == pResource->iRuntimeMaterialV2Opcode;
+		const bool_t bStandardColorV1 =
+			0u != pResource->iStandardColorV1Enabled;
 		const bool_t bTypedArtistRibbon =
 			bRuntimeMaterialV2Ribbon && !bBakedEdgeHistory;
 		const bool_t bFlowRibbon01 =
@@ -16594,17 +16993,19 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		Record_TestShaderPassApplication();
 #endif
 		PIXEL_SHADER_SAMPLER_SCOPE SamplerScope(m_pContext.Get());
-		if (bTypedArtistRibbon)
+		if (bTypedArtistRibbon || bStandardColorV1)
 		{
 			const size_t iSamplerCount = static_cast<size_t>(
-				pResource->iRuntimeMaterialV2TextureLaneCount);
-			if (iSamplerCount != 2u ||
+				bStandardColorV1 ? pResource->StandardColorV1Header[2u] :
+					pResource->iRuntimeMaterialV2TextureLaneCount);
+			if ((!bStandardColorV1 && iSamplerCount != 2u) ||
+				iSamplerCount == 0u ||
 				iSamplerCount > pResource->RuntimeMaterialV2Samplers.size() ||
 				!SamplerScope.Apply(std::span<const ComPtr<ID3D11SamplerState>>(
 					pResource->RuntimeMaterialV2Samplers.data(), iSamplerCount)))
 			{
 				return Fail_RenderOperation(
-					"Trail RuntimeMaterialV2 sampler apply failed.", E_FAIL,
+					"Trail typed material sampler apply failed.", E_FAIL,
 					SamplerScope.Was_LastFailureContractInvalid());
 			}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)

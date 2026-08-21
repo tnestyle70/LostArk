@@ -468,6 +468,7 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectUe3MaterialFamilies.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectRuntimeMaterialPacket.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectStandardColorV1.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectLocalDecalAdapter.hlsli" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl" />
