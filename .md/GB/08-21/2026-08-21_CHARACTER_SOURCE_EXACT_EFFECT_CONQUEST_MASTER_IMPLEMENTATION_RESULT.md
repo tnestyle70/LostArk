@@ -191,6 +191,31 @@ color/coverage 수직 슬라이스를 구현했다.
 - 이번 단위는 world Fluid01 SpriteParticle까지만 닫았다. 화면을 가로지르는 textured glass shard
   overlay, F raw source의 sphere/hemisphere/world shard/light/post 재조합과 Fluid01 mesh rollout은
   구현하지 않았다.
+
+### 1.14 CircleSurface/Vortex reconstructed source atom
+
+- reconstructed source execution의 strict allowlist를 32 class에서 34 class로 확장해
+  `particlemodulelocationcirclesurface`와 `particlemodulevortex`를 admission했다. 실제 source의
+  `efparticlemodule...` 이름은 기존 `SourceClass_Matches`가 `ef` prefix와 `_seeded` suffix를
+  정규화하므로 Product/character별 분기 없이 같은 실행 atom으로 join한다.
+- CircleSurface는 실행 코드가 소비하는 `startlocation` 3-vector, `startradius/startrot/velocityscale`
+  scalar distribution 네 개를 정확히 요구하고, `splitcirclecount` integer `[0,4096]`,
+  `surfaceaxis`, `bhalfmode`, `bnegativeaxis`, `velocity`, `benabled` literal type을 검증한다.
+  Vortex는 정확히 하나의 scalar `poweracceleration` distribution과 optional numeric `power`, boolean
+  `benabled`를 검증한다. 추가/누락 distribution, 잘못된 width, fractional split과 unknown class는
+  reconstructed plan commit 전에 fail-close한다.
+- 실행 증명은 7개 particle을 260cm 반경의 7-sector 원에 배치하고 radial velocity를 적용한 뒤,
+  30/60/120FPS 입력이 같은 fixed-step Vortex position/velocity에 도달하는지 비교한다. unknown,
+  fractional CircleSurface, wrong-width/missing Vortex 문서는 기존 playback에 재-stage해 모두 거부하고
+  직전 evaluated frame을 보존했다.
+- 차원 F `authored.source-particle.0f7aa9cd0601769f9e51f5cc`의 exact 7-burst,
+  CircleSurface `FX_PC_SWP_03:export:58@ref:11`, Vortex `FX_PC_SWP_03:export:184@ref:12`와 도화가 V의
+  Vortex stable row 세 개를 resource-independent raw JSON canary로 봉인했다. 격리 worktree에
+  Git 비관리 DDS가 없어도 source identity/consumed field drift를 검출한다.
+- 이 단위는 Product authored 문서와 runtime catalog를 수정하지 않았다. 위 Product particle 행은
+  이미 ordinary portable source carrier로 spawn/update를 실행하므로 이번 변경을 신규 Product
+  admission이나 도화가 V attractor 완성으로 승격하지 않는다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -240,6 +265,10 @@ color/coverage 수직 슬라이스를 구현했다.
 | Debug/Release ClientFrontendHarness build | 각 exit 0 PASS; 기존 C4828/DirectXTK LNK4099 warning만 존재 |
 | Debug/Release `--effect-fluid01-family-fast` | 각 failures 0; draw 2, pass `3/3`, mask `0x0f/0x0f`, PS invocation 2452, RGB pixels 1021, second-row sourceNode reject/rollback PASS |
 | 전체 `Test-EffectPipeline.ps1` | publisher fixture 본체 PASS; Python 82 tests 중 이번 Fluid01 7 tests PASS, 기존 Valtan cardinality/gap 기대값 drift 3 failure + 2 error로 최종 exit 1 |
+| Debug/Release ClientFrontendHarness CircleSurface/Vortex build | 각 exit 0 PASS |
+| Debug/Release `--effect-source-circle-vortex-fast` | 각 6/6 PASS; 7-count/260cm/radial velocity, 30/60/120FPS Vortex trajectory, strict reject/rollback, Dimension F와 Artist V canary PASS |
+| Debug/Release `--effect-source-null-cdo-size-fast` | 각 2/2 PASS |
+| Debug 전체 `--effect-executor-fast` 보조 실행 | 신규 CircleSurface/Vortex 6 assertions는 PASS. 격리 worktree에 Git 비관리 `Client/Bin/Resources`가 없어 기존 resource-dependent 항목들이 실패했으므로 전체 회귀 PASS로 기록하지 않음 |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -261,6 +290,9 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
   회귀 PASS로 기록하지 않는다.
 - Fluid01 opcode 17도 현재 authored 두 행과 renderer/harness까지의 vertical slice다. checked-in sealed
   runtime catalog publish와 사용자 Client 화면 판정 전에는 `COMPLETE`로 올리지 않는다.
+- CircleSurface/Vortex strict seam은 reconstructed module validation 기반일 뿐 도화가 V attractor,
+  camera/post/light composition이나 Product publish를 구현하지 않았다. Product exact 행은 canary로만
+  읽었으며 authored 문서와 catalog는 변경하지 않았다.
 - screen-space textured shard overlay의 renderer와 rollback 계약은 닫혔지만 아직 synthetic canary다.
   다음 단위는 exact shard texture/role과 F/W Product timing·ownership을 typed descriptor로 연결하고,
   RGBNoise/ZoomBlur와의 실제 ordered composition을 sealed runtime에서 검증해야 한다.
