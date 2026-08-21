@@ -82,7 +82,7 @@
             1.0
           ],
           "clip": 0.0,
-          "emissiveIntensity": 1.0,
+          "emissiveIntensity": 50.0,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
@@ -112,7 +112,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 2.0,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -1286,7 +1286,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -2128,7 +2128,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -2949,7 +2949,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 2.0,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -4024,7 +4024,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 2.0,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -5074,7 +5074,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -5182,7 +5182,7 @@
             0.02
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -6162,7 +6162,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.20000000298023224,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -7053,7 +7053,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -8315,7 +8315,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -9368,7 +9368,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -10075,7 +10075,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -11128,7 +11128,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.6499999761581421,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -12128,7 +12128,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -12965,7 +12965,7 @@
           ],
           "speed": [
             0.0,
-            0.0
+            -0.10000000149011612
           ],
           "wave": false,
           "waveAmplitude": [
@@ -12982,12 +12982,12 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -13090,7 +13090,7 @@
             0.13799999713897704
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -14210,7 +14210,7 @@
           ],
           "speed": [
             0.0,
-            0.0
+            -0.20000000298023224
           ],
           "wave": false,
           "waveAmplitude": [
@@ -14227,12 +14227,12 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -14335,7 +14335,7 @@
             0.09
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -15507,8 +15507,8 @@
             0.0
           ],
           "speed": [
-            0.0,
-            0.0
+            0.20000000298023224,
+            0.10000000149011612
           ],
           "wave": false,
           "waveAmplitude": [
@@ -15525,7 +15525,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 2.0,
+          "lifeTimeSeconds": 1.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },

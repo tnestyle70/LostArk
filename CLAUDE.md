@@ -262,15 +262,16 @@ snapshot/damage-event 진단을 제공한다. Save는 `Data/Balance`/`Data/Encou
 field의 provenance를 `PROJECT_TUNED`로 동기화한 뒤 Validate한다. `Publish Server Data` 뒤 Server를
 재시작해야 적용된다. Tool이 실행 중 Server 구조체나 Client HUD 값만 덮어쓰는 hot reload는 없다.
 
-Debug `Effect Tool`과 All Effects/Save Hot Reload 경로는 제거되었다. 제품 Effect 선택 정본은
-`PlayerSkills.inputSlot -> skillId -> skillbindings clip -> clip-local animevent effectref=asset`이며,
-runtime 재생은 계속 `CEffectCatalog -> CEffectPresentationService -> CEffectObject` 한 경로만 사용한다.
-저작 변경은 `Data/Effects/Authored`와 source catalog에서 수행하고
-`Tools/EffectPipeline/Publish-Effects.ps1`의 명시적 전체 publish로 runtime data를 만든다. Client 내부의
-selected publish, catalog rollback snapshot, approval/admission token 및 Save Hot Reload는 사용하지 않는다.
-runtime direct row는 effect ID, authoring version과 Resources 내부 document path만 소유한다. 문서 경로,
-크기, JSON schema/type/range와 GPU resource stage 실패 격리는 유지하지만 content/dependency SHA equality를
-Client 시작과 Character Select에서 다시 계산하지 않는다.
+Debug F1의 `Effect Tool`과 `All Effects`는 direct-authored Player Product cue와 Valtan pattern cue를
+같은 unified Effect 저작 tree로 연다. Player는 input slot/skill/stage/clip cue를, Valtan은
+phase/pattern/semantic stage/ordered clip occurrence/product cue를 거쳐 같은 Mesh, Sprite,
+Mesh Particle, Sprite Particle, Local Decal, Trail/Ribbon family와 `Open for Editing`을 사용한다.
+Save는 선택된 direct-authored Effect 하나만 원자 저장한 뒤 같은 catalog revision의 prepared target을
+stage/validate/commit한다. 실행 중 occurrence는 이전 immutable document를 끝까지 유지하고 다음 spawn부터
+새 document를 사용하며, 준비나 renderer commit 실패는 이전 Product pointer와 cache를 보존한다.
+schema·catalog·source batch 변경은 계속 `Tools/EffectPipeline/Publish-Effects.ps1`의 명시적 전체 publish로
+runtime data를 갱신한다. runtime 재생은 별도 Tool renderer 없이
+`CEffectCatalog -> CEffectPresentationService -> CEffectObject` 한 경로만 사용한다.
 
 #### Artist F와 Effect 화면 검증은 사용자 전용
 

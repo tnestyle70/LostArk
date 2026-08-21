@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import math
 import re
@@ -46,6 +47,13 @@ CATALOG_PATH = ROOT / "Data/Effects/EffectCatalog.json"
 CUE_PATH = source_inventory.CUE_PATH
 AUTHORED_ROOT = source_inventory.AUTHORED_ROOT
 IMPORTED_VALTAN_ROOT = ROOT / "Data/Effects/Imported/Valtan"
+SAFE_GAP_ROOT = IMPORTED_VALTAN_ROOT / "SafeReviewedGaps"
+SAFE_GAP_MANIFEST_PATH = (
+    SAFE_GAP_ROOT / "Valtan.safe-reviewed-gap-candidates.v1.json"
+)
+SAFE_GAP_APPLICATION_RECEIPT_PATH = (
+    SAFE_GAP_ROOT / "Valtan.safe-reviewed-gap-application-receipt.v1.json"
+)
 
 PROTECTED_EFFECT_ASSET_IDS = {
     "effect.valtan.pattern.420633.active",
@@ -59,15 +67,15 @@ EXPECTED_COUNTS = {
     "reviewedSelectedBranchCount": 24,
     "reviewedSelectedPatternCount": 24,
     "reachableSourceOccurrenceCount": 444,
-    "reachableCoreProjectionCount": 630,
-    "candidateDocumentCount": 37,
-    "candidateClipOccurrenceCount": 37,
-    "candidatePatternCount": 21,
-    "admittedCoreProjectionCount": 380,
-    "candidateElementCount": 380,
+    "reachableCoreProjectionCount": 628,
+    "candidateDocumentCount": 36,
+    "candidateClipOccurrenceCount": 36,
+    "candidatePatternCount": 20,
+    "admittedCoreProjectionCount": 279,
+    "candidateElementCount": 279,
     "protectedCanaryProjectionCount": 3,
-    "missingCueProjectionCount": 161,
-    "multipleCueProjectionCount": 0,
+    "missingCueProjectionCount": 160,
+    "multipleCueProjectionCount": 100,
     "negativeTimingProjectionCount": 86,
     "outsideCueWindowProjectionCount": 0,
     "effectAssetReuseDivergenceProjectionCount": 0,
@@ -80,6 +88,36 @@ class CandidateError(RuntimeError):
 
 def read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+def canonical_json_sha256(value: Any) -> str:
+    payload = json.dumps(
+        value,
+        ensure_ascii=False,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def validate_sealed_artifact(
+    document: dict[str, Any], expected_schema: str, label: str
+) -> None:
+    if (
+        document.get("schema") != expected_schema
+        or document.get("formatVersion") != 1
+    ):
+        raise CandidateError(f"{label} header is invalid")
+    expected = document.get("artifactSha256")
+    clone = copy.deepcopy(document)
+    clone.pop("artifactSha256", None)
+    if (
+        not isinstance(expected, str)
+        or not SHA256_RE.fullmatch(expected)
+        or canonical_json_sha256(clone) != expected
+    ):
+        raise CandidateError(f"{label} artifact seal is stale")
 
 
 def candidate_filename(effect_asset_id: str) -> str:
@@ -294,6 +332,32 @@ def build_projection_seed(
     seed = source_inventory.occurrence_element_seed(occurrence, carrier)
     timing = seed.setdefault("detail", {}).setdefault("timing", {})
     timing["startDelaySeconds"] = delay
+    # Inventory details are animation-agnostic. At projection time the exact
+    # source notify and cue-local window own the emitter lifetime; keeping the
+    # 0.1 s placeholder suppresses low-rate source emitters before first draw.
+    cue_end_ms = cue.get("sourceEndMs")
+    source_duration = source_inventory.finite_number(
+        occurrence.get("sourceDurationSeconds"),
+        "source occurrence duration",
+    )
+    if source_duration < 0.0:
+        raise CandidateError("source occurrence duration is negative")
+    if cue_end_ms is not None:
+        remaining_cue_seconds = (
+            int(cue_end_ms) / 1000.0
+            - source_inventory.finite_number(
+                occurrence.get("sourceTimeSeconds"),
+                "source occurrence time",
+            )
+        )
+        if remaining_cue_seconds <= 0.0:
+            raise CandidateError("admitted source occurrence has no cue lifetime")
+        timing["lifeTimeSeconds"] = min(
+            source_duration if source_duration > 0.0 else remaining_cue_seconds,
+            remaining_cue_seconds,
+        )
+    elif source_duration > 0.0:
+        timing["lifeTimeSeconds"] = source_duration
     projection["sourceFamilyGroupId"] = str(seed.get("groupId") or "")
     seed = add_v13_transform_ownership_defaults(seed)
     compact, source_key = compress_v13_source_node(seed)
@@ -606,6 +670,273 @@ def load_inventory(selection_path: Path) -> dict[str, Any]:
     )
 
 
+def validate_safe_gap_core_projection_identity(
+    inventory: dict[str, Any], manifest: dict[str, Any]
+) -> None:
+    """Prove the downstream SafeGap core slice is the frozen 160-row gap.
+
+    The reviewed batch predates SafeReviewedGaps.  Once that later batch is
+    applied, its four extra cues must not be reinterpreted as reviewed input.
+    We therefore join the downstream receipt back to the exact source
+    occurrence/carrier pairs instead of excluding a cue merely by a friendly
+    effect name.
+    """
+    candidate_rows = manifest.get("candidateDocuments")
+    core_rows = manifest.get("coreProjections")
+    summary = manifest.get("summary") or {}
+    if not isinstance(candidate_rows, list) or not isinstance(core_rows, list):
+        raise CandidateError("SafeReviewedGaps projection receipt is incomplete")
+
+    core_clips: dict[str, dict[str, Any]] = {}
+    for row in candidate_rows:
+        core_count = row.get("coreProjectionCount")
+        if (
+            isinstance(core_count, bool)
+            or not isinstance(core_count, int)
+            or core_count < 0
+        ):
+            raise CandidateError("SafeReviewedGaps core count is invalid")
+        if core_count == 0:
+            continue
+        clip_id = str(row.get("clipOccurrenceId") or "")
+        if not clip_id or clip_id in core_clips:
+            raise CandidateError(
+                "SafeReviewedGaps core clip identity is missing or duplicated"
+            )
+        core_clips[clip_id] = row
+
+    systems = {
+        str(row.get("sourceSystemId") or ""): {
+            str(carrier.get("carrierKey") or ""): carrier
+            for carrier in row.get("carriers", [])
+            if carrier.get("disposition") == "EXECUTABLE_CORE"
+        }
+        for row in inventory.get("sourceSystems", [])
+    }
+    occurrences = {
+        str(row.get("fullKey") or ""): row
+        for row in inventory.get("occurrences", [])
+        if row.get("reachabilityDisposition") == "REACHABLE_REVIEWED"
+    }
+    if "" in occurrences:
+        raise CandidateError("reviewed source occurrence identity is empty")
+
+    expected_pairs: set[tuple[str, str]] = set()
+    for occurrence_key, occurrence in occurrences.items():
+        if str(occurrence.get("clipOccurrenceId") or "") not in core_clips:
+            continue
+        for carrier_key in systems.get(
+            str(occurrence.get("sourceSystemId") or ""), {}
+        ):
+            expected_pairs.add((occurrence_key, carrier_key))
+
+    proposed_cues = {
+        str(row.get("bindingId") or ""): row
+        for row in manifest.get("proposedCueRows", [])
+    }
+    if "" in proposed_cues or len(proposed_cues) != len(
+        manifest.get("proposedCueRows", [])
+    ):
+        raise CandidateError("SafeReviewedGaps cue receipt identity is invalid")
+
+    receipt_pairs: set[tuple[str, str]] = set()
+    for row in core_rows:
+        occurrence_key = str(row.get("occurrenceFullKey") or "")
+        carrier_key = str(row.get("carrierKey") or "")
+        pair = (occurrence_key, carrier_key)
+        if not all(pair) or pair in receipt_pairs:
+            raise CandidateError(
+                "SafeReviewedGaps occurrence/carrier receipt identity is invalid"
+            )
+        receipt_pairs.add(pair)
+        occurrence = occurrences.get(occurrence_key)
+        if occurrence is None or carrier_key not in systems.get(
+            str(occurrence.get("sourceSystemId") or ""), {}
+        ):
+            raise CandidateError(
+                "SafeReviewedGaps projection no longer joins the source inventory"
+            )
+        cue = proposed_cues.get(str(row.get("cueBindingId") or ""))
+        if cue is None or any(
+            str(row.get(field) or "") != str(cue.get(cue_field) or "")
+            for field, cue_field in (
+                ("cueOccurrenceId", "occurrenceId"),
+                ("effectAssetId", "effectAssetId"),
+                ("clipOccurrenceId", "clipOccurrenceId"),
+                ("patternId", "patternId"),
+                ("semanticStageId", "stageId"),
+                ("gameplayActionId", "actionId"),
+            )
+        ):
+            raise CandidateError(
+                "SafeReviewedGaps core projection no longer joins its cue receipt"
+            )
+        if (
+            str(occurrence.get("clipOccurrenceId") or "")
+            != str(row.get("clipOccurrenceId") or "")
+            or str(occurrence.get("fullKey") or "") != occurrence_key
+        ):
+            raise CandidateError(
+                "SafeReviewedGaps core projection occurrence identity drifted"
+            )
+
+    expected_count = EXPECTED_COUNTS["missingCueProjectionCount"]
+    if (
+        receipt_pairs != expected_pairs
+        or len(receipt_pairs) != expected_count
+        or summary.get("coreProjectionCount") != expected_count
+        or sum(
+            int(row.get("coreProjectionCount", 0)) for row in candidate_rows
+        )
+        != expected_count
+    ):
+        raise CandidateError(
+            "SafeReviewedGaps does not seal the exact reviewed 160-row gap"
+        )
+
+
+def reconstruct_reviewed_inputs_after_safe_gap(
+    cue_document: dict[str, Any],
+    catalog_document: dict[str, Any],
+    inventory: dict[str, Any],
+    manifest: dict[str, Any],
+    application_receipt: dict[str, Any],
+    *,
+    verify_repository_outputs: bool,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, str]]:
+    """Remove one proof-gated downstream batch from the reviewed input view."""
+    validate_sealed_artifact(
+        manifest,
+        "lostark.valtan-safe-reviewed-gap-candidates",
+        "SafeReviewedGaps candidate manifest",
+    )
+    validate_sealed_artifact(
+        application_receipt,
+        "lostark.valtan-safe-reviewed-gap-application-receipt",
+        "SafeReviewedGaps application receipt",
+    )
+    validate_safe_gap_core_projection_identity(inventory, manifest)
+
+    manifest_link = application_receipt.get("candidateManifest") or {}
+    expected_manifest_path = SAFE_GAP_MANIFEST_PATH.relative_to(ROOT).as_posix()
+    if (
+        manifest_link.get("path") != expected_manifest_path
+        or manifest_link.get("artifactSha256")
+        != manifest.get("artifactSha256")
+    ):
+        raise CandidateError(
+            "SafeReviewedGaps application no longer seals its candidate manifest"
+        )
+    if verify_repository_outputs and (
+        manifest_link.get("rawSha256")
+        != source_inventory.sha256_file(SAFE_GAP_MANIFEST_PATH)
+    ):
+        raise CandidateError(
+            "SafeReviewedGaps candidate manifest raw identity drifted"
+        )
+
+    proposed_cues = manifest.get("proposedCueRows")
+    proposed_catalog = manifest.get("proposedCatalogRows")
+    if not isinstance(proposed_cues, list) or not isinstance(
+        proposed_catalog, list
+    ):
+        raise CandidateError("SafeReviewedGaps proposed rows are missing")
+    cue_by_binding = {
+        str(row.get("bindingId") or ""): row
+        for row in cue_document.get("cues", [])
+    }
+    catalog_by_effect = {
+        str(row.get("effectAssetId") or ""): row
+        for row in catalog_document.get("effects", [])
+    }
+    proposed_binding_ids = {str(row.get("bindingId") or "") for row in proposed_cues}
+    proposed_effect_ids = {
+        str(row.get("effectAssetId") or "") for row in proposed_catalog
+    }
+    if (
+        "" in proposed_binding_ids
+        or "" in proposed_effect_ids
+        or len(proposed_binding_ids) != len(proposed_cues)
+        or len(proposed_effect_ids) != len(proposed_catalog)
+    ):
+        raise CandidateError("SafeReviewedGaps proposed row identity is invalid")
+    if any(
+        cue_by_binding.get(str(row["bindingId"])) != row
+        for row in proposed_cues
+    ) or any(
+        catalog_by_effect.get(str(row["effectAssetId"])) != row
+        for row in proposed_catalog
+    ):
+        raise CandidateError(
+            "SafeReviewedGaps applied rows are absent, partial, or changed"
+        )
+
+    canonical_cue = application_receipt.get("canonicalCueDocument") or {}
+    canonical_catalog = application_receipt.get("canonicalCatalogDocument") or {}
+    if (
+        sorted(canonical_cue.get("addedBindingIds") or [])
+        != sorted(proposed_binding_ids)
+        or sorted(canonical_catalog.get("addedEffectAssetIds") or [])
+        != sorted(proposed_effect_ids)
+    ):
+        raise CandidateError(
+            "SafeReviewedGaps application output closure is inconsistent"
+        )
+    if verify_repository_outputs and (
+        canonical_cue.get("path") != CUE_PATH.relative_to(ROOT).as_posix()
+        or canonical_catalog.get("path")
+        != CATALOG_PATH.relative_to(ROOT).as_posix()
+        or canonical_cue.get("cueCount")
+        != len(cue_document.get("cues", []))
+        or canonical_catalog.get("effectCount")
+        != len(catalog_document.get("effects", []))
+        or canonical_cue.get("rawSha256")
+        != source_inventory.sha256_file(CUE_PATH)
+        or canonical_catalog.get("rawSha256")
+        != source_inventory.sha256_file(CATALOG_PATH)
+        or canonical_cue.get("canonicalSha256")
+        != canonical_json_sha256(cue_document)
+        or canonical_catalog.get("canonicalSha256")
+        != canonical_json_sha256(catalog_document)
+    ):
+        raise CandidateError(
+            "SafeReviewedGaps canonical repository outputs drifted"
+        )
+
+    reviewed_cues = copy.deepcopy(cue_document)
+    reviewed_cues["cues"] = [
+        copy.deepcopy(row)
+        for row in cue_document.get("cues", [])
+        if str(row.get("bindingId") or "") not in proposed_binding_ids
+    ]
+    reviewed_catalog = copy.deepcopy(catalog_document)
+    reviewed_catalog["effects"] = [
+        copy.deepcopy(row)
+        for row in catalog_document.get("effects", [])
+        if str(row.get("effectAssetId") or "") not in proposed_effect_ids
+    ]
+    input_identity = manifest.get("inputIdentity") or {}
+    baseline = {
+        "cueRawSha256": str(input_identity.get("cueRawSha256") or ""),
+        "catalogRawSha256": str(input_identity.get("catalogRawSha256") or ""),
+    }
+    if (
+        not SHA256_RE.fullmatch(baseline["cueRawSha256"])
+        or not SHA256_RE.fullmatch(baseline["catalogRawSha256"])
+        or (
+            verify_repository_outputs
+            and (
+                input_identity.get("cueCount")
+                != len(reviewed_cues["cues"])
+                or input_identity.get("catalogCount")
+                != len(reviewed_catalog["effects"])
+            )
+        )
+    ):
+        raise CandidateError("SafeReviewedGaps baseline input identity is invalid")
+    return reviewed_cues, reviewed_catalog, baseline
+
+
 def build_candidates(
     selection_path: Path = SELECTION_PATH,
     output_root: Path = OUTPUT_ROOT,
@@ -624,6 +955,27 @@ def build_candidates(
     injected_catalog_document = catalog_document is not None
     cue_document = cue_document or read_json(CUE_PATH)
     catalog_document = catalog_document or read_json(CATALOG_PATH)
+    safe_gap_baseline: dict[str, str] | None = None
+    safe_manifest_exists = SAFE_GAP_MANIFEST_PATH.is_file()
+    safe_application_exists = SAFE_GAP_APPLICATION_RECEIPT_PATH.is_file()
+    if safe_manifest_exists != safe_application_exists:
+        raise CandidateError(
+            "SafeReviewedGaps candidate/application receipt pair is incomplete"
+        )
+    if safe_manifest_exists:
+        cue_document, catalog_document, safe_gap_baseline = (
+            reconstruct_reviewed_inputs_after_safe_gap(
+                cue_document,
+                catalog_document,
+                inventory,
+                read_json(SAFE_GAP_MANIFEST_PATH),
+                read_json(SAFE_GAP_APPLICATION_RECEIPT_PATH),
+                verify_repository_outputs=(
+                    not injected_cue_document
+                    and not injected_catalog_document
+                ),
+            )
+        )
     cues_by_clip = cue_index(cue_document)
     catalogs = catalog_index(catalog_document)
     systems = {
@@ -1129,22 +1481,32 @@ def build_candidates(
             "cueDocument": {
                 "path": CUE_PATH.relative_to(ROOT).as_posix(),
                 "sha256": (
-                    source_inventory.sha256_bytes(
-                        source_inventory.pretty_json_bytes(cue_document)
+                    safe_gap_baseline["cueRawSha256"]
+                    if safe_gap_baseline is not None
+                    and not injected_cue_document
+                    else (
+                        source_inventory.sha256_bytes(
+                            source_inventory.pretty_json_bytes(cue_document)
+                        )
+                        if injected_cue_document
+                        else source_inventory.sha256_file(CUE_PATH)
                     )
-                    if injected_cue_document
-                    else source_inventory.sha256_file(CUE_PATH)
                 ),
                 "formatVersion": 2,
             },
             "effectCatalog": {
                 "path": CATALOG_PATH.relative_to(ROOT).as_posix(),
                 "sha256": (
-                    source_inventory.sha256_bytes(
-                        source_inventory.pretty_json_bytes(catalog_document)
+                    safe_gap_baseline["catalogRawSha256"]
+                    if safe_gap_baseline is not None
+                    and not injected_catalog_document
+                    else (
+                        source_inventory.sha256_bytes(
+                            source_inventory.pretty_json_bytes(catalog_document)
+                        )
+                        if injected_catalog_document
+                        else source_inventory.sha256_file(CATALOG_PATH)
                     )
-                    if injected_catalog_document
-                    else source_inventory.sha256_file(CATALOG_PATH)
                 ),
                 "formatVersion": 1,
             },

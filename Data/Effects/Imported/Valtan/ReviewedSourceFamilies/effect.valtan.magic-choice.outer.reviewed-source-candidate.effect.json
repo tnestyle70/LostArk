@@ -91,7 +91,7 @@
           ],
           "speed": [
             0.0,
-            0.0
+            0.800000011920929
           ],
           "wave": false,
           "waveAmplitude": [
@@ -108,7 +108,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 3.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -1039,12 +1039,12 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 3.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -1147,7 +1147,7 @@
             0.0
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,

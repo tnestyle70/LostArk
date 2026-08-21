@@ -18,6 +18,11 @@
   },
   "resourceVerification": [
     {
+      "assetId": "Character/Valtan/ValtanWeapon.wmodel",
+      "byteSize": 139664,
+      "sha256": "baffbd5268f216267d1cba8fb9eaf2b58276122ddd7755d18787f7dd9bb9d3da"
+    },
+    {
       "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds",
       "byteSize": 32896,
       "sha256": "982ff5105d4850438f2fec37cd8f920bfefc037ed5528bffa9dd50e9fd9cdbb0"
@@ -191,6 +196,22 @@
       "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
       "candidateEffectAssetIds": [
         "effect.valtan.front-back-front.active"
+      ],
+      "handTunableFields": [
+        "detail.color.multiply",
+        "detail.linearLerp.endScale",
+        "detail.transform.scale",
+        "detail.uv.speed"
+      ]
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds",
+      "requestedRole": "HIGH_JUMP_AXE_GROUND_IMPACT",
+      "evidenceStatus": "PROJECT_PALETTE_REUSE_NO_SOURCE_CLAIM",
+      "sourceEvidenceContext": "fx_i_shockwave_02_ycl is a physically verified official Valtan texture already admitted by the project palette; its HIGH_JUMP action 420610 timing and placement remain project authored and are not promoted to source-exact evidence.",
+      "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
+      "candidateEffectAssetIds": [
+        "effect.valtan.high-jump.airborne"
       ],
       "handTunableFields": [
         "detail.color.multiply",
@@ -445,7 +466,7 @@
       "disposition": "PROJECT_AUTHORED",
       "presentationOnly": true,
       "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.airborne.project-authored-overlay.effect.json",
-      "overlayDocumentSha256": "f216b9d83e7ec0f0e0f309336d360fb7a6743bf105b2405457992b6f22f905ac",
+      "overlayDocumentSha256": "1eedb9732f3d85bf1e22635e5b4457edeb90cb686899f1d11a8b0d83a7591771",
       "desiredElements": [
         {
           "elementId": "project-axe-beat-01-target-decal",
@@ -467,13 +488,57 @@
           "disposition": "PROJECT_AUTHORED",
           "reconcileAction": "APPEND_MISSING",
           "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-01-falling-axe",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-01.axe",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-02-falling-axe",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-02.axe",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-03-falling-axe",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-03.axe",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-01-ground-impact",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-01.ground-impact",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-02-ground-impact",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-02.ground-impact",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-03-ground-impact",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-03.ground-impact",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
         }
       ],
       "preservedCanonicalElementIds": [],
       "excludedSourceOccurrenceIds": [],
       "notes": [
         "Three root-relative target positions are hand-tuning candidates, not Server target selection or damage actors.",
-        "Axe projectile meshes are intentionally absent until a stable payload and Server/presentation authority join are proven."
+        "Each falling Mesh reuses Character/Valtan/ValtanWeapon.wmodel with useModelMaterial=true and modelPreScale=1.0; official geometry and embedded base texture are exact while trajectory, rotation, and timing are PROJECT_AUTHORED.",
+        "The three ground Sprite Particle impacts use physically verified project-palette textures and remain PROJECT_AUTHORED presentation; they add no AIRBORNE hit or Client damage actor.",
+        "No source-action projectile payload is claimed: all nine AIRBORNE elements are presentation-only and the existing LAND one-hit Server authority remains unchanged."
       ]
     },
     {
@@ -614,39 +679,54 @@
       "presentationOnly": true,
       "serverGameplayChange": false,
       "serverDamagePolicy": "UNCHANGED_EXISTING_LAND_STAGE_AUTHORITY",
-      "projectileAuthorityStatus": "UNRESOLVED_PROJECTILE"
+      "projectileAuthorityStatus": "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE"
     }
   },
-  "unresolved": [
+  "projectilePresentations": [
     {
-      "unresolvedId": "project-authored:valtan.high-jump.airborne.beat-01.axe",
+      "presentationId": "project-authored:valtan.high-jump.airborne.beat-01.axe",
       "patternId": "VALTAN_HIGH_JUMP",
       "stageId": "AIRBORNE",
-      "disposition": "UNRESOLVED_PROJECTILE",
-      "candidateAssetId": null,
-      "searchedResourceDomain": "Effect/Valtan/Meshes/**/*.wmodel",
-      "reason": "The 52 available Valtan Effect WModels contain no filename-stable axe, weapon, or throw payload; anonymous rpbf meshes are not inferred as an axe.",
-      "authority": "Presentation payload and Server projectile/damage authority remain unresolved; no fake mesh or Client damage actor is emitted."
+      "elementId": "project-axe-beat-01-falling-axe",
+      "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
+      "modelAssetId": "Character/Valtan/ValtanWeapon.wmodel",
+      "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
+      "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
+      "baseTextureProvenance": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT",
+      "trajectoryTimingProvenance": "PROJECT_AUTHORED",
+      "sourceActionPayloadClaim": "NONE",
+      "presentationOnly": true,
+      "serverGameplayChange": false
     },
     {
-      "unresolvedId": "project-authored:valtan.high-jump.airborne.beat-02.axe",
+      "presentationId": "project-authored:valtan.high-jump.airborne.beat-02.axe",
       "patternId": "VALTAN_HIGH_JUMP",
       "stageId": "AIRBORNE",
-      "disposition": "UNRESOLVED_PROJECTILE",
-      "candidateAssetId": null,
-      "searchedResourceDomain": "Effect/Valtan/Meshes/**/*.wmodel",
-      "reason": "The 52 available Valtan Effect WModels contain no filename-stable axe, weapon, or throw payload; anonymous rpbf meshes are not inferred as an axe.",
-      "authority": "Presentation payload and Server projectile/damage authority remain unresolved; no fake mesh or Client damage actor is emitted."
+      "elementId": "project-axe-beat-02-falling-axe",
+      "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
+      "modelAssetId": "Character/Valtan/ValtanWeapon.wmodel",
+      "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
+      "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
+      "baseTextureProvenance": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT",
+      "trajectoryTimingProvenance": "PROJECT_AUTHORED",
+      "sourceActionPayloadClaim": "NONE",
+      "presentationOnly": true,
+      "serverGameplayChange": false
     },
     {
-      "unresolvedId": "project-authored:valtan.high-jump.airborne.beat-03.axe",
+      "presentationId": "project-authored:valtan.high-jump.airborne.beat-03.axe",
       "patternId": "VALTAN_HIGH_JUMP",
       "stageId": "AIRBORNE",
-      "disposition": "UNRESOLVED_PROJECTILE",
-      "candidateAssetId": null,
-      "searchedResourceDomain": "Effect/Valtan/Meshes/**/*.wmodel",
-      "reason": "The 52 available Valtan Effect WModels contain no filename-stable axe, weapon, or throw payload; anonymous rpbf meshes are not inferred as an axe.",
-      "authority": "Presentation payload and Server projectile/damage authority remain unresolved; no fake mesh or Client damage actor is emitted."
+      "elementId": "project-axe-beat-03-falling-axe",
+      "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
+      "modelAssetId": "Character/Valtan/ValtanWeapon.wmodel",
+      "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
+      "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
+      "baseTextureProvenance": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT",
+      "trajectoryTimingProvenance": "PROJECT_AUTHORED",
+      "sourceActionPayloadClaim": "NONE",
+      "presentationOnly": true,
+      "serverGameplayChange": false
     }
   ]
 }

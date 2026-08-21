@@ -26,6 +26,13 @@ MODULE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
+SAFE_REVIEWED_CUE_IDS = {
+    "cue.valtan.floor-wipe-130.arena-wipe-impact",
+    "cue.valtan.floor-wipe-130.arena-wipe-telegraph",
+    "cue.valtan.floor-wipe-130.six-direction-impact",
+    "cue.valtan.floor-wipe-130.six-direction-telegraph",
+}
+
 
 class ValtanPriorityProjectionTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -54,6 +61,7 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
         self._copy(MODULE.PATTERN_BINDINGS_PATH)
         for relative in MODULE.WHIRLWIND_REQUIRED_FILES:
             self._copy(relative)
+        self._normalize_to_preapply_state()
         self.resource_root = self.root / "runtime-resources"
         self.resource_root.mkdir()
         self._write_json(self.sweep_relative, self._build_drawable_sweep())
@@ -80,6 +88,45 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
         path = self._path(relative)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(MODULE._json_bytes(value))
+
+    def _normalize_to_preapply_state(self) -> None:
+        """Remove this projection only; preserve every unrelated source row."""
+        for target in self.plan["targets"]:
+            target_relative = PurePosixPath(target["targetAuthoringPath"])
+            target_path = self._path(target_relative)
+            if not target_path.is_file():
+                continue
+            overlay = self._read_json(
+                PurePosixPath(target["overlayDocumentPath"])
+            )
+            projected_ids = {row["id"] for row in overlay["elements"]}
+            document = self._read_json(target_relative)
+            document["elements"] = [
+                row
+                for row in document["elements"]
+                if row.get("id") not in projected_ids
+            ]
+            self._write_json(target_relative, document)
+
+        catalog = self._read_json(MODULE.CATALOG_PATH)
+        catalog["effects"] = [
+            row
+            for row in catalog["effects"]
+            if row.get("effectAssetId") != MODULE.HIGH_JUMP_EFFECT_ID
+        ]
+        self._write_json(MODULE.CATALOG_PATH, catalog)
+        cues = self._read_json(MODULE.CUE_PATH)
+        cues["cues"] = [
+            row
+            for row in cues["cues"]
+            if row.get("bindingId") != MODULE.HIGH_JUMP_CUE_ROW["bindingId"]
+            and row.get("occurrenceId")
+            != MODULE.HIGH_JUMP_CUE_ROW["occurrenceId"]
+        ]
+        self._write_json(MODULE.CUE_PATH, cues)
+        receipt = self._path(self.receipt_relative)
+        if receipt.is_file():
+            receipt.unlink()
 
     def _build_drawable_sweep(self) -> dict:
         documents = []
@@ -167,6 +214,10 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
         projection = self._collect()
         self.assertEqual(before, self._snapshot(), "dry-run staging mutated files")
         self.assertEqual(9, projection.receipt["closure"]["candidateDocumentCount"])
+        self.assertEqual(
+            3,
+            projection.receipt["closure"]["officialAxePresentationCount"],
+        )
         expected_elements = sum(
             len(self._read_json(PurePosixPath(target["overlayDocumentPath"]))["elements"])
             for target in self.plan["targets"]
@@ -201,10 +252,31 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
             PurePosixPath(high_jump_target["overlayDocumentPath"])
         )
         self.assertEqual(overlay, high_jump)
-        encoded = json.dumps(high_jump).lower()
-        self.assertNotIn(".axe", encoded)
-        self.assertNotIn(".wmodel", encoded)
-        self.assertTrue(all(element["kind"] == "decal" for element in high_jump["elements"]))
+        self.assertEqual(9, len(high_jump["elements"]))
+        self.assertEqual(
+            {"decal": 3, "mesh": 3, "particle": 3},
+            {
+                kind: sum(
+                    element["kind"] == kind
+                    for element in high_jump["elements"]
+                )
+                for kind in ("decal", "mesh", "particle")
+            },
+        )
+        for axe in (
+            element for element in high_jump["elements"]
+            if element["kind"] == "mesh"
+        ):
+            self.assertEqual(
+                [{
+                    "slotId": "meshModel",
+                    "assetId": MODULE.HIGH_JUMP_AXE_MODEL_ASSET_ID,
+                }],
+                axe["resources"],
+            )
+            self.assertTrue(axe["detail"]["mesh"]["useModelMaterial"])
+            self.assertEqual(1.0, axe["detail"]["mesh"]["modelPreScale"])
+            self.assertFalse(axe["actionCueAttachment"]["enabled"])
 
         catalog_after = self._read_json(MODULE.CATALOG_PATH)
         cues_after = self._read_json(MODULE.CUE_PATH)
@@ -261,6 +333,44 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
         self.assertEqual(1, result)
         self.assertIn("not applied", error.getvalue())
         self.assertEqual(before, self._snapshot())
+
+    def test_current_repository_projection_check_is_a_no_op(self) -> None:
+        proof = (
+            self.source_root
+            / "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/DrawableProof/"
+            "Valtan.project-authored-priority.drawable-proof.v1.json"
+        )
+        before = {
+            relative: self._source_path(relative).read_bytes()
+            for relative in (
+                MODULE.DEFAULT_PATCH_PLAN,
+                MODULE.DEFAULT_RECEIPT,
+                MODULE.CATALOG_PATH,
+                MODULE.CUE_PATH,
+            )
+        }
+        projection = MODULE.collect_projection(
+            self.source_root,
+            drawable_proof=proof,
+        )
+        MODULE.check_projection(projection)
+        self.assertEqual((), projection.changed_paths)
+        cues = json.loads(
+            self._source_path(MODULE.CUE_PATH).read_text(encoding="utf-8")
+        )["cues"]
+        self.assertGreaterEqual(len(cues), 108)
+        self.assertTrue(
+            SAFE_REVIEWED_CUE_IDS.issubset(
+                {row["bindingId"] for row in cues}
+            )
+        )
+        self.assertEqual(
+            before,
+            {
+                relative: self._source_path(relative).read_bytes()
+                for relative in before
+            },
+        )
 
     def test_existing_rows_and_hand_tuning_are_preserved(self) -> None:
         target = next(

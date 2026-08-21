@@ -1,0 +1,3230 @@
+{
+  "schema": "lostark.effect-document-drawable-sweep",
+  "formatVersion": 1,
+  "resourceRoot": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources",
+  "sampleRateHz": 60,
+  "documents": [
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.arena-break-109.impact.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.arena-break-109.impact",
+      "durationSeconds": 4.23064518,
+      "sampleCount": 256,
+      "visibleElementCount": 2,
+      "preparedElementCount": 2,
+      "drawnElementCount": 2,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.1ccf2d73dab0c8d88158",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 256,
+          "attemptedSamples": 73,
+          "submittedDraws": 73,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 73
+        },
+        {
+          "elementId": "source.fbb5e0b372c437873230",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 256,
+          "attemptedSamples": 106,
+          "submittedDraws": 106,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 106
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.arena-break-109.takeoff.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.arena-break-109.takeoff",
+      "durationSeconds": 4.80000019,
+      "sampleCount": 290,
+      "visibleElementCount": 1,
+      "preparedElementCount": 1,
+      "drawnElementCount": 1,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.fb1b37e2be3401e702f7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 290,
+          "attemptedSamples": 111,
+          "submittedDraws": 111,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 111
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.armor-break-opening.charge.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.armor-break-opening.charge",
+      "durationSeconds": 2.70000005,
+      "sampleCount": 164,
+      "visibleElementCount": 10,
+      "preparedElementCount": 10,
+      "drawnElementCount": 10,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.260825188da3bd5971d4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 164,
+          "attemptedSamples": 90,
+          "submittedDraws": 70,
+          "suppressedDraws": 20,
+          "failedDraws": 0,
+          "committedDraws": 70
+        },
+        {
+          "elementId": "source.3b09a7ec74b5a7482fc1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 164,
+          "attemptedSamples": 90,
+          "submittedDraws": 25,
+          "suppressedDraws": 65,
+          "failedDraws": 0,
+          "committedDraws": 25
+        },
+        {
+          "elementId": "source.3c2da7f857804e9b945d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 164,
+          "attemptedSamples": 90,
+          "submittedDraws": 19,
+          "suppressedDraws": 71,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.654fbe0792d13bd8d5be",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 164,
+          "attemptedSamples": 90,
+          "submittedDraws": 25,
+          "suppressedDraws": 65,
+          "failedDraws": 0,
+          "committedDraws": 25
+        },
+        {
+          "elementId": "source.79406ca42d3a533c7774",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 164,
+          "attemptedSamples": 90,
+          "submittedDraws": 9,
+          "suppressedDraws": 81,
+          "failedDraws": 0,
+          "committedDraws": 9
+        },
+        {
+          "elementId": "source.87dc0e3a55b32b45140b",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 164,
+          "attemptedSamples": 90,
+          "submittedDraws": 31,
+          "suppressedDraws": 59,
+          "failedDraws": 0,
+          "committedDraws": 31
+        },
+        {
+          "elementId": "source.ae5447aca1bf63d23b75",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 164,
+          "attemptedSamples": 90,
+          "submittedDraws": 19,
+          "suppressedDraws": 71,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.e1be53d9d948c50cd3c2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 164,
+          "attemptedSamples": 90,
+          "submittedDraws": 25,
+          "suppressedDraws": 65,
+          "failedDraws": 0,
+          "committedDraws": 25
+        },
+        {
+          "elementId": "source.e6d52737e8e03c704059",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 164,
+          "attemptedSamples": 90,
+          "submittedDraws": 61,
+          "suppressedDraws": 29,
+          "failedDraws": 0,
+          "committedDraws": 61
+        },
+        {
+          "elementId": "source.f7dfcdbfecf746dd258c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 164,
+          "attemptedSamples": 90,
+          "submittedDraws": 19,
+          "suppressedDraws": 71,
+          "failedDraws": 0,
+          "committedDraws": 19
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.backstep.windup.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.backstep.windup",
+      "durationSeconds": 1.45000005,
+      "sampleCount": 89,
+      "visibleElementCount": 3,
+      "preparedElementCount": 3,
+      "drawnElementCount": 3,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.40b2b2a75d4aec1e0dc6",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 89,
+          "attemptedSamples": 81,
+          "submittedDraws": 61,
+          "suppressedDraws": 20,
+          "failedDraws": 0,
+          "committedDraws": 61
+        },
+        {
+          "elementId": "source.b502f4866ae54c778d84",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 89,
+          "attemptedSamples": 52,
+          "submittedDraws": 47,
+          "suppressedDraws": 5,
+          "failedDraws": 0,
+          "committedDraws": 47
+        },
+        {
+          "elementId": "source.f70e7d964fb673ee33fc",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 89,
+          "attemptedSamples": 81,
+          "submittedDraws": 61,
+          "suppressedDraws": 20,
+          "failedDraws": 0,
+          "committedDraws": 61
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.charge-grab-roar.counter.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.charge-grab-roar.counter",
+      "durationSeconds": 4.09688663,
+      "sampleCount": 248,
+      "visibleElementCount": 6,
+      "preparedElementCount": 6,
+      "drawnElementCount": 6,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.0195edfc2014ce88d9cf",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 248,
+          "attemptedSamples": 81,
+          "submittedDraws": 75,
+          "suppressedDraws": 6,
+          "failedDraws": 0,
+          "committedDraws": 75
+        },
+        {
+          "elementId": "source.3185cea483c5e69c9450",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 248,
+          "attemptedSamples": 49,
+          "submittedDraws": 19,
+          "suppressedDraws": 30,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.4130aafa4d8fa24da731",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 248,
+          "attemptedSamples": 49,
+          "submittedDraws": 21,
+          "suppressedDraws": 28,
+          "failedDraws": 0,
+          "committedDraws": 21
+        },
+        {
+          "elementId": "source.acdbb3a0e8ab1346264d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 248,
+          "attemptedSamples": 102,
+          "submittedDraws": 50,
+          "suppressedDraws": 52,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.d7e4b30dd66c86f61803",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 248,
+          "attemptedSamples": 49,
+          "submittedDraws": 12,
+          "suppressedDraws": 37,
+          "failedDraws": 0,
+          "committedDraws": 12
+        },
+        {
+          "elementId": "source.fffd6d2e32bf885abba7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 248,
+          "attemptedSamples": 49,
+          "submittedDraws": 21,
+          "suppressedDraws": 28,
+          "failedDraws": 0,
+          "committedDraws": 21
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.charge-grab-roar.recovery.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.charge-grab-roar.recovery",
+      "durationSeconds": 11.2677202,
+      "sampleCount": 679,
+      "visibleElementCount": 13,
+      "preparedElementCount": 13,
+      "drawnElementCount": 13,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.0b3077968e3d8f193fb0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.19749e676324f09d7299",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 625,
+          "submittedDraws": 625,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 1801
+        },
+        {
+          "elementId": "source.341d915a5b1d11141d92",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 32,
+          "submittedDraws": 31,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 31
+        },
+        {
+          "elementId": "source.39267aff6fd813caa117",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 91,
+          "submittedDraws": 91,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 91
+        },
+        {
+          "elementId": "source.4b3d471dd3828e2588d1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 121,
+          "submittedDraws": 121,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 121
+        },
+        {
+          "elementId": "source.5a3c6edbb071124180a1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 91,
+          "submittedDraws": 91,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 91
+        },
+        {
+          "elementId": "source.88d8174c6663f929eea7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 80,
+          "submittedDraws": 80,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 80
+        },
+        {
+          "elementId": "source.90ce0ad53de51a656112",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 618,
+          "submittedDraws": 618,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 618
+        },
+        {
+          "elementId": "source.9c312f0c5add9f438229",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 88,
+          "submittedDraws": 88,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 88
+        },
+        {
+          "elementId": "source.a577f4e76a5f72615c7f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 229,
+          "submittedDraws": 227,
+          "suppressedDraws": 2,
+          "failedDraws": 0,
+          "committedDraws": 898
+        },
+        {
+          "elementId": "source.ab2fedc75234f0465a3a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 198,
+          "submittedDraws": 198,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 198
+        },
+        {
+          "elementId": "source.ab3b650638bb0cba1237",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 614,
+          "submittedDraws": 614,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 614
+        },
+        {
+          "elementId": "source.fbb066e0115f95665a99",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 147,
+          "submittedDraws": 147,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 147
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.charge-grab-roar.roar.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.charge-grab-roar.roar",
+      "durationSeconds": 2.4000001,
+      "sampleCount": 146,
+      "visibleElementCount": 2,
+      "preparedElementCount": 2,
+      "drawnElementCount": 2,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.152d5f146482af4e2d14",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 146,
+          "attemptedSamples": 124,
+          "submittedDraws": 120,
+          "suppressedDraws": 4,
+          "failedDraws": 0,
+          "committedDraws": 778
+        },
+        {
+          "elementId": "source.3ac3b1e29652000c0cc2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 146,
+          "attemptedSamples": 125,
+          "submittedDraws": 124,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 124
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.down-smash.active.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.down-smash.active",
+      "durationSeconds": 4.01743793,
+      "sampleCount": 244,
+      "visibleElementCount": 6,
+      "preparedElementCount": 6,
+      "drawnElementCount": 6,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.0917ff6657a5ee2cafdb",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 244,
+          "attemptedSamples": 82,
+          "submittedDraws": 62,
+          "suppressedDraws": 20,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.54be019ae82ce5423135",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 244,
+          "attemptedSamples": 120,
+          "submittedDraws": 120,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 120
+        },
+        {
+          "elementId": "source.68619daf746949ce5bee",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 244,
+          "attemptedSamples": 82,
+          "submittedDraws": 26,
+          "suppressedDraws": 56,
+          "failedDraws": 0,
+          "committedDraws": 26
+        },
+        {
+          "elementId": "source.a11309f5b77200a19e0e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 244,
+          "attemptedSamples": 82,
+          "submittedDraws": 37,
+          "suppressedDraws": 45,
+          "failedDraws": 0,
+          "committedDraws": 37
+        },
+        {
+          "elementId": "source.b7d2497a86ffcfa1d6f5",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 244,
+          "attemptedSamples": 109,
+          "submittedDraws": 109,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 109
+        },
+        {
+          "elementId": "source.e06a050c3117a013c557",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 244,
+          "attemptedSamples": 82,
+          "submittedDraws": 62,
+          "suppressedDraws": 20,
+          "failedDraws": 0,
+          "committedDraws": 62
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.fist-in-out.inner.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.fist-in-out.inner",
+      "durationSeconds": 4.5999999,
+      "sampleCount": 278,
+      "visibleElementCount": 20,
+      "preparedElementCount": 20,
+      "drawnElementCount": 20,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.09837531929147b2c735",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 78,
+          "suppressedDraws": 17,
+          "failedDraws": 0,
+          "committedDraws": 78
+        },
+        {
+          "elementId": "source.0a0fd45f5f5a43cac37a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 121,
+          "submittedDraws": 121,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 121
+        },
+        {
+          "elementId": "source.0e2c496db903785e468f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 94,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 94
+        },
+        {
+          "elementId": "source.0f94c3c2e7360f64a4b4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 73,
+          "suppressedDraws": 22,
+          "failedDraws": 0,
+          "committedDraws": 73
+        },
+        {
+          "elementId": "source.1afcf717a3747d3474db",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 50,
+          "suppressedDraws": 45,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.203f133964614442de86",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 148,
+          "submittedDraws": 147,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 1339
+        },
+        {
+          "elementId": "source.2f5b3010a12a98b8125f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 25,
+          "suppressedDraws": 70,
+          "failedDraws": 0,
+          "committedDraws": 25
+        },
+        {
+          "elementId": "source.30e485d1767abb573cce",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 25,
+          "suppressedDraws": 70,
+          "failedDraws": 0,
+          "committedDraws": 25
+        },
+        {
+          "elementId": "source.4787e8102516f8a272fc",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 31,
+          "suppressedDraws": 64,
+          "failedDraws": 0,
+          "committedDraws": 31
+        },
+        {
+          "elementId": "source.4ae99780674e12131241",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 91,
+          "suppressedDraws": 4,
+          "failedDraws": 0,
+          "committedDraws": 91
+        },
+        {
+          "elementId": "source.4fc3b75bf5e197a27979",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 181,
+          "submittedDraws": 181,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 181
+        },
+        {
+          "elementId": "source.816ecdd06b33943dd185",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 62,
+          "suppressedDraws": 33,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.83a55bcbd440d7e3d11a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 206,
+          "submittedDraws": 206,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 206
+        },
+        {
+          "elementId": "source.8d431d8c3bf38ece65f9",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 155,
+          "submittedDraws": 152,
+          "suppressedDraws": 3,
+          "failedDraws": 0,
+          "committedDraws": 152
+        },
+        {
+          "elementId": "source.9d63f5607fdf51f557c3",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 31,
+          "suppressedDraws": 64,
+          "failedDraws": 0,
+          "committedDraws": 31
+        },
+        {
+          "elementId": "source.b819383a3f79ab87ec1d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 91,
+          "suppressedDraws": 4,
+          "failedDraws": 0,
+          "committedDraws": 91
+        },
+        {
+          "elementId": "source.b8fdc5c0154c0eb5ddb7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 50,
+          "suppressedDraws": 45,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.cd6f972fe48bd7074be3",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 175,
+          "submittedDraws": 175,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 175
+        },
+        {
+          "elementId": "source.d290be8444262f5c42c0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 73,
+          "suppressedDraws": 22,
+          "failedDraws": 0,
+          "committedDraws": 73
+        },
+        {
+          "elementId": "source.fa8711bdd5ec2cb977a4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 278,
+          "attemptedSamples": 95,
+          "submittedDraws": 34,
+          "suppressedDraws": 61,
+          "failedDraws": 0,
+          "committedDraws": 34
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.floor-wipe-130.second-smash.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.floor-wipe-130.second-smash",
+      "durationSeconds": 10.8299999,
+      "sampleCount": 652,
+      "visibleElementCount": 19,
+      "preparedElementCount": 19,
+      "drawnElementCount": 19,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.0e1d1d8d2a2735e51fdc",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 50,
+          "submittedDraws": 50,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.127ec5d4a5043876e489",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 226,
+          "submittedDraws": 226,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 226
+        },
+        {
+          "elementId": "source.26271d0ec8ec369ba369",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 120,
+          "submittedDraws": 120,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 120
+        },
+        {
+          "elementId": "source.2c01e9b1ac1e75b57bdb",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 37,
+          "submittedDraws": 37,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 37
+        },
+        {
+          "elementId": "source.2ea0505b33297236b334",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 50,
+          "submittedDraws": 50,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.3a90c1aa91c8c458d974",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 73,
+          "submittedDraws": 73,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 73
+        },
+        {
+          "elementId": "source.3f8c28bfb9697f699ae1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 37,
+          "submittedDraws": 37,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 37
+        },
+        {
+          "elementId": "source.4e281de609f2752dbcde",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 210,
+          "submittedDraws": 210,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 210
+        },
+        {
+          "elementId": "source.5ffea5d5c9ba94a8cdc4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 63,
+          "submittedDraws": 62,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.6a25c276cf2f22dfe64b",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 49,
+          "submittedDraws": 49,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.8b23b41ad41e9e63bd57",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 89,
+          "submittedDraws": 85,
+          "suppressedDraws": 4,
+          "failedDraws": 0,
+          "committedDraws": 85
+        },
+        {
+          "elementId": "source.a0df0164648a73c2dbf7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 43,
+          "submittedDraws": 37,
+          "suppressedDraws": 6,
+          "failedDraws": 0,
+          "committedDraws": 37
+        },
+        {
+          "elementId": "source.a967f329215d370ec829",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 49,
+          "submittedDraws": 49,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.b86865747521e5260ab4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 119,
+          "submittedDraws": 119,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 119
+        },
+        {
+          "elementId": "source.c3b75a0c05a90fcc8ad9",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 37,
+          "submittedDraws": 37,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 37
+        },
+        {
+          "elementId": "source.c520f3b6624cbf783014",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 37,
+          "submittedDraws": 36,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 36
+        },
+        {
+          "elementId": "source.cde09d96fb4c54a1bce3",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 37,
+          "submittedDraws": 37,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 37
+        },
+        {
+          "elementId": "source.d1bf9016f12267f99040",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 73,
+          "submittedDraws": 73,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 73
+        },
+        {
+          "elementId": "source.d5f5cf9f8ff808c9204c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 652,
+          "attemptedSamples": 37,
+          "submittedDraws": 36,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 36
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.floor-wipe-130.windup.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.floor-wipe-130.windup",
+      "durationSeconds": 3.4000001,
+      "sampleCount": 206,
+      "visibleElementCount": 7,
+      "preparedElementCount": 7,
+      "drawnElementCount": 7,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.4a09bbb4d6a41c32a462",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 206,
+          "attemptedSamples": 49,
+          "submittedDraws": 25,
+          "suppressedDraws": 24,
+          "failedDraws": 0,
+          "committedDraws": 25
+        },
+        {
+          "elementId": "source.4e7ad796669dbd070dd6",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 206,
+          "attemptedSamples": 49,
+          "submittedDraws": 34,
+          "suppressedDraws": 15,
+          "failedDraws": 0,
+          "committedDraws": 34
+        },
+        {
+          "elementId": "source.594205a79ba2d50be9b2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 206,
+          "attemptedSamples": 49,
+          "submittedDraws": 27,
+          "suppressedDraws": 22,
+          "failedDraws": 0,
+          "committedDraws": 27
+        },
+        {
+          "elementId": "source.795593128d0eaaffc017",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 206,
+          "attemptedSamples": 49,
+          "submittedDraws": 19,
+          "suppressedDraws": 30,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.7ae1a89a080929f4ba9e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 206,
+          "attemptedSamples": 49,
+          "submittedDraws": 19,
+          "suppressedDraws": 30,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.829a21c3c4abbe164cc1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 206,
+          "attemptedSamples": 49,
+          "submittedDraws": 27,
+          "suppressedDraws": 22,
+          "failedDraws": 0,
+          "committedDraws": 27
+        },
+        {
+          "elementId": "source.ac3b4abd573a0df5cbb8",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 206,
+          "attemptedSamples": 49,
+          "submittedDraws": 19,
+          "suppressedDraws": 30,
+          "failedDraws": 0,
+          "committedDraws": 19
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.four-slash.active.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.four-slash.active",
+      "durationSeconds": 5.64409065,
+      "sampleCount": 341,
+      "visibleElementCount": 8,
+      "preparedElementCount": 8,
+      "drawnElementCount": 8,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.31b6cff2796ed160b56d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 341,
+          "attemptedSamples": 120,
+          "submittedDraws": 62,
+          "suppressedDraws": 58,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.3e223a8495cabea41078",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 341,
+          "attemptedSamples": 120,
+          "submittedDraws": 105,
+          "suppressedDraws": 15,
+          "failedDraws": 0,
+          "committedDraws": 105
+        },
+        {
+          "elementId": "source.507d67cb6f7de7300a0c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 341,
+          "attemptedSamples": 36,
+          "submittedDraws": 36,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 36
+        },
+        {
+          "elementId": "source.c0c2166477a49f8aa1d1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 341,
+          "attemptedSamples": 164,
+          "submittedDraws": 164,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 164
+        },
+        {
+          "elementId": "source.e3fb086a8f9491fed6c1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 341,
+          "attemptedSamples": 154,
+          "submittedDraws": 150,
+          "suppressedDraws": 4,
+          "failedDraws": 0,
+          "committedDraws": 150
+        },
+        {
+          "elementId": "source.e895cb74021ee21b828a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 341,
+          "attemptedSamples": 74,
+          "submittedDraws": 74,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 74
+        },
+        {
+          "elementId": "source.ee6f882fae155bcca58b",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 341,
+          "attemptedSamples": 117,
+          "submittedDraws": 117,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 117
+        },
+        {
+          "elementId": "source.f044ef8a6d3f9dcf4ea0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 341,
+          "attemptedSamples": 180,
+          "submittedDraws": 26,
+          "suppressedDraws": 154,
+          "failedDraws": 0,
+          "committedDraws": 26
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.four-slash.recovery.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.four-slash.recovery",
+      "durationSeconds": 5.30000019,
+      "sampleCount": 320,
+      "visibleElementCount": 7,
+      "preparedElementCount": 7,
+      "drawnElementCount": 7,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.0814453e5cbabc9b8cf6",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 320,
+          "attemptedSamples": 50,
+          "submittedDraws": 49,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.09133eb83545e57db4ea",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 320,
+          "attemptedSamples": 121,
+          "submittedDraws": 120,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 120
+        },
+        {
+          "elementId": "source.40e7f69de0ea3188170e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 320,
+          "attemptedSamples": 254,
+          "submittedDraws": 253,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 253
+        },
+        {
+          "elementId": "source.691648b96a867bb4f783",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 320,
+          "attemptedSamples": 50,
+          "submittedDraws": 49,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.7fd684e603a34beb2b8e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 320,
+          "attemptedSamples": 61,
+          "submittedDraws": 60,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 60
+        },
+        {
+          "elementId": "source.a5d9218d59b303735209",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 320,
+          "attemptedSamples": 50,
+          "submittedDraws": 49,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.c7ebfc2ec42dce986fe7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 320,
+          "attemptedSamples": 37,
+          "submittedDraws": 36,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 36
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.ghost-transition-15.tracking.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.ghost-transition-15.tracking",
+      "durationSeconds": 3.53974509,
+      "sampleCount": 215,
+      "visibleElementCount": 15,
+      "preparedElementCount": 15,
+      "drawnElementCount": 15,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.093945f188ef52d714d5",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 96,
+          "submittedDraws": 90,
+          "suppressedDraws": 6,
+          "failedDraws": 0,
+          "committedDraws": 90
+        },
+        {
+          "elementId": "source.141dc080308c73964ed0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 75,
+          "submittedDraws": 49,
+          "suppressedDraws": 26,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.1c3434b2d34fc76f2c3a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 75,
+          "submittedDraws": 73,
+          "suppressedDraws": 2,
+          "failedDraws": 0,
+          "committedDraws": 73
+        },
+        {
+          "elementId": "source.25aacbab3baf36c6c03d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 75,
+          "submittedDraws": 30,
+          "suppressedDraws": 45,
+          "failedDraws": 0,
+          "committedDraws": 30
+        },
+        {
+          "elementId": "source.29ee471cc0e0a6558506",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 92,
+          "submittedDraws": 92,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 92
+        },
+        {
+          "elementId": "source.321cb37e40bdb842f4a5",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 75,
+          "submittedDraws": 49,
+          "suppressedDraws": 26,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.35c2812425d60b5a4437",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 149,
+          "submittedDraws": 149,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 149
+        },
+        {
+          "elementId": "source.3ed3cd63f2f6f5ccc204",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 75,
+          "submittedDraws": 25,
+          "suppressedDraws": 50,
+          "failedDraws": 0,
+          "committedDraws": 25
+        },
+        {
+          "elementId": "source.5a0f2c079f395448a21a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 89,
+          "submittedDraws": 89,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 89
+        },
+        {
+          "elementId": "source.5f2a5f04e5b865035239",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 75,
+          "submittedDraws": 30,
+          "suppressedDraws": 45,
+          "failedDraws": 0,
+          "committedDraws": 30
+        },
+        {
+          "elementId": "source.78cd06d7a10ebaa2c0bd",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 75,
+          "submittedDraws": 62,
+          "suppressedDraws": 13,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.97c5735c0e12bc0ec44a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 75,
+          "submittedDraws": 62,
+          "suppressedDraws": 13,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.a5bfdf8bb0d9b8cbf907",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 75,
+          "submittedDraws": 62,
+          "suppressedDraws": 13,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.b8f6dce1ae18e37d7fc8",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 89,
+          "submittedDraws": 89,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 89
+        },
+        {
+          "elementId": "source.e57c17eaf05958e5bccb",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 215,
+          "attemptedSamples": 92,
+          "submittedDraws": 92,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 92
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.ground-wave-smash.active.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.ground-wave-smash.active",
+      "durationSeconds": 2,
+      "sampleCount": 122,
+      "visibleElementCount": 7,
+      "preparedElementCount": 7,
+      "drawnElementCount": 7,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.31fa4b5fd451806a0db6",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 122,
+          "attemptedSamples": 60,
+          "submittedDraws": 54,
+          "suppressedDraws": 6,
+          "failedDraws": 0,
+          "committedDraws": 54
+        },
+        {
+          "elementId": "source.35463b9d5706fd42af4c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 122,
+          "attemptedSamples": 72,
+          "submittedDraws": 54,
+          "suppressedDraws": 18,
+          "failedDraws": 0,
+          "committedDraws": 54
+        },
+        {
+          "elementId": "source.68d6f86662b7b0bd3cb2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 122,
+          "attemptedSamples": 117,
+          "submittedDraws": 113,
+          "suppressedDraws": 4,
+          "failedDraws": 0,
+          "committedDraws": 113
+        },
+        {
+          "elementId": "source.6d62157f88ca9d002ef5",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 122,
+          "attemptedSamples": 60,
+          "submittedDraws": 59,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 59
+        },
+        {
+          "elementId": "source.c99aae9fc1fff66a9c1c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 122,
+          "attemptedSamples": 94,
+          "submittedDraws": 93,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 93
+        },
+        {
+          "elementId": "source.d4afcb0d935247a368fa",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 122,
+          "attemptedSamples": 78,
+          "submittedDraws": 77,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 77
+        },
+        {
+          "elementId": "source.d76375d0d50e54b57b2d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 122,
+          "attemptedSamples": 79,
+          "submittedDraws": 78,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 78
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.high-jump.land.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.high-jump.land",
+      "durationSeconds": 4.30000019,
+      "sampleCount": 260,
+      "visibleElementCount": 14,
+      "preparedElementCount": 14,
+      "drawnElementCount": 14,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.02a08172b8b42f2e7447",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 74,
+          "submittedDraws": 74,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 74
+        },
+        {
+          "elementId": "source.152f0042214bbc7d7798",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.211f476bb3c8adb60930",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.376ac01b5ea8ae7ddfd6",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.4589aa1922ad69610e9d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 92,
+          "submittedDraws": 92,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 92
+        },
+        {
+          "elementId": "source.6adb32347d26a9d79a66",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 58,
+          "submittedDraws": 49,
+          "suppressedDraws": 9,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.7660fb560f05124e17c2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 122,
+          "submittedDraws": 122,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 122
+        },
+        {
+          "elementId": "source.78f866e4629cf9cf9860",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 122,
+          "submittedDraws": 122,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 122
+        },
+        {
+          "elementId": "source.7be05e8b261aa56368b0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.a520ae0f9019b499ab0c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 151,
+          "submittedDraws": 151,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 151
+        },
+        {
+          "elementId": "source.a6504522856bc7469dca",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 58,
+          "submittedDraws": 49,
+          "suppressedDraws": 9,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.b1cef03c33fe3619f560",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 58,
+          "submittedDraws": 49,
+          "suppressedDraws": 9,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.bad75466d9a006ff462f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.be3ff3cc7c557a9d51bf",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 260,
+          "attemptedSamples": 74,
+          "submittedDraws": 74,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 74
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.high-jump.takeoff.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.high-jump.takeoff",
+      "durationSeconds": 5.125,
+      "sampleCount": 310,
+      "visibleElementCount": 2,
+      "preparedElementCount": 2,
+      "drawnElementCount": 2,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.d380f17792f1c67e9dc2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 310,
+          "attemptedSamples": 48,
+          "submittedDraws": 25,
+          "suppressedDraws": 23,
+          "failedDraws": 0,
+          "committedDraws": 25
+        },
+        {
+          "elementId": "source.f4617c98d44349eec51d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 310,
+          "attemptedSamples": 106,
+          "submittedDraws": 105,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 105
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.imprison-roar.active.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.imprison-roar.active",
+      "durationSeconds": 6.19999981,
+      "sampleCount": 374,
+      "visibleElementCount": 15,
+      "preparedElementCount": 15,
+      "drawnElementCount": 15,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.0dd6b6a5c330aabc1508",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 19,
+          "suppressedDraws": 221,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.19d8f45b2b3f606a4c28",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 213,
+          "suppressedDraws": 27,
+          "failedDraws": 0,
+          "committedDraws": 213
+        },
+        {
+          "elementId": "source.2204fdb8d53adaca2596",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 15,
+          "suppressedDraws": 225,
+          "failedDraws": 0,
+          "committedDraws": 15
+        },
+        {
+          "elementId": "source.2af5981e2dded2d2186d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 62,
+          "suppressedDraws": 178,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.3399dbc10134b239936a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 207,
+          "suppressedDraws": 33,
+          "failedDraws": 0,
+          "committedDraws": 207
+        },
+        {
+          "elementId": "source.47d74491bdcd91028d23",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 62,
+          "suppressedDraws": 178,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.5275164e8104329d49f8",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 62,
+          "suppressedDraws": 178,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.60dfa83fca87651fb4b5",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 193,
+          "suppressedDraws": 47,
+          "failedDraws": 0,
+          "committedDraws": 193
+        },
+        {
+          "elementId": "source.7041d45a15b4ea4fd659",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 62,
+          "suppressedDraws": 178,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.714d58e7f94a35d05a52",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 187,
+          "suppressedDraws": 53,
+          "failedDraws": 0,
+          "committedDraws": 187
+        },
+        {
+          "elementId": "source.9337c047a20560efa84a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 313,
+          "submittedDraws": 311,
+          "suppressedDraws": 2,
+          "failedDraws": 0,
+          "committedDraws": 311
+        },
+        {
+          "elementId": "source.982a4d0efc52460f8dd2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 12,
+          "suppressedDraws": 228,
+          "failedDraws": 0,
+          "committedDraws": 12
+        },
+        {
+          "elementId": "source.c98c25ef5c3b4be13dd1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 12,
+          "suppressedDraws": 228,
+          "failedDraws": 0,
+          "committedDraws": 12
+        },
+        {
+          "elementId": "source.dfed54ea91a893fa8003",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 240,
+          "submittedDraws": 62,
+          "suppressedDraws": 178,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.f5879deadc65d9570f89",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 374,
+          "attemptedSamples": 367,
+          "submittedDraws": 366,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 366
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.imprison-roar.recovery.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.imprison-roar.recovery",
+      "durationSeconds": 5.9000001,
+      "sampleCount": 356,
+      "visibleElementCount": 12,
+      "preparedElementCount": 12,
+      "drawnElementCount": 12,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.025e3d2a10ebe6a18154",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 219,
+          "submittedDraws": 92,
+          "suppressedDraws": 127,
+          "failedDraws": 0,
+          "committedDraws": 92
+        },
+        {
+          "elementId": "source.0d467f09dc30ca43a2c7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 219,
+          "submittedDraws": 30,
+          "suppressedDraws": 189,
+          "failedDraws": 0,
+          "committedDraws": 30
+        },
+        {
+          "elementId": "source.31387e02de07e5278090",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 219,
+          "submittedDraws": 90,
+          "suppressedDraws": 129,
+          "failedDraws": 0,
+          "committedDraws": 90
+        },
+        {
+          "elementId": "source.458bb51ac5aae039564c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 228,
+          "submittedDraws": 62,
+          "suppressedDraws": 166,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.544940db27dcb8c13942",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 219,
+          "submittedDraws": 149,
+          "suppressedDraws": 70,
+          "failedDraws": 0,
+          "committedDraws": 149
+        },
+        {
+          "elementId": "source.75f048451c280ec38888",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 219,
+          "submittedDraws": 73,
+          "suppressedDraws": 146,
+          "failedDraws": 0,
+          "committedDraws": 73
+        },
+        {
+          "elementId": "source.9dae7ac1510bd290bf2a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 219,
+          "submittedDraws": 62,
+          "suppressedDraws": 157,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.bfef0b171b7dc617f7e5",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 219,
+          "submittedDraws": 62,
+          "suppressedDraws": 157,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.f2c75890448979698b0a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 228,
+          "submittedDraws": 62,
+          "suppressedDraws": 166,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.f4a01f94ac1864f82562",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 219,
+          "submittedDraws": 62,
+          "suppressedDraws": 157,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.fae430cc81133c60672c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 219,
+          "submittedDraws": 92,
+          "suppressedDraws": 127,
+          "failedDraws": 0,
+          "committedDraws": 92
+        },
+        {
+          "elementId": "source.fe9c40be0a1c329a3ee7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 356,
+          "attemptedSamples": 228,
+          "submittedDraws": 62,
+          "suppressedDraws": 166,
+          "failedDraws": 0,
+          "committedDraws": 62
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.imprison-roar.windup.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.imprison-roar.windup",
+      "durationSeconds": 2.33999991,
+      "sampleCount": 143,
+      "visibleElementCount": 3,
+      "preparedElementCount": 3,
+      "drawnElementCount": 3,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.3b067503157d8701b3ee",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 143,
+          "attemptedSamples": 24,
+          "submittedDraws": 23,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 23
+        },
+        {
+          "elementId": "source.3f7a352b8527662265e7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 143,
+          "attemptedSamples": 31,
+          "submittedDraws": 30,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 30
+        },
+        {
+          "elementId": "source.ad38b45674ab3751b310",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 143,
+          "attemptedSamples": 37,
+          "submittedDraws": 36,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 36
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.ledge-roar.active.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.ledge-roar.active",
+      "durationSeconds": 4,
+      "sampleCount": 242,
+      "visibleElementCount": 1,
+      "preparedElementCount": 1,
+      "drawnElementCount": 1,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.6a49a3589cdea3403d1a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 242,
+          "attemptedSamples": 62,
+          "submittedDraws": 61,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 61
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.ledge-roar.recovery.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.ledge-roar.recovery",
+      "durationSeconds": 11.2677202,
+      "sampleCount": 679,
+      "visibleElementCount": 13,
+      "preparedElementCount": 13,
+      "drawnElementCount": 13,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.0381af9eaae4dcbec3c8",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 91,
+          "submittedDraws": 91,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 91
+        },
+        {
+          "elementId": "source.11bb70c0da698c99104b",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.29c18f9d6d6475749868",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 149,
+          "submittedDraws": 149,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 149
+        },
+        {
+          "elementId": "source.68fa1b8a4209d54bb014",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 614,
+          "submittedDraws": 614,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 614
+        },
+        {
+          "elementId": "source.81e5f63e8e0be209226a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.89ca138f47de123afb95",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 625,
+          "submittedDraws": 625,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 1801
+        },
+        {
+          "elementId": "source.9aef353d713685691b57",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 74,
+          "submittedDraws": 74,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 74
+        },
+        {
+          "elementId": "source.a3e944a1df7e302e0f0d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 198,
+          "submittedDraws": 198,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 198
+        },
+        {
+          "elementId": "source.b627bdaa05b92ae01890",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.c405ba6bb481b1f710cd",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 31,
+          "submittedDraws": 31,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 31
+        },
+        {
+          "elementId": "source.dec567d4e61fe32f35f2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 229,
+          "submittedDraws": 227,
+          "suppressedDraws": 2,
+          "failedDraws": 0,
+          "committedDraws": 898
+        },
+        {
+          "elementId": "source.e0422c578b0b78434143",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 90,
+          "submittedDraws": 90,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 90
+        },
+        {
+          "elementId": "source.fadc94eb4387edbe02d6",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 679,
+          "attemptedSamples": 614,
+          "submittedDraws": 614,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 614
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.ledge-roar.windup.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.ledge-roar.windup",
+      "durationSeconds": 4,
+      "sampleCount": 242,
+      "visibleElementCount": 1,
+      "preparedElementCount": 1,
+      "drawnElementCount": 1,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.98a861f197d01137407a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 242,
+          "attemptedSamples": 78,
+          "submittedDraws": 59,
+          "suppressedDraws": 19,
+          "failedDraws": 0,
+          "committedDraws": 59
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.magic-choice.inner.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.inner",
+      "durationSeconds": 2.5,
+      "sampleCount": 152,
+      "visibleElementCount": 4,
+      "preparedElementCount": 4,
+      "drawnElementCount": 4,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.091e8bc73b140feeda67",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 152,
+          "attemptedSamples": 152,
+          "submittedDraws": 62,
+          "suppressedDraws": 90,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.242e5d84c3d400b2e284",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 152,
+          "attemptedSamples": 152,
+          "submittedDraws": 122,
+          "suppressedDraws": 30,
+          "failedDraws": 0,
+          "committedDraws": 122
+        },
+        {
+          "elementId": "source.873c86238bdf1c0e44ba",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 152,
+          "attemptedSamples": 152,
+          "submittedDraws": 85,
+          "suppressedDraws": 67,
+          "failedDraws": 0,
+          "committedDraws": 85
+        },
+        {
+          "elementId": "source.8f7fea503038ab68927e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 152,
+          "attemptedSamples": 152,
+          "submittedDraws": 37,
+          "suppressedDraws": 115,
+          "failedDraws": 0,
+          "committedDraws": 37
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.magic-choice.outer.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.outer",
+      "durationSeconds": 2.5,
+      "sampleCount": 152,
+      "visibleElementCount": 2,
+      "preparedElementCount": 2,
+      "drawnElementCount": 2,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.4c97beeabb3df04a5c81",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 152,
+          "attemptedSamples": 152,
+          "submittedDraws": 62,
+          "suppressedDraws": 90,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.717b4a78c676c758a171",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 152,
+          "attemptedSamples": 152,
+          "submittedDraws": 122,
+          "suppressedDraws": 30,
+          "failedDraws": 0,
+          "committedDraws": 122
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.magic-choice.recovery.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.recovery",
+      "durationSeconds": 4.52477074,
+      "sampleCount": 274,
+      "visibleElementCount": 13,
+      "preparedElementCount": 13,
+      "drawnElementCount": 13,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.13509d64bdc8f0a7082b",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 239,
+          "submittedDraws": 239,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 239
+        },
+        {
+          "elementId": "source.185a9816a80af1a2d4be",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 76,
+          "submittedDraws": 61,
+          "suppressedDraws": 15,
+          "failedDraws": 0,
+          "committedDraws": 61
+        },
+        {
+          "elementId": "source.2c1313521f6553c640f2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 76,
+          "submittedDraws": 73,
+          "suppressedDraws": 3,
+          "failedDraws": 0,
+          "committedDraws": 73
+        },
+        {
+          "elementId": "source.50f2d8dddf79bdaf8bbd",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 91,
+          "submittedDraws": 91,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 91
+        },
+        {
+          "elementId": "source.631bd107d3f0037ead82",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 76,
+          "submittedDraws": 61,
+          "suppressedDraws": 15,
+          "failedDraws": 0,
+          "committedDraws": 61
+        },
+        {
+          "elementId": "source.6a3589c559ab950e0c55",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 76,
+          "submittedDraws": 73,
+          "suppressedDraws": 3,
+          "failedDraws": 0,
+          "committedDraws": 73
+        },
+        {
+          "elementId": "source.9359d1f9de8dcf1ba739",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 151,
+          "submittedDraws": 151,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 151
+        },
+        {
+          "elementId": "source.9a22d21c94916588b5d7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 76,
+          "submittedDraws": 61,
+          "suppressedDraws": 15,
+          "failedDraws": 0,
+          "committedDraws": 61
+        },
+        {
+          "elementId": "source.a547b11e02cda5dc3fca",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 76,
+          "submittedDraws": 50,
+          "suppressedDraws": 26,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.cff9318672563cf9c97f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 76,
+          "submittedDraws": 50,
+          "suppressedDraws": 26,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.e1947290c927b2535bd0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 76,
+          "submittedDraws": 50,
+          "suppressedDraws": 26,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.ed3a89cb2229855aa18c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 76,
+          "submittedDraws": 67,
+          "suppressedDraws": 9,
+          "failedDraws": 0,
+          "committedDraws": 67
+        },
+        {
+          "elementId": "source.f137e51781bec5a13e76",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 274,
+          "attemptedSamples": 76,
+          "submittedDraws": 73,
+          "suppressedDraws": 3,
+          "failedDraws": 0,
+          "committedDraws": 73
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.parry.slash.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.parry.slash",
+      "durationSeconds": 1.5,
+      "sampleCount": 92,
+      "visibleElementCount": 6,
+      "preparedElementCount": 6,
+      "drawnElementCount": 6,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.08a02da565688b5195e1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 92,
+          "attemptedSamples": 90,
+          "submittedDraws": 31,
+          "suppressedDraws": 59,
+          "failedDraws": 0,
+          "committedDraws": 31
+        },
+        {
+          "elementId": "source.451d7f44236fc75aa1ea",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 92,
+          "attemptedSamples": 90,
+          "submittedDraws": 62,
+          "suppressedDraws": 28,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.63f6fe371cc73967f59c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 92,
+          "attemptedSamples": 90,
+          "submittedDraws": 62,
+          "suppressedDraws": 28,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.c5b22f1e05fd9bcaa09f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 92,
+          "attemptedSamples": 90,
+          "submittedDraws": 31,
+          "suppressedDraws": 59,
+          "failedDraws": 0,
+          "committedDraws": 31
+        },
+        {
+          "elementId": "source.e02ac4b170099e69fb25",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 92,
+          "attemptedSamples": 90,
+          "submittedDraws": 37,
+          "suppressedDraws": 53,
+          "failedDraws": 0,
+          "committedDraws": 37
+        },
+        {
+          "elementId": "source.fc96288a6dfd4da6d19f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 92,
+          "attemptedSamples": 90,
+          "submittedDraws": 49,
+          "suppressedDraws": 41,
+          "failedDraws": 0,
+          "committedDraws": 49
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.parry.stance.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.parry.stance",
+      "durationSeconds": 2.8499999,
+      "sampleCount": 173,
+      "visibleElementCount": 10,
+      "preparedElementCount": 10,
+      "drawnElementCount": 10,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.0ab1722304364adfd65d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 173,
+          "attemptedSamples": 30,
+          "submittedDraws": 30,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 30
+        },
+        {
+          "elementId": "source.33b87ed86c0ca62e6eee",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 173,
+          "attemptedSamples": 102,
+          "submittedDraws": 31,
+          "suppressedDraws": 71,
+          "failedDraws": 0,
+          "committedDraws": 31
+        },
+        {
+          "elementId": "source.3cc3a44a97ded70799ba",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 173,
+          "attemptedSamples": 47,
+          "submittedDraws": 41,
+          "suppressedDraws": 6,
+          "failedDraws": 0,
+          "committedDraws": 41
+        },
+        {
+          "elementId": "source.444e484adaaec3db57af",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 173,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.538d78ef2c578433a48d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 173,
+          "attemptedSamples": 122,
+          "submittedDraws": 121,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 121
+        },
+        {
+          "elementId": "source.5b6da789226da157a1f0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 173,
+          "attemptedSamples": 102,
+          "submittedDraws": 15,
+          "suppressedDraws": 87,
+          "failedDraws": 0,
+          "committedDraws": 15
+        },
+        {
+          "elementId": "source.677ab0914835fc323882",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 173,
+          "attemptedSamples": 30,
+          "submittedDraws": 30,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 30
+        },
+        {
+          "elementId": "source.73c6ec5d09b2f85d6274",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 173,
+          "attemptedSamples": 102,
+          "submittedDraws": 19,
+          "suppressedDraws": 83,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.812019446095ebeaf58c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 173,
+          "attemptedSamples": 62,
+          "submittedDraws": 62,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.b83706de040cc083ba21",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 173,
+          "attemptedSamples": 60,
+          "submittedDraws": 54,
+          "suppressedDraws": 6,
+          "failedDraws": 0,
+          "committedDraws": 54
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.portal-rush.portal.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.portal-rush.portal",
+      "durationSeconds": 6.05033731,
+      "sampleCount": 366,
+      "visibleElementCount": 14,
+      "preparedElementCount": 14,
+      "drawnElementCount": 14,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.1b776620aaf4f38756f2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 172,
+          "submittedDraws": 171,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 171
+        },
+        {
+          "elementId": "source.1c9d5fc0aa230299b12a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 32,
+          "submittedDraws": 18,
+          "suppressedDraws": 14,
+          "failedDraws": 0,
+          "committedDraws": 18
+        },
+        {
+          "elementId": "source.215a59ea8258f7e63813",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 121,
+          "submittedDraws": 120,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 2161
+        },
+        {
+          "elementId": "source.2d9b128f179cfb10a0ef",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 31,
+          "submittedDraws": 30,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 30
+        },
+        {
+          "elementId": "source.516ebd8ab92481cddfb9",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 61,
+          "submittedDraws": 60,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 60
+        },
+        {
+          "elementId": "source.542d45705d0ab10e26c4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 31,
+          "submittedDraws": 30,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 30
+        },
+        {
+          "elementId": "source.8bdb145e59f215ec3ca4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 61,
+          "submittedDraws": 60,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 60
+        },
+        {
+          "elementId": "source.905f8d81b798a5ba69d0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 90,
+          "submittedDraws": 89,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 89
+        },
+        {
+          "elementId": "source.b34062a699ad2c3749ec",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 75,
+          "submittedDraws": 74,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 74
+        },
+        {
+          "elementId": "source.baf3b1214e15af4bdd50",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 60,
+          "submittedDraws": 59,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 59
+        },
+        {
+          "elementId": "source.c15e35d8637a09e93cd6",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 56,
+          "submittedDraws": 55,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 55
+        },
+        {
+          "elementId": "source.c8364a880f2d2bac929b",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 127,
+          "submittedDraws": 126,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 126
+        },
+        {
+          "elementId": "source.cb18c0a3eb4715d141e5",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 30,
+          "submittedDraws": 29,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 29
+        },
+        {
+          "elementId": "source.db4398c6dbd27ca0622f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 366,
+          "attemptedSamples": 55,
+          "submittedDraws": 54,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 54
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.portal-rush.recovery.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.portal-rush.recovery",
+      "durationSeconds": 11.1516161,
+      "sampleCount": 672,
+      "visibleElementCount": 5,
+      "preparedElementCount": 5,
+      "drawnElementCount": 5,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.097706a5f15671a304cf",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 672,
+          "attemptedSamples": 614,
+          "submittedDraws": 613,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 613
+        },
+        {
+          "elementId": "source.13cb87828241cc10f033",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 672,
+          "attemptedSamples": 625,
+          "submittedDraws": 624,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 1800
+        },
+        {
+          "elementId": "source.70f060fe187c02a3c5e4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 672,
+          "attemptedSamples": 616,
+          "submittedDraws": 615,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 615
+        },
+        {
+          "elementId": "source.73660ead57d410b70f84",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 672,
+          "attemptedSamples": 32,
+          "submittedDraws": 30,
+          "suppressedDraws": 2,
+          "failedDraws": 0,
+          "committedDraws": 30
+        },
+        {
+          "elementId": "source.cd96fa16ebca507fc5e1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 672,
+          "attemptedSamples": 31,
+          "submittedDraws": 30,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 30
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.portal-rush.rushes.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.portal-rush.rushes",
+      "durationSeconds": 10.6000004,
+      "sampleCount": 638,
+      "visibleElementCount": 5,
+      "preparedElementCount": 5,
+      "drawnElementCount": 5,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.12686f9c6f89878477d5",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 638,
+          "attemptedSamples": 33,
+          "submittedDraws": 32,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 32
+        },
+        {
+          "elementId": "source.2d3e6a0db388a29b4f3f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 638,
+          "attemptedSamples": 32,
+          "submittedDraws": 32,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 32
+        },
+        {
+          "elementId": "source.4108b4885c28eefc9d85",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 638,
+          "attemptedSamples": 615,
+          "submittedDraws": 614,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 614
+        },
+        {
+          "elementId": "source.6653e9d4443d28016cf4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 638,
+          "attemptedSamples": 625,
+          "submittedDraws": 624,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 1801
+        },
+        {
+          "elementId": "source.738955fc4e4a8e07b2bb",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 638,
+          "attemptedSamples": 615,
+          "submittedDraws": 614,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 614
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.red-blade-wave.active.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.red-blade-wave.active",
+      "durationSeconds": 4,
+      "sampleCount": 242,
+      "visibleElementCount": 5,
+      "preparedElementCount": 5,
+      "drawnElementCount": 5,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.055adf57f38ac8f25be3",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 242,
+          "attemptedSamples": 89,
+          "submittedDraws": 85,
+          "suppressedDraws": 4,
+          "failedDraws": 0,
+          "committedDraws": 85
+        },
+        {
+          "elementId": "source.5cb81ed1867daa4c331a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 242,
+          "attemptedSamples": 60,
+          "submittedDraws": 37,
+          "suppressedDraws": 23,
+          "failedDraws": 0,
+          "committedDraws": 37
+        },
+        {
+          "elementId": "source.5d987e41721843a8d390",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 242,
+          "attemptedSamples": 183,
+          "submittedDraws": 182,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 182
+        },
+        {
+          "elementId": "source.94fe8920096dda4a4e73",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 242,
+          "attemptedSamples": 123,
+          "submittedDraws": 122,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 122
+        },
+        {
+          "elementId": "source.f997148180378f188150",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 242,
+          "attemptedSamples": 63,
+          "submittedDraws": 62,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 62
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.red-blade-wave.recovery.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.red-blade-wave.recovery",
+      "durationSeconds": 2.10000014,
+      "sampleCount": 129,
+      "visibleElementCount": 8,
+      "preparedElementCount": 8,
+      "drawnElementCount": 8,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.033440c3f3c57b26c359",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 129,
+          "attemptedSamples": 69,
+          "submittedDraws": 59,
+          "suppressedDraws": 10,
+          "failedDraws": 0,
+          "committedDraws": 59
+        },
+        {
+          "elementId": "source.22b50d4b2e12085ca178",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 129,
+          "attemptedSamples": 69,
+          "submittedDraws": 62,
+          "suppressedDraws": 7,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.44b65d9cced8e3208e99",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 129,
+          "attemptedSamples": 69,
+          "submittedDraws": 62,
+          "suppressedDraws": 7,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.5d6b074142b470df6ff9",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 129,
+          "attemptedSamples": 69,
+          "submittedDraws": 62,
+          "suppressedDraws": 7,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.6383d218700531bee97a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 129,
+          "attemptedSamples": 69,
+          "submittedDraws": 62,
+          "suppressedDraws": 7,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.9b94f9230c2f3e91257f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 129,
+          "attemptedSamples": 69,
+          "submittedDraws": 49,
+          "suppressedDraws": 20,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.c3d8be2359a2c76638c2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 129,
+          "attemptedSamples": 69,
+          "submittedDraws": 62,
+          "suppressedDraws": 7,
+          "failedDraws": 0,
+          "committedDraws": 62
+        },
+        {
+          "elementId": "source.f493651f9796d8059c02",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 129,
+          "attemptedSamples": 69,
+          "submittedDraws": 49,
+          "suppressedDraws": 20,
+          "failedDraws": 0,
+          "committedDraws": 49
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.super-smash.windup.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.super-smash.windup",
+      "durationSeconds": 4.80000019,
+      "sampleCount": 290,
+      "visibleElementCount": 1,
+      "preparedElementCount": 1,
+      "drawnElementCount": 1,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.d8b2ab17d726fc9027e0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 290,
+          "attemptedSamples": 120,
+          "submittedDraws": 110,
+          "suppressedDraws": 10,
+          "failedDraws": 0,
+          "committedDraws": 110
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.triple-counter.first.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.triple-counter.first",
+      "durationSeconds": 3.0999999,
+      "sampleCount": 188,
+      "visibleElementCount": 16,
+      "preparedElementCount": 16,
+      "drawnElementCount": 16,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.00525535a3e06c7e8978",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 27,
+          "suppressedDraws": 81,
+          "failedDraws": 0,
+          "committedDraws": 27
+        },
+        {
+          "elementId": "source.137fe0ded1549d2a4244",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 19,
+          "suppressedDraws": 89,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.18dcc264d019d4d9712b",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 34,
+          "suppressedDraws": 74,
+          "failedDraws": 0,
+          "committedDraws": 34
+        },
+        {
+          "elementId": "source.26eba904d99af584f44f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 35,
+          "suppressedDraws": 73,
+          "failedDraws": 0,
+          "committedDraws": 35
+        },
+        {
+          "elementId": "source.395e8ac9129b1e86d275",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 50,
+          "suppressedDraws": 58,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.44437f21255d54588830",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 50,
+          "suppressedDraws": 58,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.4b8cf4d3ab3455780910",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 15,
+          "suppressedDraws": 93,
+          "failedDraws": 0,
+          "committedDraws": 15
+        },
+        {
+          "elementId": "source.7042e591e617f3a3c680",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 35,
+          "suppressedDraws": 73,
+          "failedDraws": 0,
+          "committedDraws": 35
+        },
+        {
+          "elementId": "source.79b7ea48ce5e2d581946",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 23,
+          "suppressedDraws": 85,
+          "failedDraws": 0,
+          "committedDraws": 23
+        },
+        {
+          "elementId": "source.a3245a6aa54161be8f91",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 31,
+          "suppressedDraws": 77,
+          "failedDraws": 0,
+          "committedDraws": 31
+        },
+        {
+          "elementId": "source.c91b2b80df15257fa2bb",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 19,
+          "suppressedDraws": 89,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.cc659f4726aa367c443e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 19,
+          "suppressedDraws": 89,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.d1a7b2f197536f575cc2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 19,
+          "suppressedDraws": 89,
+          "failedDraws": 0,
+          "committedDraws": 19
+        },
+        {
+          "elementId": "source.d3827ae5fa077c614715",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 49,
+          "suppressedDraws": 59,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.d730263c1a4d2f3a5714",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 78,
+          "suppressedDraws": 30,
+          "failedDraws": 0,
+          "committedDraws": 78
+        },
+        {
+          "elementId": "source.e81860f9fa7943b86ddd",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 188,
+          "attemptedSamples": 108,
+          "submittedDraws": 29,
+          "suppressedDraws": 79,
+          "failedDraws": 0,
+          "committedDraws": 29
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.whirlwind.recovery.reviewed-source-candidate.effect.json",
+      "effectAssetId": "effect.valtan.whirlwind.recovery",
+      "durationSeconds": 1.19033694,
+      "sampleCount": 74,
+      "visibleElementCount": 3,
+      "preparedElementCount": 3,
+      "drawnElementCount": 3,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.7049e02f84728c638674",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 74,
+          "attemptedSamples": 20,
+          "submittedDraws": 20,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 20
+        },
+        {
+          "elementId": "source.beb992498184e79af182",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 74,
+          "attemptedSamples": 54,
+          "submittedDraws": 52,
+          "suppressedDraws": 2,
+          "failedDraws": 0,
+          "committedDraws": 52
+        },
+        {
+          "elementId": "source.e8a5de96d95b1448332c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 74,
+          "attemptedSamples": 61,
+          "submittedDraws": 61,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 61
+        }
+      ]
+    }
+  ]
+}

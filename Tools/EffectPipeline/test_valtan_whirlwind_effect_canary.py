@@ -434,6 +434,68 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
         with self.assertRaisesRegex(builder.ContractError, "dropped serialized B_EffectRoot"):
             builder.validate_source_contract(REPOSITORY_ROOT, mutated, self.schema)
 
+    def test_animation_binding_accepts_v1_and_exactly_joins_v2_occurrence(self) -> None:
+        binding = copy.deepcopy(self.binding)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            relative = Path("Valtan.patternbindings.json")
+            binding["animationBindingDocument"] = relative.as_posix()
+
+            v1 = {
+                "schema": "lostark.valtan-pattern-bindings",
+                "formatVersion": 1,
+                "bindings": [
+                    {
+                        "actionId": builder.EXPECTED_ACTION_ID,
+                        "clip": builder.EXPECTED_RUNTIME_CLIP,
+                    }
+                ],
+            }
+            (root / relative).write_text(
+                json.dumps(v1), encoding="utf-8"
+            )
+            builder._validate_animation_binding(root, binding)
+
+            v2 = {
+                "schema": "lostark.valtan-pattern-bindings",
+                "formatVersion": 2,
+                "bindings": [
+                    {
+                        "actionId": builder.EXPECTED_ACTION_ID,
+                        "clips": [
+                            {
+                                "clipOccurrenceId": (
+                                    f"{builder.EXPECTED_ACTION_ID}.clip.99"
+                                ),
+                                "clip": "mesh_decoy",
+                            },
+                            {
+                                "clipOccurrenceId": (
+                                    builder.EXPECTED_CLIP_OCCURRENCE_ID
+                                ),
+                                "clip": builder.EXPECTED_RUNTIME_CLIP,
+                            },
+                        ],
+                    }
+                ],
+            }
+            (root / relative).write_text(
+                json.dumps(v2), encoding="utf-8"
+            )
+            builder._validate_animation_binding(root, binding)
+
+            v2["bindings"][0]["clips"][1]["clipOccurrenceId"] = (
+                f"{builder.EXPECTED_ACTION_ID}.clip.98"
+            )
+            (root / relative).write_text(
+                json.dumps(v2), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(
+                builder.ContractError,
+                "canonical Whirlwind v2 clip occurrence",
+            ):
+                builder._validate_animation_binding(root, binding)
+
     def test_physical_b_effectroot_is_unique_casefold_evidence(self) -> None:
         bone = self.binding["modelBoneEvidence"]
         model_path = (
@@ -496,6 +558,15 @@ class ValtanWhirlwindEffectCanaryTests(unittest.TestCase):
                     output_path=output,
                     check=True,
                 )
+
+    def test_rebuild_preserves_legacy_crlf_canary_bytes(self) -> None:
+        source = REPOSITORY_ROOT / self.binding["effectDocument"]
+        expected = source.read_bytes()
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "effect.json"
+            output.write_bytes(expected)
+            builder.build_and_write(REPOSITORY_ROOT, output_path=output)
+            self.assertEqual(expected, output.read_bytes())
 
     def test_invalid_mapping_preserves_previous_output(self) -> None:
         mutated = copy.deepcopy(self.mapping)

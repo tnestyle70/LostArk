@@ -68,15 +68,15 @@ def binding_index(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return result
 
 
-def cue_index(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def cue_index(document: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
     if document.get("formatVersion") != 2:
         raise TimingProposalError("timing proposals require v2 cue rows")
-    result = {}
+    result: dict[str, list[dict[str, Any]]] = {}
     for row in document.get("cues", []):
         occurrence = str(row.get("clipOccurrenceId") or "")
-        if not occurrence or occurrence in result:
+        if not occurrence:
             raise TimingProposalError("cue clip occurrence identity is invalid")
-        result[occurrence] = row
+        result.setdefault(occurrence, []).append(row)
     return result
 
 
@@ -213,7 +213,10 @@ def build_proposals() -> dict[str, Any]:
         raise TimingProposalError("Portal FINISH is not awaiting timing review")
 
     cues = cue_index(read_json(CUE_PATH))
-    current_cue = copy.deepcopy(cues.get(PORTAL_CLIP_OCCURRENCE_ID))
+    portal_cues = cues.get(PORTAL_CLIP_OCCURRENCE_ID, [])
+    if len(portal_cues) != 1:
+        raise TimingProposalError("Portal FINISH v2 cue identity is not unique")
+    current_cue = copy.deepcopy(portal_cues[0])
     if not current_cue or current_cue.get("repeatPolicy") != "once":
         raise TimingProposalError("Portal FINISH v2 cue identity drifted")
 

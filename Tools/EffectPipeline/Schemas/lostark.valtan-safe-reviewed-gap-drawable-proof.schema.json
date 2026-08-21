@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-safe-reviewed-gap-drawable-proof.schema.json",
+  "title": "Valtan safe reviewed gap drawable proof",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "disposition",
+    "candidateManifest",
+    "drawableSweep",
+    "trailAdapterPackets",
+    "whirlwindCanary",
+    "documents",
+    "adapterJoins",
+    "preservedUnresolvedTrailRows",
+    "summary",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.valtan-safe-reviewed-gap-drawable-proof" },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "disposition": { "const": "PROOF_PASS_CANONICAL_APPLY_ALLOWED" },
+    "candidateManifest": { "$ref": "#/$defs/sealedSource" },
+    "drawableSweep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "canonicalSha256", "sampleRateHz"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" },
+        "sampleRateHz": { "const": 60 }
+      }
+    },
+    "trailAdapterPackets": { "$ref": "#/$defs/sealedSource" },
+    "whirlwindCanary": { "$ref": "#/$defs/whirlwindCanary" },
+    "documents": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "effectAssetId",
+          "candidatePath",
+          "candidateRawSha256",
+          "candidateCanonicalSha256",
+          "elementCount",
+          "sweepElementRowsSha256",
+          "disposition"
+        ],
+        "properties": {
+          "effectAssetId": { "type": "string", "minLength": 1 },
+          "candidatePath": { "$ref": "#/$defs/path" },
+          "candidateRawSha256": { "$ref": "#/$defs/sha256" },
+          "candidateCanonicalSha256": { "$ref": "#/$defs/sha256" },
+          "elementCount": { "type": "integer", "minimum": 3 },
+          "sweepElementRowsSha256": { "$ref": "#/$defs/sha256" },
+          "disposition": { "const": "DRAWABLE_PROOF_PASS" }
+        }
+      }
+    },
+    "adapterJoins": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "projectionId",
+          "sourceAdapterTargetId",
+          "sourceAdapterRowSha256",
+          "sourcePacketSha256",
+          "family",
+          "effectAssetId",
+          "targetElementId",
+          "targetContractSha256",
+          "disposition"
+        ],
+        "properties": {
+          "projectionId": { "type": "string", "minLength": 1 },
+          "sourceAdapterTargetId": { "type": "string", "minLength": 1 },
+          "sourceAdapterRowSha256": { "$ref": "#/$defs/sha256" },
+          "sourcePacketSha256": { "$ref": "#/$defs/sha256" },
+          "family": { "enum": ["ANIMATION_TRAIL", "CASCADE_RIBBON"] },
+          "effectAssetId": { "type": "string", "minLength": 1 },
+          "targetElementId": { "type": "string", "minLength": 1 },
+          "targetContractSha256": { "$ref": "#/$defs/sha256" },
+          "disposition": { "const": "PACKET_TARGET_DRAW_JOIN_PASS" }
+        }
+      }
+    },
+    "preservedUnresolvedTrailRows": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "type": "object" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documentCount",
+        "visibleElementCount",
+        "preparedElementCount",
+        "drawnElementCount",
+        "failedDrawCount",
+        "adapterProjectionCount",
+        "animationTrailProjectionCount",
+        "cascadeRibbonProjectionCount",
+        "preservedUnresolvedTrailRowCount"
+      ],
+      "properties": {
+        "documentCount": { "const": 4 },
+        "visibleElementCount": { "const": 167 },
+        "preparedElementCount": { "const": 167 },
+        "drawnElementCount": { "const": 167 },
+        "failedDrawCount": { "const": 0 },
+        "adapterProjectionCount": { "const": 7 },
+        "animationTrailProjectionCount": { "const": 6 },
+        "cascadeRibbonProjectionCount": { "const": 1 },
+        "preservedUnresolvedTrailRowCount": { "const": 6 }
+      }
+    },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "minLength": 1 },
+    "sealedSource": {
+      "type": "object",
+      "required": ["path", "rawSha256", "canonicalSha256", "artifactSha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" },
+        "artifactSha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "whirlwindCanary": {
+      "type": "object",
+      "required": [
+        "status",
+        "sampleCount",
+        "playbackClampSeconds",
+        "effectElementCount",
+        "coreElementCount",
+        "animationTrailTargetCount",
+        "deferredLightCount"
+      ],
+      "properties": {
+        "status": { "const": "AUTHORED_AND_RUNTIME_SLICE_BYTE_IDENTICAL" },
+        "sampleCount": { "const": 409 },
+        "playbackClampSeconds": { "type": "number", "minimum": 1.2, "maximum": 1.21 },
+        "effectElementCount": { "const": 9 },
+        "coreElementCount": { "const": 5 },
+        "animationTrailTargetCount": { "const": 3 },
+        "deferredLightCount": { "const": 1 }
+      },
+      "additionalProperties": true
+    }
+  }
+}

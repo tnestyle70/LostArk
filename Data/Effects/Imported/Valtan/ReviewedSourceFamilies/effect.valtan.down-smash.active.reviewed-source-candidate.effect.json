@@ -112,7 +112,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.017437958717346103,
-          "lifeTimeSeconds": 1.5,
+          "lifeTimeSeconds": 1.3825620412826538,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -1188,7 +1188,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.017437958717346103,
-          "lifeTimeSeconds": 0.30000001192092896,
+          "lifeTimeSeconds": 1.3825620412826538,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -2474,7 +2474,7 @@
             1.0
           ],
           "clip": 0.0,
-          "emissiveIntensity": 1.0,
+          "emissiveIntensity": 0.10000000149011612,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
@@ -2504,7 +2504,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.017437958717346103,
-          "lifeTimeSeconds": 3.0,
+          "lifeTimeSeconds": 1.3825620412826538,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -3741,7 +3741,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.017437958717346103,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.3825620412826538,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -4892,7 +4892,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.017437958717346103,
-          "lifeTimeSeconds": 2.0,
+          "lifeTimeSeconds": 1.3825620412826538,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -6086,12 +6086,12 @@
         },
         "timing": {
           "startDelaySeconds": 0.017437958717346103,
-          "lifeTimeSeconds": 2.0,
+          "lifeTimeSeconds": 1.3825620412826538,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -6194,7 +6194,7 @@
             0.02160000028610227
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,

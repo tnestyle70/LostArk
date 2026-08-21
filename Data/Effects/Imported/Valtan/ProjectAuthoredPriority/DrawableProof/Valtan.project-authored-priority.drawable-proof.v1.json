@@ -2,9 +2,9 @@
   "schema": "lostark.valtan-project-authored-priority-drawable-proof",
   "formatVersion": 1,
   "ownerArchetypeId": "BOSS_VALTAN",
-  "patchPlanSha256": "e1cca2ed8d2ebdea38f2e5240017614fc7aeb166664acfa4e26d007f4977fd9b",
+  "patchPlanSha256": "b487e5517fc0c7a4ccd71f2e3de42c697c06e75fd85ea260abdaff6e666018a0",
   "drawableSweepPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/DrawableProof/Valtan.project-authored-priority.drawable-sweep.v1.json",
-  "drawableSweepSha256": "f3e54bba5392a2bae322ed0becc40e1594c85cb9b7fbaaacbf21193d56753c61",
+  "drawableSweepSha256": "988721ce95353ced908751dc925370738666d4c7d4e6941da7f543cb521b3742",
   "resourceRoot": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources",
   "targets": [
     {
@@ -131,13 +131,13 @@
     },
     {
       "effectAssetId": "effect.valtan.high-jump.airborne",
-      "overlayDocumentSha256": "f216b9d83e7ec0f0e0f309336d360fb7a6743bf105b2405457992b6f22f905ac",
+      "overlayDocumentSha256": "1eedb9732f3d85bf1e22635e5b4457edeb90cb686899f1d11a8b0d83a7591771",
       "disposition": "DRAWABLE_PROOF_PASS",
       "elements": [
         {
           "elementId": "project-axe-beat-01-target-decal",
           "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 106,
+          "preparedSamples": 184,
           "attemptedSamples": 38,
           "submittedDraws": 38,
           "suppressedDraws": 0,
@@ -147,7 +147,7 @@
         {
           "elementId": "project-axe-beat-02-target-decal",
           "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 106,
+          "preparedSamples": 184,
           "attemptedSamples": 38,
           "submittedDraws": 38,
           "suppressedDraws": 0,
@@ -157,12 +157,72 @@
         {
           "elementId": "project-axe-beat-03-target-decal",
           "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 106,
+          "preparedSamples": 184,
           "attemptedSamples": 38,
           "submittedDraws": 38,
           "suppressedDraws": 0,
           "failedDraws": 0,
           "committedDraws": 38
+        },
+        {
+          "elementId": "project-axe-beat-01-falling-axe",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 18,
+          "submittedDraws": 18,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 36
+        },
+        {
+          "elementId": "project-axe-beat-02-falling-axe",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 18,
+          "submittedDraws": 18,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 36
+        },
+        {
+          "elementId": "project-axe-beat-03-falling-axe",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 18,
+          "submittedDraws": 18,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 36
+        },
+        {
+          "elementId": "project-axe-beat-01-ground-impact",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 40,
+          "submittedDraws": 39,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 39
+        },
+        {
+          "elementId": "project-axe-beat-02-ground-impact",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 39,
+          "submittedDraws": 38,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 38
+        },
+        {
+          "elementId": "project-axe-beat-03-ground-impact",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 39,
+          "submittedDraws": 39,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 39
         }
       ]
     },

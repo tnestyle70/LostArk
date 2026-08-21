@@ -391,7 +391,8 @@ namespace
 	}
 
 	bool_t Is_SourceNullCdoDistribution(
-		const Client::EFFECT_DISTRIBUTION_DESC& Distribution)
+		const Client::EFFECT_DISTRIBUTION_DESC& Distribution,
+		const uint32_t iExpectedComponentCount)
 	{
 		const auto IsZero4 = [](const float4_t& Value)
 		{
@@ -400,7 +401,7 @@ namespace
 		};
 		return Distribution.strSourceClass.empty() &&
 			Distribution.strSourceObjectPath.empty() &&
-			Distribution.iComponentCount == 1u &&
+			Distribution.iComponentCount == iExpectedComponentCount &&
 			Distribution.iOperation == 1u &&
 			Distribution.iRandomLockAxes == 0u &&
 			Distribution.iLookupTableChunkSize == 0u &&
@@ -1841,7 +1842,8 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedVisualProgramDocument(
 	const EFFECT_DOCUMENT_DESC& Document = pProjection->Get_Document();
 	if (pProjection->Get_EffectAssetId().empty() ||
 		pProjection->Get_EffectAssetId() != Document.strEffectAssetId ||
-		pProjection->Get_AdmittedSelectors().empty())
+		(pProjection->Get_AdmittedRows().empty() &&
+		 pProjection->Get_AdmittedSupplementalElements().empty()))
 	{
 		strOutError =
 			"Admitted source visual-program projection identity is invalid.";
@@ -2937,7 +2939,8 @@ bool_t Client::CEffectPlayback::Step(
 					   neither collapse Rate to zero nor advance the emitter random stream. */
 					const f32_t fRateScale =
 						nullptr == pRateScaleDistribution ||
-						Is_SourceNullCdoDistribution(*pRateScaleDistribution) ? 1.f :
+						Is_SourceNullCdoDistribution(
+							*pRateScaleDistribution, 1u) ? 1.f :
 						Evaluate_ModuleFloat(State, *pSpawnModule, "ratescale",
 							fEmitterTime, 1.f);
 					State.fSpawnAccumulator +=
@@ -3913,6 +3916,16 @@ void Client::CEffectPlayback::Apply_SourceSpawnModules(
 		}
 		else if (SourceClass_Matches(Module, "particlemodulesize"))
 		{
+			const EFFECT_DISTRIBUTION_DESC* pStartSizeDistribution =
+				Find_SourceDistribution(&Module, "startsize");
+			/* A null Cascade StartSize CDO carries no executable size.  Keep
+			   Detail.Particle as the already-converted runtime fallback instead of
+			   treating the empty descriptor as an authored zero-size particle. */
+			if (nullptr == pStartSizeDistribution ||
+				Is_SourceNullCdoDistribution(*pStartSizeDistribution, 3u))
+			{
+				continue;
+			}
 			Particle.vBaseSize = Add3(Particle.vBaseSize,
 				UE3_StartSizeToClient(Element, Evaluate_ModuleVector(
 					State, Module, "startsize", fEmitterTimeSeconds,

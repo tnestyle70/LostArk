@@ -14,7 +14,7 @@
     "resourceRoleDispositions",
     "targets",
     "highJumpAirbornePatch",
-    "unresolved"
+    "projectilePresentations"
   ],
   "properties": {
     "schema": {
@@ -89,8 +89,8 @@
     },
     "resourceRoleDispositions": {
       "type": "array",
-      "minItems": 7,
-      "maxItems": 7,
+      "minItems": 8,
+      "maxItems": 8,
       "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/resourceRoleDisposition"
@@ -107,12 +107,12 @@
     "highJumpAirbornePatch": {
       "$ref": "#/$defs/highJumpAirbornePatch"
     },
-    "unresolved": {
+    "projectilePresentations": {
       "type": "array",
       "minItems": 3,
       "maxItems": 3,
       "items": {
-        "$ref": "#/$defs/unresolved"
+        "$ref": "#/$defs/projectilePresentation"
       }
     }
   },
@@ -131,7 +131,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 1024,
-      "pattern": "^Effect/Valtan/(?:[^./\\\\]+/)*[^./\\\\]+\\.(?:dds|wmodel)$"
+      "pattern": "^(?:Effect/Valtan/(?:[^./\\\\]+/)*[^./\\\\]+\\.(?:dds|wmodel)|Character/Valtan/(?:[^./\\\\]+/)*[^./\\\\]+\\.wmodel)$"
     },
     "resourceVerification": {
       "type": "object",
@@ -174,7 +174,8 @@
             "FLOOR_WIPE_IMPACT_DIFFUSE",
             "FLOOR_WIPE_GUIDE_AND_IMPACT_MASK",
             "FLOOR_WIPE_IMPACT_NOISE",
-            "FRONT_BACK_FRONT_FINAL_GROUND_IMPACT"
+            "FRONT_BACK_FRONT_FINAL_GROUND_IMPACT",
+            "HIGH_JUMP_AXE_GROUND_IMPACT"
           ]
         },
         "evidenceStatus": {
@@ -182,7 +183,8 @@
             "EXACT_OTHER_PATTERN",
             "EXACT_SAME_PATTERN_LIMITED_STAGE",
             "EXACT_SAME_PATTERN_SOURCE_ONLY_OCCURRENCE",
-            "NO_TARGET_SOURCE_JOIN"
+            "NO_TARGET_SOURCE_JOIN",
+            "PROJECT_PALETTE_REUSE_NO_SOURCE_CLAIM"
           ]
         },
         "sourceEvidenceContext": {
@@ -500,27 +502,32 @@
               "const": "UNCHANGED_EXISTING_LAND_STAGE_AUTHORITY"
             },
             "projectileAuthorityStatus": {
-              "const": "UNRESOLVED_PROJECTILE"
+              "const": "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE"
             }
           }
         }
       }
     },
-    "unresolved": {
+    "projectilePresentation": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "unresolvedId",
+        "presentationId",
         "patternId",
         "stageId",
+        "elementId",
         "disposition",
-        "candidateAssetId",
-        "searchedResourceDomain",
-        "reason",
-        "authority"
+        "modelAssetId",
+        "bossCatalogEvidence",
+        "geometryProvenance",
+        "baseTextureProvenance",
+        "trajectoryTimingProvenance",
+        "sourceActionPayloadClaim",
+        "presentationOnly",
+        "serverGameplayChange"
       ],
       "properties": {
-        "unresolvedId": {
+        "presentationId": {
           "allOf": [
             {
               "$ref": "#/$defs/stableId"
@@ -536,22 +543,36 @@
         "stageId": {
           "const": "AIRBORNE"
         },
+        "elementId": {
+          "type": "string",
+          "pattern": "^project-axe-beat-[0-9]{2}-falling-axe$"
+        },
         "disposition": {
-          "const": "UNRESOLVED_PROJECTILE"
+          "const": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE"
         },
-        "candidateAssetId": {
-          "type": "null"
+        "modelAssetId": {
+          "const": "Character/Valtan/ValtanWeapon.wmodel"
         },
-        "searchedResourceDomain": {
-          "const": "Effect/Valtan/Meshes/**/*.wmodel"
+        "bossCatalogEvidence": {
+          "const": "BOSS_VALTAN.weaponModel"
         },
-        "reason": {
-          "type": "string",
-          "minLength": 1
+        "geometryProvenance": {
+          "const": "OFFICIAL_GEOMETRY_EXACT"
         },
-        "authority": {
-          "type": "string",
-          "minLength": 1
+        "baseTextureProvenance": {
+          "const": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT"
+        },
+        "trajectoryTimingProvenance": {
+          "const": "PROJECT_AUTHORED"
+        },
+        "sourceActionPayloadClaim": {
+          "const": "NONE"
+        },
+        "presentationOnly": {
+          "const": true
+        },
+        "serverGameplayChange": {
+          "const": false
         }
       }
     }

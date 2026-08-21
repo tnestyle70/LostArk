@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-safe-reviewed-gap-candidates.schema.json",
+  "title": "Valtan safe reviewed gap immutable candidates",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "policy",
+    "inputIdentity",
+    "candidateDocuments",
+    "coreProjections",
+    "adapterProjections",
+    "preservedUnresolvedTrailRows",
+    "proposedCueRows",
+    "proposedCatalogRows",
+    "summary",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.valtan-safe-reviewed-gap-candidates" },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "policy": { "type": "string", "minLength": 1 },
+    "inputIdentity": {
+      "type": "object",
+      "required": [
+        "cuePath",
+        "cueRawSha256",
+        "cueCanonicalSha256",
+        "cueCount",
+        "bindingPath",
+        "bindingRawSha256",
+        "bindingCanonicalSha256",
+        "catalogPath",
+        "catalogRawSha256",
+        "catalogCanonicalSha256",
+        "catalogCount",
+        "inventoryCanonicalSha256",
+        "trailAdapterPath",
+        "trailAdapterRawSha256",
+        "trailAdapterCanonicalSha256",
+        "trailAdapterArtifactSha256",
+        "whirlwindCanary"
+      ],
+      "properties": {
+        "cuePath": { "$ref": "#/$defs/path" },
+        "cueRawSha256": { "$ref": "#/$defs/sha256" },
+        "cueCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "cueCount": { "const": 104 },
+        "bindingPath": { "$ref": "#/$defs/path" },
+        "bindingRawSha256": { "$ref": "#/$defs/sha256" },
+        "bindingCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "catalogPath": { "$ref": "#/$defs/path" },
+        "catalogRawSha256": { "$ref": "#/$defs/sha256" },
+        "catalogCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "catalogCount": { "const": 311 },
+        "inventoryCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "trailAdapterPath": { "$ref": "#/$defs/path" },
+        "trailAdapterRawSha256": { "$ref": "#/$defs/sha256" },
+        "trailAdapterCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "trailAdapterArtifactSha256": { "$ref": "#/$defs/sha256" },
+        "whirlwindCanary": { "$ref": "#/$defs/whirlwindCanary" }
+      },
+      "additionalProperties": false
+    },
+    "candidateDocuments": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/candidateDocument" }
+    },
+    "coreProjections": {
+      "type": "array",
+      "minItems": 160,
+      "maxItems": 160,
+      "items": {
+        "type": "object",
+        "required": [
+          "patternId",
+          "clipOccurrenceId",
+          "effectAssetId",
+          "carrierKey",
+          "id",
+          "sourceNode",
+          "disposition"
+        ],
+        "properties": {
+          "patternId": { "type": "string", "minLength": 1 },
+          "clipOccurrenceId": { "type": "string", "minLength": 1 },
+          "effectAssetId": { "type": "string", "minLength": 1 },
+          "carrierKey": { "type": "string", "minLength": 1 },
+          "id": { "type": "string", "minLength": 1 },
+          "sourceNode": { "type": "string", "minLength": 1 },
+          "disposition": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": true
+      }
+    },
+    "adapterProjections": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/adapterProjection" }
+    },
+    "preservedUnresolvedTrailRows": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/unresolvedTrail" }
+    },
+    "proposedCueRows": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "bindingId",
+          "occurrenceId",
+          "clipOccurrenceId",
+          "effectAssetId",
+          "repeatPolicy",
+          "sourceStartMs",
+          "sourceEndMs"
+        ],
+        "properties": {
+          "bindingId": { "type": "string", "minLength": 1 },
+          "occurrenceId": { "type": "string", "minLength": 1 },
+          "clipOccurrenceId": { "type": "string", "minLength": 1 },
+          "effectAssetId": { "type": "string", "minLength": 1 },
+          "repeatPolicy": { "const": "once" },
+          "sourceStartMs": { "const": 0 },
+          "sourceEndMs": { "type": "null" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "proposedCatalogRows": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["effectAssetId", "payloadKind", "authoringPath"],
+        "properties": {
+          "effectAssetId": { "type": "string", "minLength": 1 },
+          "payloadKind": { "const": "DIRECT_AUTHORED_DOCUMENT_V13" },
+          "authoringPath": { "$ref": "#/$defs/path" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateDocumentCount",
+        "elementCount",
+        "coreProjectionCount",
+        "adapterProjectionCount",
+        "familyCounts",
+        "preservedUnresolvedTrailRowCount",
+        "proposedCueCount",
+        "proposedCatalogCount"
+      ],
+      "properties": {
+        "candidateDocumentCount": { "const": 4 },
+        "elementCount": { "const": 167 },
+        "coreProjectionCount": { "const": 160 },
+        "adapterProjectionCount": { "const": 7 },
+        "familyCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ANIMATION_TRAIL", "CASCADE_RIBBON"],
+          "properties": {
+            "ANIMATION_TRAIL": { "const": 6 },
+            "CASCADE_RIBBON": { "const": 1 }
+          }
+        },
+        "preservedUnresolvedTrailRowCount": { "const": 6 },
+        "proposedCueCount": { "const": 4 },
+        "proposedCatalogCount": { "const": 4 }
+      }
+    },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "minLength": 1, "pattern": "^[^\\\\].*" },
+    "candidateDocument": {
+      "type": "object",
+      "required": [
+        "sliceId",
+        "patternId",
+        "stageId",
+        "actionId",
+        "clipOccurrenceId",
+        "clip",
+        "effectAssetId",
+        "candidatePath",
+        "canonicalPath",
+        "rawSha256",
+        "canonicalSha256",
+        "elementCount",
+        "coreProjectionCount",
+        "trailProjectionCount",
+        "elementIds",
+        "cue",
+        "catalogRow"
+      ],
+      "properties": {
+        "sliceId": { "type": "string", "minLength": 1 },
+        "patternId": { "type": "string", "minLength": 1 },
+        "stageId": { "type": "string", "minLength": 1 },
+        "actionId": { "type": "string", "minLength": 1 },
+        "clipOccurrenceId": { "type": "string", "minLength": 1 },
+        "clip": { "type": "string", "minLength": 1 },
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "candidatePath": { "$ref": "#/$defs/path" },
+        "canonicalPath": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" },
+        "elementCount": { "type": "integer", "minimum": 3 },
+        "coreProjectionCount": { "type": "integer", "minimum": 0 },
+        "trailProjectionCount": { "type": "integer", "minimum": 0 },
+        "elementIds": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "cue": { "type": "object" },
+        "catalogRow": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "adapterProjection": {
+      "type": "object",
+      "required": [
+        "projectionId",
+        "family",
+        "sourceAdapterTargetId",
+        "sourceAdapterRowSha256",
+        "sourcePacketSha256",
+        "sourceIdentitySha256",
+        "effectAssetId",
+        "targetElementId",
+        "targetContractSha256",
+        "projectionSha256"
+      ],
+      "properties": {
+        "projectionId": { "type": "string", "minLength": 1 },
+        "family": { "enum": ["ANIMATION_TRAIL", "CASCADE_RIBBON"] },
+        "sourceAdapterTargetId": { "type": "string", "minLength": 1 },
+        "sourceAdapterRowSha256": { "$ref": "#/$defs/sha256" },
+        "sourcePacketSha256": { "$ref": "#/$defs/sha256" },
+        "sourceIdentitySha256": { "$ref": "#/$defs/sha256" },
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "targetElementId": { "type": "string", "minLength": 1 },
+        "targetContractSha256": { "$ref": "#/$defs/sha256" },
+        "projectionSha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": true
+    },
+    "unresolvedTrail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapterTargetId",
+        "family",
+        "patternId",
+        "clipOccurrenceId",
+        "disposition",
+        "admissionBlockers",
+        "rowSha256",
+        "applicationDisposition"
+      ],
+      "properties": {
+        "adapterTargetId": { "type": "string", "minLength": 1 },
+        "family": { "enum": ["ANIMATION_TRAIL", "CASCADE_RIBBON"] },
+        "patternId": { "type": "string", "minLength": 1 },
+        "clipOccurrenceId": { "type": "string", "minLength": 1 },
+        "disposition": { "type": "string", "minLength": 1 },
+        "admissionBlockers": { "type": "array", "minItems": 1 },
+        "rowSha256": { "$ref": "#/$defs/sha256" },
+        "applicationDisposition": { "const": "PRESERVE_UNRESOLVED_NO_MUTATION" }
+      }
+    },
+    "whirlwindCanary": {
+      "type": "object",
+      "required": [
+        "status",
+        "sampleCount",
+        "playbackClampSeconds",
+        "effectElementCount",
+        "coreElementCount",
+        "animationTrailTargetCount",
+        "deferredLightCount"
+      ],
+      "properties": {
+        "status": { "const": "AUTHORED_AND_RUNTIME_SLICE_BYTE_IDENTICAL" },
+        "sampleCount": { "const": 409 },
+        "playbackClampSeconds": { "type": "number", "minimum": 1.2, "maximum": 1.21 },
+        "effectElementCount": { "const": 9 },
+        "coreElementCount": { "const": 5 },
+        "animationTrailTargetCount": { "const": 3 },
+        "deferredLightCount": { "const": 1 }
+      },
+      "additionalProperties": true
+    }
+  }
+}

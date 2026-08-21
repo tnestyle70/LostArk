@@ -143,10 +143,40 @@ class EffectVisualProgramCorpusTests(unittest.TestCase):
             self.assertTrue(row["executionProjection"]["admissionBlockers"])
 
         supplemental = corpus["supplementalElements"]
-        self.assertEqual(len(supplemental), 5)
+        self.assertEqual(len(supplemental), 15)
         self.assertEqual(
             Counter(item["family"] for item in supplemental),
-            Counter({"CASCADE_RIBBON": 1, "ANIMATION_TRAIL": 4}),
+            Counter(
+                {
+                    "CASCADE_RIBBON": 1,
+                    "ANIMATION_TRAIL": 13,
+                    "LIGHT_PARTICLE": 1,
+                }
+            ),
+        )
+        self.assertEqual(
+            6,
+            sum(
+                item["provenance"]["scope"]
+                == "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL"
+                for item in supplemental
+            ),
+        )
+        whirlwind_rows = [
+            item
+            for item in supplemental
+            if item["selector"]["effectAssetId"]
+            == "effect.valtan.pattern.420633.active"
+        ]
+        self.assertEqual(4, len(whirlwind_rows))
+        self.assertEqual(
+            {
+                "37b0bd1d943b630616745f7efb9004913e07a7d93529c2ab5c555eb8472c9eb6",
+                "452d705f221e498a477b168b918acfa93b8bf61e06534e7d36734be8b30288a4",
+                "981ff0495ea692899a04a72172a02a117ad8d3c8a58596ebee03588a3c60d790",
+                "ac3b368edac4ef0c26e3e019378d9379903e8d73610813c6d9bc5a66c41d129c",
+            },
+            {item["rowSha256"] for item in whirlwind_rows},
         )
         self.assertTrue(
             all(

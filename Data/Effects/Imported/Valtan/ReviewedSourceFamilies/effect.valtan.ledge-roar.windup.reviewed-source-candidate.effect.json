@@ -112,7 +112,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 3.0,
+          "lifeTimeSeconds": 1.3,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },

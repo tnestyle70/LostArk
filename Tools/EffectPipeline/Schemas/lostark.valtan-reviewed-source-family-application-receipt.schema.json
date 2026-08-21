@@ -14,7 +14,6 @@
     "closure",
     "sourceGuards",
     "protectedCanaries",
-    "excludedTargets",
     "targets",
     "canonicalOutputs"
   ],
@@ -100,8 +99,7 @@
         "applicableCandidateDocumentCount",
         "projectedSourceElementCount",
         "canonicalAuthoredDocumentCount",
-        "excludedPendingMultiCueSplitDocumentCount",
-        "excludedPendingMultiCueSplitElementCount",
+        "reportOnlyMultipleCueProjectionCount",
         "legacyGenericDeletedElementCount",
         "catalogMutationCount",
         "cueMutationCount",
@@ -109,24 +107,21 @@
       ],
       "properties": {
         "inputCandidateDocumentCount": {
-          "const": 37
+          "const": 36
         },
         "inputCandidateElementCount": {
-          "const": 380
+          "const": 279
         },
         "applicableCandidateDocumentCount": {
           "const": 36
         },
         "projectedSourceElementCount": {
-          "const": 280
+          "const": 279
         },
         "canonicalAuthoredDocumentCount": {
           "const": 36
         },
-        "excludedPendingMultiCueSplitDocumentCount": {
-          "const": 1
-        },
-        "excludedPendingMultiCueSplitElementCount": {
+        "reportOnlyMultipleCueProjectionCount": {
           "const": 100
         },
         "legacyGenericDeletedElementCount": {
@@ -171,68 +166,6 @@
             "$ref": "#/$defs/repositoryPath"
           },
           "sha256": {
-            "$ref": "#/$defs/sha256"
-          }
-        }
-      }
-    },
-    "excludedTargets": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 1,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "effectAssetId",
-          "candidateDocumentPath",
-          "candidateDocumentSha256",
-          "targetAuthoredDocumentPath",
-          "candidateElementCount",
-          "visualTimingGroups",
-          "notifySystemTimingGroups",
-          "disposition",
-          "reason",
-          "noMutationSha256"
-        ],
-        "properties": {
-          "effectAssetId": {
-            "const": "effect.valtan.front-back-front.active"
-          },
-          "candidateDocumentPath": {
-            "$ref": "#/$defs/repositoryPath"
-          },
-          "candidateDocumentSha256": {
-            "$ref": "#/$defs/sha256"
-          },
-          "targetAuthoredDocumentPath": {
-            "$ref": "#/$defs/repositoryPath"
-          },
-          "candidateElementCount": {
-            "const": 100
-          },
-          "visualTimingGroups": {
-            "type": "array",
-            "minItems": 4,
-            "maxItems": 4,
-            "items": {
-              "$ref": "#/$defs/visualTimingGroup"
-            }
-          },
-          "notifySystemTimingGroups": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "$ref": "#/$defs/notifySystemTimingGroup"
-            }
-          },
-          "disposition": {
-            "const": "EXCLUDED_PENDING_MULTI_CUE_SPLIT"
-          },
-          "reason": {
-            "const": "FOUR_VISUAL_WAVES_MUST_NOT_FLATTEN_INTO_ONE_AGGREGATE_CUE_DOCUMENT"
-          },
-          "noMutationSha256": {
             "$ref": "#/$defs/sha256"
           }
         }
@@ -356,90 +289,6 @@
         "sourceNode": {
           "type": "string",
           "minLength": 1
-        }
-      }
-    },
-    "visualTimingGroup": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "visualTimingGroupId",
-        "visualTimingGroupKey",
-        "sourceTimeSeconds",
-        "elementIds",
-        "elementCount"
-      ],
-      "properties": {
-        "visualTimingGroupId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "visualTimingGroupKey": {
-          "type": "string",
-          "minLength": 1
-        },
-        "sourceTimeSeconds": {
-          "type": "number",
-          "minimum": 0
-        },
-        "elementIds": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "elementCount": {
-          "type": "integer",
-          "minimum": 1
-        }
-      }
-    },
-    "notifySystemTimingGroup": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "notifySystemTimingGroupId",
-        "notifySystemTimingGroupKey",
-        "visualTimingGroupId",
-        "notifyId",
-        "sourceSystemId",
-        "elementIds",
-        "elementCount"
-      ],
-      "properties": {
-        "notifySystemTimingGroupId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "notifySystemTimingGroupKey": {
-          "type": "string",
-          "minLength": 1
-        },
-        "visualTimingGroupId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "notifyId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "sourceSystemId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "elementIds": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "elementCount": {
-          "type": "integer",
-          "minimum": 1
         }
       }
     }

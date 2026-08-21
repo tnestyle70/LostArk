@@ -30,8 +30,9 @@ class ValtanOccurrenceMigrationReceiptTests(unittest.TestCase):
                 self.cues,
                 require_migration_denominator=False,
             ),
-            (124, 128, 99),
+            (124, 128, 108),
         )
+        self.assertEqual(99, self.receipt["outputs"]["cueOccurrenceCount"])
         MIGRATION.check_receipt(self.receipt, self.bindings, self.cues)
 
     def test_new_v2_rows_do_not_invalidate_the_migrated_identity_subset(
@@ -68,7 +69,7 @@ class ValtanOccurrenceMigrationReceiptTests(unittest.TestCase):
                 cues,
                 require_migration_denominator=False,
             ),
-            (125, 129, 100),
+            (125, 129, 109),
         )
         MIGRATION.check_receipt(self.receipt, bindings, cues)
 

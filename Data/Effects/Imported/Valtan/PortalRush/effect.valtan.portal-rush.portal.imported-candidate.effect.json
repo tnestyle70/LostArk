@@ -2911,7 +2911,7 @@
             0.0
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -12609,7 +12609,7 @@
             0.0
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -15839,7 +15839,7 @@
             0.0
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,

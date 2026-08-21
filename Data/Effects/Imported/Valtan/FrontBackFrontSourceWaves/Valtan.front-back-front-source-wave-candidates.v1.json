@@ -14,11 +14,11 @@
     },
     {
       "path": "Data/Effects/EffectCatalog.json",
-      "sha256": "9c8eb78c238cda2e82e466480b01abf93fcdca5256051f042fc0a423ecf237d2"
+      "sha256": "b02d1ed0a014bbb0e978a3cd46474d61bd8fb92013ed74bd84b535881bc595fb"
     },
     {
       "path": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/Valtan.project-authored-priority.patch-plan.v1.json",
-      "sha256": "e1cca2ed8d2ebdea38f2e5240017614fc7aeb166664acfa4e26d007f4977fd9b"
+      "sha256": "b487e5517fc0c7a4ccd71f2e3de42c697c06e75fd85ea260abdaff6e666018a0"
     },
     {
       "path": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.front-back-front.active.project-authored-overlay.effect.json",
@@ -26,15 +26,15 @@
     },
     {
       "path": "Data/Effects/Imported/Valtan/ReviewedSourceFamilies/Valtan.reviewed-source-family-candidates.v1.json",
-      "sha256": "b13fa42d523b35c66204dec75d6b8796eab860ef1325f128ba3a95fcd5d98c97"
+      "sha256": "21cebfa22e9b33964b7d51b7eab915916f591cbdf5ec89f616cdf6b369b435b7"
     },
     {
       "path": "Data/Effects/Imported/Valtan/ReviewedSourceFamilies/effect.valtan.front-back-front.active.reviewed-source-candidate.effect.json",
-      "sha256": "d4c23120a25e09b75bf18493d23f61912ae7b6f96925b6983bf64d5a7560ea91"
+      "sha256": "385626a9e8cf569ea401847ba8d3a717397debfceeb5ee1876376da8522b66df"
     },
     {
       "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-      "sha256": "1a639dc04a11bd13636c7af9dfd71cf797ad2f3dba304b3b02a222eb21454603"
+      "sha256": "fe171539c1290b0250560c85c54c30b1c1aa4c90d6f26e392381f3a06c4a3ba1"
     }
   ],
   "clipIdentity": {
@@ -55,7 +55,7 @@
     "effectAssetId": "effect.valtan.front-back-front.active",
     "displayLabel": "Project Tuned Aggregate",
     "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.front-back-front.active.effect.json",
-    "authoredDocumentSha256": "f4183f170cdf29f21a65c08ce45e779aafea4078e61f342166a574469af9ce7c",
+    "authoredDocumentSha256": "7895a1ab080074835efc439e9476f2e75cdb6eca1207d34462e68fce95aafade",
     "catalogRow": {
       "effectAssetId": "effect.valtan.front-back-front.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
@@ -96,7 +96,7 @@
     },
     "cueRowSha256": "a0eecf0563d53e48a2fe1e3e2c544ad290bc749bb4b180736b659eb961470b94",
     "projectPatchPlanPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/Valtan.project-authored-priority.patch-plan.v1.json",
-    "projectPatchPlanSha256": "e1cca2ed8d2ebdea38f2e5240017614fc7aeb166664acfa4e26d007f4977fd9b",
+    "projectPatchPlanSha256": "b487e5517fc0c7a4ccd71f2e3de42c697c06e75fd85ea260abdaff6e666018a0",
     "projectOverlayPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.front-back-front.active.project-authored-overlay.effect.json",
     "projectOverlaySha256": "7b5c085446ca94636cc881d18b6cb438a8a37dc0dc5d500b4211429e76106907",
     "sourceElementAppendCount": 0,
@@ -298,7 +298,7 @@
       "cueLocalStartDelaySeconds": 0.0009999570846557226,
       "effectAssetId": "effect.valtan.front-back-front.source-wave-01",
       "candidateDocumentPath": "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.source-wave-01.source-wave-candidate.effect.json",
-      "candidateDocumentSha256": "c96ce4e3d99abee9aaefce5ccda6d04e9ea822bf07308b058860f8ca124a99a5",
+      "candidateDocumentSha256": "9dc30de4b283307678381ea391ed0312f4ac87f3ce5be7e92a789e4a9a77347c",
       "targetAuthoredDocumentPath": "Data/Effects/Authored/effect.valtan.front-back-front.source-wave-01.effect.json",
       "candidateElementCount": 25,
       "candidateElements": [
@@ -1442,7 +1442,7 @@
       "cueLocalStartDelaySeconds": 0.0006299228668211754,
       "effectAssetId": "effect.valtan.front-back-front.source-wave-02",
       "candidateDocumentPath": "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.source-wave-02.source-wave-candidate.effect.json",
-      "candidateDocumentSha256": "eca0f2ca46d599f3965f71b4e04e5274d54c33207ea7029041649cadbf09a311",
+      "candidateDocumentSha256": "8ce538a01e9ded0a1592f3da0e6fce2906c7512547e5ec2a7e24213b672ab9a1",
       "targetAuthoredDocumentPath": "Data/Effects/Authored/effect.valtan.front-back-front.source-wave-02.effect.json",
       "candidateElementCount": 25,
       "candidateElements": [
@@ -2586,7 +2586,7 @@
       "cueLocalStartDelaySeconds": 0.00015900230407694949,
       "effectAssetId": "effect.valtan.front-back-front.source-wave-03",
       "candidateDocumentPath": "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.source-wave-03.source-wave-candidate.effect.json",
-      "candidateDocumentSha256": "96d0a23dcea82a6136cbeaeb201f7c0f9404e6f1fb903d8136517e3731d719ae",
+      "candidateDocumentSha256": "2f36c0c891d462419ea07f6a76dfdd41f9f20d59c94fee30a8823ef88a1b1082",
       "targetAuthoredDocumentPath": "Data/Effects/Authored/effect.valtan.front-back-front.source-wave-03.effect.json",
       "candidateElementCount": 25,
       "candidateElements": [
@@ -3730,7 +3730,7 @@
       "cueLocalStartDelaySeconds": 5.3195953369389315e-05,
       "effectAssetId": "effect.valtan.front-back-front.auxiliary-source-wave",
       "candidateDocumentPath": "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.auxiliary-source-wave.source-wave-candidate.effect.json",
-      "candidateDocumentSha256": "c6993f477a748142b9a118363ea18d5f0e8fdbc3b5f90be079719b00d88fd098",
+      "candidateDocumentSha256": "9ff604605a062cafea4fe660fd8d67cc66c4b99129c1d517adbb4861b00f3cd7",
       "targetAuthoredDocumentPath": "Data/Effects/Authored/effect.valtan.front-back-front.auxiliary-source-wave.effect.json",
       "candidateElementCount": 25,
       "candidateElements": [

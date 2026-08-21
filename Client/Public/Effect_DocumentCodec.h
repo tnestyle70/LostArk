@@ -288,6 +288,11 @@ public:
 	static bool_t Is_SafeResourceAssetId(
 		const std::string& strAssetId,
 		EFFECT_RESOURCE_FILE_KIND* pOutKind = nullptr);
+	static bool_t Is_SafeElementResourceAssetId(
+		EFFECT_ELEMENT_KIND eElementKind,
+		std::string_view strSlotId,
+		const std::string& strAssetId,
+		EFFECT_RESOURCE_FILE_KIND* pOutKind = nullptr);
 	static bool_t Is_SafeModelCueAssetId(const std::string& strAssetId);
 };
 

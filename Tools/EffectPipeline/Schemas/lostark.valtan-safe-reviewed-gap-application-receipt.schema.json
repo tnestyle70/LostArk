@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-safe-reviewed-gap-application-receipt.schema.json",
+  "title": "Valtan safe reviewed gap application receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "disposition",
+    "candidateManifest",
+    "drawableProof",
+    "canonicalCueDocument",
+    "canonicalCatalogDocument",
+    "canonicalDocuments",
+    "trailProjections",
+    "preservedUnresolvedTrailRows",
+    "summary",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.valtan-safe-reviewed-gap-application-receipt" },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "disposition": { "const": "APPLIED_PROOF_GATED_IDEMPOTENT" },
+    "candidateManifest": { "$ref": "#/$defs/sealedInput" },
+    "drawableProof": { "$ref": "#/$defs/sealedInput" },
+    "canonicalCueDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "canonicalSha256", "cueCount", "addedBindingIds"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" },
+        "cueCount": { "const": 108 },
+        "addedBindingIds": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "canonicalCatalogDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "canonicalSha256", "effectCount", "addedEffectAssetIds"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" },
+        "effectCount": { "const": 315 },
+        "addedEffectAssetIds": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "canonicalDocuments": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sliceId",
+          "effectAssetId",
+          "canonicalPath",
+          "rawSha256",
+          "canonicalSha256",
+          "elementCount",
+          "elementIds"
+        ],
+        "properties": {
+          "sliceId": { "type": "string", "minLength": 1 },
+          "effectAssetId": { "type": "string", "minLength": 1 },
+          "canonicalPath": { "$ref": "#/$defs/path" },
+          "rawSha256": { "$ref": "#/$defs/sha256" },
+          "canonicalSha256": { "$ref": "#/$defs/sha256" },
+          "elementCount": { "type": "integer", "minimum": 3 },
+          "elementIds": {
+            "type": "array",
+            "minItems": 3,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "trailProjections": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": [
+          "projectionId",
+          "family",
+          "effectAssetId",
+          "targetElementId",
+          "targetContractSha256",
+          "applicationDisposition",
+          "applicationProjectionSha256"
+        ],
+        "properties": {
+          "projectionId": { "type": "string", "minLength": 1 },
+          "family": { "enum": ["ANIMATION_TRAIL", "CASCADE_RIBBON"] },
+          "effectAssetId": { "type": "string", "minLength": 1 },
+          "targetElementId": { "type": "string", "minLength": 1 },
+          "targetContractSha256": { "$ref": "#/$defs/sha256" },
+          "applicationDisposition": { "const": "APPLIED_EXACT_MISSING_ONLY" },
+          "applicationProjectionSha256": { "$ref": "#/$defs/sha256" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "preservedUnresolvedTrailRows": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "type": "object" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "addedCueCount",
+        "addedCatalogCount",
+        "addedDocumentCount",
+        "addedElementCount",
+        "coreProjectionCount",
+        "animationTrailProjectionCount",
+        "cascadeRibbonProjectionCount",
+        "preservedUnresolvedTrailRowCount",
+        "canonicalMutationFileCount"
+      ],
+      "properties": {
+        "addedCueCount": { "const": 4 },
+        "addedCatalogCount": { "const": 4 },
+        "addedDocumentCount": { "const": 4 },
+        "addedElementCount": { "const": 167 },
+        "coreProjectionCount": { "const": 160 },
+        "animationTrailProjectionCount": { "const": 6 },
+        "cascadeRibbonProjectionCount": { "const": 1 },
+        "preservedUnresolvedTrailRowCount": { "const": 6 },
+        "canonicalMutationFileCount": { "const": 6 }
+      }
+    },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "minLength": 1 },
+    "sealedInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "artifactSha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "artifactSha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

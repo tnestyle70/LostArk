@@ -5619,6 +5619,265 @@ namespace
 			"G3 Invalid Reimport Preserves Output Report Compiler And Existing Documents Transactionally");
 	}
 
+	void Test_EffectCharacterMeshResourceBoundary(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr const char_t* WeaponAssetId =
+			"Character/Valtan/ValtanWeapon.wmodel";
+		constexpr const char_t* CompilerModelAssetId =
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_broken_007.wmodel";
+		constexpr const char_t* ReimportedCompilerModelAssetId =
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_cylinder_002.wmodel";
+		constexpr const char_t* EffectTextureAssetId =
+			"Effect/Valtan/Textures/EFMASTER_MATERIAL_PROLOGUE/diffuse.dds";
+		constexpr const char_t* CharacterTextureAssetId =
+			"Character/Valtan/textures/wp_mn_rpbf_01_d.dds";
+
+		SCOPED_ENVIRONMENT_VARIABLE RuntimeResourceRoot(
+			L"LOSTARK_RESOURCE_ROOT");
+		std::filesystem::path RuntimeResourceRootPath;
+		if (RuntimeResourceRoot.Was_Defined() &&
+			!RuntimeResourceRoot.Get_OriginalValue().empty())
+		{
+			RuntimeResourceRootPath = RuntimeResourceRoot.Get_OriginalValue();
+		}
+		else
+		{
+			RuntimeResourceRootPath =
+				CProjectDataRoot::Get().parent_path() / L"Client" / L"Bin" /
+				L"Resources";
+		}
+		std::error_code ResourceError;
+		const bool_t bHasResourceRoot = RuntimeResourceRoot.Was_Defined() &&
+			!RuntimeResourceRoot.Get_OriginalValue().empty();
+		const bool_t bResourceRootReady =
+			std::filesystem::is_directory(RuntimeResourceRootPath, ResourceError) &&
+			!ResourceError &&
+			(bHasResourceRoot ||
+				RuntimeResourceRoot.Set(RuntimeResourceRootPath.c_str()));
+		runner.Require(bResourceRootReady,
+			"Character Mesh Boundary Resolves The Physical Resources Root");
+		if (!bResourceRootReady)
+			return;
+
+		EFFECT_RESOURCE_FILE_KIND eResourceKind =
+			EFFECT_RESOURCE_FILE_KIND::END;
+		const bool_t bNarrowAdmission =
+			!CEffectDocumentCodec::Is_SafeResourceAssetId(WeaponAssetId) &&
+			CEffectDocumentCodec::Is_SafeModelCueAssetId(WeaponAssetId) &&
+			CEffectDocumentCodec::Is_SafeElementResourceAssetId(
+				EFFECT_ELEMENT_KIND::MESH, "meshModel", WeaponAssetId,
+				&eResourceKind) &&
+			eResourceKind == EFFECT_RESOURCE_FILE_KIND::MODEL &&
+			CEffectDocumentCodec::Is_SafeElementResourceAssetId(
+				EFFECT_ELEMENT_KIND::PARTICLE, "meshModel", WeaponAssetId) &&
+			!CEffectDocumentCodec::Is_SafeElementResourceAssetId(
+				EFFECT_ELEMENT_KIND::DECAL, "meshModel", WeaponAssetId) &&
+			!CEffectDocumentCodec::Is_SafeElementResourceAssetId(
+				EFFECT_ELEMENT_KIND::MESH, "base", WeaponAssetId) &&
+			!CEffectDocumentCodec::Is_SafeElementResourceAssetId(
+				EFFECT_ELEMENT_KIND::MESH, "meshModel", CharacterTextureAssetId) &&
+			CEffectDocumentCodec::Is_SafeElementResourceAssetId(
+				EFFECT_ELEMENT_KIND::MESH, "base", EffectTextureAssetId);
+		runner.Require(bNarrowAdmission,
+			"Character WModel Is Admitted Only By MeshModel On Mesh Or Particle");
+
+		const auto MakeDocument = [=](const std::string& ModelAssetId)
+		{
+			EFFECT_DOCUMENT_DESC Document;
+			Document.strEffectAssetId =
+				"effect.valtan.high-jump.axe-resource-boundary.fixture";
+			Document.strDisplayName = "Valtan axe resource boundary fixture";
+			EFFECT_ELEMENT_DESC Element;
+			Element.strElementId = "fixture-axe-mesh";
+			Element.strDisplayName = "Fixture axe mesh";
+			Element.strGroupId = "manual.valtan.axe";
+			Element.eKind = EFFECT_ELEMENT_KIND::MESH;
+			Element.ResourceBindings.push_back({ "meshModel", ModelAssetId });
+			Element.ResourceBindings.push_back(
+				{ "base", EffectTextureAssetId });
+			Element.Detail.Mesh.bUseModelMaterial = true;
+			Element.Detail.Mesh.fModelPreScale = 1.f;
+			Document.Elements.push_back(std::move(Element));
+			return Document;
+		};
+		std::string Status;
+		EFFECT_DOCUMENT_DESC CharacterDocument = MakeDocument(WeaponAssetId);
+		std::vector<std::string> Dependencies;
+		CEffectDocumentCodec::Collect_ResourceAssetIds(
+			CharacterDocument, Dependencies);
+		const bool_t bDocumentRoundTrip =
+			CEffectDocumentCodec::Validate(CharacterDocument, Status) &&
+			Dependencies.size() == 2u &&
+			std::find(Dependencies.begin(), Dependencies.end(), WeaponAssetId) !=
+				Dependencies.end();
+		EFFECT_DOCUMENT_DESC ParsedDocument;
+		const std::string CharacterJson =
+			CEffectDocumentCodec::Serialize(CharacterDocument);
+		const bool_t bParsed = bDocumentRoundTrip &&
+			CEffectDocumentCodec::Parse(CharacterJson, ParsedDocument, Status) &&
+			CEffectDocumentCodec::Serialize(ParsedDocument) == CharacterJson;
+		runner.Require(bParsed,
+			"Character MeshModel Validates Collects And Round-Trips Canonically");
+		if (!bParsed)
+		{
+			std::cout << "[DETAIL] Character mesh boundary: " << Status << '\n';
+			return;
+		}
+
+		EFFECT_DOCUMENT_DESC Authored = MakeDocument(CompilerModelAssetId);
+		EFFECT_ELEMENT_DESC& AuthoredElement = Authored.Elements.front();
+		const bool_t bOverrideAndReset =
+			CEffectDocumentCodec::Set_AuthoringResourceOverride(
+				AuthoredElement, "meshModel", WeaponAssetId, Status) &&
+			AuthoredElement.ResourceBindings.front().strAssetId == WeaponAssetId &&
+			AuthoredElement.AuthoringOverrides.ResourceBindings.size() == 1u &&
+			AuthoredElement.AuthoringOverrides.ResourceBindings.front().
+				strCompilerAssetId == CompilerModelAssetId &&
+			CEffectDocumentCodec::Validate(Authored, Status) &&
+			CEffectDocumentCodec::Reset_AuthoringResourceOverride(
+				AuthoredElement, "meshModel", Status) &&
+			AuthoredElement.ResourceBindings.front().strAssetId ==
+				CompilerModelAssetId &&
+			AuthoredElement.AuthoringOverrides.ResourceBindings.empty() &&
+			CEffectDocumentCodec::Validate(Authored, Status);
+		runner.Require(bOverrideAndReset,
+			"Character MeshModel Override Persists Its Compiler Baseline And Resets");
+
+		const auto ConfigurePortableMeshParticle = [](
+			EFFECT_ELEMENT_DESC& Element)
+		{
+			const auto Distribution = [](const std::string& PropertyPath,
+				const float4_t& Minimum, const float4_t& Maximum)
+			{
+				EFFECT_DISTRIBUTION_DESC Result;
+				Result.strPropertyPath = PropertyPath;
+				Result.iComponentCount = 1u;
+				Result.iOperation = 1u;
+				Result.vDefaultMinimum = Minimum;
+				Result.vDefaultMaximum = Maximum;
+				return Result;
+			};
+			Element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+			Element.SourceRecipe.bEnabled = true;
+			Element.SourceRecipe.strRendererShape = "mesh";
+			Element.SourceRecipe.fEmitterDurationSeconds = 1.f;
+			Element.SourceRecipe.iEmitterLoopCount = 1u;
+			Element.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+			EFFECT_SOURCE_MODULE_DESC Required;
+			Required.strStableId = "fixture.required";
+			Required.strClassName = "particlemodulerequired";
+			Required.strObjectPath = "Harness.Fixture.Required";
+			Required.Distributions.push_back(Distribution(
+				"spawnrate", float4_t{}, float4_t{}));
+			Element.SourceRecipe.Modules.push_back(std::move(Required));
+			EFFECT_SOURCE_MODULE_DESC Spawn;
+			Spawn.strStableId = "fixture.spawn";
+			Spawn.strClassName = "particlemodulespawn";
+			Spawn.strObjectPath = "Harness.Fixture.Spawn";
+			Spawn.Distributions.push_back(Distribution(
+				"rate", float4_t{}, float4_t{}));
+			Spawn.Distributions.push_back(Distribution(
+				"ratescale", { 1.f, 0.f, 0.f, 0.f },
+				{ 1.f, 0.f, 0.f, 0.f }));
+			Element.SourceRecipe.Modules.push_back(std::move(Spawn));
+			EFFECT_SOURCE_MODULE_DESC Lifetime;
+			Lifetime.strStableId = "fixture.lifetime";
+			Lifetime.strClassName = "particlemodulelifetime";
+			Lifetime.strObjectPath = "Harness.Fixture.Lifetime";
+			Lifetime.Distributions.push_back(Distribution(
+				"lifetime", { 1.f, 0.f, 0.f, 0.f },
+				{ 1.f, 0.f, 0.f, 0.f }));
+			Element.SourceRecipe.Modules.push_back(std::move(Lifetime));
+			EFFECT_SOURCE_MODULE_DESC TypeData;
+			TypeData.strStableId = "fixture.typedata";
+			TypeData.strClassName = "particlemoduletypedatamesh";
+			TypeData.strObjectPath = "Harness.Fixture.TypeDataMesh";
+			Element.SourceRecipe.Modules.push_back(std::move(TypeData));
+		};
+		EFFECT_DOCUMENT_DESC ReimportExisting =
+			MakeDocument(CompilerModelAssetId);
+		ConfigurePortableMeshParticle(ReimportExisting.Elements.front());
+		const bool_t bExistingOverride =
+			CEffectDocumentCodec::Set_AuthoringResourceOverride(
+				ReimportExisting.Elements.front(), "meshModel", WeaponAssetId,
+				Status);
+		EFFECT_DOCUMENT_DESC ReimportCompiler =
+			MakeDocument(ReimportedCompilerModelAssetId);
+		ConfigurePortableMeshParticle(ReimportCompiler.Elements.front());
+		const std::string ExistingBefore =
+			CEffectDocumentCodec::Serialize(ReimportExisting);
+		const std::string CompilerBefore =
+			CEffectDocumentCodec::Serialize(ReimportCompiler);
+		EFFECT_GENERIC_AUTHORED_ELEMENT_REIMPORT_REQUEST ReimportRequest;
+		ReimportRequest.strElementId = "fixture-axe-mesh";
+		EFFECT_DOCUMENT_DESC Reimported = CharacterDocument;
+		EFFECT_GENERIC_AUTHORED_REIMPORT_REPORT ReimportReport;
+		const bool_t bReimported = bExistingOverride &&
+			CEffectDocumentCodec::Build_GenericAuthoredElementReimportStage(
+				ReimportCompiler, ReimportExisting, ReimportRequest, Reimported,
+				Status, &ReimportReport);
+		const EFFECT_ELEMENT_DESC* pReimportedElement =
+			bReimported && Reimported.Elements.size() == 1u ?
+				&Reimported.Elements.front() : nullptr;
+		const bool_t bReimportPreserved = nullptr != pReimportedElement &&
+			pReimportedElement->ResourceBindings.front().strAssetId ==
+				WeaponAssetId &&
+			pReimportedElement->AuthoringOverrides.ResourceBindings.size() == 1u &&
+			pReimportedElement->AuthoringOverrides.ResourceBindings.front().
+				strCompilerAssetId == ReimportedCompilerModelAssetId &&
+			ReimportReport.DroppedOverrides.empty() &&
+			CEffectDocumentCodec::Serialize(ReimportExisting) == ExistingBefore &&
+			CEffectDocumentCodec::Serialize(ReimportCompiler) == CompilerBefore &&
+			CEffectDocumentCodec::Validate(Reimported, Status);
+		runner.Require(bReimportPreserved,
+			"Character MeshModel Reimport Preserves Artist Asset And Rebases Compiler Baseline");
+		if (!bReimportPreserved)
+			std::cout << "[DETAIL] Character mesh reimport: " << Status << '\n';
+
+		const auto RejectsOverrideWithoutMutation = [&](
+			const std::string_view SlotId, const std::string& AssetId)
+		{
+			EFFECT_DOCUMENT_DESC Probe = MakeDocument(CompilerModelAssetId);
+			const std::string Before = CEffectDocumentCodec::Serialize(Probe);
+			std::string ExpectedError;
+			return !CEffectDocumentCodec::Set_AuthoringResourceOverride(
+					Probe.Elements.front(), SlotId, AssetId, ExpectedError) &&
+				!ExpectedError.empty() &&
+				CEffectDocumentCodec::Serialize(Probe) == Before;
+		};
+		const bool_t bUnsafeOverridesRollback =
+			RejectsOverrideWithoutMutation("base", WeaponAssetId) &&
+			RejectsOverrideWithoutMutation("meshModel", CharacterTextureAssetId) &&
+			RejectsOverrideWithoutMutation("meshModel",
+				"Character/Valtan/../ValtanWeapon.wmodel") &&
+			RejectsOverrideWithoutMutation("meshModel",
+				"Character\\Valtan\\ValtanWeapon.wmodel") &&
+			RejectsOverrideWithoutMutation("meshModel",
+				"C:/Character/Valtan/ValtanWeapon.wmodel") &&
+			RejectsOverrideWithoutMutation("meshModel",
+				"Character/Valtan/MissingWeapon.wmodel");
+		runner.Require(bUnsafeOverridesRollback,
+			"Character Mesh Override Rejects Wrong Role Extension Traversal Drive Backslash And Missing Assets Transactionally");
+
+		EFFECT_DOCUMENT_DESC InvalidDocument = CharacterDocument;
+		InvalidDocument.Elements.front().ResourceBindings.front().strAssetId =
+			"Character/Valtan/../ValtanWeapon.wmodel";
+		EFFECT_DOCUMENT_DESC ParseSentinel = CharacterDocument;
+		ParseSentinel.strDisplayName = "parse rollback sentinel";
+		const std::string SentinelBefore =
+			CEffectDocumentCodec::Serialize(ParseSentinel);
+		std::string ExpectedError;
+		const bool_t bParseRollback =
+			!CEffectDocumentCodec::Parse(
+				CEffectDocumentCodec::Serialize(InvalidDocument),
+				ParseSentinel, ExpectedError) &&
+			!ExpectedError.empty() &&
+			CEffectDocumentCodec::Serialize(ParseSentinel) == SentinelBefore;
+		runner.Require(bParseRollback,
+			"Invalid Character Mesh Document Parse Preserves The Prior Product");
+	}
+
 	void Test_ActionPresentationTimeline(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -8756,9 +9015,18 @@ namespace
 				 (pElement->eKind == EFFECT_ELEMENT_KIND::SPRITE &&
 					pElement->SourceRecipe.strRendererShape == "sprite"));
 		};
-		const bool_t bTokenClosureExact =
-			Projection->Get_EffectAssetId() == ProjectedDocument.strEffectAssetId &&
-			!Projection->Get_AdmittedSelectors().empty() &&
+		const bool_t bHasSourceParticleCarrier =
+			std::any_of(ProjectedDocument.Elements.begin(),
+				ProjectedDocument.Elements.end(),
+				[&IsSourceParticleCarrier](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return IsSourceParticleCarrier(&Element);
+				});
+		const bool_t bHasSupplementalCarrier =
+			!Projection->Get_AdmittedSupplementalElements().empty();
+		const bool_t bRowSelectorClosureExact =
+			Projection->Get_AdmittedSelectors().size() ==
+				Projection->Get_AdmittedRows().size() &&
 			std::all_of(Projection->Get_AdmittedSelectors().begin(),
 				Projection->Get_AdmittedSelectors().end(),
 				[&Projection](const EFFECT_VISUAL_PROGRAM_SELECTOR& Selector)
@@ -8766,15 +9034,24 @@ namespace
 					return Selector.strEffectAssetId ==
 						Projection->Get_EffectAssetId() &&
 						!Selector.strOccurrenceId.empty();
-				}) &&
-			std::any_of(ProjectedDocument.Elements.begin(),
-				ProjectedDocument.Elements.end(),
-				[&IsSourceParticleCarrier](const EFFECT_ELEMENT_DESC& Element)
-				{
-					return IsSourceParticleCarrier(&Element);
 				});
+		const bool_t bSupplementalSelectorClosureExact =
+			std::all_of(
+				Projection->Get_AdmittedSupplementalElements().begin(),
+				Projection->Get_AdmittedSupplementalElements().end(),
+				[&Projection](
+					const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT& Supplemental)
+				{
+					return Supplemental.Selector.strEffectAssetId ==
+						Projection->Get_EffectAssetId() &&
+						!Supplemental.Selector.strOccurrenceId.empty();
+				});
+		const bool_t bTokenClosureExact =
+			Projection->Get_EffectAssetId() == ProjectedDocument.strEffectAssetId &&
+			bRowSelectorClosureExact && bSupplementalSelectorClosureExact &&
+			(bHasSourceParticleCarrier || bHasSupplementalCarrier);
 		runner.Require(bTokenClosureExact,
-			"Source Visual Program Token Owns Exact Asset Selector And Particle Carrier Closure");
+			"Source Visual Program Token Owns Exact Asset Selector And Carrier Closure");
 
 		const auto FindProjectedElement = [&ProjectedDocument](
 			const std::string_view ElementId) -> const EFFECT_ELEMENT_DESC*
@@ -8790,6 +9067,7 @@ namespace
 		};
 		std::vector<std::string> CascadeRibbonElementIds;
 		std::vector<std::string> AnimationTrailElementIds;
+		std::vector<std::string> BakedAnimationTrailElementIds;
 		bool_t bTrailTokenClosureExact = true;
 		for (const EFFECT_VISUAL_PROGRAM_ROW& Row :
 			Projection->Get_AdmittedRows())
@@ -8823,7 +9101,15 @@ namespace
 					Supplemental.AnimationTrailPacket.has_value() &&
 					!Supplemental.CascadeRibbonPacket.has_value();
 				if (nullptr != pTarget)
+				{
 					AnimationTrailElementIds.push_back(pTarget->strElementId);
+					if (Supplemental.AnimationTrailPacket.has_value() &&
+						2u == Supplemental.AnimationTrailPacket->iPacketVersion)
+					{
+						BakedAnimationTrailElementIds.push_back(
+							pTarget->strElementId);
+					}
+				}
 			}
 		}
 		runner.Require(bTrailTokenClosureExact,
@@ -8857,7 +9143,8 @@ namespace
 		std::string SourceParticleElementId;
 		f32_t fParticleSampleTime = 0.f;
 		for (uint32_t iStep = 0u;
-			bVisualStaged && SourceParticleElementId.empty() && iStep < 600u;
+			bVisualStaged && bHasSourceParticleCarrier &&
+			SourceParticleElementId.empty() && iStep < 600u;
 			++iStep)
 		{
 			VisualPlayback.Update(1.f / 60.f, Root);
@@ -8876,16 +9163,17 @@ namespace
 		const bool_t bVisualUsesSourceSimulation = bVisualStaged &&
 			VisualPlayback.Is_SourceVisualProgramActive() &&
 			!VisualPlayback.Is_ReconstructedSourceRuntimeActive() &&
-			!SourceParticleElementId.empty() &&
-			std::none_of(VisualPlayback.Get_Frame().Elements.begin(),
+			(!bHasSourceParticleCarrier ||
+			 (!SourceParticleElementId.empty() &&
+			 std::none_of(VisualPlayback.Get_Frame().Elements.begin(),
 				VisualPlayback.Get_Frame().Elements.end(),
 				[&SourceParticleElementId](const EFFECT_EVALUATED_ELEMENT& Element)
 				{
 					return nullptr != Element.pElement &&
 						Element.pElement->strElementId == SourceParticleElementId;
-				});
+				})));
 		runner.Require(bVisualUsesSourceSimulation,
-			"Admitted Visual Program Runs Matching Mesh Sprite Source Recipe On Existing Playback Path");
+			"Admitted Visual Program Runs Source Or Supplemental Carriers On Existing Playback Path");
 		if (bVisualStaged && !bVisualUsesSourceSimulation)
 		{
 			std::cout << "[DETAIL] source visual-program playback active=" <<
@@ -8909,7 +9197,8 @@ namespace
 							Evaluated.pElement->strElementId == ElementId;
 					});
 				iMatched += Trail != Frame.Trails.end() &&
-					Trail->Points.size() >= iMinimumPoints ? 1u : 0u;
+					(std::max)(Trail->Points.size(), Trail->EdgePairs.size()) >=
+						iMinimumPoints ? 1u : 0u;
 			}
 			return iMatched;
 		};
@@ -8960,14 +9249,16 @@ namespace
 				for (const EFFECT_EVALUATED_TRAIL& Trail :
 					TrailPlayback.Get_Frame().Trails)
 				{
-					if (nullptr != Trail.pElement && 1u == Trail.Points.size())
+					const size_t iPointCount = (std::max)(
+						Trail.Points.size(), Trail.EdgePairs.size());
+					if (nullptr != Trail.pElement && 1u == iPointCount)
 						SawInitialOnePoint.emplace(
 							Trail.pElement->strElementId);
 					if (nullptr != Trail.pElement)
 					{
 						size_t& Maximum = MaximumTrailPoints[
 							Trail.pElement->strElementId];
-						Maximum = (std::max)(Maximum, Trail.Points.size());
+						Maximum = (std::max)(Maximum, iPointCount);
 					}
 				}
 				if (CountTrailPoints(TrailPlayback.Get_Frame(),
@@ -8987,9 +9278,12 @@ namespace
 						return SawInitialOnePoint.contains(ElementId);
 					}) &&
 				std::ranges::all_of(AnimationTrailElementIds,
-					[&SawInitialOnePoint](const std::string& ElementId)
+					[&SawInitialOnePoint, &BakedAnimationTrailElementIds](
+						const std::string& ElementId)
 					{
-						return SawInitialOnePoint.contains(ElementId);
+						return std::ranges::find(BakedAnimationTrailElementIds,
+							ElementId) != BakedAnimationTrailElementIds.end() ||
+							SawInitialOnePoint.contains(ElementId);
 					}) &&
 				CountTrailPoints(TrailPlayback.Get_Frame(),
 					CascadeRibbonElementIds, 2u) ==
@@ -9071,20 +9365,21 @@ namespace
 		const bool_t bNormalPreservesLegacyCarrier = bNormalStaged &&
 			!NormalPlayback.Is_SourceVisualProgramActive() &&
 			!NormalPlayback.Is_ReconstructedSourceRuntimeActive() &&
-			std::any_of(NormalPlayback.Get_Frame().Elements.begin(),
+			(!bHasSourceParticleCarrier ||
+			 (std::any_of(NormalPlayback.Get_Frame().Elements.begin(),
 				NormalPlayback.Get_Frame().Elements.end(),
 				[&SourceParticleElementId](const EFFECT_EVALUATED_ELEMENT& Element)
 				{
 					return nullptr != Element.pElement &&
 						Element.pElement->strElementId == SourceParticleElementId;
 				}) &&
-			std::none_of(NormalPlayback.Get_Frame().Particles.begin(),
+			 std::none_of(NormalPlayback.Get_Frame().Particles.begin(),
 				NormalPlayback.Get_Frame().Particles.end(),
 				[&SourceParticleElementId](const EFFECT_EVALUATED_PARTICLE& Particle)
 				{
 					return nullptr != Particle.pElement &&
 						Particle.pElement->strElementId == SourceParticleElementId;
-				});
+				})));
 		runner.Require(bNormalPreservesLegacyCarrier,
 			"Normal Authored Stage Preserves Legacy Mesh Sprite Behavior Without Visual Admission");
 		if (bNormalStaged && !bNormalPreservesLegacyCarrier)
@@ -11446,6 +11741,111 @@ namespace
 			blockedInitial && filteredFrameDidNotSubmit &&
 			unblockDidNotLookLikeRepress,
 			"UI Block Preserves Raw Physical Hold Without False Release Or Repress");
+	}
+
+	void Test_EffectNullCdoStartSizeFallback(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		const auto Distribution = [](const std::string& PropertyPath,
+			const uint32_t iComponentCount, const float4_t& Value = {})
+		{
+			EFFECT_DISTRIBUTION_DESC Result;
+			Result.strPropertyPath = PropertyPath;
+			Result.iComponentCount = iComponentCount;
+			Result.iOperation = 1u;
+			Result.vDefaultMinimum = Value;
+			Result.vDefaultMaximum = Value;
+			return Result;
+		};
+		const auto Module = [](const std::string& StableId,
+			const std::string& ClassName)
+		{
+			EFFECT_SOURCE_MODULE_DESC Result;
+			Result.strStableId = StableId;
+			Result.strClassName = ClassName;
+			Result.strObjectPath = "Harness." + StableId;
+			return Result;
+		};
+		const auto MakeDocument = [&](const bool_t bNullCdo)
+		{
+			EFFECT_DOCUMENT_DESC Document;
+			Document.strEffectAssetId = bNullCdo ?
+				"effect.size.null-cdo-fallback.harness" :
+				"effect.size.explicit-zero.harness";
+			Document.strDisplayName = bNullCdo ?
+				"Source Null CDO Size Fallback Harness" :
+				"Source Explicit Zero Size Harness";
+
+			EFFECT_ELEMENT_DESC Element;
+			Element.strElementId = bNullCdo ?
+				"null.cdo.sized.sprite" : "explicit.zero.sized.sprite";
+			Element.strDisplayName = Element.strElementId;
+			Element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+			Element.Detail.Timing.fLifeTimeSeconds = 2.f;
+			Element.Detail.Particle.iMaxParticles = 4u;
+			Element.Detail.Particle.fSpawnRatePerSecond = 0.f;
+			Element.Detail.Particle.vLifeTimeSeconds = { 1.f, 1.f };
+			Element.Detail.Particle.vStartSize = { 0.2f, 0.4f };
+			Element.SourceRecipe.bEnabled = true;
+			Element.SourceRecipe.strRendererShape = "sprite";
+			Element.SourceRecipe.fEmitterDurationSeconds = 1.f;
+			Element.SourceRecipe.iEmitterLoopCount = 1u;
+			Element.SourceRecipe.Bursts.push_back({ 0.f, 1u, 1u });
+
+			EFFECT_SOURCE_MODULE_DESC Required = Module(
+				"required", "particlemodulerequired");
+			Required.Distributions.push_back(Distribution("spawnrate", 1u));
+			Element.SourceRecipe.Modules.push_back(std::move(Required));
+
+			EFFECT_SOURCE_MODULE_DESC Lifetime = Module(
+				"lifetime", "particlemodulelifetime");
+			Lifetime.Distributions.push_back(Distribution(
+				"lifetime", 1u, { 1.f, 0.f, 0.f, 0.f }));
+			Element.SourceRecipe.Modules.push_back(std::move(Lifetime));
+
+			EFFECT_SOURCE_MODULE_DESC Size = Module(
+				"size", "particlemodulesize");
+			EFFECT_DISTRIBUTION_DESC StartSize = Distribution("startsize", 3u);
+			if (!bNullCdo)
+				StartSize.strSourceClass = "DistributionVectorConstant";
+			Size.Distributions.push_back(std::move(StartSize));
+			Element.SourceRecipe.Modules.push_back(std::move(Size));
+
+			EFFECT_SOURCE_MODULE_DESC Spawn = Module(
+				"spawn", "particlemodulespawn");
+			Spawn.Distributions.push_back(Distribution("rate", 1u));
+			Spawn.Distributions.push_back(Distribution("ratescale", 1u));
+			Element.SourceRecipe.Modules.push_back(std::move(Spawn));
+			Document.Elements.push_back(std::move(Element));
+			return Document;
+		};
+
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		std::string Status;
+		CEffectPlayback NullCdoPlayback;
+		const bool_t bNullCdoStaged = NullCdoPlayback.Stage_Document(
+			MakeDocument(true), Status);
+		if (bNullCdoStaged)
+			NullCdoPlayback.Seek(1.f / 60.f, Identity);
+		const auto& NullCdoParticles = NullCdoPlayback.Get_Frame().Particles;
+		runner.Require(bNullCdoStaged && NullCdoParticles.size() == 1u &&
+			std::abs(NullCdoParticles.front().World._11 - 0.2f) < 0.0001f &&
+			std::abs(NullCdoParticles.front().World._22 - 0.4f) < 0.0001f,
+			"Effect Null CDO StartSize Falls Back To Converted Detail Size");
+
+		CEffectPlayback ExplicitZeroPlayback;
+		const bool_t bExplicitZeroStaged = ExplicitZeroPlayback.Stage_Document(
+			MakeDocument(false), Status);
+		if (bExplicitZeroStaged)
+			ExplicitZeroPlayback.Seek(1.f / 60.f, Identity);
+		const auto& ExplicitZeroParticles =
+			ExplicitZeroPlayback.Get_Frame().Particles;
+		runner.Require(bExplicitZeroStaged &&
+			ExplicitZeroParticles.size() == 1u &&
+			std::abs(ExplicitZeroParticles.front().World._11) < 0.0001f &&
+			std::abs(ExplicitZeroParticles.front().World._22) < 0.0001f,
+			"Effect Explicit Zero StartSize Does Not Use The Detail Fallback");
 	}
 
 	void Test_EffectExactSourceSemantics(TEST_RUNNER& runner)
@@ -31398,15 +31798,51 @@ namespace
 			std::unordered_set<std::string> PreparedElementIds;
 			std::unordered_set<std::string> SubmittedElementIds;
 			bool_t bInvalidDrawSelection = false;
+			std::vector<std::string> RequiredAnchorIds;
+			for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+			{
+				if (Element.bVisible && Element.ActionCueAttachment.bEnabled &&
+					Element.ActionCueAttachment.bFollow)
+				{
+					RequiredAnchorIds.push_back(
+						Element.ActionCueAttachment.strRuntimeAnchorSlotId);
+				}
+			}
+			std::ranges::sort(RequiredAnchorIds);
+			RequiredAnchorIds.erase(std::unique(
+				RequiredAnchorIds.begin(), RequiredAnchorIds.end()),
+				RequiredAnchorIds.end());
+			const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER MovingRoot =
+				[RequiredAnchorIds](
+					const f32_t fSampleTime,
+					EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+					std::string& OutError)
+			{
+				XMStoreFloat4x4(&OutSample.RootWorld,
+					XMMatrixTranslation(fSampleTime * 120.f, 0.f, 0.f));
+				OutSample.SourceAnchorWorlds.clear();
+				for (const std::string& AnchorId : RequiredAnchorIds)
+					OutSample.SourceAnchorWorlds.emplace(
+						AnchorId, OutSample.RootWorld);
+				OutError.clear();
+				return true;
+			};
 			const uint32_t iSampleCount = static_cast<uint32_t>(
 				std::ceil(fDurationSeconds * 60.f)) + 1u;
+			f32_t fPreviousSampleSeconds = 0.f;
 			for (uint32_t iSample = 0u; iSample <= iSampleCount; ++iSample)
 			{
 				const f32_t fSampleSeconds = (std::min)(
 					fDurationSeconds,
 					static_cast<f32_t>(iSample) / 60.f);
-				Playback.Seek(fSampleSeconds, Identity);
-				if (!FrameIsFinite(Playback.Get_Frame()) ||
+				const bool_t bEvaluated = 0u == iSample ?
+					Playback.Seek_WithTransformHistory(
+						fSampleSeconds, MovingRoot, strOutError) :
+					Playback.Update_WithTransformHistory(
+						fSampleSeconds - fPreviousSampleSeconds,
+						MovingRoot, strOutError);
+				fPreviousSampleSeconds = fSampleSeconds;
+				if (!bEvaluated || !FrameIsFinite(Playback.Get_Frame()) ||
 					!EngineScope.Begin_Frame(strOutError))
 				{
 					strOutError = Path.string() + ": " + strOutError;
@@ -32611,6 +33047,12 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--effect-source-null-cdo-size-fast")
+	{
+		Test_EffectNullCdoStartSizeFallback(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--effect-tool-preview-fast")
 	{
 		Client::CEffectCatalog::Clear();
@@ -32690,6 +33132,7 @@ int main(const int argc, char* argv[])
 		Test_EffectFixedStepTransformHistory(runner);
 		Test_EffectTypedPresentation(runner);
 		Test_EffectSourceModuleOccurrenceOrder(runner);
+		Test_EffectNullCdoStartSizeFallback(runner);
 		Test_EffectExactSourceSemantics(runner);
 		Test_DimensionMasterSpriteImageFlipAuthority(runner);
 		Test_DimensionMasterSourceSemanticAssets(runner);
@@ -32746,6 +33189,12 @@ int main(const int argc, char* argv[])
 	if (Mode == "--effect-g3-authoring-fast")
 	{
 		Test_AuthoringOverrideOwnership(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-character-mesh-resource-fast")
+	{
+		Test_EffectCharacterMeshResourceBoundary(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -33090,6 +33539,7 @@ int main(const int argc, char* argv[])
 	Test_EffectFixedStepTransformHistory(runner);
 	Test_EffectTypedPresentation(runner);
 	Test_EffectSourceModuleOccurrenceOrder(runner);
+	Test_EffectNullCdoStartSizeFallback(runner);
 	Test_EffectExactSourceSemantics(runner);
 	Test_DimensionMasterSpriteImageFlipAuthority(runner);
 	Test_DimensionMasterSourceSemanticAssets(runner);

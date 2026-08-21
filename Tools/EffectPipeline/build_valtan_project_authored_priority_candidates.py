@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Build non-destructive project-authored Valtan priority overlays.
+"""Build immutable desired-state Valtan priority overlays.
 
 The output is deliberately not admitted into EffectCatalog and never edits an
-Authored Effect document.  Each ordinary v13 document contains only elements
-that are absent from its target document.  The accompanying patch-plan receipt
-records existing elements as PRESERVE_EXISTING, so later reconciliation can
-append missing stable identities without overwriting hand tuning.
+Authored Effect document.  Its nine ordinary v13 documents always contain the
+same 24 project-owned elements, including after those elements have already
+been projected.  Six pre-existing floor-axis elements remain preservation
+sentinels.  Existing projected rows must retain their stable resource/material
+identity, while hand-tunable detail fields remain owned by the canonical
+document.
 """
 
 from __future__ import annotations
@@ -83,6 +85,24 @@ ASSET_HIGH_WAVE = (
 ASSET_SHOCKWAVE_02 = (
     "Effect/Valtan/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds"
 )
+ASSET_VALTAN_WEAPON = "Character/Valtan/ValtanWeapon.wmodel"
+
+PRESERVED_CANONICAL_ELEMENT_IDS = {
+    "effect.valtan.floor-wipe-130.windup": frozenset(
+        {
+            "six-direction-telegraph.axis-000",
+            "six-direction-telegraph.axis-060",
+            "six-direction-telegraph.axis-120",
+        }
+    ),
+    "effect.valtan.floor-wipe-130.first-smash": frozenset(
+        {
+            "six-direction-impact.axis-000",
+            "six-direction-impact.axis-060",
+            "six-direction-impact.axis-120",
+        }
+    ),
+}
 
 
 class ContractError(RuntimeError):
@@ -431,6 +451,81 @@ def _sprite_particle(
     )
 
 
+def _falling_axe_mesh(
+    *,
+    beat: int,
+    start_delay: float,
+    position: tuple[float, float, float],
+) -> dict[str, Any]:
+    detail = _detail(
+        position=position,
+        rotation=(0.0, 0.0, 90.0),
+        color=(1.0, 1.0, 1.0, 1.0),
+        emissive=1.0,
+        start_delay=start_delay,
+        life_time=0.3,
+        dissolve_start=1.0,
+        billboard=False,
+    )
+    detail["mesh"] = {
+        "useModelMaterial": True,
+        "modelPreScale": 1.0,
+        "sourceTypeDataRotationDegrees": [0, 0, 0],
+    }
+    detail["linearLerp"]["position"] = True
+    detail["linearLerp"]["endPosition"] = [
+        position[0], 0.3, position[2]
+    ]
+    detail["linearLerp"]["rotation"] = True
+    detail["linearLerp"]["endRotationDegrees"] = [0.0, 360.0, 90.0]
+    return _element(
+        element_id=f"project-axe-beat-{beat:02d}-falling-axe",
+        display_name=f"Axe beat {beat} falling official Valtan axe",
+        group_id="axe_drop_presentation",
+        source_node=(
+            f"project-authored:valtan.high-jump.airborne.beat-{beat:02d}.axe"
+        ),
+        kind="mesh",
+        resources=(("meshModel", ASSET_VALTAN_WEAPON),),
+        render_profile="alpha_two_sided_depth_read",
+        detail=detail,
+    )
+
+
+def _axe_ground_impact_particle(
+    *,
+    beat: int,
+    start_delay: float,
+    position: tuple[float, float, float],
+) -> dict[str, Any]:
+    return _element(
+        element_id=f"project-axe-beat-{beat:02d}-ground-impact",
+        display_name=f"Axe beat {beat} ground shockwave Sprite Particle",
+        group_id="axe_drop_presentation",
+        source_node=(
+            f"project-authored:valtan.high-jump.airborne.beat-{beat:02d}.ground-impact"
+        ),
+        kind="particle",
+        resources=(
+            ("base", ASSET_SHOCKWAVE_02),
+            ("dissolve", ASSET_ATYPICAL_011),
+        ),
+        render_profile="additive_two_sided_depth_read",
+        detail=_detail(
+            position=position,
+            rotation=(90.0, 0.0, 0.0),
+            color=(0.04, 1.0, 0.78, 0.9),
+            emissive=2.0,
+            start_delay=start_delay,
+            life_time=0.65,
+            dissolve_start=0.58,
+            billboard=False,
+            particle_size=(4.2, 4.2),
+            particle_end_size=(7.5, 7.5),
+        ),
+    )
+
+
 def _floor_axis_elements(*, impact: bool) -> tuple[dict[str, Any], ...]:
     phase = "impact" if impact else "telegraph"
     group = "six_direction_impact" if impact else "six_direction_telegraph"
@@ -594,7 +689,14 @@ def _target_specs() -> tuple[TargetSpec, ...]:
         ),
     )
 
-    high_jump_airborne = tuple(
+    axe_target_positions = (
+        (-4.0, 0.05, 4.0),
+        (4.0, 0.05, 4.0),
+        (0.0, 0.05, 8.0),
+    )
+    axe_fall_start_delays = (0.32, 0.87, 1.42)
+    axe_impact_start_delays = (0.62, 1.17, 1.72)
+    high_jump_target_decals = tuple(
         _decal(
             element_id=f"project-axe-beat-{beat:02d}-target-decal",
             display_name=f"Axe beat {beat} target decal",
@@ -607,10 +709,39 @@ def _target_specs() -> tuple[TargetSpec, ...]:
             color=green,
             start_delay=(beat - 1) * 0.55,
             life_time=0.62,
-            position=((-4.0, 0.05, 4.0), (4.0, 0.05, 4.0), (0.0, 0.05, 8.0))[beat - 1],
+            position=axe_target_positions[beat - 1],
             emissive=1.5,
         )
         for beat in (1, 2, 3)
+    )
+    high_jump_falling_axes = tuple(
+        _falling_axe_mesh(
+            beat=beat,
+            start_delay=axe_fall_start_delays[beat - 1],
+            position=(
+                axe_target_positions[beat - 1][0],
+                10.0,
+                axe_target_positions[beat - 1][2],
+            ),
+        )
+        for beat in (1, 2, 3)
+    )
+    high_jump_ground_impacts = tuple(
+        _axe_ground_impact_particle(
+            beat=beat,
+            start_delay=axe_impact_start_delays[beat - 1],
+            position=(
+                axe_target_positions[beat - 1][0],
+                0.08,
+                axe_target_positions[beat - 1][2],
+            ),
+        )
+        for beat in (1, 2, 3)
+    )
+    high_jump_airborne = (
+        high_jump_target_decals
+        + high_jump_falling_axes
+        + high_jump_ground_impacts
     )
     high_jump_land = (
         _decal(
@@ -778,7 +909,9 @@ def _target_specs() -> tuple[TargetSpec, ...]:
             "PROJECT_AUTHORED", True, high_jump_airborne,
             notes=(
                 "Three root-relative target positions are hand-tuning candidates, not Server target selection or damage actors.",
-                "Axe projectile meshes are intentionally absent until a stable payload and Server/presentation authority join are proven.",
+                "Each falling Mesh reuses Character/Valtan/ValtanWeapon.wmodel with useModelMaterial=true and modelPreScale=1.0; official geometry and embedded base texture are exact while trajectory, rotation, and timing are PROJECT_AUTHORED.",
+                "The three ground Sprite Particle impacts use physically verified project-palette textures and remain PROJECT_AUTHORED presentation; they add no AIRBORNE hit or Client damage actor.",
+                "No source-action projectile payload is claimed: all nine AIRBORNE elements are presentation-only and the existing LAND one-hit Server authority remains unchanged.",
             ),
         ),
         TargetSpec(
@@ -892,6 +1025,18 @@ def _resource_role_dispositions() -> list[dict[str, Any]]:
                 "therefore project tuned."
             ),
             ("effect.valtan.front-back-front.active",),
+        ),
+        (
+            ASSET_SHOCKWAVE_02,
+            "HIGH_JUMP_AXE_GROUND_IMPACT",
+            "PROJECT_PALETTE_REUSE_NO_SOURCE_CLAIM",
+            (
+                "fx_i_shockwave_02_ycl is a physically verified official "
+                "Valtan texture already admitted by the project palette; its "
+                "HIGH_JUMP action 420610 timing and placement remain project "
+                "authored and are not promoted to source-exact evidence."
+            ),
+            ("effect.valtan.high-jump.airborne",),
         ),
     )
     return [
@@ -1097,6 +1242,59 @@ def _validate_reviewed_source_context(repo_root: Path) -> None:
         "fx_tex_02.fx_d_atypical_032",
     )
 
+    boss_catalog = _load_json(repo_root / "Data/Actors/BossCatalog.json")
+    bosses = boss_catalog.get("bosses")
+    if not isinstance(bosses, list):
+        raise ContractError("BossCatalog bosses changed")
+    valtan = next(
+        (
+            row for row in bosses
+            if isinstance(row, dict)
+            and row.get("archetypeId") == OWNER_ARCHETYPE_ID
+        ),
+        None,
+    )
+    if (
+        not isinstance(valtan, dict)
+        or valtan.get("weaponModel") != ASSET_VALTAN_WEAPON
+    ):
+        raise ContractError("official Valtan weapon ownership changed")
+
+    encounter = _load_json(
+        repo_root / "Data/Encounters/Valtan/ValtanEncounter.json"
+    )
+    patterns = encounter.get("patterns")
+    if not isinstance(patterns, list):
+        raise ContractError("Valtan encounter patterns changed")
+    high_jump = next(
+        (
+            row for row in patterns
+            if isinstance(row, dict)
+            and row.get("patternId") == "VALTAN_HIGH_JUMP"
+        ),
+        None,
+    )
+    stages = high_jump.get("stages") if isinstance(high_jump, dict) else None
+    if not isinstance(stages, list):
+        raise ContractError("Valtan High Jump stages changed")
+    stage_by_id = {
+        row.get("stageId"): row for row in stages if isinstance(row, dict)
+    }
+    airborne = stage_by_id.get("AIRBORNE", {})
+    land = stage_by_id.get("LAND", {})
+    if (
+        airborne.get("hitShape") != "NONE"
+        or airborne.get("hitCount") != 0
+        or airborne.get("serverDamageProfileId") != ""
+        or land.get("hitShape") != "CIRCLE"
+        or land.get("hitCount") != 1
+        or land.get("hitDelayMs") != 900
+        or land.get("serverDamageProfileId") != "damage.valtan.high-jump"
+    ):
+        raise ContractError(
+            "Valtan High Jump Server AIRBORNE/LAND hit authority changed"
+        )
+
 
 def _canonical_authoring_path(effect_asset_id: str) -> PurePosixPath:
     return PurePosixPath(
@@ -1154,7 +1352,9 @@ def _find_resource_root(repo_root: Path, explicit: Path | None) -> Path:
     )
 
 
-def _safe_resource_path(resource_root: Path, asset_id: str) -> Path:
+def _validate_candidate_resource_identity(
+    asset_id: str, *, element_kind: str, slot_id: str
+) -> PurePosixPath:
     relative = PurePosixPath(asset_id)
     if (
         relative.is_absolute()
@@ -1163,6 +1363,37 @@ def _safe_resource_path(resource_root: Path, asset_id: str) -> Path:
         or any(part in ("", ".", "..") for part in relative.parts)
     ):
         raise ContractError(f"unsafe Resources-relative asset ID: {asset_id}")
+    if slot_id == "meshModel":
+        if (
+            element_kind not in ("mesh", "particle")
+            or relative.suffix != ".wmodel"
+            or not asset_id.startswith(("Effect/Valtan/", "Character/Valtan/"))
+        ):
+            raise ContractError(
+                "meshModel requires a Valtan Effect/Character WModel on a "
+                f"Mesh or Particle: {asset_id}"
+            )
+    elif (
+        not asset_id.startswith("Effect/Valtan/")
+        or relative.suffix != ".dds"
+    ):
+        raise ContractError(
+            "non-meshModel candidate resources require an Effect/Valtan DDS: "
+            f"{asset_id}"
+        )
+    return relative
+
+
+def _safe_resource_path(
+    resource_root: Path,
+    asset_id: str,
+    *,
+    element_kind: str,
+    slot_id: str,
+) -> Path:
+    relative = _validate_candidate_resource_identity(
+        asset_id, element_kind=element_kind, slot_id=slot_id
+    )
     candidate = resource_root.joinpath(*relative.parts)
     resolved = candidate.resolve(strict=False)
     try:
@@ -1175,17 +1406,25 @@ def _safe_resource_path(resource_root: Path, asset_id: str) -> Path:
 def _verify_resources(
     resource_root: Path, targets: Iterable[TargetSpec]
 ) -> list[dict[str, Any]]:
-    asset_ids = sorted(
-        {
-            resource["assetId"]
-            for target in targets
-            for element in target.elements
-            for resource in element["resources"]
-        }
-    )
+    paths_by_asset_id: dict[str, Path] = {}
+    for target in targets:
+        for element in target.elements:
+            for resource in element["resources"]:
+                asset_id = resource["assetId"]
+                path = _safe_resource_path(
+                    resource_root,
+                    asset_id,
+                    element_kind=element["kind"],
+                    slot_id=resource["slotId"],
+                )
+                existing = paths_by_asset_id.get(asset_id)
+                if existing is not None and existing != path:
+                    raise ContractError(
+                        f"candidate resource identity resolved inconsistently: {asset_id}"
+                    )
+                paths_by_asset_id[asset_id] = path
     verified: list[dict[str, Any]] = []
-    for asset_id in asset_ids:
-        path = _safe_resource_path(resource_root, asset_id)
+    for asset_id, path in sorted(paths_by_asset_id.items()):
         if not path.is_file():
             raise ContractError(f"required candidate resource is missing: {asset_id}")
         try:
@@ -1247,9 +1486,12 @@ def _reconcile_target(
                     )
                 by_source[source_node] = element
 
-    missing: list[dict[str, Any]] = []
+    project_elements: list[dict[str, Any]] = []
     desired_rows: list[dict[str, Any]] = []
     preserved_ids: list[str] = []
+    preserve_ids = PRESERVED_CANONICAL_ELEMENT_IDS.get(
+        target.effect_asset_id, frozenset()
+    )
     for desired in target.elements:
         element_id = desired["id"]
         source_node = desired["sourceNode"]
@@ -1270,18 +1512,12 @@ def _reconcile_target(
                 f"stable sourceNode collision for {target.effect_asset_id}/{source_node}"
             )
         existing = existing_by_id or existing_by_source
-        if existing is None:
-            missing.append(deepcopy(desired))
-            desired_rows.append(
-                {
-                    "elementId": element_id,
-                    "sourceNode": source_node,
-                    "disposition": target.disposition,
-                    "reconcileAction": "APPEND_MISSING",
-                    "canonicalElementSha256": None,
-                }
-            )
-        else:
+        if element_id in preserve_ids:
+            if existing is None:
+                raise ContractError(
+                    "preserved canonical element disappeared: "
+                    f"{target.effect_asset_id}/{element_id}"
+                )
             preserved_ids.append(element_id)
             desired_rows.append(
                 {
@@ -1292,7 +1528,101 @@ def _reconcile_target(
                     "canonicalElementSha256": _sha256_json(existing),
                 }
             )
-    return missing, desired_rows, preserved_ids
+            continue
+
+        project_elements.append(deepcopy(desired))
+        if existing is not None and _immutable_projected_element(existing) != (
+            _immutable_projected_element(desired)
+        ):
+            raise ContractError(
+                "projected element immutable identity drift: "
+                f"{target.effect_asset_id}/{element_id}"
+            )
+        desired_rows.append(
+            {
+                "elementId": element_id,
+                "sourceNode": source_node,
+                "disposition": target.disposition,
+                "reconcileAction": "APPEND_MISSING",
+                "canonicalElementSha256": None,
+            }
+        )
+    if preserve_ids != set(preserved_ids):
+        raise ContractError(
+            f"preserved canonical denominator changed: {target.effect_asset_id}"
+        )
+    return project_elements, desired_rows, preserved_ids
+
+
+def _immutable_projected_element(element: Mapping[str, Any]) -> dict[str, Any]:
+    """Return fields a later hand-tuning pass is not allowed to reinterpret."""
+    return {
+        "id": element.get("id"),
+        "sourceNode": element.get("sourceNode"),
+        "groupId": element.get("groupId"),
+        "kind": element.get("kind"),
+        "resources": element.get("resources"),
+        "material": element.get("material"),
+        "actionCueAttachment": element.get("actionCueAttachment"),
+        "transformInheritance": element.get("transformInheritance"),
+        "sourceRecipe": element.get("sourceRecipe"),
+        "sourcePresentation": element.get("sourcePresentation"),
+    }
+
+
+def _validate_optional_high_jump_product_rows(repo_root: Path) -> None:
+    """Accept absence or the exact atomically projected catalog/cue pair."""
+    patch = _high_jump_airborne_patch()
+    expected_catalog = patch["catalogRow"]
+    expected_cue = patch["cueRow"]
+    catalog = _load_json(repo_root / "Data/Effects/EffectCatalog.json")
+    catalog_rows = catalog.get("effects")
+    cues = _load_json(
+        repo_root
+        / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
+    )
+    cue_rows = cues.get("cues")
+    if not isinstance(catalog_rows, list) or not isinstance(cue_rows, list):
+        raise ContractError("projected Product catalog/cue structure changed")
+
+    matching_catalog = [
+        row
+        for row in catalog_rows
+        if isinstance(row, dict)
+        and row.get("effectAssetId") == expected_catalog["effectAssetId"]
+    ]
+    matching_binding = [
+        row
+        for row in cue_rows
+        if isinstance(row, dict)
+        and row.get("bindingId") == expected_cue["bindingId"]
+    ]
+    matching_occurrence = [
+        row
+        for row in cue_rows
+        if isinstance(row, dict)
+        and row.get("occurrenceId") == expected_cue["occurrenceId"]
+    ]
+    if (
+        len(matching_catalog) > 1
+        or len(matching_binding) > 1
+        or len(matching_occurrence) > 1
+    ):
+        raise ContractError("projected Product catalog/cue identity is duplicated")
+    catalog_row = matching_catalog[0] if matching_catalog else None
+    binding_row = matching_binding[0] if matching_binding else None
+    occurrence_row = matching_occurrence[0] if matching_occurrence else None
+    if (binding_row is None) != (occurrence_row is None) or (
+        binding_row is not None and binding_row is not occurrence_row
+    ):
+        raise ContractError("projected Product cue stable identity is split")
+    cue_row = binding_row
+    if (catalog_row is None) != (cue_row is None):
+        raise ContractError("projected Product catalog/cue pair is partial")
+    if catalog_row is not None and (
+        catalog_row != expected_catalog or cue_row != expected_cue
+    ):
+        raise ContractError("projected Product catalog/cue row drift")
 
 
 def _high_jump_airborne_patch() -> dict[str, Any]:
@@ -1337,28 +1667,35 @@ def _high_jump_airborne_patch() -> dict[str, Any]:
             "presentationOnly": True,
             "serverGameplayChange": False,
             "serverDamagePolicy": "UNCHANGED_EXISTING_LAND_STAGE_AUTHORITY",
-            "projectileAuthorityStatus": "UNRESOLVED_PROJECTILE",
+            "projectileAuthorityStatus": (
+                "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE"
+            ),
         },
     }
 
 
-def _unresolved_projectiles() -> list[dict[str, Any]]:
+def _projectile_presentations() -> list[dict[str, Any]]:
     return [
         {
-            "unresolvedId": (
+            "presentationId": (
                 f"project-authored:valtan.high-jump.airborne.beat-{beat:02d}.axe"
             ),
             "patternId": "VALTAN_HIGH_JUMP",
             "stageId": "AIRBORNE",
-            "disposition": "UNRESOLVED_PROJECTILE",
-            "candidateAssetId": None,
-            "searchedResourceDomain": "Effect/Valtan/Meshes/**/*.wmodel",
-            "reason": (
-                "The 52 available Valtan Effect WModels contain no filename-stable axe, weapon, or throw payload; anonymous rpbf meshes are not inferred as an axe."
+            "elementId": f"project-axe-beat-{beat:02d}-falling-axe",
+            "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
+            "modelAssetId": ASSET_VALTAN_WEAPON,
+            "bossCatalogEvidence": (
+                "BOSS_VALTAN.weaponModel"
             ),
-            "authority": (
-                "Presentation payload and Server projectile/damage authority remain unresolved; no fake mesh or Client damage actor is emitted."
+            "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
+            "baseTextureProvenance": (
+                "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT"
             ),
+            "trajectoryTimingProvenance": "PROJECT_AUTHORED",
+            "sourceActionPayloadClaim": "NONE",
+            "presentationOnly": True,
+            "serverGameplayChange": False,
         }
         for beat in (1, 2, 3)
     ]
@@ -1419,6 +1756,27 @@ def validate_candidate_document(document: dict[str, Any]) -> None:
             "additive_two_sided_depth_read",
         }:
             raise ContractError("candidate uses a non-established material profile")
+        resources = element.get("resources")
+        if not isinstance(resources, list) or not resources:
+            raise ContractError("candidate resources are missing")
+        seen_slots: set[str] = set()
+        for resource in resources:
+            if not isinstance(resource, dict):
+                raise ContractError("candidate resource binding is invalid")
+            slot_id = resource.get("slotId")
+            asset_id = resource.get("assetId")
+            if (
+                not isinstance(slot_id, str)
+                or not isinstance(asset_id, str)
+                or slot_id in seen_slots
+            ):
+                raise ContractError("candidate resource slot is invalid or duplicate")
+            seen_slots.add(slot_id)
+            _validate_candidate_resource_identity(
+                asset_id,
+                element_kind=element.get("kind", ""),
+                slot_id=slot_id,
+            )
         timing = element.get("detail", {}).get("timing", {})
         start = timing.get("startDelaySeconds")
         lifetime = timing.get("lifeTimeSeconds")
@@ -1433,12 +1791,67 @@ def validate_candidate_document(document: dict[str, Any]) -> None:
         ):
             raise ContractError("candidate timing is invalid or unbounded")
 
+    if document["effectAssetId"] == "effect.valtan.high-jump.airborne":
+        expected_by_kind = {
+            "decal": {
+                f"project-axe-beat-{beat:02d}-target-decal"
+                for beat in (1, 2, 3)
+            },
+            "mesh": {
+                f"project-axe-beat-{beat:02d}-falling-axe"
+                for beat in (1, 2, 3)
+            },
+            "particle": {
+                f"project-axe-beat-{beat:02d}-ground-impact"
+                for beat in (1, 2, 3)
+            },
+        }
+        actual_by_kind = {
+            kind: {
+                element["id"]
+                for element in document["elements"]
+                if element.get("kind") == kind
+            }
+            for kind in expected_by_kind
+        }
+        if (
+            len(document["elements"]) != 9
+            or actual_by_kind != expected_by_kind
+            or any(
+                element.get("kind") not in expected_by_kind
+                for element in document["elements"]
+            )
+        ):
+            raise ContractError(
+                "High Jump AIRBORNE must contain three target decals, three "
+                "official axe Meshes, and three ground Sprite Particles"
+            )
+        for element in document["elements"]:
+            if element.get("kind") != "mesh":
+                continue
+            if (
+                element.get("resources")
+                != [{"slotId": "meshModel", "assetId": ASSET_VALTAN_WEAPON}]
+                or element.get("detail", {}).get("mesh", {}).get(
+                    "useModelMaterial"
+                ) is not True
+                or element.get("detail", {}).get("mesh", {}).get(
+                    "modelPreScale"
+                ) != 1.0
+                or element.get("actionCueAttachment")
+                != _disabled_action_attachment()
+            ):
+                raise ContractError(
+                    "High Jump axe Mesh must reuse the official Valtan weapon "
+                    "as an independent snapshot-root presentation"
+                )
+
 
 def validate_receipt(receipt: dict[str, Any]) -> None:
     expected_root_keys = (
         "schema", "formatVersion", "ownerArchetypeId", "generator",
         "policy", "resourceVerification", "resourceRoleDispositions", "targets",
-        "highJumpAirbornePatch", "unresolved",
+        "highJumpAirbornePatch", "projectilePresentations",
     )
     if tuple(receipt.keys()) != expected_root_keys:
         raise ContractError("project-authored patch-plan root fields/order are invalid")
@@ -1478,6 +1891,8 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
         resource_ids.append(row["assetId"])
     if resource_ids != sorted(set(resource_ids)):
         raise ContractError("resource verification identities are not unique/sorted")
+    if ASSET_VALTAN_WEAPON not in resource_ids:
+        raise ContractError("official Valtan weapon resource verification is missing")
     targets = receipt["targets"]
     if not isinstance(targets, list) or len(targets) != 9:
         raise ContractError("priority target count must remain nine")
@@ -1531,6 +1946,10 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
             ASSET_SHOCKWAVE_02,
             "NO_TARGET_SOURCE_JOIN",
         ),
+        "HIGH_JUMP_AXE_GROUND_IMPACT": (
+            ASSET_SHOCKWAVE_02,
+            "PROJECT_PALETTE_REUSE_NO_SOURCE_CLAIM",
+        ),
     }
     if not isinstance(roles, list) or len(roles) != len(expected_roles):
         raise ContractError("priority resource role disposition count changed")
@@ -1568,6 +1987,7 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
     patch = receipt["highJumpAirbornePatch"]
     cue = patch.get("cueRow", {})
     catalog = patch.get("catalogRow", {})
+    authority = patch.get("authority", {})
     if (
         catalog.get("effectAssetId") != "effect.valtan.high-jump.airborne"
         or catalog.get("payloadKind") != "DIRECT_AUTHORED_DOCUMENT_V13"
@@ -1582,19 +2002,33 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
         or cue.get("repeatPolicy") != "once"
         or cue.get("sourceStartMs") != 0
         or cue.get("sourceEndMs") is not None
+        or authority.get("presentationOnly") is not True
+        or authority.get("serverGameplayChange") is not False
+        or authority.get("serverDamagePolicy")
+        != "UNCHANGED_EXISTING_LAND_STAGE_AUTHORITY"
+        or authority.get("projectileAuthorityStatus")
+        != "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE"
     ):
         raise ContractError("High Jump AIRBORNE canonical v2 patch is incomplete")
-    unresolved = receipt["unresolved"]
+    presentations = receipt["projectilePresentations"]
     if (
-        not isinstance(unresolved, list)
-        or len(unresolved) != 3
+        not isinstance(presentations, list)
+        or len(presentations) != 3
         or any(
-            row.get("disposition") != "UNRESOLVED_PROJECTILE"
-            or row.get("candidateAssetId") is not None
-            for row in unresolved
+            row.get("disposition")
+            != "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE"
+            or row.get("modelAssetId") != ASSET_VALTAN_WEAPON
+            or row.get("geometryProvenance") != "OFFICIAL_GEOMETRY_EXACT"
+            or row.get("baseTextureProvenance")
+            != "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT"
+            or row.get("trajectoryTimingProvenance") != "PROJECT_AUTHORED"
+            or row.get("sourceActionPayloadClaim") != "NONE"
+            or row.get("presentationOnly") is not True
+            or row.get("serverGameplayChange") is not False
+            for row in presentations
         )
     ):
-        raise ContractError("High Jump unresolved projectile denominator changed")
+        raise ContractError("High Jump official axe presentation denominator changed")
 
 
 def build_artifacts(
@@ -1609,6 +2043,7 @@ def build_artifacts(
     resources = _verify_resources(
         _find_resource_root(repo_root, resource_root), targets
     )
+    _validate_optional_high_jump_product_rows(repo_root)
     overrides = canonical_overrides or {}
     files: dict[PurePosixPath, bytes] = {}
     documents: dict[str, dict[str, Any]] = {}
@@ -1624,19 +2059,16 @@ def build_artifacts(
             _validate_canonical_document(
                 canonical, target.effect_asset_id, canonical_relative
             )
-        missing, desired_rows, preserved_ids = _reconcile_target(
+        project_elements, desired_rows, preserved_ids = _reconcile_target(
             target, canonical
         )
-        overlay_relative: PurePosixPath | None = None
-        overlay_sha: str | None = None
-        if missing:
-            document = _candidate_document(target.effect_asset_id, missing)
-            validate_candidate_document(document)
-            overlay_relative = _overlay_relative_path(target.effect_asset_id)
-            payload = _json_bytes(document)
-            overlay_sha = _sha256_bytes(payload)
-            files[overlay_relative] = payload
-            documents[target.effect_asset_id] = document
+        document = _candidate_document(target.effect_asset_id, project_elements)
+        validate_candidate_document(document)
+        overlay_relative = _overlay_relative_path(target.effect_asset_id)
+        payload = _json_bytes(document)
+        overlay_sha = _sha256_bytes(payload)
+        files[overlay_relative] = payload
+        documents[target.effect_asset_id] = document
         target_rows.append(
             {
                 "patternId": target.pattern_id,
@@ -1646,13 +2078,13 @@ def build_artifacts(
                 "targetEffectAssetId": target.effect_asset_id,
                 "targetAuthoringPath": canonical_relative.as_posix(),
                 "canonicalState": (
-                    "EXISTING_DOCUMENT" if canonical is not None else "MISSING_DOCUMENT"
+                    "MISSING_DOCUMENT"
+                    if target.effect_asset_id == "effect.valtan.high-jump.airborne"
+                    else "EXISTING_DOCUMENT"
                 ),
                 "disposition": target.disposition,
                 "presentationOnly": target.presentation_only,
-                "overlayDocumentPath": (
-                    overlay_relative.as_posix() if overlay_relative else None
-                ),
+                "overlayDocumentPath": overlay_relative.as_posix(),
                 "overlayDocumentSha256": overlay_sha,
                 "desiredElements": desired_rows,
                 "preservedCanonicalElementIds": preserved_ids,
@@ -1687,7 +2119,7 @@ def build_artifacts(
         "resourceRoleDispositions": _resource_role_dispositions(),
         "targets": target_rows,
         "highJumpAirbornePatch": _high_jump_airborne_patch(),
-        "unresolved": _unresolved_projectiles(),
+        "projectilePresentations": _projectile_presentations(),
     }
     validate_receipt(receipt)
     files[RECEIPT_RELATIVE_PATH] = _json_bytes(receipt)
@@ -1699,7 +2131,9 @@ def write_artifacts(artifacts: BuildArtifacts, destination_root: Path) -> None:
     expected = {path.as_posix() for path in artifacts.files}
     output_root = destination_root.joinpath(*OUTPUT_RELATIVE_ROOT.parts)
     output_root.mkdir(parents=True, exist_ok=True)
-    for existing in output_root.glob("*.json"):
+    for existing in output_root.glob(
+        "effect.valtan.*.project-authored-overlay.effect.json"
+    ):
         relative = existing.relative_to(destination_root).as_posix()
         if relative not in expected:
             existing.unlink()
@@ -1717,14 +2151,17 @@ def check_artifacts(artifacts: BuildArtifacts, destination_root: Path) -> None:
     destination_root = destination_root.resolve()
     expected = {path.as_posix() for path in artifacts.files}
     output_root = destination_root.joinpath(*OUTPUT_RELATIVE_ROOT.parts)
-    actual = (
-        {
+    actual: set[str] = set()
+    if output_root.is_dir():
+        actual.update(
             path.relative_to(destination_root).as_posix()
-            for path in output_root.glob("*.json")
-        }
-        if output_root.is_dir()
-        else set()
-    )
+            for path in output_root.glob(
+                "effect.valtan.*.project-authored-overlay.effect.json"
+            )
+        )
+        receipt_path = destination_root.joinpath(*RECEIPT_RELATIVE_PATH.parts)
+        if receipt_path.is_file():
+            actual.add(RECEIPT_RELATIVE_PATH.as_posix())
     extra = sorted(actual - expected)
     missing = sorted(expected - actual)
     if extra or missing:
@@ -1781,7 +2218,8 @@ def main(argv: list[str] | None = None) -> int:
         "[PASS] Valtan project-authored priority candidates: "
         f"documents={len(artifacts.documents)}, desired={desired_count}, "
         f"append={append_count}, preserved={preserved_count}, "
-        f"unresolved={len(artifacts.receipt['unresolved'])}"
+        "officialAxePresentations="
+        f"{len(artifacts.receipt['projectilePresentations'])}"
     )
     return 0
 

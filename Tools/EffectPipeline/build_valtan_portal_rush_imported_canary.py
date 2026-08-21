@@ -83,21 +83,21 @@ def catalog_index() -> dict[str, dict[str, Any]]:
     return result
 
 
-def cue_index() -> dict[str, dict[str, Any]]:
+def cue_index() -> dict[str, list[dict[str, Any]]]:
     document = read_json(CUE_PATH)
     if document.get("formatVersion") != 2:
         raise CanaryError("Portal Rush canary requires canonical v2 cues")
-    result: dict[str, dict[str, Any]] = {}
+    result: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in document.get("cues", []):
         clip_occurrence_id = str(row.get("clipOccurrenceId") or "")
         if not clip_occurrence_id:
             continue
-        if clip_occurrence_id in result:
-            raise CanaryError(
-                f"duplicate cue clipOccurrenceId: {clip_occurrence_id}"
-            )
-        result[clip_occurrence_id] = copy.deepcopy(row)
-    return result
+        # A v2 clip occurrence may intentionally own multiple product cue
+        # occurrences (for example a base family plus a supplemental trail).
+        # The Portal canary selects its exact product identity below instead
+        # of treating clipOccurrenceId as globally unique.
+        result[clip_occurrence_id].append(copy.deepcopy(row))
+    return dict(result)
 
 
 def validate_candidate_document(
@@ -262,13 +262,17 @@ def build_canary(
     for clip_occurrence_id in sorted(EXPECTED_CLIPS):
         expected = EXPECTED_CLIPS[clip_occurrence_id]
         effect_id = expected["effectAssetId"]
-        cue = cues.get(clip_occurrence_id)
+        matching_cues = [
+            row
+            for row in cues.get(clip_occurrence_id, [])
+            if row.get("patternId") == PATTERN_ID
+            and row.get("actionId") == expected["gameplayActionId"]
+            and row.get("effectAssetId") == effect_id
+        ]
+        cue = matching_cues[0] if len(matching_cues) == 1 else None
         catalog = catalogs.get(effect_id)
         if (
             cue is None
-            or cue.get("patternId") != PATTERN_ID
-            or cue.get("actionId") != expected["gameplayActionId"]
-            or cue.get("effectAssetId") != effect_id
             or cue.get("repeatPolicy") != "once"
         ):
             raise CanaryError(f"canonical v2 cue drifted: {clip_occurrence_id}")

@@ -78,7 +78,7 @@
             1.0
           ],
           "clip": 0.0,
-          "emissiveIntensity": 1.0,
+          "emissiveIntensity": 0.05000000074505806,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
@@ -108,7 +108,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -1280,7 +1280,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -2121,7 +2121,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -3034,7 +3034,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.15000000596046448,
+          "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -4078,7 +4078,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 1.0,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },

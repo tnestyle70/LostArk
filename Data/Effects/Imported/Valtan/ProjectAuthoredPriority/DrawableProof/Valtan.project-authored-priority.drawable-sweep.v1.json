@@ -5,7 +5,7 @@
   "sampleRateHz": 60,
   "documents": [
     {
-      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.dash-charge.windup.project-authored-overlay.effect.json",
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.dash-charge.windup.project-authored-overlay.effect.json",
       "effectAssetId": "effect.valtan.dash-charge.windup",
       "durationSeconds": 0.600000024,
       "sampleCount": 38,
@@ -37,7 +37,7 @@
       ]
     },
     {
-      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.windup.project-authored-overlay.effect.json",
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.windup.project-authored-overlay.effect.json",
       "effectAssetId": "effect.valtan.magic-choice.windup",
       "durationSeconds": 1.39999998,
       "sampleCount": 86,
@@ -69,7 +69,7 @@
       ]
     },
     {
-      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.inner.project-authored-overlay.effect.json",
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.inner.project-authored-overlay.effect.json",
       "effectAssetId": "effect.valtan.magic-choice.inner",
       "durationSeconds": 0.699999988,
       "sampleCount": 44,
@@ -91,7 +91,7 @@
       ]
     },
     {
-      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.outer.project-authored-overlay.effect.json",
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.outer.project-authored-overlay.effect.json",
       "effectAssetId": "effect.valtan.magic-choice.outer",
       "durationSeconds": 0.800000012,
       "sampleCount": 50,
@@ -113,7 +113,7 @@
       ]
     },
     {
-      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.floor-wipe-130.windup.project-authored-overlay.effect.json",
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.floor-wipe-130.windup.project-authored-overlay.effect.json",
       "effectAssetId": "effect.valtan.floor-wipe-130.windup",
       "durationSeconds": 1.79999995,
       "sampleCount": 110,
@@ -135,7 +135,7 @@
       ]
     },
     {
-      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.floor-wipe-130.first-smash.project-authored-overlay.effect.json",
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.floor-wipe-130.first-smash.project-authored-overlay.effect.json",
       "effectAssetId": "effect.valtan.floor-wipe-130.first-smash",
       "durationSeconds": 0.800000012,
       "sampleCount": 50,
@@ -157,19 +157,19 @@
       ]
     },
     {
-      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.airborne.project-authored-overlay.effect.json",
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.airborne.project-authored-overlay.effect.json",
       "effectAssetId": "effect.valtan.high-jump.airborne",
-      "durationSeconds": 1.72000003,
-      "sampleCount": 106,
-      "visibleElementCount": 3,
-      "preparedElementCount": 3,
-      "drawnElementCount": 3,
+      "durationSeconds": 3.01999998,
+      "sampleCount": 184,
+      "visibleElementCount": 9,
+      "preparedElementCount": 9,
+      "drawnElementCount": 9,
       "disposition": "DRAWABLE_PROOF_PASS",
       "elements": [
         {
           "elementId": "project-axe-beat-01-target-decal",
           "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 106,
+          "preparedSamples": 184,
           "attemptedSamples": 38,
           "submittedDraws": 38,
           "suppressedDraws": 0,
@@ -179,7 +179,7 @@
         {
           "elementId": "project-axe-beat-02-target-decal",
           "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 106,
+          "preparedSamples": 184,
           "attemptedSamples": 38,
           "submittedDraws": 38,
           "suppressedDraws": 0,
@@ -189,17 +189,77 @@
         {
           "elementId": "project-axe-beat-03-target-decal",
           "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 106,
+          "preparedSamples": 184,
           "attemptedSamples": 38,
           "submittedDraws": 38,
           "suppressedDraws": 0,
           "failedDraws": 0,
           "committedDraws": 38
+        },
+        {
+          "elementId": "project-axe-beat-01-falling-axe",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 18,
+          "submittedDraws": 18,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 36
+        },
+        {
+          "elementId": "project-axe-beat-02-falling-axe",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 18,
+          "submittedDraws": 18,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 36
+        },
+        {
+          "elementId": "project-axe-beat-03-falling-axe",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 18,
+          "submittedDraws": 18,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 36
+        },
+        {
+          "elementId": "project-axe-beat-01-ground-impact",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 40,
+          "submittedDraws": 39,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 39
+        },
+        {
+          "elementId": "project-axe-beat-02-ground-impact",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 39,
+          "submittedDraws": 38,
+          "suppressedDraws": 1,
+          "failedDraws": 0,
+          "committedDraws": 38
+        },
+        {
+          "elementId": "project-axe-beat-03-ground-impact",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 184,
+          "attemptedSamples": 39,
+          "submittedDraws": 39,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 39
         }
       ]
     },
     {
-      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.land.project-authored-overlay.effect.json",
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.land.project-authored-overlay.effect.json",
       "effectAssetId": "effect.valtan.high-jump.land",
       "durationSeconds": 1,
       "sampleCount": 62,
@@ -221,7 +281,7 @@
       ]
     },
     {
-      "documentPath": "C:/Users/user/Desktop/LostArk/.codex_tmp/worktrees/valtan-all-effect-families-0821/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.front-back-front.active.project-authored-overlay.effect.json",
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.front-back-front.active.project-authored-overlay.effect.json",
       "effectAssetId": "effect.valtan.front-back-front.active",
       "durationSeconds": 3.32399988,
       "sampleCount": 202,
