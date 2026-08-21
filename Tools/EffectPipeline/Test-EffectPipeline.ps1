@@ -185,7 +185,7 @@ try {
         $eventPath = Join-Path $dataRoot (
             "Animation\Authored\$animationAssetId\$animationAssetId.animevents")
         $eventRows = if ($animationAssetId -ceq 'Artist') {
-            @('"fixture_clip" EFFECT startms=0 effectref=asset payload="effect.pipeline.fixture"')
+            @('"fixture_clip" EFFECT startms=0 effectref=asset payload="effect.valtan.pipeline-fixture"')
         }
         else {
             @()
@@ -198,13 +198,62 @@ try {
         'Animation\Authored\Valtan\Valtan.patterneffectcues.json') ((
         [ordered]@{
             schema = 'lostark.valtan-pattern-effect-cues'
-            formatVersion = 1
+            formatVersion = 2
             ownerArchetypeId = 'BOSS_VALTAN'
-            cues = @()
+            cues = @([ordered]@{
+                bindingId = 'cue.valtan.pipeline-fixture.active'
+                occurrenceId = 'cue.valtan.pipeline-fixture.active.occurrence.01'
+                patternId = 'VALTAN_PIPELINE_FIXTURE'
+                stageId = 'ACTIVE'
+                actionId = 'valtan.pipeline-fixture.active'
+                clipOccurrenceId = 'valtan.pipeline-fixture.active.clip.01'
+                effectAssetId = 'effect.valtan.pipeline-fixture'
+                anchorSlotId = 'root'
+                followPolicy = 'follow'
+                stopPolicy = 'cue_end'
+                repeatPolicy = 'once'
+                sourceStartMs = 0
+                sourceEndMs = 100
+                localTransform = [ordered]@{
+                    position = @(0.0, 0.0, 0.0)
+                    rotationDegrees = @(0.0, 0.0, 0.0)
+                    scale = @(1.0, 1.0, 1.0)
+                }
+            })
         } | ConvertTo-Json -Depth 10) + "`n")
     Write-Utf8 (Join-Path $dataRoot `
+        'Animation\Authored\Valtan\Valtan.patternbindings.json') ((
+        [ordered]@{
+            schema = 'lostark.valtan-pattern-bindings'
+            formatVersion = 2
+            bossArchetypeId = 'BOSS_VALTAN'
+            bindings = @([ordered]@{
+                actionId = 'valtan.pipeline-fixture.active'
+                clips = @([ordered]@{
+                    clipOccurrenceId = 'valtan.pipeline-fixture.active.clip.01'
+                    clip = 'fixture_clip'
+                    mappingBasis = 'PROJECT_AUTHORED'
+                    sourceStartMs = 0
+                    playMs = 100
+                    playRate = 1.0
+                    loop = $false
+                })
+            })
+        } | ConvertTo-Json -Depth 10) + "`n")
+    Write-Utf8 (Join-Path $dataRoot `
+        'Animation\Reference\Valtan\Valtan.animnotify') ((
+        "LOSTARK_ANIM_NOTIFY 1 `"Valtan`" 1`n" +
+        "`"fixture_clip`" skill=1 len=0.1000 name=`"Fixture`"`n"))
+    Write-Utf8 (Join-Path $dataRoot `
         'Encounters\Valtan\ValtanEncounter.json') ((
-        [ordered]@{ patterns = @() } | ConvertTo-Json -Depth 10) + "`n")
+        [ordered]@{ patterns = @([ordered]@{
+            patternId = 'VALTAN_PIPELINE_FIXTURE'
+            stages = @([ordered]@{
+                stageId = 'ACTIVE'
+                actionId = 'valtan.pipeline-fixture.active'
+                durationMs = 100
+            })
+        }) } | ConvertTo-Json -Depth 10) + "`n")
     [IO.Directory]::CreateDirectory($effectResource) | Out-Null
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'base.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'blankwhite.dds'), [byte[]](1,2,3,4))
@@ -225,7 +274,7 @@ try {
         [IO.Path]::GetFullPath($referenceDocumentPath), [Text.Encoding]::UTF8) |
         ConvertFrom-Json
     $completeDetail = $referenceDocument.elements[0].detail
-    $effectId = 'effect.pipeline.fixture'
+    $effectId = 'effect.valtan.pipeline-fixture'
     $document = [ordered]@{
         schema = 'lostark.effect-authoring'
         version = 6
@@ -265,6 +314,118 @@ try {
         $null -ne $baselineRuntime.effects[0].PSObject.Properties['payloadKind']) {
         throw 'Legacy-only publish no longer preserves the format-2 catalog shape.'
     }
+
+    $valtanCueFixturePath = Join-Path $dataRoot `
+        'Animation\Authored\Valtan\Valtan.patterneffectcues.json'
+    $valtanBindingFixturePath = Join-Path $dataRoot `
+        'Animation\Authored\Valtan\Valtan.patternbindings.json'
+    $valtanDurationFixturePath = Join-Path $dataRoot `
+        'Animation\Reference\Valtan\Valtan.animnotify'
+    $validValtanCueText = [IO.File]::ReadAllText(
+        $valtanCueFixturePath, $utf8NoBomStrict)
+    $validValtanBindingText = [IO.File]::ReadAllText(
+        $valtanBindingFixturePath, $utf8NoBomStrict)
+    $validValtanDurationText = [IO.File]::ReadAllText(
+        $valtanDurationFixturePath, $utf8NoBomStrict)
+
+    $invalidValtanBinding = $validValtanBindingText | ConvertFrom-Json
+    $invalidValtanBinding.bindings[0].clips[0].mappingBasis = 'NAME_GUESS'
+    Write-Utf8 $valtanBindingFixturePath `
+        (($invalidValtanBinding | ConvertTo-Json -Depth 20) + "`n")
+    Assert-ValidateRejected 'Valtan invalid clip mappingBasis' $baseline
+    Write-Utf8 $valtanBindingFixturePath $validValtanBindingText
+
+    $invalidValtanBinding = $validValtanBindingText | ConvertFrom-Json
+    $firstClip = $invalidValtanBinding.bindings[0].clips[0]
+    $secondClip = ($firstClip | ConvertTo-Json -Depth 10) | ConvertFrom-Json
+    $firstClip.loop = $true
+    $secondClip.clipOccurrenceId = 'valtan.pipeline-fixture.active.clip.02'
+    $secondClip.loop = $false
+    $invalidValtanBinding.bindings[0].clips = @($firstClip, $secondClip)
+    Write-Utf8 $valtanBindingFixturePath `
+        (($invalidValtanBinding | ConvertTo-Json -Depth 20) + "`n")
+    Assert-ValidateRejected 'Valtan non-final loop clip' $baseline
+    Write-Utf8 $valtanBindingFixturePath $validValtanBindingText
+
+    $invalidValtanCue = $validValtanCueText | ConvertFrom-Json
+    $invalidValtanCue.cues[0].sourceStartMs = 100
+    $invalidValtanCue.cues[0].sourceEndMs = 101
+    Write-Utf8 $valtanCueFixturePath `
+        (($invalidValtanCue | ConvertTo-Json -Depth 20) + "`n")
+    Assert-ValidateRejected 'Valtan cue outside clip source segment' $baseline
+    Write-Utf8 $valtanCueFixturePath $validValtanCueText
+
+    $invalidValtanCue = $validValtanCueText | ConvertFrom-Json
+    $invalidValtanCue.cues[0].repeatPolicy = 'each_loop'
+    Write-Utf8 $valtanCueFixturePath `
+        (($invalidValtanCue | ConvertTo-Json -Depth 20) + "`n")
+    Assert-ValidateRejected 'Valtan each_loop cue on non-loop clip' $baseline
+    Write-Utf8 $valtanCueFixturePath $validValtanCueText
+
+    # Source positions are clip-local coordinates, not direct encounter wall
+    # milliseconds. A sourceStart at 2450ms is valid when its effective
+    # source segment maps to this 100ms gameplay stage.
+    $sourceLocalBinding = $validValtanBindingText | ConvertFrom-Json
+    $sourceLocalBinding.bindings[0].clips[0].sourceStartMs = 2450
+    $sourceLocalBinding.bindings[0].clips[0].playMs = 100
+    $sourceLocalCue = $validValtanCueText | ConvertFrom-Json
+    $sourceLocalCue.cues[0].sourceStartMs = 2450
+    $sourceLocalCue.cues[0].sourceEndMs = 2550
+    Write-Utf8 $valtanDurationFixturePath ((
+        "LOSTARK_ANIM_NOTIFY 1 `"Valtan`" 1`n" +
+        "`"fixture_clip`" skill=1 len=3.0000 name=`"Fixture`"`n"))
+    Write-Utf8 $valtanBindingFixturePath `
+        (($sourceLocalBinding | ConvertTo-Json -Depth 20) + "`n")
+    Write-Utf8 $valtanCueFixturePath `
+        (($sourceLocalCue | ConvertTo-Json -Depth 20) + "`n")
+    & $publisher -Mode Validate -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) {
+        throw 'Valtan source-local wall mapping fixture was rejected.'
+    }
+
+    $sourceEndStartCue = ($sourceLocalCue | ConvertTo-Json -Depth 20) |
+        ConvertFrom-Json
+    $sourceEndStartCue.cues[0].sourceStartMs = 2550
+    $sourceEndStartCue.cues[0].sourceEndMs = $null
+    $sourceEndStartCue.cues[0].stopPolicy = 'natural'
+    Write-Utf8 $valtanCueFixturePath `
+        (($sourceEndStartCue | ConvertTo-Json -Depth 20) + "`n")
+    Assert-ValidateRejected `
+        'Valtan cue sourceStart at exclusive clip sourceEnd' $baseline
+
+    $stageEndBinding = ($sourceLocalBinding | ConvertTo-Json -Depth 20) |
+        ConvertFrom-Json
+    $stageEndBinding.bindings[0].clips[0].playMs = 200
+    $stageEndCue = ($sourceLocalCue | ConvertTo-Json -Depth 20) |
+        ConvertFrom-Json
+    $stageEndCue.cues[0].sourceStartMs = 2550
+    $stageEndCue.cues[0].sourceEndMs = $null
+    $stageEndCue.cues[0].stopPolicy = 'natural'
+    Write-Utf8 $valtanBindingFixturePath `
+        (($stageEndBinding | ConvertTo-Json -Depth 20) + "`n")
+    Write-Utf8 $valtanCueFixturePath `
+        (($stageEndCue | ConvertTo-Json -Depth 20) + "`n")
+    Assert-ValidateRejected `
+        'Valtan non-loop cue start at exclusive encounter stage end' $baseline
+
+    $stageEndBinding.bindings[0].clips[0].loop = $true
+    Write-Utf8 $valtanBindingFixturePath `
+        (($stageEndBinding | ConvertTo-Json -Depth 20) + "`n")
+    Assert-ValidateRejected `
+        'Valtan loop cue start at exclusive encounter stage end' $baseline
+
+    $sourceLocalBinding.bindings[0].clips[0].playMs = 200
+    $sourceLocalCue.cues[0].sourceStartMs = 2551
+    $sourceLocalCue.cues[0].sourceEndMs = 2552
+    Write-Utf8 $valtanBindingFixturePath `
+        (($sourceLocalBinding | ConvertTo-Json -Depth 20) + "`n")
+    Write-Utf8 $valtanCueFixturePath `
+        (($sourceLocalCue | ConvertTo-Json -Depth 20) + "`n")
+    Assert-ValidateRejected 'Valtan cue outside encounter wall stage' $baseline
+    Write-Utf8 $valtanCueFixturePath $validValtanCueText
+    Write-Utf8 $valtanBindingFixturePath $validValtanBindingText
+    Write-Utf8 $valtanDurationFixturePath $validValtanDurationText
 
     $authoringPath = Join-Path $authored "$effectId.effect.json"
     $authoringLf = [IO.File]::ReadAllText(
@@ -1235,4 +1396,24 @@ finally {
     if (Test-Path -LiteralPath $fixture) {
         Remove-Item -LiteralPath $fixture -Recurse -Force
     }
+}
+
+$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$pythonContractTests = @(
+    'Tools.EffectPipeline.test_build_valtan_stage_effects',
+    'Tools.EffectPipeline.test_build_valtan_action_bindings',
+    'Tools.EffectPipeline.test_build_valtan_source_occurrence_inventory',
+    'Tools.EffectPipeline.test_build_valtan_portal_rush_imported_canary',
+    'Tools.EffectPipeline.test_build_valtan_source_timing_delta_proposals',
+    'Tools.EffectPipeline.test_migrate_valtan_pattern_occurrences_v2'
+)
+Push-Location $repositoryRoot
+try {
+    & python -m unittest @pythonContractTests
+    if ($LASTEXITCODE) {
+        throw 'EffectPipeline Python contract tests failed.'
+    }
+}
+finally {
+    Pop-Location
 }

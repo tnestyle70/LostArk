@@ -20,6 +20,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 NS_BEGIN(Engine)
@@ -142,6 +143,63 @@ enum class EFFECT_AUTHORING_FAMILY : uint8_t
 	END
 };
 
+/* The Server reuses its staged-action index for both COMBO attacks and HOLD
+   phases. Keep the Product documents phase-local, but give the Tool an exact
+   semantic label so a HOLD start/charge/release family is never presented as
+   three basic attacks merely because its stable IDs retain the legacy baN
+   suffix. */
+enum class EFFECT_TOOL_SKILL_PHASE_ROLE : uint8_t
+{
+	EFFECT,
+	BASIC_ATTACK,
+	HOLD_START,
+	HOLD_CHARGE,
+	HOLD_RELEASE,
+	STAGE
+};
+
+constexpr EFFECT_TOOL_SKILL_PHASE_ROLE Resolve_EffectToolSkillPhaseRole(
+	const LostArk::Shared::PLAYER_SKILL_KIND eSkillKind,
+	const size_t iStageIndex,
+	const size_t iStageCount) noexcept
+{
+	if (LostArk::Shared::PLAYER_SKILL_KIND::COMBO == eSkillKind)
+		return EFFECT_TOOL_SKILL_PHASE_ROLE::BASIC_ATTACK;
+	if (LostArk::Shared::PLAYER_SKILL_KIND::HOLD == eSkillKind &&
+		1u < iStageCount && iStageIndex < iStageCount)
+	{
+		if (0u == iStageIndex)
+			return EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_START;
+		if (iStageIndex + 1u == iStageCount)
+			return EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_RELEASE;
+		return EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_CHARGE;
+	}
+	return 1u < iStageCount ?
+		EFFECT_TOOL_SKILL_PHASE_ROLE::STAGE :
+		EFFECT_TOOL_SKILL_PHASE_ROLE::EFFECT;
+}
+
+constexpr std::string_view EffectToolSkillPhaseRoleLabel(
+	const EFFECT_TOOL_SKILL_PHASE_ROLE eRole) noexcept
+{
+	switch (eRole)
+	{
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::BASIC_ATTACK:
+		return "BA";
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_START:
+		return "Hold Start";
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_CHARGE:
+		return "Hold Charge";
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_RELEASE:
+		return "Hold Release";
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::STAGE:
+		return "Stage";
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::EFFECT:
+	default:
+		return "Effect";
+	}
+}
+
 constexpr EFFECT_DOCUMENT_SOURCE Resolve_ProductCueDocumentSource(
 	const bool_t bHasVisualProgramProjection) noexcept
 {
@@ -197,6 +255,12 @@ private:
         EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE ProductCue;
     };
 
+	struct VALTAN_PRODUCT_PREVIEW final
+	{
+		VALTAN_CLIP_OCCURRENCE_VIEW Clip;
+		VALTAN_PRODUCT_EFFECT_CUE_VIEW Cue;
+	};
+
     struct EFFECT_DATA_FILE_ENTRY final
     {
         std::string strAssetId;
@@ -223,6 +287,8 @@ private:
 		std::string strElementSelectionId;
 		std::string strModelCueSelectionId;
 		bool_t bPlayCompleteAfterLoad = false;
+		optional<VALTAN_CLIP_OCCURRENCE_VIEW> ValtanClip;
+		optional<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ValtanCue;
     };
 
 	struct UNIFIED_EFFECT_CACHE final
@@ -239,6 +305,31 @@ private:
 		std::string strDrawableError;
 		std::string strPreviewReadinessError;
 		std::string strStatus;
+	};
+
+	/* Player clips retain the existing preview-loop switch. Valtan v2 clips
+	   additionally carry the canonical source segment and explicit loop bit. */
+	struct SYNCHRONIZED_ANIMATION_CLIP final
+	{
+		std::string strClipName;
+		uint32_t iPlayMs = 0u;
+		f32_t fPlayRate = 1.f;
+		uint32_t iSourceStartMs = 0u;
+		bool_t bLoop = false;
+		bool_t bHasExplicitLoopPolicy = false;
+
+		SYNCHRONIZED_ANIMATION_CLIP() = default;
+		SYNCHRONIZED_ANIMATION_CLIP(
+			std::string ClipName, uint32_t iClipPlayMs, f32_t fClipPlayRate)
+			: strClipName(std::move(ClipName)), iPlayMs(iClipPlayMs),
+			  fPlayRate(fClipPlayRate)
+		{
+		}
+		SYNCHRONIZED_ANIMATION_CLIP(const ANIMATION_SKILL_CLIP& Clip)
+			: strClipName(Clip.strClipName), iPlayMs(Clip.iPlayMs),
+			  fPlayRate(Clip.fPlayRate)
+		{
+		}
 	};
 
 	struct UNIFIED_EFFECT_CANDIDATE_BINDING final
@@ -331,15 +422,40 @@ private:
 	void Render_ValtanStageRow(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage);
+	void Render_ValtanClipOccurrence(
+		const VALTAN_STAGE_VIEW& Stage,
+		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
+		size_t iClipOrdinal);
+	void Render_ValtanProductCue(
+		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue,
+		size_t iCueOrdinal);
 	bool_t Matches_ValtanPatternSearch(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const std::string& strSearch) const;
 	bool_t Create_ValtanStageEffectDocument(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage);
-	/* Stages state their own clip, so opening an Effect can stage the boss
-	   model and start that clip instead of leaving the person to find it. */
-	bool_t Play_ValtanStageClip(const std::string& strRuntimeClipName);
+	/* V2 Product rows replay their exact occurrence/sequence. The name-only
+	   path is limited to legacy unmapped reference documents. */
+	bool_t Play_ValtanClipOccurrence(
+		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip);
+	bool_t Play_ValtanProductCue(
+		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue);
+	bool_t Play_ValtanStageSequence(
+		const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips);
+	bool_t Play_ValtanReferenceClip(const std::string& strRuntimeClipName);
+	bool_t Try_OpenValtanAuthoredEffect(
+		const std::filesystem::path& Path,
+		const std::string& strEffectAssetId,
+		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue,
+		bool_t bQueuePlayCompleteAfterLoad = false);
+	bool_t Try_OpenValtanReferenceEffect(
+		const std::filesystem::path& Path,
+		const std::string& strEffectAssetId,
+		const std::string& strRuntimeClipName);
     void Render_Detail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TransformDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_ColorDetail(
@@ -377,7 +493,9 @@ private:
 	void Render_ModelCueDetail();
 	void Render_UnifiedEffectTree(
 		const UNIFIED_EFFECT_CACHE& Cache,
-		const std::string& strFallbackDisplayName);
+		const std::string& strFallbackDisplayName,
+		const VALTAN_CLIP_OCCURRENCE_VIEW* pValtanClip = nullptr,
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW* pValtanCue = nullptr);
 	void Render_ComponentSelectionDetail();
 	void Render_EmitterSelectionDetail();
 	void Render_SourceModuleSelectionDetail();
@@ -394,14 +512,15 @@ private:
 	bool_t Try_UseSelectedElementAsAuthoringPreset();
     bool_t Try_BindMeshAuthoringResource(const std::string& strAssetId);
     bool_t Try_ClearMeshAuthoringSlot();
+	bool_t Try_DuplicateSelectedElement();
     bool_t Try_DeleteSelectedElement();
     bool_t Try_ClearElements();
     bool_t Try_ApplyDraftAndSave();
     bool_t Try_SaveDocument();
-    size_t Count_PlayerProductCueMappings(
+    size_t Count_ProductCueMappings(
         const std::string& strEffectAssetId) const;
-    bool_t Can_HotReloadSavedPlayerProduct() const;
-    bool_t Try_HotReloadSavedPlayerProduct();
+    bool_t Can_HotReloadSavedProduct() const;
+    bool_t Try_HotReloadSavedProduct();
     bool_t Try_SaveDocumentAs(const std::string& strAssetId);
 	bool_t Try_SaveSelectedAdapterElementAsGenericAuthoredCopy(
 		const std::string& strAssetId);
@@ -614,13 +733,26 @@ private:
     bool_t Apply_DetailDraft(EFFECT_DOCUMENT_DESC& Document) const;
 	bool_t Apply_ModelCueDraft(EFFECT_DOCUMENT_DESC& Document) const;
     bool_t Resolve_PreviewRoot(float4x4_t& OutRoot);
+	bool_t Has_ProductCuePreview() const;
     f32_t Resolve_EffectSampleTime(f32_t fTimelineSeconds) const;
+	f32_t Resolve_EffectTimelineTime(f32_t fEffectSampleSeconds) const;
     bool_t Is_ProductCueVisible(f32_t fTimelineSeconds) const;
+	bool_t Restore_ValtanProductPreviewPlayback(
+		const optional<VALTAN_PRODUCT_PREVIEW>& Preview,
+		f32_t fTimelineSeconds,
+		f32_t fDurationSeconds,
+		bool_t bPlaying,
+		bool_t bVisibleRequested,
+		const float4x4_t& SnapshotRoot,
+		bool_t bSnapshotCaptured,
+		std::string& strOutError);
     void Clear_ProductCuePreview();
     void Reset_ProductCueSnapshot();
     void Start_WorldPreviewFromBeginning();
     void Synchronize_LoadedSkillPreview();
+	void Select_PlayerPreviewCueCandidate(size_t iCandidateIndex);
     void Restart_SynchronizedAnimationSequence();
+	bool_t Start_SynchronizedAnimationClip(size_t iClipIndex, bool_t bPaused);
     void Seek_SynchronizedAnimationSequence(f32_t fTimeSeconds);
     void Set_SynchronizedAnimationPaused(bool_t bPaused);
     bool_t Try_ResolveSynchronizedAnimationTime(f32_t& fOutTimeSeconds) const;
@@ -663,6 +795,7 @@ private:
     optional<EFFECT_DOCUMENT_DESC> m_ActiveDocument;
 	optional<EFFECT_DOCUMENT_DESC> m_SourcePreviewDocument;
     optional<EFFECT_PRODUCT_PREVIEW> m_ProductPreview;
+	optional<VALTAN_PRODUCT_PREVIEW> m_ValtanProductPreview;
     EFFECT_ELEMENT_DESC m_MeshAuthoringDraft;
 	optional<SOURCE_ELEMENT_PRESET_SELECTION> m_SourceElementPresetSelection;
     optional<EFFECT_PARTICLE_SYSTEM_DESC> m_ParticleSystemDraft;
@@ -676,8 +809,12 @@ private:
 		m_UnifiedCandidateBindings;
 	std::unordered_map<std::string, UNIFIED_EFFECT_CACHE>
 		m_UnifiedCandidateCaches;
+	std::unordered_map<std::string, UNIFIED_EFFECT_CACHE>
+		m_ValtanUnifiedEffectCaches;
 	std::unordered_map<std::string, DIRECT_AUTHORED_EDITABLE_ENTRY>
 		m_DirectAuthoredEditableEntries;
+	std::unordered_map<std::string, size_t>
+		m_BossProductCueMappingCounts;
 	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		m_pSelectedVisualSourceProjection;
 	shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
@@ -709,7 +846,9 @@ private:
 	bool_t m_bValtanOnlyStagesWithEffect = false;
     vector<EFFECT_DATA_FILE_ENTRY> m_DataFiles;
     vector<string> m_DataFileDomains;
-    vector<ANIMATION_SKILL_CLIP> m_SynchronizedAnimationClips;
+    vector<SYNCHRONIZED_ANIMATION_CLIP> m_SynchronizedAnimationClips;
+	vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE>
+		m_PlayerPreviewCueCandidates;
     vector<string> m_AnimationClipDisplayLabels;
     vector<string> m_AnimationClipSearchTokens;
     EFFECT_ELEMENT_KIND m_eSelectedEffectType = EFFECT_ELEMENT_KIND::MESH;
@@ -849,6 +988,8 @@ private:
         EFFECT_RESOURCE_FILE_KIND::MODEL;
 	uint32_t m_iCueTransferDurationMs = 250u;
 	size_t m_iSynchronizedAnimationClipIndex = 0u;
+	uint64_t m_iSynchronizedAnimationLoopEpoch = 0u;
+	size_t m_iPlayerPreviewCueCandidateIndex = 0u;
 	f32_t m_fReconstructedSourceRuntimeClockSeconds = 0.f;
 	f32_t m_fReconstructedSourceRuntimeTailSeconds = 0.f;
 	string m_strDocumentStatus;

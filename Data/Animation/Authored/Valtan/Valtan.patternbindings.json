@@ -1,503 +1,1779 @@
 {
   "schema": "lostark.valtan-pattern-bindings",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "bossArchetypeId": "BOSS_VALTAN",
   "bindings": [
     {
       "actionId": "valtan.attack.swing.windup",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.swing.windup.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.swing.active",
-      "clip": ["mesh_att_battle_1_01", "mesh_att_battle_1_02"]
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.swing.active.clip.01",
+          "clip": "mesh_att_battle_1_01",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.swing.active.clip.02",
+          "clip": "mesh_att_battle_1_02",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.swing.recovery",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.swing.recovery.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.down-smash.windup",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.down-smash.windup.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.down-smash.active",
-      "clip": "mesh_att_battle_2_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.down-smash.active.clip.01",
+          "clip": "mesh_att_battle_2_01",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.down-smash.recovery",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.down-smash.recovery.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.imprison-roar.windup",
-      "clip": "mesh_att_battle_5_01_start"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.imprison-roar.windup.clip.01",
+          "clip": "mesh_att_battle_5_01_start",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.imprison-roar.active",
-      "clip": "mesh_att_battle_5_01_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.imprison-roar.active.clip.01",
+          "clip": "mesh_att_battle_5_01_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.imprison-roar.recovery",
-      "clip": "mesh_att_battle_5_01_end"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.imprison-roar.recovery.clip.01",
+          "clip": "mesh_att_battle_5_01_end",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.dash-charge.windup",
-      "clip": "mesh_att_battle_4_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
+          "clip": "mesh_att_battle_4_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.dash-charge.active",
-      "clip": "mesh_att_battle_4_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.active.clip.01",
+          "clip": "mesh_att_battle_4_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.dash-charge.groggy",
-      "clip": "mesh_dmg_parts_loop_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.groggy.clip.01",
+          "clip": "mesh_dmg_parts_loop_1",
+          "mappingBasis": "PATTERN_PR_REFERENCE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.dash-charge.part-break",
-      "clip": "mesh_dmg_parts_end_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.part-break.clip.01",
+          "clip": "mesh_dmg_parts_end_1",
+          "mappingBasis": "PATTERN_PR_REFERENCE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.dash-charge.recovery",
-      "clip": "mesh_att_battle_4_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.dash-charge.recovery.clip.01",
+          "clip": "mesh_att_battle_4_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.earthquake-smash.windup",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.earthquake-smash.windup.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.earthquake-smash.impact",
-      "clip": "mesh_att_battle_7_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.earthquake-smash.impact.clip.01",
+          "clip": "mesh_att_battle_7_01",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.earthquake-smash.delayed",
-      "clip": "mesh_att_battle_7_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.earthquake-smash.delayed.clip.01",
+          "clip": "mesh_att_battle_7_02",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.earthquake-smash.recovery",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.earthquake-smash.recovery.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.reactive.parry.stance",
-      "clip": "mesh_att_battle_9_01_start"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.parry.stance.clip.01",
+          "clip": "mesh_att_battle_9_01_start",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.reactive.parry.slash",
-      "clip": "mesh_att_battle_9_01_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.parry.slash.clip.01",
+          "clip": "mesh_att_battle_9_01_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.reactive.parry.recovery",
-      "clip": "mesh_att_battle_9_01_end"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.parry.recovery.clip.01",
+          "clip": "mesh_att_battle_9_01_end",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.magic-choice.windup",
-      "clip": "mesh_att_battle_5_02_start"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.magic-choice.windup.clip.01",
+          "clip": "mesh_att_battle_5_02_start",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.magic-choice.inner",
-      "clip": "mesh_att_battle_5_02_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.magic-choice.inner.clip.01",
+          "clip": "mesh_att_battle_5_02_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.magic-choice.outer",
-      "clip": "mesh_att_battle_5_02_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.magic-choice.outer.clip.01",
+          "clip": "mesh_att_battle_5_02_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.magic-choice.recovery",
-      "clip": "mesh_att_battle_5_02_end"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.magic-choice.recovery.clip.01",
+          "clip": "mesh_att_battle_5_02_end",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.four-slash.windup",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.four-slash.windup.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.four-slash.active",
-      "clip": ["mesh_att_battle_10_01", "mesh_att_battle_10_02"]
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+          "clip": "mesh_att_battle_10_01",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+          "clip": "mesh_att_battle_10_02",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.four-slash.recovery",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.high-jump.takeoff",
-      "clip": "mesh_att_battle_8_01_start"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.high-jump.takeoff.clip.01",
+          "clip": "mesh_att_battle_8_01_start",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.high-jump.airborne",
-      "clip": "mesh_att_battle_8_01_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
+          "clip": "mesh_att_battle_8_01_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.high-jump.land",
-      "clip": "mesh_att_battle_8_01_end"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.high-jump.land.clip.01",
+          "clip": "mesh_att_battle_8_01_end",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.high-jump.recovery",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.high-jump.recovery.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.stomp.windup",
-      "clip": "mesh_att_battle_11_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.stomp.windup.clip.01",
+          "clip": "mesh_att_battle_11_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.stomp.active",
-      "clip": "mesh_att_battle_11_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.stomp.active.clip.01",
+          "clip": "mesh_att_battle_11_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.stomp.recovery",
-      "clip": "mesh_att_battle_11_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.stomp.recovery.clip.01",
+          "clip": "mesh_att_battle_11_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.bind-charge-smash.lock",
-      "clip": "mesh_att_battle_12_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.bind-charge-smash.lock.clip.01",
+          "clip": "mesh_att_battle_12_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.bind-charge-smash.charge",
-      "clip": "mesh_att_battle_13_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.bind-charge-smash.charge.clip.01",
+          "clip": "mesh_att_battle_13_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.bind-charge-smash.smash",
-      "clip": "mesh_att_battle_13_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.bind-charge-smash.smash.clip.01",
+          "clip": "mesh_att_battle_13_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.bind-charge-smash.recovery",
-      "clip": "mesh_att_battle_12_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.bind-charge-smash.recovery.clip.01",
+          "clip": "mesh_att_battle_12_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.ground-wave-smash.windup",
-      "clip": "mesh_att_battle_15_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.windup.clip.01",
+          "clip": "mesh_att_battle_15_01",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.ground-wave-smash.active",
-      "clip": ["mesh_att_battle_15_02", "mesh_att_battle_15_03", "mesh_att_battle_15_04"]
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.active.clip.01",
+          "clip": "mesh_att_battle_15_02",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.active.clip.02",
+          "clip": "mesh_att_battle_15_03",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": false
+        },
+        {
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.active.clip.03",
+          "clip": "mesh_att_battle_15_04",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.ground-wave-smash.recovery",
-      "clip": "mesh_att_battle_15_05"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.recovery.clip.01",
+          "clip": "mesh_att_battle_15_05",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.super-smash.windup",
-      "clip": "mesh_att_battle_12_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.super-smash.windup.clip.01",
+          "clip": "mesh_att_battle_12_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.super-smash.active",
-      "clip": "mesh_att_battle_12_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.super-smash.active.clip.01",
+          "clip": "mesh_att_battle_12_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.super-smash.recovery",
-      "clip": "mesh_att_battle_12_05"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.super-smash.recovery.clip.01",
+          "clip": "mesh_att_battle_12_05",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.jump-spin.jump",
-      "clip": "mesh_att_battle_20_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.jump-spin.jump.clip.01",
+          "clip": "mesh_att_battle_20_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.jump-spin.land",
-      "clip": "mesh_att_battle_20_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.jump-spin.land.clip.01",
+          "clip": "mesh_att_battle_20_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.jump-spin.spin",
-      "clip": "mesh_att_battle_20_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.jump-spin.spin.clip.01",
+          "clip": "mesh_att_battle_20_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.jump-spin.recovery",
-      "clip": "mesh_att_battle_20_04"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.jump-spin.recovery.clip.01",
+          "clip": "mesh_att_battle_20_04",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.portal-rush.portal",
-      "clip": "mesh_att_battle_18_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.portal-rush.portal.clip.01",
+          "clip": "mesh_att_battle_18_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.portal-rush.rushes",
-      "clip": "mesh_att_battle_18_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.portal-rush.rushes.clip.01",
+          "clip": "mesh_att_battle_18_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.portal-rush.finish",
-      "clip": "mesh_att_battle_18_03-1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.portal-rush.finish.clip.01",
+          "clip": "mesh_att_battle_18_03-1",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.portal-rush.recovery",
-      "clip": "mesh_att_battle_18_03-2"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.portal-rush.recovery.clip.01",
+          "clip": "mesh_att_battle_18_03-2",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.charge-grab-roar.counter",
-      "clip": "mesh_att_battle_21_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.charge-grab-roar.counter.clip.01",
+          "clip": "mesh_att_battle_21_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.charge-grab-roar.charge",
-      "clip": "mesh_att_battle_21_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.charge-grab-roar.charge.clip.01",
+          "clip": "mesh_att_battle_21_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.charge-grab-roar.roar",
-      "clip": "mesh_att_battle_21_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.charge-grab-roar.roar.clip.01",
+          "clip": "mesh_att_battle_21_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.charge-grab-roar.recovery",
-      "clip": "mesh_att_battle_21_04-1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.charge-grab-roar.recovery.clip.01",
+          "clip": "mesh_att_battle_21_04-1",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.whirlwind.windup",
-      "clip": "mesh_att_battle_20_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.whirlwind.windup.clip.01",
+          "clip": "mesh_att_battle_20_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.whirlwind.active",
-      "clip": "mesh_att_battle_20_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+          "clip": "mesh_att_battle_20_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.whirlwind.recovery",
-      "clip": "mesh_att_battle_20_04"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.whirlwind.recovery.clip.01",
+          "clip": "mesh_att_battle_20_04",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.backstep.windup",
-      "clip": "mesh_att_battle_20_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.backstep.windup.clip.01",
+          "clip": "mesh_att_battle_20_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.backstep.active",
-      "clip": "mesh_att_battle_20_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.backstep.active.clip.01",
+          "clip": "mesh_att_battle_20_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.backstep.recovery",
-      "clip": "mesh_att_battle_7_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.backstep.recovery.clip.01",
+          "clip": "mesh_att_battle_7_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.red-blade-wave.windup",
-      "clip": "mesh_att_battle_9_01_start"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.red-blade-wave.windup.clip.01",
+          "clip": "mesh_att_battle_9_01_start",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.red-blade-wave.active",
-      "clip": "mesh_att_battle_12_10"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.red-blade-wave.active.clip.01",
+          "clip": "mesh_att_battle_12_10",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.red-blade-wave.recovery",
-      "clip": "mesh_att_battle_12_11"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.red-blade-wave.recovery.clip.01",
+          "clip": "mesh_att_battle_12_11",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.front-back-front.windup",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.front-back-front.windup.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.front-back-front.active",
-      "clip": "mesh_att_battle_19_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+          "clip": "mesh_att_battle_19_01",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.front-back-front.recovery",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.front-back-front.recovery.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.fist-in-out.windup",
-      "clip": "mesh_att_battle_19_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.fist-in-out.windup.clip.01",
+          "clip": "mesh_att_battle_19_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.fist-in-out.inner",
-      "clip": "mesh_att_battle_19_04"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.fist-in-out.inner.clip.01",
+          "clip": "mesh_att_battle_19_04",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.fist-in-out.outer",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.fist-in-out.outer.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.fist-in-out.recovery",
-      "clip": "mesh_idle_battle_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.fist-in-out.recovery.clip.01",
+          "clip": "mesh_idle_battle_1",
+          "mappingBasis": "ANIMATION_PR_127",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.ledge-roar.windup",
-      "clip": "mesh_evt1_att_battle_5_01_start"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.ledge-roar.windup.clip.01",
+          "clip": "mesh_evt1_att_battle_5_01_start",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.ledge-roar.active",
-      "clip": "mesh_evt1_att_battle_5_01_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.ledge-roar.active.clip.01",
+          "clip": "mesh_evt1_att_battle_5_01_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.attack.ledge-roar.recovery",
-      "clip": "mesh_evt1_att_battle_5_01_end"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.attack.ledge-roar.recovery.clip.01",
+          "clip": "mesh_evt1_att_battle_5_01_end",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.reactive.triple-counter.first",
-      "clip": "mesh_abn_groggy_1_start"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
+          "clip": "mesh_abn_groggy_1_start",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.reactive.triple-counter.first-fail",
-      "clip": "mesh_abn_groggy_1_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.first-fail.clip.01",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.reactive.triple-counter.second",
-      "clip": "mesh_abn_groggy_1_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.second.clip.01",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.reactive.triple-counter.second-fail",
-      "clip": "mesh_abn_groggy_1_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.second-fail.clip.01",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.reactive.triple-counter.third",
-      "clip": "mesh_abn_groggy_1_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.third.clip.01",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.reactive.triple-counter.third-fail",
-      "clip": "mesh_abn_groggy_1_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.third-fail.clip.01",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.reactive.triple-counter.recovery",
-      "clip": "mesh_abn_groggy_1_end"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.reactive.triple-counter.recovery.clip.01",
+          "clip": "mesh_abn_groggy_1_end",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.armor-break-opening.charge",
-      "clip": "mesh_dmg_parts_start_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.armor-break-opening.charge.clip.01",
+          "clip": "mesh_dmg_parts_start_1",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.armor-break-opening.groggy",
-      "clip": "mesh_dmg_parts_loop_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.armor-break-opening.groggy.clip.01",
+          "clip": "mesh_dmg_parts_loop_1",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.armor-break-opening.part-break",
-      "clip": "mesh_dmg_parts_end_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.armor-break-opening.part-break.clip.01",
+          "clip": "mesh_dmg_parts_end_1",
+          "mappingBasis": "PATTERN_PR_REFERENCE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.armor-break-opening.recovery",
-      "clip": "mesh_dmg_parts_end_1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.armor-break-opening.recovery.clip.01",
+          "clip": "mesh_dmg_parts_end_1",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.floor-wipe-130.windup",
-      "clip": "mesh_att_battle_1_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
+          "clip": "mesh_att_battle_1_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.floor-wipe-130.first-smash",
-      "clip": "mesh_att_battle_1_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.first-smash.clip.01",
+          "clip": "mesh_att_battle_1_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.floor-wipe-130.interval",
-      "clip": "mesh_att_battle_5_02_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.interval.clip.01",
+          "clip": "mesh_att_battle_5_02_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.floor-wipe-130.second-smash",
-      "clip": "mesh_att_battle_5_02_end"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
+          "clip": "mesh_att_battle_5_02_end",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.floor-wipe-130.recovery",
-      "clip": "mesh_att_battle_15_04"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.recovery.clip.01",
+          "clip": "mesh_att_battle_15_04",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.four-pillars-105.takeoff",
-      "clip": "mesh_att_battle_8_01_start"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.four-pillars-105.takeoff.clip.01",
+          "clip": "mesh_att_battle_8_01_start",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.four-pillars-105.yellow-zone",
-      "clip": "mesh_att_battle_8_01_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.four-pillars-105.yellow-zone.clip.01",
+          "clip": "mesh_att_battle_8_01_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.four-pillars-105.target-cone",
-      "clip": "mesh_att_battle_8_01_end"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.four-pillars-105.target-cone.clip.01",
+          "clip": "mesh_att_battle_8_01_end",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.four-pillars-105.recovery",
-      "clip": "mesh_att_battle_8_01_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.four-pillars-105.recovery.clip.01",
+          "clip": "mesh_att_battle_8_01_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.entrance-whirlwind.windup",
-      "clip": "mesh_att_battle_20_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.entrance-whirlwind.windup.clip.01",
+          "clip": "mesh_att_battle_20_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.entrance-whirlwind.sweep",
-      "clip": "mesh_att_battle_20_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.entrance-whirlwind.sweep.clip.01",
+          "clip": "mesh_att_battle_20_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.entrance-whirlwind.recovery",
-      "clip": "mesh_att_battle_20_04"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.entrance-whirlwind.recovery.clip.01",
+          "clip": "mesh_att_battle_20_04",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.arena-break-109.takeoff",
-      "clip": "mesh_att_battle_12_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
+          "clip": "mesh_att_battle_12_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.arena-break-109.drop",
-      "clip": "mesh_att_battle_12_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.drop.clip.01",
+          "clip": "mesh_att_battle_12_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.arena-break-109.impact",
-      "clip": "mesh_att_battle_12_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
+          "clip": "mesh_att_battle_12_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.arena-break-109.impact-hold",
-      "clip": "mesh_att_battle_12_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact-hold.clip.01",
+          "clip": "mesh_att_battle_12_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.arena-break-109.wide-reveal",
-      "clip": "mesh_att_battle_12_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.wide-reveal.clip.01",
+          "clip": "mesh_att_battle_12_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.arena-break-109.recovery",
-      "clip": "mesh_att_battle_12_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.recovery.clip.01",
+          "clip": "mesh_att_battle_12_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.magic-orb-stagger-76.shield",
-      "clip": "mesh_abn_groggy_1_start"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.magic-orb-stagger-76.shield.clip.01",
+          "clip": "mesh_abn_groggy_1_start",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.magic-orb-stagger-76.window",
-      "clip": "mesh_abn_groggy_1_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.magic-orb-stagger-76.window.clip.01",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.magic-orb-stagger-76.recovery",
-      "clip": "mesh_abn_groggy_1_end"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.magic-orb-stagger-76.recovery.clip.01",
+          "clip": "mesh_abn_groggy_1_end",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.center-grab-counter-64.center",
-      "clip": "mesh_att_battle_21_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.center-grab-counter-64.center.clip.01",
+          "clip": "mesh_att_battle_21_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.center-grab-counter-64.explosion",
-      "clip": "mesh_att_battle_21_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.center-grab-counter-64.explosion.clip.01",
+          "clip": "mesh_att_battle_21_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.center-grab-counter-64.counter",
-      "clip": "mesh_att_battle_21_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.center-grab-counter-64.counter.clip.01",
+          "clip": "mesh_att_battle_21_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.center-grab-counter-64.failed-charge",
-      "clip": "mesh_att_battle_21_04"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.center-grab-counter-64.failed-charge.clip.01",
+          "clip": "mesh_att_battle_21_04",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.center-grab-counter-64.recovery",
-      "clip": "mesh_att_battle_21_04-1"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.center-grab-counter-64.recovery.clip.01",
+          "clip": "mesh_att_battle_21_04-1",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.arena-break-33.cutscene",
-      "clip": "mesh_att_battle_12_01"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-33.cutscene.clip.01",
+          "clip": "mesh_att_battle_12_01",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.arena-break-33.landing",
-      "clip": "mesh_att_battle_12_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-33.landing.clip.01",
+          "clip": "mesh_att_battle_12_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.arena-break-33.spin",
-      "clip": "mesh_att_battle_12_02"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-33.spin.clip.01",
+          "clip": "mesh_att_battle_12_02",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.arena-break-33.recovery",
-      "clip": "mesh_att_battle_12_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.arena-break-33.recovery.clip.01",
+          "clip": "mesh_att_battle_12_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.ghost-transition-15.portal-open",
-      "clip": "mesh_abn_groggy_1_start"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.portal-open.clip.01",
+          "clip": "mesh_abn_groggy_1_start",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.ghost-transition-15.ghost-appear",
-      "clip": "mesh_abn_groggy_1_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.ghost-appear.clip.01",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.ghost-transition-15.four-directions",
-      "clip": "mesh_att_battle_5_01_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.four-directions.clip.01",
+          "clip": "mesh_att_battle_5_01_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.ghost-transition-15.tracking",
-      "clip": "mesh_att_battle_5_01_end"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.tracking.clip.01",
+          "clip": "mesh_att_battle_5_01_end",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.ghost-transition-15.inner",
-      "clip": "mesh_abn_groggy_1_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.inner.clip.01",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.ghost-transition-15.outer",
-      "clip": "mesh_att_battle_5_03"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.outer.clip.01",
+          "clip": "mesh_att_battle_5_03",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     },
     {
       "actionId": "valtan.mechanic.ghost-transition-15.ghost",
-      "clip": "mesh_abn_groggy_1_loop"
+      "clips": [
+        {
+          "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.ghost.clip.01",
+          "clip": "mesh_abn_groggy_1_loop",
+          "mappingBasis": "CURRENT_PRODUCT_BASELINE",
+          "sourceStartMs": 0,
+          "playMs": 0,
+          "playRate": 1.0,
+          "loop": true
+        }
+      ]
     }
   ]
 }

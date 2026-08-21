@@ -22,6 +22,7 @@
 #include "Effect_Distribution.h"
 #include "Effect_Catalog.h"
 #include "Effect_MaterialTemplate.h"
+#include "Effect_Tool.h"
 #include "Effect_Object.h"
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_Playback.h"
@@ -42,6 +43,7 @@
 #include "EncounterPatternReference.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
+#include "Valtan.h"
 #include "ValtanPatternPreviewDocument.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "WorldDestructionDebrisPresentationDocument.h"
@@ -4212,6 +4214,67 @@ namespace
 				document, "BOSS_OTHER", clips, status),
 			"Valtan Pattern Binding Rejects Wrong Boss Owner");
 
+		const std::string validV2 =
+			"{\"schema\":\"lostark.valtan-pattern-bindings\","
+			"\"formatVersion\":2,\"bossArchetypeId\":\"BOSS_VALTAN\","
+			"\"bindings\":[{\"actionId\":\"valtan.attack.whirlwind.active\","
+			"\"clips\":["
+			"{\"clipOccurrenceId\":\"test.whirlwind.active.clip.01\","
+			"\"clip\":\"mesh_att_battle_20_03\","
+			"\"mappingBasis\":\"CURRENT_PRODUCT_BASELINE\","
+			"\"sourceStartMs\":100,\"playMs\":300,\"playRate\":2.0,"
+			"\"loop\":false},"
+			"{\"clipOccurrenceId\":\"test.whirlwind.active.clip.02\","
+			"\"clip\":\"mesh_att_battle_20_04\","
+			"\"mappingBasis\":\"ANIMATION_PR_127\","
+			"\"sourceStartMs\":0,\"playMs\":0,\"playRate\":1.0,"
+			"\"loop\":true}]}]}";
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT v2Document;
+		const bool_t v2BindingValid =
+			CValtanPatternAnimationBindingDocument::Parse_Text(
+				validV2, v2Document, status) &&
+			CValtanPatternAnimationBindingDocument::Validate(
+				v2Document, "BOSS_VALTAN", clips, status);
+		runner.Require(v2BindingValid && 2u == v2Document.iFormatVersion &&
+			2u == v2Document.Bindings.front().Clips.size() &&
+			100u == v2Document.Bindings.front().Clips.front().iSourceStartMs &&
+			300u == v2Document.Bindings.front().Clips.front().iPlayMs &&
+			2.f == v2Document.Bindings.front().Clips.front().fPlayRate &&
+			v2Document.Bindings.front().Clips.back().bLoop,
+			"Valtan Pattern Binding V2 Preserves Ordered Occurrence Segment Rate And Final Loop");
+		if (v2BindingValid)
+		{
+			auto invalidV2 = v2Document;
+			invalidV2.Bindings.front().Clips.back().strClipOccurrenceId =
+				invalidV2.Bindings.front().Clips.front().strClipOccurrenceId;
+			runner.Require(
+				!CValtanPatternAnimationBindingDocument::Validate(
+					invalidV2, "BOSS_VALTAN", clips, status),
+				"Valtan Pattern Binding V2 Rejects Duplicate Clip Occurrence Identity");
+			invalidV2 = v2Document;
+			invalidV2.Bindings.front().Clips.front().strMappingBasis =
+				"UNREVIEWED_GUESS";
+			runner.Require(
+				!CValtanPatternAnimationBindingDocument::Validate(
+					invalidV2, "BOSS_VALTAN", clips, status),
+				"Valtan Pattern Binding V2 Rejects Unknown Mapping Basis");
+			invalidV2 = v2Document;
+			invalidV2.Bindings.front().Clips.front().bLoop = true;
+			runner.Require(
+				!CValtanPatternAnimationBindingDocument::Validate(
+					invalidV2, "BOSS_VALTAN", clips, status),
+				"Valtan Pattern Binding V2 Rejects A Non-Final Loop");
+		}
+		else
+		{
+			runner.Require(false,
+				"Valtan Pattern Binding V2 Rejects Duplicate Clip Occurrence Identity");
+			runner.Require(false,
+				"Valtan Pattern Binding V2 Rejects Unknown Mapping Basis");
+			runner.Require(false,
+				"Valtan Pattern Binding V2 Rejects A Non-Final Loop");
+		}
+
 		const std::string extraField = valid.substr(0u, valid.size() - 1u) +
 			",\"unexpected\":true}";
 		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT preserved = document;
@@ -4292,25 +4355,34 @@ namespace
 			CValtanPatternEffectCueDocument::Load_Source(
 				patternCueDocument, status);
 		std::unordered_set<std::string> patternCueBindings;
+		std::unordered_set<std::string> patternCueOccurrences;
 		std::unordered_set<std::string> patternCueActions;
 		std::unordered_set<std::string> patternCueEffects;
 		bool_t patternCueIdentitiesExact = patternCuesLoaded &&
 			patternCueDocument.strOwnerArchetypeId == "BOSS_VALTAN" &&
-			patternCueDocument.Cues.size() == 99u;
+			patternCueDocument.iFormatVersion == 2u &&
+			!patternCueDocument.Cues.empty();
 		for (const VALTAN_PATTERN_EFFECT_CUE& cue : patternCueDocument.Cues)
 		{
+			const bool_t sourceWindowExact = cue.bHasSourceEnd ?
+				(cue.eStopPolicy == EFFECT_STOP_POLICY::CUE_END &&
+				 cue.iStartMs < cue.iEndMs) :
+				(cue.eStopPolicy == EFFECT_STOP_POLICY::NATURAL &&
+				 cue.iStartMs == cue.iEndMs);
 			patternCueIdentitiesExact = patternCueIdentitiesExact &&
 				patternCueBindings.insert(cue.strBindingId).second &&
-				patternCueActions.insert(cue.strActionId).second &&
-				patternCueEffects.insert(cue.strEffectAssetId).second &&
-				cue.iStartMs < cue.iEndMs && 0u != cue.iStageDurationMs &&
-				cue.iEndMs <= cue.iStageDurationMs;
+				patternCueOccurrences.insert(cue.strOccurrenceId).second &&
+				!cue.strClipOccurrenceId.empty() && sourceWindowExact &&
+				0u != cue.iStageDurationMs;
+			patternCueActions.insert(cue.strActionId);
+			patternCueEffects.insert(cue.strEffectAssetId);
 		}
 		runner.Require(patternCueIdentitiesExact &&
-			patternCueBindings.size() == 99u &&
-			patternCueActions.size() == 99u &&
-			patternCueEffects.size() == 99u,
-			"Valtan Product Pattern Effect Cue Source Has 99 Unique Encounter-Qualified Bindings, Actions, And Effect Targets");
+			patternCueBindings.size() == patternCueDocument.Cues.size() &&
+			patternCueOccurrences.size() == patternCueDocument.Cues.size() &&
+			!patternCueActions.empty() && !patternCueEffects.empty() &&
+			patternCueEffects.size() <= patternCueDocument.Cues.size(),
+			"Valtan Product Pattern Effect Cue V2 Has Stable Occurrences, Policy-Exact Source Windows, And A Deduplicable Target Set");
 
 		CEncounterPatternReference encounter;
 		const bool_t encounterLoaded = encounter.Load(CProjectDataRoot::Resolve(
@@ -4318,6 +4390,116 @@ namespace
 			L"ValtanEncounter.json"), status);
 		const std::string patternCueText = Read_Text(
 			CValtanPatternEffectCueDocument::Resolve_Path());
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT productAnimationBindings;
+		const std::string productAnimationBindingText = Read_Text(
+			CValtanPatternAnimationBindingDocument::Resolve_Path("Valtan"));
+		const bool_t productAnimationBindingsLoaded =
+			!productAnimationBindingText.empty() &&
+			CValtanPatternAnimationBindingDocument::Parse_Text(
+				productAnimationBindingText, productAnimationBindings, status);
+		const auto whirlwindBinding = productAnimationBindingsLoaded ?
+			std::find_if(productAnimationBindings.Bindings.begin(),
+				productAnimationBindings.Bindings.end(),
+				[](const BOSS_PATTERN_ANIMATION_BINDING& binding)
+				{
+					return binding.strActionId ==
+						"valtan.attack.whirlwind.active";
+				}) : productAnimationBindings.Bindings.end();
+		const bool_t whirlwindOccurrenceLoops =
+			productAnimationBindingsLoaded &&
+			whirlwindBinding != productAnimationBindings.Bindings.end() &&
+			1u == whirlwindBinding->Clips.size() &&
+			whirlwindBinding->Clips.front().bLoop &&
+			whirlwindBinding->Clips.front().strClipOccurrenceId ==
+				"valtan.attack.whirlwind.active.clip.01";
+		const auto whirlwindCue = patternCuesLoaded ?
+			std::find_if(patternCueDocument.Cues.begin(),
+				patternCueDocument.Cues.end(),
+				[](const VALTAN_PATTERN_EFFECT_CUE& cue)
+				{
+					return cue.strActionId ==
+						"valtan.attack.whirlwind.active";
+				}) : patternCueDocument.Cues.end();
+		runner.Require(whirlwindOccurrenceLoops &&
+			whirlwindCue != patternCueDocument.Cues.end() &&
+			whirlwindCue->eRepeatPolicy ==
+				VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE &&
+			!whirlwindCue->bHasSourceEnd,
+			"Valtan Whirlwind Loop Occurrence Spawns Its Natural Baked Effect Once");
+
+		const std::string sharedTargetCueText =
+			"{\"schema\":\"lostark.valtan-pattern-effect-cues\","
+			"\"formatVersion\":2,\"ownerArchetypeId\":\"BOSS_VALTAN\","
+			"\"cues\":["
+			"{\"bindingId\":\"test.cue.whirlwind.once\","
+			"\"occurrenceId\":\"test.cue.whirlwind.once.occurrence.01\","
+			"\"patternId\":\"VALTAN_WHIRLWIND\",\"stageId\":\"SPIN\","
+			"\"actionId\":\"valtan.attack.whirlwind.active\","
+			"\"clipOccurrenceId\":\"valtan.attack.whirlwind.active.clip.01\","
+			"\"effectAssetId\":\"effect.valtan.test.shared-target\","
+			"\"anchorSlotId\":\"root\",\"followPolicy\":\"follow\","
+			"\"stopPolicy\":\"natural\",\"repeatPolicy\":\"once\","
+			"\"sourceStartMs\":0,\"sourceEndMs\":null,"
+			"\"localTransform\":{\"position\":[0,0,0],"
+			"\"rotationDegrees\":[0,0,0],\"scale\":[1,1,1]}},"
+			"{\"bindingId\":\"test.cue.whirlwind.each-loop\","
+			"\"occurrenceId\":\"test.cue.whirlwind.each-loop.occurrence.01\","
+			"\"patternId\":\"VALTAN_WHIRLWIND\",\"stageId\":\"SPIN\","
+			"\"actionId\":\"valtan.attack.whirlwind.active\","
+			"\"clipOccurrenceId\":\"valtan.attack.whirlwind.active.clip.01\","
+			"\"effectAssetId\":\"effect.valtan.test.shared-target\","
+			"\"anchorSlotId\":\"root\",\"followPolicy\":\"follow\","
+			"\"stopPolicy\":\"natural\",\"repeatPolicy\":\"each_loop\","
+			"\"sourceStartMs\":0,\"sourceEndMs\":null,"
+			"\"localTransform\":{\"position\":[0,0,0],"
+			"\"rotationDegrees\":[0,0,0],\"scale\":[1,1,1]}}]}";
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT sharedTargetCues;
+		const bool_t sharedTargetCuesParsed = encounterLoaded &&
+			productAnimationBindingsLoaded &&
+			CValtanPatternEffectCueDocument::Parse_Text(
+				sharedTargetCueText, encounter, productAnimationBindings,
+				sharedTargetCues, status);
+		runner.Require(sharedTargetCuesParsed &&
+			2u == sharedTargetCues.Cues.size() &&
+			sharedTargetCues.Cues[0].strEffectAssetId ==
+				sharedTargetCues.Cues[1].strEffectAssetId &&
+			sharedTargetCues.Cues[0].eRepeatPolicy !=
+				sharedTargetCues.Cues[1].eRepeatPolicy,
+			"Valtan Cue V2 Allows Same-Stage Occurrences And Shared Effect Target With Once Or Each-Loop Policy");
+
+		auto boundedAnimationBindings = productAnimationBindings;
+		if (productAnimationBindingsLoaded &&
+			whirlwindBinding != productAnimationBindings.Bindings.end())
+		{
+			const size_t bindingIndex = static_cast<size_t>(
+				whirlwindBinding - productAnimationBindings.Bindings.begin());
+			boundedAnimationBindings.Bindings[bindingIndex].Clips.front().iPlayMs =
+				100u;
+		}
+		const std::string outOfRangeCueText =
+			"{\"schema\":\"lostark.valtan-pattern-effect-cues\","
+			"\"formatVersion\":2,\"ownerArchetypeId\":\"BOSS_VALTAN\","
+			"\"cues\":[{\"bindingId\":\"test.cue.out-of-range\","
+			"\"occurrenceId\":\"test.cue.out-of-range.occurrence.01\","
+			"\"patternId\":\"VALTAN_WHIRLWIND\",\"stageId\":\"SPIN\","
+			"\"actionId\":\"valtan.attack.whirlwind.active\","
+			"\"clipOccurrenceId\":\"valtan.attack.whirlwind.active.clip.01\","
+			"\"effectAssetId\":\"effect.valtan.test.out-of-range\","
+			"\"anchorSlotId\":\"root\",\"followPolicy\":\"follow\","
+			"\"stopPolicy\":\"natural\",\"repeatPolicy\":\"once\","
+			"\"sourceStartMs\":100,\"sourceEndMs\":null,"
+			"\"localTransform\":{\"position\":[0,0,0],"
+			"\"rotationDegrees\":[0,0,0],\"scale\":[1,1,1]}}]}";
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT rejectedOutOfRange =
+			patternCueDocument;
+		const size_t preservedCueCount = rejectedOutOfRange.Cues.size();
+		runner.Require(encounterLoaded && productAnimationBindingsLoaded &&
+			whirlwindOccurrenceLoops &&
+			!CValtanPatternEffectCueDocument::Parse_Text(
+				outOfRangeCueText, encounter, boundedAnimationBindings,
+				rejectedOutOfRange, status) &&
+			rejectedOutOfRange.Cues.size() == preservedCueCount,
+			"Valtan Cue V2 Rejects A Source Window Outside Its Clip Segment And Preserves Prior State");
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT preservedPatternCues =
 			patternCueDocument;
 		const std::string preservedFirstBinding =
@@ -4337,6 +4519,100 @@ namespace
 				preservedFirstBinding,
 			"Valtan Pattern Effect Cue Parse Failure Preserves Prior Committed Document");
 
+	}
+
+	void Test_ValtanPatternEffectOccurrenceScheduling(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		std::vector<VALTAN_PATTERN_EFFECT_OCCURRENCE_SAMPLE> samples;
+		VALTAN_PATTERN_EFFECT_OCCURRENCE_SCAN_DESC scan;
+		scan.fCurrentActionAgeSeconds = 0.15f;
+		scan.fFirstOccurrenceWallSeconds = 0.1f;
+		scan.fLoopWallDurationSeconds = 0.5f;
+		scan.fPlaybackRate = 1.f;
+		scan.fLiveSourceDurationSeconds = 0.7f;
+		scan.bEachLoop = true;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(scan, samples) &&
+			1u == samples.size() && 0u == samples[0].iLoopEpoch &&
+			std::abs(samples[0].fInitialSampleSeconds - 0.05f) < 0.00001f,
+			"Valtan Natural Each-Loop First Snapshot Catches Up The Live Epoch");
+
+		scan.bHasPreviousActionAge = true;
+		scan.fPreviousActionAgeSeconds = 0.15f;
+		scan.fCurrentActionAgeSeconds = 1.15f;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(scan, samples) &&
+			2u == samples.size() &&
+			1u == samples[0].iLoopEpoch &&
+			2u == samples[1].iLoopEpoch &&
+			std::abs(samples[0].fInitialSampleSeconds - 0.55f) < 0.00002f &&
+			std::abs(samples[1].fInitialSampleSeconds - 0.05f) < 0.00002f,
+			"Valtan Each-Loop Snapshot Jump Enumerates Every Crossed Live Epoch");
+
+		scan.fLiveSourceDurationSeconds = 0.1f;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(scan, samples) &&
+			1u == samples.size() && 2u == samples[0].iLoopEpoch &&
+			std::abs(samples[0].fInitialSampleSeconds - 0.05f) < 0.00002f,
+			"Valtan Cue-End Snapshot Jump Drops Crossed Epochs Outside Their Source Window");
+
+		VALTAN_PATTERN_EFFECT_OCCURRENCE_SCAN_DESC once;
+		once.fCurrentActionAgeSeconds = 0.3f;
+		once.fFirstOccurrenceWallSeconds = 0.1f;
+		once.fPlaybackRate = 1.f;
+		once.fLiveSourceDurationSeconds = 0.4f;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(once, samples) &&
+			1u == samples.size() &&
+			std::abs(samples[0].fInitialSampleSeconds - 0.2f) < 0.00001f,
+			"Valtan Once Natural First Snapshot Seeks A Still-Live Product Effect");
+		once.fCurrentActionAgeSeconds = 0.5f;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(once, samples) &&
+			samples.empty(),
+			"Valtan Once Natural Exact Duration Boundary Is Stale");
+		once.fCurrentActionAgeSeconds = 1.f;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(once, samples) &&
+			samples.empty(),
+			"Valtan Once Natural Stale First Snapshot Queues Zero Occurrences");
+
+		VALTAN_PATTERN_EFFECT_OCCURRENCE_SCAN_DESC capped;
+		capped.fCurrentActionAgeSeconds = 1.f;
+		capped.fFirstOccurrenceWallSeconds = 0.f;
+		capped.fLoopWallDurationSeconds = 0.001f;
+		capped.fPlaybackRate = 1.f;
+		capped.fLiveSourceDurationSeconds = 1.f;
+		capped.bEachLoop = true;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(capped, samples) &&
+			VALTAN_MAX_PATTERN_EFFECT_OCCURRENCES_PER_SCAN == samples.size() &&
+			745u == samples.front().iLoopEpoch &&
+			1000u == samples.back().iLoopEpoch,
+			"Valtan Large Loop Jump Retains The Latest 256 Live Epochs Deterministically");
+
+		capped.fPreviousActionAgeSeconds = 0.9f;
+		capped.fCurrentActionAgeSeconds = 1.f;
+		capped.bHasPreviousActionAge = true;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(capped, samples) &&
+			100u == samples.size() && 901u == samples.front().iLoopEpoch &&
+			1000u == samples.back().iLoopEpoch,
+			"Valtan Subsequent Loop Scan Emits Only Crossed Epochs");
+		capped.bHasPreviousActionAge = false;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(capped, samples) &&
+			VALTAN_MAX_PATTERN_EFFECT_OCCURRENCES_PER_SCAN == samples.size() &&
+			745u == samples.front().iLoopEpoch,
+			"Valtan Stage-Edge Scan Reset Rebuilds The Bounded Live Catch-Up Set");
+
+		capped.bHasPreviousActionAge = true;
+		capped.fPreviousActionAgeSeconds = 1.2f;
+		runner.Require(
+			!Resolve_ValtanPatternEffectOccurrenceScan(capped, samples) &&
+			samples.empty(),
+			"Valtan Occurrence Scan Rejects A Backward Snapshot Interval");
 	}
 
 	/* An artist rebind is only useful if it survives the next re-materialize.
@@ -5361,6 +5637,79 @@ namespace
 			"Action Timeline Applies PlayMs Before PlayRate");
 
 		ACTION_PRESENTATION_SAMPLE sample;
+		const std::vector<ACTION_PRESENTATION_CLIP_TIMING> sourceSegment =
+		{
+			{ 3.f, 1000u, 2.f, false, 0.75f }
+		};
+		f32_t sourceSegmentCueWallOffset = -1.f;
+		runner.Require(
+			CActionPresentationTimeline::Resolve_ClipDuration(
+				sourceSegment.front(), sourceDuration, wallDuration) &&
+			std::abs(sourceDuration - 1.f) < 0.000001f &&
+			std::abs(wallDuration - 0.5f) < 0.000001f &&
+			CActionPresentationTimeline::Resolve_Sample(
+				sourceSegment, 0.125f, sample) &&
+			std::abs(sample.fClipSourceTimeSeconds - 1.f) < 0.000001f &&
+			CActionPresentationTimeline::Resolve_CueWallOffset(
+				sourceSegment, 0u, 1.25f, 0u,
+				sourceSegmentCueWallOffset) &&
+			std::abs(sourceSegmentCueWallOffset - 0.25f) < 0.000001f &&
+			!CActionPresentationTimeline::Resolve_CueWallOffset(
+				sourceSegment, 0u, 0.5f, 0u,
+				sourceSegmentCueWallOffset),
+			"Action Timeline Applies Source Start Play Rate Sample And Cue Wall Offset On One Clock");
+
+		ACTION_PRESENTATION_CUE_PREVIEW_TIMING bossCuePreview;
+		bossCuePreview.fClipSourceStartSeconds = 0.4f;
+		bossCuePreview.fPlayRate = 2.f;
+		bossCuePreview.fCueSourceStartSeconds = 1.f;
+		bossCuePreview.fCueSourceEndSeconds = 1.4f;
+		bossCuePreview.bHasCueSourceEnd = true;
+		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE bossCueSample;
+		const bool_t hiddenBeforeCue =
+			CActionPresentationTimeline::Resolve_CuePreviewSample(
+				bossCuePreview, 0.299f, bossCueSample) &&
+			!bossCueSample.bVisible &&
+			std::abs(bossCueSample.fCueWallStartSeconds - 0.3f) < 0.000001f;
+		const bool_t startsAtZero =
+			CActionPresentationTimeline::Resolve_CuePreviewSample(
+				bossCuePreview, 0.3f, bossCueSample) &&
+			bossCueSample.bVisible &&
+			std::abs(bossCueSample.fEffectSampleSeconds) < 0.000001f;
+		const bool_t samplesAtClipRate =
+			CActionPresentationTimeline::Resolve_CuePreviewSample(
+				bossCuePreview, 0.4f, bossCueSample) &&
+			bossCueSample.bVisible &&
+			std::abs(bossCueSample.fEffectSampleSeconds - 0.2f) < 0.000001f;
+		const bool_t hiddenAtExactCueEnd =
+			CActionPresentationTimeline::Resolve_CuePreviewSample(
+				bossCuePreview, 0.5f, bossCueSample) &&
+			!bossCueSample.bVisible &&
+			std::abs(bossCueSample.fCueWallEndSeconds - 0.5f) < 0.000001f;
+		runner.Require(hiddenBeforeCue && startsAtZero &&
+			samplesAtClipRate && hiddenAtExactCueEnd &&
+			!CActionPresentationTimeline::Resolve_CuePreviewSample(
+				ACTION_PRESENTATION_CUE_PREVIEW_TIMING{
+					0.4f, 2.f, 1.f, 1.f, true }, 0.3f, bossCueSample),
+			"Valtan Product Preview Maps Source Cue Windows Through Clip Play Rate");
+		runner.Require(
+			CActionPresentationTimeline::
+				Should_ReleaseCompletedAnimationClock(
+					true, false, true, true, 3.f, 3.f) &&
+			!CActionPresentationTimeline::
+				Should_ReleaseCompletedAnimationClock(
+					true, true, true, true, 3.f, 3.f) &&
+			!CActionPresentationTimeline::
+				Should_ReleaseCompletedAnimationClock(
+					true, false, false, true, 3.f, 3.f) &&
+			!CActionPresentationTimeline::
+				Should_ReleaseCompletedAnimationClock(
+					true, false, true, false, 3.f, 3.f) &&
+			!CActionPresentationTimeline::
+				Should_ReleaseCompletedAnimationClock(
+					true, false, true, true, 2.9f, 3.f),
+			"Valtan Product Preview Releases Completed Non Loop Animation Clock For Natural Effect Tail");
+
 		runner.Require(
 			CActionPresentationTimeline::Resolve_Sample(clips, 1.f, sample) &&
 			1u == sample.iClipIndex &&
@@ -10104,6 +10453,264 @@ namespace
 
 	}
 
+	void Test_ArtistEBrushTrailContract(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view EFFECT_ID =
+			"effect.artist.skill.31480.unified";
+		constexpr std::array<std::string_view, 3u> TRAIL_IDS = {{
+			"authored.source-particle.8467a9b69e22208c6d4ea99e",
+			"authored.source-particle.a006dbe9b5650a0b13880aa5",
+			"authored.source-particle.c6d4247396f641316d28767c"
+		}};
+		constexpr std::string_view WHITE_TRAIL_ID = TRAIL_IDS[2u];
+		constexpr std::string_view BRUSH_ANCHOR = "WP_WSDM_09.B_Body_03";
+		constexpr std::string_view WHITE_TRAIL_TEXTURE =
+			"Effect/Artist/Textures/fx_m_trail_010.dds";
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path ResourceRoot =
+			ResourceRootEnvironment.Was_Defined() &&
+			!ResourceRootEnvironment.Get_OriginalValue().empty() ?
+				std::filesystem::path(
+					ResourceRootEnvironment.Get_OriginalValue()) :
+				CProjectDataRoot::Get().parent_path() /
+					L"Client" / L"Bin" / L"Resources";
+		std::error_code ResourceError;
+		const bool_t bResourceRootReady =
+			std::filesystem::is_directory(ResourceRoot, ResourceError) &&
+			!ResourceError && ResourceRootEnvironment.Set(ResourceRoot.c_str());
+		runner.Require(bResourceRootReady,
+			"Artist E Brush Trail Resolves The Production Resource Root");
+		if (!bResourceRootReady)
+			return;
+
+		const std::filesystem::path DocumentPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.artist.skill.31480.unified.effect.json");
+		EFFECT_DOCUMENT_DESC Document;
+		std::string Status;
+		const bool_t bLoaded = !DocumentPath.empty() &&
+			CEffectDocumentCodec::Load(DocumentPath, Document, Status);
+		runner.Require(bLoaded && Document.strEffectAssetId == EFFECT_ID,
+			"Artist E Brush Trail Loads The Exact 31480 Authored Document");
+		if (!bLoaded || Document.strEffectAssetId != EFFECT_ID)
+		{
+			std::cout << "[ARTIST-E-TRAIL] load=" << Status << " path=" <<
+				DocumentPath.string() << '\n';
+			return;
+		}
+
+		const auto FindUnique = [&Document](const std::string_view strId)
+			-> const EFFECT_ELEMENT_DESC*
+		{
+			if (1u != std::ranges::count_if(Document.Elements,
+				[strId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == strId;
+				}))
+			{
+				return nullptr;
+			}
+			const auto Found = std::ranges::find_if(Document.Elements,
+				[strId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == strId;
+				});
+			return Found == Document.Elements.end() ? nullptr : &*Found;
+		};
+		const auto HasResource = [](const EFFECT_ELEMENT_DESC& Element,
+			const std::string_view strSlotId,
+			const std::string_view strAssetId)
+		{
+			return 1u == std::ranges::count_if(Element.ResourceBindings,
+				[strSlotId, strAssetId](
+					const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == strSlotId &&
+						Binding.strAssetId == strAssetId;
+				});
+		};
+
+		std::array<const EFFECT_ELEMENT_DESC*, TRAIL_IDS.size()> Trails{};
+		bool_t bExactFlowRibbonRows = true;
+		for (size_t iTrail = 0u; iTrail < TRAIL_IDS.size(); ++iTrail)
+		{
+			Trails[iTrail] = FindUnique(TRAIL_IDS[iTrail]);
+			const EFFECT_ELEMENT_DESC* pTrail = Trails[iTrail];
+			bExactFlowRibbonRows = bExactFlowRibbonRows && nullptr != pTrail &&
+				pTrail->bVisible && pTrail->eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+				pTrail->ActionCueAttachment.bEnabled &&
+				pTrail->ActionCueAttachment.bFollow &&
+				pTrail->ActionCueAttachment.strRuntimeAnchorSlotId == BRUSH_ANCHOR &&
+				pTrail->ActionCueAttachment.strRuntimeBoneName == "b_wp_1" &&
+				pTrail->Detail.Trail.fSampleIntervalSeconds <= 0.020001f &&
+				Has_EffectFlowRibbon01TrailContract(*pTrail);
+		}
+		const EFFECT_ELEMENT_DESC* pWhiteTrail = Trails.back();
+		const bool_t bWhiteOverrideExact = nullptr != pWhiteTrail &&
+			HasResource(*pWhiteTrail, "base", WHITE_TRAIL_TEXTURE) &&
+			std::abs(pWhiteTrail->Detail.Trail.fMinimumDistance - 0.01f) <=
+				0.00001f &&
+			pWhiteTrail->AuthoringOverrides.ResourceBindings.size() == 2u &&
+			std::ranges::all_of(
+				pWhiteTrail->AuthoringOverrides.ResourceBindings,
+				[WHITE_TRAIL_TEXTURE](
+					const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override)
+				{
+					return Override.strAssetId == WHITE_TRAIL_TEXTURE &&
+						Override.strCompilerAssetId ==
+							"Effect/Artist/Textures/fx_k_auraline_02.dds";
+				});
+		runner.Require(bExactFlowRibbonRows && bWhiteOverrideExact,
+			"Artist E Keeps Three Exact Brush-Anchored FlowRibbons And Pins One White Trail Luminance Override");
+		if (!bExactFlowRibbonRows || !bWhiteOverrideExact)
+			return;
+
+		EFFECT_DOCUMENT_DESC Isolated = Document;
+		Isolated.ModelCues.clear();
+		Isolated.Elements.clear();
+		for (const EFFECT_ELEMENT_DESC* pTrail : Trails)
+			Isolated.Elements.push_back(*pTrail);
+
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		CEffectPlayback MissingAnchorPlayback;
+		Status.clear();
+		const bool_t bMissingAnchorStaged =
+			MissingAnchorPlayback.Stage_Document(Isolated, Status);
+		if (bMissingAnchorStaged)
+			MissingAnchorPlayback.Seek(0.8f, Identity);
+		const bool_t bMissingAnchorFailClosed = bMissingAnchorStaged &&
+			std::ranges::none_of(MissingAnchorPlayback.Get_Frame().Trails,
+				[](const EFFECT_EVALUATED_TRAIL& Trail)
+				{
+					return Trail.Points.size() >= 2u;
+				});
+		runner.Require(bMissingAnchorFailClosed,
+			"Artist E Brush Trail Requires The Exact Runtime Brush Bone Anchor Without A Root Fallback");
+
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER MovingBrush = [BRUSH_ANCHOR](
+			const f32_t fSampleTimeSeconds,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+			std::string& strOutError)
+		{
+			if (!std::isfinite(fSampleTimeSeconds) || fSampleTimeSeconds < 0.f)
+			{
+				strOutError = "invalid Artist E brush sample time";
+				return false;
+			}
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
+			XMStoreFloat4x4(&Staged.RootWorld, XMMatrixIdentity());
+			float4x4_t Brush{};
+			XMStoreFloat4x4(&Brush, XMMatrixTranslation(
+				fSampleTimeSeconds * 1.2f, 1.f, 0.f));
+			Staged.SourceAnchorWorlds.emplace(
+				std::string(BRUSH_ANCHOR), Brush);
+			OutSample = std::move(Staged);
+			strOutError.clear();
+			return true;
+		};
+
+		CEffectPlayback Playback;
+		Status.clear();
+		const bool_t bPlaybackStaged = Playback.Stage_Document(Isolated, Status);
+		const bool_t bPlaybackEvaluated = bPlaybackStaged &&
+			Playback.Seek_WithTransformHistory(0.8f, MovingBrush, Status);
+		bool_t bPointPayloadExact = bPlaybackEvaluated;
+		for (const std::string_view strTrailId : TRAIL_IDS)
+		{
+			const auto Evaluated = std::ranges::find_if(
+				Playback.Get_Frame().Trails,
+				[strTrailId](const EFFECT_EVALUATED_TRAIL& Trail)
+				{
+					return nullptr != Trail.pElement &&
+						Trail.pElement->strElementId == strTrailId;
+				});
+			bPointPayloadExact = bPointPayloadExact &&
+				Evaluated != Playback.Get_Frame().Trails.end() &&
+				Evaluated->Points.size() >= 2u &&
+				std::ranges::all_of(Evaluated->Points,
+					[](const EFFECT_EVALUATED_TRAIL_POINT& Point)
+					{
+						return (Point.iSourceColorComponentMask & 0x0fu) ==
+							0x0fu &&
+							(Point.iDynamicParameterComponentMask & 0x0fu) ==
+							0x0fu &&
+							std::abs(Point.vDynamicParameter.x - 0.02f) <=
+								0.00001f &&
+							std::abs(Point.vDynamicParameter.y - 1.f) <=
+								0.00001f &&
+							std::isfinite(Point.fSourceWidth) &&
+							Point.fSourceWidth >= 0.f;
+					});
+		}
+		runner.Require(bPointPayloadExact,
+			"Artist E Direct-Authored Playback Samples Three Brush Trails At Fixed Ticks With Complete FlowRibbon Payloads");
+
+		EFFECT_DOCUMENT_DESC Invalid = Isolated;
+		EFFECT_ELEMENT_DESC& InvalidWhite = Invalid.Elements.back();
+		InvalidWhite.AuthoringOverrides.ResourceBindings.clear();
+		const bool_t bWrongTupleRejectedByPredicate =
+			!Has_EffectFlowRibbon01TrailContract(InvalidWhite);
+		runner.Require(bWrongTupleRejectedByPredicate,
+			"Artist E White Trail Profile Rejects A Missing Project-Tuned Compiler Override Instead Of Broadening By Filename");
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		Status.clear();
+		const bool_t bWorkingDirectoryReady = WorkingDirectory.Initialize(
+			CProjectDataRoot::Get().parent_path() / L"Client" / L"Default",
+			Status);
+		runner.Require(bWorkingDirectoryReady,
+			"Artist E Brush Trail Uses The Canonical Client Working Directory");
+		if (!bWorkingDirectoryReady || !bPointPayloadExact)
+			return;
+
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		Status.clear();
+		const bool_t bEngineReady = EngineScope.Initialize(Status);
+		if (!bEngineReady)
+			std::cout << "[ARTIST-E-TRAIL] WARP=" << Status << '\n';
+		runner.Require(bEngineReady,
+			"Artist E Brush Trail Initializes The Existing Hidden WARP Renderer");
+		if (!bEngineReady)
+			return;
+
+		CEffectDocumentRenderer Renderer(
+			EngineScope.Get_Device(), EngineScope.Get_Context());
+		Status.clear();
+		const bool_t bRendererStaged = SUCCEEDED(Renderer.Initialize()) &&
+			Renderer.Stage_Document(Isolated, Status);
+		HRESULT hRender = E_FAIL;
+		if (bRendererStaged && EngineScope.Begin_Frame(Status))
+		{
+			hRender = Renderer.Render(Playback.Get_Frame());
+			EngineScope.Get_Context()->Flush();
+		}
+		const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+			Renderer.Get_LastRenderSubmissionStats();
+		bool_t bRendererExact = bRendererStaged && SUCCEEDED(hRender) &&
+			Stats.bCompleted && Stats.bCommitted;
+		for (size_t iTrail = 0u; iTrail < TRAIL_IDS.size(); ++iTrail)
+		{
+			const auto Occurrence = std::ranges::find_if(Stats.Occurrences,
+				[iTrail, &TRAIL_IDS](
+					const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row)
+				{
+					return Row.strElementId == TRAIL_IDS[iTrail];
+				});
+			bRendererExact = bRendererExact &&
+				Occurrence != Stats.Occurrences.end() &&
+				Occurrence->iSourceMaterialProfile == 35u &&
+				Occurrence->iSourceTextureMask == (iTrail < 2u ? 0x7u : 0x3u) &&
+				Occurrence->iSubmitted > 0u &&
+				Occurrence->iIssuedDrawCallCount > 0u &&
+				!Occurrence->bSourceMaterialFallbackBlocked;
+		}
+		runner.Require(bRendererExact,
+			"Artist E Three FlowRibbons Upload Dynamic Geometry And Submit Profile 35 Through WARP");
+	}
+
 	void Test_DimensionMasterRSourceOccurrenceContract(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -10111,10 +10718,6 @@ namespace
 			"effect.dimensionmaster.skill.2050180.unified";
 		constexpr std::string_view PARTICLE_MASTER_MATERIAL =
 			"fx_m_mi_w_00.mi.fx_w_pa_master_01_05_dt_tr";
-		constexpr std::string_view SPRITEWAVE_MATERIAL =
-			"fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_05_tr";
-		constexpr std::string_view HELIX_ID =
-			"authored.source-particle.98639f5f2e65e0f0193c09fe";
 		constexpr std::string_view HELIX_MATERIAL =
 			"fx_m_mi_w_00.mi.fx_w_me_master_02_243_dt_tr";
 		constexpr std::array<std::string_view, 3u> PARTICLE_MASTER_IDS = {{
@@ -10122,16 +10725,17 @@ namespace
 			"authored.source-particle.3d37c9d7cc96e563a4fe1b55",
 			"authored.source-particle.f8534d1e810568b7ce3b7ee2"
 		}};
-		struct SLASH_EXPECTATION final
+		struct HELIX_EXPECTATION final
 		{
 			std::string_view strElementId;
 			f32_t fTimeSeconds;
-			uint32_t iCount;
 		};
-		constexpr std::array<SLASH_EXPECTATION, 3u> SLASHES = {{
-			{ "authored.source-particle.cc4d20091ad0ed409617f51f", 0.5f, 1u },
-			{ "authored.source-particle.333341329ff3992ea8c7f0a1", 0.7f, 1u },
-			{ "authored.source-particle.f2e42e062ca87d93f0a477e3", 1.05f, 3u }
+		constexpr std::array<HELIX_EXPECTATION, 3u> HELICES = {{
+			{ "authored.source-particle.98639f5f2e65e0f0193c09fe", 0.5f },
+			{ "authored.copy.authored.source-particle."
+			  "98639f5f2e65e0f0193c09fe.1", 0.7f },
+			{ "authored.copy.authored.source-particle."
+			  "98639f5f2e65e0f0193c09fe.2", 1.05f }
 		}};
 		constexpr std::array<f32_t, 3u> PARTICLE_MASTER_TIMES = {{
 			0.5f, 0.7f, 1.05f
@@ -10245,25 +10849,6 @@ namespace
 						std::abs(Literal.fNumber - fExpected) <= 0.000001;
 				});
 		};
-		const auto FindScalar = [](const EFFECT_SOURCE_MATERIAL_DESC& Source,
-			const std::string_view strName) -> const EFFECT_NAMED_FLOAT_DESC*
-		{
-			if (1u != std::ranges::count_if(Source.Scalars,
-				[strName](const EFFECT_NAMED_FLOAT_DESC& Scalar)
-				{
-					return Scalar.strName == strName;
-				}))
-			{
-				return nullptr;
-			}
-			const auto Found = std::ranges::find_if(Source.Scalars,
-				[strName](const EFFECT_NAMED_FLOAT_DESC& Scalar)
-				{
-					return Scalar.strName == strName;
-				});
-			return Found == Source.Scalars.end() ? nullptr : &*Found;
-		};
-
 		std::array<const EFFECT_ELEMENT_DESC*, PARTICLE_MASTER_IDS.size()>
 			ParticleMasterRows{};
 		bool_t bParticleMasterExact = true;
@@ -10332,109 +10917,6 @@ namespace
 		runner.Require(bParticleMasterExact,
 			"DimensionMaster R ParticleMaster Rows Restore Map-C Coverage And E-D-F-C Role Ownership");
 
-		std::array<const EFFECT_ELEMENT_DESC*, SLASHES.size()> SlashRows{};
-		bool_t bSlashRowsExact = true;
-		for (size_t iSlash = 0u; iSlash < SLASHES.size(); ++iSlash)
-		{
-			const SLASH_EXPECTATION& Expected = SLASHES[iSlash];
-			const EFFECT_ELEMENT_DESC* pElement =
-				FindUniqueElement(Expected.strElementId);
-			SlashRows[iSlash] = pElement;
-			if (nullptr == pElement)
-			{
-				bSlashRowsExact = false;
-				continue;
-			}
-			const EFFECT_SOURCE_MATERIAL_DESC& Source =
-				pElement->Material.SourceMaterial;
-			const EFFECT_NAMED_TEXTURE_DESC* pCarrier =
-				Resolve_EffectSpriteWaveCarrierTexture(Source);
-			const EFFECT_NAMED_TEXTURE_DESC* pEmissive =
-				Find_EffectUniqueNamedTexture(Source, "emissivetex02");
-			const EFFECT_NAMED_FLOAT_DESC* pSphere =
-				FindScalar(Source, "spheremask_strength");
-			const EFFECT_NAMED_FLOAT_DESC* pSphereMinimum =
-				FindScalar(Source, "spheremask_strength_min");
-			const EFFECT_NAMED_FLOAT_DESC* pSphereMaximum =
-				FindScalar(Source, "spheremask_strength_max");
-			const EFFECT_SOURCE_MODULE_DESC* pSpawn =
-				FindModule(*pElement, "particlemodulespawn");
-			const bool_t bThisSlashExact = pElement->bVisible &&
-				pElement->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-				pElement->SourceRecipe.strRendererShape == "mesh" &&
-				std::abs(pElement->Detail.Timing.fStartDelaySeconds -
-					Expected.fTimeSeconds) <= 0.00001f &&
-				pElement->SourceRecipe.Bursts.size() == 1u &&
-				pElement->SourceRecipe.Bursts.front().iCountMinimum ==
-					Expected.iCount &&
-				pElement->SourceRecipe.Bursts.front().iCountMaximum ==
-					Expected.iCount &&
-				nullptr != pSpawn && HasNumberLiteral(*pSpawn,
-					"burstlist[0].count", Expected.iCount) &&
-				pElement->Material.strSourceMaterialPath == SPRITEWAVE_MATERIAL &&
-				Resolve_EffectStrictTypedSourceProfile(
-					pElement->Material.strSourceMaterialPath, Source) ==
-						EFFECT_STRICT_TYPED_SOURCE_PROFILE::SPRITEWAVE_01 &&
-				Has_EffectSpriteWaveNamedTextureContract(Source) &&
-				Source.Textures.size() == 8u && nullptr != pCarrier &&
-				pCarrier->strName == "maintex" && pCarrier->strAssetId ==
-					"Effect/DimensionMaster/Textures/FX_TEX_05/"
-					"fx_m_trail_007.dds" &&
-				nullptr != pEmissive && pEmissive->strAssetId ==
-					"Effect/DimensionMaster/Textures/FX_TEX_05/"
-					"fx_m_noise_008.dds" &&
-				nullptr != pSphere && nullptr != pSphereMinimum &&
-				nullptr != pSphereMaximum &&
-				std::abs(pSphere->fValue - 1.5f) <= 0.00001f &&
-				std::abs(pSphereMinimum->fValue) <= 0.00001f &&
-				std::abs(pSphereMaximum->fValue - 10.f) <= 0.00001f &&
-				BindingMatches(*pElement, "meshModel",
-					"Effect/DimensionMaster/Meshes/fm_h_swing_05.wmodel") &&
-				BindingMatches(*pElement, "base",
-					"Effect/DimensionMaster/Textures/FX_TEX_05/"
-					"fx_m_trail_007.dds") &&
-				BindingMatches(*pElement, "dissolve",
-					"Effect/DimensionMaster/Textures/FX_TEX_04/"
-					"fx_i_atypical_03_1_ycl.dds") &&
-				BindingMatches(*pElement, "noise",
-					"Effect/DimensionMaster/Textures/FX_TEX_02/"
-					"fx_d_noise_030.dds") &&
-				!pElement->Material.Execution.bEnabled &&
-				pElement->Material.Execution.bFailClosed &&
-				pElement->Material.Execution.bAuthoringApproximate &&
-				AssetExists("Effect/DimensionMaster/Meshes/fm_h_swing_05.wmodel") &&
-				AssetExists(pCarrier->strAssetId) &&
-				AssetExists(pEmissive->strAssetId);
-			bSlashRowsExact = bSlashRowsExact && bThisSlashExact;
-			if (!bThisSlashExact)
-			{
-				std::cout << "[DM-R-SLASH] id=" << pElement->strElementId <<
-					" start=" << pElement->Detail.Timing.fStartDelaySeconds <<
-					" sourceTime=" <<
-					pElement->SourcePresentation.fSourceTimeSeconds <<
-					" bursts=" << pElement->SourceRecipe.Bursts.size() <<
-					" count=" << (pElement->SourceRecipe.Bursts.empty() ? 0u :
-						pElement->SourceRecipe.Bursts.front().iCountMinimum) <<
-					" profile=" << static_cast<uint32_t>(
-						Resolve_EffectStrictTypedSourceProfile(
-							pElement->Material.strSourceMaterialPath, Source)) <<
-					" lanes=" << Source.Textures.size() << " contract=" <<
-					Has_EffectSpriteWaveNamedTextureContract(Source) <<
-					" spawn=" << (nullptr != pSpawn) << " literal=" <<
-					(nullptr != pSpawn && HasNumberLiteral(
-						*pSpawn, "burstlist[0].count", Expected.iCount)) <<
-					" execution=" << pElement->Material.Execution.bEnabled << ',' <<
-					pElement->Material.Execution.bFailClosed << ',' <<
-					pElement->Material.Execution.bAuthoringApproximate <<
-					" carrier=" << (nullptr == pCarrier ? std::string{} :
-						pCarrier->strAssetId) << " emissive=" <<
-					(nullptr == pEmissive ? std::string{} : pEmissive->strAssetId) <<
-					'\n';
-			}
-		}
-		runner.Require(bSlashRowsExact,
-			"DimensionMaster R Keeps Three Exact SpriteWave Mesh Occurrences At 0.5 0.7 1.05 Seconds With 1 1 3 Bursts");
-
 		float4x4_t Identity{};
 		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
 		struct PARTICLE_SAMPLE final
@@ -10470,126 +10952,270 @@ namespace
 			}
 			return Sample;
 		};
-		bool_t bPlaybackCountsExact = bSlashRowsExact;
-		for (size_t iSlash = 0u;
-			bPlaybackCountsExact && iSlash < SLASHES.size(); ++iSlash)
+		constexpr std::array<std::pair<std::string_view, std::string_view>, 6u>
+			HELIX_RESOURCES = {{
+				{ "meshModel",
+					"Effect/DimensionMaster/Meshes/fm_d_helix_015_1.wmodel" },
+				{ "base", "Effect/DimensionMaster/Textures/FX_TEX_02/"
+					"fx_d_atypical_042_1_cl.dds" },
+				{ "noise", "Effect/DimensionMaster/Textures/FX_TEX_00/"
+					"fx_a_fluid_003.dds" },
+				{ "mask", "Effect/DimensionMaster/Textures/FX_TEX_05/"
+					"fx_l_spiderline_01.dds" },
+				{ "emissive", "Effect/DimensionMaster/Textures/FX_TEX_05/"
+					"fx_k_auraline_04.dds" },
+				{ "dissolve", "Effect/DimensionMaster/Textures/FX_TEX_00/"
+					"fx_b_atypical_004.dds" }
+			}};
+		const auto FindDistribution = [](const EFFECT_SOURCE_MODULE_DESC& Module,
+			const std::string_view strPropertyPath)
+			-> const EFFECT_DISTRIBUTION_DESC*
 		{
-			const PARTICLE_SAMPLE Sample = SampleElement(*SlashRows[iSlash],
-				SLASHES[iSlash].fTimeSeconds + 1.f / 60.f);
-			bPlaybackCountsExact = Sample.bStaged &&
-				Sample.Worlds.size() == SLASHES[iSlash].iCount;
-		}
-		runner.Require(bPlaybackCountsExact,
-			"DimensionMaster R Playback Emits One One Three Slash Mesh Instances Without Duplicating The Shared Effect");
-
-		const EFFECT_ELEMENT_DESC* pHelix = FindUniqueElement(HELIX_ID);
-		bool_t bHelixSourceExact = nullptr != pHelix;
-		const EFFECT_SOURCE_MODULE_DESC* pMeshRotation = nullptr;
-		const EFFECT_SOURCE_MODULE_DESC* pMeshRotationRate = nullptr;
-		const EFFECT_SOURCE_MODULE_DESC* pTypeData = nullptr;
-		if (nullptr != pHelix)
+			if (1u != std::ranges::count_if(Module.Distributions,
+				[strPropertyPath](const EFFECT_DISTRIBUTION_DESC& Distribution)
+				{
+					return Distribution.strPropertyPath == strPropertyPath;
+				}))
+			{
+				return nullptr;
+			}
+			const auto Found = std::ranges::find_if(Module.Distributions,
+				[strPropertyPath](const EFFECT_DISTRIBUTION_DESC& Distribution)
+				{
+					return Distribution.strPropertyPath == strPropertyPath;
+				});
+			return Found == Module.Distributions.end() ? nullptr : &*Found;
+		};
+		const auto HasDisabledSourcePresentation = [](
+			const EFFECT_SOURCE_PRESENTATION_DESC& Source)
 		{
-			pMeshRotation = FindModule(*pHelix, "particlemodulemeshrotation");
-			pMeshRotationRate = FindModule(
-				*pHelix, "particlemodulemeshrotationrate");
-			pTypeData = FindModule(*pHelix, "particlemoduletypedatamesh");
+			return !Source.bEnabled && Source.strSchema.empty() &&
+				0u == Source.iVersion && Source.strProfileId.empty() &&
+				Source.eStatus == EFFECT_SOURCE_PRESENTATION_STATUS::END &&
+				Source.strSourceObjectPath.empty() &&
+				Source.strSourceActionCueId.empty() &&
+				Source.strSourceEventId.empty() &&
+				0u == Source.iSourceOccurrenceIndex &&
+				std::abs(Source.fSourceTimeSeconds) <= 0.00001f &&
+				Source.Parameters.empty();
+		};
+		const std::string HelixCopySourceNode =
+			"authored-copy:" + std::string(HELICES.front().strElementId);
+		std::array<const EFFECT_ELEMENT_DESC*, HELICES.size()> HelixRows{};
+		std::array<const EFFECT_SOURCE_MODULE_DESC*, HELICES.size()>
+			MeshRotations{};
+		std::array<const EFFECT_SOURCE_MODULE_DESC*, HELICES.size()>
+			MeshRotationRates{};
+		std::array<const EFFECT_SOURCE_MODULE_DESC*, HELICES.size()> TypeDataRows{};
+		bool_t bHelixRowsExact = true;
+		for (size_t iHelix = 0u; iHelix < HELICES.size(); ++iHelix)
+		{
+			const HELIX_EXPECTATION& Expected = HELICES[iHelix];
+			const EFFECT_ELEMENT_DESC* pElement =
+				FindUniqueElement(Expected.strElementId);
+			HelixRows[iHelix] = pElement;
+			if (nullptr == pElement)
+			{
+				bHelixRowsExact = false;
+				continue;
+			}
+			const EFFECT_SOURCE_MODULE_DESC* pSpawn =
+				FindModule(*pElement, "particlemodulespawn");
+			const EFFECT_SOURCE_MODULE_DESC* pMeshRotation =
+				FindModule(*pElement, "particlemodulemeshrotation");
+			const EFFECT_SOURCE_MODULE_DESC* pMeshRotationRate =
+				FindModule(*pElement, "particlemodulemeshrotationrate");
+			const EFFECT_SOURCE_MODULE_DESC* pTypeData =
+				FindModule(*pElement, "particlemoduletypedatamesh");
+			MeshRotations[iHelix] = pMeshRotation;
+			MeshRotationRates[iHelix] = pMeshRotationRate;
+			TypeDataRows[iHelix] = pTypeData;
 			const EFFECT_DISTRIBUTION_DESC* pInitialDistribution =
 				nullptr == pMeshRotation ? nullptr :
-					([pMeshRotation]() -> const EFFECT_DISTRIBUTION_DESC*
-					{
-						const auto Found = std::ranges::find_if(
-							pMeshRotation->Distributions,
-							[](const EFFECT_DISTRIBUTION_DESC& Distribution)
-							{
-								return Distribution.strPropertyPath ==
-									"startrotation";
-							});
-						return Found == pMeshRotation->Distributions.end() ?
-							nullptr : &*Found;
-					})();
+					FindDistribution(*pMeshRotation, "startrotation");
 			const EFFECT_DISTRIBUTION_DESC* pRateDistribution =
 				nullptr == pMeshRotationRate ? nullptr :
-					([pMeshRotationRate]() -> const EFFECT_DISTRIBUTION_DESC*
+					FindDistribution(*pMeshRotationRate, "startrotationrate");
+			const bool_t bSourceNodeExact = 0u == iHelix ?
+				pElement->strSourceNode ==
+					"authored-source-particle:effect.dimensionmaster.skill."
+					"2050180.unified|source:effect.dimensionmaster.skill."
+					"2050180.imported|element:fx_pc_swp_03."
+					"par_s_swp_foldcut_body_01.particlespriteemitter_6" :
+				pElement->strSourceNode == HelixCopySourceNode;
+			const bool_t bResourcesExact =
+				pElement->ResourceBindings.size() == HELIX_RESOURCES.size() &&
+				std::ranges::all_of(HELIX_RESOURCES,
+					[&](const auto& Resource)
 					{
-						const auto Found = std::ranges::find_if(
-							pMeshRotationRate->Distributions,
-							[](const EFFECT_DISTRIBUTION_DESC& Distribution)
-							{
-								return Distribution.strPropertyPath ==
-									"startrotationrate";
-							});
-						return Found == pMeshRotationRate->Distributions.end() ?
-							nullptr : &*Found;
-					})();
-			bHelixSourceExact = pHelix->bVisible &&
-				pHelix->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-				pHelix->SourceRecipe.strRendererShape == "mesh" &&
-				pHelix->Material.strSourceMaterialPath == HELIX_MATERIAL &&
-				BindingMatches(*pHelix, "meshModel",
-					"Effect/DimensionMaster/Meshes/fm_d_helix_015_1.wmodel") &&
-				BindingMatches(*pHelix, "base",
-					"Effect/DimensionMaster/Textures/FX_TEX_02/"
-					"fx_d_atypical_042_1_cl.dds") &&
-				BindingMatches(*pHelix, "noise",
-					"Effect/DimensionMaster/Textures/FX_TEX_00/"
-					"fx_a_fluid_003.dds") &&
-				BindingMatches(*pHelix, "mask",
-					"Effect/DimensionMaster/Textures/FX_TEX_05/"
-					"fx_l_spiderline_01.dds") &&
-				BindingMatches(*pHelix, "emissive",
-					"Effect/DimensionMaster/Textures/FX_TEX_05/"
-					"fx_k_auraline_04.dds") &&
-				BindingMatches(*pHelix, "dissolve",
-					"Effect/DimensionMaster/Textures/FX_TEX_00/"
-					"fx_b_atypical_004.dds") &&
-				std::abs(pHelix->Detail.Timing.fStartDelaySeconds - 0.01f) <=
+						return BindingMatches(*pElement, Resource.first,
+							Resource.second) && AssetExists(Resource.second);
+					});
+			const bool_t bSpawnLiteralExact = nullptr != pSpawn &&
+				1u == std::ranges::count_if(pSpawn->Literals,
+					[](const EFFECT_SOURCE_LITERAL_DESC& Literal)
+					{
+						return Literal.strPropertyPath ==
+							"burstlist[0].count";
+					}) &&
+				HasNumberLiteral(*pSpawn, "burstlist[0].count", 1.0);
+			const bool_t bThisHelixExact = pElement->bVisible &&
+				pElement->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				pElement->SourceRecipe.strRendererShape == "mesh" &&
+				pElement->Material.strSourceMaterialPath == HELIX_MATERIAL &&
+				bResourcesExact && bSourceNodeExact &&
+				HasDisabledSourcePresentation(pElement->SourcePresentation) &&
+				std::abs(pElement->Detail.Timing.fStartDelaySeconds -
+					Expected.fTimeSeconds) <= 0.00001f &&
+				std::abs(pElement->Detail.Timing.fLifeTimeSeconds - 0.1f) <=
 					0.00001f &&
-				pHelix->SourceRecipe.Bursts.size() == 1u &&
-				pHelix->SourceRecipe.Bursts.front().iCountMinimum == 3u &&
-				pHelix->SourceRecipe.Bursts.front().iCountMaximum == 3u &&
-				nullptr != pMeshRotation && nullptr != pMeshRotationRate &&
-				nullptr != pTypeData && nullptr != pInitialDistribution &&
+				pElement->SourceRecipe.Bursts.size() == 1u &&
+				std::abs(pElement->SourceRecipe.Bursts.front().fTimeSeconds) <=
+					0.00001f &&
+				pElement->SourceRecipe.Bursts.front().iCountMinimum == 1u &&
+				pElement->SourceRecipe.Bursts.front().iCountMaximum == 1u &&
+				bSpawnLiteralExact && nullptr != pInitialDistribution &&
 				pInitialDistribution->LookupTable.size() == 14u &&
 				std::abs(pInitialDistribution->LookupTable[0u] + 0.2f) <=
 					0.00001f &&
 				std::abs(pInitialDistribution->LookupTable[1u] - 0.2f) <=
 					0.00001f &&
 				std::abs(pInitialDistribution->LookupTable[2u] - 0.975f) <=
-					0.00001f &&
-				nullptr != pRateDistribution &&
+					0.00001f && nullptr != pRateDistribution &&
 				pRateDistribution->LookupTable.size() == 8u &&
 				std::abs(pRateDistribution->LookupTable[1u] - 1.f) <=
 					0.00001f &&
 				std::abs(pRateDistribution->LookupTable[2u] - 1.f) <=
-					0.00001f &&
+					0.00001f && nullptr != pTypeData &&
 				HasNumberLiteral(*pTypeData, "pitch", -90.0) &&
-				std::abs(pHelix->Detail.Mesh.
+				std::abs(pElement->Detail.Mesh.
 					vSourceTypeDataRotationDegrees.x) <= 0.00001f &&
-				std::abs(pHelix->Detail.Mesh.
+				std::abs(pElement->Detail.Mesh.
 					vSourceTypeDataRotationDegrees.y + 90.f) <= 0.00001f &&
-				std::abs(pHelix->Detail.Mesh.
+				std::abs(pElement->Detail.Mesh.
 					vSourceTypeDataRotationDegrees.z) <= 0.00001f &&
-				std::abs(pHelix->Detail.Transform.
+				std::abs(pElement->Detail.Transform.
 					vRevolutionDegreesPerSecond.x) <= 0.00001f &&
-				std::abs(pHelix->Detail.Transform.
+				std::abs(pElement->Detail.Transform.
 					vRevolutionDegreesPerSecond.y) <= 0.00001f &&
-				std::abs(pHelix->Detail.Transform.
+				std::abs(pElement->Detail.Transform.
 					vRevolutionDegreesPerSecond.z) <= 0.00001f &&
-				pHelix->Detail.Particle.bLocalSpace &&
-				!pHelix->Detail.Particle.bBillboard &&
+				pElement->Detail.Particle.bLocalSpace &&
+				!pElement->Detail.Particle.bBillboard &&
 				!Has_EffectParticleMasterNamedTextureContract(
-					pHelix->Material.SourceMaterial);
+					pElement->Material.SourceMaterial);
+			bHelixRowsExact = bHelixRowsExact && bThisHelixExact;
+			if (!bThisHelixExact)
+			{
+				std::cout << "[DM-R-HELIX] id=" << pElement->strElementId <<
+					" start=" << pElement->Detail.Timing.fStartDelaySeconds <<
+					" life=" << pElement->Detail.Timing.fLifeTimeSeconds <<
+					" sourceNode=" << pElement->strSourceNode <<
+					" bursts=" << pElement->SourceRecipe.Bursts.size() <<
+					" resources=" << pElement->ResourceBindings.size() << '\n';
+			}
 		}
-		runner.Require(bHelixSourceExact,
-			"DimensionMaster R Helix Preserves Source Mesh Rotation Rate And Applies The TypeData Minus-90 Pitch Once Without Synthetic Revolution");
+		const bool_t bHelixSourceModulesShared = bHelixRowsExact &&
+			std::ranges::all_of(MeshRotations,
+				[&](const EFFECT_SOURCE_MODULE_DESC* pModule)
+				{
+					return nullptr != pModule && nullptr != MeshRotations.front() &&
+						pModule->strStableId == MeshRotations.front()->strStableId &&
+						pModule->strObjectPath == MeshRotations.front()->strObjectPath;
+				}) &&
+			std::ranges::all_of(MeshRotationRates,
+				[&](const EFFECT_SOURCE_MODULE_DESC* pModule)
+				{
+					return nullptr != pModule && nullptr != MeshRotationRates.front() &&
+						pModule->strStableId == MeshRotationRates.front()->strStableId &&
+						pModule->strObjectPath == MeshRotationRates.front()->strObjectPath;
+				}) &&
+			std::ranges::all_of(TypeDataRows,
+				[&](const EFFECT_SOURCE_MODULE_DESC* pModule)
+				{
+					return nullptr != pModule && nullptr != TypeDataRows.front() &&
+						pModule->strStableId == TypeDataRows.front()->strStableId &&
+						pModule->strObjectPath == TypeDataRows.front()->strObjectPath;
+				});
+		runner.Require(bHelixRowsExact && bHelixSourceModulesShared,
+			"DimensionMaster R Keeps Three Unique Helix Copies With Exact Shared Mesh Material Resources Rotation TypeData And Disabled Source Presentation Policy");
 
-		if (bHelixSourceExact)
+		struct HELIX_FRAME_SAMPLE final
 		{
-			const PARTICLE_SAMPLE Early = SampleElement(*pHelix, 0.02f);
-			const PARTICLE_SAMPLE Late = SampleElement(*pHelix, 0.06f);
-			EFFECT_ELEMENT_DESC ZeroTypeData = *pHelix;
+			bool_t bStaged = false;
+			std::vector<std::string> ElementIds;
+		};
+		const auto SampleHelixFrame = [&Document, &Identity, &HelixRows](
+			const f32_t fTimeSeconds)
+		{
+			HELIX_FRAME_SAMPLE Sample;
+			EFFECT_DOCUMENT_DESC Isolated = Document;
+			Isolated.ModelCues.clear();
+			Isolated.Elements.clear();
+			for (const EFFECT_ELEMENT_DESC* pHelix : HelixRows)
+			{
+				if (nullptr == pHelix)
+					return Sample;
+				Isolated.Elements.push_back(*pHelix);
+			}
+			CEffectPlayback Playback;
+			std::string Error;
+			Sample.bStaged = Playback.Stage_Document(Isolated, Error);
+			if (!Sample.bStaged)
+			{
+				std::cout << "[DM-R-HELIX] playback stage=" << Error << '\n';
+				return Sample;
+			}
+			Playback.Seek(fTimeSeconds, Identity);
+			for (const EFFECT_EVALUATED_PARTICLE& Particle :
+				Playback.Get_Frame().Particles)
+			{
+				if (nullptr != Particle.pElement)
+					Sample.ElementIds.push_back(Particle.pElement->strElementId);
+			}
+			return Sample;
+		};
+		bool_t bHelixPlaybackExact = bHelixRowsExact;
+		const HELIX_FRAME_SAMPLE Before = SampleHelixFrame(
+			HELICES.front().fTimeSeconds - 1.f / 60.f);
+		std::cout << "[DM-R-HELIX-FRAME] label=before count=" <<
+			Before.ElementIds.size() << '\n';
+		bHelixPlaybackExact = bHelixPlaybackExact && Before.bStaged &&
+			Before.ElementIds.empty();
+		for (size_t iHelix = 0u; iHelix < HELICES.size(); ++iHelix)
+		{
+			const HELIX_EXPECTATION& Expected = HELICES[iHelix];
+			const HELIX_FRAME_SAMPLE AtHit = SampleHelixFrame(
+				Expected.fTimeSeconds + 1.f / 60.f);
+			std::cout << "[DM-R-HELIX-FRAME] label=" << Expected.strElementId <<
+				" count=" << AtHit.ElementIds.size();
+			for (const std::string& strElementId : AtHit.ElementIds)
+				std::cout << " id=" << strElementId;
+			std::cout << '\n';
+			bHelixPlaybackExact = bHelixPlaybackExact && AtHit.bStaged &&
+				AtHit.ElementIds.size() == 1u &&
+				AtHit.ElementIds.front() == Expected.strElementId;
+		}
+		const HELIX_FRAME_SAMPLE After = SampleHelixFrame(
+			HELICES.back().fTimeSeconds + 0.1f + 1.f / 60.f);
+		std::cout << "[DM-R-HELIX-FRAME] label=after count=" <<
+			After.ElementIds.size() << '\n';
+		bHelixPlaybackExact = bHelixPlaybackExact && After.bStaged &&
+			After.ElementIds.empty();
+		runner.Require(bHelixPlaybackExact,
+			"DimensionMaster R Playback Emits One Helix At Each 0.5 0.7 1.05 Second Hit Without An Earlier Or Later Simultaneous Triple");
+
+		if (bHelixRowsExact)
+		{
+			const EFFECT_ELEMENT_DESC& SourceHelix = *HelixRows.front();
+			const PARTICLE_SAMPLE Early = SampleElement(SourceHelix,
+				HELICES.front().fTimeSeconds + 0.02f);
+			const PARTICLE_SAMPLE Late = SampleElement(SourceHelix,
+				HELICES.front().fTimeSeconds + 0.06f);
+			EFFECT_ELEMENT_DESC ZeroTypeData = SourceHelix;
 			ZeroTypeData.Detail.Mesh.vSourceTypeDataRotationDegrees = {};
-			const PARTICLE_SAMPLE Zero = SampleElement(ZeroTypeData, 0.02f);
+			const PARTICLE_SAMPLE Zero = SampleElement(ZeroTypeData,
+				HELICES.front().fTimeSeconds + 0.02f);
 			const auto BasisDifference = [](const float4x4_t& Left,
 				const float4x4_t& Right)
 			{
@@ -10604,8 +11230,8 @@ namespace
 					std::abs(Left._33 - Right._33);
 			};
 			const bool_t bPlaybackRotationExact = Early.bStaged && Late.bStaged &&
-				Zero.bStaged && Early.Worlds.size() == 3u &&
-				Late.Worlds.size() == 3u && Zero.Worlds.size() == 3u &&
+				Zero.bStaged && Early.Worlds.size() == 1u &&
+				Late.Worlds.size() == 1u && Zero.Worlds.size() == 1u &&
 				BasisDifference(Early.Worlds.front(), Zero.Worlds.front()) >
 					0.001f &&
 				BasisDifference(Early.Worlds.front(), Late.Worlds.front()) >
@@ -10617,7 +11243,7 @@ namespace
 				std::abs(Early.Worlds.front()._43 - Zero.Worlds.front()._43) <=
 					0.00001f;
 			runner.Require(bPlaybackRotationExact,
-				"DimensionMaster R Playback Keeps Three Helices And Separates Source Spin From TypeData Axis Correction");
+				"DimensionMaster R Helix Playback Separates Source Spin From TypeData Axis Correction");
 		}
 
 		EFFECT_ELEMENT_DESC FilenameOnlyControl =
@@ -10749,11 +11375,6 @@ namespace
 				19u, 0x39u, 4u, "particle-master-map-c");
 		runner.Require(bParticleMasterRendered,
 			"DimensionMaster R ParticleMaster Commits Profile 19 With Map-C Warp E F Lanes");
-		const bool_t bSpriteWaveRendered = bSlashRowsExact &&
-			RenderWitness(*SlashRows.back(), SLASHES.back().fTimeSeconds +
-				1.f / 60.f, 20u, 0x3fu, 3u, "spritewave-third-slash");
-		runner.Require(bSpriteWaveRendered,
-			"DimensionMaster R Third Slash Commits Three Meshes Through Profile 20 Maintex Dissolve Emissive Sphere Mask");
 		const bool_t bFilenameOnlyGeneric = bFilenameOnlyControlReady &&
 			RenderWitness(FilenameOnlyControl,
 				PARTICLE_MASTER_TIMES.front() + 1.f / 60.f,
@@ -10766,9 +11387,7 @@ namespace
 	void Test_BasicAttackExplicitCommandResendGate(TEST_RUNNER& runner)
 	{
 		using Client::CBASIC_ATTACK_RESEND_GATE;
-		using Client::CBASIC_ATTACK_REPEAT_SCHEDULER;
-		using CLOCK = std::chrono::steady_clock;
-		using namespace std::chrono_literals;
+		using Client::CBASIC_ATTACK_PRESS_EDGE_GATE;
 
 		CBASIC_ATTACK_RESEND_GATE gate;
 		runner.Require(
@@ -10789,51 +11408,43 @@ namespace
 			!gate.Observe_Button(true),
 			"Controller Reset Clears Basic Attack Resend Suppression");
 
-		CBASIC_ATTACK_REPEAT_SCHEDULER tap;
-		const CLOCK::time_point start{};
+		CBASIC_ATTACK_PRESS_EDGE_GATE tap;
 		const bool_t tapSubmittedImmediately =
-			tap.Should_Submit(true, true, start);
-		const bool_t tapDidNotAutoRepeat =
-			!tap.Should_Submit(true, true, start + 179ms);
+			tap.Should_Submit(true, true);
+		const bool_t tapDidNotAutoRepeatWhileHeld =
+			!tap.Should_Submit(true, true);
 		const bool_t tapReleasedWithoutSubmission =
-			!tap.Should_Submit(false, true, start + 179ms);
+			!tap.Should_Submit(false, true);
 		runner.Require(
-			tapSubmittedImmediately && tapDidNotAutoRepeat &&
+			tapSubmittedImmediately && tapDidNotAutoRepeatWhileHeld &&
 			tapReleasedWithoutSubmission,
-			"Basic Attack Tap Submits BA1 Once Before Initial Hold Delay");
+			"One Physical LMB Press Submits Exactly One Basic Attack");
 
 		const bool_t repeatedClickSubmittedImmediately =
-			tap.Should_Submit(true, true, start + 180ms);
+			tap.Should_Submit(true, true);
 		runner.Require(
 			repeatedClickSubmittedImmediately,
 			"Physical Release Then Repeated Click Submits Immediately");
 
-		CBASIC_ATTACK_REPEAT_SCHEDULER held;
-		const bool_t heldInitial = held.Should_Submit(true, true, start);
-		const bool_t heldWaited =
-			!held.Should_Submit(true, true, start + 179ms);
-		const bool_t heldFirstRepeat =
-			held.Should_Submit(true, true, start + 180ms);
-		const bool_t heldRepeatWaited =
-			!held.Should_Submit(true, true, start + 279ms);
-		const bool_t heldSecondRepeat =
-			held.Should_Submit(true, true, start + 280ms);
+		CBASIC_ATTACK_PRESS_EDGE_GATE held;
+		const bool_t heldInitial = held.Should_Submit(true, true);
+		const bool_t heldNeverRepeated =
+			!held.Should_Submit(true, true) &&
+			!held.Should_Submit(true, true) &&
+			!held.Should_Submit(true, true);
 		runner.Require(
-			heldInitial && heldWaited && heldFirstRepeat &&
-			heldRepeatWaited && heldSecondRepeat,
-			"Held LMB Uses 180ms Initial Delay Then 100ms Continuations");
+			heldInitial && heldNeverRepeated,
+			"Held LMB Never Auto-Buffers A Combo Continuation");
 
-		CBASIC_ATTACK_REPEAT_SCHEDULER blocked;
-		const bool_t blockedInitial = blocked.Should_Submit(true, true, start);
+		CBASIC_ATTACK_PRESS_EDGE_GATE blocked;
+		const bool_t blockedInitial = blocked.Should_Submit(true, true);
 		const bool_t filteredFrameDidNotSubmit =
-			!blocked.Should_Submit(true, false, start + 100ms);
+			!blocked.Should_Submit(true, false);
 		const bool_t unblockDidNotLookLikeRepress =
-			!blocked.Should_Submit(true, true, start + 110ms);
-		const bool_t rawHoldStillReachedRepeat =
-			blocked.Should_Submit(true, true, start + 180ms);
+			!blocked.Should_Submit(true, true);
 		runner.Require(
 			blockedInitial && filteredFrameDidNotSubmit &&
-			unblockDidNotLookLikeRepress && rawHoldStillReachedRepeat,
+			unblockDidNotLookLikeRepress,
 			"UI Block Preserves Raw Physical Hold Without False Release Or Repress");
 	}
 
@@ -12876,6 +13487,38 @@ namespace
 
 		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
 		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		constexpr const wchar_t* DIMENSIONMASTER_T_MRT =
+			L"MRT_HarnessDimensionMasterTGameObject";
+		constexpr std::array<const wchar_t*, 5u> DimensionMasterTTargetTags = {{
+			L"Target_HarnessDimensionMasterTDiffuse",
+			L"Target_HarnessDimensionMasterTNormal",
+			L"Target_HarnessDimensionMasterTDepth",
+			L"Target_HarnessDimensionMasterTPickPos",
+			L"Target_HarnessDimensionMasterTEmissive",
+		}};
+		constexpr std::array<DXGI_FORMAT, 5u> DimensionMasterTTargetFormats = {{
+			DXGI_FORMAT_R8G8B8A8_UNORM,
+			DXGI_FORMAT_R16G16B16A16_UNORM,
+			DXGI_FORMAT_R32G32B32A32_FLOAT,
+			DXGI_FORMAT_R32G32B32A32_FLOAT,
+			DXGI_FORMAT_R16G16B16A16_FLOAT,
+		}};
+		bool_t bGameObjectMrtReady = true;
+		for (size_t i = 0u; i < DimensionMasterTTargetTags.size(); ++i)
+		{
+			bGameObjectMrtReady = bGameObjectMrtReady && SUCCEEDED(
+				CGameInstance::Get().Add_RenderTarget(
+					DimensionMasterTTargetTags[i], 320u, 180u,
+					DimensionMasterTTargetFormats[i],
+					float4_t(0.f, 0.f, 0.f, 0.f))) &&
+				SUCCEEDED(CGameInstance::Get().Add_MRT(
+					DIMENSIONMASTER_T_MRT,
+					DimensionMasterTTargetTags[i]));
+		}
+		runner.Require(bGameObjectMrtReady,
+			"DimensionMaster T Isolation Creates The Production Five-Target Character GBuffer Contract");
+		if (!bGameObjectMrtReady)
+			return;
 		const matrix_t ModelPreTransform =
 			XMMatrixScaling(pSummon->vAssetPreScale.x,
 				pSummon->vAssetPreScale.y, pSummon->vAssetPreScale.z) *
@@ -13003,6 +13646,14 @@ namespace
 			"DimensionMaster T Stages ModelCue-Only Elements-Only And Full Play-All Through The Ordinary Runtime");
 		if (!bIsolationStaged)
 			return;
+		const bool_t bExactLaneRouting =
+			ModelCueRenderer.Has_NonBlendModelCues() &&
+			!GenericMaskedContrastModelCueRenderer.Has_NonBlendModelCues() &&
+			!OpaqueContrastModelCueRenderer.Has_NonBlendModelCues() &&
+			!ElementsRenderer.Has_NonBlendModelCues() &&
+			FullPlayAllRenderer.Has_NonBlendModelCues();
+		runner.Require(bExactLaneRouting,
+			"DimensionMaster T Routes Only The Exact Character-Surface Summon Identity To NONBLEND");
 
 		float4x4_t Identity{};
 		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
@@ -13016,6 +13667,7 @@ namespace
 		struct COLOR_FOOTPRINT final
 		{
 			uint64_t iPixelCount = 0u;
+			uint32_t iBoundRenderTargetCount = 0u;
 			uint32_t iMinX = UINT32_MAX;
 			uint32_t iMinY = UINT32_MAX;
 			uint32_t iMaxX = 0u;
@@ -13029,8 +13681,11 @@ namespace
 		{
 			const D3D11_QUERY_DATA_PIPELINE_STATISTICS Pipeline =
 				OutFootprint.Pipeline;
+			const uint32_t iBoundRenderTargetCount =
+				OutFootprint.iBoundRenderTargetCount;
 			OutFootprint = {};
 			OutFootprint.Pipeline = Pipeline;
+			OutFootprint.iBoundRenderTargetCount = iBoundRenderTargetCount;
 			ComPtr<ID3D11RenderTargetView> TargetView;
 			Context->OMGetRenderTargets(1u, TargetView.GetAddressOf(), nullptr);
 			ComPtr<ID3D11Resource> TargetResource;
@@ -13101,13 +13756,22 @@ namespace
 			return true;
 		};
 
+		enum class ISOLATED_RENDER_LANE
+		{
+			BLEND_DOCUMENT,
+			NONBLEND_CHARACTER,
+			NONBLEND_THEN_BLEND,
+		};
 		const auto RenderIsolated = [&](const char_t* pLabel,
 			CEffectDocumentRenderer& Renderer,
 			const EFFECT_EVALUATED_FRAME& Frame,
-			COLOR_FOOTPRINT& OutFootprint)
+			COLOR_FOOTPRINT& OutFootprint,
+			const ISOLATED_RENDER_LANE eLane =
+				ISOLATED_RENDER_LANE::BLEND_DOCUMENT)
 		{
 			std::string Error;
 			HRESULT hRender = E_FAIL;
+			bool_t bMrtBegun = false;
 			D3D11_QUERY_DESC QueryDesc{};
 			QueryDesc.Query = D3D11_QUERY_PIPELINE_STATISTICS;
 			ComPtr<ID3D11Query> PipelineQuery;
@@ -13118,10 +13782,45 @@ namespace
 				Error = "DimensionMaster T pipeline query creation failed.";
 			if (bQueryCreated && EngineScope.Begin_Frame(Error))
 			{
-				Context->Begin(PipelineQuery.Get());
-				hRender = Renderer.Render(Frame);
-				Context->End(PipelineQuery.Get());
-				Context->Flush();
+				if (eLane != ISOLATED_RENDER_LANE::BLEND_DOCUMENT)
+				{
+					bMrtBegun = SUCCEEDED(CGameInstance::Get().Begin_MRT(
+						DIMENSIONMASTER_T_MRT));
+					if (!bMrtBegun)
+						Error = "DimensionMaster T five-target MRT begin failed.";
+				}
+				if (eLane == ISOLATED_RENDER_LANE::BLEND_DOCUMENT ||
+					bMrtBegun)
+				{
+					std::array<ID3D11RenderTargetView*,
+						D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> BoundTargets{};
+					Context->OMGetRenderTargets(
+						static_cast<UINT>(BoundTargets.size()),
+						BoundTargets.data(), nullptr);
+					for (ID3D11RenderTargetView* pTarget : BoundTargets)
+					{
+						if (nullptr == pTarget)
+							continue;
+						++OutFootprint.iBoundRenderTargetCount;
+						pTarget->Release();
+					}
+					Context->Begin(PipelineQuery.Get());
+					if (eLane == ISOLATED_RENDER_LANE::BLEND_DOCUMENT)
+					{
+						hRender = Renderer.Render(Frame);
+					}
+					else
+					{
+						hRender = Renderer.Render_NonBlendModelCues(Frame);
+						if (SUCCEEDED(hRender) &&
+							eLane == ISOLATED_RENDER_LANE::NONBLEND_THEN_BLEND)
+						{
+							hRender = Renderer.Render(Frame);
+						}
+					}
+					Context->End(PipelineQuery.Get());
+					Context->Flush();
+				}
 			}
 			bool_t bPipelineCaptured = false;
 			if (bQueryCreated && SUCCEEDED(hRender))
@@ -13148,33 +13847,48 @@ namespace
 			const HRESULT hDevice = Device->GetDeviceRemovedReason();
 			const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
 				Renderer.Get_LastRenderSubmissionStats();
+			const bool_t bNeedsDocumentStats =
+				eLane != ISOLATED_RENDER_LANE::NONBLEND_CHARACTER;
 			const bool_t bCaptured = bPipelineCaptured &&
 				SUCCEEDED(hRender) && S_OK == hDevice &&
-				Stats.bCompleted && Stats.bCommitted &&
+				(!bNeedsDocumentStats ||
+					(Stats.bCompleted && Stats.bCommitted)) &&
 				CaptureColorFootprint(OutFootprint, Error);
 			if (bCaptured)
 				Context->PSGetShader(
 					OutFootprint.PixelShader.ReleaseAndGetAddressOf(), nullptr, nullptr);
+			bool_t bFinalCaptured = bCaptured;
+			if (bMrtBegun && FAILED(CGameInstance::Get().End_MRT()))
+			{
+				Error = "DimensionMaster T five-target MRT end failed.";
+				bFinalCaptured = false;
+			}
 			std::cout << "[DM-T-ISOLATION] lane=" << pLabel <<
 				" sample=" << SAMPLE_TIME_SECONDS << " pixels=" <<
-				OutFootprint.iPixelCount << " bounds=" << OutFootprint.iMinX <<
-				',' << OutFootprint.iMinY << '-' << OutFootprint.iMaxX << ',' <<
-				OutFootprint.iMaxY << " border=" <<
-				OutFootprint.bTouchesFrameBorder << " status=" <<
-				(bCaptured ? "COMMITTED" : Error) << " iaPrimitives=" <<
-				OutFootprint.Pipeline.IAPrimitives << " psInvocations=" <<
-				OutFootprint.Pipeline.PSInvocations << '\n';
-			return bCaptured;
+					OutFootprint.iPixelCount << " bounds=" << OutFootprint.iMinX <<
+					',' << OutFootprint.iMinY << '-' << OutFootprint.iMaxX << ',' <<
+					OutFootprint.iMaxY << " border=" <<
+					OutFootprint.bTouchesFrameBorder << " renderTargets=" <<
+					OutFootprint.iBoundRenderTargetCount << " status=" <<
+						(bFinalCaptured ? "COMMITTED" : Error) << " iaPrimitives=" <<
+					OutFootprint.Pipeline.IAPrimitives << " psInvocations=" <<
+					OutFootprint.Pipeline.PSInvocations << '\n';
+			return bFinalCaptured;
 		};
 
 		COLOR_FOOTPRINT ModelCueFootprint;
+		COLOR_FOOTPRINT ModelCueBlendExclusionFootprint;
 		COLOR_FOOTPRINT GenericMaskedContrastModelCueFootprint;
 		COLOR_FOOTPRINT OpaqueContrastModelCueFootprint;
 		COLOR_FOOTPRINT ElementsFootprint;
 		COLOR_FOOTPRINT FullPlayAllFootprint;
 		const bool_t bModelCueRendered = RenderIsolated(
-			"MODEL_CUE", ModelCueRenderer, ModelCuePlayback.Get_Frame(),
-			ModelCueFootprint);
+			"MODEL_CUE_NONBLEND_CHARACTER", ModelCueRenderer,
+			ModelCuePlayback.Get_Frame(), ModelCueFootprint,
+			ISOLATED_RENDER_LANE::NONBLEND_CHARACTER);
+		const bool_t bModelCueBlendExcluded = RenderIsolated(
+			"MODEL_CUE_BLEND_EXCLUSION", ModelCueRenderer,
+			ModelCuePlayback.Get_Frame(), ModelCueBlendExclusionFootprint);
 		const bool_t bGenericMaskedContrastModelCueRendered = RenderIsolated(
 			"MODEL_CUE_GENERIC_MASKED_CONTRAST",
 			GenericMaskedContrastModelCueRenderer,
@@ -13189,7 +13903,8 @@ namespace
 			ElementsFootprint);
 		const bool_t bFullPlayAllRendered = RenderIsolated(
 			"FULL_PLAY_ALL", FullPlayAllRenderer,
-			FullPlayAllPlayback.Get_Frame(), FullPlayAllFootprint);
+			FullPlayAllPlayback.Get_Frame(), FullPlayAllFootprint,
+			ISOLATED_RENDER_LANE::NONBLEND_THEN_BLEND);
 		const EFFECT_GPU_RENDER_SUBMISSION_STATS& ModelCueStats =
 			ModelCueRenderer.Get_LastRenderSubmissionStats();
 		const EFFECT_GPU_RENDER_SUBMISSION_STATS& ElementsStats =
@@ -13208,15 +13923,21 @@ namespace
 		{
 			iFullPlayAllElementSubmitted += Family.iSubmitted;
 		}
-		const bool_t bLanesSeparated = bModelCueRendered && bElementsRendered &&
+		const bool_t bLanesSeparated = bExactLaneRouting &&
+			bModelCueRendered && bModelCueBlendExcluded && bElementsRendered &&
 			0u < ModelCueFootprint.iPixelCount &&
+			ModelCueFootprint.iBoundRenderTargetCount == 5u &&
+			0u == ModelCueBlendExclusionFootprint.iPixelCount &&
+			0u == ModelCueBlendExclusionFootprint.Pipeline.IAPrimitives &&
+			ModelCueBlendExclusionFootprint.iBoundRenderTargetCount == 1u &&
 			0u == ElementsFootprint.iPixelCount &&
 			0u == iModelCueConfigured && 0u == iElementSubmitted &&
 			ModelCueStats.Occurrences.empty() &&
 			ElementsStats.Occurrences.size() == ElementsOnly.Elements.size();
 		runner.Require(bLanesSeparated,
-			"DimensionMaster T Initial 0s Isolation Proves The Visible Shape Is ModelCue-Owned And Elements Are Quiescent");
+			"DimensionMaster T Initial 0s Isolation Proves The Exact Summon Draws Only In The Five-Target NONBLEND Lane");
 		const bool_t bFullPlayAllSingleSubmit = bFullPlayAllRendered &&
+			FullPlayAllFootprint.iBoundRenderTargetCount == 5u &&
 			FullPlayAllFootprint.iPixelCount == ModelCueFootprint.iPixelCount &&
 			FullPlayAllFootprint.iMinX == ModelCueFootprint.iMinX &&
 			FullPlayAllFootprint.iMinY == ModelCueFootprint.iMinY &&
@@ -13233,23 +13954,23 @@ namespace
 			0u == iFullPlayAllElementSubmitted &&
 			FullPlayAllStats.Occurrences.size() == Unified.Elements.size();
 		runner.Require(bFullPlayAllSingleSubmit,
-			"DimensionMaster T Full Play-All Matches One ModelCue Draw Without A Second Preview Or Element Submit At 0s");
+			"DimensionMaster T Full Play-All Matches One NONBLEND Summon Draw Without A BLEND Double-Submit At 0s");
 		const bool_t bCharacterSurfaceCutout =
 			bGenericMaskedContrastModelCueRendered &&
 			bOpaqueContrastModelCueRendered &&
 			nullptr != ModelCueFootprint.PixelShader &&
 			nullptr != GenericMaskedContrastModelCueFootprint.PixelShader &&
 			nullptr != OpaqueContrastModelCueFootprint.PixelShader &&
-			ModelCueFootprint.PixelShader.Get() !=
+			ModelCueFootprint.PixelShader.Get() ==
 				GenericMaskedContrastModelCueFootprint.PixelShader.Get() &&
 			ModelCueFootprint.PixelShader.Get() !=
 				OpaqueContrastModelCueFootprint.PixelShader.Get() &&
-			ModelCueFootprint.iPixelCount <=
+			ModelCueFootprint.iPixelCount ==
 				GenericMaskedContrastModelCueFootprint.iPixelCount &&
 			ModelCueFootprint.iPixelCount <
 				OpaqueContrastModelCueFootprint.iPixelCount;
 		runner.Require(bCharacterSurfaceCutout,
-			"DimensionMaster T Uses Its Exact Source Mask Pass Instead Of The Generic Character Or Opaque Pass");
+			"DimensionMaster T Uses The Same Animated Character Mask Pass As Generic Character Surfaces");
 
 		std::string strBorderOwner = "NONE_AFTER_RETIME";
 		if (ModelCueFootprint.bTouchesFrameBorder &&
@@ -18992,13 +19713,12 @@ namespace
 			2u == serverRequestCount &&
 			!timedGate.Try_ConsumeServerRequest();
 		runner.Require(
-			CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT == 99u &&
 			CCharacterSelectArenaSpawnGate::PREWARM_TIMEOUT ==
 				std::chrono::seconds{ 30 } &&
 			prewarmDoesNotRequest && prewarmTimeoutIsRetryable &&
 			retryRestarted && exactOneRequestAfterRetry &&
 			responseTimeoutRestarts && retryAlsoRequestsOnce,
-			"Character Select Valtan Gate Sends Exactly One Request Only After 99-Target Prewarm And Restarts After Prewarm Or Response Timeout");
+			"Character Select Valtan Gate Sends Exactly One Request Only After Dynamic Target Prewarm And Restarts After Prewarm Or Response Timeout");
 
 		CCharacterSelectArenaSpawnGate immediateGate;
 		uint32_t immediateRequestCount = 0u;
@@ -19024,19 +19744,19 @@ namespace
 			playerTargets, status) &&
 			queue.Begin_Frame(queuedId) ==
 				EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED;
+		constexpr size_t BossTargetCount = 7u;
 		std::vector<std::string> bossTargets;
-		bossTargets.reserve(
-			CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT);
-		for (size_t index = 0u;
-			index < CCharacterSelectArenaSpawnGate::
-				PRODUCT_EFFECT_TARGET_COUNT;
-			++index)
+		bossTargets.reserve(BossTargetCount);
+		for (size_t index = 0u; index < BossTargetCount; ++index)
 		{
 			bossTargets.push_back(
 				"effect.valtan.contract." + std::to_string(index));
 		}
+		std::vector<std::string> bossRegistrationTargets = bossTargets;
+		bossRegistrationTargets.push_back(bossTargets.front());
+		bossRegistrationTargets.push_back(bossTargets.back());
 		bool_t bossTargetsPrepared = playerQueueRegistered &&
-			queue.Enqueue_Priority(bossTargets, status) &&
+			queue.Enqueue_Priority(bossRegistrationTargets, status) &&
 			queue.Begin_Frame(queuedId) ==
 				EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED;
 		for (const std::string& bossTarget : bossTargets)
@@ -19048,7 +19768,7 @@ namespace
 				queue.Complete_Front(queuedId, true, status);
 		}
 		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE bossProbe =
-			queue.Get_TargetProbe(bossTargets, 901u);
+			queue.Get_TargetProbe(bossRegistrationTargets, 901u);
 		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE preservedPlayerProbe =
 			queue.Get_TargetProbe(playerTargets, 901u);
 		CCharacterSelectArenaSpawnGate autoRequestGate;
@@ -19056,8 +19776,8 @@ namespace
 		const bool_t bossReadyBeforePlayerDrain =
 			autoRequestGate.Begin(true) && bossTargetsPrepared &&
 			bossProbe.bCatalogRevisionCurrent && bossProbe.bSettled &&
-			bossProbe.iTargetCount == 99u &&
-			bossProbe.iPreparedCount == 99u &&
+			bossProbe.iTargetCount == bossTargets.size() &&
+			bossProbe.iPreparedCount == bossTargets.size() &&
 			0u == bossProbe.iFailedCount &&
 			0u == bossProbe.iUnavailableCount &&
 			bossProbe.iQueuePendingCount == playerTargets.size() &&
@@ -19897,8 +20617,38 @@ namespace
 				{
 					return effectAssetId.starts_with("effect.valtan.");
 				}));
-		constexpr std::string_view inactiveAuthoringOnlyId =
-			"effect.artist.skill.31210.ba4.unified";
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT valtanCueDocument;
+		std::string valtanCueStatus;
+		const bool_t valtanCuesLoaded = catalogLoaded &&
+			CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
+				valtanCueDocument, valtanCueStatus);
+		std::set<std::string, std::less<>> valtanCueTargetIds;
+		for (const VALTAN_PATTERN_EFFECT_CUE& cue : valtanCueDocument.Cues)
+			valtanCueTargetIds.insert(cue.strEffectAssetId);
+		const bool_t everyValtanCueTargetPublished = valtanCuesLoaded &&
+			!valtanCueTargetIds.empty() &&
+			std::all_of(valtanCueTargetIds.begin(), valtanCueTargetIds.end(),
+				[](const std::string& effectAssetId)
+				{
+					return CEffectCatalog::Contains(effectAssetId);
+				});
+		if (!everyValtanCueTargetPublished ||
+			valtanRuntimeEffectCount != valtanCueTargetIds.size())
+		{
+			std::cout << "[DETAIL] Valtan dynamic catalog relation loaded=" <<
+				valtanCuesLoaded << " cues=" << valtanCueDocument.Cues.size() <<
+				" unique-targets=" << valtanCueTargetIds.size() <<
+				" catalog-valtan=" << valtanRuntimeEffectCount <<
+				" status=" << valtanCueStatus << '\n';
+		}
+		constexpr std::string_view removedLegacyArtistId =
+			"effect.artist.skill.31210.ba4";
+		constexpr std::array<std::string_view, 4u> activeArtistUnifiedIds = {{
+			"effect.artist.skill.31050.clip1.unified",
+			"effect.artist.skill.31050.clip2.unified",
+			"effect.artist.skill.31210.ba4.unified",
+			"effect.artist.skill.31950.unified"
+		}};
 		constexpr std::string_view firstId =
 			"effect.lancemaster.skill.34010.ba1.unified";
 		constexpr std::string_view secondId =
@@ -19920,13 +20670,23 @@ namespace
 				firstDocument.get() &&
 			CEffectCatalog::Find_VisualProjection_Loaded(
 				std::string(firstId)).get() == firstProjection.get();
-		runner.Require(catalogLoaded && runtimeEffectIds.size() == 192u &&
-			valtanRuntimeEffectCount == 99u &&
+		const bool_t activeArtistUnifiedExact = std::all_of(
+			activeArtistUnifiedIds.begin(), activeArtistUnifiedIds.end(),
+			[](const std::string_view effectAssetId)
+			{
+				return CEffectCatalog::Contains(std::string(effectAssetId));
+			});
+		runner.Require(catalogLoaded && valtanCuesLoaded &&
+			everyValtanCueTargetPublished &&
+			valtanRuntimeEffectCount == valtanCueTargetIds.size() &&
+			runtimeEffectIds.size() >=
+				lanceCueIds.size() + valtanCueTargetIds.size() &&
 			CEffectCatalog::Contains(std::string(firstId)) &&
 			CEffectCatalog::Contains(std::string(secondId)) &&
-			!CEffectCatalog::Contains(std::string(inactiveAuthoringOnlyId)) &&
+			activeArtistUnifiedExact &&
+			!CEffectCatalog::Contains(std::string(removedLegacyArtistId)) &&
 			cacheOnlyIdentity,
-			"Published Product Set Has 192 Runtime Members Including 99 Valtan Targets, Excludes Authoring-Only Draft, And Cache-Only Lookup Never First-Use Loads JSON");
+			"Published Product Set Dynamically Covers Every Valtan Cue Target And The Four Active Artist Unified Targets, Excludes The Replaced Legacy Artist Target, And Cache-Only Lookup Never First-Use Loads JSON");
 
 		const uint64_t beforeDirectAuthoredReplacementRevision =
 			CEffectCatalog::Get_RuntimeRevision();
@@ -30286,6 +31046,1220 @@ namespace
 				"Valtan Pattern Preview Invalid Range Preserves Prior Playlist");
 		}
 	}
+
+	struct ORDINARY_EFFECT_DRAWABLE_ELEMENT_PROOF final
+	{
+		std::string strElementId;
+		uint64_t iPreparedSamples = 0u;
+		uint64_t iAttemptedSamples = 0u;
+		uint64_t iSubmittedDraws = 0u;
+		uint64_t iSuppressedDraws = 0u;
+		uint64_t iFailedDraws = 0u;
+		uint64_t iCommittedDraws = 0u;
+	};
+
+	struct ORDINARY_EFFECT_DRAWABLE_DOCUMENT_PROOF final
+	{
+		std::filesystem::path DocumentPath;
+		std::string strEffectAssetId;
+		float fDurationSeconds = 0.f;
+		uint32_t iSampleCount = 0u;
+		std::vector<ORDINARY_EFFECT_DRAWABLE_ELEMENT_PROOF> Elements;
+	};
+
+	bool_t Read_DrawableSweepResourceRoot(
+		std::filesystem::path& OutResourceRoot,
+		std::string& strOutError)
+	{
+		const DWORD iRequired = GetEnvironmentVariableW(
+			L"LOSTARK_RESOURCE_ROOT", nullptr, 0u);
+		if (0u == iRequired)
+		{
+			strOutError =
+				"JSON drawable sweep requires LOSTARK_RESOURCE_ROOT";
+			return false;
+		}
+		std::vector<wchar_t> Buffer(static_cast<size_t>(iRequired), L'\0');
+		const DWORD iWritten = GetEnvironmentVariableW(
+			L"LOSTARK_RESOURCE_ROOT", Buffer.data(), iRequired);
+		if (0u == iWritten || iWritten >= iRequired)
+		{
+			strOutError = "unable to read LOSTARK_RESOURCE_ROOT";
+			return false;
+		}
+		OutResourceRoot = std::filesystem::path(Buffer.data());
+		std::error_code Error;
+		OutResourceRoot = std::filesystem::absolute(
+			OutResourceRoot, Error).lexically_normal();
+		if (Error || !OutResourceRoot.is_absolute() ||
+			!std::filesystem::is_directory(OutResourceRoot, Error) || Error)
+		{
+			strOutError = "LOSTARK_RESOURCE_ROOT is not an absolute directory";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Write_OrdinaryEffectDrawableSweepJson(
+		const std::filesystem::path& OutputPath,
+		const std::filesystem::path& ResourceRoot,
+		const std::vector<ORDINARY_EFFECT_DRAWABLE_DOCUMENT_PROOF>& Documents,
+		std::string& strOutError)
+	{
+		std::ostringstream Json;
+		Json << "{\n"
+			<< "  \"schema\": \"lostark.effect-document-drawable-sweep\",\n"
+			<< "  \"formatVersion\": 1,\n"
+			<< "  \"resourceRoot\": \""
+			<< Client::CDataJson::Escape(ResourceRoot.generic_string()) << "\",\n"
+			<< "  \"sampleRateHz\": 60,\n"
+			<< "  \"documents\": [\n";
+		for (size_t iDocument = 0u; iDocument < Documents.size(); ++iDocument)
+		{
+			const ORDINARY_EFFECT_DRAWABLE_DOCUMENT_PROOF& Document =
+				Documents[iDocument];
+			Json << "    {\n"
+				<< "      \"documentPath\": \""
+				<< Client::CDataJson::Escape(Document.DocumentPath.generic_string())
+				<< "\",\n"
+				<< "      \"effectAssetId\": \""
+				<< Client::CDataJson::Escape(Document.strEffectAssetId) << "\",\n"
+				<< "      \"durationSeconds\": "
+				<< std::setprecision(std::numeric_limits<float>::max_digits10)
+				<< Document.fDurationSeconds << ",\n"
+				<< "      \"sampleCount\": " << Document.iSampleCount << ",\n"
+				<< "      \"visibleElementCount\": " <<
+				Document.Elements.size() << ",\n"
+				<< "      \"preparedElementCount\": " <<
+				Document.Elements.size() << ",\n"
+				<< "      \"drawnElementCount\": " <<
+				Document.Elements.size() << ",\n"
+				<< "      \"disposition\": \"DRAWABLE_PROOF_PASS\",\n"
+				<< "      \"elements\": [\n";
+			for (size_t iElement = 0u;
+				iElement < Document.Elements.size(); ++iElement)
+			{
+				const ORDINARY_EFFECT_DRAWABLE_ELEMENT_PROOF& Element =
+					Document.Elements[iElement];
+				Json << "        {\n"
+					<< "          \"elementId\": \""
+					<< Client::CDataJson::Escape(Element.strElementId) << "\",\n"
+					<< "          \"disposition\": \"DRAWABLE_PROOF_PASS\",\n"
+					<< "          \"preparedSamples\": " <<
+					Element.iPreparedSamples << ",\n"
+					<< "          \"attemptedSamples\": " <<
+					Element.iAttemptedSamples << ",\n"
+					<< "          \"submittedDraws\": " <<
+					Element.iSubmittedDraws << ",\n"
+					<< "          \"suppressedDraws\": " <<
+					Element.iSuppressedDraws << ",\n"
+					<< "          \"failedDraws\": " <<
+					Element.iFailedDraws << ",\n"
+					<< "          \"committedDraws\": " <<
+					Element.iCommittedDraws << "\n"
+					<< "        }" <<
+					(iElement + 1u < Document.Elements.size() ? "," : "") <<
+					"\n";
+			}
+			Json << "      ]\n"
+				<< "    }" << (iDocument + 1u < Documents.size() ? "," : "")
+				<< "\n";
+		}
+		Json << "  ]\n}\n";
+
+		std::error_code Error;
+		const std::filesystem::path AbsoluteOutput =
+			std::filesystem::absolute(OutputPath, Error).lexically_normal();
+		if (Error || !AbsoluteOutput.is_absolute() ||
+			!std::filesystem::is_directory(AbsoluteOutput.parent_path(), Error) ||
+			Error)
+		{
+			strOutError =
+				"drawable sweep JSON output parent is not an absolute directory";
+			return false;
+		}
+		std::filesystem::path StagingPath = AbsoluteOutput;
+		StagingPath += L".staging." + std::to_wstring(GetCurrentProcessId());
+		std::filesystem::remove(StagingPath, Error);
+		Error.clear();
+		{
+			std::ofstream Stream(
+				StagingPath, std::ios::binary | std::ios::trunc);
+			if (!Stream)
+			{
+				strOutError = "unable to create drawable sweep JSON staging file";
+				return false;
+			}
+			const std::string Payload = Json.str();
+			Stream.write(Payload.data(), static_cast<std::streamsize>(Payload.size()));
+			Stream.flush();
+			if (!Stream)
+			{
+				Stream.close();
+				std::filesystem::remove(StagingPath, Error);
+				strOutError = "unable to flush drawable sweep JSON staging file";
+				return false;
+			}
+		}
+		if (!MoveFileExW(
+				StagingPath.c_str(), AbsoluteOutput.c_str(),
+				MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+		{
+			std::filesystem::remove(StagingPath, Error);
+			strOutError = "unable to atomically commit drawable sweep JSON";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_OrdinaryEffectDocumentsDrawableSweep(
+		const std::vector<std::filesystem::path>& Paths,
+		const std::optional<std::filesystem::path>& JsonOutputPath,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		if (Paths.empty())
+		{
+			strOutError = "ordinary Effect drawable sweep received no documents";
+			return false;
+		}
+
+		std::filesystem::path ResourceRoot;
+		if (JsonOutputPath.has_value())
+		{
+			if (!JsonOutputPath->is_absolute())
+			{
+				strOutError = "drawable sweep JSON output path must be absolute";
+				return false;
+			}
+			std::error_code OutputError;
+			const std::filesystem::path NormalizedOutput =
+				std::filesystem::absolute(
+					*JsonOutputPath, OutputError).lexically_normal();
+			if (OutputError)
+			{
+				strOutError = "unable to normalize drawable sweep JSON output path";
+				return false;
+			}
+			for (const std::filesystem::path& Path : Paths)
+			{
+				if (!Path.is_absolute())
+				{
+					strOutError =
+						"JSON drawable sweep document paths must be absolute";
+					return false;
+				}
+				std::error_code DocumentError;
+				const std::filesystem::path NormalizedDocument =
+					std::filesystem::absolute(
+						Path, DocumentError).lexically_normal();
+				if (DocumentError || NormalizedDocument == NormalizedOutput)
+				{
+					strOutError =
+						"drawable sweep JSON output collides with an input document";
+					return false;
+				}
+			}
+			if (!Read_DrawableSweepResourceRoot(ResourceRoot, strOutError))
+				return false;
+		}
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		if (!WorkingDirectory.Initialize(
+				CProjectDataRoot::Get().parent_path() / L"Client" / L"Default",
+				strOutError))
+		{
+			return false;
+		}
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		if (!EngineScope.Initialize(strOutError))
+			return false;
+		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+
+		const auto IsFiniteBlock = [](const f32_t* pValues, const size_t iCount)
+		{
+			return nullptr != pValues && std::all_of(
+				pValues, pValues + iCount,
+				[](const f32_t fValue) { return std::isfinite(fValue); });
+		};
+		const auto FrameIsFinite = [&IsFiniteBlock](
+			const EFFECT_EVALUATED_FRAME& Frame)
+		{
+			if (!std::isfinite(Frame.fSampleTimeSeconds) ||
+				!IsFiniteBlock(&Frame.RootWorld._11, 16u))
+			{
+				return false;
+			}
+			for (const EFFECT_EVALUATED_ELEMENT& Row : Frame.Elements)
+			{
+				if (nullptr == Row.pElement ||
+					!IsFiniteBlock(&Row.World._11, 16u) ||
+					!std::isfinite(Row.fLocalTimeSeconds) ||
+					!std::isfinite(Row.fNormalizedLife))
+				{
+					return false;
+				}
+			}
+			for (const EFFECT_EVALUATED_PARTICLE& Row : Frame.Particles)
+			{
+				if (nullptr == Row.pElement ||
+					!IsFiniteBlock(&Row.World._11, 16u) ||
+					!IsFiniteBlock(&Row.Color.x, 4u) ||
+					!IsFiniteBlock(&Row.vWorldVelocity.x, 3u) ||
+					!std::isfinite(Row.fNormalizedLife))
+				{
+					return false;
+				}
+			}
+			for (const EFFECT_EVALUATED_TRAIL& Trail : Frame.Trails)
+			{
+				if (nullptr == Trail.pElement)
+					return false;
+				for (const EFFECT_EVALUATED_TRAIL_POINT& Point : Trail.Points)
+				{
+					if (!IsFiniteBlock(&Point.vWorldPosition.x, 3u) ||
+						!std::isfinite(Point.fNormalizedAge) ||
+						!std::isfinite(Point.fCumulativeDistance))
+					{
+						return false;
+					}
+				}
+			}
+			return true;
+		};
+
+		std::vector<ORDINARY_EFFECT_DRAWABLE_DOCUMENT_PROOF> DocumentProofs;
+		DocumentProofs.reserve(Paths.size());
+		for (const std::filesystem::path& Path : Paths)
+		{
+			EFFECT_DOCUMENT_DESC Document;
+			if (!CEffectDocumentCodec::Load(Path, Document, strOutError) ||
+				!CEffectDocumentCodec::Validate_Drawable(Document, strOutError))
+			{
+				strOutError = Path.string() + ": " + strOutError;
+				return false;
+			}
+			std::unordered_set<std::string> ExpectedElementIds;
+			ORDINARY_EFFECT_DRAWABLE_DOCUMENT_PROOF DocumentProof;
+			std::error_code AbsoluteError;
+			DocumentProof.DocumentPath = std::filesystem::absolute(
+				Path, AbsoluteError).lexically_normal();
+			DocumentProof.strEffectAssetId = Document.strEffectAssetId;
+			if (AbsoluteError || !DocumentProof.DocumentPath.is_absolute())
+			{
+				strOutError = Path.string() +
+					": unable to normalize document path";
+				return false;
+			}
+			std::unordered_map<std::string, size_t> ElementProofIndexes;
+			for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+			{
+				if (Element.bVisible)
+				{
+					if (!ExpectedElementIds.insert(Element.strElementId).second)
+					{
+						strOutError = Path.string() +
+							": visible element ID is duplicated";
+						return false;
+					}
+					ElementProofIndexes.emplace(
+						Element.strElementId, DocumentProof.Elements.size());
+					DocumentProof.Elements.push_back({ Element.strElementId });
+				}
+			}
+			if (ExpectedElementIds.empty())
+			{
+				strOutError = Path.string() +
+					": drawable document has no visible element";
+				return false;
+			}
+
+			CEffectPlayback Playback;
+			CEffectDocumentRenderer Renderer(Device, Context);
+			if (FAILED(Renderer.Initialize()) ||
+				!Playback.Stage_Document(Document, strOutError) ||
+				!Renderer.Stage_Document(Document, strOutError))
+			{
+				strOutError = Path.string() + ": " + strOutError;
+				return false;
+			}
+			const f32_t fDurationSeconds = Playback.Get_DurationSeconds();
+			if (!std::isfinite(fDurationSeconds) || fDurationSeconds <= 0.f ||
+				fDurationSeconds > 60.f)
+			{
+				strOutError = Path.string() +
+					": ordinary Effect duration is invalid or unbounded";
+				return false;
+			}
+
+			std::unordered_set<std::string> PreparedElementIds;
+			std::unordered_set<std::string> SubmittedElementIds;
+			bool_t bInvalidDrawSelection = false;
+			const uint32_t iSampleCount = static_cast<uint32_t>(
+				std::ceil(fDurationSeconds * 60.f)) + 1u;
+			for (uint32_t iSample = 0u; iSample <= iSampleCount; ++iSample)
+			{
+				const f32_t fSampleSeconds = (std::min)(
+					fDurationSeconds,
+					static_cast<f32_t>(iSample) / 60.f);
+				Playback.Seek(fSampleSeconds, Identity);
+				if (!FrameIsFinite(Playback.Get_Frame()) ||
+					!EngineScope.Begin_Frame(strOutError))
+				{
+					strOutError = Path.string() + ": " + strOutError;
+					return false;
+				}
+				const HRESULT hRender = Renderer.Render(Playback.Get_Frame());
+				Context->Flush();
+				const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+					Renderer.Get_LastRenderSubmissionStats();
+				if (FAILED(hRender) || S_OK != Device->GetDeviceRemovedReason() ||
+					!Stats.bCompleted || !Stats.bCommitted)
+				{
+					strOutError = Path.string() +
+						": renderer did not transactionally commit a sweep sample";
+					return false;
+				}
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+				std::unordered_set<std::string> SamplePreparedElementIds;
+				std::unordered_set<std::string> SampleAttemptedElementIds;
+				for (const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row :
+					Stats.Occurrences)
+				{
+					const auto ProofIndex =
+						ElementProofIndexes.find(Row.strElementId);
+					if (ProofIndex == ElementProofIndexes.end())
+						continue;
+					ORDINARY_EFFECT_DRAWABLE_ELEMENT_PROOF& ElementProof =
+						DocumentProof.Elements[ProofIndex->second];
+					if (0u < Row.iConfigured)
+					{
+						PreparedElementIds.insert(Row.strElementId);
+						SamplePreparedElementIds.insert(Row.strElementId);
+					}
+					if (0u < Row.iAttempted)
+						SampleAttemptedElementIds.insert(Row.strElementId);
+					ElementProof.iSubmittedDraws += Row.iSubmitted;
+					ElementProof.iSuppressedDraws += Row.iSuppressed;
+					ElementProof.iFailedDraws += Row.iFailed;
+					ElementProof.iCommittedDraws += Row.iIssuedDrawCallCount;
+					if (0u < Row.iSubmitted && 0u < Row.iIssuedDrawCallCount &&
+						UINT32_MAX != Row.iSelectedPassIndex &&
+						!Row.bSourceMaterialFallbackBlocked &&
+						!Row.bDrawSelectionDiverged)
+					{
+						SubmittedElementIds.insert(Row.strElementId);
+					}
+					else if (0u < Row.iSubmitted || 0u < Row.iIssuedDrawCallCount)
+					{
+						bInvalidDrawSelection = true;
+					}
+				}
+				for (const std::string& ElementId : SamplePreparedElementIds)
+					++DocumentProof.Elements[
+						ElementProofIndexes.at(ElementId)].iPreparedSamples;
+				for (const std::string& ElementId : SampleAttemptedElementIds)
+					++DocumentProof.Elements[
+						ElementProofIndexes.at(ElementId)].iAttemptedSamples;
+#else
+				strOutError =
+					"ordinary Effect drawable sweep requires execution diagnostics";
+				return false;
+#endif
+			}
+			const auto MissingFrom = [](const auto& Expected, const auto& Observed)
+			{
+				return std::find_if(Expected.begin(), Expected.end(),
+					[&Observed](const std::string& Id)
+					{
+						return !Observed.contains(Id);
+					});
+			};
+			const auto MissingPrepared = MissingFrom(
+				ExpectedElementIds, PreparedElementIds);
+			const auto MissingSubmitted = MissingFrom(
+				ExpectedElementIds, SubmittedElementIds);
+			const auto FailedElement = std::find_if(
+				DocumentProof.Elements.begin(), DocumentProof.Elements.end(),
+				[](const ORDINARY_EFFECT_DRAWABLE_ELEMENT_PROOF& Element)
+				{
+					return 0u == Element.iPreparedSamples ||
+						0u == Element.iAttemptedSamples ||
+						0u == Element.iSubmittedDraws ||
+						0u == Element.iCommittedDraws ||
+						0u != Element.iFailedDraws;
+				});
+			if (MissingPrepared != ExpectedElementIds.end() ||
+				MissingSubmitted != ExpectedElementIds.end() ||
+				bInvalidDrawSelection || FailedElement != DocumentProof.Elements.end())
+			{
+				const std::string FailedId =
+					MissingPrepared != ExpectedElementIds.end() ? *MissingPrepared :
+					MissingSubmitted != ExpectedElementIds.end() ? *MissingSubmitted :
+					FailedElement != DocumentProof.Elements.end() ?
+						FailedElement->strElementId : "invalid-draw-selection";
+				strOutError = Path.string() +
+					": element did not prepare/draw transactionally: " + FailedId;
+				return false;
+			}
+			DocumentProof.fDurationSeconds = fDurationSeconds;
+			DocumentProof.iSampleCount = iSampleCount + 1u;
+			DocumentProofs.push_back(std::move(DocumentProof));
+			std::cout << Path.string() << "\tprepared=" <<
+				PreparedElementIds.size() << "\tdrawn=" <<
+				SubmittedElementIds.size() << "\tsamples=" <<
+				(iSampleCount + 1u) << '\n';
+		}
+		if (JsonOutputPath.has_value() &&
+			!Write_OrdinaryEffectDrawableSweepJson(
+				*JsonOutputPath, ResourceRoot, DocumentProofs, strOutError))
+		{
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
+	void Test_EffectToolPlayerPreviewCueResolution(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view BA1_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050010.ba1.unified";
+		constexpr std::string_view BA3_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050010.ba3.unified";
+		constexpr std::array<std::string_view, 4u> BA_CLIPS = {{
+			"pc_sp_m_00_sk_att_battle_1_01",
+			"pc_sp_m_00_sk_att_battle_1_02",
+			"pc_sp_m_00_sk_att_battle_1_03",
+			"pc_sp_m_00_sk_att_battle_1_04"
+		}};
+
+		std::string Status;
+		ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+		const std::filesystem::path BindingPath =
+			CAnimationSkillBindingDocument::Resolve_Path("DimensionMaster");
+		const bool_t bBindingParsed =
+			CAnimationSkillBindingDocument::Parse_Text(
+				Read_Text(BindingPath), Bindings, Status);
+		const auto Binding = std::find_if(
+			Bindings.Bindings.begin(), Bindings.Bindings.end(),
+			[](const ANIMATION_SKILL_BINDING& Candidate)
+			{
+				return 2050010u == Candidate.iSkillId;
+			});
+		bool_t bBindingExact = bBindingParsed &&
+			Binding != Bindings.Bindings.end() &&
+			Binding->Stages.size() == BA_CLIPS.size();
+		if (bBindingExact)
+		{
+			for (size_t iStage = 0u; iStage < BA_CLIPS.size(); ++iStage)
+			{
+				bBindingExact = bBindingExact &&
+					Binding->Stages[iStage].Clips.size() == 1u &&
+					Binding->Stages[iStage].Clips.front().strClipName ==
+						BA_CLIPS[iStage];
+			}
+		}
+		runner.Require(bBindingExact,
+			"Effect Tool Preview Loads The Four Ordered DimensionMaster BA Clips");
+		if (!bBindingExact)
+			return;
+
+		const std::filesystem::path CuePath = CProjectDataRoot::Resolve(
+			L"Animation/Authored/DimensionMaster/DimensionMaster.animevents");
+		const std::string CueText = Read_Text(CuePath);
+		ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+		constexpr std::array<std::string_view, 4u> BA_EFFECT_IDS = {{
+			BA1_EFFECT_ID, BA1_EFFECT_ID, BA3_EFFECT_ID, BA1_EFFECT_ID
+		}};
+		bool_t bCueTupleExact = !CueText.empty();
+		for (size_t iStage = 0u; iStage < BA_CLIPS.size(); ++iStage)
+		{
+			const std::string Needle = "\"" + std::string(BA_CLIPS[iStage]) +
+				"\" EFFECT startms=0 payload=\"" +
+				std::string(BA_EFFECT_IDS[iStage]) +
+				"\" effectref=asset anchor=\"root\" follow=follow "
+				"stop=natural";
+			size_t iCount = 0u;
+			for (size_t iPosition = 0u;
+				std::string::npos !=
+					(iPosition = CueText.find(Needle, iPosition));
+				iPosition += Needle.size())
+			{
+				++iCount;
+			}
+			bCueTupleExact = bCueTupleExact && 1u == iCount;
+			ANIMATION_EFFECT_CUE Cue;
+			Cue.strClipName = BA_CLIPS[iStage];
+			Cue.strEffectAssetId = BA_EFFECT_IDS[iStage];
+			Cue.iStartMs = 0u;
+			Cue.iEndMs = 0u;
+			Cue.strAnchorSlotId = "root";
+			CueDocument.Cues.push_back(std::move(Cue));
+		}
+		runner.Require(bCueTupleExact,
+			"Effect Tool Preview Reads The Exact BA1 BA1 BA3 BA1 Product Cue Tuple");
+
+		std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Ba1Candidates;
+		const bool_t bBa1Resolved =
+			CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+				*Binding, CueDocument.Cues, BA1_EFFECT_ID,
+				Ba1Candidates, Status);
+		constexpr std::array<size_t, 3u> BA1_STAGES = {{ 0u, 1u, 3u }};
+		bool_t bBa1Exact = bBa1Resolved &&
+			Ba1Candidates.size() == BA1_STAGES.size();
+		for (size_t iCandidate = 0u;
+			bBa1Exact && iCandidate < BA1_STAGES.size(); ++iCandidate)
+		{
+			const size_t iStage = BA1_STAGES[iCandidate];
+			const ANIMATION_EFFECT_PREVIEW_CANDIDATE& Candidate =
+				Ba1Candidates[iCandidate];
+			bBa1Exact = Candidate.iBoundClipOrdinal == iStage &&
+				Candidate.iStageIndex == iStage &&
+				0u == Candidate.iStageClipIndex &&
+				Candidate.Clip.strClipName == BA_CLIPS[iStage] &&
+				Candidate.Cue.strClipName == BA_CLIPS[iStage] &&
+				0u == Candidate.Cue.iStartMs &&
+				Candidate.Cue.strEffectAssetId == BA1_EFFECT_ID;
+		}
+		runner.Require(bBa1Exact,
+			"Effect Tool Preview Resolves BA1 Unified To BA1 BA2 And BA4 Without Chaining Them");
+
+		std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Ba3Candidates;
+		const bool_t bBa3Resolved =
+			CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+				*Binding, CueDocument.Cues, BA3_EFFECT_ID,
+				Ba3Candidates, Status);
+		const bool_t bBa3Exact = bBa3Resolved &&
+			1u == Ba3Candidates.size() &&
+			2u == Ba3Candidates.front().iBoundClipOrdinal &&
+			2u == Ba3Candidates.front().iStageIndex &&
+			0u == Ba3Candidates.front().iStageClipIndex &&
+			Ba3Candidates.front().Clip.strClipName == BA_CLIPS[2u] &&
+			Ba3Candidates.front().Cue.strClipName == BA_CLIPS[2u] &&
+			0u == Ba3Candidates.front().Cue.iStartMs &&
+			Ba3Candidates.front().Cue.strEffectAssetId == BA3_EFFECT_ID;
+		runner.Require(bBa3Exact,
+			"Effect Tool Preview Resolves BA3 Unified To Only The BA3 Clip");
+
+		std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Preserved =
+			Ba3Candidates;
+		const bool_t bUnmappedRejected =
+			!CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+				*Binding, CueDocument.Cues,
+				"effect.dimensionmaster.skill.2050010.ba2.unified",
+				Preserved, Status) &&
+			Preserved.size() == Ba3Candidates.size() &&
+			!Preserved.empty() &&
+			Preserved.front().iStageIndex == Ba3Candidates.front().iStageIndex &&
+			Preserved.front().Cue.strEffectAssetId ==
+				Ba3Candidates.front().Cue.strEffectAssetId;
+		runner.Require(bUnmappedRejected,
+			"Effect Tool Preview Rejects An Unmapped Authored BA Document Without Replacing The Prior Selection");
+	}
+
+	void Test_AnimationEffectCuePartialCatalogIsolation(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view VALID_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050010.ba1.unified";
+		constexpr std::string_view MISSING_EFFECT_ID =
+			"effect.harness.intentionally-missing.unified";
+		const std::string CueText =
+			"LOSTARK_ANIM_EVENTS 5 \"CueIsolationFixture\" 2\n"
+			"\"clip.valid\" EFFECT startms=0 payload=\"" +
+			std::string(VALID_EFFECT_ID) +
+			"\" effectref=asset anchor=\"root\" follow=follow stop=natural "
+			"px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1\n"
+			"\"clip.missing\" EFFECT startms=0 payload=\"" +
+			std::string(MISSING_EFFECT_ID) +
+			"\" effectref=asset anchor=\"root\" follow=follow stop=natural "
+			"px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1\n";
+		const std::vector<std::string> AvailableClips = {
+			"clip.valid", "clip.missing" };
+		ANIMATION_EFFECT_CUE_DOCUMENT Document;
+		std::string Status;
+		const bool_t bLoaded =
+			CEffectCatalog::Contains(std::string(VALID_EFFECT_ID)) &&
+			!CEffectCatalog::Contains(std::string(MISSING_EFFECT_ID)) &&
+			CAnimationEffectCueDocument::Load_FromText(
+				"CueIsolationFixture", CueText, AvailableClips,
+				Document, Status, true);
+		const bool_t bExactIsolation = bLoaded &&
+			1u == Document.Cues.size() &&
+			Document.Cues.front().strClipName == "clip.valid" &&
+			Document.Cues.front().strEffectAssetId == VALID_EFFECT_ID &&
+			1u == Document.UnavailableEffectAssetIds.size() &&
+			Document.UnavailableEffectAssetIds.front() == MISSING_EFFECT_ID &&
+			Status.find("Isolated 1 unavailable exact catalog target") !=
+				std::string::npos;
+		runner.Require(bExactIsolation,
+			"Animation Effect Cue Load Isolates One Missing Target Without Discarding A Valid Sibling Cue");
+
+		const std::string MissingRow =
+			"\"clip.missing\" EFFECT startms=0 payload=\"" +
+			std::string(MISSING_EFFECT_ID) +
+			"\" effectref=asset anchor=\"root\" follow=follow stop=natural "
+			"px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1\n";
+		const std::string DuplicateMissingText =
+			"LOSTARK_ANIM_EVENTS 5 \"CueDuplicateFixture\" 2\n" +
+			MissingRow + MissingRow;
+		ANIMATION_EFFECT_CUE_DOCUMENT Preserved = Document;
+		const bool_t bDuplicateMissingRejected =
+			!CAnimationEffectCueDocument::Load_FromText(
+				"CueDuplicateFixture", DuplicateMissingText,
+				{ "clip.missing" }, Preserved, Status, true) &&
+			Status == "Duplicate Animation EFFECT cue." &&
+			Preserved.Cues.size() == Document.Cues.size() &&
+			Preserved.Cues.front().strEffectAssetId ==
+				Document.Cues.front().strEffectAssetId &&
+			Preserved.UnavailableEffectAssetIds ==
+				Document.UnavailableEffectAssetIds;
+		runner.Require(bDuplicateMissingRejected,
+			"Animation Effect Cue Load Rejects Duplicate Missing Targets And Preserves The Prior Document");
+	}
+
+	void Test_EffectToolArtistBasicAttackCueResolution(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr uint32_t ARTIST_BASIC_ATTACK_SKILL_ID = 31000u;
+		constexpr std::array<std::string_view, 4u> ORDERED_CLIPS = {{
+			"sdm_att_battle_1_03",
+			"sdm_att_battle_1_02",
+			"sdm_att_battle_1_01",
+			"sdm_att_battle_1_04"
+		}};
+		constexpr std::array<std::string_view, 4u> ORDERED_EFFECTS = {{
+			"effect.artist.skill.31000.ba1.unified",
+			"effect.artist.skill.31000.ba2.unified",
+			"effect.artist.skill.31000.ba3.unified",
+			"effect.artist.skill.31000.ba4.unified"
+		}};
+
+		std::string Status;
+		ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+		const bool_t bBindingParsed =
+			CAnimationSkillBindingDocument::Parse_Text(
+				Read_Text(CAnimationSkillBindingDocument::Resolve_Path("Artist")),
+				Bindings, Status);
+		const auto Binding = std::find_if(
+			Bindings.Bindings.begin(), Bindings.Bindings.end(),
+			[](const ANIMATION_SKILL_BINDING& Candidate)
+			{
+				return ARTIST_BASIC_ATTACK_SKILL_ID == Candidate.iSkillId;
+			});
+		bool_t bBindingExact = bBindingParsed &&
+			Binding != Bindings.Bindings.end() &&
+			Binding->Stages.size() == ORDERED_CLIPS.size();
+		for (size_t iStage = 0u;
+			bBindingExact && iStage < ORDERED_CLIPS.size(); ++iStage)
+		{
+			bBindingExact = 1u == Binding->Stages[iStage].Clips.size() &&
+				Binding->Stages[iStage].Clips.front().strClipName ==
+					ORDERED_CLIPS[iStage];
+		}
+		runner.Require(bBindingExact,
+			"Effect Tool Artist BA Binding Preserves Ordered Clips 03 02 01 04");
+		if (!bBindingExact)
+			return;
+
+		ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+		const bool_t bCueDocumentLoaded =
+			CAnimationEffectCueDocument::Load_ForProductPrewarm(
+				"Artist", CueDocument, Status);
+		bool_t bExactPreviewCandidates = bCueDocumentLoaded;
+		for (size_t iStage = 0u;
+			bExactPreviewCandidates && iStage < ORDERED_EFFECTS.size(); ++iStage)
+		{
+			std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Candidates;
+			bExactPreviewCandidates =
+				CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+					*Binding, CueDocument.Cues, ORDERED_EFFECTS[iStage],
+					Candidates, Status) &&
+				1u == Candidates.size() &&
+				Candidates.front().iBoundClipOrdinal == iStage &&
+				Candidates.front().iStageIndex == iStage &&
+				0u == Candidates.front().iStageClipIndex &&
+				Candidates.front().Clip.strClipName == ORDERED_CLIPS[iStage] &&
+				Candidates.front().Cue.strClipName == ORDERED_CLIPS[iStage] &&
+				Candidates.front().Cue.strEffectAssetId == ORDERED_EFFECTS[iStage] &&
+				0u == Candidates.front().Cue.iStartMs;
+		}
+		runner.Require(bExactPreviewCandidates,
+			"Effect Tool Artist BA1 BA2 BA3 BA4 Resolve To Exactly One Ordered Stage Each");
+	}
+
+	void Test_FourClassAnimationEffectCueCatalogParity(
+		TEST_RUNNER& runner,
+		const bool_t bRequireCompleteParity)
+	{
+		using namespace Client;
+		constexpr std::array<std::string_view, 4u> CLASS_ASSETS = {{
+			"LanceMaster", "Artist", "DimensionMaster", "Warlord"
+		}};
+		constexpr std::array<std::string_view, 4u> TRANSITIONAL_ARTIST_MISSING = {{
+			"effect.artist.skill.31050.clip1.unified",
+			"effect.artist.skill.31050.clip2.unified",
+			"effect.artist.skill.31210.ba4.unified",
+			"effect.artist.skill.31950.unified"
+		}};
+		constexpr std::array<std::pair<std::string_view, std::string_view>, 4u>
+			ARTIST_BA_CUES = {{
+				{ "sdm_att_battle_1_03",
+					"effect.artist.skill.31000.ba1.unified" },
+				{ "sdm_att_battle_1_02",
+					"effect.artist.skill.31000.ba2.unified" },
+				{ "sdm_att_battle_1_01",
+					"effect.artist.skill.31000.ba3.unified" },
+				{ "sdm_att_battle_1_04",
+					"effect.artist.skill.31000.ba4.unified" }
+			}};
+
+		bool_t bAllDocumentsLoaded = true;
+		bool_t bOnlyKnownTransitionalGap = true;
+		bool_t bCompleteParity = true;
+		bool_t bArtistBaExact = false;
+		std::string Diagnostics;
+		for (const std::string_view ClassAsset : CLASS_ASSETS)
+		{
+			ANIMATION_EFFECT_CUE_DOCUMENT Document;
+			std::string Status;
+			const bool_t bLoaded =
+				CAnimationEffectCueDocument::Load_ForProductPrewarm(
+					std::string(ClassAsset), Document, Status);
+			bAllDocumentsLoaded = bAllDocumentsLoaded && bLoaded;
+			if (!bLoaded)
+			{
+				Diagnostics += std::string(ClassAsset) + ": " + Status + "; ";
+				continue;
+			}
+
+			bCompleteParity = bCompleteParity &&
+				Document.UnavailableEffectAssetIds.empty();
+			if (ClassAsset != "Artist")
+			{
+				bOnlyKnownTransitionalGap = bOnlyKnownTransitionalGap &&
+					Document.UnavailableEffectAssetIds.empty();
+			}
+			else
+			{
+				const std::vector<std::string> ExpectedMissing(
+					TRANSITIONAL_ARTIST_MISSING.begin(),
+					TRANSITIONAL_ARTIST_MISSING.end());
+				bOnlyKnownTransitionalGap = bOnlyKnownTransitionalGap &&
+					(Document.UnavailableEffectAssetIds.empty() ||
+					 Document.UnavailableEffectAssetIds == ExpectedMissing);
+
+				bArtistBaExact = true;
+				for (const auto& [ClipName, EffectAssetId] : ARTIST_BA_CUES)
+				{
+					const size_t iMatchCount = static_cast<size_t>(
+						std::count_if(Document.Cues.begin(), Document.Cues.end(),
+							[ClipName, EffectAssetId](
+								const ANIMATION_EFFECT_CUE& Cue)
+							{
+								return Cue.strClipName == ClipName &&
+									Cue.strEffectAssetId == EffectAssetId &&
+									0u == Cue.iStartMs;
+							}));
+					bArtistBaExact = bArtistBaExact && 1u == iMatchCount;
+				}
+			}
+		}
+
+		runner.Require(bAllDocumentsLoaded && bOnlyKnownTransitionalGap,
+			"Four-Class Animevents Load Commits Valid Cues And Isolates Only The Known Artist Runtime Publish Gap");
+		runner.Require(bArtistBaExact,
+			"Artist BA1 BA2 BA3 BA4 Product Cues Survive An Unrelated Missing Exact Target");
+		if (bRequireCompleteParity)
+		{
+			runner.Require(bCompleteParity,
+				"Four-Class Animevents Exact Effect Targets Have Complete Runtime Catalog Parity");
+		}
+		if (!Diagnostics.empty())
+			std::cout << "[DETAIL] " << Diagnostics << '\n';
+	}
+
+	void Test_EffectToolWarlordHoldPhaseFamily(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+		constexpr SKILL_ID FULL_BARREL_SKILL_ID = 17240u;
+		constexpr std::array<std::string_view, 5u> PHASE_CLIPS = {{
+			"wgl_sk_eternalcyclone_01",
+			"wgl_sk_eternalcyclone_02",
+			"wgl_sk_eternalcyclone_03",
+			"wgl_sk_eternalcyclone_04",
+			"wgl_sk_eternalcyclone_07"
+		}};
+		constexpr std::array<std::string_view, 3u> PRODUCT_EFFECTS = {{
+			"effect.warlord.skill.17240.ba1.unified",
+			"effect.warlord.skill.17240.ba2.unified",
+			"effect.warlord.skill.17240.ba3.unified"
+		}};
+
+		std::string Status;
+		const bool_t bCatalogLoaded = CPlayerSkillCatalog::Load(Status);
+		const PLAYER_SKILL_DEFINITION* pSkill = bCatalogLoaded ?
+			CPlayerSkillCatalog::Find_ById(FULL_BARREL_SKILL_ID) : nullptr;
+		runner.Require(nullptr != pSkill &&
+			pSkill->eCharacterClass == CHARACTER_CLASS_ID::WARLORD &&
+			pSkill->strInputSlot == "T" &&
+			pSkill->eSkillKind == PLAYER_SKILL_KIND::HOLD &&
+			3u == pSkill->iComboStageCount,
+			"Effect Tool Warlord Full Barrel Uses T And Three Server HOLD Phases");
+		if (nullptr == pSkill)
+			return;
+
+		ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+		const bool_t bBindingParsed =
+			CAnimationSkillBindingDocument::Parse_Text(
+				Read_Text(CAnimationSkillBindingDocument::Resolve_Path("Warlord")),
+				Bindings, Status);
+		const auto Binding = std::find_if(Bindings.Bindings.begin(),
+			Bindings.Bindings.end(), [](const ANIMATION_SKILL_BINDING& Candidate)
+			{
+				return FULL_BARREL_SKILL_ID == Candidate.iSkillId;
+			});
+		const bool_t bExactHoldChain = bBindingParsed &&
+			Binding != Bindings.Bindings.end() && 3u == Binding->Stages.size() &&
+			1u == Binding->Stages[0u].Clips.size() &&
+			Binding->Stages[0u].Clips[0u].strClipName == PHASE_CLIPS[0u] &&
+			3u == Binding->Stages[1u].Clips.size() &&
+			Binding->Stages[1u].Clips[0u].strClipName == PHASE_CLIPS[1u] &&
+			300u == Binding->Stages[1u].Clips[0u].iPlayMs &&
+			Binding->Stages[1u].Clips[1u].strClipName == PHASE_CLIPS[2u] &&
+			300u == Binding->Stages[1u].Clips[1u].iPlayMs &&
+			Binding->Stages[1u].Clips[2u].strClipName == PHASE_CLIPS[3u] &&
+			0u == Binding->Stages[1u].Clips[2u].iPlayMs &&
+			1u == Binding->Stages[2u].Clips.size() &&
+			Binding->Stages[2u].Clips[0u].strClipName == PHASE_CLIPS[4u];
+		runner.Require(bExactHoldChain,
+			"Effect Tool Warlord HOLD Family Preserves Start Charge Chain And Release Clips");
+		if (!bExactHoldChain)
+			return;
+
+		constexpr std::array<EFFECT_TOOL_SKILL_PHASE_ROLE, 3u> PHASE_ROLES = {{
+			EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_START,
+			EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_CHARGE,
+			EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_RELEASE
+		}};
+		bool_t bPhaseRolesExact = true;
+		for (size_t iStage = 0u; iStage < PHASE_ROLES.size(); ++iStage)
+		{
+			bPhaseRolesExact = bPhaseRolesExact &&
+				Resolve_EffectToolSkillPhaseRole(PLAYER_SKILL_KIND::HOLD,
+					iStage, PHASE_ROLES.size()) == PHASE_ROLES[iStage];
+		}
+		runner.Require(bPhaseRolesExact &&
+			EffectToolSkillPhaseRoleLabel(PHASE_ROLES[0u]) == "Hold Start" &&
+			EffectToolSkillPhaseRoleLabel(PHASE_ROLES[1u]) == "Hold Charge" &&
+			EffectToolSkillPhaseRoleLabel(PHASE_ROLES[2u]) == "Hold Release" &&
+			Resolve_EffectToolSkillPhaseRole(
+				PLAYER_SKILL_KIND::COMBO, 2u, 4u) ==
+					EFFECT_TOOL_SKILL_PHASE_ROLE::BASIC_ATTACK &&
+			Resolve_EffectToolSkillPhaseRole(
+				PLAYER_SKILL_KIND::ACTIVE, 0u, 1u) ==
+					EFFECT_TOOL_SKILL_PHASE_ROLE::EFFECT,
+			"Effect Tool Labels Warlord HOLD Family Start Charge Release Instead Of BA");
+
+		const std::filesystem::path CuePath = CProjectDataRoot::Resolve(
+			L"Animation/Authored/Warlord/Warlord.animevents");
+		const std::string CueText = Read_Text(CuePath);
+		constexpr std::array<std::string_view, 3u> PRODUCT_CLIPS = {{
+			PHASE_CLIPS[0u], PHASE_CLIPS[1u], PHASE_CLIPS[4u]
+		}};
+		bool_t bPhaseCuesExact = !CueText.empty();
+		for (size_t iStage = 0u; iStage < PRODUCT_EFFECTS.size(); ++iStage)
+		{
+			const std::string Needle = "\"" +
+				std::string(PRODUCT_CLIPS[iStage]) +
+				"\" EFFECT startms=0 payload=\"" +
+				std::string(PRODUCT_EFFECTS[iStage]) +
+				"\" effectref=asset anchor=\"root\" follow=follow "
+				"stop=natural";
+			size_t iMatches = 0u;
+			for (size_t iPosition = 0u;
+				std::string::npos !=
+					(iPosition = CueText.find(Needle, iPosition));
+				iPosition += Needle.size())
+			{
+				++iMatches;
+			}
+			bPhaseCuesExact = bPhaseCuesExact && 1u == iMatches;
+		}
+		runner.Require(bPhaseCuesExact,
+			"Effect Tool Warlord HOLD Family Keeps Three Phase Local Product Cues");
+
+		ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+		const bool_t bCueDocumentLoaded =
+			CAnimationEffectCueDocument::Load_ForProductPrewarm(
+				"Warlord", CueDocument, Status);
+		bool_t bExactPhasePreview = bCueDocumentLoaded;
+		constexpr std::array<size_t, 3u> PRODUCT_STAGES = {{ 0u, 1u, 2u }};
+		for (size_t iPhase = 0u;
+			bExactPhasePreview && iPhase < PRODUCT_EFFECTS.size(); ++iPhase)
+		{
+			std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Candidates;
+			bExactPhasePreview =
+				CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+					*Binding, CueDocument.Cues, PRODUCT_EFFECTS[iPhase],
+					Candidates, Status) &&
+				1u == Candidates.size() &&
+				Candidates.front().iStageIndex == PRODUCT_STAGES[iPhase] &&
+				0u == Candidates.front().iStageClipIndex &&
+				Candidates.front().Clip.strClipName == PRODUCT_CLIPS[iPhase] &&
+				Candidates.front().Cue.strClipName == PRODUCT_CLIPS[iPhase] &&
+				Candidates.front().Cue.strEffectAssetId ==
+					PRODUCT_EFFECTS[iPhase];
+		}
+		runner.Require(bExactPhasePreview,
+			"Effect Tool Warlord Full Barrel Resolves BA1 BA2 BA3 To Start Charge Release Clips Individually");
+	}
+
+	void Test_DimensionMasterAVoronoiCastDirectionContract(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view A_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050210.unified";
+		constexpr std::string_view Q_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050100.unified";
+		constexpr std::string_view A_VORONOI_SOURCE =
+			"fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1."
+			"particlespriteemitter_30";
+		constexpr std::string_view A_SLASH_SOURCE =
+			"fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1."
+			"particlespriteemitter_15";
+		constexpr std::string_view Q_VORONOI_SOURCE =
+			"fx_pc_swp_00.par_j_swp_nailstrike_00_2."
+			"particlespriteemitter_35";
+		constexpr std::string_view Q_SLASH_SOURCE =
+			"fx_pc_swp_00.par_j_swp_nailstrike_00_2."
+			"particlespriteemitter_31";
+		constexpr std::array<f32_t, 4u> A_TIMES =
+			{{ 0.25f, 0.60f, 0.90f, 1.30f }};
+		constexpr std::array<float3_t, 4u> A_VORONOI_POSITIONS = {{
+			{ 0.5f, -0.9f, 0.5f },
+			{ 0.5f, 0.8f, 0.5f },
+			{ 0.5f, -0.9f, -0.3f },
+			{ 0.5f, -0.8f, -0.6f }
+		}};
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path ResourceRoot =
+			ResourceRootEnvironment.Was_Defined() &&
+			!ResourceRootEnvironment.Get_OriginalValue().empty() ?
+				std::filesystem::path(
+					ResourceRootEnvironment.Get_OriginalValue()) :
+				CProjectDataRoot::Get().parent_path() /
+					L"Client" / L"Bin" / L"Resources";
+		std::error_code ResourceError;
+		const bool_t bResourceRootReady =
+			std::filesystem::is_directory(ResourceRoot, ResourceError) &&
+			!ResourceError && ResourceRootEnvironment.Set(ResourceRoot.c_str());
+		runner.Require(bResourceRootReady,
+			"DimensionMaster A And Q Resolve The Production Resource Root");
+		if (!bResourceRootReady)
+			return;
+
+		std::string Status;
+		EFFECT_DOCUMENT_DESC ADocument;
+		EFFECT_DOCUMENT_DESC QDocument;
+		const std::filesystem::path APath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050210."
+			L"unified.effect.json");
+		const std::filesystem::path QPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050100."
+			L"unified.effect.json");
+		const bool_t bLoaded = !APath.empty() && !QPath.empty() &&
+			CEffectDocumentCodec::Load(APath, ADocument, Status) &&
+			CEffectDocumentCodec::Load(QPath, QDocument, Status);
+		runner.Require(bLoaded && ADocument.strEffectAssetId == A_EFFECT_ID &&
+			QDocument.strEffectAssetId == Q_EFFECT_ID &&
+			ADocument.strEffectAssetId != QDocument.strEffectAssetId,
+			"DimensionMaster A And Q Keep Separate Authored Document Identities");
+		if (!bLoaded)
+		{
+			std::cout << "[DM-A-VORONOI] load status=" << Status << '\n';
+			return;
+		}
+
+		const auto SelectSourceRows = [](const EFFECT_DOCUMENT_DESC& Document,
+			const std::string_view Source)
+		{
+			std::vector<const EFFECT_ELEMENT_DESC*> Rows;
+			for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+			{
+				if (std::string::npos != Element.strSourceNode.find(Source))
+					Rows.push_back(&Element);
+			}
+			std::ranges::sort(Rows, {}, [](const EFFECT_ELEMENT_DESC* pElement)
+				{
+					return pElement->Detail.Timing.fStartDelaySeconds;
+				});
+			return Rows;
+		};
+		const auto AVoronoi = SelectSourceRows(ADocument, A_VORONOI_SOURCE);
+		const auto ASlash = SelectSourceRows(ADocument, A_SLASH_SOURCE);
+		bool_t bAOccurrencesExact = AVoronoi.size() == A_TIMES.size() &&
+			ASlash.size() == A_TIMES.size();
+		float3_t ExpectedDelta{};
+		for (size_t iOccurrence = 0u;
+			bAOccurrencesExact && iOccurrence < A_TIMES.size(); ++iOccurrence)
+		{
+			const float3_t& VoronoiPosition =
+				AVoronoi[iOccurrence]->Detail.Transform.vPosition;
+			const float3_t& SlashPosition =
+				ASlash[iOccurrence]->Detail.Transform.vPosition;
+			const float3_t Delta{
+				VoronoiPosition.x - SlashPosition.x,
+				VoronoiPosition.y - SlashPosition.y,
+				VoronoiPosition.z - SlashPosition.z };
+			if (0u == iOccurrence)
+				ExpectedDelta = Delta;
+			bAOccurrencesExact = bAOccurrencesExact &&
+				Nearly_Equal(AVoronoi[iOccurrence]->Detail.Timing.
+					fStartDelaySeconds, A_TIMES[iOccurrence], 0.00001f) &&
+				Nearly_Equal(ASlash[iOccurrence]->Detail.Timing.
+					fStartDelaySeconds, A_TIMES[iOccurrence], 0.00001f) &&
+				Nearly_Equal(VoronoiPosition.x,
+					A_VORONOI_POSITIONS[iOccurrence].x, 0.00001f) &&
+				Nearly_Equal(VoronoiPosition.y,
+					A_VORONOI_POSITIONS[iOccurrence].y, 0.00001f) &&
+				Nearly_Equal(VoronoiPosition.z,
+					A_VORONOI_POSITIONS[iOccurrence].z, 0.00001f) &&
+				Nearly_Equal(Delta.x, ExpectedDelta.x, 0.00001f) &&
+				Nearly_Equal(Delta.y, ExpectedDelta.y, 0.00001f) &&
+				Nearly_Equal(Delta.z, ExpectedDelta.z, 0.00001f);
+		}
+		runner.Require(bAOccurrencesExact,
+			"DimensionMaster A Materializes Four Source-Exact Voronoi And Slash Pairs In One Local Space");
+
+		const std::filesystem::path CuePath = CProjectDataRoot::Resolve(
+			L"Animation/Authored/DimensionMaster/DimensionMaster.animevents");
+		const std::string CueText = Read_Text(CuePath);
+		const auto CountText = [&CueText](const std::string_view Needle)
+		{
+			size_t Count = 0u;
+			for (size_t Position = 0u;
+				std::string::npos != (Position = CueText.find(Needle, Position));
+				Position += Needle.size())
+			{
+				++Count;
+			}
+			return Count;
+		};
+		constexpr std::string_view A_CUE =
+			"\"pc_sp_m_00_sk_sk_willowrend\" EFFECT startms=0 "
+			"payload=\"effect.dimensionmaster.skill.2050210.unified\" "
+			"effectref=asset anchor=\"root\" follow=snapshot stop=natural";
+		constexpr std::string_view Q_CUE =
+			"\"pc_sp_m_00_sk_sk_nailstrike_01\" EFFECT startms=0 "
+			"payload=\"effect.dimensionmaster.skill.2050100.unified\" "
+			"effectref=asset anchor=\"root\" follow=follow stop=natural";
+		runner.Require(1u == CountText(A_EFFECT_ID) &&
+			1u == CountText(A_CUE) && 1u == CountText(Q_EFFECT_ID) &&
+			1u == CountText(Q_CUE),
+			"DimensionMaster A Owns One Cast-Start Snapshot Cue While Q Keeps One Independent Follow Cue");
+
+		const auto QVoronoi = SelectSourceRows(QDocument, Q_VORONOI_SOURCE);
+		const auto QSlash = SelectSourceRows(QDocument, Q_SLASH_SOURCE);
+		EFFECT_DOCUMENT_DESC QPairDocument;
+		QPairDocument.strEffectAssetId =
+			"effect.dimensionmaster.q.rigid-local-pair.harness";
+		QPairDocument.strDisplayName = "DimensionMaster Q Rigid Local Pair";
+		if (QVoronoi.size() == 1u && QSlash.size() == 1u)
+		{
+			const auto AddPairElement = [&QPairDocument](
+				const char_t* pId, const EFFECT_ELEMENT_DESC& Source)
+			{
+				EFFECT_ELEMENT_DESC Element;
+				Element.strElementId = pId;
+				Element.strDisplayName = pId;
+				Element.eKind = EFFECT_ELEMENT_KIND::MESH;
+				Element.Detail.Transform.vPosition =
+					Source.Detail.Transform.vPosition;
+				Element.Detail.Transform.vScale = { 1.f, 1.f, 1.f };
+				Element.Detail.Timing.fStartDelaySeconds =
+					Source.Detail.Timing.fStartDelaySeconds;
+				Element.Detail.Timing.fLifeTimeSeconds = 0.5f;
+				Element.ActionCueAttachment.bEnabled = true;
+				Element.ActionCueAttachment.bFollow = false;
+				Element.ActionCueAttachment.strSourceAnchorSlotId = "root";
+				Element.ActionCueAttachment.strRuntimeAnchorSlotId = "root";
+				QPairDocument.Elements.push_back(std::move(Element));
+			};
+			AddPairElement("q.voronoi", *QVoronoi.front());
+			AddPairElement("q.slash", *QSlash.front());
+		}
+		CEffectPlayback QIdentityPlayback;
+		CEffectPlayback QYawPlayback;
+		const bool_t bQStaged = QVoronoi.size() == 1u && QSlash.size() == 1u &&
+			Nearly_Equal(QVoronoi.front()->Detail.Timing.fStartDelaySeconds,
+				QSlash.front()->Detail.Timing.fStartDelaySeconds, 0.00001f) &&
+			QIdentityPlayback.Stage_Document(QPairDocument, Status) &&
+			QYawPlayback.Stage_Document(QPairDocument, Status);
+		float4x4_t IdentityRoot{};
+		float4x4_t YawRoot{};
+		XMStoreFloat4x4(&IdentityRoot, XMMatrixIdentity());
+		XMStoreFloat4x4(&YawRoot,
+			XMMatrixRotationY(XMConvertToRadians(73.f)));
+		if (bQStaged)
+		{
+			QIdentityPlayback.Seek(0.30f, IdentityRoot);
+			QYawPlayback.Seek(0.30f, YawRoot);
+		}
+		const auto FindWorldPosition = [](const EFFECT_EVALUATED_FRAME& Frame,
+			const std::string_view ElementId, float3_t& OutPosition)
+		{
+			const auto Found = std::ranges::find_if(Frame.Elements,
+				[ElementId](const EFFECT_EVALUATED_ELEMENT& Element)
+				{
+					return nullptr != Element.pElement &&
+						Element.pElement->strElementId == ElementId;
+				});
+			if (Found == Frame.Elements.end())
+				return false;
+			OutPosition = { Found->World._41, Found->World._42, Found->World._43 };
+			return true;
+		};
+		float3_t IdentityVoronoi{};
+		float3_t IdentitySlash{};
+		float3_t YawVoronoi{};
+		float3_t YawSlash{};
+		const bool_t bQSamples = bQStaged &&
+			FindWorldPosition(QIdentityPlayback.Get_Frame(),
+				"q.voronoi", IdentityVoronoi) &&
+			FindWorldPosition(QIdentityPlayback.Get_Frame(),
+				"q.slash", IdentitySlash) &&
+			FindWorldPosition(QYawPlayback.Get_Frame(),
+				"q.voronoi", YawVoronoi) &&
+			FindWorldPosition(QYawPlayback.Get_Frame(),
+				"q.slash", YawSlash);
+		float3_t RotatedIdentityDelta{};
+		if (bQSamples)
+		{
+			const vector_t IdentityDelta = XMVectorSet(
+				IdentityVoronoi.x - IdentitySlash.x,
+				IdentityVoronoi.y - IdentitySlash.y,
+				IdentityVoronoi.z - IdentitySlash.z, 0.f);
+			XMStoreFloat3(&RotatedIdentityDelta,
+				XMVector3TransformNormal(IdentityDelta,
+					XMMatrixRotationY(XMConvertToRadians(73.f))));
+		}
+		const bool_t bQYawRigid = bQSamples &&
+			Nearly_Equal(YawVoronoi.x - YawSlash.x,
+				RotatedIdentityDelta.x, 0.0001f) &&
+			Nearly_Equal(YawVoronoi.y - YawSlash.y,
+				RotatedIdentityDelta.y, 0.0001f) &&
+			Nearly_Equal(YawVoronoi.z - YawSlash.z,
+				RotatedIdentityDelta.z, 0.0001f);
+		runner.Require(bQYawRigid,
+			"DimensionMaster Q Voronoi And Slash Rotate As One Rigid Local-Space Pair With Cast Yaw");
+	}
 }
 
 int main(const int argc, char* argv[])
@@ -30386,6 +32360,51 @@ int main(const int argc, char* argv[])
 			std::cout << argv[iArgument] << '\t' << Sha256 << '\n';
 		}
 		return bAllDocumentsHashed ? 0 : 1;
+	}
+	if (Mode == "--effect-document-drawable-sweep")
+	{
+		if (argc <= 2)
+		{
+			std::cerr <<
+				"--effect-document-drawable-sweep requires at least one document path.\n";
+			return 1;
+		}
+		std::optional<std::filesystem::path> JsonOutputPath;
+		int iFirstDocumentArgument = 2;
+		if (argc > 2 && nullptr != argv[2] &&
+			std::string_view(argv[2]) == "--json-output")
+		{
+			if (argc <= 4 || nullptr == argv[3])
+			{
+				std::cerr <<
+					"--json-output requires an absolute output path and at least one absolute document path.\n";
+				return 1;
+			}
+			JsonOutputPath = std::filesystem::path(argv[3]);
+			iFirstDocumentArgument = 4;
+		}
+		std::vector<std::filesystem::path> Paths;
+		Paths.reserve(static_cast<size_t>(argc - iFirstDocumentArgument));
+		for (int iArgument = iFirstDocumentArgument;
+			iArgument < argc; ++iArgument)
+		{
+			if (nullptr == argv[iArgument])
+			{
+				std::cerr << "Effect document path argument is null.\n";
+				return 1;
+			}
+			Paths.emplace_back(argv[iArgument]);
+		}
+		std::string Status;
+		const bool_t bValid =
+			Validate_OrdinaryEffectDocumentsDrawableSweep(
+				Paths, JsonOutputPath, Status);
+		std::cout << (bValid ? "[PASS] " : "[FAILURE] ") <<
+			"ordinary Effect drawable sweep";
+		if (!Status.empty())
+			std::cout << ": " << Status;
+		std::cout << '\n';
+		return bValid ? 0 : 1;
 	}
 	if (Mode == "--materialize-four-class-track-a")
 	{
@@ -30499,6 +32518,13 @@ int main(const int argc, char* argv[])
 	if (Mode == "--valtan-pattern-effects-fast")
 	{
 		Test_ValtanPatternBindingSchema(runner);
+		Test_ValtanPatternEffectOccurrenceScheduling(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--valtan-pattern-occurrence-scheduling-fast")
+	{
+		Test_ValtanPatternEffectOccurrenceScheduling(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -30585,11 +32611,57 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--effect-tool-preview-fast")
+	{
+		Client::CEffectCatalog::Clear();
+		std::string Status;
+		const bool_t bCatalogLoaded = Client::CEffectCatalog::Load(Status);
+		runner.Require(bCatalogLoaded,
+			"Effect Tool Preview Loads The Committed Runtime Effect Catalog");
+		if (bCatalogLoaded)
+		{
+			Test_AnimationEffectCuePartialCatalogIsolation(runner);
+			Test_EffectToolArtistBasicAttackCueResolution(runner);
+			Test_FourClassAnimationEffectCueCatalogParity(runner, false);
+			Test_EffectToolPlayerPreviewCueResolution(runner);
+			Test_EffectToolWarlordHoldPhaseFamily(runner);
+		}
+		else
+		{
+			std::cout << "[DETAIL] " << Status << '\n';
+		}
+		Client::CEffectCatalog::Clear();
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--four-class-effect-cue-parity-fast")
+	{
+		Client::CEffectCatalog::Clear();
+		std::string Status;
+		const bool_t bCatalogLoaded = Client::CEffectCatalog::Load(Status);
+		runner.Require(bCatalogLoaded,
+			"Four-Class Cue Parity Loads The Committed Runtime Effect Catalog");
+		if (bCatalogLoaded)
+			Test_FourClassAnimationEffectCueCatalogParity(runner, true);
+		else
+			std::cout << "[DETAIL] " << Status << '\n';
+		Client::CEffectCatalog::Clear();
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--effect-dm-r-boundary-fast")
 	{
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_DimensionMasterRSourceOccurrenceContract(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-dm-a-voronoi-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_DimensionMasterAVoronoiCastDirectionContract(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -30652,6 +32724,14 @@ int main(const int argc, char* argv[])
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_ArtistPlayableMaterialFamilyRegression(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-artist-e-trail-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_ArtistEBrushTrailContract(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -30992,6 +33072,7 @@ int main(const int argc, char* argv[])
 	Test_InvalidRequestsPreservePendingCommand(runner);
 	Test_SkillBindingSchema(runner);
 	Test_ValtanPatternBindingSchema(runner);
+	Test_ValtanPatternEffectOccurrenceScheduling(runner);
 	Test_ValtanPatternPreview(runner);
 	Test_ActionPresentationTimeline(runner);
 	Test_EngineShutdownKeepsCameraPipelineAlive(runner);

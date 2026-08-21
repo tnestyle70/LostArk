@@ -6518,7 +6518,8 @@ namespace
 		std::string& OutError,
 		const EFFECT_ELEMENT_DESC* DiagnosticElement = nullptr,
 		const FOCUSED_PARTICLE_SAMPLE* DiagnosticSample = nullptr,
-		const DECODED_MODEL_METRICS* DiagnosticModelMetrics = nullptr)
+		const DECODED_MODEL_METRICS* DiagnosticModelMetrics = nullptr,
+		const bool_t bRenderNonBlendModelCue = false)
 	{
 		Out = {};
 		if (nullptr == Object)
@@ -6630,7 +6631,8 @@ namespace
 				return false;
 			}
 			Context->Begin(Query.Get());
-			const HRESULT RenderResult = Object->Render();
+			const HRESULT RenderResult = bRenderNonBlendModelCue ?
+				Object->Render_NonBlendModelCues() : Object->Render();
 			Context->End(Query.Get());
 			ID3D11PixelShader* RawPixelShader = nullptr;
 			Context->PSGetShader(&RawPixelShader, nullptr, nullptr);
@@ -6658,7 +6660,8 @@ namespace
 			const auto& Submission = Object->Get_LastRenderSubmissionStats();
 			const bool_t bCommitted = SUCCEEDED(RenderResult) &&
 				S_OK == DeviceReason && !bFailureIsolated &&
-				Submission.bCompleted && Submission.bCommitted;
+				(bRenderNonBlendModelCue ||
+					(Submission.bCompleted && Submission.bCommitted));
 			uint64_t NonZero = 0u;
 			uint64_t One = 0u;
 			uint64_t ColorNonZero = 0u;
@@ -8852,7 +8855,8 @@ namespace
 		MaskedObject->Set_SampleTime(0.25f);
 		FOCUSED_DRAW_EVIDENCE MaskedEvidence;
 		if (!Render_WithEvidence(MaskedObject, Scope, Target,
-				OpaqueEvidence.iViewIndex, false, MaskedEvidence, OutError))
+				OpaqueEvidence.iViewIndex, false, MaskedEvidence, OutError,
+				nullptr, nullptr, nullptr, true))
 		{
 			OutError = "DimensionMaster T MASKED contrast draw failed: " + OutError;
 			return false;

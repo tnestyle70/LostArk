@@ -1986,6 +1986,21 @@
     <Filter Include="96.DataFiles\Effects\Imported\Valtan">
       <UniqueIdentifier>{ab7fff82-53b5-53fd-b5de-bd0232493d5a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves">
+      <UniqueIdentifier>{2a5603a2-7e38-5d94-b9a6-b1e347709926}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\PortalRush">
+      <UniqueIdentifier>{50784b42-5eaa-56fe-94bb-adb964fa0dbc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority">
+      <UniqueIdentifier>{4a7934f4-dcdf-513e-bbd8-7465ca6d6037}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority\DrawableProof">
+      <UniqueIdentifier>{4b818a1e-bebb-5a83-bef0-16b70b1dd4ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies">
+      <UniqueIdentifier>{2b774a3a-3224-5945-ab81-b3c62204ea5a}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Warlord">
       <UniqueIdentifier>{8c257d50-0dab-5f2c-8bb2-eb3db8d8b0e6}</UniqueIdentifier>
     </Filter>
@@ -6882,8 +6897,185 @@
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-inventory-v1.json">
       <Filter>96.DataFiles\Effects\Imported\RawResourceInventory</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\Valtan.front-back-front-source-wave-candidates.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\effect.valtan.front-back-front.auxiliary-source-wave.source-wave-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\effect.valtan.front-back-front.source-wave-01.source-wave-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\effect.valtan.front-back-front.source-wave-02.source-wave-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\effect.valtan.front-back-front.source-wave-03.source-wave-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\PortalRush\Valtan.portal-rush-imported-canary.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\PortalRush</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\PortalRush\effect.valtan.portal-rush.portal.imported-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\PortalRush</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\PortalRush\effect.valtan.portal-rush.recovery.imported-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\PortalRush</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\PortalRush\effect.valtan.portal-rush.rushes.imported-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\PortalRush</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\DrawableProof\Valtan.project-authored-priority.drawable-proof.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\DrawableProof\Valtan.project-authored-priority.drawable-sweep.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\Valtan.project-authored-priority.patch-plan.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.dash-charge.windup.project-authored-overlay.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.floor-wipe-130.first-smash.project-authored-overlay.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.floor-wipe-130.windup.project-authored-overlay.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.front-back-front.active.project-authored-overlay.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.high-jump.airborne.project-authored-overlay.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.high-jump.land.project-authored-overlay.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.magic-choice.inner.project-authored-overlay.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.magic-choice.outer.project-authored-overlay.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.magic-choice.windup.project-authored-overlay.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\README.md">
       <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\Valtan.reviewed-source-family-candidates.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.arena-break-109.impact.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.arena-break-109.takeoff.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.armor-break-opening.charge.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.backstep.windup.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.charge-grab-roar.counter.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.charge-grab-roar.recovery.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.charge-grab-roar.roar.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.down-smash.active.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.fist-in-out.inner.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.floor-wipe-130.second-smash.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.floor-wipe-130.windup.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.four-slash.active.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.four-slash.recovery.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.front-back-front.active.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.ghost-transition-15.tracking.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.ground-wave-smash.active.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.high-jump.land.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.high-jump.takeoff.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.imprison-roar.active.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.imprison-roar.recovery.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.imprison-roar.windup.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.ledge-roar.active.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.ledge-roar.recovery.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.ledge-roar.windup.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.magic-choice.inner.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.magic-choice.outer.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.magic-choice.recovery.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.parry.slash.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.parry.stance.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.portal-rush.portal.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.portal-rush.recovery.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.portal-rush.rushes.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.red-blade-wave.active.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.red-blade-wave.recovery.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.super-smash.windup.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.triple-counter.first.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ReviewedSourceFamilies\effect.valtan.whirlwind.recovery.reviewed-source-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.420633.whirlwind-baked-edge-history.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
@@ -6903,10 +7095,22 @@
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.parent-package-map.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.priority-source-sequence-selections.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.source-material-evidence.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.source-material-evidence.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.source-occurrence-inventory.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.source-timing-delta-proposals.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.trail-adapter-packets.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Warlord\Converted\effect.warlord.skill.17000.imported.effect.json">

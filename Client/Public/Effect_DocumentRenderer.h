@@ -572,6 +572,8 @@ public:
 	bool_t Stage_ReconstructedDiagnostic(
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_SELECTED_FRAME> pFrame,
 		std::string& strOutError);
+	bool_t Has_NonBlendModelCues() const;
+	HRESULT Render_NonBlendModelCues(const EFFECT_EVALUATED_FRAME& Frame);
 	HRESULT Render(const EFFECT_EVALUATED_FRAME& Frame);
 	HRESULT Render_ReconstructedDiagnostic(
 		const float4x4_t& RootWorld,
@@ -743,7 +745,9 @@ private:
 	HRESULT Render_AfterImages(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		std::span<const EFFECT_EVALUATED_AFTERIMAGE> AfterImages);
-	HRESULT Render_ModelCues(const EFFECT_EVALUATED_FRAME& Frame);
+	HRESULT Render_ModelCues(
+		const EFFECT_EVALUATED_FRAME& Frame,
+		bool_t bNonBlendCharacterSurfaceOnly);
 	HRESULT Fail_RenderOperation(
 		std::string strOperation,
 		HRESULT hResult = E_FAIL,

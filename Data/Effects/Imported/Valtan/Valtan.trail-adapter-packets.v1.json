@@ -1,0 +1,3679 @@
+{
+  "schema": "lostark.valtan-trail-adapter-packets",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "selectionPolicy": "REVIEWED_SELECTED_REACHABLE_STAGE_CLIP_ONLY; NO_SOURCE_ONLY_CLIP_INSERTION; MISSING_ADAPTER_EVIDENCE_PRESERVED_UNRESOLVED",
+  "deferredPolicy": {
+    "light": "EXCLUDED_DEFERRED",
+    "explicitGenericDust": "EXCLUDED_DEFERRED",
+    "animationTrail": "TYPED_ADAPTER_REQUIRED",
+    "trailGhost": "TYPED_ADAPTER_REQUIRED",
+    "cascadeRibbon": "TYPED_ADAPTER_REQUIRED"
+  },
+  "inputIdentity": {
+    "inventoryCanonicalSha256": "6d0d5200d29fd097ec30bb07a222344a884afd5fb33f92fe0ce5672c1aeb4428",
+    "selectionCanonicalSha256": "1f24977eaa722a95034eec91ab5dbc2f28cb5eca01432d903f84400a826a5c8a",
+    "sourceGraphEnrichment": {
+      "status": "SOURCE_GRAPH_TYPED_RECIPE_DECODED",
+      "sourceGraphCount": 2,
+      "sourceGraphs": [
+        {
+          "logicalPackage": "FX_MN_RPBF_00_N",
+          "rawSha256": "734b850f68aefd88ae2ed79dac99ce91450ae0aaaf9f6bb234299d6a1483c496"
+        },
+        {
+          "logicalPackage": "FX_MN_RPBF_00_O",
+          "rawSha256": "0bf3c2dcbc137af75714d01dae5180ccdf7ef8b830c556ab419e7ad18fe6d7bf"
+        }
+      ],
+      "runtimeCookReceipt": {
+        "logicalPath": "runtime-cook-receipt.json",
+        "sha256": "3d813afebbf0a70af32e80c8c3e717f337801157eb0c574db6e96d56bdc98750",
+        "assetCount": 398,
+        "verifiedRuntimeFileCount": 398,
+        "failureCount": 0
+      },
+      "decodedCarrierCount": 2
+    }
+  },
+  "whirlwindCanary": {
+    "status": "AUTHORED_AND_RUNTIME_SLICE_BYTE_IDENTICAL",
+    "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+    "historyArtifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+    "historyRawSha256": "34f0d15e31afdca31887828961c8de450ebc027d4dcf54ff0c0d9312df3fd64e",
+    "effectRawSha256": "e94ddfd463da840962ddf8d8a0b604af4ef833925c2ac1cfd0f8e25522a5bea7",
+    "effectCanonicalSha256": "95c233b9fb9ded959a5527381f5ae0bd1a85b8c97c5a0a6b8341f92364ecd68a",
+    "runtimeBaseSourceRawSha256": "ac0c4464fd1fc05dcb0b107e796c015b1ca4c76dcf9beb06023b5cf5d890bf94",
+    "runtimeProjectedDocumentCanonicalByteCount": 124507,
+    "runtimeProjectedDocumentSha256": "23cf5425d5c7f080a14263ef2613e715b1df206892b61ffb371fc1248988b483",
+    "runtimeProjectedDocumentTypedCodecSha256": "bdb2178b309901f360a77739bb3ec7219926bcbdd8b9e4e9a5b2b6b0911c1b02",
+    "runtimeProgramSha256": "3a3c3a42dc9423303c458fa90cdea8ba719c74853aba59d7d942f7b2b17b6fab",
+    "sampleCount": 409,
+    "sourceEndTimeSeconds": 3.200000047683716,
+    "playbackClampSeconds": 1.2000000476837158,
+    "effectElementCount": 9,
+    "coreElementCount": 5,
+    "animationTrailTargetCount": 3,
+    "deferredLightCount": 1
+  },
+  "adapters": [
+    {
+      "adapterTargetId": "valtan.trail-adapter.0496527a7bee1a6ad7bf16cb",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_EARTHQUAKE_SMASH",
+        "clipOccurrenceId": "valtan.attack.earthquake-smash.impact.clip.01",
+        "sourceActionId": 420605,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 18,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420605/stage-018/notify-007",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 3.051270008087158,
+        "sourceDurationSeconds": 0.13919700682163239,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420605_0_0_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.b696a7ba2e0072a86a557886",
+        "inventoryFullKey": "occurrence-key.b696a7ba2e0072a86a55788649814f2754495fc7702bb52a72f7342397a4d945",
+        "inventoryBranch": {
+          "branchId": "valtan_earthquake_smash.source-420605.mn_rpbf_00.sequence-003.stages-018-021",
+          "branchOrdinal": 2,
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "4f4e08bad15359de2fdbfaf4de16e80db6573c3cc1329624c49d4b4a7c2f2f06"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_earthquake_smash.source-420605.mn_rpbf_00.sequence-003.stages-018-021",
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "4f4e08bad15359de2fdbfaf4de16e80db6573c3cc1329624c49d4b4a7c2f2f06",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.earthquake-smash.impact.clip.01",
+          "reviewBasis": "clipseq seq=3 and reviewed earthquake timing table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "829194de94c14d67ed4901ceff56eae35220b9bf790ba64145aca43d8702587c",
+      "rowSha256": "42e33dbd29d987a405abe8d0098eaa304710a3a80b9adac2d5d41e5618d2256f"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.078f769daf7b3c58ab7900cb",
+      "targetVariant": "valtan.420633.notify004.emitter5258",
+      "sourceIdentity": {
+        "patternId": "VALTAN_WHIRLWIND",
+        "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+        "sourceActionId": 420633,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 2,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420633/stage-002/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 1.2000000476837158,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.2489b93c620929d4b9bada50",
+        "inventoryFullKey": "occurrence-key.2489b93c620929d4b9bada50682335a364d584cbcb80149d0da71678847ecf37",
+        "inventoryBranch": {
+          "branchId": "valtan_whirlwind.source-420633.mn_rpbf_00.sequence-002.stages-000-005",
+          "branchOrdinal": 0,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "69c1ead846d25857f426569ecfa43f8bcc28b3b4e87d1818b80a255c7bfacf6b"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_whirlwind.source-420633.mn_rpbf_00.sequence-002.stages-000-005",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "69c1ead846d25857f426569ecfa43f8bcc28b3b4e87d1818b80a255c7bfacf6b",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+          "reviewBasis": "existing 420633 source-exact 9-of-9 canary fixed at stage 002; cross-check only and never reconcile authored Whirlwind"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "ADMITTED_RENDERER_READY",
+      "target": {
+        "kind": "trail",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "id": "valtan.420633.notify004.emitter5258",
+        "sourceDocument": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+      },
+      "packet": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "rendererReady": true,
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420633/stage-002/notify-004",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158,
+        "targetElementId": "valtan.420633.notify004.emitter5258",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "history": {
+          "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+          "artifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+          "sampleCount": 409,
+          "playbackClampSeconds": 1.2000000476837158,
+          "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
+        },
+        "rendererAdmission": {
+          "sharedRendererPath": "EFFECT_TRAIL_SHARED_HEADLESS_V1",
+          "minimumRuntimePointCount": 2,
+          "onePointDisposition": "SUPPRESSED_INSUFFICIENT_POINTS",
+          "twoPointDisposition": "PREPARED_NONZERO_DRAW",
+          "newRuntimeManager": false,
+          "newShader": false
+        },
+        "packetSha256": "3efeb1e8720bf2306ccb2d40a186a830f485f2c08b3360a1b13e557d2b004cc9"
+      },
+      "resourcePacket": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+          "rawSha256": "0cda1d83c6df738528a3e32c45fd72f76a6acddf0010c76170032ae4e3469933",
+          "byteCount": 8320
+        },
+        {
+          "slotId": "dissolve",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+          "rawSha256": "58a957a8d13005c12afb097c6c8d423d2c94872dfe8b76ab1d51dabbfe67749b",
+          "byteCount": 32896
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_a_trail_011.dds",
+          "rawSha256": "ecf526f2f5849525d341e20549652736ec79ef173bdf65226f5aa314e6c89df9",
+          "byteCount": 32896
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_009.dds",
+          "rawSha256": "d9b2b59b2657fcfe333852ef2580492fcd1e7769af2d8d5096be47050cddc65e",
+          "byteCount": 32896
+        }
+      ],
+      "admissionBlockers": [],
+      "preservedLimitations": [
+        "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+      ],
+      "sourceIdentitySha256": "0f743f58e43247bac91fed26fe43376bdf8dd410bbb70895af6eee54c4a7d388",
+      "rowSha256": "3a328e7c94e0a2762c1aa0009e8b1b68b38321ddf2662515a6dcb912027f46e2"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.09a79d299c00a5c089793d30",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_WHIRLWIND",
+        "clipOccurrenceId": "valtan.attack.whirlwind.recovery.clip.01",
+        "sourceActionId": 420633,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 3,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420633/stage-003/notify-001",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 0.1965470016002655,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_4_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.42d2b76eecf20a14d27525c3",
+        "inventoryFullKey": "occurrence-key.42d2b76eecf20a14d27525c3c9f8ba8f737ed81168767e3d76f812c87409367c",
+        "inventoryBranch": {
+          "branchId": "valtan_whirlwind.source-420633.mn_rpbf_00.sequence-002.stages-000-005",
+          "branchOrdinal": 0,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "69c1ead846d25857f426569ecfa43f8bcc28b3b4e87d1818b80a255c7bfacf6b"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_whirlwind.source-420633.mn_rpbf_00.sequence-002.stages-000-005",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "69c1ead846d25857f426569ecfa43f8bcc28b3b4e87d1818b80a255c7bfacf6b",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.whirlwind.recovery.clip.01",
+          "reviewBasis": "existing 420633 source-exact 9-of-9 canary fixed at stage 002; cross-check only and never reconcile authored Whirlwind"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "9db6ea34a422e1c8492c2f0a1be9e191012599dfc2d6d542440e3840c01189a0",
+      "rowSha256": "6d1e6f97423631b808ddc0355fad752c6eea962ce9c4d53c12ffc028f8cc44ec"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.0c0cd02949a05911ee9d0019",
+      "targetVariant": "valtan.420633.notify004.emitter5259",
+      "sourceIdentity": {
+        "patternId": "VALTAN_WHIRLWIND",
+        "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+        "sourceActionId": 420633,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 2,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420633/stage-002/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 1.2000000476837158,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.2489b93c620929d4b9bada50",
+        "inventoryFullKey": "occurrence-key.2489b93c620929d4b9bada50682335a364d584cbcb80149d0da71678847ecf37",
+        "inventoryBranch": {
+          "branchId": "valtan_whirlwind.source-420633.mn_rpbf_00.sequence-002.stages-000-005",
+          "branchOrdinal": 0,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "69c1ead846d25857f426569ecfa43f8bcc28b3b4e87d1818b80a255c7bfacf6b"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_whirlwind.source-420633.mn_rpbf_00.sequence-002.stages-000-005",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "69c1ead846d25857f426569ecfa43f8bcc28b3b4e87d1818b80a255c7bfacf6b",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+          "reviewBasis": "existing 420633 source-exact 9-of-9 canary fixed at stage 002; cross-check only and never reconcile authored Whirlwind"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "ADMITTED_RENDERER_READY",
+      "target": {
+        "kind": "trail",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "id": "valtan.420633.notify004.emitter5259",
+        "sourceDocument": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+      },
+      "packet": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "rendererReady": true,
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420633/stage-002/notify-004",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158,
+        "targetElementId": "valtan.420633.notify004.emitter5259",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "history": {
+          "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+          "artifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+          "sampleCount": 409,
+          "playbackClampSeconds": 1.2000000476837158,
+          "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
+        },
+        "rendererAdmission": {
+          "sharedRendererPath": "EFFECT_TRAIL_SHARED_HEADLESS_V1",
+          "minimumRuntimePointCount": 2,
+          "onePointDisposition": "SUPPRESSED_INSUFFICIENT_POINTS",
+          "twoPointDisposition": "PREPARED_NONZERO_DRAW",
+          "newRuntimeManager": false,
+          "newShader": false
+        },
+        "packetSha256": "74af3665dcb236e48c2970292039156d750c11215712ff62f752b479968aea8d"
+      },
+      "resourcePacket": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_006.dds",
+          "rawSha256": "0eaf36a6b923cb1fdf6958716bf35598639251454b65aa90ba52a8ced7d2ee48",
+          "byteCount": 8320
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_023.dds",
+          "rawSha256": "57b6cf34817250e634094deda330e6360d31c5b03b289fb61e607f6067052427",
+          "byteCount": 65664
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_067.dds",
+          "rawSha256": "8264b8a2671205799a428e244fd2068ab1300efdea0cb0f3a504e1a0c5b6e4dd",
+          "byteCount": 32896
+        }
+      ],
+      "admissionBlockers": [],
+      "preservedLimitations": [
+        "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+      ],
+      "sourceIdentitySha256": "0f743f58e43247bac91fed26fe43376bdf8dd410bbb70895af6eee54c4a7d388",
+      "rowSha256": "e4c18829f5ef0b877dee571fcac1152370486b4a43ede30134c2427ce8ceb44c"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.0d2bd7abcc7d06b3f2f77b5b",
+      "targetVariant": "valtan.420633.notify004.emitter5258",
+      "sourceIdentity": {
+        "patternId": "VALTAN_BACKSTEP_ATTACK",
+        "clipOccurrenceId": "valtan.attack.backstep.windup.clip.01",
+        "sourceActionId": 420635,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 1,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420635/stage-001/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 3.200000047683716,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.00c06e1ea670f211a2219dd8",
+        "inventoryFullKey": "occurrence-key.00c06e1ea670f211a2219dd84ac7caacdd70b7583df90db6a914ec7b2dfdc85b",
+        "inventoryBranch": {
+          "branchId": "valtan_backstep_attack.source-420635.mn_rpbf_00.sequence-000.stages-000-009",
+          "branchOrdinal": 0,
+          "sequenceIndex": 0,
+          "sourceSequencePathSha256": "8e5bccb3331c412725fd84f2afbfd2a3ec0190d472df240878d7f247ccfdd06f"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_backstep_attack.source-420635.mn_rpbf_00.sequence-000.stages-000-009",
+          "sequenceIndex": 0,
+          "sourceSequencePathSha256": "8e5bccb3331c412725fd84f2afbfd2a3ec0190d472df240878d7f247ccfdd06f",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.backstep.windup.clip.01",
+          "reviewBasis": "clipseq seq=0 and reviewed backstep visual stage table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "ADMITTED_RENDERER_READY",
+      "target": {
+        "kind": "trail",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "id": "valtan.420633.notify004.emitter5258",
+        "sourceDocument": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+      },
+      "packet": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "rendererReady": true,
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420635/stage-001/notify-004",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 3.200000047683716,
+        "targetElementId": "valtan.420633.notify004.emitter5258",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "history": {
+          "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+          "artifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+          "sampleCount": 409,
+          "playbackClampSeconds": 1.2000000476837158,
+          "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
+        },
+        "rendererAdmission": {
+          "sharedRendererPath": "EFFECT_TRAIL_SHARED_HEADLESS_V1",
+          "minimumRuntimePointCount": 2,
+          "onePointDisposition": "SUPPRESSED_INSUFFICIENT_POINTS",
+          "twoPointDisposition": "PREPARED_NONZERO_DRAW",
+          "newRuntimeManager": false,
+          "newShader": false
+        },
+        "packetSha256": "44c8f4fd2205fea70c850c0218f17361a25f102a77c056f3fb50a37562c15de0"
+      },
+      "resourcePacket": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+          "rawSha256": "0cda1d83c6df738528a3e32c45fd72f76a6acddf0010c76170032ae4e3469933",
+          "byteCount": 8320
+        },
+        {
+          "slotId": "dissolve",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+          "rawSha256": "58a957a8d13005c12afb097c6c8d423d2c94872dfe8b76ab1d51dabbfe67749b",
+          "byteCount": 32896
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_a_trail_011.dds",
+          "rawSha256": "ecf526f2f5849525d341e20549652736ec79ef173bdf65226f5aa314e6c89df9",
+          "byteCount": 32896
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_009.dds",
+          "rawSha256": "d9b2b59b2657fcfe333852ef2580492fcd1e7769af2d8d5096be47050cddc65e",
+          "byteCount": 32896
+        }
+      ],
+      "admissionBlockers": [],
+      "preservedLimitations": [
+        "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+      ],
+      "sourceIdentitySha256": "02187836ada4b273d6f23af7a45bdd0b51f86047e6341f196209b670ca3aa4fa",
+      "rowSha256": "0dec024ac42628b8891eebdc3cc989af73b683b4d31c853478ba9c775f56d013"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.12530e5276a81c65992a667b",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_MAGIC_CHOICE",
+        "clipOccurrenceId": "valtan.attack.magic-choice.recovery.clip.01",
+        "sourceActionId": 420608,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 15,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420608/stage-015/notify-003",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.10000000149011612,
+        "sourceDurationSeconds": 0.20000000298023224,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420608_0_6_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.896fd049a7a507bd184b1faf",
+        "inventoryFullKey": "occurrence-key.896fd049a7a507bd184b1faf627fea03b4d0a20c5433ebe85a9d92b7282a4091",
+        "inventoryBranch": {
+          "branchId": "valtan_magic_choice.source-420608.mn_rpbf_00.sequence-002.stages-009-015",
+          "branchOrdinal": 1,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "99f13a6a54d2cd9d00ac5d206753204721e74b1b68b8b1a5b0f3e7005b1750a7"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_magic_choice.source-420608.mn_rpbf_00.sequence-002.stages-009-015",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "99f13a6a54d2cd9d00ac5d206753204721e74b1b68b8b1a5b0f3e7005b1750a7",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.magic-choice.recovery.clip.01",
+          "reviewBasis": "clipseq seq=2 and reviewed inner/outer stage table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "6cf208eb70f9d62cb18c0b0a60eaa3ce7f2c258ef39b4a7a53a07ba3759d39ea",
+      "rowSha256": "9eaae22fa84d8de7c6844e82b5f9c6622f14b0f8c43e4419bd50d2173a6be0c9"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.1fd67aca6e85a92a1f0bf7cd",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_FOUR_SLASH",
+        "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+        "sourceActionId": 420609,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 8,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420609/stage-008/notify-019",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 3.0076498985290527,
+        "sourceDurationSeconds": 0.21229299902915955,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420609_0_0_2",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.1bec55278b0f4a77db7a3464",
+        "inventoryFullKey": "occurrence-key.1bec55278b0f4a77db7a3464a1c0d99ed139aace91a5e6d47b0eb6587f829d37",
+        "inventoryBranch": {
+          "branchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+          "branchOrdinal": 2,
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+          "reviewBasis": "clipseq seq=3 full path crossing Main labels"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "5793364ff18f32e6297d870d58dd7177190a96124e5d222123429b5cd007ff92",
+      "rowSha256": "9e61195ea68e4402d2a5a19b42c5508af29938e8e8871715366b330773f9ef6c"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.257ce4561d3829abf09cf747",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_FLOOR_WIPE_130",
+        "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
+        "sourceActionId": 420630,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 3,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420630/stage-003/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.10000000149011612,
+        "sourceDurationSeconds": 0.20000000298023224,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420630_0_3_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.b0603699ec5eb30eea709893",
+        "inventoryFullKey": "occurrence-key.b0603699ec5eb30eea7098936f869eff48a23ab1ec1cf92916d7b57be4521d4a",
+        "inventoryBranch": {
+          "branchId": "valtan_floor_wipe_130.source-420630.mn_rpbf_00.sequence-002.stages-000-008",
+          "branchOrdinal": 0,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "71fe52f854c956b19f0cc42dfef60bc35382c7f08d10a970f4cb2118eca03a87"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_floor_wipe_130.source-420630.mn_rpbf_00.sequence-002.stages-000-008",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "71fe52f854c956b19f0cc42dfef60bc35382c7f08d10a970f4cb2118eca03a87",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
+          "reviewBasis": "clipseq seq=2 and reviewed floor-wipe per-notify timing table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "3c8b1eeb9ff0ee2d09bb2b75ad37bfe20b25ed5406197554838da9f97e930ff5",
+      "rowSha256": "94a7ccfd207c84747a2e59ff900d11410c11e67e174cc509b0e30121d9d1a500"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.28064c18382b4b2ca03b4324",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_GROUND_WAVE_SMASH",
+        "clipOccurrenceId": "valtan.attack.ground-wave-smash.windup.clip.01",
+        "sourceActionId": 420615,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 30,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420615/stage-030/notify-005",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.394663006067276,
+        "sourceDurationSeconds": 0.47657299041748047,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420615_0_1_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.4e8f46ccbfe86121498d3706",
+        "inventoryFullKey": "occurrence-key.4e8f46ccbfe86121498d370677cfe0b8aee581a14586c39b99411946d7313b93",
+        "inventoryBranch": {
+          "branchId": "valtan_ground_wave_smash.source-420615.mn_rpbf_00.sequence-005.stages-029-034",
+          "branchOrdinal": 2,
+          "sequenceIndex": 5,
+          "sourceSequencePathSha256": "f677d563d42a24301fac4e1c184c922e85e87acad0e838e473d2b4237864c531"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_ground_wave_smash.source-420615.mn_rpbf_00.sequence-005.stages-029-034",
+          "sequenceIndex": 5,
+          "sourceSequencePathSha256": "f677d563d42a24301fac4e1c184c922e85e87acad0e838e473d2b4237864c531",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.windup.clip.01",
+          "reviewBasis": "clipseq seq=5 and reviewed ground-wave full stage path"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "37fc42b56ac6651f02ed117cb90105fbd226126b5f0abb61c6df4397b277587a",
+      "rowSha256": "b30f1e26b1d615903b90dbe9b8241164beca833e725f76867bb34a5ff7a5359d"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.2de6f4f576efd4e722dbfe2a",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_FOUR_SLASH",
+        "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+        "sourceActionId": 420609,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 9,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420609/stage-009/notify-011",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 1.6241049766540527,
+        "sourceDurationSeconds": 0.5359190106391907,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420609_0_1_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.78710d298e31c42fb4edd38a",
+        "inventoryFullKey": "occurrence-key.78710d298e31c42fb4edd38a81398a449df4b443322bc4bad24f7f258ff3f6ae",
+        "inventoryBranch": {
+          "branchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+          "branchOrdinal": 2,
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+          "reviewBasis": "clipseq seq=3 full path crossing Main labels"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "3b81af7ccbdceb2b0259aeadcf83b865248b5b7d9b48d21395d39adacd2d50a2",
+      "rowSha256": "4638c7858c70b77dd783ea430de3fa33307a4d16cffe0e2533f824876b43d18b"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.30f6768b5e024380bbb7ec03",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_ARENA_BREAK_109",
+        "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
+        "sourceActionId": 420629,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 0,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420629/stage-000/notify-009",
+        "sourceType": "TrailGhostEffect",
+        "sourceTimeSeconds": 0.7729840278625488,
+        "sourceDurationSeconds": 0.0,
+        "assetClassName": "",
+        "assetObjectPath": "",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.e51bd37b25111f74c57d57c4",
+        "inventoryFullKey": "occurrence-key.e51bd37b25111f74c57d57c43c9bcc6a3d0e4e6edc87710b37cdf82064ed5d86",
+        "inventoryBranch": {
+          "branchId": "valtan_arena_break_109.source-420629.mn_rpbf_00.sequence-001.stages-000-002",
+          "branchOrdinal": 0,
+          "sequenceIndex": 1,
+          "sourceSequencePathSha256": "d6a6b80456d1716dd633ae0a3b4deba95125e51e1685e6753b17883f49b33ba5"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_arena_break_109.source-420629.mn_rpbf_00.sequence-001.stages-000-002",
+          "sequenceIndex": 1,
+          "sourceSequencePathSha256": "d6a6b80456d1716dd633ae0a3b4deba95125e51e1685e6753b17883f49b33ba5",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
+          "reviewBasis": "B4 reviewed safe 420629 seq=1 takeoff/drop/impact source path"
+        }
+      },
+      "family": "TRAIL_GHOST",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "TRAIL_GHOST_EXACT_EDGE_HISTORY_MISSING",
+        "TRAIL_GHOST_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "664d76598e291c6051862c175f5c831512dd19217eb5cdbc1b519077ee459ec0",
+      "rowSha256": "284fe7b454deaa854f82439d83a512c1834d8fc91e9429055cb641d377246c3b"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.327940399d15f5de80e352ac",
+      "targetVariant": "valtan.420633.notify004.emitter5259",
+      "sourceIdentity": {
+        "patternId": "VALTAN_JUMP_SPIN",
+        "clipOccurrenceId": "valtan.attack.jump-spin.spin.clip.01",
+        "sourceActionId": 420621,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 15,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420621/stage-015/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 3.200000047683716,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.9bc7bf33ad296d1cf86cdaae",
+        "inventoryFullKey": "occurrence-key.9bc7bf33ad296d1cf86cdaae5b572ec0e8a27d9f774f8df1a4e0ac236a013042",
+        "inventoryBranch": {
+          "branchId": "valtan_jump_spin.source-420621.mn_rpbf_00.sequence-002.stages-013-016",
+          "branchOrdinal": 1,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "835c0a0f0f8df9fba0e85ee72fc26f5ef627cd762269f91e97c9ff0b3d47a83e"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_jump_spin.source-420621.mn_rpbf_00.sequence-002.stages-013-016",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "835c0a0f0f8df9fba0e85ee72fc26f5ef627cd762269f91e97c9ff0b3d47a83e",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.jump-spin.spin.clip.01",
+          "reviewBasis": "clipseq seq=2 and reviewed jump-spin stage table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "ADMITTED_RENDERER_READY",
+      "target": {
+        "kind": "trail",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "id": "valtan.420633.notify004.emitter5259",
+        "sourceDocument": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+      },
+      "packet": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "rendererReady": true,
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420621/stage-015/notify-004",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 3.200000047683716,
+        "targetElementId": "valtan.420633.notify004.emitter5259",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "history": {
+          "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+          "artifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+          "sampleCount": 409,
+          "playbackClampSeconds": 1.2000000476837158,
+          "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
+        },
+        "rendererAdmission": {
+          "sharedRendererPath": "EFFECT_TRAIL_SHARED_HEADLESS_V1",
+          "minimumRuntimePointCount": 2,
+          "onePointDisposition": "SUPPRESSED_INSUFFICIENT_POINTS",
+          "twoPointDisposition": "PREPARED_NONZERO_DRAW",
+          "newRuntimeManager": false,
+          "newShader": false
+        },
+        "packetSha256": "e96e2517bdc37736880963fa4d4626dc43069058ad11d377c3cc3df276c1db11"
+      },
+      "resourcePacket": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_006.dds",
+          "rawSha256": "0eaf36a6b923cb1fdf6958716bf35598639251454b65aa90ba52a8ced7d2ee48",
+          "byteCount": 8320
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_023.dds",
+          "rawSha256": "57b6cf34817250e634094deda330e6360d31c5b03b289fb61e607f6067052427",
+          "byteCount": 65664
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_067.dds",
+          "rawSha256": "8264b8a2671205799a428e244fd2068ab1300efdea0cb0f3a504e1a0c5b6e4dd",
+          "byteCount": 32896
+        }
+      ],
+      "admissionBlockers": [],
+      "preservedLimitations": [
+        "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+      ],
+      "sourceIdentitySha256": "bf0412a75814dde315a3833f6acfc52e192ca235ca4da88bdcde4bc6cf56f692",
+      "rowSha256": "f4d459f778ec623fd9fbe84a4af8bfe2e73da2f31ed0dfe06bcb066ea420fb5e"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.4274086a30a882a277780af7",
+      "targetVariant": "valtan.420633.notify004.emitter5260",
+      "sourceIdentity": {
+        "patternId": "VALTAN_WHIRLWIND",
+        "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+        "sourceActionId": 420633,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 2,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420633/stage-002/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 1.2000000476837158,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.2489b93c620929d4b9bada50",
+        "inventoryFullKey": "occurrence-key.2489b93c620929d4b9bada50682335a364d584cbcb80149d0da71678847ecf37",
+        "inventoryBranch": {
+          "branchId": "valtan_whirlwind.source-420633.mn_rpbf_00.sequence-002.stages-000-005",
+          "branchOrdinal": 0,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "69c1ead846d25857f426569ecfa43f8bcc28b3b4e87d1818b80a255c7bfacf6b"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_whirlwind.source-420633.mn_rpbf_00.sequence-002.stages-000-005",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "69c1ead846d25857f426569ecfa43f8bcc28b3b4e87d1818b80a255c7bfacf6b",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+          "reviewBasis": "existing 420633 source-exact 9-of-9 canary fixed at stage 002; cross-check only and never reconcile authored Whirlwind"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "ADMITTED_RENDERER_READY",
+      "target": {
+        "kind": "trail",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "id": "valtan.420633.notify004.emitter5260",
+        "sourceDocument": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+      },
+      "packet": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "rendererReady": true,
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420633/stage-002/notify-004",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158,
+        "targetElementId": "valtan.420633.notify004.emitter5260",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "history": {
+          "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+          "artifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+          "sampleCount": 409,
+          "playbackClampSeconds": 1.2000000476837158,
+          "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
+        },
+        "rendererAdmission": {
+          "sharedRendererPath": "EFFECT_TRAIL_SHARED_HEADLESS_V1",
+          "minimumRuntimePointCount": 2,
+          "onePointDisposition": "SUPPRESSED_INSUFFICIENT_POINTS",
+          "twoPointDisposition": "PREPARED_NONZERO_DRAW",
+          "newRuntimeManager": false,
+          "newShader": false
+        },
+        "packetSha256": "0a57194b82e47888c60fe07ccd1114ecbf42738b26be5708f589cc3c12d234e4"
+      },
+      "resourcePacket": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_a_trail_003_ycl.dds",
+          "rawSha256": "21a6683bdd504b6c1e63b006632dd962b5be4a519b56654fff2916b29a7ab8b0",
+          "byteCount": 32896
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_003.dds",
+          "rawSha256": "3339f6fd17e588fed6c11082a8a93a9b6dc55c49cb20f2a956dd6258f675a83f",
+          "byteCount": 65664
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_009.dds",
+          "rawSha256": "d5e63e9f023fb9f9ffb5dc2d32f80319102b91c94c5fe7c951177d161f963c9e",
+          "byteCount": 8320
+        }
+      ],
+      "admissionBlockers": [],
+      "preservedLimitations": [
+        "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+      ],
+      "sourceIdentitySha256": "0f743f58e43247bac91fed26fe43376bdf8dd410bbb70895af6eee54c4a7d388",
+      "rowSha256": "ac758b3a0ca6ea3ccdb9e9973c90b26122ecc893fd2fd220ea70247f95f8444a"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.4e2f6b3e7e7b359438b5e626",
+      "targetVariant": "valtan.420633.notify004.emitter5260",
+      "sourceIdentity": {
+        "patternId": "VALTAN_BACKSTEP_ATTACK",
+        "clipOccurrenceId": "valtan.attack.backstep.windup.clip.01",
+        "sourceActionId": 420635,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 1,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420635/stage-001/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 3.200000047683716,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.00c06e1ea670f211a2219dd8",
+        "inventoryFullKey": "occurrence-key.00c06e1ea670f211a2219dd84ac7caacdd70b7583df90db6a914ec7b2dfdc85b",
+        "inventoryBranch": {
+          "branchId": "valtan_backstep_attack.source-420635.mn_rpbf_00.sequence-000.stages-000-009",
+          "branchOrdinal": 0,
+          "sequenceIndex": 0,
+          "sourceSequencePathSha256": "8e5bccb3331c412725fd84f2afbfd2a3ec0190d472df240878d7f247ccfdd06f"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_backstep_attack.source-420635.mn_rpbf_00.sequence-000.stages-000-009",
+          "sequenceIndex": 0,
+          "sourceSequencePathSha256": "8e5bccb3331c412725fd84f2afbfd2a3ec0190d472df240878d7f247ccfdd06f",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.backstep.windup.clip.01",
+          "reviewBasis": "clipseq seq=0 and reviewed backstep visual stage table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "ADMITTED_RENDERER_READY",
+      "target": {
+        "kind": "trail",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "id": "valtan.420633.notify004.emitter5260",
+        "sourceDocument": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+      },
+      "packet": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "rendererReady": true,
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420635/stage-001/notify-004",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 3.200000047683716,
+        "targetElementId": "valtan.420633.notify004.emitter5260",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "history": {
+          "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+          "artifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+          "sampleCount": 409,
+          "playbackClampSeconds": 1.2000000476837158,
+          "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
+        },
+        "rendererAdmission": {
+          "sharedRendererPath": "EFFECT_TRAIL_SHARED_HEADLESS_V1",
+          "minimumRuntimePointCount": 2,
+          "onePointDisposition": "SUPPRESSED_INSUFFICIENT_POINTS",
+          "twoPointDisposition": "PREPARED_NONZERO_DRAW",
+          "newRuntimeManager": false,
+          "newShader": false
+        },
+        "packetSha256": "7f6de4305c63510623effefc830a63ebfb99edea467229793a21e6a057460544"
+      },
+      "resourcePacket": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_a_trail_003_ycl.dds",
+          "rawSha256": "21a6683bdd504b6c1e63b006632dd962b5be4a519b56654fff2916b29a7ab8b0",
+          "byteCount": 32896
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_003.dds",
+          "rawSha256": "3339f6fd17e588fed6c11082a8a93a9b6dc55c49cb20f2a956dd6258f675a83f",
+          "byteCount": 65664
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_009.dds",
+          "rawSha256": "d5e63e9f023fb9f9ffb5dc2d32f80319102b91c94c5fe7c951177d161f963c9e",
+          "byteCount": 8320
+        }
+      ],
+      "admissionBlockers": [],
+      "preservedLimitations": [
+        "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+      ],
+      "sourceIdentitySha256": "02187836ada4b273d6f23af7a45bdd0b51f86047e6341f196209b670ca3aa4fa",
+      "rowSha256": "3d1b6b11f904acca8aa61f192f776ad0a7b8239c803841904f2d20d35ea926ed"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.7972fa2531e6731d730b6a64",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_ARENA_BREAK_109",
+        "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
+        "sourceActionId": 420629,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 2,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420629/stage-002/notify-007",
+        "sourceType": "TrailGhostEffect",
+        "sourceTimeSeconds": 0.21060900390148163,
+        "sourceDurationSeconds": 0.0,
+        "assetClassName": "",
+        "assetObjectPath": "",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.d60906f230c4a202603c8cf1",
+        "inventoryFullKey": "occurrence-key.d60906f230c4a202603c8cf1fe18d4ce55289ed2bcd092ec475e563578710c8b",
+        "inventoryBranch": {
+          "branchId": "valtan_arena_break_109.source-420629.mn_rpbf_00.sequence-001.stages-000-002",
+          "branchOrdinal": 0,
+          "sequenceIndex": 1,
+          "sourceSequencePathSha256": "d6a6b80456d1716dd633ae0a3b4deba95125e51e1685e6753b17883f49b33ba5"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_arena_break_109.source-420629.mn_rpbf_00.sequence-001.stages-000-002",
+          "sequenceIndex": 1,
+          "sourceSequencePathSha256": "d6a6b80456d1716dd633ae0a3b4deba95125e51e1685e6753b17883f49b33ba5",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
+          "reviewBasis": "B4 reviewed safe 420629 seq=1 takeoff/drop/impact source path"
+        }
+      },
+      "family": "TRAIL_GHOST",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "TRAIL_GHOST_EXACT_EDGE_HISTORY_MISSING",
+        "TRAIL_GHOST_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "d5ab7ff32ab639a4cc6ce8717ab837eaa14fcc87b072110dfa0ad7a166f29ded",
+      "rowSha256": "862085869ce5280250638cfff37fbe4a3d3efd414977ff9d1775a9ed07c121a5"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.7b97e2930f9d258ba0f96276",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_FLOOR_WIPE_130",
+        "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
+        "sourceActionId": 420630,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 0,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420630/stage-000/notify-008",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 1.4900000095367432,
+        "sourceDurationSeconds": 0.2800000011920929,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420609_0_0_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.4cdbb35d7f27e21c19bfdc6f",
+        "inventoryFullKey": "occurrence-key.4cdbb35d7f27e21c19bfdc6fc88c670c4897a5ba80c8f2587ee1232320bb9d62",
+        "inventoryBranch": {
+          "branchId": "valtan_floor_wipe_130.source-420630.mn_rpbf_00.sequence-002.stages-000-008",
+          "branchOrdinal": 0,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "71fe52f854c956b19f0cc42dfef60bc35382c7f08d10a970f4cb2118eca03a87"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_floor_wipe_130.source-420630.mn_rpbf_00.sequence-002.stages-000-008",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "71fe52f854c956b19f0cc42dfef60bc35382c7f08d10a970f4cb2118eca03a87",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
+          "reviewBasis": "clipseq seq=2 and reviewed floor-wipe per-notify timing table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "ce7b8b55b2b18e3f0beaf5ba7a87bd4558aa6c996f1b72a570481df4816b2857",
+      "rowSha256": "565476a9e0052d34cd3ff890fe45d9bb5be5b5030426d45f215863fdfb52fee5"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.912a62fbacdd396de8c0a6cb",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_FOUR_SLASH",
+        "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+        "sourceActionId": 420609,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 8,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420609/stage-008/notify-013",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 2.2210700511932373,
+        "sourceDurationSeconds": 0.21157899498939514,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420609_0_0_1",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.2bf6d8b63c27634d945494b5",
+        "inventoryFullKey": "occurrence-key.2bf6d8b63c27634d945494b5d8bfbcd8dd797b28d6b5176ce46e89a4b7d0737a",
+        "inventoryBranch": {
+          "branchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+          "branchOrdinal": 2,
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+          "reviewBasis": "clipseq seq=3 full path crossing Main labels"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "8afdb9976fcefec41eb7ced3cd55ca17b4d69890762883b49490aafe46171958",
+      "rowSha256": "4a69b3070a9ceb673410b727b4d1cfc0907af63cb6e2f595926846833e0079f8"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.97972754aedce5e9ceb9e41a",
+      "targetVariant": "valtan.cascade-ribbon.baced6abbaddfb0719cc",
+      "sourceIdentity": {
+        "patternId": "VALTAN_FOUR_SLASH",
+        "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+        "sourceActionId": 420609,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 9,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420609/stage-009/notify-012",
+        "sourceType": "PlayParticleEffect",
+        "sourceTimeSeconds": 1.6400439739227295,
+        "sourceDurationSeconds": 0.40017300844192505,
+        "assetClassName": "ParticleSystem",
+        "assetObjectPath": "FX_MN_RPBF_00_O.Par_O_RPBF_Trail_01",
+        "carrierKey": "system=fx_mn_rpbf_00_o.par_o_rpbf_trail_01|emitter=FX_MN_RPBF_00_O:export:10306|emitterOccurrence=0|lod=FX_MN_RPBF_00_O:export:2328|moduleOrder=a86f875bc5b4787e303f23bb3a1a33009fa0478fbbafd4fcd5ed0ae34ca23377"
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.cc9bb4778dcb9902230a35a9",
+        "inventoryFullKey": "occurrence-key.cc9bb4778dcb9902230a35a9c21f728cb6cf5e8bda835d9b9b21abdb31851af1",
+        "inventoryBranch": {
+          "branchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+          "branchOrdinal": 2,
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+          "reviewBasis": "clipseq seq=3 full path crossing Main labels"
+        }
+      },
+      "family": "CASCADE_RIBBON",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "ADMITTED_RENDERER_READY",
+      "target": {
+        "id": "valtan.cascade-ribbon.baced6abbaddfb0719cc",
+        "kind": "trail",
+        "displayName": "particlespriteemitter_21",
+        "resources": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_auraline_02.dds"
+          },
+          {
+            "slotId": "noise",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_002.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr",
+          "renderProfile": "alpha_two_sided_depth_read",
+          "sourceProfile": {
+            "enabled": false
+          }
+        },
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 0.1,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true,
+          "tilingDistanceWorldUnits": 5.0,
+          "distanceTessellationStepWorldUnits": 0.05
+        },
+        "sourceRecipe": {
+          "enabled": true,
+          "rendererShape": "ribbon",
+          "emitterDelaySeconds": 0.0,
+          "emitterDurationSeconds": 0.0,
+          "emitterLoopCount": 1,
+          "bursts": [],
+          "modules": [
+            {
+              "stableId": "FX_MN_RPBF_00_O:export:6520@ref:0",
+              "className": "particlemodulerequired",
+              "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemodulerequired_22",
+              "literals": [
+                {
+                  "propertyPath": "ballowimageflipping",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "bkilloncompleted",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "buselegacyemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "emitterloops",
+                  "kind": "number",
+                  "value": 1.0
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                },
+                {
+                  "propertyPath": "material",
+                  "kind": "number",
+                  "value": -180.0
+                },
+                {
+                  "propertyPath": "nearculldistance",
+                  "kind": "number",
+                  "value": 25.0
+                },
+                {
+                  "propertyPath": "randomimagetime",
+                  "kind": "number",
+                  "value": 1.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "spawnrate",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_MN_RPBF_00_O:export:4576@ref:1",
+              "className": "particlemodulelifetime",
+              "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemodulelifetime_22",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "lifetime",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.800000011920929,
+                    0.800000011920929,
+                    0.800000011920929,
+                    0.800000011920929
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_MN_RPBF_00_O:export:7569@ref:2",
+              "className": "particlemodulesize",
+              "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemodulesize_23",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                },
+                {
+                  "propertyPath": "startsize.distribution.objectpath",
+                  "kind": "string",
+                  "value": "par_o_rpbf_trail_01.particlemodulesize_23.distributionvectorparticleparameter_0"
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startsize",
+                  "sourceClass": "distributionvectorparticleparameter",
+                  "sourceObjectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemodulesize_23.distributionvectorparticleparameter_0",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    80.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    80.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_MN_RPBF_00_O:export:3155@ref:3",
+              "className": "particlemodulecolor",
+              "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemodulecolor_13",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "startalpha",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "startcolor",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    2.0,
+                    2.0,
+                    2.0,
+                    2.0,
+                    2.0,
+                    2.0,
+                    2.0,
+                    2.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_MN_RPBF_00_O:export:5567@ref:4",
+              "className": "particlemoduleparameterdynamic",
+              "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemoduleparameterdynamic_12",
+              "literals": [
+                {
+                  "propertyPath": "dynamicparams[0].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[0].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[0].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[0].paramname",
+                  "kind": "string",
+                  "value": "x_tiling"
+                },
+                {
+                  "propertyPath": "dynamicparams[0].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "dynamicparams[1].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[1].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[1].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[1].paramname",
+                  "kind": "string",
+                  "value": "y_tiling"
+                },
+                {
+                  "propertyPath": "dynamicparams[1].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "dynamicparams[2].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[2].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[2].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[2].paramname",
+                  "kind": "string",
+                  "value": "dissolve"
+                },
+                {
+                  "propertyPath": "dynamicparams[2].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "dynamicparams[3].bscalevelocitybyparamvalue",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[3].bspawntimeonly",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[3].buseemittertime",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "dynamicparams[3].paramname",
+                  "kind": "string",
+                  "value": "disort"
+                },
+                {
+                  "propertyPath": "dynamicparams[3].valuemethod",
+                  "kind": "string",
+                  "value": "edpv_userset"
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                },
+                {
+                  "propertyPath": "updateflags",
+                  "kind": "number",
+                  "value": 15.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "dynamicparams[0].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.019999999552965164,
+                    0.019999999552965164,
+                    0.019999999552965164,
+                    0.019999999552965164
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "dynamicparams[1].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "dynamicparams[2].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 18.46930503845215,
+                  "lookupTableStartTime": 0.30000001192092896,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.699999988079071,
+                    3.0,
+                    0.699999988079071,
+                    0.7213459014892578,
+                    0.783429741859436,
+                    0.883320152759552,
+                    1.0180861949920654,
+                    1.184796690940857,
+                    1.3805204629898071,
+                    1.60232675075531,
+                    1.847283124923706,
+                    2.1124606132507324,
+                    2.3949263095855713,
+                    2.6917500495910645,
+                    3.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "dynamicparams[3].paramvalue",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 20.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    -0.699999988079071,
+                    0.0,
+                    0.0,
+                    -0.004849279299378395,
+                    -0.018744638189673424,
+                    -0.04070735350251198,
+                    -0.06975871324539185,
+                    -0.10491998493671417,
+                    -0.14521245658397675,
+                    -0.18965739011764526,
+                    -0.2372761219739914,
+                    -0.28708991408348083,
+                    -0.3381199538707733,
+                    -0.3893876373767853,
+                    -0.43991419672966003,
+                    -0.48872098326683044,
+                    -0.5348290205001831,
+                    -0.5772599577903748,
+                    -0.615034818649292,
+                    -0.6471750140190125,
+                    -0.6727018356323242,
+                    -0.6906363368034363,
+                    -0.699999988079071
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_MN_RPBF_00_O:export:3986@ref:5",
+              "className": "particlemodulecolorscaleoverlife",
+              "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemodulecolorscaleoverlife_18",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "alphascaleoverlife",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 20.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    -1.121126115322113e-05,
+                    1.0816290378570557,
+                    0.0,
+                    0.5779640078544617,
+                    0.9382665753364563,
+                    1.0794358253479004,
+                    1.0,
+                    0.8215761184692383,
+                    0.6657431125640869,
+                    0.5309723019599915,
+                    0.41573479771614075,
+                    0.3185018301010132,
+                    0.23774456977844238,
+                    0.17193418741226196,
+                    0.11954191327095032,
+                    0.079039067029953,
+                    0.048896729946136475,
+                    0.027586057782173157,
+                    0.013578265905380249,
+                    0.0053446292877197266,
+                    0.0013560391962528229,
+                    8.423905819654465e-05,
+                    0.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "colorscaleoverlife",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 1.4285714626312256,
+                  "lookupTableStartTime": 0.30000001192092896,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.0,
+                    8.0,
+                    1.0,
+                    8.0,
+                    4.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_MN_RPBF_00_O:export:8418@ref:6",
+              "className": "particlemodulesizemultiplylife",
+              "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemodulesizemultiplylife_27",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "lifemultiplier",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 5.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_MN_RPBF_00_O:export:8425@ref:7",
+              "className": "particlemodulesizescalebytime",
+              "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemodulesizescalebytime_3",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "sizescalebytime",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 3,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 3,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 20.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.21118028461933136,
+                    0.21118028461933136,
+                    0.21118028461933136,
+                    0.4034179747104645,
+                    0.4034179747104645,
+                    0.4034179747104645,
+                    0.5738729238510132,
+                    0.5738729238510132,
+                    0.5738729238510132,
+                    0.7197048664093018,
+                    0.7197048664093018,
+                    0.7197048664093018,
+                    0.83807373046875,
+                    0.83807373046875,
+                    0.83807373046875,
+                    0.9261393547058105,
+                    0.9261393547058105,
+                    0.9261393547058105,
+                    0.9810614585876465,
+                    0.9810614585876465,
+                    0.9810614585876465,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "keys": []
+                }
+              ]
+            },
+            {
+              "stableId": "FX_MN_RPBF_00_O:export:9013@ref:8",
+              "className": "particlemoduletypedataribbon",
+              "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemoduletypedataribbon_3",
+              "literals": [
+                {
+                  "propertyPath": "bdeadtrailsondeactivate",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "bdeadtrailsonsourceloss",
+                  "kind": "boolean",
+                  "value": false
+                },
+                {
+                  "propertyPath": "btangentrecalculationeveryframe",
+                  "kind": "boolean",
+                  "value": true
+                },
+                {
+                  "propertyPath": "distancetessellationstepsize",
+                  "kind": "number",
+                  "value": 5.0
+                },
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                },
+                {
+                  "propertyPath": "tilingdistance",
+                  "kind": "number",
+                  "value": 500.0
+                }
+              ],
+              "distributions": []
+            },
+            {
+              "stableId": "FX_MN_RPBF_00_O:export:8803@ref:9",
+              "className": "particlemodulespawn",
+              "objectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemodulespawn_22",
+              "literals": [
+                {
+                  "propertyPath": "lodvalidity",
+                  "kind": "number",
+                  "value": 3.0
+                }
+              ],
+              "distributions": [
+                {
+                  "propertyPath": "rate",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 1,
+                  "lookupTableNumElements": 1,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [
+                    50.0,
+                    50.0,
+                    50.0,
+                    50.0
+                  ],
+                  "keys": []
+                },
+                {
+                  "propertyPath": "ratescale",
+                  "sourceClass": "",
+                  "sourceObjectPath": "",
+                  "componentCount": 1,
+                  "operation": 1,
+                  "randomLockAxes": 0,
+                  "lookupTableChunkSize": 0,
+                  "lookupTableNumElements": 0,
+                  "lookupTableTimeScale": 0.0,
+                  "lookupTableStartTime": 0.0,
+                  "defaultMinimum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "defaultMaximum": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "lookupTable": [],
+                  "keys": []
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "packet": {
+        "packetVersion": 1,
+        "adapterId": "cascade-ribbon-document-v12",
+        "packetLayout": "CASCADE_RIBBON_TYPED_PACKET_V1",
+        "runtimeCarrier": "EFFECT_TYPED_CASCADE_RIBBON_V1",
+        "rendererReady": true,
+        "typeDataStableId": "FX_MN_RPBF_00_O:export:9013@ref:8",
+        "typeDataClassName": "particlemoduletypedataribbon",
+        "typeDataObjectPath": "FX_MN_RPBF_00_O.par_o_rpbf_trail_01.particlemoduletypedataribbon_3",
+        "typeDataModuleSha256": "92b15b2657e74b3e7f7961d1fc660219a545ad1c976c5bf62bc7f9370e6ec18d",
+        "resolvedRendererShape": "ribbon",
+        "tilingDistance": 5.0,
+        "distanceTessellationStepSize": 0.05,
+        "tangentTessellationScalar": 0.0,
+        "lodValidity": 3.0,
+        "operationalMaxPoints": 64,
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 0.1,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true,
+          "tilingDistanceWorldUnits": 5.0,
+          "distanceTessellationStepWorldUnits": 0.05
+        },
+        "sourceRecipeSha256": "58b89138ff20c9415b9b3ef7209393254c865f8f8d487d67c069a1b86d722047",
+        "projectedRecipeSha256": "cc45db531721f7aa0f7c7a6a37455c5beeaf845a81601f403324c9b9bde7c8a3",
+        "moduleClosureSha256": "907f002a0c7245697f0ebb068a7770b226ec7bfc8347a1073ae4e76cb4ea2412",
+        "moduleCount": 10,
+        "sourceCarrierKey": "system=fx_mn_rpbf_00_o.par_o_rpbf_trail_01|emitter=FX_MN_RPBF_00_O:export:10306|emitterOccurrence=0|lod=FX_MN_RPBF_00_O:export:2328|moduleOrder=a86f875bc5b4787e303f23bb3a1a33009fa0478fbbafd4fcd5ed0ae34ca23377",
+        "rendererAdmission": {
+          "sharedRendererPath": "EFFECT_TRAIL_SHARED_HEADLESS_V1",
+          "minimumRuntimePointCount": 2,
+          "onePointDisposition": "SUPPRESSED_INSUFFICIENT_POINTS",
+          "twoPointDisposition": "PREPARED_NONZERO_DRAW",
+          "newRuntimeManager": false,
+          "newShader": false
+        },
+        "packetSha256": "ffc5c5a2c8f94269afa430a48fca8b4d71a44432e6ef9e7537a2d52dc4092ea7"
+      },
+      "resourcePacket": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_auraline_02.dds",
+          "rawSha256": "25c9e16a7ee3341ee2d98a49a5ed9ffb3fae8976db474f500f1dd403cf336f82",
+          "byteCount": 65664
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_002.dds",
+          "rawSha256": "6125c3c1bcea0455d3f3c9bf0c8092331cd789f9e6686d00eac45f136fe79393",
+          "byteCount": 8320
+        }
+      ],
+      "admissionBlockers": [],
+      "preservedLimitations": [
+        "CASCADE_RIBBON_BOUNDED_RECONSTRUCTION_NOT_NATIVE_SOURCE_EXACT"
+      ],
+      "sourceIdentitySha256": "baced6abbaddfb0719cc44bf6a6a6522951262ad9f7b92d14274d6a015afb344",
+      "rowSha256": "a596ab2fb78e168d36acf3699a46b3918763c16c6ff53f8b866be148fe808716"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.9a7eeb5d6e530a9f2ed8e950",
+      "targetVariant": "valtan.420633.notify004.emitter5258",
+      "sourceIdentity": {
+        "patternId": "VALTAN_JUMP_SPIN",
+        "clipOccurrenceId": "valtan.attack.jump-spin.spin.clip.01",
+        "sourceActionId": 420621,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 15,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420621/stage-015/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 3.200000047683716,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.9bc7bf33ad296d1cf86cdaae",
+        "inventoryFullKey": "occurrence-key.9bc7bf33ad296d1cf86cdaae5b572ec0e8a27d9f774f8df1a4e0ac236a013042",
+        "inventoryBranch": {
+          "branchId": "valtan_jump_spin.source-420621.mn_rpbf_00.sequence-002.stages-013-016",
+          "branchOrdinal": 1,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "835c0a0f0f8df9fba0e85ee72fc26f5ef627cd762269f91e97c9ff0b3d47a83e"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_jump_spin.source-420621.mn_rpbf_00.sequence-002.stages-013-016",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "835c0a0f0f8df9fba0e85ee72fc26f5ef627cd762269f91e97c9ff0b3d47a83e",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.jump-spin.spin.clip.01",
+          "reviewBasis": "clipseq seq=2 and reviewed jump-spin stage table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "ADMITTED_RENDERER_READY",
+      "target": {
+        "kind": "trail",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "id": "valtan.420633.notify004.emitter5258",
+        "sourceDocument": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+      },
+      "packet": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "rendererReady": true,
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420621/stage-015/notify-004",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 3.200000047683716,
+        "targetElementId": "valtan.420633.notify004.emitter5258",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "history": {
+          "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+          "artifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+          "sampleCount": 409,
+          "playbackClampSeconds": 1.2000000476837158,
+          "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
+        },
+        "rendererAdmission": {
+          "sharedRendererPath": "EFFECT_TRAIL_SHARED_HEADLESS_V1",
+          "minimumRuntimePointCount": 2,
+          "onePointDisposition": "SUPPRESSED_INSUFFICIENT_POINTS",
+          "twoPointDisposition": "PREPARED_NONZERO_DRAW",
+          "newRuntimeManager": false,
+          "newShader": false
+        },
+        "packetSha256": "8877457cd817b8031575b41afefac5ad6b494b14aad8b6cdaa24dbecb88f988f"
+      },
+      "resourcePacket": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+          "rawSha256": "0cda1d83c6df738528a3e32c45fd72f76a6acddf0010c76170032ae4e3469933",
+          "byteCount": 8320
+        },
+        {
+          "slotId": "dissolve",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+          "rawSha256": "58a957a8d13005c12afb097c6c8d423d2c94872dfe8b76ab1d51dabbfe67749b",
+          "byteCount": 32896
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_a_trail_011.dds",
+          "rawSha256": "ecf526f2f5849525d341e20549652736ec79ef173bdf65226f5aa314e6c89df9",
+          "byteCount": 32896
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_009.dds",
+          "rawSha256": "d9b2b59b2657fcfe333852ef2580492fcd1e7769af2d8d5096be47050cddc65e",
+          "byteCount": 32896
+        }
+      ],
+      "admissionBlockers": [],
+      "preservedLimitations": [
+        "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+      ],
+      "sourceIdentitySha256": "bf0412a75814dde315a3833f6acfc52e192ca235ca4da88bdcde4bc6cf56f692",
+      "rowSha256": "81e6a699b76fe15249709af94f8246e0c9a63e3ff847b673421f9ed53f608b97"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.9e0b462c0ca19018c9bccaa9",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_DOWN_SMASH",
+        "clipOccurrenceId": "valtan.attack.down-smash.active.clip.01",
+        "sourceActionId": 420602,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 14,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420602/stage-014/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 1.5183420181274414,
+        "sourceDurationSeconds": 0.17915700376033783,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420602_0_0_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.4cae6dc9218a09cac26bd6d4",
+        "inventoryFullKey": "occurrence-key.4cae6dc9218a09cac26bd6d4806d9dc235186288d283e1bb666f91ea734958ee",
+        "inventoryBranch": {
+          "branchId": "valtan_down_smash.source-420602.mn_rpbf_00.sequence-003.stages-014-016",
+          "branchOrdinal": 2,
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "a8724cd41fa39eda3b2ef4794b957df98765ed874f9f53205d02afca474642cb"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_down_smash.source-420602.mn_rpbf_00.sequence-003.stages-014-016",
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "a8724cd41fa39eda3b2ef4794b957df98765ed874f9f53205d02afca474642cb",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.down-smash.active.clip.01",
+          "reviewBasis": "clipseq seq=3 and reviewed DOWN timing table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "d3bd80cccbe9ab13725c13ed063610475af9236ddf33aa77a406c423319878b7",
+      "rowSha256": "ebe672cb5158eee9cca6a0650f2cb4c41ff9d97c4dafdd849cbd7a1c93cc4cfb"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.afc034814139be3321e2ae13",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_CHARGE_GRAB_ROAR",
+        "clipOccurrenceId": "valtan.attack.charge-grab-roar.counter.clip.01",
+        "sourceActionId": 420623,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 16,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420623/stage-016/notify-009",
+        "sourceType": "PlayParticleEffect",
+        "sourceTimeSeconds": 1.007554054260254,
+        "sourceDurationSeconds": 0.9924460053443909,
+        "assetClassName": "ParticleSystem",
+        "assetObjectPath": "FX_MN_RPBF_00_N.Par_N_RPBF_Ribbon_02_02",
+        "carrierKey": "system=fx_mn_rpbf_00_n.par_n_rpbf_ribbon_02_02|emitter=FX_MN_RPBF_00_N:export:7176|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1312|moduleOrder=c2e1880677b5f13589dbeefc2d1ae91aa6dc81165e74529f4b47a5f5f4bde275"
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.6d524f72d0d01c2a785d9b21",
+        "inventoryFullKey": "occurrence-key.6d524f72d0d01c2a785d9b219726a64695202376bc58509897df325a414fa77a",
+        "inventoryBranch": {
+          "branchId": "valtan_charge_grab_roar.source-420623.mn_rpbf_00.sequence-002.stages-015-031",
+          "branchOrdinal": 1,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "9cb88167618fcc61583c59231e98c3173c2104865f35daaf26de845fa1542920"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_charge_grab_roar.source-420623.mn_rpbf_00.sequence-002.stages-015-031",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "9cb88167618fcc61583c59231e98c3173c2104865f35daaf26de845fa1542920",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.charge-grab-roar.counter.clip.01",
+          "reviewBasis": "clipseq seq=2 and reviewed charge-grab-roar core/source-only table"
+        }
+      },
+      "family": "CASCADE_RIBBON",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "CASCADE_RIBBON_TESSELLATION_STEP_MISSING",
+        "CASCADE_RIBBON_TILING_DISTANCE_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "e79c9d53af3a62e65b5ee1e933f1b7564512841a8cb5b303116fbdeef213a2e4",
+      "rowSha256": "c5a76dcd4277f932f26a95ef7735b396485b0e24cfd012c501a0abc11e22ebcd"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.c95bcfbdd8e19140f127dcf8",
+      "targetVariant": "valtan.420633.notify004.emitter5259",
+      "sourceIdentity": {
+        "patternId": "VALTAN_BACKSTEP_ATTACK",
+        "clipOccurrenceId": "valtan.attack.backstep.windup.clip.01",
+        "sourceActionId": 420635,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 1,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420635/stage-001/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 3.200000047683716,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.00c06e1ea670f211a2219dd8",
+        "inventoryFullKey": "occurrence-key.00c06e1ea670f211a2219dd84ac7caacdd70b7583df90db6a914ec7b2dfdc85b",
+        "inventoryBranch": {
+          "branchId": "valtan_backstep_attack.source-420635.mn_rpbf_00.sequence-000.stages-000-009",
+          "branchOrdinal": 0,
+          "sequenceIndex": 0,
+          "sourceSequencePathSha256": "8e5bccb3331c412725fd84f2afbfd2a3ec0190d472df240878d7f247ccfdd06f"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_backstep_attack.source-420635.mn_rpbf_00.sequence-000.stages-000-009",
+          "sequenceIndex": 0,
+          "sourceSequencePathSha256": "8e5bccb3331c412725fd84f2afbfd2a3ec0190d472df240878d7f247ccfdd06f",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.backstep.windup.clip.01",
+          "reviewBasis": "clipseq seq=0 and reviewed backstep visual stage table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "ADMITTED_RENDERER_READY",
+      "target": {
+        "kind": "trail",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "id": "valtan.420633.notify004.emitter5259",
+        "sourceDocument": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+      },
+      "packet": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "rendererReady": true,
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420635/stage-001/notify-004",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 3.200000047683716,
+        "targetElementId": "valtan.420633.notify004.emitter5259",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "history": {
+          "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+          "artifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+          "sampleCount": 409,
+          "playbackClampSeconds": 1.2000000476837158,
+          "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
+        },
+        "rendererAdmission": {
+          "sharedRendererPath": "EFFECT_TRAIL_SHARED_HEADLESS_V1",
+          "minimumRuntimePointCount": 2,
+          "onePointDisposition": "SUPPRESSED_INSUFFICIENT_POINTS",
+          "twoPointDisposition": "PREPARED_NONZERO_DRAW",
+          "newRuntimeManager": false,
+          "newShader": false
+        },
+        "packetSha256": "e481c2a7431bc3bd222dc58dc50b01c3d9d7505f3287a78f4d373478ae594ac8"
+      },
+      "resourcePacket": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_006.dds",
+          "rawSha256": "0eaf36a6b923cb1fdf6958716bf35598639251454b65aa90ba52a8ced7d2ee48",
+          "byteCount": 8320
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_023.dds",
+          "rawSha256": "57b6cf34817250e634094deda330e6360d31c5b03b289fb61e607f6067052427",
+          "byteCount": 65664
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_067.dds",
+          "rawSha256": "8264b8a2671205799a428e244fd2068ab1300efdea0cb0f3a504e1a0c5b6e4dd",
+          "byteCount": 32896
+        }
+      ],
+      "admissionBlockers": [],
+      "preservedLimitations": [
+        "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+      ],
+      "sourceIdentitySha256": "02187836ada4b273d6f23af7a45bdd0b51f86047e6341f196209b670ca3aa4fa",
+      "rowSha256": "a3191197b12de401f0eda47fb706a5e19831018ae8bc0ccb63fd8bf4cee49ee9"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.d605df4050823b383a83bea5",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_SUPER_SMASH",
+        "clipOccurrenceId": "valtan.attack.super-smash.windup.clip.01",
+        "sourceActionId": 420619,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 0,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420619/stage-000/notify-008",
+        "sourceType": "TrailGhostEffect",
+        "sourceTimeSeconds": 0.7729840278625488,
+        "sourceDurationSeconds": 0.0,
+        "assetClassName": "",
+        "assetObjectPath": "",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.436adfcd791bcc6d6ff36b1d",
+        "inventoryFullKey": "occurrence-key.436adfcd791bcc6d6ff36b1d57983cf65b05adba05918f64192bff681a46dce8",
+        "inventoryBranch": {
+          "branchId": "valtan_super_smash.source-420619.mn_rpbf_00.sequence-001.stages-000-005",
+          "branchOrdinal": 0,
+          "sequenceIndex": 1,
+          "sourceSequencePathSha256": "87802e65ce74a49026c30199b49a553fbd01d6531bbb63a681668ff6baea4109"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_super_smash.source-420619.mn_rpbf_00.sequence-001.stages-000-005",
+          "sequenceIndex": 1,
+          "sourceSequencePathSha256": "87802e65ce74a49026c30199b49a553fbd01d6531bbb63a681668ff6baea4109",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.super-smash.windup.clip.01",
+          "reviewBasis": "clipseq seq=1 and reviewed super-smash visual stage table"
+        }
+      },
+      "family": "TRAIL_GHOST",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "TRAIL_GHOST_EXACT_EDGE_HISTORY_MISSING",
+        "TRAIL_GHOST_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "731a8b244c5966a18bb9cbfce94da3ebdc43d61e923a4c4b782d4460ee5d5dd7",
+      "rowSha256": "b8977e5b8b01f716d0f8078cd24380f9f0e7c652d5526d35119e0969d9794637"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.dd805658c9e055a796d7d00a",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_EARTHQUAKE_SMASH",
+        "clipOccurrenceId": "valtan.attack.earthquake-smash.delayed.clip.01",
+        "sourceActionId": 420605,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 19,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420605/stage-019/notify-008",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.728410005569458,
+        "sourceDurationSeconds": 0.07502000033855438,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420605_0_1_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.8cd897df41f94d0f216b652e",
+        "inventoryFullKey": "occurrence-key.8cd897df41f94d0f216b652e5355ee99750aa5bac8fdb09d2c6773d1fed017b9",
+        "inventoryBranch": {
+          "branchId": "valtan_earthquake_smash.source-420605.mn_rpbf_00.sequence-003.stages-018-021",
+          "branchOrdinal": 2,
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "4f4e08bad15359de2fdbfaf4de16e80db6573c3cc1329624c49d4b4a7c2f2f06"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_earthquake_smash.source-420605.mn_rpbf_00.sequence-003.stages-018-021",
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "4f4e08bad15359de2fdbfaf4de16e80db6573c3cc1329624c49d4b4a7c2f2f06",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.earthquake-smash.delayed.clip.01",
+          "reviewBasis": "clipseq seq=3 and reviewed earthquake timing table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "f310ce565b8a123f9f28fb2b7b9e768f2fb988502b45836f25310ff5ae803eef",
+      "rowSha256": "c43f4272f5d94d0ab30c5c3a56bdd9f36ecb0b1ed9011db70d7b2e7c9375acbc"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.e0f2b9a767619ceb110d4fa5",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_FOUR_SLASH",
+        "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+        "sourceActionId": 420609,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 8,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420609/stage-008/notify-005",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 1.666545033454895,
+        "sourceDurationSeconds": 0.3638089895248413,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420609_0_0_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.456e18ad9dd70ebf359fa3d2",
+        "inventoryFullKey": "occurrence-key.456e18ad9dd70ebf359fa3d2894c524f76d2c3f105f3a11f2540245bb3611227",
+        "inventoryBranch": {
+          "branchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+          "branchOrdinal": 2,
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+          "sequenceIndex": 3,
+          "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+          "reviewBasis": "clipseq seq=3 full path crossing Main labels"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "2f2f57ad192e560ac52c53ac4088f7850228d3b88d6786a2f55492b702960153",
+      "rowSha256": "14bc413b7c6b39af7329dd45b78bbaba4a80d7fbaa4daa7ce2996b8d8464c012"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.ef7306f054f42fcb2434bbe8",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_RED_BLADE_WAVE",
+        "clipOccurrenceId": "valtan.attack.red-blade-wave.recovery.clip.01",
+        "sourceActionId": 420636,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 2,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420636/stage-002/notify-003",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0557669997215271,
+        "sourceDurationSeconds": 0.3425169885158539,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420636_0_2_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.728640918f73e66cfc856732",
+        "inventoryFullKey": "occurrence-key.728640918f73e66cfc8567329d97bac34649c8141656c8564b0523f3dfd9965d",
+        "inventoryBranch": {
+          "branchId": "valtan_red_blade_wave.source-420636.mn_rpbf_00.sequence-002.stages-000-002",
+          "branchOrdinal": 0,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "f65ad06e666b832665f9bf1eaa52304430ef0c29215c0d26b4c77cb0c4a895f9"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_red_blade_wave.source-420636.mn_rpbf_00.sequence-002.stages-000-002",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "f65ad06e666b832665f9bf1eaa52304430ef0c29215c0d26b4c77cb0c4a895f9",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.red-blade-wave.recovery.clip.01",
+          "reviewBasis": "clipseq seq=2 and reviewed red-blade stage table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "59f51ebddfced2ca14e6eee458b771fe80a2cb923042490046e8cd47387755c3",
+      "rowSha256": "6fbaf8109bc1b405c31d18c4206170011df9f5235a16d710023c795b95b7deb1"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.f03638659d51c5f61dbfa4d4",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_JUMP_SPIN",
+        "clipOccurrenceId": "valtan.attack.jump-spin.recovery.clip.01",
+        "sourceActionId": 420621,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 16,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420621/stage-016/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 0.1965470016002655,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_4_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.83afb9d1903ec4bb6a2ab9e7",
+        "inventoryFullKey": "occurrence-key.83afb9d1903ec4bb6a2ab9e71f9d4f5fe3f3ca624d35265920073c195ba879ef",
+        "inventoryBranch": {
+          "branchId": "valtan_jump_spin.source-420621.mn_rpbf_00.sequence-002.stages-013-016",
+          "branchOrdinal": 1,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "835c0a0f0f8df9fba0e85ee72fc26f5ef627cd762269f91e97c9ff0b3d47a83e"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_jump_spin.source-420621.mn_rpbf_00.sequence-002.stages-013-016",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "835c0a0f0f8df9fba0e85ee72fc26f5ef627cd762269f91e97c9ff0b3d47a83e",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.jump-spin.recovery.clip.01",
+          "reviewBasis": "clipseq seq=2 and reviewed jump-spin stage table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "e0580d84686a66229d4885eecfb87d244171c61174008ad6b6a141e0a40baaa8",
+      "rowSha256": "ebdb66d641d03c56f7a467fc42d90951f4e988361e07ceb83fcfa3371c74df66"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.fa1bc626ced230f06727f1d1",
+      "targetVariant": "valtan.420633.notify004.emitter5260",
+      "sourceIdentity": {
+        "patternId": "VALTAN_JUMP_SPIN",
+        "clipOccurrenceId": "valtan.attack.jump-spin.spin.clip.01",
+        "sourceActionId": 420621,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 15,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420621/stage-015/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 3.200000047683716,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.9bc7bf33ad296d1cf86cdaae",
+        "inventoryFullKey": "occurrence-key.9bc7bf33ad296d1cf86cdaae5b572ec0e8a27d9f774f8df1a4e0ac236a013042",
+        "inventoryBranch": {
+          "branchId": "valtan_jump_spin.source-420621.mn_rpbf_00.sequence-002.stages-013-016",
+          "branchOrdinal": 1,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "835c0a0f0f8df9fba0e85ee72fc26f5ef627cd762269f91e97c9ff0b3d47a83e"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_jump_spin.source-420621.mn_rpbf_00.sequence-002.stages-013-016",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "835c0a0f0f8df9fba0e85ee72fc26f5ef627cd762269f91e97c9ff0b3d47a83e",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.jump-spin.spin.clip.01",
+          "reviewBasis": "clipseq seq=2 and reviewed jump-spin stage table"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "ADMITTED_RENDERER_READY",
+      "target": {
+        "kind": "trail",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "id": "valtan.420633.notify004.emitter5260",
+        "sourceDocument": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+      },
+      "packet": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "rendererReady": true,
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420621/stage-015/notify-004",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 3.200000047683716,
+        "targetElementId": "valtan.420633.notify004.emitter5260",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "history": {
+          "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+          "artifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+          "sampleCount": 409,
+          "playbackClampSeconds": 1.2000000476837158,
+          "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
+        },
+        "rendererAdmission": {
+          "sharedRendererPath": "EFFECT_TRAIL_SHARED_HEADLESS_V1",
+          "minimumRuntimePointCount": 2,
+          "onePointDisposition": "SUPPRESSED_INSUFFICIENT_POINTS",
+          "twoPointDisposition": "PREPARED_NONZERO_DRAW",
+          "newRuntimeManager": false,
+          "newShader": false
+        },
+        "packetSha256": "707ee343a2c5433ab806c76317638fa7ca38728bbf227f4f7fc7a41b70966d3c"
+      },
+      "resourcePacket": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_a_trail_003_ycl.dds",
+          "rawSha256": "21a6683bdd504b6c1e63b006632dd962b5be4a519b56654fff2916b29a7ab8b0",
+          "byteCount": 32896
+        },
+        {
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_003.dds",
+          "rawSha256": "3339f6fd17e588fed6c11082a8a93a9b6dc55c49cb20f2a956dd6258f675a83f",
+          "byteCount": 65664
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_009.dds",
+          "rawSha256": "d5e63e9f023fb9f9ffb5dc2d32f80319102b91c94c5fe7c951177d161f963c9e",
+          "byteCount": 8320
+        }
+      ],
+      "admissionBlockers": [],
+      "preservedLimitations": [
+        "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+      ],
+      "sourceIdentitySha256": "bf0412a75814dde315a3833f6acfc52e192ca235ca4da88bdcde4bc6cf56f692",
+      "rowSha256": "373f547a750b160356c23364ad2e4d063c41bd75f1cdd6c3007806b7df97a57a"
+    }
+  ],
+  "summary": {
+    "reviewedSelectionCount": 21,
+    "sourceInventoryOccurrenceCount": 9434,
+    "sourceInventoryCarrierCount": 1044,
+    "reviewedReachableSourceOccurrenceCount": 367,
+    "trailAdapterRowCount": 28,
+    "familyCounts": {
+      "ANIMATION_TRAIL": 23,
+      "CASCADE_RIBBON": 2,
+      "TRAIL_GHOST": 3
+    },
+    "dispositionCounts": {
+      "ADMITTED_RENDERER_READY": 10,
+      "UNRESOLVED_RUNTIME_ADAPTER": 18
+    },
+    "admittedRendererReadyCount": 10,
+    "unresolvedRuntimeAdapterCount": 18,
+    "unresolvedBlockerCounts": {
+      "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING": 14,
+      "ANIMATION_TRAIL_RENDERER_TARGET_MISSING": 14,
+      "CASCADE_RIBBON_TESSELLATION_STEP_MISSING": 1,
+      "CASCADE_RIBBON_TILING_DISTANCE_MISSING": 1,
+      "TRAIL_GHOST_EXACT_EDGE_HISTORY_MISSING": 3,
+      "TRAIL_GHOST_RENDERER_TARGET_MISSING": 3
+    },
+    "excludedDeferredLightOccurrenceCount": 0,
+    "excludedExplicitGenericDustOccurrenceCount": 6,
+    "sourceOnlyInsertedClipCount": 0,
+    "droppedTrailAdapterRowCount": 0,
+    "duplicateAdapterTargetCount": 0
+  },
+  "artifactSha256": "778f047b5e60fddd1712aba7ccc22686bf3f00544b59fb7935ed54bc9234a95b"
+}

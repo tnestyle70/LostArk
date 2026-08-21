@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-front-back-front-source-wave-application-receipt.schema.json",
+  "title": "Valtan Front Back Front Source Wave Application Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "transactionStatus",
+    "inputs",
+    "policy",
+    "closure",
+    "allEffectsClipDisplay",
+    "aggregateCanary",
+    "whirlwindCanary",
+    "targets",
+    "catalogOutput",
+    "cueOutput",
+    "canonicalOutputs"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-front-back-front-source-wave-application-receipt"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "bossArchetypeId": {
+      "const": "BOSS_VALTAN"
+    },
+    "transactionStatus": {
+      "const": "COMMITTED"
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateReceiptPath",
+        "candidateReceiptSha256",
+        "drawableProofPath",
+        "drawableProofSha256"
+      ],
+      "properties": {
+        "candidateReceiptPath": { "$ref": "#/$defs/repositoryPath" },
+        "candidateReceiptSha256": { "$ref": "#/$defs/sha256" },
+        "drawableProofPath": { "$ref": "#/$defs/repositoryPath" },
+        "drawableProofSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "animationBindingMutation",
+        "aggregateDocumentMutation",
+        "aggregateProjectOverlayMutation",
+        "aggregateSourceElementAppend",
+        "gameplayAuthorityMutation",
+        "fourthWaveRole",
+        "failureAction"
+      ],
+      "properties": {
+        "animationBindingMutation": { "const": "FORBIDDEN" },
+        "aggregateDocumentMutation": { "const": "FORBIDDEN" },
+        "aggregateProjectOverlayMutation": { "const": "FORBIDDEN" },
+        "aggregateSourceElementAppend": { "const": "FORBIDDEN" },
+        "gameplayAuthorityMutation": { "const": "FORBIDDEN" },
+        "fourthWaveRole": { "const": "AUXILIARY_SOURCE_WAVE_NOT_GAMEPLAY_HIT" },
+        "failureAction": { "const": "ROLLBACK_ALL_OUTPUTS" }
+      }
+    },
+    "closure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceWaveDocumentCount",
+        "sourceElementCount",
+        "elementsPerSourceWave",
+        "catalogAppendedOrPreservedRowCount",
+        "cueAppendedOrPreservedRowCount",
+        "allEffectsClipCueCount",
+        "aggregateSourceElementAppendCount",
+        "duplicateSourceElementCount",
+        "gameplayMutationCount"
+      ],
+      "properties": {
+        "sourceWaveDocumentCount": { "const": 4 },
+        "sourceElementCount": { "const": 100 },
+        "elementsPerSourceWave": { "const": 25 },
+        "catalogAppendedOrPreservedRowCount": { "const": 4 },
+        "cueAppendedOrPreservedRowCount": { "const": 4 },
+        "allEffectsClipCueCount": { "const": 5 },
+        "aggregateSourceElementAppendCount": { "const": 0 },
+        "duplicateSourceElementCount": { "const": 0 },
+        "gameplayMutationCount": { "const": 0 }
+      }
+    },
+    "allEffectsClipDisplay": { "type": "object" },
+    "aggregateCanary": { "type": "object" },
+    "whirlwindCanary": { "type": "object" },
+    "targets": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/target"
+      }
+    },
+    "catalogOutput": {
+      "$ref": "#/$defs/collectionOutput"
+    },
+    "cueOutput": {
+      "$ref": "#/$defs/collectionOutput"
+    },
+    "canonicalOutputs": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "role", "sha256"],
+        "properties": {
+          "path": { "$ref": "#/$defs/repositoryPath" },
+          "role": {
+            "enum": [
+              "EFFECT_CATALOG",
+              "VALTAN_CUE_DOCUMENT",
+              "AUTHORED_EFFECT_DOCUMENT"
+            ]
+          },
+          "sha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?/).+$"
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "waveOrdinal",
+        "waveId",
+        "displayLabel",
+        "presentationRole",
+        "gameplayHitDisposition",
+        "effectAssetId",
+        "candidateDocumentPath",
+        "candidateDocumentSha256",
+        "targetAuthoredDocumentPath",
+        "candidateElementCount",
+        "cueSourceStartMs",
+        "cueLocalStartDelaySeconds",
+        "catalogRow",
+        "cueRow",
+        "finalDocumentSha256"
+      ],
+      "properties": {
+        "waveOrdinal": { "type": "integer", "minimum": 1 },
+        "waveId": { "type": "string", "minLength": 1 },
+        "displayLabel": { "type": "string", "minLength": 1 },
+        "presentationRole": { "enum": ["source-wave", "auxiliary-source-wave"] },
+        "gameplayHitDisposition": {
+          "enum": [
+            "PRESENTATION_ONLY_SERVER_HIT_UNCHANGED",
+            "FORBIDDEN_AUXILIARY_NOT_GAMEPLAY_HIT"
+          ]
+        },
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "candidateDocumentPath": { "$ref": "#/$defs/repositoryPath" },
+        "candidateDocumentSha256": { "$ref": "#/$defs/sha256" },
+        "targetAuthoredDocumentPath": { "$ref": "#/$defs/repositoryPath" },
+        "candidateElementCount": { "const": 25 },
+        "cueSourceStartMs": { "type": "integer", "minimum": 0 },
+        "cueLocalStartDelaySeconds": { "type": "number", "minimum": 0 },
+        "catalogRow": { "type": "object" },
+        "cueRow": { "type": "object" },
+        "finalDocumentSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "collectionOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "appendedOrPreservedRows"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repositoryPath" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "appendedOrPreservedRows": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "type": "object" }
+        }
+      }
+    }
+  }
+}

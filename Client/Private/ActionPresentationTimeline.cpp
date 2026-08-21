@@ -13,11 +13,15 @@ bool Client::CActionPresentationTimeline::Resolve_ClipDuration(
 	fOutWallDurationSeconds = 0.f;
 	if (!std::isfinite(Clip.fModelSourceDurationSeconds) ||
 		Clip.fModelSourceDurationSeconds <= 0.f ||
+		!std::isfinite(Clip.fSourceStartSeconds) ||
+		Clip.fSourceStartSeconds < 0.f ||
+		Clip.fSourceStartSeconds >= Clip.fModelSourceDurationSeconds ||
 		!std::isfinite(Clip.fPlayRate) || Clip.fPlayRate <= 0.f)
 	{
 		return false;
 	}
-	fOutSourceDurationSeconds = Clip.fModelSourceDurationSeconds;
+	fOutSourceDurationSeconds =
+		Clip.fModelSourceDurationSeconds - Clip.fSourceStartSeconds;
 	if (0u != Clip.iPlayMs)
 	{
 		fOutSourceDurationSeconds = (std::min)(
@@ -68,7 +72,9 @@ bool Client::CActionPresentationTimeline::Resolve_Sample(
 			OutSample.iLoopEpoch = static_cast<uint64_t>(fEpoch);
 			const float fLoopWallSeconds = std::fmod(
 				fRemainingWallSeconds, fWallDurationSeconds);
-			OutSample.fClipSourceTimeSeconds = (std::min)(
+			OutSample.fClipSourceTimeSeconds =
+				Clips[iClip].fSourceStartSeconds +
+				(std::min)(
 				(std::max)(0.f, fLoopWallSeconds) * Clips[iClip].fPlayRate,
 				fSourceDurationSeconds);
 			OutSample.fStageWallTimeSeconds = fStageWallTimeSeconds;
@@ -87,7 +93,8 @@ bool Client::CActionPresentationTimeline::Resolve_Sample(
 
 		OutSample.iClipIndex = iClip;
 		OutSample.iLoopEpoch = 0u;
-		OutSample.fClipSourceTimeSeconds = (std::min)(
+		OutSample.fClipSourceTimeSeconds = Clips[iClip].fSourceStartSeconds +
+			(std::min)(
 			fRemainingWallSeconds * Clips[iClip].fPlayRate,
 			fSourceDurationSeconds);
 		OutSample.fStageWallTimeSeconds = fStageWallTimeSeconds;
@@ -130,15 +137,21 @@ bool Client::CActionPresentationTimeline::Resolve_CueWallOffset(
 			continue;
 		}
 
-		if (fCueSourceTimeSeconds > fSourceDurationSeconds + 0.000001f ||
+		const float fSourceStartSeconds =
+			Clips[iClip].fSourceStartSeconds;
+		const float fSourceEndSeconds =
+			fSourceStartSeconds + fSourceDurationSeconds;
+		if (fCueSourceTimeSeconds + 0.000001f < fSourceStartSeconds ||
+			fCueSourceTimeSeconds > fSourceEndSeconds + 0.000001f ||
 			(!Clips[iClip].bLoop && 0u != iLoopEpoch))
 		{
 			return false;
 		}
 		fWallOffset += static_cast<double>(iLoopEpoch) *
 			static_cast<double>(fWallDurationSeconds);
-		fWallOffset += (std::min)(
-			fCueSourceTimeSeconds, fSourceDurationSeconds) /
+		fWallOffset += ((std::min)(
+			(std::max)(fCueSourceTimeSeconds, fSourceStartSeconds),
+			fSourceEndSeconds) - fSourceStartSeconds) /
 			Clips[iClip].fPlayRate;
 	}
 	if (!std::isfinite(fWallOffset) ||
@@ -148,6 +161,77 @@ bool Client::CActionPresentationTimeline::Resolve_CueWallOffset(
 	}
 	fOutStageWallTimeSeconds = static_cast<float>(fWallOffset);
 	return true;
+}
+
+bool Client::CActionPresentationTimeline::Resolve_CuePreviewSample(
+	const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
+	const float fTimelineWallSeconds,
+	ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE& OutSample)
+{
+	OutSample = {};
+	if (!std::isfinite(Timing.fClipSourceStartSeconds) ||
+		Timing.fClipSourceStartSeconds < 0.f ||
+		!std::isfinite(Timing.fPlayRate) || Timing.fPlayRate <= 0.f ||
+		!std::isfinite(Timing.fCueSourceStartSeconds) ||
+		Timing.fCueSourceStartSeconds < Timing.fClipSourceStartSeconds ||
+		!std::isfinite(fTimelineWallSeconds) || fTimelineWallSeconds < 0.f)
+	{
+		return false;
+	}
+	if (Timing.bHasCueSourceEnd &&
+		(!std::isfinite(Timing.fCueSourceEndSeconds) ||
+		 Timing.fCueSourceEndSeconds <= Timing.fCueSourceStartSeconds))
+	{
+		return false;
+	}
+
+	const double fWallStart =
+		(static_cast<double>(Timing.fCueSourceStartSeconds) -
+		 static_cast<double>(Timing.fClipSourceStartSeconds)) /
+		static_cast<double>(Timing.fPlayRate);
+	const double fWallEnd = Timing.bHasCueSourceEnd ?
+		(static_cast<double>(Timing.fCueSourceEndSeconds) -
+		 static_cast<double>(Timing.fClipSourceStartSeconds)) /
+			static_cast<double>(Timing.fPlayRate) : 0.0;
+	const double fEffectSample = (std::max)(
+		0.0, (static_cast<double>(fTimelineWallSeconds) - fWallStart) *
+			static_cast<double>(Timing.fPlayRate));
+	if (!std::isfinite(fWallStart) || fWallStart < 0.0 ||
+		fWallStart > static_cast<double>((std::numeric_limits<float>::max)()) ||
+		(Timing.bHasCueSourceEnd &&
+		 (!std::isfinite(fWallEnd) || fWallEnd <= fWallStart ||
+		  fWallEnd > static_cast<double>((std::numeric_limits<float>::max)()))) ||
+		!std::isfinite(fEffectSample) ||
+		fEffectSample > static_cast<double>((std::numeric_limits<float>::max)()))
+	{
+		return false;
+	}
+
+	OutSample.fCueWallStartSeconds = static_cast<float>(fWallStart);
+	OutSample.fCueWallEndSeconds = static_cast<float>(fWallEnd);
+	OutSample.fEffectSampleSeconds = static_cast<float>(fEffectSample);
+	constexpr double START_EPSILON_SECONDS = 0.000001;
+	OutSample.bVisible =
+		static_cast<double>(fTimelineWallSeconds) + START_EPSILON_SECONDS >=
+			fWallStart &&
+		(!Timing.bHasCueSourceEnd ||
+		 static_cast<double>(fTimelineWallSeconds) < fWallEnd);
+	return true;
+}
+
+bool Client::CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
+	const bool bHasExplicitLoopPolicy,
+	const bool bLoop,
+	const bool bLastClip,
+	const bool bAnimationPaused,
+	const float fCurrentSourceSeconds,
+	const float fSourceDurationSeconds)
+{
+	return bHasExplicitLoopPolicy && !bLoop && bLastClip &&
+		bAnimationPaused && std::isfinite(fCurrentSourceSeconds) &&
+		std::isfinite(fSourceDurationSeconds) &&
+		fSourceDurationSeconds > 0.f &&
+		fCurrentSourceSeconds + 0.0001f >= fSourceDurationSeconds;
 }
 
 bool Client::CActionPresentationTimeline::Try_ResolveActionAgeSeconds(

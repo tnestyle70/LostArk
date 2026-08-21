@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-front-back-front-source-wave-drawable-proof.schema.json",
+  "title": "Valtan Front Back Front Source Wave Drawable Proof",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "candidateReceiptSha256",
+    "targets"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-front-back-front-source-wave-drawable-proof"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "bossArchetypeId": {
+      "const": "BOSS_VALTAN"
+    },
+    "candidateReceiptSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "effectAssetId",
+          "candidateDocumentSha256",
+          "disposition",
+          "elements"
+        ],
+        "properties": {
+          "effectAssetId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "candidateDocumentSha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "disposition": {
+            "const": "DRAWABLE_PROOF_PASS"
+          },
+          "elements": {
+            "type": "array",
+            "minItems": 25,
+            "maxItems": 25,
+            "items": {
+              "$ref": "#/$defs/proofElement"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "proofElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elementId",
+        "sourceNode",
+        "disposition",
+        "attemptedSamples",
+        "submittedDraws",
+        "suppressedDraws",
+        "failedDraws",
+        "committedDraws"
+      ],
+      "properties": {
+        "elementId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceNode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "disposition": {
+          "const": "DRAWABLE_PROOF_PASS"
+        },
+        "attemptedSamples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "submittedDraws": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "suppressedDraws": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedDraws": {
+          "const": 0
+        },
+        "committedDraws": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

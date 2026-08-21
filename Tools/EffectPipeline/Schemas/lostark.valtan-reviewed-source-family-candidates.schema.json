@@ -1,0 +1,798 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-reviewed-source-family-candidates.schema.json",
+  "title": "Valtan reviewed source family immutable candidate receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "mode",
+    "scope",
+    "sources",
+    "protectedCanaries",
+    "patternCoverage",
+    "unresolvedCueJoins",
+    "rejectedTimingProjections",
+    "protectedCanaryProjections",
+    "effectAssetReuseReviews",
+    "documents",
+    "summary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-reviewed-source-family-candidates"
+    },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "mode": {
+      "const": "IMMUTABLE_IMPORTED_CANDIDATES_AND_REPORT_ONLY_RECONCILE"
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selectedBranchStatus",
+        "reachabilityDisposition",
+        "carrierDisposition",
+        "candidateEffectDocumentVersion",
+        "canonicalMutationDisposition",
+        "protectedEffectAssetIds"
+      ],
+      "properties": {
+        "selectedBranchStatus": { "const": "REVIEWED_SELECTED" },
+        "reachabilityDisposition": { "const": "REACHABLE_REVIEWED" },
+        "carrierDisposition": { "const": "EXECUTABLE_CORE" },
+        "candidateEffectDocumentVersion": { "const": 13 },
+        "canonicalMutationDisposition": { "const": "NONE" },
+        "protectedEffectAssetIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "const": "effect.valtan.pattern.420633.active" }
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selectionManifest",
+        "cueDocument",
+        "effectCatalog",
+        "sourceInventoryRepositorySources",
+        "sourceProjectionSha256"
+      ],
+      "properties": {
+        "selectionManifest": { "$ref": "#/$defs/sourceFile" },
+        "cueDocument": { "$ref": "#/$defs/versionedSourceFile" },
+        "effectCatalog": { "$ref": "#/$defs/versionedSourceFile" },
+        "sourceInventoryRepositorySources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sourceFile" }
+        },
+        "sourceProjectionSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "protectedCanaries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "effectAssetId",
+          "authoredDocumentPath",
+          "authoredDocumentSha256",
+          "sourceProjectionCount",
+          "disposition"
+        ],
+        "properties": {
+          "effectAssetId": { "const": "effect.valtan.pattern.420633.active" },
+          "authoredDocumentPath": { "type": "string", "minLength": 1 },
+          "authoredDocumentSha256": { "$ref": "#/$defs/sha256" },
+          "sourceProjectionCount": { "const": 3 },
+          "disposition": {
+            "const": "PROTECTED_BYTE_CANARY_NO_CANDIDATE_NO_APPLY"
+          }
+        }
+      }
+    },
+    "patternCoverage": {
+      "type": "array",
+      "minItems": 24,
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "required": [
+          "patternId",
+          "status",
+          "reachableSourceOccurrenceCount",
+          "candidateEffectAssetCount"
+        ],
+        "properties": {
+          "patternId": { "type": "string", "minLength": 1 },
+          "status": {
+            "enum": [
+              "IMMUTABLE_CANDIDATES_EMITTED",
+              "NO_REACHABLE_EXECUTABLE_CORE_PROJECTION",
+              "ALL_CORE_PROJECTIONS_EXPLICITLY_BLOCKED_OR_EXCLUDED"
+            ]
+          },
+          "reachableSourceOccurrenceCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "candidateEffectAssetCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "unresolvedCueJoins": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/unresolvedCueJoin" }
+    },
+    "rejectedTimingProjections": {
+      "type": "array",
+      "minItems": 86,
+      "maxItems": 86,
+      "items": { "$ref": "#/$defs/timingProjection" }
+    },
+    "protectedCanaryProjections": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "patternId",
+          "clipOccurrenceId",
+          "cueOccurrenceId",
+          "effectAssetId",
+          "occurrenceFullKey",
+          "carrierKey",
+          "disposition"
+        ],
+        "properties": {
+          "patternId": { "const": "VALTAN_WHIRLWIND" },
+          "clipOccurrenceId": { "type": "string", "minLength": 1 },
+          "cueOccurrenceId": { "type": "string", "minLength": 1 },
+          "effectAssetId": { "const": "effect.valtan.pattern.420633.active" },
+          "occurrenceFullKey": { "type": "string", "minLength": 1 },
+          "carrierKey": { "type": "string", "minLength": 1 },
+          "disposition": {
+            "const": "PROTECTED_BYTE_CANARY_NO_CANDIDATE_NO_APPLY"
+          }
+        }
+      }
+    },
+    "effectAssetReuseReviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["effectAssetId", "status"],
+        "properties": {
+          "effectAssetId": { "type": "string", "minLength": 1 },
+          "status": {
+            "enum": [
+              "EQUIVALENT_SOURCE_FAMILY_REUSE_COLLAPSED",
+              "DIVERGENT_SOURCE_FAMILIES_NO_CANDIDATE_NO_APPLY"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 37,
+      "maxItems": 37,
+      "items": { "$ref": "#/$defs/candidateDocument" }
+    },
+    "summary": { "$ref": "#/$defs/summary" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sourceFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "versionedSourceFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "formatVersion"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "formatVersion": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "cueRow": {
+      "type": "object",
+      "required": [
+        "bindingId",
+        "occurrenceId",
+        "patternId",
+        "stageId",
+        "actionId",
+        "clipOccurrenceId",
+        "effectAssetId",
+        "sourceStartMs",
+        "sourceEndMs"
+      ],
+      "properties": {
+        "bindingId": { "type": "string", "minLength": 1 },
+        "occurrenceId": { "type": "string", "minLength": 1 },
+        "patternId": { "type": "string", "minLength": 1 },
+        "stageId": { "type": "string", "minLength": 1 },
+        "actionId": { "type": "string", "minLength": 1 },
+        "clipOccurrenceId": { "type": "string", "minLength": 1 },
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "sourceStartMs": { "type": "integer", "minimum": 0 },
+        "sourceEndMs": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "unresolvedCueJoin": {
+      "type": "object",
+      "required": [
+        "reason",
+        "patternId",
+        "semanticStageId",
+        "gameplayActionId",
+        "clipOccurrenceId",
+        "sourceOccurrenceFullKeys",
+        "executableCoreProjectionCount"
+      ],
+      "properties": {
+        "reason": {
+          "enum": [
+            "NO_V2_CUE_FOR_EXACT_CLIP_OCCURRENCE",
+            "MULTIPLE_V2_CUES_FOR_EXACT_CLIP_OCCURRENCE",
+            "V2_CUE_EXACT_CLIP_IDENTITY_MISMATCH",
+            "EFFECT_CATALOG_ROW_MISSING"
+          ]
+        },
+        "patternId": { "type": "string", "minLength": 1 },
+        "semanticStageId": { "type": "string" },
+        "gameplayActionId": { "type": "string", "minLength": 1 },
+        "clipOccurrenceId": { "type": "string", "minLength": 1 },
+        "sourceOccurrenceFullKeys": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "executableCoreProjectionCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cueRows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cueRow" }
+        },
+        "effectAssetId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "timingProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "semanticStageId",
+        "gameplayActionId",
+        "clipOccurrenceId",
+        "cueBindingId",
+        "cueOccurrenceId",
+        "effectAssetId",
+        "occurrenceFullKey",
+        "carrierKey",
+        "sourceActionId",
+        "branchId",
+        "sourceStageIndex",
+        "sourceStagePath",
+        "notifyOrdinal",
+        "notifyId",
+        "sourceSystemId",
+        "sourceEmitterNodeId",
+        "sourceEmitterPath",
+        "sourceTimeSeconds",
+        "sourceDurationSeconds",
+        "cueSourceStartMs",
+        "cueSourceEndMs",
+        "elementStartDelaySeconds",
+        "visualTimingGroupId",
+        "visualTimingGroupKey",
+        "notifySystemTimingGroupId",
+        "notifySystemTimingGroupKey",
+        "disposition"
+      ],
+      "properties": {
+        "patternId": { "type": "string", "minLength": 1 },
+        "semanticStageId": { "type": "string", "minLength": 1 },
+        "gameplayActionId": { "type": "string", "minLength": 1 },
+        "clipOccurrenceId": { "type": "string", "minLength": 1 },
+        "cueBindingId": { "type": "string", "minLength": 1 },
+        "cueOccurrenceId": { "type": "string", "minLength": 1 },
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "occurrenceFullKey": { "type": "string", "minLength": 1 },
+        "carrierKey": { "type": "string", "minLength": 1 },
+        "sourceActionId": { "type": "integer", "minimum": 1 },
+        "branchId": { "type": "string", "minLength": 1 },
+        "sourceStageIndex": { "type": "integer", "minimum": 0 },
+        "sourceStagePath": { "type": "string", "minLength": 1 },
+        "notifyOrdinal": { "type": "integer", "minimum": 0 },
+        "notifyId": { "type": "string", "minLength": 1 },
+        "sourceSystemId": { "type": "string", "minLength": 1 },
+        "sourceEmitterNodeId": { "type": "string", "minLength": 1 },
+        "sourceEmitterPath": { "type": "string", "minLength": 1 },
+        "sourceTimeSeconds": { "type": "number" },
+        "sourceDurationSeconds": { "type": "number", "minimum": 0 },
+        "cueSourceStartMs": { "type": "integer", "minimum": 0 },
+        "cueSourceEndMs": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        },
+        "elementStartDelaySeconds": { "type": "number" },
+        "visualTimingGroupId": { "type": "string", "minLength": 1 },
+        "visualTimingGroupKey": { "type": "string", "minLength": 1 },
+        "notifySystemTimingGroupId": { "type": "string", "minLength": 1 },
+        "notifySystemTimingGroupKey": { "type": "string", "minLength": 1 },
+        "disposition": {
+          "enum": [
+            "NEGATIVE_BEFORE_CUE_START",
+            "OUTSIDE_EXPLICIT_CUE_WINDOW"
+          ]
+        }
+      }
+    },
+    "sourceElementKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "semanticStageId",
+        "gameplayActionId",
+        "clipOccurrenceId",
+        "cueBindingId",
+        "cueOccurrenceId",
+        "effectAssetId",
+        "occurrenceFullKey",
+        "carrierKey",
+        "sourceActionId",
+        "branchId",
+        "sourceStageIndex",
+        "sourceStagePath",
+        "notifyOrdinal",
+        "notifyId",
+        "sourceSystemId",
+        "sourceEmitterNodeId",
+        "sourceEmitterPath",
+        "sourceTimeSeconds",
+        "sourceDurationSeconds",
+        "cueSourceStartMs",
+        "cueSourceEndMs",
+        "elementStartDelaySeconds",
+        "visualTimingGroupId",
+        "visualTimingGroupKey",
+        "notifySystemTimingGroupId",
+        "notifySystemTimingGroupKey",
+        "sourceFamilyGroupId",
+        "disposition",
+        "id",
+        "sourceNode",
+        "fullSourceKey"
+      ],
+      "properties": {
+        "patternId": { "type": "string", "minLength": 1 },
+        "semanticStageId": { "type": "string", "minLength": 1 },
+        "gameplayActionId": { "type": "string", "minLength": 1 },
+        "clipOccurrenceId": { "type": "string", "minLength": 1 },
+        "cueBindingId": { "type": "string", "minLength": 1 },
+        "cueOccurrenceId": { "type": "string", "minLength": 1 },
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "occurrenceFullKey": { "type": "string", "minLength": 1 },
+        "carrierKey": { "type": "string", "minLength": 1 },
+        "sourceActionId": { "type": "integer", "minimum": 1 },
+        "branchId": { "type": "string", "minLength": 1 },
+        "sourceStageIndex": { "type": "integer", "minimum": 0 },
+        "sourceStagePath": { "type": "string", "minLength": 1 },
+        "notifyOrdinal": { "type": "integer", "minimum": 0 },
+        "notifyId": { "type": "string", "minLength": 1 },
+        "sourceSystemId": { "type": "string", "minLength": 1 },
+        "sourceEmitterNodeId": { "type": "string", "minLength": 1 },
+        "sourceEmitterPath": { "type": "string", "minLength": 1 },
+        "sourceTimeSeconds": { "type": "number", "minimum": 0 },
+        "sourceDurationSeconds": { "type": "number", "minimum": 0 },
+        "cueSourceStartMs": { "type": "integer", "minimum": 0 },
+        "cueSourceEndMs": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        },
+        "elementStartDelaySeconds": { "type": "number", "minimum": 0 },
+        "visualTimingGroupId": { "type": "string", "minLength": 1 },
+        "visualTimingGroupKey": { "type": "string", "minLength": 1 },
+        "notifySystemTimingGroupId": { "type": "string", "minLength": 1 },
+        "notifySystemTimingGroupKey": { "type": "string", "minLength": 1 },
+        "sourceFamilyGroupId": { "type": "string", "minLength": 1 },
+        "disposition": { "const": "ADMITTED" },
+        "id": { "type": "string", "minLength": 1 },
+        "sourceNode": { "type": "string", "minLength": 1 },
+        "fullSourceKey": { "type": "string", "minLength": 1 }
+      }
+    },
+    "clipOccurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "semanticStageId",
+        "gameplayActionId",
+        "clipOccurrenceId",
+        "cueDisposition",
+        "cueRow",
+        "sourceOccurrenceCount",
+        "sourceOccurrenceFullKeys",
+        "sourceProjectionCount",
+        "candidateProjectionDisposition"
+      ],
+      "properties": {
+        "patternId": { "type": "string", "minLength": 1 },
+        "semanticStageId": { "type": "string", "minLength": 1 },
+        "gameplayActionId": { "type": "string", "minLength": 1 },
+        "clipOccurrenceId": { "type": "string", "minLength": 1 },
+        "cueDisposition": { "const": "REUSE_EXISTING_V2_NO_MUTATION" },
+        "cueRow": { "$ref": "#/$defs/cueRow" },
+        "sourceOccurrenceCount": { "type": "integer", "minimum": 1 },
+        "sourceOccurrenceFullKeys": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "sourceProjectionCount": { "type": "integer", "minimum": 1 },
+        "candidateProjectionDisposition": {
+          "enum": [
+            "CANONICAL_CANDIDATE_SOURCE",
+            "EQUIVALENT_EFFECT_ASSET_REUSE_NO_DUPLICATE_ELEMENTS"
+          ]
+        }
+      }
+    },
+    "preservedRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elementId", "disposition"],
+      "properties": {
+        "elementId": { "type": "string", "minLength": 1 },
+        "disposition": {
+          "enum": [
+            "REPORT_ONLY_GENERIC_DEFAULT_RETIRE_CANDIDATE_NO_DELETE",
+            "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW",
+            "PRESERVE_PROJECT_AUTHORED_OR_TUNED_ROW"
+          ]
+        }
+      }
+    },
+    "reconcile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "existingElementCount",
+        "preservedExistingElementCount",
+        "legacyGenericRetireCandidates",
+        "deleteElements",
+        "mode",
+        "candidateDocumentPath",
+        "addElementRefs",
+        "sourceRebaseRequiredRows",
+        "preservedExistingRows",
+        "preservationCounts",
+        "legacyRetirementDisposition",
+        "applyDisposition"
+      ],
+      "properties": {
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "existingElementCount": { "type": "integer", "minimum": 0 },
+        "preservedExistingElementCount": { "type": "integer", "minimum": 0 },
+        "legacyGenericRetireCandidates": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "deleteElements": { "const": [] },
+        "mode": { "const": "MISSING_ONLY_PRESERVE_EXISTING_REPORT_ONLY" },
+        "candidateDocumentPath": { "type": "string", "minLength": 1 },
+        "addElementRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "sourceNode"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "sourceNode": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "sourceRebaseRequiredRows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sourceNode", "fullSourceKey"],
+            "properties": {
+              "sourceNode": { "type": "string", "minLength": 1 },
+              "fullSourceKey": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "preservedExistingRows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/preservedRow" }
+        },
+        "preservationCounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "legacyRetirementDisposition": {
+          "const": "REPORT_ONLY_UNVERIFIED_DEFAULT_SIGNATURE_NO_DELETE"
+        },
+        "applyDisposition": {
+          "enum": [
+            "REPORT_ONLY_MISSING_ONLY_READY_NO_MUTATION",
+            "BLOCKED_SOURCE_REBASE_REQUIRED_NO_MUTATION"
+          ]
+        }
+      }
+    },
+    "visualTimingGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visualTimingGroupId",
+        "visualTimingGroupKey",
+        "patternId",
+        "clipOccurrenceId",
+        "sourceStageIndex",
+        "sourceTimeSeconds",
+        "elementStartDelaySeconds",
+        "notifySystemTimingGroupIds",
+        "notifyIds",
+        "sourceSystemIds",
+        "elementIds",
+        "elementCount"
+      ],
+      "properties": {
+        "visualTimingGroupId": { "type": "string", "minLength": 1 },
+        "visualTimingGroupKey": { "type": "string", "minLength": 1 },
+        "patternId": { "type": "string", "minLength": 1 },
+        "clipOccurrenceId": { "type": "string", "minLength": 1 },
+        "sourceStageIndex": { "type": "integer", "minimum": 0 },
+        "sourceTimeSeconds": { "type": "number", "minimum": 0 },
+        "elementStartDelaySeconds": { "type": "number", "minimum": 0 },
+        "notifySystemTimingGroupIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "notifyIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "sourceSystemIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "elementIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "elementCount": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "notifySystemTimingGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notifySystemTimingGroupId",
+        "notifySystemTimingGroupKey",
+        "visualTimingGroupId",
+        "patternId",
+        "clipOccurrenceId",
+        "sourceStageIndex",
+        "notifyOrdinal",
+        "notifyId",
+        "sourceSystemId",
+        "sourceTimeSeconds",
+        "elementStartDelaySeconds",
+        "sourceFamilyGroupIds",
+        "elementIds",
+        "elementCount"
+      ],
+      "properties": {
+        "notifySystemTimingGroupId": { "type": "string", "minLength": 1 },
+        "notifySystemTimingGroupKey": { "type": "string", "minLength": 1 },
+        "visualTimingGroupId": { "type": "string", "minLength": 1 },
+        "patternId": { "type": "string", "minLength": 1 },
+        "clipOccurrenceId": { "type": "string", "minLength": 1 },
+        "sourceStageIndex": { "type": "integer", "minimum": 0 },
+        "notifyOrdinal": { "type": "integer", "minimum": 0 },
+        "notifyId": { "type": "string", "minLength": 1 },
+        "sourceSystemId": { "type": "string", "minLength": 1 },
+        "sourceTimeSeconds": { "type": "number", "minimum": 0 },
+        "elementStartDelaySeconds": { "type": "number", "minimum": 0 },
+        "sourceFamilyGroupIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "elementIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "elementCount": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "candidateDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "candidateDocumentPath",
+        "candidateDocumentSha256",
+        "candidateElementCount",
+        "sourceElementKeys",
+        "visualTimingGroups",
+        "notifySystemTimingGroups",
+        "clipOccurrences",
+        "catalogDisposition",
+        "catalogRow",
+        "authoredDocumentPath",
+        "authoredDocumentSha256",
+        "reconcile"
+      ],
+      "properties": {
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "candidateDocumentPath": { "type": "string", "minLength": 1 },
+        "candidateDocumentSha256": { "$ref": "#/$defs/sha256" },
+        "candidateElementCount": { "type": "integer", "minimum": 1 },
+        "sourceElementKeys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sourceElementKey" }
+        },
+        "visualTimingGroups": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/visualTimingGroup" }
+        },
+        "notifySystemTimingGroups": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/notifySystemTimingGroup" }
+        },
+        "clipOccurrences": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/clipOccurrence" }
+        },
+        "catalogDisposition": { "const": "REUSE_EXISTING_NO_MUTATION" },
+        "catalogRow": { "type": "object" },
+        "authoredDocumentPath": { "type": "string", "minLength": 1 },
+        "authoredDocumentSha256": { "$ref": "#/$defs/sha256" },
+        "reconcile": { "$ref": "#/$defs/reconcile" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewedSelectedBranchCount",
+        "reviewedSelectedPatternCount",
+        "reachableSourceOccurrenceCount",
+        "reachableCoreProjectionCount",
+        "candidateDocumentCount",
+        "candidateClipOccurrenceCount",
+        "candidatePatternCount",
+        "admittedCoreProjectionCount",
+        "candidateElementCount",
+        "effectAssetEquivalentReuseCount",
+        "effectAssetReuseCollapsedProjectionCount",
+        "effectAssetReuseDivergenceCount",
+        "effectAssetReuseDivergenceProjectionCount",
+        "protectedCanaryProjectionCount",
+        "missingCueProjectionCount",
+        "multipleCueProjectionCount",
+        "cueIdentityMismatchProjectionCount",
+        "negativeTimingProjectionCount",
+        "outsideCueWindowProjectionCount",
+        "preservedAuthoredElementCount",
+        "preservedExistingSourceOrImportedRowCount",
+        "preservedProjectAuthoredOrTunedRowCount",
+        "legacyGenericRetireCandidateCount",
+        "missingOnlyAddElementCount",
+        "sourceRebaseRequiredCount",
+        "deletedElementCount"
+      ],
+      "properties": {
+        "reviewedSelectedBranchCount": { "const": 24 },
+        "reviewedSelectedPatternCount": { "const": 24 },
+        "reachableSourceOccurrenceCount": { "const": 444 },
+        "reachableCoreProjectionCount": { "const": 630 },
+        "candidateDocumentCount": { "const": 37 },
+        "candidateClipOccurrenceCount": { "const": 37 },
+        "candidatePatternCount": { "const": 21 },
+        "admittedCoreProjectionCount": { "const": 380 },
+        "candidateElementCount": { "const": 380 },
+        "effectAssetEquivalentReuseCount": { "const": 0 },
+        "effectAssetReuseCollapsedProjectionCount": { "const": 0 },
+        "effectAssetReuseDivergenceCount": { "const": 0 },
+        "effectAssetReuseDivergenceProjectionCount": { "const": 0 },
+        "protectedCanaryProjectionCount": { "const": 3 },
+        "missingCueProjectionCount": { "const": 161 },
+        "multipleCueProjectionCount": { "const": 0 },
+        "cueIdentityMismatchProjectionCount": { "const": 0 },
+        "negativeTimingProjectionCount": { "const": 86 },
+        "outsideCueWindowProjectionCount": { "const": 0 },
+        "preservedAuthoredElementCount": { "type": "integer", "minimum": 0 },
+        "preservedExistingSourceOrImportedRowCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "preservedProjectAuthoredOrTunedRowCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "legacyGenericRetireCandidateCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingOnlyAddElementCount": { "type": "integer", "minimum": 0 },
+        "sourceRebaseRequiredCount": { "type": "integer", "minimum": 0 },
+        "deletedElementCount": { "const": 0 }
+      }
+    }
+  }
+}
