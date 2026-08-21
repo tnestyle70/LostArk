@@ -78,7 +78,22 @@ color/coverage 수직 슬라이스를 구현했다.
 - donor의 `97.25deg` Y rotation과 local scale은 첫 화면 기준값이며, 사용자가 Effect Tool에서
   해당 독립 occurrence만 후속 튜닝할 수 있다.
 
-### 1.8 도화가 S `31420` 풀끝 소멸
+### 1.8 Glasshole02 첫 class-neutral family canary
+
+- 차원 W `2050120.clip3`의 exact K-child SpriteParticle
+  `authored.source-particle.40e1b48e2f0f88dcfeff1549` 한 건만 RuntimeMaterialV2 opcode 16으로
+  승격했다.
+- aura `RGBA/sRGB`, crack normal `RG/linear`, inner-hole `RGB/sRGB` 세 lane과 각각의
+  linear/wrap sampler, 32 scalar, 2 vector, dynamic/particle/static/render mask를 exact execution
+  tuple로 봉인했다.
+- 기존 bounded Glasshole02 profile-29 수식을 class-neutral HLSL family로 옮겼다. exact cooked
+  DXBC는 실제 SpriteParticle VF와 six-slot MRT/sampler ABI가 닫히지 않았으므로 oracle-only다.
+- A `2050210`과 D `2050240.clip2`의 J-child는 같은 parent 이름만으로 승격하지 않았다. 두
+  occurrence는 effective static set을 별도로 회수할 때까지 기존 reconstructed profile을 유지한다.
+- opcode 16 packet의 carrier/material/resource/channel/color-space/sampler/scalar/mask가 하나라도
+  다르면 staging에서 occurrence를 거부하고 직전 prepared document를 보존한다.
+
+### 1.9 도화가 S `31420` 풀끝 소멸
 
 - 기존 source-owned particle 한 행은 canonical identity까지 그대로 보존했다.
 - `PROJECT_TUNED` Sprite 두 행만 독립 append했다. body는 `fx_o_grass_04`를 coverage(mask),
@@ -108,6 +123,24 @@ color/coverage 수직 슬라이스를 구현했다.
 - 아직 Product occurrence를 이 family로 migration하지 않았다. class별 source-exact material은
   사용자 화면 판정과 occurrence admission을 거쳐 별도 변경으로 연결한다.
 
+### 1.11 도화가 D `31490` BLACK_TIGER_STROKE typed 수직 슬라이스
+
+- role receipt의 sourceOrder `45/46/47/48/51/52/81/82/84/110/111/113`에 해당하는
+  SpriteParticle 정확히 12행만 기존 56행 사이에 삽입했다. 기존 56행은 filter 뒤 deep-equal이며
+  각 JSON object의 key order, 숫자 표기와 들여쓰기 byte도 보존한다.
+- source child5 네 행과 child6 여덟 행을 각각 28/24 scalar packet으로 분리했다. 두 variant는
+  source parent `fx_m_pa_spritewave_01_ad`, exact base/noise/dissolve texture와 DynamicParameter
+  module identity를 유지한다.
+- class-neutral `RuntimeMaterialV2` opcode 18 consumer를 추가했다. main RGB는 linear radiance,
+  main R은 DXT1 silhouette coverage, noise RG는 UV warp, dissolve R은 gate, ParticleColor alpha는
+  독립 lifetime envelope로 소비하고 additive pass 2에서 그린다.
+- child5의 source-owned `ParticleColor.rgb=-0.5`는 기존 SpriteWave 계열과 같은 signed magnitude
+  정책(`abs(rgb)`, exact zero neutral)으로 소비해 검은 카드 collapse를 막는다.
+- opcode 18은 위 12 stable ID와 두 exact packet에서만 admission된다. allowlist 밖 opcode,
+  channel/material/scalar/sampler/render packet drift는 stage 전에 fail-close한다.
+- fidelity는 `TYPED_SOURCE_RECONSTRUCTION/PARTIAL/PENDING`이다. native DXBC 실행 또는 원본
+  shader source-exact 복원으로 기록하지 않았고 사용자 first-pixel 판정도 아직 대기다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -127,6 +160,9 @@ color/coverage 수직 슬라이스를 구현했다.
 | Debug/Release Client after subset codec change | 각 errors 0 PASS |
 | Artist A/D/R + Warlord T focused contracts | 17 tests PASS, 각 materializer `--check` PASS |
 | Lance E W-cone selective donor | 4 tests, `--check`, authored codec parse PASS |
+| Glasshole02 K01 materializer | 6 tests, `--check`, Debug authored codec parse PASS |
+| Debug Glasshole02 K01 HLSL/Client | shader compile + Client errors 0 PASS |
+| Debug/Release `--effect-glass-family-fast` | 각 11 PASS; draw 1, issued 1, RGB pixels 283, semantic-channel reject/rollback PASS |
 | Artist S grass-tip selective materializer | 7 tests PASS, `--check` PASS, 4 DDS SHA-256 PASS, Debug/Release codec SHA `03e4e9f8...` 일치 |
 | Debug `--effect-standard-color-v1-fast` codec + WARP | failures 0 |
 | Release `--effect-standard-color-v1-fast` codec + WARP | failures 0 |
@@ -135,6 +171,10 @@ color/coverage 수직 슬라이스를 구현했다.
 | StandardColorV1 envelope closure | lifetime/dissolve independence PASS |
 | StandardColorV1 BC1 fail-close | R coverage draw, unavailable A rejection, prior stage preservation PASS |
 | StandardColorV1 Debug/Release Client | errors 0 PASS |
+| Artist D BLACK_TIGER_STROKE materializer | 9 tests PASS, `--check` PASS; 56 baseline raw object byte 보존 |
+| Artist D product join verifier | 5 tests PASS, authored/cue/catalog closure PASS |
+| Debug Artist D WARP focused harness | opcode allowlist/channel negative, child5/6 draw, sparse coverage, alpha/life/warp sensitivity 전부 PASS |
+| Debug Client integration build | 외부 격리 OutDir/IntDir, errors 0 PASS |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -145,7 +185,10 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 - checked-in runtime catalog는 아직 차원 A의 기존 9행 sealed document를 가리킨다. 신규
   세 행은 `AUTHORING_ONLY/AUTHORED_NOT_PUBLISHED`이다.
 - 도화가 D effectref/source catalog와 A/R/S, 워로드 T authored 변경도 full publish 전에는
-  checked-in sealed runtime catalog에서 실행되지 않는다.
+  checked-in sealed runtime catalog에서 실행되지 않는다. D의 tiger 12행 typed Product 문서와
+  renderer admission은 준비됐지만 sealed catalog publish와 사용자 first-pixel 승인은 별도다.
+- Glasshole02 opcode 16 authored packet도 checked-in runtime catalog가 pre-promotion sealed document를
+  가리키므로 현재 `AUTHORING_ONLY/AUTHORED_NOT_PUBLISHED`이다.
 - full Effect publisher Validate는 현재 main의 `effect.valtan.red-blade-wave.active` 중복 소유자
   검증에서 중단된다. 이 세션은 해당 Valtan 데이터를 수정하지 않았다.
 - 실제 Client의 동/서/남/북 cast 방향, 검격 형태·타이밍·색감은 사용자 화면 판정 대기다.
@@ -156,5 +199,5 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 
 1. full Effect publish blocker 해소 뒤 authored/source catalog를 sealed runtime으로 transaction publish
 2. 검증된 `effect.standard_color_v1`에 source-evidence가 닫힌 occurrence를 opt-in migration
-3. Fluid01, 도화가 D tiger, screen overlay, dragon, attractor의 class-neutral family 구현
+3. Fluid01, screen overlay, dragon, attractor의 class-neutral family 구현
 4. 전체 Debug/Release·publisher·focused harness 뒤 사용자 화면 판정

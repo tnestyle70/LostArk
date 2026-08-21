@@ -76,6 +76,13 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
                 input.runtimeLocalUV, input.color,
                 input.dynamicParameter);
         }
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_SPRITEWAVE_AD_NO_EMISSIVE)
+        {
+            return Shade_EffectUe3SpriteWaveAdditiveNoEmissiveParticle(
+                input.runtimeLocalUV, input.color,
+                input.dynamicParameter);
+        }
         return Shade_RuntimeMaterialV2Particle(
             input.runtimeLocalUV, input.runtimeSubUVTransform,
             input.runtimeSubUVTransformNext, input.particleData.y,
