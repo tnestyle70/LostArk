@@ -2979,6 +2979,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.armor-break-opening.charge.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.armor-break-opening.part-break.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.backstep.recovery.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3016,6 +3019,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.dash-charge.active.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.dash-charge.part-break.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.dash-charge.recovery.effect.json">
@@ -5733,6 +5739,12 @@
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31460.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31480.crane-model-cook.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31480.flowribbon-brush-tip-anchor.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Artist\CurrentCombat\skill.31480.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\Artist\CurrentCombat</Filter>
     </None>
@@ -6868,6 +6880,9 @@
       <Filter>96.DataFiles\Effects\Imported\RawResourceInventory</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\README.md">
+      <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.420633.whirlwind-baked-edge-history.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\Valtan.action-particle-resource-catalog.json">
