@@ -10088,6 +10088,16 @@ bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(
 			if (Contains_NoCase(Effect.strEffectAssetId, strSearch))
 				return true;
 		}
+		for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Effect :
+			Stage.CombatObjectEffects)
+		{
+			if (Contains_NoCase(Effect.strCombatObjectArchetypeId, strSearch) ||
+				Contains_NoCase(Effect.strClientVisualId, strSearch) ||
+				Contains_NoCase(Effect.strEffectAssetId, strSearch))
+			{
+				return true;
+			}
+		}
 	}
 	return false;
 }
@@ -10171,7 +10181,8 @@ void Client::CEffect_Tool::Render_ValtanStageRow(
 		Stage.strStageKind + " | " + std::to_string(Stage.iDurationMs) +
 		" ms | " + Shape + " | " +
 		std::to_string(Stage.ClipOccurrences.size()) + " clips | " +
-		std::to_string(Stage.ProductCues.size()) + " cues";
+		std::to_string(Stage.ProductCues.size()) + " cues | " +
+		std::to_string(Stage.CombatObjectEffects.size()) + " moving fx";
 	const bool_t bStageOpen = ImGui::TreeNodeEx(StageLabel.c_str(),
 		ImGuiTreeNodeFlags_OpenOnArrow);
 	if (bStageOpen)
@@ -10197,7 +10208,51 @@ void Client::CEffect_Tool::Render_ValtanStageRow(
 		if (Stage.ClipOccurrences.empty())
 			ImGui::TextDisabled("(no ordered animation clip occurrence)");
 
-		if (!Stage.Has_ProductCue() && !Stage.Effects.empty())
+		if (!Stage.CombatObjectEffects.empty())
+		{
+			ImGui::SeparatorText("Combat Object Visuals (Server world-root)");
+			for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Effect :
+				Stage.CombatObjectEffects)
+			{
+				ImGui::PushID(Effect.strCombatObjectArchetypeId.c_str());
+				ImGui::TextDisabled("%s | %s | %s x%u",
+					Effect.strCombatObjectArchetypeId.c_str(),
+					Effect.strClientVisualId.c_str(),
+					Effect.strTrigger.c_str(), Effect.iSpawnValue);
+				std::string EditableStatus;
+				const std::filesystem::path* pEditablePath =
+					Resolve_DirectAuthoredEditablePath(
+						Effect.strEffectAssetId, EditableStatus);
+				if (nullptr == pEditablePath)
+				{
+					ImGui::TextDisabled("Unified Effect document is unavailable: %s",
+						EditableStatus.c_str());
+				}
+				else
+				{
+					UNIFIED_EFFECT_CACHE& Cache =
+						m_ValtanUnifiedEffectCaches[Effect.strEffectAssetId];
+					if (!Refresh_UnifiedEffectCache(
+							Cache, *pEditablePath, Effect.strEffectAssetId) ||
+						!Cache.bValid)
+					{
+						ImGui::TextDisabled(
+							"Unified Effect could not be staged: %s",
+							Cache.strStatus.c_str());
+					}
+					else
+					{
+						Render_UnifiedEffectTree(Cache,
+							"Combat Object Visual | " +
+							Effect.strEffectAssetId);
+					}
+				}
+				ImGui::PopID();
+			}
+		}
+
+		if (!Stage.Has_ProductCue() &&
+			Stage.CombatObjectEffects.empty() && !Stage.Effects.empty())
 		{
 			ImGui::SeparatorText("Reference / Unmapped Effects");
 			for (const VALTAN_STAGE_EFFECT_VIEW& Effect : Stage.Effects)
@@ -10215,7 +10270,8 @@ void Client::CEffect_Tool::Render_ValtanStageRow(
 				ImGui::PopID();
 			}
 		}
-		if (!Stage.Has_ProductCue() && Stage.Effects.empty())
+		if (!Stage.Has_ProductCue() && Stage.Effects.empty() &&
+			Stage.CombatObjectEffects.empty())
 		{
 			ImGui::TextDisabled("(no Product cue or Effect document)");
 			ImGui::SameLine();
@@ -10478,7 +10534,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	if (m_bAllEffectsValtanBossSelected)
 	{
 		ImGui::TextDisabled(
-			"Phase -> Pattern -> Stage -> ordered Clip occurrence -> Product cue -> unified Families/Elements. Server hit windows are read-only.");
+			"Phase -> Pattern -> Stage -> ordered Clip occurrence -> Product cue or Server combat-object visual -> unified Families/Elements. Server hit windows and moving roots are read-only.");
 	}
 	else
 	{
@@ -10574,6 +10630,11 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 					}
 					for (const VALTAN_STAGE_EFFECT_VIEW& Effect : Stage.Effects)
 						TreeMappedAssetIds.insert(Effect.strEffectAssetId);
+					for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Effect :
+						Stage.CombatObjectEffects)
+					{
+						TreeMappedAssetIds.insert(Effect.strEffectAssetId);
+					}
 				}
 			}
 		};

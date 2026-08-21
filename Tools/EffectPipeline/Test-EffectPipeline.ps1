@@ -248,12 +248,70 @@ try {
         'Encounters\Valtan\ValtanEncounter.json') ((
         [ordered]@{ patterns = @([ordered]@{
             patternId = 'VALTAN_PIPELINE_FIXTURE'
-            stages = @([ordered]@{
-                stageId = 'ACTIVE'
-                actionId = 'valtan.pipeline-fixture.active'
-                durationMs = 100
-            })
+            stages = @(
+                [ordered]@{
+                    stageId = 'ACTIVE'
+                    actionId = 'valtan.pipeline-fixture.active'
+                    durationMs = 100
+                },
+                [ordered]@{
+                    stageId = 'MOVING_A'
+                    actionId = 'valtan.pipeline-fixture.moving-a'
+                    durationMs = 100
+                },
+                [ordered]@{
+                    stageId = 'MOVING_B'
+                    actionId = 'valtan.pipeline-fixture.moving-b'
+                    durationMs = 100
+                })
         }) } | ConvertTo-Json -Depth 10) + "`n")
+    Write-Utf8 (Join-Path $dataRoot 'Actors\BossCatalog.json') ((
+        [ordered]@{
+            schema = 'lostark.boss-catalog'
+            formatVersion = 3
+            bosses = @([ordered]@{
+                archetypeId = 'BOSS_VALTAN'
+                combatObjectVisuals = @(
+                    [ordered]@{
+                        combatObjectArchetypeId =
+                            'combatobject.valtan.pipeline-fixture.moving-a'
+                        clientVisualId =
+                            'combatobject.visual.valtan.pipeline-fixture.moving-a.v1'
+                        effectAssetId = 'effect.valtan.pipeline-fixture'
+                    },
+                    [ordered]@{
+                        combatObjectArchetypeId =
+                            'combatobject.valtan.pipeline-fixture.moving-b'
+                        clientVisualId =
+                            'combatobject.visual.valtan.pipeline-fixture.moving-b.v1'
+                        effectAssetId = 'effect.valtan.pipeline-fixture'
+                    })
+            })
+        } | ConvertTo-Json -Depth 10) + "`n")
+    Write-Utf8 (Join-Path $dataRoot `
+        'Encounters\Valtan\ValtanCombatObjects.json') ((
+        [ordered]@{
+            schema = 'lostark.valtan-combat-objects'
+            formatVersion = 1
+            encounterId = 'ENCOUNTER_VALTAN'
+            objects = @(
+                [ordered]@{
+                    combatObjectArchetypeId =
+                        'combatobject.valtan.pipeline-fixture.moving-a'
+                    clientVisualId =
+                        'combatobject.visual.valtan.pipeline-fixture.moving-a.v1'
+                    ownerPatternId = 'VALTAN_PIPELINE_FIXTURE'
+                    ownerStageActionId = 'valtan.pipeline-fixture.moving-a'
+                },
+                [ordered]@{
+                    combatObjectArchetypeId =
+                        'combatobject.valtan.pipeline-fixture.moving-b'
+                    clientVisualId =
+                        'combatobject.visual.valtan.pipeline-fixture.moving-b.v1'
+                    ownerPatternId = 'VALTAN_PIPELINE_FIXTURE'
+                    ownerStageActionId = 'valtan.pipeline-fixture.moving-b'
+                })
+        } | ConvertTo-Json -Depth 10) + "`n")
     [IO.Directory]::CreateDirectory($effectResource) | Out-Null
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'base.dds'), [byte[]](1,2,3,4))
     [IO.File]::WriteAllBytes((Join-Path $effectResource 'blankwhite.dds'), [byte[]](1,2,3,4))
@@ -327,6 +385,20 @@ try {
         $valtanBindingFixturePath, $utf8NoBomStrict)
     $validValtanDurationText = [IO.File]::ReadAllText(
         $valtanDurationFixturePath, $utf8NoBomStrict)
+    $valtanCombatObjectFixturePath = Join-Path $dataRoot `
+        'Encounters\Valtan\ValtanCombatObjects.json'
+    $validValtanCombatObjectText = [IO.File]::ReadAllText(
+        $valtanCombatObjectFixturePath, $utf8NoBomStrict)
+
+    $invalidValtanCombatObjects =
+        $validValtanCombatObjectText | ConvertFrom-Json
+    $invalidValtanCombatObjects.objects[0].ownerStageActionId =
+        'valtan.pipeline-fixture.active'
+    Write-Utf8 $valtanCombatObjectFixturePath `
+        (($invalidValtanCombatObjects | ConvertTo-Json -Depth 20) + "`n")
+    Assert-ValidateRejected `
+        'Valtan combat-object owner action with boss-root cue' $baseline
+    Write-Utf8 $valtanCombatObjectFixturePath $validValtanCombatObjectText
 
     $invalidValtanBinding = $validValtanBindingText | ConvertFrom-Json
     $invalidValtanBinding.bindings[0].clips[0].mappingBasis = 'NAME_GUESS'

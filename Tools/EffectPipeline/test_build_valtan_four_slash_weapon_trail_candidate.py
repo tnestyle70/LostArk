@@ -88,14 +88,27 @@ class ValtanFourSlashWeaponTrailCandidateTests(unittest.TestCase):
         self.assertFalse(element["sourceRecipe"]["enabled"])
         self.assertEqual(element["sourceRecipe"]["modules"], [])
         self.assertEqual(element["sourcePresentation"], {"enabled": False})
-        self.assertNotIn(
-            BUILDER.CANDIDATE_ELEMENT_ID,
-            {row["id"] for row in self.source["elements"]},
+        projected = [
+            row
+            for row in self.source["elements"]
+            if row["id"] == BUILDER.CANDIDATE_ELEMENT_ID
+            or row["sourceNode"] == BUILDER.CANDIDATE_SOURCE_NODE
+        ]
+        receipt = self.output_root / (
+            "Valtan.four-slash-weapon-trail.application-receipt.v1.json"
         )
-        self.assertNotIn(
-            BUILDER.CANDIDATE_SOURCE_NODE,
-            {row["sourceNode"] for row in self.source["elements"]},
-        )
+        if receipt.is_file():
+            self.assertEqual(1, len(projected))
+            self.assertEqual(
+                BUILDER.canonical_sha256(
+                    BUILDER._protected_contract(element)
+                ),
+                BUILDER.canonical_sha256(
+                    BUILDER._protected_contract(projected[0])
+                ),
+            )
+        else:
+            self.assertEqual([], projected)
 
         policy = self.manifest["policy"]
         self.assertEqual(policy["classification"], "PROJECT_TUNED")

@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-combat-object-drawable-proof.schema.json",
+  "title": "Valtan combat-object sealed drawable proof",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "evidence",
+    "inputs",
+    "lifecycleReuse",
+    "targets",
+    "safety",
+    "disposition",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.valtan-combat-object-drawable-proof" },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "runtimeSweepPath",
+        "runtimeSweepRawSha256",
+        "runtimeSweepCanonicalSha256",
+        "renderer",
+        "resourceRoot"
+      ],
+      "properties": {
+        "kind": { "const": "EXECUTED_WARP_DRAWABLE_PROOF" },
+        "runtimeSweepPath": { "type": "string", "minLength": 1 },
+        "runtimeSweepRawSha256": { "$ref": "#/$defs/sha256" },
+        "runtimeSweepCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "renderer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["driver", "vendorId", "deviceId"],
+          "properties": {
+            "driver": { "const": "D3D_DRIVER_TYPE_WARP" },
+            "vendorId": { "const": 5140 },
+            "deviceId": { "const": 140 }
+          }
+        },
+        "resourceRoot": { "const": "Client/Bin/Resources" }
+      }
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/input" }
+    },
+    "lifecycleReuse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "assertionCount",
+        "failureCount",
+        "facts",
+        "highJumpOwnerStopSeconds"
+      ],
+      "properties": {
+        "mode": { "const": "--valtan-combat-object-presentation-fast" },
+        "assertionCount": { "const": 9 },
+        "failureCount": { "const": 0 },
+        "facts": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "highJumpOwnerStopSeconds": { "const": 1.9 }
+      }
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/target" }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalAuthoringMutationPerformed",
+        "cueBindingSequenceMutationPerformed",
+        "colorPipelineMutationPerformed",
+        "ordinaryDocumentPreviewIsolationUsed",
+        "exactElementDiagnosticsUsed",
+        "visualFidelityClaimed"
+      ],
+      "properties": {
+        "canonicalAuthoringMutationPerformed": { "const": false },
+        "cueBindingSequenceMutationPerformed": { "const": false },
+        "colorPipelineMutationPerformed": { "const": false },
+        "ordinaryDocumentPreviewIsolationUsed": { "const": false },
+        "exactElementDiagnosticsUsed": { "const": true },
+        "visualFidelityClaimed": { "const": false }
+      }
+    },
+    "disposition": { "const": "PROOF_PASS_NO_AUTHORED_MUTATION" },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "path", "rawSha256"],
+      "properties": {
+        "role": {
+          "enum": [
+            "BOSS_CATALOG",
+            "COMBAT_OBJECT_CATALOG",
+            "SKY_AXE_EFFECT",
+            "RED_BLADE_EFFECT",
+            "SOURCE_OCCURRENCE_INVENTORY"
+          ]
+        },
+        "path": { "type": "string", "minLength": 1 },
+        "rawSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "combatObjectArchetypeId",
+        "clientVisualId",
+        "effectAssetId",
+        "ownerPatternId",
+        "ownerStageActionId",
+        "kind",
+        "rootPolicy",
+        "classification",
+        "sourceExactClaim",
+        "sampleLabels",
+        "rootWorldDistinctCount",
+        "submittedBoundsDistinctCount",
+        "auditedElements",
+        "resources",
+        "failedDraws"
+      ],
+      "properties": {
+        "combatObjectArchetypeId": { "type": "string", "minLength": 1 },
+        "clientVisualId": { "type": "string", "minLength": 1 },
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "ownerPatternId": { "type": "string", "minLength": 1 },
+        "ownerStageActionId": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["FIXED_AREA", "MISSILE"] },
+        "rootPolicy": { "enum": ["FIXED_WORLD_ROOT", "MOVING_WORLD_ROOT"] },
+        "classification": {
+          "enum": [
+            "PROJECT_AUTHORED_OFFICIAL_GEOMETRY",
+            "SOURCE_RECIPE_IDENTITY_PRESERVED"
+          ]
+        },
+        "sourceExactClaim": { "const": false },
+        "sampleLabels": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "rootWorldDistinctCount": { "type": "integer", "minimum": 1 },
+        "submittedBoundsDistinctCount": { "type": "integer", "minimum": 1 },
+        "auditedElements": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/auditedElement" }
+        },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "failedDraws": { "const": 0 }
+      }
+    },
+    "auditedElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elementId",
+        "family",
+        "preparedSamples",
+        "attemptedSamples",
+        "submittedDraws",
+        "committedDraws",
+        "failedDraws"
+      ],
+      "properties": {
+        "elementId": { "type": "string", "minLength": 1 },
+        "family": { "enum": ["MESH", "SPRITE", "DECAL", "RIBBON"] },
+        "preparedSamples": { "type": "integer", "minimum": 1 },
+        "attemptedSamples": { "type": "integer", "minimum": 1 },
+        "submittedDraws": { "type": "integer", "minimum": 1 },
+        "committedDraws": { "type": "integer", "minimum": 1 },
+        "failedDraws": { "const": 0 }
+      }
+    }
+  }
+}

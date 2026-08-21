@@ -68,6 +68,21 @@ PATTERN_PR_REFERENCE_ACTIONS = frozenset(
 EXPECTED_BINDING_COUNT = 124
 EXPECTED_CLIP_OCCURRENCE_COUNT = 128
 EXPECTED_CUE_COUNT = 99
+RETIRED_BASELINE_CUES = (
+    {
+        "bindingId": "cue.valtan.red-blade-wave.active",
+        "occurrenceId": "cue.valtan.red-blade-wave.active.occurrence.01",
+        "reason": "COMBAT_OBJECT_OWNERSHIP_TRANSFER",
+        "replacementOwnerKind": "BOSS_COMBAT_OBJECT",
+        "combatObjectArchetypeId": (
+            "combatobject.valtan.red-blade-wave.projectile"
+        ),
+        "clientVisualId": (
+            "combatobject.visual.valtan.red-blade-wave.projectile.v1"
+        ),
+        "effectAssetId": "effect.valtan.red-blade-wave.active",
+    },
+)
 STABLE_TOKEN = re.compile(r"^[A-Za-z0-9_.-]+$")
 ANIM_NOTIFY_ROW = re.compile(
     r'^"(?P<clip>[^"]+)".*\slen=(?P<seconds>[0-9]+(?:\.[0-9]+)?)'
@@ -425,6 +440,7 @@ def check_receipt(
         raise MigrationError("Occurrence migration receipt has no identity set.")
     baseline_bindings = baseline_identity.get("bindings")
     baseline_cues = baseline_identity.get("cues")
+    retired_baseline_cues = receipt.get("retiredBaselineCues")
     if (
         not isinstance(baseline_bindings, list)
         or not isinstance(baseline_cues, list)
@@ -432,6 +448,8 @@ def check_receipt(
         or len(baseline_cues) != outputs.get("cueOccurrenceCount")
     ):
         raise MigrationError("Occurrence migration identity denominator drifted.")
+    if retired_baseline_cues != list(RETIRED_BASELINE_CUES):
+        raise MigrationError("Occurrence migration retirement ledger drifted.")
 
     current_bindings = {
         row.get("actionId"): row
@@ -504,11 +522,31 @@ def check_receipt(
         for row in cues.get("cues", [])
         if isinstance(row, dict)
     }
+    retired_by_occurrence = {
+        row["occurrenceId"]: row for row in RETIRED_BASELINE_CUES
+    }
     for baseline in baseline_cues:
         if not isinstance(baseline, dict):
             raise MigrationError("Invalid baseline cue identity row.")
         occurrence_id = baseline.get("occurrenceId")
         current = current_cues.get(occurrence_id)
+        retired = retired_by_occurrence.get(occurrence_id)
+        if retired is not None:
+            if (
+                baseline.get("bindingId") != retired["bindingId"]
+                or baseline.get("effectAssetId") != retired["effectAssetId"]
+                or current is not None
+                or any(
+                    row.get("bindingId") == retired["bindingId"]
+                    for row in cues.get("cues", [])
+                    if isinstance(row, dict)
+                )
+            ):
+                raise MigrationError(
+                    "Retired migrated cue identity was restored or rebound: "
+                    f"{occurrence_id}"
+                )
+            continue
         if not isinstance(current, dict) or any(
             current.get(field) != baseline.get(field)
             for field in cue_identity_fields

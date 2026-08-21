@@ -57,6 +57,19 @@ struct VALTAN_PRODUCT_EFFECT_CUE_VIEW final
 	bool_t bHasSourceEnd = false;
 };
 
+/* A Server-owned combat object is not a boss-root Product cue.  It still
+   belongs under the semantic stage that spawns it so All Effects can expose
+   the same editable Unified Effect families without pretending the boss
+   animation owns the moving world root. */
+struct VALTAN_COMBAT_OBJECT_EFFECT_VIEW final
+{
+	std::string strCombatObjectArchetypeId;
+	std::string strClientVisualId;
+	std::string strEffectAssetId;
+	std::string strTrigger;
+	uint32_t iSpawnValue = 0u;
+};
+
 /* Stable ordered animation occurrence authored by the animation owner.  The
    ordinal is derived after parsing and is display-only; joins always use the
    clipOccurrenceId. */
@@ -100,12 +113,16 @@ struct VALTAN_STAGE_VIEW final
 	   is still accepted read-only. */
 	std::vector<VALTAN_CLIP_OCCURRENCE_VIEW> ClipOccurrences;
 	std::vector<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ProductCues;
+	std::vector<VALTAN_COMBAT_OBJECT_EFFECT_VIEW> CombatObjectEffects;
 	std::vector<std::string> RuntimeClipNames;
 	std::string strRuntimeClipName;
 	std::optional<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ProductCue;
 	std::vector<VALTAN_STAGE_EFFECT_VIEW> Effects;
 
-	bool_t Has_Effect() const { return !Effects.empty(); }
+	bool_t Has_Effect() const
+	{
+		return !Effects.empty() || !CombatObjectEffects.empty();
+	}
 	bool_t Has_ClipBinding() const { return !ClipOccurrences.empty(); }
 	bool_t Has_ProductCue() const { return !ProductCues.empty(); }
 	bool_t Has_HitShape() const
@@ -169,6 +186,7 @@ struct VALTAN_PATTERN_TREE_VIEW final
 	size_t Get_ProductCueStageCount() const;
 	size_t Get_ClipOccurrenceCount() const;
 	size_t Get_ProductCueCount() const;
+	size_t Get_CombatObjectEffectCount() const;
 };
 
 /* Read-only join of ValtanEncounter.json, Valtan.patternbindings.json and

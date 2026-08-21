@@ -97,6 +97,13 @@ CANDIDATE_FILENAME = (
     "candidate.effect.json"
 )
 MANIFEST_FILENAME = "Valtan.four-slash-weapon-trail.candidate-manifest.v1.json"
+DRAWABLE_PROOF_RELATIVE_PATH = OUTPUT_DIRECTORY_RELATIVE_PATH / PurePosixPath(
+    "DrawableProof/Valtan.four-slash-weapon-trail.drawable-proof.v1.json"
+)
+APPLICATION_RECEIPT_RELATIVE_PATH = (
+    OUTPUT_DIRECTORY_RELATIVE_PATH
+    / PurePosixPath("Valtan.four-slash-weapon-trail.application-receipt.v1.json")
+)
 
 FORBIDDEN_WRITE_RELATIVE_PATHS = frozenset(
     {
@@ -131,6 +138,10 @@ def canonical_sha256(value: Any) -> str:
 
 def raw_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def raw_sha256_bytes(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
 
 
 def pretty_json_bytes(value: Any) -> bytes:
@@ -296,6 +307,204 @@ def _assert_missing_only_identity(root: Path) -> None:
                 )
 
 
+def _protected_contract(element: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": element.get("id"),
+        "sourceNode": element.get("sourceNode"),
+        "kind": element.get("kind"),
+        "resources": element.get("resources"),
+        "material": element.get("material"),
+        "actionCueAttachment": element.get("actionCueAttachment"),
+        "transformInheritance": element.get("transformInheritance"),
+        "sourceRecipe": element.get("sourceRecipe"),
+        "sourcePresentation": element.get("sourcePresentation"),
+    }
+
+
+def _verify_seal(value: dict[str, Any], field: str, label: str) -> None:
+    expected = value.get(field)
+    clone = copy.deepcopy(value)
+    clone.pop(field, None)
+    if not isinstance(expected, str) or canonical_sha256(clone) != expected:
+        raise CandidateError(f"{label} {field} is stale")
+
+
+def _committed_outputs_if_present(
+    root: Path,
+    source_path: Path,
+    source_document: dict[str, Any],
+    source_element: dict[str, Any],
+    candidate_path: Path,
+    manifest_path: Path,
+) -> dict[Path, bytes] | None:
+    """Validate and preserve the immutable pre-apply candidate after commit.
+
+    A committed projection is not a new candidate-build input.  Its receipt
+    closes the historical pre-apply source identity, so `--check` returns the
+    already-sealed candidate/manifest bytes while still rejecting an orphaned,
+    duplicated, or protected-contract-drifted canonical row.
+    """
+
+    receipt_path = _repository_path(root, APPLICATION_RECEIPT_RELATIVE_PATH)
+    proof_path = _repository_path(root, DRAWABLE_PROOF_RELATIVE_PATH)
+    authored_root = _repository_path(root, PurePosixPath("Data/Effects/Authored"))
+    identity_matches: list[tuple[Path, dict[str, Any]]] = []
+    source_node_matches: list[tuple[Path, dict[str, Any]]] = []
+    anchor_matches: list[tuple[Path, dict[str, Any]]] = []
+    for path in sorted(authored_root.glob("effect.valtan.*.effect.json")):
+        document = source_document if path.resolve() == source_path else _read_json(path)
+        for element in document.get("elements", []):
+            if not isinstance(element, dict):
+                continue
+            attachment = element.get("actionCueAttachment") or {}
+            if element.get("id") == CANDIDATE_ELEMENT_ID:
+                identity_matches.append((path.resolve(), element))
+            if element.get("sourceNode") == CANDIDATE_SOURCE_NODE:
+                source_node_matches.append((path.resolve(), element))
+            if attachment.get("runtimeAnchorSlotId") == RUNTIME_ANCHOR_SLOT_ID:
+                anchor_matches.append((path.resolve(), element))
+
+    if not identity_matches and not source_node_matches and not anchor_matches:
+        if receipt_path.exists():
+            raise CandidateError(
+                "FourSlash committed receipt exists without its projected row"
+            )
+        return None
+    if not receipt_path.is_file():
+        raise CandidateError(
+            "FourSlash weapon Trail candidate identity exists without a committed receipt"
+        )
+    if (
+        len(identity_matches) != 1
+        or len(source_node_matches) != 1
+        or len(anchor_matches) != 1
+        or identity_matches[0][0] != source_path
+        or source_node_matches[0][0] != source_path
+        or anchor_matches[0][0] != source_path
+        or identity_matches[0][1] is not source_node_matches[0][1]
+        or identity_matches[0][1] is not anchor_matches[0][1]
+    ):
+        raise CandidateError(
+            "FourSlash committed stable identity is duplicated or colliding"
+        )
+    projected_element = identity_matches[0][1]
+
+    if not candidate_path.is_file() or not manifest_path.is_file():
+        raise CandidateError("FourSlash committed candidate artifacts are missing")
+    candidate_payload = candidate_path.read_bytes()
+    manifest_payload = manifest_path.read_bytes()
+    candidate = _read_json(candidate_path)
+    manifest = _read_json(manifest_path)
+    candidate_elements = candidate.get("elements") or []
+    if (
+        candidate.get("schema") != "lostark.effect-authoring"
+        or candidate.get("version") != 13
+        or candidate.get("effectAssetId") != SOURCE_EFFECT_ASSET_ID
+        or len(candidate_elements) != 1
+        or not isinstance(candidate_elements[0], dict)
+    ):
+        raise CandidateError("FourSlash committed candidate document changed")
+    candidate_element = candidate_elements[0]
+    _verify_seal(manifest, "artifactSha256", "FourSlash candidate manifest")
+    target = manifest.get("target") or {}
+    candidate_identity = manifest.get("candidateIdentity") or {}
+    if (
+        manifest.get("schema")
+        != "lostark.valtan-four-slash-weapon-trail-candidate"
+        or manifest.get("formatVersion") != 1
+        or target.get("canonicalPath") != SOURCE_DOCUMENT_RELATIVE_PATH.as_posix()
+        or target.get("candidatePath")
+        != candidate_path.relative_to(root).as_posix()
+        or target.get("candidateElementId") != CANDIDATE_ELEMENT_ID
+        or target.get("candidateSourceNode") != CANDIDATE_SOURCE_NODE
+        or candidate_identity
+        != {
+            "rawSha256": raw_sha256_bytes(candidate_payload),
+            "canonicalSha256": canonical_sha256(candidate),
+            "elementSha256": canonical_sha256(candidate_element),
+            "elementCount": 1,
+        }
+    ):
+        raise CandidateError("FourSlash committed candidate/manifest join changed")
+
+    base_document = copy.deepcopy(source_document)
+    base_document["elements"] = [
+        row
+        for row in base_document.get("elements", [])
+        if not (
+            isinstance(row, dict)
+            and row.get("id") == CANDIDATE_ELEMENT_ID
+            and row.get("sourceNode") == CANDIDATE_SOURCE_NODE
+            and (row.get("actionCueAttachment") or {}).get(
+                "runtimeAnchorSlotId"
+            )
+            == RUNTIME_ANCHOR_SLOT_ID
+        )
+    ]
+    base_payload = pretty_json_bytes(base_document)
+    input_identity = manifest.get("inputIdentity") or {}
+    if (
+        raw_sha256_bytes(base_payload)
+        != input_identity.get("canonicalDocumentRawSha256")
+        or canonical_sha256(base_document)
+        != input_identity.get("canonicalDocumentCanonicalSha256")
+        or input_identity.get("preservedSourceElementId") != SOURCE_ELEMENT_ID
+        or input_identity.get("preservedSourceElementSha256")
+        != canonical_sha256(source_element)
+        or input_identity.get("preservedSourceElementAttachment")
+        != source_element.get("actionCueAttachment")
+    ):
+        raise CandidateError("FourSlash committed source requires rebase")
+    if canonical_sha256(_protected_contract(projected_element)) != canonical_sha256(
+        _protected_contract(candidate_element)
+    ):
+        raise CandidateError("FourSlash committed protected contract drifted")
+
+    receipt = _read_json(receipt_path)
+    proof_payload = proof_path.read_bytes() if proof_path.is_file() else b""
+    _verify_seal(receipt, "artifactSha256", "FourSlash application receipt")
+    receipt_projection = receipt.get("projection") or {}
+    if (
+        receipt.get("schema")
+        != "lostark.valtan-four-slash-weapon-trail-application-receipt"
+        or receipt.get("formatVersion") != 1
+        or receipt.get("transactionStatus") != "COMMITTED"
+        or receipt.get("reconcileMode") != "MISSING_ONLY"
+        or receipt.get("candidateManifest")
+        != {
+            "path": manifest_path.relative_to(root).as_posix(),
+            "rawSha256": raw_sha256_bytes(manifest_payload),
+            "artifactSha256": manifest.get("artifactSha256"),
+        }
+        or receipt.get("candidateDocument")
+        != {
+            "path": candidate_path.relative_to(root).as_posix(),
+            "rawSha256": raw_sha256_bytes(candidate_payload),
+            "elementId": CANDIDATE_ELEMENT_ID,
+            "elementSha256": canonical_sha256(candidate_element),
+        }
+        or (receipt.get("drawableProof") or {}).get("path")
+        != DRAWABLE_PROOF_RELATIVE_PATH.as_posix()
+        or (receipt.get("drawableProof") or {}).get("rawSha256")
+        != raw_sha256_bytes(proof_payload)
+        or (receipt.get("sourcePreservation") or {}).get("sourceElementSha256")
+        != canonical_sha256(source_element)
+        or receipt_projection.get("candidateElementId") != CANDIDATE_ELEMENT_ID
+        or receipt_projection.get("candidateSourceNode") != CANDIDATE_SOURCE_NODE
+        or receipt_projection.get("initialElementSha256")
+        != canonical_sha256(candidate_element)
+        or receipt_projection.get("protectedContractSha256")
+        != canonical_sha256(_protected_contract(candidate_element))
+        or (receipt.get("canonicalApply") or {}).get("preApplyRawSha256")
+        != raw_sha256_bytes(base_payload)
+    ):
+        raise CandidateError("FourSlash committed receipt requires rebase")
+    return {
+        candidate_path: candidate_payload,
+        manifest_path: manifest_payload,
+    }
+
+
 def _candidate_element(source: dict[str, Any]) -> dict[str, Any]:
     result = copy.deepcopy(source)
     result["id"] = CANDIDATE_ELEMENT_ID
@@ -352,15 +561,26 @@ def build_outputs(repository_root: Path) -> dict[Path, bytes]:
     source_path = _repository_path(root, SOURCE_DOCUMENT_RELATIVE_PATH)
     source_document = _read_json(source_path)
     source = _source_element(source_document)
+    output_root = _repository_path(root, OUTPUT_DIRECTORY_RELATIVE_PATH)
+    candidate_path = output_root / CANDIDATE_FILENAME
+    manifest_path = output_root / MANIFEST_FILENAME
+    committed_outputs = _committed_outputs_if_present(
+        root,
+        source_path,
+        source_document,
+        source,
+        candidate_path,
+        manifest_path,
+    )
+    if committed_outputs is not None:
+        return committed_outputs
+
     _assert_missing_only_identity(root)
     bone_evidence = _bone_evidence(root)
     element = _candidate_element(source)
     candidate = _candidate_document(source_document, element)
     resources = _resource_evidence(root, element["resources"])
 
-    output_root = _repository_path(root, OUTPUT_DIRECTORY_RELATIVE_PATH)
-    candidate_path = output_root / CANDIDATE_FILENAME
-    manifest_path = output_root / MANIFEST_FILENAME
     candidate_payload = pretty_json_bytes(candidate)
     candidate_relative = PurePosixPath(
         *candidate_path.relative_to(root).parts

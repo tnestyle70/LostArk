@@ -78,7 +78,13 @@ class RepositoryFixture:
             paths.add(PurePosixPath(document["candidateDocumentPath"]))
             paths.add(PurePosixPath(document["authoredDocumentPath"]))
         sources = self.receipt["sources"]
-        for name in ("selectionManifest", "cueDocument", "effectCatalog"):
+        for name in (
+            "selectionManifest",
+            "cueDocument",
+            "effectCatalog",
+            "bossCatalog",
+            "valtanCombatObjects",
+        ):
             paths.add(PurePosixPath(sources[name]["path"]))
         for row in sources["sourceInventoryRepositorySources"]:
             paths.add(PurePosixPath(row["path"]))
@@ -106,6 +112,11 @@ class RepositoryFixture:
         must reconstruct the immediately-pre-apply authored state without
         changing any non-reviewed row or the immutable candidate receipt.
         """
+        bounded_ids = {
+            element_id
+            for target in sut.BOUNDED_WEAPON_TRAIL_TARGETS
+            for element_id in target["elementIds"]
+        }
         for row in self.receipt["documents"]:
             candidate = _read_json(self.root, row["candidateDocumentPath"])
             projected_pairs = {
@@ -121,6 +132,7 @@ class RepositoryFixture:
                 for element in authored["elements"]
                 if (element.get("id"), element.get("sourceNode"))
                 not in projected_pairs
+                and element.get("id") not in bounded_ids
             ]
             _write_json_like(target_path, authored)
 
@@ -327,6 +339,61 @@ class ReviewedSourceFamilyApplicatorTests(unittest.TestCase):
             sut.commit_projection(projection)
         self.assertEqual(before_commit, _snapshot(fixture.root))
 
+    def test_retired_red_blade_cue_and_combat_owner_rebind_fail_closed(self) -> None:
+        fixture = self.make_fixture()
+        sources = fixture.receipt["sources"]
+        catalog = _read_json(fixture.root, sources["effectCatalog"]["path"])
+        cues = _read_json(fixture.root, sources["cueDocument"]["path"])
+        boss_catalog = _read_json(fixture.root, sources["bossCatalog"]["path"])
+        combat_objects = _read_json(
+            fixture.root, sources["valtanCombatObjects"]["path"]
+        )
+        sut._validate_catalog_and_cues(
+            catalog,
+            cues,
+            boss_catalog,
+            combat_objects,
+            fixture.receipt["documents"],
+        )
+
+        red_document = next(
+            row
+            for row in fixture.receipt["documents"]
+            if row["effectAssetId"] == "effect.valtan.red-blade-wave.active"
+        )
+        retired_cue = deepcopy(red_document["clipOccurrences"][0]["cueRow"])
+        restored = deepcopy(cues)
+        restored["cues"].append(retired_cue)
+        with self.assertRaisesRegex(
+            sut.SourceRebaseRequired, "retired boss-root cue was restored"
+        ):
+            sut._validate_catalog_and_cues(
+                catalog,
+                restored,
+                boss_catalog,
+                combat_objects,
+                fixture.receipt["documents"],
+            )
+
+        rebound = deepcopy(boss_catalog)
+        visual = next(
+            row
+            for row in rebound["bosses"][0]["combatObjectVisuals"]
+            if row["combatObjectArchetypeId"]
+            == "combatobject.valtan.red-blade-wave.projectile"
+        )
+        visual["effectAssetId"] = "effect.valtan.red-blade-wave.recovery"
+        with self.assertRaisesRegex(
+            sut.SourceRebaseRequired, "combat-object Effect owner drift"
+        ):
+            sut._validate_catalog_and_cues(
+                catalog,
+                cues,
+                rebound,
+                combat_objects,
+                fixture.receipt["documents"],
+            )
+
     def test_protected_whirlwind_canary_sha_drift_is_fail_closed(self) -> None:
         fixture = self.make_fixture()
         protected = fixture.receipt["protectedCanaries"][0]
@@ -381,6 +448,36 @@ class ReviewedSourceFamilyApplicatorTests(unittest.TestCase):
         )
         schema_validator.validate_schema_instance(fixture.proof, proof_schema)
         schema_validator.validate_schema_instance(projection.receipt, application_schema)
+
+    def test_committed_bounded_weapon_trails_compose_as_exact_3_9_receipt_only(self) -> None:
+        proof_path = SOURCE_ROOT / (
+            "Data/Effects/Imported/Valtan/ReviewedSourceFamilies/DrawableProof/"
+            "Valtan.reviewed-source-families.drawable-proof.v1.json"
+        )
+        projection = sut.collect_projection(
+            SOURCE_ROOT,
+            drawable_proof=proof_path,
+        )
+        self.assertTrue(
+            set(projection.changed_paths).issubset(
+                {sut.DEFAULT_APPLICATION_RECEIPT}
+            )
+        )
+        for relative, expected in projection.canonical_outputs.items():
+            self.assertEqual(
+                SOURCE_ROOT.joinpath(*relative.parts).read_bytes(), expected
+            )
+        composition = projection.receipt["downstreamBoundedWeaponTrails"]
+        self.assertEqual("PROJECT_TUNED_BOUNDED_WEAPON_TRAILS", composition["owner"])
+        self.assertEqual(3, composition["targetCount"])
+        self.assertEqual(9, composition["appendedElementCount"])
+        self.assertEqual(3, len(composition["targets"]))
+        self.assertEqual(
+            9,
+            projection.receipt["closure"][
+                "deepPreservedDownstreamElementCount"
+            ],
+        )
 
 
 if __name__ == "__main__":

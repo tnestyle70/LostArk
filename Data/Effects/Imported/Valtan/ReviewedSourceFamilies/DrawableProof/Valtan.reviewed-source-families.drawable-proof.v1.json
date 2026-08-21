@@ -2,7 +2,7 @@
   "schema": "lostark.valtan-reviewed-source-family-drawable-proof",
   "formatVersion": 1,
   "bossArchetypeId": "BOSS_VALTAN",
-  "candidateReceiptSha256": "b1f26efb1bc7d25f805f7766b860ec87ab6b1254a0df1988b618c3fa023d7752",
+  "candidateReceiptSha256": "4857ab9c0a7595fb54962f1391d40bd38b5aae5d7250ec44bb2598f2d67c2c8d",
   "targets": [
     {
       "effectAssetId": "effect.valtan.arena-break-109.impact",

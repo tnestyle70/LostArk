@@ -37,9 +37,9 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
         self.assertEqual(summary["reviewedSelectedBranchCount"], 0)
         self.assertEqual(summary["reviewedSelectedSequenceCount"], 0)
         self.assertEqual(summary["completionCarrierDenominator"], 0)
-        self.assertEqual(summary["encounterStageActionCount"], 127)
-        self.assertEqual(summary["patternBindingActionCount"], 124)
-        self.assertEqual(summary["patternBindingGapCount"], 3)
+        self.assertEqual(summary["encounterStageActionCount"], 130)
+        self.assertEqual(summary["patternBindingActionCount"], 130)
+        self.assertEqual(summary["patternBindingGapCount"], 0)
         self.assertEqual(summary["patternBindingGapProposalCount"], 3)
         self.assertEqual(summary["droppedOccurrenceCount"], 0)
         self.assertEqual(summary["duplicateOccurrenceCount"], 0)
@@ -81,6 +81,23 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
             self.assertEqual(
                 row["proposedClip"]["mappingBasis"],
                 "SOURCE_REVIEWED_DELTA",
+            )
+
+        product_bindings = {
+            row["actionId"]: row
+            for row in INVENTORY.read_json(INVENTORY.PATTERN_BINDINGS_PATH)[
+                "bindings"
+            ]
+        }
+        for action_id, (occurrence_id, clip_name) in (
+            INVENTORY.ARENA84_CURRENT_PRODUCT_BINDINGS.items()
+        ):
+            clips = product_bindings[action_id]["clips"]
+            self.assertEqual(1, len(clips))
+            self.assertEqual(occurrence_id, clips[0]["clipOccurrenceId"])
+            self.assertEqual(clip_name, clips[0]["clip"])
+            self.assertEqual(
+                "CURRENT_PRODUCT_BASELINE", clips[0]["mappingBasis"]
             )
 
         dash = self.document["sourceActionEvidenceProposals"]
@@ -165,6 +182,56 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
         self.assertEqual(
             bind["admissionDisposition"],
             "UNRESOLVED_BRANCH_SELECTION",
+        )
+
+    def test_latest_parry_and_magic_orb_stage_expansion_is_provenance_only(self) -> None:
+        branches = {
+            row["branchId"]: row
+            for row in self.document["branches"]
+        }
+        parry = [
+            row
+            for row in branches.values()
+            if row["patternId"] == "VALTAN_PARRY"
+        ]
+        magic_orb = [
+            row
+            for row in branches.values()
+            if row["patternId"] == "VALTAN_MAGIC_ORB_STAGGER_76"
+        ]
+        self.assertEqual(6, len(parry))
+        self.assertEqual(6, len(magic_orb))
+        self.assertEqual(
+            {row["matchScore"]["productNonIdleClipCount"] for row in parry},
+            {4},
+        )
+        self.assertEqual(
+            {
+                row["matchScore"]["productNonIdleClipCount"]
+                for row in magic_orb
+            },
+            {5},
+        )
+
+        normal_slash_candidates = [
+            row
+            for row in self.document["occurrences"]
+            if row["patternId"] == "VALTAN_PARRY"
+            and row["sourceActionId"] == 420606
+            and row["candidateClipOccurrenceIds"]
+            == [
+                "valtan.reactive.parry.slash.clip.01",
+                "valtan.reactive.parry.normal-slash.clip.01",
+            ]
+        ]
+        self.assertEqual(9, len(normal_slash_candidates))
+        self.assertTrue(
+            all(
+                row["clipOccurrenceId"] is None
+                and row["reachabilityDisposition"]
+                == "UNRESOLVED_BRANCH_SELECTION"
+                for row in normal_slash_candidates
+            )
         )
 
     def test_additional_twelve_pattern_audit_is_fail_closed(self) -> None:

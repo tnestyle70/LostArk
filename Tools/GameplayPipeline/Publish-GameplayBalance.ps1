@@ -1537,6 +1537,94 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 }
 if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
 
+# The combat-runtime branch owns these reactive/mechanic transitions.  A merge
+# once retained the stage/clip rows but silently dropped every non-combat-object
+# action and branch, which still passed the generic optional-field validator.
+# Keep the exact compiled row set here so Validate fails before such a partial
+# encounter can be published again.
+$authoredStageCount = 0
+$authoredStageActionCount = 0
+$authoredStageBranchCount = 0
+$authoredStageMotionCount = 0
+foreach ($pattern in @($encounterDocument.patterns)) {
+	foreach ($stage in @($pattern.stages)) {
+		++$authoredStageCount
+		$actionsProperty = $stage.PSObject.Properties['actions']
+		$branchesProperty = $stage.PSObject.Properties['branches']
+		$motionProperty = $stage.PSObject.Properties['motion']
+		if ($null -ne $actionsProperty) {
+			$authoredStageActionCount += @($actionsProperty.Value).Count
+		}
+		if ($null -ne $branchesProperty) {
+			$authoredStageBranchCount += @($branchesProperty.Value).Count
+		}
+		if ($null -ne $motionProperty) {
+			++$authoredStageMotionCount
+		}
+	}
+}
+if (@($encounterDocument.patterns).Count -ne 33 -or
+	$authoredStageCount -ne 130 -or
+	$authoredStageActionCount -ne 22 -or
+	$authoredStageBranchCount -ne 18 -or
+	$authoredStageMotionCount -ne 1) {
+	throw ('Valtan reactive stage topology count drifted: ' +
+		"patterns=$(@($encounterDocument.patterns).Count) " +
+		"stages=$authoredStageCount actions=$authoredStageActionCount " +
+		"branches=$authoredStageBranchCount motions=$authoredStageMotionCount")
+}
+
+$requiredReactiveRows = @(
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t0`tENTER`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t30`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t1`tEXIT`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_HIGH_JUMP`tvaltan.attack.high-jump.airborne`t0`tENTER`tSPAWN_COMBAT_OBJECT`tcombatobject.valtan.high-jump.target-axe`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_RED_BLADE_WAVE`tvaltan.attack.red-blade-wave.active`t0`tENTER`tSPAWN_COMBAT_OBJECT`tcombatobject.valtan.red-blade-wave.projectile`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.second`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.second`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.third`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.third`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.groggy`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.groggy`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.groggy`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.groggy`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.shield`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.invulnerable`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.shield`t1`tENTER`tSET_SHIELD`tboss.gauge.shield`t6000`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`t0`tENTER`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t100`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`t1`tEXIT`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`t2`tEXIT`tSET_SHIELD`tboss.gauge.shield`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`t3`tEXIT`tSET_BOSS_FLAG`tboss.flag.invulnerable`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.groggy`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.groggy`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.groggy`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.groggy`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`tSTAGGER_BROKEN`tvaltan.reactive.parry.slash",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`tTIMEOUT`tvaltan.reactive.parry.normal-slash",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.slash`tTIMEOUT`tvaltan.reactive.parry.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`tCOUNTER_HIT`tvaltan.reactive.triple-counter.second",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`tTIMEOUT`tvaltan.reactive.triple-counter.first-fail",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.second`tCOUNTER_HIT`tvaltan.reactive.triple-counter.third",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.second`tTIMEOUT`tvaltan.reactive.triple-counter.second-fail",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.third`tCOUNTER_HIT`tvaltan.reactive.triple-counter.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.third`tTIMEOUT`tvaltan.reactive.triple-counter.third-fail",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tWALL_CONTACT`tvaltan.mechanic.armor-break-opening.groggy",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tTIMEOUT`t-",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.groggy`tPART_DESTROYED`tvaltan.mechanic.armor-break-opening.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.groggy`tTIMEOUT`tvaltan.mechanic.armor-break-opening.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`tSTAGGER_BROKEN`tvaltan.mechanic.magic-orb-stagger-76.groggy",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`tTIMEOUT`tvaltan.mechanic.magic-orb-stagger-76.wipe",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.groggy`tTIMEOUT`tvaltan.mechanic.magic-orb-stagger-76.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tCOUNTER_HIT`tvaltan.mechanic.center-grab-counter-64.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tTIMEOUT`tvaltan.mechanic.center-grab-counter-64.failed-charge",
+	"PATTERNSTAGEMOTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tFORWARD`t100"
+)
+$missingReactiveRows = @($requiredReactiveRows | Where-Object {
+	-not $patternRows.Contains([string]$_)
+})
+if ($missingReactiveRows.Count -ne 0) {
+	throw ('Valtan reactive stage topology row is missing or changed: ' +
+		($missingReactiveRows -join ', '))
+}
+
 $combatObjectIds = [Collections.Generic.HashSet[string]]::new(
 	[StringComparer]::Ordinal)
 $combatObjectVisualIds = [Collections.Generic.HashSet[string]]::new(

@@ -53,6 +53,101 @@ SAFE_GAP_APPLICATION_RECEIPT = PurePosixPath(
     "Data/Effects/Imported/Valtan/SafeReviewedGaps/"
     "Valtan.safe-reviewed-gap-application-receipt.v1.json"
 )
+BOUNDED_WEAPON_TRAIL_MANIFEST = PurePosixPath(
+    "Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/"
+    "Valtan.bounded-weapon-trails.candidate-manifest.v1.json"
+)
+BOUNDED_WEAPON_TRAIL_PROOF = PurePosixPath(
+    "Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/DrawableProof/"
+    "Valtan.bounded-weapon-trails.drawable-proof.v1.json"
+)
+BOUNDED_WEAPON_TRAIL_APPLICATION_RECEIPT = PurePosixPath(
+    "Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/"
+    "Valtan.bounded-weapon-trails.application-receipt.v1.json"
+)
+BOUNDED_WEAPON_TRAIL_MANIFEST_RAW_SHA256 = (
+    "7698d555a53115fdf8d602d89d49cb31f70ee469d199269a719a7748445ae75c"
+)
+BOUNDED_WEAPON_TRAIL_MANIFEST_ARTIFACT_SHA256 = (
+    "cd4eebb09adc11179e2dda6e9ba200cc3e9375800539129282d5c4a542203839"
+)
+BOUNDED_WEAPON_TRAIL_PROOF_RAW_SHA256 = (
+    "fac8f9d522cfaaf51a653522ec0c3ba22f6380eb796074624c2a1191030cbe06"
+)
+BOUNDED_WEAPON_TRAIL_PROOF_ARTIFACT_SHA256 = (
+    "c1949311bae1832a9ba487286ccce724465f93a40e763ae36bcdf7ef29e93b0e"
+)
+BOUNDED_WEAPON_TRAIL_APPLICATION_RAW_SHA256 = (
+    "2410291bea5011e736e8547d5e952c1f1137ad54cbde67fa738d14f31a435f6f"
+)
+BOUNDED_WEAPON_TRAIL_APPLICATION_ARTIFACT_SHA256 = (
+    "1d5cf722bf8c41a33f0696e301cc174f97f7bdeb64d49f3b5c5701e0ae29f34d"
+)
+BOUNDED_WEAPON_TRAIL_TARGETS = (
+    {
+        "patternId": "VALTAN_WHIRLWIND",
+        "stageId": "RECOVERY",
+        "effectAssetId": "effect.valtan.whirlwind.recovery",
+        "canonicalPath": (
+            "Data/Effects/Authored/effect.valtan.whirlwind.recovery.effect.json"
+        ),
+        "candidatePath": (
+            "Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/"
+            "effect.valtan.whirlwind.recovery.weapon-bone-trails.candidate.effect.json"
+        ),
+        "runtimeAnchorSlotId": "VALTAN_WHIRLWIND_RECOVERY_WEAPON_R",
+        "runtimeBoneName": "b_wp_r_01",
+        "sourceStartSeconds": 0.0,
+        "sourceDurationSeconds": 0.1965470016002655,
+        "elementIds": (
+            "project-valtan-whirlwind-recovery-weapon-trail.emitter5259",
+            "project-valtan-whirlwind-recovery-weapon-trail.emitter5260",
+            "project-valtan-whirlwind-recovery-weapon-trail.emitter5258",
+        ),
+    },
+    {
+        "patternId": "VALTAN_GROUND_WAVE_SMASH",
+        "stageId": "WINDUP",
+        "effectAssetId": "effect.valtan.ground-wave-smash.windup",
+        "canonicalPath": (
+            "Data/Effects/Authored/effect.valtan.ground-wave-smash.windup.effect.json"
+        ),
+        "candidatePath": (
+            "Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/"
+            "effect.valtan.ground-wave-smash.windup.weapon-bone-trails.candidate.effect.json"
+        ),
+        "runtimeAnchorSlotId": "VALTAN_GROUND_WAVE_SMASH_WINDUP_WEAPON_R",
+        "runtimeBoneName": "b_wp_r_01",
+        "sourceStartSeconds": 0.394663006067276,
+        "sourceDurationSeconds": 0.47657299041748047,
+        "elementIds": (
+            "project-valtan-ground-wave-smash-windup-weapon-trail.emitter5259",
+            "project-valtan-ground-wave-smash-windup-weapon-trail.emitter5260",
+            "project-valtan-ground-wave-smash-windup-weapon-trail.emitter5258",
+        ),
+    },
+    {
+        "patternId": "VALTAN_JUMP_SPIN",
+        "stageId": "RECOVERY",
+        "effectAssetId": "effect.valtan.jump-spin.recovery",
+        "canonicalPath": (
+            "Data/Effects/Authored/effect.valtan.jump-spin.recovery.effect.json"
+        ),
+        "candidatePath": (
+            "Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/"
+            "effect.valtan.jump-spin.recovery.weapon-bone-trails.candidate.effect.json"
+        ),
+        "runtimeAnchorSlotId": "VALTAN_JUMP_SPIN_RECOVERY_WEAPON_R",
+        "runtimeBoneName": "b_wp_r_01",
+        "sourceStartSeconds": 0.0,
+        "sourceDurationSeconds": 0.1965470016002655,
+        "elementIds": (
+            "project-valtan-jump-spin-recovery-weapon-trail.emitter5259",
+            "project-valtan-jump-spin-recovery-weapon-trail.emitter5260",
+            "project-valtan-jump-spin-recovery-weapon-trail.emitter5258",
+        ),
+    },
+)
 
 
 class ProjectionError(RuntimeError):
@@ -213,19 +308,6 @@ def _reviewed_source_view_after_safe_gap(
                 f"SOURCE_REBASE_REQUIRED SafeReviewedGaps {kind} output drift"
             )
 
-    input_identity = _require_object(
-        manifest.get("inputIdentity"), "SafeReviewedGaps inputIdentity"
-    )
-    if (
-        source_expected_shas.get("cues")
-        != input_identity.get("cueRawSha256")
-        or source_expected_shas.get("catalog")
-        != input_identity.get("catalogRawSha256")
-    ):
-        raise SourceRebaseRequired(
-            "SOURCE_REBASE_REQUIRED reviewed/SafeReviewedGaps baseline identity drift"
-        )
-
     proposed_cues = _require_list(
         manifest.get("proposedCueRows"), "SafeReviewedGaps proposed cues"
     )
@@ -265,6 +347,14 @@ def _reviewed_source_view_after_safe_gap(
         row for row in reviewed_values["catalog"]["effects"]
         if row.get("effectAssetId") not in effect_ids
     ]
+    for kind in ("cues", "catalog"):
+        if _sha256(_json_bytes(reviewed_values[kind])) != source_expected_shas.get(
+            kind
+        ):
+            raise SourceRebaseRequired(
+                "SOURCE_REBASE_REQUIRED reviewed/SafeReviewedGaps composed "
+                f"{kind} identity drift"
+            )
     return reviewed_values, {
         SAFE_GAP_MANIFEST: manifest_payload,
         SAFE_GAP_APPLICATION_RECEIPT: application_payload,
@@ -300,6 +390,473 @@ def _repository_path(root: Path, relative: PurePosixPath) -> Path:
     except ValueError as exc:
         raise ProjectionError(f"repository path escaped root: {relative}") from exc
     return candidate
+
+
+def _bounded_weapon_trail_protected_contract(
+    element: dict[str, Any],
+) -> dict[str, Any]:
+    detail = element.get("detail") or {}
+    return {
+        "id": element.get("id"),
+        "groupId": element.get("groupId"),
+        "sourceNode": element.get("sourceNode"),
+        "visible": element.get("visible"),
+        "kind": element.get("kind"),
+        "resources": element.get("resources"),
+        "material": element.get("material"),
+        "actionCueAttachment": element.get("actionCueAttachment"),
+        "transformInheritance": element.get("transformInheritance"),
+        "initialTiming": detail.get("timing"),
+        "initialTrailGeometry": detail.get("trail"),
+        "sourceRecipe": element.get("sourceRecipe"),
+        "sourcePresentation": element.get("sourcePresentation"),
+    }
+
+
+def _load_bounded_weapon_trail_composition(
+    root: Path,
+) -> tuple[dict[str, Any] | None, dict[PurePosixPath, bytes]]:
+    artifact_paths = (
+        BOUNDED_WEAPON_TRAIL_MANIFEST,
+        BOUNDED_WEAPON_TRAIL_PROOF,
+        BOUNDED_WEAPON_TRAIL_APPLICATION_RECEIPT,
+    )
+    existence = [
+        _repository_path(root, relative).is_file() for relative in artifact_paths
+    ]
+    if not any(existence):
+        return None, {}
+    if not all(existence):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED bounded weapon Trail composition artifacts "
+            "are partial"
+        )
+
+    loaded: list[tuple[dict[str, Any], bytes]] = [
+        _load_json_bytes(_repository_path(root, relative))
+        for relative in artifact_paths
+    ]
+    manifest, manifest_payload = loaded[0]
+    proof, proof_payload = loaded[1]
+    application, application_payload = loaded[2]
+    exact_artifacts = (
+        (
+            manifest,
+            manifest_payload,
+            "lostark.valtan-bounded-weapon-trail-candidate-manifest",
+            BOUNDED_WEAPON_TRAIL_MANIFEST_RAW_SHA256,
+            BOUNDED_WEAPON_TRAIL_MANIFEST_ARTIFACT_SHA256,
+            "bounded weapon Trail candidate manifest",
+        ),
+        (
+            proof,
+            proof_payload,
+            "lostark.valtan-bounded-weapon-trail-drawable-proof",
+            BOUNDED_WEAPON_TRAIL_PROOF_RAW_SHA256,
+            BOUNDED_WEAPON_TRAIL_PROOF_ARTIFACT_SHA256,
+            "bounded weapon Trail drawable proof",
+        ),
+        (
+            application,
+            application_payload,
+            "lostark.valtan-bounded-weapon-trail-application-receipt",
+            BOUNDED_WEAPON_TRAIL_APPLICATION_RAW_SHA256,
+            BOUNDED_WEAPON_TRAIL_APPLICATION_ARTIFACT_SHA256,
+            "bounded weapon Trail application receipt",
+        ),
+    )
+    for document, payload, schema, raw_sha, artifact_sha, label in exact_artifacts:
+        _validate_sealed_artifact(document, schema, label)
+        if _sha256(payload) != raw_sha or document.get("artifactSha256") != artifact_sha:
+            raise SourceRebaseRequired(
+                f"SOURCE_REBASE_REQUIRED exact {label} identity drift"
+            )
+
+    manifest_link = {
+        "path": BOUNDED_WEAPON_TRAIL_MANIFEST.as_posix(),
+        "rawSha256": BOUNDED_WEAPON_TRAIL_MANIFEST_RAW_SHA256,
+        "artifactSha256": BOUNDED_WEAPON_TRAIL_MANIFEST_ARTIFACT_SHA256,
+    }
+    proof_link = {
+        "path": BOUNDED_WEAPON_TRAIL_PROOF.as_posix(),
+        "rawSha256": BOUNDED_WEAPON_TRAIL_PROOF_RAW_SHA256,
+        "artifactSha256": BOUNDED_WEAPON_TRAIL_PROOF_ARTIFACT_SHA256,
+    }
+    if (
+        manifest.get("bossArchetypeId") != BOSS_ARCHETYPE_ID
+        or manifest.get("classification") != "PROJECT_TUNED"
+        or manifest.get("reconstructionPolicy") != "BOUNDED_RECONSTRUCTION"
+        or manifest.get("sequenceDependency") != "NONE"
+        or manifest.get("summary")
+        != {
+            "targetCount": 3,
+            "candidateDocumentCount": 3,
+            "candidateElementCount": 9,
+            "sourceEmitterCountPerTarget": 3,
+            "projectionState": "CANDIDATE_ONLY_IMMUTABLE",
+        }
+        or proof.get("bossArchetypeId") != BOSS_ARCHETYPE_ID
+        or proof.get("classification") != "PROJECT_TUNED"
+        or proof.get("reconstructionPolicy") != "BOUNDED_RECONSTRUCTION"
+        or proof.get("candidateManifest") != manifest_link
+        or proof.get("disposition") != "DRAWABLE_PROOF_PASS"
+        or proof.get("summary")
+        != {
+            "targetCount": 3,
+            "candidateElementCount": 9,
+            "movingBoneDrawableCount": 9,
+            "stationarySuppressedCount": 9,
+            "missingAnchorRollbackCount": 3,
+            "failedDrawCount": 0,
+        }
+        or application.get("transactionStatus") != "COMMITTED"
+        or application.get("reconcileMode") != "MISSING_ONLY"
+        or application.get("classification") != "PROJECT_TUNED"
+        or application.get("reconstructionPolicy") != "BOUNDED_RECONSTRUCTION"
+        or application.get("candidateManifest") != manifest_link
+        or application.get("drawableProof") != proof_link
+        or application.get("summary")
+        != {
+            "targetCount": 3,
+            "appendedElementCount": 9,
+            "preservedExistingElementCount": 32,
+            "movingBoneDrawableCount": 9,
+            "stationarySuppressedCount": 9,
+            "missingAnchorRollbackCount": 3,
+        }
+    ):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED bounded weapon Trail composition closure drift"
+        )
+
+    manifest_targets = _require_list(manifest.get("targets"), "bounded manifest targets")
+    proof_targets = _require_list(proof.get("targets"), "bounded proof targets")
+    application_targets = _require_list(
+        application.get("targets"), "bounded application targets"
+    )
+    if not (
+        len(manifest_targets)
+        == len(proof_targets)
+        == len(application_targets)
+        == len(BOUNDED_WEAPON_TRAIL_TARGETS)
+    ):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED bounded weapon Trail target denominator drift"
+        )
+
+    guards: dict[PurePosixPath, bytes] = {
+        BOUNDED_WEAPON_TRAIL_MANIFEST: manifest_payload,
+        BOUNDED_WEAPON_TRAIL_PROOF: proof_payload,
+        BOUNDED_WEAPON_TRAIL_APPLICATION_RECEIPT: application_payload,
+    }
+    targets_by_effect: dict[str, dict[str, Any]] = {}
+    all_ids: set[str] = set()
+    all_sources: set[str] = set()
+    all_anchors: set[str] = set()
+    for expected, manifest_row, proof_row, application_row in zip(
+        BOUNDED_WEAPON_TRAIL_TARGETS,
+        manifest_targets,
+        proof_targets,
+        application_targets,
+        strict=True,
+    ):
+        expected_ids = list(expected["elementIds"])
+        candidate_relative = _relative_path(
+            expected["candidatePath"], "bounded candidate path"
+        )
+        candidate, candidate_payload = _load_json_bytes(
+            _repository_path(root, candidate_relative)
+        )
+        guards[candidate_relative] = candidate_payload
+        candidate_elements = [
+            _require_object(row, "bounded candidate element")
+            for row in _require_list(
+                candidate.get("elements"), "bounded candidate elements"
+            )
+        ]
+        candidate_ids = [row.get("id") for row in candidate_elements]
+        protected_hashes = [
+            _canonical_sha256(_bounded_weapon_trail_protected_contract(row))
+            for row in candidate_elements
+        ]
+        proof_elements = [
+            _require_object(row, "bounded proof element")
+            for row in _require_list(
+                proof_row.get("elements"), "bounded proof elements"
+            )
+        ]
+        exact_common = {
+            key: expected[key]
+            for key in (
+                "patternId",
+                "stageId",
+                "effectAssetId",
+                "runtimeAnchorSlotId",
+                "runtimeBoneName",
+                "sourceStartSeconds",
+                "sourceDurationSeconds",
+            )
+        }
+        manifest_common = {
+            key: expected[key]
+            for key in (
+                "patternId",
+                "stageId",
+                "effectAssetId",
+                "runtimeAnchorSlotId",
+                "runtimeBoneName",
+                "sourceDurationSeconds",
+            )
+        }
+        manifest_common["sourceTimeSeconds"] = expected["sourceStartSeconds"]
+        if (
+            candidate.get("schema") != "lostark.effect-authoring"
+            or candidate.get("version") != 13
+            or candidate.get("effectAssetId") != expected["effectAssetId"]
+            or candidate_ids != expected_ids
+            or any(
+                manifest_row.get(key) != value
+                for key, value in manifest_common.items()
+            )
+            or manifest_row.get("canonicalPath") != expected["canonicalPath"]
+            or manifest_row.get("candidatePath") != expected["candidatePath"]
+            or manifest_row.get("candidateRawSha256") != _sha256(candidate_payload)
+            or manifest_row.get("candidateCanonicalSha256")
+            != _canonical_sha256(candidate)
+            or manifest_row.get("candidateElementIds") != expected_ids
+            or manifest_row.get("candidateElementSha256")
+            != [_canonical_sha256(row) for row in candidate_elements]
+            or manifest_row.get("protectedElementContractSha256")
+            != protected_hashes
+            or any(proof_row.get(key) != value for key, value in exact_common.items())
+            or proof_row.get("candidatePath") != expected["candidatePath"]
+            or proof_row.get("candidateRawSha256") != _sha256(candidate_payload)
+            or proof_row.get("candidateCanonicalSha256")
+            != _canonical_sha256(candidate)
+            or proof_row.get("disposition") != "DRAWABLE_PROOF_PASS"
+            or [row.get("elementId") for row in proof_elements] != expected_ids
+            or any(
+                row.get("initialElementSha256") != initial_hash
+                or row.get("protectedElementContractSha256") != protected_hash
+                or (row.get("positiveMovingBone") or {})
+                .get("renderer", {})
+                .get("committedDraws")
+                != 1
+                or (row.get("positiveMovingBone") or {}).get(
+                    "distinctTrailPointCount", 0
+                )
+                < 2
+                or (row.get("stationaryControl") or {})
+                .get("renderer", {})
+                .get("committedDraws")
+                != 0
+                or (row.get("stationaryControl") or {}).get("segmentSuppressed")
+                is not True
+                for row, initial_hash, protected_hash in zip(
+                    proof_elements,
+                    manifest_row.get("candidateElementSha256") or [],
+                    protected_hashes,
+                    strict=True,
+                )
+            )
+            or (proof_row.get("missingAnchorControl") or {}).get("providerRejected")
+            is not True
+            or (proof_row.get("missingAnchorControl") or {}).get(
+                "playbackStatePreserved"
+            )
+            is not True
+            or any(
+                application_row.get(key) != value for key, value in exact_common.items()
+            )
+            or application_row.get("canonicalPath") != expected["canonicalPath"]
+            or application_row.get("appendedElementIds") != expected_ids
+            or application_row.get("initialElementSha256")
+            != manifest_row.get("candidateElementSha256")
+            or application_row.get("protectedElementContractSha256")
+            != protected_hashes
+        ):
+            raise SourceRebaseRequired(
+                "SOURCE_REBASE_REQUIRED bounded weapon Trail exact target drift: "
+                f"{expected['effectAssetId']}"
+            )
+        sources = [row.get("sourceNode") for row in candidate_elements]
+        if (
+            any(not isinstance(value, str) or not value for value in sources)
+            or all_ids.intersection(expected_ids)
+            or all_sources.intersection(sources)
+            or expected["runtimeAnchorSlotId"] in all_anchors
+        ):
+            raise SourceRebaseRequired(
+                "SOURCE_REBASE_REQUIRED bounded weapon Trail stable identity drift"
+            )
+        all_ids.update(expected_ids)
+        all_sources.update(sources)
+        all_anchors.add(expected["runtimeAnchorSlotId"])
+        targets_by_effect[expected["effectAssetId"]] = {
+            "expected": expected,
+            "candidateElements": candidate_elements,
+            "protectedElementContractSha256": protected_hashes,
+        }
+
+    composition = {
+        "targetsByEffect": targets_by_effect,
+        "allElementIds": all_ids,
+        "allSourceNodes": all_sources,
+        "allRuntimeAnchorSlots": all_anchors,
+        "receipt": {
+            "owner": "PROJECT_TUNED_BOUNDED_WEAPON_TRAILS",
+            "candidateManifest": manifest_link,
+            "drawableProof": proof_link,
+            "applicationReceipt": {
+                "path": BOUNDED_WEAPON_TRAIL_APPLICATION_RECEIPT.as_posix(),
+                "rawSha256": BOUNDED_WEAPON_TRAIL_APPLICATION_RAW_SHA256,
+                "artifactSha256": (
+                    BOUNDED_WEAPON_TRAIL_APPLICATION_ARTIFACT_SHA256
+                ),
+            },
+            "reconcileDisposition": (
+                "RECONSTRUCT_REVIEWED_PRE_APPEND_VIEW_THEN_DEEP_PRESERVE_EXACT_SUFFIX"
+            ),
+            "targetCount": 3,
+            "appendedElementCount": 9,
+            "targets": [],
+        },
+    }
+    validated_targets: list[dict[str, Any]] = []
+    for expected in BOUNDED_WEAPON_TRAIL_TARGETS:
+        canonical_relative = _relative_path(
+            expected["canonicalPath"], "bounded canonical target path"
+        )
+        canonical, canonical_payload = _load_json_bytes(
+            _repository_path(root, canonical_relative)
+        )
+        guards[canonical_relative] = canonical_payload
+        _, suffix, target_receipt = _split_bounded_weapon_trail_suffix(
+            canonical,
+            expected["effectAssetId"],
+            canonical_relative,
+            composition,
+        )
+        if len(suffix) != 3 or target_receipt is None:
+            raise SourceRebaseRequired(
+                "SOURCE_REBASE_REQUIRED bounded weapon Trail target is not "
+                f"committed: {expected['effectAssetId']}"
+            )
+        target_receipt["finalDocumentCanonicalSha256"] = _canonical_sha256(
+            canonical
+        )
+        validated_targets.append(target_receipt)
+    composition["receipt"]["targets"] = validated_targets
+    return composition, guards
+
+
+def _split_bounded_weapon_trail_suffix(
+    canonical: dict[str, Any],
+    effect_id: str,
+    target_relative: PurePosixPath,
+    composition: dict[str, Any] | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any] | None]:
+    elements = _require_list(canonical.get("elements"), f"{effect_id}.elements")
+    known_ids = {
+        element_id
+        for target in BOUNDED_WEAPON_TRAIL_TARGETS
+        for element_id in target["elementIds"]
+    }
+    known_anchors = {
+        target["runtimeAnchorSlotId"] for target in BOUNDED_WEAPON_TRAIL_TARGETS
+    }
+    if composition is None:
+        if any(
+            isinstance(row, dict)
+            and (
+                row.get("id") in known_ids
+                or (row.get("actionCueAttachment") or {}).get(
+                    "runtimeAnchorSlotId"
+                )
+                in known_anchors
+            )
+            for row in elements
+        ):
+            raise SourceRebaseRequired(
+                "SOURCE_REBASE_REQUIRED bounded weapon Trail row exists without "
+                "its sealed composition artifacts"
+            )
+        return canonical, [], None
+
+    target = composition["targetsByEffect"].get(effect_id)
+    all_ids = composition["allElementIds"]
+    all_sources = composition["allSourceNodes"]
+    all_anchors = composition["allRuntimeAnchorSlots"]
+
+    def is_bounded_identity(row: Any) -> bool:
+        return isinstance(row, dict) and (
+            row.get("id") in all_ids
+            or row.get("sourceNode") in all_sources
+            or (row.get("actionCueAttachment") or {}).get("runtimeAnchorSlotId")
+            in all_anchors
+        )
+
+    if target is None:
+        if any(is_bounded_identity(row) for row in elements):
+            raise SourceRebaseRequired(
+                "SOURCE_REBASE_REQUIRED bounded weapon Trail identity was rebound "
+                f"into {effect_id}"
+            )
+        return canonical, [], None
+
+    expected = target["expected"]
+    expected_ids = list(expected["elementIds"])
+    if target_relative.as_posix() != expected["canonicalPath"] or len(elements) < 3:
+        raise SourceRebaseRequired(
+            f"SOURCE_REBASE_REQUIRED bounded weapon Trail target rebound: {effect_id}"
+        )
+    suffix = elements[-3:]
+    if [row.get("id") if isinstance(row, dict) else None for row in suffix] != expected_ids:
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED bounded weapon Trail rows are not the exact "
+            f"three-row append suffix: {effect_id}"
+        )
+    if any(is_bounded_identity(row) for row in elements[:-3]):
+        raise SourceRebaseRequired(
+            f"SOURCE_REBASE_REQUIRED duplicate bounded weapon Trail row: {effect_id}"
+        )
+    for current, candidate, protected_sha in zip(
+        suffix,
+        target["candidateElements"],
+        target["protectedElementContractSha256"],
+        strict=True,
+    ):
+        if (
+            current.get("sourceNode") != candidate.get("sourceNode")
+            or (current.get("actionCueAttachment") or {}).get(
+                "runtimeAnchorSlotId"
+            )
+            != expected["runtimeAnchorSlotId"]
+            or _canonical_sha256(
+                _bounded_weapon_trail_protected_contract(current)
+            )
+            != protected_sha
+        ):
+            raise SourceRebaseRequired(
+                "SOURCE_REBASE_REQUIRED bounded weapon Trail protected row drift: "
+                f"{effect_id}/{current.get('id')}"
+            )
+    reviewed_view = deepcopy(canonical)
+    reviewed_view["elements"] = deepcopy(elements[:-3])
+    preserved = deepcopy(suffix)
+    return reviewed_view, preserved, {
+        "effectAssetId": effect_id,
+        "canonicalPath": target_relative.as_posix(),
+        "runtimeAnchorSlotId": expected["runtimeAnchorSlotId"],
+        "runtimeBoneName": expected["runtimeBoneName"],
+        "appendedElementIds": expected_ids,
+        "reconstructedReviewedViewCanonicalSha256": _canonical_sha256(
+            reviewed_view
+        ),
+        "deepPreservedElementSha256": [
+            _canonical_sha256(row) for row in preserved
+        ],
+    }
 
 
 def _path_inside_repository(root: Path, path: Path, label: str) -> PurePosixPath:
@@ -385,7 +942,13 @@ def _validate_candidate_receipt(receipt: dict[str, Any]) -> list[dict[str, Any]]
 def _validate_source_guard_rows(receipt: dict[str, Any]) -> list[dict[str, str]]:
     sources = _require_object(receipt.get("sources"), "candidate receipt sources")
     rows: list[dict[str, str]] = []
-    for key in ("selectionManifest", "cueDocument", "effectCatalog"):
+    for key in (
+        "selectionManifest",
+        "cueDocument",
+        "effectCatalog",
+        "bossCatalog",
+        "valtanCombatObjects",
+    ):
         row = _require_object(sources.get(key), f"candidate receipt sources.{key}")
         rows.append({"path": row.get("path"), "sha256": row.get("sha256")})
     for raw in _require_list(
@@ -488,8 +1051,68 @@ def _validate_candidate_document(
     return elements
 
 
+def _combat_object_owner_indexes(
+    boss_catalog: dict[str, Any], combat_objects: dict[str, Any]
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    if (
+        boss_catalog.get("schema") != "lostark.boss-catalog"
+        or boss_catalog.get("formatVersion") != 3
+    ):
+        raise ProjectionError("BossCatalog combat-object owner header is invalid")
+    bosses = [
+        _require_object(row, "BossCatalog boss")
+        for row in _require_list(boss_catalog.get("bosses"), "BossCatalog.bosses")
+        if isinstance(row, dict) and row.get("archetypeId") == BOSS_ARCHETYPE_ID
+    ]
+    if len(bosses) != 1:
+        raise ProjectionError("BossCatalog must contain exactly one BOSS_VALTAN")
+    visuals: dict[str, dict[str, Any]] = {}
+    for raw in _require_list(
+        bosses[0].get("combatObjectVisuals"),
+        "BOSS_VALTAN.combatObjectVisuals",
+    ):
+        row = _require_object(raw, "BossCatalog combat-object visual")
+        archetype_id = row.get("combatObjectArchetypeId")
+        if (
+            not isinstance(archetype_id, str)
+            or not archetype_id
+            or archetype_id in visuals
+        ):
+            raise ProjectionError(
+                "BossCatalog combat-object visual identity is invalid or duplicated"
+            )
+        visuals[archetype_id] = row
+
+    if (
+        combat_objects.get("schema") != "lostark.valtan-combat-objects"
+        or combat_objects.get("formatVersion") != 1
+        or combat_objects.get("encounterId") != "ENCOUNTER_VALTAN"
+    ):
+        raise ProjectionError("ValtanCombatObjects owner header is invalid")
+    objects: dict[str, dict[str, Any]] = {}
+    for raw in _require_list(
+        combat_objects.get("objects"), "ValtanCombatObjects.objects"
+    ):
+        row = _require_object(raw, "Valtan combat-object row")
+        archetype_id = row.get("combatObjectArchetypeId")
+        if (
+            not isinstance(archetype_id, str)
+            or not archetype_id
+            or archetype_id in objects
+        ):
+            raise ProjectionError(
+                "Valtan combat-object identity is invalid or duplicated"
+            )
+        objects[archetype_id] = row
+    return visuals, objects
+
+
 def _validate_catalog_and_cues(
-    catalog: dict[str, Any], cues: dict[str, Any], documents: list[dict[str, Any]]
+    catalog: dict[str, Any],
+    cues: dict[str, Any],
+    boss_catalog: dict[str, Any],
+    combat_objects: dict[str, Any],
+    documents: list[dict[str, Any]],
 ) -> None:
     if catalog.get("formatVersion") != 1:
         raise ProjectionError("EffectCatalog.json must remain formatVersion 1")
@@ -513,6 +1136,9 @@ def _validate_catalog_and_cues(
         _require_object(row, "Valtan cue row")
         for row in _require_list(cues.get("cues"), "Valtan cues")
     ]
+    combat_visuals, combat_object_rows = _combat_object_owner_indexes(
+        boss_catalog, combat_objects
+    )
     for document in documents:
         effect_id = document["effectAssetId"]
         if catalog_by_id.get(effect_id) != document.get("catalogRow"):
@@ -523,13 +1149,75 @@ def _validate_catalog_and_cues(
             raise ProjectionError(f"candidate catalog disposition is unsafe: {effect_id}")
         for clip in _require_list(document.get("clipOccurrences"), f"{effect_id}.clipOccurrences"):
             clip_row = _require_object(clip, f"{effect_id}.clipOccurrence")
-            if clip_row.get("cueDisposition") != "REUSE_EXISTING_V2_NO_MUTATION":
-                raise ProjectionError(f"candidate cue disposition is unsafe: {effect_id}")
             expected = _require_object(clip_row.get("cueRow"), f"{effect_id}.cueRow")
-            matches = [row for row in cue_rows if row == expected]
-            if len(matches) != 1 or expected.get("effectAssetId") != effect_id:
+            disposition = clip_row.get("cueDisposition")
+            if disposition == "REUSE_EXISTING_V2_NO_MUTATION":
+                if "combatObjectOwner" in clip_row:
+                    raise ProjectionError(
+                        f"boss-root cue carries an unexpected combat owner: {effect_id}"
+                    )
+                matches = [row for row in cue_rows if row == expected]
+                if len(matches) != 1 or expected.get("effectAssetId") != effect_id:
+                    raise SourceRebaseRequired(
+                        f"SOURCE_REBASE_REQUIRED exact cue v2 row drift: {effect_id}"
+                    )
+                continue
+            if (
+                disposition
+                != "RETIRED_V2_REPLACED_BY_EXACT_COMBAT_OBJECT_OWNER"
+            ):
+                raise ProjectionError(
+                    f"candidate Effect owner disposition is unsafe: {effect_id}"
+                )
+            owner = _require_object(
+                clip_row.get("combatObjectOwner"),
+                f"{effect_id}.combatObjectOwner",
+            )
+            visual = _require_object(
+                owner.get("bossCatalogVisualRow"),
+                f"{effect_id}.bossCatalogVisualRow",
+            )
+            combat_object = _require_object(
+                owner.get("combatObjectRow"),
+                f"{effect_id}.combatObjectRow",
+            )
+            archetype_id = visual.get("combatObjectArchetypeId")
+            if (
+                owner.get("ownerKind") != "BOSS_COMBAT_OBJECT"
+                or owner.get("bossArchetypeId") != BOSS_ARCHETYPE_ID
+                or not isinstance(archetype_id, str)
+                or combat_visuals.get(archetype_id) != visual
+                or combat_object_rows.get(archetype_id) != combat_object
+                or combat_object.get("combatObjectArchetypeId") != archetype_id
+                or combat_object.get("clientVisualId")
+                != visual.get("clientVisualId")
+                or visual.get("effectAssetId") != effect_id
+                or expected.get("effectAssetId") != effect_id
+                or expected.get("patternId")
+                != combat_object.get("ownerPatternId")
+                or expected.get("actionId")
+                != combat_object.get("ownerStageActionId")
+                or expected.get("patternId") != clip_row.get("patternId")
+                or expected.get("stageId") != clip_row.get("semanticStageId")
+                or expected.get("actionId")
+                != clip_row.get("gameplayActionId")
+                or expected.get("clipOccurrenceId")
+                != clip_row.get("clipOccurrenceId")
+            ):
                 raise SourceRebaseRequired(
-                    f"SOURCE_REBASE_REQUIRED exact cue v2 row drift: {effect_id}"
+                    "SOURCE_REBASE_REQUIRED exact combat-object Effect owner "
+                    f"drift: {effect_id}"
+                )
+            if any(
+                row.get("bindingId") == expected.get("bindingId")
+                or row.get("occurrenceId") == expected.get("occurrenceId")
+                or row.get("clipOccurrenceId")
+                == expected.get("clipOccurrenceId")
+                for row in cue_rows
+            ):
+                raise SourceRebaseRequired(
+                    "SOURCE_REBASE_REQUIRED retired boss-root cue was restored "
+                    f"beside combat-object owner: {effect_id}"
                 )
 
 
@@ -761,6 +1449,12 @@ def collect_projection(
             source_values["cues"], _ = _load_json_bytes(path)
             source_payloads["cues"] = payload
             source_expected_shas["cues"] = row["sha256"]
+        if relative.as_posix().endswith("Data/Actors/BossCatalog.json"):
+            source_values["bossCatalog"], _ = _load_json_bytes(path)
+        if relative.as_posix().endswith(
+            "Data/Encounters/Valtan/ValtanCombatObjects.json"
+        ):
+            source_values["combatObjects"], _ = _load_json_bytes(path)
         if _sha256(payload) != row["sha256"]:
             if relative.as_posix().endswith(
                 ("EffectCatalog.json", "Valtan.patterneffectcues.json")
@@ -770,8 +1464,16 @@ def collect_projection(
                 raise SourceRebaseRequired(
                     f"SOURCE_REBASE_REQUIRED source guard SHA drift: {relative}"
                 )
-    if set(source_values) != {"catalog", "cues"}:
-        raise ProjectionError("candidate source guards do not identify catalog and cue")
+    if set(source_values) != {
+        "catalog",
+        "cues",
+        "bossCatalog",
+        "combatObjects",
+    }:
+        raise ProjectionError(
+            "candidate source guards do not identify catalog, cues, and "
+            "combat-object owners"
+        )
     if deferred_source_guard_drift:
         source_values, downstream_guards = _reviewed_source_view_after_safe_gap(
             root,
@@ -781,7 +1483,11 @@ def collect_projection(
         )
         guards.update(downstream_guards)
     _validate_catalog_and_cues(
-        source_values["catalog"], source_values["cues"], documents
+        source_values["catalog"],
+        source_values["cues"],
+        source_values["bossCatalog"],
+        source_values["combatObjects"],
+        documents,
     )
 
     protected_receipts: list[dict[str, Any]] = []
@@ -814,6 +1520,19 @@ def collect_projection(
     if PROTECTED_WHIRLWIND_EFFECT_ID not in protected_ids:
         raise ProjectionError("Whirlwind active protected byte canary is missing")
 
+    bounded_composition, bounded_guards = _load_bounded_weapon_trail_composition(
+        root
+    )
+    guards.update(bounded_guards)
+    bounded_target_receipts: list[dict[str, Any]] = (
+        deepcopy(bounded_composition["receipt"]["targets"])
+        if bounded_composition is not None
+        else []
+    )
+    deep_preserved_bounded_element_count = (
+        9 if bounded_composition is not None else 0
+    )
+
     canonical_outputs: dict[PurePosixPath, bytes] = {}
     target_receipts: list[dict[str, Any]] = []
     for row in applicable_documents:
@@ -827,7 +1546,43 @@ def collect_projection(
                 f"SOURCE_REBASE_REQUIRED existing authored document disappeared: {effect_id}"
             )
         canonical, canonical_payload = _load_json_bytes(target_path)
-        staged = _reconcile_document(canonical, candidate_documents[effect_id], effect_id)
+        reviewed_view, bounded_suffix, bounded_target_receipt = (
+            _split_bounded_weapon_trail_suffix(
+                canonical,
+                effect_id,
+                target_relative,
+                bounded_composition,
+            )
+        )
+        staged = _reconcile_document(
+            reviewed_view, candidate_documents[effect_id], effect_id
+        )
+        if bounded_suffix:
+            staged["elements"].extend(deepcopy(bounded_suffix))
+            if staged["elements"][-len(bounded_suffix) :] != bounded_suffix:
+                raise ProjectionError(
+                    f"bounded weapon Trail suffix was rewritten: {effect_id}"
+                )
+            if bounded_target_receipt is None:
+                raise ProjectionError(
+                    f"bounded weapon Trail composition receipt is missing: {effect_id}"
+                )
+            bounded_target_receipt["finalDocumentCanonicalSha256"] = (
+                _canonical_sha256(staged)
+            )
+            receipt_index = next(
+                (
+                    index
+                    for index, row in enumerate(bounded_target_receipts)
+                    if row["effectAssetId"] == effect_id
+                ),
+                None,
+            )
+            if receipt_index is None:
+                raise ProjectionError(
+                    f"bounded weapon Trail global receipt target is missing: {effect_id}"
+                )
+            bounded_target_receipts[receipt_index] = bounded_target_receipt
         staged_payload = _json_bytes_like(canonical_payload, staged)
         canonical_outputs[target_relative] = staged_payload
         guards[target_relative] = canonical_payload
@@ -849,6 +1604,29 @@ def collect_projection(
 
     if len(canonical_outputs) != EXPECTED_APPLY_DOCUMENT_COUNT:
         raise ProjectionError("canonical output closure is not exactly 36 documents")
+    if bounded_composition is not None:
+        order = {
+            target["effectAssetId"]: index
+            for index, target in enumerate(BOUNDED_WEAPON_TRAIL_TARGETS)
+        }
+        bounded_target_receipts.sort(
+            key=lambda row: order.get(row["effectAssetId"], len(order))
+        )
+        if (
+            len(bounded_target_receipts) != 3
+            or deep_preserved_bounded_element_count != 9
+            or [row["effectAssetId"] for row in bounded_target_receipts]
+            != [target["effectAssetId"] for target in BOUNDED_WEAPON_TRAIL_TARGETS]
+        ):
+            raise ProjectionError(
+                "bounded weapon Trail downstream composition did not close 3/9"
+            )
+        bounded_composition_receipt = deepcopy(bounded_composition["receipt"])
+        bounded_composition_receipt["targets"] = bounded_target_receipts
+    else:
+        if bounded_target_receipts or deep_preserved_bounded_element_count:
+            raise ProjectionError("orphan bounded weapon Trail composition state")
+        bounded_composition_receipt = None
 
     receipt = {
         "schema": RECEIPT_SCHEMA,
@@ -883,9 +1661,16 @@ def collect_projection(
             "catalogMutationCount": 0,
             "cueMutationCount": 0,
             "protectedCanaryCount": len(protected_receipts),
+            "downstreamCompositionCount": (
+                1 if bounded_composition_receipt is not None else 0
+            ),
+            "deepPreservedDownstreamElementCount": (
+                deep_preserved_bounded_element_count
+            ),
         },
         "sourceGuards": source_guard_rows,
         "protectedCanaries": protected_receipts,
+        "downstreamBoundedWeaponTrails": bounded_composition_receipt,
         "targets": target_receipts,
         "canonicalOutputs": [
             {

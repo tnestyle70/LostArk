@@ -519,6 +519,188 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			findPattern("VALTAN_SWING");
 		const BOSS_PATTERN_DEFINITION* arenaBreakPattern =
 			findPattern("VALTAN_ARENA_BREAK_109");
+		const auto hasAction = [](
+			const BOSS_PATTERN_STAGE_DEFINITION* stage,
+			const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+			const BOSS_PATTERN_STAGE_ACTION_KIND kind,
+			const std::string_view targetId,
+			const std::uint32_t value)
+		{
+			return nullptr != stage && std::any_of(
+				stage->Actions.begin(), stage->Actions.end(),
+				[trigger, kind, targetId, value](
+					const BOSS_PATTERN_STAGE_ACTION& action)
+				{
+					return action.eTrigger == trigger && action.eKind == kind &&
+						action.strTargetId == targetId && action.iValue == value &&
+						0u == action.iDurationMs;
+				});
+		};
+		const auto hasBranch = [](
+			const BOSS_PATTERN_STAGE_DEFINITION* stage,
+			const BOSS_PATTERN_STAGE_OUTCOME outcome,
+			const std::string_view nextActionId)
+		{
+			return nullptr != stage && std::any_of(
+				stage->Branches.begin(), stage->Branches.end(),
+				[outcome, nextActionId](
+					const BOSS_PATTERN_STAGE_BRANCH& branch)
+				{
+					return branch.eOutcome == outcome &&
+						branch.strNextActionId == nextActionId;
+				});
+		};
+		const auto hasClosedFlag = [&hasAction](
+			const BOSS_PATTERN_STAGE_DEFINITION* stage,
+			const std::string_view targetId)
+		{
+			return nullptr != stage && 2u == stage->Actions.size() &&
+				hasAction(stage, BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+					BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG,
+					targetId, 1u) &&
+				hasAction(stage, BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
+					BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG,
+					targetId, 0u);
+		};
+		std::size_t valtanStageCount = 0u;
+		std::size_t valtanStageActionCount = 0u;
+		std::size_t valtanRuntimeBranchCount = 0u;
+		std::size_t valtanMotionCount = 0u;
+		if (nullptr != patterns)
+		{
+			for (const BOSS_PATTERN_DEFINITION& pattern : *patterns)
+			{
+				valtanStageCount += pattern.Stages.size();
+				for (const BOSS_PATTERN_STAGE_DEFINITION& stage : pattern.Stages)
+				{
+					valtanStageActionCount += stage.Actions.size();
+					valtanRuntimeBranchCount += stage.Branches.size();
+					if (BOSS_PATTERN_STAGE_MOTION_KIND::NONE != stage.Motion.eKind)
+						++valtanMotionCount;
+				}
+			}
+		}
+		const BOSS_PATTERN_STAGE_DEFINITION* parryStance =
+			findStage("VALTAN_PARRY", "STANCE");
+		const BOSS_PATTERN_STAGE_DEFINITION* parrySlash =
+			findStage("VALTAN_PARRY", "COUNTER_SLASH");
+		const BOSS_PATTERN_STAGE_DEFINITION* parryNormal =
+			findStage("VALTAN_PARRY", "NORMAL_SLASH");
+		const BOSS_PATTERN_STAGE_DEFINITION* tripleFirst =
+			findStage("VALTAN_TRIPLE_COUNTER", "COUNTER_1");
+		const BOSS_PATTERN_STAGE_DEFINITION* tripleSecond =
+			findStage("VALTAN_TRIPLE_COUNTER", "COUNTER_2");
+		const BOSS_PATTERN_STAGE_DEFINITION* tripleThird =
+			findStage("VALTAN_TRIPLE_COUNTER", "COUNTER_3");
+		const BOSS_PATTERN_STAGE_DEFINITION* armorCharge =
+			findStage("VALTAN_ARMOR_BREAK_OPENING", "WALL_CHARGE");
+		const BOSS_PATTERN_STAGE_DEFINITION* armorGroggy =
+			findStage("VALTAN_ARMOR_BREAK_OPENING", "GROGGY");
+		const BOSS_PATTERN_STAGE_DEFINITION* orbShield =
+			findStage("VALTAN_MAGIC_ORB_STAGGER_76", "SHIELD");
+		const BOSS_PATTERN_STAGE_DEFINITION* orbWindow =
+			findStage("VALTAN_MAGIC_ORB_STAGGER_76", "STAGGER_WINDOW");
+		const BOSS_PATTERN_STAGE_DEFINITION* orbGroggy =
+			findStage("VALTAN_MAGIC_ORB_STAGGER_76", "GROGGY");
+		const BOSS_PATTERN_STAGE_DEFINITION* orbWipe =
+			findStage("VALTAN_MAGIC_ORB_STAGGER_76", "WIPE");
+		const BOSS_PATTERN_STAGE_DEFINITION* centerCounter =
+			findStage("VALTAN_CENTER_GRAB_COUNTER_64", "COUNTER_WINDOW");
+		const bool reactiveTopologyExact = nullptr != patterns &&
+			33u == patterns->size() && 130u == valtanStageCount &&
+			22u == valtanStageActionCount &&
+			138u == valtanRuntimeBranchCount && 1u == valtanMotionCount &&
+			nullptr != parryStance && 2u == parryStance->Actions.size() &&
+			2u == parryStance->Branches.size() &&
+			hasAction(parryStance,
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+				BOSS_PATTERN_STAGE_ACTION_KIND::SET_STAGGER_GAUGE,
+				"boss.gauge.stagger", 30u) &&
+			hasAction(parryStance,
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
+				BOSS_PATTERN_STAGE_ACTION_KIND::SET_STAGGER_GAUGE,
+				"boss.gauge.stagger", 0u) &&
+			hasBranch(parryStance, BOSS_PATTERN_STAGE_OUTCOME::STAGGER_BROKEN,
+				"valtan.reactive.parry.slash") &&
+			hasBranch(parryStance, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.reactive.parry.normal-slash") &&
+			nullptr != parrySlash && 1u == parrySlash->Branches.size() &&
+			hasBranch(parrySlash, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.reactive.parry.recovery") &&
+			nullptr != parryNormal && 1u == parryNormal->Branches.size() &&
+			hasBranch(parryNormal, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.reactive.parry.recovery") &&
+			hasClosedFlag(tripleFirst, "boss.flag.counterable") &&
+			2u == tripleFirst->Branches.size() &&
+			hasBranch(tripleFirst, BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT,
+				"valtan.reactive.triple-counter.second") &&
+			hasBranch(tripleFirst, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.reactive.triple-counter.first-fail") &&
+			hasClosedFlag(tripleSecond, "boss.flag.counterable") &&
+			2u == tripleSecond->Branches.size() &&
+			hasBranch(tripleSecond, BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT,
+				"valtan.reactive.triple-counter.third") &&
+			hasBranch(tripleSecond, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.reactive.triple-counter.second-fail") &&
+			hasClosedFlag(tripleThird, "boss.flag.counterable") &&
+			2u == tripleThird->Branches.size() &&
+			hasBranch(tripleThird, BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT,
+				"valtan.reactive.triple-counter.recovery") &&
+			hasBranch(tripleThird, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.reactive.triple-counter.third-fail") &&
+			nullptr != armorCharge &&
+			BOSS_PATTERN_STAGE_MOTION_KIND::FORWARD == armorCharge->Motion.eKind &&
+			std::abs(armorCharge->Motion.fDistance - 100.f) < 1.0e-6f &&
+			2u == armorCharge->Branches.size() &&
+			hasBranch(armorCharge, BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT,
+				"valtan.mechanic.armor-break-opening.groggy") &&
+			hasBranch(armorCharge, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT, "") &&
+			hasClosedFlag(armorGroggy, "boss.flag.groggy") &&
+			2u == armorGroggy->Branches.size() &&
+			hasBranch(armorGroggy, BOSS_PATTERN_STAGE_OUTCOME::PART_DESTROYED,
+				"valtan.mechanic.armor-break-opening.recovery") &&
+			hasBranch(armorGroggy, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.mechanic.armor-break-opening.recovery") &&
+			nullptr != orbShield && 2u == orbShield->Actions.size() &&
+			hasAction(orbShield, BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+				BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG,
+				"boss.flag.invulnerable", 1u) &&
+			hasAction(orbShield, BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+				BOSS_PATTERN_STAGE_ACTION_KIND::SET_SHIELD,
+				"boss.gauge.shield", 6000u) &&
+			nullptr != orbWindow && 4u == orbWindow->Actions.size() &&
+			2u == orbWindow->Branches.size() &&
+			hasAction(orbWindow, BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER,
+				BOSS_PATTERN_STAGE_ACTION_KIND::SET_STAGGER_GAUGE,
+				"boss.gauge.stagger", 100u) &&
+			hasAction(orbWindow, BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
+				BOSS_PATTERN_STAGE_ACTION_KIND::SET_STAGGER_GAUGE,
+				"boss.gauge.stagger", 0u) &&
+			hasAction(orbWindow, BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
+				BOSS_PATTERN_STAGE_ACTION_KIND::SET_SHIELD,
+				"boss.gauge.shield", 0u) &&
+			hasAction(orbWindow, BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT,
+				BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG,
+				"boss.flag.invulnerable", 0u) &&
+			hasBranch(orbWindow, BOSS_PATTERN_STAGE_OUTCOME::STAGGER_BROKEN,
+				"valtan.mechanic.magic-orb-stagger-76.groggy") &&
+			hasBranch(orbWindow, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.mechanic.magic-orb-stagger-76.wipe") &&
+			hasClosedFlag(orbGroggy, "boss.flag.groggy") &&
+			1u == orbGroggy->Branches.size() &&
+			hasBranch(orbGroggy, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.mechanic.magic-orb-stagger-76.recovery") &&
+			nullptr != orbWipe && 1u == orbWipe->Branches.size() &&
+			hasBranch(orbWipe, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.mechanic.magic-orb-stagger-76.recovery") &&
+			hasClosedFlag(centerCounter, "boss.flag.counterable") &&
+			2u == centerCounter->Branches.size() &&
+			hasBranch(centerCounter, BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT,
+				"valtan.mechanic.center-grab-counter-64.recovery") &&
+			hasBranch(centerCounter, BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT,
+				"valtan.mechanic.center-grab-counter-64.failed-charge");
+		tests.Require(reactiveTopologyExact,
+			"Load all 130 current Valtan stages with the exact 22 actions and 138 runtime branches");
 		const bool everyPatternHasSourceTiming = nullptr != patterns &&
 			std::all_of(
 				patterns->begin(), patterns->end(),
@@ -582,15 +764,15 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			}
 		}
 		tests.Require(
-			everyDamagingStageResolves && 45u == damagingStageCount &&
-			71u == authoredHitPulseCount &&
+			everyDamagingStageResolves && 47u == damagingStageCount &&
+			73u == authoredHitPulseCount &&
 			700u == catalog.Find_DamageRatePercent(
 				"damage.valtan.arena-destroy-109") &&
 			450u == catalog.Find_DamageRatePercent(
 				"damage.valtan.six-direction-130") &&
 			900u == catalog.Find_DamageRatePercent(
 				"damage.valtan.ghost-transition-15"),
-			"Resolve all 45 Valtan hit stages and 71 pulses through project-tuned damage profiles");
+			"Resolve all 47 Valtan hit stages and 73 pulses through project-tuned damage profiles");
 	}
 	{
 		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
@@ -3928,6 +4110,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		cooldownBoss.fEngageDistance = 35.f;
 		cooldownBoss.fMoveSpeed = 3.f;
 		cooldownBoss.bIntroPatternConsumed = true;
+		cooldownBoss.bScriptedPatternPlayback = true;
 		std::map<std::string, std::uint32_t> lastStartTickByPattern;
 		std::uint32_t previousSequence = 0u;
 		bool respectedCooldowns = true;
@@ -4099,17 +4282,20 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Run the authored Valtan rotation in order and repeat it inside its span");
 		const BOSS_PATTERN_ROTATION_DEFINITION* openingSpan =
 			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 160u);
+		const BOSS_PATTERN_ROTATION_DEFINITION* secondSpan =
+			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 130u);
 		tests.Require(
 			nullptr != openingSpan &&
 			160u == openingSpan->iFromHealthBar &&
 			130u == openingSpan->iToHealthBar &&
 			openingSpan == catalog.Find_BossPatternRotation(
 				"ENCOUNTER_VALTAN", 131u) &&
-			nullptr == catalog.Find_BossPatternRotation(
-				"ENCOUNTER_VALTAN", 130u) &&
+			nullptr != secondSpan && openingSpan != secondSpan &&
+			130u == secondSpan->iFromHealthBar &&
+			109u == secondSpan->iToHealthBar &&
 			nullptr == catalog.Find_BossPatternRotation(
 				"ENCOUNTER_VALTAN", 1u),
-			"End a Valtan rotation span on the bar its next scripted mechanic owns");
+			"Hand off the 160-to-130 rotation to the 130-to-109 span on the exact boundary");
 		SERVER_WORLD_ENTITY scriptedBoss = makeEntranceBoss();
 		scriptedBoss.bScriptedPatternPlayback = true;
 		observeOrder(scriptedBoss, 400u);
@@ -4836,7 +5022,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t2\tANY\tANY\t0\n"
 					"PATTERNPOLICY\tENCOUNTER_VALTAN\tVALTAN_TEST\tNORMAL\t1\t3\tLOCK_NEAREST_ON_START\tLOCK_FACING_ON_START\n"
 					"PATTERNSOURCE\tENCOUNTER_VALTAN\tVALTAN_TEST\t420601\t12\t5000\t150\t350\t300\t180\n"
-					<< stageRow << "\n"
+					<< stageRow <<
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34020\tLANCE_MASTER\tSPACE\tlancemaster.skill.34020\t8000\t900\t0\t242\t0\t6\t0\t\tACTIVE\tLANCE_MASTER_LONG_SPEAR\tNONE\n"
 					"SKILLCOMBATTRAITS\t34020\t0\t0\t0\n";
@@ -4855,19 +5041,20 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					nullptr : previous);
 			return loaded;
 		};
-		tests.Require(
-			loadWithPatternStageRow(
-				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t600\tdamage.player.34120\t2\t242\t1\t2000"
+		const bool acceptedContactDelay = loadWithPatternStageRow(
+				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t600\tdamage.player.34120\t2\t242\t1\t2000\n"
 				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t1\tSPAWN\tvaltan.test.spawn\tWINDUP\t500\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n"
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
 				"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
 				"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
-				"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n"),
+				"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n");
+		tests.Require(
+			acceptedContactDelay,
 			"Accept a stage whose first hit lands at its authored contact delay");
 		tests.Require(
 			!loadWithPatternStageRow(
-				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t1000\tdamage.player.34120\t2\t242\t1\t2000"
+				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tACTIVE\tvaltan.test.active\tACTIVE\t1000\tCIRCLE\t8\t0\t0\t0\t0\t1\t0\t1000\tdamage.player.34120\t2\t242\t1\t2000\n"
 				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t1\tSPAWN\tvaltan.test.spawn\tWINDUP\t500\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n"
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
@@ -4877,7 +5064,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Reject a hit delay at or beyond its stage duration");
 		tests.Require(
 			!loadWithPatternStageRow(
-				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tWINDUP\tvaltan.test.active\tWINDUP\t1000\tNONE\t0\t0\t0\t0\t0\t0\t0\t600\t-\t0\t0\t0\t0"
+				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t0\tWINDUP\tvaltan.test.active\tWINDUP\t1000\tNONE\t0\t0\t0\t0\t0\t0\t0\t600\t-\t0\t0\t0\t0\n"
 				"PATTERNSTAGE\tENCOUNTER_VALTAN\tVALTAN_TEST\t1\tSPAWN\tvaltan.test.spawn\tWINDUP\t500\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n"
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 				"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
@@ -4939,7 +5126,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.active\tTIMEOUT\tvaltan.test.spawn\n"
 					"PATTERNSTAGEBRANCH\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\tTIMEOUT\t-\n"
 					"BOSSCOMBATOBJECT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\tcombatobject.visual.valtan.test.v1\tVALTAN_TEST\tvaltan.test.spawn\tFIXED_AREA\tLOCKED_TARGET_UNTIL_FIRST_PULSE\tNONE\t0\t0\t0\t0\t1000\t1\n"
-					"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34120\t0\t0\t0\t0\n"
+					"BOSSCOMBATOBJECTHIT\tENCOUNTER_VALTAN\tcombatobject.valtan.test\t0\tTIMED\t100\t1\t0\tCIRCLE\t4\t0\t0\t0\t0\tdamage.player.34010\t0\t0\t0\t0\n"
 					"PATTERNSTAGEACTION\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test.spawn\t0\tENTER\tSPAWN_COMBAT_OBJECT\tcombatobject.valtan.test\t1\t0\n"
 					"PLAYER\tLANCE_MASTER\t5500\t1000\t25\t100\t105\t2.95\t1\t0\t0\t0\t0\t0\tLANCE_MASTER_LONG_SPEAR\n"
 					"SKILL\t34010\tLANCE_MASTER\tLMB\tlancemaster.skill.34010"
@@ -7088,18 +7275,19 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 		const auto countFloorStates = [&room]()
 		{
-			/* rail intact/breaking/despawned, then brick in the same order. */
+			/* 84-stage floor intact/breaking/despawned, then the 30-stage
+			   floor sectors in the same order. */
 			std::array<std::size_t, 6u> counts{};
 			for (const WORLD_DESTRUCTION_GROUP_STATE& state :
 				room.m_WorldDestructionRuntime.Get_GroupStates())
 			{
-				const bool isRail = 0u == state.strGroupId.rfind(
+				const bool isStageA = 0u == state.strGroupId.rfind(
 					"destroyable.group.valtan.floor84.rail.", 0u);
-				const bool isBrick = 0u == state.strGroupId.rfind(
-					"destroyable.group.valtan.floor30.brick.", 0u);
-				if (!isRail && !isBrick)
+				const bool isStageB = 0u == state.strGroupId.rfind(
+					"destroyable.group.valtan.floor30.", 0u);
+				if (!isStageA && !isStageB)
 					continue;
-				const std::size_t offset = isRail ? 0u : 3u;
+				const std::size_t offset = isStageA ? 0u : 3u;
 				if (WORLD_DESTRUCTION_STATE::INTACT == state.eState)
 					++counts[offset];
 				else if (WORLD_DESTRUCTION_STATE::BREAKING == state.eState)
@@ -7117,8 +7305,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			nullptr != boss && 160u == reportedBar &&
 			destructionEpochBeforeStart != runDestructionEpoch &&
 			propEpochBeforeStart != runPropEpoch &&
-			2u == initialFloorStates[0u] &&
-			4u == initialFloorStates[3u],
+			1u == initialFloorStates[0u] &&
+			5u == initialFloorStates[3u],
 			"Ordered full run stages the exact 66-start and 3-idle ledger in one fresh arena");
 
 		std::vector<std::uint32_t> observedOrdinals;
@@ -7279,19 +7467,19 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			if (31u == room.m_ValtanOrderedAudition.iStepIndex)
 			{
 				sawFloor84Breaking = sawFloor84Breaking ||
-					2u == floorStates[1u] && 4u == floorStates[3u];
+					1u == floorStates[1u] && 5u == floorStates[3u];
 			}
 			if (room.m_ValtanOrderedAudition.iStepIndex >= 32u &&
 				room.m_ValtanOrderedAudition.iStepIndex <= 47u)
 			{
 				sawFloor84DespawnedBeforeFloor30 =
 					sawFloor84DespawnedBeforeFloor30 ||
-					2u == floorStates[2u] && 4u == floorStates[3u];
+					1u == floorStates[2u] && 5u == floorStates[3u];
 			}
 			if (47u == room.m_ValtanOrderedAudition.iStepIndex)
 			{
 				sawFloor30Breaking = sawFloor30Breaking ||
-					2u == floorStates[2u] && 4u == floorStates[4u];
+					1u == floorStates[2u] && 5u == floorStates[4u];
 			}
 		}
 
@@ -7345,9 +7533,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Ordered full run completes three independent pillar raise, break and hide cycles");
 		tests.Require(
 			sawFloor84Breaking && sawFloor84DespawnedBeforeFloor30 &&
-			sawFloor30Breaking && 2u == finalFloorStates[2u] &&
-			4u == finalFloorStates[5u],
-			"Ordered full run removes the two floor-84 rails before the four floor-30 bricks");
+			sawFloor30Breaking && 1u == finalFloorStates[2u] &&
+			5u == finalFloorStates[5u],
+			"Ordered full run removes the one floor-84 rail before the five floor-30 sectors");
 		tests.Require(
 			ticksUsed < MAX_ORDERED_TICKS && roomStayedReady &&
 			epochsStayedStable && nullptr != boss &&

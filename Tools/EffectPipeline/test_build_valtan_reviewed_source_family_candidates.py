@@ -180,12 +180,24 @@ class ValtanReviewedSourceFamilyCandidateTests(unittest.TestCase):
                 {row["effectAssetId"] for row in self.receipt["documents"]}
             )
         )
+        reviewed_cues = copy.deepcopy(current_cues)
+        reviewed_cues["cues"] = [
+            row
+            for row in current_cues["cues"]
+            if row["bindingId"] not in proposed_binding_ids
+        ]
+        reviewed_catalog = copy.deepcopy(current_catalog)
+        reviewed_catalog["effects"] = [
+            row
+            for row in current_catalog["effects"]
+            if row["effectAssetId"] not in proposed_effect_ids
+        ]
         self.assertEqual(
-            manifest["inputIdentity"]["cueRawSha256"],
+            inventory.sha256_bytes(inventory.pretty_json_bytes(reviewed_cues)),
             self.receipt["sources"]["cueDocument"]["sha256"],
         )
         self.assertEqual(
-            manifest["inputIdentity"]["catalogRawSha256"],
+            inventory.sha256_bytes(inventory.pretty_json_bytes(reviewed_catalog)),
             self.receipt["sources"]["effectCatalog"]["sha256"],
         )
         blockers = {
@@ -399,6 +411,106 @@ class ValtanReviewedSourceFamilyCandidateTests(unittest.TestCase):
             "effect.valtan.portal-rush.portal",
             {row["effectAssetId"] for row in receipt["documents"]},
         )
+
+    def test_red_blade_source_family_uses_exact_combat_object_owner(self) -> None:
+        effect_id = "effect.valtan.red-blade-wave.active"
+        row = next(
+            document
+            for document in self.receipt["documents"]
+            if document["effectAssetId"] == effect_id
+        )
+        self.assertEqual(5, row["candidateElementCount"])
+        self.assertEqual(
+            "6089c5a640cb51326679a80c6f42669b2e1cf4c91321dee63d21f2f1ca374a0b",
+            row["candidateDocumentSha256"],
+        )
+        clip = row["clipOccurrences"][0]
+        self.assertEqual(
+            "RETIRED_V2_REPLACED_BY_EXACT_COMBAT_OBJECT_OWNER",
+            clip["cueDisposition"],
+        )
+        owner = clip["combatObjectOwner"]
+        self.assertEqual("BOSS_COMBAT_OBJECT", owner["ownerKind"])
+        self.assertEqual("BOSS_VALTAN", owner["bossArchetypeId"])
+        self.assertEqual(
+            {
+                "combatObjectArchetypeId": (
+                    "combatobject.valtan.red-blade-wave.projectile"
+                ),
+                "clientVisualId": (
+                    "combatobject.visual.valtan.red-blade-wave.projectile.v1"
+                ),
+                "effectAssetId": effect_id,
+            },
+            owner["bossCatalogVisualRow"],
+        )
+        self.assertEqual(
+            "VALTAN_RED_BLADE_WAVE",
+            owner["combatObjectRow"]["ownerPatternId"],
+        )
+        self.assertEqual(
+            "valtan.attack.red-blade-wave.active",
+            owner["combatObjectRow"]["ownerStageActionId"],
+        )
+        cues = candidates.read_json(candidates.CUE_PATH)
+        self.assertFalse(
+            any(
+                cue["bindingId"] == "cue.valtan.red-blade-wave.active"
+                for cue in cues["cues"]
+            )
+        )
+
+    def test_combat_object_owner_transfer_rejects_restore_and_rebind(self) -> None:
+        cues = candidates.read_json(candidates.CUE_PATH)
+        red_transfer = next(
+            row
+            for row in candidates.COMBAT_OBJECT_OWNER_TRANSFERS
+            if row["candidateJoinEnabled"]
+        )
+        cues["cues"].append(copy.deepcopy(red_transfer["retiredCueRow"]))
+        with self.assertRaises(candidates.CandidateError):
+            candidates.build_candidates(
+                inventory_document=self.inventory,
+                cue_document=cues,
+                catalog_document=candidates.read_json(candidates.CATALOG_PATH),
+                enforce_expected_counts=False,
+            )
+
+        boss_catalog = candidates.read_json(candidates.BOSS_CATALOG_PATH)
+        red_visual = next(
+            row
+            for row in boss_catalog["bosses"][0]["combatObjectVisuals"]
+            if row["combatObjectArchetypeId"]
+            == "combatobject.valtan.red-blade-wave.projectile"
+        )
+        red_visual["effectAssetId"] = "effect.valtan.red-blade-wave.recovery"
+        with self.assertRaises(candidates.CandidateError):
+            candidates.build_candidates(
+                inventory_document=self.inventory,
+                cue_document=candidates.read_json(candidates.CUE_PATH),
+                catalog_document=candidates.read_json(candidates.CATALOG_PATH),
+                boss_catalog_document=boss_catalog,
+                enforce_expected_counts=False,
+            )
+
+        combat_objects = candidates.read_json(candidates.COMBAT_OBJECTS_PATH)
+        red_object = next(
+            row
+            for row in combat_objects["objects"]
+            if row["combatObjectArchetypeId"]
+            == "combatobject.valtan.red-blade-wave.projectile"
+        )
+        red_object["ownerStageActionId"] = (
+            "valtan.attack.red-blade-wave.recovery"
+        )
+        with self.assertRaises(candidates.CandidateError):
+            candidates.build_candidates(
+                inventory_document=self.inventory,
+                cue_document=candidates.read_json(candidates.CUE_PATH),
+                catalog_document=candidates.read_json(candidates.CATALOG_PATH),
+                combat_objects_document=combat_objects,
+                enforce_expected_counts=False,
+            )
 
     def test_divergent_effect_asset_reuse_is_fail_visible(self) -> None:
         cues = candidates.read_json(candidates.CUE_PATH)

@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-bounded-weapon-trail-candidate-manifest.schema.json",
+  "title": "Valtan bounded weapon Trail candidate manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "classification",
+    "reconstructionPolicy",
+    "sequenceDependency",
+    "sourceLimit",
+    "sourceFamily",
+    "modelEvidence",
+    "targets",
+    "summary",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-bounded-weapon-trail-candidate-manifest"
+    },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "classification": { "const": "PROJECT_TUNED" },
+    "reconstructionPolicy": { "const": "BOUNDED_RECONSTRUCTION" },
+    "sequenceDependency": { "const": "NONE" },
+    "sourceLimit": { "type": "string", "minLength": 1 },
+    "sourceFamily": { "$ref": "#/$defs/sourceFamily" },
+    "modelEvidence": { "$ref": "#/$defs/modelEvidence" },
+    "targets": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/target" }
+    },
+    "summary": { "$ref": "#/$defs/summary" },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$)).+$"
+    },
+    "string": { "type": "string", "minLength": 1 },
+    "shaArray3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/sha256" }
+    },
+    "stringArray3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/string" }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assetId", "slotIds", "byteSize", "sha256"],
+      "properties": {
+        "assetId": { "$ref": "#/$defs/repositoryPath" },
+        "slotIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["base", "noise", "mask", "dissolve"]
+          }
+        },
+        "byteSize": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sourceFamily": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "familyName",
+        "documentPath",
+        "documentRawSha256",
+        "documentCanonicalSha256",
+        "elementIds",
+        "elementSha256",
+        "resourceClosureSha256",
+        "materialClosureSha256",
+        "trailGeometrySha256",
+        "resources"
+      ],
+      "properties": {
+        "familyName": { "const": "FX_BS_01.Trail.Par_N_MRHG_Trail_01" },
+        "documentPath": {
+          "const": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+        },
+        "documentRawSha256": { "$ref": "#/$defs/sha256" },
+        "documentCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "elementIds": { "$ref": "#/$defs/stringArray3" },
+        "elementSha256": { "$ref": "#/$defs/shaArray3" },
+        "resourceClosureSha256": { "$ref": "#/$defs/shaArray3" },
+        "materialClosureSha256": { "$ref": "#/$defs/shaArray3" },
+        "trailGeometrySha256": { "$ref": "#/$defs/shaArray3" },
+        "resources": {
+          "type": "array",
+          "minItems": 10,
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/resource" }
+        }
+      }
+    },
+    "modelEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceAnchorSlotId",
+        "runtimeModelAssetId",
+        "runtimeBoneName",
+        "boneIndex",
+        "boneNameHash",
+        "matchPolicy",
+        "modelSha256",
+        "admission",
+        "parentBoneIndex",
+        "runtimeAnchorSlots"
+      ],
+      "properties": {
+        "sourceAnchorSlotId": { "const": "b_wp_r_01" },
+        "runtimeModelAssetId": {
+          "const": "Character/Valtan/MN_RPBF_01.wmodel"
+        },
+        "runtimeBoneName": { "const": "b_wp_r_01" },
+        "boneIndex": { "const": 54 },
+        "boneNameHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "matchPolicy": { "const": "EXACT_CASE_SENSITIVE" },
+        "modelSha256": { "$ref": "#/$defs/sha256" },
+        "admission": { "const": "ADMITTED_EXPLICIT_RUNTIME_BONE" },
+        "parentBoneIndex": { "type": "integer", "minimum": 0 },
+        "runtimeAnchorSlots": { "$ref": "#/$defs/stringArray3" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "stageId",
+        "actionId",
+        "clipOccurrenceId",
+        "cueBindingId",
+        "cueRowSha256",
+        "actionBindingSha256",
+        "catalogRowSha256",
+        "adapterTargetId",
+        "rowSha256",
+        "sourceNotifyId",
+        "sourceTimeSeconds",
+        "sourceDurationSeconds",
+        "sourceDisposition",
+        "classification",
+        "reconstructionPolicy",
+        "effectAssetId",
+        "canonicalPath",
+        "baselineRawSha256",
+        "baselineCanonicalSha256",
+        "baselineElementCount",
+        "runtimeAnchorSlotId",
+        "runtimeBoneName",
+        "candidatePath",
+        "candidateRawSha256",
+        "candidateCanonicalSha256",
+        "candidateElementIds",
+        "candidateElementSha256",
+        "protectedElementContractSha256"
+      ],
+      "properties": {
+        "patternId": {
+          "enum": [
+            "VALTAN_WHIRLWIND",
+            "VALTAN_GROUND_WAVE_SMASH",
+            "VALTAN_JUMP_SPIN"
+          ]
+        },
+        "stageId": { "enum": ["RECOVERY", "WINDUP"] },
+        "actionId": { "$ref": "#/$defs/string" },
+        "clipOccurrenceId": { "$ref": "#/$defs/string" },
+        "cueBindingId": { "$ref": "#/$defs/string" },
+        "cueRowSha256": { "$ref": "#/$defs/sha256" },
+        "actionBindingSha256": { "$ref": "#/$defs/sha256" },
+        "catalogRowSha256": { "$ref": "#/$defs/sha256" },
+        "adapterTargetId": { "$ref": "#/$defs/string" },
+        "rowSha256": { "$ref": "#/$defs/sha256" },
+        "sourceNotifyId": { "$ref": "#/$defs/string" },
+        "sourceTimeSeconds": { "type": "number", "minimum": 0 },
+        "sourceDurationSeconds": { "type": "number", "minimum": 0 },
+        "sourceDisposition": { "const": "UNRESOLVED_RUNTIME_ADAPTER" },
+        "classification": { "const": "PROJECT_TUNED" },
+        "reconstructionPolicy": { "const": "BOUNDED_RECONSTRUCTION" },
+        "effectAssetId": {
+          "enum": [
+            "effect.valtan.whirlwind.recovery",
+            "effect.valtan.ground-wave-smash.windup",
+            "effect.valtan.jump-spin.recovery"
+          ]
+        },
+        "canonicalPath": { "$ref": "#/$defs/repositoryPath" },
+        "baselineRawSha256": { "$ref": "#/$defs/sha256" },
+        "baselineCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "baselineElementCount": { "type": "integer", "minimum": 1 },
+        "runtimeAnchorSlotId": {
+          "enum": [
+            "VALTAN_WHIRLWIND_RECOVERY_WEAPON_R",
+            "VALTAN_GROUND_WAVE_SMASH_WINDUP_WEAPON_R",
+            "VALTAN_JUMP_SPIN_RECOVERY_WEAPON_R"
+          ]
+        },
+        "runtimeBoneName": { "const": "b_wp_r_01" },
+        "candidatePath": { "$ref": "#/$defs/repositoryPath" },
+        "candidateRawSha256": { "$ref": "#/$defs/sha256" },
+        "candidateCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "candidateElementIds": { "$ref": "#/$defs/stringArray3" },
+        "candidateElementSha256": { "$ref": "#/$defs/shaArray3" },
+        "protectedElementContractSha256": { "$ref": "#/$defs/shaArray3" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetCount",
+        "candidateDocumentCount",
+        "candidateElementCount",
+        "sourceEmitterCountPerTarget",
+        "projectionState"
+      ],
+      "properties": {
+        "targetCount": { "const": 3 },
+        "candidateDocumentCount": { "const": 3 },
+        "candidateElementCount": { "const": 9 },
+        "sourceEmitterCountPerTarget": { "const": 3 },
+        "projectionState": { "const": "CANDIDATE_ONLY_IMMUTABLE" }
+      }
+    }
+  }
+}

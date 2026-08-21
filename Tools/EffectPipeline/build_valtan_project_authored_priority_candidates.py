@@ -3,11 +3,11 @@
 
 The output is deliberately not admitted into EffectCatalog and never edits an
 Authored Effect document.  Its nine ordinary v13 documents always contain the
-same 24 project-owned elements, including after those elements have already
-been projected.  Six pre-existing floor-axis elements remain preservation
-sentinels.  Existing projected rows must retain their stable resource/material
-identity, while hand-tunable detail fields remain owned by the canonical
-document.
+same 17 project-owned elements, including after those elements have already
+been projected.  Six pre-existing floor-axis elements and the authoritative
+combat-object axe Mesh remain preservation sentinels.  Existing projected rows
+must retain their stable resource/material identity, while hand-tunable detail
+fields remain owned by the canonical document.
 """
 
 from __future__ import annotations
@@ -35,6 +35,14 @@ OUTPUT_RELATIVE_ROOT = PurePosixPath(
 )
 RECEIPT_RELATIVE_PATH = OUTPUT_RELATIVE_ROOT / (
     "Valtan.project-authored-priority.patch-plan.v1.json"
+)
+BOSS_CATALOG_RELATIVE_PATH = PurePosixPath("Data/Actors/BossCatalog.json")
+COMBAT_OBJECTS_RELATIVE_PATH = PurePosixPath(
+    "Data/Encounters/Valtan/ValtanCombatObjects.json"
+)
+EFFECT_CATALOG_RELATIVE_PATH = PurePosixPath("Data/Effects/EffectCatalog.json")
+VALTAN_CUES_RELATIVE_PATH = PurePosixPath(
+    "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
 )
 STABLE_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:[._:-][a-z0-9]+)*$")
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
@@ -86,6 +94,29 @@ ASSET_SHOCKWAVE_02 = (
     "Effect/Valtan/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds"
 )
 ASSET_VALTAN_WEAPON = "Character/Valtan/ValtanWeapon.wmodel"
+SKY_AXE_EFFECT_ID = "effect.valtan.sky-axe.active"
+SKY_AXE_DESCENT_ELEMENT_ID = "mesh.valtan.sky-axe.descent"
+SKY_AXE_TARGET_DECAL_ELEMENT_ID = "decal.valtan.sky-axe.target"
+SKY_AXE_IMPACT_ELEMENT_ID = "particle.valtan.sky-axe.impact"
+HIGH_JUMP_COMBAT_OBJECT_ID = "combatobject.valtan.high-jump.target-axe"
+HIGH_JUMP_CLIENT_VISUAL_ID = (
+    "combatobject.visual.valtan.high-jump.target-axe.v1"
+)
+LEGACY_HIGH_JUMP_EFFECT_ID = "effect.valtan.high-jump.airborne"
+LEGACY_HIGH_JUMP_AUTHORING_PATH = PurePosixPath(
+    "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
+)
+
+SKY_AXE_CATALOG_ROW = {
+    "effectAssetId": SKY_AXE_EFFECT_ID,
+    "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+    "authoringPath": "Effects/Authored/effect.valtan.sky-axe.active.effect.json",
+}
+SKY_AXE_BOSS_VISUAL_ROW = {
+    "combatObjectArchetypeId": HIGH_JUMP_COMBAT_OBJECT_ID,
+    "clientVisualId": HIGH_JUMP_CLIENT_VISUAL_ID,
+    "effectAssetId": SKY_AXE_EFFECT_ID,
+}
 
 PRESERVED_CANONICAL_ELEMENT_IDS = {
     "effect.valtan.floor-wipe-130.windup": frozenset(
@@ -119,6 +150,7 @@ class TargetSpec:
     disposition: str
     presentation_only: bool
     elements: tuple[dict[str, Any], ...]
+    additional_preserved_element_ids: tuple[str, ...] = ()
     excluded_source_occurrence_ids: tuple[str, ...] = ()
     notes: tuple[str, ...] = ()
 
@@ -451,59 +483,14 @@ def _sprite_particle(
     )
 
 
-def _falling_axe_mesh(
-    *,
-    beat: int,
-    start_delay: float,
-    position: tuple[float, float, float],
-) -> dict[str, Any]:
-    detail = _detail(
-        position=position,
-        rotation=(0.0, 0.0, 90.0),
-        color=(1.0, 1.0, 1.0, 1.0),
-        emissive=1.0,
-        start_delay=start_delay,
-        life_time=0.3,
-        dissolve_start=1.0,
-        billboard=False,
-    )
-    detail["mesh"] = {
-        "useModelMaterial": True,
-        "modelPreScale": 1.0,
-        "sourceTypeDataRotationDegrees": [0, 0, 0],
-    }
-    detail["linearLerp"]["position"] = True
-    detail["linearLerp"]["endPosition"] = [
-        position[0], 0.3, position[2]
-    ]
-    detail["linearLerp"]["rotation"] = True
-    detail["linearLerp"]["endRotationDegrees"] = [0.0, 360.0, 90.0]
+def _sky_axe_ground_impact_particle() -> dict[str, Any]:
     return _element(
-        element_id=f"project-axe-beat-{beat:02d}-falling-axe",
-        display_name=f"Axe beat {beat} falling official Valtan axe",
-        group_id="axe_drop_presentation",
+        element_id=SKY_AXE_IMPACT_ELEMENT_ID,
+        display_name="Valtan target axe ground shockwave Sprite Particle",
+        group_id="target-axe",
         source_node=(
-            f"project-authored:valtan.high-jump.airborne.beat-{beat:02d}.axe"
-        ),
-        kind="mesh",
-        resources=(("meshModel", ASSET_VALTAN_WEAPON),),
-        render_profile="alpha_two_sided_depth_read",
-        detail=detail,
-    )
-
-
-def _axe_ground_impact_particle(
-    *,
-    beat: int,
-    start_delay: float,
-    position: tuple[float, float, float],
-) -> dict[str, Any]:
-    return _element(
-        element_id=f"project-axe-beat-{beat:02d}-ground-impact",
-        display_name=f"Axe beat {beat} ground shockwave Sprite Particle",
-        group_id="axe_drop_presentation",
-        source_node=(
-            f"project-authored:valtan.high-jump.airborne.beat-{beat:02d}.ground-impact"
+            "project-authored:combatobject.valtan.high-jump."
+            "target-axe.ground-impact"
         ),
         kind="particle",
         resources=(
@@ -512,11 +499,11 @@ def _axe_ground_impact_particle(
         ),
         render_profile="additive_two_sided_depth_read",
         detail=_detail(
-            position=position,
+            position=(0.0, 0.08, 0.0),
             rotation=(90.0, 0.0, 0.0),
             color=(0.04, 1.0, 0.78, 0.9),
             emissive=2.0,
-            start_delay=start_delay,
+            start_delay=1.2,
             life_time=0.65,
             dissolve_start=0.58,
             billboard=False,
@@ -689,59 +676,24 @@ def _target_specs() -> tuple[TargetSpec, ...]:
         ),
     )
 
-    axe_target_positions = (
-        (-4.0, 0.05, 4.0),
-        (4.0, 0.05, 4.0),
-        (0.0, 0.05, 8.0),
-    )
-    axe_fall_start_delays = (0.32, 0.87, 1.42)
-    axe_impact_start_delays = (0.62, 1.17, 1.72)
-    high_jump_target_decals = tuple(
+    sky_axe_active = (
         _decal(
-            element_id=f"project-axe-beat-{beat:02d}-target-decal",
-            display_name=f"Axe beat {beat} target decal",
-            group_id="axe_drop_presentation",
+            element_id=SKY_AXE_TARGET_DECAL_ELEMENT_ID,
+            display_name="Valtan target axe warning decal",
+            group_id="target-axe",
             source_node=(
-                f"project-authored:valtan.high-jump.airborne.beat-{beat:02d}.target-decal"
+                "project-authored:combatobject.valtan.high-jump."
+                "target-axe.target-decal"
             ),
             base=ASSET_ATYPICAL_032,
-            size=(4.2, 4.2),
+            size=(3.5, 3.5),
             color=green,
-            start_delay=(beat - 1) * 0.55,
-            life_time=0.62,
-            position=axe_target_positions[beat - 1],
+            start_delay=0.0,
+            life_time=1.2,
+            position=(0.0, 0.05, 0.0),
             emissive=1.5,
-        )
-        for beat in (1, 2, 3)
-    )
-    high_jump_falling_axes = tuple(
-        _falling_axe_mesh(
-            beat=beat,
-            start_delay=axe_fall_start_delays[beat - 1],
-            position=(
-                axe_target_positions[beat - 1][0],
-                10.0,
-                axe_target_positions[beat - 1][2],
-            ),
-        )
-        for beat in (1, 2, 3)
-    )
-    high_jump_ground_impacts = tuple(
-        _axe_ground_impact_particle(
-            beat=beat,
-            start_delay=axe_impact_start_delays[beat - 1],
-            position=(
-                axe_target_positions[beat - 1][0],
-                0.08,
-                axe_target_positions[beat - 1][2],
-            ),
-        )
-        for beat in (1, 2, 3)
-    )
-    high_jump_airborne = (
-        high_jump_target_decals
-        + high_jump_falling_axes
-        + high_jump_ground_impacts
+        ),
+        _sky_axe_ground_impact_particle(),
     )
     high_jump_land = (
         _decal(
@@ -905,13 +857,14 @@ def _target_specs() -> tuple[TargetSpec, ...]:
             "VALTAN_HIGH_JUMP", "AIRBORNE",
             "valtan.attack.high-jump.airborne",
             "valtan.attack.high-jump.airborne.clip.01",
-            "effect.valtan.high-jump.airborne",
-            "PROJECT_AUTHORED", True, high_jump_airborne,
+            SKY_AXE_EFFECT_ID,
+            "PROJECT_AUTHORED", True, sky_axe_active,
+            additional_preserved_element_ids=(SKY_AXE_DESCENT_ELEMENT_ID,),
             notes=(
-                "Three root-relative target positions are hand-tuning candidates, not Server target selection or damage actors.",
-                "Each falling Mesh reuses Character/Valtan/ValtanWeapon.wmodel with useModelMaterial=true and modelPreScale=1.0; official geometry and embedded base texture are exact while trajectory, rotation, and timing are PROJECT_AUTHORED.",
-                "The three ground Sprite Particle impacts use physically verified project-palette textures and remain PROJECT_AUTHORED presentation; they add no AIRBORNE hit or Client damage actor.",
-                "No source-action projectile payload is claimed: all nine AIRBORNE elements are presentation-only and the existing LAND one-hit Server authority remains unchanged.",
+                "The Server spawns one FIXED_AREA combat object per locked alive-player target; target selection and the timed hit remain Server authority.",
+                "The warning Local Decal and impact Sprite Particle are combat-object-root local presentations, so the retired three fixed boss-root beats are not recreated.",
+                "mesh.valtan.sky-axe.descent is an existing official ValtanWeapon.wmodel preservation sentinel; this overlay never rewrites its trajectory or hand-tuned Detail.",
+                "effect.valtan.high-jump.airborne remains authoring-only history and must never be re-added to EffectCatalog or Valtan Product cues.",
             ),
         ),
         TargetSpec(
@@ -1036,7 +989,7 @@ def _resource_role_dispositions() -> list[dict[str, Any]]:
                 "HIGH_JUMP action 420610 timing and placement remain project "
                 "authored and are not promoted to source-exact evidence."
             ),
-            ("effect.valtan.high-jump.airborne",),
+            (SKY_AXE_EFFECT_ID,),
         ),
     )
     return [
@@ -1406,7 +1359,14 @@ def _safe_resource_path(
 def _verify_resources(
     resource_root: Path, targets: Iterable[TargetSpec]
 ) -> list[dict[str, Any]]:
-    paths_by_asset_id: dict[str, Path] = {}
+    paths_by_asset_id: dict[str, Path] = {
+        ASSET_VALTAN_WEAPON: _safe_resource_path(
+            resource_root,
+            ASSET_VALTAN_WEAPON,
+            element_kind="mesh",
+            slot_id="meshModel",
+        )
+    }
     for target in targets:
         for element in target.elements:
             for resource in element["resources"]:
@@ -1489,9 +1449,15 @@ def _reconcile_target(
     project_elements: list[dict[str, Any]] = []
     desired_rows: list[dict[str, Any]] = []
     preserved_ids: list[str] = []
-    preserve_ids = PRESERVED_CANONICAL_ELEMENT_IDS.get(
+    preserve_ids = set(PRESERVED_CANONICAL_ELEMENT_IDS.get(
         target.effect_asset_id, frozenset()
-    )
+    ))
+    additional_preserve_ids = set(target.additional_preserved_element_ids)
+    if preserve_ids & additional_preserve_ids:
+        raise ContractError(
+            f"duplicate preserved element contract: {target.effect_asset_id}"
+        )
+    preserve_ids.update(additional_preserve_ids)
     for desired in target.elements:
         element_id = desired["id"]
         source_node = desired["sourceNode"]
@@ -1547,6 +1513,29 @@ def _reconcile_target(
                 "canonicalElementSha256": None,
             }
         )
+    for element_id in target.additional_preserved_element_ids:
+        existing = by_id.get(element_id)
+        if existing is None:
+            raise ContractError(
+                "preserved canonical element disappeared: "
+                f"{target.effect_asset_id}/{element_id}"
+            )
+        source_node = existing.get("sourceNode")
+        if not isinstance(source_node, str):
+            raise ContractError(
+                "preserved canonical sourceNode is invalid: "
+                f"{target.effect_asset_id}/{element_id}"
+            )
+        preserved_ids.append(element_id)
+        desired_rows.append(
+            {
+                "elementId": element_id,
+                "sourceNode": source_node,
+                "disposition": target.disposition,
+                "reconcileAction": "PRESERVE_EXISTING",
+                "canonicalElementSha256": _sha256_json(existing),
+            }
+        )
     if preserve_ids != set(preserved_ids):
         raise ContractError(
             f"preserved canonical denominator changed: {target.effect_asset_id}"
@@ -1570,135 +1559,143 @@ def _immutable_projected_element(element: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _validate_optional_high_jump_product_rows(repo_root: Path) -> None:
-    """Accept absence or the exact atomically projected catalog/cue pair."""
-    patch = _high_jump_airborne_patch()
-    expected_catalog = patch["catalogRow"]
-    expected_cue = patch["cueRow"]
-    catalog = _load_json(repo_root / "Data/Effects/EffectCatalog.json")
-    catalog_rows = catalog.get("effects")
-    cues = _load_json(
-        repo_root
-        / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
+def _validate_high_jump_combat_object_ownership(repo_root: Path) -> None:
+    catalog = _load_json(repo_root.joinpath(*EFFECT_CATALOG_RELATIVE_PATH.parts))
+    cues = _load_json(repo_root.joinpath(*VALTAN_CUES_RELATIVE_PATH.parts))
+    boss_catalog = _load_json(repo_root.joinpath(*BOSS_CATALOG_RELATIVE_PATH.parts))
+    combat_objects = _load_json(
+        repo_root.joinpath(*COMBAT_OBJECTS_RELATIVE_PATH.parts)
     )
+    catalog_rows = catalog.get("effects")
     cue_rows = cues.get("cues")
-    if not isinstance(catalog_rows, list) or not isinstance(cue_rows, list):
-        raise ContractError("projected Product catalog/cue structure changed")
+    bosses = boss_catalog.get("bosses")
+    objects = combat_objects.get("objects")
+    if not all(isinstance(rows, list) for rows in (catalog_rows, cue_rows, bosses, objects)):
+        raise ContractError("High Jump combat-object ownership structure changed")
 
-    matching_catalog = [
-        row
-        for row in catalog_rows
-        if isinstance(row, dict)
-        and row.get("effectAssetId") == expected_catalog["effectAssetId"]
+    sky_catalog_rows = [
+        row for row in catalog_rows
+        if isinstance(row, dict) and row.get("effectAssetId") == SKY_AXE_EFFECT_ID
     ]
-    matching_binding = [
-        row
-        for row in cue_rows
+    legacy_catalog_rows = [
+        row for row in catalog_rows
         if isinstance(row, dict)
-        and row.get("bindingId") == expected_cue["bindingId"]
+        and row.get("effectAssetId") == LEGACY_HIGH_JUMP_EFFECT_ID
     ]
-    matching_occurrence = [
-        row
-        for row in cue_rows
+    forbidden_cues = [
+        row for row in cue_rows
         if isinstance(row, dict)
-        and row.get("occurrenceId") == expected_cue["occurrenceId"]
+        and row.get("effectAssetId") in {
+            SKY_AXE_EFFECT_ID,
+            LEGACY_HIGH_JUMP_EFFECT_ID,
+        }
     ]
+    if sky_catalog_rows != [SKY_AXE_CATALOG_ROW]:
+        raise ContractError("sky-axe EffectCatalog ownership row drift")
+    if legacy_catalog_rows or forbidden_cues:
+        raise ContractError(
+            "retired High Jump boss-root Effect was re-registered"
+        )
+
+    valtan_bosses = [
+        row for row in bosses
+        if isinstance(row, dict) and row.get("archetypeId") == OWNER_ARCHETYPE_ID
+    ]
+    if len(valtan_bosses) != 1:
+        raise ContractError("BOSS_VALTAN BossCatalog row is missing or duplicated")
+    visual_rows = [
+        row for row in valtan_bosses[0].get("combatObjectVisuals", [])
+        if isinstance(row, dict)
+        and row.get("combatObjectArchetypeId") == HIGH_JUMP_COMBAT_OBJECT_ID
+    ]
+    if visual_rows != [SKY_AXE_BOSS_VISUAL_ROW]:
+        raise ContractError("High Jump BossCatalog combat-object visual row drift")
+
+    object_rows = [
+        row for row in objects
+        if isinstance(row, dict)
+        and row.get("combatObjectArchetypeId") == HIGH_JUMP_COMBAT_OBJECT_ID
+    ]
+    if len(object_rows) != 1:
+        raise ContractError("High Jump combat object is missing or duplicated")
+    combat_object = object_rows[0]
+    hits = combat_object.get("hits")
     if (
-        len(matching_catalog) > 1
-        or len(matching_binding) > 1
-        or len(matching_occurrence) > 1
+        combat_object.get("clientVisualId") != HIGH_JUMP_CLIENT_VISUAL_ID
+        or combat_object.get("ownerPatternId") != "VALTAN_HIGH_JUMP"
+        or combat_object.get("ownerStageActionId")
+        != "valtan.attack.high-jump.airborne"
+        or combat_object.get("kind") != "FIXED_AREA"
+        or combat_object.get("originPolicy")
+        != "LOCKED_TARGET_PER_ALIVE_PLAYER"
+        or combat_object.get("lifeMs") != 1900
+        or not isinstance(hits, list)
+        or len(hits) != 1
+        or hits[0].get("trigger") != "TIMED"
+        or hits[0].get("atMs") != 1200
+        or hits[0].get("serverDamageProfileId")
+        != "damage.valtan.high-jump"
     ):
-        raise ContractError("projected Product catalog/cue identity is duplicated")
-    catalog_row = matching_catalog[0] if matching_catalog else None
-    binding_row = matching_binding[0] if matching_binding else None
-    occurrence_row = matching_occurrence[0] if matching_occurrence else None
-    if (binding_row is None) != (occurrence_row is None) or (
-        binding_row is not None and binding_row is not occurrence_row
-    ):
-        raise ContractError("projected Product cue stable identity is split")
-    cue_row = binding_row
-    if (catalog_row is None) != (cue_row is None):
-        raise ContractError("projected Product catalog/cue pair is partial")
-    if catalog_row is not None and (
-        catalog_row != expected_catalog or cue_row != expected_cue
-    ):
-        raise ContractError("projected Product catalog/cue row drift")
+        raise ContractError("High Jump combat-object authority contract drift")
+
+    legacy_document = _load_json(
+        repo_root.joinpath(*LEGACY_HIGH_JUMP_AUTHORING_PATH.parts)
+    )
+    if legacy_document.get("effectAssetId") != LEGACY_HIGH_JUMP_EFFECT_ID:
+        raise ContractError("High Jump authoring-only history is missing or changed")
 
 
-def _high_jump_airborne_patch() -> dict[str, Any]:
-    effect_asset_id = "effect.valtan.high-jump.airborne"
+def _high_jump_combat_object_transfer() -> dict[str, Any]:
     return {
-        "catalogRow": {
-            "effectAssetId": effect_asset_id,
-            "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-            "authoringPath": (
-                "Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
-            ),
+        "patternId": "VALTAN_HIGH_JUMP",
+        "stageId": "AIRBORNE",
+        "ownerStageActionId": "valtan.attack.high-jump.airborne",
+        "combatObjectArchetypeId": HIGH_JUMP_COMBAT_OBJECT_ID,
+        "clientVisualId": HIGH_JUMP_CLIENT_VISUAL_ID,
+        "effectAssetId": SKY_AXE_EFFECT_ID,
+        "targetAuthoringPath": (
+            "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json"
+        ),
+        "effectCatalogRow": dict(SKY_AXE_CATALOG_ROW),
+        "bossCatalogVisualRow": dict(SKY_AXE_BOSS_VISUAL_ROW),
+        "combatObjectContract": {
+            "kind": "FIXED_AREA",
+            "originPolicy": "LOCKED_TARGET_PER_ALIVE_PLAYER",
+            "lifeMs": 1900,
+            "timedImpactMs": 1200,
+            "serverDamageProfileId": "damage.valtan.high-jump",
         },
-        "cueRow": {
-            "bindingId": "cue.valtan.high-jump.airborne.project-authored",
-            "occurrenceId": (
-                "cue.valtan.high-jump.airborne.project-authored.occurrence.01"
-            ),
-            "patternId": "VALTAN_HIGH_JUMP",
-            "stageId": "AIRBORNE",
-            "actionId": "valtan.attack.high-jump.airborne",
-            "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
-            "effectAssetId": effect_asset_id,
-            "anchorSlotId": "root",
-            "followPolicy": "snapshot",
-            "stopPolicy": "natural",
-            "repeatPolicy": "once",
-            "sourceStartMs": 0,
-            "sourceEndMs": None,
-            "localTransform": {
-                "position": [0, 0, 0],
-                "rotationDegrees": [0, 0, 0],
-                "scale": [1, 1, 1],
-            },
-        },
-        "authoringDocument": {
-            "effectAssetId": effect_asset_id,
-            "targetAuthoringPath": (
-                "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
-            ),
+        "retiredBossRoot": {
+            "effectAssetId": LEGACY_HIGH_JUMP_EFFECT_ID,
+            "authoringHistoryPath": LEGACY_HIGH_JUMP_AUTHORING_PATH.as_posix(),
+            "effectCatalogRegistrationAllowed": False,
+            "productCueRegistrationAllowed": False,
         },
         "authority": {
-            "presentationOnly": True,
+            "effectPresentationOnly": True,
+            "serverCombatObjectAuthority": True,
             "serverGameplayChange": False,
-            "serverDamagePolicy": "UNCHANGED_EXISTING_LAND_STAGE_AUTHORITY",
-            "projectileAuthorityStatus": (
-                "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE"
-            ),
+            "serverDamagePolicy": "TIMED_COMBAT_OBJECT_HIT",
         },
     }
 
 
-def _projectile_presentations() -> list[dict[str, Any]]:
-    return [
-        {
-            "presentationId": (
-                f"project-authored:valtan.high-jump.airborne.beat-{beat:02d}.axe"
-            ),
-            "patternId": "VALTAN_HIGH_JUMP",
-            "stageId": "AIRBORNE",
-            "elementId": f"project-axe-beat-{beat:02d}-falling-axe",
-            "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
-            "modelAssetId": ASSET_VALTAN_WEAPON,
-            "bossCatalogEvidence": (
-                "BOSS_VALTAN.weaponModel"
-            ),
-            "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
-            "baseTextureProvenance": (
-                "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT"
-            ),
-            "trajectoryTimingProvenance": "PROJECT_AUTHORED",
-            "sourceActionPayloadClaim": "NONE",
-            "presentationOnly": True,
-            "serverGameplayChange": False,
-        }
-        for beat in (1, 2, 3)
-    ]
+def _official_axe_presentation() -> dict[str, Any]:
+    return {
+        "presentationId": SKY_AXE_DESCENT_ELEMENT_ID,
+        "combatObjectArchetypeId": HIGH_JUMP_COMBAT_OBJECT_ID,
+        "elementId": SKY_AXE_DESCENT_ELEMENT_ID,
+        "disposition": "PRESERVE_EXISTING_OFFICIAL_ASSET_REUSE",
+        "modelAssetId": ASSET_VALTAN_WEAPON,
+        "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
+        "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
+        "baseTextureProvenance": (
+            "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT"
+        ),
+        "trajectoryTimingProvenance": "EXISTING_HAND_TUNED_PRESERVE",
+        "presentationOnly": True,
+        "serverGameplayChange": False,
+    }
 
 
 def validate_candidate_document(document: dict[str, Any]) -> None:
@@ -1791,20 +1788,10 @@ def validate_candidate_document(document: dict[str, Any]) -> None:
         ):
             raise ContractError("candidate timing is invalid or unbounded")
 
-    if document["effectAssetId"] == "effect.valtan.high-jump.airborne":
+    if document["effectAssetId"] == SKY_AXE_EFFECT_ID:
         expected_by_kind = {
-            "decal": {
-                f"project-axe-beat-{beat:02d}-target-decal"
-                for beat in (1, 2, 3)
-            },
-            "mesh": {
-                f"project-axe-beat-{beat:02d}-falling-axe"
-                for beat in (1, 2, 3)
-            },
-            "particle": {
-                f"project-axe-beat-{beat:02d}-ground-impact"
-                for beat in (1, 2, 3)
-            },
+            "decal": {SKY_AXE_TARGET_DECAL_ELEMENT_ID},
+            "particle": {SKY_AXE_IMPACT_ELEMENT_ID},
         }
         actual_by_kind = {
             kind: {
@@ -1815,7 +1802,7 @@ def validate_candidate_document(document: dict[str, Any]) -> None:
             for kind in expected_by_kind
         }
         if (
-            len(document["elements"]) != 9
+            len(document["elements"]) != 2
             or actual_by_kind != expected_by_kind
             or any(
                 element.get("kind") not in expected_by_kind
@@ -1823,35 +1810,24 @@ def validate_candidate_document(document: dict[str, Any]) -> None:
             )
         ):
             raise ContractError(
-                "High Jump AIRBORNE must contain three target decals, three "
-                "official axe Meshes, and three ground Sprite Particles"
+                "sky-axe combat-object overlay must contain one target decal "
+                "and one ground Sprite Particle"
             )
-        for element in document["elements"]:
-            if element.get("kind") != "mesh":
-                continue
-            if (
-                element.get("resources")
-                != [{"slotId": "meshModel", "assetId": ASSET_VALTAN_WEAPON}]
-                or element.get("detail", {}).get("mesh", {}).get(
-                    "useModelMaterial"
-                ) is not True
-                or element.get("detail", {}).get("mesh", {}).get(
-                    "modelPreScale"
-                ) != 1.0
-                or element.get("actionCueAttachment")
-                != _disabled_action_attachment()
-            ):
-                raise ContractError(
-                    "High Jump axe Mesh must reuse the official Valtan weapon "
-                    "as an independent snapshot-root presentation"
-                )
+        impact = next(
+            element for element in document["elements"]
+            if element["id"] == SKY_AXE_IMPACT_ELEMENT_ID
+        )
+        if impact["detail"]["timing"]["startDelaySeconds"] != 1.2:
+            raise ContractError(
+                "sky-axe impact presentation must align to the 1200ms Server hit"
+            )
 
 
 def validate_receipt(receipt: dict[str, Any]) -> None:
     expected_root_keys = (
         "schema", "formatVersion", "ownerArchetypeId", "generator",
         "policy", "resourceVerification", "resourceRoleDispositions", "targets",
-        "highJumpAirbornePatch", "projectilePresentations",
+        "highJumpCombatObjectTransfer", "officialAxePresentation",
     )
     if tuple(receipt.keys()) != expected_root_keys:
         raise ContractError("project-authored patch-plan root fields/order are invalid")
@@ -1919,6 +1895,22 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
                 raise ContractError("preserved element requires a canonical SHA")
             if action not in ("APPEND_MISSING", "PRESERVE_EXISTING"):
                 raise ContractError("unknown reconcile action")
+    if LEGACY_HIGH_JUMP_EFFECT_ID in effect_ids or SKY_AXE_EFFECT_ID not in effect_ids:
+        raise ContractError("High Jump priority target ownership was not transferred")
+    sky_target = next(
+        target for target in targets
+        if target["targetEffectAssetId"] == SKY_AXE_EFFECT_ID
+    )
+    sky_actions = {
+        row["elementId"]: row["reconcileAction"]
+        for row in sky_target["desiredElements"]
+    }
+    if sky_actions != {
+        SKY_AXE_TARGET_DECAL_ELEMENT_ID: "APPEND_MISSING",
+        SKY_AXE_IMPACT_ELEMENT_ID: "APPEND_MISSING",
+        SKY_AXE_DESCENT_ELEMENT_ID: "PRESERVE_EXISTING",
+    }:
+        raise ContractError("sky-axe family preservation denominator changed")
     roles = receipt["resourceRoleDispositions"]
     expected_roles = {
         "DASH_FORWARD_RED_PATH": (ASSET_LINE_003, "EXACT_OTHER_PATTERN"),
@@ -1984,51 +1976,63 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
             raise ContractError("resource role disposition is invalid")
     if seen_roles != set(expected_roles):
         raise ContractError("priority resource role disposition is incomplete")
-    patch = receipt["highJumpAirbornePatch"]
-    cue = patch.get("cueRow", {})
-    catalog = patch.get("catalogRow", {})
-    authority = patch.get("authority", {})
+    transfer = receipt["highJumpCombatObjectTransfer"]
+    effect_catalog = transfer.get("effectCatalogRow", {})
+    boss_visual = transfer.get("bossCatalogVisualRow", {})
+    combat_object = transfer.get("combatObjectContract", {})
+    retired = transfer.get("retiredBossRoot", {})
+    authority = transfer.get("authority", {})
     if (
-        catalog.get("effectAssetId") != "effect.valtan.high-jump.airborne"
-        or catalog.get("payloadKind") != "DIRECT_AUTHORED_DOCUMENT_V13"
-        or cue.get("patternId") != "VALTAN_HIGH_JUMP"
-        or cue.get("stageId") != "AIRBORNE"
-        or cue.get("actionId") != "valtan.attack.high-jump.airborne"
-        or cue.get("clipOccurrenceId")
-        != "valtan.attack.high-jump.airborne.clip.01"
-        or cue.get("effectAssetId") != catalog.get("effectAssetId")
-        or cue.get("followPolicy") != "snapshot"
-        or cue.get("stopPolicy") != "natural"
-        or cue.get("repeatPolicy") != "once"
-        or cue.get("sourceStartMs") != 0
-        or cue.get("sourceEndMs") is not None
-        or authority.get("presentationOnly") is not True
+        transfer.get("patternId") != "VALTAN_HIGH_JUMP"
+        or transfer.get("stageId") != "AIRBORNE"
+        or transfer.get("ownerStageActionId")
+        != "valtan.attack.high-jump.airborne"
+        or transfer.get("combatObjectArchetypeId")
+        != HIGH_JUMP_COMBAT_OBJECT_ID
+        or transfer.get("clientVisualId") != HIGH_JUMP_CLIENT_VISUAL_ID
+        or transfer.get("effectAssetId") != SKY_AXE_EFFECT_ID
+        or transfer.get("targetAuthoringPath")
+        != "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json"
+        or effect_catalog != SKY_AXE_CATALOG_ROW
+        or boss_visual != SKY_AXE_BOSS_VISUAL_ROW
+        or combat_object != {
+            "kind": "FIXED_AREA",
+            "originPolicy": "LOCKED_TARGET_PER_ALIVE_PLAYER",
+            "lifeMs": 1900,
+            "timedImpactMs": 1200,
+            "serverDamageProfileId": "damage.valtan.high-jump",
+        }
+        or retired != {
+            "effectAssetId": LEGACY_HIGH_JUMP_EFFECT_ID,
+            "authoringHistoryPath": LEGACY_HIGH_JUMP_AUTHORING_PATH.as_posix(),
+            "effectCatalogRegistrationAllowed": False,
+            "productCueRegistrationAllowed": False,
+        }
+        or authority.get("effectPresentationOnly") is not True
+        or authority.get("serverCombatObjectAuthority") is not True
         or authority.get("serverGameplayChange") is not False
-        or authority.get("serverDamagePolicy")
-        != "UNCHANGED_EXISTING_LAND_STAGE_AUTHORITY"
-        or authority.get("projectileAuthorityStatus")
-        != "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE"
+        or authority.get("serverDamagePolicy") != "TIMED_COMBAT_OBJECT_HIT"
     ):
-        raise ContractError("High Jump AIRBORNE canonical v2 patch is incomplete")
-    presentations = receipt["projectilePresentations"]
+        raise ContractError("High Jump combat-object transfer is incomplete")
+    presentation = receipt["officialAxePresentation"]
     if (
-        not isinstance(presentations, list)
-        or len(presentations) != 3
-        or any(
-            row.get("disposition")
-            != "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE"
-            or row.get("modelAssetId") != ASSET_VALTAN_WEAPON
-            or row.get("geometryProvenance") != "OFFICIAL_GEOMETRY_EXACT"
-            or row.get("baseTextureProvenance")
-            != "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT"
-            or row.get("trajectoryTimingProvenance") != "PROJECT_AUTHORED"
-            or row.get("sourceActionPayloadClaim") != "NONE"
-            or row.get("presentationOnly") is not True
-            or row.get("serverGameplayChange") is not False
-            for row in presentations
-        )
+        presentation.get("presentationId") != SKY_AXE_DESCENT_ELEMENT_ID
+        or presentation.get("combatObjectArchetypeId")
+        != HIGH_JUMP_COMBAT_OBJECT_ID
+        or presentation.get("elementId") != SKY_AXE_DESCENT_ELEMENT_ID
+        or presentation.get("disposition")
+        != "PRESERVE_EXISTING_OFFICIAL_ASSET_REUSE"
+        or presentation.get("modelAssetId") != ASSET_VALTAN_WEAPON
+        or presentation.get("geometryProvenance")
+        != "OFFICIAL_GEOMETRY_EXACT"
+        or presentation.get("baseTextureProvenance")
+        != "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT"
+        or presentation.get("trajectoryTimingProvenance")
+        != "EXISTING_HAND_TUNED_PRESERVE"
+        or presentation.get("presentationOnly") is not True
+        or presentation.get("serverGameplayChange") is not False
     ):
-        raise ContractError("High Jump official axe presentation denominator changed")
+        raise ContractError("High Jump official axe preservation contract changed")
 
 
 def build_artifacts(
@@ -2043,7 +2047,7 @@ def build_artifacts(
     resources = _verify_resources(
         _find_resource_root(repo_root, resource_root), targets
     )
-    _validate_optional_high_jump_product_rows(repo_root)
+    _validate_high_jump_combat_object_ownership(repo_root)
     overrides = canonical_overrides or {}
     files: dict[PurePosixPath, bytes] = {}
     documents: dict[str, dict[str, Any]] = {}
@@ -2077,11 +2081,7 @@ def build_artifacts(
                 "clipOccurrenceId": target.clip_occurrence_id,
                 "targetEffectAssetId": target.effect_asset_id,
                 "targetAuthoringPath": canonical_relative.as_posix(),
-                "canonicalState": (
-                    "MISSING_DOCUMENT"
-                    if target.effect_asset_id == "effect.valtan.high-jump.airborne"
-                    else "EXISTING_DOCUMENT"
-                ),
+                "canonicalState": "EXISTING_DOCUMENT",
                 "disposition": target.disposition,
                 "presentationOnly": target.presentation_only,
                 "overlayDocumentPath": overlay_relative.as_posix(),
@@ -2118,8 +2118,8 @@ def build_artifacts(
         "resourceVerification": resources,
         "resourceRoleDispositions": _resource_role_dispositions(),
         "targets": target_rows,
-        "highJumpAirbornePatch": _high_jump_airborne_patch(),
-        "projectilePresentations": _projectile_presentations(),
+        "highJumpCombatObjectTransfer": _high_jump_combat_object_transfer(),
+        "officialAxePresentation": _official_axe_presentation(),
     }
     validate_receipt(receipt)
     files[RECEIPT_RELATIVE_PATH] = _json_bytes(receipt)
@@ -2218,8 +2218,7 @@ def main(argv: list[str] | None = None) -> int:
         "[PASS] Valtan project-authored priority candidates: "
         f"documents={len(artifacts.documents)}, desired={desired_count}, "
         f"append={append_count}, preserved={preserved_count}, "
-        "officialAxePresentations="
-        f"{len(artifacts.receipt['projectilePresentations'])}"
+        "officialAxePresentations=1"
     )
     return 0
 

@@ -13,7 +13,9 @@
     "drawableProof",
     "canonicalCueDocument",
     "canonicalCatalogDocument",
+    "combatObjectOwnershipTransfer",
     "canonicalDocuments",
+    "downstreamFourSlashWeaponTrail",
     "trailProjections",
     "preservedUnresolvedTrailRows",
     "summary",
@@ -29,16 +31,23 @@
     "canonicalCueDocument": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "rawSha256", "canonicalSha256", "cueCount", "addedBindingIds"],
+      "required": ["path", "rawSha256", "canonicalSha256", "cueCount", "addedBindingIds", "retiredBindingIds"],
       "properties": {
         "path": { "$ref": "#/$defs/path" },
         "rawSha256": { "$ref": "#/$defs/sha256" },
         "canonicalSha256": { "$ref": "#/$defs/sha256" },
-        "cueCount": { "const": 108 },
+        "cueCount": { "const": 106 },
         "addedBindingIds": {
           "type": "array",
           "minItems": 4,
           "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "retiredBindingIds": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
           "uniqueItems": true,
           "items": { "type": "string", "minLength": 1 }
         }
@@ -47,7 +56,7 @@
     "canonicalCatalogDocument": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "rawSha256", "canonicalSha256", "effectCount", "addedEffectAssetIds"],
+      "required": ["path", "rawSha256", "canonicalSha256", "effectCount", "addedEffectAssetIds", "ownershipTransferAddedEffectAssetIds", "ownershipTransferRetiredEffectAssetIds"],
       "properties": {
         "path": { "$ref": "#/$defs/path" },
         "rawSha256": { "$ref": "#/$defs/sha256" },
@@ -59,6 +68,50 @@
           "maxItems": 4,
           "uniqueItems": true,
           "items": { "type": "string", "minLength": 1 }
+        },
+        "ownershipTransferAddedEffectAssetIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "const": "effect.valtan.sky-axe.active" }
+        },
+        "ownershipTransferRetiredEffectAssetIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "const": "effect.valtan.high-jump.airborne" }
+        }
+      }
+    },
+    "combatObjectOwnershipTransfer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bossCatalogPath",
+        "bossCatalogRawSha256",
+        "bossCatalogCanonicalSha256",
+        "preTransferCueCanonicalSha256",
+        "preTransferCatalogCanonicalSha256",
+        "retiredBossRootCues",
+        "combatObjectVisuals"
+      ],
+      "properties": {
+        "bossCatalogPath": { "$ref": "#/$defs/path" },
+        "bossCatalogRawSha256": { "$ref": "#/$defs/sha256" },
+        "bossCatalogCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "preTransferCueCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "preTransferCatalogCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "retiredBossRootCues": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/ownershipTransfer" }
+        },
+        "combatObjectVisuals": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/combatObjectVisual" }
         }
       }
     },
@@ -93,6 +146,12 @@
           }
         }
       }
+    },
+    "downstreamFourSlashWeaponTrail": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/fourSlashDownstream" }
+      ]
     },
     "trailProjections": {
       "type": "array",
@@ -139,7 +198,12 @@
         "animationTrailProjectionCount",
         "cascadeRibbonProjectionCount",
         "preservedUnresolvedTrailRowCount",
-        "canonicalMutationFileCount"
+        "canonicalMutationFileCount",
+        "retiredBossRootCueCount",
+        "combatObjectVisualCount",
+        "ownershipTransferAddedCatalogCount",
+        "ownershipTransferRetiredCatalogCount",
+        "downstreamExtensionCount"
       ],
       "properties": {
         "addedCueCount": { "const": 4 },
@@ -150,7 +214,12 @@
         "animationTrailProjectionCount": { "const": 6 },
         "cascadeRibbonProjectionCount": { "const": 1 },
         "preservedUnresolvedTrailRowCount": { "const": 6 },
-        "canonicalMutationFileCount": { "const": 6 }
+        "canonicalMutationFileCount": { "const": 6 },
+        "retiredBossRootCueCount": { "const": 2 },
+        "combatObjectVisualCount": { "const": 2 },
+        "ownershipTransferAddedCatalogCount": { "const": 1 },
+        "ownershipTransferRetiredCatalogCount": { "const": 1 },
+        "downstreamExtensionCount": { "type": "integer", "minimum": 0, "maximum": 1 }
       }
     },
     "artifactSha256": { "$ref": "#/$defs/sha256" }
@@ -166,6 +235,147 @@
         "path": { "$ref": "#/$defs/path" },
         "rawSha256": { "$ref": "#/$defs/sha256" },
         "artifactSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "ownershipTransfer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bindingId",
+        "occurrenceId",
+        "patternId",
+        "stageId",
+        "actionId",
+        "clipOccurrenceId",
+        "retiredEffectAssetId",
+        "retiredSourceStartMs",
+        "retiredSourceEndMs",
+        "replacementCombatObjectArchetypeId",
+        "replacementClientVisualId",
+        "replacementEffectAssetId"
+      ],
+      "properties": {
+        "bindingId": { "type": "string", "minLength": 1 },
+        "occurrenceId": { "type": "string", "minLength": 1 },
+        "patternId": { "type": "string", "minLength": 1 },
+        "stageId": { "type": "string", "minLength": 1 },
+        "actionId": { "type": "string", "minLength": 1 },
+        "clipOccurrenceId": { "type": "string", "minLength": 1 },
+        "retiredEffectAssetId": { "type": "string", "minLength": 1 },
+        "retiredSourceStartMs": { "type": "integer", "minimum": 0 },
+        "retiredSourceEndMs": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "replacementCombatObjectArchetypeId": { "type": "string", "minLength": 1 },
+        "replacementClientVisualId": { "type": "string", "minLength": 1 },
+        "replacementEffectAssetId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "combatObjectVisual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["combatObjectArchetypeId", "clientVisualId", "effectAssetId"],
+      "properties": {
+        "combatObjectArchetypeId": { "type": "string", "minLength": 1 },
+        "clientVisualId": { "type": "string", "minLength": 1 },
+        "effectAssetId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "fourSlashDownstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "candidateManifest",
+        "drawableProof",
+        "applicationReceipt",
+        "candidateDocument",
+        "safeSourceView",
+        "canonicalOutput",
+        "projection"
+      ],
+      "properties": {
+        "status": { "const": "APPLIED_PROOF_GATED_EXACT_EXTENSION" },
+        "candidateManifest": { "$ref": "#/$defs/sealedInput" },
+        "drawableProof": { "$ref": "#/$defs/sealedInput" },
+        "applicationReceipt": { "$ref": "#/$defs/sealedInput" },
+        "candidateDocument": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "rawSha256", "canonicalSha256", "elementId", "elementSha256"],
+          "properties": {
+            "path": { "$ref": "#/$defs/path" },
+            "rawSha256": { "$ref": "#/$defs/sha256" },
+            "canonicalSha256": { "$ref": "#/$defs/sha256" },
+            "elementId": { "const": "project-four-slash-weapon-bone-trail" },
+            "elementSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "safeSourceView": { "$ref": "#/$defs/effectDocumentIdentity" },
+        "canonicalOutput": {
+          "allOf": [
+            { "$ref": "#/$defs/effectDocumentIdentity" },
+            {
+              "type": "object",
+              "required": ["path"],
+              "properties": {
+                "path": { "const": "Data/Effects/Authored/effect.valtan.four-slash.active.clip-02.effect.json" }
+              }
+            }
+          ]
+        },
+        "projection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "insertedElementIndex",
+            "elementId",
+            "sourceNode",
+            "runtimeAnchorSlotId",
+            "runtimeBoneName",
+            "elementSha256",
+            "elementValue"
+          ],
+          "properties": {
+            "insertedElementIndex": { "const": 20 },
+            "elementId": { "const": "project-four-slash-weapon-bone-trail" },
+            "sourceNode": { "const": "project-authored:valtan.four-slash.active.clip-02.weapon-bone-trail" },
+            "runtimeAnchorSlotId": { "const": "VALTAN_FOUR_SLASH_WEAPON_R" },
+            "runtimeBoneName": { "const": "b_wp_r_01" },
+            "elementSha256": { "$ref": "#/$defs/sha256" },
+            "elementValue": {
+              "type": "object",
+              "required": ["id", "sourceNode", "kind", "actionCueAttachment"],
+              "properties": {
+                "id": { "const": "project-four-slash-weapon-bone-trail" },
+                "sourceNode": { "const": "project-authored:valtan.four-slash.active.clip-02.weapon-bone-trail" },
+                "kind": { "const": "trail" },
+                "actionCueAttachment": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "effectDocumentIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rawSha256", "canonicalSha256", "elementCount", "elementIds"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" },
+        "elementCount": { "type": "integer", "minimum": 20, "maximum": 21 },
+        "elementIds": {
+          "type": "array",
+          "minItems": 20,
+          "maxItems": 21,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
       }
     }
   }

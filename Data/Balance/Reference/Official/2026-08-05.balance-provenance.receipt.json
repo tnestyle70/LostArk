@@ -37804,7 +37804,21 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "motion":  {
+                                                               "kind":  "FORWARD",
+                                                               "distance":  100.0
+                                                           },
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "WALL_CONTACT",
+                                                                     "nextActionId":  "valtan.mechanic.armor-break-opening.groggy"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  null
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "GROGGY",
@@ -37824,7 +37838,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "PART_DESTROYED",
+                                                                     "nextActionId":  "valtan.mechanic.armor-break-opening.recovery"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.mechanic.armor-break-opening.recovery"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "RECOVERY",
@@ -37887,7 +37927,21 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "motion":  {
+                                                               "kind":  "FORWARD",
+                                                               "distance":  100.0
+                                                           },
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "WALL_CONTACT",
+                                                                     "nextActionId":  "valtan.mechanic.armor-break-opening.groggy"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  null
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "GROGGY",
@@ -37907,7 +37961,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "PART_DESTROYED",
+                                                                     "nextActionId":  "valtan.mechanic.armor-break-opening.recovery"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.mechanic.armor-break-opening.recovery"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "RECOVERY",
@@ -39234,7 +39314,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "COUNTER_HIT",
+                                                                     "nextActionId":  "valtan.mechanic.center-grab-counter-64.recovery"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.mechanic.center-grab-counter-64.failed-charge"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "FAILED_CHARGE",
@@ -39337,7 +39443,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "COUNTER_HIT",
+                                                                     "nextActionId":  "valtan.mechanic.center-grab-counter-64.recovery"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.mechanic.center-grab-counter-64.failed-charge"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "FAILED_CHARGE",
@@ -47738,7 +47870,23 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.invulnerable",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_SHIELD",
+                                                                    "targetId":  "boss.gauge.shield",
+                                                                    "value":  6000,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ]
                                             },
                                             {
                                                 "stageId":  "STAGGER_WINDOW",
@@ -47758,7 +47906,109 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_STAGGER_GAUGE",
+                                                                    "targetId":  "boss.gauge.stagger",
+                                                                    "value":  100,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_STAGGER_GAUGE",
+                                                                    "targetId":  "boss.gauge.stagger",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_SHIELD",
+                                                                    "targetId":  "boss.gauge.shield",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.invulnerable",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "STAGGER_BROKEN",
+                                                                     "nextActionId":  "valtan.mechanic.magic-orb-stagger-76.groggy"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.mechanic.magic-orb-stagger-76.wipe"
+                                                                 }
+                                                             ]
+                                            },
+                                            {
+                                                "stageId":  "GROGGY",
+                                                "actionId":  "valtan.mechanic.magic-orb-stagger-76.groggy",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  5000,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0.0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.mechanic.magic-orb-stagger-76.recovery"
+                                                                 }
+                                                             ]
+                                            },
+                                            {
+                                                "stageId":  "WIPE",
+                                                "actionId":  "valtan.mechanic.magic-orb-stagger-76.wipe",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  700,
+                                                "hitShape":  "CIRCLE",
+                                                "hitOuterRadius":  100.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  1,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "serverDamageProfileId":  "damage.valtan.omnidirectional-wipe-130",
+                                                "pushRangeM":  0.0,
+                                                "pushMs":  0,
+                                                "knockdown":  true,
+                                                "downMs":  2000
                                             },
                                             {
                                                 "stageId":  "RECOVERY",
@@ -47801,7 +48051,23 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.invulnerable",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_SHIELD",
+                                                                    "targetId":  "boss.gauge.shield",
+                                                                    "value":  6000,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ]
                                             },
                                             {
                                                 "stageId":  "STAGGER_WINDOW",
@@ -47821,7 +48087,109 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_STAGGER_GAUGE",
+                                                                    "targetId":  "boss.gauge.stagger",
+                                                                    "value":  100,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_STAGGER_GAUGE",
+                                                                    "targetId":  "boss.gauge.stagger",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_SHIELD",
+                                                                    "targetId":  "boss.gauge.shield",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.invulnerable",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "STAGGER_BROKEN",
+                                                                     "nextActionId":  "valtan.mechanic.magic-orb-stagger-76.groggy"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.mechanic.magic-orb-stagger-76.wipe"
+                                                                 }
+                                                             ]
+                                            },
+                                            {
+                                                "stageId":  "GROGGY",
+                                                "actionId":  "valtan.mechanic.magic-orb-stagger-76.groggy",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  5000,
+                                                "hitShape":  "NONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  0,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "serverDamageProfileId":  "",
+                                                "pushRangeM":  0.0,
+                                                "pushMs":  0,
+                                                "knockdown":  false,
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.groggy",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.mechanic.magic-orb-stagger-76.recovery"
+                                                                 }
+                                                             ]
+                                            },
+                                            {
+                                                "stageId":  "WIPE",
+                                                "actionId":  "valtan.mechanic.magic-orb-stagger-76.wipe",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  700,
+                                                "hitShape":  "CIRCLE",
+                                                "hitOuterRadius":  100.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  0.0,
+                                                "hitLength":  0.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  1,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "serverDamageProfileId":  "damage.valtan.omnidirectional-wipe-130",
+                                                "pushRangeM":  0.0,
+                                                "pushMs":  0,
+                                                "knockdown":  true,
+                                                "downMs":  2000
                                             },
                                             {
                                                 "stageId":  "RECOVERY",
@@ -48174,7 +48542,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_STAGGER_GAUGE",
+                                                                    "targetId":  "boss.gauge.stagger",
+                                                                    "value":  30,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_STAGGER_GAUGE",
+                                                                    "targetId":  "boss.gauge.stagger",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "STAGGER_BROKEN",
+                                                                     "nextActionId":  "valtan.reactive.parry.slash"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.reactive.parry.normal-slash"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "COUNTER_SLASH",
@@ -48194,7 +48588,33 @@
                                                 "pushRangeM":  4.9,
                                                 "pushMs":  535,
                                                 "knockdown":  true,
-                                                "downMs":  2000
+                                                "downMs":  2000,
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.reactive.parry.recovery"
+                                                                 }
+                                                             ]
+                                            },
+                                            {
+                                                "stageId":  "NORMAL_SLASH",
+                                                "actionId":  "valtan.reactive.parry.normal-slash",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  700,
+                                                "hitShape":  "CONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  110.0,
+                                                "hitLength":  9.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  1,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "serverDamageProfileId":  "damage.valtan.parry",
+                                                "pushRangeM":  2.0,
+                                                "pushMs":  242,
+                                                "knockdown":  true,
+                                                "downMs":  1000
                                             },
                                             {
                                                 "stageId":  "RECOVERY",
@@ -48237,7 +48657,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_STAGGER_GAUGE",
+                                                                    "targetId":  "boss.gauge.stagger",
+                                                                    "value":  30,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_STAGGER_GAUGE",
+                                                                    "targetId":  "boss.gauge.stagger",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "STAGGER_BROKEN",
+                                                                     "nextActionId":  "valtan.reactive.parry.slash"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.reactive.parry.normal-slash"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "COUNTER_SLASH",
@@ -48257,7 +48703,33 @@
                                                 "pushRangeM":  4.9,
                                                 "pushMs":  535,
                                                 "knockdown":  true,
-                                                "downMs":  2000
+                                                "downMs":  2000,
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.reactive.parry.recovery"
+                                                                 }
+                                                             ]
+                                            },
+                                            {
+                                                "stageId":  "NORMAL_SLASH",
+                                                "actionId":  "valtan.reactive.parry.normal-slash",
+                                                "stageKind":  "ACTIVE",
+                                                "durationMs":  700,
+                                                "hitShape":  "CONE",
+                                                "hitOuterRadius":  0.0,
+                                                "hitInnerRadius":  0.0,
+                                                "hitAngleDegrees":  110.0,
+                                                "hitLength":  9.0,
+                                                "hitHalfWidth":  0.0,
+                                                "hitCount":  1,
+                                                "hitIntervalMs":  0,
+                                                "hitDelayMs":  0,
+                                                "serverDamageProfileId":  "damage.valtan.parry",
+                                                "pushRangeM":  2.0,
+                                                "pushMs":  242,
+                                                "knockdown":  true,
+                                                "downMs":  1000
                                             },
                                             {
                                                 "stageId":  "RECOVERY",
@@ -50858,7 +51330,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "COUNTER_HIT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.second"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.first-fail"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "FAIL_1",
@@ -50898,7 +51396,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "COUNTER_HIT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.third"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.second-fail"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "FAIL_2",
@@ -50938,7 +51462,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "COUNTER_HIT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.recovery"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.third-fail"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "FAIL_3",
@@ -51001,7 +51551,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "COUNTER_HIT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.second"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.first-fail"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "FAIL_1",
@@ -51041,7 +51617,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "COUNTER_HIT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.third"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.second-fail"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "FAIL_2",
@@ -51081,7 +51683,33 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "actions":  [
+                                                                {
+                                                                    "trigger":  "ENTER",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  1,
+                                                                    "durationMs":  0
+                                                                },
+                                                                {
+                                                                    "trigger":  "EXIT",
+                                                                    "kind":  "SET_BOSS_FLAG",
+                                                                    "targetId":  "boss.flag.counterable",
+                                                                    "value":  0,
+                                                                    "durationMs":  0
+                                                                }
+                                                            ],
+                                                "branches":  [
+                                                                 {
+                                                                     "outcome":  "COUNTER_HIT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.recovery"
+                                                                 },
+                                                                 {
+                                                                     "outcome":  "TIMEOUT",
+                                                                     "nextActionId":  "valtan.reactive.triple-counter.third-fail"
+                                                                 }
+                                                             ]
                                             },
                                             {
                                                 "stageId":  "FAIL_3",

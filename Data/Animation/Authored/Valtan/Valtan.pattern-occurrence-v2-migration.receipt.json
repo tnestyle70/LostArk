@@ -2046,6 +2046,17 @@
       }
     ]
   },
+  "retiredBaselineCues": [
+    {
+      "bindingId": "cue.valtan.red-blade-wave.active",
+      "occurrenceId": "cue.valtan.red-blade-wave.active.occurrence.01",
+      "reason": "COMBAT_OBJECT_OWNERSHIP_TRANSFER",
+      "replacementOwnerKind": "BOSS_COMBAT_OBJECT",
+      "combatObjectArchetypeId": "combatobject.valtan.red-blade-wave.projectile",
+      "clientVisualId": "combatobject.visual.valtan.red-blade-wave.projectile.v1",
+      "effectAssetId": "effect.valtan.red-blade-wave.active"
+    }
+  ],
   "legacyCueEndPromotions": [
     {
       "bindingId": "cue.valtan.arena-break-109.wide-reveal",

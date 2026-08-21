@@ -30,7 +30,7 @@ class ValtanOccurrenceMigrationReceiptTests(unittest.TestCase):
                 self.cues,
                 require_migration_denominator=False,
             ),
-            (124, 128, 108),
+            (130, 137, 106),
         )
         self.assertEqual(99, self.receipt["outputs"]["cueOccurrenceCount"])
         MIGRATION.check_receipt(self.receipt, self.bindings, self.cues)
@@ -69,7 +69,7 @@ class ValtanOccurrenceMigrationReceiptTests(unittest.TestCase):
                 cues,
                 require_migration_denominator=False,
             ),
-            (125, 129, 109),
+            (131, 138, 107),
         )
         MIGRATION.check_receipt(self.receipt, bindings, cues)
 
@@ -81,6 +81,48 @@ class ValtanOccurrenceMigrationReceiptTests(unittest.TestCase):
             "removed or rebound",
         ):
             MIGRATION.check_receipt(self.receipt, self.bindings, cues)
+
+    def test_only_the_exact_combat_object_transfer_may_retire_a_baseline_cue(
+        self,
+    ) -> None:
+        receipt = copy.deepcopy(self.receipt)
+        receipt["retiredBaselineCues"][0]["effectAssetId"] = (
+            "effect.valtan.invalid"
+        )
+        with self.assertRaisesRegex(
+            MIGRATION.MigrationError,
+            "retirement ledger drifted",
+        ):
+            MIGRATION.check_receipt(receipt, self.bindings, self.cues)
+
+        restored = copy.deepcopy(self.cues)
+        baseline = next(
+            row
+            for row in self.receipt["baselineIdentity"]["cues"]
+            if row["occurrenceId"]
+            == "cue.valtan.red-blade-wave.active.occurrence.01"
+        )
+        restored["cues"].append(
+            {
+                **baseline,
+                "anchorSlotId": "root",
+                "followPolicy": "follow",
+                "stopPolicy": "cue_end",
+                "repeatPolicy": "once",
+                "sourceStartMs": 0,
+                "sourceEndMs": 1000,
+                "localTransform": {
+                    "position": [0, 0, 0],
+                    "rotationDegrees": [0, 0, 0],
+                    "scale": [1, 1, 1],
+                },
+            }
+        )
+        with self.assertRaisesRegex(
+            MIGRATION.MigrationError,
+            "restored or rebound",
+        ):
+            MIGRATION.check_receipt(self.receipt, self.bindings, restored)
 
     def test_reordering_migrated_clip_occurrences_is_rejected(self) -> None:
         bindings = copy.deepcopy(self.bindings)

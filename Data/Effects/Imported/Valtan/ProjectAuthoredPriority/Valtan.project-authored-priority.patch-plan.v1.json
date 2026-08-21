@@ -211,7 +211,7 @@
       "sourceEvidenceContext": "fx_i_shockwave_02_ycl is a physically verified official Valtan texture already admitted by the project palette; its HIGH_JUMP action 420610 timing and placement remain project authored and are not promoted to source-exact evidence.",
       "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
       "candidateEffectAssetIds": [
-        "effect.valtan.high-jump.airborne"
+        "effect.valtan.sky-axe.active"
       ],
       "handTunableFields": [
         "detail.color.multiply",
@@ -460,85 +460,45 @@
       "stageId": "AIRBORNE",
       "actionId": "valtan.attack.high-jump.airborne",
       "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
-      "targetEffectAssetId": "effect.valtan.high-jump.airborne",
-      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json",
-      "canonicalState": "MISSING_DOCUMENT",
+      "targetEffectAssetId": "effect.valtan.sky-axe.active",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json",
+      "canonicalState": "EXISTING_DOCUMENT",
       "disposition": "PROJECT_AUTHORED",
       "presentationOnly": true,
-      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.airborne.project-authored-overlay.effect.json",
-      "overlayDocumentSha256": "1eedb9732f3d85bf1e22635e5b4457edeb90cb686899f1d11a8b0d83a7591771",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.sky-axe.active.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "d50336104189de3908455a82fc9e2dc4c187cddae2331402f2b894bb5eabbea7",
       "desiredElements": [
         {
-          "elementId": "project-axe-beat-01-target-decal",
-          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-01.target-decal",
+          "elementId": "decal.valtan.sky-axe.target",
+          "sourceNode": "project-authored:combatobject.valtan.high-jump.target-axe.target-decal",
           "disposition": "PROJECT_AUTHORED",
           "reconcileAction": "APPEND_MISSING",
           "canonicalElementSha256": null
         },
         {
-          "elementId": "project-axe-beat-02-target-decal",
-          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-02.target-decal",
+          "elementId": "particle.valtan.sky-axe.impact",
+          "sourceNode": "project-authored:combatobject.valtan.high-jump.target-axe.ground-impact",
           "disposition": "PROJECT_AUTHORED",
           "reconcileAction": "APPEND_MISSING",
           "canonicalElementSha256": null
         },
         {
-          "elementId": "project-axe-beat-03-target-decal",
-          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-03.target-decal",
+          "elementId": "mesh.valtan.sky-axe.descent",
+          "sourceNode": "",
           "disposition": "PROJECT_AUTHORED",
-          "reconcileAction": "APPEND_MISSING",
-          "canonicalElementSha256": null
-        },
-        {
-          "elementId": "project-axe-beat-01-falling-axe",
-          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-01.axe",
-          "disposition": "PROJECT_AUTHORED",
-          "reconcileAction": "APPEND_MISSING",
-          "canonicalElementSha256": null
-        },
-        {
-          "elementId": "project-axe-beat-02-falling-axe",
-          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-02.axe",
-          "disposition": "PROJECT_AUTHORED",
-          "reconcileAction": "APPEND_MISSING",
-          "canonicalElementSha256": null
-        },
-        {
-          "elementId": "project-axe-beat-03-falling-axe",
-          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-03.axe",
-          "disposition": "PROJECT_AUTHORED",
-          "reconcileAction": "APPEND_MISSING",
-          "canonicalElementSha256": null
-        },
-        {
-          "elementId": "project-axe-beat-01-ground-impact",
-          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-01.ground-impact",
-          "disposition": "PROJECT_AUTHORED",
-          "reconcileAction": "APPEND_MISSING",
-          "canonicalElementSha256": null
-        },
-        {
-          "elementId": "project-axe-beat-02-ground-impact",
-          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-02.ground-impact",
-          "disposition": "PROJECT_AUTHORED",
-          "reconcileAction": "APPEND_MISSING",
-          "canonicalElementSha256": null
-        },
-        {
-          "elementId": "project-axe-beat-03-ground-impact",
-          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-03.ground-impact",
-          "disposition": "PROJECT_AUTHORED",
-          "reconcileAction": "APPEND_MISSING",
-          "canonicalElementSha256": null
+          "reconcileAction": "PRESERVE_EXISTING",
+          "canonicalElementSha256": "1f56131c9688a07492f83e30e51e7ff479153c16288cee19212b58f89f4e29f3"
         }
       ],
-      "preservedCanonicalElementIds": [],
+      "preservedCanonicalElementIds": [
+        "mesh.valtan.sky-axe.descent"
+      ],
       "excludedSourceOccurrenceIds": [],
       "notes": [
-        "Three root-relative target positions are hand-tuning candidates, not Server target selection or damage actors.",
-        "Each falling Mesh reuses Character/Valtan/ValtanWeapon.wmodel with useModelMaterial=true and modelPreScale=1.0; official geometry and embedded base texture are exact while trajectory, rotation, and timing are PROJECT_AUTHORED.",
-        "The three ground Sprite Particle impacts use physically verified project-palette textures and remain PROJECT_AUTHORED presentation; they add no AIRBORNE hit or Client damage actor.",
-        "No source-action projectile payload is claimed: all nine AIRBORNE elements are presentation-only and the existing LAND one-hit Server authority remains unchanged."
+        "The Server spawns one FIXED_AREA combat object per locked alive-player target; target selection and the timed hit remain Server authority.",
+        "The warning Local Decal and impact Sprite Particle are combat-object-root local presentations, so the retired three fixed boss-root beats are not recreated.",
+        "mesh.valtan.sky-axe.descent is an existing official ValtanWeapon.wmodel preservation sentinel; this overlay never rewrites its trajectory or hand-tuned Detail.",
+        "effect.valtan.high-jump.airborne remains authoring-only history and must never be re-added to EffectCatalog or Valtan Product cues."
       ]
     },
     {
@@ -633,100 +593,55 @@
       ]
     }
   ],
-  "highJumpAirbornePatch": {
-    "catalogRow": {
-      "effectAssetId": "effect.valtan.high-jump.airborne",
+  "highJumpCombatObjectTransfer": {
+    "patternId": "VALTAN_HIGH_JUMP",
+    "stageId": "AIRBORNE",
+    "ownerStageActionId": "valtan.attack.high-jump.airborne",
+    "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+    "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
+    "effectAssetId": "effect.valtan.sky-axe.active",
+    "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json",
+    "effectCatalogRow": {
+      "effectAssetId": "effect.valtan.sky-axe.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.sky-axe.active.effect.json"
     },
-    "cueRow": {
-      "bindingId": "cue.valtan.high-jump.airborne.project-authored",
-      "occurrenceId": "cue.valtan.high-jump.airborne.project-authored.occurrence.01",
-      "patternId": "VALTAN_HIGH_JUMP",
-      "stageId": "AIRBORNE",
-      "actionId": "valtan.attack.high-jump.airborne",
-      "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
-      "effectAssetId": "effect.valtan.high-jump.airborne",
-      "anchorSlotId": "root",
-      "followPolicy": "snapshot",
-      "stopPolicy": "natural",
-      "repeatPolicy": "once",
-      "sourceStartMs": 0,
-      "sourceEndMs": null,
-      "localTransform": {
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotationDegrees": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      }
+    "bossCatalogVisualRow": {
+      "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+      "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
+      "effectAssetId": "effect.valtan.sky-axe.active"
     },
-    "authoringDocument": {
+    "combatObjectContract": {
+      "kind": "FIXED_AREA",
+      "originPolicy": "LOCKED_TARGET_PER_ALIVE_PLAYER",
+      "lifeMs": 1900,
+      "timedImpactMs": 1200,
+      "serverDamageProfileId": "damage.valtan.high-jump"
+    },
+    "retiredBossRoot": {
       "effectAssetId": "effect.valtan.high-jump.airborne",
-      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
+      "authoringHistoryPath": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json",
+      "effectCatalogRegistrationAllowed": false,
+      "productCueRegistrationAllowed": false
     },
     "authority": {
-      "presentationOnly": true,
+      "effectPresentationOnly": true,
+      "serverCombatObjectAuthority": true,
       "serverGameplayChange": false,
-      "serverDamagePolicy": "UNCHANGED_EXISTING_LAND_STAGE_AUTHORITY",
-      "projectileAuthorityStatus": "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE"
+      "serverDamagePolicy": "TIMED_COMBAT_OBJECT_HIT"
     }
   },
-  "projectilePresentations": [
-    {
-      "presentationId": "project-authored:valtan.high-jump.airborne.beat-01.axe",
-      "patternId": "VALTAN_HIGH_JUMP",
-      "stageId": "AIRBORNE",
-      "elementId": "project-axe-beat-01-falling-axe",
-      "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
-      "modelAssetId": "Character/Valtan/ValtanWeapon.wmodel",
-      "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
-      "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
-      "baseTextureProvenance": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT",
-      "trajectoryTimingProvenance": "PROJECT_AUTHORED",
-      "sourceActionPayloadClaim": "NONE",
-      "presentationOnly": true,
-      "serverGameplayChange": false
-    },
-    {
-      "presentationId": "project-authored:valtan.high-jump.airborne.beat-02.axe",
-      "patternId": "VALTAN_HIGH_JUMP",
-      "stageId": "AIRBORNE",
-      "elementId": "project-axe-beat-02-falling-axe",
-      "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
-      "modelAssetId": "Character/Valtan/ValtanWeapon.wmodel",
-      "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
-      "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
-      "baseTextureProvenance": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT",
-      "trajectoryTimingProvenance": "PROJECT_AUTHORED",
-      "sourceActionPayloadClaim": "NONE",
-      "presentationOnly": true,
-      "serverGameplayChange": false
-    },
-    {
-      "presentationId": "project-authored:valtan.high-jump.airborne.beat-03.axe",
-      "patternId": "VALTAN_HIGH_JUMP",
-      "stageId": "AIRBORNE",
-      "elementId": "project-axe-beat-03-falling-axe",
-      "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
-      "modelAssetId": "Character/Valtan/ValtanWeapon.wmodel",
-      "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
-      "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
-      "baseTextureProvenance": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT",
-      "trajectoryTimingProvenance": "PROJECT_AUTHORED",
-      "sourceActionPayloadClaim": "NONE",
-      "presentationOnly": true,
-      "serverGameplayChange": false
-    }
-  ]
+  "officialAxePresentation": {
+    "presentationId": "mesh.valtan.sky-axe.descent",
+    "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+    "elementId": "mesh.valtan.sky-axe.descent",
+    "disposition": "PRESERVE_EXISTING_OFFICIAL_ASSET_REUSE",
+    "modelAssetId": "Character/Valtan/ValtanWeapon.wmodel",
+    "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
+    "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
+    "baseTextureProvenance": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT",
+    "trajectoryTimingProvenance": "EXISTING_HAND_TUNED_PRESERVE",
+    "presentationOnly": true,
+    "serverGameplayChange": false
+  }
 }

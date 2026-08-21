@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-bounded-weapon-trail-runtime-sweep.schema.json",
+  "title": "Valtan bounded weapon Trail headless runtime sweep",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "classification",
+    "reconstructionPolicy",
+    "resourceRoot",
+    "runtimeBoneName",
+    "sampleRateHz",
+    "targets",
+    "summary",
+    "disposition"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.valtan-bounded-weapon-trail-runtime-sweep" },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "classification": { "const": "PROJECT_TUNED" },
+    "reconstructionPolicy": { "const": "BOUNDED_RECONSTRUCTION" },
+    "resourceRoot": { "type": "string", "minLength": 1 },
+    "runtimeBoneName": { "const": "b_wp_r_01" },
+    "sampleRateHz": { "const": 60 },
+    "targets": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/target" }
+    },
+    "summary": { "$ref": "#/$defs/summary" },
+    "disposition": { "const": "DRAWABLE_PROOF_PASS" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "string": { "type": "string", "minLength": 1 },
+    "vec3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" }
+    },
+    "renderer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "preparedSamples",
+        "attemptedSamples",
+        "submittedDraws",
+        "suppressedDraws",
+        "failedDraws",
+        "committedDraws",
+        "transactionCommitted"
+      ],
+      "properties": {
+        "preparedSamples": { "type": "integer", "minimum": 0 },
+        "attemptedSamples": { "type": "integer", "minimum": 0 },
+        "submittedDraws": { "type": "integer", "minimum": 0 },
+        "suppressedDraws": { "type": "integer", "minimum": 0 },
+        "failedDraws": { "type": "integer", "minimum": 0 },
+        "committedDraws": { "type": "integer", "minimum": 0 },
+        "transactionCommitted": { "type": "boolean" }
+      }
+    },
+    "positiveMovingBone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "providerSampleCount",
+        "rootWorldDistinctCount",
+        "anchorWorldDistinctCount",
+        "trailPointCount",
+        "distinctTrailPointCount",
+        "finiteTrailPointCount",
+        "cumulativeDistance",
+        "firstWorldPosition",
+        "lastWorldPosition",
+        "renderer"
+      ],
+      "properties": {
+        "providerSampleCount": { "type": "integer", "minimum": 2 },
+        "rootWorldDistinctCount": { "const": 1 },
+        "anchorWorldDistinctCount": { "type": "integer", "minimum": 2 },
+        "trailPointCount": { "type": "integer", "minimum": 2 },
+        "distinctTrailPointCount": { "type": "integer", "minimum": 2 },
+        "finiteTrailPointCount": { "type": "integer", "minimum": 2 },
+        "cumulativeDistance": { "type": "number", "minimum": 0 },
+        "firstWorldPosition": { "$ref": "#/$defs/vec3" },
+        "lastWorldPosition": { "$ref": "#/$defs/vec3" },
+        "renderer": { "$ref": "#/$defs/renderer" }
+      }
+    },
+    "stationaryControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "providerSampleCount",
+        "rootWorldDistinctCount",
+        "anchorWorldDistinctCount",
+        "trailPointCount",
+        "distinctTrailPointCount",
+        "renderer",
+        "segmentSuppressed"
+      ],
+      "properties": {
+        "providerSampleCount": { "type": "integer", "minimum": 2 },
+        "rootWorldDistinctCount": { "const": 1 },
+        "anchorWorldDistinctCount": { "const": 1 },
+        "trailPointCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "distinctTrailPointCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "renderer": { "$ref": "#/$defs/renderer" },
+        "segmentSuppressed": { "const": true }
+      }
+    },
+    "missingAnchorControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "providerRejected",
+        "playbackStatePreserved",
+        "trailPointCountAfterReject",
+        "status"
+      ],
+      "properties": {
+        "providerRejected": { "const": true },
+        "playbackStatePreserved": { "const": true },
+        "trailPointCountAfterReject": { "const": 0 },
+        "status": { "$ref": "#/$defs/string" }
+      }
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elementId", "positiveMovingBone", "stationaryControl"],
+      "properties": {
+        "elementId": { "$ref": "#/$defs/string" },
+        "positiveMovingBone": { "$ref": "#/$defs/positiveMovingBone" },
+        "stationaryControl": { "$ref": "#/$defs/stationaryControl" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "candidatePath",
+        "candidateRawSha256",
+        "candidateTypedCodecSha256",
+        "runtimeAnchorSlotId",
+        "sourceStartSeconds",
+        "sourceDurationSeconds",
+        "elements",
+        "missingAnchorControl",
+        "disposition"
+      ],
+      "properties": {
+        "effectAssetId": {
+          "enum": [
+            "effect.valtan.whirlwind.recovery",
+            "effect.valtan.ground-wave-smash.windup",
+            "effect.valtan.jump-spin.recovery"
+          ]
+        },
+        "candidatePath": { "$ref": "#/$defs/string" },
+        "candidateRawSha256": { "$ref": "#/$defs/sha256" },
+        "candidateTypedCodecSha256": { "$ref": "#/$defs/sha256" },
+        "runtimeAnchorSlotId": {
+          "enum": [
+            "VALTAN_WHIRLWIND_RECOVERY_WEAPON_R",
+            "VALTAN_GROUND_WAVE_SMASH_WINDUP_WEAPON_R",
+            "VALTAN_JUMP_SPIN_RECOVERY_WEAPON_R"
+          ]
+        },
+        "sourceStartSeconds": { "type": "number", "minimum": 0 },
+        "sourceDurationSeconds": { "type": "number", "minimum": 0 },
+        "elements": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/element" }
+        },
+        "missingAnchorControl": { "$ref": "#/$defs/missingAnchorControl" },
+        "disposition": { "const": "DRAWABLE_PROOF_PASS" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetCount",
+        "elementCount",
+        "movingBoneDrawCount",
+        "stationarySuppressedCount",
+        "missingAnchorRollbackCount"
+      ],
+      "properties": {
+        "targetCount": { "const": 3 },
+        "elementCount": { "const": 9 },
+        "movingBoneDrawCount": { "const": 9 },
+        "stationarySuppressedCount": { "const": 9 },
+        "missingAnchorRollbackCount": { "const": 3 }
+      }
+    }
+  }
+}

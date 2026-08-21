@@ -7,6 +7,7 @@
 #include "ValtanPatternEffectCueDocument.h"
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <map>
 #include <set>
@@ -73,6 +74,14 @@ namespace
 		return nullptr == pValue || DATA_JSON_TYPE::NUMBER != pValue->Get_Type() ?
 			0.0 : pValue->Get_Number();
 	}
+
+	struct COMBAT_OBJECT_EFFECT_REFERENCE final
+	{
+		std::string strClientVisualId;
+		std::string strEffectAssetId;
+		std::string strOwnerPatternId;
+		std::string strOwnerStageActionId;
+	};
 
 	Client::VALTAN_CLIP_OCCURRENCE_VIEW Build_ClipOccurrenceView(
 		const Client::BOSS_PATTERN_ANIMATION_CLIP& Clip)
@@ -161,7 +170,10 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_EffectDocumentCount() const
 		for (const VALTAN_PATTERN_VIEW& Pattern : Group)
 		{
 			for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
+			{
 				iCount += Stage.Effects.size();
+				iCount += Stage.CombatObjectEffects.size();
+			}
 		}
 	};
 	Count(Gimmicks);
@@ -234,6 +246,22 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ProductCueCount() const
 		{
 			for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
 				iCount += Stage.ProductCues.size();
+		}
+	};
+	Count(Gimmicks);
+	Count(Rotation);
+	return iCount;
+}
+
+size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_CombatObjectEffectCount() const
+{
+	size_t iCount = 0u;
+	const auto Count = [&iCount](const std::vector<VALTAN_PATTERN_VIEW>& Group)
+	{
+		for (const VALTAN_PATTERN_VIEW& Pattern : Group)
+		{
+			for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
+				iCount += Stage.CombatObjectEffects.size();
 		}
 	};
 	Count(Gimmicks);
@@ -344,6 +372,110 @@ bool_t Client::CValtanPatternTree::Load(
 		return false;
 	}
 
+	/* Moving pattern visuals are owned by Server combat objects rather than
+	   boss-root cues.  Join the encounter spawn action, combat-object owner,
+	   and BossCatalog visual explicitly so the authoring tree cannot hide the
+	   document under an unrelated "unmapped" bucket or double-own it. */
+	DATA_JSON_VALUE BossCatalog;
+	DATA_JSON_VALUE CombatObjects;
+	if (!Parse_Document(std::filesystem::path(L"Actors") /
+			L"BossCatalog.json", BossCatalog, Error) ||
+		!Parse_Document(std::filesystem::path(L"Encounters") / L"Valtan" /
+			L"ValtanCombatObjects.json", CombatObjects, Error))
+	{
+		strOutStatus = "Valtan combat-object authoring join failed: " + Error;
+		return false;
+	}
+	std::map<std::string, COMBAT_OBJECT_EFFECT_REFERENCE, std::less<>>
+		CombatObjectEffectsByArchetype;
+	const DATA_JSON_VALUE* pBosses = BossCatalog.Find("bosses");
+	const DATA_JSON_VALUE* pObjects = CombatObjects.Find("objects");
+	if (nullptr == pBosses || !pBosses->Is_Array() ||
+		nullptr == pObjects || !pObjects->Is_Array())
+	{
+		strOutStatus =
+			"Valtan combat-object authoring documents have no rows.";
+		return false;
+	}
+	const DATA_JSON_VALUE* pValtanBoss = nullptr;
+	for (const DATA_JSON_VALUE& Boss : pBosses->Get_Array())
+	{
+		if (Boss.Is_Object() &&
+			Read_String(Boss, "archetypeId") == "BOSS_VALTAN")
+		{
+			if (nullptr != pValtanBoss)
+			{
+				strOutStatus = "BossCatalog contains duplicate BOSS_VALTAN rows.";
+				return false;
+			}
+			pValtanBoss = &Boss;
+		}
+	}
+	const DATA_JSON_VALUE* pVisuals = nullptr == pValtanBoss ? nullptr :
+		pValtanBoss->Find("combatObjectVisuals");
+	if (nullptr == pVisuals || !pVisuals->Is_Array() ||
+		pVisuals->Get_Array().empty())
+	{
+		strOutStatus = "BOSS_VALTAN has no combat-object Effect visuals.";
+		return false;
+	}
+	for (const DATA_JSON_VALUE& Visual : pVisuals->Get_Array())
+	{
+		if (!Visual.Is_Object())
+		{
+			strOutStatus = "BOSS_VALTAN combat-object visual row is invalid.";
+			return false;
+		}
+		const std::string strArchetypeId = Read_String(
+			Visual, "combatObjectArchetypeId");
+		COMBAT_OBJECT_EFFECT_REFERENCE Reference;
+		Reference.strClientVisualId = Read_String(Visual, "clientVisualId");
+		Reference.strEffectAssetId = Read_String(Visual, "effectAssetId");
+		if (strArchetypeId.empty() || Reference.strClientVisualId.empty() ||
+			Reference.strEffectAssetId.empty() ||
+			!CombatObjectEffectsByArchetype.emplace(
+				strArchetypeId, std::move(Reference)).second)
+		{
+			strOutStatus =
+				"BOSS_VALTAN combat-object visual identity is invalid or duplicated.";
+			return false;
+		}
+	}
+	std::set<std::string, std::less<>> DescribedCombatObjects;
+	for (const DATA_JSON_VALUE& Object : pObjects->Get_Array())
+	{
+		if (!Object.Is_Object())
+			continue;
+		const std::string strArchetypeId = Read_String(
+			Object, "combatObjectArchetypeId");
+		auto Reference = CombatObjectEffectsByArchetype.find(strArchetypeId);
+		if (Reference == CombatObjectEffectsByArchetype.end())
+			continue;
+		const std::string strClientVisualId = Read_String(
+			Object, "clientVisualId");
+		Reference->second.strOwnerPatternId = Read_String(
+			Object, "ownerPatternId");
+		Reference->second.strOwnerStageActionId = Read_String(
+			Object, "ownerStageActionId");
+		if (strClientVisualId != Reference->second.strClientVisualId ||
+			Reference->second.strOwnerPatternId.empty() ||
+			Reference->second.strOwnerStageActionId.empty() ||
+			!DescribedCombatObjects.insert(strArchetypeId).second)
+		{
+			strOutStatus =
+				"Valtan combat-object owner or visual identity changed: " +
+				strArchetypeId;
+			return false;
+		}
+	}
+	if (DescribedCombatObjects.size() !=
+		CombatObjectEffectsByArchetype.size())
+	{
+		strOutStatus =
+			"BossCatalog combat-object Effect visual has no Valtan owner row.";
+		return false;
+	}
+
 	/* Effect bindings are optional: a freshly seeded stage document is not in
 	   patterneffects.json yet, and that must not fail the whole tree. */
 	std::map<std::string, std::pair<std::string, std::string>, std::less<>>
@@ -417,6 +549,7 @@ bool_t Client::CValtanPatternTree::Load(
 
 	VALTAN_PATTERN_TREE_VIEW Staged;
 	size_t iResolvedCueCount = 0u;
+	std::set<std::string, std::less<>> ResolvedCombatObjectEffects;
 	for (const DATA_JSON_VALUE& PatternValue : pPatterns->Get_Array())
 	{
 		if (!PatternValue.Is_Object())
@@ -466,6 +599,50 @@ bool_t Client::CValtanPatternTree::Load(
 					StageValue, "serverDamageProfileId");
 				if (Stage.strActionId.empty())
 					continue;
+
+				const DATA_JSON_VALUE* pActions = StageValue.Find("actions");
+				if (nullptr != pActions && pActions->Is_Array())
+				{
+					for (const DATA_JSON_VALUE& Action : pActions->Get_Array())
+					{
+						if (!Action.Is_Object() ||
+							Read_String(Action, "kind") !=
+								"SPAWN_COMBAT_OBJECT")
+						{
+							continue;
+						}
+						const std::string strTargetId = Read_String(
+							Action, "targetId");
+						const auto Reference =
+							CombatObjectEffectsByArchetype.find(strTargetId);
+						const double SpawnValue = Read_Number(Action, "value");
+						if (Reference == CombatObjectEffectsByArchetype.end() ||
+							Reference->second.strOwnerPatternId !=
+								Pattern.strPatternId ||
+							Reference->second.strOwnerStageActionId !=
+								Stage.strActionId ||
+							!std::isfinite(SpawnValue) || SpawnValue < 1.0 ||
+							SpawnValue >
+								static_cast<double>((std::numeric_limits<uint32_t>::max)()) ||
+							std::floor(SpawnValue) != SpawnValue ||
+							!ResolvedCombatObjectEffects.insert(strTargetId).second)
+						{
+							strOutStatus =
+								"Valtan SPAWN_COMBAT_OBJECT authoring join changed: " +
+								strTargetId;
+							return false;
+						}
+						VALTAN_COMBAT_OBJECT_EFFECT_VIEW View;
+						View.strCombatObjectArchetypeId = strTargetId;
+						View.strClientVisualId =
+							Reference->second.strClientVisualId;
+						View.strEffectAssetId =
+							Reference->second.strEffectAssetId;
+						View.strTrigger = Read_String(Action, "trigger");
+						View.iSpawnValue = static_cast<uint32_t>(SpawnValue);
+						Stage.CombatObjectEffects.push_back(std::move(View));
+					}
+				}
 
 				const auto ClipIterator = ClipsByAction.find(Stage.strActionId);
 				if (ClipIterator != ClipsByAction.end())
@@ -555,7 +732,8 @@ bool_t Client::CValtanPatternTree::Load(
 				/* Product cues own the authoring entry. The naming rule is only
 				   a fallback for a stage that has no Product cue, so the old
 				   whirlwind seed cannot appear beside the admitted 420633 row. */
-				if (!Stage.Has_ProductCue())
+				if (!Stage.Has_ProductCue() &&
+					Stage.CombatObjectEffects.empty())
 				{
 					const std::string strCandidate = Build_StageEffectAssetId(
 						Pattern.strActionId, Stage);
@@ -599,6 +777,13 @@ bool_t Client::CValtanPatternTree::Load(
 		strOutStatus = "Valtan Product Effect cue action did not resolve into the encounter: resolved " +
 			std::to_string(iResolvedCueCount) + " of " +
 			std::to_string(iCueCount) + ".";
+		return false;
+	}
+	if (ResolvedCombatObjectEffects.size() !=
+		CombatObjectEffectsByArchetype.size())
+	{
+		strOutStatus =
+			"Valtan combat-object Effect visual did not resolve into its owner stage.";
 		return false;
 	}
 	if (Staged.Gimmicks.empty() && Staged.Rotation.empty())
@@ -698,6 +883,8 @@ bool_t Client::CValtanPatternTree::Load(
 		std::to_string(OutView.Get_ClipOccurrenceCount()) + " occurrences), " +
 		std::to_string(OutView.Get_ProductCueStageCount()) + " cue stages (" +
 		std::to_string(OutView.Get_ProductCueCount()) + " Product cues), " +
+		std::to_string(OutView.Get_CombatObjectEffectCount()) +
+		" combat-object visuals, " +
 		std::to_string(OutView.Get_EffectCount()) + " with an Effect (" +
 		std::to_string(OutView.Get_EffectDocumentCount()) + " documents).";
 	return true;

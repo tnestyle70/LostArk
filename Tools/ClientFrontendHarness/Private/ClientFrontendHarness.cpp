@@ -49,6 +49,7 @@
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
 #include "Valtan.h"
+#include "ValtanPatternTree.h"
 #include "ValtanPatternPreviewDocument.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "WorldDestructionDebrisPresentationDocument.h"
@@ -78,6 +79,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <span>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -389,6 +391,7 @@ namespace
 	{
 		void Require(const bool_t condition, const char_t* pName)
 		{
+			++iAssertionCount;
 			if (condition)
 			{
 				std::cout << "[PASS] " << pName << '\n';
@@ -399,6 +402,7 @@ namespace
 			std::cout << "[FAILURE] " << pName << '\n';
 		}
 
+		std::size_t iAssertionCount = 0;
 		std::size_t iFailureCount = 0;
 	};
 
@@ -4574,6 +4578,58 @@ namespace
 		runner.Require(clipsExact,
 			"Valtan G04 Outcome Actions Reuse The Reviewed Groggy Wipe And Parry Clips");
 
+		CEncounterPatternReference encounter;
+		std::string encounterStatus;
+		const bool_t encounterLoaded = encounter.Load(
+			CProjectDataRoot::Resolve(
+				"Encounters/Valtan/ValtanEncounter.json"),
+			encounterStatus);
+		struct EXPECTED_OUTCOME_STAGE final
+		{
+			std::string_view strPatternId;
+			std::string_view strStageId;
+			std::string_view strActionId;
+		};
+		const std::array<EXPECTED_OUTCOME_STAGE, 3u> expectedOutcomeStages = {{
+			{ "VALTAN_PARRY", "NORMAL_SLASH",
+				"valtan.reactive.parry.normal-slash" },
+			{ "VALTAN_MAGIC_ORB_STAGGER_76", "GROGGY",
+				"valtan.mechanic.magic-orb-stagger-76.groggy" },
+			{ "VALTAN_MAGIC_ORB_STAGGER_76", "WIPE",
+				"valtan.mechanic.magic-orb-stagger-76.wipe" }
+		}};
+		size_t stageCount = 0u;
+		bool_t outcomeStageJoinExact = encounterLoaded && parsed &&
+			33u == encounter.Get_Patterns().size();
+		for (const ENCOUNTER_PATTERN_REFERENCE& pattern :
+			encounter.Get_Patterns())
+		{
+			stageCount += pattern.stages.size();
+		}
+		for (const EXPECTED_OUTCOME_STAGE& expected : expectedOutcomeStages)
+		{
+			size_t exactStageCount = 0u;
+			for (const ENCOUNTER_PATTERN_REFERENCE& pattern :
+				encounter.Get_Patterns())
+			{
+				if (pattern.patternId != expected.strPatternId)
+					continue;
+				for (const ENCOUNTER_STAGE_REFERENCE& stage : pattern.stages)
+				{
+					if (stage.stageId != expected.strStageId)
+						continue;
+					++exactStageCount;
+					outcomeStageJoinExact = outcomeStageJoinExact &&
+						stage.actionId == expected.strActionId &&
+						stage.stageKind == "ACTIVE";
+				}
+			}
+			outcomeStageJoinExact = outcomeStageJoinExact &&
+				1u == exactStageCount;
+		}
+		runner.Require(outcomeStageJoinExact && 130u == stageCount,
+			"Valtan G04 Outcome Presentation Bindings Join Three Current Encounter Stages By Stable Action ID");
+
 		auto duplicate = document;
 		if (!duplicate.Bindings.empty())
 		{
@@ -4961,17 +5017,23 @@ namespace
 				"combatobject.valtan.red-blade-wave.projectile",
 				"combatobject.visual.valtan.red-blade-wave.projectile.v1");
 		const bool_t prewarmContractExact =
-			cuesLoaded && cueDocument.Cues.size() == 98u &&
+			cuesLoaded && cueDocument.Cues.size() == 106u &&
 			nullptr != boss && boss->combatObjectVisuals.size() == 2u &&
 			nullptr != skyVisual && nullptr != bladeVisual &&
 			skyVisual->effectAssetId == "effect.valtan.sky-axe.active" &&
 			bladeVisual->effectAssetId == "effect.valtan.red-blade-wave.active" &&
-			productEffects.size() == 100u &&
+			productEffects.size() == 108u &&
 			!std::any_of(cueDocument.Cues.begin(), cueDocument.Cues.end(),
 				[](const VALTAN_PATTERN_EFFECT_CUE& cue)
 				{
-					return cue.strEffectAssetId ==
-						"effect.valtan.red-blade-wave.active";
+					return cue.strActionId ==
+							"valtan.attack.red-blade-wave.active" ||
+						cue.strActionId ==
+							"valtan.attack.high-jump.airborne" ||
+						cue.strEffectAssetId ==
+							"effect.valtan.red-blade-wave.active" ||
+						cue.strEffectAssetId ==
+							"effect.valtan.high-jump.airborne";
 				});
 		if (!prewarmContractExact)
 		{
@@ -4981,7 +5043,88 @@ namespace
 				" productCount=" << productEffects.size() << '\n';
 		}
 		runner.Require(prewarmContractExact,
-			"Valtan Product Prewarm Owns 98 Boss-Root Cues Plus Two Moving Combat-Object Effects Without Red-Blade Duplication");
+			"Valtan Product Prewarm Owns 106 Boss-Root Cues Plus Two Single-Owner Moving Combat-Object Effects");
+
+		VALTAN_PATTERN_TREE_VIEW patternTree;
+		std::string patternTreeStatus;
+		const bool_t patternTreeLoaded = CValtanPatternTree::Load(
+			patternTree, patternTreeStatus);
+		const auto FindStage = [&patternTree](
+			const std::string_view patternId,
+			const std::string_view actionId) -> const VALTAN_STAGE_VIEW*
+			{
+				const auto FindIn = [patternId, actionId](
+					const std::vector<VALTAN_PATTERN_VIEW>& patterns)
+					-> const VALTAN_STAGE_VIEW*
+					{
+						for (const VALTAN_PATTERN_VIEW& pattern : patterns)
+						{
+							if (pattern.strPatternId != patternId)
+								continue;
+							for (const VALTAN_STAGE_VIEW& stage : pattern.Stages)
+							{
+								if (stage.strActionId == actionId)
+									return &stage;
+							}
+						}
+						return nullptr;
+					};
+				if (const VALTAN_STAGE_VIEW* stage =
+						FindIn(patternTree.Gimmicks))
+				{
+					return stage;
+				}
+				return FindIn(patternTree.Rotation);
+			};
+		const VALTAN_STAGE_VIEW* highJumpAirborne = patternTreeLoaded ?
+			FindStage("VALTAN_HIGH_JUMP",
+				"valtan.attack.high-jump.airborne") : nullptr;
+		const VALTAN_STAGE_VIEW* redBladeProjectile = patternTreeLoaded ?
+			FindStage("VALTAN_RED_BLADE_WAVE",
+				"valtan.attack.red-blade-wave.active") : nullptr;
+		const auto HasCombatVisual = [](
+			const VALTAN_STAGE_VIEW* stage,
+			const std::string_view archetypeId,
+			const std::string_view visualId,
+			const std::string_view effectAssetId)
+			{
+				return nullptr != stage && stage->ProductCues.empty() &&
+					stage->CombatObjectEffects.size() == 1u &&
+					stage->CombatObjectEffects.front().
+						strCombatObjectArchetypeId == archetypeId &&
+					stage->CombatObjectEffects.front().strClientVisualId ==
+						visualId &&
+					stage->CombatObjectEffects.front().strEffectAssetId ==
+						effectAssetId;
+			};
+		const bool_t patternTreeContractExact =
+			patternTreeLoaded && patternTree.Get_PatternCount() == 33u &&
+			patternTree.Get_StageCount() == 130u &&
+			patternTree.Get_ClipOccurrenceCount() == 137u &&
+			patternTree.Get_ProductCueStageCount() == 98u &&
+			patternTree.Get_ProductCueCount() == 106u &&
+			patternTree.Get_CombatObjectEffectCount() == 2u &&
+			HasCombatVisual(highJumpAirborne,
+				"combatobject.valtan.high-jump.target-axe",
+				"combatobject.visual.valtan.high-jump.target-axe.v1",
+				"effect.valtan.sky-axe.active") &&
+			HasCombatVisual(redBladeProjectile,
+				"combatobject.valtan.red-blade-wave.projectile",
+				"combatobject.visual.valtan.red-blade-wave.projectile.v1",
+				"effect.valtan.red-blade-wave.active");
+		if (!patternTreeContractExact)
+		{
+			std::cout << "[DETAIL] Valtan pattern tree combat-object join: " <<
+				patternTreeStatus << " patterns=" <<
+				patternTree.Get_PatternCount() << " stages=" <<
+				patternTree.Get_StageCount() << " clips=" <<
+				patternTree.Get_ClipOccurrenceCount() << " cueStages=" <<
+				patternTree.Get_ProductCueStageCount() << " cues=" <<
+				patternTree.Get_ProductCueCount() << " movingFx=" <<
+				patternTree.Get_CombatObjectEffectCount() << '\n';
+		}
+		runner.Require(patternTreeContractExact,
+			"Valtan All Effects Tree Places Moving Combat Objects Under Their Exact Pattern And Semantic Stage");
 
 		EFFECT_DOCUMENT_DESC skyDocument;
 		std::string skyStatus;
@@ -4989,13 +5132,41 @@ namespace
 			repositoryRoot / "Data" / "Effects" / "Authored" /
 				"effect.valtan.sky-axe.active.effect.json",
 			skyDocument, skyStatus);
-		const EFFECT_ELEMENT_DESC* skyElement =
-			skyLoaded && skyDocument.Elements.size() == 1u ?
-				&skyDocument.Elements.front() : nullptr;
-		const bool_t skyResourceExact = nullptr != skyElement &&
-			skyElement->ResourceBindings.size() == 1u &&
-			skyElement->ResourceBindings.front().strSlotId == "meshModel" &&
-			skyElement->ResourceBindings.front().strAssetId ==
+		const auto FindElement = [&skyDocument](
+			const std::string_view elementId) -> const EFFECT_ELEMENT_DESC*
+			{
+				const auto found = std::find_if(
+					skyDocument.Elements.begin(), skyDocument.Elements.end(),
+					[elementId](const EFFECT_ELEMENT_DESC& element)
+					{
+						return element.strElementId == elementId;
+					});
+				return found == skyDocument.Elements.end() ? nullptr : &*found;
+			};
+		const auto HasResource = [](
+			const EFFECT_ELEMENT_DESC* element,
+			const std::string_view slotId,
+			const std::string_view assetId)
+			{
+				return nullptr != element && std::any_of(
+					element->ResourceBindings.begin(),
+					element->ResourceBindings.end(),
+					[slotId, assetId](const EFFECT_RESOURCE_BINDING_DESC& resource)
+					{
+						return resource.strSlotId == slotId &&
+							resource.strAssetId == assetId;
+					});
+			};
+		const EFFECT_ELEMENT_DESC* skyMesh =
+			FindElement("mesh.valtan.sky-axe.descent");
+		const EFFECT_ELEMENT_DESC* skyTarget =
+			FindElement("decal.valtan.sky-axe.target");
+		const EFFECT_ELEMENT_DESC* skyImpact =
+			FindElement("particle.valtan.sky-axe.impact");
+		const bool_t skyResourceExact = nullptr != skyMesh &&
+			skyMesh->ResourceBindings.size() == 1u &&
+			skyMesh->ResourceBindings.front().strSlotId == "meshModel" &&
+			skyMesh->ResourceBindings.front().strAssetId ==
 				"Character/Valtan/ValtanWeapon.wmodel";
 		EFFECT_RESOURCE_FILE_KIND resourceKind = EFFECT_RESOURCE_FILE_KIND::END;
 		const bool_t characterModelAccepted =
@@ -5016,14 +5187,40 @@ namespace
 				EFFECT_ELEMENT_KIND::MESH, "meshModel",
 				"Character/Valtan/../Valtan/ValtanWeapon.wmodel");
 		const bool_t skyContractExact =
-			skyLoaded && nullptr != skyElement && skyResourceExact &&
+			skyLoaded && skyDocument.Elements.size() == 3u &&
+			nullptr != skyMesh && nullptr != skyTarget && nullptr != skyImpact &&
+			skyResourceExact &&
 			skyDocument.strEffectAssetId == "effect.valtan.sky-axe.active" &&
-			skyElement->eKind == EFFECT_ELEMENT_KIND::MESH &&
-			std::abs(skyElement->Detail.Transform.vPosition.y - 15.f) < 1.0e-6f &&
-			skyElement->Detail.LinearLerp.bPosition &&
-			std::abs(skyElement->Detail.LinearLerp.vEndPosition.y) < 1.0e-6f &&
-			std::abs(skyElement->Detail.Timing.fLifeTimeSeconds - 1.2f) <
-			1.0e-6f && characterModelAccepted &&
+			skyMesh->eKind == EFFECT_ELEMENT_KIND::MESH &&
+			std::abs(skyMesh->Detail.Transform.vPosition.y - 15.f) < 1.0e-6f &&
+			skyMesh->Detail.LinearLerp.bPosition &&
+			std::abs(skyMesh->Detail.LinearLerp.vEndPosition.y) < 1.0e-6f &&
+			std::abs(skyMesh->Detail.Timing.fLifeTimeSeconds - 1.2f) <
+				1.0e-6f &&
+			skyTarget->eKind == EFFECT_ELEMENT_KIND::DECAL &&
+			HasResource(skyTarget, "base",
+				"Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_032.dds") &&
+			std::abs(skyTarget->Detail.Timing.fStartDelaySeconds) < 1.0e-6f &&
+			std::abs(skyTarget->Detail.Timing.fLifeTimeSeconds - 1.2f) <
+				1.0e-6f &&
+			std::abs(skyTarget->Detail.Decal.vSize.x - 3.5f) < 1.0e-6f &&
+			std::abs(skyTarget->Detail.Decal.vSize.y - 3.5f) < 1.0e-6f &&
+			skyImpact->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			HasResource(skyImpact, "base",
+				"Effect/Valtan/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds") &&
+			HasResource(skyImpact, "dissolve",
+				"Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_011.dds") &&
+			std::abs(skyImpact->Detail.Timing.fStartDelaySeconds - 1.2f) <
+				1.0e-6f &&
+			std::abs(skyImpact->Detail.Timing.fLifeTimeSeconds - 0.65f) <
+				1.0e-6f &&
+			std::abs(skyImpact->Detail.Particle.vStartSize.x - 4.2f) <
+				1.0e-6f &&
+			std::abs(skyImpact->Detail.Particle.vEndSize.x - 7.5f) <
+				1.0e-6f &&
+			skyImpact->Detail.Timing.fStartDelaySeconds +
+				skyImpact->Detail.Timing.fLifeTimeSeconds < 1.9f &&
+			characterModelAccepted &&
 			characterModelRejectedOutsideMeshSlot && characterTextureRejected &&
 			characterEscapeRejected;
 		if (!skyContractExact)
@@ -5044,7 +5241,7 @@ namespace
 						"Character/Valtan/ValtanWeapon.wmodel", modelError);
 			std::cout << "[DETAIL] Valtan sky-axe: status=" << skyStatus <<
 				" loaded=" << skyLoaded << " element=" <<
-				(nullptr != skyElement) << " resource=" << skyResourceExact <<
+				skyDocument.Elements.size() << " resource=" << skyResourceExact <<
 				" modelAccepted=" << characterModelAccepted <<
 				" modelRejectedOutsideSlot=" <<
 				characterModelRejectedOutsideMeshSlot <<
@@ -5060,7 +5257,7 @@ namespace
 					resolvedCharacterModel) << '\n';
 		}
 		runner.Require(skyContractExact,
-			"Valtan Sky Axe Uses The Existing Character WModel Only In MeshModel And Falls Fifteen Metres Over 1.2 Seconds");
+			"Valtan Sky Axe Combat Object Owns Target Decal Official Falling Axe And Timed Sprite Impact Before Server Lifetime Ends");
 
 		const std::string replicationSource = Read_Text(repositoryRoot /
 			"Client" / "Private" / "ClientReplication.cpp");
@@ -21543,12 +21740,14 @@ namespace
 		size_t typedBossSourceCount = 0u;
 		size_t typedBossCombatObjectSourceCount = 0u;
 		bool_t sourceEntriesExact = sourceIndexValid &&
-			valtanCueDocument.Cues.size() == 98u &&
-			bossPatternOwners.size() == 98u &&
+			valtanCueDocument.Cues.size() == 106u &&
+			bossPatternOwners.size() == 106u &&
 			bossCombatObjectOwners.size() == 2u &&
-			sourceIndex.iCatalogDirectCount == 201u &&
+			sourceIndex.iCatalogDirectCount == 213u &&
 			sourceIndex.iUnavailableCount == 0u &&
-			sourceIndex.Entries.size() == 201u;
+			sourceIndex.Entries.size() == 213u &&
+			sourceIndex.iCatalogDirectCount ==
+				sourceIndex.Entries.size() + sourceIndex.iUnavailableCount;
 		for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& entry :
 			sourceIndex.Entries)
 		{
@@ -21686,11 +21885,11 @@ namespace
 			sourceIndexFixturePath, sourceIndexFixtureError);
 		runner.Require(sourceEntriesExact &&
 			directSourceIds.size() == sourceIndex.Entries.size() &&
-			typedPlayerSourceCount == 101u && typedBossSourceCount == 98u &&
+			typedPlayerSourceCount == 105u && typedBossSourceCount == 106u &&
 			typedBossCombatObjectSourceCount == 2u &&
 			malformedTopLevelPreserved && isolatedRowPreservedValidCommit &&
 			duplicateTopLevelPreserved,
-			"All Effects Production Source Index Has 101 Player-Skill, 98 Boss-Pattern, And 2 Boss-Combat-Object Typed Physical Direct Documents, Isolates Unsafe Rows, And Preserves Its Prior Commit On Top-Level Failure");
+			"All Effects Production Source Index Has 105 Player-Skill, 106 Boss-Pattern, And 2 Boss-Combat-Object Typed Physical Direct Documents, Isolates Unsafe Rows, And Preserves Its Prior Commit On Top-Level Failure");
 
 		const std::filesystem::path sourceCatalog = repositoryRoot /
 			L"Client" / L"Bin" / L"DataFiles" / L"Effect" /
@@ -21847,29 +22046,55 @@ namespace
 				{
 					return effectAssetId.starts_with("effect.valtan.");
 				}));
-		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT valtanCueDocument;
-		std::string valtanCueStatus;
-		const bool_t valtanCuesLoaded = catalogLoaded &&
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT publishedValtanCueDocument;
+		std::string publishedValtanCueStatus;
+		const bool_t publishedValtanCuesLoaded = catalogLoaded &&
 			CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
-				valtanCueDocument, valtanCueStatus);
+				publishedValtanCueDocument, publishedValtanCueStatus);
 		std::set<std::string, std::less<>> valtanCueTargetIds;
-		for (const VALTAN_PATTERN_EFFECT_CUE& cue : valtanCueDocument.Cues)
+		for (const VALTAN_PATTERN_EFFECT_CUE& cue :
+			publishedValtanCueDocument.Cues)
 			valtanCueTargetIds.insert(cue.strEffectAssetId);
-		const bool_t everyValtanCueTargetPublished = valtanCuesLoaded &&
+		std::set<std::string, std::less<>> valtanCombatObjectTargetIds;
+		for (const auto& [effectAssetId, owner] : bossCombatObjectOwners)
+		{
+			(void)owner;
+			valtanCombatObjectTargetIds.insert(effectAssetId);
+		}
+		const bool_t everyValtanCueTargetPublished =
+			publishedValtanCuesLoaded &&
 			!valtanCueTargetIds.empty() &&
 			std::all_of(valtanCueTargetIds.begin(), valtanCueTargetIds.end(),
 				[](const std::string& effectAssetId)
 				{
 					return CEffectCatalog::Contains(effectAssetId);
 				});
+		const bool_t everyValtanCombatObjectTargetPublished =
+			valtanCombatObjectTargetIds.size() == 2u &&
+			std::all_of(valtanCombatObjectTargetIds.begin(),
+				valtanCombatObjectTargetIds.end(),
+				[](const std::string& effectAssetId)
+				{
+					return CEffectCatalog::Contains(effectAssetId);
+				}) &&
+			std::none_of(valtanCombatObjectTargetIds.begin(),
+				valtanCombatObjectTargetIds.end(),
+				[&valtanCueTargetIds](const std::string& effectAssetId)
+				{
+					return valtanCueTargetIds.contains(effectAssetId);
+				});
 		if (!everyValtanCueTargetPublished ||
-			valtanRuntimeEffectCount != valtanCueTargetIds.size())
+			!everyValtanCombatObjectTargetPublished ||
+			valtanRuntimeEffectCount !=
+				valtanCueTargetIds.size() + valtanCombatObjectTargetIds.size())
 		{
 			std::cout << "[DETAIL] Valtan dynamic catalog relation loaded=" <<
-				valtanCuesLoaded << " cues=" << valtanCueDocument.Cues.size() <<
+				publishedValtanCuesLoaded << " cues=" <<
+				publishedValtanCueDocument.Cues.size() <<
 				" unique-targets=" << valtanCueTargetIds.size() <<
+				" combat-targets=" << valtanCombatObjectTargetIds.size() <<
 				" catalog-valtan=" << valtanRuntimeEffectCount <<
-				" status=" << valtanCueStatus << '\n';
+				" status=" << publishedValtanCueStatus << '\n';
 		}
 		constexpr std::string_view removedLegacyArtistId =
 			"effect.artist.skill.31210.ba4";
@@ -21906,9 +22131,11 @@ namespace
 			{
 				return CEffectCatalog::Contains(std::string(effectAssetId));
 			});
-		runner.Require(catalogLoaded && valtanCuesLoaded &&
+		runner.Require(catalogLoaded && publishedValtanCuesLoaded &&
 			everyValtanCueTargetPublished &&
-			valtanRuntimeEffectCount == valtanCueTargetIds.size() &&
+			everyValtanCombatObjectTargetPublished &&
+			valtanRuntimeEffectCount ==
+				valtanCueTargetIds.size() + valtanCombatObjectTargetIds.size() &&
 			runtimeEffectIds.size() >=
 				lanceCueIds.size() + valtanCueTargetIds.size() &&
 			CEffectCatalog::Contains(std::string(firstId)) &&
@@ -32788,6 +33015,1998 @@ namespace
 		strOutError.clear();
 		return true;
 	}
+
+	struct FOUR_SLASH_TRAIL_RENDERER_PROOF final
+	{
+		uint64_t iPreparedSamples = 0u;
+		uint64_t iAttemptedSamples = 0u;
+		uint64_t iSubmittedDraws = 0u;
+		uint64_t iSuppressedDraws = 0u;
+		uint64_t iFailedDraws = 0u;
+		uint64_t iCommittedDraws = 0u;
+		bool_t bTransactionCommitted = false;
+	};
+
+	struct FOUR_SLASH_TRAIL_GEOMETRY_PROOF final
+	{
+		uint32_t iProviderSampleCount = 0u;
+		uint32_t iRootWorldDistinctCount = 0u;
+		uint32_t iAnchorWorldDistinctCount = 0u;
+		uint32_t iTrailPointCount = 0u;
+		uint32_t iDistinctTrailPointCount = 0u;
+		uint32_t iFiniteTrailPointCount = 0u;
+		f32_t fCumulativeDistance = 0.f;
+		float3_t vFirstWorldPosition{};
+		float3_t vLastWorldPosition{};
+		FOUR_SLASH_TRAIL_RENDERER_PROOF Renderer;
+	};
+
+	bool_t Write_FourSlashWeaponTrailRuntimeSweep(
+		const std::filesystem::path& OutputPath,
+		const std::filesystem::path& ResourceRoot,
+		const std::filesystem::path& CandidatePath,
+		const std::string_view strCandidateRawSha256,
+		const std::string_view strCandidateCanonicalSha256,
+		const FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Positive,
+		const FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Stationary,
+		const bool_t bMissingAnchorRejected,
+		const bool_t bMissingAnchorStatePreserved,
+		const uint32_t iMissingAnchorTrailPointCount,
+		const std::string_view strMissingAnchorStatus,
+		std::string& strOutError)
+	{
+		const auto WriteRenderer = [](std::ostringstream& Json,
+			const FOUR_SLASH_TRAIL_RENDERER_PROOF& Proof,
+			const std::string_view strIndent)
+		{
+			Json << strIndent << "{\n"
+				<< strIndent << "  \"preparedSamples\": " <<
+					Proof.iPreparedSamples << ",\n"
+				<< strIndent << "  \"attemptedSamples\": " <<
+					Proof.iAttemptedSamples << ",\n"
+				<< strIndent << "  \"submittedDraws\": " <<
+					Proof.iSubmittedDraws << ",\n"
+				<< strIndent << "  \"suppressedDraws\": " <<
+					Proof.iSuppressedDraws << ",\n"
+				<< strIndent << "  \"failedDraws\": " <<
+					Proof.iFailedDraws << ",\n"
+				<< strIndent << "  \"committedDraws\": " <<
+					Proof.iCommittedDraws << ",\n"
+				<< strIndent << "  \"transactionCommitted\": " <<
+					(Proof.bTransactionCommitted ? "true" : "false") << "\n"
+				<< strIndent << "}";
+		};
+		const auto WriteVector = [](std::ostringstream& Json,
+			const float3_t& Value)
+		{
+			Json << "[" << std::setprecision(
+				std::numeric_limits<float>::max_digits10) << Value.x << ", " <<
+				Value.y << ", " << Value.z << "]";
+		};
+
+		std::ostringstream Json;
+		Json << "{\n"
+			<< "  \"schema\": \"lostark.valtan-four-slash-weapon-trail-runtime-sweep\",\n"
+			<< "  \"formatVersion\": 1,\n"
+			<< "  \"bossArchetypeId\": \"BOSS_VALTAN\",\n"
+			<< "  \"resourceRoot\": \"" <<
+				Client::CDataJson::Escape(ResourceRoot.generic_string()) << "\",\n"
+			<< "  \"candidatePath\": \"" <<
+				Client::CDataJson::Escape(CandidatePath.generic_string()) << "\",\n"
+			<< "  \"candidateRawSha256\": \"" << strCandidateRawSha256 << "\",\n"
+			<< "  \"candidateTypedCodecSha256\": \"" <<
+				strCandidateCanonicalSha256 << "\",\n"
+			<< "  \"effectAssetId\": \"effect.valtan.four-slash.active.clip-02\",\n"
+			<< "  \"elementId\": \"project-four-slash-weapon-bone-trail\",\n"
+			<< "  \"runtimeAnchorSlotId\": \"VALTAN_FOUR_SLASH_WEAPON_R\",\n"
+			<< "  \"runtimeBoneName\": \"b_wp_r_01\",\n"
+			<< "  \"sampleRateHz\": 60,\n"
+			<< "  \"positiveMovingBone\": {\n"
+			<< "    \"providerSampleCount\": " << Positive.iProviderSampleCount << ",\n"
+			<< "    \"rootWorldDistinctCount\": " << Positive.iRootWorldDistinctCount << ",\n"
+			<< "    \"anchorWorldDistinctCount\": " << Positive.iAnchorWorldDistinctCount << ",\n"
+			<< "    \"trailPointCount\": " << Positive.iTrailPointCount << ",\n"
+			<< "    \"distinctTrailPointCount\": " << Positive.iDistinctTrailPointCount << ",\n"
+			<< "    \"finiteTrailPointCount\": " << Positive.iFiniteTrailPointCount << ",\n"
+			<< "    \"cumulativeDistance\": " << std::setprecision(
+				std::numeric_limits<float>::max_digits10) <<
+				Positive.fCumulativeDistance << ",\n"
+			<< "    \"firstWorldPosition\": ";
+		WriteVector(Json, Positive.vFirstWorldPosition);
+		Json << ",\n    \"lastWorldPosition\": ";
+		WriteVector(Json, Positive.vLastWorldPosition);
+		Json << ",\n    \"renderer\": ";
+		WriteRenderer(Json, Positive.Renderer, "    ");
+		Json << "\n  },\n"
+			<< "  \"stationaryControl\": {\n"
+			<< "    \"providerSampleCount\": " <<
+				Stationary.iProviderSampleCount << ",\n"
+			<< "    \"rootWorldDistinctCount\": " <<
+				Stationary.iRootWorldDistinctCount << ",\n"
+			<< "    \"anchorWorldDistinctCount\": " <<
+				Stationary.iAnchorWorldDistinctCount << ",\n"
+			<< "    \"trailPointCount\": " <<
+				Stationary.iTrailPointCount << ",\n"
+			<< "    \"distinctTrailPointCount\": " <<
+				Stationary.iDistinctTrailPointCount << ",\n"
+			<< "    \"renderer\": ";
+		WriteRenderer(Json, Stationary.Renderer, "    ");
+		Json << ",\n    \"segmentSuppressed\": true\n  },\n"
+			<< "  \"missingAnchorControl\": {\n"
+			<< "    \"providerRejected\": " <<
+				(bMissingAnchorRejected ? "true" : "false") << ",\n"
+			<< "    \"playbackStatePreserved\": " <<
+				(bMissingAnchorStatePreserved ? "true" : "false") << ",\n"
+			<< "    \"trailPointCountAfterReject\": " <<
+				iMissingAnchorTrailPointCount << ",\n"
+			<< "    \"status\": \"" <<
+				Client::CDataJson::Escape(std::string(strMissingAnchorStatus)) << "\"\n"
+			<< "  },\n"
+			<< "  \"disposition\": \"DRAWABLE_PROOF_PASS\"\n"
+			<< "}\n";
+
+		std::error_code Error;
+		const std::filesystem::path AbsoluteOutput = std::filesystem::absolute(
+			OutputPath, Error).lexically_normal();
+		if (Error || !AbsoluteOutput.is_absolute() ||
+			!std::filesystem::is_directory(AbsoluteOutput.parent_path(), Error) ||
+			Error || AbsoluteOutput == CandidatePath)
+		{
+			strOutError =
+				"FourSlash Trail proof output path is invalid or collides with input";
+			return false;
+		}
+		std::filesystem::path StagingPath = AbsoluteOutput;
+		StagingPath += L".staging." + std::to_wstring(GetCurrentProcessId());
+		std::filesystem::remove(StagingPath, Error);
+		Error.clear();
+		{
+			std::ofstream Stream(StagingPath, std::ios::binary | std::ios::trunc);
+			if (!Stream)
+			{
+				strOutError = "unable to create FourSlash Trail proof staging file";
+				return false;
+			}
+			const std::string Payload = Json.str();
+			Stream.write(Payload.data(), static_cast<std::streamsize>(Payload.size()));
+			Stream.flush();
+			if (!Stream)
+			{
+				Stream.close();
+				std::filesystem::remove(StagingPath, Error);
+				strOutError = "unable to flush FourSlash Trail proof staging file";
+				return false;
+			}
+		}
+		if (!MoveFileExW(StagingPath.c_str(), AbsoluteOutput.c_str(),
+			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+		{
+			std::filesystem::remove(StagingPath, Error);
+			strOutError = "unable to atomically commit FourSlash Trail proof";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_FourSlashWeaponTrailRuntimeProof(
+		const std::filesystem::path& CandidatePath,
+		const std::filesystem::path& JsonOutputPath,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		constexpr std::string_view EFFECT_ID =
+			"effect.valtan.four-slash.active.clip-02";
+		constexpr std::string_view ELEMENT_ID =
+			"project-four-slash-weapon-bone-trail";
+		constexpr std::string_view ANCHOR_ID =
+			"VALTAN_FOUR_SLASH_WEAPON_R";
+		constexpr std::string_view BONE_NAME = "b_wp_r_01";
+		constexpr f32_t SAMPLE_RATE = 60.f;
+
+		std::error_code PathError;
+		const std::filesystem::path AbsoluteCandidate =
+			std::filesystem::absolute(CandidatePath, PathError).lexically_normal();
+		if (PathError || !AbsoluteCandidate.is_absolute() ||
+			!std::filesystem::is_regular_file(AbsoluteCandidate, PathError) ||
+			PathError || !JsonOutputPath.is_absolute())
+		{
+			strOutError =
+				"FourSlash Trail proof requires absolute existing candidate and output paths";
+			return false;
+		}
+		std::filesystem::path ResourceRoot;
+		if (!Read_DrawableSweepResourceRoot(ResourceRoot, strOutError))
+			return false;
+
+		EFFECT_DOCUMENT_DESC Document;
+		if (!CEffectDocumentCodec::Load(AbsoluteCandidate, Document, strOutError) ||
+			!CEffectDocumentCodec::Validate_Drawable(Document, strOutError) ||
+			Document.strEffectAssetId != EFFECT_ID ||
+			Document.Elements.size() != 1u)
+		{
+			strOutError = "FourSlash Trail candidate is invalid: " + strOutError;
+			return false;
+		}
+		const EFFECT_ELEMENT_DESC& Element = Document.Elements.front();
+		if (Element.strElementId != ELEMENT_ID || !Element.bVisible ||
+			Element.eKind != EFFECT_ELEMENT_KIND::TRAIL ||
+			!Element.ActionCueAttachment.bEnabled ||
+			!Element.ActionCueAttachment.bFollow ||
+			Element.ActionCueAttachment.strRuntimeAnchorSlotId != ANCHOR_ID ||
+			Element.ActionCueAttachment.strRuntimeBoneName != BONE_NAME ||
+			Element.ActionCueAttachment.strSourceAnchorSlotId != BONE_NAME ||
+			Element.SourceRecipe.bEnabled ||
+			Element.Detail.Trail.iMaxPoints < 2u ||
+			Element.Detail.Trail.fSampleIntervalSeconds <= 0.f ||
+			Element.Detail.Trail.fMinimumDistance <= 0.f)
+		{
+			strOutError = "FourSlash Trail exact attachment/geometry contract changed";
+			return false;
+		}
+
+		const std::string CandidateRaw = Read_Text(AbsoluteCandidate);
+		if (CandidateRaw.empty())
+		{
+			strOutError = "FourSlash Trail candidate bytes are unavailable";
+			return false;
+		}
+		const std::string CandidateRawSha256 =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(CandidateRaw);
+		std::string CanonicalError;
+		const std::string CandidateCanonicalSha256 =
+			CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
+				Document, CanonicalError);
+		if (CandidateRawSha256.size() != 64u ||
+			CandidateCanonicalSha256.size() != 64u)
+		{
+			strOutError = CanonicalError.empty() ?
+				"FourSlash Trail candidate SHA-256 is invalid" : CanonicalError;
+			return false;
+		}
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		if (!WorkingDirectory.Initialize(
+				CProjectDataRoot::Get().parent_path() / L"Client" / L"Default",
+				strOutError))
+		{
+			return false;
+		}
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		if (!EngineScope.Initialize(strOutError))
+			return false;
+		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		const f32_t fProofTime = Element.Detail.Timing.fStartDelaySeconds +
+			5.f / SAMPLE_RATE;
+
+		const auto PopulateGeometry = [ELEMENT_ID](
+			const EFFECT_EVALUATED_FRAME& Frame,
+			FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Out)
+		{
+			const auto Trail = std::find_if(Frame.Trails.begin(), Frame.Trails.end(),
+				[](const EFFECT_EVALUATED_TRAIL& Candidate)
+				{
+					return nullptr != Candidate.pElement &&
+						Candidate.pElement->strElementId == ELEMENT_ID;
+				});
+			if (Trail == Frame.Trails.end())
+				return;
+			Out.iTrailPointCount = static_cast<uint32_t>(Trail->Points.size());
+			for (size_t iPoint = 0u; iPoint < Trail->Points.size(); ++iPoint)
+			{
+				const EFFECT_EVALUATED_TRAIL_POINT& Point = Trail->Points[iPoint];
+				const bool_t bFinite =
+					std::isfinite(Point.vWorldPosition.x) &&
+					std::isfinite(Point.vWorldPosition.y) &&
+					std::isfinite(Point.vWorldPosition.z) &&
+					std::isfinite(Point.fNormalizedAge) &&
+					std::isfinite(Point.fCumulativeDistance);
+				if (bFinite)
+					++Out.iFiniteTrailPointCount;
+				const bool_t bDistinct = 0u == iPoint ||
+					XMVectorGetX(XMVector3LengthSq(
+						XMLoadFloat3(&Point.vWorldPosition) -
+						XMLoadFloat3(&Trail->Points[iPoint - 1u].vWorldPosition))) >
+						1.0e-10f;
+				if (bDistinct)
+					++Out.iDistinctTrailPointCount;
+			}
+			if (!Trail->Points.empty())
+			{
+				Out.vFirstWorldPosition = Trail->Points.front().vWorldPosition;
+				Out.vLastWorldPosition = Trail->Points.back().vWorldPosition;
+				Out.fCumulativeDistance =
+					Trail->Points.back().fCumulativeDistance;
+			}
+		};
+
+		const auto RenderFrame = [ELEMENT_ID, &EngineScope, &Context, &Device,
+			&strOutError](CEffectDocumentRenderer& Renderer,
+			const EFFECT_EVALUATED_FRAME& Frame,
+			FOUR_SLASH_TRAIL_RENDERER_PROOF& Out)
+		{
+			if (!EngineScope.Begin_Frame(strOutError))
+				return false;
+			const HRESULT hRender = Renderer.Render(Frame);
+			Context->Flush();
+			const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+				Renderer.Get_LastRenderSubmissionStats();
+			Out.bTransactionCommitted = SUCCEEDED(hRender) && Stats.bCompleted &&
+				Stats.bCommitted && S_OK == Device->GetDeviceRemovedReason();
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+			for (const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row : Stats.Occurrences)
+			{
+				if (Row.strElementId != ELEMENT_ID)
+					continue;
+				Out.iPreparedSamples = 0u < Row.iConfigured ? 1u : 0u;
+				Out.iAttemptedSamples = 0u < Row.iAttempted ? 1u : 0u;
+				Out.iSubmittedDraws += Row.iSubmitted;
+				Out.iSuppressedDraws += Row.iSuppressed;
+				Out.iFailedDraws += Row.iFailed;
+				Out.iCommittedDraws += Row.iIssuedDrawCallCount;
+				if ((0u < Row.iSubmitted || 0u < Row.iIssuedDrawCallCount) &&
+					(UINT32_MAX == Row.iSelectedPassIndex ||
+					 Row.bSourceMaterialFallbackBlocked ||
+					 Row.bDrawSelectionDiverged))
+				{
+					Out.bTransactionCommitted = false;
+				}
+			}
+#else
+			strOutError =
+				"FourSlash Trail runtime proof requires execution diagnostics";
+			return false;
+#endif
+			if (!Out.bTransactionCommitted)
+			{
+				strOutError = "FourSlash Trail renderer transaction did not commit";
+				return false;
+			}
+			return true;
+		};
+
+		FOUR_SLASH_TRAIL_GEOMETRY_PROOF Positive;
+		CEffectPlayback PositivePlayback;
+		CEffectDocumentRenderer PositiveRenderer(Device, Context);
+		if (FAILED(PositiveRenderer.Initialize()) ||
+			!PositivePlayback.Stage_Document(Document, strOutError) ||
+			!PositiveRenderer.Stage_Document(Document, strOutError))
+		{
+			strOutError = "FourSlash Trail positive staging failed: " + strOutError;
+			return false;
+		}
+		bool_t bHasPreviousPositiveAnchor = false;
+		float3_t vPreviousPositiveAnchor{};
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER MovingBone =
+			[&Positive, &bHasPreviousPositiveAnchor, &vPreviousPositiveAnchor,
+				ANCHOR_ID](const f32_t fSampleTime,
+				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+				std::string& OutError)
+		{
+			++Positive.iProviderSampleCount;
+			Positive.iRootWorldDistinctCount = 1u;
+			XMStoreFloat4x4(&OutSample.RootWorld, XMMatrixIdentity());
+			const float3_t AnchorPosition(
+				2.f * fSampleTime,
+				0.15f * std::sin(9.f * fSampleTime),
+				0.1f * std::sin(5.f * fSampleTime));
+			if (!bHasPreviousPositiveAnchor ||
+				XMVectorGetX(XMVector3LengthSq(
+					XMLoadFloat3(&AnchorPosition) -
+					XMLoadFloat3(&vPreviousPositiveAnchor))) > 1.0e-10f)
+			{
+				++Positive.iAnchorWorldDistinctCount;
+			}
+			vPreviousPositiveAnchor = AnchorPosition;
+			bHasPreviousPositiveAnchor = true;
+			float4x4_t AnchorWorld{};
+			XMStoreFloat4x4(&AnchorWorld, XMMatrixTranslation(
+				AnchorPosition.x, AnchorPosition.y, AnchorPosition.z));
+			OutSample.SourceAnchorWorlds.clear();
+			OutSample.SourceAnchorWorlds.emplace(std::string(ANCHOR_ID), AnchorWorld);
+			OutError.clear();
+			return true;
+		};
+		if (!PositivePlayback.Seek_WithTransformHistory(
+				fProofTime, MovingBone, strOutError))
+		{
+			strOutError = "FourSlash moving-bone seek failed: " + strOutError;
+			return false;
+		}
+		PopulateGeometry(PositivePlayback.Get_Frame(), Positive);
+		if (Positive.iProviderSampleCount < 2u ||
+			Positive.iRootWorldDistinctCount != 1u ||
+			Positive.iAnchorWorldDistinctCount < 2u ||
+			Positive.iTrailPointCount < 2u ||
+			Positive.iDistinctTrailPointCount < 2u ||
+			Positive.iFiniteTrailPointCount != Positive.iTrailPointCount ||
+			!std::isfinite(Positive.fCumulativeDistance) ||
+			Positive.fCumulativeDistance <= 0.f ||
+			!RenderFrame(PositiveRenderer, PositivePlayback.Get_Frame(),
+				Positive.Renderer) ||
+			0u == Positive.Renderer.iPreparedSamples ||
+			0u == Positive.Renderer.iAttemptedSamples ||
+			0u == Positive.Renderer.iSubmittedDraws ||
+			0u == Positive.Renderer.iCommittedDraws ||
+			0u != Positive.Renderer.iFailedDraws)
+		{
+			if (strOutError.empty())
+				strOutError =
+					"stationary root plus moving FourSlash bone did not draw a finite Trail";
+			return false;
+		}
+
+		FOUR_SLASH_TRAIL_GEOMETRY_PROOF Stationary;
+		CEffectPlayback StationaryPlayback;
+		CEffectDocumentRenderer StationaryRenderer(Device, Context);
+		if (FAILED(StationaryRenderer.Initialize()) ||
+			!StationaryPlayback.Stage_Document(Document, strOutError) ||
+			!StationaryRenderer.Stage_Document(Document, strOutError))
+		{
+			strOutError = "FourSlash Trail stationary staging failed: " + strOutError;
+			return false;
+		}
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER StationaryBone =
+			[&Stationary, ANCHOR_ID](const f32_t,
+				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+				std::string& OutError)
+		{
+			++Stationary.iProviderSampleCount;
+			Stationary.iRootWorldDistinctCount = 1u;
+			Stationary.iAnchorWorldDistinctCount = 1u;
+			XMStoreFloat4x4(&OutSample.RootWorld, XMMatrixIdentity());
+			float4x4_t AnchorWorld{};
+			XMStoreFloat4x4(&AnchorWorld, XMMatrixIdentity());
+			OutSample.SourceAnchorWorlds.clear();
+			OutSample.SourceAnchorWorlds.emplace(std::string(ANCHOR_ID), AnchorWorld);
+			OutError.clear();
+			return true;
+		};
+		if (!StationaryPlayback.Seek_WithTransformHistory(
+				fProofTime, StationaryBone, strOutError))
+		{
+			strOutError = "FourSlash stationary-bone seek failed: " + strOutError;
+			return false;
+		}
+		PopulateGeometry(StationaryPlayback.Get_Frame(), Stationary);
+		if (!RenderFrame(StationaryRenderer, StationaryPlayback.Get_Frame(),
+				Stationary.Renderer) ||
+			Stationary.iProviderSampleCount < 2u ||
+			Stationary.iRootWorldDistinctCount != 1u ||
+			Stationary.iAnchorWorldDistinctCount != 1u ||
+			Stationary.iTrailPointCount > 1u ||
+			Stationary.iDistinctTrailPointCount > 1u ||
+			0u != Stationary.Renderer.iSubmittedDraws ||
+			0u != Stationary.Renderer.iCommittedDraws ||
+			0u != Stationary.Renderer.iFailedDraws)
+		{
+			if (strOutError.empty())
+				strOutError =
+					"stationary root plus stationary FourSlash bone was not suppressed";
+			return false;
+		}
+
+		CEffectPlayback MissingAnchorPlayback;
+		if (!MissingAnchorPlayback.Stage_Document(Document, strOutError))
+		{
+			strOutError = "FourSlash missing-anchor staging failed: " + strOutError;
+			return false;
+		}
+		const EFFECT_EVALUATED_FRAME BeforeMissing =
+			MissingAnchorPlayback.Get_Frame();
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER MissingAnchor = [](
+			const f32_t,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+			std::string& OutError)
+		{
+			XMStoreFloat4x4(&OutSample.RootWorld, XMMatrixIdentity());
+			OutSample.SourceAnchorWorlds.clear();
+			OutError.clear();
+			return true;
+		};
+		std::string MissingAnchorStatus;
+		const bool_t bMissingAnchorRejected =
+			!MissingAnchorPlayback.Seek_WithTransformHistory(
+				fProofTime, MissingAnchor, MissingAnchorStatus) &&
+			MissingAnchorStatus.find(ANCHOR_ID) != std::string::npos;
+		const EFFECT_EVALUATED_FRAME& AfterMissing =
+			MissingAnchorPlayback.Get_Frame();
+		const bool_t bMissingAnchorStatePreserved =
+			BeforeMissing.fSampleTimeSeconds == AfterMissing.fSampleTimeSeconds &&
+			BeforeMissing.Trails.size() == AfterMissing.Trails.size() &&
+			0 == std::memcmp(&BeforeMissing.RootWorld, &AfterMissing.RootWorld,
+				sizeof(float4x4_t));
+		uint32_t iMissingAnchorTrailPointCount = 0u;
+		for (const EFFECT_EVALUATED_TRAIL& Trail : AfterMissing.Trails)
+		{
+			if (nullptr != Trail.pElement && Trail.pElement->strElementId == ELEMENT_ID)
+				iMissingAnchorTrailPointCount +=
+					static_cast<uint32_t>(Trail.Points.size());
+		}
+		if (!bMissingAnchorRejected || !bMissingAnchorStatePreserved ||
+			0u != iMissingAnchorTrailPointCount)
+		{
+			strOutError =
+				"FourSlash missing runtime anchor did not fail closed with rollback";
+			return false;
+		}
+
+		if (!Write_FourSlashWeaponTrailRuntimeSweep(
+				JsonOutputPath, ResourceRoot, AbsoluteCandidate,
+				CandidateRawSha256, CandidateCanonicalSha256,
+				Positive, Stationary, bMissingAnchorRejected,
+				bMissingAnchorStatePreserved, iMissingAnchorTrailPointCount,
+				MissingAnchorStatus, strOutError))
+		{
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	struct BOUNDED_WEAPON_TRAIL_TARGET_SPEC final
+	{
+		std::string_view strEffectAssetId;
+		std::string_view strRuntimeAnchorSlotId;
+		std::string_view strElementPrefix;
+		f32_t fStartSeconds = 0.f;
+		f32_t fDurationSeconds = 0.f;
+	};
+
+	struct BOUNDED_WEAPON_TRAIL_TARGET_PROOF final
+	{
+		std::string strEffectAssetId;
+		std::string strRuntimeAnchorSlotId;
+		std::filesystem::path CandidatePath;
+		std::string strCandidateRawSha256;
+		std::string strCandidateTypedCodecSha256;
+		f32_t fSourceStartSeconds = 0.f;
+		f32_t fSourceDurationSeconds = 0.f;
+		std::array<std::string, 3u> ElementIds;
+		std::array<FOUR_SLASH_TRAIL_GEOMETRY_PROOF, 3u> Positive;
+		std::array<FOUR_SLASH_TRAIL_GEOMETRY_PROOF, 3u> Stationary;
+		bool_t bMissingAnchorRejected = false;
+		bool_t bMissingAnchorStatePreserved = false;
+		uint32_t iMissingAnchorTrailPointCount = 0u;
+		std::string strMissingAnchorStatus;
+	};
+
+	constexpr std::array<BOUNDED_WEAPON_TRAIL_TARGET_SPEC, 3u>
+		BOUNDED_WEAPON_TRAIL_TARGETS = {
+		BOUNDED_WEAPON_TRAIL_TARGET_SPEC{
+			"effect.valtan.whirlwind.recovery",
+			"VALTAN_WHIRLWIND_RECOVERY_WEAPON_R",
+			"project-valtan-whirlwind-recovery-weapon-trail",
+			0.f, 0.1965470016002655f },
+		BOUNDED_WEAPON_TRAIL_TARGET_SPEC{
+			"effect.valtan.ground-wave-smash.windup",
+			"VALTAN_GROUND_WAVE_SMASH_WINDUP_WEAPON_R",
+			"project-valtan-ground-wave-smash-windup-weapon-trail",
+			0.394663006067276f, 0.47657299041748047f },
+		BOUNDED_WEAPON_TRAIL_TARGET_SPEC{
+			"effect.valtan.jump-spin.recovery",
+			"VALTAN_JUMP_SPIN_RECOVERY_WEAPON_R",
+			"project-valtan-jump-spin-recovery-weapon-trail",
+			0.f, 0.1965470016002655f },
+	};
+
+	bool_t Write_BoundedWeaponTrailRuntimeSweep(
+		const std::filesystem::path& OutputPath,
+		const std::filesystem::path& ResourceRoot,
+		const std::vector<BOUNDED_WEAPON_TRAIL_TARGET_PROOF>& Targets,
+		std::string& strOutError)
+	{
+		const auto WriteRenderer = [](std::ostringstream& Json,
+			const FOUR_SLASH_TRAIL_RENDERER_PROOF& Proof,
+			const std::string_view strIndent)
+		{
+			Json << strIndent << "{\n"
+				<< strIndent << "  \"preparedSamples\": " <<
+					Proof.iPreparedSamples << ",\n"
+				<< strIndent << "  \"attemptedSamples\": " <<
+					Proof.iAttemptedSamples << ",\n"
+				<< strIndent << "  \"submittedDraws\": " <<
+					Proof.iSubmittedDraws << ",\n"
+				<< strIndent << "  \"suppressedDraws\": " <<
+					Proof.iSuppressedDraws << ",\n"
+				<< strIndent << "  \"failedDraws\": " <<
+					Proof.iFailedDraws << ",\n"
+				<< strIndent << "  \"committedDraws\": " <<
+					Proof.iCommittedDraws << ",\n"
+				<< strIndent << "  \"transactionCommitted\": " <<
+					(Proof.bTransactionCommitted ? "true" : "false") << "\n"
+				<< strIndent << "}";
+		};
+		const auto WriteVector = [](std::ostringstream& Json,
+			const float3_t& Value)
+		{
+			Json << "[" << std::setprecision(
+				std::numeric_limits<float>::max_digits10) << Value.x << ", " <<
+				Value.y << ", " << Value.z << "]";
+		};
+
+		std::ostringstream Json;
+		Json << "{\n"
+			<< "  \"schema\": \"lostark.valtan-bounded-weapon-trail-runtime-sweep\",\n"
+			<< "  \"formatVersion\": 1,\n"
+			<< "  \"bossArchetypeId\": \"BOSS_VALTAN\",\n"
+			<< "  \"classification\": \"PROJECT_TUNED\",\n"
+			<< "  \"reconstructionPolicy\": \"BOUNDED_RECONSTRUCTION\",\n"
+			<< "  \"resourceRoot\": \"" <<
+				Client::CDataJson::Escape(ResourceRoot.generic_string()) << "\",\n"
+			<< "  \"runtimeBoneName\": \"b_wp_r_01\",\n"
+			<< "  \"sampleRateHz\": 60,\n"
+			<< "  \"targets\": [\n";
+		for (size_t iTarget = 0u; iTarget < Targets.size(); ++iTarget)
+		{
+			const BOUNDED_WEAPON_TRAIL_TARGET_PROOF& Target = Targets[iTarget];
+			Json << "    {\n"
+				<< "      \"effectAssetId\": \"" <<
+					Client::CDataJson::Escape(Target.strEffectAssetId) << "\",\n"
+				<< "      \"candidatePath\": \"" <<
+					Client::CDataJson::Escape(Target.CandidatePath.generic_string()) << "\",\n"
+				<< "      \"candidateRawSha256\": \"" <<
+					Target.strCandidateRawSha256 << "\",\n"
+				<< "      \"candidateTypedCodecSha256\": \"" <<
+					Target.strCandidateTypedCodecSha256 << "\",\n"
+				<< "      \"runtimeAnchorSlotId\": \"" <<
+					Target.strRuntimeAnchorSlotId << "\",\n"
+				<< "      \"sourceStartSeconds\": " << std::setprecision(
+					std::numeric_limits<float>::max_digits10) <<
+					Target.fSourceStartSeconds << ",\n"
+				<< "      \"sourceDurationSeconds\": " <<
+					Target.fSourceDurationSeconds << ",\n"
+				<< "      \"elements\": [\n";
+			for (size_t iElement = 0u; iElement < Target.ElementIds.size(); ++iElement)
+			{
+				const FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Positive =
+					Target.Positive[iElement];
+				const FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Stationary =
+					Target.Stationary[iElement];
+				Json << "        {\n"
+					<< "          \"elementId\": \"" <<
+						Client::CDataJson::Escape(Target.ElementIds[iElement]) << "\",\n"
+					<< "          \"positiveMovingBone\": {\n"
+					<< "            \"providerSampleCount\": " <<
+						Positive.iProviderSampleCount << ",\n"
+					<< "            \"rootWorldDistinctCount\": " <<
+						Positive.iRootWorldDistinctCount << ",\n"
+					<< "            \"anchorWorldDistinctCount\": " <<
+						Positive.iAnchorWorldDistinctCount << ",\n"
+					<< "            \"trailPointCount\": " <<
+						Positive.iTrailPointCount << ",\n"
+					<< "            \"distinctTrailPointCount\": " <<
+						Positive.iDistinctTrailPointCount << ",\n"
+					<< "            \"finiteTrailPointCount\": " <<
+						Positive.iFiniteTrailPointCount << ",\n"
+					<< "            \"cumulativeDistance\": " <<
+						Positive.fCumulativeDistance << ",\n"
+					<< "            \"firstWorldPosition\": ";
+				WriteVector(Json, Positive.vFirstWorldPosition);
+				Json << ",\n            \"lastWorldPosition\": ";
+				WriteVector(Json, Positive.vLastWorldPosition);
+				Json << ",\n            \"renderer\": ";
+				WriteRenderer(Json, Positive.Renderer, "            ");
+				Json << "\n          },\n"
+					<< "          \"stationaryControl\": {\n"
+					<< "            \"providerSampleCount\": " <<
+						Stationary.iProviderSampleCount << ",\n"
+					<< "            \"rootWorldDistinctCount\": " <<
+						Stationary.iRootWorldDistinctCount << ",\n"
+					<< "            \"anchorWorldDistinctCount\": " <<
+						Stationary.iAnchorWorldDistinctCount << ",\n"
+					<< "            \"trailPointCount\": " <<
+						Stationary.iTrailPointCount << ",\n"
+					<< "            \"distinctTrailPointCount\": " <<
+						Stationary.iDistinctTrailPointCount << ",\n"
+					<< "            \"renderer\": ";
+				WriteRenderer(Json, Stationary.Renderer, "            ");
+				Json << ",\n            \"segmentSuppressed\": true\n"
+					<< "          }\n        }" <<
+					(iElement + 1u == Target.ElementIds.size() ? "\n" : ",\n");
+			}
+			Json << "      ],\n"
+				<< "      \"missingAnchorControl\": {\n"
+				<< "        \"providerRejected\": " <<
+					(Target.bMissingAnchorRejected ? "true" : "false") << ",\n"
+				<< "        \"playbackStatePreserved\": " <<
+					(Target.bMissingAnchorStatePreserved ? "true" : "false") << ",\n"
+				<< "        \"trailPointCountAfterReject\": " <<
+					Target.iMissingAnchorTrailPointCount << ",\n"
+				<< "        \"status\": \"" <<
+					Client::CDataJson::Escape(Target.strMissingAnchorStatus) << "\"\n"
+				<< "      },\n"
+				<< "      \"disposition\": \"DRAWABLE_PROOF_PASS\"\n"
+				<< "    }" << (iTarget + 1u == Targets.size() ? "\n" : ",\n");
+		}
+		Json << "  ],\n"
+			<< "  \"summary\": {\n"
+			<< "    \"targetCount\": 3,\n"
+			<< "    \"elementCount\": 9,\n"
+			<< "    \"movingBoneDrawCount\": 9,\n"
+			<< "    \"stationarySuppressedCount\": 9,\n"
+			<< "    \"missingAnchorRollbackCount\": 3\n"
+			<< "  },\n"
+			<< "  \"disposition\": \"DRAWABLE_PROOF_PASS\"\n"
+			<< "}\n";
+
+		std::error_code Error;
+		const std::filesystem::path AbsoluteOutput = std::filesystem::absolute(
+			OutputPath, Error).lexically_normal();
+		if (Error || !AbsoluteOutput.is_absolute() ||
+			!std::filesystem::is_directory(AbsoluteOutput.parent_path(), Error) || Error)
+		{
+			strOutError = "bounded weapon Trail proof output path is invalid";
+			return false;
+		}
+		for (const BOUNDED_WEAPON_TRAIL_TARGET_PROOF& Target : Targets)
+		{
+			if (AbsoluteOutput == Target.CandidatePath)
+			{
+				strOutError = "bounded weapon Trail proof output collides with input";
+				return false;
+			}
+		}
+		std::filesystem::path StagingPath = AbsoluteOutput;
+		StagingPath += L".staging." + std::to_wstring(GetCurrentProcessId());
+		std::filesystem::remove(StagingPath, Error);
+		Error.clear();
+		{
+			std::ofstream Stream(StagingPath, std::ios::binary | std::ios::trunc);
+			if (!Stream)
+			{
+				strOutError = "unable to create bounded weapon Trail proof staging file";
+				return false;
+			}
+			const std::string Payload = Json.str();
+			Stream.write(Payload.data(), static_cast<std::streamsize>(Payload.size()));
+			Stream.flush();
+			if (!Stream)
+			{
+				Stream.close();
+				std::filesystem::remove(StagingPath, Error);
+				strOutError = "unable to flush bounded weapon Trail proof staging file";
+				return false;
+			}
+		}
+		if (!MoveFileExW(StagingPath.c_str(), AbsoluteOutput.c_str(),
+			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+		{
+			std::filesystem::remove(StagingPath, Error);
+			strOutError = "unable to atomically commit bounded weapon Trail proof";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_BoundedWeaponTrailRuntimeProof(
+		const std::array<std::filesystem::path, 3u>& CandidatePaths,
+		const std::filesystem::path& JsonOutputPath,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		constexpr std::array<std::string_view, 3u> ELEMENT_SUFFIXES = {
+			"emitter5259", "emitter5260", "emitter5258"
+		};
+		constexpr std::string_view BONE_NAME = "b_wp_r_01";
+		constexpr f32_t SAMPLE_RATE = 60.f;
+		const auto NearlyEqual = [](const f32_t Left, const f32_t Right)
+		{
+			return std::fabs(Left - Right) <= 1.0e-6f;
+		};
+
+		std::error_code PathError;
+		if (!JsonOutputPath.is_absolute())
+		{
+			strOutError = "bounded weapon Trail proof output path must be absolute";
+			return false;
+		}
+		std::array<std::filesystem::path, 3u> AbsoluteCandidates;
+		for (size_t iTarget = 0u; iTarget < CandidatePaths.size(); ++iTarget)
+		{
+			AbsoluteCandidates[iTarget] = std::filesystem::absolute(
+				CandidatePaths[iTarget], PathError).lexically_normal();
+			if (PathError || !AbsoluteCandidates[iTarget].is_absolute() ||
+				!std::filesystem::is_regular_file(AbsoluteCandidates[iTarget], PathError) ||
+				PathError || AbsoluteCandidates[iTarget] == JsonOutputPath)
+			{
+				strOutError = "bounded weapon Trail candidate path is invalid";
+				return false;
+			}
+		}
+
+		std::filesystem::path ResourceRoot;
+		if (!Read_DrawableSweepResourceRoot(ResourceRoot, strOutError))
+			return false;
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		if (!WorkingDirectory.Initialize(
+				CProjectDataRoot::Get().parent_path() / L"Client" / L"Default",
+				strOutError))
+		{
+			return false;
+		}
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		if (!EngineScope.Initialize(strOutError))
+			return false;
+		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+
+		std::vector<BOUNDED_WEAPON_TRAIL_TARGET_PROOF> Proofs;
+		Proofs.reserve(BOUNDED_WEAPON_TRAIL_TARGETS.size());
+		for (size_t iTarget = 0u; iTarget < BOUNDED_WEAPON_TRAIL_TARGETS.size(); ++iTarget)
+		{
+			const BOUNDED_WEAPON_TRAIL_TARGET_SPEC& Spec =
+				BOUNDED_WEAPON_TRAIL_TARGETS[iTarget];
+			const std::filesystem::path& CandidatePath = AbsoluteCandidates[iTarget];
+			EFFECT_DOCUMENT_DESC Document;
+			if (!CEffectDocumentCodec::Load(CandidatePath, Document, strOutError) ||
+				!CEffectDocumentCodec::Validate_Drawable(Document, strOutError) ||
+				Document.strEffectAssetId != Spec.strEffectAssetId ||
+				Document.Elements.size() != 3u)
+			{
+				strOutError = CandidatePath.string() + ": invalid candidate: " + strOutError;
+				return false;
+			}
+
+			BOUNDED_WEAPON_TRAIL_TARGET_PROOF Proof;
+			Proof.strEffectAssetId = std::string(Spec.strEffectAssetId);
+			Proof.strRuntimeAnchorSlotId = std::string(Spec.strRuntimeAnchorSlotId);
+			Proof.CandidatePath = CandidatePath;
+			Proof.fSourceStartSeconds = Spec.fStartSeconds;
+			Proof.fSourceDurationSeconds = Spec.fDurationSeconds;
+			std::unordered_map<std::string, size_t> ElementIndexes;
+			for (size_t iElement = 0u; iElement < ELEMENT_SUFFIXES.size(); ++iElement)
+			{
+				Proof.ElementIds[iElement] = std::string(Spec.strElementPrefix) + "." +
+					std::string(ELEMENT_SUFFIXES[iElement]);
+				ElementIndexes.emplace(Proof.ElementIds[iElement], iElement);
+			}
+			for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+			{
+				const auto ElementIndex = ElementIndexes.find(Element.strElementId);
+				if (ElementIndex == ElementIndexes.end() || !Element.bVisible ||
+					Element.eKind != EFFECT_ELEMENT_KIND::TRAIL ||
+					!Element.ActionCueAttachment.bEnabled ||
+					!Element.ActionCueAttachment.bFollow ||
+					Element.ActionCueAttachment.strSourceAnchorSlotId != BONE_NAME ||
+					Element.ActionCueAttachment.strRuntimeAnchorSlotId !=
+						Spec.strRuntimeAnchorSlotId ||
+					Element.ActionCueAttachment.strRuntimeBoneName != BONE_NAME ||
+					Element.SourceRecipe.bEnabled ||
+					!NearlyEqual(Element.Detail.Timing.fStartDelaySeconds,
+						Spec.fStartSeconds) ||
+					!NearlyEqual(Element.Detail.Timing.fLifeTimeSeconds,
+						Spec.fDurationSeconds) ||
+					Element.Detail.Trail.iMaxPoints != 64u ||
+					!NearlyEqual(Element.Detail.Trail.fPointLifeTimeSeconds, 0.35f) ||
+					!NearlyEqual(Element.Detail.Trail.fSampleIntervalSeconds, 0.0166667f) ||
+					!NearlyEqual(Element.Detail.Trail.fMinimumDistance, 0.01f) ||
+					!NearlyEqual(Element.Detail.Trail.fStartWidth, 0.2f) ||
+					!NearlyEqual(Element.Detail.Trail.fEndWidth, 0.f) ||
+					!Element.Detail.Trail.bFaceCamera)
+				{
+					strOutError = CandidatePath.string() +
+						": exact bounded attachment/timing/geometry contract changed";
+					return false;
+				}
+			}
+			if (ElementIndexes.size() != Document.Elements.size())
+			{
+				strOutError = CandidatePath.string() + ": candidate IDs are not exact";
+				return false;
+			}
+
+			const std::string CandidateRaw = Read_Text(CandidatePath);
+			if (CandidateRaw.empty())
+			{
+				strOutError = CandidatePath.string() + ": candidate bytes unavailable";
+				return false;
+			}
+			Proof.strCandidateRawSha256 =
+				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(CandidateRaw);
+			std::string CanonicalError;
+			Proof.strCandidateTypedCodecSha256 =
+				CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
+					Document, CanonicalError);
+			if (Proof.strCandidateRawSha256.size() != 64u ||
+				Proof.strCandidateTypedCodecSha256.size() != 64u)
+			{
+				strOutError = CanonicalError.empty() ?
+					"bounded Trail candidate SHA-256 is invalid" : CanonicalError;
+				return false;
+			}
+
+			const f32_t fProofTime = Spec.fStartSeconds +
+				(std::min)(Spec.fDurationSeconds * 0.75f,
+					Spec.fDurationSeconds - 1.f / SAMPLE_RATE);
+			const auto PopulateGeometry = [&Proof](
+				const EFFECT_EVALUATED_FRAME& Frame,
+				std::array<FOUR_SLASH_TRAIL_GEOMETRY_PROOF, 3u>& Out)
+			{
+				for (const EFFECT_EVALUATED_TRAIL& Trail : Frame.Trails)
+				{
+					if (nullptr == Trail.pElement)
+						continue;
+					const auto Match = std::find(
+						Proof.ElementIds.begin(), Proof.ElementIds.end(),
+						Trail.pElement->strElementId);
+					if (Match == Proof.ElementIds.end())
+						continue;
+					FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Geometry =
+						Out[static_cast<size_t>(Match - Proof.ElementIds.begin())];
+					Geometry.iTrailPointCount =
+						static_cast<uint32_t>(Trail.Points.size());
+					for (size_t iPoint = 0u; iPoint < Trail.Points.size(); ++iPoint)
+					{
+						const EFFECT_EVALUATED_TRAIL_POINT& Point = Trail.Points[iPoint];
+						if (std::isfinite(Point.vWorldPosition.x) &&
+							std::isfinite(Point.vWorldPosition.y) &&
+							std::isfinite(Point.vWorldPosition.z) &&
+							std::isfinite(Point.fNormalizedAge) &&
+							std::isfinite(Point.fCumulativeDistance))
+						{
+							++Geometry.iFiniteTrailPointCount;
+						}
+						if (0u == iPoint || XMVectorGetX(XMVector3LengthSq(
+							XMLoadFloat3(&Point.vWorldPosition) -
+							XMLoadFloat3(&Trail.Points[iPoint - 1u].vWorldPosition))) >
+							1.0e-10f)
+						{
+							++Geometry.iDistinctTrailPointCount;
+						}
+					}
+					if (!Trail.Points.empty())
+					{
+						Geometry.vFirstWorldPosition = Trail.Points.front().vWorldPosition;
+						Geometry.vLastWorldPosition = Trail.Points.back().vWorldPosition;
+						Geometry.fCumulativeDistance =
+							Trail.Points.back().fCumulativeDistance;
+					}
+				}
+			};
+			const auto RenderFrame = [&Proof, &EngineScope, &Context, &Device,
+				&strOutError](CEffectDocumentRenderer& Renderer,
+				const EFFECT_EVALUATED_FRAME& Frame,
+				std::array<FOUR_SLASH_TRAIL_GEOMETRY_PROOF, 3u>& Out)
+			{
+				if (!EngineScope.Begin_Frame(strOutError))
+					return false;
+				const HRESULT hRender = Renderer.Render(Frame);
+				Context->Flush();
+				const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+					Renderer.Get_LastRenderSubmissionStats();
+				const bool_t bCommitted = SUCCEEDED(hRender) && Stats.bCompleted &&
+					Stats.bCommitted && S_OK == Device->GetDeviceRemovedReason();
+				for (FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Geometry : Out)
+					Geometry.Renderer.bTransactionCommitted = bCommitted;
+				if (!bCommitted)
+				{
+					strOutError = "bounded weapon Trail renderer transaction did not commit";
+					return false;
+				}
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+				for (const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row : Stats.Occurrences)
+				{
+					const auto Match = std::find(
+						Proof.ElementIds.begin(), Proof.ElementIds.end(), Row.strElementId);
+					if (Match == Proof.ElementIds.end())
+						continue;
+					FOUR_SLASH_TRAIL_RENDERER_PROOF& RendererProof =
+						Out[static_cast<size_t>(Match - Proof.ElementIds.begin())].Renderer;
+					RendererProof.iPreparedSamples = 0u < Row.iConfigured ? 1u : 0u;
+					RendererProof.iAttemptedSamples = 0u < Row.iAttempted ? 1u : 0u;
+					RendererProof.iSubmittedDraws += Row.iSubmitted;
+					RendererProof.iSuppressedDraws += Row.iSuppressed;
+					RendererProof.iFailedDraws += Row.iFailed;
+					RendererProof.iCommittedDraws += Row.iIssuedDrawCallCount;
+					if ((0u < Row.iSubmitted || 0u < Row.iIssuedDrawCallCount) &&
+						(UINT32_MAX == Row.iSelectedPassIndex ||
+						 Row.bSourceMaterialFallbackBlocked ||
+						 Row.bDrawSelectionDiverged))
+					{
+						RendererProof.bTransactionCommitted = false;
+					}
+				}
+#else
+				strOutError =
+					"bounded weapon Trail runtime proof requires execution diagnostics";
+				return false;
+#endif
+				return true;
+			};
+
+			uint32_t iPositiveProviderSamples = 0u;
+			uint32_t iPositiveAnchorDistinct = 0u;
+			bool_t bHasPreviousAnchor = false;
+			float3_t vPreviousAnchor{};
+			CEffectPlayback PositivePlayback;
+			CEffectDocumentRenderer PositiveRenderer(Device, Context);
+			if (FAILED(PositiveRenderer.Initialize()) ||
+				!PositivePlayback.Stage_Document(Document, strOutError) ||
+				!PositiveRenderer.Stage_Document(Document, strOutError))
+			{
+				strOutError = CandidatePath.string() + ": positive staging failed: " +
+					strOutError;
+				return false;
+			}
+			const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER MovingBone =
+				[&iPositiveProviderSamples, &iPositiveAnchorDistinct,
+				 &bHasPreviousAnchor, &vPreviousAnchor, &Spec](
+					const f32_t fSampleTime,
+					EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+					std::string& OutError)
+			{
+				++iPositiveProviderSamples;
+				XMStoreFloat4x4(&OutSample.RootWorld, XMMatrixIdentity());
+				const float3_t AnchorPosition(
+					2.f * fSampleTime,
+					0.15f * std::sin(9.f * fSampleTime),
+					0.1f * std::sin(5.f * fSampleTime));
+				if (!bHasPreviousAnchor || XMVectorGetX(XMVector3LengthSq(
+					XMLoadFloat3(&AnchorPosition) - XMLoadFloat3(&vPreviousAnchor))) >
+					1.0e-10f)
+				{
+					++iPositiveAnchorDistinct;
+				}
+				vPreviousAnchor = AnchorPosition;
+				bHasPreviousAnchor = true;
+				float4x4_t AnchorWorld{};
+				XMStoreFloat4x4(&AnchorWorld, XMMatrixTranslation(
+					AnchorPosition.x, AnchorPosition.y, AnchorPosition.z));
+				OutSample.SourceAnchorWorlds.clear();
+				OutSample.SourceAnchorWorlds.emplace(
+					std::string(Spec.strRuntimeAnchorSlotId), AnchorWorld);
+				OutError.clear();
+				return true;
+			};
+			if (!PositivePlayback.Seek_WithTransformHistory(
+					fProofTime, MovingBone, strOutError))
+			{
+				strOutError = CandidatePath.string() + ": moving-bone seek failed: " +
+					strOutError;
+				return false;
+			}
+			PopulateGeometry(PositivePlayback.Get_Frame(), Proof.Positive);
+			for (FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Geometry : Proof.Positive)
+			{
+				Geometry.iProviderSampleCount = iPositiveProviderSamples;
+				Geometry.iRootWorldDistinctCount = 1u;
+				Geometry.iAnchorWorldDistinctCount = iPositiveAnchorDistinct;
+			}
+			if (!RenderFrame(PositiveRenderer, PositivePlayback.Get_Frame(),
+					Proof.Positive))
+			{
+				return false;
+			}
+			for (const FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Geometry : Proof.Positive)
+			{
+				if (Geometry.iProviderSampleCount < 2u ||
+					Geometry.iRootWorldDistinctCount != 1u ||
+					Geometry.iAnchorWorldDistinctCount < 2u ||
+					Geometry.iTrailPointCount < 2u ||
+					Geometry.iDistinctTrailPointCount < 2u ||
+					Geometry.iFiniteTrailPointCount != Geometry.iTrailPointCount ||
+					!std::isfinite(Geometry.fCumulativeDistance) ||
+					Geometry.fCumulativeDistance <= 0.f ||
+					0u == Geometry.Renderer.iPreparedSamples ||
+					0u == Geometry.Renderer.iAttemptedSamples ||
+					0u == Geometry.Renderer.iSubmittedDraws ||
+					0u == Geometry.Renderer.iCommittedDraws ||
+					0u != Geometry.Renderer.iFailedDraws ||
+					!Geometry.Renderer.bTransactionCommitted)
+				{
+					strOutError = CandidatePath.string() +
+						": stationary root plus moving weapon bone did not draw all Trails";
+					return false;
+				}
+			}
+
+			uint32_t iStationaryProviderSamples = 0u;
+			CEffectPlayback StationaryPlayback;
+			CEffectDocumentRenderer StationaryRenderer(Device, Context);
+			if (FAILED(StationaryRenderer.Initialize()) ||
+				!StationaryPlayback.Stage_Document(Document, strOutError) ||
+				!StationaryRenderer.Stage_Document(Document, strOutError))
+			{
+				strOutError = CandidatePath.string() + ": stationary staging failed: " +
+					strOutError;
+				return false;
+			}
+			const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER StationaryBone =
+				[&iStationaryProviderSamples, &Spec](const f32_t,
+					EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+					std::string& OutError)
+			{
+				++iStationaryProviderSamples;
+				XMStoreFloat4x4(&OutSample.RootWorld, XMMatrixIdentity());
+				float4x4_t AnchorWorld{};
+				XMStoreFloat4x4(&AnchorWorld, XMMatrixIdentity());
+				OutSample.SourceAnchorWorlds.clear();
+				OutSample.SourceAnchorWorlds.emplace(
+					std::string(Spec.strRuntimeAnchorSlotId), AnchorWorld);
+				OutError.clear();
+				return true;
+			};
+			if (!StationaryPlayback.Seek_WithTransformHistory(
+					fProofTime, StationaryBone, strOutError))
+			{
+				strOutError = CandidatePath.string() + ": stationary seek failed: " +
+					strOutError;
+				return false;
+			}
+			PopulateGeometry(StationaryPlayback.Get_Frame(), Proof.Stationary);
+			for (FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Geometry : Proof.Stationary)
+			{
+				Geometry.iProviderSampleCount = iStationaryProviderSamples;
+				Geometry.iRootWorldDistinctCount = 1u;
+				Geometry.iAnchorWorldDistinctCount = 1u;
+			}
+			if (!RenderFrame(StationaryRenderer, StationaryPlayback.Get_Frame(),
+					Proof.Stationary))
+			{
+				return false;
+			}
+			for (const FOUR_SLASH_TRAIL_GEOMETRY_PROOF& Geometry : Proof.Stationary)
+			{
+				if (Geometry.iProviderSampleCount < 2u ||
+					Geometry.iRootWorldDistinctCount != 1u ||
+					Geometry.iAnchorWorldDistinctCount != 1u ||
+					Geometry.iTrailPointCount > 1u ||
+					Geometry.iDistinctTrailPointCount > 1u ||
+					0u != Geometry.Renderer.iSubmittedDraws ||
+					0u != Geometry.Renderer.iCommittedDraws ||
+					0u != Geometry.Renderer.iFailedDraws ||
+					!Geometry.Renderer.bTransactionCommitted)
+				{
+					strOutError = CandidatePath.string() +
+						": stationary root plus stationary weapon bone was not suppressed";
+					return false;
+				}
+			}
+
+			CEffectPlayback MissingAnchorPlayback;
+			if (!MissingAnchorPlayback.Stage_Document(Document, strOutError))
+			{
+				strOutError = CandidatePath.string() +
+					": missing-anchor staging failed: " + strOutError;
+				return false;
+			}
+			const EFFECT_EVALUATED_FRAME BeforeMissing =
+				MissingAnchorPlayback.Get_Frame();
+			const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER MissingAnchor = [](
+				const f32_t,
+				EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+				std::string& OutError)
+			{
+				XMStoreFloat4x4(&OutSample.RootWorld, XMMatrixIdentity());
+				OutSample.SourceAnchorWorlds.clear();
+				OutError.clear();
+				return true;
+			};
+			Proof.bMissingAnchorRejected =
+				!MissingAnchorPlayback.Seek_WithTransformHistory(
+					fProofTime, MissingAnchor, Proof.strMissingAnchorStatus) &&
+				Proof.strMissingAnchorStatus.find(Spec.strRuntimeAnchorSlotId) !=
+					std::string::npos;
+			const EFFECT_EVALUATED_FRAME& AfterMissing =
+				MissingAnchorPlayback.Get_Frame();
+			Proof.bMissingAnchorStatePreserved =
+				BeforeMissing.fSampleTimeSeconds == AfterMissing.fSampleTimeSeconds &&
+				BeforeMissing.Trails.size() == AfterMissing.Trails.size() &&
+				0 == std::memcmp(&BeforeMissing.RootWorld, &AfterMissing.RootWorld,
+					sizeof(float4x4_t));
+			for (const EFFECT_EVALUATED_TRAIL& Trail : AfterMissing.Trails)
+			{
+				if (nullptr != Trail.pElement &&
+					ElementIndexes.contains(Trail.pElement->strElementId))
+				{
+					Proof.iMissingAnchorTrailPointCount +=
+						static_cast<uint32_t>(Trail.Points.size());
+				}
+			}
+			if (!Proof.bMissingAnchorRejected ||
+				!Proof.bMissingAnchorStatePreserved ||
+				0u != Proof.iMissingAnchorTrailPointCount)
+			{
+				strOutError = CandidatePath.string() +
+					": missing runtime anchor did not fail closed with rollback";
+				return false;
+			}
+			Proofs.push_back(std::move(Proof));
+		}
+
+		if (!Write_BoundedWeaponTrailRuntimeSweep(
+				JsonOutputPath, ResourceRoot, Proofs, strOutError))
+		{
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	struct VALTAN_COMBAT_OBJECT_DRAW_ROW final
+	{
+		std::string strElementId;
+		std::string strFamily;
+		uint64_t iConfigured = 0u;
+		uint64_t iAttempted = 0u;
+		uint64_t iSubmitted = 0u;
+		uint64_t iCommitted = 0u;
+		uint64_t iSuppressed = 0u;
+		uint64_t iFailed = 0u;
+		float3_t vPositionMin{};
+		float3_t vPositionMax{};
+		bool_t bHasSubmittedPosition = false;
+	};
+
+	struct VALTAN_COMBAT_OBJECT_DRAW_SAMPLE final
+	{
+		std::string strLabel;
+		f32_t fRequestedSeconds = 0.f;
+		f32_t fEvaluatedSeconds = 0.f;
+		float3_t vRootPosition{};
+		std::vector<VALTAN_COMBAT_OBJECT_DRAW_ROW> Rows;
+		float3_t vSubmittedPositionMin{};
+		float3_t vSubmittedPositionMax{};
+		bool_t bHasSubmittedBounds = false;
+		bool_t bTransactionCommitted = false;
+	};
+
+	struct VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL final
+	{
+		std::string strElementId;
+		std::string strFamily;
+		uint64_t iPreparedSamples = 0u;
+		uint64_t iAttemptedSamples = 0u;
+		uint64_t iSubmittedDraws = 0u;
+		uint64_t iCommittedDraws = 0u;
+		uint64_t iSuppressedDraws = 0u;
+		uint64_t iFailedDraws = 0u;
+	};
+
+	struct VALTAN_COMBAT_OBJECT_TARGET_PROOF final
+	{
+		std::string strCombatObjectArchetypeId;
+		std::string strClientVisualId;
+		std::string strEffectAssetId;
+		std::filesystem::path DocumentPath;
+		std::string strDocumentRawSha256;
+		std::string strDocumentTypedCodecSha256;
+		std::string strRootPolicy;
+		f32_t fEffectDurationSeconds = 0.f;
+		uint32_t iRootWorldDistinctCount = 0u;
+		uint32_t iSubmittedBoundsDistinctCount = 0u;
+		uint64_t iUnauditedSubmittedDraws = 0u;
+		std::vector<std::string> AuditedElementIds;
+		std::vector<VALTAN_COMBAT_OBJECT_DRAW_SAMPLE> Samples;
+		std::vector<VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL> ElementTotals;
+	};
+
+	const char_t* Get_CombatObjectProofFamilyLabel(
+		const Client::EFFECT_GPU_RENDER_FAMILY eFamily)
+	{
+		using namespace Client;
+		switch (eFamily)
+		{
+		case EFFECT_GPU_RENDER_FAMILY::MESH:
+			return "MESH";
+		case EFFECT_GPU_RENDER_FAMILY::SPRITE:
+			return "SPRITE";
+		case EFFECT_GPU_RENDER_FAMILY::DECAL:
+			return "DECAL";
+		case EFFECT_GPU_RENDER_FAMILY::RIBBON:
+			return "RIBBON";
+		default:
+			return "END";
+		}
+	}
+
+	bool_t Is_FiniteCombatObjectProofVector(const float3_t& Value)
+	{
+		return std::isfinite(Value.x) && std::isfinite(Value.y) &&
+			std::isfinite(Value.z);
+	}
+
+	bool_t Is_FiniteCombatObjectProofFrame(
+		const Client::EFFECT_EVALUATED_FRAME& Frame)
+	{
+		const f32_t* pRoot = &Frame.RootWorld._11;
+		if (!std::isfinite(Frame.fSampleTimeSeconds) ||
+			!std::all_of(pRoot, pRoot + 16u,
+				[](const f32_t Value) { return std::isfinite(Value); }))
+		{
+			return false;
+		}
+		for (const Client::EFFECT_EVALUATED_ELEMENT& Element : Frame.Elements)
+		{
+			const f32_t* pWorld = &Element.World._11;
+			if (nullptr == Element.pElement ||
+				!std::all_of(pWorld, pWorld + 16u,
+					[](const f32_t Value) { return std::isfinite(Value); }) ||
+				!std::isfinite(Element.fLocalTimeSeconds) ||
+				!std::isfinite(Element.fNormalizedLife))
+			{
+				return false;
+			}
+		}
+		for (const Client::EFFECT_EVALUATED_PARTICLE& Particle : Frame.Particles)
+		{
+			const f32_t* pWorld = &Particle.World._11;
+			if (nullptr == Particle.pElement ||
+				!std::all_of(pWorld, pWorld + 16u,
+					[](const f32_t Value) { return std::isfinite(Value); }) ||
+				!Is_FiniteCombatObjectProofVector(Particle.vWorldVelocity) ||
+				!std::isfinite(Particle.fNormalizedLife))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t Write_ValtanCombatObjectRuntimeSweep(
+		const std::filesystem::path& OutputPath,
+		const std::filesystem::path& ResourceRoot,
+		const std::filesystem::path& BossCatalogPath,
+		const std::string_view strBossCatalogRawSha256,
+		const std::filesystem::path& CombatObjectCatalogPath,
+		const std::string_view strCombatObjectCatalogRawSha256,
+		const size_t iLifecycleAssertionCount,
+		const size_t iLifecycleFailureCount,
+		const std::vector<VALTAN_COMBAT_OBJECT_TARGET_PROOF>& Targets,
+		std::string& strOutError)
+	{
+		const auto WriteVector = [](std::ostringstream& Json,
+			const float3_t& Value)
+		{
+			Json << "[" << std::setprecision(
+				std::numeric_limits<float>::max_digits10) << Value.x << ", " <<
+				Value.y << ", " << Value.z << "]";
+		};
+		std::ostringstream Json;
+		Json << "{\n"
+			<< "  \"schema\": \"lostark.valtan-combat-object-runtime-sweep\",\n"
+			<< "  \"formatVersion\": 1,\n"
+			<< "  \"bossArchetypeId\": \"BOSS_VALTAN\",\n"
+			<< "  \"renderer\": {\"driver\": \"D3D_DRIVER_TYPE_WARP\", "
+				"\"vendorId\": 5140, \"deviceId\": 140},\n"
+			<< "  \"resourceRoot\": \"" <<
+				Client::CDataJson::Escape(ResourceRoot.generic_string()) << "\",\n"
+			<< "  \"bossCatalog\": {\"path\": \"" <<
+				Client::CDataJson::Escape(BossCatalogPath.generic_string()) <<
+				"\", \"rawSha256\": \"" << strBossCatalogRawSha256 << "\"},\n"
+			<< "  \"combatObjectCatalog\": {\"path\": \"" <<
+				Client::CDataJson::Escape(
+					CombatObjectCatalogPath.generic_string()) <<
+				"\", \"rawSha256\": \"" <<
+				strCombatObjectCatalogRawSha256 << "\"},\n"
+			<< "  \"existingLifecycleHarness\": {\n"
+			<< "    \"mode\": \"--valtan-combat-object-presentation-fast\",\n"
+			<< "    \"assertionCount\": " << iLifecycleAssertionCount << ",\n"
+			<< "    \"failureCount\": " << iLifecycleFailureCount << ",\n"
+			<< "    \"facts\": [\"LATE_INITIAL_AGE_RESOLUTION\", "
+				"\"STOP_ONCE\", \"ATOMIC_SNAPSHOT_ROLLBACK\", "
+				"\"BOUNDED_THREE_ATTEMPT_RETRY\", "
+				"\"UPDATE_FAILURE_STOP_AND_RETRY\"]\n"
+			<< "  },\n"
+			<< "  \"targets\": [\n";
+		for (size_t iTarget = 0u; iTarget < Targets.size(); ++iTarget)
+		{
+			const VALTAN_COMBAT_OBJECT_TARGET_PROOF& Target = Targets[iTarget];
+			Json << "    {\n"
+				<< "      \"combatObjectArchetypeId\": \"" <<
+					Client::CDataJson::Escape(
+						Target.strCombatObjectArchetypeId) << "\",\n"
+				<< "      \"clientVisualId\": \"" <<
+					Client::CDataJson::Escape(Target.strClientVisualId) << "\",\n"
+				<< "      \"effectAssetId\": \"" <<
+					Client::CDataJson::Escape(Target.strEffectAssetId) << "\",\n"
+				<< "      \"documentPath\": \"" <<
+					Client::CDataJson::Escape(Target.DocumentPath.generic_string()) <<
+					"\",\n"
+				<< "      \"documentRawSha256\": \"" <<
+					Target.strDocumentRawSha256 << "\",\n"
+				<< "      \"documentTypedCodecSha256\": \"" <<
+					Target.strDocumentTypedCodecSha256 << "\",\n"
+				<< "      \"rootPolicy\": \"" << Target.strRootPolicy << "\",\n"
+				<< "      \"effectDurationSeconds\": " <<
+					std::setprecision(std::numeric_limits<float>::max_digits10) <<
+					Target.fEffectDurationSeconds << ",\n"
+				<< "      \"rootWorldDistinctCount\": " <<
+					Target.iRootWorldDistinctCount << ",\n"
+				<< "      \"submittedBoundsDistinctCount\": " <<
+					Target.iSubmittedBoundsDistinctCount << ",\n"
+				<< "      \"unauditedSubmittedDraws\": " <<
+					Target.iUnauditedSubmittedDraws << ",\n"
+				<< "      \"auditedElementIds\": [";
+			for (size_t iElement = 0u;
+				iElement < Target.AuditedElementIds.size(); ++iElement)
+			{
+				Json << "\"" << Client::CDataJson::Escape(
+					Target.AuditedElementIds[iElement]) << "\"" <<
+					(iElement + 1u < Target.AuditedElementIds.size() ? ", " : "");
+			}
+			Json << "],\n"
+				<< "      \"samples\": [\n";
+			for (size_t iSample = 0u; iSample < Target.Samples.size(); ++iSample)
+			{
+				const VALTAN_COMBAT_OBJECT_DRAW_SAMPLE& Sample =
+					Target.Samples[iSample];
+				Json << "        {\n"
+					<< "          \"label\": \"" << Sample.strLabel << "\",\n"
+					<< "          \"requestedSeconds\": " <<
+						std::setprecision(
+							std::numeric_limits<float>::max_digits10) <<
+						Sample.fRequestedSeconds << ",\n"
+					<< "          \"evaluatedSeconds\": " <<
+						Sample.fEvaluatedSeconds << ",\n"
+					<< "          \"rootPosition\": ";
+				WriteVector(Json, Sample.vRootPosition);
+				Json << ",\n"
+					<< "          \"hasSubmittedBounds\": " <<
+						(Sample.bHasSubmittedBounds ? "true" : "false") << ",\n"
+					<< "          \"submittedPositionMin\": ";
+				WriteVector(Json, Sample.vSubmittedPositionMin);
+				Json << ",\n"
+					<< "          \"submittedPositionMax\": ";
+				WriteVector(Json, Sample.vSubmittedPositionMax);
+				Json << ",\n"
+					<< "          \"transactionCommitted\": " <<
+						(Sample.bTransactionCommitted ? "true" : "false") << ",\n"
+					<< "          \"rows\": [\n";
+				for (size_t iRow = 0u; iRow < Sample.Rows.size(); ++iRow)
+				{
+					const VALTAN_COMBAT_OBJECT_DRAW_ROW& Row = Sample.Rows[iRow];
+					Json << "            {\"elementId\": \"" <<
+						Client::CDataJson::Escape(Row.strElementId) <<
+						"\", \"family\": \"" << Row.strFamily <<
+						"\", \"configured\": " << Row.iConfigured <<
+						", \"attempted\": " << Row.iAttempted <<
+						", \"submitted\": " << Row.iSubmitted <<
+						", \"committed\": " << Row.iCommitted <<
+						", \"suppressed\": " << Row.iSuppressed <<
+						", \"failed\": " << Row.iFailed <<
+						", \"hasSubmittedPosition\": " <<
+						(Row.bHasSubmittedPosition ? "true" : "false") <<
+						", \"positionMin\": ";
+					WriteVector(Json, Row.vPositionMin);
+					Json << ", \"positionMax\": ";
+					WriteVector(Json, Row.vPositionMax);
+					Json << "}" << (iRow + 1u < Sample.Rows.size() ? "," : "") <<
+						"\n";
+				}
+				Json << "          ]\n"
+					<< "        }" <<
+					(iSample + 1u < Target.Samples.size() ? "," : "") << "\n";
+			}
+			Json << "      ],\n"
+				<< "      \"elementTotals\": [\n";
+			for (size_t iElement = 0u;
+				iElement < Target.ElementTotals.size(); ++iElement)
+			{
+				const VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL& Element =
+					Target.ElementTotals[iElement];
+				Json << "        {\"elementId\": \"" <<
+					Client::CDataJson::Escape(Element.strElementId) <<
+					"\", \"family\": \"" << Element.strFamily <<
+					"\", \"preparedSamples\": " << Element.iPreparedSamples <<
+					", \"attemptedSamples\": " << Element.iAttemptedSamples <<
+					", \"submittedDraws\": " << Element.iSubmittedDraws <<
+					", \"committedDraws\": " << Element.iCommittedDraws <<
+					", \"suppressedDraws\": " << Element.iSuppressedDraws <<
+					", \"failedDraws\": " << Element.iFailedDraws << "}" <<
+					(iElement + 1u < Target.ElementTotals.size() ? "," : "") <<
+					"\n";
+			}
+			Json << "      ]\n"
+				<< "    }" << (iTarget + 1u < Targets.size() ? "," : "") <<
+				"\n";
+		}
+		Json << "  ],\n"
+			<< "  \"ownerLifetimeBoundary\": {\n"
+			<< "    \"combatObjectArchetypeId\": "
+				"\"combatobject.valtan.high-jump.target-axe\",\n"
+			<< "    \"seconds\": 1.9,\n"
+			<< "    \"rendererSampleAttempted\": false,\n"
+			<< "    \"stopAppliedByExistingLifecycleHarness\": true\n"
+			<< "  },\n"
+			<< "  \"disposition\": \"DRAWABLE_PROOF_PASS\"\n"
+			<< "}\n";
+
+		std::error_code Error;
+		const std::filesystem::path AbsoluteOutput = std::filesystem::absolute(
+			OutputPath, Error).lexically_normal();
+		if (Error || !AbsoluteOutput.is_absolute() ||
+			!std::filesystem::is_directory(AbsoluteOutput.parent_path(), Error) ||
+			Error)
+		{
+			strOutError = "Valtan combat-object proof output parent is invalid";
+			return false;
+		}
+		std::filesystem::path StagingPath = AbsoluteOutput;
+		StagingPath += L".staging." + std::to_wstring(GetCurrentProcessId());
+		std::filesystem::remove(StagingPath, Error);
+		Error.clear();
+		{
+			std::ofstream Stream(StagingPath, std::ios::binary | std::ios::trunc);
+			if (!Stream)
+			{
+				strOutError =
+					"unable to create Valtan combat-object proof staging file";
+				return false;
+			}
+			const std::string Payload = Json.str();
+			Stream.write(Payload.data(),
+				static_cast<std::streamsize>(Payload.size()));
+			Stream.flush();
+			if (!Stream)
+			{
+				Stream.close();
+				std::filesystem::remove(StagingPath, Error);
+				strOutError =
+					"unable to flush Valtan combat-object proof staging file";
+				return false;
+			}
+		}
+		if (!MoveFileExW(StagingPath.c_str(), AbsoluteOutput.c_str(),
+			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+		{
+			std::filesystem::remove(StagingPath, Error);
+			strOutError =
+				"unable to atomically commit Valtan combat-object runtime sweep";
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
+
+	bool_t Validate_ValtanCombatObjectDrawableRuntimeProof(
+		const std::filesystem::path& JsonOutputPath,
+		const size_t iLifecycleAssertionCount,
+		const size_t iLifecycleFailureCount,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		constexpr std::array<std::string_view, 3u> SKY_ELEMENTS = {{
+			"mesh.valtan.sky-axe.descent",
+			"decal.valtan.sky-axe.target",
+			"particle.valtan.sky-axe.impact"
+		}};
+		constexpr std::array<std::string_view, 5u> RED_SOURCE_ELEMENTS = {{
+			"source.055adf57f38ac8f25be3",
+			"source.5cb81ed1867daa4c331a",
+			"source.5d987e41721843a8d390",
+			"source.94fe8920096dda4a4e73",
+			"source.f997148180378f188150"
+		}};
+		if (!JsonOutputPath.is_absolute() || 0u != iLifecycleFailureCount ||
+			iLifecycleAssertionCount != 9u)
+		{
+			strOutError =
+				"Valtan combat-object renderer proof requires the existing 9-assertion lifecycle gate";
+			return false;
+		}
+		std::filesystem::path ResourceRoot;
+		if (!Read_DrawableSweepResourceRoot(ResourceRoot, strOutError))
+			return false;
+		const std::filesystem::path RepositoryRoot =
+			CProjectDataRoot::Get().parent_path();
+		const std::filesystem::path BossCatalogPath = std::filesystem::absolute(
+			RepositoryRoot / "Data/Actors/BossCatalog.json").lexically_normal();
+		const std::filesystem::path CombatObjectCatalogPath =
+			std::filesystem::absolute(RepositoryRoot /
+				"Data/Encounters/Valtan/ValtanCombatObjects.json").lexically_normal();
+		const std::string BossCatalogRaw = Read_Text(BossCatalogPath);
+		const std::string CombatObjectCatalogRaw =
+			Read_Text(CombatObjectCatalogPath);
+		const std::string BossCatalogRawSha256 =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(BossCatalogRaw);
+		const std::string CombatObjectCatalogRawSha256 =
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CombatObjectCatalogRaw);
+		if (BossCatalogRaw.empty() || CombatObjectCatalogRaw.empty() ||
+			BossCatalogRawSha256.size() != 64u ||
+			CombatObjectCatalogRawSha256.size() != 64u)
+		{
+			strOutError = "Valtan combat-object proof input catalog is unavailable";
+			return false;
+		}
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		if (!WorkingDirectory.Initialize(
+			RepositoryRoot / L"Client" / L"Default", strOutError))
+		{
+			return false;
+		}
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		if (!EngineScope.Initialize(strOutError))
+			return false;
+		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+
+		struct SAMPLE_CONFIG final
+		{
+			const char_t* pLabel = nullptr;
+			f32_t fRequestedSeconds = 0.f;
+			float3_t vRootPosition{};
+		};
+		const std::array<SAMPLE_CONFIG, 5u> SkySamples = {{
+			{ "spawn", 0.f, { 2.f, 0.f, 4.f } },
+			{ "pre-impact", 1.19f, { 2.f, 0.f, 4.f } },
+			{ "late-initial-seek-impact-start", 1.2f, { 2.f, 0.f, 4.f } },
+			{ "impact-midlife", 1.5f, { 2.f, 0.f, 4.f } },
+			{ "impact-life-end", 1.85f, { 2.f, 0.f, 4.f } }
+		}};
+		constexpr f32_t RED_SPEED_METRES_PER_SECOND = 24.444445f;
+		const std::array<SAMPLE_CONFIG, 4u> RedSamples = {{
+			{ "spawn-zero-step", 0.f, { 0.f, 0.f, 4.f } },
+			{ "first-fixed-step", 1.f / 60.f,
+				{ RED_SPEED_METRES_PER_SECOND / 60.f, 0.f, 4.f } },
+			{ "late-initial-seek-mid-flight", 0.45f,
+				{ RED_SPEED_METRES_PER_SECOND * 0.45f, 0.f, 4.f } },
+			{ "pre-despawn", 0.899f,
+				{ RED_SPEED_METRES_PER_SECOND * 0.899f, 0.f, 4.f } }
+		}};
+
+		const auto BuildTarget = [&](const std::string_view strArchetypeId,
+			const std::string_view strVisualId,
+			const std::string_view strEffectAssetId,
+			const std::filesystem::path& DocumentPath,
+			const std::vector<std::string>& ElementIds,
+			const std::span<const SAMPLE_CONFIG> Samples,
+			const std::string_view strRootPolicy,
+			VALTAN_COMBAT_OBJECT_TARGET_PROOF& OutProof) -> bool_t
+		{
+			EFFECT_DOCUMENT_DESC Document;
+			if (!CEffectDocumentCodec::Load(DocumentPath, Document, strOutError) ||
+				!CEffectDocumentCodec::Validate_Drawable(Document, strOutError) ||
+				Document.strEffectAssetId != strEffectAssetId)
+			{
+				strOutError = DocumentPath.string() + ": " + strOutError;
+				return false;
+			}
+			const std::string Raw = Read_Text(DocumentPath);
+			const std::string RawSha256 =
+				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Raw);
+			std::string TypedStatus;
+			const std::string TypedSha256 =
+				CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
+					Document, TypedStatus);
+			if (Raw.empty() || RawSha256.size() != 64u ||
+				TypedSha256.size() != 64u)
+			{
+				strOutError = TypedStatus.empty() ?
+					"Valtan combat-object document identity is unavailable" :
+					TypedStatus;
+				return false;
+			}
+			std::unordered_map<std::string, const EFFECT_ELEMENT_DESC*>
+				ExpectedElements;
+			for (const std::string& ElementId : ElementIds)
+			{
+				const auto Found = std::find_if(Document.Elements.begin(),
+					Document.Elements.end(), [&ElementId](const EFFECT_ELEMENT_DESC& Row)
+					{
+						return Row.strElementId == ElementId;
+					});
+				if (Found == Document.Elements.end() ||
+					!ExpectedElements.emplace(ElementId, &*Found).second)
+				{
+					strOutError = "Valtan combat-object expected element is missing";
+					return false;
+				}
+			}
+
+			CEffectPlayback Playback;
+			CEffectDocumentRenderer Renderer(Device, Context);
+			if (FAILED(Renderer.Initialize()) ||
+				!Playback.Stage_Document(Document, strOutError) ||
+				!Renderer.Stage_Document(Document, strOutError))
+			{
+				strOutError = DocumentPath.string() + ": " + strOutError;
+				return false;
+			}
+			OutProof = {};
+			OutProof.strCombatObjectArchetypeId = strArchetypeId;
+			OutProof.strClientVisualId = strVisualId;
+			OutProof.strEffectAssetId = strEffectAssetId;
+			OutProof.DocumentPath = std::filesystem::absolute(
+				DocumentPath).lexically_normal();
+			OutProof.strDocumentRawSha256 = RawSha256;
+			OutProof.strDocumentTypedCodecSha256 = TypedSha256;
+			OutProof.strRootPolicy = strRootPolicy;
+			OutProof.fEffectDurationSeconds = Playback.Get_DurationSeconds();
+			OutProof.AuditedElementIds = ElementIds;
+			for (const std::string& ElementId : ElementIds)
+			{
+				VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL Total;
+				Total.strElementId = ElementId;
+				OutProof.ElementTotals.push_back(std::move(Total));
+			}
+			std::vector<float3_t> DistinctRoots;
+			std::vector<std::pair<float3_t, float3_t>> DistinctBounds;
+			for (const SAMPLE_CONFIG& Config : Samples)
+			{
+				float4x4_t RootWorld{};
+				XMStoreFloat4x4(&RootWorld, XMMatrixTranslation(
+					Config.vRootPosition.x, Config.vRootPosition.y,
+					Config.vRootPosition.z));
+				Playback.Seek(Config.fRequestedSeconds, RootWorld);
+				const EFFECT_EVALUATED_FRAME& Frame = Playback.Get_Frame();
+				if (!Is_FiniteCombatObjectProofFrame(Frame) ||
+					!EngineScope.Begin_Frame(strOutError))
+				{
+					return false;
+				}
+				const HRESULT RenderResult = Renderer.Render(Frame);
+				Context->Flush();
+				const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+					Renderer.Get_LastRenderSubmissionStats();
+				if (FAILED(RenderResult) ||
+					S_OK != Device->GetDeviceRemovedReason() ||
+					!Stats.bCompleted || !Stats.bCommitted)
+				{
+					strOutError =
+						"Valtan combat-object renderer transaction did not commit";
+					return false;
+				}
+
+				VALTAN_COMBAT_OBJECT_DRAW_SAMPLE Sample;
+				Sample.strLabel = Config.pLabel;
+				Sample.fRequestedSeconds = Config.fRequestedSeconds;
+				Sample.fEvaluatedSeconds = Frame.fSampleTimeSeconds;
+				Sample.vRootPosition = Config.vRootPosition;
+				Sample.bTransactionCommitted = true;
+				const bool_t bRootAlreadyCounted = std::any_of(
+					DistinctRoots.begin(), DistinctRoots.end(),
+					[&Config](const float3_t& Root)
+					{
+						return XMVectorGetX(XMVector3LengthSq(
+							XMLoadFloat3(&Root) -
+							XMLoadFloat3(&Config.vRootPosition))) <= 1.0e-10f;
+					});
+				if (!bRootAlreadyCounted)
+					DistinctRoots.push_back(Config.vRootPosition);
+				for (const std::string& ElementId : ElementIds)
+				{
+					const auto Row = std::find_if(Stats.Occurrences.begin(),
+						Stats.Occurrences.end(), [&ElementId](
+							const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Candidate)
+						{
+							return Candidate.strElementId == ElementId;
+						});
+					if (Row == Stats.Occurrences.end())
+					{
+						strOutError =
+							"Valtan combat-object renderer omitted an expected occurrence";
+						return false;
+					}
+					VALTAN_COMBAT_OBJECT_DRAW_ROW Draw;
+					Draw.strElementId = ElementId;
+					Draw.strFamily = Get_CombatObjectProofFamilyLabel(Row->eFamily);
+					Draw.iConfigured = Row->iConfigured;
+					Draw.iAttempted = Row->iAttempted;
+					Draw.iSubmitted = Row->iSubmitted;
+					Draw.iCommitted = Row->iIssuedDrawCallCount;
+					Draw.iSuppressed = Row->iSuppressed;
+					Draw.iFailed = Row->iFailed;
+					Draw.vPositionMin = Row->vSubmittedPositionMin;
+					Draw.vPositionMax = Row->vSubmittedPositionMax;
+					Draw.bHasSubmittedPosition = Row->bHasSubmittedPosition;
+					if (0u != Draw.iFailed ||
+						((0u < Draw.iSubmitted || 0u < Draw.iCommitted) &&
+							(UINT32_MAX == Row->iSelectedPassIndex ||
+							 Row->bSourceMaterialFallbackBlocked ||
+							 Row->bDrawSelectionDiverged ||
+							 !Draw.bHasSubmittedPosition ||
+							 !Is_FiniteCombatObjectProofVector(Draw.vPositionMin) ||
+							 !Is_FiniteCombatObjectProofVector(Draw.vPositionMax))))
+					{
+						strOutError =
+							"Valtan combat-object renderer selected an invalid draw";
+						return false;
+					}
+					VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL& Total =
+						OutProof.ElementTotals[Sample.Rows.size()];
+					if (0u < Draw.iConfigured)
+						++Total.iPreparedSamples;
+					if (0u < Draw.iAttempted)
+						++Total.iAttemptedSamples;
+					Total.strFamily = Draw.strFamily;
+					Total.iSubmittedDraws += Draw.iSubmitted;
+					Total.iCommittedDraws += Draw.iCommitted;
+					Total.iSuppressedDraws += Draw.iSuppressed;
+					Total.iFailedDraws += Draw.iFailed;
+					if (Draw.bHasSubmittedPosition)
+					{
+						if (!Sample.bHasSubmittedBounds)
+						{
+							Sample.vSubmittedPositionMin = Draw.vPositionMin;
+							Sample.vSubmittedPositionMax = Draw.vPositionMax;
+							Sample.bHasSubmittedBounds = true;
+						}
+						else
+						{
+							Sample.vSubmittedPositionMin.x = (std::min)(
+								Sample.vSubmittedPositionMin.x, Draw.vPositionMin.x);
+							Sample.vSubmittedPositionMin.y = (std::min)(
+								Sample.vSubmittedPositionMin.y, Draw.vPositionMin.y);
+							Sample.vSubmittedPositionMin.z = (std::min)(
+								Sample.vSubmittedPositionMin.z, Draw.vPositionMin.z);
+							Sample.vSubmittedPositionMax.x = (std::max)(
+								Sample.vSubmittedPositionMax.x, Draw.vPositionMax.x);
+							Sample.vSubmittedPositionMax.y = (std::max)(
+								Sample.vSubmittedPositionMax.y, Draw.vPositionMax.y);
+							Sample.vSubmittedPositionMax.z = (std::max)(
+								Sample.vSubmittedPositionMax.z, Draw.vPositionMax.z);
+						}
+					}
+					Sample.Rows.push_back(std::move(Draw));
+				}
+				for (const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row :
+					Stats.Occurrences)
+				{
+					if (!ExpectedElements.contains(Row.strElementId))
+						OutProof.iUnauditedSubmittedDraws += Row.iSubmitted;
+				}
+				if (Sample.bHasSubmittedBounds)
+				{
+					bool_t bKnown = false;
+					for (const auto& Bounds : DistinctBounds)
+					{
+						const float3_t DeltaMin(
+							Bounds.first.x - Sample.vSubmittedPositionMin.x,
+							Bounds.first.y - Sample.vSubmittedPositionMin.y,
+							Bounds.first.z - Sample.vSubmittedPositionMin.z);
+						const float3_t DeltaMax(
+							Bounds.second.x - Sample.vSubmittedPositionMax.x,
+							Bounds.second.y - Sample.vSubmittedPositionMax.y,
+							Bounds.second.z - Sample.vSubmittedPositionMax.z);
+						bKnown = XMVectorGetX(XMVector3LengthSq(
+							XMLoadFloat3(&DeltaMin))) <= 1.0e-10f &&
+							XMVectorGetX(XMVector3LengthSq(
+								XMLoadFloat3(&DeltaMax))) <= 1.0e-10f;
+						if (bKnown)
+							break;
+					}
+					if (!bKnown)
+						DistinctBounds.emplace_back(
+							Sample.vSubmittedPositionMin,
+							Sample.vSubmittedPositionMax);
+				}
+				OutProof.Samples.push_back(std::move(Sample));
+			}
+			OutProof.iRootWorldDistinctCount =
+				static_cast<uint32_t>(DistinctRoots.size());
+			OutProof.iSubmittedBoundsDistinctCount =
+				static_cast<uint32_t>(DistinctBounds.size());
+			return true;
+		};
+
+		const std::filesystem::path SkyPath = RepositoryRoot /
+			"Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json";
+		const std::filesystem::path RedPath = RepositoryRoot /
+			"Data/Effects/Authored/effect.valtan.red-blade-wave.active.effect.json";
+		std::vector<VALTAN_COMBAT_OBJECT_TARGET_PROOF> Targets(2u);
+		if (!BuildTarget(
+				"combatobject.valtan.high-jump.target-axe",
+				"combatobject.visual.valtan.high-jump.target-axe.v1",
+				"effect.valtan.sky-axe.active", SkyPath,
+				std::vector<std::string>(SKY_ELEMENTS.begin(), SKY_ELEMENTS.end()),
+				SkySamples, "FIXED_WORLD_ROOT", Targets[0u]) ||
+			!BuildTarget(
+				"combatobject.valtan.red-blade-wave.projectile",
+				"combatobject.visual.valtan.red-blade-wave.projectile.v1",
+				"effect.valtan.red-blade-wave.active", RedPath,
+				std::vector<std::string>(
+					RED_SOURCE_ELEMENTS.begin(), RED_SOURCE_ELEMENTS.end()),
+				RedSamples, "MOVING_WORLD_ROOT", Targets[1u]))
+		{
+			return false;
+		}
+
+		const auto HasDraw = [](const VALTAN_COMBAT_OBJECT_DRAW_SAMPLE& Sample,
+			const std::string_view ElementId)
+		{
+			const auto Row = std::find_if(Sample.Rows.begin(), Sample.Rows.end(),
+				[ElementId](const VALTAN_COMBAT_OBJECT_DRAW_ROW& Candidate)
+				{
+					return Candidate.strElementId == ElementId;
+				});
+			return Row != Sample.Rows.end() && 0u < Row->iAttempted &&
+				0u < Row->iSubmitted && 0u < Row->iCommitted &&
+				0u == Row->iFailed && Row->bHasSubmittedPosition;
+		};
+		const auto HasNoDraw = [](const VALTAN_COMBAT_OBJECT_DRAW_SAMPLE& Sample,
+			const std::string_view ElementId)
+		{
+			const auto Row = std::find_if(Sample.Rows.begin(), Sample.Rows.end(),
+				[ElementId](const VALTAN_COMBAT_OBJECT_DRAW_ROW& Candidate)
+				{
+					return Candidate.strElementId == ElementId;
+				});
+			return Row != Sample.Rows.end() &&
+				0u == Row->iSubmitted && 0u == Row->iCommitted &&
+				0u == Row->iFailed;
+		};
+		const VALTAN_COMBAT_OBJECT_TARGET_PROOF& Sky = Targets[0u];
+		const VALTAN_COMBAT_OBJECT_TARGET_PROOF& Red = Targets[1u];
+		const bool_t bSkyBoundaryExact = Sky.Samples.size() == 5u &&
+			Sky.iRootWorldDistinctCount == 1u &&
+			HasDraw(Sky.Samples[0u], SKY_ELEMENTS[0u]) &&
+			HasDraw(Sky.Samples[0u], SKY_ELEMENTS[1u]) &&
+			HasNoDraw(Sky.Samples[0u], SKY_ELEMENTS[2u]) &&
+			HasDraw(Sky.Samples[1u], SKY_ELEMENTS[0u]) &&
+			HasDraw(Sky.Samples[1u], SKY_ELEMENTS[1u]) &&
+			HasNoDraw(Sky.Samples[1u], SKY_ELEMENTS[2u]) &&
+			HasNoDraw(Sky.Samples[2u], SKY_ELEMENTS[0u]) &&
+			HasNoDraw(Sky.Samples[2u], SKY_ELEMENTS[1u]) &&
+			HasDraw(Sky.Samples[2u], SKY_ELEMENTS[2u]) &&
+			HasDraw(Sky.Samples[3u], SKY_ELEMENTS[2u]) &&
+			HasNoDraw(Sky.Samples[4u], SKY_ELEMENTS[0u]) &&
+			HasNoDraw(Sky.Samples[4u], SKY_ELEMENTS[1u]) &&
+			HasNoDraw(Sky.Samples[4u], SKY_ELEMENTS[2u]) &&
+			std::abs(Sky.Samples[2u].fEvaluatedSeconds - 1.2f) < 1.0e-5f;
+		bool_t bSkyTotalsExact = Sky.ElementTotals.size() == SKY_ELEMENTS.size();
+		for (const VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL& Total : Sky.ElementTotals)
+		{
+			bSkyTotalsExact = bSkyTotalsExact &&
+				0u < Total.iPreparedSamples && 0u < Total.iAttemptedSamples &&
+				0u < Total.iSubmittedDraws && 0u < Total.iCommittedDraws &&
+				0u == Total.iFailedDraws;
+		}
+		bool_t bRedTotalsExact = Red.ElementTotals.size() ==
+			RED_SOURCE_ELEMENTS.size() && Red.iRootWorldDistinctCount == 4u &&
+			Red.iSubmittedBoundsDistinctCount >= 2u &&
+			Red.Samples.size() == 4u;
+		for (const VALTAN_COMBAT_OBJECT_ELEMENT_TOTAL& Total : Red.ElementTotals)
+		{
+			bRedTotalsExact = bRedTotalsExact && Total.strFamily == "SPRITE" &&
+				0u < Total.iPreparedSamples && 0u < Total.iAttemptedSamples &&
+				0u < Total.iSubmittedDraws && 0u < Total.iCommittedDraws &&
+				0u == Total.iFailedDraws;
+		}
+		for (const std::string_view ElementId : RED_SOURCE_ELEMENTS)
+			bRedTotalsExact = bRedTotalsExact &&
+				HasNoDraw(Red.Samples[0u], ElementId) &&
+				HasDraw(Red.Samples[2u], ElementId);
+		if (!bSkyBoundaryExact || !bSkyTotalsExact || !bRedTotalsExact)
+		{
+			std::ostringstream Detail;
+			Detail <<
+				"Valtan combat-object boundary/root/source-family renderer proof did not close"
+				<< " skyBoundary=" << bSkyBoundaryExact
+				<< " skyTotals=" << bSkyTotalsExact
+				<< " redTotals=" << bRedTotalsExact
+				<< " skyRoots=" << Sky.iRootWorldDistinctCount
+				<< " redRoots=" << Red.iRootWorldDistinctCount
+				<< " redBounds=" << Red.iSubmittedBoundsDistinctCount;
+			for (const VALTAN_COMBAT_OBJECT_TARGET_PROOF* pTarget : { &Sky, &Red })
+			{
+				for (const VALTAN_COMBAT_OBJECT_DRAW_SAMPLE& Sample : pTarget->Samples)
+				{
+					Detail << " | " << Sample.strLabel << '@' <<
+						Sample.fEvaluatedSeconds;
+					for (const VALTAN_COMBAT_OBJECT_DRAW_ROW& Row : Sample.Rows)
+					{
+						Detail << ' ' << Row.strElementId << "=(" << Row.strFamily <<
+							",a" << Row.iAttempted << ",s" << Row.iSubmitted <<
+							",c" << Row.iCommitted << ",f" << Row.iFailed << ')';
+					}
+				}
+			}
+			strOutError = Detail.str();
+			return false;
+		}
+
+		return Write_ValtanCombatObjectRuntimeSweep(
+			JsonOutputPath, ResourceRoot, BossCatalogPath,
+			BossCatalogRawSha256, CombatObjectCatalogPath,
+			CombatObjectCatalogRawSha256, iLifecycleAssertionCount,
+			iLifecycleFailureCount, Targets, strOutError);
+	}
 	void Test_EffectToolPlayerPreviewCueResolution(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -33626,6 +35845,75 @@ int main(const int argc, char* argv[])
 			std::cout << argv[iArgument] << '\t' << Sha256 << '\n';
 		}
 		return bAllDocumentsHashed ? 0 : 1;
+	}
+	if (Mode == "--effect-valtan-four-slash-weapon-trail-proof")
+	{
+		if (argc != 5 || nullptr == argv[2] || nullptr == argv[3] ||
+			nullptr == argv[4] || std::string_view(argv[2]) != "--json-output")
+		{
+			std::cerr <<
+				"--effect-valtan-four-slash-weapon-trail-proof requires exact arguments: --json-output <absolute-output-path> <absolute-candidate-path>.\n";
+			return 1;
+		}
+		std::string Status;
+		const bool_t bValid = Validate_FourSlashWeaponTrailRuntimeProof(
+			std::filesystem::path(argv[4]), std::filesystem::path(argv[3]),
+			Status);
+		std::cout << (bValid ? "[PASS] " : "[FAILURE] ") <<
+			"Valtan FourSlash weapon-bone Trail runtime proof";
+		if (!Status.empty())
+			std::cout << ": " << Status;
+		std::cout << '\n';
+		return bValid ? 0 : 1;
+	}
+	if (Mode == "--effect-valtan-bounded-weapon-trails-proof")
+	{
+		if (argc != 7 || nullptr == argv[2] || nullptr == argv[3] ||
+			nullptr == argv[4] || nullptr == argv[5] || nullptr == argv[6] ||
+			std::string_view(argv[2]) != "--json-output")
+		{
+			std::cerr <<
+				"--effect-valtan-bounded-weapon-trails-proof requires exact arguments: --json-output <absolute-output-path> <absolute-whirlwind-recovery-candidate> <absolute-ground-wave-windup-candidate> <absolute-jump-spin-recovery-candidate>.\n";
+			return 1;
+		}
+		std::string Status;
+		const std::array<std::filesystem::path, 3u> CandidatePaths = {
+			std::filesystem::path(argv[4]),
+			std::filesystem::path(argv[5]),
+			std::filesystem::path(argv[6]),
+		};
+		const bool_t bValid = Validate_BoundedWeaponTrailRuntimeProof(
+			CandidatePaths, std::filesystem::path(argv[3]), Status);
+		std::cout << (bValid ? "[PASS] " : "[FAILURE] ") <<
+			"Valtan bounded weapon-bone Trail runtime proof";
+		if (!Status.empty())
+			std::cout << ": " << Status;
+		std::cout << '\n';
+		return bValid ? 0 : 1;
+	}
+	if (Mode == "--effect-valtan-combat-object-drawable-proof")
+	{
+		if (argc != 4 || nullptr == argv[2] || nullptr == argv[3] ||
+			std::string_view(argv[2]) != "--json-output")
+		{
+			std::cerr <<
+				"--effect-valtan-combat-object-drawable-proof requires exact arguments: --json-output <absolute-output-path>.\n";
+			return 1;
+		}
+		TEST_RUNNER LifecycleRunner{};
+		Test_ValtanCombatObjectProjection(LifecycleRunner);
+		std::string Status;
+		const bool_t bValid = 0u == LifecycleRunner.iFailureCount &&
+			Validate_ValtanCombatObjectDrawableRuntimeProof(
+				std::filesystem::path(argv[3]),
+				LifecycleRunner.iAssertionCount,
+				LifecycleRunner.iFailureCount, Status);
+		std::cout << (bValid ? "[PASS] " : "[FAILURE] ") <<
+			"Valtan combat-object drawable runtime proof";
+		if (!Status.empty())
+			std::cout << ": " << Status;
+		std::cout << '\n';
+		return bValid ? 0 : 1;
 	}
 	if (Mode == "--effect-document-drawable-sweep")
 	{

@@ -50,21 +50,21 @@
           "elementId": "project-donut-outer-boundary",
           "disposition": "DRAWABLE_PROOF_PASS",
           "preparedSamples": 86,
-          "attemptedSamples": 84,
-          "submittedDraws": 84,
+          "attemptedSamples": 86,
+          "submittedDraws": 86,
           "suppressedDraws": 0,
           "failedDraws": 0,
-          "committedDraws": 84
+          "committedDraws": 86
         },
         {
           "elementId": "project-donut-inner-growing-boundary",
           "disposition": "DRAWABLE_PROOF_PASS",
           "preparedSamples": 86,
-          "attemptedSamples": 84,
-          "submittedDraws": 84,
+          "attemptedSamples": 86,
+          "submittedDraws": 86,
           "suppressedDraws": 0,
           "failedDraws": 0,
-          "committedDraws": 84
+          "committedDraws": 86
         }
       ]
     },
@@ -82,11 +82,11 @@
           "elementId": "project-donut-inner-impact",
           "disposition": "DRAWABLE_PROOF_PASS",
           "preparedSamples": 44,
-          "attemptedSamples": 42,
-          "submittedDraws": 42,
+          "attemptedSamples": 44,
+          "submittedDraws": 44,
           "suppressedDraws": 0,
           "failedDraws": 0,
-          "committedDraws": 42
+          "committedDraws": 44
         }
       ]
     },
@@ -126,11 +126,11 @@
           "elementId": "project-floor-six-direction-center-guide",
           "disposition": "DRAWABLE_PROOF_PASS",
           "preparedSamples": 110,
-          "attemptedSamples": 108,
-          "submittedDraws": 108,
+          "attemptedSamples": 110,
+          "submittedDraws": 110,
           "suppressedDraws": 0,
           "failedDraws": 0,
-          "committedDraws": 108
+          "committedDraws": 110
         }
       ]
     },
@@ -157,99 +157,29 @@
       ]
     },
     {
-      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.airborne.project-authored-overlay.effect.json",
-      "effectAssetId": "effect.valtan.high-jump.airborne",
-      "durationSeconds": 3.01999998,
-      "sampleCount": 184,
-      "visibleElementCount": 9,
-      "preparedElementCount": 9,
-      "drawnElementCount": 9,
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.sky-axe.active.project-authored-overlay.effect.json",
+      "effectAssetId": "effect.valtan.sky-axe.active",
+      "durationSeconds": 2.5,
+      "sampleCount": 152,
+      "visibleElementCount": 2,
+      "preparedElementCount": 2,
+      "drawnElementCount": 2,
       "disposition": "DRAWABLE_PROOF_PASS",
       "elements": [
         {
-          "elementId": "project-axe-beat-01-target-decal",
+          "elementId": "decal.valtan.sky-axe.target",
           "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 184,
-          "attemptedSamples": 38,
-          "submittedDraws": 38,
+          "preparedSamples": 152,
+          "attemptedSamples": 72,
+          "submittedDraws": 72,
           "suppressedDraws": 0,
           "failedDraws": 0,
-          "committedDraws": 38
+          "committedDraws": 72
         },
         {
-          "elementId": "project-axe-beat-02-target-decal",
+          "elementId": "particle.valtan.sky-axe.impact",
           "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 184,
-          "attemptedSamples": 38,
-          "submittedDraws": 38,
-          "suppressedDraws": 0,
-          "failedDraws": 0,
-          "committedDraws": 38
-        },
-        {
-          "elementId": "project-axe-beat-03-target-decal",
-          "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 184,
-          "attemptedSamples": 38,
-          "submittedDraws": 38,
-          "suppressedDraws": 0,
-          "failedDraws": 0,
-          "committedDraws": 38
-        },
-        {
-          "elementId": "project-axe-beat-01-falling-axe",
-          "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 184,
-          "attemptedSamples": 18,
-          "submittedDraws": 18,
-          "suppressedDraws": 0,
-          "failedDraws": 0,
-          "committedDraws": 36
-        },
-        {
-          "elementId": "project-axe-beat-02-falling-axe",
-          "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 184,
-          "attemptedSamples": 18,
-          "submittedDraws": 18,
-          "suppressedDraws": 0,
-          "failedDraws": 0,
-          "committedDraws": 36
-        },
-        {
-          "elementId": "project-axe-beat-03-falling-axe",
-          "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 184,
-          "attemptedSamples": 18,
-          "submittedDraws": 18,
-          "suppressedDraws": 0,
-          "failedDraws": 0,
-          "committedDraws": 36
-        },
-        {
-          "elementId": "project-axe-beat-01-ground-impact",
-          "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 184,
-          "attemptedSamples": 40,
-          "submittedDraws": 39,
-          "suppressedDraws": 1,
-          "failedDraws": 0,
-          "committedDraws": 39
-        },
-        {
-          "elementId": "project-axe-beat-02-ground-impact",
-          "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 184,
-          "attemptedSamples": 39,
-          "submittedDraws": 38,
-          "suppressedDraws": 1,
-          "failedDraws": 0,
-          "committedDraws": 38
-        },
-        {
-          "elementId": "project-axe-beat-03-ground-impact",
-          "disposition": "DRAWABLE_PROOF_PASS",
-          "preparedSamples": 184,
+          "preparedSamples": 152,
           "attemptedSamples": 39,
           "submittedDraws": 39,
           "suppressedDraws": 0,
@@ -294,9 +224,9 @@
           "elementId": "project-three-hit-slash-01",
           "disposition": "DRAWABLE_PROOF_PASS",
           "preparedSamples": 202,
-          "attemptedSamples": 27,
+          "attemptedSamples": 26,
           "submittedDraws": 26,
-          "suppressedDraws": 1,
+          "suppressedDraws": 0,
           "failedDraws": 0,
           "committedDraws": 26
         },
@@ -314,9 +244,9 @@
           "elementId": "project-three-hit-slash-03",
           "disposition": "DRAWABLE_PROOF_PASS",
           "preparedSamples": 202,
-          "attemptedSamples": 27,
+          "attemptedSamples": 26,
           "submittedDraws": 26,
-          "suppressedDraws": 1,
+          "suppressedDraws": 0,
           "failedDraws": 0,
           "committedDraws": 26
         },
@@ -324,21 +254,21 @@
           "elementId": "project-three-hit-down-smash-decal",
           "disposition": "DRAWABLE_PROOF_PASS",
           "preparedSamples": 202,
-          "attemptedSamples": 60,
-          "submittedDraws": 60,
+          "attemptedSamples": 61,
+          "submittedDraws": 61,
           "suppressedDraws": 0,
           "failedDraws": 0,
-          "committedDraws": 60
+          "committedDraws": 61
         },
         {
           "elementId": "project-three-hit-down-smash-wave",
           "disposition": "DRAWABLE_PROOF_PASS",
           "preparedSamples": 202,
-          "attemptedSamples": 54,
-          "submittedDraws": 54,
+          "attemptedSamples": 53,
+          "submittedDraws": 53,
           "suppressedDraws": 0,
           "failedDraws": 0,
-          "committedDraws": 54
+          "committedDraws": 53
         },
         {
           "elementId": "project-three-hit-down-smash-shockwave",

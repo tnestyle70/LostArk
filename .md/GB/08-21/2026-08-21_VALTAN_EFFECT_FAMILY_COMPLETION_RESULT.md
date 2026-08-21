@@ -8,7 +8,7 @@
 Encounter Pattern
   -> Semantic Stage
   -> ordered Clip Occurrence
-  -> Product Cue Occurrence
+  -> Product Cue Occurrence 또는 Server Combat-Object Visual
   -> EffectCatalog DIRECT_AUTHORED_DOCUMENT_V13
   -> Unified Effect document
   -> 기존 EffectDocumentRenderer / material profile / shader
@@ -22,17 +22,21 @@ Encounter Pattern
 
 | 항목 | 결과 |
 |---|---:|
-| Encounter patterns / semantic stages | 33 / 127 |
-| animation action bindings / ordered clips | 124 / 128 |
-| Product cues / cue가 있는 unique clips | 108 / 102 |
-| 물리 Valtan authored docs / elements | 112 / 3,721 |
-| 제품 Catalog rows / editable docs / catalog-linked elements | 108 / 108 / 3,679 |
-| source-linked / project-authored·tuned / legacy generic | 555 / 32 / 3,092 |
+| Encounter patterns / semantic stages | 33 / 130 |
+| animation action bindings / ordered clips | 130 / 137 |
+| Boss-root Product cues / cue stages / unique cue clips | 106 / 98 / 100 |
+| Server combat-object visuals | 2 |
+| 물리 Valtan authored docs / elements | 113 / 3,734 |
+| 제품 owned effects / editable docs / elements | 108 / 108 / 3,683 |
+| family-linked / project-authored / bounded tuned / legacy generic | 555 / 27 / 9 / 3,092 |
 | completion core-linked / reviewed denominator | 542 / 628 |
-| element kind: particle / trail·ribbon / decal / mesh / light | 3,642 / 10 / 23 / 3 / 1 |
+| family: Mesh / Sprite / Mesh Particle / Sprite Particle / Local Decal / Trail·Ribbon | 1 / 0 / 2,088 / 1,552 / 21 / 20 |
+| six-family 트리 밖의 기존 Light | 1 |
 | missing resource / unsafe path / duplicate slot | 0 / 0 / 0 |
 
-`555 source-linked`와 `33 patterns 전체 source-exact 완료`는 같은 뜻이 아니다. 엄격한 completion core가
+`555 family-linked`와 `33 patterns 전체 source-exact 완료`는 같은 뜻이 아니다. 3,683개
+제품 element는 아직 native source material equation이 아닌 공용 family renderer를 소비하므로
+material fidelity는 `FAMILY_LITE`로 표기한다. 엄격한 completion core가
 연결된 pattern은 22/33이고, bounded Trail까지 포함한 source-linked pattern은 23/33이다. branch가
 유일하지 않거나 source timing이 현재 animation cue 앞에 있는 occurrence는 추측하지 않고 명시적으로
 보류했다. 기존 generic row 3,092개도 사용자 손튜닝을 덮지 않기 위해 삭제하지 않았다.
@@ -52,7 +56,8 @@ Valtan
     -> Pattern
       -> Semantic Stage
         -> Ordered Clip Occurrence
-          -> Product Cue Occurrence
+          -> Product Cue Occurrence (boss snapshot/follow)
+          -> Combat Object Visual (Server world-root)
             -> Unified Effect
               -> Mesh
               -> Sprite
@@ -62,7 +67,9 @@ Valtan
               -> Trail / Ribbon
 ```
 
-All Effects에서 선택한 cue는 exact authored document의 `authoringPath`를 연다. Open for Editing,
+All Effects에서 Product cue와 combat-object visual은 각각 exact authored document의 `authoringPath`를
+연다. High Jump sky axe와 Red Blade projectile은 boss-root cue를 중복 스폰하지 않고
+Server가 전송한 world-root transform을 소비한다. Open for Editing,
 Play Full Effect, Save와 same-revision Hot Reload는 캐릭터 Product cue와 같은 경로를 사용한다. 저장 성공은
 선택된 document와 renderer/prewarm cache만 transactionally 교체하고, 이미 재생 중인 occurrence는 기존
 shared resource를 유지하며 다음 spawn부터 새 document를 사용한다. 실패하면 이전 document/cache를
@@ -118,10 +125,28 @@ source 420637 direct join이라고 위장하지 않고 `PROJECT_TUNED` supplemen
 | JUMP_SPIN spin trails | 0 | AnimationTrail 3 | 3 |
 | 합계 | 160 | 7 | 167 |
 
-167/167 element가 actual prepare/nonzero draw를 통과했고 두 번째 apply는 changed 0이다. Backstep과
+167/167 element가 actual prepare/nonzero draw를 통과했고 두 번째 apply는 changed 0이다. 이 배치의
+FourSlash 20개에 별도로 증명한 weapon-bone Trail 1개를 missing-only로 더해 현재 canonical
+FourSlash document는 21개이다. 기존 20개 row의 정본 identity는 바꾸지 않았다. Backstep과
 JumpSpin의 six AnimationTrail은 source notify/target/material identity는 보존하지만 Whirlwind의 409-sample
 baked history를 재사용하는 `BOUNDED_RECONSTRUCTION`이다. source-exact geometry라고 과장하지 않는다.
 history/target이 없는 다른 TrailGhost/AnimationTrail은 unresolved로 남겼다.
+
+### 2.4 Weapon-bone bounded Trail 보강
+
+cue/binding/sequence를 바꾸지 않고 공식 `b_wp_r_01` anchor를 따르는 3-emitter Trail family를
+다음 세 구간에 missing-only로 추가했다.
+
+| 구간 | 시작 / 지속 | Trail |
+|---|---:|---:|
+| WHIRLWIND recovery | 0 / 0.196547s | 3 |
+| GROUND_WAVE_SMASH windup | 0.394663 / 0.476573s | 3 |
+| JUMP_SPIN recovery | 0 / 0.196547s | 3 |
+
+총 9개는 `PROJECT_TUNED + BOUNDED_RECONSTRUCTION`이다. stationary root에서 moving bone을 샘플해
+9개 모두 Trail point·draw가 생성되고, stationary anchor는 9개 모두 제출을 억제했으며,
+missing anchor 3건은 playback transaction을 rollback했다. 원본 도끼 궤적을 native material
+equation까지 완전 복원했다는 주장은 하지 않는다.
 
 ## 3. 사용자 우선 장판·도끼 연출
 
@@ -166,19 +191,19 @@ chain에는 없다. animation sequence를 임의 삽입하지 않고 source-only
 
 ### 3.4 HIGH_JUMP 도끼
 
-AIRBORNE cue/document를 새로 만들고 다음 아홉 element를 연결했다.
+AIRBORNE boss-root cue는 중복 시각 소유권이었으므로 폐기했다. Server는 AIRBORNE 진입 시
+살아 있는 player별로 `combatobject.valtan.high-jump.target-axe`를 생성하고, BossCatalog의
+`combatobject.visual.valtan.high-jump.target-axe.v1` 행이 `effect.valtan.sky-axe.active`를 world-root에
+재생한다. 하나의 combat object는 다음 3-family를 소유한다.
 
-- target Local Decal 3
-- 공식 `Character/Valtan/ValtanWeapon.wmodel` 낙하 Mesh 3
-- ground impact Sprite Particle 3
+- target Local Decal 1: 0..1.2s
+- 공식 `Character/Valtan/ValtanWeapon.wmodel` 낙하 Mesh 1: y=15 -> 0, 1.2s
+- ground impact Sprite Particle 1: 1.2..1.85s
 
-도끼는 boss가 손에 든 socket actor를 복제하지 않고 snapshot root 아래 독립 presentation Mesh로 둔다.
-`useModelMaterial=true`, `modelPreScale=1.0`이며 같은 official WModel cache를 사용한다. geometry와 base
-material identity는 공식 asset 재사용이고, 낙하 위치·회전·timing은 `PROJECT_AUTHORED`다.
-
-AIRBORNE gameplay hit shape와 damage는 그대로 NONE이고 LAND의 기존 1-hit만 유지했다. 세 도끼는
-presentation-only이며 Client가 damage actor를 만들지 않는다. HIGH_JUMP 9/9와 전체 project batch
-24/24가 actual drawable sweep을 통과했다.
+player가 3명이면 Server가 combat object를 3개 생성하므로, 과거처럼 boss local offset 3개를
+고정해 두지 않는다. actual WARP proof에서 fixed world root 1, submitted bounds 3,
+mesh/decal/impact 전환 0/1.19/1.2/1.5/1.85s와 exact lifetime-end 억제를 확인했다.
+AIRBORNE gameplay hit shape와 damage는 NONE이고 LAND의 기존 1-hit만 유지했다.
 
 ## 4. Whirlwind 회귀 canary
 
@@ -213,8 +238,11 @@ VisualProgram 결과:
 - resource references 12,159: missing/unsafe/duplicate slot 0
 - Reviewed drawable proof: 36 documents / 279 elements
 - FRONT_BACK_FRONT drawable proof: 4 / 100
-- Project priority drawable proof: 9 / 24
+- Project priority drawable proof: 9 documents / 17 appended elements
 - Safe reviewed gaps drawable proof: 4 / 167
+- FourSlash weapon-bone Trail proof/application: 1 draw / changed 0
+- Combat-object drawable proof: sky-axe 3 families + Red Blade source 5
+- bounded weapon Trail proof/application: 3 documents / 9 elements / changed 0
 - 모든 applicator post-apply check: changed 0
 - Whirlwind canary: 9/9, 409 samples, 1.2초 clamp
 - VisualProgram corpus/runtime check: 135 rows, 16 programs, 15 supplemental
@@ -228,17 +256,22 @@ VisualProgram 결과:
 - Client x64 Debug/Release full build/link PASS
 - ClientFrontendHarness x64 Debug/Release build/link PASS
 
-### 5.2 통합 Publish 완료
+### 5.2 통합 Publish 현재 상태
 
-캐릭터 손튜닝 저장이 끝난 뒤 source hash가 안정된 것을 확인하고 `Publish-Effects.ps1 -Mode Validate`,
-`Test-EffectPipeline.ps1`, `Publish-Effects.ps1 -Mode Publish` 순서로 실행했다. Publisher는 direct-authored
-Effect 204개와 VisualProgram sidecar를 제품 runtime에 transactionally 게시했다.
+이 후속 revision의 source validator와 `Publish-Effects.ps1 -Mode Validate`는 PASS했지만, tracked
+runtime catalog는 아직 이전 identity set이다. runtime에는 폐기한
+`effect.valtan.high-jump.airborne`이 남아 있고 `effect.valtan.sky-axe.active`가 없다.
 
-게시 뒤 authoring/runtime의 Valtan Catalog는 108/108로 일치하고 누락 asset은 0개다. VisualProgram도
-authoring/runtime 모두 16 programs / 135 rows / 15 supplemental로 일치한다. Debug incremental prewarm은
-108개 Valtan target 전체를 포함해 10/10 PASS했고, Effect Tool preview 17/17 및 4캐릭터 cue parity 4/4도
-Debug/Release에서 PASS했다. Release incremental prewarm의 Debug 전용 replacement 한 항목은
-`#if !defined(_DEBUG)` 계약에 따라 비적용이며, 나머지 9/9는 PASS했다.
+따라서 최종 PR 전에 다음 순서를 다시 실행해야 한다.
+
+1. 최신 `origin/main` 통합과 Effect Data project registration
+2. `Publish-Effects.ps1 -Mode Validate`
+3. `Test-EffectPipeline.ps1`
+4. `Publish-Effects.ps1 -Mode Publish`
+5. Debug/Release Client·ClientFrontendHarness 빌드와 106 boss + 2 combat prewarm 회귀
+
+이 순서가 완료되기 전에는 현재 Client runtime을 신규 High Jump 도끼 소유권의 제품
+정답으로 사용하지 않는다.
 
 ## 6. 명시적으로 남긴 경계
 
@@ -259,7 +292,8 @@ EARTHQUAKE_SMASH는 reviewed branch지만 68개 core occurrence가 현재 cue �
 `VALTAN_ARENA_BREAK_84`는 세 stage 모두 animation binding/cue/damage가 없는 environment/world-destruction
 mechanic이다. boss Effect cue completion 분모에 넣지 않았다.
 
-현재 cue 없는 semantic stage는 27개, binding은 있으나 cue가 없는 clip은 26개다. 그중 source core
+현재 ownership-aware visual이 없는 semantic stage는 30개, binding은 있으나 boss cue나
+combat-object visual이 없는 clip은 35개다. 그중 source core
 누락은 0이고 남은 reviewed core 86개는 모두 negative timing이다. 나머지는 branch 미확정, source mapping
 부재, environment ownership 또는 visual이 없는 pacing stage다.
 
@@ -284,86 +318,58 @@ F1
 
 1. WHIRLWIND active 9/9 회귀
 2. FRONT_BACK_FRONT source wave 01/02/03와 auxiliary timing
-3. HIGH_JUMP target 3회 -> official axe 3회 -> impact -> Valtan landing
+3. HIGH_JUMP player별 combat-object target -> official axe descent -> impact -> Valtan landing
 4. DASH_CHARGE red line/pulse의 방향·길이·색
 5. MAGIC_CHOICE inner 성장/outer boundary/impact UV
 6. FLOOR_WIPE 6축, center guide와 center impact
 7. PORTAL_RUSH portal/rush/recovery source carrier
 8. SWING clip02, FOUR_SLASH clip02, Backstep/JumpSpin Trail
+9. WHIRLWIND recovery, GROUND_WAVE windup, JUMP_SPIN recovery weapon-bone Trail
 
 자동 draw PASS는 최종 visual fidelity PASS가 아니다. 사용자가 색, scale, UV 속도, lifetime, local transform을
 손튜닝한 뒤 Save/Hot Reload로 다음 cue spawn을 확인한다.
 
-## 8. 2026-08-21 sequence-frozen family-rendering 후속 상태
+## 8. 2026-08-22 latest sequence·family-rendering 후속 결과
 
-이 절은 위 완료 결과를 지우지 않고, 최신 main `2230d25b`에서 시작한
-`codex/valtan-family-rendering-0821` 후속 slice의 현재 상태만 추가한다. 위 `actual draw PASS`는 당시
-overlay revision의 증거이고, 아래 X/Z footprint diff와 공용 color pipeline이 들어간 새 revision의
-draw 증거로 재사용하지 않는다.
+### 8.1 sequence와 effect ownership
 
-### 8.1 동결한 animation/cue 입력
+최신 pattern 작업자의 sequence를 행 단위로 통합했다. 현재 정본은 33 patterns,
+130 semantic stages, 130 action bindings, 137 ordered clips이다. 기존 병합 회귀였던
+duplicate `BeginPattern`과 hit damage 이중 소유를 제거하고 Server contract-test failures 0을 확인했다.
 
-이번 slice는 `Valtan.patternbindings.json`과 `Valtan.patterneffectcues.json`을 수정하지 않았다.
-현재 worktree와 HEAD의 Git blob identity는 각각 다음처럼 같다.
+Boss-root cue는 106개이고, High Jump sky axe와 Red Blade projectile 2개는 Server combat-object
+visual이다. publisher는 combat-object owner action에 boss-root cue가 하나라도 다시 생기면
+effect ID가 달라도 fail-closed한다.
 
-```text
-Valtan.patternbindings.json    96b90f1a3db9f98de354402b39ae1f0fdbf2bd02
-Valtan.patterneffectcues.json  227fc4f1ea8d289b9a44a170a1219457e854e655
-```
+### 8.2 완료한 추가 draw proof
 
-따라서 Animation 담당 sequence와 기존 Product cue/binding join은 이번 candidate diff의 변수가 아니다.
-종료 시에도 같은 raw-byte identity 검사를 다시 수행한다.
+- X/Z Local Decal footprint 교정 후 project priority 9-document / 17-element actual sweep PASS
+- FourSlash `b_wp_r_01` Trail: moving anchor draw 1, stationary suppress 1, missing-anchor rollback PASS
+- High Jump sky-axe: fixed world-root mesh/decal/sprite transition PASS
+- Red Blade source family 5개: moving world-root late-seek draw PASS
+- Whirlwind recovery, Ground Wave windup, Jump Spin recovery Trail 9개: moving draw 9,
+  stationary suppress 9, missing-anchor rollback 3 PASS
 
-### 8.2 fidelity 재분류
+모든 applicator는 missing-only이고 두 번째 apply/check에서 canonical source row를 재작성하지
+않는다. 이 proof는 draw 제출과 transaction boundary를 증명하지 사용자 visual fidelity를
+대신 판정하지 않는다.
 
-현재 물리 authored inventory 112개 / 3,721 element는 모두 `sourceMaterial.enabled=false`,
-`execution.enabled=false`라서 공용 `effect.standard` 경로로 실행된다. 이전 결과의 `source-linked`와
-`reviewed core`는 source identity, resource, carrier와 제품 draw가 연결됐다는 뜻이지, parent material의
-native equation까지 SOURCE_EXACT라는 뜻은 아니다.
+### 8.3 공용 color pipeline 의존성
 
-- parent/static set/carrier/VF/pass/opcode와 lane role/channel/color space/sampler/coverage가 모두 닫힌
-  경우만 `SOURCE_EXACT`로 부른다.
-- source resource와 carrier를 공용 generic equation으로 그리는 현재 행은 material fidelity를
-  `FAMILY_LITE`로 제한한다.
-- Dash line, donut boundary, supplemental impact처럼 사용자가 선택한 연출은 계속 `PROJECT_TUNED`다.
-- Whirlwind history 재사용과 weapon-follow 보정처럼 제한을 명시한 geometry는
-  `BOUNDED_RECONSTRUCTION`이며 SOURCE_EXACT로 승격하지 않는다.
+발탄 전용 shader나 filename switch는 추가하지 않았다. 현재 generic `base.a` / `mask.r`
+고정 해석으로는 alpha coverage를 가진 `fx_c_ring_002.dds`와 alpha가 항상 1인
+`fx_c_line_003_xcl.dds`, `fx_d_atypical_032.dds`의 의미를 완전히 닫지 못한다. lane별
+role/channel/color space/sampler, explicit coverage owner, base-radiance emissive, scene-linear HDR 계약은
+별도 class-neutral color pipeline이 main에 통합된 뒤 소비한다.
 
-### 8.3 구현된 safe candidate와 아직 남은 proof
+Magic Choice Sprite Particle companion은 이 ABI를 요구하므로 candidate-only로 보존했고
+canonical에 적용하지 않았다. 이것은 누락을 숨기는 것이 아니라 기존 캐릭터·발탄
+family 색 경로를 함께 수정하기 위한 회귀 차단이다.
 
-Local Decal quad는 X/Z가 바닥 footprint이고 Y가 depth인데, project overlay의 원형 scale 일부가
-`[s, s, 1]`로 작성돼 Z footprint가 커지지 않았다. canonical document와 cue/binding을 건드리지 않고
-candidate generator와 imported overlay에서 `[s, 1, s]`로 교정했다.
+### 8.4 현재 판정
 
-| candidate | 검증한 X/Z footprint |
-|---|---:|
-| FRONT_BACK_FRONT down-smash wave | 4.2 -> 12.0 |
-| FRONT_BACK_FRONT shockwave | 2.5 -> 10.0 |
-| HIGH_JUMP landing wave | 4.9 -> 14.0 |
-| MAGIC_CHOICE inner growing ring | 7.0 -> 18.0 |
-
-focused Python test 13/13, candidate generator write/check, JSON parse와 diff-check는 PASS했다. 그러나 overlay와
-patch-plan hash가 바뀌었으므로 이전 project drawable proof와 application/projection receipt는 현재
-candidate revision에 대해 stale이다. 아직 canonical authored document에 적용하지 않았고, 새 revision의
-actual prepare/nonzero draw proof도 실행하지 않았다.
-
-FOUR_SLASH는 기존 safe-gap source row를 유지한 채 공식 weapon bone `b_wp_r_01`을 follow하는 새
-`PROJECT_TUNED + BOUNDED` Trail candidate와 stationary-root/moving-bone sample proof를 준비 중이다.
-기존 root translation만 움직인 synthetic proof로 통과 처리하지 않는다.
-
-### 8.4 공용 color pipeline 의존성과 현재 판정
-
-발탄 전용 shader나 pattern/filename switch를 추가하기 전에 별도 `Explain effect color pipeline` 작업의
-class-neutral 계약을 통합해야 한다. 필요한 최소 계약은 texture lane별 role/channel/color space/sampler,
-explicit coverage owner, blend/alpha mode, base radiance emissive intensity, scene-linear HDR와 base-only
-decal lifetime fade다. 현재 generic `base.a`/`mask.r` 고정 해석만으로는 alpha가 coverage인
-`fx_c_ring_002.dds`와 DXT texture의 검은 사각형/잘못된 ring coverage를 안전하게 판정할 수 없다.
-
-현재 후속 slice 판정은 다음과 같다.
-
-- candidate data/generator diff: PASS
-- cue/binding freeze: PASS, 종료 시 재검사 필요
-- 공용 color pipeline 통합: PENDING
-- 새 candidate actual prepare/nonzero draw/finite/rollback proof: PENDING
-- Debug/Release Client와 전체 Effect publish: 이 후속 diff 기준 NOT RUN
-- 사용자 All Effects 눈검증과 visual PASS: NOT RUN / NOT GRANTED
+- latest sequence / combat ownership: PASS
+- family candidate actual prepare/draw/finite/rollback: PASS
+- common color ABI integration: PENDING
+- final runtime Publish after latest main merge: PENDING
+- user All Effects eye check / visual PASS: NOT RUN / NOT GRANTED

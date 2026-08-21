@@ -5,12 +5,12 @@
   "transactionStatus": "COMMITTED",
   "inputs": {
     "patchPlanPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/Valtan.project-authored-priority.patch-plan.v1.json",
-    "patchPlanSha256": "b487e5517fc0c7a4ccd71f2e3de42c697c06e75fd85ea260abdaff6e666018a0",
+    "patchPlanSha256": "de80bc7a8f3424ad4473602072804a80105d58d81bfc1e30d163b691c9a64cfe",
     "drawableSweepPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/DrawableProof/Valtan.project-authored-priority.drawable-sweep.v1.json",
-    "drawableSweepSha256": "988721ce95353ced908751dc925370738666d4c7d4e6941da7f543cb521b3742",
+    "drawableSweepSha256": "0daf8db9e76c4df5f2625771e3c61e96dffffb422fae19bfafd436d9af8306f0",
     "drawableResourceRoot": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources",
     "drawableProofPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/DrawableProof/Valtan.project-authored-priority.drawable-proof.v1.json",
-    "drawableProofSha256": "6cb858e577226da627298d9196ff60d87cd7005ae8f9c6548f687bedb69ffcea"
+    "drawableProofSha256": "af4f9e290afa03001441b0c76906fb017e1a90c27cd59fbc4bfaae0588b4206e"
   },
   "policy": {
     "reconcileMode": "APPEND_MISSING_PRESERVE_EXISTING",
@@ -21,10 +21,12 @@
   },
   "closure": {
     "candidateDocumentCount": 9,
-    "projectedElementCount": 24,
-    "highJumpCatalogRowCount": 1,
-    "highJumpCueRowCount": 1,
-    "officialAxePresentationCount": 3
+    "projectedElementCount": 17,
+    "preservationSentinelCount": 7,
+    "skyAxeCatalogRowCount": 1,
+    "legacyBossRootCatalogRowCount": 0,
+    "legacyBossRootCueRowCount": 0,
+    "officialAxePresentationCount": 1
   },
   "targets": [
     {
@@ -41,7 +43,7 @@
     {
       "effectAssetId": "effect.valtan.magic-choice.windup",
       "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.windup.project-authored-overlay.effect.json",
-      "overlayDocumentSha256": "8b287f971a1d85142017f85ab7a3007a46676de22d4a85e3a6d9d531060e0814",
+      "overlayDocumentSha256": "6a7c057d6f0daae1294801a30d0874c9cedccc0eec2883cc5deaff11c67eda87",
       "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.magic-choice.windup.effect.json",
       "projectedElementIds": [
         "project-donut-outer-boundary",
@@ -90,27 +92,20 @@
       "finalDocumentSha256": "976b4e88059c69413a54a9dbca849983b946ef74b8029ff34ef7fce485a5bd41"
     },
     {
-      "effectAssetId": "effect.valtan.high-jump.airborne",
-      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.airborne.project-authored-overlay.effect.json",
-      "overlayDocumentSha256": "1eedb9732f3d85bf1e22635e5b4457edeb90cb686899f1d11a8b0d83a7591771",
-      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json",
+      "effectAssetId": "effect.valtan.sky-axe.active",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.sky-axe.active.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "d50336104189de3908455a82fc9e2dc4c187cddae2331402f2b894bb5eabbea7",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json",
       "projectedElementIds": [
-        "project-axe-beat-01-target-decal",
-        "project-axe-beat-02-target-decal",
-        "project-axe-beat-03-target-decal",
-        "project-axe-beat-01-falling-axe",
-        "project-axe-beat-02-falling-axe",
-        "project-axe-beat-03-falling-axe",
-        "project-axe-beat-01-ground-impact",
-        "project-axe-beat-02-ground-impact",
-        "project-axe-beat-03-ground-impact"
+        "decal.valtan.sky-axe.target",
+        "particle.valtan.sky-axe.impact"
       ],
-      "finalDocumentSha256": "f582b1ff1d8d4d1cd935ee391b7f48c061215761a42a20d73bf64b0705331e74"
+      "finalDocumentSha256": "f7c36720c097c773c91eff4a48245f93e319ddd2c44f0e5c66ad218ce6840a7e"
     },
     {
       "effectAssetId": "effect.valtan.high-jump.land",
       "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.land.project-authored-overlay.effect.json",
-      "overlayDocumentSha256": "a15e225a6747a5cd2473397a0c436ee241eb49280b844e7490bc07eb6349e4c7",
+      "overlayDocumentSha256": "9888cf6afacb3d585541cf62f2115e3c2f24021b03cde47bd6f16bc087fcb16d",
       "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.high-jump.land.effect.json",
       "projectedElementIds": [
         "project-high-jump-landing-wave"
@@ -120,7 +115,7 @@
     {
       "effectAssetId": "effect.valtan.front-back-front.active",
       "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.front-back-front.active.project-authored-overlay.effect.json",
-      "overlayDocumentSha256": "7b5c085446ca94636cc881d18b6cb438a8a37dc0dc5d500b4211429e76106907",
+      "overlayDocumentSha256": "b76c1bc92a0dfa66c1ab6c4510168a21df05afb03d2da235e9cabcb7e135b2f0",
       "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.front-back-front.active.effect.json",
       "projectedElementIds": [
         "project-three-hit-slash-01",
@@ -134,11 +129,6 @@
     }
   ],
   "canonicalOutputs": [
-    {
-      "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
-      "role": "VALTAN_CUE_DOCUMENT",
-      "sha256": "da68e5ebe7723b36bba8c9bc5a7474b46f16427dcc4fdb1fe99264409d97c29d"
-    },
     {
       "path": "Data/Effects/Authored/effect.valtan.dash-charge.windup.effect.json",
       "role": "AUTHORED_EFFECT_DOCUMENT",
@@ -158,11 +148,6 @@
       "path": "Data/Effects/Authored/effect.valtan.front-back-front.active.effect.json",
       "role": "AUTHORED_EFFECT_DOCUMENT",
       "sha256": "fbfde7770930ab779e1716876c47a4eceb7901100f8992719a40c2b9fe63ef19"
-    },
-    {
-      "path": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json",
-      "role": "AUTHORED_EFFECT_DOCUMENT",
-      "sha256": "f582b1ff1d8d4d1cd935ee391b7f48c061215761a42a20d73bf64b0705331e74"
     },
     {
       "path": "Data/Effects/Authored/effect.valtan.high-jump.land.effect.json",
@@ -185,20 +170,20 @@
       "sha256": "7df1bff148100f2723897c08a173409fab00106cc650e507e3df779864b8fe01"
     },
     {
-      "path": "Data/Effects/EffectCatalog.json",
-      "role": "EFFECT_CATALOG",
-      "sha256": "41637bd546aeac977a61f722031a67692882f53cda68ea6274c9164e3a260748"
+      "path": "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "f7c36720c097c773c91eff4a48245f93e319ddd2c44f0e5c66ad218ce6840a7e"
     }
   ],
-  "highJumpAirbornePatch": {
-    "documentSha256": "f582b1ff1d8d4d1cd935ee391b7f48c061215761a42a20d73bf64b0705331e74",
-    "catalogRowSha256": "20bc384ec33d0c8dc525d1a4fc3abdfd3da66dc77abc7607317bec148f98e3df",
-    "cueRowSha256": "237477763a559d362d91480b13f2c777ea87a65cf699240639dbc2564085e8ef",
-    "officialAxePresentationIds": [
-      "project-authored:valtan.high-jump.airborne.beat-01.axe",
-      "project-authored:valtan.high-jump.airborne.beat-02.axe",
-      "project-authored:valtan.high-jump.airborne.beat-03.axe"
-    ]
+  "highJumpCombatObjectTransfer": {
+    "documentSha256": "f7c36720c097c773c91eff4a48245f93e319ddd2c44f0e5c66ad218ce6840a7e",
+    "effectCatalogRowSha256": "790aa13eb1db913a33df3bb471e33ac6e5759f76a160eeb1f472e767be650995",
+    "bossCatalogVisualRowSha256": "0f651883036c0e408bdafe572397af094b0f0d335a6f47dc295e02f1bb165093",
+    "combatObjectRowSha256": "82113bf12b4096b54d4a38883c0d9be5386fe5d200220628be8ae3936cd2a3f9",
+    "legacyBossRootAuthoringSha256": "1eedb9732f3d85bf1e22635e5b4457edeb90cb686899f1d11a8b0d83a7591771",
+    "legacyBossRootCatalogRowCount": 0,
+    "legacyBossRootCueRowCount": 0,
+    "officialAxePresentationId": "mesh.valtan.sky-axe.descent"
   },
   "whirlwindCanary": {
     "files": [
@@ -216,7 +201,7 @@
       },
       {
         "path": "Data/Effects/Imported/Valtan/Valtan.trail-adapter-packets.v1.json",
-        "sha256": "027630e4071e3f54f84713eefd08c1501f81e535711e9b29c8592131f83c4fd7"
+        "sha256": "b425694a8f36c1be5595a58230f9ba3e75d3edf4811e968d38e5d75972dacbb6"
       },
       {
         "path": "Data/Effects/VisualPrograms/effect-visual-program-corpus.v1.json",

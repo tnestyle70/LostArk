@@ -17,9 +17,9 @@
   },
   "trailAdapterPackets": {
     "path": "Data/Effects/Imported/Valtan/Valtan.trail-adapter-packets.v1.json",
-    "rawSha256": "027630e4071e3f54f84713eefd08c1501f81e535711e9b29c8592131f83c4fd7",
-    "canonicalSha256": "a035e3d07cc24c19ab74b741e9c575ea927aa93048b9e5a21966c84d0c3f14bb",
-    "artifactSha256": "85726bc0c1ddd35159d5cbe13edc35cbd3851282c0cd255850cf51dc9ef36b4f"
+    "rawSha256": "b425694a8f36c1be5595a58230f9ba3e75d3edf4811e968d38e5d75972dacbb6",
+    "canonicalSha256": "d4f32d01472bdc9d6ecbe2cae0972e05187d8906e62d43e247bf5bdbae7785a7",
+    "artifactSha256": "55a7e66c23ccf7afee178ec5aa6bbf394c2602d0d27f018d500c55c18094b658"
   },
   "whirlwindCanary": {
     "status": "AUTHORED_AND_RUNTIME_SLICE_BYTE_IDENTICAL",
@@ -249,5 +249,5 @@
     "cascadeRibbonProjectionCount": 1,
     "preservedUnresolvedTrailRowCount": 6
   },
-  "artifactSha256": "1c7aff3b9a7ae4577788bf6e674c7cdd065c31aefd56b93d7be8fb4451013e2b"
+  "artifactSha256": "44b9428ff12dbbac94a571bb4e039bd93d86fce6f0863a95f4f76f7d87586828"
 }

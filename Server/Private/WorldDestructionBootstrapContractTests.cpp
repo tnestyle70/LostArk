@@ -208,9 +208,9 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 			"Leave every floor sector INTACT when the 109 outer ring collapses");
 	}
 
-	/* Stage A is the two outer rail halves at 84 bars and stage B is the four
-	brick sectors at the 30-bar landing. Each stage has to reach its own sectors
-	and nothing else, and a floor sector owns no collision channel at all. */
+	/* Stage A is the remaining outer rail at 84 bars and stage B is the other
+	five floor sectors at the 30-bar landing. Each stage has to reach its own
+	sectors and nothing else, and a floor sector owns no collision channel. */
 	{
 		const WORLD_DESTRUCTION_ACTION_TUPLE floorStageAAction{
 			"VALTAN_ARENA_BREAK_84",
@@ -249,22 +249,22 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 				floorRuntime.Prepare_StageTrigger(
 					floorStageAAction, 7001u, 90u, 600u,
 					floorTransaction, publishedRuntimeStatus) &&
-			2u == floorTransaction.Transitions.size() &&
+			1u == floorTransaction.Transitions.size() &&
 			reachesOnly(
 				floorTransaction, "destroyable.group.valtan.floor84.rail.") &&
 			floorRuntime.Commit(floorTransaction, publishedRuntimeStatus),
-			"Collapse only the two outer rail sectors at the 84-bar impact");
+			"Collapse only the one outer rail sector at the 84-bar impact");
 
 		require(
 			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
 				floorRuntime.Prepare_StageTrigger(
 					floorStageBAction, 7001u, 91u, 900u,
 					floorTransaction, publishedRuntimeStatus) &&
-			4u == floorTransaction.Transitions.size() &&
+			5u == floorTransaction.Transitions.size() &&
 			reachesOnly(
-				floorTransaction, "destroyable.group.valtan.floor30.brick.") &&
+				floorTransaction, "destroyable.group.valtan.floor30.") &&
 			floorRuntime.Commit(floorTransaction, publishedRuntimeStatus),
-			"Collapse only the four brick sectors at the 30-bar landing");
+			"Collapse only the five remaining floor sectors at the 30-bar landing");
 
 		require(
 			WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST ==
