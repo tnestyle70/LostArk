@@ -1443,6 +1443,9 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEstherNpc.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>

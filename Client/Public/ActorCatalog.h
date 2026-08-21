@@ -71,6 +71,10 @@ struct NPC_ACTOR_ENTRY final
 	of 0 shows until the clip chain finishes. */
 	std::uint32_t cutinStartMs = 0;
 	std::uint32_t cutinEndMs = 0;
+	/* Optional pinned shader family. "esther" renders with the dedicated
+	esther NPC shader instead of the shared animated-mesh shader; empty keeps
+	the shared one. Unknown values are rejected at parse. */
+	std::string shaderProfile;
 };
 
 struct MONSTER_ACTOR_ENTRY final

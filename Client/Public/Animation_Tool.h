@@ -5,6 +5,7 @@
 #include "AnimationSkillBindingDocument.h"
 #include "AnimationEffectCueDocument.h"
 #include "CharacterPreviewPanel.h"
+#include "EncounterPatternReference.h"
 #include "ValtanPatternPreviewDocument.h"
 
 #include <filesystem>
@@ -206,6 +207,10 @@ private:
 		const shared_ptr<Engine::CModel>& pModel,
 		const std::string& status);
 	void Reset_ValtanPatternPreviewState(const std::string& status);
+	/* Mirrors the arena's pattern hit wires during tool playback: joins the
+	   playing item's source action to its encounter pattern and hands the
+	   boss preview the active stage actionId and stage-local clock. */
+	void Update_ValtanPatternHitAreaPreview();
 	void Render_ClipChain(const shared_ptr<Engine::CModel>& pModel);
 	void Render_NotifyReference(const shared_ptr<Engine::CModel>& pModel);
 	void Bind_ReferenceWire(const std::string& sourceKey);
@@ -323,6 +328,11 @@ private:
 	char_t m_ValtanPatternFilter[128]{};
 	int32_t m_iValtanSequenceSelected = -1;
 	bool_t m_bValtanRaidSequencesOnly = false;
+	CEncounterPatternReference m_ValtanEncounterReference;
+	bool_t m_bValtanEncounterReferenceLoadAttempted = false;
+	/* Seconds of finished same-sequence items before the current one, so the
+	   encounter stage lookup runs on the whole-pattern clock. */
+	f32_t m_fValtanPatternHitTimelineBaseSeconds = 0.f;
 	/* Shared with Effect Tool through MainApp. This tool only contributes the
 	unsaved Animation document lock to that one preview session. */
 	shared_ptr<CCharacterPreviewPanel> m_pPreviewPanel;

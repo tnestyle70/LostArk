@@ -266,6 +266,12 @@ bool_t Client::CEncounterPatternReference::Load(
 			outStatus = "Duplicate encounter pattern: " + pattern.patternId;
 			return false;
 		}
+		for (const DATA_JSON_VALUE& sourceId :
+			entry.Find("sourceActionIds")->Get_Array())
+		{
+			pattern.sourceActionIds.push_back(
+				static_cast<uint32_t>(sourceId.Get_Number()));
+		}
 
 		const DATA_JSON_VALUE* stages = entry.Find("stages");
 		if (nullptr == stages || !stages->Is_Array() ||
