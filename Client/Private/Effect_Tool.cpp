@@ -10388,15 +10388,58 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			if (ImGui::TreeNodeEx(SkillLabel.c_str(),
 				ImGuiTreeNodeFlags_OpenOnArrow))
 			{
+				const bool_t bHoldPhaseFamily =
+					Skill.eSkillKind == LostArk::Shared::PLAYER_SKILL_KIND::HOLD &&
+					1u < Skill.iComboStageCount &&
+					ProductCues.size() == Skill.iComboStageCount &&
+					[&ProductCues, &Skill]()
+					{
+						for (size_t iStage = 0u;
+							iStage < Skill.iComboStageCount; ++iStage)
+						{
+							if (1u != std::ranges::count_if(ProductCues,
+								[iStage](const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue)
+								{
+									return Cue.iStageIndex == iStage;
+								}))
+							{
+								return false;
+							}
+						}
+						return true;
+					}();
+				const auto BuildPhaseLabel = [&Skill](
+					const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue,
+					const bool_t bIncludeClip)
+				{
+					const EFFECT_TOOL_SKILL_PHASE_ROLE eRole =
+						Resolve_EffectToolSkillPhaseRole(Skill.eSkillKind,
+							Cue.iStageIndex, Skill.iComboStageCount);
+					std::string Label(EffectToolSkillPhaseRoleLabel(eRole));
+					if (EFFECT_TOOL_SKILL_PHASE_ROLE::BASIC_ATTACK == eRole ||
+						EFFECT_TOOL_SKILL_PHASE_ROLE::STAGE == eRole)
+					{
+						Label += " " + std::to_string(Cue.iStageIndex + 1u);
+					}
+					if (bIncludeClip && !Cue.Cue.strClipName.empty())
+						Label += " | " + Cue.Cue.strClipName;
+					return Label;
+				};
+				if (bHoldPhaseFamily)
+				{
+					ImGui::TextDisabled(
+						"One HOLD family: Start / Charge / Release. Product documents remain phase-local because the Server owns release timing.");
+				}
 				if (!SavedBindings.empty())
 				{
-					ImGui::SeparatorText("Saved Unified Effects");
+					ImGui::SeparatorText(bHoldPhaseFamily ?
+						"Saved HOLD Phase Documents" : "Saved Unified Effects");
 					for (const UNIFIED_EFFECT_CANDIDATE_BINDING* pBinding :
 						SavedBindings)
 					{
 						if (nullptr == pBinding)
 							continue;
-						const bool_t bExactProduct = std::any_of(
+						const auto ExactProduct = std::find_if(
 							ProductCues.begin(), ProductCues.end(),
 							[pBinding](
 								const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue)
@@ -10404,8 +10447,11 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 								return Cue.Cue.strEffectAssetId ==
 									pBinding->strEffectAssetId;
 							});
-						const bool_t bLegacyProduct = !bExactProduct &&
-							std::any_of(ProductCues.begin(), ProductCues.end(),
+						const bool_t bExactProduct =
+							ExactProduct != ProductCues.end();
+						const auto LegacyProduct = bExactProduct ?
+							ProductCues.end() :
+							std::find_if(ProductCues.begin(), ProductCues.end(),
 								[pBinding](
 									const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue)
 								{
@@ -10413,6 +10459,10 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 										Cue.Cue.strEffectAssetId) ==
 										pBinding->strEffectAssetId;
 								});
+						const bool_t bLegacyProduct =
+							LegacyProduct != ProductCues.end();
+						const auto MatchedProduct = bExactProduct ?
+							ExactProduct : LegacyProduct;
 						const bool_t bActive =
 							m_ActiveDocument.has_value() &&
 							m_eActiveDocumentSource ==
@@ -10420,8 +10470,13 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 							m_ActiveDocument->strEffectAssetId ==
 								pBinding->strEffectAssetId;
 						ImGui::PushID(pBinding->strEffectAssetId.c_str());
+						const std::string SavedTreeLabel =
+							bHoldPhaseFamily && MatchedProduct != ProductCues.end() ?
+								BuildPhaseLabel(*MatchedProduct, false) +
+									"##" + pBinding->strEffectAssetId :
+								pBinding->strEffectAssetId;
 						const bool_t bSavedOpen = ImGui::TreeNodeEx(
-							pBinding->strEffectAssetId.c_str(),
+							SavedTreeLabel.c_str(),
 							ImGuiTreeNodeFlags_OpenOnArrow |
 								(bActive ? ImGuiTreeNodeFlags_Selected : 0));
 						if (ImGui::IsItemHovered())
@@ -10431,6 +10486,11 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 						}
 						if (bSavedOpen)
 						{
+							if (bHoldPhaseFamily)
+							{
+								ImGui::TextWrapped("Stable Product ID: %s",
+									pBinding->strEffectAssetId.c_str());
+							}
 							if (bExactProduct)
 							{
 								ImGui::TextColored(
@@ -10492,12 +10552,11 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				}
 				if (!bArtistFSkill && nullptr != pProductEntry)
 				{
-					for (size_t iCue = 0u; iCue < ProductCues.size(); ++iCue)
+					const auto RenderProductCue = [this, pProductEntry,
+						&ProductCues, &BuildPhaseLabel](const size_t iCue)
 					{
 						const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue =
 							ProductCues[iCue];
-						const bool_t bCombo = Skill.eSkillKind ==
-							LostArk::Shared::PLAYER_SKILL_KIND::COMBO;
 						const bool_t bMultipleStageClips = std::any_of(
 							ProductCues.begin(), ProductCues.end(),
 							[&Cue](
@@ -10506,19 +10565,12 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 								return Other.iStageIndex == Cue.iStageIndex &&
 									Other.iStageClipIndex != Cue.iStageClipIndex;
 							});
-						std::string StageLabel = bCombo ?
-							("BA " + std::to_string(Cue.iStageIndex + 1u)) :
-							(ProductCues.size() > 1u ?
-								("Stage " +
-									std::to_string(Cue.iStageIndex + 1u)) :
-								std::string("Effect"));
+						std::string StageLabel = BuildPhaseLabel(Cue, true);
 						if (bMultipleStageClips)
 						{
 							StageLabel += " / Clip " +
 								std::to_string(Cue.iStageClipIndex + 1u);
 						}
-						if (!Cue.Cue.strClipName.empty())
-							StageLabel += " | " + Cue.Cue.strClipName;
 						StageLabel += "##" + std::to_string(iCue);
 						ImGui::PushID(static_cast<int>(iCue));
 						if (ImGui::TreeNodeEx(StageLabel.c_str(),
@@ -10536,6 +10588,26 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 							ImGui::TreePop();
 						}
 						ImGui::PopID();
+					};
+					if (bHoldPhaseFamily)
+					{
+						ImGui::SeparatorText("HOLD Product Family");
+						const std::string FamilyLabel = "Start / Charge / Release (" +
+							std::to_string(ProductCues.size()) +
+							" phase cues)##hold-product-family";
+						if (ImGui::TreeNodeEx(FamilyLabel.c_str(),
+							ImGuiTreeNodeFlags_DefaultOpen |
+								ImGuiTreeNodeFlags_OpenOnArrow))
+						{
+							for (size_t iCue = 0u; iCue < ProductCues.size(); ++iCue)
+								RenderProductCue(iCue);
+							ImGui::TreePop();
+						}
+					}
+					else
+					{
+						for (size_t iCue = 0u; iCue < ProductCues.size(); ++iCue)
+							RenderProductCue(iCue);
 					}
 				}
 				ImGui::TreePop();

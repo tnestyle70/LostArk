@@ -766,6 +766,7 @@ void Client::CEffectObject::Update(const f32_t fTimeDelta)
 void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 {
 	UNREFERENCED_PARAMETER(fTimeDelta);
+	m_bNonBlendModelCuePassPending = false;
 	if (m_bRenderFailureIsolated)
 		return;
 	if (m_bReconstructedDiagnosticActive)
@@ -797,6 +798,16 @@ void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
 	{
 		m_strStatus = "Effect presentation provider budget exceeded.";
 		return;
+	}
+	if (m_pRenderer->Has_NonBlendModelCues())
+	{
+		/* The exact Dimension Summon uses the ordinary animated-character
+		   deferred pass. Submit it before lighting; the remaining Effect rows
+		   keep their existing SceneHDR blend submission. */
+		m_bNonBlendModelCuePassPending = true;
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::NONBLEND,
+			static_pointer_cast<CGameObject>(Self));
 	}
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::BLEND,
@@ -967,8 +978,35 @@ void Client::CEffectObject::Finalize_PresentationSubmission(
 	m_LastPresentationSubmissionStats.bCommitted = bCommitted;
 }
 
+HRESULT Client::CEffectObject::Render_NonBlendModelCues()
+{
+	if (m_bRenderFailureIsolated)
+		return S_FALSE;
+	if (m_bReconstructedDiagnosticActive || !m_bVisible)
+		return S_FALSE;
+	std::string GateStatus;
+	if (!m_bReconstructedSourceRuntimeActive &&
+		!m_ReconstructedRuntimeBoundary.Admit_Render(GateStatus))
+	{
+		m_strStatus = std::move(GateStatus);
+		return Complete_LocalEffectFailure(
+			E_FAIL, m_strStatus, "render", false);
+	}
+	const HRESULT Result =
+		m_pRenderer->Render_NonBlendModelCues(m_Playback.Get_Frame());
+	m_strStatus = m_pRenderer->Get_Status();
+	return Complete_RenderResult(Result, m_strStatus);
+}
+
 HRESULT Client::CEffectObject::Render()
 {
+	/* NONBLEND is consumed before BLEND, so the first queued call owns only the
+	   character-surface ModelCue and clears the lane for the normal Effect draw. */
+	if (m_bNonBlendModelCuePassPending)
+	{
+		m_bNonBlendModelCuePassPending = false;
+		return Render_NonBlendModelCues();
+	}
 	if (m_bRenderFailureIsolated)
 		return S_FALSE;
 	if (m_bReconstructedDiagnosticActive)

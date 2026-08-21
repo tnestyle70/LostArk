@@ -142,6 +142,63 @@ enum class EFFECT_AUTHORING_FAMILY : uint8_t
 	END
 };
 
+/* The Server reuses its staged-action index for both COMBO attacks and HOLD
+   phases. Keep the Product documents phase-local, but give the Tool an exact
+   semantic label so a HOLD start/charge/release family is never presented as
+   three basic attacks merely because its stable IDs retain the legacy baN
+   suffix. */
+enum class EFFECT_TOOL_SKILL_PHASE_ROLE : uint8_t
+{
+	EFFECT,
+	BASIC_ATTACK,
+	HOLD_START,
+	HOLD_CHARGE,
+	HOLD_RELEASE,
+	STAGE
+};
+
+constexpr EFFECT_TOOL_SKILL_PHASE_ROLE Resolve_EffectToolSkillPhaseRole(
+	const LostArk::Shared::PLAYER_SKILL_KIND eSkillKind,
+	const size_t iStageIndex,
+	const size_t iStageCount) noexcept
+{
+	if (LostArk::Shared::PLAYER_SKILL_KIND::COMBO == eSkillKind)
+		return EFFECT_TOOL_SKILL_PHASE_ROLE::BASIC_ATTACK;
+	if (LostArk::Shared::PLAYER_SKILL_KIND::HOLD == eSkillKind &&
+		1u < iStageCount && iStageIndex < iStageCount)
+	{
+		if (0u == iStageIndex)
+			return EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_START;
+		if (iStageIndex + 1u == iStageCount)
+			return EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_RELEASE;
+		return EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_CHARGE;
+	}
+	return 1u < iStageCount ?
+		EFFECT_TOOL_SKILL_PHASE_ROLE::STAGE :
+		EFFECT_TOOL_SKILL_PHASE_ROLE::EFFECT;
+}
+
+constexpr std::string_view EffectToolSkillPhaseRoleLabel(
+	const EFFECT_TOOL_SKILL_PHASE_ROLE eRole) noexcept
+{
+	switch (eRole)
+	{
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::BASIC_ATTACK:
+		return "BA";
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_START:
+		return "Hold Start";
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_CHARGE:
+		return "Hold Charge";
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::HOLD_RELEASE:
+		return "Hold Release";
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::STAGE:
+		return "Stage";
+	case EFFECT_TOOL_SKILL_PHASE_ROLE::EFFECT:
+	default:
+		return "Effect";
+	}
+}
+
 constexpr EFFECT_DOCUMENT_SOURCE Resolve_ProductCueDocumentSource(
 	const bool_t bHasVisualProgramProjection) noexcept
 {
