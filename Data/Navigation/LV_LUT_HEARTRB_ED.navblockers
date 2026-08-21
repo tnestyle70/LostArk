@@ -3866,7 +3866,7 @@ REGION "navregion.valtan.floor84.rail.7000000000000000001" "condition.valtan.flo
 355 77
 355 81
 355 82
-REGION "navregion.valtan.floor84.rail.7000000000000000005" "condition.valtan.floor84.rail.7000000000000000005.collapsed" 1 325
+REGION "navregion.valtan.floor30.rail.7000000000000000005" "condition.valtan.floor30.rail.7000000000000000005.collapsed" 1 325
 291 83
 291 90
 292 83

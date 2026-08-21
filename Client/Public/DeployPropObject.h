@@ -21,6 +21,8 @@ public:
 		DEPLOY_PROP_MODEL_KIND modelKind = DEPLOY_PROP_MODEL_KIND::STATIC;
 		std::wstring intactPrototypeTag;
 		std::wstring fracturedPrototypeTag;
+		f32_t emissiveIntensity = 1.f;
+		bool_t deferredEmissiveOverlay = false;
 	};
 
 	/* A debris preview instance names a CModel prototype already admitted by
@@ -68,6 +70,7 @@ public:
 	virtual void Update(f32_t fTimeDelta) override;
 	virtual void Late_Update(f32_t fTimeDelta) override;
 	virtual HRESULT Render() override;
+	virtual HRESULT Render_DeferredOverlay() override;
 	virtual HRESULT Render_Shadow() override;
 
 	bool_t Set_State(DEPLOY_PROP_STATE state);
@@ -196,11 +199,14 @@ private:
 	HRESULT Render_Static(
 		const shared_ptr<CModel>& model,
 		const shared_ptr<CShader>& shader,
-		uint32_t passIndex);
+		uint32_t passIndex,
+		bool_t suppressDeferredEmissive);
+	HRESULT Render_DeferredEmissiveOverlay();
 	HRESULT Render_Animated(uint32_t passIndex);
 	HRESULT Render_DebrisPreview(bool_t shadowPass);
 	bool_t Has_VisibleDebrisPreviewInstance() const;
 	bool_t Is_BasePresentationSuppressed() const;
+	bool_t Should_RenderDeferredEmissiveOverlay() const;
 	bool_t Begin_DebrisPresentation(
 		const std::vector<DEBRIS_PREVIEW_INSTANCE_DESC>& instances,
 		bool_t suppressSource,
@@ -226,6 +232,8 @@ private:
 	DEPLOY_PROP_PLACEMENT m_Placement;
 	DEPLOY_PROP_MODEL_KIND m_ModelKind = DEPLOY_PROP_MODEL_KIND::STATIC;
 	DEPLOY_PROP_STATE m_State = DEPLOY_PROP_STATE::INTACT;
+	f32_t m_fEmissiveIntensity = 1.f;
+	bool_t m_bDeferredEmissiveOverlay = false;
 	DEPLOY_PROP_STATE m_PrePhysicsPreviewState = DEPLOY_PROP_STATE::INTACT;
 	uint32_t m_iPrePhysicsPreviewAnimationIndex = UINT32_MAX;
 	f32_t m_fPrePhysicsPreviewAnimationTrackPosition = 0.f;

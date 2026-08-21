@@ -127,6 +127,12 @@ HRESULT CLevel_ValtanArena::Initialize()
 				"Valtan level descriptor has no map area" :
 				m_MapRuntime.Get_Status());
 	}
+#ifdef _DEBUG
+	/* A placement that misses its static batch becomes its own draw, so the
+	   fallback count is what separates a heavy arena from a broken one. */
+	OutputDebugStringA(("[Level_ValtanArena][MapArea] " +
+		m_MapRuntime.Get_Status() + "\n").c_str());
+#endif
 	if (!m_DeployRuntime.Load_Area(
 		ETOUI(LEVEL::VALTAN_ARENA),
 		pEntry->pMapAreaId))

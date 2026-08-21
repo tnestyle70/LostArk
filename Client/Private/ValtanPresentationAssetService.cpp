@@ -57,15 +57,15 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 		CRuntimeAssetRoot::Resolve(pActor->animationSetId);
 	if (bodyPath.empty() || weaponPath.empty() || animSetPath.empty())
 		return E_FAIL;
-	std::vector<std::filesystem::path> armorPaths;
-	armorPaths.reserve(pActor->armorModels.size());
-	for (const std::string& armorModel : pActor->armorModels)
+	std::vector<std::pair<uint32_t, std::filesystem::path>> armorAssets;
+	armorAssets.reserve(pActor->armorParts.size());
+	for (const BOSS_ARMOR_PART_ENTRY& armorPart : pActor->armorParts)
 	{
 		std::filesystem::path armorPath =
-			CRuntimeAssetRoot::Resolve(armorModel);
+			CRuntimeAssetRoot::Resolve(armorPart.modelAssetId);
 		if (armorPath.empty())
 			return E_FAIL;
-		armorPaths.push_back(std::move(armorPath));
+		armorAssets.emplace_back(armorPart.stateMask, std::move(armorPath));
 	}
 	std::error_code animSetFileError;
 	const bool_t hasAnimSetFile = std::filesystem::is_regular_file(
@@ -114,7 +114,7 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	}
 
 	std::vector<std::pair<std::wstring, unique_ptr<CPrototype>>> staged;
-	staged.reserve(4u + armorPaths.size());
+	staged.reserve(4u + armorAssets.size());
 	staged.emplace_back(
 		TEXT("Prototype_Component_Model_Valtan"),
 		std::move(bodyModel));
@@ -129,13 +129,13 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	/* Armour rides the body rig, so it is cooked against the same skeleton
 	and pre-transformed exactly like the body. It carries no animation of
 	its own: the skinned part borrows the palette the body model built. */
-	for (size_t armorIndex = 0u; armorIndex < armorPaths.size(); ++armorIndex)
+	for (const auto& [stateMask, armorPath] : armorAssets)
 	{
 		unique_ptr<CModel> armorModel = CModel::Create(
 			pDevice,
 			pContext,
 			MODEL::ANIM,
-			armorPaths[armorIndex].string().c_str(),
+			armorPath.string().c_str(),
 			XMMatrixScaling(0.0001f, 0.0001f, 0.0001f));
 		/* A plate is presentation. An unreadable one is dropped here so the
 		boss still reaches its prototypes and spawns; the part loop skips the
@@ -143,13 +143,13 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 		if (nullptr == armorModel)
 		{
 			OutputDebugStringA(("[Client][Valtan] armour plate rejected: " +
-				armorPaths[armorIndex].string() + " | " +
+				armorPath.string() + " | " +
 				CModelDecoderRegistry::Get().Get_LastReport().error +
 				"\n").c_str());
 			continue;
 		}
 		staged.emplace_back(
-			CValtan::Build_ArmorModelPrototypeTag(armorIndex),
+			CValtan::Build_ArmorModelPrototypeTag(stateMask),
 			std::move(armorModel));
 	}
 	staged.emplace_back(

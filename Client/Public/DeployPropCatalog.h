@@ -34,6 +34,8 @@ struct DEPLOY_PROP_ASSET_ENTRY
 	std::filesystem::path fracturedRelativePath;
 	std::filesystem::path fracturedResolvedPath;
 	std::wstring fracturedPrototypeTag;
+	f32_t emissiveIntensity = 1.f;
+	bool_t deferredEmissiveOverlay = false;
 };
 
 struct DEPLOY_PROP_PLACEMENT

@@ -3,6 +3,7 @@
 #include "Gameplay/CombatCollisionContract.h"
 #include "Gameplay/WorldCollisionContract.h"
 #include "PlayerSkillSystem.h"
+#include "ServerCombatHitRuntime.h"
 
 #include <algorithm>
 #include <cmath>
@@ -147,8 +148,7 @@ void LostArk::Server::CMonsterBrain::Update(
 		if (!monster.hasAppliedPatternDamage)
 		{
 			if (LostArk::Shared::CombatCollision::Circles_Overlap(
-				attackCircle, targetBody) &&
-				!CPlayerSkillSystem::Try_Counter(*target, catalog, serverTick))
+				attackCircle, targetBody))
 			{
 				const PLAYER_RUNTIME_PROFILE* playerProfile =
 					catalog.Find_Player(target->eCharacterClass);
@@ -190,6 +190,17 @@ void LostArk::Server::CMonsterBrain::Update(
 						monster.iAttackDownMs,
 						serverTick);
 				}
+				SERVER_WORLD_TO_PLAYER_HIT incoming{};
+				incoming.iRawDamage = monster.iAttackPower;
+				incoming.fSourceX = monster.fPositionX;
+				incoming.fSourceZ = monster.fPositionZ;
+				incoming.fPushRangeM = monster.fAttackPushRangeM;
+				incoming.iPushMs = monster.iAttackPushMs;
+				incoming.bKnockdown = monster.bAttackKnockdown;
+				incoming.iDownMs = monster.iAttackDownMs;
+				incoming.iServerTick = serverTick;
+				(void)CServerCombatHitRuntime::Apply_WorldToPlayer(
+					*target, incoming, catalog, outDamageEvents);
 			}
 			monster.hasAppliedPatternDamage = true;
 		}

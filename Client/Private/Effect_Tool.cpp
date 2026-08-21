@@ -5,6 +5,7 @@
 #include "ActionPresentationTimeline.h"
 #include "AnimationSkillBindingDocument.h"
 #include "AnimationTargetService.h"
+#include "ActorCatalog.h"
 #include "Character.h"
 #include "CharacterSpec.h"
 #include "DataJson.h"
@@ -8761,6 +8762,24 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 					Cue.strStageId, Cue.strActionId });
 		++StagedBossProductCueMappingCounts[Cue.strEffectAssetId];
 	}
+	const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
+		BossCueDocument.strOwnerArchetypeId);
+	if (nullptr == pBossActor)
+	{
+		return PreservePrevious(
+			"Direct authored edit index could not validate Valtan combat-object owners: " +
+			CActorCatalog::Get_Status());
+	}
+	EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER_MAP
+		BossCombatObjectOwners;
+	for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
+		pBossActor->combatObjectVisuals)
+	{
+		BossCombatObjectOwners.emplace(Visual.effectAssetId,
+			EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER{
+				pBossActor->archetypeId, Visual.combatObjectArchetypeId,
+				Visual.clientVisualId });
+	}
 
 	std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE> ScannedFiles;
 	ScannedFiles.reserve(DataFiles.size());
@@ -8776,7 +8795,8 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	std::string SourceIndexStatus;
 	if (!CEffectDirectAuthoredSourceIndex::Build(
 			CatalogPath, AuthoredRoot, ScannedFiles, PlayerSkillOwners,
-			BossPatternOwners, SourceIndex, SourceIndexStatus))
+			BossPatternOwners, BossCombatObjectOwners,
+			SourceIndex, SourceIndexStatus))
 	{
 		return PreservePrevious(SourceIndexStatus);
 	}

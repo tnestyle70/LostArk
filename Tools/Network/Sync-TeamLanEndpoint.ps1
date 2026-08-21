@@ -105,6 +105,134 @@ function Set-ProjectUserProperty {
     }
 }
 
+function Set-ProjectUserEnvironmentVariable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$VariableName,
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    $namespaceUri = 'http://schemas.microsoft.com/developer/msbuild/2003'
+    $xmlNamespace = [System.Xml.Linq.XNamespace]::Get($namespaceUri)
+    if (Test-Path -LiteralPath $Path) {
+        $document = [System.Xml.Linq.XDocument]::Load(
+            $Path,
+            [System.Xml.Linq.LoadOptions]::PreserveWhitespace)
+        if ($null -eq $document.Root -or
+            $document.Root.Name.LocalName -ne 'Project' -or
+            $document.Root.Name.NamespaceName -ne $namespaceUri) {
+            throw "Invalid Visual Studio user project XML: $Path"
+        }
+    }
+    else {
+        $document = [System.Xml.Linq.XDocument]::new(
+            [System.Xml.Linq.XDeclaration]::new('1.0', 'utf-8', $null),
+            [System.Xml.Linq.XElement]::new(
+                $xmlNamespace + 'Project',
+                [System.Xml.Linq.XAttribute]::new('ToolsVersion', 'Current'),
+                [System.Xml.Linq.XElement]::new(
+                    $xmlNamespace + 'PropertyGroup')))
+    }
+
+    $propertyGroups = @($document.Root.Elements(
+        $xmlNamespace + 'PropertyGroup'))
+    if (0 -eq $propertyGroups.Count) {
+        $propertyGroup = [System.Xml.Linq.XElement]::new(
+            $xmlNamespace + 'PropertyGroup')
+        $document.Root.Add($propertyGroup)
+    }
+    else {
+        $propertyGroup = $propertyGroups[0]
+    }
+
+    $properties = @($document.Descendants(
+        $xmlNamespace + 'LocalDebuggerEnvironment'))
+    if (0 -eq $properties.Count) {
+        $property = [System.Xml.Linq.XElement]::new(
+            $xmlNamespace + 'LocalDebuggerEnvironment')
+        $propertyGroup.Add($property)
+        $properties = @($property)
+    }
+
+    $canonicalRow = "$VariableName=$Value"
+    foreach ($property in $properties) {
+        $rows = if ([string]::IsNullOrEmpty($property.Value)) {
+            @()
+        }
+        else {
+            @([Text.RegularExpressions.Regex]::Split(
+                $property.Value, "`r`n|`n|`r"))
+        }
+        $canonicalRows = [Collections.Generic.List[string]]::new()
+        $hasCanonicalRow = $false
+        foreach ($row in $rows) {
+            $separatorIndex = $row.IndexOf('=')
+            $isTargetRow = $separatorIndex -ge 0 -and
+                $row.Substring(0, $separatorIndex) -ceq $VariableName
+            if ($isTargetRow) {
+                if (-not $hasCanonicalRow) {
+                    $canonicalRows.Add($canonicalRow)
+                    $hasCanonicalRow = $true
+                }
+                continue
+            }
+            $canonicalRows.Add($row)
+        }
+        if (-not $hasCanonicalRow) {
+            $canonicalRows.Add($canonicalRow)
+        }
+        $property.Value = $canonicalRows -join "`n"
+    }
+
+    $temporaryPath = "$Path.$PID.tmp"
+    try {
+        $writerSettings = [System.Xml.XmlWriterSettings]::new()
+        $writerSettings.Encoding = [Text.UTF8Encoding]::new($false)
+        $writerSettings.Indent = $true
+        $writerSettings.NewLineChars = "`r`n"
+        $writerSettings.NewLineHandling =
+            [System.Xml.NewLineHandling]::Replace
+        $writer = [System.Xml.XmlWriter]::Create(
+            $temporaryPath,
+            $writerSettings)
+        try {
+            $document.Save($writer)
+        }
+        finally {
+            $writer.Dispose()
+        }
+
+        $stagedDocument = [System.Xml.Linq.XDocument]::Load($temporaryPath)
+        $stagedProperties = @($stagedDocument.Descendants(
+            $xmlNamespace + 'LocalDebuggerEnvironment'))
+        if ($stagedProperties.Count -ne $properties.Count) {
+            throw "Failed to stage LocalDebuggerEnvironment in $Path"
+        }
+        foreach ($property in $stagedProperties) {
+            $targetRows = @([Text.RegularExpressions.Regex]::Split(
+                $property.Value, "`r`n|`n|`r") | Where-Object {
+                    $separatorIndex = $_.IndexOf('=')
+                    $separatorIndex -ge 0 -and
+                        $_.Substring(0, $separatorIndex) -ceq $VariableName
+                })
+            if (1 -ne $targetRows.Count -or
+                $targetRows[0] -cne $canonicalRow) {
+                throw "Failed to canonicalize $VariableName in $Path"
+            }
+        }
+
+        Move-Item -LiteralPath $temporaryPath -Destination $Path -Force
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporaryPath) {
+            Remove-Item -LiteralPath $temporaryPath -Force
+        }
+    }
+}
+
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = [Security.Principal.WindowsPrincipal]::new($identity)
@@ -211,7 +339,8 @@ $serverBindAddress = [string]$endpoint.serverBindAddress
 $serverPort = [uint16]$endpoint.port
 $localAddresses = @(Get-NetIPAddress -AddressFamily IPv4 `
     -ErrorAction SilentlyContinue | ForEach-Object { $_.IPAddress })
-$ownsServerAddress = $localAddresses -contains $serverHost
+$ownsServerAddress = $isLoopbackEndpoint -or
+    $localAddresses -contains $serverHost
 $effectiveRole = switch ($Role) {
     'Server' {
         if (-not $ownsServerAddress) {
@@ -233,10 +362,10 @@ if ('server-host' -eq $effectiveRole) {
         -PropertyName 'LocalDebuggerCommandArguments' `
         -Value "--bind-address $serverBindAddress"
 }
-Set-ProjectUserProperty `
+Set-ProjectUserEnvironmentVariable `
     -Path $clientUserPath `
-    -PropertyName 'LocalDebuggerEnvironment' `
-    -Value "LOSTARK_SERVER_HOST=$serverHost"
+    -VariableName 'LOSTARK_SERVER_HOST' `
+    -Value $serverHost
 
 # Loopback never leaves the machine, so it needs no inbound rule - and asking
 # for one would demand an elevated shell for nothing.

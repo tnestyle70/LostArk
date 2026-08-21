@@ -13,7 +13,8 @@ namespace
 {
 	constexpr const char* CATALOG_MAGIC = "LOSTARK_DEPLOY_PROP_CATALOG";
 	constexpr const char* PLACEMENT_MAGIC = "LOSTARK_DEPLOY_PROP_PLACEMENTS";
-	constexpr uint32_t FORMAT_VERSION = 1;
+	constexpr uint32_t CATALOG_FORMAT_VERSION = 2;
+	constexpr uint32_t PLACEMENT_FORMAT_VERSION = 1;
 	constexpr uint32_t MAX_ASSET_COUNT = 64;
 	constexpr uint32_t MAX_PLACEMENT_COUNT = 4096;
 
@@ -67,7 +68,7 @@ bool_t CDeployPropCatalog::Load(
 	uint32_t version = {};
 	uint32_t assetCount = {};
 	if (!catalog || !(catalog >> magic >> version >> std::quoted(areaId) >> assetCount) ||
-		magic != CATALOG_MAGIC || version != FORMAT_VERSION ||
+		magic != CATALOG_MAGIC || version != CATALOG_FORMAT_VERSION ||
 		areaId != expectedAreaId || 0 == assetCount || assetCount > MAX_ASSET_COUNT)
 	{
 		m_Status = "DeployProp catalog header is invalid";
@@ -86,11 +87,13 @@ bool_t CDeployPropCatalog::Load(
 		std::string intactPrototype;
 		std::string fracturedPath;
 		std::string fracturedPrototype;
+		uint32_t deferredEmissiveOverlay = {};
 		DEPLOY_PROP_ASSET_ENTRY entry{};
 		if (!(catalog >> std::quoted(entry.id) >> kind >>
 			std::quoted(entry.label) >> std::quoted(intactPath) >>
 			std::quoted(intactPrototype) >> std::quoted(fracturedPath) >>
-			std::quoted(fracturedPrototype) >> std::quoted(entry.evidence)))
+			std::quoted(fracturedPrototype) >> entry.emissiveIntensity >>
+			deferredEmissiveOverlay >> std::quoted(entry.evidence)))
 		{
 			m_Status = "DeployProp catalog row is truncated at " +
 				std::to_string(index);
@@ -110,6 +113,7 @@ bool_t CDeployPropCatalog::Load(
 		entry.intactPrototypeTag.assign(intactPrototype.begin(), intactPrototype.end());
 		entry.fracturedRelativePath = std::filesystem::path(fracturedPath).lexically_normal();
 		entry.fracturedPrototypeTag.assign(fracturedPrototype.begin(), fracturedPrototype.end());
+		entry.deferredEmissiveOverlay = 0u != deferredEmissiveOverlay;
 		if (!fracturedPath.empty())
 			entry.fracturedResolvedPath = CRuntimeAssetRoot::Resolve(entry.fracturedRelativePath);
 
@@ -135,6 +139,11 @@ bool_t CDeployPropCatalog::Load(
 			(declaresFractured &&
 				(fracturedPath.empty() || fracturedPrototype.empty())) ||
 			(entry.kind == DEPLOY_PROP_MODEL_KIND::ANIM && declaresFractured) ||
+			!std::isfinite(entry.emissiveIntensity) ||
+			entry.emissiveIntensity < 0.f ||
+			deferredEmissiveOverlay > 1u ||
+			(entry.deferredEmissiveOverlay &&
+				entry.kind != DEPLOY_PROP_MODEL_KIND::STATIC) ||
 			!assetIds.insert(entry.id).second ||
 			!prototypeTags.insert(entry.intactPrototypeTag).second ||
 			(requiresFractured &&
@@ -157,7 +166,7 @@ bool_t CDeployPropCatalog::Load(
 	uint32_t placementCount = {};
 	if (!placements || !(placements >> magic >> version >>
 		std::quoted(placementAreaId) >> placementCount) ||
-		magic != PLACEMENT_MAGIC || version != FORMAT_VERSION ||
+		magic != PLACEMENT_MAGIC || version != PLACEMENT_FORMAT_VERSION ||
 		placementAreaId != areaId || 0 == placementCount ||
 		placementCount > MAX_PLACEMENT_COUNT)
 	{

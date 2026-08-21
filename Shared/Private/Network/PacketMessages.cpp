@@ -168,6 +168,42 @@ namespace
 			static_cast<std::uint8_t>(LostArk::Shared::WORLD_ENTITY_ACTION::END);
 	}
 
+	bool Is_SameOrForwardTick(
+		const std::uint32_t current,
+		const std::uint32_t start) noexcept
+	{
+		return current == start ||
+			static_cast<std::int32_t>(current - start) > 0;
+	}
+
+	bool Is_Default_BossCombatSnapshot(
+		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& snapshot)
+	{
+		return 0u == snapshot.iStateRevision &&
+			0u == snapshot.iAlivePartMask &&
+			0u == snapshot.iFlags &&
+			0u == snapshot.iCurrentStagger &&
+			0u == snapshot.iMaximumStagger &&
+			0u == snapshot.iCurrentShield &&
+			0u == snapshot.iMaximumShield &&
+			1u == snapshot.iGameplayPhase;
+	}
+
+	bool Is_Valid_BossCombatSnapshot(
+		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& snapshot)
+	{
+		const bool hasShield = LostArk::Shared::Has_BossCombatFlag(
+			snapshot.iFlags,
+			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::SHIELDED);
+		return 0u != snapshot.iStateRevision &&
+			0u == (snapshot.iFlags &
+				~LostArk::Shared::BOSS_COMBAT_STATE_KNOWN_FLAG_MASK) &&
+			snapshot.iCurrentStagger <= snapshot.iMaximumStagger &&
+			snapshot.iCurrentShield <= snapshot.iMaximumShield &&
+			(hasShield == (0u != snapshot.iCurrentShield)) &&
+			0u != snapshot.iGameplayPhase;
+	}
+
 	bool Is_Valid_WorldEntitySnapshot(
 		const LostArk::Shared::WORLD_ENTITY_SNAPSHOT& snapshot)
 	{
@@ -183,7 +219,11 @@ namespace
 			snapshot.iCurrentHp <= snapshot.iMaximumHp &&
 			0 != snapshot.iPhase &&
 			snapshot.iBrokenArmorMask <
-				(1u << LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES);
+				(1u << LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES) &&
+			(snapshot.hasBossCombatState ?
+				(Is_Valid_BossCombatSnapshot(snapshot.BossCombat) &&
+				 snapshot.iPhase == snapshot.BossCombat.iGameplayPhase) :
+				Is_Default_BossCombatSnapshot(snapshot.BossCombat));
 	}
 
 	// A zero amount is not a hit, so it must not reach presentation as one; the
@@ -198,6 +238,107 @@ namespace
 			std::isfinite(damage.fPositionX) &&
 			std::isfinite(damage.fPositionY) &&
 			std::isfinite(damage.fPositionZ);
+	}
+
+	bool Is_Valid_BossCombatEvent(
+		const LostArk::Shared::BOSS_COMBAT_EVENT& event)
+	{
+		return 0u != event.iEventSequence &&
+			0u != event.iEventTick &&
+			event.iBossNetEntityId !=
+				LostArk::Shared::INVALID_NET_ENTITY_ID &&
+			LostArk::Shared::BOSS_COMBAT_EVENT_KIND::PART_BROKEN ==
+				event.eKind &&
+			0u != event.iPartMask;
+	}
+
+	bool Are_BossCombatEventsCanonical(
+		const std::vector<LostArk::Shared::BOSS_COMBAT_EVENT>& events)
+	{
+		for (std::size_t index = 0; index < events.size(); ++index)
+		{
+			if (!Is_Valid_BossCombatEvent(events[index]) ||
+				(0u != index &&
+				 !(events[index - 1u].iEventSequence <
+					events[index].iEventSequence)))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool Are_BossCombatEventsConsistent(
+		const std::vector<LostArk::Shared::WORLD_ENTITY_SNAPSHOT>& entities,
+		const std::vector<LostArk::Shared::BOSS_COMBAT_EVENT>& events)
+	{
+		for (const LostArk::Shared::BOSS_COMBAT_EVENT& event : events)
+		{
+			const auto boss = std::find_if(
+				entities.begin(), entities.end(),
+				[&event](const LostArk::Shared::WORLD_ENTITY_SNAPSHOT& entity)
+				{
+					return entity.iNetEntityId == event.iBossNetEntityId;
+				});
+			if (boss == entities.end() || !boss->hasBossCombatState ||
+				0u != (boss->BossCombat.iAlivePartMask & event.iPartMask))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool Is_Valid_CombatObjectSnapshot(
+		const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot)
+	{
+		return snapshot.iCombatObjectId !=
+				LostArk::Shared::INVALID_COMBAT_OBJECT_ID &&
+			snapshot.iSourceNetEntityId !=
+				LostArk::Shared::INVALID_NET_ENTITY_ID &&
+			std::isfinite(snapshot.fPositionX) &&
+			std::isfinite(snapshot.fPositionY) &&
+			std::isfinite(snapshot.fPositionZ) &&
+			std::isfinite(snapshot.fYawDegrees);
+	}
+
+	bool Are_CombatObjectSnapshotsCanonical(
+		const std::vector<LostArk::Shared::COMBAT_OBJECT_SNAPSHOT>& objects)
+	{
+		for (std::size_t index = 0; index < objects.size(); ++index)
+		{
+			if (!Is_Valid_CombatObjectSnapshot(objects[index]) ||
+				(0u != index &&
+				 !(objects[index - 1u].iCombatObjectId <
+					objects[index].iCombatObjectId)))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool Are_CombatObjectSourcesPresent(
+		const std::vector<LostArk::Shared::PLAYER_SNAPSHOT>& players,
+		const std::vector<LostArk::Shared::WORLD_ENTITY_SNAPSHOT>& entities,
+		const std::vector<LostArk::Shared::COMBAT_OBJECT_SNAPSHOT>& objects)
+	{
+		for (const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& object : objects)
+		{
+			const bool hasPlayerSource = std::any_of(
+				players.begin(), players.end(), [&object](const auto& player)
+				{
+					return player.iNetEntityId == object.iSourceNetEntityId;
+				});
+			const bool hasEntitySource = std::any_of(
+				entities.begin(), entities.end(), [&object](const auto& entity)
+				{
+					return entity.iNetEntityId == object.iSourceNetEntityId;
+				});
+			if (!hasPlayerSource && !hasEntitySource)
+				return false;
+		}
+		return true;
 	}
 
 	bool Is_Valid_CombatRuntimeRevision(const std::string& revision)
@@ -1014,6 +1155,107 @@ bool LostArk::Shared::Read_Message(
 
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
+	const S2C_COMBAT_OBJECT_SPAWNED& spawned)
+{
+	if (INVALID_COMBAT_OBJECT_ID == spawned.iCombatObjectId ||
+		INVALID_NET_ENTITY_ID == spawned.iSourceNetEntityId ||
+		0u == spawned.iSpawnTick ||
+		0u == spawned.iServerTick ||
+		!Is_SameOrForwardTick(spawned.iServerTick, spawned.iSpawnTick) ||
+		!Is_Valid_StableId(spawned.strCombatObjectArchetypeId, false) ||
+		!Is_Valid_StableId(spawned.strClientVisualId, false) ||
+		!std::isfinite(spawned.fPositionX) ||
+		!std::isfinite(spawned.fPositionY) ||
+		!std::isfinite(spawned.fPositionZ) ||
+		!std::isfinite(spawned.fYawDegrees))
+	{
+		return false;
+	}
+
+	Write_U64(writer, spawned.iCombatObjectId);
+	writer.Write_U32(spawned.iSourceNetEntityId);
+	writer.Write_U32(spawned.iSpawnTick);
+	writer.Write_U32(spawned.iServerTick);
+	if (!writer.Write_String(
+			spawned.strCombatObjectArchetypeId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!writer.Write_String(
+			spawned.strClientVisualId,
+			MAX_STABLE_NETWORK_ID_BYTES))
+	{
+		return false;
+	}
+	writer.Write_F32(spawned.fPositionX);
+	writer.Write_F32(spawned.fPositionY);
+	writer.Write_F32(spawned.fPositionZ);
+	writer.Write_F32(spawned.fYawDegrees);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_COMBAT_OBJECT_SPAWNED& spawned)
+{
+	S2C_COMBAT_OBJECT_SPAWNED decoded{};
+	if (!Read_U64(reader, decoded.iCombatObjectId) ||
+		!reader.Read_U32(decoded.iSourceNetEntityId) ||
+		!reader.Read_U32(decoded.iSpawnTick) ||
+		!reader.Read_U32(decoded.iServerTick) ||
+		!reader.Read_String(
+			decoded.strCombatObjectArchetypeId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_String(
+			decoded.strClientVisualId,
+			MAX_STABLE_NETWORK_ID_BYTES) ||
+		!reader.Read_F32(decoded.fPositionX) ||
+		!reader.Read_F32(decoded.fPositionY) ||
+		!reader.Read_F32(decoded.fPositionZ) ||
+		!reader.Read_F32(decoded.fYawDegrees) ||
+		INVALID_COMBAT_OBJECT_ID == decoded.iCombatObjectId ||
+		INVALID_NET_ENTITY_ID == decoded.iSourceNetEntityId ||
+		0u == decoded.iSpawnTick ||
+		0u == decoded.iServerTick ||
+		!Is_SameOrForwardTick(decoded.iServerTick, decoded.iSpawnTick) ||
+		!Is_Valid_StableId(decoded.strCombatObjectArchetypeId, false) ||
+		!Is_Valid_StableId(decoded.strClientVisualId, false) ||
+		!std::isfinite(decoded.fPositionX) ||
+		!std::isfinite(decoded.fPositionY) ||
+		!std::isfinite(decoded.fPositionZ) ||
+		!std::isfinite(decoded.fYawDegrees))
+	{
+		return false;
+	}
+
+	spawned = std::move(decoded);
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
+	const S2C_COMBAT_OBJECT_DESPAWNED& despawned)
+{
+	if (INVALID_COMBAT_OBJECT_ID == despawned.iCombatObjectId)
+		return false;
+	Write_U64(writer, despawned.iCombatObjectId);
+	return true;
+}
+
+bool LostArk::Shared::Read_Message(
+	CPacketReader& reader,
+	S2C_COMBAT_OBJECT_DESPAWNED& despawned)
+{
+	S2C_COMBAT_OBJECT_DESPAWNED decoded{};
+	if (!Read_U64(reader, decoded.iCombatObjectId) ||
+		INVALID_COMBAT_OBJECT_ID == decoded.iCombatObjectId)
+	{
+		return false;
+	}
+	despawned = decoded;
+	return true;
+}
+
+bool LostArk::Shared::Write_Message(
+	CPacketWriter& writer,
 	const C2S_SPAWN_WORLD_ENTITY& message)
 {
 	return Is_Valid_StableId(message.strPlacementId, false) &&
@@ -1466,10 +1708,12 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 	if (0 == message.iServerTick ||
 		!Is_Known_World_Id(message.eWorldId) ||
         message.Players.empty() ||
-        message.Players.size() >
-        MAX_WORLD_SNAPSHOT_PLAYERS ||
+		message.Players.size() >
+		MAX_WORLD_SNAPSHOT_PLAYERS ||
 		message.Entities.size() > MAX_WORLD_SNAPSHOT_ENTITIES ||
 		message.DamageEvents.size() > MAX_DAMAGE_EVENTS ||
+		message.BossCombatEvents.size() > MAX_BOSS_COMBAT_EVENTS ||
+		message.CombatObjects.size() > MAX_COMBAT_OBJECTS_PER_SNAPSHOT ||
 		// maximum 0 means "no Esther in this world" and then the level must be
 		// 0 too; a live gauge can never exceed its maximum.
 		(0 == message.iEstherGaugeMaximum && 0 != message.iEstherGauge) ||
@@ -1493,6 +1737,14 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		if (!Is_Valid_DamageEvent(damage))
 			return false;
 	}
+	if (!Are_BossCombatEventsCanonical(message.BossCombatEvents) ||
+		!Are_BossCombatEventsConsistent(
+			message.Entities, message.BossCombatEvents))
+		return false;
+	if (!Are_CombatObjectSnapshotsCanonical(message.CombatObjects) ||
+		!Are_CombatObjectSourcesPresent(
+			message.Players, message.Entities, message.CombatObjects))
+		return false;
     //server tick과 player size 넣기
 	writer.Write_U32(message.iServerTick);
 	writer.Write_U16(
@@ -1505,6 +1757,10 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 	// U8 is enough: MAX_DAMAGE_EVENTS bounds one tick, far under 255.
 	writer.Write_U8(
 		static_cast<std::uint8_t>(message.DamageEvents.size()));
+	writer.Write_U8(
+		static_cast<std::uint8_t>(message.BossCombatEvents.size()));
+	writer.Write_U8(
+		static_cast<std::uint8_t>(message.CombatObjects.size()));
 	writer.Write_U32(message.iEstherGauge);
 	writer.Write_U32(message.iEstherGaugeMaximum);
 
@@ -1563,6 +1819,18 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U32(entity.iMaximumHp);
 		writer.Write_U8(entity.iPhase);
 		writer.Write_U8(entity.iBrokenArmorMask);
+		writer.Write_U8(entity.hasBossCombatState ? 1u : 0u);
+		if (entity.hasBossCombatState)
+		{
+			writer.Write_U32(entity.BossCombat.iStateRevision);
+			writer.Write_U32(entity.BossCombat.iAlivePartMask);
+			writer.Write_U16(entity.BossCombat.iFlags);
+			writer.Write_U32(entity.BossCombat.iCurrentStagger);
+			writer.Write_U32(entity.BossCombat.iMaximumStagger);
+			writer.Write_U32(entity.BossCombat.iCurrentShield);
+			writer.Write_U32(entity.BossCombat.iMaximumShield);
+			writer.Write_U8(entity.BossCombat.iGameplayPhase);
+		}
 	}
 	for (const DAMAGE_EVENT& damage : message.DamageEvents)
 	{
@@ -1572,6 +1840,23 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_F32(damage.fPositionY);
 		writer.Write_F32(damage.fPositionZ);
 		writer.Write_U8(damage.isOutgoing ? 1u : 0u);
+	}
+	for (const BOSS_COMBAT_EVENT& event : message.BossCombatEvents)
+	{
+		Write_U64(writer, event.iEventSequence);
+		writer.Write_U32(event.iEventTick);
+		writer.Write_U32(event.iBossNetEntityId);
+		writer.Write_U8(static_cast<std::uint8_t>(event.eKind));
+		writer.Write_U32(event.iPartMask);
+	}
+	for (const COMBAT_OBJECT_SNAPSHOT& object : message.CombatObjects)
+	{
+		Write_U64(writer, object.iCombatObjectId);
+		writer.Write_U32(object.iSourceNetEntityId);
+		writer.Write_F32(object.fPositionX);
+		writer.Write_F32(object.fPositionY);
+		writer.Write_F32(object.fPositionZ);
+		writer.Write_F32(object.fYawDegrees);
 	}
 
     return true;
@@ -1584,6 +1869,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	std::uint16_t playerCount = 0;
 	std::uint16_t entityCount = 0;
 	std::uint8_t damageEventCount = 0;
+	std::uint8_t bossCombatEventCount = 0;
+	std::uint8_t combatObjectCount = 0;
 	std::uint32_t estherGauge = 0;
 	std::uint32_t estherGaugeMaximum = 0;
 
@@ -1592,6 +1879,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		!reader.Read_U16(playerCount) ||
 		!reader.Read_U16(entityCount) ||
 		!reader.Read_U8(damageEventCount) ||
+		!reader.Read_U8(bossCombatEventCount) ||
+		!reader.Read_U8(combatObjectCount) ||
 		!reader.Read_U32(estherGauge) ||
 		!reader.Read_U32(estherGaugeMaximum))
     {
@@ -1604,6 +1893,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
         playerCount > MAX_WORLD_SNAPSHOT_PLAYERS ||
 		entityCount > MAX_WORLD_SNAPSHOT_ENTITIES ||
 		damageEventCount > MAX_DAMAGE_EVENTS ||
+		bossCombatEventCount > MAX_BOSS_COMBAT_EVENTS ||
+		combatObjectCount > MAX_COMBAT_OBJECTS_PER_SNAPSHOT ||
 		(0 == estherGaugeMaximum && 0 != estherGauge) ||
 		estherGauge > estherGaugeMaximum)
     {
@@ -1618,6 +1909,8 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
     decoded.Players.reserve(playerCount);
 	decoded.Entities.reserve(entityCount);
 	decoded.DamageEvents.reserve(damageEventCount);
+	decoded.BossCombatEvents.reserve(bossCombatEventCount);
+	decoded.CombatObjects.reserve(combatObjectCount);
 
     for (std::uint16_t i = 0; i < playerCount; ++i)
     {
@@ -1686,6 +1979,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 	{
 		WORLD_ENTITY_SNAPSHOT entity{};
 		std::uint8_t rawAction = 0;
+		std::uint8_t rawHasBossCombatState = 0;
 		if (!reader.Read_U32(entity.iNetEntityId) ||
 			!reader.Read_U8(rawAction) ||
 			!reader.Read_String(
@@ -1702,7 +1996,22 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U32(entity.iCurrentHp) ||
 			!reader.Read_U32(entity.iMaximumHp) ||
 			!reader.Read_U8(entity.iPhase) ||
-			!reader.Read_U8(entity.iBrokenArmorMask))
+			!reader.Read_U8(entity.iBrokenArmorMask) ||
+			!reader.Read_U8(rawHasBossCombatState) ||
+			rawHasBossCombatState > 1u)
+		{
+			return false;
+		}
+		entity.hasBossCombatState = 0u != rawHasBossCombatState;
+		if (entity.hasBossCombatState &&
+			(!reader.Read_U32(entity.BossCombat.iStateRevision) ||
+			 !reader.Read_U32(entity.BossCombat.iAlivePartMask) ||
+			 !reader.Read_U16(entity.BossCombat.iFlags) ||
+			 !reader.Read_U32(entity.BossCombat.iCurrentStagger) ||
+			 !reader.Read_U32(entity.BossCombat.iMaximumStagger) ||
+			 !reader.Read_U32(entity.BossCombat.iCurrentShield) ||
+			 !reader.Read_U32(entity.BossCombat.iMaximumShield) ||
+			 !reader.Read_U8(entity.BossCombat.iGameplayPhase)))
 		{
 			return false;
 		}
@@ -1729,6 +2038,46 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		if (!Is_Valid_DamageEvent(damage))
 			return false;
 		decoded.DamageEvents.push_back(damage);
+	}
+	for (std::uint8_t index = 0; index < bossCombatEventCount; ++index)
+	{
+		BOSS_COMBAT_EVENT event{};
+		std::uint8_t rawKind = 0;
+		if (!Read_U64(reader, event.iEventSequence) ||
+			!reader.Read_U32(event.iEventTick) ||
+			!reader.Read_U32(event.iBossNetEntityId) ||
+			!reader.Read_U8(rawKind) ||
+			!reader.Read_U32(event.iPartMask))
+		{
+			return false;
+		}
+		event.eKind = static_cast<BOSS_COMBAT_EVENT_KIND>(rawKind);
+		decoded.BossCombatEvents.push_back(event);
+	}
+	if (!Are_BossCombatEventsCanonical(decoded.BossCombatEvents) ||
+		!Are_BossCombatEventsConsistent(
+			decoded.Entities, decoded.BossCombatEvents))
+		return false;
+
+	for (std::uint8_t index = 0; index < combatObjectCount; ++index)
+	{
+		COMBAT_OBJECT_SNAPSHOT object{};
+		if (!Read_U64(reader, object.iCombatObjectId) ||
+			!reader.Read_U32(object.iSourceNetEntityId) ||
+			!reader.Read_F32(object.fPositionX) ||
+			!reader.Read_F32(object.fPositionY) ||
+			!reader.Read_F32(object.fPositionZ) ||
+			!reader.Read_F32(object.fYawDegrees))
+		{
+			return false;
+		}
+		decoded.CombatObjects.push_back(object);
+	}
+	if (!Are_CombatObjectSnapshotsCanonical(decoded.CombatObjects) ||
+		!Are_CombatObjectSourcesPresent(
+			decoded.Players, decoded.Entities, decoded.CombatObjects))
+	{
+		return false;
 	}
 
     message = std::move(decoded);

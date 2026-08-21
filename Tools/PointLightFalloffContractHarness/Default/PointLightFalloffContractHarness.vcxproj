@@ -46,6 +46,10 @@
     <OutDir>$(ProjectDir)..\Bin\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)..\Intermediate\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>PointLightFalloffContractHarness</TargetName>
+    <PointLightHarnessRepositoryRoot>$([System.IO.Path]::GetFullPath('$(ProjectDir)..\..\..'))</PointLightHarnessRepositoryRoot>
+    <LocalDebuggerWorkingDirectory>$(PointLightHarnessRepositoryRoot)</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArguments>&quot;$(PointLightHarnessRepositoryRoot)&quot;</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -107,5 +111,35 @@
     </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <PropertyGroup>
+    <EngineRoot>$(ProjectDir)..\..\..\Engine\</EngineRoot>
+    <EngineBinaryRoot>$(EngineRoot)Bin\$(Configuration)\</EngineBinaryRoot>
+    <AssimpRuntimeName Condition="'$(Configuration)'=='Debug'">assimp-vc143-mtd.dll</AssimpRuntimeName>
+    <AssimpRuntimeName Condition="'$(Configuration)'=='Release'">assimp-vc143-mt.dll</AssimpRuntimeName>
+    <AssimpRuntimeSource>$(EngineRoot)ThirdPartyLib\Assimp\Bin\$(Configuration)\$(AssimpRuntimeName)</AssimpRuntimeSource>
+    <FmodRuntimeSource>$(EngineRoot)ThirdPartyLib\FMOD\Bin\fmod.dll</FmodRuntimeSource>
+    <PhysXRuntimeRoot>$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\</PhysXRuntimeRoot>
+  </PropertyGroup>
+  <Target Name="DeployPointLightHarnessRuntimeDependencies" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+    <Error Condition="'$(AssimpRuntimeName)'==''" Text="Unsupported configuration '$(Configuration)' for Assimp runtime deployment." />
+    <Error Condition="!Exists('$(EngineBinaryRoot)Engine.dll')" Text="Engine runtime was not built for $(Configuration): $(EngineBinaryRoot)Engine.dll" />
+    <Error Condition="'$(Configuration)'=='Debug' and !Exists('$(EngineBinaryRoot)Engine.pdb')" Text="Engine debug symbols were not built: $(EngineBinaryRoot)Engine.pdb" />
+    <Error Condition="!Exists('$(FmodRuntimeSource)')" Text="Required FMOD runtime is missing: $(FmodRuntimeSource)" />
+    <Error Condition="!Exists('$(AssimpRuntimeSource)')" Text="Required Assimp runtime is missing: $(AssimpRuntimeSource)" />
+    <Error Condition="!Exists('$(PhysXRuntimeRoot)PhysX_64.dll')" Text="Required PhysX runtime is missing: $(PhysXRuntimeRoot)PhysX_64.dll" />
+    <Error Condition="!Exists('$(PhysXRuntimeRoot)PhysXCommon_64.dll')" Text="Required PhysX runtime is missing: $(PhysXRuntimeRoot)PhysXCommon_64.dll" />
+    <Error Condition="!Exists('$(PhysXRuntimeRoot)PhysXFoundation_64.dll')" Text="Required PhysX runtime is missing: $(PhysXRuntimeRoot)PhysXFoundation_64.dll" />
+    <ItemGroup>
+      <PointLightHarnessRuntimeDependency Include="$(EngineBinaryRoot)Engine.dll" />
+      <PointLightHarnessRuntimeDependency Include="$(EngineBinaryRoot)Engine.pdb" Condition="'$(Configuration)'=='Debug'" />
+      <PointLightHarnessRuntimeDependency Include="$(FmodRuntimeSource)" />
+      <PointLightHarnessRuntimeDependency Include="$(AssimpRuntimeSource)" />
+      <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysX_64.dll" />
+      <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysXCommon_64.dll" />
+      <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysXFoundation_64.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PointLightHarnessRuntimeDependency)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Message Text="Deployed Engine, FMOD, Assimp, and PhysX runtimes to $(TargetDir)" Importance="high" />
+  </Target>
   <ImportGroup Label="ExtensionTargets" />
 </Project>

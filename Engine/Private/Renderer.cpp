@@ -3,6 +3,87 @@
 #include <fstream>
 #include <iomanip>
 #include <typeinfo>
+#include <cstdio>
+#include <string>
+#ifdef _DEBUG
+namespace
+{
+	/* Debug-only frame breakdown. The renderer carries no profiler scopes, so a
+	   stalled stage is otherwise indistinguishable from a stalled frame. */
+	class CFrameStageTimer final
+	{
+	public:
+		CFrameStageTimer()
+		{
+			QueryPerformanceFrequency(&m_Frequency);
+			QueryPerformanceCounter(&m_Start);
+			m_Last = m_Start;
+		}
+		void Stamp(const char* stage)
+		{
+			LARGE_INTEGER now{};
+			QueryPerformanceCounter(&now);
+			const double ms = 1000.0 *
+				static_cast<double>(now.QuadPart - m_Last.QuadPart) /
+				static_cast<double>(m_Frequency.QuadPart);
+			m_Last = now;
+			s_Accumulated[m_Index] += ms;
+			s_Stages[m_Index] = stage;
+			if (m_Index + 1u < MAXIMUM_STAGES)
+				++m_Index;
+		}
+		~CFrameStageTimer()
+		{
+			LARGE_INTEGER now{};
+			QueryPerformanceCounter(&now);
+			const double total = 1000.0 *
+				static_cast<double>(now.QuadPart - m_Start.QuadPart) /
+				static_cast<double>(m_Frequency.QuadPart);
+			s_TotalMs += total;
+			if (++s_FrameCount < REPORT_INTERVAL)
+				return;
+			std::string line = "[FrameStage] avg total " +
+				Format(s_TotalMs / s_FrameCount) + " ms |";
+			for (uint32_t index = 0u; index < m_Index; ++index)
+			{
+				line += " ";
+				line += nullptr != s_Stages[index] ? s_Stages[index] : "?";
+				line += " ";
+				line += Format(s_Accumulated[index] / s_FrameCount);
+			}
+			line += "\n";
+			OutputDebugStringA(line.c_str());
+			s_FrameCount = 0u;
+			s_TotalMs = 0.0;
+			for (double& value : s_Accumulated)
+				value = 0.0;
+		}
+	private:
+		static std::string Format(const double value)
+		{
+			char buffer[32]{};
+			snprintf(buffer, sizeof(buffer), "%.2f", value);
+			return buffer;
+		}
+		static constexpr uint32_t MAXIMUM_STAGES = 16u;
+		static constexpr uint32_t REPORT_INTERVAL = 60u;
+		static inline double s_Accumulated[MAXIMUM_STAGES]{};
+		static inline const char* s_Stages[MAXIMUM_STAGES]{};
+		static inline double s_TotalMs = 0.0;
+		static inline uint32_t s_FrameCount = 0u;
+		LARGE_INTEGER m_Frequency{};
+		LARGE_INTEGER m_Start{};
+		LARGE_INTEGER m_Last{};
+		uint32_t m_Index = 0u;
+	};
+}
+#define FRAME_STAGE_DECLARE() CFrameStageTimer FrameStageTimer
+#define FRAME_STAGE_STAMP(name) FrameStageTimer.Stamp(name)
+#else
+#define FRAME_STAGE_DECLARE() ((void)0)
+#define FRAME_STAGE_STAMP(name) ((void)0)
+#endif
+
 
 namespace
 {
@@ -282,6 +363,7 @@ HRESULT CRenderer::Apply_RenderQualitySettings(
 
 HRESULT CRenderer::Draw()
 {
+	FRAME_STAGE_DECLARE();
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
 	auto FailFrame = [this, &Presentation](
 		const char* stage, const HRESULT hResult) -> HRESULT
@@ -293,6 +375,7 @@ HRESULT CRenderer::Draw()
 		return FAILED(hResult) ? hResult : E_FAIL;
 	};
 	HRESULT hResult = Presentation.Submit_FrameProviders();
+	FRAME_STAGE_STAMP("Submit_FrameProviders");
 	if (FAILED(hResult))
 		return FailFrame("Submit_FrameProviders", hResult);
 	const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -303,21 +386,26 @@ HRESULT CRenderer::Draw()
 	hResult = Ready_ScenePostTargets(
 		static_cast<uint32_t>(vViewportSize.x),
 		static_cast<uint32_t>(vViewportSize.y));
+	FRAME_STAGE_STAMP("ScenePostTargets");
 	if (FAILED(hResult))
 		return FailFrame("Ready_ScenePostTargets", hResult);
 	hResult = Render_Shadow();
+	FRAME_STAGE_STAMP("Shadow");
 	if (FAILED(hResult))
 		return FailFrame("Render_Shadow", hResult);
 	hResult = Render_NonBlend();
+	FRAME_STAGE_STAMP("NonBlend");
 	if (FAILED(hResult))
 		return FailFrame("Render_NonBlend", hResult);
 	if (m_RenderQualitySettings.bSSAOEnabled)
 	{
 		hResult = Render_SSAO();
+		FRAME_STAGE_STAMP("SSAO");
 		if (FAILED(hResult))
 			return FailFrame("Render_SSAO", hResult);
 	}
 	hResult = Render_Lights();
+	FRAME_STAGE_STAMP("Lights");
 	if (FAILED(hResult))
 		return FailFrame("Render_Lights", hResult);
 
@@ -329,12 +417,16 @@ HRESULT CRenderer::Draw()
 		return FailFrame("Begin_MRT_SceneHDR", hResult);
 
 	HRESULT hSceneResult = Render_Priority();
+	FRAME_STAGE_STAMP("Priority");
 	if (SUCCEEDED(hSceneResult))
 		hSceneResult = Render_Combined();
+	FRAME_STAGE_STAMP("Combined");
 	if (SUCCEEDED(hSceneResult))
 		hSceneResult = Render_NonLight();
+	FRAME_STAGE_STAMP("NonLight");
 	if (SUCCEEDED(hSceneResult))
 		hSceneResult = Render_Blend();
+FRAME_STAGE_STAMP("Blend");
 
 	/* Always restore the back-buffer/DSV pair after entering the HDR MRT. */
 	const HRESULT hEndSceneResult = CGameInstance::Get().End_MRT();
@@ -344,23 +436,27 @@ HRESULT CRenderer::Draw()
 			FAILED(hSceneResult) ? hSceneResult : hEndSceneResult);
 
 	hResult = Render_ScreenPosts();
+	FRAME_STAGE_STAMP("ScreenPosts");
 	if (FAILED(hResult))
 		return FailFrame("Render_ScreenPosts", hResult);
 
 	if (m_RenderQualitySettings.bBloomEnabled)
 	{
 		hResult = Render_Bloom();
+		FRAME_STAGE_STAMP("Bloom");
 		if (FAILED(hResult))
 			return FailFrame("Render_Bloom", hResult);
 	}
 
 	/* The one and only place tone mapping and gamma are applied. */
 	hResult = Render_Final();
+	FRAME_STAGE_STAMP("Final");
 	if (FAILED(hResult))
 		return FailFrame("Render_Final", hResult);
 
 	/* UI is authored in display space, so it stays out of the HDR target. */
 	hResult = Render_UI();
+	FRAME_STAGE_STAMP("UI");
 	if (FAILED(hResult))
 		return FailFrame("Render_UI", hResult);
 
@@ -455,13 +551,26 @@ HRESULT CRenderer::Render_NonBlend()
 	if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_GameObject"))))
 		return E_FAIL;
 
-	for (auto& pRenderObject : m_RenderObjects[ETOUI(RENDERGROUP::NONBLEND)])
+	auto& NonBlendObjects =
+		m_RenderObjects[ETOUI(RENDERGROUP::NONBLEND)];
+	auto& DeferredOverlayObjects =
+		m_RenderObjects[ETOUI(RENDERGROUP::DEFERRED_OVERLAY)];
+	for (auto& pRenderObject : NonBlendObjects)
 	{
 		if (nullptr != pRenderObject)
 			pRenderObject->Render();
 	}
 
-	m_RenderObjects[ETOUI(RENDERGROUP::NONBLEND)].clear();
+	/* Deferred overlays must run after every opaque object while the complete
+	   game-object MRT, including Target_Emissive, is still bound. */
+	for (auto& pRenderObject : DeferredOverlayObjects)
+	{
+		if (nullptr != pRenderObject)
+			pRenderObject->Render_DeferredOverlay();
+	}
+
+	NonBlendObjects.clear();
+	DeferredOverlayObjects.clear();
 
 	if (FAILED(CGameInstance::Get().End_MRT()))
 		return E_FAIL;

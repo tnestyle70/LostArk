@@ -5174,7 +5174,6 @@ bool_t Client::CEffectDocumentCodec::Is_SafeResourceAssetId(
 		eKind = EFFECT_RESOURCE_FILE_KIND::TEXTURE;
 	else
 		return false;
-
 	const std::filesystem::path Resolved =
 		CRuntimeAssetRoot::Resolve(RelativePath);
 	std::error_code Error;

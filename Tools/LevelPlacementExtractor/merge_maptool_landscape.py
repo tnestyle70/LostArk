@@ -212,14 +212,20 @@ def parse_placements(path: Path, catalog_ids: set[str]) -> dict[str, Any]:
             raise MapDocumentMergeError(
                 f"duplicate/empty placement source ID: {source_id!r}: {path}"
             )
-        if transform_source == "overlay":
+        if transform_source in ("editor", "legacy", "overlay"):
             if runtime_id > EDITOR_ID_MASK:
                 raise MapDocumentMergeError(
-                    f"overlay placement runtime ID is outside its domain: {runtime_id}"
+                    f"{transform_source} placement runtime ID is outside its domain: "
+                    f"{runtime_id}"
                 )
-        elif runtime_id != imported_id(source_id):
+        elif transform_source in ("actor", "component"):
+            if runtime_id != imported_id(source_id):
+                raise MapDocumentMergeError(
+                    f"placement runtime ID is not stable for {source_id}: {path}"
+                )
+        else:
             raise MapDocumentMergeError(
-                f"placement runtime ID is not stable for {source_id}: {path}"
+                f"unsupported placement transform source: {transform_source}: {path}"
             )
         if asset_id not in catalog_ids:
             raise MapDocumentMergeError(

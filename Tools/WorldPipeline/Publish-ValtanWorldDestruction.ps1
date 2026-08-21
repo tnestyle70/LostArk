@@ -50,13 +50,20 @@ $expectedEntranceGroupCount = 2
 # graph rather than as a total row count of the source document.
 $outerGroupIdPrefix = 'destroyable.group.valtan.outerwall109.'
 $expectedOuterGroupCount = 30
-$expectedOuterMemberCount = 30
+$expectedOuterMemberCount = 60
+$expectedOuterEmitterCount = 30
+$expectedOuterFillerAssetId = 'DEPLOY_ITR_02307'
+$expectedOuterFillerPlacementIdOffset = [uint64]1000000000000
+$expectedOuterRingRadiusMeters = 16.1
+$expectedOuterFillerAngleRadians = [Math]::PI / 30.0
+$expectedOuterTransformTolerance = 0.001
 $expectedIndependentContactWallCount = 69
 $expectedProductGroupCount = 99
 # The arena floor is the opposite polarity of a wall: it is walkable while it is
-# intact and blocks once it collapses. Stage A drops the outer rail at 84 bars
-# and stage B drops the brick ring at 30, leaving the safe core untouched. The
-# two stages are separate sub-graphs so one can never reach the other's sectors.
+# intact and blocks once it collapses. Stage A drops the northern half of the
+# outer rail at 84 bars; stage B drops its southern half together with the brick
+# ring at 30, leaving the safe core untouched. The two stages are separate
+# sub-graphs so one can never reach the other's sectors.
 $floorGroupIdPrefix = 'destroyable.group.valtan.floor'
 $floorStageAGroupIdPrefix = 'destroyable.group.valtan.floor84.'
 $floorStageBGroupIdPrefix = 'destroyable.group.valtan.floor30.'
@@ -68,12 +75,12 @@ $floorStageBPatternId = 'VALTAN_ARENA_BREAK_33'
 $floorStageBStageId = 'LANDING'
 $floorStageBActionId = 'valtan.mechanic.arena-break-33.landing'
 $floorStageBStageIndex = 1
-$expectedFloorStageAGroupCount = 2
-$expectedFloorStageBGroupCount = 4
-# Every ring slab is its own emitter and the runtime derives this many rigid
-# fragments from the slab's authored debris recipe.
+$expectedFloorStageAGroupCount = 1
+$expectedFloorStageBGroupCount = 5
+# Each ring source owns one bound visual filler alias. Only the thirty sources
+# emit debris, while all sixty placements follow the same thirty group states.
 $expectedFragmentsPerEmitter = 12
-$expectedOuterSuppressionAliasCount = 0
+$expectedOuterSuppressionAliasCount = 1
 
 function Resolve-RepoPath {
     param([string]$Path)
@@ -564,7 +571,7 @@ function Compile-ValtanWorldDestruction {
     Assert-ExactProperties $Encounter @(
         'schema','formatVersion','encounterId','bossArchetypeId','authority',
         'fixedTickHz','introPatternId','states','patterns') 'encounter root'
-    Assert-JsonInteger $Encounter.formatVersion 'encounter formatVersion' 3 3
+    Assert-JsonInteger $Encounter.formatVersion 'encounter formatVersion' 4 4
     Assert-JsonInteger $Encounter.fixedTickHz 'encounter fixedTickHz' 30 30
     if ($Encounter.schema -cne 'lostark.encounter-profile' -or
         $Encounter.encounterId -cne $expectedEncounterId -or
@@ -586,6 +593,15 @@ function Compile-ValtanWorldDestruction {
                 'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength',
                 'hitHalfWidth','hitCount','hitIntervalMs','hitDelayMs','serverDamageProfileId',
                 'pushRangeM','pushMs','knockdown','downMs')
+			if ($null -ne $stage.PSObject.Properties['branches']) {
+				$expectedStageProperties += 'branches'
+			}
+			if ($null -ne $stage.PSObject.Properties['actions']) {
+				$expectedStageProperties += 'actions'
+			}
+			if ($null -ne $stage.PSObject.Properties['motion']) {
+				$expectedStageProperties += 'motion'
+			}
             Assert-ExactProperties -Value $stage -Expected $expectedStageProperties -Context "$($pattern.patternId) stage"
             Assert-StableId $stage.stageId "$($pattern.patternId) stageId"
             Assert-StableId $stage.actionId "$($pattern.patternId) actionId"
@@ -999,9 +1015,9 @@ function Compile-ValtanWorldDestruction {
         }
     }
     # Every ordinary destructible source wall owns exactly one contact binding,
-    # receiving on its own collision box. The thirty additional 109 outer walls
-    # are stage-only and must not enter this set. A leaf group may additionally
-    # own suppress-only duplicate placements but still has one source collision.
+    # receiving on its own collision box. The thirty additional 109 source
+    # groups and their bound filler aliases are stage-only and must not enter
+    # this set. Each group still owns only its source collision.
     $contactBindings = @($serverBindings | Where-Object {
         $_.TriggerKind -ceq 'COLLIDER_CONTACT'
     })
@@ -1221,14 +1237,15 @@ function Compile-ValtanWorldDestruction {
         $debrisProfileByGroupId[[string]$profile.groupId] = $profile
     }
 
-    # One emitter per ring slab, and every slab must own a complete 12-piece
-    # recipe. A wall that cannot fracture would otherwise simply disappear at
-    # the moment of the collapse, which the runtime rejects far too late.
+    # One emitter per ring source, one bound suppress-only filler alias, and one
+    # complete 12-piece recipe per source. The alias closes the intact visual
+    # ring without doubling the one-tick PhysX debris budget.
     if ($isProductCandidate) {
         $deployAssetIds = Get-DeployPlacementAssetIds
         $anchor = Get-ArenaBreakLandingAnchor $Encounter
         $placementPositions = Get-DeployPlacementPositions
         $outerEmitterIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $outerAliasIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
         foreach ($groupId in @($outerGroupIds | Sort-Object -CaseSensitive)) {
             $outerProfile = $debrisProfileByGroupId[$groupId]
             if ($null -eq $outerProfile) {
@@ -1236,16 +1253,40 @@ function Compile-ValtanWorldDestruction {
             }
             foreach ($emitter in @($outerProfile.emitters)) {
                 $sourceId = [string]$emitter.sourceRuntimePlacementId
+                $parsedSourceId = Assert-CanonicalPlacementId `
+                    $sourceId "outer ring source placementId"
                 if (-not $outerMemberIds.Contains($sourceId) -or
                     -not $outerEmitterIds.Add($sourceId)) {
                     throw "Outer ring emitter is outside its group or duplicated: $groupId/$sourceId"
                 }
-                if (@($emitter.suppressionAliasPlacementIds).Count -ne
-                    $expectedOuterSuppressionAliasCount) {
-                    throw "Outer ring wall must be its own emitter without suppression aliases: $sourceId"
-                }
                 if (-not $deployAssetIds.ContainsKey($sourceId)) {
                     throw "Outer ring wall has no deploy placement row: $sourceId"
+                }
+                $aliasIds = @($emitter.suppressionAliasPlacementIds)
+                if ($aliasIds.Count -ne $expectedOuterSuppressionAliasCount) {
+                    throw "Outer ring source must own exactly $expectedOuterSuppressionAliasCount filler alias: $sourceId"
+                }
+                $fillerId = ''
+                foreach ($aliasIdValue in $aliasIds) {
+                    $aliasId = [string]$aliasIdValue
+                    $parsedAliasId = Assert-CanonicalPlacementId `
+                        $aliasId "outer ring filler placementId"
+                    if (-not $outerMemberIds.Contains($aliasId) -or
+                        -not $outerAliasIds.Add($aliasId)) {
+                        throw "Outer ring filler alias is outside its group or duplicated: $groupId/$aliasId"
+                    }
+                    if (-not $deployAssetIds.ContainsKey($aliasId)) {
+                        throw "Outer ring filler alias has no deploy placement row: $aliasId"
+                    }
+                    if ($parsedAliasId -ne
+                        ($parsedSourceId + $expectedOuterFillerPlacementIdOffset)) {
+                        throw "Outer ring filler does not share its source suffix: $sourceId/$aliasId"
+                    }
+                    if ([string]$deployAssetIds[$aliasId] -cne
+                        $expectedOuterFillerAssetId) {
+                        throw "Outer ring filler must use ${expectedOuterFillerAssetId}: $aliasId"
+                    }
+                    $fillerId = $aliasId
                 }
                 $pieceCount = Get-DebrisRecipePieceCount $deployAssetIds[$sourceId]
                 if ($pieceCount -ne $expectedFragmentsPerEmitter) {
@@ -1260,8 +1301,35 @@ function Compile-ValtanWorldDestruction {
                 $radialX = $wall.X - $anchor.X
                 $radialZ = $wall.Z - $anchor.Z
                 $radialLength = [Math]::Sqrt($radialX * $radialX + $radialZ * $radialZ)
-                if ($radialLength -lt 0.001) {
-                    throw "Outer ring wall sits on the landing anchor: $sourceId"
+                if ([Math]::Abs($radialLength - $expectedOuterRingRadiusMeters) -gt
+                    $expectedOuterTransformTolerance) {
+                    throw "Outer ring source is outside the canonical radius: $sourceId/$radialLength"
+                }
+                if (-not $placementPositions.ContainsKey($fillerId)) {
+                    throw "Outer ring filler has no deploy transform: $fillerId"
+                }
+                $filler = $placementPositions[$fillerId]
+                $fillerRadialX = $filler.X - $anchor.X
+                $fillerRadialZ = $filler.Z - $anchor.Z
+                $fillerRadialLength = [Math]::Sqrt(
+                    $fillerRadialX * $fillerRadialX +
+                    $fillerRadialZ * $fillerRadialZ)
+                if ([Math]::Abs(
+                    $fillerRadialLength - $expectedOuterRingRadiusMeters) -gt
+                    $expectedOuterTransformTolerance -or
+                    [Math]::Abs($filler.Y - $wall.Y) -gt
+                    $expectedOuterTransformTolerance) {
+                    throw "Outer ring filler is outside its source ring: $sourceId/$fillerId"
+                }
+                $pairDot = $radialX * $fillerRadialX +
+                    $radialZ * $fillerRadialZ
+                $pairCross = $radialX * $fillerRadialZ -
+                    $radialZ * $fillerRadialX
+                $pairAngle = [Math]::Atan2($pairCross, $pairDot)
+                if ($pairAngle -lt 0.0) { $pairAngle += 2.0 * [Math]::PI }
+                if ([Math]::Abs(
+                    $pairAngle - $expectedOuterFillerAngleRadians) -gt 0.0001) {
+                    throw "Outer ring filler is not six degrees after its source: $sourceId/$fillerId"
                 }
                 $emitterX = [double]$emitter.direction[0]
                 $emitterZ = [double]$emitter.direction[2]
@@ -1280,12 +1348,14 @@ function Compile-ValtanWorldDestruction {
                 }
             }
         }
-        if ($outerEmitterIds.Count -ne $expectedOuterMemberCount) {
-            throw "The 109 outer ring must compile exactly $expectedOuterMemberCount debris emitters, not $($outerEmitterIds.Count)."
+        if ($outerEmitterIds.Count -ne $expectedOuterEmitterCount -or
+            $outerAliasIds.Count -ne
+                ($expectedOuterEmitterCount * $expectedOuterSuppressionAliasCount)) {
+            throw "The 109 outer ring must compile exactly $expectedOuterEmitterCount debris emitters and $($expectedOuterEmitterCount * $expectedOuterSuppressionAliasCount) filler aliases."
         }
         if ($outerFragmentActorCount -ne
-            $expectedOuterMemberCount * $expectedFragmentsPerEmitter) {
-            throw "The 109 collapse must stage exactly $($expectedOuterMemberCount * $expectedFragmentsPerEmitter) debris actors, not $outerFragmentActorCount."
+            $expectedOuterEmitterCount * $expectedFragmentsPerEmitter) {
+            throw "The 109 collapse must stage exactly $($expectedOuterEmitterCount * $expectedFragmentsPerEmitter) debris actors, not $outerFragmentActorCount."
         }
     }
 
@@ -1353,6 +1423,14 @@ function Compile-ValtanWorldDestruction {
         }).Count
         OuterGroupCount = $outerGroupIds.Count
         OuterMemberCount = $outerMemberIds.Count
+        OuterEmitterCount = @($debrisProfiles | Where-Object {
+            ([string]$_.groupId).StartsWith(
+                $outerGroupIdPrefix, [StringComparison]::Ordinal)
+        } | ForEach-Object { $_.emitters }).Count
+        OuterSuppressionAliasCount = @($projectionGroups | Where-Object {
+            ([string]$_.groupId).StartsWith(
+                $outerGroupIdPrefix, [StringComparison]::Ordinal)
+        } | ForEach-Object { $_.suppressionAliasPlacementIds }).Count
         OuterFragmentActorCount = $outerFragmentActorCount
         Interior109BindingCount = $interior109BindingCount
         ImpactBindingCount = $impactBindings.Count
@@ -1444,10 +1522,11 @@ function Invoke-ContractTests {
     $simulation = Read-JsonDocument $SimulationPath
     $canonical = Compile-ValtanWorldDestruction $source $encounter $simulation
     $expectedFragmentActorCount =
-        $expectedOuterMemberCount * $expectedFragmentsPerEmitter
+        $expectedOuterEmitterCount * $expectedFragmentsPerEmitter
     # Every source wall is an independent group. The sixty-nine ordinary walls
-    # own contact bindings; the thirty 109 outer walls are stage-only. The graph
-    # also carries ten 159 impact bindings and two first-appearance bindings.
+    # own contact bindings; the thirty 109 source groups and their thirty visual
+    # fillers are stage-only. The graph also carries ten 159 impact bindings and
+    # two first-appearance bindings.
     $expectedFloorGroupCount =
         $expectedFloorStageAGroupCount + $expectedFloorStageBGroupCount
     $expectedCanonicalGroupCount =
@@ -1458,6 +1537,9 @@ function Invoke-ContractTests {
         $expectedFloorGroupCount
     if ($canonical.OuterGroupCount -ne $expectedOuterGroupCount -or
         $canonical.OuterMemberCount -ne $expectedOuterMemberCount -or
+        $canonical.OuterEmitterCount -ne $expectedOuterEmitterCount -or
+        $canonical.OuterSuppressionAliasCount -ne
+            ($expectedOuterEmitterCount * $expectedOuterSuppressionAliasCount) -or
         $canonical.OuterFragmentActorCount -ne $expectedFragmentActorCount -or
         $canonical.Interior109BindingCount -ne 0 -or
         $canonical.ImpactBindingCount -ne $expectedImpactGroupCount -or
@@ -1499,13 +1581,20 @@ function Invoke-ContractTests {
     $canonicalOuterGroups = @($canonicalProjection.groups | Where-Object {
         ([string]$_.groupId).StartsWith($outerGroupIdPrefix, [StringComparison]::Ordinal)
     })
+    $canonicalOuterProfiles = @($canonicalPresentation.profiles | Where-Object {
+        ([string]$_.groupId).StartsWith($outerGroupIdPrefix, [StringComparison]::Ordinal)
+    })
     if ($canonicalOuterGroups.Count -ne $expectedOuterGroupCount -or
         @($canonicalOuterGroups | ForEach-Object {
             $_.suppressionAliasPlacementIds
-        }).Count -ne 0 -or
+        }).Count -ne
+            ($expectedOuterEmitterCount * $expectedOuterSuppressionAliasCount) -or
         @($canonicalOuterGroups | ForEach-Object {
             $_.memberPlacementIds
-        }).Count -ne $expectedOuterMemberCount) {
+        }).Count -ne $expectedOuterMemberCount -or
+        @($canonicalOuterProfiles | ForEach-Object {
+            $_.emitters
+        }).Count -ne $expectedOuterEmitterCount) {
         throw 'Canonical projection did not compile the exact outer ring suppression contract.'
     }
     $dormantSource = Copy-JsonObject $source
@@ -1578,6 +1667,87 @@ function Invoke-ContractTests {
     Assert-Throws {
         Compile-ValtanWorldDestruction $missingWall $encounter $missingWallSimulation
     } 'outer ring wall removed from its sector'
+
+    # Removing a bound filler from both documents still leaves thirty source
+    # emitters, but reopens one visible ring gap and must not publish.
+    $missingFiller = Copy-JsonObject $source
+    $missingFillerSimulation = Copy-JsonObject $simulation
+    $missingFillerProfile = $missingFillerSimulation.profiles | Where-Object {
+        ([string]$_.groupId).StartsWith(
+            $outerGroupIdPrefix, [StringComparison]::Ordinal) -and
+        @($_.elements | ForEach-Object {
+            $_.suppressionAliasPlacementIds
+        }).Count -gt 0
+    } | Select-Object -First 1
+    $missingFillerElement = $missingFillerProfile.elements | Where-Object {
+        @($_.suppressionAliasPlacementIds).Count -gt 0
+    } | Select-Object -First 1
+    $missingFillerId = [string]$missingFillerElement.suppressionAliasPlacementIds[0]
+    $missingFillerElement.suppressionAliasPlacementIds = @()
+    $missingFillerGroup = $missingFiller.groups | Where-Object {
+        $_.groupId -ceq $missingFillerProfile.groupId
+    } | Select-Object -First 1
+    $missingFillerGroup.memberPlacementIds = @(
+        $missingFillerGroup.memberPlacementIds | Where-Object {
+            [string]$_ -cne $missingFillerId
+        })
+    Assert-Throws {
+        Compile-ValtanWorldDestruction `
+            $missingFiller $encounter $missingFillerSimulation
+    } 'outer ring filler removed from its source'
+
+    # An alias is a runtime Deploy object even though it emits no fragments.
+    # Refuse a projection that would name a filler the Client cannot suppress.
+    $outerAliasId = [string](
+        $simulation.profiles | Where-Object {
+            ([string]$_.groupId).StartsWith(
+                $outerGroupIdPrefix, [StringComparison]::Ordinal)
+        } | ForEach-Object { $_.elements } | ForEach-Object {
+            $_.suppressionAliasPlacementIds
+        } | Select-Object -First 1)
+    $preservedAssetIds = $script:DeployPlacementAssetIds
+    try {
+        $missingAliasAssetIds = @{}
+        foreach ($entry in (Get-DeployPlacementAssetIds).GetEnumerator()) {
+            if ([string]$entry.Key -cne $outerAliasId) {
+                $missingAliasAssetIds[$entry.Key] = $entry.Value
+            }
+        }
+        $script:DeployPlacementAssetIds = $missingAliasAssetIds
+        Assert-Throws {
+            Compile-ValtanWorldDestruction $source $encounter $simulation
+        } 'outer ring filler without a deploy placement'
+
+        $wrongAliasAssetIds = @{}
+        foreach ($entry in $preservedAssetIds.GetEnumerator()) {
+            $wrongAliasAssetIds[$entry.Key] = $entry.Value
+        }
+        $wrongAliasAssetIds[$outerAliasId] = 'DEPLOY_ITR_02306'
+        $script:DeployPlacementAssetIds = $wrongAliasAssetIds
+        Assert-Throws {
+            Compile-ValtanWorldDestruction $source $encounter $simulation
+        } 'outer ring filler with the source wall asset'
+    }
+    finally { $script:DeployPlacementAssetIds = $preservedAssetIds }
+
+    $preservedPlacementPositions = $script:DeployPlacementPositions
+    try {
+        $offRingPositions = @{}
+        foreach ($entry in (Get-DeployPlacementPositions).GetEnumerator()) {
+            $position = $entry.Value
+            $offRingPositions[$entry.Key] = [pscustomobject]@{
+                X = [double]$position.X
+                Y = [double]$position.Y
+                Z = [double]$position.Z
+            }
+        }
+        $offRingPositions[$outerAliasId].X += 0.25
+        $script:DeployPlacementPositions = $offRingPositions
+        Assert-Throws {
+            Compile-ValtanWorldDestruction $source $encounter $simulation
+        } 'outer ring filler outside its canonical half-angle'
+    }
+    finally { $script:DeployPlacementPositions = $preservedPlacementPositions }
 
     # A ring slab whose deploy asset owns no 12-piece recipe would vanish rather
     # than fracture, so the publisher rejects it before the Client ever sees it.
@@ -1689,4 +1859,4 @@ $result = Compile-ValtanWorldDestruction $worldEvents $encounter $simulation
 if ($Mode -eq 'Publish') {
     Publish-CompiledArtifacts $result $ServerOutputRoot $ClientOutputRoot $FailureAfterPromote
 }
-Write-Host "Valtan world destruction $Mode succeeded. groups=$($result.GroupCount) bindings=$($result.BindingCount) emitters=$($result.EmitterCount) outer109=$($result.OuterGroupCount)groups/$($result.OuterMemberCount)walls/$($result.OuterFragmentActorCount)fragments interior109=$($result.Interior109BindingCount) impact159=$($result.ImpactBindingCount) contacts=$($result.ContactBindingCount) revision=$($result.Revision)"
+Write-Host "Valtan world destruction $Mode succeeded. groups=$($result.GroupCount) bindings=$($result.BindingCount) emitters=$($result.EmitterCount) outer109=$($result.OuterGroupCount)groups/$($result.OuterMemberCount)placements/$($result.OuterEmitterCount)emitters/$($result.OuterSuppressionAliasCount)aliases/$($result.OuterFragmentActorCount)fragments interior109=$($result.Interior109BindingCount) impact159=$($result.ImpactBindingCount) contacts=$($result.ContactBindingCount) revision=$($result.Revision)"

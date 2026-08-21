@@ -32,6 +32,9 @@ $playerDocument = Read-Json 'Data\Balance\PlayerProfiles.json'
 $skillDocument = Read-Json 'Data\Balance\PlayerSkills.json'
 $damageDocument = Read-Json 'Data\Balance\DamageProfiles.json'
 $bossDocument = Read-Json 'Data\Balance\BossProfiles.json'
+$bossPartDocument = Read-Json 'Data\Balance\ValtanBossParts.json'
+$combatObjectDocument = Read-Json `
+	'Data\Encounters\Valtan\ValtanCombatObjects.json'
 $encounter = Read-Json 'Data\Encounters\Valtan\ValtanEncounter.json'
 $receipt = Get-Content -LiteralPath $receiptPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
@@ -77,6 +80,31 @@ foreach ($boss in @($bossDocument.bosses)) {
     foreach ($property in $boss.PSObject.Properties) {
         Add-Current 'Data/Balance/BossProfiles.json' "boss:$($boss.archetypeId)" $property.Name $property.Value
     }
+}
+$bossPartPath = 'Data/Balance/ValtanBossParts.json'
+$bossPartRoot = "boss-parts:$($bossPartDocument.bossArchetypeId)"
+Add-Current $bossPartPath $bossPartRoot 'bossArchetypeId' `
+	$bossPartDocument.bossArchetypeId
+Add-Current $bossPartPath $bossPartRoot 'parts.length' `
+	@($bossPartDocument.parts).Count
+foreach ($part in @($bossPartDocument.parts)) {
+	foreach ($property in $part.PSObject.Properties) {
+		Add-Current $bossPartPath "boss-part:$($part.partId)" `
+			$property.Name $property.Value
+	}
+}
+$combatObjectPath = 'Data/Encounters/Valtan/ValtanCombatObjects.json'
+$combatObjectRoot = "combat-objects:$($combatObjectDocument.encounterId)"
+Add-Current $combatObjectPath $combatObjectRoot 'encounterId' `
+	$combatObjectDocument.encounterId
+Add-Current $combatObjectPath $combatObjectRoot 'objects.length' `
+	@($combatObjectDocument.objects).Count
+foreach ($combatObject in @($combatObjectDocument.objects)) {
+	foreach ($property in $combatObject.PSObject.Properties) {
+		Add-Current $combatObjectPath `
+			"combat-object:$($combatObject.combatObjectArchetypeId)" `
+			$property.Name $property.Value
+	}
 }
 $encounterTarget = "encounter:$($encounter.encounterId)"
 foreach ($field in @('encounterId','bossArchetypeId','authority','fixedTickHz')) {
@@ -160,6 +188,18 @@ $receipt.coverage.playerProfileCount = @($playerDocument.players).Count
 $receipt.coverage.skillDefinitionCount = @($skillDocument.skills).Count
 $receipt.coverage.damageProfileCount = @($damageDocument.profiles).Count
 $receipt.coverage.bossProfileCount = @($bossDocument.bosses).Count
+if ($receipt.coverage.PSObject.Properties.Name -notcontains 'bossPartCount') {
+	$receipt.coverage | Add-Member -NotePropertyName bossPartCount `
+		-NotePropertyValue 0
+}
+$receipt.coverage.bossPartCount = @($bossPartDocument.parts).Count
+if ($receipt.coverage.PSObject.Properties.Name -notcontains `
+	'bossCombatObjectCount') {
+	$receipt.coverage | Add-Member -NotePropertyName bossCombatObjectCount `
+		-NotePropertyValue 0
+}
+$receipt.coverage.bossCombatObjectCount = `
+	@($combatObjectDocument.objects).Count
 $receipt.coverage.encounterPatternCount = @($encounter.patterns).Count
 $receipt.coverage.fieldEntryCount = $current.Count
 $serialized = $receipt | ConvertTo-Json -Depth 32

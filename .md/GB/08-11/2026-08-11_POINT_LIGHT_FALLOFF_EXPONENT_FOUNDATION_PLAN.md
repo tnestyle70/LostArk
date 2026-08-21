@@ -85,3 +85,128 @@ transient light는 기존 frame vector를 변경하지 않고 `E_FAIL`을 반환
 5. build lease를 받은 뒤 Engine → UpdateLib → PointLightFalloffContractHarness →
    ClientFrontendHarness Debug/Release를 순서대로 실행한다.
 6. 실행하지 않은 manual runtime QA는 RESULT에서 미검증으로 분리한다.
+
+## 2026-08-21 하네스 직접 실행 corrective
+
+`PointLightFalloffContractHarness`는 Engine project reference로 링크되지만 Engine의 동적 런타임을
+자기 `Bin/<Configuration>`에 배포하지 않는다. 전용 PowerShell runner만 Engine, FMOD, Assimp,
+PhysX 경로를 임시 `PATH`에 넣기 때문에 Visual Studio에서 프로젝트를 직접 시작하면 `wmain` 진입
+전에 Windows loader가 `PhysX_64.dll` 또는 `PhysXFoundation_64.dll` 누락으로 종료한다.
+
+이번 corrective는 제품 Engine 계약을 바꾸지 않고, 기존 하네스 프로젝트와 실행 진입점에
+다음 세 계약을 추가한다.
+
+1. Visual Studio 시작 시 저장소 루트를 working directory와 단일 command argument로 전달한다.
+2. Build 뒤 같은 configuration의 `Engine.dll`, Debug `Engine.pdb`, FMOD, Assimp와 PhysX 3종을
+   `$(TargetDir)`에 fail-closed로 복사한다.
+3. 명시 인자가 없는 직접 실행은 EXE의 canonical module path에서 저장소 루트를 계산하고,
+   map-light 문서와 deferred shader marker를 모두 확인한 뒤에만 기존 검증을 시작한다.
+
+기존 공용 `PropertyGroup`에는 다음 debugger 계약을 추가한다.
+
+```xml
+<PointLightHarnessRepositoryRoot>$([System.IO.Path]::GetFullPath('$(ProjectDir)..\..\..'))</PointLightHarnessRepositoryRoot>
+<LocalDebuggerWorkingDirectory>$(PointLightHarnessRepositoryRoot)</LocalDebuggerWorkingDirectory>
+<LocalDebuggerCommandArguments>&quot;$(PointLightHarnessRepositoryRoot)&quot;</LocalDebuggerCommandArguments>
+<DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+```
+
+`Microsoft.Cpp.targets` import 직후에는 다음 complete deployment block을 추가한다.
+
+```xml
+<PropertyGroup>
+  <EngineRoot>$(ProjectDir)..\..\..\Engine\</EngineRoot>
+  <EngineBinaryRoot>$(EngineRoot)Bin\$(Configuration)\</EngineBinaryRoot>
+  <AssimpRuntimeName Condition="'$(Configuration)'=='Debug'">assimp-vc143-mtd.dll</AssimpRuntimeName>
+  <AssimpRuntimeName Condition="'$(Configuration)'=='Release'">assimp-vc143-mt.dll</AssimpRuntimeName>
+  <AssimpRuntimeSource>$(EngineRoot)ThirdPartyLib\Assimp\Bin\$(Configuration)\$(AssimpRuntimeName)</AssimpRuntimeSource>
+  <FmodRuntimeSource>$(EngineRoot)ThirdPartyLib\FMOD\Bin\fmod.dll</FmodRuntimeSource>
+  <PhysXRuntimeRoot>$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\</PhysXRuntimeRoot>
+</PropertyGroup>
+<Target Name="DeployPointLightHarnessRuntimeDependencies" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+  <Error Condition="'$(AssimpRuntimeName)'==''" Text="Unsupported configuration '$(Configuration)' for Assimp runtime deployment." />
+  <Error Condition="!Exists('$(EngineBinaryRoot)Engine.dll')" Text="Engine runtime was not built for $(Configuration): $(EngineBinaryRoot)Engine.dll" />
+  <Error Condition="'$(Configuration)'=='Debug' and !Exists('$(EngineBinaryRoot)Engine.pdb')" Text="Engine debug symbols were not built: $(EngineBinaryRoot)Engine.pdb" />
+  <Error Condition="!Exists('$(FmodRuntimeSource)')" Text="Required FMOD runtime is missing: $(FmodRuntimeSource)" />
+  <Error Condition="!Exists('$(AssimpRuntimeSource)')" Text="Required Assimp runtime is missing: $(AssimpRuntimeSource)" />
+  <Error Condition="!Exists('$(PhysXRuntimeRoot)PhysX_64.dll')" Text="Required PhysX runtime is missing: $(PhysXRuntimeRoot)PhysX_64.dll" />
+  <Error Condition="!Exists('$(PhysXRuntimeRoot)PhysXCommon_64.dll')" Text="Required PhysX runtime is missing: $(PhysXRuntimeRoot)PhysXCommon_64.dll" />
+  <Error Condition="!Exists('$(PhysXRuntimeRoot)PhysXFoundation_64.dll')" Text="Required PhysX runtime is missing: $(PhysXRuntimeRoot)PhysXFoundation_64.dll" />
+  <ItemGroup>
+    <PointLightHarnessRuntimeDependency Include="$(EngineBinaryRoot)Engine.dll" />
+    <PointLightHarnessRuntimeDependency Include="$(EngineBinaryRoot)Engine.pdb" Condition="'$(Configuration)'=='Debug'" />
+    <PointLightHarnessRuntimeDependency Include="$(FmodRuntimeSource)" />
+    <PointLightHarnessRuntimeDependency Include="$(AssimpRuntimeSource)" />
+    <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysX_64.dll" />
+    <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysXCommon_64.dll" />
+    <PointLightHarnessRuntimeDependency Include="$(PhysXRuntimeRoot)PhysXFoundation_64.dll" />
+  </ItemGroup>
+  <Copy SourceFiles="@(PointLightHarnessRuntimeDependency)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  <Message Text="Deployed Engine, FMOD, Assimp, and PhysX runtimes to $(TargetDir)" Importance="high" />
+</Target>
+```
+
+하네스 진입점은 명시된 저장소 루트를 계속 우선하며, 인자가 없을 때만 canonical 출력 구조
+`<repo>/Tools/PointLightFalloffContractHarness/Bin/<Configuration>`에서 네 단계 위를 저장소 후보로
+계산한다. 임의 working directory나 잘못된 복사본을 정상 실행으로 오인하지 않도록 실제 입력
+marker 두 개가 모두 존재할 때만 후보를 commit한다.
+
+```cpp
+bool_t ResolveRepositoryRoot(
+	const int iArgumentCount,
+	wchar_t* pArguments[],
+	std::filesystem::path& OutRepositoryRoot)
+{
+	if (2 == iArgumentCount && nullptr != pArguments[1] &&
+		L'\0' != pArguments[1][0])
+	{
+		OutRepositoryRoot = std::filesystem::path(pArguments[1]);
+		return true;
+	}
+	if (1 != iArgumentCount)
+		return false;
+
+	wchar_t ModulePath[32768]{};
+	const DWORD iModulePathLength = GetModuleFileNameW(
+		nullptr, ModulePath, static_cast<DWORD>(std::size(ModulePath)));
+	if (0u == iModulePathLength || iModulePathLength >= std::size(ModulePath))
+		return false;
+
+	std::filesystem::path Candidate =
+		std::filesystem::path(ModulePath).parent_path();
+	for (uint32_t iDepth = 0u; iDepth < 4u; ++iDepth)
+		Candidate = Candidate.parent_path();
+
+	std::error_code Error;
+	Candidate = std::filesystem::weakly_canonical(Candidate, Error);
+	if (Error || Candidate.empty())
+		return false;
+
+	const std::filesystem::path MapLightsPath = Candidate / L"Data" /
+		L"Maps" / L"Authoring" / L"LV_LUT_HEARTRB_ED" /
+		L"LV_LUT_HEARTRB_ED.maplights.json";
+	const std::filesystem::path DeferredShaderPath = Candidate / L"Engine" /
+		L"Bin" / L"ShaderFiles" / L"Shader_Deferred.hlsl";
+	if (!std::filesystem::is_regular_file(MapLightsPath, Error) || Error)
+		return false;
+	Error.clear();
+	if (!std::filesystem::is_regular_file(DeferredShaderPath, Error) || Error)
+		return false;
+
+	OutRepositoryRoot = std::move(Candidate);
+	return true;
+}
+
+int wmain(const int iArgumentCount, wchar_t* pArguments[])
+{
+	std::filesystem::path RepoRoot;
+	if (!ResolveRepositoryRoot(iArgumentCount, pArguments, RepoRoot))
+		return Fail(
+			"expected one repository root argument or the canonical harness output layout");
+	// 기존 contract 검증을 그대로 수행한다.
+}
+```
+
+종료 검증은 Debug/Release project build, 두 출력 폴더의 exact app-local 파일 집합, 시스템 `PATH`에
+PhysX가 없는 상태에서 임의 working directory의 무인자 EXE 직접 실행, 명시 인자 직접 실행,
+기존 runner 실행, XML parse와 `git diff --check`까지 수행한다.

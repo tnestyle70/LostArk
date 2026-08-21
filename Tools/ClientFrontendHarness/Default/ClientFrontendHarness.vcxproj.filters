@@ -51,7 +51,13 @@
 	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\CombatHUDViewModel.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\ActorCatalog.cpp">
+	  <Filter>Client</Filter>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\CombatObjectProjectionRuntime.cpp">
 	  <Filter>Client</Filter>
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\CharacterCatalog.cpp">

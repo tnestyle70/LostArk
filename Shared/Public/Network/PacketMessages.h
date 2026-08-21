@@ -202,6 +202,39 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		S2C_WORLD_ENTITY_DESPAWNED& despawned);
 
+	struct S2C_COMBAT_OBJECT_SPAWNED
+	{
+		COMBAT_OBJECT_ID iCombatObjectId = INVALID_COMBAT_OBJECT_ID;
+		NET_ENTITY_ID iSourceNetEntityId = INVALID_NET_ENTITY_ID;
+		std::uint32_t iSpawnTick = 0;
+		std::uint32_t iServerTick = 0;
+		std::string strCombatObjectArchetypeId;
+		std::string strClientVisualId;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+		float fYawDegrees = 0.f;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_COMBAT_OBJECT_SPAWNED& spawned);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_COMBAT_OBJECT_SPAWNED& spawned);
+
+	struct S2C_COMBAT_OBJECT_DESPAWNED
+	{
+		COMBAT_OBJECT_ID iCombatObjectId = INVALID_COMBAT_OBJECT_ID;
+	};
+
+	bool Write_Message(
+		CPacketWriter& writer,
+		const S2C_COMBAT_OBJECT_DESPAWNED& despawned);
+	bool Read_Message(
+		CPacketReader& reader,
+		S2C_COMBAT_OBJECT_DESPAWNED& despawned);
+
 	//server와 client가 player제거으 byte 순서를 똑같이 사용하기 위해서이다.
 	//H 계약 : NetEntityId와 제거 이유 enun을 값으로 선언하고, writer/reaeder/
 	//overload를 공개한다.
@@ -247,6 +280,10 @@ namespace LostArk::Shared
 	the Client parts that wear them read this same bound, so a plate can never
 	be authored that the wire cannot name. */
 	inline constexpr std::uint8_t MAX_WORLD_ENTITY_ARMOR_PLATES = 4;
+	// Boss combat edges are one-tick presentation events. Persistent boss state
+	// lives on WORLD_ENTITY_SNAPSHOT so missing an edge cannot desynchronize it.
+	inline constexpr std::size_t MAX_BOSS_COMBAT_EVENTS = 64;
+	inline constexpr std::size_t MAX_COMBAT_OBJECTS_PER_SNAPSHOT = 128;
 	// Matches the publisher's 2..8 comboStages bound.
 	inline constexpr std::uint8_t MAX_COMBO_STAGES = 8;
 	using SKILL_ID = std::uint32_t;
@@ -467,6 +504,41 @@ namespace LostArk::Shared
 		std::vector<SKILL_COOLDOWN_SNAPSHOT> Cooldowns;
 	};
 
+	enum class BOSS_COMBAT_STATE_FLAG : std::uint16_t
+	{
+		NONE = 0,
+		INVULNERABLE = 1u << 0,
+		SHIELDED = 1u << 1,
+		COUNTERABLE = 1u << 2,
+		GROGGY = 1u << 3
+	};
+
+	inline constexpr std::uint16_t BOSS_COMBAT_STATE_KNOWN_FLAG_MASK =
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::INVULNERABLE) |
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::SHIELDED) |
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::COUNTERABLE) |
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::GROGGY);
+
+	[[nodiscard]]
+	constexpr bool Has_BossCombatFlag(
+		const std::uint16_t flags,
+		const BOSS_COMBAT_STATE_FLAG flag) noexcept
+	{
+		return 0u != (flags & static_cast<std::uint16_t>(flag));
+	}
+
+	struct BOSS_COMBAT_SNAPSHOT
+	{
+		std::uint32_t iStateRevision = 0;
+		std::uint32_t iAlivePartMask = 0;
+		std::uint16_t iFlags = 0;
+		std::uint32_t iCurrentStagger = 0;
+		std::uint32_t iMaximumStagger = 0;
+		std::uint32_t iCurrentShield = 0;
+		std::uint32_t iMaximumShield = 0;
+		std::uint8_t iGameplayPhase = 1;
+	};
+
 	struct WORLD_ENTITY_SNAPSHOT
 	{
 		NET_ENTITY_ID iNetEntityId = INVALID_NET_ENTITY_ID;
@@ -488,13 +560,17 @@ namespace LostArk::Shared
 		part wearing that index. Zero means every plate is still on, which is
 		also what an entity that wears no armour sends. */
 		std::uint8_t iBrokenArmorMask = 0;
+		// Only boss entities set this. Keeping it explicit avoids spending the
+		// boss payload on every NPC/monster while preserving one typed contract.
+		bool hasBossCombatState = false;
+		BOSS_COMBAT_SNAPSHOT BossCombat;
 	};
 	// One resolved hit. HP in the snapshots above is a level, so a client that
 	// only sees levels cannot tell 500 damage from two 250s inside one tick, and
 	// cannot place a number where the hit landed. The server already computes this
 	// value to subtract it; this carries the same number rather than letting the
-	// client re-derive one it has no authority for. This is the snapshot's only
-	// edge-triggered payload: a missed event never desyncs HP.
+	// client re-derive one it has no authority for. Like boss combat events below,
+	// a missed presentation edge never desynchronizes its persistent level state.
 	struct DAMAGE_EVENT
 	{
 		// Whoever took the damage: a player or a world entity, both of which live
@@ -511,6 +587,31 @@ namespace LostArk::Shared
 		bool isOutgoing = false;
 	};
 
+	enum class BOSS_COMBAT_EVENT_KIND : std::uint8_t
+	{
+		PART_BROKEN,
+		END
+	};
+
+	struct BOSS_COMBAT_EVENT
+	{
+		std::uint64_t iEventSequence = 0;
+		std::uint32_t iEventTick = 0;
+		NET_ENTITY_ID iBossNetEntityId = INVALID_NET_ENTITY_ID;
+		BOSS_COMBAT_EVENT_KIND eKind = BOSS_COMBAT_EVENT_KIND::END;
+		std::uint32_t iPartMask = 0;
+	};
+
+	struct COMBAT_OBJECT_SNAPSHOT
+	{
+		COMBAT_OBJECT_ID iCombatObjectId = INVALID_COMBAT_OBJECT_ID;
+		NET_ENTITY_ID iSourceNetEntityId = INVALID_NET_ENTITY_ID;
+		float fPositionX = 0.f;
+		float fPositionY = 0.f;
+		float fPositionZ = 0.f;
+		float fYawDegrees = 0.f;
+	};
+
 	//player snapshot을 vector 구조체로 들고, servertick을 들고있다?
 	struct S2C_WORLD_SNAPSHOT
 	{
@@ -519,6 +620,10 @@ namespace LostArk::Shared
 		std::vector<PLAYER_SNAPSHOT> Players;
 		std::vector<WORLD_ENTITY_SNAPSHOT> Entities;
 		std::vector<DAMAGE_EVENT> DamageEvents;
+		std::vector<BOSS_COMBAT_EVENT> BossCombatEvents;
+		// Full live set, sorted by iCombatObjectId. Reliable spawn/despawn
+		// frames remain ordering barriers around this 30 Hz transform level.
+		std::vector<COMBAT_OBJECT_SNAPSHOT> CombatObjects;
 		// Room-shared raid Esther gauge. A maximum of 0 says this world has no
 		// Esther roster and the HUD then has nothing to draw.
 		std::uint32_t iEstherGauge = 0;

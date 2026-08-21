@@ -90,13 +90,26 @@ HRESULT CDeployPropObject::Initialize(void* pArg)
 		0 == desc.placement.runtimePlacementId ||
 		desc.placement.assetId.empty() || desc.intactPrototypeTag.empty() ||
 		!std::isfinite(desc.placement.uniformScale) ||
-		desc.placement.uniformScale <= 0.000001f)
+		desc.placement.uniformScale <= 0.000001f ||
+		!std::isfinite(desc.emissiveIntensity) ||
+		desc.emissiveIntensity < 0.f ||
+		(desc.deferredEmissiveOverlay &&
+			desc.modelKind != DEPLOY_PROP_MODEL_KIND::STATIC))
 		return E_FAIL;
 
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(desc)))
 		return E_FAIL;
+	if (desc.deferredEmissiveOverlay &&
+		(m_pIntactModelCom->Get_NumMeshes() <= 1u ||
+			!m_pIntactModelCom->Has_MaterialTexture(
+				1u, aiTextureType_EMISSIVE)))
+	{
+		return E_FAIL;
+	}
 	m_Placement = desc.placement;
 	m_ModelKind = desc.modelKind;
+	m_fEmissiveIntensity = desc.emissiveIntensity;
+	m_bDeferredEmissiveOverlay = desc.deferredEmissiveOverlay;
 	m_iPrototypeLevelIndex = desc.prototypeLevelIndex;
 	Apply_Transform();
 	if (m_ModelKind == DEPLOY_PROP_MODEL_KIND::ANIM &&
@@ -126,6 +139,12 @@ void CDeployPropObject::Late_Update(f32_t fTimeDelta)
 	CGameInstance::Get().Add_RenderObject(
 		RENDERGROUP::NONBLEND,
 		static_pointer_cast<CGameObject>(shared_from_this()));
+	if (Should_RenderDeferredEmissiveOverlay())
+	{
+		CGameInstance::Get().Add_RenderObject(
+			RENDERGROUP::DEFERRED_OVERLAY,
+			static_pointer_cast<CGameObject>(shared_from_this()));
+	}
 	if (CGameInstance::Get().Is_ShadowLightEnabled())
 	{
 		CGameInstance::Get().Add_RenderObject(
@@ -151,7 +170,9 @@ HRESULT CDeployPropObject::Render()
 		else if (FAILED(Render_Static(
 			m_State == DEPLOY_PROP_STATE::FRACTURED ?
 			m_pFracturedModelCom : m_pIntactModelCom,
-			m_pShaderCom, 0u)))
+			m_pShaderCom, 0u,
+			m_bDeferredEmissiveOverlay &&
+				DEPLOY_PROP_STATE::INTACT == m_State)))
 		{
 			return E_FAIL;
 		}
@@ -159,6 +180,15 @@ HRESULT CDeployPropObject::Render()
 
 	return Has_VisibleDebrisPreviewInstance() ?
 		Render_DebrisPreview(false) : S_OK;
+}
+
+HRESULT CDeployPropObject::Render_DeferredOverlay()
+{
+	if (!Should_RenderDeferredEmissiveOverlay())
+		return S_OK;
+	if (FAILED(Bind_CommonShaderResources()))
+		return E_FAIL;
+	return Render_DeferredEmissiveOverlay();
 }
 
 HRESULT CDeployPropObject::Render_Shadow()
@@ -183,7 +213,7 @@ HRESULT CDeployPropObject::Render_Shadow()
 		else if (FAILED(Render_Static(
 			m_State == DEPLOY_PROP_STATE::FRACTURED ?
 			m_pFracturedModelCom : m_pIntactModelCom,
-			m_pShaderCom, STATIC_SHADOW_PASS)))
+			m_pShaderCom, STATIC_SHADOW_PASS, false)))
 		{
 			return E_FAIL;
 		}
@@ -852,24 +882,33 @@ HRESULT CDeployPropObject::Bind_ShadowShaderResources(
 HRESULT CDeployPropObject::Render_Static(
 	const shared_ptr<CModel>& model,
 	const shared_ptr<CShader>& shader,
-	const uint32_t passIndex)
+	const uint32_t passIndex,
+	const bool_t suppressDeferredEmissive)
 {
 	if (nullptr == model || nullptr == shader)
 		return E_FAIL;
 	const float2_t uvScale = float2_t(1.f, 1.f);
 	const float2_t uvOffset = float2_t(0.f, 0.f);
 	const float opacity = 1.f;
-	const float emissiveIntensity = 1.f;
+	const float emissiveIntensity = m_fEmissiveIntensity;
 	const float specularIntensity = 1.f;
 	const float specularPower = 50.f;
 	const float4_t colorTint = float4_t(1.f, 1.f, 1.f, 1.f);
+	const float4_t emissiveColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	const float4_t fullSurfaceEmissiveColor =
+		float4_t(1.f, 1.f, 1.f, 1.f);
+	const float fullSurfaceEmissiveIntensity = 0.f;
 	const uint32_t hasOpacity = 0u;
+	const uint32_t hasFullSurfaceEmissiveOverride = 0u;
+	const uint32_t fullSurfaceEmissiveMaskMode = 0u;
 	for (uint32_t index = 0; index < model->Get_NumMeshes(); ++index)
 	{
 		const uint32_t hasNormal =
 			model->Has_MaterialTexture(index, aiTextureType_NORMALS) ? 1u : 0u;
-		const uint32_t hasEmissive =
-			model->Has_MaterialTexture(index, aiTextureType_EMISSIVE) ? 1u : 0u;
+		const bool_t ownsEmissive =
+			model->Has_MaterialTexture(index, aiTextureType_EMISSIVE);
+		const uint32_t hasEmissive = ownsEmissive &&
+			!(suppressDeferredEmissive && 1u == index) ? 1u : 0u;
 		const uint32_t hasSpecular =
 			model->Has_MaterialTexture(index, aiTextureType_SPECULAR) ? 1u : 0u;
 		if (FAILED(model->Bind_Material(
@@ -882,9 +921,22 @@ HRESULT CDeployPropObject::Render_Static(
 			(0 != hasNormal && FAILED(model->Bind_Material(
 				shader, "g_NormalTexture", index, aiTextureType_NORMALS))) ||
 			FAILED(shader->Bind_RawValue("g_HasEmissiveTexture", &hasEmissive, sizeof(hasEmissive))) ||
+			FAILED(shader->Bind_RawValue("g_EmissiveColor", &emissiveColor, sizeof(emissiveColor))) ||
 			FAILED(shader->Bind_RawValue("g_EmissiveIntensity", &emissiveIntensity, sizeof(emissiveIntensity))) ||
 			(0 != hasEmissive && FAILED(model->Bind_Material(
 				shader, "g_EmissiveTexture", index, aiTextureType_EMISSIVE))) ||
+			FAILED(shader->Bind_RawValue("g_HasFullSurfaceEmissiveOverride",
+				&hasFullSurfaceEmissiveOverride,
+				sizeof(hasFullSurfaceEmissiveOverride))) ||
+			FAILED(shader->Bind_RawValue("g_FullSurfaceEmissiveColor",
+				&fullSurfaceEmissiveColor,
+				sizeof(fullSurfaceEmissiveColor))) ||
+			FAILED(shader->Bind_RawValue("g_FullSurfaceEmissiveIntensity",
+				&fullSurfaceEmissiveIntensity,
+				sizeof(fullSurfaceEmissiveIntensity))) ||
+			FAILED(shader->Bind_RawValue("g_FullSurfaceEmissiveMaskMode",
+				&fullSurfaceEmissiveMaskMode,
+				sizeof(fullSurfaceEmissiveMaskMode))) ||
 			FAILED(shader->Bind_RawValue("g_HasSpecularTexture", &hasSpecular, sizeof(hasSpecular))) ||
 			FAILED(shader->Bind_RawValue("g_SpecularIntensity", &specularIntensity, sizeof(specularIntensity))) ||
 			FAILED(shader->Bind_RawValue("g_SpecularPower", &specularPower, sizeof(specularPower))) ||
@@ -893,6 +945,44 @@ HRESULT CDeployPropObject::Render_Static(
 			FAILED(shader->Bind_RawValue("g_HasOpacityTexture", &hasOpacity, sizeof(hasOpacity))) ||
 			FAILED(shader->Begin(passIndex)) || FAILED(model->Render(index)))
 			return E_FAIL;
+	}
+	return S_OK;
+}
+
+HRESULT CDeployPropObject::Render_DeferredEmissiveOverlay()
+{
+	constexpr uint32_t EMISSIVE_MESH_INDEX = 1u;
+	constexpr uint32_t DEFERRED_EMISSIVE_OVERLAY_PASS = 15u;
+	if (nullptr == m_pIntactModelCom || nullptr == m_pShaderCom ||
+		m_pIntactModelCom->Get_NumMeshes() <= EMISSIVE_MESH_INDEX ||
+		!m_pIntactModelCom->Has_MaterialTexture(
+			EMISSIVE_MESH_INDEX, aiTextureType_EMISSIVE))
+	{
+		return E_FAIL;
+	}
+
+	const float2_t uvScale = float2_t(1.f, 1.f);
+	const float2_t uvOffset = float2_t(0.f, 0.f);
+	const float4_t emissiveColor = float4_t(1.f, 1.f, 1.f, 1.f);
+	const uint32_t hasEmissive = 1u;
+	if (FAILED(m_pShaderCom->Bind_RawValue(
+		"g_UVScale", &uvScale, sizeof(uvScale))) ||
+		FAILED(m_pShaderCom->Bind_RawValue(
+			"g_UVOffset", &uvOffset, sizeof(uvOffset))) ||
+		FAILED(m_pShaderCom->Bind_RawValue(
+			"g_HasEmissiveTexture", &hasEmissive, sizeof(hasEmissive))) ||
+		FAILED(m_pShaderCom->Bind_RawValue(
+			"g_EmissiveColor", &emissiveColor, sizeof(emissiveColor))) ||
+		FAILED(m_pShaderCom->Bind_RawValue(
+			"g_EmissiveIntensity", &m_fEmissiveIntensity,
+			sizeof(m_fEmissiveIntensity))) ||
+		FAILED(m_pIntactModelCom->Bind_Material(
+			m_pShaderCom, "g_EmissiveTexture", EMISSIVE_MESH_INDEX,
+			aiTextureType_EMISSIVE)) ||
+		FAILED(m_pShaderCom->Begin(DEFERRED_EMISSIVE_OVERLAY_PASS)) ||
+		FAILED(m_pIntactModelCom->Render(EMISSIVE_MESH_INDEX)))
+	{
+		return E_FAIL;
 	}
 	return S_OK;
 }
@@ -948,7 +1038,7 @@ HRESULT CDeployPropObject::Render_DebrisPreview(const bool_t shadowPass)
 		if (FAILED(bindResult) ||
 			FAILED(Render_Static(
 				model, m_pDebrisShaderCom,
-				shadowPass ? STATIC_SHADOW_PASS : 0u)))
+				shadowPass ? STATIC_SHADOW_PASS : 0u, false)))
 		{
 			return E_FAIL;
 		}
@@ -982,6 +1072,14 @@ bool_t CDeployPropObject::Is_BasePresentationSuppressed() const
 	}
 	return DEBRIS_PRESENTATION_OWNER::MAPTOOL_PREVIEW ==
 		m_eDebrisPresentationOwner && m_bPhysicsPreviewActive;
+}
+
+bool_t CDeployPropObject::Should_RenderDeferredEmissiveOverlay() const
+{
+	return m_bDeferredEmissiveOverlay &&
+		DEPLOY_PROP_MODEL_KIND::STATIC == m_ModelKind &&
+		DEPLOY_PROP_STATE::INTACT == m_State &&
+		!Is_BasePresentationSuppressed();
 }
 
 void CDeployPropObject::Apply_Transform()

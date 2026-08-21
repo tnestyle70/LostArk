@@ -69,6 +69,11 @@ HRESULT CGameObject::Render()
     return S_OK;
 }
 
+HRESULT CGameObject::Render_DeferredOverlay()
+{
+    return S_OK;
+}
+
 HRESULT CGameObject::Render_Shadow()
 {
     return S_OK;
