@@ -1,0 +1,309 @@
+{
+  "schema": "lostark.valtan-magic-choice-sprite-particle-companions",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "generator": {
+    "script": "Tools/EffectPipeline/build_valtan_magic_choice_sprite_particle_companions.py",
+    "schemaPath": "Tools/EffectPipeline/Schemas/lostark.valtan-magic-choice-sprite-particle-companions.schema.json",
+    "policyVersion": 1
+  },
+  "policy": {
+    "classification": "PROJECT_TUNED",
+    "fidelity": "BOUNDED_CARRIER_TRANSLATION",
+    "reconcileMode": "MISSING_ONLY",
+    "candidateOnly": true,
+    "canonicalMutationPerformed": false,
+    "cueMutationPerformed": false,
+    "bindingMutationPerformed": false,
+    "catalogMutationPerformed": false,
+    "commonRuntimeMutationPerformed": false,
+    "sourceExactClaim": false,
+    "drawableProofStatus": "NOT_ATTEMPTED_COMMON_COLOR_ABI_REQUIRED",
+    "productAdmission": "BLOCKED_CANDIDATE_ONLY"
+  },
+  "target": {
+    "patternId": "VALTAN_MAGIC_CHOICE",
+    "carrierFamily": "SPRITE_PARTICLE",
+    "sourceCarrierFamily": "LOCAL_DECAL",
+    "candidateCount": 4,
+    "candidateDocumentCount": 3
+  },
+  "sourceIdentity": [
+    {
+      "semanticStage": "WINDUP",
+      "canonicalPath": "Data/Effects/Authored/effect.valtan.magic-choice.windup.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.windup",
+      "sourceElementId": "project-donut-outer-boundary",
+      "sourceElementSha256": "8a380ab060a303baa2ed4f2c946620df799f99970e1249c070068b88d928f864",
+      "canonicalDocumentRawSha256": "7df1bff148100f2723897c08a173409fab00106cc650e507e3df779864b8fe01",
+      "canonicalDocumentCanonicalSha256": "5f697da2e54b055adb03a78c497a847efb22d9e50ec50e185b2932cb3af47f3b",
+      "resourceClosureSha256": "12f94d94647fcece2ceaee477d6639315559380074eea617b66b21259bb7b991",
+      "materialClosureSha256": "be05847a4086275d3ea7f24c27044363d6238f5cd2524a2605a48467316d6a20",
+      "timingSha256": "f3c1637113a6f500ba29cbbbd0a688c5c0829b45ebe4b19da0807a4df32217be",
+      "colorSha256": "63a1e2b7be4ffbdb00fb4b09732d8822e2a376efa3cd3552f19366280a1fe707",
+      "uvSha256": "afa241f09cc35b233c61c1636d5d66fb2f4f6b2947f2f63c8dabf0d6ad1a2f96"
+    },
+    {
+      "semanticStage": "WINDUP",
+      "canonicalPath": "Data/Effects/Authored/effect.valtan.magic-choice.windup.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.windup",
+      "sourceElementId": "project-donut-inner-growing-boundary",
+      "sourceElementSha256": "bfe67672071d6e1ed5ac26271a68142f794754762ca8d756e9e5a9faeebcb4b9",
+      "canonicalDocumentRawSha256": "7df1bff148100f2723897c08a173409fab00106cc650e507e3df779864b8fe01",
+      "canonicalDocumentCanonicalSha256": "5f697da2e54b055adb03a78c497a847efb22d9e50ec50e185b2932cb3af47f3b",
+      "resourceClosureSha256": "12f94d94647fcece2ceaee477d6639315559380074eea617b66b21259bb7b991",
+      "materialClosureSha256": "be05847a4086275d3ea7f24c27044363d6238f5cd2524a2605a48467316d6a20",
+      "timingSha256": "f3c1637113a6f500ba29cbbbd0a688c5c0829b45ebe4b19da0807a4df32217be",
+      "colorSha256": "4610f026e62d7ee5559c557e37b013b718cbbfed51c7b59d1737c0f384e9ef11",
+      "uvSha256": "98ed9bb7a11fa97e2a3ae82860cd54c51805d26635d9b02d8d5f88791b4a8dd0"
+    },
+    {
+      "semanticStage": "INNER",
+      "canonicalPath": "Data/Effects/Authored/effect.valtan.magic-choice.inner.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.inner",
+      "sourceElementId": "project-donut-inner-impact",
+      "sourceElementSha256": "2ec2a29c72dada7a7fafc753fd29f9d8b249d24f93dee61929deb40932c934cf",
+      "canonicalDocumentRawSha256": "a9915237dfb4f5cc3b3507c1abdbfe225363b062dc22fda98dc77ea04ca6f284",
+      "canonicalDocumentCanonicalSha256": "de3e0b9916691bc5e2e35a2d5149c9863d86b1daf4110416de81cf3f3e38d15b",
+      "resourceClosureSha256": "e2d1185f3c3c255dbe89ae13db2e31408ec360e10e85e1245493924ad69a544c",
+      "materialClosureSha256": "fc9bfb6a815a4bfe6966846b0cc1711b19a38d7c6f3861207b01a580838f0c6f",
+      "timingSha256": "2e11620c5309a2cf38fd9ec99e5101e0679a5fa6ba6190f3dd8d18a73135a424",
+      "colorSha256": "ef029873e407a309e4cad3440be911a47b514e368ab859e8f3868567dbc4ab97",
+      "uvSha256": "7fee82bf4fe621b48ba6c81a3b06efb7b6b28d82e3675d9154df9188309ac847"
+    },
+    {
+      "semanticStage": "OUTER",
+      "canonicalPath": "Data/Effects/Authored/effect.valtan.magic-choice.outer.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.outer",
+      "sourceElementId": "project-donut-outer-impact",
+      "sourceElementSha256": "5ae9b11755dcd28c6a88b5a541fe8fc468361a92caafcf16757cdbe672bf4510",
+      "canonicalDocumentRawSha256": "48800201ec87038055e227d8e13145121ec41c5db7c08892bc92a765e6259b92",
+      "canonicalDocumentCanonicalSha256": "cad50f6e7611d53b76b5dae7b7389a7f56562205f1539c555923c31cf0a09e1c",
+      "resourceClosureSha256": "e2d1185f3c3c255dbe89ae13db2e31408ec360e10e85e1245493924ad69a544c",
+      "materialClosureSha256": "fc9bfb6a815a4bfe6966846b0cc1711b19a38d7c6f3861207b01a580838f0c6f",
+      "timingSha256": "c40a09f7b6dc59852832d58a9a1bbf736294849fefbf80033aecc022fb067341",
+      "colorSha256": "fec57e3e7ea4282299118904551f43b93248e08eec832921484cc6aa8e0dc7d0",
+      "uvSha256": "7fee82bf4fe621b48ba6c81a3b06efb7b6b28d82e3675d9154df9188309ac847"
+    }
+  ],
+  "candidateIdentity": [
+    {
+      "semanticStage": "WINDUP",
+      "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedMagicChoiceSpriteParticleCompanions/effect.valtan.magic-choice.windup.sprite-particle-companions.candidate.effect.json",
+      "candidateElementId": "project-donut-outer-boundary.sprite-particle-v1",
+      "candidateSourceNode": "project-authored:valtan.magic-choice.donut.outer-boundary.sprite-particle-v1",
+      "candidateElementSha256": "5e7608b322cceb3dd1037102c92d274821f70f38537953dd3264c7e07a1c7b85"
+    },
+    {
+      "semanticStage": "WINDUP",
+      "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedMagicChoiceSpriteParticleCompanions/effect.valtan.magic-choice.windup.sprite-particle-companions.candidate.effect.json",
+      "candidateElementId": "project-donut-inner-growing-boundary.sprite-particle-v1",
+      "candidateSourceNode": "project-authored:valtan.magic-choice.donut.inner-growing-boundary.sprite-particle-v1",
+      "candidateElementSha256": "f05ce96474ea9f356cfed07a60bb99aa52413e02872dc62bf74f69fcb87b07f2"
+    },
+    {
+      "semanticStage": "INNER",
+      "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedMagicChoiceSpriteParticleCompanions/effect.valtan.magic-choice.inner.sprite-particle-companions.candidate.effect.json",
+      "candidateElementId": "project-donut-inner-impact.sprite-particle-v1",
+      "candidateSourceNode": "project-authored:valtan.magic-choice.donut.inner-impact.sprite-particle-v1",
+      "candidateElementSha256": "ef5e8dc420d537d9ad01846a2a35dec62f10ebe5a14b94a199f703af3bea39bc"
+    },
+    {
+      "semanticStage": "OUTER",
+      "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedMagicChoiceSpriteParticleCompanions/effect.valtan.magic-choice.outer.sprite-particle-companions.candidate.effect.json",
+      "candidateElementId": "project-donut-outer-impact.sprite-particle-v1",
+      "candidateSourceNode": "project-authored:valtan.magic-choice.donut.outer-impact.sprite-particle-v1",
+      "candidateElementSha256": "82b28ebed905001f9b3039dffa388c659cc0e1c8691ac06ba5da73bb4d37d415"
+    }
+  ],
+  "candidateDocumentIdentity": [
+    {
+      "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedMagicChoiceSpriteParticleCompanions/effect.valtan.magic-choice.inner.sprite-particle-companions.candidate.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.inner",
+      "rawSha256": "b4be5098418fd9f924442392a72688be634b123b6a4099c2afa6db486b250083",
+      "canonicalSha256": "c46312cc5e9973ad6543ee7ed570b560d04a820162aa86c2a63cb122656070c4",
+      "elementCount": 1
+    },
+    {
+      "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedMagicChoiceSpriteParticleCompanions/effect.valtan.magic-choice.outer.sprite-particle-companions.candidate.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.outer",
+      "rawSha256": "fc49756606a92d632e16ac6b9d9f08802869f690355393925dd1420d8f4a701d",
+      "canonicalSha256": "e2ef19c9d4091bc15f776439b267f643cd70c5db61103f09dce23da47cbaf444",
+      "elementCount": 1
+    },
+    {
+      "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedMagicChoiceSpriteParticleCompanions/effect.valtan.magic-choice.windup.sprite-particle-companions.candidate.effect.json",
+      "effectAssetId": "effect.valtan.magic-choice.windup",
+      "rawSha256": "c4805f9ac26ab2f6d3581ab0c827e1b299ddcc9646cb71bc3586664345d76e22",
+      "canonicalSha256": "89ef8b80d030eb532bdb954b5554c7effadd662b9803719c269a11ce6712a330",
+      "elementCount": 2
+    }
+  ],
+  "resourceEvidence": [
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds",
+      "byteSize": 16512,
+      "sha256": "1045f25f5cdb36e4afb66a3bb2417158c4ecbda419d1e31aa269dd620c3c07c0"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_004_cl.dds",
+      "byteSize": 131200,
+      "sha256": "7fa5d94db7d8587ad94ee5a119119e97221cbbe8b64eda7a0bed2ac6b447f094"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+      "byteSize": 32896,
+      "sha256": "58a957a8d13005c12afb097c6c8d423d2c94872dfe8b76ab1d51dabbfe67749b"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_011.dds",
+      "byteSize": 8320,
+      "sha256": "4d0d6a1024a7ef55c5ff469729d0f567a2dbbe941c6568f495b5dc72c2169618"
+    }
+  ],
+  "carrierTranslation": {
+    "kind": "particle",
+    "meshModelForbidden": true,
+    "groundPlaneRotationDegrees": [
+      90.0,
+      0.0,
+      0.0
+    ],
+    "billboard": false,
+    "burstCount": 1,
+    "localSpace": true,
+    "timingPolicy": "COPY_EXACT_FROM_SOURCE_ROW",
+    "colorPolicy": "COPY_EXACT_FROM_SOURCE_ROW",
+    "uvPolicy": "COPY_EXACT_FROM_SOURCE_ROW",
+    "resourcePolicy": "COPY_EXACT_FROM_SOURCE_ROW",
+    "materialPolicy": "COPY_EXACT_FROM_SOURCE_ROW",
+    "innerGrowthPolicy": "PARTICLE_SIZE_7_TO_18_NO_DOUBLE_ELEMENT_SCALE",
+    "attachmentPolicy": "COPY_DISABLED_SOURCE_ATTACHMENT"
+  },
+  "requiresCommonColorAbi": {
+    "status": "REQUIRED_BEFORE_PRODUCT_ADMISSION",
+    "minimumContractVersion": 1,
+    "variantSelection": "EXPLICIT_TYPED_VARIANT_NO_FILENAME_HEURISTICS",
+    "lanes": [
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds",
+        "roles": [
+          "BASE_RADIANCE",
+          "COVERAGE"
+        ],
+        "rgbDecode": "SRGB_TO_SCENE_LINEAR",
+        "dataDecode": "LINEAR",
+        "coverageSwizzle": "A",
+        "coverageSemantic": "RING_ALPHA"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_004_cl.dds",
+        "roles": [
+          "MASK"
+        ],
+        "rgbDecode": "LINEAR",
+        "dataDecode": "LINEAR",
+        "coverageSwizzle": "R",
+        "coverageSemantic": "GRAYSCALE_LUMINANCE_MASK"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+        "roles": [
+          "BASE_RADIANCE"
+        ],
+        "rgbDecode": "SRGB_TO_SCENE_LINEAR",
+        "dataDecode": "LINEAR",
+        "coverageSwizzle": "NONE",
+        "coverageSemantic": "NOT_A_COVERAGE_OWNER"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_011.dds",
+        "roles": [
+          "DISSOLVE"
+        ],
+        "rgbDecode": "LINEAR",
+        "dataDecode": "LINEAR",
+        "coverageSwizzle": "R",
+        "coverageSemantic": "DISSOLVE_SCALAR"
+      }
+    ],
+    "coverage": {
+      "boundary": {
+        "terms": [
+          {
+            "sourceLane": "base",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds",
+            "swizzle": "A",
+            "operator": "REPLACE"
+          },
+          {
+            "sourceLane": "mask",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_004_cl.dds",
+            "swizzle": "R",
+            "operator": "MULTIPLY"
+          },
+          {
+            "sourceLane": "particle",
+            "assetId": "",
+            "swizzle": "A",
+            "operator": "MULTIPLY"
+          }
+        ],
+        "threshold": 0.0,
+        "softness": 0.0,
+        "particleAlphaMode": "MULTIPLY_COVERAGE"
+      },
+      "impact": {
+        "terms": [
+          {
+            "sourceLane": "mask",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds",
+            "swizzle": "A",
+            "operator": "REPLACE"
+          },
+          {
+            "sourceLane": "dissolve",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_011.dds",
+            "swizzle": "R",
+            "operator": "DISSOLVE_MULTIPLY"
+          },
+          {
+            "sourceLane": "particle",
+            "assetId": "",
+            "swizzle": "A",
+            "operator": "MULTIPLY"
+          }
+        ],
+        "threshold": 0.0,
+        "softness": 0.0,
+        "particleAlphaMode": "MULTIPLY_COVERAGE"
+      },
+      "forbidDxt1ImplicitAlphaCoverage": true
+    },
+    "radiance": {
+      "baseRadianceSpace": "SCENE_LINEAR",
+      "authoredEmissiveIntensitySource": "DETAIL_COLOR_EMISSIVE_INTENSITY",
+      "emissiveOperation": "MULTIPLY_BASE_RADIANCE",
+      "allowValuesAboveOne": true,
+      "internalHdrClamp": "FORBIDDEN",
+      "internalToneMap": "FORBIDDEN",
+      "toneMapOwner": "EXTERNAL_RENDERING_PROFILE"
+    },
+    "blendProfiles": {
+      "boundary": "STRAIGHT_ALPHA_SRC_ALPHA_INV_SRC_ALPHA",
+      "impact": "SRC_ALPHA_ADDITIVE_SRC_ALPHA_ONE"
+    }
+  },
+  "requiredValidation": {
+    "status": "NOT_RUN",
+    "requiredBeforeDrawableClaim": [
+      "common color ABI implements every requiresCommonColorAbi field",
+      "candidate-only effect document codec validation passes",
+      "isolated fixed-step prepare and draw proof passes",
+      "cue and binding deep hashes remain unchanged",
+      "user performs visual comparison under fixed Valtan render profile"
+    ],
+    "proofAdmission": "DO_NOT_MARK_DRAWABLE_OR_SOURCE_EXACT_YET"
+  },
+  "artifactSha256": "45f88121702cc0a7040145063bc55ceb54d31ef1c0291ca305c4582df7926e17"
+}

@@ -2,7 +2,7 @@
   "schema": "lostark.effect-authoring",
   "version": 13,
   "effectAssetId": "effect.valtan.magic-choice.windup",
-  "displayName": "Project overlay: magic-choice.windup",
+  "displayName": "Project candidate: MagicChoice ground SpriteParticle companions",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,
@@ -12,12 +12,12 @@
   "modelCues": [],
   "elements": [
     {
-      "id": "project-donut-outer-boundary",
-      "displayName": "Donut outer red boundary",
-      "groupId": "donut_telegraph",
-      "sourceNode": "project-authored:valtan.magic-choice.donut.outer-boundary",
+      "id": "project-donut-outer-boundary.sprite-particle-v1",
+      "displayName": "Donut outer boundary SpriteParticle candidate",
+      "groupId": "valtan.project.magic-choice.sprite-particle-companion",
+      "sourceNode": "project-authored:valtan.magic-choice.donut.outer-boundary.sprite-particle-v1",
       "visible": true,
-      "kind": "decal",
+      "kind": "particle",
       "resources": [
         {
           "slotId": "base",
@@ -73,7 +73,7 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
+            90.0,
             0.0,
             0.0
           ],
@@ -243,12 +243,12 @@
             0
           ],
           "startSize": [
-            1.0,
-            1.0
+            18.0,
+            18.0
           ],
           "endSize": [
-            1.0,
-            1.0
+            18.0,
+            18.0
           ],
           "localSpace": true,
           "billboard": false
@@ -290,12 +290,12 @@
       }
     },
     {
-      "id": "project-donut-inner-growing-boundary",
-      "displayName": "Donut inner boundary growing to outer radius",
-      "groupId": "donut_telegraph",
-      "sourceNode": "project-authored:valtan.magic-choice.donut.inner-growing-boundary",
+      "id": "project-donut-inner-growing-boundary.sprite-particle-v1",
+      "displayName": "Donut growing inner SpriteParticle candidate",
+      "groupId": "valtan.project.magic-choice.sprite-particle-companion",
+      "sourceNode": "project-authored:valtan.magic-choice.donut.inner-growing-boundary.sprite-particle-v1",
       "visible": true,
-      "kind": "decal",
+      "kind": "particle",
       "resources": [
         {
           "slotId": "base",
@@ -351,7 +351,7 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
+            90.0,
             0.0,
             0.0
           ],
@@ -457,11 +457,11 @@
             0,
             0
           ],
-          "scale": true,
+          "scale": false,
           "endScale": [
-            2.5714285714285716,
             1.0,
-            2.5714285714285716
+            1.0,
+            1.0
           ],
           "velocity": false,
           "endVelocityPerSecond": [
@@ -521,12 +521,12 @@
             0
           ],
           "startSize": [
-            1.0,
-            1.0
+            7.0,
+            7.0
           ],
           "endSize": [
-            1.0,
-            1.0
+            18.0,
+            18.0
           ],
           "localSpace": true,
           "billboard": false

@@ -1,8 +1,8 @@
 {
   "schema": "lostark.effect-authoring",
   "version": 13,
-  "effectAssetId": "effect.valtan.high-jump.land",
-  "displayName": "Project overlay: high-jump.land",
+  "effectAssetId": "effect.valtan.magic-choice.inner",
+  "displayName": "Project candidate: MagicChoice ground SpriteParticle companions",
   "particleSystem": {
     "uniformScaleMultiplier": 1,
     "yawOffsetDegrees": 0,
@@ -12,20 +12,24 @@
   "modelCues": [],
   "elements": [
     {
-      "id": "project-high-jump-landing-wave",
-      "displayName": "Valtan landing outward wave",
-      "groupId": "valtan_landing",
-      "sourceNode": "project-authored:valtan.high-jump.land.outward-wave",
+      "id": "project-donut-inner-impact.sprite-particle-v1",
+      "displayName": "Donut inner impact SpriteParticle candidate",
+      "groupId": "valtan.project.magic-choice.sprite-particle-companion",
+      "sourceNode": "project-authored:valtan.magic-choice.donut.inner-impact.sprite-particle-v1",
       "visible": true,
-      "kind": "decal",
+      "kind": "particle",
       "resources": [
         {
           "slotId": "base",
-          "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_atypical_01_1.dds"
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds"
         },
         {
           "slotId": "mask",
-          "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds"
+          "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds"
+        },
+        {
+          "slotId": "dissolve",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_011.dds"
         }
       ],
       "material": {
@@ -73,7 +77,7 @@
             0.0
           ],
           "rotationDegrees": [
-            0.0,
+            90.0,
             0.0,
             0.0
           ],
@@ -83,9 +87,9 @@
             0
           ],
           "scale": [
-            0.35,
             1.0,
-            0.35
+            1.0,
+            1.0
           ],
           "velocityPerSecond": [
             0,
@@ -101,13 +105,13 @@
             0
           ],
           "multiply": [
-            0.02,
             1.0,
-            0.82,
+            0.18,
+            0.04,
             0.9
           ],
           "clip": 0,
-          "emissiveIntensity": 2.2,
+          "emissiveIntensity": 2.0,
           "distortionIntensity": 0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0,
@@ -119,7 +123,7 @@
             0
           ],
           "speed": [
-            0.35,
+            0.0,
             0.0
           ],
           "wave": false,
@@ -137,7 +141,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 1.0,
+          "lifeTimeSeconds": 0.7,
           "afterImageSeconds": 0,
           "dissolveStartNormalized": 0.72
         },
@@ -155,8 +159,8 @@
         },
         "decal": {
           "size": [
-            14.0,
-            14.0
+            8.0,
+            8.0
           ],
           "depth": 1.0
         },
@@ -179,7 +183,7 @@
             0,
             0
           ],
-          "scale": true,
+          "scale": false,
           "endScale": [
             1.0,
             1.0,
@@ -214,8 +218,8 @@
           "burstCount": 1,
           "randomSeed": 1,
           "lifeTimeSeconds": [
-            1.0,
-            1.0
+            0.7,
+            0.7
           ],
           "initialPositionMin": [
             0,
@@ -243,12 +247,12 @@
             0
           ],
           "startSize": [
-            1.0,
-            1.0
+            8.0,
+            8.0
           ],
           "endSize": [
-            1.0,
-            1.0
+            8.0,
+            8.0
           ],
           "localSpace": true,
           "billboard": false

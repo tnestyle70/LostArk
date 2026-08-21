@@ -25,8 +25,8 @@ Encounter Pattern
 | Encounter patterns / semantic stages | 33 / 127 |
 | animation action bindings / ordered clips | 124 / 128 |
 | Product cues / cue가 있는 unique clips | 108 / 102 |
-| Valtan Catalog rows / editable authored docs | 108 / 108 |
-| canonical elements | 3,679 |
+| 물리 Valtan authored docs / elements | 112 / 3,721 |
+| 제품 Catalog rows / editable docs / catalog-linked elements | 108 / 108 / 3,679 |
 | source-linked / project-authored·tuned / legacy generic | 555 / 32 / 3,092 |
 | completion core-linked / reviewed denominator | 542 / 628 |
 | element kind: particle / trail·ribbon / decal / mesh / light | 3,642 / 10 / 23 / 3 / 1 |
@@ -293,3 +293,77 @@ F1
 
 자동 draw PASS는 최종 visual fidelity PASS가 아니다. 사용자가 색, scale, UV 속도, lifetime, local transform을
 손튜닝한 뒤 Save/Hot Reload로 다음 cue spawn을 확인한다.
+
+## 8. 2026-08-21 sequence-frozen family-rendering 후속 상태
+
+이 절은 위 완료 결과를 지우지 않고, 최신 main `2230d25b`에서 시작한
+`codex/valtan-family-rendering-0821` 후속 slice의 현재 상태만 추가한다. 위 `actual draw PASS`는 당시
+overlay revision의 증거이고, 아래 X/Z footprint diff와 공용 color pipeline이 들어간 새 revision의
+draw 증거로 재사용하지 않는다.
+
+### 8.1 동결한 animation/cue 입력
+
+이번 slice는 `Valtan.patternbindings.json`과 `Valtan.patterneffectcues.json`을 수정하지 않았다.
+현재 worktree와 HEAD의 Git blob identity는 각각 다음처럼 같다.
+
+```text
+Valtan.patternbindings.json    96b90f1a3db9f98de354402b39ae1f0fdbf2bd02
+Valtan.patterneffectcues.json  227fc4f1ea8d289b9a44a170a1219457e854e655
+```
+
+따라서 Animation 담당 sequence와 기존 Product cue/binding join은 이번 candidate diff의 변수가 아니다.
+종료 시에도 같은 raw-byte identity 검사를 다시 수행한다.
+
+### 8.2 fidelity 재분류
+
+현재 물리 authored inventory 112개 / 3,721 element는 모두 `sourceMaterial.enabled=false`,
+`execution.enabled=false`라서 공용 `effect.standard` 경로로 실행된다. 이전 결과의 `source-linked`와
+`reviewed core`는 source identity, resource, carrier와 제품 draw가 연결됐다는 뜻이지, parent material의
+native equation까지 SOURCE_EXACT라는 뜻은 아니다.
+
+- parent/static set/carrier/VF/pass/opcode와 lane role/channel/color space/sampler/coverage가 모두 닫힌
+  경우만 `SOURCE_EXACT`로 부른다.
+- source resource와 carrier를 공용 generic equation으로 그리는 현재 행은 material fidelity를
+  `FAMILY_LITE`로 제한한다.
+- Dash line, donut boundary, supplemental impact처럼 사용자가 선택한 연출은 계속 `PROJECT_TUNED`다.
+- Whirlwind history 재사용과 weapon-follow 보정처럼 제한을 명시한 geometry는
+  `BOUNDED_RECONSTRUCTION`이며 SOURCE_EXACT로 승격하지 않는다.
+
+### 8.3 구현된 safe candidate와 아직 남은 proof
+
+Local Decal quad는 X/Z가 바닥 footprint이고 Y가 depth인데, project overlay의 원형 scale 일부가
+`[s, s, 1]`로 작성돼 Z footprint가 커지지 않았다. canonical document와 cue/binding을 건드리지 않고
+candidate generator와 imported overlay에서 `[s, 1, s]`로 교정했다.
+
+| candidate | 검증한 X/Z footprint |
+|---|---:|
+| FRONT_BACK_FRONT down-smash wave | 4.2 -> 12.0 |
+| FRONT_BACK_FRONT shockwave | 2.5 -> 10.0 |
+| HIGH_JUMP landing wave | 4.9 -> 14.0 |
+| MAGIC_CHOICE inner growing ring | 7.0 -> 18.0 |
+
+focused Python test 13/13, candidate generator write/check, JSON parse와 diff-check는 PASS했다. 그러나 overlay와
+patch-plan hash가 바뀌었으므로 이전 project drawable proof와 application/projection receipt는 현재
+candidate revision에 대해 stale이다. 아직 canonical authored document에 적용하지 않았고, 새 revision의
+actual prepare/nonzero draw proof도 실행하지 않았다.
+
+FOUR_SLASH는 기존 safe-gap source row를 유지한 채 공식 weapon bone `b_wp_r_01`을 follow하는 새
+`PROJECT_TUNED + BOUNDED` Trail candidate와 stationary-root/moving-bone sample proof를 준비 중이다.
+기존 root translation만 움직인 synthetic proof로 통과 처리하지 않는다.
+
+### 8.4 공용 color pipeline 의존성과 현재 판정
+
+발탄 전용 shader나 pattern/filename switch를 추가하기 전에 별도 `Explain effect color pipeline` 작업의
+class-neutral 계약을 통합해야 한다. 필요한 최소 계약은 texture lane별 role/channel/color space/sampler,
+explicit coverage owner, blend/alpha mode, base radiance emissive intensity, scene-linear HDR와 base-only
+decal lifetime fade다. 현재 generic `base.a`/`mask.r` 고정 해석만으로는 alpha가 coverage인
+`fx_c_ring_002.dds`와 DXT texture의 검은 사각형/잘못된 ring coverage를 안전하게 판정할 수 없다.
+
+현재 후속 slice 판정은 다음과 같다.
+
+- candidate data/generator diff: PASS
+- cue/binding freeze: PASS, 종료 시 재검사 필요
+- 공용 color pipeline 통합: PENDING
+- 새 candidate actual prepare/nonzero draw/finite/rollback proof: PENDING
+- Debug/Release Client와 전체 Effect publish: 이 후속 diff 기준 NOT RUN
+- 사용자 All Effects 눈검증과 visual PASS: NOT RUN / NOT GRANTED

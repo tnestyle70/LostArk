@@ -269,7 +269,7 @@
       "disposition": "PROJECT_TUNED_OVERRIDE",
       "presentationOnly": false,
       "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.windup.project-authored-overlay.effect.json",
-      "overlayDocumentSha256": "8b287f971a1d85142017f85ab7a3007a46676de22d4a85e3a6d9d531060e0814",
+      "overlayDocumentSha256": "6a7c057d6f0daae1294801a30d0874c9cedccc0eec2883cc5deaff11c67eda87",
       "desiredElements": [
         {
           "elementId": "project-donut-outer-boundary",
@@ -552,7 +552,7 @@
       "disposition": "PROJECT_TUNED_OVERRIDE",
       "presentationOnly": true,
       "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.land.project-authored-overlay.effect.json",
-      "overlayDocumentSha256": "a15e225a6747a5cd2473397a0c436ee241eb49280b844e7490bc07eb6349e4c7",
+      "overlayDocumentSha256": "9888cf6afacb3d585541cf62f2115e3c2f24021b03cde47bd6f16bc087fcb16d",
       "desiredElements": [
         {
           "elementId": "project-high-jump-landing-wave",
@@ -579,7 +579,7 @@
       "disposition": "PROJECT_TUNED_OVERRIDE",
       "presentationOnly": false,
       "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.front-back-front.active.project-authored-overlay.effect.json",
-      "overlayDocumentSha256": "7b5c085446ca94636cc881d18b6cb438a8a37dc0dc5d500b4211429e76106907",
+      "overlayDocumentSha256": "b76c1bc92a0dfa66c1ab6c4510168a21df05afb03d2da235e9cabcb7e135b2f0",
       "desiredElements": [
         {
           "elementId": "project-three-hit-slash-01",

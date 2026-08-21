@@ -183,6 +183,65 @@ non-loop pose 이후 natural Effect tail은 wall clock으로 끝까지 진행한
 Valtan clip pose/time/playing/visible/snapshot을 복원하고, unsaved load Cancel은 기존 Player target을
 바꾸지 않는다.
 
+### 0.5 2026-08-21 sequence-frozen family-rendering 후속 slice
+
+이 후속 slice는 최신 main `2230d25b`에서 만든 `codex/valtan-family-rendering-0821` branch에서 진행한다.
+Animation 담당자가 병합한 sequence와 Pattern 담당자가 병합한 cue graph는 다시 저작하지 않는다.
+다음 두 파일은 입력 정본으로 동결하고 종료 시 raw byte SHA가 시작값과 같은지 검사한다.
+
+```text
+Data/Animation/Authored/Valtan/Valtan.patternbindings.json
+Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json
+```
+
+현재 물리 inventory는 Valtan authored document 112개 / element 3,721개다. 이 가운데 제품
+EffectCatalog에 연결된 것은 108개 / 3,679개이고, 나머지 4개 / 42개는 기존 catalog 밖 authoring
+문서다. 따라서 이 문서 앞부분의 `108 product documents / 3,679 product elements`와 물리 파일 수
+`112 / 3,721`은 서로 다른 분모이며 둘 다 보존한다.
+
+이번 단계부터 fidelity 용어를 다음처럼 엄격히 구분한다.
+
+| 분류 | 이 slice에서 허용하는 의미 |
+|---|---|
+| SOURCE_EXACT | parent material, static set, carrier/VF, pass/output, opcode/equation과 각 texture lane의 role/channel/color space/sampler/coverage owner까지 source evidence로 닫힌 실행 |
+| FAMILY_LITE | source carrier와 resource/material identity는 연결했지만 공용 `effect.standard` 근사식으로 실행되어 source material equation과 coverage가 아직 증명되지 않은 상태 |
+| PROJECT_TUNED | 사용자가 선택한 telegraph, 색, 크기, UV, 위치를 pattern beat에 의도적으로 붙인 프로젝트 presentation |
+| BOUNDED_RECONSTRUCTION | source target/history가 부족해 명시한 제한 안에서 geometry를 재구성한 실행이며 SOURCE_EXACT로 승격하지 않는 상태 |
+
+앞 절의 `source-linked`, `reviewed core`, `actual draw PASS`는 source identity와 제품 draw 연결 증거다.
+그 사실만으로 SOURCE_EXACT material equation이 증명되지는 않는다. 현재 3,721개 element 모두
+`sourceMaterial.enabled=false`, `execution.enabled=false`라서 공용 generic 경로를 사용하므로,
+source equation이 닫히기 전에는 material fidelity를 FAMILY_LITE로 보고한다.
+
+공용 color pipeline 작업은 다음 class-neutral 계약을 먼저 닫는다.
+
+- texture lane별 role, channel/swizzle, linear/sRGB, sampler
+- `base.a`, `base.r/luminance`, `mask.r`, `mask.a`, particle alpha, dissolve 중 explicit coverage owner
+- straight/premultiplied alpha, additive, masked, modulate의 명시적 합성
+- emissive texture 유무와 무관한 base radiance emissive intensity, scene-linear HDR 보존
+- base-only Local Decal의 lifetime alpha/dissolve와 resource/shader 실패 rollback
+
+이 계약 없이 generic shader가 `base.a`와 `mask.r`만 고정 사용하면 `fx_c_ring_002.dds`처럼 alpha가
+경계인 texture를 잘못 읽거나 DXT base의 사각형 전체를 coverage로 취급할 수 있다. 이 공용 변경은
+별도 `Explain effect color pipeline` 작업의 diff를 먼저 통합하고, 발탄 pattern ID나 texture filename
+switch를 추가하지 않는다.
+
+sequence와 canonical authored document를 건드리지 않는 첫 candidate는 다음 두 묶음이다.
+
+1. Local Decal의 바닥 plane은 X/Z이고 Y는 depth이므로 원형 scale을 `[s, 1, s]`로 교정한다.
+   FRONT_BACK_FRONT wave `4.2 -> 12`, shockwave `2.5 -> 10`, HIGH_JUMP landing `4.9 -> 14`,
+   MAGIC_CHOICE inner ring `7 -> 18` footprint를 imported overlay와 deterministic generator에서만
+   먼저 고정한다.
+2. FOUR_SLASH는 기존 safe-gap source row를 수정하지 않고 새 `PROJECT_TUNED + BOUNDED` Trail
+   candidate가 공식 weapon bone `b_wp_r_01`을 follow하게 한다. stationary boss root에서도 움직이는
+   bone sample이 두 점 이상을 만들고, root와 bone이 모두 정지하면 중복 점과 draw를 억제해야 한다.
+
+candidate overlay hash가 바뀌면 이전 drawable receipt는 현재 revision의 증거가 아니다. 공용 color
+pipeline 통합 뒤 candidate별 실제 `prepare -> nonzero draw submit`, finite transform/lifetime, missing
+resource와 shader/GPU 실패 rollback을 다시 실행하고 baseline 대비 element diff를 함께 확인한다.
+이 actual draw proof 전에는 canonical product로 승격하지 않으며, 사용자 서면 판정 전에는 visual PASS를
+기록하지 않는다.
+
 ## 1. 현재 실측
 
 ### G00-1. 제품 data 분모

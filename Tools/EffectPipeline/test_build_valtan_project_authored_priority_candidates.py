@@ -258,6 +258,63 @@ class ValtanProjectAuthoredPriorityCandidateTests(unittest.TestCase):
             stages["LAND"]["serverDamageProfileId"],
         )
 
+    def test_circular_decal_growth_uses_xz_footprint_axes(self) -> None:
+        documents = self.build().documents
+        cases = (
+            (
+                "effect.valtan.front-back-front.active",
+                "project-three-hit-down-smash-wave",
+                [0.35, 1.0, 0.35],
+                [1.0, 1.0, 1.0],
+                (4.2, 12.0),
+            ),
+            (
+                "effect.valtan.front-back-front.active",
+                "project-three-hit-down-smash-shockwave",
+                [0.25, 1.0, 0.25],
+                [1.0, 1.0, 1.0],
+                (2.5, 10.0),
+            ),
+            (
+                "effect.valtan.high-jump.land",
+                "project-high-jump-landing-wave",
+                [0.35, 1.0, 0.35],
+                [1.0, 1.0, 1.0],
+                (4.9, 14.0),
+            ),
+            (
+                "effect.valtan.magic-choice.windup",
+                "project-donut-inner-growing-boundary",
+                [1.0, 1.0, 1.0],
+                [18.0 / 7.0, 1.0, 18.0 / 7.0],
+                (7.0, 18.0),
+            ),
+        )
+
+        for effect_id, element_id, start_scale, end_scale, footprint in cases:
+            with self.subTest(effect_id=effect_id, element_id=element_id):
+                element = next(
+                    row
+                    for row in documents[effect_id]["elements"]
+                    if row["id"] == element_id
+                )
+                detail = element["detail"]
+                self.assertEqual(start_scale, detail["transform"]["scale"])
+                self.assertEqual(end_scale, detail["linearLerp"]["endScale"])
+                self.assertTrue(detail["linearLerp"]["scale"])
+
+                size_x, size_z = detail["decal"]["size"]
+                start_xz = (
+                    round(size_x * start_scale[0], 6),
+                    round(size_z * start_scale[2], 6),
+                )
+                end_xz = (
+                    round(size_x * end_scale[0], 6),
+                    round(size_z * end_scale[2], 6),
+                )
+                self.assertEqual((footprint[0], footprint[0]), start_xz)
+                self.assertEqual((footprint[1], footprint[1]), end_xz)
+
     def test_existing_floor_axis_tuning_is_a_preserved_sentinel(self) -> None:
         effect_id = "effect.valtan.floor-wipe-130.windup"
         canonical_path = (
