@@ -36,6 +36,28 @@ struct EFFECT_SPAWN_DESC final
 	std::string strOccurrenceId;
     f32_t fPlaybackRate = 1.f;
     f32_t fInitialSampleTimeSeconds = 0.f;
+	// Dedicated room-object entry points are the only callers that set these.
+	// The boss owner remains the budget/lifetime owner; this matrix is the
+	// independent network world anchor.
+	bool_t bUseWorldRoot = false;
+	uint64_t iWorldRootHandle = 0u;
+	float4x4_t WorldRoot{};
+};
+
+struct EFFECT_WORLD_ROOT_HANDLE final
+{
+	uint64_t iValue = 0u;
+	bool_t Is_Valid() const { return 0u != iValue; }
+};
+
+struct EFFECT_WORLD_ROOT_SPAWN_DESC final
+{
+	std::string strEffectAssetId;
+	std::weak_ptr<CValtan> pBossBudgetAndLifetimeOwner;
+	float4x4_t RootWorld{};
+	std::string strOccurrenceId;
+	uint32_t iSpawnTick = 0u;
+	f32_t fInitialSampleTimeSeconds = 0.f;
 };
 
 struct EFFECT_SOURCE_BONE_ANCHOR_BUILD_DESC final
@@ -174,9 +196,17 @@ public:
         ComPtr<ID3D11DeviceContext> pContext,
         const std::vector<std::string>& AdditionalEffectAssetIds,
         std::string& strOutStatus);
-    static bool_t Spawn(
+	static bool_t Spawn(
         const EFFECT_SPAWN_DESC& Desc,
         std::string& strOutStatus);
+	static bool_t Spawn_WorldRoot(
+		const EFFECT_WORLD_ROOT_SPAWN_DESC& Desc,
+		EFFECT_WORLD_ROOT_HANDLE& OutHandle,
+		std::string& strOutStatus);
+	static bool_t Update_WorldRoot(
+		EFFECT_WORLD_ROOT_HANDLE Handle,
+		const float4x4_t& RootWorld);
+	static void Stop_WorldRoot(EFFECT_WORLD_ROOT_HANDLE Handle);
 	/* Product cue requests can originate while Object Manager is iterating its
 	   layer map.  Commit them only after Update_Engine finishes. */
 	static void Commit_PendingSpawns();

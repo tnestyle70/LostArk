@@ -685,10 +685,9 @@ bool CNetworkManager::Enqueue_ReplicationEvent(
 	   only the newest adjacent snapshot: spawn/despawn/destruction events stay
 	   as ordering barriers, but a cold level load can no longer fill the queue
 	   and disconnect with WSAENOBUFS before activation. */
-	if (Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT == event.eType &&
-		!m_ReplicationEvents.empty() &&
-		Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT ==
-			m_ReplicationEvents.back().eType)
+	if (!m_ReplicationEvents.empty() &&
+		Client::Can_CoalesceAdjacentReplicationEvents(
+			m_ReplicationEvents.back().eType, event.eType))
 	{
 		m_ReplicationEvents.back() = std::move(event);
 		return true;
@@ -885,10 +884,10 @@ void CNetworkManager::Receive_Loop(const SOCKET serverSocket)
 				   worker boundary as well as the parsed-event boundary so that cold
 				   loading cannot exhaust the raw frame queue.  Any lifecycle or
 				   destruction frame remains an ordering barrier. */
-				if (PACKET_TYPE::S2C_WORLD_SNAPSHOT == frame.ePacketType &&
-					!m_InboundFrames.empty() &&
-					PACKET_TYPE::S2C_WORLD_SNAPSHOT ==
-						m_InboundFrames.back().ePacketType)
+				if (!m_InboundFrames.empty() &&
+					Client::Can_CoalesceAdjacentInboundFrames(
+						m_InboundFrames.back().ePacketType,
+						frame.ePacketType))
 				{
 					m_InboundFrames.back() = std::move(frame);
 					continue;
@@ -1006,6 +1005,22 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED:
+	{
+		S2C_COMBAT_OBJECT_SPAWNED spawned{};
+		if (!Read_Message(reader, spawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_SPAWNED;
+		event.CombatObjectSpawned = std::move(spawned);
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
 	case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
 	{
 		S2C_WORLD_ENTITY_DESPAWNED despawned{};
@@ -1019,6 +1034,22 @@ void CNetworkManager::Handle_Frame(const LostArk::Shared::PACKET_FRAME & frame)
 		event.eType =
 			Client::CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_DESPAWNED;
 		event.WorldEntityDespawned = despawned;
+		Enqueue_ReplicationEvent(std::move(event));
+		break;
+	}
+	case PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED:
+	{
+		S2C_COMBAT_OBJECT_DESPAWNED despawned{};
+		if (!Read_Message(reader, despawned) ||
+			0 != reader.Get_RemainingSize())
+		{
+			m_iLastErrorCode.store(WSAEINVAL);
+			return;
+		}
+		Client::CLIENT_REPLICATION_EVENT event{};
+		event.eType =
+			Client::CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_DESPAWNED;
+		event.CombatObjectDespawned = despawned;
 		Enqueue_ReplicationEvent(std::move(event));
 		break;
 	}

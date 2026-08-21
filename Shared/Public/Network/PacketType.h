@@ -5,7 +5,7 @@
 
 namespace LostArk::Shared
 {
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 25;
+	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 27;
 
 	enum class WORLD_ID : std::uint16_t
 	{
@@ -125,7 +125,11 @@ namespace LostArk::Shared
 		// ownership + heal amount and answers with the player's next
 		// S2C_WORLD_SNAPSHOT (HP) and an updated S2C_INVENTORY_SNAPSHOT
 		// (decremented count) -- no separate result message.
-		C2S_USE_ITEM
+		C2S_USE_ITEM,
+
+		// Protocol v27 append-only room-owned combat-object lifecycle.
+		S2C_COMBAT_OBJECT_SPAWNED,
+		S2C_COMBAT_OBJECT_DESPAWNED
 	};
 
 	//TCP는 메시지 경계를 보존하지 않기 때문에, payload앞에 header를 둔다.
@@ -150,6 +154,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_ENTER_REJECTED:
 		case PACKET_TYPE::S2C_PLAYER_SPAWNED:
 		case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWNED:
+		case PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED:
 		case PACKET_TYPE::C2S_SPAWN_WORLD_ENTITY:
 		case PACKET_TYPE::S2C_WORLD_ENTITY_SPAWN_RESULT:
 		case PACKET_TYPE::C2S_MOVE:
@@ -165,6 +170,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::S2C_CHAT:
 		case PACKET_TYPE::S2C_PLAYER_DESPAWNED:
 		case PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED:
+		case PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED:
 		case PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC:
 		case PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA:
 		case PACKET_TYPE::S2C_ENCOUNTER_PROP_SYNC:

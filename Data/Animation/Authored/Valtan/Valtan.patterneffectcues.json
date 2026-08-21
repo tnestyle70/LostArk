@@ -2324,35 +2324,6 @@
       }
     },
     {
-      "bindingId": "cue.valtan.red-blade-wave.active",
-      "patternId": "VALTAN_RED_BLADE_WAVE",
-      "stageId": "PROJECTILE",
-      "actionId": "valtan.attack.red-blade-wave.active",
-      "effectAssetId": "effect.valtan.red-blade-wave.active",
-      "anchorSlotId": "root",
-      "followPolicy": "follow",
-      "stopPolicy": "cue_end",
-      "startMs": 0,
-      "endMs": 900,
-      "localTransform": {
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotationDegrees": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      }
-    },
-    {
       "bindingId": "cue.valtan.red-blade-wave.recovery",
       "patternId": "VALTAN_RED_BLADE_WAVE",
       "stageId": "RECOVERY",

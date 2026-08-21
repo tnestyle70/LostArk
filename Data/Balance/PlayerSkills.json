@@ -1,9 +1,12 @@
 {
   "schema": "lostark.player-skills",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "skills": [
     {
       "skillId": 34040,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "Q",
       "displayName": "이연격",
@@ -24,6 +27,9 @@
     },
     {
       "skillId": 34090,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "W",
       "displayName": "철량추",
@@ -44,6 +50,9 @@
     },
     {
       "skillId": 34100,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "E",
       "displayName": "청룡출수",
@@ -64,6 +73,9 @@
     },
     {
       "skillId": 34160,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "R",
       "displayName": "공의연무",
@@ -97,6 +109,9 @@
     },
     {
       "skillId": 34140,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "A",
       "displayName": "선풍참혼",
@@ -130,6 +145,9 @@
     },
     {
       "skillId": 34120,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "S",
       "displayName": "연환섬",
@@ -150,6 +168,9 @@
     },
     {
       "skillId": 34110,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "D",
       "displayName": "반월섬",
@@ -170,6 +191,9 @@
     },
     {
       "skillId": 34150,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "F",
       "displayName": "맹룡열파",
@@ -190,6 +214,9 @@
     },
     {
       "skillId": 34650,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "T",
       "displayName": "적룡필살",
@@ -210,6 +237,9 @@
     },
     {
       "skillId": 34610,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "V",
       "displayName": "적룡질풍격",
@@ -230,6 +260,9 @@
     },
     {
       "skillId": 34630,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "ALT_V",
       "displayName": "마룡합일섬",
@@ -250,6 +283,9 @@
     },
     {
       "skillId": 34020,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "SPACE",
       "displayName": "탄영",
@@ -270,6 +306,9 @@
     },
     {
       "skillId": 34030,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "SPACE",
       "displayName": "기상기",
@@ -290,6 +329,9 @@
     },
     {
       "skillId": 38020,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "Q",
       "displayName": "퀵 스텝",
@@ -310,6 +352,9 @@
     },
     {
       "skillId": 38050,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "W",
       "displayName": "심판의 시간",
@@ -330,6 +375,9 @@
     },
     {
       "skillId": 45050,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "Q",
       "displayName": "퓨리 블레이드",
@@ -350,6 +398,9 @@
     },
     {
       "skillId": 45060,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "W",
       "displayName": "와일드 러시",
@@ -370,6 +421,9 @@
     },
     {
       "skillId": 34010,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "LMB",
       "displayName": "긴 창_평타",
@@ -415,6 +469,9 @@
     },
     {
       "skillId": 38120,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "E",
       "displayName": "류탄",
@@ -435,6 +492,9 @@
     },
     {
       "skillId": 38200,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "R",
       "displayName": "민첩한 사격",
@@ -455,6 +515,9 @@
     },
     {
       "skillId": 38140,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "A",
       "displayName": "플라즈마 불릿",
@@ -475,6 +538,9 @@
     },
     {
       "skillId": 38180,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "S",
       "displayName": "나선의추적자",
@@ -495,6 +561,9 @@
     },
     {
       "skillId": 38210,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "D",
       "displayName": "썸머솔트샷",
@@ -515,6 +584,9 @@
     },
     {
       "skillId": 38260,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "F",
       "displayName": "피스키퍼",
@@ -535,6 +607,9 @@
     },
     {
       "skillId": 38290,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "T",
       "displayName": "프리즌 불릿",
@@ -555,6 +630,9 @@
     },
     {
       "skillId": 38250,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "V",
       "displayName": "황혼의 눈",
@@ -575,6 +653,9 @@
     },
     {
       "skillId": 38320,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "ALT_V",
       "displayName": "데드 엔드",
@@ -595,6 +676,9 @@
     },
     {
       "skillId": 38000,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "GUNSLINGER",
       "inputSlot": "LMB",
       "displayName": "핸드건 평타",
@@ -634,6 +718,9 @@
     },
     {
       "skillId": 45620,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "E",
       "displayName": "그라운드 스매시",
@@ -654,6 +741,9 @@
     },
     {
       "skillId": 45210,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "R",
       "displayName": "플라잉 스트라이크",
@@ -674,6 +764,9 @@
     },
     {
       "skillId": 45300,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "A",
       "displayName": "페이탈 소드",
@@ -694,6 +787,9 @@
     },
     {
       "skillId": 45070,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "S",
       "displayName": "허리케인 소드",
@@ -714,6 +810,9 @@
     },
     {
       "skillId": 45190,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "D",
       "displayName": "파이널 블로",
@@ -734,6 +833,9 @@
     },
     {
       "skillId": 45600,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "F",
       "displayName": "마운틴 클리브",
@@ -754,6 +856,9 @@
     },
     {
       "skillId": 45810,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "V",
       "displayName": "라그나 브레이크",
@@ -774,6 +879,9 @@
     },
     {
       "skillId": 45820,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "ALT_V",
       "displayName": "레이지 슬래셔",
@@ -794,6 +902,9 @@
     },
     {
       "skillId": 45000,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "SLAYER",
       "inputSlot": "LMB",
       "displayName": "버서커 평타",
@@ -839,6 +950,9 @@
     },
     {
       "skillId": 34000,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "Z",
       "displayName": "무기 변경(짧은 창)",
@@ -859,6 +973,9 @@
     },
     {
       "skillId": 34500,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "Z",
       "displayName": "무기 변경(긴 창)",
@@ -879,6 +996,9 @@
     },
     {
       "skillId": 34510,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "LMB",
       "displayName": "평타",
@@ -918,6 +1038,9 @@
     },
     {
       "skillId": 34520,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "SPACE",
       "displayName": "돌파",
@@ -938,6 +1061,9 @@
     },
     {
       "skillId": 34540,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "Q",
       "displayName": "나선창",
@@ -958,6 +1084,9 @@
     },
     {
       "skillId": 34550,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "W",
       "displayName": "사두룡격",
@@ -978,6 +1107,9 @@
     },
     {
       "skillId": 34560,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "E",
       "displayName": "굉열파",
@@ -998,6 +1130,9 @@
     },
     {
       "skillId": 34570,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "R",
       "displayName": "유성강천",
@@ -1018,6 +1153,9 @@
     },
     {
       "skillId": 34580,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 1,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "A",
       "displayName": "절룡세",
@@ -1051,6 +1189,9 @@
     },
     {
       "skillId": 34590,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "LANCE_MASTER",
       "inputSlot": "S",
       "displayName": "적룡포",
@@ -1090,6 +1231,9 @@
     },
     {
       "skillId": 17000,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "LMB",
       "displayName": "기본 평타",
@@ -1129,6 +1273,9 @@
     },
     {
       "skillId": 17020,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "SPACE",
       "displayName": "돌격",
@@ -1149,6 +1296,9 @@
     },
     {
       "skillId": 17025,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "SPACE",
       "displayName": "기상기",
@@ -1169,6 +1319,9 @@
     },
     {
       "skillId": 17030,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "Q",
       "displayName": "날카로운 창",
@@ -1189,6 +1342,9 @@
     },
     {
       "skillId": 17040,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "S",
       "displayName": "배쉬",
@@ -1209,6 +1365,9 @@
     },
     {
       "skillId": 17060,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "W",
       "displayName": "파이어 불릿",
@@ -1229,6 +1388,9 @@
     },
     {
       "skillId": 17080,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "E",
       "displayName": "대쉬 어퍼 파이어",
@@ -1262,6 +1424,9 @@
     },
     {
       "skillId": 17090,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "A",
       "displayName": "갈고리 사슬",
@@ -1282,6 +1447,9 @@
     },
     {
       "skillId": 17100,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "D",
       "displayName": "방패 격동",
@@ -1302,6 +1470,9 @@
     },
     {
       "skillId": 17110,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "R",
       "displayName": "리프 어택",
@@ -1322,6 +1493,9 @@
     },
     {
       "skillId": 17140,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "F",
       "displayName": "가디언의 낙뢰",
@@ -1342,6 +1516,9 @@
     },
     {
       "skillId": 17170,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "V",
       "displayName": "가디언의 수호",
@@ -1362,6 +1539,9 @@
     },
     {
       "skillId": 17240,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "T",
       "displayName": "풀배럴 캐넌",
@@ -1401,6 +1581,9 @@
     },
     {
       "skillId": 17250,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "ALT_V",
       "displayName": "수호의 맹세",
@@ -1421,6 +1604,9 @@
     },
     {
       "skillId": 17800,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "Z",
       "displayName": "방어 태세",
@@ -1441,6 +1627,9 @@
     },
     {
       "skillId": 17810,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "Z",
       "displayName": "방어 태세 해제",
@@ -1461,6 +1650,9 @@
     },
     {
       "skillId": 17820,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "WARLORD",
       "inputSlot": "X",
       "displayName": "전장의 방패",
@@ -1481,6 +1673,9 @@
     },
     {
       "skillId": 31000,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "LMB",
       "displayName": "평타",
@@ -1526,6 +1721,9 @@
     },
     {
       "skillId": 31200,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "Q",
       "displayName": "필법 : 먹물세례",
@@ -1546,6 +1744,9 @@
     },
     {
       "skillId": 31430,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "W",
       "displayName": "필법 : 흩뿌리기",
@@ -1566,6 +1767,9 @@
     },
     {
       "skillId": 31480,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "E",
       "displayName": "묵법 : 두루미나래",
@@ -1586,6 +1790,9 @@
     },
     {
       "skillId": 31210,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "R",
       "displayName": "필법 : 콩콩이",
@@ -1625,6 +1832,9 @@
     },
     {
       "skillId": 31460,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "A",
       "displayName": "묵법 : 호접몽",
@@ -1645,6 +1855,9 @@
     },
     {
       "skillId": 31420,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "S",
       "displayName": "묵법 : 난치기",
@@ -1665,6 +1878,9 @@
     },
     {
       "skillId": 31490,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "D",
       "displayName": "묵법 : 범가르기",
@@ -1685,6 +1901,9 @@
     },
     {
       "skillId": 31470,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "F",
       "displayName": "필법 : 한획긋기",
@@ -1705,6 +1924,9 @@
     },
     {
       "skillId": 31950,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "T",
       "displayName": "묵법 : 미르 새김",
@@ -1725,6 +1947,9 @@
     },
     {
       "skillId": 31910,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "V",
       "displayName": "절기 : 몽유도원",
@@ -1745,6 +1970,9 @@
     },
     {
       "skillId": 31930,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "ALT_V",
       "displayName": "몽중백화원",
@@ -1765,6 +1993,9 @@
     },
     {
       "skillId": 31110,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "X",
       "displayName": "떠오르는 해",
@@ -1785,6 +2016,9 @@
     },
     {
       "skillId": 31050,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "Z",
       "displayName": "저무는 달",
@@ -1805,6 +2039,9 @@
     },
     {
       "skillId": 31020,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "SPACE",
       "displayName": "필법 : 흘리기",
@@ -1825,6 +2062,9 @@
     },
     {
       "skillId": 31030,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "ARTIST",
       "inputSlot": "SPACE",
       "displayName": "기상기",
@@ -1845,6 +2085,9 @@
     },
     {
       "skillId": 2050010,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "LMB",
       "displayName": "기본 공격",
@@ -1890,6 +2133,9 @@
     },
     {
       "skillId": 2050100,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "Q",
       "displayName": "일침",
@@ -1910,6 +2156,9 @@
     },
     {
       "skillId": 2050120,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "W",
       "displayName": "분절",
@@ -1930,6 +2179,9 @@
     },
     {
       "skillId": 2050160,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "E",
       "displayName": "건너 찌르기",
@@ -1950,6 +2202,9 @@
     },
     {
       "skillId": 2050180,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "R",
       "displayName": "너머 베기",
@@ -1970,6 +2225,9 @@
     },
     {
       "skillId": 2050210,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "A",
       "displayName": "분광",
@@ -1990,6 +2248,9 @@
     },
     {
       "skillId": 2050220,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "S",
       "displayName": "일점 관통",
@@ -2010,6 +2271,9 @@
     },
     {
       "skillId": 2050230,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "F",
       "displayName": "시간 분쇄",
@@ -2030,6 +2294,9 @@
     },
     {
       "skillId": 2050240,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "D",
       "displayName": "경계 돌파",
@@ -2050,6 +2317,9 @@
     },
     {
       "skillId": 2050500,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "T",
       "displayName": "업의 경계",
@@ -2070,6 +2340,9 @@
     },
     {
       "skillId": 2050520,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "V",
       "displayName": "시간의 굴레",
@@ -2090,6 +2363,9 @@
     },
     {
       "skillId": 2050540,
+      "staggerDamage": 10,
+      "partDamage": 100,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "ALT_V",
       "displayName": "무간의 옥",
@@ -2110,6 +2386,9 @@
     },
     {
       "skillId": 2050020,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "SPACE",
       "displayName": "공간 도약",
@@ -2130,6 +2409,9 @@
     },
     {
       "skillId": 2050030,
+      "staggerDamage": 0,
+      "partDamage": 0,
+      "counterPower": 0,
       "characterClass": "DIMENSIONMASTER",
       "inputSlot": "SPACE",
       "displayName": "기상기",

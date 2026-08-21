@@ -33,6 +33,10 @@
     <ClInclude Include="..\Public\SpawnGroupRuntime.h" />
     <ClInclude Include="..\Public\MonsterBrain.h" />
 	<ClInclude Include="..\Public\GameplayCatalog.h" />
+	<ClInclude Include="..\Public\BossCombatRuntime.h" />
+	<ClInclude Include="..\Public\CombatObjectRuntime.h" />
+	<ClInclude Include="..\Public\ServerCombatGeometry.h" />
+	<ClInclude Include="..\Public\ServerCombatHitRuntime.h" />
 	<ClInclude Include="..\Public\PlayerSkillSystem.h" />
 	<ClInclude Include="..\Public\ServerNavigation.h" />
 	<ClInclude Include="..\Public\ValtanBrain.h" />
@@ -58,6 +62,10 @@
     <ClCompile Include="..\Private\SpawnGroupRuntime.cpp" />
     <ClCompile Include="..\Private\MonsterBrain.cpp" />
 	<ClCompile Include="..\Private\GameplayCatalog.cpp" />
+	<ClCompile Include="..\Private\BossCombatRuntime.cpp" />
+	<ClCompile Include="..\Private\CombatObjectRuntime.cpp" />
+	<ClCompile Include="..\Private\ServerCombatGeometry.cpp" />
+	<ClCompile Include="..\Private\ServerCombatHitRuntime.cpp" />
 	<ClCompile Include="..\Private\PlayerSkillSystem.cpp" />
 	<ClCompile Include="..\Private\ServerNavigation.cpp" />
 	<ClCompile Include="..\Private\ValtanBrain.cpp" />
@@ -131,7 +139,7 @@
     <OutDir>$(ProjectDir)..\Bin\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)..\Intermediate\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>Server</TargetName>
-    <LocalDebuggerCommandArguments>--bind-address 0.0.0.0</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--bind-address 127.0.0.1</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

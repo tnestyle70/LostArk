@@ -143,6 +143,26 @@ namespace
 		payload = writer.Get_Buffer();
 		return true;
 	}
+	bool Build_CombatObjectSpawnedPayload(
+		const S2C_COMBAT_OBJECT_SPAWNED& message,
+		std::vector<std::uint8_t>& payload)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+			return false;
+		payload = writer.Get_Buffer();
+		return true;
+	}
+	bool Build_CombatObjectDespawnedPayload(
+		const S2C_COMBAT_OBJECT_DESPAWNED& message,
+		std::vector<std::uint8_t>& payload)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+			return false;
+		payload = writer.Get_Buffer();
+		return true;
+	}
 	//플레이어 디스폰
 	bool Build_PlayerDespawnedPayload(
 		const S2C_PLAYER_DESPAWNED& message,
@@ -905,6 +925,98 @@ namespace
 		testRunner.Require(
 			!Write_Message(invalidWriter, invalid),
 			"Reject World Entity Despawned Zero Entity ID");
+	}
+
+	void Test_CombatObjectLifecycleRoundTrip(TEST_RUNNER& testRunner)
+	{
+		S2C_COMBAT_OBJECT_SPAWNED source{};
+		source.iCombatObjectId = 0x100000002ull;
+		source.iSourceNetEntityId = 900u;
+		source.iSpawnTick = 60u;
+		source.iServerTick = 90u;
+		source.strCombatObjectArchetypeId =
+			"combatobject.valtan.high-jump.target-axe";
+		source.strClientVisualId =
+			"combatobject.visual.valtan.high-jump.target-axe.v1";
+		source.fPositionX = 151.25f;
+		source.fPositionY = 22.97f;
+		source.fPositionZ = -121.75f;
+		source.fYawDegrees = 225.f;
+
+		std::vector<std::uint8_t> payload;
+		testRunner.Require(
+			Build_CombatObjectSpawnedPayload(source, payload),
+			"Writer Combat Object Spawned");
+		CPacketReader reader{ payload };
+		S2C_COMBAT_OBJECT_SPAWNED decoded{};
+		testRunner.Require(
+			Read_Message(reader, decoded) &&
+			0u == reader.Get_RemainingSize() &&
+			decoded.iCombatObjectId == source.iCombatObjectId &&
+			decoded.iSourceNetEntityId == source.iSourceNetEntityId &&
+			decoded.iSpawnTick == source.iSpawnTick &&
+			decoded.iServerTick == source.iServerTick &&
+			decoded.strCombatObjectArchetypeId ==
+				source.strCombatObjectArchetypeId &&
+			decoded.strClientVisualId == source.strClientVisualId &&
+			decoded.fPositionX == source.fPositionX &&
+			decoded.fPositionY == source.fPositionY &&
+			decoded.fPositionZ == source.fPositionZ &&
+			decoded.fYawDegrees == source.fYawDegrees,
+			"Combat Object Spawned Round Trip");
+
+		S2C_COMBAT_OBJECT_SPAWNED invalid = source;
+		invalid.iCombatObjectId = INVALID_COMBAT_OBJECT_ID;
+		CPacketWriter invalidIdWriter;
+		testRunner.Require(!Write_Message(invalidIdWriter, invalid),
+			"Reject Combat Object Spawn Without ID");
+		invalid = source;
+		invalid.iSourceNetEntityId = INVALID_NET_ENTITY_ID;
+		CPacketWriter invalidSourceWriter;
+		testRunner.Require(!Write_Message(invalidSourceWriter, invalid),
+			"Reject Combat Object Spawn Without Source");
+		invalid = source;
+		invalid.iServerTick = 59u;
+		CPacketWriter invalidTickWriter;
+		testRunner.Require(!Write_Message(invalidTickWriter, invalid),
+			"Reject Combat Object Spawn Before Spawn Tick");
+		invalid = source;
+		invalid.strClientVisualId = "../invalid";
+		CPacketWriter invalidVisualWriter;
+		testRunner.Require(!Write_Message(invalidVisualWriter, invalid),
+			"Reject Unstable Combat Object Visual ID");
+		invalid = source;
+		invalid.fPositionY = std::numeric_limits<float>::infinity();
+		CPacketWriter invalidPoseWriter;
+		testRunner.Require(!Write_Message(invalidPoseWriter, invalid),
+			"Reject Non-Finite Combat Object Spawn Pose");
+
+		payload.pop_back();
+		CPacketReader truncatedReader{ payload };
+		S2C_COMBAT_OBJECT_SPAWNED unchanged{};
+		unchanged.iCombatObjectId = 77u;
+		testRunner.Require(
+			!Read_Message(truncatedReader, unchanged) &&
+			unchanged.iCombatObjectId == 77u,
+			"Reject Truncated Combat Object Spawn Atomically");
+
+		S2C_COMBAT_OBJECT_DESPAWNED despawn{};
+		despawn.iCombatObjectId = source.iCombatObjectId;
+		std::vector<std::uint8_t> despawnPayload;
+		testRunner.Require(
+			Build_CombatObjectDespawnedPayload(despawn, despawnPayload),
+			"Writer Combat Object Despawned");
+		CPacketReader despawnReader{ despawnPayload };
+		S2C_COMBAT_OBJECT_DESPAWNED decodedDespawn{};
+		testRunner.Require(
+			Read_Message(despawnReader, decodedDespawn) &&
+			0u == despawnReader.Get_RemainingSize() &&
+			decodedDespawn.iCombatObjectId == despawn.iCombatObjectId,
+			"Combat Object Despawned Round Trip");
+		S2C_COMBAT_OBJECT_DESPAWNED invalidDespawn{};
+		CPacketWriter invalidDespawnWriter;
+		testRunner.Require(!Write_Message(invalidDespawnWriter, invalidDespawn),
+			"Reject Combat Object Despawn Without ID");
 	}
 	//유효하지 않은 입력에 대한 테스트 
 	void Test_InvalidEnterAcceptedPayloads(
@@ -1760,7 +1872,34 @@ namespace
 		entity.iCurrentHp = 9500;
 		entity.iMaximumHp = 10000;
 		entity.iPhase = 1;
+		entity.hasBossCombatState = true;
+		entity.BossCombat.iStateRevision = 4u;
+		entity.BossCombat.iAlivePartMask = 0x1u;
+		entity.BossCombat.iFlags = static_cast<std::uint16_t>(
+			BOSS_COMBAT_STATE_FLAG::COUNTERABLE);
+		entity.BossCombat.iCurrentStagger = 320u;
+		entity.BossCombat.iMaximumStagger = 1000u;
+		entity.BossCombat.iCurrentShield = 0u;
+		entity.BossCombat.iMaximumShield = 0u;
+		entity.BossCombat.iGameplayPhase = 1u;
 		source.Entities.push_back(entity);
+
+		BOSS_COMBAT_EVENT partBroken{};
+		partBroken.iEventSequence = 0x100000007ull;
+		partBroken.iEventTick = 30u;
+		partBroken.iBossNetEntityId = entity.iNetEntityId;
+		partBroken.eKind = BOSS_COMBAT_EVENT_KIND::PART_BROKEN;
+		partBroken.iPartMask = 0x2u;
+		source.BossCombatEvents.push_back(partBroken);
+
+		COMBAT_OBJECT_SNAPSHOT combatObject{};
+		combatObject.iCombatObjectId = 0x100000002ull;
+		combatObject.iSourceNetEntityId = entity.iNetEntityId;
+		combatObject.fPositionX = 152.f;
+		combatObject.fPositionY = 24.f;
+		combatObject.fPositionZ = -120.f;
+		combatObject.fYawDegrees = 180.f;
+		source.CombatObjects.push_back(combatObject);
 
 		std::vector<std::uint8_t> payload;
 
@@ -1769,18 +1908,25 @@ namespace
 			"Writer World Snapshot");
 
 		constexpr std::size_t snapshotHeaderBytes =
-			4 + 2 + 2 + 2 + 1 + 4 + 4;
+			4 + 2 + 2 + 2 + 1 + 1 + 1 + 4 + 4;
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
-			entity.strActionId.size() + (4 * 4) + (4 * 5) + 1;
+			entity.strActionId.size() + (4 * 4) + (4 * 5) + 1 + 1 +
+			4 + 4 + 2 + (4 * 4) + 1;
+		constexpr std::size_t bossCombatEventBytes =
+			8 + 4 + 4 + 1 + 4;
+		constexpr std::size_t combatObjectBytes =
+			8 + 4 + (4 * 4);
 		const std::size_t expectedPayloadBytes =
 			snapshotHeaderBytes +
 			(playerFixedBytes * 2) +
 			cooldownBytes +
-			entityBytes;
+			entityBytes +
+			bossCombatEventBytes +
+			combatObjectBytes;
 
 		testRunner.Require(
 			expectedPayloadBytes == payload.size(),
@@ -1798,6 +1944,8 @@ namespace
 			decoded.eWorldId == WORLD_ID::BERN &&
 			decoded.Players.size() == 2 &&
 			decoded.Entities.size() == 1 &&
+			decoded.BossCombatEvents.size() == 1 &&
+			decoded.CombatObjects.size() == 1 &&
 			decoded.iEstherGauge == 640 &&
 			decoded.iEstherGaugeMaximum == 1000,
 			"World Snapshot Header Round Trip");
@@ -1816,7 +1964,9 @@ namespace
 		testRunner.Require(
 			!Build_WorldSnapshotPayload(gaugeWithoutRoster, rosterlessPayload),
 			"Reject Esther Gauge Without Roster");
-		if (2u != decoded.Players.size() || 1u != decoded.Entities.size())
+		if (2u != decoded.Players.size() || 1u != decoded.Entities.size() ||
+			1u != decoded.BossCombatEvents.size() ||
+			1u != decoded.CombatObjects.size())
 			return;
 
 		testRunner.Require(
@@ -1857,8 +2007,37 @@ namespace
 			decoded.Entities[0].fPositionX == 150.f &&
 			decoded.Entities[0].iCurrentHp == 9500 &&
 			decoded.Entities[0].iMaximumHp == 10000 &&
-			decoded.Entities[0].iPhase == 1,
+			decoded.Entities[0].iPhase == 1 &&
+			decoded.Entities[0].hasBossCombatState &&
+			decoded.Entities[0].BossCombat.iStateRevision == 4u &&
+			decoded.Entities[0].BossCombat.iAlivePartMask == 0x1u &&
+			decoded.Entities[0].BossCombat.iFlags ==
+				static_cast<std::uint16_t>(
+					BOSS_COMBAT_STATE_FLAG::COUNTERABLE) &&
+			decoded.Entities[0].BossCombat.iCurrentStagger == 320u &&
+			decoded.Entities[0].BossCombat.iMaximumStagger == 1000u &&
+			decoded.Entities[0].BossCombat.iGameplayPhase == 1u,
 			"World Snapshot Entities Round Trip");
+
+		testRunner.Require(
+			decoded.BossCombatEvents[0].iEventSequence ==
+				partBroken.iEventSequence &&
+			decoded.BossCombatEvents[0].iEventTick == 30u &&
+			decoded.BossCombatEvents[0].iBossNetEntityId == 900u &&
+			decoded.BossCombatEvents[0].eKind ==
+				BOSS_COMBAT_EVENT_KIND::PART_BROKEN &&
+			decoded.BossCombatEvents[0].iPartMask == 0x2u,
+			"World Snapshot Boss Combat Event Round Trip");
+
+		testRunner.Require(
+			decoded.CombatObjects[0].iCombatObjectId ==
+				combatObject.iCombatObjectId &&
+			decoded.CombatObjects[0].iSourceNetEntityId == 900u &&
+			decoded.CombatObjects[0].fPositionX == 152.f &&
+			decoded.CombatObjects[0].fPositionY == 24.f &&
+			decoded.CombatObjects[0].fPositionZ == -120.f &&
+			decoded.CombatObjects[0].fYawDegrees == 180.f,
+			"World Snapshot Combat Object Round Trip");
 
 		testRunner.Require(
 			0 == reader.Get_RemainingSize(),
@@ -1963,7 +2142,109 @@ namespace
 			testRunner.Require(
 				!Write_Message(knockdownWithSkillWriter, knockdownWithSkill),
 				"Reject Knockdown That Carries A Skill");
+
+			S2C_WORLD_SNAPSHOT phaseMismatch = source;
+			phaseMismatch.Entities[0].BossCombat.iGameplayPhase = 2u;
+			CPacketWriter phaseMismatchWriter;
+			testRunner.Require(
+				!Write_Message(phaseMismatchWriter, phaseMismatch),
+				"Reject Boss Combat Phase Mismatch");
+
+			S2C_WORLD_SNAPSHOT unknownBossFlag = source;
+			unknownBossFlag.Entities[0].BossCombat.iFlags |= 0x8000u;
+			CPacketWriter unknownBossFlagWriter;
+			testRunner.Require(
+				!Write_Message(unknownBossFlagWriter, unknownBossFlag),
+				"Reject Unknown Boss Combat Flag");
+
+			S2C_WORLD_SNAPSHOT staggerOverflow = source;
+			staggerOverflow.Entities[0].BossCombat.iCurrentStagger = 1001u;
+			CPacketWriter staggerOverflowWriter;
+			testRunner.Require(
+				!Write_Message(staggerOverflowWriter, staggerOverflow),
+				"Reject Boss Stagger Above Maximum");
+
+			S2C_WORLD_SNAPSHOT shieldFlagMismatch = source;
+			shieldFlagMismatch.Entities[0].BossCombat.iCurrentShield = 10u;
+			shieldFlagMismatch.Entities[0].BossCombat.iMaximumShield = 10u;
+			CPacketWriter shieldFlagMismatchWriter;
+			testRunner.Require(
+				!Write_Message(shieldFlagMismatchWriter, shieldFlagMismatch),
+				"Reject Boss Shield Without Flag");
+
+			S2C_WORLD_SNAPSHOT dirtyAbsentBossState = source;
+			dirtyAbsentBossState.Entities[0].hasBossCombatState = false;
+			CPacketWriter dirtyAbsentBossStateWriter;
+			testRunner.Require(
+				!Write_Message(dirtyAbsentBossStateWriter, dirtyAbsentBossState),
+				"Reject Hidden Boss Combat State");
+
+			S2C_WORLD_SNAPSHOT zeroPartMask = source;
+			zeroPartMask.BossCombatEvents[0].iPartMask = 0u;
+			CPacketWriter zeroPartMaskWriter;
+			testRunner.Require(
+				!Write_Message(zeroPartMaskWriter, zeroPartMask),
+				"Reject Boss Part Event Without Mask");
+
+			S2C_WORLD_SNAPSHOT duplicateBossEvent = source;
+			duplicateBossEvent.BossCombatEvents.push_back(partBroken);
+			CPacketWriter duplicateBossEventWriter;
+			testRunner.Require(
+				!Write_Message(duplicateBossEventWriter, duplicateBossEvent),
+				"Reject Duplicate Boss Combat Event Sequence");
+
+			S2C_WORLD_SNAPSHOT uncommittedPartBreak = source;
+			uncommittedPartBreak.Entities[0].BossCombat.iAlivePartMask |= 0x2u;
+			CPacketWriter uncommittedPartBreakWriter;
+			testRunner.Require(
+				!Write_Message(uncommittedPartBreakWriter, uncommittedPartBreak),
+				"Reject Part Event Before Persistent Mask Commit");
+
+			S2C_WORLD_SNAPSHOT unknownEventBoss = source;
+			unknownEventBoss.BossCombatEvents[0].iBossNetEntityId = 901u;
+			CPacketWriter unknownEventBossWriter;
+			testRunner.Require(
+				!Write_Message(unknownEventBossWriter, unknownEventBoss),
+				"Reject Boss Combat Event Without Snapshot Owner");
+
+			S2C_WORLD_SNAPSHOT duplicateCombatObject = source;
+			duplicateCombatObject.CombatObjects.push_back(combatObject);
+			CPacketWriter duplicateCombatObjectWriter;
+			testRunner.Require(
+				!Write_Message(
+					duplicateCombatObjectWriter, duplicateCombatObject),
+				"Reject Duplicate Combat Object Snapshot ID");
+
+			S2C_WORLD_SNAPSHOT unknownCombatObjectSource = source;
+			unknownCombatObjectSource.CombatObjects[0].iSourceNetEntityId = 901u;
+			CPacketWriter unknownCombatObjectSourceWriter;
+			testRunner.Require(
+				!Write_Message(
+					unknownCombatObjectSourceWriter, unknownCombatObjectSource),
+				"Reject Combat Object Without Snapshot Source");
+
+			S2C_WORLD_SNAPSHOT nonFiniteCombatObject = source;
+			nonFiniteCombatObject.CombatObjects[0].fPositionX =
+				std::numeric_limits<float>::quiet_NaN();
+			CPacketWriter nonFiniteCombatObjectWriter;
+			testRunner.Require(
+				!Write_Message(
+					nonFiniteCombatObjectWriter, nonFiniteCombatObject),
+				"Reject Non-Finite Combat Object Snapshot");
 		}
+
+		std::vector<std::uint8_t> unknownBossEventKindPayload = payload;
+		unknownBossEventKindPayload[
+			unknownBossEventKindPayload.size() - combatObjectBytes - 5u] =
+			static_cast<std::uint8_t>(BOSS_COMBAT_EVENT_KIND::END);
+		CPacketReader unknownBossEventKindReader{ unknownBossEventKindPayload };
+		S2C_WORLD_SNAPSHOT unchangedUnknownKind{};
+		unchangedUnknownKind.iServerTick = 778u;
+		testRunner.Require(
+			!Read_Message(unknownBossEventKindReader, unchangedUnknownKind) &&
+			unchangedUnknownKind.iServerTick == 778u &&
+			unchangedUnknownKind.Entities.empty(),
+			"Reject Unknown Boss Combat Event Kind Atomically");
 
 		payload.pop_back();
 		CPacketReader truncatedReader{ payload };
@@ -1983,12 +2264,12 @@ namespace
 	void Test_WorldDestructionProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
-			24u == NETWORK_PROTOCOL_VERSION &&
+			27u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Protocol V24 Packet Types");
+			"World Destruction Packet Types At Protocol V27");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();
@@ -2678,6 +2959,7 @@ int main()
 	Test_InvalidPlayerSpawnedPayloads(testRunner);
 	Test_WorldEntitySpawnedRoundTrip(testRunner);
 	Test_WorldEntityDespawnedRoundTrip(testRunner);
+	Test_CombatObjectLifecycleRoundTrip(testRunner);
 	Test_PlayerDespawnedRoundTrip(testRunner);
 	//Move, Snapshot roundtrip
 	Test_MoveRoundTrip(testRunner);

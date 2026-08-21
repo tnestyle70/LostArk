@@ -1498,11 +1498,9 @@ void CMainApp::RenderBossHealthBar()
 		}
 	}
 
-	/* Stagger/paralyzation gauge (real paralyzationGauge -- background + hollow purple-bordered
-	track, char 473 in TargetGrade_Boss). No live server value exists yet for the fill
-	(boss_stagger_fill.png sits unused until that's wired up), so this only draws the static
-	background/track, each from its own independent "Boss_StaggerBg"/"Boss_StaggerTrack" slot
-	instead of one shared rect. */
+	/* Stagger/paralyzation gauge (real paralyzationGauge -- background + fill + hollow
+	purple-bordered track, char 473 in TargetGrade_Boss). The Server snapshot owns
+	current/maximum; presentation only crops the existing fill art inside the authored track. */
 	f32_t fStaggerBgX = 0.f, fStaggerBgY = 0.f, fStaggerBgWidth = 0.f, fStaggerBgHeight = 0.f;
 	if (m_pBossUIView->Get_SlotRect(
 		"Boss_StaggerBg", fStaggerBgX, fStaggerBgY, fStaggerBgWidth, fStaggerBgHeight))
@@ -1523,15 +1521,37 @@ void CMainApp::RenderBossHealthBar()
 	if (m_pBossUIView->Get_SlotRect(
 		"Boss_StaggerTrack", fStaggerTrackX, fStaggerTrackY, fStaggerTrackWidth, fStaggerTrackHeight))
 	{
+		const ImVec2 vStaggerTrackMin{
+			pViewport->WorkPos.x + fStaggerTrackX * scaleX,
+			pViewport->WorkPos.y + fStaggerTrackY * scaleY };
+		const ImVec2 vStaggerTrackMax{
+			vStaggerTrackMin.x + fStaggerTrackWidth * scaleX,
+			vStaggerTrackMin.y + fStaggerTrackHeight * scaleY };
+		if (0u != boss.iMaximumStagger && 0u != boss.iCurrentStagger)
+		{
+			const f32_t fStaggerRatio = (std::clamp)(
+				static_cast<f32_t>(boss.iCurrentStagger) /
+					static_cast<f32_t>(boss.iMaximumStagger),
+				0.f, 1.f);
+			if (ID3D11ShaderResourceView* pStaggerFillSRV =
+				m_pBossUIView->Load_Texture(
+					"UI/BossUI/boss_stagger_fill.png"))
+			{
+				pDrawList->AddImage(
+					pStaggerFillSRV,
+					vStaggerTrackMin,
+					ImVec2(
+						vStaggerTrackMin.x +
+							(vStaggerTrackMax.x - vStaggerTrackMin.x) *
+							fStaggerRatio,
+						vStaggerTrackMax.y),
+					ImVec2(0.f, 0.f),
+					ImVec2(fStaggerRatio, 1.f));
+			}
+		}
 		if (ID3D11ShaderResourceView* pStaggerTrackSRV =
 			m_pBossUIView->Load_Texture("UI/BossUI/boss_stagger_track.png"))
 		{
-			const ImVec2 vStaggerTrackMin{
-				pViewport->WorkPos.x + fStaggerTrackX * scaleX,
-				pViewport->WorkPos.y + fStaggerTrackY * scaleY };
-			const ImVec2 vStaggerTrackMax{
-				vStaggerTrackMin.x + fStaggerTrackWidth * scaleX,
-				vStaggerTrackMin.y + fStaggerTrackHeight * scaleY };
 			pDrawList->AddImage(pStaggerTrackSRV, vStaggerTrackMin, vStaggerTrackMax);
 		}
 	}

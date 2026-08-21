@@ -4,6 +4,7 @@
 
 #include "AnimationEffectCueDocument.h"
 #include "AnimationTargetService.h"
+#include "ActorCatalog.h"
 #include "Camera_Free.h"
 #include "Character.h"
 #include "CharacterCatalog.h"
@@ -836,15 +837,17 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 		if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
 				CueDocument, Status) ||
 			CueDocument.Cues.size() !=
-				CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT)
+				CCharacterSelectArenaSpawnGate::
+					PRODUCT_PATTERN_EFFECT_CUE_COUNT)
 		{
 			if (CueDocument.Cues.size() !=
-					CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT &&
+					CCharacterSelectArenaSpawnGate::
+						PRODUCT_PATTERN_EFFECT_CUE_COUNT &&
 				!CueDocument.Cues.empty())
 			{
-				Status = "Valtan Product Effect cue contract expected " +
+				Status = "Valtan Product pattern Effect cue contract expected " +
 					std::to_string(CCharacterSelectArenaSpawnGate::
-						PRODUCT_EFFECT_TARGET_COUNT) +
+						PRODUCT_PATTERN_EFFECT_CUE_COUNT) +
 					" targets, but loaded " +
 					std::to_string(CueDocument.Cues.size()) + ".";
 			}
@@ -852,10 +855,28 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 			return false;
 		}
 
+		const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
+			CueDocument.strOwnerArchetypeId);
+		if (nullptr == pBossActor ||
+			pBossActor->combatObjectVisuals.size() !=
+				CCharacterSelectArenaSpawnGate::
+					PRODUCT_COMBAT_OBJECT_EFFECT_TARGET_COUNT)
+		{
+			Status = nullptr == pBossActor ? CActorCatalog::Get_Status() :
+				"Valtan BossCatalog must declare exactly two combat-object visuals.";
+			Isolate_ValtanSpawnPreparationFailure(Status, false);
+			return false;
+		}
 		std::vector<std::string> EffectAssetIds;
-		EffectAssetIds.reserve(CueDocument.Cues.size());
+		EffectAssetIds.reserve(CueDocument.Cues.size() +
+			pBossActor->combatObjectVisuals.size());
 		for (const VALTAN_PATTERN_EFFECT_CUE& Cue : CueDocument.Cues)
 			EffectAssetIds.push_back(Cue.strEffectAssetId);
+		for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
+			pBossActor->combatObjectVisuals)
+		{
+			EffectAssetIds.push_back(Visual.effectAssetId);
+		}
 		if (!CEffectPresentationService::Queue_ProductTargets_Priority(
 				EffectAssetIds,
 				m_ValtanEffectPreparationTargets,
@@ -867,14 +888,14 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 					CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT &&
 				!Status.empty())
 			{
-				Status += " Exact 99-target registration was not committed.";
+				Status += " Exact 100-target registration was not committed.";
 			}
 			Isolate_ValtanSpawnPreparationFailure(Status, false);
 			return false;
 		}
 		m_ValtanPrewarmDeadline = std::chrono::steady_clock::now() +
 			CCharacterSelectArenaSpawnGate::PREWARM_TIMEOUT;
-		m_strStatus = "Priority-prewarming 99 Valtan Product Effects before "
+		m_strStatus = "Priority-prewarming 100 Valtan Product Effects before "
 			"the Server spawn request.";
 		return true;
 	}

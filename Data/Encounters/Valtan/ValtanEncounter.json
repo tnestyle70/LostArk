@@ -1,6 +1,6 @@
 {
   "schema": "lostark.encounter-profile",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "encounterId": "ENCOUNTER_VALTAN",
   "bossArchetypeId": "BOSS_VALTAN",
   "authority": "server",
@@ -18,6 +18,11 @@
   "patterns": [
     {
       "patternId": "VALTAN_SWING",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "휘두르기",
       "actionId": "valtan.attack.swing",
       "sourceActionIds": [420601, 420660],
@@ -34,6 +39,11 @@
     },
     {
       "patternId": "VALTAN_DOWN_SMASH",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "내려찍기",
       "actionId": "valtan.attack.down-smash",
       "sourceActionIds": [420602, 420661],
@@ -50,6 +60,11 @@
     },
     {
       "patternId": "VALTAN_IMPRISON_ROAR",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "감금 사자후",
       "actionId": "valtan.attack.imprison-roar",
       "sourceActionIds": [420603],
@@ -66,6 +81,11 @@
     },
     {
       "patternId": "VALTAN_DASH_CHARGE",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "대쉬 돌진",
       "actionId": "valtan.attack.dash-charge",
       "sourceActionIds": [420604],
@@ -82,6 +102,11 @@
     },
     {
       "patternId": "VALTAN_EARTHQUAKE_SMASH",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "지진 찍기",
       "actionId": "valtan.attack.earthquake-smash",
       "sourceActionIds": [420605, 420662],
@@ -99,6 +124,11 @@
     },
     {
       "patternId": "VALTAN_PARRY",
+      "category": "IMPORTANT",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "큰 베기 반격",
       "actionId": "valtan.reactive.parry",
       "sourceActionIds": [420606, 420607],
@@ -108,13 +138,32 @@
       "selectionWeight": 6, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 12.0,
       "stages": [
-        { "stageId": "STANCE", "actionId": "valtan.reactive.parry.stance", "stageKind": "WINDUP", "durationMs": 2000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "COUNTER_SLASH", "actionId": "valtan.reactive.parry.slash", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 12.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.parry", "pushRangeM": 4.9, "pushMs": 535, "knockdown": true, "downMs": 2000 },
+        { "stageId": "STANCE", "actionId": "valtan.reactive.parry.stance", "stageKind": "WINDUP", "durationMs": 2000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SET_STAGGER_GAUGE", "targetId": "boss.gauge.stagger", "value": 30, "durationMs": 0 },
+            { "trigger": "EXIT", "kind": "SET_STAGGER_GAUGE", "targetId": "boss.gauge.stagger", "value": 0, "durationMs": 0 }
+          ],
+          "branches": [
+            { "outcome": "STAGGER_BROKEN", "nextActionId": "valtan.reactive.parry.slash" },
+            { "outcome": "TIMEOUT", "nextActionId": "valtan.reactive.parry.normal-slash" }
+          ]
+        },
+        { "stageId": "COUNTER_SLASH", "actionId": "valtan.reactive.parry.slash", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 12.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.parry", "pushRangeM": 4.9, "pushMs": 535, "knockdown": true, "downMs": 2000,
+          "branches": [
+            { "outcome": "TIMEOUT", "nextActionId": "valtan.reactive.parry.recovery" }
+          ]
+        },
+        { "stageId": "NORMAL_SLASH", "actionId": "valtan.reactive.parry.normal-slash", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 110.0, "hitLength": 9.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.parry", "pushRangeM": 2.0, "pushMs": 242, "knockdown": true, "downMs": 1000 },
         { "stageId": "RECOVERY", "actionId": "valtan.reactive.parry.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
     {
       "patternId": "VALTAN_MAGIC_CHOICE",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "마력기운 양자택일",
       "actionId": "valtan.attack.magic-choice",
       "sourceActionIds": [420608],
@@ -132,6 +181,11 @@
     },
     {
       "patternId": "VALTAN_FOUR_SLASH",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "4연속 베기",
       "actionId": "valtan.attack.four-slash",
       "sourceActionIds": [420609],
@@ -148,6 +202,11 @@
     },
     {
       "patternId": "VALTAN_HIGH_JUMP",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "고공 점프 찍기",
       "actionId": "valtan.attack.high-jump",
       "sourceActionIds": [420610],
@@ -158,13 +217,22 @@
       "minimumRange": 2.0, "maximumRange": 18.0,
       "stages": [
         { "stageId": "TAKEOFF", "actionId": "valtan.attack.high-jump.takeoff", "stageKind": "WINDUP", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "AIRBORNE", "actionId": "valtan.attack.high-jump.airborne", "stageKind": "WINDUP", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "LAND", "actionId": "valtan.attack.high-jump.land", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.high-jump", "pushRangeM": 1.0, "pushMs": 150, "knockdown": true, "downMs": 1000 },
+        { "stageId": "AIRBORNE", "actionId": "valtan.attack.high-jump.airborne", "stageKind": "WINDUP", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SPAWN_COMBAT_OBJECT", "targetId": "combatobject.valtan.high-jump.target-axe", "value": 1, "durationMs": 0 }
+          ]
+        },
+        { "stageId": "LAND", "actionId": "valtan.attack.high-jump.land", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
         { "stageId": "RECOVERY", "actionId": "valtan.attack.high-jump.recovery", "stageKind": "RECOVERY", "durationMs": 1100, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
     {
       "patternId": "VALTAN_STOMP",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "발구르기",
       "actionId": "valtan.attack.stomp",
       "sourceActionIds": [420611],
@@ -181,6 +249,11 @@
     },
     {
       "patternId": "VALTAN_BIND_CHARGE_SMASH",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "구속 돌진 잡기 후 내려찍기",
       "actionId": "valtan.attack.bind-charge-smash",
       "sourceActionIds": [420612, 420613, 420614],
@@ -198,6 +271,11 @@
     },
     {
       "patternId": "VALTAN_GROUND_WAVE_SMASH",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "지진파 내려찍기",
       "actionId": "valtan.attack.ground-wave-smash",
       "sourceActionIds": [420615],
@@ -214,6 +292,11 @@
     },
     {
       "patternId": "VALTAN_SUPER_SMASH",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "초강력 내려찍기 콤보",
       "actionId": "valtan.attack.super-smash",
       "sourceActionIds": [420619, 420620, 420656, 420657],
@@ -230,6 +313,11 @@
     },
     {
       "patternId": "VALTAN_JUMP_SPIN",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "점프 찍기 후 휠윈드",
       "actionId": "valtan.attack.jump-spin",
       "sourceActionIds": [420621, 420663],
@@ -247,6 +335,11 @@
     },
     {
       "patternId": "VALTAN_PORTAL_RUSH",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "워프 돌진 콤보",
       "actionId": "valtan.attack.portal-rush",
       "sourceActionIds": [420622],
@@ -264,6 +357,11 @@
     },
     {
       "patternId": "VALTAN_CHARGE_GRAB_ROAR",
+      "category": "IMPORTANT",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "돌진 잡기 후 사자후",
       "actionId": "valtan.attack.charge-grab-roar",
       "sourceActionIds": [420623, 420631, 420632],
@@ -281,6 +379,11 @@
     },
     {
       "patternId": "VALTAN_WHIRLWIND",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "휠윈드",
       "actionId": "valtan.attack.whirlwind",
       "sourceActionIds": [420633],
@@ -290,13 +393,20 @@
       "selectionWeight": 20, "maximumConsecutiveUses": 2,
       "minimumRange": 0.0, "maximumRange": 12.0,
       "stages": [
-        { "stageId": "WINDUP", "actionId": "valtan.attack.whirlwind.windup", "stageKind": "WINDUP", "durationMs": 800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "SPIN", "actionId": "valtan.attack.whirlwind.active", "stageKind": "ACTIVE", "durationMs": 1500, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 4, "hitIntervalMs": 350, "serverDamageProfileId": "damage.valtan.circular-spin", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "WINDUP", "actionId": "valtan.attack.whirlwind.windup", "stageKind": "WINDUP", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "SPIN", "actionId": "valtan.attack.whirlwind.active", "stageKind": "ACTIVE", "durationMs": 1500, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.circular-spin", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "SPIN_2", "actionId": "valtan.attack.whirlwind.active-2", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.circular-spin", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "SPIN_3", "actionId": "valtan.attack.whirlwind.active-3", "stageKind": "ACTIVE", "durationMs": 650, "hitShape": "CIRCLE", "hitOuterRadius": 10.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.circular-spin", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
         { "stageId": "RECOVERY", "actionId": "valtan.attack.whirlwind.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
     {
       "patternId": "VALTAN_BACKSTEP_ATTACK",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "공격하면서 뒤로 빠지기",
       "actionId": "valtan.attack.backstep",
       "sourceActionIds": [420635, 420664],
@@ -313,6 +423,11 @@
     },
     {
       "patternId": "VALTAN_RED_BLADE_WAVE",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "붉은 검기 날리기",
       "actionId": "valtan.attack.red-blade-wave",
       "sourceActionIds": [420636],
@@ -323,12 +438,21 @@
       "minimumRange": 4.0, "maximumRange": 22.0,
       "stages": [
         { "stageId": "WINDUP", "actionId": "valtan.attack.red-blade-wave.windup", "stageKind": "WINDUP", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "PROJECTILE", "actionId": "valtan.attack.red-blade-wave.active", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "BOX", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 22.0, "hitHalfWidth": 2.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.red-blade-wave", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "PROJECTILE", "actionId": "valtan.attack.red-blade-wave.active", "stageKind": "ACTIVE", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SPAWN_COMBAT_OBJECT", "targetId": "combatobject.valtan.red-blade-wave.projectile", "value": 1, "durationMs": 0 }
+          ]
+        },
         { "stageId": "RECOVERY", "actionId": "valtan.attack.red-blade-wave.recovery", "stageKind": "RECOVERY", "durationMs": 900, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
     {
       "patternId": "VALTAN_FRONT_BACK_FRONT",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "앞뒤앞 내려찍기",
       "actionId": "valtan.attack.front-back-front",
       "sourceActionIds": [420637, 420666],
@@ -345,6 +469,11 @@
     },
     {
       "patternId": "VALTAN_FIST_IN_OUT",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "두 손 내려찍기 안밖 폭발",
       "actionId": "valtan.attack.fist-in-out",
       "sourceActionIds": [420638],
@@ -362,6 +491,11 @@
     },
     {
       "patternId": "VALTAN_LEDGE_ROAR",
+      "category": "NORMAL",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "낙사 사자후",
       "actionId": "valtan.attack.ledge-roar",
       "sourceActionIds": [420639],
@@ -378,6 +512,11 @@
     },
     {
       "patternId": "VALTAN_TRIPLE_COUNTER",
+      "category": "IMPORTANT",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "연속 카운터 내려찍기",
       "actionId": "valtan.reactive.triple-counter",
       "sourceActionIds": [420640, 420641, 420642, 420643, 420644, 420645, 420646, 420647],
@@ -387,17 +526,49 @@
       "selectionWeight": 4, "maximumConsecutiveUses": 1,
       "minimumRange": 0.0, "maximumRange": 18.0,
       "stages": [
-        { "stageId": "COUNTER_1", "actionId": "valtan.reactive.triple-counter.first", "stageKind": "WINDUP", "durationMs": 1800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "COUNTER_1", "actionId": "valtan.reactive.triple-counter.first", "stageKind": "WINDUP", "durationMs": 1800, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.counterable", "value": 1, "durationMs": 0 },
+            { "trigger": "EXIT", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.counterable", "value": 0, "durationMs": 0 }
+          ],
+          "branches": [
+            { "outcome": "COUNTER_HIT", "nextActionId": "valtan.reactive.triple-counter.second" },
+            { "outcome": "TIMEOUT", "nextActionId": "valtan.reactive.triple-counter.first-fail" }
+          ]
+        },
         { "stageId": "FAIL_1", "actionId": "valtan.reactive.triple-counter.first-fail", "stageKind": "ACTIVE", "durationMs": 600, "hitShape": "CIRCLE", "hitOuterRadius": 18.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.triple-counter", "pushRangeM": 0.0, "pushMs": 0, "knockdown": true, "downMs": 2000 },
-        { "stageId": "COUNTER_2", "actionId": "valtan.reactive.triple-counter.second", "stageKind": "WINDUP", "durationMs": 1600, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "COUNTER_2", "actionId": "valtan.reactive.triple-counter.second", "stageKind": "WINDUP", "durationMs": 1600, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.counterable", "value": 1, "durationMs": 0 },
+            { "trigger": "EXIT", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.counterable", "value": 0, "durationMs": 0 }
+          ],
+          "branches": [
+            { "outcome": "COUNTER_HIT", "nextActionId": "valtan.reactive.triple-counter.third" },
+            { "outcome": "TIMEOUT", "nextActionId": "valtan.reactive.triple-counter.second-fail" }
+          ]
+        },
         { "stageId": "FAIL_2", "actionId": "valtan.reactive.triple-counter.second-fail", "stageKind": "ACTIVE", "durationMs": 600, "hitShape": "CIRCLE", "hitOuterRadius": 18.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.triple-counter", "pushRangeM": 0.0, "pushMs": 0, "knockdown": true, "downMs": 2000 },
-        { "stageId": "COUNTER_3", "actionId": "valtan.reactive.triple-counter.third", "stageKind": "WINDUP", "durationMs": 1400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "COUNTER_3", "actionId": "valtan.reactive.triple-counter.third", "stageKind": "WINDUP", "durationMs": 1400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.counterable", "value": 1, "durationMs": 0 },
+            { "trigger": "EXIT", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.counterable", "value": 0, "durationMs": 0 }
+          ],
+          "branches": [
+            { "outcome": "COUNTER_HIT", "nextActionId": "valtan.reactive.triple-counter.recovery" },
+            { "outcome": "TIMEOUT", "nextActionId": "valtan.reactive.triple-counter.third-fail" }
+          ]
+        },
         { "stageId": "FAIL_3", "actionId": "valtan.reactive.triple-counter.third-fail", "stageKind": "ACTIVE", "durationMs": 600, "hitShape": "CIRCLE", "hitOuterRadius": 100.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.omnidirectional-wipe-130", "pushRangeM": 0.0, "pushMs": 0, "knockdown": true, "downMs": 2000 },
         { "stageId": "RECOVERY", "actionId": "valtan.reactive.triple-counter.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
     {
       "patternId": "VALTAN_ARMOR_BREAK_OPENING",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "LOCK_NEAREST_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "오프닝 외벽 충돌 부위 파괴",
       "actionId": "valtan.mechanic.armor-break-opening",
       "sourceActionIds": [420627, 420628, 420654, 420655],
@@ -407,13 +578,33 @@
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
-        { "stageId": "WALL_CHARGE", "actionId": "valtan.mechanic.armor-break-opening.charge", "stageKind": "WINDUP", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "GROGGY", "actionId": "valtan.mechanic.armor-break-opening.groggy", "stageKind": "ACTIVE", "durationMs": 5000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "WALL_CHARGE", "actionId": "valtan.mechanic.armor-break-opening.charge", "stageKind": "WINDUP", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "motion": { "kind": "FORWARD", "distance": 100.0 },
+          "branches": [
+            { "outcome": "WALL_CONTACT", "nextActionId": "valtan.mechanic.armor-break-opening.groggy" },
+            { "outcome": "TIMEOUT", "nextActionId": null }
+          ]
+        },
+        { "stageId": "GROGGY", "actionId": "valtan.mechanic.armor-break-opening.groggy", "stageKind": "ACTIVE", "durationMs": 5000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.groggy", "value": 1, "durationMs": 0 },
+            { "trigger": "EXIT", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.groggy", "value": 0, "durationMs": 0 }
+          ],
+          "branches": [
+            { "outcome": "PART_DESTROYED", "nextActionId": "valtan.mechanic.armor-break-opening.recovery" },
+            { "outcome": "TIMEOUT", "nextActionId": "valtan.mechanic.armor-break-opening.recovery" }
+          ]
+        },
         { "stageId": "RECOVERY", "actionId": "valtan.mechanic.armor-break-opening.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
     {
       "patternId": "VALTAN_FLOOR_WIPE_130",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NEAREST_EACH_TICK",
+      "aimPolicy": "TRACK_TARGET_EACH_TICK",
       "displayName": "115줄 6방향 충격파 후 전방향 충격파",
       "actionId": "valtan.mechanic.floor-wipe-130",
       "sourceActionIds": [420630],
@@ -432,6 +623,11 @@
     },
     {
       "patternId": "VALTAN_FOUR_PILLARS_105",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "LOCK_RANDOM_ALIVE_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "100줄 중앙 착지와 4기둥 추적 원뿔",
       "actionId": "valtan.mechanic.four-pillars-105",
       "sourceActionIds": [420610],
@@ -449,6 +645,11 @@
     },
     {
       "patternId": "VALTAN_ENTRANCE_WHIRLWIND",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
       "displayName": "첫 등장 회전 돌진",
       "actionId": "valtan.mechanic.entrance-whirlwind",
       "sourceActionIds": [420633],
@@ -465,6 +666,11 @@
     },
     {
       "patternId": "VALTAN_ARENA_BREAK_109",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NONE",
+      "aimPolicy": "FACE_MOTION_ANCHOR",
       "displayName": "109줄 아레나 붕괴",
       "actionId": "valtan.mechanic.arena-break-109",
       "sourceActionIds": [420629],
@@ -485,6 +691,11 @@
     },
     {
       "patternId": "VALTAN_ARENA_BREAK_84",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
       "displayName": "84줄 외곽 바닥 붕괴",
       "actionId": "valtan.mechanic.arena-floor-84",
       "sourceActionIds": [420629],
@@ -501,6 +712,11 @@
     },
     {
       "patternId": "VALTAN_MAGIC_ORB_STAGGER_76",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
       "displayName": "73줄 남북·동서 마력구 폭발",
       "actionId": "valtan.mechanic.magic-orb-stagger-76",
       "sourceActionIds": [420617, 420618],
@@ -510,13 +726,44 @@
       "selectionWeight": 0, "maximumConsecutiveUses": 0,
       "minimumRange": 0.0, "maximumRange": 100.0,
       "stages": [
-        { "stageId": "SHIELD", "actionId": "valtan.mechanic.magic-orb-stagger-76.shield", "stageKind": "WINDUP", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
-        { "stageId": "STAGGER_WINDOW", "actionId": "valtan.mechanic.magic-orb-stagger-76.window", "stageKind": "ACTIVE", "durationMs": 8000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "SHIELD", "actionId": "valtan.mechanic.magic-orb-stagger-76.shield", "stageKind": "WINDUP", "durationMs": 1500, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.invulnerable", "value": 1, "durationMs": 0 },
+            { "trigger": "ENTER", "kind": "SET_SHIELD", "targetId": "boss.gauge.shield", "value": 6000, "durationMs": 0 }
+          ]
+        },
+        { "stageId": "STAGGER_WINDOW", "actionId": "valtan.mechanic.magic-orb-stagger-76.window", "stageKind": "ACTIVE", "durationMs": 8000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SET_STAGGER_GAUGE", "targetId": "boss.gauge.stagger", "value": 100, "durationMs": 0 },
+            { "trigger": "EXIT", "kind": "SET_STAGGER_GAUGE", "targetId": "boss.gauge.stagger", "value": 0, "durationMs": 0 },
+            { "trigger": "EXIT", "kind": "SET_SHIELD", "targetId": "boss.gauge.shield", "value": 0, "durationMs": 0 },
+            { "trigger": "EXIT", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.invulnerable", "value": 0, "durationMs": 0 }
+          ],
+          "branches": [
+            { "outcome": "STAGGER_BROKEN", "nextActionId": "valtan.mechanic.magic-orb-stagger-76.groggy" },
+            { "outcome": "TIMEOUT", "nextActionId": "valtan.mechanic.magic-orb-stagger-76.wipe" }
+          ]
+        },
+        { "stageId": "GROGGY", "actionId": "valtan.mechanic.magic-orb-stagger-76.groggy", "stageKind": "ACTIVE", "durationMs": 5000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.groggy", "value": 1, "durationMs": 0 },
+            { "trigger": "EXIT", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.groggy", "value": 0, "durationMs": 0 }
+          ],
+          "branches": [
+            { "outcome": "TIMEOUT", "nextActionId": "valtan.mechanic.magic-orb-stagger-76.recovery" }
+          ]
+        },
+        { "stageId": "WIPE", "actionId": "valtan.mechanic.magic-orb-stagger-76.wipe", "stageKind": "ACTIVE", "durationMs": 700, "hitShape": "CIRCLE", "hitOuterRadius": 100.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.omnidirectional-wipe-130", "pushRangeM": 0.0, "pushMs": 0, "knockdown": true, "downMs": 2000 },
         { "stageId": "RECOVERY", "actionId": "valtan.mechanic.magic-orb-stagger-76.recovery", "stageKind": "RECOVERY", "durationMs": 1000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
     {
       "patternId": "VALTAN_CENTER_GRAB_COUNTER_64",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "LOCK_RANDOM_ALIVE_ON_START",
+      "aimPolicy": "LOCK_FACING_ON_START",
       "displayName": "62줄 3페이즈 중앙 표적 폭발과 잡기 카운터",
       "actionId": "valtan.mechanic.center-grab-counter-64",
       "sourceActionIds": [420623, 420631],
@@ -528,13 +775,27 @@
       "stages": [
         { "stageId": "CENTER", "actionId": "valtan.mechanic.center-grab-counter-64.center", "stageKind": "WINDUP", "durationMs": 1400, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
         { "stageId": "TARGET_EXPLOSION", "actionId": "valtan.mechanic.center-grab-counter-64.explosion", "stageKind": "ACTIVE", "durationMs": 800, "hitShape": "CIRCLE", "hitOuterRadius": 6.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.center-grab-64", "pushRangeM": 7.0, "pushMs": 150, "knockdown": true, "downMs": 1000 },
-        { "stageId": "COUNTER_WINDOW", "actionId": "valtan.mechanic.center-grab-counter-64.counter", "stageKind": "WINDUP", "durationMs": 2000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 },
+        { "stageId": "COUNTER_WINDOW", "actionId": "valtan.mechanic.center-grab-counter-64.counter", "stageKind": "WINDUP", "durationMs": 2000, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0,
+          "actions": [
+            { "trigger": "ENTER", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.counterable", "value": 1, "durationMs": 0 },
+            { "trigger": "EXIT", "kind": "SET_BOSS_FLAG", "targetId": "boss.flag.counterable", "value": 0, "durationMs": 0 }
+          ],
+          "branches": [
+            { "outcome": "COUNTER_HIT", "nextActionId": "valtan.mechanic.center-grab-counter-64.recovery" },
+            { "outcome": "TIMEOUT", "nextActionId": "valtan.mechanic.center-grab-counter-64.failed-charge" }
+          ]
+        },
         { "stageId": "FAILED_CHARGE", "actionId": "valtan.mechanic.center-grab-counter-64.failed-charge", "stageKind": "ACTIVE", "durationMs": 650, "hitShape": "BOX", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 18.0, "hitHalfWidth": 3.0, "hitCount": 1, "hitIntervalMs": 0, "serverDamageProfileId": "damage.valtan.center-grab-64", "pushRangeM": 7.0, "pushMs": 150, "knockdown": true, "downMs": 1000 },
         { "stageId": "RECOVERY", "actionId": "valtan.mechanic.center-grab-counter-64.recovery", "stageKind": "RECOVERY", "durationMs": 1200, "hitShape": "NONE", "hitOuterRadius": 0.0, "hitInnerRadius": 0.0, "hitAngleDegrees": 0.0, "hitLength": 0.0, "hitHalfWidth": 0.0, "hitCount": 0, "hitIntervalMs": 0, "serverDamageProfileId": "", "pushRangeM": 0.0, "pushMs": 0, "knockdown": false, "downMs": 0 }
       ]
     },
     {
       "patternId": "VALTAN_ARENA_BREAK_33",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
       "displayName": "30줄 두 번째 지형 절반 파괴",
       "actionId": "valtan.mechanic.arena-break-33",
       "sourceActionIds": [420629],
@@ -552,6 +813,11 @@
     },
     {
       "patternId": "VALTAN_GHOST_TRANSITION_15",
+      "category": "MECHANIC",
+      "minimumPhase": 1,
+      "maximumPhase": 3,
+      "targetPolicy": "NONE",
+      "aimPolicy": "NONE",
       "displayName": "14줄 포탈·최종 지면파괴와 망령화",
       "actionId": "valtan.mechanic.ghost-transition-15",
       "sourceActionIds": [420616, 420624, 420625, 420626, 420634, 420651, 420652, 420653, 420658, 420659, 420665],

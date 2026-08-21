@@ -46,7 +46,7 @@ namespace LostArk::Server
 		//서버의 진입점
 		int Run(
 			std::uint32_t automaticShutdownMilliseconds = 0,
-			std::string_view bindAddress = "0.0.0.0",
+			std::string_view bindAddress = "127.0.0.1",
 			std::uint16_t port = 7777u,
 			bool headless = false);
 

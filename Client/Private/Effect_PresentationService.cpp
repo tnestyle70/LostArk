@@ -140,6 +140,8 @@ namespace
 		std::unordered_map<std::string, float4x4_t> SourceAnchorWorldsScratch;
 		ARTIST_31470_TRANSFORM_HISTORY Artist31470TransformHistory;
 		Client::EFFECT_SCENE_BUDGET_COST AdmissionCost;
+		uint64_t iWorldRootHandle = 0u;
+		float4x4_t WorldRoot{};
     };
 
 	EFFECT_OWNER_VIEW Resolve_Owner(
@@ -200,6 +202,7 @@ namespace
 	std::map<std::string, Client::EFFECT_SCENE_BUDGET_COST, std::less<>>
 		g_ProductEffectBudgetCosts;
 	uint64_t g_iSceneBudgetRejectedSpawnCount = 0u;
+	uint64_t g_iNextWorldRootHandle = 1u;
 	RECONSTRUCTED_SOURCE_RUNTIME_CACHE g_ReconstructedArtist31470;
 	uint64_t g_iReconstructedArtist31470CacheGeneration = 0u;
 	Client::EFFECT_ARTIST_31470_CACHE_IDENTITY
@@ -2539,9 +2542,15 @@ bool_t Client::CEffectPresentationService::Spawn(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
-	if (!CEffectCatalog::Admit_ProductSpawn(Desc.strEffectAssetId,
-			Desc.pProductAdmissionToken, strOutStatus))
+	if ((!Desc.bUseWorldRoot &&
+		 !CEffectCatalog::Admit_ProductSpawn(Desc.strEffectAssetId,
+			 Desc.pProductAdmissionToken, strOutStatus)) ||
+		(Desc.bUseWorldRoot &&
+		 !CEffectCatalog::Is_ProductManagedEffect(Desc.strEffectAssetId)))
 	{
+		if (strOutStatus.empty())
+			strOutStatus =
+				"World-root Effect is not a Product-managed target.";
 		g_strStatus = strOutStatus;
 		return false;
 	}
@@ -2561,7 +2570,11 @@ bool_t Client::CEffectPresentationService::Spawn(
 		EFFECT_FOLLOW_POLICY::END != Desc.eFollowPolicy &&
 		EFFECT_STOP_POLICY::END != Desc.eStopPolicy &&
 		(EFFECT_STOP_POLICY::CUE_END != Desc.eStopPolicy ||
-			0u != Desc.iCueDurationMs);
+			0u != Desc.iCueDurationMs) &&
+		(Desc.bUseWorldRoot ?
+			(0u != Desc.iWorldRootHandle &&
+			 Is_NonDegenerateAffineMatrix(Desc.WorldRoot)) :
+			0u == Desc.iWorldRootHandle);
 	if (!bDescriptorValid)
 	{
 		strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
@@ -2641,6 +2654,89 @@ bool_t Client::CEffectPresentationService::Spawn(
 	return true;
 }
 
+bool_t Client::CEffectPresentationService::Spawn_WorldRoot(
+	const EFFECT_WORLD_ROOT_SPAWN_DESC& Desc,
+	EFFECT_WORLD_ROOT_HANDLE& OutHandle,
+	std::string& strOutStatus)
+{
+	OutHandle = {};
+	if (Desc.strEffectAssetId.empty() || Desc.strOccurrenceId.empty() ||
+		0u == Desc.iSpawnTick ||
+		nullptr == Desc.pBossBudgetAndLifetimeOwner.lock() ||
+		!Is_NonDegenerateAffineMatrix(Desc.RootWorld) ||
+		!std::isfinite(Desc.fInitialSampleTimeSeconds) ||
+		Desc.fInitialSampleTimeSeconds < 0.f)
+	{
+		strOutStatus = "World-root Effect spawn descriptor is invalid.";
+		return false;
+	}
+
+	EFFECT_SPAWN_DESC SpawnDesc;
+	SpawnDesc.strEffectAssetId = Desc.strEffectAssetId;
+	SpawnDesc.pBossOwner = Desc.pBossBudgetAndLifetimeOwner;
+	SpawnDesc.strAnchorSlotId = "root";
+	SpawnDesc.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+	SpawnDesc.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+	SpawnDesc.iActionStartTick = Desc.iSpawnTick;
+	SpawnDesc.strOccurrenceId = Desc.strOccurrenceId;
+	SpawnDesc.fInitialSampleTimeSeconds = Desc.fInitialSampleTimeSeconds;
+	SpawnDesc.bUseWorldRoot = true;
+	SpawnDesc.iWorldRootHandle = g_iNextWorldRootHandle;
+	SpawnDesc.WorldRoot = Desc.RootWorld;
+	if (!Spawn(SpawnDesc, strOutStatus))
+		return false;
+
+	OutHandle.iValue = g_iNextWorldRootHandle++;
+	if (0u == g_iNextWorldRootHandle)
+		g_iNextWorldRootHandle = 1u;
+	return true;
+}
+
+bool_t Client::CEffectPresentationService::Update_WorldRoot(
+	const EFFECT_WORLD_ROOT_HANDLE Handle,
+	const float4x4_t& RootWorld)
+{
+	if (!Handle.Is_Valid() || !Is_NonDegenerateAffineMatrix(RootWorld))
+		return false;
+	for (PENDING_EFFECT_SPAWN& Pending : g_PendingEffectSpawns)
+	{
+		if (Pending.Desc.iWorldRootHandle == Handle.iValue)
+		{
+			Pending.Desc.WorldRoot = RootWorld;
+			return true;
+		}
+	}
+	for (ACTIVE_EFFECT& Effect : g_ActiveEffects)
+	{
+		if (Effect.iWorldRootHandle == Handle.iValue &&
+			nullptr != Effect.pObject)
+		{
+			Effect.WorldRoot = RootWorld;
+			Effect.pObject->Set_RootWorldForNextUpdate(RootWorld);
+			return true;
+		}
+	}
+	return false;
+}
+
+void Client::CEffectPresentationService::Stop_WorldRoot(
+	const EFFECT_WORLD_ROOT_HANDLE Handle)
+{
+	if (!Handle.Is_Valid())
+		return;
+	g_PendingEffectSpawns.erase(std::remove_if(
+		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+		[Handle](const PENDING_EFFECT_SPAWN& Pending)
+		{
+			return Pending.Desc.iWorldRootHandle == Handle.iValue;
+		}), g_PendingEffectSpawns.end());
+	for (size_t index = g_ActiveEffects.size(); index-- > 0u;)
+	{
+		if (g_ActiveEffects[index].iWorldRootHandle == Handle.iValue)
+			Remove_At(index);
+	}
+}
+
 void Client::CEffectPresentationService::Commit_PendingSpawns()
 {
 	if (g_PendingEffectSpawns.empty())
@@ -2672,9 +2768,15 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
-	if (!CEffectCatalog::Admit_ProductSpawn(Desc.strEffectAssetId,
-			Desc.pProductAdmissionToken, strOutStatus))
+	if ((!Desc.bUseWorldRoot &&
+		 !CEffectCatalog::Admit_ProductSpawn(Desc.strEffectAssetId,
+			 Desc.pProductAdmissionToken, strOutStatus)) ||
+		(Desc.bUseWorldRoot &&
+		 !CEffectCatalog::Is_ProductManagedEffect(Desc.strEffectAssetId)))
 	{
+		if (strOutStatus.empty())
+			strOutStatus =
+				"World-root Effect is not a Product-managed target.";
 		g_strStatus = strOutStatus;
 		return false;
 	}
@@ -2695,7 +2797,11 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
         EFFECT_STOP_POLICY::END == Desc.eStopPolicy ||
         (EFFECT_STOP_POLICY::CUE_END == Desc.eStopPolicy &&
-            0u == Desc.iCueDurationMs))
+            0u == Desc.iCueDurationMs) ||
+		(Desc.bUseWorldRoot ?
+			(0u == Desc.iWorldRootHandle ||
+			 !Is_NonDegenerateAffineMatrix(Desc.WorldRoot)) :
+			0u != Desc.iWorldRootHandle))
     {
         strOutStatus = "Effect spawn descriptor is invalid or not admitted.";
         g_strStatus = strOutStatus;
@@ -2755,14 +2861,22 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         return false;
     }
 
-    float4x4_t Anchor{};
-	if (!Resolve_Anchor(Owner, Desc.strAnchorSlotId, Anchor))
-    {
-        strOutStatus = "Effect anchor is missing on the owner skeleton.";
-        g_strStatus = strOutStatus;
-        return false;
-    }
-    const float4x4_t Root = Compose_Local(Desc.LocalTransform, Anchor);
+    float4x4_t Root{};
+	if (Desc.bUseWorldRoot)
+	{
+		Root = Desc.WorldRoot;
+	}
+	else
+	{
+		float4x4_t Anchor{};
+		if (!Resolve_Anchor(Owner, Desc.strAnchorSlotId, Anchor))
+		{
+			strOutStatus = "Effect anchor is missing on the owner skeleton.";
+			g_strStatus = strOutStatus;
+			return false;
+		}
+		Root = Compose_Local(Desc.LocalTransform, Anchor);
+	}
     std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests =
         Collect_SourceAnchorRequests(*pDocument);
     CEffectObject::EFFECT_OBJECT_DESC ObjectDesc{};
@@ -2840,6 +2954,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         Desc.fInitialSampleTimeSeconds;
 	Active.SourceAnchorRequests = std::move(SourceAnchorRequests);
 	Active.AdmissionCost = Budget->second;
+	Active.iWorldRootHandle = Desc.iWorldRootHandle;
+	Active.WorldRoot = Desc.WorldRoot;
     g_ActiveEffects.push_back(std::move(Active));
     strOutStatus = "Spawned admitted Effect: " + Desc.strEffectAssetId;
     g_strStatus = strOutStatus;
@@ -2975,6 +3091,11 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
 			   current-pose synchronization below must not overwrite either one. */
 			continue;
 		}
+		if (0u != Effect.iWorldRootHandle)
+		{
+			Effect.pObject->Set_RootWorldForNextUpdate(Effect.WorldRoot);
+			continue;
+		}
 		Resolve_SourceAnchors(
 			Owner, Effect.SourceAnchorRequests,
 			Effect.SourceAnchorWorldsScratch);
@@ -3025,7 +3146,8 @@ Client::CEffectPresentationService::Stop_BossAction(
 		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
 		[&pOwner, iActionStartTick](const PENDING_EFFECT_SPAWN& Pending)
 		{
-			return Pending.Desc.pBossOwner.lock() == pOwner &&
+			return 0u == Pending.Desc.iWorldRootHandle &&
+				Pending.Desc.pBossOwner.lock() == pOwner &&
 				Pending.Desc.iActionStartTick == iActionStartTick;
 		}), g_PendingEffectSpawns.end());
 	Result.iPendingStopped = static_cast<uint64_t>(
@@ -3034,7 +3156,8 @@ Client::CEffectPresentationService::Stop_BossAction(
 	for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
 	{
 		const ACTIVE_EFFECT& Effect = g_ActiveEffects[iEffect];
-		if (Effect.pBossOwner.lock() != pOwner ||
+		if (0u != Effect.iWorldRootHandle ||
+			Effect.pBossOwner.lock() != pOwner ||
 			Effect.iActionStartTick != iActionStartTick)
 		{
 			continue;

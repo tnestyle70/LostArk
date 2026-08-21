@@ -1,12 +1,36 @@
 {
   "schema": "lostark.boss-catalog",
-  "formatVersion": 1,
+  "formatVersion": 3,
   "bosses": [
     {
       "archetypeId": "BOSS_VALTAN",
       "visualAssetId": "VALTAN_MN_RPBF_01",
       "bodyModel": "Character/Valtan/MN_RPBF_01.wmodel",
       "weaponModel": "Character/Valtan/ValtanWeapon.wmodel",
+      "armorParts": [
+        {
+          "partId": "boss.part.valtan.shoulder-armor",
+          "stateMask": 1,
+          "modelAssetId": "Character/Valtan/MN_RPBF_01_Parts1.wmodel"
+        },
+        {
+          "partId": "boss.part.valtan.arm-armor",
+          "stateMask": 2,
+          "modelAssetId": "Character/Valtan/MN_RPBF_01_Parts2.wmodel"
+        }
+      ],
+      "combatObjectVisuals": [
+        {
+          "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+          "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
+          "effectAssetId": "effect.valtan.sky-axe.active"
+        },
+        {
+          "combatObjectArchetypeId": "combatobject.valtan.red-blade-wave.projectile",
+          "clientVisualId": "combatobject.visual.valtan.red-blade-wave.projectile.v1",
+          "effectAssetId": "effect.valtan.red-blade-wave.active"
+        }
+      ],
       "animationSetId": "Character/Valtan/AnimSets/MN_RPBF_01_AnimSet.wmodel",
       "serverProfileId": "boss.valtan.server.v1",
       "clientPresentationId": "boss.valtan.client.v1",

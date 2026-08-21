@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <fstream>
+#include <limits>
 #include <unordered_map>
 
 namespace
@@ -92,6 +94,24 @@ namespace
 			version->Get_Type() == DATA_JSON_TYPE::NUMBER &&
 			version->Get_Number() == expected;
 	}
+
+	bool ReadU32(
+		const DATA_JSON_VALUE* value,
+		std::uint32_t& output)
+	{
+		if (nullptr == value || value->Get_Type() != DATA_JSON_TYPE::NUMBER)
+			return false;
+		const double number = value->Get_Number();
+		if (!std::isfinite(number) || number < 0.0 ||
+			number > static_cast<double>(
+				(std::numeric_limits<std::uint32_t>::max)()) ||
+			std::floor(number) != number)
+		{
+			return false;
+		}
+		output = static_cast<std::uint32_t>(number);
+		return true;
+	}
 }
 
 bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
@@ -104,9 +124,9 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		outStatus = "Missing player skill balance document";
 		return false;
 	}
-	if (!HasFormatVersion(damageRoot, 2.0) || !HasFormatVersion(skillRoot, 2.0))
+	if (!HasFormatVersion(damageRoot, 2.0) || !HasFormatVersion(skillRoot, 3.0))
 	{
-		outStatus = "Player skill balance document is not formatVersion 2";
+		outStatus = "Player skill balance document version mismatch";
 		return false;
 	}
 
@@ -149,6 +169,12 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 	for (const DATA_JSON_VALUE& value : skillValues->Get_Array())
 	{
 		const DATA_JSON_VALUE* id = Required(value, "skillId", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* staggerDamage = Required(
+			value, "staggerDamage", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* partDamage = Required(
+			value, "partDamage", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* counterPower = Required(
+			value, "counterPower", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* characterClass = Required(
 			value, "characterClass", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* slot = Required(value, "inputSlot", DATA_JSON_TYPE::STRING);
@@ -180,6 +206,13 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		}
 
 		PLAYER_SKILL_DEFINITION definition{};
+		if (!ReadU32(staggerDamage, definition.iStaggerDamage) ||
+			!ReadU32(partDamage, definition.iPartDamage) ||
+			!ReadU32(counterPower, definition.iCounterPower))
+		{
+			outStatus = "PlayerSkills.json has an invalid combat trait";
+			return false;
+		}
 		definition.iSkillId = static_cast<LostArk::Shared::SKILL_ID>(id->Get_Number());
 		definition.eCharacterClass = ParseCharacterClass(characterClass->Get_String());
 		definition.strInputSlot = slot->Get_String();

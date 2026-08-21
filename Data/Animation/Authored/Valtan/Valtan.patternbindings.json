@@ -76,6 +76,10 @@
       "clip": "mesh_att_battle_9_01_loop"
     },
     {
+      "actionId": "valtan.reactive.parry.normal-slash",
+      "clip": "mesh_att_battle_9_01_loop"
+    },
+    {
       "actionId": "valtan.reactive.parry.recovery",
       "clip": "mesh_att_battle_9_01_end"
     },
@@ -418,6 +422,14 @@
     {
       "actionId": "valtan.mechanic.magic-orb-stagger-76.window",
       "clip": "mesh_abn_groggy_1_loop"
+    },
+    {
+      "actionId": "valtan.mechanic.magic-orb-stagger-76.groggy",
+      "clip": "mesh_dmg_parts_loop_1"
+    },
+    {
+      "actionId": "valtan.mechanic.magic-orb-stagger-76.wipe",
+      "clip": "mesh_att_battle_5_02_end"
     },
     {
       "actionId": "valtan.mechanic.magic-orb-stagger-76.recovery",

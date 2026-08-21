@@ -1090,6 +1090,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.red-blade-wave.windup.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.sky-axe.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.sky-axe.active.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.stomp.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.stomp.active.effect.json"

@@ -3652,11 +3652,15 @@ namespace
 				Client::EFFECT_RESOURCE_FILE_KIND::END;
 			if (Override.strAssetId.empty() ||
 				!Client::CEffectDocumentCodec::Is_SafeResourceAssetId(
-					Override.strAssetId, &eArtistKind) ||
+					Override.strAssetId, &eArtistKind,
+					Target.eExpectedKind ==
+						Client::EFFECT_RESOURCE_FILE_KIND::MODEL) ||
 				eArtistKind != Target.eExpectedKind ||
 				(!Override.strCompilerAssetId.empty() &&
 					(!Client::CEffectDocumentCodec::Is_SafeResourceAssetId(
-						Override.strCompilerAssetId, &eCompilerKind) ||
+						Override.strCompilerAssetId, &eCompilerKind,
+						Target.eExpectedKind ==
+							Client::EFFECT_RESOURCE_FILE_KIND::MODEL) ||
 						eCompilerKind != Target.eExpectedKind)))
 			{
 				strOutError =
@@ -5116,10 +5120,14 @@ bool_t Client::CEffectDocumentCodec::Is_ResourceSlotAllowed(
 
 bool_t Client::CEffectDocumentCodec::Is_SafeResourceAssetId(
 	const std::string& strAssetId,
-	EFFECT_RESOURCE_FILE_KIND* pOutKind)
+	EFFECT_RESOURCE_FILE_KIND* pOutKind,
+	const bool_t bAllowCharacterModel)
 {
+	const bool_t bEffectResource = 0u == strAssetId.rfind("Effect/", 0u);
+	const bool_t bCharacterResource = bAllowCharacterModel &&
+		0u == strAssetId.rfind("Character/", 0u);
 	if (strAssetId.empty() || strAssetId.size() > MAX_RESOURCE_ID_BYTES ||
-		0u != strAssetId.rfind("Effect/", 0u) ||
+		(!bEffectResource && !bCharacterResource) ||
 		std::string::npos != strAssetId.find('\\') ||
 		std::string::npos != strAssetId.find(':'))
 	{
@@ -5152,6 +5160,8 @@ bool_t Client::CEffectDocumentCodec::Is_SafeResourceAssetId(
 	else if (Extension == ".dds")
 		eKind = EFFECT_RESOURCE_FILE_KIND::TEXTURE;
 	else
+		return false;
+	if (bCharacterResource && EFFECT_RESOURCE_FILE_KIND::MODEL != eKind)
 		return false;
 
 	const std::filesystem::path Resolved =
@@ -5583,7 +5593,8 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			if (!Is_ResourceSlotAllowed(Element.eKind, eRuntimeSlot) ||
 				eExpectedKind == EFFECT_RESOURCE_FILE_KIND::END ||
 				!Slots.insert(Binding.strSlotId).second ||
-				!Is_SafeResourceAssetId(Binding.strAssetId, &eActualKind) ||
+				!Is_SafeResourceAssetId(
+					Binding.strAssetId, &eActualKind, bMeshShape) ||
 				eActualKind != eExpectedKind)
 			{
 				strOutError = "Effect resource slot, path, file, or duplicate is invalid.";
@@ -7058,7 +7069,8 @@ bool_t Client::CEffectDocumentCodec::Set_AuthoringResourceOverride(
 	}
 	EFFECT_RESOURCE_FILE_KIND eArtistKind = EFFECT_RESOURCE_FILE_KIND::END;
 	if (strArtistAssetId.empty() ||
-		!Is_SafeResourceAssetId(strArtistAssetId, &eArtistKind) ||
+		!Is_SafeResourceAssetId(strArtistAssetId, &eArtistKind,
+			Target.eExpectedKind == EFFECT_RESOURCE_FILE_KIND::MODEL) ||
 		eArtistKind != Target.eExpectedKind)
 	{
 		strOutError =
@@ -7107,7 +7119,8 @@ bool_t Client::CEffectDocumentCodec::Set_AuthoringResourceOverride(
 	if (!strCompilerAssetId.empty())
 	{
 		EFFECT_RESOURCE_FILE_KIND eCompilerKind = EFFECT_RESOURCE_FILE_KIND::END;
-		if (!Is_SafeResourceAssetId(strCompilerAssetId, &eCompilerKind) ||
+		if (!Is_SafeResourceAssetId(strCompilerAssetId, &eCompilerKind,
+				Target.eExpectedKind == EFFECT_RESOURCE_FILE_KIND::MODEL) ||
 			eCompilerKind != Target.eExpectedKind)
 		{
 			strOutError =
@@ -7181,7 +7194,8 @@ bool_t Client::CEffectDocumentCodec::Reset_AuthoringResourceOverride(
 	{
 		EFFECT_RESOURCE_FILE_KIND eCompilerKind = EFFECT_RESOURCE_FILE_KIND::END;
 		if (!Is_SafeResourceAssetId(
-				Existing->strCompilerAssetId, &eCompilerKind) ||
+				Existing->strCompilerAssetId, &eCompilerKind,
+				Target.eExpectedKind == EFFECT_RESOURCE_FILE_KIND::MODEL) ||
 			eCompilerKind != Target.eExpectedKind)
 		{
 			strOutError =
@@ -7631,7 +7645,8 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementReimportStage(
 			EFFECT_RESOURCE_FILE_KIND eActualKind =
 				EFFECT_RESOURCE_FILE_KIND::END;
 			if (!CEffectDocumentCodec::Is_SafeResourceAssetId(
-					Binding.strAssetId, &eActualKind) ||
+					Binding.strAssetId, &eActualKind,
+					eExpectedKind == EFFECT_RESOURCE_FILE_KIND::MODEL) ||
 				eActualKind != eExpectedKind)
 			{
 				return false;
@@ -7750,7 +7765,8 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementReimportStage(
 				EFFECT_RESOURCE_FILE_KIND::END;
 			if (Override.strAssetId.empty() ||
 				!Is_SafeResourceAssetId(
-					Override.strAssetId, &eArtistKind) ||
+					Override.strAssetId, &eArtistKind,
+					Target.eExpectedKind == EFFECT_RESOURCE_FILE_KIND::MODEL) ||
 				eArtistKind != Target.eExpectedKind)
 			{
 				strOutError =
@@ -7765,7 +7781,8 @@ bool_t Client::CEffectDocumentCodec::Build_GenericAuthoredElementReimportStage(
 				EFFECT_RESOURCE_FILE_KIND eCompilerKind =
 					EFFECT_RESOURCE_FILE_KIND::END;
 				if (!Is_SafeResourceAssetId(
-						strCompilerAssetId, &eCompilerKind) ||
+						strCompilerAssetId, &eCompilerKind,
+						Target.eExpectedKind == EFFECT_RESOURCE_FILE_KIND::MODEL) ||
 					eCompilerKind != Target.eExpectedKind)
 				{
 					strOutError =
@@ -9997,7 +10014,7 @@ namespace
 			if (Emitter.strSizeUnitPolicy != "DIMENSIONLESS_AXIS_REORDER_ONLY" ||
 				ModelBinding == InOutElement.ResourceBindings.end() ||
 				!CEffectDocumentCodec::Is_SafeResourceAssetId(
-					ModelBinding->strAssetId, &FileKind) ||
+					ModelBinding->strAssetId, &FileKind, true) ||
 				FileKind != EFFECT_RESOURCE_FILE_KIND::MODEL ||
 				(Geometry.bEnabled &&
 					(Geometry.strParticleScaleSemantics !=

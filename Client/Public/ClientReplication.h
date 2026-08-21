@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "ClientReplicationEvent.h"
+#include "CombatObjectProjectionRuntime.h"
 #include "NetObjectRegistry.h"
 #include "WorldDestructionProjectionDocument.h"
 #include "WorldDestructionProjectionRuntime.h"
@@ -71,6 +72,7 @@ namespace Client
 		std::uint32_t iPatternSequence = 0u;
 		std::uint32_t iPatternStageIndex = 0u;
 		std::uint32_t iActionStartTick = 0u;
+		LostArk::Shared::BOSS_COMBAT_SNAPSHOT BossCombat;
 		float3_t vPosition = {};
 		f32_t fYawDegrees = 0.f;
 	};
@@ -181,6 +183,10 @@ namespace Client
 			const LostArk::Shared::S2C_WORLD_ENTITY_SPAWNED& spawned);
 		bool Apply_WorldEntityDespawn(
 			const LostArk::Shared::S2C_WORLD_ENTITY_DESPAWNED& despawned);
+		bool Apply_CombatObjectSpawn(
+			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned);
+		bool Apply_CombatObjectDespawn(
+			const LostArk::Shared::S2C_COMBAT_OBJECT_DESPAWNED& despawned);
 		//snapshot??netentityid瑜??ㅼ젣 client character濡??댁꽍?섎뒗 ?⑥닔
 		bool Apply_WorldSnapshot(
 			const LostArk::Shared::S2C_WORLD_SNAPSHOT& snapshot);
@@ -206,6 +212,37 @@ namespace Client
 		void Clear_DeferredLocalCharacterClassReplacement();
 
 		void Reset_World();
+		bool Spawn_CombatObjectPresentation(
+			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned,
+			uint64_t& outHandle,
+			std::string& outStatus);
+		bool Update_CombatObjectPresentation(
+			uint64_t handle,
+			const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot);
+		void Stop_CombatObjectPresentation(uint64_t handle);
+
+		struct COMBAT_OBJECT_PRESENTATION_SINK final
+		{
+			CClientReplication& Owner;
+			bool Spawn(
+				const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& message,
+				uint64_t& outHandle,
+				std::string& outStatus)
+			{
+				return Owner.Spawn_CombatObjectPresentation(
+					message, outHandle, outStatus);
+			}
+			bool Update(
+				uint64_t handle,
+				const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot)
+			{
+				return Owner.Update_CombatObjectPresentation(handle, snapshot);
+			}
+			void Stop(uint64_t handle)
+			{
+				Owner.Stop_CombatObjectPresentation(handle);
+			}
+		};
 
 	private:
 		//?대뼡 layer怨?prototype???앹꽦?섏뼱???섎뒗吏
@@ -231,6 +268,7 @@ namespace Client
 		std::uint64_t m_iNextDeferredLocalCharacterClassReplacementGeneration = 1u;
 		std::string m_strPendingPresentationFailure;
 		VALTAN_PRESENTATION_STATE m_ValtanPresentationState;
+		CCombatObjectProjectionRuntime m_CombatObjectProjectionRuntime;
 		CWorldDestructionProjectionRuntime m_WorldDestructionProjectionRuntime;
 		std::deque<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>
 			m_WorldDestructionLiveEvents;

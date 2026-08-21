@@ -880,6 +880,51 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
         [void]$effectIds.Add($effectAssetId)
     }
 
+    $bossCatalogPath = [IO.Path]::GetFullPath((Join-Path $RootPath `
+        'Actors\BossCatalog.json'))
+    $bossCatalog = Read-JsonDocument $bossCatalogPath
+    Assert-ExactPropertyOrder $bossCatalog @(
+        'schema','formatVersion','bosses') 'BossCatalog root'
+    if ((Get-RequiredProperty $bossCatalog 'schema' String) -cne
+            'lostark.boss-catalog' -or
+        [uint32](Get-RequiredProperty $bossCatalog 'formatVersion' Number) -ne
+            3) {
+        throw 'BossCatalog must be formatVersion 3 for combat-object Effect ownership.'
+    }
+    $valtanBossRows = @(@($bossCatalog.bosses) | Where-Object {
+        [string]$_.archetypeId -ceq 'BOSS_VALTAN' })
+    if ($valtanBossRows.Count -ne 1) {
+        throw 'BossCatalog must contain exactly one BOSS_VALTAN row.'
+    }
+    $combatObjectVisuals = @((Get-RequiredProperty `
+        $valtanBossRows[0] 'combatObjectVisuals' Array))
+    if ($combatObjectVisuals.Count -ne 2) {
+        throw 'BOSS_VALTAN must declare exactly two combat-object Effect visuals.'
+    }
+    $combatObjectArchetypeIds =
+        [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $clientVisualIds =
+        [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($visual in $combatObjectVisuals) {
+        Assert-ExactPropertyOrder $visual @(
+            'combatObjectArchetypeId','clientVisualId','effectAssetId') `
+            'BOSS_VALTAN combat-object visual'
+        $combatObjectArchetypeId = Get-RequiredProperty `
+            $visual 'combatObjectArchetypeId' String
+        $clientVisualId = Get-RequiredProperty $visual 'clientVisualId' String
+        $effectAssetId = Get-RequiredProperty $visual 'effectAssetId' String
+        Assert-StableId $combatObjectArchetypeId `
+            'BOSS_VALTAN combatObjectArchetypeId'
+        Assert-StableId $clientVisualId 'BOSS_VALTAN clientVisualId'
+        Assert-StableId $effectAssetId 'BOSS_VALTAN combat-object EffectAssetId'
+        if (-not $combatObjectArchetypeIds.Add($combatObjectArchetypeId) -or
+            -not $clientVisualIds.Add($clientVisualId) -or
+            -not $valtanEffectIds.Add($effectAssetId)) {
+            throw "BOSS_VALTAN combat-object Effect ownership is duplicated: $effectAssetId"
+        }
+        [void]$effectIds.Add($effectAssetId)
+    }
+
     $authoredValtanEffectIds = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
     $authoredRoot = Join-Path $RootPath 'Effects\Authored'
@@ -894,11 +939,11 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
             throw "Duplicate authored Valtan EffectAssetId: $assetId"
         }
     }
-    # A Valtan document on disk without a cue is not automatically a defect:
+    # A Valtan document on disk without a presentation owner is not automatically a defect:
     # the Effect Tool's Create Effect writes an authoring-only draft for a
     # silent stage, and those are contracted to stay out of the runtime
-    # catalog. What must never happen is a cue with no document, or a
-    # catalogued document that no cue plays.
+    # catalog. What must never happen is a cue/combat-object owner with no
+    # document, or a catalogued document that no Product owner plays.
     $catalogValtanEffectIds = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
     $sourceCatalogPath = Join-Path $RootPath 'Effects\EffectCatalog.json'
@@ -911,11 +956,12 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
     }
     $missingDocuments = @($valtanEffectIds | Where-Object {
         -not $authoredValtanEffectIds.Contains($_) } | Sort-Object)
-    $cataloguedWithoutCue = @($catalogValtanEffectIds | Where-Object {
+    $cataloguedWithoutOwner = @($catalogValtanEffectIds | Where-Object {
         -not $valtanEffectIds.Contains($_) } | Sort-Object)
-    if ($missingDocuments.Count -gt 0 -or $cataloguedWithoutCue.Count -gt 0) {
-        throw ('Valtan Product cue/authored document set mismatch. ' +
-            "cataloguedWithoutCue=[$($cataloguedWithoutCue -join ', ')] " +
+    if ($missingDocuments.Count -gt 0 -or
+        $cataloguedWithoutOwner.Count -gt 0) {
+        throw ('Valtan Product presentation owner/authored document set mismatch. ' +
+            "cataloguedWithoutOwner=[$($cataloguedWithoutOwner -join ', ')] " +
             "withoutDocument=[$($missingDocuments -join ', ')]")
     }
     return ,$effectIds
@@ -1505,6 +1551,16 @@ function Resolve-SafeModelCueResource([string]$AssetId) {
         throw "Missing Effect Model Cue resource: $AssetId"
     }
     return $candidate
+}
+
+function Resolve-SafeElementResource(
+    [string]$AssetId,
+    [bool]$AllowCharacterModel) {
+    if ($AllowCharacterModel -and
+        $AssetId.StartsWith('Character/', [StringComparison]::Ordinal)) {
+        return Resolve-SafeModelCueResource $AssetId
+    }
+    return Resolve-SafeResource $AssetId
 }
 
 function Copy-JsonValue([object]$Value) {
@@ -2422,7 +2478,8 @@ try {
 					if ($slot -eq 'meshModel' -and $kind -notin @('mesh','particle')) {
 						throw "meshModel is only valid on a mesh or particle Element."
                     }
-                    $resourceFile = Resolve-SafeResource $assetId
+                    $resourceFile = Resolve-SafeElementResource `
+                        $assetId ($slot -ceq 'meshModel')
                     $extension = [IO.Path]::GetExtension($resourceFile).ToLowerInvariant()
                     if (($slot -eq 'meshModel' -and $extension -ne '.wmodel') -or
                         ($slot -ne 'meshModel' -and $extension -ne '.dds')) {
@@ -2627,8 +2684,11 @@ try {
                             $artistAssetId -ceq $compilerAssetId) {
                             throw "Authoring resource override is stale or a no-op in ${effectAssetId}: $elementId/$slotId"
                         }
-                        $artistFile = Resolve-SafeResource $artistAssetId
-                        $compilerFile = Resolve-SafeResource $compilerAssetId
+                        $allowCharacterModel = $slotId -ceq 'meshModel'
+                        $artistFile = Resolve-SafeElementResource `
+                            $artistAssetId $allowCharacterModel
+                        $compilerFile = Resolve-SafeElementResource `
+                            $compilerAssetId $allowCharacterModel
                         if ([IO.Path]::GetExtension($artistFile).ToLowerInvariant() `
                                 -cne $expectedExtension -or
                             [IO.Path]::GetExtension($compilerFile).ToLowerInvariant() `

@@ -79,6 +79,7 @@
     <ClInclude Include="..\Public\CharacterSpec.h" />
     <ClInclude Include="..\Public\ClientReplication.h" />
     <ClInclude Include="..\Public\ClientReplicationEvent.h" />
+	<ClInclude Include="..\Public\CombatObjectProjectionRuntime.h" />
     <ClInclude Include="..\Public\CombatHUDViewModel.h" />
     <ClInclude Include="..\Public\HUDRuntimeView.h" />
     <ClInclude Include="..\Public\InventoryView.h" />
@@ -204,6 +205,7 @@
 	<ClCompile Include="..\Private\MonsterPresentationAssetService.cpp" />
     <ClCompile Include="..\Private\NetworkWorldEntityCommandSink.cpp" />
     <ClCompile Include="..\Private\ClientReplication.cpp" />
+	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp" />
     <ClCompile Include="..\Private\CombatHUDViewModel.cpp" />
     <ClCompile Include="..\Private\HUDRuntimeView.cpp" />
     <ClCompile Include="..\Private\InventoryView.cpp" />
@@ -354,9 +356,11 @@
     <None Include="..\..\Data\Balance\PlayerProfiles.json" />
     <None Include="..\..\Data\Balance\MonsterProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerSkills.json" />
+    <None Include="..\..\Data\Balance\ValtanBossParts.json" />
     <None Include="..\..\Data\Items\ItemCatalog.json" />
     <None Include="..\..\Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json" />
+	<None Include="..\..\Data\Encounters\Valtan\ValtanCombatObjects.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanDebugAudition.json" />
 	<None Include="..\..\Data\Encounters\Valtan\ValtanCinematicCamera.json" />
     <None Include="..\..\Data\Encounters\Valtan\ValtanWallContactActions.json" />
@@ -521,11 +525,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>..\Bin\Debug\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.200.103</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=127.0.0.1</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>..\Bin\Release\</OutDir>
-    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=192.168.200.103</LocalDebuggerEnvironment>
+    <LocalDebuggerEnvironment>LOSTARK_SERVER_HOST=127.0.0.1</LocalDebuggerEnvironment>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -1005,6 +1009,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.windup.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sky-axe.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.active.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.recovery.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.windup.effect.json" />

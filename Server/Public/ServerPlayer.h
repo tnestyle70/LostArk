@@ -28,44 +28,6 @@ namespace LostArk::Server
 		bool isActive = false;
 	};
 
-	/* One projectile-hit target the object has already touched: a contact hit
-	fires iRepeatCount times per target, iRepeatMs apart, and never again. */
-	struct SERVER_PROJECTILE_CONTACT_MARK
-	{
-		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
-			LostArk::Shared::INVALID_NET_ENTITY_ID;
-		std::uint8_t iHitIndex = 0;
-		std::uint8_t iAppliedCount = 0;
-		float fNextSeconds = 0.f;
-	};
-
-	/* A live object a skill spawned (missile, fixed area...). It outlives the
-	action that spawned it and is advanced by CPlayerSkillSystem::Update every
-	tick; the definition is looked up by skill/stage/index in the catalog so
-	nothing here points into it. Damage is a share of the skill's rate: the
-	object's hits continue the caster's sub-hit numbering. */
-	struct SERVER_SKILL_PROJECTILE
-	{
-		LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
-		std::uint8_t iStageIndex = 0;
-		std::uint8_t iProjectileIndex = 0;
-		float fPositionX = 0.f;
-		float fPositionY = 0.f;
-		float fPositionZ = 0.f;
-		float fDirectionX = 0.f;
-		float fDirectionZ = 1.f;
-		float fSpeed = 0.f;
-		// Metres still to travel; negative means unlimited (life-bound only).
-		float fRemainingDistance = -1.f;
-		float fRemainingSeconds = 0.f;
-		float fElapsedSeconds = 0.f;
-		std::uint64_t iTotalDamage = 0;
-		std::uint32_t iSubHitTotal = 1;
-		std::uint32_t iSubHitBase = 0;
-		std::uint64_t iAppliedTimedMask = 0;
-		std::vector<SERVER_PROJECTILE_CONTACT_MARK> ContactMarks;
-	};
-
 	/* Get-up grace window after a knockdown ends: 2000 ms at the fixed 30 Hz
 	tick. Long enough to cover the stand-up roll and one step of breathing
 	room, short enough that staying in a boss pattern still punishes. */
@@ -161,7 +123,6 @@ namespace LostArk::Server
 		std::uint64_t iAppliedHitMask = 0;
 		// Bit per projectile definition of the running stage already spawned.
 		std::uint16_t iSpawnedProjectileMask = 0;
-		std::vector<SERVER_SKILL_PROJECTILE> Projectiles;
 		// 1-based while a combo action runs, 0 otherwise.
 		std::uint8_t iComboStage = 0;
 		// Set by a press inside the open window, consumed when the stage ends.

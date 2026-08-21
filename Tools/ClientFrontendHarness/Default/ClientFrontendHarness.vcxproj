@@ -126,8 +126,14 @@
 	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
 	  <Link>Client\CharacterSelectionState.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\CombatHUDViewModel.cpp">
+	  <Link>Client\CombatHUDViewModel.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\ActorCatalog.cpp">
 	  <Link>Client\ActorCatalog.cpp</Link>
+	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\CombatObjectProjectionRuntime.cpp">
+	  <Link>Client\CombatObjectProjectionRuntime.cpp</Link>
 	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\CharacterCatalog.cpp">
 	  <Link>Client\CharacterCatalog.cpp</Link>

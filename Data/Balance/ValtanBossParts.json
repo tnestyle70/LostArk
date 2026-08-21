@@ -1,0 +1,21 @@
+{
+  "schema": "lostark.valtan-boss-parts",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "parts": [
+    {
+      "partId": "boss.part.valtan.shoulder-armor",
+      "stateMask": 1,
+      "maximumDurability": 1000,
+      "damageReductionPercent": 15,
+      "partDamageCondition": "GROGGY_ONLY"
+    },
+    {
+      "partId": "boss.part.valtan.arm-armor",
+      "stateMask": 2,
+      "maximumDurability": 1000,
+      "damageReductionPercent": 15,
+      "partDamageCondition": "GROGGY_ONLY"
+    }
+  ]
+}

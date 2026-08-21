@@ -32,6 +32,11 @@ namespace Client
 		/* Percent of the caster's attack power, as authored: display damage is
 		attackPower x rate / 100 and only the server resolves the real number. */
 		std::uint32_t iDamageRatePercent = 0;
+		/* Read-only combat traits. The Client may present them, but only the
+		Server uses them to resolve boss stagger, part damage, or counters. */
+		std::uint32_t iStaggerDamage = 0;
+		std::uint32_t iPartDamage = 0;
+		std::uint32_t iCounterPower = 0;
 		/* Official CostMp so the HUD can show a skill the server would refuse
 		to pay for. The server keeps its own copy from the bootstrap. */
 		std::uint32_t iResourceCost = 0;

@@ -96,6 +96,9 @@ CLevel_ValtanArena::CLevel_ValtanArena(
 
 CLevel_ValtanArena::~CLevel_ValtanArena()
 {
+#ifdef _DEBUG
+	End_ReferenceCamera(false);
+#endif
 	End_CinematicCamera();
 	m_Replication.Reset();
 	m_WorldDestructionDebrisPresentationRuntime.Clear();
@@ -264,6 +267,9 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 		CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 			LEVEL::VALTAN_ARENA))
 	{
+#ifdef _DEBUG
+		End_ReferenceCamera(false);
+#endif
 		End_CinematicCamera();
 		return;
 	}
@@ -297,6 +303,9 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 				E_FAIL,
 				"[Level_ValtanArena][WorldDestructionSync] " +
 					presentationStatus);
+#ifdef _DEBUG
+			End_ReferenceCamera(false);
+#endif
 			End_CinematicCamera();
 			CNetworkManager::Get().Close_ServerConnection();
 			if (!CLevelTransitionService::Request_Load(
@@ -311,6 +320,9 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 	}
 	if (m_Replication.Has_PendingConnectionLoss())
 	{
+#ifdef _DEBUG
+		End_ReferenceCamera(false);
+#endif
 		End_CinematicCamera();
 		if (CLevelTransitionService::Request_Load(
 			LEVEL::LOBBY,
@@ -328,6 +340,9 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 			E_FAIL,
 			"[Level_ValtanArena][EncounterPropSync] " +
 				m_DeployRuntime.Get_Status());
+#ifdef _DEBUG
+		End_ReferenceCamera(false);
+#endif
 		End_CinematicCamera();
 		CNetworkManager::Get().Close_ServerConnection();
 		(void)CLevelTransitionService::Request_Load(
@@ -349,13 +364,21 @@ void CLevel_ValtanArena::Update(f32_t fTimeDelta)
 #endif
 	Update_WorldDestructionPresentation(fTimeDelta);
 	Bind_CameraToLocalCharacter();
+#ifdef _DEBUG
+	Update_ReferenceCamera();
+#endif
 	Update_CinematicCamera(fTimeDelta);
 	const shared_ptr<CCharacter> localCharacter =
 		m_Replication.Get_LocalCharacter();
 	m_PlayerController.Set_LocalCharacter(localCharacter);
-	m_PlayerController.Update(
+	bool_t cameraAcceptsGameplay =
 		nullptr != m_pCamera && m_pCamera->Is_FollowEnabled() &&
-		!m_bCinematicCameraApplied);
+		!m_bCinematicCameraApplied;
+#ifdef _DEBUG
+	cameraAcceptsGameplay = cameraAcceptsGameplay &&
+		!m_bReferenceCameraApplied;
+#endif
+	m_PlayerController.Update(cameraAcceptsGameplay);
 }
 
 #ifdef _DEBUG
@@ -363,6 +386,31 @@ namespace
 {
 	constexpr uint64_t AUDITION_RETRY_INTERVAL_MILLISECONDS = 750u;
 	constexpr uint32_t AUDITION_MAX_RETRY_COUNT = 3u;
+	/* This owner is outside the uint32 Server entity range, so a Debug reference
+	view can never impersonate the owner of an authoritative cinematic cue. */
+	constexpr uint64_t VALTAN_REFERENCE_CAMERA_OWNER_ID =
+		0x56414C54414E5246ull;
+	constexpr std::string_view VALTAN_REFERENCE_PHASE_SOURCE_LEVEL =
+		"VALTAN_PHASE_SPACEHOLE";
+	constexpr size_t VALTAN_REFERENCE_PHASE_PLACEMENT_COUNT = 3u;
+
+	struct VALTAN_REFERENCE_CAMERA_POSE final
+	{
+		float3_t vEye;
+		float3_t vLookAt;
+		f32_t fFovYDegrees = 60.f;
+	};
+
+	/* Stable comparison poses for the two supplied references. The top-down
+	shot keeps a small Z offset so LookAt never becomes parallel to world-up. */
+	const VALTAN_REFERENCE_CAMERA_POSE VALTAN_REFERENCE_TOP_DOWN = {
+		float3_t(156.03f, 132.f, -111.f),
+		float3_t(156.03f, 23.f, -122.06f),
+		48.f };
+	const VALTAN_REFERENCE_CAMERA_POSE VALTAN_REFERENCE_EXTERIOR = {
+		float3_t(156.03f, 96.f, -18.f),
+		float3_t(156.03f, 23.f, -122.06f),
+		54.f };
 
 	uint64_t Get_AuditionMonotonicMilliseconds()
 	{
@@ -431,6 +479,155 @@ namespace
 		default:
 			return "Unknown audition verdict.";
 		}
+	}
+}
+
+bool_t CLevel_ValtanArena::Begin_ReferenceCamera(
+	const REFERENCE_CAMERA_VIEW view)
+{
+	if (nullptr == m_pCamera || REFERENCE_CAMERA_VIEW::NONE == view ||
+		m_bCinematicCameraApplied ||
+		m_ValtanCinematicCameraController.Is_Active())
+	{
+		return false;
+	}
+
+	const VALTAN_REFERENCE_CAMERA_POSE* pose = nullptr;
+	switch (view)
+	{
+	case REFERENCE_CAMERA_VIEW::TOP_DOWN:
+		pose = &VALTAN_REFERENCE_TOP_DOWN;
+		break;
+	case REFERENCE_CAMERA_VIEW::EXTERIOR:
+		pose = &VALTAN_REFERENCE_EXTERIOR;
+		break;
+	default:
+		return false;
+	}
+	const bool_t showSpaceHole =
+		REFERENCE_CAMERA_VIEW::TOP_DOWN == view;
+	if (!Set_ReferencePhaseProxyVisible(showSpaceHole))
+		return false;
+
+	if (!m_bReferenceCameraApplied)
+	{
+		m_bReferenceCameraRestoreFollowRequested =
+			m_pCamera->Is_FollowRequested();
+		m_pReferenceCameraRestoreTarget = m_pCamera->Get_FollowTarget();
+		/* Keep the target bound so the existing F6 shortcut remains meaningful,
+		but suspend follow while the fixed presentation pose is active. */
+		m_pCamera->Set_FollowEnabled(false);
+		if (!m_pCamera->Begin_PresentationOverride(
+			VALTAN_REFERENCE_CAMERA_OWNER_ID))
+		{
+			m_pCamera->Set_FollowTarget(
+				m_pReferenceCameraRestoreTarget.lock());
+			m_pCamera->Set_FollowEnabled(
+				m_bReferenceCameraRestoreFollowRequested);
+			m_pReferenceCameraRestoreTarget.reset();
+			m_bReferenceCameraRestoreFollowRequested = false;
+			(void)Set_ReferencePhaseProxyVisible(false);
+			return false;
+		}
+		m_bReferenceCameraApplied = true;
+	}
+
+	if (!m_pCamera->Apply_PresentationPose(
+		VALTAN_REFERENCE_CAMERA_OWNER_ID,
+		pose->vEye, pose->vLookAt, pose->fFovYDegrees))
+	{
+		End_ReferenceCamera(false);
+		return false;
+	}
+	m_eReferenceCameraView = view;
+	return true;
+}
+
+bool_t CLevel_ValtanArena::Set_ReferencePhaseProxyVisible(
+	const bool_t visible)
+{
+	const std::string sourceLevel(VALTAN_REFERENCE_PHASE_SOURCE_LEVEL);
+	const bool_t applied = visible ?
+		m_MapRuntime.Set_DebugSourceLevelVisible(
+			sourceLevel, true, VALTAN_REFERENCE_PHASE_PLACEMENT_COUNT) :
+		m_MapRuntime.Restore_DebugSourceLevelVisibility(
+			sourceLevel, VALTAN_REFERENCE_PHASE_PLACEMENT_COUNT);
+	if (!applied)
+	{
+		OutputDebugStringA(
+			"[Level_ValtanArena][ReferenceCamera] SpaceHole proxy visibility failed.\n");
+		return false;
+	}
+	m_bReferenceSpaceHoleVisible = visible;
+	return true;
+}
+
+void CLevel_ValtanArena::Update_ReferenceCamera()
+{
+	if (!m_bReferenceCameraApplied)
+	{
+		if (m_bReferenceSpaceHoleVisible)
+			(void)Set_ReferencePhaseProxyVisible(false);
+		return;
+	}
+	if (nullptr == m_pCamera)
+	{
+		if (m_bReferenceSpaceHoleVisible)
+			(void)Set_ReferencePhaseProxyVisible(false);
+		m_pReferenceCameraRestoreTarget.reset();
+		m_bReferenceCameraRestoreFollowRequested = false;
+		m_bReferenceCameraApplied = false;
+		m_eReferenceCameraView = REFERENCE_CAMERA_VIEW::NONE;
+		return;
+	}
+
+	/* F6 remains the one follow/free shortcut. While a reference pose owns the
+	camera, the same press dismisses it and applies the toggle the user asked for. */
+	if (GetForegroundWindow() == g_hWnd &&
+		!ImGui::GetIO().WantTextInput &&
+		CGameInstance::Get().Get_DIKeyPressed(DIK_F6))
+	{
+		End_ReferenceCamera(true);
+	}
+}
+
+void CLevel_ValtanArena::End_ReferenceCamera(
+	const bool_t toggleFollowRequested)
+{
+	if (m_bReferenceSpaceHoleVisible)
+		(void)Set_ReferencePhaseProxyVisible(false);
+	if (!m_bReferenceCameraApplied)
+		return;
+
+	const bool_t restoreFollowRequested =
+		toggleFollowRequested ?
+			!m_bReferenceCameraRestoreFollowRequested :
+			m_bReferenceCameraRestoreFollowRequested;
+	const shared_ptr<CTransform> restoreTarget =
+		m_pReferenceCameraRestoreTarget.lock();
+	if (nullptr != m_pCamera)
+	{
+		(void)m_pCamera->End_PresentationOverride(
+			VALTAN_REFERENCE_CAMERA_OWNER_ID);
+		m_pCamera->Set_FollowTarget(restoreTarget);
+		m_pCamera->Set_FollowEnabled(restoreFollowRequested);
+	}
+	m_pReferenceCameraRestoreTarget.reset();
+	m_bReferenceCameraRestoreFollowRequested = false;
+	m_bReferenceCameraApplied = false;
+	m_eReferenceCameraView = REFERENCE_CAMERA_VIEW::NONE;
+}
+
+const char_t* CLevel_ValtanArena::Get_ReferenceCameraViewName() const
+{
+	switch (m_eReferenceCameraView)
+	{
+	case REFERENCE_CAMERA_VIEW::TOP_DOWN:
+		return "Top Down";
+	case REFERENCE_CAMERA_VIEW::EXTERIOR:
+		return "Exterior";
+	default:
+		return "none";
 	}
 }
 
@@ -806,6 +1003,32 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		"109 outer ring is pattern-only: attack and charge must leave all 30 intact.");
 	ImGui::TextDisabled(
 		"No jump clip exists in this model, so the Server owns the 109 leap as an authored arc.");
+
+	ImGui::SeparatorText("Reference Views (Debug presentation only)");
+	const bool_t serverCameraOwnsPresentation =
+		m_bCinematicCameraApplied ||
+		m_ValtanCinematicCameraController.Is_Active();
+	ImGui::BeginDisabled(nullptr == m_pCamera ||
+		serverCameraOwnsPresentation);
+	if (ImGui::Button("Reference Top Down", ImVec2(180.f, 0.f)))
+		(void)Begin_ReferenceCamera(REFERENCE_CAMERA_VIEW::TOP_DOWN);
+	ImGui::SameLine();
+	if (ImGui::Button("Reference Exterior", ImVec2(180.f, 0.f)))
+		(void)Begin_ReferenceCamera(REFERENCE_CAMERA_VIEW::EXTERIOR);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(!m_bReferenceCameraApplied);
+	if (ImGui::Button("Restore Camera"))
+		End_ReferenceCamera(false);
+	ImGui::EndDisabled();
+	ImGui::Text("Reference view: %s", Get_ReferenceCameraViewName());
+	ImGui::SameLine();
+	ImGui::TextDisabled("SpaceHole proxy: %s",
+		m_bReferenceSpaceHoleVisible ? "visible" : "authored baseline");
+	ImGui::TextDisabled(
+		"F6 exits this view and toggles follow/free; a Server cinematic always takes priority.");
+	if (serverCameraOwnsPresentation)
+		ImGui::TextDisabled("Reference views wait until the Server cinematic ends.");
 
 	ImGui::SeparatorText("Live authoritative state");
 	const VALTAN_PRESENTATION_STATE& boss =
@@ -1409,6 +1632,12 @@ void CLevel_ValtanArena::Update_CinematicCamera(const f32_t fTimeDelta)
 		return;
 	}
 
+#ifdef _DEBUG
+	/* A Server-authored cue always preempts the local comparison aid before it
+	tries to acquire the single camera presentation owner. */
+	End_ReferenceCamera(false);
+#endif
+
 	if (!m_bCinematicCameraApplied)
 	{
 		m_bCinematicRestoreFollowRequested = m_pCamera->Is_FollowRequested();
@@ -1538,6 +1767,15 @@ bool_t CLevel_ValtanArena::Bind_CameraToLocalCharacter()
 			m_pCinematicRestoreTarget.reset();
 			return true;
 		}
+#ifdef _DEBUG
+		if (m_bReferenceCameraApplied)
+		{
+			m_pReferenceCameraRestoreTarget.reset();
+			m_pCamera->Set_FollowTarget(nullptr);
+			m_pCamera->Set_FollowEnabled(false);
+			return true;
+		}
+#endif
 		m_pCamera->Set_FollowTarget(nullptr);
 		m_pCamera->Set_FollowEnabled(false);
 		return true;
@@ -1556,6 +1794,15 @@ bool_t CLevel_ValtanArena::Bind_CameraToLocalCharacter()
 		m_pCinematicRestoreTarget = transform;
 		return true;
 	}
+#ifdef _DEBUG
+	if (m_bReferenceCameraApplied)
+	{
+		m_pReferenceCameraRestoreTarget = transform;
+		m_pCamera->Set_FollowTarget(transform);
+		m_pCamera->Set_FollowEnabled(false);
+		return true;
+	}
+#endif
 	m_pCamera->Set_PositionOffset(
 		float3_t(0.4f, 7.5f, 4.5f));
 	m_pCamera->Set_FollowTarget(transform);

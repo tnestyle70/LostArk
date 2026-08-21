@@ -34,14 +34,10 @@ namespace LostArk::Server
 			float fixedDeltaSeconds,
 			std::uint32_t serverTick,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const;
-		bool Try_BuildImpactMotion(
+		bool Try_BuildStageMotion(
 			const SERVER_WORLD_ENTITY& boss,
 			float fixedDeltaSeconds,
 			float& outProposedX,
 			float& outProposedZ) const;
-		bool Complete_ImpactStage(
-			SERVER_WORLD_ENTITY& boss,
-			const CGameplayCatalog& catalog,
-			std::uint32_t serverTick) const;
 	};
 }

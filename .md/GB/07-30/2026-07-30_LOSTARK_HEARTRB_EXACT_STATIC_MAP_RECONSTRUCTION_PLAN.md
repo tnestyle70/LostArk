@@ -2378,3 +2378,144 @@ v1 호환은 기존 `BG_RAD_VALTAN_A.mapplacements`를 별도 테스트 복사�
 6. 파괴 전/후 asset과 encounter event를 연결한다.
 
 이 후속 gate가 끝나기 전에는 “발탄 맵 전체 gameplay 복원 완료”라고 기록하지 않는다. 그러나 같은 `areaId -> Catalog -> placement/document -> layer` 계약을 사용하므로 아브렐슈드, 일리아칸, 카멘, 카오스 던전 시작 마을, 대륙·퀘스트 성벽도 exact ImportTable/ExportTable 근거로 반복할 수 있다.
+
+## 7. 2026-08-20 사용자 참조 사진 복구 적용 계획
+
+### 현재 실제 반영 상태와 이번 경계
+
+사용자가 제공한 두 장의 기준 사진은 제품 UI나 영상 자막을 복제하는 지시가 아니라, 발탄
+아레나의 지형·조명·안개층·카메라 구도를 비교하는 시각 참고 자료다. 이번 변경은 기존
+Server 권위 패턴·벽/바닥 파괴·collision/navigation을 바꾸지 않고 다음 네 항목만 닫는다.
+
+1. 메인 authoring placement에서 빠진 원본 `LV_LUT_HEARTRB_ED_LAND01` Landscape component
+   6개를 단일 문서에 다시 병합한다.
+2. 발탄 전용 rendering profile을 사진의 차가운 청회색 저조도 방향으로 1차 보정하고 shadow
+   focus를 실제 아레나 중심으로 옮긴다. 이 수치는 자동 visual PASS가 아니라 사용자 육안 조정의
+   시작값이다.
+3. Debug F1 Valtan audition panel에 사진 1의 탑다운과 사진 2의 외곽 전경을 반복 비교하는
+   presentation-only 카메라를 추가한다. 새 전역 단축키를 만들지 않고 F6와 Server cinematic의
+   기존 소유권을 보존한다.
+4. 탑다운 기준 뷰에서 기존 `VALTAN_PHASE_SPACEHOLE` proxy 3개만 임시 표시하고 종료 시 authored
+   hidden 상태로 원자적으로 복원한다. 이 proxy는 exact texture/position을 쓰지만 원본 UE3
+   ParticleSystem topology는 아니므로 제품 완성 효과로 승격하지 않는다.
+
+원본 SL04의 volume cloud 27개와 탑 fire particle은 source component까지 확인됐지만, 현재
+strict Effect runtime에 `VOLUME_CLOUD` evaluator와 q_firesh 3-layer material closure가 없어 이번
+변경에 근사 quad나 잘못된 material을 넣지 않는다. 이 항목은 아래 후속 Gate로 남긴다.
+
+### 수정 파일과 한 줄 책임
+
+| 구분 | 절대 경로 | 책임 |
+|---|---|---|
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Tools/LevelPlacementExtractor/merge_maptool_landscape.py` | imported와 authored placement ID domain을 현재 v2 계약대로 검증 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Tools/LevelPlacementExtractor/test_merge_maptool_landscape.py` | editor/legacy/overlay 수용과 unknown source 거부 회귀 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapplacements` | exact Landscape 6행을 메인 13,192행 문서에 병합 |
+| 생성 갱신 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/DataFiles/Map/LV_LUT_HEARTRB_ED.mapplacements` | publisher가 만든 동일 13,192행 runtime 문서 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Data/Rendering/Authored/RenderingProfiles.json` | 발탄 전용 냉색/저조도/arena-centered shadow authoring |
+| 생성 갱신 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json` | rendering publisher 출력 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Public/MapPlacementRuntime.h` | Debug sourceLevel visibility transaction 선언 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Private/MapPlacementRuntime.cpp` | 정확히 3개 proxy가 모두 있을 때만 표시하고 실패 시 authored flag rollback |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Public/Level_ValtanArena.h` | Debug reference camera 상태와 복원 API 선언 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Client/Private/Level_ValtanArena.cpp` | 두 기준 pose, F1 버튼, F6/Server cinematic/exit 복원 연결 |
+| 수정 | `C:/Users/USER/source/졸업팀폴/LostArk/Tools/ClientFrontendHarness/Private/ClientFrontendHarness.cpp` | Debug-only, 단일 camera owner, proxy rollback, 금지 hotkey 회귀 |
+| 추가 | `C:/Users/USER/source/졸업팀폴/LostArk/.md/GB/08-20/2026-08-20_VALTAN_REFERENCE_ARENA_VISUAL_RESTORE_RESULT.md` | 실제 검증과 수동 visual 경계 |
+
+### Landscape 병합기 교체 블록
+
+`parse_placements`의 ID domain 분기는 다음 블록을 정본으로 사용한다.
+
+```python
+        if transform_source in ("editor", "legacy", "overlay"):
+            if runtime_id > EDITOR_ID_MASK:
+                raise MapDocumentMergeError(
+                    f"{transform_source} placement runtime ID is outside its domain: "
+                    f"{runtime_id}"
+                )
+        elif transform_source in ("actor", "component"):
+            if runtime_id != imported_id(source_id):
+                raise MapDocumentMergeError(
+                    f"placement runtime ID is not stable for {source_id}: {path}"
+                )
+        else:
+            raise MapDocumentMergeError(
+                f"unsupported placement transform source: {transform_source}: {path}"
+            )
+```
+
+최종 placement 문서에는 아래 exact component 6행이 한 번씩만 존재해야 한다.
+
+```text
+16852290013512576097 "LV_LUT_HEARTRB_ED_LAND01:landscape:export:80" "LV_LUT_HEARTRB_ED_LAND01" "component" "MAP_26DF0325BB7D_LAND01_LC_00080" 79.36 0 -39.68 0 0 0 1 1 1 1 1
+18226031530241844408 "LV_LUT_HEARTRB_ED_LAND01:landscape:export:81" "LV_LUT_HEARTRB_ED_LAND01" "component" "MAP_5EAF3733FE39_LAND01_LC_00081" 0 0 -39.68 0 0 0 1 1 1 1 1
+15390325580332848478 "LV_LUT_HEARTRB_ED_LAND01:landscape:export:82" "LV_LUT_HEARTRB_ED_LAND01" "component" "MAP_BDBA1D3B419E_LAND01_LC_00082" 79.36 0 -79.36 0 0 0 1 1 1 1 1
+17710583595339950795 "LV_LUT_HEARTRB_ED_LAND01:landscape:export:83" "LV_LUT_HEARTRB_ED_LAND01" "component" "MAP_180BA6FE7AFC_LAND01_LC_00083" 119.04 0 -79.36 0 0 0 1 1 1 1 1
+13237793835383194087 "LV_LUT_HEARTRB_ED_LAND01:landscape:export:84" "LV_LUT_HEARTRB_ED_LAND01" "component" "MAP_FBF5FF172CEE_LAND01_LC_00084" 39.68 0 -39.68 0 0 0 1 1 1 1 1
+16705652208466217110 "LV_LUT_HEARTRB_ED_LAND01:landscape:export:85" "LV_LUT_HEARTRB_ED_LAND01" "component" "MAP_A03D2E5EC821_LAND01_LC_00085" 39.68 0 -79.36 0 0 0 1 1 1 1 1
+```
+
+### 발탄 rendering profile 교체 블록
+
+```json
+{
+  "profileId": "scene.valtan.cool-low-key.v1",
+  "exposureMultiplier": 1.55,
+  "bloomIntensityMultiplier": 0.85,
+  "light": {
+    "type": "directional",
+    "direction": [0.35, -1, 0.25, 0],
+    "diffuse": [0.24, 0.28, 0.34, 1],
+    "ambient": [0.16, 0.21, 0.28, 1],
+    "specular": [0.12, 0.15, 0.2, 1]
+  },
+  "shadow": {
+    "enabled": true,
+    "focus": [156, 24, -122],
+    "distance": 220,
+    "orthographicWidth": 260,
+    "orthographicHeight": 260,
+    "near": 0.5,
+    "far": 520,
+    "depthBias": 0.00260000001,
+    "normalBias": 0.0340000018,
+    "strength": 0.86
+  }
+}
+```
+
+### Debug reference camera와 proxy visibility 계약
+
+`CLevel_ValtanArena`는 Debug에서만 owner `0x56414C54414E5246`을 사용한다. 탑다운 pose는
+`eye=(156.03,132,-111)`, `lookAt=(156.03,23,-122.06)`, FOV 48도이고 외곽 pose는
+`eye=(156.03,96,-18)`, 같은 lookAt, FOV 54도다. `Begin_ReferenceCamera`는 Server cinematic이
+활성일 때 거부하고 기존 follow 요청/target을 저장한 뒤 `Begin_PresentationOverride`와
+`Apply_PresentationPose`만 호출한다. 네트워크, audition request, gameplay state는 호출하지 않는다.
+
+탑다운은 `Set_DebugSourceLevelVisible("VALTAN_PHASE_SPACEHOLE", true, 3)`이 성공한 뒤에만
+카메라를 적용한다. 외곽, Restore, F6, Server cinematic 선점, disconnect와 level exit는
+`Restore_DebugSourceLevelVisibility(..., 3)`로 각 record의 authored `visible`을 복원한다.
+세 placement 중 하나라도 없거나 visibility 적용이 실패하면 부분 표시를 남기지 않는다.
+
+### 프로젝트 등록
+
+신규 C++ 파일이 없으므로 `.vcxproj`와 `.vcxproj.filters` 등록은 없다. authoring JSON과 runtime
+DataFiles는 기존 `<None>` 및 publisher 경로를 재사용한다.
+
+### 적용·검증 순서
+
+1. Landscape merge unit test와 `--check-only`를 실행하고 275 assets / 13,192 placements를 고정한다.
+2. `Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED`를 실행해 authoring/runtime hash를 맞춘다.
+3. rendering profile `Validate`, `Publish`를 순서대로 실행한다.
+4. `ClientFrontendHarness --valtan-camera-fast`에서 reference camera/phase proxy 계약을 검사한다.
+5. Client x64 Debug/Release를 빌드하고 `git diff --check`를 실행한다.
+6. 사용자가 Server와 Client를 직접 실행해 `Lobby -> Valtan -> F1 -> Reference Top Down`과
+   `Reference Exterior`를 기준 사진과 비교한다. 에이전트는 Client를 자율 실행하거나 visual PASS를
+   선언하지 않는다.
+
+### 후속 source-exact atmosphere Gate
+
+SL04 volume cloud 27개를 제품에 넣기 전에 strict `VOLUME_CLOUD` typed profile/evaluator, PNG normal
+exact cooker와 receipt를 먼저 닫는다. 그 뒤에만 `<AreaId>.mapambientfx.json`에 source component
+stable ID/transform/template을 저장하고 world-owner persistent Effect loader를
+`parse -> validate -> stage -> commit/rollback -> level cleanup`으로 연결한다. 탑 fire는 q_firesh
+3-layer dissolve/basic material evaluator가 모두 exact admission된 뒤 상단 5개 point light 인접 source
+component부터 연결한다. 이 Gate 전에는 CloudPlane 2개와 maplight 22개가 source-exact baseline이다.

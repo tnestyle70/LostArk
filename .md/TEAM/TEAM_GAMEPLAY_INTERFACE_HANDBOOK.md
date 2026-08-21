@@ -184,7 +184,7 @@ Client payload에는 PlayerId와 NetEntityId가 없다. Server가 SessionId로 p
 - 보스 이동: `CValtanBrain`이 같은 Server Navigation으로 target까지 path를 계산한다.
 - Client `CNavigation`, mesh picking, animation root motion은 Server 위치를 확정하지 않는다.
 
-현재 서버 충돌 계약은 walkable nav cell 경계다. 동적 capsule-vs-capsule, projectile, knockback obstacle collision은 아직 public 계약이 아니므로 Character collider에서 임의로 서버 판정을 대신하지 않는다. 추가할 때는 Server collision owner, shape ID, broad/narrow phase, snapshot correction, harness를 한 변경 단위로 닫는다.
+walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 공격은 room-owned `CCombatObjectRuntime`의 pure XZ pose/swept primitive가 Server fixed tick에서 판정한다. 플레이어 투사체와 발탄 전투 객체는 spawn adapter만 다르고 같은 live set과 hit resolver를 사용한다. Shared combat-object lifecycle/full snapshot과 Client world-root Effect는 위치 표현만 담당하며 Client collider가 피해를 판정하지 않는다. 동적 capsule-vs-capsule와 knockback obstacle collision은 아직 public 계약이 아니므로 추가할 때 Server collision owner, shape ID, broad/narrow phase, snapshot correction, harness를 한 변경 단위로 닫는다.
 
 ## 5. Character와 Animation
 
@@ -290,6 +290,8 @@ damage, target NetEntityId, world anchor, incoming/outgoing을 제공하며 UI�
 | `Data/Balance/DamageProfiles.json` | attack power에 곱하는 damage rate percent | Server 판정, UI 예상 표시 |
 | `Data/Balance/BossProfiles.json` | boss HP, engage range, speed, phase threshold | Server boss, UI 이름 |
 | `Data/Encounters/Valtan/ValtanEncounter.json` | state/action/pattern timing/range/damage 참조 | Server Valtan brain |
+| `Data/Encounters/Valtan/ValtanCombatObjects.json` | pattern stage가 생성하는 지연/이동 객체의 stable ID, motion, life, hit | Server room combat-object runtime |
+| `Data/Actors/BossCatalog.json`의 `combatObjectVisuals` | gameplay object ID + visual ID를 Product Effect ID에 연결 | Client replication/effect prewarm |
 
 UI 담당자는 JSON을 매 프레임 읽지 않는다. `CCombatHUDViewModel::Initialize_Definitions()`가 정의를 준비하고 `CClientReplication`이 snapshot마다 runtime 상태를 적용한다. UI 코드에서 packet, socket, Character, boss GameObject를 직접 조회하지 않는다.
 
@@ -380,12 +382,13 @@ CGameRoom::Tick
 -> CValtanBrain::Update
 -> nearest living player acquire
 -> IDLE / CHASE / PATTERN_WINDUP / PATTERN_ACTIVE / PATTERN_RECOVERY / DEAD
--> damage exactly once in active window
--> S2C_WORLD_SNAPSHOT
--> CValtan presentation + CCombatHUDViewModel
+-> stage inline hit 또는 CCombatObjectRuntime spawn/update
+-> Server hit resolver가 damage/status를 확정
+-> reliable combat-object spawn/despawn + S2C_WORLD_SNAPSHOT full live set
+-> CValtan presentation + world-root Effect + CCombatHUDViewModel
 ```
 
-`BossProfiles.json`은 boss 기본 수치, `ValtanEncounter.json`은 pattern timeline, `DamageProfiles.json`은 피해량을 소유한다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이 아니다.
+`BossProfiles.json`은 boss 기본 수치, `ValtanEncounter.json`은 pattern timeline, `ValtanCombatObjects.json`은 stage 밖에서도 살아 있는 이동/지연 공격, `DamageProfiles.json`은 피해량을 소유한다. `BossCatalog.json`의 `combatObjectVisuals`는 gameplay stable ID를 Client Product Effect에만 연결하며 asset path가 Server bootstrap으로 넘어가지 않는다. Client `CValtan`의 로컬 AI는 Development preview 외 제품 정답이 아니다.
 
 플레이어 profile의 defense는 발탄 incoming damage에 실제로 사용된다. 원작 Server 공식이 client
 payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 계약이며
@@ -393,7 +396,7 @@ payload에 없으므로 `raw * 100 / (100 + defense)`는 `PROJECT_TUNED` 중앙 
 
 수업용 `CMonster`와 `astar/Monster`는 제거 대상 레거시다. 제품 일반 몬스터는 실제 4개 Valtan archetype을 `MonsterCatalog.json`과 `MonsterProfiles.json`에 등록하고, Area `SpawnGroups.world.json` → publisher → Server `CSpawnGroupRuntime/CMonsterBrain` → Shared world entity spawn/snapshot/despawn → Client catalog presentation 경로를 사용한다. 레거시 클래스를 이 계약에 다시 연결하지 않는다.
 
-combat body와 공격 footprint는 `Shared/Public/Gameplay/CombatCollisionContract.h`의 pure XZ primitive로 평가한다. 플레이어 스킬은 target body radius, 일반 몬스터와 Lugaru는 player footprint, Valtan은 circle/ring/cone/forward-box/cross와 player footprint의 교차를 Server fixed tick에서 판정한다. HP·damage·counter·death는 기존 Data와 Server 순서를 유지한다. Client `CCollider`는 spawn packet의 Server radius를 표시하는 Debug mirror일 뿐 damage 판정이나 PhysX 권위가 아니다.
+combat body와 공격 footprint는 `Shared/Public/Gameplay/CombatCollisionContract.h`와 Server combat-object geometry의 pure XZ primitive로 평가한다. 플레이어 스킬은 target body radius, 일반 몬스터와 Lugaru는 player footprint, Valtan inline stage는 circle/ring/cone/forward-box/cross, 이동 검기는 swept circle과 player footprint의 교차를 Server fixed tick에서 판정한다. HP·damage·counter·death는 같은 typed Server hit resolver 순서를 유지한다. Client `CCollider`와 world-root Effect는 Debug/visual projection일 뿐 damage 판정이나 PhysX 권위가 아니다.
 
 ## 8. MapTool과 gameplay 저장
 
@@ -563,6 +566,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - Animation Tool의 data-driven key/skill → ordered clip/BA stage authoring, atomic Save, safe action-boundary reload
 - HUD용 player/boss runtime ViewModel
 - Valtan 추적, pattern, damage, phase, death
+- player projectile와 발탄 하늘 도끼·붉은 검기의 단일 room-owned combat-object runtime, reliable lifecycle/full snapshot, world-root Effect projection
 - world gameplay와 navigation 배치 정합성 검사
 - Valtan Debug MapTool의 12-piece Mesh Emitter PhysX audition과 All/Emitter/Fragment Solo
 - `dev.training.ground` 최소 Area, class-neutral player spawn, RCArena 10종 admission, 서버 navigation
@@ -577,7 +581,7 @@ powershell -ExecutionPolicy Bypass -File Tools/Build/Invoke-BuildAndRegression.p
 - stable UI command binding과 Lobby/Scene/Gameplay typed command service 연결
 - 추가 스킬
 - party/raid admission과 roster
-- 동적 collider, projectile, knockback/피격 판정
+- 동적 capsule obstacle collision, prop 차폐·개별 파괴와 knockback obstacle 판정
 - 잡몹 및 추가 boss pattern
 - Valtan destroyable publisher, Server 상태/동적 collision·navigation, Shared replication과 제품 debris/effect cue
 

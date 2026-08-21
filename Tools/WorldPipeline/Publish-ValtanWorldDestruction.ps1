@@ -564,7 +564,7 @@ function Compile-ValtanWorldDestruction {
     Assert-ExactProperties $Encounter @(
         'schema','formatVersion','encounterId','bossArchetypeId','authority',
         'fixedTickHz','introPatternId','states','patterns') 'encounter root'
-    Assert-JsonInteger $Encounter.formatVersion 'encounter formatVersion' 3 3
+    Assert-JsonInteger $Encounter.formatVersion 'encounter formatVersion' 4 4
     Assert-JsonInteger $Encounter.fixedTickHz 'encounter fixedTickHz' 30 30
     if ($Encounter.schema -cne 'lostark.encounter-profile' -or
         $Encounter.encounterId -cne $expectedEncounterId -or
@@ -586,6 +586,15 @@ function Compile-ValtanWorldDestruction {
                 'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength',
                 'hitHalfWidth','hitCount','hitIntervalMs','serverDamageProfileId',
                 'pushRangeM','pushMs','knockdown','downMs')
+			if ($null -ne $stage.PSObject.Properties['branches']) {
+				$expectedStageProperties += 'branches'
+			}
+			if ($null -ne $stage.PSObject.Properties['actions']) {
+				$expectedStageProperties += 'actions'
+			}
+			if ($null -ne $stage.PSObject.Properties['motion']) {
+				$expectedStageProperties += 'motion'
+			}
             Assert-ExactProperties -Value $stage -Expected $expectedStageProperties -Context "$($pattern.patternId) stage"
             Assert-StableId $stage.stageId "$($pattern.patternId) stageId"
             Assert-StableId $stage.actionId "$($pattern.patternId) actionId"

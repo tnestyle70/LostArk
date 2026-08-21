@@ -48,9 +48,21 @@ private:
 	void Update_WorldDestructionPresentation(f32_t fTimeDelta);
 	bool_t Apply_EncounterPropPresentation();
 #ifdef _DEBUG
+	enum class REFERENCE_CAMERA_VIEW : uint8_t
+	{
+		NONE,
+		TOP_DOWN,
+		EXTERIOR
+	};
+	bool_t Begin_ReferenceCamera(REFERENCE_CAMERA_VIEW view);
+	bool_t Set_ReferencePhaseProxyVisible(bool_t visible);
+	void Update_ReferenceCamera();
+	void End_ReferenceCamera(bool_t toggleFollowRequested);
+	const char_t* Get_ReferenceCameraViewName() const;
 	/* Debug audition of an authored health-bar pattern. The panel only submits
 	typed requests and reports what the Server answered; it never starts a
-	pattern, moves the camera or breaks a wall on its own. */
+	pattern or breaks a wall on its own. Reference-view buttons below are a
+	separate presentation-only camera aid and never submit gameplay state. */
 	void Render_AuditionPanel();
 	void Update_AuditionTransaction();
 	bool_t Submit_Audition(
@@ -115,6 +127,12 @@ private:
 	shared_ptr<IPlayerCommandSink> m_pPlayerCommandSink;
 	CPlayerController m_PlayerController;
 #ifdef _DEBUG
+	weak_ptr<CTransform> m_pReferenceCameraRestoreTarget;
+	bool_t m_bReferenceCameraRestoreFollowRequested = false;
+	bool_t m_bReferenceCameraApplied = false;
+	bool_t m_bReferenceSpaceHoleVisible = false;
+	REFERENCE_CAMERA_VIEW m_eReferenceCameraView =
+		REFERENCE_CAMERA_VIEW::NONE;
 	size_t m_iSelectedAuditionBarIndex = 0u;
 	uint32_t m_iNextAuditionRequestSequence = 1u;
 	AUDITION_PENDING_REQUEST m_PendingAuditionRequest;

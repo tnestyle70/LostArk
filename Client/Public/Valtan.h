@@ -28,6 +28,11 @@ public:
 	static constexpr const tchar_t* WEAPON_PART_TAG = TEXT("Part_Weapon_R");
 	static constexpr const char_t* WEAPON_SOCKET_BONE = "b_wp_r_01";
 	static constexpr f32_t MODEL_VIEW_SCALE = 1.f;
+	/* Armour parts are authored on the body rig, so they are skinned parts
+	with no socket bone. The stable state mask, never array order, joins them
+	to Server-owned alive-part state. */
+	static wstring_t Build_ArmorModelPrototypeTag(uint32_t iStateMask);
+	static wstring_t Build_ArmorPartTag(uint32_t iStateMask);
 
 	typedef struct tagValtanDesc : public CContainerObject::CONTAINEROBJECT_DESC
 	{
@@ -88,6 +93,10 @@ public:
 		uint32_t iActionStartTick,
 		uint32_t iPatternSequence,
 		uint32_t iPatternStageIndex);
+	bool_t Apply_BossCombatState(
+		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state);
+	bool_t Apply_BossCombatEvent(
+		const LostArk::Shared::BOSS_COMBAT_EVENT& event);
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 #ifdef _DEBUG
 	void Set_NavigationDebugVisible(bool_t isVisible) { m_isNavigationDebugVisible = isVisible; }
@@ -109,6 +118,12 @@ private:
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	shared_ptr<CModel> m_pBodyModelCom = { nullptr };
 	shared_ptr<Engine::CTransform> m_pBodyVisualRootCom = { nullptr };
+	/* A failed plate load leaves its stable mask absent instead of shifting
+	other plates onto a different wire bit. */
+	std::unordered_map<uint32_t, wstring_t> m_ArmorPartTagsByStateMask;
+	LostArk::Shared::BOSS_COMBAT_SNAPSHOT m_BossCombatState;
+	bool_t m_hasBossCombatState = false;
+	std::uint64_t m_iLastBossCombatEventSequence = 0u;
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
 	CNavPathFollower m_PathFollower;
@@ -140,6 +155,8 @@ private:
 
 private:
 	HRESULT Ready_PartObjects();
+	void Ready_ArmorParts();
+	void Set_ArmorPartVisible(uint32_t iStateMask, bool_t isVisible);
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();
 	void Load_PatternEffectCues();
