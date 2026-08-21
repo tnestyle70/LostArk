@@ -94,8 +94,8 @@
             0.0
           ],
           "speed": [
-            0.0,
-            0.0
+            0.4000000059604645,
+            1.0
           ],
           "wave": false,
           "waveAmplitude": [
@@ -117,7 +117,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -220,7 +220,7 @@
             0.045600001239776596
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -2514,6 +2514,10 @@
         {
           "slotId": "noise",
           "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds"
+        },
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_m_trail_001_cl.dds"
         }
       ],
       "material": {
@@ -2566,7 +2570,7 @@
             1.0
           ],
           "clip": 0.0,
-          "emissiveIntensity": 1.0,
+          "emissiveIntensity": 0.009999999776482582,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
@@ -2601,7 +2605,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -2704,7 +2708,7 @@
             0.15
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,

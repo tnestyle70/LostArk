@@ -11,12 +11,16 @@
     "cascadeRibbon": "TYPED_ADAPTER_REQUIRED"
   },
   "inputIdentity": {
-    "inventoryCanonicalSha256": "6d0d5200d29fd097ec30bb07a222344a884afd5fb33f92fe0ce5672c1aeb4428",
-    "selectionCanonicalSha256": "1f24977eaa722a95034eec91ab5dbc2f28cb5eca01432d903f84400a826a5c8a",
+    "inventoryCanonicalSha256": "e7672c547e17e377f7a966060813d283030cd86e5f59eb7632c337baf5148e74",
+    "selectionCanonicalSha256": "a9ca450b635509269f64adc23af4b06bb262c93473ef2e16f2f85b6769defaa4",
     "sourceGraphEnrichment": {
       "status": "SOURCE_GRAPH_TYPED_RECIPE_DECODED",
-      "sourceGraphCount": 2,
+      "sourceGraphCount": 3,
       "sourceGraphs": [
+        {
+          "logicalPackage": "FX_MN_BOSS_01",
+          "rawSha256": "bfd272d5420989fbd539a3dbac1de2bbfd9ec7b7636a15fc58090f076e09ce51"
+        },
         {
           "logicalPackage": "FX_MN_RPBF_00_N",
           "rawSha256": "734b850f68aefd88ae2ed79dac99ce91450ae0aaaf9f6bb234299d6a1483c496"
@@ -33,7 +37,7 @@
         "verifiedRuntimeFileCount": 398,
         "failureCount": 0
       },
-      "decodedCarrierCount": 2
+      "decodedCarrierCount": 3
     }
   },
   "whirlwindCanary": {
@@ -522,6 +526,55 @@
       ],
       "sourceIdentitySha256": "0f743f58e43247bac91fed26fe43376bdf8dd410bbb70895af6eee54c4a7d388",
       "rowSha256": "e4c18829f5ef0b877dee571fcac1152370486b4a43ede30134c2427ce8ceb44c"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.0c13bb2e94a2c7c203784daa",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_IMPRISON_ROAR",
+        "clipOccurrenceId": "valtan.attack.imprison-roar.active.clip.01",
+        "sourceActionId": 420603,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 6,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420603/stage-006/notify-002",
+        "sourceType": "PlayParticleEffect",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 4.0,
+        "assetClassName": "ParticleSystem",
+        "assetObjectPath": "FX_MN_BOSS_01.RPBF.Par_D_RPBF_eye_01_LOC_INT",
+        "carrierKey": "system=fx_mn_boss_01.rpbf.par_d_rpbf_eye_01_loc_int|emitter=FX_MN_BOSS_01:export:14644|emitterOccurrence=0|lod=FX_MN_BOSS_01:export:1844|moduleOrder=7131b4c7498bf7c467d89f37dd1d23245a7b081e243f02c112a7fe968d32ff44"
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.97a916aa990e991819a8b5b8",
+        "inventoryFullKey": "occurrence-key.97a916aa990e991819a8b5b8464611231fdf54a1712dde959b5a78664957739e",
+        "inventoryBranch": {
+          "branchId": "valtan_imprison_roar.source-420603.mn_rpbf_00.sequence-002.stages-005-007",
+          "branchOrdinal": 1,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "8a1e4a7779ac66e7a73034b5f647d781990aee9c46fd4d9a69d77c9b7406a445"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_imprison_roar.source-420603.mn_rpbf_00.sequence-002.stages-005-007",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "8a1e4a7779ac66e7a73034b5f647d781990aee9c46fd4d9a69d77c9b7406a445",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.imprison-roar.active.clip.01",
+          "reviewBasis": "Att_Battle_5_01_Loop exact clip identity and 4.00s clip-local timing fit"
+        }
+      },
+      "family": "CASCADE_RIBBON",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "CASCADE_RIBBON_TILING_DISTANCE_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "f6f5f4ab6d8b03eb77d602f82463e86813cf4876b7bd4772108f1ba600785088",
+      "rowSha256": "6b781075862e149f600f7b1d7d837a8676b20896d017e1d35ea2a2d06b1df6a0"
     },
     {
       "adapterTargetId": "valtan.trail-adapter.0d2bd7abcc7d06b3f2f77b5b",
@@ -1550,6 +1603,105 @@
       "rowSha256": "3d1b6b11f904acca8aa61f192f776ad0a7b8239c803841904f2d20d35ea926ed"
     },
     {
+      "adapterTargetId": "valtan.trail-adapter.69abeeae0b42f734d2a4baa4",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_IMPRISON_ROAR",
+        "clipOccurrenceId": "valtan.attack.imprison-roar.recovery.clip.01",
+        "sourceActionId": 420603,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 7,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420603/stage-007/notify-001",
+        "sourceType": "PlayParticleEffect",
+        "sourceTimeSeconds": 0.0,
+        "sourceDurationSeconds": 3.799999952316284,
+        "assetClassName": "ParticleSystem",
+        "assetObjectPath": "FX_MN_BOSS_01.RPBF.Par_D_RPBF_eye_01_LOC_INT",
+        "carrierKey": "system=fx_mn_boss_01.rpbf.par_d_rpbf_eye_01_loc_int|emitter=FX_MN_BOSS_01:export:14644|emitterOccurrence=0|lod=FX_MN_BOSS_01:export:1844|moduleOrder=7131b4c7498bf7c467d89f37dd1d23245a7b081e243f02c112a7fe968d32ff44"
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.0c87a74956ea07ece20542fd",
+        "inventoryFullKey": "occurrence-key.0c87a74956ea07ece20542fdc2a48bd7640a1a171cbca23f35121e696ed754ca",
+        "inventoryBranch": {
+          "branchId": "valtan_imprison_roar.source-420603.mn_rpbf_00.sequence-002.stages-005-007",
+          "branchOrdinal": 1,
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "8a1e4a7779ac66e7a73034b5f647d781990aee9c46fd4d9a69d77c9b7406a445"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_imprison_roar.source-420603.mn_rpbf_00.sequence-002.stages-005-007",
+          "sequenceIndex": 2,
+          "sourceSequencePathSha256": "8a1e4a7779ac66e7a73034b5f647d781990aee9c46fd4d9a69d77c9b7406a445",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.imprison-roar.recovery.clip.01",
+          "reviewBasis": "Att_Battle_5_01_End exact clip identity and 4.43s clip-local timing fit"
+        }
+      },
+      "family": "CASCADE_RIBBON",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "CASCADE_RIBBON_TILING_DISTANCE_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "53180c744eb11748bb37ffc1b9ac3b5ae313ea6351a150f08de0987fead05a61",
+      "rowSha256": "108944af58767bd4c83e6c886ccfc7a471b470166d02d03781d75c6abaff0639"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.6fadcb6e81e01f6c06603cf0",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_SWING",
+        "clipOccurrenceId": "valtan.attack.swing.active.clip.01",
+        "sourceActionId": 420601,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 0,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420601/stage-000/notify-006",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 1.4900000095367432,
+        "sourceDurationSeconds": 0.2800000011920929,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420601_0_0_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.78f612df2272836fa0e8c6bd",
+        "inventoryFullKey": "occurrence-key.78f612df2272836fa0e8c6bd29d299f1291838e1049410b621fbeaf0cb5093c9",
+        "inventoryBranch": {
+          "branchId": "valtan_swing.source-420601.mn_rpbf_00.sequence-000.stages-000-001",
+          "branchOrdinal": 0,
+          "sequenceIndex": 0,
+          "sourceSequencePathSha256": "11bae0f4f72e0aac2f5d6c5c762d5808f89f95605380db136c0ac31faf54f179"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_swing.source-420601.mn_rpbf_00.sequence-000.stages-000-001",
+          "sequenceIndex": 0,
+          "sourceSequencePathSha256": "11bae0f4f72e0aac2f5d6c5c762d5808f89f95605380db136c0ac31faf54f179",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.attack.swing.active.clip.01",
+          "reviewBasis": "Att_Battle_1_01 exact clip identity; clip-local source events fit the natural 3.00s source window"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "471b072bd76ad22183efd6e01c9da3e9352f18b54debe2f4a19de6a1b96e2097",
+      "rowSha256": "a2694999342e16f770ebfe1031a8a79b1a2563e1d5577d8ca157fa63fff5226d"
+    },
+    {
       "adapterTargetId": "valtan.trail-adapter.7972fa2531e6731d730b6a64",
       "targetVariant": null,
       "sourceIdentity": {
@@ -1648,6 +1800,56 @@
       "preservedLimitations": [],
       "sourceIdentitySha256": "ce7b8b55b2b18e3f0beaf5ba7a87bd4558aa6c996f1b72a570481df4816b2857",
       "rowSha256": "565476a9e0052d34cd3ff890fe45d9bb5be5b5030426d45f215863fdfb52fee5"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.8a95ab89cf46298bd13f66d0",
+      "targetVariant": null,
+      "sourceIdentity": {
+        "patternId": "VALTAN_PARRY",
+        "clipOccurrenceId": "valtan.reactive.parry.recovery.clip.01",
+        "sourceActionId": 420606,
+        "profileId": "MN_RPBF_00",
+        "sourceStageIndex": 2,
+        "sourceClipOrdinal": 0,
+        "notifyId": "action-420606/stage-002/notify-004",
+        "sourceType": "Trails",
+        "sourceTimeSeconds": 0.10000000149011612,
+        "sourceDurationSeconds": 0.28363901376724243,
+        "assetClassName": "EFData_AnimNotify_Trails",
+        "assetObjectPath": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420606_0_2_0",
+        "carrierKey": null
+      },
+      "evidence": {
+        "inventoryOccurrenceId": "occurrence.8bf2343ecbbb10ff3723d503",
+        "inventoryFullKey": "occurrence-key.8bf2343ecbbb10ff3723d5032db248952368fd7f0ebcd8bc3895215786bcc44d",
+        "inventoryBranch": {
+          "branchId": "valtan_parry.source-420606.mn_rpbf_00.sequence-000.stages-000-002",
+          "branchOrdinal": 0,
+          "sequenceIndex": 0,
+          "sourceSequencePathSha256": "0c2de96c6ccffce3ebeb434e4626330ec2c395ca2698770bd6f306324be780e6"
+        },
+        "reviewedSelection": {
+          "selectedBranchId": "valtan_parry.source-420606.mn_rpbf_00.sequence-000.stages-000-002",
+          "sequenceIndex": 0,
+          "sourceSequencePathSha256": "0c2de96c6ccffce3ebeb434e4626330ec2c395ca2698770bd6f306324be780e6",
+          "timingDisposition": "REACHABLE",
+          "clipOccurrenceId": "valtan.reactive.parry.recovery.clip.01",
+          "reviewBasis": "Att_Battle_9_01_End exact clip identity and 1.07s clip-local timing fit"
+        }
+      },
+      "family": "ANIMATION_TRAIL",
+      "projectionKind": "ADAPTER_PACKET_V1",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "target": null,
+      "packet": null,
+      "resourcePacket": [],
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "preservedLimitations": [],
+      "sourceIdentitySha256": "b5d8f77bd0b0619acb2d8c147548563632168fa986551514107ed201b412d88f",
+      "rowSha256": "6c3fe3b48f6ae87b6b8c053a9f798e6091933b662f50e00706960679a8c06709"
     },
     {
       "adapterTargetId": "valtan.trail-adapter.912a62fbacdd396de8c0a6cb",
@@ -3645,35 +3847,35 @@
     }
   ],
   "summary": {
-    "reviewedSelectionCount": 21,
+    "reviewedSelectionCount": 24,
     "sourceInventoryOccurrenceCount": 9434,
     "sourceInventoryCarrierCount": 1044,
-    "reviewedReachableSourceOccurrenceCount": 367,
-    "trailAdapterRowCount": 28,
+    "reviewedReachableSourceOccurrenceCount": 444,
+    "trailAdapterRowCount": 32,
     "familyCounts": {
-      "ANIMATION_TRAIL": 23,
-      "CASCADE_RIBBON": 2,
+      "ANIMATION_TRAIL": 25,
+      "CASCADE_RIBBON": 4,
       "TRAIL_GHOST": 3
     },
     "dispositionCounts": {
       "ADMITTED_RENDERER_READY": 10,
-      "UNRESOLVED_RUNTIME_ADAPTER": 18
+      "UNRESOLVED_RUNTIME_ADAPTER": 22
     },
     "admittedRendererReadyCount": 10,
-    "unresolvedRuntimeAdapterCount": 18,
+    "unresolvedRuntimeAdapterCount": 22,
     "unresolvedBlockerCounts": {
-      "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING": 14,
-      "ANIMATION_TRAIL_RENDERER_TARGET_MISSING": 14,
+      "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING": 16,
+      "ANIMATION_TRAIL_RENDERER_TARGET_MISSING": 16,
       "CASCADE_RIBBON_TESSELLATION_STEP_MISSING": 1,
-      "CASCADE_RIBBON_TILING_DISTANCE_MISSING": 1,
+      "CASCADE_RIBBON_TILING_DISTANCE_MISSING": 3,
       "TRAIL_GHOST_EXACT_EDGE_HISTORY_MISSING": 3,
       "TRAIL_GHOST_RENDERER_TARGET_MISSING": 3
     },
     "excludedDeferredLightOccurrenceCount": 0,
-    "excludedExplicitGenericDustOccurrenceCount": 6,
+    "excludedExplicitGenericDustOccurrenceCount": 7,
     "sourceOnlyInsertedClipCount": 0,
     "droppedTrailAdapterRowCount": 0,
     "duplicateAdapterTargetCount": 0
   },
-  "artifactSha256": "778f047b5e60fddd1712aba7ccc22686bf3f00544b59fb7935ed54bc9234a95b"
+  "artifactSha256": "85726bc0c1ddd35159d5cbe13edc35cbd3851282c0cd255850cf51dc9ef36b4f"
 }

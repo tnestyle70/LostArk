@@ -78,7 +78,7 @@
             1.0
           ],
           "clip": 0.0,
-          "emissiveIntensity": 1.0,
+          "emissiveIntensity": 0.10000000149011612,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
@@ -108,7 +108,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.125,
-          "lifeTimeSeconds": 3.0,
+          "lifeTimeSeconds": 0.808,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -1349,7 +1349,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.125,
-          "lifeTimeSeconds": 2.0,
+          "lifeTimeSeconds": 0.808,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },

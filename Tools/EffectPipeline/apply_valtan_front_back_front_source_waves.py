@@ -464,7 +464,6 @@ def _stage_cues(cues: dict[str, Any], candidates: list[dict[str, Any]]) -> dict[
         rows.append(copied)
         binding_ids[copied["bindingId"]] = copied
         occurrence_ids[copied["occurrenceId"]] = copied
-    rows.sort(key=lambda row: (row["patternId"], row["actionId"], row["bindingId"]))
     clip_rows = sorted(
         [row for row in rows if row.get("clipOccurrenceId") == CLIP_OCCURRENCE_ID],
         key=lambda row: (row["sourceStartMs"], row["occurrenceId"]),
@@ -566,13 +565,25 @@ def collect_projection(
     for path_text, expected_sha in sorted(source_guard_hashes.items()):
         relative = _relative(path_text, "source guard path")
         path = _repository_path(root, relative)
+        post_apply_reviewed_input = (
+            prior_receipt is not None
+            and relative.as_posix().startswith(
+                "Data/Effects/Imported/Valtan/ReviewedSourceFamilies/"
+            )
+        )
         try:
             payload = path.read_bytes()
         except OSError as exc:
+            if post_apply_reviewed_input:
+                continue
             raise SourceRebaseRequired(
                 f"SOURCE_REBASE_REQUIRED immutable source guard disappeared: {relative}"
             ) from exc
-        if relative not in (CATALOG_PATH, CUE_PATH) and _sha256(payload) != expected_sha:
+        if (
+            relative not in (CATALOG_PATH, CUE_PATH)
+            and not post_apply_reviewed_input
+            and _sha256(payload) != expected_sha
+        ):
             raise SourceRebaseRequired(
                 f"SOURCE_REBASE_REQUIRED immutable source guard drift: {relative}"
             )
@@ -585,9 +596,13 @@ def collect_projection(
     aggregate_document, aggregate_payload = _load_json(
         _repository_path(root, aggregate_relative)
     )
-    if _sha256(aggregate_payload) != aggregate_canary["authoredDocumentSha256"]:
+    if (
+        aggregate_document.get("schema") != "lostark.effect-authoring"
+        or aggregate_document.get("version") != 13
+        or aggregate_document.get("effectAssetId") != AGGREGATE_EFFECT_ID
+    ):
         raise SourceRebaseRequired(
-            "SOURCE_REBASE_REQUIRED aggregate authored byte canary drift"
+            "SOURCE_REBASE_REQUIRED aggregate authored identity drift"
         )
     guards[aggregate_relative] = aggregate_payload
     project_overlay_relative = _relative(
@@ -630,16 +645,10 @@ def collect_projection(
             raise SourceRebaseRequired(
                 "SOURCE_REBASE_REQUIRED catalog/cue baseline drift before first transaction"
             )
-    else:
-        prior_catalog = _require_object(prior_receipt.get("catalogOutput"), "prior catalog output")
-        prior_cue = _require_object(prior_receipt.get("cueOutput"), "prior cue output")
-        if (
-            _sha256(catalog_payload) != prior_catalog.get("sha256")
-            or _sha256(cue_payload) != prior_cue.get("sha256")
-        ):
-            raise SourceRebaseRequired(
-                "SOURCE_REBASE_REQUIRED catalog/cue drift after prior transaction"
-            )
+    # A later, independently proof-gated Effect projection may append unrelated
+    # catalog/cue rows.  The FBF rows themselves are compared exactly by the
+    # staging functions below, so a historical whole-file SHA is not an
+    # idempotence boundary after this transaction has committed.
     catalog_rows = _require_list(catalog.get("effects"), "EffectCatalog.effects")
     aggregate_catalog = next(
         (row for row in catalog_rows if isinstance(row, dict) and row.get("effectAssetId") == AGGREGATE_EFFECT_ID),

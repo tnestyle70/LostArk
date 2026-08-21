@@ -75,8 +75,8 @@
           ],
           "clip": 0.0,
           "emissiveIntensity": 1.0,
-          "distortionIntensity": 0.0,
-          "distortionOnBaseMaterial": false,
+          "distortionIntensity": 15.0,
+          "distortionOnBaseMaterial": true,
           "radialTime": 0.0,
           "radialIntensity": 0.0
         },
@@ -104,7 +104,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.0,
-          "lifeTimeSeconds": 2.0,
+          "lifeTimeSeconds": 0.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -903,7 +903,7 @@
             1.0
           ],
           "clip": 0.0,
-          "emissiveIntensity": 1.0,
+          "emissiveIntensity": 100.0,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
@@ -933,7 +933,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 0.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -2227,7 +2227,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -3151,7 +3151,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.0,
-          "lifeTimeSeconds": 0.20000000298023224,
+          "lifeTimeSeconds": 0.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -4271,7 +4271,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.0,
-          "lifeTimeSeconds": 0.20000000298023224,
+          "lifeTimeSeconds": 0.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -5391,7 +5391,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -6315,7 +6315,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.0,
-          "lifeTimeSeconds": 0.6499999761581421,
+          "lifeTimeSeconds": 0.8,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },

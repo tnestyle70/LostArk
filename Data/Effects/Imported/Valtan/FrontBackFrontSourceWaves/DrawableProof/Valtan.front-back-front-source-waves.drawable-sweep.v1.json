@@ -1,0 +1,1056 @@
+{
+  "schema": "lostark.effect-document-drawable-sweep",
+  "formatVersion": 1,
+  "resourceRoot": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources",
+  "sampleRateHz": 60,
+  "documents": [
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.source-wave-01.source-wave-candidate.effect.json",
+      "effectAssetId": "effect.valtan.front-back-front.source-wave-01",
+      "durationSeconds": 7.83099985,
+      "sampleCount": 472,
+      "visibleElementCount": 25,
+      "preparedElementCount": 25,
+      "drawnElementCount": 25,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.1ddac761402dee1f554f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 79,
+          "suppressedDraws": 150,
+          "failedDraws": 0,
+          "committedDraws": 79
+        },
+        {
+          "elementId": "source.23ccf71c17fb7ab2d097",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 46,
+          "suppressedDraws": 183,
+          "failedDraws": 0,
+          "committedDraws": 46
+        },
+        {
+          "elementId": "source.3d0f7e6f3ea38ea2e20e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.51651c802822285ad978",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.5e78ed326fcdeb311297",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 50,
+          "suppressedDraws": 179,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.601ab28042c2e6e7de11",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 85,
+          "suppressedDraws": 144,
+          "failedDraws": 0,
+          "committedDraws": 85
+        },
+        {
+          "elementId": "source.6aebb5e7b6f8a9aa338c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 50,
+          "suppressedDraws": 179,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.6f1ca5f59c6207c510db",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 50,
+          "suppressedDraws": 179,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.72d2f6a35b9216122be5",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 49,
+          "suppressedDraws": 180,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.7d164abb007cd1014d01",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 51,
+          "suppressedDraws": 178,
+          "failedDraws": 0,
+          "committedDraws": 51
+        },
+        {
+          "elementId": "source.8226d64da9da6e562246",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.89720228446a2a858116",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 49,
+          "suppressedDraws": 180,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.8c2b0ec9aab3fe407ef4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 46,
+          "suppressedDraws": 183,
+          "failedDraws": 0,
+          "committedDraws": 46
+        },
+        {
+          "elementId": "source.9662e2ae68d0e8967f0c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 50,
+          "suppressedDraws": 179,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.99a6fe09d3a657d2d056",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 49,
+          "suppressedDraws": 180,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.a3b6f1c0049ef0cff706",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.bba550f14a3d23047afc",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 58,
+          "suppressedDraws": 171,
+          "failedDraws": 0,
+          "committedDraws": 58
+        },
+        {
+          "elementId": "source.bf58cbcb3be0415f50de",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 54,
+          "suppressedDraws": 175,
+          "failedDraws": 0,
+          "committedDraws": 54
+        },
+        {
+          "elementId": "source.d263f0d4610fedf9222c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 86,
+          "suppressedDraws": 143,
+          "failedDraws": 0,
+          "committedDraws": 86
+        },
+        {
+          "elementId": "source.d57cca256a66d70b5397",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.e4ff8a47f478b0580af9",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.ef2482f4de3adfef0356",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 47,
+          "suppressedDraws": 182,
+          "failedDraws": 0,
+          "committedDraws": 47
+        },
+        {
+          "elementId": "source.f9fb1732a6e206cf4cc1",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 50,
+          "suppressedDraws": 179,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.fba502d72cc5bf4f0b5c",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.fbb0955f04705b0186a0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 472,
+          "attemptedSamples": 229,
+          "submittedDraws": 50,
+          "suppressedDraws": 179,
+          "failedDraws": 0,
+          "committedDraws": 50
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.source-wave-02.source-wave-candidate.effect.json",
+      "effectAssetId": "effect.valtan.front-back-front.source-wave-02",
+      "durationSeconds": 6.74699974,
+      "sampleCount": 407,
+      "visibleElementCount": 25,
+      "preparedElementCount": 25,
+      "drawnElementCount": 25,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.02d38ad6d84d8fc9330e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 88,
+          "suppressedDraws": 76,
+          "failedDraws": 0,
+          "committedDraws": 88
+        },
+        {
+          "elementId": "source.06c72ead93db3794b905",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.07b3c7ab205bc514353e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 50,
+          "suppressedDraws": 114,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.1093f8f3ea54b148fae0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 50,
+          "suppressedDraws": 114,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.2108c72c8fd42d3f66e0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 43,
+          "suppressedDraws": 121,
+          "failedDraws": 0,
+          "committedDraws": 43
+        },
+        {
+          "elementId": "source.324e452492789a9d5104",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 49,
+          "suppressedDraws": 115,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.37100539622108507408",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 49,
+          "suppressedDraws": 115,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.3813c4c1a53b39b5d6d3",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 49,
+          "suppressedDraws": 115,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.3a74390ba999c827096f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 50,
+          "suppressedDraws": 114,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.44b4813f6b8405529e27",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 50,
+          "suppressedDraws": 114,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.4ffa4d0165e08f1b38ba",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 50,
+          "suppressedDraws": 114,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.55a6924289d22eb84ba8",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 81,
+          "suppressedDraws": 83,
+          "failedDraws": 0,
+          "committedDraws": 81
+        },
+        {
+          "elementId": "source.641f5a77611641964acf",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 87,
+          "suppressedDraws": 77,
+          "failedDraws": 0,
+          "committedDraws": 87
+        },
+        {
+          "elementId": "source.7ccb7b9c6b784748d32d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.8ac37fe2d13b17c740d8",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.8f0287c3f929fe51f701",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.983912b52c2d23f886d8",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.aaeb43db50201a636947",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 46,
+          "suppressedDraws": 118,
+          "failedDraws": 0,
+          "committedDraws": 46
+        },
+        {
+          "elementId": "source.add7ebd6344d819870f0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.dc17c4b1791e3d008215",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 51,
+          "suppressedDraws": 113,
+          "failedDraws": 0,
+          "committedDraws": 51
+        },
+        {
+          "elementId": "source.dd1e5bd4c60047706b1f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 43,
+          "suppressedDraws": 121,
+          "failedDraws": 0,
+          "committedDraws": 43
+        },
+        {
+          "elementId": "source.de30e3a95f69d10c37de",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.e8f2da742ef79f9ce9b7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 50,
+          "suppressedDraws": 114,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.f506c6f3b0215ae0f38f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 49,
+          "suppressedDraws": 115,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.f57f75268f9b592f86b4",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 407,
+          "attemptedSamples": 164,
+          "submittedDraws": 50,
+          "suppressedDraws": 114,
+          "failedDraws": 0,
+          "committedDraws": 50
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.source-wave-03.source-wave-candidate.effect.json",
+      "effectAssetId": "effect.valtan.front-back-front.source-wave-03",
+      "durationSeconds": 5.77600002,
+      "sampleCount": 349,
+      "visibleElementCount": 25,
+      "preparedElementCount": 25,
+      "drawnElementCount": 25,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.11d066905312c2523359",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.169b4b9ee1c47afe7b03",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 47,
+          "suppressedDraws": 59,
+          "failedDraws": 0,
+          "committedDraws": 47
+        },
+        {
+          "elementId": "source.17b595cf1c442ad53886",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 46,
+          "suppressedDraws": 60,
+          "failedDraws": 0,
+          "committedDraws": 46
+        },
+        {
+          "elementId": "source.1dc5843f4bbe331175f2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 50,
+          "suppressedDraws": 56,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.3a7f8cbcd398ac62d621",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 85,
+          "suppressedDraws": 21,
+          "failedDraws": 0,
+          "committedDraws": 85
+        },
+        {
+          "elementId": "source.40541c97269bcdcf795a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 46,
+          "suppressedDraws": 60,
+          "failedDraws": 0,
+          "committedDraws": 46
+        },
+        {
+          "elementId": "source.564eea8a365b9f5e7760",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 78,
+          "suppressedDraws": 28,
+          "failedDraws": 0,
+          "committedDraws": 78
+        },
+        {
+          "elementId": "source.5c3344ddcda74c894d39",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 49,
+          "suppressedDraws": 57,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.5c34729213cdd8a58b19",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 49,
+          "suppressedDraws": 57,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.60d17798d5a999179b98",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.6987d2b2b901f070628a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 86,
+          "suppressedDraws": 20,
+          "failedDraws": 0,
+          "committedDraws": 86
+        },
+        {
+          "elementId": "source.8a26b40df03616a30274",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.8e93f314fab042f037b3",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 49,
+          "suppressedDraws": 57,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.8ee315a0dc9b7cc159cc",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 50,
+          "suppressedDraws": 56,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.916b7c1cb1dfc61aa4a6",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 50,
+          "suppressedDraws": 56,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.a95b89db0924aa9f0d3d",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 49,
+          "suppressedDraws": 57,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.acd2cee6bc77124a1118",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.b1e40791e02ec4dd850f",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 49,
+          "suppressedDraws": 57,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.b2ce57aafdac188d62d6",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.c157f29dc56fccd8a379",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 58,
+          "suppressedDraws": 48,
+          "failedDraws": 0,
+          "committedDraws": 58
+        },
+        {
+          "elementId": "source.ca2ae486ed34718529e0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 50,
+          "suppressedDraws": 56,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.d22501d5da2ed6c54fd0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 50,
+          "suppressedDraws": 56,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.d9595c115e07671003b7",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.d9e0407adbd004fd08a2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.e55bc6537085850720bf",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 349,
+          "attemptedSamples": 106,
+          "submittedDraws": 50,
+          "suppressedDraws": 56,
+          "failedDraws": 0,
+          "committedDraws": 50
+        }
+      ]
+    },
+    {
+      "documentPath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.auxiliary-source-wave.source-wave-candidate.effect.json",
+      "effectAssetId": "effect.valtan.front-back-front.auxiliary-source-wave",
+      "durationSeconds": 4.77999973,
+      "sampleCount": 289,
+      "visibleElementCount": 25,
+      "preparedElementCount": 25,
+      "drawnElementCount": 25,
+      "disposition": "DRAWABLE_PROOF_PASS",
+      "elements": [
+        {
+          "elementId": "source.0fbf94388a1e66b21b1b",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.0fc1ad0a444feb0aaefa",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 54,
+          "submittedDraws": 49,
+          "suppressedDraws": 5,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.14016aae57ba3f72fbd3",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 50,
+          "submittedDraws": 50,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.2286d1723f08235dbeb5",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 61,
+          "submittedDraws": 50,
+          "suppressedDraws": 11,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.25e10ce7f7de116ea52e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 50,
+          "submittedDraws": 50,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.3f9b35891a63a5cc87d2",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 83,
+          "submittedDraws": 83,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 83
+        },
+        {
+          "elementId": "source.41c984c3eadc19d84716",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 54,
+          "submittedDraws": 49,
+          "suppressedDraws": 5,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.42c6b3dcd33af5d04574",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.4eafdf765f70174b2e11",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.57366586814cc8b0e5cf",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 50,
+          "submittedDraws": 50,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.59f7befe5da3acd9a40a",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.5b0c23332907b9ea5a31",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.6d8e2a003dc275eb477e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 61,
+          "submittedDraws": 50,
+          "suppressedDraws": 11,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.831f6aeb456d266157a0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 58,
+          "submittedDraws": 58,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 58
+        },
+        {
+          "elementId": "source.91dac0578e7823c79504",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 79,
+          "submittedDraws": 79,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 79
+        },
+        {
+          "elementId": "source.9222d7f71abb34ee65b3",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 86,
+          "submittedDraws": 86,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 86
+        },
+        {
+          "elementId": "source.a972fc4df6ac509fe44e",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 46,
+          "submittedDraws": 46,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 46
+        },
+        {
+          "elementId": "source.ae43780997313c432c77",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 46,
+          "submittedDraws": 46,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 46
+        },
+        {
+          "elementId": "source.ce394ed786458fde5cec",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 46,
+          "submittedDraws": 46,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 46
+        },
+        {
+          "elementId": "source.d91182b7c13056b3818b",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        },
+        {
+          "elementId": "source.db446574c7ed904271f0",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 50,
+          "submittedDraws": 50,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.e7e49ea0049e3ce72775",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 54,
+          "submittedDraws": 49,
+          "suppressedDraws": 5,
+          "failedDraws": 0,
+          "committedDraws": 49
+        },
+        {
+          "elementId": "source.f8d777d1df9ff25e7865",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 61,
+          "submittedDraws": 50,
+          "suppressedDraws": 11,
+          "failedDraws": 0,
+          "committedDraws": 50
+        },
+        {
+          "elementId": "source.fc574dec0694b30d912b",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 55,
+          "submittedDraws": 55,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 55
+        },
+        {
+          "elementId": "source.fd7548be22f18052fa77",
+          "disposition": "DRAWABLE_PROOF_PASS",
+          "preparedSamples": 289,
+          "attemptedSamples": 242,
+          "submittedDraws": 242,
+          "suppressedDraws": 0,
+          "failedDraws": 0,
+          "committedDraws": 242
+        }
+      ]
+    }
+  ]
+}

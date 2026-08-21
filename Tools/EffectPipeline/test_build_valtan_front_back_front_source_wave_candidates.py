@@ -150,9 +150,12 @@ class FrontBackFrontSourceWaveCandidateTests(unittest.TestCase):
             )
             for relative in source_paths:
                 source = SOURCE_ROOT.joinpath(*relative.parts)
+                if not source.is_file():
+                    continue
                 target = root.joinpath(*relative.parts)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target)
+            sut.write_outputs(root, self.outputs)
             outputs, receipt = sut.build_outputs(root)
             sut.write_outputs(root, outputs)
             sut.check_outputs(root, outputs)

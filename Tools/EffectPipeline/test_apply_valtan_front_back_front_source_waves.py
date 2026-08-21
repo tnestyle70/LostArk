@@ -14,7 +14,6 @@ import tempfile
 import unittest
 
 import apply_valtan_front_back_front_source_waves as sut
-import build_valtan_front_back_front_source_wave_candidates as builder
 import validate_boss_pattern_effects as schema_validator
 
 
@@ -30,6 +29,12 @@ PROOF_SCHEMA_PATH = Path(__file__).parent / "Schemas" / (
 APPLICATION_SCHEMA_PATH = Path(__file__).parent / "Schemas" / (
     "lostark.valtan-front-back-front-source-wave-application-receipt.schema.json"
 )
+SAFE_REVIEWED_CUE_IDS = {
+    "cue.valtan.floor-wipe-130.arena-wipe-impact",
+    "cue.valtan.floor-wipe-130.arena-wipe-telegraph",
+    "cue.valtan.floor-wipe-130.six-direction-impact",
+    "cue.valtan.floor-wipe-130.six-direction-telegraph",
+}
 
 
 def _sha256(payload: bytes) -> str:
@@ -63,7 +68,15 @@ class RepositoryFixture:
     def __init__(self) -> None:
         self._temporary = tempfile.TemporaryDirectory(prefix="valtan-fbf-wave-apply-test.")
         self.root = Path(self._temporary.name)
-        candidate_outputs, self.candidate_receipt = builder.build_outputs(SOURCE_ROOT)
+        self.candidate_receipt = _read_json(
+            SOURCE_ROOT, sut.DEFAULT_CANDIDATE_RECEIPT
+        )
+        candidate_outputs = {
+            PurePosixPath(row["candidateDocumentPath"]): SOURCE_ROOT.joinpath(
+                *PurePosixPath(row["candidateDocumentPath"]).parts
+            ).read_bytes()
+            for row in self.candidate_receipt["candidates"]
+        }
         source_paths = {
             PurePosixPath(row["path"])
             for row in self.candidate_receipt["sourceGuards"]
@@ -76,15 +89,73 @@ class RepositoryFixture:
         )
         for relative in sorted(source_paths, key=PurePosixPath.as_posix):
             source = SOURCE_ROOT.joinpath(*relative.parts)
+            if not source.is_file():
+                continue
             target = self.root.joinpath(*relative.parts)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
-        builder.write_outputs(self.root, candidate_outputs)
+        self._normalize_to_preapply_state()
+        self.candidate_receipt["sourceGuards"] = [
+            guard
+            for guard in self.candidate_receipt["sourceGuards"]
+            if self.root.joinpath(*PurePosixPath(guard["path"]).parts).is_file()
+        ]
+        for guard in self.candidate_receipt["sourceGuards"]:
+            relative = PurePosixPath(guard["path"])
+            guard["sha256"] = _sha256(
+                self.root.joinpath(*relative.parts).read_bytes()
+            )
+        candidate_outputs[sut.DEFAULT_CANDIDATE_RECEIPT] = sut._json_bytes(
+            self.candidate_receipt
+        )
+        for relative, payload in candidate_outputs.items():
+            target = self.root.joinpath(*relative.parts)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(payload)
         self.proof_relative = FIXTURE_PROOF
         self.proof_path = self.root.joinpath(*FIXTURE_PROOF.parts)
         self.proof_path.parent.mkdir(parents=True, exist_ok=True)
         self.proof = self._build_proof()
         _write_json_like(self.proof_path, self.proof)
+
+    def _normalize_to_preapply_state(self) -> None:
+        effect_ids = {
+            row["effectAssetId"] for row in self.candidate_receipt["candidates"]
+        }
+        binding_ids = {
+            row["cueRow"]["bindingId"]
+            for row in self.candidate_receipt["candidates"]
+        }
+        occurrence_ids = {
+            row["cueRow"]["occurrenceId"]
+            for row in self.candidate_receipt["candidates"]
+        }
+        catalog_path = self.root.joinpath(*sut.CATALOG_PATH.parts)
+        catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+        catalog["effects"] = [
+            row
+            for row in catalog["effects"]
+            if row.get("effectAssetId") not in effect_ids
+        ]
+        _write_json_like(catalog_path, catalog)
+        cue_path = self.root.joinpath(*sut.CUE_PATH.parts)
+        cues = json.loads(cue_path.read_text(encoding="utf-8"))
+        cues["cues"] = [
+            row
+            for row in cues["cues"]
+            if row.get("bindingId") not in binding_ids
+            and row.get("occurrenceId") not in occurrence_ids
+        ]
+        _write_json_like(cue_path, cues)
+        for row in self.candidate_receipt["candidates"]:
+            target = self.root.joinpath(
+                *PurePosixPath(row["targetAuthoredDocumentPath"]).parts
+            )
+            if target.is_file():
+                target.unlink()
+        receipt = self.root.joinpath(*sut.DEFAULT_APPLICATION_RECEIPT.parts)
+        if receipt.is_file():
+            receipt.unlink()
 
     def close(self) -> None:
         self._temporary.cleanup()
@@ -204,6 +275,59 @@ class FrontBackFrontSourceWaveApplicatorTests(unittest.TestCase):
         sut.commit_projection(post)
         self.assertEqual(after_first, _snapshot(fixture.root))
 
+    def test_current_repository_projection_check_is_a_no_op(self) -> None:
+        proof = SOURCE_ROOT / (
+            "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/"
+            "DrawableProof/Valtan.front-back-front-source-waves.drawable-proof.v1.json"
+        )
+        projection = sut.collect_projection(
+            SOURCE_ROOT,
+            drawable_proof=proof,
+        )
+        sut.check_projection(projection)
+        self.assertEqual((), projection.changed_paths)
+        cues = _read_json(SOURCE_ROOT, sut.CUE_PATH)["cues"]
+        self.assertGreaterEqual(len(cues), 108)
+        self.assertTrue(
+            SAFE_REVIEWED_CUE_IDS.issubset(
+                {row["bindingId"] for row in cues}
+            )
+        )
+
+    def test_later_unrelated_catalog_and_cue_rows_do_not_stale_fbf_rows(self) -> None:
+        fixture = self.make_fixture()
+        sut.commit_projection(fixture.projection())
+        catalog_path = fixture.root.joinpath(*sut.CATALOG_PATH.parts)
+        catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+        catalog["effects"].append(
+            {
+                "effectAssetId": "effect.valtan.zzz-unrelated.test",
+                "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+                "authoringPath": "Effects/Authored/unrelated.effect.json",
+            }
+        )
+        catalog["effects"].sort(key=lambda row: row["effectAssetId"])
+        _write_json_like(catalog_path, catalog)
+        cues_path = fixture.root.joinpath(*sut.CUE_PATH.parts)
+        cues = json.loads(cues_path.read_text(encoding="utf-8"))
+        unrelated = deepcopy(cues["cues"][0])
+        unrelated["bindingId"] = "cue.valtan.zzz-unrelated.test"
+        unrelated["occurrenceId"] = "cue.valtan.zzz-unrelated.test.occurrence.01"
+        unrelated["patternId"] = "VALTAN_ZZZ_UNRELATED_TEST"
+        unrelated["actionId"] = "valtan.zzz-unrelated.test"
+        unrelated["clipOccurrenceId"] = "valtan.zzz-unrelated.test.clip.01"
+        unrelated["effectAssetId"] = "effect.valtan.zzz-unrelated.test"
+        cues["cues"].append(unrelated)
+        cues["cues"].sort(
+            key=lambda row: (row["patternId"], row["actionId"], row["bindingId"])
+        )
+        _write_json_like(cues_path, cues)
+        projection = fixture.projection()
+        self.assertEqual(
+            {sut.DEFAULT_APPLICATION_RECEIPT},
+            set(projection.changed_paths),
+        )
+
     def test_hand_tuned_wave_element_is_deep_preserved(self) -> None:
         fixture = self.make_fixture()
         first = fixture.projection()
@@ -238,9 +362,11 @@ class FrontBackFrontSourceWaveApplicatorTests(unittest.TestCase):
         fixture = self.make_fixture()
         aggregate = fixture.candidate_receipt["aggregateCanary"]
         aggregate_path = fixture.root.joinpath(*PurePosixPath(aggregate["authoredDocumentPath"]).parts)
-        aggregate_path.write_bytes(aggregate_path.read_bytes() + b"\n")
+        aggregate_document = json.loads(aggregate_path.read_text(encoding="utf-8"))
+        aggregate_document["effectAssetId"] = "effect.valtan.front-back-front.drifted"
+        _write_json_like(aggregate_path, aggregate_document)
         before = _snapshot(fixture.root)
-        with self.assertRaisesRegex(sut.SourceRebaseRequired, "aggregate authored"):
+        with self.assertRaisesRegex(sut.SourceRebaseRequired, "aggregate authored identity"):
             fixture.projection()
         self.assertEqual(before, _snapshot(fixture.root))
 

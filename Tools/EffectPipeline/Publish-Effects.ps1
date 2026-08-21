@@ -1621,6 +1621,19 @@ function Resolve-SafeModelCueResource([string]$AssetId) {
     return $candidate
 }
 
+function Resolve-SafeElementResource(
+        [string]$Kind,
+        [string]$SlotId,
+        [string]$AssetId) {
+    if ($SlotId -ceq 'meshModel') {
+        if ($Kind -notin @('mesh', 'particle')) {
+            throw "meshModel is only valid on a mesh or particle Element."
+        }
+        return Resolve-SafeModelCueResource $AssetId
+    }
+    return Resolve-SafeResource $AssetId
+}
+
 function Copy-JsonValue([object]$Value) {
     return ($Value | ConvertTo-Json -Depth 100 -Compress) | ConvertFrom-Json
 }
@@ -2482,10 +2495,11 @@ try {
                     if ([Text.Encoding]::UTF8.GetByteCount($assetId) -gt 512) {
                         throw "Effect resource asset ID is too long: $assetId"
                     }
-					if ($slot -eq 'meshModel' -and $kind -notin @('mesh','particle')) {
-						throw "meshModel is only valid on a mesh or particle Element."
+                    if ($slot -eq 'meshModel' -and $kind -notin @('mesh','particle')) {
+                        throw "meshModel is only valid on a mesh or particle Element."
                     }
-                    $resourceFile = Resolve-SafeResource $assetId
+                    $resourceFile = Resolve-SafeElementResource `
+                        $kind $slot $assetId
                     $extension = [IO.Path]::GetExtension($resourceFile).ToLowerInvariant()
                     if (($slot -eq 'meshModel' -and $extension -ne '.wmodel') -or
                         ($slot -ne 'meshModel' -and $extension -ne '.dds')) {
@@ -2690,8 +2704,10 @@ try {
                             $artistAssetId -ceq $compilerAssetId) {
                             throw "Authoring resource override is stale or a no-op in ${effectAssetId}: $elementId/$slotId"
                         }
-                        $artistFile = Resolve-SafeResource $artistAssetId
-                        $compilerFile = Resolve-SafeResource $compilerAssetId
+                        $artistFile = Resolve-SafeElementResource `
+                            $kind $slotId $artistAssetId
+                        $compilerFile = Resolve-SafeElementResource `
+                            $kind $slotId $compilerAssetId
                         if ([IO.Path]::GetExtension($artistFile).ToLowerInvariant() `
                                 -cne $expectedExtension -or
                             [IO.Path]::GetExtension($compilerFile).ToLowerInvariant() `

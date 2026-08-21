@@ -108,7 +108,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.4000000059604645,
+          "lifeTimeSeconds": 1.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -1036,7 +1036,7 @@
             0.0
           ],
           "speed": [
-            0.0,
+            -0.25,
             0.0
           ],
           "wave": false,
@@ -1054,12 +1054,12 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 1.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -1162,7 +1162,7 @@
             0.0
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -2141,7 +2141,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 1.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -3358,7 +3358,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 1.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -4265,7 +4265,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 1.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -5106,7 +5106,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 1.5,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },

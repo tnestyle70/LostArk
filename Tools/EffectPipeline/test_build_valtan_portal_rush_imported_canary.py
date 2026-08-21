@@ -60,8 +60,8 @@ class ValtanPortalRushImportedCanaryTests(unittest.TestCase):
     def test_reconcile_is_missing_only_and_preserves_authored_rows(self) -> None:
         self.assertEqual(0, self.receipt["summary"]["deletedElementCount"])
         self.assertEqual(0, self.receipt["summary"]["sourceRebaseRequiredCount"])
-        self.assertEqual(24, self.receipt["summary"]["missingOnlyAddElementCount"])
-        self.assertEqual(47, self.receipt["summary"]["preservedAuthoredElementCount"])
+        self.assertEqual(0, self.receipt["summary"]["missingOnlyAddElementCount"])
+        self.assertEqual(71, self.receipt["summary"]["preservedAuthoredElementCount"])
         for row in self.receipt["documents"]:
             plan = row["reconcile"]
             self.assertEqual([], plan["deleteElements"])
@@ -69,9 +69,7 @@ class ValtanPortalRushImportedCanaryTests(unittest.TestCase):
                 plan["existingElementCount"],
                 plan["preservedExistingElementCount"],
             )
-            self.assertEqual(
-                row["executableElementCount"], len(plan["addElementRefs"])
-            )
+            self.assertEqual([], plan["addElementRefs"])
             self.assertEqual(
                 "REPORT_ONLY_UNVERIFIED_DEFAULT_SIGNATURE_NO_DELETE",
                 plan["legacyRetirementDisposition"],

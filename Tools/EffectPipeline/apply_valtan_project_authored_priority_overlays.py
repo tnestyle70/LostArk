@@ -82,6 +82,7 @@ DISABLED_SOURCE_RECIPE = {
     "modules": [],
 }
 HIGH_JUMP_EFFECT_ID = "effect.valtan.high-jump.airborne"
+HIGH_JUMP_AXE_MODEL_ASSET_ID = "Character/Valtan/ValtanWeapon.wmodel"
 HIGH_JUMP_CATALOG_ROW = {
     "effectAssetId": HIGH_JUMP_EFFECT_ID,
     "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
@@ -311,25 +312,40 @@ def _validate_patch_plan(plan: dict[str, Any]) -> None:
     if (
         authority.get("presentationOnly") is not True
         or authority.get("serverGameplayChange") is not False
-        or authority.get("projectileAuthorityStatus") != "UNRESOLVED_PROJECTILE"
+        or authority.get("projectileAuthorityStatus")
+        != "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE"
     ):
         raise ProjectionError("HIGH_JUMP AIRBORNE authority boundary changed")
 
-    unresolved = _require_list(plan.get("unresolved"), "patch-plan.unresolved")
-    expected_unresolved = {
+    presentations = _require_list(
+        plan.get("projectilePresentations"),
+        "patch-plan.projectilePresentations",
+    )
+    expected_presentations = {
         f"project-authored:valtan.high-jump.airborne.beat-{beat:02d}.axe"
         for beat in (1, 2, 3)
     }
-    actual_unresolved = {
-        row.get("unresolvedId")
-        for row in unresolved
+    actual_presentations = {
+        row.get("presentationId")
+        for row in presentations
         if isinstance(row, dict)
-        and row.get("disposition") == "UNRESOLVED_PROJECTILE"
-        and row.get("candidateAssetId") is None
+        and row.get("disposition")
+        == "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE"
+        and row.get("modelAssetId") == HIGH_JUMP_AXE_MODEL_ASSET_ID
+        and row.get("geometryProvenance") == "OFFICIAL_GEOMETRY_EXACT"
+        and row.get("baseTextureProvenance")
+        == "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT"
+        and row.get("trajectoryTimingProvenance") == "PROJECT_AUTHORED"
+        and row.get("sourceActionPayloadClaim") == "NONE"
+        and row.get("presentationOnly") is True
+        and row.get("serverGameplayChange") is False
     }
-    if len(unresolved) != 3 or actual_unresolved != expected_unresolved:
+    if (
+        len(presentations) != 3
+        or actual_presentations != expected_presentations
+    ):
         raise ProjectionError(
-            "three unresolved HIGH_JUMP axe projectile rows must remain explicit"
+            "three presentation-only HIGH_JUMP official axe rows must remain explicit"
         )
 
 
@@ -399,10 +415,61 @@ def _validate_candidate_document(document: dict[str, Any], effect_id: str) -> No
                 f"priority candidate timing is invalid: {effect_id}/{element_id}"
             )
 
-    encoded = json.dumps(document, ensure_ascii=False).lower()
-    if "project-authored:valtan.high-jump.airborne" in encoded:
-        if ".axe" in encoded or ".wmodel" in encoded or '"kind": "mesh"' in encoded:
-            raise ProjectionError("HIGH_JUMP unresolved axe payload was fabricated")
+    if effect_id == HIGH_JUMP_EFFECT_ID:
+        expected_by_kind = {
+            "decal": {
+                f"project-axe-beat-{beat:02d}-target-decal"
+                for beat in (1, 2, 3)
+            },
+            "mesh": {
+                f"project-axe-beat-{beat:02d}-falling-axe"
+                for beat in (1, 2, 3)
+            },
+            "particle": {
+                f"project-axe-beat-{beat:02d}-ground-impact"
+                for beat in (1, 2, 3)
+            },
+        }
+        actual_by_kind = {
+            kind: {
+                element["id"]
+                for element in elements
+                if element.get("kind") == kind
+            }
+            for kind in expected_by_kind
+        }
+        if (
+            len(elements) != 9
+            or actual_by_kind != expected_by_kind
+            or any(element.get("kind") not in expected_by_kind for element in elements)
+        ):
+            raise ProjectionError(
+                "HIGH_JUMP AIRBORNE family denominator changed"
+            )
+        for element in elements:
+            if element.get("kind") != "mesh":
+                continue
+            detail = _require_object(element.get("detail"), "axe.detail")
+            mesh = _require_object(detail.get("mesh"), "axe.detail.mesh")
+            action_attachment = _require_object(
+                element.get("actionCueAttachment"),
+                "axe.actionCueAttachment",
+            )
+            if (
+                element.get("resources")
+                != [{
+                    "slotId": "meshModel",
+                    "assetId": HIGH_JUMP_AXE_MODEL_ASSET_ID,
+                }]
+                or mesh.get("useModelMaterial") is not True
+                or mesh.get("modelPreScale") != 1.0
+                or action_attachment.get("enabled") is not False
+                or action_attachment.get("follow") is not False
+            ):
+                raise ProjectionError(
+                    "HIGH_JUMP Mesh must reuse the official Valtan axe as an "
+                    "independent snapshot-root presentation"
+                )
 
 
 def _validate_proof(
@@ -659,8 +726,12 @@ def _immutable_projection_identity(element: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": element.get("id"),
         "sourceNode": element.get("sourceNode"),
+        "groupId": element.get("groupId"),
         "kind": element.get("kind"),
+        "resources": element.get("resources"),
         "material": element.get("material"),
+        "actionCueAttachment": element.get("actionCueAttachment"),
+        "transformInheritance": element.get("transformInheritance"),
         "sourceRecipe": element.get("sourceRecipe"),
         "sourcePresentation": element.get("sourcePresentation"),
     }
@@ -830,11 +901,6 @@ def _validate_cues(
     ):
         raise ProjectionError("Valtan cue v2 document identity is invalid")
     rows = _require_list(cues.get("cues"), "Valtan cues")
-    expected_order = sorted(
-        rows, key=lambda row: (row["patternId"], row["actionId"], row["bindingId"])
-    )
-    if rows != expected_order:
-        raise ProjectionError("Valtan cue v2 rows are not in canonical order")
     binding_ids: set[str] = set()
     occurrence_ids: set[str] = set()
     semantic_ids: set[tuple[str, str, str, str, str]] = set()
@@ -945,11 +1011,6 @@ def _stage_cues(
         )
     if existing is None:
         rows.append(deepcopy(HIGH_JUMP_CUE_ROW))
-        rows.sort(
-            key=lambda row: (
-                row["patternId"], row["actionId"], row["bindingId"]
-            )
-        )
     _validate_cues(staged, action_clips, catalog_effect_ids)
     return staged, appended
 
@@ -1221,7 +1282,9 @@ def collect_projection(
             ),
             "highJumpCatalogRowCount": 1,
             "highJumpCueRowCount": 1,
-            "unresolvedProjectileCount": len(plan["unresolved"]),
+            "officialAxePresentationCount": len(
+                plan["projectilePresentations"]
+            ),
         },
         "targets": target_receipts,
         "canonicalOutputs": [
@@ -1238,8 +1301,9 @@ def collect_projection(
             "documentSha256": high_jump_target["finalDocumentSha256"],
             "catalogRowSha256": _json_sha(HIGH_JUMP_CATALOG_ROW),
             "cueRowSha256": _json_sha(HIGH_JUMP_CUE_ROW),
-            "unresolvedProjectileIds": sorted(
-                row["unresolvedId"] for row in plan["unresolved"]
+            "officialAxePresentationIds": sorted(
+                row["presentationId"]
+                for row in plan["projectilePresentations"]
             ),
         },
         "whirlwindCanary": whirlwind,
@@ -1416,7 +1480,7 @@ def _summary(projection: Projection, mode: str) -> str:
         f"projectElements={closure['projectedElementCount']}, "
         f"canonicalOutputs={len(projection.canonical_outputs)}, "
         f"changedExisting={changed_existing}, newFiles={len(new)}, "
-        f"unresolvedAxes={closure['unresolvedProjectileCount']}"
+        f"officialAxePresentations={closure['officialAxePresentationCount']}"
     )
 
 

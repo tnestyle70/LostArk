@@ -50,7 +50,7 @@ class ValtanReviewedSourceFamilyCandidateTests(unittest.TestCase):
             + summary["effectAssetReuseDivergenceProjectionCount"],
         )
         self.assertEqual(24, len(self.receipt["patternCoverage"]))
-        self.assertEqual(37, len(self.receipt["documents"]))
+        self.assertEqual(36, len(self.receipt["documents"]))
 
     def test_every_element_delay_is_exactly_cue_local(self) -> None:
         for row in self.receipt["documents"]:
@@ -86,43 +86,144 @@ class ValtanReviewedSourceFamilyCandidateTests(unittest.TestCase):
                     self.assertLess(
                         source_key["sourceTimeSeconds"], cue_end / 1000.0
                     )
+                    remaining = (
+                        cue_end / 1000.0
+                        - source_key["sourceTimeSeconds"]
+                    )
+                    source_duration = source_key["sourceDurationSeconds"]
+                    self.assertEqual(
+                        min(
+                            source_duration
+                            if source_duration > 0.0 else remaining,
+                            remaining,
+                        ),
+                        element["detail"]["timing"]["lifeTimeSeconds"],
+                    )
 
-    def test_front_back_front_keeps_four_visual_waves_and_system_groups(self) -> None:
+    def test_mesh_override_uses_exact_texture_and_cue_lifetime(self) -> None:
         row = next(
             document
             for document in self.receipt["documents"]
-            if document["effectAssetId"]
-            == "effect.valtan.front-back-front.active"
+            if document["effectAssetId"] == "effect.valtan.backstep.windup"
         )
-        visual_groups = row["visualTimingGroups"]
-        notify_system_groups = row["notifySystemTimingGroups"]
-        self.assertEqual(4, len(visual_groups))
-        self.assertEqual(12, len(notify_system_groups))
-        self.assertEqual(
-            [
-                1.1699999570846558,
-                2.2536299228668213,
-                3.224159002304077,
-                4.220053195953369,
-            ],
-            sorted(group["sourceTimeSeconds"] for group in visual_groups),
+        document = json.loads(
+            self.files[row["candidateDocumentPath"]].decode("utf-8")
         )
+        element = next(
+            candidate
+            for candidate in document["elements"]
+            if candidate["id"] == "source.40b2b2a75d4aec1e0dc6"
+        )
+        resources = {
+            binding["slotId"]: binding["assetId"]
+            for binding in element["resources"]
+        }
+        self.assertEqual("mesh", element["sourceRecipe"]["rendererShape"])
+        self.assertFalse(element["detail"]["mesh"]["useModelMaterial"])
+        self.assertFalse(element["detail"]["particle"]["billboard"])
+        self.assertEqual(resources["mask"], resources["base"])
         self.assertEqual(
-            [25, 25, 25, 25],
-            sorted(group["elementCount"] for group in visual_groups),
+            "Effect/Valtan/Textures/FX_TEX_05/fx_m_trail_001_cl.dds",
+            resources["base"],
+        )
+        self.assertEqual(0.45, element["detail"]["timing"]["lifeTimeSeconds"])
+
+    def test_front_back_front_is_report_only_after_separate_wave_projection(self) -> None:
+        effect_ids = {
+            row["effectAssetId"] for row in self.receipt["documents"]
+        }
+        self.assertNotIn("effect.valtan.front-back-front.active", effect_ids)
+        blockers = [
+            row
+            for row in self.receipt["unresolvedCueJoins"]
+            if row["reason"]
+            == "MULTIPLE_V2_CUES_FOR_EXACT_CLIP_OCCURRENCE"
+            and row["patternId"] == "VALTAN_FRONT_BACK_FRONT"
+        ]
+        self.assertEqual(1, len(blockers))
+        blocker = blockers[0]
+        self.assertEqual(100, blocker["executableCoreProjectionCount"])
+        self.assertEqual(5, len(blocker["cueRows"]))
+        self.assertEqual(
+            {
+                "effect.valtan.front-back-front.active",
+                "effect.valtan.front-back-front.source-wave-01",
+                "effect.valtan.front-back-front.source-wave-02",
+                "effect.valtan.front-back-front.source-wave-03",
+                "effect.valtan.front-back-front.auxiliary-source-wave",
+            },
+            {row["effectAssetId"] for row in blocker["cueRows"]},
+        )
+
+    def test_safe_gap_is_excluded_by_sealed_occurrence_carrier_identity(self) -> None:
+        manifest = candidates.read_json(candidates.SAFE_GAP_MANIFEST_PATH)
+        current_cues = candidates.read_json(candidates.CUE_PATH)
+        current_catalog = candidates.read_json(candidates.CATALOG_PATH)
+        proposed_binding_ids = {
+            row["bindingId"] for row in manifest["proposedCueRows"]
+        }
+        proposed_effect_ids = {
+            row["effectAssetId"] for row in manifest["proposedCatalogRows"]
+        }
+        self.assertTrue(
+            proposed_binding_ids.issubset(
+                {row["bindingId"] for row in current_cues["cues"]}
+            )
         )
         self.assertTrue(
-            all(
-                len(group["notifySystemTimingGroupIds"]) == 3
-                and len(group["notifyIds"]) == 3
-                and len(group["sourceSystemIds"]) == 3
-                for group in visual_groups
+            proposed_effect_ids.issubset(
+                {row["effectAssetId"] for row in current_catalog["effects"]}
+            )
+        )
+        self.assertTrue(
+            proposed_effect_ids.isdisjoint(
+                {row["effectAssetId"] for row in self.receipt["documents"]}
             )
         )
         self.assertEqual(
-            {8, 9},
-            {group["elementCount"] for group in notify_system_groups},
+            manifest["inputIdentity"]["cueRawSha256"],
+            self.receipt["sources"]["cueDocument"]["sha256"],
         )
+        self.assertEqual(
+            manifest["inputIdentity"]["catalogRawSha256"],
+            self.receipt["sources"]["effectCatalog"]["sha256"],
+        )
+        blockers = {
+            row["clipOccurrenceId"]: row
+            for row in self.receipt["unresolvedCueJoins"]
+            if row["reason"] == "NO_V2_CUE_FOR_EXACT_CLIP_OCCURRENCE"
+        }
+        self.assertEqual(
+            141,
+            blockers["valtan.attack.swing.active.clip.02"][
+                "executableCoreProjectionCount"
+            ],
+        )
+        self.assertEqual(
+            19,
+            blockers["valtan.attack.four-slash.active.clip.02"][
+                "executableCoreProjectionCount"
+            ],
+        )
+        self.assertFalse(
+            any(
+                row["clipOccurrenceId"]
+                == "valtan.attack.backstep.windup.clip.01"
+                and row["reason"]
+                == "MULTIPLE_V2_CUES_FOR_EXACT_CLIP_OCCURRENCE"
+                for row in self.receipt["unresolvedCueJoins"]
+            )
+        )
+
+    def test_safe_gap_core_receipt_rejects_one_carrier_identity_drift(self) -> None:
+        manifest = copy.deepcopy(
+            candidates.read_json(candidates.SAFE_GAP_MANIFEST_PATH)
+        )
+        manifest["coreProjections"][0]["carrierKey"] += ".identity-drift"
+        with self.assertRaises(candidates.CandidateError):
+            candidates.validate_safe_gap_core_projection_identity(
+                self.inventory, manifest
+            )
 
     def test_three_safe_followup_selection_outcomes_are_explicit(self) -> None:
         coverage = {
@@ -206,11 +307,13 @@ class ValtanReviewedSourceFamilyCandidateTests(unittest.TestCase):
         summary = self.receipt["summary"]
         self.assertEqual(0, summary["deletedElementCount"])
         self.assertEqual(0, summary["sourceRebaseRequiredCount"])
-        self.assertEqual(1093, summary["legacyGenericRetireCandidateCount"])
-        self.assertEqual(4, summary["preservedExistingSourceOrImportedRowCount"])
+        self.assertEqual(0, summary["missingOnlyAddElementCount"])
+        self.assertEqual(1090, summary["legacyGenericRetireCandidateCount"])
+        self.assertEqual(287, summary["preservedExistingSourceOrImportedRowCount"])
         for row in self.receipt["documents"]:
             plan = row["reconcile"]
             self.assertEqual([], plan["deleteElements"])
+            self.assertEqual([], plan["addElementRefs"])
             self.assertEqual(
                 plan["existingElementCount"],
                 plan["preservedExistingElementCount"],
@@ -286,10 +389,12 @@ class ValtanReviewedSourceFamilyCandidateTests(unittest.TestCase):
             for row in receipt["unresolvedCueJoins"]
             if row["reason"]
             == "MULTIPLE_V2_CUES_FOR_EXACT_CLIP_OCCURRENCE"
+            and row["clipOccurrenceId"]
+            == "valtan.attack.portal-rush.portal.clip.01"
         ]
         self.assertEqual(1, len(blockers))
         self.assertEqual(14, blockers[0]["executableCoreProjectionCount"])
-        self.assertEqual(14, receipt["summary"]["multipleCueProjectionCount"])
+        self.assertEqual(114, receipt["summary"]["multipleCueProjectionCount"])
         self.assertNotIn(
             "effect.valtan.portal-rush.portal",
             {row["effectAssetId"] for row in receipt["documents"]},

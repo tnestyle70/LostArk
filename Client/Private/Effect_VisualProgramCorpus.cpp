@@ -2901,6 +2901,23 @@ bool_t Client::CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
 				*ProjectedTarget = *BaseTarget;
 			}
 		}
+		/* BaseSha above already seals the authored element order.  A projected
+		   document intentionally owns its own deterministic element order, so
+		   reverse-projection equality compares the same stable element identities
+		   after ID normalization instead of rejecting an otherwise exact payload
+		   solely because the projection sorted those rows. */
+		EFFECT_DOCUMENT_DESC ActualTypedBase = BaseDocument;
+		const auto SortElementsByStableId = [](EFFECT_DOCUMENT_DESC& Document)
+		{
+			std::sort(Document.Elements.begin(), Document.Elements.end(),
+				[](const EFFECT_ELEMENT_DESC& Left,
+					const EFFECT_ELEMENT_DESC& Right)
+				{
+					return Left.strElementId < Right.strElementId;
+				});
+		};
+		SortElementsByStableId(ExpectedTypedBase);
+		SortElementsByStableId(ActualTypedBase);
 		std::string ExpectedTypedBaseError;
 		std::string ActualTypedBaseError;
 		const std::string ExpectedTypedBaseSha =
@@ -2908,7 +2925,7 @@ bool_t Client::CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
 				ExpectedTypedBase, ExpectedTypedBaseError);
 		const std::string ActualTypedBaseSha =
 			CEffectVisualProgramCorpusCodec::Compute_DocumentCanonicalSha256(
-				BaseDocument, ActualTypedBaseError);
+				ActualTypedBase, ActualTypedBaseError);
 		if (ExpectedTypedBaseSha.empty() || ActualTypedBaseSha.empty() ||
 			ExpectedTypedBaseSha != ActualTypedBaseSha)
 		{

@@ -90,8 +90,8 @@
             0.0
           ],
           "speed": [
-            0.0,
-            0.0
+            0.20000000298023224,
+            0.10000000149011612
           ],
           "wave": false,
           "waveAmplitude": [
@@ -715,8 +715,8 @@
             0.0
           ],
           "speed": [
-            0.0,
-            0.0
+            0.20000000298023224,
+            0.10000000149011612
           ],
           "wave": false,
           "waveAmplitude": [
@@ -1345,7 +1345,7 @@
           ],
           "speed": [
             0.0,
-            0.0
+            2.0
           ],
           "wave": false,
           "waveAmplitude": [
@@ -2213,7 +2213,7 @@
             1.0
           ],
           "clip": 0.0,
-          "emissiveIntensity": 1.0,
+          "emissiveIntensity": 3.0,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
@@ -2225,8 +2225,8 @@
             0.0
           ],
           "speed": [
-            0.0,
-            0.0
+            0.05000000074505806,
+            0.05000000074505806
           ],
           "wave": false,
           "waveAmplitude": [
@@ -2248,7 +2248,7 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -2351,7 +2351,7 @@
             0.44999999999999996
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -3113,7 +3113,7 @@
           ],
           "speed": [
             0.0,
-            0.0
+            2.0
           ],
           "wave": false,
           "waveAmplitude": [

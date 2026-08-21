@@ -745,6 +745,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.backstep.windup.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.backstep.windup.trails",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.backstep.windup.trails.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.bind-charge-smash.charge",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.bind-charge-smash.charge.effect.json"
@@ -905,6 +910,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.four-slash.active.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.four-slash.active.clip-02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.four-slash.active.clip-02.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.four-slash.recovery",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.four-slash.recovery.effect.json"
@@ -920,9 +930,29 @@
       "authoringPath": "Effects/Authored/effect.valtan.front-back-front.active.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.front-back-front.auxiliary-source-wave",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.auxiliary-source-wave.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.front-back-front.recovery",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.front-back-front.recovery.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.front-back-front.source-wave-01",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-01.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.front-back-front.source-wave-02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-02.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.front-back-front.source-wave-03",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-03.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.front-back-front.windup",
@@ -970,6 +1000,11 @@
       "authoringPath": "Effects/Authored/effect.valtan.ground-wave-smash.windup.effect.json"
     },
     {
+      "effectAssetId": "effect.valtan.high-jump.airborne",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
+    },
+    {
       "effectAssetId": "effect.valtan.high-jump.land",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.high-jump.land.effect.json"
@@ -1013,6 +1048,11 @@
       "effectAssetId": "effect.valtan.jump-spin.spin",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.jump-spin.spin.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.jump-spin.spin.trails",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.jump-spin.spin.trails.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.ledge-roar.active",
@@ -1143,6 +1183,11 @@
       "effectAssetId": "effect.valtan.swing.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.swing.active.effect.json"
+    },
+    {
+      "effectAssetId": "effect.valtan.swing.active.clip-02",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.swing.active.clip-02.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.swing.recovery",

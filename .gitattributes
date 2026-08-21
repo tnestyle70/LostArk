@@ -72,4 +72,26 @@
 # across core.autocrlf=true worktrees.
 /Data/Effects/Authored/effect.lancemaster.skill.34010.ba4.effect.json text eol=lf
 
+# Valtan source-family receipts bind raw JSON bytes across the animation,
+# encounter, authored Effect, imported-candidate, and catalog layers. Keep the
+# whole joined input/output slice LF-stable so a core.autocrlf=true checkout
+# cannot invalidate its candidate/proof/application SHA chain.
+/Data/Animation/Authored/Valtan/*.json text eol=lf
+/Data/Animation/Authored/Valtan/Valtan.patterneffects.json text eol=crlf
+/Data/Animation/Reference/Valtan/Valtan.clipseq text eol=lf
+/Data/Encounters/Valtan/*.json text eol=lf
+/Data/Effects/EffectCatalog.json text eol=lf
+/Data/Effects/Authored/effect.valtan*.json text eol=lf
+# The existing Whirlwind 420633 authored canary predates the LF Valtan receipt
+# chain and intentionally freezes its CRLF raw identity (e94ddf...). Preserve
+# that one legacy byte contract until its VisualProgram canary is migrated.
+/Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json text eol=crlf
+/Data/Effects/Imported/Valtan/*.json text eol=lf
+/Data/Effects/Imported/Valtan/**/*.json text eol=lf
+# The legacy base-buff action source is already raw-SHA bound as CRLF
+# (058c6dcd...). Keep this exact input identity until its catalog receipt is
+# deliberately migrated together with every consumer.
+/Data/Effects/Imported/Valtan/Valtan.basebuff-effect-source.json text eol=crlf
+/Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json text eol=crlf
+
 

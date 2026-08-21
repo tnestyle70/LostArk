@@ -46,6 +46,30 @@ DimensionMaster로 rename된 `Data/Effects/Authored/.../Candidates`의 구형 au
 재구축과 함께 삭제했다. 원본 추출 증거인 SourceCatalog/SourceExtracted와 Resources payload는 보존하지만
 admitted effect 목록이나 제품 runtime cue에는 자동 연결하지 않는다.
 
+### 2.1 2026-08-21 현재 Effect Tool과 Valtan 저작 계약
+
+위의 G0 재구축 설명과 아래 `admitted Effect 0개` 문장은 당시 단계의 역사적 경계이며 현재 제품 계약이
+아니다. 현재 Debug F1 `Effect Tool -> All Effects`는 direct-authored Player Product cue와 Valtan Product
+cue를 실제 `EffectCatalog`에 join하고 같은 unified Effect editor를 연다.
+
+```text
+Player
+  -> input slot / skill / stage / ordered clip cue
+  -> unified Effect -> family -> editable element
+
+Valtan
+  -> phase / pattern / semantic stage / ordered clip occurrence / product cue
+  -> unified Effect -> family -> editable element
+```
+
+두 owner 모두 Mesh, Sprite, Mesh Particle, Sprite Particle, Local Decal, Trail/Ribbon family tree와
+`Open for Editing`, Play, Save를 공유한다. Save는 선택된 direct-authored 문서 하나만 원자 저장하고 같은
+catalog revision의 prepared target을 교체한다. 실행 중 occurrence는 이전 document를 유지하고 다음 cue
+spawn부터 새 document를 사용하며 실패 시 이전 Product pointer/cache로 rollback한다. schema, Catalog,
+source-family batch를 바꾸는 작업은 여전히 `Publish-Effects.ps1` 전체 publish와 Client 재시작이 필요하다.
+Animation Tool은 이 경로가 존재해도 Effect element를 직접 편집하지 않고 ordered clip과 cue timing/anchor를
+소유한다. Valtan Server stage와 damage도 계속 Encounter/Server 권위이며 Effect Tool이 바꾸지 않는다.
+
 ## 3. Animation Tool이 소유하는 것
 
 Animation 담당자는 다음을 계속 소유한다.

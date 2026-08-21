@@ -152,15 +152,14 @@
         "projectedElementCount",
         "highJumpCatalogRowCount",
         "highJumpCueRowCount",
-        "unresolvedProjectileCount"
+        "officialAxePresentationCount"
       ],
       "properties": {
         "candidateDocumentCount": {
           "const": 9
         },
         "projectedElementCount": {
-          "type": "integer",
-          "minimum": 1
+          "const": 24
         },
         "highJumpCatalogRowCount": {
           "const": 1
@@ -168,7 +167,7 @@
         "highJumpCueRowCount": {
           "const": 1
         },
-        "unresolvedProjectileCount": {
+        "officialAxePresentationCount": {
           "const": 3
         }
       }
@@ -237,7 +236,7 @@
         "documentSha256",
         "catalogRowSha256",
         "cueRowSha256",
-        "unresolvedProjectileIds"
+        "officialAxePresentationIds"
       ],
       "properties": {
         "documentSha256": {
@@ -249,7 +248,7 @@
         "cueRowSha256": {
           "$ref": "#/$defs/sha256"
         },
-        "unresolvedProjectileIds": {
+        "officialAxePresentationIds": {
           "type": "array",
           "minItems": 3,
           "maxItems": 3,

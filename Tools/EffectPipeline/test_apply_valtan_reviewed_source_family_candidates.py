@@ -69,7 +69,11 @@ class RepositoryFixture:
         receipt_relative = sut.DEFAULT_CANDIDATE_RECEIPT
         source_receipt = SOURCE_ROOT.joinpath(*receipt_relative.parts)
         self.receipt = json.loads(source_receipt.read_text(encoding="utf-8"))
-        paths: set[PurePosixPath] = {receipt_relative}
+        paths: set[PurePosixPath] = {
+            receipt_relative,
+            sut.SAFE_GAP_MANIFEST,
+            sut.SAFE_GAP_APPLICATION_RECEIPT,
+        }
         for document in self.receipt["documents"]:
             paths.add(PurePosixPath(document["candidateDocumentPath"]))
             paths.add(PurePosixPath(document["authoredDocumentPath"]))
@@ -85,6 +89,7 @@ class RepositoryFixture:
             target = self.root.joinpath(*relative.parts)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
+        self._normalize_canonical_documents_to_pre_apply()
         self.proof_relative = FIXTURE_PROOF
         self.proof_path = self.root.joinpath(*FIXTURE_PROOF.parts)
         self.proof_path.parent.mkdir(parents=True, exist_ok=True)
@@ -94,12 +99,35 @@ class RepositoryFixture:
     def close(self) -> None:
         self._temporary.cleanup()
 
+    def _normalize_canonical_documents_to_pre_apply(self) -> None:
+        """Remove reviewed rows so the fixture exercises missing-only append.
+
+        The repository itself is already projected.  A useful applicator test
+        must reconstruct the immediately-pre-apply authored state without
+        changing any non-reviewed row or the immutable candidate receipt.
+        """
+        for row in self.receipt["documents"]:
+            candidate = _read_json(self.root, row["candidateDocumentPath"])
+            projected_pairs = {
+                (element["id"], element["sourceNode"])
+                for element in candidate["elements"]
+            }
+            target_path = self.root.joinpath(
+                *PurePosixPath(row["authoredDocumentPath"]).parts
+            )
+            authored = json.loads(target_path.read_text(encoding="utf-8"))
+            authored["elements"] = [
+                element
+                for element in authored["elements"]
+                if (element.get("id"), element.get("sourceNode"))
+                not in projected_pairs
+            ]
+            _write_json_like(target_path, authored)
+
     def _build_proof(self) -> dict:
         receipt_path = self.root.joinpath(*sut.DEFAULT_CANDIDATE_RECEIPT.parts)
         targets = []
         for document in self.receipt["documents"]:
-            if document["effectAssetId"] == sut.EXCLUDED_MULTI_CUE_EFFECT_ID:
-                continue
             candidate = _read_json(self.root, document["candidateDocumentPath"])
             targets.append(
                 {
@@ -142,7 +170,7 @@ class ReviewedSourceFamilyApplicatorTests(unittest.TestCase):
         self.addCleanup(fixture.close)
         return fixture
 
-    def test_dry_run_is_read_only_and_closes_36_docs_280_elements(self) -> None:
+    def test_dry_run_is_read_only_and_closes_36_docs_279_elements(self) -> None:
         fixture = self.make_fixture()
         before = _snapshot(fixture.root)
         projection = fixture.projection()
@@ -151,29 +179,12 @@ class ReviewedSourceFamilyApplicatorTests(unittest.TestCase):
         self.assertEqual(37, len(projection.changed_paths))
         self.assertEqual(1, len(projection.new_paths))
         closure = projection.receipt["closure"]
-        self.assertEqual(37, closure["inputCandidateDocumentCount"])
-        self.assertEqual(380, closure["inputCandidateElementCount"])
+        self.assertEqual(36, closure["inputCandidateDocumentCount"])
+        self.assertEqual(279, closure["inputCandidateElementCount"])
         self.assertEqual(36, closure["applicableCandidateDocumentCount"])
-        self.assertEqual(280, closure["projectedSourceElementCount"])
-        self.assertEqual(1, closure["excludedPendingMultiCueSplitDocumentCount"])
-        self.assertEqual(100, closure["excludedPendingMultiCueSplitElementCount"])
-        excluded = projection.receipt["excludedTargets"]
-        self.assertEqual(1, len(excluded))
-        self.assertEqual(sut.EXCLUDED_MULTI_CUE_EFFECT_ID, excluded[0]["effectAssetId"])
-        self.assertEqual("EXCLUDED_PENDING_MULTI_CUE_SPLIT", excluded[0]["disposition"])
-        self.assertEqual(4, len(excluded[0]["visualTimingGroups"]))
-        self.assertEqual(
-            [25, 25, 25, 25],
-            [row["elementCount"] for row in excluded[0]["visualTimingGroups"]],
-        )
-        self.assertEqual(12, len(excluded[0]["notifySystemTimingGroups"]))
-        self.assertEqual(
-            {row["visualTimingGroupId"] for row in excluded[0]["visualTimingGroups"]},
-            {
-                row["visualTimingGroupId"]
-                for row in excluded[0]["notifySystemTimingGroups"]
-            },
-        )
+        self.assertEqual(279, closure["projectedSourceElementCount"])
+        self.assertEqual(100, closure["reportOnlyMultipleCueProjectionCount"])
+        self.assertNotIn("excludedTargets", projection.receipt)
         with self.assertRaises(sut.ProjectionError):
             sut.check_projection(projection)
 
@@ -194,9 +205,6 @@ class ReviewedSourceFamilyApplicatorTests(unittest.TestCase):
             row["path"]: fixture.root.joinpath(*PurePosixPath(row["path"]).parts).read_bytes()
             for row in projection.receipt["sourceGuards"]
         }
-        excluded_path = projection.receipt["excludedTargets"][0]["targetAuthoredDocumentPath"]
-        excluded_before = fixture.root.joinpath(*PurePosixPath(excluded_path).parts).read_bytes()
-
         sut.commit_projection(projection)
         sut.check_projection(fixture.projection())
         appended = 0
@@ -207,11 +215,7 @@ class ReviewedSourceFamilyApplicatorTests(unittest.TestCase):
             delta = len(after["elements"]) - len(before["elements"])
             self.assertEqual(target["candidateElementCount"], delta)
             appended += delta
-        self.assertEqual(280, appended)
-        self.assertEqual(
-            excluded_before,
-            fixture.root.joinpath(*PurePosixPath(excluded_path).parts).read_bytes(),
-        )
+        self.assertEqual(279, appended)
         for relative, payload in protected_before.items():
             self.assertEqual(
                 payload, fixture.root.joinpath(*PurePosixPath(relative).parts).read_bytes()

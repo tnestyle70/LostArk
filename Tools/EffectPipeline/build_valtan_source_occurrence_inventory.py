@@ -1440,7 +1440,7 @@ def build_system_inventory(
             conversion_blockers.append(str(unsupported_reason))
         else:
             try:
-                detail, _detail_mappings, bursts = imported_effects.emitter_detail(
+                detail, detail_mappings, bursts = imported_effects.emitter_detail(
                     index,
                     lod,
                     modules,
@@ -1461,6 +1461,75 @@ def build_system_inventory(
                         selected_system, module_ids, normalized_graph
                     )
                 )
+                imported_effects.material_detail(
+                    material_rows, detail, detail_mappings
+                )
+                if renderer_shape == "mesh":
+                    # Follow the ordinary character Cascade importer. UE3
+                    # bOverrideMaterial is the inverse of the runtime
+                    # useModelMaterial flag; treating every mesh as embedded-
+                    # material made valid Valtan carriers prepare/draw zero.
+                    detail["mesh"]["useModelMaterial"] = (
+                        imported_effects.mesh_uses_model_material(
+                            modules, detail_mappings
+                        )
+                    )
+                    detail["particle"]["billboard"] = False
+                    has_runtime_override_texture = any(
+                        row.get("slotId") != "meshModel"
+                        for row in runtime_resources
+                    )
+                    if (
+                        not detail["mesh"]["useModelMaterial"]
+                        and not has_runtime_override_texture
+                    ):
+                        # A texture-free procedural override is not executable
+                        # in the ordinary Effect renderer. Keep the exact model
+                        # carrier and use its embedded material instead.
+                        detail["mesh"]["useModelMaterial"] = True
+                    if (
+                        not detail["mesh"]["useModelMaterial"]
+                        and not any(
+                            row.get("slotId") == "base"
+                            for row in runtime_resources
+                        )
+                    ):
+                        # Some UE3 override materials expose their only color
+                        # carrier through mask/emissive/noise. Rebind that exact
+                        # source texture to the required runtime base lane.
+                        color_carrier = next(
+                            (
+                                row
+                                for preferred_slot in (
+                                    "emissive",
+                                    "mask",
+                                    "dissolve",
+                                    "noise",
+                                )
+                                for row in runtime_resources
+                                if row.get("slotId") == preferred_slot
+                            ),
+                            None,
+                        )
+                        if color_carrier is not None:
+                            runtime_resources.append(
+                                {
+                                    "slotId": "base",
+                                    "assetId": color_carrier["assetId"],
+                                }
+                            )
+                            resource_receipt.append(
+                                {
+                                    "slotId": "base",
+                                    "sourceObjectPath": "",
+                                    "assetId": color_carrier["assetId"],
+                                    "status": (
+                                        "EXACT_SOURCE_TEXTURE_RUNTIME_BASE_ADAPTER_"
+                                        + str(color_carrier["slotId"]).upper()
+                                    ),
+                                    "sourceSlotId": color_carrier["slotId"],
+                                }
+                            )
                 portable_source_recipe = portable_recipe(source_recipe)
             except MaterializeError as error:
                 conversion_status = "UNRESOLVED_RUNTIME_ADAPTER"
@@ -1495,9 +1564,19 @@ def build_system_inventory(
             disposition = "UNRESOLVED_IMPORT_PRIMITIVE"
         elif (
             renderer_shape == "mesh"
-            and not any(
-                row.get("slotId") == "meshModel"
-                for row in runtime_resources
+            and (
+                not any(
+                    row.get("slotId") == "meshModel"
+                    for row in runtime_resources
+                )
+                or (
+                    detail is not None
+                    and not detail["mesh"]["useModelMaterial"]
+                    and not any(
+                        row.get("slotId") == "base"
+                        for row in runtime_resources
+                    )
+                )
             )
         ) or (
             renderer_shape != "mesh"
@@ -1511,6 +1590,16 @@ def build_system_inventory(
             conversion_blockers.append(
                 "DRAWABLE_BASE_OR_MESH_RUNTIME_BINDING_MISSING"
             )
+        elif (
+            detail is not None
+            and renderer_shape in ("sprite", "mesh")
+            and float(detail["particle"]["spawnRatePerSecond"]) <= 0.0
+            and portable_source_recipe is not None
+            and not portable_source_recipe.get("bursts")
+        ):
+            disposition = "UNRESOLVED_RUNTIME_ADAPTER"
+            conversion_status = "UNRESOLVED_RUNTIME_ADAPTER"
+            conversion_blockers.append("NO_EXECUTABLE_PARTICLE_EMISSION")
         else:
             disposition = "EXECUTABLE_CORE"
             conversion_status = "PORTABLE_RUNTIME_CARRIER_READY"

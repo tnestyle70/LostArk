@@ -47,13 +47,13 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
         self.assertEqual(summary["duplicateCarrierCount"], 0)
         self.assertEqual(summary["sourcePrimitiveDecodedCarrierCount"], 1044)
         self.assertEqual(summary["portableModuleReadyCarrierCount"], 904)
-        self.assertEqual(summary["drawableRuntimeReadyCarrierCount"], 551)
+        self.assertEqual(summary["drawableRuntimeReadyCarrierCount"], 547)
         self.assertEqual(summary["missingRuntimeResourceCarrierCount"], 350)
         self.assertEqual(
-            summary["portableRuntimeAdapterBlockedCarrierCount"], 119
+            summary["portableRuntimeAdapterBlockedCarrierCount"], 123
         )
         self.assertEqual(summary["runtimeResourceBoundCarrierCount"], 708)
-        self.assertEqual(summary["runtimeResourceBindingCount"], 1611)
+        self.assertEqual(summary["runtimeResourceBindingCount"], 1614)
         runtime_cook = self.document["sources"]["runtimeCookReceipt"]
         self.assertEqual(runtime_cook["assetCount"], 398)
         self.assertEqual(runtime_cook["verifiedRuntimeFileCount"], 398)
@@ -240,7 +240,7 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
             selected["summary"]["reviewedSelectedBranchCount"], 24
         )
         self.assertEqual(
-            selected["summary"]["completionCarrierDenominator"], 630
+            selected["summary"]["completionCarrierDenominator"], 628
         )
 
     def test_branch_stage_paths_and_full_keys_are_not_clip_deduplicated(self) -> None:
@@ -359,7 +359,7 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
         self.assertEqual(summary["ribbonSourceSystemCount"], 6)
         self.assertEqual(summary["ribbonReferencedOccurrenceCount"], 109)
         self.assertEqual(summary["ribbonBlockedOccurrenceCount"], 27)
-        self.assertEqual(summary["unresolvedRuntimeAdapterCarrierCount"], 125)
+        self.assertEqual(summary["unresolvedRuntimeAdapterCarrierCount"], 129)
         self.assertEqual(
             summary["unresolvedRuntimeAdapterOccurrenceCount"], 1931
         )
@@ -373,6 +373,25 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
                         "RIBBON_RUNTIME_ADAPTER_UNAVAILABLE",
                         carrier["conversionBlockers"],
                     )
+
+    def test_zero_rate_and_zero_burst_carriers_are_not_executable(self) -> None:
+        blocked = [
+            carrier
+            for system in self.document["sourceSystems"]
+            for carrier in system["carriers"]
+            if "NO_EXECUTABLE_PARTICLE_EMISSION"
+            in carrier["conversionBlockers"]
+        ]
+        self.assertEqual(4, len(blocked))
+        self.assertTrue(
+            all(
+                carrier["disposition"] == "UNRESOLVED_RUNTIME_ADAPTER"
+                and carrier["conversionStatus"]
+                == "UNRESOLVED_RUNTIME_ADAPTER"
+                and carrier["sourceRecipeSummary"]["burstCount"] == 0
+                for carrier in blocked
+            )
+        )
 
     def test_portable_runtime_admission_is_carrier_specific_and_fail_closed(self) -> None:
         portal_system = next(

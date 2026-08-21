@@ -1,0 +1,253 @@
+{
+  "schema": "lostark.valtan-safe-reviewed-gap-drawable-proof",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "disposition": "PROOF_PASS_CANONICAL_APPLY_ALLOWED",
+  "candidateManifest": {
+    "path": "Data/Effects/Imported/Valtan/SafeReviewedGaps/Valtan.safe-reviewed-gap-candidates.v1.json",
+    "rawSha256": "3ddc0837b3b499b0e0af810b1726609d65cad189ee6ef6bcb3e710fbc95c480d",
+    "canonicalSha256": "483d5a700c4529dd662a375595c3d0fc1d76dd31dcfce16ee6abf77d1aa33769",
+    "artifactSha256": "30742ab8ee7ccab8103918cd6d4997069b9568ec0a59a9c93935ea24dbd5cf30"
+  },
+  "drawableSweep": {
+    "path": "Data/Effects/Imported/Valtan/SafeReviewedGaps/DrawableProof/Valtan.safe-reviewed-gaps.drawable-sweep.v1.json",
+    "rawSha256": "0d4697fa6b187b277755579971f99656b265fdc25d724ae7c1a85da6b7cf2a9e",
+    "canonicalSha256": "02991c6fe61095b6260c0264b0767c4cafc0417871ec1977d4bef0350fc0fe78",
+    "sampleRateHz": 60
+  },
+  "trailAdapterPackets": {
+    "path": "Data/Effects/Imported/Valtan/Valtan.trail-adapter-packets.v1.json",
+    "rawSha256": "027630e4071e3f54f84713eefd08c1501f81e535711e9b29c8592131f83c4fd7",
+    "canonicalSha256": "a035e3d07cc24c19ab74b741e9c575ea927aa93048b9e5a21966c84d0c3f14bb",
+    "artifactSha256": "85726bc0c1ddd35159d5cbe13edc35cbd3851282c0cd255850cf51dc9ef36b4f"
+  },
+  "whirlwindCanary": {
+    "status": "AUTHORED_AND_RUNTIME_SLICE_BYTE_IDENTICAL",
+    "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+    "historyArtifactSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+    "historyRawSha256": "34f0d15e31afdca31887828961c8de450ebc027d4dcf54ff0c0d9312df3fd64e",
+    "effectRawSha256": "e94ddfd463da840962ddf8d8a0b604af4ef833925c2ac1cfd0f8e25522a5bea7",
+    "effectCanonicalSha256": "95c233b9fb9ded959a5527381f5ae0bd1a85b8c97c5a0a6b8341f92364ecd68a",
+    "runtimeBaseSourceRawSha256": "ac0c4464fd1fc05dcb0b107e796c015b1ca4c76dcf9beb06023b5cf5d890bf94",
+    "runtimeProjectedDocumentCanonicalByteCount": 124507,
+    "runtimeProjectedDocumentSha256": "23cf5425d5c7f080a14263ef2613e715b1df206892b61ffb371fc1248988b483",
+    "runtimeProjectedDocumentTypedCodecSha256": "bdb2178b309901f360a77739bb3ec7219926bcbdd8b9e4e9a5b2b6b0911c1b02",
+    "runtimeProgramSha256": "3a3c3a42dc9423303c458fa90cdea8ba719c74853aba59d7d942f7b2b17b6fab",
+    "sampleCount": 409,
+    "sourceEndTimeSeconds": 3.200000047683716,
+    "playbackClampSeconds": 1.2000000476837158,
+    "effectElementCount": 9,
+    "coreElementCount": 5,
+    "animationTrailTargetCount": 3,
+    "deferredLightCount": 1
+  },
+  "documents": [
+    {
+      "effectAssetId": "effect.valtan.backstep.windup.trails",
+      "candidatePath": "Data/Effects/Imported/Valtan/SafeReviewedGaps/effect.valtan.backstep.windup.trails.safe-gap-candidate.effect.json",
+      "candidateRawSha256": "352f402590703a7e619b3a3cbac2af8c89f0f2ff6ab55e250f5b070f9f072a86",
+      "candidateCanonicalSha256": "b97b601c287c5c67cbe6bde376ba927e9df2fe07085fd6a2a66453236bb814eb",
+      "elementCount": 3,
+      "sweepElementRowsSha256": "7be9ec346ee436cc7f3685e2af521c6b59b7dc4e1b5b68999e74a9915fad0acf",
+      "disposition": "DRAWABLE_PROOF_PASS"
+    },
+    {
+      "effectAssetId": "effect.valtan.four-slash.active.clip-02",
+      "candidatePath": "Data/Effects/Imported/Valtan/SafeReviewedGaps/effect.valtan.four-slash.active.clip-02.safe-gap-candidate.effect.json",
+      "candidateRawSha256": "509f16118320f15a71dce796e929ffb3be2d410fcf7e11bf235e139c028d093f",
+      "candidateCanonicalSha256": "8d0b52fe15eac0c92b0d66dc5cb557a8a84ee43d4b6705f77d5fa75ab8f008a4",
+      "elementCount": 20,
+      "sweepElementRowsSha256": "82045729e15da30f779666923a68767b3c2a03463a030353fc7d5c6dbe4cff8b",
+      "disposition": "DRAWABLE_PROOF_PASS"
+    },
+    {
+      "effectAssetId": "effect.valtan.jump-spin.spin.trails",
+      "candidatePath": "Data/Effects/Imported/Valtan/SafeReviewedGaps/effect.valtan.jump-spin.spin.trails.safe-gap-candidate.effect.json",
+      "candidateRawSha256": "0e35667aa73a899d5f5f2208411064966325c3fbfcb5145fb5028edbcec33420",
+      "candidateCanonicalSha256": "951d864f8cc08eec7728f55662b2353665d55cce32a85b8f0dda26fd67ce5599",
+      "elementCount": 3,
+      "sweepElementRowsSha256": "75265b9ef47799415a508eb84d1a963317dd1c0b57ff063bf4d6d92d91394bba",
+      "disposition": "DRAWABLE_PROOF_PASS"
+    },
+    {
+      "effectAssetId": "effect.valtan.swing.active.clip-02",
+      "candidatePath": "Data/Effects/Imported/Valtan/SafeReviewedGaps/effect.valtan.swing.active.clip-02.safe-gap-candidate.effect.json",
+      "candidateRawSha256": "edad860b18f7ee0ae535454523c7c3e5d2b635ba56d736965f6bd2f3676d6d38",
+      "candidateCanonicalSha256": "039fdf75687d59cae7b8815cf7c8f7be37d43c8b7345017ca61ad5e257772d11",
+      "elementCount": 141,
+      "sweepElementRowsSha256": "6b88d857b6c08e160c371d3109101fd29cecf8f35b2a45c0f6bc02f5e3f0ebeb",
+      "disposition": "DRAWABLE_PROOF_PASS"
+    }
+  ],
+  "adapterJoins": [
+    {
+      "projectionId": "safe-gap.adapter-projection.196629f88cf59098ff45254d68f7a6d1a0b44599b1d1a339416d85ca0f92f308",
+      "sourceAdapterTargetId": "valtan.trail-adapter.fa1bc626ced230f06727f1d1",
+      "sourceAdapterRowSha256": "373f547a750b160356c23364ad2e4d063c41bd75f1cdd6c3007806b7df97a57a",
+      "sourcePacketSha256": "707ee343a2c5433ab806c76317638fa7ca38728bbf227f4f7fc7a41b70966d3c",
+      "family": "ANIMATION_TRAIL",
+      "effectAssetId": "effect.valtan.jump-spin.spin.trails",
+      "targetElementId": "safe-gap.trail.0eae54e3e7a4d031fb12f244",
+      "targetContractSha256": "650724f0e7c889477faa6c9f37cece8b7a3bc77144fe33a698f6cadfb8aa6ded",
+      "disposition": "PACKET_TARGET_DRAW_JOIN_PASS"
+    },
+    {
+      "projectionId": "safe-gap.adapter-projection.40cfea56f2f7a7cb74e2efb0d314095d5603869e42e5f1ed19cb4e5b1ca59506",
+      "sourceAdapterTargetId": "valtan.trail-adapter.4e2f6b3e7e7b359438b5e626",
+      "sourceAdapterRowSha256": "3d1b6b11f904acca8aa61f192f776ad0a7b8239c803841904f2d20d35ea926ed",
+      "sourcePacketSha256": "7f6de4305c63510623effefc830a63ebfb99edea467229793a21e6a057460544",
+      "family": "ANIMATION_TRAIL",
+      "effectAssetId": "effect.valtan.backstep.windup.trails",
+      "targetElementId": "safe-gap.trail.356cc514cb5cf7104cba9bff",
+      "targetContractSha256": "650724f0e7c889477faa6c9f37cece8b7a3bc77144fe33a698f6cadfb8aa6ded",
+      "disposition": "PACKET_TARGET_DRAW_JOIN_PASS"
+    },
+    {
+      "projectionId": "safe-gap.adapter-projection.4e54cfe00335799a3524f6279ad06a3a40a8c1e8cb925a6ede71d56af53fda64",
+      "sourceAdapterTargetId": "valtan.trail-adapter.327940399d15f5de80e352ac",
+      "sourceAdapterRowSha256": "f4d459f778ec623fd9fbe84a4af8bfe2e73da2f31ed0dfe06bcb066ea420fb5e",
+      "sourcePacketSha256": "e96e2517bdc37736880963fa4d4626dc43069058ad11d377c3cc3df276c1db11",
+      "family": "ANIMATION_TRAIL",
+      "effectAssetId": "effect.valtan.jump-spin.spin.trails",
+      "targetElementId": "safe-gap.trail.603d4a21c858ed9fde7d16ad",
+      "targetContractSha256": "1dd60cf2cfc9d3ca58cdcae72c972c235053d072e490cafffbbf57a0b5bcf686",
+      "disposition": "PACKET_TARGET_DRAW_JOIN_PASS"
+    },
+    {
+      "projectionId": "safe-gap.adapter-projection.7ee021e357d0e744d7af8605fc1939a0690cbee5ca36c2eb2102229a61791810",
+      "sourceAdapterTargetId": "valtan.trail-adapter.c95bcfbdd8e19140f127dcf8",
+      "sourceAdapterRowSha256": "a3191197b12de401f0eda47fb706a5e19831018ae8bc0ccb63fd8bf4cee49ee9",
+      "sourcePacketSha256": "e481c2a7431bc3bd222dc58dc50b01c3d9d7505f3287a78f4d373478ae594ac8",
+      "family": "ANIMATION_TRAIL",
+      "effectAssetId": "effect.valtan.backstep.windup.trails",
+      "targetElementId": "safe-gap.trail.be92dd33e54d2a6b992d0e28",
+      "targetContractSha256": "1dd60cf2cfc9d3ca58cdcae72c972c235053d072e490cafffbbf57a0b5bcf686",
+      "disposition": "PACKET_TARGET_DRAW_JOIN_PASS"
+    },
+    {
+      "projectionId": "safe-gap.adapter-projection.a29e753e73ec86bbc2aa9230c2c8e9a5889614c5efa7270e9b0317cd20e72b7f",
+      "sourceAdapterTargetId": "valtan.trail-adapter.97972754aedce5e9ceb9e41a",
+      "sourceAdapterRowSha256": "a596ab2fb78e168d36acf3699a46b3918763c16c6ff53f8b866be148fe808716",
+      "sourcePacketSha256": "ffc5c5a2c8f94269afa430a48fca8b4d71a44432e6ef9e7537a2d52dc4092ea7",
+      "family": "CASCADE_RIBBON",
+      "effectAssetId": "effect.valtan.four-slash.active.clip-02",
+      "targetElementId": "safe-gap.trail.6dc8db3e4616f2794149d838",
+      "targetContractSha256": "2e5f52f53a26c9ee958e86590499d8a786b9a47a5bff54778bea6f4a7c9523ab",
+      "disposition": "PACKET_TARGET_DRAW_JOIN_PASS"
+    },
+    {
+      "projectionId": "safe-gap.adapter-projection.cb4aee5f333e9e43b6d59a5324c105e9c2ab83a17d9f50bb32ee523a04318a33",
+      "sourceAdapterTargetId": "valtan.trail-adapter.0d2bd7abcc7d06b3f2f77b5b",
+      "sourceAdapterRowSha256": "0dec024ac42628b8891eebdc3cc989af73b683b4d31c853478ba9c775f56d013",
+      "sourcePacketSha256": "44c8f4fd2205fea70c850c0218f17361a25f102a77c056f3fb50a37562c15de0",
+      "family": "ANIMATION_TRAIL",
+      "effectAssetId": "effect.valtan.backstep.windup.trails",
+      "targetElementId": "safe-gap.trail.1c39a20f5b0c8e6fa3c0cce6",
+      "targetContractSha256": "cee64432b2b3ab5965028391a1f18e63bae8caf48dd3ba1f28db7a202ea584f0",
+      "disposition": "PACKET_TARGET_DRAW_JOIN_PASS"
+    },
+    {
+      "projectionId": "safe-gap.adapter-projection.cd0abd30ed2b2eca357baee9efe4e38a2673acd001a3b7d06550752ba0b4385d",
+      "sourceAdapterTargetId": "valtan.trail-adapter.9a7eeb5d6e530a9f2ed8e950",
+      "sourceAdapterRowSha256": "81e6a699b76fe15249709af94f8246e0c9a63e3ff847b673421f9ed53f608b97",
+      "sourcePacketSha256": "8877457cd817b8031575b41afefac5ad6b494b14aad8b6cdaa24dbecb88f988f",
+      "family": "ANIMATION_TRAIL",
+      "effectAssetId": "effect.valtan.jump-spin.spin.trails",
+      "targetElementId": "safe-gap.trail.bb66ca56711fbe5363892a0e",
+      "targetContractSha256": "cee64432b2b3ab5965028391a1f18e63bae8caf48dd3ba1f28db7a202ea584f0",
+      "disposition": "PACKET_TARGET_DRAW_JOIN_PASS"
+    }
+  ],
+  "preservedUnresolvedTrailRows": [
+    {
+      "adapterTargetId": "valtan.trail-adapter.1fd67aca6e85a92a1f0bf7cd",
+      "family": "ANIMATION_TRAIL",
+      "patternId": "VALTAN_FOUR_SLASH",
+      "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "rowSha256": "9e61195ea68e4402d2a5a19b42c5508af29938e8e8871715366b330773f9ef6c",
+      "applicationDisposition": "PRESERVE_UNRESOLVED_NO_MUTATION"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.2de6f4f576efd4e722dbfe2a",
+      "family": "ANIMATION_TRAIL",
+      "patternId": "VALTAN_FOUR_SLASH",
+      "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "rowSha256": "4638c7858c70b77dd783ea430de3fa33307a4d16cffe0e2533f824876b43d18b",
+      "applicationDisposition": "PRESERVE_UNRESOLVED_NO_MUTATION"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.6fadcb6e81e01f6c06603cf0",
+      "family": "ANIMATION_TRAIL",
+      "patternId": "VALTAN_SWING",
+      "clipOccurrenceId": "valtan.attack.swing.active.clip.01",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "rowSha256": "a2694999342e16f770ebfe1031a8a79b1a2563e1d5577d8ca157fa63fff5226d",
+      "applicationDisposition": "PRESERVE_UNRESOLVED_NO_MUTATION"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.912a62fbacdd396de8c0a6cb",
+      "family": "ANIMATION_TRAIL",
+      "patternId": "VALTAN_FOUR_SLASH",
+      "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "rowSha256": "4a69b3070a9ceb673410b727b4d1cfc0907af63cb6e2f595926846833e0079f8",
+      "applicationDisposition": "PRESERVE_UNRESOLVED_NO_MUTATION"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.e0f2b9a767619ceb110d4fa5",
+      "family": "ANIMATION_TRAIL",
+      "patternId": "VALTAN_FOUR_SLASH",
+      "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "rowSha256": "14bc413b7c6b39af7329dd45b78bbaba4a80d7fbaa4daa7ce2996b8d8464c012",
+      "applicationDisposition": "PRESERVE_UNRESOLVED_NO_MUTATION"
+    },
+    {
+      "adapterTargetId": "valtan.trail-adapter.f03638659d51c5f61dbfa4d4",
+      "family": "ANIMATION_TRAIL",
+      "patternId": "VALTAN_JUMP_SPIN",
+      "clipOccurrenceId": "valtan.attack.jump-spin.recovery.clip.01",
+      "disposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "admissionBlockers": [
+        "ANIMATION_TRAIL_EXACT_BAKED_EDGE_HISTORY_MISSING",
+        "ANIMATION_TRAIL_RENDERER_TARGET_MISSING"
+      ],
+      "rowSha256": "ebdb66d641d03c56f7a467fc42d90951f4e988361e07ceb83fcfa3371c74df66",
+      "applicationDisposition": "PRESERVE_UNRESOLVED_NO_MUTATION"
+    }
+  ],
+  "summary": {
+    "documentCount": 4,
+    "visibleElementCount": 167,
+    "preparedElementCount": 167,
+    "drawnElementCount": 167,
+    "failedDrawCount": 0,
+    "adapterProjectionCount": 7,
+    "animationTrailProjectionCount": 6,
+    "cascadeRibbonProjectionCount": 1,
+    "preservedUnresolvedTrailRowCount": 6
+  },
+  "artifactSha256": "1c7aff3b9a7ae4577788bf6e674c7cdd065c31aefd56b93d7be8fb4451013e2b"
+}

@@ -1,0 +1,531 @@
+{
+  "schema": "lostark.valtan-front-back-front-source-wave-application-receipt",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "transactionStatus": "COMMITTED",
+  "inputs": {
+    "candidateReceiptPath": "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/Valtan.front-back-front-source-wave-candidates.v1.json",
+    "candidateReceiptSha256": "c67a3815ef1dc3ca6f8da37a264bc3340f221b7881ee1c29a80232f167de073d",
+    "drawableProofPath": "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/DrawableProof/Valtan.front-back-front-source-waves.drawable-proof.v1.json",
+    "drawableProofSha256": "e93d3f353933037ab6a7ad6aaec822cf93ffeeb337dbe57231c1ca6d9e6692ce"
+  },
+  "policy": {
+    "animationBindingMutation": "FORBIDDEN",
+    "aggregateDocumentMutation": "FORBIDDEN",
+    "aggregateProjectOverlayMutation": "FORBIDDEN",
+    "aggregateSourceElementAppend": "FORBIDDEN",
+    "gameplayAuthorityMutation": "FORBIDDEN",
+    "fourthWaveRole": "AUXILIARY_SOURCE_WAVE_NOT_GAMEPLAY_HIT",
+    "failureAction": "ROLLBACK_ALL_OUTPUTS"
+  },
+  "closure": {
+    "sourceWaveDocumentCount": 4,
+    "sourceElementCount": 100,
+    "elementsPerSourceWave": 25,
+    "catalogAppendedOrPreservedRowCount": 4,
+    "cueAppendedOrPreservedRowCount": 4,
+    "allEffectsClipCueCount": 5,
+    "aggregateSourceElementAppendCount": 0,
+    "duplicateSourceElementCount": 0,
+    "gameplayMutationCount": 0
+  },
+  "allEffectsClipDisplay": {
+    "expectedCueCountAfterApply": 5,
+    "cueDisplayOrder": [
+      {
+        "displayLabel": "Project Tuned Aggregate",
+        "effectAssetId": "effect.valtan.front-back-front.active",
+        "occurrenceId": "cue.valtan.front-back-front.active.occurrence.01",
+        "sourceStartMs": 900,
+        "disposition": "PRESERVE_EXISTING"
+      },
+      {
+        "displayLabel": "Source Wave 01",
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-01",
+        "occurrenceId": "cue.valtan.front-back-front.source-wave-01.occurrence.01",
+        "sourceStartMs": 1169,
+        "disposition": "APPEND_SEPARATE_SOURCE_CUE"
+      },
+      {
+        "displayLabel": "Source Wave 02",
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-02",
+        "occurrenceId": "cue.valtan.front-back-front.source-wave-02.occurrence.01",
+        "sourceStartMs": 2253,
+        "disposition": "APPEND_SEPARATE_SOURCE_CUE"
+      },
+      {
+        "displayLabel": "Source Wave 03",
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-03",
+        "occurrenceId": "cue.valtan.front-back-front.source-wave-03.occurrence.01",
+        "sourceStartMs": 3224,
+        "disposition": "APPEND_SEPARATE_SOURCE_CUE"
+      },
+      {
+        "displayLabel": "Source Wave Aux",
+        "effectAssetId": "effect.valtan.front-back-front.auxiliary-source-wave",
+        "occurrenceId": "cue.valtan.front-back-front.auxiliary-source-wave.occurrence.01",
+        "sourceStartMs": 4220,
+        "disposition": "APPEND_SEPARATE_SOURCE_CUE"
+      }
+    ]
+  },
+  "aggregateCanary": {
+    "effectAssetId": "effect.valtan.front-back-front.active",
+    "displayLabel": "Project Tuned Aggregate",
+    "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.front-back-front.active.effect.json",
+    "authoredDocumentSha256": "7895a1ab080074835efc439e9476f2e75cdb6eca1207d34462e68fce95aafade",
+    "catalogRow": {
+      "effectAssetId": "effect.valtan.front-back-front.active",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.active.effect.json"
+    },
+    "catalogRowSha256": "ff4d5b86e8726c2ac65161ec9c11397c07a04629ab8cb90166aa426fb12a4c36",
+    "cueRow": {
+      "bindingId": "cue.valtan.front-back-front.active",
+      "occurrenceId": "cue.valtan.front-back-front.active.occurrence.01",
+      "patternId": "VALTAN_FRONT_BACK_FRONT",
+      "stageId": "SMASHES",
+      "actionId": "valtan.attack.front-back-front.active",
+      "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+      "effectAssetId": "effect.valtan.front-back-front.active",
+      "anchorSlotId": "root",
+      "followPolicy": "follow",
+      "stopPolicy": "cue_end",
+      "repeatPolicy": "once",
+      "sourceStartMs": 900,
+      "sourceEndMs": 5000,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    "cueRowSha256": "a0eecf0563d53e48a2fe1e3e2c544ad290bc749bb4b180736b659eb961470b94",
+    "projectPatchPlanPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/Valtan.project-authored-priority.patch-plan.v1.json",
+    "projectPatchPlanSha256": "b487e5517fc0c7a4ccd71f2e3de42c697c06e75fd85ea260abdaff6e666018a0",
+    "projectOverlayPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.front-back-front.active.project-authored-overlay.effect.json",
+    "projectOverlaySha256": "7b5c085446ca94636cc881d18b6cb438a8a37dc0dc5d500b4211429e76106907",
+    "sourceElementAppendCount": 0,
+    "disposition": "PRESERVE_EXISTING_PROJECT_TUNED_AGGREGATE"
+  },
+  "whirlwindCanary": {
+    "effectAssetId": "effect.valtan.pattern.420633.active",
+    "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json",
+    "authoredDocumentSha256": "e94ddfd463da840962ddf8d8a0b604af4ef833925c2ac1cfd0f8e25522a5bea7",
+    "disposition": "PROTECTED_BYTE_CANARY_NO_MUTATION"
+  },
+  "targets": [
+    {
+      "waveOrdinal": 1,
+      "waveId": "source-wave-01",
+      "displayLabel": "Source Wave 01",
+      "presentationRole": "source-wave",
+      "gameplayHitDisposition": "PRESENTATION_ONLY_SERVER_HIT_UNCHANGED",
+      "effectAssetId": "effect.valtan.front-back-front.source-wave-01",
+      "candidateDocumentPath": "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.source-wave-01.source-wave-candidate.effect.json",
+      "candidateDocumentSha256": "9dc30de4b283307678381ea391ed0312f4ac87f3ce5be7e92a789e4a9a77347c",
+      "targetAuthoredDocumentPath": "Data/Effects/Authored/effect.valtan.front-back-front.source-wave-01.effect.json",
+      "candidateElementCount": 25,
+      "cueSourceStartMs": 1169,
+      "cueLocalStartDelaySeconds": 0.0009999570846557226,
+      "catalogRow": {
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-01",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-01.effect.json"
+      },
+      "cueRow": {
+        "bindingId": "cue.valtan.front-back-front.source-wave-01",
+        "occurrenceId": "cue.valtan.front-back-front.source-wave-01.occurrence.01",
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-01",
+        "anchorSlotId": "root",
+        "followPolicy": "follow",
+        "stopPolicy": "natural",
+        "repeatPolicy": "once",
+        "sourceStartMs": 1169,
+        "sourceEndMs": null,
+        "localTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "finalDocumentSha256": "9dc30de4b283307678381ea391ed0312f4ac87f3ce5be7e92a789e4a9a77347c"
+    },
+    {
+      "waveOrdinal": 2,
+      "waveId": "source-wave-02",
+      "displayLabel": "Source Wave 02",
+      "presentationRole": "source-wave",
+      "gameplayHitDisposition": "PRESENTATION_ONLY_SERVER_HIT_UNCHANGED",
+      "effectAssetId": "effect.valtan.front-back-front.source-wave-02",
+      "candidateDocumentPath": "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.source-wave-02.source-wave-candidate.effect.json",
+      "candidateDocumentSha256": "8ce538a01e9ded0a1592f3da0e6fce2906c7512547e5ec2a7e24213b672ab9a1",
+      "targetAuthoredDocumentPath": "Data/Effects/Authored/effect.valtan.front-back-front.source-wave-02.effect.json",
+      "candidateElementCount": 25,
+      "cueSourceStartMs": 2253,
+      "cueLocalStartDelaySeconds": 0.0006299228668211754,
+      "catalogRow": {
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-02",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-02.effect.json"
+      },
+      "cueRow": {
+        "bindingId": "cue.valtan.front-back-front.source-wave-02",
+        "occurrenceId": "cue.valtan.front-back-front.source-wave-02.occurrence.01",
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-02",
+        "anchorSlotId": "root",
+        "followPolicy": "follow",
+        "stopPolicy": "natural",
+        "repeatPolicy": "once",
+        "sourceStartMs": 2253,
+        "sourceEndMs": null,
+        "localTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "finalDocumentSha256": "8ce538a01e9ded0a1592f3da0e6fce2906c7512547e5ec2a7e24213b672ab9a1"
+    },
+    {
+      "waveOrdinal": 3,
+      "waveId": "source-wave-03",
+      "displayLabel": "Source Wave 03",
+      "presentationRole": "source-wave",
+      "gameplayHitDisposition": "PRESENTATION_ONLY_SERVER_HIT_UNCHANGED",
+      "effectAssetId": "effect.valtan.front-back-front.source-wave-03",
+      "candidateDocumentPath": "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.source-wave-03.source-wave-candidate.effect.json",
+      "candidateDocumentSha256": "2f36c0c891d462419ea07f6a76dfdd41f9f20d59c94fee30a8823ef88a1b1082",
+      "targetAuthoredDocumentPath": "Data/Effects/Authored/effect.valtan.front-back-front.source-wave-03.effect.json",
+      "candidateElementCount": 25,
+      "cueSourceStartMs": 3224,
+      "cueLocalStartDelaySeconds": 0.00015900230407694949,
+      "catalogRow": {
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-03",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-03.effect.json"
+      },
+      "cueRow": {
+        "bindingId": "cue.valtan.front-back-front.source-wave-03",
+        "occurrenceId": "cue.valtan.front-back-front.source-wave-03.occurrence.01",
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-03",
+        "anchorSlotId": "root",
+        "followPolicy": "follow",
+        "stopPolicy": "natural",
+        "repeatPolicy": "once",
+        "sourceStartMs": 3224,
+        "sourceEndMs": null,
+        "localTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "finalDocumentSha256": "2f36c0c891d462419ea07f6a76dfdd41f9f20d59c94fee30a8823ef88a1b1082"
+    },
+    {
+      "waveOrdinal": 4,
+      "waveId": "auxiliary-source-wave",
+      "displayLabel": "Source Wave Aux",
+      "presentationRole": "auxiliary-source-wave",
+      "gameplayHitDisposition": "FORBIDDEN_AUXILIARY_NOT_GAMEPLAY_HIT",
+      "effectAssetId": "effect.valtan.front-back-front.auxiliary-source-wave",
+      "candidateDocumentPath": "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/effect.valtan.front-back-front.auxiliary-source-wave.source-wave-candidate.effect.json",
+      "candidateDocumentSha256": "9ff604605a062cafea4fe660fd8d67cc66c4b99129c1d517adbb4861b00f3cd7",
+      "targetAuthoredDocumentPath": "Data/Effects/Authored/effect.valtan.front-back-front.auxiliary-source-wave.effect.json",
+      "candidateElementCount": 25,
+      "cueSourceStartMs": 4220,
+      "cueLocalStartDelaySeconds": 5.3195953369389315e-05,
+      "catalogRow": {
+        "effectAssetId": "effect.valtan.front-back-front.auxiliary-source-wave",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.front-back-front.auxiliary-source-wave.effect.json"
+      },
+      "cueRow": {
+        "bindingId": "cue.valtan.front-back-front.auxiliary-source-wave",
+        "occurrenceId": "cue.valtan.front-back-front.auxiliary-source-wave.occurrence.01",
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "effectAssetId": "effect.valtan.front-back-front.auxiliary-source-wave",
+        "anchorSlotId": "root",
+        "followPolicy": "follow",
+        "stopPolicy": "natural",
+        "repeatPolicy": "once",
+        "sourceStartMs": 4220,
+        "sourceEndMs": null,
+        "localTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "finalDocumentSha256": "9ff604605a062cafea4fe660fd8d67cc66c4b99129c1d517adbb4861b00f3cd7"
+    }
+  ],
+  "catalogOutput": {
+    "path": "Data/Effects/EffectCatalog.json",
+    "sha256": "41637bd546aeac977a61f722031a67692882f53cda68ea6274c9164e3a260748",
+    "appendedOrPreservedRows": [
+      {
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-01",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-01.effect.json"
+      },
+      {
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-02",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-02.effect.json"
+      },
+      {
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-03",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-03.effect.json"
+      },
+      {
+        "effectAssetId": "effect.valtan.front-back-front.auxiliary-source-wave",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.front-back-front.auxiliary-source-wave.effect.json"
+      }
+    ]
+  },
+  "cueOutput": {
+    "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
+    "sha256": "da68e5ebe7723b36bba8c9bc5a7474b46f16427dcc4fdb1fe99264409d97c29d",
+    "appendedOrPreservedRows": [
+      {
+        "bindingId": "cue.valtan.front-back-front.source-wave-01",
+        "occurrenceId": "cue.valtan.front-back-front.source-wave-01.occurrence.01",
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-01",
+        "anchorSlotId": "root",
+        "followPolicy": "follow",
+        "stopPolicy": "natural",
+        "repeatPolicy": "once",
+        "sourceStartMs": 1169,
+        "sourceEndMs": null,
+        "localTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      {
+        "bindingId": "cue.valtan.front-back-front.source-wave-02",
+        "occurrenceId": "cue.valtan.front-back-front.source-wave-02.occurrence.01",
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-02",
+        "anchorSlotId": "root",
+        "followPolicy": "follow",
+        "stopPolicy": "natural",
+        "repeatPolicy": "once",
+        "sourceStartMs": 2253,
+        "sourceEndMs": null,
+        "localTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      {
+        "bindingId": "cue.valtan.front-back-front.source-wave-03",
+        "occurrenceId": "cue.valtan.front-back-front.source-wave-03.occurrence.01",
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "effectAssetId": "effect.valtan.front-back-front.source-wave-03",
+        "anchorSlotId": "root",
+        "followPolicy": "follow",
+        "stopPolicy": "natural",
+        "repeatPolicy": "once",
+        "sourceStartMs": 3224,
+        "sourceEndMs": null,
+        "localTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      {
+        "bindingId": "cue.valtan.front-back-front.auxiliary-source-wave",
+        "occurrenceId": "cue.valtan.front-back-front.auxiliary-source-wave.occurrence.01",
+        "patternId": "VALTAN_FRONT_BACK_FRONT",
+        "stageId": "SMASHES",
+        "actionId": "valtan.attack.front-back-front.active",
+        "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+        "effectAssetId": "effect.valtan.front-back-front.auxiliary-source-wave",
+        "anchorSlotId": "root",
+        "followPolicy": "follow",
+        "stopPolicy": "natural",
+        "repeatPolicy": "once",
+        "sourceStartMs": 4220,
+        "sourceEndMs": null,
+        "localTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      }
+    ]
+  },
+  "canonicalOutputs": [
+    {
+      "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
+      "role": "VALTAN_CUE_DOCUMENT",
+      "sha256": "da68e5ebe7723b36bba8c9bc5a7474b46f16427dcc4fdb1fe99264409d97c29d"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.front-back-front.auxiliary-source-wave.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "9ff604605a062cafea4fe660fd8d67cc66c4b99129c1d517adbb4861b00f3cd7"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.front-back-front.source-wave-01.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "9dc30de4b283307678381ea391ed0312f4ac87f3ce5be7e92a789e4a9a77347c"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.front-back-front.source-wave-02.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "8ce538a01e9ded0a1592f3da0e6fce2906c7512547e5ec2a7e24213b672ab9a1"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.front-back-front.source-wave-03.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "2f36c0c891d462419ea07f6a76dfdd41f9f20d59c94fee30a8823ef88a1b1082"
+    },
+    {
+      "path": "Data/Effects/EffectCatalog.json",
+      "role": "EFFECT_CATALOG",
+      "sha256": "41637bd546aeac977a61f722031a67692882f53cda68ea6274c9164e3a260748"
+    }
+  ]
+}

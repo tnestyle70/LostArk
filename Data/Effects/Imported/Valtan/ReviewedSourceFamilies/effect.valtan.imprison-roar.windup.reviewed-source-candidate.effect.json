@@ -104,7 +104,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.2899999618530273,
-          "lifeTimeSeconds": 0.6499999761581421,
+          "lifeTimeSeconds": 0.11000003814697257,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -1121,7 +1121,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.2899999618530273,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.11000003814697257,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -2415,7 +2415,7 @@
             1.0
           ],
           "clip": 0.0,
-          "emissiveIntensity": 1.0,
+          "emissiveIntensity": 0.30000001192092896,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
@@ -2445,7 +2445,7 @@
         },
         "timing": {
           "startDelaySeconds": 1.2899999618530273,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.11000003814697257,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },

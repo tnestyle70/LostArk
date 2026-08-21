@@ -30,13 +30,11 @@ PROOF_SCHEMA = "lostark.valtan-reviewed-source-family-drawable-proof"
 RECEIPT_SCHEMA = "lostark.valtan-reviewed-source-family-application-receipt"
 FORMAT_VERSION = 1
 BOSS_ARCHETYPE_ID = "BOSS_VALTAN"
-EXPECTED_CANDIDATE_DOCUMENT_COUNT = 37
-EXPECTED_CANDIDATE_ELEMENT_COUNT = 380
+EXPECTED_CANDIDATE_DOCUMENT_COUNT = 36
+EXPECTED_CANDIDATE_ELEMENT_COUNT = 279
 EXPECTED_APPLY_DOCUMENT_COUNT = 36
-EXPECTED_APPLY_ELEMENT_COUNT = 280
-EXCLUDED_MULTI_CUE_EFFECT_ID = "effect.valtan.front-back-front.active"
-EXPECTED_EXCLUDED_ELEMENT_COUNT = 100
-EXPECTED_EXCLUDED_VISUAL_TIMING_GROUP_COUNT = 4
+EXPECTED_APPLY_ELEMENT_COUNT = 279
+EXPECTED_REPORT_ONLY_MULTI_CUE_PROJECTION_COUNT = 100
 PROTECTED_WHIRLWIND_EFFECT_ID = "effect.valtan.pattern.420633.active"
 
 DEFAULT_CANDIDATE_RECEIPT = PurePosixPath(
@@ -46,6 +44,14 @@ DEFAULT_CANDIDATE_RECEIPT = PurePosixPath(
 DEFAULT_APPLICATION_RECEIPT = PurePosixPath(
     "Data/Effects/Imported/Valtan/ReviewedSourceFamilies/"
     "Valtan.reviewed-source-family-application-receipt.v1.json"
+)
+SAFE_GAP_MANIFEST = PurePosixPath(
+    "Data/Effects/Imported/Valtan/SafeReviewedGaps/"
+    "Valtan.safe-reviewed-gap-candidates.v1.json"
+)
+SAFE_GAP_APPLICATION_RECEIPT = PurePosixPath(
+    "Data/Effects/Imported/Valtan/SafeReviewedGaps/"
+    "Valtan.safe-reviewed-gap-application-receipt.v1.json"
 )
 
 
@@ -83,6 +89,18 @@ def _sha256(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _canonical_sha256(value: Any) -> str:
+    return _sha256(
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    )
+
+
 def _is_sha256(value: Any) -> bool:
     return (
         isinstance(value, str)
@@ -114,6 +132,143 @@ def _load_json_bytes(path: Path) -> tuple[dict[str, Any], bytes]:
     if not isinstance(value, dict):
         raise ProjectionError(f"JSON root must be an object: {path}")
     return value, payload
+
+
+def _validate_sealed_artifact(
+    document: dict[str, Any], expected_schema: str, label: str
+) -> None:
+    if (
+        document.get("schema") != expected_schema
+        or document.get("formatVersion") != 1
+    ):
+        raise SourceRebaseRequired(
+            f"SOURCE_REBASE_REQUIRED {label} header drift"
+        )
+    expected = document.get("artifactSha256")
+    clone = deepcopy(document)
+    clone.pop("artifactSha256", None)
+    if not _is_sha256(expected) or _canonical_sha256(clone) != expected:
+        raise SourceRebaseRequired(
+            f"SOURCE_REBASE_REQUIRED {label} artifact seal drift"
+        )
+
+
+def _reviewed_source_view_after_safe_gap(
+    root: Path,
+    source_values: dict[str, dict[str, Any]],
+    source_payloads: dict[str, bytes],
+    source_expected_shas: dict[str, str],
+) -> tuple[dict[str, dict[str, Any]], dict[PurePosixPath, bytes]]:
+    manifest_path = _repository_path(root, SAFE_GAP_MANIFEST)
+    application_path = _repository_path(root, SAFE_GAP_APPLICATION_RECEIPT)
+    if not manifest_path.is_file() or not application_path.is_file():
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED downstream SafeReviewedGaps receipts are missing"
+        )
+    manifest, manifest_payload = _load_json_bytes(manifest_path)
+    application, application_payload = _load_json_bytes(application_path)
+    _validate_sealed_artifact(
+        manifest,
+        "lostark.valtan-safe-reviewed-gap-candidates",
+        "SafeReviewedGaps candidate manifest",
+    )
+    _validate_sealed_artifact(
+        application,
+        "lostark.valtan-safe-reviewed-gap-application-receipt",
+        "SafeReviewedGaps application receipt",
+    )
+    manifest_link = _require_object(
+        application.get("candidateManifest"),
+        "SafeReviewedGaps application candidateManifest",
+    )
+    if (
+        manifest_link.get("path") != SAFE_GAP_MANIFEST.as_posix()
+        or manifest_link.get("rawSha256") != _sha256(manifest_payload)
+        or manifest_link.get("artifactSha256")
+        != manifest.get("artifactSha256")
+    ):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED SafeReviewedGaps manifest/application link drift"
+        )
+
+    cue_output = _require_object(
+        application.get("canonicalCueDocument"),
+        "SafeReviewedGaps canonical cue output",
+    )
+    catalog_output = _require_object(
+        application.get("canonicalCatalogDocument"),
+        "SafeReviewedGaps canonical catalog output",
+    )
+    for kind, output, relative in (
+        ("cues", cue_output, "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"),
+        ("catalog", catalog_output, "Data/Effects/EffectCatalog.json"),
+    ):
+        if (
+            output.get("path") != relative
+            or output.get("rawSha256") != _sha256(source_payloads[kind])
+            or output.get("canonicalSha256")
+            != _canonical_sha256(source_values[kind])
+        ):
+            raise SourceRebaseRequired(
+                f"SOURCE_REBASE_REQUIRED SafeReviewedGaps {kind} output drift"
+            )
+
+    input_identity = _require_object(
+        manifest.get("inputIdentity"), "SafeReviewedGaps inputIdentity"
+    )
+    if (
+        source_expected_shas.get("cues")
+        != input_identity.get("cueRawSha256")
+        or source_expected_shas.get("catalog")
+        != input_identity.get("catalogRawSha256")
+    ):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED reviewed/SafeReviewedGaps baseline identity drift"
+        )
+
+    proposed_cues = _require_list(
+        manifest.get("proposedCueRows"), "SafeReviewedGaps proposed cues"
+    )
+    proposed_catalog = _require_list(
+        manifest.get("proposedCatalogRows"), "SafeReviewedGaps proposed catalog"
+    )
+    cue_rows = _require_list(source_values["cues"].get("cues"), "Valtan cues")
+    catalog_rows = _require_list(
+        source_values["catalog"].get("effects"), "EffectCatalog effects"
+    )
+    cue_by_binding = {row.get("bindingId"): row for row in cue_rows}
+    catalog_by_effect = {row.get("effectAssetId"): row for row in catalog_rows}
+    if any(
+        cue_by_binding.get(row.get("bindingId")) != row
+        for row in proposed_cues
+    ) or any(
+        catalog_by_effect.get(row.get("effectAssetId")) != row
+        for row in proposed_catalog
+    ):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED SafeReviewedGaps applied row drift"
+        )
+    binding_ids = {row["bindingId"] for row in proposed_cues}
+    effect_ids = {row["effectAssetId"] for row in proposed_catalog}
+    if (
+        len(binding_ids) != len(proposed_cues)
+        or len(effect_ids) != len(proposed_catalog)
+    ):
+        raise ProjectionError("SafeReviewedGaps proposed identity is duplicated")
+
+    reviewed_values = deepcopy(source_values)
+    reviewed_values["cues"]["cues"] = [
+        row for row in reviewed_values["cues"]["cues"]
+        if row.get("bindingId") not in binding_ids
+    ]
+    reviewed_values["catalog"]["effects"] = [
+        row for row in reviewed_values["catalog"]["effects"]
+        if row.get("effectAssetId") not in effect_ids
+    ]
+    return reviewed_values, {
+        SAFE_GAP_MANIFEST: manifest_payload,
+        SAFE_GAP_APPLICATION_RECEIPT: application_payload,
+    }
 
 
 def _require_object(value: Any, label: str) -> dict[str, Any]:
@@ -179,7 +334,7 @@ def _validate_candidate_receipt(receipt: dict[str, Any]) -> list[dict[str, Any]]
         "candidateDocumentCount": EXPECTED_CANDIDATE_DOCUMENT_COUNT,
         "admittedCoreProjectionCount": EXPECTED_CANDIDATE_ELEMENT_COUNT,
         "candidateElementCount": EXPECTED_CANDIDATE_ELEMENT_COUNT,
-        "missingOnlyAddElementCount": EXPECTED_CANDIDATE_ELEMENT_COUNT,
+        "multipleCueProjectionCount": EXPECTED_REPORT_ONLY_MULTI_CUE_PROJECTION_COUNT,
         "sourceRebaseRequiredCount": 0,
         "deletedElementCount": 0,
     }
@@ -193,7 +348,7 @@ def _validate_candidate_receipt(receipt: dict[str, Any]) -> list[dict[str, Any]]
         for row in _require_list(receipt.get("documents"), "candidate receipt documents")
     ]
     if len(documents) != EXPECTED_CANDIDATE_DOCUMENT_COUNT:
-        raise ProjectionError("candidate receipt must contain exactly 37 documents")
+        raise ProjectionError("candidate receipt must contain exactly 36 documents")
     effect_ids = [row.get("effectAssetId") for row in documents]
     if any(not isinstance(value, str) or not value for value in effect_ids):
         raise ProjectionError("candidate receipt effect IDs are invalid")
@@ -204,6 +359,26 @@ def _validate_candidate_receipt(receipt: dict[str, Any]) -> list[dict[str, Any]]
         raise ProjectionError("Whirlwind active is not protected by the candidate receipt")
     if protected.intersection(effect_ids):
         raise ProjectionError("a protected canary was emitted as a candidate")
+    missing_only_count = summary.get("missingOnlyAddElementCount")
+    if (
+        type(missing_only_count) is not int
+        or missing_only_count < 0
+        or missing_only_count > EXPECTED_CANDIDATE_ELEMENT_COUNT
+    ):
+        raise ProjectionError("candidate receipt missing-only count is invalid")
+    receipt_missing_only_count = sum(
+        len(
+            _require_list(
+                _require_object(row.get("reconcile"), "candidate reconcile").get(
+                    "addElementRefs"
+                ),
+                "candidate reconcile addElementRefs",
+            )
+        )
+        for row in documents
+    )
+    if receipt_missing_only_count != missing_only_count:
+        raise ProjectionError("candidate receipt missing-only closure drifted")
     return documents
 
 
@@ -297,12 +472,18 @@ def _validate_candidate_document(
         or reconcile.get("sourceRebaseRequiredRows") != []
     ):
         raise ProjectionError(f"candidate reconcile policy is unsafe: {effect_id}")
-    add_pairs = [
-        (value.get("id"), value.get("sourceNode"))
-        for value in _require_list(reconcile.get("addElementRefs"), f"{effect_id}.addElementRefs")
-        if isinstance(value, dict)
-    ]
-    if add_pairs != element_pairs:
+    add_pairs = []
+    for raw in _require_list(
+        reconcile.get("addElementRefs"), f"{effect_id}.addElementRefs"
+    ):
+        value = _require_object(raw, f"{effect_id}.addElementRef")
+        add_pairs.append((value.get("id"), value.get("sourceNode")))
+    add_pair_set = set(add_pairs)
+    if (
+        len(add_pair_set) != len(add_pairs)
+        or any(pair not in element_pairs for pair in add_pairs)
+        or add_pairs != [pair for pair in element_pairs if pair in add_pair_set]
+    ):
         raise ProjectionError(f"candidate missing-only references drift: {effect_id}")
     return elements
 
@@ -541,30 +722,14 @@ def collect_projection(
         candidate_payloads[effect_id] = payload
         candidate_paths[effect_id] = relative
     if len(global_ids) != EXPECTED_CANDIDATE_ELEMENT_COUNT:
-        raise ProjectionError("candidate element closure is not exactly 380")
-    excluded_rows = [
-        row for row in documents if row["effectAssetId"] == EXCLUDED_MULTI_CUE_EFFECT_ID
-    ]
-    if len(excluded_rows) != 1:
-        raise ProjectionError("FRONT_BACK_FRONT aggregate exclusion target is missing")
-    excluded_row = excluded_rows[0]
-    if (
-        excluded_row.get("candidateElementCount") != EXPECTED_EXCLUDED_ELEMENT_COUNT
-        or len(_require_list(excluded_row.get("visualTimingGroups"), "FRONT_BACK_FRONT visual groups"))
-        != EXPECTED_EXCLUDED_VISUAL_TIMING_GROUP_COUNT
-    ):
-        raise ProjectionError(
-            "FRONT_BACK_FRONT aggregate exclusion must remain 100 elements / 4 visual groups"
-        )
-    applicable_documents = [
-        row for row in documents if row["effectAssetId"] != EXCLUDED_MULTI_CUE_EFFECT_ID
-    ]
+        raise ProjectionError("candidate element closure is not exactly 279")
+    applicable_documents = documents
     if (
         len(applicable_documents) != EXPECTED_APPLY_DOCUMENT_COUNT
         or sum(row["candidateElementCount"] for row in applicable_documents)
         != EXPECTED_APPLY_ELEMENT_COUNT
     ):
-        raise ProjectionError("applicable source projection closure must remain 36 docs / 280 elements")
+        raise ProjectionError("applicable source projection closure must remain 36 docs / 279 elements")
     _validate_proof(
         proof, _sha256(candidate_receipt_payload), applicable_documents, candidate_elements
     )
@@ -575,6 +740,9 @@ def collect_projection(
     }
     source_guard_rows = _validate_source_guard_rows(candidate_receipt_value)
     source_values: dict[str, dict[str, Any]] = {}
+    source_payloads: dict[str, bytes] = {}
+    source_expected_shas: dict[str, str] = {}
+    deferred_source_guard_drift: list[PurePosixPath] = []
     for row in source_guard_rows:
         relative = _relative_path(row["path"], "source guard path")
         path = _repository_path(root, relative)
@@ -584,17 +752,34 @@ def collect_projection(
             raise SourceRebaseRequired(
                 f"SOURCE_REBASE_REQUIRED source guard disappeared: {relative}"
             ) from exc
-        if _sha256(payload) != row["sha256"]:
-            raise SourceRebaseRequired(
-                f"SOURCE_REBASE_REQUIRED source guard SHA drift: {relative}"
-            )
         guards[relative] = payload
         if relative.as_posix().endswith("EffectCatalog.json"):
             source_values["catalog"], _ = _load_json_bytes(path)
+            source_payloads["catalog"] = payload
+            source_expected_shas["catalog"] = row["sha256"]
         if relative.as_posix().endswith("Valtan.patterneffectcues.json"):
             source_values["cues"], _ = _load_json_bytes(path)
+            source_payloads["cues"] = payload
+            source_expected_shas["cues"] = row["sha256"]
+        if _sha256(payload) != row["sha256"]:
+            if relative.as_posix().endswith(
+                ("EffectCatalog.json", "Valtan.patterneffectcues.json")
+            ):
+                deferred_source_guard_drift.append(relative)
+            else:
+                raise SourceRebaseRequired(
+                    f"SOURCE_REBASE_REQUIRED source guard SHA drift: {relative}"
+                )
     if set(source_values) != {"catalog", "cues"}:
         raise ProjectionError("candidate source guards do not identify catalog and cue")
+    if deferred_source_guard_drift:
+        source_values, downstream_guards = _reviewed_source_view_after_safe_gap(
+            root,
+            source_values,
+            source_payloads,
+            source_expected_shas,
+        )
+        guards.update(downstream_guards)
     _validate_catalog_and_cues(
         source_values["catalog"], source_values["cues"], documents
     )
@@ -665,49 +850,6 @@ def collect_projection(
     if len(canonical_outputs) != EXPECTED_APPLY_DOCUMENT_COUNT:
         raise ProjectionError("canonical output closure is not exactly 36 documents")
 
-    excluded_target_relative = _relative_path(
-        excluded_row.get("authoredDocumentPath"),
-        "FRONT_BACK_FRONT excluded authored path",
-    )
-    excluded_target_path = _repository_path(root, excluded_target_relative)
-    if not excluded_target_path.is_file():
-        raise SourceRebaseRequired(
-            "SOURCE_REBASE_REQUIRED FRONT_BACK_FRONT excluded aggregate document disappeared"
-        )
-    excluded_target_payload = excluded_target_path.read_bytes()
-    guards[excluded_target_relative] = excluded_target_payload
-    excluded_receipt = {
-        "effectAssetId": EXCLUDED_MULTI_CUE_EFFECT_ID,
-        "candidateDocumentPath": candidate_paths[EXCLUDED_MULTI_CUE_EFFECT_ID].as_posix(),
-        "candidateDocumentSha256": _sha256(candidate_payloads[EXCLUDED_MULTI_CUE_EFFECT_ID]),
-        "targetAuthoredDocumentPath": excluded_target_relative.as_posix(),
-        "candidateElementCount": EXPECTED_EXCLUDED_ELEMENT_COUNT,
-        "visualTimingGroups": [
-            {
-                "visualTimingGroupId": group["visualTimingGroupId"],
-                "visualTimingGroupKey": group["visualTimingGroupKey"],
-                "sourceTimeSeconds": group["sourceTimeSeconds"],
-                "elementIds": group["elementIds"],
-                "elementCount": group["elementCount"],
-            }
-            for group in excluded_row["visualTimingGroups"]
-        ],
-        "notifySystemTimingGroups": [
-            {
-                "notifySystemTimingGroupId": group["notifySystemTimingGroupId"],
-                "notifySystemTimingGroupKey": group["notifySystemTimingGroupKey"],
-                "visualTimingGroupId": group["visualTimingGroupId"],
-                "notifyId": group["notifyId"],
-                "sourceSystemId": group["sourceSystemId"],
-                "elementIds": group["elementIds"],
-                "elementCount": group["elementCount"],
-            }
-            for group in excluded_row["notifySystemTimingGroups"]
-        ],
-        "disposition": "EXCLUDED_PENDING_MULTI_CUE_SPLIT",
-        "reason": "FOUR_VISUAL_WAVES_MUST_NOT_FLATTEN_INTO_ONE_AGGREGATE_CUE_DOCUMENT",
-        "noMutationSha256": _sha256(excluded_target_payload),
-    }
     receipt = {
         "schema": RECEIPT_SCHEMA,
         "formatVersion": FORMAT_VERSION,
@@ -734,8 +876,9 @@ def collect_projection(
             "applicableCandidateDocumentCount": EXPECTED_APPLY_DOCUMENT_COUNT,
             "projectedSourceElementCount": EXPECTED_APPLY_ELEMENT_COUNT,
             "canonicalAuthoredDocumentCount": EXPECTED_APPLY_DOCUMENT_COUNT,
-            "excludedPendingMultiCueSplitDocumentCount": 1,
-            "excludedPendingMultiCueSplitElementCount": EXPECTED_EXCLUDED_ELEMENT_COUNT,
+            "reportOnlyMultipleCueProjectionCount": (
+                EXPECTED_REPORT_ONLY_MULTI_CUE_PROJECTION_COUNT
+            ),
             "legacyGenericDeletedElementCount": 0,
             "catalogMutationCount": 0,
             "cueMutationCount": 0,
@@ -743,7 +886,6 @@ def collect_projection(
         },
         "sourceGuards": source_guard_rows,
         "protectedCanaries": protected_receipts,
-        "excludedTargets": [excluded_receipt],
         "targets": target_receipts,
         "canonicalOutputs": [
             {
@@ -882,7 +1024,7 @@ def _summary(projection: Projection, mode: str) -> str:
         f"sourceElements={closure['projectedSourceElementCount']}, "
         f"canonicalOutputs={len(projection.canonical_outputs)}, "
         f"changed={len(projection.changed_paths)}, new={len(projection.new_paths)}, "
-        "excludedMultiCue=1/100, catalogMutations=0, cueMutations=0, legacyDeletes=0"
+        "reportOnlyMultiCue=100, catalogMutations=0, cueMutations=0, legacyDeletes=0"
     )
 
 

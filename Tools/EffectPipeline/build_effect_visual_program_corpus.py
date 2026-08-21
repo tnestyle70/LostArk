@@ -69,6 +69,13 @@ VALTAN_WHIRLWIND_HISTORY_RELATIVE_PATH = (
     "Data/Effects/Imported/Valtan/"
     "Valtan.420633.whirlwind-baked-edge-history.v1.json"
 )
+VALTAN_SAFE_GAP_APPLICATION_RECEIPT_RELATIVE_PATH = (
+    "Data/Effects/Imported/Valtan/SafeReviewedGaps/"
+    "Valtan.safe-reviewed-gap-application-receipt.v1.json"
+)
+VALTAN_TRAIL_ADAPTER_PACKETS_RELATIVE_PATH = (
+    "Data/Effects/Imported/Valtan/Valtan.trail-adapter-packets.v1.json"
+)
 VALTAN_WHIRLWIND_EFFECT_ASSET_ID = "effect.valtan.pattern.420633.active"
 VALTAN_WHIRLWIND_HISTORY_ID = (
     "valtan.420633.animnotify-trails-479.baked-edges"
@@ -87,6 +94,16 @@ VALTAN_WHIRLWIND_LIGHT_ACTIVE_DURATION_SECONDS = 1.120460033416748
 VALTAN_WHIRLWIND_HISTORY_ARTIFACT_SHA256 = (
     "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64"
 )
+# The admitted Whirlwind runtime predates the Windows CRLF checkout canary.
+# Its four supplemental rows intentionally retain the canonical LF payload
+# identities that were sealed into the runtime program.  Input artifacts still
+# record the physical worktree hashes independently.
+VALTAN_WHIRLWIND_LEGACY_HISTORY_PAYLOAD_RAW_SHA256 = (
+    "1053b30c345fcb7e8ff7a4d30fb6c9bfebf88d7c8c3038b77e9097bf7bdd4d1b"
+)
+VALTAN_WHIRLWIND_LEGACY_DOCUMENT_PAYLOAD_RAW_SHA256 = (
+    "ac0c4464fd1fc05dcb0b107e796c015b1ca4c76dcf9beb06023b5cf5d890bf94"
+)
 DEFAULT_OUTPUT_RELATIVE_PATH = (
     "Data/Effects/VisualPrograms/effect-visual-program-corpus.v1.json"
 )
@@ -101,11 +118,12 @@ EXPECTED_SCHEDULE_COUNT = 35
 EXPECTED_BA_ROW_COUNT = 133
 EXPECTED_LOCAL_DECAL_ROW_COUNT = 2
 EXPECTED_VISUAL_ROW_COUNT = 135
-EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 9
+EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 15
 EXPECTED_CASCADE_RIBBON_VISUAL_ROW_COUNT = 4
-EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 7
+EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 13
 EXPECTED_LANCE_ANIMATION_TRAIL_ELEMENT_COUNT = 4
 EXPECTED_VALTAN_ANIMATION_TRAIL_ELEMENT_COUNT = 3
+EXPECTED_VALTAN_SAFE_GAP_ANIMATION_TRAIL_ELEMENT_COUNT = 6
 EXPECTED_VALTAN_BAKED_EDGE_LIGHT_ELEMENT_COUNT = 1
 EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT = 1
 EXPECTED_LEGACY_COUNT = 66
@@ -424,6 +442,11 @@ def _find_record(document: dict[str, Any], relative_path: str, record_id: str) -
         and document.get("historyId") == record_id
     ):
         matches = [document]
+    elif document.get("schema") == "lostark.valtan-trail-adapter-packets":
+        matches = [
+            row for row in document.get("adapters", [])
+            if isinstance(row, dict) and row.get("adapterTargetId") == record_id
+        ]
     else:
         matches = [row for row in document.get("elements", []) if row.get("id") == record_id]
     _require(len(matches) == 1, f"payload record join is not unique: {relative_path}/{record_id}")
@@ -1107,7 +1130,9 @@ def _build_valtan_baked_edge_histories(
         "historyId": VALTAN_WHIRLWIND_HISTORY_ID,
         "sourceKind": "UE3_ANIMTRAIL_BAKED_EDGE_HISTORY_V1",
         "sourceArtifactPath": source_path,
-        "sourceArtifactRawSha256": raw_sha256(receipt_path),
+        "sourceArtifactRawSha256": (
+            VALTAN_WHIRLWIND_LEGACY_HISTORY_PAYLOAD_RAW_SHA256
+        ),
         "coordinateBasis": playback["coordinateBasis"],
         "sourceEndTimeSeconds": source_end,
         "playbackClampSeconds": playback_clamp,
@@ -1128,6 +1153,9 @@ def _build_valtan_animation_trail_supplemental_elements(
     source_payload, source_record = _payload_ref(
         repository_root, source_path, VALTAN_WHIRLWIND_HISTORY_ID
     )
+    source_payload["rawSha256"] = (
+        VALTAN_WHIRLWIND_LEGACY_HISTORY_PAYLOAD_RAW_SHA256
+    )
     target_path = VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH
     _merge_input_artifact(
         input_registry,
@@ -1142,6 +1170,9 @@ def _build_valtan_animation_trail_supplemental_elements(
     for target_id in VALTAN_WHIRLWIND_TRAIL_TARGET_IDS:
         target_payload, target_record = _payload_ref(
             repository_root, target_path, target_id
+        )
+        target_payload["rawSha256"] = (
+            VALTAN_WHIRLWIND_LEGACY_DOCUMENT_PAYLOAD_RAW_SHA256
         )
         target_timing, target_contract = _trail_target_packet(target_record)
         source_recipe = _require_dict(
@@ -1273,6 +1304,313 @@ def _build_valtan_animation_trail_supplemental_elements(
     return result
 
 
+def _build_valtan_safe_gap_animation_trail_supplemental_elements(
+    repository_root: Path,
+    input_registry: dict[str, dict[str, Any]],
+    baked_edge_history: dict[str, Any],
+) -> list[dict[str, Any]]:
+    receipt_path = VALTAN_SAFE_GAP_APPLICATION_RECEIPT_RELATIVE_PATH
+    adapter_path = VALTAN_TRAIL_ADAPTER_PACKETS_RELATIVE_PATH
+    receipt = load_json(repository_root / receipt_path)
+    _verify_seal(receipt, "artifactSha256", "Valtan safe-gap application receipt")
+    _require(
+        receipt.get("schema")
+        == "lostark.valtan-safe-reviewed-gap-application-receipt"
+        and receipt.get("formatVersion") == 1
+        and receipt.get("disposition") == "APPLIED_PROOF_GATED_IDEMPOTENT",
+        "Valtan safe-gap application receipt header changed",
+    )
+    _merge_input_artifact(
+        input_registry,
+        _input_artifact(
+            repository_root,
+            receipt_path,
+            ["VALTAN_SAFE_GAP_APPLICATION_RECEIPT"],
+        ),
+    )
+    _merge_input_artifact(
+        input_registry,
+        _input_artifact(
+            repository_root,
+            adapter_path,
+            ["VALTAN_SAFE_GAP_TRAIL_ADAPTER_PACKETS"],
+        ),
+    )
+    source_history = load_json(
+        repository_root / VALTAN_WHIRLWIND_HISTORY_RELATIVE_PATH
+    )
+    history_payload, history_record = _payload_ref(
+        repository_root,
+        VALTAN_WHIRLWIND_HISTORY_RELATIVE_PATH,
+        _require_string(
+            baked_edge_history.get("historyId"),
+            "Valtan safe-gap baked-edge history ID",
+        ),
+    )
+    history_samples = _require_list(
+        baked_edge_history.get("samples"),
+        "Valtan safe-gap baked-edge samples",
+    )
+    playback_clamp = float(baked_edge_history["playbackClampSeconds"])
+    projections = []
+    for raw in _require_list(
+        receipt.get("trailProjections"),
+        "Valtan safe-gap trail projections",
+    ):
+        projection = _require_dict(raw, "Valtan safe-gap trail projection")
+        _verify_seal(
+            projection,
+            "applicationProjectionSha256",
+            "Valtan safe-gap trail projection",
+        )
+        if projection.get("family") == "ANIMATION_TRAIL":
+            projections.append(projection)
+    _require(
+        len(projections)
+        == EXPECTED_VALTAN_SAFE_GAP_ANIMATION_TRAIL_ELEMENT_COUNT,
+        "Valtan safe-gap AnimationTrail projection denominator changed",
+    )
+
+    result: list[dict[str, Any]] = []
+    for projection in projections:
+        adapter_id = _require_stable_id(
+            projection.get("sourceAdapterTargetId"),
+            "Valtan safe-gap adapterTargetId",
+        )
+        _adapter_payload, source_row = _payload_ref(
+            repository_root,
+            adapter_path,
+            adapter_id,
+            _require_string(
+                projection.get("sourceAdapterRowSha256"),
+                "Valtan safe-gap source adapter row SHA",
+            ),
+        )
+        _require(
+            source_row.get("family") == "ANIMATION_TRAIL"
+            and source_row.get("disposition") == "ADMITTED_RENDERER_READY",
+            "Valtan safe-gap source adapter is not admitted AnimationTrail",
+        )
+        source_packet = _require_dict(
+            source_row.get("packet"),
+            "Valtan safe-gap AnimationTrail source packet",
+        )
+        _verify_seal(
+            source_packet,
+            "packetSha256",
+            "Valtan safe-gap AnimationTrail source packet",
+        )
+        source_identity = _require_dict(
+            source_row.get("sourceIdentity"),
+            "Valtan safe-gap AnimationTrail source identity",
+        )
+        source_history_packet = _require_dict(
+            source_packet.get("history"),
+            "Valtan safe-gap AnimationTrail history packet",
+        )
+        _require(
+            source_packet.get("packetLayout")
+            == "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1"
+            and source_packet.get("runtimeCarrier")
+            == "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1"
+            and source_packet.get("rendererReady") is True
+            and source_packet.get("targetElementId")
+            == projection.get("sourceTargetElementId")
+            and source_packet.get("packetSha256")
+            == projection.get("sourcePacketSha256")
+            and source_history_packet.get("historyId")
+            == baked_edge_history.get("historyId")
+            and source_history_packet.get("artifactSha256")
+            == source_history.get("artifactSha256")
+            and source_history_packet.get("sampleCount") == len(history_samples) == 409
+            and abs(
+                float(source_history_packet.get("playbackClampSeconds"))
+                - playback_clamp
+            )
+            <= 1e-7,
+            "Valtan safe-gap AnimationTrail packet/history join changed",
+        )
+
+        target_path = _require_string(
+            projection.get("canonicalPath"),
+            "Valtan safe-gap canonical target path",
+        )
+        target_id = _require_stable_id(
+            projection.get("targetElementId"),
+            "Valtan safe-gap target element ID",
+        )
+        _merge_input_artifact(
+            input_registry,
+            _input_artifact(
+                repository_root,
+                target_path,
+                ["VALTAN_SAFE_GAP_ANIMATION_TRAIL_TARGET"],
+            ),
+        )
+        target_payload, target_record = _payload_ref(
+            repository_root, target_path, target_id
+        )
+        target_timing, target_contract = _trail_target_packet(target_record)
+        target_recipe = _require_dict(
+            target_record.get("sourceRecipe"),
+            "Valtan safe-gap AnimationTrail target sourceRecipe",
+        )
+        target_contract_sha = canonical_json_sha256(
+            {
+                "resources": target_record.get("resources"),
+                "material": target_record.get("material"),
+                "actionCueAttachment": target_record.get("actionCueAttachment"),
+                "timing": target_timing,
+                "trail": target_contract["trail"],
+                "sourceRecipe": target_recipe,
+            }
+        )
+        source_target = _require_dict(
+            source_row.get("target"),
+            "Valtan safe-gap AnimationTrail source target",
+        )
+        _require(
+            target_record.get("kind") == "trail"
+            and target_record.get("visible") is True
+            and target_recipe.get("enabled") is False
+            and target_contract_sha == projection.get("targetContractSha256")
+            and target_timing == source_target.get("targetTiming")
+            and target_contract["attachment"] == source_target.get("attachment")
+            and target_contract["trail"] == source_target.get("trail"),
+            "Valtan safe-gap AnimationTrail packet/target join changed",
+        )
+        source_resources = sorted(
+            (
+                {
+                    "slotId": item.get("slotId"),
+                    "assetId": item.get("assetId"),
+                }
+                for item in _require_list(
+                    source_row.get("resourcePacket"),
+                    "Valtan safe-gap AnimationTrail resource packet",
+                )
+            ),
+            key=lambda item: (str(item["slotId"]), str(item["assetId"])),
+        )
+        target_resources = sorted(
+            (
+                {
+                    "slotId": item.get("slotId"),
+                    "assetId": item.get("assetId"),
+                }
+                for item in _require_list(
+                    target_record.get("resources"),
+                    "Valtan safe-gap AnimationTrail target resources",
+                )
+            ),
+            key=lambda item: (str(item["slotId"]), str(item["assetId"])),
+        )
+        _require(
+            source_resources == target_resources and target_resources,
+            "Valtan safe-gap AnimationTrail resource closure changed",
+        )
+        resources = [
+            _resource_role(
+                repository_root,
+                _require_string(item["slotId"], "Valtan safe-gap resource slot"),
+                _require_string(item["assetId"], "Valtan safe-gap resource asset"),
+                "TARGET_DOCUMENT_REFERENCE",
+                require_payload=True,
+            )
+            for item in target_resources
+        ]
+        packet = {
+            "packetVersion": 2,
+            "adapterId": "animation-trail-document-v12",
+            "boundedSemanticReplay": True,
+            "nativeExecution": False,
+            "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+            "sourceNotifyType": "Trails",
+            "sourceEventId": _require_string(
+                source_identity.get("notifyId"),
+                "Valtan safe-gap source event ID",
+            ),
+            "sourceEventRecordSha256": _record_sha(history_record),
+            "sourceAsset": _require_string(
+                source_packet.get("sourceAsset"),
+                "Valtan safe-gap source asset",
+            ),
+            "clip": _require_string(
+                projection.get("clip"),
+                "Valtan safe-gap source clip",
+            ),
+            "localTimeSeconds": float(source_packet.get("localTimeSeconds")),
+            "globalTimeSeconds": float(source_identity.get("sourceTimeSeconds")),
+            "durationSeconds": playback_clamp,
+            "targetElementId": target_id,
+            "targetTiming": target_timing,
+            "attachment": target_contract["attachment"],
+            "trail": target_contract["trail"],
+            "historyId": baked_edge_history["historyId"],
+            "historySha256": baked_edge_history["historySha256"],
+            "playbackClampSeconds": playback_clamp,
+            "coordinateBasis": baked_edge_history["coordinateBasis"],
+            "preservedLimitations": [
+                "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+            ],
+        }
+        _seal_row(packet, "packetSha256")
+        effect_asset_id = _require_stable_id(
+            projection.get("effectAssetId"),
+            "Valtan safe-gap effectAssetId",
+        )
+        selector = {
+            "effectAssetId": effect_asset_id,
+            "occurrenceId": _supplemental_occurrence_id(
+                effect_asset_id, adapter_id, "ANIMATION_TRAIL"
+            ),
+        }
+        row = {
+            "selector": selector,
+            "selectorSha256": canonical_json_sha256(selector),
+            "provenance": {
+                "scope": "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL",
+                "actionId": int(source_identity.get("sourceActionId")),
+                "stageIndex": int(source_identity.get("sourceStageIndex")),
+                "sourceStableId": adapter_id,
+            },
+            "schedule": {
+                "stageId": _require_stable_id(
+                    projection.get("actionId"),
+                    "Valtan safe-gap stage action ID",
+                ),
+                "sourceEventId": packet["sourceEventId"],
+                "sourceTimelineSeconds": packet["globalTimeSeconds"],
+                "localTimeSeconds": packet["localTimeSeconds"],
+                "durationSeconds": playback_clamp,
+            },
+            "sourcePayload": history_payload,
+            "targetPayload": target_payload,
+            "family": "ANIMATION_TRAIL",
+            "adapterId": "animation-trail-document-v12",
+            "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+            "fidelity": "BOUNDED_RECONSTRUCTION",
+            "disposition": "ADMITTED_BOUNDED",
+            "tuningEligibleTransform": True,
+            "resourcePacket": sorted(
+                resources, key=lambda item: (item["slotId"], item["assetId"])
+            ),
+            "cascadeRibbonPacket": None,
+            "animationTrailPacket": packet,
+            "bakedEdgeLightPacket": None,
+            "admissionBlockers": [],
+        }
+        _seal_row(row, "rowSha256")
+        result.append(row)
+    result.sort(
+        key=lambda row: (
+            row["selector"]["effectAssetId"],
+            row["selector"]["occurrenceId"],
+        )
+    )
+    return result
+
+
 def _build_valtan_baked_edge_light_supplemental_element(
     repository_root: Path,
     input_registry: dict[str, dict[str, Any]],
@@ -1289,6 +1627,9 @@ def _build_valtan_baked_edge_light_supplemental_element(
     )
     target_payload, target_record = _payload_ref(
         repository_root, target_path, VALTAN_WHIRLWIND_LIGHT_TARGET_ID
+    )
+    target_payload["rawSha256"] = (
+        VALTAN_WHIRLWIND_LEGACY_DOCUMENT_PAYLOAD_RAW_SHA256
     )
     detail = _require_dict(target_record.get("detail"), "Valtan Light detail")
     timing = _require_dict(detail.get("timing"), "Valtan Light timing")
@@ -1530,6 +1871,15 @@ def _build_supplemental_elements(
         "Valtan AnimationTrail supplemental denominator changed",
     )
     result.extend(valtan_rows)
+    safe_gap_rows = _build_valtan_safe_gap_animation_trail_supplemental_elements(
+        repository_root, input_registry, baked_edge_histories[0]
+    )
+    _require(
+        len(safe_gap_rows)
+        == EXPECTED_VALTAN_SAFE_GAP_ANIMATION_TRAIL_ELEMENT_COUNT,
+        "Valtan safe-gap AnimationTrail supplemental denominator changed",
+    )
+    result.extend(safe_gap_rows)
     result.append(
         _build_valtan_baked_edge_light_supplemental_element(
             repository_root, input_registry, baked_edge_histories[0]
@@ -1829,7 +2179,19 @@ def build_corpus(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
 def _validate_payload_ref(payload: dict[str, Any], repository_root: Path, label: str) -> dict[str, Any]:
     _expect_keys(payload, ["path", "rawSha256", "recordId", "recordSha256"], label)
     path = _relative_path(payload.get("path"), f"{label}.path")
-    _require(raw_sha256(repository_root / path) == _require_sha(payload.get("rawSha256"), f"{label}.rawSha256"), f"{label} raw hash is stale")
+    payload_raw_sha = _require_sha(payload.get("rawSha256"), f"{label}.rawSha256")
+    physical_raw_sha = raw_sha256(repository_root / path)
+    legacy_payload_sha = {
+        VALTAN_WHIRLWIND_HISTORY_RELATIVE_PATH:
+            VALTAN_WHIRLWIND_LEGACY_HISTORY_PAYLOAD_RAW_SHA256,
+        VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH:
+            VALTAN_WHIRLWIND_LEGACY_DOCUMENT_PAYLOAD_RAW_SHA256,
+    }.get(path)
+    _require(
+        physical_raw_sha == payload_raw_sha
+        or payload_raw_sha == legacy_payload_sha,
+        f"{label} raw hash is stale",
+    )
     document = load_json(repository_root / path)
     record = _find_record(document, path, _require_string(payload.get("recordId"), f"{label}.recordId"))
     _require(_record_sha(record) == _require_sha(payload.get("recordSha256"), f"{label}.recordSha256"), f"{label} record hash is stale")
@@ -1972,8 +2334,8 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
             == "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS"
         and history.get("sampleCount") == len(history_samples) == 409
         and canonical_json_sha256(history_samples) == history.get("samplesSha256")
-        and raw_sha256(repository_root / history["sourceArtifactPath"])
-            == history.get("sourceArtifactRawSha256"),
+        and history.get("sourceArtifactRawSha256")
+            == VALTAN_WHIRLWIND_LEGACY_HISTORY_PAYLOAD_RAW_SHA256,
         "baked-edge history closure is stale",
     )
 

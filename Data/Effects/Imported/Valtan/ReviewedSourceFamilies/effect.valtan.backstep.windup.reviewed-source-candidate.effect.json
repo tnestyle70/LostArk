@@ -34,6 +34,10 @@
         {
           "slotId": "noise",
           "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds"
+        },
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_m_trail_001_cl.dds"
         }
       ],
       "material": {
@@ -86,7 +90,7 @@
             1.0
           ],
           "clip": 0.0,
-          "emissiveIntensity": 1.0,
+          "emissiveIntensity": 0.009999999776482582,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
@@ -116,12 +120,12 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.45,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -224,7 +228,7 @@
             0.06999999880790711
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -1433,7 +1437,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.45,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -2424,6 +2428,10 @@
         {
           "slotId": "noise",
           "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds"
+        },
+        {
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_m_trail_001_cl.dds"
         }
       ],
       "material": {
@@ -2476,7 +2484,7 @@
             1.0
           ],
           "clip": 0.0,
-          "emissiveIntensity": 1.0,
+          "emissiveIntensity": 0.009999999776482582,
           "distortionIntensity": 0.0,
           "distortionOnBaseMaterial": false,
           "radialTime": 0.0,
@@ -2506,12 +2514,12 @@
         },
         "timing": {
           "startDelaySeconds": 0.0,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.45,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": true
+          "useModelMaterial": false
         },
         "sprite": {
           "billboard": true
@@ -2614,7 +2622,7 @@
             0.06999999880790711
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,

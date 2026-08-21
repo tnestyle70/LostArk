@@ -193,6 +193,94 @@ def _cue_row(identity: Mapping[str, str], source_start_ms: int) -> dict[str, Any
     }
 
 
+def _load_sealed_outputs(
+    root: Path,
+) -> tuple[dict[PurePosixPath, bytes], dict[str, Any]] | None:
+    """Load the already-proven immutable candidates after aggregate cleanup."""
+    receipt_path = _repository_path(root, OUTPUT_RECEIPT)
+    if not receipt_path.is_file():
+        return None
+    receipt, receipt_payload = _load_json(root, OUTPUT_RECEIPT)
+    if (
+        receipt.get("schema") != SCHEMA
+        or receipt.get("formatVersion") != FORMAT_VERSION
+        or receipt.get("bossArchetypeId") != BOSS_ARCHETYPE_ID
+        or receipt.get("mode")
+        != "IMMUTABLE_FOUR_WAVE_CANDIDATES_NO_CANONICAL_MUTATION"
+    ):
+        raise CandidateError("sealed source-wave receipt identity is invalid")
+    summary = _require_object(receipt.get("summary"), "sealed summary")
+    expected_summary = {
+        "candidateDocumentCount": 4,
+        "candidateElementCount": 100,
+        "elementsPerCandidateDocument": 25,
+        "visualTimingGroupCount": 4,
+        "notifySystemTimingGroupCount": 12,
+        "catalogAppendRowCount": 4,
+        "cueAppendRowCount": 4,
+        "targetAuthoredDocumentCount": 4,
+        "aggregateSourceElementAppendCount": 0,
+        "duplicateSourceElementCount": 0,
+        "auxiliarySourceWaveCount": 1,
+        "canonicalMutationCount": 0,
+    }
+    if summary != expected_summary:
+        raise CandidateError("sealed source-wave summary drift")
+    candidates = [
+        _require_object(row, "sealed candidate")
+        for row in _require_list(receipt.get("candidates"), "sealed candidates")
+    ]
+    if (
+        len(candidates) != EXPECTED_WAVE_COUNT
+        or [row.get("waveOrdinal") for row in candidates] != [1, 2, 3, 4]
+    ):
+        raise CandidateError("sealed source-wave candidate order drift")
+    outputs: dict[PurePosixPath, bytes] = {}
+    all_pairs: set[tuple[str, str]] = set()
+    for candidate in candidates:
+        effect_id = candidate.get("effectAssetId")
+        relative = _relative(
+            candidate.get("candidateDocumentPath"),
+            f"{effect_id} sealed candidate path",
+        )
+        if relative.parent != OUTPUT_DIRECTORY:
+            raise CandidateError("sealed source-wave candidate escaped output directory")
+        document, payload = _load_json(root, relative)
+        if (
+            _sha256(payload) != candidate.get("candidateDocumentSha256")
+            or document.get("schema") != "lostark.effect-authoring"
+            or document.get("version") != 13
+            or document.get("effectAssetId") != effect_id
+        ):
+            raise CandidateError(f"sealed candidate SHA/identity drift: {effect_id}")
+        elements = [
+            _require_object(row, f"{effect_id} sealed element")
+            for row in _require_list(document.get("elements"), f"{effect_id}.elements")
+        ]
+        expected_pairs = [
+            (row.get("elementId"), row.get("sourceNode"))
+            for row in _require_list(
+                candidate.get("candidateElements"),
+                f"{effect_id}.candidateElements",
+            )
+            if isinstance(row, dict)
+        ]
+        actual_pairs = [(row.get("id"), row.get("sourceNode")) for row in elements]
+        if (
+            len(elements) != EXPECTED_ELEMENTS_PER_WAVE
+            or actual_pairs != expected_pairs
+            or len(set(actual_pairs)) != EXPECTED_ELEMENTS_PER_WAVE
+            or all_pairs.intersection(actual_pairs)
+        ):
+            raise CandidateError(f"sealed candidate element closure drift: {effect_id}")
+        all_pairs.update(actual_pairs)
+        outputs[relative] = payload
+    if len(all_pairs) != EXPECTED_ELEMENT_COUNT:
+        raise CandidateError("sealed source-wave denominator must remain 100")
+    outputs[OUTPUT_RECEIPT] = receipt_payload
+    return outputs, receipt
+
+
 def _catalog_row(effect_id: str) -> dict[str, str]:
     return {
         "effectAssetId": effect_id,
@@ -210,11 +298,28 @@ def build_outputs(repository_root: Path) -> tuple[dict[PurePosixPath, bytes], di
         or reviewed.get("bossArchetypeId") != BOSS_ARCHETYPE_ID
     ):
         raise CandidateError("reviewed source-family receipt identity is invalid")
-    aggregate_row = _find_unique(
-        _require_list(reviewed.get("documents"), "reviewed documents"),
-        lambda row: row.get("effectAssetId") == AGGREGATE_EFFECT_ID,
-        "FRONT_BACK_FRONT aggregate candidate row",
+    reviewed_documents = _require_list(
+        reviewed.get("documents"), "reviewed documents"
     )
+    aggregate_rows = [
+        row
+        for row in reviewed_documents
+        if isinstance(row, dict)
+        and row.get("effectAssetId") == AGGREGATE_EFFECT_ID
+    ]
+    if not aggregate_rows:
+        sealed = _load_sealed_outputs(root)
+        if sealed is not None:
+            return sealed
+        raise CandidateError(
+            "reviewed FRONT_BACK_FRONT aggregate is absent and no sealed candidates exist"
+        )
+    if len(aggregate_rows) != 1:
+        raise CandidateError(
+            "expected exactly one FRONT_BACK_FRONT aggregate candidate row; "
+            f"found {len(aggregate_rows)}"
+        )
+    aggregate_row = aggregate_rows[0]
     if aggregate_row.get("candidateElementCount") != EXPECTED_ELEMENT_COUNT:
         raise CandidateError("FRONT_BACK_FRONT aggregate must remain 100 elements")
     source_candidate_relative = _relative(

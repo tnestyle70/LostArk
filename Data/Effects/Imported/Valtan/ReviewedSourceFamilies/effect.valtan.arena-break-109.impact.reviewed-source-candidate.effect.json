@@ -104,7 +104,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.23064500093460083,
-          "lifeTimeSeconds": 0.6499999761581421,
+          "lifeTimeSeconds": 0.1693549990653992,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -1117,7 +1117,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.23064500093460083,
-          "lifeTimeSeconds": 2.0,
+          "lifeTimeSeconds": 0.1693549990653992,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },

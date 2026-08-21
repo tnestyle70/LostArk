@@ -112,7 +112,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.8135589957237244,
-          "lifeTimeSeconds": 1.5,
+          "lifeTimeSeconds": 0.18644100427627563,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -1841,7 +1841,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.7503370046615601,
-          "lifeTimeSeconds": 5.0,
+          "lifeTimeSeconds": 0.24966299533843994,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -2803,7 +2803,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.8135589957237244,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.18644100427627563,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -2911,7 +2911,7 @@
             0.0
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -4025,7 +4025,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.7503370046615601,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.24966299533843994,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -4933,7 +4933,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.7503370046615601,
-          "lifeTimeSeconds": 0.30000001192092896,
+          "lifeTimeSeconds": 0.24966299533843994,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -6278,7 +6278,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.7503370046615601,
-          "lifeTimeSeconds": 1.5,
+          "lifeTimeSeconds": 0.24966299533843994,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -7324,7 +7324,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.8135589957237244,
-          "lifeTimeSeconds": 1.5,
+          "lifeTimeSeconds": 0.18644100427627563,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -8446,7 +8446,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.8135589957237244,
-          "lifeTimeSeconds": 0.5,
+          "lifeTimeSeconds": 0.18644100427627563,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -10129,7 +10129,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.8135589957237244,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.18644100427627563,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -11164,7 +11164,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.8135589957237244,
-          "lifeTimeSeconds": 0.30000001192092896,
+          "lifeTimeSeconds": 0.18644100427627563,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -12501,7 +12501,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.7503370046615601,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.24966299533843994,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -12609,7 +12609,7 @@
             0.0
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
@@ -13596,7 +13596,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.8135589957237244,
-          "lifeTimeSeconds": 0.30000001192092896,
+          "lifeTimeSeconds": 0.18644100427627563,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -14725,7 +14725,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.8135589957237244,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.18644100427627563,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -15731,7 +15731,7 @@
         },
         "timing": {
           "startDelaySeconds": 0.8135589957237244,
-          "lifeTimeSeconds": 0.1,
+          "lifeTimeSeconds": 0.18644100427627563,
           "afterImageSeconds": 0.0,
           "dissolveStartNormalized": 1.0
         },
@@ -15839,7 +15839,7 @@
             0.0
           ],
           "localSpace": true,
-          "billboard": true
+          "billboard": false
         },
         "trail": {
           "maxPoints": 64,
