@@ -9202,7 +9202,7 @@ void Client::CEffect_Tool::Render_UnifiedEffectTree(
 		(bActive ? ImGuiTreeNodeFlags_Selected : 0));
 	ImGui::SameLine();
 	ImGui::BeginDisabled(bActive || nullptr == pEditablePath);
-	if (ImGui::SmallButton("Open for Editing") && nullptr != pEditablePath)
+	if (ImGui::SmallButton("Open Editor") && nullptr != pEditablePath)
 	{
 		if (!bValtanProductRow)
 		{
@@ -10888,7 +10888,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				if (!bArtistFSkill && nullptr != pProductEntry)
 				{
 					const auto RenderProductCue = [this, pProductEntry,
-						&ProductCues, &BuildPhaseLabel](const size_t iCue)
+						&ProductCues, &SavedBindings,
+						&BuildPhaseLabel](const size_t iCue)
 					{
 						const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue =
 							ProductCues[iCue];
@@ -10911,6 +10912,48 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 						if (ImGui::TreeNodeEx(StageLabel.c_str(),
 							ImGuiTreeNodeFlags_OpenOnArrow))
 						{
+							/* A Product cue is the primary authoring entry point.  Keep
+							   its exact direct-authored document and family tree beside
+							   Play Full Effect so Q/W/E/R/T and BA phases never require
+							   discovering a second, detached Saved list. */
+							const auto AuthoredBinding = std::find_if(
+								SavedBindings.begin(), SavedBindings.end(),
+								[&Cue](
+									const UNIFIED_EFFECT_CANDIDATE_BINDING* pBinding)
+								{
+									return nullptr != pBinding &&
+										pBinding->strEffectAssetId ==
+											Cue.Cue.strEffectAssetId;
+								});
+							if (AuthoredBinding != SavedBindings.end())
+							{
+								const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding =
+									**AuthoredBinding;
+								auto Cache = m_UnifiedCandidateCaches.find(
+									Binding.strEffectAssetId);
+								if (Cache != m_UnifiedCandidateCaches.end() &&
+									Refresh_UnifiedEffectCache(Cache->second,
+										Binding.Path, Binding.strEffectAssetId) &&
+									Cache->second.bValid)
+								{
+									Render_UnifiedEffectTree(Cache->second,
+										"Editable Unified Effect | " +
+											Binding.strEffectAssetId);
+								}
+								else
+								{
+									ImGui::TextDisabled(
+										"Open Editor is unavailable: %s",
+										Cache == m_UnifiedCandidateCaches.end() ?
+											"the authored cache lost this Product ID." :
+											Cache->second.strStatus.c_str());
+								}
+							}
+							else
+							{
+								ImGui::TextDisabled(
+									"Open Editor is unavailable: this Product cue has no exact direct-authored document.");
+							}
 							if (ImGui::Button("Play Full Effect"))
 								Try_SelectProductCue(*pProductEntry, iCue);
 							Render_VisualProgramAuthoring(*pProductEntry, iCue);
