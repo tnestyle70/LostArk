@@ -1,0 +1,203 @@
+{
+  "schema": "lostark.effect-screen-overlay",
+  "formatVersion": 1,
+  "provenance": "PROJECT_TUNED",
+  "presentationId": "effect.dimensionmaster.skill.2050230.unified.screen-overlay",
+  "overlays": [
+    {
+      "id": "fragment.upper-left",
+      "sourceOrder": 1000,
+      "textureAssetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_fragment_005.dds",
+      "colorSpace": "srgb",
+      "coverageChannel": "r",
+      "sampler": {
+        "filter": "linear",
+        "address": "clamp"
+      },
+      "timing": {
+        "startSeconds": 0.7,
+        "lifetimeSeconds": 0.58,
+        "alphaStart": 0.82,
+        "alphaEnd": 0.0
+      },
+      "transform": {
+        "position": [
+          0.18,
+          0.24
+        ],
+        "scale": [
+          0.31,
+          0.31
+        ],
+        "rotationDegrees": -31.0,
+        "angularVelocityDegreesPerSecond": -96.0,
+        "uvDriftPerSecond": [
+          -0.04,
+          0.03
+        ]
+      },
+      "tint": [
+        0.58,
+        0.86,
+        1.3,
+        1.0
+      ]
+    },
+    {
+      "id": "fragment.upper-right",
+      "sourceOrder": 1001,
+      "textureAssetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_fragment_005.dds",
+      "colorSpace": "srgb",
+      "coverageChannel": "r",
+      "sampler": {
+        "filter": "linear",
+        "address": "clamp"
+      },
+      "timing": {
+        "startSeconds": 0.72,
+        "lifetimeSeconds": 0.64,
+        "alphaStart": 0.76,
+        "alphaEnd": 0.0
+      },
+      "transform": {
+        "position": [
+          0.78,
+          0.2
+        ],
+        "scale": [
+          0.27,
+          0.27
+        ],
+        "rotationDegrees": 42.0,
+        "angularVelocityDegreesPerSecond": 118.0,
+        "uvDriftPerSecond": [
+          0.05,
+          0.02
+        ]
+      },
+      "tint": [
+        0.72,
+        0.92,
+        1.25,
+        1.0
+      ]
+    },
+    {
+      "id": "fragment.center-left",
+      "sourceOrder": 1002,
+      "textureAssetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_fragment_005.dds",
+      "colorSpace": "srgb",
+      "coverageChannel": "r",
+      "sampler": {
+        "filter": "linear",
+        "address": "clamp"
+      },
+      "timing": {
+        "startSeconds": 0.74,
+        "lifetimeSeconds": 0.54,
+        "alphaStart": 0.72,
+        "alphaEnd": 0.0
+      },
+      "transform": {
+        "position": [
+          0.29,
+          0.58
+        ],
+        "scale": [
+          0.23,
+          0.23
+        ],
+        "rotationDegrees": 77.0,
+        "angularVelocityDegreesPerSecond": 145.0,
+        "uvDriftPerSecond": [
+          -0.03,
+          -0.04
+        ]
+      },
+      "tint": [
+        0.5,
+        0.78,
+        1.2,
+        1.0
+      ]
+    },
+    {
+      "id": "fragment.lower-right",
+      "sourceOrder": 1003,
+      "textureAssetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_fragment_005.dds",
+      "colorSpace": "srgb",
+      "coverageChannel": "r",
+      "sampler": {
+        "filter": "linear",
+        "address": "clamp"
+      },
+      "timing": {
+        "startSeconds": 0.76,
+        "lifetimeSeconds": 0.68,
+        "alphaStart": 0.8,
+        "alphaEnd": 0.0
+      },
+      "transform": {
+        "position": [
+          0.74,
+          0.72
+        ],
+        "scale": [
+          0.34,
+          0.34
+        ],
+        "rotationDegrees": -68.0,
+        "angularVelocityDegreesPerSecond": -126.0,
+        "uvDriftPerSecond": [
+          0.04,
+          -0.03
+        ]
+      },
+      "tint": [
+        0.62,
+        0.88,
+        1.38,
+        1.0
+      ]
+    },
+    {
+      "id": "fragment.edge-right",
+      "sourceOrder": 1004,
+      "textureAssetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_fragment_005.dds",
+      "colorSpace": "srgb",
+      "coverageChannel": "r",
+      "sampler": {
+        "filter": "linear",
+        "address": "clamp"
+      },
+      "timing": {
+        "startSeconds": 0.78,
+        "lifetimeSeconds": 0.5,
+        "alphaStart": 0.68,
+        "alphaEnd": 0.0
+      },
+      "transform": {
+        "position": [
+          0.94,
+          0.47
+        ],
+        "scale": [
+          0.2,
+          0.2
+        ],
+        "rotationDegrees": 18.0,
+        "angularVelocityDegreesPerSecond": 174.0,
+        "uvDriftPerSecond": [
+          0.06,
+          0.0
+        ]
+      },
+      "tint": [
+        0.56,
+        0.82,
+        1.18,
+        1.0
+      ]
+    }
+  ]
+}

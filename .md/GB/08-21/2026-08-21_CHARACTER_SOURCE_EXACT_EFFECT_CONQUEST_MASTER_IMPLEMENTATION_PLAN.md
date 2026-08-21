@@ -310,7 +310,7 @@ ALT_V 34630 / T 34650
 | LMB | `2050010 기본 공격` | current cue는 BA1/2/4=`ba1.unified`, BA3=`ba3.unified`; 실제 mouse edge당 command 하나 | 구버전 혼용을 먼저 배제하고, source combo window 안의 재클릭만 다음 단계로 buffer. hold 자동 진행 금지 |
 | A | `2050210 분광` | source MakeFlow slash는 `.25/.60/.90/1.30s` 네 occurrence인데 current Product에 `fm_h_swing_05` 한 행만 남음. 0ms presentation snapshot은 새 authoritative yaw를 부드럽게 추종 중인 root를 동결 | outer 위치 anchor는 follow, 방향은 Server-approved `ACTION_FACING`을 actionStartTick에 snapshot. 네 source local pose를 selective merge하고 inner occurrence snapshot/독립 transform 유지; gameplay damage는 단일 hit 유지 |
 | T | `2050500 업의 경계` | T 누름 즉시 skill command. Server는 direction/distance만 소유하고 승인 target XZ를 snapshot에 보내지 않음 | T targeting mode, 11m range/nav 검증, LMB confirm/RMB cancel, Server-approved target XZ, target-root damage/effect를 한 vertical slice로 구현 |
-| F | `2050230 시간 분쇄` | raw source 69행(64 particle+2 light+3 post), current 8행(2 mesh+6 sprite), typed execution 0 | 창 타격, 반구 확장, world shard, RGB/zoom post와 화면 유리 파편을 source role별로 복원 |
+| F | `2050230 시간 분쇄` | raw source 69행(64 particle+2 light+3 post), current Product 8행(2 mesh+6 sprite). exact Fluid01 두 행과 `PROJECT_TUNED` screen-overlay 첫 Product canary 5행은 typed execution에 연결됨 | 기존 8행을 보존한 채 창 타격, 반구 확장, world shard, RGB/zoom post를 source role별로 복원하고, 화면 파편 canary는 사용자 판정과 source evidence에 따라 후속 튜닝 |
 | W | `2050120 분절` | Glasshole/Crackhole/LocalCrack/SpriteWave가 반복되고 exact cooked shader evidence가 가장 많이 확보됨 | F에서 여는 glass/crack family를 W의 exact occurrence cohort에 즉시 rollout |
 
 차원 LMB window는 고정 추측 `0.3s` 대신 source evidence를 우선한다. 현재 full-stage window와 과거
@@ -421,10 +421,19 @@ commit하고, Engine presentation manager는 기존 Light/ScreenPost와 분리�
 구성한다. Renderer는 기존 RGBNoise/ZoomBlur/FilmNoise가 끝난 scene ping-pong 뒤에 stable source order로
 textured pass를 합성하고 그 뒤의 bloom/tone map 경로는 유지한다.
 
-이 v1은 synthetic canary로 먼저 닫는 `PROJECT_TUNED/TYPED_PRESENTATION` capability다. 차원 F/W Product
-occurrence, source-exact native DXBC, normal/noise/mask 다중 lane, scene-color refraction, dissolve/seed/depth
-curve는 실제 소비자 근거와 함께 후속 revision에서 admission한다. 따라서 v1 자동 PASS만으로 차원 F의
-화면 파편이나 CAP-03 전체를 source-exact 복원 완료로 올리지 않는다.
+이 v1은 synthetic canary로 먼저 닫은 `PROJECT_TUNED/TYPED_PRESENTATION` capability다. 첫 실제 Product
+소비자는 차원 F `2050230`이며, 기존 8행 문서를 수정하지 않는 선택적 catalog presentation binding으로
+붙인다. `fx_d_fragment_005.dds`는 raw source가 0.7초 world shard에 사용했다는 근거만 있고 screen-space
+carrier 근거는 없으므로 첫 canary의 배치·색 공간·alpha envelope까지 모두 `PROJECT_TUNED`로 분리한다.
+source-exact native DXBC, normal/noise/mask 다중 lane, scene-color refraction, dissolve/seed/depth curve와 W
+rollout은 후속 revision 경계다. 따라서 Product 자동 PASS만으로 차원 F의 화면 파편이나 CAP-03 전체를
+source-exact 복원 완료로 올리지 않는다.
+
+overlay playback instance는 world document와 같은 EffectObject의 start/update/stop/cancel/clear를 따르되,
+delta clock은 world document duration clamp에 종속시키지 않는다. 따라서 후속 W처럼 screen presentation의
+tail이 짧은 world carrier보다 길어도 overlay가 자연 종료하기 전 EffectObject를 회수하지 않는다. absolute
+Tool sampling은 동일 sample time으로 seek하고 Product delta playback은 같은 playback-rate delta를 각각
+commit한다.
 
 ### CAP-04. Dragon flow와 arc-length UV
 
@@ -803,7 +812,7 @@ registration과 runtime resource existence를 한 변경 단위로 닫는다.
 4. Fluid01 mesh variant를 도화가 V, 창술 ALT_V, 워로드 17250에 별도로 admission한다.
 5. LocalCrack/Crackhole mesh/sprite variants를 carrier별로 분리한다.
 6. F raw 69행에서 role-selected sphere/hemisphere/world shard/light/post를 복원한다.
-7. CAP-03 screen overlay를 연결하고 F 화면 파편을 구현한다.
+7. CAP-03 screen overlay의 첫 Product canary를 연결하고 F 화면 파편의 사용자 판정 가능한 기반을 만든다.
 8. W와 다른 playable 차원 occurrence에 family cohort rollout한다.
 
 같은 parent 이름이어도 child/static set/carrier/role lane이 다르면 서로 다른 variant다.
@@ -838,7 +847,22 @@ byte/canonical golden으로 고정한다. focused WARP는 두 draw의 실제 PS 
 두 번째 sourceNode 거부와 직전 prepared state 보존을 Debug/Release 모두 요구한다. 공용 resource
 reuse signature도 sourceNode, render profile, SourceRecipe enabled/renderer shape를 비교해 opcode 16/17의
 strict tuple admission을 fast path에서 우회하지 못하게 한다. 이 G에서는
-world Fluid01 sprite만 닫고 CAP-03 screen-space textured shard overlay는 추가하지 않는다.
+world Fluid01 sprite만 닫은 checkpoint 뒤, 별도 수직 슬라이스에서 CAP-03 screen-space textured shard의
+첫 Product consumer를 추가했다. `EffectCatalog`의 F direct row가 class-neutral presentation asset을
+선택하고 publisher가 presentation 원문 SHA/byte와 DDS SHA/byte를 sealed runtime binding으로 만든다.
+Client catalog는 embedded schema/provenance/resource closure를 전부 stage한 뒤에만 binding map을 atomic
+commit하고, Product prewarm은 DDS identity와 typed presentation을 검증한 immutable template만 cache한다.
+각 `CEffectObject`는 template의 playback instance를 복제해 같은 lifecycle/playback-rate delta를 소비하되
+world document duration clamp보다 긴 overlay tail도 끝까지 진행한다. 기존 RGBNoise와 ZoomBlur submission
+뒤 같은 Engine overlay channel에 제출한다. start/update/natural end/cancel/death/level clear는 EffectObject
+lifecycle 하나로 닫고 spawn-time file I/O는 허용하지 않는다. malformed resource
+identity나 다섯 번째 row stage 실패는 직전 prepared generation을 보존한다.
+
+첫 canary는 source world fragment와 RGBNoise/ZoomBlur의 공통 시작 증거 `0.7s`를 기준으로 sourceOrder
+`1000..1004`의 5행을 순서대로 시작한다. DXT1/BC1인 `fx_d_fragment_005.dds`의 coverage는 `R`을
+명시하며 존재하지 않는 alpha를 사용하지 않는다. screen-space carrier, 위치, 회전, alpha, sRGB 해석은
+source occurrence로 증명되지 않았으므로 receipt에 `PROJECT_TUNED/PARTIAL`, 사용자 화면 `PENDING`으로
+봉인한다. 기존 Product 8 Elements는 canonical SHA까지 유지한다.
 
 ### G07. dragon flow와 궁극기 rollout
 
@@ -1199,7 +1223,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G03 shader variants | `IMPLEMENTED` | StandardColorV1, Glasshole02 opcode 16, Fluid01 opcode 17, Artist Tiger opcode 18의 typed admission·rollback·WARP draw | 미실행 | dragon variants와 추가 native VF/pass evidence |
 | G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R/S, Warlord T, Lance E cone donor focused PASS | 미실행 | runtime full publish, S 사용자 화면 튜닝 |
 | G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결, D tiger 12행 typed family | 미실행 | E runtime frame 확인, T asset lineage |
-| G06 glass/crack | `IMPLEMENTED` | W2050120 K-child + F2050230 Fluid01 two-row + screen-overlay v1 synthetic WARP/rollback | 미실행 | Fluid01 mesh, J-child static set, 차원 F/W Product overlay·refraction |
+| G06 glass/crack | `IMPLEMENTED` | W2050120 K-child + F2050230 Fluid01 two-row + F2050230 Product screen-overlay 5행 actual cue/catalog join, identity·rollback·timeline·clear Debug/Release focused harness | 대기 | Fluid01 mesh, J-child static set, F raw world composition, refraction/multi-lane과 W rollout |
 | G07 dragon/ultimate | `IMPLEMENTED` | Lance 34630/34650 exact 12행 opcode 19, body/head WARP draw, alpha-pan/Dynamic-W/lifetime/rollback PASS | 미실행 | 34610·Artist T·교차 class exact variant admission |
 | G08 Artist V | `IMPLEMENTED` | CircleSurface/Vortex strict executor + reviewed 7-row wisp cohort + world-metric 14-particle attractor, materializer 8 tests와 Debug/Release focused 12/12 PASS | 미실행 | full publish, camera/post/light channel |
 | G09 Dimension gameplay | `EVIDENCE_PARTIAL` | current command/snapshot audit | 미실행 | approved target replication |
@@ -1221,7 +1245,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 4. G02 Artist D product join closure
 5. G04 Warlord T noise/decal와 Artist A/R low-risk corrections
 6. G06 Glasshole02 첫 Product family canary
-7. G06 Dimension F world composition + CAP-03 screen overlay
+7. G06 Dimension F CAP-03 첫 Product canary 완료, raw world composition·고급 overlay는 계속 진행
 8. G07 source CascadeRibbon + Lance dragon typed UV family + Artist T carrier
 9. G08 Artist V attractor/screen presentation
 10. G09 Dimension LMB/T gameplay, cross-class rollout, full publish/build, 사용자 판정
