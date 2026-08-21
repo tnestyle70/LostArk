@@ -1574,6 +1574,176 @@ def _parse_animevent_line(line: str, line_number: int) -> tuple[list[str], dict[
     return tokens, attributes
 
 
+ANIMEVENT_PRODUCT_FIELDS = {
+    "startms", "endms", "payload", "effectref", "anchor", "follow",
+    "orientation", "stop", "px", "py", "pz", "rx", "ry", "rz",
+    "sx", "sy", "sz",
+}
+ACTION_FACING_PRODUCT_CUES = {
+    ("Warlord", "wgl_sk_firebullet"): {
+        "effectAssetId": "effect.warlord.skill.17060.unified",
+        "previousFollowPolicy": "follow",
+        "followPolicy": "follow",
+    },
+    ("DimensionMaster", "pc_sp_m_00_sk_sk_willowrend"): {
+        "effectAssetId": "effect.dimensionmaster.skill.2050210.unified",
+        "previousFollowPolicy": "snapshot",
+        "followPolicy": "follow",
+    },
+}
+
+
+def _parse_product_cue_placement(
+    tokens: list[str],
+    attributes: dict[str, str],
+    version: int,
+    animation_asset_id: str,
+    line_number: int,
+) -> dict[str, Any]:
+    if any("=" not in token or token.startswith("=") for token in tokens[2:]):
+        raise ValueError(
+            f"Product animevent has an invalid field at line {line_number}"
+        )
+    unknown = sorted(set(attributes) - ANIMEVENT_PRODUCT_FIELDS)
+    if unknown:
+        raise ValueError(
+            f"Product animevent has unknown fields at line {line_number}: {unknown}"
+        )
+    if attributes.get("effectref") != "asset":
+        raise ValueError(f"Product animevent effectref is invalid at line {line_number}")
+    payload = attributes.get("payload", "")
+    if not STABLE_ID.fullmatch(payload):
+        raise ValueError(f"Product animevent payload is invalid at line {line_number}")
+
+    def parse_uint(name: str, default: str | None = None) -> int:
+        value = attributes.get(name, default)
+        if value is None or not value.isdecimal():
+            raise ValueError(
+                f"Product animevent {name} is invalid at line {line_number}"
+            )
+        parsed = int(value)
+        if parsed > 0xFFFFFFFF:
+            raise ValueError(
+                f"Product animevent {name} is invalid at line {line_number}"
+            )
+        return parsed
+
+    start_ms = parse_uint("startms")
+    end_ms = parse_uint("endms", attributes["startms"])
+    anchor = attributes.get("anchor", "root")
+    follow = attributes.get("follow", "follow")
+    stop = attributes.get("stop", "natural")
+    if not anchor or follow not in {"follow", "snapshot"}:
+        raise ValueError(
+            f"Product animevent anchor/follow is invalid at line {line_number}"
+        )
+    if "orientation" in attributes and version < 6:
+        raise ValueError(
+            f"Product animevent orientation requires v6 at line {line_number}"
+        )
+    orientation = attributes.get("orientation", "anchor")
+    if orientation not in {"anchor", "action_facing"}:
+        raise ValueError(
+            f"Product animevent orientation is invalid at line {line_number}"
+        )
+    if orientation == "action_facing" and anchor != "root":
+        raise ValueError(
+            f"Product animevent action_facing requires root at line {line_number}"
+        )
+    if stop not in {"natural", "cue_end"} or end_ms < start_ms:
+        raise ValueError(
+            f"Product animevent stop/interval is invalid at line {line_number}"
+        )
+    if stop == "cue_end" and end_ms <= start_ms:
+        raise ValueError(
+            f"Product animevent cue_end interval is invalid at line {line_number}"
+        )
+
+    transform: dict[str, str] = {}
+    for name, default in (
+        ("px", "0"), ("py", "0"), ("pz", "0"),
+        ("rx", "0"), ("ry", "0"), ("rz", "0"),
+        ("sx", "1"), ("sy", "1"), ("sz", "1"),
+    ):
+        value = attributes.get(name, default)
+        try:
+            parsed = float(value)
+        except ValueError as error:
+            raise ValueError(
+                f"Product animevent {name} is invalid at line {line_number}"
+            ) from error
+        if not math.isfinite(parsed) or (name.startswith("s") and parsed <= 0.0):
+            raise ValueError(
+                f"Product animevent {name} is invalid at line {line_number}"
+            )
+        transform[name] = value
+
+    expected = ACTION_FACING_PRODUCT_CUES.get((animation_asset_id, tokens[0]))
+    if orientation == "action_facing" and expected is None:
+        raise ValueError(
+            f"Unexpected action-facing Product animevent at line {line_number}"
+        )
+    if expected is not None:
+        previous_follow = expected["previousFollowPolicy"]
+        if previous_follow not in {"follow", "snapshot"}:
+            raise ValueError("Reviewed action-facing previous follow policy is invalid")
+        is_exact_previous = (
+            payload == expected["effectAssetId"]
+            and anchor == "root"
+            and follow == previous_follow
+            and orientation == "anchor"
+        )
+        is_exact_current = (
+            payload == expected["effectAssetId"]
+            and anchor == "root"
+            and follow == expected["followPolicy"]
+            and orientation == "action_facing"
+        )
+        if not is_exact_current:
+            suffix = " (exact previous state still requires migration)" \
+                if is_exact_previous else ""
+            raise ValueError(
+                "Reviewed action-facing Product animevent drifted at line "
+                f"{line_number}{suffix}"
+            )
+    return {
+        "startms": attributes["startms"],
+        "endms": attributes.get("endms"),
+        "anchor": anchor,
+        "follow": follow,
+        "orientation": orientation,
+        "orientationExplicit": "orientation" in attributes,
+        "stop": stop,
+        "transform": transform,
+    }
+
+
+def _serialize_product_cue(
+    clip: str,
+    target: str,
+    placement: dict[str, Any],
+) -> str:
+    fields = [
+        f'startms={placement["startms"]}',
+    ]
+    if placement["endms"] is not None:
+        fields.append(f'endms={placement["endms"]}')
+    fields.extend((
+        f'payload="{target}"',
+        "effectref=asset",
+        f'anchor="{placement["anchor"]}"',
+        f'follow={placement["follow"]}',
+    ))
+    if placement["orientationExplicit"]:
+        fields.append(f'orientation={placement["orientation"]}')
+    fields.append(f'stop={placement["stop"]}')
+    fields.extend(
+        f'{name}={placement["transform"][name]}'
+        for name in ("px", "py", "pz", "rx", "ry", "rz", "sx", "sy", "sz")
+    )
+    return f'"{clip}" EFFECT ' + " ".join(fields)
+
+
 def _desired_animevent_bytes(
     contract: dict[str, Any],
     stages: list[dict[str, Any]],
@@ -1599,6 +1769,8 @@ def _desired_animevent_bytes(
     ):
         raise ValueError(f"Animevent identity mismatch: {asset_id}")
     version = int(header[1])
+    if version < 3 or version > 6:
+        raise ValueError(f"Animevent version is invalid: {asset_id}")
     event_lines = [line for line in lines[1:] if line.strip()]
     if int(header[3]) != len(event_lines):
         raise ValueError(f"Animevent row count mismatch: {asset_id}")
@@ -1609,14 +1781,25 @@ def _desired_animevent_bytes(
         for clip in stage["clips"]
     }
     preserved_lines: list[str] = []
+    existing_placements: dict[str, dict[str, Any]] = {}
     for line_number, line in enumerate(event_lines, start=2):
         tokens, attributes = _parse_animevent_line(line, line_number)
-        current_scope_product = (
-            len(tokens) >= 3
-            and tokens[1] == "EFFECT"
-            and tokens[0] in scope_clips
+        product_cue = (
+            len(tokens) >= 3 and tokens[1] == "EFFECT"
             and attributes.get("effectref") == "asset"
         )
+        placement = None
+        if product_cue:
+            placement = _parse_product_cue_placement(
+                tokens, attributes, version, asset_id, line_number
+            )
+        current_scope_product = product_cue and tokens[0] in scope_clips
+        if current_scope_product:
+            if tokens[0] in existing_placements:
+                raise ValueError(
+                    f"One clip owns duplicate Product animevents: {asset_id}/{tokens[0]}"
+                )
+            existing_placements[tokens[0]] = placement
         if not current_scope_product:
             preserved_lines.append(line)
 
@@ -1635,14 +1818,31 @@ def _desired_animevent_bytes(
                     f"One clip owns multiple product targets: {asset_id}/{clip}: "
                     f"{previous}, {target}"
                 )
-    cue_lines = [
-        (
-            f'"{clip}" EFFECT startms=0 payload="{target}" effectref=asset '
-            'anchor="root" follow=follow stop=natural '
-            'px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1'
-        )
-        for clip, target in sorted(desired_cues.items())
-    ]
+    default_placement = {
+        "startms": "0", "endms": None, "anchor": "root",
+        "follow": "follow", "orientation": "anchor",
+        "orientationExplicit": False, "stop": "natural",
+        "transform": {
+            "px": "0", "py": "0", "pz": "0",
+            "rx": "0", "ry": "0", "rz": "0",
+            "sx": "1", "sy": "1", "sz": "1",
+        },
+    }
+    cue_lines = []
+    for clip, target in sorted(desired_cues.items()):
+        placement = copy.deepcopy(existing_placements.get(
+            clip, default_placement
+        ))
+        expected = ACTION_FACING_PRODUCT_CUES.get((asset_id, clip))
+        if expected is not None and clip not in existing_placements:
+            raise ValueError(
+                f"Reviewed action-facing Product animevent is missing: {asset_id}/{clip}"
+            )
+        if expected is not None and target != expected["effectAssetId"]:
+            raise ValueError(
+                f"Reviewed action-facing Product target drifted: {asset_id}/{clip}"
+            )
+        cue_lines.append(_serialize_product_cue(clip, target, placement))
     output_events = preserved_lines + cue_lines
     output_lines = [
         f'LOSTARK_ANIM_EVENTS {version} "{asset_id}" {len(output_events)}',

@@ -926,6 +926,8 @@ private:
     EFFECT_TRANSFORM_DESC m_CueTransferLocalTransform{};
     EFFECT_FOLLOW_POLICY m_eCueTransferFollowPolicy =
         EFFECT_FOLLOW_POLICY::FOLLOW;
+	EFFECT_ORIENTATION_POLICY m_eCueTransferOrientationPolicy =
+		EFFECT_ORIENTATION_POLICY::ANCHOR;
     EFFECT_STOP_POLICY m_eCueTransferStopPolicy =
         EFFECT_STOP_POLICY::NATURAL;
     float2_t m_vMouseViewportPosition{};
@@ -973,6 +975,8 @@ private:
     bool_t m_bPromoteConfirmationRequested = false;
     bool_t m_bPendingDocumentLoadModalRequested = false;
     bool_t m_bProductCueSnapshotCaptured = false;
+	f32_t m_fProductCueActionFacingYawDegrees = 0.f;
+	bool_t m_bProductCueActionFacingCaptured = false;
     uint64_t m_iFrameNumber = 0u;
     uint64_t m_iSynchronizedAnimationTargetGeneration = 0u;
     uint64_t m_iAnimationClipLabelTargetGeneration = 0u;

@@ -35504,6 +35504,248 @@ namespace
 			"Effect Tool Warlord Full Barrel Resolves BA1 BA2 BA3 To Start Charge Release Clips Individually");
 	}
 
+	void Test_ActionFacingEffectCueContract(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view WARLORD_EFFECT_ID =
+			"effect.warlord.skill.17060.unified";
+		constexpr std::string_view DIMENSION_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050210.unified";
+		constexpr std::string_view WARLORD_CLIP = "wgl_sk_firebullet";
+		constexpr std::string_view DIMENSION_CLIP =
+			"pc_sp_m_00_sk_sk_willowrend";
+
+		const auto CueText = [&](const uint32_t iVersion,
+			const std::string_view Orientation,
+			const std::string_view Anchor = "root")
+		{
+			return "LOSTARK_ANIM_EVENTS " + std::to_string(iVersion) +
+				" \"FacingFixture\" 1\n\"fixture.clip\" EFFECT startms=0 "
+				"payload=\"" + std::string(WARLORD_EFFECT_ID) +
+				"\" effectref=asset anchor=\"" + std::string(Anchor) +
+				"\" follow=follow" + std::string(Orientation) +
+				" stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 "
+				"sx=1 sy=1 sz=1\n";
+		};
+		std::string Status;
+		ANIMATION_EFFECT_CUE_DOCUMENT Legacy;
+		const bool_t bLegacyLoaded =
+			CAnimationEffectCueDocument::Load_FromText(
+				"FacingFixture", CueText(5u, ""), { "fixture.clip" },
+				Legacy, Status, true);
+		runner.Require(bLegacyLoaded && 5u == Legacy.iFormatVersion &&
+			1u == Legacy.Cues.size() &&
+			EFFECT_ORIENTATION_POLICY::ANCHOR ==
+				Legacy.Cues.front().eOrientationPolicy,
+			"Animation Cue v5 Without Orientation Preserves ANCHOR Compatibility");
+
+		ANIMATION_EFFECT_CUE_DOCUMENT ActionFacing;
+		const bool_t bV6Loaded =
+			CAnimationEffectCueDocument::Load_FromText(
+				"FacingFixture",
+				CueText(6u, " orientation=action_facing"),
+				{ "fixture.clip" }, ActionFacing, Status, true);
+		runner.Require(bV6Loaded && 6u == ActionFacing.iFormatVersion &&
+			1u == ActionFacing.Cues.size() &&
+			EFFECT_FOLLOW_POLICY::FOLLOW ==
+				ActionFacing.Cues.front().eFollowPolicy &&
+			EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+				ActionFacing.Cues.front().eOrientationPolicy,
+			"Animation Cue v6 Separates FOLLOW Position From ACTION_FACING Rotation");
+
+		const ANIMATION_EFFECT_CUE_DOCUMENT Preserved = ActionFacing;
+		const auto RejectsAndPreserves = [&](const std::string& Text)
+		{
+			ANIMATION_EFFECT_CUE_DOCUMENT Candidate = Preserved;
+			const bool_t bRejected =
+				!CAnimationEffectCueDocument::Load_FromText(
+					"FacingFixture", Text, { "fixture.clip" },
+					Candidate, Status, true);
+			return bRejected &&
+				Candidate.iFormatVersion == Preserved.iFormatVersion &&
+				Candidate.Cues.size() == Preserved.Cues.size() &&
+				Candidate.Cues.front().eOrientationPolicy ==
+					Preserved.Cues.front().eOrientationPolicy;
+		};
+		runner.Require(RejectsAndPreserves(
+				CueText(5u, " orientation=action_facing")) &&
+			RejectsAndPreserves(
+				CueText(6u, " orientation=steering")) &&
+			RejectsAndPreserves(CueText(
+				6u, " orientation=action_facing", "weapon.socket")),
+			"Animation Cue Rejects Version-Mismatched Unknown And Non-Root Action Facing Transactionally");
+
+		ANIMATION_EFFECT_CUE_DOCUMENT Warlord;
+		ANIMATION_EFFECT_CUE_DOCUMENT Dimension;
+		const bool_t bProductDocumentsLoaded =
+			CAnimationEffectCueDocument::Load_ForProductPrewarm(
+				"Warlord", Warlord, Status) &&
+			CAnimationEffectCueDocument::Load_ForProductPrewarm(
+				"DimensionMaster", Dimension, Status);
+		const auto HasExactCue = [](const ANIMATION_EFFECT_CUE_DOCUMENT& Document,
+			const std::string_view Clip, const std::string_view EffectId)
+		{
+			return 1u == static_cast<size_t>(std::count_if(
+				Document.Cues.begin(), Document.Cues.end(),
+				[Clip, EffectId](const ANIMATION_EFFECT_CUE& Cue)
+				{
+					return Cue.strClipName == Clip &&
+						Cue.strEffectAssetId == EffectId &&
+						Cue.strAnchorSlotId == "root" &&
+						Cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::FOLLOW &&
+						Cue.eOrientationPolicy ==
+							EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+				}));
+		};
+		runner.Require(bProductDocumentsLoaded &&
+			HasExactCue(Warlord, WARLORD_CLIP, WARLORD_EFFECT_ID) &&
+			HasExactCue(Dimension, DIMENSION_CLIP, DIMENSION_EFFECT_ID),
+			"Warlord W And Dimension A Product Cues Select FOLLOW Plus ACTION_FACING");
+
+		const auto MatrixNearlyEqual = [](const float4x4_t& Left,
+			const float4x4_t& Right)
+		{
+			const f32_t* pLeft = &Left._11;
+			const f32_t* pRight = &Right._11;
+			for (size_t iValue = 0u; iValue < 16u; ++iValue)
+			{
+				if (!Nearly_Equal(pLeft[iValue], pRight[iValue], 0.0001f))
+					return false;
+			}
+			return true;
+		};
+		const auto LocalMatrix = [](const EFFECT_TRANSFORM_DESC& Local)
+		{
+			return XMMatrixScaling(
+				Local.vScale.x, Local.vScale.y, Local.vScale.z) *
+				XMMatrixRotationRollPitchYaw(
+					XMConvertToRadians(Local.vRotationDegrees.x),
+					XMConvertToRadians(Local.vRotationDegrees.y),
+					XMConvertToRadians(Local.vRotationDegrees.z)) *
+				XMMatrixTranslation(
+					Local.vPosition.x, Local.vPosition.y, Local.vPosition.z);
+		};
+		EFFECT_TRANSFORM_DESC Local;
+		Local.vPosition = { 0.25f, -0.5f, 1.25f };
+		Local.vRotationDegrees = { 4.f, 23.f, -7.f };
+		Local.vScale = { 0.75f, 1.25f, 1.5f };
+		constexpr std::array<f32_t, 4u> ACTION_YAWS =
+			{{ 0.f, 90.f, 180.f, -90.f }};
+		bool_t bCardinalBasesExact = true;
+		bool_t bNeverDoubleApplied = true;
+		for (const f32_t fActionYaw : ACTION_YAWS)
+		{
+			float4x4_t Sampled{};
+			XMStoreFloat4x4(&Sampled,
+				XMMatrixScaling(2.f, 3.f, 4.f) *
+				XMMatrixRotationY(XMConvertToRadians(fActionYaw + 180.f)) *
+				XMMatrixTranslation(7.f, 8.f, 9.f));
+			float4x4_t Actual{};
+			float4x4_t Expected{};
+			float4x4_t DoubleApplied{};
+			XMStoreFloat4x4(&Expected,
+				LocalMatrix(Local) * XMMatrixScaling(2.f, 3.f, 4.f) *
+				XMMatrixRotationY(XMConvertToRadians(fActionYaw)) *
+				XMMatrixTranslation(7.f, 8.f, 9.f));
+			XMStoreFloat4x4(&DoubleApplied,
+				LocalMatrix(Local) * XMMatrixScaling(2.f, 3.f, 4.f) *
+				XMMatrixRotationY(XMConvertToRadians(fActionYaw * 2.f)) *
+				XMMatrixTranslation(7.f, 8.f, 9.f));
+			bCardinalBasesExact = bCardinalBasesExact &&
+				CAnimationEffectCueDocument::Try_ComposeRootTransform(
+					Local, Sampled,
+					EFFECT_ORIENTATION_POLICY::ACTION_FACING,
+					fActionYaw, Actual) &&
+				MatrixNearlyEqual(Actual, Expected);
+			if (0.f != fActionYaw)
+			{
+				bNeverDoubleApplied = bNeverDoubleApplied &&
+					!MatrixNearlyEqual(Actual, DoubleApplied);
+			}
+		}
+		runner.Require(bCardinalBasesExact && bNeverDoubleApplied,
+			"Action Facing Replaces Opposite Prior Yaw At 0 90 180 Minus90 And Applies Local Geometry Exactly Once");
+
+		EFFECT_TRANSFORM_DESC IdentityLocal;
+		float4x4_t FirstAnchor{};
+		float4x4_t TurnedAnchor{};
+		XMStoreFloat4x4(&FirstAnchor,
+			XMMatrixScaling(2.f, 3.f, 4.f) *
+			XMMatrixRotationY(XMConvertToRadians(180.f)) *
+			XMMatrixTranslation(1.f, 2.f, 3.f));
+		XMStoreFloat4x4(&TurnedAnchor,
+			XMMatrixScaling(2.f, 3.f, 4.f) *
+			XMMatrixRotationY(XMConvertToRadians(-45.f)) *
+			XMMatrixTranslation(11.f, 12.f, 13.f));
+		float4x4_t FirstRoot{};
+		float4x4_t FollowRoot{};
+		const bool_t bFollowIndependent =
+			CAnimationEffectCueDocument::Try_ComposeRootTransform(
+				IdentityLocal, FirstAnchor,
+				EFFECT_ORIENTATION_POLICY::ACTION_FACING,
+				90.f, FirstRoot) &&
+			CAnimationEffectCueDocument::Try_ComposeRootTransform(
+				IdentityLocal, TurnedAnchor,
+				EFFECT_ORIENTATION_POLICY::ACTION_FACING,
+				90.f, FollowRoot) &&
+			Nearly_Equal(FirstRoot._41, 1.f) &&
+			Nearly_Equal(FirstRoot._42, 2.f) &&
+			Nearly_Equal(FirstRoot._43, 3.f) &&
+			Nearly_Equal(FollowRoot._41, 11.f) &&
+			Nearly_Equal(FollowRoot._42, 12.f) &&
+			Nearly_Equal(FollowRoot._43, 13.f) &&
+			Nearly_Equal(FirstRoot._11, FollowRoot._11, 0.0001f) &&
+			Nearly_Equal(FirstRoot._13, FollowRoot._13, 0.0001f) &&
+			Nearly_Equal(FirstRoot._31, FollowRoot._31, 0.0001f) &&
+			Nearly_Equal(FirstRoot._33, FollowRoot._33, 0.0001f);
+		runner.Require(bFollowIndependent,
+			"Mid-Action FOLLOW Samples Root Translation And Scale While Captured Action Orientation Stays Fixed");
+
+		float4x4_t AnchorCompatible{};
+		float4x4_t AnchorExpected{};
+		XMStoreFloat4x4(&AnchorExpected,
+			LocalMatrix(Local) * XMLoadFloat4x4(&TurnedAnchor));
+		const bool_t bAnchorCompatible =
+			CAnimationEffectCueDocument::Try_ComposeRootTransform(
+				Local, TurnedAnchor, EFFECT_ORIENTATION_POLICY::ANCHOR,
+				(std::numeric_limits<f32_t>::quiet_NaN)(),
+				AnchorCompatible) &&
+			MatrixNearlyEqual(AnchorCompatible, AnchorExpected);
+		float4x4_t Canary{};
+		XMStoreFloat4x4(&Canary, XMMatrixTranslation(91.f, 92.f, 93.f));
+		const float4x4_t PreservedCanary = Canary;
+		float4x4_t MirroredAnchor{};
+		XMStoreFloat4x4(&MirroredAnchor,
+			XMMatrixScaling(-2.f, 3.f, 4.f) *
+			XMMatrixRotationY(XMConvertToRadians(25.f)) *
+			XMMatrixTranslation(4.f, 5.f, 6.f));
+		float4x4_t MirroredLegacy{};
+		const bool_t bMirroredContract =
+			CAnimationEffectCueDocument::Try_ComposeRootTransform(
+				IdentityLocal, MirroredAnchor,
+				EFFECT_ORIENTATION_POLICY::ANCHOR,
+				(std::numeric_limits<f32_t>::quiet_NaN)(),
+				MirroredLegacy) &&
+			!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+				IdentityLocal, MirroredAnchor,
+				EFFECT_ORIENTATION_POLICY::ACTION_FACING,
+				0.f, Canary) &&
+			MatrixNearlyEqual(Canary, PreservedCanary);
+		const bool_t bMalformedRejected =
+			!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+				IdentityLocal, FirstAnchor,
+				EFFECT_ORIENTATION_POLICY::ACTION_FACING,
+				(std::numeric_limits<f32_t>::quiet_NaN)(), Canary) &&
+			MatrixNearlyEqual(Canary, PreservedCanary) &&
+			!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+				IdentityLocal, FirstAnchor,
+				static_cast<EFFECT_ORIENTATION_POLICY>(0xffu),
+				0.f, Canary) && MatrixNearlyEqual(Canary, PreservedCanary);
+		runner.Require(bAnchorCompatible && bMirroredContract &&
+			bMalformedRejected,
+			"ANCHOR Preserves Legacy Mirrored Basis While ACTION_FACING Rejects Mirrored Nonfinite And Unknown Inputs Without Committing Output");
+	}
+
 	void Test_DimensionMasterAVoronoiCastDirectionContract(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -36227,6 +36469,23 @@ int main(const int argc, char* argv[])
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_DimensionMasterRSourceOccurrenceContract(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-action-facing-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Client::CEffectCatalog::Clear();
+		std::string Status;
+		const bool_t bCatalogLoaded = Client::CEffectCatalog::Load(Status);
+		runner.Require(bCatalogLoaded,
+			"Action Facing Harness Loads The Committed Runtime Effect Catalog");
+		if (bCatalogLoaded)
+			Test_ActionFacingEffectCueContract(runner);
+		else
+			std::cout << "[DETAIL] " << Status << '\n';
+		Client::CEffectCatalog::Clear();
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

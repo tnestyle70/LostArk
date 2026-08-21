@@ -30,8 +30,8 @@
 namespace
 {
 	constexpr const char_t* EVENT_FILE_MAGIC = "LOSTARK_ANIM_EVENTS";
-	/* v5 adds admitted Effect anchor/follow/stop/local-transform fields. */
-	constexpr int32_t EVENT_FILE_VERSION = 5;
+	/* v6 separates position follow/snapshot from anchor/action-facing rotation. */
+	constexpr int32_t EVENT_FILE_VERSION = 6;
 	constexpr int32_t MAX_EVENT_COUNT = 100000;
 
 	/* Used when a clip carries no usable rate, which would otherwise make the
@@ -700,7 +700,12 @@ void Client::CAnimation_Tool::Consume_EffectTransfer(
 		Transfer.strAnimationAssetId != m_AssetName ||
 		Transfer.strClipName.empty() ||
 		!CEffectCatalog::Contains(Transfer.strEffectAssetId) ||
-		Transfer.ePivotKind >= EFFECT_CUE_PIVOT_KIND::END)
+		Transfer.ePivotKind >= EFFECT_CUE_PIVOT_KIND::END ||
+		Transfer.eOrientationPolicy >= EFFECT_ORIENTATION_POLICY::END ||
+		(EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+			Transfer.eOrientationPolicy &&
+			(Transfer.ePivotKind != EFFECT_CUE_PIVOT_KIND::PLAYER_ROOT ||
+			 "root" != Transfer.strAnchorSlotId)))
 	{
 		m_Status = "Effect cue transfer rejected because the animation target or admitted Effect changed.";
 		return;
@@ -717,6 +722,7 @@ void Client::CAnimation_Tool::Consume_EffectTransfer(
 	Event.eEffectReferenceKind = EFFECT_REFERENCE_KIND::EFFECT_ASSET_ID;
 	Event.sAnchorSlotId = Transfer.strAnchorSlotId;
 	Event.eFollowPolicy = Transfer.eFollowPolicy;
+	Event.eOrientationPolicy = Transfer.eOrientationPolicy;
 	Event.eStopPolicy = Transfer.eStopPolicy;
 	Event.EffectLocalTransform = Transfer.LocalTransform;
 
@@ -2555,6 +2561,22 @@ void Client::CAnimation_Tool::Render_HitEvents(const shared_ptr<Engine::CModel>&
 							evt.eFollowPolicy = EFFECT_FOLLOW_POLICY::SNAPSHOT;
 							m_bDirty = true;
 						}
+						int32_t orientation = ETOI(evt.eOrientationPolicy);
+						if (ImGui::RadioButton(
+							"Anchor Orientation", 0 == orientation))
+						{
+							evt.eOrientationPolicy =
+								EFFECT_ORIENTATION_POLICY::ANCHOR;
+							m_bDirty = true;
+						}
+						ImGui::SameLine();
+						if (ImGui::RadioButton(
+							"Action Facing", 1 == orientation))
+						{
+							evt.eOrientationPolicy =
+								EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+							m_bDirty = true;
+						}
 						int32_t stop = ETOI(evt.eStopPolicy);
 						if (ImGui::RadioButton("Natural Stop", 0 == stop))
 						{
@@ -2931,7 +2953,7 @@ bool_t Client::CAnimation_Tool::Write_EventsToPath(
 				writeSucceeded = writeSucceeded && 0 <= fprintf(
 					file,
 					"\"%s\" %s startms=%d endms=%d payload=\"%s\" "
-					"effectref=asset anchor=\"%s\" follow=%s stop=%s "
+					"effectref=asset anchor=\"%s\" follow=%s orientation=%s stop=%s "
 					"px=%.9g py=%.9g pz=%.9g rx=%.9g ry=%.9g rz=%.9g "
 					"sx=%.9g sy=%.9g sz=%.9g%s\n",
 					event.clipName.c_str(), kindName,
@@ -2939,6 +2961,8 @@ bool_t Client::CAnimation_Tool::Write_EventsToPath(
 					event.sPayload.c_str(), event.sAnchorSlotId.c_str(),
 					EFFECT_FOLLOW_POLICY::FOLLOW == event.eFollowPolicy ?
 						"follow" : "snapshot",
+					EFFECT_ORIENTATION_POLICY::ANCHOR ==
+						event.eOrientationPolicy ? "anchor" : "action_facing",
 					EFFECT_STOP_POLICY::NATURAL == event.eStopPolicy ?
 						"natural" : "cue_end",
 					event.EffectLocalTransform.vPosition.x,
@@ -3065,6 +3089,11 @@ bool_t Client::CAnimation_Tool::Validate_Events(
 					event.sAnchorSlotId.empty() ||
 					!Is_SafeQuotedText(event.sAnchorSlotId) ||
 					EFFECT_FOLLOW_POLICY::END == event.eFollowPolicy ||
+					EFFECT_ORIENTATION_POLICY::END ==
+						event.eOrientationPolicy ||
+					(EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+						event.eOrientationPolicy &&
+						"root" != event.sAnchorSlotId) ||
 					EFFECT_STOP_POLICY::END == event.eStopPolicy ||
 					!std::isfinite(local.vPosition.x) ||
 					!std::isfinite(local.vPosition.y) ||
@@ -3149,6 +3178,7 @@ bool_t Client::CAnimation_Tool::Events_AreEqual(
 			a.eEffectReferenceKind != b.eEffectReferenceKind ||
 			a.sAnchorSlotId != b.sAnchorSlotId ||
 			a.eFollowPolicy != b.eFollowPolicy ||
+			a.eOrientationPolicy != b.eOrientationPolicy ||
 			a.eStopPolicy != b.eStopPolicy ||
 			!effectTransformsAreEqual(a.EffectLocalTransform,
 				b.EffectLocalTransform) ||
@@ -3280,6 +3310,7 @@ bool_t Client::CAnimation_Tool::Load_EventsFromPath(
 		bool_t hasStartMs = false;
 		bool_t hasEndMs = false;
 		bool_t hasEffectReference = false;
+		bool_t hasOrientation = false;
 
 		if (1 == version)
 		{
@@ -3329,7 +3360,7 @@ bool_t Client::CAnimation_Tool::Load_EventsFromPath(
 						EVENT_KIND::EFFECT != event.eKind)
 					{
 						return fail(
-							"effectref is only valid for v4/v5 EFFECT rows.");
+							"effectref is only valid for v4-v6 EFFECT rows.");
 					}
 					if ("source" == value)
 					{
@@ -3349,14 +3380,14 @@ bool_t Client::CAnimation_Tool::Load_EventsFromPath(
 				if ("anchor" == key)
 				{
 					if (version < 5 || EVENT_KIND::EFFECT != event.eKind)
-						return fail("anchor is only valid for v5 EFFECT rows.");
+						return fail("anchor is only valid for v5/v6 EFFECT rows.");
 					event.sAnchorSlotId = value;
 					continue;
 				}
 				if ("follow" == key)
 				{
 					if (version < 5 || EVENT_KIND::EFFECT != event.eKind)
-						return fail("follow is only valid for v5 EFFECT rows.");
+						return fail("follow is only valid for v5/v6 EFFECT rows.");
 					if ("follow" == value)
 						event.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
 					else if ("snapshot" == value)
@@ -3365,10 +3396,32 @@ bool_t Client::CAnimation_Tool::Load_EventsFromPath(
 						return fail("Unknown Effect follow policy.");
 					continue;
 				}
+				if ("orientation" == key)
+				{
+					if (version < 6 || EVENT_KIND::EFFECT != event.eKind)
+					{
+						return fail(
+							"orientation is only valid for v6 EFFECT rows.");
+					}
+					if ("anchor" == value)
+					{
+						event.eOrientationPolicy =
+							EFFECT_ORIENTATION_POLICY::ANCHOR;
+					}
+					else if ("action_facing" == value)
+					{
+						event.eOrientationPolicy =
+							EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+					}
+					else
+						return fail("Unknown Effect orientation policy.");
+					hasOrientation = true;
+					continue;
+				}
 				if ("stop" == key)
 				{
 					if (version < 5 || EVENT_KIND::EFFECT != event.eKind)
-						return fail("stop is only valid for v5 EFFECT rows.");
+						return fail("stop is only valid for v5/v6 EFFECT rows.");
 					if ("natural" == value)
 						event.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
 					else if ("cue_end" == value)
@@ -3382,7 +3435,7 @@ bool_t Client::CAnimation_Tool::Load_EventsFromPath(
 					key == "sx" || key == "sy" || key == "sz")
 				{
 					if (version < 5 || EVENT_KIND::EFFECT != event.eKind)
-						return fail("Effect local transform is only valid in v5.");
+						return fail("Effect local transform is only valid in v5/v6.");
 					f32_t number = 0.f;
 					if (!Parse_Float(value, number))
 						return fail("Animation Effect transform number is invalid.");
@@ -3527,7 +3580,14 @@ bool_t Client::CAnimation_Tool::Load_EventsFromPath(
 				event.eEffectReferenceKind =
 					EFFECT_REFERENCE_KIND::SOURCE_REFERENCE;
 			else
-				return fail("Authored v4/v5 EFFECT row requires effectref.");
+				return fail("Authored v4-v6 EFFECT row requires effectref.");
+		}
+		if (hasOrientation &&
+			EFFECT_REFERENCE_KIND::EFFECT_ASSET_ID !=
+				event.eEffectReferenceKind)
+		{
+			return fail(
+				"orientation is only valid for admitted Effect asset rows.");
 		}
 		if (EVENT_KIND::EFFECT == event.eKind &&
 			EFFECT_REFERENCE_KIND::EFFECT_ASSET_ID ==
@@ -3680,7 +3740,7 @@ bool_t Client::CAnimation_Tool::Load_Events(
 	else if (sourceVersion < EVENT_FILE_VERSION)
 	{
 		m_Status +=
-			" [legacy source references preserved; the next authored Save writes v5]";
+			" [legacy source references preserved; the next authored Save writes v6]";
 	}
 	return true;
 }

@@ -687,7 +687,7 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
         if ($header.Count -ne 4 -or
             $header[0] -cne 'LOSTARK_ANIM_EVENTS' -or
             -not [uint32]::TryParse($header[1], [ref]$formatVersion) -or
-            $formatVersion -lt 3 -or $formatVersion -gt 5 -or
+            $formatVersion -lt 3 -or $formatVersion -gt 6 -or
             $header[2] -cne [string]$document.AnimationAssetId -or
             -not [uint32]::TryParse($header[3], [ref]$declaredRowCount)) {
             throw "Authored animation Effect cue header is invalid: $path"
@@ -727,6 +727,26 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
             $effectAssetId = ''
             if (-not $fields.TryGetValue('payload', [ref]$effectAssetId)) {
                 throw "Authored animation Product Effect cue is missing payload: $path"
+            }
+            $anchor = 'root'
+            [void]$fields.TryGetValue('anchor', [ref]$anchor)
+            if ([string]::IsNullOrEmpty($anchor)) {
+                throw "Authored animation Product Effect cue anchor is empty: $path"
+            }
+            $orientation = 'anchor'
+            $hasOrientation = $fields.TryGetValue(
+                'orientation', [ref]$orientation)
+            if (-not $hasOrientation) {
+                $orientation = 'anchor'
+            }
+            if ($hasOrientation -and $formatVersion -lt 6) {
+                throw "Authored animation Product Effect cue orientation requires v6: $path"
+            }
+            if ($orientation -cnotin @('anchor','action_facing')) {
+                throw "Authored animation Product Effect cue orientation is invalid: $path"
+            }
+            if ($orientation -ceq 'action_facing' -and $anchor -cne 'root') {
+                throw "Authored animation Product Effect cue action_facing requires root: $path"
             }
             Assert-StableId $effectAssetId 'Authored animation EffectAssetId'
             [void]$effectIds.Add($effectAssetId)

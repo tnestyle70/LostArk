@@ -208,6 +208,12 @@ character-specific `snapshotRootSourceBasisYawDegrees`를 정확히 한 번 합�
 - stable occurrence/material program의 근거가 부족하면 해당 occurrence만 draw 전 fail-closed하며,
   family 전체 fallback이나 white/opaque texture 대체로 열지 않는다.
 
+animevent v6은 position follow policy와 orientation authority를 다른 필드로 저장한다.
+`orientation=action_facing`은 root anchor의 ACTIVE 스킬만 Server snapshot에서 actionStartTick과 함께
+캡힌 yaw를 사용한다. 위치는 outer `follow` 계약대로 살아 있을 수 있고, 각 occurrence는
+시작 시점에 그 root를 snapshot할 수 있다. world-root, HOLD, mirrored/non-finite basis는 현재
+action-facing admission 대상이 아니며 해당 cue만 격리한다. v5의 누락값은 `anchor`다.
+
 Character는 Server action을 시각화한다.
 
 ```text

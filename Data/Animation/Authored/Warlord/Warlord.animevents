@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
+LOSTARK_ANIM_EVENTS 6 "Warlord" 1723
 "wgl_att_battle_1_01" CANCEL startms=0 endms=1000 payload="방어태세해제" src=orig
 "wgl_att_battle_1_01" SOUND startms=0 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_1" src=orig
 "wgl_att_battle_1_01" SOUND startms=50 payload="PC_GUNLANCER_M.PC_GunLancer_M_Att_Battle1_Vox1_1" src=orig
@@ -1704,7 +1704,7 @@ LOSTARK_ANIM_EVENTS 5 "Warlord" 1723
 "wgl_sk_eternalcyclone_01" EFFECT startms=0 payload="effect.warlord.skill.17240.ba1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_eternalcyclone_02" EFFECT startms=0 payload="effect.warlord.skill.17240.ba2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_eternalcyclone_07" EFFECT startms=0 payload="effect.warlord.skill.17240.ba3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"wgl_sk_firebullet" EFFECT startms=0 payload="effect.warlord.skill.17060.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"wgl_sk_firebullet" EFFECT startms=0 payload="effect.warlord.skill.17060.unified" effectref=asset anchor="root" follow=follow orientation=action_facing stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_guardianofprotection_attack" EFFECT startms=0 payload="effect.warlord.skill.17170.clip3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_guardianofprotection_loop" EFFECT startms=0 payload="effect.warlord.skill.17170.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "wgl_sk_guardianofprotection_start" EFFECT startms=0 payload="effect.warlord.skill.17170.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
