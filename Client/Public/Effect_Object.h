@@ -5,6 +5,7 @@
 #include "Effect_Catalog.h"
 #include "Effect_DocumentRenderer.h"
 #include "Effect_Playback.h"
+#include "Effect_ScreenOverlayPresentation.h"
 #include "GameObject.h"
 #include "Presentation_Manager.h"
 #include "PresentationProvider.h"
@@ -27,6 +28,8 @@ public:
 			pVisualProgramProjection;
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pReconstructedRuntimePreparation;
+		std::shared_ptr<const CEffectScreenOverlayPresentation>
+			pScreenOverlayPresentationTemplate;
 		float4x4_t RootWorld{};
 		bool_t bAutoPlay = true;
 		bool_t bRequirePreparedResources = false;
@@ -168,13 +171,14 @@ public:
 		if (!m_bRenderFailureIsolated || !bPlaying)
 			m_bPlaying = bPlaying;
 	}
-	void Set_Visible(bool_t bVisible)
-	{
-		if (!m_bRenderFailureIsolated || !bVisible)
-			m_bVisible = bVisible;
-	}
+	void Set_Visible(bool_t bVisible);
 	void Reset();
-	bool_t Is_Finished() const { return m_Playback.Is_Finished(); }
+	bool_t Is_Finished() const
+	{
+		return m_Playback.Is_Finished() &&
+			(nullptr == m_pScreenOverlayPresentation ||
+			 !m_pScreenOverlayPresentation->Is_Playing());
+	}
 	bool_t Query_ParticleRuntimeProbe(
 		std::string_view strElementId,
 		EFFECT_PARTICLE_RUNTIME_PROBE& OutProbe) const
@@ -269,6 +273,8 @@ private:
 	f32_t m_fPlaybackRate = 1.f;
 	uint64_t m_iConfiguredLightCount = 0u;
 	uint64_t m_iConfiguredScreenPostCount = 0u;
+	std::shared_ptr<CEffectScreenOverlayPresentation>
+		m_pScreenOverlayPresentation;
 	PRESENTATION_SUBMISSION_STATS m_LastPresentationSubmissionStats;
 	std::string m_strStatus;
 

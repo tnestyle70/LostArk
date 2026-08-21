@@ -40047,6 +40047,532 @@ namespace
 		Manager.Set_ScreenOverlaysEnabled(true);
 	}
 
+	void Test_DimensionMasterFProductScreenOverlay(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace Engine;
+		constexpr std::string_view EFFECT_ID =
+			"effect.dimensionmaster.skill.2050230.unified";
+		constexpr std::string_view PRESENTATION_ID =
+			"effect.dimensionmaster.skill.2050230.unified.screen-overlay";
+		constexpr std::string_view OVERLAY_AUTHORING_PATH =
+			"Effects/ScreenOverlays/"
+			"effect.dimensionmaster.skill.2050230.unified.screen-overlay.json";
+		constexpr std::string_view CANARY_ASSET_ID =
+			"Effect/DimensionMaster/Textures/FX_TEX_02/"
+			"fx_d_fragment_005.dds";
+		constexpr std::string_view PRODUCT_DOCUMENT_RAW_SHA256 =
+			"afab680bd36b4efcc4baf654c4848a1f3571a29cbc338b0ed58fec940de60e09";
+		constexpr std::string_view CANARY_DDS_SHA256 =
+			"193a597baf328508763b0e6712dc702d604fd1e3b22a311494c26f45470f992c";
+		constexpr uint64_t CANARY_DDS_BYTE_COUNT = 8320u;
+
+		const std::filesystem::path RepositoryRoot =
+			Resolve_ClientWorkingDirectory().parent_path().parent_path();
+		const std::filesystem::path ProductDocumentPath =
+			CProjectDataRoot::Resolve(
+				L"Effects/Authored/"
+				L"effect.dimensionmaster.skill.2050230.unified.effect.json");
+		const std::filesystem::path OverlayAuthoringPath =
+			CProjectDataRoot::Resolve(std::filesystem::path(OVERLAY_AUTHORING_PATH));
+		const std::filesystem::path ReceiptPath = CProjectDataRoot::Resolve(
+			L"Effects/Imported/DimensionMaster/"
+			L"skill.2050230.screen-overlay-product-binding.receipt.json");
+		const std::filesystem::path CatalogSourcePath =
+			CProjectDataRoot::Resolve(L"Effects/EffectCatalog.json");
+		const std::filesystem::path CuePath = CProjectDataRoot::Resolve(
+			L"Animation/Authored/DimensionMaster/DimensionMaster.animevents");
+		const std::filesystem::path RuntimeCatalogPath = RepositoryRoot /
+			L"Client" / L"Bin" / L"DataFiles" / L"Effect" /
+			L"EffectCatalog.runtime.json";
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		SCOPED_ENVIRONMENT_VARIABLE CatalogFixtureEnvironment(
+			L"LOSTARK_EFFECT_RUNTIME_CATALOG_FIXTURE");
+		std::filesystem::path ResourceRoot =
+			ResourceRootEnvironment.Was_Defined() &&
+			!ResourceRootEnvironment.Get_OriginalValue().empty() ?
+				std::filesystem::path(
+					ResourceRootEnvironment.Get_OriginalValue()) :
+				RepositoryRoot / L"Client" / L"Bin" / L"Resources";
+		std::error_code FileError;
+		const bool_t bRootsReady =
+			std::filesystem::is_directory(ResourceRoot, FileError) && !FileError &&
+			std::filesystem::is_regular_file(RuntimeCatalogPath, FileError) &&
+			!FileError && ResourceRootEnvironment.Set(ResourceRoot.c_str()) &&
+			CatalogFixtureEnvironment.Set(RuntimeCatalogPath.c_str());
+		runner.Require(bRootsReady,
+			"DimensionMaster F Product Canary Resolves Published Catalog And Runtime Resources");
+		if (!bRootsReady)
+			return;
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		std::string Status;
+		const bool_t bWorkingDirectoryReady = WorkingDirectory.Initialize(
+			Resolve_ClientWorkingDirectory(), Status);
+		runner.Require(bWorkingDirectoryReady,
+			"DimensionMaster F Product Canary Uses The Client Runtime Working Directory");
+		if (!bWorkingDirectoryReady)
+			return;
+
+		ComPtr<ID3D11Device> Device;
+		ComPtr<ID3D11DeviceContext> Context;
+		D3D_FEATURE_LEVEL FeatureLevel = D3D_FEATURE_LEVEL_11_0;
+		const D3D_FEATURE_LEVEL RequestedLevels[] = {
+			D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0 };
+		const HRESULT hDevice = D3D11CreateDevice(
+			nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0u,
+			RequestedLevels, static_cast<UINT>(std::size(RequestedLevels)),
+			D3D11_SDK_VERSION, &Device, &FeatureLevel, &Context);
+		ComPtr<IDXGIDevice> DxgiDevice;
+		ComPtr<IDXGIAdapter> Adapter;
+		DXGI_ADAPTER_DESC AdapterDesc{};
+		const bool_t bWarpReady = SUCCEEDED(hDevice) && Device && Context &&
+			SUCCEEDED(Device.As(&DxgiDevice)) && DxgiDevice &&
+			SUCCEEDED(DxgiDevice->GetAdapter(&Adapter)) && Adapter &&
+			SUCCEEDED(Adapter->GetDesc(&AdapterDesc)) &&
+			AdapterDesc.VendorId == 0x1414u &&
+			AdapterDesc.DeviceId == 0x008cu;
+		runner.Require(bWarpReady,
+			"DimensionMaster F Product Canary Initializes Microsoft WARP");
+		if (!bWarpReady)
+			return;
+
+		const std::string ProductDocumentRaw = Read_Text(ProductDocumentPath);
+		EFFECT_DOCUMENT_DESC SourceProductDocument;
+		Status.clear();
+		const bool_t bProductDocumentPreserved =
+			!ProductDocumentRaw.empty() &&
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				ProductDocumentRaw) == PRODUCT_DOCUMENT_RAW_SHA256 &&
+			CEffectDocumentCodec::Parse(
+				ProductDocumentRaw, SourceProductDocument, Status) &&
+			SourceProductDocument.strEffectAssetId == EFFECT_ID &&
+			SourceProductDocument.Elements.size() == 8u;
+		runner.Require(bProductDocumentPreserved,
+			"DimensionMaster F Keeps The Existing Eight-Element Product Document Byte-Exact");
+
+		DATA_JSON_VALUE CatalogSource;
+		Status.clear();
+		const std::string CatalogSourceText = Read_Text(CatalogSourcePath);
+		bool_t bCatalogSourceJoin = CDataJson::Parse(
+			CatalogSourceText, CatalogSource, Status) && CatalogSource.Is_Object();
+		const DATA_JSON_VALUE* pCatalogEffects =
+			bCatalogSourceJoin ? CatalogSource.Find("effects") : nullptr;
+		bCatalogSourceJoin = bCatalogSourceJoin && nullptr != pCatalogEffects &&
+			pCatalogEffects->Is_Array();
+		size_t iCatalogSourceMatches = 0u;
+		if (bCatalogSourceJoin)
+		{
+			for (const DATA_JSON_VALUE& Row : pCatalogEffects->Get_Array())
+			{
+				const DATA_JSON_VALUE* pEffectId = Row.Find("effectAssetId");
+				if (nullptr == pEffectId || !pEffectId->Is_String() ||
+					pEffectId->Get_String() != EFFECT_ID)
+				{
+					continue;
+				}
+				++iCatalogSourceMatches;
+				const DATA_JSON_VALUE* pPayloadKind = Row.Find("payloadKind");
+				const DATA_JSON_VALUE* pAuthoringPath = Row.Find("authoringPath");
+				const DATA_JSON_VALUE* pOverlayPath =
+					Row.Find("screenOverlayPresentationPath");
+				bCatalogSourceJoin = bCatalogSourceJoin &&
+					nullptr != pPayloadKind && pPayloadKind->Is_String() &&
+					pPayloadKind->Get_String() ==
+						"DIRECT_AUTHORED_DOCUMENT_V13" &&
+					nullptr != pAuthoringPath && pAuthoringPath->Is_String() &&
+					pAuthoringPath->Get_String() ==
+						"Effects/Authored/"
+						"effect.dimensionmaster.skill.2050230.unified.effect.json" &&
+					nullptr != pOverlayPath && pOverlayPath->Is_String() &&
+					pOverlayPath->Get_String() == OVERLAY_AUTHORING_PATH;
+			}
+		}
+		bCatalogSourceJoin = bCatalogSourceJoin && iCatalogSourceMatches == 1u;
+		runner.Require(bCatalogSourceJoin,
+			"DimensionMaster F Source Catalog Selectively Joins One Product Overlay Presentation");
+
+		const std::string CueText = Read_Text(CuePath);
+		const std::string ExactCue =
+			"\"pc_sp_m_00_sk_sk_chronorecoil\" EFFECT startms=0 "
+			"payload=\"effect.dimensionmaster.skill.2050230.unified\" "
+			"effectref=asset anchor=\"root\" follow=follow stop=natural";
+		size_t iExactCueCount = 0u;
+		for (size_t iPosition = 0u;
+			std::string::npos !=
+				(iPosition = CueText.find(ExactCue, iPosition));
+			iPosition += ExactCue.size())
+		{
+			++iExactCueCount;
+		}
+
+		CEffectDocumentRenderer::Clear_Prepared_Catalog();
+		CEffectCatalog::Clear();
+		Status.clear();
+		const bool_t bRuntimeCatalogLoaded = CEffectCatalog::Load(Status);
+		const std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>
+			Binding = bRuntimeCatalogLoaded ?
+				CEffectCatalog::Find_ScreenOverlayProductBinding(
+					std::string(EFFECT_ID)) : nullptr;
+		const std::string OverlayAuthoringRaw = Read_Text(OverlayAuthoringPath);
+		const bool_t bRuntimeBindingExact = bRuntimeCatalogLoaded &&
+			nullptr != Binding && Binding->strEffectAssetId == EFFECT_ID &&
+			Binding->strPresentationId == PRESENTATION_ID &&
+			Binding->strUtf8Json == OverlayAuthoringRaw &&
+			Binding->iByteCount == OverlayAuthoringRaw.size() &&
+			Binding->strSha256 ==
+				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+					OverlayAuthoringRaw) &&
+			Binding->Resources.size() == 1u &&
+			Binding->Resources.front().strAssetId == CANARY_ASSET_ID &&
+			Binding->Resources.front().iByteCount == CANARY_DDS_BYTE_COUNT &&
+			Binding->Resources.front().strSha256 == CANARY_DDS_SHA256;
+		runner.Require(bRuntimeBindingExact,
+			"DimensionMaster F Published Catalog Commits The Typed Overlay And DDS Identities");
+
+		ANIMATION_EFFECT_CUE_DOCUMENT ProductCues;
+		Status.clear();
+		const bool_t bProductCuesLoaded = bRuntimeBindingExact &&
+			CAnimationEffectCueDocument::Load_ForProductPrewarm(
+				"DimensionMaster", ProductCues, Status);
+		const size_t iJoinedCueCount = bProductCuesLoaded ?
+			static_cast<size_t>(std::count_if(
+				ProductCues.Cues.begin(), ProductCues.Cues.end(),
+				[](const ANIMATION_EFFECT_CUE& Cue)
+				{
+					return Cue.strClipName ==
+							"pc_sp_m_00_sk_sk_chronorecoil" &&
+						Cue.strEffectAssetId == EFFECT_ID &&
+						Cue.iStartMs == 0u && Cue.iEndMs == 0u &&
+						Cue.strAnchorSlotId == "root" &&
+						Cue.eFollowPolicy == EFFECT_FOLLOW_POLICY::FOLLOW &&
+						Cue.eStopPolicy == EFFECT_STOP_POLICY::NATURAL;
+				})) : 0u;
+		runner.Require(iExactCueCount == 1u && iJoinedCueCount == 1u,
+			"DimensionMaster F Actual Animation Cue Joins The Product Catalog Exactly Once");
+
+		DATA_JSON_VALUE Receipt;
+		Status.clear();
+		const bool_t bReceiptExplicit = CDataJson::Parse(
+			Read_Text(ReceiptPath), Receipt, Status) && Receipt.Is_Object() &&
+			nullptr != Receipt.Find("effectAssetId") &&
+			Receipt.Find("effectAssetId")->Is_String() &&
+			Receipt.Find("effectAssetId")->Get_String() == EFFECT_ID &&
+			nullptr != Receipt.Find("classification") &&
+			Receipt.Find("classification")->Is_Object() &&
+			nullptr != Receipt.Find("classification")->Find(
+				"carrierProvenance") &&
+			Receipt.Find("classification")->Find(
+				"carrierProvenance")->Is_String() &&
+			Receipt.Find("classification")->Find(
+				"carrierProvenance")->Get_String() == "PROJECT_TUNED" &&
+			nullptr != Receipt.Find("sourceEvidence") &&
+			Receipt.Find("sourceEvidence")->Is_Object() &&
+			nullptr != Receipt.Find("sourceEvidence")->Find(
+				"screenSpaceTexturedShardOccurrenceProven") &&
+			Receipt.Find("sourceEvidence")->Find(
+				"screenSpaceTexturedShardOccurrenceProven")->Is_Boolean() &&
+			!Receipt.Find("sourceEvidence")->Find(
+				"screenSpaceTexturedShardOccurrenceProven")->Get_Boolean();
+		runner.Require(bReceiptExplicit,
+			"DimensionMaster F Screen-Space Carrier Stays Explicitly PROJECT_TUNED And Not Source-Proven");
+
+		const std::filesystem::path CanaryDdsPath =
+			CRuntimeAssetRoot::Resolve(std::filesystem::path(CANARY_ASSET_ID));
+		const std::string CanaryDdsBytes = Read_Text(CanaryDdsPath);
+		const bool_t bCanaryResourceExact =
+			CanaryDdsBytes.size() == CANARY_DDS_BYTE_COUNT &&
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CanaryDdsBytes) == CANARY_DDS_SHA256;
+		runner.Require(bCanaryResourceExact,
+			"DimensionMaster F Canary Uses The Exact fx_d_fragment_005 DDS Bytes");
+
+		const shared_ptr<CEffectScreenOverlayPresentation> Template =
+			CEffectScreenOverlayPresentation::Create(Device);
+		Status.clear();
+		const bool_t bTemplateStaged = bRuntimeBindingExact && Template &&
+			Template->Stage_AndCommit(Binding->strUtf8Json, Status) &&
+			Template->Get_CommittedGeneration() == 1u &&
+			Template->Get_PresentationId() == PRESENTATION_ID &&
+			Template->Get_PreparedOverlayCount() == 5u &&
+			std::abs(Template->Get_MaximumEndSeconds() - 1.44f) < 0.0001f &&
+			!Template->Is_Playing();
+		runner.Require(bTemplateStaged,
+			"DimensionMaster F Typed Template Stages Five Deterministic Shards");
+		if (!bTemplateStaged)
+		{
+			CEffectDocumentRenderer::Clear_Prepared_Catalog();
+			CEffectCatalog::Clear();
+			return;
+		}
+
+		const shared_ptr<CEffectScreenOverlayPresentation> Playback =
+			Template->Clone_PlaybackInstance();
+		const bool_t bTimelineExact = nullptr != Playback &&
+			S_OK == Playback->Seek(0.69f) &&
+			Playback->Get_ActiveOverlayCount() == 0u &&
+			S_OK == Playback->Seek(0.70f) &&
+			Playback->Get_ActiveOverlayCount() == 1u &&
+			S_OK == Playback->Seek(0.72f) &&
+			Playback->Get_ActiveOverlayCount() == 2u &&
+			S_OK == Playback->Seek(0.78f) &&
+			Playback->Get_ActiveOverlayCount() == 5u &&
+			!Template->Is_Playing() && Template->Get_ElapsedSeconds() == 0.f;
+		runner.Require(bTimelineExact,
+			"DimensionMaster F Overlay Clone Has An Independent Absolute Product Timeline");
+
+		std::string MidStageMalformed = Binding->strUtf8Json;
+		const std::string CanaryAsset(CANARY_ASSET_ID);
+		const size_t iLastAsset = MidStageMalformed.rfind(CanaryAsset);
+		if (iLastAsset != std::string::npos)
+		{
+			MidStageMalformed.replace(iLastAsset, CanaryAsset.size(),
+				"Effect/DimensionMaster/Textures/FX_TEX_02/missing.dds");
+		}
+		const uint64_t iPreservedGeneration =
+			nullptr == Playback ? 0u : Playback->Get_CommittedGeneration();
+		const f32_t fPreservedElapsed =
+			nullptr == Playback ? 0.f : Playback->Get_ElapsedSeconds();
+		Status.clear();
+		const bool_t bMidStageRollback = nullptr != Playback &&
+			iLastAsset != std::string::npos &&
+			!Playback->Stage_AndCommit(MidStageMalformed, Status) &&
+			!Status.empty() &&
+			Playback->Get_CommittedGeneration() == iPreservedGeneration &&
+			Playback->Get_PresentationId() == PRESENTATION_ID &&
+			Playback->Get_PreparedOverlayCount() == 5u &&
+			Playback->Get_ElapsedSeconds() == fPreservedElapsed &&
+			Playback->Get_ActiveOverlayCount() == 5u &&
+			Playback->Is_Playing();
+		runner.Require(bMidStageRollback,
+			"DimensionMaster F Missing Fifth DDS Rolls Back Without Replacing The Live Product Template");
+
+		CPresentation_Manager& Manager = CPresentation_Manager::Get();
+		Manager.Clear_Frame();
+		Manager.Set_ScreenPostsEnabled(true);
+		Manager.Set_ScreenOverlaysEnabled(true);
+		const bool_t bPlaybackQueued = bMidStageRollback &&
+			S_OK == Playback->Queue_Frame() &&
+			S_OK == Manager.Submit_FrameProviders();
+		const auto& OrderedCanary = Manager.Get_ScreenOverlays();
+		bool_t bSourceOrderExact = bPlaybackQueued && OrderedCanary.size() == 5u;
+		for (size_t i = 0u; bSourceOrderExact && i < OrderedCanary.size(); ++i)
+		{
+			bSourceOrderExact = OrderedCanary[i].iSourceOrder == 1000u + i &&
+				OrderedCanary[i].eColorSpace ==
+					PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::SRGB &&
+				OrderedCanary[i].eCoverageChannel ==
+					PRESENTATION_SCREEN_OVERLAY_CHANNEL::R;
+		}
+		runner.Require(bSourceOrderExact,
+			"DimensionMaster F Product Shards Submit In Stable Source Order With SRGB R Coverage");
+
+		const std::shared_ptr<const EFFECT_DOCUMENT_DESC> ProductDocument =
+			CEffectCatalog::Find(std::string(EFFECT_ID));
+		const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			Projection = nullptr == ProductDocument ? nullptr :
+				CEffectCatalog::Find_VisualProjection(std::string(EFFECT_ID));
+		Status.clear();
+		const bool_t bProductPrepared = nullptr != ProductDocument &&
+			(nullptr == Projection ||
+				Projection->Get_DocumentShared().get() == ProductDocument.get()) &&
+			CEffectDocumentRenderer::Prepare_VisualProgramTarget(
+				Device, Context, CEffectCatalog::Get_RuntimeRevision(),
+				{ std::string(EFFECT_ID), ProductDocument, Projection }, Status);
+		if (!bProductPrepared)
+		{
+			std::cout << "[DETAIL] DimensionMaster F Product prewarm status: " <<
+				Status << '\n';
+		}
+		runner.Require(bProductPrepared,
+			"DimensionMaster F Actual Product Document Commits Its Immutable GPU Preparation");
+
+		const std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+			Prepared = nullptr == ProductDocument ? nullptr :
+				CEffectDocumentRenderer::Find_Prepared(
+					CEffectCatalog::Get_RuntimeRevision(), std::string(EFFECT_ID),
+					*ProductDocument, Projection);
+		unique_ptr<CEffectObject> Prototype =
+			CEffectObject::Create(Device, Context);
+		CEffectObject::EFFECT_OBJECT_DESC ProductDesc{};
+		ProductDesc.pDocument = nullptr == Projection && nullptr != ProductDocument ?
+			ProductDocument.get() : nullptr;
+		ProductDesc.pPreparedResources = Prepared;
+		ProductDesc.pVisualProgramProjection = Projection;
+		ProductDesc.pScreenOverlayPresentationTemplate = Template;
+		XMStoreFloat4x4(&ProductDesc.RootWorld, XMMatrixIdentity());
+		ProductDesc.bAutoPlay = false;
+		ProductDesc.bRequirePreparedResources = true;
+		const EFFECT_RENDER_PREWARM_PROBE BeforeClone =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		const std::shared_ptr<CEffectObject> ProductObject =
+			nullptr == Prototype ? nullptr :
+				std::dynamic_pointer_cast<CEffectObject>(
+					Prototype->Clone(&ProductDesc));
+		const EFFECT_RENDER_PREWARM_PROBE AfterClone =
+			CEffectDocumentRenderer::Get_PrewarmProbe();
+		const bool_t bProductObjectCloned = nullptr != ProductObject &&
+			AfterClone.iModelDiskLoadCount == BeforeClone.iModelDiskLoadCount &&
+			AfterClone.iTextureDiskLoadCount == BeforeClone.iTextureDiskLoadCount &&
+			AfterClone.iSynchronousDocumentStageCount ==
+				BeforeClone.iSynchronousDocumentStageCount &&
+			AfterClone.iPreparedAttachCount ==
+				BeforeClone.iPreparedAttachCount + 1u;
+		runner.Require(bProductObjectCloned,
+			"DimensionMaster F Product Object Attaches Prepared World And Overlay Resources Without Spawn-Time IO");
+
+		const auto SubmitObject = [&Manager](
+			const std::shared_ptr<CEffectObject>& Object)
+		{
+			Manager.Clear_Frame();
+			if (nullptr == Object || S_OK != Manager.Add_FrameProvider(
+					std::static_pointer_cast<IPresentationProvider>(Object)))
+			{
+				return false;
+			}
+			const HRESULT hSubmit = Manager.Submit_FrameProviders();
+			return S_OK == hSubmit || S_FALSE == hSubmit;
+		};
+		bool_t bSharedLifecycle = bProductObjectCloned;
+		if (bSharedLifecycle)
+		{
+			ProductObject->Reset();
+			ProductObject->Set_Playing(true);
+			ProductObject->Update(0.79f);
+			bSharedLifecycle = SubmitObject(ProductObject) &&
+				Manager.Get_ScreenOverlays().size() == 5u;
+			ProductObject->Set_Visible(false);
+			bSharedLifecycle = bSharedLifecycle && SubmitObject(ProductObject) &&
+				Manager.Get_ScreenOverlays().empty();
+			ProductObject->Set_Visible(true);
+			ProductObject->Reset();
+			ProductObject->Set_SampleTime(0.79f);
+			bSharedLifecycle = bSharedLifecycle && SubmitObject(ProductObject) &&
+				Manager.Get_ScreenOverlays().size() == 5u;
+			ProductObject->Set_SampleTime(1.44f);
+			bSharedLifecycle = bSharedLifecycle && SubmitObject(ProductObject) &&
+				Manager.Get_ScreenOverlays().empty();
+			ProductObject->Set_SampleTime(100.f);
+			bSharedLifecycle = bSharedLifecycle && ProductObject->Is_Finished() &&
+				SubmitObject(ProductObject) && Manager.Get_ScreenOverlays().empty();
+		}
+		runner.Require(bSharedLifecycle,
+			"DimensionMaster F Overlay Follows Its Effect Object Update Cancel Reset And Natural Clear Lifecycle");
+
+		EFFECT_DOCUMENT_DESC CompositionDocument;
+		CompositionDocument.strEffectAssetId =
+			"effect.harness.dimensionmaster-f.screen-composition";
+		CompositionDocument.strDisplayName =
+			"DimensionMaster F Screen Composition Harness";
+		for (size_t iPost = 0u; iPost < 2u; ++iPost)
+		{
+			EFFECT_ELEMENT_DESC Post;
+			Post.strElementId = iPost == 0u ? "post.rgb" : "post.zoom";
+			Post.strDisplayName = iPost == 0u ? "RGB Noise" : "Zoom Blur";
+			Post.eKind = EFFECT_ELEMENT_KIND::SCREEN_POST;
+			Post.Detail.Timing.fLifeTimeSeconds = 2.f;
+			Post.Detail.ScreenPost.bEnabled = true;
+			Post.Detail.ScreenPost.eProfile = iPost == 0u ?
+				EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1 :
+				EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1;
+			Post.Detail.ScreenPost.eStatus =
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+			Post.Detail.ScreenPost.fIntensity = iPost == 0u ? 0.37f : 0.62f;
+			Post.Detail.ScreenPost.fSecondaryIntensity =
+				iPost == 0u ? 0.11f : 0.23f;
+			Post.Detail.ScreenPost.fFrequency = iPost == 0u ? 9.f : 4.f;
+			Post.Detail.ScreenPost.iRandomSeed =
+				static_cast<uint32_t>(2050230u + iPost);
+			CompositionDocument.Elements.push_back(std::move(Post));
+		}
+
+		EFFECT_DOCUMENT_DESC ShortWorldDocument = CompositionDocument;
+		ShortWorldDocument.strEffectAssetId =
+			"effect.harness.screen-overlay.short-world-carrier";
+		ShortWorldDocument.strDisplayName =
+			"Class-Neutral Short World Carrier";
+		for (EFFECT_ELEMENT_DESC& Element : ShortWorldDocument.Elements)
+			Element.Detail.Timing.fLifeTimeSeconds = 0.1f;
+		Status.clear();
+		unique_ptr<CEffectObject> ShortWorldPrototype =
+			CEffectObject::Create(Device, Context);
+		CEffectObject::EFFECT_OBJECT_DESC ShortWorldDesc{};
+		ShortWorldDesc.pDocument = &ShortWorldDocument;
+		ShortWorldDesc.pScreenOverlayPresentationTemplate = Template;
+		XMStoreFloat4x4(&ShortWorldDesc.RootWorld, XMMatrixIdentity());
+		ShortWorldDesc.bAutoPlay = false;
+		const std::shared_ptr<CEffectObject> ShortWorldObject =
+			CEffectDocumentCodec::Validate(ShortWorldDocument, Status) &&
+			nullptr != ShortWorldPrototype ?
+				std::dynamic_pointer_cast<CEffectObject>(
+					ShortWorldPrototype->Clone(&ShortWorldDesc)) : nullptr;
+		bool_t bOverlayTailOwnsCompletion = nullptr != ShortWorldObject;
+		if (bOverlayTailOwnsCompletion)
+		{
+			ShortWorldObject->Reset();
+			ShortWorldObject->Set_Playing(true);
+			ShortWorldObject->Update(0.79f);
+			bOverlayTailOwnsCompletion = !ShortWorldObject->Is_Finished() &&
+				SubmitObject(ShortWorldObject) &&
+				Manager.Get_ScreenPosts().empty() &&
+				Manager.Get_ScreenOverlays().size() == 5u;
+			ShortWorldObject->Update(0.66f);
+			bOverlayTailOwnsCompletion = bOverlayTailOwnsCompletion &&
+				ShortWorldObject->Is_Finished() &&
+				SubmitObject(ShortWorldObject) &&
+				Manager.Get_ScreenOverlays().empty();
+		}
+		runner.Require(bOverlayTailOwnsCompletion,
+			"Class-Neutral Product Overlay Tail Outlives A Short World Document In One Effect Lifecycle");
+
+		Status.clear();
+		unique_ptr<CEffectObject> CompositionPrototype =
+			CEffectObject::Create(Device, Context);
+		CEffectObject::EFFECT_OBJECT_DESC CompositionDesc{};
+		CompositionDesc.pDocument = &CompositionDocument;
+		CompositionDesc.pScreenOverlayPresentationTemplate = Template;
+		XMStoreFloat4x4(&CompositionDesc.RootWorld, XMMatrixIdentity());
+		CompositionDesc.bAutoPlay = false;
+		const std::shared_ptr<CEffectObject> CompositionObject =
+			CEffectDocumentCodec::Validate(CompositionDocument, Status) &&
+			nullptr != CompositionPrototype ?
+				std::dynamic_pointer_cast<CEffectObject>(
+					CompositionPrototype->Clone(&CompositionDesc)) : nullptr;
+		if (nullptr != CompositionObject)
+			CompositionObject->Set_SampleTime(0.79f);
+		const bool_t bCompositionSubmitted =
+			SubmitObject(CompositionObject) &&
+			Manager.Get_ScreenPosts().size() == 2u &&
+			Manager.Get_ScreenOverlays().size() == 5u;
+		const auto& Posts = Manager.Get_ScreenPosts();
+		const PRESENTATION_SCREEN_POST_PLAN_STEP FirstOverlayStep =
+			Build_PresentationScreenOverlayPlanStep(2u, 0u);
+		const bool_t bPostOrderAndFormulaPreserved = bCompositionSubmitted &&
+			Posts[0u].eProfile ==
+				PRESENTATION_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED &&
+			Posts[0u].fIntensity == 0.37f &&
+			Posts[0u].fSecondaryIntensity == 0.11f &&
+			Posts[0u].fFrequency == 9.f &&
+			Posts[0u].iRandomSeed == 2050230u &&
+			Posts[1u].eProfile ==
+				PRESENTATION_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED &&
+			Posts[1u].fIntensity == 0.62f &&
+			Posts[1u].fSecondaryIntensity == 0.23f &&
+			Posts[1u].fFrequency == 4.f &&
+			Posts[1u].iRandomSeed == 2050231u &&
+			FirstOverlayStep.iSourceTarget == 0u &&
+			FirstOverlayStep.iDestinationTarget == 1u &&
+			PresentationScreenCompositionFinalTarget(2u, 5u) == 1u;
+		runner.Require(bPostOrderAndFormulaPreserved,
+			"DimensionMaster F Overlay Appends After Unchanged RGBNoise And ZoomBlur Descriptors");
+
+		Manager.Clear_Frame();
+		CEffectDocumentRenderer::Clear_Prepared_Catalog();
+		CEffectCatalog::Clear();
+	}
+
 	void Test_EffectStandardColorV1(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -40818,6 +41344,14 @@ int main(const int argc, char* argv[])
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_EffectScreenOverlayPresentation(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-dm-f-product-overlay-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_DimensionMasterFProductScreenOverlay(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

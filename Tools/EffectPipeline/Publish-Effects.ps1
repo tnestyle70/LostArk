@@ -140,6 +140,8 @@ if ($TestFaultInjection -cne 'None') {
 $authoringRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Authored'))
 $assemblyRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Assemblies'))
 $componentRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Components'))
+$screenOverlayRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
+    'Effects\ScreenOverlays'))
 $compiledRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot 'Effects\Compiled'))
 $authoredCorrectionRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
     'Effects\AuthoredCorrections'))
@@ -1764,6 +1766,123 @@ function Resolve-SafeElementResource(
     return Resolve-SafeResource $AssetId
 }
 
+function Build-ScreenOverlayRuntimeBinding(
+    [string]$EffectAssetId,
+    [string]$RelativePath) {
+    $expectedFileName = "$EffectAssetId.screen-overlay.json"
+    $sourceFile = Resolve-SafeDataFile $RelativePath `
+        'Effects/ScreenOverlays/' $screenOverlayRoot $expectedFileName
+    $payload = [IO.File]::ReadAllBytes($sourceFile)
+    if ($payload.LongLength -lt 1 -or $payload.LongLength -gt 4MB -or
+        ($payload.LongLength -ge 3 -and $payload[0] -eq 0xEF -and
+            $payload[1] -eq 0xBB -and $payload[2] -eq 0xBF)) {
+        throw "Screen overlay payload byte contract is invalid: $RelativePath"
+    }
+    $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+    $text = $strictUtf8.GetString($payload)
+    $document = Read-JsonDocument $sourceFile
+    try {
+        Assert-ExactPropertyOrder $document @(
+            'schema', 'formatVersion', 'provenance', 'presentationId',
+            'overlays') 'Screen overlay root'
+        if ((Get-RequiredProperty $document 'schema' String) -cne
+                'lostark.effect-screen-overlay' -or
+            [int](Get-RequiredProperty $document 'formatVersion' Number) -ne 1 -or
+            (Get-RequiredProperty $document 'provenance' String) -cne
+                'PROJECT_TUNED') {
+            throw "Screen overlay header is invalid: $RelativePath"
+        }
+        $presentationId = Get-RequiredProperty $document 'presentationId' String
+        Assert-StableId $presentationId 'Screen overlay presentationId'
+        if ($presentationId -cne "$EffectAssetId.screen-overlay") {
+            throw "Screen overlay presentation/effect identity mismatch: $RelativePath"
+        }
+        $overlays = @(Get-RequiredProperty $document 'overlays' Array)
+        if ($overlays.Count -lt 1 -or $overlays.Count -gt 64) {
+            throw "Screen overlay row count is invalid: $RelativePath"
+        }
+        $ids = [Collections.Generic.HashSet[string]]::new(
+            [StringComparer]::Ordinal)
+        $orders = [Collections.Generic.HashSet[int]]::new()
+        $resourceById = [Collections.Generic.SortedDictionary[string,object]]::new(
+            [StringComparer]::Ordinal)
+        foreach ($overlay in $overlays) {
+            Assert-ExactPropertyOrder $overlay @(
+                'id', 'sourceOrder', 'textureAssetId', 'colorSpace',
+                'coverageChannel', 'sampler', 'timing', 'transform', 'tint') `
+                'Screen overlay row'
+            $id = Get-RequiredProperty $overlay 'id' String
+            Assert-StableId $id 'Screen overlay row ID'
+            $sourceOrder = [int](Get-RequiredProperty $overlay `
+                'sourceOrder' Number)
+            if (-not $ids.Add($id) -or -not $orders.Add($sourceOrder) -or
+                $sourceOrder -lt 0) {
+                throw "Screen overlay row identity/order is invalid: $id"
+            }
+            $assetId = Get-RequiredProperty $overlay 'textureAssetId' String
+            if ([IO.Path]::GetExtension($assetId) -cne '.dds') {
+                throw "Screen overlay texture is not DDS: $assetId"
+            }
+            $resourceFile = Resolve-SafeResource $assetId
+            if (-not $resourceById.ContainsKey($assetId)) {
+                $resourceBytes = [IO.File]::ReadAllBytes($resourceFile)
+                $resourceById.Add($assetId, [ordered]@{
+                    assetId = $assetId
+                    byteCount = $resourceBytes.LongLength
+                    sha256 = Get-Sha256Hex $resourceBytes
+                })
+            }
+            $colorSpace = Get-RequiredProperty $overlay 'colorSpace' String
+            $coverage = Get-RequiredProperty $overlay 'coverageChannel' String
+            if ($colorSpace -cnotin @('linear', 'srgb') -or
+                $coverage -cnotin @('r', 'g', 'b', 'a')) {
+                throw "Screen overlay color/channel is invalid: $id"
+            }
+            $sampler = Get-RequiredProperty $overlay 'sampler' Object
+            $timing = Get-RequiredProperty $overlay 'timing' Object
+            $transform = Get-RequiredProperty $overlay 'transform' Object
+            $tint = @(Get-RequiredProperty $overlay 'tint' Array)
+            Assert-ExactPropertyOrder $sampler @('filter', 'address') `
+                'Screen overlay sampler'
+            Assert-ExactPropertyOrder $timing @(
+                'startSeconds', 'lifetimeSeconds', 'alphaStart', 'alphaEnd') `
+                'Screen overlay timing'
+            Assert-ExactPropertyOrder $transform @(
+                'position', 'scale', 'rotationDegrees',
+                'angularVelocityDegreesPerSecond', 'uvDriftPerSecond') `
+                'Screen overlay transform'
+            if ((Get-RequiredProperty $sampler 'filter' String) -cnotin
+                    @('point', 'linear') -or
+                (Get-RequiredProperty $sampler 'address' String) -cnotin
+                    @('clamp', 'wrap') -or
+                @(Get-RequiredProperty $transform 'position' Array).Count -ne 2 -or
+                @(Get-RequiredProperty $transform 'scale' Array).Count -ne 2 -or
+                @(Get-RequiredProperty $transform 'uvDriftPerSecond' Array).Count -ne 2 -or
+                $tint.Count -ne 4) {
+                throw "Screen overlay typed row shape is invalid: $id"
+            }
+            foreach ($name in @(
+                    'startSeconds', 'lifetimeSeconds', 'alphaStart', 'alphaEnd')) {
+                [void](Get-NumberValue $timing $name $id)
+            }
+            foreach ($name in @(
+                    'rotationDegrees', 'angularVelocityDegreesPerSecond')) {
+                [void](Get-NumberValue $transform $name $id)
+            }
+        }
+        return [ordered]@{
+            presentationId = $presentationId
+            byteCount = $payload.LongLength
+            sha256 = Get-Sha256Hex $payload
+            utf8Json = $text
+            resources = @($resourceById.Values)
+        }
+    }
+    finally {
+        $document = $null
+    }
+}
+
 function Copy-JsonValue([object]$Value) {
     return ($Value | ConvertTo-Json -Depth 100 -Compress) | ConvertFrom-Json
 }
@@ -2136,9 +2255,16 @@ try {
             }
             continue
         }
+        $screenOverlayPresentationPathProperty = $null
         if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
-            Assert-ExactPropertyOrder $entry @(
-                'effectAssetId', 'payloadKind', 'authoringPath') `
+            $screenOverlayPresentationPathProperty =
+                $entry.PSObject.Properties['screenOverlayPresentationPath']
+            $expectedDirectSourceFields = @(
+                'effectAssetId', 'payloadKind', 'authoringPath')
+            if ($null -ne $screenOverlayPresentationPathProperty) {
+                $expectedDirectSourceFields += 'screenOverlayPresentationPath'
+            }
+            Assert-ExactPropertyOrder $entry $expectedDirectSourceFields `
                 'Direct authored v13 source catalog entry'
         }
         elseif (-not [string]::IsNullOrEmpty($sourcePayloadKind)) {
@@ -2168,6 +2294,14 @@ try {
         }
         if (-not $isActiveProductEffect) {
             continue
+        }
+        $screenOverlayRuntimeBinding = $null
+        if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13' -and
+            $null -ne $screenOverlayPresentationPathProperty) {
+            $screenOverlayPresentationPath = Get-RequiredProperty $entry `
+                'screenOverlayPresentationPath' String
+            $screenOverlayRuntimeBinding = Build-ScreenOverlayRuntimeBinding `
+                $effectAssetId $screenOverlayPresentationPath
         }
         if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
             ++$activeDirectRuntimeCount
@@ -3049,12 +3183,17 @@ try {
                         Sha256 = $sealedSha
                         ByteCount = $sealedBytes.LongLength
                     })
-                $runtimeEffects.Add([ordered]@{
+                $directRuntimeEntry = [ordered]@{
                     payloadKind = 'DIRECT_AUTHORED_DOCUMENT_V13'
                     effectAssetId = $effectAssetId
                     authoringFormatVersion = $documentVersion
                     authoredDocumentPath = $runtimeAuthoredRelativePath
-                })
+                }
+                if ($null -ne $screenOverlayRuntimeBinding) {
+                    $directRuntimeEntry['screenOverlayPresentation'] =
+                        $screenOverlayRuntimeBinding
+                }
+                $runtimeEffects.Add($directRuntimeEntry)
                 $hasDerivedRuntime = $true
                 continue
             }
@@ -3366,6 +3505,36 @@ try {
                         -not $directAuthoredRuntimeFilesByPath.TryGetValue(
                             $authoredDocumentPath, [ref]$sealedRecord)) {
                         throw "Direct authored runtime catalog entry failed round-trip validation: $id"
+                    }
+                    # $expected is the publisher-owned OrderedDictionary while
+                    # $entry is the JSON round-trip PSCustomObject.  Query the
+                    # adapted values, not PSObject.Properties: dictionary keys
+                    # are not CLR properties in Windows PowerShell 5.1.
+                    $expectedOverlay =
+                        $expected['screenOverlayPresentation']
+                    $actualOverlay = $entry.screenOverlayPresentation
+                    if (($null -eq $expectedOverlay) -ne
+                            ($null -eq $actualOverlay)) {
+                        throw "Direct authored screen-overlay binding presence changed: $id"
+                    }
+                    if ($null -ne $expectedOverlay -and
+                        ((Get-RequiredProperty `
+                                $entry.screenOverlayPresentation `
+                                'presentationId' String) -cne
+                                [string]$expectedOverlay.presentationId -or
+                         (Get-RequiredProperty `
+                                $entry.screenOverlayPresentation `
+                                'sha256' String) -cne
+                                [string]$expectedOverlay.sha256 -or
+                         [int64](Get-RequiredProperty `
+                                $entry.screenOverlayPresentation `
+                                'byteCount' Number) -ne
+                                [int64]$expectedOverlay.byteCount -or
+                         @(Get-RequiredProperty `
+                                $entry.screenOverlayPresentation `
+                                'resources' Array).Count -ne
+                                @($expectedOverlay.resources).Count)) {
+                        throw "Direct authored screen-overlay binding failed round-trip validation: $id"
                     }
                 }
                 elseif ($payloadKind -ceq 'LEGACY_ASSEMBLY_V1') {

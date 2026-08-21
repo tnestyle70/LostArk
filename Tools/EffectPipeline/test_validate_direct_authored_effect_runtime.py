@@ -81,6 +81,38 @@ def make_catalog(runtime_catalog_path: Path) -> dict[str, object]:
     }
 
 
+def make_screen_overlay_binding() -> dict[str, object]:
+    asset_id = "Effect/Fixture/fragment.dds"
+    document = {
+        "schema": "lostark.effect-screen-overlay",
+        "formatVersion": 1,
+        "provenance": "PROJECT_TUNED",
+        "presentationId": f"{EFFECT_ID}.screen-overlay",
+        "overlays": [
+            {
+                "id": "fragment",
+                "sourceOrder": 1,
+                "textureAssetId": asset_id,
+            }
+        ],
+    }
+    text = json.dumps(document, separators=(",", ":"), ensure_ascii=False)
+    payload = text.encode("utf-8")
+    return {
+        "presentationId": document["presentationId"],
+        "byteCount": len(payload),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "utf8Json": text,
+        "resources": [
+            {
+                "assetId": asset_id,
+                "byteCount": 128,
+                "sha256": "1" * 64,
+            }
+        ],
+    }
+
+
 class DirectAuthoredRuntimeValidatorTests(unittest.TestCase):
     def setUp(self) -> None:
         self._temporary = tempfile.TemporaryDirectory()
@@ -139,6 +171,44 @@ class DirectAuthoredRuntimeValidatorTests(unittest.TestCase):
                     validator.validate_runtime_catalog(
                         mutation, self.runtime_catalog_path
                     )
+
+    def test_screen_overlay_binding_is_strict_and_hash_bound(self) -> None:
+        catalog = make_catalog(self.runtime_catalog_path)
+        catalog["effects"][1]["screenOverlayPresentation"] = (
+            make_screen_overlay_binding()
+        )
+        validator.validate_runtime_catalog(catalog, self.runtime_catalog_path)
+
+        mutations: list[dict[str, object]] = []
+        wrong_hash = copy.deepcopy(catalog)
+        wrong_hash["effects"][1]["screenOverlayPresentation"]["sha256"] = (
+            "2" * 64
+        )
+        mutations.append(wrong_hash)
+
+        malformed_mid_stage = copy.deepcopy(catalog)
+        embedded = malformed_mid_stage["effects"][1][
+            "screenOverlayPresentation"
+        ]
+        embedded["resources"][0]["assetId"] = "Effect/Fixture/other.dds"
+        mutations.append(malformed_mid_stage)
+
+        reordered = copy.deepcopy(catalog)
+        binding = reordered["effects"][1].pop("screenOverlayPresentation")
+        reordered["effects"][1] = {
+            "screenOverlayPresentation": binding,
+            **reordered["effects"][1],
+        }
+        mutations.append(reordered)
+
+        for index, mutation in enumerate(mutations):
+            with self.subTest(mutation=index):
+                with self.assertRaises(validator.ContractError):
+                    validator.validate_runtime_catalog(
+                        mutation, self.runtime_catalog_path
+                    )
+
+        validator.validate_runtime_catalog(catalog, self.runtime_catalog_path)
 
     def test_missing_escape_and_wrong_path_are_rejected_without_repair(self) -> None:
         catalog = make_catalog(self.runtime_catalog_path)

@@ -21,11 +21,14 @@ public:
 
 	static shared_ptr<CEffectScreenOverlayPresentation> Create(
 		ComPtr<ID3D11Device> pDevice);
+	shared_ptr<CEffectScreenOverlayPresentation>
+		Clone_PlaybackInstance() const;
 
 	bool_t Stage_AndCommit(
 		std::string_view strUtf8Json,
 		std::string& strOutError);
 	HRESULT Start();
+	HRESULT Seek(f32_t fElapsedSeconds);
 	HRESULT Update(f32_t fDeltaSeconds);
 	void Stop();
 	void Cancel();
@@ -43,9 +46,14 @@ public:
 	{
 		return m_PreparedOverlays.size();
 	}
+	size_t Get_ActiveOverlayCount() const;
 	f32_t Get_ElapsedSeconds() const
 	{
 		return m_fElapsedSeconds;
+	}
+	f32_t Get_MaximumEndSeconds() const
+	{
+		return m_fMaximumEndSeconds;
 	}
 	bool_t Is_Playing() const
 	{

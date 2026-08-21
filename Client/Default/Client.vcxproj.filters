@@ -2124,6 +2124,9 @@
     <Filter Include="96.DataFiles\Effects\ResourceIndex\DimensionMaster\W">
       <UniqueIdentifier>{a503052b-d3c1-581c-b8a2-8377cef6f66c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\ScreenOverlays">
+      <UniqueIdentifier>{4f141e2f-5ff8-5970-98bc-3f54ae4a62ce}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\VisualPrograms">
       <UniqueIdentifier>{c2bc4dbc-1555-520c-9463-fbb1a5524249}</UniqueIdentifier>
     </Filter>
@@ -3633,6 +3636,9 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Artist\effect.artist.skill.31480.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\Artist</Filter>
     </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Artist\effect.artist.skill.31490.black-tiger-stroke.materialization-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\Artist</Filter>
+    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Artist\effect.artist.skill.31910.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\Artist</Filter>
     </None>
@@ -3669,6 +3675,9 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050120.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\DimensionMaster</Filter>
     </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050120.clip3.glasshole02-k01.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\DimensionMaster</Filter>
+    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050160.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\DimensionMaster</Filter>
     </None>
@@ -3679,6 +3688,9 @@
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\DimensionMaster</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050230.authored-baseline.approximation-receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\DimensionMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050230.fluid01-sprite.receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\DimensionMaster</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050240.authored-baseline.approximation-receipt.json">
@@ -5562,6 +5574,9 @@
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip8\Warlord_skill_17820_authored-baseline_clip8_01.visual.wfx.json">
       <Filter>96.DataFiles\Effects\Components\Warlord\skill.17820.authored-baseline.clip8</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Contracts\character-effect-restoration-targets.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Contracts\effect-family-manifest.v1.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
@@ -6450,6 +6465,9 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050220.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050230.screen-overlay-product-binding.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050230.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster</Filter>
     </None>
@@ -6828,12 +6846,6 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34650.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat</Filter>
     </None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Materials\skill.34630-34650.dragon.exact-material-maps.receipt.json">
-      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Materials</Filter>
-    </None>
-    <None Include="..\..\Data\Effects\Imported\LanceMaster\Materials\skill.34630-34650.dragon.exact-shader-targets.json">
-      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Materials</Filter>
-    </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34000.imported-effect-draft.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
     </None>
@@ -6911,6 +6923,12 @@
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.skill-effect-source-inventory.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Materials\skill.34630-34650.dragon.exact-material-maps.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Materials\skill.34630-34650.dragon.exact-shader-targets.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Materials</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\Modules\skill.34010.external-module-closure.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\Modules</Filter>
@@ -7598,6 +7616,9 @@
     </None>
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\W\DimensionMaster.W.effect-resources.json">
       <Filter>96.DataFiles\Effects\ResourceIndex\DimensionMaster\W</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\ScreenOverlays\effect.dimensionmaster.skill.2050230.unified.screen-overlay.json">
+      <Filter>96.DataFiles\Effects\ScreenOverlays</Filter>
     </None>
     <None Include="..\..\Data\Effects\VisualPrograms\effect-visual-program-corpus.v1.json">
       <Filter>96.DataFiles\Effects\VisualPrograms</Filter>

@@ -83,6 +83,7 @@ struct EFFECT_SCENE_BUDGET_COST final
 	uint64_t iAfterImages = 0u;
 	uint64_t iLights = 0u;
 	uint64_t iScreenPosts = 0u;
+	uint64_t iScreenOverlays = 0u;
 	uint64_t iEstimatedDrawSubmissions = 0u;
 
 	bool operator==(const EFFECT_SCENE_BUDGET_COST&) const = default;

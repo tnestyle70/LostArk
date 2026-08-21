@@ -283,7 +283,8 @@
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050230.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.unified.effect.json"
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050230.unified.effect.json",
+      "screenOverlayPresentationPath": "Effects/ScreenOverlays/effect.dimensionmaster.skill.2050230.unified.screen-overlay.json"
     },
     {
       "effectAssetId": "effect.dimensionmaster.skill.2050240.authored-baseline.clip1",

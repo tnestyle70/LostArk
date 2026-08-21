@@ -255,6 +255,27 @@ Client::CEffectScreenOverlayPresentation::Create(
 		std::move(pDevice));
 }
 
+shared_ptr<Client::CEffectScreenOverlayPresentation>
+Client::CEffectScreenOverlayPresentation::Clone_PlaybackInstance() const
+{
+	if (nullptr == m_pDevice || m_PreparedOverlays.empty() ||
+		m_strPresentationId.empty() || m_iCommittedGeneration == 0u ||
+		!std::isfinite(m_fMaximumEndSeconds) || m_fMaximumEndSeconds <= 0.f)
+	{
+		return nullptr;
+	}
+	shared_ptr<CEffectScreenOverlayPresentation> Instance =
+		Create(m_pDevice);
+	if (nullptr == Instance)
+		return nullptr;
+	Instance->m_PreparedOverlays = m_PreparedOverlays;
+	Instance->m_strPresentationId = m_strPresentationId;
+	Instance->m_iCommittedGeneration = m_iCommittedGeneration;
+	Instance->m_fMaximumEndSeconds = m_fMaximumEndSeconds;
+	Instance->Stop();
+	return Instance;
+}
+
 bool_t Client::CEffectScreenOverlayPresentation::Stage_AndCommit(
 	const std::string_view strUtf8Json,
 	std::string& strOutError)
@@ -508,6 +529,18 @@ HRESULT Client::CEffectScreenOverlayPresentation::Start()
 	return S_OK;
 }
 
+HRESULT Client::CEffectScreenOverlayPresentation::Seek(
+	const f32_t fElapsedSeconds)
+{
+	if (!std::isfinite(fElapsedSeconds) || fElapsedSeconds < 0.f)
+		return E_INVALIDARG;
+	if (m_PreparedOverlays.empty())
+		return S_FALSE;
+	m_fElapsedSeconds = fElapsedSeconds;
+	m_bPlaying = fElapsedSeconds < m_fMaximumEndSeconds;
+	return m_bPlaying ? S_OK : S_FALSE;
+}
+
 HRESULT Client::CEffectScreenOverlayPresentation::Update(
 	const f32_t fDeltaSeconds)
 {
@@ -538,6 +571,21 @@ void Client::CEffectScreenOverlayPresentation::Cancel()
 	Stop();
 }
 
+size_t Client::CEffectScreenOverlayPresentation::Get_ActiveOverlayCount() const
+{
+	if (!m_bPlaying)
+		return 0u;
+	return static_cast<size_t>(std::count_if(
+		m_PreparedOverlays.begin(), m_PreparedOverlays.end(),
+		[this](const PREPARED_OVERLAY& Overlay)
+		{
+			const f32_t fEnd =
+				Overlay.fStartSeconds + Overlay.fLifetimeSeconds;
+			return m_fElapsedSeconds >= Overlay.fStartSeconds &&
+				m_fElapsedSeconds < fEnd;
+		}));
+}
+
 HRESULT Client::CEffectScreenOverlayPresentation::Queue_Frame()
 {
 	if (!m_bPlaying)
@@ -557,20 +605,7 @@ void Client::CEffectScreenOverlayPresentation::
 HRESULT Client::CEffectScreenOverlayPresentation::Submit_Presentation()
 {
 	CPresentation_Manager& Presentation = CPresentation_Manager::Get();
-	size_t iExpectedCount = 0u;
-	if (m_bPlaying)
-	{
-		for (const PREPARED_OVERLAY& Overlay : m_PreparedOverlays)
-		{
-			const f32_t fEnd =
-				Overlay.fStartSeconds + Overlay.fLifetimeSeconds;
-			if (m_fElapsedSeconds >= Overlay.fStartSeconds &&
-				m_fElapsedSeconds < fEnd)
-			{
-				++iExpectedCount;
-			}
-		}
-	}
+	const size_t iExpectedCount = Get_ActiveOverlayCount();
 	Presentation.Register_ProviderScreenOverlayExpectation(
 		m_PreparedOverlays.size(), iExpectedCount);
 

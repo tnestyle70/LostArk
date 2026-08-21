@@ -6,6 +6,8 @@
 최종 화면 판정자: 사용자
 
 Fluid01 추가 checkpoint는 기준 `b705abb7`, 격리 브랜치 `codex/dm-fluid01`에서 검증했다.
+차원 F ScreenOverlay Product checkpoint는 기준 `709ebfcb`, 격리 브랜치
+`codex/dm-f-overlay-product`에서 검증했다.
 
 이 문서는 마스터 PLAN의 실제 반영 상태만 기록한다. 도화가·워로드·창술사·차원술사
 전체 복원은 아직 진행 중이며, 이 버전에서는 family inventory, action-facing, opt-in standard
@@ -161,9 +163,9 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 - invalid version, missing asset, 알 수 없는 coverage/sampler, SRV color-space/channel 불일치는 기존
   committed presentation과 재생 clock을 유지한다. `Cancel`, `Stop`, lifetime expiry와 overlay enable
   suppression은 이미 queue된 provider가 있어도 다음 submission에서 0 draw로 정리된다.
-- 이 수직 슬라이스는 synthetic DDS canary를 첫 소비자로 둔 `PROJECT_TUNED/TYPED_PRESENTATION`이다.
-  차원 F/W Product occurrence와 원본 화면 유리 파편은 아직 연결하지 않았고 source-exact native DXBC,
-  refraction, normal/noise/mask/dissolve 다중 lane도 후속 revision 경계다.
+- capability 자체는 synthetic DDS canary로 먼저 닫은 `PROJECT_TUNED/TYPED_PRESENTATION`이다.
+  차원 F 첫 Product consumer는 1.14에서 연결했다. source-exact native DXBC, refraction,
+  normal/noise/mask/dissolve 다중 lane과 W rollout은 계속 후속 revision 경계다.
 ### 1.13 차원술사 F `2050230` Fluid01 SpriteParticle family
 
 - F의 exact Product SpriteParticle
@@ -265,6 +267,36 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   rollback과 Reset clear를 검증한다. 실제 Product 행도 Resource root를 read-only로 지정해 source burst
   14개 전부가 0.25초 시점에 root 5cm 안으로 capture되는 것을 확인했다.
 
+### 1.17 차원술사 F `2050230` 첫 Product ScreenOverlay consumer
+
+- actual animevent `pc_sp_m_00_sk_sk_chronorecoil`의 0ms effectref
+  `effect.dimensionmaster.skill.2050230.unified`와 direct EffectCatalog row를 그대로 따라 첫 Product
+  screen-overlay presentation을 선택적으로 연결했다. class/skill switch나 별도 overlay manager는
+  만들지 않아 이후 W도 같은 effect asset binding 계약을 재사용할 수 있다.
+- 기존 Product effect 문서의 8 Elements는 수정하지 않았다. 원문 byte SHA
+  `afab680bd36b4efcc4baf654c4848a1f3571a29cbc338b0ed58fec940de60e09`, Elements canonical SHA
+  `a3e3b1348614c57e78fcf4d8b3feff89d43559fa985ad5f877673c94839747ee`를 focused harness와 receipt/결과 문서로
+  봉인했다.
+- raw 69행에는 `fx_d_fragment_005.dds`를 쓰는 world SpriteParticle이 0.7초에 7개 burst되고,
+  RGBNoise와 ZoomBlur도 0.7초에 시작한다. screen-space textured shard occurrence는 source에서
+  증명되지 않았으므로 texture 선택 근거만 world source로 보존하고, 5개 screen placement·회전·alpha·
+  sRGB 해석은 전부 `PROJECT_TUNED/PARTIAL`로 명시했다. DDS는 8320-byte DXT1/BC1,
+  SHA-256 `193a597baf328508763b0e6712dc702d604fd1e3b22a311494c26f45470f992c`이며 coverage는 존재하는
+  `R` channel만 사용한다.
+- publisher는 presentation 원문과 실제 DDS의 byte count/SHA를 direct runtime row 안의 typed binding으로
+  봉인한다. catalog load는 schema, provenance, presentation ID, 원문 SHA, ordered field, resource closure를
+  모두 stage한 뒤 전체 map을 한 번에 commit한다. Product prewarm도 Resources root의 DDS identity와
+  typed GPU stage를 검증한 immutable template만 commit하므로 spawn-time disk I/O가 없다.
+- 각 Product `CEffectObject`는 template의 playback instance를 복제하고 같은 lifecycle과 playback-rate delta를
+  공유한다. overlay delta clock은 world document duration clamp와 분리되어, 짧은 world carrier가 먼저 끝나도
+  overlay tail의 natural end 전에는 EffectObject가 완료되지 않는다. absolute Tool sample은 같은 시간으로 seek한다.
+  기존 RGBNoise/ZoomBlur/FilmNoise submission은 수식·순서 변경 없이 먼저 실행되고 overlay는 그 뒤
+  기존 Engine `ScreenOverlays` channel에 제출된다. natural end, cancel, death/visibility clear, level clear,
+  reset은 같은 EffectObject lifecycle로 0 draw까지 닫힌다.
+- malformed 다섯 번째 resource/stage는 직전 presentation generation, ID, clock과 5행을 보존한다.
+  actual cue/catalog join, `.69/.70/.72/.78s` deterministic active count, sourceOrder `1000..1004`,
+  post 2행 뒤 overlay append와 target parity, cancel/reset/natural clear를 Debug/Release focused harness가
+  검증한다. 사용자 Client first-pixel과 source-exact 판정은 여전히 `PENDING`이다.
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -327,6 +359,12 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 | Debug `--effect-target-attractor-fast` | 12/12 PASS; 30/60/120FPS 동일 frame, VelocityOverLife 불변, world metric, moving Element, actual V source burst 14 전원 capture, invalid parse/stage rollback, Reset clear |
 | Release `--effect-target-attractor-fast` | Debug와 동일한 12/12 PASS, failures 0 |
 | Artist V attractor 이후 Debug/Release Client | 각 errors 0 PASS; Release warnings 2173은 기존 FXC/C4819/DirectXTK 계열, Client/UI 미실행 |
+| 차원 F Product overlay publisher | Publish/Validate 각 206 Effects PASS; embedded presentation/DDS identity와 actual cue join PASS |
+| screen-overlay runtime validator focused unit | 5 tests PASS; valid binding, payload hash, resource closure, ordered field와 prior fixture preservation |
+| Debug/Release `--effect-dm-f-product-overlay-fast` | 각 18/18 PASS; 기존 8행 raw identity, actual cue/catalog, DDS identity, `.69/.70/.72/.78s` timeline, fifth-resource rollback, Product GPU prewarm, 짧은 world carrier보다 긴 overlay tail, lifecycle와 post→overlay order |
+| Debug/Release `--effect-screen-overlay-fast` 재검증 | 각 13/13 PASS; WARP pixels 2968, linear/sRGB `128/55`, transaction/clear/order PASS |
+| Debug/Release Client | 각 errors 0, link PASS; UI/Client 자율 실행 안 함 |
+| `Sync-EffectDataProject.ps1 -Check` | `files=1811`, `filters=201` PASS |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -341,8 +379,9 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
   renderer admission은 준비됐지만 sealed catalog publish와 사용자 first-pixel 승인은 별도다.
 - Glasshole02 opcode 16 authored packet도 checked-in runtime catalog가 pre-promotion sealed document를
   가리키므로 현재 `AUTHORING_ONLY/AUTHORED_NOT_PUBLISHED`이다.
-- screen-overlay v1은 synthetic canary만 소비한다. 차원 F/W Product effectref/catalog/occurrence에는
-  아직 연결하지 않았고, 실제 화면 유리 파편과 refraction 품질은 사용자 visual 판정 전이다.
+- screen-overlay v1의 첫 실제 Product consumer는 차원 F `2050230`에 연결했다. 다만 screen-space
+  carrier가 source-proven이 아니므로 이 5행은 `PROJECT_TUNED/PARTIAL`이며, 실제 화면 유리 파편과
+  refraction 품질은 사용자 visual 판정 전이다. W Product rollout도 아직 하지 않았다.
 - Server contract-test는 이 변경이 건드리지 않은 Valtan scripted mechanic과 floor-collapse 기준선에서
   Debug 22건, Release 11건 실패했다. Server 빌드 자체는 양 configuration 모두 통과했지만 이 실행을
   회귀 PASS로 기록하지 않는다.
@@ -351,24 +390,24 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 - CircleSurface/Vortex strict seam과 도화가 V root-local attractor 실행/authoring은 닫혔다. 다만 V의
   camera/post/light composition, checked-in sealed runtime publish와 사용자 화면 판정은 구현 완료로
   올리지 않는다. attractor는 원본 module exact가 아니라 명시적 `PROJECT_TUNED` layer다.
-- screen-space textured shard overlay의 renderer와 rollback 계약은 닫혔지만 아직 synthetic canary다.
-  다음 단위는 exact shard texture/role과 F/W Product timing·ownership을 typed descriptor로 연결하고,
-  RGBNoise/ZoomBlur와의 실제 ordered composition을 sealed runtime에서 검증해야 한다.
+- screen-space textured shard overlay의 Product ownership, resource identity, rollback과 RGBNoise/ZoomBlur
+  뒤 ordered composition은 자동 검증으로 닫혔다. 다음 단위는 source-proven screen carrier 또는 사용자
+  승인 tuning, scene-color refraction과 normal/noise/mask/dissolve multi-lane, F raw world composition 및 W
+  reuse다.
 - Lance dragon opcode 19의 다섯 Product 문서도 sealed runtime catalog publish와 사용자 first-pixel
   승인이 남아 있다. `34610`과 Artist T는 같은 용이라는 이유만으로 이 exact variant에 admission하지
   않았다.
-- full Effect publisher Validate는 현재 main의 `effect.valtan.red-blade-wave.active` 중복 소유자
-  검증에서 중단된다. 이 세션은 해당 Valtan 데이터를 수정하지 않았다.
-- 이 기준점의 전체 EffectPipeline Python suite는 Valtan canonical occurrence 기대값 `128` 대 실제
-  `137`, migration 기대 tuple과 binding-gap 기대가 불일치한다. Fluid01 변경은 Valtan 파일을 수정하지
-  않았고 focused Fluid01 tests/Debug·Release WARP는 모두 통과했다.
+- full Effect publisher Publish/Validate는 이 기준점에서 206 Effects PASS했다. 생성된 runtime catalog에는
+  이미 통합된 다른 character/Valtan 미publish 변경도 함께 포함되므로 이 세션은 Valtan source/cue/binding을
+  수정하거나 그 결과를 자기 완료 증거로 소유하지 않는다.
 - 실제 Client의 동/서/남/북 cast 방향, 검격 형태·타이밍·색감은 사용자 화면 판정 대기다.
 - 워로드 W의 `fm_a_hemisphere_012` 하나가 보이는 방패 세 판을 포함하는지는 사용자
   화면 판정 후 독립 좌/중/우 cohort 추가 여부를 결정한다.
 
 ## 4. 다음 구현 단위
 
-1. 도화가 T ribbon, 도화가 V attractor/camera, 차원 F Product screen-overlay 연결을 닫는다.
-2. Fluid01 mesh와 W/J-child, 창술사 `34610` 등 source-evidence가 닫힌 exact variant를 carrier별로 확장한다.
-3. 외부 발탄 작업의 통합 상태가 안정된 뒤 이 세션의 authored/source catalog를 한 번의 Effect publisher transaction으로 sealed runtime에 반영한다.
-4. 전체 Debug/Release·publisher·focused harness 뒤 사용자가 실제 Client 화면을 판정한다.
+1. 도화가 T ribbon과 도화가 V camera/post/light composition을 닫는다.
+2. F raw 69행의 sphere/hemisphere/world shard/light/post와 scene-color refraction·multi-lane을 확장하고 W consumer를 rollout한다.
+3. Fluid01 mesh/J-child, 창술사 `34610`, Q/A 등 source-evidence가 닫힌 variant를 carrier별로 확장한다.
+4. 차원술사 T의 Server-authoritative ground targeting과 승인 target-root damage/effect를 닫는다.
+5. 이 세션의 authored/source catalog를 한 번의 Effect publisher transaction으로 sealed runtime에 반영하고 전체 Debug/Release focused harness 뒤 사용자가 실제 Client 화면을 판정한다.
