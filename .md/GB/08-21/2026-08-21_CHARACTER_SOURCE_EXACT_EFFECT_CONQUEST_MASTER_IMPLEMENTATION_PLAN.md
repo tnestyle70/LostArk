@@ -1101,7 +1101,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G | 상태 | 자동 증거 | 사용자 화면 | 다음 blocker |
 |---|---|---|---|---|
 | G00 inventory | `AUTO_PASS` | 22 occurrence family-first contract, builder check, focused 23 tests | 해당 없음 | first Product family executor |
-| G01 Tool/save | `PLANNED` | 미실행 | 미실행 | Product subset 의미 |
+| G01 Tool/save | `IMPLEMENTED` | Warlord 17090 retained subset Save/Load 7/7, invalid identity/mesh/recipe rollback | 미실행 | Light/Post/Ribbon subtype Tool tree |
 | G02 join | `PLANNED` | D 누락 실측 | 미실행 | effectref/catalog 복구 |
 | G03 shader variants | `EVIDENCE_PARTIAL` | F/W existing oracle | 미실행 | sampler/VF/pass/Product admission |
 | G04 low-risk skills | `IMPLEMENTED` | A/W action-facing Debug/Release 8/8, Dimension A 4 occurrence authored | 미실행 | runtime full publish, Artist/Warlord corrections |

@@ -4922,7 +4922,7 @@ namespace
 		return true;
 	}
 
-	bool_t Apply_Warlord17090SourceProjection(
+	bool_t Apply_Warlord17090RetainedSourceProjection(
 		Client::EFFECT_DOCUMENT_DESC& InOutDocument,
 		std::string& strOutError)
 	{
@@ -4930,7 +4930,6 @@ namespace
 		if (InOutDocument.strEffectAssetId != WARLORD_17090_EFFECT_ASSET_ID)
 			return true;
 
-		size_t iMeshCount = 0u;
 		size_t iChainCount = 0u;
 		size_t iChain06Count = 0u;
 		size_t iChain07Count = 0u;
@@ -4973,7 +4972,6 @@ namespace
 			{
 				continue;
 			}
-			++iMeshCount;
 			float3_t SourceTypeDataRotation{};
 			if (!Read_Warlord17090TypeDataMeshRotation(
 				Element, SourceTypeDataRotation, strOutError))
@@ -5083,11 +5081,17 @@ namespace
 			   never promote this carrier to Full merely because it draws. */
 			Element.Detail.Mesh.bUseModelMaterial = false;
 		}
-		if (iMeshCount != 14u || iChainCount != 12u ||
-			iChain06Count != 8u || iChain07Count != 4u)
+		/* Mutable authored documents are legal source-backed subsets.  Exact
+		   source cardinality belongs to the immutable Track-A evidence gate,
+		   never to ordinary Tool Load/Save.  Every retained chain row has already
+		   passed the stable-ID/model/material/recipe checks above; these upper
+		   bounds only prevent a future codec caller from exceeding that evidence
+		   denominator. */
+		if (iChainCount != iChain06Count + iChain07Count ||
+			iChain06Count > 8u || iChain07Count > 4u)
 		{
 			strOutError =
-				"Warlord 17090 Mesh Family cardinality changed; expected Mesh14, chain06=8, chain07=4.";
+				"Warlord 17090 retained Chain subset exceeds the source evidence denominator.";
 			return false;
 		}
 		return true;
@@ -11222,7 +11226,7 @@ bool_t Client::CEffectDocumentCodec::Parse_Value(
 		Staged.Elements.push_back(std::move(Element));
 	}
 	if (!bSourceContract &&
-		!Apply_Warlord17090SourceProjection(Staged, strOutError))
+		!Apply_Warlord17090RetainedSourceProjection(Staged, strOutError))
 	{
 		return false;
 	}

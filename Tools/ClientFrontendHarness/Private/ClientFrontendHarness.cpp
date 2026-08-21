@@ -15323,6 +15323,183 @@ namespace
 		}
 	}
 
+	void Test_Warlord17090AuthoredSubsetSave(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view CHAIN_SOURCE_MATERIAL =
+			"fx_m_mi_d_00.fx_mi.fx_d_me_chain_01_101_ma";
+		constexpr std::string_view CHAIN_06_MODEL =
+			"Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel";
+		constexpr std::string_view CHAIN_07_MODEL =
+			"Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_07.wmodel";
+		constexpr std::array<std::string_view, 4u> RETAINED_CHAIN_IDS = {{
+			"authored.source-particle.a7fae01987d89775468563e4",
+			"authored.source-particle.a2d9eabb94a5702c933cd727",
+			"authored.source-particle.72835f216dd26bb28166301f",
+			"authored.source-particle.78efab80dc7c76fc2b416cba"
+		}};
+		const std::filesystem::path SourcePath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.warlord.skill.17090.unified.effect.json");
+		EFFECT_DOCUMENT_DESC Source;
+		std::string Status;
+		const bool_t bSourceLoaded = !SourcePath.empty() &&
+			CEffectDocumentCodec::Load(SourcePath, Source, Status);
+		runner.Require(bSourceLoaded,
+			"Warlord 17090 Subset Save Loads The Immutable Full Authored Baseline");
+		if (!bSourceLoaded)
+		{
+			std::cout << "[DETAIL] " << Status << '\n';
+			return;
+		}
+
+		EFFECT_DOCUMENT_DESC Subset = Source;
+		std::erase_if(Subset.Elements, [&](const EFFECT_ELEMENT_DESC& Element)
+		{
+			if (Element.Material.strSourceMaterialPath != CHAIN_SOURCE_MATERIAL)
+				return false;
+			return std::find(RETAINED_CHAIN_IDS.begin(),
+				RETAINED_CHAIN_IDS.end(), Element.strElementId) ==
+				RETAINED_CHAIN_IDS.end();
+		});
+		const auto FindMeshAssetId = [](const EFFECT_ELEMENT_DESC& Element)
+			-> std::string_view
+		{
+			const auto Binding = std::ranges::find_if(Element.ResourceBindings,
+				[](const auto& Candidate)
+				{
+					return Candidate.strSlotId == "meshModel";
+				});
+			return Binding == Element.ResourceBindings.end() ?
+				std::string_view{} : std::string_view(Binding->strAssetId);
+		};
+		const size_t iRetainedChainCount = std::ranges::count_if(
+			Subset.Elements, [&](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.Material.strSourceMaterialPath ==
+					CHAIN_SOURCE_MATERIAL;
+			});
+		const size_t iRetainedChain06Count = std::ranges::count_if(
+			Subset.Elements, [&](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.Material.strSourceMaterialPath ==
+					CHAIN_SOURCE_MATERIAL &&
+					FindMeshAssetId(Element) == CHAIN_06_MODEL;
+			});
+		const size_t iRetainedChain07Count = std::ranges::count_if(
+			Subset.Elements, [&](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.Material.strSourceMaterialPath ==
+					CHAIN_SOURCE_MATERIAL &&
+					FindMeshAssetId(Element) == CHAIN_07_MODEL;
+			});
+		runner.Require(iRetainedChainCount == 4u &&
+			iRetainedChain06Count == 0u && iRetainedChain07Count == 4u,
+			"Warlord 17090 Subset Fixture Retains Exactly Four Proven Chain Rows");
+
+		const std::filesystem::path Destination =
+			std::filesystem::temp_directory_path() /
+			("lostark-warlord-17090-subset-" +
+				std::to_string(GetCurrentProcessId()) + "-" +
+				std::to_string(GetTickCount64()) + ".effect.json");
+		std::error_code FileError;
+		std::filesystem::remove(Destination, FileError);
+		Status.clear();
+		const bool_t bSubsetSaved = CEffectDocumentCodec::Save_Atomic(
+			Destination, Subset, Status);
+		EFFECT_DOCUMENT_DESC Reloaded;
+		const bool_t bSubsetReloaded = bSubsetSaved &&
+			CEffectDocumentCodec::Load(Destination, Reloaded, Status);
+		const bool_t bSubsetRoundTripExact = bSubsetReloaded &&
+			CEffectDocumentCodec::Serialize(Reloaded) ==
+				CEffectDocumentCodec::Serialize(Subset);
+		runner.Require(bSubsetRoundTripExact,
+			"Warlord 17090 Four-Row Chain Subset Saves And Reloads Without Cardinality Rejection");
+		if (!bSubsetRoundTripExact)
+		{
+			std::cout << "[DETAIL] " << Status << '\n';
+			std::filesystem::remove(Destination, FileError);
+			return;
+		}
+		const std::string CommittedText = Read_Text(Destination);
+		const auto FindFirstChain = [&](EFFECT_DOCUMENT_DESC& Document)
+			-> EFFECT_ELEMENT_DESC*
+		{
+			const auto Iterator = std::ranges::find_if(Document.Elements,
+				[&](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.Material.strSourceMaterialPath ==
+						CHAIN_SOURCE_MATERIAL;
+				});
+			return Iterator == Document.Elements.end() ? nullptr : &*Iterator;
+		};
+		const auto RejectsWithoutChangingDisk = [&](const EFFECT_DOCUMENT_DESC& Invalid)
+		{
+			std::string Rejection;
+			return !CEffectDocumentCodec::Save_Atomic(
+				Destination, Invalid, Rejection) && !Rejection.empty() &&
+				Read_Text(Destination) == CommittedText;
+		};
+
+		EFFECT_DOCUMENT_DESC Duplicate = Subset;
+		auto DuplicateFirst = std::ranges::find_if(Duplicate.Elements,
+			[&](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.Material.strSourceMaterialPath ==
+					CHAIN_SOURCE_MATERIAL;
+			});
+		auto DuplicateSecond = DuplicateFirst == Duplicate.Elements.end() ?
+			Duplicate.Elements.end() : std::find_if(std::next(DuplicateFirst),
+				Duplicate.Elements.end(), [&](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.Material.strSourceMaterialPath ==
+						CHAIN_SOURCE_MATERIAL;
+				});
+		if (DuplicateFirst != Duplicate.Elements.end() &&
+			DuplicateSecond != Duplicate.Elements.end())
+		{
+			DuplicateSecond->strElementId = DuplicateFirst->strElementId;
+		}
+		runner.Require(DuplicateFirst != Duplicate.Elements.end() &&
+			DuplicateSecond != Duplicate.Elements.end() &&
+			RejectsWithoutChangingDisk(Duplicate),
+			"Warlord 17090 Subset Save Rejects Duplicate Stable IDs And Preserves Disk");
+
+		EFFECT_DOCUMENT_DESC UnknownIdentity = Subset;
+		EFFECT_ELEMENT_DESC* pUnknownIdentity = FindFirstChain(UnknownIdentity);
+		if (pUnknownIdentity != nullptr)
+			pUnknownIdentity->strElementId =
+				"authored.source-particle.ffffffffffffffffffffffff";
+		runner.Require(pUnknownIdentity != nullptr &&
+			RejectsWithoutChangingDisk(UnknownIdentity),
+			"Warlord 17090 Subset Save Rejects Unknown Source Identity And Preserves Disk");
+
+		EFFECT_DOCUMENT_DESC UnknownMesh = Subset;
+		EFFECT_ELEMENT_DESC* pUnknownMesh = FindFirstChain(UnknownMesh);
+		if (pUnknownMesh != nullptr)
+		{
+			auto Binding = std::ranges::find_if(pUnknownMesh->ResourceBindings,
+				[](const auto& Candidate)
+				{
+					return Candidate.strSlotId == "meshModel";
+				});
+			if (Binding != pUnknownMesh->ResourceBindings.end())
+				Binding->strAssetId = "Effect/Warlord/Meshes/invalid.wmodel";
+		}
+		runner.Require(pUnknownMesh != nullptr &&
+			RejectsWithoutChangingDisk(UnknownMesh),
+			"Warlord 17090 Subset Save Rejects Unknown Mesh Identity And Preserves Disk");
+
+		EFFECT_DOCUMENT_DESC MalformedRecipe = Subset;
+		EFFECT_ELEMENT_DESC* pMalformed = FindFirstChain(MalformedRecipe);
+		if (pMalformed != nullptr && !pMalformed->SourceRecipe.Bursts.empty())
+			pMalformed->SourceRecipe.Bursts.front().iCountMaximum = 2u;
+		runner.Require(pMalformed != nullptr &&
+			!pMalformed->SourceRecipe.Bursts.empty() &&
+			RejectsWithoutChangingDisk(MalformedRecipe),
+			"Warlord 17090 Subset Save Rejects Malformed Source Recipe And Preserves Disk");
+		std::filesystem::remove(Destination, FileError);
+	}
+
 	void Test_RejectedSkillTypedMaterialSlices(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -36486,6 +36663,14 @@ int main(const int argc, char* argv[])
 		else
 			std::cout << "[DETAIL] " << Status << '\n';
 		Client::CEffectCatalog::Clear();
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-authored-subset-save-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_Warlord17090AuthoredSubsetSave(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
