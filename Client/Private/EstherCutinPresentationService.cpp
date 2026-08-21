@@ -16,19 +16,23 @@
 
 namespace
 {
-	constexpr uint32_t CUTIN_SHADER_PASS = 4u;
+	/* ScreenCutin pass of the dedicated esther NPC shader, whose pass order is
+	   pinned. The shared animated-mesh shader already shifted this index once
+	   when an effect pass was inserted ahead of it. */
+	constexpr uint32_t CUTIN_SHADER_PASS = 2u;
 
 	constexpr f32_t CUTIN_RECT_X = 680.f;
 	constexpr f32_t CUTIN_RECT_Y = 100.f;
 	constexpr f32_t CUTIN_RECT_WIDTH = 800.f;
 	constexpr f32_t CUTIN_RECT_HEIGHT = 800.f;
 
-	constexpr f32_t CUTIN_MODEL_YAW_DEGREES = 205.f;
-	constexpr f32_t CUTIN_CAMERA_EYE_X_PER_HEIGHT = -0.27f;
-	constexpr f32_t CUTIN_CAMERA_EYE_Y_PER_HEIGHT = 0.73f;
-	constexpr f32_t CUTIN_CAMERA_DISTANCE_PER_HEIGHT = 1.55f;
-	constexpr f32_t CUTIN_CAMERA_AT_Y_PER_HEIGHT = 0.55f;
-	constexpr f32_t CUTIN_CAMERA_FOV_DEGREES = 32.f;
+	/* User-tuned on 2026-08-21 with the F1 Esther Cutin (Debug) panel. */
+	constexpr f32_t CUTIN_MODEL_YAW_DEGREES = 244.f;
+	constexpr f32_t CUTIN_CAMERA_EYE_X_PER_HEIGHT = -0.65f;
+	constexpr f32_t CUTIN_CAMERA_EYE_Y_PER_HEIGHT = -0.05f;
+	constexpr f32_t CUTIN_CAMERA_DISTANCE_PER_HEIGHT = 1.06f;
+	constexpr f32_t CUTIN_CAMERA_AT_Y_PER_HEIGHT = 0.52f;
+	constexpr f32_t CUTIN_CAMERA_FOV_DEGREES = 39.f;
 	constexpr f32_t CUTIN_CAMERA_NEAR = 0.1f;
 	constexpr f32_t CUTIN_CAMERA_FAR = 60.f;
 	constexpr f32_t CUTIN_FALLBACK_MODEL_HEIGHT = 2.2f;
@@ -128,7 +132,7 @@ namespace
 			dynamic_pointer_cast<Engine::CShader>(
 				CGameInstance::Get().Clone_Prototype(
 					iLevelIndex,
-					TEXT("Prototype_Component_Shader_VtxAnimMeshBinary")));
+					TEXT("Prototype_Component_Shader_VtxEstherNpc")));
 		shared_ptr<Engine::CModel> stagedModel =
 			dynamic_pointer_cast<Engine::CModel>(
 				CGameInstance::Get().Clone_Prototype(

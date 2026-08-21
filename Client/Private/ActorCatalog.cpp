@@ -258,10 +258,14 @@ namespace
 				value.Is_Object() ? value.Find("actionClips") : nullptr;
 			const DATA_JSON_VALUE* pCutinWindow =
 				value.Is_Object() ? value.Find("cutinWindow") : nullptr;
+			const DATA_JSON_VALUE* pShaderProfile =
+				value.Is_Object() ? value.Find("shaderProfile") : nullptr;
 			size_t expectedFields = 6u;
 			if (nullptr != pActionClips)
 				++expectedFields;
 			if (nullptr != pCutinWindow)
+				++expectedFields;
+			if (nullptr != pShaderProfile)
 				++expectedFields;
 			if (!value.Is_Object() ||
 				expectedFields != value.Get_Object().size())
@@ -357,6 +361,15 @@ namespace
 				{
 					return false;
 				}
+			}
+			if (nullptr != pShaderProfile)
+			{
+				if (!pShaderProfile->Is_String() ||
+					pShaderProfile->Get_String() != "esther")
+				{
+					return false;
+				}
+				entry.shaderProfile = pShaderProfile->Get_String();
 			}
 			staged.push_back(std::move(entry));
 		}

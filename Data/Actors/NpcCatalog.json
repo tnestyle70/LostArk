@@ -548,7 +548,8 @@
       "actionClips": {
         "esther.strike": "npc_evt1_sk_swordofchampion_bk"
       },
-      "cutinWindow": { "startMs": 0, "endMs": 3400 }
+      "cutinWindow": { "startMs": 0, "endMs": 3400 },
+      "shaderProfile": "esther"
     },
     {
       "archetypeId": "NPC_58700",
@@ -560,7 +561,8 @@
       "actionClips": {
         "esther.strike": "npc_sk_dochul"
       },
-      "cutinWindow": { "startMs": 2300 }
+      "cutinWindow": { "startMs": 2300 },
+      "shaderProfile": "esther"
     },
     {
       "archetypeId": "NPC_59060",
@@ -572,7 +574,8 @@
       "actionClips": {
         "esther.strike": "npc_sk_breathofarcturus"
       },
-      "cutinWindow": { "startMs": 1500 }
+      "cutinWindow": { "startMs": 1500 },
+      "shaderProfile": "esther"
     }
   ]
 }

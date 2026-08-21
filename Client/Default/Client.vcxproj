@@ -450,6 +450,7 @@
   <ItemGroup>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMesh.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxAnimMeshBinary.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEstherNpc.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshPreview.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectRectPreview.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl" />
