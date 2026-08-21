@@ -297,6 +297,28 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   actual cue/catalog join, `.69/.70/.72/.78s` deterministic active count, sourceOrder `1000..1004`,
   post 2행 뒤 overlay append와 target parity, cancel/reset/natural clear를 Debug/Release focused harness가
   검증한다. 사용자 Client first-pixel과 source-exact 판정은 여전히 `PENDING`이다.
+
+### 1.18 Effect Tool Presentation Light/ScreenPost family
+
+- `EFFECT_AUTHORING_FAMILY`에 `PRESENTATION_LIGHT`와 `PRESENTATION_SCREEN_POST`를 서로 다른 family로
+  추가했다. 기존 Mesh/Sprite/MeshParticle/SpriteParticle/LocalDecal/Trail을 포함한 여덟 family가
+  element kind와 mesh carrier binding으로 정확히 resolve된다. Light/Post가 더 이상 tree에서 `END`로
+  사라지지 않으므로 count, 선택, solo/isolation, visible, delete, Apply/Revert/atomic Save 흐름을 그대로
+  사용한다.
+- Light는 기존 typed payload의 range, intensity, HDR color, ambient, falloff를 편집한다. ScreenPost는
+  RGBNoise/ZoomBlur/FilmNoise profile, intensity, secondary, frequency, HDR tint, nonzero seed를 편집한다.
+  변경된 payload는 `RECONSTRUCTED_PROFILE` status를 유지하며 global Preview ScreenPost는 계속 비영속
+  A/B gate다.
+- Presentation carrier는 WModel/DDS/material lane이 없으므로 drawable element resource UI를 표시하지
+  않고 resource binding을 거부한다. source evidence가 없는 Light/Post를 Tool에서 임의 생성하거나
+  duplicate/preset seed로 복제하지 않는다. 이미 typed payload가 enabled인 row만 수치 편집할 수 있고,
+  disabled/unresolved source row는 hide/delete만 허용한다. 신규 enabled payload는 후속 source materializer가
+  parse→validate→stage→commit으로 만들어야 한다.
+- focused harness는 synthetic authored Light+ScreenPost를 ordinary codec으로 저장·재로드한 뒤 typed field
+  수정 persistence, invalid Post profile의 disk-preserving rejection, Post 삭제 후 Light 보존, family isolation을
+  검증한다. Client/UI는 자율 실행하지 않았으므로 실제 Tool open/editor 화면과 사용자 조작 평가는
+  `PENDING`이다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -364,6 +386,8 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 | Debug/Release `--effect-dm-f-product-overlay-fast` | 각 18/18 PASS; 기존 8행 raw identity, actual cue/catalog, DDS identity, `.69/.70/.72/.78s` timeline, fifth-resource rollback, Product GPU prewarm, 짧은 world carrier보다 긴 overlay tail, lifecycle와 post→overlay order |
 | Debug/Release `--effect-screen-overlay-fast` 재검증 | 각 13/13 PASS; WARP pixels 2968, linear/sRGB `128/55`, transaction/clear/order PASS |
 | Debug/Release Client | 각 errors 0, link PASS; UI/Client 자율 실행 안 함 |
+| Debug/Release `--effect-tool-presentation-family-fast` | 각 8/8 PASS; eight-family resolve, presentation-only drawable/playback preview, typed Light/Post atomic persistence, invalid profile rollback, delete/isolation PASS |
+| Presentation Tool 변경 후 Debug/Release Client | 각 errors 0, link PASS; Tool/UI 자율 실행 안 함 |
 | `Sync-EffectDataProject.ps1 -Check` | `files=1811`, `filters=201` PASS |
 | `git diff --check` | PASS |
 

@@ -538,19 +538,26 @@ scale/alpha/dissolve 종료가 decal slab 전체를 갑자기 끄지 않도록 l
 
 ### CAP-08. Effect Tool source-aware authoring
 
-현재 Tool이 지원하는 여섯 family는 Mesh, Sprite, MeshParticle, SpriteParticle, LocalDecal, Trail이다.
+기준선 Tool이 지원하던 여섯 family는 Mesh, Sprite, MeshParticle, SpriteParticle, LocalDecal, Trail이다.
 이 분류는 AnimationTrail과 CascadeRibbon을 합치고, source DecalParticle, ModelCue, Light, ScreenPost를
-표현하지 못한다. Light와 ScreenPost는 문서/runtime에 존재하지만 tree에서 `END`로 떨어져 영구 편집할
-수 없다.
+표현하지 못했다. 첫 Presentation authoring slice는 기존 문서/runtime의 Light와 ScreenPost를 각각
+`PRESENTATION_LIGHT`, `PRESENTATION_SCREEN_POST` family로 분리해 tree/count/solo/isolation과
+Apply/Save transaction에 연결한다. material lane이 없는 presentation carrier를 drawable element 생성·
+복제·DDS binding 경로에 섞지 않는다.
 
 이번 공통 수정:
 
 - authored history trail / AnimationTrail / CascadeRibbon / spline ribbon을 subtype으로 분리
 - static LocalDecal과 source DecalParticle을 분리
-- `MODEL_CUE`, `PRESENTATION_LIGHT`, `PRESENTATION_SCREEN_POST`, 이후 ScreenOverlay/CameraImpulse family 추가
+- `PRESENTATION_LIGHT`, `PRESENTATION_SCREEN_POST`를 먼저 추가하고, `MODEL_CUE`, ScreenOverlay,
+  CameraImpulse는 각 typed lifecycle이 닫힐 때 후속 family로 추가
 - tree/count/solo/mute/isolation/Apply/Revert/Save roundtrip 연결
-- Light의 enabled/range/intensity/color/ambient/falloff 편집
+- 이미 source-backed typed payload가 enabled인 Light의 range/intensity/color/ambient/falloff 편집
 - Post의 profile/intensity/secondary/frequency/tint/seed 편집
+- typed payload가 disabled/unresolved인 source row는 Tool에서 임의 활성화하지 않고 hide/delete만 허용;
+  enabled payload 생성은 source materializer가 소유
+- Presentation family의 새 occurrence 생성, drawable preset seed, duplicate, material resource binding은
+  source-backed materialization 전까지 fail-close
 - source-owned material lane에 `inherit`, `explicit binding`, `disabled/influence=0` 세 상태 제공하되,
   기존 scalar 0으로 exact 식을 제어할 수 있는 family에는 새 schema를 만들지 않음
 - compiler source reset과 실제 disabled를 UI와 JSON에서 구분
@@ -726,8 +733,10 @@ mutable authored subset validator/projector
 ordinary authored Load와 atomic Save roundtrip은 mutable subset만 사용한다. source importer/receipt harness만
 immutable exact cardinality를 요구한다. temp save 재로드가 실패하면 기존 disk/document/preview를 유지한다.
 
-같은 G에서 CAP-08 Light/Post tree를 연결하고 워로드 BA1 RGBNoise row를 Tool에서 선택할 수 있음을
-harness로 검증한다.
+같은 G에서 CAP-08 Light/Post tree를 연결한다. harness는 여덟 authoring family가 enum과 정확히 일치하고,
+Light/Post가 서로 다른 family로 resolve되며, typed field Save/Reload, invalid profile rollback, ScreenPost 삭제 후
+Light 보존, family isolation을 검증한다. 워로드 BA1 RGBNoise 삭제는 이미 authored correction으로 닫혔으므로
+그 제거된 Product row를 다시 fixture로 삽입하지 않는다.
 
 ### G02. product join closure와 direct runtime admission
 

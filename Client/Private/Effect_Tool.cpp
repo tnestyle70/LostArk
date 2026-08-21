@@ -824,21 +824,7 @@ namespace
 	const char* AuthoringFamily_Label(
 		const Client::EFFECT_AUTHORING_FAMILY eFamily)
 	{
-		switch (eFamily)
-		{
-		case Client::EFFECT_AUTHORING_FAMILY::MESH: return "Mesh";
-		case Client::EFFECT_AUTHORING_FAMILY::SPRITE: return "Sprite";
-		case Client::EFFECT_AUTHORING_FAMILY::MESH_PARTICLE:
-			return "Mesh Particle";
-		case Client::EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE:
-			return "Sprite Particle";
-		case Client::EFFECT_AUTHORING_FAMILY::LOCAL_DECAL:
-			return "Local Decal";
-		case Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON:
-			return "Trail / Ribbon";
-		case Client::EFFECT_AUTHORING_FAMILY::END:
-		default: return "Invalid";
-		}
+		return Client::Get_EffectToolAuthoringFamilyLabel(eFamily);
 	}
 
 	Client::EFFECT_ELEMENT_KIND AuthoringFamily_Kind(
@@ -857,9 +843,20 @@ namespace
 			return Client::EFFECT_ELEMENT_KIND::DECAL;
 		case Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON:
 			return Client::EFFECT_ELEMENT_KIND::TRAIL;
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT:
+			return Client::EFFECT_ELEMENT_KIND::LIGHT;
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST:
+			return Client::EFFECT_ELEMENT_KIND::SCREEN_POST;
 		case Client::EFFECT_AUTHORING_FAMILY::END:
 		default: return Client::EFFECT_ELEMENT_KIND::END;
 		}
+	}
+
+	bool_t AuthoringFamily_CanCreate(
+		const Client::EFFECT_AUTHORING_FAMILY eFamily)
+	{
+		return eFamily >= Client::EFFECT_AUTHORING_FAMILY::MESH &&
+			eFamily <= Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON;
 	}
 
 	bool_t AuthoringFamily_RequiresMesh(
@@ -884,6 +881,10 @@ namespace
 			return "local_decal";
 		case Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON:
 			return "trail_ribbon";
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT:
+			return "presentation_light";
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST:
+			return "presentation_screen_post";
 		case Client::EFFECT_AUTHORING_FAMILY::END:
 		default: return "element";
 		}
@@ -892,29 +893,23 @@ namespace
 	Client::EFFECT_AUTHORING_FAMILY Resolve_AuthoringFamily(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
-		switch (Element.eKind)
+		return Client::Resolve_EffectToolAuthoringFamily(Element);
+	}
+
+	const char_t* ScreenPostProfile_Label(
+		const Client::EFFECT_SCREEN_POST_PROFILE eProfile)
+	{
+		switch (eProfile)
 		{
-		case Client::EFFECT_ELEMENT_KIND::MESH:
-			return Client::EFFECT_AUTHORING_FAMILY::MESH;
-		case Client::EFFECT_ELEMENT_KIND::SPRITE:
-			return Client::EFFECT_AUTHORING_FAMILY::SPRITE;
-		case Client::EFFECT_ELEMENT_KIND::PARTICLE:
-			return std::any_of(Element.ResourceBindings.begin(),
-				Element.ResourceBindings.end(),
-				[](const Client::EFFECT_RESOURCE_BINDING_DESC& Binding)
-				{
-					return Binding.strSlotId ==
-						Client::EFFECT_MESH_SHAPE_SLOT_ID;
-				}) ? Client::EFFECT_AUTHORING_FAMILY::MESH_PARTICLE :
-				Client::EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE;
-		case Client::EFFECT_ELEMENT_KIND::DECAL:
-			return Client::EFFECT_AUTHORING_FAMILY::LOCAL_DECAL;
-		case Client::EFFECT_ELEMENT_KIND::TRAIL:
-			return Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON;
-		case Client::EFFECT_ELEMENT_KIND::LIGHT:
-		case Client::EFFECT_ELEMENT_KIND::SCREEN_POST:
-		case Client::EFFECT_ELEMENT_KIND::END:
-		default: return Client::EFFECT_AUTHORING_FAMILY::END;
+		case Client::EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1:
+			return "RGB Noise (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1:
+			return "Zoom Blur (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED_V1:
+			return "Film Noise (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::END:
+		default:
+			return "Unresolved";
 		}
 	}
 
@@ -2596,6 +2591,11 @@ namespace
         const Client::EFFECT_ELEMENT_KIND eKind,
         const Client::EFFECT_RESOURCE_SLOT eSlot)
     {
+		if (Client::EFFECT_ELEMENT_KIND::LIGHT == eKind ||
+			Client::EFFECT_ELEMENT_KIND::SCREEN_POST == eKind)
+		{
+			return false;
+		}
         if (Client::EFFECT_RESOURCE_SLOT::MESH_MODEL == eSlot)
             return Client::EFFECT_ELEMENT_KIND::MESH == eKind ||
                 Client::EFFECT_ELEMENT_KIND::PARTICLE == eKind;
@@ -2669,6 +2669,11 @@ namespace
 	bool Is_ElementPreviewAdmitted(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
+		if (Element.eKind == Client::EFFECT_ELEMENT_KIND::LIGHT ||
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::SCREEN_POST)
+		{
+			return Client::Is_EffectToolPresentationPreviewAdmitted(Element);
+		}
 		// An authoring-approximate carrier owns its exact source resources and
 		// only lacks proven material semantics.  It previews so the artist can
 		// tune it; product admission is refused elsewhere and is unaffected.
@@ -2778,6 +2783,11 @@ namespace
         const Client::EFFECT_ELEMENT_DESC& Element,
         const std::string_view strSlotId)
     {
+		if (Client::EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
+			Client::EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
+		{
+			return false;
+		}
         if (strSlotId == Client::EFFECT_MESH_SHAPE_SLOT_ID)
             return Client::EFFECT_ELEMENT_KIND::MESH == Element.eKind ||
                 Client::EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind;
@@ -5600,7 +5610,18 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
 		"Exact adapter packet inspection. Persistent transforms use Stable occurrence Save / Reload; create a generic Authored starting copy before material/resource editing." :
 		"Drag numeric values for live preview; Apply updates Current Effect memory, and Save Changes writes the whole Effect.");
 	ImGui::BeginDisabled(bAdapterPacketInspection);
-	Render_ResourceSlots(false);
+	const bool_t bPresentationElement =
+		m_DetailDraft->eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+		m_DetailDraft->eKind == EFFECT_ELEMENT_KIND::SCREEN_POST;
+	if (bPresentationElement)
+	{
+		ImGui::TextDisabled(
+			"Presentation carriers have no WModel/DDS material slots. Their typed payload is edited below.");
+	}
+	else
+	{
+		Render_ResourceSlots(false);
+	}
 	Render_Detail(*m_DetailDraft, bChanged);
     if (bChanged)
     {
@@ -6193,16 +6214,24 @@ void Client::CEffect_Tool::Render_Detail(
 	ImGui::Text("%s %s %s%s", pSurface, "\xC2\xB7",
 		Get_EffectAuthoringFidelityLabel(eFidelity),
 		bModified ? " \xC2\xB7 Modified" : "");
-	/* Playback ignores the authored Detail while the source recipe owns the
-	   Element (Effect_Playback.cpp gates every module read on bEnabled), so
-	   without this the numbers below look editable and change nothing. */
-	if (Element.SourceRecipe.bEnabled)
+	const bool_t bTypedPresentationElement =
+		Element.eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+		Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST;
+	/* Drawable source carriers keep their compiler module ownership. Typed
+	   presentation carriers are different: source modules still supply their
+	   lifetime/curves, while Detail.Light/ScreenPost owns the submitted output. */
+	if (Element.SourceRecipe.bEnabled && !bTypedPresentationElement)
 	{
 		ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
 			"Source modules own playback: the values below are ignored.");
 		ImGui::TextDisabled(
 			"%zu source modules. Deleting this Element judges it as the source plays it, not as it would tune.",
 			Element.SourceRecipe.Modules.size());
+	}
+	else if (bTypedPresentationElement)
+	{
+		ImGui::TextDisabled(
+			"Typed Presentation Detail owns output; source modules retain lifetime and curve evaluation only.");
 	}
 	else
 	{
@@ -7597,15 +7626,105 @@ void Client::CEffect_Tool::Render_KindDetail(
             &Detail.Trail.bFaceCamera);
         break;
     case EFFECT_ELEMENT_KIND::LIGHT:
-        ImGui::TextWrapped(
-            "Light execution is described by the original typed module stack below. "
-            "Transform, color, timing, and every source distribution remain editable.");
+	{
+		EFFECT_LIGHT_DETAIL_DESC& Light = Detail.Light;
+		ImGui::SeparatorText("Presentation Light");
+		ImGui::TextDisabled("Profile: Point Light (Reconstructed v1)");
+		if (!Light.bEnabled)
+		{
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+				"This source row has no admitted typed Light payload. Delete or hide it here; enabling it requires source-backed materialization.");
+		}
+		bool_t bPresentationChanged = false;
+		ImGui::BeginDisabled(!Light.bEnabled);
+		bPresentationChanged |= ImGui::DragFloat("Light Range",
+			&Light.fRange, 0.01f, 0.001f, 100000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::DragFloat("Light Intensity",
+			&Light.fIntensity, 0.01f, 0.f, 100000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::ColorEdit4("Light Color",
+			&Light.vColor.x, ImGuiColorEditFlags_Float |
+			ImGuiColorEditFlags_HDR);
+		bPresentationChanged |= ImGui::ColorEdit4("Ambient Color",
+			&Light.vAmbient.x, ImGuiColorEditFlags_Float |
+			ImGuiColorEditFlags_HDR);
+		bPresentationChanged |= ImGui::DragFloat("Falloff Exponent",
+			&Light.fFalloffExponent, 0.01f, 0.001f, 128.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		ImGui::EndDisabled();
+		if (bPresentationChanged)
+		{
+			Light.eProfile = EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1;
+			Light.eStatus =
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+			bChanged = true;
+		}
+		ImGui::TextDisabled(
+			"Visible, Transform, Timing, Color Multiply, Solo and Delete use the same active Element transaction.");
         break;
+	}
     case EFFECT_ELEMENT_KIND::SCREEN_POST:
-        ImGui::TextWrapped(
-            "Screen Post execution is described by the original typed module stack below. "
-            "It is a presentation channel and is not rendered as a Particle sprite.");
+	{
+		EFFECT_SCREEN_POST_DETAIL_DESC& Post = Detail.ScreenPost;
+		ImGui::SeparatorText("Presentation Screen Post");
+		if (!Post.bEnabled)
+		{
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+				"This source row has no admitted typed Screen Post payload. Delete or hide it here; enabling it requires source-backed materialization.");
+		}
+		bool_t bPresentationChanged = false;
+		ImGui::BeginDisabled(!Post.bEnabled);
+		if (ImGui::BeginCombo("Screen Post Profile",
+			ScreenPostProfile_Label(Post.eProfile)))
+		{
+			for (uint8_t iProfile = 0u;
+				iProfile < static_cast<uint8_t>(EFFECT_SCREEN_POST_PROFILE::END);
+				++iProfile)
+			{
+				const EFFECT_SCREEN_POST_PROFILE eCandidate =
+					static_cast<EFFECT_SCREEN_POST_PROFILE>(iProfile);
+				const bool_t bSelected = eCandidate == Post.eProfile;
+				if (ImGui::Selectable(ScreenPostProfile_Label(eCandidate),
+					bSelected))
+				{
+					Post.eProfile = eCandidate;
+					bPresentationChanged = true;
+				}
+				if (bSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		bPresentationChanged |= ImGui::DragFloat("Post Intensity",
+			&Post.fIntensity, 0.001f, 0.f, 100.f, "%.4f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::DragFloat("Post Secondary Intensity",
+			&Post.fSecondaryIntensity, 0.001f, 0.f, 100.f, "%.4f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::DragFloat("Post Frequency",
+			&Post.fFrequency, 0.01f, 0.f, 1000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::ColorEdit4("Post Tint",
+			&Post.vTint.x, ImGuiColorEditFlags_Float |
+			ImGuiColorEditFlags_HDR);
+		if (ImGui::InputScalar("Post Random Seed", ImGuiDataType_U32,
+			&Post.iRandomSeed))
+		{
+			Post.iRandomSeed = (std::max)(1u, Post.iRandomSeed);
+			bPresentationChanged = true;
+		}
+		ImGui::EndDisabled();
+		if (bPresentationChanged)
+		{
+			Post.eStatus =
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+			bChanged = true;
+		}
+		ImGui::TextDisabled(
+			"The global Preview ScreenPost switch remains a non-persistent A/B gate; these fields persist only after Apply and Save.");
         break;
+	}
     case EFFECT_ELEMENT_KIND::END:
     default:
         break;
@@ -9716,9 +9835,12 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 		Try_DeleteSelectedElement();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
+	const EFFECT_ELEMENT_DESC* pSelectedForDuplicate = Find_SelectedElement();
 	const bool_t bCanDuplicateSelected = !Has_UnappliedDetailDraft() &&
 		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
-		!m_strSelectedElementId.empty();
+		nullptr != pSelectedForDuplicate &&
+		AuthoringFamily_CanCreate(
+			Resolve_AuthoringFamily(*pSelectedForDuplicate));
 	ImGui::BeginDisabled(!bCanDuplicateSelected);
 	if (ImGui::SmallButton("Duplicate Selected"))
 		Try_DuplicateSelectedElement();
@@ -9732,9 +9854,12 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::TextDisabled(
 		"Ctrl or Shift click Element rows to mark several, then Delete; Duplicate copies the open row as one independent occurrence.");
 	ImGui::SameLine();
+	const EFFECT_ELEMENT_DESC* pSelectedForSeed = Find_SelectedElement();
 	const bool_t bCanSeedSelected =
 		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
-		!m_strSelectedElementId.empty() && !Has_UnappliedDetailDraft();
+		nullptr != pSelectedForSeed && !Has_UnappliedDetailDraft() &&
+		AuthoringFamily_CanCreate(
+			Resolve_AuthoringFamily(*pSelectedForSeed));
 	ImGui::BeginDisabled(!bCanSeedSelected);
 	if (ImGui::SmallButton("Use Selected as New Layer Seed"))
 		Try_UseSelectedElementAsAuthoringPreset();
@@ -12799,10 +12924,11 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		m_eSelectedAuthoringFamily;
 	const EFFECT_ELEMENT_KIND eElementKind =
 		AuthoringFamily_Kind(eAuthoringFamily);
-	if (EFFECT_AUTHORING_FAMILY::END == eAuthoringFamily ||
+	if (!AuthoringFamily_CanCreate(eAuthoringFamily) ||
 		EFFECT_ELEMENT_KIND::END == eElementKind)
 	{
-		m_strElementStatus = "Select one supported authoring family.";
+		m_strElementStatus =
+			"Select one drawable authoring family. Presentation Light and Screen Post creation requires source-backed materialization.";
 		return false;
 	}
 
@@ -13256,10 +13382,10 @@ bool_t Client::CEffect_Tool::Try_StageElementAsAuthoringPreset(
 	}
 	EFFECT_ELEMENT_DESC Preset = GenericCopy.Elements.front();
 	const EFFECT_AUTHORING_FAMILY eFamily = Resolve_AuthoringFamily(Preset);
-	if (EFFECT_AUTHORING_FAMILY::END == eFamily)
+	if (!AuthoringFamily_CanCreate(eFamily))
 	{
 		m_strElementStatus =
-			"The selected Element family is not authorable here.";
+			"Presentation Light and Screen Post are edited or deleted in the active Effect; creating them from a drawable Element preset is not admitted.";
 		return false;
 	}
 	Preset.strGroupId = "manual.hit1";
@@ -13413,10 +13539,11 @@ bool_t Client::CEffect_Tool::Try_CreateElementDraft()
 		return false;
 	}
     const EFFECT_ELEMENT_KIND eKind = AuthoringFamily_Kind(eFamily);
-    if (EFFECT_AUTHORING_FAMILY::END == eFamily ||
+    if (!AuthoringFamily_CanCreate(eFamily) ||
         EFFECT_ELEMENT_KIND::END == eKind)
     {
-        m_strElementStatus = "Select one supported Element Type.";
+		m_strElementStatus =
+			"Select one drawable Element Type. Presentation Light and Screen Post creation requires source-backed materialization.";
         return false;
     }
     if (EFFECT_AUTHORING_FAMILY::MESH_PARTICLE == eFamily &&
@@ -13584,6 +13711,12 @@ bool_t Client::CEffect_Tool::Try_DuplicateSelectedElement()
 	{
 		m_strElementStatus =
 			"The selected Element no longer exists; nothing was duplicated.";
+		return false;
+	}
+	if (!AuthoringFamily_CanCreate(Resolve_AuthoringFamily(*Selected)))
+	{
+		m_strElementStatus =
+			"Presentation Light and Screen Post duplication is not admitted; use source-backed materialization or edit/delete the existing occurrence.";
 		return false;
 	}
 	if (Selected->TransformInheritance.bEnabled)
@@ -16463,11 +16596,19 @@ bool_t Client::CEffect_Tool::Try_BindResource(
 			"The exact adapter packet is inspection-only. Save the selected Decal/Trail as a generic Authored starting copy before binding resources.";
 		return false;
 	}
-    if (!m_ActiveDocument.has_value() || nullptr == Find_SelectedElement())
+    const EFFECT_ELEMENT_DESC* pSelectedElement = Find_SelectedElement();
+    if (!m_ActiveDocument.has_value() || nullptr == pSelectedElement)
     {
         m_strResourceStatus = "Select an Element before choosing a resource.";
         return false;
     }
+	if (pSelectedElement->eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+		pSelectedElement->eKind == EFFECT_ELEMENT_KIND::SCREEN_POST)
+	{
+		m_strResourceStatus =
+			"Presentation Light and Screen Post have no material resource lanes; edit their typed fields or delete the occurrence.";
+		return false;
+	}
     EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
     EFFECT_ELEMENT_DESC* pElement = nullptr;
     for (EFFECT_ELEMENT_DESC& Element : Staged.Elements)
@@ -18903,10 +19044,10 @@ bool_t Client::CEffect_Tool::Try_OpenVisualProgramElementForAuthoring(
 
 	EFFECT_ELEMENT_DESC Preset = Selection.GenericElement;
 	const EFFECT_AUTHORING_FAMILY eFamily = Resolve_AuthoringFamily(Preset);
-	if (EFFECT_AUTHORING_FAMILY::END == eFamily)
+	if (!AuthoringFamily_CanCreate(eFamily))
 	{
 		m_strElementStatus =
-			"The selected Element family is not authorable here.";
+			"Presentation Light and Screen Post are edited or deleted in the active Effect; creating them from a source preset is not admitted.";
 		return false;
 	}
 	Preset.strGroupId = "manual.hit1";
