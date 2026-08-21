@@ -49,6 +49,76 @@ namespace
 		});
 	}
 
+	bool HasExactProperties(
+		const DATA_JSON_VALUE& value,
+		const std::initializer_list<const char*> names)
+	{
+		if (!value.Is_Object() || value.Get_Object().size() != names.size())
+			return false;
+		for (const char* name : names)
+		{
+			if (nullptr == value.Find(name))
+				return false;
+		}
+		return true;
+	}
+
+	bool IsEffectTextureAssetId(const std::string& value)
+	{
+		if (value.empty() || value.size() > 260u ||
+			0u != value.rfind("Effect/", 0u) ||
+			value.size() < 4u || value.substr(value.size() - 4u) != ".dds" ||
+			std::string::npos != value.find('\\') ||
+			std::string::npos != value.find(':'))
+		{
+			return false;
+		}
+		std::size_t begin = 0u;
+		while (begin <= value.size())
+		{
+			const std::size_t end = value.find('/', begin);
+			if (value.substr(begin, end - begin) == "..")
+				return false;
+			if (std::string::npos == end)
+				break;
+			begin = end + 1u;
+		}
+		return true;
+	}
+
+	bool ReadFiniteFloat(const DATA_JSON_VALUE* value, float& output)
+	{
+		if (nullptr == value || !value->Is_Number() ||
+			!std::isfinite(value->Get_Number()) ||
+			std::abs(value->Get_Number()) >
+				static_cast<double>((std::numeric_limits<float>::max)()))
+		{
+			return false;
+		}
+		output = static_cast<float>(value->Get_Number());
+		return std::isfinite(output);
+	}
+
+	bool ReadTint(const DATA_JSON_VALUE* value, float4_t& output)
+	{
+		if (nullptr == value || !value->Is_Array() ||
+			4u != value->Get_Array().size())
+		{
+			return false;
+		}
+		float components[4]{};
+		for (std::size_t index = 0u; index < 4u; ++index)
+		{
+			if (!ReadFiniteFloat(&value->Get_Array()[index], components[index]) ||
+				components[index] < 0.f || components[index] > 1.f)
+			{
+				return false;
+			}
+		}
+		output = { components[0], components[1], components[2], components[3] };
+		return true;
+	}
+
 	LostArk::Shared::CHARACTER_CLASS_ID ParseCharacterClass(
 		const std::string& value)
 	{
@@ -118,13 +188,16 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 {
 	DATA_JSON_VALUE damageRoot;
 	DATA_JSON_VALUE skillRoot;
+	DATA_JSON_VALUE targetingRoot;
 	if (!ReadDocument(L"Balance/DamageProfiles.json", damageRoot) ||
-		!ReadDocument(L"Balance/PlayerSkills.json", skillRoot))
+		!ReadDocument(L"Balance/PlayerSkills.json", skillRoot) ||
+		!ReadDocument(L"Balance/PlayerSkillTargeting.json", targetingRoot))
 	{
 		outStatus = "Missing player skill balance document";
 		return false;
 	}
-	if (!HasFormatVersion(damageRoot, 2.0) || !HasFormatVersion(skillRoot, 3.0))
+	if (!HasFormatVersion(damageRoot, 2.0) || !HasFormatVersion(skillRoot, 3.0) ||
+		!HasFormatVersion(targetingRoot, 1.0))
 	{
 		outStatus = "Player skill balance document version mismatch";
 		return false;
@@ -184,6 +257,8 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		const DATA_JSON_VALUE* cooldown = Required(value, "cooldownMs", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* resourceCost = Required(
 			value, "resourceCost", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* maximumRange = Required(
+			value, "maximumRange", DATA_JSON_TYPE::NUMBER);
 		const DATA_JSON_VALUE* damageId = Required(
 			value, "serverDamageProfileId", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* kind = Required(value, "skillKind", DATA_JSON_TYPE::STRING);
@@ -196,6 +271,7 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		if (nullptr == id || nullptr == characterClass || nullptr == slot ||
 			nullptr == name || nullptr == action ||
 			nullptr == cooldown || nullptr == resourceCost ||
+			nullptr == maximumRange ||
 			resourceCost->Get_Number() < 0.0 ||
 			nullptr == damageId || nullptr == kind ||
 			nullptr == requiredStance || nullptr == setsStance ||
@@ -232,6 +308,12 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		definition.iCooldownMs = static_cast<std::uint32_t>(cooldown->Get_Number());
 		definition.iResourceCost =
 			static_cast<std::uint32_t>(resourceCost->Get_Number());
+		if (!ReadFiniteFloat(maximumRange, definition.fMaximumRange) ||
+			definition.fMaximumRange < 0.f)
+		{
+			outStatus = "PlayerSkills.json has an invalid maximumRange";
+			return false;
+		}
 		if (!damageId->Get_String().empty())
 		{
 			const auto damage = damages.find(damageId->Get_String());
@@ -326,6 +408,119 @@ bool Client::CPlayerSkillCatalog::Load(std::string& outStatus)
 		}
 
 		skills.push_back(std::move(definition));
+	}
+
+	if (!HasExactProperties(targetingRoot, { "schema", "formatVersion", "skills" }))
+	{
+		outStatus = "PlayerSkillTargeting.json header fields are invalid";
+		return false;
+	}
+	const DATA_JSON_VALUE* targetingSchema = Required(
+		targetingRoot, "schema", DATA_JSON_TYPE::STRING);
+	const DATA_JSON_VALUE* targetingRows = Required(
+		targetingRoot, "skills", DATA_JSON_TYPE::ARRAY);
+	if (nullptr == targetingSchema ||
+		targetingSchema->Get_String() != "lostark.player-skill-targeting" ||
+		nullptr == targetingRows)
+	{
+		outStatus = "PlayerSkillTargeting.json header is invalid";
+		return false;
+	}
+	std::vector<LostArk::Shared::SKILL_ID> claimedTargetSkills;
+	for (const DATA_JSON_VALUE& value : targetingRows->Get_Array())
+	{
+		if (!HasExactProperties(value,
+			{ "skillId", "targetingKind", "maximumRange", "requiresWalkable",
+			  "rangePreview", "targetPreview" }))
+		{
+			outStatus = "PlayerSkillTargeting.json row fields are invalid";
+			return false;
+		}
+		std::uint32_t skillId = 0u;
+		float maximumRange = 0.f;
+		const DATA_JSON_VALUE* kind = Required(
+			value, "targetingKind", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* walkable = Required(
+			value, "requiresWalkable", DATA_JSON_TYPE::BOOLEAN);
+		if (!ReadU32(value.Find("skillId"), skillId) || 0u == skillId ||
+			!ReadFiniteFloat(value.Find("maximumRange"), maximumRange) ||
+			maximumRange <= 0.f || nullptr == kind ||
+			kind->Get_String() != "GROUND_POINT" || nullptr == walkable ||
+			!walkable->Get_Boolean() ||
+			std::find(claimedTargetSkills.begin(), claimedTargetSkills.end(), skillId) !=
+				claimedTargetSkills.end())
+		{
+			outStatus = "PlayerSkillTargeting.json row is invalid or duplicated";
+			return false;
+		}
+		auto owner = std::find_if(skills.begin(), skills.end(),
+			[skillId](const PLAYER_SKILL_DEFINITION& skill)
+			{
+				return skill.iSkillId == skillId;
+			});
+		if (skills.end() == owner ||
+			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE != owner->eSkillKind ||
+			std::abs(owner->fMaximumRange - maximumRange) > 0.0001f)
+		{
+			outStatus = "PlayerSkillTargeting.json references a non-active skill";
+			return false;
+		}
+		auto parsePreview = [&outStatus, skillId](
+			const DATA_JSON_VALUE* preview,
+			PLAYER_SKILL_TARGET_PREVIEW& output) -> bool
+		{
+			if (nullptr == preview || !HasExactProperties(*preview,
+				{ "assetId", "diameter", "coverageChannel", "validTint",
+				  "invalidTint", "assetIdentityBasis", "usageBasis",
+				  "sourceEvidence" }))
+			{
+				outStatus = "PlayerSkillTargeting.json preview fields are invalid";
+				return false;
+			}
+			const DATA_JSON_VALUE* assetId = Required(
+				*preview, "assetId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* coverage = Required(
+				*preview, "coverageChannel", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* identityBasis = Required(
+				*preview, "assetIdentityBasis", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* usageBasis = Required(
+				*preview, "usageBasis", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* evidence = Required(
+				*preview, "sourceEvidence", DATA_JSON_TYPE::STRING);
+			if (nullptr == assetId || !IsEffectTextureAssetId(assetId->Get_String()) ||
+				!ReadFiniteFloat(preview->Find("diameter"), output.fDiameter) ||
+				output.fDiameter <= 0.f || nullptr == coverage ||
+				coverage->Get_String() != "R" ||
+				!ReadTint(preview->Find("validTint"), output.vValidTint) ||
+				!ReadTint(preview->Find("invalidTint"), output.vInvalidTint) ||
+				nullptr == identityBasis || nullptr == usageBasis || nullptr == evidence ||
+				(identityBasis->Get_String() != "SOURCE_EXTRACTED" &&
+				 identityBasis->Get_String() != "RUNTIME_RESOURCE") ||
+				usageBasis->Get_String() != "PROJECT_TUNED" ||
+				(identityBasis->Get_String() == "SOURCE_EXTRACTED") !=
+					!evidence->Get_String().empty())
+			{
+				outStatus = "PlayerSkillTargeting.json preview semantics are invalid for " +
+					std::to_string(skillId);
+				return false;
+			}
+			output.strAssetId = assetId->Get_String();
+			output.strAssetIdentityBasis = identityBasis->Get_String();
+			output.strUsageBasis = usageBasis->Get_String();
+			output.strSourceEvidence = evidence->Get_String();
+			return true;
+		};
+		if (!parsePreview(value.Find("rangePreview"), owner->RangePreview) ||
+			!parsePreview(value.Find("targetPreview"), owner->TargetPreview) ||
+			std::abs(owner->RangePreview.fDiameter - maximumRange * 2.f) > 0.0001f)
+		{
+			return false;
+		}
+		owner->eTargetIntent =
+			LostArk::Shared::SKILL_TARGET_INTENT_KIND::GROUND_POINT;
+		owner->fTargetMaximumRange = maximumRange;
+		owner->requiresWalkableTarget = true;
+		claimedTargetSkills.push_back(skillId);
 	}
 
 	g_Skills = std::move(skills);

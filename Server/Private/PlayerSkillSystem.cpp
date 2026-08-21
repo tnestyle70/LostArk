@@ -324,45 +324,89 @@ namespace
 		outDirectionX = std::sin(yawRadians);
 		outDirectionZ = std::cos(yawRadians);
 	}
+
+	bool TryResolveSkillTarget(
+		const LostArk::Server::SERVER_PLAYER& player,
+		const LostArk::Server::PLAYER_SKILL_DEFINITION& skill,
+		const LostArk::Shared::C2S_USE_SKILL& command,
+		const LostArk::Server::CServerNavigation* navigation,
+		LostArk::Server::SERVER_NAV_POINT& outTarget)
+	{
+		using namespace LostArk::Shared;
+		if (command.eTargetIntent != skill.eTargetIntent)
+			return false;
+		if (SKILL_TARGET_INTENT_KIND::AIM_POINT == skill.eTargetIntent)
+		{
+			outTarget = {};
+			return true;
+		}
+		if (SKILL_TARGET_INTENT_KIND::GROUND_POINT != skill.eTargetIntent ||
+			nullptr == navigation || !navigation->Is_Loaded() ||
+			!std::isfinite(command.fAimX) || !std::isfinite(command.fAimZ) ||
+			!std::isfinite(skill.fTargetMaximumRange) ||
+			skill.fTargetMaximumRange <= 0.f)
+		{
+			return false;
+		}
+		const float deltaX = command.fAimX - player.fPositionX;
+		const float deltaZ = command.fAimZ - player.fPositionZ;
+		const float rangeSquared =
+			skill.fTargetMaximumRange * skill.fTargetMaximumRange;
+		/* Small float tolerance accepts a Client point clamped to exactly 11 m
+		 without widening the authored gameplay range by a visible amount. */
+		if (deltaX * deltaX + deltaZ * deltaZ > rangeSquared + 0.001f)
+			return false;
+		if (skill.requiresWalkableTarget)
+			return navigation->Sample_Position(
+				command.fAimX, command.fAimZ, outTarget);
+		outTarget = { command.fAimX, player.fPositionY, command.fAimZ };
+		return true;
+	}
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Try_Start(
 	SERVER_PLAYER& player,
 	const LostArk::Shared::C2S_USE_SKILL& command,
 	const CGameplayCatalog& catalog,
-	const std::uint32_t actionStartTick) const
+	const std::uint32_t actionStartTick,
+	const CServerNavigation* navigation) const
 {
 	return Try_StartInternal(
-		player, command, catalog, actionStartTick, false);
+		player, command, catalog, actionStartTick, false, navigation);
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Try_StartPending(
 	SERVER_PLAYER& player,
 	const LostArk::Shared::C2S_USE_SKILL& command,
 	const CGameplayCatalog& catalog,
-	const std::uint32_t actionStartTick) const
+	const std::uint32_t actionStartTick,
+	const CServerNavigation* navigation) const
 {
 	return Try_StartInternal(
-		player, command, catalog, actionStartTick, true);
+		player, command, catalog, actionStartTick, true, navigation);
 }
 
 bool LostArk::Server::CPlayerSkillSystem::Try_StagePendingSkill(
 	SERVER_PLAYER& player,
 	const LostArk::Shared::C2S_USE_SKILL& command,
-	const CGameplayCatalog& catalog) const
+	const CGameplayCatalog& catalog,
+	const CServerNavigation* navigation) const
 {
 	using namespace LostArk::Shared;
 	const PLAYER_SKILL_DEFINITION* running =
 		catalog.Find_Skill(player.iCurrentSkillId);
 	const PLAYER_SKILL_DEFINITION* requested =
 		catalog.Find_Skill(command.iSkillId);
+	SERVER_NAV_POINT stagedTarget{};
 	if (PLAYER_ACTION_STATE::SKILL != player.eAction ||
 		nullptr == running || PLAYER_SKILL_KIND::COMBO != running->eSkillKind ||
 		command.iSkillId == player.iCurrentSkillId ||
 		!IsNewerSequence(command.iClientSequence, player.iLastSkillSequence) ||
 		nullptr == requested || requested->eCharacterClass != player.eCharacterClass ||
 		0u == player.iCurrentHp ||
-		!std::isfinite(command.fAimX) || !std::isfinite(command.fAimZ))
+		!std::isfinite(command.fAimX) || !std::isfinite(command.fAimZ) ||
+		!TryResolveSkillTarget(
+			player, *requested, command, navigation, stagedTarget))
 	{
 		return false;
 	}
@@ -377,10 +421,12 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	const LostArk::Shared::C2S_USE_SKILL& command,
 	const CGameplayCatalog& catalog,
 	const std::uint32_t actionStartTick,
-	const bool sequenceAlreadyConsumed) const
+	const bool sequenceAlreadyConsumed,
+	const CServerNavigation* navigation) const
 {
 	using namespace LostArk::Shared;
 	const PLAYER_SKILL_DEFINITION* skill = catalog.Find_Skill(command.iSkillId);
+	SERVER_NAV_POINT stagedTarget{};
 	if ((!sequenceAlreadyConsumed &&
 			!IsNewerSequence(command.iClientSequence, player.iLastSkillSequence)) ||
 		nullptr == skill || skill->eCharacterClass != player.eCharacterClass ||
@@ -388,6 +434,11 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 		!std::isfinite(command.fAimX) || !std::isfinite(command.fAimZ) ||
 		(PLAYER_STANCE_ID::NONE != skill->eRequiredStance &&
 			skill->eRequiredStance != player.eStance))
+	{
+		return false;
+	}
+	if (!TryResolveSkillTarget(
+		player, *skill, command, navigation, stagedTarget))
 	{
 		return false;
 	}
@@ -433,7 +484,7 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	if ((cooldown != player.CooldownEndTickBySkillId.end() &&
 		static_cast<std::int32_t>(cooldown->second - actionStartTick) > 0) ||
 		player.iCurrentResource < skill->iResourceCost ||
-		player.iCurrentIdentity < skill->iIdentityCost)
+			player.iCurrentIdentity < skill->iIdentityCost)
 	{
 		return false;
 	}
@@ -471,6 +522,14 @@ bool LostArk::Server::CPlayerSkillSystem::Try_StartInternal(
 	player.fSkillAimDirectionX = directionX;
 	player.fSkillAimDirectionZ = directionZ;
 	player.fSkillAimDistance = AimDistance(player, command.fAimX, command.fAimZ);
+	player.Clear_SkillTarget();
+	if (SKILL_TARGET_INTENT_KIND::GROUND_POINT == skill->eTargetIntent)
+	{
+		player.hasSkillTarget = true;
+		player.fSkillTargetX = stagedTarget.x;
+		player.fSkillTargetY = stagedTarget.y;
+		player.fSkillTargetZ = stagedTarget.z;
+	}
 	player.hasAppliedSkillDamage = false;
 	player.iAppliedHitMask = 0;
 	player.iSpawnedProjectileMask = 0;
@@ -820,6 +879,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.iComboStage = 0;
 		player.hasBufferedComboInput = false;
 		player.PendingCommand.Clear();
+		player.Clear_SkillTarget();
 		player.Projectiles.clear();
 		return;
 	}
@@ -868,6 +928,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 		player.iComboStage = 0;
 		player.hasBufferedComboInput = false;
 		player.PendingCommand.Clear();
+		player.Clear_SkillTarget();
 		return;
 	}
 	player.fActionElapsedSeconds += fixedDeltaSeconds;
@@ -1099,18 +1160,22 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 					continue;
 				}
 				player.iAppliedHitMask |= bit;
+				const float hitOriginX = player.hasSkillTarget ?
+					player.fSkillTargetX : player.fPositionX;
+				const float hitOriginZ = player.hasSkillTarget ?
+					player.fSkillTargetZ : player.fPositionZ;
 				std::vector<std::pair<float, SERVER_WORLD_ENTITY*>> targets;
 				for (SERVER_WORLD_ENTITY& entity : worldEntities)
 				{
 					if (!isDamageable(entity) ||
-						!Hit_ShapeOverlaps(hit, player.fPositionX, player.fPositionZ,
+						!Hit_ShapeOverlaps(hit, hitOriginX, hitOriginZ,
 							player.fSkillAimDirectionX, player.fSkillAimDirectionZ,
 							targetBodyOf(entity)))
 					{
 						continue;
 					}
-					const float deltaX = entity.fPositionX - player.fPositionX;
-					const float deltaZ = entity.fPositionZ - player.fPositionZ;
+					const float deltaX = entity.fPositionX - hitOriginX;
+					const float deltaZ = entity.fPositionZ - hitOriginZ;
 					targets.emplace_back(deltaX * deltaX + deltaZ * deltaZ, &entity);
 				}
 				std::sort(targets.begin(), targets.end(),
@@ -1136,17 +1201,21 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 	{
 		SERVER_WORLD_ENTITY* closestBoss = nullptr;
 		float closestDistanceSquared = 0.f;
+		const float hitOriginX = player.hasSkillTarget ?
+			player.fSkillTargetX : player.fPositionX;
+		const float hitOriginZ = player.hasSkillTarget ?
+			player.fSkillTargetZ : player.fPositionZ;
 		const LostArk::Shared::CombatCollision::CIRCLE_XZ skillCircle{
-			player.fPositionX,
-			player.fPositionZ,
+			hitOriginX,
+			hitOriginZ,
 			skill->fMaximumRange
 		};
 		for (SERVER_WORLD_ENTITY& entity : worldEntities)
 		{
 			if (!isDamageable(entity))
 				continue;
-			const float deltaX = entity.fPositionX - player.fPositionX;
-			const float deltaZ = entity.fPositionZ - player.fPositionZ;
+			const float deltaX = entity.fPositionX - hitOriginX;
+			const float deltaZ = entity.fPositionZ - hitOriginZ;
 			const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
 			if (LostArk::Shared::CombatCollision::Circles_Overlap(
 				skillCircle, targetBodyOf(entity)) &&
@@ -1254,6 +1323,7 @@ void LostArk::Server::CPlayerSkillSystem::Update(
 			player.iComboStage = 0;
 			player.hasBufferedComboInput = false;
 			player.hasReleasedHold = false;
+			player.Clear_SkillTarget();
 			/* A pending explicit command deliberately survives this action reset;
 			GameRoom consumes it immediately after Update from the final position. */
 		}
@@ -1359,6 +1429,7 @@ void LostArk::Server::CPlayerSkillSystem::Arm_PlayerHitReaction(
 	{
 		player.eAction = PLAYER_ACTION_STATE::KNOCKDOWN;
 		player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.Clear_SkillTarget();
 		player.iComboStage = 0u;
 		player.hasBufferedComboInput = false;
 		player.PendingCommand.Clear();

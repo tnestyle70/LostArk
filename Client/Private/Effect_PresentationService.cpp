@@ -976,6 +976,9 @@ namespace
     {
 		if (!Owner.Is_Valid() || !Owner.Try_Get_PresentationRoot(Out))
             return false;
+		if ("skill_target" == strAnchorSlotId)
+			return nullptr != Owner.pCharacter &&
+				Owner.pCharacter->Try_Get_SkillTargetRoot(Out);
         if ("root" == strAnchorSlotId)
             return true;
         const std::shared_ptr<Engine::CModel> pModel =

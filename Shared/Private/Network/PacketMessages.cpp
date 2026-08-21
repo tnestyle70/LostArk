@@ -47,6 +47,14 @@ namespace
 				LostArk::Shared::PLAYER_STANCE_ID::END);
 	}
 
+	bool Is_Valid_SkillTargetIntent(
+		const LostArk::Shared::SKILL_TARGET_INTENT_KIND intent)
+	{
+		return static_cast<std::uint8_t>(intent) <
+			static_cast<std::uint8_t>(
+				LostArk::Shared::SKILL_TARGET_INTENT_KIND::END);
+	}
+
 	bool Is_Valid_Cooldowns(
 		const std::vector<LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT>& cooldowns)
 	{
@@ -82,6 +90,14 @@ namespace
             Is_Valid_Locomotion(snapshot.eLocomotionState) &&
 			Is_Valid_PlayerAction(snapshot.eAction) &&
 			Is_Valid_Stance(snapshot.eStance) &&
+			std::isfinite(snapshot.fSkillTargetX) &&
+			std::isfinite(snapshot.fSkillTargetY) &&
+			std::isfinite(snapshot.fSkillTargetZ) &&
+			(snapshot.hasSkillTarget ?
+				(LostArk::Shared::PLAYER_ACTION_STATE::SKILL == snapshot.eAction) :
+				(0.f == snapshot.fSkillTargetX &&
+				 0.f == snapshot.fSkillTargetY &&
+				 0.f == snapshot.fSkillTargetZ)) &&
 			0 != snapshot.iMaximumHp &&
 			snapshot.iCurrentHp <= snapshot.iMaximumHp &&
 			0 != snapshot.iMaximumResource &&
@@ -1441,6 +1457,7 @@ bool LostArk::Shared::Write_Message(
 {
 	if (0 == message.iClientSequence ||
 		INVALID_SKILL_ID == message.iSkillId ||
+		!Is_Valid_SkillTargetIntent(message.eTargetIntent) ||
 		!std::isfinite(message.fAimX) ||
 		!std::isfinite(message.fAimZ))
 	{
@@ -1449,6 +1466,7 @@ bool LostArk::Shared::Write_Message(
 
 	writer.Write_U32(message.iClientSequence);
 	writer.Write_U32(message.iSkillId);
+	writer.Write_U8(static_cast<std::uint8_t>(message.eTargetIntent));
 	writer.Write_F32(message.fAimX);
 	writer.Write_F32(message.fAimZ);
 	return true;
@@ -1459,17 +1477,23 @@ bool LostArk::Shared::Read_Message(
 	C2S_USE_SKILL& message)
 {
 	C2S_USE_SKILL decoded{};
+	std::uint8_t rawTargetIntent = 0;
 	if (!reader.Read_U32(decoded.iClientSequence) ||
 		!reader.Read_U32(decoded.iSkillId) ||
+		!reader.Read_U8(rawTargetIntent) ||
 		!reader.Read_F32(decoded.fAimX) ||
 		!reader.Read_F32(decoded.fAimZ) ||
 		0 == decoded.iClientSequence ||
 		INVALID_SKILL_ID == decoded.iSkillId ||
+		!Is_Valid_SkillTargetIntent(
+			static_cast<SKILL_TARGET_INTENT_KIND>(rawTargetIntent)) ||
 		!std::isfinite(decoded.fAimX) ||
 		!std::isfinite(decoded.fAimZ))
 	{
 		return false;
 	}
+	decoded.eTargetIntent =
+		static_cast<SKILL_TARGET_INTENT_KIND>(rawTargetIntent);
 
 	message = decoded;
 	return true;
@@ -1779,6 +1803,10 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		writer.Write_U8(static_cast<std::uint8_t>(player.eStance));
 		writer.Write_U32(player.iSkillId);
 		writer.Write_U32(player.iActionStartTick);
+		writer.Write_U8(player.hasSkillTarget ? 1u : 0u);
+		writer.Write_F32(player.fSkillTargetX);
+		writer.Write_F32(player.fSkillTargetY);
+		writer.Write_F32(player.fSkillTargetZ);
 		writer.Write_U32(player.iCurrentHp);
 		writer.Write_U32(player.iMaximumHp);
 		writer.Write_U32(player.iCurrentResource);
@@ -1919,6 +1947,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
         std::uint8_t rawLocomotion = 0;
 		std::uint8_t rawAction = 0;
 		std::uint8_t rawStance = 0;
+		std::uint8_t rawHasSkillTarget = 0;
 		std::uint8_t rawCombatReady = 0;
 		std::uint8_t cooldownCount = 0;
 
@@ -1933,6 +1962,11 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 			!reader.Read_U8(rawStance) ||
 			!reader.Read_U32(player.iSkillId) ||
 			!reader.Read_U32(player.iActionStartTick) ||
+			!reader.Read_U8(rawHasSkillTarget) ||
+			rawHasSkillTarget > 1u ||
+			!reader.Read_F32(player.fSkillTargetX) ||
+			!reader.Read_F32(player.fSkillTargetY) ||
+			!reader.Read_F32(player.fSkillTargetZ) ||
 			!reader.Read_U32(player.iCurrentHp) ||
 			!reader.Read_U32(player.iMaximumHp) ||
 			!reader.Read_U32(player.iCurrentResource) ||
@@ -1955,6 +1989,7 @@ bool LostArk::Shared::Read_Message(CPacketReader& reader, S2C_WORLD_SNAPSHOT& me
 		player.eCharacterClass = static_cast<CHARACTER_CLASS_ID>(rawCharacterClass);
 		player.eAction = static_cast<PLAYER_ACTION_STATE>(rawAction);
 		player.eStance = static_cast<PLAYER_STANCE_ID>(rawStance);
+		player.hasSkillTarget = 0u != rawHasSkillTarget;
 		player.isCombatReady = 0u != rawCombatReady;
 		player.Cooldowns.reserve(cooldownCount);
 		for (std::uint8_t cooldownIndex = 0;

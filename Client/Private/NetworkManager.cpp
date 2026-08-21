@@ -415,6 +415,30 @@ bool CNetworkManager::Send_UseSkill(
 		frameBytes) && Send_All(frameBytes);
 }
 
+bool CNetworkManager::Send_UseGroundTargetSkill(
+	const std::uint32_t clientSequence,
+	const LostArk::Shared::SKILL_ID skillId,
+	const float targetX,
+	const float targetZ)
+{
+	using namespace LostArk::Shared;
+	if (!Is_Connected())
+		return false;
+	C2S_USE_SKILL message{};
+	message.iClientSequence = clientSequence;
+	message.iSkillId = skillId;
+	message.eTargetIntent = SKILL_TARGET_INTENT_KIND::GROUND_POINT;
+	message.fAimX = targetX;
+	message.fAimZ = targetZ;
+	CPacketWriter payloadWriter;
+	if (!Write_Message(payloadWriter, message))
+		return false;
+	std::vector<std::uint8_t> frameBytes;
+	return Build_Packet_Frame(
+		PACKET_TYPE::C2S_USE_SKILL,
+		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
+}
+
 bool CNetworkManager::Send_ReleaseSkill(
 	const std::uint32_t clientSequence,
 	const LostArk::Shared::SKILL_ID skillId)

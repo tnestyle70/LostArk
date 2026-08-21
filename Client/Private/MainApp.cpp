@@ -29,6 +29,7 @@
 #include "RuntimeAssetRoot.h"
 #include "InventoryView.h"
 #include "SkillWindowView.h"
+#include "SkillGroundTargetPreview.h"
 #include "UI_Sprite.h"
 
 #ifdef _DEBUG
@@ -2405,6 +2406,15 @@ HRESULT CMainApp::Ready_Prototype_For_Static()
 {
 	if (FAILED(CGameInstance::Get().Add_Prototype(
 		ETOUI(LEVEL::STATIC),
+		CSkillGroundTargetPreview::SHADER_TAG,
+		CShader::Create(
+			m_pDevice,
+			m_pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxSkillGroundTargetPreview.hlsl"),
+			VTXTEX::Elements,
+			VTXTEX::iNumElements))) ||
+		FAILED(CGameInstance::Get().Add_Prototype(
+		ETOUI(LEVEL::STATIC),
 		TEXT("Prototype_Component_Shader_VtxTex"),
 		CShader::Create(
 			m_pDevice,
@@ -2424,6 +2434,13 @@ HRESULT CMainApp::Ready_Prototype_For_Static()
 		ETOUI(LEVEL::STATIC),
 		TEXT("Prototype_GameObject_EffectObject"),
 		CEffectObject::Create(m_pDevice, m_pContext))))
+	{
+		return E_FAIL;
+	}
+	if (FAILED(CGameInstance::Get().Add_Prototype(
+		ETOUI(LEVEL::STATIC),
+		CSkillGroundTargetPreview::PROTOTYPE_TAG,
+		CSkillGroundTargetPreview::Create(m_pDevice, m_pContext))))
 	{
 		return E_FAIL;
 	}

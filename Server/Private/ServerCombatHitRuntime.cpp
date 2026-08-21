@@ -145,6 +145,7 @@ LostArk::Server::CServerCombatHitRuntime::Apply_WorldToPlayer(
 	{
 		target.eAction = PLAYER_ACTION_STATE::DEAD;
 		target.iCurrentSkillId = INVALID_SKILL_ID;
+		target.Clear_SkillTarget();
 		target.iActionStartTick = 0u == hit.iServerTick ? 1u : hit.iServerTick;
 		target.hasMoveGoal = false;
 		target.MovePath.clear();

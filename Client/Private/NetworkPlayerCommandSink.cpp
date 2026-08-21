@@ -45,6 +45,16 @@ bool Client::CNetworkPlayerCommandSink::Request_UseSkill(
 		aimZ);
 }
 
+bool Client::CNetworkPlayerCommandSink::Request_UseGroundTargetSkill(
+	std::uint32_t clientSequence,
+	LostArk::Shared::SKILL_ID skillId,
+	float targetX,
+	float targetZ)
+{
+	return CNetworkManager::Get().Send_UseGroundTargetSkill(
+		clientSequence, skillId, targetX, targetZ);
+}
+
 bool Client::CNetworkPlayerCommandSink::Request_ReleaseSkill(
 	std::uint32_t clientSequence,
 	LostArk::Shared::SKILL_ID skillId)

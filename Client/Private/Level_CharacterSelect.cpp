@@ -305,6 +305,11 @@ HRESULT CLevel_CharacterSelect::Ready_ServerGameplay()
 		make_shared<CNetworkWorldEntityCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
 	m_PlayerController.Set_AllowCapturedKeyboardInput(true);
+	if (!m_PlayerController.Initialize_TargetingPreview(
+			ETOUI(LEVEL::CHARACTER_SELECT)))
+	{
+		return E_FAIL;
+	}
 	return S_OK;
 }
 

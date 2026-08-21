@@ -172,6 +172,9 @@ void LostArk::Server::CMonsterBrain::Update(
 				if (0u == target->iCurrentHp)
 				{
 					target->eAction = LostArk::Shared::PLAYER_ACTION_STATE::DEAD;
+					target->iCurrentSkillId =
+						LostArk::Shared::INVALID_SKILL_ID;
+					target->Clear_SkillTarget();
 					target->iActionStartTick = 0u == serverTick ? 1u : serverTick;
 					target->hasBufferedComboInput = false;
 					target->PendingCommand.Clear();

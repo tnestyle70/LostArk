@@ -128,6 +128,7 @@
     <ClInclude Include="..\Public\PlayerController.h" />
     <ClInclude Include="..\Public\PlayerCommandSink.h" />
     <ClInclude Include="..\Public\PlayerSkillCatalog.h" />
+	<ClInclude Include="..\Public\SkillGroundTargetPreview.h" />
     <ClInclude Include="..\Public\ItemCatalog.h" />
     <ClInclude Include="..\Public\NetworkPlayerCommandSink.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
@@ -256,6 +257,7 @@
     <ClCompile Include="..\Private\MainApp.cpp" />
     <ClCompile Include="..\Private\PlayerController.cpp" />
     <ClCompile Include="..\Private\PlayerSkillCatalog.cpp" />
+	<ClCompile Include="..\Private\SkillGroundTargetPreview.cpp" />
     <ClCompile Include="..\Private\ItemCatalog.cpp" />
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
@@ -362,6 +364,7 @@
     <None Include="..\..\Data\Balance\PlayerProfiles.json" />
     <None Include="..\..\Data\Balance\MonsterProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerSkills.json" />
+	<None Include="..\..\Data\Balance\PlayerSkillTargeting.json" />
     <None Include="..\..\Data\Balance\ValtanBossParts.json" />
     <None Include="..\..\Data\Items\ItemCatalog.json" />
     <None Include="..\..\Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json" />
@@ -461,6 +464,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEstherNpc.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshPreview.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectRectPreview.hlsl" />
+	<FxCompile Include="..\Bin\ShaderFiles\Shader_VtxSkillGroundTargetPreview.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactSpriteBridge.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactLocalMeshBridge.hlsl" />

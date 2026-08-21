@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "Engine_Defines.h"
 #include "Network/PacketMessages.h"
 
 #include <cstdint>
@@ -10,6 +11,18 @@
 
 namespace Client
 {
+	struct PLAYER_SKILL_TARGET_PREVIEW
+	{
+		std::string strAssetId;
+		float fDiameter = 0.f;
+		float4_t vValidTint = { 1.f, 1.f, 1.f, 1.f };
+		float4_t vInvalidTint = { 1.f, 0.f, 0.f, 1.f };
+		/* Kept visible to diagnostics so runtime-resource identity is never
+		 reported as source-extracted evidence. Both usages are PROJECT_TUNED. */
+		std::string strAssetIdentityBasis;
+		std::string strUsageBasis;
+		std::string strSourceEvidence;
+	};
 	/* One row of Data/Balance/PlayerSkills.json with its damage rate already
 	resolved through Data/Balance/DamageProfiles.json.
 
@@ -40,6 +53,13 @@ namespace Client
 		/* Official CostMp so the HUD can show a skill the server would refuse
 		to pay for. The server keeps its own copy from the bootstrap. */
 		std::uint32_t iResourceCost = 0;
+		float fMaximumRange = 0.f;
+		LostArk::Shared::SKILL_TARGET_INTENT_KIND eTargetIntent =
+			LostArk::Shared::SKILL_TARGET_INTENT_KIND::AIM_POINT;
+		float fTargetMaximumRange = 0.f;
+		bool requiresWalkableTarget = false;
+		PLAYER_SKILL_TARGET_PREVIEW RangePreview;
+		PLAYER_SKILL_TARGET_PREVIEW TargetPreview;
 		LostArk::Shared::PLAYER_SKILL_KIND eSkillKind =
 			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE;
 		LostArk::Shared::PLAYER_STANCE_ID eRequiredStance =
