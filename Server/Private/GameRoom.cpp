@@ -2334,6 +2334,7 @@ bool LostArk::Server::CGameRoom::Start_ValtanOrderedAudition(
 	m_ServerTriggerSystem.Remove_Player(refreshedOwner.iPlayerId);
 
 	boss.bIntroPatternConsumed = true;
+	boss.bScriptedPatternPlayback = true;
 	boss.PendingPatternIds.clear();
 	boss.iCurrentHp = boss.iMaximumHp;
 	boss.iLastEvaluatedHealthBar = boss.iMaximumHealthBars;
@@ -2356,6 +2357,7 @@ void LostArk::Server::CGameRoom::Stop_ValtanOrderedAudition()
 		boss->iNetEntityId == m_ValtanOrderedAudition.iBossEntityId)
 	{
 		boss->PendingPatternIds.clear();
+		boss->bScriptedPatternPlayback = false;
 	}
 	if (const auto owner = m_Players.find(
 		m_ValtanOrderedAudition.iOwnerPlayerId);
@@ -2439,6 +2441,7 @@ bool LostArk::Server::CGameRoom::Prepare_ValtanOrderedAuditionBeforeBrain(
 	boss.iLastEvaluatedHealthBar =
 		m_ValtanOrderedAudition.iHeldBossHealthBar;
 	boss.bIntroPatternConsumed = true;
+	boss.bScriptedPatternPlayback = true;
 
 	for (;;)
 	{
@@ -3162,6 +3165,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
 			}
 			boss->bIntroPatternConsumed = false;
+			boss->bScriptedPatternPlayback = false;
 			m_iValtanAuditionArmedHealthBar = 0u;
 			m_ValtanAuditionSequenceBySessionId.insert_or_assign(
 				sessionId, request.iRequestSequence);

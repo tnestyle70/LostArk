@@ -12,7 +12,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 13u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 14u;
 
 	struct PLAYER_ROOT_MOTION_SAMPLE
 	{
@@ -283,6 +283,20 @@ namespace LostArk::Server
 		float fApexHeight = 0.f;
 	};
 
+	/* One authored stretch between two scripted health-bar mechanics. While the
+	boss sits inside the span it runs these patterns in order and repeats the
+	list, so being hit never reshuffles the script. Bars count down, so the
+	span runs from the higher bar to the lower one. */
+	struct BOSS_PATTERN_ROTATION_DEFINITION
+	{
+		std::string strEncounterId;
+		std::string strRotationId;
+		std::uint32_t iFromHealthBar = 0;
+		std::uint32_t iToHealthBar = 0;
+		std::uint32_t iExpectedStepCount = 0;
+		std::vector<std::string> PatternIds;
+	};
+
 	struct BOSS_PATTERN_DEFINITION
 	{
 		std::string strEncounterId;
@@ -402,6 +416,11 @@ namespace LostArk::Server
 			const std::string& encounterId) const;
 		/* Pattern the encounter plays exactly once when the boss first engages,
 		before any health-bar or weighted selection runs. Empty when unknown. */
+		/* The rotation whose span contains this bar, or nullptr when the stretch
+		has no authored order and the weighted roll owns it. */
+		const BOSS_PATTERN_ROTATION_DEFINITION* Find_BossPatternRotation(
+			const std::string& encounterId,
+			std::uint32_t healthBar) const;
 		const std::string& Find_IntroPatternId(
 			const std::string& encounterId) const;
 		const PLAYER_RUNTIME_PROFILE* Find_Player(
@@ -459,6 +478,9 @@ namespace LostArk::Server
 		std::unordered_map<std::string, VALTAN_DEBUG_AUDITION_DEFINITION>
 			m_ValtanDebugAuditions;
 		std::unordered_map<std::string, std::string> m_IntroPatternIdByEncounter;
+		std::unordered_map<std::string,
+			std::vector<BOSS_PATTERN_ROTATION_DEFINITION>>
+			m_BossPatternRotations;
 		std::unordered_map<LostArk::Shared::CHARACTER_CLASS_ID,
 			PLAYER_RUNTIME_PROFILE> m_Players;
 		std::unordered_map<std::string, std::uint32_t>

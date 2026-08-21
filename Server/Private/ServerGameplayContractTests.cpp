@@ -32,6 +32,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <set>
 #include <span>
 #include <thread>
 #include <utility>
@@ -581,15 +582,15 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			}
 		}
 		tests.Require(
-			everyDamagingStageResolves && 48u == damagingStageCount &&
-			71u == authoredHitPulseCount &&
+			everyDamagingStageResolves && 46u == damagingStageCount &&
+			72u == authoredHitPulseCount &&
 			700u == catalog.Find_DamageRatePercent(
 				"damage.valtan.arena-destroy-109") &&
 			450u == catalog.Find_DamageRatePercent(
 				"damage.valtan.six-direction-130") &&
 			900u == catalog.Find_DamageRatePercent(
 				"damage.valtan.ghost-transition-15"),
-			"Resolve all 48 Valtan hit stages and 71 pulses through project-tuned damage profiles");
+			"Resolve all 46 Valtan hit stages and 72 pulses through project-tuned damage profiles");
 	}
 	{
 		CClientSession session{ 90001u, INVALID_SOCKET, {}, {} };
@@ -2223,10 +2224,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		valtanCollisionSystem.Initialize(
 			world.Get_Placements(), dynamicWorldStatus) &&
 		/* 69 interior wall boxes plus ten independent 159 impact receivers,
-		one box per 109
-		outer ring slab now that the ring is complete at thirty, and the two
-		entrance front walls' own receivers. */
-		111u == valtanCollisionSystem.Get_CollisionBoxCount() &&
+		one box per 109 outer ring slab and one impact receiver twinning each
+		of those thirty, and the two entrance front walls' own receivers. */
+		141u == valtanCollisionSystem.Get_CollisionBoxCount() &&
 		valtanCollisionSystem.Has_CollisionBox(VALTAN_WALL_RECEIVER),
 		"Load the stable Valtan wall impact receiver and player blocker");
 	{
@@ -2298,16 +2298,19 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Project six-direction Server contacts onto an arm without filling its adjacent gap");
 	}
 	SERVER_BOSS_RECEIVER_HIT receiverHit{};
+	/* Both sweeps start clear of the 109 outer ring. Every slab of it now
+	carries a receiver, and a sweep begun inside one resolves at ratio zero,
+	which would stop exercising the travel this contract is named for. */
 	tests.Require(
 		valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
-			145.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
+			148.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
 			175.f, VALTAN_WALL_CENTER_Y, VALTAN_WALL_CENTER_Z,
 			1.f, receiverHit) &&
 		0u == receiverHit.strReceiverPlacementId.rfind(
 			"collision.valtan.wallgroup.11047903315509031966.", 0u) &&
 		receiverHit.fHitRatio > 0.f && receiverHit.fHitRatio < 1.f &&
 		!valtanCollisionSystem.Sweep_BossCircleAgainstReceivers(
-			145.f, 100.f, VALTAN_WALL_CENTER_Z,
+			148.f, 100.f, VALTAN_WALL_CENTER_Z,
 			175.f, 100.f, VALTAN_WALL_CENTER_Z,
 			1.f, receiverHit),
 		"Sweep a fast Valtan body into the deterministic earliest independent receiver without tunneling or high-Y false hits");
@@ -3979,6 +3982,136 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Gate normal Valtan reselection by source cooldown and never reroll the intro");
 	}
 
+	{
+		/* The arena trigger that activates the encounter sits far from the boss,
+		so the entrance must wait for its own authored range instead of burning on
+		the activation tick. While it waits the boss holds its spawn, because the
+		sweep is authored around that point, and nothing else may run first. */
+		std::map<PLAYER_ID, SERVER_PLAYER> entrancePlayers;
+		SERVER_PLAYER entranceTarget{};
+		entranceTarget.iPlayerId = 78u;
+		entranceTarget.iNetEntityId = 178u;
+		entranceTarget.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		entranceTarget.iCurrentHp = 1000000u;
+		entranceTarget.iMaximumHp = 1000000u;
+		entranceTarget.fPositionX = 40.f;
+		entranceTarget.fPositionY = 22.97f;
+		entranceTarget.fPositionZ = 0.f;
+		entranceTarget.isCombatReady = true;
+		entrancePlayers.emplace(entranceTarget.iPlayerId, entranceTarget);
+		const auto makeEntranceBoss = []()
+		{
+			SERVER_WORLD_ENTITY boss{};
+			boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+			boss.eAction = SERVER_ENTITY_ACTION::IDLE;
+			boss.strArchetypeId = "BOSS_VALTAN";
+			boss.strEncounterId = "ENCOUNTER_VALTAN";
+			boss.iCurrentHp = 60000u;
+			boss.iMaximumHp = 60000u;
+			boss.iMaximumHealthBars = 160u;
+			boss.iLastEvaluatedHealthBar = 160u;
+			boss.iPhaseTwoHpPercent = 68u;
+			boss.fPositionY = 22.97f;
+			boss.fSpawnPositionY = 22.97f;
+			boss.fEngageDistance = 35.f;
+			boss.fMoveSpeed = 3.f;
+			return boss;
+		};
+		const auto runEntrance = [&](
+			SERVER_WORLD_ENTITY& boss, const std::uint32_t count)
+		{
+			std::vector<DAMAGE_EVENT> events;
+			static std::uint32_t entranceTick = 1000u;
+			CValtanBrain entranceBrain;
+			for (std::uint32_t index = 0u; index < count; ++index)
+			{
+				events.clear();
+				entranceBrain.Update(
+					boss, entrancePlayers, catalog, navigation,
+					1.f / 30.f, entranceTick++, events);
+			}
+		};
+		SERVER_WORLD_ENTITY waitingBoss = makeEntranceBoss();
+		runEntrance(waitingBoss, 60u);
+		const bool heldAtSpawn =
+			!waitingBoss.bIntroPatternConsumed &&
+			waitingBoss.strPatternId.empty() &&
+			SERVER_ENTITY_ACTION::IDLE == waitingBoss.eAction &&
+			std::abs(waitingBoss.fPositionX) < 0.001f &&
+			std::abs(waitingBoss.fPositionZ) < 0.001f;
+		entrancePlayers.begin()->second.fPositionX = 8.f;
+		runEntrance(waitingBoss, 2u);
+		tests.Require(
+			heldAtSpawn && waitingBoss.bIntroPatternConsumed &&
+			"VALTAN_ENTRANCE_WHIRLWIND" == waitingBoss.strPatternId,
+			"Hold the Valtan entrance at its spawn until a player reaches its range");
+		entrancePlayers.begin()->second.fPositionX = 40.f;
+		SERVER_WORLD_ENTITY hurtBoss = makeEntranceBoss();
+		hurtBoss.iCurrentHp = hurtBoss.iMaximumHp - 1u;
+		runEntrance(hurtBoss, 2u);
+		tests.Require(
+			hurtBoss.bIntroPatternConsumed &&
+			"VALTAN_ENTRANCE_WHIRLWIND" != hurtBoss.strPatternId,
+			"Drop the pending Valtan entrance once the boss is already taking damage");
+		/* Between two scripted mechanics the script owns the order. The list is
+		advanced one step per pattern and repeated, so what the boss does next is
+		not a weighted roll and being hit cannot reshuffle it. */
+		const auto observeOrder = [&](
+			SERVER_WORLD_ENTITY& boss, const std::uint32_t count)
+		{
+			std::vector<std::string> order;
+			std::vector<DAMAGE_EVENT> events;
+			CValtanBrain observeBrain;
+			std::uint32_t observeTick = 5000u;
+			for (std::uint32_t index = 0u; index < count; ++index)
+			{
+				events.clear();
+				observeBrain.Update(
+					boss, entrancePlayers, catalog, navigation,
+					1.f / 30.f, observeTick++, events);
+				if (!boss.strPatternId.empty() &&
+					(order.empty() || order.back() != boss.strPatternId))
+				{
+					order.push_back(boss.strPatternId);
+				}
+			}
+			return order;
+		};
+		entrancePlayers.begin()->second.fPositionX = 8.f;
+		SERVER_WORLD_ENTITY rotationBoss = makeEntranceBoss();
+		const std::vector<std::string> observedOrder =
+			observeOrder(rotationBoss, 1400u);
+		const std::vector<std::string> expectedOrder{
+			"VALTAN_ENTRANCE_WHIRLWIND", "VALTAN_DASH_CHARGE",
+			"VALTAN_JUMP_SPIN", "VALTAN_FOUR_SLASH",
+			"VALTAN_DASH_CHARGE", "VALTAN_JUMP_SPIN" };
+		tests.Require(
+			observedOrder.size() >= expectedOrder.size() &&
+			std::equal(
+				expectedOrder.begin(), expectedOrder.end(), observedOrder.begin()),
+			"Run the authored Valtan rotation in order and repeat it inside its span");
+		const BOSS_PATTERN_ROTATION_DEFINITION* openingSpan =
+			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 160u);
+		tests.Require(
+			nullptr != openingSpan &&
+			160u == openingSpan->iFromHealthBar &&
+			130u == openingSpan->iToHealthBar &&
+			openingSpan == catalog.Find_BossPatternRotation(
+				"ENCOUNTER_VALTAN", 131u) &&
+			nullptr == catalog.Find_BossPatternRotation(
+				"ENCOUNTER_VALTAN", 130u) &&
+			nullptr == catalog.Find_BossPatternRotation(
+				"ENCOUNTER_VALTAN", 1u),
+			"End a Valtan rotation span on the bar its next scripted mechanic owns");
+		SERVER_WORLD_ENTITY scriptedBoss = makeEntranceBoss();
+		scriptedBoss.bScriptedPatternPlayback = true;
+		observeOrder(scriptedBoss, 400u);
+		tests.Require(
+			scriptedBoss.strRotationId.empty() &&
+			0u == scriptedBoss.iRotationStepIndex,
+			"Leave the rotation cursor untouched while scripted playback drives the boss");
+	}
+
 	SERVER_WORLD_ENTITY openingChargeBoss{};
 	openingChargeBoss.iNetEntityId = 901u;
 	openingChargeBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
@@ -4392,7 +4525,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				overCostRoot / L"Gameplay" / L"Gameplay.bootstrap",
 				std::ios::binary);
 			bootstrap <<
-				"LOSTARK_GAMEPLAY_BOOTSTRAP\t13\t75\n"
+				"LOSTARK_GAMEPLAY_BOOTSTRAP\t" << GAMEPLAY_BOOTSTRAP_VERSION <<
+				"\t75\n"
 				"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 				"DAMAGE\tdamage.player.34120\t361\n"
 				"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
@@ -4467,7 +4601,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					noDamageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t13\t75\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t" << GAMEPLAY_BOOTSTRAP_VERSION <<
+				"\t75\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34120\t361\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
@@ -4674,7 +4809,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					stageRoot / L"Gameplay" / L"Gameplay.bootstrap",
 					std::ios::binary);
 				bootstrap <<
-					"LOSTARK_GAMEPLAY_BOOTSTRAP\t13\t78\n"
+					"LOSTARK_GAMEPLAY_BOOTSTRAP\t" << GAMEPLAY_BOOTSTRAP_VERSION <<
+					"\t78\n"
 					"BOSS\tBOSS_VALTAN\tENCOUNTER_VALTAN\t60000\t160\t100\t3\t20\t2.6\t50\n"
 					"DAMAGE\tdamage.player.34010\t100\n"
 					"PATTERN\tENCOUNTER_VALTAN\tVALTAN_TEST\tvaltan.test\tNORMAL\t1\t160\t0\t0\t1\t1\t0\t8\t1\tANY\tANY\t0\n"
@@ -7317,8 +7453,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		room.m_Players.emplace(LEAP_PLAYER, leapPlayer);
 
 		/* The 109 leap lands on the pattern's compiled anchor, which is the
-		measured centre of the outer ring and deliberately not the boss
-		placement: the two sit about 4.8m apart. */
+		measured centre of the outer ring. The boss spawns on that same centre,
+		so the anchor is checked against the authored coordinate rather than
+		against its distance from the spawn. */
 		const BOSS_PATTERN_MOTION* leapMotion = nullptr;
 		if (const std::vector<BOSS_PATTERN_DEFINITION>* leapPatterns =
 			room.m_GameplayCatalog.Find_BossPatterns("ENCOUNTER_VALTAN"))
@@ -7341,12 +7478,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == leapMotion->eKind &&
 			"anchor.valtan.arena-break-109.landing" == leapMotion->strAnchorId &&
 			leapMotion->fApexHeight > 0.f &&
-			std::sqrt(
-				(anchorX - (nullptr == leapBoss ? 0.f : leapBoss->fSpawnPositionX)) *
-				(anchorX - (nullptr == leapBoss ? 0.f : leapBoss->fSpawnPositionX)) +
-				(anchorZ - (nullptr == leapBoss ? 0.f : leapBoss->fSpawnPositionZ)) *
-				(anchorZ - (nullptr == leapBoss ? 0.f : leapBoss->fSpawnPositionZ))) > 1.f,
-			"Compile a 109 landing anchor that is separate from the boss placement");
+			std::abs(anchorX - 156.03f) < 0.01f &&
+			std::abs(anchorZ + 122.06f) < 0.01f,
+			"Compile the 109 landing anchor on the authored outer-ring centre");
 
 		/* Drive the real pattern rather than assigning stages by hand, so the
 		arc is exercised through the same edges the room replicates. */

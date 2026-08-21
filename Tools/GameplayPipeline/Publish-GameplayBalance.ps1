@@ -1372,6 +1372,91 @@ foreach ($wallContact in @($wallContactDocument.actions)) {
 		$contactStage.stageId, $contactStage.actionId) -join "`t"))
 }
 
+# Between two health-bar mechanics the boss runs an authored order rather than a
+# weighted roll: the script owns that stretch, and being hit does not reshuffle
+# it. The span is declared by the bars it sits between, so the next scripted
+# mechanic ends it wherever the list happens to be.
+$rotationDocument = Read-JsonDocument `
+	'Data/Encounters/Valtan/ValtanPatternRotations.json'
+Assert-ExactProperties $rotationDocument @(
+	'schema','formatVersion','encounterId','bossArchetypeId','rotations') `
+	'Valtan pattern rotation document'
+Assert-JsonString $rotationDocument.schema 'Valtan pattern rotation schema'
+Assert-JsonInteger $rotationDocument.formatVersion `
+	'Valtan pattern rotation formatVersion' 1 1
+Assert-JsonString $rotationDocument.encounterId `
+	'Valtan pattern rotation encounterId'
+Assert-JsonString $rotationDocument.bossArchetypeId `
+	'Valtan pattern rotation bossArchetypeId'
+if ([string]$rotationDocument.schema -cne `
+	'lostark.valtan-pattern-rotations' -or
+	[uint32]$rotationDocument.formatVersion -ne 1 -or
+	[string]$rotationDocument.encounterId -cne `
+		[string]$encounterDocument.encounterId -or
+	[string]$rotationDocument.bossArchetypeId -cne `
+		[string]$encounterDocument.bossArchetypeId -or
+	$rotationDocument.rotations -isnot [Array] -or
+	@($rotationDocument.rotations).Count -eq 0 -or
+	@($rotationDocument.rotations).Count -gt 16) {
+	throw 'Valtan pattern rotation document header is invalid.'
+}
+$rotationIds =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$previousRotationFromBar = [uint32]::MaxValue
+foreach ($rotation in @($rotationDocument.rotations)) {
+	Assert-ExactProperties $rotation @(
+		'rotationId','fromHealthBar','toHealthBar','patternIds') `
+		'Valtan pattern rotation'
+	Assert-JsonString $rotation.rotationId 'Valtan pattern rotation rotationId'
+	Assert-StableId ([string]$rotation.rotationId) 'Valtan pattern rotation rotationId'
+	Assert-JsonInteger $rotation.fromHealthBar `
+		'Valtan pattern rotation fromHealthBar' 1 $maximumHealthBars
+	Assert-JsonInteger $rotation.toHealthBar `
+		'Valtan pattern rotation toHealthBar' 1 $maximumHealthBars
+	$rotationFromBar = [uint32]$rotation.fromHealthBar
+	$rotationToBar = [uint32]$rotation.toHealthBar
+	if (-not $rotationIds.Add([string]$rotation.rotationId)) {
+		throw "Valtan pattern rotation id is duplicated: $($rotation.rotationId)"
+	}
+	# Bars count down, so a span runs from the higher bar to the lower one and the
+	# document is authored in the order the fight meets them.
+	if ($rotationFromBar -le $rotationToBar -or
+		$rotationFromBar -ge $previousRotationFromBar) {
+		throw "Valtan pattern rotation span is invalid: $($rotation.rotationId)"
+	}
+	$previousRotationFromBar = $rotationFromBar
+	if ($rotation.patternIds -isnot [Array] -or
+		@($rotation.patternIds).Count -eq 0 -or
+		@($rotation.patternIds).Count -gt 32) {
+		throw "Valtan pattern rotation step count is invalid: $($rotation.rotationId)"
+	}
+	$rotationStepIndex = 0
+	foreach ($rotationPatternId in @($rotation.patternIds)) {
+		Assert-JsonString $rotationPatternId 'Valtan pattern rotation patternId'
+		Assert-StableId ([string]$rotationPatternId) 'Valtan pattern rotation patternId'
+		$rotationOwners = @($encounterDocument.patterns | Where-Object {
+			[string]$_.patternId -ceq [string]$rotationPatternId })
+		if ($rotationOwners.Count -ne 1) {
+			throw "Valtan pattern rotation names no pattern: $rotationPatternId"
+		}
+		# A scripted mechanic is owned by its own bar, and the entrance is owned by
+		# introPatternId. Neither may be replayed from a rotation step.
+		if ([string]$rotationOwners[0].selectionMode -cne 'NORMAL' -or
+			[string]$rotationPatternId -ceq `
+				[string]$encounterDocument.introPatternId) {
+			throw "Valtan pattern rotation step is not a normal pattern: $rotationPatternId"
+		}
+		$patternRows.Add((@(
+			'PATTERNROTATIONSTEP', $encounterDocument.encounterId,
+			$rotation.rotationId, $rotationStepIndex, $rotationPatternId) -join "`t"))
+		++$rotationStepIndex
+	}
+	$patternRows.Add((@(
+		'PATTERNROTATION', $encounterDocument.encounterId,
+		$rotation.rotationId, $rotationFromBar, $rotationToBar,
+		$rotationStepIndex) -join "`t"))
+}
+
 # A charge stage drives the boss forward until it meets an impact receiver, and
 # the collision ends the stage early instead of the clock. That is what turns a
 # wall into a stun, so it is authored per stage rather than inferred from a
@@ -1910,7 +1995,7 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
 }
 
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t13`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t14`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

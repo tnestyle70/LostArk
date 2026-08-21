@@ -36069,10 +36069,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  100.0,
+                        "sourceValue":  12.0,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  100.0,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  12.0,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -36212,7 +36212,7 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  1930,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  7.0,
+                                                "hitOuterRadius":  5.0,
                                                 "hitInnerRadius":  0.0,
                                                 "hitAngleDegrees":  0.0,
                                                 "hitLength":  0.0,
@@ -36275,7 +36275,7 @@
                                                 "stageKind":  "ACTIVE",
                                                 "durationMs":  1930,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  7.0,
+                                                "hitOuterRadius":  5.0,
                                                 "hitInnerRadius":  0.0,
                                                 "hitAngleDegrees":  0.0,
                                                 "hitLength":  0.0,

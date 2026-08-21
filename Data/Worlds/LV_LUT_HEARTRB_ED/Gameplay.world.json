@@ -2,7 +2,7 @@
     "schema":  "lostark.world-gameplay",
     "formatVersion":  5,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "revision":  564,
+    "revision":  566,
     "placements":  [
                        {
                            "placementId":  "collision.valtan.wallgroup.3705102.9335938568718910930",
@@ -1424,9 +1424,9 @@
                            "archetypeId":  "BOSS_VALTAN",
                            "encounterId":  "ENCOUNTER_VALTAN",
                            "position":  [
-                                            151.25,
-                                            22.9699993,
-                                            -121.75
+                                            156.03,
+                                            22.99751,
+                                            -122.06
                                         ],
                            "yawDegrees":  225,
                            "enabled":  false
@@ -1558,7 +1558,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector00.1090000000000001.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            172.133000,
+                                            25.374000,
+                                            -122.502000
+                                        ],
+                           "yawDegrees":  90.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector00.1090000000000002",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            171.873008,
+                                            25.374000,
+                                            -119.144339
+                                        ],
+                           "yawDegrees":  78.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector00.1090000000000002.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             171.873008,
@@ -1590,7 +1622,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector00.1090000000000003.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            170.920600,
+                                            25.374000,
+                                            -115.914107
+                                        ],
+                           "yawDegrees":  66.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector01.1090000000000004",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            169.317402,
+                                            25.374000,
+                                            -112.952480
+                                        ],
+                           "yawDegrees":  54.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector01.1090000000000004.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             169.317402,
@@ -1622,7 +1686,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector01.1090000000000005.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            167.133480,
+                                            25.374000,
+                                            -110.388895
+                                        ],
+                           "yawDegrees":  42.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector01.1090000000000006",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            164.464283,
+                                            25.374000,
+                                            -108.335393
+                                        ],
+                           "yawDegrees":  30.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector01.1090000000000006.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             164.464283,
@@ -1654,7 +1750,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector02.1090000000000007.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            161.426468,
+                                            25.374000,
+                                            -106.881722
+                                        ],
+                           "yawDegrees":  18.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector02.1090000000000008",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            158.152801,
+                                            25.374000,
+                                            -106.091415
+                                        ],
+                           "yawDegrees":  6.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector02.1090000000000008.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             158.152801,
@@ -1686,7 +1814,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector02.1090000000000009.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            154.786357,
+                                            25.374000,
+                                            -105.999012
+                                        ],
+                           "yawDegrees":  -6.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector03.1090000000000010",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            151.474266,
+                                            25.374000,
+                                            -106.608551
+                                        ],
+                           "yawDegrees":  -18.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000010.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             151.474266,
@@ -1718,7 +1878,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000011.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            148.361283,
+                                            25.374000,
+                                            -107.893393
+                                        ],
+                           "yawDegrees":  -30.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector03.1090000000000025",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            145.583460,
+                                            25.374000,
+                                            -109.797383
+                                        ],
+                           "yawDegrees":  -42.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000025.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             145.583460,
@@ -1750,7 +1942,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000026.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            143.262200,
+                                            25.374000,
+                                            -112.237309
+                                        ],
+                           "yawDegrees":  -54.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector03.1090000000000027",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            141.498955,
+                                            25.374000,
+                                            -115.106533
+                                        ],
+                           "yawDegrees":  -66.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000027.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             141.498955,
@@ -1782,7 +2006,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000028.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            140.370786,
+                                            25.374000,
+                                            -118.279657
+                                        ],
+                           "yawDegrees":  -78.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector03.1090000000000012",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            139.927000,
+                                            25.374000,
+                                            -121.618000
+                                        ],
+                           "yawDegrees":  -90.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector03.1090000000000012.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             139.927000,
@@ -1814,7 +2070,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector04.1090000000000013.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            140.186992,
+                                            25.374000,
+                                            -124.975661
+                                        ],
+                           "yawDegrees":  -102.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector04.1090000000000014",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            141.139400,
+                                            25.374000,
+                                            -128.205893
+                                        ],
+                           "yawDegrees":  -114.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector04.1090000000000014.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             141.139400,
@@ -1846,7 +2134,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector04.1090000000000015.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            142.742598,
+                                            25.374000,
+                                            -131.167520
+                                        ],
+                           "yawDegrees":  -126.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector05.1090000000000016",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            144.926520,
+                                            25.374000,
+                                            -133.731105
+                                        ],
+                           "yawDegrees":  -138.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector05.1090000000000016.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             144.926520,
@@ -1878,7 +2198,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector05.1090000000000017.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            147.595717,
+                                            25.374000,
+                                            -135.784607
+                                        ],
+                           "yawDegrees":  -150.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector05.1090000000000018",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            150.633532,
+                                            25.374000,
+                                            -137.238278
+                                        ],
+                           "yawDegrees":  -162.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector05.1090000000000018.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             150.633532,
@@ -1910,7 +2262,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector06.1090000000000019.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            153.907199,
+                                            25.374000,
+                                            -138.028585
+                                        ],
+                           "yawDegrees":  -174.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector06.1090000000000020",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            157.273643,
+                                            25.374000,
+                                            -138.120988
+                                        ],
+                           "yawDegrees":  -186.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector06.1090000000000020.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             157.273643,
@@ -1942,7 +2326,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector06.1090000000000029.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            160.585734,
+                                            25.374000,
+                                            -137.511449
+                                        ],
+                           "yawDegrees":  -198.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector06.1090000000000030",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            163.698717,
+                                            25.374000,
+                                            -136.226607
+                                        ],
+                           "yawDegrees":  -210.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector06.1090000000000030.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             163.698717,
@@ -1974,7 +2390,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector06.1090000000000021.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            166.476540,
+                                            25.374000,
+                                            -134.322617
+                                        ],
+                           "yawDegrees":  -222.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector07.1090000000000022",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            168.797800,
+                                            25.374000,
+                                            -131.882691
+                                        ],
+                           "yawDegrees":  -234.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector07.1090000000000022.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             168.797800,
@@ -2006,7 +2454,39 @@
                                            ]
                        },
                        {
+                           "placementId":  "collision.valtan.wallgroup.sector07.1090000000000023.receiver",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            170.561045,
+                                            25.374000,
+                                            -129.013467
+                                        ],
+                           "yawDegrees":  -246.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
                            "placementId":  "collision.valtan.wallgroup.sector07.1090000000000024",
+                           "kind":  "collisionBox",
+                           "position":  [
+                                            171.689214,
+                                            25.374000,
+                                            -125.840343
+                                        ],
+                           "yawDegrees":  -258.000000,
+                           "enabled":  true,
+                           "halfExtents":  [
+                                               2.294,
+                                               2.334,
+                                               0.838
+                                           ]
+                       },
+                       {
+                           "placementId":  "collision.valtan.wallgroup.sector07.1090000000000024.receiver",
                            "kind":  "collisionBox",
                            "position":  [
                                             171.689214,

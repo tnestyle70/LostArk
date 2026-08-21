@@ -85,6 +85,10 @@ namespace LostArk::Server
 		first engage. A late joiner never replays it, and only a room-empty or
 		Debug reset clears the ledger. */
 		bool bIntroPatternConsumed = false;
+		/* The Debug ordered audition replays an authored 1-67 list and requires an
+		empty queue between steps, so product pattern follow-ups must not be
+		queued while it drives the boss. */
+		bool bScriptedPatternPlayback = false;
 		std::uint32_t iPatternTelegraphMs = 0;
 		std::uint32_t iPatternActiveMs = 0;
 		std::uint32_t iPatternRecoveryMs = 0;
@@ -164,6 +168,11 @@ namespace LostArk::Server
 		std::vector<SERVER_BOSS_ARMOR_PLATE_STATE> ArmorPlates;
 		bool hasAppliedPatternDamage = false;
 		std::string strLastPatternId;
+		/* Cursor into the authored rotation of the span the boss is in. It is
+		kept per span so a scripted mechanic that interrupts the stretch does
+		not restart the list, and it resets when the boss enters a new span. */
+		std::string strRotationId;
+		std::uint32_t iRotationStepIndex = 0;
 		std::uint32_t iConsecutivePatternUses = 0;
 		std::vector<SERVER_BOSS_PATTERN_COOLDOWN> PatternCooldowns;
 		std::vector<std::string> PendingPatternIds;

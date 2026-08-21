@@ -1,0 +1,18 @@
+{
+  "schema": "lostark.valtan-pattern-rotations",
+  "formatVersion": 1,
+  "encounterId": "ENCOUNTER_VALTAN",
+  "bossArchetypeId": "BOSS_VALTAN",
+  "rotations": [
+    {
+      "rotationId": "rotation.valtan.160.130",
+      "fromHealthBar": 160,
+      "toHealthBar": 130,
+      "patternIds": [
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_JUMP_SPIN",
+        "VALTAN_FOUR_SLASH"
+      ]
+    }
+  ]
+}

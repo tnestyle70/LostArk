@@ -232,24 +232,43 @@ namespace
 		SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
 		const std::string& introPatternId,
+		const BOSS_PATTERN_ROTATION_DEFINITION* rotation,
 		const std::uint32_t currentHealthBar,
 		const float targetDistance,
 		const std::uint32_t serverTick)
 	{
 		/* The first appearance runs before the health-bar queue and before any
-		weighted roll, so the entrance sweep can never come up again later. It is
-		consumed even if the pattern is missing, so a broken catalog cannot stall
-		the boss on every tick. */
+		weighted roll, so the entrance sweep can never come up again later. It
+		waits at the spawn for its own authored range instead of burning on the
+		tick the encounter activates, because the arena trigger sits far from the
+		boss and the entrance is authored around the spawn point. A missing
+		pattern is consumed anyway, so a broken catalog cannot stall the boss on
+		every tick. */
 		if (!boss.bIntroPatternConsumed)
 		{
-			boss.bIntroPatternConsumed = true;
-			if (!introPatternId.empty())
+			const BOSS_PATTERN_DEFINITION* intro = introPatternId.empty() ?
+				nullptr : FindPattern(patterns, introPatternId);
+			if (nullptr == intro)
 			{
-				if (const BOSS_PATTERN_DEFINITION* intro =
-					FindPattern(patterns, introPatternId))
-				{
-					return intro;
-				}
+				boss.bIntroPatternConsumed = true;
+			}
+			else if (targetDistance >= intro->fMinimumRange &&
+				targetDistance <= intro->fMaximumRange)
+			{
+				boss.bIntroPatternConsumed = true;
+				return intro;
+			}
+			else if (boss.iCurrentHp < boss.iMaximumHp)
+			{
+				/* Combat started without the entrance ever coming into range, so it
+				is dropped instead of holding a boss that is already being hit. */
+				boss.bIntroPatternConsumed = true;
+			}
+			else
+			{
+				/* Nothing may run ahead of the entrance, so the pending intro
+				owns this tick even though it selected no pattern. */
+				return nullptr;
 			}
 		}
 		while (!boss.PendingPatternIds.empty())
@@ -261,6 +280,34 @@ namespace
 			{
 				return pattern;
 			}
+		}
+		/* Between two scripted mechanics the script owns the order, so the
+		authored list advances one step per pattern and repeats. Being hit does
+		not reshuffle it, and a mechanic that interrupts the stretch resumes
+		where it left off because the cursor lives on the boss. */
+		if (!boss.bScriptedPatternPlayback && nullptr != rotation &&
+			!rotation->PatternIds.empty())
+		{
+			if (boss.strRotationId != rotation->strRotationId)
+			{
+				boss.strRotationId = rotation->strRotationId;
+				boss.iRotationStepIndex = 0u;
+			}
+			const std::size_t stepIndex =
+				boss.iRotationStepIndex % rotation->PatternIds.size();
+			if (const BOSS_PATTERN_DEFINITION* step =
+				FindPattern(patterns, rotation->PatternIds[stepIndex]))
+			{
+				boss.iRotationStepIndex =
+					static_cast<std::uint32_t>(stepIndex + 1u) %
+						static_cast<std::uint32_t>(rotation->PatternIds.size());
+				return step;
+			}
+			/* A step the catalog cannot resolve is skipped rather than stalling
+			the stretch, and the weighted roll covers the gap. */
+			boss.iRotationStepIndex =
+				static_cast<std::uint32_t>(stepIndex + 1u) %
+					static_cast<std::uint32_t>(rotation->PatternIds.size());
 		}
 		return SelectNormalPattern(
 			boss, patterns, introPatternId,
@@ -721,9 +768,20 @@ void LostArk::Server::CValtanBrain::Update(
 	{
 		const BOSS_PATTERN_DEFINITION* selected = SelectPattern(
 			boss, *patterns, catalog.Find_IntroPatternId(boss.strEncounterId),
+			catalog.Find_BossPatternRotation(
+				boss.strEncounterId, currentHealthBar),
 			currentHealthBar, distance, serverTick);
 		if (nullptr == selected)
 		{
+			if (!boss.bIntroPatternConsumed)
+			{
+				/* The entrance is authored around the spawn point, so the boss holds
+				there until a player reaches its range instead of walking the arena
+				approach to meet them. */
+				Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
+				boss.MovePath.clear();
+				return;
+			}
 			Transition(boss, SERVER_ENTITY_ACTION::CHASE, serverTick);
 			const float pathDeltaX = target->fPositionX - boss.fLastPathGoalX;
 			const float pathDeltaZ = target->fPositionZ - boss.fLastPathGoalZ;

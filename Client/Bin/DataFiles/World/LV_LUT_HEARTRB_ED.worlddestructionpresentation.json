@@ -2,7 +2,7 @@
     "schema":  "lostark.world-destruction-debris-presentation",
     "formatVersion":  1,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "combatRuntimeRevision":  "7dc81a3a414defc2a11770d3f1b3232de5a96af91cd7aa2ffb4af99d71b37e46",
+    "combatRuntimeRevision":  "3010eee28b8c8f82365609470b431a6a4e46313a721563d2fb4736d111379c88",
     "profiles":  [
                      {
                          "groupId":  "destroyable.group.valtan.entrance.frontwallA",
@@ -220,7 +220,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000001",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000001"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -246,7 +246,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000002",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000002"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -272,7 +272,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000003",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000003"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -298,7 +298,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000004",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000004"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -324,7 +324,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000005",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000005"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -350,7 +350,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000006",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000006"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -376,7 +376,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000007",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000007"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -402,7 +402,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000008",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000008"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -428,7 +428,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000009",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000009"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -454,7 +454,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000010",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000010"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -480,7 +480,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000011",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000011"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -506,7 +506,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000012",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000012"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -532,7 +532,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000013",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000013"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -558,7 +558,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000014",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000014"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -584,7 +584,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000015",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000015"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -610,7 +610,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000016",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000016"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -636,7 +636,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000017",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000017"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -662,7 +662,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000018",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000018"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -688,7 +688,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000019",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000019"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -714,7 +714,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000020",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000020"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -740,7 +740,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000021",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000021"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -766,7 +766,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000022",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000022"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -792,7 +792,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000023",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000023"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -818,7 +818,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000024",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000024"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -844,7 +844,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000025",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000025"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -870,7 +870,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000026",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000026"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -896,7 +896,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000027",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000027"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -922,7 +922,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000028",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000028"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -948,7 +948,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000029",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000029"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,
@@ -974,7 +974,7 @@
                                           {
                                               "sourceRuntimePlacementId":  "1090000000000030",
                                               "suppressionAliasPlacementIds":  [
-
+                                                                                   "1091000000000030"
                                                                                ],
                                               "spawnOffset":  [
                                                                   0,

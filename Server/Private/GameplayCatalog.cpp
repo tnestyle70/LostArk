@@ -536,6 +536,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	using BOSS_MAP = decltype(m_Bosses);
 	using PATTERN_MAP = decltype(m_BossPatterns);
 	using INTRO_MAP = decltype(m_IntroPatternIdByEncounter);
+	using ROTATION_MAP = decltype(m_BossPatternRotations);
 	using AUDITION_MAP = decltype(m_ValtanDebugAuditions);
 	using PLAYER_MAP = decltype(m_Players);
 	using DAMAGE_MAP = decltype(m_DamageRatePercentByProfileId);
@@ -545,6 +546,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		BOSS_MAP& bosses;
 		PATTERN_MAP& patterns;
 		INTRO_MAP& intros;
+		ROTATION_MAP& rotations;
 		AUDITION_MAP& auditions;
 		PLAYER_MAP& players;
 		DAMAGE_MAP& damages;
@@ -552,6 +554,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		BOSS_MAP previousBosses;
 		PATTERN_MAP previousPatterns;
 		INTRO_MAP previousIntros;
+		ROTATION_MAP previousRotations;
 		AUDITION_MAP previousAuditions;
 		PLAYER_MAP previousPlayers;
 		DAMAGE_MAP previousDamages;
@@ -562,6 +565,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			BOSS_MAP& bossTarget,
 			PATTERN_MAP& patternTarget,
 			INTRO_MAP& introTarget,
+			ROTATION_MAP& rotationTarget,
 			AUDITION_MAP& auditionTarget,
 			PLAYER_MAP& playerTarget,
 			DAMAGE_MAP& damageTarget)
@@ -569,6 +573,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			, bosses(bossTarget)
 			, patterns(patternTarget)
 			, intros(introTarget)
+			, rotations(rotationTarget)
 			, auditions(auditionTarget)
 			, players(playerTarget)
 			, damages(damageTarget)
@@ -576,6 +581,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			, previousBosses(std::move(bossTarget))
 			, previousPatterns(std::move(patternTarget))
 			, previousIntros(std::move(introTarget))
+			, previousRotations(std::move(rotationTarget))
 			, previousAuditions(std::move(auditionTarget))
 			, previousPlayers(std::move(playerTarget))
 			, previousDamages(std::move(damageTarget))
@@ -590,6 +596,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			bosses = std::move(previousBosses);
 			patterns = std::move(previousPatterns);
 			intros = std::move(previousIntros);
+			rotations = std::move(previousRotations);
 			auditions = std::move(previousAuditions);
 			players = std::move(previousPlayers);
 			damages = std::move(previousDamages);
@@ -597,12 +604,14 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	};
 	LOAD_ROLLBACK rollback{
 		m_Skills, m_Bosses, m_BossPatterns, m_IntroPatternIdByEncounter,
+		m_BossPatternRotations,
 		m_ValtanDebugAuditions, m_Players,
 		m_DamageRatePercentByProfileId };
 	m_Skills.clear();
 	m_Bosses.clear();
 	m_BossPatterns.clear();
 	m_IntroPatternIdByEncounter.clear();
+	m_BossPatternRotations.clear();
 	m_ValtanDebugAuditions.clear();
 	m_Players.clear();
 	m_DamageRatePercentByProfileId.clear();
@@ -1205,6 +1214,89 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				"-" == fields[17] ? "" : std::string(fields[17]);
 			owner->Stages.push_back(std::move(stage));
 		}
+		/* Sorted after PATTERN and ahead of its own steps, so the span opens an
+		empty list the step rows then fill in order. */
+		else if (!fields.empty() && "PATTERNROTATION" == fields[0])
+		{
+			std::uint32_t fromBar = 0u;
+			std::uint32_t toBar = 0u;
+			std::uint32_t stepCount = 0u;
+			if (6u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !ParseNumber(fields[3], fromBar) ||
+				!ParseNumber(fields[4], toBar) ||
+				!ParseNumber(fields[5], stepCount) ||
+				0u == stepCount || stepCount > 32u || fromBar <= toBar)
+			{
+				m_strStatus = "Boss pattern rotation row is invalid";
+				return false;
+			}
+			std::vector<BOSS_PATTERN_ROTATION_DEFINITION>& rotations =
+				m_BossPatternRotations[std::string(fields[1])];
+			for (const BOSS_PATTERN_ROTATION_DEFINITION& existing : rotations)
+			{
+				/* Two spans that both claim a bar would make selection depend on
+				document order instead of the authored script. */
+				if (existing.strRotationId == fields[2] ||
+					(fromBar > existing.iToHealthBar &&
+						existing.iFromHealthBar > toBar))
+				{
+					m_strStatus = "Boss pattern rotation spans overlap";
+					return false;
+				}
+			}
+			BOSS_PATTERN_ROTATION_DEFINITION staged{};
+			staged.strEncounterId = fields[1];
+			staged.strRotationId = fields[2];
+			staged.iFromHealthBar = fromBar;
+			staged.iToHealthBar = toBar;
+			staged.iExpectedStepCount = stepCount;
+			rotations.push_back(std::move(staged));
+		}
+		/* Sorted after its own span row, so the list it appends to exists. Every
+		pattern a step names is already parsed as well. */
+		else if (!fields.empty() && "PATTERNROTATIONSTEP" == fields[0])
+		{
+			std::uint32_t stepIndex = 0u;
+			if (5u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !ParseNumber(fields[3], stepIndex) ||
+				!IsStableId(fields[4]))
+			{
+				m_strStatus = "Boss pattern rotation step row is invalid";
+				return false;
+			}
+			const auto patternMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == patternMap ||
+				patternMap->second.end() == std::find_if(
+					patternMap->second.begin(), patternMap->second.end(),
+					[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+					{
+						return pattern.strPatternId == fields[4] &&
+							BOSS_PATTERN_SELECTION::NORMAL == pattern.eSelection;
+					}))
+			{
+				m_strStatus = "Boss pattern rotation step names no normal pattern";
+				return false;
+			}
+			const auto rotationMap =
+				m_BossPatternRotations.find(std::string(fields[1]));
+			if (m_BossPatternRotations.end() == rotationMap)
+			{
+				m_strStatus = "Boss pattern rotation step has no span";
+				return false;
+			}
+			const auto rotation = std::find_if(
+				rotationMap->second.begin(), rotationMap->second.end(),
+				[&fields](const BOSS_PATTERN_ROTATION_DEFINITION& candidate)
+				{ return candidate.strRotationId == fields[2]; });
+			if (rotationMap->second.end() == rotation ||
+				stepIndex != rotation->PatternIds.size() ||
+				stepIndex >= rotation->iExpectedStepCount)
+			{
+				m_strStatus = "Boss pattern rotation steps are not ordinal";
+				return false;
+			}
+			rotation->PatternIds.emplace_back(fields[4]);
+		}
 		else if (!fields.empty() && "PATTERNWALLCONTACT" == fields[0])
 		{
 			std::uint32_t stageIndex = 0u;
@@ -1697,6 +1789,21 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		}
 	}
 
+	for (const auto& [rotationEncounterId, rotations] : m_BossPatternRotations)
+	{
+		(void)rotationEncounterId;
+		for (const BOSS_PATTERN_ROTATION_DEFINITION& rotation : rotations)
+		{
+			/* A span that lost steps would silently shorten the authored script,
+			so a partial list is refused instead of played. */
+			if (rotation.PatternIds.size() != rotation.iExpectedStepCount)
+			{
+				m_strStatus = "Boss pattern rotation step count is incomplete";
+				return false;
+			}
+		}
+	}
+
 	rollback.committed = true;
 	m_strStatus = "Loaded gameplay bootstrap";
 	return true;
@@ -1740,6 +1847,27 @@ LostArk::Server::CGameplayCatalog::Find_ValtanDebugAudition(
 {
 	const auto iter = m_ValtanDebugAuditions.find(encounterId);
 	return m_ValtanDebugAuditions.end() == iter ? nullptr : &iter->second;
+}
+
+const LostArk::Server::BOSS_PATTERN_ROTATION_DEFINITION*
+LostArk::Server::CGameplayCatalog::Find_BossPatternRotation(
+	const std::string& encounterId,
+	const std::uint32_t healthBar) const
+{
+	const auto iter = m_BossPatternRotations.find(encounterId);
+	if (m_BossPatternRotations.end() == iter)
+		return nullptr;
+	for (const BOSS_PATTERN_ROTATION_DEFINITION& rotation : iter->second)
+	{
+		/* Bars count down. A span owns the stretch at and below its opening
+		bar and stops on the bar the next scripted mechanic sits on. */
+		if (healthBar <= rotation.iFromHealthBar &&
+			healthBar > rotation.iToHealthBar)
+		{
+			return &rotation;
+		}
+	}
+	return nullptr;
 }
 
 const std::string& LostArk::Server::CGameplayCatalog::Find_IntroPatternId(
