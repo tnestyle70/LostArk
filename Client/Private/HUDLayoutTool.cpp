@@ -49,16 +49,101 @@ namespace
 		been located yet, so the 30 Inventory_Slot_* markers are position-only (empty layers) for
 		now -- real slot border art is a follow-up, not fabricated here. */
 		{ "Inventory UI",   "UI/Inventory/InventoryUI.json", "UI/Inventory/", false },
-		/* Item enhancement (강화) window content, traced from the real itemupgrade.gfx via
-		ItemUpgradeWndContent's SymbolClassTag/PlaceObject placement matrices (native 1920x1080
-		canvas, scaled to this project's 1280x720 HUD reference). Panel background, the item
-		slot/frame/glow art, the success-chance gauge ring, and the option-button background are
-		real crops resolved through the DefineSubImage bitmapId->imageId chain (mostly from the
-		ItemUpgrade_I4 atlas -- not I30, which looks similar but is the wrong source page, see
-		reference_itemupgrade_gfx_extraction memory). Every other named field (list, combobox,
-		labels, cost/money, recipe list) is placed at its real x/y but still uses a visible
-		authoring marker image since its own bitmap skin hasn't been traced yet -- follow-up, not
-		fabricated here. */
+		/* Item enhancement (장비 재련) window content. itemupgrade.gfx (the original source for this
+		document) turned out to be an outdated/wrong-version window -- confirmed against a real
+		current in-game screenshot and against itembuilduplevel.gfx's identical `enhance.*` loc-key
+		namespace. Rebuilt from itembuilduplevel.gfx's real ItemBuildUpLevelWndContent (char 992)
+		SymbolClassTag/PlaceObject placement matrices (native 1920x1080 canvas, scaled to this
+		project's 1280x720 HUD reference). Panel background, the materials-row backdrop, the
+		success-gauge cover/fill, post/auction quick-buy buttons, the breakthrough-recipe backdrop,
+		the success/fail result modal background, two grade-tier badge crops, the combobox
+		background/arrow, the shared V2btn button skin (buildUp/continuously/success-ok/fail-ok/
+		levelUp), the level-up-complete glow, and several per-row/per-state "example" crops (list
+		selected/locked/disabled, grade-list selected/side-strips, recipe icon frame) are real
+		bitmaps -- most resolved through itembuilduplevel.xml's own DefineSubImage bitmapId->imageId
+		chain, the shared V2 widgets (buttons/dropdown/lock icon) resolved one hop further through
+		the external EFUI_ShareImage/shareImageV2.swf and shareImage.swf packages named in
+		itembuilduplevel.xml's own ImportAssets2Tag (their native pixel size matches the traced
+		shapeBounds/DefineSubImage region, and buildUp_btn/continuously_btn's on-screen size also
+		applies their real root placement scale, 2.174652x/1.277771y, on top of the 103x36 native
+		V2btn_normal bitmap -- but rendered at native size anyway, never stretched, per explicit
+		direction; same for BuildUpIconFrame/SpecialMaterialSlot below despite their own real
+		placement scale). ItemUpgrade_ResultEffect (35 frames, 483x320) and ItemUpgrade_
+		CompleteEffect (80 frames, 150x150) are real flipbooks -- itembuilduplevel.gfx's own
+		"result_*"/"completeEffectCore_*" character families, both real children of
+		levelUpComplete_mc(569), confirmed by trace-to-root (not the external EFUI_Effect package).
+		A named "ItemUpgrade_SuccessEffect" using EFUI_Effect's "energeEffect_*" briefly stood in
+		this slot's place -- wrong: matched on "successEffect" appearing inside a longer wrapper
+		name (smeltEffect_slotEnergyEffect_successEffect) without ever checking the actual frame
+		color, which turned out to be plain cyan, not the real gold/orange burst. Real playback fps
+		for these two is itembuilduplevel.gfx's own actual frameRate (40.0), not a guessed default.
+		The generic item-slot frame (ItemUpgrade_BuildUpIconFrame/SpecialMaterialSlot) is arkSlot_renew_basic_V2
+		-> arkSlot_renew_basic_Frame_V2 -> V2Slot_border, a real 70x70 crop from
+		EFUI_ShareImage/shareImageV2.swf's own shareImageV2_I6.tga, scaled by each slot's own real
+		root placement scale -- this is the same shared symbol behind the long-standing InventoryUI
+		ARKSlotBackgroundV2 gap (see reference_lostark_umodel_extraction memory). noReforgingMc/
+		noneCostMc are real backdrop strips resolved directly in itembuilduplevel.xml. What's left
+		with a visible authoring marker/empty layer is either a genuine dynamic text field
+		(className=SimpleLabel/SimpleLabel_YoonGasiIIM in the real trace -- there was never a bitmap
+		to find), a vector-only fill with no texture at all (itemBuildUpGradeList's own background
+		shape, bitmapId=None), or a container that genuinely has no background of its own
+		(itemBuildUpList's only children are 14 row-template instances, no frame shape) -- these
+		three are dead ends, not unfinished work. Anything else empty is a real remaining gap.
+		PanelBg's rect was WRONG in an earlier version (borrowed detailInfoBox's anchor because its
+		own placing shape was never traced) -- caught from a real in-game screenshot not lining up,
+		then fixed for real: bitmapId 299 (the saved crop's exact source region) is shape char300's
+		fill, char300 sits inside deco_mc(303) at char992's own root (0,0), and char300's own
+		shapeBounds (381,1)-(1420,730) is the real on-screen rect -- not the crop's native 663x728
+		(the fill stretches non-1:1 across a wider vector shape, same as every other CUI_Sprite
+		draw). The list/grade/recipe per-row "example" pieces' positions are NOT further traceable:
+		exhaustively searched itembuilduplevel.xml for every PlaceObject2Tag/PlaceObject3Tag whose
+		characterId matches each row-renderer template and its internal state children (296, 1049,
+		1086, 1046, 1047, 1048, 1069, 1064, 1066, 84, 81) -- all return zero placements anywhere in
+		the document. Scaleform List/DataGrid item renderers are instantiated purely by AS3 at
+		runtime (row Y = index * itemRenderer height, computed in ActionScript, never baked into the
+		SWF timeline), so no real static position exists for any of them -- confirmed dead end, not
+		an unfinished trace. GaugeCover had the same borrowed-anchor bug as PanelBg (used
+		percentGauge/407's own root instead of char409's real parent, sprite 410, itself char992's
+		OWN unnamed child at (594,212) -- caught because the user noticed the item-icon frame and
+		the gauge ring share the same real X in the actual reference screenshot, which this fix now
+		matches almost exactly). After these two hits, every remaining real-art anchor was
+		re-verified by a generic trace-to-root script (walk each art shape's real containing sprite
+		chain all the way up to char992, summing local offsets, instead of trusting a same-area
+		named field's position) -- RecipeSlotBg/PostBtn/AuctionBtn/BreakThroughBg/SuccessModalBg/
+		FailModalBg/NoReforgingMc/NoneCostMc/CompleteGlow/successOkBtn/failOkBtn all traced back
+		exactly matching what was already used (no bug). Two more real bugs turned up this pass:
+		GaugeFill was computed as "centered inside GaugeCover", but it isn't GaugeCover's child at
+		all -- its real shape (char337) traces through char338 into percentGauge(407) instead, a
+		SEPARATE real sprite tree from GaugeCover's (410) that only visually happens to overlap on
+		screen, giving a real independent anchor (533,265) that matches neither the old nor the
+		"centered" guess. FailDeco's real shape (char898, inside fail_mc) traces to (666,54), not
+		the (613,54) used before -- a plain arithmetic slip, not a wrong-parent bug like the other
+		three. Lesson for next time an anchor is picked by "borrow the nearby named field's
+		position": verify the actual containing sprite chain instead of assuming proximity means
+		parentage. Success/complete effect correction: ItemUpgrade_SuccessEffect (EFUI_Effect's
+		"energeEffect_*", cyan) was a wrong name-match and was replaced by ItemUpgrade_ResultEffect/
+		CompleteEffect -- itembuilduplevel.gfx's own real "result_*"/"completeEffectCore_*" families
+		(orange/gold, confirmed by opening actual frames), both real children of levelUpComplete_mc.
+		Their wrapper sprites (char446/538) also carry a real uniform placement scale the
+		translate-only trace had missed (1.1428x/1.1437y and 0.9800x/0.9989y) -- applied on top of
+		native size since it's a genuine SWF transform, not an artificial rect-fit stretch (unlike
+        BuildUpBtn/BuildUpIconFrame's own real placement scale, which per explicit direction stays
+		unapplied -- every slot renders at native pixel size unless a full transform-chain audit
+		confirms the scale is real and non-degenerate). GaugeFill's own chain scale is (0,0) and
+		NoReforgingMc's is a wildly non-uniform (1.16,3.04) -- both are almost certainly animation-
+		tween snapshots (percentGauge/noRequiredRecipe_mc grow in from a hidden/collapsed start
+		state), not real static design values, so both were left at native size on purpose.
+		Full-page sweep (rounds 4-6): every DefineSubImage region on all 9 real atlas pages this
+		document uses (itemBuildUpLevel_I43/I60/IAA/I102/I112/I1C1/IB7/I115/IB5.tga) was resolved
+		through bitmapId->shape->trace-to-root, not just the handful first noticed -- I43 alone has
+		47 regions and I60 has 33; most were never even opened before a real screenshot (the user's)
+		showed a gold winged-ring piece from IB7 that had no slot at all. The result is ~60 more real
+		crops (lockMotion_mc's own ~14-piece cluster, levelUpMotion_mc1/mc2's own pieces, several
+		success_mc/childWindow/equipExpPage backgrounds, detailInfoBox's own real bg_mc distinct from
+		PanelBg, etc.) -- multi-state button hover/pressed variants were skipped since one
+		representative state per button is already wired and no hover-state swap logic exists yet.
+		Lesson: "I checked the pieces I noticed" is not the same as "I checked the page" -- when a
+		crop comes from an atlas page, list every other region on that same page before moving on. */
 		{ "Item Upgrade",   "UI/ItemUpgrade/ItemUpgradeUI.json", "UI/ItemUpgrade/", false },
 	};
 
@@ -584,6 +669,7 @@ void Client::CHUDLayoutTool::Render_RuntimePreview(const string& classId)
 			if (nullptr != pFrame)
 			{
 				const ImVec2 center(
+
 					(topLeft.x + bottomRight.x) * 0.5f +
 						slot.fAnimationOffsetX * scaleX,
 					(topLeft.y + bottomRight.y) * 0.5f +
@@ -990,20 +1076,26 @@ void Client::CHUDLayoutTool::Render_Canvas()
 				const int32_t iFrameCount = static_cast<int32_t>(Frames.size());
 
 				/* Continuous ping-pong position in [0, N-1], then cross-fade the two bracketing frames.
-				   With only a few source frames a hard cut reads as a strobe/flicker; the dissolve makes it flow. */
-				float fPos = 0.f;
-				if (iFrameCount > 1)
+				   With only a few source frames a hard cut reads as a strobe/flicker; the dissolve makes it flow.
+				   Only for looping slots (torch/fire-style flicker effects this preview was built for) --
+				   a one-shot burst (loop=false, e.g. a success-flash flipbook never meant to actually loop)
+				   freezes on a single middle frame instead, since animating it while positioning things
+				   is misleading (CHUDRuntimeView plays it once and stops; this canvas isn't "playing" at all). */
+				int32_t iFrameA = iFrameCount / 2;
+				int32_t iFrameB = iFrameA;
+				float fBlend = 0.f;
+				if (Slot.bAnimationLoop && iFrameCount > 1)
 				{
 					const float fPeriod = 2.f * (iFrameCount - 1);
 					float fCycle = fmodf(static_cast<float>(ImGui::GetTime()) * Slot.fAnimationFPS, fPeriod);
 					if (fCycle < 0.f)
 						fCycle += fPeriod;
-					fPos = (fCycle <= iFrameCount - 1) ? fCycle : (fPeriod - fCycle);
-				}
+					const float fPos = (fCycle <= iFrameCount - 1) ? fCycle : (fPeriod - fCycle);
 
-				const int32_t iFrameA = static_cast<int32_t>(fPos);
-				const int32_t iFrameB = (iFrameA + 1 < iFrameCount) ? iFrameA + 1 : iFrameA;
-				const float fBlend = fPos - iFrameA;
+					iFrameA = static_cast<int32_t>(fPos);
+					iFrameB = (iFrameA + 1 < iFrameCount) ? iFrameA + 1 : iFrameA;
+					fBlend = fPos - iFrameA;
+				}
 
 				const ImVec2 vSlotCenter((vTopLeft.x + vBotRight.x) * 0.5f, (vTopLeft.y + vBotRight.y) * 0.5f);
 				const ImVec2 vFireCenter(
@@ -1814,7 +1906,7 @@ bool_t Client::CHUDLayoutTool::Save(const filesystem::path& path)
 				file << ", ";
 			Write_String(file, slot.AnimationFrames[frameIndex]);
 		}
-		file << "] }";
+		file << "], \"loop\": " << (slot.bAnimationLoop ? "true" : "false") << " }";
 		if (!slot.strKeyframeAnimationPath.empty())
 		{
 			file << ",\n      \"keyframeAnimationPath\": ";
@@ -2087,6 +2179,19 @@ bool_t Client::CHUDLayoutTool::Load(const filesystem::path& path)
 				return false;
 			}
 			slot.AnimationFrames.push_back(frame.Get_String());
+		}
+
+		/* Optional, defaults to true (matches CHUDRuntimeView's own default) if the JSON omits
+		it -- round-tripped so Save() below does not drop a one-shot slot's loop=false back to
+		looping. */
+		if (const DATA_JSON_VALUE* pLoop = pAnimation->Find("loop"))
+		{
+			if (!pLoop->Is_Boolean())
+			{
+				m_strDataStatus = "JSON animation loop must be boolean";
+				return false;
+			}
+			slot.bAnimationLoop = pLoop->Get_Boolean();
 		}
 
 		/* Optional: only KEYFRAME_ANIMATION slots carry this. Round-tripped as-is (not required,
