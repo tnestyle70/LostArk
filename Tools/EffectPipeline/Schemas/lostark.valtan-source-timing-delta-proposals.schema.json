@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-source-timing-delta-proposals.schema.json",
+  "title": "Valtan reviewed source timing delta proposals",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "mode",
+    "sources",
+    "proposals",
+    "deferredExplicitReviews",
+    "summary"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.valtan-source-timing-delta-proposals" },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "mode": { "const": "REVIEW_ONLY_NO_CANONICAL_DATA_MUTATION" },
+    "sources": { "type": "array", "minItems": 5 },
+    "proposals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "proposalId",
+          "patternId",
+          "actionId",
+          "clipOccurrenceId",
+          "sourceActionId",
+          "sourceStageIndex",
+          "sourceClipOrdinal",
+          "status",
+          "sourceSegment",
+          "serverStageDurationMs",
+          "currentBindingClip",
+          "proposedBindingClip",
+          "currentCue",
+          "proposedCue",
+          "wallProjection"
+        ],
+        "properties": {
+          "proposalId": { "type": "string", "minLength": 1 },
+          "patternId": { "type": "string", "minLength": 1 },
+          "actionId": { "type": "string", "minLength": 1 },
+          "clipOccurrenceId": { "type": "string", "minLength": 1 },
+          "sourceActionId": { "type": "integer", "minimum": 1 },
+          "sourceStageIndex": { "type": "integer", "minimum": 0 },
+          "sourceClipOrdinal": { "type": "integer", "minimum": 0 },
+          "status": {
+            "const": "PROPOSED_SOURCE_REVIEWED_DELTA_NOT_ACCEPTED"
+          },
+          "sourceSegment": { "type": "object" },
+          "serverStageDurationMs": { "type": "integer", "minimum": 1 },
+          "currentBindingClip": { "type": "object" },
+          "proposedBindingClip": {
+            "type": "object",
+            "required": [
+              "clipOccurrenceId",
+              "clip",
+              "mappingBasis",
+              "sourceStartMs",
+              "playMs",
+              "playRate",
+              "loop"
+            ],
+            "properties": {
+              "mappingBasis": { "const": "SOURCE_REVIEWED_DELTA" },
+              "playRate": {
+                "type": "number",
+                "minimum": 0.05,
+                "maximum": 16
+              },
+              "loop": { "const": false }
+            }
+          },
+          "currentCue": { "type": "object" },
+          "proposedCue": { "type": "object" },
+          "wallProjection": {
+            "type": "object",
+            "required": [
+              "effectiveFullSegmentWallDurationMs",
+              "cueWallStartMs",
+              "cueWallEndMs",
+              "sourceNotifyWallProjections",
+              "fullSourceSegmentFitsStage",
+              "allReviewedNotifySamplesFitStage"
+            ],
+            "properties": {
+              "fullSourceSegmentFitsStage": { "const": true },
+              "allReviewedNotifySamplesFitStage": { "const": true }
+            }
+          }
+        }
+      }
+    },
+    "deferredExplicitReviews": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "object" }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "proposalCount",
+        "fullSegmentFitsStageCount",
+        "canonicalDataMutationCount",
+        "deferredCrossStageReviewCount"
+      ],
+      "properties": {
+        "proposalCount": { "type": "integer", "minimum": 1 },
+        "fullSegmentFitsStageCount": { "type": "integer", "minimum": 1 },
+        "canonicalDataMutationCount": { "const": 0 },
+        "deferredCrossStageReviewCount": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

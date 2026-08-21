@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.effect-document-drawable-sweep.schema.json",
+  "title": "Headless Effect document drawable sweep evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "resourceRoot",
+    "sampleRateHz",
+    "documents"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.effect-document-drawable-sweep"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "resourceRoot": {
+      "$ref": "#/$defs/absolutePath"
+    },
+    "sampleRateHz": {
+      "const": 60
+    },
+    "documents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/document"
+      }
+    }
+  },
+  "$defs": {
+    "absolutePath": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^(?:[A-Za-z]:/|/)"
+    },
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[a-z0-9]+(?:[._:-][a-z0-9]+)*$"
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elementId",
+        "disposition",
+        "preparedSamples",
+        "attemptedSamples",
+        "submittedDraws",
+        "suppressedDraws",
+        "failedDraws",
+        "committedDraws"
+      ],
+      "properties": {
+        "elementId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "disposition": {
+          "const": "DRAWABLE_PROOF_PASS"
+        },
+        "preparedSamples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "attemptedSamples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "submittedDraws": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "suppressedDraws": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedDraws": {
+          "const": 0
+        },
+        "committedDraws": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documentPath",
+        "effectAssetId",
+        "durationSeconds",
+        "sampleCount",
+        "visibleElementCount",
+        "preparedElementCount",
+        "drawnElementCount",
+        "disposition",
+        "elements"
+      ],
+      "properties": {
+        "documentPath": {
+          "$ref": "#/$defs/absolutePath"
+        },
+        "effectAssetId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "durationSeconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 60
+        },
+        "sampleCount": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "visibleElementCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "preparedElementCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "drawnElementCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "disposition": {
+          "const": "DRAWABLE_PROOF_PASS"
+        },
+        "elements": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/element"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-project-authored-priority-drawable-proof.schema.json",
+  "title": "Valtan project-authored priority per-element drawable proof",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "ownerArchetypeId",
+    "patchPlanSha256",
+    "drawableSweepPath",
+    "drawableSweepSha256",
+    "resourceRoot",
+    "targets"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-project-authored-priority-drawable-proof"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "ownerArchetypeId": {
+      "const": "BOSS_VALTAN"
+    },
+    "patchPlanSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "drawableSweepPath": {
+      "$ref": "#/$defs/repoPath"
+    },
+    "drawableSweepSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "resourceRoot": {
+      "$ref": "#/$defs/absolutePath"
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "$ref": "#/$defs/target"
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[a-z0-9]+(?:[._:-][a-z0-9]+)*$"
+    },
+    "repoPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)[.][.](?:/|$))[^\\\\]+$"
+    },
+    "absolutePath": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^(?:[A-Za-z]:/|/)"
+    },
+    "element": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elementId",
+        "disposition",
+        "preparedSamples",
+        "attemptedSamples",
+        "submittedDraws",
+        "suppressedDraws",
+        "failedDraws",
+        "committedDraws"
+      ],
+      "properties": {
+        "elementId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "disposition": {
+          "const": "DRAWABLE_PROOF_PASS"
+        },
+        "preparedSamples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "attemptedSamples": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "submittedDraws": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "suppressedDraws": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failedDraws": {
+          "const": 0
+        },
+        "committedDraws": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "overlayDocumentSha256",
+        "disposition",
+        "elements"
+      ],
+      "properties": {
+        "effectAssetId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "overlayDocumentSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "disposition": {
+          "const": "DRAWABLE_PROOF_PASS"
+        },
+        "elements": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/element"
+          }
+        }
+      }
+    }
+  }
+}

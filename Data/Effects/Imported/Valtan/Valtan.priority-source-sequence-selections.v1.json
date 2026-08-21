@@ -1,0 +1,939 @@
+{
+  "schema": "lostark.valtan-source-branch-selections",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "selections": [
+    {
+      "patternId": "VALTAN_SWING",
+      "sourceActionId": 420601,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 0,
+      "sourceSequencePathSha256": "11bae0f4f72e0aac2f5d6c5c762d5808f89f95605380db136c0ac31faf54f179",
+      "branchId": "valtan_swing.source-420601.mn_rpbf_00.sequence-000.stages-000-001",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "sourceVisualSignatureReviews proves 420601/420660 seq=0 byte-equivalent; the full seq=0 path exactly joins Animation PR #127 active clip occurrences in order",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.swing.active.clip.01",
+          "timingDisposition": "REACHABLE",
+          "reviewBasis": "Att_Battle_1_01 exact clip identity; clip-local source events fit the natural 3.00s source window"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.swing.active.clip.02",
+          "timingDisposition": "REACHABLE",
+          "reviewBasis": "Att_Battle_1_02 exact clip identity; clip-local source events fit the natural 2.50s source window"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_DOWN_SMASH",
+      "sourceActionId": 420602,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 3,
+      "sourceSequencePathSha256": "a8724cd41fa39eda3b2ef4794b957df98765ed874f9f53205d02afca474642cb",
+      "branchId": "valtan_down_smash.source-420602.mn_rpbf_00.sequence-003.stages-014-016",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=3 and reviewed DOWN timing table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 14,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.down-smash.active.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 15,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 16,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_IMPRISON_ROAR",
+      "sourceActionId": 420603,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "8a1e4a7779ac66e7a73034b5f647d781990aee9c46fd4d9a69d77c9b7406a445",
+      "branchId": "valtan_imprison_roar.source-420603.mn_rpbf_00.sequence-002.stages-005-007",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "sourceVisualSignatureReviews proves seq=0/2/3 byte-equivalent; seq=2 is the exact three-clip Animation PR #127 start/loop/end path with no extra source stage",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 5,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.imprison-roar.windup.clip.01",
+          "timingDisposition": "REACHABLE",
+          "reviewBasis": "Att_Battle_5_01_Start exact clip identity and 1.40s clip-local timing fit"
+        },
+        {
+          "sourceStageIndex": 6,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.imprison-roar.active.clip.01",
+          "timingDisposition": "REACHABLE",
+          "reviewBasis": "Att_Battle_5_01_Loop exact clip identity and 4.00s clip-local timing fit"
+        },
+        {
+          "sourceStageIndex": 7,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.imprison-roar.recovery.clip.01",
+          "timingDisposition": "REACHABLE",
+          "reviewBasis": "Att_Battle_5_01_End exact clip identity and 4.43s clip-local timing fit"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_EARTHQUAKE_SMASH",
+      "sourceActionId": 420605,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 3,
+      "sourceSequencePathSha256": "4f4e08bad15359de2fdbfaf4de16e80db6573c3cc1329624c49d4b4a7c2f2f06",
+      "branchId": "valtan_earthquake_smash.source-420605.mn_rpbf_00.sequence-003.stages-018-021",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=3 and reviewed earthquake timing table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 18,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.earthquake-smash.impact.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 19,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.earthquake-smash.delayed.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 20,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.earthquake-smash.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 21,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_PARRY",
+      "sourceActionId": 420606,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 0,
+      "sourceSequencePathSha256": "0c2de96c6ccffce3ebeb434e4626330ec2c395ca2698770bd6f306324be780e6",
+      "branchId": "valtan_parry.source-420606.mn_rpbf_00.sequence-000.stages-000-002",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "sourceVisualSignatureReviews proves 420606 seq=0/2/3 byte-equivalent; seq=0 exactly joins the three Animation PR #127 stance/slash/recovery occurrences",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.reactive.parry.stance.clip.01",
+          "timingDisposition": "REACHABLE",
+          "reviewBasis": "Att_Battle_9_01_Start exact clip identity and 1.70s clip-local timing fit"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.reactive.parry.slash.clip.01",
+          "timingDisposition": "REACHABLE",
+          "reviewBasis": "Att_Battle_9_01_Loop exact clip identity and 1.50s clip-local timing fit"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.reactive.parry.recovery.clip.01",
+          "timingDisposition": "REACHABLE",
+          "reviewBasis": "Att_Battle_9_01_End exact clip identity and 1.07s clip-local timing fit"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_FLOOR_WIPE_130",
+      "sourceActionId": 420630,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "71fe52f854c956b19f0cc42dfef60bc35382c7f08d10a970f4cb2118eca03a87",
+      "branchId": "valtan_floor_wipe_130.source-420630.mn_rpbf_00.sequence-002.stages-000-008",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=2 and reviewed floor-wipe per-notify timing table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.first-smash.clip.01",
+          "timingDisposition": "SOURCE_TIMING_REVIEW_REQUIRED"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.interval.clip.01",
+          "timingDisposition": "SOURCE_TIMING_REVIEW_REQUIRED"
+        },
+        {
+          "sourceStageIndex": 3,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.second-smash.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 7,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 8,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_FOUR_SLASH",
+      "sourceActionId": 420609,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 3,
+      "sourceSequencePathSha256": "c615170e4e095d2e53c8b22799e88847d244a60ab6f0140ebe0c8c671afef220",
+      "branchId": "valtan_four_slash.source-420609.mn_rpbf_00.sequence-003.stages-008-010",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=3 full path crossing Main labels",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 8,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 9,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 10,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.four-slash.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_FRONT_BACK_FRONT",
+      "sourceActionId": 420637,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 1,
+      "sourceSequencePathSha256": "43255932a31f96d5de4e44b0c00b216ac74774955ed5770ad8918cf92d0d68a1",
+      "branchId": "valtan_front_back_front.source-420637.mn_rpbf_00.sequence-001.stages-000-002",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=1 and reviewed 420637 source-only tail",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_GROUND_WAVE_SMASH",
+      "sourceActionId": 420615,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 5,
+      "sourceSequencePathSha256": "f677d563d42a24301fac4e1c184c922e85e87acad0e838e473d2b4237864c531",
+      "branchId": "valtan_ground_wave_smash.source-420615.mn_rpbf_00.sequence-005.stages-029-034",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=5 and reviewed ground-wave full stage path",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 29,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 30,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.windup.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 31,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.active.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 32,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.active.clip.02",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 33,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.active.clip.03",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 34,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.ground-wave-smash.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_HIGH_JUMP",
+      "sourceActionId": 420610,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "2874bacc9e568cb106e392490395fe9b1f8ed318344b5942c17cb597b03998ad",
+      "branchId": "valtan_high_jump.source-420610.mn_rpbf_00.sequence-002.stages-019-022",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=2 and reviewed high-jump stage table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 19,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.high-jump.takeoff.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 20,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 21,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.high-jump.land.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 22,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_MAGIC_CHOICE",
+      "sourceActionId": 420608,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "99f13a6a54d2cd9d00ac5d206753204721e74b1b68b8b1a5b0f3e7005b1750a7",
+      "branchId": "valtan_magic_choice.source-420608.mn_rpbf_00.sequence-002.stages-009-015",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=2 and reviewed inner/outer stage table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 10,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.magic-choice.windup.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 11,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.magic-choice.inner.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 12,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 14,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.magic-choice.outer.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 15,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.magic-choice.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_PORTAL_RUSH",
+      "sourceActionId": 420622,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 1,
+      "sourceSequencePathSha256": "b33f7d42642704752a1635a105b90dbce67608376cfb8f7e40396e90351a3095",
+      "branchId": "valtan_portal_rush.source-420622.mn_rpbf_00.sequence-001.stages-000-007",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=1 and reviewed Portal stage timing table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.portal-rush.portal.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.portal-rush.rushes.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 5,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.portal-rush.finish.clip.01",
+          "timingDisposition": "SOURCE_TIMING_REVIEW_REQUIRED"
+        },
+        {
+          "sourceStageIndex": 6,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.portal-rush.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_SUPER_SMASH",
+      "sourceActionId": 420619,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 1,
+      "sourceSequencePathSha256": "87802e65ce74a49026c30199b49a553fbd01d6531bbb63a681668ff6baea4109",
+      "branchId": "valtan_super_smash.source-420619.mn_rpbf_00.sequence-001.stages-000-005",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=1 and reviewed super-smash visual stage table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.super-smash.windup.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.super-smash.active.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 3,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 4,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.super-smash.recovery.clip.01",
+          "timingDisposition": "SOURCE_TIMING_REVIEW_REQUIRED"
+        },
+        {
+          "sourceStageIndex": 5,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_JUMP_SPIN",
+      "sourceActionId": 420621,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "835c0a0f0f8df9fba0e85ee72fc26f5ef627cd762269f91e97c9ff0b3d47a83e",
+      "branchId": "valtan_jump_spin.source-420621.mn_rpbf_00.sequence-002.stages-013-016",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=2 and reviewed jump-spin stage table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 13,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.jump-spin.jump.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 14,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.jump-spin.land.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 15,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.jump-spin.spin.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 16,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.jump-spin.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_CHARGE_GRAB_ROAR",
+      "sourceActionId": 420623,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "9cb88167618fcc61583c59231e98c3173c2104865f35daaf26de845fa1542920",
+      "branchId": "valtan_charge_grab_roar.source-420623.mn_rpbf_00.sequence-002.stages-015-031",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=2 and reviewed charge-grab-roar core/source-only table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 16,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.charge-grab-roar.counter.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 17,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.charge-grab-roar.charge.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 18,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.charge-grab-roar.roar.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 19,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 20,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 21,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 22,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.charge-grab-roar.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_BACKSTEP_ATTACK",
+      "sourceActionId": 420635,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 0,
+      "sourceSequencePathSha256": "8e5bccb3331c412725fd84f2afbfd2a3ec0190d472df240878d7f247ccfdd06f",
+      "branchId": "valtan_backstep_attack.source-420635.mn_rpbf_00.sequence-000.stages-000-009",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=0 and reviewed backstep visual stage table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.backstep.windup.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.backstep.active.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 7,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.backstep.recovery.clip.01",
+          "timingDisposition": "SOURCE_TIMING_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_RED_BLADE_WAVE",
+      "sourceActionId": 420636,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "f65ad06e666b832665f9bf1eaa52304430ef0c29215c0d26b4c77cb0c4a895f9",
+      "branchId": "valtan_red_blade_wave.source-420636.mn_rpbf_00.sequence-002.stages-000-002",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=2 and reviewed red-blade stage table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.red-blade-wave.windup.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.red-blade-wave.active.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.red-blade-wave.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_FIST_IN_OUT",
+      "sourceActionId": 420638,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "e0a2774427af60183da6ba8bdfb16a1c402740142db91f4cb6b671eec3f2d916",
+      "branchId": "valtan_fist_in_out.source-420638.mn_rpbf_00.sequence-002.stages-000-002",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=2 and reviewed fist source/project-pacing table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.fist-in-out.windup.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.fist-in-out.inner.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_LEDGE_ROAR",
+      "sourceActionId": 420639,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "2b2ff7aae804119f4c8a4b1e10d77ae60c498b15e1c1070ee47300f4bce3642f",
+      "branchId": "valtan_ledge_roar.source-420639.mn_rpbf_00.sequence-002.stages-000-002",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=2 and reviewed start/end/loop source order",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.ledge-roar.windup.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.ledge-roar.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.ledge-roar.active.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_TRIPLE_COUNTER",
+      "sourceActionId": 420640,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 0,
+      "sourceSequencePathSha256": "a7330d2ce225db22e7d8b21c4533a36bf90cd1edc0789c2f55d4831557fb4ef0",
+      "branchId": "valtan_triple_counter.source-420640.mn_rpbf_00.sequence-000.stages-000-002",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=0; one groggy loop cannot be assigned to five product occurrences",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.reactive.triple-counter.first.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "SOURCE_TIMING_REVIEW_REQUIRED"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.reactive.triple-counter.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_ARMOR_BREAK_OPENING",
+      "sourceActionId": 420627,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 1,
+      "sourceSequencePathSha256": "88dbb83ed2327d88c4583a8c79c2b78b48350584a2c42bfb50eb50a30ac541e6",
+      "branchId": "valtan_armor_break_opening.source-420627.mn_rpbf_00.sequence-001.stages-000-003",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "clipseq seq=1 and reviewed damage-parts source stage table",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.armor-break-opening.charge.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.armor-break-opening.groggy.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.armor-break-opening.part-break.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_WHIRLWIND",
+      "sourceActionId": 420633,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "69c1ead846d25857f426569ecfa43f8bcc28b3b4e87d1818b80a255c7bfacf6b",
+      "branchId": "valtan_whirlwind.source-420633.mn_rpbf_00.sequence-002.stages-000-005",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "existing 420633 source-exact 9-of-9 canary fixed at stage 002; cross-check only and never reconcile authored Whirlwind",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.whirlwind.windup.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.whirlwind.active.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 3,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.attack.whirlwind.recovery.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 4,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 5,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_ARENA_BREAK_109",
+      "sourceActionId": 420629,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 1,
+      "sourceSequencePathSha256": "d6a6b80456d1716dd633ae0a3b4deba95125e51e1685e6753b17883f49b33ba5",
+      "branchId": "valtan_arena_break_109.source-420629.mn_rpbf_00.sequence-001.stages-000-002",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "B4 reviewed safe 420629 seq=1 takeoff/drop/impact source path",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 0,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.takeoff.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 1,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.drop.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 2,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.arena-break-109.impact.clip.01",
+          "timingDisposition": "REACHABLE"
+        }
+      ]
+    },
+    {
+      "patternId": "VALTAN_GHOST_TRANSITION_15",
+      "sourceActionId": 420624,
+      "profileId": "MN_RPBF_00",
+      "sequenceIndex": 2,
+      "sourceSequencePathSha256": "37ba4f3e4f3ceeef9c273cc64bb7df8ceefa1fed97fe19b41db8d48018925d1c",
+      "branchId": "valtan_ghost_transition_15.source-420624.mn_rpbf_00.sequence-002.stages-017-032",
+      "status": "REVIEWED_SELECTED",
+      "reviewBasis": "B4 reviewed safe ghost loop/end pair; all other seq=2 source clips remain source-only",
+      "stageMappings": [
+        {
+          "sourceStageIndex": 17,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 18,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 19,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 20,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 21,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 22,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 23,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 24,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 25,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 26,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 27,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 28,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.four-directions.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 29,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": "valtan.mechanic.ghost-transition-15.tracking.clip.01",
+          "timingDisposition": "REACHABLE"
+        },
+        {
+          "sourceStageIndex": 30,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 31,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        },
+        {
+          "sourceStageIndex": 32,
+          "sourceClipOrdinal": 0,
+          "clipOccurrenceId": null,
+          "timingDisposition": "UNREACHABLE"
+        }
+      ]
+    }
+  ]
+}

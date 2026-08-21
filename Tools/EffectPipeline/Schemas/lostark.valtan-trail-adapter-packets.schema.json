@@ -1,0 +1,533 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-trail-adapter-packets.schema.json",
+  "title": "Valtan reviewed typed trail adapter packets",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "selectionPolicy",
+    "deferredPolicy",
+    "inputIdentity",
+    "whirlwindCanary",
+    "adapters",
+    "summary",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-trail-adapter-packets"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "bossArchetypeId": {
+      "const": "BOSS_VALTAN"
+    },
+    "selectionPolicy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "deferredPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "light",
+        "explicitGenericDust",
+        "animationTrail",
+        "trailGhost",
+        "cascadeRibbon"
+      ],
+      "properties": {
+        "light": {
+          "const": "EXCLUDED_DEFERRED"
+        },
+        "explicitGenericDust": {
+          "const": "EXCLUDED_DEFERRED"
+        },
+        "animationTrail": {
+          "const": "TYPED_ADAPTER_REQUIRED"
+        },
+        "trailGhost": {
+          "const": "TYPED_ADAPTER_REQUIRED"
+        },
+        "cascadeRibbon": {
+          "const": "TYPED_ADAPTER_REQUIRED"
+        }
+      }
+    },
+    "inputIdentity": {
+      "type": "object",
+      "required": [
+        "inventoryCanonicalSha256",
+        "selectionCanonicalSha256",
+        "sourceGraphEnrichment"
+      ],
+      "properties": {
+        "inventoryCanonicalSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "selectionCanonicalSha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sourceGraphEnrichment": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "whirlwindCanary": {
+      "type": "object",
+      "required": [
+        "status"
+      ]
+    },
+    "adapters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/adapterRow"
+      }
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "artifactSha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slotId",
+        "assetId",
+        "rawSha256",
+        "byteCount"
+      ],
+      "properties": {
+        "slotId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assetId": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "rawSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "byteCount": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "clipOccurrenceId",
+        "sourceActionId",
+        "profileId",
+        "sourceStageIndex",
+        "sourceClipOrdinal",
+        "notifyId",
+        "sourceType",
+        "sourceTimeSeconds",
+        "sourceDurationSeconds",
+        "assetClassName",
+        "assetObjectPath",
+        "carrierKey"
+      ],
+      "properties": {
+        "patternId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "clipOccurrenceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceActionId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "profileId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceStageIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceClipOrdinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "notifyId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceTimeSeconds": {
+          "type": "number"
+        },
+        "sourceDurationSeconds": {
+          "type": "number"
+        },
+        "assetClassName": {
+          "type": "string"
+        },
+        "assetObjectPath": {
+          "type": "string"
+        },
+        "carrierKey": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "rendererAdmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sharedRendererPath",
+        "minimumRuntimePointCount",
+        "onePointDisposition",
+        "twoPointDisposition",
+        "newRuntimeManager",
+        "newShader"
+      ],
+      "properties": {
+        "sharedRendererPath": {
+          "const": "EFFECT_TRAIL_SHARED_HEADLESS_V1"
+        },
+        "minimumRuntimePointCount": {
+          "const": 2
+        },
+        "onePointDisposition": {
+          "const": "SUPPRESSED_INSUFFICIENT_POINTS"
+        },
+        "twoPointDisposition": {
+          "const": "PREPARED_NONZERO_DRAW"
+        },
+        "newRuntimeManager": {
+          "const": false
+        },
+        "newShader": {
+          "const": false
+        }
+      }
+    },
+    "packet": {
+      "type": "object",
+      "required": [
+        "packetVersion",
+        "adapterId",
+        "packetLayout",
+        "runtimeCarrier",
+        "rendererReady",
+        "rendererAdmission",
+        "packetSha256"
+      ],
+      "properties": {
+        "packetVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "adapterId": {
+          "enum": [
+            "animation-trail-document-v12",
+            "cascade-ribbon-document-v12"
+          ]
+        },
+        "packetLayout": {
+          "enum": [
+            "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+            "CASCADE_RIBBON_TYPED_PACKET_V1"
+          ]
+        },
+        "runtimeCarrier": {
+          "enum": [
+            "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+            "EFFECT_TYPED_CASCADE_RIBBON_V1"
+          ]
+        },
+        "rendererReady": {
+          "const": true
+        },
+        "rendererAdmission": {
+          "$ref": "#/$defs/rendererAdmission"
+        },
+        "packetSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "additionalProperties": true
+    },
+    "adapterRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapterTargetId",
+        "targetVariant",
+        "sourceIdentity",
+        "sourceIdentitySha256",
+        "evidence",
+        "family",
+        "projectionKind",
+        "disposition",
+        "target",
+        "packet",
+        "resourcePacket",
+        "admissionBlockers",
+        "preservedLimitations",
+        "rowSha256"
+      ],
+      "properties": {
+        "adapterTargetId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetVariant": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sourceIdentity": {
+          "$ref": "#/$defs/sourceIdentity"
+        },
+        "sourceIdentitySha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "evidence": {
+          "type": "object"
+        },
+        "family": {
+          "enum": [
+            "ANIMATION_TRAIL",
+            "TRAIL_GHOST",
+            "CASCADE_RIBBON"
+          ]
+        },
+        "projectionKind": {
+          "const": "ADAPTER_PACKET_V1"
+        },
+        "disposition": {
+          "enum": [
+            "ADMITTED_RENDERER_READY",
+            "UNRESOLVED_RUNTIME_ADAPTER"
+          ]
+        },
+        "target": {
+          "oneOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "packet": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/packet"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resourcePacket": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/resource"
+          }
+        },
+        "admissionBlockers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "preservedLimitations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "rowSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "disposition": {
+                "const": "ADMITTED_RENDERER_READY"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "type": "object"
+              },
+              "packet": {
+                "$ref": "#/$defs/packet"
+              },
+              "resourcePacket": {
+                "minItems": 1
+              },
+              "admissionBlockers": {
+                "maxItems": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "target": {
+                "type": "null"
+              },
+              "packet": {
+                "type": "null"
+              },
+              "resourcePacket": {
+                "maxItems": 0
+              },
+              "admissionBlockers": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewedSelectionCount",
+        "sourceInventoryOccurrenceCount",
+        "sourceInventoryCarrierCount",
+        "reviewedReachableSourceOccurrenceCount",
+        "trailAdapterRowCount",
+        "familyCounts",
+        "dispositionCounts",
+        "admittedRendererReadyCount",
+        "unresolvedRuntimeAdapterCount",
+        "unresolvedBlockerCounts",
+        "excludedDeferredLightOccurrenceCount",
+        "excludedExplicitGenericDustOccurrenceCount",
+        "sourceOnlyInsertedClipCount",
+        "droppedTrailAdapterRowCount",
+        "duplicateAdapterTargetCount"
+      ],
+      "properties": {
+        "reviewedSelectionCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceInventoryOccurrenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceInventoryCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reviewedReachableSourceOccurrenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "trailAdapterRowCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "familyCounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "dispositionCounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "admittedRendererReadyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unresolvedRuntimeAdapterCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unresolvedBlockerCounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "excludedDeferredLightOccurrenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excludedExplicitGenericDustOccurrenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceOnlyInsertedClipCount": {
+          "const": 0
+        },
+        "droppedTrailAdapterRowCount": {
+          "const": 0
+        },
+        "duplicateAdapterTargetCount": {
+          "const": 0
+        }
+      }
+    }
+  }
+}

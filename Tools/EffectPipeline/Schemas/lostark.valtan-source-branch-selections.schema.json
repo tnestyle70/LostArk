@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-source-branch-selections.schema.json",
+  "title": "LostArk Valtan reviewed source full-sequence selections",
+  "description": "Legacy schema ID retained for compatibility. Each branchId identifies one Valtan.clipseq sequenceIndex and complete ordered source stage path; Main labels never split a selection.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "formatVersion", "bossArchetypeId", "selections"],
+  "properties": {
+    "schema": { "const": "lostark.valtan-source-branch-selections" },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "selections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "patternId",
+          "sourceActionId",
+          "profileId",
+          "sequenceIndex",
+          "sourceSequencePathSha256",
+          "branchId",
+          "status",
+          "reviewBasis",
+          "stageMappings"
+        ],
+        "properties": {
+          "patternId": { "type": "string", "minLength": 1 },
+          "sourceActionId": { "type": "integer", "minimum": 1 },
+          "profileId": { "type": "string", "minLength": 1 },
+          "sequenceIndex": { "type": "integer", "minimum": 0 },
+          "sourceSequencePathSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "branchId": { "type": "string", "minLength": 1 },
+          "status": {
+            "enum": ["REVIEWED_SELECTED", "REVIEWED_REJECTED"]
+          },
+          "reviewBasis": { "type": "string", "minLength": 1 },
+          "stageMappings": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/stageMapping" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stageMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceStageIndex",
+        "sourceClipOrdinal",
+        "clipOccurrenceId",
+        "timingDisposition"
+      ],
+      "properties": {
+        "sourceStageIndex": { "type": "integer", "minimum": 0 },
+        "sourceClipOrdinal": { "type": "integer", "minimum": 0 },
+        "clipOccurrenceId": { "type": ["string", "null"] },
+        "timingDisposition": {
+          "enum": [
+            "REACHABLE",
+            "SOURCE_TIMING_REVIEW_REQUIRED",
+            "UNREACHABLE"
+          ]
+        },
+        "reviewBasis": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

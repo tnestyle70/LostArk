@@ -43,6 +43,7 @@
 #include "EncounterPatternReference.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
+#include "Valtan.h"
 #include "ValtanPatternPreviewDocument.h"
 #include "ValtanPatternEffectCueDocument.h"
 #include "WorldDestructionDebrisPresentationDocument.h"
@@ -4213,6 +4214,67 @@ namespace
 				document, "BOSS_OTHER", clips, status),
 			"Valtan Pattern Binding Rejects Wrong Boss Owner");
 
+		const std::string validV2 =
+			"{\"schema\":\"lostark.valtan-pattern-bindings\","
+			"\"formatVersion\":2,\"bossArchetypeId\":\"BOSS_VALTAN\","
+			"\"bindings\":[{\"actionId\":\"valtan.attack.whirlwind.active\","
+			"\"clips\":["
+			"{\"clipOccurrenceId\":\"test.whirlwind.active.clip.01\","
+			"\"clip\":\"mesh_att_battle_20_03\","
+			"\"mappingBasis\":\"CURRENT_PRODUCT_BASELINE\","
+			"\"sourceStartMs\":100,\"playMs\":300,\"playRate\":2.0,"
+			"\"loop\":false},"
+			"{\"clipOccurrenceId\":\"test.whirlwind.active.clip.02\","
+			"\"clip\":\"mesh_att_battle_20_04\","
+			"\"mappingBasis\":\"ANIMATION_PR_127\","
+			"\"sourceStartMs\":0,\"playMs\":0,\"playRate\":1.0,"
+			"\"loop\":true}]}]}";
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT v2Document;
+		const bool_t v2BindingValid =
+			CValtanPatternAnimationBindingDocument::Parse_Text(
+				validV2, v2Document, status) &&
+			CValtanPatternAnimationBindingDocument::Validate(
+				v2Document, "BOSS_VALTAN", clips, status);
+		runner.Require(v2BindingValid && 2u == v2Document.iFormatVersion &&
+			2u == v2Document.Bindings.front().Clips.size() &&
+			100u == v2Document.Bindings.front().Clips.front().iSourceStartMs &&
+			300u == v2Document.Bindings.front().Clips.front().iPlayMs &&
+			2.f == v2Document.Bindings.front().Clips.front().fPlayRate &&
+			v2Document.Bindings.front().Clips.back().bLoop,
+			"Valtan Pattern Binding V2 Preserves Ordered Occurrence Segment Rate And Final Loop");
+		if (v2BindingValid)
+		{
+			auto invalidV2 = v2Document;
+			invalidV2.Bindings.front().Clips.back().strClipOccurrenceId =
+				invalidV2.Bindings.front().Clips.front().strClipOccurrenceId;
+			runner.Require(
+				!CValtanPatternAnimationBindingDocument::Validate(
+					invalidV2, "BOSS_VALTAN", clips, status),
+				"Valtan Pattern Binding V2 Rejects Duplicate Clip Occurrence Identity");
+			invalidV2 = v2Document;
+			invalidV2.Bindings.front().Clips.front().strMappingBasis =
+				"UNREVIEWED_GUESS";
+			runner.Require(
+				!CValtanPatternAnimationBindingDocument::Validate(
+					invalidV2, "BOSS_VALTAN", clips, status),
+				"Valtan Pattern Binding V2 Rejects Unknown Mapping Basis");
+			invalidV2 = v2Document;
+			invalidV2.Bindings.front().Clips.front().bLoop = true;
+			runner.Require(
+				!CValtanPatternAnimationBindingDocument::Validate(
+					invalidV2, "BOSS_VALTAN", clips, status),
+				"Valtan Pattern Binding V2 Rejects A Non-Final Loop");
+		}
+		else
+		{
+			runner.Require(false,
+				"Valtan Pattern Binding V2 Rejects Duplicate Clip Occurrence Identity");
+			runner.Require(false,
+				"Valtan Pattern Binding V2 Rejects Unknown Mapping Basis");
+			runner.Require(false,
+				"Valtan Pattern Binding V2 Rejects A Non-Final Loop");
+		}
+
 		const std::string extraField = valid.substr(0u, valid.size() - 1u) +
 			",\"unexpected\":true}";
 		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT preserved = document;
@@ -4293,25 +4355,34 @@ namespace
 			CValtanPatternEffectCueDocument::Load_Source(
 				patternCueDocument, status);
 		std::unordered_set<std::string> patternCueBindings;
+		std::unordered_set<std::string> patternCueOccurrences;
 		std::unordered_set<std::string> patternCueActions;
 		std::unordered_set<std::string> patternCueEffects;
 		bool_t patternCueIdentitiesExact = patternCuesLoaded &&
 			patternCueDocument.strOwnerArchetypeId == "BOSS_VALTAN" &&
-			patternCueDocument.Cues.size() == 99u;
+			patternCueDocument.iFormatVersion == 2u &&
+			!patternCueDocument.Cues.empty();
 		for (const VALTAN_PATTERN_EFFECT_CUE& cue : patternCueDocument.Cues)
 		{
+			const bool_t sourceWindowExact = cue.bHasSourceEnd ?
+				(cue.eStopPolicy == EFFECT_STOP_POLICY::CUE_END &&
+				 cue.iStartMs < cue.iEndMs) :
+				(cue.eStopPolicy == EFFECT_STOP_POLICY::NATURAL &&
+				 cue.iStartMs == cue.iEndMs);
 			patternCueIdentitiesExact = patternCueIdentitiesExact &&
 				patternCueBindings.insert(cue.strBindingId).second &&
-				patternCueActions.insert(cue.strActionId).second &&
-				patternCueEffects.insert(cue.strEffectAssetId).second &&
-				cue.iStartMs < cue.iEndMs && 0u != cue.iStageDurationMs &&
-				cue.iEndMs <= cue.iStageDurationMs;
+				patternCueOccurrences.insert(cue.strOccurrenceId).second &&
+				!cue.strClipOccurrenceId.empty() && sourceWindowExact &&
+				0u != cue.iStageDurationMs;
+			patternCueActions.insert(cue.strActionId);
+			patternCueEffects.insert(cue.strEffectAssetId);
 		}
 		runner.Require(patternCueIdentitiesExact &&
-			patternCueBindings.size() == 99u &&
-			patternCueActions.size() == 99u &&
-			patternCueEffects.size() == 99u,
-			"Valtan Product Pattern Effect Cue Source Has 99 Unique Encounter-Qualified Bindings, Actions, And Effect Targets");
+			patternCueBindings.size() == patternCueDocument.Cues.size() &&
+			patternCueOccurrences.size() == patternCueDocument.Cues.size() &&
+			!patternCueActions.empty() && !patternCueEffects.empty() &&
+			patternCueEffects.size() <= patternCueDocument.Cues.size(),
+			"Valtan Product Pattern Effect Cue V2 Has Stable Occurrences, Policy-Exact Source Windows, And A Deduplicable Target Set");
 
 		CEncounterPatternReference encounter;
 		const bool_t encounterLoaded = encounter.Load(CProjectDataRoot::Resolve(
@@ -4319,6 +4390,116 @@ namespace
 			L"ValtanEncounter.json"), status);
 		const std::string patternCueText = Read_Text(
 			CValtanPatternEffectCueDocument::Resolve_Path());
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT productAnimationBindings;
+		const std::string productAnimationBindingText = Read_Text(
+			CValtanPatternAnimationBindingDocument::Resolve_Path("Valtan"));
+		const bool_t productAnimationBindingsLoaded =
+			!productAnimationBindingText.empty() &&
+			CValtanPatternAnimationBindingDocument::Parse_Text(
+				productAnimationBindingText, productAnimationBindings, status);
+		const auto whirlwindBinding = productAnimationBindingsLoaded ?
+			std::find_if(productAnimationBindings.Bindings.begin(),
+				productAnimationBindings.Bindings.end(),
+				[](const BOSS_PATTERN_ANIMATION_BINDING& binding)
+				{
+					return binding.strActionId ==
+						"valtan.attack.whirlwind.active";
+				}) : productAnimationBindings.Bindings.end();
+		const bool_t whirlwindOccurrenceLoops =
+			productAnimationBindingsLoaded &&
+			whirlwindBinding != productAnimationBindings.Bindings.end() &&
+			1u == whirlwindBinding->Clips.size() &&
+			whirlwindBinding->Clips.front().bLoop &&
+			whirlwindBinding->Clips.front().strClipOccurrenceId ==
+				"valtan.attack.whirlwind.active.clip.01";
+		const auto whirlwindCue = patternCuesLoaded ?
+			std::find_if(patternCueDocument.Cues.begin(),
+				patternCueDocument.Cues.end(),
+				[](const VALTAN_PATTERN_EFFECT_CUE& cue)
+				{
+					return cue.strActionId ==
+						"valtan.attack.whirlwind.active";
+				}) : patternCueDocument.Cues.end();
+		runner.Require(whirlwindOccurrenceLoops &&
+			whirlwindCue != patternCueDocument.Cues.end() &&
+			whirlwindCue->eRepeatPolicy ==
+				VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE &&
+			!whirlwindCue->bHasSourceEnd,
+			"Valtan Whirlwind Loop Occurrence Spawns Its Natural Baked Effect Once");
+
+		const std::string sharedTargetCueText =
+			"{\"schema\":\"lostark.valtan-pattern-effect-cues\","
+			"\"formatVersion\":2,\"ownerArchetypeId\":\"BOSS_VALTAN\","
+			"\"cues\":["
+			"{\"bindingId\":\"test.cue.whirlwind.once\","
+			"\"occurrenceId\":\"test.cue.whirlwind.once.occurrence.01\","
+			"\"patternId\":\"VALTAN_WHIRLWIND\",\"stageId\":\"SPIN\","
+			"\"actionId\":\"valtan.attack.whirlwind.active\","
+			"\"clipOccurrenceId\":\"valtan.attack.whirlwind.active.clip.01\","
+			"\"effectAssetId\":\"effect.valtan.test.shared-target\","
+			"\"anchorSlotId\":\"root\",\"followPolicy\":\"follow\","
+			"\"stopPolicy\":\"natural\",\"repeatPolicy\":\"once\","
+			"\"sourceStartMs\":0,\"sourceEndMs\":null,"
+			"\"localTransform\":{\"position\":[0,0,0],"
+			"\"rotationDegrees\":[0,0,0],\"scale\":[1,1,1]}},"
+			"{\"bindingId\":\"test.cue.whirlwind.each-loop\","
+			"\"occurrenceId\":\"test.cue.whirlwind.each-loop.occurrence.01\","
+			"\"patternId\":\"VALTAN_WHIRLWIND\",\"stageId\":\"SPIN\","
+			"\"actionId\":\"valtan.attack.whirlwind.active\","
+			"\"clipOccurrenceId\":\"valtan.attack.whirlwind.active.clip.01\","
+			"\"effectAssetId\":\"effect.valtan.test.shared-target\","
+			"\"anchorSlotId\":\"root\",\"followPolicy\":\"follow\","
+			"\"stopPolicy\":\"natural\",\"repeatPolicy\":\"each_loop\","
+			"\"sourceStartMs\":0,\"sourceEndMs\":null,"
+			"\"localTransform\":{\"position\":[0,0,0],"
+			"\"rotationDegrees\":[0,0,0],\"scale\":[1,1,1]}}]}";
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT sharedTargetCues;
+		const bool_t sharedTargetCuesParsed = encounterLoaded &&
+			productAnimationBindingsLoaded &&
+			CValtanPatternEffectCueDocument::Parse_Text(
+				sharedTargetCueText, encounter, productAnimationBindings,
+				sharedTargetCues, status);
+		runner.Require(sharedTargetCuesParsed &&
+			2u == sharedTargetCues.Cues.size() &&
+			sharedTargetCues.Cues[0].strEffectAssetId ==
+				sharedTargetCues.Cues[1].strEffectAssetId &&
+			sharedTargetCues.Cues[0].eRepeatPolicy !=
+				sharedTargetCues.Cues[1].eRepeatPolicy,
+			"Valtan Cue V2 Allows Same-Stage Occurrences And Shared Effect Target With Once Or Each-Loop Policy");
+
+		auto boundedAnimationBindings = productAnimationBindings;
+		if (productAnimationBindingsLoaded &&
+			whirlwindBinding != productAnimationBindings.Bindings.end())
+		{
+			const size_t bindingIndex = static_cast<size_t>(
+				whirlwindBinding - productAnimationBindings.Bindings.begin());
+			boundedAnimationBindings.Bindings[bindingIndex].Clips.front().iPlayMs =
+				100u;
+		}
+		const std::string outOfRangeCueText =
+			"{\"schema\":\"lostark.valtan-pattern-effect-cues\","
+			"\"formatVersion\":2,\"ownerArchetypeId\":\"BOSS_VALTAN\","
+			"\"cues\":[{\"bindingId\":\"test.cue.out-of-range\","
+			"\"occurrenceId\":\"test.cue.out-of-range.occurrence.01\","
+			"\"patternId\":\"VALTAN_WHIRLWIND\",\"stageId\":\"SPIN\","
+			"\"actionId\":\"valtan.attack.whirlwind.active\","
+			"\"clipOccurrenceId\":\"valtan.attack.whirlwind.active.clip.01\","
+			"\"effectAssetId\":\"effect.valtan.test.out-of-range\","
+			"\"anchorSlotId\":\"root\",\"followPolicy\":\"follow\","
+			"\"stopPolicy\":\"natural\",\"repeatPolicy\":\"once\","
+			"\"sourceStartMs\":100,\"sourceEndMs\":null,"
+			"\"localTransform\":{\"position\":[0,0,0],"
+			"\"rotationDegrees\":[0,0,0],\"scale\":[1,1,1]}}]}";
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT rejectedOutOfRange =
+			patternCueDocument;
+		const size_t preservedCueCount = rejectedOutOfRange.Cues.size();
+		runner.Require(encounterLoaded && productAnimationBindingsLoaded &&
+			whirlwindOccurrenceLoops &&
+			!CValtanPatternEffectCueDocument::Parse_Text(
+				outOfRangeCueText, encounter, boundedAnimationBindings,
+				rejectedOutOfRange, status) &&
+			rejectedOutOfRange.Cues.size() == preservedCueCount,
+			"Valtan Cue V2 Rejects A Source Window Outside Its Clip Segment And Preserves Prior State");
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT preservedPatternCues =
 			patternCueDocument;
 		const std::string preservedFirstBinding =
@@ -4338,6 +4519,100 @@ namespace
 				preservedFirstBinding,
 			"Valtan Pattern Effect Cue Parse Failure Preserves Prior Committed Document");
 
+	}
+
+	void Test_ValtanPatternEffectOccurrenceScheduling(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		std::vector<VALTAN_PATTERN_EFFECT_OCCURRENCE_SAMPLE> samples;
+		VALTAN_PATTERN_EFFECT_OCCURRENCE_SCAN_DESC scan;
+		scan.fCurrentActionAgeSeconds = 0.15f;
+		scan.fFirstOccurrenceWallSeconds = 0.1f;
+		scan.fLoopWallDurationSeconds = 0.5f;
+		scan.fPlaybackRate = 1.f;
+		scan.fLiveSourceDurationSeconds = 0.7f;
+		scan.bEachLoop = true;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(scan, samples) &&
+			1u == samples.size() && 0u == samples[0].iLoopEpoch &&
+			std::abs(samples[0].fInitialSampleSeconds - 0.05f) < 0.00001f,
+			"Valtan Natural Each-Loop First Snapshot Catches Up The Live Epoch");
+
+		scan.bHasPreviousActionAge = true;
+		scan.fPreviousActionAgeSeconds = 0.15f;
+		scan.fCurrentActionAgeSeconds = 1.15f;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(scan, samples) &&
+			2u == samples.size() &&
+			1u == samples[0].iLoopEpoch &&
+			2u == samples[1].iLoopEpoch &&
+			std::abs(samples[0].fInitialSampleSeconds - 0.55f) < 0.00002f &&
+			std::abs(samples[1].fInitialSampleSeconds - 0.05f) < 0.00002f,
+			"Valtan Each-Loop Snapshot Jump Enumerates Every Crossed Live Epoch");
+
+		scan.fLiveSourceDurationSeconds = 0.1f;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(scan, samples) &&
+			1u == samples.size() && 2u == samples[0].iLoopEpoch &&
+			std::abs(samples[0].fInitialSampleSeconds - 0.05f) < 0.00002f,
+			"Valtan Cue-End Snapshot Jump Drops Crossed Epochs Outside Their Source Window");
+
+		VALTAN_PATTERN_EFFECT_OCCURRENCE_SCAN_DESC once;
+		once.fCurrentActionAgeSeconds = 0.3f;
+		once.fFirstOccurrenceWallSeconds = 0.1f;
+		once.fPlaybackRate = 1.f;
+		once.fLiveSourceDurationSeconds = 0.4f;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(once, samples) &&
+			1u == samples.size() &&
+			std::abs(samples[0].fInitialSampleSeconds - 0.2f) < 0.00001f,
+			"Valtan Once Natural First Snapshot Seeks A Still-Live Product Effect");
+		once.fCurrentActionAgeSeconds = 0.5f;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(once, samples) &&
+			samples.empty(),
+			"Valtan Once Natural Exact Duration Boundary Is Stale");
+		once.fCurrentActionAgeSeconds = 1.f;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(once, samples) &&
+			samples.empty(),
+			"Valtan Once Natural Stale First Snapshot Queues Zero Occurrences");
+
+		VALTAN_PATTERN_EFFECT_OCCURRENCE_SCAN_DESC capped;
+		capped.fCurrentActionAgeSeconds = 1.f;
+		capped.fFirstOccurrenceWallSeconds = 0.f;
+		capped.fLoopWallDurationSeconds = 0.001f;
+		capped.fPlaybackRate = 1.f;
+		capped.fLiveSourceDurationSeconds = 1.f;
+		capped.bEachLoop = true;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(capped, samples) &&
+			VALTAN_MAX_PATTERN_EFFECT_OCCURRENCES_PER_SCAN == samples.size() &&
+			745u == samples.front().iLoopEpoch &&
+			1000u == samples.back().iLoopEpoch,
+			"Valtan Large Loop Jump Retains The Latest 256 Live Epochs Deterministically");
+
+		capped.fPreviousActionAgeSeconds = 0.9f;
+		capped.fCurrentActionAgeSeconds = 1.f;
+		capped.bHasPreviousActionAge = true;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(capped, samples) &&
+			100u == samples.size() && 901u == samples.front().iLoopEpoch &&
+			1000u == samples.back().iLoopEpoch,
+			"Valtan Subsequent Loop Scan Emits Only Crossed Epochs");
+		capped.bHasPreviousActionAge = false;
+		runner.Require(
+			Resolve_ValtanPatternEffectOccurrenceScan(capped, samples) &&
+			VALTAN_MAX_PATTERN_EFFECT_OCCURRENCES_PER_SCAN == samples.size() &&
+			745u == samples.front().iLoopEpoch,
+			"Valtan Stage-Edge Scan Reset Rebuilds The Bounded Live Catch-Up Set");
+
+		capped.bHasPreviousActionAge = true;
+		capped.fPreviousActionAgeSeconds = 1.2f;
+		runner.Require(
+			!Resolve_ValtanPatternEffectOccurrenceScan(capped, samples) &&
+			samples.empty(),
+			"Valtan Occurrence Scan Rejects A Backward Snapshot Interval");
 	}
 
 	/* An artist rebind is only useful if it survives the next re-materialize.
@@ -5362,6 +5637,79 @@ namespace
 			"Action Timeline Applies PlayMs Before PlayRate");
 
 		ACTION_PRESENTATION_SAMPLE sample;
+		const std::vector<ACTION_PRESENTATION_CLIP_TIMING> sourceSegment =
+		{
+			{ 3.f, 1000u, 2.f, false, 0.75f }
+		};
+		f32_t sourceSegmentCueWallOffset = -1.f;
+		runner.Require(
+			CActionPresentationTimeline::Resolve_ClipDuration(
+				sourceSegment.front(), sourceDuration, wallDuration) &&
+			std::abs(sourceDuration - 1.f) < 0.000001f &&
+			std::abs(wallDuration - 0.5f) < 0.000001f &&
+			CActionPresentationTimeline::Resolve_Sample(
+				sourceSegment, 0.125f, sample) &&
+			std::abs(sample.fClipSourceTimeSeconds - 1.f) < 0.000001f &&
+			CActionPresentationTimeline::Resolve_CueWallOffset(
+				sourceSegment, 0u, 1.25f, 0u,
+				sourceSegmentCueWallOffset) &&
+			std::abs(sourceSegmentCueWallOffset - 0.25f) < 0.000001f &&
+			!CActionPresentationTimeline::Resolve_CueWallOffset(
+				sourceSegment, 0u, 0.5f, 0u,
+				sourceSegmentCueWallOffset),
+			"Action Timeline Applies Source Start Play Rate Sample And Cue Wall Offset On One Clock");
+
+		ACTION_PRESENTATION_CUE_PREVIEW_TIMING bossCuePreview;
+		bossCuePreview.fClipSourceStartSeconds = 0.4f;
+		bossCuePreview.fPlayRate = 2.f;
+		bossCuePreview.fCueSourceStartSeconds = 1.f;
+		bossCuePreview.fCueSourceEndSeconds = 1.4f;
+		bossCuePreview.bHasCueSourceEnd = true;
+		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE bossCueSample;
+		const bool_t hiddenBeforeCue =
+			CActionPresentationTimeline::Resolve_CuePreviewSample(
+				bossCuePreview, 0.299f, bossCueSample) &&
+			!bossCueSample.bVisible &&
+			std::abs(bossCueSample.fCueWallStartSeconds - 0.3f) < 0.000001f;
+		const bool_t startsAtZero =
+			CActionPresentationTimeline::Resolve_CuePreviewSample(
+				bossCuePreview, 0.3f, bossCueSample) &&
+			bossCueSample.bVisible &&
+			std::abs(bossCueSample.fEffectSampleSeconds) < 0.000001f;
+		const bool_t samplesAtClipRate =
+			CActionPresentationTimeline::Resolve_CuePreviewSample(
+				bossCuePreview, 0.4f, bossCueSample) &&
+			bossCueSample.bVisible &&
+			std::abs(bossCueSample.fEffectSampleSeconds - 0.2f) < 0.000001f;
+		const bool_t hiddenAtExactCueEnd =
+			CActionPresentationTimeline::Resolve_CuePreviewSample(
+				bossCuePreview, 0.5f, bossCueSample) &&
+			!bossCueSample.bVisible &&
+			std::abs(bossCueSample.fCueWallEndSeconds - 0.5f) < 0.000001f;
+		runner.Require(hiddenBeforeCue && startsAtZero &&
+			samplesAtClipRate && hiddenAtExactCueEnd &&
+			!CActionPresentationTimeline::Resolve_CuePreviewSample(
+				ACTION_PRESENTATION_CUE_PREVIEW_TIMING{
+					0.4f, 2.f, 1.f, 1.f, true }, 0.3f, bossCueSample),
+			"Valtan Product Preview Maps Source Cue Windows Through Clip Play Rate");
+		runner.Require(
+			CActionPresentationTimeline::
+				Should_ReleaseCompletedAnimationClock(
+					true, false, true, true, 3.f, 3.f) &&
+			!CActionPresentationTimeline::
+				Should_ReleaseCompletedAnimationClock(
+					true, true, true, true, 3.f, 3.f) &&
+			!CActionPresentationTimeline::
+				Should_ReleaseCompletedAnimationClock(
+					true, false, false, true, 3.f, 3.f) &&
+			!CActionPresentationTimeline::
+				Should_ReleaseCompletedAnimationClock(
+					true, false, true, false, 3.f, 3.f) &&
+			!CActionPresentationTimeline::
+				Should_ReleaseCompletedAnimationClock(
+					true, false, true, true, 2.9f, 3.f),
+			"Valtan Product Preview Releases Completed Non Loop Animation Clock For Natural Effect Tail");
+
 		runner.Require(
 			CActionPresentationTimeline::Resolve_Sample(clips, 1.f, sample) &&
 			1u == sample.iClipIndex &&
@@ -19365,13 +19713,12 @@ namespace
 			2u == serverRequestCount &&
 			!timedGate.Try_ConsumeServerRequest();
 		runner.Require(
-			CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT == 99u &&
 			CCharacterSelectArenaSpawnGate::PREWARM_TIMEOUT ==
 				std::chrono::seconds{ 30 } &&
 			prewarmDoesNotRequest && prewarmTimeoutIsRetryable &&
 			retryRestarted && exactOneRequestAfterRetry &&
 			responseTimeoutRestarts && retryAlsoRequestsOnce,
-			"Character Select Valtan Gate Sends Exactly One Request Only After 99-Target Prewarm And Restarts After Prewarm Or Response Timeout");
+			"Character Select Valtan Gate Sends Exactly One Request Only After Dynamic Target Prewarm And Restarts After Prewarm Or Response Timeout");
 
 		CCharacterSelectArenaSpawnGate immediateGate;
 		uint32_t immediateRequestCount = 0u;
@@ -19397,19 +19744,19 @@ namespace
 			playerTargets, status) &&
 			queue.Begin_Frame(queuedId) ==
 				EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED;
+		constexpr size_t BossTargetCount = 7u;
 		std::vector<std::string> bossTargets;
-		bossTargets.reserve(
-			CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT);
-		for (size_t index = 0u;
-			index < CCharacterSelectArenaSpawnGate::
-				PRODUCT_EFFECT_TARGET_COUNT;
-			++index)
+		bossTargets.reserve(BossTargetCount);
+		for (size_t index = 0u; index < BossTargetCount; ++index)
 		{
 			bossTargets.push_back(
 				"effect.valtan.contract." + std::to_string(index));
 		}
+		std::vector<std::string> bossRegistrationTargets = bossTargets;
+		bossRegistrationTargets.push_back(bossTargets.front());
+		bossRegistrationTargets.push_back(bossTargets.back());
 		bool_t bossTargetsPrepared = playerQueueRegistered &&
-			queue.Enqueue_Priority(bossTargets, status) &&
+			queue.Enqueue_Priority(bossRegistrationTargets, status) &&
 			queue.Begin_Frame(queuedId) ==
 				EFFECT_PRODUCT_PREWARM_STEP_RESULT::YIELDED;
 		for (const std::string& bossTarget : bossTargets)
@@ -19421,7 +19768,7 @@ namespace
 				queue.Complete_Front(queuedId, true, status);
 		}
 		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE bossProbe =
-			queue.Get_TargetProbe(bossTargets, 901u);
+			queue.Get_TargetProbe(bossRegistrationTargets, 901u);
 		const EFFECT_PRODUCT_PREWARM_TARGET_PROBE preservedPlayerProbe =
 			queue.Get_TargetProbe(playerTargets, 901u);
 		CCharacterSelectArenaSpawnGate autoRequestGate;
@@ -19429,8 +19776,8 @@ namespace
 		const bool_t bossReadyBeforePlayerDrain =
 			autoRequestGate.Begin(true) && bossTargetsPrepared &&
 			bossProbe.bCatalogRevisionCurrent && bossProbe.bSettled &&
-			bossProbe.iTargetCount == 99u &&
-			bossProbe.iPreparedCount == 99u &&
+			bossProbe.iTargetCount == bossTargets.size() &&
+			bossProbe.iPreparedCount == bossTargets.size() &&
 			0u == bossProbe.iFailedCount &&
 			0u == bossProbe.iUnavailableCount &&
 			bossProbe.iQueuePendingCount == playerTargets.size() &&
@@ -20270,6 +20617,30 @@ namespace
 				{
 					return effectAssetId.starts_with("effect.valtan.");
 				}));
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT valtanCueDocument;
+		std::string valtanCueStatus;
+		const bool_t valtanCuesLoaded = catalogLoaded &&
+			CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
+				valtanCueDocument, valtanCueStatus);
+		std::set<std::string, std::less<>> valtanCueTargetIds;
+		for (const VALTAN_PATTERN_EFFECT_CUE& cue : valtanCueDocument.Cues)
+			valtanCueTargetIds.insert(cue.strEffectAssetId);
+		const bool_t everyValtanCueTargetPublished = valtanCuesLoaded &&
+			!valtanCueTargetIds.empty() &&
+			std::all_of(valtanCueTargetIds.begin(), valtanCueTargetIds.end(),
+				[](const std::string& effectAssetId)
+				{
+					return CEffectCatalog::Contains(effectAssetId);
+				});
+		if (!everyValtanCueTargetPublished ||
+			valtanRuntimeEffectCount != valtanCueTargetIds.size())
+		{
+			std::cout << "[DETAIL] Valtan dynamic catalog relation loaded=" <<
+				valtanCuesLoaded << " cues=" << valtanCueDocument.Cues.size() <<
+				" unique-targets=" << valtanCueTargetIds.size() <<
+				" catalog-valtan=" << valtanRuntimeEffectCount <<
+				" status=" << valtanCueStatus << '\n';
+		}
 		constexpr std::string_view removedLegacyArtistId =
 			"effect.artist.skill.31210.ba4";
 		constexpr std::array<std::string_view, 4u> activeArtistUnifiedIds = {{
@@ -20305,14 +20676,17 @@ namespace
 			{
 				return CEffectCatalog::Contains(std::string(effectAssetId));
 			});
-		runner.Require(catalogLoaded && runtimeEffectIds.size() == 195u &&
-			valtanRuntimeEffectCount == 99u &&
+		runner.Require(catalogLoaded && valtanCuesLoaded &&
+			everyValtanCueTargetPublished &&
+			valtanRuntimeEffectCount == valtanCueTargetIds.size() &&
+			runtimeEffectIds.size() >=
+				lanceCueIds.size() + valtanCueTargetIds.size() &&
 			CEffectCatalog::Contains(std::string(firstId)) &&
 			CEffectCatalog::Contains(std::string(secondId)) &&
 			activeArtistUnifiedExact &&
 			!CEffectCatalog::Contains(std::string(removedLegacyArtistId)) &&
 			cacheOnlyIdentity,
-			"Published Product Set Has 195 Runtime Members Including 99 Valtan Targets And Four Active Artist Unified Targets, Excludes The Replaced Legacy Artist Target, And Cache-Only Lookup Never First-Use Loads JSON");
+			"Published Product Set Dynamically Covers Every Valtan Cue Target And The Four Active Artist Unified Targets, Excludes The Replaced Legacy Artist Target, And Cache-Only Lookup Never First-Use Loads JSON");
 
 		const uint64_t beforeDirectAuthoredReplacementRevision =
 			CEffectCatalog::Get_RuntimeRevision();
@@ -30673,6 +31047,481 @@ namespace
 		}
 	}
 
+	struct ORDINARY_EFFECT_DRAWABLE_ELEMENT_PROOF final
+	{
+		std::string strElementId;
+		uint64_t iPreparedSamples = 0u;
+		uint64_t iAttemptedSamples = 0u;
+		uint64_t iSubmittedDraws = 0u;
+		uint64_t iSuppressedDraws = 0u;
+		uint64_t iFailedDraws = 0u;
+		uint64_t iCommittedDraws = 0u;
+	};
+
+	struct ORDINARY_EFFECT_DRAWABLE_DOCUMENT_PROOF final
+	{
+		std::filesystem::path DocumentPath;
+		std::string strEffectAssetId;
+		float fDurationSeconds = 0.f;
+		uint32_t iSampleCount = 0u;
+		std::vector<ORDINARY_EFFECT_DRAWABLE_ELEMENT_PROOF> Elements;
+	};
+
+	bool_t Read_DrawableSweepResourceRoot(
+		std::filesystem::path& OutResourceRoot,
+		std::string& strOutError)
+	{
+		const DWORD iRequired = GetEnvironmentVariableW(
+			L"LOSTARK_RESOURCE_ROOT", nullptr, 0u);
+		if (0u == iRequired)
+		{
+			strOutError =
+				"JSON drawable sweep requires LOSTARK_RESOURCE_ROOT";
+			return false;
+		}
+		std::vector<wchar_t> Buffer(static_cast<size_t>(iRequired), L'\0');
+		const DWORD iWritten = GetEnvironmentVariableW(
+			L"LOSTARK_RESOURCE_ROOT", Buffer.data(), iRequired);
+		if (0u == iWritten || iWritten >= iRequired)
+		{
+			strOutError = "unable to read LOSTARK_RESOURCE_ROOT";
+			return false;
+		}
+		OutResourceRoot = std::filesystem::path(Buffer.data());
+		std::error_code Error;
+		OutResourceRoot = std::filesystem::absolute(
+			OutResourceRoot, Error).lexically_normal();
+		if (Error || !OutResourceRoot.is_absolute() ||
+			!std::filesystem::is_directory(OutResourceRoot, Error) || Error)
+		{
+			strOutError = "LOSTARK_RESOURCE_ROOT is not an absolute directory";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Write_OrdinaryEffectDrawableSweepJson(
+		const std::filesystem::path& OutputPath,
+		const std::filesystem::path& ResourceRoot,
+		const std::vector<ORDINARY_EFFECT_DRAWABLE_DOCUMENT_PROOF>& Documents,
+		std::string& strOutError)
+	{
+		std::ostringstream Json;
+		Json << "{\n"
+			<< "  \"schema\": \"lostark.effect-document-drawable-sweep\",\n"
+			<< "  \"formatVersion\": 1,\n"
+			<< "  \"resourceRoot\": \""
+			<< Client::CDataJson::Escape(ResourceRoot.generic_string()) << "\",\n"
+			<< "  \"sampleRateHz\": 60,\n"
+			<< "  \"documents\": [\n";
+		for (size_t iDocument = 0u; iDocument < Documents.size(); ++iDocument)
+		{
+			const ORDINARY_EFFECT_DRAWABLE_DOCUMENT_PROOF& Document =
+				Documents[iDocument];
+			Json << "    {\n"
+				<< "      \"documentPath\": \""
+				<< Client::CDataJson::Escape(Document.DocumentPath.generic_string())
+				<< "\",\n"
+				<< "      \"effectAssetId\": \""
+				<< Client::CDataJson::Escape(Document.strEffectAssetId) << "\",\n"
+				<< "      \"durationSeconds\": "
+				<< std::setprecision(std::numeric_limits<float>::max_digits10)
+				<< Document.fDurationSeconds << ",\n"
+				<< "      \"sampleCount\": " << Document.iSampleCount << ",\n"
+				<< "      \"visibleElementCount\": " <<
+				Document.Elements.size() << ",\n"
+				<< "      \"preparedElementCount\": " <<
+				Document.Elements.size() << ",\n"
+				<< "      \"drawnElementCount\": " <<
+				Document.Elements.size() << ",\n"
+				<< "      \"disposition\": \"DRAWABLE_PROOF_PASS\",\n"
+				<< "      \"elements\": [\n";
+			for (size_t iElement = 0u;
+				iElement < Document.Elements.size(); ++iElement)
+			{
+				const ORDINARY_EFFECT_DRAWABLE_ELEMENT_PROOF& Element =
+					Document.Elements[iElement];
+				Json << "        {\n"
+					<< "          \"elementId\": \""
+					<< Client::CDataJson::Escape(Element.strElementId) << "\",\n"
+					<< "          \"disposition\": \"DRAWABLE_PROOF_PASS\",\n"
+					<< "          \"preparedSamples\": " <<
+					Element.iPreparedSamples << ",\n"
+					<< "          \"attemptedSamples\": " <<
+					Element.iAttemptedSamples << ",\n"
+					<< "          \"submittedDraws\": " <<
+					Element.iSubmittedDraws << ",\n"
+					<< "          \"suppressedDraws\": " <<
+					Element.iSuppressedDraws << ",\n"
+					<< "          \"failedDraws\": " <<
+					Element.iFailedDraws << ",\n"
+					<< "          \"committedDraws\": " <<
+					Element.iCommittedDraws << "\n"
+					<< "        }" <<
+					(iElement + 1u < Document.Elements.size() ? "," : "") <<
+					"\n";
+			}
+			Json << "      ]\n"
+				<< "    }" << (iDocument + 1u < Documents.size() ? "," : "")
+				<< "\n";
+		}
+		Json << "  ]\n}\n";
+
+		std::error_code Error;
+		const std::filesystem::path AbsoluteOutput =
+			std::filesystem::absolute(OutputPath, Error).lexically_normal();
+		if (Error || !AbsoluteOutput.is_absolute() ||
+			!std::filesystem::is_directory(AbsoluteOutput.parent_path(), Error) ||
+			Error)
+		{
+			strOutError =
+				"drawable sweep JSON output parent is not an absolute directory";
+			return false;
+		}
+		std::filesystem::path StagingPath = AbsoluteOutput;
+		StagingPath += L".staging." + std::to_wstring(GetCurrentProcessId());
+		std::filesystem::remove(StagingPath, Error);
+		Error.clear();
+		{
+			std::ofstream Stream(
+				StagingPath, std::ios::binary | std::ios::trunc);
+			if (!Stream)
+			{
+				strOutError = "unable to create drawable sweep JSON staging file";
+				return false;
+			}
+			const std::string Payload = Json.str();
+			Stream.write(Payload.data(), static_cast<std::streamsize>(Payload.size()));
+			Stream.flush();
+			if (!Stream)
+			{
+				Stream.close();
+				std::filesystem::remove(StagingPath, Error);
+				strOutError = "unable to flush drawable sweep JSON staging file";
+				return false;
+			}
+		}
+		if (!MoveFileExW(
+				StagingPath.c_str(), AbsoluteOutput.c_str(),
+				MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+		{
+			std::filesystem::remove(StagingPath, Error);
+			strOutError = "unable to atomically commit drawable sweep JSON";
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_OrdinaryEffectDocumentsDrawableSweep(
+		const std::vector<std::filesystem::path>& Paths,
+		const std::optional<std::filesystem::path>& JsonOutputPath,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		if (Paths.empty())
+		{
+			strOutError = "ordinary Effect drawable sweep received no documents";
+			return false;
+		}
+
+		std::filesystem::path ResourceRoot;
+		if (JsonOutputPath.has_value())
+		{
+			if (!JsonOutputPath->is_absolute())
+			{
+				strOutError = "drawable sweep JSON output path must be absolute";
+				return false;
+			}
+			std::error_code OutputError;
+			const std::filesystem::path NormalizedOutput =
+				std::filesystem::absolute(
+					*JsonOutputPath, OutputError).lexically_normal();
+			if (OutputError)
+			{
+				strOutError = "unable to normalize drawable sweep JSON output path";
+				return false;
+			}
+			for (const std::filesystem::path& Path : Paths)
+			{
+				if (!Path.is_absolute())
+				{
+					strOutError =
+						"JSON drawable sweep document paths must be absolute";
+					return false;
+				}
+				std::error_code DocumentError;
+				const std::filesystem::path NormalizedDocument =
+					std::filesystem::absolute(
+						Path, DocumentError).lexically_normal();
+				if (DocumentError || NormalizedDocument == NormalizedOutput)
+				{
+					strOutError =
+						"drawable sweep JSON output collides with an input document";
+					return false;
+				}
+			}
+			if (!Read_DrawableSweepResourceRoot(ResourceRoot, strOutError))
+				return false;
+		}
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		if (!WorkingDirectory.Initialize(
+				CProjectDataRoot::Get().parent_path() / L"Client" / L"Default",
+				strOutError))
+		{
+			return false;
+		}
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		if (!EngineScope.Initialize(strOutError))
+			return false;
+		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+
+		const auto IsFiniteBlock = [](const f32_t* pValues, const size_t iCount)
+		{
+			return nullptr != pValues && std::all_of(
+				pValues, pValues + iCount,
+				[](const f32_t fValue) { return std::isfinite(fValue); });
+		};
+		const auto FrameIsFinite = [&IsFiniteBlock](
+			const EFFECT_EVALUATED_FRAME& Frame)
+		{
+			if (!std::isfinite(Frame.fSampleTimeSeconds) ||
+				!IsFiniteBlock(&Frame.RootWorld._11, 16u))
+			{
+				return false;
+			}
+			for (const EFFECT_EVALUATED_ELEMENT& Row : Frame.Elements)
+			{
+				if (nullptr == Row.pElement ||
+					!IsFiniteBlock(&Row.World._11, 16u) ||
+					!std::isfinite(Row.fLocalTimeSeconds) ||
+					!std::isfinite(Row.fNormalizedLife))
+				{
+					return false;
+				}
+			}
+			for (const EFFECT_EVALUATED_PARTICLE& Row : Frame.Particles)
+			{
+				if (nullptr == Row.pElement ||
+					!IsFiniteBlock(&Row.World._11, 16u) ||
+					!IsFiniteBlock(&Row.Color.x, 4u) ||
+					!IsFiniteBlock(&Row.vWorldVelocity.x, 3u) ||
+					!std::isfinite(Row.fNormalizedLife))
+				{
+					return false;
+				}
+			}
+			for (const EFFECT_EVALUATED_TRAIL& Trail : Frame.Trails)
+			{
+				if (nullptr == Trail.pElement)
+					return false;
+				for (const EFFECT_EVALUATED_TRAIL_POINT& Point : Trail.Points)
+				{
+					if (!IsFiniteBlock(&Point.vWorldPosition.x, 3u) ||
+						!std::isfinite(Point.fNormalizedAge) ||
+						!std::isfinite(Point.fCumulativeDistance))
+					{
+						return false;
+					}
+				}
+			}
+			return true;
+		};
+
+		std::vector<ORDINARY_EFFECT_DRAWABLE_DOCUMENT_PROOF> DocumentProofs;
+		DocumentProofs.reserve(Paths.size());
+		for (const std::filesystem::path& Path : Paths)
+		{
+			EFFECT_DOCUMENT_DESC Document;
+			if (!CEffectDocumentCodec::Load(Path, Document, strOutError) ||
+				!CEffectDocumentCodec::Validate_Drawable(Document, strOutError))
+			{
+				strOutError = Path.string() + ": " + strOutError;
+				return false;
+			}
+			std::unordered_set<std::string> ExpectedElementIds;
+			ORDINARY_EFFECT_DRAWABLE_DOCUMENT_PROOF DocumentProof;
+			std::error_code AbsoluteError;
+			DocumentProof.DocumentPath = std::filesystem::absolute(
+				Path, AbsoluteError).lexically_normal();
+			DocumentProof.strEffectAssetId = Document.strEffectAssetId;
+			if (AbsoluteError || !DocumentProof.DocumentPath.is_absolute())
+			{
+				strOutError = Path.string() +
+					": unable to normalize document path";
+				return false;
+			}
+			std::unordered_map<std::string, size_t> ElementProofIndexes;
+			for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+			{
+				if (Element.bVisible)
+				{
+					if (!ExpectedElementIds.insert(Element.strElementId).second)
+					{
+						strOutError = Path.string() +
+							": visible element ID is duplicated";
+						return false;
+					}
+					ElementProofIndexes.emplace(
+						Element.strElementId, DocumentProof.Elements.size());
+					DocumentProof.Elements.push_back({ Element.strElementId });
+				}
+			}
+			if (ExpectedElementIds.empty())
+			{
+				strOutError = Path.string() +
+					": drawable document has no visible element";
+				return false;
+			}
+
+			CEffectPlayback Playback;
+			CEffectDocumentRenderer Renderer(Device, Context);
+			if (FAILED(Renderer.Initialize()) ||
+				!Playback.Stage_Document(Document, strOutError) ||
+				!Renderer.Stage_Document(Document, strOutError))
+			{
+				strOutError = Path.string() + ": " + strOutError;
+				return false;
+			}
+			const f32_t fDurationSeconds = Playback.Get_DurationSeconds();
+			if (!std::isfinite(fDurationSeconds) || fDurationSeconds <= 0.f ||
+				fDurationSeconds > 60.f)
+			{
+				strOutError = Path.string() +
+					": ordinary Effect duration is invalid or unbounded";
+				return false;
+			}
+
+			std::unordered_set<std::string> PreparedElementIds;
+			std::unordered_set<std::string> SubmittedElementIds;
+			bool_t bInvalidDrawSelection = false;
+			const uint32_t iSampleCount = static_cast<uint32_t>(
+				std::ceil(fDurationSeconds * 60.f)) + 1u;
+			for (uint32_t iSample = 0u; iSample <= iSampleCount; ++iSample)
+			{
+				const f32_t fSampleSeconds = (std::min)(
+					fDurationSeconds,
+					static_cast<f32_t>(iSample) / 60.f);
+				Playback.Seek(fSampleSeconds, Identity);
+				if (!FrameIsFinite(Playback.Get_Frame()) ||
+					!EngineScope.Begin_Frame(strOutError))
+				{
+					strOutError = Path.string() + ": " + strOutError;
+					return false;
+				}
+				const HRESULT hRender = Renderer.Render(Playback.Get_Frame());
+				Context->Flush();
+				const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+					Renderer.Get_LastRenderSubmissionStats();
+				if (FAILED(hRender) || S_OK != Device->GetDeviceRemovedReason() ||
+					!Stats.bCompleted || !Stats.bCommitted)
+				{
+					strOutError = Path.string() +
+						": renderer did not transactionally commit a sweep sample";
+					return false;
+				}
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+				std::unordered_set<std::string> SamplePreparedElementIds;
+				std::unordered_set<std::string> SampleAttemptedElementIds;
+				for (const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row :
+					Stats.Occurrences)
+				{
+					const auto ProofIndex =
+						ElementProofIndexes.find(Row.strElementId);
+					if (ProofIndex == ElementProofIndexes.end())
+						continue;
+					ORDINARY_EFFECT_DRAWABLE_ELEMENT_PROOF& ElementProof =
+						DocumentProof.Elements[ProofIndex->second];
+					if (0u < Row.iConfigured)
+					{
+						PreparedElementIds.insert(Row.strElementId);
+						SamplePreparedElementIds.insert(Row.strElementId);
+					}
+					if (0u < Row.iAttempted)
+						SampleAttemptedElementIds.insert(Row.strElementId);
+					ElementProof.iSubmittedDraws += Row.iSubmitted;
+					ElementProof.iSuppressedDraws += Row.iSuppressed;
+					ElementProof.iFailedDraws += Row.iFailed;
+					ElementProof.iCommittedDraws += Row.iIssuedDrawCallCount;
+					if (0u < Row.iSubmitted && 0u < Row.iIssuedDrawCallCount &&
+						UINT32_MAX != Row.iSelectedPassIndex &&
+						!Row.bSourceMaterialFallbackBlocked &&
+						!Row.bDrawSelectionDiverged)
+					{
+						SubmittedElementIds.insert(Row.strElementId);
+					}
+					else if (0u < Row.iSubmitted || 0u < Row.iIssuedDrawCallCount)
+					{
+						bInvalidDrawSelection = true;
+					}
+				}
+				for (const std::string& ElementId : SamplePreparedElementIds)
+					++DocumentProof.Elements[
+						ElementProofIndexes.at(ElementId)].iPreparedSamples;
+				for (const std::string& ElementId : SampleAttemptedElementIds)
+					++DocumentProof.Elements[
+						ElementProofIndexes.at(ElementId)].iAttemptedSamples;
+#else
+				strOutError =
+					"ordinary Effect drawable sweep requires execution diagnostics";
+				return false;
+#endif
+			}
+			const auto MissingFrom = [](const auto& Expected, const auto& Observed)
+			{
+				return std::find_if(Expected.begin(), Expected.end(),
+					[&Observed](const std::string& Id)
+					{
+						return !Observed.contains(Id);
+					});
+			};
+			const auto MissingPrepared = MissingFrom(
+				ExpectedElementIds, PreparedElementIds);
+			const auto MissingSubmitted = MissingFrom(
+				ExpectedElementIds, SubmittedElementIds);
+			const auto FailedElement = std::find_if(
+				DocumentProof.Elements.begin(), DocumentProof.Elements.end(),
+				[](const ORDINARY_EFFECT_DRAWABLE_ELEMENT_PROOF& Element)
+				{
+					return 0u == Element.iPreparedSamples ||
+						0u == Element.iAttemptedSamples ||
+						0u == Element.iSubmittedDraws ||
+						0u == Element.iCommittedDraws ||
+						0u != Element.iFailedDraws;
+				});
+			if (MissingPrepared != ExpectedElementIds.end() ||
+				MissingSubmitted != ExpectedElementIds.end() ||
+				bInvalidDrawSelection || FailedElement != DocumentProof.Elements.end())
+			{
+				const std::string FailedId =
+					MissingPrepared != ExpectedElementIds.end() ? *MissingPrepared :
+					MissingSubmitted != ExpectedElementIds.end() ? *MissingSubmitted :
+					FailedElement != DocumentProof.Elements.end() ?
+						FailedElement->strElementId : "invalid-draw-selection";
+				strOutError = Path.string() +
+					": element did not prepare/draw transactionally: " + FailedId;
+				return false;
+			}
+			DocumentProof.fDurationSeconds = fDurationSeconds;
+			DocumentProof.iSampleCount = iSampleCount + 1u;
+			DocumentProofs.push_back(std::move(DocumentProof));
+			std::cout << Path.string() << "\tprepared=" <<
+				PreparedElementIds.size() << "\tdrawn=" <<
+				SubmittedElementIds.size() << "\tsamples=" <<
+				(iSampleCount + 1u) << '\n';
+		}
+		if (JsonOutputPath.has_value() &&
+			!Write_OrdinaryEffectDrawableSweepJson(
+				*JsonOutputPath, ResourceRoot, DocumentProofs, strOutError))
+		{
+			return false;
+		}
+		strOutError.clear();
+		return true;
+	}
 	void Test_EffectToolPlayerPreviewCueResolution(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -31512,6 +32361,51 @@ int main(const int argc, char* argv[])
 		}
 		return bAllDocumentsHashed ? 0 : 1;
 	}
+	if (Mode == "--effect-document-drawable-sweep")
+	{
+		if (argc <= 2)
+		{
+			std::cerr <<
+				"--effect-document-drawable-sweep requires at least one document path.\n";
+			return 1;
+		}
+		std::optional<std::filesystem::path> JsonOutputPath;
+		int iFirstDocumentArgument = 2;
+		if (argc > 2 && nullptr != argv[2] &&
+			std::string_view(argv[2]) == "--json-output")
+		{
+			if (argc <= 4 || nullptr == argv[3])
+			{
+				std::cerr <<
+					"--json-output requires an absolute output path and at least one absolute document path.\n";
+				return 1;
+			}
+			JsonOutputPath = std::filesystem::path(argv[3]);
+			iFirstDocumentArgument = 4;
+		}
+		std::vector<std::filesystem::path> Paths;
+		Paths.reserve(static_cast<size_t>(argc - iFirstDocumentArgument));
+		for (int iArgument = iFirstDocumentArgument;
+			iArgument < argc; ++iArgument)
+		{
+			if (nullptr == argv[iArgument])
+			{
+				std::cerr << "Effect document path argument is null.\n";
+				return 1;
+			}
+			Paths.emplace_back(argv[iArgument]);
+		}
+		std::string Status;
+		const bool_t bValid =
+			Validate_OrdinaryEffectDocumentsDrawableSweep(
+				Paths, JsonOutputPath, Status);
+		std::cout << (bValid ? "[PASS] " : "[FAILURE] ") <<
+			"ordinary Effect drawable sweep";
+		if (!Status.empty())
+			std::cout << ": " << Status;
+		std::cout << '\n';
+		return bValid ? 0 : 1;
+	}
 	if (Mode == "--materialize-four-class-track-a")
 	{
 		if (argc < 3 || argc > 5 || nullptr == argv[2])
@@ -31624,6 +32518,13 @@ int main(const int argc, char* argv[])
 	if (Mode == "--valtan-pattern-effects-fast")
 	{
 		Test_ValtanPatternBindingSchema(runner);
+		Test_ValtanPatternEffectOccurrenceScheduling(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--valtan-pattern-occurrence-scheduling-fast")
+	{
+		Test_ValtanPatternEffectOccurrenceScheduling(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -32171,6 +33072,7 @@ int main(const int argc, char* argv[])
 	Test_InvalidRequestsPreservePendingCommand(runner);
 	Test_SkillBindingSchema(runner);
 	Test_ValtanPatternBindingSchema(runner);
+	Test_ValtanPatternEffectOccurrenceScheduling(runner);
 	Test_ValtanPatternPreview(runner);
 	Test_ActionPresentationTimeline(runner);
 	Test_EngineShutdownKeepsCameraPipelineAlive(runner);
