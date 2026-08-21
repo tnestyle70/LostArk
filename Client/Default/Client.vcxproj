@@ -2196,6 +2196,8 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34610.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34630.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34650.source-receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Materials\skill.34630-34650.dragon.exact-material-maps.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Materials\skill.34630-34650.dragon.exact-shader-targets.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34000.imported-effect-draft.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34010.imported-effect-draft.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34020.imported-effect-draft.json" />

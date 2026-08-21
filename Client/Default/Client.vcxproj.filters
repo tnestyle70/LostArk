@@ -1992,6 +1992,9 @@
     <Filter Include="96.DataFiles\Effects\Imported\LanceMaster\Drafts">
       <UniqueIdentifier>{4df6e2ab-a026-589c-8a42-2e2f338d3148}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\LanceMaster\Materials">
+      <UniqueIdentifier>{e7aa7bc0-54b7-4d35-9a42-264495f0de52}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\LanceMaster\Modules">
       <UniqueIdentifier>{21c55e48-0ea9-54f8-b179-0142933ba1a6}</UniqueIdentifier>
     </Filter>
@@ -6812,6 +6815,12 @@
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\CurrentCombat\skill.34650.source-receipt.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\CurrentCombat</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Materials\skill.34630-34650.dragon.exact-material-maps.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Materials\skill.34630-34650.dragon.exact-shader-targets.json">
+      <Filter>96.DataFiles\Effects\Imported\LanceMaster\Materials</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\LanceMaster\Drafts\skill.34000.imported-effect-draft.json">
       <Filter>96.DataFiles\Effects\Imported\LanceMaster\Drafts</Filter>
