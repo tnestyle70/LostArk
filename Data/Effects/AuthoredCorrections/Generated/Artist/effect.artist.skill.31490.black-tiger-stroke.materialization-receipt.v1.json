@@ -34,7 +34,7 @@
   "sources": {
     "roleManifest": {
       "path": "Data/Effects/AuthoredCorrections/Artist/effect.artist.skill.31490.role-manifest.json",
-      "sha256": "daff32e0bff4f2122333ab9b6a1ea16127880d3419f0dcd3a0bf1ddb34797c92"
+      "sha256": "4077b04c4b1d4d570696d778d07190b4051ae97a762ae0c0c054f75055b81cec"
     },
     "roleMaterializationReceipt": {
       "path": "Data/Effects/AuthoredCorrections/Artist/effect.artist.skill.31490.unified.role-materialization.receipt.json",
@@ -651,5 +651,5 @@
     }
   ],
   "outputCanonicalSha256": "a2425211e46ecd0d98564e1fea6c7d76ed0c5d056f14c8b97d56914f656e98cb",
-  "artifactSha256": "6c4920f78327b61764a999247f028cc0bd1337ae57651c3171f085e51ed8e498"
+  "artifactSha256": "3a6c74217b40e77000b048e24fb37a964edb4701aeb8043261acab9b061b0d3f"
 }
