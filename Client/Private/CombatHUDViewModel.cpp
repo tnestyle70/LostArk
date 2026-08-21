@@ -280,7 +280,15 @@ void Client::CCombatHUDViewModel::Apply_Boss(
 		0u : profile->second.iMaximumHealthBars;
 	m_Boss.iCurrentHp = snapshot.iCurrentHp;
 	m_Boss.iMaximumHp = snapshot.iMaximumHp;
-	m_Boss.iPhase = snapshot.iPhase;
+	m_Boss.iPhase = snapshot.BossCombat.iGameplayPhase;
+	m_Boss.iBossCombatStateRevision =
+		snapshot.BossCombat.iStateRevision;
+	m_Boss.iAlivePartMask = snapshot.BossCombat.iAlivePartMask;
+	m_Boss.iBossCombatFlags = snapshot.BossCombat.iFlags;
+	m_Boss.iCurrentStagger = snapshot.BossCombat.iCurrentStagger;
+	m_Boss.iMaximumStagger = snapshot.BossCombat.iMaximumStagger;
+	m_Boss.iCurrentShield = snapshot.BossCombat.iCurrentShield;
+	m_Boss.iMaximumShield = snapshot.BossCombat.iMaximumShield;
 	m_Boss.eAction = snapshot.eAction;
 	m_Boss.strActionId = snapshot.strActionId;
 	m_Boss.strPatternId = snapshot.strPatternId;
@@ -305,6 +313,13 @@ void Client::CCombatHUDViewModel::Debug_Set_Boss_Preview(const bool enable)
 	m_Boss.iCurrentHp = 848096077u;
 	m_Boss.iMaximumHp = 1991561183u;
 	m_Boss.iPhase = 1u;
+	m_Boss.iBossCombatStateRevision = 1u;
+	m_Boss.iAlivePartMask = 0x3u;
+	m_Boss.iBossCombatFlags = 0u;
+	m_Boss.iCurrentStagger = 420u;
+	m_Boss.iMaximumStagger = 1000u;
+	m_Boss.iCurrentShield = 0u;
+	m_Boss.iMaximumShield = 0u;
 	m_Boss.eAction = LostArk::Shared::WORLD_ENTITY_ACTION::IDLE;
 	m_Boss.strActionId.clear();
 	m_Boss.strPatternId.clear();

@@ -35,6 +35,10 @@ public:
 		LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES;
 	static wstring_t Build_ArmorModelPrototypeTag(size_t iArmorIndex);
 	static wstring_t Build_ArmorPartTag(size_t iArmorIndex);
+	with no socket bone. The stable state mask, never array order, joins them
+	to Server-owned alive-part state. */
+	static wstring_t Build_ArmorModelPrototypeTag(uint32_t iStateMask);
+	static wstring_t Build_ArmorPartTag(uint32_t iStateMask);
 
 	typedef struct tagValtanDesc : public CContainerObject::CONTAINEROBJECT_DESC
 	{
@@ -96,6 +100,11 @@ public:
 		uint32_t iPatternSequence,
 		uint32_t iPatternStageIndex,
 		uint8_t iBrokenArmorMask);
+		uint32_t iPatternStageIndex);
+	bool_t Apply_BossCombatState(
+		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state);
+	bool_t Apply_BossCombatEvent(
+		const LostArk::Shared::BOSS_COMBAT_EVENT& event);
 	const std::string& Get_ServerActionId() const { return m_strServerActionId; }
 #ifdef _DEBUG
 	void Set_NavigationDebugVisible(bool_t isVisible) { m_isNavigationDebugVisible = isVisible; }
@@ -126,6 +135,12 @@ private:
 	/* Last mask this presentation applied, so a steady snapshot does not walk
 	the part list every tick. */
 	uint8_t m_iAppliedArmorBreakMask = 0u;
+	/* A failed plate load leaves its stable mask absent instead of shifting
+	other plates onto a different wire bit. */
+	std::unordered_map<uint32_t, wstring_t> m_ArmorPartTagsByStateMask;
+	LostArk::Shared::BOSS_COMBAT_SNAPSHOT m_BossCombatState;
+	bool_t m_hasBossCombatState = false;
+	std::uint64_t m_iLastBossCombatEventSequence = 0u;
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
 	CNavPathFollower m_PathFollower;
@@ -179,6 +194,7 @@ private:
 	/* Hides exactly the plates the Server reports broken. Presentation never
 	decides this: a plate comes off because durability reached zero. */
 	void Apply_ArmorBreakState(uint8_t iBrokenArmorMask);
+	void Set_ArmorPartVisible(uint32_t iStateMask, bool_t isVisible);
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();
 	void Load_PatternEffectCues();

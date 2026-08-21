@@ -1,0 +1,73 @@
+{
+  "schema": "lostark.valtan-combat-objects",
+  "formatVersion": 1,
+  "encounterId": "ENCOUNTER_VALTAN",
+  "objects": [
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+      "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
+      "ownerPatternId": "VALTAN_HIGH_JUMP",
+      "ownerStageActionId": "valtan.attack.high-jump.airborne",
+      "kind": "FIXED_AREA",
+      "originPolicy": "LOCKED_TARGET_UNTIL_FIRST_PULSE",
+      "directionPolicy": "NONE",
+      "offsetForwardM": 0.0,
+      "offsetRightM": 0.0,
+      "speedMps": 0.0,
+      "maximumDistanceM": 0.0,
+      "lifeMs": 1900,
+      "hits": [
+        {
+          "trigger": "TIMED",
+          "atMs": 1200,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 10.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "serverDamageProfileId": "damage.valtan.high-jump",
+          "pushRangeM": 1.0,
+          "pushMs": 150,
+          "knockdown": true,
+          "downMs": 1000
+        }
+      ]
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.red-blade-wave.projectile",
+      "clientVisualId": "combatobject.visual.valtan.red-blade-wave.projectile.v1",
+      "ownerPatternId": "VALTAN_RED_BLADE_WAVE",
+      "ownerStageActionId": "valtan.attack.red-blade-wave.active",
+      "kind": "MISSILE",
+      "originPolicy": "BOSS_POSITION",
+      "directionPolicy": "PATTERN_FACING_AT_SPAWN",
+      "offsetForwardM": 3.0,
+      "offsetRightM": 0.0,
+      "speedMps": 24.444445,
+      "maximumDistanceM": 22.0,
+      "lifeMs": 900,
+      "hits": [
+        {
+          "trigger": "CONTACT",
+          "atMs": 0,
+          "repeatCount": 1,
+          "repeatIntervalMs": 0,
+          "hitShape": "CIRCLE",
+          "hitOuterRadius": 2.0,
+          "hitInnerRadius": 0.0,
+          "hitAngleDegrees": 0.0,
+          "hitLength": 0.0,
+          "hitHalfWidth": 0.0,
+          "serverDamageProfileId": "damage.valtan.red-blade-wave",
+          "pushRangeM": 0.0,
+          "pushMs": 0,
+          "knockdown": false,
+          "downMs": 0
+        }
+      ]
+    }
+  ]
+}

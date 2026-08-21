@@ -48,6 +48,13 @@ namespace LostArk::Server
 			float fixedDeltaSeconds,
 			std::uint32_t serverTick,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const;
+		bool Try_BuildStageMotion(
+			const SERVER_WORLD_ENTITY& boss,
+			float fixedDeltaSeconds,
+			float& outProposedX,
+			float& outProposedZ) const;
+		/* The armour charge loop: a charge drives forward until it meets an
+		impact receiver, and the collision -- not the clock -- ends the stage. */
 		bool Try_BuildImpactMotion(
 			const SERVER_WORLD_ENTITY& boss,
 			float fixedDeltaSeconds,

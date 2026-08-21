@@ -287,7 +287,8 @@ public:
 		EFFECT_RESOURCE_SLOT eSlot);
 	static bool_t Is_SafeResourceAssetId(
 		const std::string& strAssetId,
-		EFFECT_RESOURCE_FILE_KIND* pOutKind = nullptr);
+		EFFECT_RESOURCE_FILE_KIND* pOutKind = nullptr,
+		bool_t bAllowCharacterModel = false);
 	static bool_t Is_SafeModelCueAssetId(const std::string& strAssetId);
 };
 

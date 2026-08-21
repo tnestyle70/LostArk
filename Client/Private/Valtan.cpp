@@ -31,6 +31,56 @@ namespace
 	constexpr f32_t VALTAN_PRESENTATION_SEEK_EPSILON_SECONDS = 1.f / 120.f;
 	constexpr f32_t HIT_FLASH_DURATION_SECONDS = 0.12f;
 	constexpr f32_t HIT_FLASH_PEAK_INTENSITY = 4.f;
+
+	bool Is_ValidBossCombatState(
+		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state)
+	{
+		const bool_t hasShield = LostArk::Shared::Has_BossCombatFlag(
+			state.iFlags,
+			LostArk::Shared::BOSS_COMBAT_STATE_FLAG::SHIELDED);
+		return 0u != state.iStateRevision &&
+			0u == (state.iFlags & static_cast<std::uint16_t>(
+				~LostArk::Shared::BOSS_COMBAT_STATE_KNOWN_FLAG_MASK)) &&
+			state.iCurrentStagger <= state.iMaximumStagger &&
+			state.iCurrentShield <= state.iMaximumShield &&
+			(hasShield == (0u != state.iCurrentShield)) &&
+			0u != state.iGameplayPhase;
+	}
+
+	bool Is_SameBossCombatState(
+		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& left,
+		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& right)
+	{
+		return std::tie(
+			left.iStateRevision,
+			left.iAlivePartMask,
+			left.iFlags,
+			left.iCurrentStagger,
+			left.iMaximumStagger,
+			left.iCurrentShield,
+			left.iMaximumShield,
+			left.iGameplayPhase) ==
+			std::tie(
+				right.iStateRevision,
+				right.iAlivePartMask,
+				right.iFlags,
+				right.iCurrentStagger,
+				right.iMaximumStagger,
+				right.iCurrentShield,
+				right.iMaximumShield,
+				right.iGameplayPhase);
+	}
+}
+
+wstring_t CValtan::Build_ArmorModelPrototypeTag(const uint32_t iStateMask)
+{
+	return TEXT("Prototype_Component_Model_ValtanArmorMask_") +
+		std::to_wstring(iStateMask);
+}
+
+wstring_t CValtan::Build_ArmorPartTag(const uint32_t iStateMask)
+{
+	return TEXT("Part_ArmorMask_") + std::to_wstring(iStateMask);
 }
 
 wstring_t CValtan::Build_ArmorModelPrototypeTag(const size_t iArmorIndex)
@@ -615,6 +665,7 @@ actually attached are recorded. */
 void CValtan::Ready_ArmorParts()
 {
 	m_ArmorPartTags.clear();
+	m_ArmorPartTagsByStateMask.clear();
 	const BOSS_ACTOR_ENTRY* pActor = CActorCatalog::Find_Boss("BOSS_VALTAN");
 	if (nullptr == pActor)
 		return;
@@ -624,12 +675,17 @@ void CValtan::Ready_ArmorParts()
 		static_cast<size_t>(MAX_ARMOR_PART_COUNT));
 	m_ArmorPartTags.reserve(armorCount);
 	for (size_t armorIndex = 0u; armorIndex < armorCount; ++armorIndex)
+	const size_t armorCount = pActor->armorParts.size();
+	m_ArmorPartTagsByStateMask.reserve(armorCount);
+	for (const BOSS_ARMOR_PART_ENTRY& armorPart : pActor->armorParts)
 	{
 		CPart_Equipment::PART_EQUIPMENT_DESC armorDesc{};
 
 		armorDesc.pParentMatrix = m_pTransformCom->Get_WorldMatrixPtr();
 		armorDesc.iPrototypeLevelIndex = m_iPrototypeLevelIndex;
 		armorDesc.strModelTag = Build_ArmorModelPrototypeTag(armorIndex);
+		armorDesc.strModelTag =
+			Build_ArmorModelPrototypeTag(armorPart.stateMask);
 		armorDesc.strShaderTag =
 			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
 		armorDesc.pSkeletonModel = m_pBodyModelCom;
@@ -642,6 +698,7 @@ void CValtan::Ready_ArmorParts()
 		armorDesc.pEmissiveOverride = &m_HitFlash;
 
 		wstring_t armorPartTag = Build_ArmorPartTag(armorIndex);
+		wstring_t armorPartTag = Build_ArmorPartTag(armorPart.stateMask);
 		if (FAILED(__super::Add_PartObject(
 			m_iPrototypeLevelIndex,
 			TEXT("Prototype_GameObject_Part_Equipment"),
@@ -734,6 +791,65 @@ void CValtan::Set_ChaseState(bool_t isChasing)
 			isChasing ? "run_battle_1" : "idle_battle_1",
 			true);
 	}
+}
+
+void CValtan::Set_ArmorPartVisible(
+	const uint32_t iStateMask,
+	const bool_t isVisible)
+{
+	const auto tag = m_ArmorPartTagsByStateMask.find(iStateMask);
+	if (tag == m_ArmorPartTagsByStateMask.end())
+		return;
+	const auto pPart = dynamic_cast<CPart_Equipment*>(
+		__super::Find_PartObject(tag->second));
+	if (nullptr != pPart)
+		pPart->Set_Visible(isVisible);
+}
+
+bool_t CValtan::Apply_BossCombatState(
+	const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state)
+{
+	if (!m_isServerAuthoritative || !Is_ValidBossCombatState(state))
+		return false;
+	if (m_hasBossCombatState)
+	{
+		if (state.iStateRevision < m_BossCombatState.iStateRevision)
+			return false;
+		if (state.iStateRevision == m_BossCombatState.iStateRevision)
+			return Is_SameBossCombatState(state, m_BossCombatState);
+	}
+
+	for (const auto& [stateMask, partTag] : m_ArmorPartTagsByStateMask)
+	{
+		(void)partTag;
+		Set_ArmorPartVisible(
+			stateMask, 0u != (state.iAlivePartMask & stateMask));
+	}
+	m_BossCombatState = state;
+	m_hasBossCombatState = true;
+	return true;
+}
+
+bool_t CValtan::Apply_BossCombatEvent(
+	const LostArk::Shared::BOSS_COMBAT_EVENT& event)
+{
+	if (!m_isServerAuthoritative || 0u == event.iEventSequence ||
+		0u == event.iEventTick || 0u == event.iPartMask ||
+		LostArk::Shared::BOSS_COMBAT_EVENT_KIND::PART_BROKEN != event.eKind)
+	{
+		return false;
+	}
+	if (event.iEventSequence <= m_iLastBossCombatEventSequence)
+		return true;
+
+	for (const auto& [stateMask, partTag] : m_ArmorPartTagsByStateMask)
+	{
+		(void)partTag;
+		if (0u != (event.iPartMask & stateMask))
+			Set_ArmorPartVisible(stateMask, false);
+	}
+	m_iLastBossCombatEventSequence = event.iEventSequence;
+	return true;
 }
 
 bool_t CValtan::Apply_NetworkState(

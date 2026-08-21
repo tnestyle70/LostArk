@@ -471,6 +471,9 @@
     <ClCompile Include="..\Private\ClientReplication.cpp">
       <Filter>04. Network</Filter>
     </ClCompile>
+	<ClCompile Include="..\Private\CombatObjectProjectionRuntime.cpp">
+	  <Filter>04. Network</Filter>
+	</ClCompile>
     <ClCompile Include="..\Private\PlayerController.cpp">
       <Filter>04. Network\00. PlayerController</Filter>
     </ClCompile>
@@ -805,6 +808,9 @@
     <ClInclude Include="..\Public\ClientReplication.h">
       <Filter>04. Network</Filter>
     </ClInclude>
+	<ClInclude Include="..\Public\CombatObjectProjectionRuntime.h">
+	  <Filter>04. Network</Filter>
+	</ClInclude>
     <ClInclude Include="..\Public\PlayerController.h">
       <Filter>04. Network\00. PlayerController</Filter>
     </ClInclude>
@@ -1159,10 +1165,16 @@
     <None Include="..\..\Data\Balance\PlayerSkills.json">
       <Filter>96.DataFiles\Balance</Filter>
     </None>
+    <None Include="..\..\Data\Balance\ValtanBossParts.json">
+      <Filter>96.DataFiles\Balance</Filter>
+    </None>
     <None Include="..\..\Data\Items\ItemCatalog.json">
       <Filter>96.DataFiles\Items</Filter>
     </None>
 	<None Include="..\..\Data\Encounters\Valtan\ValtanEncounter.json">
+	  <Filter>96.DataFiles\Encounters</Filter>
+	</None>
+	<None Include="..\..\Data\Encounters\Valtan\ValtanCombatObjects.json">
 	  <Filter>96.DataFiles\Encounters</Filter>
 	</None>
 	<None Include="..\..\Data\Encounters\Valtan\ValtanDebugAudition.json">
@@ -3208,6 +3220,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.red-blade-wave.windup.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.sky-axe.active.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.stomp.active.effect.json">

@@ -178,7 +178,9 @@ function Assert-BalanceProvenance(
     [object]$PlayerDocument,
     [object]$SkillDocument,
     [object]$DamageDocument,
-    [object]$BossDocument) {
+    [object]$BossDocument,
+    [object]$BossPartDocument,
+    [object]$CombatObjectDocument) {
     $receipt = Read-JsonDocument 'Data/Balance/Reference/Official/2026-08-05.balance-provenance.receipt.json'
     Assert-ExactProperties $receipt @(
         'schema','formatVersion','sourceBuildId','referenceSkillLevel',
@@ -197,7 +199,8 @@ function Assert-BalanceProvenance(
     }
     Assert-ExactProperties $receipt.coverage @(
         'playerProfileCount','skillDefinitionCount','damageProfileCount',
-        'bossProfileCount','encounterPatternCount','fieldEntryCount') 'balance provenance coverage'
+        'bossProfileCount','bossPartCount','encounterPatternCount',
+        'bossCombatObjectCount','fieldEntryCount') 'balance provenance coverage'
     $sourceIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 	$sourceHashes = @{}
     foreach ($sourceFile in @($receipt.sourceFiles)) {
@@ -321,6 +324,31 @@ function Assert-BalanceProvenance(
             Add-Expected 'Data/Balance/BossProfiles.json' "boss:$($boss.archetypeId)" $property.Name $property.Value
         }
     }
+    $bossPartPath = 'Data/Balance/ValtanBossParts.json'
+    $bossPartRoot = "boss-parts:$($BossPartDocument.bossArchetypeId)"
+    Add-Expected $bossPartPath $bossPartRoot 'bossArchetypeId' `
+        $BossPartDocument.bossArchetypeId
+    Add-Expected $bossPartPath $bossPartRoot 'parts.length' `
+        @($BossPartDocument.parts).Count
+    foreach ($part in @($BossPartDocument.parts)) {
+        foreach ($property in $part.PSObject.Properties) {
+            Add-Expected $bossPartPath "boss-part:$($part.partId)" `
+                $property.Name $property.Value
+        }
+    }
+	$combatObjectPath = 'Data/Encounters/Valtan/ValtanCombatObjects.json'
+	$combatObjectRoot = "combat-objects:$($CombatObjectDocument.encounterId)"
+	Add-Expected $combatObjectPath $combatObjectRoot 'encounterId' `
+		$CombatObjectDocument.encounterId
+	Add-Expected $combatObjectPath $combatObjectRoot 'objects.length' `
+		@($CombatObjectDocument.objects).Count
+	foreach ($combatObject in @($CombatObjectDocument.objects)) {
+		foreach ($property in $combatObject.PSObject.Properties) {
+			Add-Expected $combatObjectPath `
+				"combat-object:$($combatObject.combatObjectArchetypeId)" `
+				$property.Name $property.Value
+		}
+	}
     $encounter = Read-JsonDocument 'Data/Encounters/Valtan/ValtanEncounter.json'
     $encounterTarget = "encounter:$($encounter.encounterId)"
     foreach ($field in @('encounterId','bossArchetypeId','authority','fixedTickHz')) {
@@ -352,6 +380,8 @@ function Assert-BalanceProvenance(
         [uint32]$receipt.coverage.skillDefinitionCount -ne @($SkillDocument.skills).Count -or
         [uint32]$receipt.coverage.damageProfileCount -ne @($DamageDocument.profiles).Count -or
         [uint32]$receipt.coverage.bossProfileCount -ne @($BossDocument.bosses).Count -or
+        [uint32]$receipt.coverage.bossPartCount -ne @($BossPartDocument.parts).Count -or
+        [uint32]$receipt.coverage.bossCombatObjectCount -ne @($CombatObjectDocument.objects).Count -or
         [uint32]$receipt.coverage.encounterPatternCount -ne @($encounter.patterns).Count) {
         throw 'Balance provenance object coverage is stale.'
     }
@@ -387,8 +417,8 @@ foreach ($profile in @($damageDocument.profiles)) {
 $skillDocument = Read-JsonDocument 'Data/Balance/PlayerSkills.json'
 Assert-ExactProperties $skillDocument @('schema','formatVersion','skills') 'skill document'
 Assert-JsonString $skillDocument.schema 'skill document schema'
-Assert-JsonInteger $skillDocument.formatVersion 'skill document formatVersion' 2 2
-if ($skillDocument.schema -ne 'lostark.player-skills' -or $skillDocument.formatVersion -ne 2) {
+Assert-JsonInteger $skillDocument.formatVersion 'skill document formatVersion' 3 3
+if ($skillDocument.schema -ne 'lostark.player-skills' -or $skillDocument.formatVersion -ne 3) {
     throw 'Player skill header is invalid.'
 }
 
@@ -515,11 +545,11 @@ $claimedSlotStances = @{}
 $claimedStandupSlots = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $skillRows = [Collections.Generic.List[string]]::new()
 foreach ($skill in @($skillDocument.skills)) {
-    Assert-ExactProperties $skill @(
+	Assert-ExactProperties $skill @(
 		'skillId','characterClass','inputSlot','displayName','actionId','skillKind','requiredStance','setsStance',
 		'cooldownMs','actionDurationMs',
         'hitTimeMs','resourceCost','identityCost','movementDistance','maximumRange','serverDamageProfileId',
-		'effectId','comboStages') 'player skill'
+		'staggerDamage','partDamage','counterPower','effectId','comboStages') 'player skill'
 	Assert-JsonInteger $skill.skillId 'skillId' 1 ([uint32]::MaxValue)
 	foreach ($stringField in @('characterClass','inputSlot','displayName','actionId','skillKind','serverDamageProfileId',
 		'effectId','requiredStance','setsStance')) {
@@ -528,7 +558,9 @@ foreach ($skill in @($skillDocument.skills)) {
 	if ($skill.requiredStance -notin $knownStances -or $skill.setsStance -notin $knownStances) {
 		throw "Skill stance is unknown: $($skill.skillId)"
 	}
-	foreach ($integerField in @('cooldownMs','actionDurationMs','hitTimeMs','resourceCost','identityCost')) {
+	foreach ($integerField in @(
+		'cooldownMs','actionDurationMs','hitTimeMs','resourceCost','identityCost',
+		'staggerDamage','partDamage','counterPower')) {
 		Assert-JsonInteger $skill.$integerField "skill $($skill.skillId) $integerField" 0 ([uint32]::MaxValue)
 	}
 	Assert-JsonNumber $skill.movementDistance "skill $($skill.skillId) movementDistance"
@@ -542,6 +574,23 @@ foreach ($skill in @($skillDocument.skills)) {
 	$dealsDamage = $damageProfileId.Length -gt 0
 	if ($dealsDamage) {
 		Assert-StableId $damageProfileId 'serverDamageProfileId'
+	}
+	# Initial boss-interaction tuning is deliberately per landed damaging hit.
+	# Multi-hit skills therefore contribute once for each hit that the Server
+	# actually admits, rather than receiving a hidden whole-skill multiplier.
+	$expectedStaggerDamage = if ($dealsDamage) { [uint32]10 } else { [uint32]0 }
+	$expectedPartDamage = if ($dealsDamage) { [uint32]100 } else { [uint32]0 }
+	$expectedCounterPower = if ([uint32]$skill.skillId -eq 34580) {
+		[uint32]1
+	} else {
+		[uint32]0
+	}
+	if ([uint32]$skill.staggerDamage -ne $expectedStaggerDamage -or
+		[uint32]$skill.partDamage -ne $expectedPartDamage -or
+		[uint32]$skill.counterPower -ne $expectedCounterPower -or
+		([uint32]$skill.counterPower -gt 0 -and
+		 [string]$skill.skillKind -cne 'COUNTER')) {
+		throw "Player skill boss combat traits violate the deterministic landed-hit policy: $($skill.skillId)"
 	}
 	if ([string]::IsNullOrWhiteSpace([string]$skill.displayName) -or ([string]$skill.displayName).Length -gt 64) {
 		throw "Skill displayName is invalid: $($skill.skillId)"
@@ -713,6 +762,9 @@ foreach ($skill in @($skillDocument.skills)) {
         $skillKind,
         $skill.requiredStance,
         $skill.setsStance) -join "`t"))
+	$skillRows.Add((@(
+		'SKILLCOMBATTRAITS', $id, [uint32]$skill.staggerDamage,
+		[uint32]$skill.partDamage, [uint32]$skill.counterPower) -join "`t"))
 	for ($stageIndex = 0; $stageIndex -lt $stages.Count; $stageIndex++) {
 		$stage = $stages[$stageIndex]
 		$skillRows.Add((@(
@@ -810,13 +862,156 @@ foreach ($boss in @($bossDocument.bosses)) {
 	}
 }
 
+$bossPartDocument = Read-JsonDocument 'Data/Balance/ValtanBossParts.json'
+Assert-ExactProperties $bossPartDocument @(
+	'schema','formatVersion','bossArchetypeId','parts') 'Valtan boss part document'
+Assert-JsonString $bossPartDocument.schema 'Valtan boss part schema'
+Assert-JsonInteger $bossPartDocument.formatVersion `
+	'Valtan boss part formatVersion' 1 1
+Assert-JsonString $bossPartDocument.bossArchetypeId `
+	'Valtan boss part bossArchetypeId'
+Assert-StableId $bossPartDocument.bossArchetypeId `
+	'Valtan boss part bossArchetypeId'
+if ([string]$bossPartDocument.schema -cne 'lostark.valtan-boss-parts' -or
+	[uint32]$bossPartDocument.formatVersion -ne 1 -or
+	-not $bossIds.Contains([string]$bossPartDocument.bossArchetypeId) -or
+	$bossPartDocument.parts -isnot [Array] -or
+	@($bossPartDocument.parts).Count -lt 1 -or
+	@($bossPartDocument.parts).Count -gt 32) {
+	throw 'Valtan boss part header or boss owner is invalid.'
+}
+$bossPartIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$bossPartMasks = [Collections.Generic.HashSet[uint32]]::new()
+$bossPartRows = [Collections.Generic.List[string]]::new()
+$totalPartDamageReductionPercent = [uint32]0
+foreach ($part in @($bossPartDocument.parts)) {
+	Assert-ExactProperties $part @(
+		'partId','stateMask','maximumDurability','damageReductionPercent',
+		'partDamageCondition') 'Valtan boss part'
+	foreach ($field in @('partId','partDamageCondition')) {
+		Assert-JsonString $part.$field "Valtan boss part $field"
+	}
+	Assert-StableId $part.partId 'Valtan boss partId'
+	Assert-JsonInteger $part.stateMask `
+		"Valtan boss part $($part.partId) stateMask" 1 ([uint32]::MaxValue)
+	Assert-JsonInteger $part.maximumDurability `
+		"Valtan boss part $($part.partId) maximumDurability" 1 1000000
+	Assert-JsonInteger $part.damageReductionPercent `
+		"Valtan boss part $($part.partId) damageReductionPercent" 1 90
+	$stateMask = [uint32]$part.stateMask
+	if (($stateMask -band ($stateMask - 1)) -ne 0 -or
+		-not $bossPartIds.Add([string]$part.partId) -or
+		-not $bossPartMasks.Add($stateMask) -or
+		[string]$part.partDamageCondition -cne 'GROGGY_ONLY') {
+		throw "Valtan boss part identity, mask, or condition is invalid: $($part.partId)"
+	}
+	$totalPartDamageReductionPercent += [uint32]$part.damageReductionPercent
+	$bossPartRows.Add((@(
+		'BOSSPART', $bossPartDocument.bossArchetypeId, $part.partId,
+		$stateMask, [uint32]$part.maximumDurability,
+		[uint32]$part.damageReductionPercent,
+		[string]$part.partDamageCondition) -join "`t"))
+}
+if ($totalPartDamageReductionPercent -ge 100) {
+	throw 'Valtan boss part damage reductions must total less than 100 percent.'
+}
+
+# Presentation owns modelAssetId, gameplay owns durability/reduction. The two
+# authoring documents must still describe the exact same stable part identity
+# and bit, while no model path crosses into the Server bootstrap.
+$bossCatalogDocument = Read-JsonDocument 'Data/Actors/BossCatalog.json'
+Assert-ExactProperties $bossCatalogDocument @(
+	'schema','formatVersion','bosses') 'boss presentation catalog'
+Assert-JsonString $bossCatalogDocument.schema 'boss presentation catalog schema'
+Assert-JsonInteger $bossCatalogDocument.formatVersion `
+	'boss presentation catalog formatVersion' 3 3
+if ([string]$bossCatalogDocument.schema -cne 'lostark.boss-catalog' -or
+	[uint32]$bossCatalogDocument.formatVersion -ne 3 -or
+	$bossCatalogDocument.bosses -isnot [Array]) {
+	throw 'Boss presentation catalog header is invalid.'
+}
+$bossCatalogOwners = @($bossCatalogDocument.bosses | Where-Object {
+	[string]$_.archetypeId -ceq [string]$bossPartDocument.bossArchetypeId })
+if ($bossCatalogOwners.Count -ne 1 -or
+	$bossCatalogOwners[0].armorParts -isnot [Array] -or
+	@($bossCatalogOwners[0].armorParts).Count -ne @($bossPartDocument.parts).Count -or
+	$bossCatalogOwners[0].combatObjectVisuals -isnot [Array] -or
+	@($bossCatalogOwners[0].combatObjectVisuals).Count -ne 2) {
+	throw 'Valtan boss part presentation owner or count does not match gameplay.'
+}
+$presentationPartById = @{}
+foreach ($presentationPart in @($bossCatalogOwners[0].armorParts)) {
+	Assert-ExactProperties $presentationPart @(
+		'partId','stateMask','modelAssetId') 'boss presentation armor part'
+	Assert-JsonString $presentationPart.partId 'boss presentation armor partId'
+	Assert-StableId $presentationPart.partId 'boss presentation armor partId'
+	Assert-JsonInteger $presentationPart.stateMask `
+		"boss presentation armor part $($presentationPart.partId) stateMask" `
+		1 ([uint32]::MaxValue)
+	Assert-JsonString $presentationPart.modelAssetId `
+		"boss presentation armor part $($presentationPart.partId) modelAssetId"
+	$modelAssetId = [string]$presentationPart.modelAssetId
+	if ($presentationPartById.ContainsKey([string]$presentationPart.partId) -or
+		[string]::IsNullOrWhiteSpace($modelAssetId) -or
+		$modelAssetId.Length -gt 260 -or $modelAssetId.Contains('\') -or
+		$modelAssetId.StartsWith('/') -or $modelAssetId -match '^[A-Za-z]:' -or
+		@($modelAssetId.Split('/')) -contains '..') {
+		throw "Boss presentation armor part is invalid: $($presentationPart.partId)"
+	}
+	$presentationPartById[[string]$presentationPart.partId] = $presentationPart
+}
+foreach ($part in @($bossPartDocument.parts)) {
+	$presentationPart = $presentationPartById[[string]$part.partId]
+	if ($null -eq $presentationPart -or
+		[uint32]$presentationPart.stateMask -ne [uint32]$part.stateMask) {
+		throw "Valtan boss part presentation join is invalid: $($part.partId)"
+	}
+}
+$combatObjectVisualByArchetypeId = @{}
+foreach ($visual in @($bossCatalogOwners[0].combatObjectVisuals)) {
+	Assert-ExactProperties $visual @(
+		'combatObjectArchetypeId','clientVisualId','effectAssetId') `
+		'boss combat object visual'
+	foreach ($field in @(
+		'combatObjectArchetypeId','clientVisualId','effectAssetId')) {
+		Assert-JsonString $visual.$field "boss combat object visual $field"
+		Assert-StableId $visual.$field "boss combat object visual $field"
+	}
+	if ($combatObjectVisualByArchetypeId.ContainsKey(
+		[string]$visual.combatObjectArchetypeId)) {
+		throw "Duplicate boss combat object visual: $($visual.combatObjectArchetypeId)"
+	}
+	$combatObjectVisualByArchetypeId[
+		[string]$visual.combatObjectArchetypeId] = $visual
+}
+
+$combatObjectDocument = Read-JsonDocument `
+	'Data/Encounters/Valtan/ValtanCombatObjects.json'
+Assert-ExactProperties $combatObjectDocument @(
+	'schema','formatVersion','encounterId','objects') `
+	'Valtan combat object document'
+Assert-JsonString $combatObjectDocument.schema 'Valtan combat object schema'
+Assert-JsonInteger $combatObjectDocument.formatVersion `
+	'Valtan combat object formatVersion' 1 1
+Assert-JsonString $combatObjectDocument.encounterId `
+	'Valtan combat object encounterId'
+Assert-StableId $combatObjectDocument.encounterId `
+	'Valtan combat object encounterId'
+if ([string]$combatObjectDocument.schema -cne `
+	'lostark.valtan-combat-objects' -or
+	[uint32]$combatObjectDocument.formatVersion -ne 1 -or
+	$combatObjectDocument.objects -isnot [Array] -or
+	@($combatObjectDocument.objects).Count -ne 2) {
+	throw 'Valtan combat object header or first-slice object count is invalid.'
+}
+
 $encounterDocument = Read-JsonDocument 'Data/Encounters/Valtan/ValtanEncounter.json'
 Assert-ExactProperties $encounterDocument @(
 	'schema','formatVersion','encounterId','bossArchetypeId','authority','fixedTickHz',
 	'introPatternId','states','patterns') 'encounter document'
 Assert-StableId $encounterDocument.introPatternId 'encounter introPatternId'
 Assert-JsonString $encounterDocument.schema 'encounter schema'
-Assert-JsonInteger $encounterDocument.formatVersion 'encounter formatVersion' 3 3
+Assert-JsonInteger $encounterDocument.formatVersion 'encounter formatVersion' 4 4
 Assert-JsonString $encounterDocument.encounterId 'encounterId'
 Assert-JsonString $encounterDocument.bossArchetypeId 'encounter bossArchetypeId'
 Assert-JsonString $encounterDocument.authority 'encounter authority'
@@ -824,11 +1019,15 @@ Assert-JsonInteger $encounterDocument.fixedTickHz 'encounter fixedTickHz' 30 30
 Assert-StableId $encounterDocument.encounterId 'encounterId'
 Assert-StableId $encounterDocument.bossArchetypeId 'encounter bossArchetypeId'
 if ($encounterDocument.schema -ne 'lostark.encounter-profile' -or
-	$encounterDocument.formatVersion -ne 3 -or
+	$encounterDocument.formatVersion -ne 4 -or
 	$encounterDocument.authority -ne 'server' -or
 	[uint32]$encounterDocument.fixedTickHz -ne 30 -or
 	-not $bossIds.Contains([string]$encounterDocument.bossArchetypeId)) {
 	throw 'Valtan encounter header or boss reference is invalid.'
+}
+if ([string]$combatObjectDocument.encounterId -cne `
+	[string]$encounterDocument.encounterId) {
+	throw 'Valtan combat object encounter owner does not match the encounter.'
 }
 $encounterBoss = @($bossDocument.bosses | Where-Object {
 	$_.archetypeId -eq $encounterDocument.bossArchetypeId -and
@@ -844,11 +1043,15 @@ $sourceTimingByActionId = Read-ValtanSkillTiming
 $patternRows = [Collections.Generic.List[string]]::new()
 $serverMotionAnchorIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $serverMotionByPatternId = @{}
+$patternById = @{}
+$stageOwnerByKey = @{}
+$spawnCombatObjectOwnerById = @{}
 foreach ($pattern in @($encounterDocument.patterns)) {
 	# serverMotion is optional. Only a pattern whose boss motion the Server has to
 	# compute itself, like the 109 leap to its landing anchor, carries one.
 	$patternProperties = @(
 		'patternId','displayName','actionId','sourceActionIds','selectionMode',
+		'category','minimumPhase','maximumPhase','targetPolicy','aimPolicy',
 		'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
 		'armorRequirement','phaseRequirement','invulnerableWhileRunning',
 		'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',
@@ -856,11 +1059,14 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 	$hasServerMotion = $null -ne $pattern.PSObject.Properties['serverMotion']
 	if ($hasServerMotion) { $patternProperties += 'serverMotion' }
 	Assert-ExactProperties $pattern $patternProperties 'encounter pattern'
-	foreach ($field in @('patternId','displayName','actionId','selectionMode')) {
+	foreach ($field in @(
+		'patternId','displayName','actionId','selectionMode','category',
+		'targetPolicy','aimPolicy')) {
 		Assert-JsonString $pattern.$field "pattern $($pattern.patternId) $field"
 	}
 	foreach ($field in @('minimumHealthBar','maximumHealthBar','triggerHealthBar',
-		'triggerOrder','selectionWeight','maximumConsecutiveUses')) {
+		'triggerOrder','selectionWeight','maximumConsecutiveUses',
+		'minimumPhase','maximumPhase')) {
 		Assert-JsonInteger $pattern.$field "pattern $($pattern.patternId) $field" 0 ([uint32]::MaxValue)
 	}
 	Assert-JsonNumber $pattern.minimumRange "pattern $($pattern.patternId) minimumRange"
@@ -879,6 +1085,7 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		@($pattern.stages).Count -gt 64) {
 		throw "Encounter pattern base fields are invalid: $($pattern.patternId)"
 	}
+	$patternById[[string]$pattern.patternId] = $pattern
 	$patternSourceIds = [Collections.Generic.HashSet[uint32]]::new()
 	foreach ($sourceActionId in @($pattern.sourceActionIds)) {
 		Assert-JsonInteger $sourceActionId "pattern $($pattern.patternId) sourceActionId" 1 ([uint32]::MaxValue)
@@ -900,6 +1107,28 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 				[double][uint32]$encounterDocument.fixedTickHz) / 1000.0)
 	}
 	$selectionMode = [string]$pattern.selectionMode
+	$category = [string]$pattern.category
+	$targetPolicy = [string]$pattern.targetPolicy
+	$aimPolicy = [string]$pattern.aimPolicy
+	if ($category -notin @('NORMAL','IMPORTANT','MECHANIC') -or
+		[uint32]$pattern.minimumPhase -lt 1 -or
+		[uint32]$pattern.maximumPhase -lt [uint32]$pattern.minimumPhase -or
+		[uint32]$pattern.maximumPhase -gt 3 -or
+		$targetPolicy -notin @(
+			'NONE','NEAREST_EACH_TICK','LOCK_NEAREST_ON_START',
+			'LOCK_RANDOM_ALIVE_ON_START') -or
+		$aimPolicy -notin @(
+			'NONE','TRACK_TARGET_EACH_TICK','LOCK_FACING_ON_START',
+			'FACE_MOTION_ANCHOR') -or
+		(($targetPolicy -eq 'NONE') -ne
+		 ($aimPolicy -in @('NONE','FACE_MOTION_ANCHOR'))) -or
+		(($targetPolicy -eq 'NEAREST_EACH_TICK') -ne
+		 ($aimPolicy -eq 'TRACK_TARGET_EACH_TICK')) -or
+		(($targetPolicy -in @(
+			'LOCK_NEAREST_ON_START','LOCK_RANDOM_ALIVE_ON_START')) -ne
+		 ($aimPolicy -eq 'LOCK_FACING_ON_START'))) {
+		throw "Pattern category, phase, target, or aim policy is invalid: $($pattern.patternId)"
+	}
 	Assert-JsonString $pattern.armorRequirement "pattern armorRequirement"
 	$armorRequirement = [string]$pattern.armorRequirement
 	if ($armorRequirement -cnotin @('ANY','ARMORED','STRIPPED')) {
@@ -937,6 +1166,9 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			[uint32]$pattern.maximumConsecutiveUses -ne 0) {
 			throw "Health-bar pattern selection fields are invalid: $($pattern.patternId)"
 		}
+		if ($category -cne 'MECHANIC') {
+			throw "Health-bar pattern must use the MECHANIC category: $($pattern.patternId)"
+		}
 	}
 	else { throw "Unknown pattern selection mode: $($pattern.patternId)" }
 	$patternRows.Add((@(
@@ -948,6 +1180,10 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 		(Format-InvariantFloat $pattern.maximumRange "pattern maximumRange"),
 		@($pattern.stages).Count, $armorRequirement,
 		$phaseRequirement, $invulnerable) -join "`t"))
+	$patternRows.Add((@(
+		'PATTERNPOLICY', $encounterDocument.encounterId, $pattern.patternId,
+		$category, [uint32]$pattern.minimumPhase, [uint32]$pattern.maximumPhase,
+		$targetPolicy, $aimPolicy) -join "`t"))
 	# sourceActionIds[0] is the pattern entry skill. The remaining IDs are
 	# continuations/variants and are still checked above, but only the entry
 	# skill owns selection cooldown/range/approach/turn metadata.
@@ -1003,14 +1239,36 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			(Format-InvariantSignedFloat $motion.landingPosition[2] 'serverMotion landing z'),
 			(Format-InvariantFloat $motion.apexHeight 'serverMotion apexHeight')) -join "`t"))
 	}
+	if ($aimPolicy -eq 'FACE_MOTION_ANCHOR' -and -not $hasServerMotion) {
+		throw "FACE_MOTION_ANCHOR requires serverMotion: $($pattern.patternId)"
+	}
 	$stageIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$stageActionIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	$activeStageActionKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+	foreach ($stageIdentity in @($pattern.stages)) {
+		Assert-JsonString $stageIdentity.actionId `
+			"pattern $($pattern.patternId) stage actionId"
+		Assert-StableId $stageIdentity.actionId 'pattern stage actionId'
+		if (-not $stageActionIds.Add([string]$stageIdentity.actionId)) {
+			throw "Duplicate pattern stage actionId: $($pattern.patternId)/$($stageIdentity.actionId)"
+		}
+		$stageOwnerByKey["$($pattern.patternId)`n$($stageIdentity.actionId)"] = `
+			$stageIdentity
+	}
 	for ($stageIndex = 0; $stageIndex -lt @($pattern.stages).Count; $stageIndex++) {
 		$stage = $pattern.stages[$stageIndex]
-		Assert-ExactProperties $stage @(
+		$stageProperties = @(
 			'stageId','actionId','stageKind','durationMs','hitShape',
 			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength','hitHalfWidth',
 			'hitCount','hitIntervalMs','hitDelayMs','serverDamageProfileId',
-			'pushRangeM','pushMs','knockdown','downMs') 'encounter pattern stage'
+			'pushRangeM','pushMs','knockdown','downMs')
+		$hasStageBranches = $null -ne $stage.PSObject.Properties['branches']
+		$hasStageActions = $null -ne $stage.PSObject.Properties['actions']
+		$hasStageMotion = $null -ne $stage.PSObject.Properties['motion']
+		if ($hasStageBranches) { $stageProperties += 'branches' }
+		if ($hasStageActions) { $stageProperties += 'actions' }
+		if ($hasStageMotion) { $stageProperties += 'motion' }
+		Assert-ExactProperties $stage $stageProperties 'encounter pattern stage'
 		foreach ($field in @('stageId','actionId','stageKind','hitShape','serverDamageProfileId')) {
 			Assert-JsonString $stage.$field "pattern $($pattern.patternId) stage $stageIndex $field"
 		}
@@ -1088,9 +1346,422 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			$pushMs,
 			$(if ($knockdown) { 1 } else { 0 }),
 			$downMs) -join "`t"))
+
+		$stageMotionKind = 'NONE'
+		if ($hasStageMotion) {
+			Assert-ExactProperties $stage.motion @(
+				'kind','distance') 'encounter pattern stage motion'
+			Assert-JsonString $stage.motion.kind `
+				"pattern $($pattern.patternId) stage $stageIndex motion kind"
+			Assert-JsonNumber $stage.motion.distance `
+				"pattern $($pattern.patternId) stage $stageIndex motion distance"
+			$stageMotionKind = [string]$stage.motion.kind
+			if ($stageMotionKind -cne 'FORWARD' -or
+				[double]$stage.motion.distance -le 0.0 -or
+				[double]$stage.motion.distance -gt 1000.0) {
+				throw "Pattern stage motion is invalid: $($pattern.patternId) stage $stageIndex"
+			}
+			$patternRows.Add((@(
+				'PATTERNSTAGEMOTION', $encounterDocument.encounterId,
+				$pattern.patternId, $stage.actionId, $stageMotionKind,
+				(Format-InvariantFloat $stage.motion.distance `
+					"pattern $($pattern.patternId) stage motion distance")) -join "`t"))
+		}
+
+		$hasCounterableEnter = $false
+		$hasCounterableExit = $false
+		$hasStaggerGaugeEnter = $false
+		$hasStaggerGaugeExit = $false
+		$hasSpawnCombatObjectAction = $false
+		if ($hasStageActions) {
+			if ($stage.actions -isnot [Array] -or
+				@($stage.actions).Count -lt 1 -or
+				@($stage.actions).Count -gt 8) {
+				throw "Pattern stage actions must contain 1..8 closed typed actions: $($pattern.patternId) stage $stageIndex"
+			}
+			$stageActionKeys = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+			for ($actionIndex = 0; $actionIndex -lt @($stage.actions).Count; ++$actionIndex) {
+				$stageAction = $stage.actions[$actionIndex]
+				Assert-ExactProperties $stageAction @(
+					'trigger','kind','targetId','value','durationMs') `
+					'encounter pattern stage action'
+				foreach ($field in @('trigger','kind','targetId')) {
+					Assert-JsonString $stageAction.$field `
+						"pattern $($pattern.patternId) stage $stageIndex action $field"
+				}
+				Assert-StableId $stageAction.targetId `
+					'pattern stage action targetId'
+				Assert-JsonInteger $stageAction.value `
+					'pattern stage action value' 0 ([uint32]::MaxValue)
+				Assert-JsonInteger $stageAction.durationMs `
+					'pattern stage action durationMs' 0 0
+				$actionTrigger = [string]$stageAction.trigger
+				$actionKind = [string]$stageAction.kind
+				$actionTargetId = [string]$stageAction.targetId
+				$actionValue = [uint32]$stageAction.value
+				$actionKey = "$actionTrigger/$actionKind/$($stageAction.targetId)"
+				$validTypedAction = $false
+				switch ($actionKind) {
+					'SET_BOSS_FLAG' {
+						$validTypedAction = $actionTargetId -cin @(
+							'boss.flag.groggy','boss.flag.invulnerable',
+							'boss.flag.counterable') -and $actionValue -le 1
+					}
+					'SET_STAGGER_GAUGE' {
+						$validTypedAction = $actionTargetId -ceq 'boss.gauge.stagger'
+					}
+					'SET_SHIELD' {
+						$validTypedAction = $actionTargetId -ceq 'boss.gauge.shield'
+					}
+					'SPAWN_COMBAT_OBJECT' {
+						$validTypedAction = $actionTrigger -ceq 'ENTER' -and
+							$actionValue -eq 1
+					}
+				}
+				if ($actionKind -cne 'SPAWN_COMBAT_OBJECT') {
+					$validTypedAction = $validTypedAction -and
+						(($actionTrigger -ceq 'ENTER' -and $actionValue -gt 0) -or
+						 ($actionTrigger -ceq 'EXIT' -and $actionValue -eq 0))
+				}
+				if (-not $validTypedAction -or -not $stageActionKeys.Add($actionKey)) {
+					throw "Pattern stage action is invalid or duplicated: $($pattern.patternId) stage $stageIndex"
+				}
+				if ($actionKind -ceq 'SPAWN_COMBAT_OBJECT') {
+					if ($spawnCombatObjectOwnerById.ContainsKey($actionTargetId)) {
+						throw "Combat object spawn action is duplicated: $actionTargetId"
+					}
+					$spawnCombatObjectOwnerById[$actionTargetId] = [pscustomobject]@{
+						PatternId = [string]$pattern.patternId
+						StageActionId = [string]$stage.actionId
+					}
+					$hasSpawnCombatObjectAction = $true
+				}
+				else {
+					$stateKey = "$actionKind/$actionTargetId"
+					if ($actionTrigger -ceq 'ENTER') {
+						if (-not $activeStageActionKeys.Add($stateKey)) {
+							throw "Pattern stage action overlaps an active lifetime: $($pattern.patternId) stage $stageIndex"
+						}
+					} elseif (-not $activeStageActionKeys.Remove($stateKey)) {
+						throw "Pattern stage action clears an inactive lifetime: $($pattern.patternId) stage $stageIndex"
+					}
+				}
+				$hasCounterableEnter = $hasCounterableEnter -or
+					($actionTrigger -ceq 'ENTER' -and $actionKind -ceq 'SET_BOSS_FLAG' -and
+					 $actionTargetId -ceq 'boss.flag.counterable')
+				$hasCounterableExit = $hasCounterableExit -or
+					($actionTrigger -ceq 'EXIT' -and $actionKind -ceq 'SET_BOSS_FLAG' -and
+					 $actionTargetId -ceq 'boss.flag.counterable')
+				$hasStaggerGaugeEnter = $hasStaggerGaugeEnter -or
+					($actionTrigger -ceq 'ENTER' -and $actionKind -ceq 'SET_STAGGER_GAUGE')
+				$hasStaggerGaugeExit = $hasStaggerGaugeExit -or
+					($actionTrigger -ceq 'EXIT' -and $actionKind -ceq 'SET_STAGGER_GAUGE')
+				$patternRows.Add((@(
+					'PATTERNSTAGEACTION', $encounterDocument.encounterId,
+					$pattern.patternId, $stage.actionId, $actionIndex,
+					$actionTrigger, $actionKind, $stageAction.targetId,
+					[uint32]$stageAction.value,
+					[uint32]$stageAction.durationMs) -join "`t"))
+			}
+		}
+		if ($hasSpawnCombatObjectAction -and $shape -cne 'NONE') {
+			throw "Combat object spawn stage cannot also own an inline hit: $($pattern.patternId) stage $stageIndex"
+		}
+
+		if ($hasStageBranches) {
+			if ($stage.branches -isnot [Array] -or
+				@($stage.branches).Count -lt 1 -or
+				@($stage.branches).Count -gt 8) {
+				throw "Pattern stage branches are invalid: $($pattern.patternId) stage $stageIndex"
+			}
+			$branchOutcomes = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+			$hasTimeout = $false
+			$hasWallContact = $false
+			$hasCounterHit = $false
+			$hasStaggerBroken = $false
+			foreach ($branch in @($stage.branches)) {
+				Assert-ExactProperties $branch @(
+					'outcome','nextActionId') 'encounter pattern stage branch'
+				Assert-JsonString $branch.outcome 'pattern stage branch outcome'
+				$outcome = [string]$branch.outcome
+				if ($outcome -notin @(
+					'TIMEOUT','COUNTER_HIT','STAGGER_BROKEN','WALL_CONTACT',
+					'PART_DESTROYED','PROP_DESTROYED','SUMMON_DEAD',
+					'ALL_PLAYERS_GRABBED') -or
+					-not $branchOutcomes.Add($outcome)) {
+					throw "Pattern stage branch outcome is unknown or duplicated: $($pattern.patternId) stage $stageIndex"
+				}
+				$nextActionId = '-'
+				if ($null -ne $branch.nextActionId) {
+					Assert-JsonString $branch.nextActionId `
+						'pattern stage branch nextActionId'
+					Assert-StableId $branch.nextActionId `
+						'pattern stage branch nextActionId'
+					$nextActionId = [string]$branch.nextActionId
+					if (-not $stageActionIds.Contains($nextActionId) -or
+						$nextActionId -ceq [string]$stage.actionId) {
+						throw "Pattern stage branch target is dangling or self-referential: $($pattern.patternId) stage $stageIndex"
+					}
+				}
+				$hasTimeout = $hasTimeout -or $outcome -eq 'TIMEOUT'
+				$hasWallContact = $hasWallContact -or $outcome -eq 'WALL_CONTACT'
+				$hasCounterHit = $hasCounterHit -or $outcome -eq 'COUNTER_HIT'
+				$hasStaggerBroken = $hasStaggerBroken -or $outcome -eq 'STAGGER_BROKEN'
+				$patternRows.Add((@(
+					'PATTERNSTAGEBRANCH', $encounterDocument.encounterId,
+					$pattern.patternId, $stage.actionId, $outcome,
+					$nextActionId) -join "`t"))
+			}
+			if (-not $hasTimeout -or
+				($hasWallContact -and $stageMotionKind -cne 'FORWARD') -or
+				($hasCounterHit -and (-not $hasCounterableEnter -or -not $hasCounterableExit)) -or
+				($hasStaggerBroken -and (-not $hasStaggerGaugeEnter -or -not $hasStaggerGaugeExit))) {
+				throw "Pattern stage branches need one TIMEOUT and WALL_CONTACT needs FORWARD motion: $($pattern.patternId) stage $stageIndex"
+			}
+		}
+		else {
+			$implicitNextActionId = if ($stageIndex + 1 -lt @($pattern.stages).Count) {
+				[string]$pattern.stages[$stageIndex + 1].actionId
+			} else {
+				'-'
+			}
+			$patternRows.Add((@(
+				'PATTERNSTAGEBRANCH', $encounterDocument.encounterId,
+				$pattern.patternId, $stage.actionId, 'TIMEOUT',
+				$implicitNextActionId) -join "`t"))
+		}
+	}
+	if ($activeStageActionKeys.Count -ne 0) {
+		throw "Pattern stage action lifetime is not closed: $($pattern.patternId)"
 	}
 }
 if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
+
+$combatObjectIds = [Collections.Generic.HashSet[string]]::new(
+	[StringComparer]::Ordinal)
+$combatObjectVisualIds = [Collections.Generic.HashSet[string]]::new(
+	[StringComparer]::Ordinal)
+$combatObjectRows = [Collections.Generic.List[string]]::new()
+foreach ($combatObject in @($combatObjectDocument.objects)) {
+	Assert-ExactProperties $combatObject @(
+		'combatObjectArchetypeId','clientVisualId','ownerPatternId',
+		'ownerStageActionId','kind','originPolicy','directionPolicy',
+		'offsetForwardM','offsetRightM','speedMps','maximumDistanceM',
+		'lifeMs','hits') 'Valtan combat object'
+	foreach ($field in @(
+		'combatObjectArchetypeId','clientVisualId','ownerPatternId',
+		'ownerStageActionId','kind','originPolicy','directionPolicy')) {
+		Assert-JsonString $combatObject.$field "Valtan combat object $field"
+	}
+	foreach ($field in @(
+		'combatObjectArchetypeId','clientVisualId','ownerPatternId',
+		'ownerStageActionId')) {
+		Assert-StableId $combatObject.$field "Valtan combat object $field"
+	}
+	foreach ($field in @(
+		'offsetForwardM','offsetRightM','speedMps','maximumDistanceM')) {
+		Assert-JsonNumber $combatObject.$field `
+			"Valtan combat object $($combatObject.combatObjectArchetypeId) $field"
+	}
+	Assert-JsonInteger $combatObject.lifeMs `
+		"Valtan combat object $($combatObject.combatObjectArchetypeId) lifeMs" `
+		1 600000
+	$combatObjectId = [string]$combatObject.combatObjectArchetypeId
+	$clientVisualId = [string]$combatObject.clientVisualId
+	$ownerPatternId = [string]$combatObject.ownerPatternId
+	$ownerStageActionId = [string]$combatObject.ownerStageActionId
+	if (-not $combatObjectIds.Add($combatObjectId) -or
+		-not $combatObjectVisualIds.Add($clientVisualId) -or
+		-not $patternById.ContainsKey($ownerPatternId) -or
+		-not $stageOwnerByKey.ContainsKey(
+			"$ownerPatternId`n$ownerStageActionId") -or
+		-not $spawnCombatObjectOwnerById.ContainsKey($combatObjectId)) {
+		throw "Valtan combat object identity or owner is invalid: $combatObjectId"
+	}
+	$spawnOwner = $spawnCombatObjectOwnerById[$combatObjectId]
+	if ([string]$spawnOwner.PatternId -cne $ownerPatternId -or
+		[string]$spawnOwner.StageActionId -cne $ownerStageActionId) {
+		throw "Valtan combat object spawn action owner does not match: $combatObjectId"
+	}
+	$visual = $combatObjectVisualByArchetypeId[$combatObjectId]
+	if ($null -eq $visual -or
+		[string]$visual.clientVisualId -cne $clientVisualId) {
+		throw "Valtan combat object visual join is invalid: $combatObjectId"
+	}
+	$ownerPattern = $patternById[$ownerPatternId]
+	$ownerStage = $stageOwnerByKey["$ownerPatternId`n$ownerStageActionId"]
+	if ([string]$ownerStage.hitShape -cne 'NONE') {
+		throw "Valtan combat object owner stage also owns an inline hit: $combatObjectId"
+	}
+
+	$kind = [string]$combatObject.kind
+	$originPolicy = [string]$combatObject.originPolicy
+	$directionPolicy = [string]$combatObject.directionPolicy
+	$offsetForwardM = [double]$combatObject.offsetForwardM
+	$offsetRightM = [double]$combatObject.offsetRightM
+	$speedMps = [double]$combatObject.speedMps
+	$maximumDistanceM = [double]$combatObject.maximumDistanceM
+	$lifeMs = [uint32]$combatObject.lifeMs
+	$finiteMotion =
+		-not [double]::IsNaN($offsetForwardM) -and
+		-not [double]::IsInfinity($offsetForwardM) -and
+		-not [double]::IsNaN($offsetRightM) -and
+		-not [double]::IsInfinity($offsetRightM) -and
+		-not [double]::IsNaN($speedMps) -and
+		-not [double]::IsInfinity($speedMps) -and
+		-not [double]::IsNaN($maximumDistanceM) -and
+		-not [double]::IsInfinity($maximumDistanceM) -and
+		[Math]::Abs($offsetForwardM) -le 100.0 -and
+		[Math]::Abs($offsetRightM) -le 100.0 -and
+		$speedMps -ge 0.0 -and $speedMps -le 1000.0 -and
+		$maximumDistanceM -ge 0.0 -and $maximumDistanceM -le 1000.0
+	$validMotion = $false
+	if ($kind -ceq 'FIXED_AREA') {
+		$validMotion =
+			$originPolicy -ceq 'LOCKED_TARGET_UNTIL_FIRST_PULSE' -and
+			$directionPolicy -ceq 'NONE' -and
+			$offsetForwardM -eq 0.0 -and $offsetRightM -eq 0.0 -and
+			$speedMps -eq 0.0 -and $maximumDistanceM -eq 0.0 -and
+			[string]$ownerPattern.targetPolicy -cin @(
+				'LOCK_NEAREST_ON_START','LOCK_RANDOM_ALIVE_ON_START')
+	}
+	elseif ($kind -ceq 'MISSILE') {
+		$maximumTravelM = $speedMps * ([double]$lifeMs / 1000.0)
+		$validMotion = $originPolicy -ceq 'BOSS_POSITION' -and
+			$directionPolicy -ceq 'PATTERN_FACING_AT_SPAWN' -and
+			$speedMps -gt 0.0 -and $maximumDistanceM -gt 0.0 -and
+			$maximumTravelM + 0.00001 -ge $maximumDistanceM -and
+			[string]$ownerPattern.aimPolicy -ceq 'LOCK_FACING_ON_START'
+	}
+	if (-not $finiteMotion -or -not $validMotion -or
+		$combatObject.hits -isnot [Array] -or
+		@($combatObject.hits).Count -lt 1 -or
+		@($combatObject.hits).Count -gt 16) {
+		throw "Valtan combat object motion or hit count is invalid: $combatObjectId"
+	}
+
+	$combatObjectRows.Add((@(
+		'BOSSCOMBATOBJECT', $combatObjectDocument.encounterId,
+		$combatObjectId, $clientVisualId, $ownerPatternId,
+		$ownerStageActionId, $kind, $originPolicy, $directionPolicy,
+		(Format-InvariantSignedFloat $offsetForwardM `
+			"combat object $combatObjectId offsetForwardM"),
+		(Format-InvariantSignedFloat $offsetRightM `
+			"combat object $combatObjectId offsetRightM"),
+		(Format-InvariantFloat $speedMps `
+			"combat object $combatObjectId speedMps"),
+		(Format-InvariantFloat $maximumDistanceM `
+			"combat object $combatObjectId maximumDistanceM"),
+		$lifeMs, @($combatObject.hits).Count) -join "`t"))
+
+	for ($hitIndex = 0; $hitIndex -lt @($combatObject.hits).Count;
+		++$hitIndex) {
+		$hit = $combatObject.hits[$hitIndex]
+		Assert-ExactProperties $hit @(
+			'trigger','atMs','repeatCount','repeatIntervalMs','hitShape',
+			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength',
+			'hitHalfWidth','serverDamageProfileId','pushRangeM','pushMs',
+			'knockdown','downMs') 'Valtan combat object hit'
+		foreach ($field in @('trigger','hitShape','serverDamageProfileId')) {
+			Assert-JsonString $hit.$field `
+				"Valtan combat object $combatObjectId hit $field"
+		}
+		Assert-StableId $hit.serverDamageProfileId `
+			"Valtan combat object $combatObjectId hit damage profile"
+		foreach ($field in @('atMs','repeatCount','repeatIntervalMs','pushMs','downMs')) {
+			Assert-JsonInteger $hit.$field `
+				"Valtan combat object $combatObjectId hit $field" `
+				0 ([uint32]::MaxValue)
+		}
+		foreach ($field in @(
+			'hitOuterRadius','hitInnerRadius','hitAngleDegrees','hitLength',
+			'hitHalfWidth','pushRangeM')) {
+			Assert-JsonNumber $hit.$field `
+				"Valtan combat object $combatObjectId hit $field"
+		}
+		if ($hit.knockdown -isnot [bool]) {
+			throw "Valtan combat object knockdown must be Boolean: $combatObjectId"
+		}
+		$trigger = [string]$hit.trigger
+		$atMs = [uint32]$hit.atMs
+		$repeatCount = [uint32]$hit.repeatCount
+		$repeatIntervalMs = [uint32]$hit.repeatIntervalMs
+		if ($repeatCount -lt 1 -or $repeatCount -gt 64 -or
+			(($repeatCount -eq 1) -ne ($repeatIntervalMs -eq 0))) {
+			throw "Valtan combat object hit repeat is invalid: $combatObjectId/$hitIndex"
+		}
+		$lastPulseMs = [uint64]$atMs +
+			([uint64]($repeatCount - 1) * [uint64]$repeatIntervalMs)
+		if ($lastPulseMs -ge [uint64]$lifeMs -or
+			($kind -ceq 'FIXED_AREA' -and $trigger -cne 'TIMED') -or
+			($kind -ceq 'MISSILE' -and
+				($trigger -cne 'CONTACT' -or $atMs -ne 0))) {
+			throw "Valtan combat object hit timing is invalid: $combatObjectId/$hitIndex"
+		}
+		$shape = [string]$hit.hitShape
+		$outer = [double]$hit.hitOuterRadius
+		$inner = [double]$hit.hitInnerRadius
+		$angle = [double]$hit.hitAngleDegrees
+		$length = [double]$hit.hitLength
+		$halfWidth = [double]$hit.hitHalfWidth
+		$validShape = $false
+		switch ($shape) {
+			'CIRCLE' {
+				$validShape = $outer -gt 0.0 -and $inner -eq 0.0 -and
+					$angle -eq 0.0 -and $length -eq 0.0 -and $halfWidth -eq 0.0
+			}
+			'RING' {
+				$validShape = $outer -gt $inner -and $inner -gt 0.0 -and
+					$angle -eq 0.0 -and $length -eq 0.0 -and $halfWidth -eq 0.0
+			}
+			'CONE' {
+				$validShape = $angle -gt 0.0 -and $angle -le 180.0 -and
+					$length -gt 0.0 -and $outer -eq 0.0 -and
+					$inner -eq 0.0 -and $halfWidth -eq 0.0
+			}
+			'BOX' {
+				$validShape = $length -gt 0.0 -and $halfWidth -gt 0.0 -and
+					$outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0
+			}
+			'CROSS' {
+				$validShape = $length -gt 0.0 -and $halfWidth -gt 0.0 -and
+					$outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0
+			}
+			'SIX_DIRECTIONS' {
+				$validShape = $length -gt 0.0 -and $halfWidth -gt 0.0 -and
+					$outer -eq 0.0 -and $inner -eq 0.0 -and $angle -eq 0.0
+			}
+		}
+		$pushRangeM = [double]$hit.pushRangeM
+		$pushMs = [uint32]$hit.pushMs
+		$knockdown = [bool]$hit.knockdown
+		$downMs = [uint32]$hit.downMs
+		if (-not $validShape -or
+			-not $damageIds.Contains([string]$hit.serverDamageProfileId) -or
+			[Math]::Abs($pushRangeM) -gt 20.0 -or
+			(($pushRangeM -eq 0.0) -ne ($pushMs -eq 0)) -or
+			($knockdown -ne ($downMs -gt 0))) {
+			throw "Valtan combat object hit shape or effect is invalid: $combatObjectId/$hitIndex"
+		}
+		$combatObjectRows.Add((@(
+			'BOSSCOMBATOBJECTHIT', $combatObjectDocument.encounterId,
+			$combatObjectId, $hitIndex, $trigger, $atMs, $repeatCount,
+			$repeatIntervalMs, $shape,
+			(Format-InvariantFloat $outer 'combat object hit outer radius'),
+			(Format-InvariantFloat $inner 'combat object hit inner radius'),
+			(Format-InvariantFloat $angle 'combat object hit angle'),
+			(Format-InvariantFloat $length 'combat object hit length'),
+			(Format-InvariantFloat $halfWidth 'combat object hit half width'),
+			[string]$hit.serverDamageProfileId,
+			(Format-InvariantSignedFloat $pushRangeM `
+				'combat object hit pushRangeM'),
+			$pushMs, $(if ($knockdown) { 1 } else { 0 }), $downMs) -join "`t"))
+	}
+}
+if ($spawnCombatObjectOwnerById.Count -ne $combatObjectIds.Count -or
+	$combatObjectVisualByArchetypeId.Count -ne $combatObjectIds.Count) {
+	throw 'Valtan combat object definitions, spawn actions, and visuals must exact join.'
+}
 
 # The Debug ordered audition is a Server occurrence ledger, not an animation
 # playlist. It may only name stable product pattern IDs. The Animation Tool
@@ -1586,7 +2257,8 @@ foreach ($requiredActionId in $expectedNormalActionIds) {
 	}
 }
 
-Assert-BalanceProvenance $playerDocument $skillDocument $damageDocument $bossDocument
+Assert-BalanceProvenance $playerDocument $skillDocument $damageDocument `
+	$bossDocument $bossPartDocument $combatObjectDocument
 
 $skillDurationById = @{}
 $skillStageDurationsById = @{}
@@ -1994,8 +2666,13 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     }
 }
 
-$rows = @($damageRows + $skillRows + $playerRows + $bossRows + $rootMotionRows + $hitShapeRows + $patternRows | Sort-Object)
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t14`t$($rows.Count)") + $rows
+# The merged row set carries both this branch's pattern rotations and the
+# combat-runtime boss part / combat object rows, so the version moves past
+# either side rather than reusing a number that meant a narrower shape.
+$rows = @($damageRows + $skillRows + $playerRows + $bossRows +
+	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
+	$patternRows | Sort-Object)
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t15`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))
@@ -2021,3 +2698,4 @@ $patternCount = @($encounterDocument.patterns).Count
 $stageCount = @($encounterDocument.patterns | ForEach-Object { @($_.stages).Count } |
 	Measure-Object -Sum).Sum
 Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skills, $($damageRows.Count) damage profiles, $($bossIds.Count) bosses, $($bossRows.Count - $bossIds.Count) boss armour plates, $patternCount boss patterns, $stageCount pattern stages, $($auditionDocument.steps.Count) Valtan Debug audition occurrences."
+Write-Host "Gameplay balance $Mode succeeded: $($playerRows.Count) player profiles, $($skillRows.Count) skill rows, $($damageRows.Count) damage profiles, $($bossRows.Count) bosses, $($bossPartRows.Count) boss parts, $($combatObjectIds.Count) boss combat objects, $patternCount boss patterns, $stageCount pattern stages, $($auditionDocument.steps.Count) Valtan Debug audition occurrences."

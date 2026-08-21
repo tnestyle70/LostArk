@@ -211,3 +211,73 @@ actors.dimensionmaster-runtime-animation
 
 이 결과는 공용 PointLight 기반만 완료한 것이다. Artist F runtime/Product admission은 변경하지 않았고,
 실제 F 재생 판정은 typed parser/Playback/Presentation 연결과 manual eye validation 뒤에만 가능하다.
+
+## 2026-08-21 하네스 직접 실행 corrective
+
+### 원인과 수정
+
+스크린샷의 `PhysX_64.dll`, `PhysXFoundation_64.dll` 오류는 하네스 코드 안의 크래시가 아니라
+`wmain` 진입 전 Windows loader 실패였다. Engine project reference는 link dependency만 만들고,
+Engine이 요구하는 동적 런타임은 하네스 `Bin/<Configuration>`에 배포하지 않았다. 전용 runner는
+임시 `PATH`로 이를 보완했지만 Visual Studio 직접 시작과 EXE 더블클릭에는 그 환경이 없었다.
+
+다음 corrective를 반영했다.
+
+- `PointLightFalloffContractHarness.vcxproj`가 x64 Build 뒤 같은 configuration의 `Engine.dll`,
+  `fmod.dll`, Assimp, `PhysX_64.dll`, `PhysXCommon_64.dll`, `PhysXFoundation_64.dll`을
+  `$(TargetDir)`에 복사한다. Debug는 `Engine.pdb`도 함께 배포한다.
+- 각 입력이 없으면 복사 전에 `<Error>`로 Build를 실패시키고, `Copy` 실패도 Build 실패로
+  전파한다.
+- Visual Studio 직접 시작에는 저장소 루트 argument와 working directory를 project 계약으로 준다.
+- 무인자 EXE 실행은 module 위치에서 canonical 저장소 루트를 계산하고 map-light 문서와 deferred
+  shader marker를 확인한 뒤에만 실행한다. 기존 명시적 저장소 루트 인자와 runner는 그대로 호환한다.
+
+### 빌드와 app-local 배포
+
+| 단계 | 결과 |
+|---|---|
+| PointLightFalloffContractHarness x64 Debug build | exit 0, runtime deployment message 확인 |
+| PointLightFalloffContractHarness x64 Release build | exit 0, runtime deployment message 확인 |
+| Debug app-local runtime | Engine, FMOD, Debug Assimp, PhysX 3종, Engine PDB 존재 |
+| Release app-local runtime | Engine, FMOD, Release Assimp, PhysX 3종 존재 |
+
+두 configuration 모두 하네스 EXE/PDB와 아래 실행 필수 DLL이 같은 출력 폴더에 존재한다.
+
+```text
+Engine.dll
+fmod.dll
+assimp-vc143-mtd.dll (Debug) / assimp-vc143-mt.dll (Release)
+PhysX_64.dll
+PhysXCommon_64.dll
+PhysXFoundation_64.dll
+```
+
+### 실행 회귀
+
+일반 `PATH` 대신 `System32`와 Windows root만 둔 뒤 임시 working directory에서 runner 없이
+검증했다. 따라서 성공 결과가 기존 PhysX `PATH`에 우연히 의존하지 않는다.
+
+| 실행 경로 | Debug | Release |
+|---|---|---|
+| 무인자 EXE 직접 실행 | exit 0, PASS | exit 0, PASS |
+| 명시적 저장소 루트 인자 직접 실행 | exit 0, PASS | exit 0, PASS |
+| 기존 `Run-PointLightFalloffContractHarness.ps1` | exit 0, PASS | exit 0, PASS |
+
+모든 실행은 다음 contract 결과를 출력했다.
+
+```text
+PointLightFalloffContractHarness PASS: artist-exact-tuple-desc-transient-shader-point-shadow0;
+legacy1; invalid-evaluated-rollback; abi/default; final-boundary; scene-rollback;
+transient-no-push; valtan-map-light-strict-load-rollback-twenty-two-submit
+```
+
+### 정적 검증과 경계
+
+- vcxproj XML parse: PASS
+- 변경 파일 `git diff --check`: PASS (기존 LF/CRLF 안내만 존재)
+- Client/UI 실행: 수행하지 않음
+- commit/stage: 수행하지 않음
+
+이 corrective 뒤 빌드된 EXE의 무인자·명시 인자 직접 실행에서 PhysX DLL 누락이 해소됐고,
+Visual Studio 시작에도 동일한 app-local 출력과 debugger 인자 계약이 적용된다. 실제 Visual Studio
+F5/Ctrl+F5 화면 시작은 사용자 확인 경계이며, 전용 runner는 기존과 동일하게 사용할 수 있다.

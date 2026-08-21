@@ -4,12 +4,17 @@
 #include "Engine_Defines.h"
 #include "Network/PacketType.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <string_view>
 #include <vector>
 
 NS_BEGIN(Client)
+
+inline constexpr std::size_t MAX_BOSS_ARMOR_PARTS = 4u;
+inline constexpr std::size_t MAX_BOSS_COMBAT_OBJECT_VISUALS = 16u;
 
 struct CHARACTER_ACTOR_ENTRY final
 {
@@ -22,6 +27,22 @@ struct CHARACTER_ACTOR_ENTRY final
 	std::vector<std::string> weaponModels;
 	std::string animationSetId;
 	std::string runtimeStatus;
+};
+
+struct BOSS_ARMOR_PART_ENTRY final
+{
+	// Stable gameplay identity shared with BossParts balance data.
+	std::string partId;
+	// One persistent bit in BOSS_COMBAT_SNAPSHOT::iAlivePartMask.
+	std::uint32_t stateMask = 0u;
+	std::string modelAssetId;
+};
+
+struct BOSS_COMBAT_OBJECT_VISUAL_ENTRY final
+{
+	std::string combatObjectArchetypeId;
+	std::string clientVisualId;
+	std::string effectAssetId;
 };
 
 struct BOSS_ACTOR_ENTRY final
@@ -44,6 +65,10 @@ struct BOSS_ACTOR_ENTRY final
 	body skeleton, so they carry no animation of their own, and the order
 	here is the order the parts attach. */
 	std::vector<std::string> armorModels;
+	/* Skinned armour pieces share the body skeleton. partId/stateMask, rather
+	than array position or a prototype tag, join Server state to presentation. */
+	std::vector<BOSS_ARMOR_PART_ENTRY> armorParts;
+	std::vector<BOSS_COMBAT_OBJECT_VISUAL_ENTRY> combatObjectVisuals;
 	std::string animationSetId;
 	std::string serverProfileId;
 	std::string clientPresentationId;
@@ -99,6 +124,11 @@ public:
 	static const CHARACTER_ACTOR_ENTRY* Find_Character(
 		LostArk::Shared::CHARACTER_CLASS_ID networkClassId);
 	static const BOSS_ACTOR_ENTRY* Find_Boss(std::string_view archetypeId);
+	static const BOSS_COMBAT_OBJECT_VISUAL_ENTRY*
+		Find_BossCombatObjectVisual(
+			std::string_view bossArchetypeId,
+			std::string_view combatObjectArchetypeId,
+			std::string_view clientVisualId);
 	static const NPC_ACTOR_ENTRY* Find_Npc(std::string_view archetypeId);
 	static const std::vector<NPC_ACTOR_ENTRY>& Get_Npcs();
 	static const MONSTER_ACTOR_ENTRY* Find_Monster(

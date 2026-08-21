@@ -60,6 +60,22 @@ namespace
 			left.fPositionZ == right.fPositionZ &&
 			left.fYawDegrees == right.fYawDegrees;
 	}
+
+	float4x4_t Make_CombatObjectRoot(
+		const float positionX,
+		const float positionY,
+		const float positionZ,
+		const float yawDegrees)
+	{
+		float4x4_t root{};
+		DirectX::XMStoreFloat4x4(
+			&root,
+			DirectX::XMMatrixRotationY(
+				DirectX::XMConvertToRadians(yawDegrees)) *
+			DirectX::XMMatrixTranslation(
+				positionX, positionY, positionZ));
+		return root;
+	}
 }
 
 bool Client::CClientReplication::Initialize(const DESC& desc)
@@ -141,10 +157,20 @@ bool Client::CClientReplication::Update()
 				allSucceeded;
 			break;
 
+		case CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_SPAWNED:
+			allSucceeded = Apply_CombatObjectSpawn(
+				event.CombatObjectSpawned) && allSucceeded;
+			break;
+
 		case CLIENT_REPLICATION_EVENT_TYPE::WORLD_ENTITY_DESPAWNED:
 			allSucceeded =
 				Apply_WorldEntityDespawn(event.WorldEntityDespawned) &&
 				allSucceeded;
+			break;
+
+		case CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_DESPAWNED:
+			allSucceeded = Apply_CombatObjectDespawn(
+				event.CombatObjectDespawned) && allSucceeded;
 			break;
 
 		case CLIENT_REPLICATION_EVENT_TYPE::PLAYER_DESPAWNED:
@@ -960,6 +986,15 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 	const auto iter = m_WorldEntities.find(despawned.iNetEntityId);
 	if (m_WorldEntities.end() == iter)
 		return true;
+	COMBAT_OBJECT_PRESENTATION_SINK combatObjectSink{ *this };
+	const size_t removedCombatObjects =
+		m_CombatObjectProjectionRuntime.Remove_Source(
+			despawned.iNetEntityId, combatObjectSink);
+	if (0u != removedCombatObjects)
+	{
+		m_strPendingPresentationFailure =
+			"Combat-object owner despawned before reliable object cleanup.";
+	}
 
 	if (const std::shared_ptr<CNpc> npc = iter->second.pNpc.lock())
 	{
@@ -988,6 +1023,130 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 		CCombatHUDViewModel::Get().Clear_Boss();
 	m_WorldEntities.erase(iter);
 	return true;
+}
+
+bool Client::CClientReplication::Apply_CombatObjectSpawn(
+	const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned)
+{
+	using namespace LostArk::Shared;
+	const auto source = m_WorldEntities.find(spawned.iSourceNetEntityId);
+	if (source == m_WorldEntities.end() ||
+		WORLD_ENTITY_KIND::BOSS != source->second.eKind ||
+		source->second.pValtan.expired() ||
+		nullptr == CActorCatalog::Find_BossCombatObjectVisual(
+			source->second.strArchetypeId,
+			spawned.strCombatObjectArchetypeId,
+			spawned.strClientVisualId))
+	{
+		return false;
+	}
+
+	COMBAT_OBJECT_PRESENTATION_SINK sink{ *this };
+	std::string status;
+	if (!m_CombatObjectProjectionRuntime.Apply_Spawn(
+		spawned, sink, status))
+	{
+		m_strPendingPresentationFailure = std::move(status);
+		return false;
+	}
+	const COMBAT_OBJECT_PROJECTION_RECORD* record =
+		m_CombatObjectProjectionRuntime.Find(spawned.iCombatObjectId);
+	if (nullptr != record && 0u == record->iPresentationHandle)
+		m_strPendingPresentationFailure = std::move(status);
+	return true;
+}
+
+bool Client::CClientReplication::Apply_CombatObjectDespawn(
+	const LostArk::Shared::S2C_COMBAT_OBJECT_DESPAWNED& despawned)
+{
+	COMBAT_OBJECT_PRESENTATION_SINK sink{ *this };
+	std::string status;
+	const bool_t applied = m_CombatObjectProjectionRuntime.Apply_Despawn(
+		despawned, sink, status);
+	if (!applied)
+		m_strPendingPresentationFailure = std::move(status);
+	return applied;
+}
+
+bool Client::CClientReplication::Spawn_CombatObjectPresentation(
+	const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned,
+	uint64_t& outHandle,
+	std::string& outStatus)
+{
+	outHandle = 0u;
+	const auto source = m_WorldEntities.find(spawned.iSourceNetEntityId);
+	if (source == m_WorldEntities.end() ||
+		source->second.eKind != LostArk::Shared::WORLD_ENTITY_KIND::BOSS)
+	{
+		outStatus = "Combat-object visual has no live boss owner.";
+		return false;
+	}
+	const std::shared_ptr<CValtan> boss = source->second.pValtan.lock();
+	const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* visual =
+		CActorCatalog::Find_BossCombatObjectVisual(
+			source->second.strArchetypeId,
+			spawned.strCombatObjectArchetypeId,
+			spawned.strClientVisualId);
+	if (nullptr == boss || nullptr == visual)
+	{
+		outStatus = "Combat-object visual join is missing.";
+		return false;
+	}
+
+	float actionAgeSeconds = 0.f;
+	if (!CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+		spawned.iServerTick,
+		spawned.iSpawnTick,
+		30.f,
+		actionAgeSeconds))
+	{
+		outStatus = "Combat-object spawn tick is not seekable.";
+		return false;
+	}
+
+	EFFECT_WORLD_ROOT_SPAWN_DESC desc;
+	desc.strEffectAssetId = visual->effectAssetId;
+	desc.pBossBudgetAndLifetimeOwner = boss;
+	desc.RootWorld = Make_CombatObjectRoot(
+		spawned.fPositionX,
+		spawned.fPositionY,
+		spawned.fPositionZ,
+		spawned.fYawDegrees);
+	desc.strOccurrenceId = "combatobject.instance." +
+		std::to_string(spawned.iCombatObjectId);
+	desc.iSpawnTick = spawned.iSpawnTick;
+	desc.fInitialSampleTimeSeconds = actionAgeSeconds;
+	EFFECT_WORLD_ROOT_HANDLE handle;
+	if (!CEffectPresentationService::Spawn_WorldRoot(
+		desc, handle, outStatus))
+	{
+		return false;
+	}
+	outHandle = handle.iValue;
+	return true;
+}
+
+bool Client::CClientReplication::Update_CombatObjectPresentation(
+	const uint64_t handle,
+	const LostArk::Shared::COMBAT_OBJECT_SNAPSHOT& snapshot)
+{
+	EFFECT_WORLD_ROOT_HANDLE effectHandle;
+	effectHandle.iValue = handle;
+	return CEffectPresentationService::Update_WorldRoot(
+		effectHandle,
+		Make_CombatObjectRoot(
+			snapshot.fPositionX,
+			snapshot.fPositionY,
+			snapshot.fPositionZ,
+			snapshot.fYawDegrees));
+}
+
+void Client::CClientReplication::Stop_CombatObjectPresentation(
+	const uint64_t handle)
+{
+	EFFECT_WORLD_ROOT_HANDLE effectHandle;
+	effectHandle.iValue = handle;
+	CEffectPresentationService::Stop_WorldRoot(effectHandle);
 }
 
 bool Client::CClientReplication::Apply_WorldSnapshot(
@@ -1111,6 +1270,13 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	{
 		const auto iter = m_WorldEntities.find(entity.iNetEntityId);
 		if (iter == m_WorldEntities.end())
+		{
+			allSucceeded = false;
+			continue;
+		}
+		const bool_t expectsBossCombatState =
+			WORLD_ENTITY_KIND::BOSS == iter->second.eKind;
+		if (expectsBossCombatState != entity.hasBossCombatState)
 		{
 			allSucceeded = false;
 			continue;
@@ -1242,9 +1408,9 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			latest.iPatternSequence = entity.iPatternSequence;
 			latest.iPatternStageIndex = entity.iPatternStageIndex;
 			latest.iActionStartTick = entity.iActionStartTick;
+			latest.BossCombat = entity.BossCombat;
 			latest.vPosition = position;
 			latest.fYawDegrees = entity.fYawDegrees;
-			m_ValtanPresentationState = std::move(latest);
 
 			const std::shared_ptr<CValtan> valtan =
 				iter->second.pValtan.lock();
@@ -1259,19 +1425,49 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				entity.iPatternSequence,
 				entity.iPatternStageIndex,
 				entity.iBrokenArmorMask))
+				entity.iPatternStageIndex) ||
+				!valtan->Apply_BossCombatState(entity.BossCombat))
 			{
 				allSucceeded = false;
+			}
+			else
+			{
+				m_ValtanPresentationState = std::move(latest);
+				CCombatHUDViewModel::Get().Apply_Boss(
+					iter->second.strArchetypeId,
+					entity);
 			}
 		}
 		else
 		{
 			allSucceeded = false;
 		}
-		if (iter->second.eKind == WORLD_ENTITY_KIND::BOSS)
+	}
+	for (const BOSS_COMBAT_EVENT& event : snapshot.BossCombatEvents)
+	{
+		const auto boss = m_WorldEntities.find(event.iBossNetEntityId);
+		if (boss == m_WorldEntities.end() ||
+			WORLD_ENTITY_KIND::BOSS != boss->second.eKind)
 		{
-			CCombatHUDViewModel::Get().Apply_Boss(
-				iter->second.strArchetypeId,
-				entity);
+			allSucceeded = false;
+			continue;
+		}
+		const std::shared_ptr<CValtan> valtan = boss->second.pValtan.lock();
+		if (nullptr == valtan || !valtan->Apply_BossCombatEvent(event))
+			allSucceeded = false;
+	}
+	{
+		COMBAT_OBJECT_PRESENTATION_SINK sink{ *this };
+		std::string status;
+		if (!m_CombatObjectProjectionRuntime.Apply_Snapshot(
+			snapshot.iServerTick, snapshot.CombatObjects, sink, status))
+		{
+			m_strPendingPresentationFailure = std::move(status);
+			allSucceeded = false;
+		}
+		else if (status.find("failed") != std::string::npos)
+		{
+			m_strPendingPresentationFailure = std::move(status);
 		}
 	}
 	for (const DAMAGE_EVENT& damageEvent : snapshot.DamageEvents)
@@ -1415,6 +1611,8 @@ void Client::CClientReplication::Reset_World()
 	//?뚭눼?먯뿉???몄텧?섏? ?딅뒗 ?댁쑀??留욌떎. ?꾩옱 engine? ?덈꺼 ?꾪솚 ??layer瑜?
 	//癒쇱? ?쒓굅?섎?濡? level ?뚭눼?먯뿉???ㅼ떆 layer ?쒓굅瑜??쒕룄?섎㈃, ?대?
 	//?щ씪吏?layer瑜?嫄대뱶由????덈떎.
+	COMBAT_OBJECT_PRESENTATION_SINK combatObjectSink{ *this };
+	m_CombatObjectProjectionRuntime.Reset(combatObjectSink);
 	const std::vector<std::shared_ptr<CCharacter>> characters =
 		m_Registry.Get_LiveObjects();
 

@@ -89,7 +89,8 @@ collisionBox/nav region/group/binding은 추가하지 않는다. 현재 collisio
 
 1. filler 동기화 단위 테스트와 `--check-only`를 통과한다.
 2. `Publish-MapAuthoring.ps1 -AreaId LV_LUT_HEARTRB_ED`를 통과하고 authoring/runtime deploy
-   placement가 byte-identical인지 확인한다.
+   placement의 정규화된 행 내용과 parser 의미가 동일한지 확인한다. authoring은 CRLF이고
+   publisher runtime 출력은 LF이므로 raw byte/SHA 일치는 요구하지 않는다.
 3. `Publish-ValtanWorldDestruction.ps1`의 Validate, ContractTest, Publish를 통과한다.
 4. WorldGameplay와 Navigation Validate로 collision/nav 불변 계약을 회귀 확인한다.
 5. Server Debug/Release build와 `Server.exe --contract-test`, ClientFrontendHarness

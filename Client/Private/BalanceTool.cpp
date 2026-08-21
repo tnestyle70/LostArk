@@ -216,7 +216,7 @@ bool Client::CBalanceTool::Reload()
 	if (!IsExactObject(playerRoot, { "schema", "formatVersion", "players" }) ||
 		!HasSchemaVersion(playerRoot, "lostark.player-profiles", 2u) ||
 		!IsExactObject(skillRoot, { "schema", "formatVersion", "skills" }) ||
-		!HasSchemaVersion(skillRoot, "lostark.player-skills", 2u) ||
+		!HasSchemaVersion(skillRoot, "lostark.player-skills", 3u) ||
 		!IsExactObject(damageRoot, { "schema", "formatVersion", "profiles" }) ||
 		!HasSchemaVersion(damageRoot, "lostark.damage-profiles", 2u) ||
 		!IsExactObject(bossRoot, { "schema", "formatVersion", "bosses" }) ||
@@ -291,11 +291,15 @@ bool Client::CBalanceTool::Reload()
 	{
 		SKILL_EDIT row{};
 		const DATA_JSON_VALUE* stagesValue = Field(value, "comboStages", DATA_JSON_TYPE::ARRAY);
-		if (!IsExactObject(value, { "skillId", "characterClass", "inputSlot", "displayName",
+		if (!IsExactObject(value, { "skillId", "staggerDamage", "partDamage",
+			"counterPower", "characterClass", "inputSlot", "displayName",
 			"actionId", "skillKind", "cooldownMs", "actionDurationMs", "hitTimeMs",
 			"resourceCost", "identityCost", "movementDistance", "maximumRange", "serverDamageProfileId",
 			"effectId", "requiredStance", "setsStance", "comboStages" }) ||
 			!ReadU32(value, "skillId", row.skillId) ||
+			!ReadU32(value, "staggerDamage", row.staggerDamage) ||
+			!ReadU32(value, "partDamage", row.partDamage) ||
+			!ReadU32(value, "counterPower", row.counterPower) ||
 			!ReadString(value, "characterClass", row.characterClass) ||
 			!ReadString(value, "inputSlot", row.inputSlot) ||
 			!ReadString(value, "displayName", row.displayName) ||
@@ -308,6 +312,8 @@ bool Client::CBalanceTool::Reload()
 			!ReadU32(value, "identityCost", row.identityCost) ||
 			!ReadDouble(value, "movementDistance", row.movementDistance) ||
 			!ReadDouble(value, "maximumRange", row.maximumRange) ||
+			!ReadFloat(value, "movementDistance", row.movementDistance) ||
+			!ReadFloat(value, "maximumRange", row.maximumRange) ||
 			!ReadString(value, "serverDamageProfileId", row.damageProfileId) ||
 			!ReadString(value, "effectId", row.effectId) ||
 			!ReadString(value, "requiredStance", row.requiredStance) ||
@@ -1076,6 +1082,11 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 		const bool isHold = "HOLD" == skill.skillKind;
 		const bool isCounter = "COUNTER" == skill.skillKind;
 		const bool isStandup = "STANDUP" == skill.skillKind;
+		const bool isActive = skill.skillKind == "ACTIVE";
+		const bool isCombo = skill.skillKind == "COMBO";
+		const bool isHold = skill.skillKind == "HOLD";
+		const bool isCounter = skill.skillKind == "COUNTER";
+		const bool isStandup = skill.skillKind == "STANDUP";
 		if (0u == skill.skillId || 0u == skill.actionDurationMs ||
 			!skillIds.insert(skill.skillId).second ||
 			skill.characterClass.empty() || skill.inputSlot.empty() ||
@@ -1408,11 +1419,14 @@ bool Client::CBalanceTool::Save(
 	damage << "  ]\n}\n";
 
 	std::ostringstream skills;
-	skills << "{\n  \"schema\": \"lostark.player-skills\",\n  \"formatVersion\": 2,\n  \"skills\": [\n";
+	skills << "{\n  \"schema\": \"lostark.player-skills\",\n  \"formatVersion\": 3,\n  \"skills\": [\n";
 	for (std::size_t i = 0; i < m_skills.size(); ++i)
 	{
 		const SKILL_EDIT& s = m_skills[i];
 		skills << "    {\n      \"skillId\": " << s.skillId
+			<< ",\n      \"staggerDamage\": " << s.staggerDamage
+			<< ",\n      \"partDamage\": " << s.partDamage
+			<< ",\n      \"counterPower\": " << s.counterPower
 			<< ",\n      \"characterClass\": " << Quote(s.characterClass)
 			<< ",\n      \"inputSlot\": " << Quote(s.inputSlot)
 			<< ",\n      \"displayName\": " << Quote(s.displayName)
@@ -1425,6 +1439,8 @@ bool Client::CBalanceTool::Save(
 			<< ",\n      \"identityCost\": " << s.identityCost
 			<< ",\n      \"movementDistance\": " << FormatJsonNumber(s.movementDistance)
 			<< ",\n      \"maximumRange\": " << FormatJsonNumber(s.maximumRange)
+			<< ",\n      \"movementDistance\": " << std::setprecision(9) << s.movementDistance
+			<< ",\n      \"maximumRange\": " << s.maximumRange
 			<< ",\n      \"serverDamageProfileId\": " << Quote(s.damageProfileId)
 			<< ",\n      \"effectId\": " << Quote(s.effectId)
 			<< ",\n      \"requiredStance\": " << Quote(s.requiredStance)

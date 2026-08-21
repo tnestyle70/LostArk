@@ -3,8 +3,11 @@
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
 
+#include <algorithm>
 #include <fstream>
+#include <cctype>
 #include <cmath>
+#include <limits>
 #include <set>
 
 namespace
@@ -69,6 +72,38 @@ namespace
 		}
 		outValue = static_cast<f32_t>(pValue->Get_Number());
 		return true;
+	}
+
+	bool_t ReadRequiredU32(
+		const DATA_JSON_VALUE& object,
+		const char_t* pName,
+		std::uint32_t& outValue)
+	{
+		const DATA_JSON_VALUE* pValue = object.Find(pName);
+		if (nullptr == pValue || !pValue->Is_Number())
+			return false;
+		const double value = pValue->Get_Number();
+		if (!std::isfinite(value) || value < 0.0 ||
+			value > static_cast<double>(
+				(std::numeric_limits<std::uint32_t>::max)()) ||
+			std::floor(value) != value)
+		{
+			return false;
+		}
+		outValue = static_cast<std::uint32_t>(value);
+		return true;
+	}
+
+	bool_t IsStableId(const std::string& value)
+	{
+		if (value.empty() || value.size() > 64u)
+			return false;
+		return std::all_of(value.begin(), value.end(),
+			[](const unsigned char character)
+			{
+				return 0 != std::isalnum(character) || character == '_' ||
+					character == '-' || character == '.';
+			});
 	}
 
 	bool_t IsResourceId(const std::string& value)
@@ -182,8 +217,9 @@ namespace
 		if (nullptr == pSchema || !pSchema->Is_String() ||
 			pSchema->Get_String() != "lostark.boss-catalog" ||
 			nullptr == pVersion || !pVersion->Is_Number() ||
-			pVersion->Get_Number() != 1.0 ||
-			nullptr == pEntries || !pEntries->Is_Array())
+			pVersion->Get_Number() != 3.0 ||
+			nullptr == pEntries || !pEntries->Is_Array() ||
+			3u != root.Get_Object().size())
 		{
 			return false;
 		}
@@ -192,11 +228,14 @@ namespace
 		std::vector<BOSS_ACTOR_ENTRY> staged;
 		for (const DATA_JSON_VALUE& value : pEntries->Get_Array())
 		{
-			if (!value.Is_Object())
+			if (!value.Is_Object() || 12u != value.Get_Object().size())
 				return false;
 			BOSS_ACTOR_ENTRY entry;
 			const DATA_JSON_VALUE* pClips = value.Find("presentationClips");
 			const DATA_JSON_VALUE* pArmor = value.Find("armorModels");
+			const DATA_JSON_VALUE* pArmorParts = value.Find("armorParts");
+			const DATA_JSON_VALUE* pCombatObjectVisuals =
+				value.Find("combatObjectVisuals");
 			if (!ReadRequiredString(value, "archetypeId", entry.archetypeId) ||
 				!ReadRequiredString(value, "visualAssetId", entry.visualAssetId) ||
 				!ReadRequiredString(value, "bodyModel", entry.bodyModel) ||
@@ -206,6 +245,7 @@ namespace
 				!ReadRequiredString(value, "clientPresentationId", entry.clientPresentationId) ||
 				!ReadRequiredString(value, "presentationStatus", entry.presentationStatus) ||
 				nullptr == pClips || !pClips->Is_Object() ||
+				6u != pClips->Get_Object().size() ||
 				!ReadRequiredString(*pClips, "idle", entry.presentationClips.idle) ||
 				!ReadRequiredString(*pClips, "chase", entry.presentationClips.chase) ||
 				!ReadRequiredString(*pClips, "patternWindup", entry.presentationClips.patternWindup) ||
@@ -217,6 +257,14 @@ namespace
 				!IsResourceId(entry.animationSetId) ||
 				nullptr == pArmor || !pArmor->Is_Array() ||
 				pArmor->Get_Array().size() > 4u ||
+				pArmor->Get_Array().size() > MAX_BOSS_ARMOR_PARTS ||
+				nullptr == pArmorParts || !pArmorParts->Is_Array() ||
+				pArmorParts->Get_Array().size() != pArmor->Get_Array().size() ||
+				nullptr == pCombatObjectVisuals ||
+				!pCombatObjectVisuals->Is_Array() ||
+				pCombatObjectVisuals->Get_Array().empty() ||
+				pCombatObjectVisuals->Get_Array().size() >
+					MAX_BOSS_COMBAT_OBJECT_VISUALS ||
 				!archetypes.insert(entry.archetypeId).second ||
 				(entry.presentationStatus != "complete" &&
 				 entry.presentationStatus != "fallback"))
@@ -228,6 +276,54 @@ namespace
 				if (!armor.Is_String() || !IsResourceId(armor.Get_String()))
 					return false;
 				entry.armorModels.push_back(armor.Get_String());
+			}
+			std::set<std::string> armorPartIds;
+			std::set<std::uint32_t> armorStateMasks;
+			for (const DATA_JSON_VALUE& armorPartValue : pArmorParts->Get_Array())
+			{
+				BOSS_ARMOR_PART_ENTRY armorPart;
+				if (!armorPartValue.Is_Object() ||
+					3u != armorPartValue.Get_Object().size() ||
+					!ReadRequiredString(armorPartValue, "partId", armorPart.partId) ||
+					!ReadRequiredU32(
+						armorPartValue, "stateMask", armorPart.stateMask) ||
+					!ReadRequiredString(
+						armorPartValue, "modelAssetId", armorPart.modelAssetId) ||
+					!IsStableId(armorPart.partId) ||
+					0u == armorPart.stateMask ||
+					0u != (armorPart.stateMask & (armorPart.stateMask - 1u)) ||
+					!IsResourceId(armorPart.modelAssetId) ||
+					!armorPartIds.insert(armorPart.partId).second ||
+					!armorStateMasks.insert(armorPart.stateMask).second)
+				{
+					return false;
+				}
+				entry.armorParts.push_back(std::move(armorPart));
+			}
+			std::set<std::string> combatObjectArchetypeIds;
+			std::set<std::string> clientVisualIds;
+			for (const DATA_JSON_VALUE& visual :
+				pCombatObjectVisuals->Get_Array())
+			{
+				BOSS_COMBAT_OBJECT_VISUAL_ENTRY entryVisual;
+				if (!visual.Is_Object() || 3u != visual.Get_Object().size() ||
+					!ReadRequiredString(
+						visual, "combatObjectArchetypeId",
+						entryVisual.combatObjectArchetypeId) ||
+					!ReadRequiredString(
+						visual, "clientVisualId", entryVisual.clientVisualId) ||
+					!ReadRequiredString(
+						visual, "effectAssetId", entryVisual.effectAssetId) ||
+					!IsStableId(entryVisual.combatObjectArchetypeId) ||
+					!IsStableId(entryVisual.clientVisualId) ||
+					!IsStableId(entryVisual.effectAssetId) ||
+					!combatObjectArchetypeIds.insert(
+						entryVisual.combatObjectArchetypeId).second ||
+					!clientVisualIds.insert(entryVisual.clientVisualId).second)
+				{
+					return false;
+				}
+				entry.combatObjectVisuals.push_back(std::move(entryVisual));
 			}
 			staged.push_back(std::move(entry));
 		}
@@ -495,6 +591,27 @@ const Client::BOSS_ACTOR_ENTRY* Client::CActorCatalog::Find_Boss(
 	for (const BOSS_ACTOR_ENTRY& entry : g_Bosses)
 		if (entry.archetypeId == archetypeId)
 			return &entry;
+	return nullptr;
+}
+
+const Client::BOSS_COMBAT_OBJECT_VISUAL_ENTRY*
+Client::CActorCatalog::Find_BossCombatObjectVisual(
+	const std::string_view bossArchetypeId,
+	const std::string_view combatObjectArchetypeId,
+	const std::string_view clientVisualId)
+{
+	const BOSS_ACTOR_ENTRY* boss = Find_Boss(bossArchetypeId);
+	if (nullptr == boss)
+		return nullptr;
+	for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& visual :
+		boss->combatObjectVisuals)
+	{
+		if (visual.combatObjectArchetypeId == combatObjectArchetypeId &&
+			visual.clientVisualId == clientVisualId)
+		{
+			return &visual;
+		}
+	}
 	return nullptr;
 }
 

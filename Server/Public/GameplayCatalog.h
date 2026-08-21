@@ -12,7 +12,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 14u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 15u;
 
 	struct PLAYER_ROOT_MOTION_SAMPLE
 	{
@@ -123,6 +123,11 @@ namespace LostArk::Server
 		skill that does not spend it. Falling short leaves the skill unusable
 		rather than starting it for free. */
 		std::uint32_t iIdentityCost = 0;
+		/* PROJECT_TUNED boss interaction contributed by each admitted landed hit.
+		A zero disables that interaction without changing normal HP damage. */
+		std::uint32_t iStaggerDamage = 0;
+		std::uint32_t iPartDamage = 0;
+		std::uint32_t iCounterPower = 0;
 		float fMovementDistance = 0.f;
 		float fMaximumRange = 0.f;
 		LostArk::Shared::PLAYER_SKILL_KIND eSkillKind =
@@ -205,6 +210,71 @@ namespace LostArk::Server
 		SIX_DIRECTIONS
 	};
 
+	enum class BOSS_COMBAT_OBJECT_KIND : std::uint8_t
+	{
+		FIXED_AREA,
+		MISSILE
+	};
+
+	enum class BOSS_COMBAT_OBJECT_ORIGIN_POLICY : std::uint8_t
+	{
+		BOSS_POSITION,
+		LOCKED_TARGET_UNTIL_FIRST_PULSE
+	};
+
+	enum class BOSS_COMBAT_OBJECT_DIRECTION_POLICY : std::uint8_t
+	{
+		NONE,
+		PATTERN_FACING_AT_SPAWN
+	};
+
+	enum class BOSS_COMBAT_OBJECT_HIT_TRIGGER : std::uint8_t
+	{
+		CONTACT,
+		TIMED
+	};
+
+	struct BOSS_COMBAT_OBJECT_HIT final
+	{
+		BOSS_COMBAT_OBJECT_HIT_TRIGGER eTrigger =
+			BOSS_COMBAT_OBJECT_HIT_TRIGGER::TIMED;
+		std::uint32_t iAtMs = 0;
+		std::uint32_t iRepeatCount = 1;
+		std::uint32_t iRepeatIntervalMs = 0;
+		BOSS_PATTERN_HIT_SHAPE eHitShape = BOSS_PATTERN_HIT_SHAPE::NONE;
+		float fHitOuterRadius = 0.f;
+		float fHitInnerRadius = 0.f;
+		float fHitAngleDegrees = 0.f;
+		float fHitLength = 0.f;
+		float fHitHalfWidth = 0.f;
+		std::string strDamageProfileId;
+		float fPushRangeM = 0.f;
+		std::uint32_t iPushMs = 0;
+		bool bKnockdown = false;
+		std::uint32_t iDownMs = 0;
+	};
+
+	struct BOSS_COMBAT_OBJECT_DEFINITION final
+	{
+		std::string strEncounterId;
+		std::string strCombatObjectArchetypeId;
+		std::string strClientVisualId;
+		std::string strOwnerPatternId;
+		std::string strOwnerStageActionId;
+		BOSS_COMBAT_OBJECT_KIND eKind = BOSS_COMBAT_OBJECT_KIND::FIXED_AREA;
+		BOSS_COMBAT_OBJECT_ORIGIN_POLICY eOriginPolicy =
+			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::BOSS_POSITION;
+		BOSS_COMBAT_OBJECT_DIRECTION_POLICY eDirectionPolicy =
+			BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NONE;
+		float fOffsetForwardM = 0.f;
+		float fOffsetRightM = 0.f;
+		float fSpeedMps = 0.f;
+		float fMaximumDistanceM = 0.f;
+		std::uint32_t iLifeMs = 0;
+		std::uint32_t iExpectedHitCount = 0;
+		std::vector<BOSS_COMBAT_OBJECT_HIT> Hits;
+	};
+
 	enum class BOSS_PATTERN_STAGE_KIND
 	{
 		WINDUP,
@@ -227,6 +297,87 @@ namespace LostArk::Server
 		return BOSS_PATTERN_STAGE_KIND::GROGGY == kind ||
 			BOSS_PATTERN_STAGE_KIND::PART_BREAK == kind;
 	}
+	enum class BOSS_PATTERN_CATEGORY : std::uint8_t
+	{
+		NORMAL,
+		IMPORTANT,
+		MECHANIC
+	};
+
+	enum class BOSS_PATTERN_TARGET_POLICY : std::uint8_t
+	{
+		NONE,
+		NEAREST_EACH_TICK,
+		LOCK_NEAREST_ON_START,
+		LOCK_RANDOM_ALIVE_ON_START
+	};
+
+	enum class BOSS_PATTERN_AIM_POLICY : std::uint8_t
+	{
+		NONE,
+		TRACK_TARGET_EACH_TICK,
+		LOCK_FACING_ON_START,
+		FACE_MOTION_ANCHOR
+	};
+
+	enum class BOSS_PATTERN_STAGE_OUTCOME : std::uint8_t
+	{
+		TIMEOUT,
+		COUNTER_HIT,
+		STAGGER_BROKEN,
+		WALL_CONTACT,
+		PART_DESTROYED,
+		PROP_DESTROYED,
+		SUMMON_DEAD,
+		ALL_PLAYERS_GRABBED
+	};
+
+	struct BOSS_PATTERN_STAGE_BRANCH final
+	{
+		BOSS_PATTERN_STAGE_OUTCOME eOutcome =
+			BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT;
+		/* Empty means the pattern finishes. Otherwise this is another actionId
+		inside the same pattern, never a vector index. */
+		std::string strNextActionId;
+	};
+
+	enum class BOSS_PATTERN_STAGE_ACTION_TRIGGER : std::uint8_t
+	{
+		ENTER,
+		EXIT
+	};
+
+	enum class BOSS_PATTERN_STAGE_ACTION_KIND : std::uint8_t
+	{
+		SET_BOSS_FLAG,
+		SET_STAGGER_GAUGE,
+		SET_SHIELD,
+		SPAWN_COMBAT_OBJECT
+	};
+
+	struct BOSS_PATTERN_STAGE_ACTION final
+	{
+		BOSS_PATTERN_STAGE_ACTION_TRIGGER eTrigger =
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER;
+		BOSS_PATTERN_STAGE_ACTION_KIND eKind =
+			BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG;
+		std::string strTargetId;
+		std::uint32_t iValue = 0;
+		std::uint32_t iDurationMs = 0;
+	};
+
+	enum class BOSS_PATTERN_STAGE_MOTION_KIND : std::uint8_t
+	{
+		NONE,
+		FORWARD
+	};
+
+	struct BOSS_PATTERN_STAGE_MOTION final
+	{
+		BOSS_PATTERN_STAGE_MOTION_KIND eKind =
+			BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
+		float fDistance = 0.f;
+	};
 
 	struct BOSS_PATTERN_STAGE_DEFINITION
 	{
@@ -261,6 +412,9 @@ namespace LostArk::Server
 		maximumRange over the stage duration, and meeting an impact receiver ends
 		the stage early into the GROGGY stage that must follow it. */
 		bool bChargeImpact = false;
+		BOSS_PATTERN_STAGE_MOTION Motion;
+		std::vector<BOSS_PATTERN_STAGE_BRANCH> Branches;
+		std::vector<BOSS_PATTERN_STAGE_ACTION> Actions;
 	};
 
 	enum class BOSS_PATTERN_MOTION_KIND : std::uint8_t
@@ -312,6 +466,12 @@ namespace LostArk::Server
 		is the case that needs it: the raid is meant to answer the mechanic, not
 		race it down mid-cast. */
 		bool bInvulnerableWhileRunning = false;
+		BOSS_PATTERN_CATEGORY eCategory = BOSS_PATTERN_CATEGORY::NORMAL;
+		BOSS_PATTERN_TARGET_POLICY eTargetPolicy =
+			BOSS_PATTERN_TARGET_POLICY::NONE;
+		BOSS_PATTERN_AIM_POLICY eAimPolicy = BOSS_PATTERN_AIM_POLICY::NONE;
+		std::uint32_t iMinimumPhase = 1;
+		std::uint32_t iMaximumPhase = 1;
 		std::uint32_t iMinimumHealthBar = 0;
 		std::uint32_t iMaximumHealthBar = 0;
 		std::uint32_t iTriggerHealthBar = 0;
@@ -332,6 +492,23 @@ namespace LostArk::Server
 		std::uint32_t iSourceTurnDegrees = 0;
 		std::uint32_t iExpectedStageCount = 0;
 		std::vector<BOSS_PATTERN_STAGE_DEFINITION> Stages;
+	};
+
+	enum class BOSS_PART_DAMAGE_CONDITION : std::uint8_t
+	{
+		ALWAYS,
+		GROGGY_ONLY
+	};
+
+	struct BOSS_PART_DEFINITION final
+	{
+		std::string strBossArchetypeId;
+		std::string strPartId;
+		std::uint32_t iStateMask = 0;
+		std::uint32_t iMaximumDurability = 0;
+		std::uint32_t iDamageReductionPercent = 0;
+		BOSS_PART_DAMAGE_CONDITION eDamageCondition =
+			BOSS_PART_DAMAGE_CONDITION::ALWAYS;
 	};
 
 	enum class VALTAN_DEBUG_AUDITION_MAPPING : std::uint8_t
@@ -410,8 +587,12 @@ namespace LostArk::Server
 			LostArk::Shared::SKILL_ID skillId) const;
 		const BOSS_RUNTIME_PROFILE* Find_Boss(
 			const std::string& archetypeId) const;
+		const std::vector<BOSS_PART_DEFINITION>* Find_BossParts(
+			const std::string& archetypeId) const;
 		const std::vector<BOSS_PATTERN_DEFINITION>* Find_BossPatterns(
 			const std::string& encounterId) const;
+		const BOSS_COMBAT_OBJECT_DEFINITION* Find_BossCombatObject(
+			const std::string& combatObjectArchetypeId) const;
 		const VALTAN_DEBUG_AUDITION_DEFINITION* Find_ValtanDebugAudition(
 			const std::string& encounterId) const;
 		/* Pattern the encounter plays exactly once when the boss first engages,
@@ -473,8 +654,12 @@ namespace LostArk::Server
 		std::unordered_map<LostArk::Shared::SKILL_ID, PLAYER_SKILL_DEFINITION>
 			m_Skills;
 		std::unordered_map<std::string, BOSS_RUNTIME_PROFILE> m_Bosses;
+		std::unordered_map<std::string, std::vector<BOSS_PART_DEFINITION>>
+			m_BossParts;
 		std::unordered_map<std::string, std::vector<BOSS_PATTERN_DEFINITION>>
 			m_BossPatterns;
+		std::unordered_map<std::string, BOSS_COMBAT_OBJECT_DEFINITION>
+			m_BossCombatObjects;
 		std::unordered_map<std::string, VALTAN_DEBUG_AUDITION_DEFINITION>
 			m_ValtanDebugAuditions;
 		std::unordered_map<std::string, std::string> m_IntroPatternIdByEncounter;

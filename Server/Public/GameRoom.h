@@ -7,6 +7,7 @@
 #include "GameplayCatalog.h"
 #include "ItemCatalog.h"
 #include "PlayerSkillSystem.h"
+#include "CombatObjectRuntime.h"
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
 #include "ServerTriggerSystem.h"
@@ -247,6 +248,9 @@ namespace LostArk::Server
 		bool Send_WorldEntityDespawned(
 			const std::shared_ptr<CClientSession>& session,
 			LostArk::Shared::NET_ENTITY_ID netEntityId);
+		bool Send_CombatObjectSpawned(
+			const std::shared_ptr<CClientSession>& session,
+			const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned);
 		bool Send_WorldEntitySpawnResult(
 			const std::shared_ptr<CClientSession>& session,
 			const std::string& placementId,
@@ -311,6 +315,29 @@ namespace LostArk::Server
 		bool Initialize_WorldEntities();
 		bool Reset_ReplayableArenaWhenEmpty();
 		bool Reset_ValtanArenaWhenEmpty();
+		bool Apply_BossPatternStageActions(
+			SERVER_WORLD_ENTITY& boss,
+			const std::string& patternId,
+			const std::string& actionId,
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+			std::uint32_t serverTick);
+		bool Apply_BossPatternStageTransition(
+			SERVER_WORLD_ENTITY& boss,
+			const std::string& previousPatternId,
+			const std::string& previousActionId,
+			const std::string& nextPatternId,
+			const std::string& nextActionId,
+			std::uint32_t serverTick);
+		bool Stage_BossPatternStageActions(
+			const SERVER_WORLD_ENTITY& boss,
+			const std::string& patternId,
+			const std::string& actionId,
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+			std::uint32_t serverTick,
+			SERVER_BOSS_COMBAT_STATE& stagedCombat,
+			SERVER_COMBAT_OBJECT_TRANSACTION& combatObjectTransaction);
+		bool Broadcast_CombatObjectLifecycle();
+		void Drain_BossCombatEvents();
 		bool Apply_WorldDestructionStageEntry(
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t serverTick);
@@ -421,6 +448,7 @@ namespace LostArk::Server
 		CSpawnGroupBootstrap m_SpawnGroupBootstrap;
 		CSpawnGroupRuntime m_SpawnGroupRuntime;
 		CPlayerSkillSystem m_PlayerSkillSystem;
+		CCombatObjectRuntime m_CombatObjectRuntime;
 		CMonsterBrain m_MonsterBrain;
 		CValtanBrain m_ValtanBrain;
 		CEstherSkillSystem m_EstherSkillSystem;
@@ -439,6 +467,8 @@ namespace LostArk::Server
 		and consumed by Broadcast_WorldSnapshot, so an event can only ever ride
 		the snapshot of the tick that produced it. */
 		std::vector<LostArk::Shared::DAMAGE_EVENT> m_TickDamageEvents;
+		std::vector<LostArk::Shared::BOSS_COMBAT_EVENT>
+			m_TickBossCombatEvents;
 		std::string m_strStatus;
 		bool m_isReady = false;
 
@@ -446,6 +476,7 @@ namespace LostArk::Server
 		LostArk::Shared::NET_ENTITY_ID m_iNextNetEntityId = 100;
 		std::uint32_t m_iServerTick = 0;
 		std::uint64_t m_iNextWorldDestructionEventSequence = 1u;
+		std::uint64_t m_iNextBossCombatEventSequence = 1u;
 		/* Debug Valtan audition. The armed bar is the one an ARM parked the boss
 		above; a CROSS is only honoured for that same bar, so a crossing can
 		never span an unknown number of authored thresholds. Both reset with the

@@ -112,12 +112,12 @@ function Get-EncounterProfiles {
         Assert-ExactProperties $document @(
             'schema','formatVersion','encounterId','bossArchetypeId',
             'authority','fixedTickHz','introPatternId','states','patterns') 'encounter profile'
-		Assert-JsonInteger $document.formatVersion "$($document.encounterId) formatVersion" 3 3
+		Assert-JsonInteger $document.formatVersion "$($document.encounterId) formatVersion" 4 4
 		Assert-JsonInteger $document.fixedTickHz "$($document.encounterId) fixedTickHz" 30 30
         Assert-StableId $document.encounterId 'encounterId'
         Assert-StableId $document.bossArchetypeId 'bossArchetypeId'
         if ($document.schema -ne 'lostark.encounter-profile' -or
-			$document.formatVersion -ne 3 -or
+			$document.formatVersion -ne 4 -or
             $document.authority -ne 'server' -or
             $document.fixedTickHz -ne 30) {
             throw "Encounter header is invalid: $($document.encounterId)"
@@ -156,6 +156,7 @@ function Get-EncounterProfiles {
 			# publisher; this document only needs to tolerate its presence.
 			$patternProperties = @(
 				'patternId','displayName','actionId','sourceActionIds','selectionMode',
+				'category','minimumPhase','maximumPhase','targetPolicy','aimPolicy',
 				'minimumHealthBar','maximumHealthBar','triggerHealthBar','triggerOrder',
 				'armorRequirement','phaseRequirement','invulnerableWhileRunning',
 				'selectionWeight','maximumConsecutiveUses','minimumRange','maximumRange',

@@ -14,6 +14,9 @@
 #include "CharacterSelectionState.h"
 #include "CharacterCatalog.h"
 #include "CharacterSpec.h"
+#include "ClientReplicationEvent.h"
+#include "CombatHUDViewModel.h"
+#include "CombatObjectProjectionRuntime.h"
 #include "DataJson.h"
 #include "Effect_CascadeCompiler.h"
 #include "Effect_Artist31470ShaderRegistry.h"
@@ -39,6 +42,7 @@
 #include "Presentation_Manager.h"
 #include "PresentationProvider.h"
 #include "ProjectDataRoot.h"
+#include "RuntimeAssetRoot.h"
 #include "EncounterPatternReference.h"
 #include "ValtanCinematicCameraController.h"
 #include "ValtanCinematicCameraDocument.h"
@@ -4296,7 +4300,7 @@ namespace
 		std::unordered_set<std::string> patternCueEffects;
 		bool_t patternCueIdentitiesExact = patternCuesLoaded &&
 			patternCueDocument.strOwnerArchetypeId == "BOSS_VALTAN" &&
-			patternCueDocument.Cues.size() == 99u;
+			patternCueDocument.Cues.size() == 98u;
 		for (const VALTAN_PATTERN_EFFECT_CUE& cue : patternCueDocument.Cues)
 		{
 			patternCueIdentitiesExact = patternCueIdentitiesExact &&
@@ -4307,10 +4311,10 @@ namespace
 				cue.iEndMs <= cue.iStageDurationMs;
 		}
 		runner.Require(patternCueIdentitiesExact &&
-			patternCueBindings.size() == 99u &&
-			patternCueActions.size() == 99u &&
-			patternCueEffects.size() == 99u,
-			"Valtan Product Pattern Effect Cue Source Has 99 Unique Encounter-Qualified Bindings, Actions, And Effect Targets");
+			patternCueBindings.size() == 98u &&
+			patternCueActions.size() == 98u &&
+			patternCueEffects.size() == 98u,
+			"Valtan Product Pattern Effect Cue Source Has 98 Unique Encounter-Qualified Boss-Root Bindings, Actions, And Effect Targets");
 
 		CEncounterPatternReference encounter;
 		const bool_t encounterLoaded = encounter.Load(CProjectDataRoot::Resolve(
@@ -4337,6 +4341,603 @@ namespace
 				preservedFirstBinding,
 			"Valtan Pattern Effect Cue Parse Failure Preserves Prior Committed Document");
 
+	}
+
+	void Test_ValtanG04OutcomePresentationBindings(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		const std::string text = Read_Text(
+			CValtanPatternAnimationBindingDocument::Resolve_Path("Valtan"));
+		BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT document;
+		std::string status;
+		const bool_t parsed =
+			CValtanPatternAnimationBindingDocument::Parse_Text(
+				text, document, status);
+		const std::vector<std::string> requiredActionIds = {
+			"valtan.mechanic.magic-orb-stagger-76.groggy",
+			"valtan.mechanic.magic-orb-stagger-76.wipe",
+			"valtan.reactive.parry.normal-slash" };
+		runner.Require(parsed &&
+			CValtanPatternAnimationBindingDocument::Validate_RequiredActions(
+				document, requiredActionIds, status),
+			"Valtan G04 Outcome Actions Have One Required Presentation Binding");
+
+		struct EXPECTED_BINDING final
+		{
+			std::string_view strActionId;
+			std::string_view strClipName;
+		};
+		const std::array<EXPECTED_BINDING, 3u> expectedBindings = {{
+			{ "valtan.mechanic.magic-orb-stagger-76.groggy",
+				"mesh_dmg_parts_loop_1" },
+			{ "valtan.mechanic.magic-orb-stagger-76.wipe",
+				"mesh_att_battle_5_02_end" },
+			{ "valtan.reactive.parry.normal-slash",
+				"mesh_att_battle_9_01_loop" }
+		}};
+		bool_t clipsExact = parsed;
+		for (const EXPECTED_BINDING& expected : expectedBindings)
+		{
+			const auto binding = std::find_if(
+				document.Bindings.begin(), document.Bindings.end(),
+				[&expected](const BOSS_PATTERN_ANIMATION_BINDING& candidate)
+				{
+					return candidate.strActionId == expected.strActionId;
+				});
+			clipsExact = clipsExact && binding != document.Bindings.end() &&
+				binding->strClipName == expected.strClipName;
+		}
+		runner.Require(clipsExact,
+			"Valtan G04 Outcome Actions Reuse The Reviewed Groggy Wipe And Parry Clips");
+
+		auto duplicate = document;
+		if (!duplicate.Bindings.empty())
+		{
+			const auto required = std::find_if(
+				duplicate.Bindings.begin(), duplicate.Bindings.end(),
+				[&requiredActionIds](const BOSS_PATTERN_ANIMATION_BINDING& binding)
+				{
+					return binding.strActionId == requiredActionIds.front();
+				});
+			if (required != duplicate.Bindings.end())
+				duplicate.Bindings.push_back(*required);
+		}
+		runner.Require(parsed &&
+			!CValtanPatternAnimationBindingDocument::Validate_RequiredActions(
+				duplicate, requiredActionIds, status),
+			"Valtan G04 Required Outcome Contract Rejects Duplicate Binding");
+
+		auto missing = document;
+		missing.Bindings.erase(std::remove_if(
+			missing.Bindings.begin(), missing.Bindings.end(),
+			[&requiredActionIds](const BOSS_PATTERN_ANIMATION_BINDING& binding)
+			{
+				return binding.strActionId == requiredActionIds.back();
+			}), missing.Bindings.end());
+		runner.Require(parsed &&
+			!CValtanPatternAnimationBindingDocument::Validate_RequiredActions(
+				missing, requiredActionIds, status),
+			"Valtan G04 Required Outcome Contract Rejects Missing Binding");
+	}
+
+	void Test_ValtanBossCombatPresentationProjection(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+
+		CCombatHUDViewModel& hud = CCombatHUDViewModel::Get();
+		hud.Reset_RuntimeState();
+		WORLD_ENTITY_SNAPSHOT snapshot{};
+		snapshot.iCurrentHp = 730u;
+		snapshot.iMaximumHp = 1000u;
+		snapshot.iPhase = 2u;
+		snapshot.hasBossCombatState = true;
+		snapshot.BossCombat.iStateRevision = 9u;
+		snapshot.BossCombat.iAlivePartMask = 0x1u;
+		snapshot.BossCombat.iFlags =
+			static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::SHIELDED) |
+			static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::COUNTERABLE) |
+			static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::GROGGY);
+		snapshot.BossCombat.iCurrentStagger = 75u;
+		snapshot.BossCombat.iMaximumStagger = 100u;
+		snapshot.BossCombat.iCurrentShield = 250u;
+		snapshot.BossCombat.iMaximumShield = 400u;
+		snapshot.BossCombat.iGameplayPhase = 2u;
+		snapshot.strPatternId = "VALTAN_MAGIC_ORB_STAGGER_76";
+		snapshot.strActionId =
+			"valtan.mechanic.magic-orb-stagger-76.window";
+		snapshot.iPatternSequence = 4u;
+		snapshot.iPatternStageIndex = 1u;
+		hud.Apply_Boss("BOSS_VALTAN", snapshot);
+
+		const HUD_BOSS_STATE first = hud.Get_Boss();
+		runner.Require(first.isValid && first.iPhase == 2u &&
+			first.iBossCombatStateRevision == 9u &&
+			first.iAlivePartMask == 0x1u &&
+			first.iBossCombatFlags == snapshot.BossCombat.iFlags &&
+			first.iCurrentStagger == 75u &&
+			first.iMaximumStagger == 100u &&
+			first.iCurrentShield == 250u &&
+			first.iMaximumShield == 400u,
+			"Valtan HUD Projects Boss Flags Part Stagger Shield And Phase Exactly");
+
+		snapshot.iPhase = 3u;
+		snapshot.BossCombat.iStateRevision = 10u;
+		snapshot.BossCombat.iAlivePartMask = 0u;
+		snapshot.BossCombat.iFlags = static_cast<std::uint16_t>(
+			BOSS_COMBAT_STATE_FLAG::INVULNERABLE);
+		snapshot.BossCombat.iCurrentStagger = 0u;
+		snapshot.BossCombat.iMaximumStagger = 0u;
+		snapshot.BossCombat.iCurrentShield = 0u;
+		snapshot.BossCombat.iMaximumShield = 0u;
+		snapshot.BossCombat.iGameplayPhase = 3u;
+		hud.Apply_Boss("BOSS_VALTAN", snapshot);
+		const HUD_BOSS_STATE cleared = hud.Get_Boss();
+		runner.Require(cleared.iBossCombatStateRevision == 10u &&
+			cleared.iPhase == 3u && cleared.iAlivePartMask == 0u &&
+			cleared.iBossCombatFlags == static_cast<std::uint16_t>(
+				BOSS_COMBAT_STATE_FLAG::INVULNERABLE) &&
+			cleared.iCurrentStagger == 0u &&
+			cleared.iMaximumStagger == 0u &&
+			cleared.iCurrentShield == 0u && cleared.iMaximumShield == 0u,
+			"Valtan HUD Clears Stagger And Shield From The Next Persistent Snapshot");
+		hud.Reset_RuntimeState();
+		runner.Require(!hud.Get_Boss().isValid &&
+			0u == hud.Get_Boss().iBossCombatStateRevision,
+			"Valtan HUD Runtime Reset Drops Persistent Boss Presentation State");
+
+		const std::filesystem::path repositoryRoot =
+			CProjectDataRoot::Get().parent_path();
+		const std::string valtanSource = Read_Text(repositoryRoot /
+			"Client" / "Private" / "Valtan.cpp");
+		const std::string replicationSource = Read_Text(repositoryRoot /
+			"Client" / "Private" / "ClientReplication.cpp");
+		const std::array<std::string_view, 7u> stateContractTokens = {{
+			"state.iStateRevision < m_BossCombatState.iStateRevision",
+			"state.iStateRevision == m_BossCombatState.iStateRevision",
+			"return Is_SameBossCombatState(state, m_BossCombatState)",
+			"state.iAlivePartMask & stateMask",
+			"Set_ArmorPartVisible",
+			"event.iEventSequence <= m_iLastBossCombatEventSequence",
+			"m_iLastBossCombatEventSequence = event.iEventSequence"
+		}};
+		const bool_t valtanStateContractExact = !valtanSource.empty() &&
+			std::all_of(stateContractTokens.begin(), stateContractTokens.end(),
+				[&valtanSource](const std::string_view token)
+				{
+					return std::string::npos != valtanSource.find(token);
+				});
+		runner.Require(valtanStateContractExact &&
+			replicationSource.find(
+				"Apply_BossCombatState(entity.BossCombat)") !=
+					std::string::npos &&
+			replicationSource.find("Apply_BossCombatEvent(event)") !=
+					std::string::npos,
+			"Valtan Source Keeps Revision Regression Part Projection And Event Deduplication");
+	}
+
+	void Test_ValtanCombatObjectProjection(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+		SCOPED_ENVIRONMENT_VARIABLE runtimeResourceRootScope(
+			L"LOSTARK_RESOURCE_ROOT");
+		std::filesystem::path expectedRuntimeResourceRoot =
+			(CProjectDataRoot::Get().parent_path() / L"Client" / L"Bin" /
+			 L"Resources").lexically_normal();
+		std::error_code physicalModelError;
+		const std::filesystem::path physicalValtanWeapon =
+			std::filesystem::weakly_canonical(
+				expectedRuntimeResourceRoot / L"Character" / L"Valtan" /
+					L"ValtanWeapon.wmodel",
+				physicalModelError);
+		if (!physicalModelError &&
+			std::filesystem::is_regular_file(physicalValtanWeapon))
+		{
+			expectedRuntimeResourceRoot = physicalValtanWeapon.parent_path().
+				parent_path().parent_path();
+		}
+		runtimeResourceRootScope.Set(expectedRuntimeResourceRoot.c_str());
+
+		struct PROJECTION_SINK final
+		{
+			uint32_t iSpawnFailuresRemaining = 0u;
+			bool_t bFailNextUpdate = false;
+			uint64_t iNextHandle = 1u;
+			std::vector<S2C_COMBAT_OBJECT_SPAWNED> Spawns;
+			std::vector<std::pair<uint64_t, COMBAT_OBJECT_SNAPSHOT>> Updates;
+			std::vector<uint64_t> Stops;
+
+			bool_t Spawn(const S2C_COMBAT_OBJECT_SPAWNED& message,
+				uint64_t& outHandle, std::string& outStatus)
+			{
+				Spawns.push_back(message);
+				if (0u != iSpawnFailuresRemaining)
+				{
+					--iSpawnFailuresRemaining;
+					outHandle = 0u;
+					outStatus = "injected visual admission failure";
+					return false;
+				}
+				outHandle = iNextHandle++;
+				outStatus.clear();
+				return true;
+			}
+
+			bool_t Update(const uint64_t handle,
+				const COMBAT_OBJECT_SNAPSHOT& snapshot)
+			{
+				Updates.emplace_back(handle, snapshot);
+				if (!bFailNextUpdate)
+					return true;
+				bFailNextUpdate = false;
+				return false;
+			}
+
+			void Stop(const uint64_t handle)
+			{
+				Stops.push_back(handle);
+			}
+		};
+
+		const auto MakeSpawn = [](
+			const COMBAT_OBJECT_ID objectId,
+			const NET_ENTITY_ID sourceId,
+			const uint32_t spawnTick,
+			const uint32_t serverTick,
+			const char_t* archetypeId,
+			const char_t* visualId)
+		{
+			S2C_COMBAT_OBJECT_SPAWNED message{};
+			message.iCombatObjectId = objectId;
+			message.iSourceNetEntityId = sourceId;
+			message.iSpawnTick = spawnTick;
+			message.iServerTick = serverTick;
+			message.strCombatObjectArchetypeId = archetypeId;
+			message.strClientVisualId = visualId;
+			message.fPositionX = 10.f;
+			message.fPositionY = 2.f;
+			message.fPositionZ = -4.f;
+			message.fYawDegrees = 45.f;
+			return message;
+		};
+		const auto MakeSnapshot = [](const S2C_COMBAT_OBJECT_SPAWNED& spawn)
+		{
+			COMBAT_OBJECT_SNAPSHOT snapshot{};
+			snapshot.iCombatObjectId = spawn.iCombatObjectId;
+			snapshot.iSourceNetEntityId = spawn.iSourceNetEntityId;
+			snapshot.fPositionX = spawn.fPositionX;
+			snapshot.fPositionY = spawn.fPositionY;
+			snapshot.fPositionZ = spawn.fPositionZ;
+			snapshot.fYawDegrees = spawn.fYawDegrees;
+			return snapshot;
+		};
+
+		std::string status;
+		CCombatObjectProjectionRuntime lifecycle;
+		PROJECTION_SINK lifecycleSink;
+		const S2C_COMBAT_OBJECT_SPAWNED lateJoinSpawn = MakeSpawn(
+			10u, 100u, 70u, 100u,
+			"combatobject.valtan.high-jump.target-axe",
+			"combatobject.visual.valtan.high-jump.target-axe.v1");
+		const bool_t spawned = lifecycle.Apply_Spawn(
+			lateJoinSpawn, lifecycleSink, status);
+		const bool_t duplicateIgnored = lifecycle.Apply_Spawn(
+			lateJoinSpawn, lifecycleSink, status);
+		S2C_COMBAT_OBJECT_SPAWNED conflicting = lateJoinSpawn;
+		conflicting.strClientVisualId =
+			"combatobject.visual.valtan.red-blade-wave.projectile.v1";
+		const bool_t conflictRejected =
+			!lifecycle.Apply_Spawn(conflicting, lifecycleSink, status);
+		COMBAT_OBJECT_SNAPSHOT moved = MakeSnapshot(lateJoinSpawn);
+		moved.fPositionX = 12.f;
+		const bool_t snapshotApplied = lifecycle.Apply_Snapshot(
+			101u, { moved }, lifecycleSink, status);
+		float lateJoinAgeSeconds = 0.f;
+		const bool_t lateJoinAgeResolved =
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
+				lateJoinSpawn.iServerTick, lateJoinSpawn.iSpawnTick,
+				30.f, lateJoinAgeSeconds);
+		S2C_COMBAT_OBJECT_DESPAWNED despawn{};
+		despawn.iCombatObjectId = lateJoinSpawn.iCombatObjectId;
+		const bool_t despawned = lifecycle.Apply_Despawn(
+			despawn, lifecycleSink, status);
+		runner.Require(spawned && duplicateIgnored && conflictRejected &&
+			snapshotApplied && despawned && lifecycle.Get_Count() == 0u &&
+			lifecycleSink.Spawns.size() == 1u &&
+			lifecycleSink.Updates.size() == 1u &&
+			lifecycleSink.Stops == std::vector<uint64_t>{ 1u } &&
+			lateJoinAgeResolved && std::abs(lateJoinAgeSeconds - 1.f) < 1.0e-6f &&
+			lifecycleSink.Spawns.front().iServerTick == 100u &&
+			lifecycleSink.Spawns.front().iSpawnTick == 70u,
+			"Valtan Combat Object Lifecycle Deduplicates Spawn Updates World Root Seeks Late Join Age And Stops Once");
+
+		CCombatObjectProjectionRuntime atomic;
+		PROJECTION_SINK atomicSink;
+		const S2C_COMBAT_OBJECT_SPAWNED first = MakeSpawn(
+			20u, 200u, 200u, 200u,
+			"combatobject.valtan.high-jump.target-axe",
+			"combatobject.visual.valtan.high-jump.target-axe.v1");
+		const S2C_COMBAT_OBJECT_SPAWNED second = MakeSpawn(
+			21u, 200u, 200u, 200u,
+			"combatobject.valtan.red-blade-wave.projectile",
+			"combatobject.visual.valtan.red-blade-wave.projectile.v1");
+		const bool_t atomicSpawned = atomic.Apply_Spawn(first, atomicSink, status) &&
+			atomic.Apply_Spawn(second, atomicSink, status);
+		const COMBAT_OBJECT_PROJECTION_RECORD* beforeFirst = atomic.Find(20u);
+		const bool_t beforeFirstPresent = nullptr != beforeFirst;
+		const float beforeFirstPositionX = beforeFirstPresent ?
+			beforeFirst->Snapshot.fPositionX : 0.f;
+		COMBAT_OBJECT_SNAPSHOT unknown = MakeSnapshot(second);
+		unknown.iCombatObjectId = 22u;
+		atomicSink.Updates.clear();
+		const bool_t unknownSetRejected = !atomic.Apply_Snapshot(
+			201u, { MakeSnapshot(first), unknown }, atomicSink, status);
+		const COMBAT_OBJECT_PROJECTION_RECORD* afterFirst = atomic.Find(20u);
+		runner.Require(atomicSpawned && unknownSetRejected &&
+			atomicSink.Updates.empty() && beforeFirstPresent &&
+			nullptr != afterFirst &&
+			afterFirst->Snapshot.fPositionX == beforeFirstPositionX &&
+			atomic.Get_Count() == 2u,
+			"Valtan Combat Object Full Snapshot Rejects Unknown Set Atomically Before Presentation Updates");
+		atomic.Reset(atomicSink);
+
+		CCombatObjectProjectionRuntime wrappedRetry;
+		PROJECTION_SINK retrySink;
+		retrySink.iSpawnFailuresRemaining = 3u;
+		const uint32_t wrapSpawnTick =
+			(std::numeric_limits<uint32_t>::max)() - 29u;
+		const S2C_COMBAT_OBJECT_SPAWNED retrySpawn = MakeSpawn(
+			30u, 300u, wrapSpawnTick, wrapSpawnTick,
+			"combatobject.valtan.high-jump.target-axe",
+			"combatobject.visual.valtan.high-jump.target-axe.v1");
+		const COMBAT_OBJECT_SNAPSHOT retrySnapshot = MakeSnapshot(retrySpawn);
+		const bool_t logicalSpawnKept = wrappedRetry.Apply_Spawn(
+			retrySpawn, retrySink, status);
+		const bool_t beforeWrapNoRetry = wrappedRetry.Apply_Snapshot(
+			(std::numeric_limits<uint32_t>::max)(), { retrySnapshot },
+			retrySink, status) && retrySink.Spawns.size() == 1u;
+		const bool_t firstRetryAtOne = wrappedRetry.Apply_Snapshot(
+			1u, { retrySnapshot }, retrySink, status) &&
+			retrySink.Spawns.size() == 2u;
+		const bool_t noPerSnapshotRetry = wrappedRetry.Apply_Snapshot(
+			2u, { retrySnapshot }, retrySink, status) &&
+			retrySink.Spawns.size() == 2u;
+		const bool_t thirdAttemptAtThirtyOne = wrappedRetry.Apply_Snapshot(
+			31u, { retrySnapshot }, retrySink, status) &&
+			retrySink.Spawns.size() == 3u;
+		const bool_t boundedAfterThirdFailure = wrappedRetry.Apply_Snapshot(
+			61u, { retrySnapshot }, retrySink, status) &&
+			retrySink.Spawns.size() == 3u;
+		const COMBAT_OBJECT_PROJECTION_RECORD* retryRecord =
+			wrappedRetry.Find(retrySpawn.iCombatObjectId);
+		runner.Require(logicalSpawnKept && beforeWrapNoRetry &&
+			firstRetryAtOne && noPerSnapshotRetry &&
+			thirdAttemptAtThirtyOne && boundedAfterThirdFailure &&
+			nullptr != retryRecord && 0u == retryRecord->iPresentationHandle &&
+			retryRecord->iPresentationAttemptCount == 3u,
+			"Valtan Combat Object Visual Admission Retry Skips Wrapped Zero Waits Thirty Ticks And Stops After Three Attempts");
+
+		CCombatObjectProjectionRuntime updateRetry;
+		PROJECTION_SINK updateSink;
+		const S2C_COMBAT_OBJECT_SPAWNED updateSpawn = MakeSpawn(
+			40u, 400u, 100u, 100u,
+			"combatobject.valtan.red-blade-wave.projectile",
+			"combatobject.visual.valtan.red-blade-wave.projectile.v1");
+		const COMBAT_OBJECT_SNAPSHOT updateSnapshot = MakeSnapshot(updateSpawn);
+		const bool_t updateSpawned = updateRetry.Apply_Spawn(
+			updateSpawn, updateSink, status);
+		updateSink.bFailNextUpdate = true;
+		const bool_t updateFailureKeptLogical = updateRetry.Apply_Snapshot(
+			101u, { updateSnapshot }, updateSink, status);
+		const bool_t updateFailureDidNotRetryNextFrame =
+			updateRetry.Apply_Snapshot(
+				102u, { updateSnapshot }, updateSink, status) &&
+			updateSink.Spawns.size() == 1u;
+		const bool_t updateRetriedAtDeadline = updateRetry.Apply_Snapshot(
+			131u, { updateSnapshot }, updateSink, status) &&
+			updateSink.Spawns.size() == 2u;
+		const COMBAT_OBJECT_PROJECTION_RECORD* updatedRecord =
+			updateRetry.Find(updateSpawn.iCombatObjectId);
+		const bool_t replacementHandleLive = nullptr != updatedRecord &&
+			0u != updatedRecord->iPresentationHandle;
+		updateRetry.Reset(updateSink);
+		runner.Require(updateSpawned && updateFailureKeptLogical &&
+			updateFailureDidNotRetryNextFrame && updateRetriedAtDeadline &&
+			replacementHandleLive &&
+			updateSink.Stops.size() == 2u && updateRetry.Get_Count() == 0u,
+			"Valtan Combat Object Root Update Failure Stops The Handle Schedules One Bounded Retry And Reset Stops The Replacement");
+
+		const std::filesystem::path repositoryRoot =
+			CProjectDataRoot::Get().parent_path();
+		const BOSS_ACTOR_ENTRY* boss = CActorCatalog::Find_Boss("BOSS_VALTAN");
+		std::set<std::string, std::less<>> productEffects;
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT cueDocument;
+		std::string cueStatus;
+		const bool_t cuesLoaded = CValtanPatternEffectCueDocument::Load_Source(
+			cueDocument, cueStatus);
+		for (const VALTAN_PATTERN_EFFECT_CUE& cue : cueDocument.Cues)
+			productEffects.insert(cue.strEffectAssetId);
+		if (nullptr != boss)
+		{
+			for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& visual :
+				boss->combatObjectVisuals)
+			{
+				productEffects.insert(visual.effectAssetId);
+			}
+		}
+		const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* skyVisual =
+			CActorCatalog::Find_BossCombatObjectVisual(
+				"BOSS_VALTAN",
+				"combatobject.valtan.high-jump.target-axe",
+				"combatobject.visual.valtan.high-jump.target-axe.v1");
+		const BOSS_COMBAT_OBJECT_VISUAL_ENTRY* bladeVisual =
+			CActorCatalog::Find_BossCombatObjectVisual(
+				"BOSS_VALTAN",
+				"combatobject.valtan.red-blade-wave.projectile",
+				"combatobject.visual.valtan.red-blade-wave.projectile.v1");
+		const bool_t prewarmContractExact =
+			cuesLoaded && cueDocument.Cues.size() == 98u &&
+			nullptr != boss && boss->combatObjectVisuals.size() == 2u &&
+			nullptr != skyVisual && nullptr != bladeVisual &&
+			skyVisual->effectAssetId == "effect.valtan.sky-axe.active" &&
+			bladeVisual->effectAssetId == "effect.valtan.red-blade-wave.active" &&
+			productEffects.size() == 100u &&
+			!std::any_of(cueDocument.Cues.begin(), cueDocument.Cues.end(),
+				[](const VALTAN_PATTERN_EFFECT_CUE& cue)
+				{
+					return cue.strEffectAssetId ==
+						"effect.valtan.red-blade-wave.active";
+				});
+		if (!prewarmContractExact)
+		{
+			std::cout << "[DETAIL] Valtan combat-object prewarm: cueStatus=" <<
+				cueStatus << " actorStatus=" << CActorCatalog::Get_Status() <<
+				" cueCount=" << cueDocument.Cues.size() <<
+				" productCount=" << productEffects.size() << '\n';
+		}
+		runner.Require(prewarmContractExact,
+			"Valtan Product Prewarm Owns 98 Boss-Root Cues Plus Two Moving Combat-Object Effects Without Red-Blade Duplication");
+
+		EFFECT_DOCUMENT_DESC skyDocument;
+		std::string skyStatus;
+		const bool_t skyLoaded = CEffectDocumentCodec::Load(
+			repositoryRoot / "Data" / "Effects" / "Authored" /
+				"effect.valtan.sky-axe.active.effect.json",
+			skyDocument, skyStatus);
+		const EFFECT_ELEMENT_DESC* skyElement =
+			skyLoaded && skyDocument.Elements.size() == 1u ?
+				&skyDocument.Elements.front() : nullptr;
+		const bool_t skyResourceExact = nullptr != skyElement &&
+			skyElement->ResourceBindings.size() == 1u &&
+			skyElement->ResourceBindings.front().strSlotId == "meshModel" &&
+			skyElement->ResourceBindings.front().strAssetId ==
+				"Character/Valtan/ValtanWeapon.wmodel";
+		EFFECT_RESOURCE_FILE_KIND resourceKind = EFFECT_RESOURCE_FILE_KIND::END;
+		const bool_t characterModelAccepted =
+			CEffectDocumentCodec::Is_SafeResourceAssetId(
+				"Character/Valtan/ValtanWeapon.wmodel", &resourceKind, true) &&
+			resourceKind == EFFECT_RESOURCE_FILE_KIND::MODEL;
+		const bool_t characterModelRejectedOutsideMeshSlot =
+			!CEffectDocumentCodec::Is_SafeResourceAssetId(
+				"Character/Valtan/ValtanWeapon.wmodel", nullptr, false);
+		const bool_t characterTextureRejected =
+			!CEffectDocumentCodec::Is_SafeResourceAssetId(
+				"Character/WP_WSWP_M_06/textures/wp_wswp_m_06s_d.dds",
+				nullptr, true);
+		const bool_t characterEscapeRejected =
+			!CEffectDocumentCodec::Is_SafeResourceAssetId(
+				"Character/Valtan/../Valtan/ValtanWeapon.wmodel",
+				nullptr, true);
+		const bool_t skyContractExact =
+			skyLoaded && nullptr != skyElement && skyResourceExact &&
+			skyDocument.strEffectAssetId == "effect.valtan.sky-axe.active" &&
+			skyElement->eKind == EFFECT_ELEMENT_KIND::MESH &&
+			std::abs(skyElement->Detail.Transform.vPosition.y - 15.f) < 1.0e-6f &&
+			skyElement->Detail.LinearLerp.bPosition &&
+			std::abs(skyElement->Detail.LinearLerp.vEndPosition.y) < 1.0e-6f &&
+			std::abs(skyElement->Detail.Timing.fLifeTimeSeconds - 1.2f) <
+			1.0e-6f && characterModelAccepted &&
+			characterModelRejectedOutsideMeshSlot && characterTextureRejected &&
+			characterEscapeRejected;
+		if (!skyContractExact)
+		{
+			const std::filesystem::path runtimeResourceRoot =
+				CRuntimeAssetRoot::Get();
+			const std::filesystem::path resolvedCharacterModel =
+				CRuntimeAssetRoot::Resolve(
+					"Character/Valtan/ValtanWeapon.wmodel");
+			std::error_code rootError;
+			const std::filesystem::path canonicalRuntimeResourceRoot =
+				std::filesystem::weakly_canonical(
+					runtimeResourceRoot, rootError);
+			std::error_code modelError;
+			const std::filesystem::path canonicalCharacterModel =
+				std::filesystem::weakly_canonical(
+					runtimeResourceRoot /
+						"Character/Valtan/ValtanWeapon.wmodel", modelError);
+			std::cout << "[DETAIL] Valtan sky-axe: status=" << skyStatus <<
+				" loaded=" << skyLoaded << " element=" <<
+				(nullptr != skyElement) << " resource=" << skyResourceExact <<
+				" modelAccepted=" << characterModelAccepted <<
+				" modelRejectedOutsideSlot=" <<
+				characterModelRejectedOutsideMeshSlot <<
+				" textureRejected=" << characterTextureRejected <<
+				" escapeRejected=" << characterEscapeRejected <<
+				" resourceRoot=" << runtimeResourceRoot.string() <<
+				" canonicalRoot=" << canonicalRuntimeResourceRoot.string() <<
+				" rootError=" << rootError.message() <<
+				" canonicalModel=" << canonicalCharacterModel.string() <<
+				" modelError=" << modelError.message() <<
+				" resolved=" << resolvedCharacterModel.string() <<
+				" exists=" << std::filesystem::is_regular_file(
+					resolvedCharacterModel) << '\n';
+		}
+		runner.Require(skyContractExact,
+			"Valtan Sky Axe Uses The Existing Character WModel Only In MeshModel And Falls Fifteen Metres Over 1.2 Seconds");
+
+		const std::string replicationSource = Read_Text(repositoryRoot /
+			"Client" / "Private" / "ClientReplication.cpp");
+		const std::string presentationSource = Read_Text(repositoryRoot /
+			"Client" / "Private" / "Effect_PresentationService.cpp");
+		const std::string publisherSource = Read_Text(repositoryRoot /
+			"Tools" / "EffectPipeline" / "Publish-Effects.ps1");
+		std::vector<CLIENT_REPLICATION_EVENT_TYPE> eventQueue;
+		const auto enqueueEvent = [&eventQueue](
+			const CLIENT_REPLICATION_EVENT_TYPE incoming)
+		{
+			if (!eventQueue.empty() &&
+				Can_CoalesceAdjacentReplicationEvents(
+					eventQueue.back(), incoming))
+			{
+				eventQueue.back() = incoming;
+			}
+			else
+			{
+				eventQueue.push_back(incoming);
+			}
+		};
+		enqueueEvent(CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_SPAWNED);
+		enqueueEvent(CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT);
+		enqueueEvent(CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT);
+		enqueueEvent(CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_DESPAWNED);
+		enqueueEvent(CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT);
+		enqueueEvent(CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT);
+		const bool_t lifecycleBarriersExact = eventQueue.size() == 4u &&
+			eventQueue[0] ==
+				CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_SPAWNED &&
+			eventQueue[1] == CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT &&
+			eventQueue[2] ==
+				CLIENT_REPLICATION_EVENT_TYPE::COMBAT_OBJECT_DESPAWNED &&
+			eventQueue[3] == CLIENT_REPLICATION_EVENT_TYPE::WORLD_SNAPSHOT &&
+			Can_CoalesceAdjacentInboundFrames(
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT) &&
+			!Can_CoalesceAdjacentInboundFrames(
+				PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED,
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT) &&
+			!Can_CoalesceAdjacentInboundFrames(
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT,
+				PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED);
+		runner.Require(lifecycleBarriersExact,
+			"Valtan Combat Object Spawn And Despawn Are Queue Barriers While Only Adjacent Full Snapshots Coalesce");
+		runner.Require(replicationSource.find("spawned.iServerTick") !=
+				std::string::npos &&
+			replicationSource.find("spawned.iSpawnTick") !=
+				std::string::npos &&
+			replicationSource.find("Try_ResolveActionAgeSeconds") !=
+				std::string::npos &&
+			replicationSource.find(
+				"desc.fInitialSampleTimeSeconds = actionAgeSeconds") !=
+				std::string::npos &&
+			presentationSource.find("Spawn_WorldRoot") != std::string::npos &&
+			presentationSource.find("Update_WorldRoot") != std::string::npos &&
+			presentationSource.find("Stop_WorldRoot") != std::string::npos &&
+			publisherSource.find("Resolve-SafeElementResource") !=
+				std::string::npos &&
+			publisherSource.find("combatObjectVisuals") != std::string::npos &&
+			publisherSource.find("cataloguedWithoutOwner") != std::string::npos,
+			"Valtan Combat Object Consumer Seeks Server Age Owns A World-Root Handle And Publisher Joins BossCatalog Ownership");
 	}
 
 	/* An artist rebind is only useful if it survives the next re-materialize.
@@ -18992,13 +19593,17 @@ namespace
 			2u == serverRequestCount &&
 			!timedGate.Try_ConsumeServerRequest();
 		runner.Require(
-			CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT == 99u &&
+			CCharacterSelectArenaSpawnGate::PRODUCT_PATTERN_EFFECT_CUE_COUNT ==
+				98u &&
+			CCharacterSelectArenaSpawnGate::
+				PRODUCT_COMBAT_OBJECT_EFFECT_TARGET_COUNT == 2u &&
+			CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT == 100u &&
 			CCharacterSelectArenaSpawnGate::PREWARM_TIMEOUT ==
 				std::chrono::seconds{ 30 } &&
 			prewarmDoesNotRequest && prewarmTimeoutIsRetryable &&
 			retryRestarted && exactOneRequestAfterRetry &&
 			responseTimeoutRestarts && retryAlsoRequestsOnce,
-			"Character Select Valtan Gate Sends Exactly One Request Only After 99-Target Prewarm And Restarts After Prewarm Or Response Timeout");
+			"Character Select Valtan Gate Sends Exactly One Request Only After 100-Target Prewarm And Restarts After Prewarm Or Response Timeout");
 
 		CCharacterSelectArenaSpawnGate immediateGate;
 		uint32_t immediateRequestCount = 0u;
@@ -19056,8 +19661,10 @@ namespace
 		const bool_t bossReadyBeforePlayerDrain =
 			autoRequestGate.Begin(true) && bossTargetsPrepared &&
 			bossProbe.bCatalogRevisionCurrent && bossProbe.bSettled &&
-			bossProbe.iTargetCount == 99u &&
-			bossProbe.iPreparedCount == 99u &&
+			bossProbe.iTargetCount == CCharacterSelectArenaSpawnGate::
+				PRODUCT_EFFECT_TARGET_COUNT &&
+			bossProbe.iPreparedCount == CCharacterSelectArenaSpawnGate::
+				PRODUCT_EFFECT_TARGET_COUNT &&
 			0u == bossProbe.iFailedCount &&
 			0u == bossProbe.iUnavailableCount &&
 			bossProbe.iQueuePendingCount == playerTargets.size() &&
@@ -19742,6 +20349,231 @@ namespace
 		const std::filesystem::path repositoryRoot =
 			CProjectDataRoot::Get().parent_path();
 
+		/* All Effects authoring is indexed from the source catalog rather than
+		   the retired Track-A batch or the runtime Product tree.  Keep this
+		   fixture metadata-only so opening the list does not decode 101 documents. */
+		std::string sourceIndexStatus;
+		const bool_t playerSkillsLoaded =
+			CPlayerSkillCatalog::Load(sourceIndexStatus);
+		EFFECT_DIRECT_AUTHORED_OWNER_SET playerSkillOwners;
+		for (const PLAYER_SKILL_DEFINITION& skill :
+			CPlayerSkillCatalog::Get_Skills())
+		{
+			playerSkillOwners.emplace(skill.eCharacterClass, skill.iSkillId);
+		}
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT valtanCueDocument;
+		std::string valtanCueStatus;
+		const bool_t valtanCuesLoaded =
+			CValtanPatternEffectCueDocument::Load_Source(
+				valtanCueDocument, valtanCueStatus);
+		EFFECT_DIRECT_AUTHORED_BOSS_OWNER_MAP bossPatternOwners;
+		for (const VALTAN_PATTERN_EFFECT_CUE& cue : valtanCueDocument.Cues)
+		{
+			bossPatternOwners.emplace(cue.strEffectAssetId,
+				EFFECT_DIRECT_AUTHORED_BOSS_OWNER{
+					valtanCueDocument.strOwnerArchetypeId, cue.strPatternId,
+					cue.strStageId, cue.strActionId });
+		}
+		const BOSS_ACTOR_ENTRY* valtanBossActor =
+			CActorCatalog::Find_Boss(valtanCueDocument.strOwnerArchetypeId);
+		EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER_MAP
+			bossCombatObjectOwners;
+		if (nullptr != valtanBossActor)
+		{
+			for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& visual :
+				valtanBossActor->combatObjectVisuals)
+			{
+				bossCombatObjectOwners.emplace(visual.effectAssetId,
+					EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER{
+						valtanBossActor->archetypeId,
+						visual.combatObjectArchetypeId,
+						visual.clientVisualId });
+			}
+		}
+		const std::filesystem::path sourceCatalogPath = repositoryRoot /
+			L"Data" / L"Effects" / L"EffectCatalog.json";
+		const std::filesystem::path authoredRoot = repositoryRoot /
+			L"Data" / L"Effects" / L"Authored";
+		std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE> scannedSourceFiles;
+		std::error_code sourceScanError;
+		for (std::filesystem::recursive_directory_iterator iterator(
+				authoredRoot, sourceScanError), end;
+			!sourceScanError && iterator != end;
+			iterator.increment(sourceScanError))
+		{
+			if (!iterator->is_regular_file(sourceScanError) || sourceScanError)
+				continue;
+			constexpr std::string_view effectSuffix = ".effect.json";
+			const std::string filename = iterator->path().filename().string();
+			if (!filename.ends_with(effectSuffix))
+				continue;
+			scannedSourceFiles.push_back({
+				filename.substr(0u, filename.size() - effectSuffix.size()),
+				iterator->path()
+			});
+		}
+		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX sourceIndex;
+		const bool_t sourceIndexValid = playerSkillsLoaded && valtanCuesLoaded &&
+			nullptr != valtanBossActor &&
+			!sourceScanError &&
+			CEffectDirectAuthoredSourceIndex::Build(
+				sourceCatalogPath, authoredRoot, scannedSourceFiles,
+				playerSkillOwners, bossPatternOwners, bossCombatObjectOwners,
+				sourceIndex, sourceIndexStatus);
+		std::set<std::string, std::less<>> directSourceIds;
+		size_t typedPlayerSourceCount = 0u;
+		size_t typedBossSourceCount = 0u;
+		size_t typedBossCombatObjectSourceCount = 0u;
+		bool_t sourceEntriesExact = sourceIndexValid &&
+			valtanCueDocument.Cues.size() == 98u &&
+			bossPatternOwners.size() == 98u &&
+			bossCombatObjectOwners.size() == 2u &&
+			sourceIndex.iCatalogDirectCount == 201u &&
+			sourceIndex.iUnavailableCount == 0u &&
+			sourceIndex.Entries.size() == 201u;
+		for (const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& entry :
+			sourceIndex.Entries)
+		{
+			std::error_code physicalError;
+			bool_t ownerExact = false;
+			if (EFFECT_DIRECT_AUTHORED_OWNER_KIND::PLAYER_SKILL ==
+				entry.eOwnerKind)
+			{
+				++typedPlayerSourceCount;
+				ownerExact = playerSkillOwners.contains(std::make_pair(
+					entry.eCharacterClass, entry.iSkillId));
+			}
+			else if (EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_PATTERN ==
+				entry.eOwnerKind)
+			{
+				++typedBossSourceCount;
+				const auto owner =
+					bossPatternOwners.find(entry.strEffectAssetId);
+				ownerExact = bossPatternOwners.end() != owner &&
+					entry.strOwnerArchetypeId ==
+						owner->second.strOwnerArchetypeId &&
+					entry.strPatternId == owner->second.strPatternId &&
+					entry.strStageId == owner->second.strStageId &&
+					entry.strActionId == owner->second.strActionId;
+			}
+			else if (EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_COMBAT_OBJECT ==
+				entry.eOwnerKind)
+			{
+				++typedBossCombatObjectSourceCount;
+				const auto owner =
+					bossCombatObjectOwners.find(entry.strEffectAssetId);
+				ownerExact = bossCombatObjectOwners.end() != owner &&
+					entry.strOwnerArchetypeId ==
+						owner->second.strOwnerArchetypeId &&
+					entry.strCombatObjectArchetypeId ==
+						owner->second.strCombatObjectArchetypeId &&
+					entry.strClientVisualId ==
+						owner->second.strClientVisualId;
+			}
+			sourceEntriesExact = sourceEntriesExact && ownerExact &&
+				directSourceIds.insert(entry.strEffectAssetId).second &&
+				std::filesystem::is_regular_file(entry.Path, physicalError) &&
+				!physicalError;
+		}
+		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX preservedIndex;
+		preservedIndex.iCatalogDirectCount = 77u;
+		preservedIndex.Entries.push_back({});
+		std::string rejectedIndexStatus;
+		const bool_t malformedTopLevelPreserved =
+			!CEffectDirectAuthoredSourceIndex::Build(
+				sourceCatalogPath / L"missing", authoredRoot,
+				scannedSourceFiles, playerSkillOwners, bossPatternOwners,
+				bossCombatObjectOwners,
+				preservedIndex,
+				rejectedIndexStatus) &&
+			preservedIndex.iCatalogDirectCount == 77u &&
+			preservedIndex.Entries.size() == 1u &&
+			!rejectedIndexStatus.empty();
+		const std::filesystem::path sourceIndexFixturePath =
+			std::filesystem::temp_directory_path() /
+			(L"LostArkEffectSourceIndex-" +
+			 std::to_wstring(GetCurrentProcessId()) + L".json");
+		const auto writeSourceIndexFixture = [](
+			const std::filesystem::path& path, const std::string& text)
+		{
+			std::ofstream output(path, std::ios::binary | std::ios::trunc);
+			output.write(text.data(), static_cast<std::streamsize>(text.size()));
+			return output.good();
+		};
+		const auto sourceIndexRow = [](const std::string& assetId,
+			const std::string& authoringPath)
+		{
+			return std::string("{\"effectAssetId\":\"") +
+				CDataJson::Escape(assetId) +
+				"\",\"payloadKind\":\"DIRECT_AUTHORED_DOCUMENT_V13\","
+				"\"authoringPath\":\"" +
+				CDataJson::Escape(authoringPath) + "\"}";
+		};
+		bool_t isolatedRowPreservedValidCommit = false;
+		bool_t duplicateTopLevelPreserved = false;
+		if (sourceIndexValid && !sourceIndex.Entries.empty())
+		{
+			const EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY& validEntry =
+				sourceIndex.Entries.front();
+			const std::string validRelativePath = validEntry.Path.lexically_relative(
+				repositoryRoot / L"Data").generic_string();
+			std::string isolatedAssetId = validEntry.strEffectAssetId;
+			isolatedAssetId.erase(isolatedAssetId.size() -
+				std::string_view(".unified").size());
+			isolatedAssetId += ".escape.unified";
+			const std::string validRow = sourceIndexRow(
+				validEntry.strEffectAssetId, validRelativePath);
+			const std::string isolatedRow = sourceIndexRow(
+				isolatedAssetId,
+				"Effects/Authored/../escape/" + isolatedAssetId +
+					".effect.json");
+			const std::string isolatedCatalog =
+				"{\"formatVersion\":1,\"effects\":[" + validRow + "," +
+				isolatedRow + "]}";
+			EFFECT_DIRECT_AUTHORED_SOURCE_INDEX isolatedIndex;
+			std::string isolatedStatus;
+			isolatedRowPreservedValidCommit =
+				writeSourceIndexFixture(sourceIndexFixturePath, isolatedCatalog) &&
+				CEffectDirectAuthoredSourceIndex::Build(
+					sourceIndexFixturePath, authoredRoot, scannedSourceFiles,
+					playerSkillOwners, bossPatternOwners,
+					bossCombatObjectOwners,
+					isolatedIndex, isolatedStatus) &&
+				isolatedIndex.iCatalogDirectCount == 2u &&
+				isolatedIndex.iUnavailableCount == 1u &&
+				isolatedIndex.Entries.size() == 1u &&
+				isolatedIndex.Entries.front().strEffectAssetId ==
+					validEntry.strEffectAssetId;
+
+			const std::string duplicateCatalog =
+				"{\"formatVersion\":1,\"effects\":[" + validRow + "," +
+				validRow + "]}";
+			EFFECT_DIRECT_AUTHORED_SOURCE_INDEX duplicatePreserved;
+			duplicatePreserved.iCatalogDirectCount = 88u;
+			duplicatePreserved.Entries.push_back({});
+			std::string duplicateStatus;
+			duplicateTopLevelPreserved =
+				writeSourceIndexFixture(sourceIndexFixturePath, duplicateCatalog) &&
+				!CEffectDirectAuthoredSourceIndex::Build(
+					sourceIndexFixturePath, authoredRoot, scannedSourceFiles,
+					playerSkillOwners, bossPatternOwners,
+					bossCombatObjectOwners,
+					duplicatePreserved, duplicateStatus) &&
+				duplicatePreserved.iCatalogDirectCount == 88u &&
+				duplicatePreserved.Entries.size() == 1u &&
+				!duplicateStatus.empty();
+		}
+		std::error_code sourceIndexFixtureError;
+		std::filesystem::remove(
+			sourceIndexFixturePath, sourceIndexFixtureError);
+		runner.Require(sourceEntriesExact &&
+			directSourceIds.size() == sourceIndex.Entries.size() &&
+			typedPlayerSourceCount == 101u && typedBossSourceCount == 98u &&
+			typedBossCombatObjectSourceCount == 2u &&
+			malformedTopLevelPreserved && isolatedRowPreservedValidCommit &&
+			duplicateTopLevelPreserved,
+			"All Effects Production Source Index Has 101 Player-Skill, 98 Boss-Pattern, And 2 Boss-Combat-Object Typed Physical Direct Documents, Isolates Unsafe Rows, And Preserves Its Prior Commit On Top-Level Failure");
+
 		const std::filesystem::path sourceCatalog = repositoryRoot /
 			L"Client" / L"Bin" / L"DataFiles" / L"Effect" /
 			L"EffectCatalog.runtime.json";
@@ -19920,13 +20752,13 @@ namespace
 				firstDocument.get() &&
 			CEffectCatalog::Find_VisualProjection_Loaded(
 				std::string(firstId)).get() == firstProjection.get();
-		runner.Require(catalogLoaded && runtimeEffectIds.size() == 192u &&
-			valtanRuntimeEffectCount == 99u &&
+		runner.Require(catalogLoaded && runtimeEffectIds.size() == 193u &&
+			valtanRuntimeEffectCount == 100u &&
 			CEffectCatalog::Contains(std::string(firstId)) &&
 			CEffectCatalog::Contains(std::string(secondId)) &&
 			!CEffectCatalog::Contains(std::string(inactiveAuthoringOnlyId)) &&
 			cacheOnlyIdentity,
-			"Published Product Set Has 192 Runtime Members Including 99 Valtan Targets, Excludes Authoring-Only Draft, And Cache-Only Lookup Never First-Use Loads JSON");
+			"Published Product Set Has 193 Runtime Members Including 100 Valtan Targets, Excludes Authoring-Only Draft, And Cache-Only Lookup Never First-Use Loads JSON");
 
 		const uint64_t beforeDirectAuthoredReplacementRevision =
 			CEffectCatalog::Get_RuntimeRevision();
@@ -30502,6 +31334,19 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--valtan-boss-combat-presentation-fast")
+	{
+		Test_ValtanG04OutcomePresentationBindings(runner);
+		Test_ValtanBossCombatPresentationProjection(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--valtan-combat-object-presentation-fast")
+	{
+		Test_ValtanCombatObjectProjection(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--valtan-pattern-preview-fast")
 	{
 		Test_ValtanPatternPreview(runner);
@@ -30992,6 +31837,9 @@ int main(const int argc, char* argv[])
 	Test_InvalidRequestsPreservePendingCommand(runner);
 	Test_SkillBindingSchema(runner);
 	Test_ValtanPatternBindingSchema(runner);
+	Test_ValtanG04OutcomePresentationBindings(runner);
+	Test_ValtanBossCombatPresentationProjection(runner);
+	Test_ValtanCombatObjectProjection(runner);
 	Test_ValtanPatternPreview(runner);
 	Test_ActionPresentationTimeline(runner);
 	Test_EngineShutdownKeepsCameraPipelineAlive(runner);

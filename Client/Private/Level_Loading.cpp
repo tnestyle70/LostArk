@@ -3,6 +3,7 @@
 #include "Level_Loading.h"
 
 #include "AnimationEffectCueDocument.h"
+#include "ActorCatalog.h"
 #include "CharacterCatalog.h"
 #include "CharacterSelectionState.h"
 #include "CharacterSpec.h"
@@ -18,6 +19,15 @@
 
 #include <algorithm>
 #include <fstream>
+
+namespace
+{
+	constexpr size_t VALTAN_PATTERN_EFFECT_CUE_COUNT = 98u;
+	constexpr size_t VALTAN_COMBAT_OBJECT_EFFECT_TARGET_COUNT = 2u;
+	constexpr size_t VALTAN_PRODUCT_EFFECT_TARGET_COUNT =
+		VALTAN_PATTERN_EFFECT_CUE_COUNT +
+		VALTAN_COMBAT_OBJECT_EFFECT_TARGET_COUNT;
+}
 
 CLevel_Loading::CLevel_Loading(
 	ComPtr<ID3D11Device> pDevice,
@@ -291,17 +301,35 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		{
 			VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 			if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
-					CueDocument, Status))
+					CueDocument, Status) ||
+				CueDocument.Cues.size() != VALTAN_PATTERN_EFFECT_CUE_COUNT)
 			{
 				return IsolateFailure(Status);
 			}
+			const BOSS_ACTOR_ENTRY* pBossActor = CActorCatalog::Find_Boss(
+				CueDocument.strOwnerArchetypeId);
+			if (nullptr == pBossActor ||
+				pBossActor->combatObjectVisuals.size() !=
+					VALTAN_COMBAT_OBJECT_EFFECT_TARGET_COUNT)
+			{
+				return IsolateFailure(nullptr == pBossActor ?
+					CActorCatalog::Get_Status() :
+					"Valtan BossCatalog must declare exactly two combat-object visuals.");
+			}
 			std::vector<std::string> EffectAssetIds;
-			EffectAssetIds.reserve(CueDocument.Cues.size());
+			EffectAssetIds.reserve(CueDocument.Cues.size() +
+				pBossActor->combatObjectVisuals.size());
 			for (const VALTAN_PATTERN_EFFECT_CUE& Cue : CueDocument.Cues)
 				EffectAssetIds.push_back(Cue.strEffectAssetId);
+			for (const BOSS_COMBAT_OBJECT_VISUAL_ENTRY& Visual :
+				pBossActor->combatObjectVisuals)
+			{
+				EffectAssetIds.push_back(Visual.effectAssetId);
+			}
 			std::vector<std::string> BossEffectAssetIds;
 			if (!CEffectPresentationService::Queue_ProductTargets_Priority(
-					EffectAssetIds, BossEffectAssetIds, Status))
+					EffectAssetIds, BossEffectAssetIds, Status) ||
+				BossEffectAssetIds.size() != VALTAN_PRODUCT_EFFECT_TARGET_COUNT)
 			{
 				return IsolateFailure(Status);
 			}

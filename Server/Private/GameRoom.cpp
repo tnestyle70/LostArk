@@ -126,6 +126,24 @@ namespace
 		(std::numeric_limits<std::uint32_t>::max)(), 90u));
 	static_assert(1u == Add_ServerTicksSkippingReservedZero(
 		(std::numeric_limits<std::uint32_t>::max)() - 89u, 90u));
+	static_assert(static_cast<std::uint32_t>(
+		SERVER_BOSS_COMBAT_FLAG::INVULNERABLE) ==
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::INVULNERABLE));
+	static_assert(static_cast<std::uint32_t>(
+		SERVER_BOSS_COMBAT_FLAG::SHIELDED) ==
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::SHIELDED));
+	static_assert(static_cast<std::uint32_t>(
+		SERVER_BOSS_COMBAT_FLAG::COUNTERABLE) ==
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::COUNTERABLE));
+	static_assert(static_cast<std::uint32_t>(
+		SERVER_BOSS_COMBAT_FLAG::GROGGY) ==
+		static_cast<std::uint16_t>(BOSS_COMBAT_STATE_FLAG::GROGGY));
+	static_assert(
+		(static_cast<std::uint32_t>(SERVER_BOSS_COMBAT_FLAG::INVULNERABLE) |
+		 static_cast<std::uint32_t>(SERVER_BOSS_COMBAT_FLAG::SHIELDED) |
+		 static_cast<std::uint32_t>(SERVER_BOSS_COMBAT_FLAG::COUNTERABLE) |
+		 static_cast<std::uint32_t>(SERVER_BOSS_COMBAT_FLAG::GROGGY)) ==
+		BOSS_COMBAT_STATE_KNOWN_FLAG_MASK);
 
 	bool Has_ReachedServerTick(
 		const std::uint32_t currentTick,
@@ -717,11 +735,15 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	}
 
 	m_TickDamageEvents.clear();
+	m_TickBossCombatEvents.clear();
 	Refresh_PlayerBlockingBodies();
 	Update_Players(fixedDeltaSeconds);
 	const std::uint32_t updateTick =
 		(std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ?
 		1u : m_iServerTick + 1u;
+	m_CombatObjectRuntime.Update(
+		m_Players, m_WorldEntities, m_GameplayCatalog,
+		fixedDeltaSeconds, updateTick, m_TickDamageEvents);
 	std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
 	bool evaluatePlayerTriggers = true;
 #ifdef _DEBUG
@@ -806,6 +828,13 @@ void LostArk::Server::CGameRoom::Tick(const float fixedDeltaSeconds)
 	}
 	(void)Commit_DueEncounterProps(updateTick);
 	if (!Commit_DueWorldDestruction(updateTick))
+	{
+		m_isReady = false;
+		recordTickDuration();
+		return;
+	}
+	Drain_BossCombatEvents();
+	if (!Broadcast_CombatObjectLifecycle())
 	{
 		m_isReady = false;
 		recordTickDuration();
@@ -1064,6 +1093,18 @@ bool LostArk::Server::CGameRoom::Join(
 			return false;
 		}
 	}
+	std::vector<S2C_COMBAT_OBJECT_SPAWNED> liveCombatObjects;
+	m_CombatObjectRuntime.Build_LiveSpawnMessages(
+		0u == m_iServerTick ? 1u : m_iServerTick, liveCombatObjects);
+	for (const S2C_COMBAT_OBJECT_SPAWNED& combatObject : liveCombatObjects)
+	{
+		if (!Send_CombatObjectSpawned(session, combatObject))
+		{
+			Rollback_Join(sessionId);
+			session->Request_Close();
+			return false;
+		}
+	}
 	for (const auto& [existingPlayerId, existingPlayer] : m_Players)
 	{
 		(void)existingPlayerId;
@@ -1123,6 +1164,7 @@ void LostArk::Server::CGameRoom::Leave(
 	}
 
 	const NET_ENTITY_ID netEntityId = playerIter->second.iNetEntityId;
+	m_CombatObjectRuntime.Cancel_Source(netEntityId);
 	m_ServerTriggerSystem.Remove_Player(playerId);
 	if (const std::shared_ptr<CClientSession> session = Find_Session(sessionId))
 		session->Bind_PlayerId(INVALID_PLAYER_ID);
@@ -1428,6 +1470,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.iAppliedHitMask = 0;
 	player.iSpawnedProjectileMask = 0;
 	player.Projectiles.clear();
+	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
 	player.iComboStage = 0u;
 	player.hasBufferedComboInput = false;
 	player.PendingCommand.Clear();
@@ -1673,6 +1716,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.CooldownEndTickBySkillId.clear();
 	staged.isCombatReady = true;
 
+	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
 	player = std::move(staged);
 	m_ServerTriggerSystem.Remove_Player(player.iPlayerId);
 	return CHARACTER_CLASS_CHANGE_RESULT::ACCEPTED;
@@ -2155,6 +2199,12 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 	m_ServerCollisionSystem.Reset_RuntimeStates();
 	m_ServerNavigation.Reset_RuntimeBlockers();
 	m_iNextWorldDestructionEventSequence = 1u;
+	m_iNextBossCombatEventSequence = 1u;
+	m_TickBossCombatEvents.clear();
+	/* All preflight work above succeeded. Combat objects belong to the same
+	encounter epoch, so reset them only at this commit edge and keep reliable
+	despawns for the players who are still observing the audition. */
+	m_CombatObjectRuntime.Reset();
 	m_iValtanAuditionArmedHealthBar = 0u;
 #ifdef _DEBUG
 	m_ValtanOrderedAudition = {};
@@ -3073,6 +3123,9 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 				WALL_ATTACK_CENTER_Z + WALL_ATTACK_BOSS_OFFSET_Z;
 			boss->fYawDegrees = 0.f;
 			boss->MovePath.clear();
+			/* A single-pattern audition replays the pattern it names, not the
+			entrance, so the intro is spent before the request is queued. */
+			boss->bIntroPatternConsumed = true;
 			boss->PendingPatternIds.push_back(auditionPatternId);
 
 			player = m_Players.find(playerId->second);
@@ -3326,6 +3379,17 @@ bool LostArk::Server::CGameRoom::Send_WorldEntityDespawned(
 			PACKET_TYPE::S2C_WORLD_ENTITY_DESPAWNED, writer.Get_Buffer());
 }
 
+bool LostArk::Server::CGameRoom::Send_CombatObjectSpawned(
+	const std::shared_ptr<CClientSession>& session,
+	const LostArk::Shared::S2C_COMBAT_OBJECT_SPAWNED& spawned)
+{
+	using namespace LostArk::Shared;
+	CPacketWriter writer;
+	return nullptr != session && Write_Message(writer, spawned) &&
+		session->Send_Frame(
+			PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED, writer.Get_Buffer());
+}
+
 bool LostArk::Server::CGameRoom::Send_Despawned(
 	const std::shared_ptr<CClientSession>& session,
 	const LostArk::Shared::NET_ENTITY_ID netEntityId,
@@ -3507,6 +3571,47 @@ void LostArk::Server::CGameRoom::Broadcast_WorldEntityDespawned(
 	}
 }
 
+bool LostArk::Server::CGameRoom::Broadcast_CombatObjectLifecycle()
+{
+	using namespace LostArk::Shared;
+	std::vector<S2C_COMBAT_OBJECT_SPAWNED> spawned;
+	std::vector<S2C_COMBAT_OBJECT_DESPAWNED> despawned;
+	m_CombatObjectRuntime.Drain_Lifecycle(spawned, despawned);
+	for (const S2C_COMBAT_OBJECT_SPAWNED& message : spawned)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+			return false;
+		for (const auto& [sessionId, playerId] : m_PlayerIdBySessionId)
+		{
+			(void)playerId;
+			const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+			if (nullptr != session && !session->Send_Frame(
+				PACKET_TYPE::S2C_COMBAT_OBJECT_SPAWNED, writer.Get_Buffer()))
+			{
+				session->Request_Close();
+			}
+		}
+	}
+	for (const S2C_COMBAT_OBJECT_DESPAWNED& message : despawned)
+	{
+		CPacketWriter writer;
+		if (!Write_Message(writer, message))
+			return false;
+		for (const auto& [sessionId, playerId] : m_PlayerIdBySessionId)
+		{
+			(void)playerId;
+			const std::shared_ptr<CClientSession> session = Find_Session(sessionId);
+			if (nullptr != session && !session->Send_Frame(
+				PACKET_TYPE::S2C_COMBAT_OBJECT_DESPAWNED, writer.Get_Buffer()))
+			{
+				session->Request_Close();
+			}
+		}
+	}
+	return true;
+}
+
 bool LostArk::Server::CGameRoom::Broadcast_WorldDestructionDelta(
 	const std::vector<WORLD_DESTRUCTION_STATE_TRANSITION>& transitions,
 	const std::vector<LostArk::Shared::WORLD_DESTRUCTION_EVENT_WIRE>& liveEvents,
@@ -3644,9 +3749,34 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 					1u << plate.iPlateIndex);
 			}
 		}
+		if (WORLD_BOOTSTRAP_KIND::BOSS == entity.eKind)
+		{
+			snapshot.hasBossCombatState = true;
+			snapshot.BossCombat.iStateRevision =
+				entity.BossCombat.iStateRevision;
+			snapshot.BossCombat.iAlivePartMask =
+				entity.BossCombat.iAlivePartMask;
+			snapshot.BossCombat.iFlags = static_cast<std::uint16_t>(
+				entity.BossCombat.iFlags) &
+				BOSS_COMBAT_STATE_KNOWN_FLAG_MASK;
+			snapshot.BossCombat.iCurrentStagger =
+				entity.BossCombat.iStaggerCurrent;
+			snapshot.BossCombat.iMaximumStagger =
+				entity.BossCombat.iStaggerMaximum;
+			snapshot.BossCombat.iCurrentShield =
+				entity.BossCombat.iShieldCurrent;
+			snapshot.BossCombat.iMaximumShield =
+				entity.BossCombat.iShieldMaximum;
+			/* The existing gameplay phase remains the one authority. The boss
+			payload mirrors it rather than introducing a second phase clock. */
+			snapshot.BossCombat.iGameplayPhase = entity.iPhase;
+		}
 		message.Entities.push_back(std::move(snapshot));
 	}
 	message.DamageEvents = m_TickDamageEvents;
+	message.BossCombatEvents = m_TickBossCombatEvents;
+	if (!m_CombatObjectRuntime.Build_Snapshots(message.CombatObjects))
+		return;
 
 	const auto encodeStart = std::chrono::steady_clock::now();
 	CPacketWriter writer;
@@ -3818,10 +3948,23 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 			m_strStatus = "Boss gameplay profile or damage profile is missing";
 			return false;
 		}
+		const std::vector<BOSS_PART_DEFINITION>* bossParts =
+			m_GameplayCatalog.Find_BossParts(staged.strArchetypeId);
+		const std::vector<BOSS_PART_DEFINITION> noBossParts;
+		std::string combatStatus;
+		if (!CBossCombatRuntime::Initialize(
+			staged.BossCombat,
+			nullptr == bossParts ? noBossParts : *bossParts,
+			combatStatus))
+		{
+			m_strStatus = std::move(combatStatus);
+			return false;
+		}
 		staged.iCurrentHp = profile->iMaximumHp;
 		staged.iMaximumHp = profile->iMaximumHp;
 		staged.iMaximumHealthBars = profile->iMaximumHealthBars;
 		staged.iLastEvaluatedHealthBar = profile->iMaximumHealthBars;
+		staged.iAttackPower = profile->iAttackPower;
 		staged.fCollisionRadius = profile->fCollisionRadius;
 		staged.fEngageDistance = profile->fEngageDistance;
 		staged.fMoveSpeed = profile->fMoveSpeed;
@@ -3914,7 +4057,11 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 		m_isReady = false;
 		return false;
 	}
+	m_CombatObjectRuntime.Reset();
+	m_CombatObjectRuntime.Discard_PendingLifecycle();
 	m_TickDamageEvents.clear();
+	m_TickBossCombatEvents.clear();
+	m_iNextBossCombatEventSequence = 1u;
 	m_strStatus = "Replayable arena reset after the room became empty";
 	return true;
 }
@@ -3954,12 +4101,14 @@ bool LostArk::Server::CGameRoom::Reset_ValtanArenaWhenEmpty()
 	m_ServerCollisionSystem.Reset_RuntimeStates();
 	m_ServerNavigation.Reset_RuntimeBlockers();
 	m_iNextWorldDestructionEventSequence = 1u;
+	m_iNextBossCombatEventSequence = 1u;
 	if (!Initialize_WorldEntities())
 	{
 		m_isReady = false;
 		return false;
 	}
 	m_TickDamageEvents.clear();
+	m_TickBossCombatEvents.clear();
 	/* The encounter is fresh, so a bar armed by the previous occupants no
 	longer describes any live boss. Leave already dropped their sequences. */
 	m_iValtanAuditionArmedHealthBar = 0u;
@@ -4012,6 +4161,261 @@ bool LostArk::Server::CGameRoom::Apply_EncounterPropStageEntry(
 	}
 	Broadcast_EncounterPropSync();
 	return true;
+}
+
+bool LostArk::Server::CGameRoom::Apply_BossPatternStageActions(
+	SERVER_WORLD_ENTITY& boss,
+	const std::string& patternId,
+	const std::string& actionId,
+	const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+	const std::uint32_t serverTick)
+{
+	SERVER_BOSS_COMBAT_STATE stagedCombat = boss.BossCombat;
+	SERVER_COMBAT_OBJECT_TRANSACTION transaction =
+		m_CombatObjectRuntime.Begin_Transaction();
+	if (!Stage_BossPatternStageActions(
+		boss, patternId, actionId, trigger, serverTick,
+		stagedCombat, transaction))
+	{
+		return false;
+	}
+	if (!m_CombatObjectRuntime.Commit(std::move(transaction)))
+	{
+		m_strStatus = "Boss stage combat object transaction changed";
+		return false;
+	}
+	boss.BossCombat = std::move(stagedCombat);
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Apply_BossPatternStageTransition(
+	SERVER_WORLD_ENTITY& boss,
+	const std::string& previousPatternId,
+	const std::string& previousActionId,
+	const std::string& nextPatternId,
+	const std::string& nextActionId,
+	const std::uint32_t serverTick)
+{
+	SERVER_BOSS_COMBAT_STATE stagedCombat = boss.BossCombat;
+	SERVER_COMBAT_OBJECT_TRANSACTION transaction =
+		m_CombatObjectRuntime.Begin_Transaction();
+	if (!Stage_BossPatternStageActions(
+		boss, previousPatternId, previousActionId,
+		BOSS_PATTERN_STAGE_ACTION_TRIGGER::EXIT, serverTick,
+		stagedCombat, transaction) ||
+		!Stage_BossPatternStageActions(
+			boss, nextPatternId, nextActionId,
+			BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, serverTick,
+			stagedCombat, transaction))
+	{
+		return false;
+	}
+	if (!m_CombatObjectRuntime.Commit(std::move(transaction)))
+	{
+		m_strStatus = "Boss stage transition combat object transaction changed";
+		return false;
+	}
+	boss.BossCombat = std::move(stagedCombat);
+	return true;
+}
+
+bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
+	const SERVER_WORLD_ENTITY& boss,
+	const std::string& patternId,
+	const std::string& actionId,
+	const BOSS_PATTERN_STAGE_ACTION_TRIGGER trigger,
+	const std::uint32_t serverTick,
+	SERVER_BOSS_COMBAT_STATE& stagedCombat,
+	SERVER_COMBAT_OBJECT_TRANSACTION& combatObjectTransaction)
+{
+	if (patternId.empty() || actionId.empty())
+		return true;
+	const auto* patterns =
+		m_GameplayCatalog.Find_BossPatterns(boss.strEncounterId);
+	if (nullptr == patterns)
+	{
+		m_strStatus = "Boss stage action encounter is missing";
+		return false;
+	}
+	const auto pattern = std::find_if(patterns->begin(), patterns->end(),
+		[&patternId](const BOSS_PATTERN_DEFINITION& candidate)
+		{
+			return candidate.strPatternId == patternId;
+		});
+	if (patterns->end() == pattern)
+	{
+		m_strStatus = "Boss stage action pattern is missing: " + patternId;
+		return false;
+	}
+	const auto stage = std::find_if(
+		pattern->Stages.begin(), pattern->Stages.end(),
+		[&actionId](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+		{
+			return candidate.strActionId == actionId;
+		});
+	if (pattern->Stages.end() == stage)
+	{
+		m_strStatus = "Boss stage action owner is missing: " + actionId;
+		return false;
+	}
+	for (const BOSS_PATTERN_STAGE_ACTION& action : stage->Actions)
+	{
+		if (action.eTrigger != trigger)
+			continue;
+		if (0u != action.iDurationMs)
+		{
+			m_strStatus = "Unsupported boss stage action: " + action.strTargetId;
+			return false;
+		}
+		switch (action.eKind)
+		{
+		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_BOSS_FLAG:
+		{
+			if (action.iValue > 1u)
+			{
+				m_strStatus = "Boss flag stage action value is invalid: " +
+					action.strTargetId;
+				return false;
+			}
+			SERVER_BOSS_COMBAT_FLAG flag{};
+			if ("boss.flag.groggy" == action.strTargetId)
+				flag = SERVER_BOSS_COMBAT_FLAG::GROGGY;
+			else if ("boss.flag.invulnerable" == action.strTargetId)
+				flag = SERVER_BOSS_COMBAT_FLAG::INVULNERABLE;
+			else if ("boss.flag.counterable" == action.strTargetId)
+				flag = SERVER_BOSS_COMBAT_FLAG::COUNTERABLE;
+			else
+			{
+				m_strStatus = "Unknown boss flag stage action: " +
+					action.strTargetId;
+				return false;
+			}
+			(void)CBossCombatRuntime::Set_Flag(
+				stagedCombat, flag, 0u != action.iValue);
+			break;
+		}
+		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_STAGGER_GAUGE:
+			if ("boss.gauge.stagger" != action.strTargetId)
+			{
+				m_strStatus = "Unknown boss stagger gauge target: " +
+					action.strTargetId;
+				return false;
+			}
+			(void)CBossCombatRuntime::Set_StaggerGauge(
+				stagedCombat, action.iValue);
+			break;
+		case BOSS_PATTERN_STAGE_ACTION_KIND::SET_SHIELD:
+			if ("boss.gauge.shield" != action.strTargetId)
+			{
+				m_strStatus = "Unknown boss shield gauge target: " +
+					action.strTargetId;
+				return false;
+			}
+			(void)CBossCombatRuntime::Set_Shield(
+				stagedCombat, action.iValue);
+			break;
+		case BOSS_PATTERN_STAGE_ACTION_KIND::SPAWN_COMBAT_OBJECT:
+		{
+			const BOSS_COMBAT_OBJECT_DEFINITION* definition =
+				m_GameplayCatalog.Find_BossCombatObject(action.strTargetId);
+			if (nullptr == definition ||
+				definition->strEncounterId != boss.strEncounterId ||
+				definition->strOwnerPatternId != patternId ||
+				definition->strOwnerStageActionId != actionId)
+			{
+				m_strStatus = "Boss combat object owner is invalid: " +
+					action.strTargetId;
+				return false;
+			}
+			SERVER_COMBAT_OBJECT_LOCKED_TARGET lockedTarget{};
+			const SERVER_COMBAT_OBJECT_LOCKED_TARGET* resolvedLockedTarget =
+				nullptr;
+			if (BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_UNTIL_FIRST_PULSE ==
+				definition->eOriginPolicy)
+			{
+				for (const auto& [playerId, player] : m_Players)
+				{
+					(void)playerId;
+					if (player.iNetEntityId == boss.iPatternTargetEntityId)
+					{
+						if (0u != player.iCurrentHp && player.isCombatReady &&
+							LostArk::Shared::PLAYER_ACTION_STATE::DEAD !=
+								player.eAction &&
+							LostArk::Shared::PLAYER_ACTION_STATE::FALLING !=
+								player.eAction)
+						{
+							lockedTarget.iNetEntityId = player.iNetEntityId;
+							lockedTarget.fPositionX = player.fPositionX;
+							lockedTarget.fPositionY = player.fPositionY;
+							lockedTarget.fPositionZ = player.fPositionZ;
+							resolvedLockedTarget = &lockedTarget;
+						}
+						break;
+					}
+				}
+				if (nullptr == resolvedLockedTarget &&
+					boss.bHasPatternTargetLastPosition &&
+					LostArk::Shared::INVALID_NET_ENTITY_ID !=
+						boss.iPatternTargetEntityId)
+				{
+					lockedTarget.iNetEntityId = boss.iPatternTargetEntityId;
+					lockedTarget.fPositionX =
+						boss.fPatternTargetLastPositionX;
+					lockedTarget.fPositionY =
+						boss.fPatternTargetLastPositionY;
+					lockedTarget.fPositionZ =
+						boss.fPatternTargetLastPositionZ;
+					resolvedLockedTarget = &lockedTarget;
+				}
+				/* A pattern that never acquired a valid target still enters without
+				creating an object. A vanished locked target uses the cached pose. */
+				if (nullptr == resolvedLockedTarget)
+				{
+					break;
+				}
+			}
+			if (!m_CombatObjectRuntime.Stage_BossCombatObject(
+				combatObjectTransaction, boss, resolvedLockedTarget, *definition,
+				m_GameplayCatalog, action.iValue, serverTick, m_strStatus))
+			{
+				return false;
+			}
+			break;
+		}
+		default:
+			m_strStatus = "Unsupported boss stage action kind";
+			return false;
+		}
+	}
+	return true;
+}
+
+void LostArk::Server::CGameRoom::Drain_BossCombatEvents()
+{
+	using namespace LostArk::Shared;
+	for (SERVER_WORLD_ENTITY& boss : m_WorldEntities)
+	{
+		if (WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind)
+			continue;
+		auto& pending = boss.BossCombat.PendingPartBreakEdges;
+		while (!pending.empty() &&
+			m_TickBossCombatEvents.size() < MAX_BOSS_COMBAT_EVENTS)
+		{
+			const SERVER_BOSS_PART_BREAK_EDGE edge = pending.front();
+			BOSS_COMBAT_EVENT event{};
+			event.iEventSequence = m_iNextBossCombatEventSequence;
+			event.iEventTick = edge.iServerTick;
+			event.iBossNetEntityId = boss.iNetEntityId;
+			event.eKind = BOSS_COMBAT_EVENT_KIND::PART_BROKEN;
+			event.iPartMask = edge.iPartMask;
+			m_TickBossCombatEvents.push_back(event);
+			pending.erase(pending.begin());
+			m_iNextBossCombatEventSequence =
+				(std::numeric_limits<std::uint64_t>::max)() ==
+					m_iNextBossCombatEventSequence ?
+				1u : m_iNextBossCombatEventSequence + 1u;
+		}
+	}
 }
 
 bool LostArk::Server::CGameRoom::Commit_DueEncounterProps(
@@ -4276,6 +4680,12 @@ bool LostArk::Server::CGameRoom::Apply_WorldDestructionImpact(
 		m_iNextWorldDestructionEventSequence =
 			(std::numeric_limits<std::uint64_t>::max)() == lastSequence ?
 			0u : lastSequence + 1u;
+	}
+	if (!CBossCombatRuntime::Publish_PatternOutcome(
+		boss, BOSS_PATTERN_STAGE_OUTCOME::WALL_CONTACT, serverTick))
+	{
+		m_strStatus = "Valtan impact could not publish WALL_CONTACT";
+		return false;
 	}
 	outTriggered = true;
 	return true;
@@ -4694,6 +5104,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 	player.iAppliedHitMask = 0;
 	player.iSpawnedProjectileMask = 0;
 	player.Projectiles.clear();
+	m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
 	player.iComboStage = 0u;
 	player.hasBufferedComboInput = false;
 	player.PendingCommand.Clear();
@@ -4730,6 +5141,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 			VALTAN_ORDERED_AUDITION_PHASE::INACTIVE !=
 				m_ValtanOrderedAudition.ePhase)
 		{
+			m_CombatObjectRuntime.Cancel_Source(player.iNetEntityId);
 			Freeze_OrderedAuditionPlayer(player);
 			continue;
 		}
@@ -5011,6 +5423,19 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				previousPatternId != entity.strPatternId ||
 				previousStageId != entity.strPatternStageId ||
 				previousActionId != entity.strActionId;
+			const bool stageIdentityChanged =
+				previousPatternSequence != entity.iPatternSequence ||
+				previousStageIndex != entity.iPatternStageIndex ||
+				previousPatternId != entity.strPatternId ||
+				previousActionId != entity.strActionId;
+			if (stageIdentityChanged &&
+				!Apply_BossPatternStageTransition(
+					entity, previousPatternId, previousActionId,
+					entity.strPatternId, entity.strActionId, updateTick))
+			{
+				m_isReady = false;
+				return;
+			}
 			if (stageChanged)
 				(void)Apply_EncounterPropStageEntry(entity, updateTick);
 			if (stageChanged && !Apply_WorldDestructionStageEntry(
@@ -5038,7 +5463,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			}
 			float proposedX = 0.f;
 			float proposedZ = 0.f;
-			if (m_ValtanBrain.Try_BuildImpactMotion(
+			if (m_ValtanBrain.Try_BuildStageMotion(
 				entity, fixedDeltaSeconds, proposedX, proposedZ))
 			{
 				SERVER_BOSS_RECEIVER_HIT hit{};
@@ -5075,6 +5500,10 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 							"Valtan impact stage transition failed";
 						m_isReady = false;
 						return;
+						/* The impact publishes WALL_CONTACT. The Brain consumes it on
+						the next fixed tick through the authored actionId branch, so
+						GameRoom never chooses GROGGY itself. */
+						entity.fPatternForcedMotionSpeed = 0.f;
 					}
 				}
 				else
