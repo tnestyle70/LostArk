@@ -19142,6 +19142,617 @@ namespace
 		CEffectDocumentRenderer::Clear_Prepared_Catalog();
 	}
 
+	void Test_ArtistDBlackTigerStrokeRuntimeMaterial(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr uint32_t BLACK_TIGER_OPCODE = 18u;
+		constexpr std::array<std::string_view, 12u> BLACK_TIGER_IDS = {{
+			"authored.source-particle.763aea38ab1100ba9072dbfb",
+			"authored.source-particle.e6c3ffec9fbc27024e2ce78c",
+			"authored.source-particle.91392dd3a1710c9d411bfff6",
+			"authored.source-particle.382ed3229ddf083cfd22ee11",
+			"authored.source-particle.4f0381d175d441978f26ebfc",
+			"authored.source-particle.31fa700c084ab0b11447f7c7",
+			"authored.source-particle.5571970d95f97aecb889fed7",
+			"authored.source-particle.87c8abd0423fcb7e9a725659",
+			"authored.source-particle.ac2d4d3e467dc4442cba60c3",
+			"authored.source-particle.01c398219f73706b66509e77",
+			"authored.source-particle.93420edbc5815b8a01b38ef4",
+			"authored.source-particle.76d0b67fe194395ce21c51ab",
+		}};
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path ResourceRoot =
+			CProjectDataRoot::Get().parent_path() / L"Client" / L"Bin" /
+				L"Resources";
+		std::error_code ResourceError;
+		const bool_t bResourceRootReady =
+			std::filesystem::is_directory(ResourceRoot, ResourceError) &&
+			!ResourceError && ResourceRootEnvironment.Set(ResourceRoot.c_str());
+		runner.Require(bResourceRootReady,
+			"Artist D Tiger Focused Harness Resolves The Production Resource Root");
+		if (!bResourceRootReady)
+			return;
+
+		const std::filesystem::path DocumentPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.artist.skill.31490.unified.effect.json");
+		EFFECT_DOCUMENT_DESC ProductDocument;
+		std::string Status;
+		const bool_t bLoaded = !DocumentPath.empty() &&
+			CEffectDocumentCodec::Load(DocumentPath, ProductDocument, Status);
+		runner.Require(bLoaded,
+			"Artist D 31490 Product Document Loads With The Twelve Tiger Rows Joined");
+		if (!bLoaded)
+		{
+			std::cout << "[ARTIST-D-TIGER] load status=" << Status << '\n';
+			return;
+		}
+
+		const auto IsTigerId = [&BLACK_TIGER_IDS](
+			const std::string_view strElementId)
+		{
+			return std::ranges::find(BLACK_TIGER_IDS, strElementId) !=
+				BLACK_TIGER_IDS.end();
+		};
+		EFFECT_DOCUMENT_DESC TigerDocument = ProductDocument;
+		TigerDocument.ModelCues.clear();
+		std::erase_if(TigerDocument.Elements,
+			[&IsTigerId](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return !IsTigerId(Element.strElementId);
+			});
+		size_t iChild5Count = 0u;
+		size_t iChild6Count = 0u;
+		bool_t bExactPackets = TigerDocument.Elements.size() ==
+			BLACK_TIGER_IDS.size();
+		for (size_t i = 0u; i < TigerDocument.Elements.size(); ++i)
+		{
+			const EFFECT_ELEMENT_DESC& Element = TigerDocument.Elements[i];
+			const EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+				Element.Material.Execution;
+			const bool_t bChild5 = Element.Material.strSourceMaterialPath ==
+				"fx_m_mi_l_00.fx_mi.fx_l_pa_spritewave_01_5_ad";
+			const bool_t bChild6 = Element.Material.strSourceMaterialPath ==
+				"fx_m_mi_l_00.fx_mi.fx_l_pa_spritewave_01_6_ad";
+			iChild5Count += bChild5 ? 1u : 0u;
+			iChild6Count += bChild6 ? 1u : 0u;
+			bExactPackets = bExactPackets &&
+				Element.strElementId == BLACK_TIGER_IDS[i] && Element.bVisible &&
+				Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				Element.SourceRecipe.bEnabled &&
+				Element.SourceRecipe.strRendererShape == "sprite" &&
+				Element.Material.strTemplateId == "effect.standard" &&
+				!Element.Material.SourceMaterial.bEnabled &&
+				Execution.bEnabled &&
+				Execution.eBackend ==
+					EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Execution.iOpcode == BLACK_TIGER_OPCODE &&
+				Execution.iPassIndex == 2u &&
+				Execution.strBlendState == "BS_EffectAdditive" &&
+				Execution.iTextureLaneCount == 3u &&
+				Execution.iTextureMask == 0x07u &&
+				Execution.TextureLanes.size() == 3u &&
+				Execution.TextureLanes[0u].strSourceChannel == "RGB" &&
+				Execution.TextureLanes[0u].eColorSpace ==
+					EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+				Execution.TextureLanes[1u].strSourceChannel == "RG" &&
+				Execution.TextureLanes[1u].eColorSpace ==
+					EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+				Execution.TextureLanes[2u].strSourceChannel == "R" &&
+				Execution.TextureLanes[2u].eColorSpace ==
+					EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+				((bChild5 && Execution.iScalarCount == 28u) ||
+				 (bChild6 && Execution.iScalarCount == 24u));
+		}
+		runner.Require(bExactPackets && iChild5Count == 4u && iChild6Count == 8u,
+			"Artist D Tiger Keeps Its Exact Ordered Twelve-Row Four-Child5 Eight-Child6 Typed Packet Split");
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		Status.clear();
+		const bool_t bWorkingDirectoryReady = WorkingDirectory.Initialize(
+			Resolve_ClientWorkingDirectory(), Status);
+		runner.Require(bWorkingDirectoryReady,
+			"Artist D Tiger Focused Harness Uses The Canonical Client Working Directory");
+		if (!bWorkingDirectoryReady)
+			return;
+
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		Status.clear();
+		const bool_t bEngineReady = EngineScope.Initialize(Status);
+		runner.Require(bEngineReady,
+			"Artist D Tiger Focused Harness Initializes Microsoft WARP");
+		if (!bEngineReady)
+		{
+			std::cout << "[ARTIST-D-TIGER] WARP status=" << Status << '\n';
+			return;
+		}
+		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		CEffectDocumentRenderer Renderer(Device, Context);
+		const bool_t bRendererInitialized = SUCCEEDED(Renderer.Initialize());
+		runner.Require(bRendererInitialized,
+			"Artist D Tiger Focused Harness Initializes The Production Effect Renderer");
+		if (!bRendererInitialized)
+			return;
+
+		const auto Stages = [&Renderer](
+			const EFFECT_DOCUMENT_DESC& Document, std::string& strOutStatus)
+		{
+			return Renderer.Stage_Document(Document, strOutStatus);
+		};
+		Status.clear();
+		const bool_t bPositiveStage = Stages(TigerDocument, Status);
+		runner.Require(bPositiveStage,
+			"Artist D Tiger Exact Twelve-Row RuntimeMaterialV2 Document Stages Transactionally");
+		if (!bPositiveStage)
+			std::cout << "[ARTIST-D-TIGER] positive stage=" << Status << '\n';
+
+		EFFECT_DOCUMENT_DESC EscapedOpcode = TigerDocument;
+		EscapedOpcode.Elements.assign(1u, TigerDocument.Elements.front());
+		EscapedOpcode.Elements.front().strElementId =
+			"harness.artist-d-tiger.non-allowlisted-opcode18";
+		Status.clear();
+		const bool_t bEscapedOpcodeRejected = !Stages(EscapedOpcode, Status) &&
+			Status.find("escaped its exact occurrence allowlist") != std::string::npos;
+		runner.Require(bEscapedOpcodeRejected,
+			"Artist D Tiger Opcode 18 Fails Closed Outside Its Exact Twelve Occurrence Allowlist");
+
+		EFFECT_DOCUMENT_DESC ChannelMutation = TigerDocument;
+		ChannelMutation.Elements.assign(1u, TigerDocument.Elements.front());
+		ChannelMutation.Elements.front().Material.Execution.TextureLanes[0u].
+			strSourceChannel = "R";
+		Status.clear();
+		const bool_t bChannelMutationRejected = !Stages(ChannelMutation, Status) &&
+			Status.find("exact typed contract changed") != std::string::npos;
+		runner.Require(bChannelMutationRejected,
+			"Artist D Tiger Main RGB-Radiance And Main-R-Coverage Contract Rejects A Channel Mutation");
+
+		struct COLOR_CAPTURE final
+		{
+			uint64_t iRgbPixelCount = 0u;
+			uint64_t iRgbSum = 0u;
+			uint64_t iBoundingArea = 0u;
+			uint64_t iSignature = 1469598103934665603ull;
+		};
+		const auto CaptureColor = [&Device, &Context](
+			COLOR_CAPTURE& Out, std::string& strOutError)
+		{
+			Out = {};
+			ComPtr<ID3D11RenderTargetView> TargetView;
+			Context->OMGetRenderTargets(1u, TargetView.GetAddressOf(), nullptr);
+			ComPtr<ID3D11Resource> TargetResource;
+			ComPtr<ID3D11Texture2D> TargetTexture;
+			if (!TargetView)
+			{
+				strOutError = "Artist D tiger color target is not bound.";
+				return false;
+			}
+			TargetView->GetResource(TargetResource.GetAddressOf());
+			if (!TargetResource || FAILED(TargetResource.As(&TargetTexture)) ||
+				!TargetTexture)
+			{
+				strOutError = "Artist D tiger color target is not a texture.";
+				return false;
+			}
+			D3D11_TEXTURE2D_DESC TargetDesc{};
+			TargetTexture->GetDesc(&TargetDesc);
+			if (TargetDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+				TargetDesc.SampleDesc.Count != 1u)
+			{
+				strOutError = "Artist D tiger color target format is unexpected.";
+				return false;
+			}
+			D3D11_TEXTURE2D_DESC StagingDesc = TargetDesc;
+			StagingDesc.BindFlags = 0u;
+			StagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			StagingDesc.MiscFlags = 0u;
+			StagingDesc.Usage = D3D11_USAGE_STAGING;
+			ComPtr<ID3D11Texture2D> Staging;
+			if (FAILED(Device->CreateTexture2D(&StagingDesc, nullptr, &Staging)) ||
+				!Staging)
+			{
+				strOutError = "Artist D tiger staging texture creation failed.";
+				return false;
+			}
+			Context->CopyResource(Staging.Get(), TargetTexture.Get());
+			D3D11_MAPPED_SUBRESOURCE Mapped{};
+			if (FAILED(Context->Map(Staging.Get(), 0u, D3D11_MAP_READ, 0u,
+				&Mapped)))
+			{
+				strOutError = "Artist D tiger staging texture map failed.";
+				return false;
+			}
+			uint32_t iMinX = TargetDesc.Width;
+			uint32_t iMinY = TargetDesc.Height;
+			uint32_t iMaxX = 0u;
+			uint32_t iMaxY = 0u;
+			for (uint32_t y = 0u; y < TargetDesc.Height; ++y)
+			{
+				const uint8_t* pRow = static_cast<const uint8_t*>(Mapped.pData) +
+					static_cast<size_t>(y) * Mapped.RowPitch;
+				for (uint32_t x = 0u; x < TargetDesc.Width; ++x)
+				{
+					const uint8_t* pPixel = pRow + static_cast<size_t>(x) * 4u;
+					for (uint32_t iChannel = 0u; iChannel < 3u; ++iChannel)
+					{
+						Out.iSignature ^= pPixel[iChannel];
+						Out.iSignature *= 1099511628211ull;
+					}
+					if (0u == (pPixel[0u] | pPixel[1u] | pPixel[2u]))
+						continue;
+					++Out.iRgbPixelCount;
+					Out.iRgbSum += static_cast<uint64_t>(pPixel[0u]) +
+						pPixel[1u] + pPixel[2u];
+					iMinX = (std::min)(iMinX, x);
+					iMinY = (std::min)(iMinY, y);
+					iMaxX = (std::max)(iMaxX, x);
+					iMaxY = (std::max)(iMaxY, y);
+				}
+			}
+			Context->Unmap(Staging.Get(), 0u);
+			if (0u < Out.iRgbPixelCount)
+			{
+				Out.iBoundingArea =
+					static_cast<uint64_t>(iMaxX - iMinX + 1u) *
+					static_cast<uint64_t>(iMaxY - iMinY + 1u);
+			}
+			strOutError.clear();
+			return true;
+		};
+
+		struct RENDER_WITNESS final
+		{
+			bool_t bCommitted = false;
+			bool_t bSparseCoverage = false;
+			EFFECT_EVALUATED_FRAME Frame;
+			uint32_t iView = 0u;
+			COLOR_CAPTURE Color;
+		};
+		const auto RenderRow = [&](const std::string_view strElementId,
+			RENDER_WITNESS& Out)
+		{
+			Out = {};
+			const auto Source = std::ranges::find_if(TigerDocument.Elements,
+				[strElementId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == strElementId;
+				});
+			if (Source == TigerDocument.Elements.end())
+				return false;
+			EFFECT_DOCUMENT_DESC RowDocument = TigerDocument;
+			RowDocument.Elements.assign(1u, *Source);
+			CEffectPlayback Playback;
+			std::string Error;
+			if (!Playback.Stage_Document(RowDocument, Error) ||
+				!Renderer.Stage_Document(RowDocument, Error))
+			{
+				std::cout << "[ARTIST-D-TIGER] row stage id=" << strElementId <<
+					" status=" << Error << '\n';
+				return false;
+			}
+			float4x4_t Identity{};
+			XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+			constexpr std::array<f32_t, 5u> LIFE_TARGETS = {{
+				0.15f, 0.35f, 0.50f, 0.70f, 0.85f }};
+			std::array<EFFECT_EVALUATED_FRAME, LIFE_TARGETS.size()> Samples{};
+			std::array<f32_t, LIFE_TARGETS.size()> Distances{};
+			std::array<bool_t, LIFE_TARGETS.size()> Found{};
+			Distances.fill((std::numeric_limits<f32_t>::max)());
+			const f32_t fDuration = (std::min)(
+				Playback.Get_DurationSeconds(), 5.f);
+			const uint32_t iSampleCount = static_cast<uint32_t>(
+				std::ceil(fDuration * 120.f));
+			for (uint32_t iSample = 0u; iSample <= iSampleCount; ++iSample)
+			{
+				const f32_t fTime = (std::min)(fDuration,
+					static_cast<f32_t>(iSample) / 120.f);
+				Playback.Seek(fTime, Identity);
+				const auto Particle = std::ranges::find_if(
+					Playback.Get_Frame().Particles,
+					[strElementId](const EFFECT_EVALUATED_PARTICLE& Candidate)
+					{
+						return Candidate.pElement &&
+							Candidate.pElement->strElementId == strElementId;
+					});
+				if (Particle == Playback.Get_Frame().Particles.end())
+					continue;
+				for (size_t iTarget = 0u; iTarget < LIFE_TARGETS.size(); ++iTarget)
+				{
+					const f32_t fDistance = std::abs(
+						Particle->fNormalizedLife - LIFE_TARGETS[iTarget]);
+					if (fDistance < Distances[iTarget])
+					{
+						Distances[iTarget] = fDistance;
+						Samples[iTarget] = Playback.Get_Frame();
+						Found[iTarget] = true;
+					}
+				}
+			}
+
+			COLOR_CAPTURE BestRawColor;
+			uint64_t iBestRawSubmitted = 0u;
+			uint64_t iBestRawDrawCount = 0u;
+			uint32_t iBestRawPass = UINT32_MAX;
+			uint32_t iBestRawTextureMask = 0u;
+			f32_t fBestRawLife = 0.f;
+			float4_t vBestRawDynamic{};
+			float4_t vBestRawParticleColor{};
+			bool_t bRawRecorded = false;
+			for (size_t iSample = 0u; iSample < Samples.size(); ++iSample)
+			{
+				if (!Found[iSample])
+					continue;
+				const auto Particle = std::ranges::find_if(
+					Samples[iSample].Particles,
+					[strElementId](const EFFECT_EVALUATED_PARTICLE& Candidate)
+					{
+						return Candidate.pElement &&
+							Candidate.pElement->strElementId == strElementId;
+					});
+				if (Particle == Samples[iSample].Particles.end())
+					continue;
+				const float3_t vFocus{ Particle->World._41,
+					Particle->World._42, Particle->World._43 };
+				const f32_t fScale = (std::max)({
+					std::sqrt(Particle->World._11 * Particle->World._11 +
+						Particle->World._12 * Particle->World._12 +
+						Particle->World._13 * Particle->World._13),
+					std::sqrt(Particle->World._21 * Particle->World._21 +
+						Particle->World._22 * Particle->World._22 +
+						Particle->World._23 * Particle->World._23),
+					std::sqrt(Particle->World._31 * Particle->World._31 +
+						Particle->World._32 * Particle->World._32 +
+						Particle->World._33 * Particle->World._33) });
+				const f32_t fCameraDistance = std::clamp(fScale * 3.f,
+					0.25f, 50.f);
+				Engine::CGameInstance::Get().Set_Transform(D3DTS::PROJ,
+					XMMatrixPerspectiveFovLH(XMConvertToRadians(60.f),
+						320.f / 180.f, 0.01f, 1000.f));
+				for (uint32_t iView = 0u; iView < 3u; ++iView)
+				{
+					vector_t Eye{};
+					vector_t Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+					if (0u == iView)
+						Eye = XMVectorSet(vFocus.x, vFocus.y,
+							vFocus.z - fCameraDistance, 1.f);
+					else if (1u == iView)
+						Eye = XMVectorSet(vFocus.x + fCameraDistance,
+							vFocus.y, vFocus.z - fCameraDistance, 1.f);
+					else
+					{
+						Eye = XMVectorSet(vFocus.x,
+							vFocus.y + fCameraDistance, vFocus.z, 1.f);
+						Up = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+					}
+					Engine::CGameInstance::Get().Set_Transform(D3DTS::VIEW,
+						XMMatrixLookAtLH(Eye, XMVectorSet(vFocus.x, vFocus.y,
+							vFocus.z, 1.f), Up));
+					Engine::CGameInstance::Get().Update_Engine(0.f);
+					COLOR_CAPTURE Candidate;
+					if (!EngineScope.Begin_Frame(Error))
+						continue;
+					const HRESULT hRender = Renderer.Render(Samples[iSample]);
+					Context->Flush();
+					if (FAILED(hRender) || !CaptureColor(Candidate, Error))
+						continue;
+					const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+						Renderer.Get_LastRenderSubmissionStats();
+					const EFFECT_GPU_RENDER_FAMILY_STATS& Sprite = Stats.Families[
+						static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::SPRITE)];
+					const auto Occurrence = std::ranges::find_if(Stats.Occurrences,
+						[strElementId](const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row)
+						{
+							return Row.strElementId == strElementId;
+						});
+					const bool_t bDrawExact = Stats.bCompleted && Stats.bCommitted &&
+						0u < Sprite.iSubmitted &&
+						Occurrence != Stats.Occurrences.end() &&
+						Occurrence->iSelectedPassIndex == 2u &&
+						Occurrence->iSourceTextureMask == 0x07u &&
+						0u < Occurrence->iIssuedDrawCallCount;
+					if (!bRawRecorded ||
+						Candidate.iRgbPixelCount > BestRawColor.iRgbPixelCount)
+					{
+						bRawRecorded = true;
+						BestRawColor = Candidate;
+						iBestRawSubmitted = Sprite.iSubmitted;
+						if (Occurrence != Stats.Occurrences.end())
+						{
+							iBestRawDrawCount = Occurrence->iIssuedDrawCallCount;
+							iBestRawPass = Occurrence->iSelectedPassIndex;
+							iBestRawTextureMask = Occurrence->iSourceTextureMask;
+						}
+						fBestRawLife = Particle->fNormalizedLife;
+						vBestRawDynamic = Particle->vDynamicParameter;
+						vBestRawParticleColor = Particle->Color;
+					}
+					if (bDrawExact && Candidate.iRgbPixelCount >
+						Out.Color.iRgbPixelCount)
+					{
+						Out.bCommitted = true;
+						Out.Frame = Samples[iSample];
+						/* Playback frame rows point at the single-row local document.
+						   Rebind the retained sensitivity witness to the stable source
+						   row in TigerDocument before that local document goes away. */
+						for (EFFECT_EVALUATED_PARTICLE& Retained :
+							Out.Frame.Particles)
+						{
+							if (Retained.pElement &&
+								Retained.pElement->strElementId == strElementId)
+							{
+								Retained.pElement = &*Source;
+							}
+						}
+						for (EFFECT_EVALUATED_GPU_OCCURRENCE& Retained :
+							Out.Frame.GpuOccurrences)
+						{
+							if (Retained.pElement &&
+								Retained.pElement->strElementId == strElementId)
+							{
+								Retained.pElement = &*Source;
+							}
+						}
+						Out.iView = iView;
+						Out.Color = Candidate;
+					}
+				}
+			}
+			Out.bSparseCoverage = Out.Color.iBoundingArea > 16u &&
+				Out.Color.iRgbPixelCount + 4u < Out.Color.iBoundingArea;
+			std::cout << "[ARTIST-D-TIGER] render id=" << strElementId <<
+				" rgbPixels=" << Out.Color.iRgbPixelCount << " bbox=" <<
+				Out.Color.iBoundingArea << " rgbSum=" << Out.Color.iRgbSum <<
+				" sparse=" << Out.bSparseCoverage << " rawPixels=" <<
+				BestRawColor.iRgbPixelCount << " rawSubmitted=" <<
+				iBestRawSubmitted << " rawDraw=" << iBestRawDrawCount <<
+				" rawPass=" << iBestRawPass << " rawMask=0x" << std::hex <<
+				iBestRawTextureMask << std::dec << " life=" << fBestRawLife <<
+				" dynamic=" << vBestRawDynamic.x << ',' << vBestRawDynamic.y <<
+				',' << vBestRawDynamic.z << ',' << vBestRawDynamic.w <<
+				" particleColor=" << vBestRawParticleColor.x << ',' <<
+				vBestRawParticleColor.y << ',' << vBestRawParticleColor.z << ',' <<
+				vBestRawParticleColor.w << " status=" <<
+				(Out.bCommitted ? "COMMITTED" : Error) << '\n';
+			return Out.bCommitted;
+		};
+
+		RENDER_WITNESS Child5;
+		RENDER_WITNESS Child6;
+		const bool_t bChild5Draw = RenderRow(BLACK_TIGER_IDS[0u], Child5);
+		const bool_t bChild6Draw = RenderRow(BLACK_TIGER_IDS[2u], Child6);
+		runner.Require(bChild5Draw && bChild6Draw,
+			"Artist D Tiger Child5 And Child6 Each Submit A Nonzero Additive WARP Draw With All Three Exact Texture Lanes");
+		runner.Require(Child5.bSparseCoverage && Child6.bSparseCoverage,
+			"Artist D Tiger Child5 And Child6 Use Texture-Shaped Coverage Instead Of A Filled Black Sprite Card");
+
+		if (bChild5Draw)
+		{
+			const EFFECT_ELEMENT_DESC& Element = TigerDocument.Elements.front();
+			EFFECT_DOCUMENT_DESC RowDocument = TigerDocument;
+			RowDocument.Elements.assign(1u, Element);
+			std::string Error;
+			CEffectPlayback SensitivityPlayback;
+			const bool_t bRendererReady =
+				Renderer.Stage_Document(RowDocument, Error) &&
+				SensitivityPlayback.Stage_Document(RowDocument, Error);
+			float4x4_t Identity{};
+			XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+			if (bRendererReady)
+			{
+				SensitivityPlayback.Seek(
+					Child5.Frame.fSampleTimeSeconds, Identity);
+			}
+			const EFFECT_EVALUATED_FRAME& SensitivityFrame =
+				SensitivityPlayback.Get_Frame();
+			const auto Particle = std::ranges::find_if(SensitivityFrame.Particles,
+				[&Element](const EFFECT_EVALUATED_PARTICLE& Candidate)
+				{
+					return Candidate.pElement &&
+						Candidate.pElement->strElementId == Element.strElementId;
+				});
+			bool_t bSensitivityExact = bRendererReady &&
+				Particle != SensitivityFrame.Particles.end();
+			const float3_t vFocus = Particle != SensitivityFrame.Particles.end() ?
+				float3_t{ Particle->World._41, Particle->World._42,
+					Particle->World._43 } : float3_t{};
+			const f32_t fScale = Particle != SensitivityFrame.Particles.end() ?
+				(std::max)({
+					std::sqrt(Particle->World._11 * Particle->World._11 +
+						Particle->World._12 * Particle->World._12 +
+						Particle->World._13 * Particle->World._13),
+					std::sqrt(Particle->World._21 * Particle->World._21 +
+						Particle->World._22 * Particle->World._22 +
+						Particle->World._23 * Particle->World._23),
+					std::sqrt(Particle->World._31 * Particle->World._31 +
+						Particle->World._32 * Particle->World._32 +
+						Particle->World._33 * Particle->World._33) }) : 1.f;
+			const f32_t fCameraDistance = std::clamp(fScale * 3.f, 0.25f, 50.f);
+			const auto SetWitnessView = [&]()
+			{
+				vector_t Eye{};
+				vector_t Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+				if (0u == Child5.iView)
+					Eye = XMVectorSet(vFocus.x, vFocus.y,
+						vFocus.z - fCameraDistance, 1.f);
+				else if (1u == Child5.iView)
+					Eye = XMVectorSet(vFocus.x + fCameraDistance, vFocus.y,
+						vFocus.z - fCameraDistance, 1.f);
+				else
+				{
+					Eye = XMVectorSet(vFocus.x, vFocus.y + fCameraDistance,
+						vFocus.z, 1.f);
+					Up = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+				}
+				Engine::CGameInstance::Get().Set_Transform(D3DTS::PROJ,
+					XMMatrixPerspectiveFovLH(XMConvertToRadians(60.f),
+						320.f / 180.f, 0.01f, 1000.f));
+				Engine::CGameInstance::Get().Set_Transform(D3DTS::VIEW,
+					XMMatrixLookAtLH(Eye, XMVectorSet(vFocus.x, vFocus.y,
+						vFocus.z, 1.f), Up));
+				Engine::CGameInstance::Get().Update_Engine(0.f);
+			};
+			const auto CaptureFrame = [&](const EFFECT_EVALUATED_FRAME& Frame,
+				COLOR_CAPTURE& Out)
+			{
+				SetWitnessView();
+				return EngineScope.Begin_Frame(Error) &&
+					SUCCEEDED(Renderer.Render(Frame)) &&
+					(Context->Flush(), CaptureColor(Out, Error));
+			};
+			EFFECT_EVALUATED_FRAME AlphaFrame = SensitivityFrame;
+			EFFECT_EVALUATED_FRAME LifeOnlyFrame = SensitivityFrame;
+			EFFECT_EVALUATED_FRAME WarpFrame = SensitivityFrame;
+			for (EFFECT_EVALUATED_PARTICLE& Evaluated : AlphaFrame.Particles)
+			{
+				if (Evaluated.pElement &&
+					Evaluated.pElement->strElementId == Element.strElementId)
+				{
+					Evaluated.Color.w *= 0.25f;
+				}
+			}
+			for (EFFECT_EVALUATED_PARTICLE& Evaluated : LifeOnlyFrame.Particles)
+			{
+				if (Evaluated.pElement &&
+					Evaluated.pElement->strElementId == Element.strElementId)
+				{
+					Evaluated.fNormalizedLife = Evaluated.fNormalizedLife < 0.5f ?
+						0.95f : 0.05f;
+				}
+			}
+			for (EFFECT_EVALUATED_PARTICLE& Evaluated : WarpFrame.Particles)
+			{
+				if (Evaluated.pElement &&
+					Evaluated.pElement->strElementId == Element.strElementId)
+				{
+					Evaluated.vDynamicParameter.z += 2.f;
+				}
+			}
+			COLOR_CAPTURE Baseline;
+			COLOR_CAPTURE Alpha;
+			COLOR_CAPTURE LifeOnly;
+			COLOR_CAPTURE Warp;
+			bSensitivityExact = bSensitivityExact &&
+				CaptureFrame(SensitivityFrame, Baseline) &&
+				CaptureFrame(AlphaFrame, Alpha) &&
+				CaptureFrame(LifeOnlyFrame, LifeOnly) &&
+				CaptureFrame(WarpFrame, Warp) &&
+				0u < Baseline.iRgbSum && 0u < Alpha.iRgbSum &&
+				Alpha.iRgbSum < Baseline.iRgbSum &&
+				LifeOnly.iSignature == Baseline.iSignature &&
+				LifeOnly.iRgbSum == Baseline.iRgbSum &&
+				Warp.iSignature != Baseline.iSignature;
+			std::cout << "[ARTIST-D-TIGER-SENSITIVITY] baseline=" <<
+				Baseline.iRgbSum << " alpha25=" << Alpha.iRgbSum <<
+				" lifeOnlySignature=" << LifeOnly.iSignature << '/' <<
+				Baseline.iSignature << " warpSignature=" << Warp.iSignature <<
+				'/' << Baseline.iSignature << '\n';
+			runner.Require(bSensitivityExact,
+				"Artist D Tiger WARP Output Responds To Particle Alpha And Noise-RG Warp While Normalized Life Alone Does Not Reapply Dissolve");
+		}
+		CEffectDocumentRenderer::Clear_Prepared_Catalog();
+	}
+
 	void Test_ValtanBossPatternStage(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -38062,6 +38673,14 @@ int main(const int argc, char* argv[])
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_ArtistPlayableMaterialFamilyRegression(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-artist-d-tiger-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_ArtistDBlackTigerStrokeRuntimeMaterial(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

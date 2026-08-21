@@ -1147,6 +1147,301 @@ namespace
 		return Iterator == Element.ResourceBindings.end() ? nullptr : &*Iterator;
 	}
 
+	constexpr uint32_t ARTIST_D_BLACK_TIGER_STROKE_OPCODE = 18u;
+
+	struct ARTIST_D_BLACK_TIGER_STROKE_ROW final
+	{
+		std::string_view strElementId;
+		std::string_view strSourceElementId;
+		std::string_view strDynamicModuleStableId;
+		uint32_t iScalarCount;
+	};
+
+	constexpr std::array<ARTIST_D_BLACK_TIGER_STROKE_ROW, 12u>
+		ARTIST_D_BLACK_TIGER_STROKE_ROWS = {{
+		{ "authored.source-particle.763aea38ab1100ba9072dbfb",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_5",
+			"FX_PC_MSR_03:export:2587@ref:4", 28u },
+		{ "authored.source-particle.e6c3ffec9fbc27024e2ce78c",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_5.event_source-event-002",
+			"FX_PC_MSR_03:export:2587@ref:4", 28u },
+		{ "authored.source-particle.91392dd3a1710c9d411bfff6",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_6",
+			"FX_PC_SDM_08:export:1241@ref:3", 24u },
+		{ "authored.source-particle.382ed3229ddf083cfd22ee11",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_6.event_source-event-002",
+			"FX_PC_SDM_08:export:1241@ref:3", 24u },
+		{ "authored.source-particle.4f0381d175d441978f26ebfc",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_7",
+			"FX_PC_SDM_08:export:1240@ref:3", 24u },
+		{ "authored.source-particle.31fa700c084ab0b11447f7c7",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_7.event_source-event-002",
+			"FX_PC_SDM_08:export:1240@ref:3", 24u },
+		{ "authored.source-particle.5571970d95f97aecb889fed7",
+			"fx_pc_sdm_08.par_l_sdm_sk_05_3.particlespriteemitter_5",
+			"FX_PC_MSR_03:export:2587@ref:4", 28u },
+		{ "authored.source-particle.87c8abd0423fcb7e9a725659",
+			"fx_pc_sdm_08.par_l_sdm_sk_05_3.particlespriteemitter_6",
+			"FX_PC_SDM_08:export:1241@ref:3", 24u },
+		{ "authored.source-particle.ac2d4d3e467dc4442cba60c3",
+			"fx_pc_sdm_08.par_l_sdm_sk_05_3.particlespriteemitter_11",
+			"FX_PC_SDM_08:export:1240@ref:3", 24u },
+		{ "authored.source-particle.01c398219f73706b66509e77",
+			"fx_pc_sdm_08.par_l_sdm_sk_06_3.particlespriteemitter_5",
+			"FX_PC_MSR_03:export:2587@ref:4", 28u },
+		{ "authored.source-particle.93420edbc5815b8a01b38ef4",
+			"fx_pc_sdm_08.par_l_sdm_sk_06_3.particlespriteemitter_6",
+			"FX_PC_SDM_08:export:1241@ref:3", 24u },
+		{ "authored.source-particle.76d0b67fe194395ce21c51ab",
+			"fx_pc_sdm_08.par_l_sdm_sk_06_3.particlespriteemitter_2",
+			"FX_PC_SDM_08:export:1240@ref:3", 24u },
+	}};
+
+	constexpr std::array<f32_t, 28u> ARTIST_D_TIGER_CHILD5_SCALARS = {{
+		0.f, 0.f, 1.f, 1.f, 1.f, 1.100000023841858f, 1.f, 0.f,
+		1.f, 4.f, 0.10000000149011612f, 0.f, 0.f, 0.f,
+		-0.10000000149011612f, 0.f, 2.f, 1.f, 1.f, 2.f, 3.f,
+		-0.20000000298023224f, 0.f, 0.f, 0.5f, 0.5f, 0.f, 0.f,
+	}};
+
+	constexpr std::array<f32_t, 24u> ARTIST_D_TIGER_CHILD6_SCALARS = {{
+		0.f, 0.f, 1.f, 1.f, 2.f, 1.2000000476837158f,
+		0.10000000149011612f, 5.f, 25.f, 15.f, 0.f,
+		-0.10000000149011612f, 0.f, 0.f, 1.f, 1.f, 1.f,
+		-0.800000011920929f, 0.f, 0.f, 1.f, 1.f, 0.f, 0.f,
+	}};
+
+	const ARTIST_D_BLACK_TIGER_STROKE_ROW* Find_ArtistDBlackTigerStrokeRow(
+		const std::string_view strElementId)
+	{
+		const auto Iterator = std::ranges::find_if(
+			ARTIST_D_BLACK_TIGER_STROKE_ROWS,
+			[strElementId](const ARTIST_D_BLACK_TIGER_STROKE_ROW& Row)
+			{
+				return Row.strElementId == strElementId;
+			});
+		return Iterator == ARTIST_D_BLACK_TIGER_STROKE_ROWS.end() ?
+			nullptr : &*Iterator;
+	}
+
+	bool_t Is_ArtistDBlackTigerSampler(
+		const Client::EFFECT_MATERIAL_SAMPLER_DESC& Sampler)
+	{
+		return Sampler.eFilter ==
+				Client::EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR &&
+			Sampler.eAddressU ==
+				Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+			Sampler.eAddressV ==
+				Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+			Sampler.eAddressW ==
+				Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+			Sampler.fMipLodBias == 0.f && Sampler.iMaxAnisotropy == 1u &&
+			Sampler.eComparison ==
+				Client::EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER &&
+			Sampler.vBorderColor.x == 0.f && Sampler.vBorderColor.y == 0.f &&
+			Sampler.vBorderColor.z == 0.f && Sampler.vBorderColor.w == 0.f &&
+			Sampler.fMinLod == 0.f &&
+			Sampler.fMaxLod == (std::numeric_limits<f32_t>::max)();
+	}
+
+	bool_t Is_ArtistDBlackTigerLane(
+		const Client::EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane,
+		const uint32_t iIndex,
+		const std::string_view strRole,
+		const std::string_view strAssetId,
+		const std::string_view strSourceChannel)
+	{
+		return Lane.strLaneId == "lane." + std::to_string(iIndex) &&
+			Lane.strRole == strRole && Lane.strAssetId == strAssetId &&
+			Lane.iTextureRegister == iIndex &&
+			Lane.iSamplerRegister == 5u + iIndex &&
+			Lane.strSourceChannel == strSourceChannel &&
+			Lane.eColorSpace == Client::EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+			Is_ArtistDBlackTigerSampler(Lane.Sampler);
+	}
+
+	template <size_t ScalarCount>
+	bool_t Is_ArtistDBlackTigerScalars(
+		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution,
+		const std::array<f32_t, ScalarCount>& Expected)
+	{
+		if (Execution.Scalars.size() != Expected.size())
+			return false;
+		for (size_t i = 0u; i < Expected.size(); ++i)
+		{
+			const Client::EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar =
+				Execution.Scalars[i];
+			if (Scalar.strName != "scalar." + std::to_string(i) ||
+				Scalar.iPackedIndex != i || Scalar.fValue != Expected[i])
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t Has_ArtistDBlackTigerDynamicModule(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strExpectedStableId)
+	{
+		size_t iMatchCount = 0u;
+		for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (Module.strClassName != "particlemoduleparameterdynamic")
+				continue;
+			++iMatchCount;
+			if (Module.strStableId != strExpectedStableId ||
+				Module.Distributions.size() != 4u)
+			{
+				return false;
+			}
+			for (size_t i = 0u; i < Module.Distributions.size(); ++i)
+			{
+				if (Module.Distributions[i].strPropertyPath !=
+					"dynamicparams[" + std::to_string(i) + "].paramvalue")
+				{
+					return false;
+				}
+			}
+		}
+		return iMatchCount == 1u;
+	}
+
+	bool_t Validate_ArtistDBlackTigerStrokeExecution(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError)
+	{
+		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+			Element.Material.Execution;
+		const ARTIST_D_BLACK_TIGER_STROKE_ROW* pRow =
+			Find_ArtistDBlackTigerStrokeRow(Element.strElementId);
+		if (nullptr == pRow)
+		{
+			if (Execution.bEnabled &&
+				Execution.eBackend ==
+					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Execution.iOpcode == ARTIST_D_BLACK_TIGER_STROKE_OPCODE)
+			{
+				strOutError =
+					"Artist D BLACK_TIGER_STROKE opcode escaped its exact occurrence allowlist: " +
+					Element.strElementId;
+				return false;
+			}
+			return true;
+		}
+
+		const bool_t bChild5 = pRow->iScalarCount == 28u;
+		const std::string_view strMaterialPath = bChild5 ?
+			"fx_m_mi_l_00.fx_mi.fx_l_pa_spritewave_01_5_ad" :
+			"fx_m_mi_l_00.fx_mi.fx_l_pa_spritewave_01_6_ad";
+		const std::string_view strBaseAsset = bChild5 ?
+			"Effect/Artist/Textures/fx_m_trail_010.dds" :
+			"Effect/Artist/Textures/fx_m_trail_004_cl.dds";
+		const std::string_view strNoiseAsset = bChild5 ?
+			"Effect/Artist/Textures/fx_c_noise_009.dds" :
+			"Effect/Artist/Textures/fx_bg_dustpanner_01.dds";
+		constexpr std::string_view strDissolveAsset =
+			"Effect/Artist/Textures/fx_o_symbol_14.dds";
+		const std::string strExpectedSourceNode =
+			"authored-source-particle:effect.artist.skill.31490.unified|source:"
+			"effect.artist.skill.31490.imported|element:" +
+			std::string(pRow->strSourceElementId);
+
+		const bool_t bCarrier = Element.bVisible &&
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.strSourceNode == strExpectedSourceNode &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "sprite" &&
+			Element.ResourceBindings.size() == 3u &&
+			Element.ResourceBindings[0u].strSlotId == "base" &&
+			Element.ResourceBindings[0u].strAssetId == strBaseAsset &&
+			Element.ResourceBindings[1u].strSlotId == "dissolve" &&
+			Element.ResourceBindings[1u].strAssetId == strDissolveAsset &&
+			Element.ResourceBindings[2u].strSlotId == "noise" &&
+			Element.ResourceBindings[2u].strAssetId == strNoiseAsset &&
+			nullptr == Find_Binding(
+				Element, Client::EFFECT_RESOURCE_SLOT::MESH_MODEL) &&
+			Has_ArtistDBlackTigerDynamicModule(
+				Element, pRow->strDynamicModuleStableId);
+		const bool_t bMaterial =
+			Element.Material.strTemplateId == "effect.standard" &&
+			Element.Material.strSourceMaterialPath == strMaterialPath &&
+			Element.Material.eRenderProfile ==
+				Client::EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ &&
+			!Element.Material.SourceMaterial.bEnabled;
+		const bool_t bPacketIdentity = Execution.bEnabled &&
+			!Execution.bFailClosed && !Execution.bAuthoringApproximate &&
+			Execution.iVersion == 1u &&
+			Execution.eBackend ==
+				Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			Execution.iOpcode == ARTIST_D_BLACK_TIGER_STROKE_OPCODE &&
+			Execution.iPassIndex == 2u &&
+			Execution.strRasterizerState == "RS_Cull_None" &&
+			Execution.strDepthStencilState == "DSS_ReadOnly" &&
+			Execution.strBlendState == "BS_EffectAdditive" &&
+			Execution.iStencilReference == 0u &&
+			Execution.iTextureLaneCount == 3u &&
+			Execution.iTextureMask == 0x07u &&
+			Execution.TextureLanes.size() == 3u &&
+			Is_ArtistDBlackTigerLane(Execution.TextureLanes[0u], 0u,
+				"maintex", strBaseAsset, "RGB") &&
+			Is_ArtistDBlackTigerLane(Execution.TextureLanes[1u], 1u,
+				"uv_noise_tex", strNoiseAsset, "RG") &&
+			Is_ArtistDBlackTigerLane(Execution.TextureLanes[2u], 2u,
+				"dissolve_tex_01", strDissolveAsset, "R");
+		const uint32_t iInputMask = bChild5 ? 0x0fffffffu : 0x00ffffffu;
+		const bool_t bPacketMasks =
+			Execution.iDynamicConsumedMask == 0x0fu &&
+			Execution.iDynamicSuppressedMask == 0u &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0x0fu &&
+			Execution.iParticleColorSuppressedMask == 0u &&
+			Execution.iScalarCount == pRow->iScalarCount &&
+			Execution.iVectorCount == 1u &&
+			Execution.iInputCount == pRow->iScalarCount &&
+			Execution.InputConsumedMask ==
+				std::array<uint32_t, 2u>{ iInputMask, 0u } &&
+			Execution.InputSuppressedMask ==
+				std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0x07u, 0u, 0u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0x08u, 0u, 0u } &&
+			Execution.iStaticInputCount == 0u &&
+			Execution.iStaticSelectedMask == 0u &&
+			Execution.iStaticConsumedMask == 0u &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 6u &&
+			Execution.iRenderConsumedMask == 0x2fu &&
+			Execution.iRenderSuppressedMask == 0x10u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+		const bool_t bScalars = bChild5 ?
+			Is_ArtistDBlackTigerScalars(
+				Execution, ARTIST_D_TIGER_CHILD5_SCALARS) :
+			Is_ArtistDBlackTigerScalars(
+				Execution, ARTIST_D_TIGER_CHILD6_SCALARS);
+		const float4_t vExpectedEdge = bChild5 ?
+			float4_t(1.f, 1.f, 1.f, 1.f) :
+			float4_t(20.f, 20.f, 20.f, 1.f);
+		const bool_t bVector = Execution.Vectors.size() == 1u &&
+			Execution.Vectors[0u].strName == "vector.0" &&
+			Execution.Vectors[0u].iPackedIndex == 0u &&
+			Execution.Vectors[0u].vValue.x == vExpectedEdge.x &&
+			Execution.Vectors[0u].vValue.y == vExpectedEdge.y &&
+			Execution.Vectors[0u].vValue.z == vExpectedEdge.z &&
+			Execution.Vectors[0u].vValue.w == vExpectedEdge.w;
+		if (!bCarrier || !bMaterial || !bPacketIdentity || !bPacketMasks ||
+			!bScalars || !bVector)
+		{
+			strOutError =
+				"Artist D BLACK_TIGER_STROKE exact typed contract changed: " +
+				Element.strElementId;
+			return false;
+		}
+		return true;
+	}
+
 	bool_t Is_SourceMaterialFallbackBlocked(
 		const Client::EFFECT_ELEMENT_DESC& Element,
 		const Client::EFFECT_GROUPED_TRANSLUCENT_CONSTANTS& GroupedConstants)
@@ -5198,6 +5493,8 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 	PREWARM_ASSET_CACHE* pSharedAssets) const
 {
 	const EFFECT_MATERIAL_EXECUTION_DESC& Execution = Element.Material.Execution;
+	if (!Validate_ArtistDBlackTigerStrokeExecution(Element, strOutError))
+		return false;
 	if (!Execution.bEnabled)
 		return true;
 	if (Execution.iVersion != 1u ||

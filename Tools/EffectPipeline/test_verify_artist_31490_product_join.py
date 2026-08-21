@@ -62,6 +62,43 @@ class Artist31490ProductJoinTests(unittest.TestCase):
                 self.bindings, self.events, self.catalog, authored
             )
 
+    def test_tiger_packet_and_exact_allowlist_fail_closed(self) -> None:
+        wrong_channel = copy.deepcopy(self.authored)
+        tiger = next(
+            row
+            for row in wrong_channel["elements"]
+            if row["id"] == module.TIGER_IDS[0]
+        )
+        tiger["material"]["execution"]["textureLanes"][0]["sourceChannel"] = "A"
+        with self.assertRaises(module.ArtistJoinError):
+            module.validate_documents(
+                self.bindings, self.events, self.catalog, wrong_channel
+            )
+
+        escaped = copy.deepcopy(self.authored)
+        ordinary = next(
+            row for row in escaped["elements"] if row["id"] not in module.TIGER_IDS
+        )
+        ordinary.setdefault("material", {}).setdefault("execution", {})[
+            "opcode"
+        ] = module.TIGER_OPCODE
+        with self.assertRaises(module.ArtistJoinError):
+            module.validate_documents(
+                self.bindings, self.events, self.catalog, escaped
+            )
+
+        wrong_child = copy.deepcopy(self.authored)
+        tiger = next(
+            row
+            for row in wrong_child["elements"]
+            if row["id"] == module.TIGER_IDS[0]
+        )
+        tiger["material"]["sourceMaterialPath"] = module.CHILD6_PATH
+        with self.assertRaises(module.ArtistJoinError):
+            module.validate_documents(
+                self.bindings, self.events, self.catalog, wrong_child
+            )
+
     def test_runtime_membership_is_unique(self) -> None:
         self.assertFalse(module.runtime_has_target({"effects": []}))
         row = {"effectAssetId": module.EFFECT_ID}
