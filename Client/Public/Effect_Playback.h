@@ -193,6 +193,7 @@ struct EFFECT_PARTICLE_RUNTIME_PROBE final
 	f32_t fMaxAlpha = 0.f;
 	f32_t fFirstNormalizedLife = 0.f;
 	f32_t fFirstSubImageIndex = 0.f;
+	float3_t vFirstWorldPosition{};
 	EFFECT_SUBUV_FRAME_DESC FirstSubUV{};
 };
 
@@ -214,6 +215,9 @@ private:
 		float3_t vSourceDirectDirectionContribution{};
 		float3_t vInheritedParentVelocity{};
 		float3_t vVelocityScale = { 1.f, 1.f, 1.f };
+		/* Additive steering is kept in world metres per second.  It must never
+		   absorb VelocityOverLife's transient per-step scale into vVelocity. */
+		float3_t vTargetAttractorWorldVelocity{};
 		float3_t vBaseSize = { 1.f, 1.f, 1.f };
 		float3_t vSize = { 1.f, 1.f, 1.f };
 		float3_t vRotationDegrees{};
@@ -452,6 +456,13 @@ private:
 		f32_t fNormalizedAge,
 		f32_t fFixedDelta,
 		const float4x4_t& ElementWorld);
+	float3_t Apply_TargetAttractor(
+		const EFFECT_ELEMENT_DESC& Element,
+		PARTICLE_STATE& Particle,
+		f32_t fNormalizedAge,
+		f32_t fFixedDelta,
+		const float4x4_t& ElementWorld,
+		const float4x4_t& RootWorld);
 	void Initialize_ModuleRandomStates(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State);

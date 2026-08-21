@@ -4312,10 +4312,118 @@ void Client::CEffectPlayback::Update_Particles(
 			Particle.vVelocity = Add3(Particle.vVelocity,
 				Scale3(Element.Detail.Particle.vAcceleration, fFixedDelta));
 		}
+		const float3_t EffectiveVelocity = Apply_TargetAttractor(
+			Element, Particle, fNormalizedAge, fFixedDelta,
+			ElementWorld, RootWorld);
 		Particle.vPosition = Add3(Particle.vPosition,
-			Scale3(Multiply3(Particle.vVelocity,
-				Particle.vVelocityScale), fFixedDelta));
+			Scale3(EffectiveVelocity, fFixedDelta));
 	}
+}
+
+float3_t Client::CEffectPlayback::Apply_TargetAttractor(
+	const EFFECT_ELEMENT_DESC& Element,
+	PARTICLE_STATE& Particle,
+	const f32_t fNormalizedAge,
+	const f32_t fFixedDelta,
+	const float4x4_t& ElementWorld,
+	const float4x4_t& RootWorld)
+{
+	const EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& Attractor =
+		Element.Detail.Particle.TargetAttractor;
+	const float3_t SourceLocalVelocity = Multiply3(
+		Particle.vVelocity, Particle.vVelocityScale);
+	if (!Attractor.bEnabled ||
+		fNormalizedAge < Attractor.vActiveNormalized.x ||
+		fNormalizedAge > Attractor.vActiveNormalized.y)
+	{
+		Particle.vTargetAttractorWorldVelocity = {};
+		return SourceLocalVelocity;
+	}
+
+	const float4x4_t& ParticleRoot =
+		Element.Detail.Particle.bLocalSpace ?
+			ElementWorld : Particle.SpawnRootWorld;
+	const matrix_t ParticleRootMatrix = XMLoadFloat4x4(&ParticleRoot);
+	const matrix_t InverseParticleRoot = XMMatrixInverse(
+		nullptr, ParticleRootMatrix);
+	const float3_t SourceWorldVelocity = Transform_Normal(
+		SourceLocalVelocity, ParticleRootMatrix);
+	float3_t TargetWorld{};
+	if (EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::ROOT_LOCAL ==
+		Attractor.eTargetSpace)
+	{
+		TargetWorld = Transform_Coord(
+			Attractor.vTargetOffset, XMLoadFloat4x4(&RootWorld));
+	}
+	else
+	{
+		TargetWorld = Transform_Coord(
+			Attractor.vTargetOffset, XMLoadFloat4x4(&ElementWorld));
+	}
+
+	const float3_t PositionWorld = Transform_Coord(
+		Particle.vPosition, ParticleRootMatrix);
+	const float3_t Delta = Subtract3(TargetWorld, PositionWorld);
+	const f32_t fDistance = Length3(Delta);
+	float3_t EffectiveWorldVelocity = Add3(
+		SourceWorldVelocity, Particle.vTargetAttractorWorldVelocity);
+	if (fDistance <= Attractor.fConvergenceRadius)
+	{
+		Particle.vPosition = Transform_Coord(
+			TargetWorld, InverseParticleRoot);
+		Particle.vTargetAttractorWorldVelocity =
+			Scale3(SourceWorldVelocity, -1.f);
+		return {};
+	}
+
+	const float3_t Direction = Scale3(Delta, 1.f / fDistance);
+	const float3_t Tangent = Normalize3(float3_t(
+		-Direction.z, 0.f, Direction.x));
+	const float3_t Acceleration = Add3(
+		Scale3(Direction, Attractor.fRadialAcceleration),
+		Scale3(Tangent, Attractor.fTangentialAcceleration));
+	EffectiveWorldVelocity = Add3(
+		EffectiveWorldVelocity, Scale3(Acceleration, fFixedDelta));
+
+	/* Use the stopping distance implied by the authored speed/acceleration as
+	   the arrival zone. Damping is therefore independent of frame rate and does
+	   not introduce another guessed distance field. */
+	const f32_t fStoppingDistance = Attractor.fRadialAcceleration > 1.e-6f ?
+		Attractor.fMaximumSpeed * Attractor.fMaximumSpeed /
+			(2.f * Attractor.fRadialAcceleration) :
+		Attractor.fConvergenceRadius;
+	const f32_t fBrakingRadius = (std::max)(
+		Attractor.fConvergenceRadius, fStoppingDistance);
+	const f32_t fArrivalWeight = Clamp01(
+		(fBrakingRadius -
+			(fDistance - Attractor.fConvergenceRadius)) / fBrakingRadius);
+	const f32_t fDamping = (std::max)(0.f,
+		1.f - Attractor.fArrivalDamping * fArrivalWeight * fFixedDelta);
+	EffectiveWorldVelocity = Scale3(EffectiveWorldVelocity, fDamping);
+
+	const f32_t fSpeed = Length3(EffectiveWorldVelocity);
+	if (fSpeed > Attractor.fMaximumSpeed)
+	{
+		EffectiveWorldVelocity = Scale3(
+			EffectiveWorldVelocity, Attractor.fMaximumSpeed / fSpeed);
+	}
+
+	/* Preserve the authored tangent until the final radial step.  At that
+	   boundary, remove the tangent as well so a particle cannot orbit forever
+	   just outside the capture radius without ever entering it. */
+	const f32_t fRadialSpeed =
+		EffectiveWorldVelocity.x * Direction.x +
+		EffectiveWorldVelocity.y * Direction.y +
+		EffectiveWorldVelocity.z * Direction.z;
+	const f32_t fMaximumRadialSpeed =
+		(fDistance - Attractor.fConvergenceRadius) / fFixedDelta;
+	if (fRadialSpeed > fMaximumRadialSpeed)
+	{
+		EffectiveWorldVelocity = Scale3(Direction, fMaximumRadialSpeed);
+	}
+	Particle.vTargetAttractorWorldVelocity = Subtract3(
+		EffectiveWorldVelocity, SourceWorldVelocity);
+	return Transform_Normal(EffectiveWorldVelocity, InverseParticleRoot);
 }
 
 void Client::CEffectPlayback::Apply_SourceUpdateModules(
@@ -5798,8 +5906,11 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 					Size.y < 0.f ? -1.f : 1.f
 				};
 			}
-			const float3_t EvaluatedVelocity = Multiply3(
+			const float3_t SourceVelocity = Multiply3(
 				Particle.vVelocity, Particle.vVelocityScale);
+			const float3_t EvaluatedVelocity = Add3(SourceVelocity,
+				Transform_Normal(Particle.vTargetAttractorWorldVelocity,
+					XMMatrixInverse(nullptr, XMLoadFloat4x4(&ParticleRoot))));
 			XMStoreFloat3(&Evaluated.vWorldVelocity,
 				XMVector3TransformNormal(
 					XMLoadFloat3(&EvaluatedVelocity),
@@ -5902,6 +6013,7 @@ bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(
 			OutProbe.vMaxDynamicParameter = Particle.vDynamicParameter;
 			OutProbe.fFirstNormalizedLife = Particle.fNormalizedLife;
 			OutProbe.fFirstSubImageIndex = Particle.fSubImageIndex;
+			OutProbe.vFirstWorldPosition = Get_Translation(Particle.World);
 		}
 		else
 		{
