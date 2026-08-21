@@ -1588,8 +1588,12 @@ finally {
 
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $pythonContractTests = @(
+    'Tools.EffectPipeline.test_apply_artist_31210_symbol_decal',
+    'Tools.EffectPipeline.test_apply_artist_31460_slash_noise_override',
+    'Tools.EffectPipeline.test_apply_warlord_17240_screen_noise_and_decals',
     'Tools.EffectPipeline.test_build_character_effect_restoration_inventory',
     'Tools.EffectPipeline.test_materialize_dimensionmaster_2050210_occurrences',
+    'Tools.EffectPipeline.test_verify_artist_31490_product_join',
     'Tools.EffectPipeline.test_build_valtan_stage_effects',
     'Tools.EffectPipeline.test_build_valtan_action_bindings',
     'Tools.EffectPipeline.test_build_valtan_source_occurrence_inventory',
