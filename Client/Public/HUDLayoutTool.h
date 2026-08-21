@@ -76,6 +76,13 @@ public:
 		float				fAnimationScale = 1.1f;
 		float				fAnimationOffsetX = 0.f;
 		float				fAnimationOffsetY = 0.f;
+		/* Round-tripped so Save() does not silently drop it (same reasoning as
+		strKeyframeAnimationPath below). Also drives the canvas preview: a looping slot (the
+		default -- torch/fire-style flicker effects this preview's ping-pong blend was built for)
+		still cross-fades through every frame, but a one-shot burst (loop=false, e.g. a
+		success-flash flipbook that is never meant to actually loop) freezes on a single middle
+		frame instead, since animating it that way while positioning things is misleading. */
+		bool_t				bAnimationLoop = true;
 
 		/* KEYFRAME_ANIMATION slots (extracted Scaleform identity clips) carry no TextureLayers of
 		their own -- CHUDRuntimeView draws them entirely from this document instead. The Tool only

@@ -148,6 +148,15 @@ private:
 	m_pBossUIView: the Esther skill window is shared across every class, not tied to Combat HUD
 	or Screen UI, so it gets its own document/tab too. */
 	unique_ptr<CHUDRuntimeView> m_pEstherUIView = { nullptr };
+	/* UI/ItemUpgrade/ItemUpgradeUI.json's runtime consumer -- a plain generic Render("Default", 0)
+	pass (no per-slot hand-coded logic like RenderBossHealthBar's, since no real Server-side
+	재련/enhancement data exists yet). Not _DEBUG-gated, same as m_pInventoryView/m_pSkillWindowView.
+	P is a free normal gameplay keybind (not an F1/F6 tool-switch key) -- toggled the same
+	GetAsyncKeyState edge-detect pattern as K/I below, since it started as an always-on debug
+	preview that ended up blocking everything else on screen. */
+	unique_ptr<CHUDRuntimeView> m_pItemUpgradeView = { nullptr };
+	bool_t m_bItemUpgradePreviewVisible = false;
+	bool_t m_bPDown = false;
 	/* Edge-detects the local player's stance so RenderCombatHUD only calls
 	CHUDRuntimeView::Play_KeyframeAnimation on an actual change (or the first frame a stance is
 	known at all), instead of re-triggering the icon's animation every frame. NONE never matches a
@@ -254,7 +263,6 @@ private:
 	reply, which the replace-in-full display does not. */
 	int32_t m_iSelectedDebugItemIndex = 0;
 	uint32_t m_iNextDebugGiveItemSequence = 1;
-	bool_t m_bDebugItemCatalogLoaded = false;
 	string m_strDebugItemStatus;
 #endif
 

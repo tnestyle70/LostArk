@@ -242,11 +242,26 @@ HRESULT CMainApp::Initialize()
 		return E_FAIL;
 	}
 
+	/* Was only ever loaded lazily from the F1 "Inventory (Debug)" panel's own render code, so
+	CItemCatalog::Find_ById() returned nullptr for every real item (no icon, just the quantity
+	text) until a player opened Developer Tools at least once. Not fatal on failure -- the debug
+	panel already tolerated an empty catalog (just disables "Give"), so real gameplay should too
+	rather than blocking Client startup over it. */
+	std::string itemCatalogStatus;
+	if (!Client::CItemCatalog::Load(itemCatalogStatus))
+	{
+		const std::string diagnostic =
+			"[MainApp] Item Catalog initialization failed: " + itemCatalogStatus + "\n";
+		OutputDebugStringA(diagnostic.c_str());
+	}
+
 	m_pHUDRuntimeView = std::make_unique<CHUDRuntimeView>(m_pDevice, m_pContext);
 	m_pBossUIView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/BossUI/BossUI.json");
 	m_pEstherUIView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/Esther/EstherUI.json");
+	m_pItemUpgradeView = std::make_unique<CHUDRuntimeView>(
+		m_pDevice, m_pContext, L"UI/ItemUpgrade/ItemUpgradeUI.json");
 	m_pLobbyBackgroundView = std::make_unique<CHUDRuntimeView>(
 		m_pDevice, m_pContext, L"UI/Lobby/Lobby_Layout.json",
 		CHUDRuntimeView::DRAW_TARGET::BACKGROUND);
@@ -292,6 +307,20 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (iDown && !m_bIDown)
 			m_pInventoryView->Toggle();
 		m_bIDown = iDown;
+	}
+
+	/* Same reasoning/gating as K/I above: P is a free normal gameplay keybind, not an F1/F6
+	tool-switch key. Toggles the debug-only Item Upgrade static art preview (see the
+	m_pItemUpgradeView declaration comment in MainApp.h). */
+	if (nullptr != m_pItemUpgradeView && !ImGui::GetIO().WantTextInput)
+	{
+		const bool_t windowFocused =
+			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t pDown = windowFocused &&
+			0 != (GetAsyncKeyState(0x50 /* VK_P */) & 0x8000);
+		if (pDown && !m_bPDown)
+			m_bItemUpgradePreviewVisible = !m_bItemUpgradePreviewVisible;
+		m_bPDown = pDown;
 	}
 
 	/* 1/2/3/4 use whatever item is registered on Item_1..4 (drag-drop from the inventory --
@@ -934,6 +963,12 @@ void CMainApp::RenderCombatHUD()
 		m_pSkillWindowView->Render(player.eCharacterClass);
 	if (nullptr != m_pInventoryView)
 		m_pInventoryView->Render(CCombatHUDViewModel::Get().Get_Inventory().Items);
+	/* P-toggled static preview of the real traced ItemUpgradeUI.json art/positions -- see the
+	m_pItemUpgradeView declaration comment in MainApp.h. No per-slot gameplay logic (no real
+	Server 재련 data exists yet), just the same generic Render("Default", 0) pass Esther/Boss UI
+	use for their own static slots. */
+	if (nullptr != m_pItemUpgradeView && m_bItemUpgradePreviewVisible)
+		m_pItemUpgradeView->Render("Default", 0);
 	Render_ItemQuickSlots();
 }
 
@@ -2707,12 +2742,6 @@ void CMainApp::RenderDeveloperTools()
 		}
 	}
 	ImGui::SeparatorText("Inventory (Debug)");
-	if (!m_bDebugItemCatalogLoaded)
-	{
-		std::string catalogStatus;
-		Client::CItemCatalog::Load(catalogStatus);
-		m_bDebugItemCatalogLoaded = true;
-	}
 	const std::vector<Client::ITEM_DEFINITION>& debugItems =
 		Client::CItemCatalog::Get_Items();
 	CNetworkManager& debugNetworkManager = CNetworkManager::Get();
