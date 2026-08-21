@@ -1111,7 +1111,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G01 Tool/save | `IMPLEMENTED` | Warlord 17090 retained subset Save/Load 7/7, invalid identity/mesh/recipe rollback | 미실행 | Light/Post/Ribbon subtype Tool tree |
 | G02 join | `IMPLEMENTED` | Artist D effectref + source catalog + 56-row authored closure focused PASS | 미실행 | full publisher/runtime sealed join |
 | G03 shader variants | `IMPLEMENTED` | Glasshole02 K01 opcode 16 exact tuple admission, malformed packet rollback, WARP draw | 미실행 | Fluid/dragon variants와 native VF/pass evidence |
-| G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R, Warlord T, Lance E cone donor focused PASS | 미실행 | runtime full publish, S light choice |
+| G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R/S, Warlord T, Lance E cone donor focused PASS | 미실행 | runtime full publish, S 사용자 화면 튜닝 |
 | G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결 | 미실행 | D/T asset lineage |
 | G06 glass/crack | `IMPLEMENTED` | W2050120 K-child typed canary + 3 DDS lane/WARP evidence, J-child fail-closed | 미실행 | Fluid01, J-child static set, screen overlay |
 | G07 dragon/ultimate | `EVIDENCE_PARTIAL` | Lance mesh/material cohort | 미실행 | independent UV/material execution |
