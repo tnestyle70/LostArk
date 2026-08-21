@@ -38,27 +38,21 @@ namespace Client
 		bool_t m_suppressUntilRelease = false;
 	};
 
-	/* A tap submits only its first command. A physical hold waits long enough
-	for a normal click to finish before the first automatic continuation, then
-	repeats faster than every authored combo window. Input/UI blocking never
-	rearms the press; only the raw physical up edge does. */
-	class CBASIC_ATTACK_REPEAT_SCHEDULER final
+	/* One physical LMB press submits exactly one basic-attack command. Combo
+	continuation is another deliberate up -> down edge; a held button must never
+	auto-buffer the next Server-owned stage. Input/UI blocking does not invent a
+	release, so only the raw physical up edge rearms this gate. */
+	class CBASIC_ATTACK_PRESS_EDGE_GATE final
 	{
 	public:
-		static constexpr std::chrono::milliseconds INITIAL_HOLD_DELAY{ 180 };
-		static constexpr std::chrono::milliseconds REPEAT_INTERVAL{ 100 };
-
 		void Reset()
 		{
 			m_hasSubmittedCurrentPress = false;
-			m_hasSubmittedAutoRepeat = false;
-			m_LastSubmittedAt = {};
 		}
 
 		bool_t Should_Submit(
 			const bool_t isPhysicallyDown,
-			const bool_t isCommandEligible,
-			const std::chrono::steady_clock::time_point now)
+			const bool_t isCommandEligible)
 		{
 			if (!isPhysicallyDown)
 			{
@@ -71,24 +65,13 @@ namespace Client
 			if (!m_hasSubmittedCurrentPress)
 			{
 				m_hasSubmittedCurrentPress = true;
-				m_LastSubmittedAt = now;
 				return true;
 			}
-
-			const std::chrono::milliseconds interval =
-				m_hasSubmittedAutoRepeat ? REPEAT_INTERVAL : INITIAL_HOLD_DELAY;
-			if (now - m_LastSubmittedAt < interval)
-				return false;
-
-			m_hasSubmittedAutoRepeat = true;
-			m_LastSubmittedAt = now;
-			return true;
+			return false;
 		}
 
 	private:
 		bool_t m_hasSubmittedCurrentPress = false;
-		bool_t m_hasSubmittedAutoRepeat = false;
-		std::chrono::steady_clock::time_point m_LastSubmittedAt{};
 	};
 
 	class CPlayerController final
@@ -167,12 +150,12 @@ namespace Client
 		uint8_t m_byHeldKeyCode = 0;
 		std::chrono::steady_clock::time_point m_LastSkillAimSentAt{};
 		float3_t m_LastSentSkillAim{};
-		/* A held basic attack has to keep asking: the combo buffer only takes a
-		press inside a window the server owns and the client is not told about, so
-		the press is repeated at a fixed rate instead of being predicted. */
+		/* The Server owns the combo stage/window. The Client submits exactly one
+		command for each physical LMB press and never predicts a continuation from
+		a held button. */
 		LostArk::Shared::SKILL_ID m_iHeldBasicAttackSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
-		CBASIC_ATTACK_REPEAT_SCHEDULER m_BasicAttackRepeatScheduler;
+		CBASIC_ATTACK_PRESS_EDGE_GATE m_BasicAttackPressEdgeGate;
 		CBASIC_ATTACK_RESEND_GATE m_BasicAttackResendGate;
 		bool_t m_allowCapturedKeyboardInput = false;
 		/* Esther edges are tracked apart from m_wasKeyDown: the quick-slot

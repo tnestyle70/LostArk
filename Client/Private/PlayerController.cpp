@@ -67,7 +67,7 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	m_byHeldKeyCode = 0;
 	m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
-	m_BasicAttackRepeatScheduler.Reset();
+	m_BasicAttackPressEdgeGate.Reset();
 	m_BasicAttackResendGate.Reset();
 	m_LastMoveGoalSentAt = {};
 	m_LastSentMoveGoal = {};
@@ -86,7 +86,7 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
 	m_byHeldKeyCode = 0;
 	m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
-	m_BasicAttackRepeatScheduler.Reset();
+	m_BasicAttackPressEdgeGate.Reset();
 	m_BasicAttackResendGate.Reset();
 	m_LastMoveGoalSentAt = {};
 	m_LastSentMoveGoal = {};
@@ -387,7 +387,7 @@ void Client::CPlayerController::Poll_BasicAttack(
 		m_BasicAttackResendGate.Observe_Button(isPhysicallyDown);
 	if (!isPhysicallyDown)
 	{
-		(void)m_BasicAttackRepeatScheduler.Should_Submit(false, false, {});
+		(void)m_BasicAttackPressEdgeGate.Should_Submit(false, false);
 		m_iHeldBasicAttackSkillId = LostArk::Shared::INVALID_SKILL_ID;
 		return;
 	}
@@ -397,8 +397,7 @@ void Client::CPlayerController::Poll_BasicAttack(
 		LostArk::Shared::INVALID_SKILL_ID == outSkillId;
 	if (!commandEligible)
 	{
-		(void)m_BasicAttackRepeatScheduler.Should_Submit(
-			true, false, std::chrono::steady_clock::now());
+		(void)m_BasicAttackPressEdgeGate.Should_Submit(true, false);
 		return;
 	}
 
@@ -406,8 +405,7 @@ void Client::CPlayerController::Poll_BasicAttack(
 		pSpec->eCharacterClass, "LMB", stance);
 	if (nullptr == pSkill)
 		return;
-	if (!m_BasicAttackRepeatScheduler.Should_Submit(
-			true, true, std::chrono::steady_clock::now()))
+	if (!m_BasicAttackPressEdgeGate.Should_Submit(true, true))
 	{
 		return;
 	}

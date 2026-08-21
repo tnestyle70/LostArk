@@ -1,11 +1,14 @@
 #pragma once
 
+#include "AnimationSkillBindingDocument.h"
 #include "Client_Defines.h"
 #include "Effect_AuthoringDocument.h"
 #include "HitAreaWire.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 NS_BEGIN(Client)
@@ -73,13 +76,39 @@ struct ANIMATION_EFFECT_CUE_DOCUMENT final
     uint32_t iFormatVersion = 5u;
     std::string strAnimationAssetId;
     std::vector<ANIMATION_EFFECT_CUE> Cues;
+	/* Structurally valid Product cues whose exact Effect target is absent from
+	   the currently committed runtime catalog. They are isolated per target;
+	   valid sibling cues remain available to the character and Effect Tool. */
+	std::vector<std::string> UnavailableEffectAssetIds;
     std::vector<ANIMATION_HIT_CUE> Hits;
     std::vector<ANIMATION_PROJECTILE_CUE> Projectiles;
+};
+
+/* A Tool preview candidate is an exact join between one Product animevents
+   cue and one ordered skillbinding clip. It never represents an inferred full
+   skill chain. */
+struct ANIMATION_EFFECT_PREVIEW_CANDIDATE final
+{
+    size_t iBoundClipOrdinal = 0u;
+    size_t iStageIndex = 0u;
+    size_t iStageClipIndex = 0u;
+    ANIMATION_SKILL_CLIP Clip;
+    ANIMATION_EFFECT_CUE Cue;
 };
 
 class CAnimationEffectCueDocument final
 {
 public:
+    /* Joins Product cues to the binding in stage/clip order. A document with no
+       exact Product mapping fails without modifying OutCandidates, allowing
+       callers to keep the previous preview instead of expanding a skill chain. */
+    static bool_t Resolve_PreviewCandidates(
+        const ANIMATION_SKILL_BINDING& Binding,
+        const std::vector<ANIMATION_EFFECT_CUE>& ProductCues,
+        std::string_view strAuthoredEffectAssetId,
+        std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE>& OutCandidates,
+        std::string& strOutStatus);
+
     /* Loading-level path. It discovers referenced clips while parsing the
        authored rows once, so no live CModel or second animevents read is
        required just to register Product prewarm targets. */
