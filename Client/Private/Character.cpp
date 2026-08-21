@@ -262,10 +262,13 @@ bool_t CCharacter::Load_EffectCues()
 }
 
 void CCharacter::Reset_EffectCueCursor(
-	const std::uint32_t iActionStartTick)
+	const std::uint32_t iActionStartTick,
+	const f32_t fActionFacingYawDegrees)
 {
 	m_fPreviousEffectCueStageWallSeconds = -1.f;
 	m_iEffectActionStartTick = iActionStartTick;
+	m_fEffectActionFacingYawDegrees = fActionFacingYawDegrees;
+	m_bHasEffectActionFacingYaw = true;
 }
 
 f32_t CCharacter::Get_EffectPlaybackRate() const
@@ -319,6 +322,7 @@ void CCharacter::Spawn_FallbackEffect(
 	Desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
 	Desc.strAnchorSlotId = "root";
 	Desc.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+	Desc.eOrientationPolicy = EFFECT_ORIENTATION_POLICY::ANCHOR;
 	Desc.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
 	Desc.iActionStartTick = m_iEffectActionStartTick;
 	Desc.iCueStartMs = 0u;
@@ -432,6 +436,15 @@ void CCharacter::Update_EffectCues()
 				Desc.strAnchorSlotId = Cue.strAnchorSlotId;
 				Desc.LocalTransform = Cue.LocalTransform;
 				Desc.eFollowPolicy = Cue.eFollowPolicy;
+				Desc.eOrientationPolicy = Cue.eOrientationPolicy;
+				if (EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+					Cue.eOrientationPolicy)
+				{
+					Desc.bHasActionFacingYaw =
+						m_bHasEffectActionFacingYaw;
+					Desc.fActionFacingYawDegrees =
+						m_fEffectActionFacingYawDegrees;
+				}
 				Desc.eStopPolicy = Cue.eStopPolicy;
 				Desc.iCueDurationMs = iCueDurationMs;
 				Desc.iActionStartTick = m_iEffectActionStartTick;
@@ -914,10 +927,12 @@ bool_t CCharacter::Apply_NetworkAction(
 	const LostArk::Shared::SKILL_ID skillId,
 	const std::uint32_t serverTick,
 	const std::uint32_t actionStartTick,
+	const f32_t actionFacingYawDegrees,
 	const std::uint8_t comboStage)
 {
 	using namespace LostArk::Shared;
-	if (0u == serverTick || static_cast<std::uint8_t>(action) >=
+	if (0u == serverTick || !std::isfinite(actionFacingYawDegrees) ||
+		static_cast<std::uint8_t>(action) >=
 		static_cast<std::uint8_t>(PLAYER_ACTION_STATE::END))
 	{
 		return false;
@@ -962,7 +977,7 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 		Commit_PendingClipChains();
 		m_iCurrentEffectSkillId = skillId;
-		Reset_EffectCueCursor(actionStartTick);
+		Reset_EffectCueCursor(actionStartTick, actionFacingYawDegrees);
 
 		bool_t presented = Play_Skill(
 			static_cast<int32_t>(skillId),
@@ -1031,6 +1046,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		Set_Animation(CHARACTER_ANIM::HIT, true);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
 	}
 	else if (PLAYER_ACTION_STATE::KNOCKDOWN == action)
 	{
@@ -1051,6 +1068,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_eKnockdownStep = KNOCKDOWN_STEP::FALLING;
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
 	else if (PLAYER_ACTION_STATE::DEAD == action)
@@ -1064,6 +1083,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		Set_Animation(CHARACTER_ANIM::DEAD, false);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
 	}
 	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
 	{
@@ -1077,6 +1098,8 @@ bool_t CCharacter::Apply_NetworkAction(
 			true);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
 	}
 	else if (PLAYER_ACTION_STATE::KNOCKDOWN == m_eNetworkAction)
 	{
@@ -1092,6 +1115,11 @@ bool_t CCharacter::Apply_NetworkAction(
 				m_isMoving ? CHARACTER_ANIM::RUN : CHARACTER_ANIM::IDLE,
 				true);
 		}
+	}
+	if (PLAYER_ACTION_STATE::SKILL != action)
+	{
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
 	}
 	Update_ActionEmissiveOverride(action, skillId);
 	m_eNetworkAction = action;

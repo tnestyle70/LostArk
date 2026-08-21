@@ -119,8 +119,8 @@ def read_product_effect_cues(
         declared_count = int(header[3])
     except ValueError as error:
         raise ValueError("animation Effect cue version/count is invalid") from error
-    if version < 3 or version > 5:
-        raise ValueError("animation Effect cue version must be in [3, 5]")
+    if version < 3 or version > 6:
+        raise ValueError("animation Effect cue version must be in [3, 6]")
     if declared_count != len(event_lines):
         raise ValueError(
             "animation Effect cue row count mismatch: "
@@ -194,6 +194,19 @@ def read_product_effect_cues(
         follow = attributes.get("follow", "follow")
         if follow not in {"follow", "snapshot"}:
             raise ValueError(f"follow policy is invalid at line {line_number}")
+        if "orientation" in attributes and version < 6:
+            raise ValueError(
+                f"orientation requires animevents v6 at line {line_number}"
+            )
+        orientation = attributes.get("orientation", "anchor")
+        if orientation not in {"anchor", "action_facing"}:
+            raise ValueError(
+                f"orientation policy is invalid at line {line_number}"
+            )
+        if orientation == "action_facing" and anchor != "root":
+            raise ValueError(
+                f"action_facing requires the root anchor at line {line_number}"
+            )
         stop = attributes.get("stop", "natural")
         if stop not in {"natural", "cue_end"}:
             raise ValueError(f"stop policy is invalid at line {line_number}")

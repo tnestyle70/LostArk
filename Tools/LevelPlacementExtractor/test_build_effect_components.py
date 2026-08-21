@@ -50,10 +50,11 @@ def write_animevents(
     path: Path,
     animation_asset_id: str,
     rows: list[str],
+    version: int = 5,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = (
-        f'LOSTARK_ANIM_EVENTS 5 "{animation_asset_id}" {len(rows)}\n' +
+        f'LOSTARK_ANIM_EVENTS {version} "{animation_asset_id}" {len(rows)}\n' +
         "\n".join(rows)
     )
     if rows:
@@ -165,6 +166,53 @@ class EffectComponentTests(unittest.TestCase):
                     read_product_effect_cues(
                         path, "LanceMaster", {"attack"}, {effect_id}
                     )
+
+    def test_product_effect_cue_parser_preserves_v5_default_and_admits_v6_action_facing(
+        self,
+    ) -> None:
+        effect_id = "effect.warlord.skill.17060.unified"
+        base = (
+            '"wgl_sk_firebullet" EFFECT startms=0 '
+            f'payload="{effect_id}" effectref=asset '
+            'anchor="root" follow=follow stop=natural '
+            'px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1'
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "Warlord.animevents"
+            write_animevents(path, "Warlord", [base], version=5)
+            self.assertEqual(
+                [("wgl_sk_firebullet", effect_id)],
+                read_product_effect_cues(
+                    path, "Warlord", {"wgl_sk_firebullet"}, {effect_id}
+                ),
+            )
+
+            action_facing = base.replace(
+                "follow=follow", "follow=follow orientation=action_facing"
+            )
+            write_animevents(path, "Warlord", [action_facing], version=6)
+            self.assertEqual(
+                [("wgl_sk_firebullet", effect_id)],
+                read_product_effect_cues(
+                    path, "Warlord", {"wgl_sk_firebullet"}, {effect_id}
+                ),
+            )
+
+            invalid_rows = (
+                (5, action_facing, "requires animevents v6"),
+                (6, action_facing.replace("action_facing", "steering"),
+                    "orientation policy is invalid"),
+                (6, action_facing.replace('anchor="root"', 'anchor="socket"'),
+                    "requires the root anchor"),
+            )
+            for version, row, message in invalid_rows:
+                with self.subTest(version=version, message=message):
+                    write_animevents(path, "Warlord", [row], version=version)
+                    with self.assertRaisesRegex(ValueError, message):
+                        read_product_effect_cues(
+                            path, "Warlord", {"wgl_sk_firebullet"},
+                            {effect_id}
+                        )
 
     def test_product_effect_cue_parser_rejects_unowned_and_duplicate_cues(
         self,

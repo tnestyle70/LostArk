@@ -2002,6 +2002,25 @@ namespace
         return Result;
     }
 
+	bool_t Try_ExtractPlanarYawDegrees(
+		const float4x4_t& Root,
+		f32_t& fOutYawDegrees)
+	{
+		const f32_t fForwardLength = std::sqrt(
+			Root._31 * Root._31 + Root._33 * Root._33);
+		if (!std::isfinite(Root._31) || !std::isfinite(Root._33) ||
+			!std::isfinite(fForwardLength) || fForwardLength <= 1.0e-6f)
+		{
+			return false;
+		}
+		const f32_t fYawDegrees = XMConvertToDegrees(
+			std::atan2(Root._31, Root._33));
+		if (!std::isfinite(fYawDegrees))
+			return false;
+		fOutYawDegrees = fYawDegrees;
+		return true;
+	}
+
 	const char* Source_Label(const Client::EFFECT_DOCUMENT_SOURCE eSource)
 	{
         switch (eSource)
@@ -4312,10 +4331,12 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         const ANIMATION_EFFECT_CUE& Cue =
             m_ProductPreview->ProductCue.Cue;
         ImGui::TextWrapped(
-            "Product cue placement: %s | %s | %u ms",
+            "Product cue placement: %s | %s | %s | %u ms",
             Cue.strAnchorSlotId.c_str(),
             EFFECT_FOLLOW_POLICY::FOLLOW == Cue.eFollowPolicy ?
                 "follow" : "snapshot",
+			EFFECT_ORIENTATION_POLICY::ANCHOR == Cue.eOrientationPolicy ?
+				"anchor orientation" : "action facing",
             Cue.iStartMs);
         ImGui::TextDisabled(
             "Product Play locks pivot and local transform to the admitted animation cue.");
@@ -4452,6 +4473,21 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     if (ImGui::RadioButton("Cue Snapshot",
         EFFECT_FOLLOW_POLICY::SNAPSHOT == m_eCueTransferFollowPolicy))
         m_eCueTransferFollowPolicy = EFFECT_FOLLOW_POLICY::SNAPSHOT;
+	if (ImGui::RadioButton("Cue Anchor Orientation",
+		EFFECT_ORIENTATION_POLICY::ANCHOR ==
+			m_eCueTransferOrientationPolicy))
+	{
+		m_eCueTransferOrientationPolicy =
+			EFFECT_ORIENTATION_POLICY::ANCHOR;
+	}
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Cue Action Facing",
+		EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+			m_eCueTransferOrientationPolicy))
+	{
+		m_eCueTransferOrientationPolicy =
+			EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+	}
     if (ImGui::RadioButton("Natural Stop",
         EFFECT_STOP_POLICY::NATURAL == m_eCueTransferStopPolicy))
         m_eCueTransferStopPolicy = EFFECT_STOP_POLICY::NATURAL;
@@ -4476,6 +4512,9 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         !Has_UnsavedWork() &&
         m_bActiveDocumentMatchesRuntime &&
         EFFECT_PREVIEW_PIVOT_KIND::WORLD != m_ePreviewPivotKind &&
+		(EFFECT_ORIENTATION_POLICY::ACTION_FACING !=
+			m_eCueTransferOrientationPolicy ||
+		 EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT == m_ePreviewPivotKind) &&
         nullptr != pModel && bCueScaleValid &&
         (EFFECT_STOP_POLICY::NATURAL == m_eCueTransferStopPolicy ||
             m_iCueTransferDurationMs > 0u);
@@ -4520,6 +4559,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
                     EFFECT_CUE_PIVOT_KIND::MODEL_BONE);
             Transfer.LocalTransform = m_CueTransferLocalTransform;
             Transfer.eFollowPolicy = m_eCueTransferFollowPolicy;
+			Transfer.eOrientationPolicy = m_eCueTransferOrientationPolicy;
             Transfer.eStopPolicy = m_eCueTransferStopPolicy;
             CEffectAuthoringTransfer::Publish(std::move(Transfer));
             m_strPreviewStatus =
@@ -11454,7 +11494,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
             {
                 ImGui::SetTooltip(
                     "Product cue target: %s\n"
-                    "Clip %s @ %u ms | Anchor %s | %s\n"
+                    "Clip %s @ %u ms | Anchor %s | %s | %s\n"
                     "%zu Elements in the indexed Authored Product.\n"
                     "Standalone Mesh %zu | Mesh Particle %zu\n"
                     "Standalone Sprite %zu | Sprite Particle %zu\n"
@@ -11467,6 +11507,9 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                     pProductCue->Cue.strAnchorSlotId.c_str(),
                     EFFECT_FOLLOW_POLICY::FOLLOW ==
                         pProductCue->Cue.eFollowPolicy ? "follow" : "snapshot",
+					EFFECT_ORIENTATION_POLICY::ANCHOR ==
+						pProductCue->Cue.eOrientationPolicy ?
+						"anchor orientation" : "action facing",
                     pTreeDocument->Elements.size(),
                     ParticleSummary.iStandaloneMeshCount,
                     ParticleSummary.iMeshRendererCount,
@@ -11547,10 +11590,13 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                     if (ImGui::Selectable(CueLabel.c_str(), bCueSelected))
                         Try_SelectProductCue(Entry, iCue);
                     ImGui::TextDisabled(
-                        "Anchor %s | %s | %s",
+                        "Anchor %s | %s | %s | %s",
                         ProductCue.Cue.strAnchorSlotId.c_str(),
                         EFFECT_FOLLOW_POLICY::FOLLOW ==
                             ProductCue.Cue.eFollowPolicy ? "follow" : "snapshot",
+						EFFECT_ORIENTATION_POLICY::ANCHOR ==
+							ProductCue.Cue.eOrientationPolicy ?
+							"anchor orientation" : "action facing",
                         EFFECT_STOP_POLICY::NATURAL ==
                             ProductCue.Cue.eStopPolicy ? "natural" : "cue_end");
                 }
@@ -12889,6 +12935,10 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		m_ProductCueSnapshotRoot;
 	const bool_t bPreviousProductCueSnapshotCaptured =
 		m_bProductCueSnapshotCaptured;
+	const f32_t fPreviousProductCueActionFacingYawDegrees =
+		m_fProductCueActionFacingYawDegrees;
+	const bool_t bPreviousProductCueActionFacingCaptured =
+		m_bProductCueActionFacingCaptured;
 	std::string ValtanRestoreError;
 	const auto RestorePreviousSourcePreviewState = [this,
 		&PreviousProductPreview, &PreviousValtanProductPreview,
@@ -12898,7 +12948,9 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		ePreviousPreviewFilter, fPreviousPreviewTimeSeconds,
 		fPreviousPreviewDurationSeconds, bPreviousPreviewPlaying,
 		bPreviousPreviewVisibleRequested, &PreviousProductCueSnapshotRoot,
-		bPreviousProductCueSnapshotCaptured, &ValtanRestoreError]()
+		bPreviousProductCueSnapshotCaptured,
+		fPreviousProductCueActionFacingYawDegrees,
+		bPreviousProductCueActionFacingCaptured, &ValtanRestoreError]()
 	{
 		m_ProductPreview = PreviousProductPreview;
 		m_ValtanProductPreview = PreviousValtanProductPreview;
@@ -12922,7 +12974,16 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 					bPreviousProductCueSnapshotCaptured,
 					ValtanRestoreError);
 			else
+			{
+				m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+				m_bProductCueSnapshotCaptured =
+					bPreviousProductCueSnapshotCaptured;
+				m_fProductCueActionFacingYawDegrees =
+					fPreviousProductCueActionFacingYawDegrees;
+				m_bProductCueActionFacingCaptured =
+					bPreviousProductCueActionFacingCaptured;
 				Synchronize_LoadedSkillPreview();
+			}
 		}
 		return true;
 	};
@@ -15294,6 +15355,10 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 				m_ProductCueSnapshotRoot;
 			const bool_t bPreviousProductCueSnapshotCaptured =
 				m_bProductCueSnapshotCaptured;
+			const f32_t fPreviousProductCueActionFacingYawDegrees =
+				m_fProductCueActionFacingYawDegrees;
+			const bool_t bPreviousProductCueActionFacingCaptured =
+				m_bProductCueActionFacingCaptured;
 			Clear_ProductCuePreview();
 			if (!Try_StartArtist31470FullPreview())
 			{
@@ -15318,7 +15383,16 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 						bPreviousProductCueSnapshotCaptured,
 						ValtanRestoreError);
 				else
+				{
+					m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+					m_bProductCueSnapshotCaptured =
+						bPreviousProductCueSnapshotCaptured;
+					m_fProductCueActionFacingYawDegrees =
+						fPreviousProductCueActionFacingYawDegrees;
+					m_bProductCueActionFacingCaptured =
+						bPreviousProductCueActionFacingCaptured;
 					Synchronize_LoadedSkillPreview();
+				}
 				m_strElementStatus = bRestored ?
 					"Artist F full preview failed; the previous preview was restored: " +
 						ArtistStartError :
@@ -15358,6 +15432,10 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 		m_ProductCueSnapshotRoot;
 	const bool_t bPreviousProductCueSnapshotCaptured =
 		m_bProductCueSnapshotCaptured;
+	const f32_t fPreviousProductCueActionFacingYawDegrees =
+		m_fProductCueActionFacingYawDegrees;
+	const bool_t bPreviousProductCueActionFacingCaptured =
+		m_bProductCueActionFacingCaptured;
     EFFECT_PRODUCT_PREVIEW Preview;
     Preview.eCharacterClass = Entry.Skill.eCharacterClass;
     Preview.iSkillId = Entry.Skill.iSkillId;
@@ -15400,7 +15478,16 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 				bPreviousProductCueSnapshotCaptured,
 				ValtanRestoreError);
 		else
+		{
+			m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+			m_bProductCueSnapshotCaptured =
+				bPreviousProductCueSnapshotCaptured;
+			m_fProductCueActionFacingYawDegrees =
+				fPreviousProductCueActionFacingYawDegrees;
+			m_bProductCueActionFacingCaptured =
+				bPreviousProductCueActionFacingCaptured;
 			Synchronize_LoadedSkillPreview();
+		}
         m_strElementStatus =
 			"Play Full Effect could not stage this source preview: " +
 			StageError + (bRestored ? std::string{} :
@@ -21336,6 +21423,9 @@ bool_t Client::CEffect_Tool::Resolve_PreviewRoot(float4x4_t& OutRoot)
 	const bool_t bValtanSnapshot = m_ValtanProductPreview.has_value() &&
 		EFFECT_FOLLOW_POLICY::SNAPSHOT ==
 			m_ValtanProductPreview->Cue.eFollowPolicy;
+	const bool_t bPlayerActionFacing = m_ProductPreview.has_value() &&
+		EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+			m_ProductPreview->ProductCue.Cue.eOrientationPolicy;
     if ((bPlayerSnapshot || bValtanSnapshot) &&
 		m_bProductCueSnapshotCaptured)
     {
@@ -21394,8 +21484,25 @@ bool_t Client::CEffect_Tool::Resolve_PreviewRoot(float4x4_t& OutRoot)
 
 	if (m_ProductPreview.has_value())
 	{
-		OutRoot = Compose_EffectLocal(
-			m_ProductPreview->ProductCue.Cue.LocalTransform, Anchor);
+		const ANIMATION_EFFECT_CUE& Cue =
+			m_ProductPreview->ProductCue.Cue;
+		if (bPlayerActionFacing && "root" != Cue.strAnchorSlotId)
+			return false;
+		if (bPlayerActionFacing && !m_bProductCueActionFacingCaptured)
+		{
+			if (!Try_ExtractPlanarYawDegrees(
+				Anchor, m_fProductCueActionFacingYawDegrees))
+			{
+				return false;
+			}
+			m_bProductCueActionFacingCaptured = true;
+		}
+		if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+			Cue.LocalTransform, Anchor, Cue.eOrientationPolicy,
+			m_fProductCueActionFacingYawDegrees, OutRoot))
+		{
+			return false;
+		}
 	}
 	else
 	{
@@ -21570,6 +21677,8 @@ bool_t Client::CEffect_Tool::Restore_ValtanProductPreviewPlayback(
 	m_bPreviewVisibleRequested = bVisibleRequested;
 	m_ProductCueSnapshotRoot = SnapshotRoot;
 	m_bProductCueSnapshotCaptured = bSnapshotCaptured;
+	m_fProductCueActionFacingYawDegrees = 0.f;
+	m_bProductCueActionFacingCaptured = false;
 	/* Rebuild document-owned boss state first. This restores the exact 420633
 	   transform-history preparation when the selected document owns it. The v2
 	   occurrence then replaces the legacy clip with its exact source segment. */
@@ -21679,6 +21788,8 @@ void Client::CEffect_Tool::Reset_ProductCueSnapshot()
 {
     m_ProductCueSnapshotRoot = Identity_Matrix();
     m_bProductCueSnapshotCaptured = false;
+	m_fProductCueActionFacingYawDegrees = 0.f;
+	m_bProductCueActionFacingCaptured = false;
 }
 
 void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()

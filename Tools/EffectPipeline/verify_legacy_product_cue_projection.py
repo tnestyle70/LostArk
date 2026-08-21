@@ -9,6 +9,7 @@ the implementation parent and is never updated from the current worktree.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -31,6 +32,26 @@ EXPECTED_COUNTS = {
     "nonTargetComponents": 555,
     "nonTargetEffects": 101,
 }
+
+# The frozen legacy projection deliberately ignores only these two reviewed
+# composition-policy deltas.  They are parsed and exact-checked before the new
+# field is removed for legacy equality; no other v6 action-facing cue is hidden.
+ACTION_FACING_CUE_DELTAS = (
+    {
+        "animationAssetId": "Warlord",
+        "clipName": "wgl_sk_firebullet",
+        "effectAssetId": "effect.warlord.skill.17060.unified",
+        "previousFollowPolicy": "follow",
+        "currentFollowPolicy": "follow",
+    },
+    {
+        "animationAssetId": "DimensionMaster",
+        "clipName": "pc_sp_m_00_sk_sk_willowrend",
+        "effectAssetId": "effect.dimensionmaster.skill.2050210.unified",
+        "previousFollowPolicy": "snapshot",
+        "currentFollowPolicy": "follow",
+    },
+)
 
 BASELINE_PATH = PurePosixPath(
     "Data/Effects/Baselines/legacy-product-cue-projection-v1.json"
@@ -243,7 +264,7 @@ def _parse_product_cues(
         raise ProjectionError(f"Invalid animation event header: {path}")
     version = _parse_uint(header[1], "animevents version")
     declared_rows = _parse_uint(header[3], "animevents row count")
-    if version < 3 or version > 5 or header[2] != animation_asset_id:
+    if version < 3 or version > 6 or header[2] != animation_asset_id:
         raise ProjectionError(f"Animation event owner/version is invalid: {path}")
 
     rows = [line for line in lines[1:] if line]
@@ -274,6 +295,19 @@ def _parse_product_cues(
         stop = fields.get("stop", "natural")
         if not anchor or follow not in {"follow", "snapshot"}:
             raise ProjectionError(f"Product Effect cue has invalid anchor/follow: {path}")
+        if "orientation" in fields and version < 6:
+            raise ProjectionError(
+                f"Product Effect cue orientation requires version 6: {path}"
+            )
+        orientation = fields.get("orientation", "anchor")
+        if orientation not in {"anchor", "action_facing"}:
+            raise ProjectionError(
+                f"Product Effect cue has invalid orientation policy: {path}"
+            )
+        if orientation == "action_facing" and anchor != "root":
+            raise ProjectionError(
+                f"Product Effect cue action_facing requires root: {path}"
+            )
         if stop not in {"natural", "cue_end"}:
             raise ProjectionError(f"Product Effect cue has invalid stop policy: {path}")
         if end_ms < start_ms or (stop == "cue_end" and end_ms <= start_ms):
@@ -300,8 +334,7 @@ def _parse_product_cues(
             "effectAssetId": payload_id,
             "startMs": start_ms,
         }
-        cues.append(
-            {
+        cue = {
                 **identity,
                 "cueId": f"legacy-product-cue-{_canonical_sha256(identity)}",
                 "endMs": end_ms,
@@ -315,7 +348,9 @@ def _parse_product_cues(
                 },
                 "stopPolicy": stop,
             }
-        )
+        if orientation == "action_facing":
+            cue["orientationPolicy"] = orientation
+        cues.append(cue)
     return cues
 
 
@@ -344,7 +379,55 @@ def _index_unique(rows: list[Any], key: str, label: str) -> dict[str, dict[str, 
     return result
 
 
-def _build_projection(reader: SourceReader) -> dict[str, Any]:
+def _normalize_allowed_action_facing_cues(
+    cues: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    normalized = copy.deepcopy(cues)
+    allowed = {
+        (
+            delta["animationAssetId"],
+            delta["clipName"],
+            delta["effectAssetId"],
+        ): delta
+        for delta in ACTION_FACING_CUE_DELTAS
+    }
+    consumed: set[tuple[str, str, str]] = set()
+    for cue in normalized:
+        if "orientationPolicy" not in cue:
+            continue
+        identity = (
+            cue.get("animationAssetId"),
+            cue.get("clipName"),
+            cue.get("effectAssetId"),
+        )
+        delta = allowed.get(identity)
+        if delta is None or identity in consumed:
+            raise ProjectionError(
+                f"Unexpected v6 action-facing Product cue delta: {identity}"
+            )
+        if (
+            cue.get("anchorSlotId") != "root"
+            or cue.get("orientationPolicy") != "action_facing"
+            or cue.get("followPolicy") != delta["currentFollowPolicy"]
+        ):
+            raise ProjectionError(
+                f"Action-facing Product cue delta fields are invalid: {identity}"
+            )
+        consumed.add(identity)
+        del cue["orientationPolicy"]
+        cue["followPolicy"] = delta["previousFollowPolicy"]
+    if consumed != set(allowed):
+        missing = sorted(set(allowed) - consumed)
+        raise ProjectionError(
+            f"Reviewed action-facing Product cue delta is missing: {missing}"
+        )
+    return normalized
+
+
+def _build_projection(
+    reader: SourceReader,
+    normalize_action_facing: bool = False,
+) -> dict[str, Any]:
     runtime = _require_object(
         _load_json_bytes(
             reader.read_bytes(RUNTIME_CATALOG_PATH),
@@ -391,6 +474,8 @@ def _build_projection(reader: SourceReader) -> dict[str, Any]:
         parsed_cues.extend(
             _parse_product_cues(reader.read_bytes(path), path, animation_asset_id)
         )
+    if normalize_action_facing:
+        parsed_cues = _normalize_allowed_action_facing_cues(parsed_cues)
     parsed_cues = [
         cue for cue in parsed_cues if cue["effectAssetId"] != TARGET_EFFECT_ASSET_ID
     ]
@@ -612,7 +697,9 @@ def verify(repository_root: Path) -> dict[str, Any]:
     )
     expected_frozen = _expected_frozen_document(repository_root)
     _assert_equal_projection(expected_frozen, baseline, "Frozen 18d2 baseline")
-    current = _build_projection(WorktreeReader(repository_root))
+    current = _build_projection(
+        WorktreeReader(repository_root), normalize_action_facing=True
+    )
     _assert_equal_projection(baseline["projection"], current, "Current non-target")
     return baseline
 

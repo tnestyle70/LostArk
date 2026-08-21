@@ -126,6 +126,9 @@ namespace
         Client::EFFECT_TRANSFORM_DESC LocalTransform{};
         Client::EFFECT_FOLLOW_POLICY eFollowPolicy =
             Client::EFFECT_FOLLOW_POLICY::FOLLOW;
+		Client::EFFECT_ORIENTATION_POLICY eOrientationPolicy =
+			Client::EFFECT_ORIENTATION_POLICY::ANCHOR;
+		f32_t fActionFacingYawDegrees = 0.f;
         Client::EFFECT_STOP_POLICY eStopPolicy =
             Client::EFFECT_STOP_POLICY::NATURAL;
         uint32_t iCueDurationMs = 0u;
@@ -966,24 +969,6 @@ namespace
         }
     }
 
-    float4x4_t Compose_Local(
-        const Client::EFFECT_TRANSFORM_DESC& Local,
-        const float4x4_t& Anchor)
-    {
-        const matrix_t Scale = XMMatrixScaling(
-            Local.vScale.x, Local.vScale.y, Local.vScale.z);
-        const matrix_t Rotation = XMMatrixRotationRollPitchYaw(
-            XMConvertToRadians(Local.vRotationDegrees.x),
-            XMConvertToRadians(Local.vRotationDegrees.y),
-            XMConvertToRadians(Local.vRotationDegrees.z));
-        const matrix_t Translation = XMMatrixTranslation(
-            Local.vPosition.x, Local.vPosition.y, Local.vPosition.z);
-        float4x4_t Result{};
-        XMStoreFloat4x4(&Result,
-            Scale * Rotation * Translation * XMLoadFloat4x4(&Anchor));
-        return Result;
-    }
-
 	bool_t Is_FiniteTransform(const Client::EFFECT_TRANSFORM_DESC& Value)
 	{
 		return std::isfinite(Value.vPosition.x) &&
@@ -995,6 +980,31 @@ namespace
 			std::isfinite(Value.vScale.x) &&
 			std::isfinite(Value.vScale.y) &&
 			std::isfinite(Value.vScale.z);
+	}
+
+	bool_t Is_ValidOrientationDescriptor(
+		const Client::EFFECT_SPAWN_DESC& Desc)
+	{
+		if (Desc.eOrientationPolicy >=
+			Client::EFFECT_ORIENTATION_POLICY::END ||
+			(Desc.bUseWorldRoot &&
+				(Client::EFFECT_ORIENTATION_POLICY::ANCHOR !=
+					Desc.eOrientationPolicy ||
+				 Desc.bHasActionFacingYaw)) ||
+			(Desc.bHasActionFacingYaw &&
+			 !std::isfinite(Desc.fActionFacingYawDegrees)))
+		{
+			return false;
+		}
+		if (Client::EFFECT_ORIENTATION_POLICY::ANCHOR ==
+			Desc.eOrientationPolicy)
+		{
+			return true;
+		}
+		return "root" == Desc.strAnchorSlotId &&
+			Desc.bHasActionFacingYaw &&
+			std::isfinite(Desc.fActionFacingYawDegrees) &&
+			0u != Desc.iActionStartTick;
 	}
 
 	bool_t Has_EqualTransform(
@@ -2625,6 +2635,7 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 		!std::isfinite(Desc.fInitialSampleTimeSeconds) ||
 		Desc.fInitialSampleTimeSeconds < 0.f ||
 		EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
+		!Is_ValidOrientationDescriptor(Desc) ||
 		EFFECT_STOP_POLICY::NATURAL != Desc.eStopPolicy)
 	{
 		strOutStatus =
@@ -2679,7 +2690,15 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	const float4x4_t Root = Compose_Local(Desc.LocalTransform, Anchor);
+	float4x4_t Root{};
+	if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+		Desc.LocalTransform, Anchor, Desc.eOrientationPolicy,
+		Desc.fActionFacingYawDegrees, Root))
+	{
+		strOutStatus = "Artist 31470 root transform is invalid.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	ARTIST_31470_TRANSFORM_HISTORY ArtistTransformHistory;
 	if (!Prepare_Artist31470TransformHistory(
 			pOwner, SourceAnchorRequests, Root,
@@ -2749,6 +2768,8 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 	Active.strAnchorSlotId = Desc.strAnchorSlotId;
 	Active.LocalTransform = Desc.LocalTransform;
 	Active.eFollowPolicy = Desc.eFollowPolicy;
+	Active.eOrientationPolicy = Desc.eOrientationPolicy;
+	Active.fActionFacingYawDegrees = Desc.fActionFacingYawDegrees;
 	Active.eStopPolicy = Desc.eStopPolicy;
 	Active.iCueDurationMs = Desc.iCueDurationMs;
 	Active.iActionStartTick = Desc.iActionStartTick;
@@ -2851,6 +2872,7 @@ bool_t Client::CEffectPresentationService::Spawn(
 		std::isfinite(Desc.fInitialSampleTimeSeconds) &&
 		Desc.fInitialSampleTimeSeconds >= 0.f &&
 		EFFECT_FOLLOW_POLICY::END != Desc.eFollowPolicy &&
+		Is_ValidOrientationDescriptor(Desc) &&
 		EFFECT_STOP_POLICY::END != Desc.eStopPolicy &&
 		(EFFECT_STOP_POLICY::CUE_END != Desc.eStopPolicy ||
 			0u != Desc.iCueDurationMs) &&
@@ -3066,6 +3088,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         !std::isfinite(Desc.fInitialSampleTimeSeconds) ||
         Desc.fInitialSampleTimeSeconds < 0.f ||
         EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
+		!Is_ValidOrientationDescriptor(Desc) ||
         EFFECT_STOP_POLICY::END == Desc.eStopPolicy ||
         (EFFECT_STOP_POLICY::CUE_END == Desc.eStopPolicy &&
             0u == Desc.iCueDurationMs) ||
@@ -3132,7 +3155,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         return false;
     }
 
-    float4x4_t Root{};
+	float4x4_t Root{};
 	if (Desc.bUseWorldRoot)
 	{
 		Root = Desc.WorldRoot;
@@ -3146,7 +3169,14 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 			g_strStatus = strOutStatus;
 			return false;
 		}
-		Root = Compose_Local(Desc.LocalTransform, Anchor);
+		if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+			Desc.LocalTransform, Anchor, Desc.eOrientationPolicy,
+			Desc.fActionFacingYawDegrees, Root))
+		{
+			strOutStatus = "Effect cue root transform is invalid.";
+			g_strStatus = strOutStatus;
+			return false;
+		}
 	}
     std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests =
         Collect_SourceAnchorRequests(*pDocument);
@@ -3214,6 +3244,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     Active.strAnchorSlotId = Desc.strAnchorSlotId;
     Active.LocalTransform = Desc.LocalTransform;
     Active.eFollowPolicy = Desc.eFollowPolicy;
+	Active.eOrientationPolicy = Desc.eOrientationPolicy;
+	Active.fActionFacingYawDegrees = Desc.fActionFacingYawDegrees;
     Active.eStopPolicy = Desc.eStopPolicy;
     Active.iCueDurationMs = Desc.iCueDurationMs;
     Active.iActionStartTick = Desc.iActionStartTick;
@@ -3382,8 +3414,16 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
             Effect.pObject->Set_Visible(false);
             continue;
         }
-		Effect.pObject->Set_RootWorldForNextUpdate(
-			Compose_Local(Effect.LocalTransform, Anchor));
+		float4x4_t Root{};
+		if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+			Effect.LocalTransform, Anchor, Effect.eOrientationPolicy,
+			Effect.fActionFacingYawDegrees, Root))
+		{
+			Effect.bFollowAnchorMissing = true;
+			Effect.pObject->Set_Visible(false);
+			continue;
+		}
+		Effect.pObject->Set_RootWorldForNextUpdate(Root);
     }
 }
 

@@ -445,6 +445,7 @@ Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
 			Pending.Snapshot.iSkillId,
 			Pending.iServerTick,
 			Pending.Snapshot.iActionStartTick,
+			Pending.Snapshot.fYawDegrees,
 			Pending.Snapshot.iComboStage))
 	{
 		Clear_DeferredLocalCharacterClassReplacement();
@@ -1243,6 +1244,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				player.iSkillId,
 				snapshot.iServerTick,
 				player.iActionStartTick,
+				player.fYawDegrees,
 				player.iComboStage))
 		{
 			allSucceeded = false;

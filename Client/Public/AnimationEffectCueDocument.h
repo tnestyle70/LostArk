@@ -20,6 +20,15 @@ enum class EFFECT_FOLLOW_POLICY : uint8_t
     END
 };
 
+/* Position sampling and rotational authority are independent.  Existing cues
+   omit this field and retain their sampled anchor basis. */
+enum class EFFECT_ORIENTATION_POLICY : uint8_t
+{
+	ANCHOR,
+	ACTION_FACING,
+	END
+};
+
 enum class EFFECT_STOP_POLICY : uint8_t
 {
     NATURAL,
@@ -36,6 +45,8 @@ struct ANIMATION_EFFECT_CUE final
     std::string strAnchorSlotId = "root";
     EFFECT_TRANSFORM_DESC LocalTransform{};
 	EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+	EFFECT_ORIENTATION_POLICY eOrientationPolicy =
+		EFFECT_ORIENTATION_POLICY::ANCHOR;
 	EFFECT_STOP_POLICY eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
 };
 
@@ -73,7 +84,7 @@ struct ANIMATION_PROJECTILE_CUE final
 
 struct ANIMATION_EFFECT_CUE_DOCUMENT final
 {
-    uint32_t iFormatVersion = 5u;
+	uint32_t iFormatVersion = 6u;
     std::string strAnimationAssetId;
     std::vector<ANIMATION_EFFECT_CUE> Cues;
 	/* Structurally valid Product cues whose exact Effect target is absent from
@@ -99,6 +110,16 @@ struct ANIMATION_EFFECT_PREVIEW_CANDIDATE final
 class CAnimationEffectCueDocument final
 {
 public:
+	/* Local TRS is applied to the sampled root once. ACTION_FACING preserves
+	   sampled root translation/scale while replacing only its rotational basis
+	   with the action-start yaw captured by the caller. */
+	static bool_t Try_ComposeRootTransform(
+		const EFFECT_TRANSFORM_DESC& Local,
+		const float4x4_t& SampledRootAnchor,
+		EFFECT_ORIENTATION_POLICY eOrientationPolicy,
+		f32_t fActionFacingYawDegrees,
+		float4x4_t& OutRoot);
+
     /* Joins Product cues to the binding in stage/clip order. A document with no
        exact Product mapping fails without modifying OutCandidates, allowing
        callers to keep the previous preview instead of expanding a skill chain. */

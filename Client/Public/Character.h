@@ -104,6 +104,7 @@ public:
 		LostArk::Shared::SKILL_ID skillId,
 		std::uint32_t serverTick,
 		std::uint32_t actionStartTick,
+		f32_t actionFacingYawDegrees,
 		std::uint8_t comboStage = 0);
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
 	/* A Model View clone may mirror the live scene stance, but only after that
@@ -230,6 +231,8 @@ private:
 	ANIMATION_EFFECT_CUE_DOCUMENT m_EffectCueDocument;
 	f32_t m_fPreviousEffectCueStageWallSeconds = -1.f;
 	std::uint32_t m_iEffectActionStartTick = 0u;
+	f32_t m_fEffectActionFacingYawDegrees = 0.f;
+	bool_t m_bHasEffectActionFacingYaw = false;
 	LostArk::Shared::SKILL_ID m_iCurrentEffectSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
 	DEFERRED_EMISSIVE_OVERRIDE m_ActionEmissiveOverride;
@@ -293,7 +296,9 @@ private:
 	void Update_SkillProjectileDebug(f32_t fTimeDelta);
 #endif
 	bool_t Load_EffectCues();
-	void Reset_EffectCueCursor(std::uint32_t iActionStartTick);
+	void Reset_EffectCueCursor(
+		std::uint32_t iActionStartTick,
+		f32_t fActionFacingYawDegrees);
 	void Update_EffectCues();
 	void Spawn_FallbackEffect(LostArk::Shared::SKILL_ID iSkillId);
 	f32_t Get_EffectPlaybackRate() const;
