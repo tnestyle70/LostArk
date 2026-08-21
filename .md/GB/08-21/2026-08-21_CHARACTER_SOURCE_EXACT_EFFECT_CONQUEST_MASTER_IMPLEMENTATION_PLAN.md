@@ -795,6 +795,31 @@ inner-hole RGB/sRGB lane과 sampler/static/render mask를 exact tuple로 고정�
 닫히지 않은 six-slot native DXBC는 oracle-only로 유지한다. A/D의 J-child 두 occurrence는 같은 parent
 이름만으로 승격하지 않고 effective static set을 별도로 닫을 때까지 기존 경로에 남긴다.
 
+두 번째 canary는 F `2050230`의 exact Fluid01 SpriteParticle 두 행
+`authored.source-particle.1ae3416ac205fee634b746a9`와
+`authored.source-particle.ed33fb10661afb8854e76957`이다. 두 행만 RuntimeMaterialV2 opcode 17로
+승격하고 opcode 18은 도화가 D 후속 family를 위해 비워 둔다. admission key는 sprite carrier,
+child `fx_m_mi_w_00.mi.fx_w_pa_fd_01_3_tr`, parent
+`fx_mastermaterial.fx_mm.fx_mm_fluid_01_tr`, stable ID와 sourceNode, pass 3
+`RS_Default/DSS_ReadOnly/BS_EffectAlpha`, 다음 네 role lane의 exact tuple이다.
+
+```text
+transition_texture = fx_d_cloud_035.dds, RGB/linear
+emissive_tex       = fx_o_glass_01.dds, RGB/linear
+uv_noise_01_tex    = fx_bg_softriver_02_n.dds, RG/linear
+uv_noise_02_tex    = fx_bg_softriver_01_n.dds, RG/linear
+```
+
+source evidence에서 회수한 scalar 22개와 vector 0개, dynamic consumed `0x07`, particle color
+consumed `0x0f`, texture mask `0x0f`를 packet으로 봉인한다. 기존 bounded profile-34 식은
+class-neutral typed HLSL family로 이동하되 native cooked DXBC 복원으로 주장하지 않는다. selective
+materializer는 두 target의 material만 교체하고 F의 나머지 행은 canonical deep-equal, 도화가 F는
+byte/canonical golden으로 고정한다. focused WARP는 두 draw의 실제 PS invocation/RT pixel, malformed
+두 번째 sourceNode 거부와 직전 prepared state 보존을 Debug/Release 모두 요구한다. 공용 resource
+reuse signature도 sourceNode, render profile, SourceRecipe enabled/renderer shape를 비교해 opcode 16/17의
+strict tuple admission을 fast path에서 우회하지 못하게 한다. 이 G에서는
+world Fluid01 sprite만 닫고 CAP-03 screen-space textured shard overlay는 추가하지 않는다.
+
 ### G07. dragon flow와 궁극기 rollout
 
 Artist T의 fallback-blocked TypeDataRibbon을 먼저 typed CascadeRibbon으로 projection해 existing carrier
@@ -1125,10 +1150,10 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G00 inventory | `AUTO_PASS` | 22 occurrence family-first contract, builder check, focused 23 tests | 해당 없음 | first Product family executor |
 | G01 Tool/save | `IMPLEMENTED` | Warlord 17090 retained subset Save/Load 7/7, invalid identity/mesh/recipe rollback | 미실행 | Light/Post/Ribbon subtype Tool tree |
 | G02 join | `IMPLEMENTED` | Artist D effectref + source catalog + 56-row authored closure focused PASS | 미실행 | full publisher/runtime sealed join |
-| G03 shader variants | `IMPLEMENTED` | Glasshole02 K01 opcode 16 exact tuple admission, malformed packet rollback, WARP draw | 미실행 | Fluid/dragon variants와 native VF/pass evidence |
+| G03 shader variants | `IMPLEMENTED` | StandardColorV1, Glasshole02 opcode 16, Fluid01 opcode 17, Artist Tiger opcode 18의 typed admission·rollback·WARP draw | 미실행 | dragon variants와 추가 native VF/pass evidence |
 | G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R/S, Warlord T, Lance E cone donor focused PASS | 미실행 | runtime full publish, S 사용자 화면 튜닝 |
-| G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결 | 미실행 | D/T asset lineage |
-| G06 glass/crack | `IMPLEMENTED` | W2050120 K-child typed canary + screen-overlay v1 synthetic WARP/rollback evidence | 미실행 | Fluid01, J-child static set, 차원 F Product overlay/refraction |
+| G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결, D tiger 12행 typed family | 미실행 | E runtime frame 확인, T asset lineage |
+| G06 glass/crack | `IMPLEMENTED` | W2050120 K-child + F2050230 Fluid01 two-row + screen-overlay v1 synthetic WARP/rollback | 미실행 | Fluid01 mesh, J-child static set, 차원 F/W Product overlay·refraction |
 | G07 dragon/ultimate | `EVIDENCE_PARTIAL` | Lance mesh/material cohort | 미실행 | independent UV/material execution |
 | G08 Artist V | `EVIDENCE_PARTIAL` | source timing/module audit | 미실행 | attractor/camera channel |
 | G09 Dimension gameplay | `EVIDENCE_PARTIAL` | current command/snapshot audit | 미실행 | approved target replication |

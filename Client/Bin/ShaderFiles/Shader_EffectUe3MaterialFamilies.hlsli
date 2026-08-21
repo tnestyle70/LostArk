@@ -14,6 +14,125 @@
 
 static const uint RUNTIME_MATERIAL_V2_UE3_SPRITEWAVE_TR = 15u;
 static const uint RUNTIME_MATERIAL_V2_UE3_GLASSHOLE02_SPRITE_K01 = 16u;
+static const uint RUNTIME_MATERIAL_V2_UE3_FLUID01_SPRITE_W_FD_01_3 = 17u;
+
+bool EffectUe3Fluid01SpriteWFd013PacketIsValid()
+{
+    return g_RuntimeMaterialV2Enabled == 1u &&
+        g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_FLUID01_SPRITE_W_FD_01_3 &&
+        g_RuntimeMaterialV2TextureLaneCount == 4u &&
+        g_RuntimeMaterialV2TextureMask == 0xfu &&
+        g_SourceTextureMask == 0xfu &&
+        g_RuntimeMaterialV2DynamicConsumedMask == 0x7u &&
+        g_RuntimeMaterialV2DynamicSuppressedMask == 0x8u &&
+        g_RuntimeMaterialV2ParticleColorPolicy == 2u &&
+        g_RuntimeMaterialV2ParticleColorConsumedMask == 0xfu &&
+        g_RuntimeMaterialV2ParticleColorSuppressedMask == 0u &&
+        g_RuntimeMaterialV2ScalarCount == 22u &&
+        g_RuntimeMaterialV2VectorCount == 0u &&
+        g_RuntimeMaterialV2InputCount == 22u &&
+        all(g_RuntimeMaterialV2InputConsumedMask ==
+            uint2(0x003fffffu, 0u)) &&
+        all(g_RuntimeMaterialV2InputSuppressedMask == uint2(0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentConsumedMask ==
+            uint3(0u, 0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentSuppressedMask ==
+            uint3(0u, 0u, 0u)) &&
+        g_RuntimeMaterialV2StaticInputCount == 0u &&
+        g_RuntimeMaterialV2StaticSelectedMask == 0u &&
+        g_RuntimeMaterialV2StaticConsumedMask == 0u &&
+        g_RuntimeMaterialV2StaticSuppressedMask == 0u &&
+        g_RuntimeMaterialV2RenderInputCount == 0u &&
+        g_RuntimeMaterialV2RenderConsumedMask == 0u &&
+        g_RuntimeMaterialV2RenderSuppressedMask == 0u;
+}
+
+EFFECT_PS_OUT Shade_EffectUe3Fluid01SpriteWFd013Particle(
+    float2 localUV,
+    float4 particleColor,
+    float4 dynamicParameter)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    if (!EffectUe3Fluid01SpriteWFd013PacketIsValid())
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    // Exact source scalar packet for fx_w_pa_fd_01_3_tr.  This is the
+    // class-neutral typed successor of legacy bounded profile 34; it is a
+    // source-evidenced reconstruction, not a native cooked-DXBC claim.
+    const float4 p0 = g_RuntimeMaterialV2ScalarBlocks[0];
+    const float4 p1 = g_RuntimeMaterialV2ScalarBlocks[1];
+    const float4 p2 = g_RuntimeMaterialV2ScalarBlocks[2];
+    const float4 p3 = g_RuntimeMaterialV2ScalarBlocks[3];
+    const float4 p4 = g_RuntimeMaterialV2ScalarBlocks[4];
+    const float4 p5 = g_RuntimeMaterialV2ScalarBlocks[5];
+
+    const float2 noise01UV =
+        localUV * max(abs(p1.w), 0.01f) +
+        float2(p2.y, p2.x) * g_EffectLocalTime;
+    const float2 noise02UV =
+        localUV * max(abs(p2.w), 0.01f) +
+        float2(p3.y, p3.x) * g_EffectLocalTime;
+    const float2 noise01 =
+        (g_SourceTexture2.Sample(
+            g_RuntimeMaterialV2Sampler2, noise01UV).rg * 2.f - 1.f) * p2.z;
+    const float2 noise02 =
+        (g_SourceTexture3.Sample(
+            g_RuntimeMaterialV2Sampler3, noise02UV).rg * 2.f - 1.f) * p3.z;
+    const float2 uvNoise = clamp(noise01 + noise02, -0.25f, 0.25f);
+
+    const float2 transitionUV =
+        localUV * max(abs(p0.z), 0.01f) +
+        float2(p1.x, p0.w) * g_EffectLocalTime + uvNoise;
+    const float3 transitionColor = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, transitionUV).rgb;
+    const float transitionCarrier = saturate(dot(
+        transitionColor, float3(0.299f, 0.587f, 0.114f)));
+    const float threshold = saturate(
+        abs(dynamicParameter.x) / 1.5f * 0.8f + p0.y * 0.1f);
+    const float transitionSoftness = max(abs(p0.x), 1.f / 255.f);
+    const float fillGate = smoothstep(
+        threshold - transitionSoftness,
+        threshold + transitionSoftness, transitionCarrier);
+    const float lineWidth = max(
+        abs(p1.z) * transitionSoftness, 1.f / 255.f);
+    const float lineGate = saturate(
+        1.f - abs(transitionCarrier - threshold) / lineWidth);
+
+    const float2 centeredUV = localUV - float2(0.5f, 0.5f);
+    const float fresnelPower = max(
+        abs(dynamicParameter.z) * max(abs(p4.w), 0.01f), 0.01f);
+    const float radialEnvelope = pow(saturate(
+        1.f - smoothstep(0.38f, 0.5f, length(centeredUV))),
+        fresnelPower);
+    const float alphaPower = max(abs(dynamicParameter.y), 0.01f);
+    const float shape = pow(
+        saturate(max(fillGate, lineGate)), alphaPower) * radialEnvelope;
+
+    const float2 emissiveUV =
+        localUV * max(abs(p4.yz), float2(0.01f, 0.01f)) + uvNoise;
+    const float3 emissiveSample = Desaturate_SourceColor(
+        g_SourceTexture1.Sample(
+            g_RuntimeMaterialV2Sampler1, emissiveUV).rgb,
+        saturate(p4.x));
+    const float4 color = (g_ColorMultiply + g_ColorOffset) * particleColor;
+    output.SceneColor.rgb =
+        (emissiveSample * max(p3.w, 0.f) +
+         transitionColor * lineGate * max(p1.y, 0.f)) *
+        max(p5.y, 0.f) * color.rgb * max(g_EmissiveIntensity, 0.f);
+    const float peakRadiance = max(output.SceneColor.r,
+        max(output.SceneColor.g, output.SceneColor.b));
+    output.SceneColor.rgb /= 1.f + peakRadiance;
+    output.SceneColor.a = saturate(color.a * shape);
+
+    output.Distortion.xy = uvNoise *
+        clamp(p5.x * 0.01f, -0.25f, 0.25f) * shape;
+    clip(output.SceneColor.a - g_ColorClip);
+    return output;
+}
 
 bool EffectUe3Glasshole02K01PacketIsValid()
 {

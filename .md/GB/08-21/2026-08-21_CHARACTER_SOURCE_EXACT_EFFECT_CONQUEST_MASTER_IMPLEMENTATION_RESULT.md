@@ -5,6 +5,8 @@
 상태: 진행 중 living RESULT
 최종 화면 판정자: 사용자
 
+Fluid01 추가 checkpoint는 기준 `b705abb7`, 격리 브랜치 `codex/dm-fluid01`에서 검증했다.
+
 이 문서는 마스터 PLAN의 실제 반영 상태만 기록한다. 도화가·워로드·창술사·차원술사
 전체 복원은 아직 진행 중이며, 이 버전에서는 family inventory, action-facing, opt-in standard
 color/coverage 수직 슬라이스를 구현했다.
@@ -162,7 +164,33 @@ color/coverage 수직 슬라이스를 구현했다.
 - 이 수직 슬라이스는 synthetic DDS canary를 첫 소비자로 둔 `PROJECT_TUNED/TYPED_PRESENTATION`이다.
   차원 F/W Product occurrence와 원본 화면 유리 파편은 아직 연결하지 않았고 source-exact native DXBC,
   refraction, normal/noise/mask/dissolve 다중 lane도 후속 revision 경계다.
+### 1.13 차원술사 F `2050230` Fluid01 SpriteParticle family
 
+- F의 exact Product SpriteParticle
+  `authored.source-particle.1ae3416ac205fee634b746a9`와
+  `authored.source-particle.ed33fb10661afb8854e76957` 두 행만 RuntimeMaterialV2 opcode 17로
+  승격했다. Glasshole02는 opcode 16, 도화가 D BLACK_TIGER_STROKE는 opcode 18을 독립적으로 유지한다.
+- 두 행의 child는 `fx_m_mi_w_00.mi.fx_w_pa_fd_01_3_tr`, parent는
+  `fx_mastermaterial.fx_mm.fx_mm_fluid_01_tr`이다. transition `fx_d_cloud_035` RGB/linear,
+  emissive `fx_o_glass_01` RGB/linear, noise01 `fx_bg_softriver_02_n` RG/linear, noise02
+  `fx_bg_softriver_01_n` RG/linear 네 lane과 linear/wrap sampler를 exact tuple로 봉인했다.
+- source evidence의 scalar 22개, vector 0개, texture mask `0x0f`, dynamic consumed/suppressed
+  `0x07/0x08`, particle color consumed `0x0f`, pass 3
+  `RS_Default/DSS_ReadOnly/BS_EffectAlpha`를 packet으로 보존했다.
+- bounded profile-34 식을 class-neutral HLSL Fluid01 family로 옮겨 transition/noise/distortion,
+  emissive, particle color와 lifetime coverage를 평가한다. 이 식은 현재 source evidence 기반의
+  bounded 복원이며 native cooked DXBC 복원으로 주장하지 않는다.
+- C++ admission은 두 stable ID와 두 sourceNode, sprite carrier, child/resource bindings, 네 lane의
+  role/asset/register/channel/color-space/sampler, 22 scalar와 모든 mask가 모두 일치할 때만 opcode 17을
+  승인한다. 공용 resource reuse signature에도 sourceNode, render profile, SourceRecipe enabled/renderer
+  shape를 포함해 opcode 16/17 strict admission의 no-rebuild 우회를 막았다. Fluid01 두 번째 행의
+  sourceNode를 변조한 mid-stage restage와 Glasshole02 carrier shape 변조는 모두 거부하고 직전 prepared
+  draw를 유지한다. opcode 18 도화가 D 실행은 별도 exact allowlist와 WARP canary가 소유한다.
+- selective materializer는 두 target material만 교체한다. 같은 F 문서의 나머지 행은 canonical
+  deep-equal이며 도화가 F authored 문서는 byte/canonical golden으로 고정했다.
+- 이번 단위는 world Fluid01 SpriteParticle까지만 닫았다. 화면을 가로지르는 textured glass shard
+  overlay, F raw source의 sphere/hemisphere/world shard/light/post 재조합과 Fluid01 mesh rollout은
+  구현하지 않았다.
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -184,7 +212,7 @@ color/coverage 수직 슬라이스를 구현했다.
 | Lance E W-cone selective donor | 4 tests, `--check`, authored codec parse PASS |
 | Glasshole02 K01 materializer | 6 tests, `--check`, Debug authored codec parse PASS |
 | Debug Glasshole02 K01 HLSL/Client | shader compile + Client errors 0 PASS |
-| Debug/Release `--effect-glass-family-fast` | 각 11 PASS; draw 1, issued 1, RGB pixels 283, semantic-channel reject/rollback PASS |
+| Debug/Release `--effect-glass-family-fast` | 각 11 PASS; draw 1, issued 1, RGB pixels 283, semantic-channel·carrier-shape reject/rollback PASS |
 | Artist S grass-tip selective materializer | 7 tests PASS, `--check` PASS, 4 DDS SHA-256 PASS, Debug/Release codec SHA `03e4e9f8...` 일치 |
 | Debug `--effect-standard-color-v1-fast` codec + WARP | failures 0 |
 | Release `--effect-standard-color-v1-fast` codec + WARP | failures 0 |
@@ -208,6 +236,10 @@ color/coverage 수직 슬라이스를 구현했다.
 | Debug/Release Shared + NetworkProtocolHarness build/run | 각 errors 0, failures 0 PASS |
 | Debug/Release Server build | 각 errors 0 PASS |
 | Debug/Release Server `--contract-test` | Debug 22건, Release 11건 FAIL. 모두 기존 Valtan scripted mechanic/rotation/charge/root-motion/floor-collapse 계열이며 overlay 완료 증거로 승격하지 않음 |
+| Fluid01 selective materializer | 7 tests PASS, `--mode check` PASS; target 2행 외 F deep-equal, Artist F golden PASS |
+| Debug/Release ClientFrontendHarness build | 각 exit 0 PASS; 기존 C4828/DirectXTK LNK4099 warning만 존재 |
+| Debug/Release `--effect-fluid01-family-fast` | 각 failures 0; draw 2, pass `3/3`, mask `0x0f/0x0f`, PS invocation 2452, RGB pixels 1021, second-row sourceNode reject/rollback PASS |
+| 전체 `Test-EffectPipeline.ps1` | publisher fixture 본체 PASS; Python 82 tests 중 이번 Fluid01 7 tests PASS, 기존 Valtan cardinality/gap 기대값 drift 3 failure + 2 error로 최종 exit 1 |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -227,15 +259,23 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 - Server contract-test는 이 변경이 건드리지 않은 Valtan scripted mechanic과 floor-collapse 기준선에서
   Debug 22건, Release 11건 실패했다. Server 빌드 자체는 양 configuration 모두 통과했지만 이 실행을
   회귀 PASS로 기록하지 않는다.
+- Fluid01 opcode 17도 현재 authored 두 행과 renderer/harness까지의 vertical slice다. checked-in sealed
+  runtime catalog publish와 사용자 Client 화면 판정 전에는 `COMPLETE`로 올리지 않는다.
+- screen-space textured shard overlay의 renderer와 rollback 계약은 닫혔지만 아직 synthetic canary다.
+  다음 단위는 exact shard texture/role과 F/W Product timing·ownership을 typed descriptor로 연결하고,
+  RGBNoise/ZoomBlur와의 실제 ordered composition을 sealed runtime에서 검증해야 한다.
 - full Effect publisher Validate는 현재 main의 `effect.valtan.red-blade-wave.active` 중복 소유자
   검증에서 중단된다. 이 세션은 해당 Valtan 데이터를 수정하지 않았다.
+- 이 기준점의 전체 EffectPipeline Python suite는 Valtan canonical occurrence 기대값 `128` 대 실제
+  `137`, migration 기대 tuple과 binding-gap 기대가 불일치한다. Fluid01 변경은 Valtan 파일을 수정하지
+  않았고 focused Fluid01 tests/Debug·Release WARP는 모두 통과했다.
 - 실제 Client의 동/서/남/북 cast 방향, 검격 형태·타이밍·색감은 사용자 화면 판정 대기다.
 - 워로드 W의 `fm_a_hemisphere_012` 하나가 보이는 방패 세 판을 포함하는지는 사용자
   화면 판정 후 독립 좌/중/우 cohort 추가 여부를 결정한다.
 
 ## 4. 다음 구현 단위
 
-1. full Effect publish blocker 해소 뒤 authored/source catalog를 sealed runtime으로 transaction publish
-2. 검증된 `effect.standard_color_v1`에 source-evidence가 닫힌 occurrence를 opt-in migration
-3. Fluid01, screen overlay, dragon, attractor의 class-neutral family 구현
-4. 전체 Debug/Release·publisher·focused harness 뒤 사용자 화면 판정
+1. Lance/Artist dragon의 독립 UV·dissolve typed family와 실제 12 occurrence admission을 완료한다.
+2. F raw 69행의 sphere/hemisphere/world shard/light/RGBNoise/ZoomBlur를 role-select하고 screen-overlay Product timing에 연결한다.
+3. Fluid01 mesh와 W의 동일 exact variant cohort를 carrier별 admission하고 Artist T ribbon·V attractor/camera family를 닫는다.
+4. full Effect publisher transaction, 전체 Debug/Release focused harness 뒤 사용자가 실제 Client 화면을 판정한다.
