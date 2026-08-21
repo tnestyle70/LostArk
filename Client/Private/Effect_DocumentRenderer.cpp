@@ -1849,12 +1849,17 @@ namespace
 		{
 			const Client::EFFECT_ELEMENT_DESC& A = Left.Elements[i];
 			const Client::EFFECT_ELEMENT_DESC& B = Right.Elements[i];
-			if (A.strElementId != B.strElementId || A.eKind != B.eKind ||
+			if (A.strElementId != B.strElementId ||
+				A.strSourceNode != B.strSourceNode || A.eKind != B.eKind ||
 				A.Renderer.eType != B.Renderer.eType ||
 				A.Renderer.eSourceSpace != B.Renderer.eSourceSpace ||
 				A.Material.strTemplateId != B.Material.strTemplateId ||
 				A.Material.strSourceMaterialPath !=
 					B.Material.strSourceMaterialPath ||
+				A.Material.eRenderProfile != B.Material.eRenderProfile ||
+				A.SourceRecipe.bEnabled != B.SourceRecipe.bEnabled ||
+				A.SourceRecipe.strRendererShape !=
+					B.SourceRecipe.strRendererShape ||
 				!Same_MaterialExecutionResourceSignature(
 					A.Material.Execution, B.Material.Execution) ||
 				!Client::Is_EffectSourceMaterialStagingSignatureEqual(
@@ -5667,6 +5672,154 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 		{
 			strOutError = "Glasshole02 K01 opcode 16 packet is not the admitted "
 				"carrier/material/render tuple: " + Element.strElementId;
+			return false;
+		}
+	}
+	if (Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+		Execution.iOpcode == 17u)
+	{
+		static constexpr std::array<std::string_view, 2u> ELEMENT_IDS = {{
+			"authored.source-particle.1ae3416ac205fee634b746a9",
+			"authored.source-particle.ed33fb10661afb8854e76957"
+		}};
+		static constexpr std::array<std::string_view, 2u> SOURCE_NODES = {{
+			"authored-source-particle:effect.dimensionmaster.skill.2050230."
+				"unified|source:effect.dimensionmaster.skill.2050230.imported|"
+				"element:fx_pc_swp_03.par_s_swp_chrono_atk_01."
+				"particlespriteemitter_24",
+			"authored-source-particle:effect.dimensionmaster.skill.2050230."
+				"unified|source:effect.dimensionmaster.skill.2050230.imported|"
+				"element:fx_pc_swp_03.par_s_swp_chrono_rewind_02."
+				"particlespriteemitter_37"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_IDS = {{
+			"lane.0", "lane.1", "lane.2", "lane.3"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_ROLES = {{
+			"transition_texture", "emissive_tex",
+			"uv_noise_01_tex", "uv_noise_02_tex"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_ASSETS = {{
+			"Effect/DimensionMaster/Textures/FX_TEX_02/"
+				"fx_d_cloud_035.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_HIGH_03/"
+				"fx_o_glass_01.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_00/"
+				"fx_bg_softriver_02_n.dds",
+			"Effect/Warlord/Textures/FX_TEX_00/"
+				"fx_bg_softriver_01_n.dds"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_CHANNELS = {{
+			"RGB", "RGB", "RG", "RG"
+		}};
+		static constexpr std::array<std::string_view, 22u> SCALAR_NAMES = {{
+			"transition_thickness", "transition_direction", "transition_tiling",
+			"transition_panning_y", "transition_panning_x",
+			"emissive_line_intensity", "transition_line_thickness",
+			"uv_noise_01_tiling", "uv_noise_01_panning_y",
+			"uv_noise_01_panning_x", "uv_noise_01_intensity",
+			"uv_noise_02_tiling", "uv_noise_02_panning_y",
+			"uv_noise_02_panning_x", "uv_noise_02_intensity",
+			"emissive_intensity", "emissive_desaturation",
+			"emissive_uv_scale_x", "emissive_uv_scale_y", "fresnel_power",
+			"distortion_intensity", "total_scale"
+		}};
+		static constexpr std::array<f32_t, 22u> SCALAR_VALUES = {{
+			0.3f, 0.1f, 4.f, 0.2f, 0.02f, 2.f, 2.f, 0.5f,
+			0.1f, 0.2f, 0.f, 0.7f, 0.07f, 0.15f, 0.15f, 1.f,
+			0.f, 2.f, 2.f, 1.f, 1.f, 1.f
+		}};
+		const auto NearlyEqual = [](const f32_t Left, const f32_t Right)
+		{
+			return std::abs(Left - Right) <= 1.0e-6f *
+				(std::max)({ 1.f, std::abs(Left), std::abs(Right) });
+		};
+		const bool_t bFirstIdentity =
+			Element.strElementId == ELEMENT_IDS[0] &&
+			Element.strSourceNode == SOURCE_NODES[0];
+		const bool_t bSecondIdentity =
+			Element.strElementId == ELEMENT_IDS[1] &&
+			Element.strSourceNode == SOURCE_NODES[1];
+		bool_t bFluid01ContractValid =
+			(bFirstIdentity || bSecondIdentity) &&
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "sprite" &&
+			Element.Material.strSourceMaterialPath ==
+				"fx_m_mi_w_00.mi.fx_w_pa_fd_01_3_tr" &&
+			Element.ResourceBindings.size() == 2u &&
+			Element.ResourceBindings[0].strSlotId == "base" &&
+			Element.ResourceBindings[0].strAssetId == LANE_ASSETS[0] &&
+			Element.ResourceBindings[1].strSlotId == "emissive" &&
+			Element.ResourceBindings[1].strAssetId == LANE_ASSETS[1] &&
+			Execution.iTextureLaneCount == 4u && Execution.iTextureMask == 0xfu &&
+			Execution.TextureLanes.size() == LANE_IDS.size() &&
+			Execution.iDynamicConsumedMask == 0x7u &&
+			Execution.iDynamicSuppressedMask == 0x8u &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0xfu &&
+			Execution.iParticleColorSuppressedMask == 0u &&
+			Execution.iScalarCount == SCALAR_NAMES.size() &&
+			Execution.Scalars.size() == SCALAR_NAMES.size() &&
+			Execution.iVectorCount == 0u && Execution.Vectors.empty() &&
+			Execution.iInputCount == 22u &&
+			Execution.InputConsumedMask == std::array<uint32_t, 2u>{
+				0x003fffffu, 0u } &&
+			Execution.InputSuppressedMask == std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0u, 0u, 0u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0u, 0u, 0u } &&
+			Execution.iStaticInputCount == 0u &&
+			Execution.iStaticSelectedMask == 0u &&
+			Execution.iStaticConsumedMask == 0u &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 0u &&
+			Execution.iRenderConsumedMask == 0u &&
+			Execution.iRenderSuppressedMask == 0u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+		for (size_t i = 0u; bFluid01ContractValid && i < LANE_IDS.size(); ++i)
+		{
+			const EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane =
+				Execution.TextureLanes[i];
+			bFluid01ContractValid =
+				Lane.strLaneId == LANE_IDS[i] && Lane.strRole == LANE_ROLES[i] &&
+				Lane.strAssetId == LANE_ASSETS[i] &&
+				Lane.iTextureRegister == i && Lane.iSamplerRegister == 5u + i &&
+				Lane.strSourceChannel == LANE_CHANNELS[i] &&
+				Lane.eColorSpace == EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+				Lane.Sampler.eFilter == EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR &&
+				Lane.Sampler.eAddressU ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.eAddressV ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.eAddressW ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.fMipLodBias == 0.f &&
+				Lane.Sampler.iMaxAnisotropy == 1u &&
+				Lane.Sampler.eComparison ==
+					EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER &&
+				Lane.Sampler.vBorderColor.x == 0.f &&
+				Lane.Sampler.vBorderColor.y == 0.f &&
+				Lane.Sampler.vBorderColor.z == 0.f &&
+				Lane.Sampler.vBorderColor.w == 0.f &&
+				Lane.Sampler.fMinLod == 0.f &&
+				Lane.Sampler.fMaxLod == (std::numeric_limits<f32_t>::max)();
+		}
+		for (size_t i = 0u;
+			bFluid01ContractValid && i < SCALAR_NAMES.size(); ++i)
+		{
+			const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar =
+				Execution.Scalars[i];
+			bFluid01ContractValid = Scalar.strName == SCALAR_NAMES[i] &&
+				Scalar.iPackedIndex == i &&
+				NearlyEqual(Scalar.fValue, SCALAR_VALUES[i]);
+		}
+		if (!bFluid01ContractValid)
+		{
+			strOutError = "Fluid01 W-FD-01-3 opcode 17 packet is not the admitted "
+				"parent/child/carrier/role tuple: " + Element.strElementId;
 			return false;
 		}
 	}
