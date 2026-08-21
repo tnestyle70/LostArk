@@ -319,6 +319,24 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   검증한다. Client/UI는 자율 실행하지 않았으므로 실제 Tool open/editor 화면과 사용자 조작 평가는
   `PENDING`이다.
 
+### 1.19 도화가 E `31480` animated crane 제품 경로 canary
+
+- `31480 -> sdm_sk_flyinheaven -> effect.artist.skill.31480.unified` 연결을 skill binding과 정확히 하나의
+  root-follow animevent effectref로 봉인했다. source catalog뿐 아니라 실제
+  `Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json`의 direct-v13 row가 SHA-256
+  `d9fc1196...` content-addressed sealed 문서를 선택하고, 이 문서가 authored 문서와 codec semantic
+  identity가 같은지 검증한다.
+- crane ModelCue는 `SK_SDM_RCC_00_SK_FX_01.wmodel`, clip `rcc_sk_flyinheaven`, 1초 start,
+  1.11111116초 duration, translucent surface, 0.01 scale, +Z 9 velocity를 유지한다. WModel은
+  1,133,036 bytes, SHA-256 `cb96358d...`로 고정했고 실제 clip은 30 TPS, 32 ticks, animation 5개다.
+- 실제 CModel을 0.10초와 0.65초에 샘플해 43개 finite bone palette와 최대 component delta
+  `199.123`을 확인했다. 같은 두 시점을 ordinary translucent ModelCue renderer로 WARP draw/readback해
+  각각 752/228 nonzero RGB pixel과 서로 다른 frame hash를 확인했다.
+- 잘못된 clip restage는 실패하고 직전 정상 late-frame draw를 byte-equivalent readback으로 보존한다.
+  따라서 현재 증거는 clip 부재, 정지 bone palette, renderer 미실행, authored/runtime join 누락을 원인에서
+  제외한다. 실제 Client에서 두루미가 정지해 보이는지와 카메라/크기/가시성 평가는 사용자 화면 검증
+  `PENDING`이며, 이 canary 자체는 제품 데이터나 renderer를 임의 변경하지 않는다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -388,6 +406,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 | Debug/Release Client | 각 errors 0, link PASS; UI/Client 자율 실행 안 함 |
 | Debug/Release `--effect-tool-presentation-family-fast` | 각 8/8 PASS; eight-family resolve, presentation-only drawable/playback preview, typed Light/Post atomic persistence, invalid profile rollback, delete/isolation PASS |
 | Presentation Tool 변경 후 Debug/Release Client | 각 errors 0, link PASS; Tool/UI 자율 실행 안 함 |
+| Debug/Release `--effect-artist-e-fast` | 각 18/18 PASS; 실제 skill/effectref/runtime sealed join, 세 FlowRibbon draw, 30 TPS/32 tick crane clip, 43-bone palette 변화, 752/228 pixel distinct frame, invalid clip rollback PASS |
 | `Sync-EffectDataProject.ps1 -Check` | `files=1811`, `filters=201` PASS |
 | `git diff --check` | PASS |
 
