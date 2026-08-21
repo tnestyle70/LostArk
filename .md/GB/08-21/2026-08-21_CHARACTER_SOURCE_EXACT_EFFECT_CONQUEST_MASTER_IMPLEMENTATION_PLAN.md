@@ -281,7 +281,7 @@ dissolve lane과 start `0.12s`, life `2s`, size `4.5`, depth `0.25`를 receipt�
 | slot | skill | 현재 실측 | 복원 목표 |
 |---|---:|---|---|
 | Q | `34040 이연격` | clip1 mesh 1, clip2 mesh 4가 이미 존재 | BA mesh를 먼저 복사하지 않고 기존 mesh의 admission/material/revision/transform 실패를 고친다. 두 타격에 source-proven slash가 실제 draw된 뒤 부족한 carrier만 추가 |
-| A | `34140 선풍참혼` | 2-stage COMBO. 한 대상 row disk rotation은 이미 `[0,-90,0]` | stable element/clip, Apply, atomic save, next-spawn hot reload를 진단하고 transform 합성 순서를 고친다 |
+| A | `34140 선풍참혼` | 2-stage COMBO. 한 대상 row disk rotation은 이미 `[0,-90,0]`; 사용자가 BA2 unified 검격 mesh particle의 position을 Tool에서 수정해도 인게임에 반영되지 않는 재현 추가 | BA2의 정확한 stable element/clip을 선택하고 position/rotation Apply, atomic save, publish/runtime revision, next-spawn hot reload를 끝까지 진단한다. 다른 BA occurrence 오선택과 이미 살아 있는 occurrence 정책을 분리하고 실제 transform 소비 경로를 고친다 |
 | W donor | `34550 사두룡격` | `fm_d_cone_005` cone occurrence 6개 | E 복사 원본으로 쓰되 cross-document pointer가 아니라 exact resource/material/source row를 새 stable ID로 transplant |
 | E | `34560 굉열파` | clip2/clip3 Product, clip3에 기존 trail mesh | source hit 시점에 W cone을 연결. 기본 admission은 impact cone 1개이며 원본 비교가 연속 cone을 요구하면 occurrence cohort로 확대 |
 | 용 cohort | `34610 V`, `34630 ALT_V`, `34650 T` | 사용자가 부른 Z는 실제 stance swap. 용은 세 스킬의 mesh particle에 존재 | 세 스킬을 모두 source cohort로 조사해 자연스러운 UV가 깨지는 정확한 대상과 material variant를 연결 |
@@ -307,7 +307,7 @@ ALT_V 34630 / T 34650
 
 | slot | skill | 현재 실측 | 복원 목표 |
 |---|---:|---|---|
-| LMB | `2050010 기본 공격` | current cue는 BA1/2/4=`ba1.unified`, BA3=`ba3.unified`; 실제 mouse edge당 command 하나 | 구버전 혼용을 먼저 배제하고, source combo window 안의 재클릭만 다음 단계로 buffer. hold 자동 진행 금지 |
+| LMB | `2050010 기본 공격` | current cue는 BA1/2/4=`ba1.unified`, BA3=`ba3.unified`; 실제 mouse edge당 command 하나. 사용자 추가 요구는 BA1 casting/action presentation interval을 현재의 절반으로 줄이고 BA1 unified 재생 때 캐릭터가 정확히 한 번 찌르는 것 | 구버전 혼용을 먼저 배제하고, source combo window 안의 재클릭만 다음 단계로 buffer하며 hold 자동 진행은 금지한다. Server 확정 stage 1에서 BA1 animation과 BA1 unified가 같은 action clock/rate를 소비하도록 절반 retime하고, 한 입력에 한 찌르기만 재생한다 |
 | A | `2050210 분광` | source MakeFlow slash는 `.25/.60/.90/1.30s` 네 occurrence인데 current Product에 `fm_h_swing_05` 한 행만 남음. 0ms presentation snapshot은 새 authoritative yaw를 부드럽게 추종 중인 root를 동결 | outer 위치 anchor는 follow, 방향은 Server-approved `ACTION_FACING`을 actionStartTick에 snapshot. 네 source local pose를 selective merge하고 inner occurrence snapshot/독립 transform 유지; gameplay damage는 단일 hit 유지 |
 | T | `2050500 업의 경계` | T 누름 즉시 skill command. Server는 direction/distance만 소유하고 승인 target XZ를 snapshot에 보내지 않음 | T targeting mode, 11m range/nav 검증, LMB confirm/RMB cancel, Server-approved target XZ, target-root damage/effect를 한 vertical slice로 구현 |
 | F | `2050230 시간 분쇄` | raw source 69행(64 particle+2 light+3 post), current Product 8행(2 mesh+6 sprite). exact Fluid01 두 행과 `PROJECT_TUNED` screen-overlay 첫 Product canary 5행은 typed execution에 연결됨 | 기존 8행을 보존한 채 창 타격, 반구 확장, world shard, RGB/zoom post를 source role별로 복원하고, 화면 파편 canary는 사용자 판정과 source evidence에 따라 후속 튜닝 |
@@ -317,6 +317,10 @@ ALT_V 34630 / T 34650
 source window가 다르므로 G09에서 `BA1 100~510ms`, `BA2 0~410ms`, `BA3 200~1067ms`를 자동 fixture로
 만들고 사용자 조작감 승인 뒤 balance 정본을 확정한다. A의 네 slash는 presentation occurrence이며
 `PlayerSkills`의 단일 `hitTimeMs=100`과 DamageProfile을 multi-hit로 바꾸지 않는다.
+BA1 절반 retime은 cooldown이나 Server combo stage를 Client가 새로 만드는 변경이 아니다. 실제 clip의
+source duration, action snapshot duration, effect playback rate와 다음 입력 가능 시점을 함께 측정한 뒤
+animation/effect가 같은 stage clock을 소비하게 하고, 다음 stage command는 여전히 별도 mouse down edge만
+허용한다.
 
 ## 3. 공통 capability와 소비자 행렬
 
@@ -784,7 +788,7 @@ consumer occurrence set을 소유한다. Artist F registry는 그대로 둔다.
 - 워로드 T BA1 RGBNoise 제거
 - 워로드 T BA3 exact decal 4개 selective restore
 - 창술 Q existing mesh draw/admission 진단
-- 창술 A transform Apply/Save/next-spawn 회귀
+- 창술 A BA2 unified 검격 mesh particle position/rotation Apply/Save/publish/next-spawn 회귀
 - 창술 E W cone exact transplant
 - 차원 A current 9행 손튜닝 보존, MakeFlow 네 occurrence selective merge와 position FOLLOW,
   `ACTION_FACING`, inner SNAPSHOT 연결

@@ -11963,6 +11963,140 @@ namespace
 			return;
 		}
 
+		constexpr std::string_view RUNTIME_DOCUMENT_PATH =
+			"Authored/effect.artist.skill.31480.unified."
+			"d9fc1196c316f4696ba5c7c1f8c55a6365f94b9572801206f766823dd2fb4558."
+			"effect.json";
+		constexpr std::string_view RUNTIME_DOCUMENT_SHA256 =
+			"d9fc1196c316f4696ba5c7c1f8c55a6365f94b9572801206f766823dd2fb4558";
+		const std::filesystem::path RuntimeEffectRoot =
+			CProjectDataRoot::Get().parent_path() / L"Client" / L"Bin" /
+			L"DataFiles" / L"Effect";
+		const std::filesystem::path RuntimeCatalogPath =
+			RuntimeEffectRoot / L"EffectCatalog.runtime.json";
+		DATA_JSON_VALUE RuntimeCatalog;
+		Status.clear();
+		const std::string RuntimeCatalogRaw = Read_Text(RuntimeCatalogPath);
+		bool_t bRuntimeJoinExact = !RuntimeCatalogRaw.empty() &&
+			CDataJson::Parse(RuntimeCatalogRaw, RuntimeCatalog, Status) &&
+			RuntimeCatalog.Is_Object();
+		const DATA_JSON_VALUE* pRuntimeEffects =
+			bRuntimeJoinExact ? RuntimeCatalog.Find("effects") : nullptr;
+		bRuntimeJoinExact = bRuntimeJoinExact && nullptr != pRuntimeEffects &&
+			pRuntimeEffects->Is_Array();
+		size_t iRuntimeMatches = 0u;
+		if (bRuntimeJoinExact)
+		{
+			for (const DATA_JSON_VALUE& Row : pRuntimeEffects->Get_Array())
+			{
+				const DATA_JSON_VALUE* pEffectId = Row.Find("effectAssetId");
+				if (nullptr == pEffectId || !pEffectId->Is_String() ||
+					pEffectId->Get_String() != EFFECT_ID)
+				{
+					continue;
+				}
+				++iRuntimeMatches;
+				const DATA_JSON_VALUE* pPayloadKind = Row.Find("payloadKind");
+				const DATA_JSON_VALUE* pFormat =
+					Row.Find("authoringFormatVersion");
+				const DATA_JSON_VALUE* pDocumentPath =
+					Row.Find("authoredDocumentPath");
+				bRuntimeJoinExact = bRuntimeJoinExact &&
+					nullptr != pPayloadKind && pPayloadKind->Is_String() &&
+					pPayloadKind->Get_String() ==
+						"DIRECT_AUTHORED_DOCUMENT_V13" &&
+					nullptr != pFormat && pFormat->Is_Number() &&
+					std::abs(pFormat->Get_Number() - 13.0) <= 0.000001 &&
+					nullptr != pDocumentPath && pDocumentPath->Is_String() &&
+					pDocumentPath->Get_String() == RUNTIME_DOCUMENT_PATH;
+			}
+		}
+		bRuntimeJoinExact = bRuntimeJoinExact && iRuntimeMatches == 1u;
+
+		const std::filesystem::path RuntimeDocumentPath =
+			RuntimeEffectRoot / std::filesystem::path(RUNTIME_DOCUMENT_PATH);
+		const std::string RuntimeDocumentRaw = Read_Text(RuntimeDocumentPath);
+		EFFECT_DOCUMENT_DESC RuntimeDocument;
+		Status.clear();
+		const bool_t bRuntimeDocumentExact = bRuntimeJoinExact &&
+			!RuntimeDocumentRaw.empty() &&
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(RuntimeDocumentRaw) ==
+				RUNTIME_DOCUMENT_SHA256 &&
+			CEffectDocumentCodec::Parse(
+				RuntimeDocumentRaw, RuntimeDocument, Status) &&
+			RuntimeDocument.strEffectAssetId == EFFECT_ID &&
+			CEffectDocumentCodec::Serialize(RuntimeDocument) ==
+				CEffectDocumentCodec::Serialize(Document);
+		runner.Require(bRuntimeDocumentExact,
+			"Artist E Runtime Catalog Selects One Content-Addressed Sealed Document Identical To The Authored Crane Effect");
+		if (!bRuntimeDocumentExact)
+		{
+			std::cout << "[ARTIST-E-RUNTIME] matches=" << iRuntimeMatches <<
+				" status=" << Status << " path=" <<
+				RuntimeDocumentPath.string() << '\n';
+			return;
+		}
+		Document = std::move(RuntimeDocument);
+
+		const std::string SkillBindingsRaw = Read_Text(CProjectDataRoot::Resolve(
+			L"Animation/Authored/Artist/Artist.skillbindings.json"));
+		DATA_JSON_VALUE SkillBindings;
+		Status.clear();
+		bool_t bSkillBindingExact = !SkillBindingsRaw.empty() &&
+			CDataJson::Parse(SkillBindingsRaw, SkillBindings, Status) &&
+			SkillBindings.Is_Object();
+		const DATA_JSON_VALUE* pBindings =
+			bSkillBindingExact ? SkillBindings.Find("bindings") : nullptr;
+		bSkillBindingExact = bSkillBindingExact && nullptr != pBindings &&
+			pBindings->Is_Array();
+		size_t iSkillBindingMatches = 0u;
+		if (bSkillBindingExact)
+		{
+			for (const DATA_JSON_VALUE& Binding : pBindings->Get_Array())
+			{
+				const DATA_JSON_VALUE* pSkillId = Binding.Find("skillId");
+				if (nullptr == pSkillId || !pSkillId->Is_Number() ||
+					std::abs(pSkillId->Get_Number() - 31480.0) > 0.000001)
+				{
+					continue;
+				}
+				++iSkillBindingMatches;
+				const DATA_JSON_VALUE* pClips = Binding.Find("clips");
+				bSkillBindingExact = bSkillBindingExact && nullptr != pClips &&
+					pClips->Is_Array() && pClips->Get_Array().size() == 1u &&
+					pClips->Get_Array().front().Is_String() &&
+					pClips->Get_Array().front().Get_String() ==
+						"sdm_sk_flyinheaven";
+			}
+		}
+		bSkillBindingExact = bSkillBindingExact && iSkillBindingMatches == 1u;
+		const std::string AnimeventsRaw = Read_Text(CProjectDataRoot::Resolve(
+			L"Animation/Authored/Artist/Artist.animevents"));
+		constexpr std::string_view EFFECTREF_LINE =
+			"\"sdm_sk_flyinheaven\" EFFECT startms=0 "
+			"payload=\"effect.artist.skill.31480.unified\" effectref=asset "
+			"anchor=\"root\" follow=follow stop=natural px=0 py=0 pz=0 "
+			"rx=0 ry=0 rz=0 sx=1 sy=1 sz=1";
+		size_t iEffectRefMatches = 0u;
+		for (size_t iFound = AnimeventsRaw.find(EFFECTREF_LINE);
+			iFound != std::string::npos;
+			iFound = AnimeventsRaw.find(EFFECTREF_LINE,
+				iFound + EFFECTREF_LINE.size()))
+		{
+			++iEffectRefMatches;
+		}
+		const bool_t bProductTriggerExact = bSkillBindingExact &&
+			iEffectRefMatches == 1u;
+		runner.Require(bProductTriggerExact,
+			"Artist E Skill 31480 Selects FlyInHeaven And One Root-Follow Product EffectRef At Action Start");
+		if (!bProductTriggerExact)
+		{
+			std::cout << "[ARTIST-E-TRIGGER] skillMatches=" <<
+				iSkillBindingMatches << " effectRefs=" << iEffectRefMatches <<
+				" status=" << Status << '\n';
+			return;
+		}
+
 		const auto FindUnique = [&Document](const std::string_view strId)
 			-> const EFFECT_ELEMENT_DESC*
 		{
@@ -12171,6 +12305,293 @@ namespace
 		}
 		runner.Require(bRendererExact,
 			"Artist E Three FlowRibbons Upload Dynamic Geometry And Submit Profile 35 Through WARP");
+
+		constexpr std::string_view CRANE_CUE_ID =
+			"artist_31480_crane_projectile";
+		constexpr std::string_view CRANE_MODEL_ASSET_ID =
+			"Effect/Artist/Meshes/SK_SDM_RCC_00_SK_FX_01/"
+			"SK_SDM_RCC_00_SK_FX_01.wmodel";
+		constexpr std::string_view CRANE_CLIP_NAME = "rcc_sk_flyinheaven";
+		constexpr std::string_view CRANE_MODEL_SHA256 =
+			"cb96358dddf1bf749da1bc555973c8977ceaf21cf61a2bb4cd06ae5ba3ea6936";
+		const EFFECT_MODEL_CUE_DESC* pCraneCue =
+			Document.ModelCues.size() == 1u ? &Document.ModelCues.front() : nullptr;
+		const bool_t bCraneCueExact = nullptr != pCraneCue &&
+			pCraneCue->bVisible && pCraneCue->strCueId == CRANE_CUE_ID &&
+			pCraneCue->strModelAssetId == CRANE_MODEL_ASSET_ID &&
+			pCraneCue->strClipName == CRANE_CLIP_NAME &&
+			pCraneCue->eAlphaMode ==
+				EFFECT_MODEL_CUE_ALPHA_MODE::TRANSLUCENT_SURFACE &&
+			pCraneCue->bHoldLastFrame &&
+			std::abs(pCraneCue->fStartDelaySeconds - 1.f) <= 0.00001f &&
+			std::abs(pCraneCue->fDurationSeconds - 1.11111116f) <= 0.00001f &&
+			std::abs(pCraneCue->LocalTransform.vScale.x - 0.01f) <= 0.00001f &&
+			std::abs(pCraneCue->LocalTransform.vScale.y - 0.01f) <= 0.00001f &&
+			std::abs(pCraneCue->LocalTransform.vScale.z - 0.01f) <= 0.00001f &&
+			std::abs(pCraneCue->LocalTransform.vVelocityPerSecond.z - 9.f) <=
+				0.00001f;
+		runner.Require(bCraneCueExact,
+			"Artist E Loads One Exact Translucent Animated Crane ModelCue With Its Source Clip And Forward Velocity");
+		if (!bCraneCueExact)
+			return;
+
+		const std::filesystem::path CraneModelPath =
+			ResourceRoot / std::filesystem::path(pCraneCue->strModelAssetId);
+		std::ifstream CraneModelInput(CraneModelPath, std::ios::binary);
+		const std::vector<uint8_t> CraneModelBytes{
+			std::istreambuf_iterator<char>(CraneModelInput),
+			std::istreambuf_iterator<char>() };
+		const std::string_view CraneModelByteView(
+			reinterpret_cast<const char*>(CraneModelBytes.data()),
+			CraneModelBytes.size());
+		const std::string CraneModelSha256 = CraneModelBytes.empty() ?
+			std::string{} : CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				CraneModelByteView);
+		const bool_t bCraneModelIdentityExact =
+			CraneModelBytes.size() == 1'133'036u &&
+			CraneModelSha256 == CRANE_MODEL_SHA256;
+		runner.Require(bCraneModelIdentityExact,
+			"Artist E Pins The Exact Animated Crane WModel Byte Identity");
+		if (!bCraneModelIdentityExact)
+		{
+			std::cout << "[ARTIST-E-CRANE-MODEL] bytes=" <<
+				CraneModelBytes.size() << " sha256=" << CraneModelSha256 << '\n';
+			return;
+		}
+
+		const matrix_t CranePreTransform = XMMatrixScaling(
+			pCraneCue->vAssetPreScale.x, pCraneCue->vAssetPreScale.y,
+			pCraneCue->vAssetPreScale.z) * XMMatrixRotationRollPitchYaw(
+				XMConvertToRadians(pCraneCue->vAssetPreRotationDegrees.x),
+				XMConvertToRadians(pCraneCue->vAssetPreRotationDegrees.y),
+				XMConvertToRadians(pCraneCue->vAssetPreRotationDegrees.z));
+		unique_ptr<Engine::CModel> CraneModel = Engine::CModel::Create(
+			EngineScope.Get_Device(), EngineScope.Get_Context(),
+			Engine::MODEL::ANIM, CraneModelPath.string().c_str(),
+			CranePreTransform);
+		const bool_t bCraneClipStarted = nullptr != CraneModel &&
+			CraneModel->Set_Animation(pCraneCue->strClipName.c_str(), false);
+		const uint32_t iCraneAnimation = bCraneClipStarted ?
+			CraneModel->Get_CurrentAnimIndex() : UINT32_MAX;
+		const f32_t fCraneTicksPerSecond = bCraneClipStarted ?
+			CraneModel->Get_AnimationTickPerSecond(iCraneAnimation) : 0.f;
+		f32_t fCranePositionTicks = 0.f;
+		f32_t fCraneDurationTicks = 0.f;
+		const bool_t bCraneClipContract = bCraneClipStarted &&
+			CraneModel->Get_NumAnimations() == 5u &&
+			std::abs(fCraneTicksPerSecond - 30.f) <= 0.00001f &&
+			CraneModel->Get_AnimationProgress(iCraneAnimation,
+				fCranePositionTicks, fCraneDurationTicks) &&
+			std::abs(fCraneDurationTicks - 32.f) <= 0.001f &&
+			pCraneCue->bHoldLastFrame &&
+			pCraneCue->fDurationSeconds >=
+				fCraneDurationTicks / fCraneTicksPerSecond &&
+			pCraneCue->fDurationSeconds -
+				fCraneDurationTicks / fCraneTicksPerSecond <= 0.05f;
+		runner.Require(bCraneClipContract,
+			"Artist E Crane WModel Resolves Its Exact 30-TPS 32-Tick Clip And A Bounded Authored Hold Tail");
+
+		const auto SampleCranePalette = [&CraneModel, iCraneAnimation,
+			fCraneTicksPerSecond](const f32_t fLocalSeconds,
+			std::vector<float4x4_t>& OutPalette)
+		{
+			OutPalette.clear();
+			if (nullptr == CraneModel || !std::isfinite(fLocalSeconds) ||
+				fLocalSeconds < 0.f || !CraneModel->Set_AnimTrackPosition(
+					iCraneAnimation, fLocalSeconds * fCraneTicksPerSecond))
+			{
+				return false;
+			}
+			CraneModel->Play_Animation(0.f);
+			for (uint32_t iBone = 0u;; ++iBone)
+			{
+				matrix_t Combined{};
+				if (!CraneModel->Get_BoneCombinedMatrix(iBone, Combined))
+					break;
+				float4x4_t Stored{};
+				XMStoreFloat4x4(&Stored, Combined);
+				const f32_t* pComponent = &Stored._11;
+				if (!std::all_of(pComponent, pComponent + 16u,
+					[](const f32_t fValue) { return std::isfinite(fValue); }))
+				{
+					return false;
+				}
+				OutPalette.push_back(Stored);
+			}
+			return !OutPalette.empty();
+		};
+		std::vector<float4x4_t> EarlyPalette;
+		std::vector<float4x4_t> LatePalette;
+		const bool_t bEarlyPalette = bCraneClipContract &&
+			SampleCranePalette(0.10f, EarlyPalette);
+		const bool_t bLatePalette = bCraneClipContract &&
+			SampleCranePalette(0.65f, LatePalette);
+		f32_t fMaximumPaletteDelta = 0.f;
+		if (bEarlyPalette && bLatePalette &&
+			EarlyPalette.size() == LatePalette.size())
+		{
+			for (size_t iBone = 0u; iBone < EarlyPalette.size(); ++iBone)
+			{
+				const f32_t* pEarly = &EarlyPalette[iBone]._11;
+				const f32_t* pLate = &LatePalette[iBone]._11;
+				for (size_t iComponent = 0u; iComponent < 16u; ++iComponent)
+				{
+					fMaximumPaletteDelta = (std::max)(fMaximumPaletteDelta,
+						std::abs(pEarly[iComponent] - pLate[iComponent]));
+				}
+			}
+		}
+		const bool_t bCranePaletteAdvances = bEarlyPalette && bLatePalette &&
+			EarlyPalette.size() == LatePalette.size() &&
+			fMaximumPaletteDelta > 0.0001f;
+		std::cout << "[ARTIST-E-CRANE-CLIP] animations=" <<
+			(nullptr == CraneModel ? 0u : CraneModel->Get_NumAnimations()) <<
+			" tps=" << fCraneTicksPerSecond << " durationTicks=" <<
+			fCraneDurationTicks << " bones=" << EarlyPalette.size() <<
+			" maxPaletteDelta=" << fMaximumPaletteDelta << '\n';
+		runner.Require(bCranePaletteAdvances,
+			"Artist E Crane Clip Produces Distinct Finite Bone Palettes At 0P10 And 0P65 Seconds");
+
+		struct CRANE_COLOR_CAPTURE final
+		{
+			uint64_t iRgbPixelCount = 0u;
+			uint64_t iRedSum = 0u;
+			uint64_t iGreenSum = 0u;
+			uint64_t iBlueSum = 0u;
+			uint64_t iHash = 1469598103934665603ull;
+		};
+		const auto CaptureCraneColor = [&EngineScope](
+			CRANE_COLOR_CAPTURE& Out, std::string& strOutError)
+		{
+			Out = {};
+			const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+			const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+			ComPtr<ID3D11RenderTargetView> TargetView;
+			Context->OMGetRenderTargets(1u, TargetView.GetAddressOf(), nullptr);
+			ComPtr<ID3D11Resource> TargetResource;
+			ComPtr<ID3D11Texture2D> TargetTexture;
+			if (!TargetView)
+			{
+				strOutError = "Artist E crane color target is not bound.";
+				return false;
+			}
+			TargetView->GetResource(TargetResource.GetAddressOf());
+			if (!TargetResource || FAILED(TargetResource.As(&TargetTexture)) ||
+				!TargetTexture)
+			{
+				strOutError = "Artist E crane color target is not a texture.";
+				return false;
+			}
+			D3D11_TEXTURE2D_DESC TargetDesc{};
+			TargetTexture->GetDesc(&TargetDesc);
+			if (TargetDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+				TargetDesc.SampleDesc.Count != 1u)
+			{
+				strOutError = "Artist E crane color target format is unexpected.";
+				return false;
+			}
+			D3D11_TEXTURE2D_DESC StagingDesc = TargetDesc;
+			StagingDesc.BindFlags = 0u;
+			StagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			StagingDesc.MiscFlags = 0u;
+			StagingDesc.Usage = D3D11_USAGE_STAGING;
+			ComPtr<ID3D11Texture2D> Staging;
+			if (FAILED(Device->CreateTexture2D(
+				&StagingDesc, nullptr, &Staging)) || !Staging)
+			{
+				strOutError = "Artist E crane staging texture creation failed.";
+				return false;
+			}
+			Context->CopyResource(Staging.Get(), TargetTexture.Get());
+			D3D11_MAPPED_SUBRESOURCE Mapped{};
+			if (FAILED(Context->Map(
+				Staging.Get(), 0u, D3D11_MAP_READ, 0u, &Mapped)))
+			{
+				strOutError = "Artist E crane staging texture map failed.";
+				return false;
+			}
+			for (uint32_t y = 0u; y < TargetDesc.Height; ++y)
+			{
+				const uint8_t* pRow = static_cast<const uint8_t*>(Mapped.pData) +
+					static_cast<size_t>(y) * Mapped.RowPitch;
+				for (uint32_t x = 0u; x < TargetDesc.Width; ++x)
+				{
+					const uint8_t* pPixel = pRow + static_cast<size_t>(x) * 4u;
+					for (size_t iChannel = 0u; iChannel < 4u; ++iChannel)
+					{
+						Out.iHash ^= pPixel[iChannel];
+						Out.iHash *= 1099511628211ull;
+					}
+					if (0u == (pPixel[0u] | pPixel[1u] | pPixel[2u]))
+						continue;
+					++Out.iRgbPixelCount;
+					Out.iRedSum += pPixel[0u];
+					Out.iGreenSum += pPixel[1u];
+					Out.iBlueSum += pPixel[2u];
+				}
+			}
+			Context->Unmap(Staging.Get(), 0u);
+			strOutError.clear();
+			return true;
+		};
+
+		EFFECT_DOCUMENT_DESC ModelCueOnly = Document;
+		ModelCueOnly.Elements.clear();
+		CEffectPlayback ModelCuePlayback;
+		CEffectDocumentRenderer ModelCueRenderer(
+			EngineScope.Get_Device(), EngineScope.Get_Context());
+		Status.clear();
+		const bool_t bModelCueStaged = SUCCEEDED(ModelCueRenderer.Initialize()) &&
+			ModelCuePlayback.Stage_Document(ModelCueOnly, Status) &&
+			ModelCueRenderer.Stage_Document(ModelCueOnly, Status);
+		const auto RenderCraneFrame = [&](const f32_t fLocalSeconds,
+			CRANE_COLOR_CAPTURE& Out)
+		{
+			if (!bModelCueStaged)
+				return false;
+			ModelCuePlayback.Seek(
+				pCraneCue->fStartDelaySeconds + fLocalSeconds, Identity);
+			std::string Error;
+			if (!EngineScope.Begin_Frame(Error))
+				return false;
+			const HRESULT hResult = ModelCueRenderer.Render(
+				ModelCuePlayback.Get_Frame());
+			EngineScope.Get_Context()->Flush();
+			return SUCCEEDED(hResult) &&
+				S_OK == EngineScope.Get_Device()->GetDeviceRemovedReason() &&
+				CaptureCraneColor(Out, Error);
+		};
+		CRANE_COLOR_CAPTURE EarlyColor;
+		CRANE_COLOR_CAPTURE LateColor;
+		const bool_t bEarlyRendered = RenderCraneFrame(0.10f, EarlyColor);
+		const bool_t bLateRendered = RenderCraneFrame(0.65f, LateColor);
+		const bool_t bCraneFramesDistinct = bEarlyRendered && bLateRendered &&
+			EarlyColor.iRgbPixelCount > 0u && LateColor.iRgbPixelCount > 0u &&
+			EarlyColor.iHash != LateColor.iHash;
+		runner.Require(bCraneFramesDistinct,
+			"Artist E Translucent ModelCue Draws Nonzero And Distinct Early And Late WARP Frames");
+
+		EFFECT_DOCUMENT_DESC InvalidClip = ModelCueOnly;
+		InvalidClip.ModelCues.front().strClipName += ".missing";
+		Status.clear();
+		const bool_t bInvalidClipRejected =
+			!ModelCueRenderer.Stage_Document(InvalidClip, Status);
+		CRANE_COLOR_CAPTURE PreservedColor;
+		const bool_t bPreservedRendered = bInvalidClipRejected &&
+			RenderCraneFrame(0.65f, PreservedColor);
+		const bool_t bCraneRollbackExact = bPreservedRendered &&
+			PreservedColor.iRgbPixelCount == LateColor.iRgbPixelCount &&
+			PreservedColor.iRedSum == LateColor.iRedSum &&
+			PreservedColor.iGreenSum == LateColor.iGreenSum &&
+			PreservedColor.iBlueSum == LateColor.iBlueSum &&
+			PreservedColor.iHash == LateColor.iHash;
+		std::cout << "[ARTIST-E-CRANE-RENDER] earlyPixels=" <<
+			EarlyColor.iRgbPixelCount << " latePixels=" <<
+			LateColor.iRgbPixelCount << " earlyHash=" << EarlyColor.iHash <<
+			" lateHash=" << LateColor.iHash << " invalidStatus=" << Status <<
+			'\n';
+		runner.Require(bCraneRollbackExact,
+			"Artist E Missing Crane Clip Restage Rejects And Preserves The Prior Animated ModelCue Draw");
 	}
 
 	void Test_DimensionMasterRSourceOccurrenceContract(TEST_RUNNER& runner)
@@ -42257,7 +42678,8 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
-	if (Mode == "--effect-artist-e-trail-fast")
+	if (Mode == "--effect-artist-e-fast" ||
+		Mode == "--effect-artist-e-trail-fast")
 	{
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
