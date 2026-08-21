@@ -10104,6 +10104,264 @@ namespace
 
 	}
 
+	void Test_ArtistEBrushTrailContract(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view EFFECT_ID =
+			"effect.artist.skill.31480.unified";
+		constexpr std::array<std::string_view, 3u> TRAIL_IDS = {{
+			"authored.source-particle.8467a9b69e22208c6d4ea99e",
+			"authored.source-particle.a006dbe9b5650a0b13880aa5",
+			"authored.source-particle.c6d4247396f641316d28767c"
+		}};
+		constexpr std::string_view WHITE_TRAIL_ID = TRAIL_IDS[2u];
+		constexpr std::string_view BRUSH_ANCHOR = "WP_WSDM_09.B_Body_03";
+		constexpr std::string_view WHITE_TRAIL_TEXTURE =
+			"Effect/Artist/Textures/fx_m_trail_010.dds";
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path ResourceRoot =
+			ResourceRootEnvironment.Was_Defined() &&
+			!ResourceRootEnvironment.Get_OriginalValue().empty() ?
+				std::filesystem::path(
+					ResourceRootEnvironment.Get_OriginalValue()) :
+				CProjectDataRoot::Get().parent_path() /
+					L"Client" / L"Bin" / L"Resources";
+		std::error_code ResourceError;
+		const bool_t bResourceRootReady =
+			std::filesystem::is_directory(ResourceRoot, ResourceError) &&
+			!ResourceError && ResourceRootEnvironment.Set(ResourceRoot.c_str());
+		runner.Require(bResourceRootReady,
+			"Artist E Brush Trail Resolves The Production Resource Root");
+		if (!bResourceRootReady)
+			return;
+
+		const std::filesystem::path DocumentPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.artist.skill.31480.unified.effect.json");
+		EFFECT_DOCUMENT_DESC Document;
+		std::string Status;
+		const bool_t bLoaded = !DocumentPath.empty() &&
+			CEffectDocumentCodec::Load(DocumentPath, Document, Status);
+		runner.Require(bLoaded && Document.strEffectAssetId == EFFECT_ID,
+			"Artist E Brush Trail Loads The Exact 31480 Authored Document");
+		if (!bLoaded || Document.strEffectAssetId != EFFECT_ID)
+		{
+			std::cout << "[ARTIST-E-TRAIL] load=" << Status << " path=" <<
+				DocumentPath.string() << '\n';
+			return;
+		}
+
+		const auto FindUnique = [&Document](const std::string_view strId)
+			-> const EFFECT_ELEMENT_DESC*
+		{
+			if (1u != std::ranges::count_if(Document.Elements,
+				[strId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == strId;
+				}))
+			{
+				return nullptr;
+			}
+			const auto Found = std::ranges::find_if(Document.Elements,
+				[strId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == strId;
+				});
+			return Found == Document.Elements.end() ? nullptr : &*Found;
+		};
+		const auto HasResource = [](const EFFECT_ELEMENT_DESC& Element,
+			const std::string_view strSlotId,
+			const std::string_view strAssetId)
+		{
+			return 1u == std::ranges::count_if(Element.ResourceBindings,
+				[strSlotId, strAssetId](
+					const EFFECT_RESOURCE_BINDING_DESC& Binding)
+				{
+					return Binding.strSlotId == strSlotId &&
+						Binding.strAssetId == strAssetId;
+				});
+		};
+
+		std::array<const EFFECT_ELEMENT_DESC*, TRAIL_IDS.size()> Trails{};
+		bool_t bExactFlowRibbonRows = true;
+		for (size_t iTrail = 0u; iTrail < TRAIL_IDS.size(); ++iTrail)
+		{
+			Trails[iTrail] = FindUnique(TRAIL_IDS[iTrail]);
+			const EFFECT_ELEMENT_DESC* pTrail = Trails[iTrail];
+			bExactFlowRibbonRows = bExactFlowRibbonRows && nullptr != pTrail &&
+				pTrail->bVisible && pTrail->eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+				pTrail->ActionCueAttachment.bEnabled &&
+				pTrail->ActionCueAttachment.bFollow &&
+				pTrail->ActionCueAttachment.strRuntimeAnchorSlotId == BRUSH_ANCHOR &&
+				pTrail->ActionCueAttachment.strRuntimeBoneName == "b_wp_1" &&
+				pTrail->Detail.Trail.fSampleIntervalSeconds <= 0.020001f &&
+				Has_EffectFlowRibbon01TrailContract(*pTrail);
+		}
+		const EFFECT_ELEMENT_DESC* pWhiteTrail = Trails.back();
+		const bool_t bWhiteOverrideExact = nullptr != pWhiteTrail &&
+			HasResource(*pWhiteTrail, "base", WHITE_TRAIL_TEXTURE) &&
+			std::abs(pWhiteTrail->Detail.Trail.fMinimumDistance - 0.01f) <=
+				0.00001f &&
+			pWhiteTrail->AuthoringOverrides.ResourceBindings.size() == 2u &&
+			std::ranges::all_of(
+				pWhiteTrail->AuthoringOverrides.ResourceBindings,
+				[WHITE_TRAIL_TEXTURE](
+					const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override)
+				{
+					return Override.strAssetId == WHITE_TRAIL_TEXTURE &&
+						Override.strCompilerAssetId ==
+							"Effect/Artist/Textures/fx_k_auraline_02.dds";
+				});
+		runner.Require(bExactFlowRibbonRows && bWhiteOverrideExact,
+			"Artist E Keeps Three Exact Brush-Anchored FlowRibbons And Pins One White Trail Luminance Override");
+		if (!bExactFlowRibbonRows || !bWhiteOverrideExact)
+			return;
+
+		EFFECT_DOCUMENT_DESC Isolated = Document;
+		Isolated.ModelCues.clear();
+		Isolated.Elements.clear();
+		for (const EFFECT_ELEMENT_DESC* pTrail : Trails)
+			Isolated.Elements.push_back(*pTrail);
+
+		float4x4_t Identity{};
+		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+		CEffectPlayback MissingAnchorPlayback;
+		Status.clear();
+		const bool_t bMissingAnchorStaged =
+			MissingAnchorPlayback.Stage_Document(Isolated, Status);
+		if (bMissingAnchorStaged)
+			MissingAnchorPlayback.Seek(0.8f, Identity);
+		const bool_t bMissingAnchorFailClosed = bMissingAnchorStaged &&
+			std::ranges::none_of(MissingAnchorPlayback.Get_Frame().Trails,
+				[](const EFFECT_EVALUATED_TRAIL& Trail)
+				{
+					return Trail.Points.size() >= 2u;
+				});
+		runner.Require(bMissingAnchorFailClosed,
+			"Artist E Brush Trail Requires The Exact Runtime Brush Bone Anchor Without A Root Fallback");
+
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER MovingBrush = [BRUSH_ANCHOR](
+			const f32_t fSampleTimeSeconds,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+			std::string& strOutError)
+		{
+			if (!std::isfinite(fSampleTimeSeconds) || fSampleTimeSeconds < 0.f)
+			{
+				strOutError = "invalid Artist E brush sample time";
+				return false;
+			}
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
+			XMStoreFloat4x4(&Staged.RootWorld, XMMatrixIdentity());
+			float4x4_t Brush{};
+			XMStoreFloat4x4(&Brush, XMMatrixTranslation(
+				fSampleTimeSeconds * 1.2f, 1.f, 0.f));
+			Staged.SourceAnchorWorlds.emplace(
+				std::string(BRUSH_ANCHOR), Brush);
+			OutSample = std::move(Staged);
+			strOutError.clear();
+			return true;
+		};
+
+		CEffectPlayback Playback;
+		Status.clear();
+		const bool_t bPlaybackStaged = Playback.Stage_Document(Isolated, Status);
+		const bool_t bPlaybackEvaluated = bPlaybackStaged &&
+			Playback.Seek_WithTransformHistory(0.8f, MovingBrush, Status);
+		bool_t bPointPayloadExact = bPlaybackEvaluated;
+		for (const std::string_view strTrailId : TRAIL_IDS)
+		{
+			const auto Evaluated = std::ranges::find_if(
+				Playback.Get_Frame().Trails,
+				[strTrailId](const EFFECT_EVALUATED_TRAIL& Trail)
+				{
+					return nullptr != Trail.pElement &&
+						Trail.pElement->strElementId == strTrailId;
+				});
+			bPointPayloadExact = bPointPayloadExact &&
+				Evaluated != Playback.Get_Frame().Trails.end() &&
+				Evaluated->Points.size() >= 2u &&
+				std::ranges::all_of(Evaluated->Points,
+					[](const EFFECT_EVALUATED_TRAIL_POINT& Point)
+					{
+						return (Point.iSourceColorComponentMask & 0x0fu) ==
+							0x0fu &&
+							(Point.iDynamicParameterComponentMask & 0x0fu) ==
+							0x0fu &&
+							std::abs(Point.vDynamicParameter.x - 0.02f) <=
+								0.00001f &&
+							std::abs(Point.vDynamicParameter.y - 1.f) <=
+								0.00001f &&
+							std::isfinite(Point.fSourceWidth) &&
+							Point.fSourceWidth >= 0.f;
+					});
+		}
+		runner.Require(bPointPayloadExact,
+			"Artist E Direct-Authored Playback Samples Three Brush Trails At Fixed Ticks With Complete FlowRibbon Payloads");
+
+		EFFECT_DOCUMENT_DESC Invalid = Isolated;
+		EFFECT_ELEMENT_DESC& InvalidWhite = Invalid.Elements.back();
+		InvalidWhite.AuthoringOverrides.ResourceBindings.clear();
+		const bool_t bWrongTupleRejectedByPredicate =
+			!Has_EffectFlowRibbon01TrailContract(InvalidWhite);
+		runner.Require(bWrongTupleRejectedByPredicate,
+			"Artist E White Trail Profile Rejects A Missing Project-Tuned Compiler Override Instead Of Broadening By Filename");
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		Status.clear();
+		const bool_t bWorkingDirectoryReady = WorkingDirectory.Initialize(
+			CProjectDataRoot::Get().parent_path() / L"Client" / L"Default",
+			Status);
+		runner.Require(bWorkingDirectoryReady,
+			"Artist E Brush Trail Uses The Canonical Client Working Directory");
+		if (!bWorkingDirectoryReady || !bPointPayloadExact)
+			return;
+
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		Status.clear();
+		const bool_t bEngineReady = EngineScope.Initialize(Status);
+		if (!bEngineReady)
+			std::cout << "[ARTIST-E-TRAIL] WARP=" << Status << '\n';
+		runner.Require(bEngineReady,
+			"Artist E Brush Trail Initializes The Existing Hidden WARP Renderer");
+		if (!bEngineReady)
+			return;
+
+		CEffectDocumentRenderer Renderer(
+			EngineScope.Get_Device(), EngineScope.Get_Context());
+		Status.clear();
+		const bool_t bRendererStaged = SUCCEEDED(Renderer.Initialize()) &&
+			Renderer.Stage_Document(Isolated, Status);
+		HRESULT hRender = E_FAIL;
+		if (bRendererStaged && EngineScope.Begin_Frame(Status))
+		{
+			hRender = Renderer.Render(Playback.Get_Frame());
+			EngineScope.Get_Context()->Flush();
+		}
+		const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+			Renderer.Get_LastRenderSubmissionStats();
+		bool_t bRendererExact = bRendererStaged && SUCCEEDED(hRender) &&
+			Stats.bCompleted && Stats.bCommitted;
+		for (size_t iTrail = 0u; iTrail < TRAIL_IDS.size(); ++iTrail)
+		{
+			const auto Occurrence = std::ranges::find_if(Stats.Occurrences,
+				[iTrail, &TRAIL_IDS](
+					const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row)
+				{
+					return Row.strElementId == TRAIL_IDS[iTrail];
+				});
+			bRendererExact = bRendererExact &&
+				Occurrence != Stats.Occurrences.end() &&
+				Occurrence->iSourceMaterialProfile == 35u &&
+				Occurrence->iSourceTextureMask == (iTrail < 2u ? 0x7u : 0x3u) &&
+				Occurrence->iSubmitted > 0u &&
+				Occurrence->iIssuedDrawCallCount > 0u &&
+				!Occurrence->bSourceMaterialFallbackBlocked;
+		}
+		runner.Require(bRendererExact,
+			"Artist E Three FlowRibbons Upload Dynamic Geometry And Submit Profile 35 Through WARP");
+	}
+
 	void Test_DimensionMasterRSourceOccurrenceContract(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -10111,10 +10369,6 @@ namespace
 			"effect.dimensionmaster.skill.2050180.unified";
 		constexpr std::string_view PARTICLE_MASTER_MATERIAL =
 			"fx_m_mi_w_00.mi.fx_w_pa_master_01_05_dt_tr";
-		constexpr std::string_view SPRITEWAVE_MATERIAL =
-			"fx_m_mi_w_00.mi.fx_w_pa_spritewave_01_05_tr";
-		constexpr std::string_view HELIX_ID =
-			"authored.source-particle.98639f5f2e65e0f0193c09fe";
 		constexpr std::string_view HELIX_MATERIAL =
 			"fx_m_mi_w_00.mi.fx_w_me_master_02_243_dt_tr";
 		constexpr std::array<std::string_view, 3u> PARTICLE_MASTER_IDS = {{
@@ -10122,16 +10376,17 @@ namespace
 			"authored.source-particle.3d37c9d7cc96e563a4fe1b55",
 			"authored.source-particle.f8534d1e810568b7ce3b7ee2"
 		}};
-		struct SLASH_EXPECTATION final
+		struct HELIX_EXPECTATION final
 		{
 			std::string_view strElementId;
 			f32_t fTimeSeconds;
-			uint32_t iCount;
 		};
-		constexpr std::array<SLASH_EXPECTATION, 3u> SLASHES = {{
-			{ "authored.source-particle.cc4d20091ad0ed409617f51f", 0.5f, 1u },
-			{ "authored.source-particle.333341329ff3992ea8c7f0a1", 0.7f, 1u },
-			{ "authored.source-particle.f2e42e062ca87d93f0a477e3", 1.05f, 3u }
+		constexpr std::array<HELIX_EXPECTATION, 3u> HELICES = {{
+			{ "authored.source-particle.98639f5f2e65e0f0193c09fe", 0.5f },
+			{ "authored.copy.authored.source-particle."
+			  "98639f5f2e65e0f0193c09fe.1", 0.7f },
+			{ "authored.copy.authored.source-particle."
+			  "98639f5f2e65e0f0193c09fe.2", 1.05f }
 		}};
 		constexpr std::array<f32_t, 3u> PARTICLE_MASTER_TIMES = {{
 			0.5f, 0.7f, 1.05f
@@ -10245,25 +10500,6 @@ namespace
 						std::abs(Literal.fNumber - fExpected) <= 0.000001;
 				});
 		};
-		const auto FindScalar = [](const EFFECT_SOURCE_MATERIAL_DESC& Source,
-			const std::string_view strName) -> const EFFECT_NAMED_FLOAT_DESC*
-		{
-			if (1u != std::ranges::count_if(Source.Scalars,
-				[strName](const EFFECT_NAMED_FLOAT_DESC& Scalar)
-				{
-					return Scalar.strName == strName;
-				}))
-			{
-				return nullptr;
-			}
-			const auto Found = std::ranges::find_if(Source.Scalars,
-				[strName](const EFFECT_NAMED_FLOAT_DESC& Scalar)
-				{
-					return Scalar.strName == strName;
-				});
-			return Found == Source.Scalars.end() ? nullptr : &*Found;
-		};
-
 		std::array<const EFFECT_ELEMENT_DESC*, PARTICLE_MASTER_IDS.size()>
 			ParticleMasterRows{};
 		bool_t bParticleMasterExact = true;
@@ -10332,109 +10568,6 @@ namespace
 		runner.Require(bParticleMasterExact,
 			"DimensionMaster R ParticleMaster Rows Restore Map-C Coverage And E-D-F-C Role Ownership");
 
-		std::array<const EFFECT_ELEMENT_DESC*, SLASHES.size()> SlashRows{};
-		bool_t bSlashRowsExact = true;
-		for (size_t iSlash = 0u; iSlash < SLASHES.size(); ++iSlash)
-		{
-			const SLASH_EXPECTATION& Expected = SLASHES[iSlash];
-			const EFFECT_ELEMENT_DESC* pElement =
-				FindUniqueElement(Expected.strElementId);
-			SlashRows[iSlash] = pElement;
-			if (nullptr == pElement)
-			{
-				bSlashRowsExact = false;
-				continue;
-			}
-			const EFFECT_SOURCE_MATERIAL_DESC& Source =
-				pElement->Material.SourceMaterial;
-			const EFFECT_NAMED_TEXTURE_DESC* pCarrier =
-				Resolve_EffectSpriteWaveCarrierTexture(Source);
-			const EFFECT_NAMED_TEXTURE_DESC* pEmissive =
-				Find_EffectUniqueNamedTexture(Source, "emissivetex02");
-			const EFFECT_NAMED_FLOAT_DESC* pSphere =
-				FindScalar(Source, "spheremask_strength");
-			const EFFECT_NAMED_FLOAT_DESC* pSphereMinimum =
-				FindScalar(Source, "spheremask_strength_min");
-			const EFFECT_NAMED_FLOAT_DESC* pSphereMaximum =
-				FindScalar(Source, "spheremask_strength_max");
-			const EFFECT_SOURCE_MODULE_DESC* pSpawn =
-				FindModule(*pElement, "particlemodulespawn");
-			const bool_t bThisSlashExact = pElement->bVisible &&
-				pElement->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-				pElement->SourceRecipe.strRendererShape == "mesh" &&
-				std::abs(pElement->Detail.Timing.fStartDelaySeconds -
-					Expected.fTimeSeconds) <= 0.00001f &&
-				pElement->SourceRecipe.Bursts.size() == 1u &&
-				pElement->SourceRecipe.Bursts.front().iCountMinimum ==
-					Expected.iCount &&
-				pElement->SourceRecipe.Bursts.front().iCountMaximum ==
-					Expected.iCount &&
-				nullptr != pSpawn && HasNumberLiteral(*pSpawn,
-					"burstlist[0].count", Expected.iCount) &&
-				pElement->Material.strSourceMaterialPath == SPRITEWAVE_MATERIAL &&
-				Resolve_EffectStrictTypedSourceProfile(
-					pElement->Material.strSourceMaterialPath, Source) ==
-						EFFECT_STRICT_TYPED_SOURCE_PROFILE::SPRITEWAVE_01 &&
-				Has_EffectSpriteWaveNamedTextureContract(Source) &&
-				Source.Textures.size() == 8u && nullptr != pCarrier &&
-				pCarrier->strName == "maintex" && pCarrier->strAssetId ==
-					"Effect/DimensionMaster/Textures/FX_TEX_05/"
-					"fx_m_trail_007.dds" &&
-				nullptr != pEmissive && pEmissive->strAssetId ==
-					"Effect/DimensionMaster/Textures/FX_TEX_05/"
-					"fx_m_noise_008.dds" &&
-				nullptr != pSphere && nullptr != pSphereMinimum &&
-				nullptr != pSphereMaximum &&
-				std::abs(pSphere->fValue - 1.5f) <= 0.00001f &&
-				std::abs(pSphereMinimum->fValue) <= 0.00001f &&
-				std::abs(pSphereMaximum->fValue - 10.f) <= 0.00001f &&
-				BindingMatches(*pElement, "meshModel",
-					"Effect/DimensionMaster/Meshes/fm_h_swing_05.wmodel") &&
-				BindingMatches(*pElement, "base",
-					"Effect/DimensionMaster/Textures/FX_TEX_05/"
-					"fx_m_trail_007.dds") &&
-				BindingMatches(*pElement, "dissolve",
-					"Effect/DimensionMaster/Textures/FX_TEX_04/"
-					"fx_i_atypical_03_1_ycl.dds") &&
-				BindingMatches(*pElement, "noise",
-					"Effect/DimensionMaster/Textures/FX_TEX_02/"
-					"fx_d_noise_030.dds") &&
-				!pElement->Material.Execution.bEnabled &&
-				pElement->Material.Execution.bFailClosed &&
-				pElement->Material.Execution.bAuthoringApproximate &&
-				AssetExists("Effect/DimensionMaster/Meshes/fm_h_swing_05.wmodel") &&
-				AssetExists(pCarrier->strAssetId) &&
-				AssetExists(pEmissive->strAssetId);
-			bSlashRowsExact = bSlashRowsExact && bThisSlashExact;
-			if (!bThisSlashExact)
-			{
-				std::cout << "[DM-R-SLASH] id=" << pElement->strElementId <<
-					" start=" << pElement->Detail.Timing.fStartDelaySeconds <<
-					" sourceTime=" <<
-					pElement->SourcePresentation.fSourceTimeSeconds <<
-					" bursts=" << pElement->SourceRecipe.Bursts.size() <<
-					" count=" << (pElement->SourceRecipe.Bursts.empty() ? 0u :
-						pElement->SourceRecipe.Bursts.front().iCountMinimum) <<
-					" profile=" << static_cast<uint32_t>(
-						Resolve_EffectStrictTypedSourceProfile(
-							pElement->Material.strSourceMaterialPath, Source)) <<
-					" lanes=" << Source.Textures.size() << " contract=" <<
-					Has_EffectSpriteWaveNamedTextureContract(Source) <<
-					" spawn=" << (nullptr != pSpawn) << " literal=" <<
-					(nullptr != pSpawn && HasNumberLiteral(
-						*pSpawn, "burstlist[0].count", Expected.iCount)) <<
-					" execution=" << pElement->Material.Execution.bEnabled << ',' <<
-					pElement->Material.Execution.bFailClosed << ',' <<
-					pElement->Material.Execution.bAuthoringApproximate <<
-					" carrier=" << (nullptr == pCarrier ? std::string{} :
-						pCarrier->strAssetId) << " emissive=" <<
-					(nullptr == pEmissive ? std::string{} : pEmissive->strAssetId) <<
-					'\n';
-			}
-		}
-		runner.Require(bSlashRowsExact,
-			"DimensionMaster R Keeps Three Exact SpriteWave Mesh Occurrences At 0.5 0.7 1.05 Seconds With 1 1 3 Bursts");
-
 		float4x4_t Identity{};
 		XMStoreFloat4x4(&Identity, XMMatrixIdentity());
 		struct PARTICLE_SAMPLE final
@@ -10470,126 +10603,270 @@ namespace
 			}
 			return Sample;
 		};
-		bool_t bPlaybackCountsExact = bSlashRowsExact;
-		for (size_t iSlash = 0u;
-			bPlaybackCountsExact && iSlash < SLASHES.size(); ++iSlash)
+		constexpr std::array<std::pair<std::string_view, std::string_view>, 6u>
+			HELIX_RESOURCES = {{
+				{ "meshModel",
+					"Effect/DimensionMaster/Meshes/fm_d_helix_015_1.wmodel" },
+				{ "base", "Effect/DimensionMaster/Textures/FX_TEX_02/"
+					"fx_d_atypical_042_1_cl.dds" },
+				{ "noise", "Effect/DimensionMaster/Textures/FX_TEX_00/"
+					"fx_a_fluid_003.dds" },
+				{ "mask", "Effect/DimensionMaster/Textures/FX_TEX_05/"
+					"fx_l_spiderline_01.dds" },
+				{ "emissive", "Effect/DimensionMaster/Textures/FX_TEX_05/"
+					"fx_k_auraline_04.dds" },
+				{ "dissolve", "Effect/DimensionMaster/Textures/FX_TEX_00/"
+					"fx_b_atypical_004.dds" }
+			}};
+		const auto FindDistribution = [](const EFFECT_SOURCE_MODULE_DESC& Module,
+			const std::string_view strPropertyPath)
+			-> const EFFECT_DISTRIBUTION_DESC*
 		{
-			const PARTICLE_SAMPLE Sample = SampleElement(*SlashRows[iSlash],
-				SLASHES[iSlash].fTimeSeconds + 1.f / 60.f);
-			bPlaybackCountsExact = Sample.bStaged &&
-				Sample.Worlds.size() == SLASHES[iSlash].iCount;
-		}
-		runner.Require(bPlaybackCountsExact,
-			"DimensionMaster R Playback Emits One One Three Slash Mesh Instances Without Duplicating The Shared Effect");
-
-		const EFFECT_ELEMENT_DESC* pHelix = FindUniqueElement(HELIX_ID);
-		bool_t bHelixSourceExact = nullptr != pHelix;
-		const EFFECT_SOURCE_MODULE_DESC* pMeshRotation = nullptr;
-		const EFFECT_SOURCE_MODULE_DESC* pMeshRotationRate = nullptr;
-		const EFFECT_SOURCE_MODULE_DESC* pTypeData = nullptr;
-		if (nullptr != pHelix)
+			if (1u != std::ranges::count_if(Module.Distributions,
+				[strPropertyPath](const EFFECT_DISTRIBUTION_DESC& Distribution)
+				{
+					return Distribution.strPropertyPath == strPropertyPath;
+				}))
+			{
+				return nullptr;
+			}
+			const auto Found = std::ranges::find_if(Module.Distributions,
+				[strPropertyPath](const EFFECT_DISTRIBUTION_DESC& Distribution)
+				{
+					return Distribution.strPropertyPath == strPropertyPath;
+				});
+			return Found == Module.Distributions.end() ? nullptr : &*Found;
+		};
+		const auto HasDisabledSourcePresentation = [](
+			const EFFECT_SOURCE_PRESENTATION_DESC& Source)
 		{
-			pMeshRotation = FindModule(*pHelix, "particlemodulemeshrotation");
-			pMeshRotationRate = FindModule(
-				*pHelix, "particlemodulemeshrotationrate");
-			pTypeData = FindModule(*pHelix, "particlemoduletypedatamesh");
+			return !Source.bEnabled && Source.strSchema.empty() &&
+				0u == Source.iVersion && Source.strProfileId.empty() &&
+				Source.eStatus == EFFECT_SOURCE_PRESENTATION_STATUS::END &&
+				Source.strSourceObjectPath.empty() &&
+				Source.strSourceActionCueId.empty() &&
+				Source.strSourceEventId.empty() &&
+				0u == Source.iSourceOccurrenceIndex &&
+				std::abs(Source.fSourceTimeSeconds) <= 0.00001f &&
+				Source.Parameters.empty();
+		};
+		const std::string HelixCopySourceNode =
+			"authored-copy:" + std::string(HELICES.front().strElementId);
+		std::array<const EFFECT_ELEMENT_DESC*, HELICES.size()> HelixRows{};
+		std::array<const EFFECT_SOURCE_MODULE_DESC*, HELICES.size()>
+			MeshRotations{};
+		std::array<const EFFECT_SOURCE_MODULE_DESC*, HELICES.size()>
+			MeshRotationRates{};
+		std::array<const EFFECT_SOURCE_MODULE_DESC*, HELICES.size()> TypeDataRows{};
+		bool_t bHelixRowsExact = true;
+		for (size_t iHelix = 0u; iHelix < HELICES.size(); ++iHelix)
+		{
+			const HELIX_EXPECTATION& Expected = HELICES[iHelix];
+			const EFFECT_ELEMENT_DESC* pElement =
+				FindUniqueElement(Expected.strElementId);
+			HelixRows[iHelix] = pElement;
+			if (nullptr == pElement)
+			{
+				bHelixRowsExact = false;
+				continue;
+			}
+			const EFFECT_SOURCE_MODULE_DESC* pSpawn =
+				FindModule(*pElement, "particlemodulespawn");
+			const EFFECT_SOURCE_MODULE_DESC* pMeshRotation =
+				FindModule(*pElement, "particlemodulemeshrotation");
+			const EFFECT_SOURCE_MODULE_DESC* pMeshRotationRate =
+				FindModule(*pElement, "particlemodulemeshrotationrate");
+			const EFFECT_SOURCE_MODULE_DESC* pTypeData =
+				FindModule(*pElement, "particlemoduletypedatamesh");
+			MeshRotations[iHelix] = pMeshRotation;
+			MeshRotationRates[iHelix] = pMeshRotationRate;
+			TypeDataRows[iHelix] = pTypeData;
 			const EFFECT_DISTRIBUTION_DESC* pInitialDistribution =
 				nullptr == pMeshRotation ? nullptr :
-					([pMeshRotation]() -> const EFFECT_DISTRIBUTION_DESC*
-					{
-						const auto Found = std::ranges::find_if(
-							pMeshRotation->Distributions,
-							[](const EFFECT_DISTRIBUTION_DESC& Distribution)
-							{
-								return Distribution.strPropertyPath ==
-									"startrotation";
-							});
-						return Found == pMeshRotation->Distributions.end() ?
-							nullptr : &*Found;
-					})();
+					FindDistribution(*pMeshRotation, "startrotation");
 			const EFFECT_DISTRIBUTION_DESC* pRateDistribution =
 				nullptr == pMeshRotationRate ? nullptr :
-					([pMeshRotationRate]() -> const EFFECT_DISTRIBUTION_DESC*
+					FindDistribution(*pMeshRotationRate, "startrotationrate");
+			const bool_t bSourceNodeExact = 0u == iHelix ?
+				pElement->strSourceNode ==
+					"authored-source-particle:effect.dimensionmaster.skill."
+					"2050180.unified|source:effect.dimensionmaster.skill."
+					"2050180.imported|element:fx_pc_swp_03."
+					"par_s_swp_foldcut_body_01.particlespriteemitter_6" :
+				pElement->strSourceNode == HelixCopySourceNode;
+			const bool_t bResourcesExact =
+				pElement->ResourceBindings.size() == HELIX_RESOURCES.size() &&
+				std::ranges::all_of(HELIX_RESOURCES,
+					[&](const auto& Resource)
 					{
-						const auto Found = std::ranges::find_if(
-							pMeshRotationRate->Distributions,
-							[](const EFFECT_DISTRIBUTION_DESC& Distribution)
-							{
-								return Distribution.strPropertyPath ==
-									"startrotationrate";
-							});
-						return Found == pMeshRotationRate->Distributions.end() ?
-							nullptr : &*Found;
-					})();
-			bHelixSourceExact = pHelix->bVisible &&
-				pHelix->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-				pHelix->SourceRecipe.strRendererShape == "mesh" &&
-				pHelix->Material.strSourceMaterialPath == HELIX_MATERIAL &&
-				BindingMatches(*pHelix, "meshModel",
-					"Effect/DimensionMaster/Meshes/fm_d_helix_015_1.wmodel") &&
-				BindingMatches(*pHelix, "base",
-					"Effect/DimensionMaster/Textures/FX_TEX_02/"
-					"fx_d_atypical_042_1_cl.dds") &&
-				BindingMatches(*pHelix, "noise",
-					"Effect/DimensionMaster/Textures/FX_TEX_00/"
-					"fx_a_fluid_003.dds") &&
-				BindingMatches(*pHelix, "mask",
-					"Effect/DimensionMaster/Textures/FX_TEX_05/"
-					"fx_l_spiderline_01.dds") &&
-				BindingMatches(*pHelix, "emissive",
-					"Effect/DimensionMaster/Textures/FX_TEX_05/"
-					"fx_k_auraline_04.dds") &&
-				BindingMatches(*pHelix, "dissolve",
-					"Effect/DimensionMaster/Textures/FX_TEX_00/"
-					"fx_b_atypical_004.dds") &&
-				std::abs(pHelix->Detail.Timing.fStartDelaySeconds - 0.01f) <=
+						return BindingMatches(*pElement, Resource.first,
+							Resource.second) && AssetExists(Resource.second);
+					});
+			const bool_t bSpawnLiteralExact = nullptr != pSpawn &&
+				1u == std::ranges::count_if(pSpawn->Literals,
+					[](const EFFECT_SOURCE_LITERAL_DESC& Literal)
+					{
+						return Literal.strPropertyPath ==
+							"burstlist[0].count";
+					}) &&
+				HasNumberLiteral(*pSpawn, "burstlist[0].count", 1.0);
+			const bool_t bThisHelixExact = pElement->bVisible &&
+				pElement->eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				pElement->SourceRecipe.strRendererShape == "mesh" &&
+				pElement->Material.strSourceMaterialPath == HELIX_MATERIAL &&
+				bResourcesExact && bSourceNodeExact &&
+				HasDisabledSourcePresentation(pElement->SourcePresentation) &&
+				std::abs(pElement->Detail.Timing.fStartDelaySeconds -
+					Expected.fTimeSeconds) <= 0.00001f &&
+				std::abs(pElement->Detail.Timing.fLifeTimeSeconds - 0.1f) <=
 					0.00001f &&
-				pHelix->SourceRecipe.Bursts.size() == 1u &&
-				pHelix->SourceRecipe.Bursts.front().iCountMinimum == 3u &&
-				pHelix->SourceRecipe.Bursts.front().iCountMaximum == 3u &&
-				nullptr != pMeshRotation && nullptr != pMeshRotationRate &&
-				nullptr != pTypeData && nullptr != pInitialDistribution &&
+				pElement->SourceRecipe.Bursts.size() == 1u &&
+				std::abs(pElement->SourceRecipe.Bursts.front().fTimeSeconds) <=
+					0.00001f &&
+				pElement->SourceRecipe.Bursts.front().iCountMinimum == 1u &&
+				pElement->SourceRecipe.Bursts.front().iCountMaximum == 1u &&
+				bSpawnLiteralExact && nullptr != pInitialDistribution &&
 				pInitialDistribution->LookupTable.size() == 14u &&
 				std::abs(pInitialDistribution->LookupTable[0u] + 0.2f) <=
 					0.00001f &&
 				std::abs(pInitialDistribution->LookupTable[1u] - 0.2f) <=
 					0.00001f &&
 				std::abs(pInitialDistribution->LookupTable[2u] - 0.975f) <=
-					0.00001f &&
-				nullptr != pRateDistribution &&
+					0.00001f && nullptr != pRateDistribution &&
 				pRateDistribution->LookupTable.size() == 8u &&
 				std::abs(pRateDistribution->LookupTable[1u] - 1.f) <=
 					0.00001f &&
 				std::abs(pRateDistribution->LookupTable[2u] - 1.f) <=
-					0.00001f &&
+					0.00001f && nullptr != pTypeData &&
 				HasNumberLiteral(*pTypeData, "pitch", -90.0) &&
-				std::abs(pHelix->Detail.Mesh.
+				std::abs(pElement->Detail.Mesh.
 					vSourceTypeDataRotationDegrees.x) <= 0.00001f &&
-				std::abs(pHelix->Detail.Mesh.
+				std::abs(pElement->Detail.Mesh.
 					vSourceTypeDataRotationDegrees.y + 90.f) <= 0.00001f &&
-				std::abs(pHelix->Detail.Mesh.
+				std::abs(pElement->Detail.Mesh.
 					vSourceTypeDataRotationDegrees.z) <= 0.00001f &&
-				std::abs(pHelix->Detail.Transform.
+				std::abs(pElement->Detail.Transform.
 					vRevolutionDegreesPerSecond.x) <= 0.00001f &&
-				std::abs(pHelix->Detail.Transform.
+				std::abs(pElement->Detail.Transform.
 					vRevolutionDegreesPerSecond.y) <= 0.00001f &&
-				std::abs(pHelix->Detail.Transform.
+				std::abs(pElement->Detail.Transform.
 					vRevolutionDegreesPerSecond.z) <= 0.00001f &&
-				pHelix->Detail.Particle.bLocalSpace &&
-				!pHelix->Detail.Particle.bBillboard &&
+				pElement->Detail.Particle.bLocalSpace &&
+				!pElement->Detail.Particle.bBillboard &&
 				!Has_EffectParticleMasterNamedTextureContract(
-					pHelix->Material.SourceMaterial);
+					pElement->Material.SourceMaterial);
+			bHelixRowsExact = bHelixRowsExact && bThisHelixExact;
+			if (!bThisHelixExact)
+			{
+				std::cout << "[DM-R-HELIX] id=" << pElement->strElementId <<
+					" start=" << pElement->Detail.Timing.fStartDelaySeconds <<
+					" life=" << pElement->Detail.Timing.fLifeTimeSeconds <<
+					" sourceNode=" << pElement->strSourceNode <<
+					" bursts=" << pElement->SourceRecipe.Bursts.size() <<
+					" resources=" << pElement->ResourceBindings.size() << '\n';
+			}
 		}
-		runner.Require(bHelixSourceExact,
-			"DimensionMaster R Helix Preserves Source Mesh Rotation Rate And Applies The TypeData Minus-90 Pitch Once Without Synthetic Revolution");
+		const bool_t bHelixSourceModulesShared = bHelixRowsExact &&
+			std::ranges::all_of(MeshRotations,
+				[&](const EFFECT_SOURCE_MODULE_DESC* pModule)
+				{
+					return nullptr != pModule && nullptr != MeshRotations.front() &&
+						pModule->strStableId == MeshRotations.front()->strStableId &&
+						pModule->strObjectPath == MeshRotations.front()->strObjectPath;
+				}) &&
+			std::ranges::all_of(MeshRotationRates,
+				[&](const EFFECT_SOURCE_MODULE_DESC* pModule)
+				{
+					return nullptr != pModule && nullptr != MeshRotationRates.front() &&
+						pModule->strStableId == MeshRotationRates.front()->strStableId &&
+						pModule->strObjectPath == MeshRotationRates.front()->strObjectPath;
+				}) &&
+			std::ranges::all_of(TypeDataRows,
+				[&](const EFFECT_SOURCE_MODULE_DESC* pModule)
+				{
+					return nullptr != pModule && nullptr != TypeDataRows.front() &&
+						pModule->strStableId == TypeDataRows.front()->strStableId &&
+						pModule->strObjectPath == TypeDataRows.front()->strObjectPath;
+				});
+		runner.Require(bHelixRowsExact && bHelixSourceModulesShared,
+			"DimensionMaster R Keeps Three Unique Helix Copies With Exact Shared Mesh Material Resources Rotation TypeData And Disabled Source Presentation Policy");
 
-		if (bHelixSourceExact)
+		struct HELIX_FRAME_SAMPLE final
 		{
-			const PARTICLE_SAMPLE Early = SampleElement(*pHelix, 0.02f);
-			const PARTICLE_SAMPLE Late = SampleElement(*pHelix, 0.06f);
-			EFFECT_ELEMENT_DESC ZeroTypeData = *pHelix;
+			bool_t bStaged = false;
+			std::vector<std::string> ElementIds;
+		};
+		const auto SampleHelixFrame = [&Document, &Identity, &HelixRows](
+			const f32_t fTimeSeconds)
+		{
+			HELIX_FRAME_SAMPLE Sample;
+			EFFECT_DOCUMENT_DESC Isolated = Document;
+			Isolated.ModelCues.clear();
+			Isolated.Elements.clear();
+			for (const EFFECT_ELEMENT_DESC* pHelix : HelixRows)
+			{
+				if (nullptr == pHelix)
+					return Sample;
+				Isolated.Elements.push_back(*pHelix);
+			}
+			CEffectPlayback Playback;
+			std::string Error;
+			Sample.bStaged = Playback.Stage_Document(Isolated, Error);
+			if (!Sample.bStaged)
+			{
+				std::cout << "[DM-R-HELIX] playback stage=" << Error << '\n';
+				return Sample;
+			}
+			Playback.Seek(fTimeSeconds, Identity);
+			for (const EFFECT_EVALUATED_PARTICLE& Particle :
+				Playback.Get_Frame().Particles)
+			{
+				if (nullptr != Particle.pElement)
+					Sample.ElementIds.push_back(Particle.pElement->strElementId);
+			}
+			return Sample;
+		};
+		bool_t bHelixPlaybackExact = bHelixRowsExact;
+		const HELIX_FRAME_SAMPLE Before = SampleHelixFrame(
+			HELICES.front().fTimeSeconds - 1.f / 60.f);
+		std::cout << "[DM-R-HELIX-FRAME] label=before count=" <<
+			Before.ElementIds.size() << '\n';
+		bHelixPlaybackExact = bHelixPlaybackExact && Before.bStaged &&
+			Before.ElementIds.empty();
+		for (size_t iHelix = 0u; iHelix < HELICES.size(); ++iHelix)
+		{
+			const HELIX_EXPECTATION& Expected = HELICES[iHelix];
+			const HELIX_FRAME_SAMPLE AtHit = SampleHelixFrame(
+				Expected.fTimeSeconds + 1.f / 60.f);
+			std::cout << "[DM-R-HELIX-FRAME] label=" << Expected.strElementId <<
+				" count=" << AtHit.ElementIds.size();
+			for (const std::string& strElementId : AtHit.ElementIds)
+				std::cout << " id=" << strElementId;
+			std::cout << '\n';
+			bHelixPlaybackExact = bHelixPlaybackExact && AtHit.bStaged &&
+				AtHit.ElementIds.size() == 1u &&
+				AtHit.ElementIds.front() == Expected.strElementId;
+		}
+		const HELIX_FRAME_SAMPLE After = SampleHelixFrame(
+			HELICES.back().fTimeSeconds + 0.1f + 1.f / 60.f);
+		std::cout << "[DM-R-HELIX-FRAME] label=after count=" <<
+			After.ElementIds.size() << '\n';
+		bHelixPlaybackExact = bHelixPlaybackExact && After.bStaged &&
+			After.ElementIds.empty();
+		runner.Require(bHelixPlaybackExact,
+			"DimensionMaster R Playback Emits One Helix At Each 0.5 0.7 1.05 Second Hit Without An Earlier Or Later Simultaneous Triple");
+
+		if (bHelixRowsExact)
+		{
+			const EFFECT_ELEMENT_DESC& SourceHelix = *HelixRows.front();
+			const PARTICLE_SAMPLE Early = SampleElement(SourceHelix,
+				HELICES.front().fTimeSeconds + 0.02f);
+			const PARTICLE_SAMPLE Late = SampleElement(SourceHelix,
+				HELICES.front().fTimeSeconds + 0.06f);
+			EFFECT_ELEMENT_DESC ZeroTypeData = SourceHelix;
 			ZeroTypeData.Detail.Mesh.vSourceTypeDataRotationDegrees = {};
-			const PARTICLE_SAMPLE Zero = SampleElement(ZeroTypeData, 0.02f);
+			const PARTICLE_SAMPLE Zero = SampleElement(ZeroTypeData,
+				HELICES.front().fTimeSeconds + 0.02f);
 			const auto BasisDifference = [](const float4x4_t& Left,
 				const float4x4_t& Right)
 			{
@@ -10604,8 +10881,8 @@ namespace
 					std::abs(Left._33 - Right._33);
 			};
 			const bool_t bPlaybackRotationExact = Early.bStaged && Late.bStaged &&
-				Zero.bStaged && Early.Worlds.size() == 3u &&
-				Late.Worlds.size() == 3u && Zero.Worlds.size() == 3u &&
+				Zero.bStaged && Early.Worlds.size() == 1u &&
+				Late.Worlds.size() == 1u && Zero.Worlds.size() == 1u &&
 				BasisDifference(Early.Worlds.front(), Zero.Worlds.front()) >
 					0.001f &&
 				BasisDifference(Early.Worlds.front(), Late.Worlds.front()) >
@@ -10617,7 +10894,7 @@ namespace
 				std::abs(Early.Worlds.front()._43 - Zero.Worlds.front()._43) <=
 					0.00001f;
 			runner.Require(bPlaybackRotationExact,
-				"DimensionMaster R Playback Keeps Three Helices And Separates Source Spin From TypeData Axis Correction");
+				"DimensionMaster R Helix Playback Separates Source Spin From TypeData Axis Correction");
 		}
 
 		EFFECT_ELEMENT_DESC FilenameOnlyControl =
@@ -10749,11 +11026,6 @@ namespace
 				19u, 0x39u, 4u, "particle-master-map-c");
 		runner.Require(bParticleMasterRendered,
 			"DimensionMaster R ParticleMaster Commits Profile 19 With Map-C Warp E F Lanes");
-		const bool_t bSpriteWaveRendered = bSlashRowsExact &&
-			RenderWitness(*SlashRows.back(), SLASHES.back().fTimeSeconds +
-				1.f / 60.f, 20u, 0x3fu, 3u, "spritewave-third-slash");
-		runner.Require(bSpriteWaveRendered,
-			"DimensionMaster R Third Slash Commits Three Meshes Through Profile 20 Maintex Dissolve Emissive Sphere Mask");
 		const bool_t bFilenameOnlyGeneric = bFilenameOnlyControlReady &&
 			RenderWitness(FilenameOnlyControl,
 				PARTICLE_MASTER_TIMES.front() + 1.f / 60.f,
@@ -30286,6 +30558,386 @@ namespace
 				"Valtan Pattern Preview Invalid Range Preserves Prior Playlist");
 		}
 	}
+
+	void Test_EffectToolPlayerPreviewCueResolution(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view BA1_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050010.ba1.unified";
+		constexpr std::string_view BA3_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050010.ba3.unified";
+		constexpr std::array<std::string_view, 4u> BA_CLIPS = {{
+			"pc_sp_m_00_sk_att_battle_1_01",
+			"pc_sp_m_00_sk_att_battle_1_02",
+			"pc_sp_m_00_sk_att_battle_1_03",
+			"pc_sp_m_00_sk_att_battle_1_04"
+		}};
+
+		std::string Status;
+		ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+		const std::filesystem::path BindingPath =
+			CAnimationSkillBindingDocument::Resolve_Path("DimensionMaster");
+		const bool_t bBindingParsed =
+			CAnimationSkillBindingDocument::Parse_Text(
+				Read_Text(BindingPath), Bindings, Status);
+		const auto Binding = std::find_if(
+			Bindings.Bindings.begin(), Bindings.Bindings.end(),
+			[](const ANIMATION_SKILL_BINDING& Candidate)
+			{
+				return 2050010u == Candidate.iSkillId;
+			});
+		bool_t bBindingExact = bBindingParsed &&
+			Binding != Bindings.Bindings.end() &&
+			Binding->Stages.size() == BA_CLIPS.size();
+		if (bBindingExact)
+		{
+			for (size_t iStage = 0u; iStage < BA_CLIPS.size(); ++iStage)
+			{
+				bBindingExact = bBindingExact &&
+					Binding->Stages[iStage].Clips.size() == 1u &&
+					Binding->Stages[iStage].Clips.front().strClipName ==
+						BA_CLIPS[iStage];
+			}
+		}
+		runner.Require(bBindingExact,
+			"Effect Tool Preview Loads The Four Ordered DimensionMaster BA Clips");
+		if (!bBindingExact)
+			return;
+
+		const std::filesystem::path CuePath = CProjectDataRoot::Resolve(
+			L"Animation/Authored/DimensionMaster/DimensionMaster.animevents");
+		const std::string CueText = Read_Text(CuePath);
+		ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+		constexpr std::array<std::string_view, 4u> BA_EFFECT_IDS = {{
+			BA1_EFFECT_ID, BA1_EFFECT_ID, BA3_EFFECT_ID, BA1_EFFECT_ID
+		}};
+		bool_t bCueTupleExact = !CueText.empty();
+		for (size_t iStage = 0u; iStage < BA_CLIPS.size(); ++iStage)
+		{
+			const std::string Needle = "\"" + std::string(BA_CLIPS[iStage]) +
+				"\" EFFECT startms=0 payload=\"" +
+				std::string(BA_EFFECT_IDS[iStage]) +
+				"\" effectref=asset anchor=\"root\" follow=follow "
+				"stop=natural";
+			size_t iCount = 0u;
+			for (size_t iPosition = 0u;
+				std::string::npos !=
+					(iPosition = CueText.find(Needle, iPosition));
+				iPosition += Needle.size())
+			{
+				++iCount;
+			}
+			bCueTupleExact = bCueTupleExact && 1u == iCount;
+			ANIMATION_EFFECT_CUE Cue;
+			Cue.strClipName = BA_CLIPS[iStage];
+			Cue.strEffectAssetId = BA_EFFECT_IDS[iStage];
+			Cue.iStartMs = 0u;
+			Cue.iEndMs = 0u;
+			Cue.strAnchorSlotId = "root";
+			CueDocument.Cues.push_back(std::move(Cue));
+		}
+		runner.Require(bCueTupleExact,
+			"Effect Tool Preview Reads The Exact BA1 BA1 BA3 BA1 Product Cue Tuple");
+
+		std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Ba1Candidates;
+		const bool_t bBa1Resolved =
+			CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+				*Binding, CueDocument.Cues, BA1_EFFECT_ID,
+				Ba1Candidates, Status);
+		constexpr std::array<size_t, 3u> BA1_STAGES = {{ 0u, 1u, 3u }};
+		bool_t bBa1Exact = bBa1Resolved &&
+			Ba1Candidates.size() == BA1_STAGES.size();
+		for (size_t iCandidate = 0u;
+			bBa1Exact && iCandidate < BA1_STAGES.size(); ++iCandidate)
+		{
+			const size_t iStage = BA1_STAGES[iCandidate];
+			const ANIMATION_EFFECT_PREVIEW_CANDIDATE& Candidate =
+				Ba1Candidates[iCandidate];
+			bBa1Exact = Candidate.iBoundClipOrdinal == iStage &&
+				Candidate.iStageIndex == iStage &&
+				0u == Candidate.iStageClipIndex &&
+				Candidate.Clip.strClipName == BA_CLIPS[iStage] &&
+				Candidate.Cue.strClipName == BA_CLIPS[iStage] &&
+				0u == Candidate.Cue.iStartMs &&
+				Candidate.Cue.strEffectAssetId == BA1_EFFECT_ID;
+		}
+		runner.Require(bBa1Exact,
+			"Effect Tool Preview Resolves BA1 Unified To BA1 BA2 And BA4 Without Chaining Them");
+
+		std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Ba3Candidates;
+		const bool_t bBa3Resolved =
+			CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+				*Binding, CueDocument.Cues, BA3_EFFECT_ID,
+				Ba3Candidates, Status);
+		const bool_t bBa3Exact = bBa3Resolved &&
+			1u == Ba3Candidates.size() &&
+			2u == Ba3Candidates.front().iBoundClipOrdinal &&
+			2u == Ba3Candidates.front().iStageIndex &&
+			0u == Ba3Candidates.front().iStageClipIndex &&
+			Ba3Candidates.front().Clip.strClipName == BA_CLIPS[2u] &&
+			Ba3Candidates.front().Cue.strClipName == BA_CLIPS[2u] &&
+			0u == Ba3Candidates.front().Cue.iStartMs &&
+			Ba3Candidates.front().Cue.strEffectAssetId == BA3_EFFECT_ID;
+		runner.Require(bBa3Exact,
+			"Effect Tool Preview Resolves BA3 Unified To Only The BA3 Clip");
+
+		std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Preserved =
+			Ba3Candidates;
+		const bool_t bUnmappedRejected =
+			!CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+				*Binding, CueDocument.Cues,
+				"effect.dimensionmaster.skill.2050010.ba2.unified",
+				Preserved, Status) &&
+			Preserved.size() == Ba3Candidates.size() &&
+			!Preserved.empty() &&
+			Preserved.front().iStageIndex == Ba3Candidates.front().iStageIndex &&
+			Preserved.front().Cue.strEffectAssetId ==
+				Ba3Candidates.front().Cue.strEffectAssetId;
+		runner.Require(bUnmappedRejected,
+			"Effect Tool Preview Rejects An Unmapped Authored BA Document Without Replacing The Prior Selection");
+	}
+
+	void Test_DimensionMasterAVoronoiCastDirectionContract(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view A_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050210.unified";
+		constexpr std::string_view Q_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050100.unified";
+		constexpr std::string_view A_VORONOI_SOURCE =
+			"fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1."
+			"particlespriteemitter_30";
+		constexpr std::string_view A_SLASH_SOURCE =
+			"fx_pc_swp_00.par_j_swp_willowrend_swinghit_00_1."
+			"particlespriteemitter_15";
+		constexpr std::string_view Q_VORONOI_SOURCE =
+			"fx_pc_swp_00.par_j_swp_nailstrike_00_2."
+			"particlespriteemitter_35";
+		constexpr std::string_view Q_SLASH_SOURCE =
+			"fx_pc_swp_00.par_j_swp_nailstrike_00_2."
+			"particlespriteemitter_31";
+		constexpr std::array<f32_t, 4u> A_TIMES =
+			{{ 0.25f, 0.60f, 0.90f, 1.30f }};
+		constexpr std::array<float3_t, 4u> A_VORONOI_POSITIONS = {{
+			{ 0.5f, -0.9f, 0.5f },
+			{ 0.5f, 0.8f, 0.5f },
+			{ 0.5f, -0.9f, -0.3f },
+			{ 0.5f, -0.8f, -0.6f }
+		}};
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path ResourceRoot =
+			ResourceRootEnvironment.Was_Defined() &&
+			!ResourceRootEnvironment.Get_OriginalValue().empty() ?
+				std::filesystem::path(
+					ResourceRootEnvironment.Get_OriginalValue()) :
+				CProjectDataRoot::Get().parent_path() /
+					L"Client" / L"Bin" / L"Resources";
+		std::error_code ResourceError;
+		const bool_t bResourceRootReady =
+			std::filesystem::is_directory(ResourceRoot, ResourceError) &&
+			!ResourceError && ResourceRootEnvironment.Set(ResourceRoot.c_str());
+		runner.Require(bResourceRootReady,
+			"DimensionMaster A And Q Resolve The Production Resource Root");
+		if (!bResourceRootReady)
+			return;
+
+		std::string Status;
+		EFFECT_DOCUMENT_DESC ADocument;
+		EFFECT_DOCUMENT_DESC QDocument;
+		const std::filesystem::path APath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050210."
+			L"unified.effect.json");
+		const std::filesystem::path QPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.dimensionmaster.skill.2050100."
+			L"unified.effect.json");
+		const bool_t bLoaded = !APath.empty() && !QPath.empty() &&
+			CEffectDocumentCodec::Load(APath, ADocument, Status) &&
+			CEffectDocumentCodec::Load(QPath, QDocument, Status);
+		runner.Require(bLoaded && ADocument.strEffectAssetId == A_EFFECT_ID &&
+			QDocument.strEffectAssetId == Q_EFFECT_ID &&
+			ADocument.strEffectAssetId != QDocument.strEffectAssetId,
+			"DimensionMaster A And Q Keep Separate Authored Document Identities");
+		if (!bLoaded)
+		{
+			std::cout << "[DM-A-VORONOI] load status=" << Status << '\n';
+			return;
+		}
+
+		const auto SelectSourceRows = [](const EFFECT_DOCUMENT_DESC& Document,
+			const std::string_view Source)
+		{
+			std::vector<const EFFECT_ELEMENT_DESC*> Rows;
+			for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+			{
+				if (std::string::npos != Element.strSourceNode.find(Source))
+					Rows.push_back(&Element);
+			}
+			std::ranges::sort(Rows, {}, [](const EFFECT_ELEMENT_DESC* pElement)
+				{
+					return pElement->Detail.Timing.fStartDelaySeconds;
+				});
+			return Rows;
+		};
+		const auto AVoronoi = SelectSourceRows(ADocument, A_VORONOI_SOURCE);
+		const auto ASlash = SelectSourceRows(ADocument, A_SLASH_SOURCE);
+		bool_t bAOccurrencesExact = AVoronoi.size() == A_TIMES.size() &&
+			ASlash.size() == A_TIMES.size();
+		float3_t ExpectedDelta{};
+		for (size_t iOccurrence = 0u;
+			bAOccurrencesExact && iOccurrence < A_TIMES.size(); ++iOccurrence)
+		{
+			const float3_t& VoronoiPosition =
+				AVoronoi[iOccurrence]->Detail.Transform.vPosition;
+			const float3_t& SlashPosition =
+				ASlash[iOccurrence]->Detail.Transform.vPosition;
+			const float3_t Delta{
+				VoronoiPosition.x - SlashPosition.x,
+				VoronoiPosition.y - SlashPosition.y,
+				VoronoiPosition.z - SlashPosition.z };
+			if (0u == iOccurrence)
+				ExpectedDelta = Delta;
+			bAOccurrencesExact = bAOccurrencesExact &&
+				Nearly_Equal(AVoronoi[iOccurrence]->Detail.Timing.
+					fStartDelaySeconds, A_TIMES[iOccurrence], 0.00001f) &&
+				Nearly_Equal(ASlash[iOccurrence]->Detail.Timing.
+					fStartDelaySeconds, A_TIMES[iOccurrence], 0.00001f) &&
+				Nearly_Equal(VoronoiPosition.x,
+					A_VORONOI_POSITIONS[iOccurrence].x, 0.00001f) &&
+				Nearly_Equal(VoronoiPosition.y,
+					A_VORONOI_POSITIONS[iOccurrence].y, 0.00001f) &&
+				Nearly_Equal(VoronoiPosition.z,
+					A_VORONOI_POSITIONS[iOccurrence].z, 0.00001f) &&
+				Nearly_Equal(Delta.x, ExpectedDelta.x, 0.00001f) &&
+				Nearly_Equal(Delta.y, ExpectedDelta.y, 0.00001f) &&
+				Nearly_Equal(Delta.z, ExpectedDelta.z, 0.00001f);
+		}
+		runner.Require(bAOccurrencesExact,
+			"DimensionMaster A Materializes Four Source-Exact Voronoi And Slash Pairs In One Local Space");
+
+		const std::filesystem::path CuePath = CProjectDataRoot::Resolve(
+			L"Animation/Authored/DimensionMaster/DimensionMaster.animevents");
+		const std::string CueText = Read_Text(CuePath);
+		const auto CountText = [&CueText](const std::string_view Needle)
+		{
+			size_t Count = 0u;
+			for (size_t Position = 0u;
+				std::string::npos != (Position = CueText.find(Needle, Position));
+				Position += Needle.size())
+			{
+				++Count;
+			}
+			return Count;
+		};
+		constexpr std::string_view A_CUE =
+			"\"pc_sp_m_00_sk_sk_willowrend\" EFFECT startms=0 "
+			"payload=\"effect.dimensionmaster.skill.2050210.unified\" "
+			"effectref=asset anchor=\"root\" follow=snapshot stop=natural";
+		constexpr std::string_view Q_CUE =
+			"\"pc_sp_m_00_sk_sk_nailstrike_01\" EFFECT startms=0 "
+			"payload=\"effect.dimensionmaster.skill.2050100.unified\" "
+			"effectref=asset anchor=\"root\" follow=follow stop=natural";
+		runner.Require(1u == CountText(A_EFFECT_ID) &&
+			1u == CountText(A_CUE) && 1u == CountText(Q_EFFECT_ID) &&
+			1u == CountText(Q_CUE),
+			"DimensionMaster A Owns One Cast-Start Snapshot Cue While Q Keeps One Independent Follow Cue");
+
+		const auto QVoronoi = SelectSourceRows(QDocument, Q_VORONOI_SOURCE);
+		const auto QSlash = SelectSourceRows(QDocument, Q_SLASH_SOURCE);
+		EFFECT_DOCUMENT_DESC QPairDocument;
+		QPairDocument.strEffectAssetId =
+			"effect.dimensionmaster.q.rigid-local-pair.harness";
+		QPairDocument.strDisplayName = "DimensionMaster Q Rigid Local Pair";
+		if (QVoronoi.size() == 1u && QSlash.size() == 1u)
+		{
+			const auto AddPairElement = [&QPairDocument](
+				const char_t* pId, const EFFECT_ELEMENT_DESC& Source)
+			{
+				EFFECT_ELEMENT_DESC Element;
+				Element.strElementId = pId;
+				Element.strDisplayName = pId;
+				Element.eKind = EFFECT_ELEMENT_KIND::MESH;
+				Element.Detail.Transform.vPosition =
+					Source.Detail.Transform.vPosition;
+				Element.Detail.Transform.vScale = { 1.f, 1.f, 1.f };
+				Element.Detail.Timing.fStartDelaySeconds =
+					Source.Detail.Timing.fStartDelaySeconds;
+				Element.Detail.Timing.fLifeTimeSeconds = 0.5f;
+				Element.ActionCueAttachment.bEnabled = true;
+				Element.ActionCueAttachment.bFollow = false;
+				Element.ActionCueAttachment.strSourceAnchorSlotId = "root";
+				Element.ActionCueAttachment.strRuntimeAnchorSlotId = "root";
+				QPairDocument.Elements.push_back(std::move(Element));
+			};
+			AddPairElement("q.voronoi", *QVoronoi.front());
+			AddPairElement("q.slash", *QSlash.front());
+		}
+		CEffectPlayback QIdentityPlayback;
+		CEffectPlayback QYawPlayback;
+		const bool_t bQStaged = QVoronoi.size() == 1u && QSlash.size() == 1u &&
+			Nearly_Equal(QVoronoi.front()->Detail.Timing.fStartDelaySeconds,
+				QSlash.front()->Detail.Timing.fStartDelaySeconds, 0.00001f) &&
+			QIdentityPlayback.Stage_Document(QPairDocument, Status) &&
+			QYawPlayback.Stage_Document(QPairDocument, Status);
+		float4x4_t IdentityRoot{};
+		float4x4_t YawRoot{};
+		XMStoreFloat4x4(&IdentityRoot, XMMatrixIdentity());
+		XMStoreFloat4x4(&YawRoot,
+			XMMatrixRotationY(XMConvertToRadians(73.f)));
+		if (bQStaged)
+		{
+			QIdentityPlayback.Seek(0.30f, IdentityRoot);
+			QYawPlayback.Seek(0.30f, YawRoot);
+		}
+		const auto FindWorldPosition = [](const EFFECT_EVALUATED_FRAME& Frame,
+			const std::string_view ElementId, float3_t& OutPosition)
+		{
+			const auto Found = std::ranges::find_if(Frame.Elements,
+				[ElementId](const EFFECT_EVALUATED_ELEMENT& Element)
+				{
+					return nullptr != Element.pElement &&
+						Element.pElement->strElementId == ElementId;
+				});
+			if (Found == Frame.Elements.end())
+				return false;
+			OutPosition = { Found->World._41, Found->World._42, Found->World._43 };
+			return true;
+		};
+		float3_t IdentityVoronoi{};
+		float3_t IdentitySlash{};
+		float3_t YawVoronoi{};
+		float3_t YawSlash{};
+		const bool_t bQSamples = bQStaged &&
+			FindWorldPosition(QIdentityPlayback.Get_Frame(),
+				"q.voronoi", IdentityVoronoi) &&
+			FindWorldPosition(QIdentityPlayback.Get_Frame(),
+				"q.slash", IdentitySlash) &&
+			FindWorldPosition(QYawPlayback.Get_Frame(),
+				"q.voronoi", YawVoronoi) &&
+			FindWorldPosition(QYawPlayback.Get_Frame(),
+				"q.slash", YawSlash);
+		float3_t RotatedIdentityDelta{};
+		if (bQSamples)
+		{
+			const vector_t IdentityDelta = XMVectorSet(
+				IdentityVoronoi.x - IdentitySlash.x,
+				IdentityVoronoi.y - IdentitySlash.y,
+				IdentityVoronoi.z - IdentitySlash.z, 0.f);
+			XMStoreFloat3(&RotatedIdentityDelta,
+				XMVector3TransformNormal(IdentityDelta,
+					XMMatrixRotationY(XMConvertToRadians(73.f))));
+		}
+		const bool_t bQYawRigid = bQSamples &&
+			Nearly_Equal(YawVoronoi.x - YawSlash.x,
+				RotatedIdentityDelta.x, 0.0001f) &&
+			Nearly_Equal(YawVoronoi.y - YawSlash.y,
+				RotatedIdentityDelta.y, 0.0001f) &&
+			Nearly_Equal(YawVoronoi.z - YawSlash.z,
+				RotatedIdentityDelta.z, 0.0001f);
+		runner.Require(bQYawRigid,
+			"DimensionMaster Q Voronoi And Slash Rotate As One Rigid Local-Space Pair With Cast Yaw");
+	}
 }
 
 int main(const int argc, char* argv[])
@@ -30585,11 +31237,25 @@ int main(const int argc, char* argv[])
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
+	if (Mode == "--effect-tool-preview-fast")
+	{
+		Test_EffectToolPlayerPreviewCueResolution(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
 	if (Mode == "--effect-dm-r-boundary-fast")
 	{
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_DimensionMasterRSourceOccurrenceContract(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-dm-a-voronoi-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_DimensionMasterAVoronoiCastDirectionContract(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
@@ -30652,6 +31318,14 @@ int main(const int argc, char* argv[])
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_ArtistPlayableMaterialFamilyRegression(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-artist-e-trail-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_ArtistEBrushTrailContract(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

@@ -20,6 +20,32 @@
 
 namespace
 {
+    std::string Unified_AuthoredEffectAssetId(
+        const std::string_view strProductEffectAssetId)
+    {
+        constexpr std::string_view LegacyToken = ".authored-baseline";
+        constexpr std::string_view UnifiedSuffix = ".unified";
+        std::string Candidate(strProductEffectAssetId);
+        if (const size_t iLegacyToken = Candidate.find(LegacyToken);
+            iLegacyToken != std::string::npos)
+        {
+            Candidate.erase(iLegacyToken, LegacyToken.size());
+        }
+        if (!Candidate.ends_with(UnifiedSuffix))
+            Candidate += UnifiedSuffix;
+        return Candidate;
+    }
+
+    bool Is_ExactAuthoredEffectMapping(
+        const std::string_view strProductEffectAssetId,
+        const std::string_view strAuthoredEffectAssetId)
+    {
+        return !strProductEffectAssetId.empty() &&
+            (strProductEffectAssetId == strAuthoredEffectAssetId ||
+             Unified_AuthoredEffectAssetId(strProductEffectAssetId) ==
+                strAuthoredEffectAssetId);
+    }
+
     bool Tokenize(
         const std::string& Line,
         std::vector<std::string>& Out,
@@ -125,6 +151,58 @@ namespace
             Read("sz", Out.vScale.z) &&
             Out.vScale.x > 0.f && Out.vScale.y > 0.f && Out.vScale.z > 0.f;
     }
+}
+
+bool_t Client::CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+    const ANIMATION_SKILL_BINDING& Binding,
+    const std::vector<ANIMATION_EFFECT_CUE>& ProductCues,
+    const std::string_view strAuthoredEffectAssetId,
+    std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE>& OutCandidates,
+    std::string& strOutStatus)
+{
+    if (LostArk::Shared::INVALID_SKILL_ID == Binding.iSkillId ||
+        Binding.Stages.empty() || strAuthoredEffectAssetId.empty())
+    {
+        strOutStatus =
+            "Effect preview candidate resolver received an invalid binding or Effect ID.";
+        return false;
+    }
+
+    std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Staged;
+    size_t iBoundClipOrdinal = 0u;
+    for (size_t iStage = 0u; iStage < Binding.Stages.size(); ++iStage)
+    {
+        const ANIMATION_SKILL_STAGE& Stage = Binding.Stages[iStage];
+        for (size_t iClip = 0u; iClip < Stage.Clips.size();
+            ++iClip, ++iBoundClipOrdinal)
+        {
+            const ANIMATION_SKILL_CLIP& Clip = Stage.Clips[iClip];
+            for (const ANIMATION_EFFECT_CUE& Cue : ProductCues)
+            {
+                if (Cue.strClipName != Clip.strClipName ||
+                    !Is_ExactAuthoredEffectMapping(
+                        Cue.strEffectAssetId, strAuthoredEffectAssetId))
+                {
+                    continue;
+                }
+                Staged.push_back(
+                    { iBoundClipOrdinal, iStage, iClip, Clip, Cue });
+            }
+        }
+    }
+
+    if (Staged.empty())
+    {
+        strOutStatus = "No Product animevents cue maps Effect '" +
+            std::string(strAuthoredEffectAssetId) +
+            "' to an ordered skillbinding clip.";
+        return false;
+    }
+
+    OutCandidates = std::move(Staged);
+    strOutStatus = "Resolved " + std::to_string(OutCandidates.size()) +
+        " exact Product cue preview candidate(s).";
+    return true;
 }
 
 bool_t Client::CAnimationEffectCueDocument::Load_ForProductPrewarm(

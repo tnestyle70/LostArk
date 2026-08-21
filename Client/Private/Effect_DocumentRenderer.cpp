@@ -1819,96 +1819,6 @@ namespace
 			}) == 1;
 	}
 
-	bool_t Is_FlowRibbon01TrailContract(
-		const Client::EFFECT_ELEMENT_DESC& Element)
-	{
-		if (Element.eKind != Client::EFFECT_ELEMENT_KIND::TRAIL ||
-			Element.SourceRecipe.strRendererShape != "ribbon" ||
-			Element.Material.eRenderProfile !=
-				Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
-			!SourceMaterialIdentityMatches(Element.Material.SourceMaterial,
-				"ue3.material.fx.m.fx.k.flowrib.01.tr.0ca247309b89",
-				"fx_m.fx_k_flowrib_01_tr"))
-		{
-			return false;
-		}
-		const auto HasUniqueModule = [&Element](const std::string_view ClassName)
-		{
-			return std::ranges::count_if(Element.SourceRecipe.Modules,
-				[ClassName](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
-				{
-					return Module.strClassName == ClassName;
-				}) == 1;
-		};
-		if (!HasUniqueModule("particlemodulesize") ||
-			!HasUniqueModule("particlemodulecolor") ||
-			!HasUniqueModule("particlemodulecolorscaleoverlife") ||
-			!HasUniqueModule("particlemoduleparameterdynamic") ||
-			!HasUniqueModule("particlemoduletypedataribbon"))
-		{
-			return false;
-		}
-		const auto Dynamic = std::ranges::find_if(Element.SourceRecipe.Modules,
-			[](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
-			{
-				return Module.strClassName == "particlemoduleparameterdynamic";
-			});
-		static constexpr std::array<std::string_view, 4u> DYNAMIC_NAMES = {{
-			"x_tiling", "y_tiling", "dissolve", "disort"
-		}};
-		for (size_t iLane = 0u; iLane < DYNAMIC_NAMES.size(); ++iLane)
-		{
-			const std::string Property = "dynamicparams[" +
-				std::to_string(iLane) + "].paramname";
-			if (std::ranges::count_if(Dynamic->Literals,
-				[&Property, iLane](const Client::EFFECT_SOURCE_LITERAL_DESC& Literal)
-				{
-					return Literal.strPropertyPath == Property &&
-						Literal.eKind ==
-							Client::EFFECT_SOURCE_LITERAL_KIND::STRING &&
-						Literal.strString == DYNAMIC_NAMES[iLane];
-				}) != 1)
-			{
-				return false;
-			}
-		}
-
-		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source =
-			Element.Material.SourceMaterial;
-		if (Element.Material.strSourceMaterialPath ==
-			"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr")
-		{
-			return Element.ResourceBindings.size() == 3u &&
-				Source.Textures.size() == 3u &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
-					"Effect/Artist/Textures/fx_i_atypical_03_ycl.dds") &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
-					"Effect/Artist/Textures/fx_l_environment_001.dds") &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::MASK_TEXTURE,
-					"Effect/Artist/Textures/fx_d_noise_002.dds") &&
-				NamedTextureMatches(Source, "tex_main",
-					"Effect/Artist/Textures/fx_i_atypical_03_ycl.dds") &&
-				NamedTextureMatches(Source, "colormap",
-					"Effect/Artist/Textures/fx_l_environment_001.dds") &&
-				NamedTextureMatches(Source, "flowtex",
-					"Effect/Artist/Textures/fx_d_noise_002.dds");
-		}
-		return Element.Material.strSourceMaterialPath ==
-				"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr" &&
-			Element.ResourceBindings.size() == 2u && Source.Textures.size() == 2u &&
-			BindingMatches(Element, Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
-				"Effect/Artist/Textures/fx_k_auraline_02.dds") &&
-			BindingMatches(Element, Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
-				"Effect/Artist/Textures/fx_d_noise_002.dds") &&
-			NamedTextureMatches(Source, "tex_main",
-				"Effect/Artist/Textures/fx_k_auraline_02.dds") &&
-			NamedTextureMatches(Source, "flowtex",
-				"Effect/Artist/Textures/fx_d_noise_002.dds");
-	}
-
 	bool_t Is_DimensionMasterDBoundarySpriteWaveContract(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
@@ -2083,7 +1993,8 @@ namespace
 				Element.Material.strSourceMaterialPath, Source) ==
 				Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWRIBBON01)
 		{
-			return Is_FlowRibbon01TrailContract(Element) ? 35u : UINT32_MAX;
+			return Client::Has_EffectFlowRibbon01TrailContract(Element) ?
+				35u : UINT32_MAX;
 		}
 		if (6u != iStoredProfile ||
 			Element.eKind != Client::EFFECT_ELEMENT_KIND::PARTICLE ||

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <string>
 #include <string_view>
 
 NS_BEGIN(Client)
@@ -548,6 +549,165 @@ inline EFFECT_STRICT_TYPED_SOURCE_PROFILE Resolve_EffectStrictTypedSourceProfile
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::CRACKHOLEV2;
 	}
 	return EFFECT_STRICT_TYPED_SOURCE_PROFILE::NONE;
+}
+
+inline bool_t Has_EffectFlowRibbon01TrailContract(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	if (Element.eKind != EFFECT_ELEMENT_KIND::TRAIL ||
+		!Element.SourceRecipe.bEnabled ||
+		Element.SourceRecipe.strRendererShape != "ribbon" ||
+		Element.Material.eRenderProfile !=
+			EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
+		Resolve_EffectStrictTypedSourceProfile(
+			Element.Material.strSourceMaterialPath,
+			Element.Material.SourceMaterial) !=
+			EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWRIBBON01)
+	{
+		return false;
+	}
+
+	const auto HasUniqueModule = [&Element](const std::string_view ClassName)
+	{
+		return std::ranges::count_if(Element.SourceRecipe.Modules,
+			[ClassName](const EFFECT_SOURCE_MODULE_DESC& Module)
+			{
+				return Module.strClassName == ClassName;
+			}) == 1;
+	};
+	if (!HasUniqueModule("particlemodulesize") ||
+		!HasUniqueModule("particlemodulecolor") ||
+		!HasUniqueModule("particlemodulecolorscaleoverlife") ||
+		!HasUniqueModule("particlemoduleparameterdynamic") ||
+		!HasUniqueModule("particlemoduletypedataribbon"))
+	{
+		return false;
+	}
+
+	const auto Dynamic = std::ranges::find_if(Element.SourceRecipe.Modules,
+		[](const EFFECT_SOURCE_MODULE_DESC& Module)
+		{
+			return Module.strClassName == "particlemoduleparameterdynamic";
+		});
+	static constexpr std::array<std::string_view, 4u> DYNAMIC_NAMES = {{
+		"x_tiling", "y_tiling", "dissolve", "disort"
+	}};
+	for (size_t iLane = 0u; iLane < DYNAMIC_NAMES.size(); ++iLane)
+	{
+		const std::string Property = "dynamicparams[" +
+			std::to_string(iLane) + "].paramname";
+		if (std::ranges::count_if(Dynamic->Literals,
+			[&Property, iLane](const EFFECT_SOURCE_LITERAL_DESC& Literal)
+			{
+				return Literal.strPropertyPath == Property &&
+					Literal.eKind == EFFECT_SOURCE_LITERAL_KIND::STRING &&
+					Literal.strString == DYNAMIC_NAMES[iLane];
+			}) != 1)
+		{
+			return false;
+		}
+	}
+
+	const auto BindingMatches = [&Element](
+		const std::string_view strSlotId,
+		const std::string_view strAssetId)
+	{
+		return std::ranges::count_if(Element.ResourceBindings,
+			[strSlotId, strAssetId](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+			{
+				return Binding.strSlotId == strSlotId &&
+					Binding.strAssetId == strAssetId;
+			}) == 1;
+	};
+	const auto NamedTextureMatches = [&Element](
+		const std::string_view strName,
+		const std::string_view strAssetId)
+	{
+		return std::ranges::count_if(
+			Element.Material.SourceMaterial.Textures,
+			[strName, strAssetId](const EFFECT_NAMED_TEXTURE_DESC& Texture)
+			{
+				return Texture.strName == strName &&
+					Texture.strAssetId == strAssetId;
+			}) == 1;
+	};
+
+	if (Element.Material.strSourceMaterialPath ==
+		"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr")
+	{
+		return Element.ResourceBindings.size() == 3u &&
+			Element.Material.SourceMaterial.Textures.size() == 3u &&
+			BindingMatches("base",
+				"Effect/Artist/Textures/fx_i_atypical_03_ycl.dds") &&
+			BindingMatches("noise",
+				"Effect/Artist/Textures/fx_l_environment_001.dds") &&
+			BindingMatches("mask",
+				"Effect/Artist/Textures/fx_d_noise_002.dds") &&
+			NamedTextureMatches("tex_main",
+				"Effect/Artist/Textures/fx_i_atypical_03_ycl.dds") &&
+			NamedTextureMatches("colormap",
+				"Effect/Artist/Textures/fx_l_environment_001.dds") &&
+			NamedTextureMatches("flowtex",
+				"Effect/Artist/Textures/fx_d_noise_002.dds");
+	}
+
+	if (Element.Material.strSourceMaterialPath !=
+		"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr" ||
+		Element.ResourceBindings.size() != 2u ||
+		Element.Material.SourceMaterial.Textures.size() != 2u ||
+		!BindingMatches("noise",
+			"Effect/Artist/Textures/fx_d_noise_002.dds") ||
+		!NamedTextureMatches("flowtex",
+			"Effect/Artist/Textures/fx_d_noise_002.dds"))
+	{
+		return false;
+	}
+
+	constexpr std::string_view COMPILER_MAIN_TEXTURE =
+		"Effect/Artist/Textures/fx_k_auraline_02.dds";
+	if (BindingMatches("base", COMPILER_MAIN_TEXTURE) &&
+		NamedTextureMatches("tex_main", COMPILER_MAIN_TEXTURE))
+	{
+		return true;
+	}
+
+	/* Artist E intentionally keeps this texture swap pinned to one stable
+	   compiler occurrence.  fx_m_trail_010 has opaque cooked alpha, so the
+	   FlowRibbon evaluator must consume its RGB luminance and the source
+	   DynamicParameter dissolve lane; no generic alpha fallback is admitted. */
+	constexpr std::string_view ARTIST_E_WHITE_TRAIL_ELEMENT_ID =
+		"authored.source-particle.c6d4247396f641316d28767c";
+	constexpr std::string_view ARTIST_E_WHITE_TRAIL_SOURCE_NODE =
+		"authored-source-cascade-ribbon:effect.artist.skill.31480.unified|"
+		"source:effect.artist.skill.31480.imported|"
+		"element:fx_pc_sdm_00.par_o_flyinheaven_01_01."
+		"particlespriteemitter_17";
+	constexpr std::string_view PROJECT_TUNED_MAIN_TEXTURE =
+		"Effect/Artist/Textures/fx_m_trail_010.dds";
+	if (Element.strElementId != ARTIST_E_WHITE_TRAIL_ELEMENT_ID ||
+		Element.strSourceNode != ARTIST_E_WHITE_TRAIL_SOURCE_NODE ||
+		!BindingMatches("base", PROJECT_TUNED_MAIN_TEXTURE) ||
+		!NamedTextureMatches("tex_main", PROJECT_TUNED_MAIN_TEXTURE) ||
+		Element.AuthoringOverrides.ResourceBindings.size() != 2u)
+	{
+		return false;
+	}
+	const auto OverrideMatches = [&Element](
+		const std::string_view strSlotId)
+	{
+		return std::ranges::count_if(
+			Element.AuthoringOverrides.ResourceBindings,
+			[strSlotId](const EFFECT_AUTHORING_RESOURCE_OVERRIDE_DESC& Override)
+			{
+				return Override.strSlotId == strSlotId &&
+					Override.strAssetId ==
+						"Effect/Artist/Textures/fx_m_trail_010.dds" &&
+					Override.strCompilerAssetId ==
+						"Effect/Artist/Textures/fx_k_auraline_02.dds";
+			}) == 1;
+	};
+	return OverrideMatches("base") &&
+		OverrideMatches("sourceMaterialTexture:tex_main");
 }
 
 inline constexpr std::array<std::string_view, 4u>
