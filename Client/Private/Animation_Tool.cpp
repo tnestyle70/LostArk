@@ -13,6 +13,7 @@
 #include "Part_Body.h"
 #include "ProjectDataRoot.h"
 #include "Transform.h"
+#include "Valtan.h"
 
 #include <charconv>
 #include <algorithm>
@@ -224,6 +225,7 @@ void Client::CAnimation_Tool::Update(
 	{
 		Advance_ValtanPatternPreview(PreviewModel);
 	}
+	Update_ValtanPatternHitAreaPreview();
 }
 
 shared_ptr<Engine::CModel> Client::CAnimation_Tool::Resolve_Model() const
@@ -319,6 +321,9 @@ void Client::CAnimation_Tool::Adopt_AssetName(
 	m_strValtanPatternPreviewStatus.clear();
 	m_ValtanPatternPreviewModel.reset();
 	m_iValtanPatternPreviewTargetGeneration = 0u;
+	m_ValtanEncounterReference.Clear();
+	m_bValtanEncounterReferenceLoadAttempted = false;
+	m_fValtanPatternHitTimelineBaseSeconds = 0.f;
 }
 
 void Client::CAnimation_Tool::Render_TargetConflict()
@@ -1249,6 +1254,7 @@ bool_t Client::CAnimation_Tool::Start_ValtanSequencePreview(
 	m_iValtanPatternPreviewTargetGeneration =
 		CAnimationTargetService::Resolve_TargetGeneration();
 	m_iValtanSequenceSelected = static_cast<int32_t>(iSequenceIndex);
+	m_fValtanPatternHitTimelineBaseSeconds = 0.f;
 	m_strValtanPatternPreviewStatus =
 		"Playing source sequence " + label + ".";
 	return Activate_ValtanPatternPreviewItem(pModel);
@@ -1288,6 +1294,7 @@ bool_t Client::CAnimation_Tool::Start_ValtanPatternPreview(
 	m_iValtanPatternPreviewTargetGeneration =
 		CAnimationTargetService::Resolve_TargetGeneration();
 	m_iValtanSequenceSelected = -1;
+	m_fValtanPatternHitTimelineBaseSeconds = 0.f;
 	m_strValtanPatternPreviewStatus = status;
 	return Activate_ValtanPatternPreviewItem(pModel);
 }
@@ -1424,6 +1431,13 @@ void Client::CAnimation_Tool::Advance_ValtanPatternPreview(
 {
 	if (!m_bValtanPatternPreviewPlaying)
 		return;
+	const bool_t bHadItem =
+		m_iValtanPatternPreviewItem < m_ValtanPatternPreviewPlaylist.size();
+	const VALTAN_PATTERN_PREVIEW_PLAY_ITEM Finished = bHadItem ?
+		m_ValtanPatternPreviewPlaylist[m_iValtanPatternPreviewItem] :
+		VALTAN_PATTERN_PREVIEW_PLAY_ITEM{};
+	const f32_t fFinishedDurationSeconds =
+		m_fValtanPatternPreviewItemDurationSeconds;
 	++m_iValtanPatternPreviewItem;
 	if (m_iValtanPatternPreviewItem >= m_ValtanPatternPreviewPlaylist.size())
 	{
@@ -1432,6 +1446,26 @@ void Client::CAnimation_Tool::Advance_ValtanPatternPreview(
 		return;
 	}
 	Activate_ValtanPatternPreviewItem(pModel);
+	/* The pattern hit clock keeps counting only while the next started item
+	   continues the same source sequence pass; anything else restarts it. */
+	if (!m_bValtanPatternPreviewPlaying ||
+		m_iValtanPatternPreviewItem >= m_ValtanPatternPreviewPlaylist.size())
+	{
+		m_fValtanPatternHitTimelineBaseSeconds = 0.f;
+		return;
+	}
+	const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Current =
+		m_ValtanPatternPreviewPlaylist[m_iValtanPatternPreviewItem];
+	const bool_t bSameTimeline = bHadItem &&
+		!Finished.bPatternMarker && !Current.bPatternMarker &&
+		Finished.iPatternNumber == Current.iPatternNumber &&
+		Finished.iSourceActionId == Current.iSourceActionId &&
+		Finished.iSequenceIndex == Current.iSequenceIndex &&
+		Finished.iSequenceRepeatNumber == Current.iSequenceRepeatNumber;
+	if (bSameTimeline)
+		m_fValtanPatternHitTimelineBaseSeconds += fFinishedDurationSeconds;
+	else
+		m_fValtanPatternHitTimelineBaseSeconds = 0.f;
 }
 
 void Client::CAnimation_Tool::Stop_ValtanPatternPreview(
@@ -1461,6 +1495,92 @@ void Client::CAnimation_Tool::Reset_ValtanPatternPreviewState(
 	m_bLoop = true;
 	m_ValtanPatternPreviewModel.reset();
 	m_iValtanPatternPreviewTargetGeneration = 0u;
+	m_fValtanPatternHitTimelineBaseSeconds = 0.f;
+#ifdef _DEBUG
+	if (const shared_ptr<CValtan> Boss =
+		CAnimationTargetService::Resolve_Boss())
+	{
+		Boss->Clear_PatternHitAreaPreview();
+	}
+#endif
+}
+
+void Client::CAnimation_Tool::Update_ValtanPatternHitAreaPreview()
+{
+#ifdef _DEBUG
+	const shared_ptr<CValtan> Boss = CAnimationTargetService::Resolve_Boss();
+	if (nullptr == Boss)
+		return;
+	if (!m_bValtanPatternPreviewPlaying ||
+		m_iValtanPatternPreviewItem >= m_ValtanPatternPreviewPlaylist.size())
+	{
+		Boss->Clear_PatternHitAreaPreview();
+		return;
+	}
+	const VALTAN_PATTERN_PREVIEW_PLAY_ITEM& Item =
+		m_ValtanPatternPreviewPlaylist[m_iValtanPatternPreviewItem];
+	if (Item.bPatternMarker || 0u == Item.iSourceActionId)
+	{
+		Boss->Clear_PatternHitAreaPreview();
+		return;
+	}
+
+	if (!m_bValtanEncounterReferenceLoadAttempted)
+	{
+		m_bValtanEncounterReferenceLoadAttempted = true;
+		std::string status;
+		if (!m_ValtanEncounterReference.Load(CProjectDataRoot::Resolve(
+				std::filesystem::path(L"Encounters") / L"Valtan" /
+				L"ValtanEncounter.json"), status))
+		{
+			m_ValtanEncounterReference.Clear();
+		}
+	}
+	if (!m_ValtanEncounterReference.Is_Ready())
+		return;
+
+	const ENCOUNTER_PATTERN_REFERENCE* pPattern = nullptr;
+	for (const ENCOUNTER_PATTERN_REFERENCE& pattern :
+		m_ValtanEncounterReference.Get_Patterns())
+	{
+		if (std::find(pattern.sourceActionIds.begin(),
+				pattern.sourceActionIds.end(),
+				Item.iSourceActionId) != pattern.sourceActionIds.end())
+		{
+			pPattern = &pattern;
+			break;
+		}
+	}
+	if (nullptr == pPattern)
+	{
+		Boss->Clear_PatternHitAreaPreview();
+		return;
+	}
+
+	/* The stage lookup runs on the whole-pattern clock: seconds of finished
+	   same-sequence items plus the current item's local elapsed. */
+	const f32_t fTimelineMs = (m_fValtanPatternHitTimelineBaseSeconds +
+		m_fValtanPatternPreviewElapsedSeconds) * 1000.f;
+	const ENCOUNTER_STAGE_REFERENCE* pStage = nullptr;
+	for (const ENCOUNTER_STAGE_REFERENCE& stage : pPattern->stages)
+	{
+		const f32_t fStartMs = static_cast<f32_t>(stage.iStartOffsetMs);
+		if (fTimelineMs >= fStartMs &&
+			fTimelineMs < fStartMs + static_cast<f32_t>(stage.iDurationMs))
+		{
+			pStage = &stage;
+			break;
+		}
+	}
+	if (nullptr == pStage)
+	{
+		Boss->Clear_PatternHitAreaPreview();
+		return;
+	}
+	Boss->Set_PatternHitAreaPreview(
+		pStage->actionId,
+		(fTimelineMs - static_cast<f32_t>(pStage->iStartOffsetMs)) / 1000.f);
+#endif
 }
 
 /* The chains this clip belongs to. A skill plays its clips in a fixed order and

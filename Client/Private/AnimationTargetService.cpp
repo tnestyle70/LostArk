@@ -162,6 +162,12 @@ Client::CAnimationTargetService::Resolve_SceneCharacter()
 	return s_Target.lock();
 }
 
+shared_ptr<Client::CValtan>
+Client::CAnimationTargetService::Resolve_Boss()
+{
+	return s_PreviewBoss.lock();
+}
+
 shared_ptr<Engine::CModel>
 Client::CAnimationTargetService::Resolve_Model()
 {

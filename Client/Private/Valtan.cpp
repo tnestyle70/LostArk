@@ -117,6 +117,7 @@ HRESULT CValtan::Initialize(void* pArg)
 #ifdef _DEBUG
 void CValtan::Load_PatternHitAreaDebug()
 {
+	m_isPatternHitAreaDebugLoadAttempted = true;
 	m_PatternHitAreaByActionId.clear();
 	CEncounterPatternReference encounter;
 	std::string status;
@@ -155,9 +156,14 @@ void CValtan::Load_PatternHitAreaDebug()
 
 void CValtan::Draw_PatternHitAreaDebug() const
 {
-	if (nullptr == m_pTransformCom || m_strServerActionId.empty())
+	/* A tool preview clock overrides the server snapshot clock so the same
+	   wires answer both the arena and the Animation Tool sequence buttons. */
+	const bool_t isPreviewDriven = !m_strPreviewHitActionId.empty();
+	const std::string& strActionId =
+		isPreviewDriven ? m_strPreviewHitActionId : m_strServerActionId;
+	if (nullptr == m_pTransformCom || strActionId.empty())
 		return;
-	const auto iter = m_PatternHitAreaByActionId.find(m_strServerActionId);
+	const auto iter = m_PatternHitAreaByActionId.find(strActionId);
 	if (m_PatternHitAreaByActionId.end() == iter)
 		return;
 	const PATTERN_HIT_AREA_DEBUG& area = iter->second;
@@ -166,7 +172,8 @@ void CValtan::Draw_PatternHitAreaDebug() const
 	   mirror each of those instants with the same minimum visible window the
 	   player skill hit debug uses. */
 	constexpr f32_t MIN_VISIBLE_HIT_WINDOW_MS = 300.f;
-	const f32_t fAgeMs = m_fServerActionAgeSeconds * 1000.f;
+	const f32_t fAgeMs = (isPreviewDriven ?
+		m_fPreviewHitAgeSeconds : m_fServerActionAgeSeconds) * 1000.f;
 	bool_t isHitWindow = false;
 	for (uint32_t iTick = 0u; iTick < area.iHitCount; ++iTick)
 	{
@@ -252,6 +259,24 @@ void CValtan::Draw_PatternHitAreaDebug() const
 			Draw_WithYawOffset(-60.f, Shape);
 		}
 	}
+}
+
+void CValtan::Set_PatternHitAreaPreview(
+	const std::string& stageActionId,
+	const f32_t fStageAgeSeconds)
+{
+	/* A Development preview boss never took the server-authoritative load in
+	   Initialize, so the display copy is admitted on first use here. */
+	if (!m_isPatternHitAreaDebugLoadAttempted)
+		Load_PatternHitAreaDebug();
+	m_strPreviewHitActionId = stageActionId;
+	m_fPreviewHitAgeSeconds = fStageAgeSeconds;
+}
+
+void CValtan::Clear_PatternHitAreaPreview()
+{
+	m_strPreviewHitActionId.clear();
+	m_fPreviewHitAgeSeconds = 0.f;
 }
 #endif
 
@@ -516,7 +541,7 @@ void CValtan::Late_Update(f32_t fTimeDelta)
 		CGameInstance::Get().Add_DebugComponent(m_pNavigationCom);
 	if (m_isCombatColliderDebugVisible && nullptr != m_pColliderCom)
 		CGameInstance::Get().Add_DebugComponent(m_pColliderCom);
-	if (m_isPatternHitAreaDebugVisible)
+	if (m_isPatternHitAreaDebugVisible || !m_strPreviewHitActionId.empty())
 		Draw_PatternHitAreaDebug();
 #endif
 }

@@ -105,6 +105,12 @@ public:
 	void Set_PatternHitAreaDebugVisible(bool_t isVisible) {
 		m_isPatternHitAreaDebugVisible = isVisible;
 	}
+	/* Animation Tool preview: draws the same pattern hit wires from a
+	   tool-driven stage clock instead of the server snapshot. */
+	void Set_PatternHitAreaPreview(
+		const std::string& stageActionId,
+		f32_t fStageAgeSeconds);
+	void Clear_PatternHitAreaPreview();
 #endif
 
 private:
@@ -169,8 +175,11 @@ private:
 	bool_t m_isNavigationDebugVisible = { false };
 	bool_t m_isCombatColliderDebugVisible = { false };
 	bool_t m_isPatternHitAreaDebugVisible = { true };
+	bool_t m_isPatternHitAreaDebugLoadAttempted = { false };
 	std::unordered_map<std::string, PATTERN_HIT_AREA_DEBUG>
 		m_PatternHitAreaByActionId;
+	std::string m_strPreviewHitActionId;
+	f32_t m_fPreviewHitAgeSeconds = { 0.f };
 #endif
 
 private:
