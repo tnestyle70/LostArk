@@ -4961,12 +4961,12 @@ namespace
 				"combatobject.valtan.red-blade-wave.projectile",
 				"combatobject.visual.valtan.red-blade-wave.projectile.v1");
 		const bool_t prewarmContractExact =
-			cuesLoaded && cueDocument.Cues.size() == 98u &&
+			cuesLoaded && cueDocument.Cues.size() == 107u &&
 			nullptr != boss && boss->combatObjectVisuals.size() == 2u &&
 			nullptr != skyVisual && nullptr != bladeVisual &&
 			skyVisual->effectAssetId == "effect.valtan.sky-axe.active" &&
 			bladeVisual->effectAssetId == "effect.valtan.red-blade-wave.active" &&
-			productEffects.size() == 100u &&
+			productEffects.size() == 109u &&
 			!std::any_of(cueDocument.Cues.begin(), cueDocument.Cues.end(),
 				[](const VALTAN_PATTERN_EFFECT_CUE& cue)
 				{
@@ -4981,7 +4981,7 @@ namespace
 				" productCount=" << productEffects.size() << '\n';
 		}
 		runner.Require(prewarmContractExact,
-			"Valtan Product Prewarm Owns 98 Boss-Root Cues Plus Two Moving Combat-Object Effects Without Red-Blade Duplication");
+			"Valtan Product Prewarm Owns 107 Boss-Root Cues Plus Two Moving Combat-Object Effects Without Red-Blade Duplication");
 
 		EFFECT_DOCUMENT_DESC skyDocument;
 		std::string skyStatus;
@@ -21479,21 +21479,21 @@ namespace
 		{
 			playerSkillOwners.emplace(skill.eCharacterClass, skill.iSkillId);
 		}
-		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT valtanCueDocument;
-		std::string valtanCueStatus;
-		const bool_t valtanCuesLoaded =
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT valtanSourceCueDocument;
+		std::string valtanSourceCueStatus;
+		const bool_t valtanSourceCuesLoaded =
 			CValtanPatternEffectCueDocument::Load_Source(
-				valtanCueDocument, valtanCueStatus);
+				valtanSourceCueDocument, valtanSourceCueStatus);
 		EFFECT_DIRECT_AUTHORED_BOSS_OWNER_MAP bossPatternOwners;
-		for (const VALTAN_PATTERN_EFFECT_CUE& cue : valtanCueDocument.Cues)
+		for (const VALTAN_PATTERN_EFFECT_CUE& cue : valtanSourceCueDocument.Cues)
 		{
 			bossPatternOwners.emplace(cue.strEffectAssetId,
 				EFFECT_DIRECT_AUTHORED_BOSS_OWNER{
-					valtanCueDocument.strOwnerArchetypeId, cue.strPatternId,
+					valtanSourceCueDocument.strOwnerArchetypeId, cue.strPatternId,
 					cue.strStageId, cue.strActionId });
 		}
 		const BOSS_ACTOR_ENTRY* valtanBossActor =
-			CActorCatalog::Find_Boss(valtanCueDocument.strOwnerArchetypeId);
+			CActorCatalog::Find_Boss(valtanSourceCueDocument.strOwnerArchetypeId);
 		EFFECT_DIRECT_AUTHORED_BOSS_COMBAT_OBJECT_OWNER_MAP
 			bossCombatObjectOwners;
 		if (nullptr != valtanBossActor)
@@ -21531,7 +21531,8 @@ namespace
 			});
 		}
 		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX sourceIndex;
-		const bool_t sourceIndexValid = playerSkillsLoaded && valtanCuesLoaded &&
+		const bool_t sourceIndexValid = playerSkillsLoaded &&
+			valtanSourceCuesLoaded &&
 			nullptr != valtanBossActor &&
 			!sourceScanError &&
 			CEffectDirectAuthoredSourceIndex::Build(
@@ -21543,7 +21544,7 @@ namespace
 		size_t typedBossSourceCount = 0u;
 		size_t typedBossCombatObjectSourceCount = 0u;
 		bool_t sourceEntriesExact = sourceIndexValid &&
-			valtanCueDocument.Cues.size() == 98u &&
+			valtanSourceCueDocument.Cues.size() == 98u &&
 			bossPatternOwners.size() == 98u &&
 			bossCombatObjectOwners.size() == 2u &&
 			sourceIndex.iCatalogDirectCount == 201u &&
