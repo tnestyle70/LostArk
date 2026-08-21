@@ -41,6 +41,7 @@ ASSET_PRETRANSFORM = 0.01
 CORE_RADIUS = 8.60
 ARENA_RADIUS = 16.6
 BREAKING_DURATION_MS = 250
+DEPLOY_CATALOG_VERSION = 2
 
 MAP_ASSETS = REPO_ROOT / "Data/Maps/Imported" / AREA_ID / f"{AREA_ID}.mapassets"
 MAP_PLACEMENTS = REPO_ROOT / "Data/Maps/Authoring" / AREA_ID / f"{AREA_ID}.mapplacements"
@@ -77,6 +78,11 @@ DEPLOY_ASSET_EVIDENCE = (
     "overlay export migrated out of the map placement layer; no fractured mesh "
     "because the authored mutation ends at DESPAWNED"
 )
+
+DEFERRED_EMISSIVE_ASSETS = {
+    "VALTAN_FLOOR_BRICK_A",
+    "VALTAN_FLOOR_BRICK_B",
+}
 
 STAGE_KEY = {"STAGE_A": "floor84", "STAGE_B": "floor30"}
 STAGE_SLUG = {"STAGE_A": "rail", "STAGE_B": "brick"}
@@ -128,6 +134,69 @@ def read_document(path: Path) -> tuple[str, str]:
 
 def split_row(line: str) -> list[str]:
     return shlex.split(line)
+
+
+def quote_field(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def deploy_emissive_profile(asset_id: str) -> tuple[float, int]:
+    return (0.35, 1) if asset_id in DEFERRED_EMISSIVE_ASSETS else (1.0, 0)
+
+
+def render_deploy_asset_v2(tokens: list[str], intensity: float, overlay: int) -> str:
+    if len(tokens) != 8:
+        raise BuildError("Deploy asset v1 row does not have 8 fields.")
+    return " ".join(
+        (
+            quote_field(tokens[0]),
+            tokens[1],
+            *(quote_field(value) for value in tokens[2:7]),
+            format_number(intensity),
+            str(overlay),
+            quote_field(tokens[7]),
+        )
+    )
+
+
+def normalize_deploy_asset_rows(header: list[str], rows: list[str]) -> list[str]:
+    try:
+        version = int(header[1])
+        declared_count = int(header[3])
+    except (IndexError, ValueError) as error:
+        raise BuildError("Deploy asset header is invalid.") from error
+    if (
+        len(header) != 4
+        or header[0] != "LOSTARK_DEPLOY_PROP_CATALOG"
+        or header[2] != AREA_ID
+        or declared_count != len(rows)
+    ):
+        raise BuildError("Deploy asset header is invalid.")
+    if version not in (1, DEPLOY_CATALOG_VERSION):
+        raise BuildError(f"Unsupported Deploy asset version: {version}")
+
+    normalized: list[str] = []
+    for index, row in enumerate(rows):
+        tokens = split_row(row)
+        if version == 1:
+            if len(tokens) != 8:
+                raise BuildError(f"Deploy asset v1 row {index} does not have 8 fields.")
+            intensity, overlay = deploy_emissive_profile(tokens[0])
+            normalized.append(render_deploy_asset_v2(tokens, intensity, overlay))
+            continue
+        if len(tokens) != 10:
+            raise BuildError(f"Deploy asset v2 row {index} does not have 10 fields.")
+        try:
+            intensity = float(tokens[7])
+            overlay = int(tokens[8])
+        except ValueError as error:
+            raise BuildError(f"Deploy asset v2 row {index} has invalid render fields.") from error
+        if not math.isfinite(intensity) or intensity < 0.0 or overlay not in (0, 1):
+            raise BuildError(f"Deploy asset v2 row {index} has invalid render fields.")
+        if overlay and tokens[1] != "STATIC":
+            raise BuildError(f"Deploy asset v2 row {index} enables overlay on a non-static asset.")
+        normalized.append(row)
+    return normalized
 
 
 def load_map_assets() -> dict[str, str]:
@@ -356,10 +425,14 @@ def build_deploy_asset_rows(asset_paths: dict[str, str]) -> list[str]:
     for map_asset_id in sorted(DEPLOY_ASSET_OF_MAP_ASSET):
         deploy_asset_id = DEPLOY_ASSET_OF_MAP_ASSET[map_asset_id]
         relative = asset_paths[map_asset_id]
+        emissive_intensity, deferred_emissive_overlay = deploy_emissive_profile(
+            deploy_asset_id
+        )
         rows.append(
             f'"{deploy_asset_id}" STATIC "BG_RAD_VALTAN_A.{map_asset_id}" '
             f'"{relative}" "Prototype_Component_Model_{deploy_asset_id}_INTACT" '
-            f'"" "" "{DEPLOY_ASSET_EVIDENCE}"'
+            f'"" "" {format_number(emissive_intensity)} '
+            f'{deferred_emissive_overlay} "{DEPLOY_ASSET_EVIDENCE}"'
         )
     return rows
 
@@ -535,13 +608,18 @@ def build_documents(owner, layer_of, placements, asset_paths, grid: NavGrid):
 
     text, newline = read_document(DEPLOY_ASSETS)
     lines, trailing = strip_trailing_blank(text.split(newline))
-    count = int(split_row(lines[0])[3])
+    header = split_row(lines[0])
+    existing_rows = normalize_deploy_asset_rows(header, lines[1:])
+    count = len(existing_rows)
     new_rows = build_deploy_asset_rows(asset_paths)
     for row in new_rows:
-        if any(split_row(existing)[0] == split_row(row)[0] for existing in lines[1:]):
+        if any(split_row(existing)[0] == split_row(row)[0] for existing in existing_rows):
             raise BuildError(f"Deploy asset already exists: {split_row(row)[0]}")
-    lines = lines[:1] + lines[1:] + new_rows
-    lines[0] = f'LOSTARK_DEPLOY_PROP_CATALOG 1 "{AREA_ID}" {count + len(new_rows)}'
+    lines = [lines[0]] + existing_rows + new_rows
+    lines[0] = (
+        f'LOSTARK_DEPLOY_PROP_CATALOG {DEPLOY_CATALOG_VERSION} '
+        f'"{AREA_ID}" {count + len(new_rows)}'
+    )
     documents[DEPLOY_ASSETS] = newline.join(lines + ([""] if trailing else []))
 
     text, newline = read_document(DEPLOY_PLACEMENTS)

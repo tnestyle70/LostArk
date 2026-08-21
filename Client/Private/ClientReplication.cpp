@@ -941,9 +941,7 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		desc.vPosition,
 		spawned.fYawDegrees,
 		WORLD_ENTITY_ACTION::IDLE,
-		/* Spawn carries no armour state; the next snapshot is authoritative and
-		arrives on the following tick, so a fresh boss starts fully armoured. */
-		{}, {}, 0u, 0u, 0u, 0u, 0u))
+		{}, {}, 0u, 0u, 0u, 0u))
 	{
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			m_Desc.iLayerLevelIndex,
@@ -1423,8 +1421,6 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				snapshot.iServerTick,
 				entity.iActionStartTick,
 				entity.iPatternSequence,
-				entity.iPatternStageIndex,
-				entity.iBrokenArmorMask))
 				entity.iPatternStageIndex) ||
 				!valtan->Apply_BossCombatState(entity.BossCombat))
 			{

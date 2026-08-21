@@ -2,7 +2,7 @@
     "schema":  "lostark.world-destruction-client-projection",
     "formatVersion":  2,
     "areaId":  "LV_LUT_HEARTRB_ED",
-    "combatRuntimeRevision":  "3010eee28b8c8f82365609470b431a6a4e46313a721563d2fb4736d111379c88",
+    "combatRuntimeRevision":  "dadebf29992417667cddf7378a03fa000c2cbf7dfa1e6dc553fa326e894037ee",
     "groups":  [
                    {
                        "groupId":  "destroyable.group.valtan.entrance.frontwallA",
@@ -65,6 +65,16 @@
                                               ]
                    },
                    {
+                       "groupId":  "destroyable.group.valtan.floor30.rail.7000000000000000005",
+                       "mutationId":  "mutation.valtan.floor30.rail.7000000000000000005.collapse",
+                       "suppressionAliasPlacementIds":  [
+
+                                                        ],
+                       "memberPlacementIds":  [
+                                                  "7000000000000000005"
+                                              ]
+                   },
+                   {
                        "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000001",
                        "mutationId":  "mutation.valtan.floor84.rail.7000000000000000001.collapse",
                        "suppressionAliasPlacementIds":  [
@@ -72,16 +82,6 @@
                                                         ],
                        "memberPlacementIds":  [
                                                   "7000000000000000001"
-                                              ]
-                   },
-                   {
-                       "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000005",
-                       "mutationId":  "mutation.valtan.floor84.rail.7000000000000000005.collapse",
-                       "suppressionAliasPlacementIds":  [
-
-                                                        ],
-                       "memberPlacementIds":  [
-                                                  "7000000000000000005"
                                               ]
                    },
                    {

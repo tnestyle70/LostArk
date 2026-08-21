@@ -1188,12 +1188,12 @@
                        "initialState":  "INTACT"
                    },
                    {
-                       "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000005",
+                       "groupId":  "destroyable.group.valtan.floor30.rail.7000000000000000005",
                        "memberPlacementIds":  [
                                                  "7000000000000000005"
                                              ],
                        "navigationRegionIds":  [
-                                                 "navregion.valtan.floor84.rail.7000000000000000005"
+                                                 "navregion.valtan.floor30.rail.7000000000000000005"
                                              ],
                        "navPolarity":  "BLOCK_WHILE_FRACTURED",
                        "initialState":  "INTACT"
@@ -1825,8 +1825,8 @@
                           "breakingDurationMs":  250
                       },
                       {
-                          "mutationId":  "mutation.valtan.floor84.rail.7000000000000000005.collapse",
-                          "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000005",
+                          "mutationId":  "mutation.valtan.floor30.rail.7000000000000000005.collapse",
+                          "groupId":  "destroyable.group.valtan.floor30.rail.7000000000000000005",
                           "targetState":  "DESPAWNED",
                           "breakingDurationMs":  250
                       }
@@ -3663,10 +3663,10 @@
                          "enabled":  true
                      },
                      {
-                         "bindingId":  "binding.valtan.floor84.rail.7000000000000000005",
-                         "mutationId":  "mutation.valtan.floor84.rail.7000000000000000005.collapse",
-                         "patternId":  "VALTAN_ARENA_BREAK_84",
-                         "stageId":  "IMPACT",
+                         "bindingId":  "binding.valtan.floor30.rail.7000000000000000005",
+                         "mutationId":  "mutation.valtan.floor30.rail.7000000000000000005.collapse",
+                         "patternId":  "VALTAN_ARENA_BREAK_33",
+                         "stageId":  "LANDING",
                          "triggerKind":  "STAGE_ENTER",
                          "offsetMs":  0,
                          "receiverCollisionId":  "",

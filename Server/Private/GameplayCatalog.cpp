@@ -258,6 +258,9 @@ namespace
 		else if ("LOCKED_TARGET_UNTIL_FIRST_PULSE" == value)
 			output = BOSS_COMBAT_OBJECT_ORIGIN_POLICY::
 				LOCKED_TARGET_UNTIL_FIRST_PULSE;
+		else if ("LOCKED_TARGET_PER_ALIVE_PLAYER" == value)
+			output = BOSS_COMBAT_OBJECT_ORIGIN_POLICY::
+				LOCKED_TARGET_PER_ALIVE_PLAYER;
 		else
 			return false;
 		return true;
@@ -1338,9 +1341,14 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			}
 			const bool fixedArea = BOSS_COMBAT_OBJECT_KIND::FIXED_AREA ==
 				definition.eKind;
-			const bool validFixedArea = fixedArea &&
+			/* A fixed area is placed on a player, either the boss's single
+			pattern target or one per living raider for a volley. */
+			const bool lockedOrigin =
 				BOSS_COMBAT_OBJECT_ORIGIN_POLICY::
-					LOCKED_TARGET_UNTIL_FIRST_PULSE == definition.eOriginPolicy &&
+					LOCKED_TARGET_UNTIL_FIRST_PULSE == definition.eOriginPolicy ||
+				BOSS_COMBAT_OBJECT_ORIGIN_POLICY::
+					LOCKED_TARGET_PER_ALIVE_PLAYER == definition.eOriginPolicy;
+			const bool validFixedArea = fixedArea && lockedOrigin &&
 				BOSS_COMBAT_OBJECT_DIRECTION_POLICY::NONE ==
 					definition.eDirectionPolicy &&
 				0.f == definition.fOffsetForwardM &&

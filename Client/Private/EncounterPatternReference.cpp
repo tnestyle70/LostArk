@@ -404,14 +404,11 @@ bool_t Client::CEncounterPatternReference::Load(
 	{
 		if (!Is_ExactObjectWithOptional(entry, {
 				"patternId", "displayName", "actionId", "sourceActionIds",
-				"selectionMode", "minimumHealthBar", "maximumHealthBar",
-				"triggerHealthBar", "triggerOrder", "armorRequirement",
-				"phaseRequirement", "invulnerableWhileRunning",
-				"selectionWeight", "maximumConsecutiveUses", "minimumRange",
-				"maximumRange", "stages" },
 				"selectionMode", "category", "minimumPhase", "maximumPhase",
-				"targetPolicy", "aimPolicy", "minimumHealthBar", "maximumHealthBar",
-				"triggerHealthBar", "triggerOrder", "selectionWeight",
+				"targetPolicy", "aimPolicy", "minimumHealthBar",
+				"maximumHealthBar", "triggerHealthBar", "triggerOrder",
+				"armorRequirement", "phaseRequirement",
+				"invulnerableWhileRunning", "selectionWeight",
 				"maximumConsecutiveUses", "minimumRange", "maximumRange",
 				"stages" },
 				{ "serverMotion" }))
@@ -512,8 +509,6 @@ bool_t Client::CEncounterPatternReference::Load(
 					"hitAngleDegrees", "hitLength", "hitHalfWidth",
 					"hitCount", "hitIntervalMs", "hitDelayMs",
 					"serverDamageProfileId",
-					"pushRangeM", "pushMs", "knockdown", "downMs" }))
-					"hitCount", "hitIntervalMs", "serverDamageProfileId",
 					"pushRangeM", "pushMs", "knockdown", "downMs" },
 					{ "motion", "actions", "branches" }))
 			{

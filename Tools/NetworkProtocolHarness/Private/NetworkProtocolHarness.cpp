@@ -1929,11 +1929,12 @@ namespace
 		constexpr std::size_t playerFixedBytes =
 			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
-		/* Trailing 1 + 1 is iPhase and iBrokenArmorMask. */
+		/* Trailing 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
+		hasBossCombatState flag. The block after it is the boss combat
+		snapshot the flag guards. */
 		const std::size_t entityBytes =
 			4 + 1 + 2 + entity.strPatternId.size() + 2 +
-			entity.strActionId.size() + (4 * 4) + (4 * 5) + 1 + 1;
-			entity.strActionId.size() + (4 * 4) + (4 * 5) + 1 + 1 +
+			entity.strActionId.size() + (4 * 4) + (4 * 5) + 1 + 1 + 1 +
 			4 + 4 + 2 + (4 * 4) + 1;
 		constexpr std::size_t bossCombatEventBytes =
 			8 + 4 + 4 + 1 + 4;
@@ -2027,7 +2028,7 @@ namespace
 			decoded.Entities[0].iCurrentHp == 9500 &&
 			decoded.Entities[0].iMaximumHp == 10000 &&
 			decoded.Entities[0].iPhase == 1 &&
-			decoded.Entities[0].iBrokenArmorMask == 0x01,
+			decoded.Entities[0].iBrokenArmorMask == 0x01 &&
 			decoded.Entities[0].hasBossCombatState &&
 			decoded.Entities[0].BossCombat.iStateRevision == 4u &&
 			decoded.Entities[0].BossCombat.iAlivePartMask == 0x1u &&
@@ -2295,13 +2296,12 @@ namespace
 		case here compares against NETWORK_PROTOCOL_VERSION itself, and pinning a
 		literal only made an unrelated bump fail this row. */
 		testRunner.Require(
-			27u == NETWORK_PROTOCOL_VERSION &&
+			30u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Packet Types Are Known");
-			"World Destruction Packet Types At Protocol V27");
+			"World Destruction Packet Types At Protocol V30");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();

@@ -153,6 +153,9 @@ try {
     Invoke-PythonGate `
         'Artist 31470 material runtime-oracle HLSL/WARP gate' `
         @('Tools/LevelPlacementExtractor/verify_artist_31470_material_runtime_oracle_hlsl.py')
+    Invoke-PythonGate `
+        'Valtan floor crack emissive runtime contract gate' `
+        @('Tools/LevelPlacementExtractor/test_valtan_floor_emissive_contract.py')
 
     $LASTEXITCODE = 0
     & '.\Tools\RenderingPipeline\Publish-RenderingProfiles.ps1' `

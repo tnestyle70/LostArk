@@ -27,6 +27,7 @@ public:
 	virtual void Post_Physics_Update(f32_t fTimeDelta);
 	virtual void Late_Update(f32_t fTimeDelta);
 	virtual HRESULT Render();
+	virtual HRESULT Render_DeferredOverlay();
 	virtual HRESULT Render_Shadow();
 
 protected:

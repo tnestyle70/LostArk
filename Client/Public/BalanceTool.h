@@ -69,8 +69,6 @@ private:
 		std::uint32_t identityCost = 0;
 		double movementDistance = 0.0;
 		double maximumRange = 0.0;
-		float movementDistance = 0.f;
-		float maximumRange = 0.f;
 		std::string damageProfileId;
 		std::string effectId;
 		std::string requiredStance;

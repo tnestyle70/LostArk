@@ -312,8 +312,6 @@ bool Client::CBalanceTool::Reload()
 			!ReadU32(value, "identityCost", row.identityCost) ||
 			!ReadDouble(value, "movementDistance", row.movementDistance) ||
 			!ReadDouble(value, "maximumRange", row.maximumRange) ||
-			!ReadFloat(value, "movementDistance", row.movementDistance) ||
-			!ReadFloat(value, "maximumRange", row.maximumRange) ||
 			!ReadString(value, "serverDamageProfileId", row.damageProfileId) ||
 			!ReadString(value, "effectId", row.effectId) ||
 			!ReadString(value, "requiredStance", row.requiredStance) ||
@@ -1082,11 +1080,6 @@ bool Client::CBalanceTool::ValidateDraft(std::string& status) const
 		const bool isHold = "HOLD" == skill.skillKind;
 		const bool isCounter = "COUNTER" == skill.skillKind;
 		const bool isStandup = "STANDUP" == skill.skillKind;
-		const bool isActive = skill.skillKind == "ACTIVE";
-		const bool isCombo = skill.skillKind == "COMBO";
-		const bool isHold = skill.skillKind == "HOLD";
-		const bool isCounter = skill.skillKind == "COUNTER";
-		const bool isStandup = skill.skillKind == "STANDUP";
 		if (0u == skill.skillId || 0u == skill.actionDurationMs ||
 			!skillIds.insert(skill.skillId).second ||
 			skill.characterClass.empty() || skill.inputSlot.empty() ||
@@ -1439,8 +1432,6 @@ bool Client::CBalanceTool::Save(
 			<< ",\n      \"identityCost\": " << s.identityCost
 			<< ",\n      \"movementDistance\": " << FormatJsonNumber(s.movementDistance)
 			<< ",\n      \"maximumRange\": " << FormatJsonNumber(s.maximumRange)
-			<< ",\n      \"movementDistance\": " << std::setprecision(9) << s.movementDistance
-			<< ",\n      \"maximumRange\": " << s.maximumRange
 			<< ",\n      \"serverDamageProfileId\": " << Quote(s.damageProfileId)
 			<< ",\n      \"effectId\": " << Quote(s.effectId)
 			<< ",\n      \"requiredStance\": " << Quote(s.requiredStance)

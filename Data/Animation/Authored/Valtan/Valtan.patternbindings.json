@@ -57,7 +57,7 @@
     },
     {
       "actionId": "valtan.attack.dash-charge.recovery",
-      "clip": "mesh_att_battle_4_02"
+      "clip": "mesh_idle_battle_1"
     },
     {
       "actionId": "valtan.attack.earthquake-smash.windup",
@@ -181,11 +181,11 @@
     },
     {
       "actionId": "valtan.attack.super-smash.active",
-      "clip": "mesh_att_battle_12_02"
+      "clip": ["mesh_att_battle_12_02", "mesh_att_battle_12_03", "mesh_att_battle_12_04"]
     },
     {
       "actionId": "valtan.attack.super-smash.recovery",
-      "clip": "mesh_att_battle_12_05"
+      "clip": ["mesh_att_battle_12_05", "mesh_att_battle_12_04"]
     },
     {
       "actionId": "valtan.attack.jump-spin.jump",
@@ -426,6 +426,18 @@
     {
       "actionId": "valtan.mechanic.arena-break-109.recovery",
       "clip": "mesh_att_battle_12_03"
+    },
+    {
+      "actionId": "valtan.mechanic.arena-floor-84.windup",
+      "clip": "mesh_att_battle_2_01"
+    },
+    {
+      "actionId": "valtan.mechanic.arena-floor-84.impact",
+      "clip": "mesh_att_battle_2_02"
+    },
+    {
+      "actionId": "valtan.mechanic.arena-floor-84.recovery",
+      "clip": "mesh_att_battle_2_03"
     },
     {
       "actionId": "valtan.mechanic.magic-orb-stagger-76.shield",

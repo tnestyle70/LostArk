@@ -2614,18 +2614,6 @@ bool_t Client::CEffectPresentationService::Spawn(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
-	if ((!Desc.bUseWorldRoot &&
-		 !CEffectCatalog::Admit_ProductSpawn(Desc.strEffectAssetId,
-			 Desc.pProductAdmissionToken, strOutStatus)) ||
-		(Desc.bUseWorldRoot &&
-		 !CEffectCatalog::Is_ProductManagedEffect(Desc.strEffectAssetId)))
-	{
-		if (strOutStatus.empty())
-			strOutStatus =
-				"World-root Effect is not a Product-managed target.";
-		g_strStatus = strOutStatus;
-		return false;
-	}
 	if (!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
 		Desc.strEffectAssetId, strOutStatus))
 	{
@@ -2840,18 +2828,6 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     const EFFECT_SPAWN_DESC& Desc,
     std::string& strOutStatus)
 {
-	if ((!Desc.bUseWorldRoot &&
-		 !CEffectCatalog::Admit_ProductSpawn(Desc.strEffectAssetId,
-			 Desc.pProductAdmissionToken, strOutStatus)) ||
-		(Desc.bUseWorldRoot &&
-		 !CEffectCatalog::Is_ProductManagedEffect(Desc.strEffectAssetId)))
-	{
-		if (strOutStatus.empty())
-			strOutStatus =
-				"World-root Effect is not a Product-managed target.";
-		g_strStatus = strOutStatus;
-		return false;
-	}
 	if (!CEffectReconstructedRuntimeBoundary::Admit_ProductSpawn(
 		Desc.strEffectAssetId, strOutStatus))
 	{

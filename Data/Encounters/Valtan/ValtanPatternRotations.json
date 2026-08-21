@@ -11,7 +11,92 @@
       "patternIds": [
         "VALTAN_DASH_CHARGE",
         "VALTAN_JUMP_SPIN",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_HIGH_JUMP",
+        "VALTAN_DASH_CHARGE",
+        "VALTAN_HIGH_JUMP",
+        "VALTAN_EARTHQUAKE_SMASH",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_EARTHQUAKE_SMASH",
+        "VALTAN_SUPER_SMASH",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_DASH_CHARGE"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.130.109",
+      "fromHealthBar": 130,
+      "toHealthBar": 109,
+      "patternIds": [
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_DASH_CHARGE"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.109.100",
+      "fromHealthBar": 109,
+      "toHealthBar": 100,
+      "patternIds": [
+        "VALTAN_EARTHQUAKE_SMASH",
+        "VALTAN_EARTHQUAKE_SMASH",
+        "VALTAN_DASH_CHARGE"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.100.84",
+      "fromHealthBar": 100,
+      "toHealthBar": 84,
+      "patternIds": [
+        "VALTAN_RED_BLADE_WAVE",
+        "VALTAN_EARTHQUAKE_SMASH",
+        "VALTAN_WHIRLWIND",
+        "VALTAN_EARTHQUAKE_SMASH",
         "VALTAN_FOUR_SLASH"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.84.73",
+      "fromHealthBar": 84,
+      "toHealthBar": 73,
+      "patternIds": [
+        "VALTAN_SUPER_SMASH",
+        "VALTAN_GROUND_WAVE_SMASH"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.73.62",
+      "fromHealthBar": 73,
+      "toHealthBar": 62,
+      "patternIds": [
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_FRONT_BACK_FRONT",
+        "VALTAN_DOWN_SMASH",
+        "VALTAN_DOWN_SMASH"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.62.30",
+      "fromHealthBar": 62,
+      "toHealthBar": 30,
+      "patternIds": [
+        "VALTAN_DOWN_SMASH",
+        "VALTAN_DOWN_SMASH",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_EARTHQUAKE_SMASH",
+        "VALTAN_SUPER_SMASH",
+        "VALTAN_GROUND_WAVE_SMASH"
+      ]
+    },
+    {
+      "rotationId": "rotation.valtan.28.14",
+      "fromHealthBar": 28,
+      "toHealthBar": 14,
+      "patternIds": [
+        "VALTAN_WHIRLWIND",
+        "VALTAN_FOUR_SLASH",
+        "VALTAN_FRONT_BACK_FRONT",
+        "VALTAN_EARTHQUAKE_SMASH"
       ]
     }
   ]

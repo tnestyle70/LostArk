@@ -3956,8 +3956,8 @@
                                       ]
                      },
                      {
-                         "profileId":  "destroyable.group.valtan.floor84.rail.7000000000000000005.preview",
-                         "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000005",
+                         "profileId":  "destroyable.group.valtan.floor30.rail.7000000000000000005.preview",
+                         "groupId":  "destroyable.group.valtan.floor30.rail.7000000000000000005",
                          "durationSeconds":  5,
                          "previewGroundEnabled":  true,
                          "previewGroundHeight":  20,

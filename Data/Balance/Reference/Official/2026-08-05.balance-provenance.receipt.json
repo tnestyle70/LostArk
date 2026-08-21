@@ -35262,7 +35262,7 @@
                                                 "repeatCount":  1,
                                                 "repeatIntervalMs":  0,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  10.0,
+                                                "hitOuterRadius":  3.5,
                                                 "hitInnerRadius":  0.0,
                                                 "hitAngleDegrees":  0.0,
                                                 "hitLength":  0.0,
@@ -35282,7 +35282,7 @@
                                                 "repeatCount":  1,
                                                 "repeatIntervalMs":  0,
                                                 "hitShape":  "CIRCLE",
-                                                "hitOuterRadius":  10.0,
+                                                "hitOuterRadius":  3.5,
                                                 "hitInnerRadius":  0.0,
                                                 "hitAngleDegrees":  0.0,
                                                 "hitLength":  0.0,
@@ -35294,7 +35294,7 @@
                                                 "downMs":  1000
                                             }
                                         ],
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanCombatObjects.json",
@@ -35375,10 +35375,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  "LOCKED_TARGET_UNTIL_FIRST_PULSE",
+                        "sourceValue":  "LOCKED_TARGET_PER_ALIVE_PLAYER",
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  "LOCKED_TARGET_UNTIL_FIRST_PULSE",
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  "LOCKED_TARGET_PER_ALIVE_PLAYER",
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanCombatObjects.json",

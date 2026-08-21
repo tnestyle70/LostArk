@@ -1617,13 +1617,21 @@ foreach ($combatObject in @($combatObjectDocument.objects)) {
 		$maximumDistanceM -ge 0.0 -and $maximumDistanceM -le 1000.0
 	$validMotion = $false
 	if ($kind -ceq 'FIXED_AREA') {
-		$validMotion =
-			$originPolicy -ceq 'LOCKED_TARGET_UNTIL_FIRST_PULSE' -and
+		$stationary =
 			$directionPolicy -ceq 'NONE' -and
 			$offsetForwardM -eq 0.0 -and $offsetRightM -eq 0.0 -and
-			$speedMps -eq 0.0 -and $maximumDistanceM -eq 0.0 -and
-			[string]$ownerPattern.targetPolicy -cin @(
-				'LOCK_NEAREST_ON_START','LOCK_RANDOM_ALIVE_ON_START')
+			$speedMps -eq 0.0 -and $maximumDistanceM -eq 0.0
+		if ($originPolicy -ceq 'LOCKED_TARGET_PER_ALIVE_PLAYER') {
+			# The volley deals one area per living player, so it never reads the
+			# boss's single pattern target and imposes no target policy on it.
+			$validMotion = $stationary
+		}
+		else {
+			$validMotion = $stationary -and
+				$originPolicy -ceq 'LOCKED_TARGET_UNTIL_FIRST_PULSE' -and
+				[string]$ownerPattern.targetPolicy -cin @(
+					'LOCK_NEAREST_ON_START','LOCK_RANDOM_ALIVE_ON_START')
+		}
 	}
 	elseif ($kind -ceq 'MISSILE') {
 		$maximumTravelM = $speedMps * ([double]$lifeMs / 1000.0)
@@ -2666,12 +2674,40 @@ foreach ($path in @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Data\Animat
     }
 }
 
+# The loader reads an indexed row kind in file order and requires each index to
+# equal the count it has already appended. A plain text sort puts "10" between
+# "1" and "2", so a rotation, stage or hit list that reaches ten entries would
+# arrive out of order. Sort on a key that pads every digit run instead, which
+# leaves the emitted row text alone and keeps the row-kind grouping.
+function Get-BootstrapRowSortKey {
+	param([Parameter(Mandatory = $true)][string]$Row)
+
+	$key = [Text.StringBuilder]::new()
+	$digits = [Text.StringBuilder]::new()
+	foreach ($character in $Row.ToCharArray()) {
+		if ([char]::IsDigit($character)) {
+			[void]$digits.Append($character)
+			continue
+		}
+		if ($digits.Length -gt 0) {
+			[void]$key.Append($digits.ToString().PadLeft(12, '0'))
+			[void]$digits.Clear()
+		}
+		[void]$key.Append($character)
+	}
+	if ($digits.Length -gt 0) {
+		[void]$key.Append($digits.ToString().PadLeft(12, '0'))
+	}
+	return $key.ToString()
+}
+
 # The merged row set carries both this branch's pattern rotations and the
 # combat-runtime boss part / combat object rows, so the version moves past
 # either side rather than reusing a number that meant a narrower shape.
 $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
-	$patternRows | Sort-Object)
+	$patternRows | Sort-Object -Property @{
+		Expression = { Get-BootstrapRowSortKey -Row $_ } })
 $lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t15`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {

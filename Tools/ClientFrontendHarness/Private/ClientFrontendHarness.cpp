@@ -22,6 +22,7 @@
 #include "Effect_Artist31470ShaderRegistry.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_DocumentRenderer.h"
+#include "Effect_DirectAuthoredSourceIndex.h"
 #include "Effect_Distribution.h"
 #include "Effect_Catalog.h"
 #include "Effect_MaterialTemplate.h"
@@ -4385,7 +4386,8 @@ namespace
 					return candidate.strActionId == expected.strActionId;
 				});
 			clipsExact = clipsExact && binding != document.Bindings.end() &&
-				binding->strClipName == expected.strClipName;
+				1u == binding->Clips.size() &&
+				binding->Clips.front() == expected.strClipName;
 		}
 		runner.Require(clipsExact,
 			"Valtan G04 Outcome Actions Reuse The Reviewed Groggy Wipe And Parry Clips");

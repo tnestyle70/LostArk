@@ -219,7 +219,11 @@ namespace LostArk::Server
 	enum class BOSS_COMBAT_OBJECT_ORIGIN_POLICY : std::uint8_t
 	{
 		BOSS_POSITION,
-		LOCKED_TARGET_UNTIL_FIRST_PULSE
+		LOCKED_TARGET_UNTIL_FIRST_PULSE,
+		/* One object per living player, each locked to the player it was dealt.
+		The volley size is decided once at spawn, so a player who dies or joins
+		afterwards does not change how many axes are already falling. */
+		LOCKED_TARGET_PER_ALIVE_PLAYER
 	};
 
 	enum class BOSS_COMBAT_OBJECT_DIRECTION_POLICY : std::uint8_t

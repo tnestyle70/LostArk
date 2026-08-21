@@ -415,8 +415,13 @@ bool LostArk::Server::CCombatObjectRuntime::Stage_BossCombatObject(
 			BOSS_COMBAT_OBJECT_KIND::MISSILE == definition.eKind ?
 			definition.fMaximumDistanceM : 0.f;
 		object.fRemainingMilliseconds = static_cast<float>(definition.iLifeMs);
+		/* Both locked origins place the object on the player it was dealt and
+		track that one player until the first pulse; the volley differs only in
+		how many objects the room stages. */
 		if (BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_UNTIL_FIRST_PULSE ==
-			definition.eOriginPolicy)
+				definition.eOriginPolicy ||
+			BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
+				definition.eOriginPolicy)
 		{
 			if (nullptr == lockedTarget ||
 				LostArk::Shared::INVALID_NET_ENTITY_ID ==

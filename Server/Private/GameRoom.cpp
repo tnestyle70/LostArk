@@ -4374,6 +4374,43 @@ bool LostArk::Server::CGameRoom::Stage_BossPatternStageActions(
 					break;
 				}
 			}
+			if (BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
+				definition->eOriginPolicy)
+			{
+				/* The volley is dealt once: every player alive at this edge gets
+				one object locked to where they stand, and the whole set shares the
+				staging transaction so a single failure drops all of it. */
+				std::uint32_t dealt = 0u;
+				for (const auto& [volleyPlayerId, volleyPlayer] : m_Players)
+				{
+					(void)volleyPlayerId;
+					if (0u == volleyPlayer.iCurrentHp ||
+						!volleyPlayer.isCombatReady ||
+						LostArk::Shared::PLAYER_ACTION_STATE::DEAD ==
+							volleyPlayer.eAction ||
+						LostArk::Shared::PLAYER_ACTION_STATE::FALLING ==
+							volleyPlayer.eAction)
+					{
+						continue;
+					}
+					SERVER_COMBAT_OBJECT_LOCKED_TARGET volleyTarget{};
+					volleyTarget.iNetEntityId = volleyPlayer.iNetEntityId;
+					volleyTarget.fPositionX = volleyPlayer.fPositionX;
+					volleyTarget.fPositionY = volleyPlayer.fPositionY;
+					volleyTarget.fPositionZ = volleyPlayer.fPositionZ;
+					if (!m_CombatObjectRuntime.Stage_BossCombatObject(
+						combatObjectTransaction, boss, &volleyTarget, *definition,
+						m_GameplayCatalog, action.iValue, serverTick, m_strStatus))
+					{
+						return false;
+					}
+					++dealt;
+				}
+				/* An empty arena spawns nothing rather than falling back to the
+				boss position, which would drop an axe on the boss itself. */
+				(void)dealt;
+				break;
+			}
 			if (!m_CombatObjectRuntime.Stage_BossCombatObject(
 				combatObjectTransaction, boss, resolvedLockedTarget, *definition,
 				m_GameplayCatalog, action.iValue, serverTick, m_strStatus))

@@ -29,12 +29,6 @@ public:
 	static constexpr const char_t* WEAPON_SOCKET_BONE = "b_wp_r_01";
 	static constexpr f32_t MODEL_VIEW_SCALE = 1.f;
 	/* Armour parts are authored on the body rig, so they are skinned parts
-	with no socket bone. The index is the authored order in BossCatalog and it
-	is the same index the snapshot names a broken plate by. */
-	static constexpr uint32_t MAX_ARMOR_PART_COUNT =
-		LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES;
-	static wstring_t Build_ArmorModelPrototypeTag(size_t iArmorIndex);
-	static wstring_t Build_ArmorPartTag(size_t iArmorIndex);
 	with no socket bone. The stable state mask, never array order, joins them
 	to Server-owned alive-part state. */
 	static wstring_t Build_ArmorModelPrototypeTag(uint32_t iStateMask);
@@ -98,8 +92,6 @@ public:
 		uint32_t iServerTick,
 		uint32_t iActionStartTick,
 		uint32_t iPatternSequence,
-		uint32_t iPatternStageIndex,
-		uint8_t iBrokenArmorMask);
 		uint32_t iPatternStageIndex);
 	bool_t Apply_BossCombatState(
 		const LostArk::Shared::BOSS_COMBAT_SNAPSHOT& state);
@@ -129,12 +121,6 @@ private:
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	shared_ptr<CModel> m_pBodyModelCom = { nullptr };
 	shared_ptr<Engine::CTransform> m_pBodyVisualRootCom = { nullptr };
-	/* Attached armour part tags in authored order. Empty when the boss
-	wears none. */
-	vector<wstring_t> m_ArmorPartTags;
-	/* Last mask this presentation applied, so a steady snapshot does not walk
-	the part list every tick. */
-	uint8_t m_iAppliedArmorBreakMask = 0u;
 	/* A failed plate load leaves its stable mask absent instead of shifting
 	other plates onto a different wire bit. */
 	std::unordered_map<uint32_t, wstring_t> m_ArmorPartTagsByStateMask;
@@ -193,7 +179,6 @@ private:
 	void Ready_ArmorParts();
 	/* Hides exactly the plates the Server reports broken. Presentation never
 	decides this: a plate comes off because durability reached zero. */
-	void Apply_ArmorBreakState(uint8_t iBrokenArmorMask);
 	void Set_ArmorPartVisible(uint32_t iStateMask, bool_t isVisible);
 	HRESULT Ready_Components(f32_t collisionRadius);
 	void Load_PatternBindings();

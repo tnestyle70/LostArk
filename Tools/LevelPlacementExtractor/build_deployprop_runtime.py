@@ -259,6 +259,8 @@ def main() -> int:
                         quoted(intact_prototype),
                         quoted(fractured_relative),
                         quoted(fractured_prototype),
+                        "1",
+                        "0",
                         quoted(str(definition["evidence"])),
                     )
                 )
@@ -301,7 +303,7 @@ def main() -> int:
         )
 
     catalog_text = (
-        f"LOSTARK_DEPLOY_PROP_CATALOG 1 {quoted(AREA_ID)} {len(catalog_rows)}\n"
+        f"LOSTARK_DEPLOY_PROP_CATALOG 2 {quoted(AREA_ID)} {len(catalog_rows)}\n"
         + "\n".join(catalog_rows)
         + "\n"
     )

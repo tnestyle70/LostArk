@@ -60,9 +60,10 @@ $expectedOuterTransformTolerance = 0.001
 $expectedIndependentContactWallCount = 69
 $expectedProductGroupCount = 99
 # The arena floor is the opposite polarity of a wall: it is walkable while it is
-# intact and blocks once it collapses. Stage A drops the outer rail at 84 bars
-# and stage B drops the brick ring at 30, leaving the safe core untouched. The
-# two stages are separate sub-graphs so one can never reach the other's sectors.
+# intact and blocks once it collapses. Stage A drops the northern half of the
+# outer rail at 84 bars; stage B drops its southern half together with the brick
+# ring at 30, leaving the safe core untouched. The two stages are separate
+# sub-graphs so one can never reach the other's sectors.
 $floorGroupIdPrefix = 'destroyable.group.valtan.floor'
 $floorStageAGroupIdPrefix = 'destroyable.group.valtan.floor84.'
 $floorStageBGroupIdPrefix = 'destroyable.group.valtan.floor30.'
@@ -74,8 +75,8 @@ $floorStageBPatternId = 'VALTAN_ARENA_BREAK_33'
 $floorStageBStageId = 'LANDING'
 $floorStageBActionId = 'valtan.mechanic.arena-break-33.landing'
 $floorStageBStageIndex = 1
-$expectedFloorStageAGroupCount = 2
-$expectedFloorStageBGroupCount = 4
+$expectedFloorStageAGroupCount = 1
+$expectedFloorStageBGroupCount = 5
 # Each ring source owns one bound visual filler alias. Only the thirty sources
 # emit debris, while all sixty placements follow the same thirty group states.
 $expectedFragmentsPerEmitter = 12

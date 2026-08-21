@@ -4080,11 +4080,18 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		entrancePlayers.begin()->second.fPositionX = 8.f;
 		SERVER_WORLD_ENTITY rotationBoss = makeEntranceBoss();
 		const std::vector<std::string> observedOrder =
-			observeOrder(rotationBoss, 1400u);
+			observeOrder(rotationBoss, 3600u);
+		/* The authored list opens and closes on the charge, and observeOrder
+		collapses a pattern that repeats back to back, so the wrap is visible as
+		the second step of the next cycle rather than as a second charge. */
 		const std::vector<std::string> expectedOrder{
-			"VALTAN_ENTRANCE_WHIRLWIND", "VALTAN_DASH_CHARGE",
-			"VALTAN_JUMP_SPIN", "VALTAN_FOUR_SLASH",
-			"VALTAN_DASH_CHARGE", "VALTAN_JUMP_SPIN" };
+			"VALTAN_ENTRANCE_WHIRLWIND",
+			"VALTAN_DASH_CHARGE", "VALTAN_JUMP_SPIN", "VALTAN_FOUR_SLASH",
+			"VALTAN_HIGH_JUMP", "VALTAN_DASH_CHARGE", "VALTAN_HIGH_JUMP",
+			"VALTAN_EARTHQUAKE_SMASH", "VALTAN_WHIRLWIND",
+			"VALTAN_EARTHQUAKE_SMASH", "VALTAN_SUPER_SMASH",
+			"VALTAN_FOUR_SLASH", "VALTAN_DASH_CHARGE",
+			"VALTAN_JUMP_SPIN" };
 		tests.Require(
 			observedOrder.size() >= expectedOrder.size() &&
 			std::equal(
@@ -4110,6 +4117,68 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			scriptedBoss.strRotationId.empty() &&
 			0u == scriptedBoss.iRotationStepIndex,
 			"Leave the rotation cursor untouched while scripted playback drives the boss");
+	}
+	{
+		/* The sky axe volley deals one falling area per living raider, each
+		locked to the player it was dealt, so a four-player arena receives four
+		independent objects and a dead player receives none. */
+		CGameRoom volleyRoom{ LostArk::Shared::WORLD_ID::VALTAN_ARENA };
+		tests.Require(volleyRoom.Initialize_WorldEntities(),
+			"Initialize the Valtan room for the sky axe volley");
+		/* The arena authors Valtan as a disabled Debug spawn, so the room owns
+		no boss until one is activated. Stand one up directly. */
+		SERVER_WORLD_ENTITY volleyEntity{};
+		volleyEntity.iNetEntityId = 8300u;
+		volleyEntity.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		volleyEntity.eAction = SERVER_ENTITY_ACTION::IDLE;
+		volleyEntity.strArchetypeId = "BOSS_VALTAN";
+		volleyEntity.strEncounterId = "ENCOUNTER_VALTAN";
+		volleyEntity.iCurrentHp = 60000u;
+		volleyEntity.iMaximumHp = 60000u;
+		volleyEntity.iMaximumHealthBars = 160u;
+		volleyEntity.iAttackPower = 100u;
+		volleyEntity.iLastEvaluatedHealthBar = 160u;
+		volleyEntity.fPositionX = 156.03f;
+		volleyEntity.fPositionY = 22.99751f;
+		volleyEntity.fPositionZ = -122.06f;
+		/* A combat object belongs to a running pattern occurrence, so the boss
+		must already have begun one. */
+		volleyEntity.iPatternSequence = 1u;
+		volleyEntity.strPatternId = "VALTAN_HIGH_JUMP";
+		volleyEntity.strActionId = "valtan.attack.high-jump.airborne";
+		volleyRoom.m_WorldEntities.push_back(volleyEntity);
+		SERVER_WORLD_ENTITY* volleyBoss = &volleyRoom.m_WorldEntities.back();
+		for (std::uint32_t index = 0u; index < 4u; ++index)
+		{
+			SERVER_PLAYER raider{};
+			raider.iPlayerId = 8100u + index;
+			raider.iNetEntityId = 8200u + index;
+			raider.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+			raider.iCurrentHp = 5000u;
+			raider.iMaximumHp = 5000u;
+			raider.isCombatReady = true;
+			raider.fPositionX = 150.f + static_cast<float>(index);
+			raider.fPositionZ = -122.f;
+			volleyRoom.m_Players.emplace(raider.iPlayerId, raider);
+		}
+		/* One raider is down, so the volley must pass them over. */
+		volleyRoom.m_Players.at(8103u).iCurrentHp = 0u;
+		volleyRoom.m_Players.at(8103u).eAction = PLAYER_ACTION_STATE::DEAD;
+		const bool staged = nullptr != volleyBoss &&
+			volleyRoom.Apply_BossPatternStageActions(
+				*volleyBoss, "VALTAN_HIGH_JUMP",
+				"valtan.attack.high-jump.airborne",
+				BOSS_PATTERN_STAGE_ACTION_TRIGGER::ENTER, 900u);
+		const auto& liveObjects =
+			volleyRoom.m_CombatObjectRuntime.Get_LiveObjects();
+		std::set<std::uint32_t> lockedTargets;
+		for (const SERVER_COMBAT_OBJECT& object : liveObjects)
+			lockedTargets.insert(object.iLockedTargetNetEntityId);
+		tests.Require(
+			staged && 3u == liveObjects.size() &&
+			3u == lockedTargets.size() &&
+			0u == lockedTargets.count(8203u),
+			"Deal one sky axe to every living raider and none to the dead");
 	}
 
 	SERVER_WORLD_ENTITY openingChargeBoss{};
