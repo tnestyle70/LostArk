@@ -841,6 +841,18 @@ lanes와 motion을 검증한다. Artist T는 source asset lineage 결과에 따�
 `34610/34630/34650` occurrence를 inventory가 소비자로 제시하게 한다. 한 스킬이 통과했다고 family
 전체를 자동 admission하지 않고 exact variant key가 같은 occurrence만 확대한다.
 
+첫 material cohort는 `34630` clip1~4와 `34650` clip1의 body 6행/head 6행이다. source parent
+`fx_d_me_master_01_ph_msk`, child `ph_01_msk/ph_02_msk`, sourceNode, WModel, ParameterDynamic module과
+render packet을 exact allowlist로 봉인한다. RuntimeMaterialV2 opcode 19는 normal/alpha/emission/
+diffuse/specular 다섯 linear/wrap lane을 독립 소비하며 alpha lane만 `10x10`, `panY=-0.125/s`로
+움직인다. Dynamic W dissolve와 ParticleColor alpha lifetime은 서로 곱하되 normalized life를 두 번째
+dissolve로 재적용하지 않는다.
+
+복원된 pixel DXBC는 deferred five-MRT shader이고 native mesh VF/binding array가 닫히지 않았으므로
+oracle-only다. 현재 실행은 one-sided alpha + explicit clip + depth-read SceneColor semantic replay이며
+source masked depth-write/GBuffer와 동일하다고 기록하지 않는다. `34610`, Artist T와 다른 궁극기는
+각자의 exact parent/static/carrier 증거가 같은 variant임을 증명한 뒤에만 확대한다.
+
 ### G08. 도화가 V attractor와 screen presentation
 
 source timeline의 early distortion/FOV/light와 late `3.0/3.2/3.4s` burst를 occurrence별로 복원한다.
@@ -1170,7 +1182,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R/S, Warlord T, Lance E cone donor focused PASS | 미실행 | runtime full publish, S 사용자 화면 튜닝 |
 | G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결, D tiger 12행 typed family | 미실행 | E runtime frame 확인, T asset lineage |
 | G06 glass/crack | `IMPLEMENTED` | W2050120 K-child + F2050230 Fluid01 two-row + screen-overlay v1 synthetic WARP/rollback | 미실행 | Fluid01 mesh, J-child static set, 차원 F/W Product overlay·refraction |
-| G07 dragon/ultimate | `EVIDENCE_PARTIAL` | Lance mesh/material cohort | 미실행 | independent UV/material execution |
+| G07 dragon/ultimate | `IMPLEMENTED` | Lance 34630/34650 exact 12행 opcode 19, body/head WARP draw, alpha-pan/Dynamic-W/lifetime/rollback PASS | 미실행 | 34610·Artist T·교차 class exact variant admission |
 | G08 Artist V | `EVIDENCE_PARTIAL` | CircleSurface/Vortex strict executor, Dimension F 7-burst와 Artist V vortex 3행 canary Debug/Release PASS | 미실행 | attractor/camera channel |
 | G09 Dimension gameplay | `EVIDENCE_PARTIAL` | current command/snapshot audit | 미실행 | approved target replication |
 | G10 publish | `PLANNED` | 미실행 | 미실행 | preceding Gs |

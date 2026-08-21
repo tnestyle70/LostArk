@@ -20840,6 +20840,687 @@ namespace
 		CEffectDocumentRenderer::Clear_Prepared_Catalog();
 	}
 
+	void Test_LanceDragonRuntimeMaterial(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr uint32_t LANCE_DRAGON_OPCODE = 19u;
+		constexpr std::array<std::string_view, 12u> TARGET_IDS = {{
+			"authored.source-particle.2b0f00d91a20ba785ba034ec",
+			"authored.source-particle.71ac47f40d13b3a7ca6ed561",
+			"authored.source-particle.aa3beb2d7ebbe4922f6df595",
+			"authored.source-particle.237b5cd9d1fafb4b95b41212",
+			"authored.source-particle.6542736b94e7b9cd8ed5f2fd",
+			"authored.source-particle.85571ac576a68cc3ff037cae",
+			"authored.source-particle.92af24faaaeb30c6ac77d37c",
+			"authored.source-particle.80d7156c29e9bf140631ad2e",
+			"authored.source-particle.538fe0779d0718d30b68ef11",
+			"authored.source-particle.50385d998091ed0e55a047f8",
+			"authored.source-particle.0a019ebaff2bb55941d23ab8",
+			"authored.source-particle.65b74589de96c3f44e625f24",
+		}};
+		constexpr std::array<const wchar_t*, 5u> DOCUMENT_PATHS = {{
+			L"Effects/Authored/effect.lancemaster.skill.34630.clip1.unified.effect.json",
+			L"Effects/Authored/effect.lancemaster.skill.34630.clip2.unified.effect.json",
+			L"Effects/Authored/effect.lancemaster.skill.34630.clip3.unified.effect.json",
+			L"Effects/Authored/effect.lancemaster.skill.34630.clip4.unified.effect.json",
+			L"Effects/Authored/effect.lancemaster.skill.34650.clip1.unified.effect.json",
+		}};
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path ResourceRoot =
+			CProjectDataRoot::Get().parent_path() / L"Client" / L"Bin" /
+				L"Resources";
+		std::error_code ResourceError;
+		const bool_t bResourceRootReady =
+			std::filesystem::is_directory(ResourceRoot, ResourceError) &&
+			!ResourceError && ResourceRootEnvironment.Set(ResourceRoot.c_str());
+		runner.Require(bResourceRootReady,
+			"Lance Dragon Focused Harness Resolves The Production Resource Root");
+		if (!bResourceRootReady)
+			return;
+
+		std::vector<EFFECT_DOCUMENT_DESC> Products;
+		Products.reserve(DOCUMENT_PATHS.size());
+		std::string Status;
+		bool_t bAllLoaded = true;
+		for (const wchar_t* const strPath : DOCUMENT_PATHS)
+		{
+			EFFECT_DOCUMENT_DESC Document;
+			const std::filesystem::path Path = CProjectDataRoot::Resolve(strPath);
+			bAllLoaded = bAllLoaded && !Path.empty() &&
+				CEffectDocumentCodec::Load(Path, Document, Status);
+			Products.push_back(std::move(Document));
+		}
+		runner.Require(bAllLoaded,
+			"Lance Dragon Loads All Five 34630 And 34650 Product Documents");
+		if (!bAllLoaded)
+		{
+			std::cout << "[LANCE-DRAGON] load status=" << Status << '\n';
+			return;
+		}
+
+		EFFECT_DOCUMENT_DESC DragonDocument = Products.front();
+		DragonDocument.strEffectAssetId += ".dragon-family-harness";
+		DragonDocument.ModelCues.clear();
+		DragonDocument.Elements.clear();
+		for (const std::string_view strTargetId : TARGET_IDS)
+		{
+			const EFFECT_ELEMENT_DESC* pFound = nullptr;
+			for (const EFFECT_DOCUMENT_DESC& Product : Products)
+			{
+				const auto Match = std::ranges::find_if(Product.Elements,
+					[strTargetId](const EFFECT_ELEMENT_DESC& Element)
+					{
+						return Element.strElementId == strTargetId;
+					});
+				if (Match != Product.Elements.end())
+				{
+					pFound = &*Match;
+					break;
+				}
+			}
+			if (pFound)
+				DragonDocument.Elements.push_back(*pFound);
+		}
+
+		const auto NearlyEqual = [](const f32_t fLeft, const f32_t fRight)
+		{
+			return std::abs(fLeft - fRight) <= 0.0001f;
+		};
+		size_t iBodyCount = 0u;
+		size_t iHeadCount = 0u;
+		bool_t bExactPackets = DragonDocument.Elements.size() == TARGET_IDS.size();
+		for (size_t i = 0u; bExactPackets && i < DragonDocument.Elements.size(); ++i)
+		{
+			const EFFECT_ELEMENT_DESC& Element = DragonDocument.Elements[i];
+			const EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+				Element.Material.Execution;
+			const bool_t bBody = Element.ResourceBindings.size() == 6u &&
+				Element.ResourceBindings[0u].strAssetId ==
+					"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel";
+			const bool_t bHead = Element.ResourceBindings.size() == 6u &&
+				Element.ResourceBindings[0u].strAssetId ==
+					"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel";
+			iBodyCount += bBody ? 1u : 0u;
+			iHeadCount += bHead ? 1u : 0u;
+			bExactPackets = Element.strElementId == TARGET_IDS[i] &&
+				Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				Element.SourceRecipe.bEnabled &&
+				Element.SourceRecipe.strRendererShape == "mesh" &&
+				Element.Material.eRenderProfile ==
+					EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ &&
+				!Element.Material.SourceMaterial.bEnabled &&
+				Execution.bEnabled && !Execution.bFailClosed &&
+				!Execution.bAuthoringApproximate &&
+				Execution.eBackend ==
+					EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Execution.iOpcode == LANCE_DRAGON_OPCODE &&
+				Execution.iPassIndex == 3u &&
+				Execution.iTextureLaneCount == 5u &&
+				Execution.iTextureMask == 0x1fu &&
+				Execution.TextureLanes.size() == 5u &&
+				Execution.TextureLanes[0u].strRole == "normal_map" &&
+				Execution.TextureLanes[1u].strRole == "alpha_map" &&
+				Execution.TextureLanes[2u].strRole == "emission_map" &&
+				Execution.TextureLanes[3u].strRole == "diffuse_map" &&
+				Execution.TextureLanes[4u].strRole == "specular_map" &&
+				Execution.TextureLanes[1u].strSourceChannel == "R" &&
+				Execution.iDynamicConsumedMask == 0x08u &&
+				Execution.iDynamicSuppressedMask == 0x07u &&
+				Execution.iParticleColorConsumedMask == 0x0fu &&
+				Execution.Scalars.size() == 25u &&
+				NearlyEqual(Execution.Scalars[2u].fValue, 0.f) &&
+				NearlyEqual(Execution.Scalars[3u].fValue, 0.f) &&
+				NearlyEqual(Execution.Scalars[5u].fValue, 10.f) &&
+				NearlyEqual(Execution.Scalars[6u].fValue, 10.f) &&
+				NearlyEqual(Execution.Scalars[7u].fValue, 0.f) &&
+				NearlyEqual(Execution.Scalars[8u].fValue, -0.125f) &&
+				(bBody != bHead);
+		}
+		runner.Require(bExactPackets && iBodyCount == 6u && iHeadCount == 6u,
+			"Lance Dragon Keeps Twelve Exact Mesh Rows With Five Named Linear Lanes And Independent 10x10 Alpha Pan");
+		EFFECT_DOCUMENT_DESC CodecRoundTrip;
+		Status.clear();
+		const std::string CanonicalDragon =
+			CEffectDocumentCodec::Serialize(DragonDocument);
+		const bool_t bDisabledEvidenceRoundTrips =
+			!CanonicalDragon.empty() &&
+			CEffectDocumentCodec::Parse(
+				CanonicalDragon, CodecRoundTrip, Status) &&
+			CodecRoundTrip.Elements.size() == TARGET_IDS.size() &&
+			std::ranges::all_of(CodecRoundTrip.Elements,
+				[](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return !Element.Material.SourceMaterial.bEnabled &&
+						Element.Material.SourceMaterial.strProfileId ==
+							"ue3.material.fx.m.mi.00.fx.m.fx.d.me.master.01.ph.msk.8230663740c0" &&
+						Element.Material.SourceMaterial.strParentMaterialPath ==
+							"fx_m_mi_00.fx_m.fx_d_me_master_01_ph_msk";
+				});
+		runner.Require(bDisabledEvidenceRoundTrips,
+			"Lance Dragon Codec Preserves Disabled Native Parent Evidence Across Tool Round Trip");
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		Status.clear();
+		const bool_t bWorkingDirectoryReady = WorkingDirectory.Initialize(
+			Resolve_ClientWorkingDirectory(), Status);
+		runner.Require(bWorkingDirectoryReady,
+			"Lance Dragon Focused Harness Uses The Canonical Client Working Directory");
+		if (!bWorkingDirectoryReady)
+			return;
+
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		Status.clear();
+		const bool_t bEngineReady = EngineScope.Initialize(Status);
+		runner.Require(bEngineReady,
+			"Lance Dragon Focused Harness Initializes Microsoft WARP");
+		if (!bEngineReady)
+		{
+			std::cout << "[LANCE-DRAGON] WARP status=" << Status << '\n';
+			return;
+		}
+		const ComPtr<ID3D11Device> Device = EngineScope.Get_Device();
+		const ComPtr<ID3D11DeviceContext> Context = EngineScope.Get_Context();
+		CEffectDocumentRenderer Renderer(Device, Context);
+		const bool_t bRendererInitialized = SUCCEEDED(Renderer.Initialize());
+		runner.Require(bRendererInitialized,
+			"Lance Dragon Focused Harness Initializes The Production Effect Renderer");
+		if (!bRendererInitialized)
+			return;
+
+		Status.clear();
+		const bool_t bExactStage = Renderer.Stage_Document(DragonDocument, Status);
+		runner.Require(bExactStage,
+			"Lance Dragon Stages All Twelve Opcode19 Mesh Rows Transactionally");
+		if (!bExactStage)
+		{
+			std::cout << "[LANCE-DRAGON] exact stage=" << Status << '\n';
+			return;
+		}
+
+		EFFECT_DOCUMENT_DESC EscapedOpcode = DragonDocument;
+		EscapedOpcode.Elements.assign(1u, DragonDocument.Elements.front());
+		EscapedOpcode.Elements.front().strElementId =
+			"harness.lance-dragon.non-allowlisted-opcode19";
+		Status.clear();
+		const bool_t bEscapedRejected =
+			!Renderer.Stage_Document(EscapedOpcode, Status) &&
+			Status.find("escaped its exact occurrence allowlist") != std::string::npos;
+		runner.Require(bEscapedRejected,
+			"Lance Dragon Opcode19 Fails Closed Outside Its Exact Twelve Occurrence Allowlist");
+
+		EFFECT_DOCUMENT_DESC ShapeMutation = DragonDocument;
+		ShapeMutation.Elements.front().SourceRecipe.strRendererShape = "sprite";
+		Status.clear();
+		const bool_t bShapeRejected =
+			!Renderer.Stage_Document(ShapeMutation, Status) && !Status.empty();
+		runner.Require(bShapeRejected,
+			"Lance Dragon Fast Restage Cannot Reuse Resources After RendererShape Drift");
+		EFFECT_DOCUMENT_DESC ProfileMutation = DragonDocument;
+		ProfileMutation.Elements.front().Material.eRenderProfile =
+			EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ;
+		Status.clear();
+		const bool_t bProfileRejected =
+			!Renderer.Stage_Document(ProfileMutation, Status) && !Status.empty();
+		runner.Require(bProfileRejected,
+			"Lance Dragon Fast Restage Cannot Reuse Resources After RenderProfile Drift");
+
+		struct COLOR_CAPTURE final
+		{
+			uint32_t iWidth = 0u;
+			uint32_t iHeight = 0u;
+			uint64_t iRgbPixelCount = 0u;
+			uint64_t iRgbSum = 0u;
+			uint64_t iSignature = 1469598103934665603ull;
+			std::vector<uint8_t> Rgba;
+		};
+		const auto CaptureColor = [&Device, &Context](
+			COLOR_CAPTURE& Out, std::string& strOutError)
+		{
+			Out = {};
+			ComPtr<ID3D11RenderTargetView> TargetView;
+			Context->OMGetRenderTargets(1u, TargetView.GetAddressOf(), nullptr);
+			ComPtr<ID3D11Resource> TargetResource;
+			ComPtr<ID3D11Texture2D> TargetTexture;
+			if (!TargetView)
+			{
+				strOutError = "Lance dragon color target is not bound.";
+				return false;
+			}
+			TargetView->GetResource(TargetResource.GetAddressOf());
+			if (!TargetResource || FAILED(TargetResource.As(&TargetTexture)) ||
+				!TargetTexture)
+			{
+				strOutError = "Lance dragon color target is not Texture2D.";
+				return false;
+			}
+			D3D11_TEXTURE2D_DESC TargetDesc{};
+			TargetTexture->GetDesc(&TargetDesc);
+			if (TargetDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+				TargetDesc.SampleDesc.Count != 1u)
+			{
+				strOutError = "Lance dragon color target format changed.";
+				return false;
+			}
+			D3D11_TEXTURE2D_DESC StagingDesc = TargetDesc;
+			StagingDesc.BindFlags = 0u;
+			StagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+			StagingDesc.MiscFlags = 0u;
+			StagingDesc.Usage = D3D11_USAGE_STAGING;
+			ComPtr<ID3D11Texture2D> Staging;
+			if (FAILED(Device->CreateTexture2D(&StagingDesc, nullptr, &Staging)) ||
+				!Staging)
+			{
+				strOutError = "Lance dragon staging texture creation failed.";
+				return false;
+			}
+			Context->CopyResource(Staging.Get(), TargetTexture.Get());
+			D3D11_MAPPED_SUBRESOURCE Mapped{};
+			if (FAILED(Context->Map(Staging.Get(), 0u, D3D11_MAP_READ, 0u,
+				&Mapped)))
+			{
+				strOutError = "Lance dragon staging texture map failed.";
+				return false;
+			}
+			Out.iWidth = TargetDesc.Width;
+			Out.iHeight = TargetDesc.Height;
+			Out.Rgba.resize(static_cast<size_t>(TargetDesc.Width) *
+				TargetDesc.Height * 4u);
+			for (uint32_t y = 0u; y < TargetDesc.Height; ++y)
+			{
+				const uint8_t* pSource = static_cast<const uint8_t*>(Mapped.pData) +
+					static_cast<size_t>(y) * Mapped.RowPitch;
+				uint8_t* pTarget = Out.Rgba.data() +
+					static_cast<size_t>(y) * TargetDesc.Width * 4u;
+				std::memcpy(pTarget, pSource,
+					static_cast<size_t>(TargetDesc.Width) * 4u);
+				for (uint32_t x = 0u; x < TargetDesc.Width; ++x)
+				{
+					const uint8_t* pPixel = pTarget + static_cast<size_t>(x) * 4u;
+					for (uint32_t iChannel = 0u; iChannel < 3u; ++iChannel)
+					{
+						Out.iSignature ^= pPixel[iChannel];
+						Out.iSignature *= 1099511628211ull;
+					}
+					if (0u != (pPixel[0u] | pPixel[1u] | pPixel[2u]))
+					{
+						++Out.iRgbPixelCount;
+						Out.iRgbSum += static_cast<uint64_t>(pPixel[0u]) +
+							pPixel[1u] + pPixel[2u];
+					}
+				}
+			}
+			Context->Unmap(Staging.Get(), 0u);
+			strOutError.clear();
+			return true;
+		};
+
+		const auto SetView = [](const float3_t& vFocus, const f32_t fDistance,
+			const uint32_t iView)
+		{
+			vector_t Eye{};
+			vector_t Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+			if (0u == iView)
+				Eye = XMVectorSet(vFocus.x, vFocus.y,
+					vFocus.z - fDistance, 1.f);
+			else if (1u == iView)
+				Eye = XMVectorSet(vFocus.x + fDistance, vFocus.y,
+					vFocus.z - fDistance, 1.f);
+			else if (2u == iView)
+			{
+				Eye = XMVectorSet(vFocus.x, vFocus.y + fDistance,
+					vFocus.z, 1.f);
+				Up = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+			}
+			else
+				Eye = XMVectorSet(vFocus.x - fDistance, vFocus.y,
+					vFocus.z, 1.f);
+			Engine::CGameInstance::Get().Set_Transform(D3DTS::PROJ,
+				XMMatrixPerspectiveFovLH(XMConvertToRadians(60.f),
+					320.f / 180.f, 0.01f, 5000.f));
+			Engine::CGameInstance::Get().Set_Transform(D3DTS::VIEW,
+				XMMatrixLookAtLH(Eye,
+					XMVectorSet(vFocus.x, vFocus.y, vFocus.z, 1.f), Up));
+			Engine::CGameInstance::Get().Update_Engine(0.f);
+		};
+
+		struct RENDER_WITNESS final
+		{
+			bool_t bCommitted = false;
+			EFFECT_EVALUATED_FRAME Frame;
+			float3_t vFocus{};
+			f32_t fDistance = 1.f;
+			uint32_t iView = 0u;
+			COLOR_CAPTURE Color;
+		};
+		const auto FindWitness = [&](const EFFECT_DOCUMENT_DESC& Document,
+			const std::string_view strFocusId, const bool_t bRequireEveryRow,
+			RENDER_WITNESS& Out)
+		{
+			Out = {};
+			CEffectPlayback Playback;
+			std::string Error;
+			if (!Playback.Stage_Document(Document, Error) ||
+				!Renderer.Stage_Document(Document, Error))
+			{
+				std::cout << "[LANCE-DRAGON] witness stage=" << Error << '\n';
+				return false;
+			}
+			float4x4_t Identity{};
+			XMStoreFloat4x4(&Identity, XMMatrixIdentity());
+			constexpr std::array<f32_t, 3u> LIFE_TARGETS = {{ 0.20f, 0.50f, 0.80f }};
+			std::array<EFFECT_EVALUATED_FRAME, LIFE_TARGETS.size()> Samples{};
+			std::array<f32_t, LIFE_TARGETS.size()> BestDistances{};
+			std::array<bool_t, LIFE_TARGETS.size()> Found{};
+			BestDistances.fill((std::numeric_limits<f32_t>::max)());
+			const f32_t fDuration = std::clamp(
+				Playback.Get_DurationSeconds(), 0.1f, 5.f);
+			const uint32_t iSampleCount = static_cast<uint32_t>(
+				std::ceil(fDuration * 120.f));
+			for (uint32_t iSample = 0u; iSample <= iSampleCount; ++iSample)
+			{
+				const f32_t fTime = (std::min)(fDuration,
+					static_cast<f32_t>(iSample) / 120.f);
+				Playback.Seek(fTime, Identity);
+				const auto Particle = std::ranges::find_if(
+					Playback.Get_Frame().Particles,
+					[strFocusId](const EFFECT_EVALUATED_PARTICLE& Candidate)
+					{
+						return Candidate.pElement &&
+							Candidate.pElement->strElementId == strFocusId;
+					});
+				if (Particle == Playback.Get_Frame().Particles.end())
+					continue;
+				for (size_t iTarget = 0u; iTarget < LIFE_TARGETS.size(); ++iTarget)
+				{
+					const f32_t fDelta = std::abs(
+						Particle->fNormalizedLife - LIFE_TARGETS[iTarget]);
+					if (fDelta < BestDistances[iTarget])
+					{
+						BestDistances[iTarget] = fDelta;
+						Samples[iTarget] = Playback.Get_Frame();
+						Found[iTarget] = true;
+					}
+				}
+			}
+
+			constexpr std::array<f32_t, 3u> DISTANCE_MULTIPLIERS = {{ 2.f, 5.f, 12.f }};
+			for (size_t iSample = 0u; iSample < Samples.size(); ++iSample)
+			{
+				if (!Found[iSample])
+					continue;
+				const auto Particle = std::ranges::find_if(Samples[iSample].Particles,
+					[strFocusId](const EFFECT_EVALUATED_PARTICLE& Candidate)
+					{
+						return Candidate.pElement &&
+							Candidate.pElement->strElementId == strFocusId;
+					});
+				if (Particle == Samples[iSample].Particles.end())
+					continue;
+				const float3_t vFocus{ Particle->World._41,
+					Particle->World._42, Particle->World._43 };
+				const f32_t fScale = (std::max)({
+					std::sqrt(Particle->World._11 * Particle->World._11 +
+						Particle->World._12 * Particle->World._12 +
+						Particle->World._13 * Particle->World._13),
+					std::sqrt(Particle->World._21 * Particle->World._21 +
+						Particle->World._22 * Particle->World._22 +
+						Particle->World._23 * Particle->World._23),
+					std::sqrt(Particle->World._31 * Particle->World._31 +
+						Particle->World._32 * Particle->World._32 +
+						Particle->World._33 * Particle->World._33) });
+				for (const f32_t fMultiplier : DISTANCE_MULTIPLIERS)
+				{
+					const f32_t fDistance = std::clamp(
+						fScale * fMultiplier, 0.25f, 150.f);
+					for (uint32_t iView = 0u; iView < 4u; ++iView)
+					{
+						SetView(vFocus, fDistance, iView);
+						COLOR_CAPTURE Candidate;
+						if (!EngineScope.Begin_Frame(Error) ||
+							FAILED(Renderer.Render(Samples[iSample])))
+						{
+							continue;
+						}
+						Context->Flush();
+						if (!CaptureColor(Candidate, Error))
+							continue;
+						const EFFECT_GPU_RENDER_SUBMISSION_STATS& Stats =
+							Renderer.Get_LastRenderSubmissionStats();
+						const EFFECT_GPU_RENDER_FAMILY_STATS& Mesh = Stats.Families[
+							static_cast<size_t>(EFFECT_GPU_RENDER_FAMILY::MESH)];
+						const auto FocusOccurrence = std::ranges::find_if(
+							Stats.Occurrences,
+							[strFocusId](const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row)
+							{
+								return Row.strElementId == strFocusId;
+							});
+						bool_t bEveryRow = true;
+						if (bRequireEveryRow)
+						{
+							for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+							{
+								const auto Row = std::ranges::find_if(Stats.Occurrences,
+									[&Element](const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Value)
+									{
+										return Value.strElementId == Element.strElementId;
+									});
+								bEveryRow = bEveryRow && Row != Stats.Occurrences.end() &&
+									Row->iSubmitted > 0u && Row->iIssuedDrawCallCount > 0u;
+							}
+						}
+						const bool_t bExact = Stats.bCompleted && Stats.bCommitted &&
+							Mesh.iFailed == 0u && Mesh.iSubmitted > 0u &&
+							FocusOccurrence != Stats.Occurrences.end() &&
+							FocusOccurrence->iSelectedPassIndex == 3u &&
+							FocusOccurrence->iSourceTextureMask == 0x1fu &&
+							FocusOccurrence->eCarrier ==
+								EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL &&
+							FocusOccurrence->iIssuedDrawCallCount > 0u && bEveryRow;
+						if (bExact && Candidate.iRgbPixelCount >
+							Out.Color.iRgbPixelCount)
+						{
+							Out.bCommitted = true;
+							Out.Frame = Samples[iSample];
+							Out.vFocus = vFocus;
+							Out.fDistance = fDistance;
+							Out.iView = iView;
+							Out.Color = std::move(Candidate);
+						}
+					}
+				}
+			}
+			for (EFFECT_EVALUATED_PARTICLE& Particle : Out.Frame.Particles)
+			{
+				if (!Particle.pElement)
+					continue;
+				const auto Stable = std::ranges::find_if(Document.Elements,
+					[&Particle](const EFFECT_ELEMENT_DESC& Element)
+					{
+						return Element.strElementId == Particle.pElement->strElementId;
+					});
+				if (Stable != Document.Elements.end())
+					Particle.pElement = &*Stable;
+			}
+			for (EFFECT_EVALUATED_GPU_OCCURRENCE& Occurrence :
+				Out.Frame.GpuOccurrences)
+			{
+				if (!Occurrence.pElement)
+					continue;
+				const auto Stable = std::ranges::find_if(Document.Elements,
+					[&Occurrence](const EFFECT_ELEMENT_DESC& Element)
+					{
+						return Element.strElementId == Occurrence.pElement->strElementId;
+					});
+				if (Stable != Document.Elements.end())
+					Occurrence.pElement = &*Stable;
+			}
+			std::cout << "[LANCE-DRAGON] witness=" << strFocusId <<
+				" pixels=" << Out.Color.iRgbPixelCount << " sum=" <<
+				Out.Color.iRgbSum << " status=" <<
+				(Out.bCommitted ? "COMMITTED" : Error) << '\n';
+			return Out.bCommitted && Out.Color.iRgbPixelCount > 0u;
+		};
+
+		EFFECT_DOCUMENT_DESC BodyDocument = DragonDocument;
+		BodyDocument.Elements.assign(1u, DragonDocument.Elements[0u]);
+		EFFECT_DOCUMENT_DESC HeadDocument = DragonDocument;
+		HeadDocument.Elements.assign(1u, DragonDocument.Elements[1u]);
+		RENDER_WITNESS BodyWitness;
+		RENDER_WITNESS HeadWitness;
+		const bool_t bBodyDraw = FindWitness(
+			BodyDocument, TARGET_IDS[0u], false, BodyWitness);
+		const bool_t bHeadDraw = FindWitness(
+			HeadDocument, TARGET_IDS[1u], false, HeadWitness);
+		runner.Require(bBodyDraw && bHeadDraw,
+			"Lance Dragon Body And Head Each Issue Nonzero Opcode19 Five-Lane MeshParticle WARP Draws");
+
+		const auto CaptureFrame = [&](const EFFECT_EVALUATED_FRAME& Frame,
+			const RENDER_WITNESS& View, COLOR_CAPTURE& Out)
+		{
+			std::string Error;
+			SetView(View.vFocus, View.fDistance, View.iView);
+			if (!EngineScope.Begin_Frame(Error) || FAILED(Renderer.Render(Frame)))
+				return false;
+			Context->Flush();
+			return CaptureColor(Out, Error);
+		};
+
+		if (bBodyDraw)
+		{
+			Status.clear();
+			const bool_t bBodyRestaged =
+				Renderer.Stage_Document(BodyDocument, Status);
+			EFFECT_EVALUATED_FRAME BaselineFrame = BodyWitness.Frame;
+			for (EFFECT_EVALUATED_PARTICLE& Particle : BaselineFrame.Particles)
+			{
+				if (Particle.pElement &&
+					Particle.pElement->strElementId == TARGET_IDS[0u])
+				{
+					Particle.vDynamicParameter.w = 1.f;
+					Particle.Color.w = 1.f;
+					Particle.fNormalizedLife = 0.5f;
+				}
+			}
+			EFFECT_EVALUATED_FRAME AlphaFrame = BaselineFrame;
+			EFFECT_EVALUATED_FRAME LifeFrame = BaselineFrame;
+			for (EFFECT_EVALUATED_PARTICLE& Particle : AlphaFrame.Particles)
+			{
+				if (Particle.pElement &&
+					Particle.pElement->strElementId == TARGET_IDS[0u])
+					Particle.Color.w = 0.25f;
+			}
+			for (EFFECT_EVALUATED_PARTICLE& Particle : LifeFrame.Particles)
+			{
+				if (Particle.pElement &&
+					Particle.pElement->strElementId == TARGET_IDS[0u])
+					Particle.fNormalizedLife = 0.95f;
+			}
+			COLOR_CAPTURE Baseline;
+			COLOR_CAPTURE Alpha;
+			COLOR_CAPTURE Life;
+			bool_t bTimeSensitive = false;
+			bool_t bDynamicSensitive = false;
+			uint64_t iStationaryRadiancePixels = 0u;
+			COLOR_CAPTURE Time;
+			COLOR_CAPTURE Dynamic;
+			const bool_t bBaselineCaptured = bBodyRestaged &&
+				CaptureFrame(BaselineFrame, BodyWitness, Baseline);
+			for (const f32_t fDelta : std::array<f32_t, 4u>{ 0.5f, 1.f, 2.f, 3.f })
+			{
+				EFFECT_EVALUATED_FRAME TimeFrame = BaselineFrame;
+				TimeFrame.fSampleTimeSeconds += fDelta;
+				COLOR_CAPTURE Candidate;
+				if (!CaptureFrame(TimeFrame, BodyWitness, Candidate) ||
+					Candidate.iSignature == Baseline.iSignature)
+					continue;
+				for (size_t i = 0u; i + 3u < Candidate.Rgba.size() &&
+					i + 3u < Baseline.Rgba.size(); i += 4u)
+				{
+					const bool_t bBothNonzero =
+						0u != (Candidate.Rgba[i] | Candidate.Rgba[i + 1u] |
+							Candidate.Rgba[i + 2u]) &&
+						0u != (Baseline.Rgba[i] | Baseline.Rgba[i + 1u] |
+							Baseline.Rgba[i + 2u]);
+					if (bBothNonzero &&
+						Candidate.Rgba[i] == Baseline.Rgba[i] &&
+						Candidate.Rgba[i + 1u] == Baseline.Rgba[i + 1u] &&
+						Candidate.Rgba[i + 2u] == Baseline.Rgba[i + 2u])
+					{
+						++iStationaryRadiancePixels;
+					}
+				}
+				Time = std::move(Candidate);
+				bTimeSensitive = true;
+				break;
+			}
+			for (const f32_t fThreshold :
+				std::array<f32_t, 4u>{ 0.8f, 0.5f, 0.35f, 0.2f })
+			{
+				EFFECT_EVALUATED_FRAME DynamicFrame = BaselineFrame;
+				for (EFFECT_EVALUATED_PARTICLE& Particle : DynamicFrame.Particles)
+				{
+					if (Particle.pElement &&
+						Particle.pElement->strElementId == TARGET_IDS[0u])
+						Particle.vDynamicParameter.w = fThreshold;
+				}
+				COLOR_CAPTURE Candidate;
+				if (CaptureFrame(DynamicFrame, BodyWitness, Candidate) &&
+					Candidate.iSignature != Baseline.iSignature)
+				{
+					Dynamic = std::move(Candidate);
+					bDynamicSensitive = true;
+					break;
+				}
+			}
+			const bool_t bSensitivityExact = bBaselineCaptured &&
+				CaptureFrame(AlphaFrame, BodyWitness, Alpha) &&
+				CaptureFrame(LifeFrame, BodyWitness, Life) &&
+				Baseline.iRgbPixelCount > 0u && Alpha.iRgbSum > 0u &&
+				Alpha.iRgbSum < Baseline.iRgbSum && bTimeSensitive &&
+				iStationaryRadiancePixels > 0u && bDynamicSensitive &&
+				Life.iSignature == Baseline.iSignature &&
+				Life.iRgbSum == Baseline.iRgbSum;
+			std::cout << "[LANCE-DRAGON-SENSITIVITY] baseline=" <<
+				Baseline.iRgbSum << " alpha25=" << Alpha.iRgbSum <<
+				" alphaPan=" << Time.iSignature << '/' << Baseline.iSignature <<
+				" stationaryPixels=" << iStationaryRadiancePixels <<
+				" dynamicW=" << Dynamic.iSignature << '/' << Baseline.iSignature <<
+				" life=" << Life.iSignature << '/' << Baseline.iSignature << '\n';
+			runner.Require(bSensitivityExact,
+				"Lance Dragon WARP Separates Alpha UV Pan Dynamic-W Dissolve And ParticleColor Lifetime Without Normalized-Life Recoupling");
+		}
+
+		EFFECT_DOCUMENT_DESC PairDocument = DragonDocument;
+		PairDocument.Elements.assign(
+			DragonDocument.Elements.begin(), DragonDocument.Elements.begin() + 2u);
+		RENDER_WITNESS PairWitness;
+		const bool_t bPairDraw = FindWitness(
+			PairDocument, TARGET_IDS[0u], true, PairWitness);
+		COLOR_CAPTURE BeforeMalformed;
+		const bool_t bBeforeMalformedCaptured = bPairDraw &&
+			CaptureFrame(PairWitness.Frame, PairWitness, BeforeMalformed);
+		EFFECT_DOCUMENT_DESC MalformedSecond = PairDocument;
+		MalformedSecond.Elements[1u].strSourceNode += ".malformed-second";
+		Status.clear();
+		const bool_t bMalformedSecondRejected =
+			!Renderer.Stage_Document(MalformedSecond, Status) && !Status.empty();
+		COLOR_CAPTURE AfterMalformed;
+		const bool_t bPriorDrawPreserved = bBeforeMalformedCaptured &&
+			bMalformedSecondRejected &&
+			CaptureFrame(PairWitness.Frame, PairWitness, AfterMalformed) &&
+			AfterMalformed.iSignature == BeforeMalformed.iSignature &&
+			AfterMalformed.iRgbPixelCount == BeforeMalformed.iRgbPixelCount &&
+			AfterMalformed.iRgbSum == BeforeMalformed.iRgbSum &&
+			AfterMalformed.Rgba == BeforeMalformed.Rgba;
+		runner.Require(bMalformedSecondRejected,
+			"Lance Dragon Rejects SourceNode Drift In The Second Exact Occurrence Mid-Stage");
+		runner.Require(bPriorDrawPreserved,
+			"Lance Dragon Malformed Second Occurrence Rolls Back And Preserves The Prior Body-Head Draw Readback");
+		CEffectDocumentRenderer::Clear_Prepared_Catalog();
+	}
+
 	void Test_ValtanBossPatternStage(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -40383,6 +41064,15 @@ int main(const int argc, char* argv[])
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_ArtistDBlackTigerStrokeRuntimeMaterial(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-lance-dragon-fast" ||
+		Mode == "--effect-dragon-flow-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_LanceDragonRuntimeMaterial(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

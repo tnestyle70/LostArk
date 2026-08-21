@@ -1188,6 +1188,7 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34590.ba3.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34610.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34630.authored-baseline.approximation-receipt.json" />
+	<None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34630-34650.dragon-flow.materialization-receipt.v1.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34650.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34010.ba1.candidate-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34010.ba2.candidate-receipt.json" />

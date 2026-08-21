@@ -717,7 +717,11 @@ namespace
 		{
 			return false;
 		}
-		if (!Out.bEnabled)
+		/* A typed semantic replay may deliberately disable native source
+		   execution while retaining the recovered parent/profile as immutable
+		   evidence for its exact occurrence allowlist.  Minimal disabled
+		   profiles remain valid; a profileId opts into full evidence parsing. */
+		if (!Out.bEnabled && nullptr == Value.Find("profileId"))
 			return true;
 		if (const Client::DATA_JSON_VALUE* pSourceBlendClass =
 			Value.Find("sourceBlendClass"))
@@ -908,7 +912,9 @@ namespace
 	{
 		Output << "{ \"enabled\": "
 			<< (Source.bEnabled ? "true" : "false");
-		if (!Source.bEnabled)
+		/* Preserve optional disabled source evidence across Tool round trips.
+		   Empty disabled profiles keep the compact legacy representation. */
+		if (!Source.bEnabled && Source.strProfileId.empty())
 		{
 			Output << " }";
 			return;
