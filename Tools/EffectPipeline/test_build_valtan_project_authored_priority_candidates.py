@@ -45,18 +45,18 @@ class ValtanProjectAuthoredPriorityCandidateTests(unittest.TestCase):
             for target in receipt["targets"]
             for row in target["desiredElements"]
         ]
-        self.assertEqual(30, len(desired))
+        self.assertEqual(24, len(desired))
         self.assertEqual(
-            24,
+            17,
             sum(row["reconcileAction"] == "APPEND_MISSING" for row in desired),
         )
         self.assertEqual(
-            6,
+            7,
             sum(row["reconcileAction"] == "PRESERVE_EXISTING" for row in desired),
         )
         self.assertEqual(9, len(artifacts.documents))
         self.assertEqual(
-            24,
+            17,
             sum(len(document["elements"]) for document in artifacts.documents.values()),
         )
         self.assertTrue(receipt["policy"]["portalRushExcluded"])
@@ -65,11 +65,8 @@ class ValtanProjectAuthoredPriorityCandidateTests(unittest.TestCase):
             {target["patternId"] for target in receipt["targets"]},
         )
         self.assertEqual(
-            ["PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE"] * 3,
-            [
-                row["disposition"]
-                for row in receipt["projectilePresentations"]
-            ],
+            "PRESERVE_EXISTING_OFFICIAL_ASSET_REUSE",
+            receipt["officialAxePresentation"]["disposition"],
         )
 
         verified_assets = {
@@ -173,71 +170,62 @@ class ValtanProjectAuthoredPriorityCandidateTests(unittest.TestCase):
             shockwave["resources"][0]["assetId"],
         )
 
-    def test_high_jump_airborne_patch_is_complete_and_presentation_only(self) -> None:
+    def test_high_jump_combat_object_transfer_preserves_official_axe(self) -> None:
         receipt = self.build().receipt
-        patch = receipt["highJumpAirbornePatch"]
-        cue = patch["cueRow"]
-        self.assertEqual("VALTAN_HIGH_JUMP", cue["patternId"])
-        self.assertEqual("AIRBORNE", cue["stageId"])
+        transfer = receipt["highJumpCombatObjectTransfer"]
+        self.assertEqual("VALTAN_HIGH_JUMP", transfer["patternId"])
+        self.assertEqual("AIRBORNE", transfer["stageId"])
         self.assertEqual(
-            "valtan.attack.high-jump.airborne.clip.01",
-            cue["clipOccurrenceId"],
+            MODULE.HIGH_JUMP_COMBAT_OBJECT_ID,
+            transfer["combatObjectArchetypeId"],
         )
-        self.assertEqual("snapshot", cue["followPolicy"])
-        self.assertEqual("natural", cue["stopPolicy"])
-        self.assertEqual("once", cue["repeatPolicy"])
-        self.assertIsNone(cue["sourceEndMs"])
-        self.assertTrue(patch["authority"]["presentationOnly"])
-        self.assertFalse(patch["authority"]["serverGameplayChange"])
+        self.assertEqual(MODULE.SKY_AXE_EFFECT_ID, transfer["effectAssetId"])
         self.assertEqual(
-            "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE",
-            patch["authority"]["projectileAuthorityStatus"],
+            "LOCKED_TARGET_PER_ALIVE_PLAYER",
+            transfer["combatObjectContract"]["originPolicy"],
         )
-        presentations = receipt["projectilePresentations"]
-        self.assertEqual(3, len(presentations))
-        self.assertTrue(all(row["presentationOnly"] for row in presentations))
-        self.assertTrue(
-            all(not row["serverGameplayChange"] for row in presentations)
+        self.assertEqual(1200, transfer["combatObjectContract"]["timedImpactMs"])
+        self.assertFalse(
+            transfer["retiredBossRoot"]["effectCatalogRegistrationAllowed"]
         )
-        self.assertTrue(
-            all(
-                row["modelAssetId"] == MODULE.ASSET_VALTAN_WEAPON
-                and row["geometryProvenance"] == "OFFICIAL_GEOMETRY_EXACT"
-                and row["baseTextureProvenance"]
-                == "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT"
-                and row["trajectoryTimingProvenance"] == "PROJECT_AUTHORED"
-                and row["sourceActionPayloadClaim"] == "NONE"
-                for row in presentations
-            )
+        self.assertFalse(
+            transfer["retiredBossRoot"]["productCueRegistrationAllowed"]
+        )
+        self.assertTrue(transfer["authority"]["effectPresentationOnly"])
+        self.assertTrue(transfer["authority"]["serverCombatObjectAuthority"])
+        self.assertFalse(transfer["authority"]["serverGameplayChange"])
+        self.assertEqual(
+            "TIMED_COMBAT_OBJECT_HIT",
+            transfer["authority"]["serverDamagePolicy"],
+        )
+        presentation = receipt["officialAxePresentation"]
+        self.assertEqual(
+            MODULE.SKY_AXE_DESCENT_ELEMENT_ID,
+            presentation["presentationId"],
+        )
+        self.assertEqual(MODULE.ASSET_VALTAN_WEAPON, presentation["modelAssetId"])
+        self.assertEqual("OFFICIAL_GEOMETRY_EXACT", presentation["geometryProvenance"])
+        self.assertEqual(
+            "EXISTING_HAND_TUNED_PRESERVE",
+            presentation["trajectoryTimingProvenance"],
         )
 
-        airborne = self.build().documents["effect.valtan.high-jump.airborne"]
-        self.assertEqual(9, len(airborne["elements"]))
-        axes = [
-            element for element in airborne["elements"]
-            if element["kind"] == "mesh"
-        ]
-        impacts = [
-            element for element in airborne["elements"]
-            if element["kind"] == "particle"
-        ]
-        self.assertEqual(3, len(axes))
-        self.assertEqual(3, len(impacts))
-        for axe in axes:
-            self.assertEqual(
-                [{"slotId": "meshModel", "assetId": MODULE.ASSET_VALTAN_WEAPON}],
-                axe["resources"],
-            )
-            self.assertTrue(axe["detail"]["mesh"]["useModelMaterial"])
-            self.assertEqual(1.0, axe["detail"]["mesh"]["modelPreScale"])
-            self.assertTrue(axe["detail"]["linearLerp"]["position"])
-            self.assertFalse(axe["actionCueAttachment"]["enabled"])
-        for impact in impacts:
-            self.assertFalse(impact["detail"]["particle"]["billboard"])
-            self.assertEqual(
-                MODULE.ASSET_SHOCKWAVE_02,
-                impact["resources"][0]["assetId"],
-            )
+        overlay = self.build().documents[MODULE.SKY_AXE_EFFECT_ID]
+        self.assertEqual(2, len(overlay["elements"]))
+        self.assertEqual(
+            {MODULE.SKY_AXE_TARGET_DECAL_ELEMENT_ID, MODULE.SKY_AXE_IMPACT_ELEMENT_ID},
+            {element["id"] for element in overlay["elements"]},
+        )
+        self.assertNotIn(
+            MODULE.SKY_AXE_DESCENT_ELEMENT_ID,
+            {element["id"] for element in overlay["elements"]},
+        )
+        impact = next(
+            element for element in overlay["elements"]
+            if element["id"] == MODULE.SKY_AXE_IMPACT_ELEMENT_ID
+        )
+        self.assertEqual(1.2, impact["detail"]["timing"]["startDelaySeconds"])
+        self.assertEqual(MODULE.ASSET_SHOCKWAVE_02, impact["resources"][0]["assetId"])
 
         encounter = MODULE._load_json(
             self.repo_root / "Data/Encounters/Valtan/ValtanEncounter.json"
@@ -257,6 +245,63 @@ class ValtanProjectAuthoredPriorityCandidateTests(unittest.TestCase):
             "damage.valtan.high-jump",
             stages["LAND"]["serverDamageProfileId"],
         )
+
+    def test_circular_decal_growth_uses_xz_footprint_axes(self) -> None:
+        documents = self.build().documents
+        cases = (
+            (
+                "effect.valtan.front-back-front.active",
+                "project-three-hit-down-smash-wave",
+                [0.35, 1.0, 0.35],
+                [1.0, 1.0, 1.0],
+                (4.2, 12.0),
+            ),
+            (
+                "effect.valtan.front-back-front.active",
+                "project-three-hit-down-smash-shockwave",
+                [0.25, 1.0, 0.25],
+                [1.0, 1.0, 1.0],
+                (2.5, 10.0),
+            ),
+            (
+                "effect.valtan.high-jump.land",
+                "project-high-jump-landing-wave",
+                [0.35, 1.0, 0.35],
+                [1.0, 1.0, 1.0],
+                (4.9, 14.0),
+            ),
+            (
+                "effect.valtan.magic-choice.windup",
+                "project-donut-inner-growing-boundary",
+                [1.0, 1.0, 1.0],
+                [18.0 / 7.0, 1.0, 18.0 / 7.0],
+                (7.0, 18.0),
+            ),
+        )
+
+        for effect_id, element_id, start_scale, end_scale, footprint in cases:
+            with self.subTest(effect_id=effect_id, element_id=element_id):
+                element = next(
+                    row
+                    for row in documents[effect_id]["elements"]
+                    if row["id"] == element_id
+                )
+                detail = element["detail"]
+                self.assertEqual(start_scale, detail["transform"]["scale"])
+                self.assertEqual(end_scale, detail["linearLerp"]["endScale"])
+                self.assertTrue(detail["linearLerp"]["scale"])
+
+                size_x, size_z = detail["decal"]["size"]
+                start_xz = (
+                    round(size_x * start_scale[0], 6),
+                    round(size_z * start_scale[2], 6),
+                )
+                end_xz = (
+                    round(size_x * end_scale[0], 6),
+                    round(size_z * end_scale[2], 6),
+                )
+                self.assertEqual((footprint[0], footprint[0]), start_xz)
+                self.assertEqual((footprint[1], footprint[1]), end_xz)
 
     def test_existing_floor_axis_tuning_is_a_preserved_sentinel(self) -> None:
         effect_id = "effect.valtan.floor-wipe-130.windup"
@@ -355,9 +400,6 @@ class ValtanProjectAuthoredPriorityCandidateTests(unittest.TestCase):
         for target in MODULE._target_specs():
             path = MODULE._canonical_authoring_path(target.effect_asset_id)
             canonical_path = self.repo_root.joinpath(*path.parts)
-            if target.effect_asset_id == "effect.valtan.high-jump.airborne":
-                overrides[target.effect_asset_id] = None
-                continue
             canonical = MODULE._load_json(canonical_path)
             canonical["elements"] = [
                 element
@@ -369,60 +411,57 @@ class ValtanProjectAuthoredPriorityCandidateTests(unittest.TestCase):
         self.assertEqual(postapply.files, preapply.files)
         self.assertEqual(9, len(postapply.documents))
         self.assertEqual(
-            24,
+            17,
             sum(len(row["elements"]) for row in postapply.documents.values()),
         )
 
     def test_existing_project_element_resource_drift_fails_closed(self) -> None:
-        effect_id = "effect.valtan.high-jump.airborne"
+        effect_id = MODULE.SKY_AXE_EFFECT_ID
         canonical = MODULE._load_json(
             self.repo_root
-            / "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
+            / "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json"
         )
-        axe = next(row for row in canonical["elements"] if row["kind"] == "mesh")
-        axe["resources"][0]["assetId"] = "Character/Valtan/DriftedWeapon.wmodel"
+        impact = next(
+            row for row in canonical["elements"]
+            if row["id"] == MODULE.SKY_AXE_IMPACT_ELEMENT_ID
+        )
+        impact["resources"][0]["assetId"] = (
+            "Effect/Valtan/Textures/FX_TEX_04/fx_i_shockwave_03.dds"
+        )
         with self.assertRaisesRegex(
             MODULE.ContractError, "projected element immutable identity drift"
         ):
             self.build(canonical_overrides={effect_id: canonical})
 
-    def test_optional_high_jump_product_rows_are_exact_or_absent(self) -> None:
+    def test_high_jump_combat_object_ownership_is_exact(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            catalog_path = root / "Data/Effects/EffectCatalog.json"
-            cue_path = (
-                root
-                / "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
+            relative_paths = (
+                MODULE.EFFECT_CATALOG_RELATIVE_PATH,
+                MODULE.VALTAN_CUES_RELATIVE_PATH,
+                MODULE.BOSS_CATALOG_RELATIVE_PATH,
+                MODULE.COMBAT_OBJECTS_RELATIVE_PATH,
+                MODULE.LEGACY_HIGH_JUMP_AUTHORING_PATH,
             )
-            catalog_path.parent.mkdir(parents=True)
-            cue_path.parent.mkdir(parents=True)
-            catalog_path.write_text(
-                json.dumps({"effects": []}) + "\n", encoding="utf-8"
-            )
-            cue_path.write_text(
-                json.dumps({"cues": []}) + "\n", encoding="utf-8"
-            )
-            MODULE._validate_optional_high_jump_product_rows(root)
+            for relative in relative_paths:
+                source = self.repo_root.joinpath(*relative.parts)
+                destination = root.joinpath(*relative.parts)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(source.read_bytes())
+            MODULE._validate_high_jump_combat_object_ownership(root)
 
-            patch = MODULE._high_jump_airborne_patch()
-            catalog_path.write_text(
-                json.dumps({"effects": [patch["catalogRow"]]}) + "\n",
-                encoding="utf-8",
-            )
-            cue_path.write_text(
-                json.dumps({"cues": [patch["cueRow"]]}) + "\n",
-                encoding="utf-8",
-            )
-            MODULE._validate_optional_high_jump_product_rows(root)
-
-            drifted = deepcopy(patch["catalogRow"])
-            drifted["payloadKind"] = "DRIFTED"
-            catalog_path.write_text(
-                json.dumps({"effects": [drifted]}) + "\n",
-                encoding="utf-8",
-            )
-            with self.assertRaisesRegex(MODULE.ContractError, "row drift"):
-                MODULE._validate_optional_high_jump_product_rows(root)
+            catalog_path = root.joinpath(*MODULE.EFFECT_CATALOG_RELATIVE_PATH.parts)
+            catalog = MODULE._load_json(catalog_path)
+            catalog["effects"].append({
+                "effectAssetId": MODULE.LEGACY_HIGH_JUMP_EFFECT_ID,
+                "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+                "authoringPath": (
+                    "Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
+                ),
+            })
+            catalog_path.write_text(json.dumps(catalog) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(MODULE.ContractError, "re-registered"):
+                MODULE._validate_high_jump_combat_object_ownership(root)
 
     def test_missing_runtime_resource_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -475,23 +514,6 @@ class ValtanProjectAuthoredPriorityCandidateTests(unittest.TestCase):
                         element_kind=kind,
                         slot_id=slot_id,
                     )
-
-        targets = deepcopy(MODULE._target_specs())
-        airborne = next(
-            target for target in targets
-            if target.effect_asset_id == "effect.valtan.high-jump.airborne"
-        )
-        axe = next(
-            element for element in airborne.elements
-            if element["kind"] == "mesh"
-        )
-        axe["resources"][0]["assetId"] = (
-            "Character/Valtan/MissingWeapon.wmodel"
-        )
-        with self.assertRaisesRegex(
-            MODULE.ContractError, "required candidate resource is missing"
-        ):
-            MODULE._verify_resources(self.resource_root, targets)
 
     def test_receipt_schema_is_strict_and_matches_the_generator_contract(self) -> None:
         schema_path = (

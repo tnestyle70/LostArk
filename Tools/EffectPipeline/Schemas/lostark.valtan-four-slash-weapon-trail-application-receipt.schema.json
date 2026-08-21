@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-four-slash-weapon-trail-application-receipt.schema.json",
+  "title": "Valtan FourSlash weapon-bone Trail missing-only application receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "transactionStatus",
+    "reconcileMode",
+    "candidateManifest",
+    "drawableProof",
+    "candidateDocument",
+    "target",
+    "sourcePreservation",
+    "projection",
+    "canonicalApply",
+    "writeBoundary",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.valtan-four-slash-weapon-trail-application-receipt" },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "transactionStatus": { "const": "COMMITTED" },
+    "reconcileMode": { "const": "MISSING_ONLY" },
+    "candidateManifest": { "$ref": "#/$defs/artifact" },
+    "drawableProof": { "$ref": "#/$defs/artifact" },
+    "candidateDocument": { "$ref": "#/$defs/candidate" },
+    "target": { "$ref": "#/$defs/target" },
+    "sourcePreservation": { "$ref": "#/$defs/source" },
+    "projection": { "$ref": "#/$defs/projection" },
+    "canonicalApply": { "$ref": "#/$defs/apply" },
+    "writeBoundary": { "$ref": "#/$defs/boundary" },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "minLength": 1 },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "artifactSha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "artifactSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "elementId", "elementSha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "elementId": { "const": "project-four-slash-weapon-bone-trail" },
+        "elementSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patternId", "stageId", "effectAssetId", "canonicalPath"],
+      "properties": {
+        "patternId": { "const": "VALTAN_FOUR_SLASH" },
+        "stageId": { "const": "SLASHES" },
+        "effectAssetId": { "const": "effect.valtan.four-slash.active.clip-02" },
+        "canonicalPath": { "const": "Data/Effects/Authored/effect.valtan.four-slash.active.clip-02.effect.json" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceElementId", "sourceElementSha256", "sourceElementAttachmentSha256", "preservedRowCount"],
+      "properties": {
+        "sourceElementId": { "const": "safe-gap.trail.6dc8db3e4616f2794149d838" },
+        "sourceElementSha256": { "$ref": "#/$defs/sha256" },
+        "sourceElementAttachmentSha256": { "$ref": "#/$defs/sha256" },
+        "preservedRowCount": { "const": 1 }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateElementId", "candidateSourceNode", "initialElementSha256", "protectedContractSha256", "insertedElementIndex", "projectedElementCount"],
+      "properties": {
+        "candidateElementId": { "const": "project-four-slash-weapon-bone-trail" },
+        "candidateSourceNode": { "const": "project-authored:valtan.four-slash.active.clip-02.weapon-bone-trail" },
+        "initialElementSha256": { "$ref": "#/$defs/sha256" },
+        "protectedContractSha256": { "$ref": "#/$defs/sha256" },
+        "insertedElementIndex": { "type": "integer", "minimum": 1 },
+        "projectedElementCount": { "const": 1 }
+      }
+    },
+    "apply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preApplyRawSha256", "postApplyRawSha256"],
+      "properties": {
+        "preApplyRawSha256": { "$ref": "#/$defs/sha256" },
+        "postApplyRawSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonicalAuthoringPath", "receiptPath", "canonicalOutputCount", "cueBindingMutationPerformed", "catalogMutationPerformed", "sequenceMutationPerformed", "rendererMutationPerformed", "colorPipelineMutationPerformed"],
+      "properties": {
+        "canonicalAuthoringPath": { "const": "Data/Effects/Authored/effect.valtan.four-slash.active.clip-02.effect.json" },
+        "receiptPath": { "const": "Data/Effects/Imported/Valtan/ProjectTunedFourSlashWeaponTrail/Valtan.four-slash-weapon-trail.application-receipt.v1.json" },
+        "canonicalOutputCount": { "const": 1 },
+        "cueBindingMutationPerformed": { "const": false },
+        "catalogMutationPerformed": { "const": false },
+        "sequenceMutationPerformed": { "const": false },
+        "rendererMutationPerformed": { "const": false },
+        "colorPipelineMutationPerformed": { "const": false }
+      }
+    }
+  }
+}

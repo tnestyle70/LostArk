@@ -14,7 +14,7 @@
     "closure",
     "targets",
     "canonicalOutputs",
-    "highJumpAirbornePatch",
+    "highJumpCombatObjectTransfer",
     "whirlwindCanary"
   ],
   "properties": {
@@ -49,13 +49,13 @@
     },
     "canonicalOutputs": {
       "type": "array",
-      "minItems": 11,
-      "maxItems": 11,
+      "minItems": 9,
+      "maxItems": 9,
       "items": {
         "$ref": "#/$defs/output"
       }
     },
-    "highJumpAirbornePatch": {
+    "highJumpCombatObjectTransfer": {
       "$ref": "#/$defs/highJump"
     },
     "whirlwindCanary": {
@@ -150,8 +150,10 @@
       "required": [
         "candidateDocumentCount",
         "projectedElementCount",
-        "highJumpCatalogRowCount",
-        "highJumpCueRowCount",
+        "preservationSentinelCount",
+        "skyAxeCatalogRowCount",
+        "legacyBossRootCatalogRowCount",
+        "legacyBossRootCueRowCount",
         "officialAxePresentationCount"
       ],
       "properties": {
@@ -159,16 +161,22 @@
           "const": 9
         },
         "projectedElementCount": {
-          "const": 24
+          "const": 17
         },
-        "highJumpCatalogRowCount": {
+        "preservationSentinelCount": {
+          "const": 7
+        },
+        "skyAxeCatalogRowCount": {
           "const": 1
         },
-        "highJumpCueRowCount": {
-          "const": 1
+        "legacyBossRootCatalogRowCount": {
+          "const": 0
+        },
+        "legacyBossRootCueRowCount": {
+          "const": 0
         },
         "officialAxePresentationCount": {
-          "const": 3
+          "const": 1
         }
       }
     },
@@ -218,11 +226,7 @@
           "$ref": "#/$defs/repoPath"
         },
         "role": {
-          "enum": [
-            "AUTHORED_EFFECT_DOCUMENT",
-            "EFFECT_CATALOG",
-            "VALTAN_CUE_DOCUMENT"
-          ]
+          "const": "AUTHORED_EFFECT_DOCUMENT"
         },
         "sha256": {
           "$ref": "#/$defs/sha256"
@@ -234,29 +238,38 @@
       "additionalProperties": false,
       "required": [
         "documentSha256",
-        "catalogRowSha256",
-        "cueRowSha256",
-        "officialAxePresentationIds"
+        "effectCatalogRowSha256",
+        "bossCatalogVisualRowSha256",
+        "combatObjectRowSha256",
+        "legacyBossRootAuthoringSha256",
+        "legacyBossRootCatalogRowCount",
+        "legacyBossRootCueRowCount",
+        "officialAxePresentationId"
       ],
       "properties": {
         "documentSha256": {
           "$ref": "#/$defs/sha256"
         },
-        "catalogRowSha256": {
+        "effectCatalogRowSha256": {
           "$ref": "#/$defs/sha256"
         },
-        "cueRowSha256": {
+        "bossCatalogVisualRowSha256": {
           "$ref": "#/$defs/sha256"
         },
-        "officialAxePresentationIds": {
-          "type": "array",
-          "minItems": 3,
-          "maxItems": 3,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "pattern": "^project-authored:valtan\\.high-jump\\.airborne\\.beat-[0-9]{2}\\.axe$"
-          }
+        "combatObjectRowSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "legacyBossRootAuthoringSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "legacyBossRootCatalogRowCount": {
+          "const": 0
+        },
+        "legacyBossRootCueRowCount": {
+          "const": 0
+        },
+        "officialAxePresentationId": {
+          "const": "mesh.valtan.sky-axe.descent"
         }
       }
     },

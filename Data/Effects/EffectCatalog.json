@@ -1000,11 +1000,6 @@
       "authoringPath": "Effects/Authored/effect.valtan.ground-wave-smash.windup.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.high-jump.airborne",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
-    },
-    {
       "effectAssetId": "effect.valtan.high-jump.land",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.high-jump.land.effect.json"

@@ -136,6 +136,26 @@ ARENA84_BINDING_GAP_PROPOSALS = [
         },
     },
 ]
+
+# PR #138 added product-animation rows for the three Arena 84 actions.  They
+# are CURRENT_PRODUCT_BASELINE presentation clips, not acceptance of the
+# older 420629/12_0x source-review proposals above.  Keep both facts explicit:
+# the product graph has no binding gap, while source-family projection stays
+# fail-closed until the proposal is separately reviewed.
+ARENA84_CURRENT_PRODUCT_BINDINGS = {
+    "valtan.mechanic.arena-floor-84.windup": (
+        "valtan.mechanic.arena-floor-84.windup.clip.01",
+        "mesh_att_battle_2_01",
+    ),
+    "valtan.mechanic.arena-floor-84.impact": (
+        "valtan.mechanic.arena-floor-84.impact.clip.01",
+        "mesh_att_battle_2_02",
+    ),
+    "valtan.mechanic.arena-floor-84.recovery": (
+        "valtan.mechanic.arena-floor-84.recovery.clip.01",
+        "mesh_att_battle_2_03",
+    ),
+}
 SOURCE_VISUAL_SIGNATURE_EQUIVALENCE_REVIEWS = {
     "VALTAN_SWING": [(420601, 0), (420660, 0)],
     "VALTAN_IMPRISON_ROAR": [(420603, 0), (420603, 2), (420603, 3)],
@@ -2534,13 +2554,30 @@ def build_inventory(
         for row in pattern_bindings.get("bindings", [])
     }
     binding_gaps = sorted(encounter_action_ids - bound_action_ids)
-    proposed_gap_ids = sorted(
-        row["actionId"] for row in ARENA84_BINDING_GAP_PROPOSALS
-    )
-    if binding_gaps != proposed_gap_ids:
+    if binding_gaps:
         raise InventoryError(
             "canonical pattern binding gaps changed: " + repr(binding_gaps)
         )
+    bindings_by_action = {
+        str(row.get("actionId") or ""): row
+        for row in pattern_bindings.get("bindings", [])
+        if isinstance(row, dict)
+    }
+    for action_id, (occurrence_id, clip_name) in (
+        ARENA84_CURRENT_PRODUCT_BINDINGS.items()
+    ):
+        binding = bindings_by_action.get(action_id)
+        clips = binding.get("clips") if isinstance(binding, dict) else None
+        if (
+            not isinstance(clips, list)
+            or len(clips) != 1
+            or clips[0].get("clipOccurrenceId") != occurrence_id
+            or clips[0].get("clip") != clip_name
+            or clips[0].get("mappingBasis") != "CURRENT_PRODUCT_BASELINE"
+        ):
+            raise InventoryError(
+                "Arena 84 current product binding changed: " + action_id
+            )
     all_expanded = [
         f"{occurrence['fullKey']}|{carrier['carrierKey']}"
         for occurrence in occurrences

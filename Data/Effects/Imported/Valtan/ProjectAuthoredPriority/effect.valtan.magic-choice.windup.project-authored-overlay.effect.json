@@ -460,8 +460,8 @@
           "scale": true,
           "endScale": [
             2.5714285714285716,
-            2.5714285714285716,
-            1.0
+            1.0,
+            2.5714285714285716
           ],
           "velocity": false,
           "endVelocityPerSecond": [

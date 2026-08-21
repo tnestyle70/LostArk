@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-bounded-weapon-trail-application-receipt.schema.json",
+  "title": "Valtan bounded weapon Trail missing-only application receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "transactionStatus",
+    "reconcileMode",
+    "classification",
+    "reconstructionPolicy",
+    "candidateManifest",
+    "drawableProof",
+    "sourceCanary",
+    "protectedExternalInputs",
+    "targets",
+    "summary",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-bounded-weapon-trail-application-receipt"
+    },
+    "formatVersion": { "const": 1 },
+    "transactionStatus": { "const": "COMMITTED" },
+    "reconcileMode": { "const": "MISSING_ONLY" },
+    "classification": { "const": "PROJECT_TUNED" },
+    "reconstructionPolicy": { "const": "BOUNDED_RECONSTRUCTION" },
+    "candidateManifest": { "$ref": "#/$defs/sealedArtifact" },
+    "drawableProof": { "$ref": "#/$defs/sealedArtifact" },
+    "sourceCanary": { "$ref": "#/$defs/sourceCanary" },
+    "protectedExternalInputs": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/protectedInput" }
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/target" }
+    },
+    "summary": { "$ref": "#/$defs/summary" },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$)).+$"
+    },
+    "string": { "type": "string", "minLength": 1 },
+    "shaArray3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/sha256" }
+    },
+    "stringArray3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/string" }
+    },
+    "sealedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "artifactSha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repositoryPath" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "artifactSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sourceCanary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "canonicalSha256"],
+      "properties": {
+        "path": {
+          "const": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
+        },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "protectedInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256AtCommit"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repositoryPath" },
+        "rawSha256AtCommit": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "stageId",
+        "effectAssetId",
+        "canonicalPath",
+        "beforeRawSha256",
+        "beforeCanonicalSha256",
+        "afterRawSha256",
+        "afterCanonicalSha256",
+        "preservedExistingElementCount",
+        "appendedElementIds",
+        "initialElementSha256",
+        "protectedElementContractSha256",
+        "runtimeAnchorSlotId",
+        "runtimeBoneName",
+        "sourceStartSeconds",
+        "sourceDurationSeconds"
+      ],
+      "properties": {
+        "patternId": {
+          "enum": [
+            "VALTAN_WHIRLWIND",
+            "VALTAN_GROUND_WAVE_SMASH",
+            "VALTAN_JUMP_SPIN"
+          ]
+        },
+        "stageId": { "enum": ["RECOVERY", "WINDUP"] },
+        "effectAssetId": {
+          "enum": [
+            "effect.valtan.whirlwind.recovery",
+            "effect.valtan.ground-wave-smash.windup",
+            "effect.valtan.jump-spin.recovery"
+          ]
+        },
+        "canonicalPath": { "$ref": "#/$defs/repositoryPath" },
+        "beforeRawSha256": { "$ref": "#/$defs/sha256" },
+        "beforeCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "afterRawSha256": { "$ref": "#/$defs/sha256" },
+        "afterCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "preservedExistingElementCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "appendedElementIds": { "$ref": "#/$defs/stringArray3" },
+        "initialElementSha256": { "$ref": "#/$defs/shaArray3" },
+        "protectedElementContractSha256": { "$ref": "#/$defs/shaArray3" },
+        "runtimeAnchorSlotId": {
+          "enum": [
+            "VALTAN_WHIRLWIND_RECOVERY_WEAPON_R",
+            "VALTAN_GROUND_WAVE_SMASH_WINDUP_WEAPON_R",
+            "VALTAN_JUMP_SPIN_RECOVERY_WEAPON_R"
+          ]
+        },
+        "runtimeBoneName": { "const": "b_wp_r_01" },
+        "sourceStartSeconds": { "type": "number", "minimum": 0 },
+        "sourceDurationSeconds": { "type": "number", "minimum": 0 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "targetCount",
+        "appendedElementCount",
+        "preservedExistingElementCount",
+        "movingBoneDrawableCount",
+        "stationarySuppressedCount",
+        "missingAnchorRollbackCount"
+      ],
+      "properties": {
+        "targetCount": { "const": 3 },
+        "appendedElementCount": { "const": 9 },
+        "preservedExistingElementCount": { "const": 32 },
+        "movingBoneDrawableCount": { "const": 9 },
+        "stationarySuppressedCount": { "const": 9 },
+        "missingAnchorRollbackCount": { "const": 3 }
+      }
+    }
+  }
+}

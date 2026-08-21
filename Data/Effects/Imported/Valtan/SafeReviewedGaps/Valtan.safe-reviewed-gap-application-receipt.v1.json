@@ -10,31 +10,90 @@
   },
   "drawableProof": {
     "path": "Data/Effects/Imported/Valtan/SafeReviewedGaps/DrawableProof/Valtan.safe-reviewed-gaps.drawable-proof.v1.json",
-    "rawSha256": "75a768eb8f2a876b717e48e7a52de45ca5835921bbd97c5f42967f5d1932668d",
-    "artifactSha256": "1c7aff3b9a7ae4577788bf6e674c7cdd065c31aefd56b93d7be8fb4451013e2b"
+    "rawSha256": "819f2148ca416f58d06f8643f13fa695e3b86a06ea34df82a8382237da727654",
+    "artifactSha256": "44b9428ff12dbbac94a571bb4e039bd93d86fce6f0863a95f4f76f7d87586828"
   },
   "canonicalCueDocument": {
     "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
-    "rawSha256": "da68e5ebe7723b36bba8c9bc5a7474b46f16427dcc4fdb1fe99264409d97c29d",
-    "canonicalSha256": "bd72b332beeebff4681eb804ba8ced5223400756753b1d350b1e71ec0e2a6b1e",
-    "cueCount": 108,
+    "rawSha256": "623b10adebd8e57dfae5ebd155df63011cf53161e8107b0defb1b8aa6b45f1d6",
+    "canonicalSha256": "54cbcbac128775abae414922d41a8ba7b9ccb15a60b4539c9f9da46b104e1d59",
+    "cueCount": 106,
     "addedBindingIds": [
       "cue.valtan.backstep.windup.trails",
       "cue.valtan.four-slash.active.clip-02",
       "cue.valtan.jump-spin.spin.trails",
       "cue.valtan.swing.active.clip-02"
+    ],
+    "retiredBindingIds": [
+      "cue.valtan.high-jump.airborne.project-authored",
+      "cue.valtan.red-blade-wave.active"
     ]
   },
   "canonicalCatalogDocument": {
     "path": "Data/Effects/EffectCatalog.json",
-    "rawSha256": "41637bd546aeac977a61f722031a67692882f53cda68ea6274c9164e3a260748",
-    "canonicalSha256": "02c9ed470c454b86a572f388853fb7c0b25380087fa6f4f0b4bf7667163fd89a",
+    "rawSha256": "2f4dc0de24748b4bd43d58c9909866476d4baff94d111afd2942b4e73fc450ab",
+    "canonicalSha256": "8258ef5a6fd0006a82446b058e87c950b687849e8a6f75a2687d242733b39cd9",
     "effectCount": 315,
     "addedEffectAssetIds": [
       "effect.valtan.backstep.windup.trails",
       "effect.valtan.four-slash.active.clip-02",
       "effect.valtan.jump-spin.spin.trails",
       "effect.valtan.swing.active.clip-02"
+    ],
+    "ownershipTransferAddedEffectAssetIds": [
+      "effect.valtan.sky-axe.active"
+    ],
+    "ownershipTransferRetiredEffectAssetIds": [
+      "effect.valtan.high-jump.airborne"
+    ]
+  },
+  "combatObjectOwnershipTransfer": {
+    "bossCatalogPath": "Data/Actors/BossCatalog.json",
+    "bossCatalogRawSha256": "c4619be9983e30c257eefd3df54860e9d879eb014419b65753facb32e351c71f",
+    "bossCatalogCanonicalSha256": "7dca8acadae11e5fdd66704058742bb27643d598d83669e90da8b634bbb45012",
+    "preTransferCueCanonicalSha256": "bd72b332beeebff4681eb804ba8ced5223400756753b1d350b1e71ec0e2a6b1e",
+    "preTransferCatalogCanonicalSha256": "02c9ed470c454b86a572f388853fb7c0b25380087fa6f4f0b4bf7667163fd89a",
+    "retiredBossRootCues": [
+      {
+        "bindingId": "cue.valtan.high-jump.airborne.project-authored",
+        "occurrenceId": "cue.valtan.high-jump.airborne.project-authored.occurrence.01",
+        "patternId": "VALTAN_HIGH_JUMP",
+        "stageId": "AIRBORNE",
+        "actionId": "valtan.attack.high-jump.airborne",
+        "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
+        "retiredEffectAssetId": "effect.valtan.high-jump.airborne",
+        "retiredSourceStartMs": 0,
+        "retiredSourceEndMs": null,
+        "replacementCombatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+        "replacementClientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
+        "replacementEffectAssetId": "effect.valtan.sky-axe.active"
+      },
+      {
+        "bindingId": "cue.valtan.red-blade-wave.active",
+        "occurrenceId": "cue.valtan.red-blade-wave.active.occurrence.01",
+        "patternId": "VALTAN_RED_BLADE_WAVE",
+        "stageId": "PROJECTILE",
+        "actionId": "valtan.attack.red-blade-wave.active",
+        "clipOccurrenceId": "valtan.attack.red-blade-wave.active.clip.01",
+        "retiredEffectAssetId": "effect.valtan.red-blade-wave.active",
+        "retiredSourceStartMs": 0,
+        "retiredSourceEndMs": 1000,
+        "replacementCombatObjectArchetypeId": "combatobject.valtan.red-blade-wave.projectile",
+        "replacementClientVisualId": "combatobject.visual.valtan.red-blade-wave.projectile.v1",
+        "replacementEffectAssetId": "effect.valtan.red-blade-wave.active"
+      }
+    ],
+    "combatObjectVisuals": [
+      {
+        "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+        "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
+        "effectAssetId": "effect.valtan.sky-axe.active"
+      },
+      {
+        "combatObjectArchetypeId": "combatobject.valtan.red-blade-wave.projectile",
+        "clientVisualId": "combatobject.visual.valtan.red-blade-wave.projectile.v1",
+        "effectAssetId": "effect.valtan.red-blade-wave.active"
+      }
     ]
   },
   "canonicalDocuments": [
@@ -246,6 +305,396 @@
       ]
     }
   ],
+  "downstreamFourSlashWeaponTrail": {
+    "status": "APPLIED_PROOF_GATED_EXACT_EXTENSION",
+    "candidateManifest": {
+      "path": "Data/Effects/Imported/Valtan/ProjectTunedFourSlashWeaponTrail/Valtan.four-slash-weapon-trail.candidate-manifest.v1.json",
+      "rawSha256": "aa30105cebca4fe4d9fd00965feb5fc974e45d287314cf25aff8f533278e0c43",
+      "artifactSha256": "7820f92d294241b6624b1bfb82e35dbfb91da5c9009a22dbc167623f8e979d3c"
+    },
+    "drawableProof": {
+      "path": "Data/Effects/Imported/Valtan/ProjectTunedFourSlashWeaponTrail/DrawableProof/Valtan.four-slash-weapon-trail.drawable-proof.v1.json",
+      "rawSha256": "54064bd56b868ab91c29500dfe27196801fc8ef25fe20e9d64e2c7b9a266e65f",
+      "artifactSha256": "4f93bd9b07d235c6f5036d956d32513e3865472dca18986072b7f89fcbe229e7"
+    },
+    "applicationReceipt": {
+      "path": "Data/Effects/Imported/Valtan/ProjectTunedFourSlashWeaponTrail/Valtan.four-slash-weapon-trail.application-receipt.v1.json",
+      "rawSha256": "bcbcce17df25538fccc5cfb1eb0b49e1ddb6623b9ad82ee23d3abc419db47e87",
+      "artifactSha256": "ec6c6b8fd41faff5dc0e801b16104d0eb8263593aa25b3b02aeffb01fdb64536"
+    },
+    "candidateDocument": {
+      "path": "Data/Effects/Imported/Valtan/ProjectTunedFourSlashWeaponTrail/effect.valtan.four-slash.active.clip-02.weapon-bone-trail.candidate.effect.json",
+      "rawSha256": "5b0b5818860cc3f6ef5ca92adb444c2a04e264c745ff2e084cd9820a6fd1820e",
+      "canonicalSha256": "2cb285209f1992ddd14491f3b42348b82584b3e0493c6697332e02247f478c92",
+      "elementId": "project-four-slash-weapon-bone-trail",
+      "elementSha256": "1ba4d91aa4f972922f9a8b40c7c12fb0e42fd1656714fd307c03876d2f5d4ad3"
+    },
+    "safeSourceView": {
+      "rawSha256": "509f16118320f15a71dce796e929ffb3be2d410fcf7e11bf235e139c028d093f",
+      "canonicalSha256": "8d0b52fe15eac0c92b0d66dc5cb557a8a84ee43d4b6705f77d5fa75ab8f008a4",
+      "elementCount": 20,
+      "elementIds": [
+        "safe-gap.trail.6dc8db3e4616f2794149d838",
+        "source.04edcf16319413095ac9",
+        "source.138c3066c35bd35ced3b",
+        "source.19cdd9609c40c481fd61",
+        "source.1d919e07eba8f62459a0",
+        "source.26fee880d7cf95010685",
+        "source.302fa0353d1a5b91fa4a",
+        "source.463b9fd15c6d4bf109a3",
+        "source.549e2b77c370b8cce0e2",
+        "source.54a6d77c6e05d00a5a28",
+        "source.55f794c460a502afd258",
+        "source.60142aaf325769ce6552",
+        "source.627ba18f9402253dccdf",
+        "source.70fc470be6dc7ab31792",
+        "source.7e08a4a792dbc4be1e1f",
+        "source.a3d2393e329511734e59",
+        "source.a503b4e0fc53baf20adf",
+        "source.dfdee1e390b79e0d9dd8",
+        "source.ec9e158d491edbba5dc0",
+        "source.fc5e1f880cbd6e53a42a"
+      ]
+    },
+    "canonicalOutput": {
+      "path": "Data/Effects/Authored/effect.valtan.four-slash.active.clip-02.effect.json",
+      "rawSha256": "e87239d7c18485c34acead4935d04488fd6fdefbe9fbb1a21391432ef8e7d85f",
+      "canonicalSha256": "c850e1d02c8eafc2dd79355af72983864e42f8aa65919407b839aa9abc28e358",
+      "elementCount": 21,
+      "elementIds": [
+        "safe-gap.trail.6dc8db3e4616f2794149d838",
+        "source.04edcf16319413095ac9",
+        "source.138c3066c35bd35ced3b",
+        "source.19cdd9609c40c481fd61",
+        "source.1d919e07eba8f62459a0",
+        "source.26fee880d7cf95010685",
+        "source.302fa0353d1a5b91fa4a",
+        "source.463b9fd15c6d4bf109a3",
+        "source.549e2b77c370b8cce0e2",
+        "source.54a6d77c6e05d00a5a28",
+        "source.55f794c460a502afd258",
+        "source.60142aaf325769ce6552",
+        "source.627ba18f9402253dccdf",
+        "source.70fc470be6dc7ab31792",
+        "source.7e08a4a792dbc4be1e1f",
+        "source.a3d2393e329511734e59",
+        "source.a503b4e0fc53baf20adf",
+        "source.dfdee1e390b79e0d9dd8",
+        "source.ec9e158d491edbba5dc0",
+        "source.fc5e1f880cbd6e53a42a",
+        "project-four-slash-weapon-bone-trail"
+      ]
+    },
+    "projection": {
+      "insertedElementIndex": 20,
+      "elementId": "project-four-slash-weapon-bone-trail",
+      "sourceNode": "project-authored:valtan.four-slash.active.clip-02.weapon-bone-trail",
+      "runtimeAnchorSlotId": "VALTAN_FOUR_SLASH_WEAPON_R",
+      "runtimeBoneName": "b_wp_r_01",
+      "elementSha256": "1ba4d91aa4f972922f9a8b40c7c12fb0e42fd1656714fd307c03876d2f5d4ad3",
+      "elementValue": {
+        "id": "project-four-slash-weapon-bone-trail",
+        "displayName": "FourSlash weapon-bone Trail (bounded)",
+        "groupId": "valtan.project.four-slash.weapon-trail",
+        "sourceNode": "project-authored:valtan.four-slash.active.clip-02.weapon-bone-trail",
+        "visible": true,
+        "kind": "trail",
+        "resources": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_auraline_02.dds"
+          },
+          {
+            "slotId": "noise",
+            "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_002.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr",
+          "renderProfile": "alpha_two_sided_depth_read",
+          "sourceProfile": {
+            "enabled": false
+          }
+        },
+        "actionCueAttachment": {
+          "enabled": true,
+          "follow": true,
+          "sourceAnchorSlotId": "b_wp_r_01",
+          "runtimeAnchorSlotId": "VALTAN_FOUR_SLASH_WEAPON_R",
+          "runtimeBoneName": "b_wp_r_01",
+          "snapshotRootSourceBasisYawDegrees": 0,
+          "socketLocalTransform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "transformInheritance": {
+          "enabled": false,
+          "masterElementId": ""
+        },
+        "detail": {
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "velocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "color": {
+            "offset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "multiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "clip": 0.0,
+            "emissiveIntensity": 1.0,
+            "distortionIntensity": 0.0,
+            "distortionOnBaseMaterial": false,
+            "radialTime": 0.0,
+            "radialIntensity": 0.0
+          },
+          "uv": {
+            "start": [
+              0.0,
+              0.0
+            ],
+            "speed": [
+              0.0,
+              0.0
+            ],
+            "wave": false,
+            "waveAmplitude": [
+              0.0,
+              0.0
+            ],
+            "waveFrequency": 1.0,
+            "sequence": false,
+            "loop": true,
+            "sequenceTerm": 0.1,
+            "tileColumns": 1,
+            "tileRows": 1,
+            "tileIndex": 0
+          },
+          "timing": {
+            "startDelaySeconds": 1.6400439739227295,
+            "lifeTimeSeconds": 0.1,
+            "afterImageSeconds": 0.0,
+            "dissolveStartNormalized": 1.0
+          },
+          "mesh": {
+            "useModelMaterial": true
+          },
+          "sprite": {
+            "billboard": true
+          },
+          "decal": {
+            "size": [
+              1.0,
+              1.0
+            ],
+            "depth": 0.25
+          },
+          "linearLerp": {
+            "position": false,
+            "endPosition": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotation": false,
+            "endRotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "revolution": false,
+            "endRevolutionDegreesPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": false,
+            "endScale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "velocity": false,
+            "endVelocityPerSecond": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorOffset": false,
+            "endColorOffset": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "colorMultiply": false,
+            "endColorMultiply": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "emissiveIntensity": false,
+            "endEmissiveIntensity": 1.0
+          },
+          "particle": {
+            "maxParticles": 64,
+            "spawnRatePerSecond": 0.0,
+            "burstCount": 0,
+            "randomSeed": 1,
+            "lifeTimeSeconds": [
+              0.6000000238418579,
+              0.6000000238418579
+            ],
+            "initialPositionMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialPositionMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMin": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "initialVelocityMax": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "acceleration": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "startSize": [
+              0.2,
+              0.2
+            ],
+            "endSize": [
+              0.0,
+              0.0
+            ],
+            "localSpace": true,
+            "billboard": true
+          },
+          "trail": {
+            "maxPoints": 64,
+            "pointLifeTimeSeconds": 0.35,
+            "sampleIntervalSeconds": 0.0166667,
+            "minimumDistance": 0.01,
+            "startWidth": 0.2,
+            "endWidth": 0.0,
+            "faceCamera": true,
+            "tilingDistanceWorldUnits": 5.0,
+            "distanceTessellationStepWorldUnits": 0.05
+          },
+          "afterImage": {
+            "sampleIntervalSeconds": 0.05,
+            "maxCopies": 16,
+            "alphaExponent": 1.0
+          },
+          "light": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "range": 0.0,
+            "intensity": 0.0,
+            "color": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "ambient": [
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "falloffExponent": 0.0
+          },
+          "screenPost": {
+            "enabled": false,
+            "profileId": "",
+            "status": "reconstructed_profile",
+            "intensity": 0.0,
+            "secondaryIntensity": 0.0,
+            "frequency": 0.0,
+            "tint": [
+              1.0,
+              1.0,
+              1.0,
+              1.0
+            ],
+            "randomSeed": 1
+          }
+        },
+        "sourceRecipe": {
+          "enabled": false,
+          "rendererShape": "",
+          "emitterDelaySeconds": 0,
+          "emitterDurationSeconds": 0,
+          "emitterLoopCount": 1,
+          "bursts": [],
+          "modules": []
+        },
+        "sourcePresentation": {
+          "enabled": false
+        }
+      }
+    }
+  },
   "trailProjections": [
     {
       "projectionId": "safe-gap.adapter-projection.196629f88cf59098ff45254d68f7a6d1a0b44599b1d1a339416d85ca0f92f308",
@@ -491,7 +940,12 @@
     "animationTrailProjectionCount": 6,
     "cascadeRibbonProjectionCount": 1,
     "preservedUnresolvedTrailRowCount": 6,
-    "canonicalMutationFileCount": 6
+    "canonicalMutationFileCount": 6,
+    "retiredBossRootCueCount": 2,
+    "combatObjectVisualCount": 2,
+    "ownershipTransferAddedCatalogCount": 1,
+    "ownershipTransferRetiredCatalogCount": 1,
+    "downstreamExtensionCount": 1
   },
-  "artifactSha256": "5e857ae3bff9b1195a517d7c75d474988d68173a8e19831160d824dda319f875"
+  "artifactSha256": "afd7ef441a7d05e37f3540dcafb55472472f25b85c0a084b16b08da59ac58421"
 }

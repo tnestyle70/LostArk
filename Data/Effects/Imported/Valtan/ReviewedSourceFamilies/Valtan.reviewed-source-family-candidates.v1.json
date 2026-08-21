@@ -20,22 +20,32 @@
     },
     "cueDocument": {
       "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
-      "sha256": "1501a9409f2491255b46d0add949ce5fd2aab910e94a6aae4ce11d8594fce16a",
+      "sha256": "7da067b1e9407ea14c3ec983235a8c2e55f04aea5443a94f41da0adaa120943e",
       "formatVersion": 2
     },
     "effectCatalog": {
       "path": "Data/Effects/EffectCatalog.json",
-      "sha256": "9d7f6fb4c511eafd193ea35ad79fdc0674a8aa0a5bb34ded23b6c1b0a8cd3849",
+      "sha256": "2ae173927ee117e1bbd4e9c1c9da68d5dcb21c983df9774279aabdef7e2a4d86",
+      "formatVersion": 1
+    },
+    "bossCatalog": {
+      "path": "Data/Actors/BossCatalog.json",
+      "sha256": "c4619be9983e30c257eefd3df54860e9d879eb014419b65753facb32e351c71f",
+      "formatVersion": 3
+    },
+    "valtanCombatObjects": {
+      "path": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "sha256": "dfca82b92544a2f4bb06ec887993a81345d1299c5336c4db0e9c1e122ab2500c",
       "formatVersion": 1
     },
     "sourceInventoryRepositorySources": [
       {
         "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-        "sha256": "fe171539c1290b0250560c85c54c30b1c1aa4c90d6f26e392381f3a06c4a3ba1"
+        "sha256": "5eb495dab34d47c80b0f12e5230deaf64570da06b630f9cc5563ed69b4c88118"
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
-        "sha256": "4e035969255cfcb50322668ecb01bf62f86134fb4cdb0637a0bf4b89609ea3f2"
+        "sha256": "088fff81325d25ce40a0f302d149f45700334d116825b8a4fdc8b39818857a8a"
       },
       {
         "path": "Data/Animation/Authored/Valtan/Valtan.actionbindings.json",
@@ -22910,7 +22920,7 @@
           "semanticStageId": "PROJECTILE",
           "gameplayActionId": "valtan.attack.red-blade-wave.active",
           "clipOccurrenceId": "valtan.attack.red-blade-wave.active.clip.01",
-          "cueDisposition": "REUSE_EXISTING_V2_NO_MUTATION",
+          "cueDisposition": "RETIRED_V2_REPLACED_BY_EXACT_COMBAT_OBJECT_OWNER",
           "cueRow": {
             "bindingId": "cue.valtan.red-blade-wave.active",
             "occurrenceId": "cue.valtan.red-blade-wave.active.occurrence.01",
@@ -22949,7 +22959,49 @@
             "occurrence-key.eaa852de26e0513f499827a18537d56b8d313f90c9322e2ac3ea2ba823642469"
           ],
           "sourceProjectionCount": 5,
-          "candidateProjectionDisposition": "CANONICAL_CANDIDATE_SOURCE"
+          "candidateProjectionDisposition": "CANONICAL_CANDIDATE_SOURCE",
+          "combatObjectOwner": {
+            "ownerKind": "BOSS_COMBAT_OBJECT",
+            "bossArchetypeId": "BOSS_VALTAN",
+            "bossCatalogVisualRow": {
+              "combatObjectArchetypeId": "combatobject.valtan.red-blade-wave.projectile",
+              "clientVisualId": "combatobject.visual.valtan.red-blade-wave.projectile.v1",
+              "effectAssetId": "effect.valtan.red-blade-wave.active"
+            },
+            "combatObjectRow": {
+              "combatObjectArchetypeId": "combatobject.valtan.red-blade-wave.projectile",
+              "clientVisualId": "combatobject.visual.valtan.red-blade-wave.projectile.v1",
+              "ownerPatternId": "VALTAN_RED_BLADE_WAVE",
+              "ownerStageActionId": "valtan.attack.red-blade-wave.active",
+              "kind": "MISSILE",
+              "originPolicy": "BOSS_POSITION",
+              "directionPolicy": "PATTERN_FACING_AT_SPAWN",
+              "offsetForwardM": 3.0,
+              "offsetRightM": 0.0,
+              "speedMps": 24.444445,
+              "maximumDistanceM": 22.0,
+              "lifeMs": 900,
+              "hits": [
+                {
+                  "trigger": "CONTACT",
+                  "atMs": 0,
+                  "repeatCount": 1,
+                  "repeatIntervalMs": 0,
+                  "hitShape": "CIRCLE",
+                  "hitOuterRadius": 2.0,
+                  "hitInnerRadius": 0.0,
+                  "hitAngleDegrees": 0.0,
+                  "hitLength": 0.0,
+                  "hitHalfWidth": 0.0,
+                  "serverDamageProfileId": "damage.valtan.red-blade-wave",
+                  "pushRangeM": 0.0,
+                  "pushMs": 0,
+                  "knockdown": false,
+                  "downMs": 0
+                }
+              ]
+            }
+          }
         }
       ],
       "catalogDisposition": "REUSE_EXISTING_NO_MUTATION",
@@ -25103,11 +25155,11 @@
         "authoringPath": "Effects/Authored/effect.valtan.whirlwind.recovery.effect.json"
       },
       "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.whirlwind.recovery.effect.json",
-      "authoredDocumentSha256": "917809de2525fd8a72f351ee7e1ef8328aac9cca395a670aafceaf781ae31865",
+      "authoredDocumentSha256": "9c32e2de3194651bd9b1e396a416d3dfb69d0acea5d788db2022ea4ec21d1505",
       "reconcile": {
         "effectAssetId": "effect.valtan.whirlwind.recovery",
-        "existingElementCount": 11,
-        "preservedExistingElementCount": 11,
+        "existingElementCount": 14,
+        "preservedExistingElementCount": 14,
         "legacyGenericRetireCandidates": [
           "par_n_mrhg_trail_01.em00",
           "par_n_mrhg_trail_01.em01",
@@ -25167,10 +25219,22 @@
           {
             "elementId": "source.e8a5de96d95b1448332c",
             "disposition": "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW"
+          },
+          {
+            "elementId": "project-valtan-whirlwind-recovery-weapon-trail.emitter5259",
+            "disposition": "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW"
+          },
+          {
+            "elementId": "project-valtan-whirlwind-recovery-weapon-trail.emitter5260",
+            "disposition": "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW"
+          },
+          {
+            "elementId": "project-valtan-whirlwind-recovery-weapon-trail.emitter5258",
+            "disposition": "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW"
           }
         ],
         "preservationCounts": {
-          "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW": 3,
+          "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW": 6,
           "REPORT_ONLY_GENERIC_DEFAULT_RETIRE_CANDIDATE_NO_DELETE": 8
         },
         "legacyRetirementDisposition": "REPORT_ONLY_UNVERIFIED_DEFAULT_SIGNATURE_NO_DELETE",
@@ -25198,8 +25262,8 @@
     "cueIdentityMismatchProjectionCount": 0,
     "negativeTimingProjectionCount": 86,
     "outsideCueWindowProjectionCount": 0,
-    "preservedAuthoredElementCount": 1377,
-    "preservedExistingSourceOrImportedRowCount": 287,
+    "preservedAuthoredElementCount": 1380,
+    "preservedExistingSourceOrImportedRowCount": 290,
     "preservedProjectAuthoredOrTunedRowCount": 0,
     "legacyGenericRetireCandidateCount": 1090,
     "missingOnlyAddElementCount": 0,

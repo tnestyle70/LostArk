@@ -11,7 +11,7 @@
     "cascadeRibbon": "TYPED_ADAPTER_REQUIRED"
   },
   "inputIdentity": {
-    "inventoryCanonicalSha256": "e7672c547e17e377f7a966060813d283030cd86e5f59eb7632c337baf5148e74",
+    "inventoryCanonicalSha256": "e3f03cdfaaa3e9adbdc442d037607cac488413d65a25f818bf66eb52c4892aad",
     "selectionCanonicalSha256": "a9ca450b635509269f64adc23af4b06bb262c93473ef2e16f2f85b6769defaa4",
     "sourceGraphEnrichment": {
       "status": "SOURCE_GRAPH_TYPED_RECIPE_DECODED",
@@ -3877,5 +3877,5 @@
     "droppedTrailAdapterRowCount": 0,
     "duplicateAdapterTargetCount": 0
   },
-  "artifactSha256": "85726bc0c1ddd35159d5cbe13edc35cbd3851282c0cd255850cf51dc9ef36b4f"
+  "artifactSha256": "55a7e66c23ccf7afee178ec5aa6bbf394c2602d0d27f018d500c55c18094b658"
 }

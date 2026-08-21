@@ -123,6 +123,9 @@
 	<ClCompile Include="..\..\..\Client\Private\ValtanPatternEffectCueDocument.cpp">
 	  <Link>Client\ValtanPatternEffectCueDocument.cpp</Link>
 	</ClCompile>
+	<ClCompile Include="..\..\..\Client\Private\ValtanPatternTree.cpp">
+	  <Link>Client\ValtanPatternTree.cpp</Link>
+	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\CharacterSelectionState.cpp">
 	  <Link>Client\CharacterSelectionState.cpp</Link>
 	</ClCompile>
@@ -246,6 +249,9 @@
 	</ClInclude>
 	<ClInclude Include="..\..\..\Client\Public\ValtanPatternEffectCueDocument.h">
 	  <Link>Client\ValtanPatternEffectCueDocument.h</Link>
+	</ClInclude>
+	<ClInclude Include="..\..\..\Client\Public\ValtanPatternTree.h">
+	  <Link>Client\ValtanPatternTree.h</Link>
 	</ClInclude>
   </ItemGroup>
   <ItemGroup>

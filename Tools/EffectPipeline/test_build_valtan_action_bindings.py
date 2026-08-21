@@ -32,7 +32,7 @@ class ValtanActionBindingBuilderTests(unittest.TestCase):
         )
         self.assertEqual(rows, [expected])
 
-    def test_canonical_v2_build_preserves_all_128_occurrences(self) -> None:
+    def test_canonical_v2_build_preserves_all_137_occurrences(self) -> None:
         document, receipt = bindings.build_document()
         stages = [
             stage
@@ -41,11 +41,11 @@ class ValtanActionBindingBuilderTests(unittest.TestCase):
         ]
         self.assertEqual(document["formatVersion"], 2)
         self.assertEqual(receipt["formatVersion"], 2)
-        self.assertEqual(len(stages), 128)
+        self.assertEqual(len(stages), 137)
         occurrence_ids = [stage["clipOccurrenceId"] for stage in stages]
         self.assertEqual(len(occurrence_ids), len(set(occurrence_ids)))
         self.assertIn("valtan.attack.swing.active.clip.02", occurrence_ids)
-        self.assertEqual(receipt["summary"]["authoredStageCount"], 128)
+        self.assertEqual(receipt["summary"]["authoredStageCount"], 137)
 
     def test_v2_rejects_non_final_loop_bad_rate_and_bad_basis(self) -> None:
         base = {

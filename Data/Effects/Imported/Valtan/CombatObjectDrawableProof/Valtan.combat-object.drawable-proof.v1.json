@@ -1,0 +1,200 @@
+{
+  "schema": "lostark.valtan-combat-object-drawable-proof",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "evidence": {
+    "kind": "EXECUTED_WARP_DRAWABLE_PROOF",
+    "runtimeSweepPath": "Data/Effects/Imported/Valtan/CombatObjectDrawableProof/Valtan.combat-object.runtime-sweep.v1.json",
+    "runtimeSweepRawSha256": "35e670041de599583030e9a362fdf8023f442399dc9750ef484e02e80eda4933",
+    "runtimeSweepCanonicalSha256": "3539c8a4a8a8c8c485c9d6f894e4a6194498cbbcb6fa932430f09c3bc0765833",
+    "renderer": {
+      "driver": "D3D_DRIVER_TYPE_WARP",
+      "vendorId": 5140,
+      "deviceId": 140
+    },
+    "resourceRoot": "Client/Bin/Resources"
+  },
+  "inputs": [
+    {
+      "role": "BOSS_CATALOG",
+      "path": "Data/Actors/BossCatalog.json",
+      "rawSha256": "c4619be9983e30c257eefd3df54860e9d879eb014419b65753facb32e351c71f"
+    },
+    {
+      "role": "COMBAT_OBJECT_CATALOG",
+      "path": "Data/Encounters/Valtan/ValtanCombatObjects.json",
+      "rawSha256": "dfca82b92544a2f4bb06ec887993a81345d1299c5336c4db0e9c1e122ab2500c"
+    },
+    {
+      "role": "SKY_AXE_EFFECT",
+      "path": "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json",
+      "rawSha256": "f7c36720c097c773c91eff4a48245f93e319ddd2c44f0e5c66ad218ce6840a7e"
+    },
+    {
+      "role": "RED_BLADE_EFFECT",
+      "path": "Data/Effects/Authored/effect.valtan.red-blade-wave.active.effect.json",
+      "rawSha256": "28cd17b01e25ea3e0866232511850eb91267ffe07a2ca8c7a8f461cb66a923a5"
+    },
+    {
+      "role": "SOURCE_OCCURRENCE_INVENTORY",
+      "path": "Data/Effects/Imported/Valtan/Valtan.source-occurrence-inventory.v1.json",
+      "rawSha256": "95ae4908ae7c80709f1087ccf12037a97f594f8386c949c4c7e7341b3b7f8ff7"
+    }
+  ],
+  "lifecycleReuse": {
+    "mode": "--valtan-combat-object-presentation-fast",
+    "assertionCount": 9,
+    "failureCount": 0,
+    "facts": [
+      "LATE_INITIAL_AGE_RESOLUTION",
+      "STOP_ONCE",
+      "ATOMIC_SNAPSHOT_ROLLBACK",
+      "BOUNDED_THREE_ATTEMPT_RETRY",
+      "UPDATE_FAILURE_STOP_AND_RETRY"
+    ],
+    "highJumpOwnerStopSeconds": 1.9
+  },
+  "targets": [
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+      "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
+      "effectAssetId": "effect.valtan.sky-axe.active",
+      "ownerPatternId": "VALTAN_HIGH_JUMP",
+      "ownerStageActionId": "valtan.attack.high-jump.airborne",
+      "kind": "FIXED_AREA",
+      "rootPolicy": "FIXED_WORLD_ROOT",
+      "classification": "PROJECT_AUTHORED_OFFICIAL_GEOMETRY",
+      "sourceExactClaim": false,
+      "sampleLabels": [
+        "spawn",
+        "pre-impact",
+        "late-initial-seek-impact-start",
+        "impact-midlife",
+        "impact-life-end"
+      ],
+      "rootWorldDistinctCount": 1,
+      "submittedBoundsDistinctCount": 3,
+      "auditedElements": [
+        {
+          "elementId": "mesh.valtan.sky-axe.descent",
+          "family": "MESH",
+          "preparedSamples": 5,
+          "attemptedSamples": 2,
+          "submittedDraws": 2,
+          "committedDraws": 4,
+          "failedDraws": 0
+        },
+        {
+          "elementId": "decal.valtan.sky-axe.target",
+          "family": "DECAL",
+          "preparedSamples": 5,
+          "attemptedSamples": 2,
+          "submittedDraws": 2,
+          "committedDraws": 2,
+          "failedDraws": 0
+        },
+        {
+          "elementId": "particle.valtan.sky-axe.impact",
+          "family": "SPRITE",
+          "preparedSamples": 5,
+          "attemptedSamples": 2,
+          "submittedDraws": 2,
+          "committedDraws": 2,
+          "failedDraws": 0
+        }
+      ],
+      "resources": [
+        "Character/Valtan/ValtanWeapon.wmodel",
+        "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_011.dds",
+        "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_032.dds",
+        "Effect/Valtan/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds"
+      ],
+      "failedDraws": 0
+    },
+    {
+      "combatObjectArchetypeId": "combatobject.valtan.red-blade-wave.projectile",
+      "clientVisualId": "combatobject.visual.valtan.red-blade-wave.projectile.v1",
+      "effectAssetId": "effect.valtan.red-blade-wave.active",
+      "ownerPatternId": "VALTAN_RED_BLADE_WAVE",
+      "ownerStageActionId": "valtan.attack.red-blade-wave.active",
+      "kind": "MISSILE",
+      "rootPolicy": "MOVING_WORLD_ROOT",
+      "classification": "SOURCE_RECIPE_IDENTITY_PRESERVED",
+      "sourceExactClaim": false,
+      "sampleLabels": [
+        "spawn-zero-step",
+        "first-fixed-step",
+        "late-initial-seek-mid-flight",
+        "pre-despawn"
+      ],
+      "rootWorldDistinctCount": 4,
+      "submittedBoundsDistinctCount": 3,
+      "auditedElements": [
+        {
+          "elementId": "source.055adf57f38ac8f25be3",
+          "family": "SPRITE",
+          "preparedSamples": 4,
+          "attemptedSamples": 4,
+          "submittedDraws": 2,
+          "committedDraws": 2,
+          "failedDraws": 0
+        },
+        {
+          "elementId": "source.5cb81ed1867daa4c331a",
+          "family": "SPRITE",
+          "preparedSamples": 4,
+          "attemptedSamples": 4,
+          "submittedDraws": 1,
+          "committedDraws": 1,
+          "failedDraws": 0
+        },
+        {
+          "elementId": "source.5d987e41721843a8d390",
+          "family": "SPRITE",
+          "preparedSamples": 4,
+          "attemptedSamples": 4,
+          "submittedDraws": 3,
+          "committedDraws": 3,
+          "failedDraws": 0
+        },
+        {
+          "elementId": "source.94fe8920096dda4a4e73",
+          "family": "SPRITE",
+          "preparedSamples": 4,
+          "attemptedSamples": 4,
+          "submittedDraws": 3,
+          "committedDraws": 3,
+          "failedDraws": 0
+        },
+        {
+          "elementId": "source.f997148180378f188150",
+          "family": "SPRITE",
+          "preparedSamples": 4,
+          "attemptedSamples": 4,
+          "submittedDraws": 3,
+          "committedDraws": 3,
+          "failedDraws": 0
+        }
+      ],
+      "resources": [
+        "Effect/Valtan/Textures/FX_TEX_00/fx_a_hit_008.dds",
+        "Effect/Valtan/Textures/FX_TEX_04/fx_f_ring_001.dds",
+        "Effect/Valtan/Textures/FX_TEX_05/fx_m_atypical_n_001.dds",
+        "Effect/Valtan/Textures/FX_TEX_05/fx_o_sector_03.dds",
+        "Effect/Valtan/Textures/FX_TEX_HIGH_00/fx_c_glow_008.dds",
+        "Effect/Valtan/Textures/FX_TEX_HIGH_01/fx_f_electric_005.dds"
+      ],
+      "failedDraws": 0
+    }
+  ],
+  "safety": {
+    "canonicalAuthoringMutationPerformed": false,
+    "cueBindingSequenceMutationPerformed": false,
+    "colorPipelineMutationPerformed": false,
+    "ordinaryDocumentPreviewIsolationUsed": false,
+    "exactElementDiagnosticsUsed": true,
+    "visualFidelityClaimed": false
+  },
+  "disposition": "PROOF_PASS_NO_AUTHORED_MUTATION",
+  "artifactSha256": "53a99956853f89e9a0a24e78feb87024eb91029a5fc6ab4945fb7f9b9c40c455"
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-four-slash-weapon-trail-runtime-sweep.schema.json",
+  "title": "Valtan FourSlash weapon-bone Trail headless runtime sweep",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "resourceRoot",
+    "candidatePath",
+    "candidateRawSha256",
+    "candidateTypedCodecSha256",
+    "effectAssetId",
+    "elementId",
+    "runtimeAnchorSlotId",
+    "runtimeBoneName",
+    "sampleRateHz",
+    "positiveMovingBone",
+    "stationaryControl",
+    "missingAnchorControl",
+    "disposition"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.valtan-four-slash-weapon-trail-runtime-sweep" },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "resourceRoot": { "type": "string", "minLength": 1 },
+    "candidatePath": { "type": "string", "minLength": 1 },
+    "candidateRawSha256": { "$ref": "#/$defs/sha256" },
+    "candidateTypedCodecSha256": { "$ref": "#/$defs/sha256" },
+    "effectAssetId": { "const": "effect.valtan.four-slash.active.clip-02" },
+    "elementId": { "const": "project-four-slash-weapon-bone-trail" },
+    "runtimeAnchorSlotId": { "const": "VALTAN_FOUR_SLASH_WEAPON_R" },
+    "runtimeBoneName": { "const": "b_wp_r_01" },
+    "sampleRateHz": { "const": 60 },
+    "positiveMovingBone": { "$ref": "#/$defs/positive" },
+    "stationaryControl": { "$ref": "#/$defs/stationary" },
+    "missingAnchorControl": { "$ref": "#/$defs/missing" },
+    "disposition": { "const": "DRAWABLE_PROOF_PASS" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "vec3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" }
+    },
+    "renderer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preparedSamples", "attemptedSamples", "submittedDraws", "suppressedDraws", "failedDraws", "committedDraws", "transactionCommitted"],
+      "properties": {
+        "preparedSamples": { "type": "integer", "minimum": 0 },
+        "attemptedSamples": { "type": "integer", "minimum": 0 },
+        "submittedDraws": { "type": "integer", "minimum": 0 },
+        "suppressedDraws": { "type": "integer", "minimum": 0 },
+        "failedDraws": { "type": "integer", "minimum": 0 },
+        "committedDraws": { "type": "integer", "minimum": 0 },
+        "transactionCommitted": { "type": "boolean" }
+      }
+    },
+    "positive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerSampleCount", "rootWorldDistinctCount", "anchorWorldDistinctCount", "trailPointCount", "distinctTrailPointCount", "finiteTrailPointCount", "cumulativeDistance", "firstWorldPosition", "lastWorldPosition", "renderer"],
+      "properties": {
+        "providerSampleCount": { "type": "integer", "minimum": 2 },
+        "rootWorldDistinctCount": { "const": 1 },
+        "anchorWorldDistinctCount": { "type": "integer", "minimum": 2 },
+        "trailPointCount": { "type": "integer", "minimum": 2 },
+        "distinctTrailPointCount": { "type": "integer", "minimum": 2 },
+        "finiteTrailPointCount": { "type": "integer", "minimum": 2 },
+        "cumulativeDistance": { "type": "number", "exclusiveMinimum": 0 },
+        "firstWorldPosition": { "$ref": "#/$defs/vec3" },
+        "lastWorldPosition": { "$ref": "#/$defs/vec3" },
+        "renderer": { "$ref": "#/$defs/renderer" }
+      }
+    },
+    "stationary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerSampleCount", "rootWorldDistinctCount", "anchorWorldDistinctCount", "trailPointCount", "distinctTrailPointCount", "renderer", "segmentSuppressed"],
+      "properties": {
+        "providerSampleCount": { "type": "integer", "minimum": 2 },
+        "rootWorldDistinctCount": { "const": 1 },
+        "anchorWorldDistinctCount": { "const": 1 },
+        "trailPointCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "distinctTrailPointCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "renderer": { "$ref": "#/$defs/renderer" },
+        "segmentSuppressed": { "const": true }
+      }
+    },
+    "missing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerRejected", "playbackStatePreserved", "trailPointCountAfterReject", "status"],
+      "properties": {
+        "providerRejected": { "const": true },
+        "playbackStatePreserved": { "const": true },
+        "trailPointCountAfterReject": { "const": 0 },
+        "status": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

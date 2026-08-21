@@ -894,6 +894,8 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
         [StringComparer]::Ordinal)
     $valtanOccurrenceIds = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
+    $valtanCueActionIds = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal)
     $valtanEffectIds = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal)
     foreach ($cue in @($valtanCueDocument.cues)) {
@@ -927,6 +929,7 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
             -not $valtanOccurrenceIds.Add($occurrenceId)) {
             throw "Valtan pattern Effect cue identity is invalid or duplicated: $bindingId"
         }
+        [void]$valtanCueActionIds.Add($actionId)
         [void]$valtanEffectIds.Add($effectAssetId)
         $stage = $null
         if (-not $stageByActionId.TryGetValue($actionId, [ref]$stage) -or
@@ -1022,6 +1025,9 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
         [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $clientVisualIds =
         [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $combatObjectVisualByArchetype =
+        [Collections.Generic.Dictionary[string,object]]::new(
+            [StringComparer]::Ordinal)
     foreach ($visual in $combatObjectVisuals) {
         Assert-ExactPropertyOrder $visual @(
             'combatObjectArchetypeId','clientVisualId','effectAssetId') `
@@ -1035,11 +1041,69 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
         Assert-StableId $clientVisualId 'BOSS_VALTAN clientVisualId'
         Assert-StableId $effectAssetId 'BOSS_VALTAN combat-object EffectAssetId'
         if (-not $combatObjectArchetypeIds.Add($combatObjectArchetypeId) -or
-            -not $clientVisualIds.Add($clientVisualId) -or
-            -not $valtanEffectIds.Add($effectAssetId)) {
-            throw "BOSS_VALTAN combat-object Effect ownership is duplicated: $effectAssetId"
+            -not $clientVisualIds.Add($clientVisualId)) {
+            throw ("BOSS_VALTAN combat-object visual identity is duplicated: " +
+                "$combatObjectArchetypeId")
         }
+        [void]$valtanEffectIds.Add($effectAssetId)
+        $combatObjectVisualByArchetype.Add(
+            $combatObjectArchetypeId, [pscustomobject]@{
+                ClientVisualId = $clientVisualId
+                EffectAssetId = $effectAssetId
+            })
         [void]$effectIds.Add($effectAssetId)
+    }
+
+    $combatObjectPath = [IO.Path]::GetFullPath((Join-Path $RootPath `
+        'Encounters\Valtan\ValtanCombatObjects.json'))
+    $combatObjectDocument = Read-JsonDocument $combatObjectPath
+    Assert-ExactPropertyOrder $combatObjectDocument @(
+        'schema','formatVersion','encounterId','objects') `
+        'Valtan combat-object root'
+    if ((Get-RequiredProperty $combatObjectDocument 'schema' String) -cne
+            'lostark.valtan-combat-objects' -or
+        [uint32](Get-RequiredProperty $combatObjectDocument `
+            'formatVersion' Number) -ne 1 -or
+        (Get-RequiredProperty $combatObjectDocument 'encounterId' String) -cne
+            'ENCOUNTER_VALTAN') {
+        throw 'Valtan combat-object document header is invalid.'
+    }
+    $combatObjectRows = @((Get-RequiredProperty `
+        $combatObjectDocument 'objects' Array))
+    if ($combatObjectRows.Count -ne $combatObjectVisuals.Count) {
+        throw 'Valtan combat-object owner and BossCatalog visual counts differ.'
+    }
+    $resolvedCombatObjectOwners =
+        [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($combatObject in $combatObjectRows) {
+        $combatObjectArchetypeId = Get-RequiredProperty `
+            $combatObject 'combatObjectArchetypeId' String
+        $clientVisualId = Get-RequiredProperty `
+            $combatObject 'clientVisualId' String
+        $ownerPatternId = Get-RequiredProperty `
+            $combatObject 'ownerPatternId' String
+        $ownerStageActionId = Get-RequiredProperty `
+            $combatObject 'ownerStageActionId' String
+        $visual = $null
+        $stage = $null
+        if (-not $combatObjectVisualByArchetype.TryGetValue(
+                $combatObjectArchetypeId, [ref]$visual) -or
+            $visual.ClientVisualId -cne $clientVisualId -or
+            -not $resolvedCombatObjectOwners.Add($combatObjectArchetypeId) -or
+            -not $stageByActionId.TryGetValue(
+                $ownerStageActionId, [ref]$stage) -or
+            $stage.PatternId -cne $ownerPatternId) {
+            throw ("Valtan combat-object presentation owner does not join " +
+                "BossCatalog and encounter: $combatObjectArchetypeId")
+        }
+        if ($valtanCueActionIds.Contains($ownerStageActionId)) {
+            throw ("Valtan combat-object owner action also has a boss-root " +
+                "Effect cue: $ownerStageActionId")
+        }
+    }
+    if ($resolvedCombatObjectOwners.Count -ne
+        $combatObjectVisualByArchetype.Count) {
+        throw 'BOSS_VALTAN combat-object Effect visual has no exact owner.'
     }
 
     $authoredValtanEffectIds = [Collections.Generic.HashSet[string]]::new(

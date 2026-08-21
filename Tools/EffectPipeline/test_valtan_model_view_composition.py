@@ -56,7 +56,7 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             )
         )
         self.assertEqual(catalog["schema"], "lostark.boss-catalog")
-        self.assertEqual(catalog["formatVersion"], 1)
+        self.assertEqual(catalog["formatVersion"], 3)
         self.assertEqual(len(catalog["bosses"]), 1)
         valtan = catalog["bosses"][0]
         self.assertEqual(valtan["archetypeId"], "BOSS_VALTAN")
@@ -74,6 +74,25 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             valtan["clientPresentationId"], "boss.valtan.client.v1"
         )
         self.assertEqual(valtan["presentationStatus"], "complete")
+        self.assertEqual(
+            valtan["combatObjectVisuals"],
+            [
+                {
+                    "combatObjectArchetypeId":
+                        "combatobject.valtan.high-jump.target-axe",
+                    "clientVisualId":
+                        "combatobject.visual.valtan.high-jump.target-axe.v1",
+                    "effectAssetId": "effect.valtan.sky-axe.active",
+                },
+                {
+                    "combatObjectArchetypeId":
+                        "combatobject.valtan.red-blade-wave.projectile",
+                    "clientVisualId":
+                        "combatobject.visual.valtan.red-blade-wave.projectile.v1",
+                    "effectAssetId": "effect.valtan.red-blade-wave.active",
+                },
+            ],
+        )
 
     def test_product_bundle_bytes_are_pinned(self) -> None:
         expected = {
@@ -86,8 +105,8 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                 "baffbd5268f216267d1cba8fb9eaf2b58276122ddd7755d18787f7dd9bb9d3da",
             ),
             self.animset_path: (
-                41_079_878,
-                "dde1ac5a4bb2fdd579ebc78ae154bb21f698e572b6a9fb3b8b0b66fd3f152ffe",
+                46_540_308,
+                "4fd71652bf4ca6b11607449b7ece83509d9b3886b1bcdde9e2dc49c5b8c561c0",
             ),
         }
         for path, (size, digest) in expected.items():
@@ -127,7 +146,10 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
             "CValtanPresentationAssetService::Ensure_Prototypes", loader
         )
         self.assertIn(
-            "Animation preview: Valtan product composition", loader
+            "HRESULT CLoader::Ready_ValtanPresentation", loader
+        )
+        self.assertIn(
+            "return CValtanPresentationAssetService::Ensure_Prototypes(", loader
         )
         self.assertIn('TEXT("Prototype_GameObject_Valtan")', panel)
         self.assertIn("CValtan::MODEL_VIEW_SCALE", panel)

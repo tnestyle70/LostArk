@@ -1,0 +1,123 @@
+{
+  "schema": "lostark.valtan-four-slash-weapon-trail-candidate",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "generator": {
+    "script": "Tools/EffectPipeline/build_valtan_four_slash_weapon_trail_candidate.py",
+    "schemaPath": "Tools/EffectPipeline/Schemas/lostark.valtan-four-slash-weapon-trail-candidate.schema.json",
+    "policyVersion": 1
+  },
+  "policy": {
+    "classification": "PROJECT_TUNED",
+    "fidelity": "BOUNDED_RECONSTRUCTION",
+    "reconcileMode": "MISSING_ONLY",
+    "candidateOnly": true,
+    "canonicalMutationPerformed": false,
+    "cueBindingMutationPerformed": false,
+    "catalogMutationPerformed": false,
+    "sourceExactClaim": false,
+    "drawableProofStatus": "NOT_ATTEMPTED"
+  },
+  "target": {
+    "patternId": "VALTAN_FOUR_SLASH",
+    "stageId": "SLASHES",
+    "actionId": "valtan.attack.four-slash.active",
+    "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+    "effectAssetId": "effect.valtan.four-slash.active.clip-02",
+    "canonicalPath": "Data/Effects/Authored/effect.valtan.four-slash.active.clip-02.effect.json",
+    "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedFourSlashWeaponTrail/effect.valtan.four-slash.active.clip-02.weapon-bone-trail.candidate.effect.json",
+    "candidateElementId": "project-four-slash-weapon-bone-trail",
+    "candidateSourceNode": "project-authored:valtan.four-slash.active.clip-02.weapon-bone-trail"
+  },
+  "inputIdentity": {
+    "canonicalDocumentRawSha256": "509f16118320f15a71dce796e929ffb3be2d410fcf7e11bf235e139c028d093f",
+    "canonicalDocumentCanonicalSha256": "8d0b52fe15eac0c92b0d66dc5cb557a8a84ee43d4b6705f77d5fa75ab8f008a4",
+    "preservedSourceElementId": "safe-gap.trail.6dc8db3e4616f2794149d838",
+    "preservedSourceElementSha256": "f55096b20690a583cac158570115315292555df23b9c67ecb13e77c4b2441ab7",
+    "preservedSourceElementAttachment": {
+      "enabled": false,
+      "follow": false,
+      "sourceAnchorSlotId": "",
+      "runtimeAnchorSlotId": "",
+      "runtimeBoneName": "",
+      "snapshotRootSourceBasisYawDegrees": 0.0,
+      "socketLocalTransform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationDegrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  },
+  "boundedProjection": {
+    "runtimeAnchorSlotId": "VALTAN_FOUR_SLASH_WEAPON_R",
+    "runtimeBoneName": "b_wp_r_01",
+    "sourceOccurrenceTimeSeconds": 1.6400439739227295,
+    "resourceClosureSha256": "72829daad784e8883e96e3619a6ea90d3551211b93dc3f9cf7841a76f9a929c5",
+    "materialClosureSha256": "d70e07b03d9ebedbb3534f3e388503afed62b6f390f850ed41aefe624e8a294d",
+    "trailGeometrySha256": "3aa181006b1a673de4c4f67a699bdb0614340576509609e397fce1eba121a861",
+    "sourceRecipeDisposition": "DISABLED_PROJECT_CARRIER",
+    "sourcePresentationDisposition": "DISABLED_NO_SOURCE_EXACT_CLAIM",
+    "resourceEvidence": [
+      {
+        "slotId": "base",
+        "assetId": "Effect/Valtan/Textures/FX_TEX_05/fx_k_auraline_02.dds",
+        "byteSize": 65664,
+        "sha256": "25c9e16a7ee3341ee2d98a49a5ed9ffb3fae8976db474f500f1dd403cf336f82"
+      },
+      {
+        "slotId": "noise",
+        "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_002.dds",
+        "byteSize": 8320,
+        "sha256": "6125c3c1bcea0455d3f3c9bf0c8092331cd789f9e6686d00eac45f136fe79393"
+      }
+    ],
+    "modelBoneEvidence": {
+      "sourceAnchorSlotId": "b_wp_r_01",
+      "runtimeModelAssetId": "Character/Valtan/MN_RPBF_01.wmodel",
+      "runtimeBoneName": "b_wp_r_01",
+      "boneIndex": 54,
+      "boneNameHash": "51bf337724f3b4ca",
+      "matchPolicy": "EXACT_CASE_SENSITIVE",
+      "modelSha256": "227191781b035b9aa41d60cc8c49bf1e8b2f67a749111e4afe8f6f3c997b2011",
+      "admission": "ADMITTED_EXPLICIT_RUNTIME_BONE",
+      "parentBoneIndex": 41,
+      "runtimeAnchorSlotId": "VALTAN_FOUR_SLASH_WEAPON_R"
+    }
+  },
+  "candidateIdentity": {
+    "rawSha256": "5b0b5818860cc3f6ef5ca92adb444c2a04e264c745ff2e084cd9820a6fd1820e",
+    "canonicalSha256": "2cb285209f1992ddd14491f3b42348b82584b3e0493c6697332e02247f478c92",
+    "elementSha256": "1ba4d91aa4f972922f9a8b40c7c12fb0e42fd1656714fd307c03876d2f5d4ad3",
+    "elementCount": 1
+  },
+  "requiredDrawableHarness": {
+    "status": "MISSING_STATIONARY_ROOT_MOVING_BONE_FIXTURE",
+    "rootWorldPolicy": "IDENTITY_AND_STATIONARY_FOR_ALL_FIXED_STEPS",
+    "boneAnchorPolicy": "SUPPLY_DISTINCT_FINITE_b_wp_r_01_WORLD_PER_FIXED_STEP",
+    "positiveAssertions": [
+      "candidate Trail produces at least two distinct world points",
+      "trail cumulative distance is finite and greater than zero",
+      "trail bounds move while root bounds remain stationary",
+      "prepare succeeds and draw submission is nonzero"
+    ],
+    "negativeControls": [
+      "stationary root plus stationary bone produces no segment",
+      "missing runtime anchor slot fails closed without root fallback",
+      "legacy safe-gap source row remains stationary and unchanged"
+    ],
+    "proofAdmission": "DO_NOT_MARK_DRAWABLE_BEFORE_FIXTURE_PASSES"
+  },
+  "artifactSha256": "7820f92d294241b6624b1bfb82e35dbfb91da5c9009a22dbc167623f8e979d3c"
+}

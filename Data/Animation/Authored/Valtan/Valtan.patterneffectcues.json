@@ -1956,38 +1956,6 @@
       }
     },
     {
-      "bindingId": "cue.valtan.high-jump.airborne.project-authored",
-      "occurrenceId": "cue.valtan.high-jump.airborne.project-authored.occurrence.01",
-      "patternId": "VALTAN_HIGH_JUMP",
-      "stageId": "AIRBORNE",
-      "actionId": "valtan.attack.high-jump.airborne",
-      "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
-      "effectAssetId": "effect.valtan.high-jump.airborne",
-      "anchorSlotId": "root",
-      "followPolicy": "snapshot",
-      "stopPolicy": "natural",
-      "repeatPolicy": "once",
-      "sourceStartMs": 0,
-      "sourceEndMs": null,
-      "localTransform": {
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "rotationDegrees": [
-          0,
-          0,
-          0
-        ],
-        "scale": [
-          1,
-          1,
-          1
-        ]
-      }
-    },
-    {
       "bindingId": "cue.valtan.high-jump.land",
       "occurrenceId": "cue.valtan.high-jump.land.occurrence.01",
       "patternId": "VALTAN_HIGH_JUMP",

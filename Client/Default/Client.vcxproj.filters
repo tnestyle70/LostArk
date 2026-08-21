@@ -1998,6 +1998,9 @@
     <Filter Include="96.DataFiles\Effects\Imported\Valtan">
       <UniqueIdentifier>{ab7fff82-53b5-53fd-b5de-bd0232493d5a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\CombatObjectDrawableProof">
+      <UniqueIdentifier>{791862b5-5d96-51fe-8914-9130f6982c23}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves">
       <UniqueIdentifier>{2a5603a2-7e38-5d94-b9a6-b1e347709926}</UniqueIdentifier>
     </Filter>
@@ -2012,6 +2015,21 @@
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority\DrawableProof">
       <UniqueIdentifier>{4b818a1e-bebb-5a83-bef0-16b70b1dd4ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails">
+      <UniqueIdentifier>{47637a7f-daf8-5fa4-8f91-8914875aa135}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails\DrawableProof">
+      <UniqueIdentifier>{87ba81f6-ea01-5e1e-b868-02dc5327b1ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail">
+      <UniqueIdentifier>{ec23ccea-1f98-575c-814c-32b005d92c23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail\DrawableProof">
+      <UniqueIdentifier>{03895774-97e8-5b13-9153-7bb38257e51e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\ProjectTunedMagicChoiceSpriteParticleCompanions">
+      <UniqueIdentifier>{d9a0666c-9a8e-535c-ad2b-53627685c359}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\ReviewedSourceFamilies">
       <UniqueIdentifier>{2b774a3a-3224-5945-ab81-b3c62204ea5a}</UniqueIdentifier>
@@ -6951,6 +6969,12 @@
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-inventory-v1.json">
       <Filter>96.DataFiles\Effects\Imported\RawResourceInventory</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\CombatObjectDrawableProof\Valtan.combat-object.drawable-proof.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\CombatObjectDrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\CombatObjectDrawableProof\Valtan.combat-object.runtime-sweep.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\CombatObjectDrawableProof</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof\Valtan.front-back-front-source-waves.drawable-proof.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof</Filter>
     </None>
@@ -7011,9 +7035,6 @@
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.front-back-front.active.project-authored-overlay.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
     </None>
-    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.high-jump.airborne.project-authored-overlay.effect.json">
-      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
-    </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.high-jump.land.project-authored-overlay.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
     </None>
@@ -7025,6 +7046,57 @@
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.magic-choice.windup.project-authored-overlay.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectAuthoredPriority\effect.valtan.sky-axe.active.project-authored-overlay.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectAuthoredPriority</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails\DrawableProof\Valtan.bounded-weapon-trails.drawable-proof.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails\DrawableProof\Valtan.bounded-weapon-trails.runtime-sweep.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails\Valtan.bounded-weapon-trails.application-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails\Valtan.bounded-weapon-trails.candidate-manifest.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails\effect.valtan.ground-wave-smash.windup.weapon-bone-trails.candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails\effect.valtan.jump-spin.recovery.weapon-bone-trails.candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails\effect.valtan.whirlwind.recovery.weapon-bone-trails.candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedBoundedWeaponTrails</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail\DrawableProof\Valtan.four-slash-weapon-trail.drawable-proof.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail\DrawableProof\Valtan.four-slash-weapon-trail.runtime-sweep.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail\DrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail\Valtan.four-slash-weapon-trail.application-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail\Valtan.four-slash-weapon-trail.candidate-manifest.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail\effect.valtan.four-slash.active.clip-02.weapon-bone-trail.candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedFourSlashWeaponTrail</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedMagicChoiceSpriteParticleCompanions\Valtan.magic-choice-sprite-particle-companions.candidate-manifest.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedMagicChoiceSpriteParticleCompanions</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedMagicChoiceSpriteParticleCompanions\effect.valtan.magic-choice.inner.sprite-particle-companions.candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedMagicChoiceSpriteParticleCompanions</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedMagicChoiceSpriteParticleCompanions\effect.valtan.magic-choice.outer.sprite-particle-companions.candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedMagicChoiceSpriteParticleCompanions</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\ProjectTunedMagicChoiceSpriteParticleCompanions\effect.valtan.magic-choice.windup.sprite-particle-companions.candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\ProjectTunedMagicChoiceSpriteParticleCompanions</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\README.md">
       <Filter>96.DataFiles\Effects\Imported\Valtan</Filter>

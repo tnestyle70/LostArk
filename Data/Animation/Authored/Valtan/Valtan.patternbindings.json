@@ -199,7 +199,7 @@
       "clips": [
         {
           "clipOccurrenceId": "valtan.attack.dash-charge.recovery.clip.01",
-          "clip": "mesh_idle_battle_1",
+          "clip": "mesh_att_battle_4_02",
           "mappingBasis": "CURRENT_PRODUCT_BASELINE",
           "sourceStartMs": 0,
           "playMs": 0,

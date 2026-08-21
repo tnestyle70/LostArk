@@ -1,0 +1,277 @@
+{
+  "schema": "lostark.valtan-bounded-weapon-trail-candidate-manifest",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "classification": "PROJECT_TUNED",
+  "reconstructionPolicy": "BOUNDED_RECONSTRUCTION",
+  "sequenceDependency": "NONE",
+  "sourceLimit": "Target source occurrences have no exact baked-edge history; only reviewed timing and the protected Whirlwind visual family are reused.",
+  "sourceFamily": {
+    "familyName": "FX_BS_01.Trail.Par_N_MRHG_Trail_01",
+    "documentPath": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json",
+    "documentRawSha256": "e94ddfd463da840962ddf8d8a0b604af4ef833925c2ac1cfd0f8e25522a5bea7",
+    "documentCanonicalSha256": "95c233b9fb9ded959a5527381f5ae0bd1a85b8c97c5a0a6b8341f92364ecd68a",
+    "elementIds": [
+      "valtan.420633.notify004.emitter5259",
+      "valtan.420633.notify004.emitter5260",
+      "valtan.420633.notify004.emitter5258"
+    ],
+    "elementSha256": [
+      "4a61835c8fb70fd70036fd7f2b20edd3a07aee094c3e608d8da2ed8e5536fc6c",
+      "4a129d852250495d10a5aa28389101107fb7fd31a74fd7278eaf6dd76f6f58a8",
+      "8cfb762bc056f97e1ea1a99cb0c6632dd40a124dcb0915309dfa63c3abde9a5f"
+    ],
+    "resourceClosureSha256": [
+      "04c5f4ddb0d7b6ec3135ed54773bfbdc08c9e7522d94f3f6f929b14913313264",
+      "a2c565da76ede057101a9315badbdb8ec2ead0d5f697e02417d4bcbe77fc91a7",
+      "fa9a57d8361da379c1d3964b92d3f894d2563aef3b701fae764d15f733a34260"
+    ],
+    "materialClosureSha256": [
+      "d47e73e6c7ed42e2826efe8f2a5edebf46e8d60ada40d0a2f70b4d387dc1c906",
+      "9d5d502c66ed1466a95aff7225b183278c4fb4bffdde3fad33ed19eb7c94d6a6",
+      "8b4436253210bcbd5312461cccfc90c36b7cf46ec6eca9eb03b8be505b6830fe"
+    ],
+    "trailGeometrySha256": [
+      "2cdb50b6c44c1487fe79465cea8d4efa7b3efe2e9fd240e2bf5ea8a19240963c",
+      "2cdb50b6c44c1487fe79465cea8d4efa7b3efe2e9fd240e2bf5ea8a19240963c",
+      "2cdb50b6c44c1487fe79465cea8d4efa7b3efe2e9fd240e2bf5ea8a19240963c"
+    ],
+    "resources": [
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_a_trail_011.dds",
+        "slotIds": [
+          "mask"
+        ],
+        "byteSize": 32896,
+        "sha256": "ecf526f2f5849525d341e20549652736ec79ef173bdf65226f5aa314e6c89df9"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_009.dds",
+        "slotIds": [
+          "noise"
+        ],
+        "byteSize": 32896,
+        "sha256": "d9b2b59b2657fcfe333852ef2580492fcd1e7769af2d8d5096be47050cddc65e"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_006.dds",
+        "slotIds": [
+          "base"
+        ],
+        "byteSize": 8320,
+        "sha256": "0eaf36a6b923cb1fdf6958716bf35598639251454b65aa90ba52a8ced7d2ee48"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+        "slotIds": [
+          "dissolve"
+        ],
+        "byteSize": 32896,
+        "sha256": "58a957a8d13005c12afb097c6c8d423d2c94872dfe8b76ab1d51dabbfe67749b"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+        "slotIds": [
+          "base"
+        ],
+        "byteSize": 8320,
+        "sha256": "0cda1d83c6df738528a3e32c45fd72f76a6acddf0010c76170032ae4e3469933"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_067.dds",
+        "slotIds": [
+          "noise"
+        ],
+        "byteSize": 32896,
+        "sha256": "8264b8a2671205799a428e244fd2068ab1300efdea0cb0f3a504e1a0c5b6e4dd"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_023.dds",
+        "slotIds": [
+          "mask"
+        ],
+        "byteSize": 65664,
+        "sha256": "57b6cf34817250e634094deda330e6360d31c5b03b289fb61e607f6067052427"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_009.dds",
+        "slotIds": [
+          "noise"
+        ],
+        "byteSize": 8320,
+        "sha256": "d5e63e9f023fb9f9ffb5dc2d32f80319102b91c94c5fe7c951177d161f963c9e"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_a_trail_003_ycl.dds",
+        "slotIds": [
+          "base"
+        ],
+        "byteSize": 32896,
+        "sha256": "21a6683bdd504b6c1e63b006632dd962b5be4a519b56654fff2916b29a7ab8b0"
+      },
+      {
+        "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_003.dds",
+        "slotIds": [
+          "mask"
+        ],
+        "byteSize": 65664,
+        "sha256": "3339f6fd17e588fed6c11082a8a93a9b6dc55c49cb20f2a956dd6258f675a83f"
+      }
+    ]
+  },
+  "modelEvidence": {
+    "sourceAnchorSlotId": "b_wp_r_01",
+    "runtimeModelAssetId": "Character/Valtan/MN_RPBF_01.wmodel",
+    "runtimeBoneName": "b_wp_r_01",
+    "boneIndex": 54,
+    "boneNameHash": "51bf337724f3b4ca",
+    "matchPolicy": "EXACT_CASE_SENSITIVE",
+    "modelSha256": "227191781b035b9aa41d60cc8c49bf1e8b2f67a749111e4afe8f6f3c997b2011",
+    "admission": "ADMITTED_EXPLICIT_RUNTIME_BONE",
+    "parentBoneIndex": 41,
+    "runtimeAnchorSlots": [
+      "VALTAN_WHIRLWIND_RECOVERY_WEAPON_R",
+      "VALTAN_GROUND_WAVE_SMASH_WINDUP_WEAPON_R",
+      "VALTAN_JUMP_SPIN_RECOVERY_WEAPON_R"
+    ]
+  },
+  "targets": [
+    {
+      "patternId": "VALTAN_WHIRLWIND",
+      "stageId": "RECOVERY",
+      "actionId": "valtan.attack.whirlwind.recovery",
+      "clipOccurrenceId": "valtan.attack.whirlwind.recovery.clip.01",
+      "cueBindingId": "cue.valtan.whirlwind.recovery",
+      "cueRowSha256": "c6b6f9ba96156bb7418779cdda42576f24d717e59caf34757e463ebe9bf682ea",
+      "actionBindingSha256": "e071fd5eed915090a95db3903a525b3a37c946987b5addd2ce62cf719d82fe77",
+      "catalogRowSha256": "f4a37c77c075db5479526ba96deb15f311feea1935fe8519353d64b0108fcc04",
+      "adapterTargetId": "valtan.trail-adapter.09a79d299c00a5c089793d30",
+      "rowSha256": "6d1e6f97423631b808ddc0355fad752c6eea962ce9c4d53c12ffc028f8cc44ec",
+      "sourceNotifyId": "action-420633/stage-003/notify-001",
+      "sourceTimeSeconds": 0.0,
+      "sourceDurationSeconds": 0.1965470016002655,
+      "sourceDisposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "classification": "PROJECT_TUNED",
+      "reconstructionPolicy": "BOUNDED_RECONSTRUCTION",
+      "effectAssetId": "effect.valtan.whirlwind.recovery",
+      "canonicalPath": "Data/Effects/Authored/effect.valtan.whirlwind.recovery.effect.json",
+      "baselineRawSha256": "917809de2525fd8a72f351ee7e1ef8328aac9cca395a670aafceaf781ae31865",
+      "baselineCanonicalSha256": "692cd461485a9d5054e723a2d06318a6d0074aba8ac8e071bdc1fc1678cb7cf0",
+      "baselineElementCount": 11,
+      "runtimeAnchorSlotId": "VALTAN_WHIRLWIND_RECOVERY_WEAPON_R",
+      "runtimeBoneName": "b_wp_r_01",
+      "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/effect.valtan.whirlwind.recovery.weapon-bone-trails.candidate.effect.json",
+      "candidateRawSha256": "22b3fdc363394ead12a1c79a1a9d74ff922874d89f0f84cfb6edee783ef48ace",
+      "candidateCanonicalSha256": "449fcb1738bd7e057b14fd452ee32b71f113a16ead55b0430505a4fad290cdd8",
+      "candidateElementIds": [
+        "project-valtan-whirlwind-recovery-weapon-trail.emitter5259",
+        "project-valtan-whirlwind-recovery-weapon-trail.emitter5260",
+        "project-valtan-whirlwind-recovery-weapon-trail.emitter5258"
+      ],
+      "candidateElementSha256": [
+        "327b93342b5d1152b5a6c6d1974175d6fd263ad64de69eebd578d718dfaf0156",
+        "3477d08fa79bfc706728e29e19c845166e30d5179d3acd2c7f552b0d785ea4bb",
+        "ab8c2bfb79e274be3e638225748774c40e07295d360f81380219acffe5a1eb05"
+      ],
+      "protectedElementContractSha256": [
+        "f9c699fd35ac9ce7efe46c9bb3bbfae0e97be73b83b72d422f583afbd9939978",
+        "6f2be200c1592091c0997d965c94889cbf7e31d76507097336f4e44a1cf362f8",
+        "0d5674b6d56f32379be9c5b7b214cf6fdf7eefbb84c4452034e4e7da3e0c2c32"
+      ]
+    },
+    {
+      "patternId": "VALTAN_GROUND_WAVE_SMASH",
+      "stageId": "WINDUP",
+      "actionId": "valtan.attack.ground-wave-smash.windup",
+      "clipOccurrenceId": "valtan.attack.ground-wave-smash.windup.clip.01",
+      "cueBindingId": "cue.valtan.ground-wave-smash.windup",
+      "cueRowSha256": "8c2f8e189cc00c3b525731ff642a363665caea1707f3d29a5327dae7ae0582c8",
+      "actionBindingSha256": "957dd8573f35e78d83c92f2bbc1454682efafb2c3a2c8a1d8ea7a49ce0224ba0",
+      "catalogRowSha256": "dfdf3ec0c6c114c2cc280fd2ab4ac4175baa8ddb3e11584732e0bdebeab78ab4",
+      "adapterTargetId": "valtan.trail-adapter.28064c18382b4b2ca03b4324",
+      "rowSha256": "b30f1e26b1d615903b90dbe9b8241164beca833e725f76867bb34a5ff7a5359d",
+      "sourceNotifyId": "action-420615/stage-030/notify-005",
+      "sourceTimeSeconds": 0.394663006067276,
+      "sourceDurationSeconds": 0.47657299041748047,
+      "sourceDisposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "classification": "PROJECT_TUNED",
+      "reconstructionPolicy": "BOUNDED_RECONSTRUCTION",
+      "effectAssetId": "effect.valtan.ground-wave-smash.windup",
+      "canonicalPath": "Data/Effects/Authored/effect.valtan.ground-wave-smash.windup.effect.json",
+      "baselineRawSha256": "1eecf319f6dc4b46facff9abba688f00af5160a39690a541a6eb33e1c7311387",
+      "baselineCanonicalSha256": "adf215987b06509dbd3c49e53a3b9c38b39714fc0c15a81ebb429025a82ff5d5",
+      "baselineElementCount": 13,
+      "runtimeAnchorSlotId": "VALTAN_GROUND_WAVE_SMASH_WINDUP_WEAPON_R",
+      "runtimeBoneName": "b_wp_r_01",
+      "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/effect.valtan.ground-wave-smash.windup.weapon-bone-trails.candidate.effect.json",
+      "candidateRawSha256": "08eb408feb86f7876593f1802beaba13fa90c5f36501f4040c49cfd6946c80ad",
+      "candidateCanonicalSha256": "b84b99ad5e2ae77ee429a5af575958c6b33355a0e61e871aa6bb36e520d89aaa",
+      "candidateElementIds": [
+        "project-valtan-ground-wave-smash-windup-weapon-trail.emitter5259",
+        "project-valtan-ground-wave-smash-windup-weapon-trail.emitter5260",
+        "project-valtan-ground-wave-smash-windup-weapon-trail.emitter5258"
+      ],
+      "candidateElementSha256": [
+        "a441ebb1d75c392661cf086a15a6ed0880e314e8866f458887ee7adbdd2aeb5e",
+        "6fab1068a516c01ee31f047ef26098aec219d01efaceda3823275eb8c277ab93",
+        "1ed6b26a38e29f4067400afc0c337ef3311073390ab0a2df4c99a859df98bfbf"
+      ],
+      "protectedElementContractSha256": [
+        "0533ac9c84707a36f1a884b60ceeb2c94b18103dfbd8abec85eaa4f6eaf290c1",
+        "2423ff7a9b710b15f36c5efcf96ce975032c12aa50b1a5eaac6273c9168bac49",
+        "d83397084613a0b8c00b2c45aab8e7935801a2f6d62414d8de0edeb8a18cdb04"
+      ]
+    },
+    {
+      "patternId": "VALTAN_JUMP_SPIN",
+      "stageId": "RECOVERY",
+      "actionId": "valtan.attack.jump-spin.recovery",
+      "clipOccurrenceId": "valtan.attack.jump-spin.recovery.clip.01",
+      "cueBindingId": "cue.valtan.jump-spin.recovery",
+      "cueRowSha256": "27074999d44db9c3c3f06eca1f9b153ec0b963745a83d75d8a29f0b3ddbf8d14",
+      "actionBindingSha256": "e115bb0018eb64be32e7ad1075c97f72ba4b6862ac58a259ad6fa306c43c8bde",
+      "catalogRowSha256": "df28e1aafbcbf0c4513675375eb7a5535268b3e6c7cb8121939b301fbd93cd3c",
+      "adapterTargetId": "valtan.trail-adapter.f03638659d51c5f61dbfa4d4",
+      "rowSha256": "ebdb66d641d03c56f7a467fc42d90951f4e988361e07ceb83fcfa3371c74df66",
+      "sourceNotifyId": "action-420621/stage-016/notify-004",
+      "sourceTimeSeconds": 0.0,
+      "sourceDurationSeconds": 0.1965470016002655,
+      "sourceDisposition": "UNRESOLVED_RUNTIME_ADAPTER",
+      "classification": "PROJECT_TUNED",
+      "reconstructionPolicy": "BOUNDED_RECONSTRUCTION",
+      "effectAssetId": "effect.valtan.jump-spin.recovery",
+      "canonicalPath": "Data/Effects/Authored/effect.valtan.jump-spin.recovery.effect.json",
+      "baselineRawSha256": "217279b25b47880f4ea79219e8a9b328abe7acf0e74296d78ef0714d3e2c28e9",
+      "baselineCanonicalSha256": "aeade82de9227d98d5d562e5345e9cfbc9d2a441e510e6fd99d9d628c40e3b11",
+      "baselineElementCount": 8,
+      "runtimeAnchorSlotId": "VALTAN_JUMP_SPIN_RECOVERY_WEAPON_R",
+      "runtimeBoneName": "b_wp_r_01",
+      "candidatePath": "Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/effect.valtan.jump-spin.recovery.weapon-bone-trails.candidate.effect.json",
+      "candidateRawSha256": "a71cc5072041cdb7596514e21f9d5d0019ac7a9fc96632ca9e409cace723e14f",
+      "candidateCanonicalSha256": "c3ee172534426676d92c3bd0c5a9e782051d61136ec1fee45ae8dd8d1ccfa01d",
+      "candidateElementIds": [
+        "project-valtan-jump-spin-recovery-weapon-trail.emitter5259",
+        "project-valtan-jump-spin-recovery-weapon-trail.emitter5260",
+        "project-valtan-jump-spin-recovery-weapon-trail.emitter5258"
+      ],
+      "candidateElementSha256": [
+        "4ddbeca4f01f01a8d9d781fe7ab128c923046d9404492509fa2766690a2c8dec",
+        "a167516f378d168667c9fe463adb0f14219c1788f788e49d25cc37de222bb22a",
+        "ba11eedfbed8ad942632fd55845f38fc3347185dd1e5747d95c9011505f8a502"
+      ],
+      "protectedElementContractSha256": [
+        "c4cfce6fc521cbf4fb6603f7f2b4c532641b9e3c9a843638804035f459ca826e",
+        "048286b20d979286c44056ef127923da1b36b1c1457e235529c1c0eef99ea224",
+        "fbf31d875ab043845d0a147cb6b223a03c1743f1b5dd4997474cd840d506f48d"
+      ]
+    }
+  ],
+  "summary": {
+    "targetCount": 3,
+    "candidateDocumentCount": 3,
+    "candidateElementCount": 9,
+    "sourceEmitterCountPerTarget": 3,
+    "projectionState": "CANDIDATE_ONLY_IMMUTABLE"
+  },
+  "artifactSha256": "cd4eebb09adc11179e2dda6e9ba200cc3e9375800539129282d5c4a542203839"
+}

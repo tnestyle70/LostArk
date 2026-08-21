@@ -19,6 +19,8 @@ from pathlib import Path, PurePosixPath
 import sys
 from typing import Any, Mapping
 
+import validate_boss_pattern_effects as schema_validator
+
 
 SCHEMA = "lostark.valtan-front-back-front-source-wave-candidates"
 FORMAT_VERSION = 1
@@ -51,12 +53,71 @@ PROJECT_PLAN = PurePosixPath(
     "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/"
     "Valtan.project-authored-priority.patch-plan.v1.json"
 )
+PROJECT_OVERLAY = PurePosixPath(
+    "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/"
+    "effect.valtan.front-back-front.active.project-authored-overlay.effect.json"
+)
+PROJECT_DRAWABLE_PROOF = PurePosixPath(
+    "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/DrawableProof/"
+    "Valtan.project-authored-priority.drawable-proof.v1.json"
+)
+PROJECT_APPLICATION_RECEIPT = PurePosixPath(
+    "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/"
+    "Valtan.project-authored-priority.projection-receipt.v1.json"
+)
+PROJECT_DRAWABLE_PROOF_SCHEMA = PurePosixPath(
+    "Tools/EffectPipeline/Schemas/"
+    "lostark.valtan-project-authored-priority-drawable-proof.schema.json"
+)
+PROJECT_APPLICATION_RECEIPT_SCHEMA = PurePosixPath(
+    "Tools/EffectPipeline/Schemas/"
+    "lostark.valtan-project-authored-priority-projection-receipt.schema.json"
+)
+AGGREGATE_AUTHORED = PurePosixPath(
+    "Data/Effects/Authored/effect.valtan.front-back-front.active.effect.json"
+)
 OUTPUT_DIRECTORY = PurePosixPath(
     "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves"
 )
 OUTPUT_RECEIPT = OUTPUT_DIRECTORY / PurePosixPath(
     "Valtan.front-back-front-source-wave-candidates.v1.json"
 )
+
+EXPECTED_BINDING = {
+    "actionId": ACTION_ID,
+    "clips": [
+        {
+            "clipOccurrenceId": CLIP_OCCURRENCE_ID,
+            "clip": CLIP_NAME,
+            "mappingBasis": "ANIMATION_PR_127",
+            "sourceStartMs": 0,
+            "playMs": 0,
+            "playRate": 1.0,
+            "loop": True,
+        }
+    ],
+}
+
+EXPECTED_ENCOUNTER_STAGE = {
+    "stageId": STAGE_ID,
+    "actionId": ACTION_ID,
+    "stageKind": "ACTIVE",
+    "durationMs": 5000,
+    "hitShape": "CROSS",
+    "hitOuterRadius": 0.0,
+    "hitInnerRadius": 0.0,
+    "hitAngleDegrees": 0.0,
+    "hitLength": 9.0,
+    "hitHalfWidth": 2.0,
+    "hitCount": 3,
+    "hitIntervalMs": 1500,
+    "hitDelayMs": 900,
+    "serverDamageProfileId": "damage.valtan.triple-attack",
+    "pushRangeM": 0.0,
+    "pushMs": 0,
+    "knockdown": False,
+    "downMs": 0,
+}
 
 
 class CandidateError(RuntimeError):
@@ -193,6 +254,334 @@ def _cue_row(identity: Mapping[str, str], source_start_ms: int) -> dict[str, Any
     }
 
 
+def _element_identity_pairs(
+    document: Mapping[str, Any],
+    label: str,
+    *,
+    require_source_node: bool = True,
+) -> list[tuple[str, str]]:
+    pairs: list[tuple[str, str]] = []
+    for element in _require_list(document.get("elements"), f"{label}.elements"):
+        row = _require_object(element, f"{label} element")
+        element_id = row.get("id")
+        source_node = row.get("sourceNode")
+        if not isinstance(element_id, str) or not element_id:
+            raise CandidateError(f"{label} element ID is invalid")
+        if require_source_node and (
+            not isinstance(source_node, str) or not source_node
+        ):
+            raise CandidateError(f"{label} sourceNode is invalid")
+        if source_node is None and not require_source_node:
+            source_node = ""
+        if not isinstance(source_node, str):
+            raise CandidateError(f"{label} sourceNode is invalid")
+        pairs.append((element_id, source_node))
+    if len(pairs) != len(set(pairs)):
+        raise CandidateError(f"{label} contains duplicate element identities")
+    return pairs
+
+
+def _refresh_sealed_composition(
+    root: Path,
+    receipt: dict[str, Any],
+    candidate_pairs: set[tuple[str, str]],
+) -> dict[str, Any]:
+    """Re-seal composition inputs without rebuilding any immutable wave."""
+    clip_identity = _require_object(receipt.get("clipIdentity"), "sealed clip identity")
+    expected_clip_identity = {
+        "patternId": PATTERN_ID,
+        "stageId": STAGE_ID,
+        "actionId": ACTION_ID,
+        "clipOccurrenceId": CLIP_OCCURRENCE_ID,
+        "clipName": CLIP_NAME,
+        "clipSourceStartMs": 0,
+        "clipPlayMs": 0,
+        "clipPlayRate": 1.0,
+        "clipLoop": True,
+        "stageDurationMs": 5000,
+        "serverHitCount": 3,
+        "animationBindingMutationDisposition": "FORBIDDEN",
+    }
+    if clip_identity != expected_clip_identity:
+        raise CandidateError("sealed FRONT_BACK_FRONT clip identity drift")
+
+    bindings, bindings_payload = _load_json(root, PATTERN_BINDINGS)
+    binding = _find_unique(
+        _require_list(bindings.get("bindings"), "pattern bindings"),
+        lambda row: row.get("actionId") == ACTION_ID,
+        "sealed FRONT_BACK_FRONT active animation binding",
+    )
+    if binding != EXPECTED_BINDING:
+        raise CandidateError("FRONT_BACK_FRONT exact animation binding semantics drift")
+
+    encounter, encounter_payload = _load_json(root, ENCOUNTER)
+    pattern = _find_unique(
+        _require_list(encounter.get("patterns"), "encounter patterns"),
+        lambda row: row.get("patternId") == PATTERN_ID,
+        "sealed FRONT_BACK_FRONT encounter pattern",
+    )
+    stage = _find_unique(
+        _require_list(pattern.get("stages"), "FRONT_BACK_FRONT stages"),
+        lambda row: row.get("stageId") == STAGE_ID and row.get("actionId") == ACTION_ID,
+        "sealed FRONT_BACK_FRONT SMASHES stage",
+    )
+    if stage != EXPECTED_ENCOUNTER_STAGE:
+        raise CandidateError("FRONT_BACK_FRONT exact Server stage semantics drift")
+
+    aggregate_canary = _require_object(
+        receipt.get("aggregateCanary"), "sealed aggregate canary"
+    )
+    if (
+        aggregate_canary.get("effectAssetId") != AGGREGATE_EFFECT_ID
+        or aggregate_canary.get("authoredDocumentPath")
+        != AGGREGATE_AUTHORED.as_posix()
+        or aggregate_canary.get("projectPatchPlanPath") != PROJECT_PLAN.as_posix()
+        or aggregate_canary.get("projectOverlayPath") != PROJECT_OVERLAY.as_posix()
+        or aggregate_canary.get("sourceElementAppendCount") != 0
+        or aggregate_canary.get("disposition")
+        != "PRESERVE_EXISTING_PROJECT_TUNED_AGGREGATE"
+    ):
+        raise CandidateError("sealed aggregate composition identity drift")
+
+    project_plan, project_plan_payload = _load_json(root, PROJECT_PLAN)
+    project_target = _find_unique(
+        _require_list(project_plan.get("targets"), "project overlay targets"),
+        lambda row: row.get("targetEffectAssetId") == AGGREGATE_EFFECT_ID,
+        "sealed FRONT_BACK_FRONT project aggregate overlay target",
+    )
+    expected_target_identity = {
+        "patternId": PATTERN_ID,
+        "stageId": STAGE_ID,
+        "actionId": ACTION_ID,
+        "clipOccurrenceId": CLIP_OCCURRENCE_ID,
+        "targetEffectAssetId": AGGREGATE_EFFECT_ID,
+        "targetAuthoringPath": AGGREGATE_AUTHORED.as_posix(),
+        "canonicalState": "EXISTING_DOCUMENT",
+        "disposition": "PROJECT_TUNED_OVERRIDE",
+        "presentationOnly": False,
+        "overlayDocumentPath": PROJECT_OVERLAY.as_posix(),
+    }
+    if any(project_target.get(key) != value for key, value in expected_target_identity.items()):
+        raise CandidateError("FRONT_BACK_FRONT project overlay target identity drift")
+
+    project_overlay, project_overlay_payload = _load_json(root, PROJECT_OVERLAY)
+    if (
+        project_overlay.get("schema") != "lostark.effect-authoring"
+        or project_overlay.get("version") != 13
+        or project_overlay.get("effectAssetId") != AGGREGATE_EFFECT_ID
+        or project_target.get("overlayDocumentSha256")
+        != _sha256(project_overlay_payload)
+    ):
+        raise CandidateError("FRONT_BACK_FRONT project overlay content seal drift")
+
+    aggregate_authored, aggregate_authored_payload = _load_json(
+        root, AGGREGATE_AUTHORED
+    )
+    if (
+        aggregate_authored.get("schema") != "lostark.effect-authoring"
+        or aggregate_authored.get("version") != 13
+        or aggregate_authored.get("effectAssetId") != AGGREGATE_EFFECT_ID
+    ):
+        raise CandidateError("FRONT_BACK_FRONT aggregate authored identity drift")
+
+    candidate_ids = {pair[0] for pair in candidate_pairs}
+    candidate_sources = {pair[1] for pair in candidate_pairs}
+    if (
+        len(candidate_ids) != EXPECTED_ELEMENT_COUNT
+        or len(candidate_sources) != EXPECTED_ELEMENT_COUNT
+    ):
+        raise CandidateError("sealed source-wave ID/sourceNode denominator drift")
+    overlay_pairs = _element_identity_pairs(project_overlay, "project overlay")
+    aggregate_pairs = _element_identity_pairs(
+        aggregate_authored, "aggregate authored", require_source_node=False
+    )
+    desired_pairs = [
+        (row.get("elementId"), row.get("sourceNode"))
+        for row in _require_list(
+            project_target.get("desiredElements"), "project target desired elements"
+        )
+        if isinstance(row, dict)
+    ]
+    if desired_pairs != overlay_pairs:
+        raise CandidateError("FRONT_BACK_FRONT project plan/overlay element identity drift")
+
+    project_proof, project_proof_payload = _load_json(root, PROJECT_DRAWABLE_PROOF)
+    project_proof_schema, _ = _load_json(root, PROJECT_DRAWABLE_PROOF_SCHEMA)
+    project_receipt, project_receipt_payload = _load_json(
+        root, PROJECT_APPLICATION_RECEIPT
+    )
+    project_receipt_schema, _ = _load_json(
+        root, PROJECT_APPLICATION_RECEIPT_SCHEMA
+    )
+    try:
+        schema_validator.validate_schema_instance(
+            project_proof, project_proof_schema
+        )
+        schema_validator.validate_schema_instance(
+            project_receipt, project_receipt_schema
+        )
+    except Exception as exc:
+        raise CandidateError(
+            f"FRONT_BACK_FRONT ProjectAuthored proof lineage schema drift: {exc}"
+        ) from exc
+
+    project_proof_target = _find_unique(
+        _require_list(project_proof.get("targets"), "project drawable proof targets"),
+        lambda row: row.get("effectAssetId") == AGGREGATE_EFFECT_ID,
+        "FRONT_BACK_FRONT ProjectAuthored drawable proof target",
+    )
+    overlay_ids = [pair[0] for pair in overlay_pairs]
+    proof_elements = [
+        _require_object(row, "project drawable proof element")
+        for row in _require_list(
+            project_proof_target.get("elements"), "project drawable proof elements"
+        )
+    ]
+    if (
+        project_proof.get("patchPlanSha256") != _sha256(project_plan_payload)
+        or project_proof_target.get("overlayDocumentSha256")
+        != _sha256(project_overlay_payload)
+        or project_proof_target.get("disposition") != "DRAWABLE_PROOF_PASS"
+        or [row.get("elementId") for row in proof_elements] != overlay_ids
+        or any(
+            row.get("disposition") != "DRAWABLE_PROOF_PASS"
+            or type(row.get("submittedDraws")) is not int
+            or row["submittedDraws"] < 1
+            or type(row.get("committedDraws")) is not int
+            or row["committedDraws"] < 1
+            or row.get("failedDraws") != 0
+            for row in proof_elements
+        )
+    ):
+        raise CandidateError(
+            "FRONT_BACK_FRONT ProjectAuthored drawable proof binding drift"
+        )
+
+    project_inputs = _require_object(
+        project_receipt.get("inputs"), "project application inputs"
+    )
+    project_receipt_target = _find_unique(
+        _require_list(project_receipt.get("targets"), "project application targets"),
+        lambda row: row.get("effectAssetId") == AGGREGATE_EFFECT_ID,
+        "FRONT_BACK_FRONT ProjectAuthored application target",
+    )
+    project_canonical_output = _find_unique(
+        _require_list(
+            project_receipt.get("canonicalOutputs"),
+            "project application canonical outputs",
+        ),
+        lambda row: row.get("path") == AGGREGATE_AUTHORED.as_posix(),
+        "FRONT_BACK_FRONT ProjectAuthored canonical output",
+    )
+    aggregate_sha = _sha256(aggregate_authored_payload)
+    if (
+        project_receipt.get("transactionStatus") != "COMMITTED"
+        or project_inputs.get("patchPlanPath") != PROJECT_PLAN.as_posix()
+        or project_inputs.get("patchPlanSha256") != _sha256(project_plan_payload)
+        or project_inputs.get("drawableProofPath")
+        != PROJECT_DRAWABLE_PROOF.as_posix()
+        or project_inputs.get("drawableProofSha256")
+        != _sha256(project_proof_payload)
+        or project_receipt_target.get("overlayDocumentPath")
+        != PROJECT_OVERLAY.as_posix()
+        or project_receipt_target.get("overlayDocumentSha256")
+        != _sha256(project_overlay_payload)
+        or project_receipt_target.get("targetAuthoringPath")
+        != AGGREGATE_AUTHORED.as_posix()
+        or project_receipt_target.get("projectedElementIds") != overlay_ids
+        or project_receipt_target.get("finalDocumentSha256") != aggregate_sha
+        or project_canonical_output.get("role") != "AUTHORED_EFFECT_DOCUMENT"
+        or project_canonical_output.get("sha256") != aggregate_sha
+    ):
+        raise CandidateError(
+            "FRONT_BACK_FRONT ProjectAuthored proof/application lineage drift"
+        )
+    for label, pairs in (
+        ("project overlay", overlay_pairs),
+        ("aggregate authored", aggregate_pairs),
+    ):
+        ids = {pair[0] for pair in pairs}
+        sources = {pair[1] for pair in pairs if pair[1]}
+        if candidate_ids.intersection(ids) or candidate_sources.intersection(sources):
+            raise CandidateError(f"source-wave identity leaked into {label}")
+
+    catalog, _ = _load_json(root, CATALOG)
+    catalog_row = _find_unique(
+        _require_list(catalog.get("effects"), "EffectCatalog rows"),
+        lambda row: row.get("effectAssetId") == AGGREGATE_EFFECT_ID,
+        "sealed aggregate catalog row",
+    )
+    cues, _ = _load_json(root, CUES)
+    cue_row = _find_unique(
+        _require_list(cues.get("cues"), "Valtan cues"),
+        lambda row: row.get("effectAssetId") == AGGREGATE_EFFECT_ID
+        and row.get("clipOccurrenceId") == CLIP_OCCURRENCE_ID,
+        "sealed aggregate FRONT_BACK_FRONT cue",
+    )
+    if (
+        catalog_row != aggregate_canary.get("catalogRow")
+        or _json_sha(catalog_row) != aggregate_canary.get("catalogRowSha256")
+        or cue_row != aggregate_canary.get("cueRow")
+        or _json_sha(cue_row) != aggregate_canary.get("cueRowSha256")
+    ):
+        raise CandidateError("sealed aggregate catalog/cue canary drift")
+
+    whirlwind_canary = _require_object(
+        receipt.get("whirlwindCanary"), "sealed Whirlwind canary"
+    )
+    whirlwind_relative = _relative(
+        whirlwind_canary.get("authoredDocumentPath"), "sealed Whirlwind path"
+    )
+    _, whirlwind_payload = _load_json(root, whirlwind_relative)
+    if (
+        whirlwind_canary.get("effectAssetId") != WHIRLWIND_EFFECT_ID
+        or _sha256(whirlwind_payload)
+        != whirlwind_canary.get("authoredDocumentSha256")
+    ):
+        raise CandidateError("sealed Whirlwind active byte canary drift")
+
+    refreshed = deepcopy(receipt)
+    refreshed_guards = [
+        _require_object(row, "sealed source guard")
+        for row in _require_list(refreshed.get("sourceGuards"), "sealed source guards")
+    ]
+    guard_by_path = {row.get("path"): row for row in refreshed_guards}
+    if len(guard_by_path) != len(refreshed_guards):
+        raise CandidateError("sealed source guards contain duplicate paths")
+    refreshed_payloads = {
+        PATTERN_BINDINGS.as_posix(): bindings_payload,
+        ENCOUNTER.as_posix(): encounter_payload,
+        PROJECT_PLAN.as_posix(): project_plan_payload,
+        PROJECT_OVERLAY.as_posix(): project_overlay_payload,
+        PROJECT_DRAWABLE_PROOF.as_posix(): project_proof_payload,
+        PROJECT_APPLICATION_RECEIPT.as_posix(): project_receipt_payload,
+    }
+    legacy_additions = {
+        PROJECT_DRAWABLE_PROOF.as_posix(),
+        PROJECT_APPLICATION_RECEIPT.as_posix(),
+    }
+    for path_text, payload in refreshed_payloads.items():
+        guard = guard_by_path.get(path_text)
+        if guard is None:
+            if path_text not in legacy_additions:
+                raise CandidateError(f"sealed source guard is missing: {path_text}")
+            guard = {"path": path_text, "sha256": "0" * 64}
+            refreshed_guards.append(guard)
+            guard_by_path[path_text] = guard
+        guard["sha256"] = _sha256(payload)
+    refreshed_guards.sort(key=lambda row: row["path"])
+    refreshed["sourceGuards"] = refreshed_guards
+    refreshed_aggregate = _require_object(
+        refreshed.get("aggregateCanary"), "refreshed aggregate canary"
+    )
+    refreshed_aggregate["authoredDocumentSha256"] = _sha256(
+        aggregate_authored_payload
+    )
+    refreshed_aggregate["projectPatchPlanSha256"] = _sha256(project_plan_payload)
+    refreshed_aggregate["projectOverlaySha256"] = _sha256(project_overlay_payload)
+    return refreshed
+
+
 def _load_sealed_outputs(
     root: Path,
 ) -> tuple[dict[PurePosixPath, bytes], dict[str, Any]] | None:
@@ -200,7 +589,7 @@ def _load_sealed_outputs(
     receipt_path = _repository_path(root, OUTPUT_RECEIPT)
     if not receipt_path.is_file():
         return None
-    receipt, receipt_payload = _load_json(root, OUTPUT_RECEIPT)
+    receipt, _ = _load_json(root, OUTPUT_RECEIPT)
     if (
         receipt.get("schema") != SCHEMA
         or receipt.get("formatVersion") != FORMAT_VERSION
@@ -277,8 +666,9 @@ def _load_sealed_outputs(
         outputs[relative] = payload
     if len(all_pairs) != EXPECTED_ELEMENT_COUNT:
         raise CandidateError("sealed source-wave denominator must remain 100")
-    outputs[OUTPUT_RECEIPT] = receipt_payload
-    return outputs, receipt
+    refreshed = _refresh_sealed_composition(root, receipt, all_pairs)
+    outputs[OUTPUT_RECEIPT] = _json_bytes(refreshed)
+    return outputs, refreshed
 
 
 def _catalog_row(effect_id: str) -> dict[str, str]:

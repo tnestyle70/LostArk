@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-four-slash-weapon-trail-drawable-proof.schema.json",
+  "title": "Valtan FourSlash stationary-root moving-bone Trail drawable proof",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "generator",
+    "candidateManifest",
+    "candidateDocument",
+    "runtimeSweep",
+    "sourcePreservation",
+    "geometryProof",
+    "rendererProof",
+    "negativeControls",
+    "summary",
+    "disposition",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.valtan-four-slash-weapon-trail-drawable-proof" },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "generator": { "$ref": "#/$defs/generator" },
+    "candidateManifest": { "$ref": "#/$defs/manifest" },
+    "candidateDocument": { "$ref": "#/$defs/candidate" },
+    "runtimeSweep": { "$ref": "#/$defs/sweep" },
+    "sourcePreservation": { "$ref": "#/$defs/source" },
+    "geometryProof": { "$ref": "#/$defs/geometry" },
+    "rendererProof": { "$ref": "#/$defs/renderer" },
+    "negativeControls": { "$ref": "#/$defs/controls" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "disposition": { "const": "PROOF_PASS_CANONICAL_APPLY_ALLOWED" },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "minLength": 1 },
+    "vec3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" }
+    },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["script", "schemaPath", "policyVersion"],
+      "properties": {
+        "script": { "const": "Tools/EffectPipeline/build_valtan_four_slash_weapon_trail_drawable_proof.py" },
+        "schemaPath": { "const": "Tools/EffectPipeline/Schemas/lostark.valtan-four-slash-weapon-trail-drawable-proof.schema.json" },
+        "policyVersion": { "const": 1 }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "artifactSha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "artifactSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "canonicalSha256", "elementId", "elementSha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" },
+        "elementId": { "const": "project-four-slash-weapon-bone-trail" },
+        "elementSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sweep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "rawSha256", "canonicalSha256", "resourceRoot"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" },
+        "resourceRoot": { "$ref": "#/$defs/path" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonicalPath", "canonicalRawSha256", "sourceElementId", "sourceElementSha256", "sourceElementAttachmentSha256", "preservedRowCount"],
+      "properties": {
+        "canonicalPath": { "$ref": "#/$defs/path" },
+        "canonicalRawSha256": { "$ref": "#/$defs/sha256" },
+        "sourceElementId": { "const": "safe-gap.trail.6dc8db3e4616f2794149d838" },
+        "sourceElementSha256": { "$ref": "#/$defs/sha256" },
+        "sourceElementAttachmentSha256": { "$ref": "#/$defs/sha256" },
+        "preservedRowCount": { "const": 1 }
+      }
+    },
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rootWorldPolicy", "runtimeAnchorSlotId", "runtimeBoneName", "providerSampleCount", "rootWorldDistinctCount", "anchorWorldDistinctCount", "trailPointCount", "distinctTrailPointCount", "finiteTrailPointCount", "cumulativeDistance", "firstWorldPosition", "lastWorldPosition"],
+      "properties": {
+        "rootWorldPolicy": { "const": "IDENTITY_AND_STATIONARY_FOR_ALL_FIXED_STEPS" },
+        "runtimeAnchorSlotId": { "const": "VALTAN_FOUR_SLASH_WEAPON_R" },
+        "runtimeBoneName": { "const": "b_wp_r_01" },
+        "providerSampleCount": { "type": "integer", "minimum": 2 },
+        "rootWorldDistinctCount": { "const": 1 },
+        "anchorWorldDistinctCount": { "type": "integer", "minimum": 2 },
+        "trailPointCount": { "type": "integer", "minimum": 2 },
+        "distinctTrailPointCount": { "type": "integer", "minimum": 2 },
+        "finiteTrailPointCount": { "type": "integer", "minimum": 2 },
+        "cumulativeDistance": { "type": "number", "exclusiveMinimum": 0 },
+        "firstWorldPosition": { "$ref": "#/$defs/vec3" },
+        "lastWorldPosition": { "$ref": "#/$defs/vec3" }
+      }
+    },
+    "renderer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preparedSamples", "attemptedSamples", "submittedDraws", "suppressedDraws", "failedDraws", "committedDraws", "transactionCommitted"],
+      "properties": {
+        "preparedSamples": { "type": "integer", "minimum": 1 },
+        "attemptedSamples": { "type": "integer", "minimum": 1 },
+        "submittedDraws": { "type": "integer", "minimum": 1 },
+        "suppressedDraws": { "type": "integer", "minimum": 0 },
+        "failedDraws": { "const": 0 },
+        "committedDraws": { "type": "integer", "minimum": 1 },
+        "transactionCommitted": { "const": true }
+      }
+    },
+    "stationary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trailPointCount", "distinctTrailPointCount", "submittedDraws", "committedDraws", "segmentSuppressed"],
+      "properties": {
+        "trailPointCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "distinctTrailPointCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "submittedDraws": { "const": 0 },
+        "committedDraws": { "const": 0 },
+        "segmentSuppressed": { "const": true }
+      }
+    },
+    "missing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["providerRejected", "playbackStatePreserved", "trailPointCountAfterReject", "status"],
+      "properties": {
+        "providerRejected": { "const": true },
+        "playbackStatePreserved": { "const": true },
+        "trailPointCountAfterReject": { "const": 0 },
+        "status": { "type": "string", "minLength": 1 }
+      }
+    },
+    "controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stationary", "missingAnchor"],
+      "properties": {
+        "stationary": { "$ref": "#/$defs/stationary" },
+        "missingAnchor": { "$ref": "#/$defs/missing" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateElementCount", "movingBoneTrailPointMinimum", "stationaryControlMaximumTrailPoints", "missingAnchorRejected", "rendererDrawMinimum", "safeGapSourceRowsPreserved", "failedDrawCount"],
+      "properties": {
+        "candidateElementCount": { "const": 1 },
+        "movingBoneTrailPointMinimum": { "const": 2 },
+        "stationaryControlMaximumTrailPoints": { "const": 1 },
+        "missingAnchorRejected": { "const": true },
+        "rendererDrawMinimum": { "const": 1 },
+        "safeGapSourceRowsPreserved": { "const": 1 },
+        "failedDrawCount": { "const": 0 }
+      }
+    }
+  }
+}

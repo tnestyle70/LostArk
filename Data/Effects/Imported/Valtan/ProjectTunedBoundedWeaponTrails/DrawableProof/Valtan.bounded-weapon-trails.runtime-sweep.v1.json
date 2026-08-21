@@ -1,0 +1,434 @@
+{
+  "schema": "lostark.valtan-bounded-weapon-trail-runtime-sweep",
+  "formatVersion": 1,
+  "bossArchetypeId": "BOSS_VALTAN",
+  "classification": "PROJECT_TUNED",
+  "reconstructionPolicy": "BOUNDED_RECONSTRUCTION",
+  "resourceRoot": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources",
+  "runtimeBoneName": "b_wp_r_01",
+  "sampleRateHz": 60,
+  "targets": [
+    {
+      "effectAssetId": "effect.valtan.whirlwind.recovery",
+      "candidatePath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/effect.valtan.whirlwind.recovery.weapon-bone-trails.candidate.effect.json",
+      "candidateRawSha256": "22b3fdc363394ead12a1c79a1a9d74ff922874d89f0f84cfb6edee783ef48ace",
+      "candidateTypedCodecSha256": "01a162c913b5aa74d4bb5449b603cac92463e8ee13de78fe70a8ff819f2c2c15",
+      "runtimeAnchorSlotId": "VALTAN_WHIRLWIND_RECOVERY_WEAPON_R",
+      "sourceStartSeconds": 0,
+      "sourceDurationSeconds": 0.196547002,
+      "elements": [
+        {
+          "elementId": "project-valtan-whirlwind-recovery-weapon-trail.emitter5259",
+          "positiveMovingBone": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 9,
+            "trailPointCount": 4,
+            "distinctTrailPointCount": 4,
+            "finiteTrailPointCount": 4,
+            "cumulativeDistance": 0.227090672,
+            "firstWorldPosition": [0.0666666701, 0.0443280339, 0.0165896136],
+            "lastWorldPosition": [0.266666681, 0.139805868, 0.061836984],
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 1,
+              "suppressedDraws": 0,
+              "failedDraws": 0,
+              "committedDraws": 1,
+              "transactionCommitted": true
+            }
+          },
+          "stationaryControl": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 1,
+            "trailPointCount": 1,
+            "distinctTrailPointCount": 1,
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 0,
+              "suppressedDraws": 1,
+              "failedDraws": 0,
+              "committedDraws": 0,
+              "transactionCommitted": true
+            },
+            "segmentSuppressed": true
+          }
+        },
+        {
+          "elementId": "project-valtan-whirlwind-recovery-weapon-trail.emitter5260",
+          "positiveMovingBone": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 9,
+            "trailPointCount": 4,
+            "distinctTrailPointCount": 4,
+            "finiteTrailPointCount": 4,
+            "cumulativeDistance": 0.227090672,
+            "firstWorldPosition": [0.0666666701, 0.0443280339, 0.0165896136],
+            "lastWorldPosition": [0.266666681, 0.139805868, 0.061836984],
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 1,
+              "suppressedDraws": 0,
+              "failedDraws": 0,
+              "committedDraws": 1,
+              "transactionCommitted": true
+            }
+          },
+          "stationaryControl": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 1,
+            "trailPointCount": 1,
+            "distinctTrailPointCount": 1,
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 0,
+              "suppressedDraws": 1,
+              "failedDraws": 0,
+              "committedDraws": 0,
+              "transactionCommitted": true
+            },
+            "segmentSuppressed": true
+          }
+        },
+        {
+          "elementId": "project-valtan-whirlwind-recovery-weapon-trail.emitter5258",
+          "positiveMovingBone": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 9,
+            "trailPointCount": 4,
+            "distinctTrailPointCount": 4,
+            "finiteTrailPointCount": 4,
+            "cumulativeDistance": 0.227090672,
+            "firstWorldPosition": [0.0666666701, 0.0443280339, 0.0165896136],
+            "lastWorldPosition": [0.266666681, 0.139805868, 0.061836984],
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 1,
+              "suppressedDraws": 0,
+              "failedDraws": 0,
+              "committedDraws": 1,
+              "transactionCommitted": true
+            }
+          },
+          "stationaryControl": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 1,
+            "trailPointCount": 1,
+            "distinctTrailPointCount": 1,
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 0,
+              "suppressedDraws": 1,
+              "failedDraws": 0,
+              "committedDraws": 0,
+              "transactionCommitted": true
+            },
+            "segmentSuppressed": true
+          }
+        }
+      ],
+      "missingAnchorControl": {
+        "providerRejected": true,
+        "playbackStatePreserved": true,
+        "trailPointCountAfterReject": 0,
+        "status": "Effect transform history is missing required anchor: VALTAN_WHIRLWIND_RECOVERY_WEAPON_R"
+      },
+      "disposition": "DRAWABLE_PROOF_PASS"
+    },
+    {
+      "effectAssetId": "effect.valtan.ground-wave-smash.windup",
+      "candidatePath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/effect.valtan.ground-wave-smash.windup.weapon-bone-trails.candidate.effect.json",
+      "candidateRawSha256": "08eb408feb86f7876593f1802beaba13fa90c5f36501f4040c49cfd6946c80ad",
+      "candidateTypedCodecSha256": "5147b7c563047a828639f3351704dc724fe570677707e717e7009ec929089db0",
+      "runtimeAnchorSlotId": "VALTAN_GROUND_WAVE_SMASH_WINDUP_WEAPON_R",
+      "sourceStartSeconds": 0.394663006,
+      "sourceDurationSeconds": 0.47657299,
+      "elements": [
+        {
+          "elementId": "project-valtan-ground-wave-smash-windup-weapon-trail.emitter5259",
+          "positiveMovingBone": {
+            "providerSampleCount": 46,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 46,
+            "trailPointCount": 11,
+            "distinctTrailPointCount": 11,
+            "finiteTrailPointCount": 11,
+            "cumulativeDistance": 0.749388635,
+            "firstWorldPosition": [0.833333313, -0.0857342035, 0.0871503279],
+            "lastWorldPosition": [1.5, 0.0675066113, -0.0571561344],
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 1,
+              "suppressedDraws": 0,
+              "failedDraws": 0,
+              "committedDraws": 1,
+              "transactionCommitted": true
+            }
+          },
+          "stationaryControl": {
+            "providerSampleCount": 46,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 1,
+            "trailPointCount": 1,
+            "distinctTrailPointCount": 1,
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 0,
+              "suppressedDraws": 1,
+              "failedDraws": 0,
+              "committedDraws": 0,
+              "transactionCommitted": true
+            },
+            "segmentSuppressed": true
+          }
+        },
+        {
+          "elementId": "project-valtan-ground-wave-smash-windup-weapon-trail.emitter5260",
+          "positiveMovingBone": {
+            "providerSampleCount": 46,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 46,
+            "trailPointCount": 11,
+            "distinctTrailPointCount": 11,
+            "finiteTrailPointCount": 11,
+            "cumulativeDistance": 0.749388635,
+            "firstWorldPosition": [0.833333313, -0.0857342035, 0.0871503279],
+            "lastWorldPosition": [1.5, 0.0675066113, -0.0571561344],
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 1,
+              "suppressedDraws": 0,
+              "failedDraws": 0,
+              "committedDraws": 1,
+              "transactionCommitted": true
+            }
+          },
+          "stationaryControl": {
+            "providerSampleCount": 46,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 1,
+            "trailPointCount": 1,
+            "distinctTrailPointCount": 1,
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 0,
+              "suppressedDraws": 1,
+              "failedDraws": 0,
+              "committedDraws": 0,
+              "transactionCommitted": true
+            },
+            "segmentSuppressed": true
+          }
+        },
+        {
+          "elementId": "project-valtan-ground-wave-smash-windup-weapon-trail.emitter5258",
+          "positiveMovingBone": {
+            "providerSampleCount": 46,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 46,
+            "trailPointCount": 11,
+            "distinctTrailPointCount": 11,
+            "finiteTrailPointCount": 11,
+            "cumulativeDistance": 0.749388635,
+            "firstWorldPosition": [0.833333313, -0.0857342035, 0.0871503279],
+            "lastWorldPosition": [1.5, 0.0675066113, -0.0571561344],
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 1,
+              "suppressedDraws": 0,
+              "failedDraws": 0,
+              "committedDraws": 1,
+              "transactionCommitted": true
+            }
+          },
+          "stationaryControl": {
+            "providerSampleCount": 46,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 1,
+            "trailPointCount": 1,
+            "distinctTrailPointCount": 1,
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 0,
+              "suppressedDraws": 1,
+              "failedDraws": 0,
+              "committedDraws": 0,
+              "transactionCommitted": true
+            },
+            "segmentSuppressed": true
+          }
+        }
+      ],
+      "missingAnchorControl": {
+        "providerRejected": true,
+        "playbackStatePreserved": true,
+        "trailPointCountAfterReject": 0,
+        "status": "Effect transform history is missing required anchor: VALTAN_GROUND_WAVE_SMASH_WINDUP_WEAPON_R"
+      },
+      "disposition": "DRAWABLE_PROOF_PASS"
+    },
+    {
+      "effectAssetId": "effect.valtan.jump-spin.recovery",
+      "candidatePath": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/Valtan/ProjectTunedBoundedWeaponTrails/effect.valtan.jump-spin.recovery.weapon-bone-trails.candidate.effect.json",
+      "candidateRawSha256": "a71cc5072041cdb7596514e21f9d5d0019ac7a9fc96632ca9e409cace723e14f",
+      "candidateTypedCodecSha256": "cc28dd2033535dacb6f7921f6eaeca3f530a6be447c110cb467a953ab3a43bcb",
+      "runtimeAnchorSlotId": "VALTAN_JUMP_SPIN_RECOVERY_WEAPON_R",
+      "sourceStartSeconds": 0,
+      "sourceDurationSeconds": 0.196547002,
+      "elements": [
+        {
+          "elementId": "project-valtan-jump-spin-recovery-weapon-trail.emitter5259",
+          "positiveMovingBone": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 9,
+            "trailPointCount": 4,
+            "distinctTrailPointCount": 4,
+            "finiteTrailPointCount": 4,
+            "cumulativeDistance": 0.227090672,
+            "firstWorldPosition": [0.0666666701, 0.0443280339, 0.0165896136],
+            "lastWorldPosition": [0.266666681, 0.139805868, 0.061836984],
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 1,
+              "suppressedDraws": 0,
+              "failedDraws": 0,
+              "committedDraws": 1,
+              "transactionCommitted": true
+            }
+          },
+          "stationaryControl": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 1,
+            "trailPointCount": 1,
+            "distinctTrailPointCount": 1,
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 0,
+              "suppressedDraws": 1,
+              "failedDraws": 0,
+              "committedDraws": 0,
+              "transactionCommitted": true
+            },
+            "segmentSuppressed": true
+          }
+        },
+        {
+          "elementId": "project-valtan-jump-spin-recovery-weapon-trail.emitter5260",
+          "positiveMovingBone": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 9,
+            "trailPointCount": 4,
+            "distinctTrailPointCount": 4,
+            "finiteTrailPointCount": 4,
+            "cumulativeDistance": 0.227090672,
+            "firstWorldPosition": [0.0666666701, 0.0443280339, 0.0165896136],
+            "lastWorldPosition": [0.266666681, 0.139805868, 0.061836984],
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 1,
+              "suppressedDraws": 0,
+              "failedDraws": 0,
+              "committedDraws": 1,
+              "transactionCommitted": true
+            }
+          },
+          "stationaryControl": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 1,
+            "trailPointCount": 1,
+            "distinctTrailPointCount": 1,
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 0,
+              "suppressedDraws": 1,
+              "failedDraws": 0,
+              "committedDraws": 0,
+              "transactionCommitted": true
+            },
+            "segmentSuppressed": true
+          }
+        },
+        {
+          "elementId": "project-valtan-jump-spin-recovery-weapon-trail.emitter5258",
+          "positiveMovingBone": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 9,
+            "trailPointCount": 4,
+            "distinctTrailPointCount": 4,
+            "finiteTrailPointCount": 4,
+            "cumulativeDistance": 0.227090672,
+            "firstWorldPosition": [0.0666666701, 0.0443280339, 0.0165896136],
+            "lastWorldPosition": [0.266666681, 0.139805868, 0.061836984],
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 1,
+              "suppressedDraws": 0,
+              "failedDraws": 0,
+              "committedDraws": 1,
+              "transactionCommitted": true
+            }
+          },
+          "stationaryControl": {
+            "providerSampleCount": 9,
+            "rootWorldDistinctCount": 1,
+            "anchorWorldDistinctCount": 1,
+            "trailPointCount": 1,
+            "distinctTrailPointCount": 1,
+            "renderer":             {
+              "preparedSamples": 1,
+              "attemptedSamples": 1,
+              "submittedDraws": 0,
+              "suppressedDraws": 1,
+              "failedDraws": 0,
+              "committedDraws": 0,
+              "transactionCommitted": true
+            },
+            "segmentSuppressed": true
+          }
+        }
+      ],
+      "missingAnchorControl": {
+        "providerRejected": true,
+        "playbackStatePreserved": true,
+        "trailPointCountAfterReject": 0,
+        "status": "Effect transform history is missing required anchor: VALTAN_JUMP_SPIN_RECOVERY_WEAPON_R"
+      },
+      "disposition": "DRAWABLE_PROOF_PASS"
+    }
+  ],
+  "summary": {
+    "targetCount": 3,
+    "elementCount": 9,
+    "movingBoneDrawCount": 9,
+    "stationarySuppressedCount": 9,
+    "missingAnchorRollbackCount": 3
+  },
+  "disposition": "DRAWABLE_PROOF_PASS"
+}
