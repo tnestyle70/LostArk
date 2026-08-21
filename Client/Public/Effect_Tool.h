@@ -394,6 +394,7 @@ private:
 	bool_t Try_UseSelectedElementAsAuthoringPreset();
     bool_t Try_BindMeshAuthoringResource(const std::string& strAssetId);
     bool_t Try_ClearMeshAuthoringSlot();
+	bool_t Try_DuplicateSelectedElement();
     bool_t Try_DeleteSelectedElement();
     bool_t Try_ClearElements();
     bool_t Try_ApplyDraftAndSave();
@@ -620,6 +621,7 @@ private:
     void Reset_ProductCueSnapshot();
     void Start_WorldPreviewFromBeginning();
     void Synchronize_LoadedSkillPreview();
+	void Select_PlayerPreviewCueCandidate(size_t iCandidateIndex);
     void Restart_SynchronizedAnimationSequence();
     void Seek_SynchronizedAnimationSequence(f32_t fTimeSeconds);
     void Set_SynchronizedAnimationPaused(bool_t bPaused);
@@ -710,6 +712,8 @@ private:
     vector<EFFECT_DATA_FILE_ENTRY> m_DataFiles;
     vector<string> m_DataFileDomains;
     vector<ANIMATION_SKILL_CLIP> m_SynchronizedAnimationClips;
+	vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE>
+		m_PlayerPreviewCueCandidates;
     vector<string> m_AnimationClipDisplayLabels;
     vector<string> m_AnimationClipSearchTokens;
     EFFECT_ELEMENT_KIND m_eSelectedEffectType = EFFECT_ELEMENT_KIND::MESH;
@@ -849,6 +853,7 @@ private:
         EFFECT_RESOURCE_FILE_KIND::MODEL;
 	uint32_t m_iCueTransferDurationMs = 250u;
 	size_t m_iSynchronizedAnimationClipIndex = 0u;
+	size_t m_iPlayerPreviewCueCandidateIndex = 0u;
 	f32_t m_fReconstructedSourceRuntimeClockSeconds = 0.f;
 	f32_t m_fReconstructedSourceRuntimeTailSeconds = 0.f;
 	string m_strDocumentStatus;
