@@ -2244,17 +2244,17 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 		const PLAYER_SKILL_DEFINITION* dimensionMasterBasicAttack =
 			catalog.Find_Skill(2050010u);
 		constexpr std::array<std::uint32_t, 4u> expectedDurationMs =
-			{ 1400u, 1500u, 1067u, 1700u };
+			{ 700u, 1500u, 1067u, 1700u };
 		constexpr std::array<std::uint32_t, 4u> expectedHitMs =
-			{ 100u, 43u, 28u, 335u };
+			{ 50u, 43u, 28u, 335u };
 		constexpr std::array<std::uint32_t, 4u> expectedOpenMs =
-			{ 100u, 0u, 200u, 0u };
+			{ 50u, 0u, 200u, 0u };
 		constexpr std::array<std::uint32_t, 4u> expectedCloseMs =
-			{ 1400u, 1500u, 1067u, 0u };
+			{ 700u, 1500u, 1067u, 0u };
 		bool exactDimensionMasterTiming =
 			nullptr != dimensionMasterBasicAttack &&
-			1400u == dimensionMasterBasicAttack->iActionDurationMs &&
-			100u == dimensionMasterBasicAttack->iHitTimeMs &&
+			700u == dimensionMasterBasicAttack->iActionDurationMs &&
+			50u == dimensionMasterBasicAttack->iHitTimeMs &&
 			dimensionMasterBasicAttack->ComboStages.size() ==
 				expectedDurationMs.size();
 		if (exactDimensionMasterTiming)
@@ -2272,11 +2272,11 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			}
 			exactDimensionMasterTiming = exactDimensionMasterTiming &&
 				!dimensionMasterBasicAttack->ComboStages.front().RootMotion.empty() &&
-				1400u == dimensionMasterBasicAttack->ComboStages.front().
+				700u == dimensionMasterBasicAttack->ComboStages.front().
 					RootMotion.back().iTimeMs;
 		}
 		tests.Require(exactDimensionMasterTiming,
-			"Resolve exact DimensionMaster BA timings, full-stage input windows and 1400 ms root-motion trim");
+			"Resolve half-clock DimensionMaster BA1 timing, full-stage input window and 700 ms root motion");
 
 		if (nullptr != dimensionMasterBasicAttack)
 		{
@@ -2302,7 +2302,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 			SERVER_PLAYER tapped = makePlayer();
 			const bool tappedStarted =
 				skills.Try_Start(tapped, basicAttack, catalog, 100u);
-			tapped.fActionElapsedSeconds = 1.399f;
+			tapped.fActionElapsedSeconds = 0.699f;
 			skills.Update(tapped, noTargets, catalog, nullptr, nullptr,
 				0.f, 101u, noDamageEvents);
 			const bool tappedStayedInBa1 =
@@ -2314,7 +2314,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				tappedStarted && tappedStayedInBa1 &&
 				PLAYER_ACTION_STATE::NONE == tapped.eAction &&
 				0u == tapped.iComboStage,
-				"Keep a tapped DimensionMaster BA in BA1 until 1400 ms then end it");
+				"Keep a tapped DimensionMaster BA in BA1 until 700 ms then end it");
 
 			SERVER_PLAYER held = makePlayer();
 			basicAttack.iClientSequence = 1u;
@@ -2404,7 +2404,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 
 		std::vector<SERVER_WORLD_ENTITY> noTargets;
 		std::vector<DAMAGE_EVENT> noDamageEvents;
-		player.fActionElapsedSeconds = 1.399f;
+		player.fActionElapsedSeconds = 0.699f;
 		skills.Update(player, noTargets, catalog, nullptr, nullptr,
 			0.f, 202u, noDamageEvents);
 		const bool explicitWaitedForBoundary =
@@ -2499,7 +2499,7 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 				cooldownCountBeforePending ==
 					live.CooldownEndTickBySkillId.size() &&
 				!live.CooldownEndTickBySkillId.contains(2050100u);
-			live.fActionElapsedSeconds = 1.399f;
+			live.fActionElapsedSeconds = 0.699f;
 			std::vector<SERVER_WORLD_ENTITY> noTargets;
 			std::vector<DAMAGE_EVENT> noDamageEvents;
 			room.m_PlayerSkillSystem.Update(

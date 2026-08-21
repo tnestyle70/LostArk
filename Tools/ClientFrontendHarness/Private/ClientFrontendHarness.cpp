@@ -9503,7 +9503,7 @@ namespace
 						"pc_sp_m_00_sk_sk_moving_normal_1_04" } }
 				};
 				bool_t exactRoster = expected.size() == parsed.Bindings.size();
-				bool_t basicAttackTrimMatches = false;
+				bool_t basicAttackHalfClockMatches = false;
 				for (const EXPECTED_BINDING& row : expected)
 				{
 					const PLAYER_SKILL_DEFINITION* skill =
@@ -9522,8 +9522,11 @@ namespace
 							!binding->Stages.empty() &&
 							!binding->Stages.front().Clips.empty())
 						{
-							basicAttackTrimMatches =
-								1400u == binding->Stages.front().Clips.front().iPlayMs;
+							const ANIMATION_SKILL_CLIP& ba1 =
+								binding->Stages.front().Clips.front();
+							basicAttackHalfClockMatches =
+								1400u == ba1.iPlayMs &&
+								std::abs(ba1.fPlayRate - 2.f) <= 0.000001f;
 						}
 						for (const ANIMATION_SKILL_STAGE& stage : binding->Stages)
 						{
@@ -9552,13 +9555,313 @@ namespace
 				}
 				runner.Require(exactRoster,
 					"DimensionMaster Trial Roster Joins Exact Slots Skills Clips And Effects");
-				runner.Require(basicAttackTrimMatches,
-					"DimensionMaster BA1 Binding Trims Presentation To 1400 Ms");
+				runner.Require(basicAttackHalfClockMatches,
+					"DimensionMaster BA1 Plays One 1400 Ms Source Stab At 2X On A 700 Ms Wall Clock");
 			}
 			total += parsed.Bindings.size();
 		}
 		runner.Require(CPlayerSkillCatalog::Get_Skills().size() == total,
 			"Every Real Skill Binding Document Covers Every Skill Definition");
+	}
+
+	void Test_DimensionMasterBa1HalfClock(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		using namespace LostArk::Shared;
+		constexpr SKILL_ID BA1_SKILL_ID = 2050010u;
+		constexpr std::string_view BA1_CLIP =
+			"pc_sp_m_00_sk_att_battle_1_01";
+		constexpr std::string_view BA1_EFFECT =
+			"effect.dimensionmaster.skill.2050010.ba1.unified";
+
+		std::string status;
+		const bool_t catalogLoaded = CPlayerSkillCatalog::Load(status);
+		const PLAYER_SKILL_DEFINITION* skill = catalogLoaded ?
+			CPlayerSkillCatalog::Find_ById(BA1_SKILL_ID) : nullptr;
+		DATA_JSON_VALUE skillRoot;
+		std::string parseError;
+		const bool_t skillJsonParsed = CDataJson::Parse(Read_Text(
+			CProjectDataRoot::Resolve(L"Balance/PlayerSkills.json")),
+			skillRoot, parseError);
+		const DATA_JSON_VALUE* exactSkillRow = nullptr;
+		const DATA_JSON_VALUE* skillRows = skillJsonParsed ?
+			skillRoot.Find("skills") : nullptr;
+		if (nullptr != skillRows && skillRows->Is_Array())
+		{
+			for (const DATA_JSON_VALUE& row : skillRows->Get_Array())
+			{
+				const DATA_JSON_VALUE* id = row.Is_Object() ?
+					row.Find("skillId") : nullptr;
+				if (nullptr != id && id->Is_Number() &&
+					id->Get_Number() == static_cast<double>(BA1_SKILL_ID))
+				{
+					exactSkillRow = &row;
+					break;
+				}
+			}
+		}
+		const auto exactUnsigned = [](const DATA_JSON_VALUE* object,
+			const char_t* key, const uint32_t expected)
+		{
+			const DATA_JSON_VALUE* value = nullptr == object ?
+				nullptr : object->Find(key);
+			return nullptr != value && value->Is_Number() &&
+				value->Get_Number() == static_cast<double>(expected);
+		};
+		const DATA_JSON_VALUE* comboStages = nullptr == exactSkillRow ?
+			nullptr : exactSkillRow->Find("comboStages");
+		const DATA_JSON_VALUE* firstStage = nullptr;
+		if (nullptr != comboStages && comboStages->Is_Array() &&
+			comboStages->Get_Array().size() == 4u)
+		{
+			firstStage = &comboStages->Get_Array().front();
+		}
+		const bool_t exactAuthorityClock = nullptr != skill &&
+			PLAYER_SKILL_KIND::COMBO == skill->eSkillKind &&
+			4u == skill->iComboStageCount &&
+			exactUnsigned(exactSkillRow, "actionDurationMs", 700u) &&
+			exactUnsigned(exactSkillRow, "hitTimeMs", 50u) &&
+			exactUnsigned(firstStage, "actionDurationMs", 700u) &&
+			exactUnsigned(firstStage, "hitTimeMs", 50u) &&
+			exactUnsigned(firstStage, "comboAdvanceMs", 700u) &&
+			exactUnsigned(firstStage, "inputOpenMs", 50u) &&
+			exactUnsigned(firstStage, "inputCloseMs", 700u);
+		runner.Require(exactAuthorityClock,
+			"DimensionMaster BA1 Server Authority Uses One 700 Ms Half Clock With A 50 Ms Hit And Full Stage Input Window");
+
+		ComPtr<ID3D11Device> device;
+		ComPtr<ID3D11DeviceContext> context;
+		D3D_FEATURE_LEVEL featureLevel{};
+		const HRESULT createResult = D3D11CreateDevice(
+			nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0u, nullptr, 0u,
+			D3D11_SDK_VERSION, &device, &featureLevel, &context);
+		const std::filesystem::path modelPath = CRuntimeAssetRoot::Resolve(
+			"Character/DimensionMaster/DimensionMaster_Character.wmodel");
+		unique_ptr<Engine::CModel> model;
+		if (SUCCEEDED(createResult) && nullptr != device && nullptr != context &&
+			!modelPath.empty() && std::filesystem::is_regular_file(modelPath))
+		{
+			model = Engine::CModel::Create(
+				device, context, Engine::MODEL::ANIM,
+				modelPath.string().c_str(),
+				XMMatrixScaling(0.01f, 0.01f, 0.01f) *
+				XMMatrixRotationY(XMConvertToRadians(-90.f)));
+		}
+		std::vector<std::string> availableClips;
+		if (nullptr != model)
+		{
+			availableClips.reserve(model->Get_NumAnimations());
+			for (uint32_t index = 0u; index < model->Get_NumAnimations(); ++index)
+			{
+				const char_t* name = model->Get_AnimationName(index);
+				if (nullptr != name)
+					availableClips.emplace_back(name);
+			}
+		}
+
+		const std::filesystem::path bindingPath =
+			CAnimationSkillBindingDocument::Resolve_Path("DimensionMaster");
+		const std::string bindingText = Read_Text(bindingPath);
+		ANIMATION_SKILL_BINDING_DOCUMENT bindingDocument;
+		const bool_t bindingLoaded = !bindingText.empty() &&
+			CAnimationSkillBindingDocument::Parse_Text(
+				bindingText, bindingDocument, status) &&
+			CAnimationSkillBindingDocument::Validate(
+				bindingDocument, "DimensionMaster",
+				CHARACTER_CLASS_ID::DIMENSIONMASTER,
+				CPlayerSkillCatalog::Get_Skills(), availableClips, status);
+		const auto binding = std::find_if(
+			bindingDocument.Bindings.begin(), bindingDocument.Bindings.end(),
+			[](const ANIMATION_SKILL_BINDING& candidate)
+			{
+				return BA1_SKILL_ID == candidate.iSkillId;
+			});
+		const ANIMATION_SKILL_CLIP* ba1Clip =
+			bindingLoaded && binding != bindingDocument.Bindings.end() &&
+			binding->Stages.size() == 4u &&
+			binding->Stages.front().Clips.size() == 1u ?
+				&binding->Stages.front().Clips.front() : nullptr;
+		const bool_t oneStabBinding = nullptr != ba1Clip &&
+			ba1Clip->strClipName == BA1_CLIP &&
+			1400u == ba1Clip->iPlayMs &&
+			std::abs(ba1Clip->fPlayRate - 2.f) <= 0.000001f;
+		runner.Require(bindingLoaded && oneStabBinding,
+			"DimensionMaster BA1 Binds Exactly One Source Stab Clip And Plays Its 1400 Ms Segment At 2X");
+
+		bool_t modelClipExact = false;
+		bool_t sourcePosesMove = false;
+		f32_t sourceDurationSeconds = 0.f;
+		if (oneStabBinding && nullptr != model &&
+			model->Start_Animation(ba1Clip->strClipName.c_str(), false))
+		{
+			const uint32_t animation = model->Get_CurrentAnimIndex();
+			f32_t positionTicks = 0.f;
+			f32_t durationTicks = 0.f;
+			const f32_t ticksPerSecond =
+				model->Get_AnimationTickPerSecond(animation);
+			const int32_t weaponBone = model->Find_BoneIndex("b_wp_swm_m_1");
+			modelClipExact = model->Get_AnimationProgress(
+				animation, positionTicks, durationTicks) &&
+				std::isfinite(ticksPerSecond) && ticksPerSecond > 0.f &&
+				std::isfinite(durationTicks) && durationTicks > 0.f &&
+				weaponBone >= 0;
+			if (modelClipExact)
+			{
+				sourceDurationSeconds = durationTicks / ticksPerSecond;
+				modelClipExact =
+					std::abs(ticksPerSecond - 30.f) <= 0.0001f &&
+					std::abs(sourceDurationSeconds - 4.f) <= 0.0001f;
+				const std::array<uint32_t, 1u> boneIndices = {
+					static_cast<uint32_t>(weaponBone) };
+				std::array<float4x4_t, 1u> poseAtZero{};
+				std::array<float4x4_t, 1u> poseAtHit{};
+				std::array<float4x4_t, 1u> poseAtEnd{};
+				const bool_t sampled =
+					model->Sample_CurrentAnimationBoneCombinedMatrices(
+						animation, 0.f, boneIndices, poseAtZero) &&
+					model->Sample_CurrentAnimationBoneCombinedMatrices(
+						animation, 0.1f * ticksPerSecond,
+						boneIndices, poseAtHit) &&
+					model->Sample_CurrentAnimationBoneCombinedMatrices(
+						animation, 1.4f * ticksPerSecond,
+						boneIndices, poseAtEnd);
+				const auto finiteMatrix = [](const float4x4_t& matrix)
+				{
+					const f32_t* values = &matrix._11;
+					for (size_t index = 0u; index < 16u; ++index)
+					{
+						if (!std::isfinite(values[index]))
+							return false;
+					}
+					return true;
+				};
+				const auto maxDelta = [](const float4x4_t& left,
+					const float4x4_t& right)
+				{
+					f32_t result = 0.f;
+					const f32_t* leftValues = &left._11;
+					const f32_t* rightValues = &right._11;
+					for (size_t index = 0u; index < 16u; ++index)
+					{
+						result = (std::max)(result,
+							std::abs(leftValues[index] - rightValues[index]));
+					}
+					return result;
+				};
+				sourcePosesMove = sampled &&
+					finiteMatrix(poseAtZero.front()) &&
+					finiteMatrix(poseAtHit.front()) &&
+					finiteMatrix(poseAtEnd.front()) &&
+					maxDelta(poseAtZero.front(), poseAtHit.front()) > 0.0001f &&
+					maxDelta(poseAtHit.front(), poseAtEnd.front()) > 0.0001f;
+			}
+		}
+		runner.Require(modelClipExact && sourcePosesMove,
+			"DimensionMaster Product WModel Contains The Exact 30 TPS Four Second BA1 Clip And Its Weapon Pose Executes A Non Static Stab Segment");
+
+		ACTION_PRESENTATION_CLIP_TIMING timing{};
+		timing.fModelSourceDurationSeconds = sourceDurationSeconds;
+		timing.iPlayMs = nullptr == ba1Clip ? 0u : ba1Clip->iPlayMs;
+		timing.fPlayRate = nullptr == ba1Clip ? 0.f : ba1Clip->fPlayRate;
+		const std::array<ACTION_PRESENTATION_CLIP_TIMING, 1u> timings = {
+			timing };
+		f32_t trimmedSourceSeconds = 0.f;
+		f32_t wallSeconds = 0.f;
+		f32_t cueWallSeconds = -1.f;
+		ACTION_PRESENTATION_SAMPLE middleSample{};
+		ACTION_PRESENTATION_SAMPLE endSample{};
+		ACTION_PRESENTATION_CUE_PREVIEW_SAMPLE effectSample{};
+		ACTION_PRESENTATION_CUE_PREVIEW_TIMING cueTiming{};
+		cueTiming.fPlayRate = timing.fPlayRate;
+		cueTiming.fCueSourceStartSeconds = 0.f;
+		const bool_t sharedClockExact = modelClipExact && oneStabBinding &&
+			CActionPresentationTimeline::Resolve_ClipDuration(
+				timing, trimmedSourceSeconds, wallSeconds) &&
+			CActionPresentationTimeline::Resolve_Sample(
+				timings, 0.35f, middleSample) &&
+			CActionPresentationTimeline::Resolve_Sample(
+				timings, 0.7f, endSample) &&
+			CActionPresentationTimeline::Resolve_CueWallOffset(
+				timings, 0u, 0.f, 0u, cueWallSeconds) &&
+			CActionPresentationTimeline::Resolve_CuePreviewSample(
+				cueTiming, 0.35f, effectSample) &&
+			std::abs(trimmedSourceSeconds - 1.4f) <= 0.0001f &&
+			std::abs(wallSeconds - 0.7f) <= 0.0001f &&
+			std::abs(middleSample.fClipSourceTimeSeconds - 0.7f) <= 0.0001f &&
+			std::abs(endSample.fClipSourceTimeSeconds - 1.4f) <= 0.0001f &&
+			std::abs(cueWallSeconds) <= 0.0001f && effectSample.bVisible &&
+			std::abs(effectSample.fEffectSampleSeconds - 0.7f) <= 0.0001f;
+		runner.Require(sharedClockExact,
+			"DimensionMaster BA1 Character Clip And Product Effect Consume The Same 2X Action Clock From Zero Through The 700 Ms Boundary");
+
+		const std::string eventsText = Read_Text(CProjectDataRoot::Resolve(
+			L"Animation/Authored/DimensionMaster/DimensionMaster.animevents"));
+		std::istringstream eventLines(eventsText);
+		std::string eventLine;
+		size_t clipProductCueCount = 0u;
+		size_t exactProductCueCount = 0u;
+		const std::string clipToken = "\"" + std::string(BA1_CLIP) +
+			"\" EFFECT ";
+		while (std::getline(eventLines, eventLine))
+		{
+			if (!eventLine.starts_with(clipToken) ||
+				eventLine.find("effectref=asset") == std::string::npos)
+			{
+				continue;
+			}
+			++clipProductCueCount;
+			if (eventLine.find("startms=0") != std::string::npos &&
+				eventLine.find(std::string(BA1_EFFECT)) != std::string::npos)
+			{
+				++exactProductCueCount;
+			}
+		}
+		runner.Require(1u == clipProductCueCount && 1u == exactProductCueCount,
+			"DimensionMaster BA1 Exact Stab Clip Owns One Zero Time Product Effect Cue Like Artist And Warlord BA Stages");
+
+		std::string malformedText = bindingText;
+		const std::string validRate = "\"playRate\": 2.0";
+		const size_t ratePosition = malformedText.find(validRate);
+		if (std::string::npos != ratePosition)
+			malformedText.replace(ratePosition, validRate.size(),
+				"\"playRate\": 0.0");
+		wchar_t temporaryRoot[MAX_PATH]{};
+		GetTempPathW(static_cast<DWORD>(std::size(temporaryRoot)), temporaryRoot);
+		const std::filesystem::path malformedPath =
+			std::filesystem::path(temporaryRoot) /
+			("LostArkDimensionMasterBa1Malformed_" +
+				std::to_string(GetCurrentProcessId()) + ".json");
+		{
+			std::ofstream output(malformedPath, std::ios::binary | std::ios::trunc);
+			output.write(malformedText.data(),
+				static_cast<std::streamsize>(malformedText.size()));
+		}
+		ANIMATION_SKILL_BINDING_DOCUMENT preserved = bindingDocument;
+		const bool_t malformedRejected = std::string::npos != ratePosition &&
+			!CAnimationSkillBindingDocument::Load_FromPath(
+				malformedPath, "DimensionMaster",
+				CHARACTER_CLASS_ID::DIMENSIONMASTER,
+				CPlayerSkillCatalog::Get_Skills(), availableClips,
+				preserved, status);
+		std::error_code removeError;
+		std::filesystem::remove(malformedPath, removeError);
+		const auto preservedBinding = std::find_if(
+			preserved.Bindings.begin(), preserved.Bindings.end(),
+			[](const ANIMATION_SKILL_BINDING& candidate)
+			{
+				return BA1_SKILL_ID == candidate.iSkillId;
+			});
+		const bool_t priorBindingPreserved = malformedRejected &&
+			preserved.Bindings.size() == bindingDocument.Bindings.size() &&
+			preservedBinding != preserved.Bindings.end() &&
+			preservedBinding->Stages.size() == 4u &&
+			preservedBinding->Stages.front().Clips.size() == 1u &&
+			preservedBinding->Stages.front().Clips.front().strClipName == BA1_CLIP &&
+			1400u == preservedBinding->Stages.front().Clips.front().iPlayMs &&
+			std::abs(preservedBinding->Stages.front().Clips.front().fPlayRate -
+				2.f) <= 0.000001f;
+		runner.Require(priorBindingPreserved,
+			"DimensionMaster BA1 Rejects A Malformed Playback Rate Without Replacing The Previously Valid Animation Effect Clock");
 	}
 
 	void Test_SkillBindingAtomicSave(TEST_RUNNER& runner)
@@ -43307,6 +43610,12 @@ int main(const int argc, char* argv[])
 		Test_ValtanPatternBindingSchema(runner);
 		Test_ActionPresentationTimeline(runner);
 		Test_RealSkillBindingDocuments(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--dimension-ba1-sync-fast")
+	{
+		Test_DimensionMasterBa1HalfClock(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
