@@ -3247,7 +3247,7 @@
             {
               "name": "uv_noise_velue",
               "group": "uv_noise",
-              "value": -1.10000002
+              "value": 0
             },
             {
               "name": "uvnoise_move_y",
@@ -4585,7 +4585,8 @@
       },
       "sourcePresentation": {
         "enabled": false
-      }
+      },
+      "authoringOverrides": { "resources": [], "scalars": [ { "name": "uv_noise_velue", "value": 0, "compilerValue": -1.10000002 } ], "colors": [] }
     },
     {
       "id": "authored.source-particle.32a4871cc934460404365309",
@@ -4717,7 +4718,7 @@
             {
               "name": "uv_noise_velue",
               "group": "uv_noise",
-              "value": -1.10000002
+              "value": 0
             },
             {
               "name": "uvnoise_move_y",
@@ -6055,7 +6056,8 @@
       },
       "sourcePresentation": {
         "enabled": false
-      }
+      },
+      "authoringOverrides": { "resources": [], "scalars": [ { "name": "uv_noise_velue", "value": 0, "compilerValue": -1.10000002 } ], "colors": [] }
     },
     {
       "id": "authored.source-particle.ab175ceab43d84d23b8a9efc",
@@ -6187,7 +6189,7 @@
             {
               "name": "uv_noise_velue",
               "group": "uv_noise",
-              "value": -1.10000002
+              "value": 0
             },
             {
               "name": "uvnoise_move_y",
@@ -7525,7 +7527,8 @@
       },
       "sourcePresentation": {
         "enabled": false
-      }
+      },
+      "authoringOverrides": { "resources": [], "scalars": [ { "name": "uv_noise_velue", "value": 0, "compilerValue": -1.10000002 } ], "colors": [] }
     },
     {
       "id": "authored.source-particle.a6b259e86343eae97f48c142",
@@ -7657,7 +7660,7 @@
             {
               "name": "uv_noise_velue",
               "group": "uv_noise",
-              "value": -1.10000002
+              "value": 0
             },
             {
               "name": "uvnoise_move_y",
@@ -8998,7 +9001,8 @@
       },
       "sourcePresentation": {
         "enabled": false
-      }
+      },
+      "authoringOverrides": { "resources": [], "scalars": [ { "name": "uv_noise_velue", "value": 0, "compilerValue": -1.10000002 } ], "colors": [] }
     },
     {
       "id": "authored.source-particle.d7d5776483abfb036bc4e886",
@@ -15422,7 +15426,7 @@
             {
               "name": "uv_noise_velue",
               "group": "uv_noise",
-              "value": -1.10000002
+              "value": 0
             },
             {
               "name": "uvnoise_move_y",
@@ -16831,7 +16835,8 @@
       },
       "sourcePresentation": {
         "enabled": false
-      }
+      },
+      "authoringOverrides": { "resources": [], "scalars": [ { "name": "uv_noise_velue", "value": 0, "compilerValue": -1.10000002 } ], "colors": [] }
     },
     {
       "id": "authored.source-particle.64f6d0ab29d071e1a8d41dcb",
@@ -16963,7 +16968,7 @@
             {
               "name": "uv_noise_velue",
               "group": "uv_noise",
-              "value": -1.10000002
+              "value": 0
             },
             {
               "name": "uvnoise_move_y",
@@ -18372,7 +18377,8 @@
       },
       "sourcePresentation": {
         "enabled": false
-      }
+      },
+      "authoringOverrides": { "resources": [], "scalars": [ { "name": "uv_noise_velue", "value": 0, "compilerValue": -1.10000002 } ], "colors": [] }
     },
     {
       "id": "authored.source-particle.8c510113f8256fd62b31de3b",
@@ -18504,7 +18510,7 @@
             {
               "name": "uv_noise_velue",
               "group": "uv_noise",
-              "value": -1.10000002
+              "value": 0
             },
             {
               "name": "uvnoise_move_y",
@@ -19913,7 +19919,8 @@
       },
       "sourcePresentation": {
         "enabled": false
-      }
+      },
+      "authoringOverrides": { "resources": [], "scalars": [ { "name": "uv_noise_velue", "value": 0, "compilerValue": -1.10000002 } ], "colors": [] }
     },
     {
       "id": "authored.source-particle.4986a748ac0894912a52cc89",
@@ -20045,7 +20052,7 @@
             {
               "name": "uv_noise_velue",
               "group": "uv_noise",
-              "value": -1.10000002
+              "value": 0
             },
             {
               "name": "uvnoise_move_y",
@@ -21454,7 +21461,8 @@
       },
       "sourcePresentation": {
         "enabled": false
-      }
+      },
+      "authoringOverrides": { "resources": [], "scalars": [ { "name": "uv_noise_velue", "value": 0, "compilerValue": -1.10000002 } ], "colors": [] }
     },
     {
       "id": "authored.source-particle.9180da6a19275da6a61130a9",

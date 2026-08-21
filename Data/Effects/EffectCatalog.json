@@ -123,6 +123,11 @@
       "authoringPath": "Effects/Authored/effect.artist.skill.31480.unified.effect.json"
     },
     {
+      "effectAssetId": "effect.artist.skill.31490.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.artist.skill.31490.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.artist.skill.31910.authored-baseline",
       "authoringPath": "Effects/Authored/effect.artist.skill.31910.authored-baseline.effect.json"
     },
