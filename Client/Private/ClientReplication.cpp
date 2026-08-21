@@ -718,6 +718,9 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		desc.strModelTag = modelTag;
 		desc.strShaderTag =
 			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+		desc.strArchetypeId = spawned.strArchetypeId;
+		desc.strAnimationEffectCueAssetId =
+			actor->animationEffectCueAssetId;
 		const std::string* pIdleClipOverride =
 			CNpcPlacementPresentationService::Find_IdleClip(
 				m_Desc.iPrototypeLevelIndex, spawned.strPlacementId);
@@ -963,6 +966,7 @@ bool Client::CClientReplication::Apply_WorldEntityDespawn(
 
 	if (const std::shared_ptr<CNpc> npc = iter->second.pNpc.lock())
 	{
+		CEffectPresentationService::Stop_NpcOwner(npc);
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			m_Desc.iLayerLevelIndex,
 			m_Desc.strWorldEntityLayerTag,
@@ -1128,67 +1132,40 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				allSucceeded = false;
 				continue;
 			}
-			/* Server-driven NPC actions (raid Esther summons). An action the
-			catalog maps plays its clip chain once, each clip starting when the
-			previous finishes; anything else stands in the idle clip, so a
-			plain placement NPC without actionClips never switches at all. */
+			/* Server-driven NPC actions (raid Esther summons). CNpc owns both the
+			authoritative action-age seek and its admitted Effect cue cursor. This
+			keeps the model bone sampled for a late snapshot aligned with the
+			initial Effect seek instead of advancing the two on different clocks. */
 			const NPC_ACTOR_ENTRY* actor =
 				CActorCatalog::Find_Npc(iter->second.strArchetypeId);
-			if (nullptr == actor || actor->actionClips.empty())
+			if (nullptr == actor)
+			{
+				allSucceeded = false;
 				continue;
-			const auto actionClip =
-				actor->actionClips.find(entity.strActionId);
+			}
+			if (!npc->Apply_NetworkAction(
+					entity.strActionId,
+					snapshot.iServerTick,
+					entity.iActionStartTick))
+			{
+				allSucceeded = false;
+				continue;
+			}
+
+			const auto actionClip = actor->actionClips.find(entity.strActionId);
 			if (actionClip == actor->actionClips.end())
 			{
 				iter->second.strActiveActionId.clear();
 				iter->second.iActionClipIndex = 0u;
-				if (iter->second.strCurrentClip != actor->idleClip)
-				{
-					if (!npc->Set_Animation(actor->idleClip.c_str(), true))
-						allSucceeded = false;
-					else
-						iter->second.strCurrentClip = actor->idleClip;
-				}
-				continue;
+				iter->second.strCurrentClip = actor->idleClip;
 			}
-			const std::vector<std::string>& chain = actionClip->second;
-			if (iter->second.strActiveActionId != entity.strActionId)
+			else if (iter->second.strActiveActionId != entity.strActionId)
 			{
-				if (!npc->Set_Animation(chain.front().c_str(), false))
-				{
-					allSucceeded = false;
-					continue;
-				}
 				iter->second.strActiveActionId = entity.strActionId;
 				iter->second.iActionClipIndex = 0u;
-				iter->second.strCurrentClip = chain.front();
+				iter->second.strCurrentClip = actionClip->second.front();
 				CCombatHUDViewModel::Get().Apply_EstherCutinAction(
-					iter->second.strArchetypeId, chain);
-			}
-			else if (iter->second.iActionClipIndex + 1u < chain.size())
-			{
-				const std::shared_ptr<Engine::CModel> model =
-					npc->Get_Model();
-				f32_t position = 0.f;
-				f32_t duration = 0.f;
-				if (nullptr != model &&
-					model->Get_AnimationProgress(
-						model->Get_CurrentAnimIndex(),
-						position, duration) &&
-					duration > 0.f && position >= duration)
-				{
-					const std::string& next =
-						chain[iter->second.iActionClipIndex + 1u];
-					if (!npc->Set_Animation(next.c_str(), false))
-					{
-						allSucceeded = false;
-					}
-					else
-					{
-						++iter->second.iActionClipIndex;
-						iter->second.strCurrentClip = next;
-					}
-				}
+					iter->second.strArchetypeId, actionClip->second);
 			}
 		}
 		else if (WORLD_ENTITY_KIND::MONSTER == iter->second.eKind)
@@ -1441,6 +1418,7 @@ void Client::CClientReplication::Reset_World()
 		}
 		if (const std::shared_ptr<CNpc> npc = presentation.pNpc.lock())
 		{
+			CEffectPresentationService::Stop_NpcOwner(npc);
 			CGameInstance::Get().Remove_GameObject_from_Layer(
 				m_Desc.iLayerLevelIndex,
 				m_Desc.strWorldEntityLayerTag,

@@ -65,6 +65,11 @@ public:
 	// Effect Tool uses this to replace a retained preview-only prop (for example
 	// Dimension Core) with the playable class body that owns the loaded skill.
 	bool_t Select_TargetAsset(const string& strAnimationAssetName);
+	/* Stages one supported NPC product model through the existing CNpc/CModel
+	path, then publishes it under its generic animation cue asset. */
+	bool_t Select_NpcTarget(
+		const string& strArchetypeId,
+		const string& strClipName);
 
 	void Release(bool_t removeFromLayer);
 
@@ -86,6 +91,7 @@ private:
 	   product CValtan composition, and preview-only props hold CPart_Body. */
 	weak_ptr<Engine::CGameObject> m_pPreviewObject;
 	const ANIMATION_PREVIEW_ASSET* m_pPreviewAsset = nullptr;
+	string m_strPreviewNpcArchetypeId;
 	uint32_t m_iPreviewLevelIndex = UINT32_MAX;
 	/* Generic CPart_Body previews retain a raw parent pointer. The inactive slot
 	   is staged first and becomes active only after the new object validates, so

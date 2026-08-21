@@ -59,6 +59,10 @@ struct NPC_ACTOR_ENTRY final
 	std::string animationSetId;
 	std::string idleClip;
 	std::string runtimeStatus;
+	/* Optional stable animation authoring asset. NPCs with server action clips
+	use this shared .animevents document to bind exact action clips to Product
+	Effects without introducing an NPC-specific cue parser. */
+	std::string animationEffectCueAssetId;
 	/* Optional server action id -> ordered clip chain for NPC entities the
 	server drives through snapshot actions (raid Esther summons). Each clip
 	plays once and the next starts when it finishes, mirroring the source

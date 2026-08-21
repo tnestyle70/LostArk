@@ -334,6 +334,12 @@ HRESULT CLoader::Ready_For_ValtanArena()
 {
 	CValtanPresentationAssetService::Begin_LevelLoad(
 		ETOUI(LEVEL::VALTAN_ARENA));
+	/* The same numeric level slot may be cleared and entered again in one
+	process. Drop the process-local NPC prototype readiness receipt before the
+	Esther roster is ensured; otherwise a prior visit can report S_FALSE for
+	prototypes that Clear_Resources has already removed. */
+	CNpcPresentationAssetService::Begin_LevelLoad(
+		ETOUI(LEVEL::VALTAN_ARENA));
 	CNpcPlacementPresentationService::Begin_LevelLoad(
 		ETOUI(LEVEL::VALTAN_ARENA));
 	if (FAILED(CNpcPlacementPresentationService::Load(

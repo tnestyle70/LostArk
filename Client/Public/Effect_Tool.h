@@ -94,7 +94,8 @@ enum class EFFECT_DOCUMENT_SOURCE : uint8_t
 enum class EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND : uint8_t
 {
 	PLAYER_CLASS,
-	VALTAN_BOSS
+	VALTAN_BOSS,
+	ESTHER
 };
 
 struct EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION final
@@ -106,7 +107,7 @@ struct EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION final
 	std::string_view strLabel;
 };
 
-inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 7u>
+inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 8u>
 	EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS = {{
 		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS,
 			LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER,
@@ -128,7 +129,10 @@ inline constexpr std::array<EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION, 7u>
 			"Warlord" },
 		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS,
 			LostArk::Shared::CHARACTER_CLASS_ID::END,
-			"Valtan" }
+			"Valtan" },
+		{ EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::ESTHER,
+			LostArk::Shared::CHARACTER_CLASS_ID::END,
+			"Esther" }
 	}};
 
 enum class EFFECT_AUTHORING_FAMILY : uint8_t
@@ -318,6 +322,18 @@ private:
 		UNIFIED_EFFECT_CACHE Cache;
 	};
 
+	struct ESTHER_EFFECT_TREE_ENTRY final
+	{
+		std::string strOwnerArchetypeId;
+		std::string strOwnerLabel;
+		std::string strSkillLabel;
+		std::string strActionId;
+		std::string strRuntimeClipName;
+		std::string strPhaseId;
+		ANIMATION_EFFECT_CUE Cue;
+		UNIFIED_EFFECT_CACHE Cache;
+	};
+
 	enum class ARTIST_F_PREPARATION_STATE : uint8_t
 	{
 		UNATTEMPTED,
@@ -381,6 +397,7 @@ private:
 	   phase band and the stage rows come from CValtanPatternTree; this layer
 	   only decides what is visible and what the buttons do. */
 	void Render_ValtanPatternTreeSection(const std::string& strSearch);
+	void Render_EstherEffectTreeSection(const std::string& strSearch);
 	void Render_ValtanPatternNode(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const char_t* pGroupLabel,
@@ -456,10 +473,10 @@ private:
     bool_t Try_ClearElements();
     bool_t Try_ApplyDraftAndSave();
     bool_t Try_SaveDocument();
-    size_t Count_PlayerProductCueMappings(
-        const std::string& strEffectAssetId) const;
-    bool_t Can_HotReloadSavedPlayerProduct() const;
-    bool_t Try_HotReloadSavedPlayerProduct();
+	size_t Count_ProductCueMappings(
+		const std::string& strEffectAssetId) const;
+	bool_t Can_HotReloadSavedProduct() const;
+	bool_t Try_HotReloadSavedProduct();
     bool_t Try_SaveDocumentAs(const std::string& strAssetId);
 	bool_t Try_SaveSelectedAdapterElementAsGenericAuthoredCopy(
 		const std::string& strAssetId);
@@ -478,6 +495,7 @@ private:
     bool_t Execute_PendingDocumentLoad(bool_t bSaveFirst);
     bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
 	bool_t Refresh_ValtanBossPatternEffects();
+	bool_t Refresh_EstherEffects();
 	bool_t Refresh_ValtanPatternTree();
     bool_t Refresh_DataFiles();
     bool_t Refresh_ResourceCatalog();
@@ -755,8 +773,9 @@ private:
     vector<EFFECT_RESOURCE_CATALOG_ENTRY> m_ResourceCatalog;
     vector<EFFECT_RESOURCE_DOMAIN_CATALOG> m_ResourceDomains;
     vector<size_t> m_VisibleResourceIndices;
-    vector<EFFECT_SKILL_TREE_ENTRY> m_AllEffects;
+	vector<EFFECT_SKILL_TREE_ENTRY> m_AllEffects;
 	std::vector<BOSS_PATTERN_EFFECT_TREE_ENTRY> m_ValtanBossPatternEffects;
+	std::vector<ESTHER_EFFECT_TREE_ENTRY> m_EstherEffects;
 	/* Session state, rebuilt by Refresh. A failed reload keeps the previous
 	   tree so the window never empties on a transient read error. */
 	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternTree;
@@ -778,9 +797,10 @@ private:
 		EFFECT_AUTHORING_FAMILY::MESH;
     EFFECT_DETAIL_SELECTION m_eDetailSelection =
         EFFECT_DETAIL_SELECTION::NONE;
-    LostArk::Shared::CHARACTER_CLASS_ID m_eAllEffectsClass =
-        LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER;
-	bool_t m_bAllEffectsValtanBossSelected = false;
+	LostArk::Shared::CHARACTER_CLASS_ID m_eAllEffectsClass =
+		LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER;
+	EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND m_eAllEffectsOwnerKind =
+		EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS;
     EFFECT_PREVIEW_FILTER m_ePreviewFilter = EFFECT_PREVIEW_FILTER::COMPLETE;
     EFFECT_DOCUMENT_SOURCE m_eActiveDocumentSource =
         EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT;
@@ -824,6 +844,7 @@ private:
 	string m_strDetailDraftCapabilityReason;
 	string m_strUnifiedCandidateStatus;
 	string m_strValtanBossPatternStatus;
+	string m_strEstherEffectStatus;
     string m_strResourceViewFilter;
     string m_strResourceViewDomainId;
     string m_strResourceViewCategory;

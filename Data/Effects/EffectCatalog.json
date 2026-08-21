@@ -326,6 +326,21 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050540.unified.effect.json"
     },
     {
+      "effectAssetId": "effect.esther.npc_58700.awakened_dochul.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.esther.npc_58700.awakened_dochul.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.npc_59030.sword_of_champion.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.esther.npc_59030.sword_of_champion.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.esther.npc_59060.breath_of_arcturus.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.esther.npc_59060.breath_of_arcturus.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34010.ba1",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34010.ba1.effect.json"
     },

@@ -1,13 +1,21 @@
 #pragma once
 
+#include "ActionPresentationTimeline.h"
+#include "AnimationEffectCueDocument.h"
 #include "Client_Defines.h"
 #include "DeferredMaterialRenderUtils.h"
 #include "GameObject.h"
+
+#include <string>
+#include <string_view>
+#include <unordered_set>
+#include <vector>
 
 NS_BEGIN(Engine)
 class CShader;
 class CModel;
 class CCollider;
+class CTransform;
 NS_END
 
 NS_BEGIN(Client)
@@ -29,6 +37,11 @@ public:
 		uint32_t iPrototypeLevelIndex = {};
 		wstring_t strModelTag;
 		wstring_t strShaderTag;
+		/* Stable catalog owner plus the optional shared animation event document.
+		The Esther roster uses owner-specific actionClips with one common
+		"Esther" cue document, filtered against this NPC's actual model clips. */
+		std::string strArchetypeId;
+		std::string strAnimationEffectCueAssetId;
 
 		/* Clip to stand in. Every NPC is cooked under the same "npc" armature
 		name, so the clip names all carry that prefix -- "npc_idle_normal_1",
@@ -53,10 +66,20 @@ public:
 	shared_ptr<Engine::CModel> Get_Model() const {
 		return m_pModelCom;
 	}
+	shared_ptr<Engine::CTransform> Get_Transform() const {
+		return m_pTransformCom;
+	}
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	bool_t Apply_NetworkState(
 		const float3_t& position,
 		f32_t yawDegrees);
+	/* Applies one authoritative NPC action snapshot. The spawn packet has no
+	start tick, so ClientReplication primes the first clip separately; the first
+	world snapshot seeks that clip to exact Server age and catches up due cues. */
+	bool_t Apply_NetworkAction(
+		std::string_view actionId,
+		uint32_t iServerTick,
+		uint32_t iActionStartTick);
 	void Trigger_HitFlash();
 #ifdef _DEBUG
 	void Set_CombatColliderDebugVisible(bool_t isVisible) {
@@ -78,6 +101,14 @@ private:
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
+	std::string m_strArchetypeId;
+	std::string m_strAnimationEffectCueAssetId;
+	std::string m_strServerActionId;
+	uint32_t m_iLastServerTick = 0u;
+	uint32_t m_iServerActionStartTick = 0u;
+	f32_t m_fServerActionAgeSeconds = 0.f;
+	ANIMATION_EFFECT_CUE_DOCUMENT m_EffectCueDocument;
+	std::unordered_set<std::string> m_SpawnedEffectCueOccurrences;
 #ifdef _DEBUG
 	bool_t m_isCombatColliderDebugVisible = { false };
 #endif
@@ -85,6 +116,17 @@ private:
 private:
 	HRESULT Ready_Components(const NPC_DESC* pDesc);
 	HRESULT Bind_ShaderResources();
+	bool_t Load_EffectCues();
+	bool_t Build_ActionTimeline(
+		std::string_view actionId,
+		std::vector<std::string>& OutClips,
+		std::vector<uint32_t>& OutAnimationIndices,
+		std::vector<ACTION_PRESENTATION_CLIP_TIMING>& OutTimings) const;
+	void Spawn_DueEffectCues(
+		std::string_view actionId,
+		const std::vector<std::string>& Clips,
+		const std::vector<ACTION_PRESENTATION_CLIP_TIMING>& Timings,
+		f32_t fActionAgeSeconds);
 
 public:
 	static unique_ptr<CNpc> Create(ComPtr<ID3D11Device> pDevice,

@@ -1,0 +1,4 @@
+LOSTARK_ANIM_EVENTS 5 "Esther" 3
+"npc_evt1_sk_swordofchampion_bk" EFFECT startms=0 payload="effect.esther.npc_59030.sword_of_champion.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"npc_sk_dochul" EFFECT startms=0 payload="effect.esther.npc_58700.awakened_dochul.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"npc_sk_breathofarcturus" EFFECT startms=0 payload="effect.esther.npc_59060.breath_of_arcturus.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1

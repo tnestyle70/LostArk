@@ -545,6 +545,7 @@
       "animationSetId": "Character/NPC/AnimSets/NP_LRSA_00/NP_LRSA_00.wmodel",
       "idleClip": "npc_idle_battle_1",
       "runtimeStatus": "supported",
+      "animationEffectCueAssetId": "Esther",
       "actionClips": {
         "esther.strike": "npc_evt1_sk_swordofchampion_bk"
       },
@@ -557,6 +558,7 @@
       "animationSetId": "Character/NPC/AnimSets/NP_DPWI_00/NP_DPWI_00.wmodel",
       "idleClip": "npc_idle_battle_1",
       "runtimeStatus": "supported",
+      "animationEffectCueAssetId": "Esther",
       "actionClips": {
         "esther.strike": "npc_sk_dochul"
       },
@@ -569,6 +571,7 @@
       "animationSetId": "Character/NPC/AnimSets/MN_YOBR_00/MN_YOBR_00.wmodel",
       "idleClip": "npc_idle_battle_1",
       "runtimeStatus": "supported",
+      "animationEffectCueAssetId": "Esther",
       "actionClips": {
         "esther.strike": "npc_sk_breathofarcturus"
       },

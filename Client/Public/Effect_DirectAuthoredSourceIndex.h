@@ -28,6 +28,7 @@ enum class EFFECT_DIRECT_AUTHORED_OWNER_KIND : uint8_t
 {
 	PLAYER_SKILL,
 	BOSS_PATTERN,
+	ESTHER_ACTION,
 	END
 };
 
@@ -42,6 +43,17 @@ struct EFFECT_DIRECT_AUTHORED_BOSS_OWNER final
 using EFFECT_DIRECT_AUTHORED_BOSS_OWNER_MAP = std::map<std::string,
 	EFFECT_DIRECT_AUTHORED_BOSS_OWNER, std::less<>>;
 
+struct EFFECT_DIRECT_AUTHORED_ESTHER_OWNER final
+{
+	std::string strOwnerArchetypeId;
+	std::string strActionId;
+	std::string strRuntimeClipName;
+	std::string strPhaseId;
+};
+
+using EFFECT_DIRECT_AUTHORED_ESTHER_OWNER_MAP = std::map<std::string,
+	EFFECT_DIRECT_AUTHORED_ESTHER_OWNER, std::less<>>;
+
 struct EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY final
 {
 	EFFECT_DIRECT_AUTHORED_OWNER_KIND eOwnerKind =
@@ -54,6 +66,8 @@ struct EFFECT_DIRECT_AUTHORED_SOURCE_ENTRY final
 	std::string strPatternId;
 	std::string strStageId;
 	std::string strActionId;
+	std::string strRuntimeClipName;
+	std::string strPhaseId;
 	std::string strEffectAssetId;
 	std::filesystem::path Path;
 	std::filesystem::file_time_type LastWriteTime{};
@@ -80,6 +94,7 @@ public:
 		const std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE>& ScannedFiles,
 		const EFFECT_DIRECT_AUTHORED_OWNER_SET& ValidOwners,
 		const EFFECT_DIRECT_AUTHORED_BOSS_OWNER_MAP& ValidBossOwners,
+		const EFFECT_DIRECT_AUTHORED_ESTHER_OWNER_MAP& ValidEstherOwners,
 		EFFECT_DIRECT_AUTHORED_SOURCE_INDEX& InOutIndex,
 		std::string& strOutStatus);
 };

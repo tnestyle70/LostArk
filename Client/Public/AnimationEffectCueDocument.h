@@ -76,6 +76,10 @@ struct ANIMATION_EFFECT_CUE_DOCUMENT final
     uint32_t iFormatVersion = 5u;
     std::string strAnimationAssetId;
     std::vector<ANIMATION_EFFECT_CUE> Cues;
+	/* Structurally valid Product cues whose exact Effect target is absent from
+	   the currently committed runtime catalog. They are isolated per target;
+	   valid sibling cues remain available to the character and Effect Tool. */
+	std::vector<std::string> UnavailableEffectAssetIds;
     std::vector<ANIMATION_HIT_CUE> Hits;
     std::vector<ANIMATION_PROJECTILE_CUE> Projectiles;
 };

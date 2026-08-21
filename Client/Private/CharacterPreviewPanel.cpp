@@ -4,9 +4,12 @@
 
 #include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
+#include "ActorCatalog.h"
 #include "Character.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "Npc.h"
+#include "NpcPresentationAssetService.h"
 #include "Part_Body.h"
 #include "PlayableCharacterAssetService.h"
 #include "PlayableCharacterPreviewContract.h"
@@ -57,6 +60,7 @@ void Client::CCharacterPreviewPanel::Refresh_Level()
 		}
 		m_pPreviewObject.reset();
 		m_pPreviewAsset = nullptr;
+		m_strPreviewNpcArchetypeId.clear();
 		m_iPreviewLevelIndex = UINT32_MAX;
 		return;
 	}
@@ -68,6 +72,7 @@ void Client::CCharacterPreviewPanel::Refresh_Level()
 	resetPreparedGenericAssets();
 	m_pPreviewObject.reset();
 	m_pPreviewAsset = nullptr;
+	m_strPreviewNpcArchetypeId.clear();
 	m_iPreviewLevelIndex = UINT32_MAX;
 }
 
@@ -112,6 +117,131 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 	return Select_Asset(*asset);
 }
 
+bool_t Client::CCharacterPreviewPanel::Select_NpcTarget(
+	const string& strArchetypeId,
+	const string& strClipName)
+{
+	const uint32_t currentLevel =
+		CGameInstance::Get().Get_CurrentLevelID();
+	if (currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
+		currentLevel != ETOUI(LEVEL::DEVELOPMENT))
+	{
+		m_Status =
+			"NPC previews are admitted in Character Select or Development.";
+		return false;
+	}
+	if (strArchetypeId.empty() || strClipName.empty() ||
+		!CActorCatalog::Initialize())
+	{
+		m_Status = "NPC preview target or ActorCatalog is unavailable.";
+		return false;
+	}
+	const NPC_ACTOR_ENTRY* pActor =
+		CActorCatalog::Find_Npc(strArchetypeId);
+	if (nullptr == pActor || pActor->runtimeStatus != "supported" ||
+		pActor->animationEffectCueAssetId.empty())
+	{
+		m_Status = "NPC preview target has no admitted Effect cue owner: " +
+			strArchetypeId;
+		return false;
+	}
+	const bool_t bClipOwned = std::any_of(
+		pActor->actionClips.begin(), pActor->actionClips.end(),
+		[&strClipName](const auto& Action)
+		{
+			return Action.second.end() != std::find(
+				Action.second.begin(), Action.second.end(), strClipName);
+		});
+	if (!bClipOwned)
+	{
+		m_Status = "NPC preview clip is not owned by its action catalog: " +
+			strClipName;
+		return false;
+	}
+
+	if (m_strPreviewNpcArchetypeId == strArchetypeId)
+	{
+		const shared_ptr<CNpc> pNpc =
+			dynamic_pointer_cast<CNpc>(m_pPreviewObject.lock());
+		if (nullptr != pNpc && pNpc->Set_Animation(strClipName.c_str(), false) &&
+			nullptr != pNpc->Get_Model() && nullptr != pNpc->Get_Transform())
+		{
+			CAnimationTargetService::Bind_Preview(
+				pNpc->Get_Model(), pActor->animationEffectCueAssetId,
+				*pNpc->Get_Transform()->Get_WorldMatrixPtr());
+			return true;
+		}
+	}
+
+	if (!CNpcPresentationAssetService::Is_Ready(
+			currentLevel, strArchetypeId) &&
+		FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+			m_pDevice, m_pContext, currentLevel, strArchetypeId)))
+	{
+		m_Status = "NPC preview assets failed to prepare: " + strArchetypeId;
+		return false;
+	}
+
+	vector_t previewPosition = XMVectorSet(2.5f, 0.f, 0.f, 1.f);
+	const shared_ptr<CCharacter> pCharacter =
+		CAnimationTargetService::Resolve_SceneCharacter();
+	if (nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
+	{
+		previewPosition = XMVectorSetW(XMVectorAdd(
+			previewPosition,
+			pCharacter->Get_Transform()->Get_State(STATE::POSITION)), 1.f);
+	}
+
+	CNpc::NPC_DESC Desc{};
+	Desc.iPrototypeLevelIndex = currentLevel;
+	Desc.strModelTag =
+		CNpcPresentationAssetService::Get_ModelPrototypeTag(strArchetypeId);
+	Desc.strShaderTag = TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+	Desc.strArchetypeId = strArchetypeId;
+	/* Tool playback owns the occurrence. Leaving this empty prevents the CNpc
+	preview instance from spawning a second runtime copy of the same cue. */
+	Desc.strAnimationEffectCueAssetId.clear();
+	Desc.pIdleClip = strClipName.c_str();
+	Desc.isLoop = false;
+	Desc.vPosition = float3_t(
+		XMVectorGetX(previewPosition), XMVectorGetY(previewPosition),
+		XMVectorGetZ(previewPosition));
+	Desc.fCollisionRadius = 0.f;
+	shared_ptr<CGameObject> pStagedObject;
+	if (Desc.strModelTag.empty() ||
+		FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+			currentLevel, TEXT("Prototype_GameObject_Npc"), currentLevel,
+			TEXT("Layer_AnimationPreview"), &Desc, &pStagedObject)))
+	{
+		m_Status = "NPC product composition failed to stage: " + strArchetypeId;
+		return false;
+	}
+	const shared_ptr<CNpc> pStagedNpc =
+		dynamic_pointer_cast<CNpc>(pStagedObject);
+	if (nullptr == pStagedNpc || nullptr == pStagedNpc->Get_Model() ||
+		nullptr == pStagedNpc->Get_Transform() ||
+		!pStagedNpc->Set_Animation(strClipName.c_str(), false))
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			currentLevel, TEXT("Layer_AnimationPreview"), pStagedObject);
+		m_Status = "NPC preview did not expose the exact action clip.";
+		return false;
+	}
+
+	Release(true);
+	m_pPreviewObject = pStagedObject;
+	m_pPreviewAsset = nullptr;
+	m_strPreviewNpcArchetypeId = strArchetypeId;
+	m_iPreviewLevelIndex = currentLevel;
+	CAnimationTargetService::Bind_Preview(
+		pStagedNpc->Get_Model(), pActor->animationEffectCueAssetId,
+		*pStagedNpc->Get_Transform()->Get_WorldMatrixPtr());
+	m_Status = "Previewing Esther NPC " + strArchetypeId +
+		" on clip " + strClipName +
+		" 2.5 m to the right of the scene character.";
+	return true;
+}
+
 void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)
 {
 	const shared_ptr<CGameObject> previewObject = m_pPreviewObject.lock();
@@ -121,6 +251,7 @@ void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)
 			CAnimationTargetService::Clear_Preview();
 		m_pPreviewObject.reset();
 		m_pPreviewAsset = nullptr;
+		m_strPreviewNpcArchetypeId.clear();
 		m_iPreviewLevelIndex = UINT32_MAX;
 		return;
 	}
@@ -137,6 +268,7 @@ void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)
 	}
 	m_pPreviewObject.reset();
 	m_pPreviewAsset = nullptr;
+	m_strPreviewNpcArchetypeId.clear();
 	m_iPreviewLevelIndex = UINT32_MAX;
 }
 
@@ -384,6 +516,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 	m_iPreviewParentMatrixIndex = stagedParentMatrixIndex;
 	m_pPreviewObject = stagedObject;
 	m_pPreviewAsset = &asset;
+	m_strPreviewNpcArchetypeId.clear();
 	m_iPreviewLevelIndex = currentLevel;
 	if (nullptr != stagedCharacter)
 	{

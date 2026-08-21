@@ -1905,14 +1905,14 @@
           "hitTimeMs": 100,
           "comboAdvanceMs": 1400,
           "inputOpenMs": 100,
-          "inputCloseMs": 510
+          "inputCloseMs": 1400
         },
         {
           "actionDurationMs": 1500,
           "hitTimeMs": 43,
           "comboAdvanceMs": 1500,
           "inputOpenMs": 0,
-          "inputCloseMs": 410
+          "inputCloseMs": 1500
         },
         {
           "actionDurationMs": 1067,

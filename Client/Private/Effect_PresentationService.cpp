@@ -8,6 +8,7 @@
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "Npc.h"
 #include "Transform.h"
 #include "Valtan.h"
 
@@ -85,11 +86,16 @@ namespace
 	struct EFFECT_OWNER_VIEW final
 	{
 		std::shared_ptr<Client::CCharacter> pCharacter;
+		std::shared_ptr<Client::CNpc> pNpc;
 		std::shared_ptr<Client::CValtan> pBoss;
 
 		bool_t Is_Valid() const
 		{
-			return (nullptr != pCharacter) != (nullptr != pBoss);
+			const uint32_t iOwnerCount =
+				(nullptr != pCharacter ? 1u : 0u) +
+				(nullptr != pNpc ? 1u : 0u) +
+				(nullptr != pBoss ? 1u : 0u);
+			return 1u == iOwnerCount;
 		}
 
 		bool_t Try_Get_PresentationRoot(float4x4_t& Out) const
@@ -103,6 +109,15 @@ namespace
 				Out = *pTransform->Get_WorldMatrixPtr();
 				return true;
 			}
+			if (nullptr != pNpc)
+			{
+				const std::shared_ptr<Engine::CTransform> pTransform =
+					pNpc->Get_Transform();
+				if (nullptr == pTransform)
+					return false;
+				Out = *pTransform->Get_WorldMatrixPtr();
+				return true;
+			}
 			return nullptr != pBoss &&
 				pBoss->Try_Get_PresentationRootMatrix(&Out);
 		}
@@ -110,7 +125,8 @@ namespace
 		std::shared_ptr<Engine::CModel> Get_Model() const
 		{
 			return nullptr != pCharacter ? pCharacter->Get_BodyModel() :
-				(nullptr != pBoss ? pBoss->Get_BodyModel() : nullptr);
+				(nullptr != pNpc ? pNpc->Get_Model() :
+				 (nullptr != pBoss ? pBoss->Get_BodyModel() : nullptr));
 		}
 	};
 
@@ -118,6 +134,7 @@ namespace
     {
         std::shared_ptr<Client::CEffectObject> pObject;
         std::weak_ptr<Client::CCharacter> pOwner;
+		std::weak_ptr<Client::CNpc> pNpcOwner;
 		std::weak_ptr<Client::CValtan> pBossOwner;
         uint32_t iLevelIndex = UINT32_MAX;
         std::string strEffectAssetId;
@@ -145,19 +162,23 @@ namespace
 	EFFECT_OWNER_VIEW Resolve_Owner(
 		const Client::EFFECT_SPAWN_DESC& Desc)
 	{
-		return { Desc.pOwner.lock(), Desc.pBossOwner.lock() };
+		return {
+			Desc.pOwner.lock(), Desc.pNpcOwner.lock(), Desc.pBossOwner.lock() };
 	}
 
 	EFFECT_OWNER_VIEW Resolve_Owner(const ACTIVE_EFFECT& Effect)
 	{
-		return { Effect.pOwner.lock(), Effect.pBossOwner.lock() };
+		return {
+			Effect.pOwner.lock(), Effect.pNpcOwner.lock(),
+			Effect.pBossOwner.lock() };
 	}
 
 	bool_t Same_Owner(
 		const EFFECT_OWNER_VIEW& Left,
 		const EFFECT_OWNER_VIEW& Right)
 	{
-		return Left.pCharacter == Right.pCharacter && Left.pBoss == Right.pBoss;
+		return Left.pCharacter == Right.pCharacter &&
+			Left.pNpc == Right.pNpc && Left.pBoss == Right.pBoss;
 	}
 
 	struct RECONSTRUCTED_SOURCE_RUNTIME_CACHE final
@@ -2413,7 +2434,7 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 		return false;
 	}
 	EFFECT_SCENE_BUDGET_COST AdmissionCost;
-	const EFFECT_OWNER_VIEW Owner{ pOwner, nullptr };
+	const EFFECT_OWNER_VIEW Owner{ pOwner, nullptr, nullptr };
 	if (nullptr == Cache.pDocument ||
 		!Estimate_DocumentBudget(*Cache.pDocument, AdmissionCost, strOutStatus) ||
 		!Can_AdmitBudget(Owner, AdmissionCost, true, strOutStatus))
@@ -2880,9 +2901,10 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         return false;
     }
 
-    ACTIVE_EFFECT Active;
-    Active.pObject = pEffect;
+	ACTIVE_EFFECT Active;
+	Active.pObject = pEffect;
 	Active.pOwner = Owner.pCharacter;
+	Active.pNpcOwner = Owner.pNpc;
 	Active.pBossOwner = Owner.pBoss;
     Active.iLevelIndex = iLevelIndex;
     Active.strEffectAssetId = Desc.strEffectAssetId;
@@ -3069,6 +3091,58 @@ void Client::CEffectPresentationService::Stop_Owner(
         if (g_ActiveEffects[iEffect].pOwner.lock() == pOwner)
             Remove_At(iEffect);
     }
+}
+
+Client::EFFECT_NPC_ACTION_STOP_RESULT
+Client::CEffectPresentationService::Stop_NpcAction(
+	const std::shared_ptr<CNpc>& pOwner,
+	const uint32_t iActionStartTick)
+{
+	EFFECT_NPC_ACTION_STOP_RESULT Result;
+	if (nullptr == pOwner || 0u == iActionStartTick)
+		return Result;
+
+	const size_t iPendingBefore = g_PendingEffectSpawns.size();
+	g_PendingEffectSpawns.erase(std::remove_if(
+		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+		[&pOwner, iActionStartTick](const PENDING_EFFECT_SPAWN& Pending)
+		{
+			return Pending.Desc.pNpcOwner.lock() == pOwner &&
+				Pending.Desc.iActionStartTick == iActionStartTick;
+		}), g_PendingEffectSpawns.end());
+	Result.iPendingStopped = static_cast<uint64_t>(
+		iPendingBefore - g_PendingEffectSpawns.size());
+
+	for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
+	{
+		const ACTIVE_EFFECT& Effect = g_ActiveEffects[iEffect];
+		if (Effect.pNpcOwner.lock() != pOwner ||
+			Effect.iActionStartTick != iActionStartTick)
+		{
+			continue;
+		}
+		Remove_At(iEffect);
+		++Result.iActiveStopped;
+	}
+	return Result;
+}
+
+void Client::CEffectPresentationService::Stop_NpcOwner(
+	const std::shared_ptr<CNpc>& pOwner)
+{
+	if (nullptr == pOwner)
+		return;
+	g_PendingEffectSpawns.erase(std::remove_if(
+		g_PendingEffectSpawns.begin(), g_PendingEffectSpawns.end(),
+		[&pOwner](const PENDING_EFFECT_SPAWN& Pending)
+		{
+			return Pending.Desc.pNpcOwner.lock() == pOwner;
+		}), g_PendingEffectSpawns.end());
+	for (size_t iEffect = g_ActiveEffects.size(); iEffect-- > 0u;)
+	{
+		if (g_ActiveEffects[iEffect].pNpcOwner.lock() == pOwner)
+			Remove_At(iEffect);
+	}
 }
 
 Client::EFFECT_BOSS_ACTION_STOP_RESULT

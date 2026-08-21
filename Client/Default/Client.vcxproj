@@ -301,6 +301,7 @@
     <None Include="..\..\Data\Animation\Authored\Artist\Artist.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.animevents" />
     <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.skillbindings.json" />
+	<None Include="..\..\Data\Animation\Authored\Esther\Esther.animevents" />
     <None Include="..\..\Data\Animation\Authored\GunSlinger\GunSlinger.animevents" />
     <None Include="..\..\Data\Animation\Authored\GunSlinger\GunSlinger.skillbindings.json" />
     <None Include="..\..\Data\Animation\Authored\LanceMaster\LanceMaster.animevents" />

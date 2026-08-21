@@ -4,6 +4,7 @@
 
 #include "AnimationSkillBindingDocument.h"
 #include "AnimationTargetService.h"
+#include "ActorCatalog.h"
 #include "Character.h"
 #include "CharacterSpec.h"
 #include "DataJson.h"
@@ -5313,7 +5314,7 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 		Runtime_SyncLabel());
 	const bool_t bCleanHotReloadRetry = !Has_UnsavedWork() &&
 		!m_bActiveDocumentMatchesRuntime &&
-		Can_HotReloadSavedPlayerProduct();
+		Can_HotReloadSavedProduct();
 	ImGui::BeginDisabled(!bEditableSource ||
 		(!Has_UnsavedWork() && !bCleanHotReloadRetry));
 	if (ImGui::Button(bCleanHotReloadRetry ?
@@ -5427,7 +5428,7 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 		ImGui::TextDisabled(
 			"Saved Authored matches the Runtime Catalog snapshot loaded in this process.");
 	}
-	else if (Can_HotReloadSavedPlayerProduct())
+	else if (Can_HotReloadSavedProduct())
 	{
 		ImGui::TextDisabled(
 			"Saved Authored differs from Product. Use Retry Product Hot Reload; a failed retry preserves the existing prepared Product target.");
@@ -8551,6 +8552,185 @@ bool_t Client::CEffect_Tool::Refresh_ValtanBossPatternEffects()
 	return true;
 }
 
+bool_t Client::CEffect_Tool::Refresh_EstherEffects()
+{
+	if (!CActorCatalog::Initialize())
+	{
+		m_strEstherEffectStatus =
+			"Esther rows could not load ActorCatalog: " +
+			CActorCatalog::Get_Status();
+		return false;
+	}
+
+	std::map<std::string, std::vector<std::string>, std::less<>>
+		AvailableClipsByCueAsset;
+	for (const NPC_ACTOR_ENTRY& Actor : CActorCatalog::Get_Npcs())
+	{
+		if (Actor.animationEffectCueAssetId.empty())
+			continue;
+		auto& AvailableClips =
+			AvailableClipsByCueAsset[Actor.animationEffectCueAssetId];
+		for (const auto& [ActionId, Clips] : Actor.actionClips)
+		{
+			(void)ActionId;
+			AvailableClips.insert(
+				AvailableClips.end(), Clips.begin(), Clips.end());
+		}
+	}
+	if (AvailableClipsByCueAsset.empty())
+	{
+		m_strEstherEffectStatus =
+			"ActorCatalog has no action-driven Esther cue owners.";
+		return false;
+	}
+
+	std::map<std::string, ANIMATION_EFFECT_CUE_DOCUMENT, std::less<>>
+		CueDocuments;
+	for (auto& [CueAssetId, AvailableClips] : AvailableClipsByCueAsset)
+	{
+		std::sort(AvailableClips.begin(), AvailableClips.end());
+		if (AvailableClips.end() != std::unique(
+				AvailableClips.begin(), AvailableClips.end()))
+		{
+			m_strEstherEffectStatus =
+				"Esther action clips are not uniquely owned in ActorCatalog.";
+			return false;
+		}
+		const std::filesystem::path EventPath = CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Animation") / L"Authored" /
+			std::filesystem::path(CueAssetId) /
+			(std::filesystem::path(CueAssetId).wstring() + L".animevents"));
+		std::string EventText;
+		std::string Status;
+		ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+		if (!Read_TextFile(EventPath, EventText, Status) ||
+			!CAnimationEffectCueDocument::Load_FromText(
+				CueAssetId, EventText, AvailableClips, CueDocument,
+				Status, true))
+		{
+			m_strEstherEffectStatus =
+				"Esther generic animevents rejected: " + Status;
+			return false;
+		}
+		CueDocuments.emplace(CueAssetId, std::move(CueDocument));
+	}
+
+	const auto OwnerLabel = [](const std::string& ArchetypeId)
+	{
+		if (ArchetypeId == "NPC_59030") return std::string("Silian");
+		if (ArchetypeId == "NPC_58700") return std::string("Wei");
+		if (ArchetypeId == "NPC_59060") return std::string("Bahuntur");
+		return ArchetypeId;
+	};
+	const auto SkillLabel = [](const std::string& ArchetypeId)
+	{
+		if (ArchetypeId == "NPC_59030")
+			return std::string("Sword of Champion");
+		if (ArchetypeId == "NPC_58700")
+			return std::string("Awakened Dochul");
+		if (ArchetypeId == "NPC_59060")
+			return std::string("Breath of Arcturus");
+		return std::string("Esther Action");
+	};
+
+	std::vector<ESTHER_EFFECT_TREE_ENTRY> Staged;
+	size_t iUnavailableDocumentCount = 0u;
+	for (const NPC_ACTOR_ENTRY& Actor : CActorCatalog::Get_Npcs())
+	{
+		if (Actor.animationEffectCueAssetId.empty())
+			continue;
+		const auto CueDocument = CueDocuments.find(
+			Actor.animationEffectCueAssetId);
+		if (CueDocument == CueDocuments.end())
+		{
+			m_strEstherEffectStatus =
+				"Esther cue owner disappeared during staging.";
+			return false;
+		}
+		for (const auto& [ActionId, Clips] : Actor.actionClips)
+		{
+			for (const std::string& ClipName : Clips)
+			{
+				const auto Cue = std::find_if(
+					CueDocument->second.Cues.begin(),
+					CueDocument->second.Cues.end(),
+					[&ClipName](const ANIMATION_EFFECT_CUE& Candidate)
+					{
+						return Candidate.strClipName == ClipName;
+					});
+				if (Cue == CueDocument->second.Cues.end() ||
+					1u != static_cast<size_t>(std::count_if(
+						CueDocument->second.Cues.begin(),
+						CueDocument->second.Cues.end(),
+						[&ClipName](const ANIMATION_EFFECT_CUE& Candidate)
+						{
+							return Candidate.strClipName == ClipName;
+						})))
+				{
+					m_strEstherEffectStatus =
+						"Each Esther action clip must own exactly one Effect cue: " +
+						Actor.archetypeId + " / " + ClipName;
+					return false;
+				}
+
+				ESTHER_EFFECT_TREE_ENTRY Entry;
+				Entry.strOwnerArchetypeId = Actor.archetypeId;
+				Entry.strOwnerLabel = OwnerLabel(Actor.archetypeId);
+				Entry.strSkillLabel = SkillLabel(Actor.archetypeId);
+				Entry.strActionId = ActionId;
+				Entry.strRuntimeClipName = ClipName;
+				Entry.strPhaseId = "full-action";
+				Entry.Cue = *Cue;
+				const auto Previous = std::find_if(
+					m_EstherEffects.begin(), m_EstherEffects.end(),
+					[&Entry](const ESTHER_EFFECT_TREE_ENTRY& Candidate)
+					{
+						return Candidate.Cue.strEffectAssetId ==
+							Entry.Cue.strEffectAssetId;
+					});
+				if (Previous != m_EstherEffects.end())
+					Entry.Cache = Previous->Cache;
+				const std::filesystem::path AuthoredPath =
+					CProjectDataRoot::Resolve(
+						std::filesystem::path(L"Effects") / L"Authored" /
+						(std::filesystem::path(
+							Entry.Cue.strEffectAssetId).wstring() +
+						 L".effect.json"));
+				if (!Refresh_UnifiedEffectCache(
+						Entry.Cache, AuthoredPath,
+						Entry.Cue.strEffectAssetId))
+				{
+					++iUnavailableDocumentCount;
+				}
+				Staged.push_back(std::move(Entry));
+			}
+		}
+	}
+	if (Staged.size() != 3u)
+	{
+		m_strEstherEffectStatus =
+			"Esther vertical slice requires exactly three action cue owners.";
+		return false;
+	}
+	std::sort(Staged.begin(), Staged.end(),
+		[](const ESTHER_EFFECT_TREE_ENTRY& Left,
+			const ESTHER_EFFECT_TREE_ENTRY& Right)
+		{
+			return Left.strOwnerArchetypeId < Right.strOwnerArchetypeId;
+		});
+	m_EstherEffects = std::move(Staged);
+	m_strEstherEffectStatus = "Esther indexed " +
+		std::to_string(m_EstherEffects.size()) +
+		" action-owned Product cues from ActorCatalog + generic animevents.";
+	if (0u != iUnavailableDocumentCount)
+	{
+		m_strEstherEffectStatus += " " +
+			std::to_string(iUnavailableDocumentCount) +
+			" authored document(s) are not ready yet; previous runtime state was preserved.";
+	}
+	return true;
+}
+
 bool_t Client::CEffect_Tool::Refresh_UnifiedEffectCache(
 	UNIFIED_EFFECT_CACHE& Cache,
 	const std::filesystem::path& Path,
@@ -8739,6 +8919,26 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 				BossCueDocument.strOwnerArchetypeId, Cue.strPatternId,
 				Cue.strStageId, Cue.strActionId });
 	}
+	if (m_EstherEffects.empty() && !Refresh_EstherEffects())
+	{
+		return PreservePrevious(
+			"Direct authored edit index could not validate Esther action owners: " +
+			m_strEstherEffectStatus);
+	}
+	EFFECT_DIRECT_AUTHORED_ESTHER_OWNER_MAP EstherActionOwners;
+	for (const ESTHER_EFFECT_TREE_ENTRY& Entry : m_EstherEffects)
+	{
+		if (!EstherActionOwners.emplace(
+				Entry.Cue.strEffectAssetId,
+				EFFECT_DIRECT_AUTHORED_ESTHER_OWNER{
+					Entry.strOwnerArchetypeId, Entry.strActionId,
+					Entry.strRuntimeClipName, Entry.strPhaseId }).second)
+		{
+			return PreservePrevious(
+				"Direct authored edit index found a duplicate Esther Effect owner: " +
+				Entry.Cue.strEffectAssetId);
+		}
+	}
 
 	std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE> ScannedFiles;
 	ScannedFiles.reserve(DataFiles.size());
@@ -8754,7 +8954,8 @@ bool_t Client::CEffect_Tool::Refresh_DirectAuthoredEditableIndex(
 	std::string SourceIndexStatus;
 	if (!CEffectDirectAuthoredSourceIndex::Build(
 			CatalogPath, AuthoredRoot, ScannedFiles, PlayerSkillOwners,
-			BossPatternOwners, SourceIndex, SourceIndexStatus))
+			BossPatternOwners, EstherActionOwners, SourceIndex,
+			SourceIndexStatus))
 	{
 		return PreservePrevious(SourceIndexStatus);
 	}
@@ -8888,7 +9089,7 @@ Client::CEffect_Tool::Resolve_DirectAuthoredEditablePath(
 		{
 			Entry.strStatus =
 				"Open the writable Data/Effects/Authored version 13 document. "
-				"Save updates Authored and, while the exact ID remains mapped by a player Product cue, hot reloads only that Product target. A failed runtime replacement preserves the existing prepared target.";
+				"Save updates Authored and, while the exact ID remains mapped by an admitted Product cue, hot reloads only that Product target. A failed runtime replacement preserves the existing prepared target.";
 		}
 		else if (!Error.empty())
 		{
@@ -10116,6 +10317,61 @@ void Client::CEffect_Tool::Render_ValtanPatternTreeSection(
 	}
 }
 
+void Client::CEffect_Tool::Render_EstherEffectTreeSection(
+	const std::string& strSearch)
+{
+	if (!m_strEstherEffectStatus.empty())
+		ImGui::TextWrapped("%s", m_strEstherEffectStatus.c_str());
+	if (m_EstherEffects.empty())
+	{
+		ImGui::TextDisabled(
+			"No admitted Esther action cue is available. Refresh after authored documents are prepared.");
+		return;
+	}
+
+	for (const ESTHER_EFFECT_TREE_ENTRY& Entry : m_EstherEffects)
+	{
+		if (!strSearch.empty() &&
+			!Contains_NoCase("Esther", strSearch) &&
+			!Contains_NoCase(Entry.strOwnerLabel, strSearch) &&
+			!Contains_NoCase(Entry.strOwnerArchetypeId, strSearch) &&
+			!Contains_NoCase(Entry.strSkillLabel, strSearch) &&
+			!Contains_NoCase(Entry.strActionId, strSearch) &&
+			!Contains_NoCase(Entry.strRuntimeClipName, strSearch) &&
+			!Contains_NoCase(Entry.Cue.strEffectAssetId, strSearch))
+		{
+			continue;
+		}
+
+		ImGui::PushID(Entry.strOwnerArchetypeId.c_str());
+		const std::string OwnerNode = Entry.strOwnerLabel + " | " +
+			Entry.strOwnerArchetypeId;
+		if (ImGui::TreeNodeEx(OwnerNode.c_str(),
+				ImGuiTreeNodeFlags_DefaultOpen |
+					ImGuiTreeNodeFlags_OpenOnArrow))
+		{
+			if (ImGui::TreeNodeEx(Entry.strSkillLabel.c_str(),
+					ImGuiTreeNodeFlags_DefaultOpen |
+						ImGuiTreeNodeFlags_OpenOnArrow))
+			{
+				ImGui::TextDisabled("Action %s | clip %s",
+					Entry.strActionId.c_str(),
+					Entry.strRuntimeClipName.c_str());
+				if (Entry.Cache.bValid)
+					Render_UnifiedEffectTree(Entry.Cache, "Full Action");
+				else
+				{
+					ImGui::TextWrapped("%s", Entry.Cue.strEffectAssetId.c_str());
+					ImGui::TextDisabled("%s", Entry.Cache.strStatus.c_str());
+				}
+				ImGui::TreePop();
+			}
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+}
+
 void Client::CEffect_Tool::Render_AllEffectsWindow()
 {
 	ImGui::SetNextWindowPos(ImVec2(1110.f, 705.f), ImGuiCond_FirstUseEver);
@@ -10129,10 +10385,19 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	}
 
 	{
-	if (m_bAllEffectsValtanBossSelected)
+	if (EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS ==
+		m_eAllEffectsOwnerKind)
 	{
 		ImGui::TextDisabled(
 			"Phase bands are derived from triggerHealthBar; stage rows show the Server hit window and open on their own clip.");
+	}
+	else if (EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::ESTHER ==
+		m_eAllEffectsOwnerKind)
+	{
+		ImGui::TextDisabled(
+			"Esther rows join ActorCatalog actions to generic animevents; Open, Play, and Save reuse the direct-authored Product path.");
+		if (!m_strEstherEffectStatus.empty())
+			ImGui::TextWrapped("%s", m_strEstherEffectStatus.c_str());
 	}
 	else
 	{
@@ -10142,9 +10407,13 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			ImGui::TextWrapped("%s", m_strUnifiedCandidateStatus.c_str());
 	}
 	const char_t* pAllEffectsOwnerLabel =
-		m_bAllEffectsValtanBossSelected ?
-			"Valtan" : Class_Label(m_eAllEffectsClass);
-	if (ImGui::BeginCombo("Character / Boss", pAllEffectsOwnerLabel))
+		EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS ==
+			m_eAllEffectsOwnerKind ? "Valtan" :
+			(EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::ESTHER ==
+				m_eAllEffectsOwnerKind ? "Esther" :
+				Class_Label(m_eAllEffectsClass));
+	if (ImGui::BeginCombo(
+			"Character / Boss / Esther", pAllEffectsOwnerLabel))
 	{
 		for (const EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTION& Owner :
 			EFFECT_TOOL_ALL_EFFECTS_OWNER_OPTIONS)
@@ -10152,16 +10421,20 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			const bool_t bBossOwner =
 				EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS ==
 					Owner.eKind;
+			const bool_t bEstherOwner =
+				EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::ESTHER == Owner.eKind;
 			if (bBossOwner)
 				ImGui::SeparatorText("Boss Patterns");
-			const bool_t bSelected = bBossOwner ?
-				m_bAllEffectsValtanBossSelected :
-				(!m_bAllEffectsValtanBossSelected &&
-					Owner.eCharacterClass == m_eAllEffectsClass);
+			if (bEstherOwner)
+				ImGui::SeparatorText("Esther Actions");
+			const bool_t bSelected = Owner.eKind == m_eAllEffectsOwnerKind &&
+				(Owner.eKind != EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS ||
+				 Owner.eCharacterClass == m_eAllEffectsClass);
 			if (ImGui::Selectable(Owner.strLabel.data(), bSelected))
 			{
-				m_bAllEffectsValtanBossSelected = bBossOwner;
-				if (!bBossOwner)
+				m_eAllEffectsOwnerKind = Owner.eKind;
+				if (Owner.eKind ==
+					EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS)
 				{
 					m_eAllEffectsClass = Owner.eCharacterClass;
 					Select_AuthoringDomainForClass(Owner.eCharacterClass);
@@ -10210,7 +10483,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			Contains_NoCase(Row.strEffectAssetId, Search) ||
 			Contains_NoCase(Row.strRuntimeClipName, Search);
 	}
-	if (m_bAllEffectsValtanBossSelected)
+	if (EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::VALTAN_BOSS ==
+		m_eAllEffectsOwnerKind)
 	{
 		Render_ValtanPatternTreeSection(Search);
 
@@ -10275,6 +10549,11 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				DataFile.Path, DataFile.strAssetId);
 			ImGui::PopID();
 		}
+	}
+	else if (EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::ESTHER ==
+		m_eAllEffectsOwnerKind)
+	{
+		Render_EstherEffectTreeSection(Search);
 	}
 	else
 	{
@@ -10619,7 +10898,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 
 	if (!m_strElementStatus.empty())
 		ImGui::TextWrapped("%s", m_strElementStatus.c_str());
-	if (!m_bAllEffectsValtanBossSelected &&
+	if (EFFECT_TOOL_ALL_EFFECTS_OWNER_KIND::PLAYER_CLASS ==
+		m_eAllEffectsOwnerKind &&
 		ImGui::CollapsingHeader("Advanced Diagnostics"))
 	{
 		ImGui::TextDisabled(
@@ -13193,7 +13473,7 @@ bool_t Client::CEffect_Tool::Try_ClearElements()
     return true;
 }
 
-size_t Client::CEffect_Tool::Count_PlayerProductCueMappings(
+size_t Client::CEffect_Tool::Count_ProductCueMappings(
 	const std::string& strEffectAssetId) const
 {
 	if (strEffectAssetId.empty())
@@ -13215,10 +13495,15 @@ size_t Client::CEffect_Tool::Count_PlayerProductCueMappings(
 				return ProductCue.Cue.strEffectAssetId == strEffectAssetId;
 			}));
 	}
+	for (const ESTHER_EFFECT_TREE_ENTRY& Entry : m_EstherEffects)
+	{
+		if (Entry.Cue.strEffectAssetId == strEffectAssetId)
+			++iMappingCount;
+	}
 	return iMappingCount;
 }
 
-bool_t Client::CEffect_Tool::Can_HotReloadSavedPlayerProduct() const
+bool_t Client::CEffect_Tool::Can_HotReloadSavedProduct() const
 {
 	return m_ActiveDocument.has_value() &&
 		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
@@ -13226,11 +13511,11 @@ bool_t Client::CEffect_Tool::Can_HotReloadSavedPlayerProduct() const
 		m_bActiveDocumentDrawable &&
 		CEffectCatalog::Is_DirectAuthoredDocument(
 			m_ActiveDocument->strEffectAssetId) &&
-		0u != Count_PlayerProductCueMappings(
+		0u != Count_ProductCueMappings(
 			m_ActiveDocument->strEffectAssetId);
 }
 
-bool_t Client::CEffect_Tool::Try_HotReloadSavedPlayerProduct()
+bool_t Client::CEffect_Tool::Try_HotReloadSavedProduct()
 {
 	m_strSaveHotReloadStatus.clear();
 	if (!m_ActiveDocument.has_value() ||
@@ -13251,17 +13536,17 @@ bool_t Client::CEffect_Tool::Try_HotReloadSavedPlayerProduct()
 		return false;
 	}
 	const size_t iMappingCount =
-		Count_PlayerProductCueMappings(strEffectAssetId);
+		Count_ProductCueMappings(strEffectAssetId);
 	if (0u == iMappingCount)
 	{
 		m_strSaveHotReloadStatus =
-			"Authored save only: the exact Effect ID is not used by any player Product cue.";
+			"Authored save only: the exact Effect ID is not used by any admitted Product cue.";
 		return false;
 	}
 	if (!CEffectCatalog::Is_DirectAuthoredDocument(strEffectAssetId))
 	{
 		m_strSaveHotReloadStatus =
-			"Authored save only: the exact player Product Effect is not cataloged as direct-authored.";
+			"Authored save only: the exact Product Effect is not cataloged as direct-authored.";
 		return false;
 	}
 
@@ -13311,7 +13596,7 @@ bool_t Client::CEffect_Tool::Try_HotReloadSavedPlayerProduct()
 		m_strSaveHotReloadStatus =
 			"Saved Authored and hot reloaded Product '" +
 			strEffectAssetId + "' for " + std::to_string(iMappingCount) +
-			" mapped player cue(s), but the Tool preview could not be restaged: " +
+			" mapped Product cue(s), but the Tool preview could not be restaged: " +
 			m_strPreviewStatus +
 			" Subsequent Product spawns still use the saved revision.";
 		return false;
@@ -13323,7 +13608,7 @@ bool_t Client::CEffect_Tool::Try_HotReloadSavedPlayerProduct()
 		m_strSaveHotReloadStatus =
 			"Saved Authored and hot reloaded Product '" +
 			strEffectAssetId + "' for " + std::to_string(iMappingCount) +
-			" mapped player cue(s), but the Tool preview restart failed. "
+			" mapped Product cue(s), but the Tool preview restart failed. "
 			"Subsequent Product spawns still use the saved revision.";
 		return false;
 	}
@@ -13331,7 +13616,7 @@ bool_t Client::CEffect_Tool::Try_HotReloadSavedPlayerProduct()
 	m_strSaveHotReloadStatus =
 		"Saved Authored and hot reloaded Product '" + strEffectAssetId +
 		"' for all " + std::to_string(iMappingCount) +
-		" mapped player cue(s). The Tool preview restarted; active gameplay "
+		" mapped Product cue(s). The Tool preview restarted; active gameplay "
 		"occurrences are unchanged and subsequent spawns use the saved revision.";
 	return true;
 }
@@ -13391,14 +13676,14 @@ bool_t Client::CEffect_Tool::Try_ApplyDraftAndSave()
 	{
 		m_strDocumentStatus = "The active Authored Document is already saved.";
 		if (m_bActiveDocumentMatchesRuntime &&
-			Can_HotReloadSavedPlayerProduct())
+			Can_HotReloadSavedProduct())
 		{
 			m_strSaveHotReloadStatus =
 				"Saved Authored already matches the loaded Product revision; no hot reload was needed.";
 		}
 		else
 		{
-			(void)Try_HotReloadSavedPlayerProduct();
+			(void)Try_HotReloadSavedProduct();
 		}
 		return true;
 	}
@@ -13501,7 +13786,7 @@ bool_t Client::CEffect_Tool::Try_SaveDocument()
     {
         m_strDocumentStatus += " Authored preview is drawable.";
     }
-	(void)Try_HotReloadSavedPlayerProduct();
+	(void)Try_HotReloadSavedProduct();
     return true;
 }
 
@@ -14162,6 +14447,7 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
 	}
 	const bool_t bValtanBossPatternsReady =
 		Refresh_ValtanBossPatternEffects();
+	const bool_t bEstherEffectsReady = Refresh_EstherEffects();
 
     const auto FailRefresh = [this, bHadPreviousAllEffectsTree](
 		const std::string& strReason)
@@ -14407,7 +14693,13 @@ bool_t Client::CEffect_Tool::Refresh_AllEffects(
 			" Valtan rows were isolated and did not hide playable skills: " +
 			m_strValtanBossPatternStatus;
 	}
-    return true;
+	if (!bEstherEffectsReady)
+	{
+		m_strElementStatus +=
+			" Esther rows were isolated and did not hide playable skills or Valtan: " +
+			m_strEstherEffectStatus;
+	}
+	return true;
 }
 
 bool_t Client::CEffect_Tool::Refresh_DataFiles()
@@ -21090,6 +21382,67 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 		}
 	}
 
+	const auto EstherEffect = std::find_if(
+		m_EstherEffects.begin(), m_EstherEffects.end(),
+		[pPreviewDocument](const ESTHER_EFFECT_TREE_ENTRY& Entry)
+		{
+			return Entry.Cue.strEffectAssetId ==
+				pPreviewDocument->strEffectAssetId;
+		});
+	if (EstherEffect != m_EstherEffects.end())
+	{
+		if (nullptr == m_pCharacterPreviewPanel ||
+			!m_pCharacterPreviewPanel->Select_NpcTarget(
+				EstherEffect->strOwnerArchetypeId,
+				EstherEffect->strRuntimeClipName))
+		{
+			m_strPreviewAnimationStatus =
+				"Esther Effect is loaded, but its NPC product model could not be staged.";
+			return;
+		}
+		const shared_ptr<Engine::CModel> pEstherModel =
+			CAnimationTargetService::Resolve_Model();
+		if (nullptr == pEstherModel ||
+			CAnimationTargetService::Resolve_AssetName() != "Esther")
+		{
+			m_strPreviewAnimationStatus =
+				"Esther preview did not publish its generic animation target.";
+			return;
+		}
+		const std::vector<std::string> AvailableClips =
+			Collect_AnimationClipNames(pEstherModel);
+		if (AvailableClips.end() == std::find(
+				AvailableClips.begin(), AvailableClips.end(),
+				EstherEffect->strRuntimeClipName))
+		{
+			m_strPreviewAnimationStatus =
+				"Esther NPC model does not expose the cataloged action clip: " +
+				EstherEffect->strRuntimeClipName;
+			return;
+		}
+		m_SynchronizedAnimationClips = {
+			{ EstherEffect->strRuntimeClipName, 0u, 1.f } };
+		m_iSynchronizedAnimationClipIndex = 0u;
+		m_iSynchronizedAnimationTargetGeneration =
+			CAnimationTargetService::Resolve_TargetGeneration();
+		if (!pEstherModel->Start_Animation(
+				EstherEffect->strRuntimeClipName.c_str(), m_bPreviewLoop))
+		{
+			Reset_SynchronizedAnimationSequence();
+			m_strPreviewAnimationStatus =
+				"Esther action clip could not start: " +
+				EstherEffect->strRuntimeClipName;
+			return;
+		}
+		pEstherModel->Set_AnimationSpeed(1.f);
+		pEstherModel->Set_AnimPaused(false);
+		m_strPreviewAnimationStatus = "Esther action animation synced: " +
+			EstherEffect->strOwnerLabel + " / " +
+			EstherEffect->strActionId + " -> " +
+			EstherEffect->strRuntimeClipName;
+		return;
+	}
+
     std::string CatalogStatus;
     const bool_t bCatalogAvailable =
         Ensure_PlayerSkillCatalog(CatalogStatus);
@@ -22059,11 +22412,11 @@ std::string Client::CEffect_Tool::Describe_ProductPlaybackAuthoredDivergence(
     Refresh_RuntimeEquivalence();
     if (m_bActiveDocumentMatchesRuntime)
         return {};
-    return Can_HotReloadSavedPlayerProduct() ?
+    return Can_HotReloadSavedProduct() ?
         " | STALE PRODUCT: this loaded Product revision differs from saved "
             "Authored. Use Retry Product Hot Reload; failure preserves the "
             "existing prepared Product target." :
-        " | STALE PRODUCT: this Effect is not an exact direct-authored player "
+		" | STALE PRODUCT: this Effect is not an exact direct-authored "
             "Product mapping, so Authored Save does not replace it.";
 }
 

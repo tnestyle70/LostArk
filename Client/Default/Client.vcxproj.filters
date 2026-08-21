@@ -1015,6 +1015,9 @@
     <None Include="..\..\Data\Animation\Authored\DimensionMaster\DimensionMaster.skillbindings.json">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>
+	<None Include="..\..\Data\Animation\Authored\Esther\Esther.animevents">
+	  <Filter>96.DataFiles\Animation\Authored</Filter>
+	</None>
     <None Include="..\..\Data\Animation\Authored\GunSlinger\GunSlinger.animevents">
       <Filter>96.DataFiles\Animation\Authored</Filter>
     </None>

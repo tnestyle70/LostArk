@@ -155,6 +155,7 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 	const std::vector<EFFECT_DIRECT_AUTHORED_SCANNED_FILE>& ScannedFiles,
 	const EFFECT_DIRECT_AUTHORED_OWNER_SET& ValidOwners,
 	const EFFECT_DIRECT_AUTHORED_BOSS_OWNER_MAP& ValidBossOwners,
+	const EFFECT_DIRECT_AUTHORED_ESTHER_OWNER_MAP& ValidEstherOwners,
 	EFFECT_DIRECT_AUTHORED_SOURCE_INDEX& InOutIndex,
 	std::string& strOutStatus)
 {
@@ -269,23 +270,66 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		else
 		{
 			const auto BossOwner = ValidBossOwners.find(strAssetId);
-			if (ValidBossOwners.end() == BossOwner ||
-				BossOwner->second.strOwnerArchetypeId.empty() ||
-				BossOwner->second.strPatternId.empty() ||
-				BossOwner->second.strStageId.empty() ||
-				BossOwner->second.strActionId.empty())
+			const auto EstherOwner = ValidEstherOwners.find(strAssetId);
+			const bool_t bHasBossOwner =
+				ValidBossOwners.end() != BossOwner;
+			const bool_t bHasEstherOwner =
+				ValidEstherOwners.end() != EstherOwner;
+			if (bHasBossOwner && bHasEstherOwner)
 			{
 				RecordUnavailable(
-					"direct authored Effect ID has no stable player-skill or boss-pattern owner: " +
+					"direct authored Effect ID has ambiguous boss/Esther owners: " +
 					strAssetId);
 				continue;
 			}
-			Entry.eOwnerKind = EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_PATTERN;
-			Entry.strOwnerArchetypeId =
-				BossOwner->second.strOwnerArchetypeId;
-			Entry.strPatternId = BossOwner->second.strPatternId;
-			Entry.strStageId = BossOwner->second.strStageId;
-			Entry.strActionId = BossOwner->second.strActionId;
+			if (bHasBossOwner)
+			{
+				if (BossOwner->second.strOwnerArchetypeId.empty() ||
+					BossOwner->second.strPatternId.empty() ||
+					BossOwner->second.strStageId.empty() ||
+					BossOwner->second.strActionId.empty())
+				{
+					RecordUnavailable(
+						"direct authored Effect ID has an incomplete boss-pattern owner: " +
+						strAssetId);
+					continue;
+				}
+				Entry.eOwnerKind =
+					EFFECT_DIRECT_AUTHORED_OWNER_KIND::BOSS_PATTERN;
+				Entry.strOwnerArchetypeId =
+					BossOwner->second.strOwnerArchetypeId;
+				Entry.strPatternId = BossOwner->second.strPatternId;
+				Entry.strStageId = BossOwner->second.strStageId;
+				Entry.strActionId = BossOwner->second.strActionId;
+			}
+			else if (bHasEstherOwner)
+			{
+				if (EstherOwner->second.strOwnerArchetypeId.empty() ||
+					EstherOwner->second.strActionId.empty() ||
+					EstherOwner->second.strRuntimeClipName.empty() ||
+					EstherOwner->second.strPhaseId.empty())
+				{
+					RecordUnavailable(
+						"direct authored Effect ID has an incomplete Esther-action owner: " +
+						strAssetId);
+					continue;
+				}
+				Entry.eOwnerKind =
+					EFFECT_DIRECT_AUTHORED_OWNER_KIND::ESTHER_ACTION;
+				Entry.strOwnerArchetypeId =
+					EstherOwner->second.strOwnerArchetypeId;
+				Entry.strActionId = EstherOwner->second.strActionId;
+				Entry.strRuntimeClipName =
+					EstherOwner->second.strRuntimeClipName;
+				Entry.strPhaseId = EstherOwner->second.strPhaseId;
+			}
+			else
+			{
+				RecordUnavailable(
+					"direct authored Effect ID has no stable player-skill, boss-pattern, or Esther-action owner: " +
+					strAssetId);
+				continue;
+			}
 		}
 
 		const std::string strAuthoringPath = pAuthoringPath->Get_String();
@@ -390,11 +434,13 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		{
 			return std::tie(Left.eOwnerKind, Left.eCharacterClass,
 				Left.iSkillId, Left.strOwnerArchetypeId, Left.strPatternId,
-				Left.strStageId, Left.strActionId, Left.strEffectAssetId) <
+				Left.strStageId, Left.strActionId, Left.strRuntimeClipName,
+				Left.strPhaseId, Left.strEffectAssetId) <
 				std::tie(Right.eOwnerKind, Right.eCharacterClass,
 					Right.iSkillId, Right.strOwnerArchetypeId,
 					Right.strPatternId, Right.strStageId,
-					Right.strActionId, Right.strEffectAssetId);
+					Right.strActionId, Right.strRuntimeClipName,
+					Right.strPhaseId, Right.strEffectAssetId);
 		});
 	strOutStatus = "Direct authored source index admitted " +
 		std::to_string(Staged.Entries.size()) + " / " +

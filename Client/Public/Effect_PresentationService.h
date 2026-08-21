@@ -18,12 +18,14 @@ NS_BEGIN(Client)
 
 class CCharacter;
 class CEffectObject;
+class CNpc;
 class CValtan;
 
 struct EFFECT_SPAWN_DESC final
 {
     std::string strEffectAssetId;
 	std::weak_ptr<CCharacter> pOwner;
+	std::weak_ptr<CNpc> pNpcOwner;
 	std::weak_ptr<CValtan> pBossOwner;
     std::string strAnchorSlotId = "root";
     EFFECT_TRANSFORM_DESC LocalTransform{};
@@ -73,6 +75,14 @@ struct EFFECT_BOSS_ACTION_STOP_RESULT final
 	uint64_t iActiveStopped = 0u;
 
 	bool operator==(const EFFECT_BOSS_ACTION_STOP_RESULT&) const = default;
+};
+
+struct EFFECT_NPC_ACTION_STOP_RESULT final
+{
+	uint64_t iPendingStopped = 0u;
+	uint64_t iActiveStopped = 0u;
+
+	bool operator==(const EFFECT_NPC_ACTION_STOP_RESULT&) const = default;
 };
 
 /* Opaque process-local identities for the one immutable Artist F Core33 cache.
@@ -352,6 +362,13 @@ public:
     static void Update(f32_t fTimeDelta);
     static void Synchronize_FollowAnchors();
     static void Stop_Owner(const std::shared_ptr<CCharacter>& pOwner);
+	/* Server-driven NPC action effects use the same exact actionStartTick scope
+	   as boss stages. Replacement stops only that action; despawn stops every
+	   pending and active occurrence owned by the NPC. */
+	static EFFECT_NPC_ACTION_STOP_RESULT Stop_NpcAction(
+		const std::shared_ptr<CNpc>& pOwner,
+		uint32_t iActionStartTick);
+	static void Stop_NpcOwner(const std::shared_ptr<CNpc>& pOwner);
 	/* A replicated boss stage owns every queued and active cue created from its
 	   non-zero actionStartTick.  Stage replacement/abort uses this exact scope;
 	   Stop_BossOwner remains reserved for death, despawn and level teardown. */

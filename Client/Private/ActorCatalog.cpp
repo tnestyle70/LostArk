@@ -3,7 +3,9 @@
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
 
+#include <algorithm>
 #include <fstream>
+#include <cctype>
 #include <cmath>
 #include <set>
 
@@ -82,6 +84,16 @@ namespace
 			if (part == L"..")
 				return false;
 		return std::filesystem::path(value).extension() == L".wmodel";
+	}
+
+	bool_t IsStableAnimationAssetId(const std::string& value)
+	{
+		if (value.empty() || 64u < value.size())
+			return false;
+		return std::all_of(value.begin(), value.end(), [](const unsigned char ch)
+		{
+			return 0 != std::isalnum(ch) || ch == '_' || ch == '-';
+		});
 	}
 
 	LostArk::Shared::CHARACTER_CLASS_ID ParseClass(const std::string& value)
@@ -256,10 +268,15 @@ namespace
 		{
 			const DATA_JSON_VALUE* pActionClips =
 				value.Is_Object() ? value.Find("actionClips") : nullptr;
+			const DATA_JSON_VALUE* pAnimationEffectCueAssetId =
+				value.Is_Object() ?
+					value.Find("animationEffectCueAssetId") : nullptr;
 			const DATA_JSON_VALUE* pCutinWindow =
 				value.Is_Object() ? value.Find("cutinWindow") : nullptr;
 			size_t expectedFields = 6u;
 			if (nullptr != pActionClips)
+				++expectedFields;
+			if (nullptr != pAnimationEffectCueAssetId)
 				++expectedFields;
 			if (nullptr != pCutinWindow)
 				++expectedFields;
@@ -290,6 +307,22 @@ namespace
 				entry.animationSetId = pAnimSet->Get_String();
 				if (!IsResourceId(entry.animationSetId))
 					return false;
+			}
+			if (nullptr != pAnimationEffectCueAssetId &&
+				(!ReadRequiredString(value, "animationEffectCueAssetId",
+					entry.animationEffectCueAssetId) ||
+				 !IsStableAnimationAssetId(
+					entry.animationEffectCueAssetId)))
+			{
+				return false;
+			}
+			/* An action-driven supported NPC must name the generic cue document
+			that owns those clips. Conversely, a passive NPC cannot silently opt
+			into an event owner that no action timeline can consume. */
+			if ((nullptr != pActionClips) !=
+				!entry.animationEffectCueAssetId.empty())
+			{
+				return false;
 			}
 			if (nullptr != pActionClips)
 			{

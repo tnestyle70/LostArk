@@ -308,6 +308,40 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			m_EffectPreparationTargets.insert(
 				m_EffectPreparationTargets.end(),
 				BossEffectAssetIds.begin(), BossEffectAssetIds.end());
+
+			/* Esther action cues are optional NPC presentation. Prewarm the same
+			generic animation asset named by the roster without adding an
+			Esther-only queue. Do not read ActorCatalog here: this method overlaps
+			the loader worker, and that process-global catalog has no concurrent
+			first-load contract. The catalog validator owns the exact three-way
+			"Esther" join. */
+			constexpr char EstherCueAssetId[] = "Esther";
+			std::string EstherStatus;
+			ANIMATION_EFFECT_CUE_DOCUMENT EstherCueDocument;
+			std::vector<std::string> EstherEffectAssetIds;
+			if (EstherStatus.empty() &&
+				(!CAnimationEffectCueDocument::Load_ForProductPrewarm(
+					EstherCueAssetId, EstherCueDocument, EstherStatus) ||
+				 !CEffectPresentationService::Queue_ProductCues_Priority(
+					EstherCueDocument.Cues,
+					EstherEffectAssetIds,
+					EstherStatus)))
+			{
+				/* The called parser/queue preserves its exact failure reason. */
+			}
+			if (!EstherStatus.empty())
+			{
+				OutputDebugStringA((
+					"[Level_Loading] VALTAN ARENA: Esther Effect preparation "
+					"isolated: " + EstherStatus + "\n").c_str());
+			}
+			else
+			{
+				m_EffectPreparationTargets.insert(
+					m_EffectPreparationTargets.end(),
+					EstherEffectAssetIds.begin(),
+					EstherEffectAssetIds.end());
+			}
 			std::sort(m_EffectPreparationTargets.begin(),
 				m_EffectPreparationTargets.end());
 			m_EffectPreparationTargets.erase(std::unique(
