@@ -8,7 +8,7 @@ Valtan has no input slot: the Server owns ``patternId`` and ``actionId``, so the
 same route is rebuilt from three documents that already exist:
 
   ValtanEncounter.json          patternId -> gameplay actionId + sourceActionIds
-  Valtan.patternbindings.json   gameplay actionId -> clip
+  Valtan.patternbindings.json   gameplay actionId -> ordered clip occurrences
   <profile>.action-effects.json numeric actionId -> stages -> clips + notifies
 
 Nothing is inferred from a name. Only actionIds the encounter declares and only
@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -51,10 +52,134 @@ EFFECT_NOTIFY_TYPES = frozenset({
     "Trails",
     "TrailGhostEffect",
 })
+ALLOWED_MAPPING_BASES = frozenset({
+    "CURRENT_PRODUCT_BASELINE",
+    "PATTERN_PR_REFERENCE",
+    "ANIMATION_PR_127",
+    "SOURCE_REVIEWED_DELTA",
+    "PROJECT_AUTHORED",
+    "LEGACY_V1_MIGRATION",
+})
+MAX_CLIPS_PER_BINDING = 16
+MAX_BOSS_MS = 60000
 
 
 class BindingError(RuntimeError):
     pass
+
+
+def binding_clip_occurrences(row: dict[str, Any]) -> list[dict[str, Any]]:
+    """Normalize legacy v1 clips and canonical v2 clip occurrences."""
+    action_id = str(row.get("actionId") or "")
+    if not action_id:
+        raise BindingError(f"pattern binding row has no actionId: {row}")
+    raw = row.get("clips")
+    if raw is None:
+        raw = row.get("clip")
+    if isinstance(raw, (str, dict)):
+        values: list[Any] = [raw]
+    elif isinstance(raw, list):
+        values = raw
+    else:
+        raise BindingError(f"pattern binding row has no clip: {row}")
+
+    result: list[dict[str, Any]] = []
+    for ordinal, value in enumerate(values):
+        if isinstance(value, str):
+            clip = value
+            occurrence_id = f"{action_id}.clip.{ordinal + 1:02d}"
+            mapping_basis = "LEGACY_V1_MIGRATION"
+            source_start_ms = 0
+            play_ms = 0
+            play_rate = 1.0
+            loop = ordinal + 1 == len(values)
+        elif isinstance(value, dict):
+            expected = {
+                "clipOccurrenceId",
+                "clip",
+                "mappingBasis",
+                "sourceStartMs",
+                "playMs",
+                "playRate",
+                "loop",
+            }
+            if set(value) != expected:
+                raise BindingError(
+                    f"{action_id} clip occurrence properties changed at {ordinal}"
+                )
+            clip = str(value.get("clip") or "")
+            occurrence_id = str(value.get("clipOccurrenceId") or "")
+            mapping_basis = str(value.get("mappingBasis") or "")
+            source_start_ms = value.get("sourceStartMs")
+            play_ms = value.get("playMs")
+            play_rate = value.get("playRate")
+            loop = value.get("loop")
+        else:
+            raise BindingError(
+                f"{action_id} has an invalid clip occurrence at {ordinal}"
+            )
+        if (
+            not clip
+            or not occurrence_id
+            or not mapping_basis
+            or isinstance(source_start_ms, bool)
+            or not isinstance(source_start_ms, int)
+            or source_start_ms < 0
+            or source_start_ms > MAX_BOSS_MS
+            or isinstance(play_ms, bool)
+            or not isinstance(play_ms, int)
+            or play_ms < 0
+            or play_ms > MAX_BOSS_MS
+            or isinstance(play_rate, bool)
+            or not isinstance(play_rate, (int, float))
+            or not math.isfinite(float(play_rate))
+            or float(play_rate) < 0.05
+            or float(play_rate) > 16.0
+            or not isinstance(loop, bool)
+            or mapping_basis not in ALLOWED_MAPPING_BASES
+            or (loop and ordinal + 1 != len(values))
+        ):
+            raise BindingError(
+                f"{action_id} has an incomplete clip occurrence at {ordinal}: "
+                f"{value}"
+            )
+        result.append({
+            "clipOccurrenceId": occurrence_id,
+            "clip": clip,
+            "mappingBasis": mapping_basis,
+            "sourceStartMs": source_start_ms,
+            "playMs": play_ms,
+            "playRate": float(play_rate),
+            "loop": loop,
+        })
+    if not result:
+        raise BindingError(f"{action_id} has no clip occurrences")
+    if len(result) > MAX_CLIPS_PER_BINDING:
+        raise BindingError(
+            f"{action_id} has more than {MAX_CLIPS_PER_BINDING} clip occurrences"
+        )
+    return result
+
+
+def index_binding_clips(
+    rows: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    clips_by_action: dict[str, list[dict[str, Any]]] = {}
+    seen_clip_occurrence_ids: set[str] = set()
+    for row in rows:
+        action_id = str(row.get("actionId") or "")
+        clips = binding_clip_occurrences(row)
+        if action_id in clips_by_action:
+            raise BindingError(f"duplicate pattern binding actionId: {action_id}")
+        for clip in clips:
+            occurrence_id = clip["clipOccurrenceId"]
+            if occurrence_id in seen_clip_occurrence_ids:
+                raise BindingError(
+                    f"duplicate clipOccurrenceId: {occurrence_id}"
+                )
+            seen_clip_occurrence_ids.add(occurrence_id)
+        clips_by_action[action_id] = clips
+    return clips_by_action
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -144,15 +269,7 @@ def build_document() -> tuple[dict[str, Any], dict[str, Any]]:
     if pattern_bindings.get("schema") != "lostark.valtan-pattern-bindings":
         raise BindingError("pattern binding schema drifted")
 
-    clip_by_action: dict[str, str] = {}
-    for row in pattern_bindings.get("bindings", []):
-        action_id = str(row.get("actionId") or "")
-        clip = str(row.get("clip") or "")
-        if not action_id or not clip:
-            raise BindingError(f"pattern binding row is incomplete: {row}")
-        if action_id in clip_by_action and clip_by_action[action_id] != clip:
-            raise BindingError(f"pattern binding declares two clips: {action_id}")
-        clip_by_action[action_id] = clip
+    clips_by_action = index_binding_clips(pattern_bindings.get("bindings", []))
 
     source_actions, inputs = load_source_actions(catalog)
 
@@ -172,14 +289,15 @@ def build_document() -> tuple[dict[str, Any], dict[str, Any]]:
         # guess: an actionId prefixed by this pattern's gameplay action.
         stages = []
         prefix = gameplay_action + "."
-        for action_id, clip in sorted(clip_by_action.items()):
+        for action_id, clips in sorted(clips_by_action.items()):
             if not action_id.startswith(prefix):
                 continue
-            stages.append({
-                "semanticStageId": action_id[len(prefix):],
-                "gameplayActionId": action_id,
-                "clip": clip,
-            })
+            for clip in clips:
+                stages.append({
+                    "semanticStageId": action_id[len(prefix):],
+                    "gameplayActionId": action_id,
+                    **clip,
+                })
         clip_total += len(stages)
 
         source_rows = []
@@ -237,10 +355,10 @@ def build_document() -> tuple[dict[str, Any], dict[str, Any]]:
 
     document = {
         "schema": "lostark.valtan-action-effect-bindings",
-        "formatVersion": 1,
+        "formatVersion": 2,
         "bossArchetypeId": "BOSS_VALTAN",
         "route": (
-            "encounter patternId -> gameplay actionId -> authored clip; "
+            "encounter patternId -> gameplay actionId -> authored clip occurrence; "
             "source numeric actionId -> stage -> effect notify. "
             "Gameplay authority stays with the Server encounter document."
         ),
@@ -260,7 +378,7 @@ def build_document() -> tuple[dict[str, Any], dict[str, Any]]:
 
     receipt = {
         "schema": "lostark.valtan-action-effect-bindings-receipt",
-        "formatVersion": 1,
+        "formatVersion": 2,
         "bossArchetypeId": "BOSS_VALTAN",
         "summary": {
             "patternCount": len(patterns_out),

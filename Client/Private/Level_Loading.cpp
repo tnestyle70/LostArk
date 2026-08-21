@@ -22,11 +22,7 @@
 
 namespace
 {
-	constexpr size_t VALTAN_PATTERN_EFFECT_CUE_COUNT = 98u;
 	constexpr size_t VALTAN_COMBAT_OBJECT_EFFECT_TARGET_COUNT = 2u;
-	constexpr size_t VALTAN_PRODUCT_EFFECT_TARGET_COUNT =
-		VALTAN_PATTERN_EFFECT_CUE_COUNT +
-		VALTAN_COMBAT_OBJECT_EFFECT_TARGET_COUNT;
 }
 
 CLevel_Loading::CLevel_Loading(
@@ -301,8 +297,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		{
 			VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 			if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
-					CueDocument, Status) ||
-				CueDocument.Cues.size() != VALTAN_PATTERN_EFFECT_CUE_COUNT)
+					CueDocument, Status) || CueDocument.Cues.empty())
 			{
 				return IsolateFailure(Status);
 			}
@@ -329,7 +324,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			std::vector<std::string> BossEffectAssetIds;
 			if (!CEffectPresentationService::Queue_ProductTargets_Priority(
 					EffectAssetIds, BossEffectAssetIds, Status) ||
-				BossEffectAssetIds.size() != VALTAN_PRODUCT_EFFECT_TARGET_COUNT)
+				BossEffectAssetIds.empty())
 			{
 				return IsolateFailure(Status);
 			}

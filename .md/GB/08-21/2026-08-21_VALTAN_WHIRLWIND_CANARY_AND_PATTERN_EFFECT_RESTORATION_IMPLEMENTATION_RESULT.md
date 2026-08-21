@@ -17,7 +17,7 @@ VisualProgram sidecar를 항상 parse/validate/stage하므로 새 Client code의
 | Whirlwind source denominator | `5 + 3 + 1 = 9/9` | canary/boss/unit PASS | authoring 완료 |
 | Baked Trail geometry | 409 samples, 1.2초 clamp | builder check PASS | material은 bounded reconstruction |
 | Point Light | firstEdge typed attachment | packet/focused test PASS | sibling-template inference |
-| Pattern cue | `0..2133ms` authoring cue | binding/cue focused PASS | runtime effect row 1 |
+| Pattern cue | source start `0ms`, natural stop | binding/cue focused PASS | SPIN stage duration 2133ms |
 | VisualProgram corpus/runtime | rows 135 / programs 14 | source runtime/published sidecar byte-identical; corpus schema SHA 1건 stale | marker와 무관하게 always-load |
 | Gameplay | combined bootstrap v13 | Validate/Publish PASS | Server restart 필요 |
 | Item bootstrap | v2, 7 items 생성 | Server Release/contract PASS | missing bootstrap blocker 제거 |
@@ -140,11 +140,13 @@ stageId         SPIN
 actionId        valtan.attack.whirlwind.active
 effectAssetId   effect.valtan.pattern.420633.active
 startMs         0
-endMs           2133
+stopPolicy      natural
+sourceEndMs     null
 ```
 
-`2133ms`는 Server semantic SPIN stage와 effect cue의 window다. baked history clamp `1.2s`는 source
-Trail/Light local sample 범위다. 서로 다른 시간을 하나로 정규화하지 않는다.
+`2133ms`는 Server semantic SPIN stage duration이다. 현재 cue는 명시적인 cue-end가 아니라 natural
+stop을 사용한다. baked history clamp `1.2s`는 source Trail/Light local sample 범위다. 서로 다른 시간을
+하나로 정규화하지 않는다.
 
 ## 3. VisualProgram corpus/runtime
 
@@ -318,6 +320,7 @@ final 4-field Publish와 Client/Debug Server 재시작 뒤 사용자가 직접 �
 Lobby -> Valtan -> VALTAN_WHIRLWIND / SPIN
 ```
 
-화면에서는 base Dust 5 carrier, 세 baked-edge strip, first-edge Light의 존재와 0..2133ms cue 종료를
+화면에서는 base Dust 5 carrier, 세 baked-edge strip, first-edge Light의 존재와 SPIN 2133ms 동안의
+natural cue 재생을
 분리해 판정한다. FIRST_EDGE Light의 위치는 sibling-template inference이므로 source oracle과 다르면
 attachment tuning 대상으로 되돌리고 exact로 승인하지 않는다.

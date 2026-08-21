@@ -38,6 +38,7 @@ struct ENCOUNTER_PATTERN_REFERENCE final
 	std::string selectionMode;
 	uint32_t iTriggerHealthBar = 0;
 	uint32_t iTotalDurationMs = 0;
+	std::vector<uint32_t> sourceActionIds;
 	std::vector<ENCOUNTER_STAGE_REFERENCE> stages;
 };
 

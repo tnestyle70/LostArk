@@ -55,17 +55,17 @@ RUNTIME_VERSION = 1
 RUNTIME_ID = "effect.visual-program-runtime.v1"
 CONTRACT_ROLE = "GENERIC_VISUAL_PROGRAM_RUNTIME_SIDECAR_STAGE_INPUT"
 
-EXPECTED_PROGRAM_COUNT = 14
-EXPECTED_BA_PROGRAM_COUNT = 13
+EXPECTED_PROGRAM_COUNT = 16
+EXPECTED_BA_PROGRAM_COUNT = 15
 EXPECTED_ADAPTER_PROGRAM_COUNT = 1
 EXPECTED_ROW_COUNT = 135
 EXPECTED_OVERLAY_COUNT = 66
 EXPECTED_LOCAL_PACKET_COUNT = 2
 EXPECTED_FAIL_CLOSED_COUNT = 67
 EXPECTED_CASCADE_RIBBON_ROW_COUNT = 4
-EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 9
+EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 15
 EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT = 1
-EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 7
+EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 13
 EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT = 1
 
 VALTAN_WHIRLWIND_EFFECT_ASSET_ID = "effect.valtan.pattern.420633.active"
@@ -328,7 +328,17 @@ def _load_payload_record(
     relative = PurePosixPath(path_text)
     _require(not relative.is_absolute() and ".." not in relative.parts, "payload path escapes repository")
     path = repository_root / relative
-    _require(raw_sha256(path) == payload.get("rawSha256"), f"payload raw SHA changed: {path_text}")
+    physical_raw_sha = raw_sha256(path)
+    payload_raw_sha = payload.get("rawSha256")
+    if physical_raw_sha != payload_raw_sha:
+        # Phase 1 owns the only bounded exception: the four legacy Whirlwind
+        # supplemental rows retain their original LF payload identities while
+        # the frozen authoring/history canaries are checked out as CRLF.  Reuse
+        # the phase-1 validator so no other payload can bypass raw-byte drift.
+        try:
+            phase1._validate_payload_ref(payload, repository_root, "runtime payload")
+        except phase1.ContractError as error:
+            raise ContractError(f"payload raw SHA changed: {path_text}") from error
     document = load_json(path)
     record_id = _require_string(payload.get("recordId"), "payload.recordId")
     if "emitters" in document and path_text.endswith("runtime-program.candidate.json"):
@@ -349,6 +359,90 @@ def _load_payload_record(
         record_sha = canonical_json_sha256(record)
     _require(record_sha == payload.get("recordSha256"), f"payload record SHA changed: {record_id}")
     return record
+
+
+def _resolve_overlay_base_document(
+    repository_root: Path,
+    effect_asset_id: str,
+    rows: list[dict[str, Any]],
+    supplemental_source: list[dict[str, Any]],
+    stages: dict[str, dict[str, Any]],
+) -> tuple[Path, str]:
+    """Resolve the single sealed authoring document owned by an overlay program."""
+    if effect_asset_id == VALTAN_WHIRLWIND_EFFECT_ASSET_ID:
+        path = repository_root / PurePosixPath(
+            VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH
+        )
+        return path, phase1.VALTAN_WHIRLWIND_LEGACY_DOCUMENT_PAYLOAD_RAW_SHA256
+
+    stage_value = stages.get(effect_asset_id)
+    if stage_value is not None:
+        stage = _require_dict(stage_value, f"BA stage {effect_asset_id}")
+        current = _require_dict(stage.get("currentProduct"), "stage.currentProduct")
+        path_text = _require_string(current.get("authoringPath"), "authoringPath")
+        path = repository_root / PurePosixPath(path_text)
+        expected_raw = _require_sha(
+            current.get("authoringRawSha256"), "authoringRawSha256"
+        )
+        return path, expected_raw
+
+    _require(
+        not rows
+        and supplemental_source
+        and all(
+            (item.get("provenance") or {}).get("scope")
+            == "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL"
+            for item in supplemental_source
+        ),
+        f"non-BA supplemental program has no sealed safe-gap ownership: {effect_asset_id}",
+    )
+    target_payloads = [
+        _require_dict(item.get("targetPayload"), "safe-gap supplemental targetPayload")
+        for item in supplemental_source
+    ]
+    target_paths = {
+        _require_string(item.get("path"), "safe-gap target path")
+        for item in target_payloads
+    }
+    target_hashes = {
+        _require_sha(item.get("rawSha256"), "safe-gap target raw SHA")
+        for item in target_payloads
+    }
+    _require(
+        len(target_paths) == 1 and len(target_hashes) == 1,
+        f"safe-gap supplemental target join is not unique: {effect_asset_id}",
+    )
+    path = repository_root / PurePosixPath(next(iter(target_paths)))
+    return path, next(iter(target_hashes))
+
+
+def _validate_overlay_base_raw_sha(
+    repository_root: Path,
+    path: Path,
+    expected_raw_sha: str,
+    effect_asset_id: str,
+    corpus: dict[str, Any],
+) -> None:
+    physical_raw_sha = raw_sha256(path)
+    if physical_raw_sha == expected_raw_sha:
+        return
+    _require(
+        effect_asset_id == VALTAN_WHIRLWIND_EFFECT_ASSET_ID
+        and expected_raw_sha
+        == phase1.VALTAN_WHIRLWIND_LEGACY_DOCUMENT_PAYLOAD_RAW_SHA256,
+        f"BA base document raw SHA changed: {effect_asset_id}",
+    )
+    relative_path = path.resolve().relative_to(repository_root.resolve()).as_posix()
+    input_matches = [
+        item
+        for item in _require_list(corpus.get("inputArtifacts"), "corpus.inputArtifacts")
+        if isinstance(item, dict) and item.get("path") == relative_path
+    ]
+    _require(
+        len(input_matches) == 1
+        and input_matches[0].get("rawSha256") == physical_raw_sha,
+        "Whirlwind physical authoring canary diverged from the sealed corpus input",
+    )
 
 
 def validate_standard_document(document: dict[str, Any], expected_id: str) -> None:
@@ -1089,17 +1183,20 @@ def _build_programs(
                 "bakedEdgeHistories": runtime_histories,
             }
         else:
-            if effect_asset_id == VALTAN_WHIRLWIND_EFFECT_ASSET_ID:
-                path_text = VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH
-                path = repository_root / PurePosixPath(path_text)
-                expected_raw = raw_sha256(path)
-            else:
-                stage = _require_dict(stages.get(effect_asset_id), f"BA stage {effect_asset_id}")
-                current = _require_dict(stage.get("currentProduct"), "stage.currentProduct")
-                path_text = _require_string(current.get("authoringPath"), "authoringPath")
-                path = repository_root / PurePosixPath(path_text)
-                expected_raw = _require_sha(current.get("authoringRawSha256"), "authoringRawSha256")
-            _require(raw_sha256(path) == expected_raw, f"BA base document raw SHA changed: {effect_asset_id}")
+            path, expected_raw = _resolve_overlay_base_document(
+                repository_root,
+                effect_asset_id,
+                rows,
+                supplemental_source,
+                stages,
+            )
+            _validate_overlay_base_raw_sha(
+                repository_root,
+                path,
+                expected_raw,
+                effect_asset_id,
+                corpus,
+            )
             base = load_json(path)
             validate_standard_document(base, effect_asset_id)
             projected = project_ba_document(
@@ -1497,17 +1594,34 @@ def validate_runtime(
         )
         if program.get("projectionKind") == "SOURCE_RECIPE_OVERLAY_V1":
             counts[("program", "overlay")] += 1
-            if effect_asset_id == VALTAN_WHIRLWIND_EFFECT_ASSET_ID:
-                base_path = repository_root / PurePosixPath(
-                    VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH
-                )
-            else:
-                stage = _require_dict(stages.get(effect_asset_id), f"BA stage {effect_asset_id}")
-                current = _require_dict(stage.get("currentProduct"), "stage.currentProduct")
-                base_path = repository_root / PurePosixPath(current["authoringPath"])
+            phase1_rows = [
+                source_by_selector[
+                    (effect_asset_id, row["selector"]["occurrenceId"])
+                ]
+                for row in rows
+            ]
+            phase1_supplemental = [
+                item
+                for item in corpus["supplementalElements"]
+                if item["selector"]["effectAssetId"] == effect_asset_id
+            ]
+            base_path, expected_raw = _resolve_overlay_base_document(
+                repository_root,
+                effect_asset_id,
+                phase1_rows,
+                phase1_supplemental,
+                stages,
+            )
+            _validate_overlay_base_raw_sha(
+                repository_root,
+                base_path,
+                expected_raw,
+                effect_asset_id,
+                corpus,
+            )
             base = load_json(base_path)
             expected_base_identity = {
-                "rawSha256": raw_sha256(base_path),
+                "rawSha256": expected_raw,
                 "canonicalSha256": canonical_json_sha256(base),
                 "typedCodecSha256": program.get(
                     "baseDocumentIdentity", {}
@@ -1528,11 +1642,6 @@ def validate_runtime(
                     program.get("projectedDocumentCanonicalByteCount"),
                 f"projected document bytes/SHA are stale: {effect_asset_id}",
             )
-            phase1_rows = [source_by_selector[(effect_asset_id, row["selector"]["occurrenceId"])] for row in rows]
-            phase1_supplemental = [
-                item for item in corpus["supplementalElements"]
-                if item["selector"]["effectAssetId"] == effect_asset_id
-            ]
             expected_projected = project_ba_document(
                 repository_root, base, phase1_rows, phase1_supplemental
             )

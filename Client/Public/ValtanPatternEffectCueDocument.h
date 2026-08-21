@@ -12,20 +12,36 @@
 NS_BEGIN(Client)
 
 class CEncounterPatternReference;
+struct BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT;
+
+enum class VALTAN_PATTERN_EFFECT_REPEAT_POLICY : uint8_t
+{
+	ONCE,
+	EACH_LOOP,
+	END
+};
 
 struct VALTAN_PATTERN_EFFECT_CUE final
 {
 	std::string strBindingId;
+	std::string strOccurrenceId;
 	std::string strPatternId;
 	std::string strStageId;
 	std::string strActionId;
+	std::string strClipOccurrenceId;
 	std::string strEffectAssetId;
 	std::string strAnchorSlotId = "root";
 	EFFECT_TRANSFORM_DESC LocalTransform{};
 	EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
 	EFFECT_STOP_POLICY eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
+	VALTAN_PATTERN_EFFECT_REPEAT_POLICY eRepeatPolicy =
+		VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE;
+	/* v2 values are absolute source-local positions in the referenced clip
+	occurrence.  The names remain source-compatible with the v1 readers. */
 	uint32_t iStartMs = 0u;
 	uint32_t iEndMs = 0u;
+	bool_t bHasSourceEnd = false;
+	bool_t bUsesLegacyStageWallTime = false;
 	uint32_t iStageIndex = 0u;
 	uint32_t iStageDurationMs = 0u;
 };
@@ -37,11 +53,12 @@ struct VALTAN_PATTERN_EFFECT_CUE_DOCUMENT final
 	std::vector<VALTAN_PATTERN_EFFECT_CUE> Cues;
 };
 
-/* Action-qualified Product presentation cues for Valtan.  The document joins
-   directly to the authoritative encounter tuple instead of using animation
-   clip identity, because multiple Valtan actions can intentionally share one
-   clip.  Every public load stages into a temporary document and only replaces
-   the caller's output after the entire contract has validated. */
+/* Action- and clip-occurrence-qualified Product presentation cues for Valtan.
+   The document joins each cue to the authoritative encounter tuple and to one
+   stable occurrence in the action's animation binding.  Multiple actions may
+   intentionally share a model clip while retaining distinct occurrence IDs.
+   Every public load stages into a temporary document and only replaces the
+   caller's output after the entire contract has validated. */
 class CValtanPatternEffectCueDocument final
 {
 public:
@@ -49,6 +66,12 @@ public:
 	static bool_t Parse_Text(
 		std::string_view Text,
 		const CEncounterPatternReference& Encounter,
+		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT& InOutDocument,
+		std::string& strOutStatus);
+	static bool_t Parse_Text(
+		std::string_view Text,
+		const CEncounterPatternReference& Encounter,
+		const BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT& AnimationBindings,
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT& InOutDocument,
 		std::string& strOutStatus);
 	/* Source/Tool path.  Validates the JSON and encounter join without

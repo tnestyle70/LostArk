@@ -703,13 +703,27 @@ HRESULT CLoader::Ready_StaticMeshShader(
 HRESULT CLoader::Ready_AnimatedMeshShader(
 	const uint32_t iLevelIndex)
 {
-	return CGameInstance::Get().Add_Prototype(
+	if (FAILED(CGameInstance::Get().Add_Prototype(
 		iLevelIndex,
 		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary"),
 		CShader::Create(
 			m_pDevice,
 			m_pContext,
 			TEXT("../Bin/ShaderFiles/Shader_VtxAnimMeshBinary.hlsl"),
+			VTXANIMMESH::Elements,
+			VTXANIMMESH::iNumElements))))
+	{
+		return E_FAIL;
+	}
+	/* Esther summon NPCs and their screen cutin pin their own copy of the
+	   deferred material path so shared-shader pass churn cannot shift them. */
+	return CGameInstance::Get().Add_Prototype(
+		iLevelIndex,
+		TEXT("Prototype_Component_Shader_VtxEstherNpc"),
+		CShader::Create(
+			m_pDevice,
+			m_pContext,
+			TEXT("../Bin/ShaderFiles/Shader_VtxEstherNpc.hlsl"),
 			VTXANIMMESH::Elements,
 			VTXANIMMESH::iNumElements));
 }

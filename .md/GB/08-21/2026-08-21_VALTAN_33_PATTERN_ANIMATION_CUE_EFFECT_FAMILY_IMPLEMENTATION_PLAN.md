@@ -23,16 +23,18 @@ EffectCatalog -> EffectDocumentRenderer -> EffectPresentationService 경로를 �
 
 | 항목 | 실측 |
 |---|---|
-| origin/main | cd0da15c9db1, PR #129 merge |
+| origin/main | fe2309f65eb3, PR #134 merge |
 | animation sequence merge | PR #127, merge 459da808 |
 | ordered audition/pattern merge | PR #128, merge 0b70f06e |
-| 현재 branch HEAD | 410543ca559a, fix(effect): restore authoring tool hot reload |
-| origin/main -> HEAD | origin/main이 ancestor이며 복구 commit 1개가 추가됨 |
-| 공유 worktree | 이 PLAN과 별도 DimensionMaster 2050100 손튜닝 diff 존재, 손튜닝은 stage 대상에서 제외 |
+| Effect Tool/Open Editor 회귀 복구 | PR #134, merge fe2309f6 |
+| 현재 구현 branch 기준 | codex/valtan-effect-family-completion-0821 @ fe2309f65eb3 |
+| origin/main -> HEAD | 구현 시작 시 동일 |
+| 작업 위치 | 메인 저장소 폴더의 기능 branch; 별도 worktree를 만들지 않음 |
+| 보존 경계 | 동시 작업 중인 Artist/DimensionMaster 손튜닝과 World Destruction JSON은 수정·stage하지 않음 |
 
-revert a92f7255와 reapply 1d26c6c7의 committed tree는 origin/main cd0da15c와 같고, 그 위에
-복구 commit 410543ca가 올라왔다. 따라서 발탄 구현은 main에 병합된 animation sequence와 pattern
-변경, 복구된 캐릭터 authoring tool을 모두 가진 기준선에서 시작한다.
+PR #130~#134가 animation sequence와 pattern v2, 캐릭터 authoring tool, Product cue의 inline
+`Open for Editing`, Effect_Tool.cpp 전용 `/bigobj`를 main에 병합했다. 발탄 구현은 이 계약을 모두 가진
+fe2309f6 기준선에서 기능 branch로 시작하며, main 폴더를 사용하되 main에 직접 commit하지 않는다.
 
 입력의 지위는 다음처럼 고정한다.
 
@@ -53,7 +55,9 @@ RESULT에서 직접 저작했다고 명시한 pattern은 다음 13개다.
 - MAGIC_CHOICE, FOUR_SLASH, HIGH_JUMP, GROUND_WAVE_SMASH
 - WHIRLWIND, RED_BLADE_WAVE, FRONT_BACK_FRONT, FIST_IN_OUT
 
-이 13개는 merged patternbindings와 Valtan.clipseq/Valtan.clipcuts를 우선 소비한다. 나머지 20개는
+이 13개도 실제 PR #127 diff의 행 단위 provenance를 보존하며, merged patternbindings를 제품 입력으로
+소비한다. Valtan.clipseq/Valtan.clipcuts는 read-only 근거이지 제품 mapping을 자동 교체하는 정본이
+아니다. PR #127에서 값이 바뀌지 않은 행과 나머지 20개는
 현재 단일 clip 또는 부분 chain을 보존한 채 source sequence를 다시 review한다. 특히 DASH_CHARGE는
 Animation 담당 RESULT에서도 forced motion 거리와 ACTIVE duration 결합 때문에 보류한 항목이므로,
 Effect timing만 늘리지 않고 G06-2의 animation/forced-motion 검증을 함께 통과시킨다.
@@ -117,6 +121,68 @@ discovered source denominator는 executable + project-authored/override + deferr
 정확히 같아야 한다. 조용히 누락한 occurrence는 0이어야 한다. 각 rollout batch는 이 closure와
 손튜닝 보존 검증을 통과한 뒤에만 merge한다.
 
+### 0.4 2026-08-21 구현 체크포인트
+
+현재 구현은 고정 5-slot 또는 발탄 전용 renderer가 아니다. 캐릭터와 같은
+`EffectCatalog -> unified v13 Effect -> EffectDocumentRenderer -> 기존 material/profile/shader ->
+EffectPresentationService` 경로를 사용한다. `base/noise/mask/model`은 element의 재질 resource role이며
+family 개수 제한이 아니다. source ParticleSystem과 emitter/selected LOD closure 수만큼 group과 element가
+생긴다. 초기 admission의 신규 HLSL 수는 0이다.
+
+| 항목 | 현재 구현 실측 |
+|---|---:|
+| v2 animation action rows / stable clip occurrences | 124 / 128 |
+| v2 product cue occurrences / unique cued clips | 108 / 102 |
+| EffectCatalog Valtan rows / editable authored documents | 108 / 108 |
+| canonical Valtan elements | 3,679 |
+| source-linked / project-authored·tuned / legacy generic elements | 555 / 32 / 3,092 |
+| reviewed completion core-linked / denominator | 542 / 628 |
+| completion core가 한 개 이상 연결된 patterns | 22 / 33 |
+| bounded Trail 등을 포함한 source-linked patterns | 23 / 33 |
+| element kind: particle / trail·ribbon / decal / mesh / light | 3,642 / 10 / 23 / 3 / 1 |
+| source patterns / source sequences / source occurrences | 33 / 227 / 9,434 |
+| reviewed selected sequences / patterns | 24 / 24 |
+| source systems / selected-LOD carriers | 130 / 1,044 |
+| reviewed reachable EXECUTABLE_CORE denominator | 628 |
+| drawable-ready direct carriers | 547 |
+| missing runtime resource / adapter-blocked carriers | 350 / 129 |
+| deferred standalone Light / explicit generic Dust carriers | 6 / 12 |
+
+현재 canonical 적용은 모두 independent drawable proof 뒤 missing-only transaction으로 수행됐고 두 번째
+적용이 `changed=0`임을 확인했다.
+
+- reviewed source: 36 documents / 279 elements
+- FRONT_BACK_FRONT: 4 source-wave documents / 100 elements / 4 additive cues
+- project-authored priority: 9 targets / 24 elements, 기존 Floor Wipe 6축 보존
+- safe reviewed gaps: SWING clip02 141, FOUR_SLASH clip02 20, BACKSTEP trail 3,
+  JUMP_SPIN trail 3, 합계 4 documents / 167 elements
+- Whirlwind active: 기존 9/9 canary 보존
+
+위 다섯 경로의 실제 renderer sweep은 각 대상 element의 prepare와 nonzero draw를 확인했다. generic skeleton
+3,092개를 source-exact로 재분류하거나 삭제하지 않는다. reviewed denominator 628 가운데 ordinary/FBF/safe
+core 539와 protected Whirlwind core 3, 합계 542개가 연결됐고, no-v2-cue 0개와 negative timing 86개가 남는다.
+555 source-linked 중 나머지 13개는 Whirlwind의 bounded/non-core 6개, Backstep·JumpSpin의
+`BOUNDED_RECONSTRUCTION` AnimationTrail 6개, FourSlash CascadeRibbon 1개다. 따라서 이 13개를
+completion core-exact라고 세지 않는다.
+단, standalone Light/generic Dust 제외 정책과 source branch 미확정 pattern은 아래 explicit disposition에
+계속 남는다. 최종 화면 fidelity는 사용자가 판정한다.
+
+All Effects의 제품 구조는 다음과 같다.
+
+    Valtan Pattern
+      -> semantic Stage
+      -> ordered Clip Occurrence
+      -> Product Cue Occurrence
+      -> Unified Effect
+      -> source ParticleSystem/hand-authored Family Group
+      -> Mesh/Sprite/Decal/AnimationTrail/TrailGhost/Ribbon Elements
+
+Open Editor, Play Full Effect, Save, selected same-revision Hot Reload는 이 exact occurrence를 유지한다.
+cue source start/play rate/local transform이 animation과 Effect에 같은 clock으로 적용되며, 마지막
+non-loop pose 이후 natural Effect tail은 wall clock으로 끝까지 진행한다. 실패 rollback은 이전
+Valtan clip pose/time/playing/visible/snapshot을 복원하고, unsaved load Cancel은 기존 Player target을
+바꾸지 않는다.
+
 ## 1. 현재 실측
 
 ### G00-1. 제품 data 분모
@@ -126,26 +192,30 @@ discovered source denominator는 executable + project-authored/override + deferr
 | Encounter patterns | 33 |
 | Encounter semantic stages | 127 |
 | animation action bindings | 124 |
-| product Effect cues | 99 |
-| cue 없는 stages | 28 |
-| cue가 참조하는 unique Effect documents | 99 |
-| 99 documents의 elements | 3109 |
-| sourceNode가 있는 elements | 17 |
-| executable sourceRecipe elements | 5 |
-| sourcePresentation elements | 9 |
+| product Effect cues | 108 |
+| cue 없는 semantic stages / bound clip occurrences | 27 / 26 |
+| cue가 참조하는 unique Effect documents | 108 |
+| 108 documents의 elements | 3,679 |
+| source-linked / project-authored·tuned / legacy generic | 555 / 32 / 3,092 |
+| completion core-linked가 한 개 이상 연결된 patterns | 22 / 33 |
+| bounded Trail 등을 포함한 source-linked patterns | 23 / 33 |
 
-현재 99개 문서의 실질 상태는 다음과 같다.
+구현 전 99개 문서의 실질 상태는 다음과 같았다.
 
 - Whirlwind active 1개: 5 base + 3 baked AnimationTrail + 1 first-edge Light, 9/9
 - Floor Wipe 4개: sourceNode 8개가 있으나 recipe/attachment가 꺼진 부분 수작업 상태
 - 나머지 94개: clip aggregate로 생성된 generic skeleton
 
-따라서 99 cues가 있다는 사실은 99개 Effect family가 source-exact로 닫혔다는 뜻이 아니다.
-Whirlwind도 active만 닫혔고 WINDUP cue가 없으며 recovery는 generic이므로 pattern 전체 완료가 아니다.
+현재도 108 cues가 있다는 사실만으로 33개 Effect family가 source-exact로 닫혔다고 말하지 않는다.
+모든 cue-backed 문서에는 기존 generic row가 남아 있으며 exact/project row는 non-destructive append다.
+source-exact가 0인 EARTHQUAKE_SMASH, branch 미확정 8 pattern과 environment-only ARENA_BREAK_84는
+explicit unresolved/deferred 상태다. Whirlwind도 active canary는 닫혔지만 WINDUP cue가 없고 recovery에는
+generic row가 남는다.
 
 source reference inventory는 31/33 patterns에 actionbinding이 있고 ENTRANCE_WHIRLWIND와
-ARENA_BREAK_84가 비어 있다. raw event 9175개는 particle 4812, unresolved Effect 3475,
-PlayDecal 529, trail 359이며 PlayDecal payload 529개는 모두 unresolved다. 1차 분류의 unique template은
+ARENA_BREAK_84가 비어 있다. raw event 9,434개는 particle 4,812, unresolved Effect 3,475,
+PlayDecal 529, trail 618이며 PlayDecal payload 529개는 모두 unresolved다. Trail 618개에는
+AnimationTrail 259개가 포함된다. 1차 분류의 unique template은
 core 608, optional ambience 414, unresolved 618이다. branch 선택 전 source emitter 962는 상한일 뿐
 제품 구현 denominator가 아니다. full key와 reviewed branch를 선택한 뒤 실제 batch denominator를
 다시 고정한다. 이 raw corpus를 authored document마다 복제하지 않고 immutable source index를
@@ -196,15 +266,17 @@ Valtan.patternbindings.json을 action별 ordered clip object 배열로 정규화
 | actionId | Server semantic action stable ID |
 | clipOccurrenceId | document 전체에서 유일한 저장 identity |
 | clip | animation 담당자가 연결한 실제 model clip 이름 |
-| mappingBasis | ANIMATION_PR_127, PATTERN_PR_REFERENCE, SOURCE_REVIEWED_DELTA, PROJECT_AUTHORED 중 하나 |
+| mappingBasis | ANIMATION_PR_127, PATTERN_PR_REFERENCE, CURRENT_PRODUCT_BASELINE, SOURCE_REVIEWED_DELTA, PROJECT_AUTHORED 중 하나 |
 | sourceStartMs | 선택한 source clip segment의 시작, 기본 0 |
 | playMs | 기존 character 계약과 같은 source-local 최대 재생 길이, 0이면 segment 끝까지 |
 | playRate | source time / wall time 비율, 0.05..16 |
 | loop | 명시적 반복 여부, reachable chain의 마지막 clip에만 허용 |
 
 vector index는 저장 ID로 사용하지 않는다. clipIndex는 parse 뒤 파생 ordinal로만 보관한다.
-mappingBasis는 runtime 분기값이 아니라 row-level provenance이며, Pattern PR 참고 행을 Animation 담당
-정본으로 조용히 승격하지 못하게 validator가 사용한다.
+mappingBasis는 runtime 분기값이 아니라 row-level provenance다. PR #127에서 실제 변경·검토된 행은
+ANIMATION_PR_127, PR #128이 추가한 3행은 PATTERN_PR_REFERENCE, 그 밖의 병합 전 기존 행은
+CURRENT_PRODUCT_BASELINE로 기록한다. source evidence만으로 sequence를 바꾸지 않으며, 별도 검토를
+통과한 delta만 SOURCE_REVIEWED_DELTA로 승격한다.
 sourceStartMs 기본값 0은 기존 캐릭터 동작을 바꾸지 않는다. CActionPresentationTimeline을 확장해
 source segment 시작, source duration cutoff, playRate, loop epoch를 함께 해석한다.
 
@@ -233,13 +305,16 @@ cue는 semantic stage가 아니라 stable animation occurrence에 직접 연결�
 | effectAssetId | unified Effect document ID, 반복 사용 가능 |
 | anchor/follow/stop/localTransform | 기존 attachment contract |
 | sourceStartMs/sourceEndMs | referenced clip의 absolute source-local cue window |
+| repeatPolicy | once 또는 each_loop; animation loop와 Effect 재생 반복을 분리 |
 
 bindingId와 occurrenceId만 document-global unique다. actionId와 effectAssetId의 반복을 허용한다.
 같은 action 안의 unique key는 actionId + clipOccurrenceId + occurrenceId다.
 
 CActionPresentationTimeline은 cue source time에서 clip sourceStartMs를 뺀 뒤 playRate와 앞선 clip wall
-duration을 적용해 Server stage wall offset으로 변환한다. loop clip cue는 epoch마다 다시 발생한다.
-runtime instance key는 Server pattern sequence + stage + occurrenceId + loop epoch다.
+duration을 적용해 Server stage wall offset으로 변환한다. repeatPolicy=each_loop인 cue만 loop epoch마다 다시
+발생하고 once는 첫 epoch에서 한 번만 spawn한다. runtime instance key는 Server pattern sequence + stage +
+occurrenceId이며 each_loop일 때만 loop epoch를 추가한다. 533ms animation clip을 2133ms 동안 반복하지만
+409-sample baked Effect는 한 번만 유지하는 Whirlwind는 repeatPolicy=once를 고정한다.
 
 각 cue는 referenced clipOccurrenceId가 같은 actionId에 속하고, cue sourceStartMs가 clip segment
 sourceStartMs 이상이며, sourceEndMs가 sourceStartMs보다 크고 effective source end 이하임을 요구한다.
@@ -273,6 +348,11 @@ effect.ue3.grouped-translucent.v1로 실행 가능한 family를 우선 연결한
 1. Data/Effects/Imported/Valtan/Converted에는 pinned source로부터 결정적으로 재생성 가능한 occurrence
    receipt와 immutable recipe를 둔다.
 2. Data/Effects/Authored/effect.valtan.*.effect.json은 All Effects가 여는 제품 손튜닝 문서다.
+
+기본 제품 단위는 캐릭터 BA unified와 같은 persisted clipOccurrenceId 하나당 독립 unified Effect
+문서 하나다. 그 clip에서 admission된 notify/system/emitter family를 문서 안의 group/element로 묶고,
+notify local time은 element timing으로 보존한다. 의도적으로 같은 모양을 반복할 때만 동일 asset을
+여러 cue occurrence가 재사용한다.
 
 generic importer는 build_imported_effect_documents.py의 SourceIndex, selected_lod_partitions,
 emitter_detail, build_source_recipe, choose_resources를 Valtan driver로 승격한다.
@@ -362,10 +442,9 @@ cue는 현재 cue 수 / semantic stage 수다. G는 generic skeleton, P는 parti
 | 32 | ARENA_BREAK_33 | 420629 | 12_01 -> 12_02 -> 12_03; landing/spin | 2/4 | G |
 | 33 | GHOST_TRANSITION_15 | 420616,624-626,634,651-653,658-659,665 | portal/ghost/clone/wave | 6/7 | G |
 
-현재 cue 없는 28 stages:
+현재 cue 없는 27 semantic stages:
 
 - DASH_CHARGE: GROGGY, PART_BREAK
-- HIGH_JUMP: AIRBORNE
 - BIND_CHARGE_SMASH: RECOVERY
 - GROUND_WAVE_SMASH: RECOVERY
 - SUPER_SMASH: IMPACTS
@@ -393,8 +472,9 @@ project-authored telegraph가 필요한지 검토하고 explicit disposition을 
 
 ### G06-1. Portal Rush
 
-18_01 Portal02_01/02, 18_02 Dash01_1, 18_03-1 Atk01_02, recovery residual을 각각
-occurrence/family로 만든다. RUSHES 3회는 같은 unified asset을 세 cue occurrence로 재사용할 수 있다.
+18_01 Portal02_01/02, 18_02 Dash01_1, 18_03-1 Atk01_02, recovery residual을 각 persisted
+clip occurrence의 unified 문서와 내부 family로 만든다. RUSHES 반복이 실제 제품 animation epoch와
+일치한다고 검증된 경우에만 같은 unified asset을 여러 cue occurrence가 재사용한다.
 multi-occurrence, asset reuse, tree, selected Hot Reload의 첫 end-to-end admission으로 쓴다.
 
 ### G06-2. Dash Charge
@@ -402,7 +482,9 @@ multi-occurrence, asset reuse, tree, selected Hot Reload의 첫 end-to-end admis
 exact core는 4_01 약 2.45초의 Par_S_RPBF_Dash_01_1과 TrailGhost다. halfsphere/hemisphere가
 전방 방패 형태의 근거다. animation occurrence가 notify에 도달하도록 source segment/wall mapping을
 교정한다. exact resource는 atypical_055, ring_004, shockwave_02 계열이다. atypical_042_ycl과
-line_003_xcl은 Dash exact가 아니므로 붉은 line을 쓰면 PROJECT_TUNED telegraph로 분리한다.
+line_003_xcl은 Dash exact가 아니다. 다만 사용자 확정 요구에 따라 `fx_c_line_003_xcl.dds` 붉은
+전방 경로를 mandatory `PROJECT_TUNED_OVERRIDE` telegraph로 연결한다. exact provenance는
+FLOOR_WIPE 420630 / Atk09_02에 그대로 남겨 두고 Dash source-exact shield family와 섞지 않는다.
 벽 충돌은 Server stage/impact edge를 소비하며 Client가 판정하지 않는다.
 
 ### G06-3. Magic Choice Donut
@@ -412,13 +494,18 @@ line_003_xcl은 Dash exact가 아니므로 붉은 line을 쓰면 PROJECT_TUNED t
 - ring_002 exact join은 outer end Atk03_03 내부
 
 inner/outer branch를 같은 aggregate doc에 섞지 않는다. 성장 ring 2개는 source payload 미해결 시
-PROJECT_TUNED telegraph로 두고 attack fill과 provenance를 분리한다.
+PROJECT_TUNED telegraph로 두고 attack fill과 provenance를 분리한다. 두 boundary는
+`fx_c_ring_002.dds` base와 `fx_c_ring_004_cl.dds` mask 조합을 독립 element로 소유한다. 작은 ring은
+timeline scale growth, 안팎 ring은 nonzero UV sweep을 손튜닝한다. ring_004의 exact 근거는 Dash
+shield material 문맥이므로 Magic Choice 사용은 PROJECT_TUNED로 표시한다.
 
 ### G06-4. Floor Wipe 130 Six Direction
 
 Atk09_01 prep, source clip 15_03 약 0.262초의 Atk09_02 exact six-direction, 5_02_end의 Atk09_03
 impact를 분리한다. line_003_xcl은 Atk09_02 exact다. d009/d011/d032는 source material slot 역할대로
-보존하고 filename으로 의미를 재지정하지 않는다. 15_03은 우선 unreachable evidence로 남기고,
+보존하고 filename으로 의미를 재지정하지 않는다. project-authored center impact는 d009 diffuse,
+d032 mask, d028 noise, d011 dissolve role을 명시하고 색/UV/scale/lifetime을 손튜닝한다. d028도
+Atk09_02 source evidence가 있으므로 generic dust로 제외하지 않는다. 15_03은 우선 unreachable evidence로 남기고,
 별도 animation mapping delta와 Server timing 검증이 통과해야 product occurrence로 승격한다.
 
 ### G06-5. Front Back Front, 3연격
@@ -429,15 +516,21 @@ source candidate chain은 19_01 -> 19_06 -> 2_03이지만 merged product mapping
 wave는 evidence 검토 전 auxiliary/recovery visual로 표시한다. 19_06/2_03은 unreachable inventory로
 보존하며 별도 animation mapping delta가 승인된 뒤 Atk02_08, trail, Atk02_04, unresolved decal을
 reachable recovery occurrence로 분리한다. HIGH_03, b_decal_001, h_wave_04는 exact join이 아니므로
-사용 시 PROJECT_TUNED_OVERRIDE다.
+사용 시 PROJECT_TUNED_OVERRIDE다. 최종 ground supplemental의 `fx_i_shockwave_02_ycl.dds`도
+420637 source join이 없으므로 청록색 PROJECT_TUNED element로 분리한다.
 
 ### G06-6. High Jump, 도끼 3회와 착지
 
 source-exact는 takeoff Atk06_03, Valtan land Atk06_04, branch final Atk06_05/08이다.
-AIRBORNE의 Effect/PlayDecal payload는 미해결이므로 target decal + axe drop 3회는 이번 slice에서
-PROJECT_AUTHORED presentation occurrence로 연결한다. 각 occurrence는 Server action age에 고정하고
-독립 transform/scale/color/timing을 손튜닝한다. fx_h_atypical_01_1은 exact join이 아니므로 사용 시
-PROJECT_TUNED_OVERRIDE다. 현 Server LAND 1회 damage는 바꾸지 않는다.
+AIRBORNE의 원본 Effect/PlayDecal payload 자체는 미해결이지만 BossCatalog와 실제 Valtan runtime이 쓰는
+공식 무기 `Character/Valtan/ValtanWeapon.wmodel`을 확인했다. target decal 3개, 공식 도끼 Mesh 3개,
+ground-impact Sprite Particle 3개를 같은 AIRBORNE cue의 PROJECT_AUTHORED presentation으로 연결한다.
+도끼 geometry와 embedded base material identity는 공식 자산 재사용이고 낙하 위치·회전·시간은 손튜닝
+대상이다. standalone Effect snapshot에는 socket의 0.01 combined scale이 없으므로 `modelPreScale=1.0`을
+사용하고, 발탄 손의 `b_wp_r_01`에는 attach하지 않는다. Character WModel admission은 Mesh/Particle의
+`meshModel` slot에만 좁게 허용하고 texture/다른 slot, traversal, drive path, missing file은 거부한다.
+fx_h_atypical_01_1은 exact join이 아니므로 PROJECT_TUNED_OVERRIDE다. 세 도끼는 presentation-only이며
+AIRBORNE hitShape NONE과 현 Server LAND 1회 damage는 바꾸지 않는다.
 
 ## 5. Rollout 순서
 
@@ -466,8 +559,30 @@ source candidate index는 33 pattern을 한 번에 만들고 product admission�
 - FOUR_PILLARS_105, ENTRANCE_WHIRLWIND, ARENA_BREAK_109, ARENA_BREAK_84,
   MAGIC_ORB_STAGGER_76, CENTER_GRAB_COUNTER_64, ARENA_BREAK_33, GHOST_TRANSITION_15
 
-각 batch는 source closure, product join, non-destructive reconcile, publisher, harness, Debug/Release build를
-통과한 뒤 독립 commit/PR로 올린다.
+각 batch는 source closure, product join, non-destructive reconcile과 renderer proof를 독립 transaction으로
+통과한다. 현재 작업은 이 transaction들을 하나의 Valtan completion 기능 branch에서 검증한 뒤 통합 PR로 올린다.
+
+### G07-5. 현재 admission 결과와 보류 경계
+
+실제 적용 후 completion core-linked element가 한 개 이상 존재하는 pattern은 22/33이다. Whirlwind의
+non-core carrier와 bounded Trail까지 포함한 source-linked pattern은 23/33이다. 이 수치는 pattern 전체의
+generic row가 모두 교체됐다는 뜻이 아니라, 검증된 exact 또는 명시적으로 bounded된 family가 같은
+editable document graph에 non-destructive로 추가됐다는 뜻이다.
+
+- source branch가 review된 24 pattern 중 EARTHQUAKE_SMASH는 남은 core 68개가 기존 cue보다 앞서 발생해
+  `NEGATIVE_BEFORE_CUE_START`로 보류한다.
+- DASH_CHARGE, STOMP, BIND_CHARGE_SMASH, FOUR_PILLARS_105, ENTRANCE_WHIRLWIND,
+  MAGIC_ORB_STAGGER_76, CENTER_GRAB_COUNTER_64, ARENA_BREAK_33은 source sequence 또는 visual signature가
+  유일하지 않아 branch를 추측하지 않는다.
+- ARENA_BREAK_84는 세 stage 모두 animation binding/cue/damage가 없는 environment/world-destruction
+  mechanic이므로 boss Effect cue 분모 밖에 둔다.
+- canonical Trail/Ribbon은 Whirlwind 3, Backstep 3, JumpSpin 3, FourSlash ribbon 1의 10개다. 그 밖의
+  exact history/target 또는 ribbon tiling/tessellation이 없는 source trail은 unresolved로 유지한다.
+- 신규 standalone Light와 explicit generic Dust는 scope 밖 disposition으로 보존한다. 기존 Whirlwind
+  Light/Dust canary는 삭제하지 않는다.
+
+최종 full Effect runtime sidecar와 runtime Catalog publish는 동시 진행 중인 캐릭터 손튜닝 source가
+정착한 뒤 한 번 수행한다. 다른 작업자의 authored 파일을 되돌리거나 이 PR에 섞어 SHA gate를 우회하지 않는다.
 
 ## 6. 변경 예상 파일
 
@@ -556,13 +671,14 @@ commit API가 부족할 때만 최소 확장한다. 새 Valtan manager/renderer 
 
 - source segment/rate -> Server wall offset
 - same stage 2~N cues, same asset 3 occurrences
-- loop epoch 재발생과 duplicate spawn 0
+- once cue의 loop 중 duplicate spawn 0, each_loop cue의 epoch별 재발생
 - late snapshot expired skip/live catch-up
 - sequence/stage/death owner stop
 - ordered clip chain 전체 replay
 - FRONT_BACK_FRONT 4 visual waves vs gameplay hit 3 분리
 - DASH 2.45-second notify reachability
-- FLOOR_WIPE 15_03 reachability
+- FLOOR_WIPE 15_03은 현재 UNREACHABLE_SOURCE_OCCURRENCE로 검증하고,
+  별도 SOURCE_REVIEWED_DELTA가 들어올 때만 reachability를 검증
 
 ### G09-3. Source closure와 reconcile
 
@@ -605,19 +721,17 @@ ordered animation/cue 순서, occurrence별 손튜닝, shared asset reuse, Whirl
 
 ## 9. Commit과 PR 순서
 
-1. 선행 복구: All Effects/Open Editor/Save/selected Hot Reload와 캐릭터 회귀 복원
-2. boss clip occurrence v2, cue v2, timeline, tree, dynamic prewarm gate
-3. all-33 source index와 non-destructive reconcile
-4. source-unreachable clip의 reviewed animation mapping delta와 forced-motion regression
-5. B0 Whirlwind migration
-6. B1 사용자 우선 6
-7. B2 기본 공격군 9
-8. B3 복합 공격군 9
-9. B4 phase/mechanic군 8
-10. 최종 closure, RESULT, handoff, full regression
+1. 선행 PR #127~#134: animation sequence, boss occurrence v2, All Effects/Open Editor/Hot Reload 복구
+2. 현재 기능 branch: all-33 source inventory와 exact branch/disposition ledger
+3. renderer-proofed reviewed/FBF/project/safe-gap candidate의 non-destructive canonical projection
+4. Character WModel meshModel admission과 null Cascade StartSize runtime fix 및 focused harness
+5. final Effect publish, Debug/Release build/regression, RESULT와 수동 검증 handoff
+6. explicit-path commit/push/PR 뒤 최신 origin/main과 재동기화하고 PR merge
 
-각 commit은 data/schema/runtime/consumer/harness를 끊지 않는 vertical slice다. main에는 직접 작업하지
-않고 codex branch에서 push/PR한다. 다른 작업자의 미커밋 파일은 자동 add하지 않는다.
+이번 branch의 generated candidate/proof/application receipt와 그 consumer는 같은 검증 단위다. main에는
+직접 commit하지 않고 `codex/valtan-effect-family-completion-0821`에서 PR한다. World Destruction JSON,
+Artist/DimensionMaster 손튜닝 문서와 build output은 stage하지 않는다. source ambiguity를 해결하지 못한
+pattern을 파일 수를 맞추기 위해 빈 cue나 추측 asset으로 채우지 않는다.
 
 ## 10. Whirlwind checkpoint의 지위
 

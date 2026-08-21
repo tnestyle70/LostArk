@@ -20,6 +20,7 @@
 #include <map>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace
@@ -201,6 +202,8 @@ namespace
 	Client::CEffectProductPrewarmQueue g_ProductPrewarmQueue;
 	std::map<std::string, Client::EFFECT_SCENE_BUDGET_COST, std::less<>>
 		g_ProductEffectBudgetCosts;
+	std::map<std::string, f32_t, std::less<>>
+		g_ProductEffectPlaybackDurations;
 	uint64_t g_iSceneBudgetRejectedSpawnCount = 0u;
 	uint64_t g_iNextWorldRootHandle = 1u;
 	RECONSTRUCTED_SOURCE_RUNTIME_CACHE g_ReconstructedArtist31470;
@@ -212,6 +215,159 @@ namespace
 	uint64_t g_iArtist31470ToolPreviewConsumeCount = 0u;
 	uint64_t g_iArtist31470GameplayConsumeCount = 0u;
 	std::string g_strStatus = "Effect presentation service is idle.";
+
+	bool_t SourceModuleClassMatches(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view strBaseClass)
+	{
+		std::string_view Class = Module.strClassName;
+		if (Class.starts_with("efparticlemodule"))
+			Class.remove_prefix(2u);
+		if (Class.ends_with("_seeded"))
+			Class.remove_suffix(7u);
+		return Class == strBaseClass;
+	}
+
+	bool_t Try_ResolveProductPlaybackDuration(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		const std::shared_ptr<const
+			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>& pProjection,
+		f32_t& fOutDurationSeconds,
+		std::string& strOutStatus)
+	{
+		fOutDurationSeconds = 0.f;
+		std::unordered_set<std::string> SourceVisualTargetElementIds;
+		if (nullptr != pProjection)
+		{
+			if (!pProjection->Is_Valid() ||
+				pProjection->Get_EffectAssetId() != Document.strEffectAssetId ||
+				pProjection->Get_DocumentShared().get() != &Document)
+			{
+				strOutStatus =
+					"Product Effect duration projection identity diverged.";
+				return false;
+			}
+			if (pProjection->Get_ProjectionKind() == Client::
+				EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1)
+			{
+				for (const Client::EFFECT_VISUAL_PROGRAM_ROW& Row :
+					pProjection->Get_AdmittedRows())
+				{
+					if (!Row.TargetIdentity.has_value() ||
+						Row.TargetIdentity->strTargetElementId.empty() ||
+						!SourceVisualTargetElementIds.emplace(
+							Row.TargetIdentity->strTargetElementId).second)
+					{
+						strOutStatus =
+							"Product Effect duration source target closure is invalid.";
+						return false;
+					}
+				}
+				for (const Client::EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT&
+					Supplemental :
+					pProjection->Get_AdmittedSupplementalElements())
+				{
+					if (Supplemental.TargetIdentity.strTargetElementId.empty() ||
+						!SourceVisualTargetElementIds.emplace(
+							Supplemental.TargetIdentity.strTargetElementId).second)
+					{
+						strOutStatus =
+							"Product Effect duration supplemental target closure is invalid.";
+						return false;
+					}
+				}
+			}
+			else if (pProjection->Get_ProjectionKind() != Client::
+				EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::ADAPTER_PACKET_V1)
+			{
+				strOutStatus =
+					"Product Effect duration projection kind is unsupported.";
+				return false;
+			}
+		}
+
+		f32_t fDurationSeconds = 0.f;
+		for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			if (!Element.bVisible)
+				continue;
+			const bool_t bSourceVisualActive =
+				SourceVisualTargetElementIds.contains(Element.strElementId);
+			const bool_t bSourceMeshOrSpriteParticle = bSourceVisualActive &&
+				Element.SourceRecipe.bEnabled &&
+				((Element.eKind == Client::EFFECT_ELEMENT_KIND::MESH &&
+				  Element.SourceRecipe.strRendererShape == "mesh") ||
+				 (Element.eKind == Client::EFFECT_ELEMENT_KIND::SPRITE &&
+				  Element.SourceRecipe.strRendererShape == "sprite"));
+			const bool_t bSourceDecalParticle = bSourceVisualActive &&
+				Element.eKind == Client::EFFECT_ELEMENT_KIND::DECAL &&
+				Element.SourceRecipe.bEnabled &&
+				Element.SourceRecipe.strRendererShape == "decal" &&
+				std::any_of(Element.SourceRecipe.Modules.begin(),
+					Element.SourceRecipe.Modules.end(),
+					[](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
+					{
+						return SourceModuleClassMatches(
+							Module, "particlemoduletypedatadecal");
+					});
+			f32_t fElementTailSeconds = 0.f;
+			if (Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE ||
+				bSourceMeshOrSpriteParticle || bSourceDecalParticle)
+			{
+				fElementTailSeconds = Element.Detail.Particle.vLifeTimeSeconds.y;
+			}
+			else if (Element.eKind == Client::EFFECT_ELEMENT_KIND::TRAIL)
+			{
+				fElementTailSeconds =
+					Element.Detail.Trail.fPointLifeTimeSeconds;
+			}
+
+			f32_t fElementDurationSeconds =
+				Element.Detail.Timing.fLifeTimeSeconds;
+			if (Element.SourceRecipe.bEnabled &&
+				Element.SourceRecipe.fEmitterDurationSeconds > 0.f &&
+				0u != Element.SourceRecipe.iEmitterLoopCount)
+			{
+				fElementDurationSeconds =
+					Element.SourceRecipe.fEmitterDurationSeconds *
+					static_cast<f32_t>(Element.SourceRecipe.iEmitterLoopCount);
+			}
+			const f32_t fElementTotalSeconds =
+				Element.Detail.Timing.fStartDelaySeconds +
+				(Element.SourceRecipe.bEnabled ?
+					Element.SourceRecipe.fEmitterDelaySeconds : 0.f) +
+				fElementDurationSeconds +
+				Element.Detail.Timing.fAfterImageSeconds +
+				fElementTailSeconds;
+			if (!std::isfinite(fElementTotalSeconds) ||
+				fElementTotalSeconds < 0.f)
+			{
+				strOutStatus =
+					"Product Effect prepared playback duration is invalid.";
+				return false;
+			}
+			fDurationSeconds = (std::max)(
+				fDurationSeconds, fElementTotalSeconds);
+		}
+		for (const Client::EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
+		{
+			if (!Cue.bVisible)
+				continue;
+			const f32_t fCueTotalSeconds =
+				Cue.fStartDelaySeconds + Cue.fDurationSeconds;
+			if (!std::isfinite(fCueTotalSeconds) || fCueTotalSeconds < 0.f)
+			{
+				strOutStatus =
+					"Product Effect prepared model-cue duration is invalid.";
+				return false;
+			}
+			fDurationSeconds = (std::max)(
+				fDurationSeconds, fCueTotalSeconds);
+		}
+		fOutDurationSeconds = fDurationSeconds;
+		strOutStatus.clear();
+		return true;
+	}
 
 	bool_t Queue_ProductCueTargets(
 		const std::vector<Client::ANIMATION_EFFECT_CUE>& Cues,
@@ -254,6 +410,7 @@ namespace
 				g_ProductPrewarmQueue.Get_Targets().end());
 			g_ProductPrewarmQueue.Reset_ForCatalogRevision(iCatalogRevision);
 			g_ProductEffectBudgetCosts.clear();
+			g_ProductEffectPlaybackDurations.clear();
 
 			if (bPriority)
 			{
@@ -546,6 +703,8 @@ namespace
 		PrewarmTargets.reserve(Targets.size());
 		std::map<std::string, Client::EFFECT_SCENE_BUDGET_COST, std::less<>>
 			StagedBudgetCosts;
+		std::map<std::string, f32_t, std::less<>>
+			StagedPlaybackDurations;
 		for (const std::string& EffectId : Targets)
 		{
             const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Document =
@@ -577,6 +736,18 @@ namespace
 				return false;
 			}
 			StagedBudgetCosts.emplace(EffectId, BudgetCost);
+			f32_t fPlaybackDurationSeconds = 0.f;
+			if (!Try_ResolveProductPlaybackDuration(
+					*Document, Projection, fPlaybackDurationSeconds,
+					strOutStatus))
+			{
+				strOutStatus =
+					"Animation Effect duration preparation failed for " +
+					EffectId + ": " + strOutStatus;
+				return false;
+			}
+			StagedPlaybackDurations.emplace(
+				EffectId, fPlaybackDurationSeconds);
 			PrewarmTargets.push_back({ EffectId, Document, Projection });
 		}
 		if (!Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
@@ -587,6 +758,8 @@ namespace
 			return false;
 		}
 		g_ProductEffectBudgetCosts = std::move(StagedBudgetCosts);
+		g_ProductEffectPlaybackDurations =
+			std::move(StagedPlaybackDurations);
 		return true;
 	}
 
@@ -1668,6 +1841,30 @@ Client::CEffectPresentationService::Get_ProductCuePreparationProbe(
 		EffectAssetIds, CEffectCatalog::Get_RuntimeRevision());
 }
 
+bool_t Client::CEffectPresentationService::
+Try_Get_PreparedProductDurationSeconds(
+	const std::string& strEffectAssetId,
+	f32_t& fOutDurationSeconds)
+{
+	fOutDurationSeconds = 0.f;
+	const uint64_t iCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
+	if (strEffectAssetId.empty() || 0u == iCatalogRevision ||
+		g_ProductPrewarmQueue.Get_CatalogRevision() != iCatalogRevision ||
+		!g_ProductPrewarmQueue.Is_Prepared(strEffectAssetId))
+	{
+		return false;
+	}
+	const auto Duration =
+		g_ProductEffectPlaybackDurations.find(strEffectAssetId);
+	if (g_ProductEffectPlaybackDurations.end() == Duration ||
+		!std::isfinite(Duration->second) || Duration->second < 0.f)
+	{
+		return false;
+	}
+	fOutDurationSeconds = Duration->second;
+	return true;
+}
+
 void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -1693,6 +1890,7 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 		}
 		g_ProductPrewarmQueue.Reset_ForCatalogRevision(iCatalogRevision);
 		g_ProductEffectBudgetCosts.clear();
+		g_ProductEffectPlaybackDurations.clear();
 		std::string QueueStatus;
 		if (!g_ProductPrewarmQueue.Enqueue(CurrentTargets, QueueStatus))
 		{
@@ -1722,6 +1920,7 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 		Projection = nullptr == Document ? nullptr :
 			CEffectCatalog::Find_VisualProjection(EffectId);
 	EFFECT_SCENE_BUDGET_COST BudgetCost;
+	f32_t fPlaybackDurationSeconds = 0.f;
 	bool_t bPrepared = nullptr != Document;
 	if (nullptr == Document)
 	{
@@ -1744,6 +1943,14 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 			EffectId + ": " + PrepareStatus;
 		bPrepared = false;
 	}
+	if (bPrepared && !Try_ResolveProductPlaybackDuration(
+			*Document, Projection, fPlaybackDurationSeconds, PrepareStatus))
+	{
+		PrepareStatus =
+			"Product Effect incremental duration preparation failed for " +
+			EffectId + ": " + PrepareStatus;
+		bPrepared = false;
+	}
 	if (bPrepared)
 	{
 		bPrepared = CEffectDocumentRenderer::Prepare_VisualProgramTarget(
@@ -1763,6 +1970,8 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	if (bPrepared)
 	{
 		g_ProductEffectBudgetCosts[EffectId] = BudgetCost;
+		g_ProductEffectPlaybackDurations[EffectId] =
+			fPlaybackDurationSeconds;
 		g_strStatus = PrepareStatus;
 		return;
 	}
@@ -1809,6 +2018,16 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 		g_strStatus = strOutStatus;
 		return false;
 	}
+	f32_t fCandidatePlaybackDurationSeconds = 0.f;
+	if (!Try_ResolveProductPlaybackDuration(
+			*pDocument, pVisualProgramProjection,
+			fCandidatePlaybackDurationSeconds, strOutStatus))
+	{
+		strOutStatus = "Selected Effect duration preparation failed for " +
+			strEffectAssetId + ": " + strOutStatus;
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	CEffectProductPrewarmQueue StagedPrewarmQueue = g_ProductPrewarmQueue;
 	std::string QueueStatus;
 	if (!StagedPrewarmQueue.Commit_HotReloadPrepared(
@@ -1820,6 +2039,9 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 	}
 	auto StagedBudgetCosts = g_ProductEffectBudgetCosts;
 	StagedBudgetCosts.insert_or_assign(strEffectAssetId, CandidateBudget);
+	auto StagedPlaybackDurations = g_ProductEffectPlaybackDurations;
+	StagedPlaybackDurations.insert_or_assign(
+		strEffectAssetId, fCandidatePlaybackDurationSeconds);
 	if (!CEffectDocumentRenderer::Replace_VisualProgramTarget(
 			std::move(pDevice), std::move(pContext), iCatalogRevision,
 			{ strEffectAssetId, std::move(pDocument),
@@ -1831,6 +2053,7 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 
 	g_ProductPrewarmQueue = std::move(StagedPrewarmQueue);
 	g_ProductEffectBudgetCosts = std::move(StagedBudgetCosts);
+	g_ProductEffectPlaybackDurations = std::move(StagedPlaybackDurations);
 	g_strStatus = strOutStatus;
 	return true;
 }
@@ -3261,6 +3484,7 @@ void Client::CEffectPresentationService::Release_PreparedResources()
     Clear_All();
 	g_ProductPrewarmQueue.Clear();
 	g_ProductEffectBudgetCosts.clear();
+	g_ProductEffectPlaybackDurations.clear();
 	g_iSceneBudgetRejectedSpawnCount = 0u;
 	g_ReconstructedArtist31470 = {};
 	g_LastArtist31470ToolPreviewConsumption = {};

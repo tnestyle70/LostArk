@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AnimationEffectCueDocument.h"
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
@@ -38,15 +39,37 @@ struct VALTAN_STAGE_EFFECT_VIEW final
 struct VALTAN_PRODUCT_EFFECT_CUE_VIEW final
 {
 	std::string strBindingId;
+	std::string strOccurrenceId;
 	std::string strPatternId;
 	std::string strStageId;
 	std::string strActionId;
+	std::string strClipOccurrenceId;
 	std::string strEffectAssetId;
 	std::string strAnchorSlotId;
+	EFFECT_TRANSFORM_DESC LocalTransform{};
+	EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+	EFFECT_STOP_POLICY eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
 	std::string strFollowPolicy;
 	std::string strStopPolicy;
-	uint32_t iStartMs = 0u;
-	uint32_t iEndMs = 0u;
+	std::string strRepeatPolicy;
+	uint32_t iSourceStartMs = 0u;
+	uint32_t iSourceEndMs = 0u;
+	bool_t bHasSourceEnd = false;
+};
+
+/* Stable ordered animation occurrence authored by the animation owner.  The
+   ordinal is derived after parsing and is display-only; joins always use the
+   clipOccurrenceId. */
+struct VALTAN_CLIP_OCCURRENCE_VIEW final
+{
+	std::string strClipOccurrenceId;
+	std::string strClipName;
+	std::string strMappingBasis;
+	uint32_t iSourceStartMs = 0u;
+	uint32_t iPlayMs = 0u;
+	f32_t fPlayRate = 1.f;
+	bool_t bLoop = false;
+	std::vector<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ProductCues;
 };
 
 /* The stage is where a Valtan pattern actually becomes work: it owns the
@@ -72,17 +95,19 @@ struct VALTAN_STAGE_VIEW final
 	uint32_t iHitIntervalMs = 0u;
 	std::string strServerDamageProfileId;
 
-	/* The source binding may be one clip or an ordered sequence. The legacy
-	   first-name view remains populated only for callers that have not yet
-	   adopted the sequence contract. */
+	/* Product authoring uses stable ordered occurrences.  The legacy name
+	   views remain populated for compile-compatible callers while format v1
+	   is still accepted read-only. */
+	std::vector<VALTAN_CLIP_OCCURRENCE_VIEW> ClipOccurrences;
+	std::vector<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ProductCues;
 	std::vector<std::string> RuntimeClipNames;
 	std::string strRuntimeClipName;
 	std::optional<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ProductCue;
 	std::vector<VALTAN_STAGE_EFFECT_VIEW> Effects;
 
 	bool_t Has_Effect() const { return !Effects.empty(); }
-	bool_t Has_ClipBinding() const { return !RuntimeClipNames.empty(); }
-	bool_t Has_ProductCue() const { return ProductCue.has_value(); }
+	bool_t Has_ClipBinding() const { return !ClipOccurrences.empty(); }
+	bool_t Has_ProductCue() const { return !ProductCues.empty(); }
 	bool_t Has_HitShape() const
 	{
 		return !strHitShape.empty() && "NONE" != strHitShape;
@@ -142,6 +167,8 @@ struct VALTAN_PATTERN_TREE_VIEW final
 	size_t Get_EffectDocumentCount() const;
 	size_t Get_ClipBoundStageCount() const;
 	size_t Get_ProductCueStageCount() const;
+	size_t Get_ClipOccurrenceCount() const;
+	size_t Get_ProductCueCount() const;
 };
 
 /* Read-only join of ValtanEncounter.json, Valtan.patternbindings.json and

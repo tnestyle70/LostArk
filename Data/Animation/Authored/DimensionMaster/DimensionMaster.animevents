@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
+LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1546
 "pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=0 payload="FX_O_W_01.Par_O_Test_01_01" src=orig
 "pc_sp_m_00_sk_att_battle_1_01" EFFECT startms=0 payload="FX_O_W_01.Par_O_Test_02_01" src=orig
 "pc_sp_m_00_sk_att_battle_1_01" SOUND startms=29 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_Att_Battle1_1" src=orig
@@ -44,7 +44,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_att_battle_1_03" EFFECT startms=50 payload="" src=orig
 "pc_sp_m_00_sk_att_battle_1_03" EFFECT startms=50 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_att_battle_1_03" EFFECT startms=50 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_1_1" src=orig
-"pc_sp_m_00_sk_att_battle_1_03" SHAKE startms=50 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_03" SHAKE startms=50 payload="dur=0.3;in=0;out=0.1;x=1,60;y=3,50;z=0,0;fov=0,0" src=orig
 "pc_sp_m_00_sk_att_battle_1_03" CANCEL startms=150 endms=1067 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_att_battle_1_03" CANCEL startms=200 endms=1067 payload="" src=orig
 "pc_sp_m_00_sk_att_battle_1_03" CANCEL startms=400 endms=1067 payload="" src=orig
@@ -58,7 +58,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=100 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_3_1" src=orig
 "pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=100 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=100 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
-"pc_sp_m_00_sk_att_battle_1_04" SHAKE startms=100 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_1_04" SHAKE startms=100 payload="dur=0.3;in=0;out=0.1;x=3,60;y=5,50;z=0,0;fov=0,0" src=orig
 "pc_sp_m_00_sk_att_battle_1_04" EFFECT startms=131 payload="FX_PC_SWP_00.Par_J_SWP_NormalAtk_Dust_3_2" src=orig
 "pc_sp_m_00_sk_att_battle_1_04" CANCEL startms=200 endms=810 payload="[선이]" src=orig
 "pc_sp_m_00_sk_att_battle_1_04" CANCEL startms=200 endms=610 payload="[선스]" src=orig
@@ -84,15 +84,15 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_SWP_CF_02" src=orig
-"pc_sp_m_00_sk_att_battle_compete_1_loop" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" SHAKE startms=0 payload="dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_loop" SOUND startms=10 payload="" src=orig
-"pc_sp_m_00_sk_att_battle_compete_1_loop" SHAKE startms=500 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_loop" SHAKE startms=500 payload="dur=4.5;in=0;out=0.2;x=1,70;y=1,70;z=1.5,80;fov=0,0" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_star" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_star" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_1" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_star" SOUND startms=1 payload="PC_COMMON_DUAL.PC_Common_Dual1_SpeciaList_M_Vox1_1" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=664 payload="FX_PC_Confront_00.Par_J_SWP_CF_01" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=669 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_S" src=orig
-"pc_sp_m_00_sk_att_battle_compete_1_star" SHAKE startms=669 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_star" SHAKE startms=669 payload="dur=0.1;in=0;out=0.1;x=7,60;y=7,60;z=8,70;fov=0,0" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=674 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_Dust_01" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=674 payload="FX_PC_Confront_00.Par_L_WGL_CF_Shield_01_1_S" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_star" EFFECT startms=674 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -110,7 +110,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_03" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_SWP_JustGuard_01" src=orig
-"pc_sp_m_00_sk_att_battle_compete_1_succ" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_compete_1_succ" SHAKE startms=0 payload="dur=0.4;in=0;out=0.2;x=8,60;y=8,60;z=10,70;fov=0,0" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_succ" SOUND startms=1 payload="" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_succ" EFFECT startms=52 payload="" src=orig
 "pc_sp_m_00_sk_att_battle_compete_1_succ" CANCEL startms=494 endms=2000 payload="입력캔슬" src=orig
@@ -126,7 +126,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_att_battle_guide_1_succes" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_01" src=orig
 "pc_sp_m_00_sk_att_battle_guide_1_succes" EFFECT startms=0 payload="FX_PC_Confront_00.Par_O_JustGuard_03" src=orig
 "pc_sp_m_00_sk_att_battle_guide_1_succes" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
-"pc_sp_m_00_sk_att_battle_guide_1_succes" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_att_battle_guide_1_succes" SHAKE startms=0 payload="dur=0.5;in=0;out=0.2;x=5,60;y=5,60;z=5,60;fov=0,0" src=orig
 "pc_sp_m_00_sk_att_battle_guide_1_succes" SOUND startms=1 payload="PC_COMMON_PERFECTGUARD.PC_Common_PerfectGuard1_Success1_1" src=orig
 "pc_sp_m_00_sk_att_battle_guide_1_succes" CANCEL startms=180 endms=2000 payload="[회피캔슬]" src=orig
 "pc_sp_m_00_sk_att_battle_guide_1_succes" CANCEL startms=400 endms=2000 payload="입력캔슬" src=orig
@@ -144,7 +144,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=270 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_2" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" CANCEL startms=500 endms=2333 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=600 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_3" src=orig
-"pc_sp_m_00_sk_sk_chronorecoil" SHAKE startms=650 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SHAKE startms=650 payload="dur=0.75;in=0.2;out=0.05;x=0,0;y=0,0;z=0,0;fov=-5,1" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Atk_01" src=orig
@@ -152,7 +152,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Atk_04" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=700 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Atk_47" src=orig
-"pc_sp_m_00_sk_sk_chronorecoil" SHAKE startms=700 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SHAKE startms=700 payload="dur=0.3;in=0;out=0.1;x=4,50;y=4,50;z=6,60;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" CANCEL startms=900 endms=2020 payload="[선이]" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" CANCEL startms=900 endms=2020 payload="[선스]" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=1000 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_4" src=orig
@@ -165,7 +165,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1400 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1400 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Rewind_07" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" EFFECT startms=1400 payload="FX_PC_SWP_03.Par_S_SWP_Chrono_Rewind_07_2" src=orig
-"pc_sp_m_00_sk_sk_chronorecoil" SHAKE startms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_chronorecoil" SHAKE startms=1400 payload="dur=0.4;in=0;out=0.1;x=5,60;y=5,60;z=4,50;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" SOUND startms=1400 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_5" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" CANCEL startms=2000 endms=2333 payload="" src=orig
 "pc_sp_m_00_sk_sk_chronorecoil_custom_6" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_ChronoRecoil1_FX000_1" src=orig
@@ -210,7 +210,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_DimensionWp_00" src=orig
 "pc_sp_m_00_sk_sk_dimensionalgate_04" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_DimensionMove_S" src=orig
-"pc_sp_m_00_sk_sk_dimensionalgate_04" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalgate_04" SHAKE startms=0 payload="dur=0.3;in=0;out=0.1;x=3,60;y=3,60;z=4,40;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionalgate_04" SUPERARMOR startms=0 endms=320 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionalgate_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalGate2_FX000_2" src=orig
 "pc_sp_m_00_sk_sk_dimensionalgate_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalGate2_FX007_2" src=orig
@@ -250,14 +250,14 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=70 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" SOUND startms=103 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX000_3" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" SOUND startms=106 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX000_3" src=orig
-"pc_sp_m_00_sk_sk_dimensionalleap_03" SHAKE startms=245 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" SHAKE startms=245 payload="dur=0.6;in=0;out=0.2;x=2,60;y=2,60;z=3,70;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Crack_00_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=250 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Ground_00_01" src=orig
-"pc_sp_m_00_sk_sk_dimensionalleap_03" SHAKE startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_03" SHAKE startms=250 payload="dur=0.2;in=0.01;out=0.1;x=5,60;y=5,60;z=10,70;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=261 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=300 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_03" EFFECT startms=350 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
@@ -282,14 +282,14 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=350 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=370 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" SOUND startms=500 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionalLeap1_FX040_3" src=orig
-"pc_sp_m_00_sk_sk_dimensionalleap_04" SHAKE startms=545 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" SHAKE startms=545 payload="dur=0.6;in=0;out=0.2;x=2,60;y=2,60;z=3,70;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Ground_00_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Crack_00_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=550 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
-"pc_sp_m_00_sk_sk_dimensionalleap_04" SHAKE startms=550 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionalleap_04" SHAKE startms=550 payload="dur=0.2;in=0.01;out=0.1;x=5,60;y=5,60;z=10,70;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=560 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=600 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionalleap_04" EFFECT startms=650 payload="FX_PC_SWP_05.Par_K_SWP_TentDevider_Atk_00_03" src=orig
@@ -331,7 +331,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=500 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=500 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_dimensiondetonate" EFFECT startms=500 payload="FX_PC_SWP_05.Par_K_SWP_DemensionDetonate_Cast_02" src=orig
-"pc_sp_m_00_sk_sk_dimensiondetonate" SHAKE startms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensiondetonate" SHAKE startms=500 payload="dur=0.15;in=0;out=0.1;x=0,80;y=0,80;z=12,30;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensiondetonate" CANCEL startms=700 endms=1167 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
@@ -339,7 +339,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_02" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_Post.FX_Par.Par_M_FilmNoise_Zaxis_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_locdust" src=orig
-"pc_sp_m_00_sk_sk_dimensionprison" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SHAKE startms=0 payload="dur=2.54;in=0.5;out=0.2;x=0,0;y=0,0;z=2,60;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_FX000_1" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" SUPERARMOR startms=0 endms=3310 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_P000_1" src=orig
@@ -354,7 +354,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=2700 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_FX000_2" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2750 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" SOUND startms=2800 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionPrison1_P000_3" src=orig
-"pc_sp_m_00_sk_sk_dimensionprison" SHAKE startms=2823 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionprison" SHAKE startms=2823 payload="dur=0.8;in=0;out=0.5;x=7,55;y=7,55;z=14,55;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2858 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2858 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_exp_local" src=orig
 "pc_sp_m_00_sk_sk_dimensionprison" EFFECT startms=2873 payload="FX_PC_SWP_01.Par_W_SWP_DimensionPrison_00_Cancelexp" src=orig
@@ -376,7 +376,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_dimensionprison_1" CANCEL startms=900 endms=2033 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_01" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
-"pc_sp_m_00_sk_sk_dimensionthrust_01" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_01" SHAKE startms=0 payload="dur=2.2;in=0.3;out=0.15;x=0,0;y=0,0;z=0,0;fov=6,1" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_01" SUPERARMOR startms=0 endms=600 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_01" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_Vox1_1" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_01" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_FX000_1" src=orig
@@ -404,14 +404,14 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1002 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_02" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1002 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_03" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1002 payload="FX_Post.FX_Par.Par_J_RGBNoise_Zaxis_01" src=orig
-"pc_sp_m_00_sk_sk_dimensionthrust_02" SHAKE startms=1002 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" SHAKE startms=1002 payload="dur=0.25;in=0;out=0.05;x=13,55;y=13,55;z=15,40;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_02" EFFECT startms=1102 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_dimensionthrust_02" SHAKE startms=1153 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_02" SHAKE startms=1153 payload="dur=0.7;in=0;out=0.6;x=8,55;y=8,55;z=4,45;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_02" CANCEL startms=1400 endms=2400 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Weapon_01_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=0 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=0 payload="FX_PC_WGL_07.Par_S_SuperAwake_ExMove_01" src=orig
-"pc_sp_m_00_sk_sk_dimensionthrust_1" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" SHAKE startms=0 payload="dur=0.55;in=0.1;out=0.15;x=0,0;y=0,0;z=0,0;fov=10,1" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" SUPERARMOR startms=0 endms=900 payload="" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" SOUND startms=3 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_DimensionThrust1_FX000_3" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=10 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_00_01" src=orig
@@ -434,10 +434,10 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_02" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="FX_PC_SWP_00.Par_J_SWP_DimensionThrust_Exp_01_03" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=450 payload="FX_Post.FX_Par.Par_J_RGBNoise_Zaxis_01" src=orig
-"pc_sp_m_00_sk_sk_dimensionthrust_1" SHAKE startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" SHAKE startms=450 payload="dur=0.25;in=0;out=0.05;x=13,55;y=13,55;z=15,40;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" CANCEL startms=500 endms=1967 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" EFFECT startms=550 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_dimensionthrust_1" SHAKE startms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_dimensionthrust_1" SHAKE startms=600 payload="dur=0.7;in=0;out=0.6;x=8,55;y=8,55;z=4,45;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_dimensionthrust_1" CANCEL startms=900 endms=1967 payload="" src=orig
 "pc_sp_m_00_sk_sk_foldcut" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_FoldCut1_FX000_1" src=orig
 "pc_sp_m_00_sk_sk_foldcut" SUPERARMOR startms=0 endms=1500 payload="" src=orig
@@ -586,7 +586,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_instance_01" EFFECT startms=0 payload="" src=orig
 "pc_sp_m_00_sk_sk_instance_01" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
 "pc_sp_m_00_sk_sk_instance_01" EFFECT startms=0 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Cast_01" src=orig
-"pc_sp_m_00_sk_sk_instance_01" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_01" SHAKE startms=0 payload="dur=0.3;in=0.01;out=0.3;x=2,40;y=2,40;z=2,50;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_instance_01" SOUND startms=0 payload="PC_COMMON.PC_Common_FX_Ultimate1" src=orig
 "pc_sp_m_00_sk_sk_instance_01" SUPERARMOR startms=0 endms=100 payload="" src=orig
 "pc_sp_m_00_sk_sk_instance_01" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Instance1_FX000_1" src=orig
@@ -603,7 +603,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_instance_02" EFFECT startms=450 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Portal_L" src=orig
 "pc_sp_m_00_sk_sk_instance_02" EFFECT startms=450 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Swing_sub_01" src=orig
 "pc_sp_m_00_sk_sk_instance_02" EFFECT startms=450 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_instance_02" SHAKE startms=450 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_02" SHAKE startms=450 payload="dur=0.25;in=0.01;out=0.1;x=2,60;y=2,60;z=5,70;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_instance_02" SOUND startms=450 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Instance1_FX000_2" src=orig
 "pc_sp_m_00_sk_sk_instance_02" SOUND startms=450 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Instance1_FX000_3" src=orig
 "pc_sp_m_00_sk_sk_instance_02" EFFECT startms=452 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Swing_01" src=orig
@@ -627,7 +627,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_instance_04" EFFECT startms=350 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Swing_sub_01" src=orig
 "pc_sp_m_00_sk_sk_instance_04" EFFECT startms=350 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_instance_04" EFFECT startms=350 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_instance_04" SHAKE startms=350 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_04" SHAKE startms=350 payload="dur=0.25;in=0.01;out=0.1;x=2,60;y=2,60;z=5,70;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_instance_04" EFFECT startms=354 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Swing_01" src=orig
 "pc_sp_m_00_sk_sk_instance_04" EFFECT startms=354 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Portal_R" src=orig
 "pc_sp_m_00_sk_sk_instance_04" EFFECT startms=400 payload="" src=orig
@@ -655,7 +655,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_instance_06" EFFECT startms=500 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Prj_Ground_01" src=orig
 "pc_sp_m_00_sk_sk_instance_06" EFFECT startms=500 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Prj_01" src=orig
 "pc_sp_m_00_sk_sk_instance_06" EFFECT startms=500 payload="FX_PC_SWP_05.Par_K_SWP_Instance_Prj_crack_01" src=orig
-"pc_sp_m_00_sk_sk_instance_06" SHAKE startms=500 payload="" src=orig
+"pc_sp_m_00_sk_sk_instance_06" SHAKE startms=500 payload="dur=0.35;in=0;out=0.25;x=5,40;y=5,40;z=8,70;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_instance_06" EFFECT startms=550 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_instance_06" EFFECT startms=550 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "pc_sp_m_00_sk_sk_instance_06" CANCEL startms=700 endms=2067 payload="회피캔슬" src=orig
@@ -689,7 +689,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=394 payload="FX_PC_SWP_02.Par_R_SWP_MomentaryRift_47_04" src=orig
 "pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=396 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_momentaryrift" EFFECT startms=396 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_momentaryrift" SHAKE startms=396 payload="" src=orig
+"pc_sp_m_00_sk_sk_momentaryrift" SHAKE startms=396 payload="dur=0.15;in=0;out=0.1;x=0,80;y=0,80;z=12,30;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_momentaryrift" SOUND startms=400 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_MomentaryRift1_FX000_2" src=orig
 "pc_sp_m_00_sk_sk_momentaryrift" CANCEL startms=500 endms=1667 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_momentaryrift" CANCEL startms=700 endms=1310 payload="[선이]" src=orig
@@ -737,7 +737,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_Remain_05_1" src=orig
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=270 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=270 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_Remain_57_1" src=orig
-"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SHAKE startms=270 payload="" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SHAKE startms=270 payload="dur=0.3;in=0;out=0.1;x=1,50;y=1,50;z=1,50;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=280 payload="" src=orig
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" CANCEL startms=300 endms=910 payload="[선이]" src=orig
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SOUND startms=451 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_NailStrike1_Vox2_2" src=orig
@@ -752,7 +752,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=660 payload="FX_CM_02.Light.Par_MP_Light_05_L" src=orig
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=660 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_Ground_05_1" src=orig
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" EFFECT startms=660 payload="FX_PC_SWP_00.Par_J_SWP_NailStrike_Ex_57_1" src=orig
-"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SHAKE startms=660 payload="" src=orig
+"pc_sp_m_00_sk_sk_nailstrike_01_custom_5" SHAKE startms=660 payload="dur=0.3;in=0;out=0.1;x=3,60;y=5,50;z=0,0;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" CANCEL startms=800 endms=1700 payload="" src=orig
 "pc_sp_m_00_sk_sk_nailstrike_01_custom_5" CANCEL startms=900 endms=1700 payload="" src=orig
 "pc_sp_m_00_sk_sk_othertimelineenter" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_In_02" src=orig
@@ -761,18 +761,18 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_othertimelineenter" EFFECT startms=0 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_Clock_01" src=orig
 "pc_sp_m_00_sk_sk_othertimelineenter" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "pc_sp_m_00_sk_sk_othertimelineenter" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OtherTimelineEnter1_FX000_1" src=orig
-"pc_sp_m_00_sk_sk_othertimelineenter" SHAKE startms=10 payload="" src=orig
-"pc_sp_m_00_sk_sk_othertimelineenter" SHAKE startms=100 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" SHAKE startms=10 payload="dur=0.65;in=0.5;out=0.05;x=0,0;y=0,0;z=0,0;fov=-20,1" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" SHAKE startms=100 payload="dur=0.8;in=0.3;out=0.5;x=2,70;y=2,70;z=3,80;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_othertimelineenter" CANCEL startms=200 endms=910 payload="[선스]" src=orig
 "pc_sp_m_00_sk_sk_othertimelineenter" CANCEL startms=300 endms=1010 payload="[선이]" src=orig
 "pc_sp_m_00_sk_sk_othertimelineenter" EFFECT startms=600 payload="" src=orig
 "pc_sp_m_00_sk_sk_othertimelineenter" EFFECT startms=600 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_In_01" src=orig
-"pc_sp_m_00_sk_sk_othertimelineenter" SHAKE startms=600 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineenter" SHAKE startms=600 payload="dur=0.4;in=0.1;out=0.2;x=10,55;y=10,55;z=5,60;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_othertimelineenter" CANCEL startms=800 endms=1633 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_othertimelineenter" CANCEL startms=900 endms=1633 payload="" src=orig
 "pc_sp_m_00_sk_sk_othertimelineenter" CANCEL startms=1000 endms=1633 payload="" src=orig
 "pc_sp_m_00_sk_sk_othertimelineleave_01" EFFECT startms=0 payload="" src=orig
-"pc_sp_m_00_sk_sk_othertimelineleave_01" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_othertimelineleave_01" SHAKE startms=0 payload="dur=0.6;in=0.1;out=0.4;x=1,70;y=1,70;z=2,80;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_othertimelineleave_01" SUPERARMOR startms=0 endms=600 payload="" src=orig
 "pc_sp_m_00_sk_sk_othertimelineleave_01" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OtherTimelineLeave1_FX000_1" src=orig
 "pc_sp_m_00_sk_sk_othertimelineleave_01" EFFECT startms=10 payload="FX_Post.FX_Par.Par_J_RGBNoise_01_Deactive" src=orig
@@ -799,7 +799,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_overslash_02" CANCEL startms=0 endms=1500 payload="[선이]" src=orig
 "pc_sp_m_00_sk_sk_overslash_02" CANCEL startms=0 endms=1500 payload="[선스]" src=orig
 "pc_sp_m_00_sk_sk_overslash_02" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_E" src=orig
-"pc_sp_m_00_sk_sk_overslash_02" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_02" SHAKE startms=0 payload="dur=0.4;in=0.01;out=0.2;x=2,60;y=2,60;z=2,50;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_overslash_02" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_FX000_2" src=orig
 "pc_sp_m_00_sk_sk_overslash_02" EFFECT startms=50 payload="" src=orig
 "pc_sp_m_00_sk_sk_overslash_02" EFFECT startms=59 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
@@ -808,7 +808,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_overslash_03" CANCEL startms=0 endms=1500 payload="[선이]" src=orig
 "pc_sp_m_00_sk_sk_overslash_03" CANCEL startms=0 endms=1500 payload="[선스]" src=orig
 "pc_sp_m_00_sk_sk_overslash_03" EFFECT startms=0 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_E" src=orig
-"pc_sp_m_00_sk_sk_overslash_03" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_03" SHAKE startms=0 payload="dur=0.4;in=0.01;out=0.2;x=2,60;y=2,60;z=2,50;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_overslash_03" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_FX000_2" src=orig
 "pc_sp_m_00_sk_sk_overslash_03" EFFECT startms=50 payload="" src=orig
 "pc_sp_m_00_sk_sk_overslash_03" EFFECT startms=59 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
@@ -823,7 +823,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_overslash_04" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_FX000_2" src=orig
 "pc_sp_m_00_sk_sk_overslash_04" EFFECT startms=50 payload="" src=orig
 "pc_sp_m_00_sk_sk_overslash_04" EFFECT startms=61 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_01_E" src=orig
-"pc_sp_m_00_sk_sk_overslash_04" SHAKE startms=61 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_04" SHAKE startms=61 payload="dur=0.4;in=0.01;out=0.2;x=2,60;y=2,60;z=2,50;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_overslash_04" EFFECT startms=119 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_overslash_04" CANCEL startms=200 endms=1500 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_overslash_04" CANCEL startms=250 endms=1500 payload="" src=orig
@@ -850,7 +850,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_overslash_custom_8_03" EFFECT startms=450 payload="" src=orig
 "pc_sp_m_00_sk_sk_overslash_custom_8_03" SOUND startms=450 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_FX000_2" src=orig
 "pc_sp_m_00_sk_sk_overslash_custom_8_03" EFFECT startms=509 payload="FX_PC_SWP_01.Par_W_SWP_Overslash_08_E" src=orig
-"pc_sp_m_00_sk_sk_overslash_custom_8_03" SHAKE startms=510 payload="" src=orig
+"pc_sp_m_00_sk_sk_overslash_custom_8_03" SHAKE startms=510 payload="dur=0.4;in=0.01;out=0.2;x=2,60;y=2,60;z=2,50;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_overslash_custom_8_03" EFFECT startms=582 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_overslash_custom_8_03" CANCEL startms=600 endms=1800 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_overslash_custom_8_03" SOUND startms=600 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OverSlash1_Vox2_2" src=orig
@@ -868,7 +868,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=300 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=300 payload="FX_PC_SWP_05.Par_K_SWP_PhantomThrust_Atk_00_01" src=orig
 "pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=300 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_phantomthrust_01" SHAKE startms=300 payload="" src=orig
+"pc_sp_m_00_sk_sk_phantomthrust_01" SHAKE startms=300 payload="dur=0.15;in=0;out=0.1;x=0,80;y=0,80;z=12,30;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=350 payload="FX_PC_SWP_05.Par_K_SWP_PhantomThrust_Atk_08_01" src=orig
 "pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=350 payload="FX_PC_SWP_05.Par_K_SWP_PhantomThrust_Dust_00_01" src=orig
 "pc_sp_m_00_sk_sk_phantomthrust_01" EFFECT startms=400 payload="FX_PC_SWP_05.Par_K_SWP_PhantomThrust_Rib_00_01" src=orig
@@ -906,7 +906,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=50 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=50 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=50 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_riftslash_02" SHAKE startms=50 payload="" src=orig
+"pc_sp_m_00_sk_sk_riftslash_02" SHAKE startms=50 payload="dur=0.25;in=0;out=0.1;x=3,80;y=3,80;z=6,30;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=100 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_Dsut_00_01" src=orig
 "pc_sp_m_00_sk_sk_riftslash_02" CANCEL startms=300 endms=1567 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_riftslash_02" EFFECT startms=350 payload="FX_PC_SWP_05.Par_K_SWP_RiftSlash_Dust_00_02" src=orig
@@ -952,7 +952,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=197 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_02" src=orig
 "pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=198 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=198 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_riposte_01" SHAKE startms=198 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_01" SHAKE startms=198 payload="dur=0.15;in=0;out=0.1;x=0,80;y=0,80;z=12,30;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_riposte_01" CANCEL startms=233 endms=333 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_riposte_01" EFFECT startms=244 payload="" src=orig
 "pc_sp_m_00_sk_sk_riposte_02" CANCEL startms=0 endms=800 payload="회피캔슬" src=orig
@@ -981,7 +981,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=486 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=486 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_riposte_03" EFFECT startms=486 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_04-2" src=orig
-"pc_sp_m_00_sk_sk_riposte_03" SHAKE startms=486 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_03" SHAKE startms=486 payload="dur=0.3;in=0;out=0.1;x=5,40;y=5,40;z=5,40;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_riposte_03" CANCEL startms=1000 endms=1900 payload="" src=orig
 "pc_sp_m_00_sk_sk_riposte_04" CANCEL startms=0 endms=1767 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_riposte_04" CANCEL startms=0 endms=860 payload="[선이]" src=orig
@@ -1000,7 +1000,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=336 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=336 payload="FX_PC_SWP_02.Par_R_SWP_Riposte_00_04-2" src=orig
 "pc_sp_m_00_sk_sk_riposte_04" EFFECT startms=336 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_riposte_04" SHAKE startms=336 payload="" src=orig
+"pc_sp_m_00_sk_sk_riposte_04" SHAKE startms=336 payload="dur=0.3;in=0;out=0.1;x=5,40;y=5,40;z=5,40;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_riposte_04" SOUND startms=337 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Riposte1_FX000_3" src=orig
 "pc_sp_m_00_sk_sk_riposte_04" CANCEL startms=850 endms=1767 payload="" src=orig
 "pc_sp_m_00_sk_sk_standup_04" SUPERARMOR startms=0 endms=510 payload="" src=orig
@@ -1057,7 +1057,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_super_instance" EFFECT startms=2178 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Hand_01" src=orig
 "pc_sp_m_00_sk_sk_super_instance" SOUND startms=2500 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_Instance1_FX000_5" src=orig
 "pc_sp_m_00_sk_sk_super_instance" SOUND startms=2700 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_Instance1_FX000_6" src=orig
-"pc_sp_m_00_sk_sk_super_instance" SHAKE startms=2800 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SHAKE startms=2800 payload="dur=0.9;in=0.4;out=0.1;x=0.7,70;y=0.7,70;z=1.2,80;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_super_instance" EFFECT startms=2900 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Light_01" src=orig
 "pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3000 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Hole_01" src=orig
 "pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3000 payload="FX_PC_SWP_03.Par_S_SWP_Instance_BGCrack_01" src=orig
@@ -1072,7 +1072,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Dust_01" src=orig
 "pc_sp_m_00_sk_sk_super_instance" EFFECT startms=3750 payload="FX_PC_SWP_03.Par_S_SWP_Instance_Localdust_01" src=orig
-"pc_sp_m_00_sk_sk_super_instance" SHAKE startms=3750 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_instance" SHAKE startms=3750 payload="dur=0.4;in=0;out=0.2;x=8,80;y=8,80;z=10,90;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_super_instance" CANCEL startms=3800 endms=4510 payload="" src=orig
 "pc_sp_m_00_sk_sk_super_instance" CANCEL startms=4000 endms=5000 payload="회피기캔슬" src=orig
 "pc_sp_m_00_sk_sk_super_instance" CANCEL startms=4500 endms=5000 payload="" src=orig
@@ -1087,7 +1087,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=650 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_TW_S1_Hand_Deco_01" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=700 payload="FX_PC_WHK_02.Par_O_WHK_ExMove_03" src=orig
-"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=700 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=700 payload="dur=0.3;in=0;out=0.3;x=0.1,80;y=0.25,40;z=0.1,80;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_PC_SWP_04.Par_M_SWP_TW_S2_Cube_01" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_CM_02.Light.Par_MP_Light_04" src=orig
@@ -1097,10 +1097,10 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_01" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_PC_SWP_04.Par_M_SWP_TW_S2_World_BackGround_01_Test_02" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=2000 payload="FX_PC_SWP_04.Par_M_SWP_TW_S2_World_Aurora_01" src=orig
-"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=2000 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=2000 payload="dur=0.3;in=0;out=0.3;x=0.1,80;y=0.25,40;z=0.1,80;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" SOUND startms=2000 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_TimeWave1_FX000_3" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" SOUND startms=2500 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Super_TimeWave1_FX000_4" src=orig
-"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=2950 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=2950 payload="dur=1.1;in=1.1;out=0.1;x=0.15,60;y=0.15,60;z=0.15,60;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" CANCEL startms=3300 endms=4210 payload="[선이]" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" CANCEL startms=3300 endms=4210 payload="[선스]" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3700 payload="FX_PC_SWP_04.Par_M_SWP_TW_Light_01_Loop" src=orig
@@ -1113,7 +1113,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="FX_PC_SWP_04.Par_M_SWP_TW_ExpGround_01" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="FX_PC_SWP_04.Par_M_SWP_TW_Local_BoxShockWave_01" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" EFFECT startms=3950 payload="FX_PC_SWP_04.Par_M_SWP_TW_BoxOutlineDeco_01" src=orig
-"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=3950 payload="" src=orig
+"pc_sp_m_00_sk_sk_super_timewave" SHAKE startms=3950 payload="dur=1.2;in=0;out=1.2;x=2,60;y=4,50;z=2,60;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" CANCEL startms=4000 endms=5100 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_super_timewave" CANCEL startms=4200 endms=5100 payload="" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_01" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_FX000_1" src=orig
@@ -1145,7 +1145,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-2" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_02" EFFECT startms=650 payload="FX_PC_SWP_04.Par_M_SWP_TS_ShockWave_01" src=orig
-"pc_sp_m_00_sk_sk_tearingsword_02" SHAKE startms=650 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_02" SHAKE startms=650 payload="dur=0.8;in=0;out=0.8;x=3,40;y=3,15;z=3,40;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_02" SOUND startms=650 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_P000_2" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_02" CANCEL startms=900 endms=2167 payload="" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_02" CANCEL startms=1000 endms=2167 payload="" src=orig
@@ -1173,7 +1173,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_PC_SWP_04.Par_M_SWP_TS_Gate_Exp_01_07-2" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_custom_6_" EFFECT startms=150 payload="FX_PC_SWP_04.Par_M_SWP_TS_ShockWave_01" src=orig
-"pc_sp_m_00_sk_sk_tearingsword_custom_6_" SHAKE startms=150 payload="" src=orig
+"pc_sp_m_00_sk_sk_tearingsword_custom_6_" SHAKE startms=150 payload="dur=0.8;in=0;out=0.8;x=3,40;y=3,15;z=3,40;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_custom_6_" SOUND startms=150 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TearingSword1_P000_2" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_custom_6_" CANCEL startms=300 endms=1667 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_tearingsword_custom_6_" CANCEL startms=600 endms=1667 payload="" src=orig
@@ -1205,7 +1205,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=260 payload="FX_PC_SWP_01.Par_W_SWP_Jump_01_1" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_04" CANCEL startms=300 endms=810 payload="[선이]" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_04" CANCEL startms=300 endms=770 payload="[선스]" src=orig
-"pc_sp_m_00_sk_sk_telekinesisthrust_04" SHAKE startms=538 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_04" SHAKE startms=538 payload="dur=0.25;in=0;out=0;x=5,45;y=5,45;z=4,60;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=541 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=541 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=544 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_00" src=orig
@@ -1232,7 +1232,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=260 payload="FX_PC_SWP_01.Par_W_SWP_Jump_01_1" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_cust" CANCEL startms=300 endms=810 payload="[선이]" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_cust" CANCEL startms=300 endms=770 payload="[선스]" src=orig
-"pc_sp_m_00_sk_sk_telekinesisthrust_cust" SHAKE startms=538 payload="" src=orig
+"pc_sp_m_00_sk_sk_telekinesisthrust_cust" SHAKE startms=538 payload="dur=0.25;in=0;out=0;x=5,45;y=5,45;z=4,60;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=541 payload="FX_Post.FX_Par.Par_C_ZoomBlur_02" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=541 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_cust" EFFECT startms=544 payload="FX_PC_SWP_01.Par_W_SWP_FlickerThrust_Dust_00" src=orig
@@ -1244,14 +1244,14 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_telekinesisthrust_cust" CANCEL startms=750 endms=1600 payload="" src=orig
 "pc_sp_m_00_sk_sk_telekinesisthrust_cust" CANCEL startms=800 endms=1600 payload="" src=orig
 "pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=0 payload="FX_Post.FX_Par.Par_C_ZoomBlur_01" src=orig
-"pc_sp_m_00_sk_sk_timecollapse" SHAKE startms=0 payload="" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" SHAKE startms=0 payload="dur=0.6;in=0;out=0.4;x=0,0;y=0,0;z=0,0;fov=-15,1" src=orig
 "pc_sp_m_00_sk_sk_timecollapse" SOUND startms=0 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_OtherTimeLineCollapse1_Vox1_1" src=orig
 "pc_sp_m_00_sk_sk_timecollapse" SUPERARMOR startms=0 endms=1000 payload="" src=orig
 "pc_sp_m_00_sk_sk_timecollapse" SOUND startms=1 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeCollapse1_FX000_1" src=orig
 "pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=342 payload="" src=orig
 "pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=500 payload="" src=orig
 "pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=500 payload="FX_PC_SWP_00.Par_J_SWP_TimeLine_Out_01" src=orig
-"pc_sp_m_00_sk_sk_timecollapse" SHAKE startms=521 payload="" src=orig
+"pc_sp_m_00_sk_sk_timecollapse" SHAKE startms=521 payload="dur=0.6;in=0;out=0.4;x=6,50;y=10,50;z=6,50;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=530 payload="FX_PC_SWP_00.Par_J_SWP_TimeCollapse_01" src=orig
 "pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=530 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_timecollapse" EFFECT startms=530 payload="FX_PC_SWP_00.Par_J_SWP_TimeCollapse_Crack_01" src=orig
@@ -1274,7 +1274,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_timewave" EFFECT startms=691 payload="FX_PC_SWP_02.Par_R_SWP_TimeWave_00_03" src=orig
 "pc_sp_m_00_sk_sk_timewave" EFFECT startms=693 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_timewave" EFFECT startms=693 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_timewave" SHAKE startms=696 payload="" src=orig
+"pc_sp_m_00_sk_sk_timewave" SHAKE startms=696 payload="dur=0.15;in=0;out=0.1;x=5,80;y=5,80;z=12,30;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_timewave" SOUND startms=700 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_TimeWave1_FX000_2" src=orig
 "pc_sp_m_00_sk_sk_timewave" CANCEL startms=1000 endms=1860 payload="[선스]" src=orig
 "pc_sp_m_00_sk_sk_timewave" CANCEL startms=1000 endms=1860 payload="[선이]" src=orig
@@ -1298,7 +1298,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=200 payload="FX_PC_SWP_05.Par_K_SWP_Void_Curse_01" src=orig
 "pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=200 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_voidcurse_1_02" EFFECT startms=200 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_voidcurse_1_02" SHAKE startms=200 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidcurse_1_02" SHAKE startms=200 payload="dur=0.15;in=0;out=0.1;x=0,80;y=0,80;z=12,30;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_voidcurse_1_02" CANCEL startms=400 endms=1400 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_voidcurse_1_02" CANCEL startms=500 endms=1400 payload="" src=orig
 "pc_sp_m_00_sk_sk_voidcurse_1_02" CANCEL startms=600 endms=1400 payload="" src=orig
@@ -1316,7 +1316,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=250 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_04" src=orig
-"pc_sp_m_00_sk_sk_voidtrigger" SHAKE startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SHAKE startms=250 payload="dur=0.2;in=0;out=0.15;x=4,50;y=10,20;z=4,50;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger" CANCEL startms=500 endms=2400 payload="회피캔슬" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger" CANCEL startms=650 endms=1260 payload="[선스]" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger" SOUND startms=691 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_VoidTrigger1_FX000_2" src=orig
@@ -1338,7 +1338,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_SphereRGB_01_4" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_ShockWave_01-04" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=950 payload="FX_PC_SWP_04.Par_M_SWP_VT_FinishLine_01_07" src=orig
-"pc_sp_m_00_sk_sk_voidtrigger" SHAKE startms=950 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger" SHAKE startms=950 payload="dur=0.4;in=0;out=0.3;x=4,80;y=13,20;z=4,80;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger" EFFECT startms=1050 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_Ember_01" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger" CANCEL startms=1250 endms=2400 payload="" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger" CANCEL startms=1300 endms=2400 payload="" src=orig
@@ -1350,7 +1350,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" HIT startms=200 endms=800 rep=1 repms=0 fz=620 fzin=130 fzout=300 push=10 pushr=10 area=2 ar=400 aa=200 ah=200 ax=0 arem=0 maxt=0 src=orig
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=250 payload="" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=250 payload="FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_05" src=orig
-"pc_sp_m_00_sk_sk_voidtrigger_custom_5" SHAKE startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" SHAKE startms=250 payload="dur=0.2;in=0;out=0.15;x=3,50;y=6,20;z=3,50;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=450 payload="" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=450 payload="FX_PC_SWP_04.Par_M_SWP_VT_Start_Exp_01_05" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" CANCEL startms=500 endms=2867 payload="회피캔슬" src=orig
@@ -1370,7 +1370,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1400 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_01-1_05" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1400 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_Hit_01" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1400 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_ShockWave_01" src=orig
-"pc_sp_m_00_sk_sk_voidtrigger_custom_5" SHAKE startms=1400 payload="" src=orig
+"pc_sp_m_00_sk_sk_voidtrigger_custom_5" SHAKE startms=1400 payload="dur=0.4;in=0;out=0.3;x=4,80;y=13,20;z=4,80;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1500 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_01-3_05" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1500 payload="FX_PC_SWP_04.Par_M_SWP_VT_Exp_Ember_01" src=orig
 "pc_sp_m_00_sk_sk_voidtrigger_custom_5" EFFECT startms=1500 payload="FX_PC_SWP_04.Par_M_SWP_VT_FinishLine_01_07" src=orig
@@ -1399,7 +1399,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_2" src=orig
 "pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
 "pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_willowrend" SHAKE startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SHAKE startms=250 payload="dur=0.3;in=0;out=0.1;x=4,50;y=4,50;z=0,0;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_willowrend" SOUND startms=370 payload="PC_DIMENSIONMASTER_M.PC_DimensionMaster_M_SK_Willowrend1_Vox1_2" src=orig
 "pc_sp_m_00_sk_sk_willowrend" EFFECT startms=390 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Core_00_1" src=orig
 "pc_sp_m_00_sk_sk_willowrend" EFFECT startms=390 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
@@ -1423,7 +1423,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_willowrend" EFFECT startms=900 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_willowrend" EFFECT startms=900 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_00_1" src=orig
 "pc_sp_m_00_sk_sk_willowrend" EFFECT startms=900 payload="FX_CM_02.Light.Par_MP_Light_01" src=orig
-"pc_sp_m_00_sk_sk_willowrend" SHAKE startms=900 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend" SHAKE startms=900 payload="dur=0.3;in=0;out=0.1;x=4,50;y=4,50;z=0,0;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_willowrend" EFFECT startms=999 payload="" src=orig
 "pc_sp_m_00_sk_sk_willowrend" CANCEL startms=1000 endms=1720 payload="[선이]" src=orig
 "pc_sp_m_00_sk_sk_willowrend" CANCEL startms=1000 endms=1520 payload="[선스]" src=orig
@@ -1460,7 +1460,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=250 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Wind_01" src=orig
-"pc_sp_m_00_sk_sk_willowrend_custom_7" SHAKE startms=250 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SHAKE startms=250 payload="dur=0.4;in=0;out=0.2;x=1,80;y=3,50;z=1,80;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=300 payload="FX_PC_FIF_12.Par_J_FIF_RageBomb_SonicWind_01" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=300 payload="FX_Post.FX_Par.Par_J_ZoomBlur_01" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=300 payload="FX_Post.FX_Par.Par_J_RGBNoise_01" src=orig
@@ -1493,7 +1493,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_willowrend_custom_7" CANCEL startms=1200 endms=2010 payload="[선이]" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1200 payload="" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1299 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Wind_01" src=orig
-"pc_sp_m_00_sk_sk_willowrend_custom_7" SHAKE startms=1299 payload="" src=orig
+"pc_sp_m_00_sk_sk_willowrend_custom_7" SHAKE startms=1299 payload="dur=0.4;in=0;out=0.2;x=1,80;y=3,50;z=1,80;fov=0,0" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1300 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_Dust_00_1" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1300 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingDeco_00_1" src=orig
 "pc_sp_m_00_sk_sk_willowrend_custom_7" EFFECT startms=1300 payload="FX_PC_SWP_00.Par_J_SWP_Willowrend_SwingHit_07_2" src=orig
@@ -1538,10 +1538,7 @@ LOSTARK_ANIM_EVENTS 5 "DimensionMaster" 1549
 "pc_sp_m_00_sk_sk_telekinesisthrust_01" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050240.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_telekinesisthrust_04" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050240.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_timewave" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050520.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=250 payload="effect.dimensionmaster.skill.2050210.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=500 payload="effect.dimensionmaster.skill.2050210.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=750 payload="effect.dimensionmaster.skill.2050210.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
-"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=1000 payload="effect.dimensionmaster.skill.2050210.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=0 payload="effect.dimensionmaster.skill.2050210.unified" effectref=asset anchor="root" follow=snapshot stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "pc_sp_m_00_sk_sk_dimensionalleap_03" HIT startms=250 endms=250 rep=1 repms=0 fz=420 fzin=130 fzout=300 push=10 pushr=10 area=1 ar=150 aa=0 ah=300 ax=50 arem=0 maxt=0 src=orig
 "pc_sp_m_00_sk_sk_overslash_02" HIT startms=250 endms=250 rep=1 repms=0 fz=420 fzin=130 fzout=300 push=0 pushr=0 area=2 ar=450 aa=120 ah=180 ax=-225 arem=0 maxt=0 src=orig
 "pc_sp_m_00_sk_sk_chronorecoil" HIT startms=700 endms=700 rep=1 repms=0 fz=480 fzin=130 fzout=300 push=10 pushr=10 area=1 ar=300 aa=0 ah=150 ax=0 arem=0 maxt=0 src=orig

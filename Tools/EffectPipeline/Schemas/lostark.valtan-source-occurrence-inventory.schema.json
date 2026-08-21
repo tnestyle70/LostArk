@@ -1,0 +1,1089 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-source-occurrence-inventory.schema.json",
+  "title": "LostArk Valtan source occurrence inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "completionPolicy",
+    "sources",
+    "coverage",
+    "bindingGapProposals",
+    "sourceActionEvidenceProposals",
+    "sourceVisualSignatureReviews",
+    "additionalSourceSelectionAudit",
+    "reviewedBranchSelections",
+    "branches",
+    "sourceSystems",
+    "occurrences",
+    "summary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-source-occurrence-inventory"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "bossArchetypeId": {
+      "const": "BOSS_VALTAN"
+    },
+    "completionPolicy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "sourceGraphs", "runtimeCookReceipt"],
+      "properties": {
+        "repository": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourceArtifact"
+          }
+        },
+        "sourceGraphs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sourceGraph"
+          }
+        },
+        "runtimeCookReceipt": {
+          "$ref": "#/$defs/runtimeCookReceipt"
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patterns", "missingActionBindingPatterns"],
+      "properties": {
+        "patterns": {
+          "type": "array",
+          "minItems": 33,
+          "maxItems": 33,
+          "items": {
+            "$ref": "#/$defs/patternCoverage"
+          }
+        },
+        "missingActionBindingPatterns": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/missingPattern"
+          }
+        }
+      }
+    },
+    "bindingGapProposals": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/bindingGapProposal"
+      }
+    },
+    "sourceActionEvidenceProposals": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "$ref": "#/$defs/sourceActionEvidenceProposal"
+      }
+    },
+    "sourceVisualSignatureReviews": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/sourceVisualSignatureReview"
+      }
+    },
+    "additionalSourceSelectionAudit": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "$ref": "#/$defs/additionalSourceSelectionAuditRow"
+      }
+    },
+    "reviewedBranchSelections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reviewedBranch"
+      }
+    },
+    "branches": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/branch"
+      }
+    },
+    "sourceSystems": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/sourceSystem"
+      }
+    },
+    "occurrences": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/occurrence"
+      }
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "sourceGraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logicalPackage", "logicalPath", "sha256"],
+      "properties": {
+        "logicalPackage": {
+          "type": "string",
+          "minLength": 1
+        },
+        "logicalPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "runtimeCookReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logicalPath",
+        "sha256",
+        "assetCount",
+        "verifiedRuntimeFileCount",
+        "failureCount"
+      ],
+      "properties": {
+        "logicalPath": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "assetCount": { "type": "integer", "minimum": 0 },
+        "verifiedRuntimeFileCount": { "type": "integer", "minimum": 0 },
+        "failureCount": { "const": 0 }
+      }
+    },
+    "patternCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "status",
+        "sourceActionIds",
+        "sourceActionBindingCount"
+      ],
+      "properties": {
+        "patternId": {
+          "type": "string",
+          "pattern": "^VALTAN_[A-Z0-9_]+$"
+        },
+        "status": {
+          "enum": [
+            "ACTION_BINDING_PRESENT",
+            "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW",
+            "MISSING_ACTION_BINDING_NO_SOURCE_ACTION"
+          ]
+        },
+        "sourceActionIds": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "sourceActionBindingCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "missingPattern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patternId", "status", "sourceActionIds"],
+      "properties": {
+        "patternId": {
+          "enum": [
+            "VALTAN_ENTRANCE_WHIRLWIND",
+            "VALTAN_ARENA_BREAK_84"
+          ]
+        },
+        "status": {
+          "enum": [
+            "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW",
+            "MISSING_ACTION_BINDING_NO_SOURCE_ACTION"
+          ]
+        },
+        "sourceActionIds": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "bindingGapProposal": {
+      "type": "object",
+      "required": [
+        "patternId",
+        "stageId",
+        "actionId",
+        "sourceActionId",
+        "sourceStageIndex",
+        "status",
+        "proposedClip"
+      ],
+      "properties": {
+        "patternId": { "const": "VALTAN_ARENA_BREAK_84" },
+        "stageId": { "enum": ["WINDUP", "IMPACT", "RECOVERY"] },
+        "actionId": { "type": "string", "minLength": 1 },
+        "sourceActionId": { "const": 420629 },
+        "sourceStageIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "status": {
+          "const": "PROPOSED_SOURCE_REVIEWED_DELTA_NOT_ACCEPTED"
+        },
+        "proposedClip": {
+          "type": "object",
+          "required": [
+            "clipOccurrenceId",
+            "clip",
+            "mappingBasis",
+            "sourceStartMs",
+            "playMs",
+            "playRate",
+            "loop"
+          ],
+          "properties": {
+            "clipOccurrenceId": { "type": "string", "minLength": 1 },
+            "clip": { "type": "string", "minLength": 1 },
+            "mappingBasis": { "const": "SOURCE_REVIEWED_DELTA" },
+            "sourceStartMs": { "const": 0 },
+            "playMs": { "const": 0 },
+            "playRate": { "const": 1.0 },
+            "loop": { "const": true }
+          }
+        }
+      }
+    },
+    "sourceActionEvidenceProposal": {
+      "type": "object",
+      "required": [
+        "patternId",
+        "status",
+        "reviewBasis",
+        "currentSourceActionIds",
+        "proposedSourceActionId",
+        "profileId",
+        "sequenceIndex",
+        "sourceSequencePathSha256",
+        "mappingBasis",
+        "conflictDisposition",
+        "patternPreviewReferences",
+        "sourceActionDocument",
+        "proposedSourceAction"
+      ],
+      "properties": {
+        "patternId": { "const": "VALTAN_DASH_CHARGE" },
+        "status": {
+          "const": "PROPOSED_SOURCE_REVIEWED_DELTA_NOT_ACCEPTED"
+        },
+        "reviewBasis": {
+          "const": "PATTERNPREVIEW_USER_CONFIRMED_FAMILY_SEQUENCE_0"
+        },
+        "currentSourceActionIds": {
+          "type": "array",
+          "prefixItems": [{ "const": 420604 }],
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "proposedSourceActionId": { "const": 400424 },
+        "profileId": { "const": "MN_RPBF_00" },
+        "sequenceIndex": { "const": 0 },
+        "sourceSequencePathSha256": { "$ref": "#/$defs/sha256" },
+        "mappingBasis": { "const": "SOURCE_REVIEWED_DELTA" },
+        "conflictDisposition": { "type": "string", "minLength": 1 },
+        "patternPreviewReferences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["patternNumber", "confidence", "repeat"],
+            "properties": {
+              "patternNumber": { "type": "integer", "minimum": 1 },
+              "confidence": { "const": "USER_CONFIRMED_FAMILY" },
+              "repeat": { "const": 1 }
+            }
+          }
+        },
+        "sourceActionDocument": {
+          "type": "object",
+          "required": ["profileId", "catalogPath", "sha256"],
+          "properties": {
+            "profileId": { "const": "MN_RPBF_00" },
+            "catalogPath": { "type": "string", "minLength": 1 },
+            "sha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "proposedSourceAction": {
+          "type": "object",
+          "required": [
+            "sourceActionId",
+            "profileId",
+            "sourceDisplayName",
+            "stages"
+          ],
+          "properties": {
+            "sourceActionId": { "const": 400424 },
+            "profileId": { "const": "MN_RPBF_00" },
+            "sourceDisplayName": { "type": "string", "minLength": 1 },
+            "stages": { "type": "array", "minItems": 1 }
+          }
+        }
+      }
+    },
+    "sourceVisualSignatureCandidate": {
+      "type": "object",
+      "required": [
+        "branchId",
+        "sourceActionId",
+        "profileId",
+        "sequenceIndex",
+        "sourceSequencePathSha256",
+        "sourceVisualFamilySignatureSha256",
+        "sourceVisualFamilyMemberSha256s"
+      ],
+      "properties": {
+        "branchId": { "type": "string", "minLength": 1 },
+        "sourceActionId": { "type": "integer", "minimum": 1 },
+        "profileId": { "type": "string", "minLength": 1 },
+        "sequenceIndex": { "type": "integer", "minimum": 0 },
+        "sourceSequencePathSha256": { "$ref": "#/$defs/sha256" },
+        "sourceVisualFamilySignatureSha256": { "$ref": "#/$defs/sha256" },
+        "sourceVisualFamilyMemberSha256s": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
+    "sourceVisualSignatureReview": {
+      "type": "object",
+      "required": [
+        "patternId",
+        "status",
+        "reviewBasis",
+        "canonicalCandidate",
+        "equivalentCandidates",
+        "admissionDisposition"
+      ],
+      "properties": {
+        "patternId": { "type": "string", "minLength": 1 },
+        "status": {
+          "enum": [
+            "SOURCE_VISUAL_SIGNATURE_EQUIVALENT",
+            "AMBIGUOUS_SOURCE_VISUAL_SIGNATURE"
+          ]
+        },
+        "reviewBasis": { "type": "string", "minLength": 1 },
+        "canonicalCandidate": {
+          "anyOf": [
+            { "$ref": "#/$defs/sourceVisualSignatureCandidate" },
+            { "type": "null" }
+          ]
+        },
+        "equivalentCandidates": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sourceVisualSignatureCandidate" }
+        },
+        "candidateVisualSignatureSha256s": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sha256" }
+        },
+        "admissionDisposition": {
+          "enum": [
+            "SELECTION_MANIFEST_STAGE_MAPPING_REQUIRED",
+            "SOURCE_TIMING_REVIEW_REQUIRED",
+            "UNRESOLVED_BRANCH_SELECTION"
+          ]
+        }
+      }
+    },
+    "additionalSourceSelectionAuditRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "eligibilityDisposition",
+        "selectionStatus",
+        "candidateBranchId",
+        "selectedBranchId",
+        "reviewBasis",
+        "unresolvedReason"
+      ],
+      "properties": {
+        "patternId": {
+          "enum": [
+            "VALTAN_SWING",
+            "VALTAN_IMPRISON_ROAR",
+            "VALTAN_DASH_CHARGE",
+            "VALTAN_PARRY",
+            "VALTAN_STOMP",
+            "VALTAN_BIND_CHARGE_SMASH",
+            "VALTAN_FOUR_PILLARS_105",
+            "VALTAN_ENTRANCE_WHIRLWIND",
+            "VALTAN_ARENA_BREAK_84",
+            "VALTAN_MAGIC_ORB_STAGGER_76",
+            "VALTAN_CENTER_GRAB_COUNTER_64",
+            "VALTAN_ARENA_BREAK_33"
+          ]
+        },
+        "eligibilityDisposition": {
+          "enum": [
+            "SAFE_EXACT_EQUIVALENT_FULL_SEQUENCE_JOIN",
+            "UNRESOLVED_SOURCE_VISUAL_OR_TIMING_CONFLICT",
+            "UNRESOLVED_ACTION_BINDING_GAP"
+          ]
+        },
+        "selectionStatus": {
+          "enum": [
+            "REVIEWED_SELECTED",
+            "UNRESOLVED_BRANCH_SELECTION",
+            "MISSING_ACTION_BINDING_PROJECT_REUSE_REVIEW",
+            "MISSING_ACTION_BINDING_NO_SOURCE_ACTION"
+          ]
+        },
+        "candidateBranchId": {
+          "type": ["string", "null"]
+        },
+        "selectedBranchId": {
+          "type": ["string", "null"]
+        },
+        "reviewBasis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unresolvedReason": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "reviewedBranch": {
+      "type": "object",
+      "required": [
+        "patternId",
+        "sourceActionId",
+        "profileId",
+        "sequenceIndex",
+        "sourceSequencePathSha256",
+        "branchId",
+        "status",
+        "reviewBasis",
+        "stageMappings"
+      ],
+      "properties": {
+        "patternId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceActionId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "profileId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sequenceIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceSequencePathSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "branchId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": ["REVIEWED_SELECTED", "REVIEWED_REJECTED"]
+        },
+        "reviewBasis": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stageMappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stageMapping"
+          }
+        }
+      }
+    },
+    "stageMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceStageIndex",
+        "sourceClipOrdinal",
+        "clipOccurrenceId",
+        "timingDisposition"
+      ],
+      "properties": {
+        "sourceStageIndex": { "type": "integer", "minimum": 0 },
+        "sourceClipOrdinal": { "type": "integer", "minimum": 0 },
+        "clipOccurrenceId": { "type": ["string", "null"] },
+        "timingDisposition": {
+          "enum": [
+            "REACHABLE",
+            "SOURCE_TIMING_REVIEW_REQUIRED",
+            "UNREACHABLE"
+          ]
+        },
+        "reviewBasis": { "type": "string", "minLength": 1 }
+      }
+    },
+    "branch": {
+      "type": "object",
+      "required": [
+        "branchId",
+        "patternId",
+        "sourceActionId",
+        "profileId",
+        "sequenceIndex",
+        "sequenceMode",
+        "sourceSequencePathSha256",
+        "sourceVisualFamilySignatureSha256",
+        "sourceVisualFamilyMemberSha256s",
+        "sourceStagePath",
+        "orderedClips",
+        "matchScore",
+        "recommendationStatus",
+        "selectionStatus",
+        "reviewedStageMappings",
+        "candidateOccurrenceCount"
+      ],
+      "properties": {
+        "branchId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "patternId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceActionId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "profileId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sequenceIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sequenceMode": {
+          "enum": ["SEQUENCE", "COMBO", "HOLD"]
+        },
+        "sourceSequencePathSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sourceVisualFamilySignatureSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sourceVisualFamilyMemberSha256s": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sha256" }
+        },
+        "sourceStagePath": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "orderedClips": {
+          "type": "array"
+        },
+        "matchScore": {
+          "type": "object"
+        },
+        "recommendationStatus": {
+          "enum": [
+            "UNIQUE_BEST_CANDIDATE",
+            "TIED_BEST_CANDIDATE",
+            "ALTERNATE_BRANCH_CANDIDATE"
+          ]
+        },
+        "selectionStatus": {
+          "enum": [
+            "UNRESOLVED_BRANCH_SELECTION",
+            "REVIEWED_SELECTED",
+            "REVIEWED_REJECTED"
+          ]
+        },
+        "reviewedStageMappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stageMapping"
+          }
+        },
+        "candidateOccurrenceCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "sourceSystem": {
+      "type": "object",
+      "required": [
+        "sourceSystemId",
+        "catalogSourceAsset",
+        "graphRootNodeId",
+        "explicitGenericDust",
+        "rootEmitterDenominator",
+        "selectedLodCarrierCount",
+        "preservedUnresolvedEmitterCount",
+        "droppedCarrierCount",
+        "duplicateCarrierCount",
+        "carriers"
+      ],
+      "properties": {
+        "sourceSystemId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "catalogSourceAsset": {
+          "type": "string",
+          "minLength": 1
+        },
+        "graphRootNodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "explicitGenericDust": {
+          "type": "boolean"
+        },
+        "rootEmitterDenominator": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selectedLodCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "preservedUnresolvedEmitterCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "droppedCarrierCount": {
+          "const": 0
+        },
+        "duplicateCarrierCount": {
+          "const": 0
+        },
+        "carriers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/carrier"
+          }
+        }
+      }
+    },
+    "carrier": {
+      "type": "object",
+      "required": [
+        "carrierKey",
+        "sourceEmitterNodeId",
+        "selectedLodNodeId",
+        "orderedModuleOccurrences",
+        "rendererShape",
+        "disposition",
+        "conversionStatus",
+        "portableSourceRecipeSha256",
+        "runtimeResourceBindingCount",
+        "runtimeResourceBindingSha256",
+        "sourceResourceClosureCount",
+        "sourceResourceClosureSha256"
+      ],
+      "properties": {
+        "carrierKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceEmitterNodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selectedLodNodeId": {
+          "type": ["string", "null"]
+        },
+        "orderedModuleOccurrences": {
+          "type": "array"
+        },
+        "rendererShape": {
+          "type": ["string", "null"]
+        },
+        "disposition": {
+          "enum": [
+            "EXECUTABLE_CORE",
+            "DEFERRED_LIGHT",
+            "DEFERRED_GENERIC_DUST",
+            "MISSING_RUNTIME_RESOURCE",
+            "UNRESOLVED_RUNTIME_ADAPTER",
+            "UNRESOLVED_IMPORT_PRIMITIVE",
+            "UNRESOLVED_SELECTED_LOD"
+          ]
+        },
+        "conversionStatus": {
+          "type": "string",
+          "minLength": 1
+        },
+        "portableSourceRecipeSha256": {
+          "anyOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "runtimeResourceBindingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runtimeResourceBindingSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "sourceResourceClosureCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceResourceClosureSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "occurrence": {
+      "type": "object",
+      "required": [
+        "occurrenceId",
+        "fullKey",
+        "patternId",
+        "sourceActionId",
+        "branchId",
+        "sourceStageIndex",
+        "candidateClipOccurrenceIds",
+        "timingDisposition",
+        "notifyId",
+        "sourceTimeSeconds",
+        "sourceDurationSeconds",
+        "category",
+        "disposition",
+        "reachabilityDisposition",
+        "expandedCarrierCount",
+        "expandedCarrierFullKeysSha256"
+      ],
+      "properties": {
+        "occurrenceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fullKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "patternId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceActionId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "branchId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceStageIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "candidateClipOccurrenceIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "timingDisposition": {
+          "enum": [
+            "REACHABLE",
+            "SOURCE_TIMING_REVIEW_REQUIRED",
+            "UNREACHABLE"
+          ]
+        },
+        "notifyId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceTimeSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sourceDurationSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "category": {
+          "enum": ["particle", "trail", "decal", "unresolved_effect"]
+        },
+        "disposition": {
+          "enum": [
+            "EXECUTABLE_CORE",
+            "DEFERRED_LIGHT",
+            "DEFERRED_GENERIC_DUST",
+            "MISSING_RUNTIME_RESOURCE",
+            "PRESERVED_NON_PARTICLE_SOURCE_ASSET",
+            "UNRESOLVED_RUNTIME_ADAPTER",
+            "UNRESOLVED_SOURCE_PAYLOAD",
+            "UNRESOLVED_SOURCE_SYSTEM",
+            "UNRESOLVED_SOURCE_CARRIER"
+          ]
+        },
+        "reachabilityDisposition": {
+          "enum": [
+            "REACHABLE_REVIEWED",
+            "UNRESOLVED_BRANCH_SELECTION",
+            "UNRESOLVED_CLIP_OCCURRENCE_MAPPING",
+            "SOURCE_TIMING_REVIEW_REQUIRED",
+            "UNREACHABLE_SOURCE_OCCURRENCE"
+          ]
+        },
+        "expandedCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expandedCarrierFullKeysSha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "encounterPatternCount",
+        "actionBindingPatternCount",
+        "missingActionBindingPatternCount",
+        "branchCandidateCount",
+        "sourceSequenceCandidateCount",
+        "reviewedSelectedBranchCount",
+        "reviewedSelectedSequenceCount",
+        "sourceOccurrenceCandidateCount",
+        "sourceSystemCount",
+        "sourceCarrierCount",
+        "encounterStageActionCount",
+        "patternBindingActionCount",
+        "patternBindingGapCount",
+        "patternBindingGapProposalCount",
+        "sourceActionEvidenceProposalCount",
+        "sourceVisualSignatureEquivalentReviewCount",
+        "sourceVisualSignatureAmbiguousReviewCount",
+        "sourcePrimitiveDecodedCarrierCount",
+        "portableModuleReadyCarrierCount",
+        "drawableRuntimeReadyCarrierCount",
+        "missingRuntimeResourceCarrierCount",
+        "runtimeResourceBoundCarrierCount",
+        "runtimeResourceBindingCount",
+        "animationTrailOccurrenceCount",
+        "trailGhostOccurrenceCount",
+        "ribbonCarrierCount",
+        "ribbonSourceSystemCount",
+        "ribbonReferencedOccurrenceCount",
+        "ribbonBlockedOccurrenceCount",
+        "unresolvedRuntimeAdapterCarrierCount",
+        "portableRuntimeAdapterBlockedCarrierCount",
+        "unresolvedRuntimeAdapterOccurrenceCount",
+        "branchCarrierUpperBound",
+        "completionCarrierDenominator",
+        "droppedOccurrenceCount",
+        "duplicateOccurrenceCount",
+        "droppedCarrierCount",
+        "duplicateCarrierCount"
+      ],
+      "properties": {
+        "encounterPatternCount": {
+          "const": 33
+        },
+        "actionBindingPatternCount": {
+          "const": 31
+        },
+        "missingActionBindingPatternCount": {
+          "const": 2
+        },
+        "branchCandidateCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceSequenceCandidateCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "reviewedSelectedBranchCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reviewedSelectedSequenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sourceOccurrenceCandidateCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceSystemCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceCarrierCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "encounterStageActionCount": {
+          "const": 127
+        },
+        "patternBindingActionCount": {
+          "const": 124
+        },
+        "patternBindingGapCount": {
+          "const": 3
+        },
+        "patternBindingGapProposalCount": {
+          "const": 3
+        },
+        "sourceActionEvidenceProposalCount": {
+          "const": 1
+        },
+        "sourceVisualSignatureEquivalentReviewCount": {
+          "const": 4
+        },
+        "sourceVisualSignatureAmbiguousReviewCount": {
+          "const": 1
+        },
+        "sourcePrimitiveDecodedCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "portableModuleReadyCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "drawableRuntimeReadyCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missingRuntimeResourceCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runtimeResourceBoundCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runtimeResourceBindingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "animationTrailOccurrenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "trailGhostOccurrenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ribbonCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ribbonSourceSystemCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ribbonReferencedOccurrenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ribbonBlockedOccurrenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unresolvedRuntimeAdapterCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "portableRuntimeAdapterBlockedCarrierCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unresolvedRuntimeAdapterOccurrenceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "branchCarrierUpperBound": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "completionCarrierDenominator": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "droppedOccurrenceCount": {
+          "const": 0
+        },
+        "duplicateOccurrenceCount": {
+          "const": 0
+        },
+        "droppedCarrierCount": {
+          "const": 0
+        },
+        "duplicateCarrierCount": {
+          "const": 0
+        }
+      }
+    }
+  }
+}

@@ -10306,9 +10306,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  510,
+                        "sourceValue":  1400,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  510,
+                        "resultValue":  1400,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -10374,9 +10374,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  410,
+                        "sourceValue":  1500,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  410,
+                        "resultValue":  1500,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {

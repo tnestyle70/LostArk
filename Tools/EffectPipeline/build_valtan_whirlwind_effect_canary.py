@@ -71,6 +71,7 @@ EXPECTED_EFFECT_ASSET_ID = "effect.valtan.pattern.420633.active"
 EXPECTED_PATTERN_ID = "VALTAN_WHIRLWIND"
 EXPECTED_STAGE_ID = "SPIN"
 EXPECTED_ACTION_ID = "valtan.attack.whirlwind.active"
+EXPECTED_CLIP_OCCURRENCE_ID = f"{EXPECTED_ACTION_ID}.clip.01"
 EXPECTED_SOURCE_ACTION_ID = 420633
 EXPECTED_SOURCE_STAGE_INDEX = 2
 EXPECTED_SOURCE_STAGE_PATH = [1, 2, 3]
@@ -213,6 +214,26 @@ def raw_sha256(path: Path) -> str:
     except OSError as error:
         raise ContractError(f"could not hash {path}: {error}") from error
     return digest.hexdigest()
+
+
+def legacy_crlf_json_sha256_matches(path: Path, expected: str) -> bool:
+    """Accept the mechanical LF checkout of legacy CRLF JSON evidence."""
+    try:
+        payload = path.read_bytes()
+    except OSError as error:
+        raise ContractError(f"could not hash {path}: {error}") from error
+    if hashlib.sha256(payload).hexdigest() == expected:
+        return True
+    if b"\r\n" in payload or b"\n" not in payload:
+        return False
+    legacy_payload = payload.replace(b"\n", b"\r\n")
+    return hashlib.sha256(legacy_payload).hexdigest() == expected
+
+
+def legacy_crlf_json_bytes_match(actual: bytes, expected_lf: bytes) -> bool:
+    return actual == expected_lf or actual == expected_lf.replace(
+        b"\n", b"\r\n"
+    )
 
 
 def canonical_sha256(value: Any) -> str:
@@ -481,7 +502,29 @@ def _validate_animation_binding(
         lambda item: item.get("actionId") == binding["actionId"],
         "action-qualified Valtan animation binding",
     )
-    if row.get("clip") != binding["sourceBranch"]["runtimeClipName"]:
+
+    format_version = document.get("formatVersion")
+    if format_version == 1:
+        runtime_clip = row.get("clip")
+    elif format_version == 2:
+        clips = row.get("clips")
+        if not isinstance(clips, list):
+            raise ContractError("Valtan v2 animation binding clips are missing")
+        clip_occurrence = _one(
+            clips,
+            lambda item: (
+                isinstance(item, dict)
+                and item.get("clipOccurrenceId") == EXPECTED_CLIP_OCCURRENCE_ID
+            ),
+            "canonical Whirlwind v2 clip occurrence",
+        )
+        runtime_clip = clip_occurrence.get("clip")
+    else:
+        raise ContractError(
+            f"unsupported Valtan animation binding formatVersion: {format_version!r}"
+        )
+
+    if runtime_clip != binding["sourceBranch"]["runtimeClipName"]:
         raise ContractError("Valtan animation binding clip differs from source mapping")
 
 
@@ -666,9 +709,10 @@ def _load_source_artifacts(
     action_catalog_path = (
         repository_root / binding["sourceParticleResourceCatalogDocument"]
     )
-    if raw_sha256(action_catalog_path) != evidence[
-        "sourceParticleResourceCatalogSha256"
-    ]:
+    if not legacy_crlf_json_sha256_matches(
+        action_catalog_path,
+        evidence["sourceParticleResourceCatalogSha256"],
+    ):
         raise ContractError("action particle/resource catalog SHA-256 changed")
     action_catalog = load_json(action_catalog_path)
     if (
@@ -1183,7 +1227,9 @@ def _source_profile_from_valtan_material_evidence(
 ) -> tuple[dict[str, Any], str]:
     admission = carrier["materialAdmission"]
     evidence_path = repository_root / admission["evidencePath"]
-    if raw_sha256(evidence_path) != admission["evidenceSha256"]:
+    if not legacy_crlf_json_sha256_matches(
+        evidence_path, admission["evidenceSha256"]
+    ):
         raise ContractError(
             f"{carrier['carrierId']} Valtan Material evidence SHA-256 changed"
         )
@@ -2355,6 +2401,14 @@ def validate_canary(
 def write_transactionally(document: dict[str, Any], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     payload = pretty_json_bytes(document)
+    try:
+        current = output_path.read_bytes()
+    except FileNotFoundError:
+        current = b""
+    except OSError as error:
+        raise ContractError(f"could not read canary output {output_path}: {error}") from error
+    if b"\r\n" in current and b"\n" not in current.replace(b"\r\n", b""):
+        payload = payload.replace(b"\n", b"\r\n")
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -2411,7 +2465,7 @@ def build_and_write(
             actual = output_path.read_bytes()
         except OSError as error:
             raise ContractError(f"could not read canary output {output_path}: {error}") from error
-        if actual != expected:
+        if not legacy_crlf_json_bytes_match(actual, expected):
             raise ContractError(f"v13 canary output is stale: {output_path}")
     else:
         write_transactionally(document, output_path)

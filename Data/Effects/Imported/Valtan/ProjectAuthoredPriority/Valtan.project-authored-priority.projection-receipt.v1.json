@@ -1,0 +1,233 @@
+{
+  "schema": "lostark.valtan-project-authored-priority-projection-receipt",
+  "formatVersion": 1,
+  "ownerArchetypeId": "BOSS_VALTAN",
+  "transactionStatus": "COMMITTED",
+  "inputs": {
+    "patchPlanPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/Valtan.project-authored-priority.patch-plan.v1.json",
+    "patchPlanSha256": "b487e5517fc0c7a4ccd71f2e3de42c697c06e75fd85ea260abdaff6e666018a0",
+    "drawableSweepPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/DrawableProof/Valtan.project-authored-priority.drawable-sweep.v1.json",
+    "drawableSweepSha256": "988721ce95353ced908751dc925370738666d4c7d4e6941da7f543cb521b3742",
+    "drawableResourceRoot": "C:/Users/user/Desktop/LostArk/Client/Bin/Resources",
+    "drawableProofPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/DrawableProof/Valtan.project-authored-priority.drawable-proof.v1.json",
+    "drawableProofSha256": "6cb858e577226da627298d9196ff60d87cd7005ae8f9c6548f687bedb69ffcea"
+  },
+  "policy": {
+    "reconcileMode": "APPEND_MISSING_PRESERVE_EXISTING",
+    "existingElementMutation": "FORBIDDEN",
+    "identityDrift": "SOURCE_REBASE_REQUIRED",
+    "legacyGenericElementDeletion": "FORBIDDEN",
+    "failureAction": "ROLLBACK_ALL_OUTPUTS"
+  },
+  "closure": {
+    "candidateDocumentCount": 9,
+    "projectedElementCount": 24,
+    "highJumpCatalogRowCount": 1,
+    "highJumpCueRowCount": 1,
+    "officialAxePresentationCount": 3
+  },
+  "targets": [
+    {
+      "effectAssetId": "effect.valtan.dash-charge.windup",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.dash-charge.windup.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "533cdc86b3f40465914c891040eba2a014dbd018d08c6fc63f24ca2d207875ff",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.dash-charge.windup.effect.json",
+      "projectedElementIds": [
+        "project-dash-forward-line",
+        "project-dash-forward-pulse"
+      ],
+      "finalDocumentSha256": "f939d8bc9b133440d6503c67870128a85cf2927a987bee1f46c137ba4be4de41"
+    },
+    {
+      "effectAssetId": "effect.valtan.magic-choice.windup",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.windup.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "8b287f971a1d85142017f85ab7a3007a46676de22d4a85e3a6d9d531060e0814",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.magic-choice.windup.effect.json",
+      "projectedElementIds": [
+        "project-donut-outer-boundary",
+        "project-donut-inner-growing-boundary"
+      ],
+      "finalDocumentSha256": "7df1bff148100f2723897c08a173409fab00106cc650e507e3df779864b8fe01"
+    },
+    {
+      "effectAssetId": "effect.valtan.magic-choice.inner",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.inner.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "fcaecd2b10b716affb5446a2951e5dae48f421edd86e0bccc7fc9ce8b25620bd",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.magic-choice.inner.effect.json",
+      "projectedElementIds": [
+        "project-donut-inner-impact"
+      ],
+      "finalDocumentSha256": "a9915237dfb4f5cc3b3507c1abdbfe225363b062dc22fda98dc77ea04ca6f284"
+    },
+    {
+      "effectAssetId": "effect.valtan.magic-choice.outer",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.outer.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "e2d8d82191a39fdfa5103bbdd1d60ed9ae18d9674e9331e608954112f39bdb1d",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.magic-choice.outer.effect.json",
+      "projectedElementIds": [
+        "project-donut-outer-impact"
+      ],
+      "finalDocumentSha256": "48800201ec87038055e227d8e13145121ec41c5db7c08892bc92a765e6259b92"
+    },
+    {
+      "effectAssetId": "effect.valtan.floor-wipe-130.windup",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.floor-wipe-130.windup.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "f84b3afc63e76227032d18669d49562263550faeea8a5faadc1f703c066e63dc",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.floor-wipe-130.windup.effect.json",
+      "projectedElementIds": [
+        "project-floor-six-direction-center-guide"
+      ],
+      "finalDocumentSha256": "727d351df2053519b5884848a42f1c5369cb7f8b70a9e5996a6edbc2de337c68"
+    },
+    {
+      "effectAssetId": "effect.valtan.floor-wipe-130.first-smash",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.floor-wipe-130.first-smash.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "e875bf20ea1be6cb1ef049672a14a04235ee78948a8e9a0c3aaae6e5495cebd9",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.floor-wipe-130.first-smash.effect.json",
+      "projectedElementIds": [
+        "project-floor-six-direction-center-impact"
+      ],
+      "finalDocumentSha256": "976b4e88059c69413a54a9dbca849983b946ef74b8029ff34ef7fce485a5bd41"
+    },
+    {
+      "effectAssetId": "effect.valtan.high-jump.airborne",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.airborne.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "1eedb9732f3d85bf1e22635e5b4457edeb90cb686899f1d11a8b0d83a7591771",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json",
+      "projectedElementIds": [
+        "project-axe-beat-01-target-decal",
+        "project-axe-beat-02-target-decal",
+        "project-axe-beat-03-target-decal",
+        "project-axe-beat-01-falling-axe",
+        "project-axe-beat-02-falling-axe",
+        "project-axe-beat-03-falling-axe",
+        "project-axe-beat-01-ground-impact",
+        "project-axe-beat-02-ground-impact",
+        "project-axe-beat-03-ground-impact"
+      ],
+      "finalDocumentSha256": "f582b1ff1d8d4d1cd935ee391b7f48c061215761a42a20d73bf64b0705331e74"
+    },
+    {
+      "effectAssetId": "effect.valtan.high-jump.land",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.land.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "a15e225a6747a5cd2473397a0c436ee241eb49280b844e7490bc07eb6349e4c7",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.high-jump.land.effect.json",
+      "projectedElementIds": [
+        "project-high-jump-landing-wave"
+      ],
+      "finalDocumentSha256": "bf6caa2844724a413bbcc695230201a5c0f10b6418068146f1b252b0ece23c6d"
+    },
+    {
+      "effectAssetId": "effect.valtan.front-back-front.active",
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.front-back-front.active.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "7b5c085446ca94636cc881d18b6cb438a8a37dc0dc5d500b4211429e76106907",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.front-back-front.active.effect.json",
+      "projectedElementIds": [
+        "project-three-hit-slash-01",
+        "project-three-hit-slash-02",
+        "project-three-hit-slash-03",
+        "project-three-hit-down-smash-decal",
+        "project-three-hit-down-smash-wave",
+        "project-three-hit-down-smash-shockwave"
+      ],
+      "finalDocumentSha256": "fbfde7770930ab779e1716876c47a4eceb7901100f8992719a40c2b9fe63ef19"
+    }
+  ],
+  "canonicalOutputs": [
+    {
+      "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
+      "role": "VALTAN_CUE_DOCUMENT",
+      "sha256": "da68e5ebe7723b36bba8c9bc5a7474b46f16427dcc4fdb1fe99264409d97c29d"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.dash-charge.windup.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "f939d8bc9b133440d6503c67870128a85cf2927a987bee1f46c137ba4be4de41"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.floor-wipe-130.first-smash.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "976b4e88059c69413a54a9dbca849983b946ef74b8029ff34ef7fce485a5bd41"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.floor-wipe-130.windup.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "727d351df2053519b5884848a42f1c5369cb7f8b70a9e5996a6edbc2de337c68"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.front-back-front.active.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "fbfde7770930ab779e1716876c47a4eceb7901100f8992719a40c2b9fe63ef19"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "f582b1ff1d8d4d1cd935ee391b7f48c061215761a42a20d73bf64b0705331e74"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.high-jump.land.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "bf6caa2844724a413bbcc695230201a5c0f10b6418068146f1b252b0ece23c6d"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.magic-choice.inner.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "a9915237dfb4f5cc3b3507c1abdbfe225363b062dc22fda98dc77ea04ca6f284"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.magic-choice.outer.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "48800201ec87038055e227d8e13145121ec41c5db7c08892bc92a765e6259b92"
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.magic-choice.windup.effect.json",
+      "role": "AUTHORED_EFFECT_DOCUMENT",
+      "sha256": "7df1bff148100f2723897c08a173409fab00106cc650e507e3df779864b8fe01"
+    },
+    {
+      "path": "Data/Effects/EffectCatalog.json",
+      "role": "EFFECT_CATALOG",
+      "sha256": "41637bd546aeac977a61f722031a67692882f53cda68ea6274c9164e3a260748"
+    }
+  ],
+  "highJumpAirbornePatch": {
+    "documentSha256": "f582b1ff1d8d4d1cd935ee391b7f48c061215761a42a20d73bf64b0705331e74",
+    "catalogRowSha256": "20bc384ec33d0c8dc525d1a4fc3abdfd3da66dc77abc7607317bec148f98e3df",
+    "cueRowSha256": "237477763a559d362d91480b13f2c777ea87a65cf699240639dbc2564085e8ef",
+    "officialAxePresentationIds": [
+      "project-authored:valtan.high-jump.airborne.beat-01.axe",
+      "project-authored:valtan.high-jump.airborne.beat-02.axe",
+      "project-authored:valtan.high-jump.airborne.beat-03.axe"
+    ]
+  },
+  "whirlwindCanary": {
+    "files": [
+      {
+        "path": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json",
+        "sha256": "e94ddfd463da840962ddf8d8a0b604af4ef833925c2ac1cfd0f8e25522a5bea7"
+      },
+      {
+        "path": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+        "sha256": "34f0d15e31afdca31887828961c8de450ebc027d4dcf54ff0c0d9312df3fd64e"
+      },
+      {
+        "path": "Data/Animation/Authored/Valtan/Valtan.patterneffects.json",
+        "sha256": "06d469324d0581d008b782dd09fbc27b259cff3d4c67f63fc10aae667e50f681"
+      },
+      {
+        "path": "Data/Effects/Imported/Valtan/Valtan.trail-adapter-packets.v1.json",
+        "sha256": "027630e4071e3f54f84713eefd08c1501f81e535711e9b29c8592131f83c4fd7"
+      },
+      {
+        "path": "Data/Effects/VisualPrograms/effect-visual-program-corpus.v1.json",
+        "sha256": "81b5e849256e60c69894d64b25b3b04dcb7619c87b6b94a2f30bd56cb6ac31dc"
+      },
+      {
+        "path": "Data/Effects/VisualPrograms/effect-visual-program-runtime.v1.json",
+        "sha256": "fdb0726fb70b9d3f0983fbea8b630693b50895d4e93ec5810412e5fed65f5fe0"
+      }
+    ],
+    "catalogRowSha256": "0196d1c7f4b05ba314ae89afd5be3be01de1aeac1f61dcbe072adae14a88f847",
+    "cueRowsSha256": "b37514f2a44ac720712e72f07e4e8aef98d8b6ab5fdac72ecd848c88246054db"
+  }
+}

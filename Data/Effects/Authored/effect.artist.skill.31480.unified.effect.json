@@ -6,7 +6,7 @@
   "particleSystem": { "uniformScaleMultiplier": 1, "yawOffsetDegrees": 0, "directionYawDegrees": 0, "initialSpeedMultiplier": 1 },
   "modelCues": [
     { "cueId": "artist_31480_crane_projectile", "modelAssetId": "Effect/Artist/Meshes/SK_SDM_RCC_00_SK_FX_01/SK_SDM_RCC_00_SK_FX_01.wmodel", "clipName": "rcc_sk_flyinheaven", "startDelaySeconds": 1, "durationSeconds": 1.11111116, "opacity": 0.600000024, "colorMultiply": [0.449999988, 0.449999988, 0.449999988, 1], "holdLastFrame": true, "alphaMode": "TRANSLUCENT", "visible": true,
-      "localTransform": { "position": [0, 0, 0], "rotationDegrees": [0, -133, 12.5], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.00999999978, 0.00999999978, 0.00999999978], "velocityPerSecond": [0, 0, 9] },
+      "localTransform": { "position": [0, 0, 0], "rotationDegrees": [0, -91.25, 12.5], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [0.00999999978, 0.00999999978, 0.00999999978], "velocityPerSecond": [0, 0, 9] },
       "assetPreTransform": { "scale": [1, 1, 1], "rotationDegrees": [0, 0, 0] } }
   ],
   "elements": [
@@ -27,7 +27,7 @@
       "actionCueAttachment": { "enabled": false, "follow": false, "sourceAnchorSlotId": "", "runtimeAnchorSlotId": "", "runtimeBoneName": "", "snapshotRootSourceBasisYawDegrees": 0, "socketLocalTransform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] } },
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
-        "transform": { "position": [-0.50999999, 0, 0.810000002], "rotationDegrees": [0, -136.5, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [1, 1, 1], "velocityPerSecond": [0, 0, 0] },
+        "transform": { "position": [-0.50999999, 0, 0.810000002], "rotationDegrees": [0, -136.5, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [2, 2, 2], "velocityPerSecond": [0, 0, 0] },
         "color": { "offset": [0, 0, 0, 0], "multiply": [1, 1, 1, 1], "clip": 0, "emissiveIntensity": 3, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0.300000012], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
         "timing": { "startDelaySeconds": 0.996699989, "lifeTimeSeconds": 0.100000001, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
@@ -584,7 +584,7 @@
         "decal": { "size": [0.140000001, 0.00999999978], "depth": 0.25 },
         "linearLerp": { "position": false, "endPosition": [0, 0, 0], "rotation": false, "endRotationDegrees": [0, 0, 0], "revolution": false, "endRevolutionDegreesPerSecond": [0, 0, 0], "scale": false, "endScale": [1, 1, 1], "velocity": false, "endVelocityPerSecond": [0, 0, 0], "colorOffset": false, "endColorOffset": [0, 0, 0, 0], "colorMultiply": false, "endColorMultiply": [1, 1, 1, 1], "emissiveIntensity": false, "endEmissiveIntensity": 1 },
         "particle": { "maxParticles": 64, "spawnRatePerSecond": 50, "burstCount": 0, "randomSeed": 4, "lifeTimeSeconds": [0.899999976, 0.899999976], "initialPositionMin": [0, 0, 0], "initialPositionMax": [0, 0, 0], "initialVelocityMin": [0, 0, 0], "initialVelocityMax": [0, 0, 0], "acceleration": [0, 0, 0], "startSize": [0.140000001, 0.00999999978], "endSize": [0, 0], "localSpace": true, "billboard": true },
-        "trail": { "maxPoints": 64, "pointLifeTimeSeconds": 0.899999976, "sampleIntervalSeconds": 0.0199999996, "minimumDistance": 0.00999999978, "startWidth": 0.140000001, "endWidth": 0, "tilingDistanceWorldUnits": 5, "distanceTessellationStepWorldUnits": 0.00999999978, "faceCamera": true },
+        "trail": { "maxPoints": 64, "pointLifeTimeSeconds": 0.899999976, "sampleIntervalSeconds": 0.0199999996, "minimumDistance": 0.00999999978, "startWidth": 1.94000006, "endWidth": 0, "tilingDistanceWorldUnits": 5, "distanceTessellationStepWorldUnits": 0.00999999978, "faceCamera": true },
         "afterImage": { "sampleIntervalSeconds": 0.0500000007, "maxCopies": 16, "alphaExponent": 1 },
         "light": { "enabled": false },
         "screenPost": { "enabled": false }
@@ -855,14 +855,14 @@
       "visible": true,
       "kind": "trail",
       "resources": [
-        { "slotId": "base", "assetId": "Effect/Artist/Textures/fx_k_auraline_02.dds" },
+        { "slotId": "base", "assetId": "Effect/Artist/Textures/fx_m_trail_010.dds" },
         { "slotId": "noise", "assetId": "Effect/Artist/Textures/fx_d_noise_002.dds" }
       ],
-      "material": { "templateId": "effect.source_material", "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr", "renderProfile": "alpha_two_sided_depth_read", "sourceProfile": { "enabled": true, "profileId": "ue3.material.fx.m.fx.k.flowrib.01.tr.0ca247309b89", "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1", "parentMaterialPath": "fx_m.fx_k_flowrib_01_tr", "semanticStatus": "reconstructed_profile", "textures": [{ "name": "flowtex", "sourceObjectPath": "fx_tex_02.fx_d_noise_002", "assetId": "Effect/Artist/Textures/fx_d_noise_002.dds", "addressU": "wrap", "addressV": "wrap", "colorSpace": "linear", "samplingEvidence": "legacy_default" }, { "name": "tex_main", "sourceObjectPath": "fx_tex_05.fx_k_auraline_02", "assetId": "Effect/Artist/Textures/fx_k_auraline_02.dds", "addressU": "wrap", "addressV": "wrap", "colorSpace": "linear", "samplingEvidence": "legacy_default" }], "scalars": [{ "name": "colormap_des", "value": 0.699999988 }, { "name": "colormap_power", "value": 1 }, { "name": "colormap_str", "value": 2 }, { "name": "flow_ucoord", "value": 1 }, { "name": "flow_vcoord", "value": 0.5 }, { "name": "maintex_pos_v", "value": 0.150000006 }, { "name": "maintex_str", "value": 10 }, { "name": "maintex_ucoord", "value": 1 }, { "name": "maintex_vcoord", "value": 0.899999976 }], "vectors": [], "staticSwitches": [], "dynamicParameterSemantics": ["unbound", "unbound", "dissolve", "unbound"], "subUVMode": "none" } },
+      "material": { "templateId": "effect.source_material", "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr", "renderProfile": "alpha_two_sided_depth_read", "sourceProfile": { "enabled": true, "profileId": "ue3.material.fx.m.fx.k.flowrib.01.tr.0ca247309b89", "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1", "parentMaterialPath": "fx_m.fx_k_flowrib_01_tr", "semanticStatus": "reconstructed_profile", "textures": [{ "name": "flowtex", "sourceObjectPath": "fx_tex_02.fx_d_noise_002", "assetId": "Effect/Artist/Textures/fx_d_noise_002.dds", "addressU": "wrap", "addressV": "wrap", "colorSpace": "linear", "samplingEvidence": "legacy_default" }, { "name": "tex_main", "sourceObjectPath": "fx_tex_05.fx_k_auraline_02", "assetId": "Effect/Artist/Textures/fx_m_trail_010.dds", "addressU": "wrap", "addressV": "wrap", "colorSpace": "linear", "samplingEvidence": "legacy_default" }], "scalars": [{ "name": "colormap_des", "value": 0.699999988 }, { "name": "colormap_power", "value": 1 }, { "name": "colormap_str", "value": 2 }, { "name": "flow_ucoord", "value": 1 }, { "name": "flow_vcoord", "value": 0.5 }, { "name": "maintex_pos_v", "value": 0.150000006 }, { "name": "maintex_str", "value": 10 }, { "name": "maintex_ucoord", "value": 1 }, { "name": "maintex_vcoord", "value": 0.899999976 }], "vectors": [], "staticSwitches": [], "dynamicParameterSemantics": ["unbound", "unbound", "dissolve", "unbound"], "subUVMode": "none" } },
       "actionCueAttachment": { "enabled": true, "follow": true, "sourceAnchorSlotId": "B_Body_03", "runtimeAnchorSlotId": "WP_WSDM_09.B_Body_03", "runtimeBoneName": "b_wp_1", "snapshotRootSourceBasisYawDegrees": 0, "socketLocalTransform": { "position": [0.464471906, 0, 0], "rotationDegrees": [0, 0, 0], "scale": [1, 1, 1] } },
       "transformInheritance": { "enabled": false, "masterElementId": "" },
       "detail": {
-        "transform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [1, 1, 1], "velocityPerSecond": [0, 0, 0] },
+        "transform": { "position": [0, 0, 0], "rotationDegrees": [0, 0, 0], "revolutionDegreesPerSecond": [0, 0, 0], "scale": [1.98000002, 2.28999996, 1.88], "velocityPerSecond": [0, 0, 0] },
         "color": { "offset": [0, 0, 0, 0], "multiply": [1, 1, 1, 1], "clip": 0, "emissiveIntensity": 1, "distortionIntensity": 0, "distortionOnBaseMaterial": false, "radialTime": 0, "radialIntensity": 0 },
         "uv": { "start": [0, 0], "speed": [0, 0], "wave": false, "waveAmplitude": [0, 0], "waveFrequency": 1, "sequence": false, "loop": true, "sequenceTerm": 0.100000001, "tileColumns": 1, "tileRows": 1, "tileIndex": 0 },
         "timing": { "startDelaySeconds": 0.300615013, "lifeTimeSeconds": 0.899999976, "afterImageSeconds": 0, "dissolveStartNormalized": 1 },
@@ -871,7 +871,7 @@
         "decal": { "size": [0.25, 0.00999999978], "depth": 0.25 },
         "linearLerp": { "position": false, "endPosition": [0, 0, 0], "rotation": false, "endRotationDegrees": [0, 0, 0], "revolution": false, "endRevolutionDegreesPerSecond": [0, 0, 0], "scale": false, "endScale": [1, 1, 1], "velocity": false, "endVelocityPerSecond": [0, 0, 0], "colorOffset": false, "endColorOffset": [0, 0, 0, 0], "colorMultiply": false, "endColorMultiply": [1, 1, 1, 1], "emissiveIntensity": false, "endEmissiveIntensity": 1 },
         "particle": { "maxParticles": 64, "spawnRatePerSecond": 0, "burstCount": 0, "randomSeed": 7, "lifeTimeSeconds": [0.600000024, 0.600000024], "initialPositionMin": [0, 0, 0], "initialPositionMax": [0, 0, 0], "initialVelocityMin": [0, 0, 0], "initialVelocityMax": [0, 0, 0], "acceleration": [0, 0, 0], "startSize": [0.25, 0.00999999978], "endSize": [0.25, 0.00999999978], "localSpace": true, "billboard": true },
-        "trail": { "maxPoints": 64, "pointLifeTimeSeconds": 0.600000024, "sampleIntervalSeconds": 0.0166666992, "minimumDistance": 0.300000012, "startWidth": 0.25, "endWidth": 0, "tilingDistanceWorldUnits": 5, "distanceTessellationStepWorldUnits": 0.0500000007, "faceCamera": true },
+        "trail": { "maxPoints": 64, "pointLifeTimeSeconds": 0.600000024, "sampleIntervalSeconds": 0.0166666992, "minimumDistance": 0.00999999978, "startWidth": 0.5, "endWidth": 0, "tilingDistanceWorldUnits": 5, "distanceTessellationStepWorldUnits": 0.0500000007, "faceCamera": true },
         "afterImage": { "sampleIntervalSeconds": 0.0500000007, "maxCopies": 16, "alphaExponent": 1 },
         "light": { "enabled": false },
         "screenPost": { "enabled": false }
@@ -996,7 +996,8 @@
               { "propertyPath": "ratescale", "sourceClass": "", "sourceObjectPath": "", "componentCount": 1, "operation": 1, "randomLockAxes": 0, "lookupTableChunkSize": 0, "lookupTableNumElements": 0, "lookupTableTimeScale": 0, "lookupTableStartTime": 0, "defaultMinimum": [0, 0, 0, 0], "defaultMaximum": [0, 0, 0, 0], "lookupTable": [], "keys": [              ] }
             ] }
         ] },
-      "sourcePresentation": { "enabled": false }
+      "sourcePresentation": { "enabled": false },
+      "authoringOverrides": { "resources": [ { "slotId": "base", "assetId": "Effect/Artist/Textures/fx_m_trail_010.dds", "compilerAssetId": "Effect/Artist/Textures/fx_k_auraline_02.dds" }, { "slotId": "sourceMaterialTexture:tex_main", "assetId": "Effect/Artist/Textures/fx_m_trail_010.dds", "compilerAssetId": "Effect/Artist/Textures/fx_k_auraline_02.dds" } ], "scalars": [], "colors": [] }
     }
   ]
 }

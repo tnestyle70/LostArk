@@ -23,58 +23,56 @@ RECEIPT = (
 class DimensionMasterSummonBindPoseTest(unittest.TestCase):
     def test_runtime_asset_matches_exact_receipt(self) -> None:
         receipt = json.loads(RECEIPT.read_text(encoding="utf-8"))
-        witness = verifier.verify(
-            RUNTIME_WMODEL,
-            float(receipt["bindPoseGate"]["maximumAllowedNormalizedIdentityError"]),
-        )
+        witness = verifier.verify(RUNTIME_WMODEL)
         self.assertEqual(
-            receipt["evidenceChain"]["final30TicksSha256"],
+            receipt["wmodelSha256"],
             witness["wmodelSha256"],
         )
-        self.assertEqual(receipt["topology"]["submeshCount"], witness["submeshCount"])
+        self.assertEqual(receipt["submeshCount"], witness["submeshCount"])
         self.assertEqual(
-            receipt["topology"]["cookedVertexCount"], witness["cookedVertexCount"]
+            receipt["cookedVertexCount"], witness["cookedVertexCount"]
         )
         self.assertEqual(
-            receipt["topology"]["singleInfluenceCookedVertexCount"],
+            receipt["sourceTopology"]["nonzeroInfluenceHistogram"][1],
             witness["sourceTopology"]["nonzeroInfluenceHistogram"][1],
         )
-        self.assertLessEqual(
+        self.assertAlmostEqual(
             witness["bindPose"]["maximumNormalizedIdentityError"],
-            receipt["bindPoseGate"]["maximumAllowedNormalizedIdentityError"],
+            receipt["bindPose"]["maximumNormalizedIdentityError"],
+            places=12,
         )
 
         self.assertEqual(
-            [row["name"] for row in receipt["animationWitnesses"]],
+            [row["name"] for row in receipt["animations"]],
             [row["name"] for row in witness["animations"]],
         )
         for expected, actual in zip(
-            receipt["animationWitnesses"], witness["animations"], strict=True
+            receipt["animations"], witness["animations"], strict=True
         ):
             self.assertEqual(expected["durationTicks"], actual["durationTicks"])
             self.assertEqual(expected["ticksPerSecond"], actual["ticksPerSecond"])
             self.assertEqual(expected["channelCount"], actual["channelCount"])
             self.assertEqual(
-                expected["movingSourceBoneCount"], len(actual["movingSourceBones"])
+                expected["movingSourceBones"], actual["movingSourceBones"]
             )
             for expected_sample, actual_sample in zip(
                 expected["samples"], actual["samples"], strict=True
             ):
                 self.assertEqual(expected_sample["timeTicks"], actual_sample["timeTicks"])
                 for expected_value, actual_value in zip(
-                    expected_sample["minimum"],
+                    expected_sample["bounds"]["minimum"],
                     actual_sample["bounds"]["minimum"],
                     strict=True,
                 ):
                     self.assertAlmostEqual(expected_value, actual_value, places=5)
                 for expected_value, actual_value in zip(
-                    expected_sample["maximum"],
+                    expected_sample["bounds"]["maximum"],
                     actual_sample["bounds"]["maximum"],
                     strict=True,
                 ):
                     self.assertAlmostEqual(expected_value, actual_value, places=5)
                 self.assertAlmostEqual(
-                    expected_sample["diagonal"],
+                    expected_sample["bounds"]["diagonal"],
                     actual_sample["bounds"]["diagonal"],
                     places=5,
                 )

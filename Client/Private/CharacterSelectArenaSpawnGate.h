@@ -25,11 +25,8 @@ enum class CHARACTER_SELECT_ARENA_SPAWN_GATE_STATE : std::uint8_t
 class CCharacterSelectArenaSpawnGate final
 {
 public:
-	static constexpr std::size_t PRODUCT_PATTERN_EFFECT_CUE_COUNT = 98u;
 	static constexpr std::size_t PRODUCT_COMBAT_OBJECT_EFFECT_TARGET_COUNT = 2u;
-	static constexpr std::size_t PRODUCT_EFFECT_TARGET_COUNT =
-		PRODUCT_PATTERN_EFFECT_CUE_COUNT +
-		PRODUCT_COMBAT_OBJECT_EFFECT_TARGET_COUNT;
+
 	static constexpr std::chrono::seconds PREWARM_TIMEOUT{ 30 };
 
 	bool Begin(const bool bRequiresPrewarm)

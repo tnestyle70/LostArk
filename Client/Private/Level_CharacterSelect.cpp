@@ -840,22 +840,10 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 		VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 		std::string Status;
 		if (!CValtanPatternEffectCueDocument::Load_ForProductPrewarm(
-				CueDocument, Status) ||
-			CueDocument.Cues.size() !=
-				CCharacterSelectArenaSpawnGate::
-					PRODUCT_PATTERN_EFFECT_CUE_COUNT)
+				CueDocument, Status) || CueDocument.Cues.empty())
 		{
-			if (CueDocument.Cues.size() !=
-					CCharacterSelectArenaSpawnGate::
-						PRODUCT_PATTERN_EFFECT_CUE_COUNT &&
-				!CueDocument.Cues.empty())
-			{
-				Status = "Valtan Product pattern Effect cue contract expected " +
-					std::to_string(CCharacterSelectArenaSpawnGate::
-						PRODUCT_PATTERN_EFFECT_CUE_COUNT) +
-					" targets, but loaded " +
-					std::to_string(CueDocument.Cues.size()) + ".";
-			}
+			if (Status.empty())
+				Status = "Valtan Product Effect cue contract has no targets.";
 			Isolate_ValtanSpawnPreparationFailure(Status, false);
 			return false;
 		}
@@ -885,23 +873,18 @@ bool_t CLevel_CharacterSelect::Request_SelectedArenaSpawn()
 		if (!CEffectPresentationService::Queue_ProductTargets_Priority(
 				EffectAssetIds,
 				m_ValtanEffectPreparationTargets,
-				Status) ||
-			m_ValtanEffectPreparationTargets.size() !=
-				CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT)
+				Status) || m_ValtanEffectPreparationTargets.empty())
 		{
-			if (m_ValtanEffectPreparationTargets.size() !=
-					CCharacterSelectArenaSpawnGate::PRODUCT_EFFECT_TARGET_COUNT &&
-				!Status.empty())
-			{
-				Status += " Exact 100-target registration was not committed.";
-			}
+			if (Status.empty())
+				Status = "No unique Valtan Product Effect target was registered.";
 			Isolate_ValtanSpawnPreparationFailure(Status, false);
 			return false;
 		}
 		m_ValtanPrewarmDeadline = std::chrono::steady_clock::now() +
 			CCharacterSelectArenaSpawnGate::PREWARM_TIMEOUT;
-		m_strStatus = "Priority-prewarming 100 Valtan Product Effects before "
-			"the Server spawn request.";
+		m_strStatus = "Priority-prewarming " +
+			std::to_string(m_ValtanEffectPreparationTargets.size()) +
+			" unique Valtan Product Effects before the Server spawn request.";
 		return true;
 	}
 
@@ -926,11 +909,12 @@ void CLevel_CharacterSelect::Advance_ArenaSpawnRequest()
 				m_ValtanEffectPreparationTargets);
 		if (Probe.bSettled)
 		{
+			const size_t iExpectedTargetCount =
+				m_ValtanEffectPreparationTargets.size();
 			const bool_t bAllTargetsPrepared =
-				Probe.iTargetCount == CCharacterSelectArenaSpawnGate::
-					PRODUCT_EFFECT_TARGET_COUNT &&
-				Probe.iPreparedCount == CCharacterSelectArenaSpawnGate::
-					PRODUCT_EFFECT_TARGET_COUNT &&
+				0u != iExpectedTargetCount &&
+				Probe.iTargetCount == iExpectedTargetCount &&
+				Probe.iPreparedCount == iExpectedTargetCount &&
 				0u == Probe.iPendingCount && 0u == Probe.iFailedCount &&
 				0u == Probe.iUnavailableCount;
 			if (!bAllTargetsPrepared ||
@@ -1365,7 +1349,8 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 			m_iArenaSpawnIntentIndex == m_iSelectedArenaSpawnIndex)
 		{
 			ImGui::SameLine();
-			ImGui::TextDisabled("Prewarming 99 boss Effects");
+			ImGui::TextDisabled("Prewarming %zu unique boss Effects",
+				m_ValtanEffectPreparationTargets.size());
 		}
 		else if (m_pArenaSpawnGate->Can_Retry())
 			ImGui::SameLine(), ImGui::TextDisabled("Retry available");

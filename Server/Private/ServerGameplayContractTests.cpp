@@ -1728,7 +1728,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		constexpr std::array<std::uint32_t, 4u> expectedOpenMs =
 			{ 100u, 0u, 200u, 0u };
 		constexpr std::array<std::uint32_t, 4u> expectedCloseMs =
-			{ 510u, 410u, 1067u, 0u };
+			{ 1400u, 1500u, 1067u, 0u };
 		bool exactDimensionMasterTiming =
 			nullptr != dimensionMasterBasicAttack &&
 			1400u == dimensionMasterBasicAttack->iActionDurationMs &&
@@ -1754,7 +1754,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					RootMotion.back().iTimeMs;
 		}
 		tests.Require(exactDimensionMasterTiming,
-			"Resolve exact DimensionMaster BA timings and 1400 ms root-motion trim");
+			"Resolve exact DimensionMaster BA timings, full-stage input windows and 1400 ms root-motion trim");
 
 		if (nullptr != dimensionMasterBasicAttack)
 		{

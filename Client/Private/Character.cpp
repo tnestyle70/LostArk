@@ -234,6 +234,11 @@ bool_t CCharacter::Load_EffectCues()
 			status + "\n").c_str());
 		return false;
 	}
+	if (!staged.UnavailableEffectAssetIds.empty())
+	{
+		OutputDebugStringA(("Character Effect cue targets isolated: " +
+			status + "\n").c_str());
+	}
 
 	for (const ANIMATION_EFFECT_CUE& cue : staged.Cues)
 	{

@@ -1,0 +1,732 @@
+{
+  "schema": "lostark.valtan-project-authored-priority-patch-plan",
+  "formatVersion": 1,
+  "ownerArchetypeId": "BOSS_VALTAN",
+  "generator": {
+    "script": "Tools/EffectPipeline/build_valtan_project_authored_priority_candidates.py",
+    "policyVersion": 1
+  },
+  "policy": {
+    "reconcileMode": "MISSING_ONLY",
+    "sourceClaimPolicy": "NO_SOURCE_EXACT_CLAIMS",
+    "portalRushExcluded": true,
+    "newStandaloneLightAllowed": false,
+    "genericDustDebrisAllowed": false,
+    "sourceRecipeEnabled": false,
+    "sourcePresentationEnabled": false,
+    "canonicalMutationPerformed": false
+  },
+  "resourceVerification": [
+    {
+      "assetId": "Character/Valtan/ValtanWeapon.wmodel",
+      "byteSize": 139664,
+      "sha256": "baffbd5268f216267d1cba8fb9eaf2b58276122ddd7755d18787f7dd9bb9d3da"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_H_W_01/fx_h_wave_04.dds",
+      "byteSize": 32896,
+      "sha256": "982ff5105d4850438f2fec37cd8f920bfefc037ed5528bffa9dd50e9fd9cdbb0"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_a_line_010_ycl.dds",
+      "byteSize": 8320,
+      "sha256": "7c8bc941fd4796f0d1791ca4f4684c4175e7b73d1ae1880018d648a28bb86784"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_line_003_xcl.dds",
+      "byteSize": 8320,
+      "sha256": "0c1d671e8da11f3aaa194c8103f360832033d3dd84a914119799c895e774acc2"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds",
+      "byteSize": 16512,
+      "sha256": "1045f25f5cdb36e4afb66a3bb2417158c4ecbda419d1e31aa269dd620c3c07c0"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_004_cl.dds",
+      "byteSize": 131200,
+      "sha256": "7fa5d94db7d8587ad94ee5a119119e97221cbbe8b64eda7a0bed2ac6b447f094"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+      "byteSize": 32896,
+      "sha256": "58a957a8d13005c12afb097c6c8d423d2c94872dfe8b76ab1d51dabbfe67749b"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_011.dds",
+      "byteSize": 8320,
+      "sha256": "4d0d6a1024a7ef55c5ff469729d0f567a2dbbe941c6568f495b5dc72c2169618"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+      "byteSize": 8320,
+      "sha256": "0cda1d83c6df738528a3e32c45fd72f76a6acddf0010c76170032ae4e3469933"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_032.dds",
+      "byteSize": 8320,
+      "sha256": "feb0dfdea5b076acf374c58d1cbf034652b8d878a42a79ace61b62f0e49933ec"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_042_ycl.dds",
+      "byteSize": 384,
+      "sha256": "1665f94aef6d9df1b2497549bd42451d0e1692f34179976ae48c24b2ef10e06f"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_h_atypical_01_1.dds",
+      "byteSize": 32896,
+      "sha256": "762858e2707dea6783690193df7c72bf59b65fb924de429272632750d7557dec"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds",
+      "byteSize": 32896,
+      "sha256": "f394a70ea64e1e29ac60ada11d7a9c6305367b827c391ccb1ede3377d18f0117"
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_HIGH_00/fx_b_decal_001.dds",
+      "byteSize": 262272,
+      "sha256": "db8a741678792eadd45d1d4e5b381ee1b2783391d1d67cd1f028344e8a42e7bf"
+    }
+  ],
+  "resourceRoleDispositions": [
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_line_003_xcl.dds",
+      "requestedRole": "DASH_FORWARD_RED_PATH",
+      "evidenceStatus": "EXACT_OTHER_PATTERN",
+      "sourceEvidenceContext": "Exact evidence is FLOOR_WIPE action 420630 / FX_MN_RPBF_00_O.par_o_rpbf_atk_09_02 / Att_Battle_15_03 / fx_j_de_master_01_17_tr 01.heightmap; Dash use is not exact.",
+      "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
+      "candidateEffectAssetIds": [
+        "effect.valtan.dash-charge.windup"
+      ],
+      "handTunableFields": [
+        "detail.color.multiply",
+        "detail.linearLerp.endScale",
+        "detail.transform.scale",
+        "detail.uv.speed"
+      ]
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds",
+      "requestedRole": "MAGIC_DONUT_RING_BOUNDARIES",
+      "evidenceStatus": "EXACT_SAME_PATTERN_LIMITED_STAGE",
+      "sourceEvidenceContext": "Exact Magic Choice evidence is limited to outer-end FX_MN_RPBF_00_O.par_o_rpbf_atk_03_03 / Att_Battle_5_02_End; both authored boundaries remain tuned.",
+      "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
+      "candidateEffectAssetIds": [
+        "effect.valtan.magic-choice.inner",
+        "effect.valtan.magic-choice.outer",
+        "effect.valtan.magic-choice.windup"
+      ],
+      "handTunableFields": [
+        "detail.color.multiply",
+        "detail.linearLerp.endScale",
+        "detail.transform.scale",
+        "detail.uv.speed"
+      ]
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_004_cl.dds",
+      "requestedRole": "MAGIC_DONUT_ANNULUS_UV_SWEEP",
+      "evidenceStatus": "EXACT_OTHER_PATTERN",
+      "sourceEvidenceContext": "Exact context is the Dash par_s_rpbf_dash_01_1 halfsphere/hemisphere material fx_h_me_fd_01_1_ts_tr transition texture; Magic Choice use is not exact.",
+      "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
+      "candidateEffectAssetIds": [
+        "effect.valtan.magic-choice.windup"
+      ],
+      "handTunableFields": [
+        "detail.color.multiply",
+        "detail.linearLerp.endScale",
+        "detail.transform.scale",
+        "detail.uv.speed"
+      ]
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+      "requestedRole": "FLOOR_WIPE_IMPACT_DIFFUSE",
+      "evidenceStatus": "EXACT_SAME_PATTERN_SOURCE_ONLY_OCCURRENCE",
+      "sourceEvidenceContext": "Exact Atk09_02 evidence binds fx_d_atypical_009 as diff_tex1 on fx_o_me_makeflow_02_22_tr; the reachable authored center impact is a tuned approximation.",
+      "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
+      "candidateEffectAssetIds": [
+        "effect.valtan.floor-wipe-130.first-smash"
+      ],
+      "handTunableFields": [
+        "detail.color.multiply",
+        "detail.linearLerp.endScale",
+        "detail.transform.scale",
+        "detail.uv.speed"
+      ]
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_032.dds",
+      "requestedRole": "FLOOR_WIPE_GUIDE_AND_IMPACT_MASK",
+      "evidenceStatus": "EXACT_SAME_PATTERN_SOURCE_ONLY_OCCURRENCE",
+      "sourceEvidenceContext": "Exact Atk09_02 evidence binds fx_d_atypical_032 as mask_tex2 on fx_o_pa_waterflow_01_14_tr; guide and center-mask uses remain independently hand tuned.",
+      "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
+      "candidateEffectAssetIds": [
+        "effect.valtan.floor-wipe-130.first-smash",
+        "effect.valtan.floor-wipe-130.windup"
+      ],
+      "handTunableFields": [
+        "detail.color.multiply",
+        "detail.linearLerp.endScale",
+        "detail.transform.scale",
+        "detail.uv.speed"
+      ]
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+      "requestedRole": "FLOOR_WIPE_IMPACT_NOISE",
+      "evidenceStatus": "EXACT_SAME_PATTERN_SOURCE_ONLY_OCCURRENCE",
+      "sourceEvidenceContext": "Reviewed Atk09_02 evidence exists at fx_o_pa_ap_01_1_tr 01.map_a, so this resource is an explicit tuned noise candidate rather than deferred.",
+      "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
+      "candidateEffectAssetIds": [
+        "effect.valtan.floor-wipe-130.first-smash"
+      ],
+      "handTunableFields": [
+        "detail.color.multiply",
+        "detail.linearLerp.endScale",
+        "detail.transform.scale",
+        "detail.uv.speed"
+      ]
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds",
+      "requestedRole": "FRONT_BACK_FRONT_FINAL_GROUND_IMPACT",
+      "evidenceStatus": "NO_TARGET_SOURCE_JOIN",
+      "sourceEvidenceContext": "The reviewed source catalog has no action 420637 join for fx_i_shockwave_02_ycl; the third-hit ground supplement is therefore project tuned.",
+      "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
+      "candidateEffectAssetIds": [
+        "effect.valtan.front-back-front.active"
+      ],
+      "handTunableFields": [
+        "detail.color.multiply",
+        "detail.linearLerp.endScale",
+        "detail.transform.scale",
+        "detail.uv.speed"
+      ]
+    },
+    {
+      "assetId": "Effect/Valtan/Textures/FX_TEX_04/fx_i_shockwave_02_ycl.dds",
+      "requestedRole": "HIGH_JUMP_AXE_GROUND_IMPACT",
+      "evidenceStatus": "PROJECT_PALETTE_REUSE_NO_SOURCE_CLAIM",
+      "sourceEvidenceContext": "fx_i_shockwave_02_ycl is a physically verified official Valtan texture already admitted by the project palette; its HIGH_JUMP action 420610 timing and placement remain project authored and are not promoted to source-exact evidence.",
+      "candidateDisposition": "PROJECT_TUNED_CANDIDATE",
+      "candidateEffectAssetIds": [
+        "effect.valtan.high-jump.airborne"
+      ],
+      "handTunableFields": [
+        "detail.color.multiply",
+        "detail.linearLerp.endScale",
+        "detail.transform.scale",
+        "detail.uv.speed"
+      ]
+    }
+  ],
+  "targets": [
+    {
+      "patternId": "VALTAN_DASH_CHARGE",
+      "stageId": "WINDUP",
+      "actionId": "valtan.attack.dash-charge.windup",
+      "clipOccurrenceId": "valtan.attack.dash-charge.windup.clip.01",
+      "targetEffectAssetId": "effect.valtan.dash-charge.windup",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.dash-charge.windup.effect.json",
+      "canonicalState": "EXISTING_DOCUMENT",
+      "disposition": "PROJECT_TUNED_OVERRIDE",
+      "presentationOnly": false,
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.dash-charge.windup.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "533cdc86b3f40465914c891040eba2a014dbd018d08c6fc63f24ca2d207875ff",
+      "desiredElements": [
+        {
+          "elementId": "project-dash-forward-line",
+          "sourceNode": "project-authored:valtan.dash-charge.forward-line",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-dash-forward-pulse",
+          "sourceNode": "project-authored:valtan.dash-charge.forward-pulse",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        }
+      ],
+      "preservedCanonicalElementIds": [],
+      "excludedSourceOccurrenceIds": [],
+      "notes": [
+        "fx_c_line_003_xcl is a physically verified PROJECT_TUNED red forward-path telegraph; its exact source evidence belongs to FLOOR_WIPE action 420630 / par_o_rpbf_atk_09_02 / Att_Battle_15_03, not Dash.",
+        "The Dash source-exact par_s_rpbf_dash_01_1 core uses fm_h_halfsphere_01_1 and fm_d_hemisphere_001_1; this path overlay stays separate and does not duplicate or claim that shield core.",
+        "fx_d_atypical_042_ycl remains a physically verified project-tuned pulse; no shield mesh is inferred by filename or silhouette."
+      ]
+    },
+    {
+      "patternId": "VALTAN_MAGIC_CHOICE",
+      "stageId": "WINDUP",
+      "actionId": "valtan.attack.magic-choice.windup",
+      "clipOccurrenceId": "valtan.attack.magic-choice.windup.clip.01",
+      "targetEffectAssetId": "effect.valtan.magic-choice.windup",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.magic-choice.windup.effect.json",
+      "canonicalState": "EXISTING_DOCUMENT",
+      "disposition": "PROJECT_TUNED_OVERRIDE",
+      "presentationOnly": false,
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.windup.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "8b287f971a1d85142017f85ab7a3007a46676de22d4a85e3a6d9d531060e0814",
+      "desiredElements": [
+        {
+          "elementId": "project-donut-outer-boundary",
+          "sourceNode": "project-authored:valtan.magic-choice.donut.outer-boundary",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-donut-inner-growing-boundary",
+          "sourceNode": "project-authored:valtan.magic-choice.donut.inner-growing-boundary",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        }
+      ],
+      "preservedCanonicalElementIds": [],
+      "excludedSourceOccurrenceIds": [],
+      "notes": [
+        "Both red boundaries combine fx_c_ring_002 and fx_c_ring_004_cl as PROJECT_TUNED candidates; the inner ring grows to the outer boundary while UV speed drives an annulus sweep.",
+        "fx_c_ring_002 has exact Magic Choice evidence only at outer-end par_o_rpbf_atk_03_03 / Att_Battle_5_02_End; it does not make both candidate boundaries source-exact.",
+        "fx_c_ring_004_cl is an exact transition texture in the Dash halfsphere/hemisphere material context, not a Magic Choice source join."
+      ]
+    },
+    {
+      "patternId": "VALTAN_MAGIC_CHOICE",
+      "stageId": "INNER",
+      "actionId": "valtan.attack.magic-choice.inner",
+      "clipOccurrenceId": "valtan.attack.magic-choice.inner.clip.01",
+      "targetEffectAssetId": "effect.valtan.magic-choice.inner",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.magic-choice.inner.effect.json",
+      "canonicalState": "EXISTING_DOCUMENT",
+      "disposition": "PROJECT_TUNED_OVERRIDE",
+      "presentationOnly": false,
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.inner.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "fcaecd2b10b716affb5446a2951e5dae48f421edd86e0bccc7fc9ce8b25620bd",
+      "desiredElements": [
+        {
+          "elementId": "project-donut-inner-impact",
+          "sourceNode": "project-authored:valtan.magic-choice.donut.inner-impact",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        }
+      ],
+      "preservedCanonicalElementIds": [],
+      "excludedSourceOccurrenceIds": [],
+      "notes": []
+    },
+    {
+      "patternId": "VALTAN_MAGIC_CHOICE",
+      "stageId": "OUTER",
+      "actionId": "valtan.attack.magic-choice.outer",
+      "clipOccurrenceId": "valtan.attack.magic-choice.outer.clip.01",
+      "targetEffectAssetId": "effect.valtan.magic-choice.outer",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.magic-choice.outer.effect.json",
+      "canonicalState": "EXISTING_DOCUMENT",
+      "disposition": "PROJECT_TUNED_OVERRIDE",
+      "presentationOnly": false,
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.magic-choice.outer.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "e2d8d82191a39fdfa5103bbdd1d60ed9ae18d9674e9331e608954112f39bdb1d",
+      "desiredElements": [
+        {
+          "elementId": "project-donut-outer-impact",
+          "sourceNode": "project-authored:valtan.magic-choice.donut.outer-impact",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        }
+      ],
+      "preservedCanonicalElementIds": [],
+      "excludedSourceOccurrenceIds": [],
+      "notes": []
+    },
+    {
+      "patternId": "VALTAN_FLOOR_WIPE_130",
+      "stageId": "WINDUP",
+      "actionId": "valtan.mechanic.floor-wipe-130.windup",
+      "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.windup.clip.01",
+      "targetEffectAssetId": "effect.valtan.floor-wipe-130.windup",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.floor-wipe-130.windup.effect.json",
+      "canonicalState": "EXISTING_DOCUMENT",
+      "disposition": "PROJECT_AUTHORED",
+      "presentationOnly": false,
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.floor-wipe-130.windup.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "f84b3afc63e76227032d18669d49562263550faeea8a5faadc1f703c066e63dc",
+      "desiredElements": [
+        {
+          "elementId": "six-direction-telegraph.axis-000",
+          "sourceNode": "project-authored:valtan.floor-wipe-130.telegraph.axis-000",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "PRESERVE_EXISTING",
+          "canonicalElementSha256": "a995ff28f8dd644353232d25592d3eb73f0398444528ad6d171c3c9410780142"
+        },
+        {
+          "elementId": "six-direction-telegraph.axis-060",
+          "sourceNode": "project-authored:valtan.floor-wipe-130.telegraph.axis-060",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "PRESERVE_EXISTING",
+          "canonicalElementSha256": "0b54738f0fd4dbe5b5078c9f6389552507e381777e1f344b66e9326a50ed9641"
+        },
+        {
+          "elementId": "six-direction-telegraph.axis-120",
+          "sourceNode": "project-authored:valtan.floor-wipe-130.telegraph.axis-120",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "PRESERVE_EXISTING",
+          "canonicalElementSha256": "e638f8a39ea7c8e2eae03475d81391ad488234f5e7ad5ca6764b63b5691ba8d7"
+        },
+        {
+          "elementId": "project-floor-six-direction-center-guide",
+          "sourceNode": "project-authored:valtan.floor-wipe-130.telegraph.center-guide",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        }
+      ],
+      "preservedCanonicalElementIds": [
+        "six-direction-telegraph.axis-000",
+        "six-direction-telegraph.axis-060",
+        "six-direction-telegraph.axis-120"
+      ],
+      "excludedSourceOccurrenceIds": [
+        "source-only:mesh_att_battle_15_03:Atk09_02"
+      ],
+      "notes": [
+        "Existing project-authored 0/60/120 degree axis rows are preservation sentinels and form six directions without importing source-only mesh_att_battle_15_03.",
+        "Color, UV speed, and scale remain direct-authored hand-tuning fields."
+      ]
+    },
+    {
+      "patternId": "VALTAN_FLOOR_WIPE_130",
+      "stageId": "FIRST_SMASH",
+      "actionId": "valtan.mechanic.floor-wipe-130.first-smash",
+      "clipOccurrenceId": "valtan.mechanic.floor-wipe-130.first-smash.clip.01",
+      "targetEffectAssetId": "effect.valtan.floor-wipe-130.first-smash",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.floor-wipe-130.first-smash.effect.json",
+      "canonicalState": "EXISTING_DOCUMENT",
+      "disposition": "PROJECT_AUTHORED",
+      "presentationOnly": false,
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.floor-wipe-130.first-smash.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "e875bf20ea1be6cb1ef049672a14a04235ee78948a8e9a0c3aaae6e5495cebd9",
+      "desiredElements": [
+        {
+          "elementId": "six-direction-impact.axis-000",
+          "sourceNode": "project-authored:valtan.floor-wipe-130.impact.axis-000",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "PRESERVE_EXISTING",
+          "canonicalElementSha256": "75ec9e28c94d50a4689b38dceef171a0b1d893b05088dd2ffb818b71a879b763"
+        },
+        {
+          "elementId": "six-direction-impact.axis-060",
+          "sourceNode": "project-authored:valtan.floor-wipe-130.impact.axis-060",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "PRESERVE_EXISTING",
+          "canonicalElementSha256": "413d78727839253597edf3c8bbe7dc0fafab8b76a027f9bd4dcd0250697fd5ac"
+        },
+        {
+          "elementId": "six-direction-impact.axis-120",
+          "sourceNode": "project-authored:valtan.floor-wipe-130.impact.axis-120",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "PRESERVE_EXISTING",
+          "canonicalElementSha256": "07e12f032ed5cb9dfde4a8788a70a5cc6449cba44938018635a662ba700b6349"
+        },
+        {
+          "elementId": "project-floor-six-direction-center-impact",
+          "sourceNode": "project-authored:valtan.floor-wipe-130.impact.center",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        }
+      ],
+      "preservedCanonicalElementIds": [
+        "six-direction-impact.axis-000",
+        "six-direction-impact.axis-060",
+        "six-direction-impact.axis-120"
+      ],
+      "excludedSourceOccurrenceIds": [
+        "source-only:mesh_att_battle_15_03:Atk09_02"
+      ],
+      "notes": [
+        "The center impact exposes fx_d_atypical_009 diffuse, fx_d_atypical_032 mask, and fx_d_atypical_028 noise as hand-tunable project-authored slots; all occur in exact Atk09_02 evidence, but this overlay does not promote the unreachable 15_03 occurrence.",
+        "fx_c_line_003_xcl remains exact evidence for the excluded 15_03 source renderer while existing project-authored axis rows are preserved.",
+        "Color, UV speed, and scale remain direct-authored hand-tuning fields."
+      ]
+    },
+    {
+      "patternId": "VALTAN_HIGH_JUMP",
+      "stageId": "AIRBORNE",
+      "actionId": "valtan.attack.high-jump.airborne",
+      "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
+      "targetEffectAssetId": "effect.valtan.high-jump.airborne",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json",
+      "canonicalState": "MISSING_DOCUMENT",
+      "disposition": "PROJECT_AUTHORED",
+      "presentationOnly": true,
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.airborne.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "1eedb9732f3d85bf1e22635e5b4457edeb90cb686899f1d11a8b0d83a7591771",
+      "desiredElements": [
+        {
+          "elementId": "project-axe-beat-01-target-decal",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-01.target-decal",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-02-target-decal",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-02.target-decal",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-03-target-decal",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-03.target-decal",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-01-falling-axe",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-01.axe",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-02-falling-axe",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-02.axe",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-03-falling-axe",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-03.axe",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-01-ground-impact",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-01.ground-impact",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-02-ground-impact",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-02.ground-impact",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-axe-beat-03-ground-impact",
+          "sourceNode": "project-authored:valtan.high-jump.airborne.beat-03.ground-impact",
+          "disposition": "PROJECT_AUTHORED",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        }
+      ],
+      "preservedCanonicalElementIds": [],
+      "excludedSourceOccurrenceIds": [],
+      "notes": [
+        "Three root-relative target positions are hand-tuning candidates, not Server target selection or damage actors.",
+        "Each falling Mesh reuses Character/Valtan/ValtanWeapon.wmodel with useModelMaterial=true and modelPreScale=1.0; official geometry and embedded base texture are exact while trajectory, rotation, and timing are PROJECT_AUTHORED.",
+        "The three ground Sprite Particle impacts use physically verified project-palette textures and remain PROJECT_AUTHORED presentation; they add no AIRBORNE hit or Client damage actor.",
+        "No source-action projectile payload is claimed: all nine AIRBORNE elements are presentation-only and the existing LAND one-hit Server authority remains unchanged."
+      ]
+    },
+    {
+      "patternId": "VALTAN_HIGH_JUMP",
+      "stageId": "LAND",
+      "actionId": "valtan.attack.high-jump.land",
+      "clipOccurrenceId": "valtan.attack.high-jump.land.clip.01",
+      "targetEffectAssetId": "effect.valtan.high-jump.land",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.high-jump.land.effect.json",
+      "canonicalState": "EXISTING_DOCUMENT",
+      "disposition": "PROJECT_TUNED_OVERRIDE",
+      "presentationOnly": true,
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.high-jump.land.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "a15e225a6747a5cd2473397a0c436ee241eb49280b844e7490bc07eb6349e4c7",
+      "desiredElements": [
+        {
+          "elementId": "project-high-jump-landing-wave",
+          "sourceNode": "project-authored:valtan.high-jump.land.outward-wave",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        }
+      ],
+      "preservedCanonicalElementIds": [],
+      "excludedSourceOccurrenceIds": [],
+      "notes": [
+        "fx_h_atypical_01_1 is a physically verified landing-wave tuning candidate, not a source-exact claim."
+      ]
+    },
+    {
+      "patternId": "VALTAN_FRONT_BACK_FRONT",
+      "stageId": "SMASHES",
+      "actionId": "valtan.attack.front-back-front.active",
+      "clipOccurrenceId": "valtan.attack.front-back-front.active.clip.01",
+      "targetEffectAssetId": "effect.valtan.front-back-front.active",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.front-back-front.active.effect.json",
+      "canonicalState": "EXISTING_DOCUMENT",
+      "disposition": "PROJECT_TUNED_OVERRIDE",
+      "presentationOnly": false,
+      "overlayDocumentPath": "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/effect.valtan.front-back-front.active.project-authored-overlay.effect.json",
+      "overlayDocumentSha256": "7b5c085446ca94636cc881d18b6cb438a8a37dc0dc5d500b4211429e76106907",
+      "desiredElements": [
+        {
+          "elementId": "project-three-hit-slash-01",
+          "sourceNode": "project-authored:valtan.front-back-front.hit-01.slash-wave",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-three-hit-slash-02",
+          "sourceNode": "project-authored:valtan.front-back-front.hit-02.slash-wave",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-three-hit-slash-03",
+          "sourceNode": "project-authored:valtan.front-back-front.hit-03.slash-wave",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-three-hit-down-smash-decal",
+          "sourceNode": "project-authored:valtan.front-back-front.hit-03.ground-decal",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-three-hit-down-smash-wave",
+          "sourceNode": "project-authored:valtan.front-back-front.hit-03.ground-wave",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        },
+        {
+          "elementId": "project-three-hit-down-smash-shockwave",
+          "sourceNode": "project-authored:valtan.front-back-front.hit-03.ground-shockwave",
+          "disposition": "PROJECT_TUNED_OVERRIDE",
+          "reconcileAction": "APPEND_MISSING",
+          "canonicalElementSha256": null
+        }
+      ],
+      "preservedCanonicalElementIds": [],
+      "excludedSourceOccurrenceIds": [],
+      "notes": [
+        "fx_b_decal_001 and fx_h_wave_04 do not source-join action 420637 and remain explicit project-tuned supplements.",
+        "fx_i_shockwave_02_ycl is physically verified but has no Front/Back/Front action 420637 source join, so the final ground shockwave remains PROJECT_TUNED.",
+        "Only the three gameplay-aligned waves are authored; the fourth source visual wave remains outside this overlay."
+      ]
+    }
+  ],
+  "highJumpAirbornePatch": {
+    "catalogRow": {
+      "effectAssetId": "effect.valtan.high-jump.airborne",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
+    },
+    "cueRow": {
+      "bindingId": "cue.valtan.high-jump.airborne.project-authored",
+      "occurrenceId": "cue.valtan.high-jump.airborne.project-authored.occurrence.01",
+      "patternId": "VALTAN_HIGH_JUMP",
+      "stageId": "AIRBORNE",
+      "actionId": "valtan.attack.high-jump.airborne",
+      "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
+      "effectAssetId": "effect.valtan.high-jump.airborne",
+      "anchorSlotId": "root",
+      "followPolicy": "snapshot",
+      "stopPolicy": "natural",
+      "repeatPolicy": "once",
+      "sourceStartMs": 0,
+      "sourceEndMs": null,
+      "localTransform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotationDegrees": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    "authoringDocument": {
+      "effectAssetId": "effect.valtan.high-jump.airborne",
+      "targetAuthoringPath": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
+    },
+    "authority": {
+      "presentationOnly": true,
+      "serverGameplayChange": false,
+      "serverDamagePolicy": "UNCHANGED_EXISTING_LAND_STAGE_AUTHORITY",
+      "projectileAuthorityStatus": "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE"
+    }
+  },
+  "projectilePresentations": [
+    {
+      "presentationId": "project-authored:valtan.high-jump.airborne.beat-01.axe",
+      "patternId": "VALTAN_HIGH_JUMP",
+      "stageId": "AIRBORNE",
+      "elementId": "project-axe-beat-01-falling-axe",
+      "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
+      "modelAssetId": "Character/Valtan/ValtanWeapon.wmodel",
+      "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
+      "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
+      "baseTextureProvenance": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT",
+      "trajectoryTimingProvenance": "PROJECT_AUTHORED",
+      "sourceActionPayloadClaim": "NONE",
+      "presentationOnly": true,
+      "serverGameplayChange": false
+    },
+    {
+      "presentationId": "project-authored:valtan.high-jump.airborne.beat-02.axe",
+      "patternId": "VALTAN_HIGH_JUMP",
+      "stageId": "AIRBORNE",
+      "elementId": "project-axe-beat-02-falling-axe",
+      "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
+      "modelAssetId": "Character/Valtan/ValtanWeapon.wmodel",
+      "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
+      "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
+      "baseTextureProvenance": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT",
+      "trajectoryTimingProvenance": "PROJECT_AUTHORED",
+      "sourceActionPayloadClaim": "NONE",
+      "presentationOnly": true,
+      "serverGameplayChange": false
+    },
+    {
+      "presentationId": "project-authored:valtan.high-jump.airborne.beat-03.axe",
+      "patternId": "VALTAN_HIGH_JUMP",
+      "stageId": "AIRBORNE",
+      "elementId": "project-axe-beat-03-falling-axe",
+      "disposition": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE",
+      "modelAssetId": "Character/Valtan/ValtanWeapon.wmodel",
+      "bossCatalogEvidence": "BOSS_VALTAN.weaponModel",
+      "geometryProvenance": "OFFICIAL_GEOMETRY_EXACT",
+      "baseTextureProvenance": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT",
+      "trajectoryTimingProvenance": "PROJECT_AUTHORED",
+      "sourceActionPayloadClaim": "NONE",
+      "presentationOnly": true,
+      "serverGameplayChange": false
+    }
+  ]
+}

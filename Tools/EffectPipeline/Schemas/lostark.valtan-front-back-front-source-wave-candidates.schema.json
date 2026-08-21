@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-front-back-front-source-wave-candidates.schema.json",
+  "title": "Valtan Front Back Front Source Wave Candidates",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "mode",
+    "sourceGuards",
+    "clipIdentity",
+    "aggregateCanary",
+    "whirlwindCanary",
+    "allEffectsClipDisplay",
+    "candidates",
+    "summary"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-front-back-front-source-wave-candidates"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "bossArchetypeId": {
+      "const": "BOSS_VALTAN"
+    },
+    "mode": {
+      "const": "IMMUTABLE_FOUR_WAVE_CANDIDATES_NO_CANONICAL_MUTATION"
+    },
+    "sourceGuards": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/pathHash"
+      }
+    },
+    "clipIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "stageId",
+        "actionId",
+        "clipOccurrenceId",
+        "clipName",
+        "clipSourceStartMs",
+        "clipPlayMs",
+        "clipPlayRate",
+        "clipLoop",
+        "stageDurationMs",
+        "serverHitCount",
+        "animationBindingMutationDisposition"
+      ],
+      "properties": {
+        "patternId": {
+          "const": "VALTAN_FRONT_BACK_FRONT"
+        },
+        "stageId": {
+          "const": "SMASHES"
+        },
+        "actionId": {
+          "const": "valtan.attack.front-back-front.active"
+        },
+        "clipOccurrenceId": {
+          "const": "valtan.attack.front-back-front.active.clip.01"
+        },
+        "clipName": {
+          "const": "mesh_att_battle_19_01"
+        },
+        "clipSourceStartMs": {
+          "const": 0
+        },
+        "clipPlayMs": {
+          "const": 0
+        },
+        "clipPlayRate": {
+          "const": 1.0
+        },
+        "clipLoop": {
+          "const": true
+        },
+        "stageDurationMs": {
+          "const": 5000
+        },
+        "serverHitCount": {
+          "const": 3
+        },
+        "animationBindingMutationDisposition": {
+          "const": "FORBIDDEN"
+        }
+      }
+    },
+    "aggregateCanary": {
+      "$ref": "#/$defs/aggregateCanary"
+    },
+    "whirlwindCanary": {
+      "$ref": "#/$defs/whirlwindCanary"
+    },
+    "allEffectsClipDisplay": {
+      "$ref": "#/$defs/allEffectsClipDisplay"
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/candidate"
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateDocumentCount",
+        "candidateElementCount",
+        "elementsPerCandidateDocument",
+        "visualTimingGroupCount",
+        "notifySystemTimingGroupCount",
+        "catalogAppendRowCount",
+        "cueAppendRowCount",
+        "targetAuthoredDocumentCount",
+        "aggregateSourceElementAppendCount",
+        "duplicateSourceElementCount",
+        "auxiliarySourceWaveCount",
+        "canonicalMutationCount"
+      ],
+      "properties": {
+        "candidateDocumentCount": { "const": 4 },
+        "candidateElementCount": { "const": 100 },
+        "elementsPerCandidateDocument": { "const": 25 },
+        "visualTimingGroupCount": { "const": 4 },
+        "notifySystemTimingGroupCount": { "const": 12 },
+        "catalogAppendRowCount": { "const": 4 },
+        "cueAppendRowCount": { "const": 4 },
+        "targetAuthoredDocumentCount": { "const": 4 },
+        "aggregateSourceElementAppendCount": { "const": 0 },
+        "duplicateSourceElementCount": { "const": 0 },
+        "auxiliarySourceWaveCount": { "const": 1 },
+        "canonicalMutationCount": { "const": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?/).+$"
+    },
+    "pathHash": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repositoryPath" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "aggregateCanary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "effectAssetId",
+        "displayLabel",
+        "authoredDocumentPath",
+        "authoredDocumentSha256",
+        "catalogRow",
+        "catalogRowSha256",
+        "cueRow",
+        "cueRowSha256",
+        "projectPatchPlanPath",
+        "projectPatchPlanSha256",
+        "projectOverlayPath",
+        "projectOverlaySha256",
+        "sourceElementAppendCount",
+        "disposition"
+      ],
+      "properties": {
+        "effectAssetId": { "const": "effect.valtan.front-back-front.active" },
+        "displayLabel": { "const": "Project Tuned Aggregate" },
+        "authoredDocumentPath": { "$ref": "#/$defs/repositoryPath" },
+        "authoredDocumentSha256": { "$ref": "#/$defs/sha256" },
+        "catalogRow": { "type": "object" },
+        "catalogRowSha256": { "$ref": "#/$defs/sha256" },
+        "cueRow": { "type": "object" },
+        "cueRowSha256": { "$ref": "#/$defs/sha256" },
+        "projectPatchPlanPath": { "$ref": "#/$defs/repositoryPath" },
+        "projectPatchPlanSha256": { "$ref": "#/$defs/sha256" },
+        "projectOverlayPath": { "$ref": "#/$defs/repositoryPath" },
+        "projectOverlaySha256": { "$ref": "#/$defs/sha256" },
+        "sourceElementAppendCount": { "const": 0 },
+        "disposition": { "const": "PRESERVE_EXISTING_PROJECT_TUNED_AGGREGATE" }
+      }
+    },
+    "whirlwindCanary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "authoredDocumentPath",
+        "authoredDocumentSha256",
+        "disposition"
+      ],
+      "properties": {
+        "effectAssetId": { "const": "effect.valtan.pattern.420633.active" },
+        "authoredDocumentPath": { "$ref": "#/$defs/repositoryPath" },
+        "authoredDocumentSha256": { "$ref": "#/$defs/sha256" },
+        "disposition": { "const": "PROTECTED_BYTE_CANARY_NO_MUTATION" }
+      }
+    },
+    "allEffectsClipDisplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedCueCountAfterApply", "cueDisplayOrder"],
+      "properties": {
+        "expectedCueCountAfterApply": { "const": 5 },
+        "cueDisplayOrder": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "waveOrdinal",
+        "waveId",
+        "displayLabel",
+        "documentDisplayName",
+        "presentationRole",
+        "gameplayHitDisposition",
+        "visualTimingGroup",
+        "notifySystemTimingGroups",
+        "sourceTimeSeconds",
+        "cueSourceStartRounding",
+        "cueSourceStartMs",
+        "cueLocalStartDelaySeconds",
+        "effectAssetId",
+        "candidateDocumentPath",
+        "candidateDocumentSha256",
+        "targetAuthoredDocumentPath",
+        "candidateElementCount",
+        "candidateElements",
+        "sourceElementKeys",
+        "catalogRow",
+        "cueRow"
+      ],
+      "properties": {
+        "waveOrdinal": { "type": "integer", "minimum": 1 },
+        "waveId": { "type": "string", "minLength": 1 },
+        "displayLabel": { "type": "string", "minLength": 1 },
+        "documentDisplayName": { "type": "string", "minLength": 1 },
+        "presentationRole": { "enum": ["source-wave", "auxiliary-source-wave"] },
+        "gameplayHitDisposition": {
+          "enum": [
+            "PRESENTATION_ONLY_SERVER_HIT_UNCHANGED",
+            "FORBIDDEN_AUXILIARY_NOT_GAMEPLAY_HIT"
+          ]
+        },
+        "visualTimingGroup": { "type": "object" },
+        "notifySystemTimingGroups": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "object" }
+        },
+        "sourceTimeSeconds": { "type": "number", "minimum": 0 },
+        "cueSourceStartRounding": { "const": "SAFE_INTEGER_FLOOR" },
+        "cueSourceStartMs": { "type": "integer", "minimum": 0 },
+        "cueLocalStartDelaySeconds": { "type": "number", "minimum": 0 },
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "candidateDocumentPath": { "$ref": "#/$defs/repositoryPath" },
+        "candidateDocumentSha256": { "$ref": "#/$defs/sha256" },
+        "targetAuthoredDocumentPath": { "$ref": "#/$defs/repositoryPath" },
+        "candidateElementCount": { "const": 25 },
+        "candidateElements": {
+          "type": "array",
+          "minItems": 25,
+          "maxItems": 25,
+          "items": { "$ref": "#/$defs/stableElement" }
+        },
+        "sourceElementKeys": {
+          "type": "array",
+          "minItems": 25,
+          "maxItems": 25,
+          "items": { "type": "object" }
+        },
+        "catalogRow": { "type": "object" },
+        "cueRow": { "type": "object" }
+      }
+    },
+    "stableElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elementId", "sourceNode"],
+      "properties": {
+        "elementId": { "type": "string", "minLength": 1 },
+        "sourceNode": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

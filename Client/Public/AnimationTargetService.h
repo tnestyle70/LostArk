@@ -91,6 +91,9 @@ public:
 	/* Resolve_Character() prefers a selected playable preview. This accessor is
 	   only for positioning a new preview beside the actual scene character. */
 	static std::shared_ptr<CCharacter> Resolve_SceneCharacter();
+	/* The bound boss preview target, for Debug tooling that drives the boss
+	   object itself. Null when the current target is not a boss. */
+	static std::shared_ptr<CValtan> Resolve_Boss();
 	static std::shared_ptr<Engine::CModel> Resolve_Model();
 	static std::string Resolve_AssetName();
 	static uint64_t Resolve_TargetGeneration();

@@ -742,7 +742,8 @@ bool Client::CClientReplication::Apply_WorldEntitySpawn(
 		CNpc::NPC_DESC desc{};
 		desc.iPrototypeLevelIndex = m_Desc.iPrototypeLevelIndex;
 		desc.strModelTag = modelTag;
-		desc.strShaderTag =
+		desc.strShaderTag = actor->shaderProfile == "esther" ?
+			TEXT("Prototype_Component_Shader_VtxEstherNpc") :
 			TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
 		const std::string* pIdleClipOverride =
 			CNpcPlacementPresentationService::Find_IdleClip(

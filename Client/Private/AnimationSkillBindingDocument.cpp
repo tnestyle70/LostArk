@@ -150,6 +150,39 @@ namespace
 		return true;
 	}
 
+	bool Try_ParseBossMs(const DATA_JSON_VALUE& value,
+		std::uint32_t& outMilliseconds)
+	{
+		if (!value.Is_Number())
+			return false;
+		const double number = value.Get_Number();
+		if (!std::isfinite(number) || number < 0.0 ||
+			number > static_cast<double>(MAX_CLIP_PLAY_MS) ||
+			std::floor(number) != number)
+		{
+			return false;
+		}
+		outMilliseconds = static_cast<std::uint32_t>(number);
+		return true;
+	}
+
+	std::string Build_LegacyBossClipOccurrenceId(
+		const std::string_view actionId,
+		const std::size_t clipIndex)
+	{
+		return std::string(actionId) + ".legacy.clip." +
+			std::to_string(clipIndex + 1u);
+	}
+
+	bool Is_BossMappingBasis(const std::string_view value)
+	{
+		return "ANIMATION_PR_127" == value ||
+			"PATTERN_PR_REFERENCE" == value ||
+			"CURRENT_PRODUCT_BASELINE" == value ||
+			"SOURCE_REVIEWED_DELTA" == value ||
+			"PROJECT_AUTHORED" == value;
+	}
+
 	void Serialize_Clip(
 		std::ostringstream& output,
 		const ANIMATION_SKILL_CLIP& clip)
@@ -648,7 +681,6 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 {
 	constexpr std::string_view BOSS_DOCUMENT_SCHEMA =
 		"lostark.valtan-pattern-bindings";
-	constexpr double BOSS_DOCUMENT_VERSION = 1.0;
 	constexpr std::size_t MAX_BOSS_PATTERN_BINDINGS = 512u;
 
 	DATA_JSON_VALUE root;
@@ -668,8 +700,18 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 		root, "bossArchetypeId", DATA_JSON_TYPE::STRING);
 	const DATA_JSON_VALUE* bindings = Required(
 		root, "bindings", DATA_JSON_TYPE::ARRAY);
+	uint32_t formatVersion = 0u;
+	if (nullptr != version && version->Is_Number())
+	{
+		const double number = version->Get_Number();
+		if (std::isfinite(number) && std::floor(number) == number &&
+			(number == 1.0 || number == 2.0))
+		{
+			formatVersion = static_cast<uint32_t>(number);
+		}
+	}
 	if (nullptr == schema || schema->Get_String() != BOSS_DOCUMENT_SCHEMA ||
-		nullptr == version || version->Get_Number() != BOSS_DOCUMENT_VERSION ||
+		0u == formatVersion ||
 		nullptr == boss || !Is_StableToken(boss->Get_String()) ||
 		nullptr == bindings || bindings->Get_Array().empty() ||
 		bindings->Get_Array().size() > MAX_BOSS_PATTERN_BINDINGS)
@@ -680,45 +722,134 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 
 	constexpr std::size_t MAX_BOSS_PATTERN_CHAIN_CLIPS = 16u;
 	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT staged;
+	staged.iFormatVersion = formatVersion;
 	staged.strBossArchetypeId = boss->Get_String();
 	for (const DATA_JSON_VALUE& value : bindings->Get_Array())
 	{
-		if (!Has_ExactProperties(value, { "actionId", "clip" }))
+		const bool isLegacy = 1u == formatVersion;
+		if ((isLegacy &&
+			!Has_ExactProperties(value, { "actionId", "clip" })) ||
+			(!isLegacy &&
+			!Has_ExactProperties(value, { "actionId", "clips" })))
 		{
 			outStatus = "Boss pattern binding row has an unexpected field set.";
 			return false;
 		}
 		const DATA_JSON_VALUE* actionId = Required(
 			value, "actionId", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* clip = value.Find("clip");
-		std::vector<std::string> chain;
-		if (nullptr != clip && clip->Is_String())
-		{
-			chain.push_back(clip->Get_String());
-		}
-		else if (nullptr != clip && clip->Is_Array())
-		{
-			for (const DATA_JSON_VALUE& element : clip->Get_Array())
-			{
-				if (!element.Is_String() ||
-					!Is_StableToken(element.Get_String()))
-				{
-					outStatus =
-						"Boss pattern binding chain clip is invalid.";
-					return false;
-				}
-				chain.push_back(element.Get_String());
-			}
-		}
-		if (nullptr == actionId || !Is_StableToken(actionId->Get_String()) ||
-			chain.empty() || chain.size() > MAX_BOSS_PATTERN_CHAIN_CLIPS ||
-			!Is_StableToken(chain.front()))
+		if (nullptr == actionId || !Is_StableToken(actionId->Get_String()))
 		{
 			outStatus = "Boss pattern binding row is invalid.";
 			return false;
 		}
-		staged.Bindings.push_back({
-			actionId->Get_String(), std::move(chain) });
+
+		BOSS_PATTERN_ANIMATION_BINDING stagedBinding;
+		stagedBinding.strActionId = actionId->Get_String();
+		if (isLegacy)
+		{
+			const DATA_JSON_VALUE* clip = value.Find("clip");
+			std::vector<std::string> legacyChain;
+			if (nullptr != clip && clip->Is_String())
+			{
+				legacyChain.push_back(clip->Get_String());
+			}
+			else if (nullptr != clip && clip->Is_Array())
+			{
+				for (const DATA_JSON_VALUE& element : clip->Get_Array())
+				{
+					if (!element.Is_String() ||
+						!Is_StableToken(element.Get_String()))
+					{
+						outStatus =
+							"Boss pattern binding chain clip is invalid.";
+						return false;
+					}
+					legacyChain.push_back(element.Get_String());
+				}
+			}
+			if (legacyChain.empty() ||
+				legacyChain.size() > MAX_BOSS_PATTERN_CHAIN_CLIPS)
+			{
+				outStatus = "Boss pattern binding row is invalid.";
+				return false;
+			}
+			stagedBinding.Clips.reserve(legacyChain.size());
+			for (std::size_t clipIndex = 0u;
+				clipIndex < legacyChain.size(); ++clipIndex)
+			{
+				BOSS_PATTERN_ANIMATION_CLIP stagedClip;
+				stagedClip.strClipOccurrenceId =
+					Build_LegacyBossClipOccurrenceId(
+						stagedBinding.strActionId, clipIndex);
+				stagedClip.strClipName = std::move(legacyChain[clipIndex]);
+				stagedClip.strMappingBasis = "LEGACY_V1_MIGRATION";
+				stagedClip.bLoop = clipIndex + 1u == legacyChain.size();
+				if (!Is_StableToken(stagedClip.strClipOccurrenceId) ||
+					!Is_StableToken(stagedClip.strClipName))
+				{
+					outStatus = "Boss pattern legacy clip migration is invalid.";
+					return false;
+				}
+				stagedBinding.Clips.push_back(std::move(stagedClip));
+			}
+		}
+		else
+		{
+			const DATA_JSON_VALUE* clips = Required(
+				value, "clips", DATA_JSON_TYPE::ARRAY);
+			if (nullptr == clips || clips->Get_Array().empty() ||
+				clips->Get_Array().size() > MAX_BOSS_PATTERN_CHAIN_CLIPS)
+			{
+				outStatus = "Boss pattern binding v2 clip chain is invalid.";
+				return false;
+			}
+			stagedBinding.Clips.reserve(clips->Get_Array().size());
+			for (const DATA_JSON_VALUE& clipValue : clips->Get_Array())
+			{
+				if (!Has_ExactProperties(clipValue,
+					{ "clipOccurrenceId", "clip", "mappingBasis",
+					  "sourceStartMs", "playMs", "playRate", "loop" }))
+				{
+					outStatus =
+						"Boss pattern binding v2 clip has unexpected properties.";
+					return false;
+				}
+				const DATA_JSON_VALUE* occurrenceId = Required(
+					clipValue, "clipOccurrenceId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* clipName = Required(
+					clipValue, "clip", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* mappingBasis = Required(
+					clipValue, "mappingBasis", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* playRate = Required(
+					clipValue, "playRate", DATA_JSON_TYPE::NUMBER);
+				const DATA_JSON_VALUE* loop = Required(
+					clipValue, "loop", DATA_JSON_TYPE::BOOLEAN);
+				BOSS_PATTERN_ANIMATION_CLIP stagedClip;
+				if (nullptr == occurrenceId ||
+					!Is_StableToken(occurrenceId->Get_String()) ||
+					nullptr == clipName ||
+					!Is_StableToken(clipName->Get_String()) ||
+					nullptr == mappingBasis ||
+					!Is_StableToken(mappingBasis->Get_String()) ||
+					nullptr == playRate ||
+					!Try_ParsePlayRate(*playRate, stagedClip.fPlayRate) ||
+					nullptr == loop ||
+					!Try_ParseBossMs(*clipValue.Find("sourceStartMs"),
+						stagedClip.iSourceStartMs) ||
+					!Try_ParseBossMs(*clipValue.Find("playMs"),
+						stagedClip.iPlayMs))
+				{
+					outStatus = "Boss pattern binding v2 clip is invalid.";
+					return false;
+				}
+				stagedClip.strClipOccurrenceId = occurrenceId->Get_String();
+				stagedClip.strClipName = clipName->Get_String();
+				stagedClip.strMappingBasis = mappingBasis->Get_String();
+				stagedClip.bLoop = loop->Get_Boolean();
+				stagedBinding.Clips.push_back(std::move(stagedClip));
+			}
+		}
+		staged.Bindings.push_back(std::move(stagedBinding));
 	}
 
 	outDocument = std::move(staged);
@@ -734,31 +865,53 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Validate(
 {
 	if (!Is_StableToken(expectedBossArchetypeId) ||
 		document.strBossArchetypeId != expectedBossArchetypeId ||
+		(document.iFormatVersion != 1u && document.iFormatVersion != 2u) ||
 		document.Bindings.empty() || document.Bindings.size() > 512u)
 	{
 		outStatus = "Boss pattern binding owner does not match the target boss.";
 		return false;
 	}
 	std::unordered_set<std::string> claimedActions;
+	std::unordered_set<std::string> claimedOccurrences;
 	for (const BOSS_PATTERN_ANIMATION_BINDING& binding : document.Bindings)
 	{
 		if (!Is_StableToken(binding.strActionId) ||
-			binding.Clips.empty() ||
+			binding.Clips.empty() || binding.Clips.size() > 16u ||
 			!claimedActions.insert(binding.strActionId).second)
 		{
 			outStatus =
 				"Boss pattern binding has a duplicate action or missing model clip.";
 			return false;
 		}
-		for (const std::string& clipName : binding.Clips)
+		for (std::size_t clipIndex = 0u;
+			clipIndex < binding.Clips.size(); ++clipIndex)
 		{
-			if (!Is_StableToken(clipName) ||
+			const BOSS_PATTERN_ANIMATION_CLIP& clip =
+				binding.Clips[clipIndex];
+			const bool isLegacy = 1u == document.iFormatVersion;
+			if (!Is_StableToken(clip.strClipOccurrenceId) ||
+				!claimedOccurrences.insert(
+					clip.strClipOccurrenceId).second ||
+				!Is_StableToken(clip.strClipName) ||
+				(isLegacy ?
+					clip.strMappingBasis != "LEGACY_V1_MIGRATION" :
+					!Is_BossMappingBasis(clip.strMappingBasis)) ||
+				(isLegacy &&
+				 (0u != clip.iSourceStartMs || 0u != clip.iPlayMs ||
+				  1.f != clip.fPlayRate ||
+				  clip.bLoop !=
+					(clipIndex + 1u == binding.Clips.size()))) ||
+				clip.iSourceStartMs > MAX_CLIP_PLAY_MS ||
+				clip.iPlayMs > MAX_CLIP_PLAY_MS ||
+				!std::isfinite(clip.fPlayRate) ||
+				clip.fPlayRate < 0.05f || clip.fPlayRate > 16.f ||
+				(clip.bLoop && clipIndex + 1u != binding.Clips.size()) ||
 				availableClips.end() == std::find(
 					availableClips.begin(), availableClips.end(),
-					clipName))
+					clip.strClipName))
 			{
 				outStatus =
-					"Boss pattern binding has a duplicate action or missing model clip.";
+					"Boss pattern binding has an invalid occurrence, timing, loop, or model clip.";
 				return false;
 			}
 		}

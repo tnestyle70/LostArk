@@ -107,9 +107,11 @@ def _canonical_bytes(value: Any) -> bytes:
 
 
 def _pretty_bytes(value: Any) -> bytes:
-    return (
-        json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
-    ).encode("utf-8")
+    # This pre-v2 Whirlwind canary is a frozen physical-byte fixture.  Its
+    # published identity predates the repository-wide LF policy and is
+    # intentionally CRLF; regenerating it must preserve that exact boundary.
+    text = json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
+    return text.replace("\n", "\r\n").encode("utf-8")
 
 
 def _property(properties: dict[str, Any], name: str) -> Any:

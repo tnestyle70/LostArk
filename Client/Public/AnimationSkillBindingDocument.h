@@ -100,16 +100,49 @@ namespace Client
 	within the stage, mirroring the source action's sequence; gameplay pattern
 	timing remains in the encounter document. A one-clip chain is the plain
 	single-clip stage. */
+	struct BOSS_PATTERN_ANIMATION_CLIP
+	{
+		std::string strClipOccurrenceId;
+		std::string strClipName;
+		std::string strMappingBasis;
+		uint32_t iSourceStartMs = 0u;
+		uint32_t iPlayMs = 0u;
+		f32_t fPlayRate = 1.f;
+		bool_t bLoop = false;
+
+		/* Temporary source compatibility for readers that only display a v1
+		clip name.  Persisted identity remains strClipOccurrenceId. */
+		operator const std::string&() const noexcept { return strClipName; }
+		BOSS_PATTERN_ANIMATION_CLIP& operator=(std::string_view clipName)
+		{
+			strClipName.assign(clipName);
+			return *this;
+		}
+		friend bool operator==(const BOSS_PATTERN_ANIMATION_CLIP& clip,
+			std::string_view clipName)
+		{
+			return clip.strClipName == clipName;
+		}
+		friend bool operator==(std::string_view clipName,
+			const BOSS_PATTERN_ANIMATION_CLIP& clip)
+		{
+			return clip == clipName;
+		}
+
+		bool operator==(const BOSS_PATTERN_ANIMATION_CLIP&) const = default;
+	};
+
 	struct BOSS_PATTERN_ANIMATION_BINDING
 	{
 		std::string strActionId;
-		std::vector<std::string> Clips;
+		std::vector<BOSS_PATTERN_ANIMATION_CLIP> Clips;
 
 		bool operator==(const BOSS_PATTERN_ANIMATION_BINDING&) const = default;
 	};
 
 	struct BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT
 	{
+		uint32_t iFormatVersion = 1u;
 		std::string strBossArchetypeId;
 		std::vector<BOSS_PATTERN_ANIMATION_BINDING> Bindings;
 

@@ -209,8 +209,22 @@
       ]
     },
     {
+      "path": "Data/Effects/Authored/effect.valtan.backstep.windup.trails.effect.json",
+      "rawSha256": "352f402590703a7e619b3a3cbac2af8c89f0f2ff6ab55e250f5b070f9f072a86",
+      "roles": [
+        "VALTAN_SAFE_GAP_ANIMATION_TRAIL_TARGET"
+      ]
+    },
+    {
+      "path": "Data/Effects/Authored/effect.valtan.jump-spin.spin.trails.effect.json",
+      "rawSha256": "0e35667aa73a899d5f5f2208411064966325c3fbfcb5145fb5028edbcec33420",
+      "roles": [
+        "VALTAN_SAFE_GAP_ANIMATION_TRAIL_TARGET"
+      ]
+    },
+    {
       "path": "Data/Effects/Authored/effect.valtan.pattern.420633.active.effect.json",
-      "rawSha256": "ac0c4464fd1fc05dcb0b107e796c015b1ca4c76dcf9beb06023b5cf5d890bf94",
+      "rawSha256": "e94ddfd463da840962ddf8d8a0b604af4ef833925c2ac1cfd0f8e25522a5bea7",
       "roles": [
         "VALTAN_ANIMATION_TRAIL_TARGET_ELEMENTS",
         "VALTAN_BAKED_EDGE_LIGHT_TARGET_ELEMENT"
@@ -422,17 +436,31 @@
       ]
     },
     {
+      "path": "Data/Effects/Imported/Valtan/SafeReviewedGaps/Valtan.safe-reviewed-gap-application-receipt.v1.json",
+      "rawSha256": "404b6b7219ce90292d51c6396cc6e2106d5800d2e582ba4af215162059d1386e",
+      "roles": [
+        "VALTAN_SAFE_GAP_APPLICATION_RECEIPT"
+      ]
+    },
+    {
       "path": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
-      "rawSha256": "1053b30c345fcb7e8ff7a4d30fb6c9bfebf88d7c8c3038b77e9097bf7bdd4d1b",
+      "rawSha256": "34f0d15e31afdca31887828961c8de450ebc027d4dcf54ff0c0d9312df3fd64e",
       "roles": [
         "VALTAN_ANIMATION_TRAIL_BAKED_EDGE_HISTORY"
       ]
     },
     {
       "path": "Data/Effects/Imported/Valtan/Valtan.effect-resource-catalog.json",
-      "rawSha256": "59200d259f8e04004370e29305068575f5ca87097b211292b5e3365827ebf673",
+      "rawSha256": "d58005b7f53ce197ac8c1d9fafe5686fb8a0e23b8fe837cf558589d198912819",
       "roles": [
         "EXTENSION_CANARY_SOURCE"
+      ]
+    },
+    {
+      "path": "Data/Effects/Imported/Valtan/Valtan.trail-adapter-packets.v1.json",
+      "rawSha256": "027630e4071e3f54f84713eefd08c1501f81e535711e9b29c8592131f83c4fd7",
+      "roles": [
+        "VALTAN_SAFE_GAP_TRAIL_ADAPTER_PACKETS"
       ]
     },
     {
@@ -444,7 +472,7 @@
     },
     {
       "path": "Tools/EffectPipeline/Schemas/lostark.effect-visual-program-corpus.schema.json",
-      "rawSha256": "d30d6e6e5dd03db8acb55540a88db93ee8081f4aaca5705dc761bfb9d303cdbf",
+      "rawSha256": "dfb2d94196dc4e780661a93f510d89c54987e9587feb8e195eb2fcf1394d42ac",
       "roles": [
         "VISUAL_PROGRAM_CORPUS_SCHEMA"
       ]
@@ -461,7 +489,7 @@
       "selectorSha256": "908af603f8e4697e3ccb8bededcc15c028e95fb8e55e4bb92a6670da00972afb",
       "sourceArtifact": {
         "path": "Data/Effects/Imported/Valtan/Valtan.effect-resource-catalog.json",
-        "rawSha256": "59200d259f8e04004370e29305068575f5ca87097b211292b5e3365827ebf673",
+        "rawSha256": "d58005b7f53ce197ac8c1d9fafe5686fb8a0e23b8fe837cf558589d198912819",
         "roles": [
           "EXTENSION_CANARY_SOURCE"
         ]
@@ -475,7 +503,7 @@
       "admissionBlockers": [
         "EXECUTABLE_VISUAL_ROWS_NOT_ADMITTED_IN_PHASE1_SCOPE"
       ],
-      "canarySha256": "c6585b90d55a0a081c0df830e2231e058b348b5e766074313f110379d4ff1cf6"
+      "canarySha256": "f4e1bbd8796b8e0f22b545d57bad620ed06a9b5987db371e113d92307f01d23c"
     },
     {
       "canaryId": "extension-canary.warlord.generic-selector.v1",
@@ -16658,6 +16686,854 @@
     },
     {
       "selector": {
+        "effectAssetId": "effect.valtan.backstep.windup.trails",
+        "occurrenceId": "visual-occurrence.6f6bf2e3e3f98930dd1fd37b7c66603794d2665f65504d577d52db05d779b5e1"
+      },
+      "selectorSha256": "a3edba06df8569a3263ab4dba38dcf93e10de31450d5d3cf2e168c14860fa34c",
+      "provenance": {
+        "scope": "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL",
+        "actionId": 420635,
+        "stageIndex": 1,
+        "sourceStableId": "valtan.trail-adapter.4e2f6b3e7e7b359438b5e626"
+      },
+      "schedule": {
+        "stageId": "valtan.attack.backstep.windup",
+        "sourceEventId": "action-420635/stage-001/notify-004",
+        "sourceTimelineSeconds": 0.0,
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158
+      },
+      "sourcePayload": {
+        "path": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+        "rawSha256": "34f0d15e31afdca31887828961c8de450ebc027d4dcf54ff0c0d9312df3fd64e",
+        "recordId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "recordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64"
+      },
+      "targetPayload": {
+        "path": "Data/Effects/Authored/effect.valtan.backstep.windup.trails.effect.json",
+        "rawSha256": "352f402590703a7e619b3a3cbac2af8c89f0f2ff6ab55e250f5b070f9f072a86",
+        "recordId": "safe-gap.trail.356cc514cb5cf7104cba9bff",
+        "recordSha256": "232acc90f8ab9075a9c43cd3daed1413c28216a062597fa658b8680604e76d2d"
+      },
+      "family": "ANIMATION_TRAIL",
+      "adapterId": "animation-trail-document-v12",
+      "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+      "fidelity": "BOUNDED_RECONSTRUCTION",
+      "disposition": "ADMITTED_BOUNDED",
+      "tuningEligibleTransform": true,
+      "resourcePacket": [
+        {
+          "role": "BASE_COLOR",
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_a_trail_003_ycl.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "21a6683bdd504b6c1e63b006632dd962b5be4a519b56654fff2916b29a7ab8b0",
+          "byteCount": 32896,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "MASK",
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_003.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "3339f6fd17e588fed6c11082a8a93a9b6dc55c49cb20f2a956dd6258f675a83f",
+          "byteCount": 65664,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "NOISE",
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_009.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "d5e63e9f023fb9f9ffb5dc2d32f80319102b91c94c5fe7c951177d161f963c9e",
+          "byteCount": 8320,
+          "shaderRegister": null,
+          "sourceChannel": null
+        }
+      ],
+      "cascadeRibbonPacket": null,
+      "animationTrailPacket": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "boundedSemanticReplay": true,
+        "nativeExecution": false,
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420635/stage-001/notify-004",
+        "sourceEventRecordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "clip": "mesh_att_battle_20_03",
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158,
+        "targetElementId": "safe-gap.trail.356cc514cb5cf7104cba9bff",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "historySha256": "af57e82446b4739168dbbb9aca61056ce93fc9519524536b92a776da8fc2a51e",
+        "playbackClampSeconds": 1.2000000476837158,
+        "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+        "preservedLimitations": [
+          "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+        ],
+        "packetSha256": "52ca54fe654a219f0862adabca88804620cd14bab64920453cd80f99c58f5d9d"
+      },
+      "bakedEdgeLightPacket": null,
+      "admissionBlockers": [],
+      "rowSha256": "f3dc5b26a7ba1a16dc3066a1a5afc9446c4bcb7a0c0caf6736ac14d78c7f6b3d"
+    },
+    {
+      "selector": {
+        "effectAssetId": "effect.valtan.backstep.windup.trails",
+        "occurrenceId": "visual-occurrence.cf224af77866e08741d3a18bc295a5ea110f6ea4796e8a2173fef4e0cbebb7e7"
+      },
+      "selectorSha256": "9762901e8f8bac828d7efedf584d18734f354693f3eb2020a884b1eb068ba57d",
+      "provenance": {
+        "scope": "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL",
+        "actionId": 420635,
+        "stageIndex": 1,
+        "sourceStableId": "valtan.trail-adapter.c95bcfbdd8e19140f127dcf8"
+      },
+      "schedule": {
+        "stageId": "valtan.attack.backstep.windup",
+        "sourceEventId": "action-420635/stage-001/notify-004",
+        "sourceTimelineSeconds": 0.0,
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158
+      },
+      "sourcePayload": {
+        "path": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+        "rawSha256": "34f0d15e31afdca31887828961c8de450ebc027d4dcf54ff0c0d9312df3fd64e",
+        "recordId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "recordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64"
+      },
+      "targetPayload": {
+        "path": "Data/Effects/Authored/effect.valtan.backstep.windup.trails.effect.json",
+        "rawSha256": "352f402590703a7e619b3a3cbac2af8c89f0f2ff6ab55e250f5b070f9f072a86",
+        "recordId": "safe-gap.trail.be92dd33e54d2a6b992d0e28",
+        "recordSha256": "57388e79b1fb0e12d6261a9a50da027cf508ef3c75cffbc4d40221372d878ed5"
+      },
+      "family": "ANIMATION_TRAIL",
+      "adapterId": "animation-trail-document-v12",
+      "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+      "fidelity": "BOUNDED_RECONSTRUCTION",
+      "disposition": "ADMITTED_BOUNDED",
+      "tuningEligibleTransform": true,
+      "resourcePacket": [
+        {
+          "role": "BASE_COLOR",
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_006.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "0eaf36a6b923cb1fdf6958716bf35598639251454b65aa90ba52a8ced7d2ee48",
+          "byteCount": 8320,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "MASK",
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_023.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "57b6cf34817250e634094deda330e6360d31c5b03b289fb61e607f6067052427",
+          "byteCount": 65664,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "NOISE",
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_067.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "8264b8a2671205799a428e244fd2068ab1300efdea0cb0f3a504e1a0c5b6e4dd",
+          "byteCount": 32896,
+          "shaderRegister": null,
+          "sourceChannel": null
+        }
+      ],
+      "cascadeRibbonPacket": null,
+      "animationTrailPacket": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "boundedSemanticReplay": true,
+        "nativeExecution": false,
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420635/stage-001/notify-004",
+        "sourceEventRecordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "clip": "mesh_att_battle_20_03",
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158,
+        "targetElementId": "safe-gap.trail.be92dd33e54d2a6b992d0e28",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "historySha256": "af57e82446b4739168dbbb9aca61056ce93fc9519524536b92a776da8fc2a51e",
+        "playbackClampSeconds": 1.2000000476837158,
+        "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+        "preservedLimitations": [
+          "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+        ],
+        "packetSha256": "490445979e3958157aba0ea9e1bb50590e761192a0d9f8d86d92171ac0505398"
+      },
+      "bakedEdgeLightPacket": null,
+      "admissionBlockers": [],
+      "rowSha256": "4947d21913d90f23846be092d9d1594dff681c9dc86c79b8680d670cf59ac4d4"
+    },
+    {
+      "selector": {
+        "effectAssetId": "effect.valtan.backstep.windup.trails",
+        "occurrenceId": "visual-occurrence.dcf76e257c4822e35389fc6581e79dd9acbe3fe0811f092ab63776ff3aae01b1"
+      },
+      "selectorSha256": "babe8c9773f96c1e518cd459103677342fa19f3818f98abba1d292c81047b583",
+      "provenance": {
+        "scope": "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL",
+        "actionId": 420635,
+        "stageIndex": 1,
+        "sourceStableId": "valtan.trail-adapter.0d2bd7abcc7d06b3f2f77b5b"
+      },
+      "schedule": {
+        "stageId": "valtan.attack.backstep.windup",
+        "sourceEventId": "action-420635/stage-001/notify-004",
+        "sourceTimelineSeconds": 0.0,
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158
+      },
+      "sourcePayload": {
+        "path": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+        "rawSha256": "34f0d15e31afdca31887828961c8de450ebc027d4dcf54ff0c0d9312df3fd64e",
+        "recordId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "recordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64"
+      },
+      "targetPayload": {
+        "path": "Data/Effects/Authored/effect.valtan.backstep.windup.trails.effect.json",
+        "rawSha256": "352f402590703a7e619b3a3cbac2af8c89f0f2ff6ab55e250f5b070f9f072a86",
+        "recordId": "safe-gap.trail.1c39a20f5b0c8e6fa3c0cce6",
+        "recordSha256": "f7847e2f0d6afd322219b30078c247dbbf9ea926106e67092350c97446652f8d"
+      },
+      "family": "ANIMATION_TRAIL",
+      "adapterId": "animation-trail-document-v12",
+      "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+      "fidelity": "BOUNDED_RECONSTRUCTION",
+      "disposition": "ADMITTED_BOUNDED",
+      "tuningEligibleTransform": true,
+      "resourcePacket": [
+        {
+          "role": "BASE_COLOR",
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "0cda1d83c6df738528a3e32c45fd72f76a6acddf0010c76170032ae4e3469933",
+          "byteCount": 8320,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "DISSOLVE",
+          "slotId": "dissolve",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "58a957a8d13005c12afb097c6c8d423d2c94872dfe8b76ab1d51dabbfe67749b",
+          "byteCount": 32896,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "MASK",
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_a_trail_011.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "ecf526f2f5849525d341e20549652736ec79ef173bdf65226f5aa314e6c89df9",
+          "byteCount": 32896,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "NOISE",
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_009.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "d9b2b59b2657fcfe333852ef2580492fcd1e7769af2d8d5096be47050cddc65e",
+          "byteCount": 32896,
+          "shaderRegister": null,
+          "sourceChannel": null
+        }
+      ],
+      "cascadeRibbonPacket": null,
+      "animationTrailPacket": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "boundedSemanticReplay": true,
+        "nativeExecution": false,
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420635/stage-001/notify-004",
+        "sourceEventRecordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "clip": "mesh_att_battle_20_03",
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158,
+        "targetElementId": "safe-gap.trail.1c39a20f5b0c8e6fa3c0cce6",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "historySha256": "af57e82446b4739168dbbb9aca61056ce93fc9519524536b92a776da8fc2a51e",
+        "playbackClampSeconds": 1.2000000476837158,
+        "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+        "preservedLimitations": [
+          "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+        ],
+        "packetSha256": "fe93a4168c4334805512b46c18e6ec5cc763d688c78ca009ee4df3047e1e222d"
+      },
+      "bakedEdgeLightPacket": null,
+      "admissionBlockers": [],
+      "rowSha256": "6bbb82baa52f95c9da77e001095c67607d8b55429b47f7414671218801ad8d16"
+    },
+    {
+      "selector": {
+        "effectAssetId": "effect.valtan.jump-spin.spin.trails",
+        "occurrenceId": "visual-occurrence.24966d6c4004056f85ee9a8c09f90c765b89d3b4fb1f5e8d7a06b63221725741"
+      },
+      "selectorSha256": "edfe38e66c0b902ad9d6fda74dfc93e5014669311bdefca049452a30f9899831",
+      "provenance": {
+        "scope": "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL",
+        "actionId": 420621,
+        "stageIndex": 15,
+        "sourceStableId": "valtan.trail-adapter.fa1bc626ced230f06727f1d1"
+      },
+      "schedule": {
+        "stageId": "valtan.attack.jump-spin.spin",
+        "sourceEventId": "action-420621/stage-015/notify-004",
+        "sourceTimelineSeconds": 0.0,
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158
+      },
+      "sourcePayload": {
+        "path": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+        "rawSha256": "34f0d15e31afdca31887828961c8de450ebc027d4dcf54ff0c0d9312df3fd64e",
+        "recordId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "recordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64"
+      },
+      "targetPayload": {
+        "path": "Data/Effects/Authored/effect.valtan.jump-spin.spin.trails.effect.json",
+        "rawSha256": "0e35667aa73a899d5f5f2208411064966325c3fbfcb5145fb5028edbcec33420",
+        "recordId": "safe-gap.trail.0eae54e3e7a4d031fb12f244",
+        "recordSha256": "e38c7fad5528e54d8c0717a17b761697143381332a3b9983492f5f8fcd728310"
+      },
+      "family": "ANIMATION_TRAIL",
+      "adapterId": "animation-trail-document-v12",
+      "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+      "fidelity": "BOUNDED_RECONSTRUCTION",
+      "disposition": "ADMITTED_BOUNDED",
+      "tuningEligibleTransform": true,
+      "resourcePacket": [
+        {
+          "role": "BASE_COLOR",
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_a_trail_003_ycl.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "21a6683bdd504b6c1e63b006632dd962b5be4a519b56654fff2916b29a7ab8b0",
+          "byteCount": 32896,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "MASK",
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_03/fx_e_fluid_003.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "3339f6fd17e588fed6c11082a8a93a9b6dc55c49cb20f2a956dd6258f675a83f",
+          "byteCount": 65664,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "NOISE",
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_009.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "d5e63e9f023fb9f9ffb5dc2d32f80319102b91c94c5fe7c951177d161f963c9e",
+          "byteCount": 8320,
+          "shaderRegister": null,
+          "sourceChannel": null
+        }
+      ],
+      "cascadeRibbonPacket": null,
+      "animationTrailPacket": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "boundedSemanticReplay": true,
+        "nativeExecution": false,
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420621/stage-015/notify-004",
+        "sourceEventRecordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "clip": "mesh_att_battle_20_03",
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158,
+        "targetElementId": "safe-gap.trail.0eae54e3e7a4d031fb12f244",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "historySha256": "af57e82446b4739168dbbb9aca61056ce93fc9519524536b92a776da8fc2a51e",
+        "playbackClampSeconds": 1.2000000476837158,
+        "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+        "preservedLimitations": [
+          "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+        ],
+        "packetSha256": "032c32c5ca30c025ad8bffcd977b6878697448faa90a69bce837b5b759ddf6d5"
+      },
+      "bakedEdgeLightPacket": null,
+      "admissionBlockers": [],
+      "rowSha256": "4682c4c8764d54e45151f489f1aa1e34e4beb6ad8a7a0b82d55237ef1f43a53a"
+    },
+    {
+      "selector": {
+        "effectAssetId": "effect.valtan.jump-spin.spin.trails",
+        "occurrenceId": "visual-occurrence.e796a35fafaceeb7c4e4dc98843367892e051f5417c22c1f485a1b692c89ba59"
+      },
+      "selectorSha256": "c30dc3ceddd0340c10bd2bf4774eefa95b613fb71a57af0116c068f79ddacd0d",
+      "provenance": {
+        "scope": "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL",
+        "actionId": 420621,
+        "stageIndex": 15,
+        "sourceStableId": "valtan.trail-adapter.327940399d15f5de80e352ac"
+      },
+      "schedule": {
+        "stageId": "valtan.attack.jump-spin.spin",
+        "sourceEventId": "action-420621/stage-015/notify-004",
+        "sourceTimelineSeconds": 0.0,
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158
+      },
+      "sourcePayload": {
+        "path": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+        "rawSha256": "34f0d15e31afdca31887828961c8de450ebc027d4dcf54ff0c0d9312df3fd64e",
+        "recordId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "recordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64"
+      },
+      "targetPayload": {
+        "path": "Data/Effects/Authored/effect.valtan.jump-spin.spin.trails.effect.json",
+        "rawSha256": "0e35667aa73a899d5f5f2208411064966325c3fbfcb5145fb5028edbcec33420",
+        "recordId": "safe-gap.trail.603d4a21c858ed9fde7d16ad",
+        "recordSha256": "f90890cc7d2e4c16a771254d9275f99fbcb36fe1e6fdd86cb613f3073538f0e4"
+      },
+      "family": "ANIMATION_TRAIL",
+      "adapterId": "animation-trail-document-v12",
+      "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+      "fidelity": "BOUNDED_RECONSTRUCTION",
+      "disposition": "ADMITTED_BOUNDED",
+      "tuningEligibleTransform": true,
+      "resourcePacket": [
+        {
+          "role": "BASE_COLOR",
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_006.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "0eaf36a6b923cb1fdf6958716bf35598639251454b65aa90ba52a8ced7d2ee48",
+          "byteCount": 8320,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "MASK",
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_023.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "57b6cf34817250e634094deda330e6360d31c5b03b289fb61e607f6067052427",
+          "byteCount": 65664,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "NOISE",
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_067.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "8264b8a2671205799a428e244fd2068ab1300efdea0cb0f3a504e1a0c5b6e4dd",
+          "byteCount": 32896,
+          "shaderRegister": null,
+          "sourceChannel": null
+        }
+      ],
+      "cascadeRibbonPacket": null,
+      "animationTrailPacket": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "boundedSemanticReplay": true,
+        "nativeExecution": false,
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420621/stage-015/notify-004",
+        "sourceEventRecordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "clip": "mesh_att_battle_20_03",
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158,
+        "targetElementId": "safe-gap.trail.603d4a21c858ed9fde7d16ad",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "historySha256": "af57e82446b4739168dbbb9aca61056ce93fc9519524536b92a776da8fc2a51e",
+        "playbackClampSeconds": 1.2000000476837158,
+        "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+        "preservedLimitations": [
+          "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+        ],
+        "packetSha256": "62664157372732e9e2d98115250c8a98c898f3056b0e7f0f2bdf7547d1402204"
+      },
+      "bakedEdgeLightPacket": null,
+      "admissionBlockers": [],
+      "rowSha256": "bd2be5c606cd70c3ced424112433a7b6b821b28c8e590c8722b4d5d2770bf5b9"
+    },
+    {
+      "selector": {
+        "effectAssetId": "effect.valtan.jump-spin.spin.trails",
+        "occurrenceId": "visual-occurrence.efd27761dec257434f4e7ab7be75ae08680ad98e0efb48e4ba0005ee70871b16"
+      },
+      "selectorSha256": "430253387cec7c271d1d3cfb01871f4687227e22b91cafb8397a26e3fbbf5e35",
+      "provenance": {
+        "scope": "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL",
+        "actionId": 420621,
+        "stageIndex": 15,
+        "sourceStableId": "valtan.trail-adapter.9a7eeb5d6e530a9f2ed8e950"
+      },
+      "schedule": {
+        "stageId": "valtan.attack.jump-spin.spin",
+        "sourceEventId": "action-420621/stage-015/notify-004",
+        "sourceTimelineSeconds": 0.0,
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158
+      },
+      "sourcePayload": {
+        "path": "Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json",
+        "rawSha256": "34f0d15e31afdca31887828961c8de450ebc027d4dcf54ff0c0d9312df3fd64e",
+        "recordId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "recordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64"
+      },
+      "targetPayload": {
+        "path": "Data/Effects/Authored/effect.valtan.jump-spin.spin.trails.effect.json",
+        "rawSha256": "0e35667aa73a899d5f5f2208411064966325c3fbfcb5145fb5028edbcec33420",
+        "recordId": "safe-gap.trail.bb66ca56711fbe5363892a0e",
+        "recordSha256": "a8f7a164ad60e79c7d9e21f3161ebfe312bddb9b8a3ed36e901a72d2f1590b11"
+      },
+      "family": "ANIMATION_TRAIL",
+      "adapterId": "animation-trail-document-v12",
+      "packetLayout": "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1",
+      "fidelity": "BOUNDED_RECONSTRUCTION",
+      "disposition": "ADMITTED_BOUNDED",
+      "tuningEligibleTransform": true,
+      "resourcePacket": [
+        {
+          "role": "BASE_COLOR",
+          "slotId": "base",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_028.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "0cda1d83c6df738528a3e32c45fd72f76a6acddf0010c76170032ae4e3469933",
+          "byteCount": 8320,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "DISSOLVE",
+          "slotId": "dissolve",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "58a957a8d13005c12afb097c6c8d423d2c94872dfe8b76ab1d51dabbfe67749b",
+          "byteCount": 32896,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "MASK",
+          "slotId": "mask",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_00/fx_a_trail_011.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "ecf526f2f5849525d341e20549652736ec79ef173bdf65226f5aa314e6c89df9",
+          "byteCount": 32896,
+          "shaderRegister": null,
+          "sourceChannel": null
+        },
+        {
+          "role": "NOISE",
+          "slotId": "noise",
+          "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_c_noise_009.dds",
+          "resolutionStatus": "TARGET_DOCUMENT_REFERENCE",
+          "rawSha256": "d9b2b59b2657fcfe333852ef2580492fcd1e7769af2d8d5096be47050cddc65e",
+          "byteCount": 32896,
+          "shaderRegister": null,
+          "sourceChannel": null
+        }
+      ],
+      "cascadeRibbonPacket": null,
+      "animationTrailPacket": {
+        "packetVersion": 2,
+        "adapterId": "animation-trail-document-v12",
+        "boundedSemanticReplay": true,
+        "nativeExecution": false,
+        "runtimeCarrier": "EFFECT_TYPED_ANIMATION_TRAIL_BAKED_EDGE_V1",
+        "sourceNotifyType": "Trails",
+        "sourceEventId": "action-420621/stage-015/notify-004",
+        "sourceEventRecordSha256": "46bf2e83ace7d798a2ff34489cc4eb223a716ac75159d799f6dd306707112a64",
+        "sourceAsset": "MN_RPBF_00_AnimNotify_Trails.MN_RPBF_00_420621_0_3_0",
+        "clip": "mesh_att_battle_20_03",
+        "localTimeSeconds": 0.0,
+        "globalTimeSeconds": 0.0,
+        "durationSeconds": 1.2000000476837158,
+        "targetElementId": "safe-gap.trail.bb66ca56711fbe5363892a0e",
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 1.2000000476837158,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0.0,
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "trail": {
+          "maxPoints": 409,
+          "pointLifeTimeSeconds": 1.2000000476837158,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.0,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": false
+        },
+        "historyId": "valtan.420633.animnotify-trails-479.baked-edges",
+        "historySha256": "af57e82446b4739168dbbb9aca61056ce93fc9519524536b92a776da8fc2a51e",
+        "playbackClampSeconds": 1.2000000476837158,
+        "coordinateBasis": "UE3_CM_X_Z_NEG_Y_TO_RUNTIME_METERS",
+        "preservedLimitations": [
+          "SOURCE_BAKED_EDGE_GEOMETRY_EXACT_MATERIAL_REPLAY_BOUNDED"
+        ],
+        "packetSha256": "eb8b605150fae0e0ca5c1a3e1eb33fa73f57c17c5bd1363790ef22af84b5fb7a"
+      },
+      "bakedEdgeLightPacket": null,
+      "admissionBlockers": [],
+      "rowSha256": "cdd92511d79f312253baa289f1220a88471bb03ac5f539e1161a2b56e2da2fbe"
+    },
+    {
+      "selector": {
         "effectAssetId": "effect.valtan.pattern.420633.active",
         "occurrenceId": "visual-occurrence.198cd2a94a55d7cde806c65032df737ac92d6d494321812b03a89ca520847566"
       },
@@ -24552,9 +25428,9 @@
     "combatBaVisualRowCount": 133,
     "artistFLocalDecalVisualRowCount": 2,
     "cascadeRibbonVisualRowCount": 4,
-    "supplementalElementCount": 9,
+    "supplementalElementCount": 15,
     "artistFCascadeRibbonElementCount": 1,
-    "animationTrailElementCount": 7,
+    "animationTrailElementCount": 13,
     "bakedEdgeLightElementCount": 1,
     "admittedBoundedCount": 68,
     "failClosedCount": 67,
@@ -24574,5 +25450,5 @@
     "productMutation": false,
     "runtimeCatalogMutation": false
   },
-  "artifactSha256": "5407580676ca5d9123a762b384f24184abcbf61dea13c423634236378f297873"
+  "artifactSha256": "48fdf13e09c80e3f6e9e43440ec55ffbd2a8a0cb0b582b0616da4274e315d7eb"
 }

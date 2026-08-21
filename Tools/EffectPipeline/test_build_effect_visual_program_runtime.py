@@ -104,16 +104,17 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
     def test_exact_denominators_and_projected_document_bytes_sha(self) -> None:
         runtime = self.runtime
         self.assertEqual(runtime["denominators"], {
-            "programCount": 13,
-            "sourceRecipeOverlayProgramCount": 12,
+            "programCount": 16,
+            "sourceRecipeOverlayProgramCount": 15,
             "adapterPacketProgramCount": 1,
             "visualRowCount": 135,
             "sourceRecipeOverlayCount": 66,
             "localDecalAdapterPacketCount": 2,
             "cascadeRibbonVisualRowCount": 4,
-            "supplementalElementCount": 5,
+            "supplementalElementCount": 15,
             "artistFCascadeRibbonElementCount": 1,
-            "animationTrailElementCount": 4,
+            "animationTrailElementCount": 13,
+            "bakedEdgeLightElementCount": 1,
             "failClosedCount": 67,
             "extensionCanaryCount": 2,
             "productMutationCount": 0,
@@ -122,7 +123,7 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
             item for item in runtime["programs"]
             if item["projectionKind"] == "SOURCE_RECIPE_OVERLAY_V1"
         ]
-        self.assertEqual(len(overlays), 12)
+        self.assertEqual(len(overlays), 15)
         for program in overlays:
             document = program["projectedDocument"]
             canonical = builder.canonical_json_bytes(document)
@@ -145,6 +146,46 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
                 document, program["effectAssetId"]
             )
 
+    def test_whirlwind_legacy_lf_base_identity_is_the_only_raw_sha_exception(self) -> None:
+        path = (
+            self.repository_root
+            / PurePosixPath(builder.VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH)
+        )
+        builder._validate_overlay_base_raw_sha(
+            self.repository_root,
+            path,
+            builder.phase1.VALTAN_WHIRLWIND_LEGACY_DOCUMENT_PAYLOAD_RAW_SHA256,
+            builder.VALTAN_WHIRLWIND_EFFECT_ASSET_ID,
+            self.corpus,
+        )
+        with self.assertRaisesRegex(
+            builder.ContractError, "BA base document raw SHA changed"
+        ):
+            builder._validate_overlay_base_raw_sha(
+                self.repository_root,
+                path,
+                "0" * 64,
+                builder.VALTAN_WHIRLWIND_EFFECT_ASSET_ID,
+                self.corpus,
+            )
+        changed = copy.deepcopy(self.corpus)
+        input_row = next(
+            item
+            for item in changed["inputArtifacts"]
+            if item["path"] == builder.VALTAN_WHIRLWIND_DOCUMENT_RELATIVE_PATH
+        )
+        input_row["rawSha256"] = "0" * 64
+        with self.assertRaisesRegex(
+            builder.ContractError, "physical authoring canary diverged"
+        ):
+            builder._validate_overlay_base_raw_sha(
+                self.repository_root,
+                path,
+                builder.phase1.VALTAN_WHIRLWIND_LEGACY_DOCUMENT_PAYLOAD_RAW_SHA256,
+                builder.VALTAN_WHIRLWIND_EFFECT_ASSET_ID,
+                changed,
+            )
+
     def test_ba_overlay_preserves_carrier_and_executes_exact_source_recipe(self) -> None:
         admission = builder.load_json(
             self.repository_root / builder.ADMISSION_RELATIVE_PATH
@@ -156,18 +197,33 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
         for program in self.runtime["programs"]:
             if program["projectionKind"] != "SOURCE_RECIPE_OVERLAY_V1":
                 continue
-            base = builder.load_json(
-                self.repository_root
-                / PurePosixPath(
-                    stage_by_id[program["effectAssetId"]]["currentProduct"][
-                        "authoringPath"
-                    ]
-                )
+            effect_asset_id = program["effectAssetId"]
+            phase1_rows = [
+                row
+                for row in self.corpus["visualRows"]
+                if row["selector"]["effectAssetId"] == effect_asset_id
+            ]
+            phase1_supplemental = [
+                row
+                for row in self.corpus["supplementalElements"]
+                if row["selector"]["effectAssetId"] == effect_asset_id
+            ]
+            base_path, _ = builder._resolve_overlay_base_document(
+                self.repository_root,
+                effect_asset_id,
+                phase1_rows,
+                phase1_supplemental,
+                stage_by_id,
             )
+            base = builder.load_json(base_path)
             base_by_id = {item["id"]: item for item in base["elements"]}
             projected_by_id = {
                 item["id"]: item
                 for item in program["projectedDocument"]["elements"]
+            }
+            supplemental_targets = {
+                item["targetPayload"]["recordId"]: item["family"]
+                for item in phase1_supplemental
             }
             admitted_targets = set()
             for row in program["visualRows"]:
@@ -200,8 +256,23 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
                     len(source_recipe["modules"]),
                     row["sourceIdentity"]["moduleCount"],
                 )
-            for element_id in set(base_by_id) - admitted_targets:
+            for element_id in (
+                set(base_by_id) - admitted_targets - set(supplemental_targets)
+            ):
                 self.assertEqual(base_by_id[element_id], projected_by_id[element_id])
+            for element_id in supplemental_targets:
+                self.assertIn(element_id, projected_by_id)
+                if element_id in base_by_id:
+                    self.assertEqual(
+                        base_by_id[element_id]["kind"],
+                        projected_by_id[element_id]["kind"],
+                    )
+                else:
+                    self.assertIn(
+                        supplemental_targets[element_id],
+                        {"ANIMATION_TRAIL", "CASCADE_RIBBON"},
+                    )
+                    self.assertEqual(projected_by_id[element_id]["kind"], "trail")
         self.assertEqual(admitted_count, 66)
 
     def test_cascade_rows_fail_closed_and_animation_trail_packets_are_stable_elements(self) -> None:
@@ -235,10 +306,12 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
             for program in self.runtime["programs"]
             for item in program["supplementalElements"]
         ]
-        self.assertEqual(len(supplemental), 5)
+        self.assertEqual(len(supplemental), 15)
         self.assertEqual(
             sorted(item["family"] for item in supplemental),
-            ["ANIMATION_TRAIL"] * 4 + ["CASCADE_RIBBON"],
+            ["ANIMATION_TRAIL"] * 13
+            + ["CASCADE_RIBBON"]
+            + ["LIGHT_PARTICLE"],
         )
         for item in supplemental:
             self.assertEqual(
@@ -255,7 +328,7 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
                     packet["targetElementId"],
                     item["targetIdentity"]["targetElementId"],
                 )
-            else:
+            elif item["family"] == "CASCADE_RIBBON":
                 packet = item["cascadeRibbonPacket"]
                 self.assertIsNone(item["animationTrailPacket"])
                 self.assertEqual(
@@ -267,6 +340,16 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
                     ),
                     ("FX_PC_SDM_07:export:1293@ref:6", 6.0, 0.05, 500),
                 )
+            else:
+                packet = item["bakedEdgeLightPacket"]
+                self.assertEqual(item["family"], "LIGHT_PARTICLE")
+                self.assertIsNone(item["cascadeRibbonPacket"])
+                self.assertIsNone(item["animationTrailPacket"])
+                self.assertEqual(
+                    packet["runtimeCarrier"],
+                    "EFFECT_TYPED_LIGHT_BAKED_EDGE_ATTACHMENT_V1",
+                )
+                self.assertEqual(packet["lane"], "FIRST_EDGE")
 
     def test_projection_rejects_stale_source_recipe_module_and_target(self) -> None:
         _, base, rows = self._first_overlay_context()
