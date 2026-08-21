@@ -49,6 +49,38 @@ ACTIVE_INVENTORY_RELATIVE_PATH = (
     "Data/Effects/Imported/Artist/"
     "skill.31470.source-active-effect-inventory.receipt.json"
 )
+ARTIST_T_DOCUMENT_RELATIVE_PATH = (
+    "Data/Effects/Authored/effect.artist.skill.31950.unified.effect.json"
+)
+ARTIST_T_RIBBON_MATERIAL_RECEIPT_RELATIVE_PATH = (
+    "Data/Effects/Imported/Artist/Materials/"
+    "skill.31950.ribbon-parent-default-shader.receipt.json"
+)
+ARTIST_T_RIBBON_TARGET_ID = (
+    "authored.source-particle.29868adeb040d5a35e2f213c"
+)
+ARTIST_T_RIBBON_RUNTIME_MATERIAL_OPCODE = 20
+ARTIST_T_RIBBON_RESOURCES = [
+    {
+        "slotId": "base",
+        "assetId": "Effect/Artist/Textures/fx_d_normal_085.dds",
+    },
+    {
+        "slotId": "noise",
+        "assetId": "Effect/Artist/Textures/fx_a_fluid_003.dds",
+    },
+    {
+        "slotId": "emissive",
+        "assetId": "Effect/Artist/Textures/fx_k_auraline_14_ycl.dds",
+    },
+]
+ARTIST_T_RIBBON_MATERIAL_LIMITATIONS = [
+    "CHILD_MIC_HAS_NO_NATIVE_STATIC_TAIL_PARENT_DEFAULT_ONLY",
+    "SAMPLER_FILTER_ADDRESS_DEFAULTS_BOUNDED_NOT_SOURCE_REVISION_CDO_EXACT",
+    "FLUID_AND_AURA_SRGB_DEFAULTS_BOUNDED_NOT_SERIALIZED_EXPLICIT",
+    "PARENT_REFLECTION_BASIS_RECONSTRUCTED_ON_TYPED_RIBBON_CARRIER",
+    "DISTORTION_SCENE_COLOR_ACCUMULATE_PASS_DEFERRED",
+]
 LANCE_34010_SOURCE_RECEIPT_RELATIVE_PATH = (
     "Data/Effects/Imported/LanceMaster/skill.34010.source-receipt.json"
 )
@@ -118,14 +150,16 @@ EXPECTED_SCHEDULE_COUNT = 35
 EXPECTED_BA_ROW_COUNT = 133
 EXPECTED_LOCAL_DECAL_ROW_COUNT = 2
 EXPECTED_VISUAL_ROW_COUNT = 135
-EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 15
+EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 16
 EXPECTED_CASCADE_RIBBON_VISUAL_ROW_COUNT = 4
 EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 13
 EXPECTED_LANCE_ANIMATION_TRAIL_ELEMENT_COUNT = 4
 EXPECTED_VALTAN_ANIMATION_TRAIL_ELEMENT_COUNT = 3
 EXPECTED_VALTAN_SAFE_GAP_ANIMATION_TRAIL_ELEMENT_COUNT = 6
 EXPECTED_VALTAN_BAKED_EDGE_LIGHT_ELEMENT_COUNT = 1
-EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT = 1
+EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT = 2
+EXPECTED_ARTIST_F_CASCADE_RIBBON_ELEMENT_COUNT = 1
+EXPECTED_ARTIST_T_CASCADE_RIBBON_ELEMENT_COUNT = 1
 EXPECTED_LEGACY_COUNT = 66
 EXPECTED_FAIL_CLOSED_COUNT = 67
 EXPECTED_ADMITTED_COUNT = 68
@@ -1763,6 +1797,129 @@ def _literal_number(
     return float(matches[0])
 
 
+def _validate_artist_t_ribbon_material_target(
+    target: dict[str, Any],
+) -> None:
+    execution = _require_dict(
+        target.get("material", {}).get("execution"),
+        "Artist T Ribbon material execution",
+    )
+    lanes = _require_list(
+        execution.get("textureLanes"),
+        "Artist T Ribbon material texture lanes",
+    )
+    expected_lane_roles = (
+        "distortion_normal",
+        "surface_normal",
+        "alpha_aura",
+        "reflection_fluid",
+    )
+    expected_lane_assets = (
+        "Effect/Artist/Textures/fx_d_normal_085.dds",
+        "Effect/Artist/Textures/fx_d_normal_085.dds",
+        "Effect/Artist/Textures/fx_k_auraline_14_ycl.dds",
+        "Effect/Artist/Textures/fx_a_fluid_003.dds",
+    )
+    expected_channels = ("RG", "RG", "RGB", "RGB")
+    expected_color_spaces = ("linear", "linear", "srgb", "srgb")
+    expected_scalars = (
+        ("normal_strength", 0.5),
+        ("alpha_strength", 2.0),
+        ("reflection_uv_scale", 3.0),
+        ("distortion_strength", 50.0),
+        ("normal_uv_scale_x", 1.0),
+        ("normal_uv_scale_y", 1.0),
+        ("alpha_uv_scale_x", 1.0),
+        ("alpha_uv_scale_y", 1.0),
+        ("normal_pan_x", 0.0),
+        ("normal_pan_y", 0.0),
+        ("alpha_pan_x", 0.0),
+        ("alpha_pan_y", 0.0),
+    )
+    _require(
+        target.get("resources") == ARTIST_T_RIBBON_RESOURCES
+        and target.get("material", {}).get("templateId") == "effect.standard"
+        and target.get("material", {}).get("sourceProfile")
+            == {"enabled": False}
+        and execution.get("enabled") is True
+        and execution.get("version") == 1
+        and execution.get("backend") == "runtimeMaterialV2"
+        and execution.get("opcode")
+            == ARTIST_T_RIBBON_RUNTIME_MATERIAL_OPCODE
+        and execution.get("passIndex") == 1
+        and execution.get("renderState") == {
+            "rasterizer": "RS_Cull_None",
+            "depthStencil": "DSS_ReadOnly",
+            "blend": "BS_EffectAlpha",
+            "stencilReference": 0,
+        }
+        and execution.get("textureLaneCount") == 4
+        and execution.get("textureMask") == 0xF
+        and execution.get("dynamicConsumedMask") == 0xF
+        and execution.get("dynamicSuppressedMask") == 0
+        and execution.get("particleColorPolicy") == 2
+        and execution.get("particleColorConsumedMask") == 0x8
+        and execution.get("particleColorSuppressedMask") == 0x7
+        and execution.get("scalarCount") == len(expected_scalars)
+        and execution.get("vectorCount") == 1
+        and execution.get("inputCount") == 17
+        and execution.get("inputConsumedMask") == [0x1FF7F, 0]
+        and execution.get("inputSuppressedMask") == [0x80, 0]
+        and execution.get("vectorComponentConsumedMask") == [0xF, 0, 0]
+        and execution.get("vectorComponentSuppressedMask") == [0, 0, 0]
+        and execution.get("staticInputCount") == 0
+        and execution.get("staticSelectedMask") == 0
+        and execution.get("staticConsumedMask") == 0
+        and execution.get("staticSuppressedMask") == 0
+        and execution.get("renderInputCount") == 6
+        and execution.get("renderConsumedMask") == 0x2F
+        and execution.get("renderSuppressedMask") == 0x10
+        and execution.get("artistParameters") == []
+        and execution.get("colors") == [],
+        "Artist T Ribbon bounded material packet changed",
+    )
+    _require(len(lanes) == 4, "Artist T Ribbon texture denominator changed")
+    for index, lane in enumerate(lanes):
+        sampler = _require_dict(
+            lane.get("sampler"), f"Artist T Ribbon lane {index} sampler"
+        )
+        _require(
+            lane.get("laneId") == f"lane.{index}"
+            and lane.get("role") == expected_lane_roles[index]
+            and lane.get("assetId") == expected_lane_assets[index]
+            and lane.get("textureRegister") == index
+            and lane.get("samplerRegister") == 5 + index
+            and lane.get("sourceChannel") == expected_channels[index]
+            and lane.get("colorSpace") == expected_color_spaces[index]
+            and sampler.get("filter") == "linear"
+            and sampler.get("addressU") == "wrap"
+            and sampler.get("addressV")
+                == ("clamp" if index == 2 else "wrap")
+            and sampler.get("addressW") == "wrap"
+            and sampler.get("mipLodBias") == 0.0
+            and sampler.get("maxAnisotropy") == 1
+            and sampler.get("comparison") == "never"
+            and sampler.get("borderColor") == [0.0, 0.0, 0.0, 0.0]
+            and sampler.get("minLod") == 0.0
+            and sampler.get("maxLod") == 3.40282347e38,
+            f"Artist T Ribbon texture lane {index} changed",
+        )
+    _require(
+        execution.get("scalars") == [
+            {"name": name, "packedIndex": index, "value": value}
+            for index, (name, value) in enumerate(expected_scalars)
+        ]
+        and execution.get("vectors") == [
+            {
+                "name": "reflect_color_and_intensity",
+                "packedIndex": 0,
+                "value": [1.0, 1.0, 3.0, 50.0],
+            }
+        ],
+        "Artist T Ribbon packed material constants changed",
+    )
+
+
 def _build_artist_cascade_ribbon_supplemental_element(
     repository_root: Path,
     input_registry: dict[str, dict[str, Any]],
@@ -1851,6 +2008,140 @@ def _build_artist_cascade_ribbon_supplemental_element(
     return row
 
 
+def _build_artist_t_cascade_ribbon_supplemental_element(
+    repository_root: Path,
+    input_registry: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    target_path = ARTIST_T_DOCUMENT_RELATIVE_PATH
+    target_payload, target = _payload_ref(
+        repository_root, target_path, ARTIST_T_RIBBON_TARGET_ID
+    )
+    material_receipt_path = ARTIST_T_RIBBON_MATERIAL_RECEIPT_RELATIVE_PATH
+    material_receipt = load_json(repository_root / material_receipt_path)
+    _require(
+        material_receipt.get("schema")
+            == "lostark.effect-ue3-parent-default-ribbon-material-receipt"
+        and material_receipt.get("occurrenceId") == ARTIST_T_RIBBON_TARGET_ID
+        and material_receipt.get("childMic", {}).get("childNativeDxbc") is False
+        and material_receipt.get("runtimeAdmission", {}).get("admitted") is False,
+        "Artist T Ribbon parent-default evidence boundary changed",
+    )
+    for path, role in (
+        (target_path, "ARTIST_T_CASCADE_RIBBON_TARGET_ELEMENT"),
+        (
+            material_receipt_path,
+            "ARTIST_T_RIBBON_PARENT_DEFAULT_MATERIAL_EVIDENCE",
+        ),
+    ):
+        _merge_input_artifact(
+            input_registry, _input_artifact(repository_root, path, [role])
+        )
+    _require(
+        target.get("visible") is True
+        and target.get("kind") == "trail"
+        and target.get("material", {}).get("sourceMaterialPath")
+            == "fx_m_mi_d_00.fx_mi.fx_d_pa_ribbonliquid_01_101_tr",
+        "Artist T Ribbon target carrier identity changed",
+    )
+    _validate_artist_t_ribbon_material_target(target)
+    source_recipe = _require_dict(
+        target.get("sourceRecipe"), "Artist T Ribbon SourceRecipe"
+    )
+    _require(
+        source_recipe.get("enabled") is True
+        and source_recipe.get("rendererShape") == "ribbon",
+        "Artist T SourceRecipe is not an enabled Ribbon",
+    )
+    typed = _find_typed_module(
+        source_recipe, "particlemoduletypedataribbon"
+    )
+    target_timing, target_contract = _trail_target_packet(target)
+    trail = _require_dict(
+        _require_dict(target.get("detail"), "Artist T detail").get("trail"),
+        "Artist T trail",
+    )
+    packet = {
+        "packetVersion": 1,
+        "adapterId": "cascade-ribbon-document-v12",
+        "boundedSemanticReplay": True,
+        "nativeExecution": False,
+        "runtimeCarrier": "EFFECT_TYPED_CASCADE_RIBBON_V1",
+        "typeDataStableId": _require_string(
+            typed.get("stableId"), "Artist T TypeData stableId"
+        ),
+        "typeDataClassName": _require_string(
+            typed.get("className"), "Artist T TypeData className"
+        ).lower(),
+        "typeDataObjectPath": _require_string(
+            typed.get("objectPath"), "Artist T TypeData objectPath"
+        ),
+        "typeDataModuleSha256": canonical_json_sha256(typed),
+        "resolvedRendererShape": "ribbon",
+        "tilingDistance": _literal_number(typed, "tilingdistance") * 0.01,
+        "distanceTessellationStepSize": _literal_number(
+            typed, "distancetessellationstepsize"
+        ) * 0.01,
+        "tangentTessellationScalar": _literal_number(
+            typed, "tangenttessellationscalar", 0.0
+        ),
+        "lodValidity": _literal_number(typed, "lodvalidity"),
+        "operationalMaxPoints": trail.get("maxPoints"),
+        "targetTiming": target_timing,
+        "attachment": target_contract["attachment"],
+        "trail": target_contract["trail"],
+        "sourceRecipeSha256": canonical_json_sha256(source_recipe),
+        "moduleClosureSha256": canonical_json_sha256(
+            source_recipe["modules"]
+        ),
+        "moduleCount": len(source_recipe["modules"]),
+        "preservedLimitations": [
+            "CASCADE_RIBBON_BOUNDED_RECONSTRUCTION_NOT_NATIVE_SOURCE_EXACT",
+            *ARTIST_T_RIBBON_MATERIAL_LIMITATIONS,
+        ],
+    }
+    _seal_row(packet, "packetSha256")
+    selector = {
+        "effectAssetId": "effect.artist.skill.31950.unified",
+        "occurrenceId": ARTIST_T_RIBBON_TARGET_ID,
+    }
+    source_presentation = _require_dict(
+        target.get("sourcePresentation"), "Artist T sourcePresentation"
+    )
+    row = {
+        "selector": selector,
+        "selectorSha256": canonical_json_sha256(selector),
+        "provenance": {
+            "scope": "ARTIST_T_CASCADE_RIBBON",
+            "characterClass": "ARTIST",
+            "skillId": 31950,
+            "stageIndex": 0,
+            "sourceStableId": ARTIST_T_RIBBON_TARGET_ID,
+        },
+        "schedule": {
+            "stageId": "artist.31950.active",
+            "sourceEventId": source_presentation.get("sourceEventId"),
+            "sourceTimelineSeconds": 0.0,
+            "localTimeSeconds": 0.0,
+            "durationSeconds": source_recipe.get("emitterDurationSeconds"),
+        },
+        "sourcePayload": target_payload,
+        "targetPayload": copy.deepcopy(target_payload),
+        "family": "CASCADE_RIBBON",
+        "adapterId": "cascade-ribbon-document-v12",
+        "packetLayout": "CASCADE_RIBBON_TYPED_PACKET_V1",
+        "fidelity": "BOUNDED_RECONSTRUCTION",
+        "disposition": "ADMITTED_BOUNDED",
+        "tuningEligibleTransform": True,
+        "resourcePacket": [],
+        "cascadeRibbonPacket": packet,
+        "animationTrailPacket": None,
+        "bakedEdgeLightPacket": None,
+        "admissionBlockers": [],
+    }
+    _seal_row(row, "rowSha256")
+    return row
+
+
 def _build_supplemental_elements(
     repository_root: Path,
     input_registry: dict[str, dict[str, Any]],
@@ -1887,6 +2178,11 @@ def _build_supplemental_elements(
     )
     result.append(
         _build_artist_cascade_ribbon_supplemental_element(
+            repository_root, input_registry
+        )
+    )
+    result.append(
+        _build_artist_t_cascade_ribbon_supplemental_element(
             repository_root, input_registry
         )
     )
@@ -2154,7 +2450,10 @@ def build_corpus(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
             "artistFLocalDecalVisualRowCount": EXPECTED_LOCAL_DECAL_ROW_COUNT,
             "cascadeRibbonVisualRowCount": EXPECTED_CASCADE_RIBBON_VISUAL_ROW_COUNT,
             "supplementalElementCount": EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT,
-            "artistFCascadeRibbonElementCount": EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
+            "artistFCascadeRibbonElementCount":
+                EXPECTED_ARTIST_F_CASCADE_RIBBON_ELEMENT_COUNT,
+            "artistTCascadeRibbonElementCount":
+                EXPECTED_ARTIST_T_CASCADE_RIBBON_ELEMENT_COUNT,
             "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
             "bakedEdgeLightElementCount": EXPECTED_VALTAN_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
             "admittedBoundedCount": EXPECTED_ADMITTED_COUNT,
@@ -2459,6 +2758,25 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
                 canonical_json_sha256(target_recipe.get("modules", [])) == packet.get("moduleClosureSha256"),
                 "CascadeRibbon target recipe packet is stale",
             )
+            provenance = _require_dict(
+                item.get("provenance"), "CascadeRibbon provenance"
+            )
+            if provenance.get("scope") == "ARTIST_T_CASCADE_RIBBON":
+                _require(
+                    selector.get("effectAssetId")
+                        == "effect.artist.skill.31950.unified"
+                    and selector.get("occurrenceId")
+                        == ARTIST_T_RIBBON_TARGET_ID
+                    and source_record == target_record
+                    and target_record.get("visible") is True
+                    and target_record.get("kind") == "trail"
+                    and packet.get("preservedLimitations") == [
+                        "CASCADE_RIBBON_BOUNDED_RECONSTRUCTION_NOT_NATIVE_SOURCE_EXACT",
+                        *ARTIST_T_RIBBON_MATERIAL_LIMITATIONS,
+                    ],
+                    "Artist T Ribbon carrier/material packet changed",
+                )
+                _validate_artist_t_ribbon_material_target(target_record)
         else:
             _require(family == "LIGHT_PARTICLE", "unknown supplemental family")
             _require(
@@ -2510,9 +2828,16 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
                 f"supplementalElements[{index}].resourcePacket[{resource_index}]",
             )
         supplemental_counts[family] += 1
+        supplemental_counts[(
+            "scope", (item.get("provenance") or {}).get("scope")
+        )] += 1
     _require(
         supplemental_counts["ANIMATION_TRAIL"] == EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT and
         supplemental_counts["CASCADE_RIBBON"] == EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT and
+        supplemental_counts[("scope", "ARTIST_F_CASCADE_RIBBON")] ==
+            EXPECTED_ARTIST_F_CASCADE_RIBBON_ELEMENT_COUNT and
+        supplemental_counts[("scope", "ARTIST_T_CASCADE_RIBBON")] ==
+            EXPECTED_ARTIST_T_CASCADE_RIBBON_ELEMENT_COUNT and
         supplemental_counts["LIGHT_PARTICLE"] == EXPECTED_VALTAN_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
         "supplemental family denominator changed",
     )
@@ -2733,7 +3058,10 @@ def validate_corpus(corpus: dict[str, Any], repository_root: Path = REPOSITORY_R
         "artistFLocalDecalVisualRowCount": EXPECTED_LOCAL_DECAL_ROW_COUNT,
         "cascadeRibbonVisualRowCount": EXPECTED_CASCADE_RIBBON_VISUAL_ROW_COUNT,
         "supplementalElementCount": EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT,
-        "artistFCascadeRibbonElementCount": EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
+        "artistFCascadeRibbonElementCount":
+            EXPECTED_ARTIST_F_CASCADE_RIBBON_ELEMENT_COUNT,
+        "artistTCascadeRibbonElementCount":
+            EXPECTED_ARTIST_T_CASCADE_RIBBON_ELEMENT_COUNT,
             "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
             "bakedEdgeLightElementCount": EXPECTED_VALTAN_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
         "admittedBoundedCount": EXPECTED_ADMITTED_COUNT,

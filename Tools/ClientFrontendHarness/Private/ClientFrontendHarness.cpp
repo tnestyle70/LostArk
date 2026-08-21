@@ -12594,6 +12594,762 @@ namespace
 			"Artist E Missing Crane Clip Restage Rejects And Preserves The Prior Animated ModelCue Draw");
 	}
 
+	void Test_ArtistTCascadeRibbonContract(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view EFFECT_ID =
+			"effect.artist.skill.31950.unified";
+		constexpr std::string_view TARGET_ID =
+			"authored.source-particle.29868adeb040d5a35e2f213c";
+		constexpr std::string_view TYPE_DATA_STABLE_ID =
+			"FX_PC_SDM_01:export:1495@ref:6";
+		constexpr f32_t TILING_DISTANCE = 3.f;
+		constexpr f32_t TESSELLATION_STEP = 0.05f;
+		constexpr f32_t POINT_LIFETIME = 0.35f;
+		constexpr f32_t START_WIDTH = 0.2f;
+		constexpr f32_t END_WIDTH = 0.f;
+		constexpr uint32_t RUNTIME_MATERIAL_OPCODE = 20u;
+
+		SCOPED_ENVIRONMENT_VARIABLE ResourceRootEnvironment(
+			L"LOSTARK_RESOURCE_ROOT");
+		const std::filesystem::path ResourceRoot =
+			ResourceRootEnvironment.Was_Defined() &&
+			!ResourceRootEnvironment.Get_OriginalValue().empty() ?
+				std::filesystem::path(
+					ResourceRootEnvironment.Get_OriginalValue()) :
+				CProjectDataRoot::Get().parent_path() /
+					L"Client" / L"Bin" / L"Resources";
+		std::error_code ResourceError;
+		const bool_t bResourceRootReady =
+			std::filesystem::is_directory(ResourceRoot, ResourceError) &&
+			!ResourceError && ResourceRootEnvironment.Set(ResourceRoot.c_str());
+		runner.Require(bResourceRootReady,
+			"Artist T CascadeRibbon Resolves The Production Resource Root");
+		if (!bResourceRootReady)
+			return;
+
+		const std::filesystem::path CorpusPath = CProjectDataRoot::Resolve(
+			L"Effects/VisualPrograms/effect-visual-program-runtime.v1.json");
+		const std::filesystem::path DocumentPath = CProjectDataRoot::Resolve(
+			L"Effects/Authored/effect.artist.skill.31950.unified.effect.json");
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_CORPUS> Corpus;
+		EFFECT_DOCUMENT_DESC BaseDocument;
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			Projection;
+		std::string Status;
+		const bool_t bProjectionReady =
+			CEffectVisualProgramCorpusCodec::Load(CorpusPath, Corpus, Status) &&
+			nullptr != Corpus &&
+			CEffectDocumentCodec::Load(DocumentPath, BaseDocument, Status) &&
+			BaseDocument.strEffectAssetId == EFFECT_ID &&
+			CEffectVisualProgramCorpusCodec::Create_DocumentProjection(
+				*Corpus, BaseDocument, Projection, Status) &&
+			nullptr != Projection && Projection->Is_Valid();
+		runner.Require(bProjectionReady,
+			"Artist T Loads The Exact 31950 CascadeRibbon Visual Program Projection");
+		if (!bProjectionReady)
+		{
+			std::cout << "[ARTIST-T-RIBBON] projection=" << Status << '\n';
+			return;
+		}
+
+		const EFFECT_VISUAL_PROGRAM* const pProgram =
+			CEffectVisualProgramCorpusCodec::Find_Program(*Corpus, EFFECT_ID);
+		const EFFECT_VISUAL_PROGRAM_SUPPLEMENTAL_ELEMENT* const pSupplemental =
+			CEffectVisualProgramCorpusCodec::
+				Find_SupplementalElementByTargetElementId(
+					*Corpus, EFFECT_ID, TARGET_ID);
+		const auto TargetIterator = std::ranges::find_if(
+			Projection->Get_Document().Elements,
+			[](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == TARGET_ID;
+			});
+		const EFFECT_ELEMENT_DESC* const pTarget = TargetIterator ==
+			Projection->Get_Document().Elements.end() ? nullptr : &*TargetIterator;
+		const EFFECT_VISUAL_PROGRAM_CASCADE_RIBBON_PACKET* const pPacket =
+			nullptr != pSupplemental &&
+			pSupplemental->CascadeRibbonPacket.has_value() ?
+				&*pSupplemental->CascadeRibbonPacket : nullptr;
+		const auto HasLimitation = [pPacket](const std::string_view Value)
+		{
+			return nullptr != pPacket && std::ranges::find(
+				pPacket->PreservedLimitations, Value) !=
+				pPacket->PreservedLimitations.end();
+		};
+		const bool_t bPacketExact = nullptr != pProgram &&
+			pProgram->eProjectionKind ==
+				EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1 &&
+			pProgram->SupplementalElements.size() == 1u &&
+			nullptr != pSupplemental &&
+			pSupplemental->eFamily ==
+				EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON &&
+			pSupplemental->eDisposition ==
+				EFFECT_VISUAL_PROGRAM_DISPOSITION::ADMITTED_BOUNDED &&
+			pSupplemental->Resources.empty() &&
+			pSupplemental->AdmissionBlockers.empty() &&
+			nullptr != pPacket && 1u == pPacket->iPacketVersion &&
+			pPacket->bBoundedSemanticReplay && !pPacket->bNativeExecution &&
+			pPacket->strRuntimeCarrier ==
+				"EFFECT_TYPED_CASCADE_RIBBON_V1" &&
+			pPacket->strTypeDataStableId == TYPE_DATA_STABLE_ID &&
+			pPacket->strTypeDataClassName ==
+				"particlemoduletypedataribbon" &&
+			pPacket->strResolvedRendererShape == "ribbon" &&
+			pPacket->iModuleCount == 8u &&
+			pPacket->iOperationalMaxPoints == 64u &&
+			std::abs(pPacket->fTilingDistance - TILING_DISTANCE) <= 1e-6 &&
+			std::abs(pPacket->fDistanceTessellationStepSize -
+				TESSELLATION_STEP) <= 1e-6 &&
+			HasLimitation(
+				"CHILD_MIC_HAS_NO_NATIVE_STATIC_TAIL_PARENT_DEFAULT_ONLY") &&
+			HasLimitation(
+				"SAMPLER_FILTER_ADDRESS_DEFAULTS_BOUNDED_NOT_SOURCE_REVISION_CDO_EXACT") &&
+			HasLimitation(
+				"FLUID_AND_AURA_SRGB_DEFAULTS_BOUNDED_NOT_SERIALIZED_EXPLICIT") &&
+			HasLimitation(
+				"PARENT_REFLECTION_BASIS_RECONSTRUCTED_ON_TYPED_RIBBON_CARRIER") &&
+			HasLimitation("DISTORTION_SCENE_COLOR_ACCUMULATE_PASS_DEFERRED");
+		runner.Require(bPacketExact,
+			"Artist T CascadeRibbon Packet Pins Exact TypeData Geometry And Truthful Parent-Default Material Limits");
+
+		const bool_t bTargetExact = nullptr != pTarget && pTarget->bVisible &&
+			pTarget->eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+			pTarget->ResourceBindings.size() == 3u &&
+			pTarget->ResourceBindings[0].strSlotId == "base" &&
+			pTarget->ResourceBindings[0].strAssetId ==
+				"Effect/Artist/Textures/fx_d_normal_085.dds" &&
+			pTarget->ResourceBindings[1].strSlotId == "noise" &&
+			pTarget->ResourceBindings[1].strAssetId ==
+				"Effect/Artist/Textures/fx_a_fluid_003.dds" &&
+			pTarget->ResourceBindings[2].strSlotId == "emissive" &&
+			pTarget->ResourceBindings[2].strAssetId ==
+				"Effect/Artist/Textures/fx_k_auraline_14_ycl.dds" &&
+			pTarget->SourceRecipe.bEnabled &&
+			pTarget->SourceRecipe.strRendererShape == "ribbon" &&
+			pTarget->SourceRecipe.Modules.size() == 8u &&
+			std::ranges::count_if(pTarget->SourceRecipe.Modules,
+				[](const EFFECT_SOURCE_MODULE_DESC& Module)
+				{
+					return Module.strClassName ==
+						"particlemoduletypedataribbon";
+				}) == 1u &&
+			pTarget->Detail.Trail.iMaxPoints == 64u &&
+			std::abs(pTarget->Detail.Trail.fPointLifeTimeSeconds -
+				POINT_LIFETIME) <= 1e-6f &&
+			std::abs(pTarget->Detail.Trail.fStartWidth - START_WIDTH) <=
+				1e-6f &&
+			std::abs(pTarget->Detail.Trail.fEndWidth - END_WIDTH) <=
+				1e-6f &&
+			std::abs(pTarget->Detail.Trail.fTilingDistanceWorldUnits -
+				TILING_DISTANCE) <= 1e-6f &&
+			std::abs(
+				pTarget->Detail.Trail.fDistanceTessellationStepWorldUnits -
+				TESSELLATION_STEP) <= 1e-6f &&
+			pTarget->Material.strTemplateId == "effect.standard" &&
+			!pTarget->Material.SourceMaterial.bEnabled &&
+			pTarget->Material.Execution.bEnabled &&
+			pTarget->Material.Execution.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			pTarget->Material.Execution.iOpcode == RUNTIME_MATERIAL_OPCODE &&
+			pTarget->Material.Execution.iTextureLaneCount == 4u &&
+			pTarget->Material.Execution.iTextureMask == 0x0fu &&
+			pTarget->Material.Execution.TextureLanes.size() == 4u &&
+			pTarget->Material.Execution.TextureLanes[0u].strRole ==
+				"distortion_normal" &&
+			pTarget->Material.Execution.TextureLanes[0u].strAssetId ==
+				"Effect/Artist/Textures/fx_d_normal_085.dds" &&
+			pTarget->Material.Execution.TextureLanes[1u].strRole ==
+				"surface_normal" &&
+			pTarget->Material.Execution.TextureLanes[1u].strAssetId ==
+				"Effect/Artist/Textures/fx_d_normal_085.dds" &&
+			pTarget->Material.Execution.TextureLanes[2u].strRole ==
+				"alpha_aura" &&
+			pTarget->Material.Execution.TextureLanes[2u].strAssetId ==
+				"Effect/Artist/Textures/fx_k_auraline_14_ycl.dds" &&
+			pTarget->Material.Execution.TextureLanes[2u].Sampler.eAddressV ==
+				EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::CLAMP &&
+			pTarget->Material.Execution.TextureLanes[3u].strRole ==
+				"reflection_fluid" &&
+			pTarget->Material.Execution.TextureLanes[3u].strAssetId ==
+				"Effect/Artist/Textures/fx_a_fluid_003.dds" &&
+			pTarget->Material.Execution.TextureLanes[3u].Sampler.eAddressV ==
+				EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+			pTarget->Material.Execution.iDynamicConsumedMask == 0x0fu &&
+			pTarget->Material.Execution.iParticleColorConsumedMask == 0x08u &&
+			pTarget->Material.Execution.iScalarCount == 12u &&
+			pTarget->Material.Execution.iVectorCount == 1u &&
+			pTarget->Material.Execution.InputConsumedMask ==
+				std::array<uint32_t, 2u>{ 0x1ff7fu, 0u } &&
+			pTarget->Material.Execution.InputSuppressedMask ==
+				std::array<uint32_t, 2u>{ 0x80u, 0u } &&
+			!pTarget->Material.Execution.bFailClosed &&
+			!pTarget->Material.Execution.bAuthoringApproximate &&
+			!Is_EffectFailClosedSourceGeometryCarrier(*pTarget);
+		runner.Require(bTargetExact,
+			"Artist T Authored Row Selectively Carries Opcode20 And Three Exact Parent Texture Assets");
+		if (!bPacketExact || !bTargetExact)
+			return;
+
+		const auto pBaseIdentity =
+			std::make_shared<const EFFECT_DOCUMENT_DESC>(BaseDocument);
+		std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+			ProjectedResources;
+		std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
+			BaseResources;
+		Status.clear();
+		const bool_t bResourcesPrepared =
+			CEffectPlayback::Prepare_DocumentResources(
+				Projection->Get_Document(), ProjectedResources, Status,
+				Projection->Get_DocumentShared()) &&
+			CEffectPlayback::Prepare_DocumentResources(
+				*pBaseIdentity, BaseResources, Status, pBaseIdentity);
+		runner.Require(bResourcesPrepared,
+			"Artist T Prepares Immutable Projection And Base Resource Identities");
+		if (!bResourcesPrepared)
+		{
+			std::cout << "[ARTIST-T-RIBBON] prepare=" << Status << '\n';
+			return;
+		}
+
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER MovingRoot = [](
+			const f32_t fSampleTimeSeconds,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE& OutSample,
+			std::string& strOutError)
+		{
+			if (!std::isfinite(fSampleTimeSeconds) || fSampleTimeSeconds < 0.f)
+			{
+				strOutError = "invalid Artist T CascadeRibbon sample time";
+				return false;
+			}
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE Staged;
+			XMStoreFloat4x4(&Staged.RootWorld,
+				XMMatrixTranslation(fSampleTimeSeconds * 1.2f, 0.f, 0.f));
+			OutSample = std::move(Staged);
+			strOutError.clear();
+			return true;
+		};
+		const auto FindTargetTrail = [](const EFFECT_EVALUATED_FRAME& Frame)
+			-> const EFFECT_EVALUATED_TRAIL*
+		{
+			const auto Found = std::ranges::find_if(Frame.Trails,
+				[](const EFFECT_EVALUATED_TRAIL& Trail)
+				{
+					return nullptr != Trail.pElement &&
+						Trail.pElement->strElementId == TARGET_ID;
+				});
+			return Found == Frame.Trails.end() ? nullptr : &*Found;
+		};
+		const auto SnapshotTargetTrail = [&FindTargetTrail](
+			const EFFECT_EVALUATED_FRAME& Frame)
+		{
+			std::ostringstream Output;
+			Output << std::hexfloat << Frame.fSampleTimeSeconds << '|';
+			const EFFECT_EVALUATED_TRAIL* const pTrail = FindTargetTrail(Frame);
+			if (nullptr == pTrail)
+				return Output.str() + "missing";
+			for (const EFFECT_EVALUATED_TRAIL_POINT& Point : pTrail->Points)
+			{
+				Output << Point.vWorldPosition.x << ',' << Point.vWorldPosition.y <<
+					',' << Point.vWorldPosition.z << ',' << Point.fNormalizedAge <<
+					',' << Point.fCumulativeDistance << ',' << Point.fSourceWidth <<
+					',' << Point.vSourceColor.x << ',' << Point.vSourceColor.y <<
+					',' << Point.vSourceColor.z << ',' << Point.vSourceColor.w <<
+					',' << Point.vDynamicParameter.x << ',' <<
+					Point.vDynamicParameter.y << ',' << Point.vDynamicParameter.z <<
+					',' << Point.vDynamicParameter.w << ',' <<
+					Point.iSourceColorComponentMask << ',' <<
+					Point.iDynamicParameterComponentMask << ';';
+			}
+			return Output.str();
+		};
+
+		CEffectPlayback OrdinaryPlayback;
+		Status.clear();
+		const bool_t bOrdinaryStage = OrdinaryPlayback.Stage_PrevalidatedDocument(
+			Projection->Get_Document(), ProjectedResources, Status);
+		if (bOrdinaryStage)
+			OrdinaryPlayback.Seek_WithTransformHistory(1.f, MovingRoot, Status);
+		const EFFECT_EVALUATED_TRAIL* const pOrdinaryTrail =
+			FindTargetTrail(OrdinaryPlayback.Get_Frame());
+		runner.Require(bOrdinaryStage && nullptr != pOrdinaryTrail &&
+			pOrdinaryTrail->Points.size() >= 2u &&
+			!OrdinaryPlayback.Is_SourceVisualProgramActive(),
+			"Artist T Typed Material Is Executable In Ordinary Playback While Visual-Program Admission Remains Explicit");
+
+		const auto RunOneSecond = [&](const uint32_t iFramesPerSecond,
+			std::string& OutSignature,
+			std::vector<EFFECT_EVALUATED_TRAIL_POINT>& OutPoints)
+		{
+			CEffectPlayback Playback;
+			std::string LocalStatus;
+			if (!Playback.Stage_PrevalidatedVisualProgramDocument(
+					Projection, ProjectedResources, LocalStatus))
+			{
+				OutSignature = "stage failed: " + LocalStatus;
+				return false;
+			}
+			const f32_t fDelta =
+				1.f / static_cast<f32_t>(iFramesPerSecond);
+			for (uint32_t iFrame = 0u; iFrame < iFramesPerSecond; ++iFrame)
+			{
+				if (!Playback.Update_WithTransformHistory(
+						fDelta, MovingRoot, LocalStatus))
+				{
+					OutSignature = "update failed: " + LocalStatus;
+					return false;
+				}
+			}
+			const EFFECT_EVALUATED_TRAIL* const pTrail =
+				FindTargetTrail(Playback.Get_Frame());
+			if (nullptr == pTrail || pTrail->Points.size() < 2u)
+			{
+				OutSignature = "target trail missing";
+				return false;
+			}
+			OutPoints = pTrail->Points;
+			OutSignature = SnapshotTargetTrail(Playback.Get_Frame());
+			return true;
+		};
+		std::array<std::string, 3u> RateSignatures;
+		std::array<std::vector<EFFECT_EVALUATED_TRAIL_POINT>, 3u> RatePoints;
+		const bool_t bRatesExecuted =
+			RunOneSecond(30u, RateSignatures[0u], RatePoints[0u]) &&
+			RunOneSecond(60u, RateSignatures[1u], RatePoints[1u]) &&
+			RunOneSecond(144u, RateSignatures[2u], RatePoints[2u]);
+		const bool_t bRateDeterministic = bRatesExecuted &&
+			RateSignatures[0u] == RateSignatures[1u] &&
+			RateSignatures[1u] == RateSignatures[2u];
+		if (!bRateDeterministic)
+		{
+			std::cout << "[ARTIST-T-RIBBON] rate signatures bytes=" <<
+				RateSignatures[0u].size() << '/' << RateSignatures[1u].size() <<
+				'/' << RateSignatures[2u].size() << " hash=" <<
+				std::hash<std::string>{}(RateSignatures[0u]) << '/' <<
+				std::hash<std::string>{}(RateSignatures[1u]) << '/' <<
+				std::hash<std::string>{}(RateSignatures[2u]) << '\n';
+		}
+		runner.Require(bRateDeterministic,
+			"Artist T CascadeRibbon History Is Identical At 30 60 And 144 FPS");
+
+		bool_t bPointContractExact = bRateDeterministic &&
+			RatePoints[1u].size() <= 64u;
+		for (size_t iPoint = 0u;
+			bPointContractExact && iPoint < RatePoints[1u].size(); ++iPoint)
+		{
+			const EFFECT_EVALUATED_TRAIL_POINT& Point = RatePoints[1u][iPoint];
+			const f32_t fWidth = START_WIDTH +
+				(END_WIDTH - START_WIDTH) * Point.fNormalizedAge;
+			const f32_t fU = Point.fCumulativeDistance / TILING_DISTANCE;
+			bPointContractExact = std::isfinite(Point.vWorldPosition.x) &&
+				std::isfinite(Point.fNormalizedAge) &&
+				Point.fNormalizedAge >= 0.f && Point.fNormalizedAge < 1.f &&
+				std::isfinite(Point.fCumulativeDistance) &&
+				Point.fCumulativeDistance >= 0.f && std::isfinite(fWidth) &&
+				fWidth >= END_WIDTH - 1e-6f &&
+				fWidth <= START_WIDTH + 1e-6f && std::isfinite(fU) &&
+				std::abs(Point.fSourceWidth) <= 1e-6f &&
+				(Point.iSourceColorComponentMask & 0x0fu) == 0x08u &&
+				(Point.iDynamicParameterComponentMask & 0x0fu) == 0x0fu;
+			if (iPoint > 0u)
+			{
+				const EFFECT_EVALUATED_TRAIL_POINT& Previous =
+					RatePoints[1u][iPoint - 1u];
+				const f32_t fPreviousU =
+					Previous.fCumulativeDistance / TILING_DISTANCE;
+				bPointContractExact = bPointContractExact &&
+					Point.vWorldPosition.x > Previous.vWorldPosition.x &&
+					Point.fCumulativeDistance >
+						Previous.fCumulativeDistance &&
+					fU > fPreviousU &&
+					Point.fNormalizedAge < Previous.fNormalizedAge;
+			}
+		}
+		if (bPointContractExact)
+		{
+			const auto& First = RatePoints[1u].front();
+			const auto& Last = RatePoints[1u].back();
+			bPointContractExact =
+				std::abs(Last.vWorldPosition.x - 1.2f) <= 0.0001f &&
+				Last.vWorldPosition.x - First.vWorldPosition.x <=
+					1.2f * POINT_LIFETIME + 0.0001f;
+		}
+		runner.Require(bPointContractExact,
+			"Artist T CascadeRibbon Owns Bounded Lifetime Width Dynamic Lanes And Distance-Tiled UV Inputs");
+		if (!bPointContractExact && !RatePoints[1u].empty())
+		{
+			const auto& First = RatePoints[1u].front();
+			const auto& Last = RatePoints[1u].back();
+			std::cout << "[ARTIST-T-RIBBON] points=" << RatePoints[1u].size() <<
+				" firstX=" << First.vWorldPosition.x << " lastX=" <<
+				Last.vWorldPosition.x << " span=" <<
+				Last.vWorldPosition.x - First.vWorldPosition.x <<
+				" firstAge=" << First.fNormalizedAge << " lastAge=" <<
+				Last.fNormalizedAge << " sourceMask=0x" << std::hex <<
+				First.iSourceColorComponentMask << " dynamicMask=0x" <<
+				First.iDynamicParameterComponentMask << std::dec <<
+				" firstDistance=" << First.fCumulativeDistance <<
+				" lastDistance=" << Last.fCumulativeDistance << '\n';
+		}
+
+		CEffectPlayback Playback;
+		Status.clear();
+		const bool_t bPlaybackStaged =
+			Playback.Stage_PrevalidatedVisualProgramDocument(
+				Projection, ProjectedResources, Status);
+		const bool_t bPlaybackEvaluated = bPlaybackStaged &&
+			Playback.Seek_WithTransformHistory(1.f, MovingRoot, Status);
+		const std::string PreservedTarget = bPlaybackEvaluated ?
+			SnapshotTargetTrail(Playback.Get_Frame()) : std::string{};
+		const std::string PreservedFrame = bPlaybackEvaluated ?
+			Snapshot_EffectFrame(Playback.Get_Frame()) : std::string{};
+		const f32_t fPreservedDuration = Playback.Get_DurationSeconds();
+		Status.clear();
+		const bool_t bIdentityRollback = bPlaybackEvaluated &&
+			!Playback.Stage_PrevalidatedVisualProgramDocument(
+				Projection, BaseResources, Status) && !Status.empty() &&
+			Playback.Is_SourceVisualProgramActive() &&
+			Playback.Get_DurationSeconds() == fPreservedDuration &&
+			SnapshotTargetTrail(Playback.Get_Frame()) == PreservedTarget &&
+			Snapshot_EffectFrame(Playback.Get_Frame()) == PreservedFrame;
+		runner.Require(bIdentityRollback,
+			"Artist T CascadeRibbon Rejects A Prepared Identity Mismatch Without Replacing History Or Admission");
+
+		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER RejectingProvider = [](
+			const f32_t,
+			EFFECT_FIXED_STEP_TRANSFORM_SAMPLE&,
+			std::string& strOutError)
+		{
+			strOutError = "intentional Artist T history rejection";
+			return false;
+		};
+		Status.clear();
+		const bool_t bHistoryRollback = bIdentityRollback &&
+			!Playback.Update_WithTransformHistory(
+				1.f / 60.f, RejectingProvider, Status) &&
+			SnapshotTargetTrail(Playback.Get_Frame()) == PreservedTarget &&
+			Snapshot_EffectFrame(Playback.Get_Frame()) == PreservedFrame;
+		runner.Require(bHistoryRollback,
+			"Artist T CascadeRibbon Transform-History Failure Rolls Back The Whole Fixed-Step Update");
+
+		CEffectPlayback StoppedPlayback;
+		Status.clear();
+		const bool_t bStopped =
+			StoppedPlayback.Stage_PrevalidatedVisualProgramDocument(
+				Projection, ProjectedResources, Status) &&
+			StoppedPlayback.Seek_WithTransformHistory(
+				5.35f + 1.f / 60.f, MovingRoot, Status) &&
+			nullptr == FindTargetTrail(StoppedPlayback.Get_Frame());
+		runner.Require(bStopped,
+			"Artist T CascadeRibbon Stops Emission At Five Seconds And Evicts Its Exact Point-Lifetime Tail");
+		if (!bStopped)
+		{
+			const EFFECT_EVALUATED_TRAIL* const pStoppedTrail =
+				FindTargetTrail(StoppedPlayback.Get_Frame());
+			std::cout << "[ARTIST-T-RIBBON] stopped status=" << Status <<
+				" sample=" << StoppedPlayback.Get_Frame().fSampleTimeSeconds <<
+				" duration=" << StoppedPlayback.Get_DurationSeconds() <<
+				" points=" << (nullptr == pStoppedTrail ? 0u :
+					pStoppedTrail->Points.size()) << '\n';
+		}
+
+		SCOPED_WORKING_DIRECTORY WorkingDirectory;
+		Status.clear();
+		const bool_t bWorkingDirectoryReady = WorkingDirectory.Initialize(
+			CProjectDataRoot::Get().parent_path() / L"Client" / L"Default",
+			Status);
+		runner.Require(bWorkingDirectoryReady,
+			"Artist T CascadeRibbon Uses The Canonical Client Working Directory");
+
+		HEADLESS_ENGINE_RENDER_SCOPE EngineScope;
+		Status.clear();
+		const bool_t bEngineReady = bWorkingDirectoryReady &&
+			EngineScope.Initialize(Status);
+		runner.Require(bEngineReady,
+			"Artist T CascadeRibbon Initializes The Existing Hidden WARP Renderer");
+		if (bEngineReady)
+		{
+			std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>
+				PreparedRendererDocument;
+			CEffectDocumentRenderer Renderer(
+				EngineScope.Get_Device(), EngineScope.Get_Context());
+			EFFECT_PREVIEW_SUBMISSION_ISOLATION Isolation;
+			Isolation.eKind =
+				EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND::OCCURRENCE;
+			Isolation.strElementId = std::string(TARGET_ID);
+			Status.clear();
+			const bool_t bRendererStaged =
+				CEffectDocumentRenderer::Prepare_VisualProgramDocument(
+					EngineScope.Get_Device(), EngineScope.Get_Context(),
+					Projection, PreparedRendererDocument, Status) &&
+				nullptr != PreparedRendererDocument &&
+				SUCCEEDED(Renderer.Initialize()) &&
+				Renderer.Stage_PrevalidatedVisualProgramDocument(
+					Projection, PreparedRendererDocument, Status) &&
+				Renderer.Set_PreviewSubmissionIsolation(Isolation, Status);
+			runner.Require(bRendererStaged,
+				"Artist T CascadeRibbon Stages Four DDS Lanes And Opcode20 Transactionally");
+
+			if (bRendererStaged)
+			{
+				Engine::CGameInstance::Get().Set_Transform(D3DTS::VIEW,
+					XMMatrixLookAtLH(
+						XMVectorSet(1.f, 1.f, -3.f, 1.f),
+						XMVectorSet(1.f, 0.f, 0.f, 1.f),
+						XMVectorSet(0.f, 1.f, 0.f, 0.f)));
+				Engine::CGameInstance::Get().Update_Engine(0.f);
+
+				struct RIBBON_WITNESS final
+				{
+					bool_t bCommitted = false;
+					uint64_t iNonzeroRgbPixelCount = 0u;
+					uint64_t iPixelShaderInvocationCount = 0u;
+					EFFECT_GPU_RENDER_FAMILY_STATS Family;
+					EFFECT_GPU_RENDER_OCCURRENCE_STATS Occurrence;
+					bool_t bFound = false;
+				};
+				const auto CaptureNonzeroRgb = [&EngineScope](
+					uint64_t& iOutRgbPixels, std::string& strOutError)
+				{
+					iOutRgbPixels = 0u;
+					ComPtr<ID3D11RenderTargetView> TargetView;
+					EngineScope.Get_Context()->OMGetRenderTargets(
+						1u, TargetView.GetAddressOf(), nullptr);
+					if (nullptr == TargetView)
+					{
+						strOutError = "Artist T color target is not bound.";
+						return false;
+					}
+					ComPtr<ID3D11Resource> TargetResource;
+					ComPtr<ID3D11Texture2D> TargetTexture;
+					TargetView->GetResource(TargetResource.GetAddressOf());
+					if (nullptr == TargetResource ||
+						FAILED(TargetResource.As(&TargetTexture)) ||
+						nullptr == TargetTexture)
+					{
+						strOutError = "Artist T color target is not Texture2D.";
+						return false;
+					}
+					D3D11_TEXTURE2D_DESC TargetDesc{};
+					TargetTexture->GetDesc(&TargetDesc);
+					if (TargetDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+						TargetDesc.SampleDesc.Count != 1u)
+					{
+						strOutError = "Artist T color target format changed.";
+						return false;
+					}
+					D3D11_TEXTURE2D_DESC StagingDesc = TargetDesc;
+					StagingDesc.BindFlags = 0u;
+					StagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+					StagingDesc.MiscFlags = 0u;
+					StagingDesc.Usage = D3D11_USAGE_STAGING;
+					ComPtr<ID3D11Texture2D> Staging;
+					if (FAILED(EngineScope.Get_Device()->CreateTexture2D(
+						&StagingDesc, nullptr, &Staging)) || nullptr == Staging)
+					{
+						strOutError = "Artist T staging texture creation failed.";
+						return false;
+					}
+					EngineScope.Get_Context()->CopyResource(
+						Staging.Get(), TargetTexture.Get());
+					D3D11_MAPPED_SUBRESOURCE Mapped{};
+					if (FAILED(EngineScope.Get_Context()->Map(
+						Staging.Get(), 0u, D3D11_MAP_READ, 0u, &Mapped)))
+					{
+						strOutError = "Artist T staging texture map failed.";
+						return false;
+					}
+					for (uint32_t y = 0u; y < TargetDesc.Height; ++y)
+					{
+						const uint8_t* pRow =
+							static_cast<const uint8_t*>(Mapped.pData) +
+							static_cast<size_t>(y) * Mapped.RowPitch;
+						for (uint32_t x = 0u; x < TargetDesc.Width; ++x)
+						{
+							const uint8_t* pPixel = pRow +
+								static_cast<size_t>(x) * 4u;
+							if (0u != (pPixel[0u] | pPixel[1u] | pPixel[2u]))
+								++iOutRgbPixels;
+						}
+					}
+					EngineScope.Get_Context()->Unmap(Staging.Get(), 0u);
+					strOutError.clear();
+					return true;
+				};
+				const auto RenderWitness = [&](RIBBON_WITNESS& Out)
+				{
+					Out = {};
+					std::string Error;
+					D3D11_QUERY_DESC QueryDesc{};
+					QueryDesc.Query = D3D11_QUERY_PIPELINE_STATISTICS;
+					ComPtr<ID3D11Query> PipelineQuery;
+					const bool_t bQueryReady = SUCCEEDED(
+						EngineScope.Get_Device()->CreateQuery(
+							&QueryDesc, &PipelineQuery)) && nullptr != PipelineQuery;
+					HRESULT hRender = E_FAIL;
+					if (bQueryReady && EngineScope.Begin_Frame(Error))
+					{
+						EngineScope.Get_Context()->Begin(PipelineQuery.Get());
+						hRender = Renderer.Render(Playback.Get_Frame());
+						EngineScope.Get_Context()->End(PipelineQuery.Get());
+						EngineScope.Get_Context()->Flush();
+					}
+					D3D11_QUERY_DATA_PIPELINE_STATISTICS PipelineStats{};
+					HRESULT hQuery = bQueryReady ? S_FALSE : E_FAIL;
+					for (uint32_t i = 0u;
+						hQuery == S_FALSE && i < 10000u; ++i)
+					{
+						hQuery = EngineScope.Get_Context()->GetData(
+							PipelineQuery.Get(), &PipelineStats,
+							sizeof(PipelineStats), 0u);
+						if (hQuery == S_FALSE)
+							SwitchToThread();
+					}
+					if (hQuery == S_OK)
+						Out.iPixelShaderInvocationCount =
+							PipelineStats.PSInvocations;
+					const auto& Stats =
+						Renderer.Get_LastRenderSubmissionStats();
+					Out.Family = Stats.Families[static_cast<size_t>(
+						EFFECT_GPU_RENDER_FAMILY::RIBBON)];
+					const auto Found = std::ranges::find_if(Stats.Occurrences,
+						[](const EFFECT_GPU_RENDER_OCCURRENCE_STATS& Row)
+						{
+							return Row.strElementId == TARGET_ID;
+						});
+					Out.bFound = Found != Stats.Occurrences.end();
+					if (Out.bFound)
+						Out.Occurrence = *Found;
+					Out.bCommitted = SUCCEEDED(hRender) && hQuery == S_OK &&
+						S_OK == EngineScope.Get_Device()->GetDeviceRemovedReason() &&
+						Stats.bCompleted && Stats.bCommitted &&
+						CaptureNonzeroRgb(
+							Out.iNonzeroRgbPixelCount, Error);
+					std::cout << "[ARTIST-T-RIBBON] submitted=" <<
+						Out.Family.iSubmitted << " active=" <<
+						Out.Family.iActive << " candidate=" <<
+						Out.Family.iCandidate << " attempted=" <<
+						Out.Family.iAttempted << " suppressed=" <<
+						Out.Family.iSuppressed << " occurrenceActive=" <<
+						(Out.bFound ? Out.Occurrence.iActive : 0u) <<
+						" occurrenceCandidates=" << (Out.bFound ?
+							Out.Occurrence.iCandidateRowCount : 0u) <<
+						" frameTrails=" << Playback.Get_Frame().Trails.size() <<
+						" targetPoints=" << (nullptr == FindTargetTrail(
+							Playback.Get_Frame()) ? 0u : FindTargetTrail(
+								Playback.Get_Frame())->Points.size()) <<
+						" mask=0x" << std::hex <<
+						(Out.bFound ? Out.Occurrence.iSourceTextureMask : 0u) <<
+						std::dec << " pass=" << (Out.bFound ?
+							Out.Occurrence.iSelectedPassIndex : UINT32_MAX) <<
+						" vertices=" << (Out.bFound ?
+							Out.Occurrence.iFinalTrailUploadedVertexCount : 0u) <<
+						" configured/evaluated/attempted/submitted/failed=" <<
+						(Out.bFound ? Out.Occurrence.iConfigured : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iEvaluated : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iAttempted : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iSubmitted : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iFailed : 0u) <<
+						" binds=" << (Out.bFound ?
+							Out.Occurrence.iMaterialBindCount : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iTextureSrvBindCount : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iSamplerBindCount : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iShaderPassApplyCount : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iVIBufferBindCount : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iVIBufferDrawCount : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iGeometryUploadCount : 0u) << '/' <<
+						(Out.bFound ? Out.Occurrence.iIssuedDrawCallCount : 0u) <<
+						" carrier=" << static_cast<uint32_t>(Out.bFound ?
+							Out.Occurrence.eCarrier : EFFECT_GPU_RENDER_CARRIER::END) <<
+						" width=" << (Out.bFound ?
+							Out.Occurrence.fFinalTrailPairWidthMax : 0.f) <<
+						" fallback=" << (Out.bFound &&
+							Out.Occurrence.bSourceMaterialFallbackBlocked) <<
+						" diverged=" << (Out.bFound &&
+							Out.Occurrence.bDrawSelectionDiverged) <<
+						" ps=" << Out.iPixelShaderInvocationCount <<
+						" rgbPixels=" << Out.iNonzeroRgbPixelCount <<
+						" hRender=0x" << std::hex <<
+						static_cast<uint32_t>(hRender) << std::dec <<
+						" rendererStatus=" << Renderer.Get_Status() <<
+						" status=" << (Out.bCommitted ? "COMMITTED" : Error) <<
+						'\n';
+					return Out.bCommitted;
+				};
+				const auto IsExactDrawWitness = [](const RIBBON_WITNESS& Witness)
+				{
+					const auto& Occurrence = Witness.Occurrence;
+					return Witness.bCommitted && Witness.bFound &&
+						Witness.Family.iSubmitted == 1u &&
+						Witness.Family.iFailed == 0u &&
+						Witness.iPixelShaderInvocationCount > 0u &&
+						Witness.iNonzeroRgbPixelCount > 0u &&
+						Occurrence.iConfigured == 1u &&
+						Occurrence.iEvaluated == 1u && Occurrence.iActive == 1u &&
+						Occurrence.iAttempted == 1u &&
+						Occurrence.iMaterialBindCount > 0u &&
+						Occurrence.iTextureSrvBindCount >= 4u &&
+						Occurrence.iSamplerBindCount > 0u &&
+						Occurrence.iShaderPassApplyCount > 0u &&
+						Occurrence.iVIBufferBindCount > 0u &&
+						Occurrence.iVIBufferDrawCount > 0u &&
+						Occurrence.iGeometryUploadCount > 0u &&
+						Occurrence.iIssuedDrawCallCount == 1u &&
+						Occurrence.iSubmitted == 1u && Occurrence.iFailed == 0u &&
+						Occurrence.iSelectedPassIndex == 1u &&
+						Occurrence.iSourceTextureMask == 0x0fu &&
+						Occurrence.eCarrier ==
+							EFFECT_GPU_RENDER_CARRIER::RIBBON_DYNAMIC_TRAIL &&
+						Occurrence.iFinalTrailUploadedVertexCount >= 4u &&
+						Occurrence.fFinalTrailPairWidthMax > 0.f &&
+						!Occurrence.bSourceMaterialFallbackBlocked &&
+						!Occurrence.bDrawSelectionDiverged;
+				};
+
+				RIBBON_WITNESS BeforeMalformedStage;
+				const bool_t bFirstDrawExact =
+					RenderWitness(BeforeMalformedStage) &&
+					IsExactDrawWitness(BeforeMalformedStage);
+				runner.Require(bFirstDrawExact,
+					"Artist T Opcode20 Issues One Ribbon Draw With Nonzero WARP Pixels");
+
+				EFFECT_DOCUMENT_DESC Malformed = Projection->Get_Document();
+				auto MalformedTarget = std::ranges::find_if(
+					Malformed.Elements,
+					[](const EFFECT_ELEMENT_DESC& Element)
+					{
+						return Element.strElementId == TARGET_ID;
+					});
+				if (MalformedTarget != Malformed.Elements.end() &&
+					MalformedTarget->Material.Execution.TextureLanes.size() == 4u)
+				{
+						MalformedTarget->Material.Execution.TextureLanes[2u].
+						Sampler.eAddressV =
+						EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP;
+				}
+				Status.clear();
+				const bool_t bMalformedRejected =
+					!Renderer.Stage_Document(Malformed, Status) && !Status.empty();
+				runner.Require(bMalformedRejected,
+					"Artist T Opcode20 Rejects A Forged Aura Sampler Without Replacing The Prepared Draw");
+
+				RIBBON_WITNESS AfterMalformedStage;
+				const bool_t bRendererRollback = bFirstDrawExact &&
+					bMalformedRejected && RenderWitness(AfterMalformedStage) &&
+					IsExactDrawWitness(AfterMalformedStage) &&
+					AfterMalformedStage.iNonzeroRgbPixelCount ==
+						BeforeMalformedStage.iNonzeroRgbPixelCount;
+				runner.Require(bRendererRollback,
+					"Artist T Failed Material Restage Preserves The Prior Nonzero WARP Draw");
+			}
+		}
+
+		Playback.Reset();
+		runner.Require(nullptr == FindTargetTrail(Playback.Get_Frame()) &&
+			Playback.Is_SourceVisualProgramActive(),
+			"Artist T CascadeRibbon Reset Clears History Without Dropping Immutable Admission");
+	}
+
 	void Test_DimensionMasterRSourceOccurrenceContract(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -25426,13 +26182,16 @@ namespace
 
 				for (const DATA_JSON_VALUE& program : programsValue->Get_Array())
 				{
+					const DATA_JSON_VALUE* effectAssetId =
+						program.Find("effectAssetId");
 					const DATA_JSON_VALUE* projection =
 						program.Find("projectionKind");
 					const DATA_JSON_VALUE* visualRows =
 						program.Find("visualRows");
 					const DATA_JSON_VALUE* supplementalElements =
 						program.Find("supplementalElements");
-					if (nullptr == projection || !projection->Is_String() ||
+					if (nullptr == effectAssetId || !effectAssetId->Is_String() ||
+						nullptr == projection || !projection->Is_String() ||
 						nullptr == visualRows || !visualRows->Is_Array() ||
 						nullptr == supplementalElements ||
 						!supplementalElements->Is_Array())
@@ -25463,7 +26222,8 @@ namespace
 						}
 					}
 
-					uint32_t supplementalCascade = 0u;
+					uint32_t supplementalArtistFCascade = 0u;
+					uint32_t supplementalArtistTCascade = 0u;
 					uint32_t supplementalTrails = 0u;
 					uint32_t supplementalLights = 0u;
 					for (const DATA_JSON_VALUE& element :
@@ -25473,7 +26233,18 @@ namespace
 						if (nullptr == family || !family->Is_String())
 							continue;
 						if (family->Get_String() == "CASCADE_RIBBON")
-							++supplementalCascade;
+						{
+							if (effectAssetId->Get_String() ==
+								"effect.artist.skill.31470")
+							{
+								++supplementalArtistFCascade;
+							}
+							else if (effectAssetId->Get_String() ==
+								"effect.artist.skill.31950.unified")
+							{
+								++supplementalArtistTCascade;
+							}
+						}
 						else if (family->Get_String() == "ANIMATION_TRAIL")
 							++supplementalTrails;
 						else if (family->Get_String() == "LIGHT_PARTICLE")
@@ -25505,7 +26276,9 @@ namespace
 						!SetCount("supplementalElementCount", static_cast<uint32_t>(
 							supplementalElements->Get_Array().size())) ||
 						!SetCount("artistFCascadeRibbonElementCount",
-							supplementalCascade) ||
+							supplementalArtistFCascade) ||
+						!SetCount("artistTCascadeRibbonElementCount",
+							supplementalArtistTCascade) ||
 						!SetCount("animationTrailElementCount", supplementalTrails) ||
 						!SetCount("bakedEdgeLightElementCount", supplementalLights) ||
 						!SetCount("failClosedCount", failClosedRows) ||
@@ -42825,6 +43598,14 @@ int main(const int argc, char* argv[])
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_ArtistEBrushTrailContract(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-artist-t-ribbon-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_ArtistTCascadeRibbonContract(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

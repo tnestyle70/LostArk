@@ -16537,56 +16537,258 @@
       "displayName": "source-event-001 particlespriteemitter_2",
       "groupId": "authored.source-particle",
       "sourceNode": "authored-source-particle:effect.artist.skill.31950.unified|source:effect.artist.skill.31950.imported|element:fx_pc_sdm_01.par_t_sdm_dragonrising_00_wpcast_01.particlespriteemitter_2",
-      "visible": false,
-      "kind": "particle",
-      "resources": [],
+      "visible": true,
+      "kind": "trail",
+      "resources": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Artist/Textures/fx_d_normal_085.dds"
+        },
+        {
+          "slotId": "noise",
+          "assetId": "Effect/Artist/Textures/fx_a_fluid_003.dds"
+        },
+        {
+          "slotId": "emissive",
+          "assetId": "Effect/Artist/Textures/fx_k_auraline_14_ycl.dds"
+        }
+      ],
       "material": {
-        "templateId": "effect.source_material",
+        "templateId": "effect.standard",
         "sourceMaterialPath": "fx_m_mi_d_00.fx_mi.fx_d_pa_ribbonliquid_01_101_tr",
         "renderProfile": "alpha_two_sided_depth_read",
         "sourceProfile": {
+          "enabled": false
+        },
+        "execution": {
           "enabled": true,
-          "profileId": "ue3.material.fx.m.mi.00.fx.m.fx.d.pa.ribbonliquid.01.tr.6d3d630289cd",
-          "runtimeShaderProfileId": "effect.ue3.fallback-blocked.v1",
-          "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_ribbonliquid_01_tr",
-          "semanticStatus": "reconstructed_profile",
-          "textures": [],
-          "scalars": [
+          "version": 1,
+          "backend": "runtimeMaterialV2",
+          "opcode": 20,
+          "passIndex": 1,
+          "renderState": {
+            "rasterizer": "RS_Cull_None",
+            "depthStencil": "DSS_ReadOnly",
+            "blend": "BS_EffectAlpha",
+            "stencilReference": 0
+          },
+          "textureLaneCount": 4,
+          "textureMask": 15,
+          "textureLanes": [
             {
-              "name": "02.normalmapstr",
-              "value": 0.5,
-              "group": ""
+              "laneId": "lane.0",
+              "role": "distortion_normal",
+              "assetId": "Effect/Artist/Textures/fx_d_normal_085.dds",
+              "textureRegister": 0,
+              "samplerRegister": 5,
+              "sourceChannel": "RG",
+              "colorSpace": "linear",
+              "sampler": {
+                "filter": "linear",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "addressW": "wrap",
+                "mipLodBias": 0.0,
+                "maxAnisotropy": 1,
+                "comparison": "never",
+                "borderColor": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minLod": 0.0,
+                "maxLod": 3.40282347e+38
+              }
             },
             {
-              "name": "99.alphastr",
-              "value": 2.0,
-              "group": ""
+              "laneId": "lane.1",
+              "role": "surface_normal",
+              "assetId": "Effect/Artist/Textures/fx_d_normal_085.dds",
+              "textureRegister": 1,
+              "samplerRegister": 6,
+              "sourceChannel": "RG",
+              "colorSpace": "linear",
+              "sampler": {
+                "filter": "linear",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "addressW": "wrap",
+                "mipLodBias": 0.0,
+                "maxAnisotropy": 1,
+                "comparison": "never",
+                "borderColor": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minLod": 0.0,
+                "maxLod": 3.40282347e+38
+              }
+            },
+            {
+              "laneId": "lane.2",
+              "role": "alpha_aura",
+              "assetId": "Effect/Artist/Textures/fx_k_auraline_14_ycl.dds",
+              "textureRegister": 2,
+              "samplerRegister": 7,
+              "sourceChannel": "RGB",
+              "colorSpace": "srgb",
+              "sampler": {
+                "filter": "linear",
+                "addressU": "wrap",
+                "addressV": "clamp",
+                "addressW": "wrap",
+                "mipLodBias": 0.0,
+                "maxAnisotropy": 1,
+                "comparison": "never",
+                "borderColor": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minLod": 0.0,
+                "maxLod": 3.40282347e+38
+              }
+            },
+            {
+              "laneId": "lane.3",
+              "role": "reflection_fluid",
+              "assetId": "Effect/Artist/Textures/fx_a_fluid_003.dds",
+              "textureRegister": 3,
+              "samplerRegister": 8,
+              "sourceChannel": "RGB",
+              "colorSpace": "srgb",
+              "sampler": {
+                "filter": "linear",
+                "addressU": "wrap",
+                "addressV": "wrap",
+                "addressW": "wrap",
+                "mipLodBias": 0.0,
+                "maxAnisotropy": 1,
+                "comparison": "never",
+                "borderColor": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minLod": 0.0,
+                "maxLod": 3.40282347e+38
+              }
+            }
+          ],
+          "dynamicConsumedMask": 15,
+          "dynamicSuppressedMask": 0,
+          "particleColorPolicy": 2,
+          "particleColorConsumedMask": 8,
+          "particleColorSuppressedMask": 7,
+          "scalarCount": 12,
+          "vectorCount": 1,
+          "inputCount": 17,
+          "inputConsumedMask": [
+            130943,
+            0
+          ],
+          "inputSuppressedMask": [
+            128,
+            0
+          ],
+          "vectorComponentConsumedMask": [
+            15,
+            0,
+            0
+          ],
+          "vectorComponentSuppressedMask": [
+            0,
+            0,
+            0
+          ],
+          "staticInputCount": 0,
+          "staticSelectedMask": 0,
+          "staticConsumedMask": 0,
+          "staticSuppressedMask": 0,
+          "renderInputCount": 6,
+          "renderConsumedMask": 47,
+          "renderSuppressedMask": 16,
+          "scalars": [
+            {
+              "name": "normal_strength",
+              "packedIndex": 0,
+              "value": 0.5
+            },
+            {
+              "name": "alpha_strength",
+              "packedIndex": 1,
+              "value": 2.0
+            },
+            {
+              "name": "reflection_uv_scale",
+              "packedIndex": 2,
+              "value": 3.0
+            },
+            {
+              "name": "distortion_strength",
+              "packedIndex": 3,
+              "value": 50.0
+            },
+            {
+              "name": "normal_uv_scale_x",
+              "packedIndex": 4,
+              "value": 1.0
+            },
+            {
+              "name": "normal_uv_scale_y",
+              "packedIndex": 5,
+              "value": 1.0
+            },
+            {
+              "name": "alpha_uv_scale_x",
+              "packedIndex": 6,
+              "value": 1.0
+            },
+            {
+              "name": "alpha_uv_scale_y",
+              "packedIndex": 7,
+              "value": 1.0
+            },
+            {
+              "name": "normal_pan_x",
+              "packedIndex": 8,
+              "value": 0.0
+            },
+            {
+              "name": "normal_pan_y",
+              "packedIndex": 9,
+              "value": 0.0
+            },
+            {
+              "name": "alpha_pan_x",
+              "packedIndex": 10,
+              "value": 0.0
+            },
+            {
+              "name": "alpha_pan_y",
+              "packedIndex": 11,
+              "value": 0.0
             }
           ],
           "vectors": [
             {
-              "name": "10.reflectcolor",
+              "name": "reflect_color_and_intensity",
+              "packedIndex": 0,
               "value": [
                 1.0,
                 1.0,
                 3.0,
                 50.0
-              ],
-              "group": ""
+              ]
             }
           ],
-          "staticSwitches": [],
-          "dynamicParameterSemantics": [
-            "unbound",
-            "dissolve",
-            "distortion",
-            "uv_pan"
-          ],
-          "subUVMode": "none"
-        },
-        "execution": {
-          "enabled": false,
-          "failClosed": true
+          "artistParameters": [],
+          "colors": []
         }
       },
       "actionCueAttachment": {
@@ -16803,7 +17005,9 @@
           "minimumDistance": 0.01,
           "startWidth": 0.2,
           "endWidth": 0.0,
-          "faceCamera": true
+          "faceCamera": true,
+          "tilingDistanceWorldUnits": 3.0,
+          "distanceTessellationStepWorldUnits": 0.05
         },
         "afterImage": {
           "sampleIntervalSeconds": 0.05,
@@ -16848,7 +17052,7 @@
       },
       "sourceRecipe": {
         "enabled": true,
-        "rendererShape": "sprite",
+        "rendererShape": "ribbon",
         "emitterDelaySeconds": 0,
         "emitterDurationSeconds": 5.0,
         "emitterLoopCount": 1,

@@ -1123,6 +1123,7 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31490.role-manifest.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31490.unified.role-materialization.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31910.wisp-attractor.materialization.receipt.json" />
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.cascade-ribbon-projection.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.role-manifest.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.unified.role-materialization.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\DimensionMaster\effect.dimensionmaster.skill.2050210.authored-baseline.correction.json" />
@@ -1927,6 +1928,8 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.shader-cache-oracle.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.typed-material-evidence-contract.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.v4-missing-texture-acquisition.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31950.ribbon-parent-default-shader-target.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31950.ribbon-parent-default-shader.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31000.external-module-closure.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31470.external-module-closure.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\README.md" />

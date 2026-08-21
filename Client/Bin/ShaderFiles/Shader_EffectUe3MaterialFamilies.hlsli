@@ -15,6 +15,134 @@
 static const uint RUNTIME_MATERIAL_V2_UE3_SPRITEWAVE_TR = 15u;
 static const uint RUNTIME_MATERIAL_V2_UE3_GLASSHOLE02_SPRITE_K01 = 16u;
 static const uint RUNTIME_MATERIAL_V2_UE3_FLUID01_SPRITE_W_FD_01_3 = 17u;
+static const uint
+    RUNTIME_MATERIAL_V2_UE3_RIBBONLIQUID01_PARENT_DEFAULT = 20u;
+
+bool EffectUe3RibbonLiquid01ParentDefaultPacketIsValid()
+{
+    return g_RuntimeMaterialV2Enabled == 1u &&
+        g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_RIBBONLIQUID01_PARENT_DEFAULT &&
+        g_RuntimeMaterialV2TextureLaneCount == 4u &&
+        g_RuntimeMaterialV2TextureMask == 0xfu &&
+        g_SourceTextureMask == 0xfu &&
+        g_RuntimeMaterialV2DynamicConsumedMask == 0xfu &&
+        g_RuntimeMaterialV2DynamicSuppressedMask == 0u &&
+        g_RuntimeMaterialV2ParticleColorPolicy == 2u &&
+        g_RuntimeMaterialV2ParticleColorConsumedMask == 0x8u &&
+        g_RuntimeMaterialV2ParticleColorSuppressedMask == 0x7u &&
+        g_RuntimeMaterialV2ScalarCount == 12u &&
+        g_RuntimeMaterialV2VectorCount == 1u &&
+        g_RuntimeMaterialV2InputCount == 17u &&
+        all(g_RuntimeMaterialV2InputConsumedMask ==
+            uint2(0x1ff7fu, 0u)) &&
+        all(g_RuntimeMaterialV2InputSuppressedMask == uint2(0x80u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentConsumedMask ==
+            uint3(0xfu, 0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentSuppressedMask ==
+            uint3(0u, 0u, 0u)) &&
+        g_RuntimeMaterialV2StaticInputCount == 0u &&
+        g_RuntimeMaterialV2StaticSelectedMask == 0u &&
+        g_RuntimeMaterialV2StaticConsumedMask == 0u &&
+        g_RuntimeMaterialV2StaticSuppressedMask == 0u &&
+        g_RuntimeMaterialV2RenderInputCount == 6u &&
+        g_RuntimeMaterialV2RenderConsumedMask == 0x2fu &&
+        g_RuntimeMaterialV2RenderSuppressedMask == 0x10u;
+}
+
+EFFECT_PS_OUT Shade_EffectUe3RibbonLiquid01ParentDefault(
+    float2 ribbonUV,
+    float4 particleColor,
+    float4 dynamicParameter)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    if (!EffectUe3RibbonLiquid01ParentDefaultPacketIsValid())
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    /* The packet is the effective child value set evaluated against the
+       exact parent-default map.  Its raw BasePass DXBC and binding wires are
+       evidence; this HLSL is a bounded typed replay because the original
+       beam/trail VF reflection basis and UE3 CDO sampler defaults are not
+       native-executed here. */
+    const float4 p0 = g_RuntimeMaterialV2ScalarBlocks[0];
+    const float4 p1 = g_RuntimeMaterialV2ScalarBlocks[1];
+    const float4 p2 = g_RuntimeMaterialV2ScalarBlocks[2];
+    const float4 reflectColor = g_RuntimeMaterialV2Vectors[0];
+    if (!all(isfinite(ribbonUV)) || !all(isfinite(particleColor)) ||
+        !all(isfinite(dynamicParameter)) || !all(isfinite(p0)) ||
+        !all(isfinite(p1)) || !all(isfinite(p2)) ||
+        !all(isfinite(reflectColor)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float normalStrength = p0.x;
+    const float alphaStrength = p0.y;
+    const float reflectionUvScale = p0.z;
+    const float2 normalUvScale = max(abs(p1.xy), float2(0.01f, 0.01f));
+    const float2 alphaUvScale = max(abs(p1.zw), float2(0.01f, 0.01f));
+    const float2 normalPan = p2.xy;
+    const float2 alphaPan = p2.zw;
+
+    const float2 distortionUv = ribbonUV * normalUvScale +
+        normalPan * g_EffectLocalTime;
+    const float2 distortionNormal = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, distortionUv).rg * 2.f - 1.f;
+    const float uvDistortion = dynamicParameter.w - 1.f;
+    float2 warpedUv = ribbonUV;
+    warpedUv.x += distortionNormal.x * uvDistortion;
+    warpedUv.y = 0.5f + (ribbonUV.y - 0.5f) * dynamicParameter.x +
+        distortionNormal.y * uvDistortion;
+
+    const float2 alphaUv = warpedUv * alphaUvScale +
+        alphaPan * g_EffectLocalTime;
+    /* Parent expression 01.alphatex is bound to native t2/s3 and resolves to
+       fx_k_auraline_14_ycl.  Keep this semantic mapping explicit instead of
+       inferring a role from the texture's filename. */
+    const float3 alphaTexture = g_SourceTexture2.Sample(
+        g_RuntimeMaterialV2Sampler2, alphaUv).rgb;
+    const float alphaCarrier = dot(alphaTexture,
+        float3(0.33333334f, 0.33333334f, 0.33333334f));
+    const float dissolveThreshold = 1.f - saturate(dynamicParameter.y);
+    const float coverage = saturate(
+        (alphaCarrier - dissolveThreshold) * max(alphaStrength, 0.f)) *
+        saturate(particleColor.a);
+
+    const float2 surfaceNormal = g_SourceTexture1.Sample(
+        g_RuntimeMaterialV2Sampler1, warpedUv * normalUvScale +
+            normalPan * g_EffectLocalTime).rg * 2.f - 1.f;
+    const float2 reflectionUv = float2(
+        ribbonUV.x * max(abs(reflectionUvScale), 0.01f),
+        saturate(0.5f + surfaceNormal.y * normalStrength * 0.5f));
+    /* Parent expression 01.reflectiontex is bound to native t3/s2 and
+       resolves to fx_a_fluid_003.  The native beam/trail reflection basis is
+       not available on the typed carrier; reflectionUv is the bounded axis
+       reconstruction and is intentionally reported as partial fidelity. */
+    const float3 reflectionTexture = g_SourceTexture3.Sample(
+        g_RuntimeMaterialV2Sampler3, reflectionUv).rgb;
+    const float reflectionCarrier = dot(reflectionTexture,
+        float3(0.33333334f, 0.33333334f, 0.33333334f));
+    const float reflectionEnergy = reflectionCarrier * reflectionCarrier;
+    const float3 radiance = max(reflectColor.rgb, 0.f) *
+        max(reflectColor.w, 0.f) * reflectionEnergy *
+        max(g_EmissiveIntensity, 0.f);
+
+    if (!all(isfinite(float4(radiance, coverage))))
+    {
+        clip(-1.f);
+        return output;
+    }
+    output.SceneColor = float4(
+        radiance * max((g_ColorMultiply + g_ColorOffset).rgb, 0.f),
+        coverage);
+    output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+    clip(output.SceneColor.a - g_ColorClip);
+    return output;
+}
 
 bool EffectUe3Fluid01SpriteWFd013PacketIsValid()
 {

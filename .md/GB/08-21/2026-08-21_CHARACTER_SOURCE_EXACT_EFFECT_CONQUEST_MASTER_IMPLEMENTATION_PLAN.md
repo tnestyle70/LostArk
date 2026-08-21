@@ -885,6 +885,25 @@ closure를 검증한다. 창술 V/ALT_V/T의 dragon rows를 첫 material/geometr
 lanes와 motion을 검증한다. Artist T는 source asset lineage 결과에 따라 exact model cue, CascadeRibbon,
 또는 별도 spline carrier를 사용한다.
 
+Artist T `31950`의 첫 closure는 source
+`particlespriteemitter_4`, stable element
+`authored.source-particle.29868adeb040d5a35e2f213c` 한 행으로 제한한다. 해당 행의
+`particlemoduletypedataribbon` stable ID, 5초 emitter, 0.7초 source particle lifetime,
+`tilingdistance=300`, `distancetessellationstepsize=5`, DynamicParameter 네 curve를 receipt에서
+봉인한 뒤 현재 월드 단위의 `3.0/0.05`, 최대 64 point, 0.35초 history tail로 projection한다.
+30/60/144Hz update는 같은 fixed-step transform history를 만들고, emitter 종료 뒤 point tail까지
+정확히 evict해야 한다. 실패한 transform sample이나 prepared identity mismatch는 기존 history와
+visual-program admission을 보존한다.
+
+child MIC `fx_d_pa_ribbonliquid_01_101_tr`에는 native static shader tail이 없다. 따라서 parent
+`FX_D_Pa_RibbonLiquid_01_Tr`의 exact shader-map/VF/pass/texture evidence를 회수하되 child-native
+DXBC라고 부르지 않는다. RuntimeMaterialV2 opcode 20은 normal 두 lane, aura alpha, fluid reflection,
+12 scalar, reflect vector와 dynamic/particle mask를 strict tuple로 봉인하고, 기존 dynamic trail
+vertex에 DynamicParameter를 추가해 typed HLSL bounded replay로 전달한다. parent distortion
+accumulate pass, UE3 CDO sampler 기본값과 native beam/trail reflection basis는 limitation으로
+남긴다. WARP gate는 실제 four-lane bind, pass 1, dynamic geometry upload, issued draw, PS invocation,
+nonzero RGB pixel과 malformed aura sampler restage rollback을 Debug/Release 모두 요구한다.
+
 같은 MakeFlow/WaterTrail/SpriteWave/Fluid parent를 쓰는 도화가 V, 워로드 `17250/17820`, 창술
 `34610/34630/34650` occurrence를 inventory가 소비자로 제시하게 한다. 한 스킬이 통과했다고 family
 전체를 자동 admission하지 않고 exact variant key가 같은 occurrence만 확대한다.
@@ -1238,7 +1257,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R/S, Warlord T, Lance E cone donor focused PASS | 미실행 | runtime full publish, S 사용자 화면 튜닝 |
 | G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결, D tiger 12행 typed family | 미실행 | E runtime frame 확인, T asset lineage |
 | G06 glass/crack | `IMPLEMENTED` | W2050120 K-child + F2050230 Fluid01 two-row + F2050230 Product screen-overlay 5행 actual cue/catalog join, identity·rollback·timeline·clear Debug/Release focused harness | 대기 | Fluid01 mesh, J-child static set, F raw world composition, refraction/multi-lane과 W rollout |
-| G07 dragon/ultimate | `IMPLEMENTED` | Lance 34630/34650 exact 12행 opcode 19, body/head WARP draw, alpha-pan/Dynamic-W/lifetime/rollback PASS | 미실행 | 34610·Artist T·교차 class exact variant admission |
+| G07 dragon/ultimate | `IMPLEMENTED` | Lance 34630/34650 exact 12행 opcode 19 + Artist T exact TypeDataRibbon→CascadeRibbon opcode 20, fixed-step history·WARP draw·rollback PASS | 미실행 | 34610·교차 class exact variant admission, Artist T parent native distortion/reflection ABI |
 | G08 Artist V | `IMPLEMENTED` | CircleSurface/Vortex strict executor + reviewed 7-row wisp cohort + world-metric 14-particle attractor, materializer 8 tests와 Debug/Release focused 12/12 PASS | 미실행 | full publish, camera/post/light channel |
 | G09 Dimension gameplay | `EVIDENCE_PARTIAL` | current command/snapshot audit | 미실행 | approved target replication |
 | G10 publish | `PLANNED` | 미실행 | 미실행 | preceding Gs |

@@ -419,6 +419,8 @@ private:
 		std::string& strOutError);
 	bool_t Is_SourceVisualProgramElementAdmitted(
 		const EFFECT_ELEMENT_DESC& Element) const;
+	bool_t Is_PlaybackElementAdmitted(
+		const EFFECT_ELEMENT_DESC& Element) const;
 	bool_t Collect_TransformHistorySample(
 		f32_t fSampleTimeSeconds,
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
