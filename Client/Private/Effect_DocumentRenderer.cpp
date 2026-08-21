@@ -236,6 +236,20 @@ namespace
 		}
 	}
 
+	bool_t Is_DimensionSummonCharacterSurfaceCue(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		const Client::EFFECT_MODEL_CUE_DESC& Cue)
+	{
+		return Document.strEffectAssetId ==
+				"effect.dimensionmaster.skill.2050500.unified" &&
+			Cue.strCueId == "dimension_summon" &&
+			Cue.strModelAssetId ==
+				"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel" &&
+			Cue.strClipName == "sk_swp_dms_00_sk_sk_dimensionprison" &&
+			Cue.eAlphaMode ==
+				Client::EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE;
+	}
+
 	template <size_t Size>
 	int32_t NamedSourceTextureIndex(
 		const std::array<std::string_view, Size>& Names,
@@ -1819,96 +1833,6 @@ namespace
 			}) == 1;
 	}
 
-	bool_t Is_FlowRibbon01TrailContract(
-		const Client::EFFECT_ELEMENT_DESC& Element)
-	{
-		if (Element.eKind != Client::EFFECT_ELEMENT_KIND::TRAIL ||
-			Element.SourceRecipe.strRendererShape != "ribbon" ||
-			Element.Material.eRenderProfile !=
-				Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
-			!SourceMaterialIdentityMatches(Element.Material.SourceMaterial,
-				"ue3.material.fx.m.fx.k.flowrib.01.tr.0ca247309b89",
-				"fx_m.fx_k_flowrib_01_tr"))
-		{
-			return false;
-		}
-		const auto HasUniqueModule = [&Element](const std::string_view ClassName)
-		{
-			return std::ranges::count_if(Element.SourceRecipe.Modules,
-				[ClassName](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
-				{
-					return Module.strClassName == ClassName;
-				}) == 1;
-		};
-		if (!HasUniqueModule("particlemodulesize") ||
-			!HasUniqueModule("particlemodulecolor") ||
-			!HasUniqueModule("particlemodulecolorscaleoverlife") ||
-			!HasUniqueModule("particlemoduleparameterdynamic") ||
-			!HasUniqueModule("particlemoduletypedataribbon"))
-		{
-			return false;
-		}
-		const auto Dynamic = std::ranges::find_if(Element.SourceRecipe.Modules,
-			[](const Client::EFFECT_SOURCE_MODULE_DESC& Module)
-			{
-				return Module.strClassName == "particlemoduleparameterdynamic";
-			});
-		static constexpr std::array<std::string_view, 4u> DYNAMIC_NAMES = {{
-			"x_tiling", "y_tiling", "dissolve", "disort"
-		}};
-		for (size_t iLane = 0u; iLane < DYNAMIC_NAMES.size(); ++iLane)
-		{
-			const std::string Property = "dynamicparams[" +
-				std::to_string(iLane) + "].paramname";
-			if (std::ranges::count_if(Dynamic->Literals,
-				[&Property, iLane](const Client::EFFECT_SOURCE_LITERAL_DESC& Literal)
-				{
-					return Literal.strPropertyPath == Property &&
-						Literal.eKind ==
-							Client::EFFECT_SOURCE_LITERAL_KIND::STRING &&
-						Literal.strString == DYNAMIC_NAMES[iLane];
-				}) != 1)
-			{
-				return false;
-			}
-		}
-
-		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source =
-			Element.Material.SourceMaterial;
-		if (Element.Material.strSourceMaterialPath ==
-			"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_03_tr")
-		{
-			return Element.ResourceBindings.size() == 3u &&
-				Source.Textures.size() == 3u &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
-					"Effect/Artist/Textures/fx_i_atypical_03_ycl.dds") &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
-					"Effect/Artist/Textures/fx_l_environment_001.dds") &&
-				BindingMatches(Element,
-					Client::EFFECT_RESOURCE_SLOT::MASK_TEXTURE,
-					"Effect/Artist/Textures/fx_d_noise_002.dds") &&
-				NamedTextureMatches(Source, "tex_main",
-					"Effect/Artist/Textures/fx_i_atypical_03_ycl.dds") &&
-				NamedTextureMatches(Source, "colormap",
-					"Effect/Artist/Textures/fx_l_environment_001.dds") &&
-				NamedTextureMatches(Source, "flowtex",
-					"Effect/Artist/Textures/fx_d_noise_002.dds");
-		}
-		return Element.Material.strSourceMaterialPath ==
-				"fx_m_mi_k_00.fx_mi.fx_k_flowrib_01_01_tr" &&
-			Element.ResourceBindings.size() == 2u && Source.Textures.size() == 2u &&
-			BindingMatches(Element, Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE,
-				"Effect/Artist/Textures/fx_k_auraline_02.dds") &&
-			BindingMatches(Element, Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE,
-				"Effect/Artist/Textures/fx_d_noise_002.dds") &&
-			NamedTextureMatches(Source, "tex_main",
-				"Effect/Artist/Textures/fx_k_auraline_02.dds") &&
-			NamedTextureMatches(Source, "flowtex",
-				"Effect/Artist/Textures/fx_d_noise_002.dds");
-	}
-
 	bool_t Is_DimensionMasterDBoundarySpriteWaveContract(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
@@ -2083,7 +2007,8 @@ namespace
 				Element.Material.strSourceMaterialPath, Source) ==
 				Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWRIBBON01)
 		{
-			return Is_FlowRibbon01TrailContract(Element) ? 35u : UINT32_MAX;
+			return Client::Has_EffectFlowRibbon01TrailContract(Element) ?
+				35u : UINT32_MAX;
 		}
 		if (6u != iStoredProfile ||
 			Element.eKind != Client::EFFECT_ELEMENT_KIND::PARTICLE ||
@@ -16563,12 +16488,57 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 	return bSubmitted ? S_OK : S_FALSE;
 }
 
-HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
+bool_t Client::CEffectDocumentRenderer::Has_NonBlendModelCues() const
+{
+	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
+	return std::ranges::any_of(Document.ModelCues,
+		[&Document](const EFFECT_MODEL_CUE_DESC& Cue)
+		{
+			return Is_DimensionSummonCharacterSurfaceCue(Document, Cue);
+		});
+}
+
+HRESULT Client::CEffectDocumentRenderer::Render_NonBlendModelCues(
 	const EFFECT_EVALUATED_FRAME& Frame)
+{
+	m_strRenderFailureDetail.clear();
+	m_bLastRenderFailureObjectLocal = false;
+	if (!Has_NonBlendModelCues())
+		return S_FALSE;
+	std::string GateStatus;
+	if (!m_bSourceVisualProgramActive &&
+		!m_ReconstructedRuntimeBoundary.Admit_Render(GateStatus))
+	{
+		m_strStatus = std::move(GateStatus);
+		m_bLastRenderFailureObjectLocal = true;
+		return E_FAIL;
+	}
+	const HRESULT hResult = Render_ModelCues(Frame, true);
+	if (FAILED(hResult))
+	{
+		m_strStatus = "Effect non-blend animated model-cue rendering failed.";
+		if (!m_strRenderFailureDetail.empty())
+			m_strStatus += " Operation: " + m_strRenderFailureDetail;
+	}
+	else
+	{
+		m_strStatus =
+			"Effect non-blend animated model-cue rendering completed.";
+	}
+	return hResult;
+}
+
+HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
+	const EFFECT_EVALUATED_FRAME& Frame,
+	const bool_t bNonBlendCharacterSurfaceOnly)
 {
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
 	for (const EFFECT_MODEL_CUE_DESC& Cue : Document.ModelCues)
 	{
+		const bool_t bCharacterSurface =
+			Is_DimensionSummonCharacterSurfaceCue(Document, Cue);
+		if (bCharacterSurface != bNonBlendCharacterSurfaceOnly)
+			continue;
 		const f32_t fLocalTime =
 			Frame.fSampleTimeSeconds - Cue.fStartDelaySeconds;
 		if (!Cue.bVisible || fLocalTime < 0.f ||
@@ -16616,17 +16586,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 			XMMatrixTranslation(Position.x, Position.y, Position.z);
 		float4x4_t World{};
 		XMStoreFloat4x4(&World, Local * XMLoadFloat4x4(&Frame.RootWorld));
-		/* Preserve the source monster_dead_msk_high_realpbr 0.333 cutoff only
-		   for the exact Dimension Summon identity.  Generic MASKED cues keep
-		   the character pass, while OPAQUE and TRANSLUCENT remain separate. */
-		const bool_t bUseDimensionSummonExactMask =
-			Document.strEffectAssetId ==
-				"effect.dimensionmaster.skill.2050500.unified" &&
-			Cue.strCueId == "dimension_summon" &&
-			Cue.strModelAssetId ==
-				"Character/DimensionMaster/DimensionMaster_DimensionSummon.wmodel" &&
-			Cue.strClipName == "sk_swp_dms_00_sk_sk_dimensionprison" &&
-			Cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::MASKED_SURFACE;
 		HRESULT hResult = m_pAnimatedModelShader->Bind_Matrix(
 			"g_WorldMatrix", &World);
 		if (FAILED(hResult))
@@ -16667,9 +16626,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_ModelCues(
 				return Fail_RenderOperation(
 					"Animated model-cue bone bind failed at mesh " +
 					std::to_string(iMesh) + ".", hResult);
-			uint32_t iPass = bUseDimensionSummonExactMask ? 3u :
-				(Cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE ?
-					2u : 0u);
+			uint32_t iPass =
+				Cue.eAlphaMode == EFFECT_MODEL_CUE_ALPHA_MODE::OPAQUE_SURFACE ?
+					2u : 0u;
 			if (Cue.eAlphaMode ==
 				EFFECT_MODEL_CUE_ALPHA_MODE::TRANSLUCENT_SURFACE)
 			{
@@ -17291,7 +17250,7 @@ HRESULT Client::CEffectDocumentRenderer::Render(
 	{
 		return FailFrame(std::move(GateStatus), E_FAIL, true);
 	}
-	const HRESULT hModelCueResult = Render_ModelCues(Frame);
+	const HRESULT hModelCueResult = Render_ModelCues(Frame, false);
 	if (FAILED(hModelCueResult))
 	{
 		return FailFrame(

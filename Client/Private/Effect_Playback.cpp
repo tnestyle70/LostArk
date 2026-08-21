@@ -4525,7 +4525,10 @@ void Client::CEffectPlayback::Sample_Trail(
 	const f32_t fFixedDelta,
 	const float4x4_t& RootWorld)
 {
-	bool_t bCascadeRibbon = false;
+	const bool_t bDirectAuthoredFlowRibbon01 =
+		!Is_SourceVisualProgramElementAdmitted(Element) &&
+		Has_EffectFlowRibbon01TrailContract(Element);
+	bool_t bCascadeRibbon = bDirectAuthoredFlowRibbon01;
 	bool_t bAnimationTrail = false;
 	bool_t bBakedEdgeAnimationTrail = false;
 	if (Is_SourceVisualProgramElementAdmitted(Element))
@@ -4560,10 +4563,7 @@ void Client::CEffectPlayback::Sample_Trail(
 	}
 	const bool_t bSourceVisualTrail = bCascadeRibbon || bAnimationTrail;
 	const bool_t bFlowRibbon01 = bCascadeRibbon &&
-		Resolve_EffectStrictTypedSourceProfile(
-			Element.Material.strSourceMaterialPath,
-			Element.Material.SourceMaterial) ==
-			EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWRIBBON01;
+		Has_EffectFlowRibbon01TrailContract(Element);
 	if (bBakedEdgeAnimationTrail)
 	{
 		State.TrailPoints.clear();
@@ -4811,13 +4811,15 @@ void Client::CEffectPlayback::Sample_Trail(
 	const f32_t fEmitterElapsed = bSourceVisualTrail &&
 		Element.SourceRecipe.bEnabled ?
 		fLocalTime - Element.SourceRecipe.fEmitterDelaySeconds : fLocalTime;
-	const f32_t fEmissionDuration = bSourceVisualTrail &&
-		Element.SourceRecipe.fEmitterDurationSeconds > 0.f ?
-		(0u == Element.SourceRecipe.iEmitterLoopCount ?
-			Element.Detail.Timing.fLifeTimeSeconds :
-			Element.SourceRecipe.fEmitterDurationSeconds *
+	const f32_t fEmissionDuration = bDirectAuthoredFlowRibbon01 ?
+		Element.Detail.Timing.fLifeTimeSeconds :
+		(bSourceVisualTrail &&
+			Element.SourceRecipe.fEmitterDurationSeconds > 0.f ?
+			(0u == Element.SourceRecipe.iEmitterLoopCount ?
+				Element.Detail.Timing.fLifeTimeSeconds :
+				Element.SourceRecipe.fEmitterDurationSeconds *
 				static_cast<f32_t>(Element.SourceRecipe.iEmitterLoopCount)) :
-		Element.Detail.Timing.fLifeTimeSeconds;
+			Element.Detail.Timing.fLifeTimeSeconds);
 	if (fEmitterElapsed < 0.f || fEmitterElapsed > fEmissionDuration)
 	{
 		return;

@@ -20,6 +20,32 @@
 
 namespace
 {
+    std::string Unified_AuthoredEffectAssetId(
+        const std::string_view strProductEffectAssetId)
+    {
+        constexpr std::string_view LegacyToken = ".authored-baseline";
+        constexpr std::string_view UnifiedSuffix = ".unified";
+        std::string Candidate(strProductEffectAssetId);
+        if (const size_t iLegacyToken = Candidate.find(LegacyToken);
+            iLegacyToken != std::string::npos)
+        {
+            Candidate.erase(iLegacyToken, LegacyToken.size());
+        }
+        if (!Candidate.ends_with(UnifiedSuffix))
+            Candidate += UnifiedSuffix;
+        return Candidate;
+    }
+
+    bool Is_ExactAuthoredEffectMapping(
+        const std::string_view strProductEffectAssetId,
+        const std::string_view strAuthoredEffectAssetId)
+    {
+        return !strProductEffectAssetId.empty() &&
+            (strProductEffectAssetId == strAuthoredEffectAssetId ||
+             Unified_AuthoredEffectAssetId(strProductEffectAssetId) ==
+                strAuthoredEffectAssetId);
+    }
+
     bool Tokenize(
         const std::string& Line,
         std::vector<std::string>& Out,
@@ -127,6 +153,58 @@ namespace
     }
 }
 
+bool_t Client::CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+    const ANIMATION_SKILL_BINDING& Binding,
+    const std::vector<ANIMATION_EFFECT_CUE>& ProductCues,
+    const std::string_view strAuthoredEffectAssetId,
+    std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE>& OutCandidates,
+    std::string& strOutStatus)
+{
+    if (LostArk::Shared::INVALID_SKILL_ID == Binding.iSkillId ||
+        Binding.Stages.empty() || strAuthoredEffectAssetId.empty())
+    {
+        strOutStatus =
+            "Effect preview candidate resolver received an invalid binding or Effect ID.";
+        return false;
+    }
+
+    std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Staged;
+    size_t iBoundClipOrdinal = 0u;
+    for (size_t iStage = 0u; iStage < Binding.Stages.size(); ++iStage)
+    {
+        const ANIMATION_SKILL_STAGE& Stage = Binding.Stages[iStage];
+        for (size_t iClip = 0u; iClip < Stage.Clips.size();
+            ++iClip, ++iBoundClipOrdinal)
+        {
+            const ANIMATION_SKILL_CLIP& Clip = Stage.Clips[iClip];
+            for (const ANIMATION_EFFECT_CUE& Cue : ProductCues)
+            {
+                if (Cue.strClipName != Clip.strClipName ||
+                    !Is_ExactAuthoredEffectMapping(
+                        Cue.strEffectAssetId, strAuthoredEffectAssetId))
+                {
+                    continue;
+                }
+                Staged.push_back(
+                    { iBoundClipOrdinal, iStage, iClip, Clip, Cue });
+            }
+        }
+    }
+
+    if (Staged.empty())
+    {
+        strOutStatus = "No Product animevents cue maps Effect '" +
+            std::string(strAuthoredEffectAssetId) +
+            "' to an ordered skillbinding clip.";
+        return false;
+    }
+
+    OutCandidates = std::move(Staged);
+    strOutStatus = "Resolved " + std::to_string(OutCandidates.size()) +
+        " exact Product cue preview candidate(s).";
+    return true;
+}
+
 bool_t Client::CAnimationEffectCueDocument::Load_ForProductPrewarm(
     const std::string& strAnimationAssetId,
     ANIMATION_EFFECT_CUE_DOCUMENT& OutDocument,
@@ -168,6 +246,13 @@ bool_t Client::CAnimationEffectCueDocument::Load_ForProductPrewarm(
     OutDocument = std::move(Staged);
     strOutStatus = "Loaded " + std::to_string(OutDocument.Cues.size()) +
         " admitted animation Effect cues for Product prewarm without a live model.";
+	if (!OutDocument.UnavailableEffectAssetIds.empty())
+	{
+		strOutStatus += " Isolated " + std::to_string(
+			OutDocument.UnavailableEffectAssetIds.size()) +
+			" unavailable exact catalog target(s); first: " +
+			OutDocument.UnavailableEffectAssetIds.front() + ".";
+	}
     return true;
 }
 
@@ -580,26 +665,32 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
         }
         if (!Read_Transform(Fields, Cue.LocalTransform) ||
             Cue.iEndMs < Cue.iStartMs || Cue.strAnchorSlotId.empty() ||
-            !Is_AvailableClip(Cue.strClipName) ||
-            !CEffectCatalog::Contains(Cue.strEffectAssetId))
+            !Is_AvailableClip(Cue.strClipName))
         {
-            strOutStatus = "Animation EFFECT cue failed clip/effect/transform validation.";
+            strOutStatus =
+				"Animation EFFECT cue failed clip/time/transform validation.";
             return false;
         }
 		if (EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy &&
             Cue.iEndMs <= Cue.iStartMs)
         {
             strOutStatus = "cue_end requires endms greater than startms.";
-            return false;
-        }
+			return false;
+		}
         const std::string Key = Cue.strClipName + "\n" +
             std::to_string(Cue.iStartMs) + "\n" + Cue.strEffectAssetId +
             "\n" + Cue.strAnchorSlotId;
         if (!Keys.insert(Key).second)
         {
-            strOutStatus = "Duplicate admitted Animation EFFECT cue.";
+            strOutStatus = "Duplicate Animation EFFECT cue.";
             return false;
         }
+		if (!CEffectCatalog::Contains(Cue.strEffectAssetId))
+		{
+			Staged.UnavailableEffectAssetIds.push_back(
+				Cue.strEffectAssetId);
+			continue;
+		}
         Staged.Cues.push_back(std::move(Cue));
     }
     if (ActualRows != DeclaredRows)
@@ -616,6 +707,12 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
                 std::tie(Right.strClipName, Right.iStartMs,
                     Right.strEffectAssetId, Right.strAnchorSlotId);
         });
+	std::sort(Staged.UnavailableEffectAssetIds.begin(),
+		Staged.UnavailableEffectAssetIds.end());
+	Staged.UnavailableEffectAssetIds.erase(std::unique(
+		Staged.UnavailableEffectAssetIds.begin(),
+		Staged.UnavailableEffectAssetIds.end()),
+		Staged.UnavailableEffectAssetIds.end());
     if (nullptr != pOutReferencedClips)
     {
         std::vector<std::string> ReferencedClips(
@@ -625,7 +722,14 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
     }
     OutDocument = std::move(Staged);
     strOutStatus = "Loaded " + std::to_string(OutDocument.Cues.size()) +
-        " admitted animation Effect cues.";
+		" admitted animation Effect cues.";
+	if (!OutDocument.UnavailableEffectAssetIds.empty())
+	{
+		strOutStatus += " Isolated " + std::to_string(
+			OutDocument.UnavailableEffectAssetIds.size()) +
+			" unavailable exact catalog target(s); first: " +
+			OutDocument.UnavailableEffectAssetIds.front() + ".";
+	}
     return true;
 }
 

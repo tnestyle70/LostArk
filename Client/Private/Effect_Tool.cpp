@@ -76,6 +76,101 @@ namespace
 		"valtan.whirlwind.420633.active";
 	constexpr const char_t* VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID =
 		"effect.valtan.pattern.420633.active";
+
+	struct TOOL_SOURCE_ANCHOR_REQUEST final
+	{
+		std::string strRuntimeAnchorSlotId;
+		std::string strRuntimeBoneName;
+		Client::EFFECT_TRANSFORM_DESC SocketLocalTransform{};
+	};
+
+	std::vector<TOOL_SOURCE_ANCHOR_REQUEST> Collect_ToolSourceAnchorRequests(
+		const Client::EFFECT_DOCUMENT_DESC& Document)
+	{
+		std::vector<TOOL_SOURCE_ANCHOR_REQUEST> Requests;
+		const auto AddRequest = [&Requests](TOOL_SOURCE_ANCHOR_REQUEST Request)
+		{
+			if (Request.strRuntimeAnchorSlotId.empty() ||
+				Request.strRuntimeBoneName.empty())
+			{
+				return;
+			}
+			const auto Existing = std::find_if(Requests.begin(), Requests.end(),
+				[&Request](const TOOL_SOURCE_ANCHOR_REQUEST& Value)
+				{
+					return Value.strRuntimeAnchorSlotId ==
+						Request.strRuntimeAnchorSlotId;
+				});
+			if (Existing == Requests.end())
+				Requests.push_back(std::move(Request));
+		};
+
+		for (const Client::EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			if (Element.ActionCueAttachment.bEnabled &&
+				Element.ActionCueAttachment.bFollow)
+			{
+				AddRequest({
+					Element.ActionCueAttachment.strRuntimeAnchorSlotId,
+					Element.ActionCueAttachment.strRuntimeBoneName,
+					Element.ActionCueAttachment.SocketLocalTransform });
+			}
+		}
+		std::sort(Requests.begin(), Requests.end(),
+			[](const TOOL_SOURCE_ANCHOR_REQUEST& Left,
+				const TOOL_SOURCE_ANCHOR_REQUEST& Right)
+			{
+				return Left.strRuntimeAnchorSlotId < Right.strRuntimeAnchorSlotId;
+			});
+		return Requests;
+	}
+
+	bool Resolve_ToolSourceAnchorWorlds(
+		const Client::EFFECT_DOCUMENT_DESC& Document,
+		std::unordered_map<std::string, float4x4_t>& OutWorlds,
+		std::string& strOutError)
+	{
+		OutWorlds.clear();
+		const std::vector<TOOL_SOURCE_ANCHOR_REQUEST> Requests =
+			Collect_ToolSourceAnchorRequests(Document);
+		OutWorlds.reserve(Requests.size());
+		bool_t bAllResolved = true;
+		for (const TOOL_SOURCE_ANCHOR_REQUEST& Request : Requests)
+		{
+			float4x4_t BoneAnchorWorld{};
+			if (!Client::CAnimationTargetService::Resolve_AnchorTransform(
+					Request.strRuntimeBoneName.c_str(), &BoneAnchorWorld))
+			{
+				if (strOutError.empty())
+				{
+					strOutError = "preview model cannot resolve source slot '" +
+						Request.strRuntimeAnchorSlotId + "' from bone '" +
+						Request.strRuntimeBoneName + "'.";
+				}
+				bAllResolved = false;
+				continue;
+			}
+
+			const Client::EFFECT_TRANSFORM_DESC& Local =
+				Request.SocketLocalTransform;
+			const matrix_t SocketLocal = XMMatrixScaling(
+				Local.vScale.x, Local.vScale.y, Local.vScale.z) *
+				XMMatrixRotationRollPitchYaw(
+					XMConvertToRadians(Local.vRotationDegrees.x),
+					XMConvertToRadians(Local.vRotationDegrees.y),
+					XMConvertToRadians(Local.vRotationDegrees.z)) *
+				XMMatrixTranslation(
+					Local.vPosition.x, Local.vPosition.y, Local.vPosition.z);
+			float4x4_t World{};
+			XMStoreFloat4x4(&World,
+				SocketLocal * XMLoadFloat4x4(&BoneAnchorWorld));
+			OutWorlds.emplace(Request.strRuntimeAnchorSlotId, World);
+		}
+		if (bAllResolved)
+			strOutError.clear();
+		return bAllResolved;
+	}
+
 	bool Is_CompilerOwnedPortableRecipe(
 		const Client::EFFECT_DOCUMENT_DESC& Document,
 		const Client::EFFECT_ELEMENT_DESC& Element)
@@ -3001,6 +3096,27 @@ void Client::CEffect_Tool::Update(const f32_t fTimeDelta)
         Reset_ProductCueSnapshot();
         Seek_SynchronizedAnimationSequence(m_fPreviewTimeSeconds);
     }
+	/* Resolve follow anchors after any loop seek so the world submitted for this
+	   playback tick reflects the newly selected animation pose, not the final
+	   pose from the previous loop. */
+	const EFFECT_DOCUMENT_DESC& SourceAnchorDocument =
+		m_ProductPreview.has_value() && m_SourcePreviewDocument.has_value() ?
+			*m_SourcePreviewDocument : *m_ActiveDocument;
+	std::unordered_map<std::string, float4x4_t> SourceAnchorWorlds;
+	std::string SourceAnchorError;
+	const bool_t bSourceAnchorsResolved = Resolve_ToolSourceAnchorWorlds(
+		SourceAnchorDocument, SourceAnchorWorlds, SourceAnchorError);
+	pObject->Set_SourceAnchorWorlds(std::move(SourceAnchorWorlds));
+	if (!bSourceAnchorsResolved)
+	{
+		m_strPreviewStatus =
+			"World preview source anchor unavailable: " + SourceAnchorError;
+	}
+	else if (0u == m_strPreviewStatus.find(
+		"World preview source anchor unavailable:"))
+	{
+		m_strPreviewStatus = "World preview source anchors resolved.";
+	}
     float4x4_t Root{};
     const bool_t bRootResolved = Resolve_PreviewRoot(Root);
     const bool_t bCueVisible =
@@ -4202,6 +4318,43 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
             Cue.iStartMs);
         ImGui::TextDisabled(
             "Product Play locks pivot and local transform to the admitted animation cue.");
+		if (!m_PlayerPreviewCueCandidates.empty() &&
+			m_iPlayerPreviewCueCandidateIndex <
+				m_PlayerPreviewCueCandidates.size())
+		{
+			const ANIMATION_EFFECT_PREVIEW_CANDIDATE& Selected =
+				m_PlayerPreviewCueCandidates[
+					m_iPlayerPreviewCueCandidateIndex];
+			const std::string SelectedLabel = "Stage " +
+				std::to_string(Selected.iStageIndex + 1u) + " | " +
+				Selected.Clip.strClipName;
+			optional<size_t> PendingSelection;
+			if (ImGui::BeginCombo(
+					"Product Cue Stage", SelectedLabel.c_str()))
+			{
+				for (size_t iCandidate = 0u;
+					iCandidate < m_PlayerPreviewCueCandidates.size();
+					++iCandidate)
+				{
+					const ANIMATION_EFFECT_PREVIEW_CANDIDATE& Candidate =
+						m_PlayerPreviewCueCandidates[iCandidate];
+					const std::string Label = "Stage " +
+						std::to_string(Candidate.iStageIndex + 1u) + " | " +
+						Candidate.Clip.strClipName;
+					if (ImGui::Selectable(Label.c_str(),
+						iCandidate == m_iPlayerPreviewCueCandidateIndex))
+					{
+						PendingSelection = iCandidate;
+					}
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::TextDisabled(
+				"Cue startMs: %u (read-only; authored by Animation events)",
+				Selected.Cue.iStartMs);
+			if (PendingSelection.has_value())
+				Select_PlayerPreviewCueCandidate(*PendingSelection);
+		}
     }
 	else if (m_ValtanProductPreview.has_value())
 	{
@@ -9434,6 +9587,14 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	if (ImGui::SmallButton(DeleteLabel.c_str()))
 		Try_DeleteSelectedElement();
 	ImGui::EndDisabled();
+	ImGui::SameLine();
+	const bool_t bCanDuplicateSelected = !Has_UnappliedDetailDraft() &&
+		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
+		!m_strSelectedElementId.empty();
+	ImGui::BeginDisabled(!bCanDuplicateSelected);
+	if (ImGui::SmallButton("Duplicate Selected"))
+		Try_DuplicateSelectedElement();
+	ImGui::EndDisabled();
 	if (!m_MarkedElementIds.empty())
 	{
 		ImGui::SameLine();
@@ -9441,7 +9602,7 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 			m_MarkedElementIds.clear();
 	}
 	ImGui::TextDisabled(
-		"Ctrl or Shift click Element rows to mark several, then Delete.");
+		"Ctrl or Shift click Element rows to mark several, then Delete; Duplicate copies the open row as one independent occurrence.");
 	ImGui::SameLine();
 	const bool_t bCanSeedSelected =
 		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
@@ -10562,15 +10723,58 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			if (ImGui::TreeNodeEx(SkillLabel.c_str(),
 				ImGuiTreeNodeFlags_OpenOnArrow))
 			{
+				const bool_t bHoldPhaseFamily =
+					Skill.eSkillKind == LostArk::Shared::PLAYER_SKILL_KIND::HOLD &&
+					1u < Skill.iComboStageCount &&
+					ProductCues.size() == Skill.iComboStageCount &&
+					[&ProductCues, &Skill]()
+					{
+						for (size_t iStage = 0u;
+							iStage < Skill.iComboStageCount; ++iStage)
+						{
+							if (1u != std::ranges::count_if(ProductCues,
+								[iStage](const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue)
+								{
+									return Cue.iStageIndex == iStage;
+								}))
+							{
+								return false;
+							}
+						}
+						return true;
+					}();
+				const auto BuildPhaseLabel = [&Skill](
+					const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue,
+					const bool_t bIncludeClip)
+				{
+					const EFFECT_TOOL_SKILL_PHASE_ROLE eRole =
+						Resolve_EffectToolSkillPhaseRole(Skill.eSkillKind,
+							Cue.iStageIndex, Skill.iComboStageCount);
+					std::string Label(EffectToolSkillPhaseRoleLabel(eRole));
+					if (EFFECT_TOOL_SKILL_PHASE_ROLE::BASIC_ATTACK == eRole ||
+						EFFECT_TOOL_SKILL_PHASE_ROLE::STAGE == eRole)
+					{
+						Label += " " + std::to_string(Cue.iStageIndex + 1u);
+					}
+					if (bIncludeClip && !Cue.Cue.strClipName.empty())
+						Label += " | " + Cue.Cue.strClipName;
+					return Label;
+				};
+				if (bHoldPhaseFamily)
+				{
+					ImGui::TextDisabled(
+						"One HOLD family: Start / Charge / Release. Product documents remain phase-local because the Server owns release timing.");
+				}
 				if (!SavedBindings.empty())
 				{
-					ImGui::SeparatorText("Saved Unified Effects");
+					ImGui::SeparatorText(bHoldPhaseFamily ?
+						"Saved HOLD Phase Documents" : "Saved Unified Effects");
 					for (const UNIFIED_EFFECT_CANDIDATE_BINDING* pBinding :
 						SavedBindings)
 					{
 						if (nullptr == pBinding)
 							continue;
-						const bool_t bExactProduct = std::any_of(
+						const auto ExactProduct = std::find_if(
 							ProductCues.begin(), ProductCues.end(),
 							[pBinding](
 								const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue)
@@ -10578,8 +10782,11 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 								return Cue.Cue.strEffectAssetId ==
 									pBinding->strEffectAssetId;
 							});
-						const bool_t bLegacyProduct = !bExactProduct &&
-							std::any_of(ProductCues.begin(), ProductCues.end(),
+						const bool_t bExactProduct =
+							ExactProduct != ProductCues.end();
+						const auto LegacyProduct = bExactProduct ?
+							ProductCues.end() :
+							std::find_if(ProductCues.begin(), ProductCues.end(),
 								[pBinding](
 									const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue)
 								{
@@ -10587,6 +10794,10 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 										Cue.Cue.strEffectAssetId) ==
 										pBinding->strEffectAssetId;
 								});
+						const bool_t bLegacyProduct =
+							LegacyProduct != ProductCues.end();
+						const auto MatchedProduct = bExactProduct ?
+							ExactProduct : LegacyProduct;
 						const bool_t bActive =
 							m_ActiveDocument.has_value() &&
 							m_eActiveDocumentSource ==
@@ -10594,8 +10805,13 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 							m_ActiveDocument->strEffectAssetId ==
 								pBinding->strEffectAssetId;
 						ImGui::PushID(pBinding->strEffectAssetId.c_str());
+						const std::string SavedTreeLabel =
+							bHoldPhaseFamily && MatchedProduct != ProductCues.end() ?
+								BuildPhaseLabel(*MatchedProduct, false) +
+									"##" + pBinding->strEffectAssetId :
+								pBinding->strEffectAssetId;
 						const bool_t bSavedOpen = ImGui::TreeNodeEx(
-							pBinding->strEffectAssetId.c_str(),
+							SavedTreeLabel.c_str(),
 							ImGuiTreeNodeFlags_OpenOnArrow |
 								(bActive ? ImGuiTreeNodeFlags_Selected : 0));
 						if (ImGui::IsItemHovered())
@@ -10605,6 +10821,11 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 						}
 						if (bSavedOpen)
 						{
+							if (bHoldPhaseFamily)
+							{
+								ImGui::TextWrapped("Stable Product ID: %s",
+									pBinding->strEffectAssetId.c_str());
+							}
 							if (bExactProduct)
 							{
 								ImGui::TextColored(
@@ -10666,12 +10887,11 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 				}
 				if (!bArtistFSkill && nullptr != pProductEntry)
 				{
-					for (size_t iCue = 0u; iCue < ProductCues.size(); ++iCue)
+					const auto RenderProductCue = [this, pProductEntry,
+						&ProductCues, &BuildPhaseLabel](const size_t iCue)
 					{
 						const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue =
 							ProductCues[iCue];
-						const bool_t bCombo = Skill.eSkillKind ==
-							LostArk::Shared::PLAYER_SKILL_KIND::COMBO;
 						const bool_t bMultipleStageClips = std::any_of(
 							ProductCues.begin(), ProductCues.end(),
 							[&Cue](
@@ -10680,19 +10900,12 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 								return Other.iStageIndex == Cue.iStageIndex &&
 									Other.iStageClipIndex != Cue.iStageClipIndex;
 							});
-						std::string StageLabel = bCombo ?
-							("BA " + std::to_string(Cue.iStageIndex + 1u)) :
-							(ProductCues.size() > 1u ?
-								("Stage " +
-									std::to_string(Cue.iStageIndex + 1u)) :
-								std::string("Effect"));
+						std::string StageLabel = BuildPhaseLabel(Cue, true);
 						if (bMultipleStageClips)
 						{
 							StageLabel += " / Clip " +
 								std::to_string(Cue.iStageClipIndex + 1u);
 						}
-						if (!Cue.Cue.strClipName.empty())
-							StageLabel += " | " + Cue.Cue.strClipName;
 						StageLabel += "##" + std::to_string(iCue);
 						ImGui::PushID(static_cast<int>(iCue));
 						if (ImGui::TreeNodeEx(StageLabel.c_str(),
@@ -10710,6 +10923,26 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 							ImGui::TreePop();
 						}
 						ImGui::PopID();
+					};
+					if (bHoldPhaseFamily)
+					{
+						ImGui::SeparatorText("HOLD Product Family");
+						const std::string FamilyLabel = "Start / Charge / Release (" +
+							std::to_string(ProductCues.size()) +
+							" phase cues)##hold-product-family";
+						if (ImGui::TreeNodeEx(FamilyLabel.c_str(),
+							ImGuiTreeNodeFlags_DefaultOpen |
+								ImGuiTreeNodeFlags_OpenOnArrow))
+						{
+							for (size_t iCue = 0u; iCue < ProductCues.size(); ++iCue)
+								RenderProductCue(iCue);
+							ImGui::TreePop();
+						}
+					}
+					else
+					{
+						for (size_t iCue = 0u; iCue < ProductCues.size(); ++iCue)
+							RenderProductCue(iCue);
 					}
 				}
 				ImGui::TreePop();
@@ -13070,6 +13303,127 @@ bool_t Client::CEffect_Tool::Try_CreateElementDraft()
     return true;
 }
 
+bool_t Client::CEffect_Tool::Try_DuplicateSelectedElement()
+{
+	if (Has_UnappliedDetailDraft())
+	{
+		m_strElementStatus =
+			"Apply or Revert the open Detail draft before duplicating an Element.";
+		return false;
+	}
+	if (!m_ActiveDocument.has_value() ||
+		(EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource &&
+		 EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT != m_eActiveDocumentSource) ||
+		m_strSelectedElementId.empty())
+	{
+		m_strElementStatus =
+			"Open an authored Effect and select one Element to duplicate.";
+		return false;
+	}
+
+	const auto Selected = std::find_if(
+		m_ActiveDocument->Elements.begin(), m_ActiveDocument->Elements.end(),
+		[this](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.strElementId == m_strSelectedElementId;
+		});
+	if (Selected == m_ActiveDocument->Elements.end())
+	{
+		m_strElementStatus =
+			"The selected Element no longer exists; nothing was duplicated.";
+		return false;
+	}
+	if (Selected->TransformInheritance.bEnabled)
+	{
+		const std::string& strMasterId =
+			Selected->TransformInheritance.strMasterElementId;
+		if (strMasterId == Selected->strElementId ||
+			std::none_of(m_ActiveDocument->Elements.begin(),
+				m_ActiveDocument->Elements.end(),
+				[&strMasterId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == strMasterId;
+				}))
+		{
+			m_strElementStatus =
+				"Duplicate rejected an invalid or self-referential transform inheritance master.";
+			return false;
+		}
+	}
+	const std::string SourceElementId = Selected->strElementId;
+
+	EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
+	const std::string Prefix = "authored.copy.";
+	std::string DuplicateId;
+	for (size_t iCopy = 1u; iCopy <= Staged.Elements.size() + 1u; ++iCopy)
+	{
+		const std::string Suffix = "." + std::to_string(iCopy);
+		const size_t iMaximumSourceLength = 128u - Prefix.size() - Suffix.size();
+		DuplicateId = Prefix +
+			SourceElementId.substr(0u, iMaximumSourceLength) + Suffix;
+		if (std::none_of(Staged.Elements.begin(), Staged.Elements.end(),
+			[&DuplicateId](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == DuplicateId;
+			}))
+		{
+			break;
+		}
+		DuplicateId.clear();
+	}
+	if (DuplicateId.empty())
+	{
+		m_strElementStatus =
+			"Duplicate could not allocate a unique authored Element ID.";
+		return false;
+	}
+
+	EFFECT_ELEMENT_DESC Duplicate = *Selected;
+	Duplicate.strElementId = DuplicateId;
+	Duplicate.strSourceNode = "authored-copy:" + SourceElementId;
+	Duplicate.SourcePresentation = {};
+	const size_t iSelectedIndex = static_cast<size_t>(
+		std::distance(m_ActiveDocument->Elements.begin(), Selected));
+	Staged.Elements.insert(
+		Staged.Elements.begin() + static_cast<ptrdiff_t>(iSelectedIndex + 1u),
+		Duplicate);
+
+	const std::string strPreviousIsolationElement =
+		m_strPreviewIsolationElementId;
+	if (EFFECT_PREVIEW_FILTER::SOLO_SELECTED == m_ePreviewFilter ||
+		EFFECT_PREVIEW_FILTER::MUTE_SELECTED == m_ePreviewFilter)
+	{
+		m_strPreviewIsolationElementId = DuplicateId;
+	}
+	if (!Try_CommitDocument(std::move(Staged)))
+	{
+		m_strPreviewIsolationElementId = strPreviousIsolationElement;
+		return false;
+	}
+
+	Reset_DetailDraft();
+	m_MarkedElementIds.clear();
+	m_eDetailSelection = EFFECT_DETAIL_SELECTION::ELEMENT;
+	m_strSelectedElementId = DuplicateId;
+	m_strSelectedElementGroupId = Duplicate.strGroupId;
+	m_strSelectedComponentId.clear();
+	m_strSelectedEmitterId.clear();
+	m_strSelectedSourceModuleId.clear();
+	m_eSelectedEffectType = Duplicate.eKind;
+	m_strSelectedResourceSlotId = Default_SlotId(Duplicate.eKind);
+	m_eResourceLibraryFileKind = Slot_FileKind(
+		Duplicate, m_strSelectedResourceSlotId);
+	m_strSelectedResourceAssetId.clear();
+	if (m_bActiveDocumentDrawable && m_bPreviewVisibleRequested)
+		Start_WorldPreviewFromBeginning();
+	m_strElementStatus = "Duplicated '" + SourceElementId +
+		"' as '" + DuplicateId +
+		"'; timing, material, resources, attachment, and source recipe were preserved.";
+	m_strDocumentStatus =
+		"Current Effect has one unsaved duplicated Element; no Data File was written.";
+	return true;
+}
+
 bool_t Client::CEffect_Tool::Try_DeleteSelectedElement()
 {
     if (Has_UnappliedDetailDraft())
@@ -14038,7 +14392,16 @@ bool_t Client::CEffect_Tool::Try_LoadDocumentPathStaged(
             "EffectTool.DocumentLoad.CanonicalBaseline");
         CanonicalBaseline = CEffectDocumentCodec::Serialize(Staged);
     }
+	optional<EFFECT_PRODUCT_PREVIEW> RetainedProductPreview;
+	if (m_ProductPreview.has_value() &&
+		m_ProductPreview->ProductCue.Cue.strEffectAssetId ==
+			Staged.strEffectAssetId)
+	{
+		RetainedProductPreview = m_ProductPreview;
+	}
 	Clear_ProductCuePreview();
+	if (RetainedProductPreview.has_value())
+		m_ProductPreview = std::move(RetainedProductPreview);
 	m_ActiveDocument = std::move(Staged);
     Set_ActiveDocumentDrawableStatus(bDrawable, PreviewStatus);
     m_ActiveDocumentPath = Path;
@@ -21156,9 +21519,36 @@ void Client::CEffect_Tool::Clear_ProductCuePreview()
     m_ProductPreview.reset();
 	m_ValtanProductPreview.reset();
 	m_SourcePreviewDocument.reset();
+	m_PlayerPreviewCueCandidates.clear();
+	m_iPlayerPreviewCueCandidateIndex = 0u;
 	m_strPreviewIsolationElementId.clear();
 	m_strPreviewIsolationGroupId.clear();
     Reset_ProductCueSnapshot();
+}
+
+void Client::CEffect_Tool::Select_PlayerPreviewCueCandidate(
+	const size_t iCandidateIndex)
+{
+	if (!m_ProductPreview.has_value() || !m_ActiveDocument.has_value() ||
+		iCandidateIndex >= m_PlayerPreviewCueCandidates.size())
+	{
+		return;
+	}
+
+	const ANIMATION_EFFECT_PREVIEW_CANDIDATE Candidate =
+		m_PlayerPreviewCueCandidates[iCandidateIndex];
+	EFFECT_PRODUCT_PREVIEW Preview = *m_ProductPreview;
+	Preview.ProductCue.Cue = Candidate.Cue;
+	Preview.ProductCue.iBoundClipOrdinal = Candidate.iBoundClipOrdinal;
+	Preview.ProductCue.iStageIndex = Candidate.iStageIndex;
+	Preview.ProductCue.iStageClipIndex = Candidate.iStageClipIndex;
+	m_ProductPreview = std::move(Preview);
+	m_SourcePreviewDocument.reset();
+	m_iPlayerPreviewCueCandidateIndex = iCandidateIndex;
+	m_fPreviewTimeSeconds = 0.f;
+	Reset_ProductCueSnapshot();
+	Recalculate_PreviewDuration(*m_ActiveDocument);
+	Synchronize_LoadedSkillPreview();
 }
 
 void Client::CEffect_Tool::Reset_ProductCueSnapshot()
@@ -21301,6 +21691,8 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 {
     Reset_SynchronizedAnimationSequence();
 	Reset_ValtanBossPatternTransformHistory();
+	m_PlayerPreviewCueCandidates.clear();
+	m_iPlayerPreviewCueCandidateIndex = 0u;
     m_strPreviewAnimationStatus.clear();
 	const EFFECT_DOCUMENT_DESC* pPreviewDocument =
 		m_ProductPreview.has_value() && m_SourcePreviewDocument.has_value() ?
@@ -21446,7 +21838,6 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
         Ensure_PlayerSkillCatalog(CatalogStatus);
     const vector<PLAYER_SKILL_DEFINITION>& Skills =
         CPlayerSkillCatalog::Get_Skills();
-	std::vector<std::string> CandidateCueClips;
     auto Skill = m_ProductPreview.has_value() ?
         std::find_if(
             Skills.begin(), Skills.end(),
@@ -21508,18 +21899,6 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 			});
 		if (Owner != m_AllEffects.end())
 		{
-			for (const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Cue :
-				Owner->ProductCues)
-			{
-				if (!OwnsDocument(Cue.Cue.strEffectAssetId) ||
-					Cue.Cue.strClipName.empty() ||
-					std::find(CandidateCueClips.begin(), CandidateCueClips.end(),
-						Cue.Cue.strClipName) != CandidateCueClips.end())
-				{
-					continue;
-				}
-				CandidateCueClips.push_back(Cue.Cue.strClipName);
-			}
 			Skill = std::find_if(Skills.begin(), Skills.end(),
 				[&Owner](const PLAYER_SKILL_DEFINITION& Candidate)
 				{
@@ -21543,22 +21922,6 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 			});
 		if (CandidateOwner != m_UnifiedCandidateBindings.end())
 		{
-			for (const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding :
-				m_UnifiedCandidateBindings)
-			{
-				if (Binding.strEffectAssetId != DocumentAssetId ||
-					Binding.eCharacterClass !=
-						CandidateOwner->eCharacterClass ||
-					Binding.iSkillId != CandidateOwner->iSkillId ||
-					Binding.strClipName.empty() ||
-					std::find(CandidateCueClips.begin(),
-						CandidateCueClips.end(), Binding.strClipName) !=
-						CandidateCueClips.end())
-				{
-					continue;
-				}
-				CandidateCueClips.push_back(Binding.strClipName);
-			}
 			Skill = std::find_if(Skills.begin(), Skills.end(),
 				[&CandidateOwner](const PLAYER_SKILL_DEFINITION& Candidate)
 				{
@@ -21630,11 +21993,13 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
 
     ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
     std::string BindingStatus;
+	const std::vector<std::string> AvailableClips =
+		Collect_AnimationClipNames(pModel);
     if (!CAnimationSkillBindingDocument::Load(
         pAnimationAsset,
         Skill->eCharacterClass,
         Skills,
-        Collect_AnimationClipNames(pModel),
+        AvailableClips,
         Bindings,
         BindingStatus))
     {
@@ -21656,6 +22021,77 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
             "Effect is playing; its first bound animation clip is unavailable.";
         return;
     }
+
+	const bool_t bSavedPlayerDirectAuthored =
+		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+		m_ActiveDocument.has_value() &&
+		pPreviewDocument == &*m_ActiveDocument;
+	if (bSavedPlayerDirectAuthored)
+	{
+		const std::filesystem::path EventPath = CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Animation") / L"Authored" /
+			std::filesystem::path(pAnimationAsset) /
+			(std::filesystem::path(pAnimationAsset).wstring() +
+				L".animevents"));
+		std::string EventText;
+		std::string CandidateStatus;
+		ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+		if (!Read_TextFile(EventPath, EventText, CandidateStatus) ||
+			!CAnimationEffectCueDocument::Load_FromText(
+				pAnimationAsset, EventText, AvailableClips, CueDocument,
+				CandidateStatus, true) ||
+			!CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+				*Binding, CueDocument.Cues,
+				pPreviewDocument->strEffectAssetId,
+				m_PlayerPreviewCueCandidates, CandidateStatus))
+		{
+			m_ProductPreview.reset();
+			m_SourcePreviewDocument.reset();
+			Recalculate_PreviewDuration(*m_ActiveDocument);
+			m_strPreviewAnimationStatus =
+				"Saved Player Effect has no exact Product cue mapping; "
+				"full skill-chain preview was refused: " + CandidateStatus;
+			return;
+		}
+
+		size_t iSelectedCandidate = 0u;
+		if (m_ProductPreview.has_value())
+		{
+			const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& Selected =
+				m_ProductPreview->ProductCue;
+			const auto Match = std::find_if(
+				m_PlayerPreviewCueCandidates.begin(),
+				m_PlayerPreviewCueCandidates.end(),
+				[&Selected](
+					const ANIMATION_EFFECT_PREVIEW_CANDIDATE& Candidate)
+				{
+					return Candidate.iStageIndex == Selected.iStageIndex &&
+						Candidate.iStageClipIndex == Selected.iStageClipIndex &&
+						Candidate.Cue.strClipName == Selected.Cue.strClipName &&
+						Candidate.Cue.iStartMs == Selected.Cue.iStartMs &&
+						Candidate.Cue.strEffectAssetId ==
+							Selected.Cue.strEffectAssetId;
+				});
+			if (Match != m_PlayerPreviewCueCandidates.end())
+			{
+				iSelectedCandidate = static_cast<size_t>(
+					std::distance(m_PlayerPreviewCueCandidates.begin(), Match));
+			}
+		}
+		m_iPlayerPreviewCueCandidateIndex = iSelectedCandidate;
+		const ANIMATION_EFFECT_PREVIEW_CANDIDATE& Candidate =
+			m_PlayerPreviewCueCandidates[iSelectedCandidate];
+		EFFECT_PRODUCT_PREVIEW Preview;
+		Preview.eCharacterClass = Skill->eCharacterClass;
+		Preview.iSkillId = Skill->iSkillId;
+		Preview.ProductCue.Cue = Candidate.Cue;
+		Preview.ProductCue.iBoundClipOrdinal = Candidate.iBoundClipOrdinal;
+		Preview.ProductCue.iStageIndex = Candidate.iStageIndex;
+		Preview.ProductCue.iStageClipIndex = Candidate.iStageClipIndex;
+		m_ProductPreview = std::move(Preview);
+		m_SourcePreviewDocument.reset();
+		Recalculate_PreviewDuration(*m_ActiveDocument);
+	}
     m_SynchronizedAnimationClips.clear();
     if (m_ProductPreview.has_value())
     {
@@ -21676,26 +22112,6 @@ void Client::CEffect_Tool::Synchronize_LoadedSkillPreview()
             }
         }
     }
-    else if (!CandidateCueClips.empty())
-	{
-		for (const std::string& CandidateClip : CandidateCueClips)
-		{
-			for (const ANIMATION_SKILL_STAGE& Stage : Binding->Stages)
-			{
-				const auto Clip = std::find_if(Stage.Clips.begin(),
-					Stage.Clips.end(), [&CandidateClip](
-						const ANIMATION_SKILL_CLIP& Entry)
-					{
-						return Entry.strClipName == CandidateClip;
-					});
-				if (Clip != Stage.Clips.end())
-				{
-					m_SynchronizedAnimationClips.push_back(*Clip);
-					break;
-				}
-			}
-		}
-	}
     else
     {
         /* Generic Data File preview retains the full authored chain. Product
