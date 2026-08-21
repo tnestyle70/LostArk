@@ -87,8 +87,8 @@
     },
     "supplementalElements": {
       "type": "array",
-      "minItems": 9,
-      "maxItems": 9,
+      "minItems": 16,
+      "maxItems": 16,
       "items": { "$ref": "#/$defs/supplementalElement" }
     },
     "bakedEdgeHistories": {
@@ -109,6 +109,7 @@
         "cascadeRibbonVisualRowCount",
         "supplementalElementCount",
         "artistFCascadeRibbonElementCount",
+        "artistTCascadeRibbonElementCount",
         "animationTrailElementCount",
         "bakedEdgeLightElementCount",
         "admittedBoundedCount",
@@ -124,9 +125,10 @@
         "combatBaVisualRowCount": { "const": 133 },
         "artistFLocalDecalVisualRowCount": { "const": 2 },
         "cascadeRibbonVisualRowCount": { "const": 4 },
-        "supplementalElementCount": { "const": 9 },
+        "supplementalElementCount": { "const": 16 },
         "artistFCascadeRibbonElementCount": { "const": 1 },
-        "animationTrailElementCount": { "const": 7 },
+        "artistTCascadeRibbonElementCount": { "const": 1 },
+        "animationTrailElementCount": { "const": 13 },
         "bakedEdgeLightElementCount": { "const": 1 },
         "admittedBoundedCount": { "const": 68 },
         "failClosedCount": { "const": 67 },

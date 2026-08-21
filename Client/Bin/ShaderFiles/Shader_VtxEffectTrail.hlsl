@@ -2,6 +2,7 @@
 #include "Shader_Artist31470RuntimeMaterial.hlsli"
 #include "Shader_EffectStandardColorV1.hlsli"
 #include "Shader_Artist31470Active003RibbonMaterial.hlsli"
+#include "Shader_EffectUe3MaterialFamilies.hlsli"
 
 float4x4 g_WorldMatrix;
 float4x4 g_ViewMatrix;
@@ -12,6 +13,7 @@ struct VS_IN
     float3 position : POSITION;
     float2 uv : TEXCOORD0;
     float4 color : COLOR0;
+    float4 dynamicParameter : TEXCOORD1;
 };
 
 struct VS_OUT
@@ -20,6 +22,7 @@ struct VS_OUT
     float2 uv : TEXCOORD0;
     float2 runtimeUV : TEXCOORD1;
     float4 color : COLOR0;
+    float4 dynamicParameter : TEXCOORD2;
 };
 
 VS_OUT VS_MAIN(VS_IN input)
@@ -31,6 +34,7 @@ VS_OUT VS_MAIN(VS_IN input)
     output.uv = input.uv * g_UVScale + g_UVOffset;
     output.runtimeUV = input.uv;
     output.color = input.color;
+    output.dynamicParameter = input.dynamicParameter;
     return output;
 }
 
@@ -47,6 +51,12 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
         {
             return Shade_Artist31470Active003RibbonMaterial(
                 input.runtimeUV, input.color);
+        }
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_RIBBONLIQUID01_PARENT_DEFAULT)
+        {
+            return Shade_EffectUe3RibbonLiquid01ParentDefault(
+                input.runtimeUV, input.color, input.dynamicParameter);
         }
 
         EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;

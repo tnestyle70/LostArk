@@ -432,7 +432,8 @@ struct EFFECT_VISUAL_PROGRAM_CORPUS final
 	uint32_t iDeclaredLocalDecalAdapterPacketCount = 0u;
 	uint32_t iDeclaredCascadeRibbonVisualRowCount = 0u;
 	uint32_t iDeclaredSupplementalElementCount = 0u;
-	uint32_t iDeclaredArtistCascadeRibbonElementCount = 0u;
+	uint32_t iDeclaredArtistFCascadeRibbonElementCount = 0u;
+	uint32_t iDeclaredArtistTCascadeRibbonElementCount = 0u;
 	uint32_t iDeclaredAnimationTrailElementCount = 0u;
 	uint32_t iDeclaredBakedEdgeLightElementCount = 0u;
 	uint32_t iDeclaredFailClosedCount = 0u;

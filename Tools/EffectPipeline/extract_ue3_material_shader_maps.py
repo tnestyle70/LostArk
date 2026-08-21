@@ -1364,11 +1364,17 @@ def _parse_wire_array(
     expected_count: int | None,
     maximum_count: int,
     object_logical_offset: int,
+    *,
+    allow_empty: bool = False,
 ) -> tuple[list[dict[str, int]], int]:
     require(offset + 4 <= len(payload), f"{name} binding count is truncated")
     count = struct.unpack_from("<I", payload, offset)[0]
     offset += 4
-    require(0 < count <= maximum_count, f"{name} binding denominator is invalid")
+    minimum_count = 0 if allow_empty else 1
+    require(
+        minimum_count <= count <= maximum_count,
+        f"{name} binding denominator is invalid",
+    )
     if expected_count is not None:
         require(count == expected_count, f"{name} binding denominator changed")
     require(offset + count * 10 <= len(payload), f"{name} bindings are truncated")
@@ -1427,15 +1433,16 @@ def scan_native_binding_array_candidates(
                 object_bytes,
                 offset,
                 "vectors",
-                vector_count,
+                None,
                 vector_count,
                 object_logical_offset,
+                allow_empty=True,
             )
             texture_rows, offset = _parse_wire_array(
                 object_bytes,
                 offset,
                 "textures",
-                texture_count,
+                None,
                 texture_count,
                 object_logical_offset,
             )
@@ -1449,13 +1456,13 @@ def scan_native_binding_array_candidates(
                 "scalar group keys do not close over uniform expressions",
             )
             require(
-                set(vector_keys) == set(range(vector_count))
-                and len(vector_keys) == vector_count,
+                len(set(vector_keys)) == len(vector_keys)
+                and set(vector_keys).issubset(range(vector_count)),
                 "vector keys do not close over uniform expressions",
             )
             require(
-                set(texture_keys) == set(range(texture_count))
-                and len(texture_keys) == texture_count,
+                len(set(texture_keys)) == len(texture_keys)
+                and set(texture_keys).issubset(range(texture_count)),
                 "texture keys do not close over uniform expressions",
             )
             constant_rows = scalar_rows + vector_rows

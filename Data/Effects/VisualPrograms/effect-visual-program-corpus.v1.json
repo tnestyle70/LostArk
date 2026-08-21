@@ -181,22 +181,29 @@
   ],
   "inputArtifacts": [
     {
+      "path": "Data/Effects/Authored/effect.artist.skill.31950.unified.effect.json",
+      "rawSha256": "3abce9abf81e8010fde14a8544c9ab8329b0dc2bad0bd6de90dc2b14d888ba13",
+      "roles": [
+        "ARTIST_T_CASCADE_RIBBON_TARGET_ELEMENT"
+      ]
+    },
+    {
       "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba1.restoration-candidate.effect.json",
-      "rawSha256": "e3d9444257afadce6445206cbb30fd22f2940c746bd5c08febc7d554170f3804",
+      "rawSha256": "3bdf9f15f6b348556669849058db34e10fe61328ceaba6ef04e184fd2c170495",
       "roles": [
         "ANIMATION_TRAIL_TARGET_ELEMENT"
       ]
     },
     {
       "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba2.restoration-candidate.effect.json",
-      "rawSha256": "eb367decb5b3a22b8089b90a0910a2f3e5a38117abfaf2515f5fc48c256d35a1",
+      "rawSha256": "2ab49588999cdf921b480c980553e683f8723d02964fb4a1f122bd47a315a811",
       "roles": [
         "ANIMATION_TRAIL_TARGET_ELEMENT"
       ]
     },
     {
       "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba3.restoration-candidate.effect.json",
-      "rawSha256": "b1055e40457bf17a2bbf1c7fc95ae9d7ffc671bdbfbde07ef7aa1a7473abaefe",
+      "rawSha256": "43083bacf1e0d06f18a02ea782700d793b8105eabb76e52f6ce21efd320789c5",
       "roles": [
         "ANIMATION_TRAIL_TARGET_ELEMENT"
       ]
@@ -401,6 +408,13 @@
       ]
     },
     {
+      "path": "Data/Effects/Imported/Artist/Materials/skill.31950.ribbon-parent-default-shader.receipt.json",
+      "rawSha256": "2e87d106e117a3c4705c4c304a8a396c6a777fa0cd546c2c167e1053f6e3067e",
+      "roles": [
+        "ARTIST_T_RIBBON_PARENT_DEFAULT_MATERIAL_EVIDENCE"
+      ]
+    },
+    {
       "path": "Data/Effects/Imported/Artist/skill.31470.source-active-effect-inventory.receipt.json",
       "rawSha256": "96ac2147e97c9c7ba2a442367b1e55882eec0d8d021278185900cb5c3837c29a",
       "roles": [
@@ -472,7 +486,7 @@
     },
     {
       "path": "Tools/EffectPipeline/Schemas/lostark.effect-visual-program-corpus.schema.json",
-      "rawSha256": "dfb2d94196dc4e780661a93f510d89c54987e9587feb8e195eb2fcf1394d42ac",
+      "rawSha256": "b3d73ed41b4be97babdc84741f54fc5b9e1db1a28bde9150f9c114bf6e4b6bc0",
       "roles": [
         "VISUAL_PROGRAM_CORPUS_SCHEMA"
       ]
@@ -16070,6 +16084,121 @@
     },
     {
       "selector": {
+        "effectAssetId": "effect.artist.skill.31950.unified",
+        "occurrenceId": "authored.source-particle.29868adeb040d5a35e2f213c"
+      },
+      "selectorSha256": "22c69bed1380031e943b28c3819c5ed38dd8aa221c546ec151440052a2b8d582",
+      "provenance": {
+        "scope": "ARTIST_T_CASCADE_RIBBON",
+        "characterClass": "ARTIST",
+        "skillId": 31950,
+        "stageIndex": 0,
+        "sourceStableId": "authored.source-particle.29868adeb040d5a35e2f213c"
+      },
+      "schedule": {
+        "stageId": "artist.31950.active",
+        "sourceEventId": "source-event-001",
+        "sourceTimelineSeconds": 0.0,
+        "localTimeSeconds": 0.0,
+        "durationSeconds": 5.0
+      },
+      "sourcePayload": {
+        "path": "Data/Effects/Authored/effect.artist.skill.31950.unified.effect.json",
+        "rawSha256": "3abce9abf81e8010fde14a8544c9ab8329b0dc2bad0bd6de90dc2b14d888ba13",
+        "recordId": "authored.source-particle.29868adeb040d5a35e2f213c",
+        "recordSha256": "50e004d7ff282014f80aef5d4377af198b93cf3a351cc9e285fec8b6a26c42d6"
+      },
+      "targetPayload": {
+        "path": "Data/Effects/Authored/effect.artist.skill.31950.unified.effect.json",
+        "rawSha256": "3abce9abf81e8010fde14a8544c9ab8329b0dc2bad0bd6de90dc2b14d888ba13",
+        "recordId": "authored.source-particle.29868adeb040d5a35e2f213c",
+        "recordSha256": "50e004d7ff282014f80aef5d4377af198b93cf3a351cc9e285fec8b6a26c42d6"
+      },
+      "family": "CASCADE_RIBBON",
+      "adapterId": "cascade-ribbon-document-v12",
+      "packetLayout": "CASCADE_RIBBON_TYPED_PACKET_V1",
+      "fidelity": "BOUNDED_RECONSTRUCTION",
+      "disposition": "ADMITTED_BOUNDED",
+      "tuningEligibleTransform": true,
+      "resourcePacket": [],
+      "cascadeRibbonPacket": {
+        "packetVersion": 1,
+        "adapterId": "cascade-ribbon-document-v12",
+        "boundedSemanticReplay": true,
+        "nativeExecution": false,
+        "runtimeCarrier": "EFFECT_TYPED_CASCADE_RIBBON_V1",
+        "typeDataStableId": "FX_PC_SDM_01:export:1495@ref:6",
+        "typeDataClassName": "particlemoduletypedataribbon",
+        "typeDataObjectPath": "FX_PC_SDM_01.par_t_sdm_dragonrising_00_wpcast_01.particlemoduletypedataribbon_1",
+        "typeDataModuleSha256": "2cb59595a9235676caa32c3d6833f531266b6b2f18c1dde62fa40893648bafdf",
+        "resolvedRendererShape": "ribbon",
+        "tilingDistance": 3.0,
+        "distanceTessellationStepSize": 0.05,
+        "tangentTessellationScalar": 0.0,
+        "lodValidity": 3.0,
+        "operationalMaxPoints": 64,
+        "targetTiming": {
+          "startDelaySeconds": 0.0,
+          "lifeTimeSeconds": 5.0,
+          "afterImageSeconds": 0.0,
+          "dissolveStartNormalized": 1.0
+        },
+        "attachment": {
+          "enabled": false,
+          "follow": false,
+          "sourceAnchorSlotId": "",
+          "runtimeAnchorSlotId": "",
+          "runtimeBoneName": "",
+          "socketLocalTransform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "snapshotRootSourceBasisYawDegrees": 0.0
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0.0,
+          "faceCamera": true,
+          "tilingDistanceWorldUnits": 3.0,
+          "distanceTessellationStepWorldUnits": 0.05
+        },
+        "sourceRecipeSha256": "ab067bda84761c70f410fdb3ded6f113727c5113ac51d274b5a2ea541a56caf1",
+        "moduleClosureSha256": "a31ae0e7579e4b27d26d76d8ac27b6f553d5f61ae483fa4fbf9b448c6354e07e",
+        "moduleCount": 8,
+        "preservedLimitations": [
+          "CASCADE_RIBBON_BOUNDED_RECONSTRUCTION_NOT_NATIVE_SOURCE_EXACT",
+          "CHILD_MIC_HAS_NO_NATIVE_STATIC_TAIL_PARENT_DEFAULT_ONLY",
+          "SAMPLER_FILTER_ADDRESS_DEFAULTS_BOUNDED_NOT_SOURCE_REVISION_CDO_EXACT",
+          "FLUID_AND_AURA_SRGB_DEFAULTS_BOUNDED_NOT_SERIALIZED_EXPLICIT",
+          "PARENT_REFLECTION_BASIS_RECONSTRUCTED_ON_TYPED_RIBBON_CARRIER",
+          "DISTORTION_SCENE_COLOR_ACCUMULATE_PASS_DEFERRED"
+        ],
+        "packetSha256": "c45915b8f8d1e479fe7b17aa931e56a1b5bdc23833c9842d8f1dce79718d8dfe"
+      },
+      "animationTrailPacket": null,
+      "bakedEdgeLightPacket": null,
+      "admissionBlockers": [],
+      "rowSha256": "a3d6db3e4d98117c9b3e5b5f189aa8e00d8d205aafe1589c398322463425c8fc"
+    },
+    {
+      "selector": {
         "effectAssetId": "effect.lancemaster.skill.34010.ba1",
         "occurrenceId": "visual-occurrence.f574ef152f56e86fc7b645a8948c153c7f3b68fd689d15b46c3ef6be66d7eb22"
       },
@@ -16096,7 +16225,7 @@
       },
       "targetPayload": {
         "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba1.restoration-candidate.effect.json",
-        "rawSha256": "e3d9444257afadce6445206cbb30fd22f2940c746bd5c08febc7d554170f3804",
+        "rawSha256": "3bdf9f15f6b348556669849058db34e10fe61328ceaba6ef04e184fd2c170495",
         "recordId": "manual.trackb.ba1.animtrail-companion",
         "recordSha256": "230acad358ea9d6af058df7eb0b68a27240f86a4315576dc9d2354b7a5ce28dd"
       },
@@ -16220,7 +16349,7 @@
       },
       "bakedEdgeLightPacket": null,
       "admissionBlockers": [],
-      "rowSha256": "2bd38a1fb66e98a9229a0e998c1fe283990483dec4b993cd7d4921fe0349b50b"
+      "rowSha256": "a36aa74eecbe7526cd89996eb847c96d3c733882d7ea172aebb16e6ffda7c466"
     },
     {
       "selector": {
@@ -16250,7 +16379,7 @@
       },
       "targetPayload": {
         "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba2.restoration-candidate.effect.json",
-        "rawSha256": "eb367decb5b3a22b8089b90a0910a2f3e5a38117abfaf2515f5fc48c256d35a1",
+        "rawSha256": "2ab49588999cdf921b480c980553e683f8723d02964fb4a1f122bd47a315a811",
         "recordId": "manual.trackb.ba2.animtrail-companion",
         "recordSha256": "83d149f85f442c4611513f149a208c0f552c62dbf2f4ad8809a5e9593e0dd7ff"
       },
@@ -16374,7 +16503,7 @@
       },
       "bakedEdgeLightPacket": null,
       "admissionBlockers": [],
-      "rowSha256": "73a38bca807e9895927a44af8c990d6ba89fc9969517ca2068e323fb9b556e4a"
+      "rowSha256": "95276f736108149ee1889c8d7a6367047cd213cb743c97f9bebb38918a53d56b"
     },
     {
       "selector": {
@@ -16404,7 +16533,7 @@
       },
       "targetPayload": {
         "path": "Data/Effects/Authored/effect.lancemaster.skill.34010.ba3.restoration-candidate.effect.json",
-        "rawSha256": "b1055e40457bf17a2bbf1c7fc95ae9d7ffc671bdbfbde07ef7aa1a7473abaefe",
+        "rawSha256": "43083bacf1e0d06f18a02ea782700d793b8105eabb76e52f6ce21efd320789c5",
         "recordId": "manual.trackb.ba3.animtrail-companion",
         "recordSha256": "4acff60633e058c20b546d08d9e350fd0ef24bff04b036583db80a1ad55ca71a"
       },
@@ -16528,7 +16657,7 @@
       },
       "bakedEdgeLightPacket": null,
       "admissionBlockers": [],
-      "rowSha256": "f58626b2945b8f3bcdad621dc553122ec8697689c2785325c5cfc739f39aed50"
+      "rowSha256": "83689dc3a31d198358c99a595d171e8753763d9579036ce6462ab0afb173d5ae"
     },
     {
       "selector": {
@@ -25428,8 +25557,9 @@
     "combatBaVisualRowCount": 133,
     "artistFLocalDecalVisualRowCount": 2,
     "cascadeRibbonVisualRowCount": 4,
-    "supplementalElementCount": 15,
+    "supplementalElementCount": 16,
     "artistFCascadeRibbonElementCount": 1,
+    "artistTCascadeRibbonElementCount": 1,
     "animationTrailElementCount": 13,
     "bakedEdgeLightElementCount": 1,
     "admittedBoundedCount": 68,
@@ -25450,5 +25580,5 @@
     "productMutation": false,
     "runtimeCatalogMutation": false
   },
-  "artifactSha256": "48fdf13e09c80e3f6e9e43440ec55ffbd2a8a0cb0b582b0616da4274e315d7eb"
+  "artifactSha256": "03b64d3e59d468ab72e38d357bb5969cfa2c739281a27b40c2f24522c54342cb"
 }

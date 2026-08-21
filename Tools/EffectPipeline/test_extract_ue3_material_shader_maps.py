@@ -408,6 +408,59 @@ class NativeShaderObjectBindingTests(unittest.TestCase):
             4,
         )
 
+    def test_pass_may_bind_only_the_vector_expressions_it_uses(self) -> None:
+        payload = b"\x00" * 73 + b"".join(
+            (
+                wire_array([wire_row(0, 32, 16, 0)]),
+                wire_array([wire_row(1, 16, 16, 0)]),
+                wire_array([wire_row(0, 0, 1, 0)]),
+            )
+        )
+        counts = dict(UNIFORM_COUNTS)
+        counts["pixelVectorExpressions"] = 2
+        closure = binding_closure()
+        closure["declaredConstantBuffer0Float4Count"] = 3
+
+        selected = subject.select_unique_native_binding_arrays(
+            payload, 1000, counts, closure
+        )
+
+        self.assertEqual(
+            [row["expressionIndexOrGroup"] for row in selected["vectors"]],
+            [1],
+        )
+
+    def test_pass_may_omit_vectors_and_bind_a_texture_subset(self) -> None:
+        payload = b"\x00" * 73 + b"".join(
+            (
+                wire_array([wire_row(0, 0, 16, 0)]),
+                wire_array([]),
+                wire_array([wire_row(1, 0, 1, 0)]),
+            )
+        )
+        counts = dict(UNIFORM_COUNTS)
+        counts["pixelTexture2DExpressions"] = 2
+        closure = binding_closure(
+            observed={"t0/s0": 1, "t1/s1": 1},
+            textures=[0, 1],
+            samplers=[0, 1],
+        )
+        closure["declaredConstantBuffer0Float4Count"] = 1
+
+        selected = subject.select_unique_native_binding_arrays(
+            payload, 1000, counts, closure
+        )
+
+        self.assertEqual(selected["vectors"], [])
+        self.assertEqual(
+            [row["expressionIndexOrGroup"] for row in selected["textures"]],
+            [1],
+        )
+        self.assertEqual(
+            selected["textureSampleClosure"]["unownedEngineSamplePairs"],
+            ["t1/s1"],
+        )
+
     def test_two_candidates_are_rejected_as_ambiguous(self) -> None:
         first = b"\x00" * 73 + valid_binding_triple()
         payload = first + b"\x00" * (211 - len(first)) + valid_binding_triple()

@@ -6166,6 +6166,146 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 			return false;
 		}
 	}
+	if (Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+		Execution.iOpcode == 20u)
+	{
+		static constexpr std::array<std::string_view, 4u> LANE_ROLES = {{
+			"distortion_normal", "surface_normal", "alpha_aura",
+			"reflection_fluid"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_ASSETS = {{
+			"Effect/Artist/Textures/fx_d_normal_085.dds",
+			"Effect/Artist/Textures/fx_d_normal_085.dds",
+			"Effect/Artist/Textures/fx_k_auraline_14_ycl.dds",
+			"Effect/Artist/Textures/fx_a_fluid_003.dds"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_CHANNELS = {{
+			"RG", "RG", "RGB", "RGB"
+		}};
+		static constexpr std::array<EFFECT_TEXTURE_COLOR_SPACE, 4u>
+			LANE_COLOR_SPACES = {{
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB,
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB
+			}};
+		static constexpr std::array<std::string_view, 12u> SCALAR_NAMES = {{
+			"normal_strength", "alpha_strength", "reflection_uv_scale",
+			"distortion_strength", "normal_uv_scale_x", "normal_uv_scale_y",
+			"alpha_uv_scale_x", "alpha_uv_scale_y", "normal_pan_x",
+			"normal_pan_y", "alpha_pan_x", "alpha_pan_y"
+		}};
+		static constexpr std::array<f32_t, 12u> SCALAR_VALUES = {{
+			0.5f, 2.f, 3.f, 50.f, 1.f, 1.f, 1.f, 1.f,
+			0.f, 0.f, 0.f, 0.f
+		}};
+		const auto NearlyEqual = [](const f32_t Left, const f32_t Right)
+		{
+			return std::abs(Left - Right) <= 1.0e-6f *
+				(std::max)({ 1.f, std::abs(Left), std::abs(Right) });
+		};
+		bool_t bRibbonLiquidContractValid =
+			Element.eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "ribbon" &&
+			Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			Element.Material.strSourceMaterialPath ==
+				"fx_m_mi_d_00.fx_mi.fx_d_pa_ribbonliquid_01_101_tr" &&
+			Element.ResourceBindings.size() == 3u &&
+			Element.ResourceBindings[0].strSlotId == "base" &&
+			Element.ResourceBindings[0].strAssetId == LANE_ASSETS[0] &&
+			Element.ResourceBindings[1].strSlotId == "noise" &&
+			Element.ResourceBindings[1].strAssetId == LANE_ASSETS[3] &&
+			Element.ResourceBindings[2].strSlotId == "emissive" &&
+			Element.ResourceBindings[2].strAssetId == LANE_ASSETS[2] &&
+			Execution.iTextureLaneCount == 4u &&
+			Execution.iTextureMask == 0xfu &&
+			Execution.TextureLanes.size() == LANE_ROLES.size() &&
+			Execution.iDynamicConsumedMask == 0xfu &&
+			Execution.iDynamicSuppressedMask == 0u &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0x8u &&
+			Execution.iParticleColorSuppressedMask == 0x7u &&
+			Execution.iScalarCount == SCALAR_NAMES.size() &&
+			Execution.Scalars.size() == SCALAR_NAMES.size() &&
+			Execution.iVectorCount == 1u && Execution.Vectors.size() == 1u &&
+			Execution.iInputCount == 17u &&
+			Execution.InputConsumedMask ==
+				std::array<uint32_t, 2u>{ 0x1ff7fu, 0u } &&
+			Execution.InputSuppressedMask ==
+				std::array<uint32_t, 2u>{ 0x80u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0xfu, 0u, 0u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0u, 0u, 0u } &&
+			Execution.iStaticInputCount == 0u &&
+			Execution.iStaticSelectedMask == 0u &&
+			Execution.iStaticConsumedMask == 0u &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 6u &&
+			Execution.iRenderConsumedMask == 0x2fu &&
+			Execution.iRenderSuppressedMask == 0x10u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+		for (size_t i = 0u;
+			bRibbonLiquidContractValid && i < LANE_ROLES.size(); ++i)
+		{
+			const EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane =
+				Execution.TextureLanes[i];
+			bRibbonLiquidContractValid =
+				Lane.strLaneId == "lane." + std::to_string(i) &&
+				Lane.strRole == LANE_ROLES[i] && Lane.strAssetId == LANE_ASSETS[i] &&
+				Lane.iTextureRegister == i && Lane.iSamplerRegister == 5u + i &&
+				Lane.strSourceChannel == LANE_CHANNELS[i] &&
+				Lane.eColorSpace == LANE_COLOR_SPACES[i] &&
+				Lane.Sampler.eFilter == EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR &&
+				Lane.Sampler.eAddressU ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.eAddressV == (i == 2u ?
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::CLAMP :
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP) &&
+				Lane.Sampler.eAddressW ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.fMipLodBias == 0.f &&
+				Lane.Sampler.iMaxAnisotropy == 1u &&
+				Lane.Sampler.eComparison ==
+					EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER &&
+				Lane.Sampler.vBorderColor.x == 0.f &&
+				Lane.Sampler.vBorderColor.y == 0.f &&
+				Lane.Sampler.vBorderColor.z == 0.f &&
+				Lane.Sampler.vBorderColor.w == 0.f &&
+				Lane.Sampler.fMinLod == 0.f &&
+				Lane.Sampler.fMaxLod ==
+					(std::numeric_limits<f32_t>::max)();
+		}
+		for (size_t i = 0u;
+			bRibbonLiquidContractValid && i < SCALAR_NAMES.size(); ++i)
+		{
+			const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar =
+				Execution.Scalars[i];
+			bRibbonLiquidContractValid =
+				Scalar.strName == SCALAR_NAMES[i] && Scalar.iPackedIndex == i &&
+				NearlyEqual(Scalar.fValue, SCALAR_VALUES[i]);
+		}
+		if (bRibbonLiquidContractValid)
+		{
+			const EFFECT_MATERIAL_VECTOR_PARAMETER_DESC& Reflect =
+				Execution.Vectors[0];
+			bRibbonLiquidContractValid =
+				Reflect.strName == "reflect_color_and_intensity" &&
+				Reflect.iPackedIndex == 0u && NearlyEqual(Reflect.vValue.x, 1.f) &&
+				NearlyEqual(Reflect.vValue.y, 1.f) &&
+				NearlyEqual(Reflect.vValue.z, 3.f) &&
+				NearlyEqual(Reflect.vValue.w, 50.f);
+		}
+		if (!bRibbonLiquidContractValid)
+		{
+			strOutError = "RibbonLiquid01 opcode 20 packet is not the admitted "
+				"parent-default/carrier/role tuple: " + Element.strElementId;
+			return false;
+		}
+	}
 	const bool_t bStandardColorV1 = Execution.eBackend ==
 		EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
 	if ((bStandardColorV1 &&
@@ -17448,7 +17588,11 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			continue;
 		const bool_t bRuntimeMaterialV2Ribbon =
 			0u != pResource->iRuntimeMaterialV2Enabled &&
-			9u == pResource->iRuntimeMaterialV2Opcode;
+			(9u == pResource->iRuntimeMaterialV2Opcode ||
+			 20u == pResource->iRuntimeMaterialV2Opcode);
+		const bool_t bRibbonLiquid01ParentDefault =
+			bRuntimeMaterialV2Ribbon &&
+			20u == pResource->iRuntimeMaterialV2Opcode;
 		const bool_t bStandardColorV1 =
 			0u != pResource->iStandardColorV1Enabled;
 		const bool_t bTypedArtistRibbon =
@@ -17474,12 +17618,16 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		const f32_t fTessellationStep =
 			Trail.pElement->Detail.Trail.fDistanceTessellationStepWorldUnits;
 		constexpr f32_t ARTIST_RIBBON_TILING_DISTANCE = 6.f;
+		constexpr f32_t RIBBON_LIQUID_TILING_DISTANCE = 3.f;
 		constexpr f32_t ARTIST_RIBBON_TESSELLATION_STEP = 0.05f;
 		constexpr uint32_t ARTIST_RIBBON_MAX_SUBDIVISIONS = 25u;
+		const f32_t fExpectedTypedTilingDistance =
+			bRibbonLiquid01ParentDefault ? RIBBON_LIQUID_TILING_DISTANCE :
+			ARTIST_RIBBON_TILING_DISTANCE;
 		if (bTypedArtistRibbon &&
 			(!std::isfinite(fTilingDistance) ||
 				!std::isfinite(fTessellationStep) ||
-				std::abs(fTilingDistance - ARTIST_RIBBON_TILING_DISTANCE) > 1e-6f ||
+				std::abs(fTilingDistance - fExpectedTypedTilingDistance) > 1e-6f ||
 				std::abs(fTessellationStep - ARTIST_RIBBON_TESSELLATION_STEP) > 1e-6f))
 		{
 			return Fail_RenderOperation(
@@ -17502,7 +17650,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			Trail.Points.data(), Trail.Points.size());
 		if (bTypedSourceRibbon)
 		{
-			const auto ValidatePoint = [pResource, &Trail, bFlowRibbon01](
+			const auto ValidatePoint = [pResource, &Trail, bFlowRibbon01,
+				bRibbonLiquid01ParentDefault](
 				const EFFECT_EVALUATED_TRAIL_POINT& Point)
 			{
 				const uint32_t iColorMask =
@@ -17510,7 +17659,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				const uint32_t iDynamicMask =
 					Point.iDynamicParameterComponentMask & 0x0fu;
 				const bool_t bArtistCarrierContract =
-					Trail.pElement->SourceRecipe.bEnabled ?
+					Trail.pElement->SourceRecipe.bEnabled &&
+					!bRibbonLiquid01ParentDefault ?
 					(iColorMask == 0x08u && iDynamicMask == 0x0fu) :
 					((iColorMask &
 						pResource->iRuntimeMaterialV2ParticleColorConsumedMask) ==
@@ -17670,8 +17820,10 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				const float4_t Color = bRuntimeMaterialV2Ribbon ?
 					float4_t(1.f, 1.f, 1.f, Point.vSourceColor.w) :
 					float4_t(1.f, 1.f, 1.f, 1.f - Point.fNormalizedAge);
-				Vertices.push_back({ Pair.vFirstEdgeWorld, float2_t(U, 0.f), Color });
-				Vertices.push_back({ Pair.vSecondEdgeWorld, float2_t(U, 1.f), Color });
+				Vertices.push_back({ Pair.vFirstEdgeWorld, float2_t(U, 0.f),
+					Color, Point.vDynamicParameter });
+				Vertices.push_back({ Pair.vSecondEdgeWorld, float2_t(U, 1.f),
+					Color, Point.vDynamicParameter });
 			}
 		}
 		else for (size_t iPoint = 0u; iPoint < RenderPoints.size(); ++iPoint)
@@ -17684,7 +17836,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				const uint32_t iDynamicMask =
 					Point.iDynamicParameterComponentMask & 0x0fu;
 				const bool_t bArtistCarrierContract =
-					Trail.pElement->SourceRecipe.bEnabled ?
+					Trail.pElement->SourceRecipe.bEnabled &&
+					!bRibbonLiquid01ParentDefault ?
 					(iColorMask == 0x08u && iDynamicMask == 0x0fu) :
 					((iColorMask &
 						pResource->iRuntimeMaterialV2ParticleColorConsumedMask) ==
@@ -17753,9 +17906,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					float4_t(1.f, 1.f, 1.f, Point.vSourceColor.w) :
 					float4_t(1.f, 1.f, 1.f, 1.f - Age));
 			Vertices.push_back({ To_Float3(Position - HalfSide),
-				float2_t(U, 0.f), Color });
+				float2_t(U, 0.f), Color, Point.vDynamicParameter });
 			Vertices.push_back({ To_Float3(Position + HalfSide),
-				float2_t(U, 1.f), Color });
+				float2_t(U, 1.f), Color, Point.vDynamicParameter });
 		}
 		if (Vertices.size() < 4u)
 			continue;
@@ -17815,7 +17968,10 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			const size_t iSamplerCount = static_cast<size_t>(
 				bStandardColorV1 ? pResource->StandardColorV1Header[2u] :
 					pResource->iRuntimeMaterialV2TextureLaneCount);
-			if ((!bStandardColorV1 && iSamplerCount != 2u) ||
+			const size_t iExpectedRuntimeSamplerCount =
+				bRibbonLiquid01ParentDefault ? 4u : 2u;
+			if ((!bStandardColorV1 &&
+				 iSamplerCount != iExpectedRuntimeSamplerCount) ||
 				iSamplerCount == 0u ||
 				iSamplerCount > pResource->RuntimeMaterialV2Samplers.size() ||
 				!SamplerScope.Apply(std::span<const ComPtr<ID3D11SamplerState>>(

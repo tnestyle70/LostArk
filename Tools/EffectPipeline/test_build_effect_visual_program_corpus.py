@@ -143,12 +143,12 @@ class EffectVisualProgramCorpusTests(unittest.TestCase):
             self.assertTrue(row["executionProjection"]["admissionBlockers"])
 
         supplemental = corpus["supplementalElements"]
-        self.assertEqual(len(supplemental), 15)
+        self.assertEqual(len(supplemental), 16)
         self.assertEqual(
             Counter(item["family"] for item in supplemental),
             Counter(
                 {
-                    "CASCADE_RIBBON": 1,
+                    "CASCADE_RIBBON": 2,
                     "ANIMATION_TRAIL": 13,
                     "LIGHT_PARTICLE": 1,
                 }
@@ -161,6 +161,27 @@ class EffectVisualProgramCorpusTests(unittest.TestCase):
                 == "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL"
                 for item in supplemental
             ),
+        )
+        artist_t_ribbon = next(
+            item
+            for item in supplemental
+            if item["provenance"]["scope"] == "ARTIST_T_CASCADE_RIBBON"
+        )
+        self.assertEqual(
+            artist_t_ribbon["selector"],
+            {
+                "effectAssetId": "effect.artist.skill.31950.unified",
+                "occurrenceId":
+                    "authored.source-particle.29868adeb040d5a35e2f213c",
+            },
+        )
+        self.assertEqual(artist_t_ribbon["resourcePacket"], [])
+        self.assertEqual(
+            artist_t_ribbon["cascadeRibbonPacket"]["preservedLimitations"],
+            [
+                "CASCADE_RIBBON_BOUNDED_RECONSTRUCTION_NOT_NATIVE_SOURCE_EXACT",
+                *builder.ARTIST_T_RIBBON_MATERIAL_LIMITATIONS,
+            ],
         )
         whirlwind_rows = [
             item

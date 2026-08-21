@@ -5983,10 +5983,13 @@ bool_t Client::CEffectDocumentCodec::Validate(
 		}
 		const bool_t bAuthoringExecutionTarget =
 			Is_EffectAuthoringExecutionTarget(Element.Material.Execution);
-		if (Element.bVisible && !bAuthoringExecutionTarget)
+		const bool_t bGeometryOnlySourceCarrier =
+			Is_EffectFailClosedSourceGeometryCarrier(Element);
+		if (Element.bVisible && !bAuthoringExecutionTarget &&
+			!bGeometryOnlySourceCarrier)
 		{
 			strOutError =
-				"Hard fail-closed authored Element cannot be made visible: " +
+				"Hard fail-closed authored Element is not a typed source geometry carrier: " +
 				Element.strElementId + ".";
 			return false;
 		}

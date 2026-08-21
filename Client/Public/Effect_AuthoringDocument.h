@@ -1185,6 +1185,32 @@ inline bool_t Is_EffectPresentationExecutionTarget(
 	}
 }
 
+/* A typed visual program may admit source geometry before its material ABI is
+   known.  This is deliberately narrower than an authoring execution target:
+   the carrier can build deterministic history/geometry only after immutable
+   visual-program admission, while resource preparation and drawing remain
+   fail-closed.  It therefore never turns unresolved colour into a generic or
+   white-material fallback. */
+inline bool_t Is_EffectFailClosedSourceGeometryCarrier(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	const EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+		Element.Material.Execution;
+	if (!Execution.bFailClosed || Execution.bAuthoringApproximate ||
+		Execution.bEnabled || !Element.SourceRecipe.bEnabled)
+	{
+		return false;
+	}
+	if (Element.eKind == EFFECT_ELEMENT_KIND::TRAIL)
+		return Element.SourceRecipe.strRendererShape == "ribbon";
+	if (Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+	{
+		return Element.SourceRecipe.strRendererShape == "mesh" ||
+			Element.SourceRecipe.strRendererShape == "sprite";
+	}
+	return false;
+}
+
 /* G3's compiler-derived authoring family is intentionally separate from the
    Effect Tool's legacy six-way creation selector. It is a read-only
    classification of renderer shape, source blend evidence, and SubUV. */

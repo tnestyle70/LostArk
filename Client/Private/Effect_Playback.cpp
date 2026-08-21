@@ -1919,6 +1919,17 @@ bool_t Client::CEffectPlayback::Is_SourceVisualProgramElementAdmitted(
 			m_SourceVisualTargetElementIds.contains(Element.strElementId));
 }
 
+bool_t Client::CEffectPlayback::Is_PlaybackElementAdmitted(
+	const EFFECT_ELEMENT_DESC& Element) const
+{
+	if (!Element.bVisible)
+		return false;
+	if (Is_EffectAuthoringExecutionTarget(Element.Material.Execution))
+		return true;
+	return Is_EffectFailClosedSourceGeometryCarrier(Element) &&
+		Is_SourceVisualProgramElementAdmitted(Element);
+}
+
 bool_t Client::CEffectPlayback::Stage_Document(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::string& strOutError)
@@ -2170,6 +2181,13 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedVisualProgramDocument(
 		{
 			bool_t bSupplementalValid = false;
 			if (Supplemental.eFamily ==
+				EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON &&
+				Supplemental.CascadeRibbonPacket.has_value())
+			{
+				bSupplementalValid = Validate_CascadeRibbonPacket(
+					Supplemental, *pTarget, strOutError);
+			}
+			else if (Supplemental.eFamily ==
 				EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL &&
 				Supplemental.AnimationTrailPacket.has_value())
 			{
@@ -2345,7 +2363,13 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 			State.iRandomState = 1u;
 		Initialize_ModuleRandomStates(Element, State);
 		StagedStates.emplace(Element.strElementId, std::move(State));
-		if (!Element.bVisible)
+		const bool_t bElementPlaybackAdmitted =
+			Element.bVisible &&
+			(Is_EffectAuthoringExecutionTarget(
+				Element.Material.Execution) ||
+			 (Is_EffectFailClosedSourceGeometryCarrier(Element) &&
+				bElementSourceVisualActive));
+		if (!bElementPlaybackAdmitted)
 			continue;
 		f32_t fElementTail = 0.f;
 		if (Is_ParticleSimulationElement(
@@ -2364,13 +2388,23 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 						Element.SourceRecipe.iEmitterLoopCount);
 			}
 		}
-		fStagedDuration = (std::max)(fStagedDuration,
+		f32_t fElementEnd =
 			Element.Detail.Timing.fStartDelaySeconds +
 			(Element.SourceRecipe.bEnabled ?
 				Element.SourceRecipe.fEmitterDelaySeconds : 0.f) +
 			fElementDuration +
 			Element.Detail.Timing.fAfterImageSeconds +
-			fElementTail);
+			fElementTail;
+		/* CascadeRibbon owns a closed point-lifetime tail. Preserve the global
+		   fixed-step/Seek ABI and expose only this admitted family's next
+		   representable end time so the final eviction step is evaluated after
+		   emission stops instead of clamping one step early on a float boundary. */
+		if (bElementSourceVisualActive && Is_CascadeRibbonTarget(Element))
+		{
+			fElementEnd = std::nextafter(fElementEnd,
+				std::numeric_limits<f32_t>::infinity());
+		}
+		fStagedDuration = (std::max)(fStagedDuration, fElementEnd);
 	}
 	for (const EFFECT_MODEL_CUE_DESC& Cue : pStagedDocument->ModelCues)
 	{
@@ -2672,7 +2706,7 @@ void Client::CEffectPlayback::Reset()
 	m_Frame = {};
 	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
-		if (!Element.bVisible)
+		if (!Is_PlaybackElementAdmitted(Element))
 			continue;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
 		State = {};
@@ -3031,7 +3065,7 @@ bool_t Client::CEffectPlayback::Step(
 
 	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
-		if (!Element.bVisible)
+		if (!Is_PlaybackElementAdmitted(Element))
 			continue;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
 		const f32_t fLocalTime = m_fSampleTimeSeconds -
@@ -3174,7 +3208,7 @@ bool_t Client::CEffectPlayback::Step(
 
 	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
-		if (!Element.bVisible)
+		if (!Is_PlaybackElementAdmitted(Element))
 			continue;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
 		Update_Particles(Element, State, fFixedDelta, RootWorld);
@@ -4865,6 +4899,12 @@ void Client::CEffectPlayback::Sample_Trail(
 	const bool_t bSourceVisualTrail = bCascadeRibbon || bAnimationTrail;
 	const bool_t bFlowRibbon01 = bCascadeRibbon &&
 		Has_EffectFlowRibbon01TrailContract(Element);
+	const bool_t bRibbonLiquid01ParentDefault =
+		Element.SourceRecipe.bEnabled &&
+		Element.Material.Execution.bEnabled &&
+		Element.Material.Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+		Element.Material.Execution.iOpcode == 20u;
 	if (bBakedEdgeAnimationTrail)
 	{
 		State.TrailPoints.clear();
@@ -4957,6 +4997,7 @@ void Client::CEffectPlayback::Sample_Trail(
 		return true;
 	};
 	const auto UpdatePointPayload = [this, &Element, bFlowRibbon01,
+		bRibbonLiquid01ParentDefault,
 		&EvaluateDeterministicFloat, &EvaluateDeterministicVector,
 		&EvaluateIdentityFloat](
 		EFFECT_EVALUATED_TRAIL_POINT& Point)
@@ -5034,10 +5075,18 @@ void Client::CEffectPlayback::Sample_Trail(
 		{
 			f32_t fStartAlpha = 0.f;
 			f32_t fAlphaScale = 0.f;
-			if (EvaluateDeterministicFloat(
-					"particlemodulecolor", "startalpha", 0.f, fStartAlpha) &&
+			const bool_t bStartAlphaValid = bRibbonLiquid01ParentDefault ?
+				EvaluateIdentityFloat("particlemodulecolor", "startalpha",
+					0.f, 1.f, fStartAlpha) :
+				EvaluateDeterministicFloat("particlemodulecolor", "startalpha",
+					0.f, fStartAlpha);
+			const bool_t bAlphaScaleValid = bRibbonLiquid01ParentDefault ?
+				EvaluateIdentityFloat("particlemodulecolorscaleoverlife",
+					"alphascaleoverlife", Point.fNormalizedAge, 1.f,
+					fAlphaScale) :
 				EvaluateDeterministicFloat("particlemodulecolorscaleoverlife",
-					"alphascaleoverlife", Point.fNormalizedAge, fAlphaScale) &&
+					"alphascaleoverlife", Point.fNormalizedAge, fAlphaScale);
+			if (bStartAlphaValid && bAlphaScaleValid &&
 				std::isfinite(fStartAlpha * fAlphaScale))
 			{
 				Point.vSourceColor.w = fStartAlpha * fAlphaScale;
@@ -5614,6 +5663,16 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 		const EFFECT_ELEMENT_DESC& Element = Document.Elements[iElement];
 		if (!Element.bVisible)
 			continue;
+		/* GPU occurrence denominators describe every visible carrier in document
+		   order, including fail-closed rows that are intentionally dormant.  Keep
+		   those rows inactive while restricting simulation/evaluated draw rows to
+		   the admitted target closure. */
+		if (!Is_PlaybackElementAdmitted(Element))
+		{
+			if (Is_GpuVisualOccurrence(Element))
+				m_Frame.GpuOccurrences.push_back({ &Element, false, 0u });
+			continue;
+		}
 		const f32_t fLocalTime = m_fSampleTimeSeconds -
 			Element.Detail.Timing.fStartDelaySeconds;
 		const f32_t fPresentationTime = fLocalTime -

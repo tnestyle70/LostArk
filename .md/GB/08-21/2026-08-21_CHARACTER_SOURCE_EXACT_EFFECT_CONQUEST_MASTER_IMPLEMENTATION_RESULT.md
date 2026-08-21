@@ -8,6 +8,8 @@
 Fluid01 추가 checkpoint는 기준 `b705abb7`, 격리 브랜치 `codex/dm-fluid01`에서 검증했다.
 차원 F ScreenOverlay Product checkpoint는 기준 `709ebfcb`, 격리 브랜치
 `codex/dm-f-overlay-product`에서 검증했다.
+Artist T CascadeRibbon checkpoint는 기준 `709ebfbc`, 격리 브랜치
+`codex/artist-t-ribbon-family`에서 검증했다.
 
 이 문서는 마스터 PLAN의 실제 반영 상태만 기록한다. 도화가·워로드·창술사·차원술사
 전체 복원은 아직 진행 중이며, 이 버전에서는 family inventory, action-facing, opt-in standard
@@ -336,6 +338,32 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   따라서 현재 증거는 clip 부재, 정지 bone palette, renderer 미실행, authored/runtime join 누락을 원인에서
   제외한다. 실제 Client에서 두루미가 정지해 보이는지와 카메라/크기/가시성 평가는 사용자 화면 검증
   `PENDING`이며, 이 canary 자체는 제품 데이터나 renderer를 임의 변경하지 않는다.
+### 1.20 도화가 T `31950` source CascadeRibbon + RibbonLiquid01 opcode 20
+
+- fallback-blocked source 행
+  `authored.source-particle.29868adeb040d5a35e2f213c` 하나만 visible typed TRAIL로
+  projection했다. 같은 문서의 나머지 행은 canonical deep-equal이며 target의 기존 source recipe와
+  `particlemoduletypedataribbon` stable ID `FX_PC_SDM_01:export:1495@ref:6`을 보존한다.
+- source TypeData의 `tilingdistance=300`, `distancetessellationstepsize=5`를 현재 runtime world scale의
+  `3.0/0.05`로 고정했다. 최대 64 point, 0.35초 point lifetime, `0.2 -> 0` width와 source
+  DynamicParameter 네 component를 기존 dynamic trail carrier에 전달한다. 30/60/144Hz는 같은
+  fixed-step history signature를 만들며 5초 emitter 종료 뒤 point tail을 모두 evict한다.
+- child MIC에는 native static shader tail이 없음을 확인했고 parent
+  `FX_D_Pa_RibbonLiquid_01_Tr`의 exact shader map, beam/trail dynamic-parameter VF, BasePass와
+  DistortionAccumulate DXBC identity, texture defaults를 별도 receipt로 봉인했다. child-native DXBC로
+  표시하지 않았고 runtime native admission도 false로 유지한다.
+- RuntimeMaterialV2 opcode 20은 `fx_d_normal_085`의 distortion/surface normal 두 lane,
+  `fx_k_auraline_14_ycl` aura alpha, `fx_a_fluid_003` reflection lane, 12 scalar와 reflect vector를
+  strict tuple로 stage한다. HLSL은 BasePass bounded semantic replay이며 native distortion pass,
+  UE3 sampler CDO와 reflection basis는 limitation으로 명시했다.
+- visible fail-closed source geometry는 ordinary authored fallback으로 실행하지 않는다. immutable
+  visual-program supplemental admission이 있을 때만 simulation/history를 열고 material/resource/draw는
+  opcode 20 exact tuple을 별도로 요구한다. identity/transform/material restage 실패는 직전 history와
+  prepared nonzero draw를 보존한다.
+- deterministic Effect data project sync에는 Artist T 신규 receipt/target 세 파일 등록과 별도로,
+  물리 파일은 이미 존재했지만 project index에서 빠져 있던 Artist 31490, DimensionMaster 2050120/
+  2050230 receipt와 restoration-target contract 등록, Lance material 항목의 정본 순서 정규화가
+  포함된다. 이 항목들의 데이터 내용은 이 checkpoint에서 수정하지 않았다.
 
 ## 2. 실행한 검증
 
@@ -385,6 +413,13 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 | Fluid01 selective materializer | 7 tests PASS, `--mode check` PASS; target 2행 외 F deep-equal, Artist F golden PASS |
 | Debug/Release ClientFrontendHarness build | 각 exit 0 PASS; 기존 C4828/DirectXTK LNK4099 warning만 존재 |
 | Debug/Release `--effect-fluid01-family-fast` | 각 failures 0; draw 2, pass `3/3`, mask `0x0f/0x0f`, PS invocation 2452, RGB pixels 1021, second-row sourceNode reject/rollback PASS |
+| Artist T CascadeRibbon selective projection | 4 tests PASS, projection `--check` PASS; target stable ID 한 행 외 22행 canonical deep-equal |
+| Artist T parent RibbonLiquid01 evidence | extractor `--check` PASS; child native DXBC false, parent default shader map exact, runtime native admission false |
+| material shader-map extractor / corpus / runtime tests | 각 22/10/13 tests PASS |
+| visual-program corpus/runtime generated identity | corpus 135 rows/35 schedules SHA-256 `03b64d3e...42cb`, runtime 17 programs/135 rows SHA-256 `0efa7739...1054` `--check`·`--artifact-check` PASS |
+| Debug/Release Engine → UpdateLib → ClientFrontendHarness → Client | 각 exit 0 PASS; Client/UI 실행 없음 |
+| Debug/Release `--effect-artist-t-ribbon-fast` | 각 18/18 PASS, failures 0; draw 1, points 21, vertices 42, mask `0x0f`, pass 1, PS invocation 380, RGB pixels 3, forged aura sampler reject와 prior nonzero draw 보존 PASS |
+| Effect data project registration | `Sync-EffectDataProject.ps1 -Check` PASS, files 1812 / filters 200 |
 | 전체 `Test-EffectPipeline.ps1` | publisher fixture 본체 PASS; Python 82 tests 중 이번 Fluid01 7 tests PASS, 기존 Valtan cardinality/gap 기대값 drift 3 failure + 2 error로 최종 exit 1 |
 | Debug/Release ClientFrontendHarness CircleSurface/Vortex build | 각 exit 0 PASS |
 | Debug/Release `--effect-source-circle-vortex-fast` | 각 6/6 PASS; 7-count/260cm/radial velocity, 30/60/120FPS Vortex trajectory, strict reject/rollback, Dimension F와 Artist V canary PASS |
@@ -443,14 +478,19 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 - full Effect publisher Publish/Validate는 이 기준점에서 206 Effects PASS했다. 생성된 runtime catalog에는
   이미 통합된 다른 character/Valtan 미publish 변경도 함께 포함되므로 이 세션은 Valtan source/cue/binding을
   수정하거나 그 결과를 자기 완료 증거로 소유하지 않는다.
+- 도화가 T opcode 20은 exact source TypeDataRibbon projection, fixed-step CascadeRibbon history,
+  strict material packet, 실제 WARP draw와 rollback까지 닫혔다. 다만 parent native
+  DistortionAccumulate pass, UE3 sampler CDO와 reflection basis는 아직 bounded BasePass semantic replay
+  밖이며, sealed runtime publish와 사용자 first-pixel 판정 전에는 최종 visual `COMPLETE`로 올리지 않는다.
 - 실제 Client의 동/서/남/북 cast 방향, 검격 형태·타이밍·색감은 사용자 화면 판정 대기다.
 - 워로드 W의 `fm_a_hemisphere_012` 하나가 보이는 방패 세 판을 포함하는지는 사용자
   화면 판정 후 독립 좌/중/우 cohort 추가 여부를 결정한다.
 
 ## 4. 다음 구현 단위
 
-1. 도화가 T ribbon과 도화가 V camera/post/light composition을 닫는다.
-2. F raw 69행의 sphere/hemisphere/world shard/light/post와 scene-color refraction·multi-lane을 확장하고 W consumer를 rollout한다.
-3. Fluid01 mesh/J-child, 창술사 `34610`, Q/A 등 source-evidence가 닫힌 variant를 carrier별로 확장한다.
-4. 차원술사 T의 Server-authoritative ground targeting과 승인 target-root damage/effect를 닫는다.
-5. 이 세션의 authored/source catalog를 한 번의 Effect publisher transaction으로 sealed runtime에 반영하고 전체 Debug/Release focused harness 뒤 사용자가 실제 Client 화면을 판정한다.
+1. 네 캐릭터 Product occurrence의 carrier, parent/child Material, DDS alpha capability와 실제 effective shader profile을 전수조사해 square-card/coverage/decal 위험을 family별로 봉인한다.
+2. 알려진 typed family가 조건 불일치로 generic grouped profile 6에 추락하는 공통 경계를 fail-close 또는 exact admission으로 교정하고, Voronoi·slash/flow·BC1 luminance canary를 각각 닫는다.
+3. 창술사 Q/A BA2 Tool 반영과 차원술사 BA1 2배속 동기화 수직 슬라이스를 통합하고 family audit에 다시 포함한다.
+4. 도화가 R과 워로드 T를 Decal carrier/projection canary로 검증한 뒤 동일 parent/role family에 확장한다.
+5. F raw 69행의 sphere/hemisphere/world shard/light/post와 scene-color refraction·multi-lane, 도화가 V camera/post/light, dragon·Fluid01 mesh/J-child를 감사 우선순위대로 확장한다.
+6. authored/source catalog를 한 번의 Effect publisher transaction으로 sealed runtime에 반영하고 전체 Debug/Release focused harness 뒤 사용자가 실제 Client 화면을 판정한다.

@@ -55,16 +55,18 @@ RUNTIME_VERSION = 1
 RUNTIME_ID = "effect.visual-program-runtime.v1"
 CONTRACT_ROLE = "GENERIC_VISUAL_PROGRAM_RUNTIME_SIDECAR_STAGE_INPUT"
 
-EXPECTED_PROGRAM_COUNT = 16
-EXPECTED_BA_PROGRAM_COUNT = 15
+EXPECTED_PROGRAM_COUNT = 17
+EXPECTED_BA_PROGRAM_COUNT = 16
 EXPECTED_ADAPTER_PROGRAM_COUNT = 1
 EXPECTED_ROW_COUNT = 135
 EXPECTED_OVERLAY_COUNT = 66
 EXPECTED_LOCAL_PACKET_COUNT = 2
 EXPECTED_FAIL_CLOSED_COUNT = 67
 EXPECTED_CASCADE_RIBBON_ROW_COUNT = 4
-EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 15
-EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT = 1
+EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT = 16
+EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT = 2
+EXPECTED_ARTIST_F_CASCADE_RIBBON_ELEMENT_COUNT = 1
+EXPECTED_ARTIST_T_CASCADE_RIBBON_ELEMENT_COUNT = 1
 EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT = 13
 EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT = 1
 
@@ -386,31 +388,35 @@ def _resolve_overlay_base_document(
         )
         return path, expected_raw
 
+    allowed_supplemental_scopes = {
+        "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL",
+        "ARTIST_T_CASCADE_RIBBON",
+    }
     _require(
         not rows
         and supplemental_source
         and all(
             (item.get("provenance") or {}).get("scope")
-            == "VALTAN_SAFE_REVIEWED_GAP_ANIMATION_TRAIL"
+            in allowed_supplemental_scopes
             for item in supplemental_source
         ),
-        f"non-BA supplemental program has no sealed safe-gap ownership: {effect_asset_id}",
+        f"non-BA supplemental program has no sealed ownership: {effect_asset_id}",
     )
     target_payloads = [
-        _require_dict(item.get("targetPayload"), "safe-gap supplemental targetPayload")
+        _require_dict(item.get("targetPayload"), "supplemental targetPayload")
         for item in supplemental_source
     ]
     target_paths = {
-        _require_string(item.get("path"), "safe-gap target path")
+        _require_string(item.get("path"), "supplemental target path")
         for item in target_payloads
     }
     target_hashes = {
-        _require_sha(item.get("rawSha256"), "safe-gap target raw SHA")
+        _require_sha(item.get("rawSha256"), "supplemental target raw SHA")
         for item in target_payloads
     }
     _require(
         len(target_paths) == 1 and len(target_hashes) == 1,
-        f"safe-gap supplemental target join is not unique: {effect_asset_id}",
+        f"supplemental target join is not unique: {effect_asset_id}",
     )
     path = repository_root / PurePosixPath(next(iter(target_paths)))
     return path, next(iter(target_hashes))
@@ -590,8 +596,8 @@ def project_ba_document(
     for supplemental in supplemental_elements or []:
         family = supplemental.get("family")
         _require(
-            family in {"ANIMATION_TRAIL", "LIGHT_PARTICLE"} and
-            supplemental.get("disposition") == "ADMITTED_BOUNDED",
+            family in {"ANIMATION_TRAIL", "CASCADE_RIBBON", "LIGHT_PARTICLE"}
+            and supplemental.get("disposition") == "ADMITTED_BOUNDED",
             "BA supplemental projection contains an unsupported row",
         )
         target_payload = _require_dict(
@@ -609,6 +615,77 @@ def project_ba_document(
         source_recipe = _require_dict(
             target.get("sourceRecipe"), "supplemental target SourceRecipe"
         )
+        if family == "CASCADE_RIBBON":
+            source_payload = _require_dict(
+                supplemental.get("sourcePayload"),
+                "CascadeRibbon supplemental sourcePayload",
+            )
+            packet = _require_dict(
+                supplemental.get("cascadeRibbonPacket"),
+                "CascadeRibbon packet",
+            )
+            unsigned_packet = copy.deepcopy(packet)
+            packet_sha = _require_sha(
+                unsigned_packet.pop("packetSha256", None),
+                "CascadeRibbon packetSha256",
+            )
+            trail = _require_dict(
+                _require_dict(target.get("detail"), "CascadeRibbon detail").get(
+                    "trail"
+                ),
+                "CascadeRibbon trail",
+            )
+            timing = _require_dict(
+                target.get("detail", {}).get("timing"),
+                "CascadeRibbon timing",
+            )
+            if effect_asset_id == "effect.artist.skill.31950.unified":
+                phase1._validate_artist_t_ribbon_material_target(target)
+                material_boundary_valid = True
+            else:
+                material_boundary_valid = (
+                    target.get("resources") == []
+                    and target.get("material", {}).get("execution")
+                        == {"enabled": False, "failClosed": True}
+                )
+            _require(
+                supplemental.get("packetLayout")
+                    == "CASCADE_RIBBON_TYPED_PACKET_V1"
+                and source_payload == target_payload
+                and len(existing) == 1
+                and existing[0][1] == source_target
+                and target.get("kind") == "trail"
+                and target.get("visible") is True
+                and material_boundary_valid
+                and source_recipe.get("enabled") is True
+                and source_recipe.get("rendererShape") == "ribbon"
+                and packet.get("runtimeCarrier")
+                    == "EFFECT_TYPED_CASCADE_RIBBON_V1"
+                and packet.get("boundedSemanticReplay") is True
+                and packet.get("nativeExecution") is False
+                and packet.get("resolvedRendererShape") == "ribbon"
+                and packet.get("tilingDistance")
+                    == trail.get("tilingDistanceWorldUnits")
+                and packet.get("distanceTessellationStepSize")
+                    == trail.get("distanceTessellationStepWorldUnits")
+                and packet.get("targetTiming") == timing
+                and packet.get("attachment")
+                    == target.get("actionCueAttachment")
+                and packet.get("trail") == trail
+                and packet.get("sourceRecipeSha256")
+                    == canonical_json_sha256(source_recipe)
+                and packet.get("moduleClosureSha256")
+                    == canonical_json_sha256(source_recipe.get("modules"))
+                and packet.get("moduleCount")
+                    == len(_require_list(
+                        source_recipe.get("modules"),
+                        "CascadeRibbon SourceRecipe.modules",
+                    ))
+                and canonical_json_sha256(unsigned_packet) == packet_sha,
+                "CascadeRibbon carrier/material projection boundary changed",
+            )
+            seen_targets.add(target_id)
+            continue
         if family == "LIGHT_PARTICLE":
             packet = _require_dict(
                 supplemental.get("bakedEdgeLightPacket"),
@@ -1295,7 +1372,10 @@ def build_runtime(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
             "localDecalAdapterPacketCount": EXPECTED_LOCAL_PACKET_COUNT,
             "cascadeRibbonVisualRowCount": EXPECTED_CASCADE_RIBBON_ROW_COUNT,
             "supplementalElementCount": EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT,
-            "artistFCascadeRibbonElementCount": EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
+            "artistFCascadeRibbonElementCount":
+                EXPECTED_ARTIST_F_CASCADE_RIBBON_ELEMENT_COUNT,
+            "artistTCascadeRibbonElementCount":
+                EXPECTED_ARTIST_T_CASCADE_RIBBON_ELEMENT_COUNT,
             "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
             "bakedEdgeLightElementCount": EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
             "failClosedCount": EXPECTED_FAIL_CLOSED_COUNT,
@@ -1563,6 +1643,16 @@ def validate_runtime(
                     "baked-edge Light supplemental packet is invalid",
                 )
             counts[("supplemental", item.get("family"))] += 1
+            if item.get("family") == "CASCADE_RIBBON":
+                if effect_asset_id == "effect.artist.skill.31470":
+                    counts[("supplemental", "ARTIST_F_CASCADE_RIBBON")] += 1
+                elif effect_asset_id == "effect.artist.skill.31950.unified":
+                    counts[("supplemental", "ARTIST_T_CASCADE_RIBBON")] += 1
+                else:
+                    raise ContractError(
+                        "unowned CascadeRibbon supplemental program: "
+                        f"{effect_asset_id}"
+                    )
         _require(
             histories == sorted(histories, key=lambda row: row["historyId"]),
             f"runtime baked-edge histories are not deterministic: {effect_asset_id}",
@@ -1690,6 +1780,8 @@ def validate_runtime(
     _require(counts[("disposition", "FAIL_CLOSED")] == EXPECTED_FAIL_CLOSED_COUNT, "fail-closed count changed")
     _require(counts[("family", "CASCADE_RIBBON")] == EXPECTED_CASCADE_RIBBON_ROW_COUNT, "CascadeRibbon row count changed")
     _require(counts[("supplemental", "CASCADE_RIBBON")] == EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT, "Artist CascadeRibbon supplemental count changed")
+    _require(counts[("supplemental", "ARTIST_F_CASCADE_RIBBON")] == EXPECTED_ARTIST_F_CASCADE_RIBBON_ELEMENT_COUNT, "Artist F CascadeRibbon supplemental count changed")
+    _require(counts[("supplemental", "ARTIST_T_CASCADE_RIBBON")] == EXPECTED_ARTIST_T_CASCADE_RIBBON_ELEMENT_COUNT, "Artist T CascadeRibbon supplemental count changed")
     _require(counts[("supplemental", "ANIMATION_TRAIL")] == EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT, "AnimationTrail supplemental count changed")
     _require(counts[("supplemental", "LIGHT_PARTICLE")] == EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT, "baked-edge Light supplemental count changed")
     canaries = _require_list(runtime.get("extensionCanaries"), "extensionCanaries")
@@ -1707,7 +1799,10 @@ def validate_runtime(
         "localDecalAdapterPacketCount": EXPECTED_LOCAL_PACKET_COUNT,
         "cascadeRibbonVisualRowCount": EXPECTED_CASCADE_RIBBON_ROW_COUNT,
         "supplementalElementCount": EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT,
-        "artistFCascadeRibbonElementCount": EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
+        "artistFCascadeRibbonElementCount":
+            EXPECTED_ARTIST_F_CASCADE_RIBBON_ELEMENT_COUNT,
+        "artistTCascadeRibbonElementCount":
+            EXPECTED_ARTIST_T_CASCADE_RIBBON_ELEMENT_COUNT,
         "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
         "bakedEdgeLightElementCount": EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
         "failClosedCount": EXPECTED_FAIL_CLOSED_COUNT,
@@ -1891,6 +1986,24 @@ def validate_published_artifact(runtime: dict[str, Any]) -> None:
             )
             seen_selectors.add(key)
             counts[("supplemental", item.get("family"))] += 1
+            if item.get("family") == "CASCADE_RIBBON":
+                _verify_seal(
+                    _require_dict(
+                        item.get("cascadeRibbonPacket"),
+                        "runtime publish CascadeRibbon packet",
+                    ),
+                    "packetSha256",
+                    "runtime publish CascadeRibbon packet",
+                )
+                if effect_asset_id == "effect.artist.skill.31470":
+                    counts[("supplemental", "ARTIST_F_CASCADE_RIBBON")] += 1
+                elif effect_asset_id == "effect.artist.skill.31950.unified":
+                    counts[("supplemental", "ARTIST_T_CASCADE_RIBBON")] += 1
+                else:
+                    raise ContractError(
+                        "runtime publish has unowned CascadeRibbon supplemental "
+                        f"program: {effect_asset_id}"
+                    )
             packet = item.get("animationTrailPacket")
             if item.get("packetLayout") == "ANIMATION_TRAIL_BAKED_EDGE_HISTORY_V1":
                 _verify_seal(
@@ -1971,7 +2084,9 @@ def validate_published_artifact(runtime: dict[str, Any]) -> None:
         "cascadeRibbonVisualRowCount": EXPECTED_CASCADE_RIBBON_ROW_COUNT,
         "supplementalElementCount": EXPECTED_SUPPLEMENTAL_ELEMENT_COUNT,
         "artistFCascadeRibbonElementCount":
-            EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT,
+            EXPECTED_ARTIST_F_CASCADE_RIBBON_ELEMENT_COUNT,
+        "artistTCascadeRibbonElementCount":
+            EXPECTED_ARTIST_T_CASCADE_RIBBON_ELEMENT_COUNT,
         "animationTrailElementCount": EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT,
         "bakedEdgeLightElementCount": EXPECTED_BAKED_EDGE_LIGHT_ELEMENT_COUNT,
         "failClosedCount": EXPECTED_FAIL_CLOSED_COUNT,
@@ -1999,6 +2114,10 @@ def validate_published_artifact(runtime: dict[str, Any]) -> None:
         == EXPECTED_FAIL_CLOSED_COUNT
         and counts[("supplemental", "CASCADE_RIBBON")]
         == EXPECTED_ARTIST_CASCADE_RIBBON_ELEMENT_COUNT
+        and counts[("supplemental", "ARTIST_F_CASCADE_RIBBON")]
+        == EXPECTED_ARTIST_F_CASCADE_RIBBON_ELEMENT_COUNT
+        and counts[("supplemental", "ARTIST_T_CASCADE_RIBBON")]
+        == EXPECTED_ARTIST_T_CASCADE_RIBBON_ELEMENT_COUNT
         and counts[("supplemental", "ANIMATION_TRAIL")]
         == EXPECTED_ANIMATION_TRAIL_ELEMENT_COUNT
         and counts[("supplemental", "LIGHT_PARTICLE")]
