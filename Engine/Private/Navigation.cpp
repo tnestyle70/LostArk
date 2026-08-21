@@ -4,6 +4,7 @@
 #include "GameInstance.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <limits>
 
@@ -380,6 +381,28 @@ PATH_RESULT_CODE CNavigation::Find_Path(
 	OutPath = move(StagedPath);
 
 	return PATH_RESULT_CODE::SUCCESS;
+}
+
+bool_t CNavigation::Try_SampleWalkablePoint(
+	fvector_t vWorldPosition,
+	float3_t& outPosition) const
+{
+	if (MODE::NAVGRID_ASTAR != m_eMode || nullptr == m_pNavGrid)
+		return false;
+	const f32_t x = XMVectorGetX(vWorldPosition);
+	const f32_t z = XMVectorGetZ(vWorldPosition);
+	if (!std::isfinite(x) || !std::isfinite(z))
+		return false;
+	int32_t cellX = 0;
+	int32_t cellZ = 0;
+	if (!m_pNavGrid->World_ToCell(vWorldPosition, cellX, cellZ) ||
+		!m_pNavGrid->Is_Walkable(cellX, cellZ))
+	{
+		return false;
+	}
+	const uint32_t index = m_pNavGrid->To_Index(cellX, cellZ);
+	outPosition = { x, m_pNavGrid->Get_Height(index), z };
+	return std::isfinite(outPosition.y);
 }
 
 bool_t CNavigation::Register_RuntimeBlocker(

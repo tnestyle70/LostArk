@@ -6,6 +6,7 @@
 
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <memory>
 
@@ -16,6 +17,7 @@ namespace Client
 {
 	class CCharacter;
 	class IPlayerCommandSink;
+	class CSkillGroundTargetPreview;
 	struct CHARACTER_SPEC;
 
 	/* Explicit movement/skill commands take ownership at the next server action
@@ -74,6 +76,117 @@ namespace Client
 		bool_t m_hasSubmittedCurrentPress = false;
 	};
 
+	/* Pure state contract for a two-step ground-target skill. DirectInput,
+	 networking, navigation and rendering remain outside, which lets the focused
+	 frontend harness pin clamp/cancel/confirm behavior without launching Client. */
+	class CGROUND_TARGETING_STATE final
+	{
+	public:
+		bool_t Begin(
+			LostArk::Shared::SKILL_ID skillId,
+			f32_t maximumRange)
+		{
+			if (LostArk::Shared::INVALID_SKILL_ID == skillId ||
+				!std::isfinite(maximumRange) || maximumRange <= 0.f)
+			{
+				return false;
+			}
+			m_iSkillId = skillId;
+			m_fMaximumRange = maximumRange;
+			m_TargetPosition = {};
+			m_hasCursor = false;
+			m_isWalkable = false;
+			m_isActive = true;
+			return true;
+		}
+
+		void Cancel()
+		{
+			*this = {};
+		}
+
+		bool_t Update_Cursor(
+			const float3_t& casterPosition,
+			const float3_t& rawCursorPosition)
+		{
+			if (!m_isActive || !std::isfinite(casterPosition.x) ||
+				!std::isfinite(casterPosition.y) ||
+				!std::isfinite(casterPosition.z) ||
+				!std::isfinite(rawCursorPosition.x) ||
+				!std::isfinite(rawCursorPosition.z))
+			{
+				if (m_isActive)
+				{
+					m_hasCursor = false;
+					m_isWalkable = false;
+				}
+				return false;
+			}
+			float deltaX = rawCursorPosition.x - casterPosition.x;
+			float deltaZ = rawCursorPosition.z - casterPosition.z;
+			const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+			const float rangeSquared = m_fMaximumRange * m_fMaximumRange;
+			if (distanceSquared > rangeSquared && distanceSquared > 0.f)
+			{
+				const float scale = m_fMaximumRange /
+					std::sqrt(distanceSquared);
+				deltaX *= scale;
+				deltaZ *= scale;
+			}
+			m_TargetPosition = {
+				casterPosition.x + deltaX,
+				casterPosition.y,
+				casterPosition.z + deltaZ };
+			m_hasCursor = true;
+			m_isWalkable = false;
+			return true;
+		}
+
+		bool_t Apply_WalkableSample(const float3_t& sampledPosition)
+		{
+			if (!m_isActive || !m_hasCursor ||
+				!std::isfinite(sampledPosition.x) ||
+				!std::isfinite(sampledPosition.y) ||
+				!std::isfinite(sampledPosition.z) ||
+				std::abs(sampledPosition.x - m_TargetPosition.x) > 0.001f ||
+				std::abs(sampledPosition.z - m_TargetPosition.z) > 0.001f)
+			{
+				m_isWalkable = false;
+				return false;
+			}
+			m_TargetPosition = sampledPosition;
+			m_isWalkable = true;
+			return true;
+		}
+
+		void Invalidate_Cursor(const float3_t& casterPosition)
+		{
+			if (!m_isActive)
+				return;
+			m_TargetPosition = casterPosition;
+			m_hasCursor = false;
+			m_isWalkable = false;
+		}
+
+		bool_t Is_Active() const { return m_isActive; }
+		bool_t Can_Confirm() const
+		{
+			return m_isActive && m_hasCursor && m_isWalkable;
+		}
+		LostArk::Shared::SKILL_ID Get_SkillId() const { return m_iSkillId; }
+		f32_t Get_MaximumRange() const { return m_fMaximumRange; }
+		const float3_t& Get_TargetPosition() const { return m_TargetPosition; }
+
+	private:
+		LostArk::Shared::SKILL_ID m_iSkillId =
+			LostArk::Shared::INVALID_SKILL_ID;
+		f32_t m_fMaximumRange = 0.f;
+		float3_t m_TargetPosition{};
+		bool_t m_hasCursor = false;
+		bool_t m_isWalkable = false;
+		bool_t m_isActive = false;
+	};
+
 	class CPlayerController final
 	{
 	public:
@@ -83,6 +196,7 @@ namespace Client
 			const shared_ptr<CCharacter>& character);
 		void Set_CommandSink(
 			const shared_ptr<IPlayerCommandSink>& commandSink);
+		bool_t Initialize_TargetingPreview(uint32_t levelIndex);
 		void Set_AllowCapturedKeyboardInput(bool_t allow)
 		{
 			m_allowCapturedKeyboardInput = allow;
@@ -131,6 +245,7 @@ namespace Client
 		std::uint8_t Poll_EstherSlot(
 			bool_t isKeyboardBlocked,
 			bool_t useRawKeyboard);
+		void Cancel_GroundTargeting();
 
 	private:
 		weak_ptr<CCharacter> m_pLocalCharacter;
@@ -162,5 +277,9 @@ namespace Client
 		table commits Z and X every frame, and a Ctrl press must not read as
 		fresh just because the plain-slot pass was ruled out that frame. */
 		std::array<bool_t, 3> m_wasEstherKeyDown{};
+		CGROUND_TARGETING_STATE m_GroundTargeting;
+		shared_ptr<CSkillGroundTargetPreview> m_pGroundTargetPreview;
+		bool_t m_wasTargetingLeftMouseDown = false;
+		bool_t m_wasTargetingRightMouseDown = false;
 	};
 }

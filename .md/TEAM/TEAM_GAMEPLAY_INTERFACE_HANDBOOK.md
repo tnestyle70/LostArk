@@ -159,6 +159,8 @@ Test-NetConnection <SERVER_REACHABLE_IPV4> -Port 7777
 
 `CPlayerController`는 edge input, quick slot, sequence, aim만 만든다. `(class, inputSlot) -> skill ID`는 `CPlayerSkillCatalog`가 `Data/Balance/PlayerSkills.json`에서 해석한다. `IPlayerCommandSink`가 전송 구현을 숨기므로 Controller에서 `CNetworkManager`를 include하지 않는다. Character를 직접 이동하거나 `Play_Skill`을 호출하지 않는다.
 
+two-step ground target의 optional 정본은 `Data/Balance/PlayerSkillTargeting.json`이다. T/2050500은 첫 키 입력에서 packet·sequence·resource·cooldown을 소비하지 않고 class-neutral targeting state와 두 preview만 연다. valid navigation sample의 LMB confirm만 기존 `C2S_USE_SKILL`에 typed `GROUND_POINT` intent를 실으며 RMB cancel은 packet을 만들지 않는다. Client의 11m clamp와 red invalid 표시는 preview이고, Server가 finite/range/current navigation을 다시 검증해 승인한 target XYZ만 `PLAYER_SNAPSHOT`으로 복제한다. Character의 `skill_target` pseudo anchor와 Server damage shape는 이 승인 XYZ를 함께 사용한다. 사거리 링 asset identity는 `SOURCE_EXTRACTED`, cursor marker identity는 `RUNTIME_RESOURCE`지만 두 texture의 preview scale/tint/usage는 모두 `PROJECT_TUNED`다.
+
 LMB COMBO는 `comboStages[].hitTimeMs`, `comboAdvanceMs`, `actionDurationMs`를 구분한다. `hitTimeMs`는 damage 발생 시점이고 `comboAdvanceMs`는 현재 stage의 필수 caster hit/projectile spawn이 끝난 뒤 buffered BA가 다음 stage로 갈 수 있는 시점이다. LMB release는 재생 중인 stage를 자르지 않고 아직 commit되지 않은 continuation만 취소한다. COMBO 중 도착한 MOVE/SKILL은 Server가 값으로 하나만 보관하고 buffered continuation을 막은 채 현재 애니메이션의 `actionDurationMs`까지 유지한 뒤 최신 명시 command를 commit한다. 명시 command가 수락된 뒤 Client는 실제 LMB up/re-press 전까지 100ms BA resend를 억제한다.
 
 스킬 서버 흐름은 다음과 같다.

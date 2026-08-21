@@ -1539,7 +1539,8 @@ namespace
 	{
 		C2S_USE_SKILL source{};
 		source.iClientSequence = 9;
-		source.iSkillId = 34060;
+		source.iSkillId = 2050500;
+		source.eTargetIntent = SKILL_TARGET_INTENT_KIND::GROUND_POINT;
 		source.fAimX = 151.f;
 		source.fAimZ = -122.f;
 
@@ -1548,7 +1549,7 @@ namespace
 			Build_UseSkillPayload(source, payload),
 			"Writer Use Skill");
 		testRunner.Require(
-			16 == payload.size(),
+			17 == payload.size(),
 			"Use Skill Payload Size");
 
 		CPacketReader reader{ payload };
@@ -1559,6 +1560,7 @@ namespace
 		testRunner.Require(
 			decoded.iClientSequence == source.iClientSequence &&
 			decoded.iSkillId == source.iSkillId &&
+			decoded.eTargetIntent == source.eTargetIntent &&
 			decoded.fAimX == source.fAimX &&
 			decoded.fAimZ == source.fAimZ &&
 			0 == reader.Get_RemainingSize(),
@@ -1570,6 +1572,13 @@ namespace
 		testRunner.Require(
 			!Write_Message(invalidWriter, invalid),
 			"Reject Invalid Skill ID");
+
+		invalid = source;
+		invalid.eTargetIntent = SKILL_TARGET_INTENT_KIND::END;
+		CPacketWriter invalidIntentWriter;
+		testRunner.Require(
+			!Write_Message(invalidIntentWriter, invalid),
+			"Reject Unknown Skill Target Intent");
 
 		payload.pop_back();
 		CPacketReader truncatedReader{ payload };
@@ -1848,6 +1857,10 @@ namespace
 		first.eStance = PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR;
 		first.iSkillId = 34060;
 		first.iActionStartTick = 25;
+		first.hasSkillTarget = true;
+		first.fSkillTargetX = 6.f;
+		first.fSkillTargetY = 0.25f;
+		first.fSkillTargetZ = -3.f;
 		first.iCurrentHp = 875;
 		first.iMaximumHp = 1000;
 		first.iCurrentResource = 80;
@@ -1927,7 +1940,8 @@ namespace
 		constexpr std::size_t snapshotHeaderBytes =
 			4 + 2 + 2 + 2 + 1 + 1 + 1 + 4 + 4;
 		constexpr std::size_t playerFixedBytes =
-			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + 1 + 1;
+			4 + 1 + (4 * 4) + 1 + 1 + 1 + (4 * 8) + 1 + (4 * 3) +
+			1 + 1 + 1;
 		constexpr std::size_t cooldownBytes = 4 + 4;
 		/* Trailing 1 + 1 + 1 is iPhase, iBrokenArmorMask and the
 		hasBossCombatState flag. The block after it is the boss combat
@@ -2001,6 +2015,10 @@ namespace
 			PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR &&
 			decoded.Players[0].iSkillId == 34060 &&
 			decoded.Players[0].iActionStartTick == 25 &&
+			decoded.Players[0].hasSkillTarget &&
+			decoded.Players[0].fSkillTargetX == 6.f &&
+			decoded.Players[0].fSkillTargetY == 0.25f &&
+			decoded.Players[0].fSkillTargetZ == -3.f &&
 			decoded.Players[0].iCurrentHp == 875 &&
 			decoded.Players[0].Cooldowns.size() == 1 &&
 			decoded.Players[0].Cooldowns[0].iCooldownEndTick == 330 &&
@@ -2014,6 +2032,7 @@ namespace
 			decoded.Players[1].eAction ==
 			PLAYER_ACTION_STATE::TRIGGER_MOVE &&
 			decoded.Players[1].iActionStartTick == 29 &&
+			!decoded.Players[1].hasSkillTarget &&
 			!decoded.Players[1].isCombatReady,
 			"World Snapshot Players Round Trip");
 
@@ -2110,6 +2129,21 @@ namespace
 			testRunner.Require(
 				!Write_Message(triggerWithoutTickWriter, triggerWithoutTick),
 				"Reject Trigger Move Without Action Tick");
+
+			S2C_WORLD_SNAPSHOT dirtyAbsentTarget = source;
+			dirtyAbsentTarget.Players[0].hasSkillTarget = false;
+			CPacketWriter dirtyAbsentTargetWriter;
+			testRunner.Require(
+				!Write_Message(dirtyAbsentTargetWriter, dirtyAbsentTarget),
+				"Reject Hidden Skill Target Coordinates");
+
+			S2C_WORLD_SNAPSHOT targetOutsideSkill = source;
+			targetOutsideSkill.Players[1].hasSkillTarget = true;
+			targetOutsideSkill.Players[1].fSkillTargetX = 1.f;
+			CPacketWriter targetOutsideSkillWriter;
+			testRunner.Require(
+				!Write_Message(targetOutsideSkillWriter, targetOutsideSkill),
+				"Reject Skill Target Outside Skill Action");
 			/* A fall carries no skill and must carry the tick a late joiner seeks
 			the descent from, so both halves of that rule are pinned here. */
 			S2C_WORLD_SNAPSHOT falling = source;
@@ -2296,12 +2330,12 @@ namespace
 		case here compares against NETWORK_PROTOCOL_VERSION itself, and pinning a
 		literal only made an unrelated bump fail this row. */
 		testRunner.Require(
-			30u == NETWORK_PROTOCOL_VERSION &&
+			31u == NETWORK_PROTOCOL_VERSION &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_FULL_SYNC) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_WORLD_DESTRUCTION_DELTA),
-			"World Destruction Packet Types At Protocol V30");
+			"World Destruction Packet Types At Protocol V31");
 
 		S2C_WORLD_DESTRUCTION_FULL_SYNC full{};
 		full.strCombatRuntimeRevision = Make_CombatRuntimeRevision();

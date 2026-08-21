@@ -582,15 +582,16 @@ PlayerController targeting state
 -> LMB confirm consumes basic attack input
 -> IPlayerCommandSink / C2S_USE_SKILL target intent
 -> Server finite/range/navigation validation
--> SERVER_PLAYER accepted target XZ ownership
--> PLAYER_SNAPSHOT target XZ replication
+-> SERVER_PLAYER accepted target XYZ ownership
+-> PLAYER_SNAPSHOT target XYZ replication
 -> ClientReplication / Character presentation
 -> target-root effect and Server damage shape
 ```
 
 T를 처음 누를 때 command, cooldown, resource를 소비하지 않는다. LMB confirm에서만 intent를 보내며
-RMB/Esc/두 번째 T, 다른 skill, death, class/level change는 preview를 transactionally 취소한다. range 밖
-cursor는 11m에 clamp하고 nav-invalid 위치는 빨간 표시와 confirm 금지로 처리한다.
+RMB, gameplay command 비활성화, authoritative action 시작, local character rebind와 level 종료는 preview를
+transactionally 취소한다. targeting 중 다른 skill 입력은 key-edge만 갱신하고 command를 제출하지 않는다.
+range 밖 cursor는 11m에 clamp하고 nav-invalid 위치는 빨간 표시와 confirm 금지로 처리한다.
 
 Remote Client도 같은 target을 봐야 하므로 local remembered cursor를 제품 정답으로 쓰지 않는다.
 
@@ -942,7 +943,7 @@ T:
 
 - CAP-09 전체 Client/Shared/Server/Client presentation 구현
 - invalid finite/range/nav, duplicate sequence, cancel, cooldown/resource rollback tests
-- approved target XZ에서 summon effect와 damage shape가 같은 root를 쓰는 contract test
+- approved target XYZ에서 summon effect와 damage shape가 같은 root를 쓰는 contract test
 
 ### G10. 전체 Product publish와 class rollout
 

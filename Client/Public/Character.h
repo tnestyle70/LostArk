@@ -105,7 +105,10 @@ public:
 		std::uint32_t serverTick,
 		std::uint32_t actionStartTick,
 		f32_t actionFacingYawDegrees,
-		std::uint8_t comboStage = 0);
+		std::uint8_t comboStage = 0,
+		bool_t hasSkillTarget = false,
+		const float3_t& skillTarget = {});
+	bool_t Try_Get_SkillTargetRoot(float4x4_t& outWorld) const;
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
 	/* A Model View clone may mirror the live scene stance, but only after that
 	   scene Character has consumed an authoritative snapshot. Before then its
@@ -125,6 +128,10 @@ public:
 	bool_t Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop);
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	PATH_RESULT_CODE Request_Move(fvector_t vGoalPosition);
+	bool_t Try_SampleTargetGround(
+		f32_t x,
+		f32_t z,
+		float3_t& outPosition) const;
 	void Cancel_Move();
 	bool_t Is_Moving() const {
 		return m_isMoving;
@@ -235,6 +242,8 @@ private:
 	bool_t m_bHasEffectActionFacingYaw = false;
 	LostArk::Shared::SKILL_ID m_iCurrentEffectSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
+	bool_t m_hasNetworkSkillTarget = false;
+	float3_t m_NetworkSkillTarget{};
 	DEFERRED_EMISSIVE_OVERRIDE m_ActionEmissiveOverride;
 	struct NETWORK_TRANSFORM_SAMPLE
 	{

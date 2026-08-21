@@ -13331,6 +13331,141 @@ namespace
 			"UI Block Preserves Raw Physical Hold Without False Release Or Repress");
 	}
 
+	void Test_DimensionMasterGroundTargetState(TEST_RUNNER& runner)
+	{
+		using Client::CGROUND_TARGETING_STATE;
+		using LostArk::Shared::INVALID_SKILL_ID;
+
+		constexpr LostArk::Shared::SKILL_ID DIMENSIONMASTER_T = 2050500u;
+		constexpr f32_t MAXIMUM_RANGE = 11.f;
+		constexpr f32_t EPSILON = 0.0001f;
+
+		std::string catalogStatus;
+		const bool_t catalogLoaded = CPlayerSkillCatalog::Load(catalogStatus);
+		const PLAYER_SKILL_DEFINITION* definition = catalogLoaded ?
+			CPlayerSkillCatalog::Find_ById(DIMENSIONMASTER_T) : nullptr;
+		runner.Require(
+			nullptr != definition &&
+			LostArk::Shared::SKILL_TARGET_INTENT_KIND::GROUND_POINT ==
+				definition->eTargetIntent &&
+			std::abs(definition->fTargetMaximumRange - MAXIMUM_RANGE) < EPSILON &&
+			definition->requiresWalkableTarget &&
+			std::abs(definition->RangePreview.fDiameter - 22.f) < EPSILON &&
+			definition->RangePreview.strAssetId ==
+				"Effect/DimensionMaster/Textures/FX_TEX_03/fx_e_ring_028.dds" &&
+			definition->RangePreview.strAssetIdentityBasis == "SOURCE_EXTRACTED" &&
+			definition->RangePreview.strUsageBasis == "PROJECT_TUNED" &&
+			!definition->RangePreview.strSourceEvidence.empty() &&
+			std::abs(definition->TargetPreview.fDiameter - 6.f) < EPSILON &&
+			definition->TargetPreview.strAssetId ==
+				"Effect/DimensionMaster/Textures/FX_TEX_HIGH_02/fx_k_fsm_magiccircle_02.dds" &&
+			definition->TargetPreview.strAssetIdentityBasis == "RUNTIME_RESOURCE" &&
+			definition->TargetPreview.strUsageBasis == "PROJECT_TUNED" &&
+			definition->TargetPreview.strSourceEvidence.empty(),
+			"Ground Targeting Catalog Preserves Source Identity And Project-Tuned Usage");
+
+		const std::filesystem::path cuePath = CProjectDataRoot::Resolve(
+			L"Animation/Authored/DimensionMaster/DimensionMaster.animevents");
+		const std::string cueText = Read_Text(cuePath);
+		ANIMATION_EFFECT_CUE_DOCUMENT cueDocument;
+		std::string cueStatus;
+		const bool_t cueParsed = CAnimationEffectCueDocument::Load_FromText(
+			"DimensionMaster", cueText,
+			{ "pc_sp_m_00_sk_sk_dimensionprison" },
+			cueDocument, cueStatus, true);
+		const auto targetCue = std::find_if(
+			cueDocument.Cues.begin(), cueDocument.Cues.end(),
+			[](const ANIMATION_EFFECT_CUE& cue)
+			{
+				return cue.strClipName ==
+					"pc_sp_m_00_sk_sk_dimensionprison";
+			});
+		const bool_t parsedAdmittedTuple =
+			targetCue != cueDocument.Cues.end() &&
+			targetCue->strEffectAssetId ==
+				"effect.dimensionmaster.skill.2050500.unified" &&
+			targetCue->strAnchorSlotId == "skill_target" &&
+			EFFECT_FOLLOW_POLICY::SNAPSHOT == targetCue->eFollowPolicy &&
+			EFFECT_ORIENTATION_POLICY::ANCHOR ==
+				targetCue->eOrientationPolicy &&
+			EFFECT_STOP_POLICY::NATURAL == targetCue->eStopPolicy;
+		const bool_t parsedIsolatedTarget = std::find(
+			cueDocument.UnavailableEffectAssetIds.begin(),
+			cueDocument.UnavailableEffectAssetIds.end(),
+			"effect.dimensionmaster.skill.2050500.unified") !=
+			cueDocument.UnavailableEffectAssetIds.end();
+		const std::string exactTargetTuple =
+			"\"pc_sp_m_00_sk_sk_dimensionprison\" EFFECT startms=0 "
+			"payload=\"effect.dimensionmaster.skill.2050500.unified\" "
+			"effectref=asset anchor=\"skill_target\" follow=snapshot "
+			"stop=natural";
+		runner.Require(
+			cueParsed && (parsedAdmittedTuple || parsedIsolatedTarget) &&
+			std::string::npos != cueText.find(exactTargetTuple),
+			"DimensionMaster T Product Cue Uses The Approved Skill-Target Snapshot Anchor");
+
+		CGROUND_TARGETING_STATE state;
+		runner.Require(
+			!state.Begin(INVALID_SKILL_ID, MAXIMUM_RANGE) &&
+			!state.Begin(DIMENSIONMASTER_T, 0.f) &&
+			!state.Begin(DIMENSIONMASTER_T,
+				std::numeric_limits<f32_t>::quiet_NaN()) &&
+			!state.Is_Active(),
+			"Ground Targeting Rejects Invalid Skill And Range Transactionally");
+
+		const bool_t began = state.Begin(DIMENSIONMASTER_T, MAXIMUM_RANGE);
+		const float3_t caster{ 2.f, 3.f, -4.f };
+		const float3_t outsideCursor{ 35.f, 12.f, 40.f };
+		const bool_t clamped = state.Update_Cursor(caster, outsideCursor);
+		const float3_t clampedTarget = state.Get_TargetPosition();
+		const f32_t deltaX = clampedTarget.x - caster.x;
+		const f32_t deltaZ = clampedTarget.z - caster.z;
+		const f32_t clampedDistance =
+			std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
+		runner.Require(
+			began && clamped && state.Is_Active() &&
+			state.Get_SkillId() == DIMENSIONMASTER_T &&
+			std::abs(state.Get_MaximumRange() - MAXIMUM_RANGE) < EPSILON &&
+			std::abs(clampedDistance - MAXIMUM_RANGE) < EPSILON &&
+			!state.Can_Confirm(),
+			"Ground Targeting Clamps Cursor To 11m And Requires Navigation Approval");
+
+		const float3_t mismatchedSample{
+			clampedTarget.x + 0.01f, 7.f, clampedTarget.z };
+		runner.Require(
+			!state.Apply_WalkableSample(mismatchedSample) &&
+			!state.Can_Confirm(),
+			"Ground Targeting Rejects A Navigation Sample For Another XZ");
+
+		const float3_t approvedSample{
+			clampedTarget.x, 7.f, clampedTarget.z };
+		const bool_t approved = state.Apply_WalkableSample(approvedSample);
+		runner.Require(
+			approved && state.Can_Confirm() &&
+			std::abs(state.Get_TargetPosition().y - 7.f) < EPSILON,
+			"Ground Targeting Confirms Only The Exact Walkable Sample And Preserves Y");
+
+		const float3_t nonFiniteCursor{
+			std::numeric_limits<f32_t>::quiet_NaN(), 0.f, 0.f };
+		runner.Require(
+			!state.Update_Cursor(caster, nonFiniteCursor) &&
+			state.Is_Active() && !state.Can_Confirm(),
+			"Ground Targeting Invalid Cursor Fails Closed Without Ending Selection");
+
+		state.Invalidate_Cursor(caster);
+		runner.Require(
+			state.Is_Active() && !state.Can_Confirm() &&
+			state.Get_TargetPosition().x == caster.x &&
+			state.Get_TargetPosition().z == caster.z,
+			"Ground Targeting Navigation Rejection Keeps Invalid Preview State");
+
+		state.Cancel();
+		runner.Require(
+			!state.Is_Active() && !state.Can_Confirm() &&
+			state.Get_SkillId() == INVALID_SKILL_ID,
+			"Ground Targeting RMB Cancel Restores Dormant State Without A Command");
+	}
+
 	void Test_EffectNullCdoStartSizeFallback(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -42594,6 +42729,12 @@ int main(const int argc, char* argv[])
 	if (Mode == "--player-command-buffer-fast")
 	{
 		Test_BasicAttackExplicitCommandResendGate(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--dimensionmaster-ground-target-fast")
+	{
+		Test_DimensionMasterGroundTargetState(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}

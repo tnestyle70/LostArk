@@ -27,6 +27,15 @@ public:
 		float aimX,
 		float aimZ) = 0;
 
+	/* A confirmed class-neutral ground-point selection. This is deliberately a
+	 different typed call from directional aim, even though both serialize onto
+	 C2S_USE_SKILL, so input code cannot accidentally cast before confirmation. */
+	virtual bool Request_UseGroundTargetSkill(
+		std::uint32_t clientSequence,
+		LostArk::Shared::SKILL_ID skillId,
+		float targetX,
+		float targetZ) = 0;
+
 	virtual bool Request_ReleaseSkill(
 		std::uint32_t clientSequence,
 		LostArk::Shared::SKILL_ID skillId) = 0;

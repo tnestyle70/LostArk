@@ -87,6 +87,8 @@ namespace LostArk::Server
 		std::uint32_t iClientSequence = 0u;
 		LostArk::Shared::SKILL_ID iSkillId =
 			LostArk::Shared::INVALID_SKILL_ID;
+		LostArk::Shared::SKILL_TARGET_INTENT_KIND eTargetIntent =
+			LostArk::Shared::SKILL_TARGET_INTENT_KIND::AIM_POINT;
 		float fX = 0.f;
 		float fZ = 0.f;
 
@@ -110,6 +112,7 @@ namespace LostArk::Server
 			eKind = PLAYER_PENDING_COMMAND_KIND::SKILL;
 			iClientSequence = skill.iClientSequence;
 			iSkillId = skill.iSkillId;
+			eTargetIntent = skill.eTargetIntent;
 			fX = skill.fAimX;
 			fZ = skill.fAimZ;
 		}
@@ -201,6 +204,21 @@ namespace LostArk::Server
 		// Distance from the caster to the aim point the press carried, so an
 		// object that lands where the cursor points can be placed.
 		float fSkillAimDistance = 0.f;
+		/* Committed only after the ground-point request passes finite/range/nav
+		 validation. It remains stable for the action and is copied to every
+		 snapshot so damage and presentation share one authoritative root. */
+		bool hasSkillTarget = false;
+		float fSkillTargetX = 0.f;
+		float fSkillTargetY = 0.f;
+		float fSkillTargetZ = 0.f;
+
+		void Clear_SkillTarget()
+		{
+			hasSkillTarget = false;
+			fSkillTargetX = 0.f;
+			fSkillTargetY = 0.f;
+			fSkillTargetZ = 0.f;
+		}
 		bool hasAppliedSkillDamage = false;
 		std::uint64_t iAppliedHitMask = 0;
 		// Bit per projectile definition of the running stage already spawned.

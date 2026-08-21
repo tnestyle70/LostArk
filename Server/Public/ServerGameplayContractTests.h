@@ -2,5 +2,6 @@
 
 namespace LostArk::Server
 {
-	int Run_ServerGameplayContractTests();
+	int Run_ServerGameplayContractTests(
+		bool dimensionMasterGroundTargetOnly = false);
 }

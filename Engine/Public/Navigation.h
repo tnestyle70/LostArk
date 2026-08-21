@@ -50,6 +50,12 @@ public:
 		vector<float3_t>& OutPath,
 		uint32_t iMaxExpandedNodes = 16384,
 		uint32_t* pOutExpandedNodes = nullptr);
+	/* Exact non-mutating sample used by class-neutral ground targeting. It keeps
+	 the requested XZ, reads only the owning nav cell's Y, and rejects blocked or
+	 out-of-grid cells instead of projecting the cursor to a different target. */
+	bool_t Try_SampleWalkablePoint(
+		fvector_t vWorldPosition,
+		float3_t& outPosition) const;
 	bool_t Register_RuntimeBlocker(
 		const std::string& blockerId,
 		const vector<uint32_t>& cellIndices,

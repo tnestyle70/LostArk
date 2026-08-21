@@ -446,7 +446,12 @@ Client::CClientReplication::Commit_DeferredLocalCharacterClassReplacement()
 			Pending.iServerTick,
 			Pending.Snapshot.iActionStartTick,
 			Pending.Snapshot.fYawDegrees,
-			Pending.Snapshot.iComboStage))
+			Pending.Snapshot.iComboStage,
+			Pending.Snapshot.hasSkillTarget,
+			float3_t(
+				Pending.Snapshot.fSkillTargetX,
+				Pending.Snapshot.fSkillTargetY,
+				Pending.Snapshot.fSkillTargetZ)))
 	{
 		Clear_DeferredLocalCharacterClassReplacement();
 		m_strPendingPresentationFailure =
@@ -1245,7 +1250,12 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 				snapshot.iServerTick,
 				player.iActionStartTick,
 				player.fYawDegrees,
-				player.iComboStage))
+				player.iComboStage,
+				player.hasSkillTarget,
+				float3_t(
+					player.fSkillTargetX,
+					player.fSkillTargetY,
+					player.fSkillTargetZ)))
 		{
 			allSucceeded = false;
 		}

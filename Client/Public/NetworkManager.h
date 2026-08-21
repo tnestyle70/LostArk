@@ -65,6 +65,11 @@ public:
 		LostArk::Shared::SKILL_ID skillId,
 		float aimX,
 		float aimZ);
+	bool Send_UseGroundTargetSkill(
+		std::uint32_t clientSequence,
+		LostArk::Shared::SKILL_ID skillId,
+		float targetX,
+		float targetZ);
 	bool Send_ReleaseSkill(
 		std::uint32_t clientSequence,
 		LostArk::Shared::SKILL_ID skillId);
