@@ -25155,11 +25155,11 @@
         "authoringPath": "Effects/Authored/effect.valtan.whirlwind.recovery.effect.json"
       },
       "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.whirlwind.recovery.effect.json",
-      "authoredDocumentSha256": "917809de2525fd8a72f351ee7e1ef8328aac9cca395a670aafceaf781ae31865",
+      "authoredDocumentSha256": "9c32e2de3194651bd9b1e396a416d3dfb69d0acea5d788db2022ea4ec21d1505",
       "reconcile": {
         "effectAssetId": "effect.valtan.whirlwind.recovery",
-        "existingElementCount": 11,
-        "preservedExistingElementCount": 11,
+        "existingElementCount": 14,
+        "preservedExistingElementCount": 14,
         "legacyGenericRetireCandidates": [
           "par_n_mrhg_trail_01.em00",
           "par_n_mrhg_trail_01.em01",
@@ -25219,10 +25219,22 @@
           {
             "elementId": "source.e8a5de96d95b1448332c",
             "disposition": "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW"
+          },
+          {
+            "elementId": "project-valtan-whirlwind-recovery-weapon-trail.emitter5259",
+            "disposition": "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW"
+          },
+          {
+            "elementId": "project-valtan-whirlwind-recovery-weapon-trail.emitter5260",
+            "disposition": "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW"
+          },
+          {
+            "elementId": "project-valtan-whirlwind-recovery-weapon-trail.emitter5258",
+            "disposition": "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW"
           }
         ],
         "preservationCounts": {
-          "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW": 3,
+          "PRESERVE_EXISTING_SOURCE_OR_IMPORTED_ROW": 6,
           "REPORT_ONLY_GENERIC_DEFAULT_RETIRE_CANDIDATE_NO_DELETE": 8
         },
         "legacyRetirementDisposition": "REPORT_ONLY_UNVERIFIED_DEFAULT_SIGNATURE_NO_DELETE",
@@ -25250,8 +25262,8 @@
     "cueIdentityMismatchProjectionCount": 0,
     "negativeTimingProjectionCount": 86,
     "outsideCueWindowProjectionCount": 0,
-    "preservedAuthoredElementCount": 1377,
-    "preservedExistingSourceOrImportedRowCount": 287,
+    "preservedAuthoredElementCount": 1380,
+    "preservedExistingSourceOrImportedRowCount": 290,
     "preservedProjectAuthoredOrTunedRowCount": 0,
     "legacyGenericRetireCandidateCount": 1090,
     "missingOnlyAddElementCount": 0,

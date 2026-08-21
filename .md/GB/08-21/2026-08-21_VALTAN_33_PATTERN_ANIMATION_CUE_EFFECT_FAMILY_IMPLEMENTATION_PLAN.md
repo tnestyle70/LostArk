@@ -23,12 +23,12 @@ EffectCatalog -> EffectDocumentRenderer -> EffectPresentationService 경로를 �
 
 | 항목 | 실측 |
 |---|---|
-| origin/main | 0f884326, PR #139 build-repair merge; final integration pending |
+| origin/main | 0f884326, PR #139 build-repair merge |
 | animation sequence merge | PR #127, merge 459da808 |
 | ordered audition/pattern merge | PR #128, merge 0b70f06e |
 | Effect Tool/Open Editor 회귀 복구 | PR #134, merge fe2309f6 |
 | 현재 구현 branch 기준 | codex/valtan-family-rendering-0821 |
-| origin/main -> HEAD | PR #138 sequence/combat runtime 통합 후 PR #139 수동 통합 대기 |
+| origin/main -> HEAD | PR #138 sequence/combat runtime과 PR #139 build repair를 수동 통합 완료 (`8f55a22d`) |
 | 작업 위치 | 메인 저장소 폴더의 기능 branch; 별도 worktree를 만들지 않음 |
 | 보존 경계 | 동시 작업 중인 Artist/DimensionMaster 손튜닝과 World Destruction JSON은 수정·stage하지 않음 |
 
@@ -647,8 +647,10 @@ editable document graph에 non-destructive로 추가됐다는 뜻이다.
 - 신규 standalone Light와 explicit generic Dust는 scope 밖 disposition으로 보존한다. 기존 Whirlwind
   Light/Dust canary는 삭제하지 않는다.
 
-최종 full Effect runtime sidecar와 runtime Catalog publish는 동시 진행 중인 캐릭터 손튜닝 source가
-정착한 뒤 한 번 수행한다. 다른 작업자의 authored 파일을 되돌리거나 이 PR에 섞어 SHA gate를 우회하지 않는다.
+최종 full Effect runtime sidecar와 runtime Catalog publish는 다른 작업자의 authored 파일을 되돌리거나
+이 PR에 섞지 않은 상태에서 수행했다. `Publish-Effects.ps1 -Mode Publish`는 204개 Effect와
+16개 VisualProgram/135개 row를 게시했고, 후속 Validate도 PASS했다. 제품 Valtan 집합은
+106 boss-root cue + 2 combat-object visual = 108개이며 retired High Jump airborne ID는 런타임에서 제거됐다.
 
 ## 6. 변경 예상 파일
 
@@ -792,7 +794,7 @@ ordered animation/cue 순서, occurrence별 손튜닝, shared asset reuse, Whirl
 2. 현재 기능 branch: all-33 source inventory와 exact branch/disposition ledger
 3. renderer-proofed reviewed/FBF/project/safe-gap candidate의 non-destructive canonical projection
 4. Character WModel meshModel admission과 null Cascade StartSize runtime fix 및 focused harness
-5. final Effect publish, Debug/Release build/regression, RESULT와 수동 검증 handoff
+5. final Effect publish와 자동 Debug/Release build/regression, RESULT와 수동 검증 handoff
 6. explicit-path commit/push/PR 뒤 최신 origin/main과 재동기화하고 PR merge
 
 이번 branch의 generated candidate/proof/application receipt와 그 consumer는 같은 검증 단위다. main에는

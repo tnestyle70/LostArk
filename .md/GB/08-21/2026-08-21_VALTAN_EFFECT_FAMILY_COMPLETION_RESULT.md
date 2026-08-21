@@ -258,20 +258,35 @@ VisualProgram 결과:
 
 ### 5.2 통합 Publish 현재 상태
 
-이 후속 revision의 source validator와 `Publish-Effects.ps1 -Mode Validate`는 PASS했지만, tracked
-runtime catalog는 아직 이전 identity set이다. runtime에는 폐기한
-`effect.valtan.high-jump.airborne`이 남아 있고 `effect.valtan.sky-axe.active`가 없다.
+최신 `origin/main@0f884326`과 PR #139 build repair를 통합하고 Effect Data project registration을
+동기화했다. 이어서 다음 publish gate를 순서대로 완료했다.
 
-따라서 최종 PR 전에 다음 순서를 다시 실행해야 한다.
+1. `Publish-Effects.ps1 -Mode Validate`: 204 catalog entries PASS
+2. `Test-EffectPipeline.ps1`: 42 tests PASS
+3. `Publish-Effects.ps1 -Mode Publish`: 204 Effects, VisualProgram 16개/135 rows 게시 PASS
+4. 게시 직후 `Publish-Effects.ps1 -Mode Validate`: PASS
 
-1. 최신 `origin/main` 통합과 Effect Data project registration
-2. `Publish-Effects.ps1 -Mode Validate`
-3. `Test-EffectPipeline.ps1`
-4. `Publish-Effects.ps1 -Mode Publish`
-5. Debug/Release Client·ClientFrontendHarness 빌드와 106 boss + 2 combat prewarm 회귀
+게시된 runtime Valtan 집합은 108개다. `effect.valtan.sky-axe.active`와
+`effect.valtan.red-blade-wave.active`가 combat-object owner로 존재하고, retired
+`effect.valtan.high-jump.airborne`은 없다. 따라서 authoring의 106 boss-root cue + 2 combat-object
+visual partition과 제품 runtime identity가 일치한다. Debug/Release 실행형 회귀는 별도 최종
+matrix로 기록하며 Client/UI visual PASS는 사용자가 직접 판정한다.
 
-이 순서가 완료되기 전에는 현재 Client runtime을 신규 High Jump 도끼 소유권의 제품
-정답으로 사용하지 않는다.
+### 5.3 최종 자동 회귀
+
+- Valtan focused Python: 218 tests PASS, optional schema dependency 1 skip
+- FBF composition 음성 경계: overlay/plan 자체 재해시와 application receipt 위조 2건 모두 fail-closed
+- ClientFrontendHarness Debug: 9/9 관련 mode PASS
+- ClientFrontendHarness Release: 7/9 mode PASS; incremental/loading prewarm의 Valtan
+  105 player / 106 boss / 2 combat ownership과 108개 product coverage assertion은 모두 PASS했다.
+  두 mode의 유일한 실패는 Release에서 의도적으로 비활성인 Debug-authoring same-revision
+  replacement smoke 1건이며 Release 제품 Valtan 재생 경로의 실패가 아니다.
+- Engine Release -> `UpdateLib.bat Release` -> Harness Release link: PASS
+- Client full incremental Debug/Release build/link: PASS
+- Gameplay Validate: 33 patterns / 130 stages / 2 combat objects PASS
+- Effect Validate: 204 catalog entries, VisualProgram 16개/135 rows PASS
+- Effect Data project registration: 1,821 files / 205 filters PASS
+- JSON/XML parse와 `git diff --check`: PASS
 
 ## 6. 명시적으로 남긴 경계
 
@@ -371,5 +386,6 @@ family 색 경로를 함께 수정하기 위한 회귀 차단이다.
 - latest sequence / combat ownership: PASS
 - family candidate actual prepare/draw/finite/rollback: PASS
 - common color ABI integration: PENDING
-- final runtime Publish after latest main merge: PENDING
+- final runtime Publish after latest main merge: PASS (204 Effects, Valtan 108, VisualProgram 16/135)
+- Debug/Release Client build and Valtan executable regression: PASS (Release Debug-authoring smoke 제외 경계 명시)
 - user All Effects eye check / visual PASS: NOT RUN / NOT GRANTED

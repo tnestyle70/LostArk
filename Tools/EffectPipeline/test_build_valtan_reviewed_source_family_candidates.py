@@ -321,7 +321,23 @@ class ValtanReviewedSourceFamilyCandidateTests(unittest.TestCase):
         self.assertEqual(0, summary["sourceRebaseRequiredCount"])
         self.assertEqual(0, summary["missingOnlyAddElementCount"])
         self.assertEqual(1090, summary["legacyGenericRetireCandidateCount"])
-        self.assertEqual(287, summary["preservedExistingSourceOrImportedRowCount"])
+        self.assertEqual(290, summary["preservedExistingSourceOrImportedRowCount"])
+        whirlwind_recovery = next(
+            row
+            for row in self.receipt["documents"]
+            if row["effectAssetId"] == "effect.valtan.whirlwind.recovery"
+        )
+        preserved_ids = {
+            row["elementId"]
+            for row in whirlwind_recovery["reconcile"]["preservedExistingRows"]
+        }
+        self.assertTrue(
+            {
+                "project-valtan-whirlwind-recovery-weapon-trail.emitter5258",
+                "project-valtan-whirlwind-recovery-weapon-trail.emitter5259",
+                "project-valtan-whirlwind-recovery-weapon-trail.emitter5260",
+            }.issubset(preserved_ids)
+        )
         for row in self.receipt["documents"]:
             plan = row["reconcile"]
             self.assertEqual([], plan["deleteElements"])

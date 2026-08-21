@@ -2,7 +2,7 @@
   "schema": "lostark.valtan-front-back-front-source-wave-drawable-proof",
   "formatVersion": 1,
   "bossArchetypeId": "BOSS_VALTAN",
-  "candidateReceiptSha256": "c67a3815ef1dc3ca6f8da37a264bc3340f221b7881ee1c29a80232f167de073d",
+  "candidateReceiptSha256": "21e4f4668a3bd0c991e450f1fa2dd1513f98b208fbfa2d9f0a5db3aa9a03ac65",
   "targets": [
     {
       "effectAssetId": "effect.valtan.front-back-front.source-wave-01",

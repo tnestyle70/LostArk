@@ -33,6 +33,34 @@ WHIRLWIND_EFFECT_ID = "effect.valtan.pattern.420633.active"
 CLIP_OCCURRENCE_ID = "valtan.attack.front-back-front.active.clip.01"
 EXPECTED_TARGET_COUNT = 4
 EXPECTED_ELEMENT_COUNT = 100
+HISTORICAL_CANDIDATE_RECEIPT_SHA256 = (
+    "c67a3815ef1dc3ca6f8da37a264bc3340f221b7881ee1c29a80232f167de073d"
+)
+HISTORICAL_DRAWABLE_PROOF_SHA256 = (
+    "e93d3f353933037ab6a7ad6aaec822cf93ffeeb337dbe57231c1ca6d9e6692ce"
+)
+
+EXPECTED_APPLICATION_POLICY = {
+    "animationBindingMutation": "FORBIDDEN",
+    "aggregateDocumentMutation": "FORBIDDEN",
+    "aggregateProjectOverlayMutation": "FORBIDDEN",
+    "aggregateSourceElementAppend": "FORBIDDEN",
+    "gameplayAuthorityMutation": "FORBIDDEN",
+    "fourthWaveRole": "AUXILIARY_SOURCE_WAVE_NOT_GAMEPLAY_HIT",
+    "failureAction": "ROLLBACK_ALL_OUTPUTS",
+}
+
+EXPECTED_APPLICATION_CLOSURE = {
+    "sourceWaveDocumentCount": 4,
+    "sourceElementCount": 100,
+    "elementsPerSourceWave": 25,
+    "catalogAppendedOrPreservedRowCount": 4,
+    "cueAppendedOrPreservedRowCount": 4,
+    "allEffectsClipCueCount": 5,
+    "aggregateSourceElementAppendCount": 0,
+    "duplicateSourceElementCount": 0,
+    "gameplayMutationCount": 0,
+}
 
 DEFAULT_CANDIDATE_RECEIPT = PurePosixPath(
     "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/"
@@ -41,6 +69,10 @@ DEFAULT_CANDIDATE_RECEIPT = PurePosixPath(
 DEFAULT_APPLICATION_RECEIPT = PurePosixPath(
     "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/"
     "Valtan.front-back-front-source-wave-application-receipt.v1.json"
+)
+DEFAULT_DRAWABLE_PROOF = PurePosixPath(
+    "Data/Effects/Imported/Valtan/FrontBackFrontSourceWaves/DrawableProof/"
+    "Valtan.front-back-front-source-waves.drawable-proof.v1.json"
 )
 CATALOG_PATH = PurePosixPath("Data/Effects/EffectCatalog.json")
 CUE_PATH = PurePosixPath(
@@ -244,6 +276,148 @@ def _validate_candidate_receipt(receipt: dict[str, Any]) -> list[dict[str, Any]]
     ):
         raise ProjectionError("fourth source wave was mislabeled as gameplay")
     return candidates
+
+
+def _validate_prior_application_receipt(
+    receipt: dict[str, Any],
+    candidates: list[dict[str, Any]],
+    *,
+    candidate_path: PurePosixPath,
+    proof_path: PurePosixPath,
+    current_candidate_sha256: str,
+    current_proof_sha256: str,
+) -> None:
+    if (
+        receipt.get("schema") != RECEIPT_SCHEMA
+        or receipt.get("formatVersion") != FORMAT_VERSION
+        or receipt.get("bossArchetypeId") != BOSS_ARCHETYPE_ID
+        or receipt.get("transactionStatus") != "COMMITTED"
+        or receipt.get("policy") != EXPECTED_APPLICATION_POLICY
+        or receipt.get("closure") != EXPECTED_APPLICATION_CLOSURE
+    ):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED existing source-wave application contract drift"
+        )
+
+    inputs = _require_object(receipt.get("inputs"), "prior receipt inputs")
+    input_pair = (
+        inputs.get("candidateReceiptSha256"),
+        inputs.get("drawableProofSha256"),
+    )
+    accepted_pairs = {(current_candidate_sha256, current_proof_sha256)}
+    if (
+        candidate_path == DEFAULT_CANDIDATE_RECEIPT
+        and proof_path == DEFAULT_DRAWABLE_PROOF
+    ):
+        accepted_pairs.add((
+            HISTORICAL_CANDIDATE_RECEIPT_SHA256,
+            HISTORICAL_DRAWABLE_PROOF_SHA256,
+        ))
+    if (
+        inputs.get("candidateReceiptPath") != candidate_path.as_posix()
+        or inputs.get("drawableProofPath") != proof_path.as_posix()
+        or input_pair not in accepted_pairs
+    ):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED existing source-wave application input lineage drift"
+        )
+
+    targets = [
+        _require_object(row, "prior application target")
+        for row in _require_list(receipt.get("targets"), "prior application targets")
+    ]
+    if len(targets) != EXPECTED_TARGET_COUNT:
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED existing source-wave application target count drift"
+        )
+    target_by_effect: dict[str, dict[str, Any]] = {}
+    compared_keys = (
+        "waveOrdinal",
+        "waveId",
+        "displayLabel",
+        "presentationRole",
+        "gameplayHitDisposition",
+        "effectAssetId",
+        "candidateDocumentPath",
+        "candidateDocumentSha256",
+        "targetAuthoredDocumentPath",
+        "candidateElementCount",
+        "cueSourceStartMs",
+        "cueLocalStartDelaySeconds",
+        "catalogRow",
+        "cueRow",
+    )
+    for candidate, prior in zip(candidates, targets):
+        if any(prior.get(key) != candidate.get(key) for key in compared_keys):
+            raise SourceRebaseRequired(
+                "SOURCE_REBASE_REQUIRED existing source-wave application target drift"
+            )
+        effect_id = prior["effectAssetId"]
+        if effect_id in target_by_effect or not _is_sha256(
+            prior.get("finalDocumentSha256")
+        ):
+            raise SourceRebaseRequired(
+                "SOURCE_REBASE_REQUIRED existing source-wave application target seal drift"
+            )
+        target_by_effect[effect_id] = prior
+
+    catalog_output = _require_object(
+        receipt.get("catalogOutput"), "prior catalog output"
+    )
+    cue_output = _require_object(receipt.get("cueOutput"), "prior cue output")
+    if (
+        catalog_output.get("path") != CATALOG_PATH.as_posix()
+        or not _is_sha256(catalog_output.get("sha256"))
+        or catalog_output.get("appendedOrPreservedRows")
+        != [row["catalogRow"] for row in candidates]
+        or cue_output.get("path") != CUE_PATH.as_posix()
+        or not _is_sha256(cue_output.get("sha256"))
+        or cue_output.get("appendedOrPreservedRows")
+        != [row["cueRow"] for row in candidates]
+    ):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED existing source-wave catalog/cue receipt drift"
+        )
+
+    canonical_outputs = [
+        _require_object(row, "prior canonical output")
+        for row in _require_list(
+            receipt.get("canonicalOutputs"), "prior canonical outputs"
+        )
+    ]
+    expected_paths = {
+        CATALOG_PATH.as_posix(),
+        CUE_PATH.as_posix(),
+        *(row["targetAuthoredDocumentPath"] for row in candidates),
+    }
+    if (
+        len(canonical_outputs) != len(expected_paths)
+        or {row.get("path") for row in canonical_outputs} != expected_paths
+        or any(not _is_sha256(row.get("sha256")) for row in canonical_outputs)
+    ):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED existing source-wave canonical output closure drift"
+        )
+    canonical_by_path = {row["path"]: row for row in canonical_outputs}
+    if (
+        canonical_by_path[CATALOG_PATH.as_posix()].get("role") != "EFFECT_CATALOG"
+        or canonical_by_path[CATALOG_PATH.as_posix()].get("sha256")
+        != catalog_output["sha256"]
+        or canonical_by_path[CUE_PATH.as_posix()].get("role")
+        != "VALTAN_CUE_DOCUMENT"
+        or canonical_by_path[CUE_PATH.as_posix()].get("sha256")
+        != cue_output["sha256"]
+        or any(
+            canonical_by_path[row["targetAuthoredDocumentPath"]].get("role")
+            != "AUTHORED_EFFECT_DOCUMENT"
+            or canonical_by_path[row["targetAuthoredDocumentPath"]].get("sha256")
+            != target_by_effect[row["effectAssetId"]]["finalDocumentSha256"]
+            for row in candidates
+        )
+    ):
+        raise SourceRebaseRequired(
+            "SOURCE_REBASE_REQUIRED existing source-wave canonical output seal drift"
+        )
 
 
 def _validate_candidate_document(
@@ -539,18 +713,14 @@ def collect_projection(
     prior_receipt_payload: bytes | None = None
     if prior_receipt_path.is_file():
         prior_receipt, prior_receipt_payload = _load_json(prior_receipt_path)
-        prior_inputs = _require_object(prior_receipt.get("inputs"), "prior receipt inputs")
-        if (
-            prior_receipt.get("schema") != RECEIPT_SCHEMA
-            or prior_receipt.get("formatVersion") != FORMAT_VERSION
-            or prior_receipt.get("transactionStatus") != "COMMITTED"
-            or prior_inputs.get("candidateReceiptSha256")
-            != _sha256(candidate_receipt_payload)
-            or prior_inputs.get("drawableProofSha256") != _sha256(proof_payload)
-        ):
-            raise SourceRebaseRequired(
-                "SOURCE_REBASE_REQUIRED existing source-wave application receipt is stale"
-            )
+        _validate_prior_application_receipt(
+            prior_receipt,
+            candidates,
+            candidate_path=candidate_relative,
+            proof_path=proof_relative,
+            current_candidate_sha256=_sha256(candidate_receipt_payload),
+            current_proof_sha256=_sha256(proof_payload),
+        )
 
     guards: dict[PurePosixPath, bytes | None] = {
         candidate_relative: candidate_receipt_payload,

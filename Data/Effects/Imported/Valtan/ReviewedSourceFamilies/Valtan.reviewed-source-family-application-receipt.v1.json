@@ -5,9 +5,9 @@
   "transactionStatus": "COMMITTED",
   "inputs": {
     "candidateReceiptPath": "Data/Effects/Imported/Valtan/ReviewedSourceFamilies/Valtan.reviewed-source-family-candidates.v1.json",
-    "candidateReceiptSha256": "4857ab9c0a7595fb54962f1391d40bd38b5aae5d7250ec44bb2598f2d67c2c8d",
+    "candidateReceiptSha256": "4743509c8f70cda82ba44f02585a0371eb18d60e98587bf7ab64aa303a738459",
     "drawableProofPath": "Data/Effects/Imported/Valtan/ReviewedSourceFamilies/DrawableProof/Valtan.reviewed-source-families.drawable-proof.v1.json",
-    "drawableProofSha256": "be89c664d22d66429a9f296e5611446a3bf7f73de2c527f4a5fe0e08a8afe775"
+    "drawableProofSha256": "b0df50da5c3905f8e27bda778ef6211d9aed9677da118a7330e758f17020e9cd"
   },
   "policy": {
     "reconcileMode": "MISSING_ONLY_APPEND_OR_DEEP_PRESERVE_EXISTING",
