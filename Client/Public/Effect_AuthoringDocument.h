@@ -1158,6 +1158,33 @@ struct EFFECT_ELEMENT_DESC final
 	EFFECT_AUTHORING_OVERRIDES_DESC AuthoringOverrides;
 };
 
+inline bool_t Is_EffectPresentationExecutionTarget(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	switch (Element.eKind)
+	{
+	case EFFECT_ELEMENT_KIND::LIGHT:
+		return Element.Detail.Light.bEnabled &&
+			Element.Detail.Light.eProfile != EFFECT_LIGHT_PROFILE::END &&
+			Element.Detail.Light.eStatus !=
+				EFFECT_PRESENTATION_RUNTIME_STATUS::END;
+	case EFFECT_ELEMENT_KIND::SCREEN_POST:
+		return Element.Detail.ScreenPost.bEnabled &&
+			Element.Detail.ScreenPost.eProfile !=
+				EFFECT_SCREEN_POST_PROFILE::END &&
+			Element.Detail.ScreenPost.eStatus !=
+				EFFECT_PRESENTATION_RUNTIME_STATUS::END;
+	case EFFECT_ELEMENT_KIND::MESH:
+	case EFFECT_ELEMENT_KIND::SPRITE:
+	case EFFECT_ELEMENT_KIND::PARTICLE:
+	case EFFECT_ELEMENT_KIND::DECAL:
+	case EFFECT_ELEMENT_KIND::TRAIL:
+	case EFFECT_ELEMENT_KIND::END:
+	default:
+		return false;
+	}
+}
+
 /* G3's compiler-derived authoring family is intentionally separate from the
    Effect Tool's legacy six-way creation selector. It is a read-only
    classification of renderer shape, source blend evidence, and SubUV. */

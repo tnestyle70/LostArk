@@ -7382,8 +7382,9 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 		[](const EFFECT_ELEMENT_DESC& Element)
 		{
 			return Element.bVisible &&
-				Is_EffectAuthoringExecutionTarget(
-					Element.Material.Execution);
+				(Is_EffectAuthoringExecutionTarget(
+					Element.Material.Execution) ||
+				 Is_EffectPresentationExecutionTarget(Element));
 		});
 	const bool_t bHasVisibleModelCue = std::any_of(
 		Document.ModelCues.begin(), Document.ModelCues.end(),
@@ -7400,7 +7401,8 @@ bool_t Client::CEffectDocumentCodec::Validate_Drawable(
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
 		if (!Element.bVisible ||
-			!Is_EffectAuthoringExecutionTarget(Element.Material.Execution))
+			(!Is_EffectAuthoringExecutionTarget(Element.Material.Execution) &&
+			 !Is_EffectPresentationExecutionTarget(Element)))
 			continue;
 		if (EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
 			EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)

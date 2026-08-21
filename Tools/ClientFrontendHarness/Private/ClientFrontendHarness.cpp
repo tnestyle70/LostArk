@@ -16219,6 +16219,274 @@ namespace
 		}
 	}
 
+	void Test_EffectToolPresentationFamilies(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		EFFECT_DOCUMENT_DESC Source;
+		Source.strEffectAssetId = "effect.harness.presentation-families";
+		Source.strDisplayName = "Presentation Families Harness";
+		EFFECT_ELEMENT_DESC Light;
+		Light.strElementId = "presentation.light.harness";
+		Light.strDisplayName = "Presentation Light";
+		Light.strGroupId = "presentation.light";
+		Light.eKind = EFFECT_ELEMENT_KIND::LIGHT;
+		Light.Detail.Timing.fLifeTimeSeconds = 1.f;
+		Light.Detail.Light.bEnabled = true;
+		Light.Detail.Light.eProfile = EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1;
+		Light.Detail.Light.eStatus =
+			EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+		Light.Detail.Light.fRange = 12.f;
+		Light.Detail.Light.fIntensity = 3.f;
+		Light.Detail.Light.vColor = { 1.f, 0.75f, 0.25f, 1.f };
+		Light.Detail.Light.vAmbient = { 0.05f, 0.025f, 0.f, 1.f };
+		Light.Detail.Light.fFalloffExponent = 2.f;
+		EFFECT_ELEMENT_DESC Post;
+		Post.strElementId = "presentation.screen-post.harness";
+		Post.strDisplayName = "Presentation Screen Post";
+		Post.strGroupId = "presentation.screen-post";
+		Post.eKind = EFFECT_ELEMENT_KIND::SCREEN_POST;
+		Post.Detail.Timing.fLifeTimeSeconds = 1.f;
+		Post.Detail.ScreenPost.bEnabled = true;
+		Post.Detail.ScreenPost.eProfile =
+			EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1;
+		Post.Detail.ScreenPost.eStatus =
+			EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+		Post.Detail.ScreenPost.fIntensity = 0.25f;
+		Post.Detail.ScreenPost.fSecondaryIntensity = 0.1f;
+		Post.Detail.ScreenPost.fFrequency = 1.5f;
+		Post.Detail.ScreenPost.iRandomSeed = 11u;
+		Source.Elements = { Light, Post };
+		std::string Status;
+		const bool_t bSourceValid = CEffectDocumentCodec::Validate(
+			Source, Status) && CEffectDocumentCodec::Validate_Drawable(
+				Source, Status);
+		runner.Require(bSourceValid,
+			"Effect Tool Presentation Family Fixture Is A Valid Authored Light And Screen Post Document");
+		if (!bSourceValid)
+		{
+			std::cout << "[DETAIL] " << Status << '\n';
+			return;
+		}
+
+		std::array<EFFECT_ELEMENT_DESC, 8u> FamilyProbes{};
+		FamilyProbes[0u].eKind = EFFECT_ELEMENT_KIND::MESH;
+		FamilyProbes[1u].eKind = EFFECT_ELEMENT_KIND::SPRITE;
+		FamilyProbes[2u].eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+		FamilyProbes[3u].eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+		EFFECT_RESOURCE_BINDING_DESC MeshShapeBinding;
+		MeshShapeBinding.strSlotId = "meshModel";
+		FamilyProbes[3u].ResourceBindings.push_back(MeshShapeBinding);
+		FamilyProbes[4u].eKind = EFFECT_ELEMENT_KIND::DECAL;
+		FamilyProbes[5u].eKind = EFFECT_ELEMENT_KIND::TRAIL;
+		FamilyProbes[6u] = Source.Elements[0u];
+		FamilyProbes[7u] = Source.Elements[1u];
+		constexpr std::array<EFFECT_AUTHORING_FAMILY, 8u> EXPECTED_FAMILIES = {{
+			EFFECT_AUTHORING_FAMILY::MESH,
+			EFFECT_AUTHORING_FAMILY::SPRITE,
+			EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE,
+			EFFECT_AUTHORING_FAMILY::MESH_PARTICLE,
+			EFFECT_AUTHORING_FAMILY::LOCAL_DECAL,
+			EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON,
+			EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT,
+			EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST
+		}};
+		bool_t bFamilyTableExact = EXPECTED_FAMILIES.size() ==
+			static_cast<size_t>(EFFECT_AUTHORING_FAMILY::END);
+		for (size_t iFamily = 0u; iFamily < FamilyProbes.size(); ++iFamily)
+		{
+			bFamilyTableExact = bFamilyTableExact &&
+				Resolve_EffectToolAuthoringFamily(FamilyProbes[iFamily]) ==
+					EXPECTED_FAMILIES[iFamily] &&
+				std::string_view(Get_EffectToolAuthoringFamilyLabel(
+					EXPECTED_FAMILIES[iFamily])) != "Invalid";
+		}
+		const bool_t bFamiliesResolved = bFamilyTableExact &&
+			Resolve_EffectToolAuthoringFamily(Source.Elements[0u]) ==
+				EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT &&
+			Resolve_EffectToolAuthoringFamily(Source.Elements[1u]) ==
+				EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST &&
+			std::string_view(Get_EffectToolAuthoringFamilyLabel(
+				EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT)) ==
+					"Presentation Light" &&
+			std::string_view(Get_EffectToolAuthoringFamilyLabel(
+				EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST)) ==
+					"Presentation Screen Post" &&
+			Is_EffectToolPresentationPreviewAdmitted(Source.Elements[0u]) &&
+			Is_EffectToolPresentationPreviewAdmitted(Source.Elements[1u]);
+		runner.Require(bFamiliesResolved,
+			"Effect Tool Resolves Light And Screen Post As Distinct Presentation Families");
+
+		CEffectPlayback Playback;
+		Status.clear();
+		const bool_t bPlaybackStaged = Playback.Stage_Document(Source, Status);
+		float4x4_t Root{};
+		XMStoreFloat4x4(&Root, XMMatrixIdentity());
+		if (bPlaybackStaged)
+			Playback.Seek(0.25f, Root);
+		const bool_t bPresentationPreviewExecutable = bPlaybackStaged &&
+			Playback.Get_Frame().Elements.empty() &&
+			Playback.Get_Frame().Lights.size() == 1u &&
+			Playback.Get_Frame().ScreenPosts.size() == 1u;
+		runner.Require(bPresentationPreviewExecutable,
+			"Effect Tool Presentation Families Form A Drawable Playback-Executable Preview Document");
+		if (!bPresentationPreviewExecutable)
+		{
+			std::cout << "[DETAIL] " << Status << '\n';
+			return;
+		}
+
+		const std::filesystem::path Destination =
+			std::filesystem::temp_directory_path() /
+			("lostark-effect-presentation-families-" +
+				std::to_string(GetCurrentProcessId()) + "-" +
+				std::to_string(GetTickCount64()) + ".effect.json");
+		std::error_code FileError;
+		std::filesystem::remove(Destination, FileError);
+		Status.clear();
+		const bool_t bInitialSaved = CEffectDocumentCodec::Save_Atomic(
+			Destination, Source, Status);
+		EFFECT_DOCUMENT_DESC Reloaded;
+		const bool_t bInitialReloaded = bInitialSaved &&
+			CEffectDocumentCodec::Load(Destination, Reloaded, Status);
+		runner.Require(bInitialReloaded,
+			"Effect Tool Presentation Families Save And Reload Through The Ordinary Authored Codec");
+		if (!bInitialReloaded)
+		{
+			std::cout << "[DETAIL] " << Status << '\n';
+			std::filesystem::remove(Destination, FileError);
+			return;
+		}
+
+		const auto FindLight = [](EFFECT_DOCUMENT_DESC& Document)
+			-> EFFECT_ELEMENT_DESC*
+		{
+			const auto Iterator = std::ranges::find_if(Document.Elements,
+				[](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.eKind == EFFECT_ELEMENT_KIND::LIGHT &&
+						Element.Detail.Light.bEnabled;
+				});
+			return Iterator == Document.Elements.end() ? nullptr : &*Iterator;
+		};
+		const auto FindPost = [](EFFECT_DOCUMENT_DESC& Document)
+			-> EFFECT_ELEMENT_DESC*
+		{
+			const auto Iterator = std::ranges::find_if(Document.Elements,
+				[](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST &&
+						Element.Detail.ScreenPost.bEnabled;
+				});
+			return Iterator == Document.Elements.end() ? nullptr : &*Iterator;
+		};
+
+		EFFECT_DOCUMENT_DESC Edited = Reloaded;
+		EFFECT_ELEMENT_DESC* pEditedLight = FindLight(Edited);
+		EFFECT_ELEMENT_DESC* pEditedPost = FindPost(Edited);
+		if (nullptr != pEditedLight)
+		{
+			pEditedLight->Detail.Light.fRange = 24.f;
+			pEditedLight->Detail.Light.fIntensity = 7.f;
+			pEditedLight->Detail.Light.fFalloffExponent = 3.5f;
+		}
+		if (nullptr != pEditedPost)
+		{
+			pEditedPost->Detail.ScreenPost.eProfile =
+				EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1;
+			pEditedPost->Detail.ScreenPost.fIntensity = 0.4f;
+			pEditedPost->Detail.ScreenPost.fSecondaryIntensity = 0.125f;
+			pEditedPost->Detail.ScreenPost.fFrequency = 2.5f;
+			pEditedPost->Detail.ScreenPost.vTint = { 0.8f, 0.9f, 1.f, 1.f };
+			pEditedPost->Detail.ScreenPost.iRandomSeed = 77u;
+		}
+		const std::string InitialCanonical =
+			CEffectDocumentCodec::Serialize(Reloaded);
+		Status.clear();
+		const bool_t bEditedSaved = nullptr != pEditedLight &&
+			nullptr != pEditedPost &&
+			CEffectDocumentCodec::Save_AtomicIfUnchanged(
+				Destination, Edited, InitialCanonical, Status);
+		EFFECT_DOCUMENT_DESC EditedReloaded;
+		const bool_t bEditedReloaded = bEditedSaved &&
+			CEffectDocumentCodec::Load(Destination, EditedReloaded, Status);
+		EFFECT_ELEMENT_DESC* pReloadedLight = FindLight(EditedReloaded);
+		EFFECT_ELEMENT_DESC* pReloadedPost = FindPost(EditedReloaded);
+		const bool_t bTypedFieldsPersisted = bEditedReloaded &&
+			nullptr != pReloadedLight && nullptr != pReloadedPost &&
+			pReloadedLight->Detail.Light.fRange == 24.f &&
+			pReloadedLight->Detail.Light.fIntensity == 7.f &&
+			pReloadedLight->Detail.Light.fFalloffExponent == 3.5f &&
+			pReloadedPost->Detail.ScreenPost.eProfile ==
+				EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1 &&
+			pReloadedPost->Detail.ScreenPost.fIntensity == 0.4f &&
+			pReloadedPost->Detail.ScreenPost.fSecondaryIntensity == 0.125f &&
+			pReloadedPost->Detail.ScreenPost.fFrequency == 2.5f &&
+			pReloadedPost->Detail.ScreenPost.iRandomSeed == 77u;
+		runner.Require(bTypedFieldsPersisted,
+			"Effect Tool Presentation Light And Screen Post Typed Fields Persist After Atomic Save Reload");
+		if (!bTypedFieldsPersisted)
+		{
+			std::cout << "[DETAIL] " << Status << '\n';
+			std::filesystem::remove(Destination, FileError);
+			return;
+		}
+
+		const std::string EditedCanonical =
+			CEffectDocumentCodec::Serialize(EditedReloaded);
+		const std::string EditedDisk = Read_Text(Destination);
+		EFFECT_DOCUMENT_DESC Invalid = EditedReloaded;
+		EFFECT_ELEMENT_DESC* pInvalidPost = FindPost(Invalid);
+		if (nullptr != pInvalidPost)
+			pInvalidPost->Detail.ScreenPost.eProfile =
+				EFFECT_SCREEN_POST_PROFILE::END;
+		Status.clear();
+		const bool_t bInvalidRejected = nullptr != pInvalidPost &&
+			!CEffectDocumentCodec::Save_AtomicIfUnchanged(
+				Destination, Invalid, EditedCanonical, Status) &&
+			!Status.empty() && Read_Text(Destination) == EditedDisk;
+		runner.Require(bInvalidRejected,
+			"Effect Tool Presentation Invalid Profile Is Rejected Without Changing The Saved Effect");
+
+		EFFECT_DOCUMENT_DESC Deleted = EditedReloaded;
+		const size_t iBeforeDelete = Deleted.Elements.size();
+		std::erase_if(Deleted.Elements,
+			[](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST &&
+					Element.Detail.ScreenPost.bEnabled;
+			});
+		Status.clear();
+		const bool_t bDeleteSaved = Deleted.Elements.size() < iBeforeDelete &&
+			CEffectDocumentCodec::Save_AtomicIfUnchanged(
+				Destination, Deleted, EditedCanonical, Status);
+		EFFECT_DOCUMENT_DESC DeletedReloaded;
+		const bool_t bDeleteReloaded = bDeleteSaved &&
+			CEffectDocumentCodec::Load(Destination, DeletedReloaded, Status);
+		const bool_t bPostDeleted = bDeleteReloaded &&
+			nullptr == FindPost(DeletedReloaded) &&
+			nullptr != FindLight(DeletedReloaded);
+		runner.Require(bPostDeleted,
+			"Effect Tool Presentation Screen Post Delete Preserves The Light Family And Saves Atomically");
+
+		EFFECT_DOCUMENT_DESC LightSolo = EditedReloaded;
+		std::erase_if(LightSolo.Elements,
+			[](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Resolve_EffectToolAuthoringFamily(Element) !=
+					EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT;
+			});
+		runner.Require(!LightSolo.Elements.empty() &&
+			std::ranges::all_of(LightSolo.Elements,
+				[](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Resolve_EffectToolAuthoringFamily(Element) ==
+						EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT;
+				}),
+			"Effect Tool Presentation Family Isolation Keeps Only The Selected Typed Family");
+
+		std::filesystem::remove(Destination, FileError);
+	}
+
 	void Test_Warlord17090AuthoredSubsetSave(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -41872,6 +42140,14 @@ int main(const int argc, char* argv[])
 		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
 		std::cout << std::unitbuf;
 		Test_Warlord17090AuthoredSubsetSave(runner);
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--effect-tool-presentation-family-fast")
+	{
+		SCOPED_ENGINE_ERROR_MODE NonInteractiveErrors(true);
+		std::cout << std::unitbuf;
+		Test_EffectToolPresentationFamilies(runner);
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
