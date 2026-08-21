@@ -246,6 +246,13 @@ bool_t Client::CAnimationEffectCueDocument::Load_ForProductPrewarm(
     OutDocument = std::move(Staged);
     strOutStatus = "Loaded " + std::to_string(OutDocument.Cues.size()) +
         " admitted animation Effect cues for Product prewarm without a live model.";
+	if (!OutDocument.UnavailableEffectAssetIds.empty())
+	{
+		strOutStatus += " Isolated " + std::to_string(
+			OutDocument.UnavailableEffectAssetIds.size()) +
+			" unavailable exact catalog target(s); first: " +
+			OutDocument.UnavailableEffectAssetIds.front() + ".";
+	}
     return true;
 }
 
@@ -658,26 +665,32 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
         }
         if (!Read_Transform(Fields, Cue.LocalTransform) ||
             Cue.iEndMs < Cue.iStartMs || Cue.strAnchorSlotId.empty() ||
-            !Is_AvailableClip(Cue.strClipName) ||
-            !CEffectCatalog::Contains(Cue.strEffectAssetId))
+            !Is_AvailableClip(Cue.strClipName))
         {
-            strOutStatus = "Animation EFFECT cue failed clip/effect/transform validation.";
+            strOutStatus =
+				"Animation EFFECT cue failed clip/time/transform validation.";
             return false;
         }
 		if (EFFECT_STOP_POLICY::CUE_END == Cue.eStopPolicy &&
             Cue.iEndMs <= Cue.iStartMs)
         {
             strOutStatus = "cue_end requires endms greater than startms.";
-            return false;
-        }
+			return false;
+		}
         const std::string Key = Cue.strClipName + "\n" +
             std::to_string(Cue.iStartMs) + "\n" + Cue.strEffectAssetId +
             "\n" + Cue.strAnchorSlotId;
         if (!Keys.insert(Key).second)
         {
-            strOutStatus = "Duplicate admitted Animation EFFECT cue.";
+            strOutStatus = "Duplicate Animation EFFECT cue.";
             return false;
         }
+		if (!CEffectCatalog::Contains(Cue.strEffectAssetId))
+		{
+			Staged.UnavailableEffectAssetIds.push_back(
+				Cue.strEffectAssetId);
+			continue;
+		}
         Staged.Cues.push_back(std::move(Cue));
     }
     if (ActualRows != DeclaredRows)
@@ -694,6 +707,12 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
                 std::tie(Right.strClipName, Right.iStartMs,
                     Right.strEffectAssetId, Right.strAnchorSlotId);
         });
+	std::sort(Staged.UnavailableEffectAssetIds.begin(),
+		Staged.UnavailableEffectAssetIds.end());
+	Staged.UnavailableEffectAssetIds.erase(std::unique(
+		Staged.UnavailableEffectAssetIds.begin(),
+		Staged.UnavailableEffectAssetIds.end()),
+		Staged.UnavailableEffectAssetIds.end());
     if (nullptr != pOutReferencedClips)
     {
         std::vector<std::string> ReferencedClips(
@@ -703,7 +722,14 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
     }
     OutDocument = std::move(Staged);
     strOutStatus = "Loaded " + std::to_string(OutDocument.Cues.size()) +
-        " admitted animation Effect cues.";
+		" admitted animation Effect cues.";
+	if (!OutDocument.UnavailableEffectAssetIds.empty())
+	{
+		strOutStatus += " Isolated " + std::to_string(
+			OutDocument.UnavailableEffectAssetIds.size()) +
+			" unavailable exact catalog target(s); first: " +
+			OutDocument.UnavailableEffectAssetIds.front() + ".";
+	}
     return true;
 }
 

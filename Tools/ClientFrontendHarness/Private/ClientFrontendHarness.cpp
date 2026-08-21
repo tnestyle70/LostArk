@@ -11039,9 +11039,7 @@ namespace
 	void Test_BasicAttackExplicitCommandResendGate(TEST_RUNNER& runner)
 	{
 		using Client::CBASIC_ATTACK_RESEND_GATE;
-		using Client::CBASIC_ATTACK_REPEAT_SCHEDULER;
-		using CLOCK = std::chrono::steady_clock;
-		using namespace std::chrono_literals;
+		using Client::CBASIC_ATTACK_PRESS_EDGE_GATE;
 
 		CBASIC_ATTACK_RESEND_GATE gate;
 		runner.Require(
@@ -11062,51 +11060,43 @@ namespace
 			!gate.Observe_Button(true),
 			"Controller Reset Clears Basic Attack Resend Suppression");
 
-		CBASIC_ATTACK_REPEAT_SCHEDULER tap;
-		const CLOCK::time_point start{};
+		CBASIC_ATTACK_PRESS_EDGE_GATE tap;
 		const bool_t tapSubmittedImmediately =
-			tap.Should_Submit(true, true, start);
-		const bool_t tapDidNotAutoRepeat =
-			!tap.Should_Submit(true, true, start + 179ms);
+			tap.Should_Submit(true, true);
+		const bool_t tapDidNotAutoRepeatWhileHeld =
+			!tap.Should_Submit(true, true);
 		const bool_t tapReleasedWithoutSubmission =
-			!tap.Should_Submit(false, true, start + 179ms);
+			!tap.Should_Submit(false, true);
 		runner.Require(
-			tapSubmittedImmediately && tapDidNotAutoRepeat &&
+			tapSubmittedImmediately && tapDidNotAutoRepeatWhileHeld &&
 			tapReleasedWithoutSubmission,
-			"Basic Attack Tap Submits BA1 Once Before Initial Hold Delay");
+			"One Physical LMB Press Submits Exactly One Basic Attack");
 
 		const bool_t repeatedClickSubmittedImmediately =
-			tap.Should_Submit(true, true, start + 180ms);
+			tap.Should_Submit(true, true);
 		runner.Require(
 			repeatedClickSubmittedImmediately,
 			"Physical Release Then Repeated Click Submits Immediately");
 
-		CBASIC_ATTACK_REPEAT_SCHEDULER held;
-		const bool_t heldInitial = held.Should_Submit(true, true, start);
-		const bool_t heldWaited =
-			!held.Should_Submit(true, true, start + 179ms);
-		const bool_t heldFirstRepeat =
-			held.Should_Submit(true, true, start + 180ms);
-		const bool_t heldRepeatWaited =
-			!held.Should_Submit(true, true, start + 279ms);
-		const bool_t heldSecondRepeat =
-			held.Should_Submit(true, true, start + 280ms);
+		CBASIC_ATTACK_PRESS_EDGE_GATE held;
+		const bool_t heldInitial = held.Should_Submit(true, true);
+		const bool_t heldNeverRepeated =
+			!held.Should_Submit(true, true) &&
+			!held.Should_Submit(true, true) &&
+			!held.Should_Submit(true, true);
 		runner.Require(
-			heldInitial && heldWaited && heldFirstRepeat &&
-			heldRepeatWaited && heldSecondRepeat,
-			"Held LMB Uses 180ms Initial Delay Then 100ms Continuations");
+			heldInitial && heldNeverRepeated,
+			"Held LMB Never Auto-Buffers A Combo Continuation");
 
-		CBASIC_ATTACK_REPEAT_SCHEDULER blocked;
-		const bool_t blockedInitial = blocked.Should_Submit(true, true, start);
+		CBASIC_ATTACK_PRESS_EDGE_GATE blocked;
+		const bool_t blockedInitial = blocked.Should_Submit(true, true);
 		const bool_t filteredFrameDidNotSubmit =
-			!blocked.Should_Submit(true, false, start + 100ms);
+			!blocked.Should_Submit(true, false);
 		const bool_t unblockDidNotLookLikeRepress =
-			!blocked.Should_Submit(true, true, start + 110ms);
-		const bool_t rawHoldStillReachedRepeat =
-			blocked.Should_Submit(true, true, start + 180ms);
+			!blocked.Should_Submit(true, true);
 		runner.Require(
 			blockedInitial && filteredFrameDidNotSubmit &&
-			unblockDidNotLookLikeRepress && rawHoldStillReachedRepeat,
+			unblockDidNotLookLikeRepress,
 			"UI Block Preserves Raw Physical Hold Without False Release Or Repress");
 	}
 
@@ -20280,8 +20270,14 @@ namespace
 				{
 					return effectAssetId.starts_with("effect.valtan.");
 				}));
-		constexpr std::string_view inactiveAuthoringOnlyId =
-			"effect.artist.skill.31210.ba4.unified";
+		constexpr std::string_view removedLegacyArtistId =
+			"effect.artist.skill.31210.ba4";
+		constexpr std::array<std::string_view, 4u> activeArtistUnifiedIds = {{
+			"effect.artist.skill.31050.clip1.unified",
+			"effect.artist.skill.31050.clip2.unified",
+			"effect.artist.skill.31210.ba4.unified",
+			"effect.artist.skill.31950.unified"
+		}};
 		constexpr std::string_view firstId =
 			"effect.lancemaster.skill.34010.ba1.unified";
 		constexpr std::string_view secondId =
@@ -20303,13 +20299,20 @@ namespace
 				firstDocument.get() &&
 			CEffectCatalog::Find_VisualProjection_Loaded(
 				std::string(firstId)).get() == firstProjection.get();
-		runner.Require(catalogLoaded && runtimeEffectIds.size() == 192u &&
+		const bool_t activeArtistUnifiedExact = std::all_of(
+			activeArtistUnifiedIds.begin(), activeArtistUnifiedIds.end(),
+			[](const std::string_view effectAssetId)
+			{
+				return CEffectCatalog::Contains(std::string(effectAssetId));
+			});
+		runner.Require(catalogLoaded && runtimeEffectIds.size() == 195u &&
 			valtanRuntimeEffectCount == 99u &&
 			CEffectCatalog::Contains(std::string(firstId)) &&
 			CEffectCatalog::Contains(std::string(secondId)) &&
-			!CEffectCatalog::Contains(std::string(inactiveAuthoringOnlyId)) &&
+			activeArtistUnifiedExact &&
+			!CEffectCatalog::Contains(std::string(removedLegacyArtistId)) &&
 			cacheOnlyIdentity,
-			"Published Product Set Has 192 Runtime Members Including 99 Valtan Targets, Excludes Authoring-Only Draft, And Cache-Only Lookup Never First-Use Loads JSON");
+			"Published Product Set Has 195 Runtime Members Including 99 Valtan Targets And Four Active Artist Unified Targets, Excludes The Replaced Legacy Artist Target, And Cache-Only Lookup Never First-Use Loads JSON");
 
 		const uint64_t beforeDirectAuthoredReplacementRevision =
 			CEffectCatalog::Get_RuntimeRevision();
@@ -30808,6 +30811,228 @@ namespace
 			"Effect Tool Preview Rejects An Unmapped Authored BA Document Without Replacing The Prior Selection");
 	}
 
+	void Test_AnimationEffectCuePartialCatalogIsolation(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr std::string_view VALID_EFFECT_ID =
+			"effect.dimensionmaster.skill.2050010.ba1.unified";
+		constexpr std::string_view MISSING_EFFECT_ID =
+			"effect.harness.intentionally-missing.unified";
+		const std::string CueText =
+			"LOSTARK_ANIM_EVENTS 5 \"CueIsolationFixture\" 2\n"
+			"\"clip.valid\" EFFECT startms=0 payload=\"" +
+			std::string(VALID_EFFECT_ID) +
+			"\" effectref=asset anchor=\"root\" follow=follow stop=natural "
+			"px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1\n"
+			"\"clip.missing\" EFFECT startms=0 payload=\"" +
+			std::string(MISSING_EFFECT_ID) +
+			"\" effectref=asset anchor=\"root\" follow=follow stop=natural "
+			"px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1\n";
+		const std::vector<std::string> AvailableClips = {
+			"clip.valid", "clip.missing" };
+		ANIMATION_EFFECT_CUE_DOCUMENT Document;
+		std::string Status;
+		const bool_t bLoaded =
+			CEffectCatalog::Contains(std::string(VALID_EFFECT_ID)) &&
+			!CEffectCatalog::Contains(std::string(MISSING_EFFECT_ID)) &&
+			CAnimationEffectCueDocument::Load_FromText(
+				"CueIsolationFixture", CueText, AvailableClips,
+				Document, Status, true);
+		const bool_t bExactIsolation = bLoaded &&
+			1u == Document.Cues.size() &&
+			Document.Cues.front().strClipName == "clip.valid" &&
+			Document.Cues.front().strEffectAssetId == VALID_EFFECT_ID &&
+			1u == Document.UnavailableEffectAssetIds.size() &&
+			Document.UnavailableEffectAssetIds.front() == MISSING_EFFECT_ID &&
+			Status.find("Isolated 1 unavailable exact catalog target") !=
+				std::string::npos;
+		runner.Require(bExactIsolation,
+			"Animation Effect Cue Load Isolates One Missing Target Without Discarding A Valid Sibling Cue");
+
+		const std::string MissingRow =
+			"\"clip.missing\" EFFECT startms=0 payload=\"" +
+			std::string(MISSING_EFFECT_ID) +
+			"\" effectref=asset anchor=\"root\" follow=follow stop=natural "
+			"px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1\n";
+		const std::string DuplicateMissingText =
+			"LOSTARK_ANIM_EVENTS 5 \"CueDuplicateFixture\" 2\n" +
+			MissingRow + MissingRow;
+		ANIMATION_EFFECT_CUE_DOCUMENT Preserved = Document;
+		const bool_t bDuplicateMissingRejected =
+			!CAnimationEffectCueDocument::Load_FromText(
+				"CueDuplicateFixture", DuplicateMissingText,
+				{ "clip.missing" }, Preserved, Status, true) &&
+			Status == "Duplicate Animation EFFECT cue." &&
+			Preserved.Cues.size() == Document.Cues.size() &&
+			Preserved.Cues.front().strEffectAssetId ==
+				Document.Cues.front().strEffectAssetId &&
+			Preserved.UnavailableEffectAssetIds ==
+				Document.UnavailableEffectAssetIds;
+		runner.Require(bDuplicateMissingRejected,
+			"Animation Effect Cue Load Rejects Duplicate Missing Targets And Preserves The Prior Document");
+	}
+
+	void Test_EffectToolArtistBasicAttackCueResolution(TEST_RUNNER& runner)
+	{
+		using namespace Client;
+		constexpr uint32_t ARTIST_BASIC_ATTACK_SKILL_ID = 31000u;
+		constexpr std::array<std::string_view, 4u> ORDERED_CLIPS = {{
+			"sdm_att_battle_1_03",
+			"sdm_att_battle_1_02",
+			"sdm_att_battle_1_01",
+			"sdm_att_battle_1_04"
+		}};
+		constexpr std::array<std::string_view, 4u> ORDERED_EFFECTS = {{
+			"effect.artist.skill.31000.ba1.unified",
+			"effect.artist.skill.31000.ba2.unified",
+			"effect.artist.skill.31000.ba3.unified",
+			"effect.artist.skill.31000.ba4.unified"
+		}};
+
+		std::string Status;
+		ANIMATION_SKILL_BINDING_DOCUMENT Bindings;
+		const bool_t bBindingParsed =
+			CAnimationSkillBindingDocument::Parse_Text(
+				Read_Text(CAnimationSkillBindingDocument::Resolve_Path("Artist")),
+				Bindings, Status);
+		const auto Binding = std::find_if(
+			Bindings.Bindings.begin(), Bindings.Bindings.end(),
+			[](const ANIMATION_SKILL_BINDING& Candidate)
+			{
+				return ARTIST_BASIC_ATTACK_SKILL_ID == Candidate.iSkillId;
+			});
+		bool_t bBindingExact = bBindingParsed &&
+			Binding != Bindings.Bindings.end() &&
+			Binding->Stages.size() == ORDERED_CLIPS.size();
+		for (size_t iStage = 0u;
+			bBindingExact && iStage < ORDERED_CLIPS.size(); ++iStage)
+		{
+			bBindingExact = 1u == Binding->Stages[iStage].Clips.size() &&
+				Binding->Stages[iStage].Clips.front().strClipName ==
+					ORDERED_CLIPS[iStage];
+		}
+		runner.Require(bBindingExact,
+			"Effect Tool Artist BA Binding Preserves Ordered Clips 03 02 01 04");
+		if (!bBindingExact)
+			return;
+
+		ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+		const bool_t bCueDocumentLoaded =
+			CAnimationEffectCueDocument::Load_ForProductPrewarm(
+				"Artist", CueDocument, Status);
+		bool_t bExactPreviewCandidates = bCueDocumentLoaded;
+		for (size_t iStage = 0u;
+			bExactPreviewCandidates && iStage < ORDERED_EFFECTS.size(); ++iStage)
+		{
+			std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Candidates;
+			bExactPreviewCandidates =
+				CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+					*Binding, CueDocument.Cues, ORDERED_EFFECTS[iStage],
+					Candidates, Status) &&
+				1u == Candidates.size() &&
+				Candidates.front().iBoundClipOrdinal == iStage &&
+				Candidates.front().iStageIndex == iStage &&
+				0u == Candidates.front().iStageClipIndex &&
+				Candidates.front().Clip.strClipName == ORDERED_CLIPS[iStage] &&
+				Candidates.front().Cue.strClipName == ORDERED_CLIPS[iStage] &&
+				Candidates.front().Cue.strEffectAssetId == ORDERED_EFFECTS[iStage] &&
+				0u == Candidates.front().Cue.iStartMs;
+		}
+		runner.Require(bExactPreviewCandidates,
+			"Effect Tool Artist BA1 BA2 BA3 BA4 Resolve To Exactly One Ordered Stage Each");
+	}
+
+	void Test_FourClassAnimationEffectCueCatalogParity(
+		TEST_RUNNER& runner,
+		const bool_t bRequireCompleteParity)
+	{
+		using namespace Client;
+		constexpr std::array<std::string_view, 4u> CLASS_ASSETS = {{
+			"LanceMaster", "Artist", "DimensionMaster", "Warlord"
+		}};
+		constexpr std::array<std::string_view, 4u> TRANSITIONAL_ARTIST_MISSING = {{
+			"effect.artist.skill.31050.clip1.unified",
+			"effect.artist.skill.31050.clip2.unified",
+			"effect.artist.skill.31210.ba4.unified",
+			"effect.artist.skill.31950.unified"
+		}};
+		constexpr std::array<std::pair<std::string_view, std::string_view>, 4u>
+			ARTIST_BA_CUES = {{
+				{ "sdm_att_battle_1_03",
+					"effect.artist.skill.31000.ba1.unified" },
+				{ "sdm_att_battle_1_02",
+					"effect.artist.skill.31000.ba2.unified" },
+				{ "sdm_att_battle_1_01",
+					"effect.artist.skill.31000.ba3.unified" },
+				{ "sdm_att_battle_1_04",
+					"effect.artist.skill.31000.ba4.unified" }
+			}};
+
+		bool_t bAllDocumentsLoaded = true;
+		bool_t bOnlyKnownTransitionalGap = true;
+		bool_t bCompleteParity = true;
+		bool_t bArtistBaExact = false;
+		std::string Diagnostics;
+		for (const std::string_view ClassAsset : CLASS_ASSETS)
+		{
+			ANIMATION_EFFECT_CUE_DOCUMENT Document;
+			std::string Status;
+			const bool_t bLoaded =
+				CAnimationEffectCueDocument::Load_ForProductPrewarm(
+					std::string(ClassAsset), Document, Status);
+			bAllDocumentsLoaded = bAllDocumentsLoaded && bLoaded;
+			if (!bLoaded)
+			{
+				Diagnostics += std::string(ClassAsset) + ": " + Status + "; ";
+				continue;
+			}
+
+			bCompleteParity = bCompleteParity &&
+				Document.UnavailableEffectAssetIds.empty();
+			if (ClassAsset != "Artist")
+			{
+				bOnlyKnownTransitionalGap = bOnlyKnownTransitionalGap &&
+					Document.UnavailableEffectAssetIds.empty();
+			}
+			else
+			{
+				const std::vector<std::string> ExpectedMissing(
+					TRANSITIONAL_ARTIST_MISSING.begin(),
+					TRANSITIONAL_ARTIST_MISSING.end());
+				bOnlyKnownTransitionalGap = bOnlyKnownTransitionalGap &&
+					(Document.UnavailableEffectAssetIds.empty() ||
+					 Document.UnavailableEffectAssetIds == ExpectedMissing);
+
+				bArtistBaExact = true;
+				for (const auto& [ClipName, EffectAssetId] : ARTIST_BA_CUES)
+				{
+					const size_t iMatchCount = static_cast<size_t>(
+						std::count_if(Document.Cues.begin(), Document.Cues.end(),
+							[ClipName, EffectAssetId](
+								const ANIMATION_EFFECT_CUE& Cue)
+							{
+								return Cue.strClipName == ClipName &&
+									Cue.strEffectAssetId == EffectAssetId &&
+									0u == Cue.iStartMs;
+							}));
+					bArtistBaExact = bArtistBaExact && 1u == iMatchCount;
+				}
+			}
+		}
+
+		runner.Require(bAllDocumentsLoaded && bOnlyKnownTransitionalGap,
+			"Four-Class Animevents Load Commits Valid Cues And Isolates Only The Known Artist Runtime Publish Gap");
+		runner.Require(bArtistBaExact,
+			"Artist BA1 BA2 BA3 BA4 Product Cues Survive An Unrelated Missing Exact Target");
+		if (bRequireCompleteParity)
+		{
+			runner.Require(bCompleteParity,
+				"Four-Class Animevents Exact Effect Targets Have Complete Runtime Catalog Parity");
+		}
+		if (!Diagnostics.empty())
+			std::cout << "[DETAIL] " << Diagnostics << '\n';
+	}
+
 	void Test_EffectToolWarlordHoldPhaseFamily(TEST_RUNNER& runner)
 	{
 		using namespace Client;
@@ -30918,6 +31143,31 @@ namespace
 		}
 		runner.Require(bPhaseCuesExact,
 			"Effect Tool Warlord HOLD Family Keeps Three Phase Local Product Cues");
+
+		ANIMATION_EFFECT_CUE_DOCUMENT CueDocument;
+		const bool_t bCueDocumentLoaded =
+			CAnimationEffectCueDocument::Load_ForProductPrewarm(
+				"Warlord", CueDocument, Status);
+		bool_t bExactPhasePreview = bCueDocumentLoaded;
+		constexpr std::array<size_t, 3u> PRODUCT_STAGES = {{ 0u, 1u, 2u }};
+		for (size_t iPhase = 0u;
+			bExactPhasePreview && iPhase < PRODUCT_EFFECTS.size(); ++iPhase)
+		{
+			std::vector<ANIMATION_EFFECT_PREVIEW_CANDIDATE> Candidates;
+			bExactPhasePreview =
+				CAnimationEffectCueDocument::Resolve_PreviewCandidates(
+					*Binding, CueDocument.Cues, PRODUCT_EFFECTS[iPhase],
+					Candidates, Status) &&
+				1u == Candidates.size() &&
+				Candidates.front().iStageIndex == PRODUCT_STAGES[iPhase] &&
+				0u == Candidates.front().iStageClipIndex &&
+				Candidates.front().Clip.strClipName == PRODUCT_CLIPS[iPhase] &&
+				Candidates.front().Cue.strClipName == PRODUCT_CLIPS[iPhase] &&
+				Candidates.front().Cue.strEffectAssetId ==
+					PRODUCT_EFFECTS[iPhase];
+		}
+		runner.Require(bExactPhasePreview,
+			"Effect Tool Warlord Full Barrel Resolves BA1 BA2 BA3 To Start Charge Release Clips Individually");
 	}
 
 	void Test_DimensionMasterAVoronoiCastDirectionContract(TEST_RUNNER& runner)
@@ -31462,8 +31712,39 @@ int main(const int argc, char* argv[])
 	}
 	if (Mode == "--effect-tool-preview-fast")
 	{
-		Test_EffectToolPlayerPreviewCueResolution(runner);
-		Test_EffectToolWarlordHoldPhaseFamily(runner);
+		Client::CEffectCatalog::Clear();
+		std::string Status;
+		const bool_t bCatalogLoaded = Client::CEffectCatalog::Load(Status);
+		runner.Require(bCatalogLoaded,
+			"Effect Tool Preview Loads The Committed Runtime Effect Catalog");
+		if (bCatalogLoaded)
+		{
+			Test_AnimationEffectCuePartialCatalogIsolation(runner);
+			Test_EffectToolArtistBasicAttackCueResolution(runner);
+			Test_FourClassAnimationEffectCueCatalogParity(runner, false);
+			Test_EffectToolPlayerPreviewCueResolution(runner);
+			Test_EffectToolWarlordHoldPhaseFamily(runner);
+		}
+		else
+		{
+			std::cout << "[DETAIL] " << Status << '\n';
+		}
+		Client::CEffectCatalog::Clear();
+		std::cout << "failures : " << runner.iFailureCount << '\n';
+		return 0 == runner.iFailureCount ? 0 : 1;
+	}
+	if (Mode == "--four-class-effect-cue-parity-fast")
+	{
+		Client::CEffectCatalog::Clear();
+		std::string Status;
+		const bool_t bCatalogLoaded = Client::CEffectCatalog::Load(Status);
+		runner.Require(bCatalogLoaded,
+			"Four-Class Cue Parity Loads The Committed Runtime Effect Catalog");
+		if (bCatalogLoaded)
+			Test_FourClassAnimationEffectCueCatalogParity(runner, true);
+		else
+			std::cout << "[DETAIL] " << Status << '\n';
+		Client::CEffectCatalog::Clear();
 		std::cout << "failures : " << runner.iFailureCount << '\n';
 		return 0 == runner.iFailureCount ? 0 : 1;
 	}
