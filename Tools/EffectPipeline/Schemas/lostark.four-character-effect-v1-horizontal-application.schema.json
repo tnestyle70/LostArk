@@ -1,0 +1,522 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/four-character-effect-v1-horizontal-application-v1.json",
+  "title": "LostArk four-character Effect V1 horizontal application ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "identity",
+    "inputs",
+    "policy",
+    "summary",
+    "projections",
+    "occurrences",
+    "transaction",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.four-character-effect-v1-horizontal-application" },
+    "formatVersion": { "const": 1 },
+    "identity": { "$ref": "#/$defs/identity" },
+    "inputs": { "$ref": "#/$defs/inputs" },
+    "policy": { "$ref": "#/$defs/policy" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "projections": { "$ref": "#/$defs/projections" },
+    "occurrences": {
+      "type": "array",
+      "minItems": 1885,
+      "maxItems": 1885,
+      "items": { "$ref": "#/$defs/occurrence" }
+    },
+    "transaction": { "$ref": "#/$defs/transaction" },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nullableString": {
+      "type": ["string", "null"]
+    },
+    "nullableBoolean": {
+      "type": ["boolean", "null"]
+    },
+    "countMap": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ledgerId", "generation", "revision", "scope"],
+      "properties": {
+        "ledgerId": { "const": "effect.v1.horizontal.four-character.product.v1" },
+        "generation": { "const": 1 },
+        "revision": { "const": 1 },
+        "scope": { "const": "FOUR_CHARACTER_PRODUCT_OCCURRENCES" }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tupleInventory",
+        "sourceMaterialContract",
+        "materialProgramRegistry"
+      ],
+      "properties": {
+        "tupleInventory": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "builder",
+            "mode",
+            "checkedInArtifactUsed",
+            "artifactSha256"
+          ],
+          "properties": {
+            "builder": { "const": "Tools/EffectPipeline/build_effect_tuple_cohort_inventory.py:build_inventory" },
+            "mode": { "const": "IN_MEMORY_CURRENT_HEAD" },
+            "checkedInArtifactUsed": { "const": false },
+            "artifactSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "sourceMaterialContract": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "fileSha256", "joinMode", "materialIdentityCount"],
+          "properties": {
+            "path": { "const": "Data/Effects/AuthoredCorrections/Generated/FourClassCombat.source-material-contract.json" },
+            "fileSha256": { "$ref": "#/$defs/sha256" },
+            "joinMode": { "const": "EXACT_SOURCE_MATERIAL_PATH_ONLY" },
+            "materialIdentityCount": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "materialProgramRegistry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "fileSha256",
+            "validatedRegistrySha256",
+            "bindingCount",
+            "bindingPacketValidation"
+          ],
+          "properties": {
+            "path": { "const": "Data/Effects/MaterialPrograms/effect-material-program-registry.v1.json" },
+            "fileSha256": { "$ref": "#/$defs/sha256" },
+            "validatedRegistrySha256": { "$ref": "#/$defs/sha256" },
+            "bindingCount": { "type": "integer", "minimum": 0 },
+            "bindingPacketValidation": { "const": "INLINE_BIT_EXACT" }
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trackBTupleInventoryRuntimeProofAllowed",
+        "trackBArtifactPromotedToRuntimeProof",
+        "bindingIdentityRequiredForCurrentBound",
+        "bindingAbsentIdentity",
+        "sourceJoinMode",
+        "sourceDepthWriteEvidence",
+        "maskedDepthWriteAdmission",
+        "automaticBindingMutation",
+        "manualReviewDefault"
+      ],
+      "properties": {
+        "trackBTupleInventoryRuntimeProofAllowed": { "const": false },
+        "trackBArtifactPromotedToRuntimeProof": { "const": false },
+        "bindingIdentityRequiredForCurrentBound": { "const": true },
+        "bindingAbsentIdentity": { "type": "null" },
+        "sourceJoinMode": { "const": "EXACT_SOURCE_MATERIAL_PATH_ONLY" },
+        "sourceDepthWriteEvidence": { "const": "NOT_CAPTURED" },
+        "maskedDepthWriteAdmission": { "const": "BLOCKED_UNTIL_EVIDENCE" },
+        "automaticBindingMutation": { "const": false },
+        "manualReviewDefault": { "const": "PENDING" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productOccurrenceCount",
+        "productAssetCount",
+        "horizontalFineOccurrenceCount",
+        "featureDeferredOccurrenceCount",
+        "domainOccurrenceCounts",
+        "fineRendererKindCounts",
+        "coarseCarrierCounts",
+        "applicationStateCounts",
+        "programStatusCounts",
+        "layoutStatusCounts",
+        "descriptorStatusCounts",
+        "adapterStatusCounts",
+        "sourceIdentityJoinStatusCounts",
+        "sourceParentAgreementCounts",
+        "sourceRenderStateResolvedCount",
+        "sourceRenderStateUnresolvedCount",
+        "sourceRenderStateCategoryCounts",
+        "currentRenderProfileCounts",
+        "renderStateComparisonStatusCounts",
+        "renderStateMismatchAxisCounts",
+        "registryBindingCount",
+        "targetRegistryBindingCount",
+        "unboundOccurrenceCount",
+        "manualReviewCounts",
+        "duplicateOccurrenceKeyCount",
+        "duplicateRegistryBindingKeyCount",
+        "registryReverseJoinMissingCount"
+      ],
+      "properties": {
+        "productOccurrenceCount": { "const": 1885 },
+        "productAssetCount": { "const": 99 },
+        "horizontalFineOccurrenceCount": { "const": 1871 },
+        "featureDeferredOccurrenceCount": { "const": 14 },
+        "domainOccurrenceCounts": { "$ref": "#/$defs/countMap" },
+        "fineRendererKindCounts": { "$ref": "#/$defs/countMap" },
+        "coarseCarrierCounts": { "$ref": "#/$defs/countMap" },
+        "applicationStateCounts": { "$ref": "#/$defs/countMap" },
+        "programStatusCounts": { "$ref": "#/$defs/countMap" },
+        "layoutStatusCounts": { "$ref": "#/$defs/countMap" },
+        "descriptorStatusCounts": { "$ref": "#/$defs/countMap" },
+        "adapterStatusCounts": { "$ref": "#/$defs/countMap" },
+        "sourceIdentityJoinStatusCounts": { "$ref": "#/$defs/countMap" },
+        "sourceParentAgreementCounts": { "$ref": "#/$defs/countMap" },
+        "sourceRenderStateResolvedCount": { "type": "integer", "minimum": 0 },
+        "sourceRenderStateUnresolvedCount": { "type": "integer", "minimum": 0 },
+        "sourceRenderStateCategoryCounts": { "$ref": "#/$defs/countMap" },
+        "currentRenderProfileCounts": { "$ref": "#/$defs/countMap" },
+        "renderStateComparisonStatusCounts": { "$ref": "#/$defs/countMap" },
+        "renderStateMismatchAxisCounts": { "$ref": "#/$defs/countMap" },
+        "registryBindingCount": { "type": "integer", "minimum": 0 },
+        "targetRegistryBindingCount": { "type": "integer", "minimum": 0 },
+        "unboundOccurrenceCount": { "type": "integer", "minimum": 0 },
+        "manualReviewCounts": { "$ref": "#/$defs/countMap" },
+        "duplicateOccurrenceKeyCount": { "const": 0 },
+        "duplicateRegistryBindingKeyCount": { "const": 0 },
+        "registryReverseJoinMissingCount": { "const": 0 }
+      }
+    },
+    "projections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "occurrenceKeyProjectionSha256",
+        "sourceIdentityJoinProjectionSha256",
+        "bindingReverseJoinProjectionSha256",
+        "applicationStateProjectionSha256"
+      ],
+      "properties": {
+        "occurrenceKeyProjectionSha256": { "$ref": "#/$defs/sha256" },
+        "sourceIdentityJoinProjectionSha256": { "$ref": "#/$defs/sha256" },
+        "bindingReverseJoinProjectionSha256": { "$ref": "#/$defs/sha256" },
+        "applicationStateProjectionSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "bindingIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "elementId",
+        "programId",
+        "layoutId",
+        "descriptorId",
+        "adapterId",
+        "bindingSha256"
+      ],
+      "properties": {
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "elementId": { "type": "string", "minLength": 1 },
+        "programId": { "type": "string", "minLength": 1 },
+        "layoutId": { "type": "string", "minLength": 1 },
+        "descriptorId": { "type": "string", "minLength": 1 },
+        "adapterId": { "type": "string", "minLength": 1 },
+        "bindingSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sourceMaterial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceMaterialPath",
+        "inventoryEffectiveParentMaterialPath",
+        "contractJoinStatus",
+        "contractParentMaterialPath",
+        "parentAgreement",
+        "profileId",
+        "runtimeShaderProfileId",
+        "productAdmissionStatus",
+        "semanticStatus",
+        "sourceEvidenceResolved"
+      ],
+      "properties": {
+        "sourceMaterialPath": { "$ref": "#/$defs/nullableString" },
+        "inventoryEffectiveParentMaterialPath": { "$ref": "#/$defs/nullableString" },
+        "contractJoinStatus": {
+          "enum": [
+            "EXACT_SOURCE_MATERIAL_IDENTITY",
+            "NO_COMMITTED_SOURCE_IDENTITY"
+          ]
+        },
+        "contractParentMaterialPath": { "$ref": "#/$defs/nullableString" },
+        "parentAgreement": { "$ref": "#/$defs/nullableBoolean" },
+        "profileId": { "$ref": "#/$defs/nullableString" },
+        "runtimeShaderProfileId": { "$ref": "#/$defs/nullableString" },
+        "productAdmissionStatus": { "$ref": "#/$defs/nullableString" },
+        "semanticStatus": { "$ref": "#/$defs/nullableString" },
+        "sourceEvidenceResolved": { "$ref": "#/$defs/nullableBoolean" }
+      }
+    },
+    "sourceRenderState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blendMode",
+        "twoSided",
+        "depthTestEnabled",
+        "depthWrite",
+        "depthWriteEvidence",
+        "usesDistortion"
+      ],
+      "properties": {
+        "blendMode": {
+          "enum": ["BLEND_Additive", "BLEND_Translucent", "BLEND_Masked"]
+        },
+        "twoSided": { "type": "boolean" },
+        "depthTestEnabled": { "type": "boolean" },
+        "depthWrite": { "type": "null" },
+        "depthWriteEvidence": { "const": "NOT_CAPTURED" },
+        "usesDistortion": { "$ref": "#/$defs/nullableBoolean" }
+      }
+    },
+    "currentRenderState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "renderProfile",
+        "blendMode",
+        "twoSided",
+        "depthTestEnabled",
+        "depthWrite"
+      ],
+      "properties": {
+        "renderProfile": { "type": "string", "minLength": 1 },
+        "blendMode": {
+          "enum": ["BLEND_Additive", "BLEND_Translucent", "BLEND_Opaque"]
+        },
+        "twoSided": { "type": "boolean" },
+        "depthTestEnabled": { "type": "boolean" },
+        "depthWrite": { "type": "boolean" }
+      }
+    },
+    "renderStateComparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "mismatchAxes", "depthWriteCompared"],
+      "properties": {
+        "status": {
+          "enum": [
+            "MATCH_AVAILABLE_AXES",
+            "MISMATCH_AVAILABLE_AXES",
+            "SOURCE_STATE_UNRESOLVED"
+          ]
+        },
+        "mismatchAxes": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "enum": ["blendMode", "twoSided", "depthTest"] }
+        },
+        "depthWriteCompared": { "const": false }
+      }
+    },
+    "renderState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "current", "comparison"],
+      "properties": {
+        "source": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/sourceRenderState" }
+          ]
+        },
+        "current": { "$ref": "#/$defs/currentRenderState" },
+        "comparison": { "$ref": "#/$defs/renderStateComparison" }
+      }
+    },
+    "programAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "programCandidateId", "programEvidenceId"],
+      "properties": {
+        "status": {
+          "enum": [
+            "TYPED_RUNTIME_PROGRAM_DECLARED",
+            "DXBC_OCCURRENCE_EXACT",
+            "DXBC_OCCURRENCE_EXACT_UNTRANSLATED",
+            "DXBC_FAMILY_REPRESENTATIVE_ONLY",
+            "BOUNDED_SOURCE_PROFILE_ONLY",
+            "NO_PROGRAM_EVIDENCE"
+          ]
+        },
+        "programCandidateId": { "$ref": "#/$defs/nullableString" },
+        "programEvidenceId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "layoutAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "layoutCandidateId", "layoutEvidenceId"],
+      "properties": {
+        "status": {
+          "enum": [
+            "TYPED_PACKET_CLOSED",
+            "EXACT_VARIANT_NATIVE_WIRE_ONLY_REQUIRES_PACKET_TRANSLATION",
+            "NAMED_NATIVE_WIRE_ONLY_WITHIN_COUNT_CAPS",
+            "NAMED_NATIVE_WIRE_ONLY_REQUIRES_COUNT_EXTENSION",
+            "SOURCE_NAMES_ONLY",
+            "UNRESOLVED"
+          ]
+        },
+        "layoutCandidateId": { "$ref": "#/$defs/nullableString" },
+        "layoutEvidenceId": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+    "descriptorAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "descriptorVariantId"],
+      "properties": {
+        "status": {
+          "enum": [
+            "TYPED_VALUES_CLOSED",
+            "SOURCE_VALUES_PRESENT_UNPACKED",
+            "RESOURCE_ONLY_NO_MATERIAL_VALUES",
+            "MISSING"
+          ]
+        },
+        "descriptorVariantId": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+    "adapterAxis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "adapterCandidateId", "runtimeVerified"],
+      "properties": {
+        "status": {
+          "enum": [
+            "TYPED_STATIC_DISPATCH_CANDIDATE",
+            "RENDER_PROFILE_STATIC_CANDIDATE"
+          ]
+        },
+        "adapterCandidateId": { "type": "string", "minLength": 1 },
+        "runtimeVerified": { "type": "boolean" }
+      }
+    },
+    "axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["program", "layout", "descriptor", "adapter"],
+      "properties": {
+        "program": { "$ref": "#/$defs/programAxis" },
+        "layout": { "$ref": "#/$defs/layoutAxis" },
+        "descriptor": { "$ref": "#/$defs/descriptorAxis" },
+        "adapter": { "$ref": "#/$defs/adapterAxis" }
+      }
+    },
+    "occurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ledgerOccurrenceId",
+        "effectAssetId",
+        "elementId",
+        "elementOrder",
+        "domain",
+        "fineRendererKind",
+        "coarseCarrier",
+        "horizontalScopeStatus",
+        "applicationState",
+        "runtimeProofStatus",
+        "bindingIdentity",
+        "sourceMaterial",
+        "renderState",
+        "axes",
+        "blockers",
+        "manualReview",
+        "rowSha256"
+      ],
+      "properties": {
+        "ledgerOccurrenceId": { "type": "string", "minLength": 1 },
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "elementId": { "type": "string", "minLength": 1 },
+        "elementOrder": { "type": "integer", "minimum": 0 },
+        "domain": {
+          "enum": ["Artist", "DimensionMaster", "LanceMaster", "Warlord"]
+        },
+        "fineRendererKind": {
+          "enum": [
+            "SPRITE_PARTICLE",
+            "MESH_PARTICLE",
+            "DECAL_PARTICLE",
+            "LEGACY_STANDALONE_SPRITE",
+            "AUTHORED_LEGACY_TRAIL",
+            "CASCADE_RIBBON"
+          ]
+        },
+        "coarseCarrier": { "enum": ["SPRITE", "MESH", "DECAL", "RIBBON"] },
+        "horizontalScopeStatus": { "enum": ["IN_SCOPE", "FEATURE_DEFERRED"] },
+        "applicationState": {
+          "enum": [
+            "CURRENT_BOUND_INLINE_EXACT",
+            "INLINE_MIRROR_CANDIDATE",
+            "SOURCE_EXACT_SIMPLE_RT0_PACKET_PENDING",
+            "SOURCE_EXACT_PACKET_PENDING",
+            "PROJECT_RECONSTRUCTION_PENDING",
+            "FEATURE_DEFERRED",
+            "EVIDENCE_BLOCKED"
+          ]
+        },
+        "runtimeProofStatus": {
+          "enum": ["REGISTRY_BINDING_INLINE_PACKET_EXACT", "NOT_PROVEN"]
+        },
+        "bindingIdentity": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/bindingIdentity" }
+          ]
+        },
+        "sourceMaterial": { "$ref": "#/$defs/sourceMaterial" },
+        "renderState": { "$ref": "#/$defs/renderState" },
+        "axes": { "$ref": "#/$defs/axes" },
+        "blockers": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "manualReview": { "const": "PENDING" },
+        "rowSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "partialCommitAllowed"],
+      "properties": {
+        "model": { "const": "PARSE_VALIDATE_STAGE_ATOMIC_REPLACE" },
+        "partialCommitAllowed": { "const": false }
+      }
+    }
+  }
+}

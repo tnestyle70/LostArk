@@ -10,7 +10,7 @@ V0 fixture origin commit: `61930d4ab7018b9df04dea7c297681505160c34d`
 
 V0 상태: `COMPLETE_BASELINE`
 
-V1 상태: `FIRST_CANARY_AUTOMATED / USER_REVIEW_PENDING`
+V1 상태: `BINDING_1_ACTUAL_SPRITE_AUTOMATED / USER_REVIEW_PENDING`
 
 최종 화면 판정자: 사용자
 
@@ -23,6 +23,10 @@ V1 상태: `FIRST_CANARY_AUTOMATED / USER_REVIEW_PENDING`
 - [`Valtan Core-Three Missing Family ABI 복원 결과`](2026-08-22_VALTAN_FRONT_BACK_FRONT_MISSING_FAMILY_RESTORATION_RESULT.md)
 - [`Client frontend 광역 하네스 삭제 결과`](2026-08-22_CLIENT_FRONTEND_HARNESS_REMOVAL_RESULT.md)
 - [`도화가 S Typed Rect V1 첫 확장 결과`](2026-08-22_ARTIST_S_TYPED_RECT_V1_EXPANSION_RESULT.md)
+- [`Effect Tuple Cohort Inventory 결과`](../08-23/2026-08-23_EFFECT_TUPLE_COHORT_INVENTORY_RESULT.md)
+- [`Artist F horizontal Sprite canary 결과`](../08-23/2026-08-23_EFFECT_V1_HORIZONTAL_SPRITE_CANARY_IMPLEMENTATION_RESULT.md)
+- [`4캐릭터·Valtan 대표 canary 전수 조사 결과`](../08-23/2026-08-23_EFFECT_REPRESENTATIVE_CANARY_SURVEY_RESULT.md)
+- [`4캐릭터 Effect V1 수평 application ledger 결과`](../08-23/2026-08-23_FOUR_CHARACTER_EFFECT_V1_HORIZONTAL_APPLICATION_LEDGER_RESULT.md)
 
 이 문서는 도화가, 워로드, 창술사, 차원술사와 Valtan의 **현재 Product Effect 전체**를
 FAMILY_LITE 가시화 기반에서 typed/source-derived runtime ABI로 승격하는 living master다.
@@ -287,6 +291,106 @@ EffectCatalog의 direct-authored 경로를 reference fallback보다 우선한다
 숨기면 animation composition 전체를 확인할 수 없기 때문이다. phase/gate/health-bar 정보는 encounter
 정본에 계속 남지만 All Effects의 저작 계층을 바꾸지 않는다.
 
+### 0.11 Track A/B 이후 대표 canary checkpoint
+
+Track B merge snapshot은 4캐릭터·Valtan authored `416/7,566`과 Product `145/2,554`를
+Program/Layout/Adapter/Descriptor/Composition 축으로 전수 분류했다. 이 inventory의 cohort는 전부 정적
+재사용 후보이며 runtime-verified cohort는 0이다. `origin/main@d6b27084`의 Track A registry input 뒤
+builder `--check`는 stale이므로 current taxonomy 작업에서 재생성하되 Track A proof를 cohort 전체로
+소급 전파하지 않는다.
+
+Track A는 `effect.artist.skill.31470.unified / sprite.2b3dc6842507e910` 한 occurrence에만 Binding을
+추가해 registry-inline bit-exact packet과 actual SpriteParticle compiled draw를 자동으로 닫았다.
+사용자 A/B 전에는 visual PASS가 아니다. Track B 정적 evidence를 이 actual proof로 소급 승격하지 않는다.
+
+다음 수직 슬라이스는 대표 canary 조사 결과의 taxonomy 기반 20-slot audition matrix를 따른다. 스킬과
+pattern은 사용자 UI의 예시 라벨일 뿐 selection key가 아니다. 우선순위는 actual MeshParticle control,
+source/current render-state split, cross-domain simple Sprite, LocalDecal, UV-flow, WPO, Glass/MRT,
+Ribbon/Presentation, family별 V0 삭제분 default-off 복원 순서다. C++ renderer는 skill/class/material 이름을
+switch하지 않고 stable occurrence admission과 일반 `Program × Layout × Adapter` tuple만 소비한다.
+
+### 0.12 4캐릭터 Product 수평 batch 결정 (2026-08-23 사용자 결정)
+
+4캐릭터 Product는 class나 skill 단위 canary 승인을 다음 batch의 선행 조건으로 두지 않는다. 최신 Product
+분모는 `1,885`행이고, 실제 particle material 수평 적용 범위는 `SpriteParticle 1,337 + MeshParticle 493
++ DecalParticle 41 = 1,871`행이다. Artist standalone Sprite Rect 2행과 Ribbon 12행은 같은 전수 ledger에
+남기되 S/M/D 공용 Adapter 적용 분모에는 섞지 않는다.
+
+`전체 배선`은 다음 두 상태를 구별한다.
+
+```text
+모든 1,885행
+  -> source/current composition·carrier·state와 P/L/D/A evidence를 전수 판정
+  -> 자동 증거가 닫힌 모든 S/M/D행은 같은 batch에서 Binding 생성
+  -> 한 축이라도 열려 있는 행은 Binding 없이 blocker를 봉인하고 기존 V0 draw 유지
+```
+
+이 결정을 구현한 4캐릭터 application ledger의 current partition은 다음과 같다. 이 상태들은 서로
+배타적이며 합계가 항상 `1,885`여야 한다.
+
+| application state | occurrence | 현재 의미 |
+|---|---:|---|
+| `CURRENT_BOUND_INLINE_EXACT` | 1 | Track A actual Sprite Binding |
+| `INLINE_MIRROR_CANDIDATE` | 43 | typed inline packet은 닫혔으나 공용 registry batch 대기 |
+| `SOURCE_EXACT_SIMPLE_RT0_PACKET_PENDING` | 64 | exact Program·기본 state/layout evidence, packet/actual tuple 대기 |
+| `SOURCE_EXACT_PACKET_PENDING` | 596 | occurrence-exact Program이 있으나 ABI/scene/MRT/WPO/state 중 후속 작업 필요 |
+| `PROJECT_RECONSTRUCTION_PENDING` | 711 | admitted reconstructed profile을 typed packet/Program으로 구현해야 함 |
+| `FEATURE_DEFERRED` | 14 | standalone Sprite Rect 2 + Ribbon 12 |
+| `EVIDENCE_BLOCKED` | 456 | source identity/state/Program/Descriptor 등 필수 근거 미폐쇄 |
+
+committed FourClassCombat source contract와 exact material path로 join되는 행은 `1,512`, 미가입은 `373`이다.
+원본 render state는 `1,204`행만 strict resolve되며 `681`행은 unresolved다. 비교 가능한 축에서는 현재 V0와
+`1,125`행이 일치하고 `79`행이 다르다. mismatch 축은 중복 집계로 blend 54, two-sided 34, depth-test
+20이다. source contract가 depth-write를 캡처하지 않았으므로 masked 행을 opaque/depth-write로 추정하지
+않는다.
+
+사용자 occurrence Solo는 자동으로 닫힌 cohort를 Product에 적용하기 위한 입장권이 아니다. 전체 batch의
+publisher·exact packet·prepared snapshot·actual draw·Debug/Release 검증을 먼저 끝내고, 사용자는 그 뒤 대표
+4스킬과 영향받은 composition을 화면에서 판정한다. 사용자 판정 전에도 자동 Binding은 존재할 수 있지만
+그 행의 visual 상태는 계속 `USER_REVIEW_PENDING`이며 `V1_COMPLETE` 또는 원작 fidelity PASS로 기록하지 않는다.
+
+이 결정은 현재 Product에 살아 있는 occurrence에만 적용한다. V0에서 빠진 source occurrence는 composition
+merge 결정이 별도이므로 `restoration-candidate`, Product cue 미연결, default-off 경계를 유지한다. 자동
+material 증거가 닫혔다는 이유로 삭제분을 Product에 일괄 삽입하지 않는다.
+
+공용화 단위는 세 carrier capability와 그 아래의 typed tuple이다.
+
+```text
+S = SpriteParticle Standard RT0
+M = MeshParticle CModel RT0
+D = LocalDecal Projector RT0
+
+Binding = stable occurrence
+        + Program equation
+        + Layout ABI
+        + Descriptor values/resources/dynamics
+        + compiled Adapter carrier/VF/pass/state/MRT
+```
+
+Adapter 구현은 동일 tuple에 대해 도메인 무관해야 한다. Artist, DimensionMaster, LanceMaster, Warlord,
+Valtan 이름과 skill ID, source material 이름을 C++ renderer switch에 넣지 않는다. source state를 확인할 수
+없는 행은 현재 `renderProfile`을 원본이라고 추정하지 않고 evidence blocker로 남긴다.
+
+병렬 작업 소유권은 다음으로 고정한다.
+
+| 소유자 | 단독 소유 | 소유하지 않음 |
+|---|---|---|
+| 공용 runtime spine PR | registry fragment merge, compiled S/M/D Adapter, exact dual-resolve, actual draw, focused harness | 4캐릭터/Valtan occurrence 정책과 대량 authored mutation |
+| 4캐릭터 horizontal PR | 1,885행 ledger, four-character fragment, evidence-closed authored packet/Binding, 대표 4스킬 composition regression | 공용 registry/C++/HLSL의 두 번째 구현, Valtan 669행 |
+| Valtan horizontal PR | Valtan 669행 ledger와 Valtan fragment/authored packet | 4캐릭터 1,885행과 공용 spine 재구현 |
+| 최종 integration owner | 두 domain fragment 병합 뒤 단일 runtime registry/catalog publish와 Debug/Release | domain별 근거를 다른 domain의 runtime proof로 소급 승격 |
+
+4캐릭터 대표 acceptance composition은 차원술사 R `2050180`, 도화가 A `31460`, 창술사 D `34110`,
+워로드 R `17110` clip2/clip3의 5개 문서, S/M/D `131`행이다. 이 스킬 이름은 renderer selection key가
+아니며, 전체 batch 뒤 사용자가 실제 composition을 찾기 위한 고정 검증 표본이다.
+
+공용 S6/M3/D14와 current enabled inline 44행의 exact 교집합은 Artist F 5행이다. 공용 fragment가 그중
+Sprite/Mesh/Decal golden 3행을 소유하므로 4캐릭터 첫 fragment는 `sprite.c65181324417a1a8`과
+`decal.6f78bff02c657a14` 두 Binding만 추가한다. 예상 상태는 공용 merge 뒤 bound 3/candidate 41,
+four-character fragment 뒤 bound 5/candidate 39다. 대표 131행은 세 공용 Program과 교집합이 0이므로 이
+첫 fragment만으로 대표 스킬 화면은 바뀌지 않는다. 대표 화면을 여는 첫 후속 capability는 차원술사 R의
+exact `fx_mm_basic_01_ad` Sprite tuple이고, 이후 창술사 D lensflare/noise tuple 순서다.
+
 ## 1. V0 기준선 실측
 
 ### 1.1 병합 기준
@@ -431,9 +535,10 @@ EffectAssetId + stable ElementId
   -> Bind -> Begin -> Draw -> state restore
 ```
 
-HLSL은 program equation을 소유한다. Descriptor는 CB/SRV/sampler/channel/color space와 render
-state를 소유한다. Adapter는 geometry/VF/pass/scene input/RT topology와 draw transaction을 소유한다.
-Authored document는 stable element, composition, carrier와 admitted program/descriptor 선택을 소유한다.
+HLSL은 program equation을 소유한다. Layout은 CB/SRV register와 semantic wire를, Descriptor는 occurrence의
+values/resources/sampler/channel/color space를 소유한다. compiled Adapter는 geometry/VF/pass/scene input,
+RT/MRT topology, blend/cull/depth/stencil state와 draw transaction을 함께 봉인한다. Authored document는
+stable element, composition과 carrier를 소유하고 registry Binding이 그 occurrence에 네 ID를 admission한다.
 
 ### 2.2 정본 데이터 계약
 
@@ -480,13 +585,14 @@ supported carrier adapter
 evidence receipt and Product admission status
 ```
 
-파일 안에서는 `program`, `layout`, `descriptor`, `admission` 네 collection을 분리한다. Program은
-equation identity, layout은 GPU 전달 계약, descriptor는 occurrence의 effective values/resources/state,
-admission은 stable element가 세 ID를 소비할 자격을 소유한다.
+파일 안에서는 `programs`, `layouts`, `descriptors`, `adapters`, `bindings` 다섯 collection을 분리한다.
+Program은 equation identity, Layout은 GPU 전달 계약, Descriptor는 occurrence의 effective
+values/resources/samplers, Adapter는 compiled carrier/VF/pass/state/MRT allowlist, Binding은 stable
+occurrence가 네 ID를 함께 소비할 자격을 소유한다.
 
 `ue3-material-family-registry.v1.json`은 계속 discovery intake이고, 새 registry가 Product admission
-정본이다. occurrence 선택을 두 번째 binding 파일에 중복하지 않고 Authored element의 material
-execution이 stable registry ID를 참조한다. `CEffect_Catalog`이 parse→validate→stage→commit하고
+정본이다. occurrence 선택을 두 번째 파일이나 C++ skill switch에 중복하지 않고 registry Binding의
+`effectAssetId + elementId`가 stable occurrence를 선택한다. `CEffect_Catalog`이 parse→validate→stage→commit하고
 `CEffect_PresentationService`가 main-thread prewarm한 뒤 `CEffect_DocumentRenderer`가 소비한다.
 
 ### 2.3 migration 중 fallback 정책
@@ -1061,7 +1167,7 @@ resource cache 수치를 같이 기록한다. 행 수와 draw 수가 증가했�
 만족할 때만 선언한다. `PROJECT_RECONSTRUCTED` Product도 자동 gate와 `USER_APPROVED`를 모두 요구한다.
 `V1_VISUAL_REVIEW_CLOSED`만으로 완벽 복원을 선언하지 않는다.
 
-## 6. 각 canary와 cohort의 admission gate
+## 6. 각 occurrence와 수평 batch의 admission gate
 
 모든 G03~G10 cohort는 적용 가능한 다음 순서를 생략하지 않는다.
 
@@ -1072,16 +1178,19 @@ resource cache 수치를 같이 기록한다. 행 수와 draw 수가 증가했�
    receipt와 deterministic sensitivity, non-pixel presentation이면 `NOT_APPLICABLE`
 5. CB lane, SRV wire, sampler, channel/color space, dynamic parameter
 6. actual VF/pass, scene input, RT/MRT/coverage와 render state
-7. Tool이 지원되는 pixel family는 default-off stable occurrence canary. Tool에서 표현할 수 없는
-   Product presentation은 사용자 조작 가능한 Product audition 경로
-8. Debug/Release compile, first draw, state/rollback proof
-9. 사용자 Tool A/B와 손튜닝
-10. Product staged publish/restart admission
-11. 구조적으로 같은 program/layout/descriptor closure가 증명된 cohort만 registry 확장하고 fidelity는
-    occurrence별 evidence로 유지
+7. 현재 Product occurrence는 위 자동 증거가 닫힌 행을 domain batch로 모두 선택한다. 사용자 Solo나
+   대표 canary 승인을 batch admission의 선행 조건으로 두지 않는다. Product에서 빠진 source row만
+   default-off `restoration-candidate` 경계를 사용한다.
+8. 구조적으로 같은 Program/Layout/Descriptor/Adapter closure가 증명된 행만 registry fragment를 생성하고
+   fidelity는 occurrence별 evidence로 유지한다.
+9. Debug/Release compile, exact dual-resolve, first draw, state/rollback proof
+10. Product staged publish/restart admission. evidence-open 행은 Binding 없이 기존 V0 draw를 유지한다.
+11. 전체 적용 뒤 사용자 A/B와 composition 검증. 이 단계는 이미 자동 admission된 Binding을 여는 gate가
+    아니라 visual 상태를 `USER_REVIEW_PENDING`에서 닫는 gate다.
 
 한 gate의 PASS를 다음 gate로 대신하지 않는다. 특히 texture parity, DXBC 확보, HLSL 번역, first draw,
-사용자 visual과 Product admission은 서로 다른 상태다.
+사용자 visual과 Product admission은 서로 다른 상태다. 사용자 visual 전 수평 Binding을 허용한다는 결정은
+근거가 없는 tuple을 허용하거나 visual PASS를 자동 선언한다는 뜻이 아니다.
 
 ## 7. PR과 main 통합 단위
 
@@ -1089,18 +1198,20 @@ V1 전체를 한 PR로 올리지 않는다. 과거 #141의 203 files/46 regressi
 한 수직 슬라이스만 한 PR에 담는다.
 
 ```text
-one stable canary or one proven cohort
-+ registry/descriptor data
+one generic carrier/program capability
++ one deterministic domain application batch
++ registry fragment/descriptor data
 + required C++/HLSL adapter
 + focused receipt/harness
-+ selective authored Product rows
++ evidence-closed authored Product rows
 + publisher output contract
 + PLAN/RESULT update
 ```
 
-- 다른 cohort의 authored rows를 bulk regenerate하지 않는다.
-- 사용자 승인 전 canary PR은 `productMutation=false`를 유지한다.
-- Product PR은 승인된 stable IDs만 selective mutation한다.
+- source evidence가 열려 있는 다른 cohort의 authored rows를 같이 regenerate하지 않는다.
+- 사용자 승인 전에도 자동 evidence가 닫힌 current Product occurrence는 Binding을 가질 수 있다. visual
+  receipt는 별도 `USER_REVIEW_PENDING`으로 유지한다.
+- Product PR은 ledger가 자동 admission한 stable IDs만 builder로 selective mutation한다.
 - PR merge 뒤 최신 main에서 다음 cohort branch를 만든다.
 - 다른 세션의 dirty worktree나 hand-tuned rows를 자동 정리하지 않는다.
 
@@ -1160,17 +1271,17 @@ ClientFrontendHarness는 삭제된 정본이므로 다시 추가하지 않는다
 | G | 상태 | 자동 분모 | 사용자 화면 | 다음 blocker |
 |---|---|---|---|---|
 | V0 baseline | `COMPLETE_BASELINE` | live 205 assets / 5,294 elements join 실측 | 기존 손튜닝 기준 | V1 ledger 생성 |
-| G00 inventory | `PLANNED` | frozen 5,294+2,256 및 current 5,568+2,258을 분리 + source restoration/presentation | 해당 없음 | builder/schema |
-| G01 registry | `PLANNED` | current 48 typed seed + Tool canary descriptors | 해당 없음 | stable IDs/layout schema |
-| G02 adapters | `PLANNED` | carrier/layout matrix | 해당 없음 | descriptor-driven binder |
-| G02a programs | `PLANNED` | distinct program identity 분모 미산출 | 해당 없음 | DXBC translation/reconstruction materialization |
+| G00 inventory | `FOUR_CHARACTER_HORIZONTAL_APPLICATION_LEDGER_COMPLETE / FULL_OUTER_MIGRATION_LEDGER_PARTIAL` | current 4캐릭터 Product 99 assets/1,885행, fine S/M/D 1,871행의 source/current/P-L-D-A/application state. Valtan 및 삭제분 full outer join은 별도 | 해당 없음 | 공용 spine merge 뒤 binding-aware ledger 재생성 |
+| G01 registry | `BINDING_1_AUTOMATED` | Program 1 + Layout 1 + Descriptor 1 + Adapter 1 + Artist F Binding 1 | `USER_REVIEW_PENDING` | representative Mesh/Decal/flow tuple admission |
+| G02 adapters | `FIRST_ACTUAL_SPRITE_ADAPTER_AUTOMATED` | Artist F stable occurrence 1의 carrier/pass/state/MRT actual draw | `USER_REVIEW_PENDING` | 일반 actual MeshParticle adapter canary |
+| G02a programs | `FIRST_PROGRAM_CONSUMER_AUTOMATED` | Artist F opcode 6 one Program, inline↔registry bit-exact | `USER_REVIEW_PENDING` | exact translated Program을 packet/adapter와 수직 연결 |
 | G03 coverage | `FIRST_RECT_CANARY_AUTOMATED` | 도화가 S Sprite Rect 2행 typed packet/publish/build | `USER_REVIEW_PENDING` | body/tip first pixel과 A control 사용자 판정 |
 | G04 decal | `PLANNED` | live decal 57 | `PENDING` | actual decal VF/pass |
 | G05 flow/masked | `FIRST_CARRIER_COHORT_AUTOMATED` | Fluid01 Sprite 2 + MakeFlow Mesh 1 + WPO Mesh Tool 2 | `USER_REVIEW_PENDING` | 사용자 Solo 뒤 WPO terminal 판정, time/dynamic/sampler 후속 |
 | G06 glass | `TOOL_CANARY_SEED` | Glasshole one occurrence | `PENDING` | sampler/VF/MRT/Product |
 | G07 trail | `PLANNED` | live trail 32 | `PENDING` | topology/material split |
 | G08a-c presentation | `TYPED_SEEDS_PRESENT` | Light 1 + ModelCue/screen generated inventory pending | `PENDING` | Light/screen/model separate adapters |
-| G09 characters | `FIRST_CARRIER_COHORT_AUTOMATED` | live 99/1,885, visible 1,842, hidden 43 + generated restoration | `USER_REVIEW_PENDING` | G03~G08 cohorts와 사용자 A/B |
+| G09 characters | `HORIZONTAL_LEDGER_COMPLETE / BINDING_1_AUTOMATED` | Product 1,885 전수: current bound 1, inline mirror 43, source-exact pending 660, reconstruction pending 711, deferred 14, blocked 456 | `USER_REVIEW_PENDING` | 공용 S/M/D spine merge, evidence-closed domain fragment batch, 대표 4스킬 composition A/B |
 | G10 Valtan | `TOOL_CANARY_SEED` | live 108 assets / 3,683 elements + generated restoration | `PENDING` | core-three full ABI/Product |
 | G11 automated | `PLANNED` | generated final Product/non-live/restoration/presentation gap 0 | 해당 없음 | all prior automated gates |
 | G11 visual | `PLANNED` | generated final Product/presentation review 분모 | `PENDING` | 모든 required row `USER_APPROVED` |

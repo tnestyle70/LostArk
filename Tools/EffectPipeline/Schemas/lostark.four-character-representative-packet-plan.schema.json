@@ -1,0 +1,566 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/four-character-representative-packet-plan-v1.json",
+  "title": "LostArk four-character representative check-only packet plan",
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nullableSha256": {
+      "oneOf": [
+        { "$ref": "#/$defs/sha256" },
+        { "type": "null" }
+      ]
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "countMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["DECAL", "MESH", "SPRITE"],
+      "properties": {
+        "DECAL": { "type": "integer", "minimum": 0 },
+        "MESH": { "type": "integer", "minimum": 0 },
+        "SPRITE": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "stringArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "inputIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "roles",
+        "rawSha256",
+        "byteSize",
+        "canonicalJsonSha256"
+      ],
+      "properties": {
+        "path": { "$ref": "#/$defs/relativePath" },
+        "roles": { "$ref": "#/$defs/stringArray" },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "byteSize": { "type": "integer", "minimum": 1 },
+        "canonicalJsonSha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "tupleInventoryInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "builder",
+        "mode",
+        "checkedInArtifactUsed",
+        "artifactSha256"
+      ],
+      "properties": {
+        "builder": {
+          "const": "Tools/EffectPipeline/build_effect_tuple_cohort_inventory.py:build_inventory"
+        },
+        "mode": { "const": "IN_MEMORY_CURRENT_HEAD" },
+        "checkedInArtifactUsed": { "const": false },
+        "artifactSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "targetDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "domain",
+        "path",
+        "byteSize",
+        "rawSha256",
+        "canonicalJsonSha256",
+        "occurrenceCount",
+        "carrierCounts",
+        "enabledInlineExecutionCount",
+        "disabledInlineExecutionCount",
+        "runtimeRegistryBindingCount",
+        "authoredByteMutationAllowed"
+      ],
+      "properties": {
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "domain": { "enum": ["Artist", "DimensionMaster", "LanceMaster", "Warlord"] },
+        "path": { "$ref": "#/$defs/relativePath" },
+        "byteSize": { "type": "integer", "minimum": 1 },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalJsonSha256": { "$ref": "#/$defs/sha256" },
+        "occurrenceCount": { "type": "integer", "minimum": 1 },
+        "carrierCounts": { "$ref": "#/$defs/countMap" },
+        "enabledInlineExecutionCount": { "const": 0 },
+        "disabledInlineExecutionCount": { "type": "integer", "minimum": 0 },
+        "runtimeRegistryBindingCount": { "const": 0 },
+        "authoredByteMutationAllowed": { "const": false }
+      }
+    },
+    "renderState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blendMode",
+        "lightingModel",
+        "twoSided",
+        "disableDepthTest",
+        "usesDistortion"
+      ],
+      "properties": {
+        "blendMode": { "enum": ["BLEND_Additive", "BLEND_Translucent"] },
+        "lightingModel": { "type": ["string", "null"] },
+        "twoSided": { "const": false },
+        "disableDepthTest": { "const": false },
+        "usesDistortion": { "type": ["boolean", "null"] }
+      }
+    },
+    "resourceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slotId", "assetId"],
+      "properties": {
+        "slotId": { "type": "string", "minLength": 1 },
+        "assetId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "candidateSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceMaterialPath",
+        "parentMaterialPath",
+        "parentResolution",
+        "childParentRowSha256",
+        "profileId",
+        "renderProfile",
+        "renderState",
+        "sourceContractRowSha256",
+        "sourceParametersSha256",
+        "authoredSourceProfileSha256",
+        "authoredResourcesSha256",
+        "sourceContractResourceBindings"
+      ],
+      "properties": {
+        "sourceMaterialPath": { "type": "string", "minLength": 1 },
+        "parentMaterialPath": { "type": "string", "minLength": 1 },
+        "parentResolution": {
+          "enum": ["AUTHORED_PARENT_EXACT", "CHILD_PARENT_KNOWN_FAMILY_EXACT"]
+        },
+        "childParentRowSha256": { "$ref": "#/$defs/nullableSha256" },
+        "profileId": { "type": "string", "minLength": 1 },
+        "renderProfile": {
+          "enum": ["additive_one_sided_depth_read", "alpha_one_sided_depth_read"]
+        },
+        "renderState": { "$ref": "#/$defs/renderState" },
+        "sourceContractRowSha256": { "$ref": "#/$defs/sha256" },
+        "sourceParametersSha256": { "$ref": "#/$defs/sha256" },
+        "authoredSourceProfileSha256": { "$ref": "#/$defs/sha256" },
+        "authoredResourcesSha256": { "$ref": "#/$defs/sha256" },
+        "sourceContractResourceBindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resourceBinding" }
+        }
+      }
+    },
+    "shaderInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["register", "mask", "interpolation", "centroid"],
+      "properties": {
+        "register": { "type": "string", "pattern": "^v[0-9]+$" },
+        "mask": { "type": "string", "pattern": "^[xyzw]+$" },
+        "interpolation": { "type": "string", "minLength": 1 },
+        "centroid": { "type": "boolean" }
+      }
+    },
+    "candidateProgram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "programCandidateId",
+        "programEvidenceId",
+        "dxbcSha256",
+        "dxbcByteSize",
+        "dxbcPath",
+        "cookedRowSha256",
+        "hlslSha256",
+        "hlslPath",
+        "functionName",
+        "translationRowSha256",
+        "declarationsSha256",
+        "constantBuffers",
+        "samplers",
+        "textures",
+        "inputs",
+        "outputs",
+        "compiledRuntimeProgramId"
+      ],
+      "properties": {
+        "programCandidateId": { "type": "string", "minLength": 1 },
+        "programEvidenceId": { "type": "string", "minLength": 1 },
+        "dxbcSha256": { "$ref": "#/$defs/sha256" },
+        "dxbcByteSize": { "type": "integer", "minimum": 1 },
+        "dxbcPath": { "$ref": "#/$defs/relativePath" },
+        "cookedRowSha256": { "$ref": "#/$defs/sha256" },
+        "hlslSha256": { "$ref": "#/$defs/sha256" },
+        "hlslPath": { "$ref": "#/$defs/relativePath" },
+        "functionName": { "type": "string", "minLength": 1 },
+        "translationRowSha256": { "$ref": "#/$defs/sha256" },
+        "declarationsSha256": { "$ref": "#/$defs/sha256" },
+        "constantBuffers": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
+        "samplers": { "$ref": "#/$defs/stringArray" },
+        "textures": { "$ref": "#/$defs/stringArray" },
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/shaderInput" }
+        },
+        "outputs": { "$ref": "#/$defs/stringArray" },
+        "compiledRuntimeProgramId": { "type": "null" }
+      }
+    },
+    "candidateNamedAbi": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layoutEvidenceId",
+        "bindingSemanticSha256",
+        "namedAbiRowSha256",
+        "textureSlotCount",
+        "scalarLaneCount",
+        "vectorLaneCount",
+        "timeDependentScalarLaneCount",
+        "timeDependentVectorLaneCount",
+        "textureSlots",
+        "runtimePacketTopologyMaterialized",
+        "compiledRuntimeLayoutId"
+      ],
+      "properties": {
+        "layoutEvidenceId": { "type": "string", "minLength": 1 },
+        "bindingSemanticSha256": { "$ref": "#/$defs/sha256" },
+        "namedAbiRowSha256": { "$ref": "#/$defs/sha256" },
+        "textureSlotCount": { "type": "integer", "minimum": 1 },
+        "scalarLaneCount": { "type": "integer", "minimum": 0 },
+        "vectorLaneCount": { "type": "integer", "minimum": 0 },
+        "timeDependentScalarLaneCount": { "type": "integer", "minimum": 0 },
+        "timeDependentVectorLaneCount": { "type": "integer", "minimum": 0 },
+        "textureSlots": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "object" }
+        },
+        "runtimePacketTopologyMaterialized": { "const": false },
+        "compiledRuntimeLayoutId": { "type": "null" }
+      }
+    },
+    "candidateFamily": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateFamilyId",
+        "disposition",
+        "targetEffectAssetId",
+        "targetElementIds",
+        "source",
+        "program",
+        "namedAbi",
+        "adapter",
+        "descriptor",
+        "runtimeAdmission",
+        "blockers"
+      ],
+      "properties": {
+        "candidateFamilyId": { "type": "string", "minLength": 1 },
+        "disposition": { "const": "PACKET_MATERIALIZATION_PENDING" },
+        "targetEffectAssetId": { "type": "string", "minLength": 1 },
+        "targetElementIds": { "$ref": "#/$defs/stringArray" },
+        "source": { "$ref": "#/$defs/candidateSource" },
+        "program": { "$ref": "#/$defs/candidateProgram" },
+        "namedAbi": { "$ref": "#/$defs/candidateNamedAbi" },
+        "adapter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "staticCandidateId",
+            "requiredCarrier",
+            "requiredRenderProfile",
+            "compiledRuntimeAdapterId",
+            "actualDrawVerified"
+          ],
+          "properties": {
+            "staticCandidateId": { "type": "string", "minLength": 1 },
+            "requiredCarrier": { "const": "SPRITE" },
+            "requiredRenderProfile": { "type": "string", "minLength": 1 },
+            "compiledRuntimeAdapterId": { "type": "null" },
+            "actualDrawVerified": { "const": false }
+          }
+        },
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["staticCandidateId", "runtimeDescriptorId", "packetMaterialized"],
+          "properties": {
+            "staticCandidateId": { "type": "string", "minLength": 1 },
+            "runtimeDescriptorId": { "type": "null" },
+            "packetMaterialized": { "const": false }
+          }
+        },
+        "runtimeAdmission": { "const": false },
+        "blockers": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "occurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "occurrenceId",
+        "effectAssetId",
+        "elementId",
+        "elementOrder",
+        "authoredElementSha256",
+        "carrier",
+        "fineRendererKind",
+        "sourceMaterialPath",
+        "sourceParentMaterialPath",
+        "sourceParentResolution",
+        "sourceParentRowSha256",
+        "renderProfile",
+        "resourcesSha256",
+        "sourceProfileSha256",
+        "inlineExecutionStatus",
+        "inlineExecutionEnabled",
+        "programStatus",
+        "programCandidateId",
+        "programEvidenceId",
+        "layoutStatus",
+        "layoutEvidenceId",
+        "staticAdapterCandidateId",
+        "candidateFamilyId",
+        "packetDisposition",
+        "admissionBasis",
+        "runtimeAdmission",
+        "proposedEnabledExecution",
+        "blockers"
+      ],
+      "properties": {
+        "occurrenceId": { "type": "string", "minLength": 1 },
+        "effectAssetId": { "type": "string", "minLength": 1 },
+        "elementId": { "type": "string", "minLength": 1 },
+        "elementOrder": { "type": "integer", "minimum": 0 },
+        "authoredElementSha256": { "$ref": "#/$defs/sha256" },
+        "carrier": { "enum": ["DECAL", "MESH", "SPRITE"] },
+        "fineRendererKind": { "type": "string", "minLength": 1 },
+        "sourceMaterialPath": { "type": ["string", "null"] },
+        "sourceParentMaterialPath": { "type": ["string", "null"] },
+        "sourceParentResolution": { "type": ["string", "null"] },
+        "sourceParentRowSha256": { "$ref": "#/$defs/nullableSha256" },
+        "renderProfile": { "type": ["string", "null"] },
+        "resourcesSha256": { "$ref": "#/$defs/sha256" },
+        "sourceProfileSha256": { "$ref": "#/$defs/nullableSha256" },
+        "inlineExecutionStatus": {
+          "enum": ["ABSENT", "DISABLED_FAIL_CLOSED_APPROXIMATION"]
+        },
+        "inlineExecutionEnabled": { "const": false },
+        "programStatus": { "type": "string", "minLength": 1 },
+        "programCandidateId": { "type": ["string", "null"] },
+        "programEvidenceId": { "type": ["string", "null"] },
+        "layoutStatus": { "type": "string", "minLength": 1 },
+        "layoutEvidenceId": { "type": ["string", "null"] },
+        "staticAdapterCandidateId": { "type": ["string", "null"] },
+        "candidateFamilyId": { "type": ["string", "null"] },
+        "packetDisposition": { "enum": ["BLOCKED", "PACKET_MATERIALIZATION_PENDING"] },
+        "admissionBasis": { "type": "string", "minLength": 1 },
+        "runtimeAdmission": { "const": false },
+        "proposedEnabledExecution": { "type": "null" },
+        "blockers": { "$ref": "#/$defs/stringArray" }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "identity",
+    "scope",
+    "policies",
+    "inputs",
+    "targetDocuments",
+    "candidateFamilies",
+    "occurrences",
+    "summary",
+    "admission",
+    "transaction",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.four-character-representative-packet-plan" },
+    "formatVersion": { "const": 1 },
+    "identity": { "const": "CHECK_ONLY_PACKET_PLAN_NO_RUNTIME_OR_PRODUCT_ADMISSION" },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetIds",
+        "documentCount",
+        "occurrenceCount",
+        "carrierCounts",
+        "priorityCandidateCount"
+      ],
+      "properties": {
+        "effectAssetIds": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "documentCount": { "const": 5 },
+        "occurrenceCount": { "const": 131 },
+        "carrierCounts": { "$ref": "#/$defs/countMap" },
+        "priorityCandidateCount": { "const": 8 }
+      }
+    },
+    "policies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authoredWriter",
+        "registryWriter",
+        "cppWriter",
+        "enabledPacketGeneration",
+        "rendererDispatch",
+        "skillSpecificRendererSwitch",
+        "visualAdmission"
+      ],
+      "properties": {
+        "authoredWriter": { "const": false },
+        "registryWriter": { "const": false },
+        "cppWriter": { "const": false },
+        "enabledPacketGeneration": {
+          "const": "FORBIDDEN_UNTIL_COMPILED_TUPLE_AND_ACTUAL_ADAPTER"
+        },
+        "rendererDispatch": { "const": "PROGRAM_LAYOUT_ADAPTER_TUPLE_ONLY" },
+        "skillSpecificRendererSwitch": { "const": "FORBIDDEN" },
+        "visualAdmission": { "const": "USER_ONLY" }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tupleInventory", "files"],
+      "properties": {
+        "tupleInventory": { "$ref": "#/$defs/tupleInventoryInput" },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/inputIdentity" }
+        }
+      }
+    },
+    "targetDocuments": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/targetDocument" }
+    },
+    "candidateFamilies": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/candidateFamily" }
+    },
+    "occurrences": {
+      "type": "array",
+      "minItems": 131,
+      "maxItems": 131,
+      "items": { "$ref": "#/$defs/occurrence" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documentCount",
+        "occurrenceCount",
+        "carrierCounts",
+        "inlineExecutionStatusCounts",
+        "enabledInlineExecutionCount",
+        "runtimeRegistryBindingCount",
+        "runtimeAdmissionCount",
+        "compiledTupleCount",
+        "actualAdapterDrawVerifiedCount",
+        "packetMaterializationPendingCount",
+        "blockedCount",
+        "candidateFamilyCount",
+        "authoredMutationCount"
+      ],
+      "properties": {
+        "documentCount": { "const": 5 },
+        "occurrenceCount": { "const": 131 },
+        "carrierCounts": { "$ref": "#/$defs/countMap" },
+        "inlineExecutionStatusCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ABSENT", "DISABLED_FAIL_CLOSED_APPROXIMATION"],
+          "properties": {
+            "ABSENT": { "const": 115 },
+            "DISABLED_FAIL_CLOSED_APPROXIMATION": { "const": 16 }
+          }
+        },
+        "enabledInlineExecutionCount": { "const": 0 },
+        "runtimeRegistryBindingCount": { "const": 0 },
+        "runtimeAdmissionCount": { "const": 0 },
+        "compiledTupleCount": { "const": 0 },
+        "actualAdapterDrawVerifiedCount": { "const": 0 },
+        "packetMaterializationPendingCount": { "const": 8 },
+        "blockedCount": { "const": 123 },
+        "candidateFamilyCount": { "const": 3 },
+        "authoredMutationCount": { "const": 0 }
+      }
+    },
+    "admission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtimeExecution",
+        "productAdmission",
+        "enabledPacketEmission",
+        "currentProductPreserved",
+        "requiredBeforeAnyEnabledPacket"
+      ],
+      "properties": {
+        "runtimeExecution": { "const": false },
+        "productAdmission": { "const": false },
+        "enabledPacketEmission": { "const": false },
+        "currentProductPreserved": { "const": true },
+        "requiredBeforeAnyEnabledPacket": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "transaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "partialCommitAllowed",
+        "writablePath",
+        "authoredDocumentsByteStable"
+      ],
+      "properties": {
+        "model": { "const": "PARSE_VALIDATE_STAGE_ATOMIC_PLAN_REPLACE" },
+        "partialCommitAllowed": { "const": false },
+        "writablePath": {
+          "const": "Data/Effects/Contracts/four-character-representative-packet-plan.v1.json"
+        },
+        "authoredDocumentsByteStable": { "const": true }
+      }
+    },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  }
+}

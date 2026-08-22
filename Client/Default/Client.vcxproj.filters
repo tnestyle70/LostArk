@@ -5832,6 +5832,12 @@
     <None Include="..\..\Data\Effects\Contracts\effect-import-bases.v1.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Contracts\four-character-effect-v1-horizontal-application.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Contracts\four-character-representative-packet-plan.v1.json">
+      <Filter>96.DataFiles\Effects\Contracts</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json">
       <Filter>96.DataFiles\Effects\Contracts</Filter>
     </None>
