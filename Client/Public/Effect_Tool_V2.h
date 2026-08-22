@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -16,6 +17,8 @@ class CShader;
 NS_END
 
 NS_BEGIN(Client)
+
+class CEffectPreviewV2;
 
 class CEffect_Tool_V2 final
 {
@@ -106,6 +109,9 @@ private:
 	void Render_SlotCards();
 	void Render_ResourceBrowser();
 	void Render_PreviewPanel();
+	void Render_CreatePanel();
+	void Render_TuningPanel();
+	bool_t Try_CreatePreview();
 
 	SLOT_BINDINGS& Current_Bindings();
 	std::string& Current_SlotAssetId();
@@ -136,12 +142,16 @@ private:
 	std::string m_strDomainFilter;
 	char m_szNameFilter[128] = {};
 	bool_t m_bVisibleDirty = true;
-	bool_t m_bShowAllTextures = false;
 	std::unordered_map<std::string, TEXTURE_USAGE> m_TextureUsage;
 	std::string m_strUsageStatus;
 
 	std::unordered_map<std::string, PREVIEW_ENTRY> m_Previews;
 	uint32_t m_iLoadsThisFrame = 0u;
+
+	std::weak_ptr<CEffectPreviewV2> m_pPreview;
+	bool_t m_bPreviewPrototypeRegistered = false;
+	bool_t m_bTuningWindowOpen = false;
+	std::string m_strPreviewStatus;
 
 	std::string m_strStatus;
 };

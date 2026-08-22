@@ -381,6 +381,9 @@
     <ClCompile Include="..\Private\Effect_Tool_V2.cpp">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Effect_Preview_V2.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Valtan.cpp">
       <Filter>02.GameObjects\01. Boss</Filter>
     </ClCompile>
@@ -713,6 +716,9 @@
       <Filter>03. Tools\03. UI</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_Tool_V2.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_Preview_V2.h">
       <Filter>03. Tools\06. Effect V2</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Valtan.h">

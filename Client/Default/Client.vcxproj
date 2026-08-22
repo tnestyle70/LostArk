@@ -121,6 +121,7 @@
     <ClInclude Include="..\Public\Client_Defines.h" />
     <ClInclude Include="..\public\Effect_Tool.h" />
     <ClInclude Include="..\Public\Effect_Tool_V2.h" />
+    <ClInclude Include="..\Public\Effect_Preview_V2.h" />
     <ClInclude Include="..\Public\HUDLayoutTool.h" />
     <ClInclude Include="..\Public\Level_Loading.h" />
     <ClInclude Include="..\public\Loader.h" />
@@ -250,6 +251,7 @@
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <ClCompile Include="..\Private\Effect_Tool_V2.cpp" />
+    <ClCompile Include="..\Private\Effect_Preview_V2.cpp" />
     <ClCompile Include="..\Private\HUDLayoutTool.cpp" />
     <ClCompile Include="..\Private\Level_Loading.cpp" />
     <ClCompile Include="..\private\Loader.cpp" />

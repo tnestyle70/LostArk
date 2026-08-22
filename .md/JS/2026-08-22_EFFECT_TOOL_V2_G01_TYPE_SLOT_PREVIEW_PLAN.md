@@ -24,6 +24,22 @@
   (원시 정점 bounds는 본 오프셋 공간이라 카메라가 빗나갔던 문제의 수정).
 - Preview 패널에 모델 진단(skinned/static, 메시·본·애니·머티리얼 수, bounds, 메시별 diffuse 파일명) 표시.
 
+
+## G03 범위 — Create Effect 월드 preview + 실시간 튜닝 (사용자 확인 완료 2026-08-22)
+
+- `CEffectPreviewV2`(`Effect_Preview_V2.h/.cpp`, `CGameObject` 파생): `Prototype_GameObject_EffectPreviewV2`를
+  `LEVEL::STATIC`에 1회 등록하고 현재 레벨의 `Layer_EffectPreviewV2`에 Clone. 레벨 전환 시 자동 정리(툴은 `weak_ptr`).
+- Shape: Mesh 타입 → WModel(NONANIM, 실패 시 ANIM + `Bind_BoneMatrices`), Texture 타입 → `CVIBuffer_Rect` 빌보드.
+- v2 소유 셰이더: `Shader_EffectV2_Common.hlsli`(공용 PS: Base(UV scale/pan) + Noise 왜곡 × Mask.r × Dissolve
+  smoothstep × Tint + Emissive×Intensity, 패스 4개 = Alpha/Additive × DepthTest on/off),
+  `Shader_EffectMeshV2.hlsl`, `Shader_EffectAnimMeshV2.hlsl`, `Shader_EffectRectV2.hlsl`. BLEND 그룹 제출.
+- 툴: `Create Effect`(Base 필수, Mesh/Particle 타입은 Mesh 필수; Particle/Decal/Trail은 비활성) → 카메라 전방 3 m.
+  Tuning: Restart/Visible/Bring To Camera, Position/Rotation/Scale, Tint/Blend/DepthTest/Billboard, UV Scale·Base Pan,
+  Noise Strength/Scale/Pan, Emissive Intensity, Dissolve Amount/Softness, Lifetime/Loop/Play Rate. 실패 사유는
+  `CEffectPreviewV2::Last_Error()`로 상태줄에 노출.
+- 카메라 없는 Lobby에서는 안 보임(Character Select/Bern/Valtan/Test에서 사용).
+- AGENTS '단일 Effect 런타임 경로' 규칙 대비: 이 경로는 Debug 툴 preview 전용이며 제품 재생 경로가 아니다.
+
 ## 파일
 
 | 파일 | 역할 |
@@ -31,6 +47,8 @@
 | `Client/Public/Effect_Tool_V2.h` (새) | `CEffect_Tool_V2` 선언 |
 | `Client/Private/Effect_Tool_V2.cpp` (새) | 스캔/미리보기/썸네일/ImGui |
 | `Client/Bin/ShaderFiles/Shader_VtxAnimMeshPreview_V2.hlsl` (새) | 스킨 메시 썸네일 셰이더 |
+| `Client/Public/Effect_Preview_V2.h`, `Client/Private/Effect_Preview_V2.cpp` (새) | 월드 preview GameObject |
+| `Client/Bin/ShaderFiles/Shader_EffectV2_Common.hlsli`, `Shader_EffectMeshV2.hlsl`, `Shader_EffectAnimMeshV2.hlsl`, `Shader_EffectRectV2.hlsl` (새) | preview 셰이더 |
 | `Tools/EffectToolV2/build_texture_slot_usage.py` (새) | 슬롯 사용 사이드카 생성기 |
 | `Data/Effects/V2/TextureSlotUsage.v1.json` (생성물, Git 추적) | 텍스처→슬롯 사용 횟수 |
 | `Client/Public/MainApp.h`, `Client/Private/MainApp.cpp` | `DEBUG_TOOL::EFFECT_V2`, 멤버, 버튼/생성/Render/Free |
@@ -59,6 +77,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -69,6 +88,8 @@ class CShader;
 NS_END
 
 NS_BEGIN(Client)
+
+class CEffectPreviewV2;
 
 class CEffect_Tool_V2 final
 {
@@ -159,6 +180,9 @@ private:
 	void Render_SlotCards();
 	void Render_ResourceBrowser();
 	void Render_PreviewPanel();
+	void Render_CreatePanel();
+	void Render_TuningPanel();
+	bool_t Try_CreatePreview();
 
 	SLOT_BINDINGS& Current_Bindings();
 	std::string& Current_SlotAssetId();
@@ -196,6 +220,10 @@ private:
 	std::unordered_map<std::string, PREVIEW_ENTRY> m_Previews;
 	uint32_t m_iLoadsThisFrame = 0u;
 
+	std::weak_ptr<CEffectPreviewV2> m_pPreview;
+	bool_t m_bPreviewPrototypeRegistered = false;
+	std::string m_strPreviewStatus;
+
 	std::string m_strStatus;
 };
 
@@ -211,6 +239,8 @@ NS_END
 #include "BinaryAsset/ModelAssetData.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "DataJson.h"
+#include "Effect_Preview_V2.h"
+#include "GameInstance.h"
 #include "Model.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
@@ -304,6 +334,9 @@ void Client::CEffect_Tool_V2::Render()
 		Render_ResourceBrowser();
 		ImGui::TableSetColumnIndex(1);
 		Render_PreviewPanel();
+		ImGui::Separator();
+		Render_CreatePanel();
+		Render_TuningPanel();
 		ImGui::EndTable();
 	}
 
@@ -1196,6 +1229,176 @@ void Client::CEffect_Tool_V2::Render_PreviewPanel()
 		ImGui::TextWrapped("%s", pPreview->strInfo.c_str());
 }
 
+void Client::CEffect_Tool_V2::Render_CreatePanel()
+{
+	ImGui::TextUnformatted("World Preview");
+	const SLOT_BINDINGS& Bindings = Current_Bindings();
+	const bool_t bMeshType =
+		EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::PARTICLE == m_eType;
+	const bool_t bSupportedType =
+		EFFECT_TYPE::MESH == m_eType || EFFECT_TYPE::TEXTURE == m_eType;
+	const bool_t bHasBase =
+		!Bindings[static_cast<size_t>(RESOURCE_SLOT::BASE)].empty();
+	const bool_t bHasMesh =
+		!Bindings[static_cast<size_t>(RESOURCE_SLOT::MESH)].empty();
+	const bool_t bCanCreate =
+		bSupportedType && bHasBase && (!bMeshType || bHasMesh);
+	ImGui::BeginDisabled(!bCanCreate);
+	if (ImGui::Button("Create Effect"))
+		Try_CreatePreview();
+	ImGui::EndDisabled();
+	if (!bSupportedType)
+		ImGui::TextDisabled("Only Mesh and Texture types can be previewed yet.");
+	else if (!bHasBase)
+		ImGui::TextDisabled("Bind a Base texture first.");
+	else if (bMeshType && !bHasMesh)
+		ImGui::TextDisabled("Bind a Mesh first.");
+	if (!m_strPreviewStatus.empty())
+		ImGui::TextWrapped("%s", m_strPreviewStatus.c_str());
+}
+
+bool_t Client::CEffect_Tool_V2::Try_CreatePreview()
+{
+	CGameInstance& GameInstance = CGameInstance::Get();
+	if (!m_bPreviewPrototypeRegistered)
+	{
+		unique_ptr<CEffectPreviewV2> pPrototype =
+			CEffectPreviewV2::Create(m_pDevice, m_pContext);
+		if (nullptr == pPrototype)
+		{
+			m_strPreviewStatus = "Preview prototype creation failed.";
+			return false;
+		}
+		const HRESULT hResult = GameInstance.Add_Prototype(
+			ETOUI(LEVEL::STATIC), L"Prototype_GameObject_EffectPreviewV2",
+			std::move(pPrototype));
+		if (FAILED(hResult))
+		{
+			m_strPreviewStatus =
+				"Prototype registration returned failure (already registered or STATIC level unavailable); continuing.";
+		}
+		m_bPreviewPrototypeRegistered = true;
+	}
+	if (const std::shared_ptr<CEffectPreviewV2> pPrevious = m_pPreview.lock())
+		pPrevious->Set_Hidden(true);
+
+	const SLOT_BINDINGS& Bindings = Current_Bindings();
+	CEffectPreviewV2::DESC Desc{};
+	Desc.eShape = EFFECT_TYPE::MESH == m_eType ?
+		CEffectPreviewV2::SHAPE::MESH : CEffectPreviewV2::SHAPE::SPRITE;
+	Desc.strMeshAssetId = Bindings[static_cast<size_t>(RESOURCE_SLOT::MESH)];
+	for (int32_t iSlot = static_cast<int32_t>(RESOURCE_SLOT::BASE);
+		iSlot < static_cast<int32_t>(RESOURCE_SLOT::END); ++iSlot)
+	{
+		Desc.TextureAssetIds[static_cast<size_t>(
+			iSlot - static_cast<int32_t>(RESOURCE_SLOT::BASE))] =
+			Bindings[static_cast<size_t>(iSlot)];
+	}
+
+	const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
+	const float4x4_t* pCameraWorld = GameInstance.Get_InverseTransform(D3DTS::VIEW);
+	if (nullptr == pCameraPosition || nullptr == pCameraWorld)
+	{
+		m_strPreviewStatus = "Camera is not available in this level.";
+		return false;
+	}
+	const vector_t Look = XMVector3Normalize(XMLoadFloat4x4(pCameraWorld).r[2]);
+	const vector_t Spawn = XMLoadFloat4(pCameraPosition) + Look * 3.f;
+	XMStoreFloat3(&Desc.vPosition, Spawn);
+	Desc.vScale = { 1.f, 1.f, 1.f };
+
+	std::shared_ptr<CGameObject> pGameObject;
+	if (FAILED(GameInstance.Add_GameObject_to_Layer(
+		ETOUI(LEVEL::STATIC), L"Prototype_GameObject_EffectPreviewV2",
+		GameInstance.Get_CurrentLevelID(), L"Layer_EffectPreviewV2",
+		&Desc, &pGameObject)))
+	{
+		m_strPreviewStatus = "Create failed: " +
+			(CEffectPreviewV2::Last_Error().empty() ?
+				std::string("prototype clone or layer add failed.") :
+				CEffectPreviewV2::Last_Error());
+		return false;
+	}
+	const std::shared_ptr<CEffectPreviewV2> pPreview =
+		std::dynamic_pointer_cast<CEffectPreviewV2>(pGameObject);
+	if (nullptr == pPreview)
+	{
+		m_strPreviewStatus = "Create failed: unexpected object type.";
+		return false;
+	}
+	m_pPreview = pPreview;
+	m_strPreviewStatus = "Spawned at camera forward 3 m.";
+	return true;
+}
+
+void Client::CEffect_Tool_V2::Render_TuningPanel()
+{
+	const std::shared_ptr<CEffectPreviewV2> pPreview = m_pPreview.lock();
+	if (nullptr == pPreview)
+	{
+		ImGui::TextDisabled("No live preview. Create Effect to spawn one.");
+		return;
+	}
+	ImGui::SeparatorText("Tuning");
+	ImGui::Text("%s | %.2fs | %s",
+		CEffectPreviewV2::SHAPE::MESH == pPreview->Shape() ? "Mesh" : "Sprite",
+		pPreview->Time(), pPreview->Status().c_str());
+	if (ImGui::Button("Restart"))
+		pPreview->Restart();
+	ImGui::SameLine();
+	bool_t bVisible = !pPreview->Is_Hidden();
+	if (ImGui::Checkbox("Visible", &bVisible))
+		pPreview->Set_Hidden(!bVisible);
+	ImGui::SameLine();
+	if (ImGui::Button("Bring To Camera"))
+	{
+		CGameInstance& GameInstance = CGameInstance::Get();
+		const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
+		const float4x4_t* pCameraWorld = GameInstance.Get_InverseTransform(D3DTS::VIEW);
+		if (nullptr != pCameraPosition && nullptr != pCameraWorld)
+		{
+			const vector_t Look = XMVector3Normalize(XMLoadFloat4x4(pCameraWorld).r[2]);
+			XMStoreFloat3(&pPreview->Position(),
+				XMLoadFloat4(pCameraPosition) + Look * 3.f);
+		}
+	}
+
+	ImGui::SeparatorText("Transform");
+	ImGui::DragFloat3("Position", &pPreview->Position().x, 0.05f);
+	ImGui::DragFloat3("Rotation (deg)", &pPreview->RotationDegrees().x, 1.f);
+	ImGui::DragFloat3("Scale", &pPreview->Scale().x, 0.01f, 0.001f, 1000.f);
+
+	CEffectPreviewV2::PARAMS& P = pPreview->Params();
+	ImGui::SeparatorText("Material");
+	ImGui::ColorEdit4("Tint", &P.vTint.x, ImGuiColorEditFlags_Float);
+	int32_t iBlend = static_cast<int32_t>(P.eBlend);
+	if (ImGui::Combo("Blend", &iBlend, "Alpha\0Additive\0"))
+		P.eBlend = static_cast<CEffectPreviewV2::BLEND_MODE>(iBlend);
+	ImGui::Checkbox("Depth Test", &P.bDepthTest);
+	if (CEffectPreviewV2::SHAPE::SPRITE == pPreview->Shape())
+	{
+		ImGui::SameLine();
+		ImGui::Checkbox("Billboard", &P.bBillboard);
+	}
+	ImGui::DragFloat2("UV Scale", &P.vUVScale.x, 0.01f, 0.01f, 64.f);
+	ImGui::DragFloat2("Base Pan (uv/s)", &P.vBasePan.x, 0.01f, -10.f, 10.f);
+	ImGui::DragFloat("Noise Strength", &P.fNoiseStrength, 0.005f, 0.f, 2.f);
+	ImGui::DragFloat("Noise Scale", &P.fNoiseScale, 0.01f, 0.01f, 64.f);
+	ImGui::DragFloat2("Noise Pan (uv/s)", &P.vNoisePan.x, 0.01f, -10.f, 10.f);
+	ImGui::DragFloat("Emissive Intensity", &P.fEmissiveIntensity, 0.05f, 0.f, 32.f);
+	ImGui::SliderFloat("Dissolve Amount", &P.fDissolveAmount, 0.f, 1.f);
+	ImGui::SliderFloat("Dissolve Softness", &P.fDissolveSoftness, 0.f, 0.5f);
+
+	ImGui::SeparatorText("Playback");
+	ImGui::DragFloat("Lifetime (s, 0 = infinite)", &P.fLifetime, 0.05f, 0.f, 600.f);
+	ImGui::Checkbox("Loop", &P.bLoop);
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(120.f);
+	ImGui::DragFloat("Play Rate", &P.fPlayRate, 0.01f, 0.f, 16.f);
+	if (pPreview->Is_Finished())
+		ImGui::TextDisabled("Finished (lifetime reached). Restart to replay.");
+}
+
 Client::CEffect_Tool_V2::SLOT_BINDINGS& Client::CEffect_Tool_V2::Current_Bindings()
 {
 	return m_Bindings[static_cast<size_t>(m_eType)];
@@ -1259,6 +1462,659 @@ const char* Client::CEffect_Tool_V2::Slot_Description(const RESOURCE_SLOT eSlot)
 	case RESOURCE_SLOT::DISSOLVE: return "Dissolve: R channel threshold over lifetime.";
 	default: return "";
 	}
+}
+```
+
+### Client/Public/Effect_Preview_V2.h
+
+```cpp
+#pragma once
+
+#include "Client_Defines.h"
+#include "GameObject.h"
+
+#include <array>
+#include <cstdint>
+#include <string>
+
+NS_BEGIN(Engine)
+class CModel;
+class CShader;
+class CVIBuffer_Rect;
+NS_END
+
+NS_BEGIN(Client)
+
+class CEffectPreviewV2 final : public CGameObject
+{
+public:
+	enum class SHAPE : int32_t
+	{
+		MESH,
+		SPRITE,
+		END
+	};
+
+	enum class BLEND_MODE : int32_t
+	{
+		ALPHA,
+		ADDITIVE,
+		END
+	};
+
+	enum class TEXTURE_INPUT : int32_t
+	{
+		BASE,
+		NOISE,
+		MASK,
+		EMISSIVE,
+		DISSOLVE,
+		END
+	};
+
+	struct PARAMS final
+	{
+		float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
+		BLEND_MODE eBlend = BLEND_MODE::ADDITIVE;
+		bool_t bBillboard = true;
+		bool_t bDepthTest = true;
+		float2_t vUVScale = { 1.f, 1.f };
+		float2_t vBasePan = { 0.f, 0.f };
+		f32_t fNoiseStrength = 0.f;
+		f32_t fNoiseScale = 1.f;
+		float2_t vNoisePan = { 0.f, 0.f };
+		f32_t fEmissiveIntensity = 1.f;
+		f32_t fDissolveAmount = 0.f;
+		f32_t fDissolveSoftness = 0.1f;
+		f32_t fLifetime = 0.f;
+		bool_t bLoop = true;
+		f32_t fPlayRate = 1.f;
+	};
+
+	struct DESC final : public GAMEOBJECT_DESC
+	{
+		SHAPE eShape = SHAPE::SPRITE;
+		std::string strMeshAssetId;
+		std::array<std::string, static_cast<size_t>(TEXTURE_INPUT::END)> TextureAssetIds;
+		float3_t vPosition = { 0.f, 0.f, 0.f };
+		float3_t vRotationDegrees = { 0.f, 0.f, 0.f };
+		float3_t vScale = { 1.f, 1.f, 1.f };
+		PARAMS Params;
+	};
+
+private:
+	CEffectPreviewV2(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext);
+public:
+	virtual ~CEffectPreviewV2();
+
+public:
+	virtual HRESULT Initialize_Prototype() override;
+	virtual HRESULT Initialize(void* pArg) override;
+	virtual void Update(f32_t fTimeDelta) override;
+	virtual void Late_Update(f32_t fTimeDelta) override;
+	virtual HRESULT Render() override;
+
+	PARAMS& Params() { return m_Params; }
+	float3_t& Position() { return m_vPosition; }
+	float3_t& RotationDegrees() { return m_vRotationDegrees; }
+	float3_t& Scale() { return m_vScale; }
+	const std::string& Status() const { return m_strStatus; }
+	SHAPE Shape() const { return m_eShape; }
+	f32_t Time() const { return m_fTime; }
+	bool_t Is_Finished() const { return m_bFinished; }
+	bool_t Is_Hidden() const { return m_bHidden; }
+	void Set_Hidden(const bool_t bHidden) { m_bHidden = bHidden; }
+	void Restart();
+	static const std::string& Last_Error() { return s_strLastError; }
+
+private:
+	HRESULT Load_Texture(
+		const std::string& strAssetId, ComPtr<ID3D11ShaderResourceView>& OutView);
+	void Apply_Transform();
+	HRESULT Bind_Common(const shared_ptr<Engine::CShader>& pShader);
+
+private:
+	SHAPE m_eShape = SHAPE::SPRITE;
+	PARAMS m_Params;
+	float3_t m_vPosition = { 0.f, 0.f, 0.f };
+	float3_t m_vRotationDegrees = { 0.f, 0.f, 0.f };
+	float3_t m_vScale = { 1.f, 1.f, 1.f };
+	f32_t m_fTime = 0.f;
+	bool_t m_bFinished = false;
+	bool_t m_bHidden = false;
+	bool_t m_bSkinned = false;
+	std::string m_strStatus;
+
+	shared_ptr<Engine::CShader> m_pShader;
+	shared_ptr<Engine::CModel> m_pModel;
+	shared_ptr<Engine::CVIBuffer_Rect> m_pRect;
+	std::array<ComPtr<ID3D11ShaderResourceView>,
+		static_cast<size_t>(TEXTURE_INPUT::END)> m_Textures;
+	static std::string s_strLastError;
+
+public:
+	static unique_ptr<CEffectPreviewV2> Create(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext);
+	virtual shared_ptr<CPrototype> Clone(void* pArg) override;
+};
+
+NS_END
+```
+
+### Client/Private/Effect_Preview_V2.cpp
+
+```cpp
+#include "Effect_Preview_V2.h"
+#include "GameInstance.h"
+#include "Model.h"
+#include "RuntimeAssetRoot.h"
+#include "Shader.h"
+#include "VIBuffer_Rect.h"
+
+#include "DirectXTK/DDSTextureLoader.h"
+
+#include <cmath>
+#include <filesystem>
+
+namespace
+{
+	constexpr const char* TEXTURE_CONSTANTS[] = {
+		"g_BaseTexture", "g_NoiseTexture", "g_MaskTexture",
+		"g_EmissiveTexture", "g_DissolveTexture"
+	};
+	constexpr const char* TEXTURE_FLAG_CONSTANTS[] = {
+		"g_HasBase", "g_HasNoise", "g_HasMask", "g_HasEmissive", "g_HasDissolve"
+	};
+}
+
+Client::CEffectPreviewV2::CEffectPreviewV2(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+	: CGameObject(std::move(pDevice), std::move(pContext))
+{
+}
+
+Client::CEffectPreviewV2::~CEffectPreviewV2() = default;
+
+HRESULT Client::CEffectPreviewV2::Initialize_Prototype()
+{
+	return S_OK;
+}
+
+std::string Client::CEffectPreviewV2::s_strLastError;
+
+HRESULT Client::CEffectPreviewV2::Initialize(void* pArg)
+{
+	const auto Fail = [this](std::string strReason)
+	{
+		m_strStatus = std::move(strReason);
+		s_strLastError = m_strStatus;
+		return E_FAIL;
+	};
+	s_strLastError.clear();
+	if (nullptr == pArg)
+		return Fail("Preview desc is null.");
+	if (FAILED(__super::Initialize(pArg)))
+		return Fail("Transform component creation failed.");
+	const DESC& Desc = *static_cast<const DESC*>(pArg);
+	m_eShape = Desc.eShape;
+	m_Params = Desc.Params;
+	m_vPosition = Desc.vPosition;
+	m_vRotationDegrees = Desc.vRotationDegrees;
+	m_vScale = Desc.vScale;
+
+	if (SHAPE::MESH == m_eShape)
+	{
+		const std::filesystem::path MeshPath =
+			CRuntimeAssetRoot::Resolve(std::filesystem::path(Desc.strMeshAssetId));
+		if (MeshPath.empty() || !std::filesystem::is_regular_file(MeshPath))
+			return Fail("Mesh asset is missing: " + Desc.strMeshAssetId);
+		unique_ptr<Engine::CModel> Model = Engine::CModel::Create(
+			m_pDevice, m_pContext, MODEL::NONANIM,
+			MeshPath.string().c_str(), XMMatrixIdentity());
+		m_bSkinned = false;
+		if (nullptr == Model)
+		{
+			Model = Engine::CModel::Create(
+				m_pDevice, m_pContext, MODEL::ANIM,
+				MeshPath.string().c_str(), XMMatrixIdentity());
+			m_bSkinned = nullptr != Model;
+		}
+		if (nullptr == Model)
+			return Fail("Mesh load failed: " + Desc.strMeshAssetId);
+		m_pModel = std::move(Model);
+		unique_ptr<Engine::CShader> Shader = m_bSkinned ?
+			Engine::CShader::Create(m_pDevice, m_pContext,
+				TEXT("../Bin/ShaderFiles/Shader_EffectAnimMeshV2.hlsl"),
+				VTXANIMMESH::Elements, VTXANIMMESH::iNumElements) :
+			Engine::CShader::Create(m_pDevice, m_pContext,
+				TEXT("../Bin/ShaderFiles/Shader_EffectMeshV2.hlsl"),
+				VTXMESH::Elements, VTXMESH::iNumElements);
+		if (nullptr == Shader)
+		{
+			return Fail(m_bSkinned ?
+				"Shader_EffectAnimMeshV2.hlsl compile failed." :
+				"Shader_EffectMeshV2.hlsl compile failed.");
+		}
+		m_pShader = std::move(Shader);
+	}
+	else
+	{
+		unique_ptr<Engine::CVIBuffer_Rect> Rect =
+			Engine::CVIBuffer_Rect::Create(m_pDevice, m_pContext);
+		if (nullptr == Rect)
+			return Fail("Rect buffer creation failed.");
+		m_pRect = std::move(Rect);
+		unique_ptr<Engine::CShader> Shader = Engine::CShader::Create(
+			m_pDevice, m_pContext,
+			TEXT("../Bin/ShaderFiles/Shader_EffectRectV2.hlsl"),
+			VTXTEX::Elements, VTXTEX::iNumElements);
+		if (nullptr == Shader)
+			return Fail("Shader_EffectRectV2.hlsl compile failed.");
+		m_pShader = std::move(Shader);
+	}
+
+	for (size_t iInput = 0u; iInput < m_Textures.size(); ++iInput)
+	{
+		const std::string& strAssetId = Desc.TextureAssetIds[iInput];
+		if (strAssetId.empty())
+			continue;
+		if (FAILED(Load_Texture(strAssetId, m_Textures[iInput])))
+			return Fail("Texture load failed: " + strAssetId);
+	}
+	m_strStatus = "Ready";
+	Apply_Transform();
+	return S_OK;
+}
+
+HRESULT Client::CEffectPreviewV2::Load_Texture(
+	const std::string& strAssetId,
+	ComPtr<ID3D11ShaderResourceView>& OutView)
+{
+	const std::filesystem::path Path =
+		CRuntimeAssetRoot::Resolve(std::filesystem::path(strAssetId));
+	if (Path.empty() || !std::filesystem::is_regular_file(Path))
+		return E_FAIL;
+	return DirectX::CreateDDSTextureFromFile(
+		m_pDevice.Get(), Path.c_str(), nullptr, &OutView);
+}
+
+void Client::CEffectPreviewV2::Restart()
+{
+	m_fTime = 0.f;
+	m_bFinished = false;
+}
+
+void Client::CEffectPreviewV2::Update(const f32_t fTimeDelta)
+{
+	if (!m_bFinished)
+	{
+		m_fTime += fTimeDelta * m_Params.fPlayRate;
+		if (m_Params.fLifetime > 0.f && m_fTime >= m_Params.fLifetime)
+		{
+			if (m_Params.bLoop)
+				m_fTime = std::fmod(m_fTime, m_Params.fLifetime);
+			else
+				m_bFinished = true;
+		}
+	}
+	Apply_Transform();
+}
+
+void Client::CEffectPreviewV2::Apply_Transform()
+{
+	const matrix_t Scale =
+		XMMatrixScaling(m_vScale.x, m_vScale.y, m_vScale.z);
+	matrix_t Rotation = XMMatrixRotationRollPitchYaw(
+		XMConvertToRadians(m_vRotationDegrees.x),
+		XMConvertToRadians(m_vRotationDegrees.y),
+		XMConvertToRadians(m_vRotationDegrees.z));
+	if (SHAPE::SPRITE == m_eShape && m_Params.bBillboard)
+	{
+		const float4x4_t* pCameraWorld =
+			CGameInstance::Get().Get_InverseTransform(D3DTS::VIEW);
+		if (nullptr != pCameraWorld)
+		{
+			matrix_t CameraWorld = XMLoadFloat4x4(pCameraWorld);
+			CameraWorld.r[0] = XMVector3Normalize(CameraWorld.r[0]);
+			CameraWorld.r[1] = XMVector3Normalize(CameraWorld.r[1]);
+			CameraWorld.r[2] = XMVector3Normalize(CameraWorld.r[2]);
+			CameraWorld.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
+			Rotation = Rotation * CameraWorld;
+		}
+	}
+	const matrix_t World = Scale * Rotation *
+		XMMatrixTranslation(m_vPosition.x, m_vPosition.y, m_vPosition.z);
+	m_pTransformCom->Set_State(STATE::RIGHT, World.r[0]);
+	m_pTransformCom->Set_State(STATE::UP, World.r[1]);
+	m_pTransformCom->Set_State(STATE::LOOK, World.r[2]);
+	m_pTransformCom->Set_State(STATE::POSITION, World.r[3]);
+}
+
+void Client::CEffectPreviewV2::Late_Update(const f32_t fTimeDelta)
+{
+	UNREFERENCED_PARAMETER(fTimeDelta);
+	if (m_bHidden || m_bFinished || nullptr == m_pShader)
+		return;
+	CGameInstance::Get().Add_RenderObject(
+		RENDERGROUP::BLEND,
+		static_pointer_cast<CGameObject>(shared_from_this()));
+}
+
+HRESULT Client::CEffectPreviewV2::Bind_Common(
+	const shared_ptr<Engine::CShader>& pShader)
+{
+	CGameInstance& GameInstance = CGameInstance::Get();
+	if (FAILED(m_pTransformCom->Bind_ShaderResource(pShader, "g_WorldMatrix")) ||
+		FAILED(GameInstance.Bind_Transform(pShader, "g_ViewMatrix", D3DTS::VIEW)) ||
+		FAILED(GameInstance.Bind_Transform(pShader, "g_ProjMatrix", D3DTS::PROJ)))
+	{
+		return E_FAIL;
+	}
+	const PARAMS& P = m_Params;
+	if (FAILED(pShader->Bind_RawValue("g_Time", &m_fTime, sizeof(m_fTime))) ||
+		FAILED(pShader->Bind_RawValue("g_Tint", &P.vTint, sizeof(P.vTint))) ||
+		FAILED(pShader->Bind_RawValue("g_UVScale", &P.vUVScale, sizeof(P.vUVScale))) ||
+		FAILED(pShader->Bind_RawValue("g_BasePan", &P.vBasePan, sizeof(P.vBasePan))) ||
+		FAILED(pShader->Bind_RawValue("g_NoiseStrength", &P.fNoiseStrength, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_NoiseScale", &P.fNoiseScale, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_NoisePan", &P.vNoisePan, sizeof(P.vNoisePan))) ||
+		FAILED(pShader->Bind_RawValue("g_EmissiveIntensity", &P.fEmissiveIntensity, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_DissolveAmount", &P.fDissolveAmount, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_DissolveSoftness", &P.fDissolveSoftness, sizeof(f32_t))))
+	{
+		return E_FAIL;
+	}
+	for (size_t iInput = 0u; iInput < m_Textures.size(); ++iInput)
+	{
+		const uint32_t iHas = nullptr != m_Textures[iInput] ? 1u : 0u;
+		if (FAILED(pShader->Bind_RawValue(
+			TEXTURE_FLAG_CONSTANTS[iInput], &iHas, sizeof(iHas))))
+			return E_FAIL;
+		if (0u != iHas &&
+			FAILED(pShader->Bind_Texture(TEXTURE_CONSTANTS[iInput], m_Textures[iInput])))
+			return E_FAIL;
+	}
+	return S_OK;
+}
+
+HRESULT Client::CEffectPreviewV2::Render()
+{
+	if (FAILED(Bind_Common(m_pShader)))
+	{
+		m_strStatus = "Shader bind failed.";
+		return E_FAIL;
+	}
+	const uint32_t iPass =
+		static_cast<uint32_t>(m_Params.eBlend) + (m_Params.bDepthTest ? 0u : 2u);
+	if (SHAPE::MESH == m_eShape)
+	{
+		for (uint32_t iMesh = 0u; iMesh < m_pModel->Get_NumMeshes(); ++iMesh)
+		{
+			if (m_bSkinned && FAILED(m_pModel->Bind_BoneMatrices(
+				m_pShader, "g_BoneMatrices", iMesh)))
+			{
+				m_strStatus = "Bone matrix bind failed.";
+				return E_FAIL;
+			}
+			if (FAILED(m_pShader->Begin(iPass)) || FAILED(m_pModel->Render(iMesh)))
+			{
+				m_strStatus = "Mesh draw failed.";
+				return E_FAIL;
+			}
+		}
+		return S_OK;
+	}
+	if (FAILED(m_pShader->Begin(iPass)) || FAILED(m_pRect->Render()))
+	{
+		m_strStatus = "Sprite draw failed.";
+		return E_FAIL;
+	}
+	return S_OK;
+}
+
+unique_ptr<Client::CEffectPreviewV2> Client::CEffectPreviewV2::Create(
+	ComPtr<ID3D11Device> pDevice,
+	ComPtr<ID3D11DeviceContext> pContext)
+{
+	unique_ptr<CEffectPreviewV2> Instance(new CEffectPreviewV2(
+		std::move(pDevice), std::move(pContext)));
+	if (FAILED(Instance->Initialize_Prototype()))
+		return nullptr;
+	return Instance;
+}
+
+shared_ptr<CPrototype> Client::CEffectPreviewV2::Clone(void* pArg)
+{
+	shared_ptr<CEffectPreviewV2> Instance(new CEffectPreviewV2(m_pDevice, m_pContext));
+	if (FAILED(Instance->Initialize(pArg)))
+		return nullptr;
+	return Instance;
+}
+```
+
+### Client/Bin/ShaderFiles/Shader_EffectV2_Common.hlsli
+
+```hlsl
+#include "Engine_Shader_Defines.hlsli"
+
+float4x4 g_WorldMatrix;
+float4x4 g_ViewMatrix;
+float4x4 g_ProjMatrix;
+
+float g_Time;
+float4 g_Tint = float4(1.f, 1.f, 1.f, 1.f);
+float2 g_UVScale = float2(1.f, 1.f);
+float2 g_BasePan = float2(0.f, 0.f);
+float g_NoiseStrength = 0.f;
+float g_NoiseScale = 1.f;
+float2 g_NoisePan = float2(0.f, 0.f);
+float g_EmissiveIntensity = 1.f;
+float g_DissolveAmount = 0.f;
+float g_DissolveSoftness = 0.1f;
+
+Texture2D g_BaseTexture;
+Texture2D g_NoiseTexture;
+Texture2D g_MaskTexture;
+Texture2D g_EmissiveTexture;
+Texture2D g_DissolveTexture;
+uint g_HasBase = 0;
+uint g_HasNoise = 0;
+uint g_HasMask = 0;
+uint g_HasEmissive = 0;
+uint g_HasDissolve = 0;
+
+RasterizerState RS_EffectV2
+{
+	FillMode = Solid;
+	CullMode = None;
+	FrontCounterClockwise = false;
+};
+
+struct PS_EFFECT_IN
+{
+	float4 vPosition : SV_POSITION;
+	float2 vTexcoord : TEXCOORD0;
+};
+
+float4 PS_EFFECT_V2(PS_EFFECT_IN input) : SV_TARGET0
+{
+	const float2 uv = input.vTexcoord * g_UVScale + g_BasePan * g_Time;
+
+	float2 distortion = float2(0.f, 0.f);
+	if (0 != g_HasNoise)
+	{
+		const float2 noiseUV = uv * g_NoiseScale + g_NoisePan * g_Time;
+		distortion = (g_NoiseTexture.Sample(LinearSampler, noiseUV).rg * 2.f - 1.f) *
+			g_NoiseStrength;
+	}
+	const float2 baseUV = uv + distortion;
+
+	float4 base = float4(1.f, 1.f, 1.f, 1.f);
+	if (0 != g_HasBase)
+		base = g_BaseTexture.Sample(LinearSampler, baseUV);
+
+	float mask = 1.f;
+	if (0 != g_HasMask)
+		mask = g_MaskTexture.Sample(LinearSampler, uv).r;
+
+	float3 emissive = float3(0.f, 0.f, 0.f);
+	if (0 != g_HasEmissive)
+		emissive = g_EmissiveTexture.Sample(LinearSampler, baseUV).rgb * g_EmissiveIntensity;
+
+	float dissolve = 1.f;
+	if (0 != g_HasDissolve)
+	{
+		const float threshold = g_DissolveTexture.Sample(LinearSampler, uv).r;
+		dissolve = smoothstep(
+			g_DissolveAmount - g_DissolveSoftness,
+			g_DissolveAmount + g_DissolveSoftness,
+			threshold);
+	}
+
+	const float alpha = base.a * mask * dissolve * g_Tint.a;
+	if (alpha <= 0.001f)
+		discard;
+	const float3 color = base.rgb * g_Tint.rgb + emissive;
+	return float4(color, alpha);
+}
+
+#define EFFECT_V2_PASSES(VS_FUNC) \
+	pass AlphaDepth \
+	{ \
+		SetRasterizerState(RS_EffectV2); \
+		SetDepthStencilState(DSS_ReadOnly, 0); \
+		SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		VertexShader = compile vs_5_0 VS_FUNC(); \
+		GeometryShader = NULL; \
+		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+	} \
+	pass AdditiveDepth \
+	{ \
+		SetRasterizerState(RS_EffectV2); \
+		SetDepthStencilState(DSS_ReadOnly, 0); \
+		SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		VertexShader = compile vs_5_0 VS_FUNC(); \
+		GeometryShader = NULL; \
+		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+	} \
+	pass AlphaNoDepth \
+	{ \
+		SetRasterizerState(RS_EffectV2); \
+		SetDepthStencilState(DSS_ZNone, 0); \
+		SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		VertexShader = compile vs_5_0 VS_FUNC(); \
+		GeometryShader = NULL; \
+		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+	} \
+	pass AdditiveNoDepth \
+	{ \
+		SetRasterizerState(RS_EffectV2); \
+		SetDepthStencilState(DSS_ZNone, 0); \
+		SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		VertexShader = compile vs_5_0 VS_FUNC(); \
+		GeometryShader = NULL; \
+		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+	}
+```
+
+### Client/Bin/ShaderFiles/Shader_EffectMeshV2.hlsl
+
+```hlsl
+#include "Shader_EffectV2_Common.hlsli"
+
+struct VS_IN
+{
+	float3 vPosition : POSITION;
+	float3 vNormal : NORMAL;
+	float3 vTangent : TANGENT;
+	float3 vBinormal : BINORMAL;
+	float2 vTexcoord : TEXCOORD0;
+};
+
+PS_EFFECT_IN VS_MAIN(VS_IN input)
+{
+	PS_EFFECT_IN output;
+	const matrix worldViewProjection =
+		mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix);
+	output.vPosition = mul(float4(input.vPosition, 1.f), worldViewProjection);
+	output.vTexcoord = input.vTexcoord;
+	return output;
+}
+
+technique11 DefaultTechnique
+{
+	EFFECT_V2_PASSES(VS_MAIN)
+}
+```
+
+### Client/Bin/ShaderFiles/Shader_EffectAnimMeshV2.hlsl
+
+```hlsl
+#include "Shader_EffectV2_Common.hlsli"
+
+matrix g_BoneMatrices[512];
+
+struct VS_IN
+{
+	float3 vPosition : POSITION;
+	float3 vNormal : NORMAL;
+	float3 vTangent : TANGENT;
+	float3 vBinormal : BINORMAL;
+	float2 vTexcoord : TEXCOORD0;
+	uint4 vBlendIndices : BLENDINDEX;
+	float4 vBlendWeights : BLENDWEIGHT;
+};
+
+PS_EFFECT_IN VS_MAIN(VS_IN input)
+{
+	PS_EFFECT_IN output;
+	const matrix boneMatrix =
+		g_BoneMatrices[input.vBlendIndices.x] * input.vBlendWeights.x +
+		g_BoneMatrices[input.vBlendIndices.y] * input.vBlendWeights.y +
+		g_BoneMatrices[input.vBlendIndices.z] * input.vBlendWeights.z +
+		g_BoneMatrices[input.vBlendIndices.w] * input.vBlendWeights.w;
+	const float4 skinnedPosition = mul(float4(input.vPosition, 1.f), boneMatrix);
+	const matrix worldViewProjection =
+		mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix);
+	output.vPosition = mul(skinnedPosition, worldViewProjection);
+	output.vTexcoord = input.vTexcoord;
+	return output;
+}
+
+technique11 DefaultTechnique
+{
+	EFFECT_V2_PASSES(VS_MAIN)
+}
+```
+
+### Client/Bin/ShaderFiles/Shader_EffectRectV2.hlsl
+
+```hlsl
+#include "Shader_EffectV2_Common.hlsli"
+
+struct VS_IN
+{
+	float3 vPosition : POSITION;
+	float2 vTexcoord : TEXCOORD0;
+};
+
+PS_EFFECT_IN VS_MAIN(VS_IN input)
+{
+	PS_EFFECT_IN output;
+	const matrix worldViewProjection =
+		mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix);
+	output.vPosition = mul(float4(input.vPosition, 1.f), worldViewProjection);
+	output.vTexcoord = input.vTexcoord;
+	return output;
+}
+
+technique11 DefaultTechnique
+{
+	EFFECT_V2_PASSES(VS_MAIN)
 }
 ```
 
@@ -1471,141 +2327,51 @@ if __name__ == "__main__":
     main()
 ```
 
-### 기존 파일 변경 (MainApp.h / MainApp.cpp / Client.vcxproj / Client.vcxproj.filters)
+### 기존 파일 변경 (MainApp.h / MainApp.cpp / Client.vcxproj / Client.vcxproj.filters, 누적 diff vs HEAD)
 
 ```diff
 diff --git a/Client/Default/Client.vcxproj b/Client/Default/Client.vcxproj
-index 55b1fa58..8a692e5c 100644
+index 8a692e5c..b0b09706 100644
 --- a/Client/Default/Client.vcxproj
 +++ b/Client/Default/Client.vcxproj
-@@ -120,6 +120,7 @@
-     <ClInclude Include="..\public\Camera_Free.h" />
+@@ -121,6 +121,7 @@
      <ClInclude Include="..\Public\Client_Defines.h" />
      <ClInclude Include="..\public\Effect_Tool.h" />
-+    <ClInclude Include="..\Public\Effect_Tool_V2.h" />
+     <ClInclude Include="..\Public\Effect_Tool_V2.h" />
++    <ClInclude Include="..\Public\Effect_Preview_V2.h" />
      <ClInclude Include="..\Public\HUDLayoutTool.h" />
      <ClInclude Include="..\Public\Level_Loading.h" />
      <ClInclude Include="..\public\Loader.h" />
-@@ -248,6 +249,7 @@
-     <ClCompile Include="..\private\Effect_Tool.cpp">
+@@ -250,6 +251,7 @@
        <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
      </ClCompile>
-+    <ClCompile Include="..\Private\Effect_Tool_V2.cpp" />
+     <ClCompile Include="..\Private\Effect_Tool_V2.cpp" />
++    <ClCompile Include="..\Private\Effect_Preview_V2.cpp" />
      <ClCompile Include="..\Private\HUDLayoutTool.cpp" />
      <ClCompile Include="..\Private\Level_Loading.cpp" />
      <ClCompile Include="..\private\Loader.cpp" />
 diff --git a/Client/Default/Client.vcxproj.filters b/Client/Default/Client.vcxproj.filters
-index fe8d25b9..d40493c0 100644
+index d40493c0..a01b058e 100644
 --- a/Client/Default/Client.vcxproj.filters
 +++ b/Client/Default/Client.vcxproj.filters
-@@ -46,6 +46,9 @@
-     <Filter Include="03. Tools\05. Sequencer">
-       <UniqueIdentifier>{6f28d0c9-bbd3-42f8-9b77-040d9c18034e}</UniqueIdentifier>
-     </Filter>
-+    <Filter Include="03. Tools\06. Effect V2">
-+      <UniqueIdentifier>{ca71a633-aed2-4aaf-82dc-975cd7e1ea9a}</UniqueIdentifier>
-+    </Filter>
-     <Filter Include="02.GameObjects\01. Boss">
-       <UniqueIdentifier>{2d44837b-7b11-42f4-9d69-d18a0e209670}</UniqueIdentifier>
-     </Filter>
-@@ -375,6 +378,9 @@
-     <ClCompile Include="..\Private\HUDLayoutTool.cpp">
-       <Filter>03. Tools\03. UI</Filter>
+@@ -381,6 +381,9 @@
+     <ClCompile Include="..\Private\Effect_Tool_V2.cpp">
+       <Filter>03. Tools\06. Effect V2</Filter>
      </ClCompile>
-+    <ClCompile Include="..\Private\Effect_Tool_V2.cpp">
++    <ClCompile Include="..\Private\Effect_Preview_V2.cpp">
 +      <Filter>03. Tools\06. Effect V2</Filter>
 +    </ClCompile>
      <ClCompile Include="..\Private\Valtan.cpp">
        <Filter>02.GameObjects\01. Boss</Filter>
      </ClCompile>
-@@ -706,6 +712,9 @@
-     <ClInclude Include="..\Public\HUDLayoutTool.h">
-       <Filter>03. Tools\03. UI</Filter>
+@@ -715,6 +718,9 @@
+     <ClInclude Include="..\Public\Effect_Tool_V2.h">
+       <Filter>03. Tools\06. Effect V2</Filter>
      </ClInclude>
-+    <ClInclude Include="..\Public\Effect_Tool_V2.h">
++    <ClInclude Include="..\Public\Effect_Preview_V2.h">
 +      <Filter>03. Tools\06. Effect V2</Filter>
 +    </ClInclude>
      <ClInclude Include="..\Public\Valtan.h">
        <Filter>02.GameObjects\01. Boss</Filter>
      </ClInclude>
-diff --git a/Client/Private/MainApp.cpp b/Client/Private/MainApp.cpp
-index 539c2d11..4eff175a 100644
---- a/Client/Private/MainApp.cpp
-+++ b/Client/Private/MainApp.cpp
-@@ -36,6 +36,7 @@
- #include "BalanceTool.h"
- #include "CharacterPreviewPanel.h"
- #include "Effect_Tool.h"
-+#include "Effect_Tool_V2.h"
- #include "HUDLayoutTool.h"
- #include "MapEditorWorkspaceService.h"
- #include "MapTool.h"
-@@ -611,6 +612,10 @@ HRESULT CMainApp::Render()
- 				if (nullptr != m_pEffectTool)
- 					m_pEffectTool->Render();
- 				break;
-+			case DEBUG_TOOL::EFFECT_V2:
-+				if (nullptr != m_pEffectToolV2)
-+					m_pEffectToolV2->Render();
-+				break;
- 			case DEBUG_TOOL::RENDERING:
- 				RenderRenderingWorkbench();
- 				break;
-@@ -2746,6 +2751,11 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
- 				make_unique<CEffect_Tool>(
- 					m_pDevice, m_pContext, m_pCharacterPreviewPanel);
- 		break;
-+	case DEBUG_TOOL::EFFECT_V2:
-+		if (nullptr == m_pEffectToolV2)
-+			m_pEffectToolV2 =
-+				make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext);
-+		break;
- 	case DEBUG_TOOL::RENDERING:
- 		if (!m_bRenderQualityDraftInitialized)
- 		{
-@@ -2821,6 +2831,8 @@ void CMainApp::RenderDeveloperTools()
- 		true);
- 	toolButton("Effect Tool", DEBUG_TOOL::EFFECT, true);
- 	ImGui::SameLine();
-+	toolButton("Effect Tool v2", DEBUG_TOOL::EFFECT_V2, true);
-+	ImGui::SameLine();
- 	toolButton("Rendering Workbench", DEBUG_TOOL::RENDERING, true);
- 	ImGui::SameLine();
- 	toolButton("HUD Layout Tool", DEBUG_TOOL::UI, true);
-@@ -3379,6 +3391,7 @@ void CMainApp::Free()
- 		pProfiler->Set_Enabled(false);
- 	m_pAnimationTool.reset();
- 	m_pEffectTool.reset();
-+	m_pEffectToolV2.reset();
- 	if (nullptr != m_pCharacterPreviewPanel)
- 		m_pCharacterPreviewPanel->Release(true);
- 	m_pCharacterPreviewPanel.reset();
-diff --git a/Client/Public/MainApp.h b/Client/Public/MainApp.h
-index d61f460b..d999d512 100644
---- a/Client/Public/MainApp.h
-+++ b/Client/Public/MainApp.h
-@@ -14,6 +14,7 @@ NS_BEGIN(Client)
- 
- class CMapTool;
- class CEffect_Tool;
-+class CEffect_Tool_V2;
- class CAnimation_Tool;
- class CHUDLayoutTool;
- class CHUDRuntimeView;
-@@ -35,6 +36,7 @@ private:
- 		MAP,
- 		ANIMATION,
- 		EFFECT,
-+		EFFECT_V2,
- 		RENDERING,
- 		UI,
- 		BALANCE
-@@ -239,6 +241,7 @@ private:
- #ifdef _DEBUG
- 	unique_ptr<CMapTool> m_pMapTool = { nullptr };
- 	unique_ptr<CEffect_Tool> m_pEffectTool = { nullptr };
-+	unique_ptr<CEffect_Tool_V2> m_pEffectToolV2 = { nullptr };
- 	unique_ptr<CAnimation_Tool> m_pAnimationTool = { nullptr };
- 	shared_ptr<CCharacterPreviewPanel> m_pCharacterPreviewPanel = { nullptr };
- 	unique_ptr<CHUDLayoutTool> m_pHUDLayoutTool = { nullptr };
 ```
