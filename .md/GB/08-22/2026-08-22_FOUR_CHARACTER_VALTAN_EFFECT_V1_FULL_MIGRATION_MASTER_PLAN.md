@@ -239,6 +239,17 @@ frozen V0 Product
 이 cohort의 자동 성공은 네 스킬 전체 `V1_COMPLETE`가 아니다. canary별 carrier와 typed RT0 실행이
 제품 후보가 되었음을 뜻하며, terminal 판정과 Product composition 완료는 사용자 화면 승인 뒤 닫는다.
 
+### 0.7 첫 carrier cohort 구현 checkpoint
+
+`2026-08-22_V1_CARRIER_COHORT_INTEGRATION_RESULT.md` 기준 자동 구현과 Debug/Release는 완료됐다.
+
+- 창술사 D와 F carrier는 `KEEP`이며 F만 profile36 material action을 Product에 publish했다.
+- 차원술사 F Fluid01 두 Sprite carrier는 `KEEP`이고 first-pixel witness를 봉인했다.
+- 워로드 F는 Product를 동결하고 Tool-only 두 행 후보까지만 만들었다. terminal 판정은
+  `USER_REVIEW_PENDING`이다.
+- `REPLACE/ADD/RETIRE`를 Product에 실행한 대상은 아직 없다.
+- 다음 gate는 사용자의 네 대상 Solo/전체 composition 판정이며, 그 전에는 `V1_COMPLETE`로 올리지 않는다.
+
 ## 1. V0 기준선 실측
 
 ### 1.1 병합 기준
