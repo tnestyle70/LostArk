@@ -39,22 +39,22 @@
     },
     {
       "path": "Client/Public/Effect_DocumentRenderer.h",
-      "sha256": "83667418a5a6ef304091060d7a21dc2c5622cc0a3cefb4f47dd037e12f4aeef5",
+      "sha256": "f6af03281369a93daacafefc91606f5e60609034914e233cb7442d66de852666",
       "role": "renderer default-off Valtan canary packet and state contract"
     },
     {
       "path": "Client/Private/Effect_DocumentRenderer.cpp",
-      "sha256": "0127312cd262769f2c64bdc147b1f20f060b5638f925c2f0b681c6f9752a0eca",
+      "sha256": "370a8b4248eef859100cc97d6fde1b37528f74f740aae745c0b6cdcbe1047460",
       "role": "exact occurrence staging and bounded RT0 renderer dispatch integration"
     },
     {
       "path": "Client/Public/Effect_Tool.h",
-      "sha256": "e7d1742e0d60d1b7633c1c70816efb59c7176d01fddcf18c5f0396e261faa028",
+      "sha256": "f26cb56bfd899ed37804cdde2f4d55b91ca50acbca745d25d1ebf37b94b5e234",
       "role": "Effect Tool default-off Valtan canary selection state contract"
     },
     {
       "path": "Client/Private/Effect_Tool.cpp",
-      "sha256": "bdd3e8744921762bc34c20c2229b2db1a01ac9eccd6d1a3f31441d27b9d1f1b4",
+      "sha256": "3d98e94dc6feeea77f17e6b899b0b0414f35abdefdace03c1f5e9b6d0384d13f",
       "role": "explicit Tool toggle, exact occurrence gate, rollback, and preview staging integration"
     },
     {

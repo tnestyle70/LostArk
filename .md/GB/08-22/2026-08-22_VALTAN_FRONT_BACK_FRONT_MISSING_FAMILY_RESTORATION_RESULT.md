@@ -111,7 +111,7 @@ Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/
 
 runtime contract는 C++/HLSL 구현 파일의 path, byte size와 SHA-256을 봉인한다. 파일 누락이나
 hash drift는 admission을 거부한다. 최종 receipt SHA-256은
-`2b041199bfb58f1916e4c7318bf5496e53a0d451ecc4ef6a136cf5549392ea6c`이다.
+`2a77fbd9232f14987250a518912912e126d0d34a46f2dbba2dd9eb3aab6cfd02`이다.
 이 raw-byte 계약에 포함된 12개 C++/HLSL 경로는 `.gitattributes`에서 `text eol=lf`로 고정해
 `core.autocrlf=true`인 새 checkout에서도 같은 SHA-256을 유지한다.
 
