@@ -222,6 +222,41 @@ ID로 Tool Solo 후보를 다시 만든다. 사용자가 포함을 승인해야 
 지운 행은 retirement/disabled receipt를 남긴다. 따라서 현재 live element 수는 V0 기준선이지 최종 V1
 분모가 아니다. V1 전수 계획의 generated restoration ledger가 최종 분모를 소유한다.
 
+## 6a. 확정된 V1_COMPLETE 판정 기준 (2026-08-22 사용자 결정)
+
+사용자가 완료 이름이 흔들리지 않도록 다음 두 이름을 분리하고, 판정은 `V1_COMPLETE`로만 한다.
+
+```text
+V1_COMPLETE
+= 올바른 carrier
++ family별 RT0 Base HLSL
++ texture / channel / scalar / DynamicParameter 배선
++ blend / depth
++ attachment / timing
++ Effect Tool 편집·저장
++ 사용자 육안 승인
+```
+
+```text
+NATIVE_PARITY   (별도 backlog, V1 완료 조건 아님)
+= native VertexFactory / BasePass 선택
++ 원본 ShaderMap permutation과 exact child cooked variant
++ 원본 MRT 0/2/3/4/5 전체 의미
++ Distortion 이외의 scene feedback
++ hardware sampler 전수 parity와 raw VS spatial A/B
+```
+
+- `V1_COMPLETE` 판정에 `NATIVE_PARITY` 항목을 요구하지 않는다. 도화가 F도 typed RT0 semantic
+  replay golden이지 native VF/pass 전체를 닫은 사례가 아니며, 그 수준이 기준선이다.
+- 원본 evidence가 없는 element는 `PROJECT_RECONSTRUCTED`, parent 증거로 식을 재구성한 element는
+  `BOUNDED_TRANSLATED`로 기록한다. 증거 없이 `SOURCE_EXACT`로 올리지 않는다.
+- 13절의 `G0~G9` 표준 공정은 그대로 쓴다. 다만 `G2`의 DXBC/native wire와 `G5`의 raw VS A/B가
+  아직 없는 family는 `NATIVE_PARITY` backlog로 남기고, parent material evidence
+  (`effect-family-manifest.v1.json`의 texture/scalar parameter와 blend/twoSided/masked)로 RT0 Base를
+  닫아 `V1_COMPLETE` 판정을 진행한다.
+- 이 결정은 완료 기준을 낮추는 것이 아니라 도화가 F가 실제로 통과한 기준으로 되돌린 것이다.
+  `NATIVE_PARITY`는 폐기가 아니라 별도 후속 연구 항목으로 유지한다.
+
 ## 7. 기존 translucent 경로가 하던 일과 부족했던 이유
 
 기존 grouped translucent는 많은 SpriteParticle과 MeshParticle을 빠르게 보이게 한 중요한 기반이다.

@@ -134,7 +134,27 @@ V1 architecture와 `SOURCE_EXACT` fidelity는 계속 별도 축으로 기록한�
 손튜닝 composition 및 복구 승인된 source occurrence를 typed Product에 연결한 뒤 사용자가 effect
 composition을 승인하는 것이다.
 
-### 0.5 첫 확장 실험: 도화가 A 대조군과 S Rect family
+### 0.5 완료 이름을 두 개로 고정한다 (2026-08-22 사용자 결정)
+
+이 계획의 완료 판정은 `V1_COMPLETE` 하나만 사용한다.
+
+| 이름 | 구성 | 이 계획에서의 위치 |
+|---|---|---|
+| `V1_COMPLETE` | 올바른 carrier + family별 RT0 Base HLSL + texture/channel/scalar/DynamicParameter 배선 + blend/depth + attachment/timing + Effect Tool 편집·저장 + 사용자 육안 승인 | 완료 조건 |
+| `NATIVE_PARITY` | native VF/BasePass, 원본 ShaderMap permutation, exact child cooked variant, MRT 0/2/3/4/5, Distortion 외 scene feedback, hardware sampler 전수 parity | 별도 backlog. 완료 조건 아님 |
+
+도화가 F도 typed RT0 semantic replay golden이며 native VF/pass 전체를 닫은 사례가 아니다.
+그 수준이 `V1_GOLDEN_CONTROL`이고 동시에 `V1_COMPLETE`의 기준선이다. 따라서 G03~G08의 각 family는
+`NATIVE_PARITY` 항목이 비어 있어도 RT0 Base와 배선, carrier, timing, Tool 저장, 사용자 승인이
+닫히면 `V1_TYPED_PRODUCT`로 완료 처리한다. fidelity는 계속 별도 축으로 기록한다.
+
+RT0 Base 재구성의 1차 evidence는 `Data/Effects/Contracts/effect-family-manifest.v1.json`의 parent
+material evidence다. 이 문서는 family별 `blendMode`, `twoSided`, `isMasked`, texture parameter의
+이름·group·기본 texture, scalar parameter의 이름·group·기본값을 소유한다. DXBC가 없는 family는 이
+증거로 `BOUNDED_TRANSLATED` RT0 Base를 닫고, 증거로 의미가 닫히지 않는 scalar는 구현하지 않고
+`NATIVE_PARITY` backlog에 남긴다.
+
+### 0.6 첫 확장 실험: 도화가 A 대조군과 S Rect family
 
 전체 스킬을 동시에 승격하지 않는다. 첫 실험은 다음 세 행으로 고정한다.
 
@@ -161,6 +181,17 @@ S의 원본 36행을 다시 넣지 않는다. 현재 Product의 source 1행과 �
 texture/channel/sampler packet, render profile, 기존 composition과 사용자 승인을 요구한다. exact cooked
 child 실행, native ShaderMap/VF/BasePass, distortion 및 MRT2~5는 `NATIVE_PARITY` 후속 연구이며 이 실험의
 완료 조건이 아니다.
+
+### 0.7 창술사 D·F lane
+
+창술사 D(34110 반월섬)와 F(34150 맹룡열파)는 이 계획의 첫 `V1_COMPLETE` 확장 실험 대상이다.
+
+| 단계 | 상태 |
+|---|---|
+| Product admission (catalog + animevents cue) | 완료. [RESULT](2026-08-22_LANCEMASTER_D_F_PRODUCT_EFFECT_RESTORATION_RESULT.md) |
+| grouped 242행의 family 분해 | 완료. 23개 parent material |
+| typed family 확장 | 진행 중. [RESULT](2026-08-22_LANCEMASTER_D_F_V1_FAMILY_EXPANSION_RESULT.md) |
+| 사용자 육안 승인·손튜닝 | `USER_REVIEW_PENDING` |
 
 ## 1. V0 기준선 실측
 
