@@ -1,5 +1,9 @@
 # 2026-08-21 Character Source-Exact Effect Conquest Master 구현 계획
 
+> 2026-08-22 이후 4캐릭터와 Valtan 전체 V1 migration의 실행 순서·분모·완료 조건 정본은
+> [`2026-08-22_FOUR_CHARACTER_VALTAN_EFFECT_V1_FULL_MIGRATION_MASTER_PLAN.md`](../08-22/2026-08-22_FOUR_CHARACTER_VALTAN_EFFECT_V1_FULL_MIGRATION_MASTER_PLAN.md)다.
+> 이 문서는 기존 캐릭터별 결함, source evidence와 capability 상세 backlog로 계속 참조한다.
+
 기준일: 2026-08-21
 코드·데이터 기준선: `812d23a4` (`origin/main` pull 반영)
 구현 branch/worktree: `codex/effect-family-conquest` / `C:/Users/user/Desktop/LostArk-effect-family-conquest`
@@ -12,6 +16,7 @@
 
 연결 문서:
 
+- `../../TEAM/EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md`
 - `2026-08-13_ARTIST_31470_F_ORIGINAL_EFFECT_RESTORATION_RESULT.md`
 - `2026-08-17_EFFECT_DIMENSIONMASTER_SHADERCACHE_JOIN_RESULT.md`
 - `2026-08-21_CHARACTER_SOURCE_EXACT_EFFECT_AND_CRANE_RESTORATION_IMPLEMENTATION_PLAN.md`

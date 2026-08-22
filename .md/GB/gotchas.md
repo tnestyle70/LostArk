@@ -275,9 +275,10 @@ source 소유 particle 4,609
 하나씩 추가한다. 상세는
 `.md/GB/08-17/2026-08-17_EFFECT_SOURCE_TRIM_AND_DEDUP_CORRECTION_RESULT.md`.
 
-### 12.5 원본 동일을 목표로 하면 스킬 수만큼 셰이더가 필요하다
+### 12.5 원본 동일의 비용 단위는 스킬 수가 아니라 exact program과 ABI다
 
-도화가 F만 화면이 나온 이유는 문서가 좋아서가 아니라 전용 셰이더 5벌을 사람이 썼기 때문이다.
+도화가 F가 가장 높은 화면 완성도를 낸 것은 generic profile 하나에 맡긴 결과가 아니라, stable
+occurrence와 resource 역할을 고정하고 다음 translated/typed 셰이더들을 실제 carrier에 연결했기 때문이다.
 
 ```text
 Shader_Artist31470RuntimeMaterial.hlsli         34 sample
@@ -290,9 +291,13 @@ Shader_Artist31470Diagnostic.hlsli               6
 `g_SourceTexture0..6`을 실제로 샘플링하는 것은 이 파일들과 decal adapter 뿐이고,
 표준 경로 `Shader_EffectCommon.hlsli`는 이름 있는 5개만 샘플링한다.
 
-**교훈**: "원본과 동일"은 스킬 × family 마다 셰이더 한 벌을 요구한다. 그 비용을 감당할 수 없으면
-목표를 "원본에서 데이터만 얻고 표준 셰이더로 만든다"로 바꾼다. 1차가 도화가 F 하나에서
-멈춘 것이 그 증거다.
+**교훈**: "원본과 동일"은 element나 스킬마다 셰이더 한 벌을 요구하지 않는다. equation이 같은
+occurrence는 translated HLSL program과 renderer adapter를 재사용하고 texture·CB·sampler 차이는
+exact descriptor가 소유한다. equation이 다르면 새 program, VF/pass/scene/RT topology가 다르면 새
+adapter가 필요하다. 도화가 F에서 사람이 쓴 전용 파일은 이 경계를 처음 증명한 선례이지,
+스킬별 renderer 복제를 정본으로 만든 근거가 아니다. 현재 공정은
+[`EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md`](../TEAM/EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md)를
+따른다.
 
 ### 12.6 판정자 없는 목표를 세우지 않는다
 
