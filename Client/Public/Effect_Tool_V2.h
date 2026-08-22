@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Client_Defines.h"
-#include "Effect_Preview_V2.h"
+#include "EffectV2_Document.h"
+#include "EffectV2_Object.h"
 #include "Engine_Defines.h"
 
 #include <array>
@@ -24,15 +25,7 @@ class CNpc;
 class CEffect_Tool_V2 final
 {
 public:
-	enum class EFFECT_TYPE : int32_t
-	{
-		MESH,
-		TEXTURE,
-		PARTICLE,
-		DECAL,
-		TRAIL,
-		END
-	};
+	using EFFECT_TYPE = EFFECT_V2_TYPE;
 
 	enum class RESOURCE_SLOT : int32_t
 	{
@@ -80,44 +73,15 @@ private:
 	using SLOT_BINDINGS =
 		std::array<std::string, static_cast<size_t>(RESOURCE_SLOT::END)>;
 
-	struct PART_OVERRIDE final
-	{
-		bool_t bVisible = true;
-		std::string strBaseAssetId;
-	};
-
-	struct DOCUMENT_STAGE final
-	{
-		EFFECT_TYPE eType = EFFECT_TYPE::MESH;
-		CEffectPreviewV2::DESC Desc;
-		std::vector<PART_OVERRIDE> Parts;
-		std::string strAnimationClip;
-	};
+	using PART_OVERRIDE = EFFECT_V2_PART_OVERRIDE;
+	using PIVOT_ROTATION = CEffectV2Object::PIVOT_ROTATION;
+	using EFFECT_BINDING = EFFECT_V2_BINDING;
 
 	enum class PIVOT_MODE : int32_t
 	{
 		WORLD,
 		TARGET_BONE,
 		END
-	};
-
-	enum class PIVOT_ROTATION : int32_t
-	{
-		BONE,
-		TARGET_YAW,
-		WORLD,
-		END
-	};
-
-	struct EFFECT_BINDING final
-	{
-		std::string strEffectId;
-		std::string strClip;
-		uint32_t iStartMs = 0u;
-		std::string strBone;
-		bool_t bFollowBone = true;
-		PIVOT_ROTATION eRotation = PIVOT_ROTATION::TARGET_YAW;
-		bool_t bStopWithClip = false;
 	};
 
 public:
@@ -155,31 +119,20 @@ private:
 	void Render_TuningPanel();
 	bool_t Try_CreatePreview();
 	bool_t Spawn_Preview(
-		const CEffectPreviewV2::DESC& Desc,
+		const CEffectV2Object::DESC& Desc,
 		const std::vector<PART_OVERRIDE>& Parts,
 		const std::string& strAnimationClip);
 	void Scan_Documents();
 	bool_t Save_Document();
 	bool_t Load_Document(const std::string& strEffectId);
-	static std::filesystem::path Document_Directory();
-	static bool_t Parse_Document(
-		const std::string& strText,
-		DOCUMENT_STAGE& OutStage,
-		std::string& strOutError);
 
 	void Render_AttachWindow();
 	bool_t Spawn_Target(const std::string& strArchetypeId);
 	void Despawn_Target();
 	void Move_Target(const float3_t& vPosition, f32_t fYawDegrees);
 	void Update_Attach(f32_t fTimeDelta);
-	static std::filesystem::path Binding_Directory();
 	bool_t Save_Bindings();
 	bool_t Load_Bindings(const std::string& strArchetypeId);
-	static bool_t Parse_Bindings(
-		const std::string& strText,
-		const std::string& strExpectedArchetypeId,
-		std::vector<EFFECT_BINDING>& OutBindings,
-		std::string& strOutError);
 	static bool_t Collect_BoneNames(
 		const std::string& strModelAssetId,
 		std::vector<std::string>& OutNames);
@@ -219,7 +172,7 @@ private:
 	std::unordered_map<std::string, PREVIEW_ENTRY> m_Previews;
 	uint32_t m_iLoadsThisFrame = 0u;
 
-	std::weak_ptr<CEffectPreviewV2> m_pPreview;
+	std::weak_ptr<CEffectV2Object> m_pPreview;
 	EFFECT_TYPE m_ePreviewType = EFFECT_TYPE::MESH;
 	bool_t m_bPreviewPrototypeRegistered = false;
 	bool_t m_bTuningWindowOpen = false;
@@ -238,6 +191,7 @@ private:
 	f32_t m_fTargetYawDegrees = 0.f;
 	std::vector<std::string> m_TargetBoneNames;
 	bool_t m_bTargetClipLoop = true;
+	bool_t m_bRuntimeOnTarget = false;
 	f32_t m_fTargetLastClipSeconds = -1.f;
 	PIVOT_MODE m_ePivotMode = PIVOT_MODE::WORLD;
 	PIVOT_ROTATION m_ePivotRotation = PIVOT_ROTATION::TARGET_YAW;

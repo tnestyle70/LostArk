@@ -1,6 +1,7 @@
 #include "NpcPresentationAssetService.h"
 
 #include "ActorCatalog.h"
+#include "EffectV2_Runtime.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "Npc.h"
@@ -169,6 +170,7 @@ HRESULT Client::CNpcPresentationAssetService::Ensure_Prototypes(
 		g_ReadyAnimSets[iLevelIndex].insert(actor->animationSetId);
 	if (needsObjectPrototype)
 		g_NpcObjectReadyLevels.insert(iLevelIndex);
+	CEffectV2Runtime::Prewarm_Archetype(pDevice, pContext, std::string(archetypeId));
 	return S_OK;
 }
 

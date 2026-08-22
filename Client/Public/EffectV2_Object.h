@@ -16,9 +16,19 @@ NS_END
 
 NS_BEGIN(Client)
 
-class CEffectPreviewV2 final : public CGameObject
+class CNpc;
+
+class CEffectV2Object final : public CGameObject
 {
 public:
+	enum class PIVOT_ROTATION : int32_t
+	{
+		BONE,
+		TARGET_YAW,
+		WORLD,
+		END
+	};
+
 	enum class SHAPE : int32_t
 	{
 		MESH,
@@ -116,11 +126,11 @@ public:
 	};
 
 private:
-	CEffectPreviewV2(
+	CEffectV2Object(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
 public:
-	virtual ~CEffectPreviewV2();
+	virtual ~CEffectV2Object();
 
 public:
 	virtual HRESULT Initialize_Prototype() override;
@@ -155,14 +165,50 @@ public:
 	f32_t Animation_DurationSeconds(uint32_t iIndex) const;
 	bool_t Animation_Progress(f32_t& fOutSeconds, f32_t& fOutDurationSeconds) const;
 	bool_t Is_Finished() const { return m_bFinished; }
+	void Finish() { m_bFinished = true; }
 	bool_t Is_Hidden() const { return m_bHidden; }
 	void Set_Hidden(const bool_t bHidden) { m_bHidden = bHidden; }
 	void Restart();
+	static HRESULT Prewarm(
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		const DESC& Desc,
+		std::string& strOutError);
+	static void Clear_ResourceCache();
+	void Set_FollowTarget(
+		const std::weak_ptr<CNpc>& pTarget,
+		std::string strBone,
+		PIVOT_ROTATION eRotation);
+	void Clear_FollowTarget();
+	bool_t Has_FollowTarget() const { return m_bFollowTarget; }
+	static bool_t Resolve_TargetPivot(
+		const CNpc& Npc,
+		const std::string& strBone,
+		PIVOT_ROTATION eRotation,
+		float4x4_t& OutPivot);
 	static const std::string& Last_Error() { return s_strLastError; }
 
 private:
 	HRESULT Load_Texture(
 		const std::string& strAssetId, ComPtr<ID3D11ShaderResourceView>& OutView);
+	static HRESULT Acquire_Model(
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		const std::string& strAssetId,
+		shared_ptr<Engine::CModel>& OutModel,
+		bool_t& bOutSkinned,
+		std::string& strOutError);
+	static HRESULT Acquire_Shader(
+		const ComPtr<ID3D11Device>& pDevice,
+		const ComPtr<ID3D11DeviceContext>& pContext,
+		const wstring_t& strFilePath,
+		const D3D11_INPUT_ELEMENT_DESC* pElements,
+		uint32_t iNumElements,
+		shared_ptr<Engine::CShader>& OutShader);
+	static HRESULT Acquire_Texture(
+		const ComPtr<ID3D11Device>& pDevice,
+		const std::string& strAssetId,
+		ComPtr<ID3D11ShaderResourceView>& OutView);
 	void Apply_Transform();
 	void Sync_Animation(bool_t bRestart);
 	HRESULT Bind_Common(const shared_ptr<Engine::CShader>& pShader);
@@ -175,6 +221,10 @@ private:
 	float3_t m_vDisplacement = { 0.f, 0.f, 0.f };
 	uint32_t m_iAppliedAnimationIndex = UINT32_MAX;
 	std::vector<PART> m_Parts;
+	bool_t m_bFollowTarget = false;
+	std::weak_ptr<CNpc> m_pFollowTarget;
+	std::string m_strFollowBone;
+	PIVOT_ROTATION m_eFollowRotation = PIVOT_ROTATION::TARGET_YAW;
 	f32_t m_fTime = 0.f;
 	bool_t m_bFinished = false;
 	bool_t m_bHidden = false;
@@ -189,7 +239,7 @@ private:
 	static std::string s_strLastError;
 
 public:
-	static unique_ptr<CEffectPreviewV2> Create(
+	static unique_ptr<CEffectV2Object> Create(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext);
 	virtual shared_ptr<CPrototype> Clone(void* pArg) override;

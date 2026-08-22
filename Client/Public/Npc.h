@@ -53,6 +53,12 @@ public:
 	shared_ptr<Engine::CModel> Get_Model() const {
 		return m_pModelCom;
 	}
+	shared_ptr<Engine::CTransform> Get_Transform() const {
+		return m_pTransformCom;
+	}
+	const wstring_t& Get_ModelTag() const {
+		return m_strModelTag;
+	}
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	bool_t Apply_NetworkState(
 		const float3_t& position,
@@ -75,6 +81,7 @@ public:
 private:
 	shared_ptr<Engine::CShader> m_pShaderCom = { nullptr };
 	shared_ptr<Engine::CModel> m_pModelCom = { nullptr };
+	wstring_t m_strModelTag;
 	shared_ptr<Engine::CCollider> m_pColliderCom = { nullptr };
 	DEFERRED_EMISSIVE_OVERRIDE m_HitFlash;
 	f32_t m_fHitFlashRemainingSeconds = { 0.f };
