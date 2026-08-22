@@ -10,7 +10,6 @@ The harness fixes the Client working directory to `Client/Default`, verifies the
 
 `-SkipBuild` is for a local repeat against already-built binaries; it does not weaken the smoke or audit checks. Runtime Resources are managed directly by the team lead and are not an immutable-pack/hash gate.
 
-While `ClientFrontendHarness` runs, the script points its process-local
-`LOSTARK_RESOURCE_ROOT` at `Client/Bin/Resources` so Effect document validation
-uses the same real resource files as Client. The caller's prior environment value
-is restored immediately afterward.
+Effect and resource admission is performed by the domain publishers, focused
+Python/WARP checks, and the Client Debug/Release builds. The regression command
+does not build or execute a second Client frontend.

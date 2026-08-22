@@ -222,7 +222,7 @@ Server는 `CHARACTER_SELECT_ARENA` 진입 session마다 독립된 `CGameRoom` si
 - gameplay: 클래스 중립 `playerSpawn` 4개만 저장하며 `archetypeId`는 `null`
 - navigation: `Data/Navigation/LV_DEV_TRAINING_GROUND.navgrid.json`에서 32×32 runtime grid를 결정적으로 생성
 - runtime: `CClientReplication -> CPlayerController -> IPlayerCommandSink`와 `CCombatHUDViewModel`을 사용
-- automated contracts: `NetworkProtocolHarness`, `ClientFrontendHarness`, `Server.exe --contract-test`와 변경 domain publisher validation을 실행
+- automated contracts: `NetworkProtocolHarness`, `Server.exe --contract-test`, 변경 domain publisher/check와 focused 실행 검증을 실행
 - runtime validation: `Framework.slnLaunch`로 실제 Server와 Client를 함께 실행해 Lobby → Server 승인 Character Select 진입, class 연속 변경과 각 class 스킬 snapshot, 우클릭 이동, F6 follow/free와 free-camera command 차단, disconnect 시 Lobby 복귀, Bern/Valtan 진입을 확인
 
 `playerSpawn`은 자리와 transform만 소유한다. 실제 character class는 Lobby/session 선택과 `C2S_ENTER_WORLD`가 소유하며 MapTool/world JSON이 특정 클래스를 고정하지 않는다.

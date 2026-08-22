@@ -108,8 +108,6 @@ try {
             'Tools\ValtanFourPlayerHarness\Default\ValtanFourPlayerHarness.vcxproj'
         Invoke-MSBuildProject $msbuild `
             'Tools\CharacterSelectIsolationHarness\Default\CharacterSelectIsolationHarness.vcxproj'
-        Invoke-MSBuildProject $msbuild `
-            'Tools\ClientFrontendHarness\Default\ClientFrontendHarness.vcxproj'
         Invoke-MSBuildProject $msbuild 'Server\Default\Server.vcxproj'
         Invoke-MSBuildProject $msbuild 'Client\Default\Client.vcxproj'
     }
@@ -169,32 +167,6 @@ try {
     & $protocolHarness
     if ($LASTEXITCODE -ne 0) {
         throw 'NetworkProtocolHarness failed.'
-    }
-
-    $frontendHarness = Join-Path $repoRoot `
-        "Tools\ClientFrontendHarness\Bin\$Configuration\ClientFrontendHarness.exe"
-    $previousResourceRoot = [Environment]::GetEnvironmentVariable(
-        'LOSTARK_RESOURCE_ROOT', 'Process')
-    try {
-        [Environment]::SetEnvironmentVariable(
-            'LOSTARK_RESOURCE_ROOT',
-            $runtimeResourceRoot,
-            'Process')
-        & $frontendHarness
-        if ($LASTEXITCODE -ne 0) {
-            throw 'ClientFrontendHarness failed.'
-        }
-
-		$effectCatalog = Join-Path $repoRoot `
-			'Client\Bin\DataFiles\Effect\EffectCatalog.runtime.json'
-		& $frontendHarness --effect-reconstructed-gpu-material $effectCatalog
-		if ($LASTEXITCODE -ne 0) {
-			throw 'Artist 31470 WARP first-draw harness failed.'
-		}
-    }
-    finally {
-        [Environment]::SetEnvironmentVariable(
-            'LOSTARK_RESOURCE_ROOT', $previousResourceRoot, 'Process')
     }
 
     & $serverExe --contract-test

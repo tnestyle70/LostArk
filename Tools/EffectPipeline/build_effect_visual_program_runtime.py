@@ -108,23 +108,18 @@ class ContractError(ValueError):
 
 def _typed_codec_tool(repository_root: Path) -> Path:
     configured = os.environ.get("LOSTARK_EFFECT_DOCUMENT_CODEC_TOOL")
-    candidates = []
     if configured:
-        candidates.append(Path(configured))
-    candidates.extend([
-        repository_root
-        / "Tools/ClientFrontendHarness/Bin/Debug/ClientFrontendHarness.exe",
-        repository_root
-        / "Tools/ClientFrontendHarness/Bin/Release/ClientFrontendHarness.exe",
-    ])
-    for candidate in candidates:
-        resolved = candidate.resolve()
+        resolved = Path(configured).resolve()
         if resolved.is_file():
             return resolved
+        raise ContractError(
+            "LOSTARK_EFFECT_DOCUMENT_CODEC_TOOL does not name a file: "
+            f"{resolved}"
+        )
     raise ContractError(
-        "EffectDocumentCodec identity tool is missing; build "
-        "Tools/ClientFrontendHarness and/or set "
-        "LOSTARK_EFFECT_DOCUMENT_CODEC_TOOL"
+        "EffectDocumentCodec regeneration requires an explicitly supplied "
+        "LOSTARK_EFFECT_DOCUMENT_CODEC_TOOL; normal admission validates the "
+        "tracked runtime sidecar with --artifact-check"
     )
 
 

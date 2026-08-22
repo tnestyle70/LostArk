@@ -333,7 +333,8 @@ Preview Panel이 weapon anchor를 매 frame 제공
 자동 검증과 수동 검증을 구분한다.
 
 - 자동: temp failure rollback, owner/count/malformed row 거부, non-admitted bind gate, Debug Client build,
-  ClientFrontendHarness의 animation binding/effect cue 계약, `git diff --check`.
+  당시 animation binding/effect cue focused 계약 실행 결과, `git diff --check`. 광역 Client frontend
+  계약 프로젝트는 현재 정본 regression에서 제거됐다.
 - 수동: 다섯 class target, scrub 시각, Dirty target 전환 보존과 Level 전환 cleanup.
 - 미완료로 남길 것: admitted Effect fixture/catalog resolver, 실제 Effect Tool `Use Selected Effect` 성공 경로,
   anchor-relative local transform 편집, Server collider/damage publisher, EFFECT window/trail start-stop,
