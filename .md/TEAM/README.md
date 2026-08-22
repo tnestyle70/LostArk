@@ -35,10 +35,11 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 6. 담당별 입력·출력 계약: `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md`
 7. F1 Balance Tool과 공식 provenance 작업법: `BALANCE_TOOL_OWNER_HANDOFF.md`
 8. Animation/Effect/Character Preview Tool 경계: `ANIMATION_TOOL_OWNER_HANDOFF.md`
-9. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
-10. Map Destruction PhysX·Mesh Debris 작업법: `MAP_DESTRUCTION_PHYSX_HANDOFF.md`
-11. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
-12. 최근 통합 검증 증거: `../GB/08-07/2026-08-07_VALTAN_WORLD_DESTRUCTION_RESULT.md`
+9. Effect family/runtime ABI 복원 경계: `EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md`
+10. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
+11. Map Destruction PhysX·Mesh Debris 작업법: `MAP_DESTRUCTION_PHYSX_HANDOFF.md`
+12. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
+13. 최근 통합 검증 증거: `../GB/08-07/2026-08-07_VALTAN_WORLD_DESTRUCTION_RESULT.md`
 
 <!-- team-contract: vertical-slice-feature-owner; roles-are-not-file-permissions -->
 
@@ -57,6 +58,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 | `BALANCE_TOOL_OWNER_HANDOFF.md` | 공식 receipt, F1 Balance Tool, Server 적용·검증 절차가 바뀔 때 |
 | `TEAM_GAMEPLAY_INTERFACE_HANDBOOK.md` | 담당자가 소비하는 C++/데이터 public 계약이 바뀔 때 |
 | `ANIMATION_TOOL_OWNER_HANDOFF.md` | Animation/Effect/Character Preview Tool의 authoring 소유권이 바뀔 때 |
+| `EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md` | Effect element→pixel 구조, family/program/descriptor/adapter 경계와 source-exact admission 공정이 바뀔 때 |
 | `AREA_DATA_LAYER_GUIDE.md` | Area 등록, optional layer, publisher, MapTool 지원 범위가 바뀔 때 |
 | `MAP_DESTRUCTION_PHYSX_HANDOFF.md` | MapTool 파괴 preview의 Mesh Emitter, PhysX, trigger/effect 연결 절차가 바뀔 때 |
 | `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md` | 수치 정본, 튜닝 절차, runtime reload 정책이 바뀔 때 |
