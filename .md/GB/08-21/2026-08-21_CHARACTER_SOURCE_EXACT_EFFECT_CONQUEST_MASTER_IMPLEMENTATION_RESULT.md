@@ -350,6 +350,45 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   2050230 receipt와 restoration-target contract 등록, Lance material 항목의 정본 순서 정규화가
   포함된다. 이 항목들의 데이터 내용은 이 checkpoint에서 수정하지 않았다.
 
+### 1.20 창술사 Q `34040` exact mesh와 A `34140` authoring identity
+
+- Q는 BA mesh를 복사하지 않았다. clip1의
+  `authored.source-particle.e59eea1946d4de8c6a5ddb33` WaterTrail mesh 한 행과 clip2의
+  `50996b.../fda543.../8c890d.../dbfd66...` MissileTrail mesh 네 행, 기존 WModel/DDS/source recipe를
+  그대로 사용한다.
+- 1타는 기존 profile 14에서 draw됐고, 2타의 네 행도 SRV bind, alpha one-sided pass, CModel draw와
+  PS invocation까지 도달했지만 RGB가 0이었다. 원인은 four-lane MissileTrail profile 13이 source의
+  이름 있는 26 scalar를 배열 앞 8개로 읽고 `alpha_pan/uv_noise_velue/uv_noise_pan/alpha_dissolve`를
+  typed dynamic semantic으로 투영하지 않은 family evaluator 공백이었다.
+- profile 13은 공통 이름 기반 MissileTrail constant packet과 typed dynamic semantic을 소비한다.
+  admission은 exact source profile ID, parent material, alpha one-sided mesh particle, 정확한
+  `meshModel/base/mask/noise/dissolve` 다섯 binding과 no-emissive tuple에 한정된다. named texture가 있는
+  문서는 lane asset까지 binding과 일치해야 하며, sealed legacy 문서의 empty named provenance만 기존
+  resource tuple으로 허용한다.
+- `ParticleModuleParameterDynamic`은 정확히 한 module과
+  `alpha_pan/uv_noise_velue/uv_noise_pan/alpha_dissolve` 네 typed param name을 요구한다. 이 문자열
+  signature도 prepared-resource 재사용 판정에 포함해 같은 document identity의 값-only restage가 검증을
+  우회하지 못한다. parent drift, duplicate named texture lane, dynamic param-name drift는 모두 기존 prepared
+  draw를 교체하기 전에 거부되고 전체 WARP RGBA readback byte를 보존한다. R/G alpha scalar lane을 각각
+  단독 변경한 canary는 서로 다른 nonzero readback을 만들고 exact baseline restage로 복귀한다.
+- grouped-translucent canary는
+  profile 6과 issued draw를 유지하고 forged profile 13 admission 뒤에도 source document serialization과
+  전체 WARP RGBA readback byte가 동일하다.
+- A `34140 선풍참혼`의 정확한 대상은
+  `effect.lancemaster.skill.34140.ba2.clip2.unified`의 `d629659d...` 행이다. 디스크 rotation은 이미
+  `[0,-90,0]`, position은 `[0,0.99000001,0]`이다. 이 통합은 사용자 튜닝 값을 임의로 바꾸거나
+  BA mesh를 복사하지 않고, Tool에서 해당 stable row를 잘못 선택하지 않도록 identity를 노출한다.
+- 실제 원인은 transform serializer나 runtime matrix 합성 결함이 아니다. 장창 `34140`과 같은 input A의
+  단창 `34580 절룡세`가 서로 다른 skill/stance/document인데 기존 Tool tree가 이를 충분히 구분해 주지
+  않았고, 이미 살아 있던 occurrence는 저장 뒤에도 의도적으로 immutable하다. 또한 `34140` BA2의
+  `_03` clip에는 effect cue가 없고 `_04` clip만 `ba2.clip2.unified`를 소비한다. 따라서 다른 A/BA
+  occurrence를 편집했거나 저장 전에 생성된 occurrence를 계속 보면 “position이 반영되지 않음”처럼
+  보인다. 정확한 stable row를 선택한 경로에서는 save와 runtime revision 모두 정상이다.
+- Effect Tool의 skill tree와 Selection에 `skillId`, required stance, stage/clip/effect ID를 표시했다.
+  Debug에서 저장한 새 document identity는 다음 cast부터 소비하고 이미 살아 있는 occurrence는
+  불변이다. Release는 publisher가 만든 sealed 문서를 재시작 후 소비한다. Product 데이터와
+  사용자 손튜닝 행은 이 통합에서 수정하지 않았다.
+
 ## 2. 실행한 검증
 
 | 검증 | 결과 |
@@ -425,6 +464,8 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 | Presentation Tool 변경 후 Debug/Release Client | 각 errors 0, link PASS; Tool/UI 자율 실행 안 함 |
 | Debug/Release `--effect-artist-e-fast` | 각 18/18 PASS; 실제 skill/effectref/runtime sealed join, 세 FlowRibbon draw, 30 TPS/32 tick crane clip, 43-bone palette 변화, 752/228 pixel distinct frame, invalid clip rollback PASS |
 | `Sync-EffectDataProject.ps1 -Check` | `files=1811`, `filters=201` PASS |
+| Lance Q exact source/product identity | Q1 WaterTrail mesh 1행, Q2 MissileTrail mesh 4행과 기존 WModel/DDS/source recipe 보존; 대체 BA mesh 미생성 |
+| Lance A `34140` authoring identity | `d629659d...` 행의 skill/stance/stage/clip/effect ID를 Tool tree/Selection에 노출; Product transform 미변경 |
 | `git diff --check` | PASS |
 
 Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK4099 계열이며
@@ -462,6 +503,11 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
   strict material packet, 실제 WARP draw와 rollback까지 닫혔다. 다만 parent native
   DistortionAccumulate pass, UE3 sampler CDO와 reflection basis는 아직 bounded BasePass semantic replay
   밖이며, sealed runtime publish와 사용자 first-pixel 판정 전에는 최종 visual `COMPLETE`로 올리지 않는다.
+- 창술사 Q/A의 자동 계약은 닫혔지만 Client/UI는 실행하지 않았다. Q 1·2타의 실제 화면 visibility와
+  색감, `34140`의 다음 cast position/rotation은 사용자 first-pixel/손튜닝 판정 전까지 `PENDING`이다.
+- 자동 Release 검증은 checked-in sealed 원본 document 소비와 mutable reload 거부까지다. 임시로 편집한
+  `34140` authored document를 새 SHA sealed output으로 publish하고 재시작한 실제 Client 화면 소비는
+  Product 데이터를 보존하기 위해 자동 변경하지 않았으며 사용자 publish/restart 검증으로 남는다.
 - 실제 Client의 동/서/남/북 cast 방향, 검격 형태·타이밍·색감은 사용자 화면 판정 대기다.
 - 워로드 W의 `fm_a_hemisphere_012` 하나가 보이는 방패 세 판을 포함하는지는 사용자
   화면 판정 후 독립 좌/중/우 cohort 추가 여부를 결정한다.

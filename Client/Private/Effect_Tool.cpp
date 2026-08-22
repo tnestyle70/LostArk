@@ -78,6 +78,31 @@ namespace
 	constexpr const char_t* VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID =
 		"effect.valtan.pattern.420633.active";
 
+	const char_t* Tool_PlayerStanceLabel(
+		const LostArk::Shared::PLAYER_STANCE_ID eStance)
+	{
+		using LostArk::Shared::PLAYER_STANCE_ID;
+		switch (eStance)
+		{
+		case PLAYER_STANCE_ID::NONE: return "NONE";
+		case PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR:
+			return "LANCE_MASTER_LONG_SPEAR";
+		case PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR:
+			return "LANCE_MASTER_SHORT_SPEAR";
+		case PLAYER_STANCE_ID::WARLORD_NORMAL: return "WARLORD_NORMAL";
+		case PLAYER_STANCE_ID::WARLORD_DEFENSE: return "WARLORD_DEFENSE";
+		case PLAYER_STANCE_ID::END:
+		default: return "INVALID";
+		}
+	}
+
+	std::string Tool_SkillIdentitySuffix(
+		const Client::PLAYER_SKILL_DEFINITION& Skill)
+	{
+		return " | #" + std::to_string(Skill.iSkillId) + " | Stance " +
+			Tool_PlayerStanceLabel(Skill.eRequiredStance);
+	}
+
 	struct TOOL_SOURCE_ANCHOR_REQUEST final
 	{
 		std::string strRuntimeAnchorSlotId;
@@ -4977,6 +5002,33 @@ void Client::CEffect_Tool::Render_SelectionPath() const
 	ImGui::Text("Level: %s", pSelectionLevel);
 	ImGui::TextWrapped("Skill / Document: %s",
 		m_ActiveDocument->strEffectAssetId.c_str());
+	if (m_ProductPreview.has_value())
+	{
+		const PLAYER_SKILL_DEFINITION* pSkill =
+			CPlayerSkillCatalog::Find_ById(m_ProductPreview->iSkillId);
+		if (nullptr != pSkill &&
+			pSkill->eCharacterClass == m_ProductPreview->eCharacterClass)
+		{
+			const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
+				m_ProductPreview->ProductCue;
+			ImGui::TextWrapped(
+				"Product Skill: #%u | Input %s | Required Stance %s",
+				static_cast<uint32_t>(pSkill->iSkillId),
+				pSkill->strInputSlot.c_str(),
+				Tool_PlayerStanceLabel(pSkill->eRequiredStance));
+			ImGui::TextWrapped(
+				"Product Cue: Stage %zu / Clip %zu | %s @ %u ms | %s",
+				ProductCue.iStageIndex + 1u,
+				ProductCue.iStageClipIndex + 1u,
+				ProductCue.Cue.strClipName.c_str(),
+				ProductCue.Cue.iStartMs,
+				ProductCue.Cue.strEffectAssetId.c_str());
+			ImGui::TextDisabled(
+				"Apply / Save replaces only this Product target at the current "
+				"catalog revision. An active occurrence stays immutable; Restart "
+				"or the next cast consumes it.");
+		}
+	}
 	if (!m_strSelectedComponentId.empty())
 		ImGui::TextWrapped("Component: %s", m_strSelectedComponentId.c_str());
 	if (!m_strSelectedEmitterId.empty())
@@ -11033,7 +11085,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			ImGui::PushID(static_cast<int>(Skill.iSkillId));
 			const std::string SkillLabel = "Skill | Input " +
 				Skill.strInputSlot + " | " + Skill.strDisplayName +
-				" | Saved " + std::to_string(SavedBindings.size());
+				Tool_SkillIdentitySuffix(Skill) + " | Saved " +
+				std::to_string(SavedBindings.size());
 			if (ImGui::TreeNodeEx(SkillLabel.c_str(),
 				ImGuiTreeNodeFlags_OpenOnArrow))
 			{
@@ -11658,6 +11711,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			EFFECT_DETAIL_SELECTION::SKILL == m_eDetailSelection;
         const std::string SkillLabel = "Skill | " + Entry.Skill.strInputSlot +
 			" | " + Entry.Skill.strDisplayName +
+			Tool_SkillIdentitySuffix(Entry.Skill) +
             (Entry.ProductCues.empty() ?
                 " | [Active Product Cue missing]" :
                 (Entry.ProductCues.size() == 1u ?

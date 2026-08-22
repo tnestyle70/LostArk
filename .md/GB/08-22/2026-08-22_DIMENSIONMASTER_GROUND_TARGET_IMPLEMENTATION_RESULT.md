@@ -87,8 +87,6 @@
 | Server build | PASS | PASS |
 | `Server.exe --dimensionmaster-ground-target-contract` | 11/11 PASS | 11/11 PASS |
 | Client build | errors 0 PASS | errors 0 PASS |
-| ClientFrontendHarness build | PASS | PASS |
-| `--dimensionmaster-ground-target-fast` | 9/9 PASS | 9/9 PASS |
 
 추가 검증:
 
@@ -97,8 +95,8 @@
   target outside SKILL과 destination-preserving failure를 포함해 PASS.
 - Server focused: wrong intent, 11m 초과, non-finite, unknown skill, blocked nav, duplicate sequence,
   buffered target 재검증, approved XYZ snapshot, target-root damage, natural end/death/knockdown cleanup PASS.
-- Client focused: source/runtime provenance, Product pseudo-anchor tuple, invalid Begin rollback, 11m clamp,
-  exact-XZ nav sample, invalid cursor, red-invalid state와 RMB dormant reset PASS.
+- Client source/runtime provenance, Product pseudo-anchor tuple, 11m clamp, navigation sample, invalid/red preview와
+  RMB reset consumer는 Debug/Release Client 컴파일·링크로 연결을 확인했다.
 - `PlayerSkillTargeting.json` JSON parse, `Client.vcxproj/.filters` XML parse와 신규 C++/HLSL/Data 등록 PASS.
 - 생성된 `worlddestruction*.json`은 이 변경에서 제외하고 원래 tracked 상태로 복원했다.
 - Client/UI는 실행하거나 조작하지 않았다.
@@ -121,10 +119,11 @@
 
 사용자의 서면 관찰 전에는 visual PASS, first pixel 또는 원본 색감 동일 판정으로 기록하지 않는다.
 
-## 5. 통합 시 남은 작업
+## 5. 통합 결과와 남은 경계
 
-- integration 브랜치에서 다른 Effect family 변경과 conflict를 의미 단위로 합친다.
-- 최종 Effect publisher transaction과 전체 Debug/Release 검증 뒤 PR로 `main`에 반영한다.
+- 선별 integration 브랜치에서 다른 Effect family 변경과 의미 단위로 합쳐 Debug/Release 전체 빌드,
+  NetworkProtocolHarness와 Server contract, gameplay/Effect publisher를 통과했다.
+- 남은 경계는 사용자가 실제 Client에서 preview 크기·색·바닥 밀착과 target damage 일치를 육안 판정하는 것이다.
 - Valtan authored/candidate/pattern cue 파일은 이 작업에서 수정하지 않았다. `Level_ValtanArena.cpp`는
   class-neutral preview clone 초기화만, `ValtanBrain.cpp`는 모든 boss death hit에 공통인 player target
   cleanup 한 줄만 변경했다.

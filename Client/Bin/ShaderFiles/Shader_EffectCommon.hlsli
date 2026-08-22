@@ -785,31 +785,43 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         const float dissolveAmount = saturate(Source_DynamicParameterValue(
             dynamicParameter, 18u, 0.f));
         const float2 noiseUV = uv * max(
-            abs(g_SourceVector0.zw), float2(0.01f, 0.01f)) +
-            float2(noisePan, alphaPan) * g_EffectLocalTime;
+            abs(g_TypedTrailParameters[2].xy), float2(0.01f, 0.01f)) +
+            (g_TypedTrailParameters[2].zw + float2(noisePan, 0.f)) *
+                g_EffectLocalTime;
         const float4 noise = g_NoiseTexture.Sample(LinearSampler, noiseUV);
         const float2 warpedUV = uv + (noise.rg * 2.f - 1.f) *
-            min(abs(g_SourceScalars1.z) * noiseStrength * 0.0025f, 0.1f);
+            clamp(g_TypedTrailParameters[3].x * noiseStrength * 0.01f,
+                -0.1f, 0.1f);
+        // The source parent exposes independent R/G U-coordinate lanes.  Its
+        // `*_r_texcoord` and `*_g_texcoord` values are not a packed float2 UV:
+        // each channel scales and offsets U while preserving the mesh V.
         const float2 alphaRUV = float2(
-            warpedUV.x * max(abs(g_SourceScalars1.x), 0.01f) +
-                g_SourceVector0.x + alphaPan * g_EffectLocalTime,
+            warpedUV.x * max(abs(g_TypedTrailParameters[1].x), 0.01f) +
+                g_TypedTrailParameters[1].z +
+                (g_TypedTrailParameters[0].z + alphaPan) *
+                    g_EffectLocalTime,
             warpedUV.y);
         const float2 alphaGUV = float2(
-            warpedUV.x * max(abs(g_SourceScalars1.y), 0.01f) +
-                g_SourceVector0.y + alphaPan * g_EffectLocalTime,
+            warpedUV.x * max(abs(g_TypedTrailParameters[1].y), 0.01f) +
+                g_TypedTrailParameters[1].w +
+                (g_TypedTrailParameters[0].w + alphaPan) *
+                    g_EffectLocalTime,
             warpedUV.y);
         const float alphaR = g_MaskTexture.Sample(
             LinearSampler, alphaRUV).r;
         const float alphaG = g_MaskTexture.Sample(
             LinearSampler, alphaGUV).g;
         const float alphaTexture = max(alphaR, alphaG);
-        const float alphaCarrier = smoothstep(
-            0.04f, 0.2f, alphaTexture *
-                max(g_SourceScalars0.x, 0.f) * 0.15f);
+        const float alphaCarrier = pow(saturate(
+            alphaTexture * max(g_TypedTrailParameters[0].x, 0.f)),
+            max(abs(g_TypedTrailParameters[0].y), 0.01f));
+        const float2 dissolveUV = warpedUV * max(
+            abs(g_TypedTrailParameters[7].zw), float2(0.01f, 0.01f)) +
+            g_TypedTrailParameters[3].zw * g_EffectLocalTime;
         const float dissolveValue = g_DissolveTexture.Sample(
-            LinearSampler, warpedUV).r;
+            LinearSampler, dissolveUV).r;
         const float dissolveSoftness = rcp(
-            max(abs(g_SourceScalars1.w), 1.f));
+            max(abs(g_TypedTrailParameters[3].y), 1.f));
         const float dissolveGate = smoothstep(
             dissolveAmount - dissolveSoftness,
             dissolveAmount + dissolveSoftness,
@@ -819,9 +831,10 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         const float edgeFeather = saturate(edgeDistance * 64.f);
         shape = alphaCarrier * dissolveGate * edgeFeather;
         const float4 base = g_BaseTexture.Sample(LinearSampler, warpedUV);
-        const float emissivePower = max(abs(g_SourceScalars0.w), 0.01f);
+        const float emissivePower = max(
+            abs(g_TypedTrailParameters[7].y), 0.01f);
         const float emissiveStrength = min(
-            max(g_SourceScalars0.z, 0.f) * 0.05f, 8.f);
+            max(g_TypedTrailParameters[7].x, 0.f) * 0.05f, 8.f);
         output.SceneColor.rgb = pow(saturate(
             base.rgb + alphaTexture.xxx), emissivePower) *
             emissiveStrength * shape;

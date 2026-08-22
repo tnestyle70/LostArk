@@ -25,7 +25,7 @@ Client가 콤보 단계를 임의 생성하거나 자동 진행하지 않는다.
 3. `DimensionMaster.rootmotion.json` stage 0 sample 시간을 절반으로 압축한다.
 4. 공식 receipt의 변경 필드만 `PROJECT_TUNED`로 동기화한다.
 5. Server contract에서 700ms 경계 이전에는 BA1을 유지하고 경계에서만 다음 stage/종료가 일어나는지 검사한다.
-6. Client focused harness에서 실제 WModel, exact clip, weapon-bone pose 변화, 단일 Product cue, animation/effect shared clock, malformed rate atomic rollback을 검사한다.
+6. binding/root-motion JSON exact parse, gameplay publisher, Server combo contract와 실제 Client Debug/Release build로 공개 consumer 연결을 검사한다.
 
 ## 4. 변경 파일
 
@@ -34,15 +34,13 @@ Client가 콤보 단계를 임의 생성하거나 자동 진행하지 않는다.
 - `Data/Animation/Authored/DimensionMaster/DimensionMaster.skillbindings.json`
 - `Data/Animation/RootMotion/DimensionMaster.rootmotion.json`
 - `Server/Private/ServerGameplayContractTests.cpp`
-- `Tools/ClientFrontendHarness/Private/ClientFrontendHarness.cpp`
 
 Valtan authored/candidate/cue와 공용 renderer/shader는 수정하지 않는다.
 
 ## 5. 검증 계획
 
 - gameplay balance/runtime-set publisher Validate
-- Debug/Release Engine, Shared, Server, ClientFrontendHarness build
-- Debug/Release `ClientFrontendHarness.exe --dimension-ba1-sync-fast`
+- Debug/Release Engine, Shared, Server, Client build
 - Debug/Release `Server.exe --contract-test`
 - JSON parse, `git diff --check`
 - 사용자가 직접 인게임에서 BA1 한 번 입력 시 0.7초 안에 실제 찌르기 1회와 BA1 unified 이펙트가 동시에 보이는지 최종 육안 판정

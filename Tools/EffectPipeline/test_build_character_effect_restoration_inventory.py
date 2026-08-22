@@ -39,7 +39,7 @@ class CharacterEffectRestorationInventoryTests(unittest.TestCase):
         self.assertEqual(summary["occurrenceCount"], 22)
         self.assertEqual(
             summary["runtimeAdmissionCounts"],
-            {"ADMITTED": 19, "AUTHORING_ONLY": 3},
+            {"ADMITTED": 22},
         )
         targets = {row["targetId"]: row for row in self.inventory["targets"]}
         artist = targets["target.artist.f.31470.golden"]
@@ -75,11 +75,11 @@ class CharacterEffectRestorationInventoryTests(unittest.TestCase):
             "authored.source-particle.ca6dc295e0267400d6968003",
         ):
             self.assertEqual(
-                occurrences[stable_id]["runtimeAdmission"], "AUTHORING_ONLY"
+                occurrences[stable_id]["runtimeAdmission"], "ADMITTED"
             )
             self.assertEqual(
                 occurrences[stable_id]["productJoin"]["status"],
-                "AUTHORED_NOT_PUBLISHED",
+                "CLOSED",
             )
 
         dimension_rows = [
@@ -297,7 +297,12 @@ class CharacterEffectRestorationInventoryTests(unittest.TestCase):
         unpublished = next(
             row
             for row in changed["occurrences"]
-            if row["productJoin"]["status"] == "AUTHORED_NOT_PUBLISHED"
+            if row["productJoin"]["status"] == "CLOSED"
+        )
+        unpublished["productJoin"]["status"] = "AUTHORED_NOT_PUBLISHED"
+        unpublished["productJoin"]["publishedElementSha256"] = None
+        unpublished["blockers"].append(
+            "PUBLISHED_DIRECT_DOCUMENT_STALE_FOR_OCCURRENCE"
         )
         unpublished["runtimeAdmission"] = "ADMITTED"
         with self.assertRaisesRegex(

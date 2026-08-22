@@ -262,30 +262,6 @@ try {
             "LOSTARK_ANIM_EVENTS $(if ($animationAssetId -ceq 'Artist') { 6 } else { 5 }) `"$animationAssetId`" $($eventRows.Count)`n" +
             (($eventRows -join "`n") + $(if ($eventRows.Count) { "`n" } else { '' }))))
     }
-    Write-Utf8 (Join-Path $dataRoot 'Actors\BossCatalog.json') ((
-        [ordered]@{
-            schema = 'lostark.boss-catalog'
-            formatVersion = 3
-            bosses = @([ordered]@{
-                archetypeId = 'BOSS_VALTAN'
-                combatObjectVisuals = @(
-                    [ordered]@{
-                        combatObjectArchetypeId =
-                            'combatobject.valtan.pipeline.target-axe'
-                        clientVisualId =
-                            'combatobject.visual.valtan.pipeline.target-axe.v1'
-                        effectAssetId = $combatObjectEffectIds[0]
-                    },
-                    [ordered]@{
-                        combatObjectArchetypeId =
-                            'combatobject.valtan.pipeline.red-wave'
-                        clientVisualId =
-                            'combatobject.visual.valtan.pipeline.red-wave.v1'
-                        effectAssetId = $combatObjectEffectIds[1]
-                    }
-                )
-            })
-        } | ConvertTo-Json -Depth 10) + "`n")
     Write-Utf8 (Join-Path $dataRoot `
         'Animation\Authored\Valtan\Valtan.patterneffectcues.json') ((
         [ordered]@{
@@ -369,14 +345,14 @@ try {
                             'combatobject.valtan.pipeline-fixture.moving-a'
                         clientVisualId =
                             'combatobject.visual.valtan.pipeline-fixture.moving-a.v1'
-                        effectAssetId = 'effect.valtan.pipeline-fixture'
+                        effectAssetId = $combatObjectEffectIds[0]
                     },
                     [ordered]@{
                         combatObjectArchetypeId =
                             'combatobject.valtan.pipeline-fixture.moving-b'
                         clientVisualId =
                             'combatobject.visual.valtan.pipeline-fixture.moving-b.v1'
-                        effectAssetId = 'effect.valtan.pipeline-fixture'
+                        effectAssetId = $combatObjectEffectIds[1]
                     })
             })
         } | ConvertTo-Json -Depth 10) + "`n")

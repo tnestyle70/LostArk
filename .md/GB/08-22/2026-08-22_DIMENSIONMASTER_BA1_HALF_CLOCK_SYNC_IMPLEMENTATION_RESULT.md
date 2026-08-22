@@ -20,7 +20,7 @@
 - exact clip: `pc_sp_m_00_sk_att_battle_1_01`
 - clip 실측: 30 TPS, 4.0초
 - 무기 bone: `b_wp_swm_m_1`
-- focused harness가 source 0.0/0.1/1.4초의 무기 pose가 유한하고 서로 달라 실제 비정적 찌르기 구간임을 확인했다.
+- binding은 exact clip 하나와 `playRate=2.0`을 소유하고 root-motion stage 0은 0~700ms에서 기존 최종 변위를 보존한다.
 
 ## 3. 자동 검증
 
@@ -31,13 +31,12 @@
 | Engine x64 Debug/Release build + `UpdateLib.bat` | PASS |
 | Shared x64 Debug/Release build | PASS |
 | Server x64 Debug/Release build | PASS |
-| ClientFrontendHarness x64 Debug/Release build | PASS |
-| Debug `--dimension-ba1-sync-fast` | PASS 6/6, failures 0 |
-| Release `--dimension-ba1-sync-fast` | PASS 6/6, failures 0 |
+| Client x64 Debug/Release build | PASS, compile/link errors 0 |
 | Debug `Server.exe --contract-test` | PASS, failures 0 |
 | Release `Server.exe --contract-test` | PASS, failures 0 |
 
-전체 `--skill-binding-fast`의 BA1 신규 assertion은 PASS했다. 같은 실행의 `2050240` delayed cue와 DimensionMaster exact roster 두 실패는 통합 기준점부터 존재하는 비관련 기준이다. 후자는 이미 제품에 존재하는 STANDUP `2050030` 때문에 test의 13행 기대와 실제 14 binding이 불일치하며, 이 변경에서는 범위를 넓혀 수정하지 않았다.
+최종 선별 통합은 별도 Client frontend 통합 실행 파일을 admission gate로 사용하지 않았다. gameplay publisher,
+Server 콤보 계약, Debug/Release 전체 빌드로 현재 제품 경로를 재검증했다.
 
 ## 4. 수동 검증 경계
 

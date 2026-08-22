@@ -186,9 +186,6 @@
 	<ClCompile Include="..\..\..\Client\Private\Effect_Object.cpp">
 	  <Link>Client\Effect_Object.cpp</Link>
 	</ClCompile>
-	<ClCompile Include="..\..\..\Client\Private\Effect_ScreenOverlayPresentation.cpp">
-	  <Link>Client\Effect_ScreenOverlayPresentation.cpp</Link>
-	</ClCompile>
 	<ClCompile Include="..\..\..\Client\Private\DeferredMaterialRenderUtils.cpp">
 	  <Link>Client\DeferredMaterialRenderUtils.cpp</Link>
 	</ClCompile>

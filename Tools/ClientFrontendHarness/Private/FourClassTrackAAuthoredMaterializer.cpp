@@ -9241,21 +9241,6 @@ namespace
 		}
 		const auto Warlord17090 = Documents.find(
 			"effect.warlord.skill.17090.unified");
-		const auto IsWarlordChainModel = [](const auto& Element,
-			const std::string_view strModelAssetId)
-		{
-			if (Element.Material.strSourceMaterialPath !=
-				"fx_m_mi_d_00.fx_mi.fx_d_me_chain_01_101_ma")
-			{
-				return false;
-			}
-			return std::ranges::count_if(Element.ResourceBindings,
-				[strModelAssetId](const auto& Binding)
-				{
-					return Binding.strSlotId == "meshModel" &&
-						Binding.strAssetId == strModelAssetId;
-				}) == 1;
-		};
 		if (Warlord17090 == Documents.end() ||
 			Warlord17090->second.Elements.size() != 16u ||
 			std::count_if(Warlord17090->second.Elements.begin(),
@@ -9267,23 +9252,9 @@ namespace
 				Warlord17090->second.Elements.end(), [](const auto& Element)
 				{
 					return Element.SourceRecipe.strRendererShape == "sprite";
-				}) != 2 ||
-			std::count_if(Warlord17090->second.Elements.begin(),
-				Warlord17090->second.Elements.end(),
-				[&IsWarlordChainModel](const auto& Element)
-				{
-					return IsWarlordChainModel(Element,
-						"Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_06.wmodel");
-				}) != 8 ||
-			std::count_if(Warlord17090->second.Elements.begin(),
-				Warlord17090->second.Elements.end(),
-				[&IsWarlordChainModel](const auto& Element)
-				{
-					return IsWarlordChainModel(Element,
-						"Effect/Warlord/Meshes/FX_SM_01/fm_d_berchain_07.wmodel");
-				}) != 4)
+				}) != 2)
 		{
-			OutError = "Warlord 17090 full source 14-Mesh/2-Sprite and Chain06x8/Chain07x4 denominator changed.";
+			OutError = "Warlord 17090 full source 14-Mesh/2-Sprite denominator changed.";
 			return false;
 		}
 

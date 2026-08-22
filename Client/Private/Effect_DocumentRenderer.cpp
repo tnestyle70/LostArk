@@ -2161,6 +2161,35 @@ namespace
 			Same_MaterialVectors(Left.Colors, Right.Colors);
 	}
 
+	bool_t Same_TypedDynamicParameterResourceSignature(
+		const Client::EFFECT_CASCADE_RECIPE_DESC& Left,
+		const Client::EFFECT_CASCADE_RECIPE_DESC& Right)
+	{
+		using DYNAMIC_STRING_LITERAL =
+			std::pair<std::string_view, std::string_view>;
+		const auto Collect = [](const Client::EFFECT_CASCADE_RECIPE_DESC& Recipe)
+		{
+			std::vector<DYNAMIC_STRING_LITERAL> Result;
+			for (const Client::EFFECT_SOURCE_MODULE_DESC& Module : Recipe.Modules)
+			{
+				if (Module.strClassName != "particlemoduleparameterdynamic")
+					continue;
+				Result.emplace_back("#module", "");
+				for (const Client::EFFECT_SOURCE_LITERAL_DESC& Literal :
+					Module.Literals)
+				{
+					if (Literal.eKind !=
+						Client::EFFECT_SOURCE_LITERAL_KIND::STRING)
+						continue;
+					Result.emplace_back(
+						Literal.strPropertyPath, Literal.strString);
+				}
+			}
+			return Result;
+		};
+		return Collect(Left) == Collect(Right);
+	}
+
 	bool_t Resource_SignatureMatches(
 		const Client::EFFECT_DOCUMENT_DESC& Left,
 		const Client::EFFECT_DOCUMENT_DESC& Right)
@@ -2197,6 +2226,8 @@ namespace
 				A.SourceRecipe.bEnabled != B.SourceRecipe.bEnabled ||
 				A.SourceRecipe.strRendererShape !=
 					B.SourceRecipe.strRendererShape ||
+				!Same_TypedDynamicParameterResourceSignature(
+					A.SourceRecipe, B.SourceRecipe) ||
 				A.Material.strTemplateId != B.Material.strTemplateId ||
 				A.Material.strSourceMaterialPath !=
 					B.Material.strSourceMaterialPath ||
@@ -2550,7 +2581,13 @@ namespace
 			return 12u;
 		if (Source.strRuntimeShaderProfileId ==
 			Client::EFFECT_MISSILETRAIL_RUNTIME_PROFILE_ID)
-			return 13u;
+		{
+			return SourceMaterialIdentityMatches(Source,
+				"ue3.material.fx.m.mi.03.fx.m.fx.m.pa."
+				"missiletrail.01.tr.9641f8d91e6a",
+				"fx_m_mi_03.fx_m.fx_m_pa_missiletrail_01_tr") &&
+				Source.StaticSwitches.empty() ? 13u : UINT32_MAX;
+		}
 		if (Source.strRuntimeShaderProfileId ==
 			Client::EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID)
 		{
@@ -2773,12 +2810,75 @@ namespace
 				Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
 	}
 
+	bool_t Is_MissileTrailFourLaneCarrierContractSatisfied(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source =
+			Element.Material.SourceMaterial;
+		if (!Is_StrictParticleShapeCarrierContractSatisfied(Element, "mesh") ||
+			Element.Material.eRenderProfile !=
+				Client::EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ ||
+			Element.ResourceBindings.size() != 5u ||
+			!SourceMaterialIdentityMatches(Source,
+				"ue3.material.fx.m.mi.03.fx.m.fx.m.pa."
+				"missiletrail.01.tr.9641f8d91e6a",
+				"fx_m_mi_03.fx_m.fx_m_pa_missiletrail_01_tr") ||
+			!Source.StaticSwitches.empty())
+		{
+			return false;
+		}
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pBase = Find_Binding(
+			Element, Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE);
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pMask = Find_Binding(
+			Element, Client::EFFECT_RESOURCE_SLOT::MASK_TEXTURE);
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pNoise = Find_Binding(
+			Element, Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE);
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pDissolve = Find_Binding(
+			Element, Client::EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE);
+		if (nullptr == pBase || pBase->strAssetId.empty() || nullptr == pMask ||
+			pMask->strAssetId.empty() || nullptr == pNoise ||
+			pNoise->strAssetId.empty() || nullptr == pDissolve ||
+			pDissolve->strAssetId.empty() || nullptr != Find_Binding(
+				Element, Client::EFFECT_RESOURCE_SLOT::EMISSIVE_TEXTURE))
+		{
+			return false;
+		}
+		/* Older sealed programs can lack named texture provenance. When names
+		   are present, bind every executable lane back to the same typed
+		   resource and require the one unsampled dependency receipt. Duplicate
+		   aliases must not be admitted by a first-match lookup. */
+		if (Source.Textures.empty())
+			return true;
+		static constexpr std::array<std::string_view, 3u> CONSUMED_NAMES = {{
+			"alpha_tex", "uv_noise_tex", "uv_dissolve_tex"
+		}};
+		const size_t iDependencyCount = std::ranges::count_if(
+			Source.Textures,
+			[](const Client::EFFECT_NAMED_TEXTURE_DESC& Texture)
+			{
+				return Texture.strName == "umodel_dependency" &&
+					Texture.strAssetId.empty();
+			});
+		return Source.Textures.size() == 4u && iDependencyCount == 1u &&
+			Client::Has_EffectUniqueNamedTextureContract(
+				Source, CONSUMED_NAMES) &&
+			NamedTextureMatches(Source, "alpha_tex", pMask->strAssetId) &&
+			NamedTextureMatches(Source, "uv_noise_tex", pNoise->strAssetId) &&
+			NamedTextureMatches(Source, "uv_dissolve_tex",
+				pDissolve->strAssetId);
+	}
+
 	uint32_t EffectiveSourceMaterialProfileIndex(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
 		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source =
 			Element.Material.SourceMaterial;
 		const uint32_t iStoredProfile = SourceMaterialProfileIndex(Source);
+		if (13u == iStoredProfile)
+		{
+			return Is_MissileTrailFourLaneCarrierContractSatisfied(Element) ?
+				13u : UINT32_MAX;
+		}
 		if (14u == iStoredProfile)
 		{
 			return Is_StrictTwoSidedAlphaMeshCarrierContractSatisfied(Element) &&
@@ -3104,7 +3204,7 @@ namespace
 		const uint32_t iProfile,
 		const std::string_view strParameterName)
 	{
-		if (15u == iProfile)
+		if (13u == iProfile || 15u == iProfile)
 		{
 			if (strParameterName == "alpha_pan") return 15u;
 			if (strParameterName == "uv_noise_velue" ||
@@ -3202,7 +3302,7 @@ namespace
 		const uint32_t iProfile,
 		std::array<uint32_t, 4u>& OutSemantics)
 	{
-		if (15u != iProfile && 14u != iProfile && 11u != iProfile &&
+		if (13u != iProfile && 15u != iProfile && 14u != iProfile &&
 			16u != iProfile && 18u != iProfile && 19u != iProfile &&
 			20u != iProfile && 21u != iProfile && 23u != iProfile &&
 			24u != iProfile && 26u != iProfile && 34u != iProfile)
@@ -5075,7 +5175,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		Build_SliceConstants(SourceMaterial, Staged.vSourceScalars0,
 			Staged.vSourceScalars1, Staged.vSourceVector0);
 	}
-	else if (15u == Staged.iSourceMaterialProfile)
+	else if (13u == Staged.iSourceMaterialProfile ||
+		15u == Staged.iSourceMaterialProfile)
 	{
 		Build_MissileTrailConstants(
 			SourceMaterial, Staged.TypedTrailParameters);
@@ -5215,10 +5316,19 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 				SourceMaterial.DynamicParameterSemantics[iSemantic]);
 	}
 	std::array<uint32_t, 4u> TypedDynamicSemantics{};
-	if (Try_ResolveTypedDynamicParameterSemantics(
-		Element, Staged.iSourceMaterialProfile, TypedDynamicSemantics))
+	const bool_t bTypedDynamicSemanticsResolved =
+		Try_ResolveTypedDynamicParameterSemantics(
+			Element, Staged.iSourceMaterialProfile, TypedDynamicSemantics);
+	if (bTypedDynamicSemanticsResolved)
 	{
 		Staged.DynamicParameterSemantics = TypedDynamicSemantics;
+	}
+	else if (13u == Staged.iSourceMaterialProfile)
+	{
+		strOutError =
+			"MissileTrail source Material requires one exact typed dynamic "
+			"parameter module: " + Element.strElementId;
+		return E_FAIL;
 	}
 	const EFFECT_RESOURCE_BINDING_DESC* pModelBinding =
 		Find_Binding(Element, EFFECT_RESOURCE_SLOT::MESH_MODEL);

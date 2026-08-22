@@ -280,8 +280,8 @@ dissolve lane과 start `0.12s`, life `2s`, size `4.5`, depth `0.25`를 receipt�
 
 | slot | skill | 현재 실측 | 복원 목표 |
 |---|---:|---|---|
-| Q | `34040 이연격` | clip1 mesh 1, clip2 mesh 4가 이미 존재 | BA mesh를 먼저 복사하지 않고 기존 mesh의 admission/material/revision/transform 실패를 고친다. 두 타격에 source-proven slash가 실제 draw된 뒤 부족한 carrier만 추가 |
-| A | `34140 선풍참혼` | 2-stage COMBO. 한 대상 row disk rotation은 이미 `[0,-90,0]`; 사용자가 BA2 unified 검격 mesh particle의 position을 Tool에서 수정해도 인게임에 반영되지 않는 재현 추가 | BA2의 정확한 stable element/clip을 선택하고 position/rotation Apply, atomic save, publish/runtime revision, next-spawn hot reload를 끝까지 진단한다. 다른 BA occurrence 오선택과 이미 살아 있는 occurrence 정책을 분리하고 실제 transform 소비 경로를 고친다 |
+| Q | `34040 이연격` | clip1 WaterTrail mesh 1은 draw됐지만 clip2 MissileTrail mesh 4는 SRV/pass/draw/PS invocation 뒤에도 0 RGB였다. profile 13이 이름 있는 26 scalar를 배열 앞 8개로 읽고 DynamicParameter 이름을 typed semantic으로 연결하지 않은 family 결손 | BA mesh를 복사하지 않는다. 기존 1+4 exact mesh를 유지하고 exact four-lane MissileTrail profile ID/parent/carrier/resource tuple에만 이름 기반 constants와 typed dynamic semantics를 연결한다. named/legacy-empty texture provenance를 구분하고 parent·duplicate lane·dynamic param-name drift 및 grouped consumer 오입장을 transactionally 거부한다. R/G scalar sensitivity와 거부 뒤 prepared readback 불변을 WARP로 증명한다. |
+| A | `34140 선풍참혼` | 2-stage COMBO의 `d629...` row는 disk position `[0,0.99000001,0]`, rotation `[0,-90,0]`이다. 같은 A slot의 단창 `34580 절룡세`, effect cue가 없는 BA2 `_03`과 실제 cue를 가진 `_04`, active occurrence 불변 계약이 Tool에서 드러나지 않았다 | Tool selection/tree에 skill ID, required stance, stage/clip/effect ID를 표시한다. exact stable row의 position/rotation만 편집하고 active occurrence는 불변, Debug 다음 cast만 교체된 target을 소비한다. Release는 publish된 sealed 문서를 재시작 후 소비하며 invalid save/replacement는 rollback한다. |
 | W donor | `34550 사두룡격` | `fm_d_cone_005` cone occurrence 6개 | E 복사 원본으로 쓰되 cross-document pointer가 아니라 exact resource/material/source row를 새 stable ID로 transplant |
 | E | `34560 굉열파` | clip2/clip3 Product, clip3에 기존 trail mesh | source hit 시점에 W cone을 연결. 기본 admission은 impact cone 1개이며 원본 비교가 연속 cone을 요구하면 occurrence cohort로 확대 |
 | 용 cohort | `34610 V`, `34630 ALT_V`, `34650 T` | 사용자가 부른 Z는 실제 stance swap. 용은 세 스킬의 mesh particle에 존재 | 세 스킬을 모두 source cohort로 조사해 자연스러운 UV가 깨지는 정확한 대상과 material variant를 연결 |
@@ -1041,8 +1041,8 @@ Client/Private/Effect_Catalog.cpp
 Client/Private/Effect_PresentationService.cpp
 ```
 
-공통 source variant registry를 새 파일로 만들면 `Client.vcxproj`와 `.filters`, ClientFrontendHarness와
-같은 G에서 등록한다. F 전용 registry는 golden fixture로 유지한다.
+공통 source variant registry를 새 파일로 만들면 `Client.vcxproj`와 `.filters`, 실제 Client
+consumer를 같은 G에서 등록한다. F 전용 registry는 golden fixture로 유지한다.
 
 ### 5.3 Shader와 rendering
 
@@ -1172,7 +1172,7 @@ Engine x64 Debug/Release
 UpdateLib.bat Debug/Release
 Shared + NetworkProtocolHarness Debug/Release와 실행
 Server Debug/Release + Server.exe --contract-test
-ClientFrontendHarness Debug/Release와 focused effect flags
+effect pipeline domain test와 실제 Client Debug/Release
 Client x64 Debug/Release
 ```
 
@@ -1249,7 +1249,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G01 Tool/save | `IMPLEMENTED` | Warlord 17090 retained subset Save/Load 7/7, invalid identity/mesh/recipe rollback | 미실행 | Light/Post/Ribbon subtype Tool tree |
 | G02 join | `IMPLEMENTED` | Artist D effectref + source catalog + 56-row authored closure focused PASS | 미실행 | full publisher/runtime sealed join |
 | G03 shader variants | `IMPLEMENTED` | StandardColorV1, Fluid01 opcode 17, Artist Tiger opcode 18의 typed admission·rollback·WARP draw | 미실행 | source-exact Glasshole과 추가 native VF/pass evidence |
-| G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R/S, Warlord T, Lance E cone donor focused PASS | 미실행 | runtime full publish, S 사용자 화면 튜닝 |
+| G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R/S, Warlord T, Lance E cone donor, Lance Q exact 1+4 mesh admission과 A exact-row Tool identity, final Client Debug/Release·publisher regression | 미실행 | S와 Lance Q/A 사용자 화면 튜닝 |
 | G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결, D tiger 12행 typed family | 미실행 | E runtime frame 확인, T asset lineage |
 | G06 glass/crack | `IMPLEMENTED` | F2050230 Fluid01 two-row + F2050230 Product screen-overlay 5행 actual cue/catalog join, identity·rollback·timeline·clear Debug/Release focused harness | 대기 | source-exact Glasshole 별도 통합, Fluid01 mesh, F raw world composition과 refraction/multi-lane |
 | G07 dragon/ultimate | `IMPLEMENTED` | Lance 34630/34650 exact 12행 opcode 19 + Artist T exact TypeDataRibbon→CascadeRibbon opcode 20, fixed-step history·WARP draw·rollback PASS | 미실행 | 34610·교차 class exact variant admission, Artist T parent native distortion/reflection ABI |

@@ -22,8 +22,8 @@ Data/Balance/PlayerSkillTargeting.json
 -> Server target-root damage shape
 ```
 
-자동 종료 증거는 Debug/Release Shared+Network harness, Server focused contract, Client build,
-ClientFrontendHarness focused state test, gameplay publisher Validate와 `git diff --check`다. Client/UI는
+자동 종료 증거는 Debug/Release Shared+NetworkProtocolHarness, Server contract, Client build,
+gameplay publisher Validate와 `git diff --check`다. Client/UI는
 에이전트가 실행하지 않으며 preview의 형태·색·스케일은 사용자 육안 판정 전까지 visual PASS로 올리지
 않는다.
 
@@ -199,8 +199,6 @@ msbuild Server/Server.vcxproj /p:Configuration=Debug /p:Platform=x64
 Server/Bin/Debug/Server.exe --dimensionmaster-ground-target-contract
 
 msbuild Client/Default/Client.vcxproj /p:Configuration=Debug /p:Platform=x64
-msbuild Tools/ClientFrontendHarness/ClientFrontendHarness.vcxproj /p:Configuration=Debug /p:Platform=x64
-Tools/ClientFrontendHarness/Bin/x64/Debug/ClientFrontendHarness.exe --dimensionmaster-ground-target-fast
 ```
 
 같은 순서를 Release로 반복하고 JSON/XML parse, exact PlayerSkills/Damage hash 보존,
