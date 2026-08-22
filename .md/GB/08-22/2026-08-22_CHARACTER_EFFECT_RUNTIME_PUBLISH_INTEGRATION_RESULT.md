@@ -87,10 +87,10 @@ occurrence, source overlay CAS/round-trip, Valtan placement source contract였�
 않았다. 후보 코드·데이터·publisher 결과는 다음 복구 가능한 위치에 보존한다.
 
 ```text
-branch  codex/effect-family-conquest
-head    10e18dea50d3915f0bfa71484ea3a711b38c8dd8
-PR      #141 (closed without merge)
-base    main@7fb8f8139f62657914228070ebe2a9860287b577
+branch               codex/effect-family-conquest
+implementation head  10e18dea50d3915f0bfa71484ea3a711b38c8dd8
+PR                   #141 (closed without merge)
+base                 main@7fb8f8139f62657914228070ebe2a9860287b577
 ```
 
 사용자 결정에 따라 이 광역 복원 방향은 여기서 종료한다. 새 방향은 최신 main에서 새 범위와
