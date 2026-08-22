@@ -341,6 +341,7 @@ namespace LostArk::Server
 		bool Apply_WorldDestructionStageEntry(
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t serverTick);
+#ifdef _DEBUG
 		/* Commit the 69 ordinary contact walls and the 30 outer ring walls in one
 		transaction, leaving every floor sector INTACT. A floor-collapse bar only
 		arrives after the fight has already taken those walls down, so the
@@ -350,6 +351,7 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t resetTick,
 			std::string& status);
+#endif
 		/* The navigation grid is the ground a boss pattern stride may cross.
 		Pattern motion is swept against impact receivers alone, and nothing in
 		that sweep knows where the ground stops, so the furthest sample the grid
