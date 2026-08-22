@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{7641288A-F176-45C9-A612-48F11991C4A6}</ProjectGuid>
+    <RootNamespace>EffectRenderContractHarness</RootNamespace>
+    <ProjectName>EffectRenderContractHarness</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <OutDir>$(ProjectDir)..\Bin\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)..\Intermediate\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>EffectRenderContractHarness</TargetName>
+    <EffectHarnessRepositoryRoot>$([System.IO.Path]::GetFullPath('$(ProjectDir)..\..\..'))</EffectHarnessRepositoryRoot>
+    <LocalDebuggerWorkingDirectory>$(EffectHarnessRepositoryRoot)\Client\Default</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArguments>&quot;$(EffectHarnessRepositoryRoot)&quot; 0 &quot;$(EffectHarnessRepositoryRoot)\Client\Bin\DataFiles\Effect\EffectCatalog.runtime.json&quot;</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;LOSTARK_EFFECT_RUNTIME_AUTHORITY_SEMANTIC_TESTS;LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;$(ProjectDir)..\..\..\Shared\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalOptions>/utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\Shared\Bin\$(Configuration);$(ProjectDir)..\..\..\EngineSDK\lib\$(Configuration);$(ProjectDir)..\..\..\EngineSDK\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Engine.lib;Shared.lib;DirectXTKd.lib;d3d11.lib;dxgi.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;LOSTARK_EFFECT_RUNTIME_AUTHORITY_SEMANTIC_TESTS;LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\..\..\Client\Public;$(ProjectDir)..\..\..\EngineSDK\Inc;$(ProjectDir)..\..\..\Shared\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalOptions>/utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(ProjectDir)..\..\..\Shared\Bin\$(Configuration);$(ProjectDir)..\..\..\EngineSDK\lib\$(Configuration);$(ProjectDir)..\..\..\EngineSDK\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Engine.lib;Shared.lib;DirectXTK.lib;d3d11.lib;dxgi.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Private\EffectRenderContractHarness.cpp" />
+    <ClCompile Include="..\..\..\Client\Private\DataJson.cpp"><Link>Client\DataJson.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\DeferredMaterialRenderUtils.cpp"><Link>Client\DeferredMaterialRenderUtils.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_Artist31470ShaderRegistry.cpp"><Link>Client\Effect_Artist31470ShaderRegistry.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_Catalog.cpp"><Link>Client\Effect_Catalog.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_CascadeCompiler.cpp"><Link>Client\Effect_CascadeCompiler.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_Distribution.cpp"><Link>Client\Effect_Distribution.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_DocumentCodec.cpp"><Link>Client\Effect_DocumentCodec.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_DocumentRenderer.cpp"><Link>Client\Effect_DocumentRenderer.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_LightPresentation.cpp"><Link>Client\Effect_LightPresentation.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_MaterialProgramRegistry.cpp"><Link>Client\Effect_MaterialProgramRegistry.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_Object.cpp"><Link>Client\Effect_Object.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_OccurrenceTuning.cpp"><Link>Client\Effect_OccurrenceTuning.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_Playback.cpp"><Link>Client\Effect_Playback.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_ReconstructedExecution.cpp"><Link>Client\Effect_ReconstructedExecution.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_RuntimeAuthority.cpp"><Link>Client\Effect_RuntimeAuthority.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_ScreenOverlayPresentation.cpp"><Link>Client\Effect_ScreenOverlayPresentation.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_ValtanTranslatedCanaryRuntime.cpp"><Link>Client\Effect_ValtanTranslatedCanaryRuntime.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\Effect_VisualProgramCorpus.cpp"><Link>Client\Effect_VisualProgramCorpus.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp"><Link>Client\ProjectDataRoot.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\RuntimeAssetRoot.cpp"><Link>Client\RuntimeAssetRoot.cpp</Link></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Engine\Default\Engine.vcxproj">
+      <Project>{922BAEFB-8A3C-4F15-9F51-BF7C7ECC1CD7}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Shared\Default\Shared.vcxproj">
+      <Project>{F4CCF815-6D51-412F-A76E-84D2F1D05571}</Project>
+    </ProjectReference>
+  </ItemGroup>
+	<ItemGroup>
+		<None Include="..\Run-EffectRenderContractHarness.ps1" />
+	</ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <PropertyGroup>
+    <EngineRoot>$(ProjectDir)..\..\..\Engine\</EngineRoot>
+    <EngineBinaryRoot>$(EngineRoot)Bin\$(Configuration)\</EngineBinaryRoot>
+    <AssimpRuntimeName Condition="'$(Configuration)'=='Debug'">assimp-vc143-mtd.dll</AssimpRuntimeName>
+    <AssimpRuntimeName Condition="'$(Configuration)'=='Release'">assimp-vc143-mt.dll</AssimpRuntimeName>
+  </PropertyGroup>
+  <Target Name="DeployEffectHarnessRuntimeDependencies" AfterTargets="Build" Condition="'$(Platform)'=='x64'">
+    <ItemGroup>
+      <EffectHarnessRuntimeDependency Include="$(EngineBinaryRoot)Engine.dll" />
+      <EffectHarnessRuntimeDependency Include="$(EngineRoot)ThirdPartyLib\FMOD\Bin\fmod.dll" />
+      <EffectHarnessRuntimeDependency Include="$(EngineRoot)ThirdPartyLib\Assimp\Bin\$(Configuration)\$(AssimpRuntimeName)" />
+      <EffectHarnessRuntimeDependency Include="$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\PhysX_64.dll" />
+      <EffectHarnessRuntimeDependency Include="$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\PhysXCommon_64.dll" />
+      <EffectHarnessRuntimeDependency Include="$(EngineRoot)ThirdPartyLib\PhysX\Bin\$(Configuration)\PhysXFoundation_64.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(EffectHarnessRuntimeDependency)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
