@@ -9,24 +9,39 @@
     "effectAssetId": "effect.dimensionmaster.skill.2050120.clip3.unified"
   },
   "scope": {
-    "stage": "G03_3_EXACT_NATIVE_SHADER_OBJECT_BINDING_CLOSURE",
+    "stage": "G03_6_SOURCE_EMITTER_VF_NO_DENSITY_VERTEX_PASS_EVIDENCE",
     "classNeutralExtractor": true,
     "runtimeAdmission": false,
     "visualAdmission": false,
     "dxbcExtracted": true,
     "nativeShaderObjectBindingsDecoded": true,
     "nativeShaderObjectBindingRuntimeAdmission": false,
+    "sourceEmitterVertexFactorySelection": true,
+    "exactVertexShaderBlob": true,
+    "exactVertexPixelSignatureClosure": true,
+    "authoringNoDensityPass": true,
+    "densityPolicy": "NO_DENSITY_AUTHORING_BOUNDED",
+    "rawVertexShaderExecution": false,
+    "sourceExactVertexCb": false,
+    "productVfPass": false,
     "installedShaderCacheRead": false,
     "installedShaderCachePolicy": "EXCLUDED_PINNED_V974_IS_AUTHORITATIVE"
   },
   "inputs": {
     "targetManifest": {
       "repoRelativePath": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-shader-targets.json",
-      "rawSha256": "cc30068eee7074a84ba6b4e962556c557e7021c7e47408d2f97cd95d7d4318bc"
+      "rawSha256": "23bfa8afea812a74f89849bf70a3dd19d3c9823de8961087233e545e368b0c7e"
     },
     "extractor": {
       "repoRelativePath": "Tools/EffectPipeline/extract_ue3_material_shader_maps.py",
-      "rawSha256": "0088ac33e9f02d7b907a6e72c3a9f07ccc48ead4570014d6b7b879fcb1492567"
+      "rawSha256": "13bb7decbbf02297949e10606f3b9a5f7447bf75afbddd87809eb9e07462fa3e"
+    },
+    "authoredEffectDocument": {
+      "repoRelativePath": "Data/Effects/Authored/effect.dimensionmaster.skill.2050120.clip3.unified.effect.json",
+      "rawSha256": "a12b15073d2db7c5272173a67ed61442b6a5d9d5b74ab958c3dcf13e603dfc26",
+      "schema": "lostark.effect-authoring",
+      "version": 13,
+      "effectAssetId": "effect.dimensionmaster.skill.2050120.clip3.unified"
     },
     "sourcePackages": [
       {
@@ -2243,6 +2258,451 @@
         ]
       },
       "parentDefaultFallbackApplied": false,
+      "sourceEmitterVertexFactoryPass": {
+        "occurrenceId": "authored.source-particle.40e1b48e2f0f88dcfeff1549",
+        "sourceRecipe": {
+          "rendererShape": "sprite",
+          "requiredModule": {
+            "stableId": "FX_PC_SWP_05:export:2282@ref:0",
+            "className": "particlemodulerequired",
+            "boffsetcenter": true,
+            "screenalignment": "psa_rectangle"
+          },
+          "dynamicModule": {
+            "stableId": "FX_PC_SWP_05:export:1895@ref:4",
+            "className": "particlemoduleparameterdynamic",
+            "updateflags": 15
+          }
+        },
+        "sourceEmitterVertexFactorySelection": {
+          "selectionRule": "PARTICLE_REQUIRED_BOFFSETCENTER_PLUS_DYNAMIC_PARAMETER_MODULE",
+          "vertexFactoryType": "fparticleoffsetcenterdynamicparametervertexfactory",
+          "rejectedCompetingVertexFactoryTypes": [
+            "fparticledynamicparametervertexfactory"
+          ]
+        },
+        "authoringVertexPassSelection": {
+          "densityPolicy": "NO_DENSITY_AUTHORING_BOUNDED",
+          "vertexShaderType": "tbasepassvertexshaderfnolightmappolicyfnodensitypolicy",
+          "vertexShaderIdHex": "2dd6d96a7e6c974fac82106409a5b9b8"
+        },
+        "selectedVertexShaderReference": {
+          "shaderType": "tbasepassvertexshaderfnolightmappolicyfnodensitypolicy",
+          "shaderIdHex": "2dd6d96a7e6c974fac82106409a5b9b8"
+        },
+        "exactVertexShader": {
+          "shaderType": "tbasepassvertexshaderfnolightmappolicyfnodensitypolicy",
+          "shaderIdHex": "2dd6d96a7e6c974fac82106409a5b9b8",
+          "packedDescriptor": {
+            "shaderType": "tbasepassvertexshaderfnolightmappolicyfnodensitypolicy",
+            "shaderIdHex": "2dd6d96a7e6c974fac82106409a5b9b8",
+            "groupIndex": 4,
+            "descriptorIndex": 8,
+            "descriptorLogicalOffset": 55232500,
+            "descriptorRawSha256": "405a0684e63729acc511db6eca629cfae4fad1f3b9a21066c6f5525ed123b16f",
+            "packedIndexAndOffsetU32": 8,
+            "packedSizeU32": 425984000,
+            "codeBlobIndex": 8,
+            "sliceOffsetInUncompressedBlob": 0,
+            "sliceByteSize": 6500,
+            "reservedLow18Bits": 0
+          },
+          "compressedCodeBlob": {
+            "codeIndex": 8,
+            "codeHeaderLogicalOffset": 55266727,
+            "compressedLogicalOffset": 55266735,
+            "compressedByteSize": 2398,
+            "uncompressedByteSize": 6500,
+            "compressedSha256": "7a4d67eacf8a97be61c8dcf6f5d1a1d12b938849e9540a2d64c1e36fb1c5eeab",
+            "uncompressedSha256": "defae822f429760d30e0bfd31cef8c1217af8d7e43f794be6b42e85e6552995b"
+          },
+          "dxbc": {
+            "byteSize": 6500,
+            "sha256": "defae822f429760d30e0bfd31cef8c1217af8d7e43f794be6b42e85e6552995b",
+            "chunkCount": 3,
+            "chunks": [
+              {
+                "fourCc": "ISGN",
+                "offset": 44,
+                "byteSize": 224,
+                "payloadSha256": "56917a18b42b4a5ee0689d98e9838ab60939cc7d5b6928f58c19fd231de0740a"
+              },
+              {
+                "fourCc": "OSGN",
+                "offset": 276,
+                "byteSize": 248,
+                "payloadSha256": "60b15b40106842cfdece0162fe9a712fb3ca5e18237f0e7159dd5366df5f3859"
+              },
+              {
+                "fourCc": "SHEX",
+                "offset": 532,
+                "byteSize": 5960,
+                "payloadSha256": "bd3fe49b81d2d67be2eb0d9afcaf48b2982678645f4fe4a6f03c9ed3f2c0810e"
+              }
+            ]
+          },
+          "exactOneDxbcContainer": true,
+          "actualVfPassAdmission": false,
+          "admissionBlocker": "NATIVE_SHADER_OBJECT_BINDING_AND_VF_ABI_UNPROVEN"
+        },
+        "vertexShaderDeclarationClosure": {
+          "profile": "vs_5_0",
+          "constantBufferFloat4Counts": {
+            "0": 27,
+            "1": 5
+          },
+          "normalizedDisassemblySha256": "8aa77ea4dea5c4ab1a9c12fe281478b698e80f4ee0eee4dd6e0923c871e876b7",
+          "declarationSha256": "af1e939ecf2fc27f0cd3a605508d1029f8b8383bfa2bbcd6573daa86cf428b3d",
+          "instructionSha256": "d04d20db314c4cf60ea4aa3a0988fa386e3b67dd094e3d2b9d5d5cea042586af",
+          "instructionCount": 186
+        },
+        "vertexShaderInputSignature": [
+          {
+            "semanticName": "POSITION",
+            "semanticIndex": 0,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 0,
+            "mask": 15,
+            "readWriteMask": 15,
+            "stream": 0
+          },
+          {
+            "semanticName": "NORMAL",
+            "semanticIndex": 0,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 1,
+            "mask": 15,
+            "readWriteMask": 15,
+            "stream": 0
+          },
+          {
+            "semanticName": "TANGENT",
+            "semanticIndex": 0,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 2,
+            "mask": 7,
+            "readWriteMask": 3,
+            "stream": 0
+          },
+          {
+            "semanticName": "BLENDWEIGHT",
+            "semanticIndex": 0,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 3,
+            "mask": 3,
+            "readWriteMask": 3,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 0,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 4,
+            "mask": 3,
+            "readWriteMask": 3,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 1,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 5,
+            "mask": 15,
+            "readWriteMask": 15,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 3,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 6,
+            "mask": 15,
+            "readWriteMask": 15,
+            "stream": 0
+          }
+        ],
+        "vertexShaderOutputSignature": [
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 10,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 0,
+            "mask": 15,
+            "readWriteMask": 0,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 11,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 1,
+            "mask": 15,
+            "readWriteMask": 0,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 0,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 2,
+            "mask": 15,
+            "readWriteMask": 0,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 1,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 3,
+            "mask": 15,
+            "readWriteMask": 0,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 2,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 4,
+            "mask": 15,
+            "readWriteMask": 0,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 4,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 5,
+            "mask": 15,
+            "readWriteMask": 0,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 6,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 6,
+            "mask": 15,
+            "readWriteMask": 0,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 5,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 7,
+            "mask": 15,
+            "readWriteMask": 0,
+            "stream": 0
+          },
+          {
+            "semanticName": "SV_Position",
+            "semanticIndex": 0,
+            "systemValueType": 1,
+            "componentType": 3,
+            "register": 8,
+            "mask": 15,
+            "readWriteMask": 0,
+            "stream": 0
+          }
+        ],
+        "selectedPixelShaderInputSignature": [
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 10,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 0,
+            "mask": 15,
+            "readWriteMask": 7,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 11,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 1,
+            "mask": 15,
+            "readWriteMask": 15,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 0,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 2,
+            "mask": 15,
+            "readWriteMask": 3,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 1,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 3,
+            "mask": 15,
+            "readWriteMask": 15,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 2,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 4,
+            "mask": 15,
+            "readWriteMask": 15,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 4,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 5,
+            "mask": 15,
+            "readWriteMask": 15,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 6,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 6,
+            "mask": 15,
+            "readWriteMask": 7,
+            "stream": 0
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 5,
+            "systemValueType": 0,
+            "componentType": 3,
+            "register": 7,
+            "mask": 15,
+            "readWriteMask": 11,
+            "stream": 0
+          },
+          {
+            "semanticName": "SV_IsFrontFace",
+            "semanticIndex": 0,
+            "systemValueType": 9,
+            "componentType": 1,
+            "register": 8,
+            "mask": 1,
+            "readWriteMask": 0,
+            "stream": 0
+          }
+        ],
+        "vertexPixelSignatureClosure": {
+          "linkedSemanticCount": 8,
+          "rasterizerOwnedSystemValueCount": 1,
+          "links": [
+            {
+              "semanticName": "TEXCOORD",
+              "semanticIndex": 10,
+              "producerRegister": 0,
+              "producerMask": 15,
+              "consumerRegister": 0,
+              "consumerMask": 15,
+              "componentType": 3
+            },
+            {
+              "semanticName": "TEXCOORD",
+              "semanticIndex": 11,
+              "producerRegister": 1,
+              "producerMask": 15,
+              "consumerRegister": 1,
+              "consumerMask": 15,
+              "componentType": 3
+            },
+            {
+              "semanticName": "TEXCOORD",
+              "semanticIndex": 0,
+              "producerRegister": 2,
+              "producerMask": 15,
+              "consumerRegister": 2,
+              "consumerMask": 15,
+              "componentType": 3
+            },
+            {
+              "semanticName": "TEXCOORD",
+              "semanticIndex": 1,
+              "producerRegister": 3,
+              "producerMask": 15,
+              "consumerRegister": 3,
+              "consumerMask": 15,
+              "componentType": 3
+            },
+            {
+              "semanticName": "TEXCOORD",
+              "semanticIndex": 2,
+              "producerRegister": 4,
+              "producerMask": 15,
+              "consumerRegister": 4,
+              "consumerMask": 15,
+              "componentType": 3
+            },
+            {
+              "semanticName": "TEXCOORD",
+              "semanticIndex": 4,
+              "producerRegister": 5,
+              "producerMask": 15,
+              "consumerRegister": 5,
+              "consumerMask": 15,
+              "componentType": 3
+            },
+            {
+              "semanticName": "TEXCOORD",
+              "semanticIndex": 6,
+              "producerRegister": 6,
+              "producerMask": 15,
+              "consumerRegister": 6,
+              "consumerMask": 15,
+              "componentType": 3
+            },
+            {
+              "semanticName": "TEXCOORD",
+              "semanticIndex": 5,
+              "producerRegister": 7,
+              "producerMask": 15,
+              "consumerRegister": 7,
+              "consumerMask": 15,
+              "componentType": 3
+            }
+          ],
+          "pass": true
+        },
+        "admission": {
+          "sourceEmitterVertexFactorySelection": true,
+          "exactVertexShaderBlob": true,
+          "exactVertexPixelSignatureClosure": true,
+          "authoringNoDensityPass": true,
+          "rawVertexShaderExecution": false,
+          "sourceExactVertexCb": false,
+          "productVfPass": false,
+          "runtime": false,
+          "visual": false
+        }
+      },
       "cookedPixelShader": {
         "shaderType": "tbasepasspixelshaderfnolightmappolicyskylight",
         "shaderIdHex": "377108e10f08cc488de94c405e789871",
@@ -12025,11 +12485,19 @@
     "uniformExpressionSetDecodedCount": 5,
     "exactPixelShaderDxbcCount": 5,
     "uniqueExactPixelShaderDxbcCount": 5,
+    "sourceEmitterVertexFactorySelectionCount": 1,
+    "exactVertexShaderBlobCount": 1,
+    "exactVertexPixelSignatureClosureCount": 1,
+    "authoringNoDensityPassCount": 1,
+    "rawVertexShaderExecutionCount": 0,
+    "sourceExactVertexCbCount": 0,
+    "productVfPassCount": 0,
     "exactNativeShaderObjectBindingCount": 5,
     "blockedNativeShaderObjectBindingCount": 0,
     "actualVfPassAdmissionCount": 0,
     "runtimeAdmissionCount": 0,
-    "result": "PASS_G03_3_EXPECTED_EXACT_NATIVE_BINDINGS_AND_SLICE_BLOCKED"
+    "visualAdmissionCount": 0,
+    "result": "PASS_G03_6_EXACT_NATIVE_BINDINGS_AND_SOURCE_EMITTER_VF_PASS_EVIDENCE"
   },
-  "receiptSha256": "d089a4058266792095408ea04595ba8c08e5958937048dc3e4f86b5e17d20b2e"
+  "receiptSha256": "ae02f14e37a234b5c083bbe5da044a9700a9dfb2e00306f81b354dbe55b6f42c"
 }

@@ -5616,6 +5616,9 @@
     <None Include="..\..\Data\Effects\CookedShaders\a04dc3d21a95d5f2299d6bc8d07f65bd7cde640be52ed0df362b4a71b0c680e6.dxbc">
       <Filter>96.DataFiles\Effects\CookedShaders</Filter>
     </None>
+    <None Include="..\..\Data\Effects\CookedShaders\defae822f429760d30e0bfd31cef8c1217af8d7e43f794be6b42e85e6552995b.dxbc">
+      <Filter>96.DataFiles\Effects\CookedShaders</Filter>
+    </None>
     <None Include="..\..\Data\Effects\CookedShaders\e2ba1c1ef87cdd52cc74a8e661f8613d0b17f2cc7b9b1d0d7ab6ed80ec6e775b.dxbc">
       <Filter>96.DataFiles\Effects\CookedShaders</Filter>
     </None>

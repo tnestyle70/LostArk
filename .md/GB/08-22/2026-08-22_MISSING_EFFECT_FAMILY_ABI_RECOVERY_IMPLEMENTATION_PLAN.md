@@ -139,9 +139,10 @@ identity는 7/7 exact지만 runtime DDS 두 개가 빠져 있었다. 두 source 
 이번 첫 변경 단위는 이 두 immutable DDS의 source-exact runtime parity와 texture/sampler receipt 재생성만
 닫는다. raw DXBC canary admission, Product profile 변경, authored tuning 변경은 같은 커밋에 섞지 않는다.
 
-그 다음 변경 단위는 scalar-group lane/padding, `TF_Default`의 해당 revision TextureLODSettings,
-생략된 Texture2D CDO default, `fparticle` BasePass varying과 external opacity/scene-depth owner를 닫는다.
-이 증거가 닫히기 전에는 기존 bounded profile 29를 exact 원본이라고 승격하지 않는다.
+그 다음 변경 단위는 scalar-group lane/padding, source revision Texture CDO와 TextureLODSettings,
+`fparticle` BasePass varying과 external opacity/scene-depth owner를 닫는다. 이 증거가 닫히면 raw DXBC는
+제품 shader가 아니라 numeric oracle로 유지하고, 원본 RT0 계산을 읽을 수 있는 Glasshole 전용 HLSL로
+번역해 동일 입력 패리티를 검증한다. 이 전에는 기존 bounded profile 29를 exact 원본이라고 승격하지 않는다.
 
 ## 5. 다음 canary 순서
 
@@ -261,7 +262,7 @@ git diff --check
 
 생성 도구는 현재 repository root의 두 DDS가 source byte/hash와 일치하는지 확인해야 한다. 성공해도
 `sourceExactSampler`, `sourceValueReplay`, `actualVfPass`, `productRuntime`, `visual`은 false를 유지한다.
-사용자 화면 판정은 raw canary가 실제로 연결되는 후속 G 전까지 요청하지 않는다.
+사용자 화면 판정은 translated Glasshole HLSL canary가 실제로 연결되는 후속 G 전까지 요청하지 않는다.
 
 ## 8. 완료 조건
 
@@ -278,3 +279,111 @@ git diff --check
 - LocalDecal carrier가 없는 문서에서 texture만 바꾸는 것
 - sampler/VF/pass가 열린 raw DXBC를 Product 기본 경로로 켜는 것
 - 사용자의 서면 관찰 없이 visual PASS를 기록하는 것
+
+## 9. G03-6 Glasshole source ABI evidence closure
+
+texture byte parity 다음 변경 단위는 Product profile이나 authored 수치를 켜지 않고, 첫 canary가
+소비할 source ABI를 세 독립 증거로 봉인한다. 세 증거 중 하나가 실패해도 기존 Product 경로는 그대로
+유지하며 `effect.ue3.glasshole-02.v1`을 source-exact라고 승격하지 않는다.
+
+### 9.1 source Texture CDO와 sampler selector
+
+`extract_ue3_material_texture_sampler_closure.py`가 공식 v975 Engine package의
+`Default__Texture -> Default__Texture2D` CDO chain과 `TextureFilter/TextureAddress/TextureGroup`
+UEnum을 추가 입력으로 검증한다. precedence는 다음 하나뿐이다.
+
+```text
+Texture2D serialized property
+-> source-revision CDO serialized property
+-> native-constructor unresolved
+```
+
+생략된 `SRGB`는 CDO의 `true`, 생략된 `Filter`는 CDO의 `TF_Linear`를 상속한다. v975 enum에
+존재하지 않는 `TF_Default`는 거부한다. 그러나 생략된 Address와 native LODGroup, 보호된
+TextureLODSettings가 최종 hardware filter를 만드는 수식은 계속 blocker다. 그러므로 Glasshole의
+color-space/selector 부분 증거는 닫히지만 full sampler와 Product admission은 false다.
+
+### 9.2 scalar group packing의 대상 한정 closure
+
+`evaluate_ue3_material_uniform_expressions.py`는 일반 UE3 전체를 source-exact로 선언하지 않는다.
+대신 Epic 공식 packed-scalar 배열 ABI와 현재 native wire를 대조하고, 선택된 그룹의 모든 lane이 실제
+56 scalar 안에 존재하는 target만 `EPIC_PACKED_SCALAR_ABI_CORROBORATED_AND_TARGET_PADDING_FREE`로
+기록한다. Glasshole은 group `1,7,8,9,10,11,12,13`이 모두 완전한 float4라 padding 모호성이 없다.
+time-zero 8개 float4의 128-byte little-endian SHA-256은
+`23e40670db53319d0c8a013b9f63866c4ed6aa16afdb4837db3a9c0c242e356d`여야 한다.
+
+동일 v975 evaluator 코드나 vendor-authorized CB capture가 없으므로 scope의
+`nativeScalarGroupPackingSourceClosed`는 false를 유지한다. 다른 target의 불완전 마지막 그룹도 자동
+승격하지 않는다.
+
+### 9.3 실제 emitter VF와 bounded NoDensity pass
+
+`exact-shader-targets.json`은 현재 authored occurrence 문서와 다음 선택 계약을 추가한다.
+
+```json
+{
+  "occurrenceId": "authored.source-particle.40e1b48e2f0f88dcfeff1549",
+  "requiredModule": {
+    "boffsetcenter": true,
+    "screenalignment": "psa_rectangle"
+  },
+  "dynamicModule": {
+    "className": "particlemoduleparameterdynamic",
+    "updateflags": 15
+  },
+  "vertexFactoryType": "fparticleoffsetcenterdynamicparametervertexfactory",
+  "densityPolicy": "NO_DENSITY_AUTHORING_BOUNDED",
+  "vertexShaderType": "tbasepassvertexshaderfnolightmappolicyfnodensitypolicy",
+  "vertexShaderIdHex": "2dd6d96a7e6c974fac82106409a5b9b8"
+}
+```
+
+`extract_ue3_material_shader_maps.py`는 occurrence의 sourceRecipe를 다시 읽어 위 module 조건을
+검증하고, 선택된 VF 행의 NoDensity VS 하나를 exact cache에서 추출한다. 예상 VS는 6,500 bytes,
+SHA-256 `defae822f429760d30e0bfd31cef8c1217af8d7e43f794be6b42e85e6552995b`,
+`CB0[27] + CB1[5]`이며 VS output과 Glass PS input semantic이 닫혀야 한다.
+
+이 증거는 `sourceEmitterVertexFactorySelection=true`, `exactVertexShaderBlob=true`,
+`exactVertexPixelSignatureClosure=true`, `authoringNoDensityPass=true`까지만 허용한다. raw VS execution,
+source-exact vertex CB, scene fog/density, Product VF/pass, runtime과 visual admission은 모두 false다.
+
+### 9.4 이번 G에서 수정하는 파일
+
+| 파일 | 변경 책임 |
+|---|---|
+| `Tools/EffectPipeline/extract_ue3_material_texture_sampler_closure.py` | v975 Engine CDO/UEnum 검증과 explicit/CDO/native precedence |
+| `Tools/EffectPipeline/test_extract_ue3_material_texture_sampler_closure.py` | CDO 상속, `TF_Default` 거부, Address/final-filter fail-closed 회귀 |
+| `Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-texture-sampler-closure.receipt.json` | CDO provenance와 7/7 color-space/filter-selector 부분 closure |
+| `Tools/EffectPipeline/evaluate_ue3_material_uniform_expressions.py` | packed scalar target-padding-free 계산과 deterministic payload hash |
+| `Tools/EffectPipeline/test_evaluate_ue3_material_uniform_expressions.py` | Glass wire/group/lane/hash 및 partial-group 거부 회귀 |
+| `Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.source-value-uniform-evaluation.targets.json` | 갱신된 exact material-map receipt raw/seal identity |
+| `Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.source-value-uniform-evaluation.receipt.json` | corroborated scalar ABI와 source-exact 경계 |
+| `Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-shader-targets.json` | authored canary occurrence와 offset-center NoDensity VS 기대값 |
+| `Tools/EffectPipeline/extract_ue3_material_shader_maps.py` | source emitter VF 선택, exact VS 추출, VS/PS signature closure |
+| `Tools/EffectPipeline/test_extract_ue3_material_shader_maps.py` | VF 오선택, module mutation, VS identity/signature 회귀 |
+| `Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-material-maps.receipt.json` | exact offset-center NoDensity VS와 bounded authoring pass evidence |
+| `Data/Effects/Contracts/ue3-exact-cooked-shader-variants.v1.json` | 세 upstream receipt를 소비하되 Product/visual false 유지 |
+| `Tools/EffectPipeline/materialize_ue3_exact_cooked_shader_variants.py` | Glass variant에 부분 sampler/scalar/VF evidence와 exact VS sidecar projection |
+| `Tools/EffectPipeline/test_materialize_ue3_exact_cooked_shader_variants.py` | upstream digest, VS/PS blob, admission 경계 검증 |
+| `Data/Effects/CookedShaders/defae822f429760d30e0bfd31cef8c1217af8d7e43f794be6b42e85e6552995b.dxbc` | 6,500-byte exact NoDensity VS oracle sidecar |
+| `Client/Default/Client.vcxproj`, `Client/Default/Client.vcxproj.filters` | 신규 Git Data VS blob을 `96.DataFiles/Effects/CookedShaders`에 등록 |
+
+새 C++/HLSL 실행 코드는 아직 추가하지 않는다. 프로젝트 파일 변경은 exact VS oracle blob의 Data 노출만
+소유한다. 이 evidence G가 전부 통과한 뒤 G03-7은 raw DXBC를 제품 draw에 직접 승격하지 않는다. exact DXBC의 RT0 수식을
+`Shade_Ue3Glasshole02` 전용 HLSL로 번역하고, source-value texture/scalar/VF 입력에서 raw oracle과
+constant·spatial 패리티를 먼저 통과시킨다. 그 번역 HLSL만 authoring canary에 연결하며 CB2에 있던
+scene/pass 의미, scene depth와 alpha/depth/MRT-isolation state는 우리 renderer의 typed 입력으로 제공한다.
+
+### 9.5 G03-6 검증
+
+```powershell
+python Tools/EffectPipeline/test_extract_ue3_material_texture_sampler_closure.py
+python Tools/EffectPipeline/test_evaluate_ue3_material_uniform_expressions.py
+python Tools/EffectPipeline/test_extract_ue3_material_shader_maps.py
+python Tools/EffectPipeline/test_materialize_ue3_exact_cooked_shader_variants.py
+python Tools/EffectPipeline/extract_ue3_material_texture_sampler_closure.py --check
+python Tools/EffectPipeline/evaluate_ue3_material_uniform_expressions.py --check
+python Tools/EffectPipeline/extract_ue3_material_shader_maps.py --check
+python Tools/EffectPipeline/materialize_ue3_exact_cooked_shader_variants.py --check
+git diff --check
+```
