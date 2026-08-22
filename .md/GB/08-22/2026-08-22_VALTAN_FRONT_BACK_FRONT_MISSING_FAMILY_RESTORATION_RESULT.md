@@ -142,8 +142,10 @@ Crack의 다음 세 source-exact DDS는 기존 runtime Resources에 없어서 �
 - runtime contract deterministic `--check`: PASS
 - runtime-sealed C++/HLSL 12개 경로의 Git `text/eol=lf` 계약: PASS
 - Client x64 Debug full compile/link: PASS
-- Effect publisher Validate: 204 catalog entries PASS
+- Effect publisher Validate: 205 catalog entries PASS
 - Valtan render contract: 113 documents, 3,734 elements, changed documents/elements 0 PASS
+- 신규 recovery Data 26개 `Client.vcxproj`/`.filters` 공식 Sync/Check/registration harness: PASS
+- source translated HLSLI 5개 LF 고정 및 각 translation `hlslSha256` raw-byte 재현: 5/5 PASS
 - project/filter XML parse와 scoped `git diff --check`: PASS
 
 ## 8. 남은 경계
