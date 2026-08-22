@@ -163,21 +163,39 @@ Adapter는 renderer가 descriptor와 program을 GPU draw로 바꾸는 경계다.
 ## 6. V0에서 V1로 간다는 표현의 정확한 뜻
 
 `V0`와 `V1`은 현재 JSON schema나 C++ enum의 공식 세대명이 아니다. 이 문서에서는 사용자가
-말한 진행 방향을 설명하는 **maturity label**로만 쓴다. 실제 구현에는 다음 세 층이 공존한다.
+말한 진행 방향을 설명하는 **architecture label**로만 쓴다. 실제 구현에는 다음 세 층이 공존한다.
 
 | 성숙도 | 역할 | 현재 의미 |
 |---|---|---|
 | `FAMILY_LITE / compatibility` | 넓은 범위를 일단 보이게 하는 호환 경로 | 공용 UV/pan과 base/noise/mask/emissive slot을 사용하는 grouped/generic 근사 |
 | `TYPED_FAMILY / reconstructed` | 명시적인 packet과 수식을 쓰는 재구성 경로 | RuntimeMaterialV2, StandardColorV1, Artist typed opcode처럼 의미가 닫혔지만 일부 sampler/VF/source-exact 증거가 남을 수 있음 |
-| `SOURCE_EXACT / admitted` | 원본 program과 ABI 패리티를 닫은 제품 경로 | ShaderMap/DXBC/native wire/VF/pass/state, 수치 A/B, 사용자 화면, Product admission까지 통과한 exact tuple |
+| `SOURCE_EXACT / evidence` | 원본 program과 ABI 패리티를 닫은 fidelity 경로 | ShaderMap/DXBC/native wire/VF/pass/state와 수치 A/B를 통과한 exact tuple. Product·사용자 승인은 별도 축 |
 
-사용자의 표현으로는 `FAMILY_LITE`가 V0에 가깝고 `SOURCE_EXACT`가 목표 V1에 가깝다. 그러나
-중간의 typed family 성과를 V0로 되돌려 부르거나, 코드의 `STANDARD_COLOR_V1`을 전체 V1
-architecture 이름으로 사용하지 않는다.
+위 표는 빠른 설명용 maturity ladder다. 실제 ledger는 다음 다섯 축을 분리한다.
+
+```text
+runtime architecture : V0_COMPATIBILITY | V1_TYPED_CANDIDATE
+                       | V1_TYPED_PRODUCT | V1_TYPED_PRESENTATION_PRODUCT
+disposition          : LIVE_PRODUCT | AUDITION_ONLY | LEGACY | RETIRED
+                       | DISABLED_WITH_RECEIPT
+fidelity evidence    : SOURCE_EXACT | BOUNDED_TRANSLATED
+                       | PROJECT_RECONSTRUCTED | NOT_APPLICABLE
+runtime admission    : NOT_ADMITTED | TOOL_ONLY | PRODUCT_ADMITTED
+visual review        : NOT_REQUIRED | USER_REVIEW_PENDING | USER_APPROVED | USER_WAIVED
+```
+
+사용자의 표현으로는 `FAMILY_LITE`가 V0, typed program/layout/descriptor/adapter가 V1이다.
+`SOURCE_EXACT`는 V1 안의 fidelity 등급이지 V1의 유일한 완료 형태가 아니다. 원본 증거가 없는
+element도 typed ABI, fail-closed Product admission과 사용자 승인을 닫으면
+`V1_TYPED_PRODUCT + PROJECT_RECONSTRUCTED`로 완료할 수 있다. Light나 ModelCue처럼 material equation이
+없는 presentation은 `V1_TYPED_PRESENTATION_PRODUCT + NOT_APPLICABLE`로 닫는다. 중간의 typed family 성과를 V0로 되돌려
+부르거나, 코드의 `STANDARD_COLOR_V1`을 전체 V1 architecture 이름으로 사용하지 않는다.
+`USER_WAIVED`는 review가 닫혔다는 뜻일 뿐 visual fidelity PASS가 아니다. “완벽 복원”은 required
+composition이 사용자의 `USER_APPROVED`를 받은 경우에만 선언한다.
 
 마이그레이션 동안 세 경로는 공존한다.
 
-- 증거가 부족한 단순 element는 FAMILY_LITE를 유지할 수 있다.
+- 마이그레이션 중인 element는 자기 V1 replacement가 승인될 때까지 FAMILY_LITE를 유지할 수 있다.
 - channel/coverage 의미가 확정된 표준 Sprite/Decal/Trail은 StandardColorV1을 쓸 수 있다.
 - 고유 equation은 RuntimeMaterialV2의 검증된 opcode/layout이 맞으면 이를 재사용한다.
 - Glasshole처럼 packet 크기, scene input, sampler/register와 MRT 계약이 다르면 별도 typed layout과
@@ -185,8 +203,24 @@ architecture 이름으로 사용하지 않는다.
 - exact replacement를 stage한 뒤 오류가 나면 generic으로 조용히 fallback하지 않고 fail closed 한다.
 
 목표는 모든 family를 하나의 mega packet에 넣는 것이 아니다. 목표는
-`compiled program/layout ID + exact descriptor + 공용 carrier adapter`이며, 같은 layout을 쓰는
+`compiled program/layout ID + typed, fidelity-qualified descriptor + 공용 carrier adapter`이며, 같은 layout을 쓰는
 program끼리 renderer code를 재사용하는 것이다.
+
+V1은 현재 V0 문서를 제자리 변환하는 일만 뜻하지 않는다. V0 손튜닝 중 사각 카드, 잘못된 alpha/UV,
+미지원 carrier 때문에 source element를 제거했다면 다음 3-way 복구가 필요하다.
+
+```text
+원본 source occurrence 전체
++ 현재 V0 user-tuned document
++ 복원된 V1 program/layout/descriptor
+= Tool-only source restoration candidate
+```
+
+기존에 남아 있는 행은 사용자가 맞춘 transform, timing, attachment와 composition을 보존하고 material
+계약만 선택적으로 바꾼다. 원본에는 있지만 V0에 없는 행은 family가 닫힌 뒤에만 stable source-derived
+ID로 Tool Solo 후보를 다시 만든다. 사용자가 포함을 승인해야 Product에 삽입하며, 거부하거나 의도적으로
+지운 행은 retirement/disabled receipt를 남긴다. 따라서 현재 live element 수는 V0 기준선이지 최종 V1
+분모가 아니다. V1 전수 계획의 generated restoration ledger가 최종 분모를 소유한다.
 
 ## 7. 기존 translucent 경로가 하던 일과 부족했던 이유
 
@@ -212,7 +246,8 @@ gray -> UV/distortion       다른 texture를 휘게 함
 
 따라서 `t0=Base`, `base.a=alpha`, `mask.r=coverage`를 전 family의 기본 공식으로 쓰면 검격은
 사각형으로 보이고, glass는 색·굴절이 사라지며, dragon flow는 잘못된 위치에서 UV가 시작할 수
-있다. Source-exact descriptor는 각 lane에 다음을 명시한다.
+있다. Typed descriptor는 각 lane에 다음을 명시하고 source evidence가 모두 닫힌 occurrence에만
+`SOURCE_EXACT` fidelity를 부여한다.
 
 - texture register와 sampler register
 - source channel
@@ -257,15 +292,15 @@ shader가 opcode에 맞는 HLSL evaluator를 dispatch한다. 앞으로 registry�
 | equation은 같지만 packet/register layout이 다름 | 새 typed layout 또는 compatible layout adapter 추가 |
 | VF/pass/scene input/RT topology가 다름 | 새 technique/adapter 추가 |
 | Sprite를 projected decal로 바꿔야 함 | LocalDecal carrier/projection과 decal VF/pass부터 복원 |
-| source evidence가 아직 없음 | FAMILY_LITE 또는 PROJECT_TUNED로 명시하고 source-exact admission 금지 |
+| source evidence가 아직 없음 | FAMILY_LITE 또는 PROJECT_RECONSTRUCTED로 명시하고 source-exact 표기 금지 |
 
 Program identity에 skill ID, class 이름, 파일명 또는 occurrence ID를 넣지 않는다. Exact identity는
 material/static permutation과 실제 VF/pass/program·binding closure가 소유한다. Occurrence ID는
-어떤 exact descriptor를 소비하는지 선택할 뿐이다.
+어떤 verified descriptor를 소비하는지 선택할 뿐이다.
 
 ## 10. 도화가 F가 증명한 것
 
-도화가 F는 이 방법론의 golden control이다. 성공 요인은 “전용 shader 파일이 있었다” 하나가 아니다.
+도화가 F는 이 계획의 `V1_GOLDEN_CONTROL`이다. 성공 요인은 “전용 shader 파일이 있었다” 하나가 아니다.
 
 1. stable occurrence를 식별했다.
 2. 원본 texture와 material 역할을 연결했다.
@@ -341,9 +376,10 @@ false이므로 V1 Product coverage는 아직 `0/3,683`이다.
 
 따라서 다음 방향은 맞다.
 
-- ground decal은 LocalDecal carrier/projection과 exact decal material program/descriptor를 함께 복원한다.
-- 나머지 missing Sprite/Mesh family는 exact occurrence를 하나씩 canary로 골라 program과 ABI를 닫는다.
-- 동일한 exact descriptor closure를 공유하는 cohort에만 registry row로 확장한다.
+- ground decal은 LocalDecal carrier/projection과 verified, fidelity-qualified decal material
+  program/descriptor를 함께 복원한다.
+- 나머지 missing Sprite/Mesh family는 stable occurrence를 하나씩 canary로 골라 program과 ABI를 닫는다.
+- 동일한 program/layout/descriptor closure가 구조적으로 증명된 cohort에만 registry row로 확장한다.
 
 그러나 “발탄 ground decal과 다른 두 family용 HLSL 세 개를 반드시 새로 만든다”라고 미리 고정하지
 않는다. 실측 후 기존 program/layout을 재사용할 수 있으면 descriptor만 추가하고, equation이 다르면
@@ -413,12 +449,13 @@ false이므로 V1 Product coverage는 아직 `0/3,683`이다.
 
 ### G8. Product admission
 
-- Product registry에 exact program/layout/descriptor ID를 등록한다.
+- Product registry에 typed program/layout/descriptor ID와 별도의 fidelity status를 등록한다.
 - publish, restart, runtime selection을 검증한다.
 
-### G9. exact cohort 확장
+### G9. verified cohort 확장
 
-- exact descriptor closure가 같은 occurrence에만 데이터로 확장한다.
+- program/layout/descriptor closure의 구조적 동등성이 증명된 occurrence에만 데이터로 확장한다.
+- 같은 closure를 재사용해도 fidelity는 occurrence별 source/reconstruction evidence로 유지한다.
 - 다른 CB/SRV/sampler/VF/pass tuple은 새 canary로 남긴다.
 
 ## 14. 완료 증거 사다리
@@ -430,8 +467,8 @@ false이므로 V1 Product coverage는 아직 `0/3,683`이다.
 | DXBC 확보 | exact program identity와 bytecode | runtime에서 같은 출력 |
 | translated equation | structural/numeric replay | 올바른 packet과 carrier |
 | ABI descriptor | CB/SRV/sampler/VF/pass/state closure | 사용자 화면 승인 |
-| Tool canary | exact occurrence의 fail-closed draw | Product 전체 admission |
-| Product admission | publish/restart 후 exact selector 소비 | 다른 family의 exactness |
+| Tool canary | stable occurrence의 typed fail-closed draw | Product 전체 admission |
+| Product admission | publish/restart 후 typed selector 소비 | source-exact fidelity 또는 다른 family의 정확성 |
 | 사용자 승인 | 대상 화면의 visual fidelity 판정 | 증거가 다른 occurrence로 자동 전파됨 |
 
 `첫 pixel`, `draw admitted`, `texture 7/7`, `DXBC translated`를 각각 복원 완료와 혼동하지 않는다.
@@ -480,7 +517,10 @@ sampler, VF/pass, scene input, RT와 state를 빠짐없이 소유해야 한다. 
    분리한다.
 7. Screen shard, attractor, scene feedback은 material family만으로 해결되지 않는 presentation
    capability이므로 별도 carrier/adapter 수직 슬라이스로 진행한다.
-8. 각 canary가 사용자 승인을 받은 뒤 exact descriptor가 동일한 cohort만 catalog에 확장한다.
+8. 각 canary가 사용자 승인을 받은 뒤 program/layout/descriptor의 구조적 동등성이 증명된 cohort만
+   catalog에 확장하고, fidelity는 occurrence별 evidence로 유지한다.
+9. family 하나가 닫힐 때마다 현재 V0 matched 행과 함께, 그 family 문제 때문에 과거 삭제된 source
+   occurrence를 Tool-only 후보로 복구해 사용자가 Product 포함 여부를 결정한다.
 
 이 순서는 family 수를 억지로 줄이는 것이 아니라, renderer scheduling은 공용화하고 원본 program과
 descriptor의 차이는 데이터와 translated HLSL로 보존하는 방향이다.
@@ -500,6 +540,7 @@ descriptor의 차이는 데이터와 translated HLSL로 보존하는 방향이�
 
 ## 18. 관련 구현 계획
 
+- [4캐릭터·Valtan Effect V1 전체 마이그레이션 마스터 계획](../GB/08-22/2026-08-22_FOUR_CHARACTER_VALTAN_EFFECT_V1_FULL_MIGRATION_MASTER_PLAN.md)
 - [Character Source-Exact Effect Conquest Master 계획](../GB/08-21/2026-08-21_CHARACTER_SOURCE_EXACT_EFFECT_CONQUEST_MASTER_IMPLEMENTATION_PLAN.md)
 - [Animation/Effect/Character Preview Tool 인계](ANIMATION_TOOL_OWNER_HANDOFF.md)
 
