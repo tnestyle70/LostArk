@@ -36,6 +36,7 @@
 #include "BalanceTool.h"
 #include "CharacterPreviewPanel.h"
 #include "Effect_Tool.h"
+#include "Effect_Tool_V2.h"
 #include "HUDLayoutTool.h"
 #include "MapEditorWorkspaceService.h"
 #include "MapTool.h"
@@ -610,6 +611,10 @@ HRESULT CMainApp::Render()
 			case DEBUG_TOOL::EFFECT:
 				if (nullptr != m_pEffectTool)
 					m_pEffectTool->Render();
+				break;
+			case DEBUG_TOOL::EFFECT_V2:
+				if (nullptr != m_pEffectToolV2)
+					m_pEffectToolV2->Render();
 				break;
 			case DEBUG_TOOL::RENDERING:
 				RenderRenderingWorkbench();
@@ -2746,6 +2751,11 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool)
 				make_unique<CEffect_Tool>(
 					m_pDevice, m_pContext, m_pCharacterPreviewPanel);
 		break;
+	case DEBUG_TOOL::EFFECT_V2:
+		if (nullptr == m_pEffectToolV2)
+			m_pEffectToolV2 =
+				make_unique<CEffect_Tool_V2>(m_pDevice, m_pContext);
+		break;
 	case DEBUG_TOOL::RENDERING:
 		if (!m_bRenderQualityDraftInitialized)
 		{
@@ -2820,6 +2830,8 @@ void CMainApp::RenderDeveloperTools()
 		DEBUG_TOOL::ANIMATION,
 		true);
 	toolButton("Effect Tool", DEBUG_TOOL::EFFECT, true);
+	ImGui::SameLine();
+	toolButton("Effect Tool v2", DEBUG_TOOL::EFFECT_V2, true);
 	ImGui::SameLine();
 	toolButton("Rendering Workbench", DEBUG_TOOL::RENDERING, true);
 	ImGui::SameLine();
@@ -3379,6 +3391,7 @@ void CMainApp::Free()
 		pProfiler->Set_Enabled(false);
 	m_pAnimationTool.reset();
 	m_pEffectTool.reset();
+	m_pEffectToolV2.reset();
 	if (nullptr != m_pCharacterPreviewPanel)
 		m_pCharacterPreviewPanel->Release(true);
 	m_pCharacterPreviewPanel.reset();

@@ -1,0 +1,4213 @@
+{
+ "schema": "lostark.effect-tool-v2.texture-slot-usage",
+ "formatVersion": 1,
+ "sourcePatterns": [
+  "Data/Effects/Imported/*/Converted/*.imported.effect.json",
+  "Data/Effects/Authored/*.json"
+ ],
+ "sourceDocumentCount": 392,
+ "slots": [
+  "base",
+  "noise",
+  "mask",
+  "emissive",
+  "dissolve"
+ ],
+ "textures": {
+  "bg_rad_end_foliage_lotuslamp01_d_kmh.dds": {
+   "dissolve": 1,
+   "noise": 1
+  },
+  "bg_rad_end_foliage_lotuslamp01_e_kmh.dds": {
+   "base": 3,
+   "mask": 1
+  },
+  "bg_rad_end_foliage_lotuslamp01_n_kmh.dds": {
+   "mask": 1
+  },
+  "brdf_beckmann_spec.dds": {
+   "dissolve": 6
+  },
+  "diffuse.dds": {
+   "base": 6,
+   "mask": 6
+  },
+  "flat_black.dds": {
+   "mask": 6
+  },
+  "flat_gray.dds": {
+   "dissolve": 42
+  },
+  "fx_a_atypical_002_cl.dds": {
+   "mask": 54,
+   "params": [
+    "opacity_tex",
+    "mask_tex"
+   ]
+  },
+  "fx_a_atypical_003.dds": {
+   "base": 8
+  },
+  "fx_a_atypical_006.dds": {
+   "noise": 2
+  },
+  "fx_a_atypical_007.dds": {
+   "base": 11,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_atypical_013_cl.dds": {
+   "base": 9,
+   "mask": 10,
+   "params": [
+    "alpha_texture2"
+   ]
+  },
+  "fx_a_atypical_018.dds": {
+   "base": 78,
+   "dissolve": 1,
+   "mask": 11,
+   "noise": 13,
+   "params": [
+    "emissive_tex",
+    "21.map_c",
+    "maskb_tex",
+    "maska_tex"
+   ]
+  },
+  "fx_a_atypical_018_cl.dds": {
+   "base": 5
+  },
+  "fx_a_atypical_019_1.dds": {
+   "base": 11,
+   "mask": 22,
+   "noise": 6,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_a_atypical_023.dds": {
+   "mask": 1
+  },
+  "fx_a_atypical_025_cl.dds": {
+   "base": 2
+  },
+  "fx_a_atypical_039.dds": {
+   "base": 5
+  },
+  "fx_a_atypical_043.dds": {
+   "noise": 6
+  },
+  "fx_a_atypical_048.dds": {
+   "base": 103,
+   "mask": 3,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_a_atypical_048_cl.dds": {
+   "dissolve": 4,
+   "mask": 2
+  },
+  "fx_a_blankwhite_01.dds": {
+   "base": 476,
+   "emissive": 2,
+   "mask": 20,
+   "noise": 4,
+   "params": [
+    "alpha_texture1_mask",
+    "01_distortmask_tex",
+    "umodel_dependency",
+    "01.map_a"
+   ]
+  },
+  "fx_a_cloud_005.dds": {
+   "base": 35
+  },
+  "fx_a_cloud_007.dds": {
+   "base": 4,
+   "mask": 4,
+   "params": [
+    "alpha_tex"
+   ]
+  },
+  "fx_a_cloud_013.dds": {
+   "base": 8,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_cloud_015.dds": {
+   "dissolve": 1,
+   "emissive": 1
+  },
+  "fx_a_cloud_016.dds": {
+   "base": 4
+  },
+  "fx_a_cloud_017.dds": {
+   "noise": 26,
+   "params": [
+    "01.specmap",
+    "uv_noise_01_tex"
+   ]
+  },
+  "fx_a_cloud_019.dds": {
+   "base": 13
+  },
+  "fx_a_cloud_021.dds": {
+   "emissive": 29,
+   "mask": 7,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_a_cloud_022.dds": {
+   "base": 8,
+   "dissolve": 21,
+   "emissive": 16,
+   "mask": 19,
+   "noise": 105,
+   "params": [
+    "uv_noise_tex",
+    "uv_noise_tex_02",
+    "emissive_tex02",
+    "tex_uv_flow",
+    "uv_noise_01_tex",
+    "dissolve_tex02"
+   ]
+  },
+  "fx_a_cloud_026.dds": {
+   "noise": 12,
+   "params": [
+    "umodel_dependency"
+   ]
+  },
+  "fx_a_cloud_031.dds": {
+   "mask": 9,
+   "params": [
+    "alpha_tex"
+   ]
+  },
+  "fx_a_decal_004_cl.dds": {
+   "base": 3
+  },
+  "fx_a_decal_006.dds": {
+   "base": 5
+  },
+  "fx_a_decal_008.dds": {
+   "mask": 1
+  },
+  "fx_a_decal_010.dds": {
+   "base": 2,
+   "noise": 1,
+   "params": [
+    "01.diffmap_a"
+   ]
+  },
+  "fx_a_decal_013.dds": {
+   "base": 1,
+   "dissolve": 1
+  },
+  "fx_a_decal_014.dds": {
+   "base": 12
+  },
+  "fx_a_decal_014_2.dds": {
+   "base": 1
+  },
+  "fx_a_decal_014_n.dds": {
+   "noise": 7
+  },
+  "fx_a_electric_003.dds": {
+   "base": 2
+  },
+  "fx_a_electric_005.dds": {
+   "base": 5
+  },
+  "fx_a_electric_008.dds": {
+   "mask": 86,
+   "params": [
+    "alpha_texture"
+   ]
+  },
+  "fx_a_electric_009.dds": {
+   "emissive": 3,
+   "params": [
+    "emissive_tex_02"
+   ]
+  },
+  "fx_a_environ_001.dds": {
+   "base": 32,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_environ_002.dds": {
+   "base": 108,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_environ_002_n.dds": {
+   "noise": 27,
+   "params": [
+    "normal_tex"
+   ]
+  },
+  "fx_a_environ_010.dds": {
+   "base": 18,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_fire_003.dds": {
+   "dissolve": 12,
+   "emissive": 4,
+   "mask": 11,
+   "params": [
+    "mask_tex"
+   ]
+  },
+  "fx_a_fire_004.dds": {
+   "base": 33,
+   "mask": 19
+  },
+  "fx_a_fire_006.dds": {
+   "emissive": 2
+  },
+  "fx_a_fire_018_cube.dds": {
+   "noise": 10
+  },
+  "fx_a_fire_020.dds": {
+   "mask": 12
+  },
+  "fx_a_fluid_002.dds": {
+   "mask": 18,
+   "params": [
+    "alpha_tex",
+    "subuv_alpha_tex"
+   ]
+  },
+  "fx_a_fluid_002_n.dds": {
+   "params": [
+    "normal_tex"
+   ]
+  },
+  "fx_a_fluid_003.dds": {
+   "noise": 15
+  },
+  "fx_a_fluid_011.dds": {
+   "base": 9
+  },
+  "fx_a_fluid_011_n.dds": {
+   "noise": 9
+  },
+  "fx_a_fluid_017_n.dds": {
+   "mask": 3,
+   "noise": 33,
+   "params": [
+    "uv_noise_tex_01",
+    "uv_noise_texture"
+   ]
+  },
+  "fx_a_fluid_019_n.dds": {
+   "noise": 6
+  },
+  "fx_a_fluid_021_n.dds": {
+   "noise": 12,
+   "params": [
+    "uv_noise_tex_01"
+   ]
+  },
+  "fx_a_fluid_022_1.dds": {
+   "mask": 4,
+   "noise": 2
+  },
+  "fx_a_fluid_025_loc_int.dds": {
+   "base": 2
+  },
+  "fx_a_fragment_001.dds": {
+   "base": 24,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_fragment_002.dds": {
+   "base": 17,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_fragment_002_cl.dds": {
+   "base": 8
+  },
+  "fx_a_fragment_004.dds": {
+   "base": 50,
+   "params": [
+    "subuv_tex"
+   ]
+  },
+  "fx_a_fragment_004_cl.dds": {
+   "mask": 6
+  },
+  "fx_a_fragment_005.dds": {
+   "base": 5,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_fragment_007.dds": {
+   "base": 553,
+   "params": [
+    "subuv_tex"
+   ]
+  },
+  "fx_a_glow_001.dds": {
+   "base": 65,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_glow_002.dds": {
+   "base": 102,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_glow_003.dds": {
+   "base": 58,
+   "noise": 1,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_glow_004.dds": {
+   "base": 126,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_glow_009.dds": {
+   "base": 12
+  },
+  "fx_a_glow_05_cl.dds": {
+   "base": 2,
+   "emissive": 18,
+   "noise": 2
+  },
+  "fx_a_hit_004.dds": {
+   "dissolve": 5,
+   "emissive": 8,
+   "mask": 6,
+   "noise": 4
+  },
+  "fx_a_hit_005.dds": {
+   "base": 19,
+   "mask": 5,
+   "params": [
+    "emissive_tex",
+    "00.map_b"
+   ]
+  },
+  "fx_a_hit_007.dds": {
+   "base": 3,
+   "mask": 2,
+   "noise": 4
+  },
+  "fx_a_hit_008.dds": {
+   "base": 54,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_ice_002.dds": {
+   "emissive": 3,
+   "noise": 71,
+   "params": [
+    "02.map_e"
+   ]
+  },
+  "fx_a_ice_003.dds": {
+   "mask": 87
+  },
+  "fx_a_ice_006.dds": {
+   "base": 4
+  },
+  "fx_a_line_003.dds": {
+   "base": 21,
+   "params": [
+    "maintex"
+   ]
+  },
+  "fx_a_line_005.dds": {
+   "base": 40,
+   "emissive": 2,
+   "noise": 1,
+   "params": [
+    "maintex",
+    "umodel_dependency"
+   ]
+  },
+  "fx_a_line_010.dds": {
+   "emissive": 2
+  },
+  "fx_a_line_010_ycl.dds": {
+   "base": 11,
+   "mask": 1,
+   "noise": 16,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_a_noise_002.dds": {
+   "base": 72,
+   "dissolve": 5,
+   "noise": 139,
+   "params": [
+    "01.specmap",
+    "06.map",
+    "detail texture",
+    "dissolve_noise_tex"
+   ]
+  },
+  "fx_a_noise_003.dds": {
+   "base": 2,
+   "noise": 2
+  },
+  "fx_a_noise_004.dds": {
+   "base": 5,
+   "mask": 1,
+   "params": [
+    "11.map_b",
+    "01.map_a"
+   ]
+  },
+  "fx_a_noise_008_n.dds": {
+   "base": 14,
+   "mask": 53,
+   "noise": 87,
+   "params": [
+    "06.map"
+   ]
+  },
+  "fx_a_noise_009.dds": {
+   "base": 59,
+   "noise": 5,
+   "params": [
+    "tex_uv_flow",
+    "emissivee_wave_texture",
+    "tex_alpha_02"
+   ]
+  },
+  "fx_a_noise_010.dds": {
+   "noise": 7
+  },
+  "fx_a_noise_011.dds": {
+   "base": 51,
+   "emissive": 1,
+   "mask": 21,
+   "noise": 109,
+   "params": [
+    "umodel_dependency",
+    "uv_noise_tex",
+    "01.map_a",
+    "06.map_b"
+   ]
+  },
+  "fx_a_noise_014.dds": {
+   "base": 6,
+   "noise": 6,
+   "params": [
+    "diff_tex2"
+   ]
+  },
+  "fx_a_noise_017.dds": {
+   "mask": 18,
+   "noise": 2
+  },
+  "fx_a_noise_018.dds": {
+   "noise": 3,
+   "params": [
+    "umodel_dependency"
+   ]
+  },
+  "fx_a_ring_001_cl.dds": {
+   "base": 92,
+   "mask": 77,
+   "params": [
+    "spread texture",
+    "emissive_tex"
+   ]
+  },
+  "fx_a_snow_001.dds": {
+   "noise": 2
+  },
+  "fx_a_trail_003_ycl.dds": {
+   "base": 14,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_a_trail_004.dds": {
+   "noise": 9,
+   "params": [
+    "22.map_a"
+   ]
+  },
+  "fx_a_trail_005_cl.dds": {
+   "base": 10,
+   "emissive": 9,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_a_trail_006.dds": {
+   "base": 12
+  },
+  "fx_a_trail_007.dds": {
+   "base": 96,
+   "emissive": 4,
+   "mask": 144,
+   "params": [
+    "tex_alpha_01"
+   ]
+  },
+  "fx_a_trail_007_cl.dds": {
+   "base": 2
+  },
+  "fx_a_trail_011.dds": {
+   "base": 32,
+   "emissive": 1,
+   "mask": 6,
+   "params": [
+    "alpha_texture"
+   ]
+  },
+  "fx_b_atypical_004.dds": {
+   "base": 299,
+   "dissolve": 74,
+   "emissive": 51,
+   "mask": 66,
+   "noise": 137,
+   "params": [
+    "02.map_e",
+    "31.map_e",
+    "diff_tex2",
+    "emissive_tex_02",
+    "12.map_f",
+    "emissive_color",
+    "04.map_anew",
+    "01.map_e",
+    "umodel_dependency",
+    "upperemissivetexture",
+    "01_color_tex",
+    "01.map_a",
+    "06.map_b",
+    "01.specmap"
+   ]
+  },
+  "fx_b_atypical_004_cube.dds": {
+   "base": 19,
+   "emissive": 11,
+   "noise": 34,
+   "params": [
+    "refle_tex"
+   ]
+  },
+  "fx_b_atypical_006.dds": {
+   "base": 2,
+   "noise": 19,
+   "params": [
+    "distorta_tex"
+   ]
+  },
+  "fx_b_atypical_007.dds": {
+   "base": 8,
+   "mask": 6,
+   "params": [
+    "alpha_tex",
+    "emissive_tex"
+   ]
+  },
+  "fx_b_atypical_009.dds": {
+   "base": 5,
+   "dissolve": 4
+  },
+  "fx_b_atypical_014.dds": {
+   "base": 23,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_b_atypical_018.dds": {
+   "base": 67,
+   "params": [
+    "opacity_tex"
+   ]
+  },
+  "fx_b_atypical_019.dds": {
+   "base": 6
+  },
+  "fx_b_atypical_026.dds": {
+   "base": 8
+  },
+  "fx_b_cloud_016.dds": {
+   "base": 2,
+   "mask": 35,
+   "params": [
+    "distortb_tex"
+   ]
+  },
+  "fx_b_decal_001.dds": {
+   "base": 4
+  },
+  "fx_b_decal_001_e.dds": {
+   "base": 5
+  },
+  "fx_b_decal_006.dds": {
+   "base": 24,
+   "mask": 2,
+   "params": [
+    "01.alphamaskmap"
+   ]
+  },
+  "fx_b_decal_006_d.dds": {
+   "base": 3
+  },
+  "fx_b_fluid_007.dds": {
+   "base": 9
+  },
+  "fx_b_fragment_003_cl.dds": {
+   "mask": 3,
+   "params": [
+    "alpha_texture2"
+   ]
+  },
+  "fx_b_fragment_004.dds": {
+   "base": 64,
+   "params": [
+    "subuv_tex"
+   ]
+  },
+  "fx_b_glow_001_cl.dds": {
+   "base": 77,
+   "emissive": 37,
+   "mask": 2,
+   "params": [
+    "center texture",
+    "umodel_dependency"
+   ]
+  },
+  "fx_b_glow_010.dds": {
+   "base": 8
+  },
+  "fx_b_glow_015.dds": {
+   "base": 6,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_b_ring_001.dds": {
+   "base": 3,
+   "emissive": 5,
+   "mask": 19,
+   "params": [
+    "00.map_b",
+    "mask_tex"
+   ]
+  },
+  "fx_b_ring_005_cl.dds": {
+   "base": 2,
+   "mask": 1
+  },
+  "fx_bg_dustpanner_01.dds": {
+   "base": 3,
+   "noise": 29,
+   "params": [
+    "diff_noise_tex",
+    "uv_noise_01_tex",
+    "01.map_a"
+   ]
+  },
+  "fx_bg_fogsheet_cloudtex_01.dds": {
+   "emissive": 67,
+   "noise": 4,
+   "params": [
+    "diff_tex"
+   ]
+  },
+  "fx_bg_fogsheet_flarecolors_01_cl.dds": {
+   "base": 2
+  },
+  "fx_bg_softriver_02_n.dds": {
+   "noise": 58,
+   "params": [
+    "uv_noise_01_tex"
+   ]
+  },
+  "fx_bg_waterspray_01.dds": {
+   "base": 3,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_c_atypical_005_ycl.dds": {
+   "noise": 1
+  },
+  "fx_c_atypical_007_cl.dds": {
+   "emissive": 6,
+   "mask": 21,
+   "params": [
+    "opacity_tex"
+   ]
+  },
+  "fx_c_atypical_016.dds": {
+   "base": 18,
+   "emissive": 1,
+   "noise": 18,
+   "params": [
+    "12.map_f",
+    "02.map_e"
+   ]
+  },
+  "fx_c_cloud_012.dds": {
+   "base": 38,
+   "mask": 31,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_c_cloud_015.dds": {
+   "dissolve": 49,
+   "emissive": 52,
+   "mask": 20,
+   "params": [
+    "umodel_dependency",
+    "01.map_a"
+   ]
+  },
+  "fx_c_cloud_018.dds": {
+   "base": 6,
+   "noise": 11
+  },
+  "fx_c_decal_002_1.dds": {
+   "base": 18,
+   "emissive": 4,
+   "mask": 11
+  },
+  "fx_c_decal_002_2.dds": {
+   "base": 9,
+   "dissolve": 19,
+   "mask": 13
+  },
+  "fx_c_decal_002_3.dds": {
+   "base": 16,
+   "dissolve": 2,
+   "emissive": 6,
+   "mask": 19
+  },
+  "fx_c_decal_002_n.dds": {
+   "dissolve": 5,
+   "emissive": 4,
+   "mask": 5,
+   "noise": 18
+  },
+  "fx_c_flow_004.dds": {
+   "noise": 2
+  },
+  "fx_c_glow_0001.dds": {
+   "base": 1
+  },
+  "fx_c_glow_001.dds": {
+   "emissive": 11,
+   "noise": 2,
+   "params": [
+    "opacity_tex"
+   ]
+  },
+  "fx_c_glow_003.dds": {
+   "base": 1,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_c_glow_006.dds": {
+   "base": 8
+  },
+  "fx_c_glow_007.dds": {
+   "base": 79,
+   "params": [
+    "lensflaretexture"
+   ]
+  },
+  "fx_c_glow_008.dds": {
+   "base": 262,
+   "params": [
+    "lensflaretexture"
+   ]
+  },
+  "fx_c_glow_010.dds": {
+   "base": 57,
+   "params": [
+    "lensflaretexture",
+    "02.map_e"
+   ]
+  },
+  "fx_c_hit_002.dds": {
+   "mask": 1
+  },
+  "fx_c_ice_003.dds": {
+   "base": 4
+  },
+  "fx_c_line_001.dds": {
+   "base": 10
+  },
+  "fx_c_line_002_cl.dds": {
+   "emissive": 4
+  },
+  "fx_c_line_003_xcl.dds": {
+   "base": 1,
+   "mask": 1
+  },
+  "fx_c_line_004_ycl.dds": {
+   "base": 2,
+   "dissolve": 18,
+   "noise": 4,
+   "params": [
+    "21.map_c",
+    "04.map_anew",
+    "22.map_a"
+   ]
+  },
+  "fx_c_line_006_cl.dds": {
+   "base": 13,
+   "mask": 8,
+   "params": [
+    "01.alphamap",
+    "maintex"
+   ]
+  },
+  "fx_c_noise_001.dds": {
+   "base": 13,
+   "noise": 41,
+   "params": [
+    "transition texture"
+   ]
+  },
+  "fx_c_noise_001_n.dds": {
+   "mask": 18,
+   "noise": 16,
+   "params": [
+    "texture_distortion",
+    "06.map"
+   ]
+  },
+  "fx_c_noise_002.dds": {
+   "mask": 6,
+   "params": [
+    "12.map_f",
+    "edgedeco texture01",
+    "umodel_dependency"
+   ]
+  },
+  "fx_c_noise_003.dds": {
+   "mask": 24
+  },
+  "fx_c_noise_005.dds": {
+   "noise": 23
+  },
+  "fx_c_noise_008.dds": {
+   "noise": 18
+  },
+  "fx_c_noise_009.dds": {
+   "base": 24,
+   "mask": 20,
+   "noise": 49,
+   "params": [
+    "uv_noise_tex_02",
+    "1_uv_noise_texture",
+    "02.map_e",
+    "tex_uv_flow",
+    "06.map_a"
+   ]
+  },
+  "fx_c_ring_002.dds": {
+   "base": 27,
+   "mask": 2,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_c_ring_004_cl.dds": {
+   "base": 4,
+   "emissive": 9,
+   "mask": 2
+  },
+  "fx_c_sand_002.dds": {
+   "noise": 4
+  },
+  "fx_c_water_001.dds": {
+   "emissive": 6,
+   "mask": 1
+  },
+  "fx_d_atypical_002_1.dds": {
+   "mask": 14,
+   "params": [
+    "opacity_tex"
+   ]
+  },
+  "fx_d_atypical_002_1_ycl.dds": {
+   "base": 58,
+   "mask": 22,
+   "params": [
+    "maintex",
+    "tex_alpha_01"
+   ]
+  },
+  "fx_d_atypical_006.dds": {
+   "base": 40,
+   "mask": 2,
+   "params": [
+    "02.map_e",
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_006_1.dds": {
+   "base": 28,
+   "noise": 6,
+   "params": [
+    "diff_tex1",
+    "01.map_a",
+    "02.map_e"
+   ]
+  },
+  "fx_d_atypical_006_1_xcl.dds": {
+   "mask": 3,
+   "params": [
+    "22.map_f"
+   ]
+  },
+  "fx_d_atypical_006_ycl.dds": {
+   "base": 42,
+   "params": [
+    "maintex",
+    "01.map_a",
+    "tex_diffmap"
+   ]
+  },
+  "fx_d_atypical_008.dds": {
+   "base": 3,
+   "params": [
+    "map_a"
+   ]
+  },
+  "fx_d_atypical_009.dds": {
+   "base": 77,
+   "dissolve": 10,
+   "mask": 6,
+   "noise": 18,
+   "params": [
+    "dissolve_tex_01",
+    "diff_tex1",
+    "umodel_dependency",
+    "11.map_b",
+    "02.map_e"
+   ]
+  },
+  "fx_d_atypical_010.dds": {
+   "emissive": 4,
+   "params": [
+    "01.specmap"
+   ]
+  },
+  "fx_d_atypical_011.dds": {
+   "base": 16,
+   "dissolve": 7,
+   "emissive": 3,
+   "noise": 2,
+   "params": [
+    "tex_alpha_02",
+    "diff_tex",
+    "12.map_f"
+   ]
+  },
+  "fx_d_atypical_013.dds": {
+   "base": 4,
+   "noise": 1
+  },
+  "fx_d_atypical_014.dds": {
+   "mask": 1
+  },
+  "fx_d_atypical_016.dds": {
+   "base": 33,
+   "mask": 1,
+   "noise": 12,
+   "params": [
+    "01.map_a",
+    "04.map_anew"
+   ]
+  },
+  "fx_d_atypical_027.dds": {
+   "base": 16,
+   "params": [
+    "01.map_a",
+    "emissive_tex"
+   ]
+  },
+  "fx_d_atypical_028.dds": {
+   "base": 155,
+   "emissive": 12,
+   "mask": 33,
+   "noise": 274,
+   "params": [
+    "01.map_a",
+    "noisedissolve_tex",
+    "06.map_b",
+    "uv_noise_tex",
+    "emissive_tex_01",
+    "umodel_dependency",
+    "emissive_tex",
+    "31.map_e",
+    "diff_tex1",
+    "01.emismap",
+    "map_b",
+    "emissivetex02"
+   ]
+  },
+  "fx_d_atypical_031.dds": {
+   "base": 36,
+   "mask": 2,
+   "params": [
+    "umodel_dependency",
+    "00.map_b"
+   ]
+  },
+  "fx_d_atypical_031_cl.dds": {
+   "base": 31,
+   "mask": 21,
+   "params": [
+    "mask_tex",
+    "00.map_b"
+   ]
+  },
+  "fx_d_atypical_032.dds": {
+   "base": 74,
+   "emissive": 2,
+   "mask": 4,
+   "params": [
+    "00.map_b",
+    "mask_tex2"
+   ]
+  },
+  "fx_d_atypical_034.dds": {
+   "base": 8
+  },
+  "fx_d_atypical_034_1.dds": {
+   "base": 4,
+   "noise": 2
+  },
+  "fx_d_atypical_034_cl.dds": {
+   "base": 40,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_d_atypical_035_1.dds": {
+   "base": 18,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_035_1_cl.dds": {
+   "base": 7,
+   "emissive": 2
+  },
+  "fx_d_atypical_035_cl.dds": {
+   "base": 4
+  },
+  "fx_d_atypical_037.dds": {
+   "emissive": 4
+  },
+  "fx_d_atypical_042_1.dds": {
+   "base": 18,
+   "params": [
+    "02.map_e"
+   ]
+  },
+  "fx_d_atypical_042_1_cl.dds": {
+   "base": 33,
+   "mask": 3,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_042_ycl.dds": {
+   "base": 5,
+   "emissive": 18,
+   "mask": 2,
+   "params": [
+    "11.map_b"
+   ]
+  },
+  "fx_d_atypical_043.dds": {
+   "base": 5,
+   "emissive": 2,
+   "mask": 6,
+   "noise": 27,
+   "params": [
+    "noise_texture",
+    "uvnoise_texture",
+    "uv_noise_tex_02",
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_045.dds": {
+   "base": 4,
+   "dissolve": 3,
+   "emissive": 16,
+   "params": [
+    "dissolve_tex_01",
+    "noisedissolve_tex"
+   ]
+  },
+  "fx_d_atypical_049.dds": {
+   "base": 5,
+   "noise": 19,
+   "params": [
+    "02.map_e"
+   ]
+  },
+  "fx_d_atypical_051.dds": {
+   "base": 2,
+   "emissive": 1,
+   "noise": 4
+  },
+  "fx_d_atypical_055.dds": {
+   "base": 37,
+   "mask": 9,
+   "noise": 8,
+   "params": [
+    "06.map_d",
+    "21.map_c",
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_055_2.dds": {
+   "base": 25,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_055_2_cl.dds": {
+   "dissolve": 44,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_d_atypical_055_3_cl.dds": {
+   "base": 4
+  },
+  "fx_d_atypical_055_ycl.dds": {
+   "base": 14,
+   "mask": 2,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_056.dds": {
+   "noise": 3,
+   "params": [
+    "04.map_anew"
+   ]
+  },
+  "fx_d_atypical_057.dds": {
+   "base": 4,
+   "mask": 10,
+   "params": [
+    "maska_tex"
+   ]
+  },
+  "fx_d_atypical_058_cl.dds": {
+   "emissive": 2,
+   "mask": 1,
+   "noise": 6,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_d_atypical_060_1_cl.dds": {
+   "base": 3
+  },
+  "fx_d_atypical_060_cl.dds": {
+   "base": 74,
+   "noise": 37,
+   "params": [
+    "06.map_b",
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_067.dds": {
+   "base": 32,
+   "noise": 9,
+   "params": [
+    "01.map_e"
+   ]
+  },
+  "fx_d_atypical_069_ycl.dds": {
+   "base": 19,
+   "mask": 6,
+   "noise": 2,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_073.dds": {
+   "emissive": 4
+  },
+  "fx_d_atypical_076_1_cl.dds": {
+   "base": 21,
+   "dissolve": 2,
+   "params": [
+    "12.map_c",
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_076_2_cl.dds": {
+   "base": 12,
+   "mask": 2,
+   "params": [
+    "21.map_c",
+    "01.map_a"
+   ]
+  },
+  "fx_d_atypical_076_cl.dds": {
+   "mask": 1,
+   "params": [
+    "42.map_c"
+   ]
+  },
+  "fx_d_atypical_084.dds": {
+   "base": 6
+  },
+  "fx_d_atypical_091_cl.dds": {
+   "emissive": 6
+  },
+  "fx_d_atypical_096_ycl.dds": {
+   "mask": 4
+  },
+  "fx_d_atypical_097.dds": {
+   "base": 44,
+   "mask": 28
+  },
+  "fx_d_atypical_098.dds": {
+   "base": 3,
+   "mask": 71,
+   "params": [
+    "12.map_f"
+   ]
+  },
+  "fx_d_atypical_101_1_cl.dds": {
+   "emissive": 25
+  },
+  "fx_d_atypical_114_1_cl.dds": {
+   "dissolve": 6
+  },
+  "fx_d_atypical_127_xcl.dds": {
+   "base": 7
+  },
+  "fx_d_atypical_132_ycl.dds": {
+   "emissive": 7,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_d_atypical_134_cl.dds": {
+   "base": 2,
+   "mask": 1
+  },
+  "fx_d_cloud_006.dds": {
+   "base": 11,
+   "params": [
+    "01.map"
+   ]
+  },
+  "fx_d_cloud_021.dds": {
+   "base": 1,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_d_cloud_026.dds": {
+   "base": 7
+  },
+  "fx_d_cloud_027.dds": {
+   "base": 58,
+   "mask": 4,
+   "noise": 4,
+   "params": [
+    "emissive_tex",
+    "alpha_tex"
+   ]
+  },
+  "fx_d_cloud_031.dds": {
+   "emissive": 1
+  },
+  "fx_d_cloud_033.dds": {
+   "base": 9,
+   "mask": 18,
+   "params": [
+    "12.map_f",
+    "map_a"
+   ]
+  },
+  "fx_d_cloud_035.dds": {
+   "base": 4,
+   "emissive": 9,
+   "mask": 10,
+   "noise": 6,
+   "params": [
+    "12.map_f"
+   ]
+  },
+  "fx_d_cloud_051.dds": {
+   "base": 9,
+   "params": [
+    "01.map_a",
+    "02.map_e"
+   ]
+  },
+  "fx_d_cloud_052.dds": {
+   "mask": 132
+  },
+  "fx_d_cloud_053.dds": {
+   "base": 3,
+   "params": [
+    "01.map_a",
+    "02.map_e"
+   ]
+  },
+  "fx_d_decal_003.dds": {
+   "base": 2,
+   "noise": 1
+  },
+  "fx_d_decal_005.dds": {
+   "base": 10,
+   "emissive": 5,
+   "noise": 15
+  },
+  "fx_d_decal_012.dds": {
+   "base": 15,
+   "params": [
+    "01.diffmap_a"
+   ]
+  },
+  "fx_d_decal_023.dds": {
+   "mask": 6,
+   "noise": 20,
+   "params": [
+    "06.map_f"
+   ]
+  },
+  "fx_d_decal_033.dds": {
+   "base": 60,
+   "params": [
+    "01.diffmap_a"
+   ]
+  },
+  "fx_d_decal_045.dds": {
+   "base": 14
+  },
+  "fx_d_decal_046_1.dds": {
+   "base": 72
+  },
+  "fx_d_electric_013_1.dds": {
+   "mask": 6,
+   "params": [
+    "12.map_f"
+   ]
+  },
+  "fx_d_electric_013_ycl.dds": {
+   "emissive": 28,
+   "noise": 44
+  },
+  "fx_d_environ_001.dds": {
+   "base": 8,
+   "dissolve": 8,
+   "emissive": 19,
+   "mask": 85,
+   "noise": 26,
+   "params": [
+    "01.specmap"
+   ]
+  },
+  "fx_d_environ_004.dds": {
+   "base": 7,
+   "params": [
+    "01.diffmap_a"
+   ]
+  },
+  "fx_d_environ_010.dds": {
+   "base": 4
+  },
+  "fx_d_environ_018.dds": {
+   "base": 18,
+   "mask": 9
+  },
+  "fx_d_environ_022.dds": {
+   "base": 17,
+   "noise": 1,
+   "params": [
+    "01.specmap"
+   ]
+  },
+  "fx_d_environ_034.dds": {
+   "base": 6,
+   "mask": 4
+  },
+  "fx_d_environ_035.dds": {
+   "base": 5,
+   "dissolve": 3,
+   "emissive": 3,
+   "mask": 50,
+   "noise": 34,
+   "params": [
+    "11.map_b"
+   ]
+  },
+  "fx_d_environ_047_cl.dds": {
+   "base": 3,
+   "emissive": 18,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_d_environ_066.dds": {
+   "base": 8,
+   "mask": 1
+  },
+  "fx_d_environ_067.dds": {
+   "emissive": 22,
+   "noise": 15,
+   "params": [
+    "11.map_b",
+    "02.map_e"
+   ]
+  },
+  "fx_d_environ_068.dds": {
+   "emissive": 2,
+   "params": [
+    "12.map_f"
+   ]
+  },
+  "fx_d_environ_072_nomipmap.dds": {
+   "dissolve": 1,
+   "mask": 1,
+   "noise": 2
+  },
+  "fx_d_environ_099.dds": {
+   "noise": 7
+  },
+  "fx_d_fire_019.dds": {
+   "base": 3
+  },
+  "fx_d_fire_019_1.dds": {
+   "noise": 3
+  },
+  "fx_d_fluid_006_cl.dds": {
+   "base": 12,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_d_fluid_007.dds": {
+   "emissive": 71,
+   "mask": 3,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_d_fluid_011.dds": {
+   "base": 3,
+   "mask": 17
+  },
+  "fx_d_fluid_013.dds": {
+   "base": 5,
+   "params": [
+    "00_mapsource",
+    "00.map_alpha"
+   ]
+  },
+  "fx_d_fluid_020.dds": {
+   "base": 16,
+   "emissive": 10,
+   "mask": 4,
+   "noise": 18,
+   "params": [
+    "alpha_tex"
+   ]
+  },
+  "fx_d_fluid_024.dds": {
+   "base": 21,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_d_fluid_026.dds": {
+   "base": 2,
+   "noise": 10,
+   "params": [
+    "01.emismap"
+   ]
+  },
+  "fx_d_fluid_056_cl.dds": {
+   "dissolve": 22,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_d_fluid_070_cl.dds": {
+   "noise": 4
+  },
+  "fx_d_fluid_071_cl.dds": {
+   "base": 4
+  },
+  "fx_d_fluid_072_cl.dds": {
+   "base": 3,
+   "params": [
+    "11.map_b",
+    "01.map_a"
+   ]
+  },
+  "fx_d_fluid_073_ycl.dds": {
+   "mask": 1
+  },
+  "fx_d_fragment_003.dds": {
+   "base": 2,
+   "mask": 9,
+   "noise": 66,
+   "params": [
+    "extra_alpha_tex"
+   ]
+  },
+  "fx_d_fragment_005.dds": {
+   "base": 101,
+   "mask": 9
+  },
+  "fx_d_fragment_013.dds": {
+   "base": 7,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_d_fragment_016.dds": {
+   "mask": 17,
+   "noise": 2
+  },
+  "fx_d_glow_001_cl.dds": {
+   "base": 45
+  },
+  "fx_d_glow_008_cl.dds": {
+   "base": 1,
+   "params": [
+    "42.map_c"
+   ]
+  },
+  "fx_d_glow_009_cl.dds": {
+   "base": 3
+  },
+  "fx_d_glow_011.dds": {
+   "base": 2
+  },
+  "fx_d_hit_001_cl.dds": {
+   "params": [
+    "maskb_tex"
+   ]
+  },
+  "fx_d_hit_004.dds": {
+   "base": 3,
+   "mask": 1,
+   "params": [
+    "emissive_tex",
+    "mask_tex"
+   ]
+  },
+  "fx_d_hit_006_1_cl.dds": {
+   "mask": 15
+  },
+  "fx_d_hit_006_cl.dds": {
+   "base": 5,
+   "mask": 4
+  },
+  "fx_d_hit_007.dds": {
+   "emissive": 10,
+   "mask": 6,
+   "noise": 4
+  },
+  "fx_d_hit_007_1.dds": {
+   "emissive": 4,
+   "mask": 8
+  },
+  "fx_d_hit_008.dds": {
+   "base": 2,
+   "mask": 4,
+   "params": [
+    "00.map_b"
+   ]
+  },
+  "fx_d_hit_010.dds": {
+   "emissive": 1,
+   "noise": 2
+  },
+  "fx_d_noise_002.dds": {
+   "base": 18,
+   "dissolve": 2,
+   "mask": 283,
+   "noise": 318,
+   "params": [
+    "flowtex",
+    "uv_noise_texture",
+    "uv_noise_tex",
+    "add_tex"
+   ]
+  },
+  "fx_d_noise_003.dds": {
+   "base": 116,
+   "dissolve": 7,
+   "emissive": 1,
+   "mask": 41,
+   "noise": 118,
+   "params": [
+    "twinkle_tex",
+    "twinkle_tex_01",
+    "tex_alpha_02",
+    "sparkle_tex",
+    "01.map_a",
+    "alpha_tex",
+    "dissolve_tex02",
+    "alpha_tex02",
+    "emissive_tex01",
+    "01_specmap_a"
+   ]
+  },
+  "fx_d_noise_004_1.dds": {
+   "base": 17,
+   "dissolve": 2,
+   "mask": 27,
+   "noise": 23,
+   "params": [
+    "emissivee_wave_texture",
+    "uv_noise_01_tex",
+    "emissive_tex",
+    "06.map"
+   ]
+  },
+  "fx_d_noise_005.dds": {
+   "noise": 2
+  },
+  "fx_d_noise_006.dds": {
+   "mask": 52,
+   "noise": 16,
+   "params": [
+    "flowtex",
+    "umodel_dependency"
+   ]
+  },
+  "fx_d_noise_009.dds": {
+   "base": 61,
+   "dissolve": 12,
+   "emissive": 28,
+   "mask": 283,
+   "noise": 554,
+   "params": [
+    "06.map",
+    "14.map_d",
+    "uv_noise_tex",
+    "a_noise_01_tex",
+    "uv_noise_01_tex",
+    "5_distortmap",
+    "01_uvdistortmap",
+    "01_distort02_tex"
+   ]
+  },
+  "fx_d_noise_012.dds": {
+   "dissolve": 4
+  },
+  "fx_d_noise_014.dds": {
+   "base": 224,
+   "dissolve": 25,
+   "emissive": 35,
+   "mask": 13,
+   "noise": 381,
+   "params": [
+    "11.map_b",
+    "b_noise_01_tex",
+    "a_noise_01_tex",
+    "uv_noise_01_tex",
+    "01.map_a",
+    "dissolvetexture",
+    "noise_tex",
+    "umodel_dependency",
+    "uv_dissolve_tex",
+    "uvdistort_map",
+    "06.map"
+   ]
+  },
+  "fx_d_noise_014_1.dds": {
+   "mask": 13,
+   "noise": 100,
+   "params": [
+    "11.map_b",
+    "tex_uvnoise_01"
+   ]
+  },
+  "fx_d_noise_019.dds": {
+   "noise": 1
+  },
+  "fx_d_noise_020_cl.dds": {
+   "mask": 4
+  },
+  "fx_d_noise_021.dds": {
+   "base": 14,
+   "mask": 8,
+   "noise": 207,
+   "params": [
+    "06.map_b",
+    "uv_noise_01_tex",
+    "umodel_dependency",
+    "15.map_type",
+    "06.map",
+    "02.map_e"
+   ]
+  },
+  "fx_d_noise_030.dds": {
+   "base": 77,
+   "dissolve": 35,
+   "emissive": 22,
+   "mask": 44,
+   "noise": 352,
+   "params": [
+    "umodel_dependency",
+    "dissolve_tex02",
+    "uv_noise_tex_02",
+    "noisedissolve_tex",
+    "uv_noise_tex",
+    "dissolve_tex_01",
+    "01.map_a",
+    "06.map_b",
+    "uv_dissolve_tex",
+    "worldoffset_emissive_tex_01",
+    "uv_noise_tex_01",
+    "uv_noise_tex_03",
+    "06.map_anew",
+    "map_b",
+    "emissive_tex_02"
+   ]
+  },
+  "fx_d_noise_031.dds": {
+   "base": 37,
+   "dissolve": 54,
+   "emissive": 6,
+   "noise": 49,
+   "params": [
+    "12.map_f",
+    "map_b",
+    "uv_dissolve_tex",
+    "01.noisemap",
+    "06.map",
+    "umodel_dependency",
+    "map_a"
+   ]
+  },
+  "fx_d_noise_033.dds": {
+   "base": 24,
+   "dissolve": 1,
+   "emissive": 1,
+   "mask": 14,
+   "noise": 171,
+   "params": [
+    "uv_noise_tex",
+    "uv_noise_01_tex",
+    "06.map_anew",
+    "06.map",
+    "06.map_f",
+    "01.map_a",
+    "12.map_f",
+    "11.map_b",
+    "02.map_e",
+    "uv_noise_texture"
+   ]
+  },
+  "fx_d_noise_034.dds": {
+   "base": 3,
+   "mask": 1
+  },
+  "fx_d_noise_037.dds": {
+   "base": 4,
+   "mask": 7,
+   "params": [
+    "diff_tex"
+   ]
+  },
+  "fx_d_noise_042.dds": {
+   "emissive": 12
+  },
+  "fx_d_noise_043.dds": {
+   "base": 4,
+   "emissive": 40,
+   "noise": 6,
+   "params": [
+    "01.map_a",
+    "02.map_e"
+   ]
+  },
+  "fx_d_noise_045.dds": {
+   "base": 36,
+   "mask": 3,
+   "noise": 4,
+   "params": [
+    "01.map_a",
+    "22.map_a"
+   ]
+  },
+  "fx_d_noise_046_ycl.dds": {
+   "noise": 5,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_d_normal_001_n.dds": {
+   "mask": 2,
+   "noise": 12,
+   "params": [
+    "06.map"
+   ]
+  },
+  "fx_d_normal_009.dds": {
+   "base": 1,
+   "mask": 11,
+   "noise": 27,
+   "params": [
+    "06.map"
+   ]
+  },
+  "fx_d_normal_010_4.dds": {
+   "mask": 2
+  },
+  "fx_d_normal_010_5.dds": {
+   "mask": 6
+  },
+  "fx_d_normal_011_1.dds": {
+   "dissolve": 4
+  },
+  "fx_d_normal_012.dds": {
+   "noise": 5
+  },
+  "fx_d_normal_012_1.dds": {
+   "noise": 5
+  },
+  "fx_d_normal_016_1.dds": {
+   "noise": 5
+  },
+  "fx_d_normal_017_1.dds": {
+   "noise": 2
+  },
+  "fx_d_normal_018.dds": {
+   "noise": 2
+  },
+  "fx_d_normal_018_1.dds": {
+   "noise": 2
+  },
+  "fx_d_normal_024.dds": {
+   "mask": 2,
+   "noise": 1
+  },
+  "fx_d_normal_033_1.dds": {
+   "dissolve": 8,
+   "mask": 5,
+   "noise": 15
+  },
+  "fx_d_normal_037.dds": {
+   "noise": 12
+  },
+  "fx_d_normal_037_1.dds": {
+   "emissive": 12,
+   "noise": 2
+  },
+  "fx_d_normal_041_1.dds": {
+   "base": 4,
+   "noise": 4,
+   "params": [
+    "00.map_b"
+   ]
+  },
+  "fx_d_normal_042_1.dds": {
+   "mask": 4
+  },
+  "fx_d_normal_043.dds": {
+   "params": [
+    "06.normalmap"
+   ]
+  },
+  "fx_d_normal_043_1.dds": {
+   "mask": 10,
+   "noise": 18,
+   "params": [
+    "01.heightmap"
+   ]
+  },
+  "fx_d_normal_045.dds": {
+   "noise": 8
+  },
+  "fx_d_normal_045_1.dds": {
+   "mask": 2,
+   "noise": 27
+  },
+  "fx_d_normal_066.dds": {
+   "mask": 2
+  },
+  "fx_d_normal_081_1.dds": {
+   "dissolve": 6
+  },
+  "fx_d_normal_083.dds": {
+   "params": [
+    "uv_noise_tex_02"
+   ]
+  },
+  "fx_d_normal_084_1.dds": {
+   "base": 2,
+   "noise": 3
+  },
+  "fx_d_normal_085.dds": {
+   "base": 1,
+   "mask": 54,
+   "noise": 14,
+   "params": [
+    "06.map"
+   ]
+  },
+  "fx_d_normal_102.dds": {
+   "noise": 10
+  },
+  "fx_d_shockwave_001_ycl.dds": {
+   "mask": 1,
+   "noise": 6
+  },
+  "fx_d_shockwave_002_ycl.dds": {
+   "dissolve": 2,
+   "params": [
+    "22.map_a"
+   ]
+  },
+  "fx_d_shockwave_003_cl.dds": {
+   "base": 14,
+   "mask": 14
+  },
+  "fx_d_stoneparts_002.dds": {
+   "mask": 10,
+   "noise": 16
+  },
+  "fx_d_symbol_020_cl.dds": {
+   "base": 4,
+   "mask": 1
+  },
+  "fx_d_symbol_160_nomipmap_cl.dds": {
+   "noise": 1
+  },
+  "fx_d_trail_002_cl.dds": {
+   "base": 125,
+   "emissive": 7,
+   "mask": 5,
+   "params": [
+    "21.map_c",
+    "01.map_a"
+   ]
+  },
+  "fx_d_typical_001_nomipmap_cl.dds": {
+   "mask": 2
+  },
+  "fx_d_typical_006.dds": {
+   "noise": 6,
+   "params": [
+    "11.map_b"
+   ]
+  },
+  "fx_d_typical_033_cl.dds": {
+   "noise": 1
+  },
+  "fx_d_uvturbulence_001.dds": {
+   "base": 4,
+   "mask": 8,
+   "noise": 20,
+   "params": [
+    "01.map_uv",
+    "umodel_dependency"
+   ]
+  },
+  "fx_d_uvturbulence_003.dds": {
+   "noise": 6
+  },
+  "fx_d_uvturbulence_004.dds": {
+   "mask": 6
+  },
+  "fx_e_adba.dds": {
+   "params": [
+    "umodel_dependency"
+   ]
+  },
+  "fx_e_atypical_002.dds": {
+   "base": 91,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_atypical_002_cl.dds": {
+   "base": 3,
+   "mask": 1
+  },
+  "fx_e_atypical_003.dds": {
+   "base": 9,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_atypical_004.dds": {
+   "base": 6
+  },
+  "fx_e_atypical_005.dds": {
+   "base": 20
+  },
+  "fx_e_atypical_005_cl.dds": {
+   "base": 102
+  },
+  "fx_e_atypical_006.dds": {
+   "base": 41,
+   "emissive": 9,
+   "params": [
+    "emissive_tex",
+    "umodel_dependency"
+   ]
+  },
+  "fx_e_atypical_007.dds": {
+   "base": 6
+  },
+  "fx_e_atypical_008.dds": {
+   "noise": 2
+  },
+  "fx_e_atypical_009.dds": {
+   "base": 3
+  },
+  "fx_e_atypical_010.dds": {
+   "base": 6
+  },
+  "fx_e_atypical_011.dds": {
+   "base": 15,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_atypical_012.dds": {
+   "base": 25,
+   "emissive": 1,
+   "mask": 17,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_e_atypical_014.dds": {
+   "base": 1,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_atypical_015.dds": {
+   "params": [
+    "mask_tex"
+   ]
+  },
+  "fx_e_atypical_017_cl.dds": {
+   "base": 22,
+   "emissive": 2,
+   "mask": 11,
+   "params": [
+    "12.map_c"
+   ]
+  },
+  "fx_e_atypical_018_cl.dds": {
+   "base": 1,
+   "mask": 2
+  },
+  "fx_e_atypical_019_cl.dds": {
+   "noise": 3
+  },
+  "fx_e_atypical_024.dds": {
+   "base": 1
+  },
+  "fx_e_atypical_028.dds": {
+   "base": 27
+  },
+  "fx_e_atypical_029.dds": {
+   "base": 16,
+   "params": [
+    "rampshape_texture"
+   ]
+  },
+  "fx_e_atypical_030.dds": {
+   "base": 4,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_e_atypical_031.dds": {
+   "base": 35,
+   "params": [
+    "emissive_tex",
+    "texturesample"
+   ]
+  },
+  "fx_e_atypical_037.dds": {
+   "noise": 2
+  },
+  "fx_e_cloud_001.dds": {
+   "dissolve": 7,
+   "params": [
+    "dissolve_noise_tex"
+   ]
+  },
+  "fx_e_cloud_004_cl.dds": {
+   "base": 31,
+   "dissolve": 38,
+   "params": [
+    "dissolve_tex"
+   ]
+  },
+  "fx_e_cloud_007.dds": {
+   "base": 6
+  },
+  "fx_e_cloud_008.dds": {
+   "dissolve": 8,
+   "mask": 31,
+   "params": [
+    "02.map_e"
+   ]
+  },
+  "fx_e_cloud_010.dds": {
+   "dissolve": 13,
+   "mask": 2,
+   "params": [
+    "dissolve_noise_tex"
+   ]
+  },
+  "fx_e_decal_003.dds": {
+   "base": 8
+  },
+  "fx_e_decal_005_e_cl.dds": {
+   "base": 8
+  },
+  "fx_e_decal_007_1_n.dds": {
+   "noise": 5
+  },
+  "fx_e_decal_007_2.dds": {
+   "base": 24,
+   "dissolve": 5
+  },
+  "fx_e_decal_012.dds": {
+   "dissolve": 3
+  },
+  "fx_e_decal_013.dds": {
+   "base": 3
+  },
+  "fx_e_electric_002.dds": {
+   "emissive": 4,
+   "mask": 9
+  },
+  "fx_e_electric_004.dds": {
+   "emissive": 2
+  },
+  "fx_e_electric_005.dds": {
+   "base": 23,
+   "mask": 1,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_fluid_001.dds": {
+   "mask": 3,
+   "params": [
+    "colormap2_tex"
+   ]
+  },
+  "fx_e_fluid_002.dds": {
+   "mask": 3
+  },
+  "fx_e_fluid_003.dds": {
+   "mask": 38,
+   "noise": 19,
+   "params": [
+    "alpha_tex"
+   ]
+  },
+  "fx_e_fluid_006.dds": {
+   "base": 3,
+   "mask": 149,
+   "params": [
+    "mask_tex",
+    "emissive_tex"
+   ]
+  },
+  "fx_e_fluid_007.dds": {
+   "base": 207,
+   "dissolve": 25,
+   "emissive": 6,
+   "noise": 17,
+   "params": [
+    "emissive_tex",
+    "dissolve_noise_tex"
+   ]
+  },
+  "fx_e_fluid_021.dds": {
+   "base": 2,
+   "mask": 1
+  },
+  "fx_e_fluid_026.dds": {
+   "base": 3,
+   "dissolve": 18,
+   "noise": 6,
+   "params": [
+    "01.emismap",
+    "umodel_dependency"
+   ]
+  },
+  "fx_e_fluid_029.dds": {
+   "mask": 2
+  },
+  "fx_e_fluid_030.dds": {
+   "mask": 8,
+   "noise": 6,
+   "params": [
+    "11.map_b"
+   ]
+  },
+  "fx_e_fluid_035_cl.dds": {
+   "base": 9,
+   "mask": 9
+  },
+  "fx_e_fluid_035_n_cl.dds": {
+   "noise": 18
+  },
+  "fx_e_fluid_037.dds": {
+   "mask": 2
+  },
+  "fx_e_fragment_002.dds": {
+   "emissive": 8
+  },
+  "fx_e_fragment_003.dds": {
+   "noise": 3
+  },
+  "fx_e_glow_001.dds": {
+   "base": 77,
+   "emissive": 24,
+   "mask": 30,
+   "noise": 2,
+   "params": [
+    "texturesample",
+    "emissive_tex"
+   ]
+  },
+  "fx_e_glow_002_cl.dds": {
+   "mask": 12,
+   "params": [
+    "opacity_tex"
+   ]
+  },
+  "fx_e_hit_003.dds": {
+   "emissive": 3
+  },
+  "fx_e_hit_006.dds": {
+   "base": 32,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_hit_007_1.dds": {
+   "emissive": 2
+  },
+  "fx_e_hit_009.dds": {
+   "emissive": 3,
+   "mask": 4
+  },
+  "fx_e_hit_009r.dds": {
+   "base": 20
+  },
+  "fx_e_ice_001.dds": {
+   "dissolve": 3,
+   "params": [
+    "dissolve_noise_tex"
+   ]
+  },
+  "fx_e_line_008.dds": {
+   "base": 3,
+   "params": [
+    "02.map_e"
+   ]
+  },
+  "fx_e_line_011_1_ycl.dds": {
+   "emissive": 23,
+   "params": [
+    "11.map_b"
+   ]
+  },
+  "fx_e_line_011_2_xcl.dds": {
+   "emissive": 18,
+   "params": [
+    "emissive_tex_02"
+   ]
+  },
+  "fx_e_noise_001.dds": {
+   "base": 5,
+   "mask": 8,
+   "noise": 282,
+   "params": [
+    "edge_tex",
+    "diff_tex2"
+   ]
+  },
+  "fx_e_noise_002.dds": {
+   "base": 14,
+   "dissolve": 6,
+   "emissive": 13,
+   "mask": 18,
+   "noise": 16,
+   "params": [
+    "umodel_dependency",
+    "11.map_b",
+    "06.map_anew"
+   ]
+  },
+  "fx_e_noise_003.dds": {
+   "base": 3,
+   "dissolve": 5,
+   "noise": 100,
+   "params": [
+    "06.map_b",
+    "umodel_dependency",
+    "noise_tex",
+    "06.map"
+   ]
+  },
+  "fx_e_noise_006.dds": {
+   "noise": 9
+  },
+  "fx_e_noise_008.dds": {
+   "base": 16,
+   "dissolve": 109,
+   "noise": 44,
+   "params": [
+    "dissolve_noise_tex",
+    "01.specmap_a"
+   ]
+  },
+  "fx_e_noise_011.dds": {
+   "noise": 67
+  },
+  "fx_e_noise_012.dds": {
+   "base": 7,
+   "dissolve": 3,
+   "emissive": 9,
+   "noise": 18,
+   "params": [
+    "31.map_e"
+   ]
+  },
+  "fx_e_ring_001.dds": {
+   "base": 43,
+   "dissolve": 17,
+   "mask": 4,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_ring_001_cl.dds": {
+   "base": 19,
+   "mask": 11,
+   "params": [
+    "mainalpha_tex"
+   ]
+  },
+  "fx_e_ring_003.dds": {
+   "base": 20,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_ring_005.dds": {
+   "base": 54,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_ring_006.dds": {
+   "noise": 1
+  },
+  "fx_e_ring_010_cl.dds": {
+   "base": 3,
+   "mask": 1
+  },
+  "fx_e_ring_012_cl.dds": {
+   "mask": 3
+  },
+  "fx_e_ring_021_cl.dds": {
+   "base": 12,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_ring_023.dds": {
+   "base": 1,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_ring_028.dds": {
+   "noise": 3
+  },
+  "fx_e_ring_038.dds": {
+   "noise": 7
+  },
+  "fx_e_ring_039.dds": {
+   "dissolve": 3
+  },
+  "fx_e_ring_040.dds": {
+   "mask": 4,
+   "noise": 19
+  },
+  "fx_e_symbol_002.dds": {
+   "mask": 18,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_e_symbol_053.dds": {
+   "noise": 3
+  },
+  "fx_e_symbol_057.dds": {
+   "base": 22,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_e_symbol_064_1_cl.dds": {
+   "noise": 4,
+   "params": [
+    "01.map_a",
+    "01.map.d"
+   ]
+  },
+  "fx_e_symbol_064_1_n_xcl.dds": {
+   "mask": 4,
+   "params": [
+    "01.map.n"
+   ]
+  },
+  "fx_f_aura_004.dds": {
+   "dissolve": 8
+  },
+  "fx_f_aura_004_1.dds": {
+   "base": 4
+  },
+  "fx_f_decal_007.dds": {
+   "base": 5
+  },
+  "fx_f_electric_005.dds": {
+   "base": 25,
+   "mask": 7
+  },
+  "fx_f_firedust001.dds": {
+   "emissive": 1
+  },
+  "fx_f_line_004.dds": {
+   "mask": 5
+  },
+  "fx_f_noise_0191.dds": {
+   "noise": 1,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_f_noise_0191_ycl.dds": {
+   "noise": 2
+  },
+  "fx_f_rectangle_001.dds": {
+   "dissolve": 10,
+   "mask": 26
+  },
+  "fx_f_ring_001.dds": {
+   "base": 213,
+   "emissive": 2,
+   "mask": 5,
+   "params": [
+    "emissive_tex",
+    "00.map_b",
+    "transition texture"
+   ]
+  },
+  "fx_f_shine_003_1.dds": {
+   "base": 6,
+   "emissive": 19
+  },
+  "fx_f_star_001.dds": {
+   "base": 15,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_f_star_002.dds": {
+   "base": 2
+  },
+  "fx_f_symbol_041.dds": {
+   "mask": 4
+  },
+  "fx_f_symbol_042.dds": {
+   "mask": 4
+  },
+  "fx_g_leaf_06.dds": {
+   "base": 5,
+   "params": [
+    "01.map_a",
+    "02.map_e"
+   ]
+  },
+  "fx_g_petds_cotton_01.dds": {
+   "mask": 17,
+   "noise": 2,
+   "params": [
+    "alpha_texture"
+   ]
+  },
+  "fx_g_rainbow_02.dds": {
+   "base": 4
+  },
+  "fx_g_rainbowmosaic_01.dds": {
+   "base": 2,
+   "noise": 132
+  },
+  "fx_g_sy_rune_02.dds": {
+   "base": 4
+  },
+  "fx_h_atypical_01_1.dds": {
+   "base": 66,
+   "dissolve": 185,
+   "emissive": 8,
+   "noise": 13,
+   "params": [
+    "dissolve_tex",
+    "emissive_tex01",
+    "diff_tex1",
+    "uv_dissolve_tex",
+    "diff_tex2"
+   ]
+  },
+  "fx_h_decal_043.dds": {
+   "base": 6,
+   "params": [
+    "01.diffmap_a"
+   ]
+  },
+  "fx_h_digtal_01.dds": {
+   "noise": 36
+  },
+  "fx_h_fluid_02.dds": {
+   "emissive": 3
+  },
+  "fx_h_hexagon_01_1.dds": {
+   "dissolve": 6,
+   "params": [
+    "dissolve_tex_01"
+   ]
+  },
+  "fx_h_hit_01.dds": {
+   "mask": 25
+  },
+  "fx_h_noise_001.dds": {
+   "base": 4,
+   "dissolve": 60,
+   "mask": 24,
+   "noise": 20,
+   "params": [
+    "dissolve_tex_01",
+    "emissive_tex",
+    "noisedissolve_tex"
+   ]
+  },
+  "fx_h_speedline_01_01.dds": {
+   "mask": 4
+  },
+  "fx_h_trail_01_1.dds": {
+   "mask": 8,
+   "params": [
+    "tex_alpha_01"
+   ]
+  },
+  "fx_h_wave_01.dds": {
+   "base": 20,
+   "params": [
+    "maintex"
+   ]
+  },
+  "fx_h_wave_02.dds": {
+   "mask": 12,
+   "params": [
+    "tex_alpha_01"
+   ]
+  },
+  "fx_h_wave_04.dds": {
+   "base": 22,
+   "emissive": 3,
+   "mask": 1
+  },
+  "fx_i_atypical_01_ycl.dds": {
+   "base": 5,
+   "emissive": 3,
+   "params": [
+    "colormap_tex"
+   ]
+  },
+  "fx_i_atypical_02.dds": {
+   "base": 19,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_i_atypical_03_1.dds": {
+   "base": 83
+  },
+  "fx_i_atypical_03_1_ycl.dds": {
+   "base": 4,
+   "dissolve": 9,
+   "mask": 5,
+   "noise": 6,
+   "params": [
+    "opacity_tex",
+    "04.map_anew"
+   ]
+  },
+  "fx_i_atypical_03_2_xcl.dds": {
+   "base": 2,
+   "mask": 1,
+   "noise": 36,
+   "params": [
+    "diff_tex2"
+   ]
+  },
+  "fx_i_atypical_03_ycl.dds": {
+   "base": 8,
+   "params": [
+    "tex_main"
+   ]
+  },
+  "fx_i_environment_001.dds": {
+   "base": 8,
+   "dissolve": 1,
+   "emissive": 2,
+   "mask": 21,
+   "noise": 21,
+   "params": [
+    "02.map_e",
+    "umodel_dependency",
+    "diff_tex2",
+    "tex_colormap",
+    "06.map_f"
+   ]
+  },
+  "fx_i_environment_002.dds": {
+   "base": 16,
+   "mask": 3,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_i_fragment_02_cl.dds": {
+   "base": 7
+  },
+  "fx_i_noise_01.dds": {
+   "emissive": 31,
+   "mask": 9,
+   "noise": 11,
+   "params": [
+    "12.map_f"
+   ]
+  },
+  "fx_i_noise_02_ycl.dds": {
+   "mask": 11
+  },
+  "fx_i_noise_03.dds": {
+   "base": 151,
+   "mask": 61,
+   "noise": 65,
+   "params": [
+    "01.map_a",
+    "01.map_e",
+    "02.map_e",
+    "06.map_anew",
+    "04.map_anew",
+    "01.emitmap",
+    "11.map_b",
+    "01.map"
+   ]
+  },
+  "fx_i_noise_04.dds": {
+   "base": 11,
+   "mask": 1,
+   "noise": 7
+  },
+  "fx_i_noise_05.dds": {
+   "base": 19,
+   "emissive": 2,
+   "noise": 35,
+   "params": [
+    "01.map_c",
+    "11.map_b"
+   ]
+  },
+  "fx_i_rainbowring_01.dds": {
+   "base": 40,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_i_shockwave_01_ycl.dds": {
+   "mask": 4,
+   "noise": 12,
+   "params": [
+    "04.map_anew"
+   ]
+  },
+  "fx_i_shockwave_02.dds": {
+   "base": 3,
+   "mask": 9,
+   "noise": 7,
+   "params": [
+    "opacity_tex"
+   ]
+  },
+  "fx_i_shockwave_02_ycl.dds": {
+   "base": 8,
+   "emissive": 6,
+   "mask": 99,
+   "noise": 77,
+   "params": [
+    "21.map_c",
+    "04.map_anew",
+    "alpha_tex",
+    "main_tex"
+   ]
+  },
+  "fx_i_smoke_01.dds": {
+   "mask": 12
+  },
+  "fx_i_thunder_02.dds": {
+   "base": 3
+  },
+  "fx_i_thunder_02_ycl.dds": {
+   "noise": 5,
+   "params": [
+    "21.map_c"
+   ]
+  },
+  "fx_i_watercaustic_001.dds": {
+   "noise": 3,
+   "params": [
+    "addmap1_tex"
+   ]
+  },
+  "fx_j_auraline_01_cl.dds": {
+   "base": 8
+  },
+  "fx_j_auraline_04_ycl.dds": {
+   "emissive": 4,
+   "mask": 12
+  },
+  "fx_j_auraline_05_ycl.dds": {
+   "mask": 4
+  },
+  "fx_j_auraline_10_ycl.dds": {
+   "emissive": 15
+  },
+  "fx_j_auraline_17_ycl.dds": {
+   "base": 1,
+   "mask": 2,
+   "params": [
+    "tex_main"
+   ]
+  },
+  "fx_j_auraline_19_ycl.dds": {
+   "emissive": 4,
+   "mask": 50,
+   "params": [
+    "a_mask_tex"
+   ]
+  },
+  "fx_j_auraline_21_ycl.dds": {
+   "base": 6,
+   "noise": 2
+  },
+  "fx_j_auraline_22_ycl.dds": {
+   "base": 2
+  },
+  "fx_j_auraline_23_ycl.dds": {
+   "base": 6
+  },
+  "fx_j_box_01_cl.dds": {
+   "dissolve": 8
+  },
+  "fx_j_broken_03_cl.dds": {
+   "mask": 3
+  },
+  "fx_j_caustic_tile_01.dds": {
+   "dissolve": 4,
+   "mask": 6
+  },
+  "fx_j_caustic_tile_02.dds": {
+   "base": 34,
+   "emissive": 4,
+   "noise": 4,
+   "params": [
+    "spec_texture",
+    "umodel_dependency",
+    "diff_tex"
+   ]
+  },
+  "fx_j_caustic_tile_04.dds": {
+   "base": 16,
+   "dissolve": 2
+  },
+  "fx_j_caustic_tile_05.dds": {
+   "base": 91,
+   "noise": 24,
+   "params": [
+    "flow_texture"
+   ]
+  },
+  "fx_j_chormaticring_01.dds": {
+   "base": 10,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_j_cloud_01_cl.dds": {
+   "mask": 3
+  },
+  "fx_j_cloud_tile_01.dds": {
+   "base": 31,
+   "emissive": 4,
+   "noise": 4,
+   "params": [
+    "diff_tex"
+   ]
+  },
+  "fx_j_cloud_tile_02.dds": {
+   "emissive": 3,
+   "mask": 2
+  },
+  "fx_j_cloud_tile_03.dds": {
+   "base": 4,
+   "noise": 14
+  },
+  "fx_j_cyber_01.dds": {
+   "mask": 12,
+   "noise": 7
+  },
+  "fx_j_dragoneye_02_cl.dds": {
+   "base": 6
+  },
+  "fx_j_dragonskin_tile_04.dds": {
+   "base": 4
+  },
+  "fx_j_dustparticle_tile_01.dds": {
+   "base": 5,
+   "dissolve": 4
+  },
+  "fx_j_dustparticle_tile_02.dds": {
+   "base": 52,
+   "params": [
+    "aura_texture"
+   ]
+  },
+  "fx_j_environment_tile_02.dds": {
+   "base": 2,
+   "emissive": 15,
+   "mask": 76,
+   "noise": 2,
+   "params": [
+    "12.map_f"
+   ]
+  },
+  "fx_j_flare_01.dds": {
+   "base": 4
+  },
+  "fx_j_flare_02_cl.dds": {
+   "base": 6,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_j_flaredust_01.dds": {
+   "emissive": 2,
+   "mask": 2
+  },
+  "fx_j_flownoise_tile_02.dds": {
+   "noise": 2
+  },
+  "fx_j_flownoise_tile_04.dds": {
+   "base": 8,
+   "noise": 14,
+   "params": [
+    "umodel_dependency"
+   ]
+  },
+  "fx_j_flowsmoke_01_cl.dds": {
+   "base": 3,
+   "emissive": 41,
+   "mask": 10,
+   "params": [
+    "umodel_dependency"
+   ]
+  },
+  "fx_j_gradient_03.dds": {
+   "base": 3
+  },
+  "fx_j_gradientmask_01_cl.dds": {
+   "base": 4
+  },
+  "fx_j_hexagone_01.dds": {
+   "base": 5,
+   "params": [
+    "emissive_tex_01"
+   ]
+  },
+  "fx_j_inkdrop_01.dds": {
+   "mask": 6,
+   "params": [
+    "alpha_tex"
+   ]
+  },
+  "fx_j_lava_tile_01.dds": {
+   "noise": 2
+  },
+  "fx_j_levelupsymbol_01_cl.dds": {
+   "dissolve": 21,
+   "params": [
+    "dissolve_tex_01"
+   ]
+  },
+  "fx_j_line_01_xcl.dds": {
+   "mask": 23,
+   "params": [
+    "mask_a_tex"
+   ]
+  },
+  "fx_j_line_03_cl.dds": {
+   "emissive": 4,
+   "params": [
+    "mask_b_tex"
+   ]
+  },
+  "fx_j_line_08_cl.dds": {
+   "mask": 12,
+   "params": [
+    "a_mask_tex"
+   ]
+  },
+  "fx_j_mirnoise_01.dds": {
+   "base": 125,
+   "emissive": 158,
+   "mask": 14,
+   "noise": 115,
+   "params": [
+    "emissivetex02",
+    "umodel_dependency",
+    "emissive_tex_02",
+    "00.map_b",
+    "opacity_tex",
+    "02.map_e",
+    "04.map_anew",
+    "diff_tex1",
+    "12.map_f",
+    "diff_tex2",
+    "uv_noise_tex",
+    "06.map_b",
+    "emissive_tex",
+    "colormap_tex"
+   ]
+  },
+  "fx_j_mirnoise_02.dds": {
+   "base": 147,
+   "dissolve": 67,
+   "emissive": 135,
+   "mask": 4,
+   "noise": 29,
+   "params": [
+    "diff_tex",
+    "texture_fx_panning",
+    "emissive_tex_01",
+    "01.map_a",
+    "31.map_e",
+    "umodel_dependency",
+    "02.map_e"
+   ]
+  },
+  "fx_j_noise_01.dds": {
+   "base": 2
+  },
+  "fx_j_noise_tile_02.dds": {
+   "base": 4,
+   "mask": 2,
+   "noise": 2
+  },
+  "fx_j_noise_tile_03.dds": {
+   "base": 5,
+   "dissolve": 2,
+   "noise": 4
+  },
+  "fx_j_noise_tile_04.dds": {
+   "base": 10,
+   "noise": 2,
+   "params": [
+    "umodel_dependency",
+    "colormap"
+   ]
+  },
+  "fx_j_noise_tile_05.dds": {
+   "emissive": 1,
+   "noise": 4
+  },
+  "fx_j_noise_tile_06.dds": {
+   "mask": 2,
+   "noise": 3,
+   "params": [
+    "flow_1_tex"
+   ]
+  },
+  "fx_j_noise_tile_07.dds": {
+   "dissolve": 21,
+   "noise": 3,
+   "params": [
+    "dissolve_texture"
+   ]
+  },
+  "fx_j_noise_tile_08.dds": {
+   "base": 17,
+   "params": [
+    "umodel_dependency"
+   ]
+  },
+  "fx_j_noise_tile_09.dds": {
+   "base": 17,
+   "noise": 19,
+   "params": [
+    "diff_texture"
+   ]
+  },
+  "fx_j_noise_tile_10.dds": {
+   "base": 2
+  },
+  "fx_j_noise_tile_12.dds": {
+   "emissive": 2
+  },
+  "fx_j_normal_01.dds": {
+   "emissive": 4
+  },
+  "fx_j_normal_02.dds": {
+   "dissolve": 8,
+   "noise": 12,
+   "params": [
+    "flow_tex"
+   ]
+  },
+  "fx_j_normal_bc5_07.dds": {
+   "mask": 3
+  },
+  "fx_j_normal_bc5_08.dds": {
+   "base": 8,
+   "dissolve": 24,
+   "emissive": 6,
+   "mask": 4,
+   "noise": 8,
+   "params": [
+    "umodel_dependency"
+   ]
+  },
+  "fx_j_normal_bc5_09.dds": {
+   "base": 58,
+   "emissive": 5,
+   "mask": 14,
+   "noise": 8,
+   "params": [
+    "normal_tex",
+    "cracknormal_tex",
+    "umodel_dependency"
+   ]
+  },
+  "fx_j_normal_bc5_10.dds": {
+   "dissolve": 2,
+   "mask": 1,
+   "noise": 7,
+   "params": [
+    "flow_texture",
+    "umodel_dependency",
+    "flowtex"
+   ]
+  },
+  "fx_j_risingcolor_01.dds": {
+   "base": 4,
+   "noise": 2,
+   "params": [
+    "diff_tex2"
+   ]
+  },
+  "fx_j_risingforce_01.dds": {
+   "dissolve": 6,
+   "emissive": 29,
+   "mask": 3,
+   "noise": 18,
+   "params": [
+    "umodel_dependency",
+    "tex_01"
+   ]
+  },
+  "fx_j_smoke_01_cl.dds": {
+   "emissive": 20,
+   "mask": 23,
+   "params": [
+    "umodel_dependency",
+    "21.map_c"
+   ]
+  },
+  "fx_j_smoke_mask_03_cl.dds": {
+   "mask": 2
+  },
+  "fx_j_smokeline_01_ycl.dds": {
+   "mask": 3
+  },
+  "fx_j_swp_symbol_01_cl.dds": {
+   "base": 6
+  },
+  "fx_j_timeline_01_ycl.dds": {
+   "base": 4,
+   "mask": 2
+  },
+  "fx_j_voronoi_tile_01.dds": {
+   "base": 41,
+   "dissolve": 3,
+   "params": [
+    "slice_flow_texture"
+   ]
+  },
+  "fx_j_wave_03_ycl.dds": {
+   "mask": 6,
+   "params": [
+    "mask_tex"
+   ]
+  },
+  "fx_j_ylinestream_01.dds": {
+   "base": 12
+  },
+  "fx_j_ylinestream_01_ycl.dds": {
+   "base": 48,
+   "params": [
+    "diff_tex"
+   ]
+  },
+  "fx_k_auraline_01.dds": {
+   "base": 19
+  },
+  "fx_k_auraline_02.dds": {
+   "base": 110,
+   "mask": 9,
+   "params": [
+    "diff_tex1",
+    "opacity_tex",
+    "mask_tex"
+   ]
+  },
+  "fx_k_auraline_02_ycl.dds": {
+   "base": 7
+  },
+  "fx_k_auraline_04.dds": {
+   "emissive": 7
+  },
+  "fx_k_auraline_04_ycl.dds": {
+   "params": [
+    "b_mask_tex"
+   ]
+  },
+  "fx_k_auraline_05_ycl.dds": {
+   "base": 5,
+   "dissolve": 108,
+   "emissive": 6,
+   "params": [
+    "dissolve_tex_01"
+   ]
+  },
+  "fx_k_auraline_08.dds": {
+   "dissolve": 9
+  },
+  "fx_k_auraline_09.dds": {
+   "base": 18,
+   "params": [
+    "01.map_a",
+    "02.map_e"
+   ]
+  },
+  "fx_k_auraline_12_ycl.dds": {
+   "dissolve": 2
+  },
+  "fx_k_auraline_14.dds": {
+   "base": 25,
+   "params": [
+    "diff_tex1"
+   ]
+  },
+  "fx_k_auraline_15.dds": {
+   "mask": 2
+  },
+  "fx_k_auraline_16.dds": {
+   "base": 148,
+   "mask": 21,
+   "params": [
+    "diff_tex1",
+    "alpha_texture2"
+   ]
+  },
+  "fx_k_auraline_17.dds": {
+   "base": 2,
+   "noise": 4
+  },
+  "fx_k_auraline_20.dds": {
+   "base": 3
+  },
+  "fx_k_auraline_20_1_cl.dds": {
+   "mask": 10
+  },
+  "fx_k_auratile_01.dds": {
+   "noise": 3
+  },
+  "fx_k_auratile_02.dds": {
+   "base": 16,
+   "dissolve": 3,
+   "noise": 29,
+   "params": [
+    "uv_noise_tex",
+    "01.map_e",
+    "dissolve_tex"
+   ]
+  },
+  "fx_k_blood_01.dds": {
+   "emissive": 2,
+   "noise": 5,
+   "params": [
+    "01.emismap"
+   ]
+  },
+  "fx_k_blood_02.dds": {
+   "mask": 4
+  },
+  "fx_k_bubbletile_01.dds": {
+   "noise": 32,
+   "params": [
+    "diff_tex2"
+   ]
+  },
+  "fx_k_caustictile_01.dds": {
+   "base": 31,
+   "dissolve": 8,
+   "emissive": 4,
+   "mask": 7,
+   "noise": 205,
+   "params": [
+    "diff_tex2",
+    "06.map_b",
+    "01_alpha01_tex",
+    "diff_tex"
+   ]
+  },
+  "fx_k_caustictile_03.dds": {
+   "base": 5,
+   "params": [
+    "emissive_tex_01"
+   ]
+  },
+  "fx_k_cloudtilie_01.dds": {
+   "emissive": 12,
+   "noise": 4
+  },
+  "fx_k_electile_01.dds": {
+   "mask": 68
+  },
+  "fx_k_electile_02.dds": {
+   "base": 42,
+   "dissolve": 8,
+   "emissive": 23,
+   "mask": 54,
+   "noise": 2,
+   "params": [
+    "worldoffset_emissive_tex_01",
+    "emissive_tex_01",
+    "dissolve_tex_01"
+   ]
+  },
+  "fx_k_electile_02_1.dds": {
+   "base": 3,
+   "params": [
+    "02.map_e"
+   ]
+  },
+  "fx_k_electric_01.dds": {
+   "base": 26,
+   "emissive": 2,
+   "mask": 14,
+   "noise": 38,
+   "params": [
+    "uv_noise_tex",
+    "diff_tex1"
+   ]
+  },
+  "fx_k_electric_02.dds": {
+   "base": 4,
+   "params": [
+    "rampshape_texture"
+   ]
+  },
+  "fx_k_fluidtile_01.dds": {
+   "base": 95,
+   "dissolve": 67,
+   "mask": 68,
+   "params": [
+    "umodel_dependency"
+   ]
+  },
+  "fx_k_fluidtile_02.dds": {
+   "base": 66
+  },
+  "fx_k_liquid_02.dds": {
+   "base": 67,
+   "mask": 23
+  },
+  "fx_k_mask_01_l.dds": {
+   "mask": 2
+  },
+  "fx_k_smoke_01.dds": {
+   "dissolve": 66,
+   "emissive": 20,
+   "mask": 4
+  },
+  "fx_k_smoke_02.dds": {
+   "dissolve": 24,
+   "mask": 67
+  },
+  "fx_k_smoketile_01.dds": {
+   "base": 8,
+   "mask": 68,
+   "noise": 3,
+   "params": [
+    "add_tex"
+   ]
+  },
+  "fx_k_trail_up_01.dds": {
+   "base": 12,
+   "emissive": 2,
+   "mask": 12,
+   "params": [
+    "opacity_tex"
+   ]
+  },
+  "fx_k_turtlespec_01.dds": {
+   "base": 3,
+   "emissive": 6,
+   "mask": 2,
+   "noise": 18,
+   "params": [
+    "emissive_tex_01"
+   ]
+  },
+  "fx_l_environment_001.dds": {
+   "base": 121,
+   "dissolve": 67,
+   "emissive": 101,
+   "mask": 38,
+   "noise": 44,
+   "params": [
+    "color_tex",
+    "umodel_dependency",
+    "diff_tex2",
+    "diffuse_tex",
+    "02.map_e",
+    "06.map_f",
+    "colormap",
+    "edge_tex"
+   ]
+  },
+  "fx_l_spiderline_01.dds": {
+   "base": 1,
+   "mask": 7
+  },
+  "fx_l_symbol_08_1_cl.dds": {
+   "dissolve": 16
+  },
+  "fx_linecircle_001.dds": {
+   "base": 3
+  },
+  "fx_m_atypical_001_cl.dds": {
+   "base": 5,
+   "mask": 5
+  },
+  "fx_m_atypical_002_ycl.dds": {
+   "mask": 2
+  },
+  "fx_m_atypical_003.dds": {
+   "mask": 4,
+   "params": [
+    "mask_tex"
+   ]
+  },
+  "fx_m_atypical_004_loc_int.dds": {
+   "base": 31,
+   "emissive": 9,
+   "params": [
+    "umodel_dependency"
+   ]
+  },
+  "fx_m_atypical_007.dds": {
+   "base": 9,
+   "mask": 22,
+   "params": [
+    "alpha_tex",
+    "maintex"
+   ]
+  },
+  "fx_m_atypical_008.dds": {
+   "base": 6,
+   "mask": 8
+  },
+  "fx_m_atypical_01.dds": {
+   "dissolve": 4
+  },
+  "fx_m_atypical_012.dds": {
+   "dissolve": 6
+  },
+  "fx_m_atypical_013_yclamp.dds": {
+   "base": 33,
+   "params": [
+    "maintex"
+   ]
+  },
+  "fx_m_atypical_n_001.dds": {
+   "base": 8,
+   "emissive": 10,
+   "noise": 25
+  },
+  "fx_m_auraline_tilerefine_05_ycl.dds": {
+   "emissive": 2
+  },
+  "fx_m_caustic_001.dds": {
+   "base": 35,
+   "dissolve": 28,
+   "noise": 32,
+   "params": [
+    "umodel_dependency",
+    "dissolve_tex_01",
+    "02.map_e",
+    "diff_tex1",
+    "diff_tex2",
+    "12.map_f",
+    "main_tex"
+   ]
+  },
+  "fx_m_circuitboard_01.dds": {
+   "emissive": 4,
+   "noise": 18
+  },
+  "fx_m_crosshairline_axis_01.dds": {
+   "base": 7,
+   "mask": 3
+  },
+  "fx_m_cybernoise_02.dds": {
+   "noise": 39,
+   "params": [
+    "in_hole_texture"
+   ]
+  },
+  "fx_m_decal_001.dds": {
+   "base": 2
+  },
+  "fx_m_decal_01_1.dds": {
+   "base": 8
+  },
+  "fx_m_decal_01_2.dds": {
+   "noise": 8
+  },
+  "fx_m_dis_001.dds": {
+   "dissolve": 7,
+   "params": [
+    "dissolve_tex_01"
+   ]
+  },
+  "fx_m_flare_001.dds": {
+   "base": 6
+  },
+  "fx_m_flow_01_n.dds": {
+   "noise": 8
+  },
+  "fx_m_flow_02_n.dds": {
+   "noise": 16,
+   "params": [
+    "noise_tex",
+    "umodel_dependency"
+   ]
+  },
+  "fx_m_flow_03_n.dds": {
+   "mask": 4,
+   "noise": 8,
+   "params": [
+    "noise_tex"
+   ]
+  },
+  "fx_m_flow_04_n.dds": {
+   "base": 4,
+   "noise": 50,
+   "params": [
+    "uv_noise_tex",
+    "tex_uv_flow"
+   ]
+  },
+  "fx_m_fluid_005.dds": {
+   "base": 5,
+   "mask": 3
+  },
+  "fx_m_gracylinder_01.dds": {
+   "base": 2,
+   "mask": 4
+  },
+  "fx_m_gracylinder_02_xcl.dds": {
+   "mask": 14
+  },
+  "fx_m_gracylinder_02_ycl.dds": {
+   "mask": 1
+  },
+  "fx_m_gracylinder_03_ycl.dds": {
+   "mask": 4
+  },
+  "fx_m_gradient_01_ycl.dds": {
+   "base": 1,
+   "mask": 8
+  },
+  "fx_m_grawave_01_ycl.dds": {
+   "mask": 2
+  },
+  "fx_m_line_005_ycl.dds": {
+   "dissolve": 10
+  },
+  "fx_m_magicsymbol_001.dds": {
+   "mask": 3
+  },
+  "fx_m_magicsymbol_005.dds": {
+   "dissolve": 15
+  },
+  "fx_m_mask_axis_01_cl.dds": {
+   "emissive": 2
+  },
+  "fx_m_noise_001.dds": {
+   "base": 96,
+   "dissolve": 160,
+   "emissive": 72,
+   "mask": 23,
+   "noise": 149,
+   "params": [
+    "dissolve_tex_01",
+    "uv_dissolve_tex",
+    "tex_alpha_02",
+    "noisedissolve_tex",
+    "emissive_tex_02",
+    "14.map_d",
+    "dissolve_tex",
+    "uv_noise_tex",
+    "diff_tex1",
+    "uv_noise_tex_02",
+    "emissivetex02",
+    "emissive_tex01",
+    "01.map_a",
+    "alpha_tex02"
+   ]
+  },
+  "fx_m_noise_002.dds": {
+   "dissolve": 8,
+   "emissive": 18,
+   "noise": 76,
+   "params": [
+    "uv_noise_tex",
+    "dissolve_tex_01"
+   ]
+  },
+  "fx_m_noise_003.dds": {
+   "base": 9,
+   "dissolve": 16,
+   "emissive": 32,
+   "noise": 116,
+   "params": [
+    "emissive_tex02",
+    "tex_uvnoise_01",
+    "emissive_tex_01",
+    "01.map_e"
+   ]
+  },
+  "fx_m_noise_004.dds": {
+   "noise": 29,
+   "params": [
+    "tex_uvnoise_01"
+   ]
+  },
+  "fx_m_noise_005.dds": {
+   "base": 3
+  },
+  "fx_m_noise_008.dds": {
+   "base": 30,
+   "dissolve": 17,
+   "emissive": 35,
+   "mask": 23,
+   "noise": 96,
+   "params": [
+    "emissivetex02",
+    "uv_noise_tex",
+    "uv_noise_tex_02",
+    "noisedissolve_tex",
+    "dissolve_tex_01"
+   ]
+  },
+  "fx_m_normal_compressnormal_04.dds": {
+   "dissolve": 1,
+   "mask": 2,
+   "noise": 2
+  },
+  "fx_m_normal_compressnormal_05.dds": {
+   "emissive": 1,
+   "noise": 3
+  },
+  "fx_m_normallinenoise_01.dds": {
+   "emissive": 2
+  },
+  "fx_m_normallinenoiseaxis_01.dds": {
+   "noise": 2
+  },
+  "fx_m_normalperlinnoise_01.dds": {
+   "mask": 2,
+   "params": [
+    "flow_2_tex"
+   ]
+  },
+  "fx_m_ring_001.dds": {
+   "base": 63,
+   "mask": 44,
+   "params": [
+    "alpha_texture2"
+   ]
+  },
+  "fx_m_ring_001_cl.dds": {
+   "base": 19,
+   "mask": 2
+  },
+  "fx_m_shine_010_cl.dds": {
+   "mask": 4
+  },
+  "fx_m_smoketile_02.dds": {
+   "base": 4
+  },
+  "fx_m_spark_001.dds": {
+   "base": 62,
+   "emissive": 2,
+   "mask": 2,
+   "params": [
+    "maintex"
+   ]
+  },
+  "fx_m_spatter_001_xyclamp.dds": {
+   "base": 64,
+   "dissolve": 80,
+   "emissive": 6,
+   "mask": 54,
+   "params": [
+    "opacity_tex",
+    "b_mask_tex",
+    "emissive_tex",
+    "umodel_dependency"
+   ]
+  },
+  "fx_m_speedline_01_02.dds": {
+   "emissive": 4
+  },
+  "fx_m_symbol_destiny_04.dds": {
+   "dissolve": 4
+  },
+  "fx_m_tilelinenoise_01.dds": {
+   "base": 9,
+   "noise": 2
+  },
+  "fx_m_trail_001_cl.dds": {
+   "base": 112,
+   "mask": 65,
+   "params": [
+    "umodel_dependency",
+    "alpha_tex"
+   ]
+  },
+  "fx_m_trail_002.dds": {
+   "base": 29,
+   "mask": 10,
+   "params": [
+    "tex_alpha_01",
+    "emit tex2",
+    "maintex"
+   ]
+  },
+  "fx_m_trail_003.dds": {
+   "base": 7,
+   "emissive": 36,
+   "mask": 2,
+   "params": [
+    "21.map_c",
+    "maintex"
+   ]
+  },
+  "fx_m_trail_004.dds": {
+   "base": 18
+  },
+  "fx_m_trail_004_cl.dds": {
+   "base": 201,
+   "params": [
+    "maintex"
+   ]
+  },
+  "fx_m_trail_005.dds": {
+   "base": 11,
+   "mask": 15
+  },
+  "fx_m_trail_006.dds": {
+   "base": 12,
+   "mask": 8
+  },
+  "fx_m_trail_007.dds": {
+   "base": 6,
+   "mask": 30,
+   "params": [
+    "alpha_tex"
+   ]
+  },
+  "fx_m_trail_008.dds": {
+   "base": 17,
+   "params": [
+    "maintex"
+   ]
+  },
+  "fx_m_trail_008_2_ycl.dds": {
+   "base": 3,
+   "mask": 3,
+   "params": [
+    "01_alpha02_tex",
+    "21.map_c",
+    "22.map_a",
+    "02.map_e"
+   ]
+  },
+  "fx_m_trail_010.dds": {
+   "base": 5,
+   "emissive": 4,
+   "params": [
+    "tex_main"
+   ]
+  },
+  "fx_m_trail_010_xclamp.dds": {
+   "base": 6
+  },
+  "fx_m_trail_015.dds": {
+   "base": 2
+  },
+  "fx_m_w_watertex_02.dds": {
+   "base": 6,
+   "params": [
+    "01.map_a"
+   ]
+  },
+  "fx_m_wave_001.dds": {
+   "base": 30,
+   "emissive": 43,
+   "mask": 7,
+   "noise": 17,
+   "params": [
+    "umodel_dependency",
+    "opacity_tex",
+    "maintex",
+    "04.map_anew"
+   ]
+  },
+  "fx_m_wave_001_ycl.dds": {
+   "base": 172,
+   "emissive": 7,
+   "mask": 66,
+   "noise": 2,
+   "params": [
+    "maintex",
+    "opacity_tex",
+    "22.map_a"
+   ]
+  },
+  "fx_n_alpha_01.dds": {
+   "base": 4
+  },
+  "fx_n_cncs_magic_02.dds": {
+   "dissolve": 2
+  },
+  "fx_n_decal_03.dds": {
+   "mask": 8
+  },
+  "fx_n_ink_002.dds": {
+   "noise": 6,
+   "params": [
+    "tex01"
+   ]
+  },
+  "fx_n_rimsymbol_001.dds": {
+   "base": 8,
+   "mask": 2
+  },
+  "fx_n_trail_001_cl.dds": {
+   "base": 2,
+   "mask": 4,
+   "params": [
+    "alpha_tex"
+   ]
+  },
+  "fx_o_glass_01.dds": {
+   "base": 2,
+   "emissive": 6
+  },
+  "fx_o_grass_03.dds": {
+   "dissolve": 2,
+   "params": [
+    "dissolve_tex_01"
+   ]
+  },
+  "fx_o_grass_04.dds": {
+   "dissolve": 4,
+   "params": [
+    "dissolve_tex_01"
+   ]
+  },
+  "fx_o_sector_03.dds": {
+   "base": 3
+  },
+  "fx_o_symbol_14.dds": {
+   "base": 5,
+   "noise": 4,
+   "params": [
+    "emissive_tex"
+   ]
+  },
+  "fx_q_noise_001.dds": {
+   "base": 4
+  },
+  "fx_q_noise_002.dds": {
+   "base": 2,
+   "mask": 1
+  },
+  "fx_r_gra_03_ycl.dds": {
+   "params": [
+    "opacity_tex"
+   ]
+  },
+  "fx_r_symbol_swp_01_cl.dds": {
+   "dissolve": 3
+  },
+  "fx_r_symbol_swp_02_cl.dds": {
+   "base": 4
+  },
+  "fx_r_symbol_swp_03_cl.dds": {
+   "base": 2,
+   "dissolve": 4
+  },
+  "fx_s_atypical_001.dds": {
+   "mask": 4
+  },
+  "fx_s_atypical_006.dds": {
+   "base": 39,
+   "mask": 13,
+   "noise": 10
+  },
+  "fx_s_dust_04.dds": {
+   "dissolve": 4
+  },
+  "fx_s_swp_clockcircle_01.dds": {
+   "base": 3,
+   "emissive": 9
+  },
+  "fx_s_waternoise_01.dds": {
+   "noise": 6,
+   "params": [
+    "02.map_e"
+   ]
+  },
+  "fx_t_ink_01.dds": {
+   "mask": 6,
+   "params": [
+    "alpha_tex"
+   ]
+  },
+  "fx_u_glow_001.dds": {
+   "base": 2
+  },
+  "fx_w_atypical_001.dds": {
+   "dissolve": 10
+  },
+  "fx_w_atypical_004.dds": {
+   "emissive": 1,
+   "mask": 2
+  },
+  "fx_w_atypical_005.dds": {
+   "dissolve": 1,
+   "noise": 3
+  },
+  "fx_w_atypical_016_xcl.dds": {
+   "dissolve": 6
+  },
+  "fx_w_atypical_017.dds": {
+   "base": 24,
+   "dissolve": 2,
+   "mask": 10,
+   "noise": 2
+  },
+  "fx_w_atypical_018.dds": {
+   "dissolve": 4
+  },
+  "fx_w_decal_004.dds": {
+   "noise": 1
+  },
+  "fx_w_environ_001.dds": {
+   "emissive": 4
+  },
+  "fx_w_environ_002.dds": {
+   "emissive": 3
+  },
+  "fx_w_inkpaddle.dds": {
+   "mask": 2,
+   "params": [
+    "01.alphamaskmap"
+   ]
+  },
+  "fx_w_mbd_magicsymbol_02.dds": {
+   "mask": 4
+  },
+  "fx_w_swp_magiccircle_01.dds": {
+   "dissolve": 2
+  },
+  "fx_w_swp_magiccircle_03.dds": {
+   "mask": 2
+  },
+  "fx_w_swp_magiccircle_05.dds": {
+   "base": 3
+  },
+  "fx_w_swp_magiccircle_07.dds": {
+   "base": 3,
+   "dissolve": 3,
+   "mask": 1
+  },
+  "fx_w_wgl_gdd_01_cm_01.dds": {
+   "noise": 42,
+   "params": [
+    "texture_color_fx_skin"
+   ]
+  },
+  "fx_wgl_gdd_01_da.dds": {
+   "base": 42,
+   "params": [
+    "texture_basecolor"
+   ]
+  },
+  "fx_wgl_gdd_01_da1.dds": {
+   "noise": 39,
+   "params": [
+    "texture_color_fx_skin"
+   ]
+  },
+  "fx_wgl_gdd_01_da2.dds": {
+   "base": 39,
+   "params": [
+    "texture_basecolor"
+   ]
+  },
+  "fx_x_hexagongradient_01.dds": {
+   "base": 6,
+   "noise": 18
+  },
+  "lv_common_wet_22_d.dds": {
+   "base": 15,
+   "noise": 3
+  },
+  "mn_elid_00_cm.dds": {
+   "base": 6
+  },
+  "mn_elid_00_d.dds": {
+   "mask": 6
+  },
+  "mn_elid_00_em.dds": {
+   "dissolve": 6
+  },
+  "mn_elid_00_m.dds": {
+   "emissive": 6
+  },
+  "mn_elid_00_n.dds": {
+   "noise": 6
+  },
+  "mn_elid_00_s.dds": {
+   "base": 6
+  },
+  "mn_rpbf_01-1_d_loc_int.dds": {
+   "mask": 3
+  },
+  "mn_rpbf_01-1_e_loc_int.dds": {
+   "base": 3
+  },
+  "mn_rpbf_01-1_n_loc_int.dds": {
+   "noise": 3
+  },
+  "mn_rpbf_01-1_s_loc_int.dds": {
+   "emissive": 3
+  },
+  "mn_rpbf_01-2_d_loc_int.dds": {
+   "mask": 3
+  },
+  "mn_rpbf_01-2_e.dds": {
+   "base": 3
+  },
+  "mn_rpbf_01-2_n_loc_int.dds": {
+   "noise": 3
+  },
+  "mn_rpbf_01-2_s_loc_int.dds": {
+   "emissive": 3
+  },
+  "mn_ttrr_00_d.dds": {
+   "base": 36
+  },
+  "mn_ttrr_00_n.dds": {
+   "noise": 36
+  },
+  "normal.dds": {
+   "noise": 12
+  },
+  "pc_dl_av_219a_paning.dds": {
+   "base": 2
+  },
+  "sk_flm_gdr_01_d.dds": {
+   "noise": 20,
+   "params": [
+    "01.map.d"
+   ]
+  },
+  "sk_flm_gdr_01_e.dds": {
+   "base": 20,
+   "params": [
+    "01.emismap"
+   ]
+  },
+  "sk_flm_gdr_01_n.dds": {
+   "mask": 20,
+   "params": [
+    "01.map.n"
+   ]
+  },
+  "sk_flm_gdr_02_d.dds": {
+   "noise": 20,
+   "params": [
+    "01.map.d"
+   ]
+  },
+  "sk_flm_gdr_02_e.dds": {
+   "base": 20,
+   "params": [
+    "01.emismap"
+   ]
+  },
+  "sk_flm_gdr_02_n.dds": {
+   "mask": 20,
+   "params": [
+    "01.map.n"
+   ]
+  },
+  "sk_flm_ydr_00_e.dds": {
+   "base": 16,
+   "params": [
+    "emissive_tex_01"
+   ]
+  },
+  "sk_flm_ydr_00_n.dds": {
+   "params": [
+    "normaltexture"
+   ]
+  },
+  "sk_swp_dmc_00_cm.dds": {
+   "noise": 2
+  },
+  "sk_swp_dmc_00_d.dds": {
+   "base": 4
+  },
+  "sk_swp_dmc_00_n.dds": {
+   "emissive": 2,
+   "noise": 2
+  },
+  "sk_swp_dmc_00_orm.dds": {
+   "dissolve": 2
+  },
+  "sk_swp_dmc_01_d.dds": {
+   "base": 2
+  },
+  "sk_swp_dmc_01_n.dds": {
+   "noise": 2
+  },
+  "sk_swp_dms_00_01_d.dds": {
+   "base": 8
+  },
+  "sk_swp_dms_00_01_n.dds": {
+   "dissolve": 4,
+   "noise": 4
+  },
+  "sk_swp_dms_00_01_orm.dds": {
+   "noise": 4
+  },
+  "sk_wgl_gdd_00_cm.dds": {
+   "base": 3,
+   "params": [
+    "01.emismap"
+   ]
+  },
+  "sk_wgl_gdd_00_n.dds": {
+   "params": [
+    "normal_tex",
+    "normal_color"
+   ]
+  },
+  "sk_wgl_gdd_01_d.dds": {
+   "base": 3,
+   "params": [
+    "diffuse_color"
+   ]
+  },
+  "sk_wgl_gdd_01_d1.dds": {
+   "noise": 3
+  },
+  "sk_wgl_gdd_01_n1.dds": {
+   "mask": 3
+  },
+  "wp_mn_lrcn_01_d.dds": {
+   "base": 1
+  },
+  "wp_mn_lrcn_01_s.dds": {
+   "noise": 1
+  }
+ }
+}

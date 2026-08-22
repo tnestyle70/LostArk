@@ -46,6 +46,9 @@
     <Filter Include="03. Tools\05. Sequencer">
       <UniqueIdentifier>{6f28d0c9-bbd3-42f8-9b77-040d9c18034e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="03. Tools\06. Effect V2">
+      <UniqueIdentifier>{ca71a633-aed2-4aaf-82dc-975cd7e1ea9a}</UniqueIdentifier>
+    </Filter>
     <Filter Include="02.GameObjects\01. Boss">
       <UniqueIdentifier>{2d44837b-7b11-42f4-9d69-d18a0e209670}</UniqueIdentifier>
     </Filter>
@@ -374,6 +377,9 @@
     </ClCompile>
     <ClCompile Include="..\Private\HUDLayoutTool.cpp">
       <Filter>03. Tools\03. UI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\Effect_Tool_V2.cpp">
+      <Filter>03. Tools\06. Effect V2</Filter>
     </ClCompile>
     <ClCompile Include="..\Private\Valtan.cpp">
       <Filter>02.GameObjects\01. Boss</Filter>
@@ -705,6 +711,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\HUDLayoutTool.h">
       <Filter>03. Tools\03. UI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_Tool_V2.h">
+      <Filter>03. Tools\06. Effect V2</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Valtan.h">
       <Filter>02.GameObjects\01. Boss</Filter>
