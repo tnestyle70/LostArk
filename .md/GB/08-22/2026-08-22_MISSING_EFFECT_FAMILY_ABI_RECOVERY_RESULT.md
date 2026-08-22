@@ -302,3 +302,79 @@ git diff --check
 translated runtime/canary, source-exact full sampler, source vertex CB, Product와 visual은 계속 false다.
 다음 gate는 translated RT0-only shader에 typed scene depth, tangent-space view vector, clip position,
 alpha blend/read-only depth와 단일 Tool canary를 연결하는 것이다.
+
+## 10. G03-8 Glasshole02 translated runtime canary
+
+Glasshole02의 translated RT0 shader와 단일 occurrence Tool canary를 구현했다. runtime shader는 현재
+`VTXEFFECT_PARTICLE` input을 원본 PS signature에 연결하고, PS는 RT0 하나만 선언한다.
+
+```text
+runtime VS instruction count      75
+runtime PS instruction count     173
+raw DXBC vs runtime cases          3  (t=0, 0.25, 0.6)
+maximum RT0 absolute error         0
+Target_Depth equivalence error  2.67e-5
+material DDS parity              7/7
+texture/sampler registers        t0..t7 / s0..s7
+```
+
+### 10.1 이번 구현에서 닫힌 경계
+
+- exact effect와 단일 occurrence, MIC/parent/family/runtime profile
+- Required `boffsetcenter=true`, `psa_rectangle`, DynamicParameter `updateflags=15`
+- 7 DDS의 runtime byte count/SHA-256 및 7/7 color-space/filter selector
+- `Target_Depth`의 `t2/s0` binding과 perspective `_33/_43` 역투영 CB2
+- source uniform-expression AST에서 매 draw 조립하는 `c1..c21`
+- renderer-owned `c0.x=1`: particle `COLOR.w` life alpha와의 이중 곱 방지
+- signed Periodic, nonnegative occurrence local time, 동일 time global/CB0 upload
+- alpha two-sided/depth-read-only/RT0-only pass와 전체 관련 D3D state guard
+- default OFF, Product/read-only/prepared/reconstructed OFF, raw canary와 상호 배타
+- canary ON hot-stage의 resource reuse 금지와 매 stage identity/DDS hash 재검증
+- packet stage 이후 draw 실패 시 family-lite fallback 금지
+
+초기 C++ evaluator는 AppendVector의 unused lane을 잘못 broadcast했다. RT0가 xy만 읽어 기존 픽셀 WARP
+검사가 이를 숨겼지만, AST row 비교에서 발견해 `c3/c7/c8/c10/c11/c13`의 z/w를 0으로 교정했다.
+현재 self-test는 비영 `time` parameter를 포함해 `t=0/0.25/0.6`의 22행 전체를 확인한다.
+
+### 10.2 자동 검증 상태
+
+```text
+test_replay_ue3_glasshole02_runtime_rt0.py
+  Ran 6 tests, OK
+
+replay_ue3_glasshole02_runtime_rt0.py
+  cases=3 maxError=0
+
+test_materialize_ue3_glasshole02_runtime_canary_contract.py
+  Ran 17 tests, OK
+
+materialize_ue3_glasshole02_runtime_canary_contract.py --check
+  PASS receipt=c607917a60d38017d33fcbb39a610a7a3dd27f25169fc11a8aeccfc1b36c08bb
+```
+
+Client x64 Debug/Release와 `ClientFrontendHarness` x64 Debug/Release 빌드는 모두 성공했다.
+`ClientFrontendHarness` 실행은 두 구성 모두 exit code 1, 48건 실패로 동일했다. 실패 집합은 현재
+worktree에 이미 존재하는 광역 authored/family 계약 실패이며 G03-8 전용 검증의 PASS 근거로 사용하지
+않는다. 이번 변경은 harness 소스를 수정·삭제·복구하지 않았고, 별도 focused contract/replay 결과만
+G03-8 자동 승인 근거로 사용한다.
+
+Client 실행과 화면 조작은 수행하지 않았다. 첫 픽셀, 카드 경계, 유리 굴절/내부 방사, depth intersection,
+UV 움직임, 방향/크기의 visual admission은 사용자 Effect Tool A/B 전까지 계속 false다.
+
+### 10.3 아직 exact/visual로 승인하지 않는 것
+
+| 항목 | 현재 판정 |
+|---|---|
+| translated PS RT0 equation | raw DXBC numeric parity PASS |
+| material CB `c1..c21` | exact AST projection, runtime full-row self-test |
+| `c0` | renderer-owned explicit exception, source material row 아님 |
+| DDS/color-space/filter selector | 7/7 exact |
+| hardware filter/address | candidate; hardware 0/7 exact, address 1/14 exact |
+| source raw VS | oracle/signature만 보존, runtime에서 직접 실행하지 않음 |
+| runtime vertex spatial parity | structure/signature closed, raw VS numeric A/B 미완료 |
+| Product admission | false |
+| visual admission | 사용자 Effect Tool A/B 전까지 false |
+
+따라서 이 결과를 차원술사 전체 glass 완료로 과대 해석하지 않는다. 첫 occurrence에서 카드 경계,
+유리 굴절/내부 방사, depth intersection, UV 움직임, 방향과 크기를 사용자가 확인한 뒤 동일
+`parent + permutation + carrier/VF + pass` cohort로 확대한다.

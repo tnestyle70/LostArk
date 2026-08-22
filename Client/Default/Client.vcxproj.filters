@@ -1494,7 +1494,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactLocalMeshBridge.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl">
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectGlasshole02.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl">
@@ -1522,6 +1522,9 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </None>
   </ItemGroup>
@@ -6390,13 +6393,16 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.exact-material-maps.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
     </None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.glasshole02-hlsl-translation.receipt.json">
-      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
-    </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.exact-shader-targets.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.exact-texture-sampler-closure.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.glasshole02-hlsl-translation.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.glasshole02-runtime-canary.contract.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.source-value-uniform-evaluation.receipt.json">

@@ -468,7 +468,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactSpriteBridge.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactLocalMeshBridge.hlsl" />
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectGlasshole02.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl" />
     <None Include="..\Bin\ShaderFiles\Shader_Artist31470Diagnostic.hlsli" />
@@ -478,6 +478,7 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectStandardColorV1.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectLocalDecalAdapter.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshPreview.hlsl" />
@@ -2053,9 +2054,10 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050510.imported-effect-draft.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Drafts\skill.2050540.imported-effect-draft.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.exact-material-maps.receipt.json" />
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.glasshole02-hlsl-translation.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.exact-shader-targets.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.exact-texture-sampler-closure.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.glasshole02-hlsl-translation.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.glasshole02-runtime-canary.contract.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.source-value-uniform-evaluation.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.source-value-uniform-evaluation.targets.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.structural-fixed-input-replay.receipt.json" />

@@ -619,6 +619,10 @@ private:
 	bool_t Try_SetExactCookedCanaryEnabled(bool_t bEnabled);
 	void Reset_ExactCookedCanarySelection(std::string strReason);
 	void Invalidate_ExactCookedCanaryInstallation(std::string strReason);
+	bool_t Has_Glasshole02TranslatedCanaryOccurrence(
+		const EFFECT_DOCUMENT_DESC& Document) const;
+	bool_t Try_SetGlasshole02TranslatedCanaryEnabled(bool_t bEnabled);
+	void Reset_Glasshole02TranslatedCanarySelection(std::string strReason);
 	bool_t Try_StartArtist31470FullPreview();
 	bool_t Try_ResetArtist31470PreviewIsolation();
 	bool_t Try_SetArtist31470PreviewFamilyIsolation(
@@ -1016,6 +1020,7 @@ private:
 	bool_t m_bDocumentDirty = false;
 	bool_t m_bExactCookedCanaryEnabled = false;
 	bool_t m_bExactCookedCanaryVariantsInstalled = false;
+	bool_t m_bGlasshole02TranslatedCanaryEnabled = false;
 	bool_t m_bActiveDocumentDrawable = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;
     bool_t m_bResourceCatalogRefreshAttempted = false;
@@ -1069,6 +1074,8 @@ private:
     string m_strPreviewStatus;
 	string m_strExactCookedCanaryStatus =
 		"OFF: family-lite authoring preview remains active.";
+	string m_strGlasshole02TranslatedCanaryStatus =
+		"OFF: translated Glasshole02 Tool canary is not staged.";
     string m_strPreviewAnimationStatus;
     string m_strAnimationClipLabelStatus;
 };

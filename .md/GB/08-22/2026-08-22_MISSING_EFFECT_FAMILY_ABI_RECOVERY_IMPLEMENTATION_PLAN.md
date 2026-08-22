@@ -434,3 +434,112 @@ python Tools/EffectPipeline/extract_ue3_material_shader_maps.py --check
 python Tools/EffectPipeline/materialize_ue3_exact_cooked_shader_variants.py --check
 git diff --check
 ```
+
+## 11. G03-8 Glasshole02 translated runtime canary
+
+G03-8은 G03-7에서 수치 패리티를 닫은 Glasshole02 RT0 식을 실제 Effect Tool particle draw에
+연결한다. 대상은 다음 한 occurrence로 제한한다.
+
+```text
+effectAssetId   effect.dimensionmaster.skill.2050120.clip3.unified
+occurrenceId    authored.source-particle.40e1b48e2f0f88dcfeff1549
+familyId        ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2
+runtimeProfile  effect.ue3.glasshole-02.v1
+carrier         SpriteParticle / OffsetCenter / PSA_Rectangle
+source VF       FParticleOffsetCenterDynamicParameterVertexFactory
+pass            NoDensity, alpha two-sided, depth read-only, RT0 only
+```
+
+raw DXBC는 계속 offline oracle로만 사용한다. 제품 draw가 소비하는 것은
+`Shader_VtxEffectGlasshole02.hlsl`과 읽을 수 있는 `Shader_Ue3Glasshole02.hlsli`다. shader는
+현재 `VTXEFFECT_PARTICLE` stream을 원본 PS varying에 연결하며, 원본 PS의 RT0 식과
+`t0..t7/s0..s7`, `CB0[22]`, scene depth 역투영을 보존한다.
+
+### 11.1 동적 CB0
+
+time-zero receipt를 그대로 업로드하면 UV panner가 정지하므로 허용하지 않는다. occurrence local time과
+동일한 시각으로 source uniform-expression AST를 매 draw 재구성한다.
+
+```text
+c0       renderer-owned external opacity = 1
+c1..c13 exact vector-expression projection
+c14..c21 exact padding-free scalar group×4+lane projection
+```
+
+`c0`는 원본 material expression 소유 행이 아니다. particle `COLOR.w`가 이미 life alpha를 운반하므로
+1로 고정해 이중 alpha를 막는다. 따라서 exact AST 패리티 주장은 `c1..c21`에 한정한다.
+`Periodic`은 HLSL `frac`가 아니라 UE3의 signed `x-trunc(x)`를 사용한다. C++ evaluator는
+`t=0/0.25/0.6`의 22행 전체와 비영 `time` parameter를 검사하며, AppendVector의 unused tail이 0인
+`c3/c7/c8/c10/c11/c13`도 봉인한다.
+
+### 11.2 texture, sampler, depth
+
+| register | 입력 | 판정 |
+|---|---|---|
+| `t0/s1` | `fx_j_normal_bc5_09.dds` | byte/hash exact, linear |
+| `t1/s2` | `fx_d_atypical_094_ycl.dds` | byte/hash exact, sRGB, V clamp exact |
+| `t2/s0` | engine `Target_Depth` | typed engine input, point-clamp canary policy |
+| `t3/s3` | `fx_m_cybernoise_02.dds` | byte/hash exact, sRGB |
+| `t4/s4` | `fx_j_dustparticle_tile_02.dds` | byte/hash exact, sRGB |
+| `t5/s5` | `fx_j_environment_tile_01.dds` | byte/hash exact, sRGB |
+| `t6/s6` | `fx_f_aura_004_1.dds` | byte/hash exact, sRGB |
+| `t7/s7` | `fx_i_environment_001.dds` | byte/hash exact, sRGB |
+
+7 DDS는 stage마다 byte count와 SHA-256을 다시 확인한다. color-space와 source filter selector는 7/7
+exact지만 최종 hardware filter는 0/7, address는 1/14만 exact다. 현재 sampler state는 명시적인
+authoring canary candidate이며 source-exact full sampler로 승격하지 않는다.
+
+`Target_Depth.x`는 source NDC depth다. 현재 row-vector LH perspective의 `_33/_43`에서
+`CB2[1]=(0,0,1/P43,P33/P43)`를 만들고 원본 역투영식을 그대로 사용한다. `_34≈1`, `_44≈0`이
+아니거나 `P43`이 유효하지 않으면 fail-closed한다.
+
+### 11.3 activation과 failure 경계
+
+- 별도 `Enable Translated Glasshole02 Canary` Tool toggle만 사용한다.
+- 기본 OFF, Product Play/read-only/catalog prepared/reconstructed runtime에서는 항상 OFF다.
+- raw cooked canary와 동시에 켤 수 없다.
+- effect, occurrence, MIC/parent/family/profile, Required module, Dynamic module, carrier와 pass를 모두
+  확인한 뒤에만 packet을 stage한다.
+- canary ON에서는 GPU resource reuse fast path를 금지해 hot-stage도 위 identity와 DDS hash를 다시
+  검사한다.
+- stage 전 실패는 toggle을 명시적으로 끈 뒤 ordinary preview로 돌아갈 수 있다.
+- packet이 stage된 뒤 draw 실패는 같은 occurrence를 generic family-lite shader로 보내지 않는다.
+
+### 11.4 검증과 admission
+
+자동 검증은 다음 순서로 닫는다.
+
+```powershell
+python Tools/EffectPipeline/test_replay_ue3_glasshole02_runtime_rt0.py
+python Tools/EffectPipeline/replay_ue3_glasshole02_runtime_rt0.py
+python Tools/EffectPipeline/test_materialize_ue3_glasshole02_runtime_canary_contract.py
+python Tools/EffectPipeline/materialize_ue3_glasshole02_runtime_canary_contract.py --check
+powershell -ExecutionPolicy Bypass -File Tools/EffectPipeline/Sync-EffectDataProject.ps1 -Check
+# Client Debug/Release build and focused frontend harness
+git diff --check
+```
+
+자동 PASS가 승인하는 것은 translated RT0 식, material CB/resource binding과 Tool-only canary stage다.
+현재 vertex bridge는 raw source VS의 signature를 닫았지만 camera-to-particle/tangent/OffsetCenter 공간값을
+raw VS와 수치 A/B한 것은 아니다. 이 항목과 sampler 후보, 최종 색·coverage·움직임은 사용자의 Effect
+Tool 육안 A/B 전까지 visual/source-exact admission을 false로 유지한다.
+
+## 12. 이후 모든 missing family 반복 규칙
+
+Glasshole02가 수동 A/B까지 닫히면 같은 작업 단위를 다음 family에 반복한다. 재사용 키는 스킬 이름이
+아니라 `(parent material + static permutation + carrier/VF + pass)`다. 같은 키의 occurrence는 전용
+HLSL/renderer를 공유하고, 키가 다르면 억지로 generic translucent/additive/mask에 합치지 않는다.
+
+| 우선순위 | 스킬 cohort | 먼저 닫을 missing family/기능 |
+|---|---|---|
+| 1 | 차원술사 W/F 및 동일 glass occurrence | Glasshole02 canary 확대, FluidNinja/Crackhole/CustomParticle 분리 |
+| 2 | 창술사 창폼 T와 용 occurrence | DragonMasked UV scroll, carrier start/offset/velocity ABI |
+| 3 | 창술사 V와 screw/helix occurrence | 특수 mesh material, UV flow와 depth/blend pass |
+| 4 | 워로드 F/풀배럴캐넌 | LocalDecal carrier와 검은 경계/붉은 내부 4 decal |
+| 5 | 차원술사 S/W/F | glass cohort 공유와 screen-space shard/반구 pass 분리 |
+| 6 | 도화가 미르세김/V/T | CModel animation, attractor/screen layer, dragon 계열 material을 각각 분리 |
+
+각 family 문서에는 source object/parent/MIC, static switches, exact ShaderMap과 DXBC SHA, carrier/VF,
+CB/SRV/sampler wire, blend/depth/MRT, translated HLSL, raw-vs-translated WARP receipt, renderer canary,
+Debug/Release build, 사용자 수동 판정을 같은 표 형식으로 누적한다. 한 family를 이 끝까지 닫기 전에는
+다음 스킬의 눈 튜닝이나 광역 catalog 승격을 섞지 않는다.
