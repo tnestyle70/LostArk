@@ -4,6 +4,7 @@
 
 #include "DirectXTK/DDSTextureLoader.h"
 #include "Effect_Artist31470ShaderRegistry.h"
+#include "Effect_Catalog.h"
 #include "Effect_DocumentCodec.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_RuntimeAuthority.h"
@@ -11,6 +12,7 @@
 #include "GameInstance.h"
 #include "Model.h"
 #include "RuntimeAssetRoot.h"
+#include "Render_OutputContract.h"
 #include "Shader.h"
 #include "VIBuffer_DynamicTrail.h"
 #include "VIBuffer_ParticleRect.h"
@@ -37,6 +39,139 @@
 
 namespace
 {
+	bool_t Is_ZeroFloatBits(const FLOAT fValue)
+	{
+		return std::bit_cast<uint32_t>(fValue) == 0u;
+	}
+
+	bool_t Is_DefaultStencilFace(
+		const D3D11_DEPTH_STENCILOP_DESC& Face)
+	{
+		return Face.StencilFailOp == D3D11_STENCIL_OP_KEEP &&
+			Face.StencilDepthFailOp == D3D11_STENCIL_OP_KEEP &&
+			Face.StencilPassOp == D3D11_STENCIL_OP_KEEP &&
+			Face.StencilFunc == D3D11_COMPARISON_ALWAYS;
+	}
+
+	bool_t Is_DefaultUnusedBlendTarget(
+		const D3D11_RENDER_TARGET_BLEND_DESC& Target)
+	{
+		return !Target.BlendEnable && Target.SrcBlend == D3D11_BLEND_ONE &&
+			Target.DestBlend == D3D11_BLEND_ZERO &&
+			Target.BlendOp == D3D11_BLEND_OP_ADD &&
+			Target.SrcBlendAlpha == D3D11_BLEND_ONE &&
+			Target.DestBlendAlpha == D3D11_BLEND_ZERO &&
+			Target.BlendOpAlpha == D3D11_BLEND_OP_ADD &&
+			Target.RenderTargetWriteMask == D3D11_COLOR_WRITE_ENABLE_ALL;
+	}
+
+	bool_t Is_CompiledSpriteParticleAdapter(
+		const Client::EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter)
+	{
+		return Adapter.eAdapterId ==
+				Client::EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
+				SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1 &&
+			Adapter.eCarrier ==
+				Client::EFFECT_COMPILED_MATERIAL_CARRIER::SPRITE_PARTICLE &&
+			Adapter.strAdapterId ==
+				Client::EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADAPTER_ID &&
+			Adapter.strShaderId == "Shader_VtxEffectParticle.hlsl" &&
+			Adapter.strVertexLayoutId == "VTXEFFECT_PARTICLE" &&
+			Adapter.iPassIndex == 1u && Adapter.strMrtId == "MRT_SceneHDR" &&
+			Adapter.iSceneColorRenderTargetIndex == 0u &&
+			Adapter.strSceneColorSemantic == "SV_TARGET0" &&
+			Adapter.iDistortionRenderTargetIndex == 1u &&
+			Adapter.strDistortionSemantic == "SV_TARGET1" &&
+			Adapter.bDistortionDeterministicZero &&
+			Adapter.strRasterizerState == "RS_Cull_None" &&
+			Adapter.strDepthStencilState == "DSS_ReadOnly" &&
+			Adapter.strBlendState == "BS_EffectAlpha" &&
+			Adapter.iStencilReference == 0u;
+	}
+
+	bool_t Validate_ActualSpriteParticleAdapterPipeline(
+		ID3D11DeviceContext* pContext,
+		const Client::EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter)
+	{
+		if (nullptr == pContext || !Is_CompiledSpriteParticleAdapter(Adapter) ||
+			Engine::CRenderOutputContract::Get_Active() !=
+				Engine::RENDER_OUTPUT_CONTRACT::
+					SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION ||
+			!Engine::CRenderOutputContract::Matches_ActiveRenderTargets(pContext))
+		{
+			return false;
+		}
+
+		ID3D11RasterizerState* pRasterizerRaw = nullptr;
+		ID3D11DepthStencilState* pDepthStencilRaw = nullptr;
+		ID3D11BlendState* pBlendRaw = nullptr;
+		UINT iStencilReference = UINT32_MAX;
+		std::array<FLOAT, 4u> BlendFactor{};
+		UINT iSampleMask = 0u;
+		pContext->RSGetState(&pRasterizerRaw);
+		pContext->OMGetDepthStencilState(
+			&pDepthStencilRaw, &iStencilReference);
+		pContext->OMGetBlendState(
+			&pBlendRaw, BlendFactor.data(), &iSampleMask);
+		ComPtr<ID3D11RasterizerState> pRasterizer;
+		ComPtr<ID3D11DepthStencilState> pDepthStencil;
+		ComPtr<ID3D11BlendState> pBlend;
+		pRasterizer.Attach(pRasterizerRaw);
+		pDepthStencil.Attach(pDepthStencilRaw);
+		pBlend.Attach(pBlendRaw);
+		if (nullptr == pRasterizer || nullptr == pDepthStencil ||
+			nullptr == pBlend || iStencilReference != Adapter.iStencilReference ||
+			iSampleMask != 0xffffffffu ||
+			!std::all_of(BlendFactor.begin(), BlendFactor.end(),
+				Is_ZeroFloatBits))
+		{
+			return false;
+		}
+
+		D3D11_RASTERIZER_DESC Rasterizer{};
+		D3D11_DEPTH_STENCIL_DESC DepthStencil{};
+		D3D11_BLEND_DESC Blend{};
+		pRasterizer->GetDesc(&Rasterizer);
+		pDepthStencil->GetDesc(&DepthStencil);
+		pBlend->GetDesc(&Blend);
+		const D3D11_RENDER_TARGET_BLEND_DESC& SceneColor = Blend.RenderTarget[0u];
+		const D3D11_RENDER_TARGET_BLEND_DESC& Distortion = Blend.RenderTarget[1u];
+		return Rasterizer.FillMode == D3D11_FILL_SOLID &&
+			Rasterizer.CullMode == D3D11_CULL_NONE &&
+			!Rasterizer.FrontCounterClockwise && Rasterizer.DepthBias == 0 &&
+			Is_ZeroFloatBits(Rasterizer.DepthBiasClamp) &&
+			Is_ZeroFloatBits(Rasterizer.SlopeScaledDepthBias) &&
+			Rasterizer.DepthClipEnable && !Rasterizer.ScissorEnable &&
+			!Rasterizer.MultisampleEnable &&
+			!Rasterizer.AntialiasedLineEnable && DepthStencil.DepthEnable &&
+			DepthStencil.DepthWriteMask == D3D11_DEPTH_WRITE_MASK_ZERO &&
+			DepthStencil.DepthFunc == D3D11_COMPARISON_LESS_EQUAL &&
+			!DepthStencil.StencilEnable &&
+			DepthStencil.StencilReadMask == D3D11_DEFAULT_STENCIL_READ_MASK &&
+			DepthStencil.StencilWriteMask == D3D11_DEFAULT_STENCIL_WRITE_MASK &&
+			Is_DefaultStencilFace(DepthStencil.FrontFace) &&
+			Is_DefaultStencilFace(DepthStencil.BackFace) &&
+			!Blend.AlphaToCoverageEnable && Blend.IndependentBlendEnable &&
+			SceneColor.BlendEnable &&
+			SceneColor.SrcBlend == D3D11_BLEND_SRC_ALPHA &&
+			SceneColor.DestBlend == D3D11_BLEND_INV_SRC_ALPHA &&
+			SceneColor.BlendOp == D3D11_BLEND_OP_ADD &&
+			SceneColor.SrcBlendAlpha == D3D11_BLEND_ONE &&
+			SceneColor.DestBlendAlpha == D3D11_BLEND_INV_SRC_ALPHA &&
+			SceneColor.BlendOpAlpha == D3D11_BLEND_OP_ADD &&
+			SceneColor.RenderTargetWriteMask == D3D11_COLOR_WRITE_ENABLE_ALL &&
+			Distortion.BlendEnable && Distortion.SrcBlend == D3D11_BLEND_ONE &&
+			Distortion.DestBlend == D3D11_BLEND_ONE &&
+			Distortion.BlendOp == D3D11_BLEND_OP_ADD &&
+			Distortion.SrcBlendAlpha == D3D11_BLEND_ONE &&
+			Distortion.DestBlendAlpha == D3D11_BLEND_ONE &&
+			Distortion.BlendOpAlpha == D3D11_BLEND_OP_ADD &&
+			Distortion.RenderTargetWriteMask ==
+				(D3D11_COLOR_WRITE_ENABLE_RED | D3D11_COLOR_WRITE_ENABLE_GREEN) &&
+			std::all_of(Blend.RenderTarget + 2u, Blend.RenderTarget + 8u,
+				Is_DefaultUnusedBlendTarget);
+	}
+
 	struct ARTIST31470_EMITTER_ROW_PIN final
 	{
 		uint32_t iOrder;
@@ -3779,6 +3914,7 @@ struct Client::CEffectDocumentRenderer::PREWARM_ASSET_CACHE final
 struct Client::CEffectDocumentRenderer::PREPARED_DOCUMENT final
 {
 	uint64_t iCatalogRevision = 0u;
+	uint64_t iMaterialProgramRegistryGeneration = 0u;
 	uint64_t iResourceSignature = 0u;
 	std::string strEffectAssetId;
 	const EFFECT_DOCUMENT_DESC* pCatalogDocumentIdentity = nullptr;
@@ -3790,6 +3926,8 @@ struct Client::CEffectDocumentRenderer::PREPARED_DOCUMENT final
 		pReconstructedRuntimePreparation;
 	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		pVisualProgramProjection;
+	std::shared_ptr<const CEffectMaterialProgramRegistry>
+		pMaterialProgramRegistry;
 	uint32_t iReconstructedNeutralBaseCount = 0u;
 	uint32_t iReconstructedOneLayerCount = 0u;
 	uint32_t iReconstructedMaterialEvaluatorCount = 0u;
@@ -3798,6 +3936,7 @@ struct Client::CEffectDocumentRenderer::PREPARED_DOCUMENT final
 	uint32_t iArtistVisualV4Count = 0u;
 	uint32_t iArtistVisualV4UnsupportedCount = 0u;
 	uint32_t iLegacyOccurrenceVisualSuppressedCount = 0u;
+	uint32_t iMaterialProgramResolvedElementCount = 0u;
 	std::unordered_map<std::string, ELEMENT_RESOURCE> ElementResources;
 	std::unordered_map<std::string, MODEL_CUE_RESOURCE>
 		ModelCuePrototypes;
@@ -3817,6 +3956,8 @@ struct Client::CEffectDocumentRenderer::PRODUCT_PREWARM_SESSION final
 	ID3D11Device* pDevice = nullptr;
 	ID3D11DeviceContext* pContext = nullptr;
 	uint64_t iCatalogRevision = 0u;
+	std::shared_ptr<const CEffectMaterialProgramRegistry>
+		pMaterialProgramRegistry;
 	PREWARM_ASSET_CACHE SharedAssets;
 };
 
@@ -8383,12 +8524,18 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 		pPreparation,
 	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		pVisualProgramProjection,
-	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument) const
+	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pImmutableDocument,
+	std::shared_ptr<const CEffectMaterialProgramRegistry>
+		pMaterialProgramRegistry) const
 {
 	if ((0u == iCatalogRevision && nullptr != pImmutableDocument) ||
 		(0u != iCatalogRevision &&
 			(nullptr == pImmutableDocument ||
-			 pImmutableDocument.get() != &Document)))
+			 pImmutableDocument.get() != &Document ||
+			 nullptr == pMaterialProgramRegistry ||
+			 pMaterialProgramRegistry->Get_CatalogRevision() !=
+				iCatalogRevision)) ||
+		(0u == iCatalogRevision && nullptr != pMaterialProgramRegistry))
 	{
 		strOutError =
 			"Prepared Effect catalog immutable document identity is invalid.";
@@ -8423,6 +8570,9 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 	}
 	auto Staged = std::make_shared<PREPARED_DOCUMENT>();
 	Staged->iCatalogRevision = iCatalogRevision;
+	Staged->iMaterialProgramRegistryGeneration =
+		nullptr == pMaterialProgramRegistry ? 0u :
+			pMaterialProgramRegistry->Get_GenerationId();
 	Staged->iResourceSignature = Build_ResourceSignature(Document);
 	Staged->strEffectAssetId = strEffectAssetId;
 	Staged->pCatalogDocumentIdentity =
@@ -8433,6 +8583,7 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 		Staged->pImmutableDocument = std::move(pImmutableDocument);
 	Staged->pReconstructedRuntimePreparation = pPreparation;
 	Staged->pVisualProgramProjection = pVisualProgramProjection;
+	Staged->pMaterialProgramRegistry = pMaterialProgramRegistry;
 	uint32_t iTrailBufferPointCapacity = 0u;
 	if (!Try_ResolveTrailBufferPointCapacity(
 			Document, iTrailBufferPointCapacity, strOutError))
@@ -15056,6 +15207,33 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 	};
 	for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
 	{
+		const std::shared_ptr<const EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>
+			pMaterialProgramBinding = nullptr == pMaterialProgramRegistry ?
+				nullptr : pMaterialProgramRegistry->Resolve(
+					strEffectAssetId, Element.strElementId);
+		EFFECT_ELEMENT_DESC RegistryMaterializedElement;
+		const EFFECT_ELEMENT_DESC* pStagedElement = &Element;
+		if (nullptr != pMaterialProgramBinding)
+		{
+			if (pMaterialProgramBinding->iCatalogRevision != iCatalogRevision ||
+				pMaterialProgramBinding->iRegistryGenerationId !=
+					pMaterialProgramRegistry->Get_GenerationId() ||
+				pMaterialProgramBinding->strEffectAssetId != strEffectAssetId ||
+				pMaterialProgramBinding->strElementId != Element.strElementId ||
+				!CEffectMaterialProgramRegistry::Is_ExecutionBitExact(
+					pMaterialProgramBinding->Execution,
+					Element.Material.Execution))
+			{
+				strOutError =
+					"Bound material-program packet differs from inline golden mirror: " +
+					Element.strElementId;
+				return false;
+			}
+			RegistryMaterializedElement = Element;
+			RegistryMaterializedElement.Material.Execution =
+				pMaterialProgramBinding->Execution;
+			pStagedElement = &RegistryMaterializedElement;
+		}
 		f32_t fModelPreScale = Element.Detail.Mesh.fModelPreScale;
 		const EFFECT_RUNTIME_PROGRAM_EMITTER* pProgramEmitter = nullptr;
 		if (nullptr != pPreparation && nullptr != pPreparation->Get_Program())
@@ -15170,10 +15348,56 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 			Resource.bOccurrenceVisualSuppressed = true;
 		}
 		else if (FAILED(Stage_ElementResource(
-			strEffectAssetId, Element, Resource, strOutError,
+			strEffectAssetId, *pStagedElement, Resource, strOutError,
 			pSharedAssets, fModelPreScale)))
 		{
 			return false;
+		}
+		if (nullptr != pMaterialProgramBinding)
+		{
+			const EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+				pMaterialProgramBinding->Execution;
+			if (!Is_CompiledSpriteParticleAdapter(
+					pMaterialProgramBinding->Adapter) ||
+				Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+				!Element.SourceRecipe.bEnabled ||
+				Element.SourceRecipe.strRendererShape != "sprite" ||
+				nullptr != Find_Binding(
+					Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
+				nullptr != Resource.pModel ||
+				Element.Material.eRenderProfile !=
+					EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
+				Execution.eBackend !=
+					EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 ||
+				Execution.iOpcode != 6u || Execution.iPassIndex != 1u ||
+				Execution.strRasterizerState != "RS_Cull_None" ||
+				Execution.strDepthStencilState != "DSS_ReadOnly" ||
+				Execution.strBlendState != "BS_EffectAlpha" ||
+				Execution.iStencilReference != 0u ||
+				0u == Resource.iRuntimeMaterialV2Enabled ||
+				Resource.iRuntimeMaterialV2Opcode != 6u)
+			{
+				strOutError =
+					"Bound material-program compiled Sprite adapter carrier changed: " +
+					Element.strElementId;
+				return false;
+			}
+			EFFECT_MATERIAL_EXECUTION_DESC PreparedSnapshot;
+			if (!Build_MaterialExecutionSnapshot(
+					*pStagedElement, Resource, PreparedSnapshot, strOutError) ||
+				!CEffectMaterialProgramRegistry::Is_ExecutionBitExact(
+					pMaterialProgramBinding->Execution, PreparedSnapshot))
+			{
+				if (strOutError.empty())
+				{
+					strOutError =
+						"Bound material-program prepared snapshot differs from registry: " +
+						Element.strElementId;
+				}
+				return false;
+			}
+			Resource.pMaterialProgramBinding = pMaterialProgramBinding;
+			++Staged->iMaterialProgramResolvedElementCount;
 		}
 		const EFFECT_VISUAL_PROGRAM_ROW* pVisualProgramRow =
 			nullptr == pVisualProgramProjection ? nullptr :
@@ -15425,10 +15649,20 @@ bool_t Client::CEffectDocumentRenderer::Prepare_Catalog(
 		std::shared_ptr<const EFFECT_DOCUMENT_DESC>>>& Documents,
 	std::string& strOutError)
 {
+	const std::shared_ptr<const CEffectMaterialProgramRegistry> Registry =
+		CEffectCatalog::Acquire_MaterialProgramRegistry();
+	if (nullptr == Registry ||
+		Registry->Get_CatalogRevision() != iCatalogRevision)
+	{
+		strOutError =
+			"Effect catalog preparation has no matching immutable "
+			"material-program generation.";
+		return false;
+	}
 	std::vector<EFFECT_RENDER_PREWARM_TARGET> Targets;
 	Targets.reserve(Documents.size());
 	for (const auto& [EffectId, Document] : Documents)
-		Targets.push_back({ EffectId, Document, nullptr });
+		Targets.push_back({ EffectId, Document, nullptr, Registry });
 	return Prepare_VisualProgramCatalog(std::move(pDevice),
 		std::move(pContext), iCatalogRevision, Targets, strOutError);
 }
@@ -15440,8 +15674,12 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 	const std::vector<EFFECT_RENDER_PREWARM_TARGET>& Targets,
 	std::string& strOutError)
 {
+	const std::shared_ptr<const CEffectMaterialProgramRegistry> Registry =
+		Targets.empty() ? nullptr : Targets.front().pMaterialProgramRegistry;
 	if (nullptr == pDevice || nullptr == pContext || 0u == iCatalogRevision ||
-		Targets.empty() ||
+		Targets.empty() || nullptr == Registry ||
+		Registry->Get_CatalogRevision() != iCatalogRevision ||
+		Registry->Get_BindingCount() > UINT32_MAX ||
 		nullptr == Acquire_RendererCore(pDevice, pContext))
 	{
 		strOutError = "Effect product prewarm arguments or renderer core are invalid.";
@@ -15461,7 +15699,9 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 			if (nullptr != g_pProductPrewarmSession &&
 				g_pProductPrewarmSession->pDevice == pDevice.Get() &&
 				g_pProductPrewarmSession->pContext == pContext.Get() &&
-				g_pProductPrewarmSession->iCatalogRevision == iCatalogRevision)
+				g_pProductPrewarmSession->iCatalogRevision == iCatalogRevision &&
+				g_pProductPrewarmSession->pMaterialProgramRegistry.get() ==
+					Registry.get())
 			{
 				ExistingSession = g_pProductPrewarmSession;
 			}
@@ -15483,6 +15723,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 			EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>& Projection =
 			Target.pVisualProgramProjection;
 		if (EffectId.empty() || nullptr == Document ||
+			Target.pMaterialProgramRegistry.get() != Registry.get() ||
 			EffectId != Document->strEffectAssetId ||
 			(nullptr != Projection &&
 			 (!Projection->Is_Valid() ||
@@ -15501,6 +15742,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 		if (Reusable != Existing.end() && nullptr != Reusable->second &&
 			Reusable->second->pCatalogDocumentIdentity == Document.get() &&
 			Reusable->second->pVisualProgramProjection.get() == Projection.get() &&
+			Reusable->second->pMaterialProgramRegistry.get() == Registry.get() &&
 			Reusable->second->pImmutableDocument.get() == Document.get())
 		{
 			Staged.emplace(Key, Reusable->second);
@@ -15516,7 +15758,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 		std::shared_ptr<const PREPARED_DOCUMENT> Prepared;
 		if (!Loader.Build_PreparedDocument(
 			iCatalogRevision, EffectId, *Document, &SharedAssets,
-			Prepared, strOutError, nullptr, Projection, Document))
+			Prepared, strOutError, nullptr, Projection, Document, Registry))
 		{
 			return false;
 		}
@@ -15533,6 +15775,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 	StagedSession->pDevice = pDevice.Get();
 	StagedSession->pContext = pContext.Get();
 	StagedSession->iCatalogRevision = iCatalogRevision;
+	StagedSession->pMaterialProgramRegistry = Registry;
 	StagedSession->SharedAssets = std::move(SharedAssets);
 	{
 		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
@@ -15550,8 +15793,22 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 		++g_iPreparedCatalogGeneration;
 		++g_EffectRenderPrewarmProbe.iCatalogCommitCount;
 		g_EffectRenderPrewarmProbe.iCatalogRevision = iCatalogRevision;
+		g_EffectRenderPrewarmProbe.iMaterialProgramRegistryGeneration =
+			Registry->Get_GenerationId();
+		g_EffectRenderPrewarmProbe.iMaterialProgramBindingCount =
+			static_cast<uint32_t>(Registry->Get_BindingCount());
 		g_EffectRenderPrewarmProbe.iPreparedDocumentCount =
 			static_cast<uint32_t>(g_PreparedEffectDocuments.size());
+		g_EffectRenderPrewarmProbe.iMaterialProgramResolvedElementCount = 0u;
+		for (const auto& [Key, Prepared] : g_PreparedEffectDocuments)
+		{
+			(void)Key;
+			if (nullptr != Prepared)
+			{
+				g_EffectRenderPrewarmProbe.iMaterialProgramResolvedElementCount +=
+					Prepared->iMaterialProgramResolvedElementCount;
+			}
+		}
 	}
 	strOutError = "Prepared " + std::to_string(Targets.size()) +
 		" admitted animation Effect targets for catalog revision " +
@@ -15571,8 +15828,13 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 		Target.pDocument;
 	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
 		Projection = Target.pVisualProgramProjection;
+	const std::shared_ptr<const CEffectMaterialProgramRegistry>& Registry =
+		Target.pMaterialProgramRegistry;
 	if (nullptr == pDevice || nullptr == pContext || 0u == iCatalogRevision ||
 		EffectId.empty() || nullptr == Document ||
+		nullptr == Registry ||
+		Registry->Get_CatalogRevision() != iCatalogRevision ||
+		Registry->Get_BindingCount() > UINT32_MAX ||
 		EffectId != Document->strEffectAssetId ||
 		(nullptr != Projection &&
 			(!Projection->Is_Valid() ||
@@ -15604,7 +15866,9 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 		if (bMergeExisting && nullptr != g_pProductPrewarmSession &&
 			(g_pProductPrewarmSession->pDevice != pDevice.Get() ||
 			 g_pProductPrewarmSession->pContext != pContext.Get() ||
-			 g_pProductPrewarmSession->iCatalogRevision != iCatalogRevision))
+			 g_pProductPrewarmSession->iCatalogRevision != iCatalogRevision ||
+			 g_pProductPrewarmSession->pMaterialProgramRegistry.get() !=
+				Registry.get()))
 		{
 			strOutError =
 				"Effect incremental Product prewarm session identity changed.";
@@ -15619,6 +15883,8 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 					Existing->second->pCatalogDocumentIdentity != Document.get() ||
 					Existing->second->pVisualProgramProjection.get() !=
 						Projection.get() ||
+					Existing->second->pMaterialProgramRegistry.get() !=
+						Registry.get() ||
 					Existing->second->pImmutableDocument.get() != Document.get())
 				{
 					strOutError =
@@ -15650,8 +15916,8 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 	CEffectDocumentRenderer Loader(pDevice, pContext);
 	std::shared_ptr<const PREPARED_DOCUMENT> Prepared;
 	if (!Loader.Build_PreparedDocument(
-			iCatalogRevision, EffectId, *Document, &StagedSharedAssets,
-			Prepared, strOutError, nullptr, Projection, Document))
+		iCatalogRevision, EffectId, *Document, &StagedSharedAssets,
+		Prepared, strOutError, nullptr, Projection, Document, Registry))
 	{
 		return false;
 	}
@@ -15659,6 +15925,7 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 	StagedSession->pDevice = pDevice.Get();
 	StagedSession->pContext = pContext.Get();
 	StagedSession->iCatalogRevision = iCatalogRevision;
+	StagedSession->pMaterialProgramRegistry = Registry;
 	StagedSession->SharedAssets = std::move(StagedSharedAssets);
 
 	{
@@ -15696,8 +15963,23 @@ bool_t Client::CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 		++g_iPreparedCatalogGeneration;
 		++g_EffectRenderPrewarmProbe.iCatalogCommitCount;
 		g_EffectRenderPrewarmProbe.iCatalogRevision = iCatalogRevision;
+		g_EffectRenderPrewarmProbe.iMaterialProgramRegistryGeneration =
+			Registry->Get_GenerationId();
+		g_EffectRenderPrewarmProbe.iMaterialProgramBindingCount =
+			static_cast<uint32_t>(Registry->Get_BindingCount());
 		g_EffectRenderPrewarmProbe.iPreparedDocumentCount =
 			static_cast<uint32_t>(g_PreparedEffectDocuments.size());
+		g_EffectRenderPrewarmProbe.iMaterialProgramResolvedElementCount = 0u;
+		for (const auto& [PreparedKey, PreparedEntry] :
+			g_PreparedEffectDocuments)
+		{
+			(void)PreparedKey;
+			if (nullptr != PreparedEntry)
+			{
+				g_EffectRenderPrewarmProbe.iMaterialProgramResolvedElementCount +=
+					PreparedEntry->iMaterialProgramResolvedElementCount;
+			}
+		}
 	}
 	strOutError = "Incrementally prepared Product Effect target " + EffectId +
 		" for catalog revision " + std::to_string(iCatalogRevision) + ".";
@@ -15716,8 +15998,12 @@ bool_t Client::CEffectDocumentRenderer::Replace_VisualProgramTarget(
 		Target.pDocument;
 	const std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>&
 		Projection = Target.pVisualProgramProjection;
+	const std::shared_ptr<const CEffectMaterialProgramRegistry>& Registry =
+		Target.pMaterialProgramRegistry;
 	if (nullptr == pDevice || nullptr == pContext || 0u == iCatalogRevision ||
 		EffectId.empty() || nullptr == Document ||
+		nullptr == Registry ||
+		Registry->Get_CatalogRevision() != iCatalogRevision ||
 		EffectId != Document->strEffectAssetId ||
 		(nullptr != Projection &&
 			(!Projection->Is_Valid() ||
@@ -15743,7 +16029,9 @@ bool_t Client::CEffectDocumentRenderer::Replace_VisualProgramTarget(
 			nullptr == g_pProductPrewarmSession ||
 			g_pProductPrewarmSession->pDevice != pDevice.Get() ||
 			g_pProductPrewarmSession->pContext != pContext.Get() ||
-			g_pProductPrewarmSession->iCatalogRevision != iCatalogRevision)
+			g_pProductPrewarmSession->iCatalogRevision != iCatalogRevision ||
+			g_pProductPrewarmSession->pMaterialProgramRegistry.get() !=
+				Registry.get())
 		{
 			strOutError =
 				"Effect Product replacement has no matching prepared session.";
@@ -15755,8 +16043,8 @@ bool_t Client::CEffectDocumentRenderer::Replace_VisualProgramTarget(
 	CEffectDocumentRenderer Loader(pDevice, pContext);
 	std::shared_ptr<const PREPARED_DOCUMENT> Candidate;
 	if (!Loader.Build_PreparedDocument(
-			iCatalogRevision, EffectId, *Document, &StagedSharedAssets,
-			Candidate, strOutError, nullptr, Projection, Document))
+		iCatalogRevision, EffectId, *Document, &StagedSharedAssets,
+		Candidate, strOutError, nullptr, Projection, Document, Registry))
 	{
 		return false;
 	}
@@ -15764,6 +16052,7 @@ bool_t Client::CEffectDocumentRenderer::Replace_VisualProgramTarget(
 	StagedSession->pDevice = pDevice.Get();
 	StagedSession->pContext = pContext.Get();
 	StagedSession->iCatalogRevision = iCatalogRevision;
+	StagedSession->pMaterialProgramRegistry = Registry;
 	StagedSession->SharedAssets = std::move(StagedSharedAssets);
 
 	{
@@ -15774,7 +16063,9 @@ bool_t Client::CEffectDocumentRenderer::Replace_VisualProgramTarget(
 			nullptr == g_pProductPrewarmSession ||
 			g_pProductPrewarmSession->pDevice != pDevice.Get() ||
 			g_pProductPrewarmSession->pContext != pContext.Get() ||
-			g_pProductPrewarmSession->iCatalogRevision != iCatalogRevision)
+			g_pProductPrewarmSession->iCatalogRevision != iCatalogRevision ||
+			g_pProductPrewarmSession->pMaterialProgramRegistry.get() !=
+				Registry.get())
 		{
 			strOutError =
 				"Effect Product prepared cache changed during replacement staging.";
@@ -15826,8 +16117,23 @@ bool_t Client::CEffectDocumentRenderer::Replace_VisualProgramTarget(
 		++g_iPreparedCatalogGeneration;
 		++g_EffectRenderPrewarmProbe.iCatalogCommitCount;
 		g_EffectRenderPrewarmProbe.iCatalogRevision = iCatalogRevision;
+		g_EffectRenderPrewarmProbe.iMaterialProgramRegistryGeneration =
+			Registry->Get_GenerationId();
+		g_EffectRenderPrewarmProbe.iMaterialProgramBindingCount =
+			static_cast<uint32_t>(Registry->Get_BindingCount());
 		g_EffectRenderPrewarmProbe.iPreparedDocumentCount =
 			static_cast<uint32_t>(g_PreparedEffectDocuments.size());
+		g_EffectRenderPrewarmProbe.iMaterialProgramResolvedElementCount = 0u;
+		for (const auto& [PreparedKey, PreparedEntry] :
+			g_PreparedEffectDocuments)
+		{
+			(void)PreparedKey;
+			if (nullptr != PreparedEntry)
+			{
+				g_EffectRenderPrewarmProbe.iMaterialProgramResolvedElementCount +=
+					PreparedEntry->iMaterialProgramResolvedElementCount;
+			}
+		}
 	}
 	strOutError = "Replaced prepared Product Effect target " + EffectId +
 		" for catalog revision " + std::to_string(iCatalogRevision) + ".";
@@ -16099,7 +16405,9 @@ Client::CEffectDocumentRenderer::Find_Prepared(
 	const std::string& strEffectAssetId,
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-		pVisualProgramProjection)
+		pVisualProgramProjection,
+	std::shared_ptr<const CEffectMaterialProgramRegistry>
+		pMaterialProgramRegistry)
 {
 	const std::scoped_lock Lock(g_EffectRenderCacheMutex);
 	++g_EffectRenderPrewarmProbe.iPreparedIdentityLookupCount;
@@ -16111,6 +16419,12 @@ Client::CEffectDocumentRenderer::Find_Prepared(
 		Iterator->second->strEffectAssetId != strEffectAssetId ||
 		Iterator->second->pCatalogDocumentIdentity != &Document ||
 		Iterator->second->pImmutableDocument.get() != &Document ||
+		Iterator->second->pMaterialProgramRegistry.get() !=
+			pMaterialProgramRegistry.get() ||
+		(nullptr != pMaterialProgramRegistry &&
+			(pMaterialProgramRegistry->Get_CatalogRevision() != iCatalogRevision ||
+			 Iterator->second->iMaterialProgramRegistryGeneration !=
+				pMaterialProgramRegistry->Get_GenerationId())) ||
 		Iterator->second->pVisualProgramProjection.get() !=
 			pVisualProgramProjection.get())
 	{
@@ -16148,7 +16462,10 @@ void Client::CEffectDocumentRenderer::Clear_Prepared_Catalog()
 	g_iPreparedCatalogRevision = 0u;
 	++g_iPreparedCatalogGeneration;
 	g_EffectRenderPrewarmProbe.iCatalogRevision = 0u;
+	g_EffectRenderPrewarmProbe.iMaterialProgramRegistryGeneration = 0u;
 	g_EffectRenderPrewarmProbe.iPreparedDocumentCount = 0u;
+	g_EffectRenderPrewarmProbe.iMaterialProgramBindingCount = 0u;
+	g_EffectRenderPrewarmProbe.iMaterialProgramResolvedElementCount = 0u;
 }
 
 bool_t Client::CEffectDocumentRenderer::Stage_Prepared(
@@ -16183,6 +16500,14 @@ bool_t Client::CEffectDocumentRenderer::Stage_PreparedInternal(
 		const auto Current = g_PreparedEffectDocumentsByIdentity.find(&Document);
 		bCatalogIdentityCurrent =
 			g_iPreparedCatalogRevision == pPrepared->iCatalogRevision &&
+			nullptr != g_pProductPrewarmSession &&
+			g_pProductPrewarmSession->pMaterialProgramRegistry.get() ==
+				pPrepared->pMaterialProgramRegistry.get() &&
+			nullptr != pPrepared->pMaterialProgramRegistry &&
+			pPrepared->pMaterialProgramRegistry->Get_CatalogRevision() ==
+				pPrepared->iCatalogRevision &&
+			pPrepared->pMaterialProgramRegistry->Get_GenerationId() ==
+				pPrepared->iMaterialProgramRegistryGeneration &&
 			Current != g_PreparedEffectDocumentsByIdentity.end() &&
 			Current->second.get() == pPrepared.get();
 	}
@@ -16275,6 +16600,14 @@ bool_t Client::CEffectDocumentRenderer::Stage_PrevalidatedVisualProgramDocument(
 		const auto Current = g_PreparedEffectDocumentsByIdentity.find(&Document);
 		bCatalogIdentityCurrent =
 			g_iPreparedCatalogRevision == pPrepared->iCatalogRevision &&
+			nullptr != g_pProductPrewarmSession &&
+			g_pProductPrewarmSession->pMaterialProgramRegistry.get() ==
+				pPrepared->pMaterialProgramRegistry.get() &&
+			nullptr != pPrepared->pMaterialProgramRegistry &&
+			pPrepared->pMaterialProgramRegistry->Get_CatalogRevision() ==
+				pPrepared->iCatalogRevision &&
+			pPrepared->pMaterialProgramRegistry->Get_GenerationId() ==
+				pPrepared->iMaterialProgramRegistryGeneration &&
 			Current != g_PreparedEffectDocumentsByIdentity.end() &&
 			Current->second.get() == pPrepared.get();
 	}
@@ -18992,12 +19325,51 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	EFFECT_COLOR_DESC CommonColor =
 		Evaluate_CommonColor(Source, Normalized);
 	CommonColor.vColorMultiply = float4_t(1.f, 1.f, 1.f, 1.f);
+	const std::shared_ptr<const EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>&
+		pMaterialProgramBinding = pResource->pMaterialProgramBinding;
+	uint32_t iPass = UINT32_MAX;
+	if (nullptr != pMaterialProgramBinding)
+	{
+		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter =
+			pMaterialProgramBinding->Adapter;
+		if (nullptr == m_pPreparedDocument ||
+			nullptr == m_pPreparedDocument->pMaterialProgramRegistry ||
+			m_pPreparedDocument->pMaterialProgramRegistry->Get_CatalogRevision() !=
+				pMaterialProgramBinding->iCatalogRevision ||
+			m_pPreparedDocument->iMaterialProgramRegistryGeneration !=
+				pMaterialProgramBinding->iRegistryGenerationId ||
+			m_pPreparedDocument->pMaterialProgramRegistry->Resolve(
+					Get_StagedDocument().strEffectAssetId,
+					Source.strElementId).get() != pMaterialProgramBinding.get() ||
+			!Is_CompiledSpriteParticleAdapter(Adapter) ||
+			Source.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+			!Source.SourceRecipe.bEnabled ||
+			Source.SourceRecipe.strRendererShape != "sprite" ||
+			nullptr != Find_Binding(Source, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
+			nullptr != pResource->pModel || nullptr == m_pParticleShader ||
+			nullptr == m_pParticleBuffer ||
+			Source.Material.eRenderProfile !=
+				EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
+			0u == pResource->iRuntimeMaterialV2Enabled ||
+			pResource->iRuntimeMaterialV2Opcode != 6u ||
+			Select_Pass(Source.Material.eRenderProfile) != Adapter.iPassIndex ||
+			Engine::CRenderOutputContract::Get_Active() !=
+				Engine::RENDER_OUTPUT_CONTRACT::
+				SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION)
+		{
+			return Fail_RenderOperation(
+				"Bound Sprite material adapter draw contract changed.",
+				E_FAIL, true);
+		}
+		iPass = Adapter.iPassIndex;
+	}
 	hResult = Bind_Common(m_pParticleShader, Source, CommonColor,
 		LocalTime, Normalized, *pResource);
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Particle common/material shader bind failed.", hResult);
-	const uint32_t iPass = Select_Pass(Source.Material.eRenderProfile);
+	if (nullptr == pMaterialProgramBinding)
+		iPass = Select_Pass(Source.Material.eRenderProfile);
 	if (UINT32_MAX == iPass)
 		return Fail_RenderOperation(
 			"Particle render-profile pass is invalid.", E_INVALIDARG, true);
@@ -19005,6 +19377,14 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Particle shader pass apply failed.", hResult);
+	if (nullptr != pMaterialProgramBinding &&
+		!Validate_ActualSpriteParticleAdapterPipeline(
+			m_pContext.Get(), pMaterialProgramBinding->Adapter))
+	{
+		return Fail_RenderOperation(
+			"Bound Sprite material adapter actual pass/state/MRT changed.",
+			E_FAIL, true);
+	}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 	Record_TestShaderPassApplication();
 #endif

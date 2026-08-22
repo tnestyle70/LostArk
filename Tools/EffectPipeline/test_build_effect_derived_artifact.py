@@ -20,6 +20,16 @@ assert SPEC is not None and SPEC.loader is not None
 derived = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(derived)
 
+DIRECT_RUNTIME_MODULE_PATH = Path(__file__).with_name(
+    "validate_direct_authored_effect_runtime.py"
+)
+DIRECT_RUNTIME_SPEC = importlib.util.spec_from_file_location(
+    "direct_effect_runtime", DIRECT_RUNTIME_MODULE_PATH
+)
+assert DIRECT_RUNTIME_SPEC is not None and DIRECT_RUNTIME_SPEC.loader is not None
+direct_runtime = importlib.util.module_from_spec(DIRECT_RUNTIME_SPEC)
+DIRECT_RUNTIME_SPEC.loader.exec_module(direct_runtime)
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PUBLISHER = Path(__file__).with_name("Publish-Effects.ps1")
 SCHEMA_PATH = Path(__file__).with_name("Schemas") / (
@@ -36,11 +46,15 @@ RECONSTRUCTED_SIDECAR = REPO_ROOT / (
 VISUAL_PROGRAM_SIDECAR = REPO_ROOT / (
     "Data/Effects/VisualPrograms/effect-visual-program-runtime.v1.json"
 )
+MATERIAL_PROGRAM_REGISTRY = REPO_ROOT / (
+    "Data/Effects/MaterialPrograms/effect-material-program-registry.v1.json"
+)
 
 
 def write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    payload = (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    path.write_bytes(payload)
 
 
 def raw_sha(path: Path) -> str:
@@ -254,6 +268,14 @@ class DerivedArtifactContractTests(unittest.TestCase):
         )
         visual_program.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(VISUAL_PROGRAM_SIDECAR, visual_program)
+        material_program_registry = data_root / (
+            "Effects/MaterialPrograms/effect-material-program-registry.v1.json"
+        )
+        fixture_material_programs = json.loads(
+            MATERIAL_PROGRAM_REGISTRY.read_text(encoding="utf-8")
+        )
+        fixture_material_programs["bindings"] = []
+        write_json(material_program_registry, fixture_material_programs)
         return data_root, resource_root, runtime_output, outputs
 
     def _build_reconstructed_publisher_fixture(
@@ -304,6 +326,14 @@ class DerivedArtifactContractTests(unittest.TestCase):
         )
         visual_program.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(VISUAL_PROGRAM_SIDECAR, visual_program)
+        material_program_registry = data_root / (
+            "Effects/MaterialPrograms/effect-material-program-registry.v1.json"
+        )
+        fixture_material_programs = json.loads(
+            MATERIAL_PROGRAM_REGISTRY.read_text(encoding="utf-8")
+        )
+        fixture_material_programs["bindings"] = []
+        write_json(material_program_registry, fixture_material_programs)
         return data_root, resource_root, runtime_output, candidate
 
     def _build_generic_bundle_for_effect(
@@ -1234,8 +1264,9 @@ class DerivedArtifactContractTests(unittest.TestCase):
         result = self._run_publisher(data_root, resources, output)
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         runtime = derived.load_json(output)
-        derived.validate_runtime_catalog(runtime)
-        self.assertEqual(runtime["formatVersion"], 3)
+        direct_runtime.validate_runtime_catalog(runtime, output)
+        self.assertEqual(runtime["formatVersion"], 4)
+        self.assertEqual(runtime["materialPrograms"]["bindings"], [])
         self.assertEqual(len(runtime["effects"]), 1)
         self.assertEqual(
             runtime["effects"][0]["payloadKind"],
@@ -1284,7 +1315,7 @@ class DerivedArtifactContractTests(unittest.TestCase):
         )
         candidate.unlink()
         sidecar.unlink()
-        derived.validate_runtime_catalog(runtime)
+        direct_runtime.validate_runtime_catalog(runtime, output)
         rejected = self._run_publisher(data_root, resources, output)
         self.assertNotEqual(rejected.returncode, 0)
         self.assertEqual(output.read_bytes(), committed)
@@ -1485,13 +1516,14 @@ class DerivedArtifactContractTests(unittest.TestCase):
         self.assertEqual(list(output.parent.glob("*.tmp")), [])
         self.assertEqual(list(output.parent.glob("*.bak")), [])
 
-    def test_publisher_format3_round_trip_keeps_product_false(self) -> None:
+    def test_publisher_format4_round_trip_keeps_product_false(self) -> None:
         data_root, resources, output, _ = self._build_publisher_fixture()
         result = self._run_publisher(data_root, resources, output)
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         runtime = derived.load_json(output)
-        derived.validate_runtime_catalog(runtime)
-        self.assertEqual(runtime["formatVersion"], 3)
+        direct_runtime.validate_runtime_catalog(runtime, output)
+        self.assertEqual(runtime["formatVersion"], 4)
+        self.assertEqual(runtime["materialPrograms"]["bindings"], [])
         self.assertEqual(len(runtime["effects"]), 1)
         self.assertFalse(runtime["effects"][0]["productAdmission"])
         self.assertEqual(runtime["effects"][0]["payloadKind"], "IMMUTABLE_COMPILED_IR")

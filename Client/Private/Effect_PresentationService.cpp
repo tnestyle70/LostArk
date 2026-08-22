@@ -823,6 +823,18 @@ namespace
             strOutStatus = "No admitted animation Effect targets require prewarm.";
             return true;
         }
+		const std::shared_ptr<const Client::CEffectMaterialProgramRegistry>
+			MaterialProgramRegistry =
+				Client::CEffectCatalog::Acquire_MaterialProgramRegistry();
+		if (nullptr == MaterialProgramRegistry ||
+			0u == MaterialProgramRegistry->Get_CatalogRevision() ||
+			Client::CEffectCatalog::Get_RuntimeRevision() !=
+				MaterialProgramRegistry->Get_CatalogRevision())
+		{
+			strOutStatus =
+				"Animation Effect prewarm has no immutable material-program generation.";
+			return false;
+		}
 		std::vector<Client::EFFECT_RENDER_PREWARM_TARGET> PrewarmTargets;
 		PrewarmTargets.reserve(Targets.size());
 		std::map<std::string, Client::EFFECT_SCENE_BUDGET_COST, std::less<>>
@@ -902,11 +914,12 @@ namespace
 			StagedBudgetCosts.emplace(EffectId, BudgetCost);
 			StagedPlaybackDurations.emplace(
 				EffectId, fPlaybackDurationSeconds);
-			PrewarmTargets.push_back({ EffectId, Document, Projection });
+			PrewarmTargets.push_back({ EffectId, Document, Projection,
+				MaterialProgramRegistry });
 		}
 		if (!Client::CEffectDocumentRenderer::Prepare_VisualProgramCatalog(
 			std::move(pDevice), std::move(pContext),
-			Client::CEffectCatalog::Get_RuntimeRevision(), PrewarmTargets,
+			MaterialProgramRegistry->Get_CatalogRevision(), PrewarmTargets,
 			strOutStatus))
 		{
 			return false;
@@ -924,12 +937,17 @@ namespace
 			const std::string& strEffectAssetId,
 			const Client::EFFECT_DOCUMENT_DESC& Document)
 	{
+		const std::shared_ptr<const Client::CEffectMaterialProgramRegistry>
+			MaterialProgramRegistry =
+				Client::CEffectCatalog::Acquire_MaterialProgramRegistry();
+		if (nullptr == MaterialProgramRegistry)
+			return nullptr;
 		const std::shared_ptr<const
 			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION> Projection =
 			Client::CEffectCatalog::Find_VisualProjection(strEffectAssetId);
 		return Client::CEffectDocumentRenderer::Find_Prepared(
-			Client::CEffectCatalog::Get_RuntimeRevision(),
-			strEffectAssetId, Document, Projection);
+			MaterialProgramRegistry->Get_CatalogRevision(),
+			strEffectAssetId, Document, Projection, MaterialProgramRegistry);
 	}
 
 	bool_t Resolve_ProductScreenOverlayTemplate(
@@ -2072,7 +2090,11 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
 {
-	const uint64_t iCatalogRevision = CEffectCatalog::Get_RuntimeRevision();
+	const std::shared_ptr<const CEffectMaterialProgramRegistry>
+		MaterialProgramRegistry =
+			CEffectCatalog::Acquire_MaterialProgramRegistry();
+	const uint64_t iCatalogRevision = nullptr == MaterialProgramRegistry ? 0u :
+		MaterialProgramRegistry->Get_CatalogRevision();
 	if (nullptr == pDevice || nullptr == pContext || 0u == iCatalogRevision)
 	{
 		g_strStatus =
@@ -2182,7 +2204,8 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	{
 		bPrepared = CEffectDocumentRenderer::Prepare_VisualProgramTarget(
 			std::move(pDevice), std::move(pContext), iCatalogRevision,
-			{ EffectId, Document, Projection }, PrepareStatus);
+			{ EffectId, Document, Projection, MaterialProgramRegistry },
+			PrepareStatus);
 	}
 
 	std::string CompletionStatus;
@@ -2228,9 +2251,14 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 		pVisualProgramProjection,
 	std::string& strOutStatus)
 {
+	const std::shared_ptr<const CEffectMaterialProgramRegistry>
+		MaterialProgramRegistry =
+			CEffectCatalog::Acquire_MaterialProgramRegistry();
 	if (nullptr == pDevice || nullptr == pContext ||
 		0u == iCatalogRevision || strEffectAssetId.empty() ||
 		nullptr == pDocument ||
+		nullptr == MaterialProgramRegistry ||
+		MaterialProgramRegistry->Get_CatalogRevision() != iCatalogRevision ||
 		pDocument->strEffectAssetId != strEffectAssetId ||
 		CEffectCatalog::Get_RuntimeRevision() != iCatalogRevision ||
 		g_ProductPrewarmQueue.Get_CatalogRevision() != iCatalogRevision ||
@@ -2315,7 +2343,8 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 	if (!CEffectDocumentRenderer::Replace_VisualProgramTarget(
 			std::move(pDevice), std::move(pContext), iCatalogRevision,
 			{ strEffectAssetId, std::move(pDocument),
-				std::move(pVisualProgramProjection) }, strOutStatus))
+				std::move(pVisualProgramProjection), MaterialProgramRegistry },
+			strOutStatus))
 	{
 		g_strStatus = strOutStatus;
 		return false;

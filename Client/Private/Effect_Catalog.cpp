@@ -2,6 +2,7 @@
 
 #include "DataJson.h"
 #include "Effect_DocumentCodec.h"
+#include "Effect_MaterialProgramRegistry.h"
 #include "Effect_OccurrenceTuning.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "ProjectDataRoot.h"
@@ -54,6 +55,8 @@ namespace
 	std::map<std::string,
 		std::shared_ptr<const Client::EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>,
 		std::less<>> g_ScreenOverlayProductBindings;
+	std::shared_ptr<const Client::CEffectMaterialProgramRegistry>
+		g_pMaterialProgramRegistry;
     uint64_t g_iRuntimeRevision = 0u;
 	uint32_t g_iCatalogOwnerThreadId = 0u;
     std::string g_strStatus = "Effect catalog has not been loaded.";
@@ -3621,6 +3624,8 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		Root, "components", DATA_JSON_TYPE::ARRAY);
     const DATA_JSON_VALUE* pEffects = Required(
         Root, "effects", DATA_JSON_TYPE::ARRAY);
+	const DATA_JSON_VALUE* pMaterialPrograms =
+		Root.Find("materialPrograms");
 	const DATA_JSON_VALUE* pVisualProgramSidecarRequired =
 		Root.Find("visualProgramSidecarRequired");
 	const bool_t bVisualProgramSidecarMarkerValid =
@@ -3635,15 +3640,30 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 			{ "schema", "formatVersion", "components", "effects" }) ||
 		Has_ExactOrderedKeys(Root, { "schema", "formatVersion",
 			"visualProgramSidecarRequired", "components", "effects" });
-	const bool_t bDerivedCatalog = bIntegralCatalogVersion &&
+	const bool_t bVersion3Catalog = bIntegralCatalogVersion &&
 		3.0 == pVersion->Get_Number() && nullptr != pSchema &&
 		pSchema->Get_String() == "lostark.effect-runtime-catalog" &&
 		bVisualProgramSidecarMarkerValid &&
 		bPlainDerivedCatalog;
+	const bool_t bPlainMaterialProgramCatalog =
+		Has_ExactOrderedKeys(Root, { "schema", "formatVersion",
+			"materialPrograms", "components", "effects" }) ||
+		Has_ExactOrderedKeys(Root, { "schema", "formatVersion",
+			"visualProgramSidecarRequired", "materialPrograms",
+			"components", "effects" });
+	const bool_t bVersion4Catalog = bIntegralCatalogVersion &&
+		4.0 == pVersion->Get_Number() && nullptr != pSchema &&
+		pSchema->Get_String() == "lostark.effect-runtime-catalog" &&
+		bVisualProgramSidecarMarkerValid &&
+		nullptr != pMaterialPrograms && pMaterialPrograms->Is_Object() &&
+		bPlainMaterialProgramCatalog;
+	const bool_t bDerivedCatalog = bVersion3Catalog || bVersion4Catalog;
     if ((!bLegacyCatalog && !bDerivedCatalog) ||
 		nullptr == pComponents || nullptr == pEffects)
     {
-        strOutStatus = "Effect runtime catalog must be legacy formatVersion 2 or typed formatVersion 3.";
+		strOutStatus =
+			"Effect runtime catalog must be legacy formatVersion 2, typed "
+			"formatVersion 3, or material-program formatVersion 4.";
         g_strStatus = strOutStatus;
         return false;
     }
@@ -3681,6 +3701,19 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		return false;
 	}
 	const uint64_t iStagedCatalogRevision = g_iRuntimeRevision + 1u;
+	std::shared_ptr<const CEffectMaterialProgramRegistry>
+		StagedMaterialProgramRegistry = bVersion4Catalog ?
+			CEffectMaterialProgramRegistry::Create(
+				*pMaterialPrograms, iStagedCatalogRevision,
+				iStagedCatalogRevision, Error) :
+			CEffectMaterialProgramRegistry::Create_Empty(
+				iStagedCatalogRevision, iStagedCatalogRevision, Error);
+	if (nullptr == StagedMaterialProgramRegistry)
+	{
+		strOutStatus = "Effect material-program registry rejected: " + Error;
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	for (const DATA_JSON_VALUE& ComponentValue : pComponents->Get_Array())
 	{
 		EFFECT_COMPONENT_DESC Component;
@@ -4006,6 +4039,73 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
         }
     }
 
+	/* A Binding is part of the catalog transaction, so its stable target and
+	   inline golden packet must be proven before the new registry generation is
+	   committed.  Bound direct-authored documents are staged eagerly here; all
+	   unbound documents retain the existing lazy path. */
+	for (const EFFECT_MATERIAL_PROGRAM_BINDING_TARGET& Target :
+		StagedMaterialProgramRegistry->Get_BindingTargets())
+	{
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> TargetDocument;
+		const auto StagedDocument = Staged.find(Target.strEffectAssetId);
+		if (StagedDocument != Staged.end())
+		{
+			TargetDocument = StagedDocument->second;
+		}
+		else
+		{
+			const auto DirectSource = StagedDirectAuthoredSources.find(
+				Target.strEffectAssetId);
+			EFFECT_DOCUMENT_DESC ParsedDocument;
+			if (DirectSource == StagedDirectAuthoredSources.end() ||
+				nullptr == DirectSource->second ||
+				!Parse_DirectAuthoredRuntimeDocument(
+					Target.strEffectAssetId, *DirectSource->second,
+					ParsedDocument, Error))
+			{
+				strOutStatus =
+					"Effect material-program Binding target rejected: " +
+					Target.strEffectAssetId + "/" + Target.strElementId +
+					(Error.empty() ? std::string(" is not a staged document") :
+						std::string("; ") + Error);
+				g_strStatus = strOutStatus;
+				return false;
+			}
+			TargetDocument = std::make_shared<const EFFECT_DOCUMENT_DESC>(
+				std::move(ParsedDocument));
+			if (!Staged.emplace(
+					Target.strEffectAssetId, TargetDocument).second)
+			{
+				strOutStatus =
+					"Effect material-program Binding target staging collided: " +
+					Target.strEffectAssetId;
+				g_strStatus = strOutStatus;
+				return false;
+			}
+		}
+
+		const auto Element = std::find_if(
+			TargetDocument->Elements.begin(), TargetDocument->Elements.end(),
+			[&Target](const EFFECT_ELEMENT_DESC& Candidate)
+			{
+				return Candidate.strElementId == Target.strElementId;
+			});
+		const std::shared_ptr<const EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>
+			Resolved = StagedMaterialProgramRegistry->Resolve(
+				Target.strEffectAssetId, Target.strElementId);
+		if (Element == TargetDocument->Elements.end() || nullptr == Resolved ||
+			!CEffectMaterialProgramRegistry::Is_ExecutionBitExact(
+				Resolved->Execution, Element->Material.Execution))
+		{
+			strOutStatus =
+				"Effect material-program Binding target or inline golden packet "
+				"mismatched: " + Target.strEffectAssetId + "/" +
+				Target.strElementId;
+			g_strStatus = strOutStatus;
+			return false;
+		}
+	}
+
 	// A formatVersion 3 catalog and its visual-program sidecar are one
 	// transaction.  The legacy marker remains parse-compatible, but it is not
 	// runtime authority: false must never discard an otherwise valid sidecar.
@@ -4132,6 +4232,7 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 	g_VisualProjections = std::move(StagedVisualProjections);
 	g_ScreenOverlayProductBindings =
 		std::move(StagedScreenOverlayProductBindings);
+	g_pMaterialProgramRegistry = std::move(StagedMaterialProgramRegistry);
 	g_iRuntimeRevision = iStagedCatalogRevision;
 	g_iCatalogOwnerThreadId = static_cast<uint32_t>(GetCurrentThreadId());
 	const size_t iLazyDirectDocumentCount = std::count_if(
@@ -4150,7 +4251,9 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 		std::to_string(g_VisualPrograms.size()) +
 		" matched visual programs, and " +
 		std::to_string(g_VisualProjections.size()) +
-		" committed visual projections; sealed direct documents pending first "
+		" committed visual projections, " +
+		std::to_string(g_pMaterialProgramRegistry->Get_BindingCount()) +
+		" material-program bindings; sealed direct documents pending first "
 		"use=" + std::to_string(iLazyDirectDocumentCount) + ").";
     strOutStatus = g_strStatus;
 	StatusGuard.bCommitted = true;
@@ -4830,6 +4933,12 @@ std::vector<std::string> Client::CEffectCatalog::Get_VisualProgramAssetIds()
 	return Result;
 }
 
+std::shared_ptr<const Client::CEffectMaterialProgramRegistry>
+Client::CEffectCatalog::Acquire_MaterialProgramRegistry()
+{
+	return g_pMaterialProgramRegistry;
+}
+
 uint64_t Client::CEffectCatalog::Get_RuntimeRevision()
 {
     return g_iRuntimeRevision;
@@ -4852,6 +4961,7 @@ void Client::CEffectCatalog::Clear()
 	g_VisualPrograms.clear();
 	g_VisualProjections.clear();
 	g_ScreenOverlayProductBindings.clear();
+	g_pMaterialProgramRegistry.reset();
 	g_iCatalogOwnerThreadId = 0u;
     g_strStatus = "Effect catalog cleared.";
 }

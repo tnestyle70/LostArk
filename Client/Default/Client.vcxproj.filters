@@ -348,6 +348,9 @@
     <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\Effect_MaterialProgramRegistry.cpp">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\Effect_DirectAuthoredSourceIndex.cpp">
       <Filter>03. Tools\02. Effect</Filter>
     </ClCompile>
@@ -959,6 +962,9 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_DocumentRenderer.h">
+      <Filter>03. Tools\02. Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\Effect_MaterialProgramRegistry.h">
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\Effect_DirectAuthoredSourceIndex.h">

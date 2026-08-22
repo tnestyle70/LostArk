@@ -28,6 +28,8 @@ $ResourceRoot = [IO.Path]::GetFullPath($ResourceRoot)
 $OutputPath = [IO.Path]::GetFullPath($OutputPath)
 $visualProgramSourcePath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
     'Effects\VisualPrograms\effect-visual-program-runtime.v1.json'))
+$materialProgramSourcePath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
+    'Effects\MaterialPrograms\effect-material-program-registry.v1.json'))
 $visualProgramOutputPath = [IO.Path]::GetFullPath((Join-Path `
     (Split-Path -Parent $OutputPath) 'EffectVisualPrograms.runtime.json'))
 $catalogPath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
@@ -105,7 +107,10 @@ $derivedOutputPaths = @(
         Path = $visualProgramOutputPath
         Label = 'Effect visual-program output'
     })
-$sourceAliases = @($catalogPath, $visualProgramSourcePath)
+$sourceAliases = @(
+    $catalogPath,
+    $visualProgramSourcePath,
+    $materialProgramSourcePath)
 foreach ($derivedOutput in $derivedOutputPaths) {
     Assert-SafeDerivedOutputPath $derivedOutput.Path $derivedOutput.Label `
         $sourceAliases @($DataRoot, $ResourceRoot)
@@ -152,6 +157,8 @@ $reconstructedRenderResourceRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
 $derivedArtifactTool = Join-Path $PSScriptRoot 'build_effect_derived_artifact.py'
 $directAuthoredRuntimeTool = Join-Path $PSScriptRoot `
     'validate_direct_authored_effect_runtime.py'
+$materialProgramRegistryTool = Join-Path $PSScriptRoot `
+    'build_effect_material_program_registry.py'
 $effectDocumentCompactTool = Join-Path $PSScriptRoot `
     'compact_effect_document.py'
 $visualProgramRuntimeTool = Join-Path $PSScriptRoot `
@@ -1346,6 +1353,30 @@ function Invoke-EffectRuntimeCatalogValidation([string]$Path) {
     }
 }
 
+function Invoke-MaterialProgramRegistryBuild {
+    if (-not [IO.File]::Exists($materialProgramRegistryTool)) {
+        throw "Missing material-program registry validator: $materialProgramRegistryTool"
+    }
+    $python = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $python) {
+        throw 'Python is required to validate the Effect material-program registry.'
+    }
+    $registryJson = & $python.Source -B $materialProgramRegistryTool `
+        --source $materialProgramSourcePath `
+        --effect-catalog $catalogPath `
+        --data-root $DataRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw "Effect material-program registry validation failed with exit code $LASTEXITCODE."
+    }
+    $registryText = (@($registryJson) -join "`n").Trim()
+    if ([string]::IsNullOrWhiteSpace($registryText)) {
+        throw 'Effect material-program registry validator returned no document.'
+    }
+    [LostArk.EffectPipeline.StrictJsonObjectKeyScanner]::Validate(
+        $registryText, $materialProgramSourcePath)
+    return $registryText | ConvertFrom-Json
+}
+
 function Invoke-VisualProgramArtifactCheck([string]$Path) {
     if (-not [IO.File]::Exists($visualProgramRuntimeTool)) {
         throw "Missing visual-program runtime validator: $visualProgramRuntimeTool"
@@ -2103,6 +2134,7 @@ try {
 finally {
     $visualProgramSourceDocument = $null
 }
+$materialPrograms = Invoke-MaterialProgramRegistryBuild
 
 $activeProductEffectIds = Get-ActiveProductEffectIds $DataRoot
 if ($activeProductEffectIds.Count -lt 1) {
@@ -3293,39 +3325,30 @@ try {
     $runtimeComponents = @($runtimeComponentsById.GetEnumerator() |
         Sort-Object Key | ForEach-Object { $_.Value })
     $sortedRuntimeEffects = @($runtimeEffects | Sort-Object effectAssetId)
-    if ($hasDerivedRuntime) {
-        $runtimeOutputEffects = @($sortedRuntimeEffects | ForEach-Object {
-            if ([string]$_.payloadKind -cin @(
-                    'IMMUTABLE_COMPILED_IR',
-                    'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM',
-                    'DIRECT_AUTHORED_DOCUMENT_V13')) {
-                $_
-            }
-            else {
-                [ordered]@{
-                    payloadKind = 'LEGACY_ASSEMBLY_V1'
-                    effectAssetId = $_.effectAssetId
-                    authoringFormatVersion = $_.authoringFormatVersion
-                    contentSha256 = $_.contentSha256
-                    dependencies = $_.dependencies
-                    assembly = $_.assembly
-                }
-            }
-        })
-        $runtime = [ordered]@{
-            schema = 'lostark.effect-runtime-catalog'
-            formatVersion = 3
-            components = $runtimeComponents
-            effects = $runtimeOutputEffects
+    $runtimeOutputEffects = @($sortedRuntimeEffects | ForEach-Object {
+        if ([string]$_.payloadKind -cin @(
+                'IMMUTABLE_COMPILED_IR',
+                'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM',
+                'DIRECT_AUTHORED_DOCUMENT_V13')) {
+            $_
         }
-    }
-    else {
-        $runtimeOutputEffects = $sortedRuntimeEffects
-        $runtime = [ordered]@{
-            formatVersion = 2
-            components = $runtimeComponents
-            effects = $runtimeOutputEffects
+        else {
+            [ordered]@{
+                payloadKind = 'LEGACY_ASSEMBLY_V1'
+                effectAssetId = $_.effectAssetId
+                authoringFormatVersion = $_.authoringFormatVersion
+                contentSha256 = $_.contentSha256
+                dependencies = $_.dependencies
+                assembly = $_.assembly
+            }
         }
+    })
+    $runtime = [ordered]@{
+        schema = 'lostark.effect-runtime-catalog'
+        formatVersion = 4
+        materialPrograms = $materialPrograms
+        components = $runtimeComponents
+        effects = $runtimeOutputEffects
     }
     $json = $runtime | ConvertTo-Json -Depth 100 -Compress
     $runtimeCatalogMaximumBytes = 256 * 1024 * 1024
@@ -3335,12 +3358,11 @@ try {
             "$runtimeCatalogUtf8Bytes > $runtimeCatalogMaximumBytes")
     }
     if ($Mode -ceq 'Validate') {
-        if ($hasDerivedRuntime) {
-            Invoke-EffectRuntimeCatalogValidationBundle `
-                $json $directAuthoredRuntimeFilesByPath
-        }
+        Invoke-EffectRuntimeCatalogValidationBundle `
+            $json $directAuthoredRuntimeFilesByPath
         Write-Host (
             "PASS: validated $($runtimeEffects.Count) Effect catalog entries " +
+            "with $(@($materialPrograms.bindings).Count) material-program bindings " +
             "and $($visualProgramSourcePath) visual-program sidecar.")
         return
     }
@@ -3386,21 +3408,23 @@ try {
         finally {
             $stagedVisualProgramDocument = $null
         }
-        if ($hasDerivedRuntime) {
-            Invoke-EffectRuntimeCatalogValidationBundle `
-                $json $directAuthoredRuntimeFilesByPath
-        }
+        Invoke-EffectRuntimeCatalogValidationBundle `
+            $json $directAuthoredRuntimeFilesByPath
         $roundTrip = Read-JsonDocument $temporary
         try {
             $roundEffects = @(Get-RequiredProperty $roundTrip 'effects' Array)
             $roundComponents = @(Get-RequiredProperty $roundTrip 'components' Array)
-            $expectedFormat = if ($hasDerivedRuntime) { 3 } else { 2 }
+            $roundMaterialPrograms = Get-RequiredProperty `
+                $roundTrip 'materialPrograms' Object
+            $expectedFormat = 4
             if ([int](Get-RequiredProperty $roundTrip 'formatVersion' Number) -ne
                     $expectedFormat -or
                 $roundEffects.Count -ne $runtimeEffects.Count -or
                 $roundComponents.Count -ne $runtimeComponents.Count) {
                 throw 'Generated runtime catalog failed round-trip validation.'
             }
+            Assert-JsonEquivalent $materialPrograms $roundMaterialPrograms `
+                '$.materialPrograms'
             $expectedById = @{}
             foreach ($expected in $runtimeOutputEffects) {
                 $expectedById[[string]$expected.effectAssetId] = $expected

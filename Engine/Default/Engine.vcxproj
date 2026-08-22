@@ -219,6 +219,7 @@
     <ClInclude Include="..\public\Prototype_Manager.h" />
     <ClInclude Include="..\Public\PresentationProvider.h" />
     <ClInclude Include="..\Public\Presentation_Manager.h" />
+    <ClInclude Include="..\Public\Render_OutputContract.h" />
     <ClInclude Include="..\public\Renderer.h" />
     <ClInclude Include="..\public\RenderTarget.h" />
     <ClInclude Include="..\Public\RigidBody.h" />
@@ -292,6 +293,7 @@
     <ClCompile Include="..\private\Prototype.cpp" />
     <ClCompile Include="..\private\Prototype_Manager.cpp" />
     <ClCompile Include="..\private\Renderer.cpp" />
+    <ClCompile Include="..\Private\Render_OutputContract.cpp" />
     <ClCompile Include="..\private\RenderTarget.cpp" />
     <ClCompile Include="..\Private\RigidBody.cpp" />
     <ClCompile Include="..\private\Shader.cpp" />
