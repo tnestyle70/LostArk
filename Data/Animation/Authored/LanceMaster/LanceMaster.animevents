@@ -1,4 +1,4 @@
-LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3134
+LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3136
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력끝" src=orig
 "flm_att_battle_compete_1_loop" CANCEL startms=0 endms=5000 payload="입력없음" src=orig
 "flm_att_battle_compete_1_loop" EFFECT startms=0 payload="FX_PC_Confront_00.Par_J_GuardHolding_04" src=orig
@@ -3101,6 +3101,8 @@ LOSTARK_ANIM_EVENTS 5 "LanceMaster" 3134
 "flm_sk_chestdestruction_04" EFFECT startms=0 payload="effect.lancemaster.skill.34140.ba2.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_counterattack_01" EFFECT startms=0 payload="effect.lancemaster.skill.34580.ba1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_counterattack_02" EFFECT startms=0 payload="effect.lancemaster.skill.34580.ba2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"flm_sk_crescentsweep" EFFECT startms=0 payload="effect.lancemaster.skill.34110.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
+"flm_sk_crushingblow" EFFECT startms=0 payload="effect.lancemaster.skill.34150.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_cycloinclance_01" EFFECT startms=0 payload="effect.lancemaster.skill.34100.clip1.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_cycloinclance_02" EFFECT startms=0 payload="effect.lancemaster.skill.34100.clip2.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
 "flm_sk_cycloinclance_03_re" EFFECT startms=0 payload="effect.lancemaster.skill.34100.clip3.unified" effectref=asset anchor="root" follow=follow stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1
