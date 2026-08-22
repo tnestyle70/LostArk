@@ -9,6 +9,12 @@
     "effectAssetId": "effect.dimensionmaster.skill.2050120.clip3.unified"
   },
   "inputs": {
+    "authoredEffectDocument": {
+      "repoRelativePath": "Data/Effects/Authored/effect.dimensionmaster.skill.2050120.clip3.unified.effect.json",
+      "schema": "lostark.effect-authoring",
+      "version": 13,
+      "effectAssetId": "effect.dimensionmaster.skill.2050120.clip3.unified"
+    },
     "officialRefShaderCache": {
       "fileName": "EV2LG3OVEH3HGV7THTFFTM7TOKMCC.v974.upk",
       "physicalByteSize": 245114448,
@@ -116,6 +122,29 @@
         "expectedDxbc": {
           "byteSize": 7584,
           "sha256": "e2ba1c1ef87cdd52cc74a8e661f8613d0b17f2cc7b9b1d0d7ab6ed80ec6e775b"
+        }
+      },
+      "expectedSourceEmitterVertexFactoryPass": {
+        "occurrenceId": "authored.source-particle.40e1b48e2f0f88dcfeff1549",
+        "requiredModule": {
+          "boffsetcenter": true,
+          "screenalignment": "psa_rectangle"
+        },
+        "dynamicModule": {
+          "className": "particlemoduleparameterdynamic",
+          "updateflags": 15
+        },
+        "vertexFactoryType": "fparticleoffsetcenterdynamicparametervertexfactory",
+        "densityPolicy": "NO_DENSITY_AUTHORING_BOUNDED",
+        "vertexShaderType": "tbasepassvertexshaderfnolightmappolicyfnodensitypolicy",
+        "vertexShaderIdHex": "2dd6d96a7e6c974fac82106409a5b9b8",
+        "expectedDxbc": {
+          "byteSize": 6500,
+          "sha256": "defae822f429760d30e0bfd31cef8c1217af8d7e43f794be6b42e85e6552995b"
+        },
+        "expectedConstantBufferFloat4Counts": {
+          "0": 27,
+          "1": 5
         }
       }
     },
@@ -293,6 +322,7 @@
     "expectedBlockedCount": 1,
     "expectedExactDxbcCount": 5,
     "expectedExactNativeBindingCount": 5,
+    "expectedSourceEmitterVertexFactoryPassCount": 1,
     "parentDefaultFallbackCount": 0
   }
 }

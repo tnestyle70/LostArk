@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Join UE3 MaterialInstanceConstant static sets to exact cooked shader maps.
 
-This is the class-neutral cooked Material recovery path through G03-3.  It:
+This is the class-neutral cooked Material recovery path through G03-6.  It:
 
 * read a pinned source MIC and decode its native ``FStaticParameterSet``;
 * join that set to exactly one map in a pinned RefShaderCache using the Lost
@@ -15,6 +15,10 @@ This is the class-neutral cooked Material recovery path through G03-3.  It:
   declarations;
 * fail closed when a MIC has no native static resource instead of silently
   selecting its parent's default map.
+* for manifest-declared canaries, join an authored emitter ``sourceRecipe``
+  to one exact particle vertex factory and an authoring-bounded NoDensity
+  BasePass vertex shader, then close its output signature to the selected
+  pixel shader input signature.
 
 The frozen Artist 31470 extractors remain unchanged.  This tool reuses their
 already-proven binary primitives, but owns no character-, skill-, family-,
@@ -101,6 +105,8 @@ POLICY_REQUIRE_NATIVE = "REQUIRE_MIC_NATIVE_FSTATICPARAMETERSET"
 POLICY_BLOCK_ABSENT = "BLOCK_IF_MIC_HAS_NO_NATIVE_STATIC_RESOURCE"
 STATUS_EXACT = "EXACT_MATERIAL_SHADER_MAP"
 STATUS_BLOCKED = "BLOCKED_NO_EFFECTIVE_STATIC_SET_ABI_EVIDENCE"
+DENSITY_NO_DENSITY_AUTHORING_BOUNDED = "NO_DENSITY_AUTHORING_BOUNDED"
+SOURCE_EMITTER_VF_PASS_FIELD = "expectedSourceEmitterVertexFactoryPass"
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -158,10 +164,30 @@ def validate_target_manifest(document: dict[str, Any]) -> list[dict[str, Any]]:
     require(isinstance(targets, list) and targets, "target manifest targets are absent")
     require(isinstance(summary, dict), "target manifest summary is absent")
     cache = inputs.get("officialRefShaderCache")
+    authored = inputs.get("authoredEffectDocument")
     sources = inputs.get("sourcePackages")
     policies = document.get("vertexFactoryPolicies")
     native_policy = document.get("nativeShaderObjectBindingPolicy")
     require(isinstance(cache, dict), "official RefShaderCache identity is absent")
+    require(isinstance(authored, dict), "authored effect-document input is absent")
+    authored_path_text = str(authored.get("repoRelativePath", ""))
+    authored_path = Path(authored_path_text)
+    require(
+        authored_path_text
+        and not authored_path.is_absolute()
+        and ".." not in authored_path.parts
+        and authored_path.as_posix() == authored_path_text,
+        "authored effect-document path must be repository-relative POSIX",
+    )
+    require(
+        authored.get("schema") == "lostark.effect-authoring"
+        and isinstance(authored.get("version"), int)
+        and isinstance(authored.get("effectAssetId"), str)
+        and authored["effectAssetId"]
+        and authored.get("effectAssetId")
+        == document.get("identity", {}).get("effectAssetId"),
+        "authored effect-document identity is invalid",
+    )
     require(isinstance(sources, list) and sources, "source-package identities are absent")
     require(isinstance(policies, dict) and policies, "vertex-factory policies are absent")
     require(
@@ -188,6 +214,7 @@ def validate_target_manifest(document: dict[str, Any]) -> list[dict[str, Any]]:
 
     target_ids: set[str] = set()
     occurrence_ids: set[str] = set()
+    expected_source_emitter_vf_pass_count = 0
     for target in targets:
         require(isinstance(target, dict), "target row is invalid")
         target_id = str(target.get("targetId", ""))
@@ -237,6 +264,87 @@ def validate_target_manifest(document: dict[str, Any]) -> list[dict[str, Any]]:
             )
             occurrence_ids.add(occurrence_id)
 
+        source_vf_pass = target.get(SOURCE_EMITTER_VF_PASS_FIELD)
+        if source_vf_pass is not None:
+            expected_source_emitter_vf_pass_count += 1
+            require(
+                isinstance(source_vf_pass, dict),
+                f"source emitter VF/pass contract is invalid: {target_id}",
+            )
+            require(
+                renderer_type == "SpriteParticle"
+                and target.get("expectedStatus") == STATUS_EXACT,
+                f"source emitter VF/pass requires an exact SpriteParticle target: {target_id}",
+            )
+            source_occurrence_id = source_vf_pass.get("occurrenceId")
+            require(
+                source_occurrence_id in rows,
+                f"source emitter VF/pass occurrence is not owned by target: {target_id}",
+            )
+            required_module = source_vf_pass.get("requiredModule")
+            dynamic_module = source_vf_pass.get("dynamicModule")
+            require(
+                isinstance(required_module, dict)
+                and isinstance(required_module.get("boffsetcenter"), bool)
+                and isinstance(required_module.get("screenalignment"), str),
+                f"source Required module contract is invalid: {target_id}",
+            )
+            require(
+                isinstance(dynamic_module, dict)
+                and isinstance(dynamic_module.get("className"), str)
+                and dynamic_module["className"].casefold()
+                == "particlemoduleparameterdynamic"
+                and isinstance(dynamic_module.get("updateflags"), int)
+                and not isinstance(dynamic_module.get("updateflags"), bool),
+                f"source DynamicParameter module contract is invalid: {target_id}",
+            )
+            require(
+                source_vf_pass.get("densityPolicy")
+                == DENSITY_NO_DENSITY_AUTHORING_BOUNDED,
+                f"source vertex pass must remain authoring-bounded NoDensity: {target_id}",
+            )
+            require(
+                all(
+                    isinstance(source_vf_pass.get(field), str)
+                    and source_vf_pass[field]
+                    for field in (
+                        "vertexFactoryType",
+                        "vertexShaderType",
+                        "vertexShaderIdHex",
+                    )
+                ),
+                f"source emitter VF/pass identity is incomplete: {target_id}",
+            )
+            vertex_shader_id = str(source_vf_pass["vertexShaderIdHex"])
+            require(
+                len(vertex_shader_id) == 32,
+                f"source vertex shader ID is invalid: {target_id}",
+            )
+            bytes.fromhex(vertex_shader_id)
+            expected_dxbc = source_vf_pass.get("expectedDxbc")
+            require(
+                isinstance(expected_dxbc, dict)
+                and isinstance(expected_dxbc.get("byteSize"), int)
+                and expected_dxbc["byteSize"] > 0
+                and len(str(expected_dxbc.get("sha256", ""))) == 64,
+                f"source vertex shader DXBC identity is invalid: {target_id}",
+            )
+            bytes.fromhex(str(expected_dxbc["sha256"]))
+            expected_cbs = source_vf_pass.get(
+                "expectedConstantBufferFloat4Counts"
+            )
+            require(
+                isinstance(expected_cbs, dict)
+                and expected_cbs
+                and all(
+                    str(register).isdigit()
+                    and isinstance(count, int)
+                    and count > 0
+                    for register, count in expected_cbs.items()
+                ),
+                f"source vertex shader constant-buffer contract is invalid: {target_id}",
+            )
+
     require(
         summary.get("targetCount") == len(targets),
         "target manifest target denominator changed",
@@ -264,7 +372,48 @@ def validate_target_manifest(document: dict[str, Any]) -> list[dict[str, Any]]:
         == summary.get("expectedExactCount"),
         "target manifest exact native-binding denominator changed",
     )
+    require(
+        summary.get("expectedSourceEmitterVertexFactoryPassCount")
+        == expected_source_emitter_vf_pass_count,
+        "target manifest source emitter VF/pass denominator changed",
+    )
     return targets
+
+
+def load_authored_effect_document(
+    expected: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Load one repository-owned authored document without an absolute fallback."""
+
+    repo_relative_path = str(expected["repoRelativePath"])
+    path = (REPOSITORY_ROOT / Path(repo_relative_path)).resolve()
+    try:
+        actual_relative_path = path.relative_to(REPOSITORY_ROOT).as_posix()
+    except ValueError as error:
+        raise ValueError("authored effect document escapes the repository") from error
+    require(
+        actual_relative_path == repo_relative_path,
+        "authored effect-document path changed after resolution",
+    )
+    require(path.is_file(), f"authored effect document is missing: {path}")
+    document = read_json(path)
+    require(
+        document.get("schema") == expected["schema"]
+        and document.get("version") == expected["version"]
+        and document.get("effectAssetId") == expected["effectAssetId"],
+        "authored effect-document identity changed",
+    )
+    require(
+        isinstance(document.get("elements"), list),
+        "authored effect-document elements are absent",
+    )
+    return document, {
+        "repoRelativePath": repo_relative_path,
+        "rawSha256": digest_file(path),
+        "schema": document["schema"],
+        "version": document["version"],
+        "effectAssetId": document["effectAssetId"],
+    }
 
 
 def find_exact_export(package: Any, target: dict[str, Any]) -> Any:
@@ -1032,6 +1181,380 @@ def select_structural_vf_pass_candidate(
     }
 
 
+def _module_literals(module: dict[str, Any]) -> dict[str, Any]:
+    rows = module.get("literals")
+    require(isinstance(rows, list), "source module literals are absent")
+    result: dict[str, Any] = {}
+    for row in rows:
+        require(isinstance(row, dict), "source module literal row is invalid")
+        path = str(row.get("propertyPath", "")).casefold()
+        require(path and path not in result, "source module literal path is duplicated")
+        result[path] = row.get("value")
+    return result
+
+
+def _unique_source_module(
+    modules: list[dict[str, Any]], class_name: str
+) -> dict[str, Any]:
+    matches = [
+        row
+        for row in modules
+        if isinstance(row, dict)
+        and str(row.get("className", "")).casefold() == class_name.casefold()
+    ]
+    require(
+        len(matches) == 1,
+        f"source module is absent or ambiguous: {class_name}",
+    )
+    return matches[0]
+
+
+def derive_particle_sprite_vertex_factory_type(
+    *, boffsetcenter: bool, has_dynamic_parameter_module: bool
+) -> str:
+    """Project the two source flags that select this UE3 particle VF branch."""
+
+    require(
+        has_dynamic_parameter_module,
+        "source DynamicParameter module is required by this VF contract",
+    )
+    return (
+        "fparticleoffsetcenterdynamicparametervertexfactory"
+        if boffsetcenter
+        else "fparticledynamicparametervertexfactory"
+    )
+
+
+def select_source_emitter_vertex_factory_pass(
+    authored_document: dict[str, Any],
+    target: dict[str, Any],
+    material_map: dict[str, Any],
+) -> dict[str, Any]:
+    """Join one authored sourceRecipe to one exact VF row and vertex pass."""
+
+    expected = target.get(SOURCE_EMITTER_VF_PASS_FIELD)
+    require(isinstance(expected, dict), "source emitter VF/pass contract is absent")
+    occurrence_id = expected["occurrenceId"]
+    elements = [
+        row
+        for row in authored_document.get("elements", [])
+        if isinstance(row, dict) and row.get("id") == occurrence_id
+    ]
+    require(
+        len(elements) == 1,
+        f"authored source occurrence is absent or ambiguous: {occurrence_id}",
+    )
+    element = elements[0]
+    require(
+        element.get("kind") == "particle",
+        "authored source VF occurrence is not a particle",
+    )
+    require(
+        element.get("material", {}).get("sourceMaterialPath")
+        == target["sourceMaterialPath"],
+        "authored source occurrence material differs from target",
+    )
+    recipe = element.get("sourceRecipe")
+    require(
+        isinstance(recipe, dict)
+        and recipe.get("enabled") is True
+        and str(recipe.get("rendererShape", "")).casefold() == "sprite",
+        "authored source occurrence has no enabled sprite sourceRecipe",
+    )
+    modules = recipe.get("modules")
+    require(isinstance(modules, list), "authored sourceRecipe modules are absent")
+
+    required_module = _unique_source_module(modules, "particlemodulerequired")
+    required_literals = _module_literals(required_module)
+    for path, value in expected["requiredModule"].items():
+        require(
+            required_literals.get(path.casefold()) == value,
+            f"source Required module literal changed: {path}",
+        )
+
+    dynamic_class = expected["dynamicModule"]["className"]
+    dynamic_module = _unique_source_module(modules, dynamic_class)
+    dynamic_literals = _module_literals(dynamic_module)
+    updateflags = dynamic_literals.get("updateflags")
+    require(
+        isinstance(updateflags, int)
+        and not isinstance(updateflags, bool)
+        and updateflags == expected["dynamicModule"]["updateflags"],
+        "source DynamicParameter updateflags changed",
+    )
+
+    selected_vf_type = derive_particle_sprite_vertex_factory_type(
+        boffsetcenter=required_literals["boffsetcenter"],
+        has_dynamic_parameter_module=True,
+    )
+    require(
+        selected_vf_type.casefold() == expected["vertexFactoryType"].casefold(),
+        "source module combination selected a different vertex factory",
+    )
+    vf_rows = [
+        row
+        for row in material_map["vertexFactories"]
+        if row["vertexFactoryType"].casefold() == selected_vf_type.casefold()
+    ]
+    require(
+        len(vf_rows) == 1,
+        "selected emitter vertex-factory row is absent or ambiguous",
+    )
+    vertex_references = [
+        row
+        for row in vf_rows[0]["shaderReferences"]
+        if row["shaderType"].casefold()
+        == expected["vertexShaderType"].casefold()
+    ]
+    require(
+        len(vertex_references) == 1,
+        "selected emitter NoDensity vertex shader is absent or ambiguous",
+    )
+    selected_reference = vertex_references[0]
+    require(
+        selected_reference["shaderIdHex"] == expected["vertexShaderIdHex"],
+        "selected emitter NoDensity vertex shader identity changed",
+    )
+    rejected_competitors = sorted(
+        row["vertexFactoryType"]
+        for row in material_map["vertexFactories"]
+        if row["vertexFactoryType"].casefold().startswith("fparticle")
+        and row["vertexFactoryType"].casefold() != selected_vf_type.casefold()
+    )
+    return {
+        "occurrenceId": occurrence_id,
+        "sourceRecipe": {
+            "rendererShape": recipe["rendererShape"],
+            "requiredModule": {
+                "stableId": required_module.get("stableId"),
+                "className": required_module.get("className"),
+                "boffsetcenter": required_literals["boffsetcenter"],
+                "screenalignment": required_literals["screenalignment"],
+            },
+            "dynamicModule": {
+                "stableId": dynamic_module.get("stableId"),
+                "className": dynamic_module.get("className"),
+                "updateflags": updateflags,
+            },
+        },
+        "sourceEmitterVertexFactorySelection": {
+            "selectionRule": (
+                "PARTICLE_REQUIRED_BOFFSETCENTER_PLUS_DYNAMIC_PARAMETER_MODULE"
+            ),
+            "vertexFactoryType": selected_vf_type,
+            "rejectedCompetingVertexFactoryTypes": rejected_competitors,
+        },
+        "authoringVertexPassSelection": {
+            "densityPolicy": expected["densityPolicy"],
+            "vertexShaderType": selected_reference["shaderType"],
+            "vertexShaderIdHex": selected_reference["shaderIdHex"],
+        },
+        "selectedVertexShaderReference": dict(selected_reference),
+    }
+
+
+def dxbc_chunk_payloads(bytecode: bytes) -> dict[str, bytes]:
+    require(bytecode[:4] == b"DXBC" and len(bytecode) >= 32, "DXBC header is invalid")
+    total_size, count = struct.unpack_from("<II", bytecode, 24)
+    require(total_size == len(bytecode), "DXBC total size changed")
+    require(32 + count * 4 <= len(bytecode), "DXBC chunk table is truncated")
+    result: dict[str, bytes] = {}
+    for index in range(count):
+        offset = struct.unpack_from("<I", bytecode, 32 + index * 4)[0]
+        require(offset + 8 <= len(bytecode), "DXBC chunk header is truncated")
+        four_cc = bytecode[offset : offset + 4].decode("ascii", "strict")
+        size = struct.unpack_from("<I", bytecode, offset + 4)[0]
+        require(offset + 8 + size <= len(bytecode), "DXBC chunk is truncated")
+        require(four_cc not in result, f"DXBC chunk is duplicated: {four_cc}")
+        result[four_cc] = bytecode[offset + 8 : offset + 8 + size]
+    return result
+
+
+def parse_dxbc_signature(payload: bytes) -> list[dict[str, Any]]:
+    require(len(payload) >= 8, "DXBC signature payload is truncated")
+    count, reserved = struct.unpack_from("<II", payload, 0)
+    require(reserved in (0, 8), "DXBC signature header changed")
+    require(8 + count * 24 <= len(payload), "DXBC signature rows are truncated")
+    rows = []
+    for index in range(count):
+        offset = 8 + index * 24
+        (
+            name_offset,
+            semantic_index,
+            system_value,
+            component_type,
+            register,
+            mask,
+            read_write_mask,
+            stream,
+        ) = struct.unpack_from("<5I2BH", payload, offset)
+        require(name_offset < len(payload), "DXBC semantic name offset is invalid")
+        end = payload.find(b"\0", name_offset)
+        require(end >= 0, "DXBC semantic name is unterminated")
+        require(mask != 0 and mask <= 0xF, "DXBC signature mask is invalid")
+        rows.append(
+            {
+                "semanticName": payload[name_offset:end].decode("ascii", "strict"),
+                "semanticIndex": semantic_index,
+                "systemValueType": system_value,
+                "componentType": component_type,
+                "register": register,
+                "mask": mask,
+                "readWriteMask": read_write_mask,
+                "stream": stream,
+            }
+        )
+    return rows
+
+
+def parse_vertex_shader_declaration_closure(
+    disassembly: dict[str, Any],
+) -> dict[str, Any]:
+    profile = str(disassembly.get("profile", ""))
+    require(profile.startswith("vs_"), "selected BasePass shader is not a vertex shader")
+    counts: dict[str, int] = {}
+    for line in disassembly.get("declarations", []):
+        for match in re.finditer(r"\bcb(\d+)\[(\d+)\]", line, re.IGNORECASE):
+            register, count = match.groups()
+            require(register not in counts, "vertex DXBC constant buffer is duplicated")
+            counts[register] = int(count)
+    require(counts, "vertex DXBC constant-buffer declarations are absent")
+    return {
+        "profile": profile,
+        "constantBufferFloat4Counts": dict(
+            sorted(counts.items(), key=lambda row: int(row[0]))
+        ),
+        "normalizedDisassemblySha256": disassembly["normalizedDisassemblySha256"],
+        "declarationSha256": disassembly["declarationSha256"],
+        "instructionSha256": disassembly["instructionSha256"],
+        "instructionCount": disassembly["instructionCount"],
+    }
+
+
+def close_vertex_pixel_signatures(
+    vertex_outputs: list[dict[str, Any]],
+    pixel_inputs: list[dict[str, Any]],
+) -> dict[str, Any]:
+    producers: dict[tuple[str, int], list[dict[str, Any]]] = {}
+    for row in vertex_outputs:
+        key = (row["semanticName"].casefold(), row["semanticIndex"])
+        producers.setdefault(key, []).append(row)
+    links = []
+    rasterizer_owned = 0
+    for consumer in pixel_inputs:
+        if (
+            consumer["systemValueType"] == 9
+            or consumer["semanticName"].casefold() == "sv_isfrontface"
+        ):
+            rasterizer_owned += 1
+            continue
+        key = (consumer["semanticName"].casefold(), consumer["semanticIndex"])
+        candidates = producers.get(key, [])
+        require(
+            len(candidates) == 1,
+            f"vertex output semantic is absent or ambiguous: {key}",
+        )
+        producer = candidates[0]
+        require(
+            producer["componentType"] == consumer["componentType"],
+            f"vertex/pixel semantic component type changed: {key}",
+        )
+        require(
+            producer["mask"] & consumer["mask"] == consumer["mask"],
+            f"vertex output mask does not cover pixel input: {key}",
+        )
+        links.append(
+            {
+                "semanticName": consumer["semanticName"],
+                "semanticIndex": consumer["semanticIndex"],
+                "producerRegister": producer["register"],
+                "producerMask": producer["mask"],
+                "consumerRegister": consumer["register"],
+                "consumerMask": consumer["mask"],
+                "componentType": consumer["componentType"],
+            }
+        )
+    require(links, "vertex/pixel signature closure has no linked semantics")
+    return {
+        "linkedSemanticCount": len(links),
+        "rasterizerOwnedSystemValueCount": rasterizer_owned,
+        "links": links,
+        "pass": True,
+    }
+
+
+def validate_expected_vertex_shader_identity(
+    extracted: dict[str, Any], expected: dict[str, Any]
+) -> None:
+    expected_dxbc = expected["expectedDxbc"]
+    require(
+        extracted["shaderType"] == expected["vertexShaderType"]
+        and extracted["shaderIdHex"] == expected["vertexShaderIdHex"],
+        "exact vertex shader reference identity changed",
+    )
+    require(
+        extracted.get("exactOneDxbcContainer") is True
+        and extracted["dxbc"]["byteSize"] == expected_dxbc["byteSize"]
+        and extracted["dxbc"]["sha256"] == expected_dxbc["sha256"],
+        "exact vertex shader DXBC identity changed",
+    )
+
+
+def complete_source_emitter_vertex_factory_pass(
+    selection: dict[str, Any],
+    expected: dict[str, Any],
+    vertex_shader: dict[str, Any],
+    pixel_shader: dict[str, Any],
+    disassembler: D3DDisassembler,
+) -> dict[str, Any]:
+    validate_expected_vertex_shader_identity(vertex_shader, expected)
+    vertex_bytecode = vertex_shader["_bytecode"]
+    pixel_bytecode = pixel_shader["_bytecode"]
+    declaration_closure = parse_vertex_shader_declaration_closure(
+        disassembler.disassemble(vertex_bytecode)
+    )
+    require(
+        declaration_closure["constantBufferFloat4Counts"]
+        == expected["expectedConstantBufferFloat4Counts"],
+        "exact vertex shader constant-buffer declarations changed",
+    )
+    vertex_chunks = dxbc_chunk_payloads(vertex_bytecode)
+    pixel_chunks = dxbc_chunk_payloads(pixel_bytecode)
+    require(
+        "ISGN" in vertex_chunks
+        and "OSGN" in vertex_chunks
+        and "ISGN" in pixel_chunks,
+        "vertex/pixel signature chunks are absent",
+    )
+    vertex_inputs = parse_dxbc_signature(vertex_chunks["ISGN"])
+    vertex_outputs = parse_dxbc_signature(vertex_chunks["OSGN"])
+    pixel_inputs = parse_dxbc_signature(pixel_chunks["ISGN"])
+    signature_closure = close_vertex_pixel_signatures(vertex_outputs, pixel_inputs)
+    public_vertex_shader = {
+        key: value for key, value in vertex_shader.items() if not key.startswith("_")
+    }
+    return {
+        **selection,
+        "exactVertexShader": public_vertex_shader,
+        "vertexShaderDeclarationClosure": declaration_closure,
+        "vertexShaderInputSignature": vertex_inputs,
+        "vertexShaderOutputSignature": vertex_outputs,
+        "selectedPixelShaderInputSignature": pixel_inputs,
+        "vertexPixelSignatureClosure": signature_closure,
+        "admission": {
+            "sourceEmitterVertexFactorySelection": True,
+            "exactVertexShaderBlob": True,
+            "exactVertexPixelSignatureClosure": True,
+            "authoringNoDensityPass": True,
+            "rawVertexShaderExecution": False,
+            "sourceExactVertexCb": False,
+            "productVfPass": False,
+            "runtime": False,
+            "visual": False,
+        },
+    }
+
+
 def extract_selected_packed_dxbc(
     package: dict[str, Any],
     layout: dict[str, Any],
@@ -1664,6 +2187,9 @@ def build_receipt(
     targets = validate_target_manifest(targets_document)
     inputs = targets_document["inputs"]
     vf_policies = targets_document["vertexFactoryPolicies"]
+    authored_document, authored_identity = load_authored_effect_document(
+        inputs["authoredEffectDocument"]
+    )
 
     source_rows = {
         row["fileName"].casefold(): row for row in inputs["sourcePackages"]
@@ -1778,16 +2304,23 @@ def build_receipt(
             target["expectedStatus"] == STATUS_EXACT,
             f"unexpected exact target: {target['targetId']}",
         )
-        final_targets.append(
-            {
-                **decoded,
-                "status": STATUS_EXACT,
-                "baseMaterialScan": scan,
-                "materialMap": material_map,
-                "structuralVfPassCandidate": structural_selection,
-                "parentDefaultFallbackApplied": False,
-            }
-        )
+        final_target = {
+            **decoded,
+            "status": STATUS_EXACT,
+            "baseMaterialScan": scan,
+            "materialMap": material_map,
+            "structuralVfPassCandidate": structural_selection,
+            "parentDefaultFallbackApplied": False,
+        }
+        if SOURCE_EMITTER_VF_PASS_FIELD in target:
+            final_target["sourceEmitterVertexFactoryPass"] = (
+                select_source_emitter_vertex_factory_pass(
+                    authored_document,
+                    target,
+                    material_map,
+                )
+            )
+        final_targets.append(final_target)
         exact_count += 1
 
     selected_references = [
@@ -1795,7 +2328,19 @@ def build_receipt(
         for target in final_targets
         if target["status"] == STATUS_EXACT
     ]
-    exact_dxbc = extract_selected_packed_dxbc(cache, layout, selected_references)
+    selected_vertex_references = [
+        target["sourceEmitterVertexFactoryPass"]["selectedVertexShaderReference"]
+        for target in final_targets
+        if isinstance(target.get("sourceEmitterVertexFactoryPass"), dict)
+    ]
+    exact_dxbc = extract_selected_packed_dxbc(
+        cache,
+        layout,
+        selected_references + selected_vertex_references,
+    )
+    unique_pixel_shader_ids = {
+        row["shaderIdHex"] for row in selected_references
+    }
     exact_dxbc_count = 0
     for target in final_targets:
         if target["status"] != STATUS_EXACT:
@@ -1825,6 +2370,30 @@ def build_receipt(
         exact_dxbc_count += 1
 
     disassembler = D3DDisassembler(d3dcompiler_path)
+    source_emitter_vf_pass_count = 0
+    for target in final_targets:
+        selection = target.get("sourceEmitterVertexFactoryPass")
+        if not isinstance(selection, dict):
+            continue
+        manifest_target = targets_by_id[target["targetId"]]
+        expected = manifest_target[SOURCE_EMITTER_VF_PASS_FIELD]
+        vertex_shader_id = selection["selectedVertexShaderReference"][
+            "shaderIdHex"
+        ]
+        pixel_shader_id = target["structuralVfPassCandidate"][
+            "selectedPixelPassReference"
+        ]["shaderIdHex"]
+        target["sourceEmitterVertexFactoryPass"] = (
+            complete_source_emitter_vertex_factory_pass(
+                selection,
+                expected,
+                exact_dxbc[vertex_shader_id],
+                exact_dxbc[pixel_shader_id],
+                disassembler,
+            )
+        )
+        source_emitter_vf_pass_count += 1
+
     selected_objects = extract_selected_shader_objects(
         cache,
         layout,
@@ -1917,24 +2486,37 @@ def build_receipt(
         exact_dxbc_count == summary["expectedExactDxbcCount"],
         "exact DXBC result denominator changed",
     )
-    native_binding_result = (
-        "PASS_G03_3_EXPECTED_EXACT_NATIVE_BINDINGS_AND_SLICE_BLOCKED"
+    require(
+        source_emitter_vf_pass_count
+        == summary["expectedSourceEmitterVertexFactoryPassCount"],
+        "source emitter VF/pass result denominator changed",
+    )
+    overall_result = (
+        "PASS_G03_6_EXACT_NATIVE_BINDINGS_AND_SOURCE_EMITTER_VF_PASS_EVIDENCE"
         if exact_native_binding_count == summary["expectedExactNativeBindingCount"]
         and blocked_native_binding_count == 0
-        else "BLOCKED_G03_3_ONE_OR_MORE_FAMILIES_LACK_UNIQUE_NATIVE_BINDING_CLOSURE"
+        else "BLOCKED_G03_6_NATIVE_BINDING_OR_SOURCE_EMITTER_VF_PASS_EVIDENCE"
     )
     receipt = {
         "schema": RECEIPT_SCHEMA,
         "formatVersion": RECEIPT_FORMAT_VERSION,
         "identity": targets_document["identity"],
         "scope": {
-            "stage": "G03_3_EXACT_NATIVE_SHADER_OBJECT_BINDING_CLOSURE",
+            "stage": "G03_6_SOURCE_EMITTER_VF_NO_DENSITY_VERTEX_PASS_EVIDENCE",
             "classNeutralExtractor": True,
             "runtimeAdmission": False,
             "visualAdmission": False,
             "dxbcExtracted": True,
             "nativeShaderObjectBindingsDecoded": True,
             "nativeShaderObjectBindingRuntimeAdmission": False,
+            "sourceEmitterVertexFactorySelection": True,
+            "exactVertexShaderBlob": True,
+            "exactVertexPixelSignatureClosure": True,
+            "authoringNoDensityPass": True,
+            "densityPolicy": DENSITY_NO_DENSITY_AUTHORING_BOUNDED,
+            "rawVertexShaderExecution": False,
+            "sourceExactVertexCb": False,
+            "productVfPass": False,
             "installedShaderCacheRead": False,
             "installedShaderCachePolicy": "EXCLUDED_PINNED_V974_IS_AUTHORITATIVE",
         },
@@ -1951,6 +2533,7 @@ def build_receipt(
                 ).as_posix(),
                 "rawSha256": digest_file(Path(__file__).resolve()),
             },
+            "authoredEffectDocument": authored_identity,
             "sourcePackages": source_identities,
             "d3dcompiler": disassembler.identity,
         },
@@ -1967,12 +2550,20 @@ def build_receipt(
             "parentDefaultFallbackCount": 0,
             "uniformExpressionSetDecodedCount": exact_count,
             "exactPixelShaderDxbcCount": exact_dxbc_count,
-            "uniqueExactPixelShaderDxbcCount": len(exact_dxbc),
+            "uniqueExactPixelShaderDxbcCount": len(unique_pixel_shader_ids),
+            "sourceEmitterVertexFactorySelectionCount": source_emitter_vf_pass_count,
+            "exactVertexShaderBlobCount": source_emitter_vf_pass_count,
+            "exactVertexPixelSignatureClosureCount": source_emitter_vf_pass_count,
+            "authoringNoDensityPassCount": source_emitter_vf_pass_count,
+            "rawVertexShaderExecutionCount": 0,
+            "sourceExactVertexCbCount": 0,
+            "productVfPassCount": 0,
             "exactNativeShaderObjectBindingCount": exact_native_binding_count,
             "blockedNativeShaderObjectBindingCount": blocked_native_binding_count,
             "actualVfPassAdmissionCount": 0,
             "runtimeAdmissionCount": 0,
-            "result": native_binding_result,
+            "visualAdmissionCount": 0,
+            "result": overall_result,
         },
     }
     seal(receipt)

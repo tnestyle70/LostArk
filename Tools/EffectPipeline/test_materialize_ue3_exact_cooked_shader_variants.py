@@ -170,6 +170,17 @@ def fixture(renderer_type: str = "SpriteParticle") -> tuple[dict, dict, dict, di
                 "materialRows": material_rows,
                 "allRows": all_rows,
                 "materialRowsSemanticSha256": "1" * 64,
+                "nativeScalarGroupPackingEvidence": {
+                    "fidelity": "EPIC_PACKED_SCALAR_ABI_CORROBORATED_BUT_TARGET_PADDING_UNRESOLVED",
+                    "nativeScalarGroupPackingSourceClosed": False,
+                    "sourceExactAdmission": False,
+                    "targetPaddingFreeCorroborationAdmission": False,
+                    "targetPaddingFree": False,
+                    "selectedGroupCount": 1,
+                    "completeGroupCount": 0,
+                    "partialGroupCount": 1,
+                    "packedLittleEndianSha256": None,
+                },
             },
         },
     }
@@ -187,9 +198,38 @@ def fixture(renderer_type: str = "SpriteParticle") -> tuple[dict, dict, dict, di
                 "bindingFidelity": "SOURCE_EXACT",
                 "sourceTexture2D": {
                     "samplerAndColorSpace": {
-                        "addressU": {"value": "ta_clamp"},
-                        "addressV": {"valueCandidate": "ta_wrap"},
-                        "colorSpace": {"valueCandidate": "srgb"},
+                        "addressU": {
+                            "value": "ta_clamp",
+                            "sourceExact": True,
+                            "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                        },
+                        "addressV": {
+                            "value": None,
+                            "sourceExact": False,
+                            "valueCandidate": "ta_wrap",
+                            "candidateFidelity": "EXPLICIT_FIXTURE_CANDIDATE",
+                        },
+                        "filterSelector": {
+                            "value": "tf_linear",
+                            "sourceExact": True,
+                            "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                        },
+                        "hardwareFilter": {
+                            "value": None,
+                            "sourceExact": False,
+                            "valueCandidate": "linear",
+                            "candidateFidelity": "EXPLICIT_FIXTURE_CANDIDATE",
+                        },
+                        "colorSpace": {
+                            "value": "srgb",
+                            "sourceExact": True,
+                            "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                        },
+                        "sourceExactColorSpace": True,
+                        "sourceExactFilterSelector": True,
+                        "sourceExactAddressAxisCount": 1,
+                        "sourceExactHardwareFilter": False,
+                        "sourceExactSamplerAndColorSpace": False,
                     }
                 },
                 "ddsIdentity": {
@@ -206,9 +246,73 @@ def fixture(renderer_type: str = "SpriteParticle") -> tuple[dict, dict, dict, di
         ],
         "sourceExactTextureBindingAdmission": True,
         "runtimeDdsParityAdmission": True,
+        "sourceExactSamplerAdmission": False,
+        "sourceValueTextureSamplerAdmission": False,
+        "sourceExactColorSpaceBindingCount": 1,
+        "sourceExactFilterSelectorBindingCount": 1,
+        "sourceExactAddressAxisCount": 1,
+        "sourceExactAddressAxisDenominator": 2,
+        "sourceExactHardwareFilterBindingCount": 0,
         "blockers": ["FILTER_TF_DEFAULT_TEXTURELODSETTINGS_UNRESOLVED"],
     }
     return exact, replay, uniform, texture, bytecode
+
+
+def add_vertex_sidecar(exact: dict, bytecode: bytes) -> None:
+    digest = target.sha256_bytes(bytecode)
+    exact["sourceEmitterVertexFactoryPass"] = {
+        "occurrenceId": "fixture-occurrence-never-projected",
+        "sourceRecipe": {
+            "rendererShape": "sprite",
+            "requiredModule": {
+                "stableId": "fixture-required-never-projected",
+                "className": "particlemodulerequired",
+                "boffsetcenter": True,
+                "screenalignment": "psa_rectangle",
+            },
+            "dynamicModule": {
+                "stableId": "fixture-dynamic-never-projected",
+                "className": "particlemoduleparameterdynamic",
+                "updateflags": 15,
+            },
+        },
+        "sourceEmitterVertexFactorySelection": {
+            "selectionRule": "PARTICLE_REQUIRED_BOFFSETCENTER_PLUS_DYNAMIC_PARAMETER_MODULE",
+            "vertexFactoryType": "fparticleoffsetcenterdynamicparametervertexfactory",
+            "rejectedCompetingVertexFactoryTypes": [
+                "fparticledynamicparametervertexfactory"
+            ],
+        },
+        "authoringVertexPassSelection": {
+            "densityPolicy": "NO_DENSITY_AUTHORING_BOUNDED",
+            "vertexShaderType": "tbasepassvertexshaderfnolightmappolicyfnodensitypolicy",
+            "vertexShaderIdHex": "fedcba9876543210fedcba9876543210",
+        },
+        "exactVertexShader": {
+            "shaderType": "tbasepassvertexshaderfnolightmappolicyfnodensitypolicy",
+            "shaderIdHex": "fedcba9876543210fedcba9876543210",
+            "dxbc": {"byteSize": len(bytecode), "sha256": digest},
+        },
+        "vertexShaderDeclarationClosure": {
+            "profile": "vs_5_0",
+            "constantBufferFloat4Counts": {"0": 27, "1": 5},
+        },
+        "vertexShaderInputSignature": [{"semanticName": "POSITION", "semanticIndex": 0}],
+        "vertexShaderOutputSignature": [{"semanticName": "TEXCOORD", "semanticIndex": 0}],
+        "selectedPixelShaderInputSignature": [{"semanticName": "TEXCOORD", "semanticIndex": 0}],
+        "vertexPixelSignatureClosure": {"linkedSemanticCount": 1, "pass": True},
+        "admission": {
+            "sourceEmitterVertexFactorySelection": True,
+            "exactVertexShaderBlob": True,
+            "exactVertexPixelSignatureClosure": True,
+            "authoringNoDensityPass": True,
+            "rawVertexShaderExecution": False,
+            "sourceExactVertexCb": False,
+            "productVfPass": False,
+            "runtime": False,
+            "visual": False,
+        },
+    }
 
 
 class MaterializeExactCookedVariantsTests(unittest.TestCase):
@@ -226,8 +330,26 @@ class MaterializeExactCookedVariantsTests(unittest.TestCase):
         self.assertEqual(sampler["fidelity"], target.PREVIEW_FIDELITY)
         self.assertEqual(sampler["addressU"], "clamp")
         self.assertEqual(sampler["addressV"], "wrap")
-        self.assertEqual(sampler["filter"], "linear")
+        self.assertEqual(sampler["hardwareFilter"], "linear")
         self.assertFalse(sampler["sourceExact"])
+        self.assertEqual(
+            sampler["components"]["addressV"]["provenance"],
+            "EXPLICIT_UPSTREAM_PREVIEW_CANDIDATE",
+        )
+
+    def test_unresolved_sampler_does_not_infer_preview_candidate(self) -> None:
+        _, _, _, texture, _ = fixture()
+        binding = texture["uniformTextureBindings"][0]
+        sampler = binding["sourceTexture2D"]["samplerAndColorSpace"]
+        sampler["addressV"].pop("valueCandidate")
+        sampler["hardwareFilter"].pop("valueCandidate")
+        self.assertIsNone(target.preview_sampler(binding))
+        projected = target.slim_texture_binding(binding)
+        partial = projected["sourceExactSamplerPartialEvidence"]
+        self.assertTrue(partial["sourceExactColorSpace"])
+        self.assertTrue(partial["sourceExactFilterSelector"])
+        self.assertFalse(partial["sourceExactHardwareFilter"])
+        self.assertFalse(partial["fullSamplerSourceExact"])
 
     def test_sprite_engine_row_policy_only_supplies_external_opacity(self) -> None:
         _, _, uniform, _, _ = fixture()
@@ -267,6 +389,36 @@ class MaterializeExactCookedVariantsTests(unittest.TestCase):
         )
         self.assertNotIn("SOURCE_EXACT", scalar_row["fidelity"])
 
+    def test_padding_free_scalar_rows_project_corroborated_lane_order_only(self) -> None:
+        _, _, uniform, _, _ = fixture()
+        cb0 = uniform["sourceValueUniformEvaluation"]["nativeCb0"]
+        cb0["materialRows"][0]["source"] = "PIXEL_SCALAR_EXPRESSION_GROUP"
+        packing = cb0["nativeScalarGroupPackingEvidence"]
+        packing.update(
+            {
+                "fidelity": "EPIC_PACKED_SCALAR_ABI_CORROBORATED_AND_TARGET_PADDING_FREE",
+                "targetPaddingFreeCorroborationAdmission": True,
+                "targetPaddingFree": True,
+                "completeGroupCount": 1,
+                "partialGroupCount": 0,
+                "packedLittleEndianSha256": "3" * 64,
+            }
+        )
+        rows = target.preview_cb0_rows(
+            cb0, target.engine_row_policy("SpriteParticle", cb0)
+        )
+        scalar_row = next(
+            row for row in rows
+            if row.get("source") == "PIXEL_SCALAR_EXPRESSION_GROUP"
+        )
+        self.assertEqual(
+            scalar_row["fidelity"], target.TARGET_PADDING_FREE_SCALAR_FIDELITY
+        )
+        projection = target.scalar_packing_projection(cb0)
+        self.assertTrue(projection["targetPaddingFreeCorroborationAdmission"])
+        self.assertFalse(projection["nativeScalarGroupPackingSourceClosed"])
+        self.assertFalse(projection["sourceExactAdmission"])
+
     def test_one_rt0_variant_is_candidate_but_never_admitted(self) -> None:
         exact, replay, uniform, texture, bytecode = fixture()
         variant = target.build_variant(exact, replay, uniform, texture, bytecode)
@@ -293,6 +445,32 @@ class MaterializeExactCookedVariantsTests(unittest.TestCase):
         variant = target.build_variant(exact, replay, uniform, texture, bytecode)
         self.assertFalse(variant["admission"]["authoringPreviewCandidate"])
 
+    def test_exact_vertex_sidecar_keeps_execution_and_product_closed(self) -> None:
+        exact, replay, uniform, texture, pixel_bytecode = fixture()
+        vertex_bytecode = b"DXBC-vertex-fixture"
+        add_vertex_sidecar(exact, vertex_bytecode)
+        variant = target.build_variant(
+            exact, replay, uniform, texture, pixel_bytecode, vertex_bytecode
+        )
+        evidence = variant["sourceEmitterVertexFactoryPassEvidence"]
+        self.assertEqual(
+            evidence["sourceEmitterVertexFactorySelection"]["vertexFactoryType"],
+            "fparticleoffsetcenterdynamicparametervertexfactory",
+        )
+        self.assertEqual(
+            evidence["authoringVertexPassSelection"]["densityPolicy"],
+            "NO_DENSITY_AUTHORING_BOUNDED",
+        )
+        self.assertEqual(
+            evidence["vertexShader"]["sha256"],
+            target.sha256_bytes(vertex_bytecode),
+        )
+        self.assertTrue(evidence["vertexPixelSignatureClosure"]["pass"])
+        self.assertFalse(evidence["admission"]["rawVertexShaderExecution"])
+        self.assertFalse(evidence["admission"]["sourceExactVertexCb"])
+        self.assertFalse(evidence["admission"]["productVfPass"])
+        self.assertNotIn("occurrenceId", set(target.iter_keys(variant)))
+
     def test_contract_validation_rejects_selector_keys(self) -> None:
         exact, replay, uniform, texture, bytecode = fixture()
         variant = target.build_variant(exact, replay, uniform, texture, bytecode)
@@ -318,6 +496,75 @@ class MaterializeExactCookedVariantsTests(unittest.TestCase):
         }
         contract["contractSha256"] = target.canonical_json_sha256(contract)
         target.validate_contract(contract, {target.sha256_bytes(bytecode): bytecode})
+
+    def test_tracked_contract_projects_glass_g03_6_evidence_fail_closed(self) -> None:
+        contract = target.read_json(target.DEFAULT_OUTPUT)
+        blobs = {}
+        for variant in contract["variants"]:
+            shaders = [variant["pixelShader"]]
+            vertex_pass = variant["sourceEmitterVertexFactoryPassEvidence"]
+            if vertex_pass is not None:
+                shaders.append(vertex_pass["vertexShader"])
+            for shader in shaders:
+                blobs[shader["sha256"]] = (
+                    target.REPOSITORY_ROOT / shader["repositoryRelativePath"]
+                ).read_bytes()
+        target.validate_contract(contract, blobs)
+        summary = contract["summary"]
+        self.assertEqual(summary["variantCount"], 5)
+        self.assertEqual(summary["uniquePixelShaderBlobCount"], 5)
+        self.assertEqual(summary["exactVertexShaderSidecarCount"], 1)
+        self.assertEqual(summary["targetPaddingFreeScalarCorroborationCount"], 1)
+        self.assertEqual(summary["sourceExactSamplerAdmissionCount"], 0)
+        self.assertEqual(summary["productRuntimeAdmissionCount"], 0)
+        glass = next(
+            variant for variant in contract["variants"]
+            if "glasshole.02" in variant["familyId"]
+        )
+        packing = glass["sourceValueUniformExpressions"][
+            "nativeScalarGroupPackingEvidence"
+        ]
+        self.assertTrue(packing["targetPaddingFreeCorroborationAdmission"])
+        self.assertFalse(packing["nativeScalarGroupPackingSourceClosed"])
+        self.assertFalse(packing["sourceExactAdmission"])
+        self.assertEqual(
+            packing["packedLittleEndianSha256"],
+            "23e40670db53319d0c8a013b9f63866c4ed6aa16afdb4837db3a9c0c242e356d",
+        )
+        scalar_rows = [
+            row for row in glass["authoringPreviewInputs"]["timeZeroCb0Rows"]
+            if row.get("source") == "PIXEL_SCALAR_EXPRESSION_GROUP"
+        ]
+        self.assertEqual(len(scalar_rows), 8)
+        self.assertTrue(
+            all(
+                row["fidelity"] == target.TARGET_PADDING_FREE_SCALAR_FIDELITY
+                for row in scalar_rows
+            )
+        )
+        self.assertEqual(glass["authoringPreviewInputs"]["samplers"], [])
+        self.assertTrue(glass["admission"]["sourceExactColorSpace"])
+        self.assertTrue(glass["admission"]["sourceExactFilterSelector"])
+        self.assertFalse(glass["admission"]["sourceExactSampler"])
+        vertex_pass = glass["sourceEmitterVertexFactoryPassEvidence"]
+        self.assertEqual(vertex_pass["vertexShader"]["byteCount"], 6500)
+        self.assertEqual(
+            vertex_pass["vertexShader"]["sha256"],
+            "defae822f429760d30e0bfd31cef8c1217af8d7e43f794be6b42e85e6552995b",
+        )
+        self.assertEqual(
+            vertex_pass["vertexShaderDeclarationClosure"][
+                "constantBufferFloat4Counts"
+            ],
+            {"0": 27, "1": 5},
+        )
+        self.assertEqual(
+            vertex_pass["vertexPixelSignatureClosure"]["linkedSemanticCount"], 8
+        )
+        self.assertFalse(vertex_pass["admission"]["rawVertexShaderExecution"])
+        self.assertFalse(vertex_pass["admission"]["productVfPass"])
+        self.assertFalse(glass["admission"]["productRuntime"])
+        self.assertFalse(glass["admission"]["visual"])
 
 
 if __name__ == "__main__":

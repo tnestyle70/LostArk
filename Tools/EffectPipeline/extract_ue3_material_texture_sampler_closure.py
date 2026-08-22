@@ -9,12 +9,13 @@ this tool joins, in order:
 * raw MIC texture overrides keyed by the full ``FName`` (base + number);
 * uniform-expression index -> native t/s binding wire;
 * the exact source Texture2D export and authenticated extracted DDS bytes; and
-* serialized Texture2D address/filter/sRGB fields.
+* serialized Texture2D address/filter/sRGB fields; and
+* the official v975 Engine Texture CDO/UEnum source-revision defaults.
 
-Omitted Texture2D properties are deliberately not promoted to source-exact
-sampler state.  The receipt records the UE3 native-constructor candidate and a
-blocker until the matching source-revision CDO/TextureLODSettings configuration
-is available.  Authored generic resource slots are never consulted.
+Texture properties use one precedence rule: serialized Texture2D property,
+source-revision CDO serialized property, then unresolved native constructor.
+The protected TextureLODSettings hardware-filter projection remains blocked.
+Authored generic resource slots are never consulted.
 """
 
 from __future__ import annotations
@@ -86,6 +87,94 @@ DEFAULT_RAW_DDS_ROOT = DEFAULT_RAW_DDS_RECEIPT.parent
 DEFAULT_RUNTIME_TEXTURE_ROOT = (
     REPOSITORY_ROOT / "Client/Bin/Resources/Effect/DimensionMaster/Textures"
 )
+DEFAULT_OFFICIAL_V975_ROOT = Path(
+    "C:/Users/user/Desktop/Resource_LostArk/01_Extracted/Effect/ARTIST/"
+    "31470_TrackA_20260812/OfficialRefShaderCacheV974"
+)
+DEFAULT_OFFICIAL_V975_MANIFEST = DEFAULT_OFFICIAL_V975_ROOT / "45_975.json"
+DEFAULT_OFFICIAL_V975_ENGINE_PACKAGE = (
+    DEFAULT_OFFICIAL_V975_ROOT / "NE1FENCQ4UNE9ZPRENOQS.v975.u"
+)
+
+OFFICIAL_V975_MANIFEST_SHA256 = (
+    "331bfb3ef14cafc5a31f9006bc7590540589d61718527f2668eeb58ee7ec96e9"
+)
+OFFICIAL_V975_ENGINE_LOGICAL_PATH = "/EFGame/ReleasePC/NE1FENCQ4UNE9ZPRENOQS.u"
+OFFICIAL_V975_ENGINE_PHYSICAL_SHA256 = (
+    "3b6de4c2cf785174d3cbeb8c9b31bdec846bf51737bcee0887160dcf64d58c3f"
+)
+OFFICIAL_V975_ENGINE_LOGICAL_SHA256 = (
+    "b64c0d72c5d7479c9a98cd3ea40b085341894a30c8694a0e9b6bcee91d6964fd"
+)
+OFFICIAL_V975_ENGINE_RAW_MD5 = "d24d1cb9e034558aec501a4adbc7553d"
+OFFICIAL_V975_ENGINE_RAW_BYTE_SIZE = 1_397_047
+OFFICIAL_V975_ENGINE_PACKED_MD5 = "cb27c7febb8553208465913a9f5415f5"
+OFFICIAL_V975_ENGINE_PACKED_BYTE_SIZE = 1_142_697
+
+SOURCE_REVISION_CDO_EXPECTATIONS = {
+    "Default__Texture": {
+        "className": "texture",
+        "exportIndexZeroBased": 9747,
+        "archetypePath": "Default__Surface",
+        "serialOffset": 3_754_293,
+        "serialByteSize": 351,
+        "serialSha256": (
+            "630d85dd8451cd9be1cbafbb75422f08b2e854e04b62ced8fd7ec03a6a2e6516"
+        ),
+        "propertyStreamSha256": (
+            "c727a72743714d4d891a03ac8185556839359086c447e92434a89c7acc9ee9d8"
+        ),
+    },
+    "Default__Texture2D": {
+        "className": "texture2d",
+        "exportIndexZeroBased": 9831,
+        "archetypePath": "Default__Texture",
+        "serialOffset": 3_758_613,
+        "serialByteSize": 101,
+        "serialSha256": (
+            "6fa2b3c999339b71b228a3fb1c8ec5d5c4dba920fedc1a93004bcfd568e1c086"
+        ),
+        "propertyStreamSha256": (
+            "5c387eee6f93eccc70116ca9e5f4434dbe9179d5647d6efc01862aeaa00ed64e"
+        ),
+    },
+}
+
+SOURCE_REVISION_ENUM_EXPECTATIONS = {
+    "TextureFilter": {
+        "exportIndexZeroBased": 9661,
+        "serialOffset": 3_749_475,
+        "serialByteSize": 44,
+        "serialSha256": (
+            "84074bed4c695561388b0d3f1488b6adff2b212989fec65a999ab8d7461a8a93"
+        ),
+        "values": ["TF_Nearest", "TF_Linear", "TF_MAX"],
+    },
+    "TextureAddress": {
+        "exportIndexZeroBased": 9662,
+        "serialOffset": 3_749_519,
+        "serialByteSize": 52,
+        "serialSha256": (
+            "5c0eb6470a0f5d244ccf84d265c38ec3ed6456c02cb50c6ea502d02dbca03aff"
+        ),
+        "values": ["TA_Wrap", "TA_Clamp", "TA_Mirror", "TA_MAX"],
+    },
+    "TextureGroup": {
+        "exportIndexZeroBased": 9663,
+        "serialOffset": 3_749_571,
+        "serialByteSize": 284,
+        "serialSha256": (
+            "69b375fdbf273f59fde2efae75d047d25089a198dec8797c52e6b386138211e3"
+        ),
+        "valueCount": 33,
+        "requiredOrdinals": {
+            "TEXTUREGROUP_Effects": 13,
+            "TEXTUREGROUP_EffectsNotFiltered": 14,
+            "TEXTUREGROUP_EffectsNormalMap": 31,
+            "TEXTUREGROUP_MAX": 32,
+        },
+    },
+}
 
 
 def folded(value: Any) -> str:
@@ -104,6 +193,14 @@ def sha256_bytes(value: bytes) -> str:
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while payload := stream.read(1024 * 1024):
+            digest.update(payload)
+    return digest.hexdigest()
+
+
+def md5_file(path: Path) -> str:
+    digest = hashlib.md5()
     with path.open("rb") as stream:
         while payload := stream.read(1024 * 1024):
             digest.update(payload)
@@ -132,11 +229,150 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
 
 
 def source_descriptor(path: Path, role: str) -> dict[str, Any]:
+    resolved = path.resolve()
+    try:
+        display_path = resolved.relative_to(REPOSITORY_ROOT.resolve()).as_posix()
+    except ValueError:
+        display_path = resolved.as_posix()
     return {
-        "path": path.as_posix(),
-        "byteSize": path.stat().st_size,
-        "sha256": sha256_file(path),
+        "path": display_path,
+        "byteSize": resolved.stat().st_size,
+        "sha256": sha256_file(resolved),
         "role": role,
+    }
+
+
+def official_manifest_file_evidence(
+    manifest: dict[str, Any], logical_path: str
+) -> dict[str, Any]:
+    matches = []
+    for raw in manifest.get("files", []):
+        require(isinstance(raw, str), "official manifest file row is not text")
+        parts = [part.strip() for part in raw.split("|")]
+        if len(parts) >= 12 and folded(parts[2]) == folded(logical_path):
+            matches.append(parts)
+    require(
+        len(matches) == 1,
+        f"official manifest path is not unique: {logical_path}",
+    )
+    parts = matches[0]
+    require(parts[1] in {"F", "X"}, "official manifest row is not a file")
+    require(parts[5] in {"gz", "xd"}, "official manifest codec changed")
+    return {
+        "manifestOrdinal": int(parts[0]),
+        "entryType": parts[1],
+        "logicalPath": parts[2],
+        "version": int(parts[3]),
+        "sequence": int(parts[4]),
+        "codec": parts[5],
+        "rawByteSize": int(parts[6]),
+        "packedByteSize": int(parts[7]),
+        "rawMd5": parts[8],
+        "packedMd5": parts[9],
+        "cdnRelativePath": f"v{int(parts[3])}/{int(parts[4])}.gz",
+    }
+
+
+def unique_export_by_name(package: Any, object_name: str, class_name: str) -> Any:
+    matches = [
+        entry
+        for entry in package.exports
+        if folded(entry.object_name) == folded(object_name)
+        and folded(
+            package_ref_name(entry.class_index, package.imports, package.exports)
+        )
+        == folded(class_name)
+    ]
+    require(
+        len(matches) == 1,
+        f"expected one {class_name} export named {object_name} (found {len(matches)})",
+    )
+    return matches[0]
+
+
+def enum_export_evidence(
+    package: Any, object_name: str, expectation: dict[str, Any]
+) -> dict[str, Any]:
+    entry = unique_export_by_name(package, object_name, "Enum")
+    serial = package.logical[
+        entry.serial_offset : entry.serial_offset + entry.serial_size
+    ]
+    require(entry.index == expectation["exportIndexZeroBased"], f"{object_name} export index changed")
+    require(entry.serial_offset == expectation["serialOffset"], f"{object_name} serial offset changed")
+    require(entry.serial_size == expectation["serialByteSize"], f"{object_name} serial size changed")
+    require(sha256_bytes(serial) == expectation["serialSha256"], f"{object_name} serial changed")
+    require(len(serial) >= 20, f"{object_name} enum serial is truncated")
+    count = struct.unpack_from("<i", serial, 16)[0]
+    require(count >= 0 and 20 + count * 8 == len(serial), f"{object_name} enum shape changed")
+    values = []
+    for ordinal in range(count):
+        name_index, name_number = struct.unpack_from("<ii", serial, 20 + ordinal * 8)
+        require(0 <= name_index < len(package.names), f"{object_name} enum FName is invalid")
+        require(name_number == 0, f"{object_name} enum FName number changed")
+        values.append(package.names[name_index])
+    if "values" in expectation:
+        require(values == expectation["values"], f"{object_name} values changed")
+    else:
+        require(count == expectation["valueCount"], f"{object_name} value count changed")
+        for value, ordinal in expectation["requiredOrdinals"].items():
+            require(values[ordinal] == value, f"{object_name} ordinal changed: {value}")
+    return {
+        "objectPath": package_ref_path(entry.index + 1, package.imports, package.exports),
+        "exportIndexZeroBased": entry.index,
+        "serialOffset": entry.serial_offset,
+        "serialByteSize": entry.serial_size,
+        "serialSha256": sha256_bytes(serial),
+        "enumPrefixSha256": sha256_bytes(serial[:16]),
+        "valueCount": count,
+        "values": [
+            {"ordinal": ordinal, "name": value}
+            for ordinal, value in enumerate(values)
+        ],
+        "fidelity": "SOURCE_EXACT_V975_UENUM_SERIAL",
+    }
+
+
+def cdo_export_evidence(
+    package: Any, object_name: str, expectation: dict[str, Any]
+) -> dict[str, Any]:
+    entry = unique_export_by_name(package, object_name, expectation["className"])
+    serial = package.logical[
+        entry.serial_offset : entry.serial_offset + entry.serial_size
+    ]
+    require(entry.index == expectation["exportIndexZeroBased"], f"{object_name} export index changed")
+    require(entry.serial_offset == expectation["serialOffset"], f"{object_name} serial offset changed")
+    require(entry.serial_size == expectation["serialByteSize"], f"{object_name} serial size changed")
+    require(sha256_bytes(serial) == expectation["serialSha256"], f"{object_name} serial changed")
+    archetype_path = package_ref_path(
+        entry.archetype_index, package.imports, package.exports
+    )
+    require(archetype_path == expectation["archetypePath"], f"{object_name} archetype changed")
+    records, property_start, property_end = parse_property_records(
+        serial, package.names, package.summary.version
+    )
+    require(
+        sha256_bytes(serial[property_start:property_end])
+        == expectation["propertyStreamSha256"],
+        f"{object_name} property stream changed",
+    )
+    fields = {
+        name: property_evidence(records, name)
+        for name in ("addressx", "addressy", "srgb", "filter", "lodgroup")
+    }
+    return {
+        "objectPath": package_ref_path(entry.index + 1, package.imports, package.exports),
+        "className": expectation["className"],
+        "exportIndexZeroBased": entry.index,
+        "archetypePackageReference": entry.archetype_index,
+        "archetypePath": archetype_path,
+        "serialOffset": entry.serial_offset,
+        "serialByteSize": entry.serial_size,
+        "serialSha256": sha256_bytes(serial),
+        "propertyStreamStart": property_start,
+        "propertyStreamEnd": property_end,
+        "propertyStreamSha256": sha256_bytes(serial[property_start:property_end]),
+        "fields": fields,
+        "fidelity": "SOURCE_EXACT_V975_TEXTURE_CDO_SERIAL",
     }
 
 
@@ -531,88 +767,424 @@ def property_evidence(records: list[dict[str, Any]], name: str) -> dict[str, Any
         "propertyName": row["propertyName"],
         "propertyType": row["propertyType"],
         "value": row.get("value"),
+        "tagOffset": row["tagOffset"],
+        "valueOffset": row["valueOffset"],
+        "recordEndOffset": row["recordEndOffset"],
         "recordSha256": row["recordSha256"],
         "encodedValueSha256": row["encodedValueSha256"],
     }
 
 
-def sampler_projection(fields: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def source_revision_texture_abi_evidence(
+    official_manifest_path: Path, engine_package_path: Path
+) -> dict[str, Any]:
+    require(official_manifest_path.is_file(), f"official manifest missing: {official_manifest_path}")
+    require(engine_package_path.is_file(), f"source Engine package missing: {engine_package_path}")
+    require(
+        sha256_file(official_manifest_path) == OFFICIAL_V975_MANIFEST_SHA256,
+        "official v975 manifest identity changed",
+    )
+    require(
+        sha256_file(engine_package_path) == OFFICIAL_V975_ENGINE_PHYSICAL_SHA256,
+        "official v975 Engine package identity changed",
+    )
+    manifest = read_json(official_manifest_path)
+    require(manifest.get("version_no") == 975, "official manifest revision changed")
+    manifest_row = official_manifest_file_evidence(
+        manifest, OFFICIAL_V975_ENGINE_LOGICAL_PATH
+    )
+    require(manifest_row["version"] == 975, "Engine manifest version changed")
+    require(manifest_row["sequence"] == 14, "Engine manifest sequence changed")
+    require(
+        manifest_row["rawByteSize"] == OFFICIAL_V975_ENGINE_RAW_BYTE_SIZE
+        and manifest_row["rawMd5"] == OFFICIAL_V975_ENGINE_RAW_MD5,
+        "Engine manifest raw identity changed",
+    )
+    require(
+        manifest_row["packedByteSize"] == OFFICIAL_V975_ENGINE_PACKED_BYTE_SIZE
+        and manifest_row["packedMd5"] == OFFICIAL_V975_ENGINE_PACKED_MD5,
+        "Engine manifest packed identity changed",
+    )
+    require(
+        engine_package_path.stat().st_size == manifest_row["rawByteSize"]
+        and md5_file(engine_package_path) == manifest_row["rawMd5"],
+        "Engine package disagrees with official manifest",
+    )
+
+    package = load_package(engine_package_path, LOSTARK_KR_AES_KEY)
+    summary = package.summary
+    require(sha256_bytes(package.logical) == OFFICIAL_V975_ENGINE_LOGICAL_SHA256, "Engine logical package changed")
+    require(
+        summary.version == 868
+        and summary.licensee_version == 16
+        and summary.engine_version == 12097
+        and summary.cooker_version == 136
+        and summary.package_guid_hex == "8fb2f40c3e328a478b44f5e14511c09d"
+        and summary.name_count == 21134
+        and summary.import_count == 185
+        and summary.export_count == 32875,
+        "Engine package summary changed",
+    )
+
+    default_texture = cdo_export_evidence(
+        package,
+        "Default__Texture",
+        SOURCE_REVISION_CDO_EXPECTATIONS["Default__Texture"],
+    )
+    default_texture2d = cdo_export_evidence(
+        package,
+        "Default__Texture2D",
+        SOURCE_REVISION_CDO_EXPECTATIONS["Default__Texture2D"],
+    )
+    require(
+        all(
+            default_texture2d["fields"][name]["status"] == "OMITTED_FROM_EXPORT"
+            for name in ("addressx", "addressy", "srgb", "filter", "lodgroup")
+        ),
+        "Default__Texture2D relevant override set changed",
+    )
+    require(
+        default_texture["fields"]["addressx"]["status"] == "OMITTED_FROM_EXPORT"
+        and default_texture["fields"]["addressy"]["status"] == "OMITTED_FROM_EXPORT"
+        and default_texture["fields"]["lodgroup"]["status"] == "OMITTED_FROM_EXPORT",
+        "Default__Texture native-default boundary changed",
+    )
+    srgb_default = default_texture["fields"]["srgb"]
+    require(
+        srgb_default["status"] == "SERIALIZED_EXPLICIT"
+        and srgb_default["value"] is True
+        and srgb_default["tagOffset"] == 4
+        and srgb_default["valueOffset"] == 28
+        and srgb_default["recordEndOffset"] == 29
+        and srgb_default["recordSha256"]
+        == "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+        "Default__Texture SRGB record changed",
+    )
+    filter_default = default_texture["fields"]["filter"]
+    require(
+        filter_default["status"] == "SERIALIZED_EXPLICIT"
+        and folded(filter_default["value"]) == "tf_linear"
+        and filter_default["tagOffset"] == 191
+        and filter_default["valueOffset"] == 223
+        and filter_default["recordEndOffset"] == 231
+        and filter_default["recordSha256"]
+        == "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+        "Default__Texture Filter record changed",
+    )
+
+    enums = {
+        name: enum_export_evidence(package, name, expectation)
+        for name, expectation in SOURCE_REVISION_ENUM_EXPECTATIONS.items()
+    }
+    require(
+        "tf_default"
+        not in {folded(row["name"]) for row in enums["TextureFilter"]["values"]},
+        "v975 unexpectedly contains TF_Default",
+    )
+
+    effective_defaults: dict[str, dict[str, Any]] = {}
+    for name in ("addressx", "addressy", "srgb", "filter", "lodgroup"):
+        source = None
+        for cdo in (default_texture2d, default_texture):
+            if cdo["fields"][name]["status"] == "SERIALIZED_EXPLICIT":
+                source = cdo
+                break
+        if source is None:
+            effective_defaults[name] = {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+            }
+            continue
+        field = source["fields"][name]
+        effective_defaults[name] = {
+            "status": "SOURCE_REVISION_CDO_SERIALIZED",
+            "declaringCdo": source["objectPath"],
+            "propertyName": field["propertyName"],
+            "propertyType": field["propertyType"],
+            "value": field["value"],
+            "tagOffset": field["tagOffset"],
+            "valueOffset": field["valueOffset"],
+            "recordEndOffset": field["recordEndOffset"],
+            "recordSha256": field["recordSha256"],
+            "encodedValueSha256": field["encodedValueSha256"],
+            "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+        }
+
+    evidence = {
+        "sourceRevision": 975,
+        "officialManifestRow": manifest_row,
+        "enginePackage": {
+            "logicalPath": OFFICIAL_V975_ENGINE_LOGICAL_PATH,
+            "physicalByteSize": engine_package_path.stat().st_size,
+            "physicalMd5": md5_file(engine_package_path),
+            "physicalSha256": sha256_file(engine_package_path),
+            "logicalByteSize": len(package.logical),
+            "logicalSha256": sha256_bytes(package.logical),
+            "packageVersion": summary.version,
+            "licenseeVersion": summary.licensee_version,
+            "engineVersion": summary.engine_version,
+            "cookerVersion": summary.cooker_version,
+            "packageGuidHex": summary.package_guid_hex,
+            "nameCount": summary.name_count,
+            "importCount": summary.import_count,
+            "exportCount": summary.export_count,
+        },
+        "cdoChain": {
+            "precedence": ["Default__Texture2D", "Default__Texture", "native-constructor"],
+            "defaultTexture": default_texture,
+            "defaultTexture2D": default_texture2d,
+        },
+        "effectiveSerializedDefaults": effective_defaults,
+        "enums": enums,
+        "textureLodSettings": {
+            "finalHardwareFilterResolved": False,
+            "status": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED",
+            "fidelity": "BLOCKER_NOT_GENERIC_UE3_ASSUMPTION",
+        },
+        "sourceRevisionCdoClosed": True,
+        "sourceRevisionEnumsClosed": True,
+        "nativeConstructorDefaultsClosed": False,
+        "textureLodSettingsHardwareFilterClosed": False,
+    }
+    validate_source_revision_texture_abi(evidence)
+    return evidence
+
+
+def validate_source_revision_texture_abi(evidence: dict[str, Any]) -> None:
+    require(evidence.get("sourceRevision") == 975, "source revision evidence changed")
+    manifest_row = evidence.get("officialManifestRow", {})
+    require(
+        manifest_row.get("logicalPath") == OFFICIAL_V975_ENGINE_LOGICAL_PATH
+        and manifest_row.get("version") == 975
+        and manifest_row.get("sequence") == 14
+        and manifest_row.get("rawByteSize") == OFFICIAL_V975_ENGINE_RAW_BYTE_SIZE
+        and manifest_row.get("rawMd5") == OFFICIAL_V975_ENGINE_RAW_MD5
+        and manifest_row.get("packedByteSize") == OFFICIAL_V975_ENGINE_PACKED_BYTE_SIZE
+        and manifest_row.get("packedMd5") == OFFICIAL_V975_ENGINE_PACKED_MD5,
+        "official Engine manifest evidence changed",
+    )
+    package = evidence.get("enginePackage", {})
+    require(
+        package.get("physicalByteSize") == OFFICIAL_V975_ENGINE_RAW_BYTE_SIZE
+        and package.get("physicalMd5") == OFFICIAL_V975_ENGINE_RAW_MD5
+        and package.get("physicalSha256") == OFFICIAL_V975_ENGINE_PHYSICAL_SHA256
+        and package.get("logicalByteSize") == 6_093_451
+        and package.get("logicalSha256") == OFFICIAL_V975_ENGINE_LOGICAL_SHA256,
+        "source Engine package evidence changed",
+    )
+    cdo_chain = evidence.get("cdoChain", {})
+    require(
+        cdo_chain.get("precedence")
+        == ["Default__Texture2D", "Default__Texture", "native-constructor"],
+        "source CDO precedence changed",
+    )
+    for key, object_name in (
+        ("defaultTexture", "Default__Texture"),
+        ("defaultTexture2D", "Default__Texture2D"),
+    ):
+        cdo = cdo_chain.get(key, {})
+        expected = SOURCE_REVISION_CDO_EXPECTATIONS[object_name]
+        require(
+            cdo.get("exportIndexZeroBased") == expected["exportIndexZeroBased"]
+            and cdo.get("archetypePath") == expected["archetypePath"]
+            and cdo.get("serialOffset") == expected["serialOffset"]
+            and cdo.get("serialByteSize") == expected["serialByteSize"]
+            and cdo.get("serialSha256") == expected["serialSha256"]
+            and cdo.get("propertyStreamSha256")
+            == expected["propertyStreamSha256"],
+            f"{object_name} receipt identity changed",
+        )
+    defaults = evidence.get("effectiveSerializedDefaults", {})
+    require(
+        defaults.get("srgb", {}).get("status") == "SOURCE_REVISION_CDO_SERIALIZED"
+        and defaults.get("srgb", {}).get("value") is True,
+        "source CDO SRGB default changed",
+    )
+    require(
+        defaults.get("filter", {}).get("status") == "SOURCE_REVISION_CDO_SERIALIZED"
+        and folded(defaults.get("filter", {}).get("value")) == "tf_linear",
+        "source CDO Filter default changed",
+    )
+    require(
+        all(
+            defaults.get(name, {}).get("status") == "NATIVE_CONSTRUCTOR_UNRESOLVED"
+            for name in ("addressx", "addressy", "lodgroup")
+        ),
+        "source native-default boundary changed",
+    )
+    enums = evidence.get("enums", {})
+    for name, expected in SOURCE_REVISION_ENUM_EXPECTATIONS.items():
+        enum = enums.get(name, {})
+        require(
+            enum.get("exportIndexZeroBased") == expected["exportIndexZeroBased"]
+            and enum.get("serialOffset") == expected["serialOffset"]
+            and enum.get("serialByteSize") == expected["serialByteSize"]
+            and enum.get("serialSha256") == expected["serialSha256"],
+            f"{name} receipt identity changed",
+        )
+    filter_values = [
+        row.get("name") for row in enums.get("TextureFilter", {}).get("values", [])
+    ]
+    require(
+        filter_values == SOURCE_REVISION_ENUM_EXPECTATIONS["TextureFilter"]["values"],
+        "TextureFilter enum receipt changed",
+    )
+    address_values = [
+        row.get("name") for row in enums.get("TextureAddress", {}).get("values", [])
+    ]
+    require(
+        address_values == SOURCE_REVISION_ENUM_EXPECTATIONS["TextureAddress"]["values"],
+        "TextureAddress enum receipt changed",
+    )
+    group_rows = enums.get("TextureGroup", {}).get("values", [])
+    require(len(group_rows) == 33, "TextureGroup enum receipt changed")
+    for value, ordinal in SOURCE_REVISION_ENUM_EXPECTATIONS["TextureGroup"][
+        "requiredOrdinals"
+    ].items():
+        require(group_rows[ordinal].get("name") == value, f"TextureGroup receipt ordinal changed: {value}")
+    require(
+        evidence.get("sourceRevisionCdoClosed") is True
+        and evidence.get("sourceRevisionEnumsClosed") is True
+        and evidence.get("nativeConstructorDefaultsClosed") is False
+        and evidence.get("textureLodSettingsHardwareFilterClosed") is False
+        and evidence.get("textureLodSettings", {}).get("finalHardwareFilterResolved") is False,
+        "source revision admission boundary changed",
+    )
+
+
+def sampler_projection(
+    fields: dict[str, dict[str, Any]], source_revision_abi: dict[str, Any]
+) -> dict[str, Any]:
+    defaults = source_revision_abi["effectiveSerializedDefaults"]
+    enum_values = {
+        name: {folded(row["name"]) for row in enum_row["values"]}
+        for name, enum_row in source_revision_abi["enums"].items()
+    }
     blockers: list[str] = []
 
-    def address(field_name: str, blocker: str) -> dict[str, Any]:
+    def effective(field_name: str) -> dict[str, Any]:
         field = fields[field_name]
         if field["status"] == "SERIALIZED_EXPLICIT":
-            token = folded(field.get("value"))
-            require(token in {"ta_wrap", "ta_clamp"}, f"unsupported {field_name}: {token}")
-            return {"value": token, "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY"}
-        blockers.append(blocker)
+            return {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": field.get("value"),
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+            }
+        default = defaults[field_name]
+        if default["status"] == "SOURCE_REVISION_CDO_SERIALIZED":
+            return {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": default.get("value"),
+                "propertySource": default["declaringCdo"],
+                "recordSha256": default["recordSha256"],
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+            }
         return {
-            "valueCandidate": "ta_wrap",
-            "fidelity": "UE3_NATIVE_CONSTRUCTOR_CANDIDATE_NOT_SOURCE_REVISION_CDO",
+            "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+            "value": None,
+            "propertySource": "NATIVE_CONSTRUCTOR",
+            "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
         }
 
-    address_u = address("addressx", "ADDRESS_U_SOURCE_REVISION_CDO_UNRESOLVED")
-    address_v = address("addressy", "ADDRESS_V_SOURCE_REVISION_CDO_UNRESOLVED")
+    def address(field_name: str, blocker: str) -> dict[str, Any]:
+        result = effective(field_name)
+        if result["status"] == "NATIVE_CONSTRUCTOR_UNRESOLVED":
+            blockers.append(blocker)
+            result["sourceExact"] = False
+            return result
+        token = folded(result["value"])
+        require(
+            token in enum_values["TextureAddress"] and token != "ta_max",
+            f"unsupported {field_name}: {token}",
+        )
+        result["value"] = token
+        result["sourceExact"] = True
+        return result
 
-    srgb = fields["srgb"]
-    if srgb["status"] == "SERIALIZED_EXPLICIT":
+    address_u = address("addressx", "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED")
+    address_v = address("addressy", "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED")
+
+    srgb = effective("srgb")
+    if srgb["status"] == "NATIVE_CONSTRUCTOR_UNRESOLVED":
+        blockers.append("COLOR_SPACE_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED")
+        color_space = {**srgb, "sourceExact": False}
+    else:
         require(type(srgb.get("value")) is bool, "Texture2D sRGB is not bool")
         color_space = {
+            **srgb,
             "value": "srgb" if srgb["value"] else "linear",
-            "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
-        }
-    else:
-        blockers.append("COLOR_SPACE_SOURCE_REVISION_CDO_UNRESOLVED")
-        color_space = {
-            "valueCandidate": "srgb",
-            "fidelity": "UE3_NATIVE_CONSTRUCTOR_CANDIDATE_NOT_SOURCE_REVISION_CDO",
+            "sourceExact": True,
         }
 
-    filter_field = fields["filter"]
-    if filter_field["status"] == "SERIALIZED_EXPLICIT":
+    filter_field = effective("filter")
+    if filter_field["status"] == "NATIVE_CONSTRUCTOR_UNRESOLVED":
+        blockers.append("FILTER_SELECTOR_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED")
+        selector = None
+        filter_selector = {**filter_field, "sourceExact": False}
+    else:
         selector = folded(filter_field.get("value"))
         require(
-            selector in {"tf_nearest", "tf_linear", "tf_default"},
-            f"unsupported Texture2D filter: {selector}",
+            selector in enum_values["TextureFilter"] and selector != "tf_max",
+            f"unsupported Texture2D filter for v975: {selector}",
         )
-        selector_fidelity = "SOURCE_EXACT_SERIALIZED_PROPERTY"
-    else:
-        selector = "tf_default"
-        selector_fidelity = (
-            "UE3_NATIVE_CONSTRUCTOR_CANDIDATE_NOT_SOURCE_REVISION_CDO"
-        )
-        blockers.append("FILTER_SELECTOR_SOURCE_REVISION_CDO_UNRESOLVED")
+        filter_selector = {
+            **filter_field,
+            "value": selector,
+            "sourceExact": True,
+        }
 
-    lod_group = fields["lodgroup"]
-    lod_value = (
-        folded(lod_group.get("value"))
-        if lod_group["status"] == "SERIALIZED_EXPLICIT"
-        else None
+    lod_field = effective("lodgroup")
+    if lod_field["status"] == "NATIVE_CONSTRUCTOR_UNRESOLVED":
+        blockers.append("LOD_GROUP_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED")
+        lod_projection = {**lod_field, "sourceExact": False}
+    else:
+        lod_value = folded(lod_field.get("value"))
+        require(
+            lod_value in enum_values["TextureGroup"]
+            and lod_value != "texturegroup_max",
+            f"unsupported Texture2D LODGroup for v975: {lod_value}",
+        )
+        lod_projection = {**lod_field, "value": lod_value, "sourceExact": True}
+
+    hardware_filter_exact = False
+    if selector is not None:
+        blockers.append(
+            "FILTER_"
+            + selector.upper()
+            + "_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+        )
+    hardware_filter = {
+        "value": None,
+        "selector": selector,
+        "sourceExact": hardware_filter_exact,
+        "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED",
+    }
+
+    source_exact_sampler = (
+        address_u["sourceExact"]
+        and address_v["sourceExact"]
+        and color_space["sourceExact"]
+        and filter_selector["sourceExact"]
+        and lod_projection["sourceExact"]
+        and hardware_filter_exact
     )
-    if selector == "tf_default":
-        blockers.append("FILTER_TF_DEFAULT_TEXTURELODSETTINGS_UNRESOLVED")
-        resolved_filter = None
-    else:
-        resolved_filter = "point" if selector == "tf_nearest" else "linear"
-
     return {
+        "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
         "addressU": address_u,
         "addressV": address_v,
-        "filterSelector": {
-            "value": selector,
-            "fidelity": selector_fidelity,
-        },
-        "lodGroup": {
-            "value": lod_value,
-            "fidelity": (
-                "SOURCE_EXACT_SERIALIZED_PROPERTY"
-                if lod_value is not None
-                else "SOURCE_REVISION_CDO_UNRESOLVED"
-            ),
-        },
-        "resolvedFilter": resolved_filter,
+        "filterSelector": filter_selector,
+        "lodGroup": lod_projection,
+        "hardwareFilter": hardware_filter,
+        "resolvedFilter": None,
         "colorSpace": color_space,
-        "sourceExactSamplerAndColorSpace": not blockers,
+        "sourceExactColorSpace": color_space["sourceExact"],
+        "sourceExactFilterSelector": filter_selector["sourceExact"],
+        "sourceExactAddressAxisCount": int(address_u["sourceExact"])
+        + int(address_v["sourceExact"]),
+        "sourceExactLodGroup": lod_projection["sourceExact"],
+        "sourceExactHardwareFilter": hardware_filter_exact,
+        "sourceExactSamplerAndColorSpace": source_exact_sampler,
         "blockers": sorted(set(blockers)),
     }
 
@@ -622,6 +1194,7 @@ def texture_export_evidence(
     asset: dict[str, Any],
     source_root: Path,
     package_cache: dict[str, Any],
+    source_revision_abi: dict[str, Any],
 ) -> dict[str, Any]:
     physical_name = str(asset.get("physicalPackage") or "")
     package_path = source_root / physical_name
@@ -665,7 +1238,7 @@ def texture_export_evidence(
         "propertyStreamStart": property_start,
         "propertyStreamEnd": property_end,
         "fields": fields,
-        "samplerAndColorSpace": sampler_projection(fields),
+        "samplerAndColorSpace": sampler_projection(fields, source_revision_abi),
     }
 
 
@@ -802,6 +1375,8 @@ def build_receipt(
     raw_dds_receipt_path: Path,
     raw_dds_root: Path,
     runtime_texture_root: Path,
+    official_manifest_path: Path,
+    engine_package_path: Path,
 ) -> dict[str, Any]:
     exact = read_json(exact_receipt_path)
     require(
@@ -814,6 +1389,9 @@ def build_receipt(
     material_dds_receipt = read_json(material_dds_receipt_path)
     raw_dds_receipt = read_json(raw_dds_receipt_path)
     raw_rows = raw_dds_index(raw_dds_receipt)
+    source_revision_abi = source_revision_texture_abi_evidence(
+        official_manifest_path, engine_package_path
+    )
     package_cache: dict[str, Any] = {}
     texture_cache: dict[str, dict[str, Any]] = {}
     dds_cache: dict[tuple[str, str], dict[str, Any]] = {}
@@ -926,7 +1504,11 @@ def build_receipt(
             texture_asset = resolve_texture_manifest_asset(source_path, assets)
             if folded(source_path) not in texture_cache:
                 texture_cache[folded(source_path)] = texture_export_evidence(
-                    source_path, texture_asset, source_root, package_cache
+                    source_path,
+                    texture_asset,
+                    source_root,
+                    package_cache,
+                    source_revision_abi,
                 )
             dds_key = (folded(exact_target["sourceMaterialPath"]), folded(source_path))
             if dds_key not in dds_cache:
@@ -961,6 +1543,36 @@ def build_receipt(
             ]
             for binding in bindings
         )
+        source_exact_color_space_count = sum(
+            binding["sourceTexture2D"]["samplerAndColorSpace"][
+                "sourceExactColorSpace"
+            ]
+            for binding in bindings
+        )
+        source_exact_filter_selector_count = sum(
+            binding["sourceTexture2D"]["samplerAndColorSpace"][
+                "sourceExactFilterSelector"
+            ]
+            for binding in bindings
+        )
+        source_exact_address_axis_count = sum(
+            binding["sourceTexture2D"]["samplerAndColorSpace"][
+                "sourceExactAddressAxisCount"
+            ]
+            for binding in bindings
+        )
+        source_exact_lod_group_count = sum(
+            binding["sourceTexture2D"]["samplerAndColorSpace"][
+                "sourceExactLodGroup"
+            ]
+            for binding in bindings
+        )
+        source_exact_hardware_filter_count = sum(
+            binding["sourceTexture2D"]["samplerAndColorSpace"][
+                "sourceExactHardwareFilter"
+            ]
+            for binding in bindings
+        )
         targets.append(
             {
                 "targetId": exact_target["targetId"],
@@ -991,6 +1603,12 @@ def build_receipt(
                 "sourceExactTextureBindingAdmission": True,
                 "runtimeDdsParityAdmission": runtime_dds_admitted,
                 "sourceExactSamplerAdmission": sampler_admitted,
+                "sourceExactColorSpaceBindingCount": source_exact_color_space_count,
+                "sourceExactFilterSelectorBindingCount": source_exact_filter_selector_count,
+                "sourceExactAddressAxisCount": source_exact_address_axis_count,
+                "sourceExactAddressAxisDenominator": len(bindings) * 2,
+                "sourceExactLodGroupBindingCount": source_exact_lod_group_count,
+                "sourceExactHardwareFilterBindingCount": source_exact_hardware_filter_count,
                 "sourceValueTextureSamplerAdmission": (
                     runtime_dds_admitted and sampler_admitted
                 ),
@@ -1001,14 +1619,23 @@ def build_receipt(
     exact_targets = [
         row for row in targets if row["status"] != "BLOCKED_UPSTREAM_NO_EXACT_MATERIAL_MAP"
     ]
+    glasshole = next(
+        row
+        for row in exact_targets
+        if row["targetId"] == "dimensionmaster-w-glasshole-02"
+    )
     receipt = {
         "schema": SCHEMA,
         "formatVersion": FORMAT_VERSION,
         "identity": exact.get("identity"),
         "scope": {
-            "stage": "G03_5_EXACT_TEXTURE_BINDING_SAMPLER_EVIDENCE",
+            "stage": "G03_6_SOURCE_REVISION_TEXTURE_CDO_SAMPLER_EVIDENCE",
             "classNeutralExtractor": True,
             "authoredGenericResourceSlotsRead": False,
+            "sourceRevisionTextureCdoClosed": True,
+            "sourceRevisionTextureEnumsClosed": True,
+            "sourceRevisionNativeConstructorDefaultsClosed": False,
+            "sourceRevisionTextureLodSettingsHardwareFilterClosed": False,
             "sourceExactTextureBindingAdmission": all(
                 row["sourceExactTextureBindingAdmission"] for row in exact_targets
             ),
@@ -1031,10 +1658,17 @@ def build_receipt(
             "rawDdsReceipt": source_descriptor(
                 raw_dds_receipt_path, "AUTHENTICATED_RAW_DDS_EVIDENCE"
             ),
+            "officialV975Manifest": source_descriptor(
+                official_manifest_path, "PINNED_OFFICIAL_SOURCE_REVISION_MANIFEST"
+            ),
+            "officialV975EnginePackage": source_descriptor(
+                engine_package_path, "PINNED_OFFICIAL_SOURCE_REVISION_ENGINE_PACKAGE"
+            ),
             "extractor": source_descriptor(
                 Path(__file__).resolve(), "TRACKED_SOURCE"
             ),
         },
+        "sourceRevisionTextureAbi": source_revision_abi,
         "targets": targets,
         "summary": {
             "targetCount": len(targets),
@@ -1055,6 +1689,30 @@ def build_receipt(
             "sourceValueTextureSamplerTargetCount": sum(
                 row["sourceValueTextureSamplerAdmission"] for row in exact_targets
             ),
+            "glasshole02SamplerEvidence": {
+                "bindingCount": glasshole["uniformTextureBindingCount"],
+                "sourceExactColorSpaceBindingCount": glasshole[
+                    "sourceExactColorSpaceBindingCount"
+                ],
+                "sourceExactFilterSelectorBindingCount": glasshole[
+                    "sourceExactFilterSelectorBindingCount"
+                ],
+                "sourceExactAddressAxisCount": glasshole[
+                    "sourceExactAddressAxisCount"
+                ],
+                "sourceExactAddressAxisDenominator": glasshole[
+                    "sourceExactAddressAxisDenominator"
+                ],
+                "sourceExactLodGroupBindingCount": glasshole[
+                    "sourceExactLodGroupBindingCount"
+                ],
+                "sourceExactHardwareFilterBindingCount": glasshole[
+                    "sourceExactHardwareFilterBindingCount"
+                ],
+                "sourceExactFullSamplerTargetCount": int(
+                    glasshole["sourceExactSamplerAdmission"]
+                ),
+            },
             "uniqueEffectiveTextureCount": len(
                 {
                     binding["effectiveSourceObjectPath"]
@@ -1063,8 +1721,8 @@ def build_receipt(
                 }
             ),
             "result": (
-                "PASS_G03_5_EXACT_TEXTURE_BINDINGS_"
-                "SAMPLER_AND_RUNTIME_DDS_BLOCKERS_EXPLICIT"
+                "PASS_G03_6_SOURCE_REVISION_TEXTURE_CDO_ENUM_"
+                "PARTIAL_SAMPLER_CLOSURE_FULL_SAMPLER_BLOCKED"
             ),
         },
     }
@@ -1079,6 +1737,7 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
     sealed = dict(receipt)
     claimed = sealed.pop("receiptSha256", None)
     require(claimed == canonical_json_sha256(sealed), "receipt digest mismatch")
+    validate_source_revision_texture_abi(receipt.get("sourceRevisionTextureAbi", {}))
     summary = receipt.get("summary", {})
     require(summary.get("exactTargetCount") == 5, "W exact target denominator changed")
     require(summary.get("upstreamBlockedTargetCount") == 1, "W blocked denominator changed")
@@ -1086,11 +1745,54 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
     require(summary.get("sourceExactTextureBindingCount") == 5, "exact texture closure failed")
     require(summary.get("uniqueEffectiveTextureCount") == 23, "effective texture denominator changed")
     require(summary.get("sourceExactSamplerTargetCount") == 0, "sampler blocker unexpectedly changed")
-    require(summary.get("runtimeDdsParityTargetCount") == 4, "runtime DDS parity denominator changed")
+    require(summary.get("runtimeDdsParityTargetCount") == 5, "runtime DDS parity closure regressed")
+    glass = summary.get("glasshole02SamplerEvidence", {})
     require(
-        receipt.get("scope", {}).get("runtimeAdmission") is False
+        glass.get("bindingCount") == 7
+        and glass.get("sourceExactColorSpaceBindingCount") == 7
+        and glass.get("sourceExactFilterSelectorBindingCount") == 7
+        and glass.get("sourceExactAddressAxisCount") == 1
+        and glass.get("sourceExactAddressAxisDenominator") == 14
+        and glass.get("sourceExactLodGroupBindingCount") == 6
+        and glass.get("sourceExactHardwareFilterBindingCount") == 0
+        and glass.get("sourceExactFullSamplerTargetCount") == 0,
+        "Glasshole02 partial sampler evidence changed",
+    )
+    glasshole = next(
+        (
+            row
+            for row in receipt.get("targets", [])
+            if row.get("targetId") == "dimensionmaster-w-glasshole-02"
+        ),
+        None,
+    )
+    require(glasshole is not None, "Glasshole02 target missing")
+    glass_blockers = set(glasshole.get("blockers", []))
+    require(
+        "COLOR_SPACE_SOURCE_REVISION_CDO_UNRESOLVED" not in glass_blockers
+        and "FILTER_SELECTOR_SOURCE_REVISION_CDO_UNRESOLVED" not in glass_blockers
+        and "FILTER_TF_DEFAULT_TEXTURELODSETTINGS_UNRESOLVED" not in glass_blockers
+        and "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+        in glass_blockers
+        and "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED" in glass_blockers
+        and "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED" in glass_blockers
+        and "LOD_GROUP_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED" in glass_blockers,
+        "Glasshole02 blocker boundary changed",
+    )
+    require(
+        receipt.get("scope", {}).get("sourceRevisionTextureCdoClosed") is True
+        and receipt.get("scope", {}).get("sourceRevisionTextureEnumsClosed") is True
+        and receipt.get("scope", {}).get(
+            "sourceRevisionNativeConstructorDefaultsClosed"
+        )
+        is False
+        and receipt.get("scope", {}).get(
+            "sourceRevisionTextureLodSettingsHardwareFilterClosed"
+        )
+        is False
+        and receipt.get("scope", {}).get("runtimeAdmission") is False
         and receipt.get("scope", {}).get("visualAdmission") is False,
-        "runtime or visual admission must remain false",
+        "source ABI, runtime, or visual admission boundary changed",
     )
 
 
@@ -1104,6 +1806,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--raw-dds-receipt", type=Path, default=DEFAULT_RAW_DDS_RECEIPT)
     parser.add_argument("--raw-dds-root", type=Path, default=DEFAULT_RAW_DDS_ROOT)
     parser.add_argument("--runtime-texture-root", type=Path, default=DEFAULT_RUNTIME_TEXTURE_ROOT)
+    parser.add_argument(
+        "--official-v975-manifest",
+        type=Path,
+        default=DEFAULT_OFFICIAL_V975_MANIFEST,
+    )
+    parser.add_argument(
+        "--official-v975-engine-package",
+        type=Path,
+        default=DEFAULT_OFFICIAL_V975_ENGINE_PACKAGE,
+    )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
@@ -1117,6 +1829,8 @@ def main(argv: list[str] | None = None) -> int:
         args.raw_dds_receipt,
         args.raw_dds_root,
         args.runtime_texture_root,
+        args.official_v975_manifest,
+        args.official_v975_engine_package,
     )
     validate_receipt(receipt)
     if args.check:
@@ -1126,10 +1840,12 @@ def main(argv: list[str] | None = None) -> int:
         write_json_atomic(args.output, receipt)
     summary = receipt["summary"]
     print(
-        "PASS G03-5 texture/sampler closure "
+        "PASS G03-6 source-revision texture/sampler closure "
         f"targets={summary['exactTargetCount']} "
         f"bindings={summary['uniformTextureBindingCount']} "
         f"textures={summary['uniqueEffectiveTextureCount']} "
+        f"glassColor={summary['glasshole02SamplerEvidence']['sourceExactColorSpaceBindingCount']}/7 "
+        f"glassFilter={summary['glasshole02SamplerEvidence']['sourceExactFilterSelectorBindingCount']}/7 "
         f"samplerExact={summary['sourceExactSamplerTargetCount']}"
     )
     return 0

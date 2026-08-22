@@ -16,9 +16,11 @@ numeric material slice:
 Textures, samplers, engine-owned CB rows, actual VF/pass selection, runtime
 admission, and visual fidelity remain outside this stage.  FoldedMath ordinal
 0/2 and Periodic/Sine opcode meaning are checked against a pinned local Epic
-UnrealEngine source file before evaluation.  Native scalar group lane order and
-padding remain an explicit runtime-admission blocker until their source ABI is
-proven independently.
+UnrealEngine source file before evaluation.  Epic's sequential packed-scalar
+ABI corroborates ``group * 4 + xyzw`` for a target whose selected groups all
+contain four real expressions.  LostArk v975 same-revision source proof and the
+padding value of a partial final group remain explicit runtime-admission
+blockers.
 """
 
 from __future__ import annotations
@@ -87,6 +89,50 @@ STATUS_EXACT = "EXACT_MATERIAL_SHADER_MAP"
 STATUS_CLOSED = "EXACT_SOURCE_VALUE_UNIFORM_CB0_CLOSURE"
 MIC_CLASSES = {"materialinstanceconstant", "materialinstancetimevarying"}
 BASE_MATERIAL_CLASSES = {"material", "material3", "decalmaterial"}
+
+PACKED_SCALAR_LANE_ORDER = ("x", "y", "z", "w")
+PACKED_SCALAR_FIDELITY = (
+    "EPIC_PACKED_SCALAR_ABI_CORROBORATED_AND_TARGET_PADDING_FREE"
+)
+PACKED_SCALAR_PADDING_UNRESOLVED = (
+    "EPIC_PACKED_SCALAR_ABI_CORROBORATED_BUT_TARGET_PADDING_UNRESOLVED"
+)
+EPIC_PACKED_SCALAR_ABI_CORROBORATION = {
+    "evidenceId": "EPIC_UE_4_0_2_SEQUENTIAL_PACKED_SCALAR_FLOAT_STORE",
+    "repository": "EpicGames/UnrealEngine",
+    "tag": "4.0.2-release",
+    "commit": "488f3e727e5c02bbca9ba351ad26c39c5a5f150a",
+    "repoRelativePath": (
+        "Engine/Source/Runtime/Engine/Private/Materials/"
+        "MaterialUniformExpressions.cpp"
+    ),
+    "gitBlobSha1": "117c5ea41c0e6fe7a9e18e486d74b64ed43a4e6b",
+    "normalizedUtf8Sha256": (
+        "98be6f87716ba90832e6565977b3d58c284bc192c850353d5d4c22d4c947c5f9"
+    ),
+    "float4ArrayCountRule": "(UniformScalarExpressions.Num()+3)/4",
+    "sequentialStoreRule": "TempScalarBuffer[ScalarIndex]=VectorValue.R",
+    "projectedLaneRule": "expressionIndex=group*4+laneIndex(xyzw)",
+    "sameRevisionAsLostArkV975": False,
+    "sourceExactAdmission": False,
+}
+
+GLASSHOLE_TARGET_ID = "dimensionmaster-w-glasshole-02"
+GLASSHOLE_SCALAR_EXPRESSION_COUNT = 56
+GLASSHOLE_SCALAR_GROUP_WIRES = (
+    (1, 14),
+    (7, 15),
+    (8, 16),
+    (9, 17),
+    (10, 18),
+    (11, 19),
+    (12, 20),
+    (13, 21),
+)
+GLASSHOLE_PACKED_SCALAR_BYTE_COUNT = 128
+GLASSHOLE_PACKED_SCALAR_SHA256 = (
+    "23e40670db53319d0c8a013b9f63866c4ed6aa16afdb4837db3a9c0c242e356d"
+)
 
 
 def _float32(value: float) -> float:
@@ -520,6 +566,244 @@ def evaluate_expression(
     raise ValueError(f"uniform expression type is not source-proven for G03-5: {type_name}")
 
 
+def validate_native_scalar_group_packing_evidence(
+    evidence: dict[str, Any], scalar_values: list[float]
+) -> None:
+    require(
+        evidence["epicPackedScalarAbiCorroborationId"]
+        == EPIC_PACKED_SCALAR_ABI_CORROBORATION["evidenceId"],
+        "packed scalar Epic corroboration identity changed",
+    )
+    require(
+        evidence["nativeScalarGroupPackingSourceClosed"] is False
+        and evidence["sourceExactAdmission"] is False,
+        "packed scalar same-revision source boundary changed",
+    )
+    require(
+        evidence["scalarExpressionCount"] == len(scalar_values)
+        and evidence["laneOrder"] == list(PACKED_SCALAR_LANE_ORDER)
+        and evidence["projectionRule"]
+        == "expressionIndex=group*4+laneIndex(xyzw)",
+        "packed scalar projection contract changed",
+    )
+
+    groups = evidence["groupsInAscendingCb0SlotOrder"]
+    require(
+        evidence["selectedGroupCount"] == len(groups),
+        "packed scalar selected-group denominator changed",
+    )
+    slots = [int(row["slot"]) for row in groups]
+    require(slots == sorted(slots) and len(slots) == len(set(slots)),
+            "packed scalar CB0 slots are not unique and ordered")
+
+    complete_count = 0
+    payload = bytearray()
+    for row in groups:
+        group = int(row["group"])
+        require(group >= 0, "packed scalar group is negative")
+        require(int(row["baseIndex"]) == int(row["slot"]) * 16,
+                "packed scalar slot/base wire changed")
+        projected_indices = []
+        present_indices = []
+        values = []
+        complete = True
+        for lane_index, _ in enumerate(PACKED_SCALAR_LANE_ORDER):
+            expression_index = group * 4 + lane_index
+            projected_indices.append(expression_index)
+            present = expression_index < len(scalar_values)
+            if present:
+                present_indices.append(expression_index)
+                values.append(scalar_values[expression_index])
+            else:
+                complete = False
+        require(row["projectedExpressionIndices"] == projected_indices,
+                "packed scalar lane projection changed")
+        require(row["presentExpressionIndices"] == present_indices,
+                "packed scalar present-lane projection changed")
+        require(row["completeFourLaneProjection"] is complete,
+                "packed scalar group completeness changed")
+        if complete:
+            complete_count += 1
+            expected_value = _float4(values)
+            payload.extend(struct.pack("<4f", *expected_value))
+
+    partial_count = len(groups) - complete_count
+    target_padding_free = bool(groups) and partial_count == 0
+    require(
+        evidence["completeGroupCount"] == complete_count
+        and evidence["partialGroupCount"] == partial_count
+        and evidence["targetPaddingFree"] is target_padding_free,
+        "packed scalar padding denominator changed",
+    )
+    if target_padding_free:
+        require(
+            evidence["fidelity"] == PACKED_SCALAR_FIDELITY
+            and evidence["targetPaddingFreeCorroborationAdmission"] is True
+            and evidence["packedLittleEndianByteCount"] == len(payload)
+            and evidence["packedLittleEndianSha256"]
+            == hashlib.sha256(payload).hexdigest(),
+            "padding-free packed scalar payload changed",
+        )
+    else:
+        require(
+            evidence["fidelity"] == PACKED_SCALAR_PADDING_UNRESOLVED
+            and evidence["targetPaddingFreeCorroborationAdmission"] is False
+            and evidence["packedLittleEndianByteCount"] is None
+            and evidence["packedLittleEndianSha256"] is None,
+            "partial scalar group was admitted as padding-free",
+        )
+
+
+def project_native_scalar_group_packing(
+    scalar_values: list[float], native_binding: dict[str, Any]
+) -> dict[str, Any]:
+    declared_count = int(
+        native_binding["constantBufferClosure"][
+            "declaredConstantBuffer0Float4Count"
+        ]
+    )
+    groups = []
+    seen_slots: set[int] = set()
+    for wire in native_binding["scalarGroups"]:
+        group = int(wire["expressionIndexOrGroup"])
+        base_index = int(wire["baseIndex"])
+        require(group >= 0, "scalar CB0 group is negative")
+        require(base_index >= 0 and base_index % 16 == 0,
+                "scalar CB0 wire is unaligned")
+        slot = base_index // 16
+        require(slot < declared_count, "scalar CB0 wire exceeds the declared buffer")
+        require(slot not in seen_slots, "scalar CB0 slot is written more than once")
+        seen_slots.add(slot)
+
+        projected_indices = []
+        present_indices = []
+        complete = True
+        for lane_index, _ in enumerate(PACKED_SCALAR_LANE_ORDER):
+            expression_index = group * 4 + lane_index
+            projected_indices.append(expression_index)
+            present = expression_index < len(scalar_values)
+            if present:
+                present_indices.append(expression_index)
+            else:
+                complete = False
+        groups.append(
+            {
+                "group": group,
+                "slot": slot,
+                "baseIndex": base_index,
+                "projectedExpressionIndices": projected_indices,
+                "presentExpressionIndices": present_indices,
+                "completeFourLaneProjection": complete,
+            }
+        )
+
+    groups.sort(key=lambda row: row["slot"])
+    complete_count = sum(row["completeFourLaneProjection"] for row in groups)
+    partial_count = len(groups) - complete_count
+    target_padding_free = bool(groups) and partial_count == 0
+    payload = (
+        b"".join(
+            struct.pack(
+                "<4f",
+                *(
+                    scalar_values[index]
+                    for index in row["projectedExpressionIndices"]
+                ),
+            )
+            for row in groups
+        )
+        if target_padding_free
+        else None
+    )
+    evidence = {
+        "fidelity": (
+            PACKED_SCALAR_FIDELITY
+            if target_padding_free
+            else PACKED_SCALAR_PADDING_UNRESOLVED
+        ),
+        "epicPackedScalarAbiCorroborationId": (
+            EPIC_PACKED_SCALAR_ABI_CORROBORATION["evidenceId"]
+        ),
+        "nativeScalarGroupPackingSourceClosed": False,
+        "sourceExactAdmission": False,
+        "targetPaddingFreeCorroborationAdmission": target_padding_free,
+        "scalarExpressionCount": len(scalar_values),
+        "selectedGroupCount": len(groups),
+        "completeGroupCount": complete_count,
+        "partialGroupCount": partial_count,
+        "targetPaddingFree": target_padding_free,
+        "projectionRule": "expressionIndex=group*4+laneIndex(xyzw)",
+        "laneOrder": list(PACKED_SCALAR_LANE_ORDER),
+        "payloadRowOrder": "ASCENDING_CB0_SLOT",
+        "packedLittleEndianFloatEncoding": "IEEE754_BINARY32",
+        "packedLittleEndianByteCount": len(payload) if payload is not None else None,
+        "packedLittleEndianSha256": (
+            hashlib.sha256(payload).hexdigest() if payload is not None else None
+        ),
+        "groupsInAscendingCb0SlotOrder": groups,
+    }
+    validate_native_scalar_group_packing_evidence(evidence, scalar_values)
+    return evidence
+
+
+def validate_target_native_scalar_group_packing(
+    target_id: str, evaluation: dict[str, Any]
+) -> None:
+    scalar_values = evaluation["pixelScalarExpressionValues"]
+    evidence = evaluation["nativeCb0"]["nativeScalarGroupPackingEvidence"]
+    validate_native_scalar_group_packing_evidence(evidence, scalar_values)
+    if target_id != GLASSHOLE_TARGET_ID:
+        return
+
+    require(
+        len(scalar_values) == GLASSHOLE_SCALAR_EXPRESSION_COUNT,
+        "Glasshole scalar expression denominator changed",
+    )
+    wires = [
+        (int(row["group"]), int(row["slot"]))
+        for row in evidence["groupsInAscendingCb0SlotOrder"]
+    ]
+    require(wires == list(GLASSHOLE_SCALAR_GROUP_WIRES),
+            "Glasshole scalar group wire changed")
+    for group, row in zip(
+        (wire[0] for wire in GLASSHOLE_SCALAR_GROUP_WIRES),
+        evidence["groupsInAscendingCb0SlotOrder"],
+    ):
+        require(
+            row["projectedExpressionIndices"]
+            == [group * 4 + lane for lane in range(4)]
+            and row["presentExpressionIndices"]
+            == [group * 4 + lane for lane in range(4)],
+            "Glasshole scalar lane projection changed",
+        )
+    scalar_rows = {
+        int(row["slot"]): row
+        for row in evaluation["nativeCb0"]["materialRows"]
+        if row["source"] == "PIXEL_SCALAR_EXPRESSION_GROUP"
+    }
+    require(
+        sorted(scalar_rows) == [slot for _, slot in GLASSHOLE_SCALAR_GROUP_WIRES],
+        "Glasshole scalar CB0 slot set changed",
+    )
+    for projected in evidence["groupsInAscendingCb0SlotOrder"]:
+        row = scalar_rows[int(projected["slot"])]
+        indices = projected["projectedExpressionIndices"]
+        require(
+            row["expressionIndices"] == indices
+            and row["value"] == _float4(scalar_values[index] for index in indices),
+            "Glasshole scalar CB0 float4 projection changed",
+        )
+    require(
+        evidence["fidelity"] == PACKED_SCALAR_FIDELITY
+        and evidence["targetPaddingFreeCorroborationAdmission"] is True
+        and evidence["packedLittleEndianByteCount"]
+        == GLASSHOLE_PACKED_SCALAR_BYTE_COUNT
+        and evidence["packedLittleEndianSha256"]
+        == GLASSHOLE_PACKED_SCALAR_SHA256,
+        "Glasshole packed scalar payload changed",
+    )
+
+
 def evaluate_uniform_set_into_cb0(
     uniform_set: dict[str, Any],
     native_binding: dict[str, Any],
@@ -562,17 +846,21 @@ def evaluate_uniform_set_into_cb0(
     cb0: list[list[float] | None] = [None] * declared_count
     material_rows = []
 
-    for wire in native_binding["scalarGroups"]:
-        group = int(wire["expressionIndexOrGroup"])
-        slot = int(wire["baseIndex"]) // 16
-        require(int(wire["baseIndex"]) % 16 == 0, "scalar CB0 wire is unaligned")
+    scalar_packing = project_native_scalar_group_packing(
+        scalar_values, native_binding
+    )
+
+    for projected in scalar_packing["groupsInAscendingCb0SlotOrder"]:
+        slot = int(projected["slot"])
         require(cb0[slot] is None, "native CB0 slot is written more than once")
         value = [0.0, 0.0, 0.0, 0.0]
         indices = []
-        for lane in range(4):
-            expression_index = group * 4 + lane
-            if expression_index < len(scalar_values):
-                value[lane] = scalar_values[expression_index]
+        present_indices = set(projected["presentExpressionIndices"])
+        for lane_index, expression_index in enumerate(
+            projected["projectedExpressionIndices"]
+        ):
+            if expression_index in present_indices:
+                value[lane_index] = scalar_values[expression_index]
                 indices.append(expression_index)
         cb0[slot] = _float4(value)
         material_rows.append(
@@ -638,6 +926,7 @@ def evaluate_uniform_set_into_cb0(
             "materialRows": material_rows,
             "allRows": all_rows,
             "materialRowsSemanticSha256": canonical_json_sha256(material_rows),
+            "nativeScalarGroupPackingEvidence": scalar_packing,
         },
     }
 
@@ -813,6 +1102,7 @@ def build_receipt(
             effective_vectors,
             context,
         )
+        validate_target_native_scalar_group_packing(target_id, evaluation)
         targets.append(
             {
                 "targetId": target_id,
@@ -840,10 +1130,12 @@ def build_receipt(
         "formatVersion": RECEIPT_FORMAT_VERSION,
         "identity": manifest["identity"],
         "scope": {
-            "stage": "G03_5_SOURCE_VALUE_UNIFORM_CB0_CLOSURE",
+            "stage": "G03_6_TARGET_PACKED_SCALAR_EVIDENCE_CLOSURE",
             "classNeutralEvaluator": True,
             "numericMaterialUniformSliceClosed": True,
             "nativeScalarGroupPackingSourceClosed": False,
+            "epicPackedScalarAbiCorroborated": True,
+            "targetPaddingFreePackedScalarEvidence": True,
             "texturesAndSamplersClosed": False,
             "engineOwnedConstantRowsClosed": False,
             "sourceValueReplayAdmission": False,
@@ -869,6 +1161,9 @@ def build_receipt(
             "sourcePackages": source_identities,
         },
         "parameterIdentityAndPrecedence": manifest["parameterIdentity"],
+        "epicPackedScalarAbiCorroboration": dict(
+            EPIC_PACKED_SCALAR_ABI_CORROBORATION
+        ),
         "targets": targets,
         "summary": {
             "exactInputTargetCount": len(targets),
@@ -879,11 +1174,28 @@ def build_receipt(
             "actualVfPassAdmissionCount": 0,
             "runtimeAdmissionCount": 0,
             "visualAdmissionCount": 0,
-            "result": "PASS_G03_5_SOURCE_VALUE_UNIFORM_CB0_CLOSED_TEXTURE_SAMPLER_REPLAY_OPEN",
+            "targetPaddingFreePackedScalarCount": sum(
+                row["sourceValueUniformEvaluation"]["nativeCb0"]
+                ["nativeScalarGroupPackingEvidence"]
+                ["targetPaddingFreeCorroborationAdmission"]
+                for row in targets
+            ),
+            "result": (
+                "PASS_G03_6_GLASSHOLE_TARGET_PACKED_SCALAR_EVIDENCE_CLOSED_"
+                "GENERIC_PADDING_AND_REPLAY_OPEN"
+            ),
         },
         "decision": {
             "foldedMathOrdinal0": "SOURCE_PROVEN_ADD",
             "foldedMathOrdinal2": "SOURCE_PROVEN_MUL_AND_ARTIST_COOKED_CORROBORATED",
+            "packedScalarAbi": (
+                "EPIC_CROSS_REVISION_CORROBORATED_LOSTARK_V975_SOURCE_OPEN"
+            ),
+            "glassholePackedScalarFidelity": PACKED_SCALAR_FIDELITY,
+            "glassholePackedScalarPayloadSha256": (
+                GLASSHOLE_PACKED_SCALAR_SHA256
+            ),
+            "nativeScalarGroupPackingSourceClosed": False,
             "sourceValueUniformCb0ClosureAdmission": True,
             "sourceValueReplayAdmission": False,
             "remainingBlockers": [
@@ -907,6 +1219,9 @@ def validate_output_receipt(receipt: dict[str, Any]) -> None:
     require(receipt.get("formatVersion") == RECEIPT_FORMAT_VERSION, "output receipt version changed")
     require(
         receipt["scope"]["nativeScalarGroupPackingSourceClosed"] is False
+        and receipt["scope"]["epicPackedScalarAbiCorroborated"] is True
+        and receipt["epicPackedScalarAbiCorroboration"]
+        == EPIC_PACKED_SCALAR_ABI_CORROBORATION
         and "NATIVE_SCALAR_GROUP_LANE_ORDER_AND_PADDING_SOURCE_ABI_NOT_PROVEN"
         in receipt["decision"]["remainingBlockers"],
         "native scalar packing admission boundary changed",
@@ -928,12 +1243,27 @@ def validate_output_receipt(receipt: dict[str, Any]) -> None:
             "target admission boundary changed",
         )
         cb0 = target["sourceValueUniformEvaluation"]["nativeCb0"]
+        validate_target_native_scalar_group_packing(
+            target["targetId"], target["sourceValueUniformEvaluation"]
+        )
         require(
             cb0["materialBoundFloat4Count"]
             + cb0["engineOrRendererUnboundFloat4Count"]
             == cb0["declaredFloat4Count"],
             "target CB0 ownership denominator changed",
         )
+    require(
+        summary["targetPaddingFreePackedScalarCount"] == 1
+        and [
+            target["targetId"]
+            for target in receipt["targets"]
+            if target["sourceValueUniformEvaluation"]["nativeCb0"]
+            ["nativeScalarGroupPackingEvidence"]
+            ["targetPaddingFreeCorroborationAdmission"]
+        ]
+        == [GLASSHOLE_TARGET_ID],
+        "target padding-free packed scalar denominator changed",
+    )
     expected_seal = receipt["receiptSha256"]
     candidate = dict(receipt)
     candidate.pop("receiptSha256")
@@ -968,8 +1298,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         check_or_write(args.output.resolve(), receipt, args.check)
         print(
-            "UE3 source-value uniform CB0 PASS: "
+            "UE3 source-value uniform CB0 + packed scalar evidence PASS: "
             f"targets={receipt['summary']['sourceValueUniformCb0ClosureCount']} "
+            f"paddingFree={receipt['summary']['targetPaddingFreePackedScalarCount']} "
             "sourceReplay=0 runtime=0 visual=0"
         )
         return 0
