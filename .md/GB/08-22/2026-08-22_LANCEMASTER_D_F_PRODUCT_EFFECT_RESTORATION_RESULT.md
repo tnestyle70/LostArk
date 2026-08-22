@@ -113,15 +113,64 @@ F: 180~576ms EarthQS trail, 679~776ms Ark, 1383ms HurricaneDust, 1405ms DragonSw
 
 ## 4. 남은 경계
 
-### 4.1 D·F 자체
+### 4.1 원본 대비 실제 반영 범위
 
-- typed `runtimeMaterialV2` 승격과 family RT0 Base HLSL 재사용은 미착수다.
-- `sourcePresentation.enabled`가 두 문서 모두 false이고 `sourceTimeSeconds`만 보존돼 있다
-  (D 4개 시각, F 8개 시각). 즉 element별 원본 발생 시각이 아직 runtime timeline으로 승격되지 않았다.
-  이는 기존 live 문서(`34630.clip1` 등)와 동일한 상태이므로 이번 범위에서 바꾸지 않았다.
-- F의 186 element 중 attachment가 enabled인 행은 0개다. 전부 cue root transform에서 스폰된다.
+`복원`이 어디까지 원본을 반영했는지 field 단위로 분리한다.
 
-### 4.2 같은 결손이 남아 있는 다른 slot
+**원본에서 그대로 온 것**
+
+| 축 | 근거 |
+|---|---|
+| carrier | element별 `sourceRecipe.rendererShape`. D는 mesh 19 / sprite 64 / decal 5, F는 mesh 75 / sprite 111 |
+| 발생 시각 | `detail.timing.startDelaySeconds`가 animevents `src=orig` EFFECT 시각과 일치. D는 `0/96/490/676/690/710ms`, F는 `180/232/574/575/576/776/1405ms` |
+| texture 역할 | `material.sourceProfile.textures`의 `sourceObjectPath`, `group`, addressU/V, colorSpace |
+| blend/depth | element별 `renderProfile` (D `alpha_two_sided 32 / additive_two_sided 21 / additive_one_sided 18 / alpha_one_sided 17`) |
+| emitter recipe | `sourceRecipe.modules`에 Cascade module literal 보존, bursts / emitterDuration / loops |
+| resource | D 157/157, F 417/417 asset이 실재 |
+
+**원본에서 오지 않았거나 아직 승격되지 않은 것**
+
+| 축 | 현재 상태 |
+|---|---|
+| RT0 equation | 274 element 중 242가 `effect.ue3.grouped-translucent.v1` generic 경로. family 전용 typed RT0 program은 이번 작업에서 만들지 않았다 |
+| typed 배선 | `material.execution.enabled = true` row 0개. lane/register/opcode 계약 미승격 |
+| conversion status | 두 receipt 모두 `presentationSourceExactEmitterCount = 0`. 전 emitter가 `SOURCE_RECIPE_RUNTIME_PENDING`(D 55 / F 56) 또는 `SOURCE_MATERIAL_RUNTIME_PENDING`(D 33 / F 31) |
+| Cascade curve | receipt `manualTuningBoundaries`대로 start/end·min/max로 collapse됨 |
+| mesh particle | per-particle mesh rotation, orbit, 3D size curve는 thin path로 축약 |
+
+### 4.2 imported 대비 unified element 결손
+
+unified 문서는 imported 변환의 부분집합이다.
+
+| skill | imported element | unified element | 비율 |
+|---|---:|---:|---:|
+| 34110 (D) | 127 | 88 | 69% |
+| 34150 (F) | 294 | 186 | 63% |
+
+system 단위로 통째로 빠진 원본 emitter는 다음이다.
+
+| skill | 빠진 source system | imported element | animevents 시각 |
+|---|---|---:|---|
+| D | `fx_cm_02.light.par_mp_light_01` | 5 | 735ms |
+| F | `fx_pc_flm_03.par_n_flm_ark_01` | 6 | 679ms |
+| F | `fx_pc_flm_03.par_n_flm_earthqs_trail_01_07` | 6 | 233ms |
+| F | `fx_pc_flm_03.par_n_flm_hurricanedust_01` | 3 | 1383 / 1386 / 1392ms |
+| F | `fx_cm_02.light.par_mp_light_01` | 9 | 1387ms |
+| F | `fx_cm_00.dust.par_d_dust_001_pr` | 12 | 1413ms |
+
+animevents `src=orig` 시각 대비 unified 문서가 덮은 시각은 D가 7개 중 6개, F가 14개 중 6개다.
+F의 `0ms Par_N_Trail_03_02`는 imported 단계에도 없어 source intake부터 필요하다.
+같은 system이 부분만 남은 행(`ark_04 21/42`, `dragonswing_02 24/33`, `spark_24 12/19` 등)도 있다.
+
+이 결손은 이번 admission 변경이 만든 것이 아니라 unified 문서가 이미 가지고 있던 상태다.
+master 계획 `4.2 V0에서 삭제한 source element를 복구하는 3-way merge`의 대상이다.
+
+### 4.3 attachment
+
+F의 186 element 중 `actionCueAttachment.enabled`인 행은 0개다. 전부 cue root transform에서 스폰된다.
+D는 5개(decal)만 root anchor를 사용한다.
+
+### 4.4 같은 admission 결손이 남아 있는 다른 slot
 
 `skillbindings` clip 대 `effectref=asset` cue를 대조한 감사 결과다. D·F는 이 목록에서 사라졌다.
 
