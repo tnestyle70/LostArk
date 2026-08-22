@@ -145,6 +145,16 @@ class TextureSamplerClosureTests(unittest.TestCase):
         receipt = closure.read_json(receipt_path)
 
         closure.validate_receipt(receipt)
+        self.assertEqual(receipt["summary"]["runtimeDdsParityTargetCount"], 5)
+        glasshole = next(
+            row for row in receipt["targets"]
+            if row.get("targetId") == "dimensionmaster-w-glasshole-02"
+        )
+        self.assertTrue(glasshole["runtimeDdsParityAdmission"])
+        self.assertEqual(
+            receipt["inputs"]["extractor"]["path"],
+            "Tools/EffectPipeline/extract_ue3_material_texture_sampler_closure.py",
+        )
         self.assertFalse(receipt["scope"]["authoredGenericResourceSlotsRead"])
         self.assertFalse(receipt["scope"]["runtimeAdmission"])
         self.assertFalse(receipt["scope"]["visualAdmission"])
