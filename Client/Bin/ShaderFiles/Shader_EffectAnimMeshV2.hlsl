@@ -22,10 +22,12 @@ PS_EFFECT_IN VS_MAIN(VS_IN input)
 		g_BoneMatrices[input.vBlendIndices.z] * input.vBlendWeights.z +
 		g_BoneMatrices[input.vBlendIndices.w] * input.vBlendWeights.w;
 	const float4 skinnedPosition = mul(float4(input.vPosition, 1.f), boneMatrix);
-	const matrix worldViewProjection =
-		mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix);
-	output.vPosition = mul(skinnedPosition, worldViewProjection);
+	const float3 skinnedNormal = mul(float4(input.vNormal, 0.f), boneMatrix).xyz;
+	const float4 worldPosition = mul(skinnedPosition, g_WorldMatrix);
+	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
 	output.vTexcoord = input.vTexcoord;
+	output.vWorldNormal = normalize(mul(skinnedNormal, (float3x3)g_WorldMatrix));
+	output.vWorldPosition = worldPosition.xyz;
 	return output;
 }
 

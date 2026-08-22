@@ -1,0 +1,10 @@
+{
+  "schema": "lostark.effect-v2-bindings",
+  "formatVersion": 1,
+  "archetypeId": "NPC_58700",
+  "bindings": [
+    { "effectId": "esther.wei.dochul_1", "clip": "npc_sk_dochul", "startMs": 1733, "bone": "b_effectroot", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.wei.dochul_2", "clip": "npc_sk_dochul", "startMs": 2966, "bone": "b_effectroot", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false },
+    { "effectId": "esther.wei.dochul_3", "clip": "npc_sk_dochul", "startMs": 4700, "bone": "b_effectroot", "followBone": true, "rotation": "TargetYaw", "stopWithClip": false }
+  ]
+}

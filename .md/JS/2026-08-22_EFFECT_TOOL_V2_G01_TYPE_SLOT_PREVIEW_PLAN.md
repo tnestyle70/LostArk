@@ -40,6 +40,267 @@
 - 카메라 없는 Lobby에서는 안 보임(Character Select/Bern/Valtan/Test에서 사용).
 - AGENTS '단일 Effect 런타임 경로' 규칙 대비: 이 경로는 Debug 툴 preview 전용이며 제품 재생 경로가 아니다.
 
+## G04 범위 — Tuning 옵션 재구성 (pivot 상대 transform · Lerp 트랙 · velocity · color · bloom/distortion · UV · dissolve start)
+
+사용자 메모(2026-08-22)를 그대로 옮긴 것이며 아직 구현·검증 전이다. 새 파일은 없다. `Effect_Tool_V2.h`, 다른 셰이더 3개, 프로젝트/필터는 바꾸지 않는다.
+
+### 데이터 모델 (`CEffectPreviewV2`)
+
+- `LERP_FLOAT3 { vStart, vEnd, bLerp; Evaluate(fLifeRatio) }`: `bLerp`가 꺼지면 항상 `vStart`, 켜지면
+  `lerp(vStart, vEnd, fLifeRatio)`. `fLifeRatio = saturate(time / lifetime)`이며 lifetime 0(무한)이면 0으로 고정한다.
+  사용자 메모의 "잔여 시간 비율"은 `1 - fLifeRatio`와 같은 축이므로 값은 start→end로 흐른다.
+- `PARAMS`에 `Position / Rotation(deg) / Scale / Velocity(m/s)` 네 `LERP_FLOAT3` 트랙. 이전 `DESC.vPosition/vRotationDegrees/vScale`과
+  `Position()/RotationDegrees()/Scale()` 접근자는 제거하고 `Params().Position.vStart` 등으로 일원화.
+- **Pivot**: `DESC.PivotWorld`(float4x4, Create 시 카메라 전방 3 m translation) → `m_PivotWorld`. 네 트랙은 전부 pivot 로컬이며
+  `World = S * R * T(position + displacement) * Pivot`. Billboard sprite는 pivot으로 변환한 위치만 쓰고 orientation은 카메라 basis로 교체.
+  지금은 pivot이 월드 고정점이지만 나중에 부모(본/캐릭터) 행렬을 그대로 넣는 자리다. `PivotWorld()` 접근자, Tuning `Pivot (world)`로 이동.
+- **Velocity**: `Update`에서 `m_vDisplacement += Velocity.Evaluate(ratio) * dt * playRate`. `Restart`와 loop wrap에서 0으로 리셋.
+  Lerp를 켜면 속도 자체가 start→end로 변한다.
+- **Color**: `vColorMul`(이전 Tint 대체), `vColorOffset`, `eColorClipChannel{RGB, ALPHA}` + `fColorClip`.
+  셰이더: `rgb = max(base.rgb*mul.rgb+offset.rgb, 0)`, `a = saturate(base.a*mask*dissolve*mul.a+offset.a)`,
+  `a<=0.001 → discard`, `fColorClip>0`이면 `max(r,g,b)` 또는 `a`가 그 이하일 때 discard. clip은 emissive 가산 전에 적용.
+- **Bloom Intensity**(이전 Emissive Intensity 대체): `rgb += emissive.rgb * bloom`. Emissive 텍스처 미바인드면 셰이더가 무시하고 UI도 비활성.
+  Renderer bloom threshold가 1.0이므로 1 이하면 번지지 않는다.
+- **Distortion Intensity**: PS 출력이 `SV_TARGET0(SceneHDR) + SV_TARGET1(Target_Distortion)` 두 개가 되며
+  `distortion = (noise.rg*2-1) * intensity * a`, noise 미바인드면 0. 단위는 UV offset이고 `Shader_Deferred` SCENE_RESOLVE가 ±0.05로 clamp하므로
+  UI 범위 0~0.1. 블렌드 스테이트는 제품 `BS_EffectAlpha/BS_EffectAdditive`와 같은 형식(RT1 One/One, write mask RG)의
+  `BS_EffectV2Alpha/BS_EffectV2Additive`를 v2 hlsli 안에 둔다. Noise Strength/Scale/Pan은 그대로 두고(noise sample을 공유) noise 미바인드면 함께 비활성.
+- **UV**: `vUVStart`, `vUVSpeed`(이전 Base Pan), `vUVTileCount`(이전 UV Scale). `uv = texcoord * tile + start + speed * time`.
+- **Dissolve Start**(이전 Dissolve Amount 슬라이더 대체): `amount = saturate((ratio - start) / (1 - start))`, `start>=1`이면 0.
+  CPU에서 계산해 `g_DissolveAmount`로 바인드하므로 셰이더의 dissolve 식은 그대로. lifetime 0이면 진행하지 않는다(UI 경고).
+- 유지: Blend/Depth Test/Billboard, Lifetime/Loop/Play Rate, Mesh Pre-Scale, Dissolve Softness.
+
+### Tuning 창 레이아웃
+
+```text
+[Mesh|Sprite] time | life ratio | status      Restart  Visible  Bring To Camera
+(경고) Lifetime is 0: Lerp tracks and Dissolve Start stay at their start values.
+Transform (relative to pivot)
+  Pivot (world)  x y z
+  [ ] Position      x y z        ← 체크 시 아래에 End x y z
+  [ ] Rotation (deg)
+  [ ] Scale
+  [ ] Velocity (m/s)
+  Mesh Pre-Scale (Mesh만)
+Color
+  Color Mul (ColorEdit4) · Color Offset (-1~1) · [RGB|Alpha] Color Clip 0~1
+Bloom / Distortion
+  Bloom Intensity (Emissive 없으면 disabled) · Distortion Intensity · Noise Strength/Scale/Pan (Noise 없으면 disabled)
+UV
+  UV Start · UV Speed (uv/s) · UV TileCount
+Dissolve
+  Dissolve Start (life 0-1) · Dissolve Softness · "Dissolve amount now x.xx" (Dissolve 없으면 disabled)
+Blend
+  Blend · Depth Test · Billboard(Sprite)
+Playback
+  Lifetime · Loop · Play Rate
+```
+
+### 바뀌는 셰이더 상수 (`Shader_EffectV2_Common.hlsli`)
+
+| 제거 | 추가 |
+|---|---|
+| `g_Tint`, `g_UVScale`, `g_BasePan`, `g_EmissiveIntensity` | `g_ColorMul`, `g_ColorOffset`, `g_ColorClip`, `g_ColorClipChannel(uint)`, `g_BloomIntensity`, `g_DistortionIntensity`, `g_UVStart`, `g_UVSpeed`, `g_UVTileCount` |
+
+`PS_EFFECT_V2` 반환형이 `float4`에서 `PS_EFFECT_OUT{SV_TARGET0, SV_TARGET1}`로 바뀐다. Mesh/AnimMesh/Rect 셰이더는 include만 하므로 수정 없음.
+
+### `Effect_Tool_V2.cpp` 변경 범위
+
+- `Try_CreatePreview`: `Desc.vPosition/vScale` → `XMStoreFloat4x4(&Desc.PivotWorld, XMMatrixTranslationFromVector(Spawn))`.
+- `Try_CreatePreview` 정의 바로 뒤, `Render_TuningPanel` 바로 앞에 파일 로컬 `namespace { void Draw_LerpTrack(...) }` 추가
+  (체크박스 + Start DragFloat3 + 체크 시 End DragFloat3).
+- `Render_TuningPanel` 본문 전체 교체(위 레이아웃). `Bring To Camera`는 `PivotWorld()`를 옮긴다.
+- 나머지 함수와 `Effect_Tool_V2.h`는 그대로.
+
+## G05 범위 — 스킨드 Mesh 이펙트의 클립 재생 (도철 `FX_CUDC_00_SK` 등)
+
+배경: `Effect/Esther/Wei/Models/Dochul/FX_CUDC_00_SK.wmodel`은 클립 52개를 내장한다(`dochul_idle_normal_1`, `dochul_att_battle_1_01~10_01`,
+`dochul_sk_dochul_01~03`, `dochul_sk_esthereffect_2`, …). v2 preview는 이미 `MODEL::ANIM`+`Bind_BoneMatrices`로 그리지만
+`Play_Animation`을 부르지 않아 바인드 포즈로 멈춰 있었다. 인하우스 툴은 Cascade와 달리 "Skinned Mesh 엘리먼트 = 모델 + 클립 + 머티리얼"을
+한 요소로 다루므로, 클립 재생을 preview 안에 넣고 Color/Bloom/Dissolve를 재생 중에 튜닝한다. Animation Tool/Character Preview 경로는
+캐릭터 프리뷰용이라 여기서 쓰지 않는다(다른 이펙트를 도철 본에 붙이는 G06에서 pivot 소스 후보로만 검토).
+
+### `CEffectPreviewV2`
+
+- `PARAMS`에 `uint32_t iAnimationIndex = 0`, `bool_t bAnimationLoop = true` 추가. 재생 속도는 기존 `fPlayRate` 공유.
+- public: `Is_Skinned()`, `Animation_Count()`(skinned가 아니면 0), `Animation_Name(i)`, `Animation_DurationSeconds(i)`
+  (`Get_AnimationProgress`의 tick duration ÷ `Get_AnimationTickPerSecond`), `Animation_Progress(outSeconds, outDurationSeconds)`.
+- private `Sync_Animation(bRestart)`: 클립 수 0이면 무시. `iAnimationIndex`를 범위로 clamp. `bRestart`이거나 인덱스가
+  `m_iAppliedAnimationIndex`와 다르면 `Start_Animation(index, loop)`(트랙 0초로 되감기), 아니면 `Set_Animation(index, loop)`로 loop 플래그만 반영.
+- 호출 시점: `Initialize` 텍스처 로드 후(`"Ready"` 직전), `Restart`, `Update`의 매 프레임(`Sync_Animation(false)` 뒤 `Play_Animation(fStep)`),
+  lifetime loop wrap 시 `Sync_Animation(true)`. 따라서 `Restart`/loop wrap에서 이펙트 시간 0초와 클립 0초가 함께 출발한다.
+- `m_bFinished`면 Play_Animation도 멈춘다(화면에서 사라지므로).
+- Mesh Pre-Scale 기본값: 정적 FX 메시는 0.01(cm→m), 스킨드 모델은 `Initialize`에서 로드 직후 **0.0001**로 덮어쓴다.
+  NPC 파이프라인(`buildScript/build_npc.py` + `cook_npc.py`) cook은 정점 cm + 아마추어 노드 scale 100이라 스킨 결과가 cm×100이고
+  제품 `CNpcPresentationAssetService`도 `0.0001 * RotationY(-90)`로 admission한다. Tuning에 `1 / 0.01 / 0.0001` 프리셋 버튼.
+  (이전 기록 "1.0이 맞음"은 다른 사람이 구운 구 도철 파일 기준이었고 그 파일은 아래 G06 note대로 폐기.)
+
+### 도철 `FX_CUDC_00_SK` 재쿠킹 (2026-08-22)
+
+- 구 파일(다른 팀원 추출)은 스켈레톤 bind translation cm, 애니 position key m(1/100)으로 불일치 → 클립 재생 시 본이 루트로 뭉쳐
+  머리·몸통이 겹쳤다. 아마추어 노드 `dochul` scale 0.01(→ bind 결과 m, pre-scale 1.0에서 정상 크기)였으나 키만 m.
+- LookInfo `EFDLChar_MN_CUDC_00.MN_CUDC_00.loa`: 메시 `MN_CUDC_00.Mesh.MN_CUDC_00_SK`, 애니셋 `MN_BSTRH_00.Ani.MN_BSTRH_00_Ani`(52클립,
+  `sk_esthereffect_2` 포함). `FX_CUDC_00` 패키지는 없고 `MN_CUDC_00` 안에 `fx_cudc_00_sk.psk`(= `mn_cudc_00_sk.psk`와 재질명만 다름, 동일 크기)가 있다.
+- 재현: `umodel_lostark_v7 -export -psk -uncook -groups MN_CUDC_00 / MN_BSTRH_00` → `_export_esther_wei_g`,
+  `npc_lookinfo.py … 175320`(불사귀 도철) → `esther_wei_dochul.json`, `build_npc.py`(body 21,816 verts·46본·52 actions, 30fps bake) →
+  `cook_npc.py Npc_175320=175320` → `Npc_175320.wmodel`(meshes 2, animations 52, 8,308,258 B). bind/anim translation 일치 확인
+  (`b_effectname` -114.72 둘 다). 구 파일은 scratch `dochul_backup/`에 보관, `FX_CUDC_00_SK.wmodel`·`FX_CUDC_00_PRL_SK.wmodel` 둘 다 새 cook으로 교체
+  (PRL psk는 재질만 다르고 geometry 동일). 클립 이름은 `npc_*`(`npc_sk_esthereffect_2`), 파트 `mn_cudc_00_mi`(#0 머리 `mn_cudc_00_d_loc_int`)·
+  `mn_cudc_00-1_mi`(#1 몸 `mn_cudc_00-1_d`). 제품 orientation을 맞추려면 Rotation Y -90.
+- 교체 직후 "WModel load failed": 새 cook은 `textures/*.tga`를 참조하는데 폴더엔 구 파일용 `.dds`만 있어 `CMaterial`이 fail-closed.
+  cook 산출 tga 4장을 `Dochul/textures/`에 추가해 해결. 툴 썸네일/Create 실패 문구에 `CModelDecoderRegistry::Get_LastReport().error`를
+  붙여 디코더 거부 사유가 보이게 했다(디코더 통과 후 `Ready_Materials` 실패는 report가 비어 있으므로 그때는 텍스처 파일 존재부터 확인).
+- 2026-08-22 사용자 확인: 새 cook 정상 표시. 모델 내장 머티리얼 자동 바인딩·노말맵 Lit 모드(G07 후보)는 사용자 결정으로 보류.
+
+### Tuning 창 `Animation` 섹션 (skinned일 때만, Transform 바로 아래)
+
+```text
+Clip      [idx] name            ← combo, 항목마다 "(x.xx s)" 길이 표시
+[ ] Clip Loop   [Lifetime = Clip Length]
+Clip 1.23 / 2.40 s (Play Rate applies)
+```
+
+클립이 0개인 skinned 모델은 "Skinned mesh without clips (bind pose only)."만 표시.
+
+### 변경 파일
+
+`Effect_Preview_V2.h/.cpp`, `Effect_Tool_V2.cpp`(`Render_TuningPanel`의 Mesh Pre-Scale 블록 바로 뒤에 섹션 추가). 셰이더·프로젝트 변경 없음.
+
+## G06 범위 — Opaque 패스 + 서브메시(Part)별 Base/Visible
+
+배경(2026-08-22 사용자 관찰): 도철 `FX_CUDC_00_SK`에 Base 한 장을 입히면 모델이 깨져 보였다. 실측 원인 두 가지.
+(1) wmodel은 서브메시 2개(#0 정점 18,845 `fx_cudc_00-1_mi`, #1 정점 6,430 `lfx_cudc_00_mi`)이고 텍스처 경로가 박혀 있지 않아
+Base 한 장이 두 파트 모두에 입혀진다. 짝은 옆 `textures/`의 `mn_cudc_00-1_d.dds`(#0), `mn_cudc_00_d_loc_int.dds`(#1).
+(2) v2 패스 4개는 모두 depth write 없음 + CullMode None + 블렌드라 속이 있는 몸체는 뒷면·내부가 앞면 위로 겹친다.
+
+### 셰이더 (`Shader_EffectV2_Common.hlsli`)
+
+- `BS_EffectV2Opaque`(제품 `BS_EffectOpaque` 형식: RT0 블렌드 off, RT1 One/One write mask RG) 추가.
+- 5번째 pass `Opaque`: `RS_Default`(back-face cull) + `DSS_Default`(depth write) + `BS_EffectV2Opaque`. PS는 동일(discard·Bloom·Dissolve 그대로).
+
+### `CEffectPreviewV2`
+
+- `BLEND_MODE`에 `SOLID` 추가(`OPAQUE`는 wingdi 매크로와 충돌). `Render`의 pass 선택: SOLID → 4, 아니면 기존 `blend + (depthTest ? 0 : 2)`.
+- `struct PART { bVisible, strBaseAssetId, pBaseView }`, `std::vector<PART> m_Parts`를 Mesh 로드 직후 `Get_NumMeshes()` 크기로 생성.
+- public `Part_Count / Part_Name(i)`(= `CModel::Get_MaterialName`) `/ Part_Visible(i)& / Part_BaseAssetId(i) / Set_PartBase(i, assetId)`
+  (빈 문자열이면 오버라이드 해제, 로드 실패 시 이전 상태 유지하고 `E_FAIL`).
+- Mesh 루프: `bVisible` false면 skip. 메시마다 Base SRV를 `PART.pBaseView ?: 공용 Base 슬롯`으로 골라 `g_HasBase/g_BaseTexture`를 다시 바인드.
+  Noise/Mask/Emissive/Dissolve는 공용 유지.
+
+### Tuning 창
+
+- `Parts` 섹션(Mesh shape, 파트 1개 이상): "Base slot now: <파일명>" 안내 + 파트별 행
+  `[v] #i <머티리얼명>  (shared Base | 파일명)  [<- Base slot] [Clear]`.
+  사용 흐름: 라이브러리에서 텍스처를 클릭해 Base 카드를 바꾼 뒤(라이브 preview는 안 바뀜) 해당 파트의 `<- Base slot`으로 복사.
+- Blend combo `Alpha / Additive / Opaque`. Opaque(`SOLID`)면 Depth Test 체크박스 비활성(항상 depth write).
+
+### 변경 파일
+
+`Shader_EffectV2_Common.hlsli`, `Effect_Preview_V2.h/.cpp`, `Effect_Tool_V2.cpp`(`Render_TuningPanel`의 Blend 섹션 앞에 Parts, Blend combo 항목). 프로젝트 변경 없음.
+
+## G07-lite 범위 — Rim(프레넬) 외곽 발광 + Ghost Alpha
+
+배경: 원본 도철 머티리얼 부모 `preset_ghost_msk`의 흰 외곽선은 프레넬/림 항이다. 라이팅·노말맵 없이 실루엣 발광만 넣는다
+(모델 머티리얼 자동 바인딩·Lit 모드 G07은 사용자 결정으로 보류).
+
+### 셰이더
+
+- `PS_EFFECT_IN`에 `float3 vWorldNormal : NORMAL`, `float3 vWorldPosition : TEXCOORD1` 추가. 상수 `g_vCamPosition`, `g_RimColor`,
+  `g_RimPower`, `g_RimIntensity`, `g_GhostAlpha`.
+- Mesh VS: 월드 노말 `normalize(mul(N, (float3x3)World))`. AnimMesh VS: `mul(float4(N,0), boneMatrix)` 후 월드. Rect VS: 노말 0 → PS가 rim 생략.
+- PS: `fresnel = pow(1 - saturate(abs(dot(N, V))), RimPower)`(CullMode None이라 뒷면도 `abs`), `a *= lerp(1, fresnel, GhostAlpha)`를
+  discard 판정 전에, `rgb += RimColor * fresnel * RimIntensity`를 emissive 가산 직전에 적용.
+
+### `CEffectPreviewV2` / Tuning
+
+- `PARAMS`: `vRimColor(1,1,1,1)`, `fRimPower 3`, `fRimIntensity 0`, `fGhostAlpha 0`. `Bind_Common`이 `Get_CamPosition()`과 함께 바인드.
+- Tuning Mesh shape에 `Rim (Fresnel)` 섹션: Rim Color(ColorEdit3) · Rim Power 0.1~16 · Rim Intensity 0~8 · Ghost Alpha 0~1.
+
+### 변경 파일
+
+`Shader_EffectV2_Common.hlsli`, `Shader_EffectRectV2.hlsl`, `Shader_EffectMeshV2.hlsl`, `Shader_EffectAnimMeshV2.hlsl`,
+`Effect_Preview_V2.h/.cpp`, `Effect_Tool_V2.cpp`. 프로젝트 변경 없음.
+
+## G09 범위 — Effect v2 문서 Save / Load
+
+결정(2026-08-22, 사용자): 인게임 재생은 **B안** — v2 전용 문서 + v2 전용 런타임 오브젝트 + v2 바인딩 문서. "v2로 저작한 에셋만 v2 런타임"으로
+범위를 한정하고 팀장 합의는 별도. G09는 그 첫 단계인 저작 문서 저장/로드만 다룬다.
+
+### 문서 계약 `Data/Effects/V2/Authored/<effectId>.effectv2.json`
+
+```json
+{
+  "schema": "lostark.effect-v2", "formatVersion": 1,
+  "effectId": "esther.wei.dochul",
+  "effectType": "Mesh",
+  "slots": { "mesh": "Effect/Esther/Wei/Models/Dochul/FX_CUDC_00_SK.wmodel", "base": "...", "noise": "", "mask": "", "emissive": "", "dissolve": "" },
+  "params": { "position": {"start":[0,0,0],"end":[0,0,0],"lerp":false}, "rotation": …, "scale": …, "velocity": …,
+              "colorOffset":[0,0,0,0], "colorMul":[1,1,1,1], "colorClipChannel":"Alpha", "colorClip":0,
+              "rimColor":[1,1,1,1], "rimPower":3, "rimIntensity":0, "ghostAlpha":0,
+              "bloomIntensity":1, "distortionIntensity":0, "uvStart":[0,0], "uvSpeed":[0,0], "uvTileCount":[1,1],
+              "noiseStrength":0, "noiseScale":1, "noisePan":[0,0], "dissolveStart":0, "dissolveSoftness":0.1,
+              "blend":"Opaque", "billboard":true, "depthTest":true, "lifetime":0, "loop":true, "playRate":1,
+              "meshPreScale":0.0001, "animationClip":"npc_sk_esthereffect_2", "animationLoop":true },
+  "parts": [ { "index":0, "material":"mn_cudc_00_mi", "visible":true, "base":"…/mn_cudc_00_d_loc_int.dds" } ]
+}
+```
+
+- `effectId` = 파일명 stem, `[A-Za-z0-9._-]{1,80}`. 클립은 인덱스가 아니라 **이름**으로 저장(모델 재쿠킹에 안전).
+- 로드 검증(fail-closed): schema/formatVersion, `effectType` enum, `slots` 문자열 + 자산 실존(`CRuntimeAssetRoot::Resolve`), Mesh면 `slots.mesh` 필수,
+  `params` 각 키 타입(누락 키는 기본값), enum 문자열, `meshPreScale>0`/`lifetime>=0`/`playRate>=0`, `parts[].index` 0~255·`base` 실존.
+- 저장은 `.tmp`에 쓴 뒤 rename(원자). 파서는 `CDataJson::Parse`, 쓰기는 `CDataJson::Escape` 기반 수동 직렬화(`%.7g`).
+
+### 코드
+
+- `CEffectPreviewV2`: `DESC.bParamsAuthored`(true면 스킨드 pre-scale 자동값으로 덮지 않음), `m_CreationDesc`/`Creation_Desc()` — Save가 생성 당시 슬롯을 읽는다.
+- `CEffect_Tool_V2`: `Effect_Tool_V2.h`가 `Effect_Preview_V2.h`를 include(전방선언 → 실체). `PART_OVERRIDE`, `DOCUMENT_STAGE`,
+  `Spawn_Preview(Desc, Parts, clip)`(Try_CreatePreview와 Load의 공용 스폰: 프로토타입 등록·이전 preview 숨김·카메라 pivot·파트 오버라이드·클립 이름→인덱스),
+  `Document_Directory()`, `Scan_Documents()`, `Save_Document()`, `Parse_Document()`(static, parse→validate→stage), `Load_Document()`(commit: type·슬롯 바인딩·스폰, 실패 시 이전 type/바인딩 복원).
+  멤버 `m_ePreviewType`, `m_szEffectId[96]`, `m_Documents`, `m_bDocumentsScanned`, `m_strDocumentStatus`.
+- UI: Create 패널 아래 `Document` 패널 — Effect ID 입력 · Save(라이브 preview 필요) · Rescan · 문서 목록(더블클릭 로드) · Load · 상태줄.
+
+## G10 범위 — Attach: 타깃 NPC 소환 · 클립 재생/스크럽 · 본 pivot · 바인딩 문서
+
+배경: 피벗을 붙이려면 소환 대상 모델을 지형 위에 띄우고 애니메이션을 재생/정지한 채 튜닝해야 한다. 공용 Character Preview는 NPC 애니셋을 붙이지 않아
+웨이 클립을 못 돌리므로, **제품 NPC 표현 경로**(`CActorCatalog` + `CNpcPresentationAssetService::Ensure_Prototypes` + `Prototype_GameObject_Npc`)로 실제 CNpc를
+`Layer_EffectPreviewV2Target`에 소환한다(ClientReplication과 같은 레시피, 두 번째 로더 없음). 위치는 **씬 캐릭터 옆 2.5 m 지면**(캐릭터 없으면 원점).
+
+### 툴 (`Effect Attach v2` 창, Create 패널 `Attach...`)
+
+- Target: supported NPC archetype 콤보 → `Spawn Target`/`Despawn`, Target Position/Yaw(DragFloat, `CNpc::Apply_NetworkState`), `Beside Character`.
+  웨이 `NPC_58700`은 `esther.strike` 첫 클립(`npc_sk_dochul`)으로 시작. 본 이름은 모델 자산을 `CModelDecoderRegistry`로 디코드해 `Has_Bone` 필터.
+- Target Playback: 클립 콤보(애니셋 포함) · 프레임 스크럽(`Set_AnimPaused`+`Set_AnimTrackPosition`) · Play/Pause · `< Frame`/`Frame >` · Restart Clip(이펙트도 Restart) · Loop.
+- Effect Pivot: `Pivot Mode World / Target Bone` + Pivot Bone 콤보. Target Bone이면 매 프레임 `PivotWorld = Get_BoneMatrix(bone) × RotY(yaw)·T(pos)`
+  (`Update_Attach`), Tuning의 Pivot(world) 입력은 비활성, Bring To Camera는 World 모드로 되돌림.
+  **본 행렬의 스케일은 버린다**(축 정규화, 위치·회전만): NPC 본에는 admission 0.0001×아마추어 100=0.01이 합성돼 있어 그대로 쓰면 이펙트가 100분의 1로
+  줄어 사라진다(2026-08-22 사용자 관찰 "Target Bone 후 도철 안 보임"의 원인).
+  `Pivot Rotation` = `Bone`(본 회전 상속) / `Target Yaw`(본 위치 + 타깃 yaw, **기본**) / `World`(본 위치만). 본 회전을 상속하면 Tuning의 오일러
+  Rotation(Z→X→Y 순, 피벗 축 기준)이 기울어진 본 축 위에서 돌아 직관과 어긋나므로 기본은 Target Yaw. 바인딩 행에 `"rotation": "Bone|TargetYaw|World"` 저장. `Spawn Frame`(30 fps) — 타깃 클립이 그 시각을 지나면 preview Restart.
+- Bindings: `Data/Effects/V2/Bindings/<archetypeId>.effectv2bindings.json`
+  `{ "schema":"lostark.effect-v2-bindings","formatVersion":1,"archetypeId":"NPC_58700",
+     "bindings":[{"effectId":"esther.wei.dochul","clip":"npc_sk_dochul","startMs":0,"bone":"b_effectroot","followBone":true,"stopWithClip":false}] }`
+  `Add / Update Binding`(effectId+clip 키), 행 클릭 → effectId/frame/pivot/clip 복원, `Stop w/ clip`, Remove, `Save Bindings`(.tmp→rename), `Reload`.
+  로드 검증: schema/version/archetypeId 일치, effectId 형식, clip 비어있지 않음, startMs 0~600000, 중복(effectId+clip) 거부.
+- 로컬 오프셋은 바인딩이 아니라 이펙트 문서의 Position/Rotation/Scale 트랙이 소유한다.
+
+### 코드
+
+`Effect_Tool_V2.h/.cpp`: `PIVOT_MODE`, `EFFECT_BINDING`, `Render_AttachWindow/Spawn_Target/Despawn_Target/Move_Target/Update_Attach/
+Binding_Directory/Save_Bindings/Load_Bindings/Parse_Bindings/Collect_BoneNames`, 멤버 `m_pTarget(weak CNpc)`, `m_strTargetArchetypeId`, 위치/yaw, 본 목록,
+`m_ePivotMode/m_strPivotBone/m_iSpawnFrame/m_Bindings`. include `ActorCatalog.h, AnimationTargetService.h, Character.h, Npc.h, NpcPresentationAssetService.h`.
+`Render()`가 `Update_Attach` → Tuning → Attach 창 순으로 호출. 프로젝트 변경 없음.
+
+### 다음 단계(미구현)
+
+G11 런타임: `CEffectV2Object`(preview 일반화) + 바인딩 로드 + `CNpc::Set_Animation`/`CCharacter` 클립 시작 훅 → 웨이 `npc_sk_dochul` 재생 시 도철 스폰.
+플레이어 캐릭터 타깃(`CAnimationTargetService` 경로)은 G10 Attach 창의 Target 종류로 추가 예정.
+
+## G08 — 인버티드 헐 Outline (추가 후 제거, 2026-08-22)
+
+pass 5 `Outline`(CullFront, 노말 방향 월드 m 밀어내기, 단색) + Tuning `Outline` 섹션 + 파트별 제외를 넣어 확인했으나 사용자 판정으로 제거.
+사유: 디졸브로 사라지는 연출과 겹치면 헐이 모델 크기만큼 남아 보이고, 윤곽은 툴 파라미터가 아니라 나중에 전용 셰이더(스크린 스페이스 등)에서
+처리할 문제. 코드·셰이더는 G07-lite 상태로 되돌렸고 Rim 기능만 남긴다.
+
 ## 파일
 
 | 파일 | 역할 |
@@ -47,8 +308,8 @@
 | `Client/Public/Effect_Tool_V2.h` (새) | `CEffect_Tool_V2` 선언 |
 | `Client/Private/Effect_Tool_V2.cpp` (새) | 스캔/미리보기/썸네일/ImGui |
 | `Client/Bin/ShaderFiles/Shader_VtxAnimMeshPreview_V2.hlsl` (새) | 스킨 메시 썸네일 셰이더 |
-| `Client/Public/Effect_Preview_V2.h`, `Client/Private/Effect_Preview_V2.cpp` (새) | 월드 preview GameObject |
-| `Client/Bin/ShaderFiles/Shader_EffectV2_Common.hlsli`, `Shader_EffectMeshV2.hlsl`, `Shader_EffectAnimMeshV2.hlsl`, `Shader_EffectRectV2.hlsl` (새) | preview 셰이더 |
+| `Client/Public/Effect_Preview_V2.h`, `Client/Private/Effect_Preview_V2.cpp` (새, G04에서 PARAMS/pivot/lerp/velocity 재구성) | 월드 preview GameObject |
+| `Client/Bin/ShaderFiles/Shader_EffectV2_Common.hlsli` (새, G04에서 상수·PS 출력·블렌드 교체), `Shader_EffectMeshV2.hlsl`, `Shader_EffectAnimMeshV2.hlsl`, `Shader_EffectRectV2.hlsl` (새) | preview 셰이더 |
 | `Tools/EffectToolV2/build_texture_slot_usage.py` (새) | 슬롯 사용 사이드카 생성기 |
 | `Data/Effects/V2/TextureSlotUsage.v1.json` (생성물, Git 추적) | 텍스처→슬롯 사용 횟수 |
 | `Client/Public/MainApp.h`, `Client/Private/MainApp.cpp` | `DEBUG_TOOL::EFFECT_V2`, 멤버, 버튼/생성/Render/Free |
@@ -63,6 +324,19 @@
 - Client Debug x64 빌드 성공, `Effect_Tool_V2.cpp` 경고 0, `git diff --check` 통과.
 - 사용자 확인(2026-08-22): Type/슬롯/라이브러리/미리보기 동작, `Esther/Balthorr·Thirain·Wei` 도메인 분리,
   `Esther/Wei/Models/Dochul/FX_CUDC_00_SK.wmodel` 스킨 썸네일 표시.
+- G04 자동(2026-08-22 실행): Client Debug x64 MSBuild exit 0(신규 경고 0, 기존 `GameInstance.h` C4819만),
+  `fxc /T fx_5_0`로 Rect/Mesh/AnimMesh V2 셰이더 3개 컴파일 성공(X4717 deprecated 경고만), `git diff --check` 통과.
+  사용자 수동(미실행): Create → Pivot 이동과 Position 분리, 각 트랙 Lerp 체크 시 End 칸 표시·lifetime 동안 보간, Velocity로 이동·Restart 리셋,
+  Color Mul/Offset/Clip(RGB·Alpha), Emissive 바인드 시 Bloom Intensity > 1에서 번짐, Noise 바인드 시 Distortion Intensity로 배경 굴절,
+  UV Start/Speed/TileCount, Dissolve 바인드 + lifetime > 0에서 Dissolve Start 이후 소멸, lifetime 0 경고 표시.
+- G05 자동(2026-08-22 실행): Client Debug x64 MSBuild exit 0(신규 경고 0), `git diff --check` 통과.
+  사용자 수동(미실행): Mesh 타입에 `FX_CUDC_00_SK.wmodel` 바인드 → Create → Animation 섹션 표시, Clip combo 52개·길이 표시,
+  `dochul_sk_esthereffect_2` 선택 시 재생, Clip Loop, Restart 시 클립 0초 동기, `Lifetime = Clip Length` 뒤 lifetime loop에서 클립도 되감김,
+  Play Rate가 클립 속도에 반영, 재생 중 Color/Bloom/Dissolve 튜닝 반영.
+- G06 자동(2026-08-22 실행): Client Debug x64 MSBuild exit 0(`OPAQUE` 매크로 충돌로 1회 실패 후 `SOLID`로 rename), fxc fx_5_0 3개 셰이더
+  컴파일 성공(Opaque pass 포함), `git diff --check` 통과.
+  사용자 수동(미실행): 도철 Create → Blend `Opaque`에서 뒷면/내부 겹침 사라짐, Parts 섹션에 #0 `fx_cudc_00-1_mi`/#1 `lfx_cudc_00_mi` 2행,
+  라이브러리에서 `mn_cudc_00_d_loc_int` 선택 후 #1 `<- Base slot`으로 파트 텍스처 분리, Visible 체크로 파트 숨김, Clear로 공용 Base 복귀.
 
 ## 전체 코드
 
@@ -72,6 +346,7 @@
 #pragma once
 
 #include "Client_Defines.h"
+#include "Effect_Preview_V2.h"
 #include "Engine_Defines.h"
 
 #include <array>
@@ -89,7 +364,7 @@ NS_END
 
 NS_BEGIN(Client)
 
-class CEffectPreviewV2;
+class CNpc;
 
 class CEffect_Tool_V2 final
 {
@@ -150,6 +425,46 @@ private:
 	using SLOT_BINDINGS =
 		std::array<std::string, static_cast<size_t>(RESOURCE_SLOT::END)>;
 
+	struct PART_OVERRIDE final
+	{
+		bool_t bVisible = true;
+		std::string strBaseAssetId;
+	};
+
+	struct DOCUMENT_STAGE final
+	{
+		EFFECT_TYPE eType = EFFECT_TYPE::MESH;
+		CEffectPreviewV2::DESC Desc;
+		std::vector<PART_OVERRIDE> Parts;
+		std::string strAnimationClip;
+	};
+
+	enum class PIVOT_MODE : int32_t
+	{
+		WORLD,
+		TARGET_BONE,
+		END
+	};
+
+	enum class PIVOT_ROTATION : int32_t
+	{
+		BONE,
+		TARGET_YAW,
+		WORLD,
+		END
+	};
+
+	struct EFFECT_BINDING final
+	{
+		std::string strEffectId;
+		std::string strClip;
+		uint32_t iStartMs = 0u;
+		std::string strBone;
+		bool_t bFollowBone = true;
+		PIVOT_ROTATION eRotation = PIVOT_ROTATION::TARGET_YAW;
+		bool_t bStopWithClip = false;
+	};
+
 public:
 	CEffect_Tool_V2(
 		ComPtr<ID3D11Device> pDevice,
@@ -181,8 +496,38 @@ private:
 	void Render_ResourceBrowser();
 	void Render_PreviewPanel();
 	void Render_CreatePanel();
+	void Render_DocumentPanel();
 	void Render_TuningPanel();
 	bool_t Try_CreatePreview();
+	bool_t Spawn_Preview(
+		const CEffectPreviewV2::DESC& Desc,
+		const std::vector<PART_OVERRIDE>& Parts,
+		const std::string& strAnimationClip);
+	void Scan_Documents();
+	bool_t Save_Document();
+	bool_t Load_Document(const std::string& strEffectId);
+	static std::filesystem::path Document_Directory();
+	static bool_t Parse_Document(
+		const std::string& strText,
+		DOCUMENT_STAGE& OutStage,
+		std::string& strOutError);
+
+	void Render_AttachWindow();
+	bool_t Spawn_Target(const std::string& strArchetypeId);
+	void Despawn_Target();
+	void Move_Target(const float3_t& vPosition, f32_t fYawDegrees);
+	void Update_Attach(f32_t fTimeDelta);
+	static std::filesystem::path Binding_Directory();
+	bool_t Save_Bindings();
+	bool_t Load_Bindings(const std::string& strArchetypeId);
+	static bool_t Parse_Bindings(
+		const std::string& strText,
+		const std::string& strExpectedArchetypeId,
+		std::vector<EFFECT_BINDING>& OutBindings,
+		std::string& strOutError);
+	static bool_t Collect_BoneNames(
+		const std::string& strModelAssetId,
+		std::vector<std::string>& OutNames);
 
 	SLOT_BINDINGS& Current_Bindings();
 	std::string& Current_SlotAssetId();
@@ -203,7 +548,7 @@ private:
 
 	EFFECT_TYPE m_eType = EFFECT_TYPE::MESH;
 	RESOURCE_SLOT m_eSelectedSlot = RESOURCE_SLOT::BASE;
-	std::array<SLOT_BINDINGS, static_cast<size_t>(EFFECT_TYPE::END)> m_Bindings;
+	std::array<SLOT_BINDINGS, static_cast<size_t>(EFFECT_TYPE::END)> m_SlotBindings;
 
 	bool_t m_bScanned = false;
 	std::vector<RESOURCE_ENTRY> m_Resources;
@@ -213,7 +558,6 @@ private:
 	std::string m_strDomainFilter;
 	char m_szNameFilter[128] = {};
 	bool_t m_bVisibleDirty = true;
-	bool_t m_bShowAllTextures = false;
 	std::unordered_map<std::string, TEXTURE_USAGE> m_TextureUsage;
 	std::string m_strUsageStatus;
 
@@ -221,8 +565,31 @@ private:
 	uint32_t m_iLoadsThisFrame = 0u;
 
 	std::weak_ptr<CEffectPreviewV2> m_pPreview;
+	EFFECT_TYPE m_ePreviewType = EFFECT_TYPE::MESH;
 	bool_t m_bPreviewPrototypeRegistered = false;
+	bool_t m_bTuningWindowOpen = false;
 	std::string m_strPreviewStatus;
+
+	char m_szEffectId[96] = {};
+	std::vector<std::string> m_Documents;
+	bool_t m_bDocumentsScanned = false;
+	std::string m_strDocumentStatus;
+
+	bool_t m_bAttachWindowOpen = false;
+	std::weak_ptr<CNpc> m_pTarget;
+	std::string m_strTargetArchetypeId;
+	int32_t m_iTargetArchetypeSelection = -1;
+	float3_t m_vTargetPosition = { 0.f, 0.f, 0.f };
+	f32_t m_fTargetYawDegrees = 0.f;
+	std::vector<std::string> m_TargetBoneNames;
+	bool_t m_bTargetClipLoop = true;
+	f32_t m_fTargetLastClipSeconds = -1.f;
+	PIVOT_MODE m_ePivotMode = PIVOT_MODE::WORLD;
+	PIVOT_ROTATION m_ePivotRotation = PIVOT_ROTATION::TARGET_YAW;
+	std::string m_strPivotBone;
+	int32_t m_iSpawnFrame = 0;
+	std::vector<EFFECT_BINDING> m_Bindings;
+	std::string m_strAttachStatus;
 
 	std::string m_strStatus;
 };
@@ -236,12 +603,17 @@ NS_END
 #include "imgui.h"
 
 #include "Effect_Tool_V2.h"
+#include "ActorCatalog.h"
+#include "AnimationTargetService.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
+#include "Character.h"
 #include "DataJson.h"
 #include "Effect_Preview_V2.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "Npc.h"
+#include "NpcPresentationAssetService.h"
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "Shader.h"
@@ -252,6 +624,7 @@ NS_END
 #include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -336,13 +709,18 @@ void Client::CEffect_Tool_V2::Render()
 		Render_PreviewPanel();
 		ImGui::Separator();
 		Render_CreatePanel();
-		Render_TuningPanel();
+		ImGui::Separator();
+		Render_DocumentPanel();
 		ImGui::EndTable();
 	}
 
 	if (!m_strStatus.empty())
 		ImGui::TextWrapped("%s", m_strStatus.c_str());
 	ImGui::End();
+
+	Update_Attach(ImGui::GetIO().DeltaTime);
+	Render_TuningPanel();
+	Render_AttachWindow();
 }
 
 void Client::CEffect_Tool_V2::Scan_Resources()
@@ -507,35 +885,21 @@ void Client::CEffect_Tool_V2::Rebuild_VisibleResources()
 	const RESOURCE_KIND eKind = Slot_Kind(m_eSelectedSlot);
 	m_eVisibleKind = eKind;
 	const std::string Filter = To_Lower(m_szNameFilter);
-	const size_t iSlot = static_cast<size_t>(m_eSelectedSlot);
-	const bool_t bUsageFilter =
-		RESOURCE_KIND::TEXTURE == eKind && !m_bShowAllTextures;
+	const bool_t bDedupeByName = m_strDomainFilter.empty();
+	std::set<std::string> SeenNames;
 	for (size_t iEntry = 0u; iEntry < m_Resources.size(); ++iEntry)
 	{
 		const RESOURCE_ENTRY& Entry = m_Resources[iEntry];
 		if (Entry.eKind != eKind)
 			continue;
-		if (bUsageFilter &&
-			(nullptr == Entry.pUsage || 0u == Entry.pUsage->Counts[iSlot]))
-			continue;
 		if (!m_strDomainFilter.empty() && Entry.strDomain != m_strDomainFilter)
 			continue;
-		if (!Filter.empty() &&
-			std::string::npos == To_Lower(Entry.strFileName).find(Filter))
+		const std::string LowerName = To_Lower(Entry.strFileName);
+		if (!Filter.empty() && std::string::npos == LowerName.find(Filter))
+			continue;
+		if (bDedupeByName && !SeenNames.insert(LowerName).second)
 			continue;
 		m_VisibleResources.push_back(iEntry);
-	}
-	if (RESOURCE_KIND::TEXTURE == eKind)
-	{
-		std::stable_sort(m_VisibleResources.begin(), m_VisibleResources.end(),
-			[this, iSlot](const size_t iLeft, const size_t iRight)
-			{
-				const TEXTURE_USAGE* pLeft = m_Resources[iLeft].pUsage;
-				const TEXTURE_USAGE* pRight = m_Resources[iRight].pUsage;
-				const uint32_t iLeftCount = nullptr == pLeft ? 0u : pLeft->Counts[iSlot];
-				const uint32_t iRightCount = nullptr == pRight ? 0u : pRight->Counts[iSlot];
-				return iLeftCount > iRightCount;
-			});
 	}
 }
 
@@ -613,7 +977,8 @@ bool_t Client::CEffect_Tool_V2::Create_ModelThumbnail(
 	}
 	if (nullptr == Model)
 	{
-		strOutError = "WModel load failed: " + Path.string();
+		strOutError = "WModel load failed: " + Path.string() + "\n" +
+			CModelDecoderRegistry::Get().Get_LastReport().error;
 		return false;
 	}
 	float3_t Minimum{};
@@ -625,7 +990,8 @@ bool_t Client::CEffect_Tool_V2::Create_ModelThumbnail(
 	}
 	else if (!Compute_SkinnedBounds(Path, *Model, Minimum, Maximum, strOutInfo))
 	{
-		strOutError = "WModel bounds failed: " + Path.string();
+		strOutError = "WModel bounds failed: " + Path.string() + "\n" +
+			CModelDecoderRegistry::Get().Get_LastReport().error;
 		return false;
 	}
 	{
@@ -1063,18 +1429,6 @@ void Client::CEffect_Tool_V2::Render_ResourceBrowser()
 		m_bVisibleDirty = true;
 	}
 
-	if (RESOURCE_KIND::TEXTURE == eKind)
-	{
-		ImGui::SameLine();
-		if (ImGui::Checkbox("Show all", &m_bShowAllTextures))
-			m_bVisibleDirty = true;
-		if (ImGui::IsItemHovered())
-		{
-			ImGui::SetTooltip(
-				"Off: only textures that the imported/authored source documents bound to this slot at least once.\nOn: every DDS.");
-		}
-	}
-
 	if (m_bVisibleDirty || m_eVisibleKind != eKind)
 		Rebuild_VisibleResources();
 	ImGui::TextDisabled("%zu shown", m_VisibleResources.size());
@@ -1247,6 +1601,14 @@ void Client::CEffect_Tool_V2::Render_CreatePanel()
 	if (ImGui::Button("Create Effect"))
 		Try_CreatePreview();
 	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(m_pPreview.expired());
+	if (ImGui::Button("Open Tuning"))
+		m_bTuningWindowOpen = true;
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	if (ImGui::Button("Attach..."))
+		m_bAttachWindowOpen = true;
 	if (!bSupportedType)
 		ImGui::TextDisabled("Only Mesh and Texture types can be previewed yet.");
 	else if (!bHasBase)
@@ -1258,6 +1620,26 @@ void Client::CEffect_Tool_V2::Render_CreatePanel()
 }
 
 bool_t Client::CEffect_Tool_V2::Try_CreatePreview()
+{
+	const SLOT_BINDINGS& Bindings = Current_Bindings();
+	CEffectPreviewV2::DESC Desc{};
+	Desc.eShape = EFFECT_TYPE::MESH == m_eType ?
+		CEffectPreviewV2::SHAPE::MESH : CEffectPreviewV2::SHAPE::SPRITE;
+	Desc.strMeshAssetId = Bindings[static_cast<size_t>(RESOURCE_SLOT::MESH)];
+	for (int32_t iSlot = static_cast<int32_t>(RESOURCE_SLOT::BASE);
+		iSlot < static_cast<int32_t>(RESOURCE_SLOT::END); ++iSlot)
+	{
+		Desc.TextureAssetIds[static_cast<size_t>(
+			iSlot - static_cast<int32_t>(RESOURCE_SLOT::BASE))] =
+			Bindings[static_cast<size_t>(iSlot)];
+	}
+	return Spawn_Preview(Desc, {}, std::string());
+}
+
+bool_t Client::CEffect_Tool_V2::Spawn_Preview(
+	const CEffectPreviewV2::DESC& SourceDesc,
+	const std::vector<PART_OVERRIDE>& Parts,
+	const std::string& strAnimationClip)
 {
 	CGameInstance& GameInstance = CGameInstance::Get();
 	if (!m_bPreviewPrototypeRegistered)
@@ -1282,19 +1664,7 @@ bool_t Client::CEffect_Tool_V2::Try_CreatePreview()
 	if (const std::shared_ptr<CEffectPreviewV2> pPrevious = m_pPreview.lock())
 		pPrevious->Set_Hidden(true);
 
-	const SLOT_BINDINGS& Bindings = Current_Bindings();
-	CEffectPreviewV2::DESC Desc{};
-	Desc.eShape = EFFECT_TYPE::MESH == m_eType ?
-		CEffectPreviewV2::SHAPE::MESH : CEffectPreviewV2::SHAPE::SPRITE;
-	Desc.strMeshAssetId = Bindings[static_cast<size_t>(RESOURCE_SLOT::MESH)];
-	for (int32_t iSlot = static_cast<int32_t>(RESOURCE_SLOT::BASE);
-		iSlot < static_cast<int32_t>(RESOURCE_SLOT::END); ++iSlot)
-	{
-		Desc.TextureAssetIds[static_cast<size_t>(
-			iSlot - static_cast<int32_t>(RESOURCE_SLOT::BASE))] =
-			Bindings[static_cast<size_t>(iSlot)];
-	}
-
+	CEffectPreviewV2::DESC Desc = SourceDesc;
 	const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
 	const float4x4_t* pCameraWorld = GameInstance.Get_InverseTransform(D3DTS::VIEW);
 	if (nullptr == pCameraPosition || nullptr == pCameraWorld)
@@ -1304,8 +1674,7 @@ bool_t Client::CEffect_Tool_V2::Try_CreatePreview()
 	}
 	const vector_t Look = XMVector3Normalize(XMLoadFloat4x4(pCameraWorld).r[2]);
 	const vector_t Spawn = XMLoadFloat4(pCameraPosition) + Look * 3.f;
-	XMStoreFloat3(&Desc.vPosition, Spawn);
-	Desc.vScale = { 1.f, 1.f, 1.f };
+	XMStoreFloat4x4(&Desc.PivotWorld, XMMatrixTranslationFromVector(Spawn));
 
 	std::shared_ptr<CGameObject> pGameObject;
 	if (FAILED(GameInstance.Add_GameObject_to_Layer(
@@ -1326,23 +1695,1273 @@ bool_t Client::CEffect_Tool_V2::Try_CreatePreview()
 		m_strPreviewStatus = "Create failed: unexpected object type.";
 		return false;
 	}
+	for (uint32_t iPart = 0u;
+		iPart < Parts.size() && iPart < pPreview->Part_Count(); ++iPart)
+	{
+		pPreview->Part_Visible(iPart) = Parts[iPart].bVisible;
+		if (!Parts[iPart].strBaseAssetId.empty() &&
+			FAILED(pPreview->Set_PartBase(iPart, Parts[iPart].strBaseAssetId)))
+		{
+			m_strPreviewStatus = "Part texture load failed: " + Parts[iPart].strBaseAssetId;
+		}
+	}
+	if (!strAnimationClip.empty())
+	{
+		bool_t bFound = false;
+		for (uint32_t iClip = 0u; iClip < pPreview->Animation_Count(); ++iClip)
+		{
+			const char_t* pName = pPreview->Animation_Name(iClip);
+			if (nullptr != pName && strAnimationClip == pName)
+			{
+				pPreview->Params().iAnimationIndex = iClip;
+				bFound = true;
+				break;
+			}
+		}
+		if (!bFound)
+			m_strPreviewStatus = "Animation clip not found in model: " + strAnimationClip;
+	}
 	m_pPreview = pPreview;
-	m_strPreviewStatus = "Spawned at camera forward 3 m.";
+	m_ePreviewType = m_eType;
+	m_bTuningWindowOpen = true;
+	if (m_strPreviewStatus.empty() || 0 == m_strPreviewStatus.rfind("Pivot", 0))
+		m_strPreviewStatus = "Pivot spawned at camera forward 3 m.";
 	return true;
+}
+
+std::filesystem::path Client::CEffect_Tool_V2::Document_Directory()
+{
+	return CProjectDataRoot::Resolve(L"Effects/V2/Authored");
+}
+
+void Client::CEffect_Tool_V2::Scan_Documents()
+{
+	m_bDocumentsScanned = true;
+	m_Documents.clear();
+	std::error_code Error;
+	const std::filesystem::path Directory = Document_Directory();
+	if (Directory.empty() || !std::filesystem::is_directory(Directory, Error))
+		return;
+	for (const std::filesystem::directory_entry& Entry :
+		std::filesystem::directory_iterator(Directory, Error))
+	{
+		if (!Entry.is_regular_file(Error))
+			continue;
+		const std::string strName = Entry.path().filename().string();
+		constexpr const char* SUFFIX = ".effectv2.json";
+		const size_t iSuffix = std::strlen(SUFFIX);
+		if (strName.size() <= iSuffix ||
+			strName.compare(strName.size() - iSuffix, iSuffix, SUFFIX) != 0)
+			continue;
+		m_Documents.push_back(strName.substr(0u, strName.size() - iSuffix));
+	}
+	std::sort(m_Documents.begin(), m_Documents.end());
+}
+
+namespace
+{
+	bool_t Is_ValidEffectId(const std::string& strId)
+	{
+		if (strId.empty() || strId.size() > 80u)
+			return false;
+		for (const char Character : strId)
+		{
+			if (!std::isalnum(static_cast<unsigned char>(Character)) &&
+				'.' != Character && '_' != Character && '-' != Character)
+				return false;
+		}
+		return true;
+	}
+
+	std::string Json_String(const std::string& strValue)
+	{
+		return "\"" + Client::CDataJson::Escape(strValue) + "\"";
+	}
+
+	std::string Json_Number(const f32_t fValue)
+	{
+		char szBuffer[48]{};
+		std::snprintf(szBuffer, sizeof(szBuffer), "%.7g",
+			std::isfinite(fValue) ? static_cast<double>(fValue) : 0.0);
+		std::string strText = szBuffer;
+		if (std::string::npos == strText.find_first_of(".eE"))
+			strText += ".0";
+		return strText;
+	}
+
+	std::string Json_Float2(const float2_t& vValue)
+	{
+		return "[" + Json_Number(vValue.x) + ", " + Json_Number(vValue.y) + "]";
+	}
+
+	std::string Json_Float3(const float3_t& vValue)
+	{
+		return "[" + Json_Number(vValue.x) + ", " + Json_Number(vValue.y) + ", " +
+			Json_Number(vValue.z) + "]";
+	}
+
+	std::string Json_Float4(const float4_t& vValue)
+	{
+		return "[" + Json_Number(vValue.x) + ", " + Json_Number(vValue.y) + ", " +
+			Json_Number(vValue.z) + ", " + Json_Number(vValue.w) + "]";
+	}
+
+	std::string Json_Lerp(const Client::CEffectPreviewV2::LERP_FLOAT3& Track)
+	{
+		return "{ \"start\": " + Json_Float3(Track.vStart) +
+			", \"end\": " + Json_Float3(Track.vEnd) +
+			", \"lerp\": " + (Track.bLerp ? "true" : "false") + " }";
+	}
+
+	const char* EFFECT_TYPE_KEYS[] = { "Mesh", "Texture", "Particle", "Decal", "Trail" };
+	const char* BLEND_KEYS[] = { "Alpha", "Additive", "Opaque" };
+	const char* CLIP_CHANNEL_KEYS[] = { "RGB", "Alpha" };
+
+	bool_t Read_Number(const Client::DATA_JSON_VALUE& Object,
+		const char* pKey, f32_t& fOut, std::string& strError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Object.Find(pKey);
+		if (nullptr == pValue)
+			return true;
+		if (!pValue->Is_Number() || !std::isfinite(pValue->Get_Number()))
+		{
+			strError = std::string("params.") + pKey + " must be a finite number.";
+			return false;
+		}
+		fOut = static_cast<f32_t>(pValue->Get_Number());
+		return true;
+	}
+
+	bool_t Read_Bool(const Client::DATA_JSON_VALUE& Object,
+		const char* pKey, bool_t& bOut, std::string& strError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Object.Find(pKey);
+		if (nullptr == pValue)
+			return true;
+		if (!pValue->Is_Boolean())
+		{
+			strError = std::string("params.") + pKey + " must be a boolean.";
+			return false;
+		}
+		bOut = pValue->Get_Boolean();
+		return true;
+	}
+
+	bool_t Read_FloatArray(const Client::DATA_JSON_VALUE& Object,
+		const char* pKey, f32_t* pOut, const size_t iCount, std::string& strError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Object.Find(pKey);
+		if (nullptr == pValue)
+			return true;
+		if (!pValue->Is_Array() || pValue->Get_Array().size() != iCount)
+		{
+			strError = std::string("params.") + pKey + " must be an array of " +
+				std::to_string(iCount) + " numbers.";
+			return false;
+		}
+		for (size_t iIndex = 0u; iIndex < iCount; ++iIndex)
+		{
+			const Client::DATA_JSON_VALUE& Element = pValue->Get_Array()[iIndex];
+			if (!Element.Is_Number() || !std::isfinite(Element.Get_Number()))
+			{
+				strError = std::string("params.") + pKey + " contains a non-finite value.";
+				return false;
+			}
+			pOut[iIndex] = static_cast<f32_t>(Element.Get_Number());
+		}
+		return true;
+	}
+
+	bool_t Read_Lerp(const Client::DATA_JSON_VALUE& Object,
+		const char* pKey, Client::CEffectPreviewV2::LERP_FLOAT3& Track, std::string& strError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Object.Find(pKey);
+		if (nullptr == pValue)
+			return true;
+		if (!pValue->Is_Object())
+		{
+			strError = std::string("params.") + pKey + " must be an object.";
+			return false;
+		}
+		return Read_FloatArray(*pValue, "start", &Track.vStart.x, 3u, strError) &&
+			Read_FloatArray(*pValue, "end", &Track.vEnd.x, 3u, strError) &&
+			Read_Bool(*pValue, "lerp", Track.bLerp, strError);
+	}
+
+	bool_t Read_Enum(const Client::DATA_JSON_VALUE& Object, const char* pKey,
+		const char* const* pKeys, const size_t iKeyCount, int32_t& iOut, std::string& strError)
+	{
+		const Client::DATA_JSON_VALUE* pValue = Object.Find(pKey);
+		if (nullptr == pValue)
+			return true;
+		if (pValue->Is_String())
+		{
+			for (size_t iIndex = 0u; iIndex < iKeyCount; ++iIndex)
+			{
+				if (pValue->Get_String() == pKeys[iIndex])
+				{
+					iOut = static_cast<int32_t>(iIndex);
+					return true;
+				}
+			}
+		}
+		strError = std::string(pKey) + " has an unknown value.";
+		return false;
+	}
+}
+
+bool_t Client::CEffect_Tool_V2::Save_Document()
+{
+	const std::shared_ptr<CEffectPreviewV2> pPreview = m_pPreview.lock();
+	const std::string strEffectId = m_szEffectId;
+	if (nullptr == pPreview)
+	{
+		m_strDocumentStatus = "Create Effect first; Save writes the live preview.";
+		return false;
+	}
+	if (!Is_ValidEffectId(strEffectId))
+	{
+		m_strDocumentStatus = "Effect ID must be 1-80 chars of [A-Za-z0-9._-].";
+		return false;
+	}
+	const CEffectPreviewV2::DESC& Desc = pPreview->Creation_Desc();
+	const CEffectPreviewV2::PARAMS& P = pPreview->Params();
+	const char* pClip = pPreview->Animation_Name(P.iAnimationIndex);
+
+	std::string Text;
+	Text += "{\n";
+	Text += "  \"schema\": \"lostark.effect-v2\",\n";
+	Text += "  \"formatVersion\": 1,\n";
+	Text += "  \"effectId\": " + Json_String(strEffectId) + ",\n";
+	Text += "  \"effectType\": " + Json_String(
+		EFFECT_TYPE_KEYS[static_cast<size_t>(m_ePreviewType)]) + ",\n";
+	Text += "  \"slots\": {\n";
+	Text += "    \"mesh\": " + Json_String(Desc.strMeshAssetId) + ",\n";
+	static const char* SLOT_KEYS[] = { "base", "noise", "mask", "emissive", "dissolve" };
+	for (size_t iInput = 0u; iInput < Desc.TextureAssetIds.size(); ++iInput)
+	{
+		Text += std::string("    \"") + SLOT_KEYS[iInput] + "\": " +
+			Json_String(Desc.TextureAssetIds[iInput]) +
+			(iInput + 1u < Desc.TextureAssetIds.size() ? ",\n" : "\n");
+	}
+	Text += "  },\n";
+	Text += "  \"params\": {\n";
+	Text += "    \"position\": " + Json_Lerp(P.Position) + ",\n";
+	Text += "    \"rotation\": " + Json_Lerp(P.Rotation) + ",\n";
+	Text += "    \"scale\": " + Json_Lerp(P.Scale) + ",\n";
+	Text += "    \"velocity\": " + Json_Lerp(P.Velocity) + ",\n";
+	Text += "    \"colorOffset\": " + Json_Float4(P.vColorOffset) + ",\n";
+	Text += "    \"colorMul\": " + Json_Float4(P.vColorMul) + ",\n";
+	Text += "    \"colorClipChannel\": " + Json_String(
+		CLIP_CHANNEL_KEYS[static_cast<size_t>(P.eColorClipChannel)]) + ",\n";
+	Text += "    \"colorClip\": " + Json_Number(P.fColorClip) + ",\n";
+	Text += "    \"rimColor\": " + Json_Float4(P.vRimColor) + ",\n";
+	Text += "    \"rimPower\": " + Json_Number(P.fRimPower) + ",\n";
+	Text += "    \"rimIntensity\": " + Json_Number(P.fRimIntensity) + ",\n";
+	Text += "    \"ghostAlpha\": " + Json_Number(P.fGhostAlpha) + ",\n";
+	Text += "    \"bloomIntensity\": " + Json_Number(P.fBloomIntensity) + ",\n";
+	Text += "    \"distortionIntensity\": " + Json_Number(P.fDistortionIntensity) + ",\n";
+	Text += "    \"uvStart\": " + Json_Float2(P.vUVStart) + ",\n";
+	Text += "    \"uvSpeed\": " + Json_Float2(P.vUVSpeed) + ",\n";
+	Text += "    \"uvTileCount\": " + Json_Float2(P.vUVTileCount) + ",\n";
+	Text += "    \"noiseStrength\": " + Json_Number(P.fNoiseStrength) + ",\n";
+	Text += "    \"noiseScale\": " + Json_Number(P.fNoiseScale) + ",\n";
+	Text += "    \"noisePan\": " + Json_Float2(P.vNoisePan) + ",\n";
+	Text += "    \"dissolveStart\": " + Json_Number(P.fDissolveStart) + ",\n";
+	Text += "    \"dissolveSoftness\": " + Json_Number(P.fDissolveSoftness) + ",\n";
+	Text += "    \"blend\": " + Json_String(BLEND_KEYS[static_cast<size_t>(P.eBlend)]) + ",\n";
+	Text += std::string("    \"billboard\": ") + (P.bBillboard ? "true" : "false") + ",\n";
+	Text += std::string("    \"depthTest\": ") + (P.bDepthTest ? "true" : "false") + ",\n";
+	Text += "    \"lifetime\": " + Json_Number(P.fLifetime) + ",\n";
+	Text += std::string("    \"loop\": ") + (P.bLoop ? "true" : "false") + ",\n";
+	Text += "    \"playRate\": " + Json_Number(P.fPlayRate) + ",\n";
+	Text += "    \"meshPreScale\": " + Json_Number(P.fMeshPreScale) + ",\n";
+	Text += "    \"animationClip\": " + Json_String(nullptr != pClip ? pClip : "") + ",\n";
+	Text += std::string("    \"animationLoop\": ") + (P.bAnimationLoop ? "true" : "false") + "\n";
+	Text += "  },\n";
+	Text += "  \"parts\": [\n";
+	for (uint32_t iPart = 0u; iPart < pPreview->Part_Count(); ++iPart)
+	{
+		Text += "    { \"index\": " + std::to_string(iPart) +
+			", \"material\": " + Json_String(pPreview->Part_Name(iPart)) +
+			", \"visible\": " + (pPreview->Part_Visible(iPart) ? "true" : "false") +
+			", \"base\": " + Json_String(pPreview->Part_BaseAssetId(iPart)) + " }" +
+			(iPart + 1u < pPreview->Part_Count() ? ",\n" : "\n");
+	}
+	Text += "  ]\n";
+	Text += "}\n";
+
+	std::error_code Error;
+	const std::filesystem::path Directory = Document_Directory();
+	if (Directory.empty())
+	{
+		m_strDocumentStatus = "Project data root is not available.";
+		return false;
+	}
+	std::filesystem::create_directories(Directory, Error);
+	const std::filesystem::path Target = Directory / (strEffectId + ".effectv2.json");
+	const std::filesystem::path Temporary = Directory / (strEffectId + ".effectv2.json.tmp");
+	{
+		std::ofstream Stream(Temporary, std::ios::binary | std::ios::trunc);
+		if (!Stream.is_open())
+		{
+			m_strDocumentStatus = "Cannot open for write: " + Temporary.string();
+			return false;
+		}
+		Stream << Text;
+		if (!Stream.good())
+		{
+			Stream.close();
+			std::filesystem::remove(Temporary, Error);
+			m_strDocumentStatus = "Write failed: " + Temporary.string();
+			return false;
+		}
+	}
+	std::filesystem::rename(Temporary, Target, Error);
+	if (Error)
+	{
+		std::filesystem::remove(Temporary, Error);
+		m_strDocumentStatus = "Rename failed: " + Target.string();
+		return false;
+	}
+	m_bDocumentsScanned = false;
+	m_strDocumentStatus = "Saved " + Target.filename().string();
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Parse_Document(
+	const std::string& strText,
+	DOCUMENT_STAGE& OutStage,
+	std::string& strOutError)
+{
+	DATA_JSON_VALUE Root;
+	if (!CDataJson::Parse(strText, Root, strOutError) || !Root.Is_Object())
+	{
+		if (strOutError.empty())
+			strOutError = "Document root is not an object.";
+		return false;
+	}
+	const DATA_JSON_VALUE* pSchema = Root.Find("schema");
+	const DATA_JSON_VALUE* pVersion = Root.Find("formatVersion");
+	if (nullptr == pSchema || !pSchema->Is_String() || pSchema->Get_String() != "lostark.effect-v2" ||
+		nullptr == pVersion || !pVersion->Is_Number() || pVersion->Get_Number() != 1.0)
+	{
+		strOutError = "schema must be lostark.effect-v2 formatVersion 1.";
+		return false;
+	}
+	int32_t iType = 0;
+	if (!Read_Enum(Root, "effectType", EFFECT_TYPE_KEYS,
+		_countof(EFFECT_TYPE_KEYS), iType, strOutError))
+		return false;
+	if (nullptr == Root.Find("effectType"))
+	{
+		strOutError = "effectType is required.";
+		return false;
+	}
+	DOCUMENT_STAGE Stage{};
+	Stage.eType = static_cast<EFFECT_TYPE>(iType);
+	Stage.Desc.eShape = EFFECT_TYPE::MESH == Stage.eType ?
+		CEffectPreviewV2::SHAPE::MESH : CEffectPreviewV2::SHAPE::SPRITE;
+
+	const DATA_JSON_VALUE* pSlots = Root.Find("slots");
+	if (nullptr == pSlots || !pSlots->Is_Object())
+	{
+		strOutError = "slots object is required.";
+		return false;
+	}
+	static const char* SLOT_KEYS[] = { "mesh", "base", "noise", "mask", "emissive", "dissolve" };
+	for (size_t iKey = 0u; iKey < _countof(SLOT_KEYS); ++iKey)
+	{
+		const DATA_JSON_VALUE* pValue = pSlots->Find(SLOT_KEYS[iKey]);
+		if (nullptr == pValue)
+			continue;
+		if (!pValue->Is_String())
+		{
+			strOutError = std::string("slots.") + SLOT_KEYS[iKey] + " must be a string.";
+			return false;
+		}
+		const std::string& strAssetId = pValue->Get_String();
+		if (!strAssetId.empty())
+		{
+			const std::filesystem::path Resolved =
+				CRuntimeAssetRoot::Resolve(std::filesystem::path(strAssetId));
+			if (Resolved.empty() || !std::filesystem::is_regular_file(Resolved))
+			{
+				strOutError = std::string("slots.") + SLOT_KEYS[iKey] +
+					" asset is missing: " + strAssetId;
+				return false;
+			}
+		}
+		if (0u == iKey)
+			Stage.Desc.strMeshAssetId = strAssetId;
+		else
+			Stage.Desc.TextureAssetIds[iKey - 1u] = strAssetId;
+	}
+	if (CEffectPreviewV2::SHAPE::MESH == Stage.Desc.eShape && Stage.Desc.strMeshAssetId.empty())
+	{
+		strOutError = "Mesh effect requires slots.mesh.";
+		return false;
+	}
+
+	const DATA_JSON_VALUE* pParams = Root.Find("params");
+	if (nullptr == pParams || !pParams->Is_Object())
+	{
+		strOutError = "params object is required.";
+		return false;
+	}
+	CEffectPreviewV2::PARAMS& P = Stage.Desc.Params;
+	int32_t iClipChannel = static_cast<int32_t>(P.eColorClipChannel);
+	int32_t iBlend = static_cast<int32_t>(P.eBlend);
+	if (!Read_Lerp(*pParams, "position", P.Position, strOutError) ||
+		!Read_Lerp(*pParams, "rotation", P.Rotation, strOutError) ||
+		!Read_Lerp(*pParams, "scale", P.Scale, strOutError) ||
+		!Read_Lerp(*pParams, "velocity", P.Velocity, strOutError) ||
+		!Read_FloatArray(*pParams, "colorOffset", &P.vColorOffset.x, 4u, strOutError) ||
+		!Read_FloatArray(*pParams, "colorMul", &P.vColorMul.x, 4u, strOutError) ||
+		!Read_Enum(*pParams, "colorClipChannel", CLIP_CHANNEL_KEYS,
+			_countof(CLIP_CHANNEL_KEYS), iClipChannel, strOutError) ||
+		!Read_Number(*pParams, "colorClip", P.fColorClip, strOutError) ||
+		!Read_FloatArray(*pParams, "rimColor", &P.vRimColor.x, 4u, strOutError) ||
+		!Read_Number(*pParams, "rimPower", P.fRimPower, strOutError) ||
+		!Read_Number(*pParams, "rimIntensity", P.fRimIntensity, strOutError) ||
+		!Read_Number(*pParams, "ghostAlpha", P.fGhostAlpha, strOutError) ||
+		!Read_Number(*pParams, "bloomIntensity", P.fBloomIntensity, strOutError) ||
+		!Read_Number(*pParams, "distortionIntensity", P.fDistortionIntensity, strOutError) ||
+		!Read_FloatArray(*pParams, "uvStart", &P.vUVStart.x, 2u, strOutError) ||
+		!Read_FloatArray(*pParams, "uvSpeed", &P.vUVSpeed.x, 2u, strOutError) ||
+		!Read_FloatArray(*pParams, "uvTileCount", &P.vUVTileCount.x, 2u, strOutError) ||
+		!Read_Number(*pParams, "noiseStrength", P.fNoiseStrength, strOutError) ||
+		!Read_Number(*pParams, "noiseScale", P.fNoiseScale, strOutError) ||
+		!Read_FloatArray(*pParams, "noisePan", &P.vNoisePan.x, 2u, strOutError) ||
+		!Read_Number(*pParams, "dissolveStart", P.fDissolveStart, strOutError) ||
+		!Read_Number(*pParams, "dissolveSoftness", P.fDissolveSoftness, strOutError) ||
+		!Read_Enum(*pParams, "blend", BLEND_KEYS, _countof(BLEND_KEYS), iBlend, strOutError) ||
+		!Read_Bool(*pParams, "billboard", P.bBillboard, strOutError) ||
+		!Read_Bool(*pParams, "depthTest", P.bDepthTest, strOutError) ||
+		!Read_Number(*pParams, "lifetime", P.fLifetime, strOutError) ||
+		!Read_Bool(*pParams, "loop", P.bLoop, strOutError) ||
+		!Read_Number(*pParams, "playRate", P.fPlayRate, strOutError) ||
+		!Read_Number(*pParams, "meshPreScale", P.fMeshPreScale, strOutError) ||
+		!Read_Bool(*pParams, "animationLoop", P.bAnimationLoop, strOutError))
+	{
+		return false;
+	}
+	P.eColorClipChannel = static_cast<CEffectPreviewV2::COLOR_CLIP_CHANNEL>(iClipChannel);
+	P.eBlend = static_cast<CEffectPreviewV2::BLEND_MODE>(iBlend);
+	if (P.fMeshPreScale <= 0.f || P.fLifetime < 0.f || P.fPlayRate < 0.f)
+	{
+		strOutError = "params.meshPreScale/lifetime/playRate out of range.";
+		return false;
+	}
+	if (const DATA_JSON_VALUE* pClip = pParams->Find("animationClip"))
+	{
+		if (!pClip->Is_String())
+		{
+			strOutError = "params.animationClip must be a string.";
+			return false;
+		}
+		Stage.strAnimationClip = pClip->Get_String();
+	}
+	Stage.Desc.bParamsAuthored = true;
+
+	if (const DATA_JSON_VALUE* pParts = Root.Find("parts"))
+	{
+		if (!pParts->Is_Array())
+		{
+			strOutError = "parts must be an array.";
+			return false;
+		}
+		for (const DATA_JSON_VALUE& Part : pParts->Get_Array())
+		{
+			const DATA_JSON_VALUE* pIndex = Part.Is_Object() ? Part.Find("index") : nullptr;
+			if (nullptr == pIndex || !pIndex->Is_Number() || pIndex->Get_Number() < 0.0 ||
+				pIndex->Get_Number() > 255.0)
+			{
+				strOutError = "parts[].index must be a number in [0, 255].";
+				return false;
+			}
+			const size_t iIndex = static_cast<size_t>(pIndex->Get_Number());
+			if (Stage.Parts.size() <= iIndex)
+				Stage.Parts.resize(iIndex + 1u);
+			PART_OVERRIDE& Override = Stage.Parts[iIndex];
+			if (!Read_Bool(Part, "visible", Override.bVisible, strOutError))
+				return false;
+			if (const DATA_JSON_VALUE* pBase = Part.Find("base"))
+			{
+				if (!pBase->Is_String())
+				{
+					strOutError = "parts[].base must be a string.";
+					return false;
+				}
+				Override.strBaseAssetId = pBase->Get_String();
+				if (!Override.strBaseAssetId.empty())
+				{
+					const std::filesystem::path Resolved = CRuntimeAssetRoot::Resolve(
+						std::filesystem::path(Override.strBaseAssetId));
+					if (Resolved.empty() || !std::filesystem::is_regular_file(Resolved))
+					{
+						strOutError = "parts[].base asset is missing: " + Override.strBaseAssetId;
+						return false;
+					}
+				}
+			}
+		}
+	}
+	OutStage = std::move(Stage);
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Load_Document(const std::string& strEffectId)
+{
+	if (!Is_ValidEffectId(strEffectId))
+	{
+		m_strDocumentStatus = "Invalid effect ID.";
+		return false;
+	}
+	const std::filesystem::path Target =
+		Document_Directory() / (strEffectId + ".effectv2.json");
+	std::ifstream Stream(Target, std::ios::binary);
+	if (!Stream.is_open())
+	{
+		m_strDocumentStatus = "Cannot open: " + Target.string();
+		return false;
+	}
+	const std::string Text((std::istreambuf_iterator<char>(Stream)),
+		std::istreambuf_iterator<char>());
+	DOCUMENT_STAGE Stage;
+	std::string strError;
+	if (!Parse_Document(Text, Stage, strError))
+	{
+		m_strDocumentStatus = "Load rejected (" + strEffectId + "): " + strError;
+		return false;
+	}
+	const EFFECT_TYPE ePreviousType = m_eType;
+	const SLOT_BINDINGS PreviousBindings = m_SlotBindings[static_cast<size_t>(Stage.eType)];
+	m_eType = Stage.eType;
+	SLOT_BINDINGS& Bindings = Current_Bindings();
+	Bindings[static_cast<size_t>(RESOURCE_SLOT::MESH)] = Stage.Desc.strMeshAssetId;
+	for (size_t iInput = 0u; iInput < Stage.Desc.TextureAssetIds.size(); ++iInput)
+	{
+		Bindings[static_cast<size_t>(RESOURCE_SLOT::BASE) + iInput] =
+			Stage.Desc.TextureAssetIds[iInput];
+	}
+	if (!Spawn_Preview(Stage.Desc, Stage.Parts, Stage.strAnimationClip))
+	{
+		m_SlotBindings[static_cast<size_t>(Stage.eType)] = PreviousBindings;
+		m_eType = ePreviousType;
+		m_strDocumentStatus = "Load failed (" + strEffectId + "): " + m_strPreviewStatus;
+		return false;
+	}
+	std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s", strEffectId.c_str());
+	m_bVisibleDirty = true;
+	m_strDocumentStatus = "Loaded " + strEffectId;
+	return true;
+}
+
+void Client::CEffect_Tool_V2::Render_DocumentPanel()
+{
+	if (!m_bDocumentsScanned)
+		Scan_Documents();
+	ImGui::TextUnformatted("Document (Data/Effects/V2/Authored)");
+	ImGui::SetNextItemWidth(-1.f);
+	ImGui::InputTextWithHint("##EffectId", "Effect ID (e.g. esther.wei.dochul)",
+		m_szEffectId, sizeof(m_szEffectId));
+	ImGui::BeginDisabled(m_pPreview.expired() || '\0' == m_szEffectId[0]);
+	if (ImGui::Button("Save"))
+		Save_Document();
+	ImGui::EndDisabled();
+	if (m_pPreview.expired())
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("(Create Effect first)");
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Rescan"))
+		Scan_Documents();
+	if (m_Documents.empty())
+		ImGui::TextDisabled("No saved documents.");
+	else if (ImGui::BeginListBox("##Documents", ImVec2(-1.f, 88.f)))
+	{
+		for (const std::string& strDocument : m_Documents)
+		{
+			const bool_t bSelected = strDocument == m_szEffectId;
+			if (ImGui::Selectable(strDocument.c_str(), bSelected))
+				std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s", strDocument.c_str());
+			if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+				Load_Document(strDocument);
+		}
+		ImGui::EndListBox();
+	}
+	ImGui::BeginDisabled('\0' == m_szEffectId[0]);
+	if (ImGui::Button("Load"))
+		Load_Document(m_szEffectId);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::TextDisabled("(double-click a row to load)");
+	if (!m_strDocumentStatus.empty())
+		ImGui::TextWrapped("%s", m_strDocumentStatus.c_str());
+}
+
+namespace
+{
+	constexpr const wchar_t* TARGET_LAYER_TAG = L"Layer_EffectPreviewV2Target";
+	constexpr f32_t BINDING_FRAME_RATE = 30.f;
+	const char* PIVOT_ROTATION_KEYS[] = { "Bone", "TargetYaw", "World" };
+
+	matrix_t Target_World(const float3_t& vPosition, const f32_t fYawDegrees)
+	{
+		return XMMatrixRotationY(XMConvertToRadians(fYawDegrees)) *
+			XMMatrixTranslation(vPosition.x, vPosition.y, vPosition.z);
+	}
+}
+
+bool_t Client::CEffect_Tool_V2::Collect_BoneNames(
+	const std::string& strModelAssetId,
+	std::vector<std::string>& OutNames)
+{
+	OutNames.clear();
+	MODEL_ASSET_LOAD_DESC Desc{};
+	Desc.meshPath = CRuntimeAssetRoot::Resolve(std::filesystem::path(strModelAssetId));
+	if (Desc.meshPath.empty())
+		return false;
+	Desc.assetRoot = CRuntimeAssetRoot::Get();
+	MODEL_ASSET_DATA Asset{};
+	if (!CModelDecoderRegistry::Get().Decode(Desc, Asset))
+		return false;
+	for (const MODEL_BONE_DATA& Bone : Asset.skeleton.bones)
+		OutNames.push_back(Bone.name);
+	return !OutNames.empty();
+}
+
+bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
+{
+	Despawn_Target();
+	CGameInstance& GameInstance = CGameInstance::Get();
+	const uint32_t iLevel = GameInstance.Get_CurrentLevelID();
+	const NPC_ACTOR_ENTRY* pActor = CActorCatalog::Find_Npc(strArchetypeId);
+	const wstring_t strModelTag =
+		CNpcPresentationAssetService::Get_ModelPrototypeTag(strArchetypeId);
+	if (nullptr == pActor || strModelTag.empty())
+	{
+		m_strAttachStatus = "Unknown NPC archetype: " + strArchetypeId;
+		return false;
+	}
+	if (FAILED(CNpcPresentationAssetService::Ensure_Prototypes(
+		m_pDevice, m_pContext, iLevel, strArchetypeId)))
+	{
+		m_strAttachStatus = "NPC presentation prototypes failed: " + strArchetypeId;
+		return false;
+	}
+
+	float3_t vPosition{ 0.f, 0.f, 0.f };
+	if (const std::shared_ptr<CCharacter> pCharacter =
+		CAnimationTargetService::Resolve_SceneCharacter();
+		nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
+	{
+		XMStoreFloat3(&vPosition,
+			pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
+			XMVectorSet(2.5f, 0.f, 0.f, 0.f));
+	}
+
+	CNpc::NPC_DESC Desc{};
+	Desc.iPrototypeLevelIndex = iLevel;
+	Desc.strModelTag = strModelTag;
+	Desc.strShaderTag = pActor->shaderProfile == "esther" ?
+		TEXT("Prototype_Component_Shader_VtxEstherNpc") :
+		TEXT("Prototype_Component_Shader_VtxAnimMeshBinary");
+	Desc.pIdleClip = pActor->idleClip.c_str();
+	Desc.isLoop = true;
+	Desc.vPosition = vPosition;
+	Desc.fYawDegree = 0.f;
+	Desc.fCollisionRadius = 0.f;
+	std::shared_ptr<CGameObject> pGameObject;
+	if (FAILED(GameInstance.Add_GameObject_to_Layer(
+		iLevel, TEXT("Prototype_GameObject_Npc"), iLevel, TARGET_LAYER_TAG,
+		&Desc, &pGameObject)))
+	{
+		m_strAttachStatus = "Target spawn failed: " + strArchetypeId;
+		return false;
+	}
+	const std::shared_ptr<CNpc> pNpc = std::dynamic_pointer_cast<CNpc>(pGameObject);
+	if (nullptr == pNpc || nullptr == pNpc->Get_Model())
+	{
+		GameInstance.Remove_GameObject_from_Layer(iLevel, TARGET_LAYER_TAG, pGameObject);
+		m_strAttachStatus = "Target spawn returned an unexpected object.";
+		return false;
+	}
+	m_pTarget = pNpc;
+	m_strTargetArchetypeId = strArchetypeId;
+	m_vTargetPosition = vPosition;
+	m_fTargetYawDegrees = 0.f;
+	m_fTargetLastClipSeconds = -1.f;
+
+	std::vector<std::string> BoneNames;
+	Collect_BoneNames(pActor->modelAssetId, BoneNames);
+	m_TargetBoneNames.clear();
+	for (const std::string& strBone : BoneNames)
+	{
+		if (pNpc->Get_Model()->Has_Bone(strBone.c_str()))
+			m_TargetBoneNames.push_back(strBone);
+	}
+	if (m_strPivotBone.empty() || !pNpc->Get_Model()->Has_Bone(m_strPivotBone.c_str()))
+	{
+		m_strPivotBone = pNpc->Get_Model()->Has_Bone("b_effectroot") ? "b_effectroot" :
+			(m_TargetBoneNames.empty() ? std::string() : m_TargetBoneNames.front());
+	}
+
+	const auto Strike = pActor->actionClips.find("esther.strike");
+	if (Strike != pActor->actionClips.end() && !Strike->second.empty())
+		pNpc->Set_Animation(Strike->second.front().c_str(), m_bTargetClipLoop);
+
+	Load_Bindings(strArchetypeId);
+	m_strAttachStatus = "Target " + strArchetypeId + " spawned beside the scene character.";
+	return true;
+}
+
+void Client::CEffect_Tool_V2::Despawn_Target()
+{
+	if (const std::shared_ptr<CNpc> pNpc = m_pTarget.lock())
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			CGameInstance::Get().Get_CurrentLevelID(), TARGET_LAYER_TAG, pNpc);
+	}
+	m_pTarget.reset();
+	m_TargetBoneNames.clear();
+}
+
+void Client::CEffect_Tool_V2::Move_Target(const float3_t& vPosition, const f32_t fYawDegrees)
+{
+	const std::shared_ptr<CNpc> pNpc = m_pTarget.lock();
+	if (nullptr == pNpc || !pNpc->Apply_NetworkState(vPosition, fYawDegrees))
+		return;
+	m_vTargetPosition = vPosition;
+	m_fTargetYawDegrees = fYawDegrees;
+}
+
+void Client::CEffect_Tool_V2::Update_Attach(const f32_t fTimeDelta)
+{
+	UNREFERENCED_PARAMETER(fTimeDelta);
+	const std::shared_ptr<CNpc> pNpc = m_pTarget.lock();
+	const std::shared_ptr<CEffectPreviewV2> pPreview = m_pPreview.lock();
+	if (nullptr == pNpc || nullptr == pNpc->Get_Model())
+		return;
+	const std::shared_ptr<Engine::CModel> pModel = pNpc->Get_Model();
+	if (nullptr != pPreview && PIVOT_MODE::TARGET_BONE == m_ePivotMode &&
+		!m_strPivotBone.empty() && pModel->Has_Bone(m_strPivotBone.c_str()))
+	{
+		const matrix_t TargetWorld = Target_World(m_vTargetPosition, m_fTargetYawDegrees);
+		matrix_t Pivot = pModel->Get_BoneMatrix(m_strPivotBone.c_str()) * TargetWorld;
+		const vector_t Translation = XMVectorSetW(Pivot.r[3], 1.f);
+		if (PIVOT_ROTATION::BONE == m_ePivotRotation)
+		{
+			const vector_t Right = XMVector3Normalize(Pivot.r[0]);
+			const vector_t Up = XMVector3Normalize(Pivot.r[1]);
+			const vector_t Look = XMVector3Normalize(Pivot.r[2]);
+			if (XMVectorGetX(XMVector3LengthSq(Right)) > 0.f &&
+				XMVectorGetX(XMVector3LengthSq(Up)) > 0.f &&
+				XMVectorGetX(XMVector3LengthSq(Look)) > 0.f)
+			{
+				Pivot.r[0] = Right;
+				Pivot.r[1] = Up;
+				Pivot.r[2] = Look;
+			}
+			else
+				Pivot = XMMatrixIdentity();
+		}
+		else if (PIVOT_ROTATION::TARGET_YAW == m_ePivotRotation)
+			Pivot = XMMatrixRotationY(XMConvertToRadians(m_fTargetYawDegrees));
+		else
+			Pivot = XMMatrixIdentity();
+		Pivot.r[3] = Translation;
+		XMStoreFloat4x4(&pPreview->PivotWorld(), Pivot);
+	}
+
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	const uint32_t iClip = pModel->Get_CurrentAnimIndex();
+	const f32_t fTickPerSecond = pModel->Get_AnimationTickPerSecond(iClip);
+	if (fTickPerSecond <= 0.f || !pModel->Get_AnimationProgress(iClip, fPosition, fDuration))
+		return;
+	const f32_t fSeconds = fPosition / fTickPerSecond;
+	const f32_t fSpawnSeconds = static_cast<f32_t>(m_iSpawnFrame) / BINDING_FRAME_RATE;
+	if (nullptr != pPreview && !pModel->Is_AnimPaused() &&
+		m_fTargetLastClipSeconds >= 0.f && m_fTargetLastClipSeconds < fSpawnSeconds &&
+		fSeconds >= fSpawnSeconds)
+	{
+		pPreview->Restart();
+	}
+	if (fSeconds < m_fTargetLastClipSeconds && nullptr != pPreview && 0 == m_iSpawnFrame)
+		pPreview->Restart();
+	m_fTargetLastClipSeconds = fSeconds;
+}
+
+std::filesystem::path Client::CEffect_Tool_V2::Binding_Directory()
+{
+	return CProjectDataRoot::Resolve(L"Effects/V2/Bindings");
+}
+
+bool_t Client::CEffect_Tool_V2::Parse_Bindings(
+	const std::string& strText,
+	const std::string& strExpectedArchetypeId,
+	std::vector<EFFECT_BINDING>& OutBindings,
+	std::string& strOutError)
+{
+	DATA_JSON_VALUE Root;
+	if (!CDataJson::Parse(strText, Root, strOutError) || !Root.Is_Object())
+	{
+		if (strOutError.empty())
+			strOutError = "Bindings root is not an object.";
+		return false;
+	}
+	const DATA_JSON_VALUE* pSchema = Root.Find("schema");
+	const DATA_JSON_VALUE* pVersion = Root.Find("formatVersion");
+	const DATA_JSON_VALUE* pArchetype = Root.Find("archetypeId");
+	if (nullptr == pSchema || !pSchema->Is_String() ||
+		pSchema->Get_String() != "lostark.effect-v2-bindings" ||
+		nullptr == pVersion || !pVersion->Is_Number() || pVersion->Get_Number() != 1.0 ||
+		nullptr == pArchetype || !pArchetype->Is_String() ||
+		pArchetype->Get_String() != strExpectedArchetypeId)
+	{
+		strOutError = "schema/formatVersion/archetypeId mismatch.";
+		return false;
+	}
+	const DATA_JSON_VALUE* pRows = Root.Find("bindings");
+	if (nullptr == pRows || !pRows->Is_Array())
+	{
+		strOutError = "bindings must be an array.";
+		return false;
+	}
+	std::vector<EFFECT_BINDING> Staged;
+	for (const DATA_JSON_VALUE& Row : pRows->Get_Array())
+	{
+		if (!Row.Is_Object())
+		{
+			strOutError = "bindings[] entries must be objects.";
+			return false;
+		}
+		EFFECT_BINDING Binding;
+		const DATA_JSON_VALUE* pEffect = Row.Find("effectId");
+		const DATA_JSON_VALUE* pClip = Row.Find("clip");
+		const DATA_JSON_VALUE* pStart = Row.Find("startMs");
+		const DATA_JSON_VALUE* pBone = Row.Find("bone");
+		if (nullptr == pEffect || !pEffect->Is_String() || !Is_ValidEffectId(pEffect->Get_String()) ||
+			nullptr == pClip || !pClip->Is_String() || pClip->Get_String().empty() ||
+			nullptr == pStart || !pStart->Is_Number() || pStart->Get_Number() < 0.0 ||
+			pStart->Get_Number() > 600000.0 ||
+			nullptr == pBone || !pBone->Is_String())
+		{
+			strOutError = "bindings[] requires effectId, clip, startMs (0-600000), bone.";
+			return false;
+		}
+		Binding.strEffectId = pEffect->Get_String();
+		Binding.strClip = pClip->Get_String();
+		Binding.iStartMs = static_cast<uint32_t>(pStart->Get_Number());
+		Binding.strBone = pBone->Get_String();
+		int32_t iRotation = static_cast<int32_t>(Binding.eRotation);
+		if (!Read_Bool(Row, "followBone", Binding.bFollowBone, strOutError) ||
+			!Read_Enum(Row, "rotation", PIVOT_ROTATION_KEYS,
+				_countof(PIVOT_ROTATION_KEYS), iRotation, strOutError) ||
+			!Read_Bool(Row, "stopWithClip", Binding.bStopWithClip, strOutError))
+			return false;
+		Binding.eRotation = static_cast<PIVOT_ROTATION>(iRotation);
+		for (const EFFECT_BINDING& Existing : Staged)
+		{
+			if (Existing.strEffectId == Binding.strEffectId && Existing.strClip == Binding.strClip)
+			{
+				strOutError = "duplicate binding: " + Binding.strEffectId + " / " + Binding.strClip;
+				return false;
+			}
+		}
+		Staged.push_back(std::move(Binding));
+	}
+	OutBindings = std::move(Staged);
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Load_Bindings(const std::string& strArchetypeId)
+{
+	m_Bindings.clear();
+	const std::filesystem::path Target =
+		Binding_Directory() / (strArchetypeId + ".effectv2bindings.json");
+	std::ifstream Stream(Target, std::ios::binary);
+	if (!Stream.is_open())
+	{
+		m_strAttachStatus = "No bindings yet for " + strArchetypeId + ".";
+		return true;
+	}
+	const std::string Text((std::istreambuf_iterator<char>(Stream)),
+		std::istreambuf_iterator<char>());
+	std::string strError;
+	std::vector<EFFECT_BINDING> Bindings;
+	if (!Parse_Bindings(Text, strArchetypeId, Bindings, strError))
+	{
+		m_strAttachStatus = "Bindings rejected (" + strArchetypeId + "): " + strError;
+		return false;
+	}
+	m_Bindings = std::move(Bindings);
+	m_strAttachStatus = "Loaded " + std::to_string(m_Bindings.size()) +
+		" binding(s) for " + strArchetypeId + ".";
+	return true;
+}
+
+bool_t Client::CEffect_Tool_V2::Save_Bindings()
+{
+	if (m_strTargetArchetypeId.empty())
+	{
+		m_strAttachStatus = "Spawn a target first.";
+		return false;
+	}
+	std::string Text;
+	Text += "{\n";
+	Text += "  \"schema\": \"lostark.effect-v2-bindings\",\n";
+	Text += "  \"formatVersion\": 1,\n";
+	Text += "  \"archetypeId\": " + Json_String(m_strTargetArchetypeId) + ",\n";
+	Text += "  \"bindings\": [\n";
+	for (size_t iIndex = 0u; iIndex < m_Bindings.size(); ++iIndex)
+	{
+		const EFFECT_BINDING& Binding = m_Bindings[iIndex];
+		Text += "    { \"effectId\": " + Json_String(Binding.strEffectId) +
+			", \"clip\": " + Json_String(Binding.strClip) +
+			", \"startMs\": " + std::to_string(Binding.iStartMs) +
+			", \"bone\": " + Json_String(Binding.strBone) +
+			", \"followBone\": " + (Binding.bFollowBone ? "true" : "false") +
+			", \"rotation\": " + Json_String(
+				PIVOT_ROTATION_KEYS[static_cast<size_t>(Binding.eRotation)]) +
+			", \"stopWithClip\": " + (Binding.bStopWithClip ? "true" : "false") + " }" +
+			(iIndex + 1u < m_Bindings.size() ? ",\n" : "\n");
+	}
+	Text += "  ]\n";
+	Text += "}\n";
+
+	std::error_code Error;
+	const std::filesystem::path Directory = Binding_Directory();
+	if (Directory.empty())
+	{
+		m_strAttachStatus = "Project data root is not available.";
+		return false;
+	}
+	std::filesystem::create_directories(Directory, Error);
+	const std::filesystem::path Target =
+		Directory / (m_strTargetArchetypeId + ".effectv2bindings.json");
+	const std::filesystem::path Temporary =
+		Directory / (m_strTargetArchetypeId + ".effectv2bindings.json.tmp");
+	{
+		std::ofstream Stream(Temporary, std::ios::binary | std::ios::trunc);
+		if (!Stream.is_open())
+		{
+			m_strAttachStatus = "Cannot open for write: " + Temporary.string();
+			return false;
+		}
+		Stream << Text;
+		if (!Stream.good())
+		{
+			Stream.close();
+			std::filesystem::remove(Temporary, Error);
+			m_strAttachStatus = "Write failed: " + Temporary.string();
+			return false;
+		}
+	}
+	std::filesystem::rename(Temporary, Target, Error);
+	if (Error)
+	{
+		std::filesystem::remove(Temporary, Error);
+		m_strAttachStatus = "Rename failed: " + Target.string();
+		return false;
+	}
+	m_strAttachStatus = "Saved " + Target.filename().string();
+	return true;
+}
+
+void Client::CEffect_Tool_V2::Render_AttachWindow()
+{
+	if (!m_bAttachWindowOpen)
+		return;
+	ImGui::SetNextWindowSize(ImVec2(460.f, 640.f), ImGuiCond_FirstUseEver);
+	if (!ImGui::Begin("Effect Attach v2", &m_bAttachWindowOpen))
+	{
+		ImGui::End();
+		return;
+	}
+	const std::shared_ptr<CNpc> pNpc = m_pTarget.lock();
+	const std::shared_ptr<Engine::CModel> pModel =
+		nullptr != pNpc ? pNpc->Get_Model() : nullptr;
+
+	ImGui::SeparatorText("Target (NPC archetype)");
+	const std::vector<NPC_ACTOR_ENTRY>& Npcs = CActorCatalog::Get_Npcs();
+	const char* pSelectedLabel =
+		m_iTargetArchetypeSelection >= 0 &&
+		m_iTargetArchetypeSelection < static_cast<int32_t>(Npcs.size()) ?
+		Npcs[static_cast<size_t>(m_iTargetArchetypeSelection)].archetypeId.c_str() : "(select)";
+	if (ImGui::BeginCombo("Archetype", pSelectedLabel))
+	{
+		for (int32_t iIndex = 0; iIndex < static_cast<int32_t>(Npcs.size()); ++iIndex)
+		{
+			const NPC_ACTOR_ENTRY& Entry = Npcs[static_cast<size_t>(iIndex)];
+			if (Entry.runtimeStatus != "supported")
+				continue;
+			const std::string strLabel = Entry.archetypeId + "  (" +
+				std::filesystem::path(Entry.modelAssetId).stem().string() + ")";
+			if (ImGui::Selectable(strLabel.c_str(), iIndex == m_iTargetArchetypeSelection))
+				m_iTargetArchetypeSelection = iIndex;
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::BeginDisabled(m_iTargetArchetypeSelection < 0);
+	if (ImGui::Button("Spawn Target"))
+		Spawn_Target(Npcs[static_cast<size_t>(m_iTargetArchetypeSelection)].archetypeId);
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(nullptr == pNpc);
+	if (ImGui::Button("Despawn"))
+		Despawn_Target();
+	ImGui::EndDisabled();
+	if (nullptr != pNpc)
+	{
+		ImGui::Text("Live: %s", m_strTargetArchetypeId.c_str());
+		float3_t vPosition = m_vTargetPosition;
+		f32_t fYaw = m_fTargetYawDegrees;
+		if (ImGui::DragFloat3("Target Position", &vPosition.x, 0.05f))
+			Move_Target(vPosition, fYaw);
+		if (ImGui::DragFloat("Target Yaw (deg)", &fYaw, 1.f, -360.f, 360.f))
+			Move_Target(vPosition, fYaw);
+		if (ImGui::Button("Beside Character"))
+		{
+			if (const std::shared_ptr<CCharacter> pCharacter =
+				CAnimationTargetService::Resolve_SceneCharacter();
+				nullptr != pCharacter && nullptr != pCharacter->Get_Transform())
+			{
+				XMStoreFloat3(&vPosition,
+					pCharacter->Get_Transform()->Get_State(STATE::POSITION) +
+					XMVectorSet(2.5f, 0.f, 0.f, 0.f));
+				Move_Target(vPosition, fYaw);
+			}
+		}
+	}
+
+	if (nullptr != pModel && 0u < pModel->Get_NumAnimations())
+	{
+		ImGui::SeparatorText("Target Playback");
+		const uint32_t iCurrent = pModel->Get_CurrentAnimIndex();
+		const char_t* pCurrentName = pModel->Get_AnimationName(iCurrent);
+		if (ImGui::BeginCombo("Target Clip", nullptr != pCurrentName ? pCurrentName : "(none)"))
+		{
+			for (uint32_t iClip = 0u; iClip < pModel->Get_NumAnimations(); ++iClip)
+			{
+				const char_t* pName = pModel->Get_AnimationName(iClip);
+				if (nullptr == pName)
+					continue;
+				if (ImGui::Selectable(pName, iClip == iCurrent))
+				{
+					pModel->Set_Animation(iClip, m_bTargetClipLoop);
+					pModel->Set_AnimTrackPosition(iClip, 0.f);
+					m_fTargetLastClipSeconds = -1.f;
+				}
+			}
+			ImGui::EndCombo();
+		}
+		f32_t fPosition = 0.f;
+		f32_t fDuration = 0.f;
+		const bool_t bHasTrack =
+			pModel->Get_AnimationProgress(iCurrent, fPosition, fDuration) && fDuration > 0.f;
+		const f32_t fTickPerSecond = pModel->Get_AnimationTickPerSecond(iCurrent);
+		if (bHasTrack)
+		{
+			f32_t fScrub = fPosition;
+			char_t szFormat[64]{};
+			std::snprintf(szFormat, sizeof(szFormat), "frame %%.1f / %.0f", fDuration);
+			ImGui::SetNextItemWidth(-1.f);
+			if (ImGui::SliderFloat("##TargetScrub", &fScrub, 0.f, fDuration, szFormat))
+			{
+				pModel->Set_AnimPaused(true);
+				pModel->Set_AnimTrackPosition(iCurrent, fScrub);
+			}
+			if (fTickPerSecond > 0.f)
+				ImGui::TextDisabled("%.2f / %.2f s", fPosition / fTickPerSecond, fDuration / fTickPerSecond);
+		}
+		const bool_t bPaused = pModel->Is_AnimPaused();
+		if (ImGui::Button(bPaused ? "Play" : "Pause"))
+			pModel->Set_AnimPaused(!bPaused);
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!bHasTrack);
+		if (ImGui::Button("< Frame"))
+		{
+			pModel->Set_AnimPaused(true);
+			pModel->Set_AnimTrackPosition(iCurrent, (std::max)(0.f, fPosition - 1.f));
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Frame >"))
+		{
+			pModel->Set_AnimPaused(true);
+			pModel->Set_AnimTrackPosition(iCurrent, (std::min)(fDuration, fPosition + 1.f));
+		}
+		ImGui::EndDisabled();
+		ImGui::SameLine();
+		if (ImGui::Button("Restart Clip"))
+		{
+			pModel->Set_AnimTrackPosition(iCurrent, 0.f);
+			m_fTargetLastClipSeconds = -1.f;
+			if (const std::shared_ptr<CEffectPreviewV2> pPreview = m_pPreview.lock())
+				pPreview->Restart();
+		}
+		ImGui::SameLine();
+		if (ImGui::Checkbox("Loop", &m_bTargetClipLoop))
+			pModel->Set_Animation(iCurrent, m_bTargetClipLoop);
+	}
+
+	ImGui::SeparatorText("Effect Pivot");
+	int32_t iMode = static_cast<int32_t>(m_ePivotMode);
+	if (ImGui::Combo("Pivot Mode", &iMode, "World\0Target Bone\0"))
+		m_ePivotMode = static_cast<PIVOT_MODE>(iMode);
+	ImGui::BeginDisabled(m_TargetBoneNames.empty());
+	if (ImGui::BeginCombo("Pivot Bone", m_strPivotBone.empty() ? "(none)" : m_strPivotBone.c_str()))
+	{
+		for (const std::string& strBone : m_TargetBoneNames)
+		{
+			if (ImGui::Selectable(strBone.c_str(), strBone == m_strPivotBone))
+				m_strPivotBone = strBone;
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::EndDisabled();
+	int32_t iRotation = static_cast<int32_t>(m_ePivotRotation);
+	if (ImGui::Combo("Pivot Rotation", &iRotation, "Bone\0Target Yaw\0World\0"))
+		m_ePivotRotation = static_cast<PIVOT_ROTATION>(iRotation);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Bone: inherit bone orientation. Target Yaw: bone position + target facing (default). World: bone position only.");
+	if (PIVOT_MODE::TARGET_BONE == m_ePivotMode && nullptr == pNpc)
+		ImGui::TextDisabled("Spawn a target to follow a bone.");
+	ImGui::InputInt("Spawn Frame (30 fps)", &m_iSpawnFrame);
+	m_iSpawnFrame = (std::max)(0, (std::min)(m_iSpawnFrame, 18000));
+	ImGui::TextDisabled("Effect restarts when the target clip passes the spawn frame (= %u ms).",
+		static_cast<uint32_t>(static_cast<f32_t>(m_iSpawnFrame) * 1000.f / BINDING_FRAME_RATE));
+
+	ImGui::SeparatorText("Bindings (Data/Effects/V2/Bindings)");
+	const char_t* pClipForBinding =
+		nullptr != pModel ? pModel->Get_AnimationName(pModel->Get_CurrentAnimIndex()) : nullptr;
+	ImGui::Text("Effect: %s | Clip: %s | Bone: %s",
+		'\0' == m_szEffectId[0] ? "(none)" : m_szEffectId,
+		nullptr != pClipForBinding ? pClipForBinding : "(none)",
+		m_strPivotBone.empty() ? "(none)" : m_strPivotBone.c_str());
+	ImGui::BeginDisabled('\0' == m_szEffectId[0] || nullptr == pClipForBinding || nullptr == pNpc);
+	if (ImGui::Button("Add / Update Binding"))
+	{
+		EFFECT_BINDING Binding;
+		Binding.strEffectId = m_szEffectId;
+		Binding.strClip = pClipForBinding;
+		Binding.iStartMs = static_cast<uint32_t>(
+			static_cast<f32_t>(m_iSpawnFrame) * 1000.f / BINDING_FRAME_RATE);
+		Binding.strBone = PIVOT_MODE::TARGET_BONE == m_ePivotMode ? m_strPivotBone : std::string();
+		Binding.bFollowBone = PIVOT_MODE::TARGET_BONE == m_ePivotMode;
+		Binding.eRotation = m_ePivotRotation;
+		bool_t bReplaced = false;
+		for (EFFECT_BINDING& Existing : m_Bindings)
+		{
+			if (Existing.strEffectId == Binding.strEffectId && Existing.strClip == Binding.strClip)
+			{
+				Binding.bStopWithClip = Existing.bStopWithClip;
+				Existing = Binding;
+				bReplaced = true;
+				break;
+			}
+		}
+		if (!bReplaced)
+			m_Bindings.push_back(Binding);
+		m_strAttachStatus = bReplaced ? "Binding updated (unsaved)." : "Binding added (unsaved).";
+	}
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(m_strTargetArchetypeId.empty());
+	if (ImGui::Button("Save Bindings"))
+		Save_Bindings();
+	ImGui::SameLine();
+	if (ImGui::Button("Reload"))
+		Load_Bindings(m_strTargetArchetypeId);
+	ImGui::EndDisabled();
+	if (m_Bindings.empty())
+		ImGui::TextDisabled("No bindings.");
+	for (size_t iIndex = 0u; iIndex < m_Bindings.size(); ++iIndex)
+	{
+		EFFECT_BINDING& Binding = m_Bindings[iIndex];
+		ImGui::PushID(static_cast<int32_t>(iIndex));
+		char_t szRow[256]{};
+		std::snprintf(szRow, sizeof(szRow), "%s @ %s +%ums %s%s",
+			Binding.strEffectId.c_str(), Binding.strClip.c_str(), Binding.iStartMs,
+			Binding.strBone.empty() ? "(world)" : Binding.strBone.c_str(),
+			Binding.bFollowBone ? "" : " [no follow]");
+		if (ImGui::Selectable(szRow, false))
+		{
+			std::snprintf(m_szEffectId, sizeof(m_szEffectId), "%s", Binding.strEffectId.c_str());
+			m_iSpawnFrame = static_cast<int32_t>(
+				static_cast<f32_t>(Binding.iStartMs) * BINDING_FRAME_RATE / 1000.f + 0.5f);
+			m_ePivotMode = Binding.strBone.empty() ? PIVOT_MODE::WORLD : PIVOT_MODE::TARGET_BONE;
+			m_ePivotRotation = Binding.eRotation;
+			if (!Binding.strBone.empty())
+				m_strPivotBone = Binding.strBone;
+			if (nullptr != pNpc)
+				pNpc->Set_Animation(Binding.strClip.c_str(), m_bTargetClipLoop);
+		}
+		ImGui::SameLine();
+		ImGui::Checkbox("Stop w/ clip", &Binding.bStopWithClip);
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Remove"))
+		{
+			m_Bindings.erase(m_Bindings.begin() + static_cast<std::ptrdiff_t>(iIndex));
+			ImGui::PopID();
+			break;
+		}
+		ImGui::PopID();
+	}
+	if (!m_strAttachStatus.empty())
+		ImGui::TextWrapped("%s", m_strAttachStatus.c_str());
+	ImGui::End();
+}
+
+namespace
+{
+	void Draw_LerpTrack(
+		const char* szLabel,
+		Client::CEffectPreviewV2::LERP_FLOAT3& Track,
+		const float fSpeed,
+		const float fMin,
+		const float fMax)
+	{
+		ImGui::PushID(szLabel);
+		ImGui::Checkbox("##Lerp", &Track.bLerp);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Interpolate Start -> End over Lifetime.");
+		ImGui::SameLine();
+		ImGui::DragFloat3(szLabel, &Track.vStart.x, fSpeed, fMin, fMax);
+		if (Track.bLerp)
+		{
+			ImGui::Indent(24.f);
+			ImGui::DragFloat3("End", &Track.vEnd.x, fSpeed, fMin, fMax);
+			ImGui::Unindent(24.f);
+		}
+		ImGui::PopID();
+	}
 }
 
 void Client::CEffect_Tool_V2::Render_TuningPanel()
 {
+	if (!m_bTuningWindowOpen)
+		return;
+	ImGui::SetNextWindowSize(ImVec2(420.f, 720.f), ImGuiCond_FirstUseEver);
+	if (!ImGui::Begin("Effect Tuning v2", &m_bTuningWindowOpen))
+	{
+		ImGui::End();
+		return;
+	}
 	const std::shared_ptr<CEffectPreviewV2> pPreview = m_pPreview.lock();
 	if (nullptr == pPreview)
 	{
 		ImGui::TextDisabled("No live preview. Create Effect to spawn one.");
+		ImGui::End();
 		return;
 	}
-	ImGui::SeparatorText("Tuning");
-	ImGui::Text("%s | %.2fs | %s",
+	CEffectPreviewV2::PARAMS& P = pPreview->Params();
+	ImGui::Text("%s | %.2fs | life %.2f | %s",
 		CEffectPreviewV2::SHAPE::MESH == pPreview->Shape() ? "Mesh" : "Sprite",
-		pPreview->Time(), pPreview->Status().c_str());
+		pPreview->Time(), pPreview->Life_Ratio(), pPreview->Status().c_str());
 	if (ImGui::Button("Restart"))
 		pPreview->Restart();
 	ImGui::SameLine();
@@ -1355,39 +2974,199 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		CGameInstance& GameInstance = CGameInstance::Get();
 		const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
 		const float4x4_t* pCameraWorld = GameInstance.Get_InverseTransform(D3DTS::VIEW);
+		m_ePivotMode = PIVOT_MODE::WORLD;
 		if (nullptr != pCameraPosition && nullptr != pCameraWorld)
 		{
 			const vector_t Look = XMVector3Normalize(XMLoadFloat4x4(pCameraWorld).r[2]);
-			XMStoreFloat3(&pPreview->Position(),
-				XMLoadFloat4(pCameraPosition) + Look * 3.f);
+			XMStoreFloat4x4(&pPreview->PivotWorld(), XMMatrixTranslationFromVector(
+				XMLoadFloat4(pCameraPosition) + Look * 3.f));
+		}
+	}
+	const bool_t bLifetimeKnown = P.fLifetime > 0.f;
+	const bool_t bAnyLerp =
+		P.Position.bLerp || P.Rotation.bLerp || P.Scale.bLerp || P.Velocity.bLerp;
+	if (!bLifetimeKnown && (bAnyLerp || pPreview->Has_Texture(CEffectPreviewV2::TEXTURE_INPUT::DISSOLVE)))
+		ImGui::TextColored(ImVec4(1.f, 0.8f, 0.3f, 1.f),
+			"Lifetime is 0: Lerp tracks and Dissolve Start stay at their start values.");
+
+	ImGui::SeparatorText("Transform (relative to pivot)");
+	if (PIVOT_MODE::TARGET_BONE == m_ePivotMode)
+	{
+		ImGui::TextDisabled("Pivot follows target bone '%s' (Attach window). World pivot is read-only.",
+			m_strPivotBone.c_str());
+	}
+	ImGui::BeginDisabled(PIVOT_MODE::TARGET_BONE == m_ePivotMode);
+	ImGui::DragFloat3("Pivot (world)", &pPreview->PivotWorld()._41, 0.05f);
+	ImGui::EndDisabled();
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Parent pivot. Position/Rotation/Scale/Velocity below are relative to it.");
+	Draw_LerpTrack("Position", P.Position, 0.05f, -1000.f, 1000.f);
+	Draw_LerpTrack("Rotation (deg)", P.Rotation, 1.f, -3600.f, 3600.f);
+	Draw_LerpTrack("Scale", P.Scale, 0.01f, 0.001f, 1000.f);
+	Draw_LerpTrack("Velocity (m/s)", P.Velocity, 0.05f, -1000.f, 1000.f);
+	if (CEffectPreviewV2::SHAPE::MESH == pPreview->Shape())
+	{
+		ImGui::DragFloat("Mesh Pre-Scale", &P.fMeshPreScale, 0.00005f, 0.00001f, 10.f, "%.5f");
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("WModel unit conversion applied before Scale. Static FX meshes are cm (0.01 = metres); NPC-pipeline skinned cooks carry a x100 armature node, so 0.0001 = metres.");
+		ImGui::SameLine();
+		if (ImGui::SmallButton("1"))
+			P.fMeshPreScale = 1.f;
+		ImGui::SameLine();
+		if (ImGui::SmallButton("0.01"))
+			P.fMeshPreScale = 0.01f;
+		ImGui::SameLine();
+		if (ImGui::SmallButton("0.0001"))
+			P.fMeshPreScale = 0.0001f;
+	}
+
+	if (pPreview->Is_Skinned())
+	{
+		ImGui::SeparatorText("Animation");
+		const uint32_t iClipCount = pPreview->Animation_Count();
+		if (0u == iClipCount)
+			ImGui::TextDisabled("Skinned mesh without clips (bind pose only).");
+		else
+		{
+			const char_t* pCurrentName = pPreview->Animation_Name(P.iAnimationIndex);
+			char_t szCurrent[160]{};
+			snprintf(szCurrent, sizeof(szCurrent), "[%u] %s",
+				P.iAnimationIndex, nullptr != pCurrentName ? pCurrentName : "(none)");
+			if (ImGui::BeginCombo("Clip", szCurrent))
+			{
+				for (uint32_t iClip = 0u; iClip < iClipCount; ++iClip)
+				{
+					const char_t* pName = pPreview->Animation_Name(iClip);
+					char_t szItem[160]{};
+					snprintf(szItem, sizeof(szItem), "[%u] %s (%.2fs)",
+						iClip, nullptr != pName ? pName : "(none)",
+						pPreview->Animation_DurationSeconds(iClip));
+					const bool_t bSelected = iClip == P.iAnimationIndex;
+					if (ImGui::Selectable(szItem, bSelected))
+						P.iAnimationIndex = iClip;
+					if (bSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::Checkbox("Clip Loop", &P.bAnimationLoop);
+			ImGui::SameLine();
+			if (ImGui::Button("Lifetime = Clip Length"))
+				P.fLifetime = pPreview->Animation_DurationSeconds(P.iAnimationIndex);
+			f32_t fClipSeconds = 0.f;
+			f32_t fClipDuration = 0.f;
+			if (pPreview->Animation_Progress(fClipSeconds, fClipDuration))
+				ImGui::TextDisabled("Clip %.2f / %.2f s (Play Rate applies)", fClipSeconds, fClipDuration);
 		}
 	}
 
-	ImGui::SeparatorText("Transform");
-	ImGui::DragFloat3("Position", &pPreview->Position().x, 0.05f);
-	ImGui::DragFloat3("Rotation (deg)", &pPreview->RotationDegrees().x, 1.f);
-	ImGui::DragFloat3("Scale", &pPreview->Scale().x, 0.01f, 0.001f, 1000.f);
+	ImGui::SeparatorText("Color");
+	ImGui::ColorEdit4("Color Mul", &P.vColorMul.x, ImGuiColorEditFlags_Float);
+	ImGui::DragFloat4("Color Offset", &P.vColorOffset.x, 0.01f, -1.f, 1.f);
+	int32_t iClipChannel = static_cast<int32_t>(P.eColorClipChannel);
+	ImGui::SetNextItemWidth(90.f);
+	if (ImGui::Combo("##ClipChannel", &iClipChannel, "RGB\0Alpha\0"))
+		P.eColorClipChannel = static_cast<CEffectPreviewV2::COLOR_CLIP_CHANNEL>(iClipChannel);
+	ImGui::SameLine();
+	ImGui::SliderFloat("Color Clip", &P.fColorClip, 0.f, 1.f);
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("Pixels whose max(RGB) or A is <= this value are discarded. 0 = off.");
 
-	CEffectPreviewV2::PARAMS& P = pPreview->Params();
-	ImGui::SeparatorText("Material");
-	ImGui::ColorEdit4("Tint", &P.vTint.x, ImGuiColorEditFlags_Float);
+	if (CEffectPreviewV2::SHAPE::MESH == pPreview->Shape())
+	{
+		ImGui::SeparatorText("Rim (Fresnel)");
+		ImGui::ColorEdit3("Rim Color", &P.vRimColor.x, ImGuiColorEditFlags_Float);
+		ImGui::DragFloat("Rim Power", &P.fRimPower, 0.05f, 0.1f, 16.f);
+		ImGui::DragFloat("Rim Intensity", &P.fRimIntensity, 0.05f, 0.f, 8.f);
+		ImGui::SliderFloat("Ghost Alpha", &P.fGhostAlpha, 0.f, 1.f);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("0 = alpha untouched, 1 = alpha multiplied by the fresnel term (only silhouettes remain).");
+	}
+
+	ImGui::SeparatorText("Bloom / Distortion");
+	ImGui::BeginDisabled(!pPreview->Has_Texture(CEffectPreviewV2::TEXTURE_INPUT::EMISSIVE));
+	ImGui::DragFloat("Bloom Intensity", &P.fBloomIntensity, 0.05f, 0.f, 32.f);
+	ImGui::EndDisabled();
+	if (!pPreview->Has_Texture(CEffectPreviewV2::TEXTURE_INPUT::EMISSIVE))
+		ImGui::TextDisabled("Bind an Emissive texture to use Bloom Intensity.");
+	ImGui::BeginDisabled(!pPreview->Has_Texture(CEffectPreviewV2::TEXTURE_INPUT::NOISE));
+	ImGui::DragFloat("Distortion Intensity", &P.fDistortionIntensity, 0.001f, 0.f, 0.1f, "%.3f");
+	ImGui::DragFloat("Noise Strength", &P.fNoiseStrength, 0.005f, 0.f, 2.f);
+	ImGui::DragFloat("Noise Scale", &P.fNoiseScale, 0.01f, 0.01f, 64.f);
+	ImGui::DragFloat2("Noise Pan (uv/s)", &P.vNoisePan.x, 0.01f, -10.f, 10.f);
+	ImGui::EndDisabled();
+	if (!pPreview->Has_Texture(CEffectPreviewV2::TEXTURE_INPUT::NOISE))
+		ImGui::TextDisabled("Bind a Noise texture to use Distortion and Noise.");
+
+	ImGui::SeparatorText("UV");
+	ImGui::DragFloat2("UV Start", &P.vUVStart.x, 0.01f, -10.f, 10.f);
+	ImGui::DragFloat2("UV Speed (uv/s)", &P.vUVSpeed.x, 0.01f, -10.f, 10.f);
+	ImGui::DragFloat2("UV TileCount", &P.vUVTileCount.x, 0.01f, 0.01f, 64.f);
+
+	ImGui::SeparatorText("Dissolve");
+	ImGui::BeginDisabled(!pPreview->Has_Texture(CEffectPreviewV2::TEXTURE_INPUT::DISSOLVE));
+	ImGui::SliderFloat("Dissolve Start (life 0-1)", &P.fDissolveStart, 0.f, 1.f);
+	ImGui::SliderFloat("Dissolve Softness", &P.fDissolveSoftness, 0.f, 0.5f);
+	ImGui::EndDisabled();
+	if (pPreview->Has_Texture(CEffectPreviewV2::TEXTURE_INPUT::DISSOLVE))
+		ImGui::TextDisabled("Dissolve amount now %.2f", pPreview->Dissolve_Amount());
+	else
+		ImGui::TextDisabled("Bind a Dissolve texture to use Dissolve Start.");
+
+	if (CEffectPreviewV2::SHAPE::MESH == pPreview->Shape() && 0u < pPreview->Part_Count())
+	{
+		ImGui::SeparatorText("Parts");
+		ImGui::TextDisabled("Base slot now: %s",
+			Current_Bindings()[static_cast<size_t>(RESOURCE_SLOT::BASE)].empty() ?
+			"(none)" :
+			std::filesystem::path(Current_Bindings()[static_cast<size_t>(RESOURCE_SLOT::BASE)])
+				.filename().string().c_str());
+		for (uint32_t iPart = 0u; iPart < pPreview->Part_Count(); ++iPart)
+		{
+			ImGui::PushID(static_cast<int32_t>(iPart));
+			ImGui::Checkbox("##Visible", &pPreview->Part_Visible(iPart));
+			if (ImGui::IsItemHovered())
+				ImGui::SetTooltip("Visible");
+			ImGui::SameLine();
+			const std::string& strOverride = pPreview->Part_BaseAssetId(iPart);
+			ImGui::Text("#%u %s", iPart, pPreview->Part_Name(iPart).c_str());
+			ImGui::SameLine();
+			ImGui::TextDisabled("%s", strOverride.empty() ? "(shared Base)" :
+				std::filesystem::path(strOverride).filename().string().c_str());
+			ImGui::SameLine();
+			ImGui::BeginDisabled(
+				Current_Bindings()[static_cast<size_t>(RESOURCE_SLOT::BASE)].empty());
+			if (ImGui::SmallButton("<- Base slot"))
+			{
+				if (FAILED(pPreview->Set_PartBase(iPart,
+					Current_Bindings()[static_cast<size_t>(RESOURCE_SLOT::BASE)])))
+				{
+					m_strPreviewStatus = "Part texture load failed.";
+				}
+			}
+			ImGui::EndDisabled();
+			if (!strOverride.empty())
+			{
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Clear"))
+					pPreview->Set_PartBase(iPart, std::string());
+			}
+			ImGui::PopID();
+		}
+	}
+
+	ImGui::SeparatorText("Blend");
 	int32_t iBlend = static_cast<int32_t>(P.eBlend);
-	if (ImGui::Combo("Blend", &iBlend, "Alpha\0Additive\0"))
+	if (ImGui::Combo("Blend", &iBlend, "Alpha\0Additive\0Opaque\0"))
 		P.eBlend = static_cast<CEffectPreviewV2::BLEND_MODE>(iBlend);
+	ImGui::BeginDisabled(CEffectPreviewV2::BLEND_MODE::SOLID == P.eBlend);
 	ImGui::Checkbox("Depth Test", &P.bDepthTest);
+	ImGui::EndDisabled();
 	if (CEffectPreviewV2::SHAPE::SPRITE == pPreview->Shape())
 	{
 		ImGui::SameLine();
 		ImGui::Checkbox("Billboard", &P.bBillboard);
 	}
-	ImGui::DragFloat2("UV Scale", &P.vUVScale.x, 0.01f, 0.01f, 64.f);
-	ImGui::DragFloat2("Base Pan (uv/s)", &P.vBasePan.x, 0.01f, -10.f, 10.f);
-	ImGui::DragFloat("Noise Strength", &P.fNoiseStrength, 0.005f, 0.f, 2.f);
-	ImGui::DragFloat("Noise Scale", &P.fNoiseScale, 0.01f, 0.01f, 64.f);
-	ImGui::DragFloat2("Noise Pan (uv/s)", &P.vNoisePan.x, 0.01f, -10.f, 10.f);
-	ImGui::DragFloat("Emissive Intensity", &P.fEmissiveIntensity, 0.05f, 0.f, 32.f);
-	ImGui::SliderFloat("Dissolve Amount", &P.fDissolveAmount, 0.f, 1.f);
-	ImGui::SliderFloat("Dissolve Softness", &P.fDissolveSoftness, 0.f, 0.5f);
 
 	ImGui::SeparatorText("Playback");
 	ImGui::DragFloat("Lifetime (s, 0 = infinite)", &P.fLifetime, 0.05f, 0.f, 600.f);
@@ -1397,11 +3176,12 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 	ImGui::DragFloat("Play Rate", &P.fPlayRate, 0.01f, 0.f, 16.f);
 	if (pPreview->Is_Finished())
 		ImGui::TextDisabled("Finished (lifetime reached). Restart to replay.");
+	ImGui::End();
 }
 
 Client::CEffect_Tool_V2::SLOT_BINDINGS& Client::CEffect_Tool_V2::Current_Bindings()
 {
-	return m_Bindings[static_cast<size_t>(m_eType)];
+	return m_SlotBindings[static_cast<size_t>(m_eType)];
 }
 
 std::string& Client::CEffect_Tool_V2::Current_SlotAssetId()
@@ -1476,6 +3256,7 @@ const char* Client::CEffect_Tool_V2::Slot_Description(const RESOURCE_SLOT eSlot)
 #include <array>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 NS_BEGIN(Engine)
 class CModel;
@@ -1499,6 +3280,7 @@ public:
 	{
 		ALPHA,
 		ADDITIVE,
+		SOLID,
 		END
 	};
 
@@ -1512,23 +3294,61 @@ public:
 		END
 	};
 
+	enum class COLOR_CLIP_CHANNEL : int32_t
+	{
+		RGB,
+		ALPHA,
+		END
+	};
+
+	struct LERP_FLOAT3 final
+	{
+		float3_t vStart = { 0.f, 0.f, 0.f };
+		float3_t vEnd = { 0.f, 0.f, 0.f };
+		bool_t bLerp = false;
+		float3_t Evaluate(f32_t fLifeRatio) const;
+	};
+
 	struct PARAMS final
 	{
-		float4_t vTint = { 1.f, 1.f, 1.f, 1.f };
-		BLEND_MODE eBlend = BLEND_MODE::ADDITIVE;
-		bool_t bBillboard = true;
-		bool_t bDepthTest = true;
-		float2_t vUVScale = { 1.f, 1.f };
-		float2_t vBasePan = { 0.f, 0.f };
+		LERP_FLOAT3 Position;
+		LERP_FLOAT3 Rotation;
+		LERP_FLOAT3 Scale = { { 1.f, 1.f, 1.f }, { 1.f, 1.f, 1.f }, false };
+		LERP_FLOAT3 Velocity;
+		float4_t vColorOffset = { 0.f, 0.f, 0.f, 0.f };
+		float4_t vColorMul = { 1.f, 1.f, 1.f, 1.f };
+		COLOR_CLIP_CHANNEL eColorClipChannel = COLOR_CLIP_CHANNEL::ALPHA;
+		f32_t fColorClip = 0.f;
+		float4_t vRimColor = { 1.f, 1.f, 1.f, 1.f };
+		f32_t fRimPower = 3.f;
+		f32_t fRimIntensity = 0.f;
+		f32_t fGhostAlpha = 0.f;
+		f32_t fBloomIntensity = 1.f;
+		f32_t fDistortionIntensity = 0.f;
+		float2_t vUVStart = { 0.f, 0.f };
+		float2_t vUVSpeed = { 0.f, 0.f };
+		float2_t vUVTileCount = { 1.f, 1.f };
 		f32_t fNoiseStrength = 0.f;
 		f32_t fNoiseScale = 1.f;
 		float2_t vNoisePan = { 0.f, 0.f };
-		f32_t fEmissiveIntensity = 1.f;
-		f32_t fDissolveAmount = 0.f;
+		f32_t fDissolveStart = 0.f;
 		f32_t fDissolveSoftness = 0.1f;
+		BLEND_MODE eBlend = BLEND_MODE::ADDITIVE;
+		bool_t bBillboard = true;
+		bool_t bDepthTest = true;
 		f32_t fLifetime = 0.f;
 		bool_t bLoop = true;
 		f32_t fPlayRate = 1.f;
+		f32_t fMeshPreScale = 0.01f;
+		uint32_t iAnimationIndex = 0u;
+		bool_t bAnimationLoop = true;
+	};
+
+	struct PART final
+	{
+		bool_t bVisible = true;
+		std::string strBaseAssetId;
+		ComPtr<ID3D11ShaderResourceView> pBaseView;
 	};
 
 	struct DESC final : public GAMEOBJECT_DESC
@@ -1536,10 +3356,13 @@ public:
 		SHAPE eShape = SHAPE::SPRITE;
 		std::string strMeshAssetId;
 		std::array<std::string, static_cast<size_t>(TEXTURE_INPUT::END)> TextureAssetIds;
-		float3_t vPosition = { 0.f, 0.f, 0.f };
-		float3_t vRotationDegrees = { 0.f, 0.f, 0.f };
-		float3_t vScale = { 1.f, 1.f, 1.f };
+		float4x4_t PivotWorld = {
+			1.f, 0.f, 0.f, 0.f,
+			0.f, 1.f, 0.f, 0.f,
+			0.f, 0.f, 1.f, 0.f,
+			0.f, 0.f, 0.f, 1.f };
 		PARAMS Params;
+		bool_t bParamsAuthored = false;
 	};
 
 private:
@@ -1557,12 +3380,30 @@ public:
 	virtual HRESULT Render() override;
 
 	PARAMS& Params() { return m_Params; }
-	float3_t& Position() { return m_vPosition; }
-	float3_t& RotationDegrees() { return m_vRotationDegrees; }
-	float3_t& Scale() { return m_vScale; }
+	const DESC& Creation_Desc() const { return m_CreationDesc; }
+	float4x4_t& PivotWorld() { return m_PivotWorld; }
 	const std::string& Status() const { return m_strStatus; }
 	SHAPE Shape() const { return m_eShape; }
 	f32_t Time() const { return m_fTime; }
+	f32_t Life_Ratio() const;
+	f32_t Dissolve_Amount() const;
+	bool_t Has_Texture(const TEXTURE_INPUT eInput) const
+	{
+		return nullptr != m_Textures[static_cast<size_t>(eInput)];
+	}
+	uint32_t Part_Count() const { return static_cast<uint32_t>(m_Parts.size()); }
+	const std::string& Part_Name(uint32_t iIndex) const;
+	bool_t& Part_Visible(const uint32_t iIndex) { return m_Parts[iIndex].bVisible; }
+	const std::string& Part_BaseAssetId(const uint32_t iIndex) const
+	{
+		return m_Parts[iIndex].strBaseAssetId;
+	}
+	HRESULT Set_PartBase(uint32_t iIndex, const std::string& strAssetId);
+	bool_t Is_Skinned() const { return m_bSkinned; }
+	uint32_t Animation_Count() const;
+	const char_t* Animation_Name(uint32_t iIndex) const;
+	f32_t Animation_DurationSeconds(uint32_t iIndex) const;
+	bool_t Animation_Progress(f32_t& fOutSeconds, f32_t& fOutDurationSeconds) const;
 	bool_t Is_Finished() const { return m_bFinished; }
 	bool_t Is_Hidden() const { return m_bHidden; }
 	void Set_Hidden(const bool_t bHidden) { m_bHidden = bHidden; }
@@ -1573,14 +3414,17 @@ private:
 	HRESULT Load_Texture(
 		const std::string& strAssetId, ComPtr<ID3D11ShaderResourceView>& OutView);
 	void Apply_Transform();
+	void Sync_Animation(bool_t bRestart);
 	HRESULT Bind_Common(const shared_ptr<Engine::CShader>& pShader);
 
 private:
 	SHAPE m_eShape = SHAPE::SPRITE;
 	PARAMS m_Params;
-	float3_t m_vPosition = { 0.f, 0.f, 0.f };
-	float3_t m_vRotationDegrees = { 0.f, 0.f, 0.f };
-	float3_t m_vScale = { 1.f, 1.f, 1.f };
+	DESC m_CreationDesc;
+	float4x4_t m_PivotWorld;
+	float3_t m_vDisplacement = { 0.f, 0.f, 0.f };
+	uint32_t m_iAppliedAnimationIndex = UINT32_MAX;
+	std::vector<PART> m_Parts;
 	f32_t m_fTime = 0.f;
 	bool_t m_bFinished = false;
 	bool_t m_bHidden = false;
@@ -1608,6 +3452,7 @@ NS_END
 
 ```cpp
 #include "Effect_Preview_V2.h"
+#include "BinaryAsset/ModelDecoderRegistry.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "RuntimeAssetRoot.h"
@@ -1616,6 +3461,7 @@ NS_END
 
 #include "DirectXTK/DDSTextureLoader.h"
 
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 
@@ -1628,6 +3474,21 @@ namespace
 	constexpr const char* TEXTURE_FLAG_CONSTANTS[] = {
 		"g_HasBase", "g_HasNoise", "g_HasMask", "g_HasEmissive", "g_HasDissolve"
 	};
+
+	f32_t Saturate(const f32_t fValue)
+	{
+		return (std::min)(1.f, (std::max)(0.f, fValue));
+	}
+}
+
+float3_t Client::CEffectPreviewV2::LERP_FLOAT3::Evaluate(const f32_t fLifeRatio) const
+{
+	if (!bLerp)
+		return vStart;
+	float3_t vResult;
+	XMStoreFloat3(&vResult, XMVectorLerp(
+		XMLoadFloat3(&vStart), XMLoadFloat3(&vEnd), fLifeRatio));
+	return vResult;
 }
 
 Client::CEffectPreviewV2::CEffectPreviewV2(
@@ -1635,6 +3496,7 @@ Client::CEffectPreviewV2::CEffectPreviewV2(
 	ComPtr<ID3D11DeviceContext> pContext)
 	: CGameObject(std::move(pDevice), std::move(pContext))
 {
+	XMStoreFloat4x4(&m_PivotWorld, XMMatrixIdentity());
 }
 
 Client::CEffectPreviewV2::~CEffectPreviewV2() = default;
@@ -1660,11 +3522,10 @@ HRESULT Client::CEffectPreviewV2::Initialize(void* pArg)
 	if (FAILED(__super::Initialize(pArg)))
 		return Fail("Transform component creation failed.");
 	const DESC& Desc = *static_cast<const DESC*>(pArg);
+	m_CreationDesc = Desc;
 	m_eShape = Desc.eShape;
 	m_Params = Desc.Params;
-	m_vPosition = Desc.vPosition;
-	m_vRotationDegrees = Desc.vRotationDegrees;
-	m_vScale = Desc.vScale;
+	m_PivotWorld = Desc.PivotWorld;
 
 	if (SHAPE::MESH == m_eShape)
 	{
@@ -1684,8 +3545,14 @@ HRESULT Client::CEffectPreviewV2::Initialize(void* pArg)
 			m_bSkinned = nullptr != Model;
 		}
 		if (nullptr == Model)
-			return Fail("Mesh load failed: " + Desc.strMeshAssetId);
+		{
+			return Fail("Mesh load failed: " + Desc.strMeshAssetId + " | " +
+				CModelDecoderRegistry::Get().Get_LastReport().error);
+		}
 		m_pModel = std::move(Model);
+		m_Parts.assign(m_pModel->Get_NumMeshes(), PART{});
+		if (m_bSkinned && !Desc.bParamsAuthored)
+			m_Params.fMeshPreScale = 0.0001f;
 		unique_ptr<Engine::CShader> Shader = m_bSkinned ?
 			Engine::CShader::Create(m_pDevice, m_pContext,
 				TEXT("../Bin/ShaderFiles/Shader_EffectAnimMeshV2.hlsl"),
@@ -1725,6 +3592,7 @@ HRESULT Client::CEffectPreviewV2::Initialize(void* pArg)
 		if (FAILED(Load_Texture(strAssetId, m_Textures[iInput])))
 			return Fail("Texture load failed: " + strAssetId);
 	}
+	Sync_Animation(true);
 	m_strStatus = "Ready";
 	Apply_Transform();
 	return S_OK;
@@ -1742,21 +3610,139 @@ HRESULT Client::CEffectPreviewV2::Load_Texture(
 		m_pDevice.Get(), Path.c_str(), nullptr, &OutView);
 }
 
+const std::string& Client::CEffectPreviewV2::Part_Name(const uint32_t iIndex) const
+{
+	static const std::string strEmpty;
+	if (nullptr == m_pModel || iIndex >= m_Parts.size())
+		return strEmpty;
+	return m_pModel->Get_MaterialName(iIndex);
+}
+
+HRESULT Client::CEffectPreviewV2::Set_PartBase(
+	const uint32_t iIndex, const std::string& strAssetId)
+{
+	if (iIndex >= m_Parts.size())
+		return E_INVALIDARG;
+	PART& Part = m_Parts[iIndex];
+	if (strAssetId.empty())
+	{
+		Part.strBaseAssetId.clear();
+		Part.pBaseView.Reset();
+		return S_OK;
+	}
+	ComPtr<ID3D11ShaderResourceView> pView;
+	if (FAILED(Load_Texture(strAssetId, pView)))
+		return E_FAIL;
+	Part.strBaseAssetId = strAssetId;
+	Part.pBaseView = std::move(pView);
+	return S_OK;
+}
+
 void Client::CEffectPreviewV2::Restart()
 {
 	m_fTime = 0.f;
+	m_vDisplacement = { 0.f, 0.f, 0.f };
 	m_bFinished = false;
+	Sync_Animation(true);
+}
+
+uint32_t Client::CEffectPreviewV2::Animation_Count() const
+{
+	if (!m_bSkinned || nullptr == m_pModel)
+		return 0u;
+	return m_pModel->Get_NumAnimations();
+}
+
+const char_t* Client::CEffectPreviewV2::Animation_Name(const uint32_t iIndex) const
+{
+	if (iIndex >= Animation_Count())
+		return nullptr;
+	return m_pModel->Get_AnimationName(iIndex);
+}
+
+f32_t Client::CEffectPreviewV2::Animation_DurationSeconds(const uint32_t iIndex) const
+{
+	if (iIndex >= Animation_Count())
+		return 0.f;
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	const f32_t fTickPerSecond = m_pModel->Get_AnimationTickPerSecond(iIndex);
+	if (fTickPerSecond <= 0.f ||
+		!m_pModel->Get_AnimationProgress(iIndex, fPosition, fDuration))
+		return 0.f;
+	return fDuration / fTickPerSecond;
+}
+
+bool_t Client::CEffectPreviewV2::Animation_Progress(
+	f32_t& fOutSeconds, f32_t& fOutDurationSeconds) const
+{
+	const uint32_t iIndex = m_Params.iAnimationIndex;
+	if (iIndex >= Animation_Count())
+		return false;
+	f32_t fPosition = 0.f;
+	f32_t fDuration = 0.f;
+	const f32_t fTickPerSecond = m_pModel->Get_AnimationTickPerSecond(iIndex);
+	if (fTickPerSecond <= 0.f ||
+		!m_pModel->Get_AnimationProgress(iIndex, fPosition, fDuration))
+		return false;
+	fOutSeconds = fPosition / fTickPerSecond;
+	fOutDurationSeconds = fDuration / fTickPerSecond;
+	return true;
+}
+
+void Client::CEffectPreviewV2::Sync_Animation(const bool_t bRestart)
+{
+	const uint32_t iCount = Animation_Count();
+	if (0u == iCount)
+		return;
+	if (m_Params.iAnimationIndex >= iCount)
+		m_Params.iAnimationIndex = iCount - 1u;
+	const uint32_t iIndex = m_Params.iAnimationIndex;
+	if (bRestart || iIndex != m_iAppliedAnimationIndex)
+	{
+		m_pModel->Start_Animation(iIndex, m_Params.bAnimationLoop);
+		m_iAppliedAnimationIndex = iIndex;
+		return;
+	}
+	m_pModel->Set_Animation(iIndex, m_Params.bAnimationLoop);
+}
+
+f32_t Client::CEffectPreviewV2::Life_Ratio() const
+{
+	if (m_Params.fLifetime <= 0.f)
+		return 0.f;
+	return Saturate(m_fTime / m_Params.fLifetime);
+}
+
+f32_t Client::CEffectPreviewV2::Dissolve_Amount() const
+{
+	const f32_t fStart = Saturate(m_Params.fDissolveStart);
+	if (fStart >= 1.f)
+		return 0.f;
+	return Saturate((Life_Ratio() - fStart) / (1.f - fStart));
 }
 
 void Client::CEffectPreviewV2::Update(const f32_t fTimeDelta)
 {
 	if (!m_bFinished)
 	{
-		m_fTime += fTimeDelta * m_Params.fPlayRate;
+		const f32_t fStep = fTimeDelta * m_Params.fPlayRate;
+		const float3_t vVelocity = m_Params.Velocity.Evaluate(Life_Ratio());
+		m_vDisplacement.x += vVelocity.x * fStep;
+		m_vDisplacement.y += vVelocity.y * fStep;
+		m_vDisplacement.z += vVelocity.z * fStep;
+		m_fTime += fStep;
+		Sync_Animation(false);
+		if (0u != Animation_Count())
+			m_pModel->Play_Animation(fStep);
 		if (m_Params.fLifetime > 0.f && m_fTime >= m_Params.fLifetime)
 		{
 			if (m_Params.bLoop)
+			{
 				m_fTime = std::fmod(m_fTime, m_Params.fLifetime);
+				m_vDisplacement = { 0.f, 0.f, 0.f };
+				Sync_Animation(true);
+			}
 			else
 				m_bFinished = true;
 		}
@@ -1766,12 +3752,24 @@ void Client::CEffectPreviewV2::Update(const f32_t fTimeDelta)
 
 void Client::CEffectPreviewV2::Apply_Transform()
 {
-	const matrix_t Scale =
-		XMMatrixScaling(m_vScale.x, m_vScale.y, m_vScale.z);
-	matrix_t Rotation = XMMatrixRotationRollPitchYaw(
-		XMConvertToRadians(m_vRotationDegrees.x),
-		XMConvertToRadians(m_vRotationDegrees.y),
-		XMConvertToRadians(m_vRotationDegrees.z));
+	const f32_t fRatio = Life_Ratio();
+	const float3_t vPosition = m_Params.Position.Evaluate(fRatio);
+	const float3_t vRotation = m_Params.Rotation.Evaluate(fRatio);
+	const float3_t vScale = m_Params.Scale.Evaluate(fRatio);
+	const f32_t fPreScale =
+		SHAPE::MESH == m_eShape ? (std::max)(0.0001f, m_Params.fMeshPreScale) : 1.f;
+	const matrix_t Scale = XMMatrixScaling(
+		vScale.x * fPreScale, vScale.y * fPreScale, vScale.z * fPreScale);
+	const matrix_t Rotation = XMMatrixRotationRollPitchYaw(
+		XMConvertToRadians(vRotation.x),
+		XMConvertToRadians(vRotation.y),
+		XMConvertToRadians(vRotation.z));
+	const matrix_t LocalTranslation = XMMatrixTranslation(
+		vPosition.x + m_vDisplacement.x,
+		vPosition.y + m_vDisplacement.y,
+		vPosition.z + m_vDisplacement.z);
+	const matrix_t Pivot = XMLoadFloat4x4(&m_PivotWorld);
+	matrix_t World = Scale * Rotation * LocalTranslation * Pivot;
 	if (SHAPE::SPRITE == m_eShape && m_Params.bBillboard)
 	{
 		const float4x4_t* pCameraWorld =
@@ -1783,11 +3781,10 @@ void Client::CEffectPreviewV2::Apply_Transform()
 			CameraWorld.r[1] = XMVector3Normalize(CameraWorld.r[1]);
 			CameraWorld.r[2] = XMVector3Normalize(CameraWorld.r[2]);
 			CameraWorld.r[3] = XMVectorSet(0.f, 0.f, 0.f, 1.f);
-			Rotation = Rotation * CameraWorld;
+			World = Scale * Rotation * CameraWorld *
+				XMMatrixTranslationFromVector(World.r[3]);
 		}
 	}
-	const matrix_t World = Scale * Rotation *
-		XMMatrixTranslation(m_vPosition.x, m_vPosition.y, m_vPosition.z);
 	m_pTransformCom->Set_State(STATE::RIGHT, World.r[0]);
 	m_pTransformCom->Set_State(STATE::UP, World.r[1]);
 	m_pTransformCom->Set_State(STATE::LOOK, World.r[2]);
@@ -1815,15 +3812,30 @@ HRESULT Client::CEffectPreviewV2::Bind_Common(
 		return E_FAIL;
 	}
 	const PARAMS& P = m_Params;
-	if (FAILED(pShader->Bind_RawValue("g_Time", &m_fTime, sizeof(m_fTime))) ||
-		FAILED(pShader->Bind_RawValue("g_Tint", &P.vTint, sizeof(P.vTint))) ||
-		FAILED(pShader->Bind_RawValue("g_UVScale", &P.vUVScale, sizeof(P.vUVScale))) ||
-		FAILED(pShader->Bind_RawValue("g_BasePan", &P.vBasePan, sizeof(P.vBasePan))) ||
+	const uint32_t iColorClipChannel = static_cast<uint32_t>(P.eColorClipChannel);
+	const f32_t fDissolveAmount = Dissolve_Amount();
+	const float4_t* pCameraPosition = GameInstance.Get_CamPosition();
+	const float4_t vCameraPosition =
+		nullptr != pCameraPosition ? *pCameraPosition : float4_t(0.f, 0.f, 0.f, 1.f);
+	if (FAILED(pShader->Bind_RawValue("g_vCamPosition", &vCameraPosition, sizeof(vCameraPosition))) ||
+		FAILED(pShader->Bind_RawValue("g_RimColor", &P.vRimColor, sizeof(P.vRimColor))) ||
+		FAILED(pShader->Bind_RawValue("g_RimPower", &P.fRimPower, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_RimIntensity", &P.fRimIntensity, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_GhostAlpha", &P.fGhostAlpha, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_Time", &m_fTime, sizeof(m_fTime))) ||
+		FAILED(pShader->Bind_RawValue("g_ColorMul", &P.vColorMul, sizeof(P.vColorMul))) ||
+		FAILED(pShader->Bind_RawValue("g_ColorOffset", &P.vColorOffset, sizeof(P.vColorOffset))) ||
+		FAILED(pShader->Bind_RawValue("g_ColorClip", &P.fColorClip, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_ColorClipChannel", &iColorClipChannel, sizeof(iColorClipChannel))) ||
+		FAILED(pShader->Bind_RawValue("g_BloomIntensity", &P.fBloomIntensity, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_DistortionIntensity", &P.fDistortionIntensity, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_UVStart", &P.vUVStart, sizeof(P.vUVStart))) ||
+		FAILED(pShader->Bind_RawValue("g_UVSpeed", &P.vUVSpeed, sizeof(P.vUVSpeed))) ||
+		FAILED(pShader->Bind_RawValue("g_UVTileCount", &P.vUVTileCount, sizeof(P.vUVTileCount))) ||
 		FAILED(pShader->Bind_RawValue("g_NoiseStrength", &P.fNoiseStrength, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_NoiseScale", &P.fNoiseScale, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_NoisePan", &P.vNoisePan, sizeof(P.vNoisePan))) ||
-		FAILED(pShader->Bind_RawValue("g_EmissiveIntensity", &P.fEmissiveIntensity, sizeof(f32_t))) ||
-		FAILED(pShader->Bind_RawValue("g_DissolveAmount", &P.fDissolveAmount, sizeof(f32_t))) ||
+		FAILED(pShader->Bind_RawValue("g_DissolveAmount", &fDissolveAmount, sizeof(f32_t))) ||
 		FAILED(pShader->Bind_RawValue("g_DissolveSoftness", &P.fDissolveSoftness, sizeof(f32_t))))
 	{
 		return E_FAIL;
@@ -1848,12 +3860,25 @@ HRESULT Client::CEffectPreviewV2::Render()
 		m_strStatus = "Shader bind failed.";
 		return E_FAIL;
 	}
-	const uint32_t iPass =
+	const uint32_t iPass = BLEND_MODE::SOLID == m_Params.eBlend ? 4u :
 		static_cast<uint32_t>(m_Params.eBlend) + (m_Params.bDepthTest ? 0u : 2u);
 	if (SHAPE::MESH == m_eShape)
 	{
 		for (uint32_t iMesh = 0u; iMesh < m_pModel->Get_NumMeshes(); ++iMesh)
 		{
+			if (iMesh < m_Parts.size() && !m_Parts[iMesh].bVisible)
+				continue;
+			const ComPtr<ID3D11ShaderResourceView>& pBase =
+				(iMesh < m_Parts.size() && nullptr != m_Parts[iMesh].pBaseView) ?
+				m_Parts[iMesh].pBaseView :
+				m_Textures[static_cast<size_t>(TEXTURE_INPUT::BASE)];
+			const uint32_t iHasBase = nullptr != pBase ? 1u : 0u;
+			if (FAILED(m_pShader->Bind_RawValue("g_HasBase", &iHasBase, sizeof(iHasBase))) ||
+				(0u != iHasBase && FAILED(m_pShader->Bind_Texture("g_BaseTexture", pBase))))
+			{
+				m_strStatus = "Part base bind failed.";
+				return E_FAIL;
+			}
 			if (m_bSkinned && FAILED(m_pModel->Bind_BoneMatrices(
 				m_pShader, "g_BoneMatrices", iMesh)))
 			{
@@ -1906,13 +3931,23 @@ float4x4 g_ViewMatrix;
 float4x4 g_ProjMatrix;
 
 float g_Time;
-float4 g_Tint = float4(1.f, 1.f, 1.f, 1.f);
-float2 g_UVScale = float2(1.f, 1.f);
-float2 g_BasePan = float2(0.f, 0.f);
+float4 g_vCamPosition = float4(0.f, 0.f, 0.f, 1.f);
+float4 g_RimColor = float4(1.f, 1.f, 1.f, 1.f);
+float g_RimPower = 3.f;
+float g_RimIntensity = 0.f;
+float g_GhostAlpha = 0.f;
+float4 g_ColorMul = float4(1.f, 1.f, 1.f, 1.f);
+float4 g_ColorOffset = float4(0.f, 0.f, 0.f, 0.f);
+float g_ColorClip = 0.f;
+uint g_ColorClipChannel = 1;
+float g_BloomIntensity = 1.f;
+float g_DistortionIntensity = 0.f;
+float2 g_UVStart = float2(0.f, 0.f);
+float2 g_UVSpeed = float2(0.f, 0.f);
+float2 g_UVTileCount = float2(1.f, 1.f);
 float g_NoiseStrength = 0.f;
 float g_NoiseScale = 1.f;
 float2 g_NoisePan = float2(0.f, 0.f);
-float g_EmissiveIntensity = 1.f;
 float g_DissolveAmount = 0.f;
 float g_DissolveSoftness = 0.1f;
 
@@ -1934,24 +3969,93 @@ RasterizerState RS_EffectV2
 	FrontCounterClockwise = false;
 };
 
+BlendState BS_EffectV2Alpha
+{
+	BlendEnable[0] = true;
+	BlendEnable[1] = true;
+	SrcBlend[0] = Src_Alpha;
+	DestBlend[0] = Inv_Src_Alpha;
+	BlendOp[0] = Add;
+	SrcBlendAlpha[0] = One;
+	DestBlendAlpha[0] = Inv_Src_Alpha;
+	BlendOpAlpha[0] = Add;
+	SrcBlend[1] = One;
+	DestBlend[1] = One;
+	BlendOp[1] = Add;
+	SrcBlendAlpha[1] = One;
+	DestBlendAlpha[1] = One;
+	BlendOpAlpha[1] = Add;
+	RenderTargetWriteMask[1] = 0x03;
+};
+
+BlendState BS_EffectV2Additive
+{
+	BlendEnable[0] = true;
+	BlendEnable[1] = true;
+	SrcBlend[0] = Src_Alpha;
+	DestBlend[0] = One;
+	BlendOp[0] = Add;
+	SrcBlendAlpha[0] = One;
+	DestBlendAlpha[0] = One;
+	BlendOpAlpha[0] = Add;
+	SrcBlend[1] = One;
+	DestBlend[1] = One;
+	BlendOp[1] = Add;
+	SrcBlendAlpha[1] = One;
+	DestBlendAlpha[1] = One;
+	BlendOpAlpha[1] = Add;
+	RenderTargetWriteMask[1] = 0x03;
+};
+
+BlendState BS_EffectV2Opaque
+{
+	BlendEnable[0] = false;
+	BlendEnable[1] = true;
+	SrcBlend[1] = One;
+	DestBlend[1] = One;
+	BlendOp[1] = Add;
+	SrcBlendAlpha[1] = One;
+	DestBlendAlpha[1] = One;
+	BlendOpAlpha[1] = Add;
+	RenderTargetWriteMask[1] = 0x03;
+};
+
 struct PS_EFFECT_IN
 {
 	float4 vPosition : SV_POSITION;
 	float2 vTexcoord : TEXCOORD0;
+	float3 vWorldNormal : NORMAL;
+	float3 vWorldPosition : TEXCOORD1;
 };
 
-float4 PS_EFFECT_V2(PS_EFFECT_IN input) : SV_TARGET0
+struct PS_EFFECT_OUT
 {
-	const float2 uv = input.vTexcoord * g_UVScale + g_BasePan * g_Time;
+	float4 vSceneColor : SV_TARGET0;
+	float4 vDistortion : SV_TARGET1;
+};
 
-	float2 distortion = float2(0.f, 0.f);
+PS_EFFECT_OUT PS_EFFECT_V2(PS_EFFECT_IN input)
+{
+	PS_EFFECT_OUT output;
+	const float2 uv = input.vTexcoord * g_UVTileCount + g_UVStart + g_UVSpeed * g_Time;
+
+	float fresnel = 0.f;
+	if (dot(input.vWorldNormal, input.vWorldNormal) > 0.f)
+	{
+		const float3 N = normalize(input.vWorldNormal);
+		const float3 V = normalize(g_vCamPosition.xyz - input.vWorldPosition);
+		fresnel = pow(1.f - saturate(abs(dot(N, V))), max(g_RimPower, 0.01f));
+	}
+
+	float2 noise = float2(0.5f, 0.5f);
+	float2 warp = float2(0.f, 0.f);
 	if (0 != g_HasNoise)
 	{
 		const float2 noiseUV = uv * g_NoiseScale + g_NoisePan * g_Time;
-		distortion = (g_NoiseTexture.Sample(LinearSampler, noiseUV).rg * 2.f - 1.f) *
-			g_NoiseStrength;
+		noise = g_NoiseTexture.Sample(LinearSampler, noiseUV).rg;
+		warp = (noise * 2.f - 1.f) * g_NoiseStrength;
 	}
-	const float2 baseUV = uv + distortion;
+	const float2 baseUV = uv + warp;
 
 	float4 base = float4(1.f, 1.f, 1.f, 1.f);
 	if (0 != g_HasBase)
@@ -1960,10 +4064,6 @@ float4 PS_EFFECT_V2(PS_EFFECT_IN input) : SV_TARGET0
 	float mask = 1.f;
 	if (0 != g_HasMask)
 		mask = g_MaskTexture.Sample(LinearSampler, uv).r;
-
-	float3 emissive = float3(0.f, 0.f, 0.f);
-	if (0 != g_HasEmissive)
-		emissive = g_EmissiveTexture.Sample(LinearSampler, baseUV).rgb * g_EmissiveIntensity;
 
 	float dissolve = 1.f;
 	if (0 != g_HasDissolve)
@@ -1975,11 +4075,27 @@ float4 PS_EFFECT_V2(PS_EFFECT_IN input) : SV_TARGET0
 			threshold);
 	}
 
-	const float alpha = base.a * mask * dissolve * g_Tint.a;
-	if (alpha <= 0.001f)
+	float4 color;
+	color.rgb = max(base.rgb * g_ColorMul.rgb + g_ColorOffset.rgb, float3(0.f, 0.f, 0.f));
+	color.a = saturate(base.a * mask * dissolve * g_ColorMul.a + g_ColorOffset.a);
+	color.a *= lerp(1.f, fresnel, saturate(g_GhostAlpha));
+	if (color.a <= 0.001f)
 		discard;
-	const float3 color = base.rgb * g_Tint.rgb + emissive;
-	return float4(color, alpha);
+	const float clipValue = (0 == g_ColorClipChannel) ?
+		max(color.r, max(color.g, color.b)) : color.a;
+	if (g_ColorClip > 0.f && clipValue <= g_ColorClip)
+		discard;
+
+	color.rgb += g_RimColor.rgb * fresnel * g_RimIntensity;
+	if (0 != g_HasEmissive)
+		color.rgb += g_EmissiveTexture.Sample(LinearSampler, baseUV).rgb * g_BloomIntensity;
+
+	const float2 distortion = (0 != g_HasNoise) ?
+		(noise * 2.f - 1.f) * g_DistortionIntensity * color.a : float2(0.f, 0.f);
+
+	output.vSceneColor = color;
+	output.vDistortion = float4(distortion, 0.f, 0.f);
+	return output;
 }
 
 #define EFFECT_V2_PASSES(VS_FUNC) \
@@ -1987,7 +4103,7 @@ float4 PS_EFFECT_V2(PS_EFFECT_IN input) : SV_TARGET0
 	{ \
 		SetRasterizerState(RS_EffectV2); \
 		SetDepthStencilState(DSS_ReadOnly, 0); \
-		SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		SetBlendState(BS_EffectV2Alpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
 		VertexShader = compile vs_5_0 VS_FUNC(); \
 		GeometryShader = NULL; \
 		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
@@ -1996,7 +4112,7 @@ float4 PS_EFFECT_V2(PS_EFFECT_IN input) : SV_TARGET0
 	{ \
 		SetRasterizerState(RS_EffectV2); \
 		SetDepthStencilState(DSS_ReadOnly, 0); \
-		SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		SetBlendState(BS_EffectV2Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
 		VertexShader = compile vs_5_0 VS_FUNC(); \
 		GeometryShader = NULL; \
 		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
@@ -2005,7 +4121,7 @@ float4 PS_EFFECT_V2(PS_EFFECT_IN input) : SV_TARGET0
 	{ \
 		SetRasterizerState(RS_EffectV2); \
 		SetDepthStencilState(DSS_ZNone, 0); \
-		SetBlendState(BS_AlphaBlend, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		SetBlendState(BS_EffectV2Alpha, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
 		VertexShader = compile vs_5_0 VS_FUNC(); \
 		GeometryShader = NULL; \
 		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
@@ -2014,7 +4130,16 @@ float4 PS_EFFECT_V2(PS_EFFECT_IN input) : SV_TARGET0
 	{ \
 		SetRasterizerState(RS_EffectV2); \
 		SetDepthStencilState(DSS_ZNone, 0); \
-		SetBlendState(BS_Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		SetBlendState(BS_EffectV2Additive, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
+		VertexShader = compile vs_5_0 VS_FUNC(); \
+		GeometryShader = NULL; \
+		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
+	} \
+	pass Opaque \
+	{ \
+		SetRasterizerState(RS_Default); \
+		SetDepthStencilState(DSS_Default, 0); \
+		SetBlendState(BS_EffectV2Opaque, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff); \
 		VertexShader = compile vs_5_0 VS_FUNC(); \
 		GeometryShader = NULL; \
 		PixelShader = compile ps_5_0 PS_EFFECT_V2(); \
@@ -2038,10 +4163,11 @@ struct VS_IN
 PS_EFFECT_IN VS_MAIN(VS_IN input)
 {
 	PS_EFFECT_IN output;
-	const matrix worldViewProjection =
-		mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix);
-	output.vPosition = mul(float4(input.vPosition, 1.f), worldViewProjection);
+	const float4 worldPosition = mul(float4(input.vPosition, 1.f), g_WorldMatrix);
+	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
 	output.vTexcoord = input.vTexcoord;
+	output.vWorldNormal = normalize(mul(input.vNormal, (float3x3)g_WorldMatrix));
+	output.vWorldPosition = worldPosition.xyz;
 	return output;
 }
 
@@ -2078,10 +4204,12 @@ PS_EFFECT_IN VS_MAIN(VS_IN input)
 		g_BoneMatrices[input.vBlendIndices.z] * input.vBlendWeights.z +
 		g_BoneMatrices[input.vBlendIndices.w] * input.vBlendWeights.w;
 	const float4 skinnedPosition = mul(float4(input.vPosition, 1.f), boneMatrix);
-	const matrix worldViewProjection =
-		mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix);
-	output.vPosition = mul(skinnedPosition, worldViewProjection);
+	const float3 skinnedNormal = mul(float4(input.vNormal, 0.f), boneMatrix).xyz;
+	const float4 worldPosition = mul(skinnedPosition, g_WorldMatrix);
+	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
 	output.vTexcoord = input.vTexcoord;
+	output.vWorldNormal = normalize(mul(skinnedNormal, (float3x3)g_WorldMatrix));
+	output.vWorldPosition = worldPosition.xyz;
 	return output;
 }
 
@@ -2105,10 +4233,11 @@ struct VS_IN
 PS_EFFECT_IN VS_MAIN(VS_IN input)
 {
 	PS_EFFECT_IN output;
-	const matrix worldViewProjection =
-		mul(mul(g_WorldMatrix, g_ViewMatrix), g_ProjMatrix);
-	output.vPosition = mul(float4(input.vPosition, 1.f), worldViewProjection);
+	const float4 worldPosition = mul(float4(input.vPosition, 1.f), g_WorldMatrix);
+	output.vPosition = mul(mul(worldPosition, g_ViewMatrix), g_ProjMatrix);
 	output.vTexcoord = input.vTexcoord;
+	output.vWorldNormal = float3(0.f, 0.f, 0.f);
+	output.vWorldPosition = worldPosition.xyz;
 	return output;
 }
 
