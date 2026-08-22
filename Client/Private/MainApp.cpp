@@ -276,83 +276,6 @@ HRESULT CMainApp::Initialize()
 	return S_OK;
 }
 
-#ifdef _DEBUG
-namespace
-{
-	/* Debug-only update breakdown, mirroring the renderer's stage timer. */
-	class CUpdateStageTimer final
-	{
-	public:
-		CUpdateStageTimer()
-		{
-			QueryPerformanceFrequency(&m_Frequency);
-			QueryPerformanceCounter(&m_Start);
-			m_Last = m_Start;
-		}
-		void Stamp(const char* stage)
-		{
-			LARGE_INTEGER now{};
-			QueryPerformanceCounter(&now);
-			const double ms = 1000.0 *
-				static_cast<double>(now.QuadPart - m_Last.QuadPart) /
-				static_cast<double>(m_Frequency.QuadPart);
-			m_Last = now;
-			s_Accumulated[m_Index] += ms;
-			s_Stages[m_Index] = stage;
-			if (m_Index + 1u < MAXIMUM_STAGES)
-				++m_Index;
-		}
-		~CUpdateStageTimer()
-		{
-			LARGE_INTEGER now{};
-			QueryPerformanceCounter(&now);
-			s_TotalMs += 1000.0 *
-				static_cast<double>(now.QuadPart - m_Start.QuadPart) /
-				static_cast<double>(m_Frequency.QuadPart);
-			if (++s_FrameCount < REPORT_INTERVAL)
-				return;
-			std::string line = "[UpdateStage] avg total " +
-				Format(s_TotalMs / s_FrameCount) + " ms |";
-			for (uint32_t index = 0u; index < m_Index; ++index)
-			{
-				line += " ";
-				line += nullptr != s_Stages[index] ? s_Stages[index] : "?";
-				line += " ";
-				line += Format(s_Accumulated[index] / s_FrameCount);
-			}
-			line += "\n";
-			::OutputDebugStringA(line.c_str());
-			s_FrameCount = 0u;
-			s_TotalMs = 0.0;
-			for (double& value : s_Accumulated)
-				value = 0.0;
-		}
-	private:
-		static std::string Format(const double value)
-		{
-			char buffer[32]{};
-			snprintf(buffer, sizeof(buffer), "%.2f", value);
-			return buffer;
-		}
-		static constexpr uint32_t MAXIMUM_STAGES = 16u;
-		static constexpr uint32_t REPORT_INTERVAL = 60u;
-		static inline double s_Accumulated[MAXIMUM_STAGES]{};
-		static inline const char* s_Stages[MAXIMUM_STAGES]{};
-		static inline double s_TotalMs = 0.0;
-		static inline uint32_t s_FrameCount = 0u;
-		LARGE_INTEGER m_Frequency{};
-		LARGE_INTEGER m_Start{};
-		LARGE_INTEGER m_Last{};
-		uint32_t m_Index = 0u;
-	};
-}
-#define UPDATE_STAGE_DECLARE() CUpdateStageTimer UpdateStageTimer
-#define UPDATE_STAGE_STAMP(name) UpdateStageTimer.Stamp(name)
-#else
-#define UPDATE_STAGE_DECLARE() ((void)0)
-#define UPDATE_STAGE_STAMP(name) ((void)0)
-#endif
-
 void CMainApp::Update(const f32_t fTimeDelta)
 {
 #ifdef _DEBUG
@@ -479,25 +402,17 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		DIM::LB,
 		worldLeftMouseConsumed);
 
-	UPDATE_STAGE_DECLARE();
 	CNetworkManager::Get().Update();
-	UPDATE_STAGE_STAMP("Network");
 	CGameInstance::Get().Update_Engine(fTimeDelta);
-	UPDATE_STAGE_STAMP("Update_Engine");
 	CEffectPresentationService::Advance_ProductCuePreparation(
 		m_pDevice, m_pContext);
-	UPDATE_STAGE_STAMP("Effect_Advance");
 	CEffectPresentationService::Commit_PendingSpawns();
-	UPDATE_STAGE_STAMP("Effect_Commit");
 	CEffectPresentationService::Synchronize_FollowAnchors();
-	UPDATE_STAGE_STAMP("Effect_Anchors");
 	CEffectPresentationService::Update(fTimeDelta);
-UPDATE_STAGE_STAMP("Effect_Update");
 
 #ifdef _DEBUG
 	if (nullptr != m_pMapTool)
 		m_pMapTool->Update(fTimeDelta);
-	UPDATE_STAGE_STAMP("MapTool");
 	if (nullptr != m_pAnimationTool)
 	{
 		m_pAnimationTool->Update(
@@ -505,10 +420,8 @@ UPDATE_STAGE_STAMP("Effect_Update");
 			m_bDeveloperToolsVisible &&
 			DEBUG_TOOL::ANIMATION == m_eActiveDebugTool);
 	}
-	UPDATE_STAGE_STAMP("AnimationTool");
 	if (nullptr != m_pEffectTool)
 		m_pEffectTool->Update(fTimeDelta);
-	UPDATE_STAGE_STAMP("EffectTool");
 #endif
 
 	// 현재 Level의 Update가 끝난 뒤에만 기존 Level을 파괴한다.

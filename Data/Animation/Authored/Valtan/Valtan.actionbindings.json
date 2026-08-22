@@ -102796,6 +102796,604 @@
    ]
   },
   {
+   "patternId": "VALTAN_ARENA_BREAK_84",
+   "displayName": "84줄 외곽 바닥 붕괴",
+   "gameplayActionId": "valtan.mechanic.arena-floor-84",
+   "sourceActionIds": [
+    420629
+   ],
+   "stages": [
+    {
+     "semanticStageId": "impact",
+     "gameplayActionId": "valtan.mechanic.arena-floor-84.impact",
+     "clip": "mesh_att_battle_12_02"
+    },
+    {
+     "semanticStageId": "recovery",
+     "gameplayActionId": "valtan.mechanic.arena-floor-84.recovery",
+     "clip": "mesh_att_battle_12_03"
+    },
+    {
+     "semanticStageId": "windup",
+     "gameplayActionId": "valtan.mechanic.arena-floor-84.windup",
+     "clip": "mesh_att_battle_12_01"
+    }
+   ],
+   "sourceActions": [
+    {
+     "sourceActionId": 420629,
+     "profileId": "MN_RPBF_00",
+     "sourceDisplayName": "레이드 발탄_모든 지형물 파괴 연출",
+     "stages": [
+      {
+       "stageIndex": 0,
+       "stageName": "Main",
+       "animationClips": [
+        "Att_Battle_12_01"
+       ],
+       "effectCues": [
+        {
+         "notifyId": "action-420629/stage-000/notify-001",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.0,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-000/notify-002",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.0,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-000/notify-003",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.0,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-000/notify-004",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.0,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-000/notify-005",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.0,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-000/notify-006",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.0,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-000/notify-009",
+         "sourceType": "TrailGhostEffect",
+         "category": "trail",
+         "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+         "localTimeSeconds": 0.7729840278625488,
+         "durationSeconds": 0.0,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-000/notify-012",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.800000011920929,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_01"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-000/notify-013",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.800000011920929,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_FilmNoise_01"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-000/notify-014",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.800000011920929,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "stageIndex": 1,
+       "stageName": "StageName",
+       "animationClips": [
+        "Att_battle_12_02"
+       ],
+       "effectCues": [
+        {
+         "notifyId": "action-420629/stage-001/notify-001",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.0,
+         "durationSeconds": 0.0,
+         "assetReferences": []
+        }
+       ]
+      },
+      {
+       "stageIndex": 2,
+       "stageName": "StageName",
+       "animationClips": [
+        "Att_battle_12_03"
+       ],
+       "effectCues": [
+        {
+         "notifyId": "action-420629/stage-002/notify-005",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.20000000298023224,
+         "durationSeconds": 0.10000000149011612,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-002/notify-006",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.20000000298023224,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-002/notify-007",
+         "sourceType": "TrailGhostEffect",
+         "category": "trail",
+         "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+         "localTimeSeconds": 0.21060900390148163,
+         "durationSeconds": 0.0,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-002/notify-008",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.21699799597263336,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_CM_02.Light.Par_MP_Light_05_L"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-002/notify-010",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.23000000417232513,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-002/notify-012",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.23064500093460083,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_02"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-002/notify-013",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.23064500093460083,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_FilmNoise_01"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-002/notify-014",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.23064500093460083,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-002/notify-015",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.30000001192092896,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        }
+       ]
+      },
+      {
+       "stageIndex": 3,
+       "stageName": "Main",
+       "animationClips": [
+        "Att_Battle_12_01"
+       ],
+       "effectCues": [
+        {
+         "notifyId": "action-420629/stage-003/notify-003",
+         "sourceType": "TrailGhostEffect",
+         "category": "trail",
+         "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+         "localTimeSeconds": 0.7729840278625488,
+         "durationSeconds": 0.0,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-003/notify-006",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.800000011920929,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_01"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-003/notify-007",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.800000011920929,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_FilmNoise_01"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-003/notify-008",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.800000011920929,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "stageIndex": 4,
+       "stageName": "StageName",
+       "animationClips": [
+        "Att_battle_12_02"
+       ],
+       "effectCues": [
+        {
+         "notifyId": "action-420629/stage-004/notify-001",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.0,
+         "durationSeconds": 0.0,
+         "assetReferences": []
+        }
+       ]
+      },
+      {
+       "stageIndex": 5,
+       "stageName": "StageName",
+       "animationClips": [
+        "Att_battle_12_03"
+       ],
+       "effectCues": [
+        {
+         "notifyId": "action-420629/stage-005/notify-005",
+         "sourceType": "TrailGhostEffect",
+         "category": "trail",
+         "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+         "localTimeSeconds": 0.21060900390148163,
+         "durationSeconds": 0.0,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-005/notify-006",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.21699799597263336,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_CM_02.Light.Par_MP_Light_05_L"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-005/notify-008",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.23000000417232513,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-005/notify-010",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.23064500093460083,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_02"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-005/notify-011",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.23064500093460083,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_FilmNoise_01"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-005/notify-012",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.23064500093460083,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "stageIndex": 6,
+       "stageName": "Main",
+       "animationClips": [
+        "Att_Battle_12_01"
+       ],
+       "effectCues": [
+        {
+         "notifyId": "action-420629/stage-006/notify-003",
+         "sourceType": "TrailGhostEffect",
+         "category": "trail",
+         "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+         "localTimeSeconds": 0.7729840278625488,
+         "durationSeconds": 0.0,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-006/notify-006",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.800000011920929,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_01"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-006/notify-007",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.800000011920929,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_FilmNoise_01"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-006/notify-008",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.800000011920929,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "stageIndex": 7,
+       "stageName": "StageName",
+       "animationClips": [
+        "Att_battle_12_02"
+       ],
+       "effectCues": [
+        {
+         "notifyId": "action-420629/stage-007/notify-001",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.0,
+         "durationSeconds": 0.0,
+         "assetReferences": []
+        }
+       ]
+      },
+      {
+       "stageIndex": 8,
+       "stageName": "StageName",
+       "animationClips": [
+        "Att_battle_12_03"
+       ],
+       "effectCues": [
+        {
+         "notifyId": "action-420629/stage-008/notify-005",
+         "sourceType": "TrailGhostEffect",
+         "category": "trail",
+         "resolutionStatus": "SOURCE_PARAMETERS_SERIALIZED",
+         "localTimeSeconds": 0.21060900390148163,
+         "durationSeconds": 0.0,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-008/notify-006",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.21699799597263336,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_CM_02.Light.Par_MP_Light_05_L"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-008/notify-008",
+         "sourceType": "Effect",
+         "category": "unresolved_effect",
+         "resolutionStatus": "UNRESOLVED_SOURCE_PAYLOAD",
+         "localTimeSeconds": 0.23000000417232513,
+         "durationSeconds": 0.20000000298023224,
+         "assetReferences": []
+        },
+        {
+         "notifyId": "action-420629/stage-008/notify-010",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.23064500093460083,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_MN_RPBF_00_O.Par_O_RPBF_Atk_07_02"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-008/notify-011",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.23064500093460083,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_FilmNoise_01"
+          }
+         ]
+        },
+        {
+         "notifyId": "action-420629/stage-008/notify-012",
+         "sourceType": "PlayParticleEffect",
+         "category": "particle",
+         "resolutionStatus": "SOURCE_ASSET_EXPLICIT",
+         "localTimeSeconds": 0.23064500093460083,
+         "durationSeconds": 0.0,
+         "assetReferences": [
+          {
+           "className": "ParticleSystem",
+           "objectPath": "FX_Post.FX_Par.Par_C_ZoomBlur_03"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
    "patternId": "VALTAN_ARENA_BREAK_33",
    "displayName": "33줄 두 번째 지형 파괴",
    "gameplayActionId": "valtan.mechanic.arena-break-33",

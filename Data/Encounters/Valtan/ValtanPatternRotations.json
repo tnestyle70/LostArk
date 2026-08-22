@@ -25,7 +25,7 @@
     },
     {
       "rotationId": "rotation.valtan.130.109",
-      "fromHealthBar": 130,
+      "fromHealthBar": 129,
       "toHealthBar": 109,
       "patternIds": [
         "VALTAN_FOUR_SLASH",
@@ -35,7 +35,7 @@
     },
     {
       "rotationId": "rotation.valtan.109.100",
-      "fromHealthBar": 109,
+      "fromHealthBar": 108,
       "toHealthBar": 100,
       "patternIds": [
         "VALTAN_EARTHQUAKE_SMASH",
@@ -45,7 +45,7 @@
     },
     {
       "rotationId": "rotation.valtan.100.84",
-      "fromHealthBar": 100,
+      "fromHealthBar": 99,
       "toHealthBar": 84,
       "patternIds": [
         "VALTAN_RED_BLADE_WAVE",
@@ -57,7 +57,7 @@
     },
     {
       "rotationId": "rotation.valtan.84.73",
-      "fromHealthBar": 84,
+      "fromHealthBar": 83,
       "toHealthBar": 73,
       "patternIds": [
         "VALTAN_SUPER_SMASH",
@@ -66,7 +66,7 @@
     },
     {
       "rotationId": "rotation.valtan.73.62",
-      "fromHealthBar": 73,
+      "fromHealthBar": 72,
       "toHealthBar": 62,
       "patternIds": [
         "VALTAN_FOUR_SLASH",
@@ -77,7 +77,7 @@
     },
     {
       "rotationId": "rotation.valtan.62.30",
-      "fromHealthBar": 62,
+      "fromHealthBar": 61,
       "toHealthBar": 30,
       "patternIds": [
         "VALTAN_DOWN_SMASH",
@@ -90,7 +90,7 @@
     },
     {
       "rotationId": "rotation.valtan.28.14",
-      "fromHealthBar": 28,
+      "fromHealthBar": 29,
       "toHealthBar": 14,
       "patternIds": [
         "VALTAN_WHIRLWIND",

@@ -154,6 +154,18 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 		-90.f,
 		true,
 		"BOSS_VALTAN"
+	},
+	ANIMATION_PREVIEW_ASSET
+	{
+		"boss.valtan.ghost",
+		"[Boss] Ghost Valtan - MN_RPBF_02 (140 clips)",
+		"Valtan_Ghost_MN_RPBF_02",
+		"Character/Valtan/Ghost/MN_RPBF_02.wmodel",
+		L"Prototype_Component_Model_AnimationPreview_Boss_Valtan_Ghost",
+		false,
+		0.01f,
+		-90.f,
+		true
 	}
 };
 
