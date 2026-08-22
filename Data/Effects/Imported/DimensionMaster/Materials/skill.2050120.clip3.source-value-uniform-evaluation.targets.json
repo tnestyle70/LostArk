@@ -10,8 +10,8 @@
   "inputs": {
     "exactMaterialMapReceipt": {
       "repoRelativePath": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-material-maps.receipt.json",
-      "rawSha256": "f9f60193e30e27292f96d58ec1e75a4deb0578fa51ec8a3c135f21d553db6c66",
-      "receiptSha256": "ae02f14e37a234b5c083bbe5da044a9700a9dfb2e00306f81b354dbe55b6f42c"
+      "rawSha256": "7dfab72eb7cb09762e01cb8f2e1a20f1a1181826a8a9833bf06d341cab44103e",
+      "receiptSha256": "b492cecffabf1a4f4b4bb888541c983b8484fd6b53de545761329bec58d3c08c"
     },
     "sourcePackagesRoot": "C:/Users/user/Desktop/Resource_LostArk/00_SourcePackages/Effect_DIMENSIONMASTER_20260803_v3/Dependencies",
     "officialEngineSource": {

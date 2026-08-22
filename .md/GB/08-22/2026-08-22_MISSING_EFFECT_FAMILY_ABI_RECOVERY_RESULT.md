@@ -1,12 +1,8 @@
 # Missing Effect Family ABI 복원 결과
 
-branch: `codex/glasshole02-source-exact-integration`
+branch: `codex/missing-effect-family-recovery`
 
-integration base: `origin/main@06679125bed84d243708d8606dfad293556464e4`
-
-source branch: `codex/missing-effect-family-recovery@ff3eb7d2`
-
-source base: `origin/main@7fb8f8139f62657914228070ebe2a9860287b577`
+base: `origin/main@7fb8f8139f62657914228070ebe2a9860287b577`
 
 plan: `2026-08-22_MISSING_EFFECT_FAMILY_ABI_RECOVERY_IMPLEMENTATION_PLAN.md`
 
@@ -353,14 +349,14 @@ test_materialize_ue3_glasshole02_runtime_canary_contract.py
   Ran 17 tests, OK
 
 materialize_ue3_glasshole02_runtime_canary_contract.py --check
-  PASS receipt=7ba4dc6201d137e43aa37117c60dc279e9f9af6d6dd6883e1fa142573ea38871
+  PASS receipt=c607917a60d38017d33fcbb39a610a7a3dd27f25169fc11a8aeccfc1b36c08bb
 ```
 
-원본 구현 branch에서는 Client x64 Debug/Release와 당시 존재하던 `ClientFrontendHarness` x64
-Debug/Release 빌드가 성공했지만, harness 실행은 두 구성 모두 기존 광역 authored/family 계약 48건으로
-실패했다. 이 결과는 G03-8의 PASS 근거로 사용하지 않았다. 통합 기준 main에서는 해당 harness가 이미
-삭제되어 있으며, 현재 변경은 `Tools/ClientFrontendHarness`에 diff가 없고 이를 복구하지 않는다.
-통합 승격 근거는 아래 focused contract/replay, 전체 effect pipeline과 Client Debug/Release 빌드다.
+최초 feature branch 검증 당시 Client x64 Debug/Release와 `ClientFrontendHarness` x64 Debug/Release
+빌드는 모두 성공했다. `ClientFrontendHarness` 실행은 두 구성 모두 exit code 1, 48건 실패로 동일했다.
+실패 집합은 당시 worktree에 이미 존재한 광역 authored/family 계약 실패이며 G03-8 전용 검증의 PASS
+근거로 사용하지 않는다. Glasshole 변경은 harness 소스를 수정하거나 의존하지 않았고, 별도 focused
+contract/replay 결과만 G03-8 자동 승인 근거로 사용한다.
 
 Client 실행과 화면 조작은 수행하지 않았다. 첫 픽셀, 카드 경계, 유리 굴절/내부 방사, depth intersection,
 UV 움직임, 방향/크기의 visual admission은 사용자 Effect Tool A/B 전까지 계속 false다.
@@ -383,33 +379,105 @@ UV 움직임, 방향/크기의 visual admission은 사용자 Effect Tool A/B 전
 유리 굴절/내부 방사, depth intersection, UV 움직임, 방향과 크기를 사용자가 확인한 뒤 동일
 `parent + permutation + carrier/VF + pass` cohort로 확대한다.
 
-## 11. clean main 선별 통합 결과
+## 11. G03-9 main 통합 구조와 element 경계
 
-`codex/missing-effect-family-recovery@ff3eb7d2`의 네 구현 커밋을 PR #142가 반영된 clean main
-`06679125bed84d243708d8606dfad293556464e4` 위에 다시 적용했다. 충돌을 숨기는 merge나 #141 전체
-cherry-pick은 사용하지 않았다. 현재 단위는 Glasshole02 한 family의 source-exact 증거, HLSL 번역,
-Tool 전용 canary와 그 소비 계약만 포함한다.
-
-Windows `core.autocrlf=true` checkout에서도 source-exact shader hash가 변하지 않도록 세 HLSL 입력과
-translation receipt는 LF, 기존 C++/authoring canary 입력은 CRLF로 `.gitattributes`에 고정했다.
-PR #142가 바꾼 renderer/tool까지 포함해 runtime canary receipt를 다시 봉인했고, 현재 seal은
-`7ba4dc6201d137e43aa37117c60dc279e9f9af6d6dd6883e1fa142573ea38871`이다.
-
-통합 기준에서 실행한 자동 검증은 다음과 같다.
+최신 `origin/main@06679125`의 캐릭터 family 변경을 Glasshole 브랜치에 충돌 없이 통합했다.
+Glasshole 구현은 authored Effect element를 새로 만들거나 복제하지 않는다. 기존 main 문서의 다음
+단일 occurrence를 그대로 사용한다.
 
 ```text
-Glasshole02 texture/sampler closure                 PASS (targets=5, bindings=24, textures=23)
-exact cooked variants                              PASS (variants=5, blobs=6, Product runtime=0)
-HLSL WARP numeric parity                           PASS (13/13, maxError=0)
-translated runtime RT0 replay                      PASS (3/3, maxError=0)
-runtime canary focused tests                       PASS (17/17)
-Effect pipeline                                    PASS (Python tests 110)
-Effect data project sync                           PASS (files=1836, filters=207)
-Client x64 Debug build                             PASS
-Client x64 Release build                           PASS
-git diff --check                                   PASS
+effectAssetId  effect.dimensionmaster.skill.2050120.clip3.unified
+elementId      authored.source-particle.40e1b48e2f0f88dcfeff1549
+displayName    source-event-012 particlespriteemitter_47
+start/life     0.25 / 0.1 seconds
+particle life  0.6 seconds
 ```
 
-통합 후에도 Tool canary는 기본 OFF이고 Product, prepared, reconstructed, visual admission은 모두 false다.
-`ClientFrontendHarness`를 복구하지 않으며 Valtan authored/candidate/world 데이터도 변경하지 않는다.
-raw source VS의 공간 수치 A/B와 사용자 Effect Tool 첫 픽셀 A/B는 자동 검증으로 대체하지 않는다.
+Tool은 exact effect, element, family, runtime profile과 occurrence count `1`을 먼저 검사한다. 통과하면
+기존 `ELEMENT_RESOURCE`에 7 SRV, 8 sampler, translated Glass packet을 부착한다. toggle OFF는 기존
+family-lite draw이고, toggle ON은 같은 particle instance/world/color/dynamic/life 입력을 한 번만 만든 뒤
+Glass draw가 ordinary draw를 대체한다. Glass draw 실패 시 같은 occurrence를 family-lite로 이중 출력하거나
+fallback하지 않고 fail-close한다.
+
+Tool의 `Solo Element`는 별도 데이터나 element를 만드는 기능이 아니다. 현재 authoring 문서의 메모리 복사본에서
+선택하지 않은 행을 제외하는 preview filter일 뿐이며 저장/publish 문서를 변경하지 않는다.
+
+## 12. G03-9 cross-checkout receipt 안정화
+
+통합 preflight에서 기존 receipt 일부가 Windows 작업복사본의 CRLF 또는 mixed-EOL raw hash를 봉인해,
+같은 Git commit의 LF checkout에서 재생되지 않는 문제를 확인했다. 다음 경계로 교정했다.
+
+- Glass target/receipt 8개, authored W 문서, resource manifest, exact-cooked contract, Glass HLSL 3개,
+  renderer/tool C++ 4개를 `.gitattributes`의 canonical LF 대상으로 고정했다.
+- JSON writer 3개에 `newline="\n"`을 명시했다. evaluator는 exact material writer를 공유한다.
+- UPK/U, shader cache, DXBC, DDS, DLL, package/export payload와 외부 source는 계속 raw byte hash를 사용한다.
+  source-exact binary identity를 텍스트 정규화하지 않았다.
+- exact material부터 structural replay, source-value, texture/sampler, exact-cooked, HLSL translation,
+  runtime canary 순으로 receipt chain을 다시 생성했다.
+
+최종 runtime canary receipt seal은
+`2c14a5640f7818fa79e0f6b6a06326e4b4f2dcc240a9afb1f2926f9875e36b34`다.
+
+## 13. renderer adapter 전수조사 비평
+
+`154 family / 1,970 occurrence`의 named ABI가 닫혔다는 수치는 맞다. 다만 PS의 대표 carrier,
+RT 집합, CB2/coverage 존재만으로 만든 일곱 coarse bucket을 곧바로 일곱 개의 완성 renderer ABI로
+해석하면 안 된다.
+
+| coarse bucket | family | occurrence |
+|---|---:|---:|
+| sprite + MRT + CB2 | 71 | 817 |
+| sprite + RT0 | 30 | 424 |
+| mesh + MRT + CB2 | 23 | 370 |
+| sprite + RT0 + CB2 | 10 | 167 |
+| mesh + RT0 + CB2 | 4 | 100 |
+| mesh + MRT + coverage + CB2 | 3 | 49 |
+| mesh + RT0 | 13 | 43 |
+
+이 일곱 bucket의 상위 네 개는 `1,778 / 1,970 = 90.25%`다. CB2를 합쳐
+`carrier × RT × coverage` 다섯 scheduling topology로 축약할 때에만 상위 네 개가
+`1,921 / 1,970 = 97.51%`가 된다. 두 분류를 섞어 “일곱 adapter의 상위 네 개가 97%”라고
+말할 수 없다.
+
+실제 PS register/mask/interpolation/centroid와 RT signature는 59종이다. 첫 `71 family / 817 occurrence`
+bucket 안에도 PS signature 30종, VF candidate-set 5종, CB0 크기 22종, SRV wire 42종이 있으며,
+실제 occurrence carrier는 sprite 692와 mesh 125로 혼재한다. 단순 sourceRecipe ABI까지 합치면 71개 중
+70개의 descriptor tuple이 다르다.
+
+따라서 복원 단위는 다음 두 계층으로 고정한다.
+
+1. **공유 실행 골격**: Sprite/Mesh scheduling, RT0 또는 BasePass-MRT 경로, coverage/discard,
+   state guard와 fail-closed draw 교체를 공용화한다.
+2. **family/occurrence exact descriptor**: translated PS, CB AST evaluator, 실제 VF semantic builder,
+   SRV/sampler wire, render state, RT0/MRT policy와 sourceRecipe admission을 데이터로 소유한다.
+
+Glasshole02가 증명한 것은 이 공용 골격과 exact occurrence 하나의 typed 배선이다. 첫 coarse bucket의
+71 family 전체가 자동 승인된 것은 아니다. Glasshole과 PS signature/RT가 같은 후보도 Glasshole01,
+Glasshole02, Crackbase02의 `3 family / 15 occurrence`뿐이며, 이 셋도 CB0, texture/sampler, depth slot과
+render state가 달라 각각 descriptor 검증이 필요하다.
+
+## 14. main 승격과 최종 통합 검증
+
+Glasshole02 source-exact 증거, 전용 HLSL, 기존 occurrence Tool canary는 PR #143으로
+`origin/main@58403a9a`에 승격됐다. 별도 authored/solo element는 생성하지 않았고 기존
+`authored.source-particle.40e1b48e2f0f88dcfeff1549`만 소비한다.
+
+통합 이후 canonical LF receipt chain을 별도 clean checkout에서도 다시 실행했다. exact material부터
+runtime canary까지 모든 check가 통과했고 최종 runtime receipt seal은
+`2c14a5640f7818fa79e0f6b6a06326e4b4f2dcc240a9afb1f2926f9875e36b34`로 고정됐다.
+
+```text
+focused Python unit tests                    108 PASS
+exact material / structural replay          PASS
+source uniform / texture-sampler closure    PASS
+exact cooked / HLSL WARP parity             PASS (13 cases, maxError=0)
+runtime RT0 parity                           PASS (3 cases, maxError=0)
+runtime canary contract                      PASS
+fresh LF checkout full receipt replay       PASS
+Effect data project sync                     PASS (files=1836, filters=207)
+Engine + UpdateLib + Client x64 Debug        PASS
+Engine + UpdateLib + Client x64 Release      PASS
+```
+
+Client 실행과 visual PASS는 수행하지 않았다. 사용자는 최신 main 또는 이 통합 worktree의
+`Framework.sln`을 열고 Effect Tool에서 exact occurrence의 canary OFF/ON을 직접 A/B한다.
