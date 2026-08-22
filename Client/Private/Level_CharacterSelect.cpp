@@ -145,9 +145,17 @@ CLevel_CharacterSelect::~CLevel_CharacterSelect()
 
 HRESULT CLevel_CharacterSelect::Initialize()
 {
-	if (FAILED(__super::Initialize()) ||
-		!CCombatHUDViewModel::Get().Initialize_Definitions())
+	if (FAILED(__super::Initialize()))
 	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] base CLevel::Initialize failed.\n");
+		return E_FAIL;
+	}
+	if (!CCombatHUDViewModel::Get().Initialize_Definitions())
+	{
+		OutputDebugStringA((
+			"[Level_CharacterSelect] CombatHUDViewModel::Initialize_Definitions failed: " +
+			CCombatHUDViewModel::Get().Get_Status() + "\n").c_str());
 		return E_FAIL;
 	}
 
@@ -176,7 +184,11 @@ HRESULT CLevel_CharacterSelect::Initialize()
 			SUPPORTED_CLASSES.end(),
 			initialClass);
 		if (SUPPORTED_CLASSES.end() == selected)
+		{
+			OutputDebugStringA(
+				"[Level_CharacterSelect] Selected class is not in SUPPORTED_CLASSES.\n");
 			return E_INVALIDARG;
+		}
 		m_iSelectedClassIndex = static_cast<size_t>(
 			std::distance(SUPPORTED_CLASSES.begin(), selected));
 	}
@@ -272,11 +284,15 @@ HRESULT CLevel_CharacterSelect::Ready_Camera()
 		&desc,
 		&gameObject)))
 	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] Ready_Camera: Add_GameObject_to_Layer failed.\n");
 		return E_FAIL;
 	}
 	m_pCamera = dynamic_pointer_cast<CCamera_Free>(gameObject);
 	if (nullptr == m_pCamera)
 	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] Ready_Camera: spawned object was not a CCamera_Free.\n");
 		CGameInstance::Get().Remove_GameObject_from_Layer(
 			ETOUI(LEVEL::CHARACTER_SELECT),
 			TEXT("Layer_Camera"),
@@ -298,7 +314,11 @@ HRESULT CLevel_CharacterSelect::Ready_ServerGameplay()
 	desc.strWorldEntityLayerTag = TEXT("Layer_WorldEntity");
 	desc.bDeferLocalCharacterClassReplacement = true;
 	if (!m_Replication.Initialize(desc))
+	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] Ready_ServerGameplay: CClientReplication::Initialize failed.\n");
 		return E_FAIL;
+	}
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_pWorldEntityCommandSink =
@@ -308,6 +328,8 @@ HRESULT CLevel_CharacterSelect::Ready_ServerGameplay()
 	if (!m_PlayerController.Initialize_TargetingPreview(
 			ETOUI(LEVEL::CHARACTER_SELECT)))
 	{
+		OutputDebugStringA(
+			"[Level_CharacterSelect] Ready_ServerGameplay: Initialize_TargetingPreview failed.\n");
 		return E_FAIL;
 	}
 	return S_OK;

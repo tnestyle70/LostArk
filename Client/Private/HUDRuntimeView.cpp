@@ -194,6 +194,9 @@ HRESULT Client::CHUDRuntimeView::Load()
 			if (const DATA_JSON_VALUE* pLoop = pAnimation->Find("loop"))
 				if (pLoop->Is_Boolean())
 					Slot.bAnimationLoop = pLoop->Get_Boolean();
+			if (const DATA_JSON_VALUE* pAdditive = pAnimation->Find("additive"))
+				if (pAdditive->Is_Boolean())
+					Slot.bAnimationAdditive = pAdditive->Get_Boolean();
 		}
 
 		if (const DATA_JSON_VALUE* pKeyframePath = SlotValue.Find("keyframeAnimationPath"))
@@ -482,6 +485,20 @@ bool_t Client::CHUDRuntimeView::Set_SlotVisible(const string& strSlotId, bool_t 
 	return false;
 }
 
+bool_t Client::CHUDRuntimeView::Restart_Animation(const string& strSlotId)
+{
+	for (HUD_SLOT& Slot : m_Slots)
+	{
+		if (Slot.strId != strSlotId || Slot.AnimationFrames.empty())
+			continue;
+
+		Slot.dAnimationStartSeconds = ImGui::GetTime();
+		return true;
+	}
+
+	return false;
+}
+
 void Client::CHUDRuntimeView::Enable_Additive_Blend(const ImDrawList* pParentList, const ImDrawCmd* pCmd)
 {
 	auto pView = static_cast<CHUDRuntimeView*>(pCmd->UserCallbackData);
@@ -581,7 +598,8 @@ void Client::CHUDRuntimeView::Render(const string& strOwnerClass, int32_t iStage
 			ID3D11ShaderResourceView* pSRV =
 				Get_Or_Load_Texture(Slot.AnimationFrames[iFrameIndex]);
 			if (nullptr != pSRV)
-				Draw_Image_Quad(pDrawList, pSRV, Corners, IM_COL32(255, 255, 255, 255), false, false);
+				Draw_Image_Quad(pDrawList, pSRV, Corners, IM_COL32(255, 255, 255, 255),
+					Slot.bAnimationAdditive, false);
 			continue;
 		}
 

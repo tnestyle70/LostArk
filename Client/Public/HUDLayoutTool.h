@@ -83,6 +83,11 @@ public:
 		success-flash flipbook that is never meant to actually loop) freezes on a single middle
 		frame instead, since animating it that way while positioning things is misleading. */
 		bool_t				bAnimationLoop = true;
+		/* Additive blend for the whole AnimationFrames flipbook -- for a Scaleform source clip
+		placed with a real PlaceObject blendMode (an additive glow/particle flipbook), same meaning
+		as TEXTURE_LAYER::bAdditive but scoped to the animation since such a slot's TextureLayers
+		stays empty. Round-tripped so Save() does not silently drop it. */
+		bool_t				bAnimationAdditive = false;
 
 		/* KEYFRAME_ANIMATION slots (extracted Scaleform identity clips) carry no TextureLayers of
 		their own -- CHUDRuntimeView draws them entirely from this document instead. The Tool only

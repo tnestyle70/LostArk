@@ -73,6 +73,12 @@ public:
 	document fails to load, or the label is unknown. */
 	bool_t Play_KeyframeAnimation(const string& strSlotId, const string& strLabel);
 
+	/* Restarts a slot's "animation.frames" flipbook from frame 0 at the current time -- for a
+	one-shot effect (loop=false) a caller wants to fire on a real event (a gauge reaching 100%),
+	since AnimationFrames otherwise only starts once, on this slot's first Render() call. No-op if
+	the slot doesn't exist or has no AnimationFrames. */
+	bool_t Restart_Animation(const string& strSlotId);
+
 	/* Overrides a slot's authored "rotation" (degrees, clockwise, about its own rect centre) at
 	runtime -- for continuous data-driven rotation (DimensionMaster's minute hand tracks its real
 	cyclic identity gauge value directly via MovieClip.rotation in the source, not a frame-based
@@ -151,6 +157,11 @@ private:
 		false plays once from the view's first render and then stops drawing the slot entirely,
 		e.g. a boot logo intro that should reveal whatever is layered beneath it once it ends. */
 		bool_t					bAnimationLoop = true;
+		/* Additive blend for every frame in AnimationFrames -- for a Scaleform source clip placed
+		with a real PlaceObject blendMode (e.g. an additive glow/particle flipbook), matching
+		TEXTURE_LAYER::bAdditive's own meaning but scoped to the whole animation since a flipbook
+		slot's Layers stays empty (see AnimationFrames comment above). */
+		bool_t					bAnimationAdditive = false;
 		/* Sentinel: unset until this slot's first Render() call, which stamps it with
 		ImGui::GetTime() so playback starts from frame 0 the first time this slot is actually
 		drawn -- using the raw (app-launch-relative) clock directly would let engine/asset init

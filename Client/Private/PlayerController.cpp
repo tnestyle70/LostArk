@@ -579,7 +579,7 @@ bool_t Client::CPlayerController::Initialize_TargetingPreview(
 	CGameObject::GAMEOBJECT_DESC desc{};
 	shared_ptr<CGameObject> object;
 	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
-		levelIndex,
+		ETOUI(LEVEL::STATIC),
 		CSkillGroundTargetPreview::PROTOTYPE_TAG,
 		levelIndex,
 		TEXT("Layer_SkillGroundTargetPreview"),

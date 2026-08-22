@@ -157,6 +157,14 @@ private:
 	unique_ptr<CHUDRuntimeView> m_pItemUpgradeView = { nullptr };
 	bool_t m_bItemUpgradePreviewVisible = false;
 	bool_t m_bPDown = false;
+	/* Edge-detects the synthetic 0..99 gauge sweep wrapping back to 0 (see the "%" text draw call
+	near ItemUpgradeView's Render()) to fire the real ItemUpgrade_CoreFlash/_ShockwaveRing one-shot
+	burst once per "0->100" cycle -- CoreFlash plays first, then ShockwaveRing once CoreFlash's own
+	28-frame/20fps duration elapses (real Scaleform ordering: coreLevelEffect1 before
+	compF_shockwave_red inside levelUpMotion_mc). Once a real Server 재련 completion event exists
+	this should fire from that instead of the synthetic sweep wrapping. */
+	int32_t m_iItemUpgradePreviousPercent = -1;
+	f64_t m_dItemUpgradeShockwaveScheduledAt = -1.0;
 	/* Edge-detects the local player's stance so RenderCombatHUD only calls
 	CHUDRuntimeView::Play_KeyframeAnimation on an actual change (or the first frame a stance is
 	known at all), instead of re-triggering the icon's animation every frame. NONE never matches a
