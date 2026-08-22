@@ -1,0 +1,1566 @@
+{
+  "schema": "lostark.effect-ue3-glasshole02-hlsl-translation-receipt",
+  "formatVersion": 1,
+  "target": {
+    "targetId": "dimensionmaster-w-glasshole-02",
+    "familyId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2",
+    "occurrenceId": "authored.source-particle.40e1b48e2f0f88dcfeff1549",
+    "rendererType": "SpriteParticle",
+    "sourceParentMaterial": "fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr"
+  },
+  "inputs": {
+    "rawPixelDxbc": {
+      "path": "Data/Effects/CookedShaders/e2ba1c1ef87cdd52cc74a8e661f8613d0b17f2cc7b9b1d0d7ab6ed80ec6e775b.dxbc",
+      "byteSize": 7584,
+      "sha256": "e2ba1c1ef87cdd52cc74a8e661f8613d0b17f2cc7b9b1d0d7ab6ed80ec6e775b",
+      "role": "SOURCE_EXACT_COOKED_PIXEL_SHADER_NUMERIC_ORACLE"
+    },
+    "translatedHlslInclude": {
+      "path": "Client/Bin/ShaderFiles/Shader_Ue3Glasshole02.hlsli",
+      "byteSize": 13489,
+      "sha256": "95ef0ee0976a4dd137493f26fa492394ac7b401623c3ed1b271600189dc185ce",
+      "role": "READABLE_GLASSHOLE02_EQUATION_TRANSLATION"
+    },
+    "translatedHlslWrapper": {
+      "path": "Client/Bin/ShaderFiles/Shader_Ue3Glasshole02Translation.hlsl",
+      "byteSize": 152,
+      "sha256": "88fdcd3ce90dfedd2eba4138bdfcca982577d7c55b38a0b3df8a029e4ff4c2e3",
+      "role": "D3DCOMPILE_PS_MAIN_WRAPPER"
+    },
+    "sourceUniformReceipt": {
+      "path": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.source-value-uniform-evaluation.receipt.json",
+      "byteSize": 208916,
+      "sha256": "2947a83755f9871fbe98b1614eaeaae1aacec696db3d43dc4d6bdac8e8d5b26c",
+      "role": "SOURCE_VALUE_CB0_MATERIAL_ROWS_PREREQUISITE",
+      "receiptSha256": "c905b7b536ae2e6cd20bfbe2cc34b3362c24aa1f9891af0bdcdaf7ea2202f35d"
+    }
+  },
+  "shaderAbi": {
+    "profile": "ps_5_0",
+    "entry": "PS_MAIN",
+    "rawInstructionCount": 198,
+    "rawInstructionSha256": "65ceceacd63d684131e4e49dd5423cb33780482b844dd08a8fd5efdf17359d27",
+    "translatedInstructionCount": 197,
+    "translatedInstructionSha256": "7553a88f2a34422eb7efe757ef9769cf1a55187db0028cfb210c16857f7e16e9",
+    "translatedDxbcByteSize": 9176,
+    "translatedDxbcSha256": "b5a51f4fbcda98dfdd0628f1b318b332741cbc20c1ed3085cb1bd0c36c7ec450",
+    "constantBufferFloat4Counts": {
+      "0": 22,
+      "2": 4
+    },
+    "textureRegisters": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "samplerRegisters": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "inputSignature": [
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 10,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 0,
+        "mask": 15,
+        "readWriteMask": 7,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 11,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 1,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 2,
+        "mask": 15,
+        "readWriteMask": 3,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 1,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 3,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 2,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 4,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 4,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 5,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 6,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 6,
+        "mask": 15,
+        "readWriteMask": 7,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 5,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 7,
+        "mask": 15,
+        "readWriteMask": 11,
+        "stream": 0
+      },
+      {
+        "semanticName": "SV_IsFrontFace",
+        "semanticIndex": 0,
+        "systemValueType": 9,
+        "componentType": 1,
+        "register": 8,
+        "mask": 1,
+        "readWriteMask": 0,
+        "stream": 0
+      }
+    ],
+    "outputSignature": [
+      {
+        "semanticName": "SV_Target",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 0,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "SV_Target",
+        "semanticIndex": 2,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 2,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "SV_Target",
+        "semanticIndex": 3,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 3,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "SV_Target",
+        "semanticIndex": 4,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 4,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "SV_Target",
+        "semanticIndex": 5,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 5,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      }
+    ],
+    "centroidInputRegisters": [
+      6,
+      7
+    ],
+    "declaredMrtRegisters": [
+      0,
+      2,
+      3,
+      4,
+      5
+    ],
+    "carrier": {
+      "sourceSha256": "70a9a875255404515ab4b10573eb378ef28c4d8d00768a5113b8b253f1f63af1",
+      "compiledDxbcSha256": "28870567cf6a797eb62eb6c3ee0176a7bc23de3302b661320158e09d1dff659c",
+      "compiler": {
+        "fileName": "d3dcompiler_47.dll",
+        "physicalByteSize": 4916800,
+        "rawSha256": "ce013eb1639f8e2620a509e73b33029108f55a293e304e33e38b72fd65c531b8",
+        "hashRole": "EXTERNAL_RAW_BINARY_BYTES"
+      },
+      "linkageContract": "PS_ISGN_SEMANTIC_COMPATIBLE_GENERATED_FULLSCREEN_TRIANGLE",
+      "constantBufferFloat4Count": 8,
+      "signatureClosure": {
+        "linkedSemanticCount": 8,
+        "rasterizerOwnedSystemValueCount": 1,
+        "links": [
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 10,
+            "consumerRegister": 0,
+            "consumerMask": 15,
+            "producerRegister": 0,
+            "producerMask": 15,
+            "componentType": 3
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 11,
+            "consumerRegister": 1,
+            "consumerMask": 15,
+            "producerRegister": 1,
+            "producerMask": 15,
+            "componentType": 3
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 0,
+            "consumerRegister": 2,
+            "consumerMask": 15,
+            "producerRegister": 2,
+            "producerMask": 15,
+            "componentType": 3
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 1,
+            "consumerRegister": 3,
+            "consumerMask": 15,
+            "producerRegister": 3,
+            "producerMask": 15,
+            "componentType": 3
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 2,
+            "consumerRegister": 4,
+            "consumerMask": 15,
+            "producerRegister": 4,
+            "producerMask": 15,
+            "componentType": 3
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 4,
+            "consumerRegister": 5,
+            "consumerMask": 15,
+            "producerRegister": 5,
+            "producerMask": 15,
+            "componentType": 3
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 6,
+            "consumerRegister": 6,
+            "consumerMask": 15,
+            "producerRegister": 6,
+            "producerMask": 15,
+            "componentType": 3
+          },
+          {
+            "semanticName": "TEXCOORD",
+            "semanticIndex": 5,
+            "consumerRegister": 7,
+            "consumerMask": 15,
+            "producerRegister": 7,
+            "producerMask": 15,
+            "componentType": 3
+          }
+        ],
+        "pass": true
+      }
+    },
+    "registerAndSignatureParityAdmission": true
+  },
+  "warpComparison": {
+    "backend": "D3D11_WARP_RAW_DXBC_VERSUS_COMPILED_TRANSLATED_HLSL",
+    "featureLevel": "0xb000",
+    "compiler": {
+      "fileName": "d3dcompiler_47.dll",
+      "physicalByteSize": 4916800,
+      "rawSha256": "ce013eb1639f8e2620a509e73b33029108f55a293e304e33e38b72fd65c531b8",
+      "hashRole": "EXTERNAL_RAW_BINARY_BYTES"
+    },
+    "samplerPolicy": "POINT_CLAMP_COMMON_NUMERIC_FIXTURE_ONLY",
+    "sourceExactSamplerPolicyAdmission": false,
+    "textureExtent": [
+      4,
+      4
+    ],
+    "constantBufferInputs": [
+      "CB0[22]",
+      "CB2[4]"
+    ],
+    "textureInputs": [
+      "t0/s0",
+      "t1/s1",
+      "t2/s2",
+      "t3/s3",
+      "t4/s4",
+      "t5/s5",
+      "t6/s6",
+      "t7/s7"
+    ],
+    "caseCount": 13,
+    "spatialPatternCaseCount": 6,
+    "tolerance": 1e-06,
+    "maximumAbsoluteError": 0.0,
+    "cases": [
+      {
+        "caseId": "source-cb/spatial-baseline",
+        "expectedRelation": "BASELINE",
+        "spatialPattern": true,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            2.2444136142730713,
+            2.489881753921509,
+            3.305621385574341,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            2.2444136142730713,
+            2.489881753921509,
+            3.305621385574341,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 0.0,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "particle-uv/spatial-left",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": true,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            3.387925148010254,
+            3.5975098609924316,
+            4.1410441398620605,
+            0.057862747460603714
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            3.387925148010254,
+            3.5975098609924316,
+            4.1410441398620605,
+            0.057862747460603714
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 1.1435115337371826,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "particle-uv/spatial-right",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": true,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            3.1119632720947266,
+            3.431763172149658,
+            4.014009952545166,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            3.1119632720947266,
+            3.431763172149658,
+            4.014009952545166,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 0.9418814182281494,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "particle-uv/spatial-upper-right",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": true,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            3.091386556625366,
+            3.4072837829589844,
+            3.9900283813476562,
+            0.057862747460603714
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            3.091386556625366,
+            3.4072837829589844,
+            3.9900283813476562,
+            0.057862747460603714
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 0.9174020290374756,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "dynamic-parameter/all-lanes",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": false,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            2.738096237182617,
+            3.03532338142395,
+            3.718256950378418,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            2.738096237182617,
+            3.03532338142395,
+            3.718256950378418,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 0.5454416275024414,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "camera-to-particle/direction",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": false,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            2.252148151397705,
+            2.4826176166534424,
+            3.306180477142334,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            2.252148151397705,
+            2.4826176166534424,
+            3.306180477142334,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 0.007734537124633789,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "scene-depth/projected",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": true,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            3.719611167907715,
+            4.149478912353516,
+            5.8872175216674805,
+            0.036567069590091705
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            3.719611167907715,
+            4.149478912353516,
+            5.8872175216674805,
+            0.036567069590091705
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 2.5815961360931396,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "particle-color/rgba",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": false,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            0.8880947232246399,
+            2.0001561641693115,
+            4.512888431549072,
+            0.032812900841236115
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            0.8880947232246399,
+            2.0001561641693115,
+            4.512888431549072,
+            0.032812900841236115
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 1.3563188910484314,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "material-scalar/curve-inner-hole",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": false,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            2.2577168941497803,
+            2.503056526184082,
+            3.318258047103882,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            2.2577168941497803,
+            2.503056526184082,
+            3.318258047103882,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 0.013303279876708984,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "fog-selection/composite",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": false,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            1.684252381324768,
+            1.6996127367019653,
+            2.2712345123291016,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            1.684252381324768,
+            1.6996127367019653,
+            2.2712345123291016,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 1.0343868732452393,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "textures/spatial-alternate-grid",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": true,
+        "sensitivityTargetRegister": 0,
+        "rawDxbcMrt": [
+          [
+            4.271971702575684,
+            4.5420451164245605,
+            5.3716511726379395,
+            0.04861625283956528
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            4.271971702575684,
+            4.5420451164245605,
+            5.3716511726379395,
+            0.04861625283956528
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 2.0660297870635986,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "tangent-frame/encoded-normal",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": false,
+        "sensitivityTargetRegister": 2,
+        "rawDxbcMrt": [
+          [
+            2.2444136142730713,
+            2.489881753921509,
+            3.305621385574341,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.7347823977470398,
+            0.3397029638290405,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            2.2444136142730713,
+            2.489881753921509,
+            3.305621385574341,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.7347823977470398,
+            0.3397029638290405,
+            1.0,
+            0.0
+          ],
+          [
+            0.10999999940395355,
+            0.23000000417232513,
+            0.3700000047683716,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 0.0820075273513794,
+        "comparisonAdmission": true
+      },
+      {
+        "caseId": "scene-metadata/cb2-row3",
+        "expectedRelation": "SENSITIVE",
+        "spatialPattern": false,
+        "sensitivityTargetRegister": 3,
+        "rawDxbcMrt": [
+          [
+            2.2444136142730713,
+            2.489881753921509,
+            3.305621385574341,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.7099999785423279,
+            0.12999999523162842,
+            0.5199999809265137,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "translatedHlslMrt": [
+          [
+            2.2444136142730713,
+            2.489881753921509,
+            3.305621385574341,
+            0.06002359464764595
+          ],
+          [
+            -99.0,
+            -99.0,
+            -99.0,
+            -99.0
+          ],
+          [
+            0.8001564145088196,
+            0.4217104911804199,
+            1.0,
+            0.0
+          ],
+          [
+            0.7099999785423279,
+            0.12999999523162842,
+            0.5199999809265137,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        ],
+        "targetMaximumAbsoluteError": {
+          "rt0": 0.0,
+          "rt2": 0.0,
+          "rt3": 0.0,
+          "rt4": 0.0,
+          "rt5": 0.0
+        },
+        "maximumAbsoluteError": 0.0,
+        "rawTargetVersusBaselineMaximumDelta": 0.5999999791383743,
+        "comparisonAdmission": true
+      }
+    ],
+    "fixedFixtureEquationParityAdmission": true
+  },
+  "decision": {
+    "rawDxbcNumericOracle": true,
+    "rawDxbcProductExecution": false,
+    "translatedHlslCompiled": true,
+    "translatedHlslFixedFixtureEquationParity": true,
+    "translatedHlslRuntimeAdmission": false,
+    "translatedHlslAuthoringCanaryAdmission": false,
+    "sourceExactSamplerAdmission": false,
+    "sourceExactVertexConstantBufferAdmission": false,
+    "productAdmission": false,
+    "visualAdmission": false,
+    "nextGate": "TYPED_RENDERER_CB2_SCENE_DEPTH_STATE_AND_SINGLE_AUTHORING_CANARY"
+  },
+  "receiptSha256": "c4a5a6f70872faa0ba61a3139923ab1b37022b55b560e6923a99b83f971c0fb5"
+}

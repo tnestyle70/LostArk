@@ -251,3 +251,54 @@ CB      CB0[27] + CB1[5]
 VS output은 Glass PS의 여덟 TEXCOORD input을 모두 공급한다. 다만 raw VS 실행에는 UE3 vertex stream과
 CB0/CB1 packing이 더 필요하다. 첫 canary는 exact VS를 oracle blob으로 보존하고 translated sprite
 bridge가 varying을 재구성하는 경계로 진행한다. scene fog/density와 Product pass는 승인하지 않는다.
+
+## 9. G03-7 Glasshole02 HLSL equation parity
+
+Glasshole02의 7,584-byte PS DXBC 198개 instruction을
+`Shader_Ue3Glasshole02.hlsli`의 읽을 수 있는 HLSL 식으로 번역했다. CB0[22], CB2[4],
+`t0..t7/s0..s7`, TEXCOORD10/11/0/1/2/4/6/5와 RT0/2/3/4/5 signature를 그대로 보존했다.
+
+초기에는 disassembler의 반올림된 상수를 사용해 RT0 최대 오차가 약 `3.15e-5`였지만, 원본 literal의
+정확한 `1/pi`, `1/(2*pi)`, `1/29`, `1/15` float 값을 사용한 뒤 13개 WARP case의 최대 절대 오차가
+`0`으로 닫혔다.
+
+검증 case는 다음 입력을 독립적으로 변화시킨다.
+
+- 4분면 particle UV와 4x4 spatial texture pattern
+- dynamic parameter, tangent-space camera vector, particle color/alpha
+- scene depth와 CB2, material scalar group, fog/selection
+- tangent basis의 RT2 normal과 CB2의 RT3 metadata
+- RT1 sentinel hole 및 RT4/RT5 zero output
+
+```text
+raw instruction count       198
+translated instruction      197
+case count                   13
+spatial case count            6
+tolerance                  1e-6
+maximum absolute error         0
+```
+
+실행한 검증:
+
+```text
+test_replay_ue3_glasshole02_hlsl_translation.py
+  Ran 5 tests, OK
+
+replay_ue3_glasshole02_hlsl_translation.py --check
+  PASS cases=13 maxError=0
+
+replay_ue3_glasshole02_hlsl_translation.py --validate-only
+  PASS
+
+python -m py_compile
+  PASS
+
+git diff --check
+  PASS
+```
+
+이번 결과가 승인하는 것은 fixed/source-value fixture의 equation parity뿐이다. raw DXBC Product 실행,
+translated runtime/canary, source-exact full sampler, source vertex CB, Product와 visual은 계속 false다.
+다음 gate는 translated RT0-only shader에 typed scene depth, tangent-space view vector, clip position,
+alpha blend/read-only depth와 단일 Tool canary를 연결하는 것이다.
