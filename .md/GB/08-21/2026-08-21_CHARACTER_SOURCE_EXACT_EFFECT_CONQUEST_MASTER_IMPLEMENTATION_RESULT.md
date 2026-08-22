@@ -84,22 +84,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 - donor의 `97.25deg` Y rotation과 local scale은 첫 화면 기준값이며, 사용자가 Effect Tool에서
   해당 독립 occurrence만 후속 튜닝할 수 있다.
 
-### 1.8 Glasshole02 첫 class-neutral family canary
-
-- 차원 W `2050120.clip3`의 exact K-child SpriteParticle
-  `authored.source-particle.40e1b48e2f0f88dcfeff1549` 한 건만 RuntimeMaterialV2 opcode 16으로
-  승격했다.
-- aura `RGBA/sRGB`, crack normal `RG/linear`, inner-hole `RGB/sRGB` 세 lane과 각각의
-  linear/wrap sampler, 32 scalar, 2 vector, dynamic/particle/static/render mask를 exact execution
-  tuple로 봉인했다.
-- 기존 bounded Glasshole02 profile-29 수식을 class-neutral HLSL family로 옮겼다. exact cooked
-  DXBC는 실제 SpriteParticle VF와 six-slot MRT/sampler ABI가 닫히지 않았으므로 oracle-only다.
-- A `2050210`과 D `2050240.clip2`의 J-child는 같은 parent 이름만으로 승격하지 않았다. 두
-  occurrence는 effective static set을 별도로 회수할 때까지 기존 reconstructed profile을 유지한다.
-- opcode 16 packet의 carrier/material/resource/channel/color-space/sampler/scalar/mask가 하나라도
-  다르면 staging에서 occurrence를 거부하고 직전 prepared document를 보존한다.
-
-### 1.9 도화가 S `31420` 풀끝 소멸
+### 1.8 도화가 S `31420` 풀끝 소멸
 
 - 기존 source-owned particle 한 행은 canonical identity까지 그대로 보존했다.
 - `PROJECT_TUNED` Sprite 두 행만 독립 append했다. body는 `fx_o_grass_04`를 coverage(mask),
@@ -109,7 +94,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   실제 PointLight는 추가하지 않았고, body/tip의 alpha·emissive·dissolve가 절대 시각
   `1.5318s`에 함께 종료된다.
 
-### 1.10 opt-in `effect.standard_color_v1`
+### 1.9 opt-in `effect.standard_color_v1`
 
 - 기존 generic effect 의미를 바꾸지 않고 `standardColorV1` backend를 명시적으로 선택한
   sprite-backed PARTICLE, DECAL, TRAIL만 새 계약에 admission한다.
@@ -129,7 +114,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 - 아직 Product occurrence를 이 family로 migration하지 않았다. class별 source-exact material은
   사용자 화면 판정과 occurrence admission을 거쳐 별도 변경으로 연결한다.
 
-### 1.11 도화가 D `31490` BLACK_TIGER_STROKE typed 수직 슬라이스
+### 1.10 도화가 D `31490` BLACK_TIGER_STROKE typed 수직 슬라이스
 
 - role receipt의 sourceOrder `45/46/47/48/51/52/81/82/84/110/111/113`에 해당하는
   SpriteParticle 정확히 12행만 기존 56행 사이에 삽입했다. 기존 56행은 filter 뒤 deep-equal이며
@@ -147,7 +132,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 - fidelity는 `TYPED_SOURCE_RECONSTRUCTION/PARTIAL/PENDING`이다. native DXBC 실행 또는 원본
   shader source-exact 복원으로 기록하지 않았고 사용자 first-pixel 판정도 아직 대기다.
 
-### 1.12 typed textured screen-overlay v1 capability
+### 1.11 typed textured screen-overlay v1 capability
 
 - 기존 RGBNoise, ZoomBlur, FilmNoise의 profile/pass 번호와 수식을 바꾸지 않고 별도
   `ScreenOverlays` presentation channel을 추가했다. Manager는 frame마다 overlay expectation,
@@ -168,12 +153,12 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 - capability 자체는 synthetic DDS canary로 먼저 닫은 `PROJECT_TUNED/TYPED_PRESENTATION`이다.
   차원 F 첫 Product consumer는 1.14에서 연결했다. source-exact native DXBC, refraction,
   normal/noise/mask/dissolve 다중 lane과 W rollout은 계속 후속 revision 경계다.
-### 1.13 차원술사 F `2050230` Fluid01 SpriteParticle family
+### 1.12 차원술사 F `2050230` Fluid01 SpriteParticle family
 
 - F의 exact Product SpriteParticle
   `authored.source-particle.1ae3416ac205fee634b746a9`와
   `authored.source-particle.ed33fb10661afb8854e76957` 두 행만 RuntimeMaterialV2 opcode 17로
-  승격했다. Glasshole02는 opcode 16, 도화가 D BLACK_TIGER_STROKE는 opcode 18을 독립적으로 유지한다.
+  승격했다. 도화가 D BLACK_TIGER_STROKE는 opcode 18을 독립적으로 유지한다.
 - 두 행의 child는 `fx_m_mi_w_00.mi.fx_w_pa_fd_01_3_tr`, parent는
   `fx_mastermaterial.fx_mm.fx_mm_fluid_01_tr`이다. transition `fx_d_cloud_035` RGB/linear,
   emissive `fx_o_glass_01` RGB/linear, noise01 `fx_bg_softriver_02_n` RG/linear, noise02
@@ -187,16 +172,16 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 - C++ admission은 두 stable ID와 두 sourceNode, sprite carrier, child/resource bindings, 네 lane의
   role/asset/register/channel/color-space/sampler, 22 scalar와 모든 mask가 모두 일치할 때만 opcode 17을
   승인한다. 공용 resource reuse signature에도 sourceNode, render profile, SourceRecipe enabled/renderer
-  shape를 포함해 opcode 16/17 strict admission의 no-rebuild 우회를 막았다. Fluid01 두 번째 행의
-  sourceNode를 변조한 mid-stage restage와 Glasshole02 carrier shape 변조는 모두 거부하고 직전 prepared
-  draw를 유지한다. opcode 18 도화가 D 실행은 별도 exact allowlist와 WARP canary가 소유한다.
+  shape를 포함해 opcode 17 strict admission의 no-rebuild 우회를 막았다. Fluid01 두 번째 행의
+  sourceNode를 변조한 mid-stage restage는 거부하고 직전 prepared draw를 유지한다. opcode 18 도화가 D
+  실행은 별도 exact allowlist와 WARP canary가 소유한다.
 - selective materializer는 두 target material만 교체한다. 같은 F 문서의 나머지 행은 canonical
   deep-equal이며 도화가 F authored 문서는 byte/canonical golden으로 고정했다.
 - 이번 단위는 world Fluid01 SpriteParticle까지만 닫았다. 화면을 가로지르는 textured glass shard
   overlay, F raw source의 sphere/hemisphere/world shard/light/post 재조합과 Fluid01 mesh rollout은
   구현하지 않았다.
 
-### 1.14 CircleSurface/Vortex reconstructed source atom
+### 1.13 CircleSurface/Vortex reconstructed source atom
 
 - reconstructed source execution의 strict allowlist를 32 class에서 34 class로 확장해
   `particlemodulelocationcirclesurface`와 `particlemodulevortex`를 admission했다. 실제 source의
@@ -219,7 +204,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 - 이 단위는 Product authored 문서와 runtime catalog를 수정하지 않았다. 위 Product particle 행은
   이미 ordinary portable source carrier로 spawn/update를 실행하므로 이번 변경을 신규 Product
   admission이나 도화가 V attractor 완성으로 승격하지 않는다.
-### 1.15 창술사 `34630/34650` dragon masked class-neutral family
+### 1.14 창술사 `34630/34650` dragon masked class-neutral family
 
 - `34630` clip1~4와 `34650` clip1의 기존 Product 문서에서 body 6행/head 6행, 정확히 12행만
   selective materialize했다. 비대상 top-level element JSON byte와 대상의 material/resources 외 필드는
@@ -245,7 +230,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   `Effect/LanceMaster/Textures/fx_d_atypical_010.dds` SHA-256 `93fa9c93...`, head spec은
   `Effect/LanceMaster/Textures/sk_flm_gdr_02_s.dds` SHA-256 `a626399c...`다. DDS는 커밋하지 않는다.
 
-### 1.16 도화가 V reviewed wisp cohort와 TargetAttractor
+### 1.15 도화가 V reviewed wisp cohort와 TargetAttractor
 
 - 도화가 V `31910`의 현재 손튜닝 41행 canonical hash를 보존하고, sealed donor와 Track-A receipt,
   `PALE_YELLOW_RED_ORBIT` role allowlist가 모두 일치하는 source particle 다섯 행만 앞에 삽입했다.
@@ -269,7 +254,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   rollback과 Reset clear를 검증한다. 실제 Product 행도 Resource root를 read-only로 지정해 source burst
   14개 전부가 0.25초 시점에 root 5cm 안으로 capture되는 것을 확인했다.
 
-### 1.17 차원술사 F `2050230` 첫 Product ScreenOverlay consumer
+### 1.16 차원술사 F `2050230` 첫 Product ScreenOverlay consumer
 
 - actual animevent `pc_sp_m_00_sk_sk_chronorecoil`의 0ms effectref
   `effect.dimensionmaster.skill.2050230.unified`와 direct EffectCatalog row를 그대로 따라 첫 Product
@@ -300,7 +285,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   post 2행 뒤 overlay append와 target parity, cancel/reset/natural clear를 Debug/Release focused harness가
   검증한다. 사용자 Client first-pixel과 source-exact 판정은 여전히 `PENDING`이다.
 
-### 1.18 Effect Tool Presentation Light/ScreenPost family
+### 1.17 Effect Tool Presentation Light/ScreenPost family
 
 - `EFFECT_AUTHORING_FAMILY`에 `PRESENTATION_LIGHT`와 `PRESENTATION_SCREEN_POST`를 서로 다른 family로
   추가했다. 기존 Mesh/Sprite/MeshParticle/SpriteParticle/LocalDecal/Trail을 포함한 여덟 family가
@@ -321,7 +306,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   검증한다. Client/UI는 자율 실행하지 않았으므로 실제 Tool open/editor 화면과 사용자 조작 평가는
   `PENDING`이다.
 
-### 1.19 도화가 E `31480` animated crane 제품 경로 canary
+### 1.18 도화가 E `31480` animated crane 제품 경로 canary
 
 - `31480 -> sdm_sk_flyinheaven -> effect.artist.skill.31480.unified` 연결을 skill binding과 정확히 하나의
   root-follow animevent effectref로 봉인했다. source catalog뿐 아니라 실제
@@ -338,7 +323,7 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
   따라서 현재 증거는 clip 부재, 정지 bone palette, renderer 미실행, authored/runtime join 누락을 원인에서
   제외한다. 실제 Client에서 두루미가 정지해 보이는지와 카메라/크기/가시성 평가는 사용자 화면 검증
   `PENDING`이며, 이 canary 자체는 제품 데이터나 renderer를 임의 변경하지 않는다.
-### 1.20 도화가 T `31950` source CascadeRibbon + RibbonLiquid01 opcode 20
+### 1.19 도화가 T `31950` source CascadeRibbon + RibbonLiquid01 opcode 20
 
 - fallback-blocked source 행
   `authored.source-particle.29868adeb040d5a35e2f213c` 하나만 visible typed TRAIL로
@@ -384,9 +369,6 @@ color/coverage와 Lance dragon masked material 수직 슬라이스를 구현했�
 | Debug/Release Client after subset codec change | 각 errors 0 PASS |
 | Artist A/D/R + Warlord T focused contracts | 17 tests PASS, 각 materializer `--check` PASS |
 | Lance E W-cone selective donor | 4 tests, `--check`, authored codec parse PASS |
-| Glasshole02 K01 materializer | 6 tests, `--check`, Debug authored codec parse PASS |
-| Debug Glasshole02 K01 HLSL/Client | shader compile + Client errors 0 PASS |
-| Debug/Release `--effect-glass-family-fast` | 각 11 PASS; draw 1, issued 1, RGB pixels 283, semantic-channel·carrier-shape reject/rollback PASS |
 | Artist S grass-tip selective materializer | 7 tests PASS, `--check` PASS, 4 DDS SHA-256 PASS, Debug/Release codec SHA `03e4e9f8...` 일치 |
 | Debug `--effect-standard-color-v1-fast` codec + WARP | failures 0 |
 | Release `--effect-standard-color-v1-fast` codec + WARP | failures 0 |
@@ -455,8 +437,6 @@ Release Client 경고 2173건은 기존 FXC X4717/X4000, C4819, DirectXTK LNK409
 - 도화가 D effectref/source catalog와 A/R/S, 워로드 T authored 변경도 full publish 전에는
   checked-in sealed runtime catalog에서 실행되지 않는다. D의 tiger 12행 typed Product 문서와
   renderer admission은 준비됐지만 sealed catalog publish와 사용자 first-pixel 승인은 별도다.
-- Glasshole02 opcode 16 authored packet도 checked-in runtime catalog가 pre-promotion sealed document를
-  가리키므로 현재 `AUTHORING_ONLY/AUTHORED_NOT_PUBLISHED`이다.
 - screen-overlay v1의 첫 실제 Product consumer는 차원 F `2050230`에 연결했다. 다만 screen-space
   carrier가 source-proven이 아니므로 이 5행은 `PROJECT_TUNED/PARTIAL`이며, 실제 화면 유리 파편과
   refraction 품질은 사용자 visual 판정 전이다. W Product rollout도 아직 하지 않았다.

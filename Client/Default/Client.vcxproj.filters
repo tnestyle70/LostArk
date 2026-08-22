@@ -3690,9 +3690,6 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050120.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\DimensionMaster</Filter>
     </None>
-    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050120.clip3.glasshole02-k01.receipt.json">
-      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\DimensionMaster</Filter>
-    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050160.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\DimensionMaster</Filter>
     </None>

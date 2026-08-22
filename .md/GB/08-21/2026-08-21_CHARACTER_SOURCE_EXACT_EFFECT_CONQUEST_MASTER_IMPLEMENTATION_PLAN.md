@@ -831,14 +831,10 @@ registration과 runtime resource existence를 한 변경 단위로 닫는다.
 
 같은 parent 이름이어도 child/static set/carrier/role lane이 다르면 서로 다른 variant다.
 
-현재 첫 canary는 W `2050120.clip3`의 K-child occurrence
-`authored.source-particle.40e1b48e2f0f88dcfeff1549` 하나다. 복원된 profile-29 식을
-class-neutral RuntimeMaterialV2 opcode 16으로 옮기고 aura RGBA/sRGB, crack normal RG/linear,
-inner-hole RGB/sRGB lane과 sampler/static/render mask를 exact tuple로 고정한다. 실제 VF/pass가
-닫히지 않은 six-slot native DXBC는 oracle-only로 유지한다. A/D의 J-child 두 occurrence는 같은 parent
-이름만으로 승격하지 않고 effective static set을 별도로 닫을 때까지 기존 경로에 남긴다.
+Glasshole02 bounded opcode 16 canary는 source-exact family 복원 브랜치와 중복되므로 이 통합에서
+제외한다. W `2050120.clip3` authored/runtime identity는 main과 동일하게 유지한다.
 
-두 번째 canary는 F `2050230`의 exact Fluid01 SpriteParticle 두 행
+이번 통합의 첫 canary는 F `2050230`의 exact Fluid01 SpriteParticle 두 행
 `authored.source-particle.1ae3416ac205fee634b746a9`와
 `authored.source-particle.ed33fb10661afb8854e76957`이다. 두 행만 RuntimeMaterialV2 opcode 17로
 승격하고 opcode 18은 도화가 D 후속 family를 위해 비워 둔다. admission key는 sprite carrier,
@@ -859,7 +855,7 @@ class-neutral typed HLSL family로 이동하되 native cooked DXBC 복원으로 
 materializer는 두 target의 material만 교체하고 F의 나머지 행은 canonical deep-equal, 도화가 F는
 byte/canonical golden으로 고정한다. focused WARP는 두 draw의 실제 PS invocation/RT pixel, malformed
 두 번째 sourceNode 거부와 직전 prepared state 보존을 Debug/Release 모두 요구한다. 공용 resource
-reuse signature도 sourceNode, render profile, SourceRecipe enabled/renderer shape를 비교해 opcode 16/17의
+reuse signature도 sourceNode, render profile, SourceRecipe enabled/renderer shape를 비교해 opcode 17의
 strict tuple admission을 fast path에서 우회하지 못하게 한다. 이 G에서는
 world Fluid01 sprite만 닫은 checkpoint 뒤, 별도 수직 슬라이스에서 CAP-03 screen-space textured shard의
 첫 Product consumer를 추가했다. `EffectCatalog`의 F direct row가 class-neutral presentation asset을
@@ -1186,7 +1182,6 @@ Client x64 Debug/Release
 --effect-character-restoration-inventory-fast
 --effect-authored-subset-save-fast
 --effect-source-variant-fast
---effect-glass-family-fast
 --effect-dragon-flow-fast
 --effect-screen-overlay-fast
 --effect-presentation-clear-fast
@@ -1253,10 +1248,10 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 | G00 inventory | `AUTO_PASS` | 22 occurrence family-first contract, builder check, focused 23 tests | 해당 없음 | first Product family executor |
 | G01 Tool/save | `IMPLEMENTED` | Warlord 17090 retained subset Save/Load 7/7, invalid identity/mesh/recipe rollback | 미실행 | Light/Post/Ribbon subtype Tool tree |
 | G02 join | `IMPLEMENTED` | Artist D effectref + source catalog + 56-row authored closure focused PASS | 미실행 | full publisher/runtime sealed join |
-| G03 shader variants | `IMPLEMENTED` | StandardColorV1, Glasshole02 opcode 16, Fluid01 opcode 17, Artist Tiger opcode 18의 typed admission·rollback·WARP draw | 미실행 | dragon variants와 추가 native VF/pass evidence |
+| G03 shader variants | `IMPLEMENTED` | StandardColorV1, Fluid01 opcode 17, Artist Tiger opcode 18의 typed admission·rollback·WARP draw | 미실행 | source-exact Glasshole과 추가 native VF/pass evidence |
 | G04 low-risk skills | `IMPLEMENTED` | action-facing, Dimension A4, Artist A/R/S, Warlord T, Lance E cone donor focused PASS | 미실행 | runtime full publish, S 사용자 화면 튜닝 |
 | G05 animated animals | `EVIDENCE_PARTIAL` | E WModel/clip 연결, D tiger 12행 typed family | 미실행 | E runtime frame 확인, T asset lineage |
-| G06 glass/crack | `IMPLEMENTED` | W2050120 K-child + F2050230 Fluid01 two-row + F2050230 Product screen-overlay 5행 actual cue/catalog join, identity·rollback·timeline·clear Debug/Release focused harness | 대기 | Fluid01 mesh, J-child static set, F raw world composition, refraction/multi-lane과 W rollout |
+| G06 glass/crack | `IMPLEMENTED` | F2050230 Fluid01 two-row + F2050230 Product screen-overlay 5행 actual cue/catalog join, identity·rollback·timeline·clear Debug/Release focused harness | 대기 | source-exact Glasshole 별도 통합, Fluid01 mesh, F raw world composition과 refraction/multi-lane |
 | G07 dragon/ultimate | `IMPLEMENTED` | Lance 34630/34650 exact 12행 opcode 19 + Artist T exact TypeDataRibbon→CascadeRibbon opcode 20, fixed-step history·WARP draw·rollback PASS | 미실행 | 34610·교차 class exact variant admission, Artist T parent native distortion/reflection ABI |
 | G08 Artist V | `IMPLEMENTED` | CircleSurface/Vortex strict executor + reviewed 7-row wisp cohort + world-metric 14-particle attractor, materializer 8 tests와 Debug/Release focused 12/12 PASS | 미실행 | full publish, camera/post/light channel |
 | G09 Dimension gameplay | `EVIDENCE_PARTIAL` | current command/snapshot audit | 미실행 | approved target replication |
@@ -1277,7 +1272,7 @@ W    F에서 연 family가 기존 vertical slash/유리 균열에 재사용
 3. G01 Warlord A subset save + Light/Post/Ribbon subtype Tool tree
 4. G02 Artist D product join closure
 5. G04 Warlord T noise/decal와 Artist A/R low-risk corrections
-6. G06 Glasshole02 첫 Product family canary
+6. G06 source-exact Glasshole 결과는 별도 브랜치 완료 뒤 통합
 7. G06 Dimension F CAP-03 첫 Product canary 완료, raw world composition·고급 overlay는 계속 진행
 8. G07 source CascadeRibbon + Lance dragon typed UV family + Artist T carrier
 9. G08 Artist V attractor/screen presentation
