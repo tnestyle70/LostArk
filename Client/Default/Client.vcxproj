@@ -42,6 +42,7 @@
     <ClInclude Include="..\Public\Effect_AuthoringDocument.h" />
     <ClInclude Include="..\Public\Effect_CascadeCompiler.h" />
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h" />
+	<ClInclude Include="..\Public\Effect_ValtanTranslatedCanaryRuntime.h" />
 	<ClInclude Include="..\Public\Effect_Artist31470ShaderRegistry.h" />
 	<ClInclude Include="..\Public\Effect_ReconstructedExecution.h" />
     <ClInclude Include="..\Public\Generated\Effect_SourceContractRegistry.generated.h" />
@@ -183,6 +184,7 @@
     <ClCompile Include="..\Private\CharacterSelectionState.cpp" />
     <ClCompile Include="..\Private\Effect_CascadeCompiler.cpp" />
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp" />
+	<ClCompile Include="..\Private\Effect_ValtanTranslatedCanaryRuntime.cpp" />
 	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp" />
 	<ClCompile Include="..\Private\Effect_ReconstructedExecution.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentCodec.cpp" />
@@ -469,6 +471,9 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactSpriteBridge.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactLocalMeshBridge.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectGlasshole02.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanCrack01.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanDissolve01.hlsl" />
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanGround04.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectDecal.hlsl" />
     <None Include="..\Bin\ShaderFiles\Shader_Artist31470Diagnostic.hlsli" />
@@ -479,6 +484,9 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectLocalDecalAdapter.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl" />
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanCrack01.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanDissolve01.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanGround04.hlsli" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshPreview.hlsl" />

@@ -327,6 +327,9 @@
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\Effect_ValtanTranslatedCanaryRuntime.cpp">
+	  <Filter>03. Tools\02. Effect</Filter>
+	</ClCompile>
 	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
@@ -881,6 +884,9 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h">
+	  <Filter>03. Tools\02. Effect</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\Effect_ValtanTranslatedCanaryRuntime.h">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\Effect_Artist31470ShaderRegistry.h">
@@ -1497,6 +1503,15 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectGlasshole02.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanCrack01.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanDissolve01.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanGround04.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
@@ -1525,6 +1540,15 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanCrack01.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanDissolve01.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanGround04.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
   </ItemGroup>

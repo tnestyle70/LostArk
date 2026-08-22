@@ -36,15 +36,15 @@ exact child material
 다른 family다. parent나 ABI가 닫히지 않은 occurrence는 generic plane으로 대체하지 않고
 fail-close한다.
 
-### 2026-08-22 missing-family 총동원 범위 교정
+### 2026-08-22 최종 범위 교정
 
-사용자 결정에 따라 이 세션은 Glasshole을 중복 구현하지 않고 다음 다섯 source family의
-증거, HLSL 번역, 발탄 canary admission을 끝까지 소유한다.
+사용자 최종 결정에 따라 이 세션은 Glasshole과 캐릭터 공용 family 작업을 중복하지 않는다.
+첫 구현 단위는 3연격에서 실제 손튜닝을 막는 다음 세 source family의 증거, HLSL 번역,
+Tool-only runtime ABI와 canary admission까지다. Firework/Smoke는 inventory와 번역 증거만
+보존하고 이 수직 슬라이스의 renderer admission에는 포함하지 않는다.
 
 | family | source identity | 실제 carrier | 첫 발탄 canary |
 |---|---|---|---|
-| Firework additive | direct `Material` `fx_m_mi_00.fx_m.fx_a_pa_firework_01_ad` | Sprite Particle | sourceOrder 6, 19 |
-| Smoke translucent | direct `Material` `fx_m_mi_05.fx_m.fx_b_pa_smoke_03_tr` | Sprite Particle | sourceOrder 3 |
 | Masked dissolve stone | child `fx_m_mi_n_00.fx_n_me_dissolve_04_011_ma` / parent `fx_m_mi_00.fx_m.fx_d_pa_dissolve_01_ma` | Mesh Particle + `fx_sm_00.fm_a_stone_001` | sourceOrder 7 |
 | Ground decal | child `fx_m_mi_n_00.fx_mi.fx_n_de_ground_04_30_tr` / parent `fx_m_mi_04.fx_m.fx_d_de_ground_04_tr` | TypeDataDecal projector | sourceOrder 14 |
 | Valtan crack translucent | child `fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr` / parent `fx_m_mi_00.fx_m.fx_d_me_crack_01_tr` | Mesh Particle + source emitter mesh join | `Atk_04_11/12/13` 7개 |
@@ -66,9 +66,10 @@ exact child/direct Material serial
 + class-neutral Product occurrence projection
 ```
 
-현재 공식 cache에서 다섯 pixel equation은 모두 회수 가능하다. 식만 번역해 WARP 오차가
-0이어도 sampler/CDO, engine-owned CB row, 실제 VF/pass 또는 Cascade module dependency가
-열려 있으면 `PIXEL_EQUATION_EXACT`이지 `SOURCE_EXACT_PRODUCT`가 아니다.
+세 family의 공식 pixel equation은 회수·번역하고 원본 DXBC와 WARP 수치 오차 0으로 닫는다.
+그 뒤에도 sampler default와 실제 source VF/pass는 열린 경계이므로 첫 결과는
+`SOURCE_EXACT_PRODUCT`가 아니라 `TOOL_RENDERER_RUNTIME_ADMITTED_BOUNDED_RT0`이다.
+Product, 실제 VF/pass와 visual admission은 계속 false로 둔다.
 
 ## G-1. 전체 발탄 WModel 100배 회귀의 즉시 복구
 
@@ -190,21 +191,10 @@ Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/
   Valtan.front-back-front-source-exact-family-receipt.v1.json
 ```
 
-Glasshole 세션의 전용 식과 파일은 건드리지 않는다. 다만 이 세션의 다섯 family도 동일한
-class-neutral shader ABI를 소비해야 하므로, 공용 기반 커밋이 main에 들어온 뒤 그 ABI를 rebase해
-고정 opcode/HLSL adapter와 renderer admission을 이 세션의 별도 커밋으로 연결한다. 공용 기반이
-아직 merge되지 않은 동안에는 source/cache/CB/SRV/sampler/VF 증거와 HLSL A/B를 독립적으로
-완료한다. generic fallback을 임시 연결하지 않는다.
-
-두 direct Material(Firework/Smoke)은 MIC가 아니며 parent와 instance override가 원래 없다.
-따라서 `parentMaterialPath` 필수 join이나 synthetic self-parent를 사용하지 않는다. variant key에
-`sourceMaterialPath + direct Material base ID + carrier/VF/pass + render state`를 넣는다. 반대로
-동명의 `fx_a_pa_firework_01_01_ad` child MIC는 vector override가 다른 별도 variant다.
-
-기존 native binding scanner가 scalar expression 0개를 거부하는 것은 direct Material을 잘못
-제외하는 회귀다. 빈 scalar binding array를 허용하되 vector/texture denominator와 CB0 closure는
-그대로 strict하게 검사하고, Firework/Smoke fixture로 0-scalar 정상 사례와 잘못된 nonzero row,
-중복 texture wire, engine-owned pair 충돌을 고정한다.
+Glasshole 세션의 전용 식과 Product gate는 건드리지 않는다. 이 세션은 세 family만 동일한
+translated-HLSL 원칙으로 결합하되, 실제 Product 경로 대신 3연격 exact Authored 문서에서
+명시적으로 켜는 Tool gate를 사용한다. generic fallback을 임시 연결하지 않고 canary draw가
+실패하면 해당 occurrence를 fail-close한다.
 
 `Valtan.source-material-evidence.json`의 child/parent/default/override를 이름 기반으로 병합하고,
 carrier별 static set, texture sampler, dynamic parameter, render state를 variant key로 봉인한다.
@@ -223,9 +213,10 @@ texture/scalar/vector와 sampler를 source evidence에서 다시 패킹하고, s
 parent identity와 named lane contract가 일치할 때만 `sourceProfile.enabled=true` 또는 단일
 `RuntimeMaterialV2` owner로 승격한다.
 
-Valtan Crack, MaskedDissolve, GroundDecal, Firework, Smoke는 이번 slice의 명시적 복원 대상이다.
-raw DXBC와 번역 HLSL을 함께 oracle로 사용하되 Product에는 fixed opcode와 검증된 packet만
-들어간다. `Translucent/Additive/Masked` suffix 추측 fallback은 금지한다.
+Valtan Crack, MaskedDissolve, GroundDecal만 이번 runtime slice의 명시적 복원 대상이다.
+raw DXBC와 번역 HLSL을 함께 oracle로 사용하고 Tool에는 검증된 exact occurrence packet만
+들어간다. 향후 Product admission도 같은 증거를 요구한다.
+`Translucent/Additive/Masked` suffix 추측 fallback은 금지한다.
 
 ## G03. Local Decal typed family의 Valtan canary 소비
 

@@ -33,6 +33,9 @@ NS_END
 
 NS_BEGIN(Client)
 
+class CValtanTranslatedCanaryRuntime;
+struct VALTAN_TRANSLATED_CANARY_ELEMENT_PACKET;
+
 enum class RECONSTRUCTED_DIAGNOSTIC_SOLO : uint8_t
 {
 	MESH,
@@ -268,6 +271,32 @@ public:
 	static constexpr bool_t
 		GLASSHOLE02_TRANSLATED_CANARY_FAIL_CLOSED = true;
 
+	/* One Tool-only gate owns the three source families selected for the first
+	   Valtan FRONT_BACK_FRONT family audition.  Product preparation never
+	   enables it; exact HLSL draw failures suppress only the admitted
+	   occurrence instead of falling through to the family-lite shader. */
+	static constexpr std::string_view
+		VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID =
+		"effect.valtan.front-back-front.windup";
+	static constexpr std::array<std::string_view, 9u>
+		VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS = {{
+		"par_n_rpbf_atk_01_02.em07",
+		"par_n_rpbf_atk_01_02.em14",
+		"par_n_rpbf_atk_04_11.em00",
+		"par_n_rpbf_atk_04_11.em01",
+		"par_n_rpbf_atk_04_12.em00",
+		"par_n_rpbf_atk_04_12.em01",
+		"par_n_rpbf_atk_04_12.em02",
+		"par_n_rpbf_atk_04_13.em00",
+		"par_n_rpbf_atk_04_13.em01",
+	}};
+	static constexpr bool_t
+		VALTAN_TRANSLATED_CANARY_DEFAULT_ENABLED = false;
+	static constexpr bool_t
+		VALTAN_TRANSLATED_CANARY_PRODUCT_ENABLED = false;
+	static constexpr bool_t
+		VALTAN_TRANSLATED_CANARY_FAIL_CLOSED = true;
+
 private:
 	struct ELEMENT_RESOURCE final
 	{
@@ -358,6 +387,8 @@ private:
 			pExactPreviewPacket;
 		std::shared_ptr<const GLASSHOLE02_TRANSLATED_CANARY_ELEMENT_PACKET>
 			pGlasshole02TranslatedCanaryPacket;
+		std::shared_ptr<const VALTAN_TRANSLATED_CANARY_ELEMENT_PACKET>
+			pValtanTranslatedCanaryPacket;
 	};
 	struct MODEL_CUE_RESOURCE final
 	{
@@ -592,6 +623,13 @@ public:
 	{
 		return m_bAuthoringGlasshole02TranslatedCanaryEnabled;
 	}
+	bool_t Set_AuthoringValtanTranslatedCanaryEnabled(
+		bool_t bEnabled,
+		std::string& strOutError);
+	bool_t Is_AuthoringValtanTranslatedCanaryEnabled() const
+	{
+		return m_bAuthoringValtanTranslatedCanaryEnabled;
+	}
 	bool_t Stage_ReconstructedRuntimeProgram(
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation,
@@ -680,6 +718,11 @@ private:
 		ELEMENT_RESOURCE& InOutResource,
 		std::string& strOutError) const;
 	bool_t Stage_Glasshole02TranslatedCanaryPacket(
+		const std::string& strEffectAssetId,
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_RESOURCE& InOutResource,
+		std::string& strOutError) const;
+	bool_t Stage_ValtanTranslatedCanaryPacket(
 		const std::string& strEffectAssetId,
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_RESOURCE& InOutResource,
@@ -800,6 +843,15 @@ private:
 		const ELEMENT_RESOURCE& Resource,
 		f32_t fLocalTimeSeconds,
 		std::span<const Engine::VTXEFFECT_PARTICLE> Instances);
+	HRESULT Render_ValtanTranslatedCanaryMesh(
+		const EFFECT_EVALUATED_ELEMENT& Element,
+		const ELEMENT_RESOURCE& Resource,
+		const float4x4_t& World,
+		const float4x4_t& NormalMatrix,
+		const float4_t& DynamicParameter);
+	HRESULT Render_ValtanTranslatedCanaryGround(
+		const EFFECT_EVALUATED_ELEMENT& Element,
+		const ELEMENT_RESOURCE& Resource);
 	HRESULT Render_Trails(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		std::span<const EFFECT_EVALUATED_TRAIL> Trails);
@@ -869,9 +921,13 @@ private:
 	ComPtr<ID3D11BlendState> m_pExactPreviewAdditiveOneOneBlendState;
 	shared_ptr<Engine::CShader> m_pGlasshole02TranslatedCanaryShader;
 	ComPtr<ID3D11BlendState> m_pGlasshole02TranslatedCanaryBlendState;
+	std::unique_ptr<CValtanTranslatedCanaryRuntime>
+		m_pValtanTranslatedCanaryRuntime;
 	bool_t m_bAuthoringExactPreviewExecutionEnabled = false;
 	bool_t m_bAuthoringGlasshole02TranslatedCanaryEnabled =
 		GLASSHOLE02_TRANSLATED_CANARY_DEFAULT_ENABLED;
+	bool_t m_bAuthoringValtanTranslatedCanaryEnabled =
+		VALTAN_TRANSLATED_CANARY_DEFAULT_ENABLED;
 	bool_t m_bReconstructedSourceRuntimeActive = false;
 	bool_t m_bSourceVisualProgramActive = false;
 	EFFECT_PREVIEW_SUBMISSION_ISOLATION m_PreviewSubmissionIsolation;

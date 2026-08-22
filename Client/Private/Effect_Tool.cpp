@@ -5489,7 +5489,8 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 		bool_t bTranslatedRequested =
 			m_bGlasshole02TranslatedCanaryEnabled;
 		ImGui::BeginDisabled(Has_ProductCuePreview() ||
-			m_bExactCookedCanaryEnabled);
+			m_bExactCookedCanaryEnabled ||
+			m_bValtanTranslatedCanaryEnabled);
 		if (ImGui::Checkbox("Enable Translated Glasshole02 Canary",
 			&bTranslatedRequested))
 		{
@@ -5503,6 +5504,25 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 			"Scope: one DimensionMaster W occurrence only; default OFF, Product/read-only OFF, and draw failure fail-closed.");
 		ImGui::TextDisabled(
 			"Carrier: translated RT0 HLSL with live exact CB0 assembly, 7 DDS SRVs plus Target_Depth t2, and 8 typed samplers.");
+		ImGui::SeparatorText("Translated Valtan Core-Three Canary");
+		bool_t bValtanTranslatedRequested =
+			m_bValtanTranslatedCanaryEnabled;
+		ImGui::BeginDisabled(Has_ProductCuePreview() ||
+			m_bExactCookedCanaryEnabled ||
+			m_bGlasshole02TranslatedCanaryEnabled);
+		if (ImGui::Checkbox("Enable Valtan Ground / Crack / Dissolve Canary",
+			&bValtanTranslatedRequested))
+		{
+			Try_SetValtanTranslatedCanaryEnabled(
+				bValtanTranslatedRequested);
+		}
+		ImGui::EndDisabled();
+		ImGui::TextWrapped("%s",
+			m_strValtanTranslatedCanaryStatus.c_str());
+		ImGui::TextDisabled(
+			"Scope: FRONT_BACK_FRONT windup only; nine exact occurrences, default OFF, Product/read-only OFF, draw failure fail-closed.");
+		ImGui::TextDisabled(
+			"Fidelity: exact translated PS equation + 19/19 source DDS + exact material CB0/time; RT0 bounded LocalMesh/LocalDecal carriers and neutral engine scene-CB lanes. Source VF/MRT, scene-CB parity, and full sampler parity remain OFF.");
 	}
 	if (!bEditableSource)
 	{
@@ -17149,10 +17169,11 @@ bool_t Client::CEffect_Tool::Try_SetExactCookedCanaryEnabled(
 
 	if (!m_ActiveDocument.has_value() ||
 		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
-		Has_ProductCuePreview() || m_bGlasshole02TranslatedCanaryEnabled)
+		Has_ProductCuePreview() || m_bGlasshole02TranslatedCanaryEnabled ||
+		m_bValtanTranslatedCanaryEnabled)
 	{
 		m_strExactCookedCanaryStatus =
-			"REFUSED: enable requires saved Authored preview, Product OFF, and translated Glasshole02 canary OFF.";
+			"REFUSED: enable requires saved Authored preview, Product OFF, and translated family canaries OFF.";
 		return false;
 	}
 	std::string InstallError;
@@ -17195,6 +17216,7 @@ void Client::CEffect_Tool::Reset_ExactCookedCanarySelection(
 	std::string strReason)
 {
 	Reset_Glasshole02TranslatedCanarySelection(strReason);
+	Reset_ValtanTranslatedCanarySelection(strReason);
 	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
 		nullptr != pObject &&
 		pObject->Is_AuthoringExactPreviewExecutionEnabled())
@@ -17211,6 +17233,7 @@ void Client::CEffect_Tool::Invalidate_ExactCookedCanaryInstallation(
 	std::string strReason)
 {
 	Reset_Glasshole02TranslatedCanarySelection(strReason);
+	Reset_ValtanTranslatedCanarySelection(strReason);
 	bool_t bHadInstalledSelection =
 		m_bExactCookedCanaryEnabled ||
 		m_bExactCookedCanaryVariantsInstalled ||
@@ -17311,6 +17334,7 @@ bool_t Client::CEffect_Tool::Try_SetGlasshole02TranslatedCanaryEnabled(
 	if (!m_ActiveDocument.has_value() ||
 		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
 		Has_ProductCuePreview() || m_bExactCookedCanaryEnabled ||
+		m_bValtanTranslatedCanaryEnabled ||
 		!Has_Glasshole02TranslatedCanaryOccurrence(*m_ActiveDocument))
 	{
 		m_strGlasshole02TranslatedCanaryStatus =
@@ -17362,6 +17386,135 @@ void Client::CEffect_Tool::Reset_Glasshole02TranslatedCanarySelection(
 	m_strGlasshole02TranslatedCanaryStatus =
 		"OFF: " + std::move(strReason) +
 		" Translated Glasshole02 canary must be enabled explicitly again.";
+}
+
+bool_t Client::CEffect_Tool::Has_ValtanTranslatedCanaryOccurrences(
+	const EFFECT_DOCUMENT_DESC& Document) const
+{
+	if (Document.strEffectAssetId !=
+		CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID)
+	{
+		return false;
+	}
+	for (const std::string_view strExpectedId :
+		CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS)
+	{
+		const EFFECT_ELEMENT_DESC* pFound = nullptr;
+		for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			if (Element.strElementId != strExpectedId)
+				continue;
+			if (nullptr != pFound)
+				return false;
+			pFound = &Element;
+		}
+		if (nullptr == pFound ||
+			EFFECT_ELEMENT_KIND::PARTICLE != pFound->eKind ||
+			!std::isfinite(pFound->Detail.Mesh.fModelPreScale) ||
+			std::abs(pFound->Detail.Mesh.fModelPreScale - 0.01f) > 1.e-6f)
+		{
+			return false;
+		}
+		const std::string_view strExpectedMaterial =
+			strExpectedId == "par_n_rpbf_atk_01_02.em07" ?
+				"fx_m_mi_n_00.fx_n_me_dissolve_04_011_ma" :
+			strExpectedId == "par_n_rpbf_atk_01_02.em14" ?
+				"fx_m_mi_n_00.fx_mi.fx_n_de_ground_04_30_tr" :
+				"fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr";
+		if (pFound->Material.strSourceMaterialPath != strExpectedMaterial ||
+			pFound->Material.SourceMaterial.bEnabled)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Try_SetValtanTranslatedCanaryEnabled(
+	const bool_t bEnabled)
+{
+	if (!bEnabled)
+	{
+		if (const shared_ptr<CEffectObject> pObject =
+				m_pWorldPreviewObject.lock();
+			nullptr != pObject &&
+			pObject->Is_AuthoringValtanTranslatedCanaryEnabled())
+		{
+			std::string Error;
+			if (!pObject->Set_AuthoringValtanTranslatedCanaryEnabled(
+				false, Error))
+			{
+				m_strValtanTranslatedCanaryStatus =
+					"FAILED to disable translated Valtan canary: " + Error;
+				return false;
+			}
+		}
+		m_bValtanTranslatedCanaryEnabled = false;
+		m_strValtanTranslatedCanaryStatus =
+			"OFF: translated Valtan core-three Tool canary is not staged.";
+		if (m_ActiveDocument.has_value() &&
+			EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+			!Has_ProductCuePreview())
+		{
+			Stage_WorldPreview(*m_ActiveDocument);
+		}
+		return true;
+	}
+
+	if (!m_ActiveDocument.has_value() ||
+		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
+		Has_ProductCuePreview() || m_bExactCookedCanaryEnabled ||
+		m_bGlasshole02TranslatedCanaryEnabled ||
+		!Has_ValtanTranslatedCanaryOccurrences(*m_ActiveDocument))
+	{
+		m_strValtanTranslatedCanaryStatus =
+			"REFUSED: open exact Valtan FRONT_BACK_FRONT windup Authored data with Product and other canaries OFF.";
+		return false;
+	}
+
+	m_bValtanTranslatedCanaryEnabled = true;
+	if (nullptr == m_pWorldPreviewObject.lock())
+	{
+		m_strValtanTranslatedCanaryStatus =
+			"ARMED: stage the Authored preview to compile the three translated family programs.";
+		return true;
+	}
+	Release_WorldPreview(true);
+	if (!Stage_WorldPreview(*m_ActiveDocument))
+	{
+		const std::string CanaryFailure = m_strPreviewStatus;
+		m_bValtanTranslatedCanaryEnabled = false;
+		Release_WorldPreview(true);
+		const bool_t bOrdinaryPreviewRestored =
+			Stage_WorldPreview(*m_ActiveDocument);
+		m_strValtanTranslatedCanaryStatus = bOrdinaryPreviewRestored ?
+			"FAILED TO ARM: Valtan translated staging rolled back and ordinary preview was restored." :
+			"FAILED CLOSED: Valtan translated staging and ordinary preview restoration both failed.";
+		m_strPreviewStatus = CanaryFailure +
+			(bOrdinaryPreviewRestored ?
+				" Ordinary preview was restored with the canary OFF." :
+				" Ordinary preview restoration also failed.");
+		return false;
+	}
+	m_strValtanTranslatedCanaryStatus =
+		"ACTIVE: the 9/9 Authored gate passed; the current exact preview subset uses translated RT0 HLSL, exact material CB0/time, bounded engine scene CBs, and 19/19 source DDS. Product remains OFF.";
+	return true;
+}
+
+void Client::CEffect_Tool::Reset_ValtanTranslatedCanarySelection(
+	std::string strReason)
+{
+	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+		nullptr != pObject &&
+		pObject->Is_AuthoringValtanTranslatedCanaryEnabled())
+	{
+		std::string Ignore;
+		pObject->Set_AuthoringValtanTranslatedCanaryEnabled(false, Ignore);
+	}
+	m_bValtanTranslatedCanaryEnabled = false;
+	m_strValtanTranslatedCanaryStatus =
+		"OFF: " + std::move(strReason) +
+		" Translated Valtan canary must be enabled explicitly again.";
 }
 
 bool_t Client::CEffect_Tool::Try_StartArtist31470FullPreview()
@@ -21350,8 +21503,15 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	const EFFECT_DOCUMENT_DESC& Document,
 	const bool_t bAllowReadOnlySourceProjection)
 {
-    const EFFECT_DOCUMENT_DESC PreviewDocument =
-        Build_PreviewDocument(Document);
+	const bool_t bValtanTranslatedCanaryStage =
+		m_bValtanTranslatedCanaryEnabled &&
+		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+		!bAllowReadOnlySourceProjection && !Has_ProductCuePreview() &&
+		m_ActiveDocument.has_value() &&
+		Document.strEffectAssetId == m_ActiveDocument->strEffectAssetId &&
+		Has_ValtanTranslatedCanaryOccurrences(Document);
+	const EFFECT_DOCUMENT_DESC PreviewDocument =
+		Build_PreviewDocument(Document, bValtanTranslatedCanaryStage);
 	const bool_t bGlasshole02TranslatedCanaryStage =
 		m_bGlasshole02TranslatedCanaryEnabled &&
 		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
@@ -21361,6 +21521,7 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 		Has_Glasshole02TranslatedCanaryOccurrence(PreviewDocument);
 	bool_t bExactCanaryStage = m_bExactCookedCanaryEnabled &&
 		!bGlasshole02TranslatedCanaryStage &&
+		!bValtanTranslatedCanaryStage &&
 		m_bExactCookedCanaryVariantsInstalled &&
 		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
 		!bAllowReadOnlySourceProjection && !Has_ProductCuePreview() &&
@@ -21371,7 +21532,20 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 			m_pWorldPreviewObject.lock();
 		nullptr != pExisting)
 	{
-		if (bGlasshole02TranslatedCanaryStage &&
+		if (bValtanTranslatedCanaryStage &&
+			!pExisting->Is_AuthoringValtanTranslatedCanaryEnabled())
+		{
+			Release_WorldPreview(true);
+		}
+		else if (!bValtanTranslatedCanaryStage &&
+			pExisting->Is_AuthoringValtanTranslatedCanaryEnabled())
+		{
+			std::string DisableError;
+			pExisting->Set_AuthoringValtanTranslatedCanaryEnabled(
+				false, DisableError);
+			Release_WorldPreview(true);
+		}
+		else if (bGlasshole02TranslatedCanaryStage &&
 			!pExisting->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
 		{
 			/* The translated shader is compiled only by an explicit pre-stage
@@ -21406,6 +21580,18 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	std::string ExactFallbackReason;
 	if (nullptr != pObject)
 	{
+		if (bValtanTranslatedCanaryStage &&
+			!pObject->Is_AuthoringValtanTranslatedCanaryEnabled() &&
+			!pObject->Set_AuthoringValtanTranslatedCanaryEnabled(
+				true, Error))
+		{
+			m_strValtanTranslatedCanaryStatus =
+				"FAILED CLOSED before stage: " + Error +
+				" Toggle OFF explicitly to return to ordinary preview.";
+			m_strPreviewStatus =
+				"Translated Valtan canary could not be armed: " + Error;
+			return false;
+		}
 		if (bGlasshole02TranslatedCanaryStage &&
 			!pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled() &&
 			!pObject->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
@@ -21508,6 +21694,12 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	if (!bStaged)
     {
         m_strPreviewStatus = "Document is editable but not drawable yet: " + Error;
+		if (bValtanTranslatedCanaryStage)
+		{
+			m_strValtanTranslatedCanaryStatus =
+				"FAILED CLOSED during stage: " + Error +
+				" Toggle OFF explicitly to return to ordinary preview.";
+		}
 		if (bGlasshole02TranslatedCanaryStage)
 		{
 			m_strGlasshole02TranslatedCanaryStatus =
@@ -21583,6 +21775,14 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         break;
     }
 	if (nullptr != pObject &&
+		pObject->Is_AuthoringValtanTranslatedCanaryEnabled())
+	{
+		m_strPreviewStatus +=
+			" Translated Valtan core-three RT0 canary is active after the 9/9 Authored gate; the current exact preview subset is staged.";
+		m_strValtanTranslatedCanaryStatus =
+			"ACTIVE: exact material CB0/time, bounded neutral engine scene-CB lanes, 19/19 source DDS parity, bounded LocalMesh/LocalDecal adapters, Product OFF, draw fail-closed.";
+	}
+	else if (nullptr != pObject &&
 		pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
 	{
 		m_strPreviewStatus +=
@@ -21611,9 +21811,69 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 
 Client::EFFECT_DOCUMENT_DESC
 Client::CEffect_Tool::Build_PreviewDocument(
-    const EFFECT_DOCUMENT_DESC& Document) const
+	const EFFECT_DOCUMENT_DESC& Document,
+	const bool_t bAllowValtanTranslatedCanaryProjection) const
 {
     EFFECT_DOCUMENT_DESC Preview = Document;
+	if (bAllowValtanTranslatedCanaryProjection &&
+		m_bValtanTranslatedCanaryEnabled &&
+		Preview.strEffectAssetId ==
+			CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID)
+	{
+		/* This is a non-persistent Tool projection.  The authored document keeps
+		   the imported generic plane carriers so Save/Publish cannot silently
+		   Product-admit an unproven source VF.  The explicit canary gate swaps
+		   only the two bounded carrier adapters required for visual audition. */
+		for (EFFECT_ELEMENT_DESC& Element : Preview.Elements)
+		{
+			if (Element.strElementId == "par_n_rpbf_atk_01_02.em07")
+			{
+				const auto Model = std::find_if(
+					Element.ResourceBindings.begin(),
+					Element.ResourceBindings.end(),
+					[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+					{
+						return Binding.strSlotId == "meshModel";
+					});
+				if (Model != Element.ResourceBindings.end())
+				{
+					Model->strAssetId =
+						"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel";
+				}
+				Element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+				Element.Renderer.eType = EFFECT_RENDERER_TYPE::MESH_PARTICLE;
+				Element.SourceRecipe.strRendererShape = "mesh";
+				Element.Detail.Mesh.bUseModelMaterial = false;
+				Element.Detail.Mesh.fModelPreScale = 0.01f;
+			}
+			else if (Element.strElementId == "par_n_rpbf_atk_01_02.em14")
+			{
+				std::erase_if(Element.ResourceBindings,
+					[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+					{
+						return Binding.strSlotId == "meshModel";
+					});
+				Element.eKind = EFFECT_ELEMENT_KIND::DECAL;
+				Element.Renderer.eType = EFFECT_RENDERER_TYPE::DECAL_PARTICLE;
+				Element.SourceRecipe.strRendererShape = "decal";
+				Element.Detail.Decal.vSize =
+					Element.Detail.Particle.vStartSize;
+				Element.Detail.Decal.fDepth = 0.25f;
+			}
+			else if (std::find(
+				CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS.begin(),
+				CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS.end(),
+				std::string_view(Element.strElementId)) !=
+				CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS.end())
+			{
+				Element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+				Element.Renderer.eType = EFFECT_RENDERER_TYPE::MESH_PARTICLE;
+				Element.SourceRecipe.strRendererShape = "mesh";
+				Element.Detail.Mesh.bUseModelMaterial = false;
+				Element.Detail.Mesh.fModelPreScale = 0.01f;
+			}
+		}
+	}
 	if (!m_bPreviewScreenPostEnabled)
 	{
 		std::erase_if(Preview.Elements,

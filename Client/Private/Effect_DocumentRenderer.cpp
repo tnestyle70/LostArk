@@ -7,6 +7,7 @@
 #include "Effect_DocumentCodec.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_RuntimeAuthority.h"
+#include "Effect_ValtanTranslatedCanaryRuntime.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "RuntimeAssetRoot.h"
@@ -5163,10 +5164,11 @@ bool_t Client::CEffectDocumentRenderer::Set_AuthoringExactPreviewExecutionEnable
 			"Enable authoring exact preview before staging an Effect Document.";
 		return false;
 	}
-	if (m_bAuthoringGlasshole02TranslatedCanaryEnabled)
+	if (m_bAuthoringGlasshole02TranslatedCanaryEnabled ||
+		m_bAuthoringValtanTranslatedCanaryEnabled)
 	{
 		strOutError =
-			"Raw cooked preview and Glasshole02 translated canary are mutually exclusive.";
+			"Raw cooked preview and translated family canaries are mutually exclusive.";
 		return false;
 	}
 	const std::shared_ptr<EFFECT_RENDERER_CORE> Core =
@@ -5223,6 +5225,12 @@ bool_t Client::CEffectDocumentRenderer::
 			"Glasshole02 translated canary and raw cooked preview are mutually exclusive.";
 		return false;
 	}
+	if (m_bAuthoringValtanTranslatedCanaryEnabled)
+	{
+		strOutError =
+			"Glasshole02 and Valtan translated canaries are mutually exclusive.";
+		return false;
+	}
 	if (!Validate_Glasshole02TranslatedCanaryCB0Evaluator())
 	{
 		strOutError =
@@ -5269,6 +5277,57 @@ bool_t Client::CEffectDocumentRenderer::
 	m_bAuthoringGlasshole02TranslatedCanaryEnabled = true;
 	m_strStatus =
 		"Glasshole02 translated-HLSL Tool canary armed; Product remains OFF and failures are fail-closed.";
+	return true;
+}
+
+bool_t Client::CEffectDocumentRenderer::
+	Set_AuthoringValtanTranslatedCanaryEnabled(
+		const bool_t bEnabled,
+		std::string& strOutError)
+{
+	strOutError.clear();
+	static_assert(!VALTAN_TRANSLATED_CANARY_DEFAULT_ENABLED);
+	static_assert(!VALTAN_TRANSLATED_CANARY_PRODUCT_ENABLED);
+	static_assert(VALTAN_TRANSLATED_CANARY_FAIL_CLOSED);
+	static_assert(!CValtanTranslatedCanaryRuntime::DEFAULT_ENABLED);
+	static_assert(!CValtanTranslatedCanaryRuntime::PRODUCT_ENABLED);
+	static_assert(CValtanTranslatedCanaryRuntime::FAIL_CLOSED);
+	static_assert(!CValtanTranslatedCanaryRuntime::ENGINE_SCENE_CB_EXACT);
+	if (!bEnabled)
+	{
+		m_bAuthoringValtanTranslatedCanaryEnabled = false;
+		if (nullptr != m_pValtanTranslatedCanaryRuntime)
+			m_pValtanTranslatedCanaryRuntime->Clear();
+		m_pValtanTranslatedCanaryRuntime.reset();
+		m_strStatus =
+			"Valtan translated-HLSL canary disabled; ordinary preview active.";
+		return true;
+	}
+	if (nullptr != m_pPreparedDocument || !m_Document.Elements.empty())
+	{
+		strOutError =
+			"Enable Valtan translated canary before staging an Effect Document.";
+		return false;
+	}
+	if (m_bAuthoringExactPreviewExecutionEnabled ||
+		m_bAuthoringGlasshole02TranslatedCanaryEnabled)
+	{
+		strOutError =
+			"Valtan translated canary and other authoring canaries are mutually exclusive.";
+		return false;
+	}
+	auto Staged = std::make_unique<CValtanTranslatedCanaryRuntime>(
+		m_pDevice, m_pContext);
+	if (!Staged->Arm(strOutError))
+	{
+		if (strOutError.empty())
+			strOutError = "Valtan translated runtime could not be armed.";
+		return false;
+	}
+	m_pValtanTranslatedCanaryRuntime = std::move(Staged);
+	m_bAuthoringValtanTranslatedCanaryEnabled = true;
+	m_strStatus =
+		"Valtan core-three translated-HLSL Tool canary armed; Product remains OFF and failures are fail-closed.";
 	return true;
 }
 
@@ -5614,6 +5673,38 @@ bool_t Client::CEffectDocumentRenderer::
 	return true;
 }
 
+bool_t Client::CEffectDocumentRenderer::
+	Stage_ValtanTranslatedCanaryPacket(
+		const std::string& strEffectAssetId,
+		const EFFECT_ELEMENT_DESC& Element,
+		ELEMENT_RESOURCE& InOutResource,
+		std::string& strOutError) const
+{
+	if (!m_bAuthoringValtanTranslatedCanaryEnabled)
+		return true;
+	if (strEffectAssetId != VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID)
+	{
+		strOutError =
+			"Valtan translated canary rejected a non-target Effect ID.";
+		return false;
+	}
+	if (nullptr == m_pValtanTranslatedCanaryRuntime ||
+		!m_pValtanTranslatedCanaryRuntime->Is_Armed())
+	{
+		strOutError =
+			"Valtan translated canary runtime was not armed before staging.";
+		return false;
+	}
+	std::shared_ptr<const VALTAN_TRANSLATED_CANARY_ELEMENT_PACKET> Packet;
+	if (!m_pValtanTranslatedCanaryRuntime->Stage_Packet(
+		strEffectAssetId, Element, Packet, strOutError))
+	{
+		return false;
+	}
+	InOutResource.pValtanTranslatedCanaryPacket = std::move(Packet);
+	return true;
+}
+
 HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	const std::string& strEffectAssetId,
 	const EFFECT_ELEMENT_DESC& Element,
@@ -5630,6 +5721,11 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	{
 		return E_FAIL;
 	}
+	if (!Stage_ValtanTranslatedCanaryPacket(
+		strEffectAssetId, Element, Staged, strOutError))
+	{
+		return E_FAIL;
+	}
 	if (EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
 	EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
 	{
@@ -5639,7 +5735,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	if (Element.Material.Execution.bFailClosed &&
 		!Element.Material.Execution.bAuthoringApproximate &&
 		nullptr == Staged.pExactPreviewPacket &&
-		nullptr == Staged.pGlasshole02TranslatedCanaryPacket)
+		nullptr == Staged.pGlasshole02TranslatedCanaryPacket &&
+		nullptr == Staged.pValtanTranslatedCanaryPacket)
 	{
 		Staged.bOccurrenceVisualSuppressed = true;
 		OutResource = std::move(Staged);
@@ -14562,6 +14659,7 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 			nullptr == pVisualProgramProjection &&
 			!m_bAuthoringExactPreviewExecutionEnabled &&
 			!m_bAuthoringGlasshole02TranslatedCanaryEnabled &&
+			!m_bAuthoringValtanTranslatedCanaryEnabled &&
 			Element.Material.Execution.bFailClosed &&
 			!Element.Material.Execution.bAuthoringApproximate;
 		if (bOrdinaryFailClosed)
@@ -15576,6 +15674,9 @@ bool_t Client::CEffectDocumentRenderer::Stage_PreparedInternal(
 	const bool_t bPreserveGlasshole02TranslatedCanary =
 		bAllowPreserveGlasshole02TranslatedCanary && !bCatalogPrepared &&
 		m_bAuthoringGlasshole02TranslatedCanaryEnabled;
+	const bool_t bPreserveValtanTranslatedCanary =
+		bAllowPreserveGlasshole02TranslatedCanary && !bCatalogPrepared &&
+		m_bAuthoringValtanTranslatedCanaryEnabled;
 	bool_t bCatalogIdentityCurrent = true;
 	if (bCatalogPrepared)
 	{
@@ -15627,6 +15728,14 @@ bool_t Client::CEffectDocumentRenderer::Stage_PreparedInternal(
 	{
 		m_pGlasshole02TranslatedCanaryShader.reset();
 		m_pGlasshole02TranslatedCanaryBlendState.Reset();
+	}
+	m_bAuthoringValtanTranslatedCanaryEnabled =
+		bPreserveValtanTranslatedCanary;
+	if (!bPreserveValtanTranslatedCanary)
+	{
+		if (nullptr != m_pValtanTranslatedCanaryRuntime)
+			m_pValtanTranslatedCanaryRuntime->Clear();
+		m_pValtanTranslatedCanaryRuntime.reset();
 	}
 	m_bReconstructedSourceRuntimeActive = false;
 	m_bSourceVisualProgramActive = false;
@@ -15708,6 +15817,10 @@ bool_t Client::CEffectDocumentRenderer::Stage_PrevalidatedVisualProgramDocument(
 	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
 	m_pGlasshole02TranslatedCanaryShader.reset();
 	m_pGlasshole02TranslatedCanaryBlendState.Reset();
+	m_bAuthoringValtanTranslatedCanaryEnabled = false;
+	if (nullptr != m_pValtanTranslatedCanaryRuntime)
+		m_pValtanTranslatedCanaryRuntime->Clear();
+	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = false;
 	/* Source-module execution is enabled only by an admitted overlay program.
 	   Adapter packets (for example LocalDecal) reuse the base playback document
@@ -15760,9 +15873,51 @@ bool_t Client::CEffectDocumentRenderer::Stage_Document(
 			return false;
 		}
 	}
+	if (m_bAuthoringValtanTranslatedCanaryEnabled)
+	{
+		if (Document.strEffectAssetId !=
+			VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID ||
+			nullptr == m_pValtanTranslatedCanaryRuntime ||
+			!m_pValtanTranslatedCanaryRuntime->Is_Armed())
+		{
+			strOutError =
+				"Valtan translated canary document/program identity changed.";
+			return false;
+		}
+		size_t iStagedOccurrenceCount = 0u;
+		for (const std::string_view strOccurrenceId :
+			VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS)
+		{
+			const size_t iCount = static_cast<size_t>(std::count_if(
+				Document.Elements.begin(), Document.Elements.end(),
+				[strOccurrenceId](const EFFECT_ELEMENT_DESC& Element)
+				{
+					return Element.strElementId == strOccurrenceId;
+				}));
+			if (iCount > 1u)
+			{
+				strOutError =
+					"Valtan translated canary occurrence is duplicated: " +
+					std::string(strOccurrenceId);
+				return false;
+			}
+			iStagedOccurrenceCount += iCount;
+		}
+		/* CEffect_Tool verifies the complete nine-occurrence authored identity
+		   before arming.  Preview isolation then removes non-solo elements, so the
+		   renderer accepts a non-empty exact subset while Stage_Packet still
+		   validates every surviving material/carrier identity fail-closed. */
+		if (0u == iStagedOccurrenceCount)
+		{
+			strOutError =
+				"Valtan translated canary preview contains no target occurrence.";
+			return false;
+		}
+	}
 	if (!CEffectDocumentCodec::Validate_Drawable(Document, strOutError))
 		return false;
 	if (!m_bAuthoringGlasshole02TranslatedCanaryEnabled &&
+		!m_bAuthoringValtanTranslatedCanaryEnabled &&
 		nullptr != m_pPreparedDocument &&
 		0u == m_pPreparedDocument->iCatalogRevision &&
 		Resource_SignatureMatches(m_Document, Document))
@@ -15807,6 +15962,10 @@ bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedRuntimeProgram(
 	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
 	m_pGlasshole02TranslatedCanaryShader.reset();
 	m_pGlasshole02TranslatedCanaryBlendState.Reset();
+	m_bAuthoringValtanTranslatedCanaryEnabled = false;
+	if (nullptr != m_pValtanTranslatedCanaryRuntime)
+		m_pValtanTranslatedCanaryRuntime->Clear();
+	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = false;
 	m_bSourceVisualProgramActive = false;
 	Reset_PreviewSubmissionIsolation();
@@ -15861,6 +16020,10 @@ bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedSourceRuntime(
 	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
 	m_pGlasshole02TranslatedCanaryShader.reset();
 	m_pGlasshole02TranslatedCanaryBlendState.Reset();
+	m_bAuthoringValtanTranslatedCanaryEnabled = false;
+	if (nullptr != m_pValtanTranslatedCanaryRuntime)
+		m_pValtanTranslatedCanaryRuntime->Clear();
+	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = true;
 	m_bSourceVisualProgramActive = true;
 	Reset_PreviewSubmissionIsolation();
@@ -15930,6 +16093,10 @@ bool_t Client::CEffectDocumentRenderer::
 	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
 	m_pGlasshole02TranslatedCanaryShader.reset();
 	m_pGlasshole02TranslatedCanaryBlendState.Reset();
+	m_bAuthoringValtanTranslatedCanaryEnabled = false;
+	if (nullptr != m_pValtanTranslatedCanaryRuntime)
+		m_pValtanTranslatedCanaryRuntime->Clear();
+	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = true;
 	/* Adapter packets add renderer state only.  The reconstructed preparation
 	   continues to own source-module execution and its 35-row target closure. */
@@ -16401,6 +16568,10 @@ bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedDiagnostic(
 	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
 	m_pGlasshole02TranslatedCanaryShader.reset();
 	m_pGlasshole02TranslatedCanaryBlendState.Reset();
+	m_bAuthoringValtanTranslatedCanaryEnabled = false;
+	if (nullptr != m_pValtanTranslatedCanaryRuntime)
+		m_pValtanTranslatedCanaryRuntime->Clear();
+	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = false;
 	m_bSourceVisualProgramActive = false;
 	Reset_PreviewSubmissionIsolation();
@@ -16628,6 +16799,10 @@ void Client::CEffectDocumentRenderer::Clear()
 	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
 	m_pGlasshole02TranslatedCanaryShader.reset();
 	m_pGlasshole02TranslatedCanaryBlendState.Reset();
+	m_bAuthoringValtanTranslatedCanaryEnabled = false;
+	if (nullptr != m_pValtanTranslatedCanaryRuntime)
+		m_pValtanTranslatedCanaryRuntime->Clear();
+	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = false;
 	m_bSourceVisualProgramActive = false;
 	Reset_PreviewSubmissionIsolation();
@@ -17520,6 +17695,17 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	}
 	XMStoreFloat4x4(&NormalMatrix,
 		XMMatrixTranspose(XMMatrixInverse(nullptr, LoadedWorld)));
+	if (m_bAuthoringValtanTranslatedCanaryEnabled &&
+		nullptr != Resource.pValtanTranslatedCanaryPacket)
+	{
+		const HRESULT CanaryResult = Render_ValtanTranslatedCanaryMesh(
+			Element, Resource, World, NormalMatrix, DynamicParameter);
+		if (S_OK == CanaryResult)
+			return S_OK;
+		return Fail_RenderOperation(
+			"Valtan translated mesh canary draw failed closed.",
+			FAILED(CanaryResult) ? CanaryResult : E_FAIL, true);
+	}
 	const HRESULT ExactResult = Render_AuthoringExactPreviewMesh(
 		Element, Resource, fAlphaScale, World, NormalMatrix, DynamicParameter);
 	if (S_OK == ExactResult)
@@ -17679,6 +17865,60 @@ HRESULT Client::CEffectDocumentRenderer::Render_Rect(
 	return S_OK;
 }
 
+HRESULT Client::CEffectDocumentRenderer::Render_ValtanTranslatedCanaryMesh(
+	const EFFECT_EVALUATED_ELEMENT& Element,
+	const ELEMENT_RESOURCE& Resource,
+	const float4x4_t& World,
+	const float4x4_t& NormalMatrix,
+	const float4_t& DynamicParameter)
+{
+	if (!m_bAuthoringValtanTranslatedCanaryEnabled ||
+		nullptr == Resource.pValtanTranslatedCanaryPacket)
+	{
+		return S_FALSE;
+	}
+	if (nullptr == Element.pElement ||
+		nullptr == m_pValtanTranslatedCanaryRuntime ||
+		!m_pValtanTranslatedCanaryRuntime->Is_Armed())
+	{
+		return E_INVALIDARG;
+	}
+	return m_pValtanTranslatedCanaryRuntime->Draw_Mesh(
+		*Element.pElement, Resource.pModel,
+		Resource.pValtanTranslatedCanaryPacket,
+		World, NormalMatrix, DynamicParameter, Element.fLocalTimeSeconds);
+}
+
+HRESULT Client::CEffectDocumentRenderer::Render_ValtanTranslatedCanaryGround(
+	const EFFECT_EVALUATED_ELEMENT& Element,
+	const ELEMENT_RESOURCE& Resource)
+{
+	if (!m_bAuthoringValtanTranslatedCanaryEnabled ||
+		nullptr == Resource.pValtanTranslatedCanaryPacket)
+	{
+		return S_FALSE;
+	}
+	if (nullptr == Element.pElement || nullptr == m_pRect ||
+		nullptr == m_pValtanTranslatedCanaryRuntime ||
+		!m_pValtanTranslatedCanaryRuntime->Is_Armed())
+	{
+		return E_INVALIDARG;
+	}
+	const matrix_t World = XMLoadFloat4x4(&Element.World);
+	if (S_OK != Validate_DecalProjectionWorld(Element))
+		return E_INVALIDARG;
+	float4x4_t InverseDecal{};
+	XMStoreFloat4x4(&InverseDecal, XMMatrixInverse(nullptr, World));
+	EFFECT_DECAL_SHADER_PROJECTION_DESC Projection{};
+	if (!Resolve_DecalShaderProjection(Element, Projection))
+		return E_INVALIDARG;
+	return m_pValtanTranslatedCanaryRuntime->Draw_Ground(
+		*Element.pElement, m_pRect,
+		Resource.pValtanTranslatedCanaryPacket,
+		InverseDecal, Projection.vSize, Projection.fDepth,
+		Element.fLocalTimeSeconds);
+}
+
 HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	const EFFECT_EVALUATED_ELEMENT& Element,
 	const ELEMENT_RESOURCE& Resource)
@@ -17704,6 +17944,17 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	if (!Resolve_DecalShaderProjection(Element, Projection))
 		return Fail_RenderOperation("Decal shader projection is invalid.",
 			E_INVALIDARG, true);
+	if (m_bAuthoringValtanTranslatedCanaryEnabled &&
+		nullptr != Resource.pValtanTranslatedCanaryPacket)
+	{
+		const HRESULT CanaryResult = Render_ValtanTranslatedCanaryGround(
+			Element, Resource);
+		if (S_OK == CanaryResult)
+			return S_OK;
+		return Fail_RenderOperation(
+			"Valtan translated ground canary draw failed closed.",
+			FAILED(CanaryResult) ? CanaryResult : E_FAIL, true);
+	}
 	HRESULT hResult = Bind_MaterialInputs(m_pDecalShader,
 		*Element.pElement, Element.Color,
 		Element.fLocalTimeSeconds, Element.fNormalizedLife, Resource);
@@ -17791,7 +18042,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_Element(
 	if (nullptr == Element.pElement)
 		return Fail_RenderOperation(
 			"Effect element descriptor is missing.", E_INVALIDARG, true);
-	if (Resource.bOccurrenceVisualSuppressed)
+	if (Resource.bOccurrenceVisualSuppressed &&
+		!(m_bAuthoringValtanTranslatedCanaryEnabled &&
+			nullptr != Resource.pValtanTranslatedCanaryPacket))
 		return S_FALSE;
 	switch (Element.pElement->eKind)
 	{
@@ -18062,8 +18315,14 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			GLASSHOLE02_TRANSLATED_CANARY_EFFECT_ASSET_ID &&
 		pSource->strElementId ==
 			GLASSHOLE02_TRANSLATED_CANARY_OCCURRENCE_ID;
+	const bool_t bValtanTranslatedCanaryCandidate =
+		m_bAuthoringValtanTranslatedCanaryEnabled &&
+		Get_StagedDocument().strEffectAssetId ==
+			VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID &&
+		nullptr != pResource->pValtanTranslatedCanaryPacket;
 	const bool_t bAnyAuthoringCanaryCandidate =
-		bExactPreviewCandidate || bGlasshole02TranslatedCanaryCandidate;
+		bExactPreviewCandidate || bGlasshole02TranslatedCanaryCandidate ||
+		bValtanTranslatedCanaryCandidate;
 	if ((pResource->bSourceMaterialFallbackBlocked ||
 		pResource->bOccurrenceVisualSuppressed) &&
 		!bAnyAuthoringCanaryCandidate)

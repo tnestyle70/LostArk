@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import struct
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -65,6 +66,80 @@ def source_revision_abi_fixture() -> dict:
 
 
 class TextureSamplerClosureTests(unittest.TestCase):
+    def test_class_neutral_target_filter_pins_identity_and_order(self) -> None:
+        exact_targets = [
+            {
+                "targetId": "ground",
+                "familyId": "family.ground",
+                "sourceMaterialPath": "mi.ground",
+                "parentMaterialPath": "m.ground",
+                "rendererType": "LocalDecal",
+            },
+            {
+                "targetId": "crack",
+                "familyId": "family.crack",
+                "sourceMaterialPath": "mi.crack",
+                "parentMaterialPath": "m.crack",
+                "rendererType": "MeshParticle",
+            },
+        ]
+        target_filter = {
+            "schema": closure.TARGET_FILTER_SCHEMA,
+            "formatVersion": closure.TARGET_FILTER_FORMAT_VERSION,
+            "filterId": "core-two",
+            "targets": [
+                {
+                    "targetId": "crack",
+                    "familyId": "family.crack",
+                    "sourceMaterialPath": "mi.crack",
+                    "parentMaterialPath": "m.crack",
+                    "rendererType": "MeshParticle",
+                },
+                {"targetId": "ground"},
+            ],
+        }
+
+        selected, normalized = closure.selected_exact_targets(
+            exact_targets, target_filter
+        )
+
+        self.assertEqual([row["targetId"] for row in selected], ["crack", "ground"])
+        self.assertEqual(normalized["filterId"], "core-two")
+        changed = copy.deepcopy(target_filter)
+        changed["targets"][0]["rendererType"] = "SpriteParticle"
+        with self.assertRaisesRegex(ValueError, "rendererType changed"):
+            closure.selected_exact_targets(exact_targets, changed)
+
+    def test_source_pack_mapping_closes_parent_package_without_object_overclaim(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            source_root = Path(temporary)
+            (source_root / "parent.upk").touch()
+            source_pack = {
+                "schemaVersion": 1,
+                "packages": [
+                    {
+                        "logicalPackage": "FX_M_MI_00",
+                        "physicalPackage": "parent.upk",
+                        "resolved": True,
+                    }
+                ],
+            }
+
+            rows = closure.source_pack_manifest_assets(source_pack, source_root)
+            assets = closure.manifest_asset_index({"assets": rows})
+            parent = closure.resolve_parent_manifest_asset(
+                "fx_m_mi_00.fx_m.fx_d_me_crack_01_tr", assets
+            )
+
+        self.assertEqual(parent["physicalPackage"], "parent.upk")
+        self.assertEqual(
+            parent["resolutionStatus"],
+            "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+        )
+        self.assertEqual(
+            rows[0]["sourceAssetPath"], "fx_m_mi_00.__package_mapping__"
+        )
+
     def test_tagged_texture_override_preserves_full_fname_number(self) -> None:
         names = [
             "None",
@@ -314,6 +389,53 @@ class TextureSamplerClosureTests(unittest.TestCase):
                 mutation["receiptSha256"] = closure.canonical_json_sha256(sealed)
                 with self.assertRaises(ValueError):
                     closure.validate_receipt(mutation)
+
+    def test_tracked_valtan_core_three_receipt_is_exact_but_sampler_blocked(self) -> None:
+        receipt_path = (
+            Path(__file__).resolve().parents[2]
+            / "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/"
+            "Valtan.front-back-front-texture-sampler-closure.receipt.v1.json"
+        )
+        receipt = closure.read_json(receipt_path)
+
+        closure.validate_receipt(receipt)
+        self.assertEqual(
+            receipt["scope"]["selectedTargetIds"],
+            [
+                "valtan-front-back-front-masked-dissolve-stone",
+                "valtan-front-back-front-ground-decal",
+                "valtan-front-back-front-crack-translucent",
+            ],
+        )
+        self.assertEqual(receipt["summary"]["exactTargetCount"], 3)
+        self.assertEqual(receipt["summary"]["sourceExactTextureBindingCount"], 3)
+        self.assertEqual(receipt["summary"]["runtimeDdsParityTargetCount"], 3)
+        self.assertEqual(receipt["summary"]["sourceExactSamplerTargetCount"], 0)
+        self.assertFalse(receipt["scope"]["runtimeAdmission"])
+        self.assertFalse(receipt["scope"]["visualAdmission"])
+        for target in receipt["targets"]:
+            self.assertTrue(target["sourceExactTextureBindingAdmission"])
+            self.assertTrue(target["runtimeDdsParityAdmission"])
+            self.assertFalse(target["sourceExactSamplerAdmission"])
+            self.assertTrue(target["blockers"])
+            for binding in target["uniformTextureBindings"]:
+                self.assertIn("runtimeTexture", binding["ddsIdentity"])
+                self.assertNotIn("runtimeDimensionMaster", binding["ddsIdentity"])
+
+    def test_valtan_receipt_rejects_resealed_sampler_overclaim(self) -> None:
+        receipt_path = (
+            Path(__file__).resolve().parents[2]
+            / "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/"
+            "Valtan.front-back-front-texture-sampler-closure.receipt.v1.json"
+        )
+        mutation = closure.read_json(receipt_path)
+        mutation["targets"][0]["sourceExactSamplerAdmission"] = True
+        sealed = dict(mutation)
+        sealed.pop("receiptSha256", None)
+        mutation["receiptSha256"] = closure.canonical_json_sha256(sealed)
+
+        with self.assertRaisesRegex(ValueError, "sampler admission overclaim"):
+            closure.validate_receipt(mutation)
 
 
 if __name__ == "__main__":
