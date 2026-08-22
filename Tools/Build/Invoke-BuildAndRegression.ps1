@@ -154,6 +154,9 @@ try {
     Invoke-PythonGate `
         'Valtan floor crack emissive runtime contract gate' `
         @('Tools/LevelPlacementExtractor/test_valtan_floor_emissive_contract.py')
+    Invoke-PythonGate `
+        'Ground-target preview prototype scope gate' `
+        @('Tools/GameplayPipeline/test_ground_target_preview_prototype_scope.py')
 
     $LASTEXITCODE = 0
     & '.\Tools\RenderingPipeline\Publish-RenderingProfiles.ps1' `
