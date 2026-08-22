@@ -1,4 +1,5 @@
 #include "Npc.h"
+#include "EffectV2_Runtime.h"
 
 #include "Collider.h"
 #include "DeferredMaterialRenderUtils.h"
@@ -76,7 +77,11 @@ bool_t CNpc::Set_Animation(const char_t* pClipName, bool_t isLoop)
 {
 	if (nullptr == pClipName || nullptr == m_pModelCom)
 		return false;
-	return m_pModelCom->Set_Animation(pClipName, isLoop);
+	if (!m_pModelCom->Set_Animation(pClipName, isLoop))
+		return false;
+	CEffectV2Runtime::Notify_NpcClip(
+		static_pointer_cast<CNpc>(shared_from_this()), pClipName);
+	return true;
 }
 
 bool_t CNpc::Apply_NetworkState(
@@ -119,6 +124,8 @@ void CNpc::Priority_Update(f32_t fTimeDelta)
 void CNpc::Update(f32_t fTimeDelta)
 {
 	m_pModelCom->Play_Animation(fTimeDelta);
+	CEffectV2Runtime::Tick_Npc(
+		static_pointer_cast<CNpc>(shared_from_this()), m_pDevice, m_pContext);
 	if (m_fHitFlashRemainingSeconds > 0.f)
 	{
 		m_fHitFlashRemainingSeconds -= fTimeDelta;
@@ -180,6 +187,7 @@ HRESULT CNpc::Ready_Components(const NPC_DESC* pDesc)
 		TEXT("Com_Model"),
 		m_pModelCom)))
 		return E_FAIL;
+	m_strModelTag = pDesc->strModelTag;
 
 	if (pDesc->fCollisionRadius > 0.f)
 	{
