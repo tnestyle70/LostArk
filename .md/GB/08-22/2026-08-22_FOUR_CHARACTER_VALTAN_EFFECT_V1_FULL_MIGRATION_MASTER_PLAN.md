@@ -182,7 +182,7 @@ texture/channel/sampler packet, render profile, 기존 composition과 사용자 
 child 실행, native ShaderMap/VF/BasePass, distortion 및 MRT2~5는 `NATIVE_PARITY` 후속 연구이며 이 실험의
 완료 조건이 아니다.
 
-### 0.7 창술사 D·F lane
+### 0.7 창술사 D·F typed-family lane
 
 창술사 D(34110 반월섬)와 F(34150 맹룡열파)는 이 계획의 첫 `V1_COMPLETE` 확장 실험 대상이다.
 
@@ -192,6 +192,52 @@ child 실행, native ShaderMap/VF/BasePass, distortion 및 MRT2~5는 `NATIVE_PAR
 | grouped 242행의 family 분해 | 완료. 23개 parent material |
 | typed family 확장 | 진행 중. [RESULT](2026-08-22_LANCEMASTER_D_F_V1_FAMILY_EXPANSION_RESULT.md) |
 | 사용자 육안 승인·손튜닝 | `USER_REVIEW_PENDING` |
+
+### 0.8 V0 보존과 carrier 승격의 네 가지 terminal 판정
+
+V0 손튜닝 Product는 삭제 대상이 아니라 화면 비교 기준선과 rollback 대상이다. 그러나 V0 행이 원본
+carrier를 증명한다는 뜻은 아니다. V1은 source occurrence마다 emitter kind, geometry/model, attachment,
+material family가 요구하는 adapter를 확인한 뒤 아래 네 terminal 판정 중 하나만 부여한다.
+
+| 판정 | 적용 조건 | Product 처리 | 손튜닝값 처리 |
+|---|---|---|---|
+| `KEEP` | 현재 V0 행의 carrier와 semantic role이 source evidence와 맞고 화면에 의미가 있음 | 같은 stable 행에서 typed material/ABI만 승격하며 중복 행을 만들지 않음 | 기존 transform, size, timing, color를 그대로 유지 |
+| `REPLACE` | 현재 V0 행이 역할은 맞지만 Sprite/Mesh/Decal/Trail carrier 또는 attachment가 틀림 | 정확한 carrier 후보를 Tool-only로 만들고 사용자 승인과 동시에 predecessor를 원자적으로 교체 | predecessor의 손튜닝값을 대응 가능한 occurrence 필드에 이식하고 재튜닝 |
+| `ADD` | V0 pruning에서 빠졌지만 기존 행과 겹치지 않는 의미 있는 원본 역할임 | 기본 OFF Tool-only candidate로 시작하고 사용자 승인 뒤에만 Product에 추가 | source transform/timeline을 시작점으로 사용하고 별도 손튜닝 |
+| `RETIRE` | 중복, 잘못된 carrier로만 표현 가능, 리소스/근거 부재, RT0에서 의미 없음 | Product와 audition 대상에서 제외하고 이유와 source identity를 receipt에 보존 | 이식하지 않음 |
+
+조사 중인 행은 terminal 판정을 받은 것이 아니다. `PENDING_EVIDENCE` 또는 `USER_REVIEW_PENDING`으로
+별도 기록하며, 이를 `KEEP`이나 `ADD`로 간주하지 않는다. 특히 다음은 금지한다.
+
+- 원본 source element를 스킬 단위로 bulk append하거나 bulk regenerate하지 않는다.
+- Sprite에 decal texture를 연결해 Decal로 간주하거나 generic plane을 정확한 Mesh carrier로 간주하지 않는다.
+- `REPLACE` 승인 전에 V0 predecessor를 삭제하거나 stable Product composition을 바꾸지 않는다.
+- family HLSL이 보인다는 이유만으로 carrier/attachment/timeline 증거가 없는 행을 Product admission하지 않는다.
+- 한 canary가 통과했다는 이유로 같은 스킬의 다른 occurrence transform/timing을 자동 승인하지 않는다.
+
+승격 순서는 항상 다음과 같다.
+
+```text
+frozen V0 Product
+  -> one source carrier candidate (Tool-only/default OFF)
+  -> typed family packet + RT0 program
+  -> Solo draw/build/publish evidence
+  -> user A/B
+  -> KEEP / REPLACE / ADD / RETIRE
+  -> approved Product atomic publish
+```
+
+첫 carrier cohort는 다음 네 계약으로 고정한다.
+
+| 순서 | 대상 | canary 역할 | 자동 gate | Product gate |
+|---:|---|---|---|---|
+| 1 | 창술사 D source Mesh | 이미 연결된 source carrier의 no-code control | exact stable row, mesh/resource/family join과 draw contract | 사용자 control 승인 |
+| 2 | 워로드 F WPO SinWave Mesh | 잘못 평탄화된 핵심 Mesh material의 family+carrier 승격 | 두 occurrence 중 1 canary + 1 data-only reuse, strict packet | 사용자 전기 표면 승인 뒤 `KEEP` 또는 `REPLACE` |
+| 3 | 차원술사 F Fluid01 Sprite | 기존 typed equation을 실제 Sprite carrier first pixel로 연결 | canary + 같은 family 확장, alpha/time/resource closure | 사용자 화면 승인 뒤 `KEEP`/`ADD` 판정 |
+| 4 | 창술사 F MakeFlow Mesh | existing profile/HLSL에 effective parent 5-lane과 dynamic semantics 연결 | source carrier/parent/lane/dynamic exact join | 사용자 승인 뒤 `KEEP`/`REPLACE` 판정 |
+
+이 cohort의 자동 성공은 네 스킬 전체 `V1_COMPLETE`가 아니다. canary별 carrier와 typed RT0 실행이
+제품 후보가 되었음을 뜻하며, terminal 판정과 Product composition 완료는 사용자 화면 승인 뒤 닫는다.
 
 ## 1. V0 기준선 실측
 
