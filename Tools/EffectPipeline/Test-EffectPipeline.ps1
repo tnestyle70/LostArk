@@ -1573,6 +1573,7 @@ $pythonContractTests = @(
     'Tools.EffectPipeline.test_materialize_dimensionmaster_2050230_fluid01_sprite',
     'Tools.EffectPipeline.test_verify_dimensionmaster_2050230_fluid01_first_pixel',
     'Tools.EffectPipeline.test_materialize_dimensionmaster_2050210_occurrences',
+    'Tools.EffectPipeline.test_materialize_lancemaster_34110_34150_v1_cohort',
     'Tools.EffectPipeline.test_verify_artist_31490_product_join',
     'Tools.EffectPipeline.test_build_valtan_stage_effects',
     'Tools.EffectPipeline.test_build_valtan_action_bindings',

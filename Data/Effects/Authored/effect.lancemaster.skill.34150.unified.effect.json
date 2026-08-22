@@ -84582,11 +84582,21 @@
         "renderProfile": "alpha_two_sided_depth_read",
         "sourceProfile": {
           "enabled": true,
-          "profileId": "ue3.material.fx.m.fx.k.me.makeflow.02.tr.4e9c934f58ab",
+          "profileId": "ue3.material.fx.m.mi.02.fx.m.fx.k.me.makeflow.02.tr.5059859991f8",
           "runtimeShaderProfileId": "effect.ue3.grouped-translucent.v1",
-          "parentMaterialPath": "fx_m.fx_k_me_makeflow_02_tr",
+          "parentMaterialPath": "fx_m_mi_02.fx_m.fx_k_me_makeflow_02_tr",
           "semanticStatus": "reconstructed_profile",
           "textures": [
+            {
+              "name": "opacity_tex",
+              "sourceObjectPath": "fx_tex_05.fx_m_spatter_001_xyclamp",
+              "assetId": "Effect/LanceMaster/Textures/fx_m_spatter_001_xyclamp.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "legacy_default",
+              "group": "opacity"
+            },
             {
               "name": "diff_tex1",
               "sourceObjectPath": "fx_tex_04.fx_h_atypical_01_1",
@@ -84595,7 +84605,7 @@
               "addressV": "wrap",
               "colorSpace": "linear",
               "samplingEvidence": "legacy_default",
-              "group": ""
+              "group": "diff"
             },
             {
               "name": "diff_tex2",
@@ -84605,7 +84615,17 @@
               "addressV": "wrap",
               "colorSpace": "linear",
               "samplingEvidence": "legacy_default",
-              "group": ""
+              "group": "diff"
+            },
+            {
+              "name": "color_tex",
+              "sourceObjectPath": "fx_l_environment_001",
+              "assetId": "Effect/LanceMaster/Textures/fx_l_environment_001.dds",
+              "addressU": "wrap",
+              "addressV": "wrap",
+              "colorSpace": "linear",
+              "samplingEvidence": "legacy_default",
+              "group": "color"
             },
             {
               "name": "flowtex",
@@ -84616,118 +84636,148 @@
               "colorSpace": "linear",
               "samplingEvidence": "legacy_default",
               "group": ""
-            },
-            {
-              "name": "opacity_tex",
-              "sourceObjectPath": "fx_tex_05.fx_m_spatter_001_xyclamp",
-              "assetId": "Effect/LanceMaster/Textures/fx_m_spatter_001_xyclamp.dds",
-              "addressU": "wrap",
-              "addressV": "wrap",
-              "colorSpace": "linear",
-              "samplingEvidence": "legacy_default",
-              "group": ""
             }
           ],
           "scalars": [
             {
-              "name": "diff1_tile_u",
-              "value": 0.5,
-              "group": ""
-            },
-            {
-              "name": "diff1_tile_v",
+              "name": "opacity_pow",
               "value": 1.0,
-              "group": ""
-            },
-            {
-              "name": "diff2_pan_v",
-              "value": 0.0,
-              "group": ""
-            },
-            {
-              "name": "diff2_tile_u",
-              "value": 1.2000000476837158,
-              "group": ""
-            },
-            {
-              "name": "diff2_tile_v",
-              "value": 1.0,
-              "group": ""
-            },
-            {
-              "name": "diff_des",
-              "value": 1.0,
-              "group": ""
-            },
-            {
-              "name": "diff_pow",
-              "value": 1.2000000476837158,
-              "group": ""
-            },
-            {
-              "name": "diff_str",
-              "value": 30.0,
-              "group": ""
-            },
-            {
-              "name": "distort_str",
-              "value": 0.20000000298023224,
-              "group": ""
-            },
-            {
-              "name": "flow_bias",
-              "value": 0.20000000298023224,
-              "group": ""
-            },
-            {
-              "name": "flow_pan_v",
-              "value": 0.10000000149011612,
-              "group": ""
-            },
-            {
-              "name": "flow_tile_u",
-              "value": 0.5,
-              "group": ""
-            },
-            {
-              "name": "flow_tile_v",
-              "value": 1.0,
-              "group": ""
+              "group": "opacity"
             },
             {
               "name": "gra_pow",
               "value": 1.0,
-              "group": ""
+              "group": "opacity"
             },
             {
               "name": "opacity_distort_str",
               "value": 0.20000000298023224,
-              "group": ""
+              "group": "opacity"
             },
             {
-              "name": "opacity_pow",
+              "name": "diff1_pan_v",
+              "value": 0.0,
+              "group": "diff"
+            },
+            {
+              "name": "diff1_pan_u",
+              "value": 0.0,
+              "group": "diff"
+            },
+            {
+              "name": "flow_bias",
+              "value": 0.20000000298023224,
+              "group": "flow"
+            },
+            {
+              "name": "flow_tile_v",
               "value": 1.0,
-              "group": ""
+              "group": "flow"
+            },
+            {
+              "name": "flow_tile_u",
+              "value": 0.5,
+              "group": "flow"
+            },
+            {
+              "name": "diff1_tile_v",
+              "value": 1.0,
+              "group": "diff"
+            },
+            {
+              "name": "diff1_tile_u",
+              "value": 0.5,
+              "group": "diff"
             },
             {
               "name": "opacity_rot",
               "value": 0.0,
-              "group": ""
-            },
-            {
-              "name": "opacity_str",
-              "value": 2.0,
-              "group": ""
-            },
-            {
-              "name": "opacity_tile_u",
-              "value": 1.0,
-              "group": ""
+              "group": "opacity"
             },
             {
               "name": "opacity_tile_v",
               "value": 1.0,
-              "group": ""
+              "group": "opacity"
+            },
+            {
+              "name": "opacity_tile_u",
+              "value": 1.0,
+              "group": "opacity"
+            },
+            {
+              "name": "diff_str",
+              "value": 30.0,
+              "group": "diff"
+            },
+            {
+              "name": "diff_pow",
+              "value": 1.2000000476837158,
+              "group": "diff"
+            },
+            {
+              "name": "diff_des",
+              "value": 1.0,
+              "group": "diff"
+            },
+            {
+              "name": "diff2_pan_v",
+              "value": 0.0,
+              "group": "diff"
+            },
+            {
+              "name": "diff2_pan_u",
+              "value": 0.0,
+              "group": "diff"
+            },
+            {
+              "name": "diff2_tile_v",
+              "value": 1.0,
+              "group": "diff"
+            },
+            {
+              "name": "diff2_tile_u",
+              "value": 1.2000000476837158,
+              "group": "diff"
+            },
+            {
+              "name": "color_str",
+              "value": 2.0,
+              "group": "color"
+            },
+            {
+              "name": "color_pow",
+              "value": 1.0,
+              "group": "color"
+            },
+            {
+              "name": "color_des",
+              "value": 0.0,
+              "group": "color"
+            },
+            {
+              "name": "flow_pan_u",
+              "value": 0.0,
+              "group": "flow"
+            },
+            {
+              "name": "flow_pan_v",
+              "value": 0.10000000149011612,
+              "group": "flow"
+            },
+            {
+              "name": "cameravec_pow",
+              "value": 1.0,
+              "group": "None"
+            },
+            {
+              "name": "opacity_str",
+              "value": 2.0,
+              "group": "opacity"
+            },
+            {
+              "name": "distort_str",
+              "value": 0.20000000298023224,
+              "group": "distort"
             }
           ],
           "vectors": [],
