@@ -3,9 +3,10 @@
 
 The output is deliberately outside ``Data/Effects/Authored``.  Each admitted
 ``clipOccurrenceId`` owns one ordinary v13 Effect document containing every
-reviewed source occurrence's drawable first-LOD carrier.  Existing authored
+reviewed source occurrence's drawable first-LOD carrier.  Carrier V1 successor
 documents, catalog rows, and v2 cues are only inspected; the reconcile receipt
-is missing-only and never retires or overwrites an authored element.
+is missing-only and never retires or overwrites an authored element.  Retired
+V0 owner identities resolve only through the sealed successor contract.
 
 Portal Rush FINISH remains excluded while its selected source stage is
 ``SOURCE_TIMING_REVIEW_REQUIRED``.  This canary therefore proves PORTAL,
@@ -37,25 +38,43 @@ RECEIPT_NAME = "Valtan.portal-rush-imported-canary.v1.json"
 CATALOG_PATH = ROOT / "Data/Effects/EffectCatalog.json"
 CUE_PATH = source_inventory.CUE_PATH
 AUTHORED_ROOT = source_inventory.AUTHORED_ROOT
+CARRIER_V1_RECEIPT_PATH = (
+    ROOT
+    / "Data/Effects/Imported/Valtan/CarrierV1/"
+    "Valtan.carrier-v1-materialization-receipt.v1.json"
+)
+MIGRATION_RECEIPT_PATH = (
+    ROOT
+    / "Data/Animation/Authored/Valtan/"
+    "Valtan.pattern-occurrence-v2-migration.receipt.json"
+)
 
 EXPECTED_CLIPS = {
     "valtan.attack.portal-rush.portal.clip.01": {
         "sourceStageIndex": 0,
+        "stageId": "PORTAL",
         "gameplayActionId": "valtan.attack.portal-rush.portal",
-        "effectAssetId": "effect.valtan.portal-rush.portal",
+        "retiredBindingId": "cue.valtan.portal-rush.portal",
+        "retiredEffectAssetId": "effect.valtan.portal-rush.portal",
     },
     "valtan.attack.portal-rush.rushes.clip.01": {
         "sourceStageIndex": 1,
+        "stageId": "RUSHES",
         "gameplayActionId": "valtan.attack.portal-rush.rushes",
-        "effectAssetId": "effect.valtan.portal-rush.rushes",
+        "retiredBindingId": "cue.valtan.portal-rush.rushes",
+        "retiredEffectAssetId": "effect.valtan.portal-rush.rushes",
     },
     "valtan.attack.portal-rush.recovery.clip.01": {
         "sourceStageIndex": 6,
+        "stageId": "RECOVERY",
         "gameplayActionId": "valtan.attack.portal-rush.recovery",
-        "effectAssetId": "effect.valtan.portal-rush.recovery",
+        "retiredBindingId": "cue.valtan.portal-rush.recovery",
+        "retiredEffectAssetId": "effect.valtan.portal-rush.recovery",
     },
 }
 EXCLUDED_FINISH_CLIP = "valtan.attack.portal-rush.finish.clip.01"
+EXCLUDED_FINISH_BINDING_ID = "cue.valtan.portal-rush.finish"
+EXCLUDED_FINISH_EFFECT_ID = "effect.valtan.portal-rush.finish"
 
 
 class CanaryError(RuntimeError):
@@ -64,6 +83,153 @@ class CanaryError(RuntimeError):
 
 def read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+def load_carrier_v1_successor_contract() -> dict[str, Any]:
+    """Load the successor ledger and verify both migration hash seals."""
+    try:
+        carrier_receipt = read_json(CARRIER_V1_RECEIPT_PATH)
+        migration_receipt = read_json(MIGRATION_RECEIPT_PATH)
+        cue_document = read_json(CUE_PATH)
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise CanaryError(
+            f"Carrier V1 successor contract could not be loaded: {error}"
+        ) from error
+
+    if (
+        carrier_receipt.get("schema")
+        != "lostark.valtan-carrier-v1-materialization-receipt"
+        or carrier_receipt.get("formatVersion") != 1
+    ):
+        raise CanaryError("Carrier V1 materialization receipt identity drifted")
+    if (
+        migration_receipt.get("schema")
+        != "lostark.valtan-pattern-occurrence-v2-migration-receipt"
+        or migration_receipt.get("formatVersion") != 2
+    ):
+        raise CanaryError("pattern occurrence migration receipt identity drifted")
+    if cue_document.get("formatVersion") != 2:
+        raise CanaryError("Carrier V1 successor contract requires v2 cues")
+
+    migration_contract = migration_receipt.get("carrierV1SuccessorContract")
+    if not isinstance(migration_contract, dict):
+        raise CanaryError("migration receipt lost its Carrier V1 successor contract")
+    try:
+        expected_receipt_path = CARRIER_V1_RECEIPT_PATH.relative_to(ROOT).as_posix()
+    except ValueError as error:
+        raise CanaryError("Carrier V1 receipt escaped the repository root") from error
+    carrier_hash = source_inventory.canonical_sha256(carrier_receipt)
+    cue_hash = source_inventory.canonical_sha256(cue_document)
+    if (
+        migration_contract.get("carrierReceiptPath") != expected_receipt_path
+        or migration_contract.get("carrierReceiptCanonicalSha256") != carrier_hash
+        or migration_contract.get("currentCueCanonicalSha256") != cue_hash
+    ):
+        raise CanaryError("Carrier V1 successor contract hash seal drifted")
+
+    mappings = carrier_receipt.get("retiredOwnerSuccessorMappings")
+    if not isinstance(mappings, list) or not mappings:
+        raise CanaryError("Carrier V1 successor mapping ledger is missing")
+    by_retired_binding: dict[str, dict[str, Any]] = {}
+    replacement_count = 0
+    retired_without_successor_count = 0
+    for raw_row in mappings:
+        if not isinstance(raw_row, dict):
+            raise CanaryError("Carrier V1 successor mapping row is invalid")
+        row = copy.deepcopy(raw_row)
+        retired_binding_id = str(row.get("retiredBindingId") or "")
+        required_identity = (
+            retired_binding_id,
+            str(row.get("retiredEffectAssetId") or ""),
+            str(row.get("patternId") or ""),
+            str(row.get("stageId") or ""),
+            str(row.get("actionId") or ""),
+            str(row.get("clipOccurrenceId") or ""),
+        )
+        if any(not value for value in required_identity):
+            raise CanaryError("Carrier V1 successor mapping identity is incomplete")
+        if retired_binding_id in by_retired_binding:
+            raise CanaryError(
+                f"duplicate retired Carrier V1 cue mapping: {retired_binding_id}"
+            )
+        disposition = row.get("disposition")
+        replacement_binding_id = row.get("replacementBindingId")
+        replacement_effect_id = row.get("replacementEffectAssetId")
+        if disposition == "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER":
+            if not isinstance(replacement_binding_id, str) or not replacement_binding_id:
+                raise CanaryError("Carrier V1 successor binding identity is missing")
+            if not isinstance(replacement_effect_id, str) or not replacement_effect_id:
+                raise CanaryError("Carrier V1 successor effect identity is missing")
+            replacement_count += 1
+        elif disposition == "RETIRED_NO_EXACT_REVIEWED_CARRIER_OWNER":
+            if replacement_binding_id is not None or replacement_effect_id is not None:
+                raise CanaryError("successor-less Carrier V1 retirement gained an owner")
+            retired_without_successor_count += 1
+        else:
+            raise CanaryError(f"unknown Carrier V1 successor disposition: {disposition}")
+        by_retired_binding[retired_binding_id] = row
+
+    current_cues = cue_document.get("cues")
+    if not isinstance(current_cues, list):
+        raise CanaryError("current v2 cue document is invalid")
+    current_binding_ids = [str(row.get("bindingId") or "") for row in current_cues]
+    if (
+        any(not value for value in current_binding_ids)
+        or len(current_binding_ids) != len(set(current_binding_ids))
+        or any(value in by_retired_binding for value in current_binding_ids)
+    ):
+        raise CanaryError("current cue document retained a retired or duplicate owner")
+    replacement_binding_ids = {
+        str(row["replacementBindingId"])
+        for row in mappings
+        if row.get("disposition") == "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER"
+    }
+    if not replacement_binding_ids.issubset(set(current_binding_ids)):
+        raise CanaryError("current cue document is missing a Carrier V1 successor")
+    if (
+        migration_contract.get("currentCueCount") != len(current_cues)
+        or migration_contract.get("retiredCueCount") != len(mappings)
+        or migration_contract.get("replacementMappingCount") != replacement_count
+        or migration_contract.get("retiredWithoutSuccessorCount")
+        != retired_without_successor_count
+        or migration_contract.get("uniqueReplacementBindingCount")
+        != len(replacement_binding_ids)
+    ):
+        raise CanaryError("Carrier V1 successor contract counts drifted")
+
+    return {
+        "carrierReceipt": carrier_receipt,
+        "migrationReceipt": migration_receipt,
+        "migrationContract": copy.deepcopy(migration_contract),
+        "cueDocument": cue_document,
+        "byRetiredBindingId": by_retired_binding,
+        "carrierReceiptCanonicalSha256": carrier_hash,
+        "migrationReceiptCanonicalSha256": source_inventory.canonical_sha256(
+            migration_receipt
+        ),
+        "currentCueCanonicalSha256": cue_hash,
+    }
+
+
+def require_portal_successor(
+    contract: dict[str, Any],
+    clip_occurrence_id: str,
+    expected: dict[str, Any],
+) -> dict[str, Any]:
+    mapping = contract["byRetiredBindingId"].get(expected["retiredBindingId"])
+    if mapping is None:
+        raise CanaryError(f"Portal Rush successor mapping is missing: {clip_occurrence_id}")
+    if (
+        mapping.get("retiredEffectAssetId") != expected["retiredEffectAssetId"]
+        or mapping.get("patternId") != PATTERN_ID
+        or mapping.get("stageId") != expected["stageId"]
+        or mapping.get("actionId") != expected["gameplayActionId"]
+        or mapping.get("clipOccurrenceId") != clip_occurrence_id
+        or mapping.get("disposition")
+        != "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER"
+    ):
+        raise CanaryError(f"Portal Rush successor mapping drifted: {clip_occurrence_id}")
+    return copy.deepcopy(mapping)
 
 
 def candidate_filename(effect_asset_id: str) -> str:
@@ -254,6 +420,24 @@ def build_canary(
             + repr(sorted(occurrences_by_clip))
         )
 
+    successor_contract = load_carrier_v1_successor_contract()
+    finish_mapping = successor_contract["byRetiredBindingId"].get(
+        EXCLUDED_FINISH_BINDING_ID
+    )
+    if (
+        finish_mapping is None
+        or finish_mapping.get("retiredEffectAssetId") != EXCLUDED_FINISH_EFFECT_ID
+        or finish_mapping.get("patternId") != PATTERN_ID
+        or finish_mapping.get("stageId") != "FINISH"
+        or finish_mapping.get("actionId") != "valtan.attack.portal-rush.finish"
+        or finish_mapping.get("clipOccurrenceId") != EXCLUDED_FINISH_CLIP
+        or finish_mapping.get("disposition")
+        != "RETIRED_NO_EXACT_REVIEWED_CARRIER_OWNER"
+        or finish_mapping.get("replacementBindingId") is not None
+        or finish_mapping.get("replacementEffectAssetId") is not None
+    ):
+        raise CanaryError("Portal FINISH retirement contract drifted")
+
     catalogs = catalog_index()
     cues = cue_index()
     files: dict[str, bytes] = {}
@@ -261,13 +445,18 @@ def build_canary(
     projection_rows = []
     for clip_occurrence_id in sorted(EXPECTED_CLIPS):
         expected = EXPECTED_CLIPS[clip_occurrence_id]
-        effect_id = expected["effectAssetId"]
+        successor = require_portal_successor(
+            successor_contract, clip_occurrence_id, expected
+        )
+        effect_id = successor["replacementEffectAssetId"]
+        binding_id = successor["replacementBindingId"]
         matching_cues = [
             row
             for row in cues.get(clip_occurrence_id, [])
             if row.get("patternId") == PATTERN_ID
             and row.get("actionId") == expected["gameplayActionId"]
             and row.get("effectAssetId") == effect_id
+            and row.get("bindingId") == binding_id
         ]
         cue = matching_cues[0] if len(matching_cues) == 1 else None
         catalog = catalogs.get(effect_id)
@@ -337,6 +526,10 @@ def build_canary(
                 "clipOccurrenceId": clip_occurrence_id,
                 "sourceStageIndex": expected["sourceStageIndex"],
                 "gameplayActionId": expected["gameplayActionId"],
+                "retiredBindingId": expected["retiredBindingId"],
+                "retiredEffectAssetId": expected["retiredEffectAssetId"],
+                "successorDisposition": successor["disposition"],
+                "successorBindingId": binding_id,
                 "effectAssetId": effect_id,
                 "candidateDocumentPath": relative_path,
                 "candidateDocumentSha256": source_inventory.sha256_bytes(
@@ -350,7 +543,7 @@ def build_canary(
                 "executableElementCount": len(seeds),
                 "catalogDisposition": "REUSE_EXISTING_NO_MUTATION",
                 "catalogRow": catalog,
-                "cueDisposition": "REUSE_EXISTING_V2_NO_MUTATION",
+                "cueDisposition": "REUSE_CARRIER_V1_SUCCESSOR_V2_NO_MUTATION",
                 "cueRow": cue,
                 "authoredDocumentPath": authored_path.relative_to(ROOT).as_posix(),
                 "authoredDocumentSha256": source_inventory.sha256_file(
@@ -370,6 +563,23 @@ def build_canary(
             "path": selection_path.relative_to(ROOT).as_posix(),
             "sha256": source_inventory.sha256_file(selection_path),
         },
+        "carrierV1SuccessorContract": {
+            "carrierReceiptPath": CARRIER_V1_RECEIPT_PATH.relative_to(
+                ROOT
+            ).as_posix(),
+            "carrierReceiptCanonicalSha256": successor_contract[
+                "carrierReceiptCanonicalSha256"
+            ],
+            "migrationReceiptPath": MIGRATION_RECEIPT_PATH.relative_to(
+                ROOT
+            ).as_posix(),
+            "migrationReceiptCanonicalSha256": successor_contract[
+                "migrationReceiptCanonicalSha256"
+            ],
+            "currentCueCanonicalSha256": successor_contract[
+                "currentCueCanonicalSha256"
+            ],
+        },
         "sourceProjectionSha256": source_inventory.canonical_sha256(
             sorted(
                 projection_rows,
@@ -383,7 +593,13 @@ def build_canary(
         "excluded": [
             {
                 "clipOccurrenceId": EXCLUDED_FINISH_CLIP,
-                "disposition": "SOURCE_TIMING_REVIEW_REQUIRED",
+                "retiredBindingId": EXCLUDED_FINISH_BINDING_ID,
+                "retiredEffectAssetId": EXCLUDED_FINISH_EFFECT_ID,
+                "disposition": (
+                    "SOURCE_TIMING_REVIEW_REQUIRED_AND_"
+                    "CARRIER_V1_RETIRED_NO_SUCCESSOR"
+                ),
+                "successorContractRow": copy.deepcopy(finish_mapping),
             }
         ],
         "documents": receipt_documents,

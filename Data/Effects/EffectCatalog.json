@@ -711,419 +711,219 @@
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34650.clip2.unified.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.arena-break-109.impact",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.backstep.windup.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.arena-break-109.impact.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.backstep.windup.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.arena-break-109.impact-hold",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.charge-grab-roar.counter.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.arena-break-109.impact-hold.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.charge-grab-roar.counter.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.arena-break-109.recovery",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.charge-grab-roar.recovery.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.arena-break-109.recovery.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.charge-grab-roar.recovery.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.arena-break-109.takeoff",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.charge-grab-roar.roar.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.arena-break-109.takeoff.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.charge-grab-roar.roar.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.arena-break-109.wide-reveal",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.down-smash.active.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.arena-break-109.wide-reveal.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.down-smash.active.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.arena-break-33.cutscene",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.earthquake-smash.delayed.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.arena-break-33.cutscene.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.earthquake-smash.delayed.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.arena-break-33.recovery",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.earthquake-smash.impact.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.arena-break-33.recovery.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.earthquake-smash.impact.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.armor-break-opening.charge",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.armor-break-opening.charge.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.backstep.recovery",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.backstep.recovery.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.backstep.windup",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.active.clip-02",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.backstep.windup.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.active.clip-02.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.backstep.windup.trails",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.backstep.windup.trails.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.bind-charge-smash.charge",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.front-back-front.active.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.bind-charge-smash.charge.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.front-back-front.active.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.bind-charge-smash.lock",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.ground-wave-smash.active.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.bind-charge-smash.lock.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.ground-wave-smash.active.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.bind-charge-smash.smash",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.ground-wave-smash.active.clip-02",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.bind-charge-smash.smash.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.ground-wave-smash.active.clip-02.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.center-grab-counter-64.center",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.high-jump.land.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.center-grab-counter-64.center.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.high-jump.land.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.center-grab-counter-64.counter",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.center-grab-counter-64.counter.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.center-grab-counter-64.failed-charge",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.imprison-roar.active.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.center-grab-counter-64.failed-charge.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.imprison-roar.active.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.center-grab-counter-64.recovery",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.imprison-roar.recovery.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.center-grab-counter-64.recovery.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.imprison-roar.recovery.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.charge-grab-roar.counter",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.imprison-roar.windup.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.charge-grab-roar.counter.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.imprison-roar.windup.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.charge-grab-roar.recovery",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.jump-spin.jump.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.charge-grab-roar.recovery.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.jump-spin.jump.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.charge-grab-roar.roar",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.ledge-roar.active.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.charge-grab-roar.roar.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.ledge-roar.active.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.dash-charge.active",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.ledge-roar.recovery.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.dash-charge.active.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.ledge-roar.recovery.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.dash-charge.recovery",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.ledge-roar.windup.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.dash-charge.recovery.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.ledge-roar.windup.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.dash-charge.windup",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.dash-charge.windup.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.down-smash.active",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.down-smash.active.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.down-smash.recovery",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.down-smash.recovery.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.down-smash.windup",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.down-smash.windup.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.earthquake-smash.delayed",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.earthquake-smash.delayed.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.earthquake-smash.impact",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.earthquake-smash.impact.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.earthquake-smash.recovery",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.red-blade-wave.recovery.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.earthquake-smash.recovery.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.red-blade-wave.recovery.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.earthquake-smash.windup",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.super-smash.windup.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.earthquake-smash.windup.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.super-smash.windup.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.entrance-whirlwind.recovery",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.swing.active.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.entrance-whirlwind.recovery.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.swing.active.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.entrance-whirlwind.sweep",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.swing.active.clip-02",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.entrance-whirlwind.sweep.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.swing.active.clip-02.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.fist-in-out.inner",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.fist-in-out.inner.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.fist-in-out.outer",
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.fist-in-out.outer.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.fist-in-out.recovery",
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.fist-in-out.recovery.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.floor-wipe-130.first-smash",
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.first-smash.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.floor-wipe-130.interval",
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.interval.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.floor-wipe-130.second-smash",
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.second-smash.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.floor-wipe-130.windup",
+      "effectAssetId": "effect.valtan.carrier-v1.mechanic.ghost-transition-15.tracking.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.floor-wipe-130.windup.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.mechanic.ghost-transition-15.tracking.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.four-pillars-105.takeoff",
+      "effectAssetId": "effect.valtan.carrier-v1.reactive.parry.slash.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.four-pillars-105.takeoff.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.reactive.parry.slash.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.four-pillars-105.target-cone",
+      "effectAssetId": "effect.valtan.carrier-v1.reactive.parry.stance.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.four-pillars-105.target-cone.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.reactive.parry.stance.clip-01.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.four-slash.active",
+      "effectAssetId": "effect.valtan.carrier-v1.reactive.triple-counter.first.clip-01",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.four-slash.active.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.four-slash.active.clip-02",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.four-slash.active.clip-02.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.four-slash.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.four-slash.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.four-slash.windup",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.four-slash.windup.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.front-back-front.active",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.active.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.front-back-front.auxiliary-source-wave",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.auxiliary-source-wave.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.front-back-front.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.front-back-front.source-wave-01",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-01.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.front-back-front.source-wave-02",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-02.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.front-back-front.source-wave-03",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.source-wave-03.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.front-back-front.windup",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.front-back-front.windup.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ghost-transition-15.four-directions",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.four-directions.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ghost-transition-15.ghost",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.ghost.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ghost-transition-15.ghost-appear",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.ghost-appear.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ghost-transition-15.inner",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.inner.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ghost-transition-15.portal-open",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.portal-open.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ghost-transition-15.tracking",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ghost-transition-15.tracking.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ground-wave-smash.active",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ground-wave-smash.active.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ground-wave-smash.windup",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ground-wave-smash.windup.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.high-jump.land",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.high-jump.land.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.high-jump.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.high-jump.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.high-jump.takeoff",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.high-jump.takeoff.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.imprison-roar.active",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.imprison-roar.active.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.imprison-roar.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.imprison-roar.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.imprison-roar.windup",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.imprison-roar.windup.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.jump-spin.jump",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.jump-spin.jump.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.jump-spin.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.jump-spin.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.jump-spin.spin",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.jump-spin.spin.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.jump-spin.spin.trails",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.jump-spin.spin.trails.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ledge-roar.active",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ledge-roar.active.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ledge-roar.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ledge-roar.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.ledge-roar.windup",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.ledge-roar.windup.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.magic-choice.inner",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.magic-choice.inner.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.magic-choice.outer",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.magic-choice.outer.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.magic-choice.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.magic-choice.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.magic-choice.windup",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.magic-choice.windup.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.magic-orb-stagger-76.shield",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.magic-orb-stagger-76.shield.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.magic-orb-stagger-76.window",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.magic-orb-stagger-76.window.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.parry.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.parry.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.parry.slash",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.parry.slash.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.parry.stance",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.parry.stance.effect.json"
+      "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.reactive.triple-counter.first.clip-01.effect.json"
     },
     {
       "effectAssetId": "effect.valtan.pattern.420633.active",
@@ -1131,124 +931,14 @@
       "authoringPath": "Effects/Authored/effect.valtan.pattern.420633.active.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.portal-rush.finish",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.portal-rush.finish.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.portal-rush.portal",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.portal-rush.portal.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.portal-rush.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.portal-rush.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.portal-rush.rushes",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.portal-rush.rushes.effect.json"
-    },
-    {
       "effectAssetId": "effect.valtan.red-blade-wave.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.red-blade-wave.active.effect.json"
     },
     {
-      "effectAssetId": "effect.valtan.red-blade-wave.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.red-blade-wave.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.red-blade-wave.windup",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.red-blade-wave.windup.effect.json"
-    },
-    {
       "effectAssetId": "effect.valtan.sky-axe.active",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.valtan.sky-axe.active.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.stomp.active",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.stomp.active.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.stomp.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.stomp.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.stomp.windup",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.stomp.windup.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.super-smash.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.super-smash.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.super-smash.windup",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.super-smash.windup.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.swing.active",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.swing.active.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.swing.active.clip-02",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.swing.active.clip-02.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.swing.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.swing.recovery.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.swing.windup",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.swing.windup.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.triple-counter.first",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.first.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.triple-counter.first-fail",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.first-fail.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.triple-counter.second",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.second.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.triple-counter.second-fail",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.second-fail.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.triple-counter.third",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.third.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.triple-counter.third-fail",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.triple-counter.third-fail.effect.json"
-    },
-    {
-      "effectAssetId": "effect.valtan.whirlwind.recovery",
-      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-      "authoringPath": "Effects/Authored/effect.valtan.whirlwind.recovery.effect.json"
     },
     {
       "effectAssetId": "effect.warlord.skill.17000.ba1",

@@ -61,10 +61,23 @@ SAFE_GAP_MANIFEST_PATH = (
 SAFE_GAP_APPLICATION_RECEIPT_PATH = (
     SAFE_GAP_ROOT / "Valtan.safe-reviewed-gap-application-receipt.v1.json"
 )
+CARRIER_V1_RECEIPT_PATH = (
+    IMPORTED_VALTAN_ROOT
+    / "CarrierV1/Valtan.carrier-v1-materialization-receipt.v1.json"
+)
 
 PROTECTED_EFFECT_ASSET_IDS = {
     "effect.valtan.pattern.420633.active",
 }
+ALLOWED_POST_SAFE_GAP_CATALOG_ROWS = (
+    {
+        "effectAssetId": "effect.artist.skill.31490.unified",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": (
+            "Effects/Authored/effect.artist.skill.31490.unified.effect.json"
+        ),
+    },
+)
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 
 # These two boss-root cues were deliberately retired after the reviewed-source
@@ -864,13 +877,15 @@ def load_inventory(selection_path: Path) -> dict[str, Any]:
 def validate_safe_gap_core_projection_identity(
     inventory: dict[str, Any], manifest: dict[str, Any]
 ) -> None:
-    """Prove the downstream SafeGap core slice is the frozen 160-row gap.
+    """Prove the downstream SafeGap core slice is the frozen 160-row witness.
 
     The reviewed batch predates SafeReviewedGaps.  Once that later batch is
     applied, its four extra cues must not be reinterpreted as reviewed input.
     We therefore join the downstream receipt back to the exact source
     occurrence/carrier pairs instead of excluding a cue merely by a friendly
-    effect name.
+    effect name.  Carrier V1 may add exact decal carriers to those clips, so
+    the historical 160 pairs are required to remain an exact subset rather
+    than pretending to be the current exhaustive carrier denominator.
     """
     candidate_rows = manifest.get("candidateDocuments")
     core_rows = manifest.get("coreProjections")
@@ -973,7 +988,7 @@ def validate_safe_gap_core_projection_identity(
 
     expected_count = EXPECTED_COUNTS["missingCueProjectionCount"]
     if (
-        receipt_pairs != expected_pairs
+        not receipt_pairs.issubset(expected_pairs)
         or len(receipt_pairs) != expected_count
         or summary.get("coreProjectionCount") != expected_count
         or sum(
@@ -1161,8 +1176,16 @@ def reconstruct_reviewed_inputs_after_safe_gap(
         - int(input_identity.get("cueCount") or 0)
     )
     allowed_cue_composition = cue_delta == -len(retired_binding_ids)
+    downstream_catalog_rows = [
+        row
+        for expected in ALLOWED_POST_SAFE_GAP_CATALOG_ROWS
+        for row in reviewed_catalog["effects"]
+        if row.get("effectAssetId") == expected["effectAssetId"]
+    ]
     allowed_catalog_composition = (
-        catalog_delta == 0 and sky_axe_rows == [expected_sky_axe_row]
+        catalog_delta == len(ALLOWED_POST_SAFE_GAP_CATALOG_ROWS)
+        and downstream_catalog_rows == list(ALLOWED_POST_SAFE_GAP_CATALOG_ROWS)
+        and sky_axe_rows == [expected_sky_axe_row]
     )
     if (
         not SHA256_RE.fullmatch(baseline["cueRawSha256"])
@@ -1179,6 +1202,123 @@ def reconstruct_reviewed_inputs_after_safe_gap(
     return reviewed_cues, reviewed_catalog, baseline
 
 
+def validate_historical_candidate_outputs(
+    receipt: dict[str, Any], inventory: dict[str, Any]
+) -> None:
+    """Keep the predecessor candidates as sealed, non-Product witnesses."""
+    validate_receipt(receipt)
+    if (
+        receipt.get("summary", {}).get("candidateDocumentCount") != 36
+        or receipt.get("summary", {}).get("candidateElementCount") != 279
+        or receipt.get("summary", {}).get("reachableCoreProjectionCount") != 628
+    ):
+        raise CandidateError("historical reviewed candidate denominator drifted")
+    for row in receipt.get("documents") or []:
+        relative = str(row.get("candidateDocumentPath") or "")
+        path = ROOT / relative
+        if not path.is_file() or source_inventory.sha256_file(path) != row.get(
+            "candidateDocumentSha256"
+        ):
+            raise CandidateError(
+                f"historical reviewed candidate output drifted: {relative}"
+            )
+    safe_manifest = read_json(SAFE_GAP_MANIFEST_PATH)
+    validate_sealed_artifact(
+        safe_manifest,
+        "lostark.valtan-safe-reviewed-gap-candidates",
+        "SafeReviewedGaps historical witness",
+    )
+    validate_safe_gap_core_projection_identity(inventory, safe_manifest)
+
+
+def validate_carrier_v1_successor(
+    historical_receipt: dict[str, Any],
+    *,
+    cue_document: dict[str, Any] | None = None,
+    catalog_document: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Prove the current Product is Carrier V1, not the old candidate batch."""
+    successor = read_json(CARRIER_V1_RECEIPT_PATH)
+    if (
+        successor.get("schema")
+        != "lostark.valtan-carrier-v1-materialization-receipt"
+        or successor.get("formatVersion") != 1
+        or successor.get("bossArchetypeId") != "BOSS_VALTAN"
+    ):
+        raise CandidateError("Carrier V1 successor receipt header is invalid")
+    summary = successor.get("summary") or {}
+    reset = successor.get("productReset") or {}
+    if (
+        summary.get("reviewedCoreProjectionCount") != 660
+        or summary.get("reviewedCoreSpriteProjectionCount") != 455
+        or summary.get("reviewedCoreMeshProjectionCount") != 173
+        or summary.get("reviewedCoreDecalProjectionCount") != 32
+        or summary.get("materializedProjectionCount") != 657
+        or summary.get("finalValtanCatalogCount") != 46
+        or summary.get("finalBossRootCueCount") != 44
+        or reset.get("nonExactOldBossRootSurvivorCount") != 0
+        or reset.get("duplicateClipOccurrenceOwnerCount") != 0
+    ):
+        raise CandidateError("Carrier V1 successor denominator drifted")
+
+    cue_document = cue_document or read_json(CUE_PATH)
+    catalog_document = catalog_document or read_json(CATALOG_PATH)
+    outputs = successor.get("outputs") or {}
+    cue_output = outputs.get("cues") or {}
+    catalog_output = outputs.get("catalog") or {}
+    catalog_projection = source_inventory.effect_catalog_prefix_projection(
+        catalog_document, "effect.valtan."
+    )
+    if (
+        cue_output.get("cueCount") != len(cue_document.get("cues") or [])
+        or cue_output.get("canonicalSha256")
+        != source_inventory.canonical_sha256(cue_document)
+        or catalog_output.get("scope") != "EFFECT_ASSET_ID_PREFIX"
+        or catalog_output.get("effectAssetIdPrefix") != "effect.valtan."
+        or catalog_output.get("effectCount")
+        != len(catalog_projection["effects"])
+        or catalog_output.get("canonicalSha256")
+        != source_inventory.canonical_sha256(catalog_projection)
+    ):
+        raise CandidateError("Carrier V1 current Product outputs drifted")
+
+    historical_effect_ids = {
+        str(row.get("effectAssetId") or "")
+        for row in historical_receipt.get("documents") or []
+    }
+    live_effect_ids = {
+        str(row.get("effectAssetId") or "")
+        for row in catalog_document.get("effects") or []
+    }
+    live_historical = historical_effect_ids.intersection(live_effect_ids)
+    if live_historical != {"effect.valtan.red-blade-wave.active"}:
+        raise CandidateError(
+            "historical reviewed owner was restored outside the Red Blade "
+            "combat-object exception"
+        )
+    live_cue_effect_ids = {
+        str(row.get("effectAssetId") or "")
+        for row in cue_document.get("cues") or []
+    }
+    if "effect.valtan.red-blade-wave.active" in live_cue_effect_ids:
+        raise CandidateError("Red Blade combat-object owner regained a boss-root cue")
+
+    mappings_by_effect: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in successor.get("retiredOwnerSuccessorMappings") or []:
+        mappings_by_effect[str(row.get("retiredEffectAssetId") or "")].append(row)
+    unmapped = sorted(
+        effect_id
+        for effect_id in historical_effect_ids
+        if effect_id != "effect.valtan.red-blade-wave.active"
+        and not mappings_by_effect.get(effect_id)
+    )
+    if unmapped:
+        raise CandidateError(
+            "Carrier V1 omitted historical owner mappings: " + ", ".join(unmapped)
+        )
+    return successor
+
+
 def build_candidates(
     selection_path: Path = SELECTION_PATH,
     output_root: Path = OUTPUT_ROOT,
@@ -1193,6 +1333,22 @@ def build_candidates(
     selection_path = selection_path.resolve()
     output_root = output_root.resolve()
     validate_output_root(output_root)
+    if CARRIER_V1_RECEIPT_PATH.is_file():
+        historical_receipt_path = output_root / RECEIPT_NAME
+        if not historical_receipt_path.is_file():
+            raise CandidateError(
+                "historical reviewed source candidate receipt is missing"
+            )
+        historical_receipt = read_json(historical_receipt_path)
+        inventory = inventory_document or load_inventory(selection_path)
+        validate_historical_candidate_outputs(historical_receipt, inventory)
+        validate_carrier_v1_successor(
+            historical_receipt,
+            cue_document=cue_document,
+            catalog_document=catalog_document,
+        )
+        relative = historical_receipt_path.relative_to(ROOT).as_posix()
+        return {relative: historical_receipt_path.read_bytes()}, historical_receipt
     inventory = inventory_document or load_inventory(selection_path)
     _validate_source_denominator(inventory)
     injected_cue_document = cue_document is not None

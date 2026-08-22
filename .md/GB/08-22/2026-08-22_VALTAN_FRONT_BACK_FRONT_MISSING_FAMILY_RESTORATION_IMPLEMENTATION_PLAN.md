@@ -7,6 +7,55 @@
 1. 모든 발탄 패턴 Effect를 4캐릭터와 같은 손튜닝 가능 상태로 복구한다.
 2. 그 뒤 3연격을 첫 missing-family 육안 canary로 사용한다.
 
+### 2026-08-22 carrier-first Product 재기준선 최종 결정
+
+사용자 최종 결정에 따라 기존 clip-name aggregate V0 행은 더 이상 Product 기준선으로 보존하지
+않는다. 다만 ID 모양만 보고 삭제하지 않고, 아래 네 항목이 모두 맞는 행만 legacy로 확정한 뒤
+활성 Product에서 전량 제거한다.
+
+```text
+sourceNode == ""
++ element id의 .emNN ordinal
++ Product owner가 가리키는 원본 ParticleSystem exact join
++ N번째 material resourceBinding objectPath == element sourceMaterialPath
+```
+
+현재 boss-root cue Product만 보면 96문서 / 3,328 element 중 strict legacy가 3,022행이고,
+Red Blade combat-object Product owner까지 포함하면 97문서 / 3,343 element 중 3,032행이다.
+초기에는 나머지 311행을 보존할 예정이었지만, 최종 구현 결정은 더 엄격하다. 기존 boss-root
+owner의 모든 행을 제거하고 exact join 행만 새 clip owner로 재구성한다. 기존 문서는
+`elements=[]` evidence shell로 남기며 preimage hash와 이동/삭제 분모는 immutable receipt가
+소유한다. 예외는 이미 검증된 Whirlwind active와 별도 combat-object owner뿐이다.
+
+새 Product carrier 정본은 reviewed branch에서만 만든다.
+
+| 분모 | 수치 | 처리 |
+|---|---:|---|
+| reviewed patterns | 24 / 33 | source branch가 사람 검토로 고정된 범위 |
+| exact core clip occurrences | 45 clips / 24 patterns | reviewed 4중 exact join |
+| exact carrier projections | 660 | Sprite 455 / Mesh 173 / Decal 32 |
+| common-translucent Product projections | 657 | 보호 Whirlwind exact alias 3행 제외 |
+| blocked projections | 917 | resource/adapter/dust/light blocker ledger-only |
+| 미승격 patterns | 9 | 미검토 branch 7 + action binding 부재 2 |
+
+660행은 occurrence full key와 carrier key로 각각 고유한 element를 만들고, clip-local cue clock을
+사용한다. Mesh는 exact `Effect/Valtan/Meshes/**/*.wmodel` 한 개와 `modelPreScale=0.01`을,
+Sprite/Decal은 meshModel 0개와 modelPreScale 필드 없음까지 고정한다. system 안에 mesh 하나가 있다는
+이유로 다른 Sprite/Decal emitter에 그 mesh를 복사하는 fallback은 금지한다.
+
+이번 carrier-first 단계에서는 아직 typed family가 닫히지 않은 657행도 원본
+`sourceMaterialPath`, texture/resource lane, sourceRecipe를 보존한 채 공통
+`alpha_two_sided_depth_read` RT0로 임시 실행한다. 이 상태의 명칭은
+`CARRIER_V1_COMMON_TRANSLUCENT`이며 family 복원 또는 `V1_COMPLETE`가 아니다. 이후 exact
+child/parent family가 닫히면 element identity와 손튜닝 transform/timing은 유지하고 material
+executor만 교체한다.
+
+Decal은 exact EF TypeDataDecal closure와 Base DDS가 닫힌 32행만 실제 Decal carrier로
+승격한다. 반면 Light, ScreenPost 또는 runtime carrier adapter/resource가 닫히지 않은 행은 common
+translucent로 위장하지 않는다. carrier shape와 source identity는 1,577행 전체 ledger에 남기되
+drawable element로 만들지 않는다. 이 경계는 "미해석 material은 임시 translucent"와
+"미구현 carrier를 임의 quad/mesh로 바꾸지 않음"을 동시에 만족시킨다.
+
 2026-08-21에 추가된 source-occurrence/source-wave writer가 기존 Valtan WModel 계약을 다시
 빠뜨렸다. 현재 canonical `effect.valtan.*` 113문서의 meshModel carrier는 2,130개이며,
 `Effect/.../*.wmodel` 150개와 `Character/Valtan/ValtanWeapon.wmodel` 1개가 명시적
@@ -33,8 +82,10 @@ exact child material
 ```
 
 따라서 같은 Translucent라도 SpriteWave, MakeFlow, WaterTrail, Crack, Ground Decal은 서로
-다른 family다. parent나 ABI가 닫히지 않은 occurrence는 generic plane으로 대체하지 않고
-fail-close한다.
+다른 family다. 다만 carrier-first 재기준선에서는 exact carrier/resource/sourceMaterialPath가 닫힌
+Sprite·Mesh·검증된 Decal만 명시적인 `CARRIER_V1_COMMON_TRANSLUCENT`로 실행할 수 있다. 이것을
+family 복원으로 부르지 않으며, runtime carrier adapter 자체가 없는 Light/ScreenPost는 generic
+plane이나 임의 mesh로 바꾸지 않고 fail-close한다.
 
 ### 2026-08-22 최종 범위 교정
 
@@ -70,6 +121,69 @@ exact child/direct Material serial
 그 뒤에도 sampler default와 실제 source VF/pass는 열린 경계이므로 첫 결과는
 `SOURCE_EXACT_PRODUCT`가 아니라 `TOOL_RENDERER_RUNTIME_ADMITTED_BOUNDED_RT0`이다.
 Product, 실제 VF/pass와 visual admission은 계속 false로 둔다.
+
+### 2026-08-22 V1 완료선과 첫 확장 실험
+
+위의 `source exact`/native parity 연구선은 V1 완료 조건이 아니다. 도화가 F에서 실제로 성공한
+제품 기준을 발탄에도 그대로 적용하고, 다음 합성이 사용자 육안 승인을 받으면 `V1_COMPLETE`로
+기록한다.
+
+```text
+정확한 element와 carrier
++ child/parent texture lane, channel, scalar, DynamicParameter 배선
++ family별 RT0 Base HLSL
++ blend/depth
++ attachment/timing
++ Effect Tool 저장·재로드 가능한 손튜닝
++ 사용자 서면 visual 승인
+= V1_COMPLETE
+```
+
+native ShaderMap/VF, 전체 MRT, distortion parity는 선택적인 `NATIVE_PARITY` 후속 연구다. 단,
+`CARRIER_V1_COMMON_TRANSLUCENT`는 손튜닝 시작점을 만드는 중간 상태일 뿐 V1 완료 조건의 generic
+shader fallback은 아니다. 필수 RT0 family 식이나 carrier를 표현할 수 없으면
+`V1_COMPLETE`로 승격하지 않고 ledger의 `BLOCKED_REQUIRED`를 유지한다.
+
+첫 구조 검증은 기존 9-row hardcoded Tool canary를 Product로 켜는 작업이 아니다. exact child
+`fx_m_mi_m_00.fx_mi.fx_m_me_watertrail_01_46_tr`, parent
+`fx_m_mi_03.fx_m.fx_m_me_watertrail_01_tr`, mesh `fx_sm_01.fm_m_sphere_006`을 공유하는 다음 두
+occurrence를 별도의 저장 가능한 audition Effect로 만든다.
+
+| audition | source occurrence | 목적 |
+|---|---|---|
+| 3연격 | `Atk_01_02` sourceOrder 15 | 첫 발탄 source family 손튜닝 canary |
+| 4연격 | `effect.valtan.four-slash.active.clip-02`의 `source.7e08a4a792dbc4be1e1f` | 같은 family executor의 스킬 비의존 재사용 증명 |
+
+3연격 문서는 catalog와 실제 ordered clip occurrence cue를 같은 transaction에서 추가해 All
+Effects Product tree에 연결한다. source time `3.214798927s`는 정수 반올림으로 뭉개지 않고
+`sourceStartMs=3214`와 element local delay `0.000798927s`로 분리한다. 동시에 잘못된 60-row
+aggregate `front-back-front.windup`은 catalog와 cue에서 제거하고 증거 문서와 60-row ledger로만
+보존한다.
+
+4연격에는 같은 source WATERTRAIL element가 기존 Product cue로 이미 한 번 실행된다. 별도 cue를
+추가하면 같은 occurrence가 두 번 그려지므로 재사용 문서는 authoring-only witness로 둔다. 4연격
+Product 승격은 기존 element를 receipt-aware in-place 교체하는 별도 원자 작업에서만 허용한다.
+자동 검증이 실패하면 3연격 문서, catalog 교체, cue 교체, 두 audition 문서와 ledger를 전부
+rollback한다. 사용자 서면 승인 전 상태는 family/carrier first-pixel canary이지 `V1_COMPLETE`가
+아니다.
+두 occurrence는 동일한 `effect.ue3.watertrail-01.v1` profile, 동일 RT0 HLSL 분기, 동일 renderer
+코드를 사용해야 하며, Four Slash 전용 shader/profile/opcode/C++ effect-ID 분기는 0개여야 한다.
+
+`front-back-front.windup`의 60 row는 source 감사용 legacy aggregate다. 이 문서를 Product
+catalog/cue에서 실제로 분리하고, 60/60 row마다 아래 중 하나를 기록하는 별도 selection ledger를
+둔다.
+
+```text
+V1_REQUIRED_VISIBLE       현재 V1 audition/Product에 들어가며 반드시 가시 기여해야 함
+V1_OUT_OF_SCOPE_NON_RT0   distortion/light/post처럼 현재 V1 완료선 밖임
+USER_RETIRED              사용자가 Solo/mute 비교 후 제외를 승인함
+BLOCKED_REQUIRED          필수 후보이나 family/carrier가 아직 닫히지 않음
+```
+
+unknown, failed-but-removed, silent drop은 허용하지 않는다. Product에 들어간 N개는 N개 모두
+attempted/submitted/committed draw와 사용자 Solo 기여가 있어야 하며, 동일 material/mesh라는 이유로
+자동 dedup하지 않는다. 첫 WaterTrail 실험 성공은 확장 구조의 `GO` 증거일 뿐 3연격 전체 완료가
+아니다.
 
 ## G-1. 전체 발탄 WModel 100배 회귀의 즉시 복구
 

@@ -21,6 +21,21 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.document = INVENTORY.build_inventory()
         cls.payload = INVENTORY.pretty_json_bytes(cls.document)
+        selection_path = (
+            INVENTORY.ROOT
+            / "Data/Effects/Imported/Valtan/"
+            "Valtan.priority-source-sequence-selections.v1.json"
+        )
+        cls.selection_manifest = INVENTORY.load_selection_manifest(
+            selection_path
+        )
+        cls.selected_document = INVENTORY.build_inventory(
+            {
+                "reviewedBranchSelections": cls.selection_manifest[
+                    "selections"
+                ]
+            }
+        )
 
     def test_first_inventory_is_31_of_33_and_never_counts_branch_upper_bound(self) -> None:
         summary = self.document["summary"]
@@ -46,11 +61,11 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
         self.assertEqual(summary["droppedCarrierCount"], 0)
         self.assertEqual(summary["duplicateCarrierCount"], 0)
         self.assertEqual(summary["sourcePrimitiveDecodedCarrierCount"], 1044)
-        self.assertEqual(summary["portableModuleReadyCarrierCount"], 904)
-        self.assertEqual(summary["drawableRuntimeReadyCarrierCount"], 547)
-        self.assertEqual(summary["missingRuntimeResourceCarrierCount"], 350)
+        self.assertEqual(summary["portableModuleReadyCarrierCount"], 933)
+        self.assertEqual(summary["drawableRuntimeReadyCarrierCount"], 573)
+        self.assertEqual(summary["missingRuntimeResourceCarrierCount"], 353)
         self.assertEqual(
-            summary["portableRuntimeAdapterBlockedCarrierCount"], 123
+            summary["portableRuntimeAdapterBlockedCarrierCount"], 94
         )
         self.assertEqual(summary["runtimeResourceBoundCarrierCount"], 708)
         self.assertEqual(summary["runtimeResourceBindingCount"], 1614)
@@ -275,15 +290,7 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
         )
 
     def test_checked_selection_manifest_admits_only_three_safe_followups(self) -> None:
-        selection_path = (
-            INVENTORY.ROOT
-            / "Data/Effects/Imported/Valtan/"
-            "Valtan.priority-source-sequence-selections.v1.json"
-        )
-        manifest = INVENTORY.load_selection_manifest(selection_path)
-        selected = INVENTORY.build_inventory(
-            {"reviewedBranchSelections": manifest["selections"]}
-        )
+        selected = self.selected_document
         audit = {
             row["patternId"]: row
             for row in selected["additionalSourceSelectionAudit"]
@@ -307,7 +314,34 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
             selected["summary"]["reviewedSelectedBranchCount"], 24
         )
         self.assertEqual(
-            selected["summary"]["completionCarrierDenominator"], 628
+            selected["summary"]["completionCarrierDenominator"], 660
+        )
+
+    def test_default_builder_admits_32_exact_decal_projections(self) -> None:
+        selected = self.selected_document
+        systems = {
+            row["sourceSystemId"]: row for row in selected["sourceSystems"]
+        }
+        decal_projections = [
+            carrier
+            for occurrence in selected["occurrences"]
+            if occurrence["reachabilityDisposition"] == "REACHABLE_REVIEWED"
+            for carrier in systems.get(
+                occurrence.get("sourceSystemId") or "", {}
+            ).get("carriers", [])
+            if carrier.get("rendererShape") == "decal"
+        ]
+        self.assertEqual(32, len(decal_projections))
+        self.assertTrue(
+            all(
+                row["kind"] == "decal"
+                and row["disposition"] == "EXECUTABLE_CORE"
+                and row["conversionStatus"]
+                == "PORTABLE_RUNTIME_CARRIER_READY"
+                and row["conversionBlockers"] == []
+                and row["portableSourceRecipeSha256"]
+                for row in decal_projections
+            )
         )
 
     def test_branch_stage_paths_and_full_keys_are_not_clip_deduplicated(self) -> None:
@@ -426,9 +460,9 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
         self.assertEqual(summary["ribbonSourceSystemCount"], 6)
         self.assertEqual(summary["ribbonReferencedOccurrenceCount"], 109)
         self.assertEqual(summary["ribbonBlockedOccurrenceCount"], 27)
-        self.assertEqual(summary["unresolvedRuntimeAdapterCarrierCount"], 129)
+        self.assertEqual(summary["unresolvedRuntimeAdapterCarrierCount"], 100)
         self.assertEqual(
-            summary["unresolvedRuntimeAdapterOccurrenceCount"], 1931
+            summary["unresolvedRuntimeAdapterOccurrenceCount"], 1729
         )
         for system in self.document["sourceSystems"]:
             for carrier in system["carriers"]:
@@ -668,6 +702,116 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
         rebuilt = INVENTORY.build_inventory(copy.deepcopy(self.document))
         self.assertEqual(INVENTORY.pretty_json_bytes(rebuilt), self.payload)
 
+    def test_carrier_seed_enforces_exact_mesh_binding_and_centimetre_scale(self) -> None:
+        detail = {
+            "mesh": {"modelPreScale": 99.0},
+            "particle": {"billboard": False},
+        }
+        mesh_resource = {
+            "slotId": "meshModel",
+            "assetId": (
+                "Effect/Valtan/Meshes/FX_SM_01/fm_m_sphere_006.wmodel"
+            ),
+        }
+        mesh = INVENTORY.carrier_element_seed(
+            "fx.test.mesh",
+            "system=fx.test.mesh|carrier=0",
+            "particle",
+            "mesh",
+            "FX_TEST.MeshEmitter",
+            detail,
+            {"enabled": True, "modules": []},
+            [mesh_resource],
+            [{"sourceMaterialPath": "FX.Test.fx_mesh_tr"}],
+        )
+        mesh_bindings = [
+            row
+            for row in mesh["resources"]
+            if row["slotId"] == "meshModel"
+        ]
+        self.assertEqual([mesh_resource], mesh_bindings)
+        self.assertEqual(0.01, mesh["detail"]["mesh"]["modelPreScale"])
+        self.assertEqual(99.0, detail["mesh"]["modelPreScale"])
+
+        invalid_mesh_resources = (
+            [],
+            [mesh_resource, copy.deepcopy(mesh_resource)],
+            [
+                {
+                    "slotId": "meshModel",
+                    "assetId": "Effect/Character/Meshes/fm_wrong.wmodel",
+                }
+            ],
+            [
+                {
+                    "slotId": "meshModel",
+                    "assetId": "Effect/Valtan/Meshes/fm_wrong.fbx",
+                }
+            ],
+        )
+        for resources in invalid_mesh_resources:
+            with self.subTest(resources=resources):
+                with self.assertRaises(INVENTORY.InventoryError):
+                    INVENTORY.carrier_element_seed(
+                        "fx.test.mesh",
+                        "system=fx.test.mesh|carrier=invalid",
+                        "particle",
+                        "mesh",
+                        "FX_TEST.MeshEmitter",
+                        detail,
+                        {"enabled": True, "modules": []},
+                        resources,
+                        [{"sourceMaterialPath": "FX.Test.fx_mesh_tr"}],
+                    )
+
+    def test_non_mesh_carrier_never_inherits_mesh_binding_or_scale(self) -> None:
+        detail = {
+            "mesh": {"modelPreScale": 99.0},
+            "particle": {"billboard": True},
+        }
+        sprite = INVENTORY.carrier_element_seed(
+            "fx.test.sprite",
+            "system=fx.test.sprite|carrier=0",
+            "particle",
+            "sprite",
+            "FX_TEST.SpriteEmitter",
+            detail,
+            {"enabled": True, "modules": []},
+            [
+                {
+                    "slotId": "base",
+                    "assetId": "Effect/Valtan/Textures/FX_TEX_01/fx_test.dds",
+                }
+            ],
+            [{"sourceMaterialPath": "FX.Test.fx_sprite_tr"}],
+        )
+        self.assertFalse(
+            any(row["slotId"] == "meshModel" for row in sprite["resources"])
+        )
+        self.assertNotIn("modelPreScale", sprite["detail"]["mesh"])
+        self.assertEqual(99.0, detail["mesh"]["modelPreScale"])
+
+        with self.assertRaises(INVENTORY.InventoryError):
+            INVENTORY.carrier_element_seed(
+                "fx.test.sprite",
+                "system=fx.test.sprite|carrier=invalid",
+                "particle",
+                "sprite",
+                "FX_TEST.SpriteEmitter",
+                detail,
+                {"enabled": True, "modules": []},
+                [
+                    {
+                        "slotId": "meshModel",
+                        "assetId": (
+                            "Effect/Valtan/Meshes/FX_SM_01/"
+                            "fm_m_sphere_006.wmodel"
+                        ),
+                    }
+                ],
+                [{"sourceMaterialPath": "FX.Test.fx_sprite_tr"}],
+            )
+
     def test_check_is_read_only_and_detects_drift(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "inventory.json"
@@ -678,6 +822,46 @@ class ValtanSourceOccurrenceInventoryTests(unittest.TestCase):
             self.assertEqual(after, before)
             with self.assertRaises(INVENTORY.InventoryError):
                 INVENTORY.check_exact(path, self.payload + b" ")
+
+    def test_cue_index_uses_clip_occurrence_for_multi_clip_actions(self) -> None:
+        cues = {
+            "cues": [
+                {
+                    "patternId": "VALTAN_FOUR_SLASH",
+                    "actionId": "valtan.attack.four-slash.active",
+                    "clipOccurrenceId": "valtan.attack.four-slash.active.clip.01",
+                    "effectAssetId": "effect.valtan.carrier-v1.four-slash.active.clip-01",
+                },
+                {
+                    "patternId": "VALTAN_FOUR_SLASH",
+                    "actionId": "valtan.attack.four-slash.active",
+                    "clipOccurrenceId": "valtan.attack.four-slash.active.clip.02",
+                    "effectAssetId": "effect.valtan.carrier-v1.four-slash.active.clip-02",
+                },
+            ]
+        }
+        index = INVENTORY.cue_effect_index(cues)
+        self.assertEqual(2, len(index))
+        self.assertEqual(
+            "effect.valtan.carrier-v1.four-slash.active.clip-01",
+            index[
+                (
+                    "VALTAN_FOUR_SLASH",
+                    "valtan.attack.four-slash.active",
+                    "valtan.attack.four-slash.active.clip.01",
+                )
+            ],
+        )
+        self.assertEqual(
+            "effect.valtan.carrier-v1.four-slash.active.clip-02",
+            index[
+                (
+                    "VALTAN_FOUR_SLASH",
+                    "valtan.attack.four-slash.active",
+                    "valtan.attack.four-slash.active.clip.02",
+                )
+            ],
+        )
 
     def test_reconcile_is_missing_only_and_reports_legacy_rows(self) -> None:
         legacy = {

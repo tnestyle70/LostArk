@@ -1,0 +1,14 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.valtan.front-back-front.v1-watertrail-audition",
+  "displayName": "Valtan / Front Back Front / V1 WATERTRAIL Audition",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1,
+    "yawOffsetDegrees": 0,
+    "directionYawDegrees": 0,
+    "initialSpeedMultiplier": 1
+  },
+  "modelCues": [],
+  "elements": []
+}

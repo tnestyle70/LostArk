@@ -124,7 +124,7 @@
   "artifacts": {
     "candidateCanonicalSha256": "b2ac6b0db6c027f3047d98e6526466d2a1da602e0bcdd47a5c70cf53f25ea60e",
     "candidateByteSha256": "3e80a6896af0d7b190ead60082865e775cdf1b9f444fc6877d3e5150466bde25",
-    "catalogCanonicalSha256": "0a506a80316af51317316a17486c821bc45119334c3fbf3e178230935cbedece",
+    "catalogCanonicalSha256": "f5245b0377ecc28ce159ef92ad30893ed5204d5bff25d840254008d945496ddb",
     "implementation": [
       {
         "path": "Client/Bin/ShaderFiles/Shader_EffectUe3MaterialFamilies.hlsli",
@@ -142,12 +142,12 @@
       },
       {
         "path": "Client/Private/Effect_DocumentRenderer.cpp",
-        "byteSize": 845937,
-        "sha256": "838c00212c487bb79350ab5152bbbefbfaa82957a2c76233cc5457fe1082e8da",
+        "byteSize": 847737,
+        "sha256": "aa51a4848bb933169050cf04607065e0fca43ab0598e932e73a80024fa89b16d",
         "identityNormalization": "CRLF_TO_LF",
         "role": "exact child/parent/carrier/occurrence admission and fail-close"
       }
     ]
   },
-  "receiptSha256": "0158d998ffedeee76b4d43a4c157be4f169e7fdf96369ccec63979240486415e"
+  "receiptSha256": "c58f0a736bdbaa98d1d3cd8ee8a7d330a3ae72d94628414a7d4ee0e06f1360af"
 }
