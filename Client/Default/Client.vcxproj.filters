@@ -3819,12 +3819,12 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34610.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
     </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34630-34650.dragon-flow.materialization-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
+    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34630.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
     </None>
-	<None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34630-34650.dragon-flow.materialization-receipt.v1.json">
-	  <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
-	</None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34650.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
     </None>
