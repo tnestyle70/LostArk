@@ -2168,6 +2168,164 @@
           "renderProfile": "alpha_two_sided_depth_read",
           "sourceProfile": {
             "enabled": false
+          },
+          "execution": {
+            "enabled": true,
+            "version": 1,
+            "backend": "runtimeMaterialV2",
+            "opcode": 21,
+            "passIndex": 1,
+            "renderState": {
+              "rasterizer": "RS_Cull_None",
+              "depthStencil": "DSS_ReadOnly",
+              "blend": "BS_EffectAlpha",
+              "stencilReference": 0
+            },
+            "textureLaneCount": 4,
+            "textureMask": 15,
+            "textureLanes": [
+              {
+                "laneId": "lane.0",
+                "role": "base_radiance",
+                "assetId": "Effect/Artist/Textures/fx_a_line_003.dds",
+                "textureRegister": 0,
+                "samplerRegister": 5,
+                "sourceChannel": "RGBA",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.1",
+                "role": "coverage",
+                "assetId": "Effect/Artist/Textures/fx_o_grass_04.dds",
+                "textureRegister": 1,
+                "samplerRegister": 6,
+                "sourceChannel": "R",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.2",
+                "role": "emissive_radiance",
+                "assetId": "Effect/Artist/Textures/fx_d_fluid_007.dds",
+                "textureRegister": 2,
+                "samplerRegister": 7,
+                "sourceChannel": "RGB",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.3",
+                "role": "dissolve",
+                "assetId": "Effect/Artist/Textures/fx_o_grass_03.dds",
+                "textureRegister": 3,
+                "samplerRegister": 8,
+                "sourceChannel": "R",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              }
+            ],
+            "dynamicConsumedMask": 0,
+            "dynamicSuppressedMask": 0,
+            "particleColorPolicy": 0,
+            "particleColorConsumedMask": 0,
+            "particleColorSuppressedMask": 0,
+            "scalarCount": 0,
+            "vectorCount": 0,
+            "inputCount": 0,
+            "inputConsumedMask": [
+              0,
+              0
+            ],
+            "inputSuppressedMask": [
+              0,
+              0
+            ],
+            "vectorComponentConsumedMask": [
+              0,
+              0,
+              0
+            ],
+            "vectorComponentSuppressedMask": [
+              0,
+              0,
+              0
+            ],
+            "staticInputCount": 0,
+            "staticSelectedMask": 0,
+            "staticConsumedMask": 0,
+            "staticSuppressedMask": 0,
+            "renderInputCount": 0,
+            "renderConsumedMask": 0,
+            "renderSuppressedMask": 0,
+            "scalars": [],
+            "vectors": [],
+            "artistParameters": [],
+            "colors": []
           }
         },
         "actionCueAttachment": {
@@ -2455,6 +2613,164 @@
           "renderProfile": "alpha_two_sided_depth_read",
           "sourceProfile": {
             "enabled": false
+          },
+          "execution": {
+            "enabled": true,
+            "version": 1,
+            "backend": "runtimeMaterialV2",
+            "opcode": 21,
+            "passIndex": 1,
+            "renderState": {
+              "rasterizer": "RS_Cull_None",
+              "depthStencil": "DSS_ReadOnly",
+              "blend": "BS_EffectAlpha",
+              "stencilReference": 0
+            },
+            "textureLaneCount": 4,
+            "textureMask": 15,
+            "textureLanes": [
+              {
+                "laneId": "lane.0",
+                "role": "base_radiance",
+                "assetId": "Effect/Artist/Textures/fx_a_line_003.dds",
+                "textureRegister": 0,
+                "samplerRegister": 5,
+                "sourceChannel": "RGBA",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.1",
+                "role": "coverage",
+                "assetId": "Effect/Artist/Textures/fx_o_grass_03.dds",
+                "textureRegister": 1,
+                "samplerRegister": 6,
+                "sourceChannel": "R",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.2",
+                "role": "emissive_radiance",
+                "assetId": "Effect/Artist/Textures/fx_d_fluid_007.dds",
+                "textureRegister": 2,
+                "samplerRegister": 7,
+                "sourceChannel": "RGB",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.3",
+                "role": "dissolve",
+                "assetId": "Effect/Artist/Textures/fx_o_grass_04.dds",
+                "textureRegister": 3,
+                "samplerRegister": 8,
+                "sourceChannel": "R",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              }
+            ],
+            "dynamicConsumedMask": 0,
+            "dynamicSuppressedMask": 0,
+            "particleColorPolicy": 0,
+            "particleColorConsumedMask": 0,
+            "particleColorSuppressedMask": 0,
+            "scalarCount": 0,
+            "vectorCount": 0,
+            "inputCount": 0,
+            "inputConsumedMask": [
+              0,
+              0
+            ],
+            "inputSuppressedMask": [
+              0,
+              0
+            ],
+            "vectorComponentConsumedMask": [
+              0,
+              0,
+              0
+            ],
+            "vectorComponentSuppressedMask": [
+              0,
+              0,
+              0
+            ],
+            "staticInputCount": 0,
+            "staticSelectedMask": 0,
+            "staticConsumedMask": 0,
+            "staticSuppressedMask": 0,
+            "renderInputCount": 0,
+            "renderConsumedMask": 0,
+            "renderSuppressedMask": 0,
+            "scalars": [],
+            "vectors": [],
+            "artistParameters": [],
+            "colors": []
           }
         },
         "actionCueAttachment": {
