@@ -197,8 +197,14 @@ class Glasshole02RuntimeCanaryContractTests(unittest.TestCase):
             ),
             (
                 tool.replace(
-                    "!bAllowReadOnlySourceProjection && !Has_ProductCuePreview()",
-                    "bAllowReadOnlySourceProjection && !Has_ProductCuePreview()",
+                    "const bool_t bGlasshole02TranslatedCanaryStage =\n"
+                    "\t\tm_bGlasshole02TranslatedCanaryEnabled &&\n"
+                    "\t\tEFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&\n"
+                    "\t\t!bAllowReadOnlySourceProjection && !Has_ProductCuePreview()",
+                    "const bool_t bGlasshole02TranslatedCanaryStage =\n"
+                    "\t\tm_bGlasshole02TranslatedCanaryEnabled &&\n"
+                    "\t\tEFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&\n"
+                    "\t\tbAllowReadOnlySourceProjection && !Has_ProductCuePreview()",
                     1,
                 ),
                 header,

@@ -1,0 +1,28 @@
+{
+  "schema": "lostark.effect-ue3-material-texture-sampler-target-filter",
+  "formatVersion": 1,
+  "filterId": "valtan.front-back-front.core-three.texture-sampler-closure",
+  "targets": [
+    {
+      "targetId": "valtan-front-back-front-masked-dissolve-stone",
+      "familyId": "ue3.material.fx.m.mi.n.00.fx.n.me.dissolve.04.011.ma.748e33633b4a",
+      "sourceMaterialPath": "fx_m_mi_n_00.fx_n_me_dissolve_04_011_ma",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_dissolve_01_ma",
+      "rendererType": "MeshParticle"
+    },
+    {
+      "targetId": "valtan-front-back-front-ground-decal",
+      "familyId": "ue3.material.fx.m.mi.n.00.fx.n.de.ground.04.30.tr.9ad14c432bdb",
+      "sourceMaterialPath": "fx_m_mi_n_00.fx_mi.fx_n_de_ground_04_30_tr",
+      "parentMaterialPath": "fx_m_mi_04.fx_m.fx_d_de_ground_04_tr",
+      "rendererType": "LocalDecal"
+    },
+    {
+      "targetId": "valtan-front-back-front-crack-translucent",
+      "familyId": "ue3.material.fx.m.mi.o.00.fx.o.me.crack.01.01.tr.c9f38136093d",
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_me_crack_01_tr",
+      "rendererType": "MeshParticle"
+    }
+  ]
+}

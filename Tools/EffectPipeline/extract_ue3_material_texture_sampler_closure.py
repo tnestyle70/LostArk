@@ -55,6 +55,8 @@ from extract_ue3_placements import (  # noqa: E402
 
 SCHEMA = "lostark.effect-ue3-material-texture-sampler-closure-receipt"
 FORMAT_VERSION = 1
+TARGET_FILTER_SCHEMA = "lostark.effect-ue3-material-texture-sampler-target-filter"
+TARGET_FILTER_FORMAT_VERSION = 1
 EXACT_STATUS = "EXACT_MATERIAL_SHADER_MAP"
 
 DEFAULT_EXACT_RECEIPT = REPOSITORY_ROOT / (
@@ -412,6 +414,101 @@ def manifest_asset_index(resource_manifest: dict[str, Any]) -> dict[str, dict[st
     return result
 
 
+def source_pack_manifest_assets(
+    source_pack_manifest: dict[str, Any], source_root: Path
+) -> list[dict[str, Any]]:
+    """Expose source-pack package identities through the class-neutral resolver.
+
+    A focused material-map receipt can reference dependencies that are absent
+    from a character occurrence manifest.  The source pack is authoritative
+    for logical-package -> physical-package identity; it does not claim that a
+    particular object exists.  ``strict_export`` still proves that later.
+    """
+
+    result = []
+    seen: dict[str, str] = {}
+    for row in source_pack_manifest.get("packages", []):
+        if not isinstance(row, dict) or row.get("resolved") is not True:
+            continue
+        logical_package = str(row.get("logicalPackage") or "")
+        physical_package = str(row.get("physicalPackage") or "")
+        if not logical_package or not physical_package:
+            continue
+        if not (source_root / physical_package).is_file():
+            continue
+        key = folded(logical_package)
+        previous = seen.get(key)
+        require(
+            previous is None or folded(previous) == folded(physical_package),
+            f"ambiguous source-pack physical package: {logical_package}",
+        )
+        seen[key] = physical_package
+    for logical_package_key, physical_package in sorted(seen.items()):
+        result.append(
+            {
+                "sourceAssetPath": f"{logical_package_key}.__package_mapping__",
+                "logicalPackage": logical_package_key,
+                "physicalPackage": physical_package,
+                "roles": ["package_mapping"],
+                "mappingFidelity": "PINNED_SOURCE_PACK_LOGICAL_PACKAGE",
+            }
+        )
+    return result
+
+
+def selected_exact_targets(
+    exact_targets: list[dict[str, Any]], target_filter: dict[str, Any] | None
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    if target_filter is None:
+        return exact_targets, None
+    require(
+        target_filter.get("schema") == TARGET_FILTER_SCHEMA
+        and target_filter.get("formatVersion") == TARGET_FILTER_FORMAT_VERSION,
+        "unsupported texture/sampler target filter",
+    )
+    filter_id = str(target_filter.get("filterId") or "")
+    require(filter_id, "target filter id is empty")
+    requested = target_filter.get("targets")
+    require(isinstance(requested, list) and requested, "target filter is empty")
+    exact_by_id: dict[str, dict[str, Any]] = {}
+    for row in exact_targets:
+        target_id = str(row.get("targetId") or "")
+        require(target_id and target_id not in exact_by_id, f"duplicate exact target: {target_id}")
+        exact_by_id[target_id] = row
+
+    selected = []
+    selected_ids: set[str] = set()
+    normalized = []
+    for request in requested:
+        require(isinstance(request, dict), "target filter row is not an object")
+        target_id = str(request.get("targetId") or "")
+        require(target_id and target_id not in selected_ids, f"duplicate filtered target: {target_id}")
+        require(target_id in exact_by_id, f"filtered target is absent upstream: {target_id}")
+        exact = exact_by_id[target_id]
+        for field in ("familyId", "sourceMaterialPath", "parentMaterialPath", "rendererType"):
+            if field in request:
+                require(
+                    request[field] == exact.get(field),
+                    f"filtered target {field} changed: {target_id}",
+                )
+        selected_ids.add(target_id)
+        selected.append(exact)
+        normalized.append(
+            {
+                field: request[field]
+                for field in (
+                    "targetId",
+                    "familyId",
+                    "sourceMaterialPath",
+                    "parentMaterialPath",
+                    "rendererType",
+                )
+                if field in request
+            }
+        )
+    return selected, {"filterId": filter_id, "targets": normalized}
+
+
 def resolve_texture_manifest_asset(
     source_path: str, assets: dict[str, dict[str, Any]]
 ) -> dict[str, Any]:
@@ -464,11 +561,35 @@ def resolve_parent_manifest_asset(
         if folded(target_path).endswith("." + key)
         and "material_parent" in {folded(role) for role in row.get("roles", [])}
     ]
+    if len(suffix_matches) == 1:
+        return suffix_matches[0]
     require(
-        len(suffix_matches) == 1,
+        not suffix_matches,
         f"parent Material manifest mapping is ambiguous: {target_path}",
     )
-    return suffix_matches[0]
+
+    logical_package, separator, _relative_path = target_path.partition(".")
+    require(separator, f"invalid parent Material object path: {target_path}")
+    package_rows = [
+        row
+        for row in assets.values()
+        if folded(row.get("logicalPackage")) == folded(logical_package)
+        and row.get("physicalPackage")
+    ]
+    physical_packages = sorted(
+        {str(row["physicalPackage"]) for row in package_rows}, key=str.casefold
+    )
+    require(
+        len(physical_packages) == 1,
+        f"parent Material logical package mapping is not unique: {logical_package}",
+    )
+    return {
+        "sourceAssetPath": target_path,
+        "logicalPackage": logical_package,
+        "physicalPackage": physical_packages[0],
+        "roles": ["material_parent"],
+        "resolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+    }
 
 
 def manifest_relative_object(row: dict[str, Any]) -> str:
@@ -1292,6 +1413,7 @@ def close_dds_identity(
     material_dds_root: Path,
     raw_dds_root: Path,
     runtime_root: Path,
+    runtime_identity_key: str,
 ) -> dict[str, Any]:
     key = folded(source_path)
     evidence = []
@@ -1336,7 +1458,7 @@ def close_dds_identity(
 
     logical_package = source_path.split(".", 1)[0]
     leaf = source_path.rsplit(".", 1)[-1] + ".dds"
-    runtime_path = runtime_root / logical_package.upper() / leaf
+    runtime_path = runtime_root.resolve() / logical_package.upper() / leaf
     runtime = {
         "relativePath": (
             runtime_path.relative_to(REPOSITORY_ROOT / "Client/Bin/Resources").as_posix()
@@ -1363,7 +1485,7 @@ def close_dds_identity(
         "sourceObjectPath": source_path,
         "sourceExactDds": {"byteSize": byte_size, "sha256": digest},
         "evidence": evidence,
-        "runtimeDimensionMaster": runtime,
+        runtime_identity_key: runtime,
     }
 
 
@@ -1378,6 +1500,8 @@ def build_receipt(
     runtime_texture_root: Path,
     official_manifest_path: Path,
     engine_package_path: Path,
+    target_filter_path: Path | None = None,
+    source_pack_manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     exact = read_json(exact_receipt_path)
     require(
@@ -1387,6 +1511,24 @@ def build_receipt(
     )
     resource_manifest = read_json(resource_manifest_path)
     assets = manifest_asset_index(resource_manifest)
+    source_pack_manifest = None
+    if source_pack_manifest_path is not None:
+        source_pack_manifest = read_json(source_pack_manifest_path)
+        require(
+            isinstance(source_pack_manifest.get("packages"), list),
+            "source-pack manifest packages are missing",
+        )
+        for row in source_pack_manifest_assets(source_pack_manifest, source_root):
+            key = folded(row["sourceAssetPath"])
+            previous = assets.get(key)
+            require(previous is None or previous == row, f"ambiguous resource asset: {key}")
+            assets[key] = row
+    target_filter = read_json(target_filter_path) if target_filter_path else None
+    exact_target_rows, normalized_target_filter = selected_exact_targets(
+        exact.get("targets", []), target_filter
+    )
+    filtered = normalized_target_filter is not None
+    runtime_identity_key = "runtimeTexture" if filtered else "runtimeDimensionMaster"
     material_dds_receipt = read_json(material_dds_receipt_path)
     raw_dds_receipt = read_json(raw_dds_receipt_path)
     raw_rows = raw_dds_index(raw_dds_receipt)
@@ -1398,7 +1540,7 @@ def build_receipt(
     dds_cache: dict[tuple[str, str], dict[str, Any]] = {}
     targets = []
 
-    for exact_target in exact.get("targets", []):
+    for exact_target in exact_target_rows:
         if exact_target.get("status") != EXACT_STATUS:
             targets.append(
                 {
@@ -1521,13 +1663,18 @@ def build_receipt(
                     material_dds_root,
                     raw_dds_root,
                     runtime_texture_root,
+                    runtime_identity_key,
                 )
             texture = texture_cache[folded(source_path)]
             dds = dds_cache[dds_key]
             binding["sourceTexture2D"] = texture
             binding["ddsIdentity"] = dds
-            if not dds["runtimeDimensionMaster"]["sourceExactParity"]:
-                target_blockers.add("RUNTIME_DIMENSIONMASTER_DDS_MISSING_OR_MISMATCH")
+            if not dds[runtime_identity_key]["sourceExactParity"]:
+                target_blockers.add(
+                    "RUNTIME_DDS_MISSING_OR_MISMATCH"
+                    if filtered
+                    else "RUNTIME_DIMENSIONMASTER_DDS_MISSING_OR_MISMATCH"
+                )
             target_blockers.update(texture["samplerAndColorSpace"]["blockers"])
 
         unique_effective = sorted(
@@ -1535,7 +1682,7 @@ def build_receipt(
             key=str.casefold,
         )
         runtime_dds_admitted = all(
-            binding["ddsIdentity"]["runtimeDimensionMaster"]["sourceExactParity"]
+            binding["ddsIdentity"][runtime_identity_key]["sourceExactParity"]
             for binding in bindings
         )
         sampler_admitted = all(
@@ -1620,11 +1767,126 @@ def build_receipt(
     exact_targets = [
         row for row in targets if row["status"] != "BLOCKED_UPSTREAM_NO_EXACT_MATERIAL_MAP"
     ]
-    glasshole = next(
-        row
-        for row in exact_targets
-        if row["targetId"] == "dimensionmaster-w-glasshole-02"
-    )
+    inputs = {
+        "exactMaterialMapReceipt": source_descriptor(
+            exact_receipt_path, "CANONICAL_G03_3_INPUT"
+        ),
+        "resourceSourceManifest": source_descriptor(
+            resource_manifest_path, "SOURCE_ASSET_TO_PHYSICAL_PACKAGE_INDEX"
+        ),
+        "materialDdsReceipt": source_descriptor(
+            material_dds_receipt_path, "MATCHED_MATERIAL_UMODEL_DDS_EVIDENCE"
+        ),
+        "rawDdsReceipt": source_descriptor(
+            raw_dds_receipt_path, "AUTHENTICATED_RAW_DDS_EVIDENCE"
+        ),
+        "officialV975Manifest": source_descriptor(
+            official_manifest_path, "PINNED_OFFICIAL_SOURCE_REVISION_MANIFEST"
+        ),
+        "officialV975EnginePackage": source_descriptor(
+            engine_package_path, "PINNED_OFFICIAL_SOURCE_REVISION_ENGINE_PACKAGE"
+        ),
+        "extractor": source_descriptor(Path(__file__).resolve(), "TRACKED_SOURCE"),
+    }
+    if target_filter_path is not None:
+        inputs["targetFilter"] = source_descriptor(
+            target_filter_path, "PINNED_CLASS_NEUTRAL_TARGET_SUBSET"
+        )
+    if source_pack_manifest_path is not None:
+        inputs["sourcePackManifest"] = source_descriptor(
+            source_pack_manifest_path, "LOGICAL_TO_PHYSICAL_PACKAGE_INDEX"
+        )
+
+    summary = {
+        "targetCount": len(targets),
+        "exactTargetCount": len(exact_targets),
+        "upstreamBlockedTargetCount": len(targets) - len(exact_targets),
+        "uniformTextureBindingCount": sum(
+            row["uniformTextureBindingCount"] for row in exact_targets
+        ),
+        "sourceExactTextureBindingCount": sum(
+            row["sourceExactTextureBindingAdmission"] for row in exact_targets
+        ),
+        "runtimeDdsParityTargetCount": sum(
+            row["runtimeDdsParityAdmission"] for row in exact_targets
+        ),
+        "sourceExactSamplerTargetCount": sum(
+            row["sourceExactSamplerAdmission"] for row in exact_targets
+        ),
+        "sourceValueTextureSamplerTargetCount": sum(
+            row["sourceValueTextureSamplerAdmission"] for row in exact_targets
+        ),
+        "uniqueEffectiveTextureCount": len(
+            {
+                binding["effectiveSourceObjectPath"]
+                for row in exact_targets
+                for binding in row["uniformTextureBindings"]
+            }
+        ),
+    }
+    if filtered:
+        summary["targetSamplerEvidence"] = [
+            {
+                "targetId": row["targetId"],
+                "bindingCount": row["uniformTextureBindingCount"],
+                "sourceExactColorSpaceBindingCount": row[
+                    "sourceExactColorSpaceBindingCount"
+                ],
+                "sourceExactFilterSelectorBindingCount": row[
+                    "sourceExactFilterSelectorBindingCount"
+                ],
+                "sourceExactAddressAxisCount": row["sourceExactAddressAxisCount"],
+                "sourceExactAddressAxisDenominator": row[
+                    "sourceExactAddressAxisDenominator"
+                ],
+                "sourceExactLodGroupBindingCount": row[
+                    "sourceExactLodGroupBindingCount"
+                ],
+                "sourceExactHardwareFilterBindingCount": row[
+                    "sourceExactHardwareFilterBindingCount"
+                ],
+                "sourceExactFullSamplerAdmission": row[
+                    "sourceExactSamplerAdmission"
+                ],
+            }
+            for row in exact_targets
+        ]
+        summary["result"] = (
+            "PASS_CLASS_NEUTRAL_FILTERED_SOURCE_TEXTURE_BINDING_"
+            "PARTIAL_SAMPLER_CLOSURE"
+        )
+    else:
+        glasshole = next(
+            row
+            for row in exact_targets
+            if row["targetId"] == "dimensionmaster-w-glasshole-02"
+        )
+        summary["glasshole02SamplerEvidence"] = {
+            "bindingCount": glasshole["uniformTextureBindingCount"],
+            "sourceExactColorSpaceBindingCount": glasshole[
+                "sourceExactColorSpaceBindingCount"
+            ],
+            "sourceExactFilterSelectorBindingCount": glasshole[
+                "sourceExactFilterSelectorBindingCount"
+            ],
+            "sourceExactAddressAxisCount": glasshole["sourceExactAddressAxisCount"],
+            "sourceExactAddressAxisDenominator": glasshole[
+                "sourceExactAddressAxisDenominator"
+            ],
+            "sourceExactLodGroupBindingCount": glasshole[
+                "sourceExactLodGroupBindingCount"
+            ],
+            "sourceExactHardwareFilterBindingCount": glasshole[
+                "sourceExactHardwareFilterBindingCount"
+            ],
+            "sourceExactFullSamplerTargetCount": int(
+                glasshole["sourceExactSamplerAdmission"]
+            ),
+        }
+        summary["result"] = (
+            "PASS_G03_6_SOURCE_REVISION_TEXTURE_CDO_ENUM_"
+            "PARTIAL_SAMPLER_CLOSURE_FULL_SAMPLER_BLOCKED"
+        )
     receipt = {
         "schema": SCHEMA,
         "formatVersion": FORMAT_VERSION,
@@ -1632,6 +1894,13 @@ def build_receipt(
         "scope": {
             "stage": "G03_6_SOURCE_REVISION_TEXTURE_CDO_SAMPLER_EVIDENCE",
             "classNeutralExtractor": True,
+            "targetFilterApplied": filtered,
+            "targetFilterId": (
+                normalized_target_filter["filterId"]
+                if normalized_target_filter is not None
+                else None
+            ),
+            "selectedTargetIds": [row["targetId"] for row in exact_target_rows],
             "authoredGenericResourceSlotsRead": False,
             "sourceRevisionTextureCdoClosed": True,
             "sourceRevisionTextureEnumsClosed": True,
@@ -1646,32 +1915,105 @@ def build_receipt(
             "runtimeAdmission": False,
             "visualAdmission": False,
         },
-        "inputs": {
-            "exactMaterialMapReceipt": source_descriptor(
-                exact_receipt_path, "CANONICAL_G03_3_INPUT"
-            ),
-            "resourceSourceManifest": source_descriptor(
-                resource_manifest_path, "SOURCE_ASSET_TO_PHYSICAL_PACKAGE_INDEX"
-            ),
-            "materialDdsReceipt": source_descriptor(
-                material_dds_receipt_path, "MATCHED_MATERIAL_UMODEL_DDS_EVIDENCE"
-            ),
-            "rawDdsReceipt": source_descriptor(
-                raw_dds_receipt_path, "AUTHENTICATED_RAW_DDS_EVIDENCE"
-            ),
-            "officialV975Manifest": source_descriptor(
-                official_manifest_path, "PINNED_OFFICIAL_SOURCE_REVISION_MANIFEST"
-            ),
-            "officialV975EnginePackage": source_descriptor(
-                engine_package_path, "PINNED_OFFICIAL_SOURCE_REVISION_ENGINE_PACKAGE"
-            ),
-            "extractor": source_descriptor(
-                Path(__file__).resolve(), "TRACKED_SOURCE"
-            ),
-        },
+        "inputs": inputs,
         "sourceRevisionTextureAbi": source_revision_abi,
         "targets": targets,
-        "summary": {
+        "summary": summary,
+    }
+    sealed = dict(receipt)
+    receipt["receiptSha256"] = canonical_json_sha256(sealed)
+    return receipt
+
+
+def validate_receipt(receipt: dict[str, Any]) -> None:
+    require(receipt.get("schema") == SCHEMA, "receipt schema mismatch")
+    require(receipt.get("formatVersion") == FORMAT_VERSION, "receipt version mismatch")
+    sealed = dict(receipt)
+    claimed = sealed.pop("receiptSha256", None)
+    require(claimed == canonical_json_sha256(sealed), "receipt digest mismatch")
+    validate_source_revision_texture_abi(receipt.get("sourceRevisionTextureAbi", {}))
+    scope = receipt.get("scope", {})
+    summary = receipt.get("summary", {})
+    if scope.get("targetFilterApplied") is True:
+        targets = receipt.get("targets", [])
+        require(isinstance(targets, list) and targets, "filtered targets are missing")
+        target_ids = [str(row.get("targetId") or "") for row in targets]
+        require(
+            all(target_ids) and len(target_ids) == len(set(target_ids)),
+            "filtered target ids are invalid",
+        )
+        require(
+            scope.get("targetFilterId")
+            and scope.get("selectedTargetIds") == target_ids,
+            "filtered target scope changed",
+        )
+        require(
+            "targetFilter" in receipt.get("inputs", {})
+            and "sourcePackManifest" in receipt.get("inputs", {}),
+            "filtered receipt inputs are incomplete",
+        )
+
+        exact_targets = [
+            row
+            for row in targets
+            if row.get("status") != "BLOCKED_UPSTREAM_NO_EXACT_MATERIAL_MAP"
+        ]
+        for row in targets:
+            if row.get("status") == "BLOCKED_UPSTREAM_NO_EXACT_MATERIAL_MAP":
+                require(
+                    row.get("sourceExactTextureBindingAdmission") is False
+                    and row.get("runtimeDdsParityAdmission") is False
+                    and row.get("sourceExactSamplerAdmission") is False,
+                    f"blocked target was admitted: {row.get('targetId')}",
+                )
+                continue
+            bindings = row.get("uniformTextureBindings", [])
+            require(
+                isinstance(bindings, list)
+                and len(bindings) == row.get("uniformTextureBindingCount"),
+                f"binding denominator changed: {row.get('targetId')}",
+            )
+            runtime_admitted = all(
+                binding.get("ddsIdentity", {})
+                .get("runtimeTexture", {})
+                .get("sourceExactParity")
+                is True
+                for binding in bindings
+            )
+            sampler_admitted = all(
+                binding.get("sourceTexture2D", {})
+                .get("samplerAndColorSpace", {})
+                .get("sourceExactSamplerAndColorSpace")
+                is True
+                for binding in bindings
+            )
+            require(
+                row.get("sourceExactTextureBindingAdmission") is True,
+                f"exact texture binding not admitted: {row.get('targetId')}",
+            )
+            require(
+                row.get("runtimeDdsParityAdmission") is runtime_admitted,
+                f"runtime DDS admission overclaim: {row.get('targetId')}",
+            )
+            require(
+                row.get("sourceExactSamplerAdmission") is sampler_admitted,
+                f"sampler admission overclaim: {row.get('targetId')}",
+            )
+            require(
+                row.get("sourceValueTextureSamplerAdmission")
+                is (runtime_admitted and sampler_admitted),
+                f"source-value admission overclaim: {row.get('targetId')}",
+            )
+            blockers = set(row.get("blockers", []))
+            if not runtime_admitted:
+                require(
+                    "RUNTIME_DDS_MISSING_OR_MISMATCH" in blockers,
+                    f"runtime DDS blocker missing: {row.get('targetId')}",
+                )
+            if not sampler_admitted:
+                require(blockers, f"sampler blocker missing: {row.get('targetId')}")
+
+        expected_summary = {
             "targetCount": len(targets),
             "exactTargetCount": len(exact_targets),
             "upstreamBlockedTargetCount": len(targets) - len(exact_targets),
@@ -1690,30 +2032,6 @@ def build_receipt(
             "sourceValueTextureSamplerTargetCount": sum(
                 row["sourceValueTextureSamplerAdmission"] for row in exact_targets
             ),
-            "glasshole02SamplerEvidence": {
-                "bindingCount": glasshole["uniformTextureBindingCount"],
-                "sourceExactColorSpaceBindingCount": glasshole[
-                    "sourceExactColorSpaceBindingCount"
-                ],
-                "sourceExactFilterSelectorBindingCount": glasshole[
-                    "sourceExactFilterSelectorBindingCount"
-                ],
-                "sourceExactAddressAxisCount": glasshole[
-                    "sourceExactAddressAxisCount"
-                ],
-                "sourceExactAddressAxisDenominator": glasshole[
-                    "sourceExactAddressAxisDenominator"
-                ],
-                "sourceExactLodGroupBindingCount": glasshole[
-                    "sourceExactLodGroupBindingCount"
-                ],
-                "sourceExactHardwareFilterBindingCount": glasshole[
-                    "sourceExactHardwareFilterBindingCount"
-                ],
-                "sourceExactFullSamplerTargetCount": int(
-                    glasshole["sourceExactSamplerAdmission"]
-                ),
-            },
             "uniqueEffectiveTextureCount": len(
                 {
                     binding["effectiveSourceObjectPath"]
@@ -1721,25 +2039,50 @@ def build_receipt(
                     for binding in row["uniformTextureBindings"]
                 }
             ),
-            "result": (
-                "PASS_G03_6_SOURCE_REVISION_TEXTURE_CDO_ENUM_"
-                "PARTIAL_SAMPLER_CLOSURE_FULL_SAMPLER_BLOCKED"
-            ),
-        },
-    }
-    sealed = dict(receipt)
-    receipt["receiptSha256"] = canonical_json_sha256(sealed)
-    return receipt
+        }
+        for field, expected in expected_summary.items():
+            require(summary.get(field) == expected, f"filtered summary changed: {field}")
+        expected_sampler_evidence = [
+            {
+                "targetId": row["targetId"],
+                "bindingCount": row["uniformTextureBindingCount"],
+                "sourceExactColorSpaceBindingCount": row[
+                    "sourceExactColorSpaceBindingCount"
+                ],
+                "sourceExactFilterSelectorBindingCount": row[
+                    "sourceExactFilterSelectorBindingCount"
+                ],
+                "sourceExactAddressAxisCount": row["sourceExactAddressAxisCount"],
+                "sourceExactAddressAxisDenominator": row[
+                    "sourceExactAddressAxisDenominator"
+                ],
+                "sourceExactLodGroupBindingCount": row[
+                    "sourceExactLodGroupBindingCount"
+                ],
+                "sourceExactHardwareFilterBindingCount": row[
+                    "sourceExactHardwareFilterBindingCount"
+                ],
+                "sourceExactFullSamplerAdmission": row[
+                    "sourceExactSamplerAdmission"
+                ],
+            }
+            for row in exact_targets
+        ]
+        require(
+            summary.get("targetSamplerEvidence") == expected_sampler_evidence,
+            "filtered sampler evidence changed",
+        )
+        require(
+            scope.get("sourceExactTextureBindingAdmission")
+            is all(row["sourceExactTextureBindingAdmission"] for row in exact_targets)
+            and scope.get("sourceExactSamplerAdmission")
+            is all(row["sourceExactSamplerAdmission"] for row in exact_targets)
+            and scope.get("runtimeAdmission") is False
+            and scope.get("visualAdmission") is False,
+            "filtered source, runtime, or visual admission boundary changed",
+        )
+        return
 
-
-def validate_receipt(receipt: dict[str, Any]) -> None:
-    require(receipt.get("schema") == SCHEMA, "receipt schema mismatch")
-    require(receipt.get("formatVersion") == FORMAT_VERSION, "receipt version mismatch")
-    sealed = dict(receipt)
-    claimed = sealed.pop("receiptSha256", None)
-    require(claimed == canonical_json_sha256(sealed), "receipt digest mismatch")
-    validate_source_revision_texture_abi(receipt.get("sourceRevisionTextureAbi", {}))
-    summary = receipt.get("summary", {})
     require(summary.get("exactTargetCount") == 5, "W exact target denominator changed")
     require(summary.get("upstreamBlockedTargetCount") == 1, "W blocked denominator changed")
     require(summary.get("uniformTextureBindingCount") == 24, "W texture wire denominator changed")
@@ -1817,6 +2160,16 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=DEFAULT_OFFICIAL_V975_ENGINE_PACKAGE,
     )
+    parser.add_argument(
+        "--target-filter",
+        type=Path,
+        help="optional class-neutral exact-target subset with pinned identities",
+    )
+    parser.add_argument(
+        "--source-pack-manifest",
+        type=Path,
+        help="optional logical-package to physical-package dependency index",
+    )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
@@ -1832,6 +2185,8 @@ def main(argv: list[str] | None = None) -> int:
         args.runtime_texture_root,
         args.official_v975_manifest,
         args.official_v975_engine_package,
+        args.target_filter,
+        args.source_pack_manifest,
     )
     validate_receipt(receipt)
     if args.check:
@@ -1840,15 +2195,26 @@ def main(argv: list[str] | None = None) -> int:
     else:
         write_json_atomic(args.output, receipt)
     summary = receipt["summary"]
-    print(
-        "PASS G03-6 source-revision texture/sampler closure "
-        f"targets={summary['exactTargetCount']} "
-        f"bindings={summary['uniformTextureBindingCount']} "
-        f"textures={summary['uniqueEffectiveTextureCount']} "
-        f"glassColor={summary['glasshole02SamplerEvidence']['sourceExactColorSpaceBindingCount']}/7 "
-        f"glassFilter={summary['glasshole02SamplerEvidence']['sourceExactFilterSelectorBindingCount']}/7 "
-        f"samplerExact={summary['sourceExactSamplerTargetCount']}"
-    )
+    if receipt["scope"]["targetFilterApplied"]:
+        print(
+            "PASS class-neutral filtered texture/sampler closure "
+            f"filter={receipt['scope']['targetFilterId']} "
+            f"targets={summary['exactTargetCount']} "
+            f"bindings={summary['uniformTextureBindingCount']} "
+            f"textures={summary['uniqueEffectiveTextureCount']} "
+            f"runtimeDds={summary['runtimeDdsParityTargetCount']} "
+            f"samplerExact={summary['sourceExactSamplerTargetCount']}"
+        )
+    else:
+        print(
+            "PASS G03-6 source-revision texture/sampler closure "
+            f"targets={summary['exactTargetCount']} "
+            f"bindings={summary['uniformTextureBindingCount']} "
+            f"textures={summary['uniqueEffectiveTextureCount']} "
+            f"glassColor={summary['glasshole02SamplerEvidence']['sourceExactColorSpaceBindingCount']}/7 "
+            f"glassFilter={summary['glasshole02SamplerEvidence']['sourceExactFilterSelectorBindingCount']}/7 "
+            f"samplerExact={summary['sourceExactSamplerTargetCount']}"
+        )
     return 0
 
 

@@ -47,26 +47,26 @@
     },
     {
       "path": "Client/Private/Effect_DocumentRenderer.cpp",
-      "byteSize": 817044,
-      "sha256": "4c14bd469bd02fcdd845af9f7fdcc1e6028209626a037b532818328c81c0ac17",
+      "byteSize": 826236,
+      "sha256": "370a8b4248eef859100cc97d6fde1b37528f74f740aae745c0b6cdcbe1047460",
       "role": "focused authoring renderer canary gate and bindings"
     },
     {
       "path": "Client/Public/Effect_DocumentRenderer.h",
-      "byteSize": 33379,
-      "sha256": "6241765eb60ff24e53482b83a39e7f7ca26d781e0d0e44a2ecb48d770c331440",
+      "byteSize": 35521,
+      "sha256": "f6af03281369a93daacafefc91606f5e60609034914e233cb7442d66de852666",
       "role": "focused canary identity and closed activation constants"
     },
     {
       "path": "Client/Private/Effect_Tool.cpp",
-      "byteSize": 880219,
-      "sha256": "901a04047bebbed8bc372368b205bbd6603d9af671e5e50010dbafe6d9d6566e",
+      "byteSize": 890477,
+      "sha256": "6b169d5d8d861cacf549e561e038db116bdfbe907f1f5f33bfcd71d4b25ef8da",
       "role": "explicit authoring Tool canary toggle, staging, and rollback seam"
     },
     {
       "path": "Client/Public/Effect_Tool.h",
-      "byteSize": 41026,
-      "sha256": "031fe2a2b980f4abe7981bbc93c030fad1ef4c0e92305b7f04168be3e8ecc9b7",
+      "byteSize": 41462,
+      "sha256": "f26cb56bfd899ed37804cdde2f4d55b91ca50acbca745d25d1ebf37b94b5e234",
       "role": "separate default-off Tool canary state"
     }
   ],
@@ -2118,5 +2118,5 @@
     "rawSourceVertexShaderExecution": false,
     "visual": false
   },
-  "receiptSha256": "2c14a5640f7818fa79e0f6b6a06326e4b4f2dcc240a9afb1f2926f9875e36b34"
+  "receiptSha256": "eacde49dd0d3faacea8d3127afdcdf2e507a34609adacff72669b1444c097184"
 }

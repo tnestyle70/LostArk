@@ -327,6 +327,9 @@
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
+	<ClCompile Include="..\Private\Effect_ValtanTranslatedCanaryRuntime.cpp">
+	  <Filter>03. Tools\02. Effect</Filter>
+	</ClCompile>
 	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
@@ -881,6 +884,9 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h">
+	  <Filter>03. Tools\02. Effect</Filter>
+	</ClInclude>
+	<ClInclude Include="..\Public\Effect_ValtanTranslatedCanaryRuntime.h">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\Effect_Artist31470ShaderRegistry.h">
@@ -1497,6 +1503,15 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectGlasshole02.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanCrack01.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanDissolve01.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanGround04.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
@@ -1525,6 +1540,15 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanCrack01.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanDissolve01.hlsli">
+      <Filter>97.ShaderFiles</Filter>
+    </None>
+    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanGround04.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
   </ItemGroup>
@@ -2033,6 +2057,15 @@
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\CombatObjectDrawableProof">
       <UniqueIdentifier>{791862b5-5d96-51fe-8914-9130f6982c23}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration">
+      <UniqueIdentifier>{a7ffb6b9-d336-5670-9c0a-4af04a6ae4cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders">
+      <UniqueIdentifier>{6c73ad3e-bc5a-5b98-acc7-877eb1d0192d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders">
+      <UniqueIdentifier>{fbbdf4e1-1a94-5f46-a387-abfb496f7815}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves">
       <UniqueIdentifier>{2a5603a2-7e38-5d94-b9a6-b1e347709926}</UniqueIdentifier>
@@ -7052,6 +7085,84 @@
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\CombatObjectDrawableProof\Valtan.combat-object.runtime-sweep.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\CombatObjectDrawableProof</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders\19bba55d0aaaffa320e175d3fa3bd71602fd469f3f90cdcc6e90dde636978c5b.dxbc">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders\39503bb820e24101792acce4c87d161b7f12fb65dea1d836cc5ce4f3fcb93a94.dxbc">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders\433da6658bf69e839b82d216a0d142006491f202ac7262b2b068dc35fc0e79e9.dxbc">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders\88199e51d1d2faf27c6fd58e6690712e3a0eb0561f3d1829100cb34ced7f7c4e.dxbc">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders\befb60c839ccdc027566138ecad22aaf795f49f2ab40868f0ad694f149f35a7c.dxbc">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\CookedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders\Shade_Ue3_fx_a_pa_firework_01_ad.hlsli">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders\Shade_Ue3_fx_b_pa_smoke_03_tr.hlsli">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders\Shade_Ue3_fx_d_de_ground_04_tr.hlsli">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders\Shade_Ue3_fx_d_me_crack_01_tr.hlsli">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders\Shade_Ue3_fx_d_pa_dissolve_01_ma.hlsli">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\TranslatedShaders</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-exact-pixel-programs.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-family-inventory.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-pixel-equation-warp-replay.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-runtime-canary-contract.receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-runtime-canary-contract.targets.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-source-exact-family-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-source-exact-family-targets.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-source-value-uniform-evaluation.receipt.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-source-value-uniform-evaluation.targets.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-texture-sampler-closure-targets.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-texture-sampler-closure.receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\crack-translucent.translation.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\firework.translation.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\ground-decal.translation.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\masked-dissolve.translation.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\smoke.translation.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof\Valtan.front-back-front-source-waves.drawable-proof.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof</Filter>

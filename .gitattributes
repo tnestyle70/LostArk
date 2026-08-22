@@ -37,6 +37,23 @@
 # the hash and fails Publish-GameplayBalance.ps1's staleness check.
 *.py text eol=lf
 
+# The Valtan FRONT_BACK_FRONT translated runtime canary receipt binds the raw
+# implementation bytes below. Keep the exact Tool adapter, integration seams,
+# and translated shaders LF-stable across core.autocrlf=true worktrees.
+/Client/Public/Effect_ValtanTranslatedCanaryRuntime.h text eol=lf
+/Client/Private/Effect_ValtanTranslatedCanaryRuntime.cpp text eol=lf
+/Client/Public/Effect_DocumentRenderer.h text eol=lf
+/Client/Private/Effect_DocumentRenderer.cpp text eol=lf
+/Client/Public/Effect_Tool.h text eol=lf
+/Client/Private/Effect_Tool.cpp text eol=lf
+/Client/Bin/ShaderFiles/Shader_Ue3ValtanCrack01.hlsli text eol=lf
+/Client/Bin/ShaderFiles/Shader_Ue3ValtanDissolve01.hlsli text eol=lf
+/Client/Bin/ShaderFiles/Shader_Ue3ValtanGround04.hlsli text eol=lf
+/Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanCrack01.hlsl text eol=lf
+/Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanDissolve01.hlsl text eol=lf
+/Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanGround04.hlsl text eol=lf
+/Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/TranslatedShaders/*.hlsli text eol=lf
+
 # The Artist 31470 reconstructed runtime program has a frozen raw UTF-8/LF
 # identity. Keep this one generated candidate byte-exact on every checkout.
 /Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json text eol=lf

@@ -1,0 +1,59 @@
+[
+  {
+    "dxbc": "433da6658bf69e839b82d216a0d142006491f202ac7262b2b068dc35fc0e79e9.dxbc",
+    "status": "TRANSLATED",
+    "functionName": "Shade_Ue3_fx_a_pa_firework_01_ad",
+    "instructionCount": 18,
+    "dxbcSha256": "433da6658bf69e839b82d216a0d142006491f202ac7262b2b068dc35fc0e79e9",
+    "hlslSha256": "f974f856969cb43058646764275754d44465a70802054b69df596d59044d22e5",
+    "declarations": {
+      "constantBuffers": {
+        "cb0": 3
+      },
+      "samplers": [
+        "s0",
+        "s1"
+      ],
+      "textures": [
+        "t0",
+        "t1"
+      ],
+      "textureTypes": {
+        "t0": "Texture2D",
+        "t1": "Texture2D"
+      },
+      "inputs": [
+        {
+          "register": "v2",
+          "mask": "xy",
+          "interpolation": "linear",
+          "centroid": false
+        },
+        {
+          "register": "v3",
+          "mask": "xyz",
+          "interpolation": "linear",
+          "centroid": false
+        },
+        {
+          "register": "v4",
+          "mask": "x",
+          "interpolation": "linear",
+          "centroid": false
+        },
+        {
+          "register": "v5",
+          "mask": "w",
+          "interpolation": "linear",
+          "centroid": false
+        }
+      ],
+      "outputs": [
+        "o0"
+      ],
+      "coverageMask": false,
+      "coverageInput": false,
+      "temporaryCount": 2
+    }
+  }
+]

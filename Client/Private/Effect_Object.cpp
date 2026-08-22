@@ -232,6 +232,27 @@ bool_t Client::CEffectObject::
 		m_pRenderer->Is_AuthoringGlasshole02TranslatedCanaryEnabled();
 }
 
+bool_t Client::CEffectObject::
+	Set_AuthoringValtanTranslatedCanaryEnabled(
+		const bool_t bEnabled,
+		std::string& strOutError)
+{
+	if (nullptr == m_pRenderer)
+	{
+		strOutError = "Effect renderer is unavailable.";
+		return false;
+	}
+	return m_pRenderer->Set_AuthoringValtanTranslatedCanaryEnabled(
+		bEnabled, strOutError);
+}
+
+bool_t Client::CEffectObject::
+	Is_AuthoringValtanTranslatedCanaryEnabled() const
+{
+	return nullptr != m_pRenderer &&
+		m_pRenderer->Is_AuthoringValtanTranslatedCanaryEnabled();
+}
+
 bool_t Client::CEffectObject::Stage_PreparedDocument(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>

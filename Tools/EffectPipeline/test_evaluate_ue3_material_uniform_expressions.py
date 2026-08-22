@@ -200,7 +200,7 @@ class SourceValueUniformEvaluatorTests(unittest.TestCase):
         self.assertEqual(by_key[("rate", 2)]["value"], 2.0)
         self.assertEqual(by_key[("rate", 2)]["sourceObjectPath"], "Parent.MI")
 
-    def test_folded_math_zero_is_add_and_two_is_multiply(self) -> None:
+    def test_folded_math_zero_add_two_multiply_three_divide(self) -> None:
         constant_a = {
             "typeName": "fmaterialuniformexpressionconstant",
             "value": [1.0, 2.0, 3.0, 4.0],
@@ -229,6 +229,11 @@ class SourceValueUniformEvaluatorTests(unittest.TestCase):
         self.assertEqual(
             subject.evaluate_expression(folded(2), {}, {}, **kwargs),
             [5.0, 12.0, 21.0, 32.0],
+        )
+        self.assertEqual(
+            subject.evaluate_expression(folded(3), {}, {}, **kwargs),
+            [0.20000000298023224, 0.3333333432674408,
+             0.4285714328289032, 0.5],
         )
         with self.assertRaisesRegex(ValueError, "not source-proven"):
             subject.evaluate_expression(folded(1), {}, {}, **kwargs)
@@ -279,6 +284,29 @@ class SourceValueUniformEvaluatorTests(unittest.TestCase):
         )
         self.assertEqual(result[:3], [-0.25, -0.25, 0.25])
         self.assertEqual(struct.pack("<f", result[3]), struct.pack("<f", 0.0))
+
+    def test_max_is_component_wise_and_float32(self) -> None:
+        expression = {
+            "typeName": "fmaterialuniformexpressionmax",
+            "a": {
+                "typeName": "fmaterialuniformexpressionconstant",
+                "value": [1.0, 4.0, -3.0, 8.0],
+            },
+            "b": {
+                "typeName": "fmaterialuniformexpressionconstant",
+                "value": [2.0, 3.0, -2.0, 9.0],
+            },
+        }
+        self.assertEqual(
+            subject.evaluate_expression(
+                expression,
+                {},
+                {},
+                game_time_seconds=0.0,
+                real_time_seconds=0.0,
+            ),
+            [2.0, 4.0, -2.0, 9.0],
+        )
 
     def test_native_cb0_pack_preserves_engine_holes(self) -> None:
         uniform_set = {
@@ -446,10 +474,13 @@ enum EFoldedMathOperation
 };
 case FMO_Add: OutData.WriteOpcode(UE::Shader::EPreshaderOpcode::Add); break;
 case FMO_Mul: OutData.WriteOpcode(UE::Shader::EPreshaderOpcode::Mul); break;
+case FMO_Div: OutData.WriteOpcode(UE::Shader::EPreshaderOpcode::Div); break;
 class FMaterialUniformExpressionPeriodic {};
 EPreshaderOpcode::Fractional;
 class FMaterialUniformExpressionSine {};
 bIsCosine ? UE::Shader::EPreshaderOpcode::Cos : UE::Shader::EPreshaderOpcode::Sin;
+class FMaterialUniformExpressionMax {};
+OutData.WriteOpcode(UE::Shader::EPreshaderOpcode::Max);
 """.lstrip()
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "MaterialUniformExpressions.h"
@@ -473,6 +504,8 @@ bIsCosine ? UE::Shader::EPreshaderOpcode::Cos : UE::Shader::EPreshaderOpcode::Si
             evidence = subject.validate_official_source(path, expected)
         self.assertEqual(evidence["verifiedSemantics"]["foldedMathOrdinal0"], "ADD")
         self.assertEqual(evidence["verifiedSemantics"]["foldedMathOrdinal2"], "MUL")
+        self.assertEqual(evidence["verifiedSemantics"]["foldedMathOrdinal3"], "DIV")
+        self.assertEqual(evidence["verifiedSemantics"]["max"], "COMPONENT_WISE_MAX")
 
 
 if __name__ == "__main__":

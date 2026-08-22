@@ -1,0 +1,400 @@
+{
+  "schema": "lostark.valtan-front-back-front-runtime-canary-contract",
+  "formatVersion": 1,
+  "subject": {
+    "encounter": "VALTAN",
+    "pattern": "FRONT_BACK_FRONT",
+    "effectAssetId": "effect.valtan.front-back-front.windup",
+    "familyCount": 3,
+    "runtimeElementCount": 9
+  },
+  "inputs": {
+    "targets": {
+      "path": "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/Valtan.front-back-front-runtime-canary-contract.targets.v1.json",
+      "byteSize": 7560,
+      "sha256": "3c3991a7111bfb04746006352342328752055a4a5d49a2578e9e11e2c35c87c5",
+      "role": "three-family Tool canary targets"
+    },
+    "authoredIdentity": {
+      "path": "Data/Effects/Authored/effect.valtan.front-back-front.windup.effect.json",
+      "effectAssetId": "effect.valtan.front-back-front.windup",
+      "selectedOccurrenceCount": 9,
+      "selectedOccurrenceIdentitySemanticSha256": "e8972befb6c29d01266c8bd0852a8e3c92cac8598ee9b76e7e6f26003fd058d6",
+      "role": "exact authored identity projection; tuning-only fields outside the projection remain editable"
+    },
+    "sourceExactTargets": {
+      "path": "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/Valtan.front-back-front-source-exact-family-targets.v1.json",
+      "byteSize": 13655,
+      "sha256": "e6853c768bee34b4f2bd84fedecb27fe757c1cd6adc16f0bdf88d3accb22b576",
+      "role": "source-exact family targets"
+    },
+    "sourceExactReceipt": {
+      "path": "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/Valtan.front-back-front-source-exact-family-receipt.v1.json",
+      "byteSize": 529294,
+      "sha256": "df79e14ab7f9f073a19ea57f42fb2b4384a9309a3c96a400e9eaad76250a199a",
+      "role": "source-exact shader-map/native-binding receipt"
+    },
+    "exactPixelPrograms": {
+      "path": "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/Valtan.front-back-front-exact-pixel-programs.v1.json",
+      "byteSize": 9830,
+      "sha256": "a5d126f6d4f5f0801da23eb2982aeb53157931c5b4000385342d83c70f2568f9",
+      "role": "exact packed DXBC programs"
+    },
+    "translations": [
+      {
+        "path": "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/masked-dissolve.translation.json",
+        "byteSize": 1603,
+        "sha256": "0cf5810d0cafdd5d2c06e3e380281fef94d30c37d99fba95d0c0ae58075c95c3",
+        "role": "valtan-front-back-front-masked-dissolve-stone translated HLSL evidence"
+      },
+      {
+        "path": "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/ground-decal.translation.json",
+        "byteSize": 1800,
+        "sha256": "d73d93733b2082d00685e10d146323b9b34e97507fd99f5d1b4d526d9ac69540",
+        "role": "valtan-front-back-front-ground-decal translated HLSL evidence"
+      },
+      {
+        "path": "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/crack-translucent.translation.json",
+        "byteSize": 2120,
+        "sha256": "2adfac1bbe1fcb6a855d2426224e8200af6100e564ee8d90b9f572346698e995",
+        "role": "valtan-front-back-front-crack-translucent translated HLSL evidence"
+      }
+    ],
+    "runtimeImplementation": [
+      {
+        "path": "Client/Public/Effect_ValtanTranslatedCanaryRuntime.h",
+        "byteSize": 3534,
+        "sha256": "c3cf8a9b1e5276880e49eeccc491b1da16fd2d13f60fe5210566b14c7cc8dcac",
+        "role": "Tool-only three-family runtime adapter public contract"
+      },
+      {
+        "path": "Client/Private/Effect_ValtanTranslatedCanaryRuntime.cpp",
+        "byteSize": 42339,
+        "sha256": "c634616e1215c137b7f9fd389b67791bbe14707ab5f2e0bc15093f359986254e",
+        "role": "exact translated shader compile, live ABI binding, and fail-closed draw implementation"
+      },
+      {
+        "path": "Client/Public/Effect_DocumentRenderer.h",
+        "byteSize": 35521,
+        "sha256": "f6af03281369a93daacafefc91606f5e60609034914e233cb7442d66de852666",
+        "role": "renderer default-off Valtan canary packet and state contract"
+      },
+      {
+        "path": "Client/Private/Effect_DocumentRenderer.cpp",
+        "byteSize": 826236,
+        "sha256": "370a8b4248eef859100cc97d6fde1b37528f74f740aae745c0b6cdcbe1047460",
+        "role": "exact occurrence staging and bounded RT0 renderer dispatch integration"
+      },
+      {
+        "path": "Client/Public/Effect_Tool.h",
+        "byteSize": 41462,
+        "sha256": "f26cb56bfd899ed37804cdde2f4d55b91ca50acbca745d25d1ebf37b94b5e234",
+        "role": "Effect Tool default-off Valtan canary selection state contract"
+      },
+      {
+        "path": "Client/Private/Effect_Tool.cpp",
+        "byteSize": 890477,
+        "sha256": "6b169d5d8d861cacf549e561e038db116bdfbe907f1f5f33bfcd71d4b25ef8da",
+        "role": "explicit Tool toggle, exact occurrence gate, rollback, and preview staging integration"
+      },
+      {
+        "path": "Client/Bin/ShaderFiles/Shader_Ue3ValtanDissolve01.hlsli",
+        "byteSize": 19506,
+        "sha256": "0dad883c24014dffb0fcfa94afbfd0eab1cc1280fe29cdf0d3ec9baa6f02e476",
+        "role": "masked-dissolve source-exact translated pixel equation ABI"
+      },
+      {
+        "path": "Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanDissolve01.hlsl",
+        "byteSize": 4430,
+        "sha256": "864b5ada480bbc2131e43fa6593a45e9338d500118b473093d2e93b6faafffc5",
+        "role": "masked-dissolve bounded RT0 Tool carrier shader"
+      },
+      {
+        "path": "Client/Bin/ShaderFiles/Shader_Ue3ValtanGround04.hlsli",
+        "byteSize": 17702,
+        "sha256": "c17670091380e155b5f86680b6f6adcac25405f3db857dd01ddd18f39e32c2cc",
+        "role": "ground-decal source-exact translated pixel equation ABI"
+      },
+      {
+        "path": "Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanGround04.hlsl",
+        "byteSize": 4927,
+        "sha256": "c7650ce57d0398f19ddbdfb7261f220addc0799f9846bc1146112844f63b48f5",
+        "role": "ground-decal bounded RT0 Tool carrier shader"
+      },
+      {
+        "path": "Client/Bin/ShaderFiles/Shader_Ue3ValtanCrack01.hlsli",
+        "byteSize": 20861,
+        "sha256": "b26468c434e77a8921983de2e806d6e99a6bbffeecb4c2de0b26ff9e6a18e38c",
+        "role": "crack-translucent source-exact translated pixel equation ABI"
+      },
+      {
+        "path": "Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanCrack01.hlsl",
+        "byteSize": 4734,
+        "sha256": "a21b87f3c8452f408c222266bca3bf0bac70064ba70628947954398781702b2e",
+        "role": "crack-translucent bounded RT0 Tool carrier shader"
+      }
+    ]
+  },
+  "activation": {
+    "toolOnly": true,
+    "defaultOff": true,
+    "failClosed": true,
+    "fallbackToApproximationOnFailure": false,
+    "productAdmission": false,
+    "visualAdmission": false,
+    "actualVfPassAdmission": false
+  },
+  "carrierAdapter": {
+    "fidelity": "RT0_ONLY_BOUNDED_CARRIER_ADAPTER",
+    "pixelOutputRegisters": [
+      0
+    ],
+    "rawSourceVertexShaderExecution": false,
+    "rawSourceMrtExecution": false,
+    "sourceVertexFactoryPassAdmission": false,
+    "engineSceneCbExact": false
+  },
+  "runtimeRegressionSeams": {
+    "compileTimeAdmissionBoundaryCrossAsserted": true,
+    "groundNeutralSceneCb2Lane": true,
+    "groundRectResourcesBoundBeforeDraw": true,
+    "ordinaryFailClosedExcludesValtan": true,
+    "rendererAcceptsNonEmptyExactSubset": true,
+    "toolFullNineAuthoredPrecheck": true,
+    "previewProjectionRequiresExactAuthoredStage": true,
+    "toolLiveEditIdentityDriftFailsClosed": true,
+    "toolLabelsEngineSceneCbBoundedNotExact": true
+  },
+  "families": [
+    {
+      "targetId": "valtan-front-back-front-masked-dissolve-stone",
+      "familyId": "ue3.material.fx.m.mi.n.00.fx.n.me.dissolve.04.011.ma.748e33633b4a",
+      "rendererType": "MeshParticle",
+      "sourceVertexFactoryType": "flocalvertexfactory",
+      "sourceMaterialPath": "fx_m_mi_n_00.fx_n_me_dissolve_04_011_ma",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_dissolve_01_ma",
+      "exactPixelShaderSha256": "19bba55d0aaaffa320e175d3fa3bd71602fd469f3f90cdcc6e90dde636978c5b",
+      "translatedFunctionName": "Shade_Ue3_fx_d_pa_dissolve_01_ma",
+      "translatedHlslSha256": "ca9388662b20aca3110017464d3dacc31d46f6c7210970dde8b8b26d918f7038",
+      "sourcePixelOutputRegisters": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ],
+      "boundedAdapterKind": "TOOL_LOCAL_MESH_RT0",
+      "boundedAdapterPixelOutputRegisters": [
+        0
+      ],
+      "authoredOccurrences": [
+        {
+          "sourceOccurrenceId": "valtan.front-back-front.atk-01-02.source-order-07",
+          "runtimeElementId": "par_n_rpbf_atk_01_02.em07",
+          "visible": true,
+          "authoredKind": "particle",
+          "sourceMaterialPath": "fx_m_mi_n_00.fx_n_me_dissolve_04_011_ma",
+          "sourceProfileEnabled": false,
+          "modelPreScale": 0.01,
+          "resourceBindingsSemanticSha256": "bfe79d562e32b12a3c3720edd697f6b86cc19bb1c8021ade004ada3a9f72ce5e"
+        }
+      ],
+      "evidence": {
+        "shaderMap": "EXACT_MATERIAL_SHADER_MAP",
+        "nativeShaderObjectBinding": "EXACT_NATIVE_SHADER_OBJECT_BINDING",
+        "pixelEquation": "EXACT_PACKED_DXBC",
+        "hlslTranslation": "TRANSLATED"
+      },
+      "admission": {
+        "toolCanaryContract": true,
+        "rendererRuntime": true,
+        "samplerExact": false,
+        "engineSceneCbExact": false,
+        "actualVfPass": false,
+        "product": false,
+        "visual": false
+      }
+    },
+    {
+      "targetId": "valtan-front-back-front-ground-decal",
+      "familyId": "ue3.material.fx.m.mi.n.00.fx.n.de.ground.04.30.tr.9ad14c432bdb",
+      "rendererType": "LocalDecal",
+      "sourceVertexFactoryType": "flocaldecalvertexfactory",
+      "sourceMaterialPath": "fx_m_mi_n_00.fx_mi.fx_n_de_ground_04_30_tr",
+      "parentMaterialPath": "fx_m_mi_04.fx_m.fx_d_de_ground_04_tr",
+      "exactPixelShaderSha256": "88199e51d1d2faf27c6fd58e6690712e3a0eb0561f3d1829100cb34ced7f7c4e",
+      "translatedFunctionName": "Shade_Ue3_fx_d_de_ground_04_tr",
+      "translatedHlslSha256": "de569916598a4470c01f9dcb64078b64afdaf62178bc0834379bf843c3bd5b76",
+      "sourcePixelOutputRegisters": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ],
+      "boundedAdapterKind": "TOOL_LOCAL_DECAL_RT0",
+      "boundedAdapterPixelOutputRegisters": [
+        0
+      ],
+      "authoredOccurrences": [
+        {
+          "sourceOccurrenceId": "valtan.front-back-front.atk-01-02.source-order-14",
+          "runtimeElementId": "par_n_rpbf_atk_01_02.em14",
+          "visible": true,
+          "authoredKind": "particle",
+          "sourceMaterialPath": "fx_m_mi_n_00.fx_mi.fx_n_de_ground_04_30_tr",
+          "sourceProfileEnabled": false,
+          "modelPreScale": 0.01,
+          "resourceBindingsSemanticSha256": "c95b64131ec8c222326c7914862a901c4505e638d5cedcbda39aa4a7789b4ece"
+        }
+      ],
+      "evidence": {
+        "shaderMap": "EXACT_MATERIAL_SHADER_MAP",
+        "nativeShaderObjectBinding": "EXACT_NATIVE_SHADER_OBJECT_BINDING",
+        "pixelEquation": "EXACT_PACKED_DXBC",
+        "hlslTranslation": "TRANSLATED"
+      },
+      "admission": {
+        "toolCanaryContract": true,
+        "rendererRuntime": true,
+        "samplerExact": false,
+        "engineSceneCbExact": false,
+        "actualVfPass": false,
+        "product": false,
+        "visual": false
+      }
+    },
+    {
+      "targetId": "valtan-front-back-front-crack-translucent",
+      "familyId": "ue3.material.fx.m.mi.o.00.fx.o.me.crack.01.01.tr.c9f38136093d",
+      "rendererType": "MeshParticle",
+      "sourceVertexFactoryType": "flocalvertexfactory",
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_me_crack_01_tr",
+      "exactPixelShaderSha256": "39503bb820e24101792acce4c87d161b7f12fb65dea1d836cc5ce4f3fcb93a94",
+      "translatedFunctionName": "Shade_Ue3_fx_d_me_crack_01_tr",
+      "translatedHlslSha256": "6e0f88174b4ca355c35d40abc4024fdcb0b428c2cdd45ceeb2df8c3d860165d4",
+      "sourcePixelOutputRegisters": [
+        0,
+        2,
+        3,
+        4,
+        5
+      ],
+      "boundedAdapterKind": "TOOL_LOCAL_MESH_RT0",
+      "boundedAdapterPixelOutputRegisters": [
+        0
+      ],
+      "authoredOccurrences": [
+        {
+          "sourceOccurrenceId": "valtan.front-back-front.atk-04-11.em00",
+          "runtimeElementId": "par_n_rpbf_atk_04_11.em00",
+          "visible": true,
+          "authoredKind": "particle",
+          "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr",
+          "sourceProfileEnabled": false,
+          "modelPreScale": 0.01,
+          "resourceBindingsSemanticSha256": "7f7b3a3035ff72cdb170abfddda6e9a1d0a628de7257011931c71e3bae854849"
+        },
+        {
+          "sourceOccurrenceId": "valtan.front-back-front.atk-04-11.em01",
+          "runtimeElementId": "par_n_rpbf_atk_04_11.em01",
+          "visible": true,
+          "authoredKind": "particle",
+          "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr",
+          "sourceProfileEnabled": false,
+          "modelPreScale": 0.01,
+          "resourceBindingsSemanticSha256": "7f7b3a3035ff72cdb170abfddda6e9a1d0a628de7257011931c71e3bae854849"
+        },
+        {
+          "sourceOccurrenceId": "valtan.front-back-front.atk-04-12.em00",
+          "runtimeElementId": "par_n_rpbf_atk_04_12.em00",
+          "visible": true,
+          "authoredKind": "particle",
+          "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr",
+          "sourceProfileEnabled": false,
+          "modelPreScale": 0.01,
+          "resourceBindingsSemanticSha256": "7f7b3a3035ff72cdb170abfddda6e9a1d0a628de7257011931c71e3bae854849"
+        },
+        {
+          "sourceOccurrenceId": "valtan.front-back-front.atk-04-12.em01",
+          "runtimeElementId": "par_n_rpbf_atk_04_12.em01",
+          "visible": true,
+          "authoredKind": "particle",
+          "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr",
+          "sourceProfileEnabled": false,
+          "modelPreScale": 0.01,
+          "resourceBindingsSemanticSha256": "7f7b3a3035ff72cdb170abfddda6e9a1d0a628de7257011931c71e3bae854849"
+        },
+        {
+          "sourceOccurrenceId": "valtan.front-back-front.atk-04-12.em02",
+          "runtimeElementId": "par_n_rpbf_atk_04_12.em02",
+          "visible": true,
+          "authoredKind": "particle",
+          "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr",
+          "sourceProfileEnabled": false,
+          "modelPreScale": 0.01,
+          "resourceBindingsSemanticSha256": "7f7b3a3035ff72cdb170abfddda6e9a1d0a628de7257011931c71e3bae854849"
+        },
+        {
+          "sourceOccurrenceId": "valtan.front-back-front.atk-04-13.em00",
+          "runtimeElementId": "par_n_rpbf_atk_04_13.em00",
+          "visible": true,
+          "authoredKind": "particle",
+          "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr",
+          "sourceProfileEnabled": false,
+          "modelPreScale": 0.01,
+          "resourceBindingsSemanticSha256": "7f7b3a3035ff72cdb170abfddda6e9a1d0a628de7257011931c71e3bae854849"
+        },
+        {
+          "sourceOccurrenceId": "valtan.front-back-front.atk-04-13.em01",
+          "runtimeElementId": "par_n_rpbf_atk_04_13.em01",
+          "visible": true,
+          "authoredKind": "particle",
+          "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr",
+          "sourceProfileEnabled": false,
+          "modelPreScale": 0.01,
+          "resourceBindingsSemanticSha256": "7f7b3a3035ff72cdb170abfddda6e9a1d0a628de7257011931c71e3bae854849"
+        }
+      ],
+      "evidence": {
+        "shaderMap": "EXACT_MATERIAL_SHADER_MAP",
+        "nativeShaderObjectBinding": "EXACT_NATIVE_SHADER_OBJECT_BINDING",
+        "pixelEquation": "EXACT_PACKED_DXBC",
+        "hlslTranslation": "TRANSLATED"
+      },
+      "admission": {
+        "toolCanaryContract": true,
+        "rendererRuntime": true,
+        "samplerExact": false,
+        "engineSceneCbExact": false,
+        "actualVfPass": false,
+        "product": false,
+        "visual": false
+      }
+    }
+  ],
+  "summary": {
+    "exactShaderMapFamilyCount": 3,
+    "exactPixelEquationCount": 3,
+    "translatedHlslCount": 3,
+    "toolCanaryFamilyCount": 3,
+    "runtimeElementCount": 9,
+    "boundedRt0AdapterCount": 3,
+    "runtimeImplementationFileCount": 12,
+    "rendererRuntimeFamilyCount": 3,
+    "runtimeRegressionSeamCount": 9
+  },
+  "admission": {
+    "contractStatus": "TOOL_RENDERER_RUNTIME_ADMITTED_BOUNDED_RT0",
+    "toolCanaryContract": true,
+    "rendererRuntimeAdmission": true,
+    "defaultRuntime": false,
+    "samplerExact": false,
+    "engineSceneCbExact": false,
+    "actualVfPass": false,
+    "product": false,
+    "visual": false
+  },
+  "receiptSha256": "ba1b820122ec7e20e9d54be80e900f4ec11e9cc94b5020bb7e7a332c30ee0ffb"
+}
