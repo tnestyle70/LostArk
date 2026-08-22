@@ -3033,6 +3033,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip3.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.restoration-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.authored-baseline.clip1.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
