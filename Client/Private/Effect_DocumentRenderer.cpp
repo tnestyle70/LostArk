@@ -1023,6 +1023,74 @@ namespace
 		Parameters[7] = { 0.f, 0.f, 0.f, 0.f };
 	}
 
+	/* fx_mm_basic_01_ad / _tr.  The grouped path collapsed this master material
+	   to one pan and one gray carrier, which loses the two independent uv_noise
+	   domains and treats the dedicated alpha_tex as if it were artwork.  Lane
+	   assignment here follows the parent parameter groups: emissive_tex and
+	   alpha_tex are the "emissive" group, uv_noise_01/02 are the "uv_noise"
+	   group with their own tiling and panning.
+
+	   fresnel_power, edge_power, edge_intensity, depth_alpha_bias,
+	   camera_distance and world_normal_intensity are deliberately not packed.
+	   They need scene depth and world normal inputs that the RT0 base pass does
+	   not carry, and inventing them would change coverage without evidence. */
+	void Build_MmBasic01Constants(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
+		std::array<float4_t, 8u>& Parameters)
+	{
+		auto S = [&Source](const std::string_view Name, const f32_t Fallback)
+		{
+			return SourceScalar(Source, Name, Fallback);
+		};
+		Parameters[0] = { S("uv_panning_x", 0.f), S("uv_panning_y", 0.f),
+			S("uv_scale", 1.f), S("emissive_power", 1.f) };
+		Parameters[1] = { S("emissive_desaturation", 0.f),
+			S("distortion_intensity", 0.f), 0.f, 0.f };
+		Parameters[2] = { S("uv_noise_01_panning_x", 0.f),
+			S("uv_noise_01_panning_y", 0.f),
+			S("uv_noise_01_tiling_x", 1.f),
+			S("uv_noise_01_tiling_y", 1.f) };
+		Parameters[3] = { S("uv_noise_02_panning_x", 0.f),
+			S("uv_noise_02_panning_y", 0.f),
+			S("uv_noise_02_tiling_x", 1.f),
+			S("uv_noise_02_tiling_y", 1.f) };
+		Parameters[4] = { S("uv_noise_01_intensity", 0.f),
+			S("uv_noise_02_intensity", 0.f), 0.f, 0.f };
+		Parameters[5] = { 0.f, 0.f, 0.f, 0.f };
+		Parameters[6] = { 0.f, 0.f, 0.f, 0.f };
+		Parameters[7] = { 0.f, 0.f, 0.f, 0.f };
+	}
+
+	/* fx_k_me_flowtrail_01_ts_tr.  Three source groups, three UV domains:
+	   diff owns radiance, opacity owns coverage and noise offsets both.  The
+	   wave group (wave_str, wave_tile, wave_pan_speed, wave_noise_str) is not
+	   packed: no child in the corpus overrides wave_tile or wave_pan_speed and
+	   the parent expression graph is not in evidence, so its geometry would be
+	   invented.  cameravec_pow needs a camera vector the RT0 base pass does not
+	   carry.  Both stay in the NATIVE_PARITY backlog. */
+	void Build_FlowTrail01Constants(
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
+		std::array<float4_t, 8u>& Parameters)
+	{
+		auto S = [&Source](const std::string_view Name, const f32_t Fallback)
+		{
+			return SourceScalar(Source, Name, Fallback);
+		};
+		Parameters[0] = { S("diff_u_tile", 1.f), S("diff_v_tile", 1.f),
+			S("diff_u_center", 0.f), S("diff_rotation", 0.f) };
+		Parameters[1] = { S("diff_pow", 1.f), S("diff_str", 1.f),
+			S("diff_desturation", 0.f), S("distortion_str", 0.f) };
+		Parameters[2] = { S("opacity_u_tile", 1.f), S("opacity_v_tile", 1.f),
+			S("opacity_u_center", 0.f), S("opacity_rotation", 0.f) };
+		Parameters[3] = { S("opacity_str", 1.f), S("noise_str", 0.f),
+			S("noise_u_tile", 1.f), S("noise_v_tile", 1.f) };
+		Parameters[4] = { S("noise_u_pan", 0.f), S("noise_v_pan", 0.f),
+			0.f, 0.f };
+		Parameters[5] = { 0.f, 0.f, 0.f, 0.f };
+		Parameters[6] = { 0.f, 0.f, 0.f, 0.f };
+		Parameters[7] = { 0.f, 0.f, 0.f, 0.f };
+	}
+
 	void Build_Simple02Constants(
 		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source,
 		std::array<float4_t, 8u>& Parameters,
@@ -3166,6 +3234,28 @@ namespace
 			return Is_FamilyProfileCarrierContractSatisfied(Element, 32u) &&
 				Client::Has_EffectCrackholeV2NamedTextureContract(Source) ?
 				32u : UINT32_MAX;
+		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::MM_BASIC01:
+			/* The corpus authors this family on both sprite and mesh particle
+			   carriers and in additive and alpha blends.  Carrier geometry and
+			   blend are render state; the equation is shared, so both admit. */
+			if ((Is_StrictParticleShapeCarrierContractSatisfied(
+					Element, "sprite") ||
+				Is_StrictParticleShapeCarrierContractSatisfied(
+					Element, "mesh")) &&
+				Source.StaticSwitches.empty() &&
+				Client::Has_EffectMmBasic01NamedTextureContract(Source))
+			{
+				return 39u;
+			}
+			break;
+		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWTRAIL01:
+			if (Is_StrictTwoSidedAlphaMeshCarrierContractSatisfied(Element) &&
+				Source.StaticSwitches.empty() &&
+				Client::Has_EffectFlowTrail01NamedTextureContract(Source))
+			{
+				return 40u;
+			}
+			break;
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::NONE:
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::END:
 		default:
@@ -5933,6 +6023,16 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		Build_Simple02Constants(SourceMaterial,
 			Staged.TypedTrailParameters, Staged.vSourceVector0);
 	}
+	else if (39u == Staged.iSourceMaterialProfile)
+	{
+		Build_MmBasic01Constants(
+			SourceMaterial, Staged.TypedTrailParameters);
+	}
+	else if (40u == Staged.iSourceMaterialProfile)
+	{
+		Build_FlowTrail01Constants(
+			SourceMaterial, Staged.TypedTrailParameters);
+	}
 	for (size_t iSemantic = 0u;
 		iSemantic < Staged.DynamicParameterSemantics.size(); ++iSemantic)
 	{
@@ -6320,6 +6420,33 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 					SourceMaterial, "uv_noise_tex"), false))
 			return E_FAIL;
 	}
+	else if (39u == Staged.iSourceMaterialProfile)
+	{
+		/* Lane order is the family contract, not the authored listing order:
+		   0 emissive radiance, 1 dedicated coverage, 2 and 3 the two uv_noise
+		   domains.  Only lane 0 is required. */
+		if (!StageRequiredNamedTextureContract(
+				Client::EFFECT_MM_BASIC01_SOURCE_TEXTURE_NAMES) ||
+			!StageNamedSourceTexture(1u,
+				Client::Find_EffectUniqueNamedTexture(
+					SourceMaterial, "alpha_tex"), false) ||
+			!StageNamedSourceTexture(2u,
+				Client::Find_EffectUniqueNamedTexture(
+					SourceMaterial, "uv_noise_01_tex"), false) ||
+			!StageNamedSourceTexture(3u,
+				Client::Find_EffectUniqueNamedTexture(
+					SourceMaterial, "uv_noise_02_tex"), false))
+			return E_FAIL;
+	}
+	else if (40u == Staged.iSourceMaterialProfile)
+	{
+		if (!StageRequiredNamedTextureContract(
+				Client::EFFECT_FLOWTRAIL01_SOURCE_TEXTURE_NAMES) ||
+			!StageNamedSourceTexture(2u,
+				Client::Find_EffectUniqueNamedTexture(
+					SourceMaterial, "noise_tex"), false))
+			return E_FAIL;
+	}
 	else if (34u == Staged.iSourceMaterialProfile)
 	{
 		static constexpr std::array<std::string_view, 2u>
@@ -6434,7 +6561,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		34u == Staged.iSourceMaterialProfile ||
 		35u == Staged.iSourceMaterialProfile ||
 		(Staged.iSourceMaterialProfile >= 36u &&
-		 Staged.iSourceMaterialProfile <= 38u);
+		 Staged.iSourceMaterialProfile <= 40u);
 	Staged.bSourceMaterialFallbackBlocked = !Element.Material.Execution.bEnabled &&
 		((!bStrictTypedApproximateProfile &&
 			Is_SourceMaterialFallbackBlocked(Element, Staged.GroupedConstants)) ||
@@ -6496,7 +6623,11 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		(37u == Staged.iSourceMaterialProfile &&
 			(Staged.iSourceTextureMask & 0x1fu) != 0x1fu) ||
 		(38u == Staged.iSourceMaterialProfile &&
-			(Staged.iSourceTextureMask & 0x7u) != 0x7u));
+			(Staged.iSourceTextureMask & 0x7u) != 0x7u) ||
+		(39u == Staged.iSourceMaterialProfile &&
+			(Staged.iSourceTextureMask & 0x1u) != 0x1u) ||
+		(40u == Staged.iSourceMaterialProfile &&
+			(Staged.iSourceTextureMask & 0x3u) != 0x3u));
 	OutResource = std::move(Staged);
 	return S_OK;
 }
