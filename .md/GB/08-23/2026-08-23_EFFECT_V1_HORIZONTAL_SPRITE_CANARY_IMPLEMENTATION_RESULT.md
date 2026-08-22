@@ -97,4 +97,3 @@ runner에서 새로 측정한 값만 기록한다.
 Client/UI는 에이전트가 실행하거나 조작하지 않았고 visual PASS도 선언하지 않았다. Binding 1
 candidate와 자동 A/B가 완료된 뒤 `Framework.slnLaunch`의 `Server + Client` profile,
 `Client/Default` working directory, Artist F 경로와 두 commit/catalog identity를 최종 인계한다.
-
