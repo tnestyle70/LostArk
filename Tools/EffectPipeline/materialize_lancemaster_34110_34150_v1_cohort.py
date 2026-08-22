@@ -211,6 +211,21 @@ def validate_profile36_runtime(root: Path) -> dict[str, str]:
             "MakeFlow02 strict parent admission changed")
 
     renderer = (root / DOCUMENT_RENDERER).read_text(encoding="utf-8-sig")
+    selector_start = renderer.find(
+        "case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::MAKEFLOW_02:")
+    selector_end = renderer.find(
+        "case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::MAKEFLOW_03:",
+        selector_start)
+    require(selector_start >= 0 and selector_end > selector_start,
+            "MakeFlow02 enum-to-runtime selector bridge is missing")
+    selector_block = renderer[selector_start:selector_end]
+    require("return 36u;" in selector_block and
+            "Is_StrictTwoSidedAlphaMeshCarrierContractSatisfied(Element)" in
+            selector_block and
+            "Has_EffectMakeFlowMeshNamedTextureContract(Source)" in
+            selector_block,
+            "MakeFlow02 enum-to-profile36 carrier bridge changed")
+
     renderer_start = renderer.find("else if (36u == Staged.iSourceMaterialProfile)")
     renderer_end = renderer.find("else if (37u == Staged.iSourceMaterialProfile)",
                                  renderer_start)
@@ -219,13 +234,28 @@ def validate_profile36_runtime(root: Path) -> dict[str, str]:
     renderer_block = renderer[renderer_start:renderer_end]
     require("Build_MakeFlowConstants(" in renderer_block,
             "MakeFlow profile36 constant builder changed")
+    texture_start = renderer.find(
+        "else if (16u == Staged.iSourceMaterialProfile ||", renderer_end)
+    texture_end = renderer.find(
+        "else if (17u == Staged.iSourceMaterialProfile)", texture_start)
+    require(texture_start >= 0 and texture_end > texture_start,
+            "MakeFlow profile16/36 texture stage is missing")
+    texture_block = renderer[texture_start:texture_end]
+    require("36u == Staged.iSourceMaterialProfile" in texture_block and
+            "EFFECT_MAKEFLOW_MESH_SOURCE_TEXTURE_NAMES" in texture_block and
+            "StageRequiredNamedTextureContract(" in texture_block,
+            "MakeFlow profile36 five-lane texture stage changed")
     return {
         "shaderBranchSha256": hashlib.sha256(
             shader_block.encode("utf-8")).hexdigest(),
         "strictAdmissionSha256": hashlib.sha256(
             profile_block.encode("utf-8")).hexdigest(),
+        "selectorBridgeSha256": hashlib.sha256(
+            selector_block.encode("utf-8")).hexdigest(),
         "rendererBranchSha256": hashlib.sha256(
             renderer_block.encode("utf-8")).hexdigest(),
+        "textureStageSha256": hashlib.sha256(
+            texture_block.encode("utf-8")).hexdigest(),
     }
 
 
@@ -663,7 +693,12 @@ def run(root: Path, mode: str) -> tuple[bool, dict[str, Any]]:
     receipt_path = root / OUTPUT_RECEIPT
     receipt_current = receipt_path.is_file() and (
         receipt_path.read_text(encoding="utf-8-sig") == receipt_text)
-    stale_document = not promoted or source_text != staged_text
+    # The authored JSON may be checked out with CRLF even though the
+    # materializer's canonical target block uses LF.  Admission above already
+    # compares the complete target profile and seals every non-owned semantic
+    # field, so newline-only differences are not authored drift.  Rewrite the
+    # Product only when the exact profile36 promotion is actually absent.
+    stale_document = not promoted
 
     if mode == "check":
         require(not stale_document,

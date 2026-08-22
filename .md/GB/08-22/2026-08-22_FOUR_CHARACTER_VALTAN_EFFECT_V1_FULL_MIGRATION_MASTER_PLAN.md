@@ -2,7 +2,9 @@
 
 기준 branch: `origin/main`
 
-기준 commit: `61930d4ab7018b9df04dea7c297681505160c34d`
+V0 fixture origin commit: `61930d4ab7018b9df04dea7c297681505160c34d`
+
+첫 carrier cohort 통합 base: `origin/main@48c53f20`
 
 V0 상태: `COMPLETE_BASELINE`
 
@@ -239,14 +241,14 @@ frozen V0 Product
 이 cohort의 자동 성공은 네 스킬 전체 `V1_COMPLETE`가 아니다. canary별 carrier와 typed RT0 실행이
 제품 후보가 되었음을 뜻하며, terminal 판정과 Product composition 완료는 사용자 화면 승인 뒤 닫는다.
 
-### 0.7 첫 carrier cohort 구현 checkpoint
+### 0.9 첫 carrier cohort 구현 checkpoint
 
 `2026-08-22_V1_CARRIER_COHORT_INTEGRATION_RESULT.md` 기준 자동 구현과 Debug/Release는 완료됐다.
 
 - 창술사 D와 F carrier는 `KEEP`이며 F만 profile36 material action을 Product에 publish했다.
 - 차원술사 F Fluid01 두 Sprite carrier는 `KEEP`이고 first-pixel witness를 봉인했다.
-- 워로드 F는 Product를 동결하고 Tool-only 두 행 후보까지만 만들었다. terminal 판정은
-  `USER_REVIEW_PENDING`이다.
+- 워로드 F는 Product를 동결하고 Tool-only 두 행 후보까지만 만들었다. carrier terminal 판정은
+  아직 미부여이며 별도 review state만 `USER_REVIEW_PENDING`이다.
 - `REPLACE/ADD/RETIRE`를 Product에 실행한 대상은 아직 없다.
 - 다음 gate는 사용자의 네 대상 Solo/전체 composition 판정이며, 그 전에는 `V1_COMPLETE`로 올리지 않는다.
 
@@ -312,46 +314,51 @@ Effect element 밖의 Product presentation도 G00 분모에 포함한다. 현재
 DimensionMaster F screen overlay 문서는 1개다. 이후 builder가 발견하는 screen/light/model
 presentation은 별도 typed presentation 분모로 추가하며 material element 수에 중복 합산하지 않는다.
 
-4캐릭터 composition 분모는 55 distinct skill IDs, 103 `effectref=asset` cue rows, 97 unique assets다.
+현재 4캐릭터 composition 분모는 57 distinct numeric skill IDs, 105 `effectref=asset` cue rows,
+99 unique assets다.
 같은 asset을 가리키는 반복 cue도 attachment/timing composition variant로 ledger에 유지한다. 4캐릭터
-live 1,611행은 visible 1,568, hidden 43이고 typed seed 46은 모두 visible이다. 따라서 현재 visible
-V0/untyped는 1,522행이다.
+live 1,885행은 visible 1,842, hidden 43이고 typed seed 48은 모두 visible이다. 따라서 현재 visible
+V0/untyped는 1,794행이다. 위 `205/5,294/46` 표는 V0 frozen fixture이고, 현재 Product successor
+분모는 Valtan을 합쳐 `207 assets / 5,568 elements / 48 typed`로 별도 유지한다.
 
 ### 1.3 direct-authored migration corpus
 
-4캐릭터의 `DIRECT_AUTHORED_DOCUMENT_V13` 후보 corpus는 106 assets/1,707 elements이고 현재 visible
-element는 1,664다. live cue 도달 범위는 97/1,611이므로 9문서/96행이 catalog에는 있으나 현재
+4캐릭터의 현재 `DIRECT_AUTHORED_DOCUMENT_V13` 후보 corpus는 109 assets/1,983 elements이고 visible
+element는 1,940이다. live cue 도달 범위는 99/1,885이므로 10문서/98행이 catalog에는 있으나 현재
 animevent에 join되지 않는다.
 
 ```text
 DimensionMaster BA2, BA4, overslash clip2, clip3
 Warlord BA1, BA2, battlefield clip3, clip4, clip8
+Warlord F WPO SinWave Tool-only candidate
 ```
 
-이 9문서를 강제로 cue에 연결하지 않는다. G00에서 `JOIN_REQUIRED`, `NON_PRODUCT_EVIDENCE`,
+이 10문서를 강제로 cue에 연결하지 않는다. G00에서 `JOIN_REQUIRED`, `NON_PRODUCT_EVIDENCE`,
 `SUPERSEDED` 중 하나를 source/skillbinding 증거로 확정한다. Hidden 43행도 수를 줄이기 위해 삭제하지
 않고 `DISABLED_WITH_RECEIPT` 또는 실제 V1 target으로 분류한다.
 
 Valtan canonical V0 corpus 108/3,683은 모두 Product다. boss-root pattern cue가 106/3,665를,
 BossCatalog combat-object visual이 나머지 2/18을 소유한다. 따라서 현재 direct/canonical migration
-corpus는 214 assets/5,390 elements, live Product는 205/5,294이며 미결 join/disposition은
-4캐릭터 9 assets/96 elements다.
+corpus는 217 assets/5,666 elements, live Product는 207/5,568이며 미결 join/disposition은
+4캐릭터 10 assets/98 elements다. frozen V0 fixture `214/5,390 -> 205/5,294 + 9/96`도 회귀 비교용으로
+계속 보존한다.
 
 ### 1.4 catalog-addressable 상한과 live 분모를 섞지 않는다
 
-현재 5개 domain의 catalog-addressable authored 상한은 315문서, 7,550 elements이고 Artist legacy
+현재 5개 domain의 catalog-addressable authored 상한은 318문서, 7,826 elements이고 Artist legacy
 immutable program 한 행이 별도로 있다.
 
 | domain | catalog entries | canonical authored docs | authored elements |
 |---|---:|---:|---:|
 | Artist | 34 | 33 | 560 |
-| Warlord | 54 | 54 | 1,093 |
-| LanceMaster | 82 | 82 | 1,553 |
+| Warlord | 55 | 55 | 1,095 |
+| LanceMaster | 84 | 84 | 1,827 |
 | DimensionMaster | 38 | 38 | 661 |
 | Valtan | 108 | 108 | 3,683 |
-| **합계** | **316** | **315** | **7,550** |
+| **합계** | **319** | **318** | **7,826** |
 
-frozen live 분모 5,294와의 차이 2,256행은 legacy, duplicate, audition 또는 현재 cue 비도달 문서다.
+현재 live successor 분모 5,568과의 차이 2,258행은 legacy, duplicate, audition 또는 현재 cue 비도달
+문서다. frozen V0의 `7,550 - 5,294 = 2,256`도 별도 fixture로 유지한다.
 이를 무조건 Product로 승격하지 않는다. G00에서 각 행을 `LIVE_PRODUCT`, `AUDITION_ONLY`,
 `LEGACY`, `RETIRED` 중 하나로 분류한다. “전체 V1”은 frozen 5,294행 각각의 successor/retirement를
 설명하고, frozen catalog-addressable non-live 2,256행도 누락 없이 disposition을 가지며, 그 결정과
@@ -666,9 +673,10 @@ PR마다 다음 두 묶음을 함께 stage한다.
 
 목표:
 
-- live 205/5,294를 deterministic하게 재생성한다.
-- direct/canonical corpus 214/5,390과 live 사이 4캐릭터 9/96의 join/disposition을 확정한다.
-- catalog 316/7,550과 live 차이를 분류한다.
+- frozen V0 live 205/5,294와 현재 successor live 207/5,568을 각각 deterministic하게 재생성한다.
+- frozen direct/canonical `214/5,390 -> 9/96 non-live`와 현재
+  `217/5,666 -> 10/98 non-live`의 join/disposition을 각각 확정한다.
+- frozen catalog 316/7,550과 현재 catalog 319/7,826을 섞지 않고 live 차이를 분류한다.
 - source occurrence→current element→V1 lineage crosswalk를 만든다.
 - V0 document/element snapshot hash와 3-way merge disposition을 봉인한다.
 - ModelCue, screen overlay, Light 같은 비-material presentation 분모를 별도로 센다.
@@ -684,8 +692,10 @@ PR마다 다음 두 묶음을 함께 stage한다.
 
 - missing catalog/document/element ID, duplicate live ID, non-finite transform을 거부한다.
 - 같은 입력에서 artifact SHA가 동일해야 한다.
-- 현재 main fixture가 `205/5,294/46 typed seed/5,248 rows without execution`을 재현해야 한다.
-- 4캐릭터 fixture가 direct 106/1,707, live 97/1,611, unjoined 9/96을 재현해야 한다.
+- frozen V0 fixture가 `205/5,294/46 typed seed/5,248 rows without execution`을 재현해야 한다.
+- 현재 successor fixture가 `207/5,568/48 typed seed`를 재현해야 한다.
+- 4캐릭터 frozen fixture `direct 106/1,707, live 97/1,611, unjoined 9/96`과 현재 fixture
+  `direct 109/1,983, live 99/1,885, unjoined 10/98`을 둘 다 재현해야 한다.
 - Valtan fixture가 pattern cue 106/3,665 + combat-object visual 2/18 = live 108/3,683을 재현해야 한다.
 
 종료 증거: 모든 current row는 lineage/disposition을 가진다. 모든 source candidate는 stable inventory
@@ -1115,17 +1125,17 @@ ClientFrontendHarness는 삭제된 정본이므로 다시 추가하지 않는다
 | G | 상태 | 자동 분모 | 사용자 화면 | 다음 blocker |
 |---|---|---|---|---|
 | V0 baseline | `COMPLETE_BASELINE` | live 205 assets / 5,294 elements join 실측 | 기존 손튜닝 기준 | V1 ledger 생성 |
-| G00 inventory | `PLANNED` | 5,294 live + 2,256 catalog-addressable non-live + source restoration + presentation | 해당 없음 | builder/schema |
-| G01 registry | `PLANNED` | current 46 typed seed + Tool canary descriptors | 해당 없음 | stable IDs/layout schema |
+| G00 inventory | `PLANNED` | frozen 5,294+2,256 및 current 5,568+2,258을 분리 + source restoration/presentation | 해당 없음 | builder/schema |
+| G01 registry | `PLANNED` | current 48 typed seed + Tool canary descriptors | 해당 없음 | stable IDs/layout schema |
 | G02 adapters | `PLANNED` | carrier/layout matrix | 해당 없음 | descriptor-driven binder |
 | G02a programs | `PLANNED` | distinct program identity 분모 미산출 | 해당 없음 | DXBC translation/reconstruction materialization |
 | G03 coverage | `FIRST_RECT_CANARY_AUTOMATED` | 도화가 S Sprite Rect 2행 typed packet/publish/build | `USER_REVIEW_PENDING` | body/tip first pixel과 A control 사용자 판정 |
 | G04 decal | `PLANNED` | live decal 57 | `PENDING` | actual decal VF/pass |
-| G05 flow/masked | `PLANNED` | verified cohort 미산출 | `PENDING` | time/dynamic/sampler ABI |
+| G05 flow/masked | `FIRST_CARRIER_COHORT_AUTOMATED` | Fluid01 Sprite 2 + MakeFlow Mesh 1 + WPO Mesh Tool 2 | `USER_REVIEW_PENDING` | 사용자 Solo 뒤 WPO terminal 판정, time/dynamic/sampler 후속 |
 | G06 glass | `TOOL_CANARY_SEED` | Glasshole one occurrence | `PENDING` | sampler/VF/MRT/Product |
 | G07 trail | `PLANNED` | live trail 32 | `PENDING` | topology/material split |
 | G08a-c presentation | `TYPED_SEEDS_PRESENT` | Light 1 + ModelCue/screen generated inventory pending | `PENDING` | Light/screen/model separate adapters |
-| G09 characters | `PLANNED` | live 97/1,611, visible 1,568, hidden 43 + generated restoration | `PENDING` | G03~G08 cohorts |
+| G09 characters | `FIRST_CARRIER_COHORT_AUTOMATED` | live 99/1,885, visible 1,842, hidden 43 + generated restoration | `USER_REVIEW_PENDING` | G03~G08 cohorts와 사용자 A/B |
 | G10 Valtan | `TOOL_CANARY_SEED` | live 108 assets / 3,683 elements + generated restoration | `PENDING` | core-three full ABI/Product |
 | G11 automated | `PLANNED` | generated final Product/non-live/restoration/presentation gap 0 | 해당 없음 | all prior automated gates |
 | G11 visual | `PLANNED` | generated final Product/presentation review 분모 | `PENDING` | 모든 required row `USER_APPROVED` |

@@ -35,7 +35,8 @@ fidelity             PROJECT_RECONSTRUCTED / TYPED_RT0_BASE_ONLY
 | source 190행 bulk restore | 수행하지 않음 |
 | Product animevent/cue | 기존 `effect.warlord.skill.17140.unified` 유지 |
 | Tool 후보 Product 연결 | 없음 |
-| carrierDisposition | `USER_REVIEW_PENDING` |
+| carrierDisposition | 미부여 (`null`) |
+| reviewState | `USER_REVIEW_PENDING` |
 | candidateAction | `ADD_OR_REPLACE_PENDING` |
 | terminal KEEP/REPLACE/ADD/RETIRE | 사용자 승인 전 미부여 |
 

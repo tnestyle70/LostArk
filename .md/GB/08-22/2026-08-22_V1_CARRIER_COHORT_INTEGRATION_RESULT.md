@@ -2,7 +2,7 @@
 
 branch: `codex/v1-carrier-cohort`
 
-base: `main@dc280ff55cc49d7f92c0d84737fd939bbf440dca`
+integration base: `origin/main@48c53f20` (PR #151 창술사 D/F profile39/40 확장 포함)
 
 master plan: `2026-08-22_FOUR_CHARACTER_VALTAN_EFFECT_V1_FULL_MIGRATION_MASTER_PLAN.md`
 
@@ -43,7 +43,7 @@ USER_REVIEW_PENDING
 | 순서 | 대상 / stable ID | carrier | material action | Product 상태 | 자동 상태 |
 |---:|---|---|---|---|---|
 | 1 | 창술사 D `c7469f2311b49e44ed801be8` | `KEEP` | 없음, profile15 control | 88행 byte/semantic 동결 | control join PASS |
-| 2 | 워로드 F `8c0d6ab070c1a6c83479e590`, `59e6ffa8852fba74279b6ae9` | `USER_REVIEW_PENDING` | Tool-only opcode22 RT0 | Product 56행 byte 동결 | canary + data-only reuse PASS |
+| 2 | 워로드 F `8c0d6ab070c1a6c83479e590`, `59e6ffa8852fba74279b6ae9` | 미부여 (`reviewState=USER_REVIEW_PENDING`) | Tool-only opcode22 RT0 | Product 56행 byte 동결 | canary + data-only reuse PASS |
 | 3 | 차원술사 F `1ae3416ac205fee634b746a9`, `ed33fb10661afb8854e76957` | `KEEP`, `KEEP` | 기존 opcode17 유지 | 기존 8행과 손튜닝 유지 | RT0 witness PASS |
 | 4 | 창술사 F `dfc359983bf57e958f75740d` | `KEEP` | `PROMOTE_EFFECTIVE_PARENT_PROFILE36` | target sourceProfile만 변경·publish | five-lane join PASS |
 
@@ -114,21 +114,27 @@ raw F source에서 child `fx_w_pa_fd_01_3_tr`, parent `fx_mm_fluid_01_tr`를 쓰
 ## 5. 통합 중 닫은 재현성 문제
 
 격리 worktree에서는 통과했지만 fresh Windows checkout에서 워로드 materializer가 HLSL의 CRLF를
-LF와 다른 byte identity로 오판했다. JSON은 semantic object로 비교하고 HLSL/C++ 구현 receipt는
-`CRLF_TO_LF` canonical bytes로 봉인하도록 고쳤다. 필드/식/리소스 drift는 계속 fail-close하며 단순
-줄바꿈만 stale로 처리하지 않는다. 회귀 test를 추가한 뒤 워로드 focused test는 10건이 됐다.
+LF와 다른 byte identity로 오판했고, 창술사 materializer도 exact profile36이 이미 적용된 Product의
+CRLF target block을 stale로 오판했다. JSON은 semantic object로 비교하고 HLSL/C++ 구현 receipt는
+`CRLF_TO_LF` canonical bytes로 봉인한다. 필드/식/리소스 drift는 계속 fail-close하며 단순 줄바꿈만
+stale로 처리하지 않는다.
+
+PR #151의 profile39/40과 profile36이 섞이지 않도록 MakeFlow 검증에는
+`MAKEFLOW_02 enum -> runtime profile36 -> five-lane texture stage -> RT0 HLSL` bridge hash를 추가했다.
+현재 D는 profile39 14행, F는 profile39 12행/profile40 48행/profile36 1행이며 각 selector는 배타적이다.
 
 ## 6. 자동 검증
 
 ```text
 DimensionMaster Fluid01 focused                  8 / 8 PASS
-LanceMaster D/F focused                         7 / 7 PASS
+LanceMaster D/F focused                         8 / 8 PASS
 Warlord F WPO focused                          10 / 10 PASS
+typed source-profile join audit                  4 / 4 PASS
 Effect materializer --check                     PASS x3
 Sync-EffectDataProject -Check                    PASS, 1865 files / 210 filters
 Publish-Effects -Mode Validate                   PASS, 207 active Effects
 Publish-Effects -Mode Publish                    PASS, 207 active Effects
-EffectPipeline full contract                     PASS, 129 tests
+EffectPipeline full contract                     PASS, 130 tests
 visual-program artifact                          PASS, 17 programs / 135 rows
 Client x64 Debug compile/link                    PASS
 Client x64 Release compile/link                  PASS

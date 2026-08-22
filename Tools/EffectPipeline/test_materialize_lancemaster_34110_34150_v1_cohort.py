@@ -122,7 +122,8 @@ class LanceMasterDFV1CohortTests(unittest.TestCase):
         self.assertEqual(
             set(receipt["runtime"]["evidence"]),
             {"shaderBranchSha256", "strictAdmissionSha256",
-             "rendererBranchSha256"},
+             "selectorBridgeSha256", "rendererBranchSha256",
+             "textureStageSha256"},
         )
         self.assertEqual(
             receipt["runtime"]["evidence"],
@@ -141,6 +142,18 @@ class LanceMasterDFV1CohortTests(unittest.TestCase):
                  for path in paths}
         self.assertFalse(changed)
         self.assertEqual(before, after)
+
+    def test_crlf_checkout_is_semantically_current(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="lance-d-f-v1-crlf-") as raw:
+            fixture = Path(raw)
+            copy_fixture(fixture)
+            f_path = fixture / subject.F_DOCUMENT
+            normalized = f_path.read_bytes().replace(b"\r\n", b"\n")
+            f_path.write_bytes(normalized.replace(b"\n", b"\r\n"))
+
+            changed, _ = subject.run(fixture, "check")
+
+            self.assertFalse(changed)
 
     def test_legacy_fixture_changes_only_f_target_source_profile(self) -> None:
         with tempfile.TemporaryDirectory(prefix="lance-d-f-v1-cohort-") as raw:

@@ -84,7 +84,8 @@ class WarlordWpoSinWaveCanaryTests(unittest.TestCase):
 
     def test_disposition_waits_for_user_review(self) -> None:
         disposition = canary.read_json(canary.RECEIPT)["disposition"]
-        self.assertEqual(disposition["carrierDisposition"], "USER_REVIEW_PENDING")
+        self.assertIsNone(disposition["carrierDisposition"])
+        self.assertEqual(disposition["reviewState"], "USER_REVIEW_PENDING")
         self.assertEqual(disposition["candidateAction"], "ADD_OR_REPLACE_PENDING")
         self.assertFalse(disposition["terminalKeepReplaceAddRetireAssigned"])
 

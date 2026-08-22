@@ -163,8 +163,10 @@
     "evidence": {
       "shaderBranchSha256": "1e4cce09573df56f2193fccbcb2d5f09531febd4ec90832caa2d3a8010b4f6b0",
       "strictAdmissionSha256": "75549c043697b3673605c412e6252f78d14eaa9d846ffe8e3d46ce389574fae1",
-      "rendererBranchSha256": "ce6418f0b33404f46bf1022ca3335738b228cb369eeb25c98bb779ad9625dee0"
+      "selectorBridgeSha256": "5cb0613cae90bcfa52f30f271f6015eec6d9d47899252a5abd1acc4a48ecdb40",
+      "rendererBranchSha256": "ce6418f0b33404f46bf1022ca3335738b228cb369eeb25c98bb779ad9625dee0",
+      "textureStageSha256": "ecc2dcd077d3f2c4b6448f409fa1ba3f9f2ae05406e030454241e6fc7e7d599f"
     }
   },
-  "artifactSha256": "fa2f7c54aafd9c069d17c9a4dcd40cc3b0ac604d709d45cd3b7845d5fbd6517c"
+  "artifactSha256": "e932fb91c13f8fa3f408b88ab69db8ed5266f90d731df6343a3af27b359d5d33"
 }
