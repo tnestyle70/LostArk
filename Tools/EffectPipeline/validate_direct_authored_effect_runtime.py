@@ -22,7 +22,8 @@ from typing import Any
 
 DIRECT_PAYLOAD_KIND = "DIRECT_AUTHORED_DOCUMENT_V13"
 RUNTIME_SCHEMA = "lostark.effect-runtime-catalog"
-RUNTIME_VERSION = 3
+LEGACY_RUNTIME_VERSION = 3
+RUNTIME_VERSION = 4
 AUTHORING_SCHEMA = "lostark.effect-authoring"
 AUTHORING_VERSION = 13
 DIRECT_ENTRY_KEYS = (
@@ -183,7 +184,7 @@ def _load_sealed_authored_document(
 
 def validate_direct_entry(
     entry: dict[str, Any], effect_id: str, runtime_catalog_path: Path
-) -> None:
+) -> dict[str, Any]:
     if tuple(entry.keys()) not in (
         DIRECT_ENTRY_KEYS,
         DIRECT_ENTRY_WITH_SCREEN_OVERLAY_KEYS,
@@ -197,7 +198,7 @@ def validate_direct_entry(
     if type(version) is not int or version != AUTHORING_VERSION:
         raise ContractError("direct authored runtime authoring version is invalid")
 
-    _load_sealed_authored_document(
+    authored = _load_sealed_authored_document(
         runtime_catalog_path,
         entry["authoredDocumentPath"],
         effect_id,
@@ -205,6 +206,7 @@ def validate_direct_entry(
     binding = entry.get("screenOverlayPresentation")
     if binding is not None:
         validate_screen_overlay_binding(binding, effect_id)
+    return authored
 
 
 def validate_screen_overlay_binding(value: Any, effect_id: str) -> None:
@@ -305,19 +307,56 @@ def _load_derived_validator() -> Any:
     return module
 
 
+def _load_material_program_registry_validator() -> Any:
+    path = Path(__file__).with_name("build_effect_material_program_registry.py")
+    spec = importlib.util.spec_from_file_location(
+        "lostark_effect_material_program_registry_validator", path
+    )
+    if spec is None or spec.loader is None:
+        raise ContractError("cannot load the material-program registry validator")
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        raise ContractError(
+            f"cannot initialize the material-program registry validator: {exc}"
+        ) from exc
+    return module
+
+
 def validate_runtime_catalog(
     value: dict[str, Any], runtime_catalog_path: Path
 ) -> None:
     root_keys = tuple(value.keys())
-    plain_keys = ("schema", "formatVersion", "components", "effects")
-    sidecar_plain_keys = (
+    legacy_plain_keys = ("schema", "formatVersion", "components", "effects")
+    legacy_sidecar_keys = (
         "schema",
         "formatVersion",
         "visualProgramSidecarRequired",
         "components",
         "effects",
     )
-    if root_keys not in (plain_keys, sidecar_plain_keys):
+    current_plain_keys = (
+        "schema",
+        "formatVersion",
+        "materialPrograms",
+        "components",
+        "effects",
+    )
+    current_sidecar_keys = (
+        "schema",
+        "formatVersion",
+        "visualProgramSidecarRequired",
+        "materialPrograms",
+        "components",
+        "effects",
+    )
+    if root_keys not in (
+        legacy_plain_keys,
+        legacy_sidecar_keys,
+        current_plain_keys,
+        current_sidecar_keys,
+    ):
         raise ContractError("runtime catalog fields or order are invalid")
     if "visualProgramSidecarRequired" in value and type(
         value["visualProgramSidecarRequired"]
@@ -326,14 +365,28 @@ def validate_runtime_catalog(
     if value["schema"] != RUNTIME_SCHEMA:
         raise ContractError("runtime catalog schema mismatch")
     version = value["formatVersion"]
-    if type(version) is not int or version != RUNTIME_VERSION:
+    if type(version) is not int or version not in (
+        LEGACY_RUNTIME_VERSION,
+        RUNTIME_VERSION,
+    ):
         raise ContractError("runtime catalog formatVersion mismatch")
+    if version == LEGACY_RUNTIME_VERSION and root_keys not in (
+        legacy_plain_keys,
+        legacy_sidecar_keys,
+    ):
+        raise ContractError("runtime catalog v3 must not contain materialPrograms")
+    if version == RUNTIME_VERSION and root_keys not in (
+        current_plain_keys,
+        current_sidecar_keys,
+    ):
+        raise ContractError("runtime catalog v4 requires materialPrograms")
     if not isinstance(value["components"], list) or not isinstance(
         value["effects"], list
     ):
         raise ContractError("runtime catalog arrays are invalid")
 
     effect_ids: set[str] = set()
+    direct_documents: dict[str, dict[str, Any]] = {}
     non_direct: list[dict[str, Any]] = []
     for index, entry in enumerate(value["effects"]):
         if not isinstance(entry, dict):
@@ -345,13 +398,26 @@ def validate_runtime_catalog(
             raise ContractError(f"duplicate runtime effect ID: {effect_id}")
         effect_ids.add(effect_id)
         if entry.get("payloadKind") == DIRECT_PAYLOAD_KIND:
-            validate_direct_entry(entry, effect_id, runtime_catalog_path)
+            direct_documents[effect_id] = validate_direct_entry(
+                entry, effect_id, runtime_catalog_path
+            )
         else:
             non_direct.append(entry)
 
+    if version == RUNTIME_VERSION:
+        registry_validator = _load_material_program_registry_validator()
+        try:
+            registry_validator.validate_registry(
+                value["materialPrograms"], direct_documents
+            )
+        except Exception as exc:
+            if exc.__class__.__name__ == "ContractError":
+                raise ContractError(str(exc)) from exc
+            raise
+
     projected = {
         "schema": value["schema"],
-        "formatVersion": value["formatVersion"],
+        "formatVersion": LEGACY_RUNTIME_VERSION,
         "components": value["components"],
         "effects": non_direct,
     }

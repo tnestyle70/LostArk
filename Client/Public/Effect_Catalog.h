@@ -25,6 +25,7 @@ struct EFFECT_OCCURRENCE_TUNING_DOCUMENT;
 struct EFFECT_VISUAL_PROGRAM;
 struct EFFECT_VISUAL_PROGRAM_CORPUS;
 struct EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION;
+class CEffectMaterialProgramRegistry;
 
 struct EFFECT_SCREEN_OVERLAY_RESOURCE_IDENTITY final
 {
@@ -522,6 +523,11 @@ public:
 	static std::vector<std::string> Get_RuntimeAuthorityAssetIds();
 	static std::vector<std::string> Get_ReconstructedRuntimeProgramAssetIds();
 	static std::vector<std::string> Get_VisualProgramAssetIds();
+	/* Captures the immutable material-program generation together with the
+	   catalog revision it was staged from.  Callers must retain this handle
+	   through prewarm instead of resolving the current catalog again. */
+	static std::shared_ptr<const CEffectMaterialProgramRegistry>
+		Acquire_MaterialProgramRegistry();
     static uint64_t Get_RuntimeRevision();
     static const std::string& Get_Status();
     static void Clear();

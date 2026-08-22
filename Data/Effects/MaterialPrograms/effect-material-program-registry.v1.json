@@ -1,0 +1,118 @@
+{
+  "schema": "lostark.effect-material-program-registry",
+  "formatVersion": 1,
+  "programs": [
+    {
+      "programId": "effect.program.runtime-material-v2.opcode-6.artist-f-sprite.v1",
+      "backend": "runtimeMaterialV2",
+      "opcode": 6
+    }
+  ],
+  "layouts": [
+    {
+      "layoutId": "effect.layout.runtime-material-v2.artist-f-sprite.v1",
+      "executionVersion": 1,
+      "textureLaneCount": 2,
+      "textureMask": 3,
+      "textureLanes": [
+        {
+          "laneId": "lane.0",
+          "role": "sparkle_tex",
+          "textureRegister": 0,
+          "samplerRegister": 5,
+          "sourceChannel": "",
+          "colorSpace": "srgb"
+        },
+        {
+          "laneId": "lane.1",
+          "role": "edgedeco.texture01",
+          "textureRegister": 1,
+          "samplerRegister": 6,
+          "sourceChannel": "",
+          "colorSpace": "srgb"
+        }
+      ],
+      "dynamicConsumedMask": 15,
+      "dynamicSuppressedMask": 0,
+      "particleColorPolicy": 3,
+      "particleColorConsumedMask": 15,
+      "particleColorSuppressedMask": 0,
+      "scalarCount": 3,
+      "vectorCount": 0,
+      "inputCount": 6,
+      "inputConsumedMask": [55, 0],
+      "inputSuppressedMask": [8, 0],
+      "vectorComponentConsumedMask": [0, 0, 0],
+      "vectorComponentSuppressedMask": [0, 0, 0],
+      "staticInputCount": 0,
+      "staticSelectedMask": 0,
+      "staticConsumedMask": 0,
+      "staticSuppressedMask": 0,
+      "renderInputCount": 6,
+      "renderConsumedMask": 47,
+      "renderSuppressedMask": 16,
+      "scalarRows": [
+        { "name": "scalar.0", "packedIndex": 0 },
+        { "name": "scalar.1", "packedIndex": 1 },
+        { "name": "scalar.2", "packedIndex": 2 }
+      ],
+      "vectorRows": [],
+      "artistParameterRows": [],
+      "colorRows": []
+    }
+  ],
+  "descriptors": [
+    {
+      "descriptorId": "effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1",
+      "layoutId": "effect.layout.runtime-material-v2.artist-f-sprite.v1",
+      "textureLanes": [
+        {
+          "laneId": "lane.0",
+          "assetId": "Effect/Artist/Textures/fx_d_noise_003.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "wrap",
+            "addressV": "wrap",
+            "addressW": "wrap",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [0, 0, 0, 0],
+            "minLod": 0,
+            "maxLod": 3.40282347e+38
+          }
+        },
+        {
+          "laneId": "lane.1",
+          "assetId": "Effect/Artist/Textures/fx_c_noise_002.dds",
+          "sampler": {
+            "filter": "linear",
+            "addressU": "wrap",
+            "addressV": "wrap",
+            "addressW": "wrap",
+            "mipLodBias": 0,
+            "maxAnisotropy": 1,
+            "comparison": "never",
+            "borderColor": [0, 0, 0, 0],
+            "minLod": 0,
+            "maxLod": 3.40282347e+38
+          }
+        }
+      ],
+      "scalars": [
+        { "name": "scalar.0", "value": 30 },
+        { "name": "scalar.1", "value": 1.5 },
+        { "name": "scalar.2", "value": 0.100000001 }
+      ],
+      "vectors": [],
+      "artistParameters": [],
+      "colors": []
+    }
+  ],
+  "adapters": [
+    {
+      "adapterId": "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1"
+    }
+  ],
+  "bindings": []
+}

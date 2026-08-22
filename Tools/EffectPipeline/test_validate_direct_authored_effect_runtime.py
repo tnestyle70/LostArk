@@ -20,6 +20,14 @@ validator = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(validator)
 
 EFFECT_ID = "effect.fixture.direct-authored"
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+MATERIAL_PROGRAM_SOURCE_PATH = (
+    REPOSITORY_ROOT
+    / "Data"
+    / "Effects"
+    / "MaterialPrograms"
+    / "effect-material-program-registry.v1.json"
+)
 
 
 def make_authored_payload(effect_id: str = EFFECT_ID) -> bytes:
@@ -81,6 +89,21 @@ def make_catalog(runtime_catalog_path: Path) -> dict[str, object]:
     }
 
 
+def make_v4_catalog(runtime_catalog_path: Path) -> dict[str, object]:
+    legacy = make_catalog(runtime_catalog_path)
+    material_programs = json.loads(
+        MATERIAL_PROGRAM_SOURCE_PATH.read_text(encoding="utf-8")
+    )
+    material_programs["bindings"] = []
+    return {
+        "schema": legacy["schema"],
+        "formatVersion": 4,
+        "materialPrograms": material_programs,
+        "components": legacy["components"],
+        "effects": legacy["effects"],
+    }
+
+
 def make_screen_overlay_binding() -> dict[str, object]:
     asset_id = "Effect/Fixture/fragment.dds"
     document = {
@@ -139,6 +162,42 @@ class DirectAuthoredRuntimeValidatorTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(validator.ContractError, "fields or order"):
             validator.validate_runtime_catalog(marked, self.runtime_catalog_path)
+
+    def test_v3_compatibility_and_v4_material_program_registry(self) -> None:
+        validator.validate_runtime_catalog(
+            make_catalog(self.runtime_catalog_path), self.runtime_catalog_path
+        )
+        validator.validate_runtime_catalog(
+            make_v4_catalog(self.runtime_catalog_path), self.runtime_catalog_path
+        )
+
+        v4_without_registry = make_catalog(self.runtime_catalog_path)
+        v4_without_registry["formatVersion"] = 4
+        with self.assertRaisesRegex(validator.ContractError, "v4 requires"):
+            validator.validate_runtime_catalog(
+                v4_without_registry, self.runtime_catalog_path
+            )
+
+        v3_with_registry = make_v4_catalog(self.runtime_catalog_path)
+        v3_with_registry["formatVersion"] = 3
+        with self.assertRaisesRegex(validator.ContractError, "v3 must not"):
+            validator.validate_runtime_catalog(v3_with_registry, self.runtime_catalog_path)
+
+        wrong_registry = make_v4_catalog(self.runtime_catalog_path)
+        wrong_registry["materialPrograms"]["schema"] = "lostark.wrong"
+        with self.assertRaisesRegex(validator.ContractError, "schema mismatch"):
+            validator.validate_runtime_catalog(wrong_registry, self.runtime_catalog_path)
+
+        reordered_registry = make_v4_catalog(self.runtime_catalog_path)
+        registry = reordered_registry["materialPrograms"]
+        reordered_registry["materialPrograms"] = {
+            "formatVersion": registry["formatVersion"],
+            **{key: value for key, value in registry.items() if key != "formatVersion"},
+        }
+        with self.assertRaisesRegex(validator.ContractError, "fields or order"):
+            validator.validate_runtime_catalog(
+                reordered_registry, self.runtime_catalog_path
+            )
 
     def test_version_extra_field_duplicate_and_order_fail_closed(self) -> None:
         mutations: list[dict[str, object]] = []

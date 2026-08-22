@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "Render_OutputContract.h"
 
 #include <fstream>
 #include <iomanip>
@@ -330,17 +331,24 @@ HRESULT CRenderer::Draw()
 	hResult = CGameInstance::Get().Begin_MRT(TEXT("MRT_SceneHDR"));
 	if (FAILED(hResult))
 		return FailFrame("Begin_MRT_SceneHDR", hResult);
+	HRESULT hSceneResult = S_OK;
+	HRESULT hEndSceneResult = S_OK;
+	{
+		CRenderOutputContractScope SceneOutputScope(
+			RENDER_OUTPUT_CONTRACT::
+			SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION,
+			m_pContext.Get());
+		hSceneResult = Render_Priority();
+		if (SUCCEEDED(hSceneResult))
+			hSceneResult = Render_Combined();
+		if (SUCCEEDED(hSceneResult))
+			hSceneResult = Render_NonLight();
+		if (SUCCEEDED(hSceneResult))
+			hSceneResult = Render_Blend();
 
-	HRESULT hSceneResult = Render_Priority();
-	if (SUCCEEDED(hSceneResult))
-		hSceneResult = Render_Combined();
-	if (SUCCEEDED(hSceneResult))
-		hSceneResult = Render_NonLight();
-	if (SUCCEEDED(hSceneResult))
-		hSceneResult = Render_Blend();
-
-	/* Always restore the back-buffer/DSV pair after entering the HDR MRT. */
-	const HRESULT hEndSceneResult = CGameInstance::Get().End_MRT();
+		/* Always restore the back-buffer/DSV pair after entering the HDR MRT. */
+		hEndSceneResult = CGameInstance::Get().End_MRT();
+	}
 	if (FAILED(hSceneResult) || FAILED(hEndSceneResult))
 		return FailFrame(
 			FAILED(hSceneResult) ? "Render_Scene" : "End_MRT_SceneHDR",

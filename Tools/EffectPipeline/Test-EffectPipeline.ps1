@@ -248,6 +248,15 @@ try {
     [IO.File]::WriteAllBytes(
         $fixtureVisualProgramSource,
         [IO.File]::ReadAllBytes($visualProgramSource))
+    $materialProgramSource = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot `
+        '..\..\Data\Effects\MaterialPrograms\effect-material-program-registry.v1.json'))
+    $fixtureMaterialProgramSource = Join-Path $dataRoot `
+        'Effects\MaterialPrograms\effect-material-program-registry.v1.json'
+    $fixtureMaterialPrograms = Get-Content -LiteralPath `
+        $materialProgramSource -Raw -Encoding UTF8 | ConvertFrom-Json
+    $fixtureMaterialPrograms.bindings = @()
+    Write-Utf8 $fixtureMaterialProgramSource `
+        (($fixtureMaterialPrograms | ConvertTo-Json -Depth 30) + "`n")
     foreach ($animationAssetId in @(
             'Artist', 'DimensionMaster', 'LanceMaster', 'Warlord')) {
         $eventPath = Join-Path $dataRoot (
@@ -435,10 +444,12 @@ try {
     $baseline = [IO.File]::ReadAllBytes($output)
     $baselineRuntime = Get-Content -LiteralPath $output -Raw -Encoding UTF8 |
         ConvertFrom-Json
-    if ([int]$baselineRuntime.formatVersion -ne 2 -or
-        $null -ne $baselineRuntime.PSObject.Properties['schema'] -or
-        $null -ne $baselineRuntime.effects[0].PSObject.Properties['payloadKind']) {
-        throw 'Legacy-only publish no longer preserves the format-2 catalog shape.'
+    if ([int]$baselineRuntime.formatVersion -ne 4 -or
+        [string]$baselineRuntime.schema -cne 'lostark.effect-runtime-catalog' -or
+        [string]$baselineRuntime.effects[0].payloadKind -cne
+            'LEGACY_ASSEMBLY_V1' -or
+        @($baselineRuntime.materialPrograms.bindings).Count -ne 0) {
+        throw 'Legacy-only publish no longer preserves the format-4 Binding-0 catalog shape.'
     }
 
     $artistCueFixturePath = Join-Path $dataRoot `

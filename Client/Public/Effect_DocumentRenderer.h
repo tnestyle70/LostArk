@@ -3,6 +3,7 @@
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 #include "Effect_AuthoringDocument.h"
+#include "Effect_MaterialProgramRegistry.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_Playback.h"
@@ -57,7 +58,10 @@ struct EFFECT_RENDER_PREWARM_PROBE final
 	uint64_t iSynchronousDocumentStageCount = 0u;
 	uint64_t iPreparedLookupMissCount = 0u;
 	uint64_t iCatalogRevision = 0u;
+	uint64_t iMaterialProgramRegistryGeneration = 0u;
 	uint32_t iPreparedDocumentCount = 0u;
+	uint32_t iMaterialProgramBindingCount = 0u;
+	uint32_t iMaterialProgramResolvedElementCount = 0u;
 };
 
 struct EFFECT_DECAL_SHADER_PROJECTION_DESC final
@@ -77,6 +81,8 @@ struct EFFECT_RENDER_PREWARM_TARGET final
 	std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument;
 	std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		pVisualProgramProjection;
+	std::shared_ptr<const CEffectMaterialProgramRegistry>
+		pMaterialProgramRegistry;
 };
 
 enum class EFFECT_GPU_RENDER_FAMILY : uint8_t
@@ -389,6 +395,8 @@ private:
 			pGlasshole02TranslatedCanaryPacket;
 		std::shared_ptr<const VALTAN_TRANSLATED_CANARY_ELEMENT_PACKET>
 			pValtanTranslatedCanaryPacket;
+		std::shared_ptr<const EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>
+			pMaterialProgramBinding;
 	};
 	struct MODEL_CUE_RESOURCE final
 	{
@@ -448,7 +456,9 @@ public:
 		const std::string& strEffectAssetId,
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
-			pVisualProgramProjection = nullptr);
+			pVisualProgramProjection = nullptr,
+		std::shared_ptr<const CEffectMaterialProgramRegistry>
+			pMaterialProgramRegistry = nullptr);
 	static std::shared_ptr<const CEffectPlayback::PREPARED_RESOURCES>
 		Get_PlaybackResources(
 			const std::shared_ptr<const PREPARED_DOCUMENT>& pPrepared);
@@ -769,7 +779,9 @@ private:
 		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 			pVisualProgramProjection = nullptr,
 		std::shared_ptr<const EFFECT_DOCUMENT_DESC>
-			pImmutableDocument = nullptr) const;
+			pImmutableDocument = nullptr,
+		std::shared_ptr<const CEffectMaterialProgramRegistry>
+			pMaterialProgramRegistry = nullptr) const;
 	bool_t Clone_ModelCueResources(
 		const PREPARED_DOCUMENT& Prepared,
 		std::unordered_map<std::string, MODEL_CUE_RESOURCE>& OutResources,
@@ -945,4 +957,3 @@ private:
 };
 
 NS_END
-

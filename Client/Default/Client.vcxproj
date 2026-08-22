@@ -54,6 +54,7 @@
     <ClInclude Include="..\Public\Effect_Playback.h" />
     <ClInclude Include="..\Public\Effect_LightPresentation.h" />
     <ClInclude Include="..\Public\Effect_DocumentRenderer.h" />
+    <ClInclude Include="..\Public\Effect_MaterialProgramRegistry.h" />
     <ClInclude Include="..\Public\Effect_DirectAuthoredSourceIndex.h" />
     <ClInclude Include="..\Public\Effect_Object.h" />
     <ClInclude Include="..\Public\Effect_ScreenOverlayPresentation.h" />
@@ -192,6 +193,7 @@
     <ClCompile Include="..\Private\Effect_Playback.cpp" />
     <ClCompile Include="..\Private\Effect_LightPresentation.cpp" />
     <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp" />
+    <ClCompile Include="..\Private\Effect_MaterialProgramRegistry.cpp" />
     <ClCompile Include="..\Private\Effect_DirectAuthoredSourceIndex.cpp" />
     <ClCompile Include="..\Private\Effect_Object.cpp" />
     <ClCompile Include="..\Private\Effect_ScreenOverlayPresentation.cpp" />

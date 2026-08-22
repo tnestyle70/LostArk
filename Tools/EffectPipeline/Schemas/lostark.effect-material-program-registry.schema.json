@@ -1,0 +1,347 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/effect-material-program-registry-v1.json",
+  "title": "LostArk Effect material program registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "programs",
+    "layouts",
+    "descriptors",
+    "adapters",
+    "bindings"
+  ],
+  "properties": {
+    "schema": { "const": "lostark.effect-material-program-registry" },
+    "formatVersion": { "const": 1 },
+    "programs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/program" }
+    },
+    "layouts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/layout" }
+    },
+    "descriptors": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": { "$ref": "#/$defs/descriptor" }
+    },
+    "adapters": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/adapter" }
+    },
+    "bindings": {
+      "type": "array",
+      "maxItems": 65536,
+      "items": { "$ref": "#/$defs/binding" }
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+    },
+    "uint32": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    "float4": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "type": "number" }
+    },
+    "mask2": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/uint32" }
+    },
+    "mask3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/uint32" }
+    },
+    "program": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["programId", "backend", "opcode"],
+      "properties": {
+        "programId": { "$ref": "#/$defs/stableId" },
+        "backend": { "const": "runtimeMaterialV2" },
+        "opcode": { "$ref": "#/$defs/uint32" }
+      }
+    },
+    "layoutTextureLane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "laneId",
+        "role",
+        "textureRegister",
+        "samplerRegister",
+        "sourceChannel",
+        "colorSpace"
+      ],
+      "properties": {
+        "laneId": { "$ref": "#/$defs/stableId" },
+        "role": { "$ref": "#/$defs/stableId" },
+        "textureRegister": { "$ref": "#/$defs/uint32" },
+        "samplerRegister": { "$ref": "#/$defs/uint32" },
+        "sourceChannel": { "type": "string", "maxLength": 64 },
+        "colorSpace": { "enum": ["linear", "srgb"] }
+      }
+    },
+    "packedRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "packedIndex"],
+      "properties": {
+        "name": { "$ref": "#/$defs/stableId" },
+        "packedIndex": { "$ref": "#/$defs/uint32" }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layoutId",
+        "executionVersion",
+        "textureLaneCount",
+        "textureMask",
+        "textureLanes",
+        "dynamicConsumedMask",
+        "dynamicSuppressedMask",
+        "particleColorPolicy",
+        "particleColorConsumedMask",
+        "particleColorSuppressedMask",
+        "scalarCount",
+        "vectorCount",
+        "inputCount",
+        "inputConsumedMask",
+        "inputSuppressedMask",
+        "vectorComponentConsumedMask",
+        "vectorComponentSuppressedMask",
+        "staticInputCount",
+        "staticSelectedMask",
+        "staticConsumedMask",
+        "staticSuppressedMask",
+        "renderInputCount",
+        "renderConsumedMask",
+        "renderSuppressedMask",
+        "scalarRows",
+        "vectorRows",
+        "artistParameterRows",
+        "colorRows"
+      ],
+      "properties": {
+        "layoutId": { "$ref": "#/$defs/stableId" },
+        "executionVersion": { "const": 1 },
+        "textureLaneCount": { "type": "integer", "minimum": 0, "maximum": 6 },
+        "textureMask": { "$ref": "#/$defs/uint32" },
+        "textureLanes": {
+          "type": "array",
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/layoutTextureLane" }
+        },
+        "dynamicConsumedMask": { "$ref": "#/$defs/uint32" },
+        "dynamicSuppressedMask": { "$ref": "#/$defs/uint32" },
+        "particleColorPolicy": { "$ref": "#/$defs/uint32" },
+        "particleColorConsumedMask": { "$ref": "#/$defs/uint32" },
+        "particleColorSuppressedMask": { "$ref": "#/$defs/uint32" },
+        "scalarCount": { "type": "integer", "minimum": 0, "maximum": 52 },
+        "vectorCount": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "inputCount": { "$ref": "#/$defs/uint32" },
+        "inputConsumedMask": { "$ref": "#/$defs/mask2" },
+        "inputSuppressedMask": { "$ref": "#/$defs/mask2" },
+        "vectorComponentConsumedMask": { "$ref": "#/$defs/mask3" },
+        "vectorComponentSuppressedMask": { "$ref": "#/$defs/mask3" },
+        "staticInputCount": { "$ref": "#/$defs/uint32" },
+        "staticSelectedMask": { "$ref": "#/$defs/uint32" },
+        "staticConsumedMask": { "$ref": "#/$defs/uint32" },
+        "staticSuppressedMask": { "$ref": "#/$defs/uint32" },
+        "renderInputCount": { "$ref": "#/$defs/uint32" },
+        "renderConsumedMask": { "$ref": "#/$defs/uint32" },
+        "renderSuppressedMask": { "$ref": "#/$defs/uint32" },
+        "scalarRows": {
+          "type": "array",
+          "maxItems": 52,
+          "items": { "$ref": "#/$defs/packedRow" }
+        },
+        "vectorRows": {
+          "type": "array",
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/packedRow" }
+        },
+        "artistParameterRows": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/packedRow" }
+        },
+        "colorRows": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/packedRow" }
+        }
+      }
+    },
+    "sampler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filter",
+        "addressU",
+        "addressV",
+        "addressW",
+        "mipLodBias",
+        "maxAnisotropy",
+        "comparison",
+        "borderColor",
+        "minLod",
+        "maxLod"
+      ],
+      "properties": {
+        "filter": { "enum": ["point", "linear", "anisotropic"] },
+        "addressU": { "enum": ["wrap", "mirror", "clamp", "border"] },
+        "addressV": { "enum": ["wrap", "mirror", "clamp", "border"] },
+        "addressW": { "enum": ["wrap", "mirror", "clamp", "border"] },
+        "mipLodBias": { "type": "number" },
+        "maxAnisotropy": { "type": "integer", "minimum": 1, "maximum": 16 },
+        "comparison": {
+          "enum": [
+            "never",
+            "less",
+            "equal",
+            "lessEqual",
+            "greater",
+            "notEqual",
+            "greaterEqual",
+            "always"
+          ]
+        },
+        "borderColor": { "$ref": "#/$defs/float4" },
+        "minLod": { "type": "number" },
+        "maxLod": { "type": "number" }
+      }
+    },
+    "descriptorTextureLane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["laneId", "assetId", "sampler"],
+      "properties": {
+        "laneId": { "$ref": "#/$defs/stableId" },
+        "assetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^Effect/(?:[^/]+/)*[^/]+\\.dds$"
+        },
+        "sampler": { "$ref": "#/$defs/sampler" }
+      }
+    },
+    "scalarValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value"],
+      "properties": {
+        "name": { "$ref": "#/$defs/stableId" },
+        "value": { "type": "number" }
+      }
+    },
+    "vectorValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value"],
+      "properties": {
+        "name": { "$ref": "#/$defs/stableId" },
+        "value": { "$ref": "#/$defs/float4" }
+      }
+    },
+    "descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "descriptorId",
+        "layoutId",
+        "textureLanes",
+        "scalars",
+        "vectors",
+        "artistParameters",
+        "colors"
+      ],
+      "properties": {
+        "descriptorId": { "$ref": "#/$defs/stableId" },
+        "layoutId": { "$ref": "#/$defs/stableId" },
+        "textureLanes": {
+          "type": "array",
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/descriptorTextureLane" }
+        },
+        "scalars": {
+          "type": "array",
+          "maxItems": 52,
+          "items": { "$ref": "#/$defs/scalarValue" }
+        },
+        "vectors": {
+          "type": "array",
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/vectorValue" }
+        },
+        "artistParameters": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/vectorValue" }
+        },
+        "colors": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/vectorValue" }
+        }
+      }
+    },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapterId"],
+      "properties": {
+        "adapterId": {
+          "const": "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1"
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "elementId",
+        "programId",
+        "layoutId",
+        "descriptorId",
+        "adapterId"
+      ],
+      "properties": {
+        "effectAssetId": { "$ref": "#/$defs/stableId" },
+        "elementId": { "$ref": "#/$defs/stableId" },
+        "programId": { "$ref": "#/$defs/stableId" },
+        "layoutId": { "$ref": "#/$defs/stableId" },
+        "descriptorId": { "$ref": "#/$defs/stableId" },
+        "adapterId": { "$ref": "#/$defs/stableId" }
+      }
+    }
+  }
+}
