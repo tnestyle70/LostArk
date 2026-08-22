@@ -114,5 +114,14 @@
       "adapterId": "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1"
     }
   ],
-  "bindings": []
+  "bindings": [
+    {
+      "effectAssetId": "effect.artist.skill.31470.unified",
+      "elementId": "sprite.2b3dc6842507e910",
+      "programId": "effect.program.runtime-material-v2.opcode-6.artist-f-sprite.v1",
+      "layoutId": "effect.layout.runtime-material-v2.artist-f-sprite.v1",
+      "descriptorId": "effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1",
+      "adapterId": "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1"
+    }
+  ]
 }

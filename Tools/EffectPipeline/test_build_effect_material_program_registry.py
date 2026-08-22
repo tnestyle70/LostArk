@@ -72,11 +72,11 @@ def make_authored_documents() -> dict[str, dict[str, object]]:
 
 
 class MaterialProgramRegistryTests(unittest.TestCase):
-    def test_source_contains_binding_zero_registry(self) -> None:
+    def test_source_contains_exact_artist_f_canary_binding(self) -> None:
         registry = registry_tool.build_registry(
             SOURCE_PATH, EFFECT_CATALOG_PATH, DATA_ROOT
         )
-        self.assertEqual([], registry["bindings"])
+        self.assertEqual([make_binding()], registry["bindings"])
         output = io.StringIO()
         with redirect_stdout(output):
             self.assertEqual(
