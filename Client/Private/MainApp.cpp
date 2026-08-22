@@ -969,7 +969,58 @@ void CMainApp::RenderCombatHUD()
 	Server 재련 data exists yet), just the same generic Render("Default", 0) pass Esther/Boss UI
 	use for their own static slots. */
 	if (nullptr != m_pItemUpgradeView && m_bItemUpgradePreviewVisible)
+	{
 		m_pItemUpgradeView->Render("Default", 0);
+
+		/* No real Server 재련 percent exists yet (see comment above), so this is a synthetic
+		sweep 0..99 kept in lockstep with ItemUpgrade_GaugeFill's own JSON animation (100 frames
+		at 45fps) purely so the preview number matches the bar it sits over. Once a real gauge
+		value exists this should read it the same way RenderLanceMasterIdentityGauge() reads
+		player.iCurrentIdentity, not this clock. */
+		f32_t fSlotX, fSlotY, fSlotWidth, fSlotHeight;
+		if (m_pItemUpgradeView->Get_SlotRect(
+			"ItemUpgrade_GaugeFill", fSlotX, fSlotY, fSlotWidth, fSlotHeight))
+		{
+			constexpr f32_t GAUGE_FILL_FPS = 45.f;
+			constexpr f32_t GAUGE_FILL_FRAME_COUNT = 100.f;
+			const f32_t fCycleSeconds = GAUGE_FILL_FRAME_COUNT / GAUGE_FILL_FPS;
+			const f32_t fElapsed = std::fmod(
+				static_cast<f32_t>(ImGui::GetTime()), fCycleSeconds);
+			const int32_t iPercent = std::clamp(
+				static_cast<int32_t>(fElapsed / fCycleSeconds * GAUGE_FILL_FRAME_COUNT),
+				0, 99);
+
+			/* Wrap (99 -> 0) = one synthetic "gauge filled to 100%" cycle. CoreFlash fires now;
+			ShockwaveRing is scheduled for CoreFlash's own real duration (28 frames/20fps) later so
+			the two real Scaleform layers play in their authored order instead of together. */
+			if (iPercent < m_iItemUpgradePreviousPercent)
+			{
+				m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CoreFlash");
+				constexpr f64_t CORE_FLASH_DURATION_SECONDS = 28.0 / 20.0;
+				m_dItemUpgradeShockwaveScheduledAt =
+					ImGui::GetTime() + CORE_FLASH_DURATION_SECONDS;
+			}
+			m_iItemUpgradePreviousPercent = iPercent;
+
+			if (m_dItemUpgradeShockwaveScheduledAt >= 0.0 &&
+				ImGui::GetTime() >= m_dItemUpgradeShockwaveScheduledAt)
+			{
+				m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ShockwaveRing");
+				m_dItemUpgradeShockwaveScheduledAt = -1.0;
+			}
+
+			const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
+			const float scaleX = viewportSize.x / 1280.f;
+			const float scaleY = viewportSize.y / 720.f;
+			const float textScale = (std::min)(scaleX, scaleY);
+			const wstring strPercent = std::to_wstring(iPercent) + L"%";
+			CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strPercent.c_str(),
+				float2_t(
+					(fSlotX + fSlotWidth * 0.5f) * scaleX,
+					(fSlotY + fSlotHeight * 0.5f) * scaleY),
+				Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.3f * textScale);
+		}
+	}
 	Render_ItemQuickSlots();
 }
 
@@ -983,7 +1034,8 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	{
 		return;
 	}
-	if (!CCombatHUDViewModel::Get().Get_Player().isValid)
+	const HUD_PLAYER_STATE& keyLabelPlayer = CCombatHUDViewModel::Get().Get_Player();
+	if (!keyLabelPlayer.isValid)
 		return;
 	if (nullptr == m_pHUDRuntimeView)
 		return;
@@ -992,7 +1044,7 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	constexpr KEY_LABEL LABELS[] = {
 		{ "Skill_Q", L"Q" }, { "Skill_W", L"W" }, { "Skill_E", L"E" }, { "Skill_R", L"R" },
 		{ "Skill_A", L"A" }, { "Skill_S", L"S" }, { "Skill_D", L"D" }, { "Skill_F", L"F" },
-		{ "Skill_T", L"T" },
+		{ "Skill_T", L"T" }, { "Skill_V", L"V" },
 		{ "SpecialSkill_1", L"6" }, { "SpecialSkill_2", L"7" }, { "SpecialSkill_3", L"8" },
 		{ "SpecialSkill_4", L"9" }, { "SpecialSkill_5", L"0" },
 		{ "Item_1", L"1" }, { "Item_2", L"2" }, { "Item_3", L"3" }, { "Item_4", L"4" },
@@ -1003,11 +1055,11 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	for (const KEY_LABEL& Label : LABELS)
+	const auto DrawKeyLabel = [&](const char* pSlotId, const wchar_t* pLabel)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-		if (!m_pHUDRuntimeView->Get_SlotRect(Label.pSlotId, fX, fY, fWidth, fHeight))
-			continue;
+		if (!m_pHUDRuntimeView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight))
+			return;
 
 		/* "Empty Slot.png"/"Empty Slot 2.png" are both 52x52 art with a solid pointed tab
 		filling roughly the bottom 30% (measured directly from the source pixels: transparent
@@ -1020,12 +1072,28 @@ void CMainApp::RenderQuickSlotKeyLabels()
 		0.407 for '8', 0.336 vs 0.306 for 'Q') -- same font already used for combat damage
 		numbers because it needs to read clearly at a glance too. */
 		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel);
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
 		const f32_t fScale = (vMeasured.y > 0.f) ?
 			(fHeight * 0.22f / vMeasured.y) : 1.f;
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel,
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
 			float2_t(fLabelCenterX * textScaleX, fLabelCenterY * textScaleY),
 			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	};
+
+	for (const KEY_LABEL& Label : LABELS)
+		DrawKeyLabel(Label.pSlotId, Label.pLabel);
+
+	/* Z/X are not common ACTIVE slots like the ones above -- only Artist has Z ("저무는 달") and
+	only Warlord has X ("전장의 방패")/Z ("방어 태세 전환"), per PlayerSkills.json's per-class
+	ACTIVE slot lists. Drawing them unconditionally like the shared LABELS above would put a
+	"Z"/"X" label over a slot a class never uses. */
+	using LostArk::Shared::CHARACTER_CLASS_ID;
+	if (CHARACTER_CLASS_ID::ARTIST == keyLabelPlayer.eCharacterClass)
+		DrawKeyLabel("Skill_Z", L"Z");
+	else if (CHARACTER_CLASS_ID::WARLORD == keyLabelPlayer.eCharacterClass)
+	{
+		DrawKeyLabel("Skill_X", L"X");
+		DrawKeyLabel("Skill_Z", L"Z");
 	}
 }
 
@@ -2538,11 +2606,21 @@ void CMainApp::Apply_LevelRequest()
 	const bool_t hasTargetProfile = nullptr != pTarget &&
 		nullptr != pTarget->pRenderingProfileId &&
 		m_RenderingProfiles.Has_Profile(pTarget->pRenderingProfileId);
+	if (!hasTargetProfile)
+	{
+		OutputDebugStringA(
+			"[MainApp] Activation target has no registered rendering profile.\n");
+	}
 	unique_ptr<CLevel> nextLevel = hasTargetProfile ?
 		CLevelRegistry::Create_Level(
 			request.eTargetLevel,
 			m_pDevice,
 			m_pContext) : nullptr;
+	if (hasTargetProfile && nullptr == nextLevel)
+	{
+		OutputDebugStringA(
+			"[MainApp] Create_Level returned null (target Level::Initialize failed).\n");
+	}
 	const string previousProfileId =
 		m_RenderingProfiles.Get_ActiveProfileId();
 	string profileStatus;

@@ -1,12 +1,1567 @@
 {
-  "schema": "lostark.ui-layout",
-  "formatVersion": 1,
-  "resolution": {
-    "width": 1280,
-    "height": 720
+ "schema": "lostark.ui-layout",
+ "formatVersion": 1,
+ "resolution": {
+  "width": 1280,
+  "height": 720
+ },
+ "classes": [
+  "Default"
+ ],
+ "slots": [
+  {
+   "id": "ItemUpgrade_PanelBg",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 259.657196,
+    "y": 4.43819237,
+    "width": 442,
+    "height": 485.333313
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_panel_bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
   },
-  "classes": [
-    "Default"
-  ],
-  "slots": []
+  {
+   "id": "ItemUpgrade_SuccessModalBg",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 364.666809,
+    "y": 631.42865,
+    "width": 948,
+    "height": 489.333313
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_result_modal_bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_RecipeIconBgExample",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 373.41272,
+    "y": 325,
+    "width": 60,
+    "height": 68
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_recipeslot_icon_bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_RecipeIconBg1",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 449.074677,
+    "y": 325,
+    "width": 60,
+    "height": 68
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_recipeslot_icon_bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_RecipeIconBg2",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 528.969299,
+    "y": 325,
+    "width": 60,
+    "height": 68
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_recipeslot_icon_bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_DecoIcon",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 451.593597,
+    "y": 41.2919273,
+    "width": 57.3333015,
+    "height": 57.3333015
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_deco_icon.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_SpecialListPageBg",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 837.099854,
+    "y": 174.360428,
+    "width": 295.914001,
+    "height": 453.963989
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_speciallistpage_bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_LevelUpMotion2Big",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 253.633133,
+    "y": 62.8284073,
+    "width": 456,
+    "height": 260.666687
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_levelupmotion2_big.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_GaugeFill",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 444.570587,
+    "y": 166.531937,
+    "width": 71.3332977,
+    "height": 70.6667023
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 45,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_000.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_001.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_002.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_003.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_004.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_005.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_006.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_007.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_008.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_009.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_010.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_011.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_012.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_013.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_014.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_015.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_016.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_017.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_018.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_019.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_020.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_021.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_022.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_023.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_024.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_025.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_026.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_027.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_028.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_029.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_030.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_031.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_032.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_033.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_034.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_035.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_036.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_037.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_038.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_039.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_040.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_041.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_042.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_043.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_044.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_045.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_046.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_047.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_048.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_049.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_050.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_051.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_052.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_053.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_054.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_055.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_056.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_057.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_058.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_059.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_060.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_061.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_062.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_063.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_064.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_065.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_066.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_067.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_068.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_069.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_070.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_071.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_072.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_073.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_074.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_075.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_076.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_077.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_078.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_079.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_080.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_081.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_082.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_083.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_084.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_085.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_086.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_087.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_088.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_089.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_090.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_091.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_092.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_093.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_094.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_095.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_096.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_097.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_098.png",
+     "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_099.png"
+    ],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_WingedRingGold",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 362.703918,
+    "y": 127.766266,
+    "width": 236,
+    "height": 162.666702
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_winged_ring_gold.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_LevelUpBtn",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 444.51532,
+    "y": 257.411133,
+    "width": 71.3332977,
+    "height": 26.6667004
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_levelup_btn_bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_EquipExpPageLine",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 374.451965,
+    "y": 315.138123,
+    "width": 211.333298,
+    "height": 8
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_equipexppage_line.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_SmeltGlow",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 430.2372,
+    "y": 151.8653,
+    "width": 100.0,
+    "height": 100.0
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 20,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_001.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_002.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_003.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_004.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_005.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_006.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_007.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_008.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_009.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_010.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_011.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_012.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_013.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_014.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_015.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_016.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_017.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_018.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_019.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_020.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_021.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_022.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_023.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_024.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_025.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_026.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_027.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_028.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_029.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_030.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_031.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_032.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_033.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_034.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_035.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_036.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_037.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_038.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_039.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_040.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_041.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_042.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_043.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_044.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_045.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_046.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_047.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_048.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_049.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_050.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_051.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_052.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_053.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_054.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_055.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_056.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_057.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_058.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_059.png",
+     "UI/ItemUpgrade/SmeltGlow/SmeltGlow_060.png"
+    ],
+    "loop": true,
+    "additive": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_CoreFlash",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 381.2463,
+    "y": 102.8744,
+    "width": 197.9818,
+    "height": 197.9818
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 20,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_001.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_002.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_003.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_004.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_005.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_006.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_007.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_008.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_009.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_010.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_011.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_012.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_013.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_014.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_015.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_016.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_017.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_018.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_019.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_020.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_021.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_022.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_023.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_024.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_025.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_026.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_027.png",
+     "UI/ItemUpgrade/CoreFlash/CoreFlash_028.png"
+    ],
+    "loop": false,
+    "additive": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_ShockwaveRing",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 413.5706,
+    "y": 135.1986,
+    "width": 133.3333,
+    "height": 133.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 20,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_001.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_002.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_003.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_004.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_005.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_006.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_007.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_008.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_009.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_010.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_011.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_012.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_013.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_014.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_015.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_016.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_017.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_018.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_019.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_020.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_021.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_022.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_023.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_024.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_025.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_026.png",
+     "UI/ItemUpgrade/ShockwaveRing/ShockwaveRing_027.png"
+    ],
+    "loop": false,
+    "additive": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_WingDecoFade",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 253.3333,
+    "y": 29.3333,
+    "width": 441.3333,
+    "height": 329.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 20,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_001.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_002.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_003.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_004.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_005.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_006.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_007.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_008.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_009.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_010.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_011.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_012.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_013.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_014.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_015.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_016.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_017.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_018.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_019.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_020.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_021.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_022.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_023.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_024.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_025.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_026.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_027.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_028.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_029.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_030.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_031.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_032.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_033.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_034.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_035.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_036.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_037.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_038.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_039.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_040.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_041.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_042.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_043.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_044.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_045.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_046.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_047.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_048.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_049.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_050.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_051.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_052.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_053.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_054.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_055.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_056.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_057.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_058.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_059.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_060.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_061.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_062.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_063.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_064.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_065.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_066.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_067.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_068.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_069.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_070.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_071.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_072.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_073.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_074.png",
+     "UI/ItemUpgrade/WingDecoFade/WingDecoFade_075.png"
+    ],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_LeftListBg",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 11.8333,
+    "y": 42.7,
+    "width": 295.914,
+    "height": 453.964
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_speciallistpage_bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListNormalBg0",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 11.8333,
+    "y": 42.7,
+    "width": 137.3333,
+    "height": 23.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_liststep2_normal.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListNormalBg1",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 11.8333,
+    "y": 79.3667,
+    "width": 137.3333,
+    "height": 23.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_liststep2_normal.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListNormalBg2",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 11.8333,
+    "y": 116.0333,
+    "width": 137.3333,
+    "height": 23.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_liststep2_normal.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListNormalBg3",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 11.8333,
+    "y": 152.7,
+    "width": 137.3333,
+    "height": 23.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_liststep2_normal.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_RightGradeListBg",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 685.3333,
+    "y": 40.0,
+    "width": 295.914,
+    "height": 453.964
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_speciallistpage_bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListSelectedExample",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 11.8333,
+    "y": 42.7,
+    "width": 138.6667,
+    "height": 24.6667
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_list_selected.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListLockExample",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 15.1667,
+    "y": 82.0333,
+    "width": 14.0,
+    "height": 18.0
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_lock_icon.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListDisabledExample",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 11.8333,
+    "y": 116.0333,
+    "width": 190.0,
+    "height": 35.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_list_disabled.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_GradeTierA",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 685.3333,
+    "y": 40.0,
+    "width": 133.3333,
+    "height": 43.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_grade_tier_a.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_GradeTierB",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 685.3333,
+    "y": 86.6667,
+    "width": 133.3333,
+    "height": 43.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_grade_tier_b.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_GradeSelectedExample",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 685.3333,
+    "y": 168.0,
+    "width": 240.0,
+    "height": 61.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_grade_selected.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_GradeStripA",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 685.3333,
+    "y": 232.0,
+    "width": 2.6667,
+    "height": 61.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_grade_strip_a.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_GradeStripB",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 690.6667,
+    "y": 232.0,
+    "width": 2.6667,
+    "height": 61.3333
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  }
+ ]
 }

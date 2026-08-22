@@ -1906,7 +1906,8 @@ bool_t Client::CHUDLayoutTool::Save(const filesystem::path& path)
 				file << ", ";
 			Write_String(file, slot.AnimationFrames[frameIndex]);
 		}
-		file << "], \"loop\": " << (slot.bAnimationLoop ? "true" : "false") << " }";
+		file << "], \"loop\": " << (slot.bAnimationLoop ? "true" : "false")
+			<< ", \"additive\": " << (slot.bAnimationAdditive ? "true" : "false") << " }";
 		if (!slot.strKeyframeAnimationPath.empty())
 		{
 			file << ",\n      \"keyframeAnimationPath\": ";
@@ -2192,6 +2193,18 @@ bool_t Client::CHUDLayoutTool::Load(const filesystem::path& path)
 				return false;
 			}
 			slot.bAnimationLoop = pLoop->Get_Boolean();
+		}
+
+		/* Optional, defaults to false if the JSON omits it -- round-tripped so Save() below does
+		not drop an additive flipbook's flag back to non-additive. */
+		if (const DATA_JSON_VALUE* pAdditive = pAnimation->Find("additive"))
+		{
+			if (!pAdditive->Is_Boolean())
+			{
+				m_strDataStatus = "JSON animation additive must be boolean";
+				return false;
+			}
+			slot.bAnimationAdditive = pAdditive->Get_Boolean();
 		}
 
 		/* Optional: only KEYFRAME_ANIMATION slots carry this. Round-tripped as-is (not required,
