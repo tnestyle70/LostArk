@@ -37,6 +37,26 @@
 # the hash and fails Publish-GameplayBalance.ps1's staleness check.
 *.py text eol=lf
 
+# Glasshole02 translated shaders are raw-SHA bound by their source-exact
+# replay and runtime-canary receipts. Keep every receipt input LF-stable.
+/Client/Bin/ShaderFiles/Shader_Ue3Glasshole02.hlsli text eol=lf
+/Client/Bin/ShaderFiles/Shader_Ue3Glasshole02Translation.hlsl text eol=lf
+/Client/Bin/ShaderFiles/Shader_VtxEffectGlasshole02.hlsl text eol=lf
+/Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.glasshole02-hlsl-translation.receipt.json text eol=lf
+
+# The focused Glasshole02 runtime-canary receipt also binds the exact authored
+# source, upstream evidence, and its four C++ seams as CRLF working-tree bytes.
+# Make that existing Windows byte contract explicit instead of inheriting each
+# checkout's core.autocrlf setting.
+/Data/Effects/Authored/effect.dimensionmaster.skill.2050120.clip3.unified.effect.json text eol=crlf
+/Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-material-maps.receipt.json text eol=crlf
+/Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-texture-sampler-closure.receipt.json text eol=crlf
+/Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.source-value-uniform-evaluation.receipt.json text eol=crlf
+/Client/Private/Effect_DocumentRenderer.cpp text eol=crlf
+/Client/Public/Effect_DocumentRenderer.h text eol=crlf
+/Client/Private/Effect_Tool.cpp text eol=crlf
+/Client/Public/Effect_Tool.h text eol=crlf
+
 # The Artist 31470 reconstructed runtime program has a frozen raw UTF-8/LF
 # identity. Keep this one generated candidate byte-exact on every checkout.
 /Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json text eol=lf

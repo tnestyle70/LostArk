@@ -1,8 +1,12 @@
 # Missing Effect Family ABI 복원 결과
 
-branch: `codex/missing-effect-family-recovery`
+branch: `codex/glasshole02-source-exact-integration`
 
-base: `origin/main@7fb8f8139f62657914228070ebe2a9860287b577`
+integration base: `origin/main@06679125bed84d243708d8606dfad293556464e4`
+
+source branch: `codex/missing-effect-family-recovery@ff3eb7d2`
+
+source base: `origin/main@7fb8f8139f62657914228070ebe2a9860287b577`
 
 plan: `2026-08-22_MISSING_EFFECT_FAMILY_ABI_RECOVERY_IMPLEMENTATION_PLAN.md`
 
@@ -349,14 +353,14 @@ test_materialize_ue3_glasshole02_runtime_canary_contract.py
   Ran 17 tests, OK
 
 materialize_ue3_glasshole02_runtime_canary_contract.py --check
-  PASS receipt=c607917a60d38017d33fcbb39a610a7a3dd27f25169fc11a8aeccfc1b36c08bb
+  PASS receipt=7ba4dc6201d137e43aa37117c60dc279e9f9af6d6dd6883e1fa142573ea38871
 ```
 
-Client x64 Debug/Release와 `ClientFrontendHarness` x64 Debug/Release 빌드는 모두 성공했다.
-`ClientFrontendHarness` 실행은 두 구성 모두 exit code 1, 48건 실패로 동일했다. 실패 집합은 현재
-worktree에 이미 존재하는 광역 authored/family 계약 실패이며 G03-8 전용 검증의 PASS 근거로 사용하지
-않는다. 이번 변경은 harness 소스를 수정·삭제·복구하지 않았고, 별도 focused contract/replay 결과만
-G03-8 자동 승인 근거로 사용한다.
+원본 구현 branch에서는 Client x64 Debug/Release와 당시 존재하던 `ClientFrontendHarness` x64
+Debug/Release 빌드가 성공했지만, harness 실행은 두 구성 모두 기존 광역 authored/family 계약 48건으로
+실패했다. 이 결과는 G03-8의 PASS 근거로 사용하지 않았다. 통합 기준 main에서는 해당 harness가 이미
+삭제되어 있으며, 현재 변경은 `Tools/ClientFrontendHarness`에 diff가 없고 이를 복구하지 않는다.
+통합 승격 근거는 아래 focused contract/replay, 전체 effect pipeline과 Client Debug/Release 빌드다.
 
 Client 실행과 화면 조작은 수행하지 않았다. 첫 픽셀, 카드 경계, 유리 굴절/내부 방사, depth intersection,
 UV 움직임, 방향/크기의 visual admission은 사용자 Effect Tool A/B 전까지 계속 false다.
@@ -378,3 +382,34 @@ UV 움직임, 방향/크기의 visual admission은 사용자 Effect Tool A/B 전
 따라서 이 결과를 차원술사 전체 glass 완료로 과대 해석하지 않는다. 첫 occurrence에서 카드 경계,
 유리 굴절/내부 방사, depth intersection, UV 움직임, 방향과 크기를 사용자가 확인한 뒤 동일
 `parent + permutation + carrier/VF + pass` cohort로 확대한다.
+
+## 11. clean main 선별 통합 결과
+
+`codex/missing-effect-family-recovery@ff3eb7d2`의 네 구현 커밋을 PR #142가 반영된 clean main
+`06679125bed84d243708d8606dfad293556464e4` 위에 다시 적용했다. 충돌을 숨기는 merge나 #141 전체
+cherry-pick은 사용하지 않았다. 현재 단위는 Glasshole02 한 family의 source-exact 증거, HLSL 번역,
+Tool 전용 canary와 그 소비 계약만 포함한다.
+
+Windows `core.autocrlf=true` checkout에서도 source-exact shader hash가 변하지 않도록 세 HLSL 입력과
+translation receipt는 LF, 기존 C++/authoring canary 입력은 CRLF로 `.gitattributes`에 고정했다.
+PR #142가 바꾼 renderer/tool까지 포함해 runtime canary receipt를 다시 봉인했고, 현재 seal은
+`7ba4dc6201d137e43aa37117c60dc279e9f9af6d6dd6883e1fa142573ea38871`이다.
+
+통합 기준에서 실행한 자동 검증은 다음과 같다.
+
+```text
+Glasshole02 texture/sampler closure                 PASS (targets=5, bindings=24, textures=23)
+exact cooked variants                              PASS (variants=5, blobs=6, Product runtime=0)
+HLSL WARP numeric parity                           PASS (13/13, maxError=0)
+translated runtime RT0 replay                      PASS (3/3, maxError=0)
+runtime canary focused tests                       PASS (17/17)
+Effect pipeline                                    PASS (Python tests 110)
+Effect data project sync                           PASS (files=1836, filters=207)
+Client x64 Debug build                             PASS
+Client x64 Release build                           PASS
+git diff --check                                   PASS
+```
+
+통합 후에도 Tool canary는 기본 OFF이고 Product, prepared, reconstructed, visual admission은 모두 false다.
+`ClientFrontendHarness`를 복구하지 않으며 Valtan authored/candidate/world 데이터도 변경하지 않는다.
+raw source VS의 공간 수치 A/B와 사용자 Effect Tool 첫 픽셀 A/B는 자동 검증으로 대체하지 않는다.
