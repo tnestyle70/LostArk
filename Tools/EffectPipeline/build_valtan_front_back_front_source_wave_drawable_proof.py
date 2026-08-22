@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Seal headless renderer evidence for four FRONT_BACK_FRONT source waves.
 
-The input sweep must be emitted by ClientFrontendHarness from the exact four
-immutable candidate document paths.  This builder never invents draw results:
+The input sweep is an immutable headless-renderer capture for the exact four
+candidate document paths.  This builder never invents draw results:
 it validates candidate hashes, document and element order, resource-root
 identity, and every draw counter before producing the narrower proof consumed
 by ``apply_valtan_front_back_front_source_waves.py``.

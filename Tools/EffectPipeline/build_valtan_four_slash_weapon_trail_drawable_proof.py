@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Seal the FourSlash stationary-root/moving-bone Trail renderer proof.
 
-The runtime sweep is emitted only by ClientFrontendHarness.  This builder does
-not infer trajectory or draw results from JSON authoring data: it joins that
+The runtime sweep is tracked immutable headless-renderer evidence. This builder
+does not infer trajectory or draw results from JSON authoring data: it joins that
 machine evidence to the exact isolated candidate, its preserved safe-gap row,
 and the official Valtan weapon-bone identity before allowing canonical apply.
 """

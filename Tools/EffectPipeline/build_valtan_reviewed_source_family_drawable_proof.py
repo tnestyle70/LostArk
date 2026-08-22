@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Seal headless renderer evidence for reviewed Valtan source families.
 
-The input sweep must be emitted by ClientFrontendHarness from the exact 36
+The input sweep is an immutable headless-renderer capture for the exact 36
 applicable reviewed candidate document paths. This builder never invents draw results:
 it validates candidate hashes, document and element order, resource-root
 identity, and every draw counter before producing the narrower proof consumed

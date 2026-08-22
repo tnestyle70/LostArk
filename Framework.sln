@@ -15,8 +15,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ValtanFourPlayerHarness", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CharacterSelectIsolationHarness", "Tools\CharacterSelectIsolationHarness\Default\CharacterSelectIsolationHarness.vcxproj", "{D9E5A74B-70B1-41DF-8871-118120CBC7CD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ClientFrontendHarness", "Tools\ClientFrontendHarness\Default\ClientFrontendHarness.vcxproj", "{78406C04-3D55-4F36-B6D1-B5180A48F521}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Server", "Server\Default\Server.vcxproj", "{053788E7-C377-4811-8AFE-BC23D9BE4AE7}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PhysicsContractHarness", "Tools\PhysicsContractHarness\Default\PhysicsContractHarness.vcxproj", "{AB5658F8-984D-4826-8F05-5044E1B12BAF}"
@@ -81,12 +79,6 @@ Global
 		{D9E5A74B-70B1-41DF-8871-118120CBC7CD}.Release|x64.Build.0 = Release|x64
 		{D9E5A74B-70B1-41DF-8871-118120CBC7CD}.Release|x86.ActiveCfg = Release|Win32
 		{D9E5A74B-70B1-41DF-8871-118120CBC7CD}.Release|x86.Build.0 = Release|Win32
-		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Debug|x64.ActiveCfg = Debug|x64
-		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Debug|x64.Build.0 = Debug|x64
-		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Debug|x86.ActiveCfg = Debug|x64
-		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Release|x64.ActiveCfg = Release|x64
-		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Release|x64.Build.0 = Release|x64
-		{78406C04-3D55-4F36-B6D1-B5180A48F521}.Release|x86.ActiveCfg = Release|x64
 		{053788E7-C377-4811-8AFE-BC23D9BE4AE7}.Debug|x64.ActiveCfg = Debug|x64
 		{053788E7-C377-4811-8AFE-BC23D9BE4AE7}.Debug|x64.Build.0 = Debug|x64
 		{053788E7-C377-4811-8AFE-BC23D9BE4AE7}.Debug|x86.ActiveCfg = Debug|Win32

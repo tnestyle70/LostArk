@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Seal executed WARP evidence for Valtan-owned combat-object visuals.
 
-The runtime sweep is emitted only by ClientFrontendHarness.  This builder joins
-that evidence to BossCatalog ownership, Server combat-object lifetime/movement,
+The runtime sweep is tracked immutable headless-renderer evidence. This builder
+joins it to BossCatalog ownership, Server combat-object lifetime/movement,
 the two immutable authored Effect documents, and the source occurrence
 inventory.  It never edits cues, bindings, sequences, authored Effects, or the
 color pipeline.
