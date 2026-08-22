@@ -1,0 +1,14 @@
+{
+  "schema": "lostark.effect-authoring",
+  "version": 13,
+  "effectAssetId": "effect.valtan.four-slash.v1-watertrail-audition",
+  "displayName": "Valtan / Four Slash / V1 WATERTRAIL Reuse Audition",
+  "particleSystem": {
+    "uniformScaleMultiplier": 1,
+    "yawOffsetDegrees": 0,
+    "directionYawDegrees": 0,
+    "initialSpeedMultiplier": 1
+  },
+  "modelCues": [],
+  "elements": []
+}

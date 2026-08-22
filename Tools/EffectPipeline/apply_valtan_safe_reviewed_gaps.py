@@ -30,6 +30,11 @@ RECEIPT_PATH = (
     candidates.OUTPUT_ROOT
     / "Valtan.safe-reviewed-gap-application-receipt.v1.json"
 )
+CARRIER_V1_RECEIPT_PATH = (
+    ROOT
+    / "Data/Effects/Imported/Valtan/CarrierV1/"
+    "Valtan.carrier-v1-materialization-receipt.v1.json"
+)
 BOSS_CATALOG_PATH = ROOT / "Data/Actors/BossCatalog.json"
 SCHEMA = "lostark.valtan-safe-reviewed-gap-application-receipt"
 FORMAT_VERSION = 1
@@ -51,6 +56,17 @@ PRE_TRANSFER_APPLIED_CUE_CANONICAL_SHA256 = (
 PRE_TRANSFER_APPLIED_CATALOG_COUNT = 315
 PRE_TRANSFER_APPLIED_CATALOG_CANONICAL_SHA256 = (
     "02c9ed470c454b86a572f388853fb7c0b25380087fa6f4f0b4bf7667163fd89a"
+)
+
+SAFE_GAP_PREDECESSOR_BINDING_IDS = (
+    "cue.valtan.backstep.windup.trails",
+    "cue.valtan.four-slash.active.clip-02",
+    "cue.valtan.jump-spin.spin.trails",
+    "cue.valtan.swing.active.clip-02",
+)
+SAFE_GAP_PREDECESSOR_EFFECT_IDS = tuple(
+    value.replace("cue.", "effect.", 1)
+    for value in SAFE_GAP_PREDECESSOR_BINDING_IDS
 )
 
 COMBAT_OBJECT_OWNERSHIP_TRANSFERS = (
@@ -925,7 +941,8 @@ def validate_receipt(
             transfer["retiredCue"]["bindingId"]
             for transfer in COMBAT_OBJECT_OWNERSHIP_TRANSFERS
         )
-        or canonical_catalog.get("effectCount") != 315
+        or canonical_catalog.get("effectCount")
+        != PRE_TRANSFER_APPLIED_CATALOG_COUNT
         or canonical_catalog.get("ownershipTransferAddedEffectAssetIds")
         != ["effect.valtan.sky-axe.active"]
         or canonical_catalog.get("ownershipTransferRetiredEffectAssetIds")
@@ -968,7 +985,156 @@ def _atomic_replace(writes: dict[Path, bytes]) -> None:
             temporary.unlink(missing_ok=True)
 
 
+def validate_historical_receipt(document: dict[str, Any]) -> None:
+    """Validate the predecessor as immutable evidence, not current Product.
+
+    Carrier V1 intentionally retired every SafeReviewedGaps boss-root owner.
+    The old receipt therefore seals the state that *was* applied; its Product
+    hashes must never be rebound to today's catalog/cue documents.
+    """
+    if (
+        document.get("schema") != SCHEMA
+        or document.get("formatVersion") != FORMAT_VERSION
+        or document.get("bossArchetypeId") != "BOSS_VALTAN"
+        or document.get("disposition") != "APPLIED_PROOF_GATED_IDEMPOTENT"
+    ):
+        raise ApplyError("safe-gap historical receipt header is invalid")
+    verify_seal(document, "artifactSha256", "safe-gap historical receipt")
+    summary = document.get("summary") or {}
+    if (
+        document.get("canonicalCueDocument", {}).get("cueCount") != 106
+        or document.get("canonicalCatalogDocument", {}).get("effectCount") != 315
+        or summary.get("coreProjectionCount") != 160
+        or summary.get("addedElementCount") != 167
+        or summary.get("animationTrailProjectionCount") != 6
+        or summary.get("cascadeRibbonProjectionCount") != 1
+        or len(document.get("trailProjections") or []) != 7
+    ):
+        raise ApplyError("safe-gap historical denominator drifted")
+    for identity_key in ("candidateManifest", "drawableProof"):
+        identity = document.get(identity_key) or {}
+        path_value = identity.get("path")
+        if not isinstance(path_value, str) or not path_value:
+            raise ApplyError(f"safe-gap historical {identity_key} path is invalid")
+        path = ROOT / path_value
+        artifact = read_json(path)
+        if (
+            raw_sha256(path) != identity.get("rawSha256")
+            or artifact.get("artifactSha256") != identity.get("artifactSha256")
+        ):
+            raise ApplyError(
+                f"safe-gap historical {identity_key} identity drifted"
+            )
+    for row in document.get("trailProjections") or []:
+        verify_seal(
+            row,
+            "applicationProjectionSha256",
+            "historical trail application projection",
+        )
+
+
+def validate_carrier_v1_successor() -> dict[str, Any]:
+    """Prove Carrier V1 owns current Product without resurrecting this slice."""
+    successor = read_json(CARRIER_V1_RECEIPT_PATH)
+    if (
+        successor.get("schema")
+        != "lostark.valtan-carrier-v1-materialization-receipt"
+        or successor.get("formatVersion") != 1
+        or successor.get("bossArchetypeId") != "BOSS_VALTAN"
+    ):
+        raise ApplyError("Carrier V1 successor receipt header is invalid")
+    summary = successor.get("summary") or {}
+    product_reset = successor.get("productReset") or {}
+    if (
+        summary.get("reviewedCoreProjectionCount") != 660
+        or summary.get("materializedProjectionCount") != 657
+        or summary.get("finalValtanCatalogCount") != 46
+        or summary.get("finalBossRootCueCount") != 44
+        or product_reset.get("nonExactOldBossRootSurvivorCount") != 0
+        or product_reset.get("duplicateClipOccurrenceOwnerCount") != 0
+    ):
+        raise ApplyError("Carrier V1 successor denominator drifted")
+
+    cues = read_json(candidates.CUES_PATH)
+    catalog = read_json(candidates.CATALOG_PATH)
+    outputs = successor.get("outputs") or {}
+    cue_output = outputs.get("cues") or {}
+    catalog_output = outputs.get("catalog") or {}
+    catalog_projection = (
+        candidates.source_inventory.effect_catalog_prefix_projection(
+            catalog, "effect.valtan."
+        )
+    )
+    if (
+        cue_output.get("path") != relative(candidates.CUES_PATH)
+        or cue_output.get("cueCount") != len(cues.get("cues") or [])
+        or cue_output.get("canonicalSha256")
+        != candidates.source_inventory.canonical_sha256(cues)
+        or catalog_output.get("path") != relative(candidates.CATALOG_PATH)
+        or catalog_output.get("scope") != "EFFECT_ASSET_ID_PREFIX"
+        or catalog_output.get("effectAssetIdPrefix") != "effect.valtan."
+        or catalog_output.get("effectCount")
+        != len(catalog_projection["effects"])
+        or catalog_output.get("canonicalSha256")
+        != candidates.source_inventory.canonical_sha256(catalog_projection)
+    ):
+        raise ApplyError("Carrier V1 current Product outputs drifted")
+
+    cue_ids = {str(row.get("bindingId") or "") for row in cues.get("cues") or []}
+    effect_ids = {
+        str(row.get("effectAssetId") or "") for row in catalog.get("effects") or []
+    }
+    if cue_ids.intersection(SAFE_GAP_PREDECESSOR_BINDING_IDS) or effect_ids.intersection(
+        SAFE_GAP_PREDECESSOR_EFFECT_IDS
+    ):
+        raise ApplyError("SafeReviewedGaps predecessor owner was resurrected")
+
+    mappings = {
+        str(row.get("retiredBindingId") or ""): row
+        for row in successor.get("retiredOwnerSuccessorMappings") or []
+    }
+    clip_groups = successor.get("clipGroups") or []
+    clip_ids = [str(row.get("clipOccurrenceId") or "") for row in clip_groups]
+    if len(clip_ids) != len(set(clip_ids)):
+        raise ApplyError("Carrier V1 successor has a duplicate clip owner")
+    for binding_id in SAFE_GAP_PREDECESSOR_BINDING_IDS:
+        mapping = mappings.get(binding_id)
+        if mapping is None:
+            raise ApplyError(f"Carrier V1 omitted predecessor mapping: {binding_id}")
+        disposition = mapping.get("disposition")
+        if disposition == "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER":
+            replacement_binding = str(mapping.get("replacementBindingId") or "")
+            replacement_effect = str(mapping.get("replacementEffectAssetId") or "")
+            if replacement_binding not in cue_ids or replacement_effect not in effect_ids:
+                raise ApplyError(
+                    f"Carrier V1 replacement owner is not live: {binding_id}"
+                )
+        elif disposition == "RETIRED_NO_EXACT_REVIEWED_CARRIER_OWNER":
+            if mapping.get("replacementBindingId") is not None or mapping.get(
+                "replacementEffectAssetId"
+            ) is not None:
+                raise ApplyError(
+                    f"Carrier V1 retired mapping unexpectedly names an owner: {binding_id}"
+                )
+        else:
+            raise ApplyError(
+                f"Carrier V1 predecessor disposition is invalid: {binding_id}"
+            )
+    return successor
+
+
 def expected_application() -> tuple[str, dict[Path, bytes], dict[str, Any]]:
+    if CARRIER_V1_RECEIPT_PATH.is_file():
+        if not RECEIPT_PATH.is_file():
+            raise ApplyError("safe-gap historical receipt is missing")
+        receipt = read_json(RECEIPT_PATH)
+        validate_historical_receipt(receipt)
+        validate_carrier_v1_successor()
+        return (
+            "CARRIER_V1_SUCCESSOR_HISTORICAL",
+            {RECEIPT_PATH: RECEIPT_PATH.read_bytes()},
+            receipt,
+        )
     manifest, proof = _load_inputs()
     cues = read_json(candidates.CUES_PATH)
     catalog = read_json(candidates.CATALOG_PATH)
@@ -1030,7 +1196,10 @@ def main() -> int:
         }
         _atomic_replace(changed)
         final_state, final_writes, final_receipt = expected_application()
-        if final_state != "APPLIED_EXACT" or any(
+        if final_state not in {
+            "APPLIED_EXACT",
+            "CARRIER_V1_SUCCESSOR_HISTORICAL",
+        } or any(
             not path.is_file() or path.read_bytes() != payload
             for path, payload in final_writes.items()
         ):
@@ -1042,7 +1211,10 @@ def main() -> int:
             + json.dumps(final_receipt["summary"], sort_keys=True)
         )
         return 0
-    if state != "APPLIED_EXACT":
+    if state not in {
+        "APPLIED_EXACT",
+        "CARRIER_V1_SUCCESSOR_HISTORICAL",
+    }:
         raise ApplyError("safe-gap canonical state has not been applied")
     drift = [
         str(path)

@@ -6,15 +6,15 @@
   "sources": [
     {
       "path": "Data/Encounters/Valtan/ValtanEncounter.json",
-      "sha256": "1a639dc04a11bd13636c7af9dfd71cf797ad2f3dba304b3b02a222eb21454603"
+      "sha256": "5eb495dab34d47c80b0f12e5230deaf64570da06b630f9cc5563ed69b4c88118"
     },
     {
       "path": "Data/Animation/Authored/Valtan/Valtan.patternbindings.json",
-      "sha256": "4e035969255cfcb50322668ecb01bf62f86134fb4cdb0637a0bf4b89609ea3f2"
+      "sha256": "088fff81325d25ce40a0f302d149f45700334d116825b8a4fdc8b39818857a8a"
     },
     {
       "path": "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json",
-      "sha256": "9c4a5b059a7f4bd5aff949dc2aedd73083b326e3d39eae48d20f809628f37c1d"
+      "sha256": "80f0d0671060590a764189554f17a258e27df566db3aa5d4e8a3b5707ae1aea2"
     },
     {
       "path": "Data/Animation/Reference/Valtan/Valtan.animnotify",
@@ -22,9 +22,24 @@
     },
     {
       "path": "Data/Effects/Imported/Valtan/Valtan.priority-source-sequence-selections.v1.json",
-      "sha256": "05dc675d6ba2f0ad7c1f6a5c6316a87630739819208c1c32b4add0c36dde61a5"
+      "sha256": "6934f7ec5a0d2dbc605ba8fce38f153fe25adca601e4c0a5e217b05ac9892bb8"
+    },
+    {
+      "path": "Data/Effects/Imported/Valtan/CarrierV1/Valtan.carrier-v1-materialization-receipt.v1.json",
+      "sha256": "461f007308083c9941b68a88bd70daea9fdd00feb726b97cb65f9a770a1664dd"
+    },
+    {
+      "path": "Data/Animation/Authored/Valtan/Valtan.pattern-occurrence-v2-migration.receipt.json",
+      "sha256": "1051359ccb6210ed154602fefc5db809eab70d51d326c2b9655a5d7daaeb2fb4"
     }
   ],
+  "carrierV1SuccessorContract": {
+    "carrierReceiptPath": "Data/Effects/Imported/Valtan/CarrierV1/Valtan.carrier-v1-materialization-receipt.v1.json",
+    "carrierReceiptCanonicalSha256": "746daab34783dad76fc3cbf0c17fd74a8d0773caaf2fe0b35ac078624ae5756e",
+    "migrationReceiptPath": "Data/Animation/Authored/Valtan/Valtan.pattern-occurrence-v2-migration.receipt.json",
+    "migrationReceiptCanonicalSha256": "4718ee45a51d0c23be0674f9393dd4446322f01923a179c6d8bd86b7375b98bf",
+    "currentCueCanonicalSha256": "6b0ce162e27eab4f8839c1aaec1e88e202afb314addde04864fa18252fde9b83"
+  },
   "proposals": [
     {
       "proposalId": "valtan.portal-rush.finish.full-segment-compression.v1",
@@ -34,7 +49,7 @@
       "sourceActionId": 420622,
       "sourceStageIndex": 5,
       "sourceClipOrdinal": 0,
-      "status": "PROPOSED_SOURCE_REVIEWED_DELTA_NOT_ACCEPTED",
+      "status": "PROPOSED_BINDING_DELTA_BLOCKED_NO_EXACT_CARRIER_V1_CUE_SUCCESSOR",
       "sourceSegment": {
         "clip": "mesh_att_battle_18_03-1",
         "sourceStartMs": 0,
@@ -60,70 +75,25 @@
         "playRate": 2.7778333333333336,
         "loop": false
       },
-      "currentCue": {
-        "bindingId": "cue.valtan.portal-rush.finish",
-        "occurrenceId": "cue.valtan.portal-rush.finish.occurrence.01",
+      "historicalCueOwner": {
+        "retiredBindingId": "cue.valtan.portal-rush.finish",
+        "retiredEffectAssetId": "effect.valtan.portal-rush.finish",
         "patternId": "VALTAN_PORTAL_RUSH",
         "stageId": "FINISH",
         "actionId": "valtan.attack.portal-rush.finish",
         "clipOccurrenceId": "valtan.attack.portal-rush.finish.clip.01",
-        "effectAssetId": "effect.valtan.portal-rush.finish",
-        "anchorSlotId": "root",
-        "followPolicy": "follow",
-        "stopPolicy": "cue_end",
-        "repeatPolicy": "once",
-        "sourceStartMs": 0,
-        "sourceEndMs": 600,
-        "localTransform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
-        }
+        "disposition": "RETIRED_NO_EXACT_REVIEWED_CARRIER_OWNER",
+        "replacementBindingId": null,
+        "replacementEffectAssetId": null
       },
-      "proposedCue": {
-        "bindingId": "cue.valtan.portal-rush.finish",
-        "occurrenceId": "cue.valtan.portal-rush.finish.occurrence.01",
-        "patternId": "VALTAN_PORTAL_RUSH",
-        "stageId": "FINISH",
-        "actionId": "valtan.attack.portal-rush.finish",
-        "clipOccurrenceId": "valtan.attack.portal-rush.finish.clip.01",
-        "effectAssetId": "effect.valtan.portal-rush.finish",
-        "anchorSlotId": "root",
-        "followPolicy": "follow",
-        "stopPolicy": "cue_end",
-        "repeatPolicy": "once",
+      "currentProductCue": null,
+      "proposedProductCue": null,
+      "reviewOnlySourceWindow": {
         "sourceStartMs": 0,
         "sourceEndMs": 1666,
-        "localTransform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
-        }
+        "disposition": "REVIEW_ONLY_NOT_A_PRODUCT_CUE"
       },
+      "productCueDisposition": "BLOCKED_RETIRED_NO_EXACT_CARRIER_V1_SUCCESSOR_DO_NOT_RESTORE_LEGACY_CUE",
       "wallProjection": {
         "effectiveFullSegmentWallDurationMs": 600.0,
         "cueWallStartMs": 0.0,
@@ -154,6 +124,8 @@
   "summary": {
     "proposalCount": 1,
     "fullSegmentFitsStageCount": 1,
+    "productCueProposalCount": 0,
+    "historicalBlockedCueCount": 1,
     "canonicalDataMutationCount": 0,
     "deferredCrossStageReviewCount": 1
   }

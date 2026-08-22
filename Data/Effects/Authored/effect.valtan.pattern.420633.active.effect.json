@@ -7922,7 +7922,8 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": false
+          "useModelMaterial": false,
+          "modelPreScale": 0.01
         },
         "sprite": {
           "billboard": true
@@ -9400,7 +9401,8 @@
           "dissolveStartNormalized": 1.0
         },
         "mesh": {
-          "useModelMaterial": false
+          "useModelMaterial": false,
+          "modelPreScale": 0.01
         },
         "sprite": {
           "billboard": true

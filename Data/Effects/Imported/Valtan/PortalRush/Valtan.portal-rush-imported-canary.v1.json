@@ -8,11 +8,31 @@
     "path": "Data/Effects/Imported/Valtan/Valtan.priority-source-sequence-selections.v1.json",
     "sha256": "6934f7ec5a0d2dbc605ba8fce38f153fe25adca601e4c0a5e217b05ac9892bb8"
   },
-  "sourceProjectionSha256": "92d64369372140cd5c97a6985865d72dd2cf9b2103ea82382311ea9b41729788",
+  "carrierV1SuccessorContract": {
+    "carrierReceiptPath": "Data/Effects/Imported/Valtan/CarrierV1/Valtan.carrier-v1-materialization-receipt.v1.json",
+    "carrierReceiptCanonicalSha256": "746daab34783dad76fc3cbf0c17fd74a8d0773caaf2fe0b35ac078624ae5756e",
+    "migrationReceiptPath": "Data/Animation/Authored/Valtan/Valtan.pattern-occurrence-v2-migration.receipt.json",
+    "migrationReceiptCanonicalSha256": "4718ee45a51d0c23be0674f9393dd4446322f01923a179c6d8bd86b7375b98bf",
+    "currentCueCanonicalSha256": "6b0ce162e27eab4f8839c1aaec1e88e202afb314addde04864fa18252fde9b83"
+  },
+  "sourceProjectionSha256": "b71ed8b15fd0c7831657a4b1b5ef12e9608bb69a301d11ba939f9fd4a40c5676",
   "excluded": [
     {
       "clipOccurrenceId": "valtan.attack.portal-rush.finish.clip.01",
-      "disposition": "SOURCE_TIMING_REVIEW_REQUIRED"
+      "retiredBindingId": "cue.valtan.portal-rush.finish",
+      "retiredEffectAssetId": "effect.valtan.portal-rush.finish",
+      "disposition": "SOURCE_TIMING_REVIEW_REQUIRED_AND_CARRIER_V1_RETIRED_NO_SUCCESSOR",
+      "successorContractRow": {
+        "retiredBindingId": "cue.valtan.portal-rush.finish",
+        "retiredEffectAssetId": "effect.valtan.portal-rush.finish",
+        "patternId": "VALTAN_PORTAL_RUSH",
+        "stageId": "FINISH",
+        "actionId": "valtan.attack.portal-rush.finish",
+        "clipOccurrenceId": "valtan.attack.portal-rush.finish.clip.01",
+        "disposition": "RETIRED_NO_EXACT_REVIEWED_CARRIER_OWNER",
+        "replacementBindingId": null,
+        "replacementEffectAssetId": null
+      }
     }
   ],
   "documents": [
@@ -20,9 +40,13 @@
       "clipOccurrenceId": "valtan.attack.portal-rush.portal.clip.01",
       "sourceStageIndex": 0,
       "gameplayActionId": "valtan.attack.portal-rush.portal",
-      "effectAssetId": "effect.valtan.portal-rush.portal",
-      "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.portal-rush.portal.imported-candidate.effect.json",
-      "candidateDocumentSha256": "9e6368878ef48ba33d700329bf8491fac7ad49af11d5624e409c4cd261066b57",
+      "retiredBindingId": "cue.valtan.portal-rush.portal",
+      "retiredEffectAssetId": "effect.valtan.portal-rush.portal",
+      "successorDisposition": "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER",
+      "successorBindingId": "cue.valtan.carrier-v1.attack.portal-rush.portal.clip-01",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01",
+      "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01.imported-candidate.effect.json",
+      "candidateDocumentSha256": "dfd7e07018033c481afc5ca8a9c4b5bc975f88a7a633f15384cf9272616a408a",
       "sourceOccurrenceCount": 5,
       "sourceOccurrenceFullKeys": [
         "occurrence-key.372635221c2b7b2f91e4f98049894b7ed3bf8a574dd54f940b8e28da476e7188",
@@ -106,255 +130,19 @@
       "executableElementCount": 14,
       "catalogDisposition": "REUSE_EXISTING_NO_MUTATION",
       "catalogRow": {
-        "effectAssetId": "effect.valtan.portal-rush.portal",
+        "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01",
         "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-        "authoringPath": "Effects/Authored/effect.valtan.portal-rush.portal.effect.json"
+        "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01.effect.json"
       },
-      "cueDisposition": "REUSE_EXISTING_V2_NO_MUTATION",
+      "cueDisposition": "REUSE_CARRIER_V1_SUCCESSOR_V2_NO_MUTATION",
       "cueRow": {
-        "bindingId": "cue.valtan.portal-rush.portal",
-        "occurrenceId": "cue.valtan.portal-rush.portal.occurrence.01",
+        "bindingId": "cue.valtan.carrier-v1.attack.portal-rush.portal.clip-01",
+        "occurrenceId": "cue.valtan.carrier-v1.attack.portal-rush.portal.clip-01.occurrence.01",
         "patternId": "VALTAN_PORTAL_RUSH",
         "stageId": "PORTAL",
         "actionId": "valtan.attack.portal-rush.portal",
         "clipOccurrenceId": "valtan.attack.portal-rush.portal.clip.01",
-        "effectAssetId": "effect.valtan.portal-rush.portal",
-        "anchorSlotId": "root",
-        "followPolicy": "follow",
-        "stopPolicy": "cue_end",
-        "repeatPolicy": "once",
-        "sourceStartMs": 0,
-        "sourceEndMs": 1000,
-        "localTransform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
-        }
-      },
-      "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.portal-rush.portal.effect.json",
-      "authoredDocumentSha256": "08f6e943a9074bfbb899afad890699a7dc513adad9575cba7ec1317542cf08f4",
-      "reconcile": {
-        "effectAssetId": "effect.valtan.portal-rush.portal",
-        "existingElementCount": 37,
-        "preservedExistingElementCount": 37,
-        "sourceRebaseRequired": [],
-        "legacyGenericRetireCandidates": [
-          "par_n_rpbf_potal_02_01.em00",
-          "par_n_rpbf_potal_02_01.em01",
-          "par_n_rpbf_potal_02_01.em02",
-          "par_n_rpbf_potal_02_01.em03",
-          "par_n_rpbf_potal_02_01.em04",
-          "par_n_rpbf_potal_02_01.em05",
-          "par_n_rpbf_potal_02_01.em06",
-          "par_n_rpbf_potal_02_01.em07",
-          "par_n_rpbf_potal_02_01.em08",
-          "par_n_rpbf_potal_02_01.em09",
-          "par_n_rpbf_potal_02_01.em10",
-          "par_n_rpbf_potal_02_01.em11",
-          "par_n_rpbf_potal_02_01.em12",
-          "par_n_rpbf_potal_02_01.em13",
-          "par_n_rpbf_potal_02_01.em14",
-          "par_n_rpbf_potal_02_01.em15",
-          "par_n_rpbf_potal_02_02.em00",
-          "par_n_rpbf_potal_02_02.em01",
-          "par_n_rpbf_potal_02_02.em02",
-          "par_n_rpbf_potal_02_02.em03",
-          "par_n_rpbf_potal_02_02.em04",
-          "par_n_rpbf_potal_02_02.em05",
-          "par_n_rpbf_potal_02_02.em06"
-        ],
-        "deleteElements": [],
-        "mode": "MISSING_ONLY_PRESERVE_EXISTING",
-        "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.portal-rush.portal.imported-candidate.effect.json",
-        "addElementRefs": [],
-        "legacyRetirementDisposition": "REPORT_ONLY_UNVERIFIED_DEFAULT_SIGNATURE_NO_DELETE"
-      }
-    },
-    {
-      "clipOccurrenceId": "valtan.attack.portal-rush.recovery.clip.01",
-      "sourceStageIndex": 6,
-      "gameplayActionId": "valtan.attack.portal-rush.recovery",
-      "effectAssetId": "effect.valtan.portal-rush.recovery",
-      "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.portal-rush.recovery.imported-candidate.effect.json",
-      "candidateDocumentSha256": "b7e21e734ecd603888ff1cbf2e33b9f7db7f2816ec3272ba5b979186df43ed54",
-      "sourceOccurrenceCount": 9,
-      "sourceOccurrenceFullKeys": [
-        "occurrence-key.528876ff29b7ee3909ce7ce21d70302f14d130e6a068a3f25bfe5c5e7a091f53",
-        "occurrence-key.8cebe0b9d1fbe78feb4e1ee32c6e4e9379d2fe1a28867e0bfc7580de1a032c36",
-        "occurrence-key.8fc6f8c791d1d1749a70f5eb1bd04e5e4cf3b4e76ccee56705d686a36ff598ed",
-        "occurrence-key.98fbb4ae04722f688c462d879a688523f0e3cc86775f018c807cb57d761befaa",
-        "occurrence-key.ae3fc52df16655aca65e8afb61e315335702049ecba4ae510248c7105f8235a4",
-        "occurrence-key.cafa1acbccbb1f2333d2a8178c0de652fc9a8ade34c122112486688f276b94e7",
-        "occurrence-key.dd7a31b2f4b057cd3f3993985d4677b96f77002aa409d86b52544c9a086f8b25",
-        "occurrence-key.e34ceaf3a7a4d02029896812d8df5e017b388c97628bcd323f6189fcc3060328",
-        "occurrence-key.fd999f1fa30ee31fdade4a70f2c59ad3054199513fb9f478924fc1523a3c904a"
-      ],
-      "sourceElementKeys": [
-        {
-          "id": "source.097706a5f15671a304cf",
-          "sourceNode": "valtan.source.097706a5f15671a304cf753cab225775d5e537fd01755baa76c0fcb7504eba3b",
-          "fullSourceKey": "occurrence-key.cafa1acbccbb1f2333d2a8178c0de652fc9a8ade34c122112486688f276b94e7|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7013|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1015|moduleOrder=dadabd1846590f3d6bc498a0de05455d2ec0edb1b8aa2873d1479879d5af1906"
-        },
-        {
-          "id": "source.13cb87828241cc10f033",
-          "sourceNode": "valtan.source.13cb87828241cc10f03325ccbec0dfb586c23db5487b6761da0028b534637ca9",
-          "fullSourceKey": "occurrence-key.cafa1acbccbb1f2333d2a8178c0de652fc9a8ade34c122112486688f276b94e7|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7015|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1017|moduleOrder=d0841ac2ea8e02e15db8e237d1d11a054269586c6a7a1977d52314f15b4caa08"
-        },
-        {
-          "id": "source.70f060fe187c02a3c5e4",
-          "sourceNode": "valtan.source.70f060fe187c02a3c5e4dfe3f305981a9cb2197aab0268a0f3dd52c55126deaa",
-          "fullSourceKey": "occurrence-key.cafa1acbccbb1f2333d2a8178c0de652fc9a8ade34c122112486688f276b94e7|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7016|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1018|moduleOrder=0497c50b0648e9f56a50e60c0024eea2f570f02d9a15641b7cc703063be60793"
-        },
-        {
-          "id": "source.73660ead57d410b70f84",
-          "sourceNode": "valtan.source.73660ead57d410b70f84e7dd43c82c112f167aa3da9edb5f124c8759bb85909a",
-          "fullSourceKey": "occurrence-key.98fbb4ae04722f688c462d879a688523f0e3cc86775f018c807cb57d761befaa|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7064|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1107|moduleOrder=0753985ee66b37c3d97d99e8c9299c3ef5938636a914b32f3691fc534d10fdcf"
-        },
-        {
-          "id": "source.cd96fa16ebca507fc5e1",
-          "sourceNode": "valtan.source.cd96fa16ebca507fc5e100df687d2c59b3daeb7e7b0ca9258300da73dda33f69",
-          "fullSourceKey": "occurrence-key.ae3fc52df16655aca65e8afb61e315335702049ecba4ae510248c7105f8235a4|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7064|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1107|moduleOrder=0753985ee66b37c3d97d99e8c9299c3ef5938636a914b32f3691fc534d10fdcf"
-        }
-      ],
-      "executableElementCount": 5,
-      "catalogDisposition": "REUSE_EXISTING_NO_MUTATION",
-      "catalogRow": {
-        "effectAssetId": "effect.valtan.portal-rush.recovery",
-        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-        "authoringPath": "Effects/Authored/effect.valtan.portal-rush.recovery.effect.json"
-      },
-      "cueDisposition": "REUSE_EXISTING_V2_NO_MUTATION",
-      "cueRow": {
-        "bindingId": "cue.valtan.portal-rush.recovery",
-        "occurrenceId": "cue.valtan.portal-rush.recovery.occurrence.01",
-        "patternId": "VALTAN_PORTAL_RUSH",
-        "stageId": "RECOVERY",
-        "actionId": "valtan.attack.portal-rush.recovery",
-        "clipOccurrenceId": "valtan.attack.portal-rush.recovery.clip.01",
-        "effectAssetId": "effect.valtan.portal-rush.recovery",
-        "anchorSlotId": "root",
-        "followPolicy": "follow",
-        "stopPolicy": "cue_end",
-        "repeatPolicy": "once",
-        "sourceStartMs": 0,
-        "sourceEndMs": 1100,
-        "localTransform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotationDegrees": [
-            0,
-            0,
-            0
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
-        }
-      },
-      "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.portal-rush.recovery.effect.json",
-      "authoredDocumentSha256": "3d450d55d42aaf80453843cd1fdd198534b2026fd3db40dde78deb02ed702aa1",
-      "reconcile": {
-        "effectAssetId": "effect.valtan.portal-rush.recovery",
-        "existingElementCount": 17,
-        "preservedExistingElementCount": 17,
-        "sourceRebaseRequired": [],
-        "legacyGenericRetireCandidates": [
-          "par_n_rpbf_dash_01_1.em00",
-          "par_n_rpbf_dash_01_1.em01",
-          "par_n_rpbf_dash_01_1.em02",
-          "par_n_rpbf_dash_01_1.em03",
-          "par_n_rpbf_dash_01_1.em04",
-          "par_n_rpbf_foot_01.em00",
-          "par_n_rpbf_foot_01.em01",
-          "par_n_rpbf_foot_01.em02",
-          "par_n_rpbf_foot_01.em03",
-          "par_n_rpbf_foot_01.em04",
-          "par_n_rpbf_foot_01.em05",
-          "par_n_rpbf_foot_01.em06"
-        ],
-        "deleteElements": [],
-        "mode": "MISSING_ONLY_PRESERVE_EXISTING",
-        "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.portal-rush.recovery.imported-candidate.effect.json",
-        "addElementRefs": [],
-        "legacyRetirementDisposition": "REPORT_ONLY_UNVERIFIED_DEFAULT_SIGNATURE_NO_DELETE"
-      }
-    },
-    {
-      "clipOccurrenceId": "valtan.attack.portal-rush.rushes.clip.01",
-      "sourceStageIndex": 1,
-      "gameplayActionId": "valtan.attack.portal-rush.rushes",
-      "effectAssetId": "effect.valtan.portal-rush.rushes",
-      "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.portal-rush.rushes.imported-candidate.effect.json",
-      "candidateDocumentSha256": "1a3c9ecea70b25af713f99034ce0a2ab88d7a0cfd283ffaa21dd96e381a71f26",
-      "sourceOccurrenceCount": 6,
-      "sourceOccurrenceFullKeys": [
-        "occurrence-key.112a977088028d09d113c57d80849b6de5e68a91631fbf9f4f3f1dd8da1b6be2",
-        "occurrence-key.7e9572d226a3e04bebc13b19d285d46ac6ec62af29ddb0d4439fd299071b4ad3",
-        "occurrence-key.806e5ce2c48ba84f3a60e46aba770e676ed0df95650019209837b0219a547098",
-        "occurrence-key.9945f1369b06169b845185caedd87ac58af28d1ac4ab5b32d0b77c12a8f336ad",
-        "occurrence-key.a2e7dccec0b51b168b6203972a502ff4c143a82c67936aa1e60cec12a9e461ae",
-        "occurrence-key.adef26f307d8d40d48d3e617845707646847d9ed02a4b03bdf4c5a00b4fe9096"
-      ],
-      "sourceElementKeys": [
-        {
-          "id": "source.12686f9c6f89878477d5",
-          "sourceNode": "valtan.source.12686f9c6f89878477d59169ba882488bc28ae5b2beaceba148ae0aadf2575d3",
-          "fullSourceKey": "occurrence-key.9945f1369b06169b845185caedd87ac58af28d1ac4ab5b32d0b77c12a8f336ad|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7064|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1107|moduleOrder=0753985ee66b37c3d97d99e8c9299c3ef5938636a914b32f3691fc534d10fdcf"
-        },
-        {
-          "id": "source.2d3e6a0db388a29b4f3f",
-          "sourceNode": "valtan.source.2d3e6a0db388a29b4f3f06c1b8e3f42374a05410ada05a8d9a3e02bfead4a141",
-          "fullSourceKey": "occurrence-key.806e5ce2c48ba84f3a60e46aba770e676ed0df95650019209837b0219a547098|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7064|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1107|moduleOrder=0753985ee66b37c3d97d99e8c9299c3ef5938636a914b32f3691fc534d10fdcf"
-        },
-        {
-          "id": "source.4108b4885c28eefc9d85",
-          "sourceNode": "valtan.source.4108b4885c28eefc9d85f75c8a183bb710d842cd17dea73a395a2b6850a3cab5",
-          "fullSourceKey": "occurrence-key.7e9572d226a3e04bebc13b19d285d46ac6ec62af29ddb0d4439fd299071b4ad3|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7016|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1018|moduleOrder=0497c50b0648e9f56a50e60c0024eea2f570f02d9a15641b7cc703063be60793"
-        },
-        {
-          "id": "source.6653e9d4443d28016cf4",
-          "sourceNode": "valtan.source.6653e9d4443d28016cf414931704581a99edaf8a5b6a1800214dfc6a2696657f",
-          "fullSourceKey": "occurrence-key.7e9572d226a3e04bebc13b19d285d46ac6ec62af29ddb0d4439fd299071b4ad3|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7015|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1017|moduleOrder=d0841ac2ea8e02e15db8e237d1d11a054269586c6a7a1977d52314f15b4caa08"
-        },
-        {
-          "id": "source.738955fc4e4a8e07b2bb",
-          "sourceNode": "valtan.source.738955fc4e4a8e07b2bbc9e13ef09e99a40a7f72b72fbb9fe3bd254f3505f266",
-          "fullSourceKey": "occurrence-key.7e9572d226a3e04bebc13b19d285d46ac6ec62af29ddb0d4439fd299071b4ad3|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7013|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1015|moduleOrder=dadabd1846590f3d6bc498a0de05455d2ec0edb1b8aa2873d1479879d5af1906"
-        }
-      ],
-      "executableElementCount": 5,
-      "catalogDisposition": "REUSE_EXISTING_NO_MUTATION",
-      "catalogRow": {
-        "effectAssetId": "effect.valtan.portal-rush.rushes",
-        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
-        "authoringPath": "Effects/Authored/effect.valtan.portal-rush.rushes.effect.json"
-      },
-      "cueDisposition": "REUSE_EXISTING_V2_NO_MUTATION",
-      "cueRow": {
-        "bindingId": "cue.valtan.portal-rush.rushes",
-        "occurrenceId": "cue.valtan.portal-rush.rushes.occurrence.01",
-        "patternId": "VALTAN_PORTAL_RUSH",
-        "stageId": "RUSHES",
-        "actionId": "valtan.attack.portal-rush.rushes",
-        "clipOccurrenceId": "valtan.attack.portal-rush.rushes.clip.01",
-        "effectAssetId": "effect.valtan.portal-rush.rushes",
+        "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01",
         "anchorSlotId": "root",
         "followPolicy": "follow",
         "stopPolicy": "natural",
@@ -379,30 +167,244 @@
           ]
         }
       },
-      "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.portal-rush.rushes.effect.json",
-      "authoredDocumentSha256": "8b7dca5ed195cb46cc70105695fd4da2d0c67654496dfea6a11bb7a9ccaf95ed",
+      "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01.effect.json",
+      "authoredDocumentSha256": "18cc98592fd81b7d0372d7067b809d1f8e5f67a53a426d2d30b4fae6d0b58d78",
       "reconcile": {
-        "effectAssetId": "effect.valtan.portal-rush.rushes",
-        "existingElementCount": 17,
-        "preservedExistingElementCount": 17,
+        "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01",
+        "existingElementCount": 14,
+        "preservedExistingElementCount": 14,
         "sourceRebaseRequired": [],
-        "legacyGenericRetireCandidates": [
-          "par_n_rpbf_dash_01_1.em00",
-          "par_n_rpbf_dash_01_1.em01",
-          "par_n_rpbf_dash_01_1.em02",
-          "par_n_rpbf_dash_01_1.em03",
-          "par_n_rpbf_dash_01_1.em04",
-          "par_n_rpbf_foot_01.em00",
-          "par_n_rpbf_foot_01.em01",
-          "par_n_rpbf_foot_01.em02",
-          "par_n_rpbf_foot_01.em03",
-          "par_n_rpbf_foot_01.em04",
-          "par_n_rpbf_foot_01.em05",
-          "par_n_rpbf_foot_01.em06"
-        ],
+        "legacyGenericRetireCandidates": [],
         "deleteElements": [],
         "mode": "MISSING_ONLY_PRESERVE_EXISTING",
-        "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.portal-rush.rushes.imported-candidate.effect.json",
+        "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01.imported-candidate.effect.json",
+        "addElementRefs": [],
+        "legacyRetirementDisposition": "REPORT_ONLY_UNVERIFIED_DEFAULT_SIGNATURE_NO_DELETE"
+      }
+    },
+    {
+      "clipOccurrenceId": "valtan.attack.portal-rush.recovery.clip.01",
+      "sourceStageIndex": 6,
+      "gameplayActionId": "valtan.attack.portal-rush.recovery",
+      "retiredBindingId": "cue.valtan.portal-rush.recovery",
+      "retiredEffectAssetId": "effect.valtan.portal-rush.recovery",
+      "successorDisposition": "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER",
+      "successorBindingId": "cue.valtan.carrier-v1.attack.portal-rush.recovery.clip-01",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01",
+      "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01.imported-candidate.effect.json",
+      "candidateDocumentSha256": "8bf9587259ef786af7c372e234e38fbcd61d8a6dfa310b507715fce78cb4dc05",
+      "sourceOccurrenceCount": 9,
+      "sourceOccurrenceFullKeys": [
+        "occurrence-key.528876ff29b7ee3909ce7ce21d70302f14d130e6a068a3f25bfe5c5e7a091f53",
+        "occurrence-key.8cebe0b9d1fbe78feb4e1ee32c6e4e9379d2fe1a28867e0bfc7580de1a032c36",
+        "occurrence-key.8fc6f8c791d1d1749a70f5eb1bd04e5e4cf3b4e76ccee56705d686a36ff598ed",
+        "occurrence-key.98fbb4ae04722f688c462d879a688523f0e3cc86775f018c807cb57d761befaa",
+        "occurrence-key.ae3fc52df16655aca65e8afb61e315335702049ecba4ae510248c7105f8235a4",
+        "occurrence-key.cafa1acbccbb1f2333d2a8178c0de652fc9a8ade34c122112486688f276b94e7",
+        "occurrence-key.dd7a31b2f4b057cd3f3993985d4677b96f77002aa409d86b52544c9a086f8b25",
+        "occurrence-key.e34ceaf3a7a4d02029896812d8df5e017b388c97628bcd323f6189fcc3060328",
+        "occurrence-key.fd999f1fa30ee31fdade4a70f2c59ad3054199513fb9f478924fc1523a3c904a"
+      ],
+      "sourceElementKeys": [
+        {
+          "id": "source.097706a5f15671a304cf",
+          "sourceNode": "valtan.source.097706a5f15671a304cf753cab225775d5e537fd01755baa76c0fcb7504eba3b",
+          "fullSourceKey": "occurrence-key.cafa1acbccbb1f2333d2a8178c0de652fc9a8ade34c122112486688f276b94e7|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7013|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1015|moduleOrder=dadabd1846590f3d6bc498a0de05455d2ec0edb1b8aa2873d1479879d5af1906"
+        },
+        {
+          "id": "source.13cb87828241cc10f033",
+          "sourceNode": "valtan.source.13cb87828241cc10f03325ccbec0dfb586c23db5487b6761da0028b534637ca9",
+          "fullSourceKey": "occurrence-key.cafa1acbccbb1f2333d2a8178c0de652fc9a8ade34c122112486688f276b94e7|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7015|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1017|moduleOrder=d0841ac2ea8e02e15db8e237d1d11a054269586c6a7a1977d52314f15b4caa08"
+        },
+        {
+          "id": "source.5d76f72d3d461cf88df6",
+          "sourceNode": "valtan.source.5d76f72d3d461cf88df606c979306ee4de3f8fb449e4bd1aacc0fd73af61bd73",
+          "fullSourceKey": "occurrence-key.ae3fc52df16655aca65e8afb61e315335702049ecba4ae510248c7105f8235a4|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7070|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1113|moduleOrder=4f6765d1a05219f0ed5d0cd600ae38da6f27e784a64b030ec83376d2047bb8e0"
+        },
+        {
+          "id": "source.70f060fe187c02a3c5e4",
+          "sourceNode": "valtan.source.70f060fe187c02a3c5e4dfe3f305981a9cb2197aab0268a0f3dd52c55126deaa",
+          "fullSourceKey": "occurrence-key.cafa1acbccbb1f2333d2a8178c0de652fc9a8ade34c122112486688f276b94e7|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7016|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1018|moduleOrder=0497c50b0648e9f56a50e60c0024eea2f570f02d9a15641b7cc703063be60793"
+        },
+        {
+          "id": "source.73660ead57d410b70f84",
+          "sourceNode": "valtan.source.73660ead57d410b70f84e7dd43c82c112f167aa3da9edb5f124c8759bb85909a",
+          "fullSourceKey": "occurrence-key.98fbb4ae04722f688c462d879a688523f0e3cc86775f018c807cb57d761befaa|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7064|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1107|moduleOrder=0753985ee66b37c3d97d99e8c9299c3ef5938636a914b32f3691fc534d10fdcf"
+        },
+        {
+          "id": "source.cd96fa16ebca507fc5e1",
+          "sourceNode": "valtan.source.cd96fa16ebca507fc5e100df687d2c59b3daeb7e7b0ca9258300da73dda33f69",
+          "fullSourceKey": "occurrence-key.ae3fc52df16655aca65e8afb61e315335702049ecba4ae510248c7105f8235a4|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7064|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1107|moduleOrder=0753985ee66b37c3d97d99e8c9299c3ef5938636a914b32f3691fc534d10fdcf"
+        },
+        {
+          "id": "source.f8c678a78b3d97a55c93",
+          "sourceNode": "valtan.source.f8c678a78b3d97a55c93e91dbbe16582ed1f7d8c38af2069658ef29207f4a60b",
+          "fullSourceKey": "occurrence-key.98fbb4ae04722f688c462d879a688523f0e3cc86775f018c807cb57d761befaa|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7070|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1113|moduleOrder=4f6765d1a05219f0ed5d0cd600ae38da6f27e784a64b030ec83376d2047bb8e0"
+        }
+      ],
+      "executableElementCount": 7,
+      "catalogDisposition": "REUSE_EXISTING_NO_MUTATION",
+      "catalogRow": {
+        "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01.effect.json"
+      },
+      "cueDisposition": "REUSE_CARRIER_V1_SUCCESSOR_V2_NO_MUTATION",
+      "cueRow": {
+        "bindingId": "cue.valtan.carrier-v1.attack.portal-rush.recovery.clip-01",
+        "occurrenceId": "cue.valtan.carrier-v1.attack.portal-rush.recovery.clip-01.occurrence.01",
+        "patternId": "VALTAN_PORTAL_RUSH",
+        "stageId": "RECOVERY",
+        "actionId": "valtan.attack.portal-rush.recovery",
+        "clipOccurrenceId": "valtan.attack.portal-rush.recovery.clip.01",
+        "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01",
+        "anchorSlotId": "root",
+        "followPolicy": "follow",
+        "stopPolicy": "natural",
+        "repeatPolicy": "once",
+        "sourceStartMs": 0,
+        "sourceEndMs": null,
+        "localTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01.effect.json",
+      "authoredDocumentSha256": "79f931c572daf1fdd4dcb84c7288494e56b924c7c2611b4e05d8ab5fe3698b00",
+      "reconcile": {
+        "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01",
+        "existingElementCount": 7,
+        "preservedExistingElementCount": 7,
+        "sourceRebaseRequired": [],
+        "legacyGenericRetireCandidates": [],
+        "deleteElements": [],
+        "mode": "MISSING_ONLY_PRESERVE_EXISTING",
+        "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01.imported-candidate.effect.json",
+        "addElementRefs": [],
+        "legacyRetirementDisposition": "REPORT_ONLY_UNVERIFIED_DEFAULT_SIGNATURE_NO_DELETE"
+      }
+    },
+    {
+      "clipOccurrenceId": "valtan.attack.portal-rush.rushes.clip.01",
+      "sourceStageIndex": 1,
+      "gameplayActionId": "valtan.attack.portal-rush.rushes",
+      "retiredBindingId": "cue.valtan.portal-rush.rushes",
+      "retiredEffectAssetId": "effect.valtan.portal-rush.rushes",
+      "successorDisposition": "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER",
+      "successorBindingId": "cue.valtan.carrier-v1.attack.portal-rush.rushes.clip-01",
+      "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01",
+      "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01.imported-candidate.effect.json",
+      "candidateDocumentSha256": "5b89fc57995f4bbc144aac44d4082756419c99576f566806770555969f071b2c",
+      "sourceOccurrenceCount": 6,
+      "sourceOccurrenceFullKeys": [
+        "occurrence-key.112a977088028d09d113c57d80849b6de5e68a91631fbf9f4f3f1dd8da1b6be2",
+        "occurrence-key.7e9572d226a3e04bebc13b19d285d46ac6ec62af29ddb0d4439fd299071b4ad3",
+        "occurrence-key.806e5ce2c48ba84f3a60e46aba770e676ed0df95650019209837b0219a547098",
+        "occurrence-key.9945f1369b06169b845185caedd87ac58af28d1ac4ab5b32d0b77c12a8f336ad",
+        "occurrence-key.a2e7dccec0b51b168b6203972a502ff4c143a82c67936aa1e60cec12a9e461ae",
+        "occurrence-key.adef26f307d8d40d48d3e617845707646847d9ed02a4b03bdf4c5a00b4fe9096"
+      ],
+      "sourceElementKeys": [
+        {
+          "id": "source.12686f9c6f89878477d5",
+          "sourceNode": "valtan.source.12686f9c6f89878477d59169ba882488bc28ae5b2beaceba148ae0aadf2575d3",
+          "fullSourceKey": "occurrence-key.9945f1369b06169b845185caedd87ac58af28d1ac4ab5b32d0b77c12a8f336ad|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7064|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1107|moduleOrder=0753985ee66b37c3d97d99e8c9299c3ef5938636a914b32f3691fc534d10fdcf"
+        },
+        {
+          "id": "source.2592c9bdf2c5e3aa5d84",
+          "sourceNode": "valtan.source.2592c9bdf2c5e3aa5d8404cfb6d032ae536b83392a954fa8e97b39e2160a23a4",
+          "fullSourceKey": "occurrence-key.9945f1369b06169b845185caedd87ac58af28d1ac4ab5b32d0b77c12a8f336ad|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7070|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1113|moduleOrder=4f6765d1a05219f0ed5d0cd600ae38da6f27e784a64b030ec83376d2047bb8e0"
+        },
+        {
+          "id": "source.2d3e6a0db388a29b4f3f",
+          "sourceNode": "valtan.source.2d3e6a0db388a29b4f3f06c1b8e3f42374a05410ada05a8d9a3e02bfead4a141",
+          "fullSourceKey": "occurrence-key.806e5ce2c48ba84f3a60e46aba770e676ed0df95650019209837b0219a547098|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7064|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1107|moduleOrder=0753985ee66b37c3d97d99e8c9299c3ef5938636a914b32f3691fc534d10fdcf"
+        },
+        {
+          "id": "source.4108b4885c28eefc9d85",
+          "sourceNode": "valtan.source.4108b4885c28eefc9d85f75c8a183bb710d842cd17dea73a395a2b6850a3cab5",
+          "fullSourceKey": "occurrence-key.7e9572d226a3e04bebc13b19d285d46ac6ec62af29ddb0d4439fd299071b4ad3|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7016|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1018|moduleOrder=0497c50b0648e9f56a50e60c0024eea2f570f02d9a15641b7cc703063be60793"
+        },
+        {
+          "id": "source.6653e9d4443d28016cf4",
+          "sourceNode": "valtan.source.6653e9d4443d28016cf414931704581a99edaf8a5b6a1800214dfc6a2696657f",
+          "fullSourceKey": "occurrence-key.7e9572d226a3e04bebc13b19d285d46ac6ec62af29ddb0d4439fd299071b4ad3|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7015|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1017|moduleOrder=d0841ac2ea8e02e15db8e237d1d11a054269586c6a7a1977d52314f15b4caa08"
+        },
+        {
+          "id": "source.6ab2bfa2f7ce34369128",
+          "sourceNode": "valtan.source.6ab2bfa2f7ce343691284a64b4de7d19a20a99ab6d6fad5509a4ac38f3825fd9",
+          "fullSourceKey": "occurrence-key.806e5ce2c48ba84f3a60e46aba770e676ed0df95650019209837b0219a547098|system=fx_mn_rpbf_00_n.par_n_rpbf_foot_01|emitter=FX_MN_RPBF_00_N:export:7070|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1113|moduleOrder=4f6765d1a05219f0ed5d0cd600ae38da6f27e784a64b030ec83376d2047bb8e0"
+        },
+        {
+          "id": "source.738955fc4e4a8e07b2bb",
+          "sourceNode": "valtan.source.738955fc4e4a8e07b2bbc9e13ef09e99a40a7f72b72fbb9fe3bd254f3505f266",
+          "fullSourceKey": "occurrence-key.7e9572d226a3e04bebc13b19d285d46ac6ec62af29ddb0d4439fd299071b4ad3|system=fx_mn_rpbf_00_n.par_n_rpbf_dash_01_1|emitter=FX_MN_RPBF_00_N:export:7013|emitterOccurrence=0|lod=FX_MN_RPBF_00_N:export:1015|moduleOrder=dadabd1846590f3d6bc498a0de05455d2ec0edb1b8aa2873d1479879d5af1906"
+        }
+      ],
+      "executableElementCount": 7,
+      "catalogDisposition": "REUSE_EXISTING_NO_MUTATION",
+      "catalogRow": {
+        "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01.effect.json"
+      },
+      "cueDisposition": "REUSE_CARRIER_V1_SUCCESSOR_V2_NO_MUTATION",
+      "cueRow": {
+        "bindingId": "cue.valtan.carrier-v1.attack.portal-rush.rushes.clip-01",
+        "occurrenceId": "cue.valtan.carrier-v1.attack.portal-rush.rushes.clip-01.occurrence.01",
+        "patternId": "VALTAN_PORTAL_RUSH",
+        "stageId": "RUSHES",
+        "actionId": "valtan.attack.portal-rush.rushes",
+        "clipOccurrenceId": "valtan.attack.portal-rush.rushes.clip.01",
+        "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01",
+        "anchorSlotId": "root",
+        "followPolicy": "follow",
+        "stopPolicy": "natural",
+        "repeatPolicy": "once",
+        "sourceStartMs": 0,
+        "sourceEndMs": null,
+        "localTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "authoredDocumentPath": "Data/Effects/Authored/effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01.effect.json",
+      "authoredDocumentSha256": "99a2bd68b4a59ec0ce2be153e61af92f1cdbb110f02ce0dd28ed35f40cd03c18",
+      "reconcile": {
+        "effectAssetId": "effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01",
+        "existingElementCount": 7,
+        "preservedExistingElementCount": 7,
+        "sourceRebaseRequired": [],
+        "legacyGenericRetireCandidates": [],
+        "deleteElements": [],
+        "mode": "MISSING_ONLY_PRESERVE_EXISTING",
+        "candidateDocumentPath": "Data/Effects/Imported/Valtan/PortalRush/effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01.imported-candidate.effect.json",
         "addElementRefs": [],
         "legacyRetirementDisposition": "REPORT_ONLY_UNVERIFIED_DEFAULT_SIGNATURE_NO_DELETE"
       }
@@ -412,8 +414,8 @@
     "candidateDocumentCount": 3,
     "clipOccurrenceCount": 3,
     "sourceOccurrenceCount": 20,
-    "executableElementCount": 24,
-    "preservedAuthoredElementCount": 71,
+    "executableElementCount": 28,
+    "preservedAuthoredElementCount": 28,
     "missingOnlyAddElementCount": 0,
     "deletedElementCount": 0,
     "sourceRebaseRequiredCount": 0,

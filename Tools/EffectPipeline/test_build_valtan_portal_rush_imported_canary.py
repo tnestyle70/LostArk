@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 TOOLS = Path(__file__).resolve().parent
@@ -25,7 +26,7 @@ class ValtanPortalRushImportedCanaryTests(unittest.TestCase):
 
     def test_emits_one_independent_v13_document_per_reachable_clip(self) -> None:
         self.assertEqual(3, self.receipt["summary"]["candidateDocumentCount"])
-        self.assertEqual(24, self.receipt["summary"]["executableElementCount"])
+        self.assertEqual(28, self.receipt["summary"]["executableElementCount"])
         self.assertEqual(
             set(canary.EXPECTED_CLIPS),
             {
@@ -41,6 +42,25 @@ class ValtanPortalRushImportedCanaryTests(unittest.TestCase):
             },
         )
         for row in self.receipt["documents"]:
+            self.assertEqual(
+                "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER",
+                row["successorDisposition"],
+            )
+            self.assertTrue(
+                row["successorBindingId"].startswith("cue.valtan.carrier-v1.")
+            )
+            self.assertTrue(
+                row["effectAssetId"].startswith("effect.valtan.carrier-v1.")
+            )
+            self.assertEqual(
+                row["successorBindingId"], row["cueRow"]["bindingId"]
+            )
+            self.assertEqual(
+                row["effectAssetId"], row["cueRow"]["effectAssetId"]
+            )
+            self.assertNotEqual(
+                row["retiredBindingId"], row["cueRow"]["bindingId"]
+            )
             document = json.loads(
                 self.files[row["candidateDocumentPath"]].decode("utf-8")
             )
@@ -61,7 +81,7 @@ class ValtanPortalRushImportedCanaryTests(unittest.TestCase):
         self.assertEqual(0, self.receipt["summary"]["deletedElementCount"])
         self.assertEqual(0, self.receipt["summary"]["sourceRebaseRequiredCount"])
         self.assertEqual(0, self.receipt["summary"]["missingOnlyAddElementCount"])
-        self.assertEqual(71, self.receipt["summary"]["preservedAuthoredElementCount"])
+        self.assertEqual(28, self.receipt["summary"]["preservedAuthoredElementCount"])
         for row in self.receipt["documents"]:
             plan = row["reconcile"]
             self.assertEqual([], plan["deleteElements"])
@@ -74,6 +94,38 @@ class ValtanPortalRushImportedCanaryTests(unittest.TestCase):
                 "REPORT_ONLY_UNVERIFIED_DEFAULT_SIGNATURE_NO_DELETE",
                 plan["legacyRetirementDisposition"],
             )
+
+    def test_finish_is_sealed_as_historical_without_successor(self) -> None:
+        self.assertEqual(1, len(self.receipt["excluded"]))
+        row = self.receipt["excluded"][0]
+        self.assertEqual(canary.EXCLUDED_FINISH_CLIP, row["clipOccurrenceId"])
+        self.assertEqual(
+            canary.EXCLUDED_FINISH_BINDING_ID, row["retiredBindingId"]
+        )
+        self.assertIn("RETIRED_NO_SUCCESSOR", row["disposition"])
+        successor = row["successorContractRow"]
+        self.assertEqual(
+            "RETIRED_NO_EXACT_REVIEWED_CARRIER_OWNER",
+            successor["disposition"],
+        )
+        self.assertIsNone(successor["replacementBindingId"])
+        self.assertIsNone(successor["replacementEffectAssetId"])
+
+    def test_tampered_successor_receipt_fails_closed(self) -> None:
+        receipt = canary.read_json(canary.CARRIER_V1_RECEIPT_PATH)
+        receipt["retiredOwnerSuccessorMappings"][0]["stageId"] = "DRIFTED"
+        actual_read_json = canary.read_json
+
+        def tampered_read_json(path: Path) -> dict:
+            if path == canary.CARRIER_V1_RECEIPT_PATH:
+                return copy.deepcopy(receipt)
+            return actual_read_json(path)
+
+        with mock.patch.object(
+            canary, "read_json", side_effect=tampered_read_json
+        ):
+            with self.assertRaises(canary.CanaryError):
+                canary.load_carrier_v1_successor_contract()
 
     def test_user_tuned_existing_source_row_is_never_overwritten(self) -> None:
         document_row = self.receipt["documents"][0]

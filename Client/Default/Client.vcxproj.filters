@@ -2055,6 +2055,9 @@
     <Filter Include="96.DataFiles\Effects\Imported\Valtan">
       <UniqueIdentifier>{ab7fff82-53b5-53fd-b5de-bd0232493d5a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\CarrierV1">
+      <UniqueIdentifier>{c7e1d801-8e26-5900-8354-ea016ec762bc}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\CombatObjectDrawableProof">
       <UniqueIdentifier>{791862b5-5d96-51fe-8914-9130f6982c23}</UniqueIdentifier>
     </Filter>
@@ -2072,6 +2075,9 @@
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves\DrawableProof">
       <UniqueIdentifier>{fcba7dbd-86ea-507c-86a3-561ef7eba554}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="96.DataFiles\Effects\Imported\Valtan\FrontBackFrontV1">
+      <UniqueIdentifier>{fe5845ae-63e1-5542-9823-61863cac5dde}</UniqueIdentifier>
     </Filter>
     <Filter Include="96.DataFiles\Effects\Imported\Valtan\PortalRush">
       <UniqueIdentifier>{50784b42-5eaa-56fe-94bb-adb964fa0dbc}</UniqueIdentifier>
@@ -3135,6 +3141,135 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.bind-charge-smash.smash.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.backstep.windup.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.charge-grab-roar.counter.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.charge-grab-roar.recovery.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.charge-grab-roar.roar.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.down-smash.active.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.earthquake-smash.delayed.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.earthquake-smash.impact.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.fist-in-out.inner.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.four-slash.active.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.four-slash.active.clip-02.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.four-slash.recovery.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.front-back-front.active.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.ground-wave-smash.active.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.ground-wave-smash.active.clip-02.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.high-jump.land.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.high-jump.takeoff.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.imprison-roar.active.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.imprison-roar.recovery.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.imprison-roar.windup.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.jump-spin.jump.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.ledge-roar.active.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.ledge-roar.recovery.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.ledge-roar.windup.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.inner.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.outer.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.magic-choice.recovery.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.red-blade-wave.recovery.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.super-smash.windup.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.swing.active.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.swing.active.clip-02.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.attack.whirlwind.recovery.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.arena-break-109.impact.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.arena-break-109.takeoff.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.armor-break-opening.charge.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.second-smash.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.floor-wipe-130.windup.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.mechanic.ghost-transition-15.tracking.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.reactive.parry.slash.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.reactive.parry.stance.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.carrier-v1.reactive.triple-counter.first.clip-01.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.center-grab-counter-64.center.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3234,6 +3369,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.recovery.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.v1-watertrail-audition.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.four-slash.windup.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3253,6 +3391,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.source-wave-03.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.v1-watertrail-audition.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.valtan.front-back-front.windup.effect.json">
@@ -7098,6 +7239,12 @@
     <None Include="..\..\Data\Effects\Imported\RawResourceInventory\R8.raw-resource-inventory-v1.json">
       <Filter>96.DataFiles\Effects\Imported\RawResourceInventory</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.carrier-v1-materialization-receipt.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\CarrierV1</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\CarrierV1\Valtan.legacy-v0-carrier-migration-inventory.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\CarrierV1</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\CombatObjectDrawableProof\Valtan.combat-object.drawable-proof.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\CombatObjectDrawableProof</Filter>
     </None>
@@ -7206,7 +7353,19 @@
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontSourceWaves\effect.valtan.front-back-front.source-wave-03.source-wave-candidate.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontSourceWaves</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontV1\Valtan.front-back-front-v1-selection-ledger.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontV1</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\PortalRush\Valtan.portal-rush-imported-canary.v1.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\PortalRush</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\PortalRush\effect.valtan.carrier-v1.attack.portal-rush.portal.clip-01.imported-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\PortalRush</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\PortalRush\effect.valtan.carrier-v1.attack.portal-rush.recovery.clip-01.imported-candidate.effect.json">
+      <Filter>96.DataFiles\Effects\Imported\Valtan\PortalRush</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Imported\Valtan\PortalRush\effect.valtan.carrier-v1.attack.portal-rush.rushes.clip-01.imported-candidate.effect.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\PortalRush</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\PortalRush\effect.valtan.portal-rush.portal.imported-candidate.effect.json">

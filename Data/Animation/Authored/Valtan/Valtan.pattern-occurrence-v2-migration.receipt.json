@@ -2048,6 +2048,16 @@
   },
   "retiredBaselineCues": [
     {
+      "bindingId": "cue.valtan.front-back-front.windup",
+      "occurrenceId": "cue.valtan.front-back-front.windup.occurrence.01",
+      "reason": "LEGACY_CLIP_AGGREGATE_CARRIER_COLLAPSE",
+      "replacementOwnerKind": "ANIMATION_EFFECT_CUE",
+      "replacementBindingId": "cue.valtan.front-back-front.v1-watertrail-audition",
+      "replacementOccurrenceId": "cue.valtan.front-back-front.v1-watertrail-audition.occurrence.01",
+      "replacementEffectAssetId": "effect.valtan.front-back-front.v1-watertrail-audition",
+      "effectAssetId": "effect.valtan.front-back-front.windup"
+    },
+    {
       "bindingId": "cue.valtan.red-blade-wave.active",
       "occurrenceId": "cue.valtan.red-blade-wave.active.occurrence.01",
       "reason": "COMBAT_OBJECT_OWNERSHIP_TRANSFER",
@@ -2057,6 +2067,22 @@
       "effectAssetId": "effect.valtan.red-blade-wave.active"
     }
   ],
+  "carrierV1SuccessorContract": {
+    "carrierReceiptPath": "Data/Effects/Imported/Valtan/CarrierV1/Valtan.carrier-v1-materialization-receipt.v1.json",
+    "carrierReceiptCanonicalSha256": "a1a0515a6072c52097bef9ada0ab681fe8c8c46c4d64d902817d4e2e4e826e00",
+    "currentCueCanonicalSha256": "6b0ce162e27eab4f8839c1aaec1e88e202afb314addde04864fa18252fde9b83",
+    "currentCueCount": 44,
+    "retiredCueCount": 105,
+    "replacementMappingCount": 48,
+    "retiredWithoutSuccessorCount": 57,
+    "uniqueReplacementBindingCount": 42,
+    "carrierClipCueCount": 43,
+    "newCarrierCueWithoutRetiredPredecessorCount": 1,
+    "carrierRetiredBaselineCueCount": 96,
+    "legacyRetiredBaselineCueCount": 2,
+    "survivingBaselineCueCount": 1,
+    "postBaselineRetiredCueCount": 9
+  },
   "legacyCueEndPromotions": [
     {
       "bindingId": "cue.valtan.arena-break-109.wide-reveal",

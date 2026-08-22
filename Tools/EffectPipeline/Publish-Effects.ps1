@@ -3609,8 +3609,12 @@ try {
                     }
                     continue
                 }
-                $authoredTemporary =
-                    "$authoredDestination.$transactionId.tmp"
+                # Do not append the transaction ID to the immutable destination.
+                # Long, descriptive Effect IDs can keep the destination below
+                # MAX_PATH while pushing that temporary name past it.
+                $authoredTemporary = [IO.Path]::GetFullPath((Join-Path `
+                    $authoredOutputRoot `
+                    ".$transactionId.$($newAuthoredDestinations.Count).tmp"))
                 Assert-RegularPublishDestination $authoredTemporary `
                     'Direct authored runtime temporary output'
                 try {
