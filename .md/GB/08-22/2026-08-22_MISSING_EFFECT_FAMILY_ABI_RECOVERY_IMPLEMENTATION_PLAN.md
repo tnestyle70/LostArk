@@ -260,6 +260,53 @@ python Tools/EffectPipeline/test_materialize_ue3_exact_cooked_shader_variants.py
 git diff --check
 ```
 
+## 10. G03-7 Glasshole02 DXBC equation translation
+
+G03-7은 G03-6의 배선 증거를 소비해 원본 PS DXBC를 읽을 수 있는 HLSL로 옮긴다. raw DXBC는
+offline numeric oracle이며 Product나 Effect Tool에서 직접 실행하지 않는다. 번역 shader는 다음 ABI를
+그대로 유지한다.
+
+```text
+CB0[22] + CB2[4]
+t0..t7 / s0..s7
+TEXCOORD10,11,0,1,2,4,6,5 + SV_IsFrontFace
+SV_Target0,2,3,4,5
+raw instruction denominator 198
+```
+
+번역은 opcode 수를 흉내 내는 것이 아니라 raw instruction의 component lifetime, swizzle,
+`mad/log2/exp2`, sample level/bias와 분기 순서를 보존한다. disassembler의 6자리 표기만 복사하지 않고
+`1/pi`, `1/(2*pi)`, `1/29`, `1/15`의 실제 float 상수를 사용한다.
+
+동일 carrier, CB bytes, 4x4 spatial texture, point-clamp sampler와 scene-depth fixture에서 raw DXBC와
+compiled HLSL을 WARP로 실행한다. 4분면 UV, dynamic parameter, camera vector, scene depth, particle
+color, scalar row, fog/selection, tangent normal RT2와 CB2 RT3를 독립 mutation하는 13 case 모두에서
+RT0/2/3/4/5 최대 절대 오차가 `1e-6` 이하여야 한다.
+
+| 파일 | 책임 |
+|---|---|
+| `Client/Bin/ShaderFiles/Shader_Ue3Glasshole02.hlsli` | 198-instruction readable equation translation |
+| `Client/Bin/ShaderFiles/Shader_Ue3Glasshole02Translation.hlsl` | offline `PS_MAIN` compile wrapper |
+| `Tools/EffectPipeline/replay_ue3_glasshole02_hlsl_translation.py` | raw DXBC/translated HLSL 동일 입력 WARP A/B와 sealed receipt 생성 |
+| `Tools/EffectPipeline/test_replay_ue3_glasshole02_hlsl_translation.py` | signature/register/MRT/case mutation 및 admission 회귀 |
+| `Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.glasshole02-hlsl-translation.receipt.json` | equation parity와 다음 renderer gate 정본 |
+| `Client/Default/Client.vcxproj`, `Client/Default/Client.vcxproj.filters` | HLSL과 receipt 프로젝트 등록 |
+
+이 G는 translated equation parity만 승인한다. source-exact full sampler, source vertex CB, translated
+runtime, authoring canary, Product와 visual은 false다. 다음 G는 이 HLSL의 RT0 식만 사용하는 typed
+Glass renderer를 추가하고, scene depth/CB2/view-vector/clip-position과 alpha two-sided read-only-depth
+state를 한 occurrence canary에 연결한다.
+
+### 10.1 G03-7 검증
+
+```powershell
+python Tools/EffectPipeline/test_replay_ue3_glasshole02_hlsl_translation.py
+python Tools/EffectPipeline/replay_ue3_glasshole02_hlsl_translation.py --check
+python Tools/EffectPipeline/replay_ue3_glasshole02_hlsl_translation.py --validate-only
+python -m py_compile Tools/EffectPipeline/replay_ue3_glasshole02_hlsl_translation.py Tools/EffectPipeline/test_replay_ue3_glasshole02_hlsl_translation.py
+git diff --check
+```
+
 생성 도구는 현재 repository root의 두 DDS가 source byte/hash와 일치하는지 확인해야 한다. 성공해도
 `sourceExactSampler`, `sourceValueReplay`, `actualVfPass`, `productRuntime`, `visual`은 false를 유지한다.
 사용자 화면 판정은 translated Glasshole HLSL canary가 실제로 연결되는 후속 G 전까지 요청하지 않는다.
