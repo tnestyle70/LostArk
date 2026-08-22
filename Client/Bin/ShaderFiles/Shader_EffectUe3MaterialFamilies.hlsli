@@ -18,6 +18,8 @@ static const uint
     RUNTIME_MATERIAL_V2_UE3_RIBBONLIQUID01_PARENT_DEFAULT = 20u;
 static const uint
     RUNTIME_MATERIAL_V2_PROJECT_BASE_COVERAGE_EMISSIVE_DISSOLVE_RECT = 21u;
+static const uint
+    RUNTIME_MATERIAL_V2_UE3_WPO_SINWAVE_ELECTRIC_RT0_MESH = 22u;
 
 bool EffectUe3RibbonLiquid01ParentDefaultPacketIsValid()
 {
@@ -685,6 +687,111 @@ EFFECT_PS_OUT Shade_EffectProjectBaseCoverageEmissiveDissolveRect(float2 uv)
 
     clip(alpha - max(g_ColorClip, 1.f / 255.f));
     output.SceneColor = float4(radiance, alpha);
+    output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+    return output;
+}
+
+bool EffectUe3WpoSinWaveElectricRt0MeshPacketIsValid()
+{
+    return g_RuntimeMaterialV2Enabled == 1u &&
+        g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_WPO_SINWAVE_ELECTRIC_RT0_MESH &&
+        g_RuntimeMaterialV2TextureLaneCount == 2u &&
+        g_RuntimeMaterialV2TextureMask == 0x03u &&
+        g_SourceTextureMask == 0x03u &&
+        g_RuntimeMaterialV2DynamicConsumedMask == 0x02u &&
+        g_RuntimeMaterialV2DynamicSuppressedMask == 0x0du &&
+        g_RuntimeMaterialV2ParticleColorPolicy == 2u &&
+        g_RuntimeMaterialV2ParticleColorConsumedMask == 0x0fu &&
+        g_RuntimeMaterialV2ParticleColorSuppressedMask == 0u &&
+        g_RuntimeMaterialV2ScalarCount == 10u &&
+        g_RuntimeMaterialV2VectorCount == 1u &&
+        g_RuntimeMaterialV2InputCount == 10u &&
+        all(g_RuntimeMaterialV2InputConsumedMask == uint2(0x03ffu, 0u)) &&
+        all(g_RuntimeMaterialV2InputSuppressedMask == uint2(0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentConsumedMask ==
+            uint3(0x07u, 0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentSuppressedMask ==
+            uint3(0x08u, 0u, 0u)) &&
+        g_RuntimeMaterialV2StaticInputCount == 0u &&
+        g_RuntimeMaterialV2StaticSelectedMask == 0u &&
+        g_RuntimeMaterialV2StaticConsumedMask == 0u &&
+        g_RuntimeMaterialV2StaticSuppressedMask == 0u &&
+        g_RuntimeMaterialV2RenderInputCount == 6u &&
+        g_RuntimeMaterialV2RenderConsumedMask == 0x2fu &&
+        g_RuntimeMaterialV2RenderSuppressedMask == 0x10u;
+}
+
+EFFECT_PS_OUT Shade_EffectUe3WpoSinWaveElectricRt0Mesh(
+    float2 localUV,
+    float4 particleColor,
+    float4 dynamicParameter)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    if (!EffectUe3WpoSinWaveElectricRt0MeshPacketIsValid() ||
+        !all(isfinite(localUV)) || !all(isfinite(particleColor)) ||
+        !all(isfinite(dynamicParameter)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    /* PROJECT_RECONSTRUCTED RT0 base.  Source evidence resolves only
+       21.map_c to the alpha family and 02.map_e to the emission family.
+       Parent 06.map/12.map_f/dependency lanes and the vertex WPO equation
+       remain PENDING_EVIDENCE and are deliberately absent from this packet. */
+    const float4 p0 = g_RuntimeMaterialV2ScalarBlocks[0];
+    const float4 p1 = g_RuntimeMaterialV2ScalarBlocks[1];
+    const float4 p2 = g_RuntimeMaterialV2ScalarBlocks[2];
+    const float4 emissionColor = g_RuntimeMaterialV2Vectors[0];
+    if (!all(isfinite(p0)) || !all(isfinite(p1)) ||
+        !all(isfinite(p2)) || !all(isfinite(emissionColor)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float alphaPower = max(abs(p0.x), 1.0e-4f);
+    const float alphaStrength = max(abs(p0.y), 1.0e-4f);
+    const float2 alphaUvScale = max(abs(p0.zw), float2(1.0e-4f, 1.0e-4f));
+    const float emissionPower = max(abs(p1.x), 1.0e-4f);
+    const float emissionDesaturation = saturate(p1.y);
+    const float2 emissionUvScale = max(abs(p1.zw), float2(1.0e-4f, 1.0e-4f));
+    const float2 emissionPan = p2.xy;
+
+    const float alphaMask = saturate(g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, localUV * alphaUvScale).r);
+    const float poweredMask = pow(alphaMask, alphaPower);
+    const float dissolveThreshold = saturate(dynamicParameter.y);
+    const float dissolveGate = saturate(
+        (poweredMask - dissolveThreshold) * alphaStrength);
+    const float coverage = dissolveGate * saturate(particleColor.a);
+
+    const float3 emissionSample = max(g_SourceTexture1.Sample(
+        g_RuntimeMaterialV2Sampler1,
+        localUV * emissionUvScale + emissionPan * g_EffectLocalTime).rgb, 0.f);
+    const float emissionLuma = dot(
+        emissionSample, float3(0.299f, 0.587f, 0.114f));
+    const float3 emissionBase = lerp(
+        emissionSample, emissionLuma.xxx, emissionDesaturation);
+    const float3 poweredEmission = pow(
+        max(emissionBase, 1.0e-6f), emissionPower);
+    const float3 particleMagnitude = abs(particleColor.rgb);
+    const float particlePeak = max(
+        particleMagnitude.r, max(particleMagnitude.g, particleMagnitude.b));
+    const float3 particleModulator = particlePeak > 1.0e-4f ?
+        particleMagnitude : float3(1.f, 1.f, 1.f);
+    const float3 authoredColor = max(
+        (g_ColorMultiply + g_ColorOffset).rgb, float3(0.f, 0.f, 0.f));
+    const float3 radiance = poweredEmission * max(emissionColor.rgb, 0.f) *
+        particleModulator * authoredColor * max(g_EmissiveIntensity, 0.f);
+
+    if (!all(isfinite(float4(radiance, coverage))))
+    {
+        clip(-1.f);
+        return output;
+    }
+    output.SceneColor = float4(radiance, coverage);
     output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
     return output;
 }

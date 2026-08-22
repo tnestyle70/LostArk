@@ -1569,6 +1569,7 @@ $pythonContractTests = @(
     'Tools.EffectPipeline.test_apply_artist_31420_grass_tip_fade',
     'Tools.EffectPipeline.test_apply_artist_31460_slash_noise_override',
     'Tools.EffectPipeline.test_apply_warlord_17240_screen_noise_and_decals',
+    'Tools.EffectPipeline.test_materialize_warlord_17140_wpo_sinwave_canary',
     'Tools.EffectPipeline.test_build_character_effect_restoration_inventory',
     'Tools.EffectPipeline.test_materialize_dimensionmaster_2050230_fluid01_sprite',
     'Tools.EffectPipeline.test_verify_dimensionmaster_2050230_fluid01_first_pixel',
