@@ -127,3 +127,28 @@
 - Valtan authored/candidate/pattern cue 파일은 이 작업에서 수정하지 않았다. `Level_ValtanArena.cpp`는
   class-neutral preview clone 초기화만, `ValtanBrain.cpp`는 모든 boss death hit에 공통인 player target
   cleanup 한 줄만 변경했다.
+
+## 6. main 통합 후 Level 진입 회귀 수정
+
+main 통합 바이너리에서 `Stage loading failed. Lobby remains active.`가 발생했다. Client와 Server는
+`127.0.0.1:7777`로 실제 연결되고 Server 입장 승인까지 완료됐으며, 실패 뒤 Client rollback이 socket을
+닫은 것이므로 endpoint 접속 장애가 아니었다.
+
+원인은 `CSkillGroundTargetPreview`의 prototype scope와 layer scope를 같은 값으로 전달한 것이다.
+prototype은 `CMainApp::Ready_Prototype_For_Static`에서 `LEVEL::STATIC`에만 등록되지만,
+`CPlayerController::Initialize_TargetingPreview`는 기존에 target `levelIndex`에서 prototype을 lookup했다.
+Engine prototype manager에는 STATIC fallback이 없으므로 Character Select, Bern, Development, Valtan의
+preview clone과 Level activation이 모두 실패할 수밖에 없었다.
+
+수정 후 호출 계약은 다음과 같다.
+
+```text
+prototype lookup level = LEVEL::STATIC
+layer placement level  = target levelIndex
+```
+
+`Tools/GameplayPipeline/test_ground_target_preview_prototype_scope.py`를 추가하고 정본
+`Invoke-BuildAndRegression.ps1`에 연결했다. 이 gate는 STATIC 등록, STATIC lookup과 target layer 배치,
+네 Level consumer를 함께 검사한다. focused test는 2/2 PASS이고 Debug Client 전체 compile은 error 0으로
+완료했으며 Release Client 전체 build/link도 PASS했다. 실행 중인 수정 전 Client를 종료한 뒤 Debug
+정본 exe link와 사용자 Level 진입 smoke를 남은 검증으로 분리한다.
