@@ -3,7 +3,8 @@
 
 This is the class-neutral cooked Material recovery path through G03-6.  It:
 
-* read a pinned source MIC and decode its native ``FStaticParameterSet``;
+* read either a pinned source MIC and decode its native ``FStaticParameterSet``
+  or pin a direct ``Material`` export to its zero-override default set;
 * join that set to exactly one map in a pinned RefShaderCache using the Lost
   Ark v868 engine-equality projection;
 * decode only that map's vertex-factory references and uniform-expression set;
@@ -103,6 +104,9 @@ DEFAULT_CACHE = Path(
 
 POLICY_REQUIRE_NATIVE = "REQUIRE_MIC_NATIVE_FSTATICPARAMETERSET"
 POLICY_BLOCK_ABSENT = "BLOCK_IF_MIC_HAS_NO_NATIVE_STATIC_RESOURCE"
+POLICY_DIRECT_MATERIAL = "DIRECT_MATERIAL_ZERO_OVERRIDE_STATIC_SET"
+SOURCE_KIND_MIC = "MATERIAL_INSTANCE_CONSTANT"
+SOURCE_KIND_DIRECT_MATERIAL = "DIRECT_MATERIAL"
 STATUS_EXACT = "EXACT_MATERIAL_SHADER_MAP"
 STATUS_BLOCKED = "BLOCKED_NO_EFFECTIVE_STATIC_SET_ABI_EVIDENCE"
 DENSITY_NO_DENSITY_AUTHORING_BOUNDED = "NO_DENSITY_AUTHORING_BOUNDED"
@@ -232,7 +236,8 @@ def validate_target_manifest(document: dict[str, Any]) -> list[dict[str, Any]]:
         )
         policy = policies[renderer_type]
         require(
-            policy.get("family") in ("PARTICLE_SPRITE", "LOCAL_MESH"),
+            policy.get("family")
+            in ("PARTICLE_SPRITE", "LOCAL_MESH", "LOCAL_DECAL"),
             f"unsupported G03-3 vertex-factory family: {renderer_type}",
         )
         require(
@@ -244,15 +249,73 @@ def validate_target_manifest(document: dict[str, Any]) -> list[dict[str, Any]]:
             and policy["passPixelShaderType"],
             f"target pass policy is absent: {renderer_type}",
         )
+        source_kind = target.get("sourceObjectKind", SOURCE_KIND_MIC)
         require(
-            target.get("staticParameterPolicy")
-            in (POLICY_REQUIRE_NATIVE, POLICY_BLOCK_ABSENT),
-            f"target static-parameter policy is invalid: {target_id}",
+            source_kind in (SOURCE_KIND_MIC, SOURCE_KIND_DIRECT_MATERIAL),
+            f"target source-object kind is invalid: {target_id}",
         )
+        if source_kind == SOURCE_KIND_MIC:
+            require(
+                target.get("staticParameterPolicy")
+                in (POLICY_REQUIRE_NATIVE, POLICY_BLOCK_ABSENT),
+                f"target MIC static-parameter policy is invalid: {target_id}",
+            )
+            require(
+                isinstance(target.get("micObjectPath"), str)
+                and target["micObjectPath"],
+                f"target MIC object path is absent: {target_id}",
+            )
+        else:
+            require(
+                target.get("staticParameterPolicy") == POLICY_DIRECT_MATERIAL,
+                f"target direct-Material policy is invalid: {target_id}",
+            )
+            require(
+                isinstance(target.get("sourceObjectPath"), str)
+                and target["sourceObjectPath"]
+                and str(target.get("sourceClassName", "")).casefold()
+                == "material",
+                f"target direct-Material export identity is absent: {target_id}",
+            )
+            require(
+                isinstance(
+                    target.get("expectedBaseMaterialIdOffsetInNativeTail"), int
+                )
+                and target["expectedBaseMaterialIdOffsetInNativeTail"] >= 0,
+                f"target direct-Material native base-ID offset is absent: {target_id}",
+            )
+            require(
+                target.get("parentMaterialPath") is None,
+                f"direct Material cannot declare a parent: {target_id}",
+            )
+            require(
+                isinstance(target.get("expectedDefaultStaticParameterSetRawSha256"), str)
+                and len(target["expectedDefaultStaticParameterSetRawSha256"]) == 64
+                and isinstance(
+                    target.get("expectedEngineEqualityStaticParameterSetSha256"),
+                    str,
+                )
+                and len(
+                    target["expectedEngineEqualityStaticParameterSetSha256"]
+                )
+                == 64,
+                f"target direct-Material default static-set pins are absent: {target_id}",
+            )
         require(
             target.get("expectedStatus") in (STATUS_EXACT, STATUS_BLOCKED),
             f"target expected status is invalid: {target_id}",
         )
+        expected_selection = target.get("expectedStructuralSelection")
+        if expected_selection is not None and expected_selection.get("expectedDxbc"):
+            expected_dxbc = expected_selection["expectedDxbc"]
+            require(
+                isinstance(expected_dxbc.get("byteSize"), int)
+                and expected_dxbc["byteSize"] > 0
+                and isinstance(expected_dxbc.get("sha256"), str)
+                and len(expected_dxbc["sha256"]) == 64,
+                f"target expected DXBC identity is invalid: {target_id}",
+            )
+            bytes.fromhex(expected_dxbc["sha256"])
         base_id = str(target.get("baseMaterialIdHex", ""))
         require(len(base_id) == 32, f"target base Material ID is invalid: {target_id}")
         bytes.fromhex(base_id)
@@ -418,8 +481,15 @@ def load_authored_effect_document(
 
 
 def find_exact_export(package: Any, target: dict[str, Any]) -> Any:
-    wanted_path = target["micObjectPath"].casefold()
-    wanted_class = target.get("micClassName", "materialinstanceconstant").casefold()
+    source_kind = target.get("sourceObjectKind", SOURCE_KIND_MIC)
+    if source_kind == SOURCE_KIND_DIRECT_MATERIAL:
+        wanted_path = target["sourceObjectPath"].casefold()
+        wanted_class = target.get("sourceClassName", "material").casefold()
+        label = "direct Material"
+    else:
+        wanted_path = target["micObjectPath"].casefold()
+        wanted_class = target.get("micClassName", "materialinstanceconstant").casefold()
+        label = "MIC"
     rows = []
     for entry in package.exports:
         actual_path = package_ref_path(
@@ -435,7 +505,7 @@ def find_exact_export(package: Any, target: dict[str, Any]) -> Any:
             rows.append(entry)
     require(
         len(rows) == 1,
-        f"MIC export is absent or ambiguous: {target['targetId']}",
+        f"{label} export is absent or ambiguous: {target['targetId']}",
     )
     entry = rows[0]
     expected_index = target.get("expectedExportIndexZeroBased")
@@ -445,6 +515,87 @@ def find_exact_export(package: Any, target: dict[str, Any]) -> Any:
             f"MIC export index changed: {target['targetId']}",
         )
     return entry
+
+
+def decode_direct_material_target(
+    package: Any,
+    target: dict[str, Any],
+) -> dict[str, Any]:
+    """Pin one direct Material export without inventing an MIC parent/override."""
+
+    require(
+        target.get("sourceObjectKind") == SOURCE_KIND_DIRECT_MATERIAL,
+        "direct Material decoder received a non-direct target",
+    )
+    entry = find_exact_export(package, target)
+    serial = package.logical[
+        entry.serial_offset : entry.serial_offset + entry.serial_size
+    ]
+    _properties, property_end = parse_tagged_properties(
+        serial, package.names, package.summary.version
+    )
+    expected_serial_sha = target.get("expectedSerialSha256")
+    if expected_serial_sha:
+        require(
+            sha256_bytes(serial) == expected_serial_sha,
+            f"direct Material serial SHA changed: {target['targetId']}",
+        )
+    if target.get("expectedPropertyStreamEnd") is not None:
+        require(
+            property_end == target["expectedPropertyStreamEnd"],
+            f"direct Material property end changed: {target['targetId']}",
+        )
+    tail = serial[property_end:]
+    base_material_id = bytes.fromhex(target["baseMaterialIdHex"])
+    base_id_occurrences = tail.count(base_material_id)
+    require(
+        base_id_occurrences
+        == int(target.get("expectedDirectMaterialBaseIdOccurrenceCount", 1)),
+        f"direct Material base ID occurrence denominator changed: {target['targetId']}",
+    )
+    base_id_offset = tail.find(base_material_id)
+    require(
+        base_id_offset == target["expectedBaseMaterialIdOffsetInNativeTail"],
+        f"direct Material native base-ID offset changed: {target['targetId']}",
+    )
+    default_static_payload = base_material_id + struct.pack("<IIII", 0, 0, 0, 0)
+    default_static_set = parse_static_parameter_set(
+        default_static_payload, 0, package.names
+    )
+    default_equality = engine_equivalent_static_parameter_set(default_static_set)
+    require(
+        default_static_set["rawSha256"]
+        == target["expectedDefaultStaticParameterSetRawSha256"]
+        and canonical_json_sha256(default_equality)
+        == target["expectedEngineEqualityStaticParameterSetSha256"],
+        f"direct Material canonical default static set changed: {target['targetId']}",
+    )
+    return {
+        "status": "DIRECT_MATERIAL_SOURCE_SERIAL_DECODED",
+        "sourcePackageFileName": package.path.name,
+        "sourceObjectPath": package_ref_path(
+            entry.index + 1, package.imports, package.exports
+        ),
+        "sourceClassName": package_ref_name(
+            entry.class_index, package.imports, package.exports
+        ),
+        "exportIndexZeroBased": entry.index,
+        "serialOffset": entry.serial_offset,
+        "serialByteSize": entry.serial_size,
+        "serialSha256": sha256_bytes(serial),
+        "propertyStreamEnd": property_end,
+        "nativeTailByteCount": len(tail),
+        "baseMaterialIdOccurrenceCount": base_id_occurrences,
+        "baseMaterialIdOffsetInNativeTail": base_id_offset,
+        "staticParameterSetSource": "DIRECT_MATERIAL_DEFAULT_ZERO_ROW_KEY",
+        "staticParameterSet": public_static_set(default_static_set),
+        "engineEqualityStaticParameterSet": default_equality,
+        "engineEqualityStaticParameterSetSha256": canonical_json_sha256(
+            default_equality
+        ),
+        "parentMaterialPath": None,
+        "instanceOverrideCount": 0,
+    }
 
 
 def decode_static_set_from_tail(
@@ -970,6 +1121,59 @@ def select_unique_map_context(
     return candidates[0]
 
 
+def select_pinned_direct_material_map_context(
+    scan: dict[str, Any], target: dict[str, Any]
+) -> dict[str, Any]:
+    """Select a direct Material's sole zero-override map using explicit pins."""
+
+    expected = target.get("expectedMaterialMap")
+    require(isinstance(expected, dict), "direct Material map pins are absent")
+    candidates = [
+        row
+        for row in scan["materialMapContexts"]
+        if all(
+            row.get(field) == expected.get(field)
+            for field in ("logicalOffset", "logicalEndOffset", "vertexFactoryCount")
+        )
+        and row.get("staticParameterSetRawSha256")
+        == target["expectedDefaultStaticParameterSetRawSha256"]
+        and row.get("engineEqualityStaticParameterSetSha256")
+        == target["expectedEngineEqualityStaticParameterSetSha256"]
+    ]
+    require(
+        len(candidates) == 1,
+        "pinned direct-Material default map is absent or ambiguous",
+    )
+    return candidates[0]
+
+
+def validate_direct_material_default_static_set(
+    material_map: dict[str, Any], target: dict[str, Any]
+) -> None:
+    static_set = material_map["staticParameterSet"]
+    require(
+        static_set["baseMaterialIdHex"] == target["baseMaterialIdHex"],
+        "direct Material default-set base ID changed",
+    )
+    for field in (
+        "staticSwitchParameters",
+        "staticComponentMaskParameters",
+        "normalParameters",
+        "terrainLayerWeightParameters",
+    ):
+        require(
+            static_set[field] == [],
+            f"direct Material default static set unexpectedly owns {field}",
+        )
+    require(
+        static_set["rawSha256"]
+        == target["expectedDefaultStaticParameterSetRawSha256"]
+        and material_map["engineEqualityStaticParameterSetSha256"]
+        == target["expectedEngineEqualityStaticParameterSetSha256"],
+        "direct Material default static-set identity changed",
+    )
+
+
 def parse_material_map(
     package: dict[str, Any],
     layout: dict[str, Any],
@@ -1111,10 +1315,14 @@ def select_structural_vf_pass_candidate(
     for row in material_map["vertexFactories"]:
         folded = row["vertexFactoryType"].casefold()
         if family == "PARTICLE_SPRITE":
-            matches = folded.startswith("fparticle") and not any(
-                token in folded for token in excluded
+            exact_vf = policy.get("vertexFactoryType")
+            matches = (
+                folded == str(exact_vf).casefold()
+                if exact_vf
+                else folded.startswith("fparticle")
+                and not any(token in folded for token in excluded)
             )
-        elif family == "LOCAL_MESH":
+        elif family in ("LOCAL_MESH", "LOCAL_DECAL"):
             matches = folded == str(policy["vertexFactoryType"]).casefold()
         else:
             matches = False
@@ -1934,8 +2142,8 @@ def scan_native_binding_array_candidates(
     texture_count = int(uniform_counts["pixelTexture2DExpressions"])
     scalar_group_count = math.ceil(scalar_count / 4)
     require(
-        scalar_group_count > 0 and vector_count > 0 and texture_count > 0,
-        "G03-3 requires non-empty scalar/vector/texture expression denominators",
+        vector_count > 0 and texture_count > 0,
+        "G03-3 requires non-empty vector/texture expression denominators",
     )
     cb0_size = int(dxbc_closure["declaredConstantBuffer0Float4Count"])
     declared_textures = set(dxbc_closure["declaredTextureRegisters"])
@@ -1952,6 +2160,7 @@ def scan_native_binding_array_candidates(
                 None,
                 scalar_group_count,
                 object_logical_offset,
+                allow_empty=True,
             )
             vector_rows, offset = _parse_wire_array(
                 object_bytes,
@@ -2004,9 +2213,21 @@ def scan_native_binding_array_candidates(
                 len(cb_slots) == len(set(cb_slots)),
                 "native constant-buffer slots overlap",
             )
+            sorted_cb_slots = sorted(cb_slots)
             require(
-                cb_slots and max(cb_slots) + 1 == cb0_size,
-                "native wires do not close over the DXBC CB0 declaration",
+                sorted_cb_slots
+                and all(0 <= slot < cb0_size for slot in sorted_cb_slots),
+                "native wires fall outside the DXBC CB0 declaration",
+            )
+            require(
+                sorted_cb_slots
+                == list(range(sorted_cb_slots[0], sorted_cb_slots[-1] + 1)),
+                "native material constant-buffer slots are not contiguous",
+            )
+            unowned_cb_slots = sorted(set(range(cb0_size)) - set(sorted_cb_slots))
+            leading_unowned_cb_slots = list(range(0, sorted_cb_slots[0]))
+            trailing_unowned_cb_slots = list(
+                range(sorted_cb_slots[-1] + 1, cb0_size)
             )
             require(
                 all(row["numBytesOrResources"] == 1 for row in texture_rows),
@@ -2065,8 +2286,20 @@ def scan_native_binding_array_candidates(
                 **semantic_rows,
                 "constantBufferClosure": {
                     "declaredConstantBuffer0Float4Count": cb0_size,
-                    "maximumNativeBoundConstantBuffer0Slot": max(cb_slots),
-                    "boundConstantBuffer0Slots": sorted(cb_slots),
+                    "minimumNativeBoundConstantBuffer0Slot": sorted_cb_slots[0],
+                    "maximumNativeBoundConstantBuffer0Slot": sorted_cb_slots[-1],
+                    "boundConstantBuffer0Slots": sorted_cb_slots,
+                    "unownedConstantBuffer0Slots": unowned_cb_slots,
+                    "leadingUnownedConstantBuffer0Slots": leading_unowned_cb_slots,
+                    "trailingUnownedConstantBuffer0Slots": trailing_unowned_cb_slots,
+                    "unownedConstantBuffer0SlotPolicy": (
+                        "PRESERVE_ENGINE_OR_PASS_OWNED_PREFIX_AND_SUFFIX_ROWS"
+                    ),
+                    "scalarUniformExpressionGroupDenominator": scalar_group_count,
+                    "nativeScalarWireCount": len(scalar_rows),
+                    "scalarExpressionGroupsWithoutNativeWire": sorted(
+                        set(range(scalar_group_count)) - set(scalar_keys)
+                    ),
                 },
                 "textureSampleClosure": {
                     "materialSamplePairs": sorted(material_pairs),
@@ -2141,7 +2374,9 @@ def validate_cache_identity(
 
 
 def validate_source_package(
-    path: Path, expected: dict[str, Any]
+    path: Path,
+    expected: dict[str, Any],
+    source_pack_manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     require(path.is_file(), f"pinned source package is missing: {path}")
     identity = {
@@ -2159,7 +2394,36 @@ def validate_source_package(
         identity["rawSha256"] == expected["rawSha256"],
         f"source package SHA changed: {path.name}",
     )
-    relationship = expected["officialManifest975Relationship"]
+    relationship = expected.get("officialManifest975Relationship")
+    if relationship == "PINNED_SOURCE_PACK_PAYLOAD":
+        require(
+            isinstance(source_pack_manifest, dict),
+            f"source-pack manifest is absent: {path.name}",
+        )
+        rows = [
+            row
+            for row in source_pack_manifest.get("packages", [])
+            if str(row.get("physicalPackage", "")).casefold()
+            == path.name.casefold()
+        ]
+        require(
+            len(rows) == 1,
+            f"source-pack entry is absent or ambiguous: {path.name}",
+        )
+        row = rows[0]
+        require(
+            row.get("resolved") is True
+            and row.get("byteSize") == identity["physicalByteSize"]
+            and row.get("sha256") == identity["rawSha256"]
+            and row.get("relativePath") == f"Dependencies/{path.name}",
+            f"source-pack entry identity changed: {path.name}",
+        )
+        return {
+            **identity,
+            **expected,
+            "sourcePackEntry": row,
+        }
+
     official = expected["officialManifest975"]
     if relationship == "EXACT_EXTRACTED_PAYLOAD":
         require(
@@ -2192,6 +2456,30 @@ def build_receipt(
         inputs["authoredEffectDocument"]
     )
 
+    source_pack_manifest = None
+    source_pack_identity = None
+    expected_source_pack = inputs.get("sourcePackManifest")
+    if expected_source_pack is not None:
+        require(
+            isinstance(expected_source_pack, dict),
+            "source-pack manifest identity is invalid",
+        )
+        source_pack_path = source_root.parent / expected_source_pack["fileName"]
+        require(
+            source_pack_path.is_file(),
+            f"source-pack manifest is missing: {source_pack_path}",
+        )
+        source_pack_identity = {
+            "fileName": source_pack_path.name,
+            "physicalByteSize": source_pack_path.stat().st_size,
+            "rawSha256": digest_file(source_pack_path),
+        }
+        require(
+            source_pack_identity == expected_source_pack,
+            "source-pack manifest identity changed",
+        )
+        source_pack_manifest = read_json(source_pack_path)
+
     source_rows = {
         row["fileName"].casefold(): row for row in inputs["sourcePackages"]
     }
@@ -2200,25 +2488,33 @@ def build_receipt(
     for key in sorted(source_rows):
         expected = source_rows[key]
         path = source_root / expected["fileName"]
-        source_identities.append(validate_source_package(path, expected))
+        source_identities.append(
+            validate_source_package(path, expected, source_pack_manifest)
+        )
         source_packages[key] = load_package(path, LOSTARK_KR_AES_KEY)
 
     decoded_targets = []
     for target in targets:
         package = source_packages[target["sourcePackageFileName"].casefold()]
-        decoded_targets.append(
-            {
-                "targetId": target["targetId"],
-                "familyId": target["familyId"],
-                "rendererType": target["rendererType"],
-                "occurrenceIds": target["occurrenceIds"],
-                "sourceMaterialPath": target["sourceMaterialPath"],
-                "parentMaterialPath": target["parentMaterialPath"],
-                "baseMaterialIdHex": target["baseMaterialIdHex"],
-                "expectedStatus": target["expectedStatus"],
-                "mic": decode_mic_target(package, target),
-            }
-        )
+        decoded = {
+            "targetId": target["targetId"],
+            "familyId": target["familyId"],
+            "rendererType": target["rendererType"],
+            "occurrenceIds": target["occurrenceIds"],
+            "sourceMaterialPath": target["sourceMaterialPath"],
+            "parentMaterialPath": target.get("parentMaterialPath"),
+            "baseMaterialIdHex": target["baseMaterialIdHex"],
+            "expectedStatus": target["expectedStatus"],
+        }
+        source_kind = target.get("sourceObjectKind", SOURCE_KIND_MIC)
+        if source_kind == SOURCE_KIND_DIRECT_MATERIAL:
+            decoded["sourceObjectKind"] = SOURCE_KIND_DIRECT_MATERIAL
+            decoded["directMaterial"] = decode_direct_material_target(
+                package, target
+            )
+        else:
+            decoded["mic"] = decode_mic_target(package, target)
+        decoded_targets.append(decoded)
 
     require(cache_path.is_file(), f"pinned official RefShaderCache is missing: {cache_path}")
     cache = package_tables(cache_path)
@@ -2243,7 +2539,8 @@ def build_receipt(
                 scan["rawHitCount"] == expected_raw_hits,
                 f"base Material hit denominator changed: {target['targetId']}",
             )
-        if decoded["mic"]["status"] == STATUS_BLOCKED:
+        mic = decoded.get("mic")
+        if mic is not None and mic["status"] == STATUS_BLOCKED:
             require(
                 target["expectedStatus"] == STATUS_BLOCKED,
                 f"unexpected blocked target: {target['targetId']}",
@@ -2261,10 +2558,14 @@ def build_receipt(
             blocked_count += 1
             continue
 
-        equality_sha = decoded["mic"][
-            "engineEqualityStaticParameterSetSha256"
-        ]
-        context = select_unique_map_context(scan, equality_sha)
+        if decoded.get("sourceObjectKind", SOURCE_KIND_MIC) == SOURCE_KIND_DIRECT_MATERIAL:
+            context = select_pinned_direct_material_map_context(scan, target)
+            equality_sha = context["engineEqualityStaticParameterSetSha256"]
+        else:
+            equality_sha = decoded["mic"][
+                "engineEqualityStaticParameterSetSha256"
+            ]
+            context = select_unique_map_context(scan, equality_sha)
         expected_map = target.get("expectedMaterialMap")
         if expected_map:
             for field in (
@@ -2277,6 +2578,8 @@ def build_receipt(
                     f"material-map {field} changed: {target['targetId']}",
                 )
         material_map = parse_material_map(cache, layout, context, equality_sha)
+        if decoded.get("sourceObjectKind", SOURCE_KIND_MIC) == SOURCE_KIND_DIRECT_MATERIAL:
+            validate_direct_material_default_static_set(material_map, target)
         structural_selection = select_structural_vf_pass_candidate(
             material_map,
             target["rendererType"],
@@ -2536,6 +2839,11 @@ def build_receipt(
             },
             "authoredEffectDocument": authored_identity,
             "sourcePackages": source_identities,
+            **(
+                {"sourcePackManifest": source_pack_identity}
+                if source_pack_identity is not None
+                else {}
+            ),
             "d3dcompiler": disassembler.identity,
         },
         "officialRefShaderCache": {

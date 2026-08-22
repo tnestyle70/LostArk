@@ -548,10 +548,12 @@ def evaluate_expression(
         ordinal = int(expression["operationOrdinal"])
         counts = stats["foldedMathOperationOrdinalCounts"]
         counts[str(ordinal)] = counts.get(str(ordinal), 0) + 1
-        require(ordinal in (0, 2), f"FoldedMath ordinal is not source-proven for G03-5: {ordinal}")
+        require(ordinal in (0, 2, 3), f"FoldedMath ordinal is not source-proven for G03-5: {ordinal}")
         if ordinal == 0:
             return _float4(left + right for left, right in zip(a, b))
-        return _float4(left * right for left, right in zip(a, b))
+        if ordinal == 2:
+            return _float4(left * right for left, right in zip(a, b))
+        return _float4(left / right for left, right in zip(a, b))
     if type_name == "fmaterialuniformexpressionappendvector":
         a, b = child("a"), child("b")
         count = int(expression["componentsFromA"])
@@ -562,6 +564,9 @@ def evaluate_expression(
     if type_name == "fmaterialuniformexpressionsine":
         operation = math.cos if bool(expression["isCosine"]) else math.sin
         return _float4(operation(value) for value in child("input"))
+    if type_name == "fmaterialuniformexpressionmax":
+        a, b = child("a"), child("b")
+        return _float4(max(left, right) for left, right in zip(a, b))
 
     raise ValueError(f"uniform expression type is not source-proven for G03-5: {type_name}")
 
@@ -949,8 +954,9 @@ def validate_official_source(path: Path, expected: dict[str, Any]) -> dict[str, 
     )
     require(
         re.search(r"case\s+FMO_Add\s*:\s*OutData\.WriteOpcode\([^;]*::Add\)", text)
-        and re.search(r"case\s+FMO_Mul\s*:\s*OutData\.WriteOpcode\([^;]*::Mul\)", text),
-        "FoldedMath Add/Mul opcode mapping changed",
+        and re.search(r"case\s+FMO_Mul\s*:\s*OutData\.WriteOpcode\([^;]*::Mul\)", text)
+        and re.search(r"case\s+FMO_Div\s*:\s*OutData\.WriteOpcode\([^;]*::Div\)", text),
+        "FoldedMath Add/Mul/Div opcode mapping changed",
     )
     require(
         "FMaterialUniformExpressionPeriodic" in text
@@ -964,6 +970,11 @@ def validate_official_source(path: Path, expected: dict[str, Any]) -> dict[str, 
             text,
         ),
         "Sine Sin/Cos opcode evidence is absent",
+    )
+    require(
+        "class FMaterialUniformExpressionMax" in text
+        and "OutData.WriteOpcode(UE::Shader::EPreshaderOpcode::Max)" in text,
+        "Max opcode evidence is absent",
     )
     lines = text.splitlines()
 
@@ -980,15 +991,19 @@ def validate_official_source(path: Path, expected: dict[str, Any]) -> dict[str, 
         "verifiedSemantics": {
             "foldedMathOrdinal0": "ADD",
             "foldedMathOrdinal2": "MUL",
+            "foldedMathOrdinal3": "DIV",
             "periodic": "FRACTIONAL",
             "sine": "SIN_OR_COS_BY_SERIALIZED_BOOL",
+            "max": "COMPONENT_WISE_MAX",
         },
         "evidenceLinesOneBased": {
             "foldedMathEnum": line_of("enum EFoldedMathOperation"),
             "foldedMathAddOpcode": line_of("case FMO_Add:"),
             "foldedMathMulOpcode": line_of("case FMO_Mul:"),
+            "foldedMathDivOpcode": line_of("case FMO_Div:"),
             "periodicClass": line_of("class FMaterialUniformExpressionPeriodic"),
             "sineClass": line_of("class FMaterialUniformExpressionSine"),
+            "maxClass": line_of("class FMaterialUniformExpressionMax"),
         },
     }
 

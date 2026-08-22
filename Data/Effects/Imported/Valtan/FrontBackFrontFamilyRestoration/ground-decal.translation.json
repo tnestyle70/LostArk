@@ -1,0 +1,82 @@
+[
+  {
+    "dxbc": "88199e51d1d2faf27c6fd58e6690712e3a0eb0561f3d1829100cb34ced7f7c4e.dxbc",
+    "status": "TRANSLATED",
+    "functionName": "Shade_Ue3_fx_d_de_ground_04_tr",
+    "instructionCount": 113,
+    "dxbcSha256": "88199e51d1d2faf27c6fd58e6690712e3a0eb0561f3d1829100cb34ced7f7c4e",
+    "hlslSha256": "de569916598a4470c01f9dcb64078b64afdaf62178bc0834379bf843c3bd5b76",
+    "declarations": {
+      "constantBuffers": {
+        "cb0": 20,
+        "cb2": 4
+      },
+      "samplers": [
+        "s0",
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5"
+      ],
+      "textures": [
+        "t0",
+        "t1",
+        "t2",
+        "t3",
+        "t4",
+        "t5"
+      ],
+      "textureTypes": {
+        "t0": "Texture2D",
+        "t1": "Texture2D",
+        "t2": "Texture2D",
+        "t3": "Texture2D",
+        "t4": "Texture2D",
+        "t5": "Texture2D"
+      },
+      "inputs": [
+        {
+          "register": "v0",
+          "mask": "xyz",
+          "interpolation": "linear",
+          "centroid": true
+        },
+        {
+          "register": "v4",
+          "mask": "xyzw",
+          "interpolation": "linear",
+          "centroid": true
+        },
+        {
+          "register": "v5",
+          "mask": "xyzw",
+          "interpolation": "linear",
+          "centroid": false
+        },
+        {
+          "register": "v6",
+          "mask": "xyz",
+          "interpolation": "linear",
+          "centroid": true
+        },
+        {
+          "register": "v7",
+          "mask": "xyz",
+          "interpolation": "linear",
+          "centroid": false
+        }
+      ],
+      "outputs": [
+        "o0",
+        "o2",
+        "o3",
+        "o4",
+        "o5"
+      ],
+      "coverageMask": false,
+      "coverageInput": false,
+      "temporaryCount": 5
+    }
+  }
+]

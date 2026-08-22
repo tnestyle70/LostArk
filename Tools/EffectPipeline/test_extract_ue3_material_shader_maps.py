@@ -258,6 +258,43 @@ class TargetManifestTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "multiple targets"):
             subject.validate_target_manifest(document)
 
+    def test_accepts_direct_material_without_synthetic_parent(self) -> None:
+        document = minimal_manifest()
+        target = document["targets"][0]
+        target.update(
+            {
+                "sourceObjectKind": subject.SOURCE_KIND_DIRECT_MATERIAL,
+                "sourceObjectPath": "fx_m.fx_direct",
+                "sourceClassName": "material",
+                "parentMaterialPath": None,
+                "staticParameterPolicy": subject.POLICY_DIRECT_MATERIAL,
+                "expectedBaseMaterialIdOffsetInNativeTail": 16,
+                "expectedDefaultStaticParameterSetRawSha256": "1" * 64,
+                "expectedEngineEqualityStaticParameterSetSha256": "2" * 64,
+            }
+        )
+        rows = subject.validate_target_manifest(document)
+        self.assertEqual(
+            rows[0]["sourceObjectKind"], subject.SOURCE_KIND_DIRECT_MATERIAL
+        )
+
+    def test_direct_material_rejects_synthetic_parent(self) -> None:
+        document = minimal_manifest()
+        target = document["targets"][0]
+        target.update(
+            {
+                "sourceObjectKind": subject.SOURCE_KIND_DIRECT_MATERIAL,
+                "sourceObjectPath": "fx_m.fx_direct",
+                "sourceClassName": "material",
+                "staticParameterPolicy": subject.POLICY_DIRECT_MATERIAL,
+                "expectedBaseMaterialIdOffsetInNativeTail": 16,
+                "expectedDefaultStaticParameterSetRawSha256": "1" * 64,
+                "expectedEngineEqualityStaticParameterSetSha256": "2" * 64,
+            }
+        )
+        with self.assertRaisesRegex(ValueError, "cannot declare a parent"):
+            subject.validate_target_manifest(document)
+
     def test_accepts_one_source_emitter_vf_pass_contract(self) -> None:
         document = minimal_manifest()
         document["targets"][0][subject.SOURCE_EMITTER_VF_PASS_FIELD] = (
@@ -458,6 +495,61 @@ class MapSelectionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "absent or ambiguous"):
             subject.select_unique_map_context(scan, "a")
 
+    def test_direct_default_map_requires_raw_and_engine_equality_pins(self) -> None:
+        scan = {
+            "materialMapContexts": [
+                {
+                    "logicalOffset": 10,
+                    "logicalEndOffset": 20,
+                    "vertexFactoryCount": 1,
+                    "staticParameterSetRawSha256": "a" * 64,
+                    "engineEqualityStaticParameterSetSha256": "b" * 64,
+                },
+                {
+                    "logicalOffset": 10,
+                    "logicalEndOffset": 20,
+                    "vertexFactoryCount": 1,
+                    "staticParameterSetRawSha256": "c" * 64,
+                    "engineEqualityStaticParameterSetSha256": "b" * 64,
+                },
+            ]
+        }
+        target = {
+            "expectedMaterialMap": {
+                "logicalOffset": 10,
+                "logicalEndOffset": 20,
+                "vertexFactoryCount": 1,
+            },
+            "expectedDefaultStaticParameterSetRawSha256": "a" * 64,
+            "expectedEngineEqualityStaticParameterSetSha256": "b" * 64,
+        }
+        selected = subject.select_pinned_direct_material_map_context(scan, target)
+        self.assertEqual(selected["staticParameterSetRawSha256"], "a" * 64)
+
+    def test_direct_default_map_rejects_engine_equal_nondefault_raw_set(self) -> None:
+        scan = {
+            "materialMapContexts": [
+                {
+                    "logicalOffset": 10,
+                    "logicalEndOffset": 20,
+                    "vertexFactoryCount": 1,
+                    "staticParameterSetRawSha256": "c" * 64,
+                    "engineEqualityStaticParameterSetSha256": "b" * 64,
+                }
+            ]
+        }
+        target = {
+            "expectedMaterialMap": {
+                "logicalOffset": 10,
+                "logicalEndOffset": 20,
+                "vertexFactoryCount": 1,
+            },
+            "expectedDefaultStaticParameterSetRawSha256": "a" * 64,
+            "expectedEngineEqualityStaticParameterSetSha256": "b" * 64,
+        }
+        with self.assertRaisesRegex(ValueError, "absent or ambiguous"):
+            subject.select_pinned_direct_material_map_context(scan, target)
+
     def test_multiple_sprite_vfs_can_converge_on_one_pixel_shader(self) -> None:
         material_map = {
             "vertexFactories": [
@@ -527,6 +619,65 @@ class MapSelectionTests(unittest.TestCase):
         self.assertEqual(
             result["selectedPixelPassReference"]["shaderIdHex"], "c" * 32
         )
+
+    def test_local_decal_policy_never_selects_local_mesh_vf(self) -> None:
+        material_map = {
+            "vertexFactories": [
+                {
+                    "vertexFactoryType": "flocalvertexfactory",
+                    "shaderReferences": [
+                        {"shaderType": "basepass", "shaderIdHex": "a" * 32}
+                    ],
+                },
+                {
+                    "vertexFactoryType": "flocaldecalvertexfactory",
+                    "shaderReferences": [
+                        {"shaderType": "basepass", "shaderIdHex": "b" * 32}
+                    ],
+                },
+            ]
+        }
+        policy = {
+            "family": "LOCAL_DECAL",
+            "vertexFactoryType": "flocaldecalvertexfactory",
+            "passPixelShaderType": "basepass",
+            "actualVfPassAdmission": False,
+        }
+        result = subject.select_structural_vf_pass_candidate(
+            material_map, "LocalDecal", policy
+        )
+        self.assertEqual(result["vertexFactoryCandidateCount"], 1)
+        self.assertEqual(
+            result["selectedPixelPassReference"]["shaderIdHex"], "b" * 32
+        )
+
+    def test_exact_sprite_vf_policy_does_not_merge_other_particle_vfs(self) -> None:
+        material_map = {
+            "vertexFactories": [
+                {
+                    "vertexFactoryType": "fparticleoffsetcentervertexfactory",
+                    "shaderReferences": [
+                        {"shaderType": "basepass", "shaderIdHex": "a" * 32}
+                    ],
+                },
+                {
+                    "vertexFactoryType": "fparticlevertexfactory",
+                    "shaderReferences": [
+                        {"shaderType": "basepass", "shaderIdHex": "a" * 32}
+                    ],
+                },
+            ]
+        }
+        policy = {
+            "family": "PARTICLE_SPRITE",
+            "vertexFactoryType": "fparticleoffsetcentervertexfactory",
+            "passPixelShaderType": "basepass",
+            "actualVfPassAdmission": False,
+        }
+        result = subject.select_structural_vf_pass_candidate(
+            material_map, "OffsetCenterSprite", policy
+        )
+        self.assertEqual(result["vertexFactoryCandidateCount"], 1)
 
     def test_artist_packed_descriptor_primitive_decodes_dword_slice(self) -> None:
         shader_id = bytes.fromhex("11" * 16)
@@ -697,6 +848,214 @@ class NativeShaderObjectBindingTests(unittest.TestCase):
         self.assertEqual(
             selected["textureSampleClosure"]["unownedEngineSamplePairs"],
             ["t1/s1"],
+        )
+
+    def test_zero_scalar_direct_material_binding_is_supported(self) -> None:
+        direct_material_triple = b"".join(
+            (
+                wire_array([]),
+                wire_array(
+                    [
+                        wire_row(0, 16, 16, 0),
+                        wire_row(1, 32, 16, 0),
+                    ]
+                ),
+                wire_array(
+                    [
+                        wire_row(0, 0, 1, 0),
+                        wire_row(1, 1, 1, 1),
+                    ]
+                ),
+            )
+        )
+        uniform_counts = {
+            "pixelScalarExpressions": 0,
+            "pixelVectorExpressions": 2,
+            "pixelTexture2DExpressions": 2,
+        }
+        closure = binding_closure(
+            observed={"t0/s0": 1, "t1/s1": 1},
+            textures=[0, 1],
+            samplers=[0, 1],
+        )
+        closure["declaredConstantBuffer0Float4Count"] = 3
+
+        selected = subject.select_unique_native_binding_arrays(
+            b"\xff" * 73 + direct_material_triple + b"\xff" * 19,
+            1000,
+            uniform_counts,
+            closure,
+        )
+
+        self.assertEqual(selected["bindingArraysOffsetInShaderObject"], 73)
+        self.assertEqual(selected["scalarGroups"], [])
+        self.assertEqual(
+            selected["constantBufferClosure"]["boundConstantBuffer0Slots"],
+            [1, 2],
+        )
+
+    def test_zero_scalar_direct_material_rejects_a_scalar_wire(self) -> None:
+        invalid = b"".join(
+            (
+                wire_array([wire_row(0, 0, 16, 0)]),
+                wire_array(
+                    [
+                        wire_row(0, 16, 16, 0),
+                        wire_row(1, 32, 16, 0),
+                    ]
+                ),
+                wire_array(
+                    [
+                        wire_row(0, 0, 1, 0),
+                        wire_row(1, 1, 1, 1),
+                    ]
+                ),
+            )
+        )
+        uniform_counts = {
+            "pixelScalarExpressions": 0,
+            "pixelVectorExpressions": 2,
+            "pixelTexture2DExpressions": 2,
+        }
+        closure = binding_closure(
+            observed={"t0/s0": 1, "t1/s1": 1},
+            textures=[0, 1],
+            samplers=[0, 1],
+        )
+        closure["declaredConstantBuffer0Float4Count"] = 3
+
+        self.assertEqual(
+            subject.scan_native_binding_array_candidates(
+                b"\xff" * 73 + invalid + b"\xff" * 19,
+                1000,
+                uniform_counts,
+                closure,
+            ),
+            [],
+        )
+
+    def test_nonzero_scalar_expressions_may_have_zero_native_scalar_wires(self) -> None:
+        smoke_triple = b"".join(
+            (
+                wire_array([]),
+                wire_array(
+                    [
+                        wire_row(0, 16, 16, 0),
+                        wire_row(1, 32, 16, 0),
+                        wire_row(2, 48, 16, 0),
+                    ]
+                ),
+                wire_array(
+                    [
+                        wire_row(0, 2, 1, 1),
+                        wire_row(1, 3, 1, 2),
+                        wire_row(2, 0, 1, 3),
+                    ]
+                ),
+            )
+        )
+        uniform_counts = {
+            "pixelScalarExpressions": 9,
+            "pixelVectorExpressions": 3,
+            "pixelTexture2DExpressions": 3,
+        }
+        closure = binding_closure(
+            observed={"t0/s3": 1, "t1/s0": 1, "t2/s1": 1, "t3/s2": 1},
+            textures=[0, 1, 2, 3],
+            samplers=[0, 1, 2, 3],
+        )
+
+        selected = subject.select_unique_native_binding_arrays(
+            b"\xff" * 73 + smoke_triple + b"\xff" * 19,
+            1000,
+            uniform_counts,
+            closure,
+        )
+
+        self.assertEqual(selected["scalarGroups"], [])
+        self.assertEqual(
+            selected["constantBufferClosure"]["unownedConstantBuffer0Slots"],
+            [0],
+        )
+        self.assertEqual(
+            selected["constantBufferClosure"][
+                "scalarExpressionGroupsWithoutNativeWire"
+            ],
+            [0, 1, 2],
+        )
+        self.assertEqual(
+            selected["textureSampleClosure"]["unownedEngineSamplePairs"],
+            ["t1/s0"],
+        )
+
+    def test_engine_owned_cb0_prefix_and_suffix_are_preserved(self) -> None:
+        closure = binding_closure()
+        closure["declaredConstantBuffer0Float4Count"] = 8
+        selected = subject.select_unique_native_binding_arrays(
+            b"\xff" * 73 + valid_binding_triple() + b"\xff" * 19,
+            1000,
+            UNIFORM_COUNTS,
+            closure,
+        )
+
+        self.assertEqual(
+            selected["constantBufferClosure"]["boundConstantBuffer0Slots"],
+            [1, 2, 3],
+        )
+        self.assertEqual(
+            selected["constantBufferClosure"]["unownedConstantBuffer0Slots"],
+            [0, 4, 5, 6, 7],
+        )
+        self.assertEqual(
+            selected["constantBufferClosure"][
+                "leadingUnownedConstantBuffer0Slots"
+            ],
+            [0],
+        )
+        self.assertEqual(
+            selected["constantBufferClosure"][
+                "trailingUnownedConstantBuffer0Slots"
+            ],
+            [4, 5, 6, 7],
+        )
+
+    def test_noncontiguous_native_material_cb0_slots_fail_closed(self) -> None:
+        gapped = b"".join(
+            (
+                wire_array([wire_row(0, 64, 16, 0)]),
+                wire_array(
+                    [
+                        wire_row(0, 16, 16, 0),
+                        wire_row(1, 48, 16, 0),
+                    ]
+                ),
+                wire_array([wire_row(0, 0, 1, 0)]),
+            )
+        )
+        closure = binding_closure()
+        closure["declaredConstantBuffer0Float4Count"] = 6
+
+        self.assertEqual(
+            subject.scan_native_binding_array_candidates(
+                b"\xff" * 73 + gapped + b"\xff" * 19,
+                1000,
+                UNIFORM_COUNTS,
+                closure,
+            ),
+            [],
+        )
+
+    def test_native_material_cb0_slot_outside_declaration_fails_closed(self) -> None:
+        closure = binding_closure()
+        closure["declaredConstantBuffer0Float4Count"] = 3
+        self.assertEqual(
+            subject.scan_native_binding_array_candidates(
+                b"\xff" * 73 + valid_binding_triple() + b"\xff" * 19,
+                1000,
+                UNIFORM_COUNTS,
+                closure,
+            ),
+            [],
         )
 
     def test_two_candidates_are_rejected_as_ambiguous(self) -> None:

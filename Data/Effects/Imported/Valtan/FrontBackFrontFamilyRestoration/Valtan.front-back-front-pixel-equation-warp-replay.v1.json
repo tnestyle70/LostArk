@@ -1,0 +1,202 @@
+[
+  {
+    "dxbc": "433da6658bf69e839b82d216a0d142006491f202ac7262b2b068dc35fc0e79e9.dxbc",
+    "profile": "ps_5_0",
+    "instructionCount": 18,
+    "renderTargetCount": 1,
+    "worstRelativeDelta": 0.0,
+    "seeds": [
+      {
+        "seed": 1,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 2,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 3,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 4,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 5,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      }
+    ],
+    "result": "NUMERIC_EXACT"
+  },
+  {
+    "dxbc": "befb60c839ccdc027566138ecad22aaf795f49f2ab40868f0ad694f149f35a7c.dxbc",
+    "profile": "ps_5_0",
+    "instructionCount": 51,
+    "renderTargetCount": 6,
+    "worstRelativeDelta": 0.0,
+    "seeds": [
+      {
+        "seed": 1,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 2,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 3,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 4,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 5,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      }
+    ],
+    "result": "NUMERIC_EXACT"
+  },
+  {
+    "dxbc": "19bba55d0aaaffa320e175d3fa3bd71602fd469f3f90cdcc6e90dde636978c5b.dxbc",
+    "profile": "ps_5_0",
+    "instructionCount": 121,
+    "renderTargetCount": 6,
+    "worstRelativeDelta": 0.0,
+    "seeds": [
+      {
+        "seed": 1,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 2,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 3,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 4,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 5,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      }
+    ],
+    "result": "NUMERIC_EXACT"
+  },
+  {
+    "dxbc": "88199e51d1d2faf27c6fd58e6690712e3a0eb0561f3d1829100cb34ced7f7c4e.dxbc",
+    "profile": "ps_5_0",
+    "instructionCount": 113,
+    "renderTargetCount": 6,
+    "worstRelativeDelta": 0.0,
+    "seeds": [
+      {
+        "seed": 1,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 2,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 3,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 4,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 5,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      }
+    ],
+    "result": "NUMERIC_EXACT"
+  },
+  {
+    "dxbc": "39503bb820e24101792acce4c87d161b7f12fb65dea1d836cc5ce4f3fcb93a94.dxbc",
+    "profile": "ps_5_0",
+    "instructionCount": 126,
+    "renderTargetCount": 6,
+    "worstRelativeDelta": 0.0,
+    "seeds": [
+      {
+        "seed": 1,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 2,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 3,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 4,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      },
+      {
+        "seed": 5,
+        "worstRelativeDelta": 0.0,
+        "mismatchCount": 0,
+        "mismatches": []
+      }
+    ],
+    "result": "NUMERIC_EXACT"
+  }
+]
