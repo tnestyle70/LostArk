@@ -1,4 +1,7 @@
-# 캐릭터 Effect authored → sealed runtime 통합 결과
+# 캐릭터 Effect authored → sealed runtime 통합 시도 결과
+
+> 최종 판정: `NOT MERGED`. 아래 publisher 결과는 후보 브랜치 내부에서 성공했지만,
+> 정본 Debug 통합 회귀의 `ClientFrontendHarness`가 46건 실패해 main 승격을 중단했다.
 
 ## 1. 이번 통합 경계
 
@@ -62,13 +65,42 @@ publisher는 authored 문서를 직접 덮어쓰지 않고 새 SHA-256 identity�
 | catalog old/new identity 비교 | 정확히 18 Effect mapping 변경 확인 |
 | sealed target cardinality parse | Artist `4/69/3/18/68/46/23`, Warlord T `24/6/12`; BA1 Post 0, BA3 Decal 4 PASS |
 
-Client Debug/Release와 신규 창술사 Q/A focused harness는 뒤따르는 통합 commit까지 포함한 최종
-branch 기준으로 다시 실행한다. Client/UI는 자율 실행하지 않았으며 first-pixel과 원본 색감 판정은
-사용자 수동 검증 전까지 `PENDING`이다.
+Client Debug build/link는 통과했지만 아래 정본 회귀에서 하네스가 실패했다. Release 통합 회귀와
+신규 창술사 Q/A focused harness는 완료하지 않았다. Client/UI는 자율 실행하지 않았으며
+first-pixel과 원본 색감 판정도 실행하지 않았다.
 
-## 5. 다음 국소 복원 경계
+## 5. 종료 판정과 보존 위치
 
-광범위한 캐릭터 전수 수정은 여기서 멈춘다. 다음 문서는 워로드 F `17140`, V `17170`,
+정본 통합 명령은 다음 순서까지 진행됐다.
+
+| 단계 | 결과 |
+|---|---|
+| Engine/Shared/Server/Client Debug build/link | PASS |
+| Balance/World/Navigation Validate | PASS |
+| Effect 205개 및 Data project registration | PASS |
+| Artist F material oracle / Rendering profile / NetworkProtocolHarness | PASS |
+| 기본 `ClientFrontendHarness` | **FAIL, 46 failures** |
+
+대표 실패군은 DimensionMaster source material admission과 semantic module 보존, legacy GPU
+occurrence, source overlay CAS/round-trip, Valtan placement source contract였다. 따라서
+`Publish-Effects` 통과만으로 제품 회귀가 닫혔다고 판단하지 않았고 PR #141은 main에 병합하지
+않았다. 후보 코드·데이터·publisher 결과는 다음 복구 가능한 위치에 보존한다.
+
+```text
+branch  codex/effect-family-conquest
+head    10e18dea50d3915f0bfa71484ea3a711b38c8dd8
+PR      #141 (closed without merge)
+base    main@7fb8f8139f62657914228070ebe2a9860287b577
+```
+
+사용자 결정에 따라 이 광역 복원 방향은 여기서 종료한다. 새 방향은 최신 main에서 새 범위와
+새 완료 판정자를 먼저 정한 뒤 시작하며, 이 브랜치를 통째로 cherry-pick하거나 부분 결과를
+이미 main에 반영된 것으로 간주하지 않는다.
+
+## 6. 폐기한 다음 국소 복원 경계
+
+광범위한 캐릭터 전수 수정은 여기서 멈춘다. 아래 항목은 당시 제안이었으나 방향 재설정으로
+실행하지 않았다. 워로드 F `17140`, V `17170`,
 풀배럴 캐넌 T `17240`과 도화가 A/S 및 이미 반영된 스킬을 다음 열로 먼저 고정한다.
 
 ```text
