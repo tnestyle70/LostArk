@@ -210,6 +210,7 @@ struct EFFECT_GPU_RENDER_OCCURRENCE_STATS final
 	uint64_t iGeometryUploadCount = 0u;
 	uint64_t iIssuedDrawCallCount = 0u;
 	uint64_t iDrawSelectionCount = 0u;
+	uint64_t iCompiledAdapterPipelineValidationCount = 0u;
 	uint64_t iSubmitted = 0u;
 	uint64_t iSuppressed = 0u;
 	uint64_t iFailed = 0u;
@@ -888,6 +889,7 @@ private:
 	void Record_TestDrawSelection(
 		EFFECT_GPU_RENDER_CARRIER eCarrier,
 		uint32_t iSelectedPassIndex);
+	void Record_TestCompiledAdapterPipelineValidation();
 	void Record_TestIssuedDraw(const float4x4_t& World);
 	void Record_TestIssuedDraw(
 		std::span<const Engine::VTXEFFECT_PARTICLE> Instances);

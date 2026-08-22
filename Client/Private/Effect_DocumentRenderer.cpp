@@ -17427,8 +17427,18 @@ bool_t Client::CEffectDocumentRenderer::Set_PreviewSubmissionIsolation(
 	const bool_t bGenericVisual = m_bSourceVisualProgramActive &&
 		nullptr != m_pPreparedDocument &&
 		nullptr != m_pPreparedDocument->pVisualProgramProjection;
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+	/* The focused GPU harness stages the ordinary product document directly so
+	   Binding 0 and Binding 1 exercise the same renderer path.  Only the
+	   test-only CEffectObject entry point can reach this allowance; the product
+	   entry point still requires an admitted source visual program. */
+	const bool_t bStagedOrdinaryTest = nullptr != m_pPreparedDocument &&
+		!m_bReconstructedSourceRuntimeActive && !m_bSourceVisualProgramActive;
+#else
+	constexpr bool_t bStagedOrdinaryTest = false;
+#endif
 	const EFFECT_DOCUMENT_DESC& Document = Get_StagedDocument();
-	if ((!bReconstructedArtist && !bGenericVisual) ||
+	if ((!bReconstructedArtist && !bGenericVisual && !bStagedOrdinaryTest) ||
 		(bReconstructedArtist &&
 		 (Program->iSkillId != 31470u || Program->Admission.bRuntimeExecution ||
 		  Program->Admission.bProduct ||
@@ -17800,6 +17810,13 @@ void Client::CEffectDocumentRenderer::Record_TestDrawSelection(
 		m_pActiveOccurrenceStats->bDrawSelectionDiverged = true;
 	}
 	++m_pActiveOccurrenceStats->iDrawSelectionCount;
+}
+
+void Client::CEffectDocumentRenderer::
+	Record_TestCompiledAdapterPipelineValidation()
+{
+	if (nullptr != m_pActiveOccurrenceStats)
+		++m_pActiveOccurrenceStats->iCompiledAdapterPipelineValidationCount;
 }
 
 namespace
@@ -19377,13 +19394,18 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
 			"Particle shader pass apply failed.", hResult);
-	if (nullptr != pMaterialProgramBinding &&
-		!Validate_ActualSpriteParticleAdapterPipeline(
-			m_pContext.Get(), pMaterialProgramBinding->Adapter))
+	if (nullptr != pMaterialProgramBinding)
 	{
-		return Fail_RenderOperation(
-			"Bound Sprite material adapter actual pass/state/MRT changed.",
-			E_FAIL, true);
+		if (!Validate_ActualSpriteParticleAdapterPipeline(
+				m_pContext.Get(), pMaterialProgramBinding->Adapter))
+		{
+			return Fail_RenderOperation(
+				"Bound Sprite material adapter actual pass/state/MRT changed.",
+				E_FAIL, true);
+		}
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+		Record_TestCompiledAdapterPipelineValidation();
+#endif
 	}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 	Record_TestShaderPassApplication();
