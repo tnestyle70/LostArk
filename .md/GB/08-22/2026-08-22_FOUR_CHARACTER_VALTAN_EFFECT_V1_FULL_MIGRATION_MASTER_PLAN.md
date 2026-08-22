@@ -254,6 +254,39 @@ frozen V0 Product
 - `REPLACE/ADD/RETIRE`를 Product에 실행한 대상은 아직 없다.
 - 다음 gate는 사용자의 네 대상 Solo/전체 composition 판정이며, 그 전에는 `V1_COMPLETE`로 올리지 않는다.
 
+### 0.10 Valtan All Effects 저작 화면 계약
+
+Valtan의 All Effects 화면은 phase 탐색기가 아니라 캐릭터 skill 목록과 같은 pattern 저작 화면이다.
+pattern 하나를 열었을 때 순서는 다음으로 고정한다.
+
+```text
+Pattern
+  -> Saved Unified Effects
+       -> Open Saved Effect
+       -> Play Saved Effect
+  -> Animations / Semantic Stages
+       -> ordered clip occurrence
+       -> Product cue timing/attachment diagnostics
+```
+
+Saved 목록은 pattern의 `Stage.ClipOccurrences[].ProductCues`, `Stage.Effects`,
+`Stage.CombatObjectEffects`를 semantic stage 순서로 합치고 `effectAssetId`로 중복 제거한다. 현재 main
+정본의 raw link는 Product cue 44, stage-authored reference 61, combat-object visual 2로 107개다.
+Whirlwind SPIN의 한 Effect가 Product cue와 explicit reference에 함께 기록돼 있으므로 pattern-local
+`effectAssetId` 중복 제거 뒤 실제 Saved 행은 106개다.
+`VALTAN_DASH_CHARGE`처럼 Product cue가 아직 없는 pattern도 기존 stage-authored 문서 4개를 Saved 목록에
+표시해야 한다. Product cue 행의 Open/Play는 exact clip occurrence와 cue를 사용한다. stage-authored
+reference와 combat-object visual은 소유 semantic stage의 ordered clip sequence 전체를 재생한다.
+combat-object attachment는 계속 Server world-root 소유이며 Tool의 boss animation 동기화가 그 소유권을
+바꾸지 않는다. 동일 `effectAssetId`의 Product/reference provenance는 한 행에 모두 보존하고, 저장 경로는
+EffectCatalog의 direct-authored 경로를 reference fallback보다 우선한다. 목록이나 아래 animation tree를
+그리는 것만으로 문서를 parse하지 않으며 실제 Open/Play 입력에서 identity와 drawable 상태를 검증한다.
+
+`Repeat rotation in every phase`, `Only stages with an Effect`, phase combo는 이 저작 계약에서 제거한다.
+같은 rotation pattern을 phase마다 복제하면 saved Effect가 여러 개인 것처럼 보이고, effect 없는 stage를
+숨기면 animation composition 전체를 확인할 수 없기 때문이다. phase/gate/health-bar 정보는 encounter
+정본에 계속 남지만 All Effects의 저작 계층을 바꾸지 않는다.
+
 ## 1. V0 기준선 실측
 
 ### 1.1 병합 기준
