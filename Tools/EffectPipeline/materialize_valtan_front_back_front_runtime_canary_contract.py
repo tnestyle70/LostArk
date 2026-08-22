@@ -163,6 +163,7 @@ EXPECTED_RUNTIME_REGRESSION_SEAMS = {
     "rendererAcceptsNonEmptyExactSubset": True,
     "toolFullNineAuthoredPrecheck": True,
     "previewProjectionRequiresExactAuthoredStage": True,
+    "toolLiveEditIdentityDriftFailsClosed": True,
     "toolLabelsEngineSceneCbBoundedNotExact": True,
 }
 
@@ -362,6 +363,16 @@ def validate_runtime_regression_seams(
         and "!Has_ProductCuePreview()" in world_preview[stage_offset:projection_offset]
         and "Has_ValtanTranslatedCanaryOccurrences(Document)" in world_preview[stage_offset:projection_offset],
         "Valtan preview carrier projection is no longer gated by exact Authored eligibility",
+    )
+    require(
+        re.search(
+            r"if\s*\(\s*m_bValtanTranslatedCanaryEnabled\s*&&\s*"
+            r"!bValtanTranslatedCanaryStage\s*\)\s*\{.*?"
+            r"ordinary preview was not substituted\..*?return false\s*;",
+            world_preview[stage_offset:projection_offset],
+            re.DOTALL,
+        ) is not None,
+        "Valtan Tool live-edit invariant drift can fall back to ordinary preview",
     )
     preview_projection = cpp_function_body(
         tool_cpp_text, "CEffect_Tool::Build_PreviewDocument(")
@@ -752,7 +763,7 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
             require(occurrence.get("modelPreScale") == 0.01, f"receipt lost 0.01 modelPreScale: {target_id}")
         all_runtime_ids.extend(EXPECTED_RUNTIME_IDS[target_id])
     require(len(all_runtime_ids) == len(set(all_runtime_ids)) == 9, "receipt runtime element IDs are duplicated")
-    require(receipt.get("summary") == {"exactShaderMapFamilyCount": 3, "exactPixelEquationCount": 3, "translatedHlslCount": 3, "toolCanaryFamilyCount": 3, "runtimeElementCount": 9, "boundedRt0AdapterCount": 3, "runtimeImplementationFileCount": 12, "rendererRuntimeFamilyCount": 3, "runtimeRegressionSeamCount": 8}, "runtime canary receipt summary changed")
+    require(receipt.get("summary") == {"exactShaderMapFamilyCount": 3, "exactPixelEquationCount": 3, "translatedHlslCount": 3, "toolCanaryFamilyCount": 3, "runtimeElementCount": 9, "boundedRt0AdapterCount": 3, "runtimeImplementationFileCount": 12, "rendererRuntimeFamilyCount": 3, "runtimeRegressionSeamCount": len(EXPECTED_RUNTIME_REGRESSION_SEAMS)}, "runtime canary receipt summary changed")
     require(receipt.get("admission") == {"contractStatus": "TOOL_RENDERER_RUNTIME_ADMITTED_BOUNDED_RT0", "toolCanaryContract": True, "rendererRuntimeAdmission": True, "defaultRuntime": False, "samplerExact": False, "engineSceneCbExact": False, "actualVfPass": False, "product": False, "visual": False}, "runtime canary receipt admission boundary changed")
 
 

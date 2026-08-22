@@ -21510,6 +21510,15 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 		m_ActiveDocument.has_value() &&
 		Document.strEffectAssetId == m_ActiveDocument->strEffectAssetId &&
 		Has_ValtanTranslatedCanaryOccurrences(Document);
+	if (m_bValtanTranslatedCanaryEnabled &&
+		!bValtanTranslatedCanaryStage)
+	{
+		m_strValtanTranslatedCanaryStatus =
+			"FAILED CLOSED before stage: the exact 9/9 Valtan Authored identity changed. Toggle OFF explicitly to return to ordinary preview.";
+		m_strPreviewStatus =
+			"Translated Valtan canary staging was refused after its exact Authored identity changed; ordinary preview was not substituted.";
+		return false;
+	}
 	const EFFECT_DOCUMENT_DESC PreviewDocument =
 		Build_PreviewDocument(Document, bValtanTranslatedCanaryStage);
 	const bool_t bGlasshole02TranslatedCanaryStage =

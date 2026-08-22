@@ -59,8 +59,8 @@
     },
     {
       "path": "Client/Private/Effect_Tool.cpp",
-      "byteSize": 890053,
-      "sha256": "3d98e94dc6feeea77f17e6b899b0b0414f35abdefdace03c1f5e9b6d0384d13f",
+      "byteSize": 890477,
+      "sha256": "6b169d5d8d861cacf549e561e038db116bdfbe907f1f5f33bfcd71d4b25ef8da",
       "role": "explicit authoring Tool canary toggle, staging, and rollback seam"
     },
     {
@@ -2118,5 +2118,5 @@
     "rawSourceVertexShaderExecution": false,
     "visual": false
   },
-  "receiptSha256": "2349aded6fa05b7055036c796d583e90f05d31298335a0c2252167303ff52aec"
+  "receiptSha256": "eacde49dd0d3faacea8d3127afdcdf2e507a34609adacff72669b1444c097184"
 }

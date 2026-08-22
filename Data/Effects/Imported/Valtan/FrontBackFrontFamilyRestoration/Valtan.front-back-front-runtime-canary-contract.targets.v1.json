@@ -54,7 +54,7 @@
     },
     {
       "path": "Client/Private/Effect_Tool.cpp",
-      "sha256": "3d98e94dc6feeea77f17e6b899b0b0414f35abdefdace03c1f5e9b6d0384d13f",
+      "sha256": "6b169d5d8d861cacf549e561e038db116bdfbe907f1f5f33bfcd71d4b25ef8da",
       "role": "explicit Tool toggle, exact occurrence gate, rollback, and preview staging integration"
     },
     {

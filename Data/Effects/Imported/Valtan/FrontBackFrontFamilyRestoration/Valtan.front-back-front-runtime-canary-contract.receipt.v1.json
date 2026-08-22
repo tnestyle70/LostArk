@@ -12,7 +12,7 @@
     "targets": {
       "path": "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/Valtan.front-back-front-runtime-canary-contract.targets.v1.json",
       "byteSize": 7560,
-      "sha256": "599f5eabe93efc2d624da1c9a956869018c7adf6e5ae95d896ea9328cfbb0afb",
+      "sha256": "3c3991a7111bfb04746006352342328752055a4a5d49a2578e9e11e2c35c87c5",
       "role": "three-family Tool canary targets"
     },
     "authoredIdentity": {
@@ -93,8 +93,8 @@
       },
       {
         "path": "Client/Private/Effect_Tool.cpp",
-        "byteSize": 890053,
-        "sha256": "3d98e94dc6feeea77f17e6b899b0b0414f35abdefdace03c1f5e9b6d0384d13f",
+        "byteSize": 890477,
+        "sha256": "6b169d5d8d861cacf549e561e038db116bdfbe907f1f5f33bfcd71d4b25ef8da",
         "role": "explicit Tool toggle, exact occurrence gate, rollback, and preview staging integration"
       },
       {
@@ -162,6 +162,7 @@
     "rendererAcceptsNonEmptyExactSubset": true,
     "toolFullNineAuthoredPrecheck": true,
     "previewProjectionRequiresExactAuthoredStage": true,
+    "toolLiveEditIdentityDriftFailsClosed": true,
     "toolLabelsEngineSceneCbBoundedNotExact": true
   },
   "families": [
@@ -382,7 +383,7 @@
     "boundedRt0AdapterCount": 3,
     "runtimeImplementationFileCount": 12,
     "rendererRuntimeFamilyCount": 3,
-    "runtimeRegressionSeamCount": 8
+    "runtimeRegressionSeamCount": 9
   },
   "admission": {
     "contractStatus": "TOOL_RENDERER_RUNTIME_ADMITTED_BOUNDED_RT0",
@@ -395,5 +396,5 @@
     "product": false,
     "visual": false
   },
-  "receiptSha256": "2a77fbd9232f14987250a518912912e126d0d34a46f2dbba2dd9eb3aab6cfd02"
+  "receiptSha256": "ba1b820122ec7e20e9d54be80e900f4ec11e9cc94b5020bb7e7a332c30ee0ffb"
 }

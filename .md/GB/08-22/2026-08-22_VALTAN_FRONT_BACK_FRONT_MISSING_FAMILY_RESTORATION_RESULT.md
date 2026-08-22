@@ -88,6 +88,8 @@ crackline model identity를 유지한다. Complete뿐 아니라 target Element S
   우회하지 않는다.
 - carrier projection은 실제 Authored canary stage가 eligible일 때만 적용하므로 stale UI flag가
   Product/read-only preview를 변형하지 않는다.
+- canary ON 상태에서 live edit가 exact 9/9 Authored identity를 깨뜨리면 ordinary preview로
+  대체하지 않고 stage 자체를 fail-close하며, 명시적으로 OFF한 뒤에만 family-lite로 돌아간다.
 
 ## 5. 구현과 증거
 
@@ -111,7 +113,7 @@ Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/
 
 runtime contract는 C++/HLSL 구현 파일의 path, byte size와 SHA-256을 봉인한다. 파일 누락이나
 hash drift는 admission을 거부한다. 최종 receipt SHA-256은
-`2a77fbd9232f14987250a518912912e126d0d34a46f2dbba2dd9eb3aab6cfd02`이다.
+`ba1b820122ec7e20e9d54be80e900f4ec11e9cc94b5020bb7e7a332c30ee0ffb`이다.
 이 raw-byte 계약에 포함된 12개 C++/HLSL 경로는 `.gitattributes`에서 `text eol=lf`로 고정해
 `core.autocrlf=true`인 새 checkout에서도 같은 SHA-256을 유지한다.
 
@@ -138,7 +140,7 @@ Crack의 다음 세 source-exact DDS는 기존 runtime Resources에 없어서 �
 - 세 exact DXBC -> HLSL WARP replay: mismatch `0`
 - 세 wrapper HLSL Debug/Release VS/PS compile: PASS, RT0 only
 - runtime DDS byte/SHA/color-space pins: 19/19 PASS
-- Valtan family/source-value/texture-closure/runtime-contract focused unit tests: 93 PASS
+- Valtan family/source-value/texture-closure/runtime-contract focused unit tests: 94 PASS
 - runtime contract deterministic `--check`: PASS
 - runtime-sealed C++/HLSL 12개 경로의 Git `text/eol=lf` 계약: PASS
 - Client x64 Debug full compile/link: PASS

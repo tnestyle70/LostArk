@@ -133,6 +133,36 @@ class ValtanFrontBackFrontRuntimeCanaryContractTests(unittest.TestCase):
         self.assertFalse(self.generated["carrierAdapter"]["engineSceneCbExact"])
         self.assertFalse(self.generated["admission"]["engineSceneCbExact"])
 
+    def test_live_edit_identity_drift_cannot_stage_ordinary_preview(self) -> None:
+        runtime_header = (
+            canary.REPOSITORY_ROOT
+            / "Client/Public/Effect_ValtanTranslatedCanaryRuntime.h"
+        ).read_text(encoding="utf-8-sig")
+        runtime = (
+            canary.REPOSITORY_ROOT
+            / "Client/Private/Effect_ValtanTranslatedCanaryRuntime.cpp"
+        ).read_text(encoding="utf-8-sig")
+        renderer = (
+            canary.REPOSITORY_ROOT / "Client/Private/Effect_DocumentRenderer.cpp"
+        ).read_text(encoding="utf-8-sig")
+        tool_path = canary.REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp"
+        tool = tool_path.read_text(encoding="utf-8-sig")
+        exact_gate = (
+            "if (m_bValtanTranslatedCanaryEnabled &&\n"
+            "\t\t!bValtanTranslatedCanaryStage)"
+        )
+        self.assertEqual(tool.count(exact_gate), 1)
+        mutated = tool.replace(
+            exact_gate,
+            "if (false && m_bValtanTranslatedCanaryEnabled &&\n"
+            "\t\t!bValtanTranslatedCanaryStage)",
+            1,
+        )
+        with self.assertRaisesRegex(ValueError, "live-edit invariant drift"):
+            canary.validate_runtime_regression_seams(
+                runtime_header, runtime, renderer, mutated
+            )
+
     def test_runtime_regression_seam_validator_rejects_critical_mutations(self) -> None:
         runtime_header_path = canary.REPOSITORY_ROOT / "Client/Public/Effect_ValtanTranslatedCanaryRuntime.h"
         runtime_path = canary.REPOSITORY_ROOT / "Client/Private/Effect_ValtanTranslatedCanaryRuntime.cpp"
