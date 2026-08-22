@@ -16,6 +16,8 @@ static const uint RUNTIME_MATERIAL_V2_UE3_SPRITEWAVE_TR = 15u;
 static const uint RUNTIME_MATERIAL_V2_UE3_FLUID01_SPRITE_W_FD_01_3 = 17u;
 static const uint
     RUNTIME_MATERIAL_V2_UE3_RIBBONLIQUID01_PARENT_DEFAULT = 20u;
+static const uint
+    RUNTIME_MATERIAL_V2_PROJECT_BASE_COVERAGE_EMISSIVE_DISSOLVE_RECT = 21u;
 
 bool EffectUe3RibbonLiquid01ParentDefaultPacketIsValid()
 {
@@ -610,6 +612,79 @@ EFFECT_PS_OUT Shade_EffectUe3DragonPhMaskedMesh(
     }
     clip(coverage - max(g_ColorClip, 1.f / 255.f));
     output.SceneColor = float4(radiance, coverage);
+    output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
+    return output;
+}
+
+bool EffectProjectBaseCoverageEmissiveDissolveRectPacketIsValid()
+{
+    return g_RuntimeMaterialV2Enabled == 1u &&
+        g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_PROJECT_BASE_COVERAGE_EMISSIVE_DISSOLVE_RECT &&
+        g_RuntimeMaterialV2TextureLaneCount == 4u &&
+        g_RuntimeMaterialV2TextureMask == 0x0fu &&
+        g_SourceTextureMask == 0x0fu &&
+        g_RuntimeMaterialV2DynamicConsumedMask == 0u &&
+        g_RuntimeMaterialV2DynamicSuppressedMask == 0u &&
+        g_RuntimeMaterialV2ParticleColorPolicy == 0u &&
+        g_RuntimeMaterialV2ParticleColorConsumedMask == 0u &&
+        g_RuntimeMaterialV2ParticleColorSuppressedMask == 0u &&
+        g_RuntimeMaterialV2ScalarCount == 0u &&
+        g_RuntimeMaterialV2VectorCount == 0u &&
+        g_RuntimeMaterialV2InputCount == 0u &&
+        all(g_RuntimeMaterialV2InputConsumedMask == uint2(0u, 0u)) &&
+        all(g_RuntimeMaterialV2InputSuppressedMask == uint2(0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentConsumedMask ==
+            uint3(0u, 0u, 0u)) &&
+        all(g_RuntimeMaterialV2VectorComponentSuppressedMask ==
+            uint3(0u, 0u, 0u)) &&
+        g_RuntimeMaterialV2StaticInputCount == 0u &&
+        g_RuntimeMaterialV2StaticSelectedMask == 0u &&
+        g_RuntimeMaterialV2StaticConsumedMask == 0u &&
+        g_RuntimeMaterialV2StaticSuppressedMask == 0u &&
+        g_RuntimeMaterialV2RenderInputCount == 0u &&
+        g_RuntimeMaterialV2RenderConsumedMask == 0u &&
+        g_RuntimeMaterialV2RenderSuppressedMask == 0u;
+}
+
+EFFECT_PS_OUT Shade_EffectProjectBaseCoverageEmissiveDissolveRect(float2 uv)
+{
+    EFFECT_PS_OUT output = (EFFECT_PS_OUT)0;
+    if (!EffectProjectBaseCoverageEmissiveDissolveRectPacketIsValid() ||
+        !all(isfinite(uv)))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float4 base = g_SourceTexture0.Sample(
+        g_RuntimeMaterialV2Sampler0, uv);
+    const float coverage = saturate(g_SourceTexture1.Sample(
+        g_RuntimeMaterialV2Sampler1, uv).r);
+    const float3 emissive = max(g_SourceTexture2.Sample(
+        g_RuntimeMaterialV2Sampler2, uv).rgb, float3(0.f, 0.f, 0.f));
+    const float dissolve = saturate(g_SourceTexture3.Sample(
+        g_RuntimeMaterialV2Sampler3, uv).r);
+    if (!all(isfinite(base)) || !isfinite(coverage) ||
+        !all(isfinite(emissive)) || !isfinite(dissolve))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    const float4 coloredBase = base * g_ColorMultiply + g_ColorOffset;
+    const float dissolveGate = step(saturate(g_DissolveAmount), dissolve);
+    const float alpha = saturate(coloredBase.a) * coverage * dissolveGate;
+    const float3 radiance = max(coloredBase.rgb, float3(0.f, 0.f, 0.f)) +
+        emissive * max(g_EmissiveIntensity, 0.f);
+    if (!all(isfinite(float4(radiance, alpha))))
+    {
+        clip(-1.f);
+        return output;
+    }
+
+    clip(alpha - max(g_ColorClip, 1.f / 255.f));
+    output.SceneColor = float4(radiance, alpha);
     output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
     return output;
 }

@@ -1444,6 +1444,7 @@ namespace
 	}
 
 	constexpr uint32_t LANCE_DRAGON_MASKED_OPCODE = 19u;
+	constexpr uint32_t PROJECT_BASE_COVERAGE_EMISSIVE_DISSOLVE_RECT_OPCODE = 21u;
 
 	struct LANCE_DRAGON_MASKED_ROW final
 	{
@@ -6607,6 +6608,97 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 		strOutError = "Authored material backend has no matching renderer carrier: " +
 			Element.strElementId;
 		return false;
+	}
+	if (Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+		Execution.iOpcode ==
+			PROJECT_BASE_COVERAGE_EMISSIVE_DISSOLVE_RECT_OPCODE)
+	{
+		static constexpr std::array<std::string_view, 4u> RESOURCE_SLOTS = {{
+			"base", "mask", "emissive", "dissolve"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_ROLES = {{
+			"base_radiance", "coverage", "emissive_radiance", "dissolve"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_CHANNELS = {{
+			"RGBA", "R", "RGB", "R"
+		}};
+		bool_t bRectContractValid = Element.bVisible &&
+			Element.eKind == EFFECT_ELEMENT_KIND::SPRITE &&
+			Element.Renderer.eType == EFFECT_RENDERER_TYPE::END &&
+			Element.Renderer.eSourceSpace == EFFECT_SOURCE_SPACE::END &&
+			!Element.SourceRecipe.bEnabled &&
+			Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			Element.Material.strSourceMaterialPath.empty() &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			Element.ResourceBindings.size() == RESOURCE_SLOTS.size() &&
+			Execution.iTextureLaneCount == LANE_ROLES.size() &&
+			Execution.iTextureMask == 0x0fu &&
+			Execution.TextureLanes.size() == LANE_ROLES.size() &&
+			Execution.iDynamicConsumedMask == 0u &&
+			Execution.iDynamicSuppressedMask == 0u &&
+			Execution.iParticleColorPolicy == 0u &&
+			Execution.iParticleColorConsumedMask == 0u &&
+			Execution.iParticleColorSuppressedMask == 0u &&
+			Execution.iScalarCount == 0u && Execution.Scalars.empty() &&
+			Execution.iVectorCount == 0u && Execution.Vectors.empty() &&
+			Execution.iInputCount == 0u &&
+			Execution.InputConsumedMask == std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.InputSuppressedMask == std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0u, 0u, 0u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0u, 0u, 0u } &&
+			Execution.iStaticInputCount == 0u &&
+			Execution.iStaticSelectedMask == 0u &&
+			Execution.iStaticConsumedMask == 0u &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 0u &&
+			Execution.iRenderConsumedMask == 0u &&
+			Execution.iRenderSuppressedMask == 0u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty() &&
+			Element.Detail.Color.fDistortionIntensity == 0.f &&
+			!Element.Detail.Color.bDistortionOnBaseMaterial &&
+			Element.Detail.Color.fRadialTime == 0.f &&
+			Element.Detail.Color.fRadialIntensity == 0.f;
+		for (size_t i = 0u; bRectContractValid && i < LANE_ROLES.size(); ++i)
+		{
+			const EFFECT_RESOURCE_BINDING_DESC& Binding = Element.ResourceBindings[i];
+			const EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane = Execution.TextureLanes[i];
+			bRectContractValid =
+				Binding.strSlotId == RESOURCE_SLOTS[i] &&
+				!Binding.strAssetId.empty() &&
+				Lane.strLaneId == "lane." + std::to_string(i) &&
+				Lane.strRole == LANE_ROLES[i] &&
+				Lane.strAssetId == Binding.strAssetId &&
+				Lane.iTextureRegister == i && Lane.iSamplerRegister == 5u + i &&
+				Lane.strSourceChannel == LANE_CHANNELS[i] &&
+				Lane.eColorSpace == EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+				Lane.Sampler.eFilter == EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR &&
+				Lane.Sampler.eAddressU ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.eAddressV ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.eAddressW ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.fMipLodBias == 0.f &&
+				Lane.Sampler.iMaxAnisotropy == 1u &&
+				Lane.Sampler.eComparison ==
+					EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER &&
+				Lane.Sampler.vBorderColor.x == 0.f &&
+				Lane.Sampler.vBorderColor.y == 0.f &&
+				Lane.Sampler.vBorderColor.z == 0.f &&
+				Lane.Sampler.vBorderColor.w == 0.f &&
+				Lane.Sampler.fMinLod == 0.f &&
+				Lane.Sampler.fMaxLod == (std::numeric_limits<f32_t>::max)();
+		}
+		if (!bRectContractValid)
+		{
+			strOutError =
+				"Base/Coverage/Emissive/Dissolve rect opcode 21 packet is invalid: " +
+				Element.strElementId;
+			return false;
+		}
 	}
 	if (Execution.eBackend ==
 			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
@@ -17143,7 +17235,7 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 	}
 	const bool_t bRuntimeMaterialV2Shader = pShader == m_pMeshShader ||
 		pShader == m_pParticleShader || pShader == m_pDecalShader ||
-		pShader == m_pTrailShader;
+		pShader == m_pTrailShader || pShader == m_pRectShader;
 	if (bRuntimeMaterialV2Shader)
 	{
 		if (
@@ -17418,6 +17510,15 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 	{
 		return Fail_RenderOperation(
 			"Material bind failed: source-profile block.",
+			hFirstBindFailure);
+	}
+	if (pShader == m_pRectShader && 0u != Resource.iRuntimeMaterialV2Enabled &&
+		BindFailed(pShader->Bind_RawValue("g_SourceTextureMask",
+			&Resource.iSourceTextureMask,
+			sizeof(Resource.iSourceTextureMask))))
+	{
+		return Fail_RenderOperation(
+			"Material bind failed: typed sprite rect source texture mask.",
 			hFirstBindFailure);
 	}
 
@@ -17847,6 +17948,24 @@ HRESULT Client::CEffectDocumentRenderer::Render_Rect(
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
 	Record_TestShaderPassApplication();
 #endif
+	PIXEL_SHADER_SAMPLER_SCOPE SamplerScope(m_pContext.Get());
+	if (0u != Resource.iRuntimeMaterialV2Enabled &&
+		0u != Resource.iRuntimeMaterialV2TextureLaneCount)
+	{
+		const size_t iSamplerCount = static_cast<size_t>(
+			Resource.iRuntimeMaterialV2TextureLaneCount);
+		if (iSamplerCount > Resource.RuntimeMaterialV2Samplers.size() ||
+			!SamplerScope.Apply(std::span<const ComPtr<ID3D11SamplerState>>(
+				Resource.RuntimeMaterialV2Samplers.data(), iSamplerCount)))
+		{
+			return Fail_RenderOperation(
+				"Sprite Rect typed material sampler apply failed.", E_FAIL,
+				SamplerScope.Was_LastFailureContractInvalid());
+		}
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+		Record_TestSamplerBinding();
+#endif
+	}
 	hResult = m_pRect->Bind_Resources();
 	if (S_OK != hResult)
 		return Fail_RenderOperation(
