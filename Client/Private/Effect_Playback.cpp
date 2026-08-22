@@ -1350,10 +1350,159 @@ namespace
 		return true;
 	}
 
-	bool_t Is_ReconstructedSourceModuleSupported(
-		const Client::EFFECT_SOURCE_MODULE_DESC& Module)
+	bool_t Validate_ReconstructedSourceLiteral(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view PropertyPath,
+		const Client::EFFECT_SOURCE_LITERAL_KIND ExpectedKind,
+		std::string& strOutError)
 	{
-		static constexpr std::array<std::string_view, 32u> Supported = {
+		const size_t Count = std::ranges::count_if(Module.Literals,
+			[PropertyPath](const Client::EFFECT_SOURCE_LITERAL_DESC& Literal)
+			{
+				return Literal.strPropertyPath == PropertyPath;
+			});
+		if (Count > 1u)
+		{
+			strOutError = "duplicate source literal: " +
+				std::string(PropertyPath);
+			return false;
+		}
+		const Client::EFFECT_SOURCE_LITERAL_DESC* pLiteral =
+			Find_SourceLiteral(Module, PropertyPath);
+		if (nullptr == pLiteral)
+			return true;
+		if (pLiteral->eKind != ExpectedKind)
+		{
+			strOutError = "source literal kind mismatches: " +
+				std::string(PropertyPath);
+			return false;
+		}
+		if (ExpectedKind == Client::EFFECT_SOURCE_LITERAL_KIND::NUMBER &&
+			!std::isfinite(pLiteral->fNumber))
+		{
+			strOutError = "source numeric literal is non-finite: " +
+				std::string(PropertyPath);
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_ReconstructedSourceDistribution(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		const std::string_view PropertyPath,
+		const uint32_t iExpectedComponentCount,
+		std::string& strOutError)
+	{
+		if (1u != std::ranges::count_if(Module.Distributions,
+			[PropertyPath](const Client::EFFECT_DISTRIBUTION_DESC& Distribution)
+			{
+				return Distribution.strPropertyPath == PropertyPath;
+			}))
+		{
+			strOutError = "source distribution is missing or duplicate: " +
+				std::string(PropertyPath);
+			return false;
+		}
+		const Client::EFFECT_DISTRIBUTION_DESC* pDistribution =
+			Find_SourceDistribution(&Module, PropertyPath);
+		if (nullptr == pDistribution ||
+			pDistribution->iComponentCount != iExpectedComponentCount)
+		{
+			strOutError = "source distribution component count mismatches: " +
+				std::string(PropertyPath);
+			return false;
+		}
+		std::string DistributionError;
+		if (!Client::CEffectDistribution::Validate(
+				*pDistribution, DistributionError))
+		{
+			strOutError = "source distribution is malformed: " +
+				std::string(PropertyPath) + ": " + DistributionError;
+			return false;
+		}
+		return true;
+	}
+
+	bool_t Validate_ReconstructedCircleSurface(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		if (Module.Distributions.size() != 4u)
+		{
+			strOutError =
+				"CircleSurface has an unconsumed or missing distribution.";
+			return false;
+		}
+		for (const std::string_view BooleanPath : {
+				std::string_view("benabled"), std::string_view("bhalfmode"),
+				std::string_view("bnegativeaxis"), std::string_view("velocity") })
+		{
+			if (!Validate_ReconstructedSourceLiteral(Module, BooleanPath,
+					EFFECT_SOURCE_LITERAL_KIND::BOOLEAN, strOutError))
+				return false;
+		}
+		if (!Validate_ReconstructedSourceLiteral(Module, "splitcirclecount",
+				EFFECT_SOURCE_LITERAL_KIND::NUMBER, strOutError) ||
+			!Validate_ReconstructedSourceLiteral(Module, "surfaceaxis",
+				EFFECT_SOURCE_LITERAL_KIND::STRING, strOutError))
+		{
+			return false;
+		}
+		const EFFECT_SOURCE_LITERAL_DESC* pSplit =
+			Find_SourceLiteral(Module, "splitcirclecount");
+		if (nullptr != pSplit && (pSplit->fNumber < 0.0 ||
+			pSplit->fNumber > 4096.0 ||
+			std::floor(pSplit->fNumber) != pSplit->fNumber))
+		{
+			strOutError =
+				"CircleSurface splitCircleCount must be an integer in [0,4096].";
+			return false;
+		}
+		const std::string_view SurfaceAxis =
+			SourceString(Module, "surfaceaxis");
+		if (!SurfaceAxis.empty() &&
+			SurfaceAxis != "pmlcs_circle_axis_xy" &&
+			SurfaceAxis != "pmlcs_circle_axis_yz" &&
+			SurfaceAxis != "pmlcs_circle_axis_zx")
+		{
+			strOutError = "CircleSurface surfaceAxis is unsupported.";
+			return false;
+		}
+		return Validate_ReconstructedSourceDistribution(
+				Module, "startlocation", 3u, strOutError) &&
+			Validate_ReconstructedSourceDistribution(
+				Module, "startradius", 1u, strOutError) &&
+			Validate_ReconstructedSourceDistribution(
+				Module, "startrot", 1u, strOutError) &&
+			Validate_ReconstructedSourceDistribution(
+				Module, "velocityscale", 1u, strOutError);
+	}
+
+	bool_t Validate_ReconstructedVortex(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		if (Module.Distributions.size() != 1u)
+		{
+			strOutError = "Vortex has an unconsumed or missing distribution.";
+			return false;
+		}
+		return Validate_ReconstructedSourceLiteral(Module, "benabled",
+				EFFECT_SOURCE_LITERAL_KIND::BOOLEAN, strOutError) &&
+			Validate_ReconstructedSourceLiteral(Module, "power",
+				EFFECT_SOURCE_LITERAL_KIND::NUMBER, strOutError) &&
+			Validate_ReconstructedSourceDistribution(
+				Module, "poweracceleration", 1u, strOutError);
+	}
+
+	bool_t Validate_ReconstructedSourceModuleExecutionContract(
+		const Client::EFFECT_SOURCE_MODULE_DESC& Module,
+		std::string& strOutError)
+	{
+		strOutError.clear();
+		static constexpr std::array<std::string_view, 34u> Supported = {
 			"particlemoduleacceleration",
 			"particlemodulecameraoffset",
 			"particlemodulecolor",
@@ -1361,6 +1510,7 @@ namespace
 			"particlemodulecolorscaleoverlife",
 			"particlemodulelifetime",
 			"particlemodulelocation",
+			"particlemodulelocationcirclesurface",
 			"particlemodulelocationdirect",
 			"particlemodulelocationonground",
 			"particlemodulelocationprimitivecylinder",
@@ -1385,13 +1535,28 @@ namespace
 			"particlemoduletypedatamesh",
 			"particlemoduletypedataribbon",
 			"particlemodulevelocity",
-			"particlemodulevelocityoverlifetime"
+			"particlemodulevelocityoverlifetime",
+			"particlemodulevortex"
 		};
-		return std::ranges::any_of(Supported,
+		const bool_t bSupported = std::ranges::any_of(Supported,
 			[&Module](const std::string_view ClassName)
 			{
 				return SourceClass_Matches(Module, ClassName);
 			});
+		if (!bSupported)
+		{
+			strOutError = "source module class is not in the strict executor allowlist";
+			return false;
+		}
+		if (SourceClass_Matches(Module,
+				"particlemodulelocationcirclesurface"))
+		{
+			return Validate_ReconstructedCircleSurface(Module, strOutError);
+		}
+		if (SourceClass_Matches(Module, "particlemodulevortex"))
+			return Validate_ReconstructedVortex(Module, strOutError);
+		strOutError.clear();
+		return true;
 	}
 
 	bool_t Try_ResolveReconstructedParameter(
@@ -1594,12 +1759,19 @@ namespace
 				if (PlanModuleIt == Plan.Get_Modules().end() ||
 					PlanModuleIt->second.strExactSourceClass !=
 						SourceModule.strClassName ||
-					!Is_ReconstructedSourceModuleSupported(SourceModule) ||
 					PlanModuleIt->second.DistributionIds.size() !=
 						SourceModule.Distributions.size())
 				{
 					return Reject_ReconstructedSourceRuntime(strOutError,
 						"source module class or distribution order is unsupported");
+				}
+				std::string ModuleExecutionError;
+				if (!Validate_ReconstructedSourceModuleExecutionContract(
+						SourceModule, ModuleExecutionError))
+				{
+					return Reject_ReconstructedSourceRuntime(strOutError,
+						"source module execution contract is unsupported: " +
+						ModuleExecutionError);
 				}
 				++ModuleCount;
 				if (SourceClass_Matches(
@@ -1709,6 +1881,14 @@ namespace
 
 }
 
+bool_t Client::CEffectPlayback::Validate_ReconstructedSourceModuleExecution(
+	const EFFECT_SOURCE_MODULE_DESC& Module,
+	std::string& strOutError)
+{
+	return Validate_ReconstructedSourceModuleExecutionContract(
+		Module, strOutError);
+}
+
 struct Client::CEffectPlayback::PREPARED_RESOURCES final
 {
 	std::string strEffectAssetId;
@@ -1737,6 +1917,17 @@ bool_t Client::CEffectPlayback::Is_SourceVisualProgramElementAdmitted(
 	return m_bSourceVisualProgramActive &&
 		(!m_bRequireSourceVisualTargetClosure ||
 			m_SourceVisualTargetElementIds.contains(Element.strElementId));
+}
+
+bool_t Client::CEffectPlayback::Is_PlaybackElementAdmitted(
+	const EFFECT_ELEMENT_DESC& Element) const
+{
+	if (!Element.bVisible)
+		return false;
+	if (Is_EffectAuthoringExecutionTarget(Element.Material.Execution))
+		return true;
+	return Is_EffectFailClosedSourceGeometryCarrier(Element) &&
+		Is_SourceVisualProgramElementAdmitted(Element);
 }
 
 bool_t Client::CEffectPlayback::Stage_Document(
@@ -1990,6 +2181,13 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedVisualProgramDocument(
 		{
 			bool_t bSupplementalValid = false;
 			if (Supplemental.eFamily ==
+				EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON &&
+				Supplemental.CascadeRibbonPacket.has_value())
+			{
+				bSupplementalValid = Validate_CascadeRibbonPacket(
+					Supplemental, *pTarget, strOutError);
+			}
+			else if (Supplemental.eFamily ==
 				EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL &&
 				Supplemental.AnimationTrailPacket.has_value())
 			{
@@ -2165,7 +2363,13 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 			State.iRandomState = 1u;
 		Initialize_ModuleRandomStates(Element, State);
 		StagedStates.emplace(Element.strElementId, std::move(State));
-		if (!Element.bVisible)
+		const bool_t bElementPlaybackAdmitted =
+			Element.bVisible &&
+			(Is_EffectAuthoringExecutionTarget(
+				Element.Material.Execution) ||
+			 (Is_EffectFailClosedSourceGeometryCarrier(Element) &&
+				bElementSourceVisualActive));
+		if (!bElementPlaybackAdmitted)
 			continue;
 		f32_t fElementTail = 0.f;
 		if (Is_ParticleSimulationElement(
@@ -2184,13 +2388,23 @@ bool_t Client::CEffectPlayback::Stage_PrevalidatedDocumentInternal(
 						Element.SourceRecipe.iEmitterLoopCount);
 			}
 		}
-		fStagedDuration = (std::max)(fStagedDuration,
+		f32_t fElementEnd =
 			Element.Detail.Timing.fStartDelaySeconds +
 			(Element.SourceRecipe.bEnabled ?
 				Element.SourceRecipe.fEmitterDelaySeconds : 0.f) +
 			fElementDuration +
 			Element.Detail.Timing.fAfterImageSeconds +
-			fElementTail);
+			fElementTail;
+		/* CascadeRibbon owns a closed point-lifetime tail. Preserve the global
+		   fixed-step/Seek ABI and expose only this admitted family's next
+		   representable end time so the final eviction step is evaluated after
+		   emission stops instead of clamping one step early on a float boundary. */
+		if (bElementSourceVisualActive && Is_CascadeRibbonTarget(Element))
+		{
+			fElementEnd = std::nextafter(fElementEnd,
+				std::numeric_limits<f32_t>::infinity());
+		}
+		fStagedDuration = (std::max)(fStagedDuration, fElementEnd);
 	}
 	for (const EFFECT_MODEL_CUE_DESC& Cue : pStagedDocument->ModelCues)
 	{
@@ -2492,7 +2706,7 @@ void Client::CEffectPlayback::Reset()
 	m_Frame = {};
 	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
-		if (!Element.bVisible)
+		if (!Is_PlaybackElementAdmitted(Element))
 			continue;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
 		State = {};
@@ -2851,7 +3065,7 @@ bool_t Client::CEffectPlayback::Step(
 
 	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
-		if (!Element.bVisible)
+		if (!Is_PlaybackElementAdmitted(Element))
 			continue;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
 		const f32_t fLocalTime = m_fSampleTimeSeconds -
@@ -2994,7 +3208,7 @@ bool_t Client::CEffectPlayback::Step(
 
 	for (const EFFECT_ELEMENT_DESC& Element : Get_StagedDocument().Elements)
 	{
-		if (!Element.bVisible)
+		if (!Is_PlaybackElementAdmitted(Element))
 			continue;
 		ELEMENT_STATE& State = m_States[Element.strElementId];
 		Update_Particles(Element, State, fFixedDelta, RootWorld);
@@ -4132,10 +4346,118 @@ void Client::CEffectPlayback::Update_Particles(
 			Particle.vVelocity = Add3(Particle.vVelocity,
 				Scale3(Element.Detail.Particle.vAcceleration, fFixedDelta));
 		}
+		const float3_t EffectiveVelocity = Apply_TargetAttractor(
+			Element, Particle, fNormalizedAge, fFixedDelta,
+			ElementWorld, RootWorld);
 		Particle.vPosition = Add3(Particle.vPosition,
-			Scale3(Multiply3(Particle.vVelocity,
-				Particle.vVelocityScale), fFixedDelta));
+			Scale3(EffectiveVelocity, fFixedDelta));
 	}
+}
+
+float3_t Client::CEffectPlayback::Apply_TargetAttractor(
+	const EFFECT_ELEMENT_DESC& Element,
+	PARTICLE_STATE& Particle,
+	const f32_t fNormalizedAge,
+	const f32_t fFixedDelta,
+	const float4x4_t& ElementWorld,
+	const float4x4_t& RootWorld)
+{
+	const EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& Attractor =
+		Element.Detail.Particle.TargetAttractor;
+	const float3_t SourceLocalVelocity = Multiply3(
+		Particle.vVelocity, Particle.vVelocityScale);
+	if (!Attractor.bEnabled ||
+		fNormalizedAge < Attractor.vActiveNormalized.x ||
+		fNormalizedAge > Attractor.vActiveNormalized.y)
+	{
+		Particle.vTargetAttractorWorldVelocity = {};
+		return SourceLocalVelocity;
+	}
+
+	const float4x4_t& ParticleRoot =
+		Element.Detail.Particle.bLocalSpace ?
+			ElementWorld : Particle.SpawnRootWorld;
+	const matrix_t ParticleRootMatrix = XMLoadFloat4x4(&ParticleRoot);
+	const matrix_t InverseParticleRoot = XMMatrixInverse(
+		nullptr, ParticleRootMatrix);
+	const float3_t SourceWorldVelocity = Transform_Normal(
+		SourceLocalVelocity, ParticleRootMatrix);
+	float3_t TargetWorld{};
+	if (EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::ROOT_LOCAL ==
+		Attractor.eTargetSpace)
+	{
+		TargetWorld = Transform_Coord(
+			Attractor.vTargetOffset, XMLoadFloat4x4(&RootWorld));
+	}
+	else
+	{
+		TargetWorld = Transform_Coord(
+			Attractor.vTargetOffset, XMLoadFloat4x4(&ElementWorld));
+	}
+
+	const float3_t PositionWorld = Transform_Coord(
+		Particle.vPosition, ParticleRootMatrix);
+	const float3_t Delta = Subtract3(TargetWorld, PositionWorld);
+	const f32_t fDistance = Length3(Delta);
+	float3_t EffectiveWorldVelocity = Add3(
+		SourceWorldVelocity, Particle.vTargetAttractorWorldVelocity);
+	if (fDistance <= Attractor.fConvergenceRadius)
+	{
+		Particle.vPosition = Transform_Coord(
+			TargetWorld, InverseParticleRoot);
+		Particle.vTargetAttractorWorldVelocity =
+			Scale3(SourceWorldVelocity, -1.f);
+		return {};
+	}
+
+	const float3_t Direction = Scale3(Delta, 1.f / fDistance);
+	const float3_t Tangent = Normalize3(float3_t(
+		-Direction.z, 0.f, Direction.x));
+	const float3_t Acceleration = Add3(
+		Scale3(Direction, Attractor.fRadialAcceleration),
+		Scale3(Tangent, Attractor.fTangentialAcceleration));
+	EffectiveWorldVelocity = Add3(
+		EffectiveWorldVelocity, Scale3(Acceleration, fFixedDelta));
+
+	/* Use the stopping distance implied by the authored speed/acceleration as
+	   the arrival zone. Damping is therefore independent of frame rate and does
+	   not introduce another guessed distance field. */
+	const f32_t fStoppingDistance = Attractor.fRadialAcceleration > 1.e-6f ?
+		Attractor.fMaximumSpeed * Attractor.fMaximumSpeed /
+			(2.f * Attractor.fRadialAcceleration) :
+		Attractor.fConvergenceRadius;
+	const f32_t fBrakingRadius = (std::max)(
+		Attractor.fConvergenceRadius, fStoppingDistance);
+	const f32_t fArrivalWeight = Clamp01(
+		(fBrakingRadius -
+			(fDistance - Attractor.fConvergenceRadius)) / fBrakingRadius);
+	const f32_t fDamping = (std::max)(0.f,
+		1.f - Attractor.fArrivalDamping * fArrivalWeight * fFixedDelta);
+	EffectiveWorldVelocity = Scale3(EffectiveWorldVelocity, fDamping);
+
+	const f32_t fSpeed = Length3(EffectiveWorldVelocity);
+	if (fSpeed > Attractor.fMaximumSpeed)
+	{
+		EffectiveWorldVelocity = Scale3(
+			EffectiveWorldVelocity, Attractor.fMaximumSpeed / fSpeed);
+	}
+
+	/* Preserve the authored tangent until the final radial step.  At that
+	   boundary, remove the tangent as well so a particle cannot orbit forever
+	   just outside the capture radius without ever entering it. */
+	const f32_t fRadialSpeed =
+		EffectiveWorldVelocity.x * Direction.x +
+		EffectiveWorldVelocity.y * Direction.y +
+		EffectiveWorldVelocity.z * Direction.z;
+	const f32_t fMaximumRadialSpeed =
+		(fDistance - Attractor.fConvergenceRadius) / fFixedDelta;
+	if (fRadialSpeed > fMaximumRadialSpeed)
+	{
+		EffectiveWorldVelocity = Scale3(Direction, fMaximumRadialSpeed);
+	}
+	Particle.vTargetAttractorWorldVelocity = Subtract3(
+		EffectiveWorldVelocity, SourceWorldVelocity);
+	return Transform_Normal(EffectiveWorldVelocity, InverseParticleRoot);
 }
 
 void Client::CEffectPlayback::Apply_SourceUpdateModules(
@@ -4577,6 +4899,12 @@ void Client::CEffectPlayback::Sample_Trail(
 	const bool_t bSourceVisualTrail = bCascadeRibbon || bAnimationTrail;
 	const bool_t bFlowRibbon01 = bCascadeRibbon &&
 		Has_EffectFlowRibbon01TrailContract(Element);
+	const bool_t bRibbonLiquid01ParentDefault =
+		Element.SourceRecipe.bEnabled &&
+		Element.Material.Execution.bEnabled &&
+		Element.Material.Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+		Element.Material.Execution.iOpcode == 20u;
 	if (bBakedEdgeAnimationTrail)
 	{
 		State.TrailPoints.clear();
@@ -4669,6 +4997,7 @@ void Client::CEffectPlayback::Sample_Trail(
 		return true;
 	};
 	const auto UpdatePointPayload = [this, &Element, bFlowRibbon01,
+		bRibbonLiquid01ParentDefault,
 		&EvaluateDeterministicFloat, &EvaluateDeterministicVector,
 		&EvaluateIdentityFloat](
 		EFFECT_EVALUATED_TRAIL_POINT& Point)
@@ -4746,10 +5075,18 @@ void Client::CEffectPlayback::Sample_Trail(
 		{
 			f32_t fStartAlpha = 0.f;
 			f32_t fAlphaScale = 0.f;
-			if (EvaluateDeterministicFloat(
-					"particlemodulecolor", "startalpha", 0.f, fStartAlpha) &&
+			const bool_t bStartAlphaValid = bRibbonLiquid01ParentDefault ?
+				EvaluateIdentityFloat("particlemodulecolor", "startalpha",
+					0.f, 1.f, fStartAlpha) :
+				EvaluateDeterministicFloat("particlemodulecolor", "startalpha",
+					0.f, fStartAlpha);
+			const bool_t bAlphaScaleValid = bRibbonLiquid01ParentDefault ?
+				EvaluateIdentityFloat("particlemodulecolorscaleoverlife",
+					"alphascaleoverlife", Point.fNormalizedAge, 1.f,
+					fAlphaScale) :
 				EvaluateDeterministicFloat("particlemodulecolorscaleoverlife",
-					"alphascaleoverlife", Point.fNormalizedAge, fAlphaScale) &&
+					"alphascaleoverlife", Point.fNormalizedAge, fAlphaScale);
+			if (bStartAlphaValid && bAlphaScaleValid &&
 				std::isfinite(fStartAlpha * fAlphaScale))
 			{
 				Point.vSourceColor.w = fStartAlpha * fAlphaScale;
@@ -5326,6 +5663,16 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 		const EFFECT_ELEMENT_DESC& Element = Document.Elements[iElement];
 		if (!Element.bVisible)
 			continue;
+		/* GPU occurrence denominators describe every visible carrier in document
+		   order, including fail-closed rows that are intentionally dormant.  Keep
+		   those rows inactive while restricting simulation/evaluated draw rows to
+		   the admitted target closure. */
+		if (!Is_PlaybackElementAdmitted(Element))
+		{
+			if (Is_GpuVisualOccurrence(Element))
+				m_Frame.GpuOccurrences.push_back({ &Element, false, 0u });
+			continue;
+		}
 		const f32_t fLocalTime = m_fSampleTimeSeconds -
 			Element.Detail.Timing.fStartDelaySeconds;
 		const f32_t fPresentationTime = fLocalTime -
@@ -5618,8 +5965,11 @@ void Client::CEffectPlayback::Rebuild_Frame(const float4x4_t& RootWorld)
 					Size.y < 0.f ? -1.f : 1.f
 				};
 			}
-			const float3_t EvaluatedVelocity = Multiply3(
+			const float3_t SourceVelocity = Multiply3(
 				Particle.vVelocity, Particle.vVelocityScale);
+			const float3_t EvaluatedVelocity = Add3(SourceVelocity,
+				Transform_Normal(Particle.vTargetAttractorWorldVelocity,
+					XMMatrixInverse(nullptr, XMLoadFloat4x4(&ParticleRoot))));
 			XMStoreFloat3(&Evaluated.vWorldVelocity,
 				XMVector3TransformNormal(
 					XMLoadFloat3(&EvaluatedVelocity),
@@ -5722,6 +6072,7 @@ bool_t Client::CEffectPlayback::Query_ParticleRuntimeProbe(
 			OutProbe.vMaxDynamicParameter = Particle.vDynamicParameter;
 			OutProbe.fFirstNormalizedLife = Particle.fNormalizedLife;
 			OutProbe.fFirstSubImageIndex = Particle.fSubImageIndex;
+			OutProbe.vFirstWorldPosition = Get_Translation(Particle.World);
 		}
 		else
 		{

@@ -218,6 +218,46 @@ enum class EFFECT_MATERIAL_EXECUTION_BACKEND : uint8_t
 	RUNTIME_MATERIAL_V2,
 	ARTIST_VISUAL_V4,
 	LOCAL_DECAL,
+	STANDARD_COLOR_V1,
+	END
+};
+
+enum class EFFECT_STANDARD_COLOR_CHANNEL : uint8_t
+{
+	INVALID,
+	R,
+	G,
+	B,
+	A,
+	RGB,
+	END
+};
+
+enum class EFFECT_STANDARD_COLOR_EMISSIVE_MODE : uint8_t
+{
+	NONE,
+	BASE_RADIANCE,
+	END
+};
+
+enum class EFFECT_STANDARD_COLOR_LIFETIME_ENVELOPE : uint8_t
+{
+	INVALID,
+	CARRIER_ALPHA,
+	END
+};
+
+enum class EFFECT_STANDARD_COLOR_DISSOLVE_MODE : uint8_t
+{
+	NONE,
+	LANE_THRESHOLD,
+	END
+};
+
+enum class EFFECT_STANDARD_COLOR_MISSING_LANE_POLICY : uint8_t
+{
+	INVALID,
+	FAIL_CLOSED,
 	END
 };
 
@@ -283,6 +323,29 @@ struct EFFECT_MATERIAL_TEXTURE_LANE_DESC final
 	EFFECT_MATERIAL_SAMPLER_DESC Sampler;
 };
 
+struct EFFECT_STANDARD_COLOR_V1_DESC final
+{
+	uint32_t iPacketVersion = 0u;
+	std::string strBaseRadianceLaneId;
+	EFFECT_STANDARD_COLOR_CHANNEL eBaseRadianceChannel =
+		EFFECT_STANDARD_COLOR_CHANNEL::INVALID;
+	std::string strCoverageLaneId;
+	EFFECT_STANDARD_COLOR_CHANNEL eCoverageChannel =
+		EFFECT_STANDARD_COLOR_CHANNEL::INVALID;
+	EFFECT_STANDARD_COLOR_EMISSIVE_MODE eEmissiveMode =
+		EFFECT_STANDARD_COLOR_EMISSIVE_MODE::NONE;
+	EFFECT_STANDARD_COLOR_LIFETIME_ENVELOPE eLifetimeEnvelope =
+		EFFECT_STANDARD_COLOR_LIFETIME_ENVELOPE::INVALID;
+	EFFECT_STANDARD_COLOR_DISSOLVE_MODE eDissolveMode =
+		EFFECT_STANDARD_COLOR_DISSOLVE_MODE::NONE;
+	std::string strDissolveLaneId;
+	EFFECT_STANDARD_COLOR_CHANNEL eDissolveChannel =
+		EFFECT_STANDARD_COLOR_CHANNEL::INVALID;
+	f32_t fDissolveSoftness = 0.f;
+	EFFECT_STANDARD_COLOR_MISSING_LANE_POLICY eMissingLanePolicy =
+		EFFECT_STANDARD_COLOR_MISSING_LANE_POLICY::INVALID;
+};
+
 struct EFFECT_MATERIAL_SCALAR_PARAMETER_DESC final
 {
 	std::string strName;
@@ -326,6 +389,7 @@ struct EFFECT_MATERIAL_EXECUTION_DESC final
 	uint32_t iTextureLaneCount = 0u;
 	uint32_t iTextureMask = 0u;
 	std::vector<EFFECT_MATERIAL_TEXTURE_LANE_DESC> TextureLanes;
+	EFFECT_STANDARD_COLOR_V1_DESC StandardColorV1;
 	uint32_t iDynamicConsumedMask = 0u;
 	uint32_t iDynamicSuppressedMask = 0u;
 	uint32_t iParticleColorPolicy = 0u;
@@ -521,6 +585,17 @@ enum class EFFECT_PARTICLE_VELOCITY_MODE : uint8_t
 	END
 };
 
+/* The attractor is an authored motion layer, not a recovered Cascade module.
+   ROOT_LOCAL lets several independently transformed occurrences converge on
+   one effect/caster centre. ELEMENT_LOCAL keeps a self-contained carrier
+   centred on its own authored transform. */
+enum class EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE : uint8_t
+{
+	ROOT_LOCAL,
+	ELEMENT_LOCAL,
+	END
+};
+
 struct EFFECT_PARTICLE_SPAWN_SHAPE_DESC final
 {
 	EFFECT_PARTICLE_SPAWN_SHAPE eKind = EFFECT_PARTICLE_SPAWN_SHAPE::POINT;
@@ -543,6 +618,39 @@ struct EFFECT_PARTICLE_INITIAL_VELOCITY_DESC final
 	float2_t vSpeedRange = { 0.f, 0.f };
 	/* Half-angle of the CONE around the Element +Y axis, in degrees. */
 	f32_t fConeAngleDegrees = 0.f;
+};
+
+struct EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC final
+{
+	bool_t bEnabled = false;
+	EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE eTargetSpace =
+		EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::ROOT_LOCAL;
+	/* Metres in the selected target space. */
+	float3_t vTargetOffset = { 0.f, 0.f, 0.f };
+	/* Particle-normalized active interval. */
+	float2_t vActiveNormalized = { 0.f, 1.f };
+	/* World metres per second squared. Tangential acceleration is signed around
+	   world +Y, independent of Element pitch and non-uniform scale. */
+	f32_t fRadialAcceleration = 0.f;
+	f32_t fTangentialAcceleration = 0.f;
+	/* World metres per second; required and positive while enabled. */
+	f32_t fMaximumSpeed = 1.f;
+	/* World-metre radius. Entering it captures the particle at the target. */
+	f32_t fConvergenceRadius = 0.05f;
+	/* Per-second damping, weighted by the physically derived braking radius. */
+	f32_t fArrivalDamping = 0.f;
+
+	bool_t Is_Default() const
+	{
+		return !bEnabled &&
+			eTargetSpace ==
+				EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE::ROOT_LOCAL &&
+			vTargetOffset.x == 0.f && vTargetOffset.y == 0.f &&
+			vTargetOffset.z == 0.f && vActiveNormalized.x == 0.f &&
+			vActiveNormalized.y == 1.f && fRadialAcceleration == 0.f &&
+			fTangentialAcceleration == 0.f && fMaximumSpeed == 1.f &&
+			fConvergenceRadius == 0.05f && fArrivalDamping == 0.f;
+	}
 };
 
 /* Authored trim over a source-owned Element.
@@ -607,6 +715,7 @@ struct EFFECT_PARTICLE_DESC final
 	   omits them spawns exactly as it did before the fields existed. */
 	EFFECT_PARTICLE_SPAWN_SHAPE_DESC SpawnShape;
 	EFFECT_PARTICLE_INITIAL_VELOCITY_DESC InitialVelocity;
+	EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC TargetAttractor;
 	/* Read only while SourceRecipe.bEnabled; all ones means untouched. */
 	EFFECT_PARTICLE_SOURCE_SCALE_DESC SourceScale;
 };
@@ -1048,6 +1157,59 @@ struct EFFECT_ELEMENT_DESC final
 	EFFECT_SOURCE_PRESENTATION_DESC SourcePresentation;
 	EFFECT_AUTHORING_OVERRIDES_DESC AuthoringOverrides;
 };
+
+inline bool_t Is_EffectPresentationExecutionTarget(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	switch (Element.eKind)
+	{
+	case EFFECT_ELEMENT_KIND::LIGHT:
+		return Element.Detail.Light.bEnabled &&
+			Element.Detail.Light.eProfile != EFFECT_LIGHT_PROFILE::END &&
+			Element.Detail.Light.eStatus !=
+				EFFECT_PRESENTATION_RUNTIME_STATUS::END;
+	case EFFECT_ELEMENT_KIND::SCREEN_POST:
+		return Element.Detail.ScreenPost.bEnabled &&
+			Element.Detail.ScreenPost.eProfile !=
+				EFFECT_SCREEN_POST_PROFILE::END &&
+			Element.Detail.ScreenPost.eStatus !=
+				EFFECT_PRESENTATION_RUNTIME_STATUS::END;
+	case EFFECT_ELEMENT_KIND::MESH:
+	case EFFECT_ELEMENT_KIND::SPRITE:
+	case EFFECT_ELEMENT_KIND::PARTICLE:
+	case EFFECT_ELEMENT_KIND::DECAL:
+	case EFFECT_ELEMENT_KIND::TRAIL:
+	case EFFECT_ELEMENT_KIND::END:
+	default:
+		return false;
+	}
+}
+
+/* A typed visual program may admit source geometry before its material ABI is
+   known.  This is deliberately narrower than an authoring execution target:
+   the carrier can build deterministic history/geometry only after immutable
+   visual-program admission, while resource preparation and drawing remain
+   fail-closed.  It therefore never turns unresolved colour into a generic or
+   white-material fallback. */
+inline bool_t Is_EffectFailClosedSourceGeometryCarrier(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	const EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+		Element.Material.Execution;
+	if (!Execution.bFailClosed || Execution.bAuthoringApproximate ||
+		Execution.bEnabled || !Element.SourceRecipe.bEnabled)
+	{
+		return false;
+	}
+	if (Element.eKind == EFFECT_ELEMENT_KIND::TRAIL)
+		return Element.SourceRecipe.strRendererShape == "ribbon";
+	if (Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE)
+	{
+		return Element.SourceRecipe.strRendererShape == "mesh" ||
+			Element.SourceRecipe.strRendererShape == "sprite";
+	}
+	return false;
+}
 
 /* G3's compiler-derived authoring family is intentionally separate from the
    Effect Tool's legacy six-way creation selector. It is a read-only

@@ -1,0 +1,95 @@
+{
+  "schema": "lostark.effect-ue3-parent-default-ribbon-material-target",
+  "formatVersion": 1,
+  "targetId": "artist.31950.ribbon-liquid-01-101",
+  "occurrenceId": "authored.source-particle.29868adeb040d5a35e2f213c",
+  "sourceRootHint": "C:/Users/user/Desktop/Resource_LostArk/00_SourcePackages/Effect_DIMENSIONMASTER_20260803_v3/Dependencies",
+  "childMic": {
+    "physicalPackage": "ZHJ4TC4PCK4PL4J22HIXEYUX5U.upk",
+    "physicalPackageByteSize": 306154,
+    "physicalPackageSha256": "79e61663cd8f120badbd2309bb3a4638d5853afcfa5db4f012065a899aee0c0a",
+    "objectPath": "fx_mi.fx_d_pa_ribbonliquid_01_101_tr",
+    "className": "materialinstanceconstant",
+    "exportIndexZeroBased": 2226,
+    "serialSha256": "e0a788ef15c9f73c6aefbe52be2a531c71fe1975365c7bc04481e7e577b4c999",
+    "propertyStreamEnd": 512,
+    "expectedNativeTailByteCount": 0
+  },
+  "parentMaterial": {
+    "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+    "physicalPackageByteSize": 536936,
+    "physicalPackageSha256": "5b9d692b3f8ccb4bb914ce1b1b0ab100afc0b8a482a184cd10716aa523756cc8",
+    "objectPath": "fx_m.fx_d_pa_ribbonliquid_01_tr",
+    "className": "material",
+    "exportIndexZeroBased": 102,
+    "serialSha256": "36c27b6fc3bab2b3a4b53a5480aa3c1d470b0cc46c37bdf8aafd2884e2015841",
+    "propertyStreamEnd": 1066,
+    "nativeTailByteCount": 112,
+    "nativeTailSha256": "7be153965b6c7158c0efb0b25c9d551d4b40bea4e8c3d004368235d4cb51a18d",
+    "baseMaterialIdHex": "cb038048e5d968458226af5e11fc1c8e"
+  },
+  "officialRefShaderCache": {
+    "pathHint": "C:/Users/user/Desktop/Resource_LostArk/01_Extracted/Effect/ARTIST/31470_TrackA_20260812/OfficialRefShaderCacheV974/EV2LG3OVEH3HGV7THTFFTM7TOKMCC.v974.upk",
+    "physicalPackageByteSize": 245114448,
+    "physicalPackageSha256": "83609267d9476f393cfe793d3d8cd265535c3d855e2f1f79774c618f85ed6455",
+    "expectedRawBaseMaterialHitCount": 3,
+    "expectedParseableStaticSetCount": 2,
+    "expectedMaterialMapContextCount": 1,
+    "expectedMaterialMap": {
+      "logicalOffset": 844786000,
+      "logicalEndOffset": 844787428,
+      "rawSha256": "083ebcc32bdfa0678f7d96af5deee0a7e646fe85d88a47ae7111e0df552f2e59",
+      "staticParameterSetRawSha256": "b533153c10d98f364dee5d91b969ddf0bd1530a6e7e7369eeb8df11531e291fb",
+      "engineEqualityStaticParameterSetSha256": "32a986c71f08d0b159bc6ccc913f769d26f0234bda15c98d5fd9f46443675872",
+      "vertexFactoryCount": 3,
+      "friendlyName": "FX_D_Pa_RibbonLiquid_01_Tr"
+    }
+  },
+  "rendererEvidence": {
+    "vertexFactoryType": "fparticlebeamtraildynamicparametervertexfactory",
+    "passes": [
+      {
+        "role": "BASE_TRANSLUCENT",
+        "shaderType": "tbasepasspixelshaderfnolightmappolicyskylight",
+        "shaderIdHex": "a2a6b2f8633ae240b7036e6e92fd5ff2",
+        "dxbcByteSize": 3564,
+        "dxbcSha256": "086b5d2d352b434eadc8fa841d0fa4b5f1769e25116b54b620d50ca57951e8fb",
+        "expectedNativeBindingCandidateCount": 1
+      },
+      {
+        "role": "DISTORTION_ACCUMULATE",
+        "shaderType": "tdistortionmeshpixelshader<fdistortmeshaccumulatepolicy>",
+        "shaderIdHex": "11565f38a774a94aa2738ceb869dbcbe",
+        "dxbcByteSize": 2400,
+        "dxbcSha256": "9610e78d24201edc7e9dfab76f1448fa81a3586aa926a1189ee18cce36f7e8af",
+        "expectedNativeBindingCandidateCount": 1
+      }
+    ]
+  },
+  "textures": [
+    {
+      "sourceObjectPath": "fx_tex_01.fx_d_normal_085",
+      "logicalPackage": "fx_tex_01",
+      "physicalPackage": "YGI3SORGM3I18GHA5BMJ8L5CZ.upk",
+      "physicalPackageSha256": "afc7d3cbb63907a353926c1a58649cc2145da23ada15d4509ae9691f6b80c793",
+      "runtimeAssetId": "Effect/Artist/Textures/fx_d_normal_085.dds",
+      "runtimeDdsSha256": "617414c6ff317f0cd70723ea8ff1d10764c6b1a438b343b4b82d3d5d80dd5703"
+    },
+    {
+      "sourceObjectPath": "fx_tex_00.fx_a_fluid_003",
+      "logicalPackage": "fx_tex_00",
+      "physicalPackage": "YGI3SORGM3I11GHA5BMJ885CZ.upk",
+      "physicalPackageSha256": "c650b18b6998a4c26cb520aeed2a36f9d90f4f77228da218d0fe568b1ba9d1c5",
+      "runtimeAssetId": "Effect/Artist/Textures/fx_a_fluid_003.dds",
+      "runtimeDdsSha256": "0f8b781ccf049e7e2a034fea32d36123c2f5ec4eba74e224fdce2ee490398ab0"
+    },
+    {
+      "sourceObjectPath": "fx_tex_05.fx_k_auraline_14_ycl",
+      "logicalPackage": "fx_tex_05",
+      "physicalPackage": "YGI3SORGM3I10GHA5BMJ815CZ.upk",
+      "physicalPackageSha256": "7c312729211f44aa7981a4a14c5054bd928de8a32819ec265eb43b47985e839c",
+      "runtimeAssetId": "Effect/Artist/Textures/fx_k_auraline_14_ycl.dds",
+      "runtimeDdsSha256": "1d73b6debce1f3e44bb33a4c455466b06cb0bf7a04b41358fce01405f6573792"
+    }
+  ]
+}

@@ -7,6 +7,7 @@
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
 #include "PlayerSkillSystem.h"
+#include "Network/PacketReader.h"
 #include "ServerNavigation.h"
 #include "ServerCollisionSystem.h"
 #include "ServerTriggerSystem.h"
@@ -42,13 +43,31 @@ namespace
 {
 	struct TESTS
 	{
+		explicit TESTS(const bool groundTargetOnly = false)
+			: groundTargetOnly(groundTargetOnly)
+		{
+		}
+
 		void Require(const bool condition, const char* name)
+		{
+			if (groundTargetOnly)
+				return;
+			Record(condition, name);
+		}
+
+		void Require_GroundTarget(const bool condition, const char* name)
+		{
+			Record(condition, name);
+		}
+
+		void Record(const bool condition, const char* name)
 		{
 			std::cout << (condition ? "[PASS] " : "[FAILURE] ") << name << '\n';
 			if (!condition)
 				++failures;
 		}
 		int failures = 0;
+		bool groundTargetOnly = false;
 	};
 
 	constexpr std::uint32_t VALID_VALTAN_DEBUG_AUDITION_ROW_COUNT = 68u;
@@ -441,15 +460,20 @@ namespace
 	};
 }
 
-int LostArk::Server::Run_ServerGameplayContractTests()
+int LostArk::Server::Run_ServerGameplayContractTests(
+	const bool dimensionMasterGroundTargetOnly)
 {
 	using namespace LostArk::Shared;
-	TESTS tests{};
+	TESTS tests{ dimensionMasterGroundTargetOnly };
 	CGameplayCatalog catalog;
 	const bool catalogLoaded = catalog.Load();
 	if (!catalogLoaded)
 		std::cout << "[STATUS] " << catalog.Get_Status() << std::endl;
-	tests.Require(catalogLoaded, "Load gameplay balance bootstrap");
+	if (dimensionMasterGroundTargetOnly)
+		tests.Require_GroundTarget(
+			catalogLoaded, "Load gameplay balance bootstrap for DimensionMaster T");
+	else
+		tests.Require(catalogLoaded, "Load gameplay balance bootstrap");
 	{
 		const VALTAN_DEBUG_AUDITION_DEFINITION* audition =
 			catalog.Find_ValtanDebugAudition("ENCOUNTER_VALTAN");
@@ -1622,6 +1646,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				"Reject class change outside Character Select without mutation");
 		}
 	}
+	CServerNavigation groundTargetNavigation;
+	const bool groundTargetNavigationLoaded =
+		groundTargetNavigation.Load("LV_LUT_HEARTRB_ED");
+	tests.Require_GroundTarget(groundTargetNavigationLoaded,
+		"Load authoritative navigation for ground-target skill contracts");
 	for (const QUICK_SKILL_CONTRACT& contract : QUICK_SKILLS)
 	{
 		const PLAYER_SKILL_DEFINITION* skill =
@@ -1658,16 +1687,327 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		C2S_USE_SKILL quickCommand{};
 		quickCommand.iClientSequence = 1;
 		quickCommand.iSkillId = contract.skillId;
-		quickCommand.fAimX = 1.f;
-		quickCommand.fAimZ = 0.f;
+		const bool isGroundTargetSkill = nullptr != skill &&
+			SKILL_TARGET_INTENT_KIND::GROUND_POINT == skill->eTargetIntent;
+		if (isGroundTargetSkill)
+		{
+			quickPlayer.fPositionX = 147.75f;
+			quickPlayer.fPositionZ = -117.25f;
+			quickCommand.eTargetIntent =
+				SKILL_TARGET_INTENT_KIND::GROUND_POINT;
+			quickCommand.fAimX = 156.25f;
+			quickCommand.fAimZ = -122.25f;
+		}
+		else
+		{
+			quickCommand.fAimX = 1.f;
+			quickCommand.fAimZ = 0.f;
+		}
 		CPlayerSkillSystem quickSkillSystem;
 		tests.Require(
 			quickSkillSystem.Try_Start(
 				quickPlayer,
 				quickCommand,
 				catalog,
-				1),
+				1,
+				isGroundTargetSkill ? &groundTargetNavigation : nullptr),
 			"Approve playable skill command");
+	}
+	{
+		constexpr SKILL_ID DIMENSIONMASTER_T = 2050500u;
+		const PLAYER_SKILL_DEFINITION* skill =
+			catalog.Find_Skill(DIMENSIONMASTER_T);
+		SERVER_NAV_POINT approvedTarget{};
+		const bool targetSampled = groundTargetNavigation.Sample_Position(
+			156.25f, -122.25f, approvedTarget);
+		const bool exactTargetingDefinition = nullptr != skill &&
+			SKILL_TARGET_INTENT_KIND::GROUND_POINT == skill->eTargetIntent &&
+			std::fabs(skill->fTargetMaximumRange - 11.f) < 0.0001f &&
+			skill->requiresWalkableTarget && 938u == skill->iResourceCost &&
+			4367u == skill->iActionDurationMs &&
+			2858u == skill->iHitTimeMs;
+		tests.Require_GroundTarget(exactTargetingDefinition && targetSampled,
+			"Resolve DimensionMaster T as exact 11m walkable ground-target skill");
+
+		auto makePlayer = []()
+		{
+			SERVER_PLAYER player{};
+			player.eCharacterClass = CHARACTER_CLASS_ID::DIMENSIONMASTER;
+			player.iCurrentHp = 1000u;
+			player.iMaximumHp = 1000u;
+			player.iCurrentResource = 1000u;
+			player.iMaximumResource = 1000u;
+			player.fPositionX = 147.75f;
+			player.fPositionY = 0.f;
+			player.fPositionZ = -117.25f;
+			return player;
+		};
+		const auto gameplayStateUnchanged = [](
+			const SERVER_PLAYER& before,
+			const SERVER_PLAYER& after)
+		{
+			return before.iLastSkillSequence == after.iLastSkillSequence &&
+				before.iCurrentResource == after.iCurrentResource &&
+				before.eAction == after.eAction &&
+				before.iCurrentSkillId == after.iCurrentSkillId &&
+				before.CooldownEndTickBySkillId ==
+					after.CooldownEndTickBySkillId &&
+				before.hasSkillTarget == after.hasSkillTarget;
+		};
+
+		CPlayerSkillSystem skills;
+		SERVER_PLAYER rejected = makePlayer();
+		C2S_USE_SKILL command{};
+		command.iClientSequence = 1u;
+		command.iSkillId = DIMENSIONMASTER_T;
+		command.fAimX = approvedTarget.x;
+		command.fAimZ = approvedTarget.z;
+		const SERVER_PLAYER beforeWrongIntent = rejected;
+		const bool wrongIntentRejected = !skills.Try_Start(
+			rejected, command, catalog, 10u, &groundTargetNavigation) &&
+			gameplayStateUnchanged(beforeWrongIntent, rejected);
+
+		command.eTargetIntent = SKILL_TARGET_INTENT_KIND::GROUND_POINT;
+		command.fAimX = rejected.fPositionX + 11.01f;
+		command.fAimZ = rejected.fPositionZ;
+		const SERVER_PLAYER beforeOutOfRange = rejected;
+		const bool outOfRangeRejected = !skills.Try_Start(
+			rejected, command, catalog, 10u, &groundTargetNavigation) &&
+			gameplayStateUnchanged(beforeOutOfRange, rejected);
+
+		command.fAimX = std::numeric_limits<float>::quiet_NaN();
+		const SERVER_PLAYER beforeNonFinite = rejected;
+		const bool nonFiniteRejected = !skills.Try_Start(
+			rejected, command, catalog, 10u, &groundTargetNavigation) &&
+			gameplayStateUnchanged(beforeNonFinite, rejected);
+
+		command.fAimX = approvedTarget.x;
+		command.fAimZ = approvedTarget.z;
+		command.iSkillId = 0xfefefefeu;
+		const SERVER_PLAYER beforeUnknown = rejected;
+		const bool unknownRejected = !skills.Try_Start(
+			rejected, command, catalog, 10u, &groundTargetNavigation) &&
+			gameplayStateUnchanged(beforeUnknown, rejected);
+		tests.Require_GroundTarget(
+			wrongIntentRejected && outOfRangeRejected &&
+			nonFiniteRejected && unknownRejected,
+			"Reject wrong intent, out-of-range, non-finite and unknown T without mutation");
+
+		float lastWalkableX = 152.f;
+		float firstBlockedX = 0.f;
+		SERVER_NAV_POINT navProbe{};
+		bool foundNearbyBlockedPoint = groundTargetNavigation.Sample_Position(
+			lastWalkableX, -137.f, navProbe);
+		const float probeStep = groundTargetNavigation.Get_CellSize() * 0.25f;
+		if (foundNearbyBlockedPoint)
+		{
+			foundNearbyBlockedPoint = false;
+			const float probeLimitX = lastWalkableX + 60.f;
+			for (float x = lastWalkableX + probeStep;
+				x <= probeLimitX; x += probeStep)
+			{
+				if (groundTargetNavigation.Sample_Position(x, -137.f, navProbe))
+				{
+					lastWalkableX = x;
+					continue;
+				}
+				firstBlockedX = x;
+				foundNearbyBlockedPoint = true;
+				break;
+			}
+		}
+		SERVER_PLAYER navRejected = makePlayer();
+		navRejected.fPositionX = lastWalkableX;
+		navRejected.fPositionZ = -137.f;
+		command.iSkillId = DIMENSIONMASTER_T;
+		command.iClientSequence = 1u;
+		command.fAimX = firstBlockedX;
+		command.fAimZ = -137.f;
+		const SERVER_PLAYER beforeNavReject = navRejected;
+		const bool navInvalidRejected = foundNearbyBlockedPoint &&
+			!skills.Try_Start(navRejected, command, catalog, 10u,
+				&groundTargetNavigation) &&
+			gameplayStateUnchanged(beforeNavReject, navRejected);
+		tests.Require_GroundTarget(navInvalidRejected,
+			"Reject a within-range but non-walkable DimensionMaster T target transactionally");
+
+		SERVER_PLAYER approved = makePlayer();
+		command.iClientSequence = 1u;
+		command.iSkillId = DIMENSIONMASTER_T;
+		command.fAimX = approvedTarget.x;
+		command.fAimZ = approvedTarget.z;
+		const bool started = skills.Try_Start(
+			approved, command, catalog, 20u, &groundTargetNavigation);
+		const std::uint32_t resourceAfterStart = approved.iCurrentResource;
+		const auto cooldownsAfterStart = approved.CooldownEndTickBySkillId;
+		const bool approvedTargetPreserved = started &&
+			PLAYER_ACTION_STATE::SKILL == approved.eAction &&
+			approved.hasSkillTarget &&
+			std::fabs(approved.fSkillTargetX - approvedTarget.x) < 0.0001f &&
+			std::fabs(approved.fSkillTargetY - approvedTarget.y) < 0.0001f &&
+			std::fabs(approved.fSkillTargetZ - approvedTarget.z) < 0.0001f &&
+			1000u - skill->iResourceCost == resourceAfterStart &&
+			cooldownsAfterStart.contains(DIMENSIONMASTER_T);
+		const bool duplicateRejected = !skills.Try_Start(
+			approved, command, catalog, 21u, &groundTargetNavigation) &&
+			resourceAfterStart == approved.iCurrentResource &&
+			cooldownsAfterStart == approved.CooldownEndTickBySkillId &&
+			1u == approved.iLastSkillSequence;
+		tests.Require_GroundTarget(approvedTargetPreserved && duplicateRejected,
+			"Commit approved T target/cost once and reject duplicate sequence without mutation");
+
+		CGameRoom snapshotRoom{ WORLD_ID::TRAINING_GROUND };
+		constexpr SESSION_ID SNAPSHOT_SESSION = 91001u;
+		constexpr PLAYER_ID SNAPSHOT_PLAYER = 91001u;
+		auto snapshotSession = std::make_shared<CClientSession>(
+			SNAPSHOT_SESSION, INVALID_SOCKET,
+			CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
+		snapshotSession->m_isSendRunning.store(true);
+		SERVER_PLAYER snapshotPlayer = approved;
+		snapshotPlayer.iSessionId = SNAPSHOT_SESSION;
+		snapshotPlayer.iPlayerId = SNAPSHOT_PLAYER;
+		snapshotPlayer.iNetEntityId = 91001u;
+		snapshotRoom.m_iServerTick = 20u;
+		snapshotRoom.m_Sessions.emplace(SNAPSHOT_SESSION, snapshotSession);
+		snapshotRoom.m_PlayerIdBySessionId.emplace(
+			SNAPSHOT_SESSION, SNAPSHOT_PLAYER);
+		snapshotRoom.m_Players.emplace(SNAPSHOT_PLAYER, snapshotPlayer);
+		snapshotRoom.Broadcast_WorldSnapshot();
+		S2C_WORLD_SNAPSHOT decodedSnapshot{};
+		bool snapshotTargetPreserved = false;
+		if (1u == snapshotSession->m_OutboundFrames.size())
+		{
+			const std::vector<std::uint8_t>& frame =
+				snapshotSession->m_OutboundFrames.front().Bytes;
+			PACKET_HEADER header{};
+			if (Read_Packet_Header(frame, header) &&
+				PACKET_TYPE::S2C_WORLD_SNAPSHOT == header.ePacketType &&
+				header.iTotalSize == frame.size())
+			{
+				CPacketReader reader{ std::span<const std::uint8_t>(
+					frame.data() + PACKET_HEADER_BYTES,
+					frame.size() - PACKET_HEADER_BYTES) };
+				if (Read_Message(reader, decodedSnapshot) &&
+					0u == reader.Get_RemainingSize())
+				{
+					const auto replicated = std::find_if(
+						decodedSnapshot.Players.begin(),
+						decodedSnapshot.Players.end(),
+						[](const PLAYER_SNAPSHOT& player)
+						{ return 91001u == player.iNetEntityId; });
+					snapshotTargetPreserved =
+						decodedSnapshot.Players.end() != replicated &&
+						replicated->hasSkillTarget &&
+						std::fabs(replicated->fSkillTargetX - approvedTarget.x) < 0.0001f &&
+						std::fabs(replicated->fSkillTargetY - approvedTarget.y) < 0.0001f &&
+						std::fabs(replicated->fSkillTargetZ - approvedTarget.z) < 0.0001f;
+				}
+			}
+		}
+		snapshotSession->Request_Close();
+		tests.Require_GroundTarget(snapshotTargetPreserved,
+			"Replicate the approved T target XYZ through the canonical world snapshot");
+
+		SERVER_WORLD_ENTITY atTarget{};
+		atTarget.iNetEntityId = 92001u;
+		atTarget.eKind = WORLD_BOOTSTRAP_KIND::MONSTER;
+		atTarget.eAction = SERVER_ENTITY_ACTION::IDLE;
+		atTarget.iCurrentHp = 100000u;
+		atTarget.iMaximumHp = 100000u;
+		atTarget.fPositionX = approvedTarget.x;
+		atTarget.fPositionY = approvedTarget.y;
+		atTarget.fPositionZ = approvedTarget.z;
+		atTarget.fCollisionRadius = 0.25f;
+		SERVER_WORLD_ENTITY atCaster = atTarget;
+		atCaster.iNetEntityId = 92002u;
+		atCaster.fPositionX = approved.fPositionX;
+		atCaster.fPositionY = approved.fPositionY;
+		atCaster.fPositionZ = approved.fPositionZ;
+		std::vector<SERVER_WORLD_ENTITY> targets{ atTarget, atCaster };
+		std::vector<DAMAGE_EVENT> damageEvents;
+		skills.Update(approved, targets, catalog, &groundTargetNavigation,
+			nullptr, 2.859f, 21u, damageEvents);
+		const bool damagedAtApprovedRoot = 1u == damageEvents.size() &&
+			92001u == damageEvents.front().iTargetNetEntityId &&
+			targets[0].iCurrentHp < targets[0].iMaximumHp &&
+			targets[1].iCurrentHp == targets[1].iMaximumHp;
+		tests.Require_GroundTarget(damagedAtApprovedRoot,
+			"Resolve DimensionMaster T damage at approved target root, not caster root");
+
+		skills.Update(approved, targets, catalog, &groundTargetNavigation,
+			nullptr, 2.f, 22u, damageEvents);
+		tests.Require_GroundTarget(
+			PLAYER_ACTION_STATE::NONE == approved.eAction &&
+			!approved.hasSkillTarget &&
+			0.f == approved.fSkillTargetX && 0.f == approved.fSkillTargetY &&
+			0.f == approved.fSkillTargetZ,
+			"Clear approved T target atomically when the action ends");
+
+		SERVER_PLAYER pending = makePlayer();
+		pending.eAction = PLAYER_ACTION_STATE::SKILL;
+		pending.iCurrentSkillId = 2050010u;
+		pending.iLastSkillSequence = 1u;
+		command.iClientSequence = 2u;
+		command.iSkillId = DIMENSIONMASTER_T;
+		command.eTargetIntent = SKILL_TARGET_INTENT_KIND::GROUND_POINT;
+		command.fAimX = approvedTarget.x;
+		command.fAimZ = approvedTarget.z;
+		const bool pendingStaged = skills.Try_StagePendingSkill(
+			pending, command, catalog, &groundTargetNavigation);
+		pending.eAction = PLAYER_ACTION_STATE::NONE;
+		pending.iCurrentSkillId = INVALID_SKILL_ID;
+		pending.fPositionX = approvedTarget.x - 20.f;
+		pending.fPositionZ = approvedTarget.z;
+		pending.PendingCommand.Clear();
+		const std::uint32_t pendingResource = pending.iCurrentResource;
+		const auto pendingCooldowns = pending.CooldownEndTickBySkillId;
+		const bool pendingRevalidated = !skills.Try_StartPending(
+			pending, command, catalog, 30u, &groundTargetNavigation) &&
+			pendingResource == pending.iCurrentResource &&
+			pendingCooldowns == pending.CooldownEndTickBySkillId &&
+			!pending.hasSkillTarget &&
+			PLAYER_ACTION_STATE::NONE == pending.eAction;
+		tests.Require_GroundTarget(pendingStaged && pendingRevalidated,
+			"Revalidate a buffered T target at actual start and reject stale range without cost");
+
+		SERVER_PLAYER interrupted = makePlayer();
+		command.iClientSequence = 1u;
+		const bool interruptedStarted = skills.Try_Start(
+			interrupted, command, catalog, 40u, &groundTargetNavigation);
+		interrupted.iCurrentHp = 0u;
+		std::vector<SERVER_WORLD_ENTITY> noTargets;
+		std::vector<DAMAGE_EVENT> noDamageEvents;
+		skills.Update(interrupted, noTargets, catalog, &groundTargetNavigation,
+			nullptr, 0.f, 41u, noDamageEvents);
+		const bool deathCleared = interruptedStarted &&
+			PLAYER_ACTION_STATE::DEAD == interrupted.eAction &&
+			INVALID_SKILL_ID == interrupted.iCurrentSkillId &&
+			!interrupted.hasSkillTarget &&
+			0.f == interrupted.fSkillTargetX &&
+			0.f == interrupted.fSkillTargetY &&
+			0.f == interrupted.fSkillTargetZ;
+
+		SERVER_PLAYER knockedDown = makePlayer();
+		command.iClientSequence = 1u;
+		const bool knockdownStarted = skills.Try_Start(
+			knockedDown, command, catalog, 50u, &groundTargetNavigation);
+		CPlayerSkillSystem::Arm_PlayerHitReaction(
+			knockedDown, knockedDown.fPositionX - 1.f,
+			knockedDown.fPositionZ, 1.f, 100u, true, 1000u, 51u);
+		const bool knockdownCleared = knockdownStarted &&
+			PLAYER_ACTION_STATE::KNOCKDOWN == knockedDown.eAction &&
+			INVALID_SKILL_ID == knockedDown.iCurrentSkillId &&
+			!knockedDown.hasSkillTarget &&
+			0.f == knockedDown.fSkillTargetX &&
+			0.f == knockedDown.fSkillTargetY &&
+			0.f == knockedDown.fSkillTargetZ;
+		tests.Require_GroundTarget(deathCleared && knockdownCleared,
+			"Clear approved T target on death and knockdown interruption");
+	}
+	if (dimensionMasterGroundTargetOnly)
+	{
+		std::cout << "failures : " << tests.failures << '\n';
+		return 0 == tests.failures ? 0 : 1;
 	}
 	for (const BASIC_ATTACK_CONTRACT& contract : BASIC_ATTACKS)
 	{
@@ -1904,17 +2244,17 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		const PLAYER_SKILL_DEFINITION* dimensionMasterBasicAttack =
 			catalog.Find_Skill(2050010u);
 		constexpr std::array<std::uint32_t, 4u> expectedDurationMs =
-			{ 1400u, 1500u, 1067u, 1700u };
+			{ 700u, 1500u, 1067u, 1700u };
 		constexpr std::array<std::uint32_t, 4u> expectedHitMs =
-			{ 100u, 43u, 28u, 335u };
+			{ 50u, 43u, 28u, 335u };
 		constexpr std::array<std::uint32_t, 4u> expectedOpenMs =
-			{ 100u, 0u, 200u, 0u };
+			{ 50u, 0u, 200u, 0u };
 		constexpr std::array<std::uint32_t, 4u> expectedCloseMs =
-			{ 1400u, 1500u, 1067u, 0u };
+			{ 700u, 1500u, 1067u, 0u };
 		bool exactDimensionMasterTiming =
 			nullptr != dimensionMasterBasicAttack &&
-			1400u == dimensionMasterBasicAttack->iActionDurationMs &&
-			100u == dimensionMasterBasicAttack->iHitTimeMs &&
+			700u == dimensionMasterBasicAttack->iActionDurationMs &&
+			50u == dimensionMasterBasicAttack->iHitTimeMs &&
 			dimensionMasterBasicAttack->ComboStages.size() ==
 				expectedDurationMs.size();
 		if (exactDimensionMasterTiming)
@@ -1932,11 +2272,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			}
 			exactDimensionMasterTiming = exactDimensionMasterTiming &&
 				!dimensionMasterBasicAttack->ComboStages.front().RootMotion.empty() &&
-				1400u == dimensionMasterBasicAttack->ComboStages.front().
+				700u == dimensionMasterBasicAttack->ComboStages.front().
 					RootMotion.back().iTimeMs;
 		}
 		tests.Require(exactDimensionMasterTiming,
-			"Resolve exact DimensionMaster BA timings, full-stage input windows and 1400 ms root-motion trim");
+			"Resolve half-clock DimensionMaster BA1 timing, full-stage input window and 700 ms root motion");
 
 		if (nullptr != dimensionMasterBasicAttack)
 		{
@@ -1962,7 +2302,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			SERVER_PLAYER tapped = makePlayer();
 			const bool tappedStarted =
 				skills.Try_Start(tapped, basicAttack, catalog, 100u);
-			tapped.fActionElapsedSeconds = 1.399f;
+			tapped.fActionElapsedSeconds = 0.699f;
 			skills.Update(tapped, noTargets, catalog, nullptr, nullptr,
 				0.f, 101u, noDamageEvents);
 			const bool tappedStayedInBa1 =
@@ -1974,7 +2314,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				tappedStarted && tappedStayedInBa1 &&
 				PLAYER_ACTION_STATE::NONE == tapped.eAction &&
 				0u == tapped.iComboStage,
-				"Keep a tapped DimensionMaster BA in BA1 until 1400 ms then end it");
+				"Keep a tapped DimensionMaster BA in BA1 until 700 ms then end it");
 
 			SERVER_PLAYER held = makePlayer();
 			basicAttack.iClientSequence = 1u;
@@ -2064,7 +2404,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 		std::vector<SERVER_WORLD_ENTITY> noTargets;
 		std::vector<DAMAGE_EVENT> noDamageEvents;
-		player.fActionElapsedSeconds = 1.399f;
+		player.fActionElapsedSeconds = 0.699f;
 		skills.Update(player, noTargets, catalog, nullptr, nullptr,
 			0.f, 202u, noDamageEvents);
 		const bool explicitWaitedForBoundary =
@@ -2159,7 +2499,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				cooldownCountBeforePending ==
 					live.CooldownEndTickBySkillId.size() &&
 				!live.CooldownEndTickBySkillId.contains(2050100u);
-			live.fActionElapsedSeconds = 1.399f;
+			live.fActionElapsedSeconds = 0.699f;
 			std::vector<SERVER_WORLD_ENTITY> noTargets;
 			std::vector<DAMAGE_EVENT> noDamageEvents;
 			room.m_PlayerSkillSystem.Update(

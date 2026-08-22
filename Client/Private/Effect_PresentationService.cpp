@@ -5,9 +5,11 @@
 #include "Effect_Object.h"
 #include "Effect_ProductPrewarmQueue.h"
 #include "Effect_ReconstructedExecution.h"
+#include "Effect_ScreenOverlayPresentation.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "RuntimeAssetRoot.h"
 #include "Transform.h"
 #include "Valtan.h"
 
@@ -16,6 +18,9 @@
 #include <cfloat>
 #include <cmath>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <set>
@@ -126,6 +131,9 @@ namespace
         Client::EFFECT_TRANSFORM_DESC LocalTransform{};
         Client::EFFECT_FOLLOW_POLICY eFollowPolicy =
             Client::EFFECT_FOLLOW_POLICY::FOLLOW;
+		Client::EFFECT_ORIENTATION_POLICY eOrientationPolicy =
+			Client::EFFECT_ORIENTATION_POLICY::ANCHOR;
+		f32_t fActionFacingYawDegrees = 0.f;
         Client::EFFECT_STOP_POLICY eStopPolicy =
             Client::EFFECT_STOP_POLICY::NATURAL;
         uint32_t iCueDurationMs = 0u;
@@ -204,6 +212,9 @@ namespace
 		g_ProductEffectBudgetCosts;
 	std::map<std::string, f32_t, std::less<>>
 		g_ProductEffectPlaybackDurations;
+	std::map<std::string,
+		std::shared_ptr<const Client::CEffectScreenOverlayPresentation>,
+		std::less<>> g_ProductScreenOverlayTemplates;
 	uint64_t g_iSceneBudgetRejectedSpawnCount = 0u;
 	uint64_t g_iNextWorldRootHandle = 1u;
 	RECONSTRUCTED_SOURCE_RUNTIME_CACHE g_ReconstructedArtist31470;
@@ -369,6 +380,116 @@ namespace
 		return true;
 	}
 
+	bool_t Prepare_ProductScreenOverlayTemplate(
+		ComPtr<ID3D11Device> pDevice,
+		const std::string& EffectAssetId,
+		std::shared_ptr<const Client::CEffectScreenOverlayPresentation>&
+			OutTemplate,
+		std::string& strOutStatus)
+	{
+		using namespace Client;
+		OutTemplate.reset();
+		const std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>
+			Binding = CEffectCatalog::Find_ScreenOverlayProductBinding(
+				EffectAssetId);
+		if (nullptr == Binding)
+		{
+			strOutStatus.clear();
+			return true;
+		}
+		if (nullptr == pDevice || Binding->strEffectAssetId != EffectAssetId ||
+			Binding->strPresentationId.empty() ||
+			Binding->strUtf8Json.size() != Binding->iByteCount ||
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				Binding->strUtf8Json) != Binding->strSha256 ||
+			Binding->Resources.empty())
+		{
+			strOutStatus =
+				"Product screen-overlay catalog identity is invalid.";
+			return false;
+		}
+		for (const EFFECT_SCREEN_OVERLAY_RESOURCE_IDENTITY& Resource :
+			Binding->Resources)
+		{
+			const std::filesystem::path Path = CRuntimeAssetRoot::Resolve(
+				std::filesystem::path(Resource.strAssetId));
+			std::ifstream Input(Path, std::ios::binary);
+			if (Path.empty() || !Input)
+			{
+				strOutStatus =
+					"Product screen-overlay resource is missing: " +
+					Resource.strAssetId;
+				return false;
+			}
+			const std::string Bytes{
+				std::istreambuf_iterator<char_t>(Input),
+				std::istreambuf_iterator<char_t>() };
+			if (Bytes.size() != Resource.iByteCount ||
+				CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(Bytes) !=
+					Resource.strSha256)
+			{
+				strOutStatus =
+					"Product screen-overlay resource identity changed: " +
+					Resource.strAssetId;
+				return false;
+			}
+		}
+
+		std::shared_ptr<CEffectScreenOverlayPresentation> Staged =
+			CEffectScreenOverlayPresentation::Create(std::move(pDevice));
+		if (nullptr == Staged ||
+			!Staged->Stage_AndCommit(Binding->strUtf8Json, strOutStatus) ||
+			Staged->Get_CommittedGeneration() != 1u ||
+			Staged->Get_PresentationId() != Binding->strPresentationId ||
+			0u == Staged->Get_PreparedOverlayCount() ||
+			!std::isfinite(Staged->Get_MaximumEndSeconds()) ||
+			Staged->Get_MaximumEndSeconds() <= 0.f)
+		{
+			if (strOutStatus.empty())
+			{
+				strOutStatus =
+					"Product screen-overlay typed staging failed.";
+			}
+			return false;
+		}
+		OutTemplate = std::move(Staged);
+		strOutStatus.clear();
+		return true;
+	}
+
+	bool_t Apply_ProductScreenOverlayReceipt(
+		const std::shared_ptr<const Client::CEffectScreenOverlayPresentation>&
+			pTemplate,
+		Client::EFFECT_SCENE_BUDGET_COST& InOutBudget,
+		f32_t& fInOutDurationSeconds,
+		std::string& strOutStatus)
+	{
+		if (nullptr == pTemplate)
+			return true;
+		const uint64_t iOverlayCount = static_cast<uint64_t>(
+			pTemplate->Get_PreparedOverlayCount());
+		if (0u == iOverlayCount || iOverlayCount > 64u ||
+			iOverlayCount >
+				(std::numeric_limits<uint64_t>::max)() -
+				InOutBudget.iScreenOverlays ||
+			iOverlayCount >
+				(std::numeric_limits<uint64_t>::max)() -
+				InOutBudget.iEstimatedDrawSubmissions ||
+			!std::isfinite(pTemplate->Get_MaximumEndSeconds()) ||
+			pTemplate->Get_MaximumEndSeconds() <= 0.f)
+		{
+			strOutStatus =
+				"Product screen-overlay budget or duration receipt is invalid.";
+			return false;
+		}
+		InOutBudget.iScreenOverlays += iOverlayCount;
+		InOutBudget.iEstimatedDrawSubmissions += iOverlayCount;
+		fInOutDurationSeconds = (std::max)(
+			fInOutDurationSeconds, pTemplate->Get_MaximumEndSeconds());
+		strOutStatus.clear();
+		return true;
+	}
+
 	bool_t Queue_ProductCueTargets(
 		const std::vector<Client::ANIMATION_EFFECT_CUE>& Cues,
 		const bool_t bPriority,
@@ -411,6 +532,7 @@ namespace
 			g_ProductPrewarmQueue.Reset_ForCatalogRevision(iCatalogRevision);
 			g_ProductEffectBudgetCosts.clear();
 			g_ProductEffectPlaybackDurations.clear();
+			g_ProductScreenOverlayTemplates.clear();
 
 			if (bPriority)
 			{
@@ -483,6 +605,7 @@ namespace
 			Add(InOut.iAfterImages, Value.iAfterImages) &&
 			Add(InOut.iLights, Value.iLights) &&
 			Add(InOut.iScreenPosts, Value.iScreenPosts) &&
+			Add(InOut.iScreenOverlays, Value.iScreenOverlays) &&
 			Add(InOut.iEstimatedDrawSubmissions,
 				Value.iEstimatedDrawSubmissions);
 	}
@@ -498,18 +621,19 @@ namespace
 			Value.iAfterImages <= Limit.iAfterImages &&
 			Value.iLights <= Limit.iLights &&
 			Value.iScreenPosts <= Limit.iScreenPosts &&
+			Value.iScreenOverlays <= Limit.iScreenOverlays &&
 			Value.iEstimatedDrawSubmissions <=
 				Limit.iEstimatedDrawSubmissions;
 	}
 
 	const Client::EFFECT_SCENE_BUDGET_COST SCENE_HARD_BUDGET =
-		{ 128u, 16384u, 4096u, 12288u, 2048u, 32u, 16u, 6144u };
+		{ 128u, 16384u, 4096u, 12288u, 2048u, 32u, 16u, 64u, 6144u };
 	/* Remote cosmetics stop before the hard ceiling so a local action and boss
 	   telegraph retain deterministic headroom during a four-player burst. */
 	const Client::EFFECT_SCENE_BUDGET_COST REMOTE_SCENE_SOFT_BUDGET =
-		{ 96u, 12288u, 2814u, 8192u, 1536u, 24u, 4u, 4096u };
+		{ 96u, 12288u, 2814u, 8192u, 1536u, 24u, 4u, 24u, 4096u };
 	const Client::EFFECT_SCENE_BUDGET_COST OWNER_BUDGET =
-		{ 32u, 8192u, 2048u, 4096u, 1024u, 16u, 16u, 3072u };
+		{ 32u, 8192u, 2048u, 4096u, 1024u, 16u, 16u, 32u, 3072u };
 
 	Client::EFFECT_SCENE_BUDGET_COST Current_ActiveBudget()
 	{
@@ -705,6 +829,9 @@ namespace
 			StagedBudgetCosts;
 		std::map<std::string, f32_t, std::less<>>
 			StagedPlaybackDurations;
+		std::map<std::string, std::shared_ptr<const
+			Client::CEffectScreenOverlayPresentation>, std::less<>>
+			StagedScreenOverlayTemplates;
 		for (const std::string& EffectId : Targets)
 		{
             const std::shared_ptr<const Client::EFFECT_DOCUMENT_DESC> Document =
@@ -727,6 +854,16 @@ namespace
 					EffectId;
 				return false;
 			}
+			std::shared_ptr<const Client::CEffectScreenOverlayPresentation>
+				ScreenOverlayTemplate;
+			if (!Prepare_ProductScreenOverlayTemplate(
+					pDevice, EffectId, ScreenOverlayTemplate, strOutStatus))
+			{
+				strOutStatus =
+					"Animation Effect screen-overlay preparation failed for " +
+					EffectId + ": " + strOutStatus;
+				return false;
+			}
 			Client::EFFECT_SCENE_BUDGET_COST BudgetCost;
 			if (!Client::CEffectPresentationService::Estimate_DocumentBudget(
 					*Document, BudgetCost, strOutStatus))
@@ -735,7 +872,6 @@ namespace
 					EffectId + ": " + strOutStatus;
 				return false;
 			}
-			StagedBudgetCosts.emplace(EffectId, BudgetCost);
 			f32_t fPlaybackDurationSeconds = 0.f;
 			if (!Try_ResolveProductPlaybackDuration(
 					*Document, Projection, fPlaybackDurationSeconds,
@@ -746,6 +882,24 @@ namespace
 					EffectId + ": " + strOutStatus;
 				return false;
 			}
+			if (!Apply_ProductScreenOverlayReceipt(
+					ScreenOverlayTemplate, BudgetCost,
+					fPlaybackDurationSeconds, strOutStatus) ||
+				!BudgetWithin(BudgetCost, SCENE_HARD_BUDGET))
+			{
+				if (strOutStatus.empty())
+					strOutStatus = "screen-overlay hard budget exceeded";
+				strOutStatus =
+					"Animation Effect screen-overlay receipt failed for " +
+					EffectId + ": " + strOutStatus;
+				return false;
+			}
+			if (nullptr != ScreenOverlayTemplate)
+			{
+				StagedScreenOverlayTemplates.emplace(
+					EffectId, std::move(ScreenOverlayTemplate));
+			}
+			StagedBudgetCosts.emplace(EffectId, BudgetCost);
 			StagedPlaybackDurations.emplace(
 				EffectId, fPlaybackDurationSeconds);
 			PrewarmTargets.push_back({ EffectId, Document, Projection });
@@ -760,6 +914,8 @@ namespace
 		g_ProductEffectBudgetCosts = std::move(StagedBudgetCosts);
 		g_ProductEffectPlaybackDurations =
 			std::move(StagedPlaybackDurations);
+		g_ProductScreenOverlayTemplates =
+			std::move(StagedScreenOverlayTemplates);
 		return true;
 	}
 
@@ -776,6 +932,43 @@ namespace
 			strEffectAssetId, Document, Projection);
 	}
 
+	bool_t Resolve_ProductScreenOverlayTemplate(
+		const std::string& EffectAssetId,
+		std::shared_ptr<const Client::CEffectScreenOverlayPresentation>& Out,
+		std::string& strOutStatus)
+	{
+		Out.reset();
+		const std::shared_ptr<const Client::EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>
+			Binding = Client::CEffectCatalog::Find_ScreenOverlayProductBinding(
+				EffectAssetId);
+		const auto Prepared =
+			g_ProductScreenOverlayTemplates.find(EffectAssetId);
+		if (nullptr == Binding)
+		{
+			if (Prepared != g_ProductScreenOverlayTemplates.end())
+			{
+				strOutStatus =
+					"Product screen-overlay cache has no catalog owner.";
+				return false;
+			}
+			strOutStatus.clear();
+			return true;
+		}
+		if (Prepared == g_ProductScreenOverlayTemplates.end() ||
+			nullptr == Prepared->second ||
+			Prepared->second->Get_PresentationId() !=
+				Binding->strPresentationId ||
+			Prepared->second->Get_PreparedOverlayCount() == 0u)
+		{
+			strOutStatus =
+				"Product screen-overlay target was not atomically prewarmed.";
+			return false;
+		}
+		Out = Prepared->second;
+		strOutStatus.clear();
+		return true;
+	}
+
     bool Resolve_Anchor(
 		const EFFECT_OWNER_VIEW& Owner,
         const std::string& strAnchorSlotId,
@@ -783,6 +976,9 @@ namespace
     {
 		if (!Owner.Is_Valid() || !Owner.Try_Get_PresentationRoot(Out))
             return false;
+		if ("skill_target" == strAnchorSlotId)
+			return nullptr != Owner.pCharacter &&
+				Owner.pCharacter->Try_Get_SkillTargetRoot(Out);
         if ("root" == strAnchorSlotId)
             return true;
         const std::shared_ptr<Engine::CModel> pModel =
@@ -966,24 +1162,6 @@ namespace
         }
     }
 
-    float4x4_t Compose_Local(
-        const Client::EFFECT_TRANSFORM_DESC& Local,
-        const float4x4_t& Anchor)
-    {
-        const matrix_t Scale = XMMatrixScaling(
-            Local.vScale.x, Local.vScale.y, Local.vScale.z);
-        const matrix_t Rotation = XMMatrixRotationRollPitchYaw(
-            XMConvertToRadians(Local.vRotationDegrees.x),
-            XMConvertToRadians(Local.vRotationDegrees.y),
-            XMConvertToRadians(Local.vRotationDegrees.z));
-        const matrix_t Translation = XMMatrixTranslation(
-            Local.vPosition.x, Local.vPosition.y, Local.vPosition.z);
-        float4x4_t Result{};
-        XMStoreFloat4x4(&Result,
-            Scale * Rotation * Translation * XMLoadFloat4x4(&Anchor));
-        return Result;
-    }
-
 	bool_t Is_FiniteTransform(const Client::EFFECT_TRANSFORM_DESC& Value)
 	{
 		return std::isfinite(Value.vPosition.x) &&
@@ -995,6 +1173,31 @@ namespace
 			std::isfinite(Value.vScale.x) &&
 			std::isfinite(Value.vScale.y) &&
 			std::isfinite(Value.vScale.z);
+	}
+
+	bool_t Is_ValidOrientationDescriptor(
+		const Client::EFFECT_SPAWN_DESC& Desc)
+	{
+		if (Desc.eOrientationPolicy >=
+			Client::EFFECT_ORIENTATION_POLICY::END ||
+			(Desc.bUseWorldRoot &&
+				(Client::EFFECT_ORIENTATION_POLICY::ANCHOR !=
+					Desc.eOrientationPolicy ||
+				 Desc.bHasActionFacingYaw)) ||
+			(Desc.bHasActionFacingYaw &&
+			 !std::isfinite(Desc.fActionFacingYawDegrees)))
+		{
+			return false;
+		}
+		if (Client::EFFECT_ORIENTATION_POLICY::ANCHOR ==
+			Desc.eOrientationPolicy)
+		{
+			return true;
+		}
+		return "root" == Desc.strAnchorSlotId &&
+			Desc.bHasActionFacingYaw &&
+			std::isfinite(Desc.fActionFacingYawDegrees) &&
+			0u != Desc.iActionStartTick;
 	}
 
 	bool_t Has_EqualTransform(
@@ -1891,6 +2094,7 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 		g_ProductPrewarmQueue.Reset_ForCatalogRevision(iCatalogRevision);
 		g_ProductEffectBudgetCosts.clear();
 		g_ProductEffectPlaybackDurations.clear();
+		g_ProductScreenOverlayTemplates.clear();
 		std::string QueueStatus;
 		if (!g_ProductPrewarmQueue.Enqueue(CurrentTargets, QueueStatus))
 		{
@@ -1921,6 +2125,8 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 			CEffectCatalog::Find_VisualProjection(EffectId);
 	EFFECT_SCENE_BUDGET_COST BudgetCost;
 	f32_t fPlaybackDurationSeconds = 0.f;
+	std::shared_ptr<const CEffectScreenOverlayPresentation>
+		ScreenOverlayTemplate;
 	bool_t bPrepared = nullptr != Document;
 	if (nullptr == Document)
 	{
@@ -1936,6 +2142,14 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 			EffectId;
 		bPrepared = false;
 	}
+	if (bPrepared && !Prepare_ProductScreenOverlayTemplate(
+			pDevice, EffectId, ScreenOverlayTemplate, PrepareStatus))
+	{
+		PrepareStatus =
+			"Product Effect incremental screen-overlay preparation failed for " +
+			EffectId + ": " + PrepareStatus;
+		bPrepared = false;
+	}
 	if (bPrepared && !Estimate_DocumentBudget(
 			*Document, BudgetCost, PrepareStatus))
 	{
@@ -1948,6 +2162,19 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 	{
 		PrepareStatus =
 			"Product Effect incremental duration preparation failed for " +
+			EffectId + ": " + PrepareStatus;
+		bPrepared = false;
+	}
+	if (bPrepared &&
+		(!Apply_ProductScreenOverlayReceipt(
+			ScreenOverlayTemplate, BudgetCost,
+			fPlaybackDurationSeconds, PrepareStatus) ||
+		 !BudgetWithin(BudgetCost, SCENE_HARD_BUDGET)))
+	{
+		if (PrepareStatus.empty())
+			PrepareStatus = "screen-overlay hard budget exceeded";
+		PrepareStatus =
+			"Product Effect incremental screen-overlay receipt failed for " +
 			EffectId + ": " + PrepareStatus;
 		bPrepared = false;
 	}
@@ -1972,6 +2199,15 @@ void Client::CEffectPresentationService::Advance_ProductCuePreparation(
 		g_ProductEffectBudgetCosts[EffectId] = BudgetCost;
 		g_ProductEffectPlaybackDurations[EffectId] =
 			fPlaybackDurationSeconds;
+		if (nullptr != ScreenOverlayTemplate)
+		{
+			g_ProductScreenOverlayTemplates[EffectId] =
+				std::move(ScreenOverlayTemplate);
+		}
+		else
+		{
+			g_ProductScreenOverlayTemplates.erase(EffectId);
+		}
 		g_strStatus = PrepareStatus;
 		return;
 	}
@@ -2010,6 +2246,18 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 		return false;
 	}
 
+	std::shared_ptr<const CEffectScreenOverlayPresentation>
+		CandidateScreenOverlayTemplate;
+	if (!Prepare_ProductScreenOverlayTemplate(
+			pDevice, strEffectAssetId, CandidateScreenOverlayTemplate,
+			strOutStatus))
+	{
+		strOutStatus =
+			"Selected Effect screen-overlay preparation failed for " +
+			strEffectAssetId + ": " + strOutStatus;
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	EFFECT_SCENE_BUDGET_COST CandidateBudget;
 	if (!Estimate_DocumentBudget(*pDocument, CandidateBudget, strOutStatus))
 	{
@@ -2028,6 +2276,18 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 		g_strStatus = strOutStatus;
 		return false;
 	}
+	if (!Apply_ProductScreenOverlayReceipt(
+			CandidateScreenOverlayTemplate, CandidateBudget,
+			fCandidatePlaybackDurationSeconds, strOutStatus) ||
+		!BudgetWithin(CandidateBudget, SCENE_HARD_BUDGET))
+	{
+		if (strOutStatus.empty())
+			strOutStatus = "screen-overlay hard budget exceeded";
+		strOutStatus = "Selected Effect screen-overlay receipt failed for " +
+			strEffectAssetId + ": " + strOutStatus;
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	CEffectProductPrewarmQueue StagedPrewarmQueue = g_ProductPrewarmQueue;
 	std::string QueueStatus;
 	if (!StagedPrewarmQueue.Commit_HotReloadPrepared(
@@ -2042,6 +2302,16 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 	auto StagedPlaybackDurations = g_ProductEffectPlaybackDurations;
 	StagedPlaybackDurations.insert_or_assign(
 		strEffectAssetId, fCandidatePlaybackDurationSeconds);
+	auto StagedScreenOverlayTemplates = g_ProductScreenOverlayTemplates;
+	if (nullptr != CandidateScreenOverlayTemplate)
+	{
+		StagedScreenOverlayTemplates.insert_or_assign(
+			strEffectAssetId, std::move(CandidateScreenOverlayTemplate));
+	}
+	else
+	{
+		StagedScreenOverlayTemplates.erase(strEffectAssetId);
+	}
 	if (!CEffectDocumentRenderer::Replace_VisualProgramTarget(
 			std::move(pDevice), std::move(pContext), iCatalogRevision,
 			{ strEffectAssetId, std::move(pDocument),
@@ -2054,6 +2324,8 @@ bool_t Client::CEffectPresentationService::Replace_ProductPreparedTarget(
 	g_ProductPrewarmQueue = std::move(StagedPrewarmQueue);
 	g_ProductEffectBudgetCosts = std::move(StagedBudgetCosts);
 	g_ProductEffectPlaybackDurations = std::move(StagedPlaybackDurations);
+	g_ProductScreenOverlayTemplates =
+		std::move(StagedScreenOverlayTemplates);
 	g_strStatus = strOutStatus;
 	return true;
 }
@@ -2625,6 +2897,7 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 		!std::isfinite(Desc.fInitialSampleTimeSeconds) ||
 		Desc.fInitialSampleTimeSeconds < 0.f ||
 		EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
+		!Is_ValidOrientationDescriptor(Desc) ||
 		EFFECT_STOP_POLICY::NATURAL != Desc.eStopPolicy)
 	{
 		strOutStatus =
@@ -2679,7 +2952,15 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 		g_strStatus = strOutStatus;
 		return false;
 	}
-	const float4x4_t Root = Compose_Local(Desc.LocalTransform, Anchor);
+	float4x4_t Root{};
+	if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+		Desc.LocalTransform, Anchor, Desc.eOrientationPolicy,
+		Desc.fActionFacingYawDegrees, Root))
+	{
+		strOutStatus = "Artist 31470 root transform is invalid.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	ARTIST_31470_TRANSFORM_HISTORY ArtistTransformHistory;
 	if (!Prepare_Artist31470TransformHistory(
 			pOwner, SourceAnchorRequests, Root,
@@ -2749,6 +3030,8 @@ bool_t Client::CEffectPresentationService::Spawn_ReconstructedArtist31470(
 	Active.strAnchorSlotId = Desc.strAnchorSlotId;
 	Active.LocalTransform = Desc.LocalTransform;
 	Active.eFollowPolicy = Desc.eFollowPolicy;
+	Active.eOrientationPolicy = Desc.eOrientationPolicy;
+	Active.fActionFacingYawDegrees = Desc.fActionFacingYawDegrees;
 	Active.eStopPolicy = Desc.eStopPolicy;
 	Active.iCueDurationMs = Desc.iCueDurationMs;
 	Active.iActionStartTick = Desc.iActionStartTick;
@@ -2851,6 +3134,7 @@ bool_t Client::CEffectPresentationService::Spawn(
 		std::isfinite(Desc.fInitialSampleTimeSeconds) &&
 		Desc.fInitialSampleTimeSeconds >= 0.f &&
 		EFFECT_FOLLOW_POLICY::END != Desc.eFollowPolicy &&
+		Is_ValidOrientationDescriptor(Desc) &&
 		EFFECT_STOP_POLICY::END != Desc.eStopPolicy &&
 		(EFFECT_STOP_POLICY::CUE_END != Desc.eStopPolicy ||
 			0u != Desc.iCueDurationMs) &&
@@ -2886,6 +3170,14 @@ bool_t Client::CEffectPresentationService::Spawn(
 	{
 		strOutStatus =
 			"Effect spawn rejected because its admitted animation target was not prewarmed.";
+		g_strStatus = strOutStatus;
+		return false;
+	}
+	std::shared_ptr<const CEffectScreenOverlayPresentation>
+		ScreenOverlayTemplate;
+	if (!Resolve_ProductScreenOverlayTemplate(
+			Desc.strEffectAssetId, ScreenOverlayTemplate, strOutStatus))
+	{
 		g_strStatus = strOutStatus;
 		return false;
 	}
@@ -3066,6 +3358,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         !std::isfinite(Desc.fInitialSampleTimeSeconds) ||
         Desc.fInitialSampleTimeSeconds < 0.f ||
         EFFECT_FOLLOW_POLICY::END == Desc.eFollowPolicy ||
+		!Is_ValidOrientationDescriptor(Desc) ||
         EFFECT_STOP_POLICY::END == Desc.eStopPolicy ||
         (EFFECT_STOP_POLICY::CUE_END == Desc.eStopPolicy &&
             0u == Desc.iCueDurationMs) ||
@@ -3103,6 +3396,14 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         g_strStatus = strOutStatus;
         return false;
     }
+	std::shared_ptr<const CEffectScreenOverlayPresentation>
+		ScreenOverlayTemplate;
+	if (!Resolve_ProductScreenOverlayTemplate(
+			Desc.strEffectAssetId, ScreenOverlayTemplate, strOutStatus))
+	{
+		g_strStatus = strOutStatus;
+		return false;
+	}
 	const auto Budget = g_ProductEffectBudgetCosts.find(
 		Desc.strEffectAssetId);
 	if (Budget == g_ProductEffectBudgetCosts.end() ||
@@ -3132,7 +3433,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
         return false;
     }
 
-    float4x4_t Root{};
+	float4x4_t Root{};
 	if (Desc.bUseWorldRoot)
 	{
 		Root = Desc.WorldRoot;
@@ -3146,7 +3447,14 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 			g_strStatus = strOutStatus;
 			return false;
 		}
-		Root = Compose_Local(Desc.LocalTransform, Anchor);
+		if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+			Desc.LocalTransform, Anchor, Desc.eOrientationPolicy,
+			Desc.fActionFacingYawDegrees, Root))
+		{
+			strOutStatus = "Effect cue root transform is invalid.";
+			g_strStatus = strOutStatus;
+			return false;
+		}
 	}
     std::vector<SOURCE_ANCHOR_REQUEST> SourceAnchorRequests =
         Collect_SourceAnchorRequests(*pDocument);
@@ -3157,6 +3465,7 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
 	ObjectDesc.pDocument = nullptr == pVisualProjection ? pDocument.get() : nullptr;
 	ObjectDesc.pPreparedResources = pPrepared;
 	ObjectDesc.pVisualProgramProjection = pVisualProjection;
+	ObjectDesc.pScreenOverlayPresentationTemplate = ScreenOverlayTemplate;
     ObjectDesc.RootWorld = Root;
     ObjectDesc.bAutoPlay = false;
     ObjectDesc.bRequirePreparedResources = true;
@@ -3214,6 +3523,8 @@ bool_t Client::CEffectPresentationService::Spawn_Immediate(
     Active.strAnchorSlotId = Desc.strAnchorSlotId;
     Active.LocalTransform = Desc.LocalTransform;
     Active.eFollowPolicy = Desc.eFollowPolicy;
+	Active.eOrientationPolicy = Desc.eOrientationPolicy;
+	Active.fActionFacingYawDegrees = Desc.fActionFacingYawDegrees;
     Active.eStopPolicy = Desc.eStopPolicy;
     Active.iCueDurationMs = Desc.iCueDurationMs;
     Active.iActionStartTick = Desc.iActionStartTick;
@@ -3382,8 +3693,16 @@ void Client::CEffectPresentationService::Synchronize_FollowAnchors()
             Effect.pObject->Set_Visible(false);
             continue;
         }
-		Effect.pObject->Set_RootWorldForNextUpdate(
-			Compose_Local(Effect.LocalTransform, Anchor));
+		float4x4_t Root{};
+		if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+			Effect.LocalTransform, Anchor, Effect.eOrientationPolicy,
+			Effect.fActionFacingYawDegrees, Root))
+		{
+			Effect.bFollowAnchorMissing = true;
+			Effect.pObject->Set_Visible(false);
+			continue;
+		}
+		Effect.pObject->Set_RootWorldForNextUpdate(Root);
     }
 }
 
@@ -3485,6 +3804,7 @@ void Client::CEffectPresentationService::Release_PreparedResources()
 	g_ProductPrewarmQueue.Clear();
 	g_ProductEffectBudgetCosts.clear();
 	g_ProductEffectPlaybackDurations.clear();
+	g_ProductScreenOverlayTemplates.clear();
 	g_iSceneBudgetRejectedSpawnCount = 0u;
 	g_ReconstructedArtist31470 = {};
 	g_LastArtist31470ToolPreviewConsumption = {};

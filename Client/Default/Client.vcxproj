@@ -55,6 +55,7 @@
     <ClInclude Include="..\Public\Effect_DocumentRenderer.h" />
     <ClInclude Include="..\Public\Effect_DirectAuthoredSourceIndex.h" />
     <ClInclude Include="..\Public\Effect_Object.h" />
+    <ClInclude Include="..\Public\Effect_ScreenOverlayPresentation.h" />
     <ClInclude Include="..\Public\Effect_ThumbnailCache.h" />
     <ClInclude Include="..\Public\Effect_Catalog.h" />
     <ClInclude Include="..\Public\Effect_OccurrenceTuning.h" />
@@ -127,6 +128,7 @@
     <ClInclude Include="..\Public\PlayerController.h" />
     <ClInclude Include="..\Public\PlayerCommandSink.h" />
     <ClInclude Include="..\Public\PlayerSkillCatalog.h" />
+	<ClInclude Include="..\Public\SkillGroundTargetPreview.h" />
     <ClInclude Include="..\Public\ItemCatalog.h" />
     <ClInclude Include="..\Public\NetworkPlayerCommandSink.h" />
     <ClInclude Include="..\Public\ProfilerCaptureIO.h" />
@@ -190,6 +192,7 @@
     <ClCompile Include="..\Private\Effect_DocumentRenderer.cpp" />
     <ClCompile Include="..\Private\Effect_DirectAuthoredSourceIndex.cpp" />
     <ClCompile Include="..\Private\Effect_Object.cpp" />
+    <ClCompile Include="..\Private\Effect_ScreenOverlayPresentation.cpp" />
     <ClCompile Include="..\Private\Effect_ThumbnailCache.cpp" />
     <ClCompile Include="..\Private\Effect_Catalog.cpp" />
     <ClCompile Include="..\Private\Effect_OccurrenceTuning.cpp" />
@@ -254,6 +257,7 @@
     <ClCompile Include="..\Private\MainApp.cpp" />
     <ClCompile Include="..\Private\PlayerController.cpp" />
     <ClCompile Include="..\Private\PlayerSkillCatalog.cpp" />
+	<ClCompile Include="..\Private\SkillGroundTargetPreview.cpp" />
     <ClCompile Include="..\Private\ItemCatalog.cpp" />
     <ClCompile Include="..\Private\NetworkPlayerCommandSink.cpp" />
     <ClCompile Include="..\Private\ProfilerCaptureIO.cpp" />
@@ -360,6 +364,7 @@
     <None Include="..\..\Data\Balance\PlayerProfiles.json" />
     <None Include="..\..\Data\Balance\MonsterProfiles.json" />
     <None Include="..\..\Data\Balance\PlayerSkills.json" />
+	<None Include="..\..\Data\Balance\PlayerSkillTargeting.json" />
     <None Include="..\..\Data\Balance\ValtanBossParts.json" />
     <None Include="..\..\Data\Items\ItemCatalog.json" />
     <None Include="..\..\Data\Balance\Reference\Official\2026-08-05.balance-provenance.receipt.json" />
@@ -459,6 +464,7 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEstherNpc.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectMeshPreview.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectRectPreview.hlsl" />
+	<FxCompile Include="..\Bin\ShaderFiles\Shader_VtxSkillGroundTargetPreview.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactSpriteBridge.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactLocalMeshBridge.hlsl" />
@@ -468,6 +474,7 @@
     <None Include="..\Bin\ShaderFiles\Shader_EffectCommon.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectUe3MaterialFamilies.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectRuntimeMaterialPacket.hlsli" />
+    <None Include="..\Bin\ShaderFiles\Shader_EffectStandardColorV1.hlsli" />
     <None Include="..\Bin\ShaderFiles\Shader_EffectLocalDecalAdapter.hlsli" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshBinary.hlsl" />
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxMeshMapInstance.hlsl" />
@@ -1115,6 +1122,8 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31470.occurrence-tuning.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31490.role-manifest.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31490.unified.role-materialization.receipt.json" />
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31910.wisp-attractor.materialization.receipt.json" />
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.cascade-ribbon-projection.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.role-manifest.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Artist\effect.artist.skill.31950.unified.role-materialization.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\DimensionMaster\effect.dimensionmaster.skill.2050210.authored-baseline.correction.json" />
@@ -1131,6 +1140,7 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Artist\effect.artist.skill.31430.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Artist\effect.artist.skill.31460.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Artist\effect.artist.skill.31480.authored-baseline.approximation-receipt.json" />
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Artist\effect.artist.skill.31490.black-tiger-stroke.materialization-receipt.v1.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Artist\effect.artist.skill.31910.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Artist\effect.artist.skill.31930.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\ComponentBuild\Artist.component-build.receipt.json" />
@@ -1147,6 +1157,7 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050180.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050220.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050230.authored-baseline.approximation-receipt.json" />
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050230.fluid01-sprite.receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050240.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050500.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\DimensionMaster\effect.dimensionmaster.skill.2050520.authored-baseline.approximation-receipt.json" />
@@ -1184,6 +1195,7 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34590.ba2.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34590.ba3.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34610.authored-baseline.approximation-receipt.json" />
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34630-34650.dragon-flow.materialization-receipt.v1.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34630.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34650.authored-baseline.approximation-receipt.json" />
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34010.ba1.candidate-receipt.json" />
@@ -1773,6 +1785,7 @@
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip5\Warlord_skill_17820_authored-baseline_clip5_00.visual.wfx.json" />
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip8\Warlord_skill_17820_authored-baseline_clip8_00.visual.wfx.json" />
     <None Include="..\..\Data\Effects\Components\Warlord\skill.17820.authored-baseline.clip8\Warlord_skill_17820_authored-baseline_clip8_01.visual.wfx.json" />
+    <None Include="..\..\Data\Effects\Contracts\character-effect-restoration-targets.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\effect-family-manifest.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\effect-import-bases.v1.json" />
     <None Include="..\..\Data\Effects\Contracts\ue3-cascade-source-v1.registry.json" />
@@ -1914,6 +1927,8 @@
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.shader-cache-oracle.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.typed-material-evidence-contract.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31470.v4-missing-texture-acquisition.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31950.ribbon-parent-default-shader-target.json" />
+    <None Include="..\..\Data\Effects\Imported\Artist\Materials\skill.31950.ribbon-parent-default-shader.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31000.external-module-closure.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\Modules\skill.31470.external-module-closure.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\README.md" />
@@ -2069,6 +2084,7 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050200.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050210.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050220.source-receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050230.screen-overlay-product-binding.receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050230.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050240.source-receipt.json" />
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\skill.2050500.source-receipt.json" />
@@ -2221,6 +2237,8 @@
     <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.combat-source-stage-manifest.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.resource-source-manifest.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\LanceMaster.skill-effect-source-inventory.json" />
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Materials\skill.34630-34650.dragon.exact-material-maps.receipt.json" />
+    <None Include="..\..\Data\Effects\Imported\LanceMaster\Materials\skill.34630-34650.dragon.exact-shader-targets.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\Modules\skill.34010.external-module-closure.json" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\README.md" />
     <None Include="..\..\Data\Effects\Imported\LanceMaster\skill.34000.source-receipt.json" />
@@ -2450,6 +2468,7 @@
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\T\DimensionMaster.T.effect-resources.json" />
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\V\DimensionMaster.V.effect-resources.json" />
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\W\DimensionMaster.W.effect-resources.json" />
+    <None Include="..\..\Data\Effects\ScreenOverlays\effect.dimensionmaster.skill.2050230.unified.screen-overlay.json" />
     <None Include="..\..\Data\Effects\VisualPrograms\effect-visual-program-corpus.v1.json" />
     <None Include="..\..\Data\Effects\VisualPrograms\effect-visual-program-runtime.v1.json" />
   </ItemGroup>

@@ -104,15 +104,16 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
     def test_exact_denominators_and_projected_document_bytes_sha(self) -> None:
         runtime = self.runtime
         self.assertEqual(runtime["denominators"], {
-            "programCount": 16,
-            "sourceRecipeOverlayProgramCount": 15,
+            "programCount": 17,
+            "sourceRecipeOverlayProgramCount": 16,
             "adapterPacketProgramCount": 1,
             "visualRowCount": 135,
             "sourceRecipeOverlayCount": 66,
             "localDecalAdapterPacketCount": 2,
             "cascadeRibbonVisualRowCount": 4,
-            "supplementalElementCount": 15,
+            "supplementalElementCount": 16,
             "artistFCascadeRibbonElementCount": 1,
+            "artistTCascadeRibbonElementCount": 1,
             "animationTrailElementCount": 13,
             "bakedEdgeLightElementCount": 1,
             "failClosedCount": 67,
@@ -123,7 +124,7 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
             item for item in runtime["programs"]
             if item["projectionKind"] == "SOURCE_RECIPE_OVERLAY_V1"
         ]
-        self.assertEqual(len(overlays), 15)
+        self.assertEqual(len(overlays), 16)
         for program in overlays:
             document = program["projectedDocument"]
             canonical = builder.canonical_json_bytes(document)
@@ -306,11 +307,11 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
             for program in self.runtime["programs"]
             for item in program["supplementalElements"]
         ]
-        self.assertEqual(len(supplemental), 15)
+        self.assertEqual(len(supplemental), 16)
         self.assertEqual(
             sorted(item["family"] for item in supplemental),
             ["ANIMATION_TRAIL"] * 13
-            + ["CASCADE_RIBBON"]
+            + ["CASCADE_RIBBON"] * 2
             + ["LIGHT_PARTICLE"],
         )
         for item in supplemental:
@@ -331,15 +332,44 @@ class EffectVisualProgramRuntimeTests(unittest.TestCase):
             elif item["family"] == "CASCADE_RIBBON":
                 packet = item["cascadeRibbonPacket"]
                 self.assertIsNone(item["animationTrailPacket"])
-                self.assertEqual(
-                    (
-                        packet["typeDataStableId"],
-                        packet["tilingDistance"],
-                        packet["distanceTessellationStepSize"],
-                        packet["operationalMaxPoints"],
-                    ),
-                    ("FX_PC_SDM_07:export:1293@ref:6", 6.0, 0.05, 500),
-                )
+                if item["selector"]["effectAssetId"] == "effect.artist.skill.31470":
+                    self.assertEqual(
+                        (
+                            packet["typeDataStableId"],
+                            packet["tilingDistance"],
+                            packet["distanceTessellationStepSize"],
+                            packet["operationalMaxPoints"],
+                        ),
+                        ("FX_PC_SDM_07:export:1293@ref:6", 6.0, 0.05, 500),
+                    )
+                else:
+                    self.assertEqual(
+                        item["selector"],
+                        {
+                            "effectAssetId": "effect.artist.skill.31950.unified",
+                            "occurrenceId":
+                                "authored.source-particle.29868adeb040d5a35e2f213c",
+                        },
+                    )
+                    self.assertEqual(
+                        (
+                            packet["typeDataStableId"],
+                            packet["tilingDistance"],
+                            packet["distanceTessellationStepSize"],
+                        ),
+                        (
+                            "FX_PC_SDM_01:export:1495@ref:6",
+                            3.0,
+                            0.05,
+                        ),
+                    )
+                    self.assertEqual(
+                        packet["preservedLimitations"],
+                        [
+                            "CASCADE_RIBBON_BOUNDED_RECONSTRUCTION_NOT_NATIVE_SOURCE_EXACT",
+                            *builder.phase1.ARTIST_T_RIBBON_MATERIAL_LIMITATIONS,
+                        ],
+                    )
             else:
                 packet = item["bakedEdgeLightPacket"]
                 self.assertEqual(item["family"], "LIGHT_PARTICLE")

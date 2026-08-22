@@ -1147,6 +1147,642 @@ namespace
 		return Iterator == Element.ResourceBindings.end() ? nullptr : &*Iterator;
 	}
 
+	constexpr uint32_t ARTIST_D_BLACK_TIGER_STROKE_OPCODE = 18u;
+
+	struct ARTIST_D_BLACK_TIGER_STROKE_ROW final
+	{
+		std::string_view strElementId;
+		std::string_view strSourceElementId;
+		std::string_view strDynamicModuleStableId;
+		uint32_t iScalarCount;
+	};
+
+	constexpr std::array<ARTIST_D_BLACK_TIGER_STROKE_ROW, 12u>
+		ARTIST_D_BLACK_TIGER_STROKE_ROWS = {{
+		{ "authored.source-particle.763aea38ab1100ba9072dbfb",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_5",
+			"FX_PC_MSR_03:export:2587@ref:4", 28u },
+		{ "authored.source-particle.e6c3ffec9fbc27024e2ce78c",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_5.event_source-event-002",
+			"FX_PC_MSR_03:export:2587@ref:4", 28u },
+		{ "authored.source-particle.91392dd3a1710c9d411bfff6",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_6",
+			"FX_PC_SDM_08:export:1241@ref:3", 24u },
+		{ "authored.source-particle.382ed3229ddf083cfd22ee11",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_6.event_source-event-002",
+			"FX_PC_SDM_08:export:1241@ref:3", 24u },
+		{ "authored.source-particle.4f0381d175d441978f26ebfc",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_7",
+			"FX_PC_SDM_08:export:1240@ref:3", 24u },
+		{ "authored.source-particle.31fa700c084ab0b11447f7c7",
+			"fx_pc_sdm_08.par_l_sdm_sk_01_3.particlespriteemitter_7.event_source-event-002",
+			"FX_PC_SDM_08:export:1240@ref:3", 24u },
+		{ "authored.source-particle.5571970d95f97aecb889fed7",
+			"fx_pc_sdm_08.par_l_sdm_sk_05_3.particlespriteemitter_5",
+			"FX_PC_MSR_03:export:2587@ref:4", 28u },
+		{ "authored.source-particle.87c8abd0423fcb7e9a725659",
+			"fx_pc_sdm_08.par_l_sdm_sk_05_3.particlespriteemitter_6",
+			"FX_PC_SDM_08:export:1241@ref:3", 24u },
+		{ "authored.source-particle.ac2d4d3e467dc4442cba60c3",
+			"fx_pc_sdm_08.par_l_sdm_sk_05_3.particlespriteemitter_11",
+			"FX_PC_SDM_08:export:1240@ref:3", 24u },
+		{ "authored.source-particle.01c398219f73706b66509e77",
+			"fx_pc_sdm_08.par_l_sdm_sk_06_3.particlespriteemitter_5",
+			"FX_PC_MSR_03:export:2587@ref:4", 28u },
+		{ "authored.source-particle.93420edbc5815b8a01b38ef4",
+			"fx_pc_sdm_08.par_l_sdm_sk_06_3.particlespriteemitter_6",
+			"FX_PC_SDM_08:export:1241@ref:3", 24u },
+		{ "authored.source-particle.76d0b67fe194395ce21c51ab",
+			"fx_pc_sdm_08.par_l_sdm_sk_06_3.particlespriteemitter_2",
+			"FX_PC_SDM_08:export:1240@ref:3", 24u },
+	}};
+
+	constexpr std::array<f32_t, 28u> ARTIST_D_TIGER_CHILD5_SCALARS = {{
+		0.f, 0.f, 1.f, 1.f, 1.f, 1.100000023841858f, 1.f, 0.f,
+		1.f, 4.f, 0.10000000149011612f, 0.f, 0.f, 0.f,
+		-0.10000000149011612f, 0.f, 2.f, 1.f, 1.f, 2.f, 3.f,
+		-0.20000000298023224f, 0.f, 0.f, 0.5f, 0.5f, 0.f, 0.f,
+	}};
+
+	constexpr std::array<f32_t, 24u> ARTIST_D_TIGER_CHILD6_SCALARS = {{
+		0.f, 0.f, 1.f, 1.f, 2.f, 1.2000000476837158f,
+		0.10000000149011612f, 5.f, 25.f, 15.f, 0.f,
+		-0.10000000149011612f, 0.f, 0.f, 1.f, 1.f, 1.f,
+		-0.800000011920929f, 0.f, 0.f, 1.f, 1.f, 0.f, 0.f,
+	}};
+
+	const ARTIST_D_BLACK_TIGER_STROKE_ROW* Find_ArtistDBlackTigerStrokeRow(
+		const std::string_view strElementId)
+	{
+		const auto Iterator = std::ranges::find_if(
+			ARTIST_D_BLACK_TIGER_STROKE_ROWS,
+			[strElementId](const ARTIST_D_BLACK_TIGER_STROKE_ROW& Row)
+			{
+				return Row.strElementId == strElementId;
+			});
+		return Iterator == ARTIST_D_BLACK_TIGER_STROKE_ROWS.end() ?
+			nullptr : &*Iterator;
+	}
+
+	bool_t Is_ArtistDBlackTigerSampler(
+		const Client::EFFECT_MATERIAL_SAMPLER_DESC& Sampler)
+	{
+		return Sampler.eFilter ==
+				Client::EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR &&
+			Sampler.eAddressU ==
+				Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+			Sampler.eAddressV ==
+				Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+			Sampler.eAddressW ==
+				Client::EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+			Sampler.fMipLodBias == 0.f && Sampler.iMaxAnisotropy == 1u &&
+			Sampler.eComparison ==
+				Client::EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER &&
+			Sampler.vBorderColor.x == 0.f && Sampler.vBorderColor.y == 0.f &&
+			Sampler.vBorderColor.z == 0.f && Sampler.vBorderColor.w == 0.f &&
+			Sampler.fMinLod == 0.f &&
+			Sampler.fMaxLod == (std::numeric_limits<f32_t>::max)();
+	}
+
+	bool_t Is_ArtistDBlackTigerLane(
+		const Client::EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane,
+		const uint32_t iIndex,
+		const std::string_view strRole,
+		const std::string_view strAssetId,
+		const std::string_view strSourceChannel)
+	{
+		return Lane.strLaneId == "lane." + std::to_string(iIndex) &&
+			Lane.strRole == strRole && Lane.strAssetId == strAssetId &&
+			Lane.iTextureRegister == iIndex &&
+			Lane.iSamplerRegister == 5u + iIndex &&
+			Lane.strSourceChannel == strSourceChannel &&
+			Lane.eColorSpace == Client::EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+			Is_ArtistDBlackTigerSampler(Lane.Sampler);
+	}
+
+	template <size_t ScalarCount>
+	bool_t Is_ArtistDBlackTigerScalars(
+		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution,
+		const std::array<f32_t, ScalarCount>& Expected)
+	{
+		if (Execution.Scalars.size() != Expected.size())
+			return false;
+		for (size_t i = 0u; i < Expected.size(); ++i)
+		{
+			const Client::EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar =
+				Execution.Scalars[i];
+			if (Scalar.strName != "scalar." + std::to_string(i) ||
+				Scalar.iPackedIndex != i || Scalar.fValue != Expected[i])
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	bool_t Has_ArtistDBlackTigerDynamicModule(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strExpectedStableId)
+	{
+		size_t iMatchCount = 0u;
+		for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (Module.strClassName != "particlemoduleparameterdynamic")
+				continue;
+			++iMatchCount;
+			if (Module.strStableId != strExpectedStableId ||
+				Module.Distributions.size() != 4u)
+			{
+				return false;
+			}
+			for (size_t i = 0u; i < Module.Distributions.size(); ++i)
+			{
+				if (Module.Distributions[i].strPropertyPath !=
+					"dynamicparams[" + std::to_string(i) + "].paramvalue")
+				{
+					return false;
+				}
+			}
+		}
+		return iMatchCount == 1u;
+	}
+
+	bool_t Validate_ArtistDBlackTigerStrokeExecution(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError)
+	{
+		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+			Element.Material.Execution;
+		const ARTIST_D_BLACK_TIGER_STROKE_ROW* pRow =
+			Find_ArtistDBlackTigerStrokeRow(Element.strElementId);
+		if (nullptr == pRow)
+		{
+			if (Execution.bEnabled &&
+				Execution.eBackend ==
+					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Execution.iOpcode == ARTIST_D_BLACK_TIGER_STROKE_OPCODE)
+			{
+				strOutError =
+					"Artist D BLACK_TIGER_STROKE opcode escaped its exact occurrence allowlist: " +
+					Element.strElementId;
+				return false;
+			}
+			return true;
+		}
+
+		const bool_t bChild5 = pRow->iScalarCount == 28u;
+		const std::string_view strMaterialPath = bChild5 ?
+			"fx_m_mi_l_00.fx_mi.fx_l_pa_spritewave_01_5_ad" :
+			"fx_m_mi_l_00.fx_mi.fx_l_pa_spritewave_01_6_ad";
+		const std::string_view strBaseAsset = bChild5 ?
+			"Effect/Artist/Textures/fx_m_trail_010.dds" :
+			"Effect/Artist/Textures/fx_m_trail_004_cl.dds";
+		const std::string_view strNoiseAsset = bChild5 ?
+			"Effect/Artist/Textures/fx_c_noise_009.dds" :
+			"Effect/Artist/Textures/fx_bg_dustpanner_01.dds";
+		constexpr std::string_view strDissolveAsset =
+			"Effect/Artist/Textures/fx_o_symbol_14.dds";
+		const std::string strExpectedSourceNode =
+			"authored-source-particle:effect.artist.skill.31490.unified|source:"
+			"effect.artist.skill.31490.imported|element:" +
+			std::string(pRow->strSourceElementId);
+
+		const bool_t bCarrier = Element.bVisible &&
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.strSourceNode == strExpectedSourceNode &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "sprite" &&
+			Element.ResourceBindings.size() == 3u &&
+			Element.ResourceBindings[0u].strSlotId == "base" &&
+			Element.ResourceBindings[0u].strAssetId == strBaseAsset &&
+			Element.ResourceBindings[1u].strSlotId == "dissolve" &&
+			Element.ResourceBindings[1u].strAssetId == strDissolveAsset &&
+			Element.ResourceBindings[2u].strSlotId == "noise" &&
+			Element.ResourceBindings[2u].strAssetId == strNoiseAsset &&
+			nullptr == Find_Binding(
+				Element, Client::EFFECT_RESOURCE_SLOT::MESH_MODEL) &&
+			Has_ArtistDBlackTigerDynamicModule(
+				Element, pRow->strDynamicModuleStableId);
+		const bool_t bMaterial =
+			Element.Material.strTemplateId == "effect.standard" &&
+			Element.Material.strSourceMaterialPath == strMaterialPath &&
+			Element.Material.eRenderProfile ==
+				Client::EFFECT_RENDER_PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ &&
+			!Element.Material.SourceMaterial.bEnabled;
+		const bool_t bPacketIdentity = Execution.bEnabled &&
+			!Execution.bFailClosed && !Execution.bAuthoringApproximate &&
+			Execution.iVersion == 1u &&
+			Execution.eBackend ==
+				Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			Execution.iOpcode == ARTIST_D_BLACK_TIGER_STROKE_OPCODE &&
+			Execution.iPassIndex == 2u &&
+			Execution.strRasterizerState == "RS_Cull_None" &&
+			Execution.strDepthStencilState == "DSS_ReadOnly" &&
+			Execution.strBlendState == "BS_EffectAdditive" &&
+			Execution.iStencilReference == 0u &&
+			Execution.iTextureLaneCount == 3u &&
+			Execution.iTextureMask == 0x07u &&
+			Execution.TextureLanes.size() == 3u &&
+			Is_ArtistDBlackTigerLane(Execution.TextureLanes[0u], 0u,
+				"maintex", strBaseAsset, "RGB") &&
+			Is_ArtistDBlackTigerLane(Execution.TextureLanes[1u], 1u,
+				"uv_noise_tex", strNoiseAsset, "RG") &&
+			Is_ArtistDBlackTigerLane(Execution.TextureLanes[2u], 2u,
+				"dissolve_tex_01", strDissolveAsset, "R");
+		const uint32_t iInputMask = bChild5 ? 0x0fffffffu : 0x00ffffffu;
+		const bool_t bPacketMasks =
+			Execution.iDynamicConsumedMask == 0x0fu &&
+			Execution.iDynamicSuppressedMask == 0u &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0x0fu &&
+			Execution.iParticleColorSuppressedMask == 0u &&
+			Execution.iScalarCount == pRow->iScalarCount &&
+			Execution.iVectorCount == 1u &&
+			Execution.iInputCount == pRow->iScalarCount &&
+			Execution.InputConsumedMask ==
+				std::array<uint32_t, 2u>{ iInputMask, 0u } &&
+			Execution.InputSuppressedMask ==
+				std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0x07u, 0u, 0u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0x08u, 0u, 0u } &&
+			Execution.iStaticInputCount == 0u &&
+			Execution.iStaticSelectedMask == 0u &&
+			Execution.iStaticConsumedMask == 0u &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 6u &&
+			Execution.iRenderConsumedMask == 0x2fu &&
+			Execution.iRenderSuppressedMask == 0x10u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+		const bool_t bScalars = bChild5 ?
+			Is_ArtistDBlackTigerScalars(
+				Execution, ARTIST_D_TIGER_CHILD5_SCALARS) :
+			Is_ArtistDBlackTigerScalars(
+				Execution, ARTIST_D_TIGER_CHILD6_SCALARS);
+		const float4_t vExpectedEdge = bChild5 ?
+			float4_t(1.f, 1.f, 1.f, 1.f) :
+			float4_t(20.f, 20.f, 20.f, 1.f);
+		const bool_t bVector = Execution.Vectors.size() == 1u &&
+			Execution.Vectors[0u].strName == "vector.0" &&
+			Execution.Vectors[0u].iPackedIndex == 0u &&
+			Execution.Vectors[0u].vValue.x == vExpectedEdge.x &&
+			Execution.Vectors[0u].vValue.y == vExpectedEdge.y &&
+			Execution.Vectors[0u].vValue.z == vExpectedEdge.z &&
+			Execution.Vectors[0u].vValue.w == vExpectedEdge.w;
+		if (!bCarrier || !bMaterial || !bPacketIdentity || !bPacketMasks ||
+			!bScalars || !bVector)
+		{
+			strOutError =
+				"Artist D BLACK_TIGER_STROKE exact typed contract changed: " +
+				Element.strElementId;
+			return false;
+		}
+		return true;
+	}
+
+	constexpr uint32_t LANCE_DRAGON_MASKED_OPCODE = 19u;
+
+	struct LANCE_DRAGON_MASKED_ROW final
+	{
+		std::string_view strElementId;
+		std::string_view strSourceNode;
+		std::string_view strMeshAssetId;
+		std::string_view strSourceMaterialPath;
+		std::string_view strDynamicModuleStableId;
+		bool_t bBody;
+	};
+
+	constexpr std::array<LANCE_DRAGON_MASKED_ROW, 12u>
+		LANCE_DRAGON_MASKED_ROWS = {{
+		{ "authored.source-particle.2b0f00d91a20ba785ba034ec",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip1.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_14",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", true },
+		{ "authored.source-particle.71ac47f40d13b3a7ca6ed561",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip1.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_15",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+		{ "authored.source-particle.aa3beb2d7ebbe4922f6df595",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip1.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_start.particlespriteemitter_3",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", true },
+		{ "authored.source-particle.237b5cd9d1fafb4b95b41212",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip1.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_start.particlespriteemitter_4",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+		{ "authored.source-particle.6542736b94e7b9cd8ed5f2fd",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip2.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_14.event_source-event-033",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", true },
+		{ "authored.source-particle.85571ac576a68cc3ff037cae",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip2.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_15.event_source-event-033",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+		{ "authored.source-particle.92af24faaaeb30c6ac77d37c",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip3.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_14.event_source-event-048",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", true },
+		{ "authored.source-particle.80d7156c29e9bf140631ad2e",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip3.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_loop.particlespriteemitter_15.event_source-event-048",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+		{ "authored.source-particle.538fe0779d0718d30b68ef11",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip4.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_end.particlespriteemitter_0",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_FS_AV_08:export:509@ref:5", true },
+		{ "authored.source-particle.50385d998091ed0e55a047f8",
+			"authored-source-particle:effect.lancemaster.skill.34630.clip4.unified|source:effect.lance_master.skill.34630.imported|element:fx_pc_flm_09.par_s_flm_superlance_wp_end.particlespriteemitter_1",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+		{ "authored.source-particle.0a019ebaff2bb55941d23ab8",
+			"authored-source-particle:effect.lancemaster.skill.34650.clip1.unified|source:effect.lance_master.skill.34650.imported|element:fx_pc_flm_08.par_t_flm_dragoncleave_01_wpcast_01_s.particlespriteemitter_14",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_01_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", true },
+		{ "authored.source-particle.65b74589de96c3f44e625f24",
+			"authored-source-particle:effect.lancemaster.skill.34650.clip1.unified|source:effect.lance_master.skill.34650.imported|element:fx_pc_flm_08.par_t_flm_dragoncleave_01_wpcast_01_s.particlespriteemitter_15",
+			"Effect/LanceMaster/Meshes/fm_x_flm_gdr_01_dragon.wmodel",
+			"fx_m_mi_t_00.fx_mi.fx_t_me_master_01_ph_02_msk",
+			"FX_PC_DDK_03:export:4292@ref:5", false },
+	}};
+
+	constexpr std::array<std::string_view, 25u> LANCE_DRAGON_SCALAR_NAMES = {{
+		"02.n.uvscale.x", "03.n.uvscale.y", "05.n.panning.x",
+		"06.n.panning.y", "11.normalmap.str", "02.map_a_uvscale_r",
+		"03.map_a_uvscale_g", "04.map_a_panning_x", "05.map_a_panning_y",
+		"36.str", "37.power", "03.emap_uv.x.scale", "04.emap_uv.y.scale",
+		"15.emissiion_power", "02.uvscale.x", "03.uvscale.y",
+		"91.desaturation", "92.emissiion_power", "05.specmap_uvscale.x",
+		"06.specmap_uvscale.y", "02.specmap_str", "07.desaturation",
+		"08.specmap_power", "05.power", "06.str",
+	}};
+
+	constexpr std::array<f32_t, 25u> LANCE_DRAGON_SCALAR_VALUES = {{
+		1.f, 1.f, 0.f, 0.f, 1.5f, 10.f, 10.f, 0.f, -0.125f, 10.f,
+		1.f, 1.f, 1.f, 0.1f, 1.f, 1.f, 0.f, 1.f, 1.f, 1.f, 0.25f,
+		0.f, 1.2f, 2.f, 1.f,
+	}};
+
+	const LANCE_DRAGON_MASKED_ROW* Find_LanceDragonMaskedRow(
+		const std::string_view strElementId)
+	{
+		const auto Iterator = std::ranges::find_if(
+			LANCE_DRAGON_MASKED_ROWS,
+			[strElementId](const LANCE_DRAGON_MASKED_ROW& Row)
+			{
+				return Row.strElementId == strElementId;
+			});
+		return Iterator == LANCE_DRAGON_MASKED_ROWS.end() ? nullptr : &*Iterator;
+	}
+
+	bool_t Has_LanceDragonDynamicModule(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		const std::string_view strExpectedStableId)
+	{
+		size_t iMatchCount = 0u;
+		for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (Module.strClassName != "particlemoduleparameterdynamic")
+				continue;
+			++iMatchCount;
+			if (Module.strStableId != strExpectedStableId ||
+				Module.Distributions.size() != 4u)
+			{
+				return false;
+			}
+			for (size_t i = 0u; i < Module.Distributions.size(); ++i)
+			{
+				const Client::EFFECT_DISTRIBUTION_DESC& Distribution =
+					Module.Distributions[i];
+				if (Distribution.strPropertyPath !=
+						"dynamicparams[" + std::to_string(i) + "].paramvalue" ||
+					Distribution.LookupTable.size() != 4u ||
+					!std::ranges::all_of(Distribution.LookupTable,
+						[](const f32_t fValue) { return fValue == 1.f; }))
+				{
+					return false;
+				}
+			}
+		}
+		return iMatchCount == 1u;
+	}
+
+	bool_t Is_LanceDragonLane(
+		const Client::EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane,
+		const uint32_t iIndex,
+		const std::string_view strRole,
+		const std::string_view strAssetId,
+		const std::string_view strChannel)
+	{
+		return Lane.strLaneId == "lane." + std::to_string(iIndex) &&
+			Lane.strRole == strRole && Lane.strAssetId == strAssetId &&
+			Lane.iTextureRegister == iIndex &&
+			Lane.iSamplerRegister == 5u + iIndex &&
+			Lane.strSourceChannel == strChannel &&
+			Lane.eColorSpace == Client::EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+			Is_ArtistDBlackTigerSampler(Lane.Sampler);
+	}
+
+	bool_t Validate_LanceDragonMaskedExecution(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError)
+	{
+		const auto NearlyEqual = [](const f32_t fLeft, const f32_t fRight)
+		{
+			return std::abs(fLeft - fRight) <= 0.0001f;
+		};
+		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+			Element.Material.Execution;
+		const LANCE_DRAGON_MASKED_ROW* pRow =
+			Find_LanceDragonMaskedRow(Element.strElementId);
+		if (nullptr == pRow)
+		{
+			if (Execution.bEnabled &&
+				Execution.eBackend ==
+					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Execution.iOpcode == LANCE_DRAGON_MASKED_OPCODE)
+			{
+				strOutError =
+					"Lance dragon opcode escaped its exact occurrence allowlist: " +
+					Element.strElementId;
+				return false;
+			}
+			return true;
+		}
+
+		constexpr std::string_view PARENT_MATERIAL =
+			"fx_m_mi_00.fx_m.fx_d_me_master_01_ph_msk";
+		constexpr std::string_view PROFILE_ID =
+			"ue3.material.fx.m.mi.00.fx.m.fx.d.me.master.01.ph.msk.8230663740c0";
+		const std::string_view strNormal = pRow->bBody ?
+			"Effect/LanceMaster/Textures/sk_flm_gdr_01_n.dds" :
+			"Effect/LanceMaster/Textures/sk_flm_gdr_02_n.dds";
+		constexpr std::string_view strAlpha =
+			"Effect/LanceMaster/Textures/fx_d_noise_043.dds";
+		const std::string_view strEmission = pRow->bBody ?
+			"Effect/LanceMaster/Textures/sk_flm_gdr_01_e.dds" :
+			"Effect/LanceMaster/Textures/sk_flm_gdr_02_e.dds";
+		const std::string_view strDiffuse = pRow->bBody ?
+			"Effect/LanceMaster/Textures/sk_flm_gdr_01_d.dds" :
+			"Effect/LanceMaster/Textures/sk_flm_gdr_02_d.dds";
+		const std::string_view strSpecular = pRow->bBody ?
+			"Effect/LanceMaster/Textures/fx_d_atypical_010.dds" :
+			"Effect/LanceMaster/Textures/sk_flm_gdr_02_s.dds";
+
+		const bool_t bCarrier = Element.bVisible &&
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.strSourceNode == pRow->strSourceNode &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "mesh" &&
+			Element.ResourceBindings.size() == 6u &&
+			Element.ResourceBindings[0u].strSlotId == "meshModel" &&
+			Element.ResourceBindings[0u].strAssetId == pRow->strMeshAssetId &&
+			Element.ResourceBindings[1u].strSlotId == "base" &&
+			Element.ResourceBindings[1u].strAssetId == strDiffuse &&
+			Element.ResourceBindings[2u].strSlotId == "dissolve" &&
+			Element.ResourceBindings[2u].strAssetId == strAlpha &&
+			Element.ResourceBindings[3u].strSlotId == "noise" &&
+			Element.ResourceBindings[3u].strAssetId == strNormal &&
+			Element.ResourceBindings[4u].strSlotId == "mask" &&
+			Element.ResourceBindings[4u].strAssetId == strSpecular &&
+			Element.ResourceBindings[5u].strSlotId == "emissive" &&
+			Element.ResourceBindings[5u].strAssetId == strEmission &&
+			Has_LanceDragonDynamicModule(
+				Element, pRow->strDynamicModuleStableId);
+		const bool_t bMaterial =
+			Element.Material.strTemplateId == "effect.standard" &&
+			Element.Material.strSourceMaterialPath ==
+				pRow->strSourceMaterialPath &&
+			Element.Material.eRenderProfile ==
+				Client::EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			Element.Material.SourceMaterial.strProfileId == PROFILE_ID &&
+			Element.Material.SourceMaterial.strParentMaterialPath ==
+				PARENT_MATERIAL;
+
+		const bool_t bPacket = Execution.bEnabled && !Execution.bFailClosed &&
+			!Execution.bAuthoringApproximate && Execution.iVersion == 1u &&
+			Execution.eBackend ==
+				Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			Execution.iOpcode == LANCE_DRAGON_MASKED_OPCODE &&
+			Execution.iPassIndex == 3u &&
+			Execution.strRasterizerState == "RS_Default" &&
+			Execution.strDepthStencilState == "DSS_ReadOnly" &&
+			Execution.strBlendState == "BS_EffectAlpha" &&
+			Execution.iStencilReference == 0u &&
+			Execution.iTextureLaneCount == 5u &&
+			Execution.iTextureMask == 0x1fu &&
+			Execution.TextureLanes.size() == 5u &&
+			Is_LanceDragonLane(Execution.TextureLanes[0u], 0u,
+				"normal_map", strNormal, "RG") &&
+			Is_LanceDragonLane(Execution.TextureLanes[1u], 1u,
+				"alpha_map", strAlpha, "R") &&
+			Is_LanceDragonLane(Execution.TextureLanes[2u], 2u,
+				"emission_map", strEmission, "RGB") &&
+			Is_LanceDragonLane(Execution.TextureLanes[3u], 3u,
+				"diffuse_map", strDiffuse, "RGB") &&
+			Is_LanceDragonLane(Execution.TextureLanes[4u], 4u,
+				"specular_map", strSpecular, "RGB");
+		const bool_t bMasks = Execution.iDynamicConsumedMask == 0x08u &&
+			Execution.iDynamicSuppressedMask == 0x07u &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0x0fu &&
+			Execution.iParticleColorSuppressedMask == 0u &&
+			Execution.iScalarCount == 25u && Execution.iVectorCount == 3u &&
+			Execution.iInputCount == 25u &&
+			Execution.InputConsumedMask ==
+				std::array<uint32_t, 2u>{ 0x01ffffffu, 0u } &&
+			Execution.InputSuppressedMask ==
+				std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0x07u, 0x07u, 0x07u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0x08u, 0x08u, 0x08u } &&
+			Execution.iStaticInputCount == 23u &&
+			Execution.iStaticSelectedMask == 0x0013b74fu &&
+			Execution.iStaticConsumedMask == 0x007fffffu &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 6u &&
+			Execution.iRenderConsumedMask == 0x2fu &&
+			Execution.iRenderSuppressedMask == 0x10u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+
+		bool_t bScalars = Execution.Scalars.size() ==
+			LANCE_DRAGON_SCALAR_VALUES.size();
+		for (size_t i = 0u; bScalars && i < Execution.Scalars.size(); ++i)
+		{
+			const Client::EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar =
+				Execution.Scalars[i];
+			bScalars = Scalar.strName == LANCE_DRAGON_SCALAR_NAMES[i] &&
+				Scalar.iPackedIndex == i &&
+				NearlyEqual(Scalar.fValue, LANCE_DRAGON_SCALAR_VALUES[i]);
+		}
+		bool_t bVectors = Execution.Vectors.size() == 3u;
+		if (bVectors)
+		{
+			const auto& Diffuse = Execution.Vectors[0u];
+			const auto& Specular = Execution.Vectors[1u];
+			const auto& Emission = Execution.Vectors[2u];
+			bVectors = Diffuse.strName == "93.emissiion_color" &&
+				Diffuse.iPackedIndex == 0u &&
+				NearlyEqual(Diffuse.vValue.x, 1.f) &&
+				NearlyEqual(Diffuse.vValue.y, 1.f) &&
+				NearlyEqual(Diffuse.vValue.z, 1.f) &&
+				NearlyEqual(Diffuse.vValue.w, 1.f) &&
+				Specular.strName == "09.specmap_color" &&
+				Specular.iPackedIndex == 1u &&
+				NearlyEqual(Specular.vValue.x, 5.f) &&
+				NearlyEqual(Specular.vValue.y, 2.5f) &&
+				NearlyEqual(Specular.vValue.z, 0.75f) &&
+				NearlyEqual(Specular.vValue.w, 1.f) &&
+				Emission.strName == "19.emissiion_color" &&
+				Emission.iPackedIndex == 2u &&
+				NearlyEqual(Emission.vValue.x, 10.f) &&
+				NearlyEqual(Emission.vValue.y, 0.f) &&
+				NearlyEqual(Emission.vValue.z, 0.f) &&
+				NearlyEqual(Emission.vValue.w, 1.f);
+		}
+
+		if (!bCarrier || !bMaterial || !bPacket || !bMasks ||
+			!bScalars || !bVectors)
+		{
+			const std::string_view strChangedSection = !bCarrier ? "carrier" :
+				!bMaterial ? "material" : !bPacket ? "packet" :
+				!bMasks ? "masks" : !bScalars ? "scalars" : "vectors";
+			strOutError =
+				"Lance dragon exact typed contract changed (" +
+				std::string(strChangedSection) + "): " +
+				Element.strElementId;
+			if (!bMaterial)
+			{
+				strOutError += " [template=" + Element.Material.strTemplateId +
+					", source=" + Element.Material.strSourceMaterialPath +
+					", renderProfile=" + std::to_string(static_cast<uint32_t>(
+						Element.Material.eRenderProfile)) +
+					", enabled=" + std::to_string(
+						Element.Material.SourceMaterial.bEnabled ? 1u : 0u) +
+					", profile=" + Element.Material.SourceMaterial.strProfileId +
+					", parent=" +
+					Element.Material.SourceMaterial.strParentMaterialPath + "]";
+			}
+			return false;
+		}
+		return true;
+	}
+
 	bool_t Is_SourceMaterialFallbackBlocked(
 		const Client::EFFECT_ELEMENT_DESC& Element,
 		const Client::EFFECT_GROUPED_TRANSLUCENT_CONSTANTS& GroupedConstants)
@@ -1324,6 +1960,157 @@ namespace
 		return true;
 	}
 
+	bool_t Same_StandardColorV1(
+		const Client::EFFECT_STANDARD_COLOR_V1_DESC& Left,
+		const Client::EFFECT_STANDARD_COLOR_V1_DESC& Right)
+	{
+		return Left.iPacketVersion == Right.iPacketVersion &&
+			Left.strBaseRadianceLaneId == Right.strBaseRadianceLaneId &&
+			Left.eBaseRadianceChannel == Right.eBaseRadianceChannel &&
+			Left.strCoverageLaneId == Right.strCoverageLaneId &&
+			Left.eCoverageChannel == Right.eCoverageChannel &&
+			Left.eEmissiveMode == Right.eEmissiveMode &&
+			Left.eLifetimeEnvelope == Right.eLifetimeEnvelope &&
+			Left.eDissolveMode == Right.eDissolveMode &&
+			Left.strDissolveLaneId == Right.strDissolveLaneId &&
+			Left.eDissolveChannel == Right.eDissolveChannel &&
+			Left.fDissolveSoftness == Right.fDissolveSoftness &&
+			Left.eMissingLanePolicy == Right.eMissingLanePolicy;
+	}
+
+	uint32_t StandardColorChannelMask(
+		const Client::EFFECT_STANDARD_COLOR_CHANNEL eChannel)
+	{
+		switch (eChannel)
+		{
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::R:
+			return 0x01u;
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::G:
+			return 0x02u;
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::B:
+			return 0x04u;
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::A:
+			return 0x08u;
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::RGB:
+			return 0x07u;
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::INVALID:
+		case Client::EFFECT_STANDARD_COLOR_CHANNEL::END:
+		default:
+			return 0u;
+		}
+	}
+
+	uint32_t StandardColorSourceChannelMask(const std::string_view strChannel)
+	{
+		uint32_t iMask = 0u;
+		for (const char_t Character : strChannel)
+		{
+			switch (Character)
+			{
+			case 'R': iMask |= 0x01u; break;
+			case 'G': iMask |= 0x02u; break;
+			case 'B': iMask |= 0x04u; break;
+			case 'A': iMask |= 0x08u; break;
+			default: return 0u;
+			}
+		}
+		return iMask;
+	}
+
+	uint32_t StandardColorSrvChannelMask(const DXGI_FORMAT eFormat)
+	{
+		switch (eFormat)
+		{
+		case DXGI_FORMAT_A8_UNORM:
+			return 0x08u;
+
+		case DXGI_FORMAT_R8_UNORM:
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_R8_UINT:
+		case DXGI_FORMAT_R8_SINT:
+		case DXGI_FORMAT_R16_UNORM:
+		case DXGI_FORMAT_R16_SNORM:
+		case DXGI_FORMAT_R16_UINT:
+		case DXGI_FORMAT_R16_SINT:
+		case DXGI_FORMAT_R16_FLOAT:
+		case DXGI_FORMAT_R32_UINT:
+		case DXGI_FORMAT_R32_SINT:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_BC4_UNORM:
+		case DXGI_FORMAT_BC4_SNORM:
+			return 0x01u;
+
+		case DXGI_FORMAT_R8G8_UNORM:
+		case DXGI_FORMAT_R8G8_SNORM:
+		case DXGI_FORMAT_R8G8_UINT:
+		case DXGI_FORMAT_R8G8_SINT:
+		case DXGI_FORMAT_R16G16_UNORM:
+		case DXGI_FORMAT_R16G16_SNORM:
+		case DXGI_FORMAT_R16G16_UINT:
+		case DXGI_FORMAT_R16G16_SINT:
+		case DXGI_FORMAT_R16G16_FLOAT:
+		case DXGI_FORMAT_R32G32_UINT:
+		case DXGI_FORMAT_R32G32_SINT:
+		case DXGI_FORMAT_R32G32_FLOAT:
+		case DXGI_FORMAT_BC5_UNORM:
+		case DXGI_FORMAT_BC5_SNORM:
+			return 0x03u;
+
+		case DXGI_FORMAT_R32G32B32_UINT:
+		case DXGI_FORMAT_R32G32B32_SINT:
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+		case DXGI_FORMAT_R11G11B10_FLOAT:
+		case DXGI_FORMAT_B5G6R5_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+		case DXGI_FORMAT_BC1_UNORM:
+		case DXGI_FORMAT_BC1_UNORM_SRGB:
+		case DXGI_FORMAT_BC6H_UF16:
+		case DXGI_FORMAT_BC6H_SF16:
+			return 0x07u;
+
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R10G10B10A2_UINT:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+		case DXGI_FORMAT_B5G5R5A1_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+		case DXGI_FORMAT_BC2_UNORM:
+		case DXGI_FORMAT_BC2_UNORM_SRGB:
+		case DXGI_FORMAT_BC3_UNORM:
+		case DXGI_FORMAT_BC3_UNORM_SRGB:
+		case DXGI_FORMAT_BC7_UNORM:
+		case DXGI_FORMAT_BC7_UNORM_SRGB:
+			return 0x0fu;
+
+		default:
+			return 0u;
+		}
+	}
+
+	bool_t Is_StandardColorSrgbFormat(const DXGI_FORMAT eFormat)
+	{
+		return eFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_B8G8R8X8_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_BC1_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_BC2_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_BC3_UNORM_SRGB ||
+			eFormat == DXGI_FORMAT_BC7_UNORM_SRGB;
+	}
+
 	bool_t Same_MaterialExecutionResourceSignature(
 		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Left,
 		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Right)
@@ -1341,6 +2128,8 @@ namespace
 			Left.iStencilReference == Right.iStencilReference &&
 			Left.iTextureLaneCount == Right.iTextureLaneCount &&
 			Left.iTextureMask == Right.iTextureMask &&
+			Same_StandardColorV1(
+				Left.StandardColorV1, Right.StandardColorV1) &&
 			Left.iDynamicConsumedMask == Right.iDynamicConsumedMask &&
 			Left.iDynamicSuppressedMask == Right.iDynamicSuppressedMask &&
 			Left.iParticleColorPolicy == Right.iParticleColorPolicy &&
@@ -1372,6 +2161,35 @@ namespace
 			Same_MaterialVectors(Left.Colors, Right.Colors);
 	}
 
+	bool_t Same_TypedDynamicParameterResourceSignature(
+		const Client::EFFECT_CASCADE_RECIPE_DESC& Left,
+		const Client::EFFECT_CASCADE_RECIPE_DESC& Right)
+	{
+		using DYNAMIC_STRING_LITERAL =
+			std::pair<std::string_view, std::string_view>;
+		const auto Collect = [](const Client::EFFECT_CASCADE_RECIPE_DESC& Recipe)
+		{
+			std::vector<DYNAMIC_STRING_LITERAL> Result;
+			for (const Client::EFFECT_SOURCE_MODULE_DESC& Module : Recipe.Modules)
+			{
+				if (Module.strClassName != "particlemoduleparameterdynamic")
+					continue;
+				Result.emplace_back("#module", "");
+				for (const Client::EFFECT_SOURCE_LITERAL_DESC& Literal :
+					Module.Literals)
+				{
+					if (Literal.eKind !=
+						Client::EFFECT_SOURCE_LITERAL_KIND::STRING)
+						continue;
+					Result.emplace_back(
+						Literal.strPropertyPath, Literal.strString);
+				}
+			}
+			return Result;
+		};
+		return Collect(Left) == Collect(Right);
+	}
+
 	bool_t Resource_SignatureMatches(
 		const Client::EFFECT_DOCUMENT_DESC& Left,
 		const Client::EFFECT_DOCUMENT_DESC& Right)
@@ -1401,12 +2219,19 @@ namespace
 		{
 			const Client::EFFECT_ELEMENT_DESC& A = Left.Elements[i];
 			const Client::EFFECT_ELEMENT_DESC& B = Right.Elements[i];
-			if (A.strElementId != B.strElementId || A.eKind != B.eKind ||
+			if (A.strElementId != B.strElementId ||
+				A.strSourceNode != B.strSourceNode || A.eKind != B.eKind ||
 				A.Renderer.eType != B.Renderer.eType ||
 				A.Renderer.eSourceSpace != B.Renderer.eSourceSpace ||
+				A.SourceRecipe.bEnabled != B.SourceRecipe.bEnabled ||
+				A.SourceRecipe.strRendererShape !=
+					B.SourceRecipe.strRendererShape ||
+				!Same_TypedDynamicParameterResourceSignature(
+					A.SourceRecipe, B.SourceRecipe) ||
 				A.Material.strTemplateId != B.Material.strTemplateId ||
 				A.Material.strSourceMaterialPath !=
 					B.Material.strSourceMaterialPath ||
+				A.Material.eRenderProfile != B.Material.eRenderProfile ||
 				!Same_MaterialExecutionResourceSignature(
 					A.Material.Execution, B.Material.Execution) ||
 				!Client::Is_EffectSourceMaterialStagingSignatureEqual(
@@ -1756,7 +2581,13 @@ namespace
 			return 12u;
 		if (Source.strRuntimeShaderProfileId ==
 			Client::EFFECT_MISSILETRAIL_RUNTIME_PROFILE_ID)
-			return 13u;
+		{
+			return SourceMaterialIdentityMatches(Source,
+				"ue3.material.fx.m.mi.03.fx.m.fx.m.pa."
+				"missiletrail.01.tr.9641f8d91e6a",
+				"fx_m_mi_03.fx_m.fx_m_pa_missiletrail_01_tr") &&
+				Source.StaticSwitches.empty() ? 13u : UINT32_MAX;
+		}
 		if (Source.strRuntimeShaderProfileId ==
 			Client::EFFECT_WATERTRAIL_RUNTIME_PROFILE_ID)
 		{
@@ -1979,12 +2810,75 @@ namespace
 				Client::EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
 	}
 
+	bool_t Is_MissileTrailFourLaneCarrierContractSatisfied(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source =
+			Element.Material.SourceMaterial;
+		if (!Is_StrictParticleShapeCarrierContractSatisfied(Element, "mesh") ||
+			Element.Material.eRenderProfile !=
+				Client::EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ ||
+			Element.ResourceBindings.size() != 5u ||
+			!SourceMaterialIdentityMatches(Source,
+				"ue3.material.fx.m.mi.03.fx.m.fx.m.pa."
+				"missiletrail.01.tr.9641f8d91e6a",
+				"fx_m_mi_03.fx_m.fx_m_pa_missiletrail_01_tr") ||
+			!Source.StaticSwitches.empty())
+		{
+			return false;
+		}
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pBase = Find_Binding(
+			Element, Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE);
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pMask = Find_Binding(
+			Element, Client::EFFECT_RESOURCE_SLOT::MASK_TEXTURE);
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pNoise = Find_Binding(
+			Element, Client::EFFECT_RESOURCE_SLOT::NOISE_TEXTURE);
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pDissolve = Find_Binding(
+			Element, Client::EFFECT_RESOURCE_SLOT::DISSOLVE_TEXTURE);
+		if (nullptr == pBase || pBase->strAssetId.empty() || nullptr == pMask ||
+			pMask->strAssetId.empty() || nullptr == pNoise ||
+			pNoise->strAssetId.empty() || nullptr == pDissolve ||
+			pDissolve->strAssetId.empty() || nullptr != Find_Binding(
+				Element, Client::EFFECT_RESOURCE_SLOT::EMISSIVE_TEXTURE))
+		{
+			return false;
+		}
+		/* Older sealed programs can lack named texture provenance. When names
+		   are present, bind every executable lane back to the same typed
+		   resource and require the one unsampled dependency receipt. Duplicate
+		   aliases must not be admitted by a first-match lookup. */
+		if (Source.Textures.empty())
+			return true;
+		static constexpr std::array<std::string_view, 3u> CONSUMED_NAMES = {{
+			"alpha_tex", "uv_noise_tex", "uv_dissolve_tex"
+		}};
+		const size_t iDependencyCount = std::ranges::count_if(
+			Source.Textures,
+			[](const Client::EFFECT_NAMED_TEXTURE_DESC& Texture)
+			{
+				return Texture.strName == "umodel_dependency" &&
+					Texture.strAssetId.empty();
+			});
+		return Source.Textures.size() == 4u && iDependencyCount == 1u &&
+			Client::Has_EffectUniqueNamedTextureContract(
+				Source, CONSUMED_NAMES) &&
+			NamedTextureMatches(Source, "alpha_tex", pMask->strAssetId) &&
+			NamedTextureMatches(Source, "uv_noise_tex", pNoise->strAssetId) &&
+			NamedTextureMatches(Source, "uv_dissolve_tex",
+				pDissolve->strAssetId);
+	}
+
 	uint32_t EffectiveSourceMaterialProfileIndex(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
 		const Client::EFFECT_SOURCE_MATERIAL_DESC& Source =
 			Element.Material.SourceMaterial;
 		const uint32_t iStoredProfile = SourceMaterialProfileIndex(Source);
+		if (13u == iStoredProfile)
+		{
+			return Is_MissileTrailFourLaneCarrierContractSatisfied(Element) ?
+				13u : UINT32_MAX;
+		}
 		if (14u == iStoredProfile)
 		{
 			return Is_StrictTwoSidedAlphaMeshCarrierContractSatisfied(Element) &&
@@ -2310,7 +3204,7 @@ namespace
 		const uint32_t iProfile,
 		const std::string_view strParameterName)
 	{
-		if (15u == iProfile)
+		if (13u == iProfile || 15u == iProfile)
 		{
 			if (strParameterName == "alpha_pan") return 15u;
 			if (strParameterName == "uv_noise_velue" ||
@@ -2408,7 +3302,7 @@ namespace
 		const uint32_t iProfile,
 		std::array<uint32_t, 4u>& OutSemantics)
 	{
-		if (15u != iProfile && 14u != iProfile && 11u != iProfile &&
+		if (13u != iProfile && 15u != iProfile && 14u != iProfile &&
 			16u != iProfile && 18u != iProfile && 19u != iProfile &&
 			20u != iProfile && 21u != iProfile && 23u != iProfile &&
 			24u != iProfile && 26u != iProfile && 34u != iProfile)
@@ -4281,7 +5175,8 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		Build_SliceConstants(SourceMaterial, Staged.vSourceScalars0,
 			Staged.vSourceScalars1, Staged.vSourceVector0);
 	}
-	else if (15u == Staged.iSourceMaterialProfile)
+	else if (13u == Staged.iSourceMaterialProfile ||
+		15u == Staged.iSourceMaterialProfile)
 	{
 		Build_MissileTrailConstants(
 			SourceMaterial, Staged.TypedTrailParameters);
@@ -4421,10 +5316,19 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 				SourceMaterial.DynamicParameterSemantics[iSemantic]);
 	}
 	std::array<uint32_t, 4u> TypedDynamicSemantics{};
-	if (Try_ResolveTypedDynamicParameterSemantics(
-		Element, Staged.iSourceMaterialProfile, TypedDynamicSemantics))
+	const bool_t bTypedDynamicSemanticsResolved =
+		Try_ResolveTypedDynamicParameterSemantics(
+			Element, Staged.iSourceMaterialProfile, TypedDynamicSemantics);
+	if (bTypedDynamicSemanticsResolved)
 	{
 		Staged.DynamicParameterSemantics = TypedDynamicSemantics;
+	}
+	else if (13u == Staged.iSourceMaterialProfile)
+	{
+		strOutError =
+			"MissileTrail source Material requires one exact typed dynamic "
+			"parameter module: " + Element.strElementId;
+		return E_FAIL;
 	}
 	const EFFECT_RESOURCE_BINDING_DESC* pModelBinding =
 		Find_Binding(Element, EFFECT_RESOURCE_SLOT::MESH_MODEL);
@@ -5045,6 +5949,10 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 	PREWARM_ASSET_CACHE* pSharedAssets) const
 {
 	const EFFECT_MATERIAL_EXECUTION_DESC& Execution = Element.Material.Execution;
+	if (!Validate_LanceDragonMaskedExecution(Element, strOutError))
+		return false;
+	if (!Validate_ArtistDBlackTigerStrokeExecution(Element, strOutError))
+		return false;
 	if (!Execution.bEnabled)
 		return true;
 	if (Execution.iVersion != 1u ||
@@ -5062,9 +5970,321 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 		(Execution.eBackend ==
 			EFFECT_MATERIAL_EXECUTION_BACKEND::ARTIST_VISUAL_V4 &&
 		 Element.eKind != EFFECT_ELEMENT_KIND::MESH &&
-		 Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE))
+		 Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE) ||
+		(Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 &&
+		 ((Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
+		   Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END) ||
+		  (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
+		   Element.eKind != EFFECT_ELEMENT_KIND::DECAL &&
+		   Element.eKind != EFFECT_ELEMENT_KIND::TRAIL))))
 	{
 		strOutError = "Authored material backend has no matching renderer carrier: " +
+			Element.strElementId;
+		return false;
+	}
+	if (Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+		Execution.iOpcode == 17u)
+	{
+		static constexpr std::array<std::string_view, 2u> ELEMENT_IDS = {{
+			"authored.source-particle.1ae3416ac205fee634b746a9",
+			"authored.source-particle.ed33fb10661afb8854e76957"
+		}};
+		static constexpr std::array<std::string_view, 2u> SOURCE_NODES = {{
+			"authored-source-particle:effect.dimensionmaster.skill.2050230."
+				"unified|source:effect.dimensionmaster.skill.2050230.imported|"
+				"element:fx_pc_swp_03.par_s_swp_chrono_atk_01."
+				"particlespriteemitter_24",
+			"authored-source-particle:effect.dimensionmaster.skill.2050230."
+				"unified|source:effect.dimensionmaster.skill.2050230.imported|"
+				"element:fx_pc_swp_03.par_s_swp_chrono_rewind_02."
+				"particlespriteemitter_37"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_IDS = {{
+			"lane.0", "lane.1", "lane.2", "lane.3"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_ROLES = {{
+			"transition_texture", "emissive_tex",
+			"uv_noise_01_tex", "uv_noise_02_tex"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_ASSETS = {{
+			"Effect/DimensionMaster/Textures/FX_TEX_02/"
+				"fx_d_cloud_035.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_HIGH_03/"
+				"fx_o_glass_01.dds",
+			"Effect/DimensionMaster/Textures/FX_TEX_00/"
+				"fx_bg_softriver_02_n.dds",
+			"Effect/Warlord/Textures/FX_TEX_00/"
+				"fx_bg_softriver_01_n.dds"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_CHANNELS = {{
+			"RGB", "RGB", "RG", "RG"
+		}};
+		static constexpr std::array<std::string_view, 22u> SCALAR_NAMES = {{
+			"transition_thickness", "transition_direction", "transition_tiling",
+			"transition_panning_y", "transition_panning_x",
+			"emissive_line_intensity", "transition_line_thickness",
+			"uv_noise_01_tiling", "uv_noise_01_panning_y",
+			"uv_noise_01_panning_x", "uv_noise_01_intensity",
+			"uv_noise_02_tiling", "uv_noise_02_panning_y",
+			"uv_noise_02_panning_x", "uv_noise_02_intensity",
+			"emissive_intensity", "emissive_desaturation",
+			"emissive_uv_scale_x", "emissive_uv_scale_y", "fresnel_power",
+			"distortion_intensity", "total_scale"
+		}};
+		static constexpr std::array<f32_t, 22u> SCALAR_VALUES = {{
+			0.3f, 0.1f, 4.f, 0.2f, 0.02f, 2.f, 2.f, 0.5f,
+			0.1f, 0.2f, 0.f, 0.7f, 0.07f, 0.15f, 0.15f, 1.f,
+			0.f, 2.f, 2.f, 1.f, 1.f, 1.f
+		}};
+		const auto NearlyEqual = [](const f32_t Left, const f32_t Right)
+		{
+			return std::abs(Left - Right) <= 1.0e-6f *
+				(std::max)({ 1.f, std::abs(Left), std::abs(Right) });
+		};
+		const bool_t bFirstIdentity =
+			Element.strElementId == ELEMENT_IDS[0] &&
+			Element.strSourceNode == SOURCE_NODES[0];
+		const bool_t bSecondIdentity =
+			Element.strElementId == ELEMENT_IDS[1] &&
+			Element.strSourceNode == SOURCE_NODES[1];
+		bool_t bFluid01ContractValid =
+			(bFirstIdentity || bSecondIdentity) &&
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "sprite" &&
+			Element.Material.strSourceMaterialPath ==
+				"fx_m_mi_w_00.mi.fx_w_pa_fd_01_3_tr" &&
+			Element.ResourceBindings.size() == 2u &&
+			Element.ResourceBindings[0].strSlotId == "base" &&
+			Element.ResourceBindings[0].strAssetId == LANE_ASSETS[0] &&
+			Element.ResourceBindings[1].strSlotId == "emissive" &&
+			Element.ResourceBindings[1].strAssetId == LANE_ASSETS[1] &&
+			Execution.iTextureLaneCount == 4u && Execution.iTextureMask == 0xfu &&
+			Execution.TextureLanes.size() == LANE_IDS.size() &&
+			Execution.iDynamicConsumedMask == 0x7u &&
+			Execution.iDynamicSuppressedMask == 0x8u &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0xfu &&
+			Execution.iParticleColorSuppressedMask == 0u &&
+			Execution.iScalarCount == SCALAR_NAMES.size() &&
+			Execution.Scalars.size() == SCALAR_NAMES.size() &&
+			Execution.iVectorCount == 0u && Execution.Vectors.empty() &&
+			Execution.iInputCount == 22u &&
+			Execution.InputConsumedMask == std::array<uint32_t, 2u>{
+				0x003fffffu, 0u } &&
+			Execution.InputSuppressedMask == std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0u, 0u, 0u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0u, 0u, 0u } &&
+			Execution.iStaticInputCount == 0u &&
+			Execution.iStaticSelectedMask == 0u &&
+			Execution.iStaticConsumedMask == 0u &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 0u &&
+			Execution.iRenderConsumedMask == 0u &&
+			Execution.iRenderSuppressedMask == 0u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+		for (size_t i = 0u; bFluid01ContractValid && i < LANE_IDS.size(); ++i)
+		{
+			const EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane =
+				Execution.TextureLanes[i];
+			bFluid01ContractValid =
+				Lane.strLaneId == LANE_IDS[i] && Lane.strRole == LANE_ROLES[i] &&
+				Lane.strAssetId == LANE_ASSETS[i] &&
+				Lane.iTextureRegister == i && Lane.iSamplerRegister == 5u + i &&
+				Lane.strSourceChannel == LANE_CHANNELS[i] &&
+				Lane.eColorSpace == EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+				Lane.Sampler.eFilter == EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR &&
+				Lane.Sampler.eAddressU ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.eAddressV ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.eAddressW ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.fMipLodBias == 0.f &&
+				Lane.Sampler.iMaxAnisotropy == 1u &&
+				Lane.Sampler.eComparison ==
+					EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER &&
+				Lane.Sampler.vBorderColor.x == 0.f &&
+				Lane.Sampler.vBorderColor.y == 0.f &&
+				Lane.Sampler.vBorderColor.z == 0.f &&
+				Lane.Sampler.vBorderColor.w == 0.f &&
+				Lane.Sampler.fMinLod == 0.f &&
+				Lane.Sampler.fMaxLod == (std::numeric_limits<f32_t>::max)();
+		}
+		for (size_t i = 0u;
+			bFluid01ContractValid && i < SCALAR_NAMES.size(); ++i)
+		{
+			const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar =
+				Execution.Scalars[i];
+			bFluid01ContractValid = Scalar.strName == SCALAR_NAMES[i] &&
+				Scalar.iPackedIndex == i &&
+				NearlyEqual(Scalar.fValue, SCALAR_VALUES[i]);
+		}
+		if (!bFluid01ContractValid)
+		{
+			strOutError = "Fluid01 W-FD-01-3 opcode 17 packet is not the admitted "
+				"parent/child/carrier/role tuple: " + Element.strElementId;
+			return false;
+		}
+	}
+	if (Execution.eBackend ==
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+		Execution.iOpcode == 20u)
+	{
+		static constexpr std::array<std::string_view, 4u> LANE_ROLES = {{
+			"distortion_normal", "surface_normal", "alpha_aura",
+			"reflection_fluid"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_ASSETS = {{
+			"Effect/Artist/Textures/fx_d_normal_085.dds",
+			"Effect/Artist/Textures/fx_d_normal_085.dds",
+			"Effect/Artist/Textures/fx_k_auraline_14_ycl.dds",
+			"Effect/Artist/Textures/fx_a_fluid_003.dds"
+		}};
+		static constexpr std::array<std::string_view, 4u> LANE_CHANNELS = {{
+			"RG", "RG", "RGB", "RGB"
+		}};
+		static constexpr std::array<EFFECT_TEXTURE_COLOR_SPACE, 4u>
+			LANE_COLOR_SPACES = {{
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				EFFECT_TEXTURE_COLOR_SPACE::LINEAR,
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB,
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB
+			}};
+		static constexpr std::array<std::string_view, 12u> SCALAR_NAMES = {{
+			"normal_strength", "alpha_strength", "reflection_uv_scale",
+			"distortion_strength", "normal_uv_scale_x", "normal_uv_scale_y",
+			"alpha_uv_scale_x", "alpha_uv_scale_y", "normal_pan_x",
+			"normal_pan_y", "alpha_pan_x", "alpha_pan_y"
+		}};
+		static constexpr std::array<f32_t, 12u> SCALAR_VALUES = {{
+			0.5f, 2.f, 3.f, 50.f, 1.f, 1.f, 1.f, 1.f,
+			0.f, 0.f, 0.f, 0.f
+		}};
+		const auto NearlyEqual = [](const f32_t Left, const f32_t Right)
+		{
+			return std::abs(Left - Right) <= 1.0e-6f *
+				(std::max)({ 1.f, std::abs(Left), std::abs(Right) });
+		};
+		bool_t bRibbonLiquidContractValid =
+			Element.eKind == EFFECT_ELEMENT_KIND::TRAIL &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "ribbon" &&
+			Element.Material.strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			Element.Material.strSourceMaterialPath ==
+				"fx_m_mi_d_00.fx_mi.fx_d_pa_ribbonliquid_01_101_tr" &&
+			Element.ResourceBindings.size() == 3u &&
+			Element.ResourceBindings[0].strSlotId == "base" &&
+			Element.ResourceBindings[0].strAssetId == LANE_ASSETS[0] &&
+			Element.ResourceBindings[1].strSlotId == "noise" &&
+			Element.ResourceBindings[1].strAssetId == LANE_ASSETS[3] &&
+			Element.ResourceBindings[2].strSlotId == "emissive" &&
+			Element.ResourceBindings[2].strAssetId == LANE_ASSETS[2] &&
+			Execution.iTextureLaneCount == 4u &&
+			Execution.iTextureMask == 0xfu &&
+			Execution.TextureLanes.size() == LANE_ROLES.size() &&
+			Execution.iDynamicConsumedMask == 0xfu &&
+			Execution.iDynamicSuppressedMask == 0u &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0x8u &&
+			Execution.iParticleColorSuppressedMask == 0x7u &&
+			Execution.iScalarCount == SCALAR_NAMES.size() &&
+			Execution.Scalars.size() == SCALAR_NAMES.size() &&
+			Execution.iVectorCount == 1u && Execution.Vectors.size() == 1u &&
+			Execution.iInputCount == 17u &&
+			Execution.InputConsumedMask ==
+				std::array<uint32_t, 2u>{ 0x1ff7fu, 0u } &&
+			Execution.InputSuppressedMask ==
+				std::array<uint32_t, 2u>{ 0x80u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0xfu, 0u, 0u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0u, 0u, 0u } &&
+			Execution.iStaticInputCount == 0u &&
+			Execution.iStaticSelectedMask == 0u &&
+			Execution.iStaticConsumedMask == 0u &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 6u &&
+			Execution.iRenderConsumedMask == 0x2fu &&
+			Execution.iRenderSuppressedMask == 0x10u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+		for (size_t i = 0u;
+			bRibbonLiquidContractValid && i < LANE_ROLES.size(); ++i)
+		{
+			const EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane =
+				Execution.TextureLanes[i];
+			bRibbonLiquidContractValid =
+				Lane.strLaneId == "lane." + std::to_string(i) &&
+				Lane.strRole == LANE_ROLES[i] && Lane.strAssetId == LANE_ASSETS[i] &&
+				Lane.iTextureRegister == i && Lane.iSamplerRegister == 5u + i &&
+				Lane.strSourceChannel == LANE_CHANNELS[i] &&
+				Lane.eColorSpace == LANE_COLOR_SPACES[i] &&
+				Lane.Sampler.eFilter == EFFECT_MATERIAL_TEXTURE_FILTER::LINEAR &&
+				Lane.Sampler.eAddressU ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.eAddressV == (i == 2u ?
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::CLAMP :
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP) &&
+				Lane.Sampler.eAddressW ==
+					EFFECT_MATERIAL_TEXTURE_ADDRESS_MODE::WRAP &&
+				Lane.Sampler.fMipLodBias == 0.f &&
+				Lane.Sampler.iMaxAnisotropy == 1u &&
+				Lane.Sampler.eComparison ==
+					EFFECT_MATERIAL_COMPARISON_FUNCTION::NEVER &&
+				Lane.Sampler.vBorderColor.x == 0.f &&
+				Lane.Sampler.vBorderColor.y == 0.f &&
+				Lane.Sampler.vBorderColor.z == 0.f &&
+				Lane.Sampler.vBorderColor.w == 0.f &&
+				Lane.Sampler.fMinLod == 0.f &&
+				Lane.Sampler.fMaxLod ==
+					(std::numeric_limits<f32_t>::max)();
+		}
+		for (size_t i = 0u;
+			bRibbonLiquidContractValid && i < SCALAR_NAMES.size(); ++i)
+		{
+			const EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar =
+				Execution.Scalars[i];
+			bRibbonLiquidContractValid =
+				Scalar.strName == SCALAR_NAMES[i] && Scalar.iPackedIndex == i &&
+				NearlyEqual(Scalar.fValue, SCALAR_VALUES[i]);
+		}
+		if (bRibbonLiquidContractValid)
+		{
+			const EFFECT_MATERIAL_VECTOR_PARAMETER_DESC& Reflect =
+				Execution.Vectors[0];
+			bRibbonLiquidContractValid =
+				Reflect.strName == "reflect_color_and_intensity" &&
+				Reflect.iPackedIndex == 0u && NearlyEqual(Reflect.vValue.x, 1.f) &&
+				NearlyEqual(Reflect.vValue.y, 1.f) &&
+				NearlyEqual(Reflect.vValue.z, 3.f) &&
+				NearlyEqual(Reflect.vValue.w, 50.f);
+		}
+		if (!bRibbonLiquidContractValid)
+		{
+			strOutError = "RibbonLiquid01 opcode 20 packet is not the admitted "
+				"parent-default/carrier/role tuple: " + Element.strElementId;
+			return false;
+		}
+	}
+	const bool_t bStandardColorV1 = Execution.eBackend ==
+		EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
+	if ((bStandardColorV1 &&
+		 (Element.Material.strTemplateId != EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID ||
+		  Execution.iOpcode != 1u ||
+		  Execution.StandardColorV1.iPacketVersion != 1u ||
+		  !Element.ResourceBindings.empty() ||
+		  Element.Material.SourceMaterial.bEnabled ||
+		  Element.Material.eRenderProfile ==
+			EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE)) ||
+		(!bStandardColorV1 &&
+		 Element.Material.strTemplateId == EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID))
+	{
+		strOutError = "StandardColorV1 admission identity is invalid: " +
 			Element.strElementId;
 		return false;
 	}
@@ -5133,6 +6353,13 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 	Resource.SourceTextures.fill(nullptr);
 	Resource.RuntimeMaterialV2Samplers.fill(nullptr);
 	Resource.MaterialExecutionLanes.fill(std::nullopt);
+	Resource.iStandardColorV1Enabled = 0u;
+	Resource.StandardColorV1Header = {};
+	Resource.StandardColorV1BaseCoverage = {};
+	Resource.StandardColorV1Dissolve = {};
+	Resource.StandardColorV1Policies = {};
+	Resource.vStandardColorV1Scalars = {};
+	Resource.StandardColorV1 = {};
 	Resource.iSourceTextureMask = 0u;
 	Resource.iSourceTextureClampUMask = 0u;
 	Resource.iSourceTextureClampVMask = 0u;
@@ -5144,8 +6371,9 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 			Lane.iSamplerRegister != 5u + Lane.iTextureRegister ||
 			Lane.strLaneId.empty() || Lane.strRole.empty() ||
 			Lane.strAssetId.empty() ||
-			(Execution.eBackend ==
-				EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL &&
+			((Execution.eBackend ==
+				EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL ||
+			  bStandardColorV1) &&
 			 Lane.strSourceChannel.empty()) ||
 			(!Lane.strSourceChannel.empty() &&
 			 (Lane.strSourceChannel.size() > 4u ||
@@ -5174,6 +6402,27 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 			strOutError = "Authored material DDS stage failed: " +
 				Lane.strAssetId;
 			return false;
+		}
+		if (bStandardColorV1)
+		{
+			D3D11_SHADER_RESOURCE_VIEW_DESC SrvDesc{};
+			Resource.SourceTextures[iLane]->GetDesc(&SrvDesc);
+			const uint32_t iDeclaredChannelMask =
+				StandardColorSourceChannelMask(Lane.strSourceChannel);
+			const uint32_t iAvailableChannelMask =
+				StandardColorSrvChannelMask(SrvDesc.Format);
+			const bool_t bExpectedSrgb = Lane.eColorSpace ==
+				EFFECT_TEXTURE_COLOR_SPACE::SRGB;
+			if (0u == iDeclaredChannelMask || 0u == iAvailableChannelMask ||
+				(iDeclaredChannelMask & iAvailableChannelMask) !=
+					iDeclaredChannelMask ||
+				Is_StandardColorSrgbFormat(SrvDesc.Format) != bExpectedSrgb)
+			{
+				strOutError =
+					"StandardColorV1 DDS channel/color-space contract changed: " +
+					Lane.strLaneId;
+				return false;
+			}
 		}
 		D3D11_SAMPLER_DESC D3dSampler{};
 		if (!Try_ToD3dSampler(Lane.Sampler, D3dSampler) ||
@@ -5337,6 +6586,101 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 		Resource.iRuntimeMaterialV2TextureLaneCount = 0u;
 		Resource.iRuntimeMaterialV2TextureMask = 0u;
 	}
+	else if (bStandardColorV1)
+	{
+		const EFFECT_STANDARD_COLOR_V1_DESC& Packet =
+			Execution.StandardColorV1;
+		const auto FindLane = [&Execution](const std::string_view strLaneId,
+			uint32_t& iOutLane)
+		{
+			for (uint32_t iLane = 0u;
+				iLane < Execution.TextureLanes.size(); ++iLane)
+			{
+				if (Execution.TextureLanes[iLane].strLaneId == strLaneId)
+				{
+					iOutLane =
+						Execution.TextureLanes[iLane].iTextureRegister;
+					return true;
+				}
+			}
+			return false;
+		};
+		uint32_t iBaseLane = UINT32_MAX;
+		uint32_t iCoverageLane = UINT32_MAX;
+		uint32_t iDissolveLane = UINT32_MAX;
+		const uint32_t iBaseChannel = static_cast<uint32_t>(
+			Packet.eBaseRadianceChannel);
+		const uint32_t iCoverageChannel = static_cast<uint32_t>(
+			Packet.eCoverageChannel);
+		const bool_t bHasDissolve = Packet.eDissolveMode ==
+			EFFECT_STANDARD_COLOR_DISSOLVE_MODE::LANE_THRESHOLD;
+		if (!Execution.ArtistParameters.empty() || !Execution.Colors.empty() ||
+			Execution.iScalarCount != 0u || Execution.iVectorCount != 0u ||
+			!Execution.Scalars.empty() || !Execution.Vectors.empty() ||
+			!FindLane(Packet.strBaseRadianceLaneId, iBaseLane) ||
+			!FindLane(Packet.strCoverageLaneId, iCoverageLane) ||
+			(bHasDissolve &&
+			 !FindLane(Packet.strDissolveLaneId, iDissolveLane)) ||
+			iBaseLane >= Execution.iTextureLaneCount ||
+			iCoverageLane >= Execution.iTextureLaneCount ||
+			(bHasDissolve && iDissolveLane >= Execution.iTextureLaneCount) ||
+			0u == StandardColorChannelMask(Packet.eBaseRadianceChannel) ||
+			0u == StandardColorChannelMask(Packet.eCoverageChannel) ||
+			(bHasDissolve &&
+			 0u == StandardColorChannelMask(Packet.eDissolveChannel)) ||
+			Packet.eLifetimeEnvelope !=
+				EFFECT_STANDARD_COLOR_LIFETIME_ENVELOPE::CARRIER_ALPHA ||
+			Packet.eMissingLanePolicy !=
+				EFFECT_STANDARD_COLOR_MISSING_LANE_POLICY::FAIL_CLOSED ||
+			Packet.eEmissiveMode >=
+				EFFECT_STANDARD_COLOR_EMISSIVE_MODE::END ||
+			Packet.eDissolveMode >= EFFECT_STANDARD_COLOR_DISSOLVE_MODE::END ||
+			!std::isfinite(Packet.fDissolveSoftness) ||
+			Packet.fDissolveSoftness < 0.f || Packet.fDissolveSoftness > 1.f)
+		{
+			strOutError = "StandardColorV1 typed packet cannot be staged: " +
+				Element.strElementId;
+			return false;
+		}
+		const uint32_t iRequiredMask = (1u << iBaseLane) |
+			(1u << iCoverageLane) |
+			(bHasDissolve ? (1u << iDissolveLane) : 0u);
+		if (iRequiredMask != Execution.iTextureMask ||
+			(!bHasDissolve &&
+			 (!Packet.strDissolveLaneId.empty() ||
+			  Packet.eDissolveChannel != EFFECT_STANDARD_COLOR_CHANNEL::INVALID ||
+			  Packet.fDissolveSoftness != 0.f)))
+		{
+			strOutError = "StandardColorV1 required-lane closure changed: " +
+				Element.strElementId;
+			return false;
+		}
+
+		Resource.iArtistVisualV4Opcode = 0u;
+		Resource.iArtistVisualV4TextureMask = 0u;
+		Resource.iRuntimeMaterialV2Enabled = 0u;
+		Resource.iRuntimeMaterialV2Opcode = 0u;
+		Resource.iRuntimeMaterialV2TextureLaneCount = 0u;
+		Resource.iRuntimeMaterialV2TextureMask = 0u;
+		Resource.iStandardColorV1Enabled = 1u;
+		Resource.StandardColorV1Header = {
+			Packet.iPacketVersion, Execution.iOpcode,
+			Execution.iTextureLaneCount, Execution.iTextureMask };
+		Resource.StandardColorV1BaseCoverage = {
+			iBaseLane, iBaseChannel, iCoverageLane, iCoverageChannel };
+		Resource.StandardColorV1Dissolve = {
+			static_cast<uint32_t>(Packet.eDissolveMode),
+			bHasDissolve ? iDissolveLane : UINT32_MAX,
+			static_cast<uint32_t>(Packet.eDissolveChannel),
+			static_cast<uint32_t>(Packet.eMissingLanePolicy) };
+		Resource.StandardColorV1Policies = {
+			static_cast<uint32_t>(Packet.eEmissiveMode),
+			static_cast<uint32_t>(Packet.eLifetimeEnvelope),
+			iRequiredMask, Resource.iSourceTextureMask };
+		Resource.vStandardColorV1Scalars = {
+			Packet.fDissolveSoftness, 0.f, 0.f, 0.f };
+		Resource.StandardColorV1 = Packet;
+	}
 	else
 	{
 		if (!Execution.ArtistParameters.empty() || !Execution.Colors.empty())
@@ -5364,25 +6708,30 @@ bool_t Client::CEffectDocumentRenderer::Build_MaterialExecutionSnapshot(
 	OutSnapshot = {};
 	const bool_t bRuntime = 0u != Resource.iRuntimeMaterialV2Enabled;
 	const bool_t bArtist = 0u != Resource.iArtistVisualV4Opcode;
-	if (!bRuntime && !bArtist)
+	const bool_t bStandard = 0u != Resource.iStandardColorV1Enabled;
+	const uint32_t iBackendCount = static_cast<uint32_t>(bRuntime) +
+		static_cast<uint32_t>(bArtist) + static_cast<uint32_t>(bStandard);
+	if (0u == iBackendCount)
 		return false;
-	if (bRuntime && bArtist)
+	if (1u != iBackendCount)
 	{
-		strOutError = "Prepared material selected two typed backends: " +
+		strOutError = "Prepared material selected multiple typed backends: " +
 			Element.strElementId;
 		return false;
 	}
 	EFFECT_MATERIAL_EXECUTION_DESC Staged;
 	Staged.bEnabled = true;
 	Staged.iVersion = 1u;
-	Staged.eBackend = bArtist ?
-		EFFECT_MATERIAL_EXECUTION_BACKEND::ARTIST_VISUAL_V4 :
+	Staged.eBackend = bStandard ?
+		EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1 :
+		(bArtist ? EFFECT_MATERIAL_EXECUTION_BACKEND::ARTIST_VISUAL_V4 :
 		(Element.eKind == EFFECT_ELEMENT_KIND::DECAL &&
 		 Resource.iRuntimeMaterialV2Opcode == 14u ?
 			EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL :
-			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2);
-	Staged.iOpcode = bArtist ? Resource.iArtistVisualV4Opcode :
-		Resource.iRuntimeMaterialV2Opcode;
+			EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2));
+	Staged.iOpcode = bStandard ? Resource.StandardColorV1Header[1u] :
+		(bArtist ? Resource.iArtistVisualV4Opcode :
+			Resource.iRuntimeMaterialV2Opcode);
 	Staged.iPassIndex = Select_Pass(Element.Material.eRenderProfile);
 	Staged.iStencilReference = 0u;
 	switch (Element.Material.eRenderProfile)
@@ -5418,10 +6767,15 @@ bool_t Client::CEffectDocumentRenderer::Build_MaterialExecutionSnapshot(
 			Element.strElementId;
 		return false;
 	}
-	Staged.iTextureMask = bArtist ? Resource.iArtistVisualV4TextureMask :
-		Resource.iRuntimeMaterialV2TextureMask;
+	Staged.iTextureMask = bStandard ? Resource.StandardColorV1Header[3u] :
+		(bArtist ? Resource.iArtistVisualV4TextureMask :
+			Resource.iRuntimeMaterialV2TextureMask);
 	Staged.iTextureLaneCount = std::popcount(Staged.iTextureMask);
-	if ((!bArtist && Staged.iTextureLaneCount !=
+	if ((bStandard &&
+		 (Resource.StandardColorV1Header[0u] != 1u ||
+		  Resource.StandardColorV1Header[1u] != 1u ||
+		  Resource.StandardColorV1Header[2u] != Staged.iTextureLaneCount)) ||
+		(!bArtist && !bStandard && Staged.iTextureLaneCount !=
 			Resource.iRuntimeMaterialV2TextureLaneCount) ||
 		Staged.iTextureLaneCount > Resource.MaterialExecutionLanes.size() ||
 		Staged.iTextureMask != (Staged.iTextureLaneCount == 0u ? 0u :
@@ -5441,6 +6795,60 @@ bool_t Client::CEffectDocumentRenderer::Build_MaterialExecutionSnapshot(
 			return false;
 		}
 		Staged.TextureLanes.push_back(*Resource.MaterialExecutionLanes[iLane]);
+	}
+	if (bStandard)
+	{
+		Staged.StandardColorV1 = Resource.StandardColorV1;
+		const EFFECT_STANDARD_COLOR_V1_DESC& Packet = Staged.StandardColorV1;
+		const bool_t bHasDissolve = Packet.eDissolveMode ==
+			EFFECT_STANDARD_COLOR_DISSOLVE_MODE::LANE_THRESHOLD;
+		const auto FindLaneRegister = [&Staged](
+			const std::string_view strLaneId, uint32_t& iOutRegister)
+		{
+			const auto Iterator = std::find_if(Staged.TextureLanes.begin(),
+				Staged.TextureLanes.end(), [strLaneId](const auto& Lane)
+				{ return Lane.strLaneId == strLaneId; });
+			if (Iterator == Staged.TextureLanes.end())
+				return false;
+			iOutRegister = Iterator->iTextureRegister;
+			return true;
+		};
+		uint32_t iExpectedBaseLane = UINT32_MAX;
+		uint32_t iExpectedCoverageLane = UINT32_MAX;
+		uint32_t iExpectedDissolveLane = UINT32_MAX;
+		if (!FindLaneRegister(
+				Packet.strBaseRadianceLaneId, iExpectedBaseLane) ||
+			!FindLaneRegister(Packet.strCoverageLaneId, iExpectedCoverageLane) ||
+			(bHasDissolve && !FindLaneRegister(
+				Packet.strDissolveLaneId, iExpectedDissolveLane)) ||
+			Resource.StandardColorV1BaseCoverage[0u] != iExpectedBaseLane ||
+			Resource.StandardColorV1BaseCoverage[1u] !=
+				static_cast<uint32_t>(Packet.eBaseRadianceChannel) ||
+			Resource.StandardColorV1BaseCoverage[2u] != iExpectedCoverageLane ||
+			Resource.StandardColorV1BaseCoverage[3u] !=
+				static_cast<uint32_t>(Packet.eCoverageChannel) ||
+			Resource.StandardColorV1Dissolve[0u] !=
+				static_cast<uint32_t>(Packet.eDissolveMode) ||
+			Resource.StandardColorV1Dissolve[1u] != iExpectedDissolveLane ||
+			Resource.StandardColorV1Dissolve[2u] !=
+				static_cast<uint32_t>(Packet.eDissolveChannel) ||
+			Resource.StandardColorV1Dissolve[3u] !=
+				static_cast<uint32_t>(Packet.eMissingLanePolicy) ||
+			Resource.StandardColorV1Policies[0u] !=
+				static_cast<uint32_t>(Packet.eEmissiveMode) ||
+			Resource.StandardColorV1Policies[1u] !=
+				static_cast<uint32_t>(Packet.eLifetimeEnvelope) ||
+			Resource.StandardColorV1Policies[2u] != Staged.iTextureMask ||
+			Resource.StandardColorV1Policies[3u] != Staged.iTextureMask ||
+			Resource.vStandardColorV1Scalars.x != Packet.fDissolveSoftness ||
+			Resource.vStandardColorV1Scalars.y != 0.f ||
+			Resource.vStandardColorV1Scalars.z != 0.f ||
+			Resource.vStandardColorV1Scalars.w != 0.f)
+		{
+			strOutError = "Prepared StandardColorV1 GPU packet changed: " +
+				Element.strElementId;
+			return false;
+		}
 	}
 	Staged.iDynamicConsumedMask = Resource.iRuntimeMaterialV2DynamicConsumedMask;
 	Staged.iDynamicSuppressedMask = Resource.iRuntimeMaterialV2DynamicSuppressedMask;
@@ -15063,6 +16471,32 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 			"Material bind failed: RuntimeMaterialV2 vector block.",
 			hFirstBindFailure);
 	}
+	const bool_t bStandardColorV1Shader = pShader == m_pParticleShader ||
+		pShader == m_pDecalShader || pShader == m_pTrailShader;
+	if (bStandardColorV1Shader &&
+		(BindFailed(pShader->Bind_RawValue("g_StandardColorV1Enabled",
+			&Resource.iStandardColorV1Enabled,
+			sizeof(Resource.iStandardColorV1Enabled))) ||
+		 BindFailed(pShader->Bind_RawValue("g_StandardColorV1Header",
+			Resource.StandardColorV1Header.data(),
+			sizeof(Resource.StandardColorV1Header))) ||
+		 BindFailed(pShader->Bind_RawValue("g_StandardColorV1BaseCoverage",
+			Resource.StandardColorV1BaseCoverage.data(),
+			sizeof(Resource.StandardColorV1BaseCoverage))) ||
+		 BindFailed(pShader->Bind_RawValue("g_StandardColorV1Dissolve",
+			Resource.StandardColorV1Dissolve.data(),
+			sizeof(Resource.StandardColorV1Dissolve))) ||
+		 BindFailed(pShader->Bind_RawValue("g_StandardColorV1Policies",
+			Resource.StandardColorV1Policies.data(),
+			sizeof(Resource.StandardColorV1Policies))) ||
+		 BindFailed(pShader->Bind_RawValue("g_StandardColorV1Scalars",
+			&Resource.vStandardColorV1Scalars,
+			sizeof(Resource.vStandardColorV1Scalars)))))
+	{
+		return Fail_RenderOperation(
+			"Material bind failed: StandardColorV1 packet.",
+			hFirstBindFailure);
+	}
 	const std::string_view strSourceSubUVMode = SourceLiteralString(
 		Element, "interpolationmethod");
 	const uint32_t iSourceSubUVColumns = static_cast<uint32_t>((std::max)(
@@ -15373,9 +16807,13 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		0u != Resource.iRuntimeMaterialV2Enabled &&
 		(3u == Resource.iRuntimeMaterialV2Opcode ||
 			8u == Resource.iRuntimeMaterialV2Opcode);
+	const bool_t bLanceDragonMaskedReplay =
+		0u != Resource.iRuntimeMaterialV2Enabled &&
+		LANCE_DRAGON_MASKED_OPCODE == Resource.iRuntimeMaterialV2Opcode;
 	const bool_t bFlow02RecoveredEquation =
 		7u == Resource.iArtistVisualV4Opcode;
-	if ((bMainSourceReplay || bFlow02RecoveredEquation) &&
+	if ((bMainSourceReplay || bLanceDragonMaskedReplay ||
+		bFlow02RecoveredEquation) &&
 		nullptr == pDynamicParameter)
 	{
 		// These source occurrences carry ParameterDynamic.  UE3's missing
@@ -15418,6 +16856,26 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		// Particle alpha is multiplicative in both recovered opacity programs.
 		// Dynamic X is a UV offset and Dynamic Z is a dissolve threshold, so
 		// neither lane is a valid CPU zero-pixel predicate.
+		if (Element.Color.vColorMultiply.w <= 0.f)
+			return S_FALSE;
+	}
+	if (bLanceDragonMaskedReplay)
+	{
+		if (!std::isfinite(DynamicParameter.x) ||
+			!std::isfinite(DynamicParameter.y) ||
+			!std::isfinite(DynamicParameter.z) ||
+			!std::isfinite(DynamicParameter.w) ||
+			!std::isfinite(Element.Color.vColorMultiply.x) ||
+			!std::isfinite(Element.Color.vColorMultiply.y) ||
+			!std::isfinite(Element.Color.vColorMultiply.z) ||
+			!std::isfinite(Element.Color.vColorMultiply.w))
+		{
+			return Fail_RenderOperation(
+				"Lance dragon typed mesh carrier is non-finite.",
+				E_INVALIDARG, true);
+		}
+		/* Dynamic W owns dissolve while ParticleColor alpha owns the lifetime
+		   envelope.  Only the latter has a texture-independent zero predicate. */
 		if (Element.Color.vColorMultiply.w <= 0.f)
 			return S_FALSE;
 	}
@@ -15692,17 +17150,20 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	Record_TestShaderPassApplication();
 #endif
 	PIXEL_SHADER_SAMPLER_SCOPE SamplerScope(m_pContext.Get());
-	if (0u != Resource.iRuntimeMaterialV2Enabled &&
-		0u != Resource.iRuntimeMaterialV2TextureLaneCount)
+	if ((0u != Resource.iRuntimeMaterialV2Enabled &&
+		 0u != Resource.iRuntimeMaterialV2TextureLaneCount) ||
+		0u != Resource.iStandardColorV1Enabled)
 	{
 		const size_t iSamplerCount = static_cast<size_t>(
-			Resource.iRuntimeMaterialV2TextureLaneCount);
+			0u != Resource.iStandardColorV1Enabled ?
+				Resource.StandardColorV1Header[2u] :
+				Resource.iRuntimeMaterialV2TextureLaneCount);
 		if (iSamplerCount > Resource.RuntimeMaterialV2Samplers.size() ||
 			!SamplerScope.Apply(std::span<const ComPtr<ID3D11SamplerState>>(
 				Resource.RuntimeMaterialV2Samplers.data(), iSamplerCount)))
 		{
 			return Fail_RenderOperation(
-				"Decal RuntimeMaterialV2 sampler apply failed.", E_FAIL,
+				"Decal typed material sampler apply failed.", E_FAIL,
 				SamplerScope.Was_LastFailureContractInvalid());
 		}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
@@ -16028,12 +17489,15 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	PIXEL_SHADER_SAMPLER_SCOPE SamplerScope(m_pContext.Get());
 	if ((0u != pResource->iRuntimeMaterialV2Enabled &&
 		0u != pResource->iRuntimeMaterialV2TextureLaneCount) ||
-		0u != pResource->iArtistVisualV4Opcode)
+		0u != pResource->iArtistVisualV4Opcode ||
+		0u != pResource->iStandardColorV1Enabled)
 	{
 		const size_t iSamplerCount = static_cast<size_t>(
-			0u != pResource->iRuntimeMaterialV2Enabled ?
+			0u != pResource->iStandardColorV1Enabled ?
+				pResource->StandardColorV1Header[2u] :
+			(0u != pResource->iRuntimeMaterialV2Enabled ?
 				pResource->iRuntimeMaterialV2TextureLaneCount :
-				std::popcount(pResource->iArtistVisualV4TextureMask));
+				std::popcount(pResource->iArtistVisualV4TextureMask)));
 		if (iSamplerCount > pResource->RuntimeMaterialV2Samplers.size() ||
 			!SamplerScope.Apply(std::span<const ComPtr<ID3D11SamplerState>>(
 				pResource->RuntimeMaterialV2Samplers.data(), iSamplerCount)))
@@ -16089,7 +17553,13 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			continue;
 		const bool_t bRuntimeMaterialV2Ribbon =
 			0u != pResource->iRuntimeMaterialV2Enabled &&
-			9u == pResource->iRuntimeMaterialV2Opcode;
+			(9u == pResource->iRuntimeMaterialV2Opcode ||
+			 20u == pResource->iRuntimeMaterialV2Opcode);
+		const bool_t bRibbonLiquid01ParentDefault =
+			bRuntimeMaterialV2Ribbon &&
+			20u == pResource->iRuntimeMaterialV2Opcode;
+		const bool_t bStandardColorV1 =
+			0u != pResource->iStandardColorV1Enabled;
 		const bool_t bTypedArtistRibbon =
 			bRuntimeMaterialV2Ribbon && !bBakedEdgeHistory;
 		const bool_t bFlowRibbon01 =
@@ -16113,12 +17583,16 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		const f32_t fTessellationStep =
 			Trail.pElement->Detail.Trail.fDistanceTessellationStepWorldUnits;
 		constexpr f32_t ARTIST_RIBBON_TILING_DISTANCE = 6.f;
+		constexpr f32_t RIBBON_LIQUID_TILING_DISTANCE = 3.f;
 		constexpr f32_t ARTIST_RIBBON_TESSELLATION_STEP = 0.05f;
 		constexpr uint32_t ARTIST_RIBBON_MAX_SUBDIVISIONS = 25u;
+		const f32_t fExpectedTypedTilingDistance =
+			bRibbonLiquid01ParentDefault ? RIBBON_LIQUID_TILING_DISTANCE :
+			ARTIST_RIBBON_TILING_DISTANCE;
 		if (bTypedArtistRibbon &&
 			(!std::isfinite(fTilingDistance) ||
 				!std::isfinite(fTessellationStep) ||
-				std::abs(fTilingDistance - ARTIST_RIBBON_TILING_DISTANCE) > 1e-6f ||
+				std::abs(fTilingDistance - fExpectedTypedTilingDistance) > 1e-6f ||
 				std::abs(fTessellationStep - ARTIST_RIBBON_TESSELLATION_STEP) > 1e-6f))
 		{
 			return Fail_RenderOperation(
@@ -16141,7 +17615,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 			Trail.Points.data(), Trail.Points.size());
 		if (bTypedSourceRibbon)
 		{
-			const auto ValidatePoint = [pResource, &Trail, bFlowRibbon01](
+			const auto ValidatePoint = [pResource, &Trail, bFlowRibbon01,
+				bRibbonLiquid01ParentDefault](
 				const EFFECT_EVALUATED_TRAIL_POINT& Point)
 			{
 				const uint32_t iColorMask =
@@ -16149,7 +17624,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				const uint32_t iDynamicMask =
 					Point.iDynamicParameterComponentMask & 0x0fu;
 				const bool_t bArtistCarrierContract =
-					Trail.pElement->SourceRecipe.bEnabled ?
+					Trail.pElement->SourceRecipe.bEnabled &&
+					!bRibbonLiquid01ParentDefault ?
 					(iColorMask == 0x08u && iDynamicMask == 0x0fu) :
 					((iColorMask &
 						pResource->iRuntimeMaterialV2ParticleColorConsumedMask) ==
@@ -16309,8 +17785,10 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				const float4_t Color = bRuntimeMaterialV2Ribbon ?
 					float4_t(1.f, 1.f, 1.f, Point.vSourceColor.w) :
 					float4_t(1.f, 1.f, 1.f, 1.f - Point.fNormalizedAge);
-				Vertices.push_back({ Pair.vFirstEdgeWorld, float2_t(U, 0.f), Color });
-				Vertices.push_back({ Pair.vSecondEdgeWorld, float2_t(U, 1.f), Color });
+				Vertices.push_back({ Pair.vFirstEdgeWorld, float2_t(U, 0.f),
+					Color, Point.vDynamicParameter });
+				Vertices.push_back({ Pair.vSecondEdgeWorld, float2_t(U, 1.f),
+					Color, Point.vDynamicParameter });
 			}
 		}
 		else for (size_t iPoint = 0u; iPoint < RenderPoints.size(); ++iPoint)
@@ -16323,7 +17801,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 				const uint32_t iDynamicMask =
 					Point.iDynamicParameterComponentMask & 0x0fu;
 				const bool_t bArtistCarrierContract =
-					Trail.pElement->SourceRecipe.bEnabled ?
+					Trail.pElement->SourceRecipe.bEnabled &&
+					!bRibbonLiquid01ParentDefault ?
 					(iColorMask == 0x08u && iDynamicMask == 0x0fu) :
 					((iColorMask &
 						pResource->iRuntimeMaterialV2ParticleColorConsumedMask) ==
@@ -16392,9 +17871,9 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 					float4_t(1.f, 1.f, 1.f, Point.vSourceColor.w) :
 					float4_t(1.f, 1.f, 1.f, 1.f - Age));
 			Vertices.push_back({ To_Float3(Position - HalfSide),
-				float2_t(U, 0.f), Color });
+				float2_t(U, 0.f), Color, Point.vDynamicParameter });
 			Vertices.push_back({ To_Float3(Position + HalfSide),
-				float2_t(U, 1.f), Color });
+				float2_t(U, 1.f), Color, Point.vDynamicParameter });
 		}
 		if (Vertices.size() < 4u)
 			continue;
@@ -16449,17 +17928,22 @@ HRESULT Client::CEffectDocumentRenderer::Render_Trails(
 		Record_TestShaderPassApplication();
 #endif
 		PIXEL_SHADER_SAMPLER_SCOPE SamplerScope(m_pContext.Get());
-		if (bTypedArtistRibbon)
+		if (bTypedArtistRibbon || bStandardColorV1)
 		{
 			const size_t iSamplerCount = static_cast<size_t>(
-				pResource->iRuntimeMaterialV2TextureLaneCount);
-			if (iSamplerCount != 2u ||
+				bStandardColorV1 ? pResource->StandardColorV1Header[2u] :
+					pResource->iRuntimeMaterialV2TextureLaneCount);
+			const size_t iExpectedRuntimeSamplerCount =
+				bRibbonLiquid01ParentDefault ? 4u : 2u;
+			if ((!bStandardColorV1 &&
+				 iSamplerCount != iExpectedRuntimeSamplerCount) ||
+				iSamplerCount == 0u ||
 				iSamplerCount > pResource->RuntimeMaterialV2Samplers.size() ||
 				!SamplerScope.Apply(std::span<const ComPtr<ID3D11SamplerState>>(
 					pResource->RuntimeMaterialV2Samplers.data(), iSamplerCount)))
 			{
 				return Fail_RenderOperation(
-					"Trail RuntimeMaterialV2 sampler apply failed.", E_FAIL,
+					"Trail typed material sampler apply failed.", E_FAIL,
 					SamplerScope.Was_LastFailureContractInvalid());
 			}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)

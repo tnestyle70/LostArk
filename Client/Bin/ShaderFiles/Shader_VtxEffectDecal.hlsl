@@ -1,5 +1,6 @@
 #include "Shader_EffectCommon.hlsli"
 #include "Shader_Artist31470RuntimeMaterial.hlsli"
+#include "Shader_EffectStandardColorV1.hlsli"
 #include "Shader_Artist31470Active022DecalMaterial.hlsli"
 #include "Shader_EffectLocalDecalAdapter.hlsli"
 
@@ -52,6 +53,12 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
     const float2 decalUV = float2(
         local.x / g_DecalSize.x + 0.5f,
         0.5f - local.z / g_DecalSize.y);
+    if (0u != g_StandardColorV1Enabled)
+    {
+        return Shade_EffectStandardColorV1(
+            decalUV * g_UVScale + g_UVOffset,
+            float4(1.f, 1.f, 1.f, 1.f));
+    }
     if (0u != g_RuntimeMaterialV2Enabled)
     {
         if (g_RuntimeMaterialV2Opcode ==

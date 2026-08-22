@@ -892,6 +892,7 @@ bool LostArk::Server::CGameplayCatalog::Load()
 	}
 
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillCombatTraitOwners;
+	std::unordered_set<LostArk::Shared::SKILL_ID> skillTargetOwners;
 	std::unordered_set<std::string> patternPolicyOwners;
 	for (std::uint32_t row = 0; row < rowCount; ++row)
 	{
@@ -993,6 +994,39 @@ bool LostArk::Server::CGameplayCatalog::Load()
 			owner->second.iStaggerDamage = staggerDamage;
 			owner->second.iPartDamage = partDamage;
 			owner->second.iCounterPower = counterPower;
+		}
+		else if (!fields.empty() && "SKILLTARGET" == fields[0])
+		{
+			LostArk::Shared::SKILL_ID ownerSkillId =
+				LostArk::Shared::INVALID_SKILL_ID;
+			float maximumRange = 0.f;
+			std::uint32_t requiresWalkable = 0u;
+			if (5u != fields.size() ||
+				!ParseNumber(fields[1], ownerSkillId) ||
+				"GROUND_POINT" != fields[2] ||
+				!ParseNumber(fields[3], maximumRange) ||
+				!ParseNumber(fields[4], requiresWalkable) ||
+				!std::isfinite(maximumRange) || maximumRange <= 0.f ||
+				1u != requiresWalkable)
+			{
+				m_strStatus = "Player skill target row is invalid";
+				return false;
+			}
+			const auto owner = m_Skills.find(ownerSkillId);
+			if (m_Skills.end() == owner ||
+				!skillTargetOwners.insert(ownerSkillId).second ||
+				LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE !=
+					owner->second.eSkillKind ||
+				maximumRange != owner->second.fMaximumRange)
+			{
+				m_strStatus =
+					"Player skill target has no owner, is duplicated, or conflicts";
+				return false;
+			}
+			owner->second.eTargetIntent =
+				LostArk::Shared::SKILL_TARGET_INTENT_KIND::GROUND_POINT;
+			owner->second.fTargetMaximumRange = maximumRange;
+			owner->second.requiresWalkableTarget = true;
 		}
 		else if (!fields.empty() && "SKILLSTAGE" == fields[0])
 		{

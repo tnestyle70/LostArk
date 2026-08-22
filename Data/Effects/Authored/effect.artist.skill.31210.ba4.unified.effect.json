@@ -107140,6 +107140,281 @@
         "enabled": false,
         "masterElementId": ""
       }
+    },
+    {
+      "id": "decal.artist.31210.ba4.symbol14.v1",
+      "displayName": "PROJECT_TUNED | R final symbol LocalDecal",
+      "groupId": "project.artist.31210.ba4.symbol",
+      "sourceNode": "project-authored:artist:31210:ba4:symbol14:v1",
+      "visible": true,
+      "kind": "decal",
+      "resources": [
+        {
+          "slotId": "base",
+          "assetId": "Effect/Artist/Textures/fx_o_symbol_14.dds"
+        }
+      ],
+      "material": {
+        "templateId": "effect.standard",
+        "sourceMaterialPath": "",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "sourceProfile": {
+          "enabled": false
+        }
+      },
+      "actionCueAttachment": {
+        "enabled": true,
+        "follow": false,
+        "sourceAnchorSlotId": "root",
+        "runtimeAnchorSlotId": "root",
+        "runtimeBoneName": "",
+        "snapshotRootSourceBasisYawDegrees": 0,
+        "socketLocalTransform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "transformInheritance": {
+        "enabled": false,
+        "masterElementId": ""
+      },
+      "detail": {
+        "transform": {
+          "position": [
+            0,
+            0.03,
+            0
+          ],
+          "rotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolutionDegreesPerSecond": [
+            0,
+            -720,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "velocityPerSecond": [
+            0,
+            0,
+            0
+          ]
+        },
+        "color": {
+          "offset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "multiply": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "clip": 0,
+          "emissiveIntensity": 1,
+          "distortionIntensity": 0,
+          "distortionOnBaseMaterial": false,
+          "radialTime": 0,
+          "radialIntensity": 0
+        },
+        "uv": {
+          "start": [
+            0,
+            0
+          ],
+          "speed": [
+            0,
+            0
+          ],
+          "wave": false,
+          "waveAmplitude": [
+            0,
+            0
+          ],
+          "waveFrequency": 1,
+          "sequence": false,
+          "loop": true,
+          "sequenceTerm": 0.1,
+          "tileColumns": 1,
+          "tileRows": 1,
+          "tileIndex": 0
+        },
+        "timing": {
+          "startDelaySeconds": 0.5333000000000014,
+          "lifeTimeSeconds": 0.8,
+          "afterImageSeconds": 0,
+          "dissolveStartNormalized": 1
+        },
+        "mesh": {
+          "useModelMaterial": false,
+          "sourceTypeDataRotationDegrees": [
+            0,
+            0,
+            0
+          ]
+        },
+        "sprite": {
+          "billboard": true,
+          "billboardRollDegrees": 0,
+          "billboardRollDegreesPerSecond": 0
+        },
+        "decal": {
+          "size": [
+            2.5,
+            1.55
+          ],
+          "depth": 0.25
+        },
+        "linearLerp": {
+          "position": false,
+          "endPosition": [
+            0,
+            0.03,
+            0
+          ],
+          "rotation": false,
+          "endRotationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "revolution": false,
+          "endRevolutionDegreesPerSecond": [
+            0,
+            -720,
+            0
+          ],
+          "scale": true,
+          "endScale": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "velocity": false,
+          "endVelocityPerSecond": [
+            0,
+            0,
+            0
+          ],
+          "colorOffset": false,
+          "endColorOffset": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "colorMultiply": true,
+          "endColorMultiply": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "emissiveIntensity": false,
+          "endEmissiveIntensity": 1
+        },
+        "particle": {
+          "maxParticles": 1,
+          "spawnRatePerSecond": 0,
+          "burstCount": 0,
+          "randomSeed": 31210,
+          "lifeTimeSeconds": [
+            0.8,
+            0.8
+          ],
+          "initialPositionMin": [
+            0,
+            0,
+            0
+          ],
+          "initialPositionMax": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMin": [
+            0,
+            0,
+            0
+          ],
+          "initialVelocityMax": [
+            0,
+            0,
+            0
+          ],
+          "acceleration": [
+            0,
+            0,
+            0
+          ],
+          "startSize": [
+            2.5,
+            1.55
+          ],
+          "endSize": [
+            0.025,
+            0.0155
+          ],
+          "localSpace": true,
+          "billboard": true
+        },
+        "trail": {
+          "maxPoints": 64,
+          "pointLifeTimeSeconds": 0.35,
+          "sampleIntervalSeconds": 0.0166667,
+          "minimumDistance": 0.01,
+          "startWidth": 0.2,
+          "endWidth": 0,
+          "tilingDistanceWorldUnits": 0,
+          "distanceTessellationStepWorldUnits": 0,
+          "faceCamera": true
+        },
+        "afterImage": {
+          "sampleIntervalSeconds": 0.05,
+          "maxCopies": 16,
+          "alphaExponent": 1
+        },
+        "light": {
+          "enabled": false
+        },
+        "screenPost": {
+          "enabled": false
+        }
+      },
+      "sourceRecipe": {
+        "enabled": false,
+        "rendererShape": "",
+        "emitterDelaySeconds": 0,
+        "emitterDurationSeconds": 0,
+        "emitterLoopCount": 1,
+        "bursts": [],
+        "modules": []
+      },
+      "sourcePresentation": {
+        "enabled": false
+      }
     }
   ]
 }

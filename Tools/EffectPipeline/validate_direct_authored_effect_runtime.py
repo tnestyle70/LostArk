@@ -10,6 +10,7 @@ the unchanged remainder to that validator.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 from pathlib import Path, PurePosixPath
@@ -30,6 +31,17 @@ DIRECT_ENTRY_KEYS = (
     "authoringFormatVersion",
     "authoredDocumentPath",
 )
+DIRECT_ENTRY_WITH_SCREEN_OVERLAY_KEYS = DIRECT_ENTRY_KEYS + (
+    "screenOverlayPresentation",
+)
+SCREEN_OVERLAY_BINDING_KEYS = (
+    "presentationId",
+    "byteCount",
+    "sha256",
+    "utf8Json",
+    "resources",
+)
+SCREEN_OVERLAY_RESOURCE_KEYS = ("assetId", "byteCount", "sha256")
 STABLE_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:[._-][a-z0-9]+)*$")
 
 
@@ -172,7 +184,11 @@ def _load_sealed_authored_document(
 def validate_direct_entry(
     entry: dict[str, Any], effect_id: str, runtime_catalog_path: Path
 ) -> None:
-    _require_exact_order(entry, DIRECT_ENTRY_KEYS, "direct authored runtime entry")
+    if tuple(entry.keys()) not in (
+        DIRECT_ENTRY_KEYS,
+        DIRECT_ENTRY_WITH_SCREEN_OVERLAY_KEYS,
+    ):
+        raise ContractError("direct authored runtime entry fields or order are invalid")
     if entry["payloadKind"] != DIRECT_PAYLOAD_KIND:
         raise ContractError("direct authored runtime payloadKind mismatch")
     if entry["effectAssetId"] != effect_id:
@@ -186,6 +202,92 @@ def validate_direct_entry(
         entry["authoredDocumentPath"],
         effect_id,
     )
+    binding = entry.get("screenOverlayPresentation")
+    if binding is not None:
+        validate_screen_overlay_binding(binding, effect_id)
+
+
+def validate_screen_overlay_binding(value: Any, effect_id: str) -> None:
+    _require_exact_order(
+        value, SCREEN_OVERLAY_BINDING_KEYS, "screen-overlay Product binding"
+    )
+    presentation_id = _require_stable_id(
+        value["presentationId"], "screen-overlay presentationId"
+    )
+    if presentation_id != f"{effect_id}.screen-overlay":
+        raise ContractError("screen-overlay presentation/effect identity mismatch")
+    byte_count = value["byteCount"]
+    sha256 = value["sha256"]
+    utf8_json = value["utf8Json"]
+    resources = value["resources"]
+    if (
+        type(byte_count) is not int
+        or byte_count < 1
+        or byte_count > 4 * 1024 * 1024
+        or not isinstance(sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", sha256) is None
+        or not isinstance(utf8_json, str)
+        or not isinstance(resources, list)
+        or not 1 <= len(resources) <= 64
+    ):
+        raise ContractError("screen-overlay Product binding identity is invalid")
+    payload = utf8_json.encode("utf-8")
+    if len(payload) != byte_count or hashlib.sha256(payload).hexdigest() != sha256:
+        raise ContractError("screen-overlay Product binding payload identity mismatch")
+
+    resource_ids: set[str] = set()
+    for resource in resources:
+        _require_exact_order(
+            resource, SCREEN_OVERLAY_RESOURCE_KEYS, "screen-overlay resource"
+        )
+        asset_id = resource["assetId"]
+        resource_bytes = resource["byteCount"]
+        resource_sha = resource["sha256"]
+        if (
+            not isinstance(asset_id, str)
+            or not asset_id.startswith("Effect/")
+            or not asset_id.endswith(".dds")
+            or "\\" in asset_id
+            or ":" in asset_id
+            or any(part in ("", ".", "..") for part in asset_id.split("/"))
+            or asset_id in resource_ids
+            or type(resource_bytes) is not int
+            or resource_bytes < 1
+            or not isinstance(resource_sha, str)
+            or re.fullmatch(r"[0-9a-f]{64}", resource_sha) is None
+        ):
+            raise ContractError("screen-overlay resource identity is invalid")
+        resource_ids.add(asset_id)
+
+    try:
+        embedded = json.loads(utf8_json, object_pairs_hook=_object_no_duplicates)
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ContractError(f"embedded screen-overlay JSON is invalid: {exc}") from exc
+    _require_exact_order(
+        embedded,
+        ("schema", "formatVersion", "provenance", "presentationId", "overlays"),
+        "embedded screen-overlay root",
+    )
+    overlays = embedded["overlays"]
+    if (
+        embedded["schema"] != "lostark.effect-screen-overlay"
+        or type(embedded["formatVersion"]) is not int
+        or embedded["formatVersion"] != 1
+        or embedded["provenance"] != "PROJECT_TUNED"
+        or embedded["presentationId"] != presentation_id
+        or not isinstance(overlays, list)
+        or not 1 <= len(overlays) <= 64
+    ):
+        raise ContractError("embedded screen-overlay header is invalid")
+    referenced_ids: set[str] = set()
+    for overlay in overlays:
+        if not isinstance(overlay, dict) or not isinstance(
+            overlay.get("textureAssetId"), str
+        ):
+            raise ContractError("embedded screen-overlay texture row is invalid")
+        referenced_ids.add(overlay["textureAssetId"])
+    if referenced_ids != resource_ids:
+        raise ContractError("embedded screen-overlay resource closure mismatch")
 
 
 def _load_derived_validator() -> Any:

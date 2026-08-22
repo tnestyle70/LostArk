@@ -10212,9 +10212,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1400,
+                        "sourceValue":  700,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1400,
+                        "resultValue":  700,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -10265,9 +10265,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1400,
+                        "sourceValue":  700,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1400,
+                        "resultValue":  700,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -10279,10 +10279,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1400,
+                        "sourceValue":  700,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1400,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  700,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10291,11 +10291,12 @@
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
-                                       "policyId":  "animation-reference-timing-v1"
+                                       "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  100,
-                        "transform":  "identity",
-                        "resultValue":  100
+                        "sourceValue":  50,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  50,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",
@@ -10306,9 +10307,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  1400,
+                        "sourceValue":  700,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  1400,
+                        "resultValue":  700,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -10320,9 +10321,9 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  100,
+                        "sourceValue":  50,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  100,
+                        "resultValue":  50,
                         "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
@@ -10592,11 +10593,12 @@
                         "basis":  "PROJECT_TUNED",
                         "source":  {
                                        "type":  "project-policy",
-                                       "policyId":  "animation-reference-hit-timing-v1"
+                                       "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  100,
-                        "transform":  "identity",
-                        "resultValue":  100
+                        "sourceValue":  50,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  50,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Balance/PlayerSkills.json",

@@ -51,6 +51,9 @@ namespace
 		std::shared_ptr<const
 			Client::EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>, std::less<>>
 		g_VisualProjections;
+	std::map<std::string,
+		std::shared_ptr<const Client::EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>,
+		std::less<>> g_ScreenOverlayProductBindings;
     uint64_t g_iRuntimeRevision = 0u;
 	uint32_t g_iCatalogOwnerThreadId = 0u;
     std::string g_strStatus = "Effect catalog has not been loaded.";
@@ -815,6 +818,133 @@ namespace
 			return false;
 		}
 		iOutValue = static_cast<uint64_t>(Value->Get_Number());
+		return true;
+	}
+	bool Read_StringExact(const Client::DATA_JSON_VALUE& Object,
+		const char* pName, std::string& strOutValue,
+		bool bAllowEmpty, size_t iMaximumLength);
+	bool Read_ShaExact(const Client::DATA_JSON_VALUE& Object,
+		const char* pName, std::string& strOutValue);
+
+	bool Parse_ScreenOverlayProductBinding(
+		const Client::DATA_JSON_VALUE& Value,
+		const std::string& EffectAssetId,
+		Client::EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING& OutBinding,
+		std::string& strOutError)
+	{
+		using namespace Client;
+		if (!Has_ExactOrderedKeys(Value, {
+			"presentationId", "byteCount", "sha256", "utf8Json",
+			"resources" }))
+		{
+			strOutError =
+				"Screen-overlay Product binding fields or order are invalid.";
+			return false;
+		}
+		EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING Staged;
+		Staged.strEffectAssetId = EffectAssetId;
+		const DATA_JSON_VALUE* pResources = Required(
+			Value, "resources", DATA_JSON_TYPE::ARRAY);
+		if (!Read_StringExact(Value, "presentationId",
+				Staged.strPresentationId, false, 128u) ||
+			!Is_StableId(Staged.strPresentationId) ||
+			!Read_U64Exact(Value, "byteCount", Staged.iByteCount) ||
+			0u == Staged.iByteCount || Staged.iByteCount > 4u * 1024u * 1024u ||
+			!Read_ShaExact(Value, "sha256", Staged.strSha256) ||
+			!Read_StringExact(Value, "utf8Json", Staged.strUtf8Json,
+				false, 4u * 1024u * 1024u) ||
+			Staged.strUtf8Json.size() != Staged.iByteCount ||
+			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(
+				Staged.strUtf8Json) != Staged.strSha256 ||
+			nullptr == pResources || pResources->Get_Array().empty() ||
+			pResources->Get_Array().size() > 64u)
+		{
+			strOutError =
+				"Screen-overlay Product binding identity or payload is invalid.";
+			return false;
+		}
+
+		std::set<std::string, std::less<>> ResourceIds;
+		Staged.Resources.reserve(pResources->Get_Array().size());
+		for (const DATA_JSON_VALUE& Row : pResources->Get_Array())
+		{
+			EFFECT_SCREEN_OVERLAY_RESOURCE_IDENTITY Resource;
+			if (!Has_ExactOrderedKeys(Row,
+					{ "assetId", "byteCount", "sha256" }) ||
+				!Read_StringExact(Row, "assetId", Resource.strAssetId,
+					false, 512u) ||
+				!CEffectDocumentCodec::Is_SafeResourceAssetId(
+					Resource.strAssetId) ||
+				!Resource.strAssetId.starts_with("Effect/") ||
+				!Resource.strAssetId.ends_with(".dds") ||
+				!Read_U64Exact(Row, "byteCount", Resource.iByteCount) ||
+				0u == Resource.iByteCount ||
+				!Read_ShaExact(Row, "sha256", Resource.strSha256) ||
+				!ResourceIds.insert(Resource.strAssetId).second)
+			{
+				strOutError =
+					"Screen-overlay Product resource identity is invalid.";
+				return false;
+			}
+			Staged.Resources.push_back(std::move(Resource));
+		}
+
+		DATA_JSON_VALUE PresentationRoot;
+		std::string ParseError;
+		if (!CDataJson::Parse(Staged.strUtf8Json,
+				PresentationRoot, ParseError) ||
+			!Has_ExactOrderedKeys(PresentationRoot, {
+				"schema", "formatVersion", "provenance", "presentationId",
+				"overlays" }))
+		{
+			strOutError = "Embedded screen-overlay JSON is invalid: " + ParseError;
+			return false;
+		}
+		const DATA_JSON_VALUE* pSchema = Required(
+			PresentationRoot, "schema", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pVersion = Required(
+			PresentationRoot, "formatVersion", DATA_JSON_TYPE::NUMBER);
+		const DATA_JSON_VALUE* pProvenance = Required(
+			PresentationRoot, "provenance", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pPresentationId = Required(
+			PresentationRoot, "presentationId", DATA_JSON_TYPE::STRING);
+		const DATA_JSON_VALUE* pOverlays = Required(
+			PresentationRoot, "overlays", DATA_JSON_TYPE::ARRAY);
+		std::set<std::string, std::less<>> ReferencedResourceIds;
+		if (nullptr != pOverlays)
+		{
+			for (const DATA_JSON_VALUE& Overlay : pOverlays->Get_Array())
+			{
+				const DATA_JSON_VALUE* pTexture = Required(
+					Overlay, "textureAssetId", DATA_JSON_TYPE::STRING);
+				if (nullptr == pTexture ||
+					!ResourceIds.contains(pTexture->Get_String()))
+				{
+					strOutError =
+						"Embedded screen-overlay texture binding is invalid.";
+					return false;
+				}
+				ReferencedResourceIds.insert(pTexture->Get_String());
+			}
+		}
+		if (nullptr == pSchema || pSchema->Get_String() !=
+				"lostark.effect-screen-overlay" ||
+			nullptr == pVersion || pVersion->Was_FloatingPointToken() ||
+			pVersion->Get_Number() != 1.0 ||
+			nullptr == pProvenance ||
+			pProvenance->Get_String() != "PROJECT_TUNED" ||
+			nullptr == pPresentationId ||
+			pPresentationId->Get_String() != Staged.strPresentationId ||
+			nullptr == pOverlays || pOverlays->Get_Array().empty() ||
+			ReferencedResourceIds != ResourceIds)
+		{
+			strOutError =
+				"Embedded screen-overlay header or resource set is invalid.";
+			return false;
+		}
+
+		OutBinding = std::move(Staged);
+		strOutError.clear();
 		return true;
 	}
 
@@ -3541,6 +3671,9 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 	std::map<std::string,
 		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>,
 		std::less<>> StagedVisualProjections;
+	std::map<std::string,
+		std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>,
+		std::less<>> StagedScreenOverlayProductBindings;
 	if (UINT64_MAX == g_iRuntimeRevision)
 	{
 		strOutStatus = "Effect runtime catalog revision is exhausted.";
@@ -3631,7 +3764,10 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 			const bool_t bLegacyEntry = Has_ExactOrderedKeys(Entry, {
 				"payloadKind", "effectAssetId", "authoringFormatVersion",
 				"authoredDocumentPath", "contentSha256", "dependencies" });
-			if (!bMinimalEntry && !bLegacyEntry)
+			const bool_t bScreenOverlayEntry = Has_ExactOrderedKeys(Entry, {
+				"payloadKind", "effectAssetId", "authoringFormatVersion",
+				"authoredDocumentPath", "screenOverlayPresentation" });
+			if (!bMinimalEntry && !bLegacyEntry && !bScreenOverlayEntry)
 			{
 				strOutStatus =
 					"Effect direct authored runtime entry fields or order are invalid.";
@@ -3653,12 +3789,36 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 				Staged.contains(pAssetId->Get_String()) ||
 				StagedDirectAuthoredSources.contains(pAssetId->Get_String()) ||
 				StagedRuntimeAuthorities.contains(pAssetId->Get_String()) ||
-				StagedRuntimeProgramEntries.contains(pAssetId->Get_String()))
+				StagedRuntimeProgramEntries.contains(pAssetId->Get_String()) ||
+				StagedScreenOverlayProductBindings.contains(
+					pAssetId->Get_String()))
 			{
 				strOutStatus =
 					"Effect direct authored runtime entry has an invalid identity or path.";
 				g_strStatus = strOutStatus;
 				return false;
+			}
+			std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>
+				ScreenOverlayBinding;
+			if (bScreenOverlayEntry)
+			{
+				const DATA_JSON_VALUE* pScreenOverlayPresentation = Required(
+					Entry, "screenOverlayPresentation", DATA_JSON_TYPE::OBJECT);
+				EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING ParsedBinding;
+				if (nullptr == pScreenOverlayPresentation ||
+					!Parse_ScreenOverlayProductBinding(
+						*pScreenOverlayPresentation, pAssetId->Get_String(),
+						ParsedBinding, Error))
+				{
+					strOutStatus =
+						"Effect screen-overlay Product binding rejected for " +
+						pAssetId->Get_String() + ": " + Error;
+					g_strStatus = strOutStatus;
+					return false;
+				}
+				ScreenOverlayBinding =
+					std::make_shared<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>(
+						std::move(ParsedBinding));
 			}
 
 			std::filesystem::path SealedPath;
@@ -3683,6 +3843,17 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 			{
 				strOutStatus =
 					"Duplicate direct authored EffectAssetId in runtime catalog: " +
+					pAssetId->Get_String();
+				g_strStatus = strOutStatus;
+				return false;
+			}
+			if (nullptr != ScreenOverlayBinding &&
+				!StagedScreenOverlayProductBindings.emplace(
+					pAssetId->Get_String(),
+					std::move(ScreenOverlayBinding)).second)
+			{
+				strOutStatus =
+					"Duplicate screen-overlay Product binding: " +
 					pAssetId->Get_String();
 				g_strStatus = strOutStatus;
 				return false;
@@ -3959,6 +4130,8 @@ bool_t Client::CEffectCatalog::Load(std::string& strOutStatus)
 	g_pVisualProgramCorpus = std::move(StagedVisualProgramCorpus);
 	g_VisualPrograms = std::move(StagedVisualPrograms);
 	g_VisualProjections = std::move(StagedVisualProjections);
+	g_ScreenOverlayProductBindings =
+		std::move(StagedScreenOverlayProductBindings);
 	g_iRuntimeRevision = iStagedCatalogRevision;
 	g_iCatalogOwnerThreadId = static_cast<uint32_t>(GetCurrentThreadId());
 	const size_t iLazyDirectDocumentCount = std::count_if(
@@ -4386,6 +4559,16 @@ Client::CEffectCatalog::Find_VisualProjection_Loaded(
 	return g_VisualProjections.end() == Iterator ? nullptr : Iterator->second;
 }
 
+std::shared_ptr<const Client::EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>
+Client::CEffectCatalog::Find_ScreenOverlayProductBinding(
+	const std::string& strEffectAssetId)
+{
+	const auto Iterator =
+		g_ScreenOverlayProductBindings.find(strEffectAssetId);
+	return g_ScreenOverlayProductBindings.end() == Iterator ?
+		nullptr : Iterator->second;
+}
+
 bool_t Client::CEffectCatalog::Prepare_ReconstructedRuntimeProgram(
 	const std::string& strEffectAssetId,
 	std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&
@@ -4668,6 +4851,7 @@ void Client::CEffectCatalog::Clear()
 	g_pVisualProgramCorpus.reset();
 	g_VisualPrograms.clear();
 	g_VisualProjections.clear();
+	g_ScreenOverlayProductBindings.clear();
 	g_iCatalogOwnerThreadId = 0u;
     g_strStatus = "Effect catalog cleared.";
 }

@@ -96,6 +96,11 @@ HRESULT CLevel_Development::Initialize()
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	if (!m_PlayerController.Initialize_TargetingPreview(
+			ETOUI(LEVEL::DEVELOPMENT)))
+	{
+		return E_FAIL;
+	}
 	return S_OK;
 }
 

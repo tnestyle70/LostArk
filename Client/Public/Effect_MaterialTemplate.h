@@ -46,6 +46,8 @@ struct EFFECT_MATERIAL_TEMPLATE_DESC final
 inline constexpr std::string_view EFFECT_MESH_SHAPE_SLOT_ID = "meshModel";
 inline constexpr std::string_view EFFECT_STANDARD_MATERIAL_TEMPLATE_ID =
 	"effect.standard";
+inline constexpr std::string_view EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID =
+	"effect.standard_color_v1";
 inline constexpr std::string_view EFFECT_SOURCE_MATERIAL_TEMPLATE_ID =
 	"effect.source_material";
 inline constexpr f32_t EFFECT_MANUAL_MESH_DEFAULT_SCALE = 0.01f;
@@ -763,6 +765,14 @@ inline constexpr EFFECT_MATERIAL_TEMPLATE_DESC
 	};
 
 inline constexpr EFFECT_MATERIAL_TEMPLATE_DESC
+	EFFECT_STANDARD_COLOR_V1_TEMPLATE = {
+		EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID,
+		"effect.standard-color.hlsl.v1",
+		nullptr,
+		0u
+	};
+
+inline constexpr EFFECT_MATERIAL_TEMPLATE_DESC
 	EFFECT_SOURCE_MATERIAL_TEMPLATE = {
 		EFFECT_SOURCE_MATERIAL_TEMPLATE_ID,
 		"effect.source-material.ue3-profile-runtime.v1",
@@ -775,6 +785,8 @@ inline const EFFECT_MATERIAL_TEMPLATE_DESC* Find_EffectMaterialTemplate(
 {
 	if (strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID)
 		return &EFFECT_STANDARD_MATERIAL_TEMPLATE;
+	if (strTemplateId == EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID)
+		return &EFFECT_STANDARD_COLOR_V1_TEMPLATE;
 	if (strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID)
 		return &EFFECT_SOURCE_MATERIAL_TEMPLATE;
 	return nullptr;

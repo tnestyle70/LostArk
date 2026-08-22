@@ -78,6 +78,31 @@ namespace
 	constexpr const char_t* VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID =
 		"effect.valtan.pattern.420633.active";
 
+	const char_t* Tool_PlayerStanceLabel(
+		const LostArk::Shared::PLAYER_STANCE_ID eStance)
+	{
+		using LostArk::Shared::PLAYER_STANCE_ID;
+		switch (eStance)
+		{
+		case PLAYER_STANCE_ID::NONE: return "NONE";
+		case PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR:
+			return "LANCE_MASTER_LONG_SPEAR";
+		case PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR:
+			return "LANCE_MASTER_SHORT_SPEAR";
+		case PLAYER_STANCE_ID::WARLORD_NORMAL: return "WARLORD_NORMAL";
+		case PLAYER_STANCE_ID::WARLORD_DEFENSE: return "WARLORD_DEFENSE";
+		case PLAYER_STANCE_ID::END:
+		default: return "INVALID";
+		}
+	}
+
+	std::string Tool_SkillIdentitySuffix(
+		const Client::PLAYER_SKILL_DEFINITION& Skill)
+	{
+		return " | #" + std::to_string(Skill.iSkillId) + " | Stance " +
+			Tool_PlayerStanceLabel(Skill.eRequiredStance);
+	}
+
 	struct TOOL_SOURCE_ANCHOR_REQUEST final
 	{
 		std::string strRuntimeAnchorSlotId;
@@ -336,6 +361,8 @@ namespace
 			return "ArtistVisualV4";
 		case Client::EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL:
 			return "LocalDecal";
+		case Client::EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1:
+			return "StandardColorV1";
 		case Client::EFFECT_MATERIAL_EXECUTION_BACKEND::END:
 		default:
 			return "Invalid";
@@ -822,21 +849,7 @@ namespace
 	const char* AuthoringFamily_Label(
 		const Client::EFFECT_AUTHORING_FAMILY eFamily)
 	{
-		switch (eFamily)
-		{
-		case Client::EFFECT_AUTHORING_FAMILY::MESH: return "Mesh";
-		case Client::EFFECT_AUTHORING_FAMILY::SPRITE: return "Sprite";
-		case Client::EFFECT_AUTHORING_FAMILY::MESH_PARTICLE:
-			return "Mesh Particle";
-		case Client::EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE:
-			return "Sprite Particle";
-		case Client::EFFECT_AUTHORING_FAMILY::LOCAL_DECAL:
-			return "Local Decal";
-		case Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON:
-			return "Trail / Ribbon";
-		case Client::EFFECT_AUTHORING_FAMILY::END:
-		default: return "Invalid";
-		}
+		return Client::Get_EffectToolAuthoringFamilyLabel(eFamily);
 	}
 
 	Client::EFFECT_ELEMENT_KIND AuthoringFamily_Kind(
@@ -855,9 +868,20 @@ namespace
 			return Client::EFFECT_ELEMENT_KIND::DECAL;
 		case Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON:
 			return Client::EFFECT_ELEMENT_KIND::TRAIL;
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT:
+			return Client::EFFECT_ELEMENT_KIND::LIGHT;
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST:
+			return Client::EFFECT_ELEMENT_KIND::SCREEN_POST;
 		case Client::EFFECT_AUTHORING_FAMILY::END:
 		default: return Client::EFFECT_ELEMENT_KIND::END;
 		}
+	}
+
+	bool_t AuthoringFamily_CanCreate(
+		const Client::EFFECT_AUTHORING_FAMILY eFamily)
+	{
+		return eFamily >= Client::EFFECT_AUTHORING_FAMILY::MESH &&
+			eFamily <= Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON;
 	}
 
 	bool_t AuthoringFamily_RequiresMesh(
@@ -882,6 +906,10 @@ namespace
 			return "local_decal";
 		case Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON:
 			return "trail_ribbon";
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT:
+			return "presentation_light";
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST:
+			return "presentation_screen_post";
 		case Client::EFFECT_AUTHORING_FAMILY::END:
 		default: return "element";
 		}
@@ -890,29 +918,23 @@ namespace
 	Client::EFFECT_AUTHORING_FAMILY Resolve_AuthoringFamily(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
-		switch (Element.eKind)
+		return Client::Resolve_EffectToolAuthoringFamily(Element);
+	}
+
+	const char_t* ScreenPostProfile_Label(
+		const Client::EFFECT_SCREEN_POST_PROFILE eProfile)
+	{
+		switch (eProfile)
 		{
-		case Client::EFFECT_ELEMENT_KIND::MESH:
-			return Client::EFFECT_AUTHORING_FAMILY::MESH;
-		case Client::EFFECT_ELEMENT_KIND::SPRITE:
-			return Client::EFFECT_AUTHORING_FAMILY::SPRITE;
-		case Client::EFFECT_ELEMENT_KIND::PARTICLE:
-			return std::any_of(Element.ResourceBindings.begin(),
-				Element.ResourceBindings.end(),
-				[](const Client::EFFECT_RESOURCE_BINDING_DESC& Binding)
-				{
-					return Binding.strSlotId ==
-						Client::EFFECT_MESH_SHAPE_SLOT_ID;
-				}) ? Client::EFFECT_AUTHORING_FAMILY::MESH_PARTICLE :
-				Client::EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE;
-		case Client::EFFECT_ELEMENT_KIND::DECAL:
-			return Client::EFFECT_AUTHORING_FAMILY::LOCAL_DECAL;
-		case Client::EFFECT_ELEMENT_KIND::TRAIL:
-			return Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON;
-		case Client::EFFECT_ELEMENT_KIND::LIGHT:
-		case Client::EFFECT_ELEMENT_KIND::SCREEN_POST:
-		case Client::EFFECT_ELEMENT_KIND::END:
-		default: return Client::EFFECT_AUTHORING_FAMILY::END;
+		case Client::EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1:
+			return "RGB Noise (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1:
+			return "Zoom Blur (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED_V1:
+			return "Film Noise (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::END:
+		default:
+			return "Unresolved";
 		}
 	}
 
@@ -2002,6 +2024,25 @@ namespace
         return Result;
     }
 
+	bool_t Try_ExtractPlanarYawDegrees(
+		const float4x4_t& Root,
+		f32_t& fOutYawDegrees)
+	{
+		const f32_t fForwardLength = std::sqrt(
+			Root._31 * Root._31 + Root._33 * Root._33);
+		if (!std::isfinite(Root._31) || !std::isfinite(Root._33) ||
+			!std::isfinite(fForwardLength) || fForwardLength <= 1.0e-6f)
+		{
+			return false;
+		}
+		const f32_t fYawDegrees = XMConvertToDegrees(
+			std::atan2(Root._31, Root._33));
+		if (!std::isfinite(fYawDegrees))
+			return false;
+		fOutYawDegrees = fYawDegrees;
+		return true;
+	}
+
 	const char* Source_Label(const Client::EFFECT_DOCUMENT_SOURCE eSource)
 	{
         switch (eSource)
@@ -2575,6 +2616,11 @@ namespace
         const Client::EFFECT_ELEMENT_KIND eKind,
         const Client::EFFECT_RESOURCE_SLOT eSlot)
     {
+		if (Client::EFFECT_ELEMENT_KIND::LIGHT == eKind ||
+			Client::EFFECT_ELEMENT_KIND::SCREEN_POST == eKind)
+		{
+			return false;
+		}
         if (Client::EFFECT_RESOURCE_SLOT::MESH_MODEL == eSlot)
             return Client::EFFECT_ELEMENT_KIND::MESH == eKind ||
                 Client::EFFECT_ELEMENT_KIND::PARTICLE == eKind;
@@ -2648,6 +2694,11 @@ namespace
 	bool Is_ElementPreviewAdmitted(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
+		if (Element.eKind == Client::EFFECT_ELEMENT_KIND::LIGHT ||
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::SCREEN_POST)
+		{
+			return Client::Is_EffectToolPresentationPreviewAdmitted(Element);
+		}
 		// An authoring-approximate carrier owns its exact source resources and
 		// only lacks proven material semantics.  It previews so the artist can
 		// tune it; product admission is refused elsewhere and is unaffected.
@@ -2757,6 +2808,11 @@ namespace
         const Client::EFFECT_ELEMENT_DESC& Element,
         const std::string_view strSlotId)
     {
+		if (Client::EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
+			Client::EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
+		{
+			return false;
+		}
         if (strSlotId == Client::EFFECT_MESH_SHAPE_SLOT_ID)
             return Client::EFFECT_ELEMENT_KIND::MESH == Element.eKind ||
                 Client::EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind;
@@ -4312,10 +4368,12 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         const ANIMATION_EFFECT_CUE& Cue =
             m_ProductPreview->ProductCue.Cue;
         ImGui::TextWrapped(
-            "Product cue placement: %s | %s | %u ms",
+            "Product cue placement: %s | %s | %s | %u ms",
             Cue.strAnchorSlotId.c_str(),
             EFFECT_FOLLOW_POLICY::FOLLOW == Cue.eFollowPolicy ?
                 "follow" : "snapshot",
+			EFFECT_ORIENTATION_POLICY::ANCHOR == Cue.eOrientationPolicy ?
+				"anchor orientation" : "action facing",
             Cue.iStartMs);
         ImGui::TextDisabled(
             "Product Play locks pivot and local transform to the admitted animation cue.");
@@ -4452,6 +4510,21 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     if (ImGui::RadioButton("Cue Snapshot",
         EFFECT_FOLLOW_POLICY::SNAPSHOT == m_eCueTransferFollowPolicy))
         m_eCueTransferFollowPolicy = EFFECT_FOLLOW_POLICY::SNAPSHOT;
+	if (ImGui::RadioButton("Cue Anchor Orientation",
+		EFFECT_ORIENTATION_POLICY::ANCHOR ==
+			m_eCueTransferOrientationPolicy))
+	{
+		m_eCueTransferOrientationPolicy =
+			EFFECT_ORIENTATION_POLICY::ANCHOR;
+	}
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Cue Action Facing",
+		EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+			m_eCueTransferOrientationPolicy))
+	{
+		m_eCueTransferOrientationPolicy =
+			EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+	}
     if (ImGui::RadioButton("Natural Stop",
         EFFECT_STOP_POLICY::NATURAL == m_eCueTransferStopPolicy))
         m_eCueTransferStopPolicy = EFFECT_STOP_POLICY::NATURAL;
@@ -4476,6 +4549,9 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         !Has_UnsavedWork() &&
         m_bActiveDocumentMatchesRuntime &&
         EFFECT_PREVIEW_PIVOT_KIND::WORLD != m_ePreviewPivotKind &&
+		(EFFECT_ORIENTATION_POLICY::ACTION_FACING !=
+			m_eCueTransferOrientationPolicy ||
+		 EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT == m_ePreviewPivotKind) &&
         nullptr != pModel && bCueScaleValid &&
         (EFFECT_STOP_POLICY::NATURAL == m_eCueTransferStopPolicy ||
             m_iCueTransferDurationMs > 0u);
@@ -4520,6 +4596,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
                     EFFECT_CUE_PIVOT_KIND::MODEL_BONE);
             Transfer.LocalTransform = m_CueTransferLocalTransform;
             Transfer.eFollowPolicy = m_eCueTransferFollowPolicy;
+			Transfer.eOrientationPolicy = m_eCueTransferOrientationPolicy;
             Transfer.eStopPolicy = m_eCueTransferStopPolicy;
             CEffectAuthoringTransfer::Publish(std::move(Transfer));
             m_strPreviewStatus =
@@ -4925,6 +5002,33 @@ void Client::CEffect_Tool::Render_SelectionPath() const
 	ImGui::Text("Level: %s", pSelectionLevel);
 	ImGui::TextWrapped("Skill / Document: %s",
 		m_ActiveDocument->strEffectAssetId.c_str());
+	if (m_ProductPreview.has_value())
+	{
+		const PLAYER_SKILL_DEFINITION* pSkill =
+			CPlayerSkillCatalog::Find_ById(m_ProductPreview->iSkillId);
+		if (nullptr != pSkill &&
+			pSkill->eCharacterClass == m_ProductPreview->eCharacterClass)
+		{
+			const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
+				m_ProductPreview->ProductCue;
+			ImGui::TextWrapped(
+				"Product Skill: #%u | Input %s | Required Stance %s",
+				static_cast<uint32_t>(pSkill->iSkillId),
+				pSkill->strInputSlot.c_str(),
+				Tool_PlayerStanceLabel(pSkill->eRequiredStance));
+			ImGui::TextWrapped(
+				"Product Cue: Stage %zu / Clip %zu | %s @ %u ms | %s",
+				ProductCue.iStageIndex + 1u,
+				ProductCue.iStageClipIndex + 1u,
+				ProductCue.Cue.strClipName.c_str(),
+				ProductCue.Cue.iStartMs,
+				ProductCue.Cue.strEffectAssetId.c_str());
+			ImGui::TextDisabled(
+				"Apply / Save replaces only this Product target at the current "
+				"catalog revision. An active occurrence stays immutable; Restart "
+				"or the next cast consumes it.");
+		}
+	}
 	if (!m_strSelectedComponentId.empty())
 		ImGui::TextWrapped("Component: %s", m_strSelectedComponentId.c_str());
 	if (!m_strSelectedEmitterId.empty())
@@ -5558,7 +5662,18 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
 		"Exact adapter packet inspection. Persistent transforms use Stable occurrence Save / Reload; create a generic Authored starting copy before material/resource editing." :
 		"Drag numeric values for live preview; Apply updates Current Effect memory, and Save Changes writes the whole Effect.");
 	ImGui::BeginDisabled(bAdapterPacketInspection);
-	Render_ResourceSlots(false);
+	const bool_t bPresentationElement =
+		m_DetailDraft->eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+		m_DetailDraft->eKind == EFFECT_ELEMENT_KIND::SCREEN_POST;
+	if (bPresentationElement)
+	{
+		ImGui::TextDisabled(
+			"Presentation carriers have no WModel/DDS material slots. Their typed payload is edited below.");
+	}
+	else
+	{
+		Render_ResourceSlots(false);
+	}
 	Render_Detail(*m_DetailDraft, bChanged);
     if (bChanged)
     {
@@ -6151,16 +6266,24 @@ void Client::CEffect_Tool::Render_Detail(
 	ImGui::Text("%s %s %s%s", pSurface, "\xC2\xB7",
 		Get_EffectAuthoringFidelityLabel(eFidelity),
 		bModified ? " \xC2\xB7 Modified" : "");
-	/* Playback ignores the authored Detail while the source recipe owns the
-	   Element (Effect_Playback.cpp gates every module read on bEnabled), so
-	   without this the numbers below look editable and change nothing. */
-	if (Element.SourceRecipe.bEnabled)
+	const bool_t bTypedPresentationElement =
+		Element.eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+		Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST;
+	/* Drawable source carriers keep their compiler module ownership. Typed
+	   presentation carriers are different: source modules still supply their
+	   lifetime/curves, while Detail.Light/ScreenPost owns the submitted output. */
+	if (Element.SourceRecipe.bEnabled && !bTypedPresentationElement)
 	{
 		ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
 			"Source modules own playback: the values below are ignored.");
 		ImGui::TextDisabled(
 			"%zu source modules. Deleting this Element judges it as the source plays it, not as it would tune.",
 			Element.SourceRecipe.Modules.size());
+	}
+	else if (bTypedPresentationElement)
+	{
+		ImGui::TextDisabled(
+			"Typed Presentation Detail owns output; source modules retain lifetime and curve evaluation only.");
 	}
 	else
 	{
@@ -7402,6 +7525,72 @@ void Client::CEffect_Tool::Render_KindDetail(
 				bChanged = true;
 			}
 		}
+
+		ImGui::SeparatorText("Particle Target Attractor");
+		EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& Attractor =
+			Detail.Particle.TargetAttractor;
+		bool_t bAttractorEnabled = Attractor.bEnabled;
+		if (ImGui::Checkbox("Enable Target Attractor", &bAttractorEnabled))
+		{
+			if (bAttractorEnabled)
+			{
+				Attractor.bEnabled = true;
+				if (Attractor.fRadialAcceleration == 0.f)
+					Attractor.fRadialAcceleration = 8.f;
+			}
+			else
+			{
+				Attractor = EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC{};
+			}
+			bChanged = true;
+		}
+		if (Attractor.bEnabled)
+		{
+			static const char* const s_AttractorTargetSpaceLabels[] =
+			{
+				"Effect Root Local", "Element Local"
+			};
+			int32_t iTargetSpace = static_cast<int32_t>(
+				Attractor.eTargetSpace);
+			if (ImGui::Combo("Target Space", &iTargetSpace,
+				s_AttractorTargetSpaceLabels,
+				IM_ARRAYSIZE(s_AttractorTargetSpaceLabels)))
+			{
+				Attractor.eTargetSpace =
+					static_cast<EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE>(
+						iTargetSpace);
+				bChanged = true;
+			}
+			bChanged |= DragFloat3("Target Offset",
+				Attractor.vTargetOffset, 0.01f, -1000.f, 1000.f);
+			if (DragFloat2("Active Normalized Min/Max",
+				Attractor.vActiveNormalized, 0.01f, 0.f, 1.f))
+			{
+				Attractor.vActiveNormalized.x = std::clamp(
+					Attractor.vActiveNormalized.x, 0.f, 0.999f);
+				Attractor.vActiveNormalized.y = std::clamp(
+					Attractor.vActiveNormalized.y,
+					Attractor.vActiveNormalized.x + 0.001f, 1.f);
+				bChanged = true;
+			}
+			bChanged |= ImGui::DragFloat("Radial Acceleration",
+				&Attractor.fRadialAcceleration, 0.1f, 0.f, 10000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Tangential Acceleration",
+				&Attractor.fTangentialAcceleration, 0.1f, -10000.f,
+				10000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Maximum Speed",
+				&Attractor.fMaximumSpeed, 0.1f, 0.001f, 1000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Convergence Radius",
+				&Attractor.fConvergenceRadius, 0.01f, 0.001f, 1000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Arrival Damping",
+				&Attractor.fArrivalDamping, 0.1f, 0.f, 1000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::TextDisabled(
+				"Authored PROJECT_TUNED motion layer. SourceRecipe modules run first; this layer then steers the effective velocity toward the selected centre.");
+		}
         bChanged |= ImGui::Checkbox("Particle Local Space",
             &Detail.Particle.bLocalSpace);
 		if (ImGui::IsItemHovered())
@@ -7489,15 +7678,105 @@ void Client::CEffect_Tool::Render_KindDetail(
             &Detail.Trail.bFaceCamera);
         break;
     case EFFECT_ELEMENT_KIND::LIGHT:
-        ImGui::TextWrapped(
-            "Light execution is described by the original typed module stack below. "
-            "Transform, color, timing, and every source distribution remain editable.");
+	{
+		EFFECT_LIGHT_DETAIL_DESC& Light = Detail.Light;
+		ImGui::SeparatorText("Presentation Light");
+		ImGui::TextDisabled("Profile: Point Light (Reconstructed v1)");
+		if (!Light.bEnabled)
+		{
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+				"This source row has no admitted typed Light payload. Delete or hide it here; enabling it requires source-backed materialization.");
+		}
+		bool_t bPresentationChanged = false;
+		ImGui::BeginDisabled(!Light.bEnabled);
+		bPresentationChanged |= ImGui::DragFloat("Light Range",
+			&Light.fRange, 0.01f, 0.001f, 100000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::DragFloat("Light Intensity",
+			&Light.fIntensity, 0.01f, 0.f, 100000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::ColorEdit4("Light Color",
+			&Light.vColor.x, ImGuiColorEditFlags_Float |
+			ImGuiColorEditFlags_HDR);
+		bPresentationChanged |= ImGui::ColorEdit4("Ambient Color",
+			&Light.vAmbient.x, ImGuiColorEditFlags_Float |
+			ImGuiColorEditFlags_HDR);
+		bPresentationChanged |= ImGui::DragFloat("Falloff Exponent",
+			&Light.fFalloffExponent, 0.01f, 0.001f, 128.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		ImGui::EndDisabled();
+		if (bPresentationChanged)
+		{
+			Light.eProfile = EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1;
+			Light.eStatus =
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+			bChanged = true;
+		}
+		ImGui::TextDisabled(
+			"Visible, Transform, Timing, Color Multiply, Solo and Delete use the same active Element transaction.");
         break;
+	}
     case EFFECT_ELEMENT_KIND::SCREEN_POST:
-        ImGui::TextWrapped(
-            "Screen Post execution is described by the original typed module stack below. "
-            "It is a presentation channel and is not rendered as a Particle sprite.");
+	{
+		EFFECT_SCREEN_POST_DETAIL_DESC& Post = Detail.ScreenPost;
+		ImGui::SeparatorText("Presentation Screen Post");
+		if (!Post.bEnabled)
+		{
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+				"This source row has no admitted typed Screen Post payload. Delete or hide it here; enabling it requires source-backed materialization.");
+		}
+		bool_t bPresentationChanged = false;
+		ImGui::BeginDisabled(!Post.bEnabled);
+		if (ImGui::BeginCombo("Screen Post Profile",
+			ScreenPostProfile_Label(Post.eProfile)))
+		{
+			for (uint8_t iProfile = 0u;
+				iProfile < static_cast<uint8_t>(EFFECT_SCREEN_POST_PROFILE::END);
+				++iProfile)
+			{
+				const EFFECT_SCREEN_POST_PROFILE eCandidate =
+					static_cast<EFFECT_SCREEN_POST_PROFILE>(iProfile);
+				const bool_t bSelected = eCandidate == Post.eProfile;
+				if (ImGui::Selectable(ScreenPostProfile_Label(eCandidate),
+					bSelected))
+				{
+					Post.eProfile = eCandidate;
+					bPresentationChanged = true;
+				}
+				if (bSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		bPresentationChanged |= ImGui::DragFloat("Post Intensity",
+			&Post.fIntensity, 0.001f, 0.f, 100.f, "%.4f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::DragFloat("Post Secondary Intensity",
+			&Post.fSecondaryIntensity, 0.001f, 0.f, 100.f, "%.4f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::DragFloat("Post Frequency",
+			&Post.fFrequency, 0.01f, 0.f, 1000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::ColorEdit4("Post Tint",
+			&Post.vTint.x, ImGuiColorEditFlags_Float |
+			ImGuiColorEditFlags_HDR);
+		if (ImGui::InputScalar("Post Random Seed", ImGuiDataType_U32,
+			&Post.iRandomSeed))
+		{
+			Post.iRandomSeed = (std::max)(1u, Post.iRandomSeed);
+			bPresentationChanged = true;
+		}
+		ImGui::EndDisabled();
+		if (bPresentationChanged)
+		{
+			Post.eStatus =
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+			bChanged = true;
+		}
+		ImGui::TextDisabled(
+			"The global Preview ScreenPost switch remains a non-persistent A/B gate; these fields persist only after Apply and Save.");
         break;
+	}
     case EFFECT_ELEMENT_KIND::END:
     default:
         break;
@@ -9608,9 +9887,12 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 		Try_DeleteSelectedElement();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
+	const EFFECT_ELEMENT_DESC* pSelectedForDuplicate = Find_SelectedElement();
 	const bool_t bCanDuplicateSelected = !Has_UnappliedDetailDraft() &&
 		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
-		!m_strSelectedElementId.empty();
+		nullptr != pSelectedForDuplicate &&
+		AuthoringFamily_CanCreate(
+			Resolve_AuthoringFamily(*pSelectedForDuplicate));
 	ImGui::BeginDisabled(!bCanDuplicateSelected);
 	if (ImGui::SmallButton("Duplicate Selected"))
 		Try_DuplicateSelectedElement();
@@ -9624,9 +9906,12 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::TextDisabled(
 		"Ctrl or Shift click Element rows to mark several, then Delete; Duplicate copies the open row as one independent occurrence.");
 	ImGui::SameLine();
+	const EFFECT_ELEMENT_DESC* pSelectedForSeed = Find_SelectedElement();
 	const bool_t bCanSeedSelected =
 		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
-		!m_strSelectedElementId.empty() && !Has_UnappliedDetailDraft();
+		nullptr != pSelectedForSeed && !Has_UnappliedDetailDraft() &&
+		AuthoringFamily_CanCreate(
+			Resolve_AuthoringFamily(*pSelectedForSeed));
 	ImGui::BeginDisabled(!bCanSeedSelected);
 	if (ImGui::SmallButton("Use Selected as New Layer Seed"))
 		Try_UseSelectedElementAsAuthoringPreset();
@@ -10800,7 +11085,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			ImGui::PushID(static_cast<int>(Skill.iSkillId));
 			const std::string SkillLabel = "Skill | Input " +
 				Skill.strInputSlot + " | " + Skill.strDisplayName +
-				" | Saved " + std::to_string(SavedBindings.size());
+				Tool_SkillIdentitySuffix(Skill) + " | Saved " +
+				std::to_string(SavedBindings.size());
 			if (ImGui::TreeNodeEx(SkillLabel.c_str(),
 				ImGuiTreeNodeFlags_OpenOnArrow))
 			{
@@ -11425,6 +11711,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			EFFECT_DETAIL_SELECTION::SKILL == m_eDetailSelection;
         const std::string SkillLabel = "Skill | " + Entry.Skill.strInputSlot +
 			" | " + Entry.Skill.strDisplayName +
+			Tool_SkillIdentitySuffix(Entry.Skill) +
             (Entry.ProductCues.empty() ?
                 " | [Active Product Cue missing]" :
                 (Entry.ProductCues.size() == 1u ?
@@ -11454,7 +11741,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
             {
                 ImGui::SetTooltip(
                     "Product cue target: %s\n"
-                    "Clip %s @ %u ms | Anchor %s | %s\n"
+                    "Clip %s @ %u ms | Anchor %s | %s | %s\n"
                     "%zu Elements in the indexed Authored Product.\n"
                     "Standalone Mesh %zu | Mesh Particle %zu\n"
                     "Standalone Sprite %zu | Sprite Particle %zu\n"
@@ -11467,6 +11754,9 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                     pProductCue->Cue.strAnchorSlotId.c_str(),
                     EFFECT_FOLLOW_POLICY::FOLLOW ==
                         pProductCue->Cue.eFollowPolicy ? "follow" : "snapshot",
+					EFFECT_ORIENTATION_POLICY::ANCHOR ==
+						pProductCue->Cue.eOrientationPolicy ?
+						"anchor orientation" : "action facing",
                     pTreeDocument->Elements.size(),
                     ParticleSummary.iStandaloneMeshCount,
                     ParticleSummary.iMeshRendererCount,
@@ -11547,10 +11837,13 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                     if (ImGui::Selectable(CueLabel.c_str(), bCueSelected))
                         Try_SelectProductCue(Entry, iCue);
                     ImGui::TextDisabled(
-                        "Anchor %s | %s | %s",
+                        "Anchor %s | %s | %s | %s",
                         ProductCue.Cue.strAnchorSlotId.c_str(),
                         EFFECT_FOLLOW_POLICY::FOLLOW ==
                             ProductCue.Cue.eFollowPolicy ? "follow" : "snapshot",
+						EFFECT_ORIENTATION_POLICY::ANCHOR ==
+							ProductCue.Cue.eOrientationPolicy ?
+							"anchor orientation" : "action facing",
                         EFFECT_STOP_POLICY::NATURAL ==
                             ProductCue.Cue.eStopPolicy ? "natural" : "cue_end");
                 }
@@ -12685,10 +12978,11 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		m_eSelectedAuthoringFamily;
 	const EFFECT_ELEMENT_KIND eElementKind =
 		AuthoringFamily_Kind(eAuthoringFamily);
-	if (EFFECT_AUTHORING_FAMILY::END == eAuthoringFamily ||
+	if (!AuthoringFamily_CanCreate(eAuthoringFamily) ||
 		EFFECT_ELEMENT_KIND::END == eElementKind)
 	{
-		m_strElementStatus = "Select one supported authoring family.";
+		m_strElementStatus =
+			"Select one drawable authoring family. Presentation Light and Screen Post creation requires source-backed materialization.";
 		return false;
 	}
 
@@ -12889,6 +13183,10 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		m_ProductCueSnapshotRoot;
 	const bool_t bPreviousProductCueSnapshotCaptured =
 		m_bProductCueSnapshotCaptured;
+	const f32_t fPreviousProductCueActionFacingYawDegrees =
+		m_fProductCueActionFacingYawDegrees;
+	const bool_t bPreviousProductCueActionFacingCaptured =
+		m_bProductCueActionFacingCaptured;
 	std::string ValtanRestoreError;
 	const auto RestorePreviousSourcePreviewState = [this,
 		&PreviousProductPreview, &PreviousValtanProductPreview,
@@ -12898,7 +13196,9 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		ePreviousPreviewFilter, fPreviousPreviewTimeSeconds,
 		fPreviousPreviewDurationSeconds, bPreviousPreviewPlaying,
 		bPreviousPreviewVisibleRequested, &PreviousProductCueSnapshotRoot,
-		bPreviousProductCueSnapshotCaptured, &ValtanRestoreError]()
+		bPreviousProductCueSnapshotCaptured,
+		fPreviousProductCueActionFacingYawDegrees,
+		bPreviousProductCueActionFacingCaptured, &ValtanRestoreError]()
 	{
 		m_ProductPreview = PreviousProductPreview;
 		m_ValtanProductPreview = PreviousValtanProductPreview;
@@ -12922,7 +13222,16 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 					bPreviousProductCueSnapshotCaptured,
 					ValtanRestoreError);
 			else
+			{
+				m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+				m_bProductCueSnapshotCaptured =
+					bPreviousProductCueSnapshotCaptured;
+				m_fProductCueActionFacingYawDegrees =
+					fPreviousProductCueActionFacingYawDegrees;
+				m_bProductCueActionFacingCaptured =
+					bPreviousProductCueActionFacingCaptured;
 				Synchronize_LoadedSkillPreview();
+			}
 		}
 		return true;
 	};
@@ -13127,10 +13436,10 @@ bool_t Client::CEffect_Tool::Try_StageElementAsAuthoringPreset(
 	}
 	EFFECT_ELEMENT_DESC Preset = GenericCopy.Elements.front();
 	const EFFECT_AUTHORING_FAMILY eFamily = Resolve_AuthoringFamily(Preset);
-	if (EFFECT_AUTHORING_FAMILY::END == eFamily)
+	if (!AuthoringFamily_CanCreate(eFamily))
 	{
 		m_strElementStatus =
-			"The selected Element family is not authorable here.";
+			"Presentation Light and Screen Post are edited or deleted in the active Effect; creating them from a drawable Element preset is not admitted.";
 		return false;
 	}
 	Preset.strGroupId = "manual.hit1";
@@ -13284,10 +13593,11 @@ bool_t Client::CEffect_Tool::Try_CreateElementDraft()
 		return false;
 	}
     const EFFECT_ELEMENT_KIND eKind = AuthoringFamily_Kind(eFamily);
-    if (EFFECT_AUTHORING_FAMILY::END == eFamily ||
+    if (!AuthoringFamily_CanCreate(eFamily) ||
         EFFECT_ELEMENT_KIND::END == eKind)
     {
-        m_strElementStatus = "Select one supported Element Type.";
+		m_strElementStatus =
+			"Select one drawable Element Type. Presentation Light and Screen Post creation requires source-backed materialization.";
         return false;
     }
     if (EFFECT_AUTHORING_FAMILY::MESH_PARTICLE == eFamily &&
@@ -13455,6 +13765,12 @@ bool_t Client::CEffect_Tool::Try_DuplicateSelectedElement()
 	{
 		m_strElementStatus =
 			"The selected Element no longer exists; nothing was duplicated.";
+		return false;
+	}
+	if (!AuthoringFamily_CanCreate(Resolve_AuthoringFamily(*Selected)))
+	{
+		m_strElementStatus =
+			"Presentation Light and Screen Post duplication is not admitted; use source-backed materialization or edit/delete the existing occurrence.";
 		return false;
 	}
 	if (Selected->TransformInheritance.bEnabled)
@@ -15294,6 +15610,10 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 				m_ProductCueSnapshotRoot;
 			const bool_t bPreviousProductCueSnapshotCaptured =
 				m_bProductCueSnapshotCaptured;
+			const f32_t fPreviousProductCueActionFacingYawDegrees =
+				m_fProductCueActionFacingYawDegrees;
+			const bool_t bPreviousProductCueActionFacingCaptured =
+				m_bProductCueActionFacingCaptured;
 			Clear_ProductCuePreview();
 			if (!Try_StartArtist31470FullPreview())
 			{
@@ -15318,7 +15638,16 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 						bPreviousProductCueSnapshotCaptured,
 						ValtanRestoreError);
 				else
+				{
+					m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+					m_bProductCueSnapshotCaptured =
+						bPreviousProductCueSnapshotCaptured;
+					m_fProductCueActionFacingYawDegrees =
+						fPreviousProductCueActionFacingYawDegrees;
+					m_bProductCueActionFacingCaptured =
+						bPreviousProductCueActionFacingCaptured;
 					Synchronize_LoadedSkillPreview();
+				}
 				m_strElementStatus = bRestored ?
 					"Artist F full preview failed; the previous preview was restored: " +
 						ArtistStartError :
@@ -15358,6 +15687,10 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 		m_ProductCueSnapshotRoot;
 	const bool_t bPreviousProductCueSnapshotCaptured =
 		m_bProductCueSnapshotCaptured;
+	const f32_t fPreviousProductCueActionFacingYawDegrees =
+		m_fProductCueActionFacingYawDegrees;
+	const bool_t bPreviousProductCueActionFacingCaptured =
+		m_bProductCueActionFacingCaptured;
     EFFECT_PRODUCT_PREVIEW Preview;
     Preview.eCharacterClass = Entry.Skill.eCharacterClass;
     Preview.iSkillId = Entry.Skill.iSkillId;
@@ -15400,7 +15733,16 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 				bPreviousProductCueSnapshotCaptured,
 				ValtanRestoreError);
 		else
+		{
+			m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+			m_bProductCueSnapshotCaptured =
+				bPreviousProductCueSnapshotCaptured;
+			m_fProductCueActionFacingYawDegrees =
+				fPreviousProductCueActionFacingYawDegrees;
+			m_bProductCueActionFacingCaptured =
+				bPreviousProductCueActionFacingCaptured;
 			Synchronize_LoadedSkillPreview();
+		}
         m_strElementStatus =
 			"Play Full Effect could not stage this source preview: " +
 			StageError + (bRestored ? std::string{} :
@@ -16308,11 +16650,19 @@ bool_t Client::CEffect_Tool::Try_BindResource(
 			"The exact adapter packet is inspection-only. Save the selected Decal/Trail as a generic Authored starting copy before binding resources.";
 		return false;
 	}
-    if (!m_ActiveDocument.has_value() || nullptr == Find_SelectedElement())
+    const EFFECT_ELEMENT_DESC* pSelectedElement = Find_SelectedElement();
+    if (!m_ActiveDocument.has_value() || nullptr == pSelectedElement)
     {
         m_strResourceStatus = "Select an Element before choosing a resource.";
         return false;
     }
+	if (pSelectedElement->eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+		pSelectedElement->eKind == EFFECT_ELEMENT_KIND::SCREEN_POST)
+	{
+		m_strResourceStatus =
+			"Presentation Light and Screen Post have no material resource lanes; edit their typed fields or delete the occurrence.";
+		return false;
+	}
     EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
     EFFECT_ELEMENT_DESC* pElement = nullptr;
     for (EFFECT_ELEMENT_DESC& Element : Staged.Elements)
@@ -17447,6 +17797,7 @@ bool_t Client::CEffect_Tool::Ensure_ArtistFMaterialExecutionSnapshots()
 		case EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL:
 			++iLocalDecalCount;
 			break;
+		case EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1:
 		case EFFECT_MATERIAL_EXECUTION_BACKEND::GENERIC:
 		case EFFECT_MATERIAL_EXECUTION_BACKEND::END:
 		default:
@@ -18747,10 +19098,10 @@ bool_t Client::CEffect_Tool::Try_OpenVisualProgramElementForAuthoring(
 
 	EFFECT_ELEMENT_DESC Preset = Selection.GenericElement;
 	const EFFECT_AUTHORING_FAMILY eFamily = Resolve_AuthoringFamily(Preset);
-	if (EFFECT_AUTHORING_FAMILY::END == eFamily)
+	if (!AuthoringFamily_CanCreate(eFamily))
 	{
 		m_strElementStatus =
-			"The selected Element family is not authorable here.";
+			"Presentation Light and Screen Post are edited or deleted in the active Effect; creating them from a source preset is not admitted.";
 		return false;
 	}
 	Preset.strGroupId = "manual.hit1";
@@ -21336,6 +21687,9 @@ bool_t Client::CEffect_Tool::Resolve_PreviewRoot(float4x4_t& OutRoot)
 	const bool_t bValtanSnapshot = m_ValtanProductPreview.has_value() &&
 		EFFECT_FOLLOW_POLICY::SNAPSHOT ==
 			m_ValtanProductPreview->Cue.eFollowPolicy;
+	const bool_t bPlayerActionFacing = m_ProductPreview.has_value() &&
+		EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+			m_ProductPreview->ProductCue.Cue.eOrientationPolicy;
     if ((bPlayerSnapshot || bValtanSnapshot) &&
 		m_bProductCueSnapshotCaptured)
     {
@@ -21394,8 +21748,25 @@ bool_t Client::CEffect_Tool::Resolve_PreviewRoot(float4x4_t& OutRoot)
 
 	if (m_ProductPreview.has_value())
 	{
-		OutRoot = Compose_EffectLocal(
-			m_ProductPreview->ProductCue.Cue.LocalTransform, Anchor);
+		const ANIMATION_EFFECT_CUE& Cue =
+			m_ProductPreview->ProductCue.Cue;
+		if (bPlayerActionFacing && "root" != Cue.strAnchorSlotId)
+			return false;
+		if (bPlayerActionFacing && !m_bProductCueActionFacingCaptured)
+		{
+			if (!Try_ExtractPlanarYawDegrees(
+				Anchor, m_fProductCueActionFacingYawDegrees))
+			{
+				return false;
+			}
+			m_bProductCueActionFacingCaptured = true;
+		}
+		if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+			Cue.LocalTransform, Anchor, Cue.eOrientationPolicy,
+			m_fProductCueActionFacingYawDegrees, OutRoot))
+		{
+			return false;
+		}
 	}
 	else
 	{
@@ -21570,6 +21941,8 @@ bool_t Client::CEffect_Tool::Restore_ValtanProductPreviewPlayback(
 	m_bPreviewVisibleRequested = bVisibleRequested;
 	m_ProductCueSnapshotRoot = SnapshotRoot;
 	m_bProductCueSnapshotCaptured = bSnapshotCaptured;
+	m_fProductCueActionFacingYawDegrees = 0.f;
+	m_bProductCueActionFacingCaptured = false;
 	/* Rebuild document-owned boss state first. This restores the exact 420633
 	   transform-history preparation when the selected document owns it. The v2
 	   occurrence then replaces the legacy clip with its exact source segment. */
@@ -21679,6 +22052,8 @@ void Client::CEffect_Tool::Reset_ProductCueSnapshot()
 {
     m_ProductCueSnapshotRoot = Identity_Matrix();
     m_bProductCueSnapshotCaptured = false;
+	m_fProductCueActionFacingYawDegrees = 0.f;
+	m_bProductCueActionFacingCaptured = false;
 }
 
 void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()

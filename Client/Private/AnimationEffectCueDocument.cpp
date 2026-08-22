@@ -151,6 +151,138 @@ namespace
             Read("sz", Out.vScale.z) &&
             Out.vScale.x > 0.f && Out.vScale.y > 0.f && Out.vScale.z > 0.f;
     }
+
+	constexpr f32_t CUE_ROOT_AFFINE_TOLERANCE = 0.00001f;
+	constexpr f32_t CUE_ROOT_MINIMUM_BASIS_LENGTH = 0.00000001f;
+	constexpr f32_t CUE_ROOT_MINIMUM_NORMALIZED_DETERMINANT = 0.0001f;
+
+	f32_t CueRoot_BasisLength(
+		const f32_t X,
+		const f32_t Y,
+		const f32_t Z)
+	{
+		return std::sqrt(X * X + Y * Y + Z * Z);
+	}
+
+	f32_t CueRoot_Determinant(const float4x4_t& Value)
+	{
+		return
+			Value._11 * (Value._22 * Value._33 - Value._23 * Value._32) -
+			Value._12 * (Value._21 * Value._33 - Value._23 * Value._31) +
+			Value._13 * (Value._21 * Value._32 - Value._22 * Value._31);
+	}
+
+	bool_t Is_ValidCueRootMatrix(const float4x4_t& Value)
+	{
+		const f32_t* const pValues = &Value._11;
+		if (!std::all_of(pValues, pValues + 16u,
+			[](const f32_t fValue) { return std::isfinite(fValue); }) ||
+			std::abs(Value._14) > CUE_ROOT_AFFINE_TOLERANCE ||
+			std::abs(Value._24) > CUE_ROOT_AFFINE_TOLERANCE ||
+			std::abs(Value._34) > CUE_ROOT_AFFINE_TOLERANCE ||
+			std::abs(Value._44 - 1.f) > CUE_ROOT_AFFINE_TOLERANCE)
+		{
+			return false;
+		}
+
+		const f32_t fScaleX = CueRoot_BasisLength(
+			Value._11, Value._12, Value._13);
+		const f32_t fScaleY = CueRoot_BasisLength(
+			Value._21, Value._22, Value._23);
+		const f32_t fScaleZ = CueRoot_BasisLength(
+			Value._31, Value._32, Value._33);
+		if (!std::isfinite(fScaleX) || !std::isfinite(fScaleY) ||
+			!std::isfinite(fScaleZ) ||
+			fScaleX <= CUE_ROOT_MINIMUM_BASIS_LENGTH ||
+			fScaleY <= CUE_ROOT_MINIMUM_BASIS_LENGTH ||
+			fScaleZ <= CUE_ROOT_MINIMUM_BASIS_LENGTH)
+		{
+			return false;
+		}
+
+		const f32_t fNormalizedDeterminant =
+			std::abs(CueRoot_Determinant(Value)) /
+			(fScaleX * fScaleY * fScaleZ);
+		return std::isfinite(fNormalizedDeterminant) &&
+			fNormalizedDeterminant >=
+				CUE_ROOT_MINIMUM_NORMALIZED_DETERMINANT;
+	}
+}
+
+bool_t Client::CAnimationEffectCueDocument::Try_ComposeRootTransform(
+	const EFFECT_TRANSFORM_DESC& Local,
+	const float4x4_t& SampledRootAnchor,
+	const EFFECT_ORIENTATION_POLICY eOrientationPolicy,
+	const f32_t fActionFacingYawDegrees,
+	float4x4_t& OutRoot)
+{
+	const bool_t bFiniteLocal =
+		std::isfinite(Local.vPosition.x) &&
+		std::isfinite(Local.vPosition.y) &&
+		std::isfinite(Local.vPosition.z) &&
+		std::isfinite(Local.vRotationDegrees.x) &&
+		std::isfinite(Local.vRotationDegrees.y) &&
+		std::isfinite(Local.vRotationDegrees.z) &&
+		std::isfinite(Local.vScale.x) &&
+		std::isfinite(Local.vScale.y) &&
+		std::isfinite(Local.vScale.z);
+	if (!bFiniteLocal ||
+		Local.vScale.x <= 0.f || Local.vScale.y <= 0.f ||
+		Local.vScale.z <= 0.f ||
+		!Is_ValidCueRootMatrix(SampledRootAnchor) ||
+		eOrientationPolicy >= EFFECT_ORIENTATION_POLICY::END)
+	{
+		return false;
+	}
+
+	float4x4_t EffectiveAnchor = SampledRootAnchor;
+	if (EFFECT_ORIENTATION_POLICY::ACTION_FACING == eOrientationPolicy)
+	{
+		if (!std::isfinite(fActionFacingYawDegrees))
+			return false;
+		const f32_t fScaleX = CueRoot_BasisLength(
+			SampledRootAnchor._11, SampledRootAnchor._12,
+			SampledRootAnchor._13);
+		const f32_t fScaleY = CueRoot_BasisLength(
+			SampledRootAnchor._21, SampledRootAnchor._22,
+			SampledRootAnchor._23);
+		const f32_t fScaleZ = CueRoot_BasisLength(
+			SampledRootAnchor._31, SampledRootAnchor._32,
+			SampledRootAnchor._33);
+		const f32_t fSignedNormalizedDeterminant =
+			CueRoot_Determinant(SampledRootAnchor) /
+			(fScaleX * fScaleY * fScaleZ);
+		if (!std::isfinite(fSignedNormalizedDeterminant) ||
+			fSignedNormalizedDeterminant <=
+				CUE_ROOT_MINIMUM_NORMALIZED_DETERMINANT)
+		{
+			return false;
+		}
+		DirectX::XMStoreFloat4x4(&EffectiveAnchor,
+			DirectX::XMMatrixScaling(fScaleX, fScaleY, fScaleZ) *
+			DirectX::XMMatrixRotationY(
+				DirectX::XMConvertToRadians(fActionFacingYawDegrees)) *
+			DirectX::XMMatrixTranslation(
+				SampledRootAnchor._41,
+				SampledRootAnchor._42,
+				SampledRootAnchor._43));
+	}
+
+	float4x4_t Staged{};
+	DirectX::XMStoreFloat4x4(&Staged,
+		DirectX::XMMatrixScaling(
+			Local.vScale.x, Local.vScale.y, Local.vScale.z) *
+		DirectX::XMMatrixRotationRollPitchYaw(
+			DirectX::XMConvertToRadians(Local.vRotationDegrees.x),
+			DirectX::XMConvertToRadians(Local.vRotationDegrees.y),
+			DirectX::XMConvertToRadians(Local.vRotationDegrees.z)) *
+		DirectX::XMMatrixTranslation(
+			Local.vPosition.x, Local.vPosition.y, Local.vPosition.z) *
+		DirectX::XMLoadFloat4x4(&EffectiveAnchor));
+	if (!Is_ValidCueRootMatrix(Staged))
+		return false;
+	OutRoot = Staged;
+	return true;
 }
 
 bool_t Client::CAnimationEffectCueDocument::Resolve_PreviewCandidates(
@@ -490,7 +622,7 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
     }
     uint32_t Version = 0u;
     uint32_t DeclaredRows = 0u;
-    if (!Parse_UInt(Tokens[1], Version) || Version < 3u || Version > 5u ||
+    if (!Parse_UInt(Tokens[1], Version) || Version < 3u || Version > 6u ||
         Tokens[2] != strAnimationAssetId ||
         !Parse_UInt(Tokens[3], DeclaredRows))
     {
@@ -650,6 +782,32 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
                 return false;
             }
         }
+		const auto Orientation = Fields.find("orientation");
+		if (Fields.end() != Orientation)
+		{
+			if (Version < 6u)
+			{
+				strOutStatus =
+					"Animation EFFECT orientation is only valid in version 6.";
+				return false;
+			}
+			if ("anchor" == Orientation->second)
+			{
+				Cue.eOrientationPolicy =
+					EFFECT_ORIENTATION_POLICY::ANCHOR;
+			}
+			else if ("action_facing" == Orientation->second)
+			{
+				Cue.eOrientationPolicy =
+					EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+			}
+			else
+			{
+				strOutStatus =
+					"Animation EFFECT cue has an unknown orientation policy.";
+				return false;
+			}
+		}
         const auto Stop = Fields.find("stop");
         if (Fields.end() != Stop)
         {
@@ -665,6 +823,8 @@ bool_t Client::CAnimationEffectCueDocument::Load_FromText(
         }
         if (!Read_Transform(Fields, Cue.LocalTransform) ||
             Cue.iEndMs < Cue.iStartMs || Cue.strAnchorSlotId.empty() ||
+			(EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+				Cue.eOrientationPolicy && "root" != Cue.strAnchorSlotId) ||
             !Is_AvailableClip(Cue.strClipName))
         {
             strOutStatus =

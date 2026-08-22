@@ -298,6 +298,13 @@ Character Select는 Loader 시작과 함께 선택 class cue를 priority queue�
 CPU 준비를 겹친다. activation은 현재 catalog revision의 선택 target만 terminal인지 확인하며 무관한
 background pending은 진입을 막지 않는다. Product prepared record는 catalog document를 immutable shared
 ownership으로 유지하며 Playback/Renderer attach는 revision/document identity를 재사용한다.
+
+animevent v6 Effect cue는 위치 추적 `follow=follow|snapshot`과 방향 권위
+`orientation=anchor|action_facing`을 분리한다. `action_facing`은 root anchor의 ACTIVE 스킬에서만
+Server snapshot의 스킬 edge yaw/actionStartTick을 한 번 캡아 사용하며, HOLD나 world-root cue에는
+자동 적용하지 않는다. v5 문서의 orientation 누락은 `anchor`로 읽히고 unknown token,
+non-finite yaw, mirrored action-facing basis는 해당 cue만 fail-closed한다.
+
 Character Select 내부의 Server 승인 class 변경도 local snapshot을 stable generation으로 stage하고 새 class
 Product cue target이 settle된 뒤에만 기존 character replacement transaction을 commit한다. 준비 중
 gameplay와 class/stage/create 입력은 차단하며 replacement 실패는 입력 정지 대신 Lobby 복귀로 격리한다.
@@ -419,7 +426,7 @@ ViewModel/임시 overlay다. layout JSON으로 최종 image widget을 생성하�
 
 - 셰이더: `../Bin/ShaderFiles/Shader_*.hlsl`
 - 프로젝트 데이터: `CProjectDataRoot::Resolve()`로 `Data/` 정본을 해석한다.
-- 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. Server pre-build의 `Publish-GameplayBalance.ps1`이 수치 runtime bootstrap을 생성한다.
+- 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. two-step ground target의 optional 입력·preview 계약은 `PlayerSkillTargeting.json`이며 기존 skillId/maximumRange와 exact join한다. Server pre-build의 `Publish-GameplayBalance.ps1`이 수치와 `SKILLTARGET` admission runtime bootstrap을 생성한다. texture ID와 tint는 Client-only이며 Server bootstrap에 넣지 않는다.
 - 아이템: `Data/Items/ItemCatalog.json`이 정본이다. Server pre-build의 `Publish-ItemCatalog.ps1`이 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하고 `CItemCatalog`이 이를 필수 로드한다. `Server/Bin` 생성물을 커밋하거나 Server가 authoring JSON을 직접 읽게 하지 않는다.
 - Git 관리 대상 `Data` 원본은 `Client.vcxproj`에서 `96.DataFiles`의 `None` 항목으로 보인다. 이는 탐색용 링크이며 runtime 복사나 두 번째 정본이 아니다.
 - 현재 밸런스 검증은 JSON publish 후 Server 재기동과 `dev.training.ground` smoke로 수행한다. 무중단 Hot Reload는 아직 활성화하지 않으며 revision과 Server tick-boundary commit 없이 Client만 재읽지 않는다. 상세 계약은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.

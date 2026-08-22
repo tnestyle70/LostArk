@@ -235,11 +235,25 @@ bool Client::CEffectDirectAuthoredSourceIndex::Build(
 		++Staged.iCatalogDirectCount;
 		const DATA_JSON_VALUE* pAssetId = CatalogEntry.Find("effectAssetId");
 		const DATA_JSON_VALUE* pAuthoringPath = CatalogEntry.Find("authoringPath");
-		if (CatalogEntry.Get_Object().size() != 3u || nullptr == pAssetId ||
+		const DATA_JSON_VALUE* pScreenOverlayPresentationPath =
+			CatalogEntry.Find("screenOverlayPresentationPath");
+		const bool_t bOptionalScreenOverlayPathValid =
+			nullptr == pScreenOverlayPresentationPath ||
+			(pScreenOverlayPresentationPath->Get_Type() == DATA_JSON_TYPE::STRING &&
+			 !pScreenOverlayPresentationPath->Get_String().empty() &&
+			 pScreenOverlayPresentationPath->Get_String().starts_with(
+				"Effects/ScreenOverlays/") &&
+			 pScreenOverlayPresentationPath->Get_String().ends_with(
+				".screen-overlay.json"));
+		if ((CatalogEntry.Get_Object().size() != 3u &&
+			 CatalogEntry.Get_Object().size() != 4u) || nullptr == pAssetId ||
 			pAssetId->Get_Type() != DATA_JSON_TYPE::STRING ||
 			pAssetId->Get_String().empty() || nullptr == pAuthoringPath ||
 			pAuthoringPath->Get_Type() != DATA_JSON_TYPE::STRING ||
-			pAuthoringPath->Get_String().empty())
+			pAuthoringPath->Get_String().empty() ||
+			!bOptionalScreenOverlayPathValid ||
+			(CatalogEntry.Get_Object().size() == 4u &&
+			 nullptr == pScreenOverlayPresentationPath))
 		{
 			strOutStatus =
 				"EffectCatalog.json contains a malformed direct-authored row.";

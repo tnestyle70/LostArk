@@ -8,6 +8,13 @@ $authored = Join-Path $dataRoot 'Effects\Authored'
 $assemblies = Join-Path $dataRoot 'Effects\Assemblies\Fixture'
 $components = Join-Path $dataRoot 'Effects\Components\Fixture'
 $effectResource = Join-Path $resourceRoot 'Effect\Test'
+$combatObjectEffectIds = @(
+    'effect.valtan.pipeline-combat.target-axe',
+    'effect.valtan.pipeline-combat.red-wave'
+)
+$script:CombatObjectFixtureDocument = $null
+$script:CombatObjectFixtureComponent = $null
+$script:CombatObjectFixtureAssembly = $null
 $utf8NoBom = [Text.UTF8Encoding]::new($false)
 $utf8NoBomStrict = [Text.UTF8Encoding]::new($false, $true)
 
@@ -46,8 +53,34 @@ function Write-Fixture(
     [object[]]$SourceActionCues = @()) {
     $authoringPath = Join-Path $authored "$effectId.effect.json"
     Write-Utf8 $authoringPath (($Document | ConvertTo-Json -Depth 30) + "`n")
+    if ($null -eq $script:CombatObjectFixtureDocument) {
+        $script:CombatObjectFixtureDocument =
+            ($Document | ConvertTo-Json -Depth 30) | ConvertFrom-Json
+    }
+    $effectiveCatalog = ($Catalog | ConvertTo-Json -Depth 30) |
+        ConvertFrom-Json
+    foreach ($combatObjectEffectId in $combatObjectEffectIds) {
+        $combatObjectDocument =
+            ($script:CombatObjectFixtureDocument |
+                ConvertTo-Json -Depth 30) | ConvertFrom-Json
+        $combatObjectDocument.effectAssetId = $combatObjectEffectId
+        $combatObjectDocument.displayName = "Pipeline Combat Object Fixture"
+        Write-Utf8 (Join-Path $authored "$combatObjectEffectId.effect.json") `
+            (($combatObjectDocument | ConvertTo-Json -Depth 30) + "`n")
+        if (0 -eq @($effectiveCatalog.effects | Where-Object {
+                [string]$_.effectAssetId -ceq $combatObjectEffectId
+            }).Count) {
+            $combatObjectCatalogEntry = [ordered]@{
+                effectAssetId = $combatObjectEffectId
+                authoringPath =
+                    "Effects/Authored/$combatObjectEffectId.effect.json"
+            }
+            $effectiveCatalog.effects = @($effectiveCatalog.effects) +
+                @($combatObjectCatalogEntry)
+        }
+    }
     Write-Utf8 (Join-Path $dataRoot 'Effects\EffectCatalog.json') `
-        (($Catalog | ConvertTo-Json -Depth 10) + "`n")
+        (($effectiveCatalog | ConvertTo-Json -Depth 30) + "`n")
     $componentId = 'effect.component.fixture.00'
     $componentDocument = ($Document | ConvertTo-Json -Depth 30) |
         ConvertFrom-Json
@@ -120,6 +153,41 @@ function Write-Fixture(
         (($component | ConvertTo-Json -Depth 40) + "`n")
     Write-Utf8 (Join-Path $assemblies "$effectId.assembly.json") `
         (($assembly | ConvertTo-Json -Depth 40) + "`n")
+    if ($null -eq $script:CombatObjectFixtureComponent) {
+        $script:CombatObjectFixtureComponent =
+            ($component | ConvertTo-Json -Depth 40) | ConvertFrom-Json
+        $script:CombatObjectFixtureAssembly =
+            ($assembly | ConvertTo-Json -Depth 40) | ConvertFrom-Json
+    }
+    for ($combatIndex = 0;
+        $combatIndex -lt $combatObjectEffectIds.Count;
+        ++$combatIndex) {
+        $combatObjectEffectId = $combatObjectEffectIds[$combatIndex]
+        $combatComponentId =
+            "effect.component.fixture.combat.$('{0:D2}' -f $combatIndex)"
+        $combatComponent =
+            ($script:CombatObjectFixtureComponent |
+                ConvertTo-Json -Depth 40) | ConvertFrom-Json
+        $combatComponent.componentAssetId = $combatComponentId
+        $combatComponent.source.effectAssetId = $combatObjectEffectId
+        $combatComponent.document.effectAssetId = $combatComponentId
+        $combatAssembly =
+            ($script:CombatObjectFixtureAssembly |
+                ConvertTo-Json -Depth 40) | ConvertFrom-Json
+        $combatAssembly.effectAssetId = $combatObjectEffectId
+        $combatAssembly.displayName = 'Pipeline Combat Object Fixture'
+        $combatAssembly.componentCues[0].componentAssetId = $combatComponentId
+        $combatAuthoringPath = Join-Path $authored `
+            "$combatObjectEffectId.effect.json"
+        $combatAssembly.sourceDocumentFileSha256 =
+            Get-CanonicalTrackedTextSha256 $combatAuthoringPath
+        Write-Utf8 (Join-Path $components `
+            "Fixture_Combat_$('{0:D2}' -f $combatIndex).particlesystem.wfx.json") `
+            (($combatComponent | ConvertTo-Json -Depth 40) + "`n")
+        Write-Utf8 (Join-Path $assemblies `
+            "$combatObjectEffectId.assembly.json") `
+            (($combatAssembly | ConvertTo-Json -Depth 40) + "`n")
+    }
 }
 
 function Assert-PublishRejected([string]$Name, [byte[]]$Committed) {
@@ -185,13 +253,13 @@ try {
         $eventPath = Join-Path $dataRoot (
             "Animation\Authored\$animationAssetId\$animationAssetId.animevents")
         $eventRows = if ($animationAssetId -ceq 'Artist') {
-            @('"fixture_clip" EFFECT startms=0 effectref=asset payload="effect.valtan.pipeline-fixture"')
+            @('"fixture_clip" EFFECT startms=0 effectref=asset payload="effect.valtan.pipeline-fixture" anchor="root" follow=follow orientation=action_facing')
         }
         else {
             @()
         }
         Write-Utf8 $eventPath ((
-            "LOSTARK_ANIM_EVENTS 5 `"$animationAssetId`" $($eventRows.Count)`n" +
+            "LOSTARK_ANIM_EVENTS $(if ($animationAssetId -ceq 'Artist') { 6 } else { 5 }) `"$animationAssetId`" $($eventRows.Count)`n" +
             (($eventRows -join "`n") + $(if ($eventRows.Count) { "`n" } else { '' }))))
     }
     Write-Utf8 (Join-Path $dataRoot `
@@ -277,14 +345,14 @@ try {
                             'combatobject.valtan.pipeline-fixture.moving-a'
                         clientVisualId =
                             'combatobject.visual.valtan.pipeline-fixture.moving-a.v1'
-                        effectAssetId = 'effect.valtan.pipeline-fixture'
+                        effectAssetId = $combatObjectEffectIds[0]
                     },
                     [ordered]@{
                         combatObjectArchetypeId =
                             'combatobject.valtan.pipeline-fixture.moving-b'
                         clientVisualId =
                             'combatobject.visual.valtan.pipeline-fixture.moving-b.v1'
-                        effectAssetId = 'effect.valtan.pipeline-fixture'
+                        effectAssetId = $combatObjectEffectIds[1]
                     })
             })
         } | ConvertTo-Json -Depth 10) + "`n")
@@ -372,6 +440,30 @@ try {
         $null -ne $baselineRuntime.effects[0].PSObject.Properties['payloadKind']) {
         throw 'Legacy-only publish no longer preserves the format-2 catalog shape.'
     }
+
+    $artistCueFixturePath = Join-Path $dataRoot `
+        'Animation\Authored\Artist\Artist.animevents'
+    $validArtistCueText = [IO.File]::ReadAllText(
+        $artistCueFixturePath, $utf8NoBomStrict)
+    Write-Utf8 $artistCueFixturePath (
+        $validArtistCueText.Replace('orientation=action_facing',
+            'orientation=steering'))
+    Assert-ValidateRejected 'Unknown v6 cue orientation' $baseline
+    Write-Utf8 $artistCueFixturePath (
+        $validArtistCueText.Replace('anchor="root"', 'anchor="socket"'))
+    Assert-ValidateRejected 'Action-facing cue on a non-root anchor' $baseline
+    Write-Utf8 $artistCueFixturePath (
+        $validArtistCueText.Replace('LOSTARK_ANIM_EVENTS 6',
+            'LOSTARK_ANIM_EVENTS 5'))
+    Assert-ValidateRejected 'v5 cue carrying a v6 orientation token' $baseline
+    Write-Utf8 $artistCueFixturePath (
+        $validArtistCueText.Replace(' orientation=action_facing', ''))
+    & $publisher -Mode Validate -DataRoot $dataRoot `
+        -ResourceRoot $resourceRoot -OutputPath $output
+    if ($LASTEXITCODE) {
+        throw 'v6 cue without orientation did not preserve ANCHOR compatibility.'
+    }
+    Write-Utf8 $artistCueFixturePath $validArtistCueText
 
     $valtanCueFixturePath = Join-Path $dataRoot `
         'Animation\Authored\Valtan\Valtan.patterneffectcues.json'
@@ -1472,6 +1564,15 @@ finally {
 
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $pythonContractTests = @(
+    'Tools.EffectPipeline.test_apply_lancemaster_34560_w_cone_donor',
+    'Tools.EffectPipeline.test_apply_artist_31210_symbol_decal',
+    'Tools.EffectPipeline.test_apply_artist_31420_grass_tip_fade',
+    'Tools.EffectPipeline.test_apply_artist_31460_slash_noise_override',
+    'Tools.EffectPipeline.test_apply_warlord_17240_screen_noise_and_decals',
+    'Tools.EffectPipeline.test_build_character_effect_restoration_inventory',
+    'Tools.EffectPipeline.test_materialize_dimensionmaster_2050230_fluid01_sprite',
+    'Tools.EffectPipeline.test_materialize_dimensionmaster_2050210_occurrences',
+    'Tools.EffectPipeline.test_verify_artist_31490_product_join',
     'Tools.EffectPipeline.test_build_valtan_stage_effects',
     'Tools.EffectPipeline.test_build_valtan_action_bindings',
     'Tools.EffectPipeline.test_build_valtan_source_occurrence_inventory',

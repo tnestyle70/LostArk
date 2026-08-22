@@ -7,6 +7,7 @@
 #include "GameInstance.h"
 #include "PlayerCommandSink.h"
 #include "PlayerSkillCatalog.h"
+#include "SkillGroundTargetPreview.h"
 #include "Transform.h"
 
 #include <cmath>
@@ -60,6 +61,7 @@ void Client::CPlayerController::Set_LocalCharacter(const shared_ptr<CCharacter>&
 		return;
 
 	m_pLocalCharacter = character;
+	Cancel_GroundTargeting();
 	m_iNextMoveSequence = 1;
 	m_iNextActionSequence = 1;
 	m_wasRightMouseDown = false;
@@ -81,6 +83,7 @@ void Client::CPlayerController::Rebind_LocalCharacter(
 	if (m_pLocalCharacter.lock() == character)
 		return;
 	m_pLocalCharacter = character;
+	Cancel_GroundTargeting();
 	m_wasRightMouseDown = false;
 	m_wasKeyDown.fill(false);
 	m_iHeldSkillId = LostArk::Shared::INVALID_SKILL_ID;
@@ -112,6 +115,96 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 		m_pLocalCharacter.lock();
 	const shared_ptr<IPlayerCommandSink> commandSink =
 		m_pCommandSink;
+	const bool_t isLeftMousePhysicallyDown =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::LB) & 0x80);
+	const bool_t isRightMousePhysicallyDown =
+		0 != (CGameInstance::Get().Get_DIMouseStateRaw(DIM::RB) & 0x80);
+
+	if (m_GroundTargeting.Is_Active())
+	{
+		const auto& playerState = CCombatHUDViewModel::Get().Get_Player();
+		if (!gameplayCommandsEnabled || nullptr == character ||
+			nullptr == commandSink || nullptr == m_pGroundTargetPreview ||
+			!playerState.isValid || 0u == playerState.iCurrentHp ||
+			!playerState.isCombatReady ||
+			LostArk::Shared::PLAYER_ACTION_STATE::NONE != playerState.eAction)
+		{
+			Cancel_GroundTargeting();
+		}
+		else
+		{
+			const shared_ptr<CTransform> transform = character->Get_Transform();
+			if (nullptr == transform)
+			{
+				Cancel_GroundTargeting();
+			}
+			else
+			{
+				const vector_t position = transform->Get_State(STATE::POSITION);
+				float3_t caster{};
+				XMStoreFloat3(&caster, position);
+				float3_t rawCursor{};
+				if (Try_PickGroundPlane(caster.y, rawCursor) &&
+					m_GroundTargeting.Update_Cursor(caster, rawCursor))
+				{
+					float3_t sampled{};
+					const float3_t& clamped =
+						m_GroundTargeting.Get_TargetPosition();
+					if (character->Try_SampleTargetGround(
+							clamped.x, clamped.z, sampled))
+					{
+						(void)m_GroundTargeting.Apply_WalkableSample(sampled);
+					}
+				}
+				else
+				{
+					m_GroundTargeting.Invalidate_Cursor(caster);
+				}
+				m_pGroundTargetPreview->Set_State(
+					caster, m_GroundTargeting.Get_TargetPosition(),
+					m_GroundTargeting.Can_Confirm());
+
+				const bool_t cancelEdge = isRightMousePhysicallyDown &&
+					!m_wasTargetingRightMouseDown;
+				const bool_t confirmEdge =
+					!CGameInstance::Get().IsMouseInputBlocked() &&
+					0 != (CGameInstance::Get().Get_DIMouseState(DIM::LB) & 0x80) &&
+					isLeftMousePhysicallyDown &&
+					!m_wasTargetingLeftMouseDown;
+				m_wasTargetingLeftMouseDown = isLeftMousePhysicallyDown;
+				m_wasTargetingRightMouseDown = isRightMousePhysicallyDown;
+				if (cancelEdge)
+				{
+					Cancel_GroundTargeting();
+				}
+				else if (confirmEdge && m_GroundTargeting.Can_Confirm())
+				{
+					const float3_t target =
+						m_GroundTargeting.Get_TargetPosition();
+					if (commandSink->Request_UseGroundTargetSkill(
+							m_iNextActionSequence,
+							m_GroundTargeting.Get_SkillId(),
+							target.x, target.z))
+					{
+						++m_iNextActionSequence;
+						if (0u == m_iNextActionSequence)
+							m_iNextActionSequence = 1u;
+						Cancel_GroundTargeting();
+					}
+				}
+			}
+		}
+
+		LostArk::Shared::SKILL_ID ignoredSkill =
+			LostArk::Shared::INVALID_SKILL_ID;
+		LostArk::Shared::SKILL_ID ignoredRelease =
+			LostArk::Shared::INVALID_SKILL_ID;
+		Poll_SkillSlots(true, useRawKeyboard, character,
+			ignoredSkill, ignoredRelease);
+		(void)Poll_EstherSlot(true, useRawKeyboard);
+		m_wasRightMouseDown = isRightMouseDown;
+		return;
+	}
 
 	if (gameplayCommandsEnabled && isRightMouseDown &&
 		nullptr != character &&
@@ -178,6 +271,30 @@ void Client::CPlayerController::Update(const bool_t gameplayCommandsEnabled)
 		const shared_ptr<CTransform> transform = character->Get_Transform();
 		if (nullptr != transform)
 		{
+			const PLAYER_SKILL_DEFINITION* requestedDefinition =
+				CPlayerSkillCatalog::Find_ById(requestedSkillId);
+			if (nullptr != requestedDefinition &&
+				LostArk::Shared::SKILL_TARGET_INTENT_KIND::GROUND_POINT ==
+					requestedDefinition->eTargetIntent)
+			{
+				if (nullptr != m_pGroundTargetPreview &&
+					m_GroundTargeting.Begin(
+						requestedSkillId,
+						requestedDefinition->fTargetMaximumRange) &&
+					m_pGroundTargetPreview->Begin(*requestedDefinition))
+				{
+					m_wasTargetingLeftMouseDown =
+						isLeftMousePhysicallyDown;
+					m_wasTargetingRightMouseDown =
+						isRightMousePhysicallyDown;
+				}
+				else
+				{
+					Cancel_GroundTargeting();
+				}
+				m_wasRightMouseDown = isRightMouseDown;
+				return;
+			}
 			const vector_t position = transform->Get_State(STATE::POSITION);
 			float3_t aim{};
 			const f32_t groundY = XMVectorGetY(position);
@@ -450,6 +567,45 @@ void Client::CPlayerController::Set_CommandSink(
 	const shared_ptr<IPlayerCommandSink>& commandSink)
 {
 	m_pCommandSink = commandSink;
+}
+
+bool_t Client::CPlayerController::Initialize_TargetingPreview(
+	const uint32_t levelIndex)
+{
+	if (nullptr != m_pGroundTargetPreview)
+		return true;
+	if (levelIndex >= ETOUI(LEVEL::END))
+		return false;
+	CGameObject::GAMEOBJECT_DESC desc{};
+	shared_ptr<CGameObject> object;
+	if (FAILED(CGameInstance::Get().Add_GameObject_to_Layer(
+		levelIndex,
+		CSkillGroundTargetPreview::PROTOTYPE_TAG,
+		levelIndex,
+		TEXT("Layer_SkillGroundTargetPreview"),
+		&desc,
+		&object)))
+	{
+		return false;
+	}
+	m_pGroundTargetPreview =
+		dynamic_pointer_cast<CSkillGroundTargetPreview>(object);
+	if (nullptr == m_pGroundTargetPreview)
+	{
+		CGameInstance::Get().Remove_GameObject_from_Layer(
+			levelIndex, TEXT("Layer_SkillGroundTargetPreview"), object);
+		return false;
+	}
+	return true;
+}
+
+void Client::CPlayerController::Cancel_GroundTargeting()
+{
+	m_GroundTargeting.Cancel();
+	if (nullptr != m_pGroundTargetPreview)
+		m_pGroundTargetPreview->Clear();
+	m_wasTargetingLeftMouseDown = false;
+	m_wasTargetingRightMouseDown = false;
 }
 
 bool_t Client::CPlayerController::Should_SendMoveGoal(

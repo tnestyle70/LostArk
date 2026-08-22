@@ -1,5 +1,6 @@
 #include "Shader_EffectCommon.hlsli"
 #include "Shader_Artist31470RuntimeMaterial.hlsli"
+#include "Shader_EffectStandardColorV1.hlsli"
 #include "Shader_EffectUe3MaterialFamilies.hlsli"
 #include "Shader_Artist31470Diagnostic.hlsli"
 
@@ -61,12 +62,31 @@ VS_OUT VS_MAIN(VS_IN input)
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
+    if (0u != g_StandardColorV1Enabled)
+    {
+        return Shade_EffectStandardColorV1Particle(
+            input.uv, input.uvNext, input.particleData.y, input.color);
+    }
     if (0u != g_RuntimeMaterialV2Enabled)
     {
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_FLUID01_SPRITE_W_FD_01_3)
+        {
+            return Shade_EffectUe3Fluid01SpriteWFd013Particle(
+                input.runtimeLocalUV, input.color,
+                input.dynamicParameter);
+        }
         if (g_RuntimeMaterialV2Opcode ==
             RUNTIME_MATERIAL_V2_UE3_SPRITEWAVE_TR)
         {
             return Shade_EffectUe3SpriteWaveTrParticle(
+                input.runtimeLocalUV, input.color,
+                input.dynamicParameter);
+        }
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_SPRITEWAVE_AD_NO_EMISSIVE)
+        {
+            return Shade_EffectUe3SpriteWaveAdditiveNoEmissiveParticle(
                 input.runtimeLocalUV, input.color,
                 input.dynamicParameter);
         }

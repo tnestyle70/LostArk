@@ -28,6 +28,12 @@ struct EFFECT_SPAWN_DESC final
     std::string strAnchorSlotId = "root";
     EFFECT_TRANSFORM_DESC LocalTransform{};
     EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+	EFFECT_ORIENTATION_POLICY eOrientationPolicy =
+		EFFECT_ORIENTATION_POLICY::ANCHOR;
+	/* Valid only for ACTION_FACING and captured with iActionStartTick from the
+	   same authoritative Player snapshot. */
+	bool_t bHasActionFacingYaw = false;
+	f32_t fActionFacingYawDegrees = 0.f;
     EFFECT_STOP_POLICY eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
     uint32_t iCueDurationMs = 0u;
     uint32_t iActionStartTick = 0u;
@@ -77,6 +83,7 @@ struct EFFECT_SCENE_BUDGET_COST final
 	uint64_t iAfterImages = 0u;
 	uint64_t iLights = 0u;
 	uint64_t iScreenPosts = 0u;
+	uint64_t iScreenOverlays = 0u;
 	uint64_t iEstimatedDrawSubmissions = 0u;
 
 	bool operator==(const EFFECT_SCENE_BUDGET_COST&) const = default;
