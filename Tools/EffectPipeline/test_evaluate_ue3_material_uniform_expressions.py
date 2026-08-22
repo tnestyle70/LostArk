@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import copy
 import hashlib
+import json
 import struct
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from Tools.EffectPipeline import evaluate_ue3_material_uniform_expressions as subject
 
@@ -56,6 +63,60 @@ def _parameter_item(
         )
     result += _fname(names, "None")
     return bytes(result)
+
+
+def _glasshole_scalar_values() -> list[float]:
+    values = [0.0] * subject.GLASSHOLE_SCALAR_EXPRESSION_COUNT
+    packed_rows = {
+        1: [2.5, -15.0, -7.5, 1.0],
+        7: [0.0, 0.0, -7.0, 0.2],
+        8: [0.0, 2.0, 1.0, 0.3],
+        9: [0.0, 0.0, 1.0, 0.1],
+        10: [0.0, 2.0, -0.8, 1.0],
+        11: [1.0, 0.0, 0.0, 0.0],
+        12: [0.0, 0.0, 0.0, 2.0],
+        13: [5.0, -0.0, 0.0, 0.8],
+    }
+    for group, row in packed_rows.items():
+        values[group * 4 : group * 4 + 4] = row
+    return values
+
+
+def _glasshole_native_binding() -> dict[str, object]:
+    return {
+        "constantBufferClosure": {
+            "declaredConstantBuffer0Float4Count": 22,
+        },
+        "scalarGroups": [
+            {
+                "expressionIndexOrGroup": group,
+                "baseIndex": slot * 16,
+            }
+            for group, slot in subject.GLASSHOLE_SCALAR_GROUP_WIRES
+        ],
+    }
+
+
+def _glasshole_evaluation(evidence: dict[str, object]) -> dict[str, object]:
+    values = _glasshole_scalar_values()
+    material_rows = []
+    for group in evidence["groupsInAscendingCb0SlotOrder"]:
+        indices = group["projectedExpressionIndices"]
+        material_rows.append(
+            {
+                "slot": group["slot"],
+                "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+                "expressionIndices": indices,
+                "value": [subject._float32(values[index]) for index in indices],
+            }
+        )
+    return {
+        "pixelScalarExpressionValues": values,
+        "nativeCb0": {
+            "materialRows": material_rows,
+            "nativeScalarGroupPackingEvidence": evidence,
+        },
+    }
 
 
 class SourceValueUniformEvaluatorTests(unittest.TestCase):
@@ -271,6 +332,111 @@ class SourceValueUniformEvaluatorTests(unittest.TestCase):
         self.assertEqual(rows[1]["value"], [1.0, 2.0, 3.0, 4.0])
         self.assertEqual(rows[2]["value"], [5.0, 0.0, 0.0, 0.0])
         self.assertEqual(rows[3]["value"], [1.0, 2.0, 3.0, 4.0])
+        evidence = result["nativeCb0"]["nativeScalarGroupPackingEvidence"]
+        self.assertEqual(evidence["partialGroupCount"], 1)
+        self.assertFalse(evidence["targetPaddingFree"])
+        self.assertFalse(evidence["targetPaddingFreeCorroborationAdmission"])
+        self.assertEqual(
+            evidence["fidelity"], subject.PACKED_SCALAR_PADDING_UNRESOLVED
+        )
+        self.assertIsNone(evidence["packedLittleEndianByteCount"])
+        self.assertIsNone(evidence["packedLittleEndianSha256"])
+        partial = evidence["groupsInAscendingCb0SlotOrder"][1]
+        self.assertFalse(partial["completeFourLaneProjection"])
+        self.assertEqual(partial["projectedExpressionIndices"], [4, 5, 6, 7])
+        self.assertEqual(partial["presentExpressionIndices"], [4])
+
+    def test_glasshole_native_scalar_groups_are_padding_free_and_hash_sealed(self) -> None:
+        values = _glasshole_scalar_values()
+        evidence = subject.project_native_scalar_group_packing(
+            values, _glasshole_native_binding()
+        )
+        subject.validate_target_native_scalar_group_packing(
+            subject.GLASSHOLE_TARGET_ID, _glasshole_evaluation(evidence)
+        )
+
+        self.assertEqual(evidence["fidelity"], subject.PACKED_SCALAR_FIDELITY)
+        self.assertEqual(evidence["selectedGroupCount"], 8)
+        self.assertEqual(evidence["completeGroupCount"], 8)
+        self.assertEqual(evidence["partialGroupCount"], 0)
+        self.assertEqual(
+            evidence["packedLittleEndianByteCount"],
+            subject.GLASSHOLE_PACKED_SCALAR_BYTE_COUNT,
+        )
+        self.assertEqual(
+            evidence["packedLittleEndianSha256"],
+            subject.GLASSHOLE_PACKED_SCALAR_SHA256,
+        )
+        self.assertEqual(
+            [
+                [
+                    subject._float32(values[index])
+                    for index in row["projectedExpressionIndices"]
+                ]
+                for row in evidence["groupsInAscendingCb0SlotOrder"]
+            ],
+            [
+                [2.5, -15.0, -7.5, 1.0],
+                [0.0, 0.0, -7.0, subject._float32(0.2)],
+                [0.0, 2.0, 1.0, subject._float32(0.3)],
+                [0.0, 0.0, 1.0, subject._float32(0.1)],
+                [0.0, 2.0, subject._float32(-0.8), 1.0],
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 2.0],
+                [5.0, -0.0, 0.0, subject._float32(0.8)],
+            ],
+        )
+
+    def test_glasshole_lane_swap_and_group_mutation_fail_closed(self) -> None:
+        values = _glasshole_scalar_values()
+        evidence = subject.project_native_scalar_group_packing(
+            values, _glasshole_native_binding()
+        )
+        lane_swapped = copy.deepcopy(evidence)
+        indices = lane_swapped["groupsInAscendingCb0SlotOrder"][0][
+            "projectedExpressionIndices"
+        ]
+        indices[0], indices[1] = indices[1], indices[0]
+        with self.assertRaisesRegex(ValueError, "lane projection changed"):
+            subject.validate_native_scalar_group_packing_evidence(
+                lane_swapped, values
+            )
+
+        mutated_native = _glasshole_native_binding()
+        mutated_native["scalarGroups"][0]["expressionIndexOrGroup"] = 2
+        group_mutated = subject.project_native_scalar_group_packing(
+            values, mutated_native
+        )
+        with self.assertRaisesRegex(ValueError, "Glasshole scalar group wire changed"):
+            subject.validate_target_native_scalar_group_packing(
+                subject.GLASSHOLE_TARGET_ID,
+                _glasshole_evaluation(group_mutated),
+            )
+
+    def test_tracked_receipt_seals_only_glasshole_target_padding_free(self) -> None:
+        receipt_path = REPOSITORY_ROOT / (
+            "Data/Effects/Imported/DimensionMaster/Materials/"
+            "skill.2050120.clip3.source-value-uniform-evaluation.receipt.json"
+        )
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        subject.validate_output_receipt(receipt)
+        admitted = [
+            target
+            for target in receipt["targets"]
+            if target["sourceValueUniformEvaluation"]["nativeCb0"]
+            ["nativeScalarGroupPackingEvidence"]
+            ["targetPaddingFreeCorroborationAdmission"]
+        ]
+        self.assertEqual(
+            [target["targetId"] for target in admitted],
+            [subject.GLASSHOLE_TARGET_ID],
+        )
+        for target in receipt["targets"]:
+            self.assertFalse(target["sourceValueReplayAdmission"])
+            self.assertFalse(target["actualVfPassAdmission"])
+            self.assertFalse(target["runtimeAdmission"])
+            self.assertFalse(target["visualAdmission"])
+        self.assertFalse(receipt["scope"]["nativeScalarGroupPackingSourceClosed"])
 
     def test_official_source_semantics_are_verified_not_assumed(self) -> None:
         text = """

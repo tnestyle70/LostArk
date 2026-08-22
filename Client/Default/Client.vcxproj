@@ -1782,6 +1782,7 @@
     <None Include="..\..\Data\Effects\CookedShaders\7917664ff360df0f6305bf8d6c41a8c506872a62e09d26beb2b8fd8d7164d76c.dxbc" />
     <None Include="..\..\Data\Effects\CookedShaders\9c4706c3b6a36cb5a5eac40d8e871f2b67351265cf211f624614c842f0334b8e.dxbc" />
     <None Include="..\..\Data\Effects\CookedShaders\a04dc3d21a95d5f2299d6bc8d07f65bd7cde640be52ed0df362b4a71b0c680e6.dxbc" />
+    <None Include="..\..\Data\Effects\CookedShaders\defae822f429760d30e0bfd31cef8c1217af8d7e43f794be6b42e85e6552995b.dxbc" />
     <None Include="..\..\Data\Effects\CookedShaders\e2ba1c1ef87cdd52cc74a8e661f8613d0b17f2cc7b9b1d0d7ab6ed80ec6e775b.dxbc" />
     <None Include="..\..\Data\Effects\EffectCatalog.json" />
     <None Include="..\..\Data\Effects\Imported\Artist\ActionSource\Artist.skeletal-mesh-sockets.json" />

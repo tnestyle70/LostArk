@@ -30,8 +30,14 @@ def minimal_manifest() -> dict:
     return {
         "schema": subject.TARGET_SCHEMA,
         "formatVersion": subject.TARGET_FORMAT_VERSION,
-        "identity": {"fixture": True},
+        "identity": {"fixture": True, "effectAssetId": "fixture.effect"},
         "inputs": {
+            "authoredEffectDocument": {
+                "repoRelativePath": "Data/Effects/Authored/fixture.effect.json",
+                "schema": "lostark.effect-authoring",
+                "version": 13,
+                "effectAssetId": "fixture.effect",
+            },
             "officialRefShaderCache": {},
             "sourcePackages": [
                 {
@@ -61,7 +67,96 @@ def minimal_manifest() -> dict:
             "expectedBlockedCount": 0,
             "expectedExactDxbcCount": 1,
             "expectedExactNativeBindingCount": 1,
+            "expectedSourceEmitterVertexFactoryPassCount": 0,
         },
+    }
+
+
+def source_vf_pass_contract() -> dict:
+    return {
+        "occurrenceId": "fixture.occurrence",
+        "requiredModule": {
+            "boffsetcenter": True,
+            "screenalignment": "psa_rectangle",
+        },
+        "dynamicModule": {
+            "className": "particlemoduleparameterdynamic",
+            "updateflags": 15,
+        },
+        "vertexFactoryType": "fparticleoffsetcenterdynamicparametervertexfactory",
+        "densityPolicy": subject.DENSITY_NO_DENSITY_AUTHORING_BOUNDED,
+        "vertexShaderType": "nodensityvs",
+        "vertexShaderIdHex": "2" * 32,
+        "expectedDxbc": {"byteSize": 6500, "sha256": "d" * 64},
+        "expectedConstantBufferFloat4Counts": {"0": 27, "1": 5},
+    }
+
+
+def source_authored_document() -> dict:
+    return {
+        "elements": [
+            {
+                "id": "fixture.occurrence",
+                "kind": "particle",
+                "material": {"sourceMaterialPath": "fixture.source"},
+                "sourceRecipe": {
+                    "enabled": True,
+                    "rendererShape": "sprite",
+                    "modules": [
+                        {
+                            "stableId": "required",
+                            "className": "particlemodulerequired",
+                            "literals": [
+                                {
+                                    "propertyPath": "boffsetcenter",
+                                    "kind": "boolean",
+                                    "value": True,
+                                },
+                                {
+                                    "propertyPath": "screenalignment",
+                                    "kind": "string",
+                                    "value": "psa_rectangle",
+                                },
+                            ],
+                        },
+                        {
+                            "stableId": "dynamic",
+                            "className": "particlemoduleparameterdynamic",
+                            "literals": [
+                                {
+                                    "propertyPath": "updateflags",
+                                    "kind": "number",
+                                    "value": 15,
+                                }
+                            ],
+                        },
+                    ],
+                },
+            }
+        ]
+    }
+
+
+def source_material_map() -> dict:
+    return {
+        "vertexFactories": [
+            {
+                "vertexFactoryType": (
+                    "fparticleoffsetcenterdynamicparametervertexfactory"
+                ),
+                "shaderReferences": [
+                    {"shaderType": "basepass", "shaderIdHex": "3" * 32},
+                    {"shaderType": "nodensityvs", "shaderIdHex": "2" * 32},
+                ],
+            },
+            {
+                "vertexFactoryType": "fparticledynamicparametervertexfactory",
+                "shaderReferences": [
+                    {"shaderType": "basepass", "shaderIdHex": "3" * 32},
+                    {"shaderType": "nodensityvs", "shaderIdHex": "5" * 32},
+                ],
+            },
+        ]
     }
 
 
@@ -162,6 +257,149 @@ class TargetManifestTests(unittest.TestCase):
         document["summary"]["expectedExactCount"] = 2
         with self.assertRaisesRegex(ValueError, "multiple targets"):
             subject.validate_target_manifest(document)
+
+    def test_accepts_one_source_emitter_vf_pass_contract(self) -> None:
+        document = minimal_manifest()
+        document["targets"][0][subject.SOURCE_EMITTER_VF_PASS_FIELD] = (
+            source_vf_pass_contract()
+        )
+        document["summary"]["expectedSourceEmitterVertexFactoryPassCount"] = 1
+        rows = subject.validate_target_manifest(document)
+        self.assertEqual(
+            rows[0][subject.SOURCE_EMITTER_VF_PASS_FIELD]["densityPolicy"],
+            subject.DENSITY_NO_DENSITY_AUTHORING_BOUNDED,
+        )
+
+
+class SourceEmitterVertexFactoryPassTests(unittest.TestCase):
+    def target(self) -> dict:
+        target = minimal_manifest()["targets"][0]
+        target[subject.SOURCE_EMITTER_VF_PASS_FIELD] = source_vf_pass_contract()
+        return target
+
+    def test_required_offset_center_and_dynamic_module_select_exact_vf(self) -> None:
+        result = subject.select_source_emitter_vertex_factory_pass(
+            source_authored_document(),
+            self.target(),
+            source_material_map(),
+        )
+        self.assertEqual(
+            result["sourceEmitterVertexFactorySelection"]["vertexFactoryType"],
+            "fparticleoffsetcenterdynamicparametervertexfactory",
+        )
+        self.assertEqual(
+            result["selectedVertexShaderReference"]["shaderIdHex"],
+            "2" * 32,
+        )
+        self.assertEqual(
+            result["sourceEmitterVertexFactorySelection"][
+                "rejectedCompetingVertexFactoryTypes"
+            ],
+            ["fparticledynamicparametervertexfactory"],
+        )
+
+    def test_required_module_mutation_fails_closed(self) -> None:
+        document = source_authored_document()
+        required = document["elements"][0]["sourceRecipe"]["modules"][0]
+        required["literals"][0]["value"] = False
+        with self.assertRaisesRegex(ValueError, "Required module literal changed"):
+            subject.select_source_emitter_vertex_factory_pass(
+                document,
+                self.target(),
+                source_material_map(),
+            )
+
+    def test_dynamic_updateflags_mutation_fails_closed(self) -> None:
+        document = source_authored_document()
+        dynamic = document["elements"][0]["sourceRecipe"]["modules"][1]
+        dynamic["literals"][0]["value"] = 7
+        with self.assertRaisesRegex(ValueError, "updateflags changed"):
+            subject.select_source_emitter_vertex_factory_pass(
+                document,
+                self.target(),
+                source_material_map(),
+            )
+
+    def test_regular_dynamic_vf_cannot_replace_offset_center_vf(self) -> None:
+        material_map = source_material_map()
+        material_map["vertexFactories"] = material_map["vertexFactories"][1:]
+        with self.assertRaisesRegex(ValueError, "row is absent or ambiguous"):
+            subject.select_source_emitter_vertex_factory_pass(
+                source_authored_document(),
+                self.target(),
+                material_map,
+            )
+
+    def test_vertex_shader_reference_identity_mutation_fails_closed(self) -> None:
+        material_map = source_material_map()
+        material_map["vertexFactories"][0]["shaderReferences"][1][
+            "shaderIdHex"
+        ] = "4" * 32
+        with self.assertRaisesRegex(ValueError, "shader identity changed"):
+            subject.select_source_emitter_vertex_factory_pass(
+                source_authored_document(),
+                self.target(),
+                material_map,
+            )
+
+    def test_exact_vertex_dxbc_identity_mutation_fails_closed(self) -> None:
+        expected = source_vf_pass_contract()
+        extracted = {
+            "shaderType": expected["vertexShaderType"],
+            "shaderIdHex": expected["vertexShaderIdHex"],
+            "exactOneDxbcContainer": True,
+            "dxbc": dict(expected["expectedDxbc"]),
+        }
+        subject.validate_expected_vertex_shader_identity(extracted, expected)
+        extracted["dxbc"]["sha256"] = "e" * 64
+        with self.assertRaisesRegex(ValueError, "DXBC identity changed"):
+            subject.validate_expected_vertex_shader_identity(extracted, expected)
+
+    def test_vertex_output_closes_pixel_input_and_rasterizer_value(self) -> None:
+        vertex_outputs = [
+            {
+                "semanticName": "TEXCOORD",
+                "semanticIndex": 0,
+                "systemValueType": 0,
+                "componentType": 3,
+                "register": 2,
+                "mask": 15,
+                "readWriteMask": 15,
+                "stream": 0,
+            }
+        ]
+        pixel_inputs = [
+            {
+                "semanticName": "TEXCOORD",
+                "semanticIndex": 0,
+                "systemValueType": 0,
+                "componentType": 3,
+                "register": 0,
+                "mask": 3,
+                "readWriteMask": 3,
+                "stream": 0,
+            },
+            {
+                "semanticName": "SV_IsFrontFace",
+                "semanticIndex": 0,
+                "systemValueType": 9,
+                "componentType": 1,
+                "register": 1,
+                "mask": 1,
+                "readWriteMask": 1,
+                "stream": 0,
+            },
+        ]
+        closure = subject.close_vertex_pixel_signatures(
+            vertex_outputs, pixel_inputs
+        )
+        self.assertTrue(closure["pass"])
+        self.assertEqual(closure["linkedSemanticCount"], 1)
+        self.assertEqual(closure["rasterizerOwnedSystemValueCount"], 1)
+
+        vertex_outputs[0]["mask"] = 1
+        with self.assertRaisesRegex(ValueError, "does not cover"):
+            subject.close_vertex_pixel_signatures(vertex_outputs, pixel_inputs)
 
 
 class StaticSetPolicyTests(unittest.TestCase):
