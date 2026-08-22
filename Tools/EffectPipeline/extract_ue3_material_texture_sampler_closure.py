@@ -132,10 +132,15 @@ def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
 
 
 def source_descriptor(path: Path, role: str) -> dict[str, Any]:
+    resolved = path.resolve()
+    try:
+        display_path = resolved.relative_to(REPOSITORY_ROOT.resolve()).as_posix()
+    except ValueError:
+        display_path = resolved.as_posix()
     return {
-        "path": path.as_posix(),
-        "byteSize": path.stat().st_size,
-        "sha256": sha256_file(path),
+        "path": display_path,
+        "byteSize": resolved.stat().st_size,
+        "sha256": sha256_file(resolved),
         "role": role,
     }
 
@@ -1086,7 +1091,7 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
     require(summary.get("sourceExactTextureBindingCount") == 5, "exact texture closure failed")
     require(summary.get("uniqueEffectiveTextureCount") == 23, "effective texture denominator changed")
     require(summary.get("sourceExactSamplerTargetCount") == 0, "sampler blocker unexpectedly changed")
-    require(summary.get("runtimeDdsParityTargetCount") == 4, "runtime DDS parity denominator changed")
+    require(summary.get("runtimeDdsParityTargetCount") == 5, "runtime DDS parity closure regressed")
     require(
         receipt.get("scope", {}).get("runtimeAdmission") is False
         and receipt.get("scope", {}).get("visualAdmission") is False,

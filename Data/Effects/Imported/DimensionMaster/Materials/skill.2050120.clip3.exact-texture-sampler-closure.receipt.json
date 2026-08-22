@@ -19,13 +19,13 @@
   },
   "inputs": {
     "exactMaterialMapReceipt": {
-      "path": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-material-maps.receipt.json",
+      "path": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-material-maps.receipt.json",
       "byteSize": 473632,
       "sha256": "6cb11cfd89e5d9ea0ab70f04634148b502a34183a734cf3cb52ee289081d43ad",
       "role": "CANONICAL_G03_3_INPUT"
     },
     "resourceSourceManifest": {
-      "path": "C:/Users/user/Desktop/LostArk/Data/Effects/Imported/DimensionMaster/DimensionMaster.resource-source-manifest.json",
+      "path": "Data/Effects/Imported/DimensionMaster/DimensionMaster.resource-source-manifest.json",
       "byteSize": 373541,
       "sha256": "a7411ceb1b0e29126503c6932dca1fe8438e7c6ee7fa7345856e72b472e15143",
       "role": "SOURCE_ASSET_TO_PHYSICAL_PACKAGE_INDEX"
@@ -43,9 +43,9 @@
       "role": "AUTHENTICATED_RAW_DDS_EVIDENCE"
     },
     "extractor": {
-      "path": "C:/Users/user/Desktop/LostArk/Tools/EffectPipeline/extract_ue3_material_texture_sampler_closure.py",
-      "byteSize": 46403,
-      "sha256": "966fd79e71cd9aeec6ad4d4f28b0c4db7caedc4444421d7e3a16f63df85162ba",
+      "path": "Tools/EffectPipeline/extract_ue3_material_texture_sampler_closure.py",
+      "byteSize": 46593,
+      "sha256": "59b4bc566b52659becf5fec52bb9fe6ce63185c599867ade32711ee0870b5dcc",
       "role": "TRACKED_SOURCE"
     }
   },
@@ -466,10 +466,10 @@
             ],
             "runtimeDimensionMaster": {
               "relativePath": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_094_ycl.dds",
-              "status": "MISSING",
-              "byteSize": null,
-              "sha256": null,
-              "sourceExactParity": false
+              "status": "PRESENT",
+              "byteSize": 65664,
+              "sha256": "8097e1011480df43f56ad42a0ab849c74b9d8a29c17c867556f1df68dd071041",
+              "sourceExactParity": true
             }
           }
         },
@@ -903,10 +903,10 @@
             ],
             "runtimeDimensionMaster": {
               "relativePath": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_f_aura_004_1.dds",
-              "status": "MISSING",
-              "byteSize": null,
-              "sha256": null,
-              "sourceExactParity": false
+              "status": "PRESENT",
+              "byteSize": 32896,
+              "sha256": "80a7797447d457de7e56594951e2d91c12899d144a7e0c730a4a8da14fdca896",
+              "sourceExactParity": true
             }
           }
         },
@@ -1037,7 +1037,7 @@
         "fx_tex_06.fx_m_cybernoise_02"
       ],
       "sourceExactTextureBindingAdmission": true,
-      "runtimeDdsParityAdmission": false,
+      "runtimeDdsParityAdmission": true,
       "sourceExactSamplerAdmission": false,
       "sourceValueTextureSamplerAdmission": false,
       "blockers": [
@@ -1045,8 +1045,7 @@
         "ADDRESS_V_SOURCE_REVISION_CDO_UNRESOLVED",
         "COLOR_SPACE_SOURCE_REVISION_CDO_UNRESOLVED",
         "FILTER_SELECTOR_SOURCE_REVISION_CDO_UNRESOLVED",
-        "FILTER_TF_DEFAULT_TEXTURELODSETTINGS_UNRESOLVED",
-        "RUNTIME_DIMENSIONMASTER_DDS_MISSING_OR_MISMATCH"
+        "FILTER_TF_DEFAULT_TEXTURELODSETTINGS_UNRESOLVED"
       ]
     },
     {
@@ -3747,11 +3746,11 @@
     "upstreamBlockedTargetCount": 1,
     "uniformTextureBindingCount": 24,
     "sourceExactTextureBindingCount": 5,
-    "runtimeDdsParityTargetCount": 4,
+    "runtimeDdsParityTargetCount": 5,
     "sourceExactSamplerTargetCount": 0,
     "sourceValueTextureSamplerTargetCount": 0,
     "uniqueEffectiveTextureCount": 23,
     "result": "PASS_G03_5_EXACT_TEXTURE_BINDINGS_SAMPLER_AND_RUNTIME_DDS_BLOCKERS_EXPLICIT"
   },
-  "receiptSha256": "3e8683d4dc05d597f7d420fc3923e591d2d04ac2ab23a0dfe7ffbb54f1118d8a"
+  "receiptSha256": "8ac6a399b154c2d413f5ae5b67f694b1f472d144119d16eda4b312661bcf0074"
 }

@@ -29,7 +29,7 @@
     },
     "structuralFixedInputReplay": {
       "repositoryRelativePath": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.structural-fixed-input-replay.receipt.json",
-      "fileRawSha256": "1bd5638e23635f01a9d0508e19fb9467e3422f18e4c292c689efcb077cf7429d",
+      "fileRawSha256": "99ac7d5f796e9f3312c9c152c4ca58e79f2a579453e725b7d1902567d2d7e83f",
       "schema": "lostark.effect-ue3-material-fixed-input-replay-receipt",
       "formatVersion": 1,
       "receiptSha256": "294c33d3be95bb34ba49b46ed655ef14219a6485b33960c28c675c357f16814c"
@@ -43,10 +43,10 @@
     },
     "exactTextureSamplerClosure": {
       "repositoryRelativePath": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-texture-sampler-closure.receipt.json",
-      "fileRawSha256": "15084c2a38a11a7472943893b872727e740c63eed06991267616ef9093df9840",
+      "fileRawSha256": "db529b40283655186b48d084406d0960f44816ea06379ac33a3d67c08a1e4f09",
       "schema": "lostark.effect-ue3-material-texture-sampler-closure-receipt",
       "formatVersion": 1,
-      "receiptSha256": "3e8683d4dc05d597f7d420fc3923e591d2d04ac2ab23a0dfe7ffbb54f1118d8a"
+      "receiptSha256": "8ac6a399b154c2d413f5ae5b67f694b1f472d144119d16eda4b312661bcf0074"
     },
     "pinnedOfficialRefShaderCache": {
       "fileName": "EV2LG3OVEH3HGV7THTFFTM7TOKMCC.v974.upk",
@@ -1400,10 +1400,10 @@
             },
             "fixtureRuntimeDdsEvidence": {
               "resourceRelativePath": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_094_ycl.dds",
-              "status": "MISSING",
-              "byteSize": null,
-              "sha256": null,
-              "sourceExactParity": false
+              "status": "PRESENT",
+              "byteSize": 65664,
+              "sha256": "8097e1011480df43f56ad42a0ab849c74b9d8a29c17c867556f1df68dd071041",
+              "sourceExactParity": true
             },
             "sourceSamplerAndColorSpaceEvidence": {
               "addressU": {
@@ -1639,10 +1639,10 @@
             },
             "fixtureRuntimeDdsEvidence": {
               "resourceRelativePath": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_f_aura_004_1.dds",
-              "status": "MISSING",
-              "byteSize": null,
-              "sha256": null,
-              "sourceExactParity": false
+              "status": "PRESENT",
+              "byteSize": 32896,
+              "sha256": "80a7797447d457de7e56594951e2d91c12899d144a7e0c730a4a8da14fdca896",
+              "sourceExactParity": true
             },
             "sourceSamplerAndColorSpaceEvidence": {
               "addressU": {
@@ -1748,7 +1748,7 @@
         ],
         "bindingCount": 7,
         "sourceExactTextureBindingAdmission": true,
-        "fixtureRuntimeDdsParityAdmission": false,
+        "fixtureRuntimeDdsParityAdmission": true,
         "sourceExactSamplerAdmission": false,
         "sourceValueTextureSamplerAdmission": false,
         "blockers": [
@@ -1756,8 +1756,7 @@
           "ADDRESS_V_SOURCE_REVISION_CDO_UNRESOLVED",
           "COLOR_SPACE_SOURCE_REVISION_CDO_UNRESOLVED",
           "FILTER_SELECTOR_SOURCE_REVISION_CDO_UNRESOLVED",
-          "FILTER_TF_DEFAULT_TEXTURELODSETTINGS_UNRESOLVED",
-          "RUNTIME_DIMENSIONMASTER_DDS_MISSING_OR_MISMATCH"
+          "FILTER_TF_DEFAULT_TEXTURELODSETTINGS_UNRESOLVED"
         ]
       },
       "authoringPreviewInputs": {
@@ -2133,7 +2132,6 @@
         "NATIVE_EMITTER_VERTEX_FACTORY_ABI_UNPROVEN",
         "NATIVE_SCALAR_GROUP_LANE_ORDER_AND_PADDING_SOURCE_ABI_NOT_PROVEN",
         "PRODUCT_RUNTIME_NOT_ADMITTED",
-        "RUNTIME_DIMENSIONMASTER_DDS_MISSING_OR_MISMATCH",
         "SOURCE_VALUE_REPLAY_NOT_CLOSED",
         "USER_VISUAL_ADMISSION_REQUIRED"
       ]
@@ -8903,5 +8901,5 @@
     "upstreamBlockedFamilyCount": 1,
     "result": "PASS_SOURCE_VARIANTS_MATERIALIZED_PREVIEW_CANDIDATES_ONLY"
   },
-  "contractSha256": "f961ab52da6b3c0a64bfa2790c2212ceb943ca8615b711bb8aae6e15831c4168"
+  "contractSha256": "3ea88e675f57e8160ffbf8ffbf232ed4e2a1a7ef59bb94aa708a662c37d1249a"
 }
