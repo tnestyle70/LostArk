@@ -422,6 +422,11 @@
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34100.clip3.unified.effect.json"
     },
     {
+      "effectAssetId": "effect.lancemaster.skill.34110.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34110.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.lancemaster.skill.34120.authored-baseline.clip1",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34120.authored-baseline.clip1.effect.json"
     },
@@ -474,6 +479,11 @@
       "effectAssetId": "effect.lancemaster.skill.34140.ba2.clip2.unified",
       "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
       "authoringPath": "Effects/Authored/effect.lancemaster.skill.34140.ba2.clip2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.lancemaster.skill.34150.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.lancemaster.skill.34150.unified.effect.json"
     },
     {
       "effectAssetId": "effect.lancemaster.skill.34160.ba1",

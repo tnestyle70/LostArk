@@ -3,7 +3,12 @@
   "version": 13,
   "effectAssetId": "effect.lancemaster.skill.34150.unified",
   "displayName": "effect.lancemaster.skill.34150.unified",
-  "particleSystem": {},
+  "particleSystem": {
+    "uniformScaleMultiplier": 1.0,
+    "yawOffsetDegrees": 0.0,
+    "directionYawDegrees": 0.0,
+    "initialSpeedMultiplier": 1.0
+  },
   "modelCues": [],
   "elements": [
     {
