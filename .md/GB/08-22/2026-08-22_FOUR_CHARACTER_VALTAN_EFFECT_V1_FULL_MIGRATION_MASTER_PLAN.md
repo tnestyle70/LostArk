@@ -6,7 +6,7 @@
 
 V0 상태: `COMPLETE_BASELINE`
 
-V1 상태: `PLANNED`
+V1 상태: `FIRST_CANARY_AUTOMATED / USER_REVIEW_PENDING`
 
 최종 화면 판정자: 사용자
 
@@ -18,6 +18,7 @@ V1 상태: `PLANNED`
 - [`Glasshole02 Missing Family ABI 복원 결과`](2026-08-22_MISSING_EFFECT_FAMILY_ABI_RECOVERY_RESULT.md)
 - [`Valtan Core-Three Missing Family ABI 복원 결과`](2026-08-22_VALTAN_FRONT_BACK_FRONT_MISSING_FAMILY_RESTORATION_RESULT.md)
 - [`Client frontend 광역 하네스 삭제 결과`](2026-08-22_CLIENT_FRONTEND_HARNESS_REMOVAL_RESULT.md)
+- [`도화가 S Typed Rect V1 첫 확장 결과`](2026-08-22_ARTIST_S_TYPED_RECT_V1_EXPANSION_RESULT.md)
 
 이 문서는 도화가, 워로드, 창술사, 차원술사와 Valtan의 **현재 Product Effect 전체**를
 FAMILY_LITE 가시화 기반에서 typed/source-derived runtime ABI로 승격하는 living master다.
@@ -132,6 +133,34 @@ V1 architecture와 `SOURCE_EXACT` fidelity는 계속 별도 축으로 기록한�
 복제하는 것이 아니다. 필요한 distinct HLSL program과 shared adapter를 family 단위로 닫고, 현재 V0
 손튜닝 composition 및 복구 승인된 source occurrence를 typed Product에 연결한 뒤 사용자가 effect
 composition을 승인하는 것이다.
+
+### 0.5 첫 확장 실험: 도화가 A 대조군과 S Rect family
+
+전체 스킬을 동시에 승격하지 않는다. 첫 실험은 다음 세 행으로 고정한다.
+
+| 역할 | stable occurrence | 현재 상태 | 실험에서 증명할 것 |
+|---|---|---|---|
+| 무코드 대조군 | 도화가 A `authored.source-particle.cb346af...` | SpriteWave profile 20과 RT0 식이 이미 연결됨 | 기존 typed family의 spawn/draw/pixel 경로가 최신 Product에서 유지되는지 |
+| 구현 canary | 도화가 S `sprite.artist.31420.grass-coverage.v1` | standalone Sprite Rect + generic material | Rect carrier가 typed RuntimeMaterialV2 packet과 RT0 family 함수를 소비하는지 |
+| 데이터 확장 | 도화가 S `sprite.artist.31420.grass-tip-emissive.v1` | canary와 같은 carrier, 다른 mask/dissolve와 손튜닝값 | 두 번째 occurrence가 C++/HLSL 추가 없이 descriptor만으로 같은 family를 재사용하는지 |
+
+S의 원본 36행을 다시 넣지 않는다. 현재 Product의 source 1행과 사용자가 승인한 project sprite 2행만
+유지하며, 두 project 행의 stable ID, transform, color, emissive, UV, timing, attachment 값은 변경하지
+않는다. 이번 변경은 다음 계약만 추가한다.
+
+1. standalone Sprite Rect를 RuntimeMaterialV2 typed carrier로 admission한다.
+2. `base RGBA + coverage R + emissive RGB + dissolve R` 네 lane을 갖는 class-neutral RT0 family opcode를
+   한 번 구현한다.
+3. body와 tip은 같은 opcode와 packet layout을 사용하고 texture asset과 기존 Detail 값만 다르게 둔다.
+4. shader는 `base * color + emissive * intensity`, `base alpha * coverage * lifetime`, dissolve threshold,
+   RT0 SceneColor와 zero distortion만 계산한다.
+5. Debug/Release shader compile, document codec/publisher, focused materializer/harness와 rollback을 자동
+   검증하고, 실제 화면 품질은 사용자가 Effect Tool에서 승인한다.
+
+이 실험의 `V1_COMPLETE` 조건은 도화가 F의 실제 성공선과 같다. 올바른 carrier, typed RT0 equation,
+texture/channel/sampler packet, render profile, 기존 composition과 사용자 승인을 요구한다. exact cooked
+child 실행, native ShaderMap/VF/BasePass, distortion 및 MRT2~5는 `NATIVE_PARITY` 후속 연구이며 이 실험의
+완료 조건이 아니다.
 
 ## 1. V0 기준선 실측
 
@@ -1002,7 +1031,7 @@ ClientFrontendHarness는 삭제된 정본이므로 다시 추가하지 않는다
 | G01 registry | `PLANNED` | current 46 typed seed + Tool canary descriptors | 해당 없음 | stable IDs/layout schema |
 | G02 adapters | `PLANNED` | carrier/layout matrix | 해당 없음 | descriptor-driven binder |
 | G02a programs | `PLANNED` | distinct program identity 분모 미산출 | 해당 없음 | DXBC translation/reconstruction materialization |
-| G03 coverage | `PLANNED` | verified cohort 미산출 | `PENDING` | first Sprite/Mesh RT0 canary |
+| G03 coverage | `FIRST_RECT_CANARY_AUTOMATED` | 도화가 S Sprite Rect 2행 typed packet/publish/build | `USER_REVIEW_PENDING` | body/tip first pixel과 A control 사용자 판정 |
 | G04 decal | `PLANNED` | live decal 57 | `PENDING` | actual decal VF/pass |
 | G05 flow/masked | `PLANNED` | verified cohort 미산출 | `PENDING` | time/dynamic/sampler ABI |
 | G06 glass | `TOOL_CANARY_SEED` | Glasshole one occurrence | `PENDING` | sampler/VF/MRT/Product |

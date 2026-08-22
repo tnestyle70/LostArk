@@ -23,6 +23,7 @@ DONOR_ROLE_PATH = REPOSITORY_ROOT / (
 )
 EFFECT_ID = "effect.artist.skill.31420.unified"
 BASE_ROW_COUNT = 1
+RUNTIME_MATERIAL_OPCODE = 21
 EXPECTED_BASE_ROWS_SHA256 = (
     "591ed3e084abce3ffff0f9931ae7c483a8951620b1e257477840fd069b712c5d"
 )
@@ -90,6 +91,84 @@ def validate_donor_resources(path: pathlib.Path = DONOR_ROLE_PATH) -> None:
             )
 
 
+def _typed_sampler() -> dict[str, Any]:
+    return {
+        "filter": "linear",
+        "addressU": "wrap",
+        "addressV": "wrap",
+        "addressW": "wrap",
+        "mipLodBias": 0,
+        "maxAnisotropy": 1,
+        "comparison": "never",
+        "borderColor": [0, 0, 0, 0],
+        "minLod": 0,
+        "maxLod": 3.40282347e38,
+    }
+
+
+def build_execution(
+    *, mask_asset_id: str, dissolve_asset_id: str
+) -> dict[str, Any]:
+    lane_rows = (
+        ("base_radiance", LINE_ASSET_ID, "RGBA"),
+        ("coverage", mask_asset_id, "R"),
+        ("emissive_radiance", EMISSIVE_ASSET_ID, "RGB"),
+        ("dissolve", dissolve_asset_id, "R"),
+    )
+    lanes = [
+        {
+            "laneId": f"lane.{index}",
+            "role": role,
+            "assetId": asset_id,
+            "textureRegister": index,
+            "samplerRegister": 5 + index,
+            "sourceChannel": source_channel,
+            "colorSpace": "linear",
+            "sampler": _typed_sampler(),
+        }
+        for index, (role, asset_id, source_channel) in enumerate(lane_rows)
+    ]
+    return {
+        "enabled": True,
+        "version": 1,
+        "backend": "runtimeMaterialV2",
+        "opcode": RUNTIME_MATERIAL_OPCODE,
+        "passIndex": 1,
+        "renderState": {
+            "rasterizer": "RS_Cull_None",
+            "depthStencil": "DSS_ReadOnly",
+            "blend": "BS_EffectAlpha",
+            "stencilReference": 0,
+        },
+        "textureLaneCount": 4,
+        "textureMask": 15,
+        "textureLanes": lanes,
+        "dynamicConsumedMask": 0,
+        "dynamicSuppressedMask": 0,
+        "particleColorPolicy": 0,
+        "particleColorConsumedMask": 0,
+        "particleColorSuppressedMask": 0,
+        "scalarCount": 0,
+        "vectorCount": 0,
+        "inputCount": 0,
+        "inputConsumedMask": [0, 0],
+        "inputSuppressedMask": [0, 0],
+        "vectorComponentConsumedMask": [0, 0, 0],
+        "vectorComponentSuppressedMask": [0, 0, 0],
+        "staticInputCount": 0,
+        "staticSelectedMask": 0,
+        "staticConsumedMask": 0,
+        "staticSuppressedMask": 0,
+        "renderInputCount": 0,
+        "renderConsumedMask": 0,
+        "renderSuppressedMask": 0,
+        "scalars": [],
+        "vectors": [],
+        "artistParameters": [],
+        "colors": [],
+    }
+
+
 def _base_element(
     *,
     element_id: str,
@@ -107,8 +186,9 @@ def _base_element(
     dissolve_start: float,
     uv_speed: list[float],
     random_seed: int,
+    typed_execution: bool,
 ) -> dict[str, Any]:
-    return {
+    element = {
         "id": element_id,
         "displayName": display_name,
         "groupId": "project.artist.31420.grass-tip-fade",
@@ -252,9 +332,17 @@ def _base_element(
         },
         "sourcePresentation": {"enabled": False},
     }
+    if typed_execution:
+        element["material"]["execution"] = build_execution(
+            mask_asset_id=mask_asset_id,
+            dissolve_asset_id=dissolve_asset_id,
+        )
+    return element
 
 
-def build_project_rows() -> list[dict[str, Any]]:
+def build_project_rows(
+    *, typed_execution: bool = True
+) -> list[dict[str, Any]]:
     body = _base_element(
         element_id=GRASS_COVERAGE_ID,
         display_name="PROJECT_TUNED | S grass coverage dissolve",
@@ -271,6 +359,7 @@ def build_project_rows() -> list[dict[str, Any]]:
         dissolve_start=0.42,
         uv_speed=[0, 0.08],
         random_seed=31420,
+        typed_execution=typed_execution,
     )
     tip = _base_element(
         element_id=GRASS_TIP_ID,
@@ -288,6 +377,7 @@ def build_project_rows() -> list[dict[str, Any]]:
         dissolve_start=0.38,
         uv_speed=[0, -0.05],
         random_seed=31421,
+        typed_execution=typed_execution,
     )
     return [body, tip]
 
@@ -342,13 +432,24 @@ def validate_document(document: dict[str, Any]) -> bool:
         if matches:
             raise ArtistGrassTipError("Artist S project row displaced source data")
         return False
-    if elements[BASE_ROW_COUNT:] != project_rows or matches != project_rows:
+    if elements[BASE_ROW_COUNT:] == project_rows and matches == project_rows:
+        if len({row.get("id") for row in elements}) != len(elements):
+            raise ArtistGrassTipError("Artist S element IDs are duplicated")
+        return True
+    legacy_rows = build_project_rows(typed_execution=False)
+    if elements[BASE_ROW_COUNT:] == legacy_rows and matches == legacy_rows:
+        return False
+    else:
         raise ArtistGrassTipError(
             "Artist S project sprites are duplicated, reordered, or changed"
         )
-    if len({row.get("id") for row in elements}) != len(elements):
-        raise ArtistGrassTipError("Artist S element IDs are duplicated")
-    return True
+
+
+def _render_project_rows(
+    rows: list[dict[str, Any]], newline: str
+) -> str:
+    rendered = json.dumps(rows, ensure_ascii=False, indent=2, allow_nan=False)
+    return newline.join("    " + line for line in rendered.splitlines()[1:-1])
 
 
 def build_document_text(original_text: str, document: dict[str, Any]) -> str:
@@ -356,18 +457,25 @@ def build_document_text(original_text: str, document: dict[str, Any]) -> str:
         return original_text
     start, end = _elements_array_bounds(original_text)
     array_text = original_text[start:end]
+    elements = document["elements"]
     body_end = len(array_text.rstrip())
     if body_end == 0 or array_text[:body_end][-1] != "}":
         raise ArtistGrassTipError("Artist S elements array layout changed")
     newline = "\r\n" if "\r\n" in original_text else "\n"
-    rendered = json.dumps(
-        build_project_rows(), ensure_ascii=False, indent=2, allow_nan=False
-    )
-    rendered_lines = rendered.splitlines()[1:-1]
-    rendered = newline.join("  " + line for line in rendered_lines)
-    migrated_array = (
-        array_text[:body_end] + "," + newline + rendered + array_text[body_end:]
-    )
+    rendered = _render_project_rows(build_project_rows(), newline)
+    if len(elements) == BASE_ROW_COUNT:
+        migrated_array = (
+            array_text[:body_end] + "," + newline + rendered + array_text[body_end:]
+        )
+    else:
+        legacy = _render_project_rows(
+            build_project_rows(typed_execution=False), newline
+        )
+        if array_text.count(legacy) != 1:
+            raise ArtistGrassTipError(
+                "Artist S legacy project sprite text changed"
+            )
+        migrated_array = array_text.replace(legacy, rendered, 1)
     result = original_text[:start] + migrated_array + original_text[end:]
     try:
         staged = json.loads(result)

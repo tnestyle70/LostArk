@@ -90,6 +90,44 @@ class Artist31420GrassTipFadeTests(unittest.TestCase):
                 "alpha_two_sided_depth_read",
             )
 
+    def test_body_and_tip_share_one_typed_rect_family(self) -> None:
+        body, tip = module.build_project_rows()
+        for row in (body, tip):
+            execution = row["material"]["execution"]
+            self.assertTrue(execution["enabled"])
+            self.assertEqual(execution["backend"], "runtimeMaterialV2")
+            self.assertEqual(execution["opcode"], module.RUNTIME_MATERIAL_OPCODE)
+            self.assertEqual(execution["passIndex"], 1)
+            self.assertEqual(execution["textureMask"], 15)
+            self.assertEqual(
+                [lane["role"] for lane in execution["textureLanes"]],
+                [
+                    "base_radiance",
+                    "coverage",
+                    "emissive_radiance",
+                    "dissolve",
+                ],
+            )
+            self.assertEqual(
+                [lane["sourceChannel"] for lane in execution["textureLanes"]],
+                ["RGBA", "R", "RGB", "R"],
+            )
+            self.assertEqual(
+                [lane["colorSpace"] for lane in execution["textureLanes"]],
+                ["linear"] * 4,
+            )
+            self.assertEqual(execution["scalarCount"], 0)
+            self.assertEqual(execution["vectorCount"], 0)
+
+        body_lanes = body["material"]["execution"]["textureLanes"]
+        tip_lanes = tip["material"]["execution"]["textureLanes"]
+        self.assertEqual(body_lanes[0], tip_lanes[0])
+        self.assertEqual(body_lanes[2], tip_lanes[2])
+        self.assertEqual(body_lanes[1]["assetId"], module.GRASS_04_ASSET_ID)
+        self.assertEqual(body_lanes[3]["assetId"], module.GRASS_03_ASSET_ID)
+        self.assertEqual(tip_lanes[1]["assetId"], module.GRASS_03_ASSET_ID)
+        self.assertEqual(tip_lanes[3]["assetId"], module.GRASS_04_ASSET_ID)
+
     def test_tip_is_hdr_emissive_not_a_point_light(self) -> None:
         body, tip = module.build_project_rows()
         self.assertGreater(tip["detail"]["color"]["emissiveIntensity"], 1)
