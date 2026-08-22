@@ -263,9 +263,15 @@ field의 provenance를 `PROJECT_TUNED`로 동기화한 뒤 Validate한다. `Publ
 재시작해야 적용된다. Tool이 실행 중 Server 구조체나 Client HUD 값만 덮어쓰는 hot reload는 없다.
 
 Debug F1의 `Effect Tool`과 `All Effects`는 direct-authored Player Product cue와 Valtan pattern cue를
-같은 unified Effect 저작 tree로 연다. Player는 input slot/skill/stage/clip cue를, Valtan은
-phase/pattern/semantic stage/ordered clip occurrence/product cue를 거쳐 같은 Mesh, Sprite,
-Mesh Particle, Sprite Particle, Local Decal, Trail/Ribbon family와 `Open for Editing`을 사용한다.
+같은 unified Effect 저작 tree로 연다. Player의 skill과 Valtan의 pattern은 같은 최상위 저작 단위다.
+Valtan pattern을 열면 Product cue, stage-authored reference와 combat-object visual의 saved unified
+Effect를 먼저 중복 없이 나열하고 `Open Saved Effect`/`Play Saved Effect`를 제공한 뒤, 그 아래에
+semantic stage와 ordered clip occurrence를 표시한다. Open은 Valtan 모델과 해당 animation을 함께
+stage하고, Play는 Product의 exact clip occurrence 또는 reference/world-root owner stage의 ordered clip
+sequence 전체와 Effect clock을 같은 시작점에서 재생한다. saved 문서 decode는 Open/Play 전까지 지연한다.
+phase band는 Server encounter 메타데이터이며 All Effects의 반복 tree나 stage 숨김 filter로 사용하지
+않는다. 두 owner는 같은 Mesh, Sprite, Mesh Particle, Sprite Particle, Local Decal, Trail/Ribbon family를
+사용한다.
 Save는 선택된 direct-authored Effect 하나만 원자 저장한 뒤 같은 catalog revision의 prepared target을
 stage/validate/commit한다. 실행 중 occurrence는 이전 immutable document를 끝까지 유지하고 다음 spawn부터
 새 document를 사용하며, 준비나 renderer commit 실패는 이전 Product pointer와 cache를 보존한다.

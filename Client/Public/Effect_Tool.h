@@ -342,14 +342,16 @@ private:
 
     struct PENDING_DOCUMENT_LOAD final
     {
-        std::filesystem::path Path;
-        std::string strSelectionId;
-        EFFECT_DOCUMENT_SOURCE eSource = EFFECT_DOCUMENT_SOURCE::END;
+		std::filesystem::path Path;
+		std::string strSelectionId;
+		EFFECT_DOCUMENT_SOURCE eSource = EFFECT_DOCUMENT_SOURCE::END;
 		std::string strElementSelectionId;
 		std::string strModelCueSelectionId;
 		bool_t bPlayCompleteAfterLoad = false;
 		optional<VALTAN_CLIP_OCCURRENCE_VIEW> ValtanClip;
 		optional<VALTAN_PRODUCT_EFFECT_CUE_VIEW> ValtanCue;
+		optional<std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>>
+			ValtanReferenceClips;
     };
 
 	struct UNIFIED_EFFECT_CACHE final
@@ -407,12 +409,6 @@ private:
 		std::filesystem::path Path;
 	};
 
-	struct BOSS_PATTERN_EFFECT_TREE_ENTRY final
-	{
-		BOSS_PATTERN_EFFECT_TREE_ROW Row;
-		UNIFIED_EFFECT_CACHE Cache;
-	};
-
 	enum class ARTIST_F_PREPARATION_STATE : uint8_t
 	{
 		UNATTEMPTED,
@@ -468,20 +464,14 @@ private:
         const std::string& strDomainId,
         const std::string& strCategory,
         const std::string& strKindCategory);
-    void Render_ValtanAuthoringOpenButton(
-        const std::filesystem::path& Path,
-        const std::string& strEffectAssetId,
-        const std::string& strRuntimeClipName = std::string());
-	/* All Effects > Valtan draws phase -> pattern -> stage -> Effect. The
-	   phase band and the stage rows come from CValtanPatternTree; this layer
-	   only decides what is visible and what the buttons do. */
+	/* All Effects treats one Valtan pattern like one Character skill: saved
+	   unified Effects first, then the ordered semantic-stage animations. */
 	void Render_ValtanPatternTreeSection(const std::string& strSearch);
 	void Render_ValtanPatternNode(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const char_t* pGroupLabel,
 		const std::string& strSearch);
 	void Render_ValtanStageRow(
-		const VALTAN_PATTERN_VIEW& Pattern,
 		const VALTAN_STAGE_VIEW& Stage);
 	void Render_ValtanClipOccurrence(
 		const VALTAN_STAGE_VIEW& Stage,
@@ -494,11 +484,8 @@ private:
 	bool_t Matches_ValtanPatternSearch(
 		const VALTAN_PATTERN_VIEW& Pattern,
 		const std::string& strSearch) const;
-	bool_t Create_ValtanStageEffectDocument(
-		const VALTAN_PATTERN_VIEW& Pattern,
-		const VALTAN_STAGE_VIEW& Stage);
-	/* V2 Product rows replay their exact occurrence/sequence. The name-only
-	   path is limited to legacy unmapped reference documents. */
+	/* Product rows replay their exact cue occurrence. Reference and world-root
+	   rows replay the complete ordered clip sequence of their owner stage. */
 	bool_t Play_ValtanClipOccurrence(
 		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip);
 	bool_t Play_ValtanProductCue(
@@ -506,17 +493,22 @@ private:
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue);
 	bool_t Play_ValtanStageSequence(
 		const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips);
-	bool_t Play_ValtanReferenceClip(const std::string& strRuntimeClipName);
+	bool_t Try_PlayValtanSavedUnifiedEffect(
+		const std::filesystem::path& Path,
+		const std::string& strEffectAssetId,
+		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
+		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue);
+	bool_t Try_OpenValtanSavedReferenceEffect(
+		const std::filesystem::path& Path,
+		const std::string& strEffectAssetId,
+		const std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>& Clips,
+		bool_t bQueuePlayCompleteAfterLoad = false);
 	bool_t Try_OpenValtanAuthoredEffect(
 		const std::filesystem::path& Path,
 		const std::string& strEffectAssetId,
 		const VALTAN_CLIP_OCCURRENCE_VIEW& Clip,
 		const VALTAN_PRODUCT_EFFECT_CUE_VIEW& Cue,
 		bool_t bQueuePlayCompleteAfterLoad = false);
-	bool_t Try_OpenValtanReferenceEffect(
-		const std::filesystem::path& Path,
-		const std::string& strEffectAssetId,
-		const std::string& strRuntimeClipName);
     void Render_Detail(EFFECT_ELEMENT_DESC& Element, bool_t& bChanged);
     void Render_TransformDetail(EFFECT_DETAIL_DESC& Detail, bool_t& bChanged);
     void Render_ColorDetail(
@@ -599,7 +591,6 @@ private:
         bool_t bBypassUnsavedGuard);
     bool_t Execute_PendingDocumentLoad(bool_t bSaveFirst);
     bool_t Refresh_AllEffects(bool_t bReloadSkillCatalog = false);
-	bool_t Refresh_ValtanBossPatternEffects();
 	bool_t Refresh_ValtanPatternTree();
     bool_t Refresh_DataFiles();
     bool_t Refresh_ResourceCatalog();
@@ -659,6 +650,7 @@ private:
 		const std::string& strEffectAssetId,
 		EFFECT_AUTHORING_FAMILY eFamily);
 	bool_t Try_PlayUnifiedEffect(const UNIFIED_EFFECT_CACHE& Cache);
+	bool_t Try_PlayActiveUnifiedEffect();
 	bool_t Try_PlaySavedUnifiedEffect(
 		const UNIFIED_EFFECT_CANDIDATE_BINDING& Binding);
 	bool_t Try_PlayUnifiedModelCues(
@@ -904,16 +896,11 @@ private:
     vector<EFFECT_RESOURCE_DOMAIN_CATALOG> m_ResourceDomains;
     vector<size_t> m_VisibleResourceIndices;
     vector<EFFECT_SKILL_TREE_ENTRY> m_AllEffects;
-	std::vector<BOSS_PATTERN_EFFECT_TREE_ENTRY> m_ValtanBossPatternEffects;
 	/* Session state, rebuilt by Refresh. A failed reload keeps the previous
 	   tree so the window never empties on a transient read error. */
 	VALTAN_PATTERN_TREE_VIEW m_ValtanPatternTree;
 	std::string m_strValtanPatternTreeStatus;
 	bool_t m_bValtanPatternTreeLoaded = false;
-	/* -1 shows every band; otherwise the index into m_ValtanPatternTree.Phases. */
-	int32_t m_iValtanPhaseFilter = -1;
-	bool_t m_bValtanRepeatRotationPerPhase = true;
-	bool_t m_bValtanOnlyStagesWithEffect = false;
     vector<EFFECT_DATA_FILE_ENTRY> m_DataFiles;
     vector<string> m_DataFileDomains;
     vector<SYNCHRONIZED_ANIMATION_CLIP> m_SynchronizedAnimationClips;
@@ -971,7 +958,6 @@ private:
 	string m_strDetailDraftElementId;
 	string m_strDetailDraftCapabilityReason;
 	string m_strUnifiedCandidateStatus;
-	string m_strValtanBossPatternStatus;
     string m_strResourceViewFilter;
     string m_strResourceViewDomainId;
     string m_strResourceViewCategory;
