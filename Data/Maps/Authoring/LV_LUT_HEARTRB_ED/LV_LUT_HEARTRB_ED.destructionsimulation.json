@@ -3842,8 +3842,8 @@
                                       ]
                      },
                      {
-                         "profileId":  "destroyable.group.valtan.floor30.brick.7000000000000000006.preview",
-                         "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000006",
+                         "profileId":  "destroyable.group.valtan.floor84.brick.7000000000000000006.preview",
+                         "groupId":  "destroyable.group.valtan.floor84.brick.7000000000000000006",
                          "durationSeconds":  5,
                          "previewGroundEnabled":  true,
                          "previewGroundHeight":  20,
@@ -3880,8 +3880,8 @@
                                       ]
                      },
                      {
-                         "profileId":  "destroyable.group.valtan.floor30.brick.7000000000000000007.preview",
-                         "groupId":  "destroyable.group.valtan.floor30.brick.7000000000000000007",
+                         "profileId":  "destroyable.group.valtan.floor84.brick.7000000000000000007.preview",
+                         "groupId":  "destroyable.group.valtan.floor84.brick.7000000000000000007",
                          "durationSeconds":  5,
                          "previewGroundEnabled":  true,
                          "previewGroundHeight":  20,
@@ -3918,8 +3918,8 @@
                                       ]
                      },
                      {
-                         "profileId":  "destroyable.group.valtan.floor84.rail.7000000000000000001.preview",
-                         "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000001",
+                         "profileId":  "destroyable.group.valtan.floor30.rail.7000000000000000001.preview",
+                         "groupId":  "destroyable.group.valtan.floor30.rail.7000000000000000001",
                          "durationSeconds":  5,
                          "previewGroundEnabled":  true,
                          "previewGroundHeight":  20,
@@ -3956,8 +3956,8 @@
                                       ]
                      },
                      {
-                         "profileId":  "destroyable.group.valtan.floor30.rail.7000000000000000005.preview",
-                         "groupId":  "destroyable.group.valtan.floor30.rail.7000000000000000005",
+                         "profileId":  "destroyable.group.valtan.floor84.rail.7000000000000000005.preview",
+                         "groupId":  "destroyable.group.valtan.floor84.rail.7000000000000000005",
                          "durationSeconds":  5,
                          "previewGroundEnabled":  true,
                          "previewGroundHeight":  20,

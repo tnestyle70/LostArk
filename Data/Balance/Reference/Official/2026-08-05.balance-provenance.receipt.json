@@ -45,10 +45,10 @@
     "coverage":  {
                      "playerProfileCount":  6,
                      "skillDefinitionCount":  94,
-                     "damageProfileCount":  108,
+                     "damageProfileCount":  109,
                      "bossProfileCount":  1,
                      "encounterPatternCount":  33,
-                     "fieldEntryCount":  3289,
+                     "fieldEntryCount":  3292,
                      "bossPartCount":  2,
                      "bossCombatObjectCount":  2
                  },
@@ -2919,6 +2919,34 @@
                         "sourceValue":  450,
                         "transform":  "Balance Tool authored override",
                         "resultValue":  450,
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/DamageProfiles.json",
+                        "targetId":  "damage:damage.valtan.four-pillars-105-pierce",
+                        "targetField":  "damageProfileId",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  "damage.valtan.four-pillars-105-pierce",
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  "damage.valtan.four-pillars-105-pierce",
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Balance/DamageProfiles.json",
+                        "targetId":  "damage:damage.valtan.four-pillars-105-pierce",
+                        "targetField":  "damageRatePercent",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  100000,
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  100000,
                         "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
                     },
                     {
@@ -37804,7 +37832,11 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "motion":  {
+                                                               "kind":  "FORWARD",
+                                                               "distance":  100.0
+                                                           }
                                             },
                                             {
                                                 "stageId":  "GROGGY",
@@ -37887,7 +37919,11 @@
                                                 "pushRangeM":  0.0,
                                                 "pushMs":  0,
                                                 "knockdown":  false,
-                                                "downMs":  0
+                                                "downMs":  0,
+                                                "motion":  {
+                                                               "kind":  "FORWARD",
+                                                               "distance":  100.0
+                                                           }
                                             },
                                             {
                                                 "stageId":  "GROGGY",
@@ -38537,10 +38573,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  84,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  84,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -39531,10 +39567,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  84,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  84,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -40206,7 +40242,11 @@
                                                 "pushRangeM":  2.0,
                                                 "pushMs":  150,
                                                 "knockdown":  true,
-                                                "downMs":  1000
+                                                "downMs":  1000,
+                                                "motion":  {
+                                                               "kind":  "FORWARD",
+                                                               "distance":  20.0
+                                                           }
                                             },
                                             {
                                                 "stageId":  "GROGGY",
@@ -40309,7 +40349,11 @@
                                                 "pushRangeM":  2.0,
                                                 "pushMs":  150,
                                                 "knockdown":  true,
-                                                "downMs":  1000
+                                                "downMs":  1000,
+                                                "motion":  {
+                                                               "kind":  "FORWARD",
+                                                               "distance":  20.0
+                                                           }
                                             },
                                             {
                                                 "stageId":  "GROGGY",
@@ -40523,10 +40567,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  73,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  73,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -41869,10 +41913,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  130,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  130,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -43070,7 +43114,7 @@
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
-                                                "serverDamageProfileId":  "damage.valtan.four-pillars-105",
+                                                "serverDamageProfileId":  "damage.valtan.four-pillars-105-pierce",
                                                 "pushRangeM":  1.0,
                                                 "pushMs":  150,
                                                 "knockdown":  true,
@@ -43153,7 +43197,7 @@
                                                 "hitCount":  1,
                                                 "hitIntervalMs":  0,
                                                 "hitDelayMs":  0,
-                                                "serverDamageProfileId":  "damage.valtan.four-pillars-105",
+                                                "serverDamageProfileId":  "damage.valtan.four-pillars-105-pierce",
                                                 "pushRangeM":  1.0,
                                                 "pushMs":  150,
                                                 "knockdown":  true,
@@ -43765,10 +43809,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  73,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  73,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -44815,10 +44859,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  84,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  84,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -45383,6 +45427,38 @@
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
                         "targetId":  "pattern:VALTAN_HIGH_JUMP",
+                        "targetField":  "patterns[8].serverMotion",
+                        "basis":  "PROJECT_TUNED",
+                        "source":  {
+                                       "type":  "project-policy",
+                                       "policyId":  "balance-tool-authored-override-v1"
+                                   },
+                        "sourceValue":  {
+                                            "kind":  "LEAP_TO_TARGET",
+                                            "anchorId":  "anchor.valtan.high-jump.landing",
+                                            "landingPosition":  [
+                                                                    156.03,
+                                                                    22.99751,
+                                                                    -122.06
+                                                                ],
+                                            "apexHeight":  9.0
+                                        },
+                        "transform":  "Balance Tool authored override",
+                        "resultValue":  {
+                                            "kind":  "LEAP_TO_TARGET",
+                                            "anchorId":  "anchor.valtan.high-jump.landing",
+                                            "landingPosition":  [
+                                                                    156.03,
+                                                                    22.99751,
+                                                                    -122.06
+                                                                ],
+                                            "apexHeight":  9.0
+                                        },
+                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                    },
+                    {
+                        "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
+                        "targetId":  "pattern:VALTAN_HIGH_JUMP",
                         "targetField":  "patterns[8].sourceActionIds",
                         "basis":  "PROJECT_TUNED",
                         "source":  {
@@ -45741,10 +45817,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  109,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  109,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -47085,10 +47161,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  109,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  109,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -47995,10 +48071,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  130,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  130,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -48431,10 +48507,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  62,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  62,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",
@@ -48905,10 +48981,10 @@
                                        "type":  "project-policy",
                                        "policyId":  "balance-tool-authored-override-v1"
                                    },
-                        "sourceValue":  160,
+                        "sourceValue":  100,
                         "transform":  "Balance Tool authored override",
-                        "resultValue":  160,
-                        "note":  "Added through the F1 Balance Tool authoring contract; official source binding is not claimed."
+                        "resultValue":  100,
+                        "note":  "Changed through the F1 Balance Tool; re-export official sources to restore an official basis."
                     },
                     {
                         "targetDocument":  "Data/Encounters/Valtan/ValtanEncounter.json",

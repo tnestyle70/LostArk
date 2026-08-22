@@ -651,6 +651,125 @@ function Convert-WorldDocument {
     }
 }
 
+# The stele slots are gameplay cover, but their position is already owned by
+# the Deploy placement the Client renders. Storing it twice is how the two
+# silently drift, so the document names the placement and the position is read
+# from that one row here.
+function Get-DeployPlacementXZ {
+    param([string]$AreaId, [string]$PlacementId, [string]$ExpectedAssetId)
+    $relativePath = "Data/Maps/Authoring/$AreaId/$AreaId.deployplacements"
+    $absolutePath = [IO.Path]::GetFullPath((Join-Path $repoRoot $relativePath))
+    if (-not [IO.File]::Exists($absolutePath)) {
+        throw "Encounter prop slot has no Deploy placement document: $relativePath"
+    }
+    foreach ($line in [IO.File]::ReadAllLines($absolutePath)) {
+        $fields = @($line -split '\s+' | Where-Object { $_.Length -gt 0 })
+        if ($fields.Count -lt 8 -or $fields[0] -cne $PlacementId) { continue }
+        $assetId = $fields[4].Trim('"')
+        if ($assetId -cne $ExpectedAssetId) {
+            throw "Encounter prop placement $PlacementId is $assetId, not $ExpectedAssetId."
+        }
+        $x = 0.0
+        $z = 0.0
+        $style = [Globalization.NumberStyles]::Float
+        $culture = [Globalization.CultureInfo]::InvariantCulture
+        if (-not [double]::TryParse($fields[5], $style, $culture, [ref]$x) -or
+            -not [double]::TryParse($fields[7], $style, $culture, [ref]$z)) {
+            throw "Encounter prop placement $PlacementId has an unreadable position."
+        }
+        return [ordered]@{ X = $x; Z = $z }
+    }
+    throw "Encounter prop slot names a Deploy placement that does not exist: $PlacementId"
+}
+
+function Convert-EncounterPropsDocument {
+    param([string]$AreaId, [string]$WorldId)
+    $relativePath = "Data/Worlds/$AreaId/EncounterProps.world.json"
+    $absolutePath = [IO.Path]::GetFullPath((Join-Path $repoRoot $relativePath))
+    if (-not [IO.File]::Exists($absolutePath)) {
+        return [ordered]@{
+            WorldId = $WorldId; AreaId = $AreaId
+            Lines = [Collections.Generic.List[string]]::new()
+            SetCount = 0; SlotCount = 0; IsPresent = $false
+        }
+    }
+    $document = Read-ProjectJson $relativePath
+    Assert-ExactProperties $document @(
+        'schema','formatVersion','areaId','revision','propSets') $relativePath
+    if ($document.schema -cne 'lostark.world-encounter-props' -or
+        $document.formatVersion -ne 1 -or $document.areaId -cne $AreaId) {
+        throw "Encounter prop header is invalid: $relativePath"
+    }
+    Assert-JsonInteger $document.revision "$relativePath revision" 1 ([uint32]::MaxValue)
+    if ($document.propSets -isnot [Array] -or
+        @($document.propSets).Count -eq 0 -or
+        @($document.propSets).Count -gt 8) {
+        throw "Encounter prop document exceeds its limits: $relativePath"
+    }
+    $setRows = [Collections.Generic.List[string]]::new()
+    $slotRows = [Collections.Generic.List[string]]::new()
+    $setIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $slotIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $culture = [Globalization.CultureInfo]::InvariantCulture
+    foreach ($propSet in @($document.propSets)) {
+        Assert-ExactProperties $propSet @(
+            'propSetId','encounterId','deployAssetId','coverRadiusMeters',
+            'slots') "$relativePath propSet"
+        foreach ($field in @('propSetId','encounterId','deployAssetId')) {
+            Assert-StableId ([string]$propSet.$field) "$relativePath propSet $field"
+        }
+        if (-not $setIds.Add([string]$propSet.propSetId)) {
+            throw "Encounter prop set is duplicated: $($propSet.propSetId)"
+        }
+        $coverRadius = [double]$propSet.coverRadiusMeters
+        if ([double]::IsNaN($coverRadius) -or [double]::IsInfinity($coverRadius) -or
+            $coverRadius -le 0.0 -or $coverRadius -gt 8.0) {
+            throw "Encounter prop cover radius is invalid: $($propSet.propSetId)"
+        }
+        if ($propSet.slots -isnot [Array] -or
+            @($propSet.slots).Count -eq 0 -or
+            @($propSet.slots).Count -gt 16) {
+            throw "Encounter prop set slot count is invalid: $($propSet.propSetId)"
+        }
+        $setRows.Add((@(
+            'PROPSET', $propSet.propSetId, $propSet.encounterId,
+            $propSet.deployAssetId,
+            $coverRadius.ToString('0.######', $culture)) -join "`t"))
+        $previousSlotId = ''
+        foreach ($slot in @($propSet.slots)) {
+            Assert-ExactProperties $slot @('slotId','deployPlacementId') "$relativePath slot"
+            Assert-StableId ([string]$slot.slotId) "$relativePath slotId"
+            $placementId = [string]$slot.deployPlacementId
+            if ($placementId -cnotmatch '^[0-9]{1,20}$') {
+                throw "Encounter prop slot placement id is invalid: $placementId"
+            }
+            if (-not $slotIds.Add([string]$slot.slotId)) {
+                throw "Encounter prop slot is duplicated: $($slot.slotId)"
+            }
+            if ($previousSlotId.Length -ne 0 -and
+                [StringComparer]::Ordinal.Compare(
+                    $previousSlotId, [string]$slot.slotId) -ge 0) {
+                throw "Encounter prop slots are not ordinal: $($slot.slotId)"
+            }
+            $previousSlotId = [string]$slot.slotId
+            $position = Get-DeployPlacementXZ -AreaId $AreaId `
+                -PlacementId $placementId -ExpectedAssetId $propSet.deployAssetId
+            $slotRows.Add((@(
+                'PROPSLOT', $propSet.propSetId, $slot.slotId,
+                ([double]$position.X).ToString('0.######', $culture),
+                ([double]$position.Z).ToString('0.######', $culture)) -join "`t"))
+        }
+    }
+    $lines = [Collections.Generic.List[string]]::new()
+    $lines.Add("LOSTARK_ENCOUNTER_PROP_BOOTSTRAP`t1`t$WorldId`t$AreaId`t$($document.revision)`t$($setRows.Count)`t$($slotRows.Count)")
+    foreach ($row in $setRows) { $lines.Add($row) }
+    foreach ($row in $slotRows) { $lines.Add($row) }
+    return [ordered]@{
+        WorldId = $WorldId; AreaId = $AreaId; Lines = $lines
+        SetCount = $setRows.Count; SlotCount = $slotRows.Count; IsPresent = $true
+    }
+}
+
 $actorIds = Get-ActorIds
 $encounterProfiles = Get-EncounterProfiles
 $monsterProfiles = Get-MonsterProfiles
@@ -662,6 +781,12 @@ $spawnDocuments = @(
 )
 $spawnByWorld = @{}
 foreach ($spawn in $spawnDocuments) { $spawnByWorld[$spawn.WorldId] = $spawn }
+$encounterPropDocuments = @(
+    (Convert-EncounterPropsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN'),
+    (Convert-EncounterPropsDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA'),
+    (Convert-EncounterPropsDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND'),
+    (Convert-EncounterPropsDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA')
+)
 $worlds = @(
     (Convert-WorldDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.BERN.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.VALTAN_ARENA.GroupIds),
@@ -703,6 +828,21 @@ if ($Mode -eq 'Publish') {
 				Staged = $staged
 				Destination = Join-Path $resolvedOutputRoot "$($spawn.WorldId).spawngroupsbootstrap"
 				Rollback = Join-Path $resolvedOutputRoot ".$($spawn.WorldId).spawngroups.rollback.$transactionId"
+				HadPrevious = $false
+				Promoted = $false
+			})
+		}
+		foreach ($props in @($encounterPropDocuments | Where-Object IsPresent)) {
+			$staged = Join-Path $stagingRoot "$($props.WorldId).encounterpropsbootstrap"
+			[IO.File]::WriteAllLines(
+				$staged,
+				$props.Lines,
+				[Text.UTF8Encoding]::new($false))
+			$promotions.Add([ordered]@{
+				World = $props
+				Staged = $staged
+				Destination = Join-Path $resolvedOutputRoot "$($props.WorldId).encounterpropsbootstrap"
+				Rollback = Join-Path $resolvedOutputRoot ".$($props.WorldId).encounterprops.rollback.$transactionId"
 				HadPrevious = $false
 				Promoted = $false
 			})
@@ -800,5 +940,8 @@ else {
 	}
 	foreach ($spawn in @($spawnDocuments | Where-Object IsPresent)) {
 		Write-Output "Validated $($spawn.WorldId): $($spawn.Count) spawn groups"
+	}
+	foreach ($props in @($encounterPropDocuments | Where-Object IsPresent)) {
+		Write-Output "Validated $($props.WorldId): $($props.SetCount) prop sets, $($props.SlotCount) slots"
 	}
 }

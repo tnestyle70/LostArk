@@ -2731,7 +2731,7 @@ REGION "navregion.valtan.floor30.brick.7000000000000000003" "condition.valtan.fl
 334 111
 335 109
 335 110
-REGION "navregion.valtan.floor30.brick.7000000000000000006" "condition.valtan.floor30.brick.7000000000000000006.collapsed" 1 360
+REGION "navregion.valtan.floor84.brick.7000000000000000006" "condition.valtan.floor84.brick.7000000000000000006.collapsed" 1 360
 297 82
 297 83
 297 84
@@ -3092,7 +3092,7 @@ REGION "navregion.valtan.floor30.brick.7000000000000000006" "condition.valtan.fl
 317 70
 317 71
 318 71
-REGION "navregion.valtan.floor30.brick.7000000000000000007" "condition.valtan.floor30.brick.7000000000000000007.collapsed" 1 425
+REGION "navregion.valtan.floor84.brick.7000000000000000007" "condition.valtan.floor84.brick.7000000000000000007.collapsed" 1 425
 313 61
 313 62
 314 60
@@ -3518,7 +3518,7 @@ REGION "navregion.valtan.floor30.brick.7000000000000000007" "condition.valtan.fl
 349 75
 349 76
 349 77
-REGION "navregion.valtan.floor84.rail.7000000000000000001" "condition.valtan.floor84.rail.7000000000000000001.collapsed" 1 347
+REGION "navregion.valtan.floor30.rail.7000000000000000001" "condition.valtan.floor30.rail.7000000000000000001.collapsed" 1 347
 296 95
 296 96
 296 97
@@ -3866,7 +3866,7 @@ REGION "navregion.valtan.floor84.rail.7000000000000000001" "condition.valtan.flo
 355 77
 355 81
 355 82
-REGION "navregion.valtan.floor30.rail.7000000000000000005" "condition.valtan.floor30.rail.7000000000000000005.collapsed" 1 325
+REGION "navregion.valtan.floor84.rail.7000000000000000005" "condition.valtan.floor84.rail.7000000000000000005.collapsed" 1 325
 291 83
 291 90
 292 83

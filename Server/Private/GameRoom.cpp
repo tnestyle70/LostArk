@@ -471,18 +471,25 @@ LostArk::Server::CGameRoom::CGameRoom(
 		{
 			return;
 		}
-		/* The four pillar slots are repeatable presentation state. Their current
-		Deploy occurrences are hidden on the Client until this state becomes
-		INTACT. They own no collision or navigation until that gameplay contract
-		is authored separately. */
-		ENCOUNTER_PROP_SET_DESCRIPTOR pillarSet{};
-		pillarSet.strPropSetId = "encounterprop.valtan.four-pillars";
-		pillarSet.strEncounterId = "ENCOUNTER_VALTAN";
-		pillarSet.SlotIds = {
-			"pillar.valtan.slot00", "pillar.valtan.slot01",
-			"pillar.valtan.slot02", "pillar.valtan.slot03" };
-		if (!m_EncounterPropRuntime.Initialize(pillarSet, m_strStatus, 1u))
+		/* The stele slots are repeatable presentation state whose Deploy
+		occurrences stay hidden on the Client until the state becomes INTACT.
+		The authored set now carries the cover circle each raised slot owns, and
+		its position is published from the same Deploy placement the Client
+		renders, so the two can never describe different ground. */
+		std::vector<ENCOUNTER_PROP_SET_DESCRIPTOR> propSets;
+		if (!Load_EncounterPropSets(m_eWorldId, propSets, m_strStatus))
 			return;
+		if (!propSets.empty())
+		{
+			if (propSets.size() != 1u ||
+				!m_EncounterPropRuntime.Initialize(
+					propSets.front(), m_strStatus, 1u))
+			{
+				m_strStatus =
+					"World declares an encounter prop set this room cannot own";
+				return;
+			}
+		}
 		std::set<std::string> voidConditionIds;
 		for (const WORLD_DESTRUCTION_MUTATION_DESCRIPTOR& mutation :
 			m_WorldDestructionBootstrap.Get_DescriptorGraph().Mutations)
@@ -2176,6 +2183,18 @@ bool LostArk::Server::CGameRoom::Reset_ValtanAuditionState(
 	/* Pattern sequence is an edge identity on the Client. Preserve the live
 	   monotonic base so Reset + Play can never reuse a completed camera key. */
 	stagedBoss.iPatternSequence = boss.iPatternSequence;
+	/* The boss combat revision is the same kind of monotonic edge identity. A
+	   Client drops any boss combat frame whose revision moved backwards, and the
+	   HP that frame carries goes down with it, so a reset continues the live
+	   sequence instead of restarting it at one. */
+	if (stagedBoss.BossCombat.iStateRevision <=
+		boss.BossCombat.iStateRevision)
+	{
+		stagedBoss.BossCombat.iStateRevision =
+			(std::numeric_limits<std::uint32_t>::max)() ==
+				boss.BossCombat.iStateRevision ?
+			1u : boss.BossCombat.iStateRevision + 1u;
+	}
 	/* A Debug audition asks for one exact pattern, so the encounter intro is
 	   staged as already consumed and the requested pattern is the first sequence
 	   the user sees. Only the Entrance operation puts the ledger back. */
@@ -2765,6 +2784,11 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			VALTAN_AUDITION_OPERATION::PLAY_PILLAR_CYCLE == request.eOperation;
 		const bool isWallAttackPlay =
 			VALTAN_AUDITION_OPERATION::PLAY_WALL_ATTACK == request.eOperation;
+		/* The Debug pattern browser names an authored pattern by its index in
+		   the encounter document instead of a health bar, so the NORMAL
+		   patterns no bar owns can be inspected without fighting for them. */
+		const bool isPatternPlay =
+			VALTAN_AUDITION_OPERATION::PLAY_PATTERN == request.eOperation;
 		const bool isFinalArenaView =
 			VALTAN_AUDITION_OPERATION::SHOW_FINAL_ARENA == request.eOperation;
 		/* The same staging without the floor stages, so the 84 and 30 collapses
@@ -2816,7 +2840,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			(VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR == request.eOperation ||
 			 VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE == request.eOperation ||
 			 isPillarCyclePlay || isWallAttackPlay || isArenaStagingView ||
-			 isOrderedStart))
+			 isPatternPlay || isOrderedStart))
 		{
 			(void)Activate_Encounter("boss.valtan.center");
 			boss = Find_AuditionBoss();
@@ -2873,7 +2897,17 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 		/* The pillar cycle names the mechanic, not a bar, so its own authored
 		pattern decides which crossing reproduces it. */
 		std::uint32_t targetHealthBar = request.iTargetHealthBar;
-		if (!isEntrancePlay && !isArenaStagingView)
+		if (isPatternPlay)
+		{
+			/* One-based so the wire never carries the zero that means "no bar",
+			   and bounded by the catalog the publisher wrote in the same
+			   authored order the Client lists. */
+			if (0u == targetHealthBar || targetHealthBar > patterns->size())
+				return VALTAN_AUDITION_RESULT::REJECTED_UNKNOWN_HEALTH_BAR;
+			auditionPatternId = (*patterns)[targetHealthBar - 1u].strPatternId;
+			targetHealthBar = 0u;
+		}
+		else if (!isEntrancePlay && !isArenaStagingView)
 		{
 			const auto authored = std::find_if(
 				patterns->begin(),
@@ -2899,7 +2933,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 		const bool isOneClickPlay =
 			VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR == request.eOperation ||
 			isEntrancePlay || isPillarCyclePlay || isWallAttackPlay ||
-			isArenaStagingView;
+			isArenaStagingView || isPatternPlay;
 		/* ARM/CROSS are diagnostics over the current encounter. PLAY is the
 		   repeatable user-facing audition: it resets the authoritative boss and
 		   destruction generation first, so a previous 159/80 run cannot make the
@@ -3225,6 +3259,29 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			return VALTAN_AUDITION_RESULT::QUEUED;
 		}
 
+		if (isPatternPlay)
+		{
+			/* The named pattern is queued the way a crossed health bar queues its
+			mechanic, so the Brain starts it on the next tick and it runs the same
+			product stage, camera and destruction path instead of a second
+			Debug-only playback. */
+			std::string resetStatus;
+			const std::uint32_t resetTick =
+				0u == m_iServerTick ? 1u : m_iServerTick;
+			if (!Reset_ValtanAuditionState(*boss, resetTick, resetStatus))
+			{
+				m_strStatus = std::move(resetStatus);
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
+			boss->bIntroPatternConsumed = true;
+			boss->PendingPatternIds.push_back(auditionPatternId);
+			m_iValtanAuditionArmedHealthBar = 0u;
+			currentHealthBar = CValtanBrain::Calculate_HealthBar(*boss);
+			m_ValtanAuditionSequenceBySessionId.insert_or_assign(
+				sessionId, request.iRequestSequence);
+			return VALTAN_AUDITION_RESULT::QUEUED;
+		}
+
 		if (VALTAN_AUDITION_OPERATION::PLAY_HEALTH_BAR == request.eOperation ||
 			isPillarCyclePlay)
 		{
@@ -3241,6 +3298,42 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 				CValtanBrain::Resolve_HealthBarHp(*boss, targetHealthBar);
 			if (previousBar > boss->iMaximumHealthBars || 0u == targetHp)
 				return VALTAN_AUDITION_RESULT::REJECTED_UNKNOWN_HEALTH_BAR;
+
+			/* A bar whose pattern takes the ground away is only ever reached after
+			the fight has already broken every wall, so auditioning it inside a
+			walled arena hides the collapse behind them. The walls come down in
+			this same request because a second one would give the boss a tick to
+			start an ordinary pattern and the bar would then be rejected. */
+			const WORLD_DESTRUCTION_DESCRIPTOR_GRAPH& auditionGraph =
+				m_WorldDestructionBootstrap.Get_DescriptorGraph();
+			const bool patternRemovesGround = std::any_of(
+				auditionGraph.Bindings.begin(), auditionGraph.Bindings.end(),
+				[&auditionGraph, &auditionPatternId](
+					const WORLD_DESTRUCTION_BINDING_DESCRIPTOR& binding)
+				{
+					if (WORLD_DESTRUCTION_TRIGGER_KIND::STAGE !=
+						binding.eTriggerKind ||
+						binding.strPatternId != auditionPatternId)
+					{
+						return false;
+					}
+					const auto mutation = std::find_if(
+						auditionGraph.Mutations.begin(),
+						auditionGraph.Mutations.end(),
+						[&binding](
+							const WORLD_DESTRUCTION_MUTATION_DESCRIPTOR& candidate)
+						{
+							return candidate.strMutationId == binding.strMutationId;
+						});
+					return auditionGraph.Mutations.end() != mutation &&
+						mutation->bRemovesGround;
+				});
+			if (patternRemovesGround &&
+				!Break_EveryWallForAudition(*boss, resetTick, resetStatus))
+			{
+				m_strStatus = std::move(resetStatus);
+				return VALTAN_AUDITION_RESULT::REJECTED_PATTERN_UNAVAILABLE;
+			}
 
 			/* PLAY is one atomic Debug command. Unlike two UI clicks, there is no
 			brain tick between priming the previous bar and crossing the target,
@@ -4129,6 +4222,69 @@ bool LostArk::Server::CGameRoom::Apply_EncounterPropStageEntry(
 	{
 		return true;
 	}
+	/* A later pattern owns each shatter, because the stele set outlives the
+	   pattern that raised it. The stage edge names the pair it breaks, so the
+	   pair that goes leaves the opposite pair standing as the cover the raid
+	   moves to. */
+	if (const std::vector<BOSS_PATTERN_DEFINITION>* propBreakPatterns =
+		m_GameplayCatalog.Find_BossPatterns(boss.strEncounterId))
+	{
+		const auto propBreakPattern = std::find_if(
+			propBreakPatterns->begin(), propBreakPatterns->end(),
+			[&boss](const BOSS_PATTERN_DEFINITION& candidate)
+			{ return candidate.strPatternId == boss.strPatternId; });
+		if (propBreakPatterns->end() != propBreakPattern &&
+			boss.iPatternStageIndex < propBreakPattern->Stages.size())
+		{
+			const BOSS_PATTERN_STAGE_DEFINITION& propBreakStage =
+				propBreakPattern->Stages[boss.iPatternStageIndex];
+			const auto& propSlots = m_EncounterPropRuntime.Get_SlotStates();
+			/* Only a raised pair can shatter. The wave is an ordinary rotation
+			   pattern that also runs when no stele stands, and asking to break a
+			   hidden slot is a rejection, not a no-op. */
+			const bool everyNamedSlotRaised =
+				!propBreakStage.PropBreakSlotIds.empty() &&
+				/* A Debug ordered playback owns the whole stele cycle itself so
+				   each step can be observed on its own, and a pattern it happens
+				   to run must not shatter a pair out from under it. */
+				!boss.bScriptedPatternPlayback &&
+				propBreakStage.strPropBreakSetId ==
+					m_EncounterPropRuntime.Get_PropSetId() &&
+				propBreakStage.strActionId == boss.strActionId &&
+				std::all_of(
+					propBreakStage.PropBreakSlotIds.begin(),
+					propBreakStage.PropBreakSlotIds.end(),
+					[&propSlots](const std::string& slotId)
+					{
+						const auto found = std::find_if(
+							propSlots.begin(), propSlots.end(),
+							[&slotId](const ENCOUNTER_PROP_SLOT_STATE& candidate)
+							{ return candidate.strSlotId == slotId; });
+						return propSlots.end() != found &&
+							LostArk::Shared::ENCOUNTER_PROP_STATE::INTACT ==
+								found->eState;
+					});
+			if (everyNamedSlotRaised)
+			{
+				ENCOUNTER_PROP_TRANSACTION breakTransaction{};
+				std::string breakStatus;
+				if (ENCOUNTER_PROP_PREPARE_RESULT::READY ==
+					m_EncounterPropRuntime.Prepare_BreakSlots(
+						propBreakStage.PropBreakSlotIds,
+						m_EncounterPropRuntime.Get_OccurrenceSequence(),
+						serverTick, breakTransaction, breakStatus) &&
+					m_EncounterPropRuntime.Commit(breakTransaction, breakStatus))
+				{
+					Broadcast_EncounterPropSync();
+				}
+				else if (!breakStatus.empty())
+				{
+					/* A refused shatter is isolated the same way a refused raise is. */
+					m_strStatus = std::move(breakStatus);
+				}
+			}
+		}
+	}
 	if (PILLAR_PATTERN_ID != boss.strPatternId ||
 		PILLAR_SPAWN_STAGE_ID != boss.strPatternStageId)
 	{
@@ -4528,6 +4684,133 @@ void LostArk::Server::CGameRoom::Broadcast_EncounterPropSync()
 		if (nullptr != session && !Send_EncounterPropSync(session))
 			session->Request_Close();
 	}
+}
+
+void LostArk::Server::CGameRoom::Resolve_NavigableStep(
+	const CServerNavigation& navigation,
+	const float fromX,
+	const float fromZ,
+	const float targetX,
+	const float targetZ,
+	float& outX,
+	float& outZ)
+{
+	if (!navigation.Is_Loaded() ||
+		!navigation.Is_PointWalkableExact(fromX, fromZ))
+	{
+		outX = targetX;
+		outZ = targetZ;
+		return;
+	}
+	/* Eight samples resolve a stride finer than one navigation cell at the
+	   fastest authored charge speed, so the stop lands against the face rather
+	   than a whole stride short of it. */
+	constexpr std::uint32_t SAMPLE_COUNT = 8u;
+	float reachedX = fromX;
+	float reachedZ = fromZ;
+	for (std::uint32_t sample = 1u; sample <= SAMPLE_COUNT; ++sample)
+	{
+		const float ratio = static_cast<float>(sample) /
+			static_cast<float>(SAMPLE_COUNT);
+		const float sampleX = fromX + (targetX - fromX) * ratio;
+		const float sampleZ = fromZ + (targetZ - fromZ) * ratio;
+		if (!navigation.Is_PointWalkableExact(sampleX, sampleZ))
+			break;
+		reachedX = sampleX;
+		reachedZ = sampleZ;
+	}
+	outX = reachedX;
+	outZ = reachedZ;
+}
+
+bool LostArk::Server::CGameRoom::Break_EveryWallForAudition(
+	const SERVER_WORLD_ENTITY& boss,
+	const std::uint32_t resetTick,
+	std::string& status)
+{
+	struct WALL_PAIR final
+	{
+		WORLD_DESTRUCTION_BINDING_APPLICATION Application;
+		WORLD_DESTRUCTION_STATE_TRANSITION Transition;
+	};
+	const WORLD_DESTRUCTION_DESCRIPTOR_GRAPH& graph =
+		m_WorldDestructionBootstrap.Get_DescriptorGraph();
+	const std::uint32_t epoch = m_WorldDestructionRuntime.Get_EncounterEpoch();
+	std::vector<WALL_PAIR> stagedPairs;
+	const auto append =
+		[&stagedPairs, epoch](const WORLD_DESTRUCTION_TRANSACTION& transaction)
+		{
+			if (transaction.iEncounterEpoch != epoch ||
+				transaction.BindingApplications.size() !=
+					transaction.Transitions.size())
+			{
+				return false;
+			}
+			for (std::size_t index = 0u;
+				index < transaction.Transitions.size(); ++index)
+			{
+				stagedPairs.push_back({
+					transaction.BindingApplications[index],
+					transaction.Transitions[index] });
+			}
+			return true;
+		};
+
+	for (const WORLD_DESTRUCTION_BINDING_DESCRIPTOR& binding : graph.Bindings)
+	{
+		if (WORLD_DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT !=
+			binding.eTriggerKind)
+		{
+			continue;
+		}
+		WORLD_DESTRUCTION_TRANSACTION contactTransaction{};
+		if (WORLD_DESTRUCTION_PREPARE_RESULT::READY !=
+				m_WorldDestructionRuntime.Prepare_ContactTrigger(
+					binding.strImpactReceiverId, boss.iNetEntityId,
+					resetTick, resetTick, contactTransaction, status) ||
+			!append(contactTransaction))
+		{
+			status = "Audition wall clear failed on an ordinary wall: " + status;
+			return false;
+		}
+	}
+
+	WORLD_DESTRUCTION_ACTION_TUPLE outerAction{};
+	outerAction.strPatternId = FINAL_ARENA_PATTERN_ID;
+	outerAction.strStageId = FINAL_ARENA_STAGE_ID;
+	outerAction.strActionId = FINAL_ARENA_ACTION_ID;
+	outerAction.iStageIndex = 2u;
+	WORLD_DESTRUCTION_TRANSACTION outerTransaction{};
+	const std::uint32_t outerPatternSequence =
+		(std::numeric_limits<std::uint32_t>::max)() == boss.iPatternSequence ?
+		1u : boss.iPatternSequence + 1u;
+	if (WORLD_DESTRUCTION_PREPARE_RESULT::READY !=
+			m_WorldDestructionRuntime.Prepare_StageTrigger(
+				outerAction, boss.iNetEntityId, outerPatternSequence,
+				resetTick, outerTransaction, status) ||
+		!append(outerTransaction))
+	{
+		status = "Audition wall clear failed on the outer ring: " + status;
+		return false;
+	}
+
+	std::sort(
+		stagedPairs.begin(), stagedPairs.end(),
+		[](const WALL_PAIR& left, const WALL_PAIR& right)
+		{
+			return left.Transition.strGroupId < right.Transition.strGroupId;
+		});
+	WORLD_DESTRUCTION_TRANSACTION wallTransaction{};
+	wallTransaction.iEncounterEpoch = epoch;
+	wallTransaction.iRequestTick = resetTick;
+	for (WALL_PAIR& pair : stagedPairs)
+	{
+		wallTransaction.BindingApplications.push_back(
+			std::move(pair.Application));
+		wallTransaction.Transitions.push_back(std::move(pair.Transition));
+	}
+	return Commit_WorldDestructionTransaction(
+		wallTransaction, {}, resetTick, status);
 }
 
 bool LostArk::Server::CGameRoom::Apply_WorldDestructionStageEntry(
@@ -5444,6 +5727,27 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 #endif
 			if (updateValtanBrain)
 			{
+				/* Only a stele that is standing right now is cover. A slot that
+				   is breaking or hidden stops answering the blow on the same
+				   tick the Server retired it. */
+				std::vector<LostArk::Shared::CombatCollision::CIRCLE_XZ>
+					coverCircles;
+				if (m_EncounterPropRuntime.Is_Initialized())
+				{
+					const float coverRadius =
+						m_EncounterPropRuntime.Get_CoverRadiusMeters();
+					for (const ENCOUNTER_PROP_SLOT_STATE& slot :
+						m_EncounterPropRuntime.Get_SlotStates())
+					{
+						if (LostArk::Shared::ENCOUNTER_PROP_STATE::INTACT !=
+							slot.eState)
+						{
+							continue;
+						}
+						coverCircles.push_back({
+							slot.fPositionX, slot.fPositionZ, coverRadius });
+					}
+				}
 				m_ValtanBrain.Update(
 					entity,
 					m_Players,
@@ -5451,6 +5755,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 					m_ServerNavigation,
 					fixedDeltaSeconds,
 					updateTick,
+					coverCircles,
 					m_TickDamageEvents);
 			}
 			const bool stageChanged =
@@ -5503,6 +5808,15 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 			if (m_ValtanBrain.Try_BuildStageMotion(
 				entity, fixedDeltaSeconds, proposedX, proposedZ))
 			{
+				const auto Take_MotionStep =
+					[this, &entity](const float targetX, const float targetZ)
+					{
+						Resolve_NavigableStep(
+							m_ServerNavigation,
+							entity.fPositionX, entity.fPositionZ,
+							targetX, targetZ,
+							entity.fPositionX, entity.fPositionZ);
+					};
 				SERVER_BOSS_RECEIVER_HIT hit{};
 				if (m_ServerCollisionSystem.Sweep_BossCircleAgainstReceivers(
 					entity.fPositionX, entity.fPositionY, entity.fPositionZ,
@@ -5517,8 +5831,9 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 						0.001f / distance : 0.f;
 					const float safeRatio = (std::max)(
 						0.f, hit.fHitRatio - marginRatio);
-					entity.fPositionX += deltaX * safeRatio;
-					entity.fPositionZ += deltaZ * safeRatio;
+					Take_MotionStep(
+						entity.fPositionX + deltaX * safeRatio,
+						entity.fPositionZ + deltaZ * safeRatio);
 					bool triggered = false;
 					if (!Apply_WorldDestructionImpact(
 						entity, hit.strReceiverPlacementId, updateTick, triggered))
@@ -5545,8 +5860,7 @@ void LostArk::Server::CGameRoom::Update_WorldEntities(
 				}
 				else
 				{
-					entity.fPositionX = proposedX;
-					entity.fPositionZ = proposedZ;
+					Take_MotionStep(proposedX, proposedZ);
 				}
 			}
 #ifdef _DEBUG

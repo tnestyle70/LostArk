@@ -3866,7 +3866,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	CValtanBrain brain;
 	std::vector<DAMAGE_EVENT> valtanDamageEvents;
 	brain.Update(valtan, players, catalog, navigation, 0.1f, 99,
-		valtanDamageEvents);
+		{}, valtanDamageEvents);
 	tests.Require(
 		SERVER_ENTITY_ACTION::IDLE == valtan.eAction &&
 		1000u == players.begin()->second.iCurrentHp &&
@@ -3875,7 +3875,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	players.begin()->second.isCombatReady = true;
 	for (std::uint32_t tick = 100; tick < 140 && valtanDamageEvents.empty(); ++tick)
 		brain.Update(valtan, players, catalog, navigation, 0.1f, tick,
-			valtanDamageEvents);
+			{}, valtanDamageEvents);
 	tests.Require(781u == players.begin()->second.iCurrentHp,
 		"Apply the queued 130-bar Valtan six-direction hit once");
 	tests.Require(
@@ -3894,7 +3894,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		"Queue and advance the staged 130-bar scripted mechanic");
 	valtan.iCurrentHp = 30000;
 	brain.Update(valtan, players, catalog, navigation, 0.1f, 141,
-		valtanDamageEvents);
+		{}, valtanDamageEvents);
 	tests.Require(2u == valtan.iPhase, "Advance Valtan phase from server HP");
 
 	{
@@ -3944,7 +3944,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			cooldownDamageEvents.clear();
 			brain.Update(
 				cooldownBoss, cooldownPlayers, catalog, navigation,
-				1.f / 30.f, tick, cooldownDamageEvents);
+				1.f / 30.f, tick, {}, cooldownDamageEvents);
 			if (cooldownBoss.iPatternSequence == previousSequence)
 				continue;
 			previousSequence = cooldownBoss.iPatternSequence;
@@ -4028,7 +4028,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				events.clear();
 				entranceBrain.Update(
 					boss, entrancePlayers, catalog, navigation,
-					1.f / 30.f, entranceTick++, events);
+					1.f / 30.f, entranceTick++, {}, events);
 			}
 		};
 		SERVER_WORLD_ENTITY waitingBoss = makeEntranceBoss();
@@ -4053,9 +4053,10 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			hurtBoss.bIntroPatternConsumed &&
 			"VALTAN_ENTRANCE_WHIRLWIND" != hurtBoss.strPatternId,
 			"Drop the pending Valtan entrance once the boss is already taking damage");
-		/* Between two scripted mechanics the script owns the order. The list is
-		advanced one step per pattern and repeated, so what the boss does next is
-		not a weighted roll and being hit cannot reshuffle it. */
+		/* The authored list introduces the band: it is advanced one step per
+		pattern and is not repeated. Being hit cannot reshuffle it, and once it
+		is spent the stretch hands over to the weighted roll so the rest of the
+		moveset can appear too. */
 		const auto observeOrder = [&](
 			SERVER_WORLD_ENTITY& boss, const std::uint32_t count)
 		{
@@ -4068,7 +4069,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				events.clear();
 				observeBrain.Update(
 					boss, entrancePlayers, catalog, navigation,
-					1.f / 30.f, observeTick++, events);
+					1.f / 30.f, observeTick++, {}, events);
 				if (!boss.strPatternId.empty() &&
 					(order.empty() || order.back() != boss.strPatternId))
 				{
@@ -4081,22 +4082,41 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		SERVER_WORLD_ENTITY rotationBoss = makeEntranceBoss();
 		const std::vector<std::string> observedOrder =
 			observeOrder(rotationBoss, 3600u);
-		/* The authored list opens and closes on the charge, and observeOrder
-		collapses a pattern that repeats back to back, so the wrap is visible as
-		the second step of the next cycle rather than as a second charge. */
+		/* observeOrder collapses a pattern that repeats back to back, so the
+		authored charge that opens and closes the list is seen once at each end
+		rather than twice in a row. */
 		const std::vector<std::string> expectedOrder{
 			"VALTAN_ENTRANCE_WHIRLWIND",
 			"VALTAN_DASH_CHARGE", "VALTAN_JUMP_SPIN", "VALTAN_FOUR_SLASH",
 			"VALTAN_HIGH_JUMP", "VALTAN_DASH_CHARGE", "VALTAN_HIGH_JUMP",
 			"VALTAN_EARTHQUAKE_SMASH", "VALTAN_WHIRLWIND",
 			"VALTAN_EARTHQUAKE_SMASH", "VALTAN_SUPER_SMASH",
-			"VALTAN_FOUR_SLASH", "VALTAN_DASH_CHARGE",
-			"VALTAN_JUMP_SPIN" };
+			"VALTAN_FOUR_SLASH", "VALTAN_DASH_CHARGE" };
 		tests.Require(
 			observedOrder.size() >= expectedOrder.size() &&
 			std::equal(
 				expectedOrder.begin(), expectedOrder.end(), observedOrder.begin()),
-			"Run the authored Valtan rotation in order and repeat it inside its span");
+			"Introduce every authored Valtan rotation step once and in order");
+		/* The introduction is spent by now, so the stretch has to be drawing
+		from the whole eligible moveset. A pattern the authored list never names
+		proves the roll took over instead of the list looping. */
+		const BOSS_PATTERN_ROTATION_DEFINITION* introducedSpan =
+			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 160u);
+		bool reachedBeyondTheList = false;
+		if (nullptr != introducedSpan)
+		{
+			for (std::size_t index = expectedOrder.size();
+				index < observedOrder.size(); ++index)
+			{
+				reachedBeyondTheList = reachedBeyondTheList ||
+					introducedSpan->PatternIds.end() == std::find(
+						introducedSpan->PatternIds.begin(),
+						introducedSpan->PatternIds.end(), observedOrder[index]);
+			}
+		}
+		tests.Require(
+			reachedBeyondTheList,
+			"Hand the stretch to the weighted roll once the introduction is spent");
 		const BOSS_PATTERN_ROTATION_DEFINITION* openingSpan =
 			catalog.Find_BossPatternRotation("ENCOUNTER_VALTAN", 160u);
 		tests.Require(
@@ -4200,7 +4220,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	openingChargeBoss.bIntroPatternConsumed = true;
 	brain.Update(
 		openingChargeBoss, players, catalog, navigation,
-		1.f / 30.f, 200u, valtanDamageEvents);
+		1.f / 30.f, 200u, {}, valtanDamageEvents);
 	tests.Require(
 		openingChargeBoss.strPatternId == "VALTAN_ARMOR_BREAK_OPENING" &&
 		openingChargeBoss.strPatternStageId == "WALL_CHARGE" &&
@@ -6029,6 +6049,40 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 	}
 
 	{
+		/* Pattern motion is swept against impact receivers alone, and that sweep
+		does not know where the ground stops. One charge stride out of the arena
+		floor would otherwise leave the boss standing inside a wall's own
+		navigation blocker, which nothing can then path out of without being
+		projected first. */
+		CGameRoom navigableStepRoom{ WORLD_ID::VALTAN_ARENA };
+		constexpr float STEP_FROM_Z = -120.2f;
+		constexpr float STEP_TARGET_Z = -117.9778f;
+		float reachedX = 0.f;
+		float reachedZ = 0.f;
+		CGameRoom::Resolve_NavigableStep(
+			navigableStepRoom.m_ServerNavigation,
+			156.03f, STEP_FROM_Z, 156.03f, STEP_TARGET_Z, reachedX, reachedZ);
+		/* A start the grid already refuses is passed through untouched, because
+		refusing it there would strand a boss that is somehow off the floor. */
+		float strandedX = 0.f;
+		float strandedZ = 0.f;
+		CGameRoom::Resolve_NavigableStep(
+			navigableStepRoom.m_ServerNavigation,
+			156.03f, STEP_TARGET_Z, 156.03f, STEP_FROM_Z, strandedX, strandedZ);
+		tests.Require(
+			navigableStepRoom.Is_Ready() &&
+			navigableStepRoom.m_ServerNavigation.Is_PointWalkableExact(
+				156.03f, STEP_FROM_Z) &&
+			!navigableStepRoom.m_ServerNavigation.Is_PointWalkableExact(
+				156.03f, STEP_TARGET_Z) &&
+			navigableStepRoom.m_ServerNavigation.Is_PointWalkableExact(
+				reachedX, reachedZ) &&
+			reachedZ > STEP_FROM_Z && reachedZ < STEP_TARGET_Z &&
+			156.03f == strandedX && STEP_FROM_Z == strandedZ,
+			"Stop a boss pattern stride against the ground instead of inside a wall");
+	}
+
+	{
 		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
 		SERVER_WORLD_ENTITY boss{};
 		boss.iNetEntityId = 7002u;
@@ -6383,7 +6437,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		{
 			auditionBrain.Update(
 				*auditionBoss, room.m_Players, room.m_GameplayCatalog,
-				room.m_ServerNavigation, 1.f / 30.f, 500u, auditionDamage);
+				room.m_ServerNavigation, 1.f / 30.f, 500u, {}, auditionDamage);
 		}
 		const bool queuedOnlyTarget = nullptr != auditionBoss &&
 			1u == auditionBoss->TriggeredPatternIds.size() &&
@@ -7088,15 +7142,17 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 
 		const auto countFloorStates = [&room]()
 		{
-			/* rail intact/breaking/despawned, then brick in the same order. */
+			/* Stage A (the screen-right arena half) intact/breaking/despawned, then
+			   stage B (the screen-left half) in the same order. Each half is one
+			   outer rail plus two brick sectors, so three groups answer each. */
 			std::array<std::size_t, 6u> counts{};
 			for (const WORLD_DESTRUCTION_GROUP_STATE& state :
 				room.m_WorldDestructionRuntime.Get_GroupStates())
 			{
 				const bool isRail = 0u == state.strGroupId.rfind(
-					"destroyable.group.valtan.floor84.rail.", 0u);
+					"destroyable.group.valtan.floor84.", 0u);
 				const bool isBrick = 0u == state.strGroupId.rfind(
-					"destroyable.group.valtan.floor30.brick.", 0u);
+					"destroyable.group.valtan.floor30.", 0u);
 				if (!isRail && !isBrick)
 					continue;
 				const std::size_t offset = isRail ? 0u : 3u;
@@ -7117,8 +7173,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			nullptr != boss && 160u == reportedBar &&
 			destructionEpochBeforeStart != runDestructionEpoch &&
 			propEpochBeforeStart != runPropEpoch &&
-			2u == initialFloorStates[0u] &&
-			4u == initialFloorStates[3u],
+			3u == initialFloorStates[0u] &&
+			3u == initialFloorStates[3u],
 			"Ordered full run stages the exact 66-start and 3-idle ledger in one fresh arena");
 
 		std::vector<std::uint32_t> observedOrdinals;
@@ -7279,19 +7335,19 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			if (31u == room.m_ValtanOrderedAudition.iStepIndex)
 			{
 				sawFloor84Breaking = sawFloor84Breaking ||
-					2u == floorStates[1u] && 4u == floorStates[3u];
+					3u == floorStates[1u] && 3u == floorStates[3u];
 			}
 			if (room.m_ValtanOrderedAudition.iStepIndex >= 32u &&
 				room.m_ValtanOrderedAudition.iStepIndex <= 47u)
 			{
 				sawFloor84DespawnedBeforeFloor30 =
 					sawFloor84DespawnedBeforeFloor30 ||
-					2u == floorStates[2u] && 4u == floorStates[3u];
+					3u == floorStates[2u] && 3u == floorStates[3u];
 			}
 			if (47u == room.m_ValtanOrderedAudition.iStepIndex)
 			{
 				sawFloor30Breaking = sawFloor30Breaking ||
-					2u == floorStates[2u] && 4u == floorStates[4u];
+					3u == floorStates[2u] && 3u == floorStates[4u];
 			}
 		}
 
@@ -7345,9 +7401,9 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Ordered full run completes three independent pillar raise, break and hide cycles");
 		tests.Require(
 			sawFloor84Breaking && sawFloor84DespawnedBeforeFloor30 &&
-			sawFloor30Breaking && 2u == finalFloorStates[2u] &&
-			4u == finalFloorStates[5u],
-			"Ordered full run removes the two floor-84 rails before the four floor-30 bricks");
+			sawFloor30Breaking && 3u == finalFloorStates[2u] &&
+			3u == finalFloorStates[5u],
+			"Ordered full run removes the screen-right half before the screen-left half");
 		tests.Require(
 			ticksUsed < MAX_ORDERED_TICKS && roomStayedReady &&
 			epochsStayedStable && nullptr != boss &&
@@ -7425,8 +7481,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		CGameRoom room{ WORLD_ID::VALTAN_ARENA };
 		constexpr PLAYER_ID FALL_PLAYER = 79u;
 		constexpr SESSION_ID FALL_SESSION = 4243u;
-		/* Exclusively inside navregion.valtan.floor84.rail.7000000000000000001:
-		no other authored region owns this cell, so the stage-A collapse is the
+		/* Exclusively inside navregion.valtan.floor30.rail.7000000000000000001:
+		no other authored region owns this cell, so the stage-B collapse is the
 		only thing that can open it. */
 		constexpr float FALL_RAIL_X = 155.25f;
 		constexpr float FALL_RAIL_Z = -107.25f;
@@ -7435,7 +7491,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		constexpr float ARENA_CORE_X = 154.296f;
 		constexpr float ARENA_CORE_Z = -125.219f;
 		const std::string railConditionId =
-			"condition.valtan.floor84.rail.7000000000000000001.collapsed";
+			"condition.valtan.floor30.rail.7000000000000000001.collapsed";
 
 		std::string voidStatus;
 		const bool rejectedObstaclePolarity =
@@ -7474,7 +7530,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			PLAYER_ACTION_STATE::NONE == standing.eAction &&
 			1000u == standing.iCurrentHp &&
 			standing.fPositionY == railGround.y,
-			"Leave a player standing on an intact stage-A rail sector alone");
+			"Leave a player standing on an intact stage-B rail sector alone");
 
 		/* This is the exact navigation edge the collapse commit applies. Flipping
 		it directly keeps the fall contract independent of the pattern schedule
@@ -7495,7 +7551,7 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 				FALL_RAIL_X, FALL_RAIL_Z) &&
 			!room.m_ServerNavigation.Is_PointInVoidRegion(
 				ARENA_CORE_X, ARENA_CORE_Z),
-			"Open a fall region only where the stage-A rail sector collapsed");
+			"Open a fall region only where the stage-B rail sector collapsed");
 
 		const float heightBeforeFall =
 			room.m_Players.at(FALL_PLAYER).fPositionY;
@@ -7629,7 +7685,8 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 					return;
 				leapBrain.Update(
 					*leapBoss, room.m_Players, room.m_GameplayCatalog,
-					room.m_ServerNavigation, 1.f / 30.f, leapTick++, leapDamage);
+					room.m_ServerNavigation, 1.f / 30.f, leapTick++, {},
+					leapDamage);
 			}
 		};
 
@@ -7686,6 +7743,101 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		tests.Require(
 			landedExactly,
 			"Land the 109 leap exactly on the compiled anchor at IMPACT");
+	}
+
+	{
+		/* The high jump used to take off and land on its own feet because it
+		owned no motion at all. It now follows the target it locked, so the arc
+		has to end where that player stood and not where the boss started. */
+		const std::vector<BOSS_PATTERN_DEFINITION>* leapPatterns =
+			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		const BOSS_PATTERN_DEFINITION* highJump = nullptr;
+		if (nullptr != leapPatterns)
+		{
+			const auto found = std::find_if(
+				leapPatterns->begin(), leapPatterns->end(),
+				[](const BOSS_PATTERN_DEFINITION& candidate)
+				{ return candidate.strPatternId == "VALTAN_HIGH_JUMP"; });
+			if (leapPatterns->end() != found)
+				highJump = &(*found);
+		}
+		std::map<PLAYER_ID, SERVER_PLAYER> leapArcPlayers;
+		SERVER_PLAYER leapArcTarget{};
+		leapArcTarget.iPlayerId = 91;
+		leapArcTarget.iNetEntityId = 9100;
+		leapArcTarget.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
+		leapArcTarget.iCurrentHp = 1000;
+		leapArcTarget.iMaximumHp = 1000;
+		leapArcTarget.isCombatReady = true;
+		leapArcTarget.fPositionX = 160.5f;
+		leapArcTarget.fPositionY = 22.97f;
+		leapArcTarget.fPositionZ = -125.5f;
+		leapArcPlayers.emplace(leapArcTarget.iPlayerId, leapArcTarget);
+
+		SERVER_WORLD_ENTITY leapArcBoss{};
+		leapArcBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
+		leapArcBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		leapArcBoss.strArchetypeId = "BOSS_VALTAN";
+		leapArcBoss.strEncounterId = "ENCOUNTER_VALTAN";
+		leapArcBoss.iCurrentHp = 60000;
+		leapArcBoss.iMaximumHp = 60000;
+		leapArcBoss.iMaximumHealthBars = 160;
+		leapArcBoss.iLastEvaluatedHealthBar = 160;
+		leapArcBoss.iPhaseTwoHpPercent = 68;
+		leapArcBoss.iPhase = 1;
+		leapArcBoss.fPositionX = 156.03f;
+		leapArcBoss.fPositionY = 22.97f;
+		leapArcBoss.fPositionZ = -122.06f;
+		leapArcBoss.fSpawnPositionX = leapArcBoss.fPositionX;
+		leapArcBoss.fSpawnPositionY = leapArcBoss.fPositionY;
+		leapArcBoss.fSpawnPositionZ = leapArcBoss.fPositionZ;
+		leapArcBoss.fEngageDistance = 35.f;
+		leapArcBoss.fMoveSpeed = 3.f;
+		leapArcBoss.bIntroPatternConsumed = true;
+		/* Queued the way a crossed health bar queues its mechanic, so the jump
+		starts on the next tick without waiting for a weighted roll to name it. */
+		leapArcBoss.PendingPatternIds.push_back("VALTAN_HIGH_JUMP");
+		CValtanBrain leapArcBrain;
+		std::vector<DAMAGE_EVENT> leapArcDamage;
+		leapArcBrain.Update(
+			leapArcBoss, leapArcPlayers, catalog, navigation,
+			1.f / 30.f, 900u, {}, leapArcDamage);
+		const bool startedTheJump =
+			"VALTAN_HIGH_JUMP" == leapArcBoss.strPatternId;
+		const bool landsOnTheTarget =
+			std::abs(leapArcBoss.fLeapLandingX - leapArcTarget.fPositionX) < 0.01f &&
+			std::abs(leapArcBoss.fLeapLandingZ - leapArcTarget.fPositionZ) < 0.01f;
+		const bool leftItsOwnFeet =
+			std::abs(leapArcBoss.fLeapLandingX - leapArcBoss.fSpawnPositionX) > 1.f ||
+			std::abs(leapArcBoss.fLeapLandingZ - leapArcBoss.fSpawnPositionZ) > 1.f;
+		tests.Require(
+			nullptr != highJump &&
+			BOSS_PATTERN_MOTION_KIND::LEAP_TO_TARGET == highJump->Motion.eKind &&
+			startedTheJump && landsOnTheTarget && leftItsOwnFeet &&
+			leapArcBoss.fPatternLeapApexHeight == highJump->Motion.fApexHeight,
+			"Land the high jump on the player it locked instead of its own feet");
+
+		/* With nobody to lock, the arc still needs a real destination or the
+		boss would drop through an uninitialised landing. */
+		std::map<PLAYER_ID, SERVER_PLAYER> emptyLeapPlayers;
+		SERVER_WORLD_ENTITY targetlessBoss = leapArcBoss;
+		targetlessBoss.strPatternId.clear();
+		targetlessBoss.strPatternStageId.clear();
+		targetlessBoss.PendingPatternIds.clear();
+		targetlessBoss.PendingPatternIds.push_back("VALTAN_HIGH_JUMP");
+		targetlessBoss.eAction = SERVER_ENTITY_ACTION::IDLE;
+		targetlessBoss.fLeapLandingX = 0.f;
+		targetlessBoss.fLeapLandingZ = 0.f;
+		std::vector<DAMAGE_EVENT> targetlessDamage;
+		CValtanBrain targetlessBrain;
+		targetlessBrain.Update(
+			targetlessBoss, emptyLeapPlayers, catalog, navigation,
+			1.f / 30.f, 940u, {}, targetlessDamage);
+		tests.Require(
+			nullptr != highJump &&
+			0.f == targetlessBoss.fLeapLandingX &&
+			0.f == targetlessBoss.fLeapLandingZ,
+			"Leave a targetless high jump alone rather than starting a blind arc");
 	}
 
 	{
@@ -7757,9 +7909,13 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 		ENCOUNTER_PROP_SET_DESCRIPTOR descriptor{};
 		descriptor.strPropSetId = "encounterprop.valtan.four-pillars";
 		descriptor.strEncounterId = "ENCOUNTER_VALTAN";
-		descriptor.SlotIds = {
-			"pillar.valtan.slot03", "pillar.valtan.slot00",
-			"pillar.valtan.slot02", "pillar.valtan.slot01" };
+		descriptor.fCoverRadiusMeters = 0.9f;
+		/* Authored order is preserved, so the set is deliberately not sorted. */
+		descriptor.Slots = {
+			{ "pillar.valtan.slot03", 152.423755f, -118.453755f },
+			{ "pillar.valtan.slot00", 159.636245f, -118.453755f },
+			{ "pillar.valtan.slot02", 152.423755f, -125.666245f },
+			{ "pillar.valtan.slot01", 159.636245f, -125.666245f } };
 
 		std::string status;
 		CEncounterPropRuntime runtime;
@@ -7783,10 +7939,11 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 			"Initialize the four pillar slots hidden in canonical slot order");
 
 		ENCOUNTER_PROP_SET_DESCRIPTOR duplicated = descriptor;
-		duplicated.SlotIds.push_back("pillar.valtan.slot00");
+		duplicated.Slots.push_back(
+			{ "pillar.valtan.slot00", 152.423755f, -118.453755f });
 		CEncounterPropRuntime rejected;
 		ENCOUNTER_PROP_SET_DESCRIPTOR nameless = descriptor;
-		nameless.SlotIds[1u].clear();
+		nameless.Slots[1u].strSlotId.clear();
 		CEncounterPropRuntime alsoRejected;
 		tests.Require(
 			!rejected.Initialize(duplicated, status, 1u) &&
@@ -7874,6 +8031,150 @@ int LostArk::Server::Run_ServerGameplayContractTests()
 						0u == slot.iOccurrenceSequence;
 				}),
 			"Reset the pillars to hidden and refuse a transaction from the old epoch");
+	}
+
+	{
+		/* Cover is the attack segment against the stele circle, not a
+		containment test on either end. A player directly behind the stele is
+		answered by it; one standing beside it, or in front of it, is not. */
+		using LostArk::Shared::CombatCollision::CIRCLE_XZ;
+		using LostArk::Shared::CombatCollision::Segment_IntersectsCircle;
+		const CIRCLE_XZ stele{ 0.f, 5.f, 0.9f };
+		const bool behindIsAnswered =
+			Segment_IntersectsCircle(0.f, 0.f, 0.f, 10.f, stele);
+		const bool besideIsExposed =
+			!Segment_IntersectsCircle(0.f, 0.f, 6.f, 10.f, stele);
+		const bool inFrontIsExposed =
+			!Segment_IntersectsCircle(0.f, 0.f, 0.f, 3.f, stele);
+		const bool zeroRadiusIsExposed = !Segment_IntersectsCircle(
+			0.f, 0.f, 0.f, 10.f, CIRCLE_XZ{ 0.f, 5.f, 0.f });
+		tests.Require(
+			behindIsAnswered && besideIsExposed && inFrontIsExposed &&
+			zeroRadiusIsExposed,
+			"Answer a blow only where the stele stands between boss and player");
+	}
+
+	{
+		/* A stele stops being cover on the tick it starts breaking, which is
+		what hands the raid over to the opposite diagonal. */
+		ENCOUNTER_PROP_SET_DESCRIPTOR coverSet{};
+		coverSet.strPropSetId = "encounterprop.valtan.four-pillars";
+		coverSet.strEncounterId = "ENCOUNTER_VALTAN";
+		coverSet.fCoverRadiusMeters = 0.9f;
+		coverSet.Slots = {
+			{ "pillar.valtan.slot00", 159.636245f, -118.453755f },
+			{ "pillar.valtan.slot01", 159.636245f, -125.666245f },
+			{ "pillar.valtan.slot02", 152.423755f, -125.666245f },
+			{ "pillar.valtan.slot03", 152.423755f, -118.453755f } };
+		std::string coverStatus;
+		CEncounterPropRuntime coverRuntime;
+		const auto intactCount = [&coverRuntime]()
+		{
+			const std::vector<ENCOUNTER_PROP_SLOT_STATE>& live =
+				coverRuntime.Get_SlotStates();
+			return std::count_if(live.begin(), live.end(),
+				[](const ENCOUNTER_PROP_SLOT_STATE& slot)
+				{ return ENCOUNTER_PROP_STATE::INTACT == slot.eState; });
+		};
+		ENCOUNTER_PROP_TRANSACTION coverRaise{};
+		const bool coverRaised =
+			coverRuntime.Initialize(coverSet, coverStatus, 1u) &&
+			ENCOUNTER_PROP_PREPARE_RESULT::READY == coverRuntime.Prepare_Spawn(
+				1u, 10u, coverRaise, coverStatus) &&
+			coverRuntime.Commit(coverRaise, coverStatus);
+		/* The authored position has to survive the raise, because the cover
+		circle is built from the live slot rather than a second lookup. */
+		const std::vector<ENCOUNTER_PROP_SLOT_STATE>& coverSlots =
+			coverRuntime.Get_SlotStates();
+		const bool carriedPositions = coverRaised && 4u == coverSlots.size() &&
+			std::all_of(coverSlots.begin(), coverSlots.end(),
+				[](const ENCOUNTER_PROP_SLOT_STATE& slot)
+				{
+					return 0.f != slot.fPositionX && 0.f != slot.fPositionZ;
+				});
+		/* Counted before the shatter, because the same query answers both
+		states and the order of the two checks would otherwise decide them. */
+		const auto raisedCoverCount = intactCount();
+		ENCOUNTER_PROP_TRANSACTION coverShatter{};
+		const std::vector<std::string> firstDiagonal = {
+			"pillar.valtan.slot00", "pillar.valtan.slot02" };
+		const bool diagonalShattered =
+			ENCOUNTER_PROP_PREPARE_RESULT::READY ==
+				coverRuntime.Prepare_BreakSlots(
+					firstDiagonal, 1u, 20u, coverShatter, coverStatus) &&
+			coverRuntime.Commit(coverShatter, coverStatus);
+		const auto remainingCoverCount = intactCount();
+		tests.Require(
+			carriedPositions && 4 == raisedCoverCount,
+			"Raise four stele slots carrying the authored cover position");
+		tests.Require(
+			diagonalShattered && 2 == remainingCoverCount &&
+			0.9f == coverRuntime.Get_CoverRadiusMeters(),
+			"Leave only the opposite diagonal standing as cover");
+	}
+
+	{
+		/* The stele contracts are only real once the publisher wrote them into
+		the bootstrap the Server actually reads, so they are checked against the
+		loaded catalog rather than against the authoring documents. */
+		const std::vector<BOSS_PATTERN_DEFINITION>* valtanPatterns =
+			catalog.Find_BossPatterns("ENCOUNTER_VALTAN");
+		const auto findStage = [valtanPatterns](
+			const char* patternId, const char* stageId)
+			-> const BOSS_PATTERN_STAGE_DEFINITION*
+		{
+			if (nullptr == valtanPatterns)
+				return nullptr;
+			const auto pattern = std::find_if(
+				valtanPatterns->begin(), valtanPatterns->end(),
+				[patternId](const BOSS_PATTERN_DEFINITION& candidate)
+				{ return candidate.strPatternId == patternId; });
+			if (valtanPatterns->end() == pattern)
+				return nullptr;
+			const auto stage = std::find_if(
+				pattern->Stages.begin(), pattern->Stages.end(),
+				[stageId](const BOSS_PATTERN_STAGE_DEFINITION& candidate)
+				{ return candidate.strStageId == stageId; });
+			return pattern->Stages.end() == stage ? nullptr : &(*stage);
+		};
+		const BOSS_PATTERN_STAGE_DEFINITION* pierceStage =
+			findStage("VALTAN_FOUR_PILLARS_105", "TARGET_CONE");
+		const BOSS_PATTERN_STAGE_DEFINITION* ringStage =
+			findStage("VALTAN_FOUR_PILLARS_105", "YELLOW_ZONE");
+		tests.Require(
+			nullptr != pierceStage && nullptr != ringStage &&
+			pierceStage->bPiercesCover && !ringStage->bPiercesCover &&
+			pierceStage->strDamageProfileId !=
+				ringStage->strDamageProfileId,
+			"Grant cover piercing to the authored cone alone and on its own damage");
+
+		const BOSS_PATTERN_STAGE_DEFINITION* firstBreak =
+			findStage("VALTAN_RED_BLADE_WAVE", "PROJECTILE");
+		const BOSS_PATTERN_STAGE_DEFINITION* secondBreak =
+			findStage("VALTAN_RED_BLADE_WAVE", "RECOVERY");
+		const BOSS_PATTERN_STAGE_DEFINITION* noBreak =
+			findStage("VALTAN_RED_BLADE_WAVE", "WINDUP");
+		bool pairsAreDisjoint =
+			nullptr != firstBreak && nullptr != secondBreak;
+		if (pairsAreDisjoint)
+		{
+			for (const std::string& slotId : firstBreak->PropBreakSlotIds)
+			{
+				pairsAreDisjoint = pairsAreDisjoint &&
+					secondBreak->PropBreakSlotIds.end() == std::find(
+						secondBreak->PropBreakSlotIds.begin(),
+						secondBreak->PropBreakSlotIds.end(), slotId);
+			}
+		}
+		tests.Require(
+			nullptr != firstBreak && nullptr != secondBreak &&
+			nullptr != noBreak &&
+			2u == firstBreak->PropBreakSlotIds.size() &&
+			2u == secondBreak->PropBreakSlotIds.size() &&
+			noBreak->PropBreakSlotIds.empty() && pairsAreDisjoint &&
+			firstBreak->strPropBreakSetId ==
+				"encounterprop.valtan.four-pillars",
+			"Break the stele two at a time on two disjoint authored stage edges");
 	}
 
 	{

@@ -18,19 +18,29 @@ namespace
 	constexpr float DEGREES_TO_RADIANS = 0.0174532925f;
 	constexpr float MILLISECONDS_TO_SECONDS = 0.001f;
 	constexpr float PATH_POINT_STOP_DISTANCE = 0.1f;
-	constexpr const char* ARENA_BREAK_PATTERN_ID = "VALTAN_ARENA_BREAK_109";
-	constexpr const char* ARENA_BREAK_TAKEOFF_STAGE_ID = "TAKEOFF";
-	constexpr const char* ARENA_BREAK_DROP_STAGE_ID = "DROP";
 	/* The converted Valtan model carries no jump clip, so the leap is a Server
 	transform arc instead of root motion. Both the apex and the landing point
 	come from the pattern's compiled serverMotion anchor, never from a constant
 	here and never from the boss placement. */
 
-	bool Is_ArenaBreakLeapStage(const SERVER_WORLD_ENTITY& boss)
+	/* A leap is declared by the pattern's compiled motion rather than by its
+	name, so any pattern that authors one gets the same arc. The rise is always
+	the first stage and the travel the second, which is what every authored leap
+	is shaped like; the stages after them are played from the landing. */
+	bool Is_LeapPattern(const BOSS_PATTERN_DEFINITION& pattern)
 	{
-		return boss.strPatternId == ARENA_BREAK_PATTERN_ID &&
-			(boss.strPatternStageId == ARENA_BREAK_TAKEOFF_STAGE_ID ||
-				boss.strPatternStageId == ARENA_BREAK_DROP_STAGE_ID);
+		return BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == pattern.Motion.eKind ||
+			BOSS_PATTERN_MOTION_KIND::LEAP_TO_TARGET == pattern.Motion.eKind;
+	}
+
+	constexpr std::uint32_t LEAP_TAKEOFF_STAGE_INDEX = 0u;
+	constexpr std::uint32_t LEAP_TRAVEL_STAGE_INDEX = 1u;
+
+	bool Is_LeapArcStage(const SERVER_WORLD_ENTITY& boss)
+	{
+		return boss.fPatternLeapApexHeight > 0.f &&
+			(LEAP_TAKEOFF_STAGE_INDEX == boss.iPatternStageIndex ||
+				LEAP_TRAVEL_STAGE_INDEX == boss.iPatternStageIndex);
 	}
 
 	/* Stage progress in [0,1]. A zero-length stage reads as finished so the
@@ -53,11 +63,11 @@ namespace
 	camera frames and the walls fly away from. */
 	void Advance_ArenaBreakLeap(SERVER_WORLD_ENTITY& boss)
 	{
-		if (!Is_ArenaBreakLeapStage(boss))
+		if (!Is_LeapArcStage(boss))
 			return;
 		const float ratio = StageRatio(boss);
 		const float apex = boss.fLeapApexHeight;
-		if (boss.strPatternStageId == ARENA_BREAK_TAKEOFF_STAGE_ID)
+		if (LEAP_TAKEOFF_STAGE_INDEX == boss.iPatternStageIndex)
 		{
 			boss.fPositionX = boss.fLeapOriginX;
 			boss.fPositionZ = boss.fLeapOriginZ;
@@ -441,10 +451,12 @@ namespace
 				return pattern;
 			}
 		}
-		/* Between two scripted mechanics the script owns the order, so the
-		authored list advances one step per pattern and repeats. Being hit does
-		not reshuffle it, and a mechanic that interrupts the stretch resumes
-		where it left off because the cursor lives on the boss. */
+		/* The authored list introduces the band rather than looping it. Every
+		pattern the band brings is shown once, in order, so nothing the encounter
+		adds can be missed; the stretch then hands over to the weighted roll, which
+		draws from the whole eligible moveset instead of the list alone. A mechanic
+		that interrupts the introduction resumes where it left off because the
+		cursor lives on the boss, and a new band restarts it. */
 		if (!boss.bScriptedPatternPlayback && nullptr != rotation &&
 			!rotation->PatternIds.empty())
 		{
@@ -453,21 +465,19 @@ namespace
 				boss.strRotationId = rotation->strRotationId;
 				boss.iRotationStepIndex = 0u;
 			}
-			const std::size_t stepIndex =
-				boss.iRotationStepIndex % rotation->PatternIds.size();
-			if (const BOSS_PATTERN_DEFINITION* step =
-				FindPattern(patterns, rotation->PatternIds[stepIndex]))
+			if (boss.iRotationStepIndex <
+				static_cast<std::uint32_t>(rotation->PatternIds.size()))
 			{
-				boss.iRotationStepIndex =
-					static_cast<std::uint32_t>(stepIndex + 1u) %
-						static_cast<std::uint32_t>(rotation->PatternIds.size());
-				return step;
+				const std::size_t stepIndex = boss.iRotationStepIndex;
+				++boss.iRotationStepIndex;
+				if (const BOSS_PATTERN_DEFINITION* step =
+					FindPattern(patterns, rotation->PatternIds[stepIndex]))
+				{
+					return step;
+				}
+				/* A step the catalog cannot resolve is skipped rather than
+				stalling the introduction, and the weighted roll covers the gap. */
 			}
-			/* A step the catalog cannot resolve is skipped rather than stalling
-			the stretch, and the weighted roll covers the gap. */
-			boss.iRotationStepIndex =
-				static_cast<std::uint32_t>(stepIndex + 1u) %
-					static_cast<std::uint32_t>(rotation->PatternIds.size());
 		}
 		return SelectNormalPattern(
 			boss, patterns, introPatternId,
@@ -541,6 +551,7 @@ namespace
 		boss.iPatternHitDelayMs = stage.iHitDelayMs;
 		boss.iAppliedPatternHitCount = 0u;
 		boss.bPatternWallContact = stage.bWallContact;
+		boss.bPatternPiercesCover = stage.bPiercesCover;
 		boss.fPatternPushRangeM = stage.fPushRangeM;
 		boss.iPatternPushMs = stage.iPushMs;
 		boss.bPatternKnockdown = stage.bKnockdown;
@@ -557,8 +568,8 @@ namespace
 		boss.eAction = ToServerAction(stage.eStageKind);
 		boss.fActionElapsedSeconds = 0.f;
 		boss.iActionStartTick = 0u == serverTick ? 1u : serverTick;
-		if (boss.strPatternId == ARENA_BREAK_PATTERN_ID &&
-			stage.strStageId == ARENA_BREAK_TAKEOFF_STAGE_ID)
+		if (boss.fPatternLeapApexHeight > 0.f &&
+			LEAP_TAKEOFF_STAGE_INDEX == stageIndex)
 		{
 			boss.fLeapOriginX = boss.fPositionX;
 			boss.fLeapOriginY = boss.fPositionY;
@@ -566,8 +577,8 @@ namespace
 			boss.fLeapApexHeight = boss.fPatternLeapApexHeight;
 			boss.MovePath.clear();
 		}
-		else if (boss.strPatternId == ARENA_BREAK_PATTERN_ID &&
-			stage.strStageId != ARENA_BREAK_DROP_STAGE_ID)
+		else if (boss.fPatternLeapApexHeight > 0.f &&
+			LEAP_TRAVEL_STAGE_INDEX != stageIndex)
 		{
 			/* Everything from IMPACT onward is played from the compiled landing
 			anchor, so the landing is exact rather than wherever the last
@@ -602,9 +613,22 @@ namespace
 			boss.strLastPatternId = pattern.strPatternId;
 			boss.iConsecutivePatternUses = 1u;
 		}
-		/* A pattern that owns a compiled landing anchor lands on it. Everything
-		else keeps standing on its authored placement. */
-		if (BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == pattern.Motion.eKind)
+		/* The target has to be locked before the landing is chosen, because a
+		leap that follows its target lands where that lock put it. */
+		BeginPatternTargetAndAim(boss, pattern, players, nearestTarget);
+		/* A pattern that owns a compiled landing anchor lands on it, and one that
+		follows its target lands where the lock found it. The authored position is
+		the anchor a targetless leap falls back to, so the arc always has a real
+		destination. Everything else keeps standing on its authored placement. */
+		if (BOSS_PATTERN_MOTION_KIND::LEAP_TO_TARGET == pattern.Motion.eKind &&
+			boss.bHasPatternTargetLastPosition)
+		{
+			boss.fLeapLandingX = boss.fPatternTargetLastPositionX;
+			boss.fLeapLandingY = boss.fPatternTargetLastPositionY;
+			boss.fLeapLandingZ = boss.fPatternTargetLastPositionZ;
+			boss.fPatternLeapApexHeight = pattern.Motion.fApexHeight;
+		}
+		else if (Is_LeapPattern(pattern))
 		{
 			boss.fLeapLandingX = pattern.Motion.fLandingX;
 			boss.fLeapLandingY = pattern.Motion.fLandingY;
@@ -618,7 +642,6 @@ namespace
 			boss.fLeapLandingZ = boss.fSpawnPositionZ;
 			boss.fPatternLeapApexHeight = 0.f;
 		}
-		BeginPatternTargetAndAim(boss, pattern, players, nearestTarget);
 		EnterPatternStage(boss, pattern.Stages.front(), 0u, serverTick);
 	}
 
@@ -648,6 +671,7 @@ namespace
 		boss.iPatternHitDelayMs = 0u;
 		boss.iAppliedPatternHitCount = 0u;
 		boss.bPatternWallContact = false;
+		boss.bPatternPiercesCover = false;
 		boss.fPatternPushRangeM = 0.f;
 		boss.iPatternPushMs = 0u;
 		boss.bPatternKnockdown = false;
@@ -765,6 +789,27 @@ namespace
 		return false;
 	}
 
+	/* The stele answers the blow instead of the player. The test is the straight
+	   line from the boss to the player against the standing prop's circle, so a
+	   player beside the stele is still exposed and one directly behind it is not.
+	   A stage that is authored to pierce cover never reaches here. */
+	bool IsShieldedByCover(
+		const SERVER_WORLD_ENTITY& boss,
+		const SERVER_PLAYER& player,
+		const std::vector<LostArk::Shared::CombatCollision::CIRCLE_XZ>&
+			coverCircles)
+	{
+		return std::any_of(
+			coverCircles.begin(), coverCircles.end(),
+			[&boss, &player](
+				const LostArk::Shared::CombatCollision::CIRCLE_XZ& circle)
+			{
+				return LostArk::Shared::CombatCollision::Segment_IntersectsCircle(
+					boss.fPositionX, boss.fPositionZ,
+					player.fPositionX, player.fPositionZ, circle);
+			});
+	}
+
 	bool ContainsPatternHit(
 		const SERVER_WORLD_ENTITY& boss,
 		const SERVER_PLAYER& player)
@@ -840,6 +885,8 @@ namespace
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 		const CGameplayCatalog& catalog,
 		const std::uint32_t serverTick,
+		const std::vector<LostArk::Shared::CombatCollision::CIRCLE_XZ>&
+			coverCircles,
 		std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents)
 	{
 		if (BOSS_PATTERN_HIT_SHAPE::NONE == boss.ePatternHitShape ||
@@ -859,6 +906,8 @@ namespace
 			so it is consulted before any damage is resolved. */
 			if (0u == player.iCurrentHp || !player.isCombatReady ||
 				!ContainsPatternHit(boss, player) ||
+				(!boss.bPatternPiercesCover &&
+					IsShieldedByCover(boss, player, coverCircles)) ||
 				CPlayerSkillSystem::Try_Counter(player, catalog, serverTick))
 			{
 				continue;
@@ -959,6 +1008,8 @@ void LostArk::Server::CValtanBrain::Update(
 	const CServerNavigation& navigation,
 	const float fixedDeltaSeconds,
 	const std::uint32_t serverTick,
+	const std::vector<LostArk::Shared::CombatCollision::CIRCLE_XZ>&
+		coverCircles,
 	std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const
 {
 	if (WORLD_BOOTSTRAP_KIND::BOSS != boss.eKind)
@@ -982,7 +1033,10 @@ void LostArk::Server::CValtanBrain::Update(
 		static_cast<std::uint64_t>(boss.iCurrentHp) * 100u <=
 		static_cast<std::uint64_t>(boss.iMaximumHp) * boss.iPhaseTwoHpPercent)
 	{
-		boss.iPhase = 2;
+		/* The phase ships inside the boss combat snapshot, so it moves through
+		the runtime that owns that snapshot's revision rather than being written
+		here. */
+		(void)CBossCombatRuntime::Set_GameplayPhase(boss, 2u);
 	}
 	const std::uint32_t currentHealthBar = Calculate_HealthBar(boss);
 	QueueCrossedHealthBarPatterns(boss, *patterns, currentHealthBar);
@@ -1075,7 +1129,6 @@ void LostArk::Server::CValtanBrain::Update(
 			boss.fPatternForcedMotionSpeed = durationSeconds > 0.f ?
 				boss.fPatternMaximumRange / durationSeconds : 0.f;
 		}
-		BeginPattern(boss, *selected, players, target, serverTick);
 	}
 
 	const BOSS_PATTERN_DEFINITION* currentPattern =
@@ -1123,7 +1176,9 @@ void LostArk::Server::CValtanBrain::Update(
 				boss.iAppliedPatternHitCount *
 				boss.iPatternHitIntervalMs))
 	{
-		ApplyPatternHit(boss, players, catalog, serverTick, outDamageEvents);
+		ApplyPatternHit(
+			boss, players, catalog, serverTick, coverCircles,
+			outDamageEvents);
 		++boss.iAppliedPatternHitCount;
 	}
 	if (boss.fActionElapsedSeconds <

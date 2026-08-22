@@ -1203,7 +1203,11 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 			'kind','anchorId','landingPosition','apexHeight') "pattern $($pattern.patternId) serverMotion"
 		Assert-JsonString $motion.kind "pattern $($pattern.patternId) serverMotion kind"
 		Assert-StableId $motion.anchorId "pattern $($pattern.patternId) serverMotion anchorId"
-		if ([string]$motion.kind -cne 'LEAP_TO_ANCHOR') {
+		# LEAP_TO_TARGET lands where the pattern locked its target; the authored
+		# position is the anchor it falls back to when there was no target, and it
+		# still feeds the camera lookAt check below.
+		if ([string]$motion.kind -cne 'LEAP_TO_ANCHOR' -and
+			[string]$motion.kind -cne 'LEAP_TO_TARGET') {
 			throw "Unknown serverMotion kind: $($pattern.patternId)"
 		}
 		if ($motion.landingPosition -isnot [Array] -or
@@ -2049,6 +2053,165 @@ foreach ($wallContact in @($wallContactDocument.actions)) {
 		'PATTERNWALLCONTACT', $encounterDocument.encounterId,
 		$ownerPattern.patternId, [uint32]$stageIndex,
 		$contactStage.stageId, $contactStage.actionId) -join "`t"))
+}
+
+# Cover is answered by a raised stele, but one authored stage is meant to reach
+# through it. The allowlist is the only way a stage gains that, so a new pattern
+# cannot silently ignore the raid's only protection.
+$coverPierceDocument = Read-JsonDocument `
+	'Data/Encounters/Valtan/ValtanCoverPiercingActions.json'
+Assert-ExactProperties $coverPierceDocument @(
+	'schema','formatVersion','encounterId','bossArchetypeId','actions') `
+	'Valtan cover piercing document'
+Assert-JsonString $coverPierceDocument.schema 'Valtan cover piercing schema'
+Assert-JsonInteger $coverPierceDocument.formatVersion `
+	'Valtan cover piercing formatVersion' 1 1
+if ([string]$coverPierceDocument.schema -cne `
+	'lostark.valtan-cover-piercing-actions' -or
+	[uint32]$coverPierceDocument.formatVersion -ne 1 -or
+	[string]$coverPierceDocument.encounterId -cne `
+		[string]$encounterDocument.encounterId -or
+	[string]$coverPierceDocument.bossArchetypeId -cne `
+		[string]$encounterDocument.bossArchetypeId -or
+	$coverPierceDocument.actions -isnot [Array] -or
+	@($coverPierceDocument.actions).Count -eq 0 -or
+	@($coverPierceDocument.actions).Count -gt 16) {
+	throw 'Valtan cover piercing document header is invalid.'
+}
+$coverPierceActionIds =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$previousCoverPierceActionId = ''
+foreach ($coverPierce in @($coverPierceDocument.actions)) {
+	Assert-ExactProperties $coverPierce @('patternId','stageId','actionId') `
+		'Valtan cover piercing action'
+	foreach ($field in @('patternId','stageId','actionId')) {
+		Assert-JsonString $coverPierce.$field "Valtan cover piercing $field"
+		Assert-StableId ([string]$coverPierce.$field) "Valtan cover piercing $field"
+	}
+	$pierceActionId = [string]$coverPierce.actionId
+	if (-not $coverPierceActionIds.Add($pierceActionId) -or
+		($previousCoverPierceActionId.Length -ne 0 -and
+		 [StringComparer]::Ordinal.Compare(
+			$previousCoverPierceActionId, $pierceActionId) -ge 0)) {
+		throw "Valtan cover piercing actions are duplicated or not ordinal: $pierceActionId"
+	}
+	$previousCoverPierceActionId = $pierceActionId
+	$ownerPatterns = @($encounterDocument.patterns | Where-Object {
+		[string]$_.patternId -ceq [string]$coverPierce.patternId })
+	if ($ownerPatterns.Count -ne 1) {
+		throw "Valtan cover piercing pattern is missing: $($coverPierce.patternId)"
+	}
+	$ownerPattern = $ownerPatterns[0]
+	$pierceStageIndex = -1
+	for ($candidateIndex = 0;
+		$candidateIndex -lt @($ownerPattern.stages).Count; ++$candidateIndex) {
+		$candidate = $ownerPattern.stages[$candidateIndex]
+		if ([string]$candidate.stageId -ceq [string]$coverPierce.stageId -and
+			[string]$candidate.actionId -ceq $pierceActionId) {
+			if ($pierceStageIndex -ne -1) {
+				throw "Valtan cover piercing stage is duplicated: $pierceActionId"
+			}
+			$pierceStageIndex = $candidateIndex
+		}
+	}
+	if ($pierceStageIndex -lt 0) {
+		throw "Valtan cover piercing stage/action join failed: $pierceActionId"
+	}
+	$pierceStage = $ownerPattern.stages[$pierceStageIndex]
+	if ([string]$pierceStage.hitShape -ceq 'NONE' -or
+		[uint32]$pierceStage.hitCount -eq 0) {
+		throw "Valtan cover piercing action has no Server hit pulse: $pierceActionId"
+	}
+	$patternRows.Add((@(
+		'PATTERNSTAGECOVERPIERCE', $encounterDocument.encounterId,
+		$ownerPattern.patternId, [uint32]$pierceStageIndex,
+		$pierceStage.stageId, $pierceStage.actionId) -join "`t"))
+}
+
+# The four stele slots outlive the pattern that raises them, so a later
+# pattern stage owns each shatter. The edge names the slots it breaks because a
+# pair leaves the opposite pair standing, and that is the cover the raid moves
+# to. A slot may be claimed by exactly one edge for the whole encounter.
+$propBreakDocument = Read-JsonDocument `
+	'Data/Encounters/Valtan/ValtanPropBreakActions.json'
+Assert-ExactProperties $propBreakDocument @(
+	'schema','formatVersion','encounterId','bossArchetypeId','propSetId',
+	'actions') 'Valtan prop break document'
+foreach ($field in @('schema','encounterId','bossArchetypeId','propSetId')) {
+	Assert-JsonString $propBreakDocument.$field "Valtan prop break $field"
+}
+Assert-JsonInteger $propBreakDocument.formatVersion `
+	'Valtan prop break formatVersion' 1 1
+if ([string]$propBreakDocument.schema -cne 'lostark.valtan-prop-break-actions' -or
+	[uint32]$propBreakDocument.formatVersion -ne 1 -or
+	[string]$propBreakDocument.encounterId -cne
+		[string]$encounterDocument.encounterId -or
+	[string]$propBreakDocument.bossArchetypeId -cne
+		[string]$encounterDocument.bossArchetypeId -or
+	$propBreakDocument.actions -isnot [Array] -or
+	@($propBreakDocument.actions).Count -eq 0 -or
+	@($propBreakDocument.actions).Count -gt 8) {
+	throw 'Valtan prop break document header is invalid.'
+}
+Assert-StableId ([string]$propBreakDocument.propSetId) 'Valtan prop break propSetId'
+$propBreakActionIds =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$propBreakSlotIds =
+	[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$previousPropBreakActionId = ''
+foreach ($propBreak in @($propBreakDocument.actions)) {
+	Assert-ExactProperties $propBreak @(
+		'patternId','stageId','actionId','slotIds') 'Valtan prop break action'
+	foreach ($field in @('patternId','stageId','actionId')) {
+		Assert-JsonString $propBreak.$field "Valtan prop break $field"
+		Assert-StableId ([string]$propBreak.$field) "Valtan prop break $field"
+	}
+	$propActionId = [string]$propBreak.actionId
+	if (-not $propBreakActionIds.Add($propActionId) -or
+		($previousPropBreakActionId.Length -ne 0 -and
+		 [StringComparer]::Ordinal.Compare(
+			$previousPropBreakActionId, $propActionId) -ge 0)) {
+		throw "Valtan prop break actions are duplicated or not ordinal: $propActionId"
+	}
+	$previousPropBreakActionId = $propActionId
+	if ($propBreak.slotIds -isnot [Array] -or
+		@($propBreak.slotIds).Count -eq 0 -or
+		@($propBreak.slotIds).Count -gt 8) {
+		throw "Valtan prop break action names no slots: $propActionId"
+	}
+	$ownerPatterns = @($encounterDocument.patterns | Where-Object {
+		[string]$_.patternId -ceq [string]$propBreak.patternId })
+	if ($ownerPatterns.Count -ne 1) {
+		throw "Valtan prop break pattern is missing: $($propBreak.patternId)"
+	}
+	$ownerPattern = $ownerPatterns[0]
+	$propStageIndex = -1
+	for ($candidateIndex = 0;
+		$candidateIndex -lt @($ownerPattern.stages).Count; ++$candidateIndex) {
+		$candidate = $ownerPattern.stages[$candidateIndex]
+		if ([string]$candidate.stageId -ceq [string]$propBreak.stageId -and
+			[string]$candidate.actionId -ceq $propActionId) {
+			if ($propStageIndex -ne -1) {
+				throw "Valtan prop break stage is duplicated: $propActionId"
+			}
+			$propStageIndex = $candidateIndex
+		}
+	}
+	if ($propStageIndex -lt 0) {
+		throw "Valtan prop break stage/action join failed: $propActionId"
+	}
+	foreach ($slotId in @($propBreak.slotIds)) {
+		Assert-JsonString $slotId 'Valtan prop break slotId'
+		Assert-StableId ([string]$slotId) 'Valtan prop break slotId'
+		if (-not $propBreakSlotIds.Add([string]$slotId)) {
+			throw "Valtan prop break slot is claimed twice: $slotId"
+		}
+		$patternRows.Add((@(
+			'PATTERNSTAGEPROPBREAK', $encounterDocument.encounterId,
+			$ownerPattern.patternId, [uint32]$propStageIndex,
+			$propBreak.stageId, $propActionId,
+			$propBreakDocument.propSetId, $slotId) -join "`t"))
+	}
 }
 
 # Between two health-bar mechanics the boss runs an authored order rather than a

@@ -102,6 +102,11 @@ private:
 		bool_t waitForPattern = false;
 	};
 	void Start_EnvironmentTimeline();
+	/* Queues one PLAY_PATTERN step per authored rotation entry, in the order
+	the script lists them, so the whole authored order can be watched without
+	waiting for the weighted roll to pick each pattern. */
+	void Start_AuthoredRotationPlayback(
+		const std::vector<std::string>& rotationOrder);
 	void Advance_EnvironmentTimeline(bool_t isBossPatternRunning);
 #endif
 
@@ -148,6 +153,12 @@ private:
 	uint64_t m_iObservedWorldDestructionPresentationGeneration = 0u;
 	uint32_t m_iObservedEncounterPropEpoch = 0u;
 	uint32_t m_iObservedEncounterPropServerTick = 0u;
+	/* The shatter is an edge, not a level: a Server sync repeats BREAKING for
+	   as long as the slot stays in it. Remembering the slot state version the
+	   burst was thrown for fires exactly once per shatter and still catches a
+	   later one even if the intervening syncs were never observed. */
+	std::array<uint32_t, 4> m_FiredEncounterPropBurstVersions = {
+		0u, 0u, 0u, 0u };
 	CClientReplication m_Replication;
 	CWorldPlayerNameplateView m_PlayerNameplateView;
 	std::vector<REPLICATED_PLAYER_VIEW> m_NameplatePlayers;
@@ -161,6 +172,10 @@ private:
 	REFERENCE_CAMERA_VIEW m_eReferenceCameraView =
 		REFERENCE_CAMERA_VIEW::NONE;
 	size_t m_iSelectedAuditionBarIndex = 0u;
+	/* Index into the authored pattern order the Server publishes in the same
+	document order, so the Debug browser can play a NORMAL pattern no health
+	bar owns. */
+	size_t m_iSelectedAuditionPatternIndex = 0u;
 	uint32_t m_iNextAuditionRequestSequence = 1u;
 	AUDITION_PENDING_REQUEST m_PendingAuditionRequest;
 	bool_t m_bOrderedAuditionActive = false;

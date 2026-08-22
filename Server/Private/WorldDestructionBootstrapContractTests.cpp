@@ -208,9 +208,13 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 			"Leave every floor sector INTACT when the 109 outer ring collapses");
 	}
 
-	/* Stage A is the two outer rail halves at 84 bars and stage B is the four
-	brick sectors at the 30-bar landing. Each stage has to reach its own sectors
-	and nothing else, and a floor sector owns no collision channel at all. */
+	/* Stage A is the screen-right arena half at 84 bars and stage B is the
+	screen-left half at the 30-bar landing, each half being one outer rail plus
+	two brick sectors. A half is the smallest authored unit: the rail submeshes
+	are material layers over the same half, not angular slices. The SL00 inner
+	wedge and centre cap are Map placements and stay standing. Each stage
+	reaches its own half and nothing else, and a floor sector owns no collision
+	channel at all. */
 	{
 		const WORLD_DESTRUCTION_ACTION_TUPLE floorStageAAction{
 			"VALTAN_ARENA_BREAK_84",
@@ -249,22 +253,22 @@ int LostArk::Server::Run_WorldDestructionBootstrapContractTests()
 				floorRuntime.Prepare_StageTrigger(
 					floorStageAAction, 7001u, 90u, 600u,
 					floorTransaction, publishedRuntimeStatus) &&
-			2u == floorTransaction.Transitions.size() &&
+			3u == floorTransaction.Transitions.size() &&
 			reachesOnly(
-				floorTransaction, "destroyable.group.valtan.floor84.rail.") &&
+				floorTransaction, "destroyable.group.valtan.floor84.") &&
 			floorRuntime.Commit(floorTransaction, publishedRuntimeStatus),
-			"Collapse only the two outer rail sectors at the 84-bar impact");
+			"Collapse only the screen-right arena half at the 84-bar impact");
 
 		require(
 			WORLD_DESTRUCTION_PREPARE_RESULT::READY ==
 				floorRuntime.Prepare_StageTrigger(
 					floorStageBAction, 7001u, 91u, 900u,
 					floorTransaction, publishedRuntimeStatus) &&
-			4u == floorTransaction.Transitions.size() &&
+			3u == floorTransaction.Transitions.size() &&
 			reachesOnly(
-				floorTransaction, "destroyable.group.valtan.floor30.brick.") &&
+				floorTransaction, "destroyable.group.valtan.floor30.") &&
 			floorRuntime.Commit(floorTransaction, publishedRuntimeStatus),
-			"Collapse only the four brick sectors at the 30-bar landing");
+			"Collapse only the screen-left arena half at the 30-bar landing");
 
 		require(
 			WORLD_DESTRUCTION_PREPARE_RESULT::DUPLICATE_REQUEST ==

@@ -20,6 +20,12 @@ NS_BEGIN(Client)
 class CDeployPropObject;
 class CDeployPropRuntime;
 
+/* Half-angle of the cone the twelve pieces are thrown into. A slab coming
+   apart keeps its pieces travelling roughly one way, so the wall default is
+   narrow. A prop that bursts asks for the whole hemisphere instead. */
+inline constexpr f32_t WALL_DEBRIS_SPREAD_DEGREES = 28.f;
+inline constexpr f32_t BURST_DEBRIS_SPREAD_DEGREES = 180.f;
+
 struct WORLD_DESTRUCTION_DEBRIS_EMITTER_CUE final
 {
 	uint64_t sourceRuntimePlacementId = 0u;
@@ -29,6 +35,7 @@ struct WORLD_DESTRUCTION_DEBRIS_EMITTER_CUE final
 	f32_t speedMetersPerSecond = 0.f;
 	f32_t gravityScale = 1.f;
 	f32_t lifetimeSeconds = 0.f;
+	f32_t spreadDegrees = WALL_DEBRIS_SPREAD_DEGREES;
 };
 
 /* One transient cue accompanies an authoritative INTACT -> BREAKING edge.

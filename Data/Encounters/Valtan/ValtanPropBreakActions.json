@@ -1,0 +1,11 @@
+{
+  "schema": "lostark.valtan-prop-break-actions",
+  "formatVersion": 1,
+  "encounterId": "ENCOUNTER_VALTAN",
+  "bossArchetypeId": "BOSS_VALTAN",
+  "propSetId": "encounterprop.valtan.four-pillars",
+  "actions": [
+    { "patternId": "VALTAN_RED_BLADE_WAVE", "stageId": "PROJECTILE", "actionId": "valtan.attack.red-blade-wave.active", "slotIds": [ "pillar.valtan.slot00", "pillar.valtan.slot02" ] },
+    { "patternId": "VALTAN_RED_BLADE_WAVE", "stageId": "RECOVERY", "actionId": "valtan.attack.red-blade-wave.recovery", "slotIds": [ "pillar.valtan.slot01", "pillar.valtan.slot03" ] }
+  ]
+}

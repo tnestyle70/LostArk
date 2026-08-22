@@ -1,0 +1,9 @@
+{
+  "schema": "lostark.valtan-cover-piercing-actions",
+  "formatVersion": 1,
+  "encounterId": "ENCOUNTER_VALTAN",
+  "bossArchetypeId": "BOSS_VALTAN",
+  "actions": [
+    { "patternId": "VALTAN_FOUR_PILLARS_105", "stageId": "TARGET_CONE", "actionId": "valtan.mechanic.four-pillars-105.target-cone" }
+  ]
+}

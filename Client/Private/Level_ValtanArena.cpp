@@ -18,11 +18,15 @@ headers, which is the same order Level_CharacterSelect.cpp uses. */
 #include "ProjectDataRoot.h"
 #include "Transform.h"
 
+#include "DataJson.h"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <limits>
+#include <string>
 #include <string_view>
 
 namespace
@@ -34,6 +38,12 @@ namespace
 		"pillar.valtan.slot02", "pillar.valtan.slot03" };
 	/* The Server currently owns the four inner repeatable slots. Keep this
 	   slot-to-placement mapping stable when applying an encounter-prop sync. */
+	/* The stele bursts instead of toppling, so its twelve pieces leave along
+	   the full hemisphere around the upward axis rather than the narrow cone a
+	   falling wall slab uses. */
+	constexpr f32_t VALTAN_PILLAR_BURST_SPEED_METERS_PER_SECOND = 7.f;
+	constexpr f32_t VALTAN_PILLAR_BURST_GRAVITY_SCALE = 2.f;
+	constexpr f32_t VALTAN_PILLAR_BURST_LIFETIME_SECONDS = 4.f;
 	constexpr std::array<uint64_t, 4> VALTAN_PILLAR_SLOT_PLACEMENT_IDS = {
 		14226635865317864635ull,
 		14753860598629869201ull,
@@ -460,6 +470,47 @@ namespace
 		return bars;
 	}
 
+	/* The authored rotation script is the order the boss is meant to run its
+	normal patterns in, so the Debug browser replays exactly that list rather
+	than a second hand-kept order. Only this panel consumes the document, so it
+	is read here instead of widening the shared encounter reference. */
+	std::vector<std::string> Collect_AuthoredRotationPatternIds()
+	{
+		std::vector<std::string> ordered;
+		const std::filesystem::path path = CProjectDataRoot::Resolve(
+			L"Encounters/Valtan/ValtanPatternRotations.json");
+		std::ifstream input(path, std::ios::binary);
+		if (!input)
+			return ordered;
+		const std::string text(
+			(std::istreambuf_iterator<char_t>(input)),
+			std::istreambuf_iterator<char_t>());
+		Client::DATA_JSON_VALUE root;
+		std::string parseError;
+		if (!Client::CDataJson::Parse(text, root, parseError) ||
+			!root.Is_Object())
+		{
+			return ordered;
+		}
+		const Client::DATA_JSON_VALUE* rotations = root.Find("rotations");
+		if (nullptr == rotations || !rotations->Is_Array())
+			return ordered;
+		for (const Client::DATA_JSON_VALUE& rotation : rotations->Get_Array())
+		{
+			if (!rotation.Is_Object())
+				continue;
+			const Client::DATA_JSON_VALUE* ids = rotation.Find("patternIds");
+			if (nullptr == ids || !ids->Is_Array())
+				continue;
+			for (const Client::DATA_JSON_VALUE& id : ids->Get_Array())
+			{
+				if (id.Is_String())
+					ordered.push_back(id.Get_String());
+			}
+		}
+		return ordered;
+	}
+
 	const char_t* Describe_AuditionResult(
 		const LostArk::Shared::VALTAN_AUDITION_RESULT result)
 	{
@@ -811,9 +862,22 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 			operation ||
 		LostArk::Shared::VALTAN_AUDITION_OPERATION::STOP_ORDERED_1_67 ==
 			operation;
+	/* The pattern browser addresses the authored pattern order instead, and
+	sends a one-based index so the wire never carries the zero that means
+	"no bar". */
+	const bool_t isPatternPlay =
+		LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN == operation;
+	const std::vector<Client::ENCOUNTER_PATTERN_REFERENCE>& patterns =
+		m_ValtanEncounterReference.Get_Patterns();
+	if (isPatternPlay && m_iSelectedAuditionPatternIndex >= patterns.size())
+	{
+		m_strAuditionStatus = "No authored pattern is selected.";
+		return false;
+	}
 	const std::vector<uint32_t> bars =
 		Collect_AuditionHealthBars(m_ValtanEncounterReference);
-	if (!isBarless && m_iSelectedAuditionBarIndex >= bars.size())
+	if (!isBarless && !isPatternPlay &&
+		m_iSelectedAuditionBarIndex >= bars.size())
 	{
 		m_strAuditionStatus = "No authored health-bar pattern is selected.";
 		return false;
@@ -821,8 +885,9 @@ bool_t CLevel_ValtanArena::Submit_Audition(
 
 	const uint32_t sequence = 0u == m_iNextAuditionRequestSequence ?
 		1u : m_iNextAuditionRequestSequence;
-	const uint32_t targetHealthBar =
-		isBarless ? 0u : bars[m_iSelectedAuditionBarIndex];
+	const uint32_t targetHealthBar = isPatternPlay ?
+		static_cast<uint32_t>(m_iSelectedAuditionPatternIndex + 1u) :
+		(isBarless ? 0u : bars[m_iSelectedAuditionBarIndex]);
 	if (!CNetworkManager::Get().Send_ValtanAudition(
 		sequence, operation, targetHealthBar))
 	{
@@ -874,6 +939,51 @@ void CLevel_ValtanArena::Request_OrderedAuditionStop(
 		m_bRestartOrderedAfterStop = false;
 }
 
+void CLevel_ValtanArena::Start_AuthoredRotationPlayback(
+	const std::vector<std::string>& rotationOrder)
+{
+	using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
+	const std::vector<Client::ENCOUNTER_PATTERN_REFERENCE>& patterns =
+		m_ValtanEncounterReference.Get_Patterns();
+	std::vector<ENVIRONMENT_TIMELINE_STEP> staged;
+	staged.reserve(rotationOrder.size());
+	for (const std::string& patternId : rotationOrder)
+	{
+		/* The Server resolves the same one-based position in the same authored
+		order, so the index is built from the encounter reference rather than
+		from a second list this panel would have to keep in step. */
+		const auto found = std::find_if(
+			patterns.begin(), patterns.end(),
+			[&patternId](const Client::ENCOUNTER_PATTERN_REFERENCE& candidate)
+			{
+				return candidate.patternId == patternId;
+			});
+		if (patterns.end() == found)
+		{
+			m_strAuditionStatus =
+				"The rotation script names a pattern the encounter does not own: " +
+				patternId;
+			return;
+		}
+		ENVIRONMENT_TIMELINE_STEP step{};
+		step.eOperation = OPERATION::PLAY_PATTERN;
+		step.iTargetHealthBar = static_cast<uint32_t>(
+			std::distance(patterns.begin(), found)) + 1u;
+		step.waitForPattern = true;
+		staged.push_back(step);
+	}
+	if (staged.empty())
+	{
+		m_strAuditionStatus = "The rotation script carries no playable step.";
+		return;
+	}
+	m_EnvironmentTimeline = std::move(staged);
+	m_iEnvironmentTimelineStep = 0u;
+	m_bEnvironmentTimelineWaiting = false;
+	m_bEnvironmentTimelinePatternStarted = false;
+	m_strAuditionStatus.clear();
+}
+
 void CLevel_ValtanArena::Start_EnvironmentTimeline()
 {
 	using OPERATION = LostArk::Shared::VALTAN_AUDITION_OPERATION;
@@ -921,16 +1031,42 @@ void CLevel_ValtanArena::Advance_EnvironmentTimeline(
 	}
 	if (m_iEnvironmentTimelineStep >= m_EnvironmentTimeline.size())
 	{
+		/* The two runs finish on different notes, so the verdict is read from
+		the run that just ended rather than assuming the chapter timeline. */
+		const bool_t wasRotationPlayback =
+			!m_EnvironmentTimeline.empty() &&
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN ==
+				m_EnvironmentTimeline.front().eOperation;
 		m_EnvironmentTimeline.clear();
 		m_iEnvironmentTimelineStep = 0u;
-		m_strAuditionStatus =
+		m_strAuditionStatus = wasRotationPlayback ?
+			"Authored rotation playback finished." :
 			"Full environment timeline finished. Pillars stay raised: the shatter has no product trigger yet.";
 		return;
 	}
 
 	const ENVIRONMENT_TIMELINE_STEP& step =
 		m_EnvironmentTimeline[m_iEnvironmentTimelineStep];
-	if (0u != step.iTargetHealthBar)
+	if (LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN ==
+		step.eOperation)
+	{
+		/* A rotation step carries a one-based authored pattern index, not a
+		bar, so it selects out of the pattern list instead of the bar list. */
+		const std::vector<Client::ENCOUNTER_PATTERN_REFERENCE>& patterns =
+			m_ValtanEncounterReference.Get_Patterns();
+		if (0u == step.iTargetHealthBar ||
+			step.iTargetHealthBar > patterns.size())
+		{
+			m_EnvironmentTimeline.clear();
+			m_iEnvironmentTimelineStep = 0u;
+			m_strAuditionStatus =
+				"Rotation playback stopped: an authored pattern is missing.";
+			return;
+		}
+		m_iSelectedAuditionPatternIndex =
+			static_cast<size_t>(step.iTargetHealthBar - 1u);
+	}
+	else if (0u != step.iTargetHealthBar)
 	{
 		const std::vector<uint32_t> bars =
 			Collect_AuditionHealthBars(m_ValtanEncounterReference);
@@ -1104,7 +1240,9 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 
 	/* The arena floor collapses on its own health-bar patterns, so its sectors
 	are counted separately instead of being reported as interior walls that
-	reacted to the 109 collapse by mistake. */
+	reacted to the 109 collapse by mistake. Three groups answer each stage: one
+	outer rail and two brick sectors per arena half. The SL00 inner wedge and
+	centre cap are Map placements, so they never appear in either count. */
 	static constexpr std::string_view FLOOR_STAGE_A_GROUP_PREFIX =
 		"destroyable.group.valtan.floor84.";
 	static constexpr std::string_view FLOOR_STAGE_B_GROUP_PREFIX =
@@ -1183,15 +1321,20 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 		outerGroupCount,
 		outerPlacementCount);
 	ImGui::Text(
-		"Floor Stage A (84): INTACT %zu | BREAKING %zu | GONE %zu   (expected 2)",
+		"Floor Stage A (84): INTACT %zu | BREAKING %zu | GONE %zu   (expected 3)",
 		floorStageAIntact,
 		floorStageABreaking,
 		floorStageAGone);
 	ImGui::Text(
-		"Floor Stage B (30): INTACT %zu | BREAKING %zu | GONE %zu   (expected 4)",
+		"Floor Stage B (30): INTACT %zu | BREAKING %zu | GONE %zu   (expected 3)",
 		floorStageBIntact,
 		floorStageBBreaking,
 		floorStageBGone);
+	ImGui::TextDisabled(
+		"Stage A drops the screen-right half (outer rail plus two brick sectors),"
+		" stage B the screen-left half. A half is the smallest authored unit: the"
+		" rail submeshes are material layers, not angular slices. The SL00 inner"
+		" wedge and centre cap are Map placements and stay standing either way.");
 	if (0u != interiorReactedCount)
 	{
 		ImGui::TextColored(
@@ -1397,6 +1540,12 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	}
 	ImGui::SeparatorText("Advanced authored health bar");
 	ImGui::SeparatorText("Authored health bar");
+	ImGui::TextColored(
+		ImVec4(0.55f, 0.85f, 1.f, 1.f),
+		"Floor collapse: 84 drops the screen-right half of the disc, 30 the"
+		" screen-left half, and the Server clears every wall inside the same"
+		" request. Press \"Reference Top Down\" above first: the audition stands"
+		" you off-centre and the far half is easy to miss from ground level.");
 	for (size_t index = 0; index < bars.size(); ++index)
 	{
 		char_t label[32]{};
@@ -1438,6 +1587,71 @@ void CLevel_ValtanArena::Render_AuditionPanel()
 	ImGui::EndDisabled();
 	ImGui::TextDisabled(
 		"Keep Broken replays the selected bar without resetting walls, floor or props.");
+	ImGui::TextDisabled(
+		"A floor-collapse bar takes every wall down with it in the same request.");
+
+	/* The authored rotation script is what the boss is meant to run between
+	the scripted mechanics, and only nine patterns are owned by a health bar.
+	Replaying the script in order is therefore the only way to watch the whole
+	authored order without fighting for every weighted roll. */
+	ImGui::SeparatorText("New Pattern");
+	const std::vector<std::string> rotationOrder =
+		Collect_AuthoredRotationPatternIds();
+	const std::vector<Client::ENCOUNTER_PATTERN_REFERENCE>& authoredPatterns =
+		m_ValtanEncounterReference.Get_Patterns();
+	if (rotationOrder.empty() || authoredPatterns.empty())
+	{
+		ImGui::TextDisabled(
+			"ValtanPatternRotations.json carries no authored rotation step.");
+	}
+	else
+	{
+		const bool_t rotationRunning = !m_EnvironmentTimeline.empty() &&
+			LostArk::Shared::VALTAN_AUDITION_OPERATION::PLAY_PATTERN ==
+				m_EnvironmentTimeline.front().eOperation;
+		ImGui::Text("Authored rotation script: %zu patterns in order",
+			rotationOrder.size());
+		ImGui::BeginChild(
+			"##ValtanRotationScript", ImVec2(330.f, 150.f),
+			ImGuiChildFlags_Borders);
+		for (size_t index = 0; index < rotationOrder.size(); ++index)
+		{
+			const bool_t isCurrent = rotationRunning &&
+				m_iEnvironmentTimelineStep == index;
+			if (isCurrent)
+			{
+				ImGui::TextColored(ImVec4(0.55f, 0.85f, 1.f, 1.f), "%2zu. %s",
+					index + 1u, rotationOrder[index].c_str());
+			}
+			else
+			{
+				ImGui::Text("%2zu. %s",
+					index + 1u, rotationOrder[index].c_str());
+			}
+		}
+		ImGui::EndChild();
+		ImGui::BeginDisabled(focusedControlsDisabled || rotationRunning);
+		if (ImGui::Button("Play New Pattern", ImVec2(330.f, 0.f)))
+			Start_AuthoredRotationPlayback(rotationOrder);
+		ImGui::EndDisabled();
+		if (rotationRunning)
+		{
+			ImGui::Text("Playing %zu / %zu",
+				m_iEnvironmentTimelineStep + 1u, m_EnvironmentTimeline.size());
+			if (ImGui::Button("Stop New Pattern", ImVec2(330.f, 0.f)))
+			{
+				m_EnvironmentTimeline.clear();
+				m_iEnvironmentTimelineStep = 0u;
+				m_bEnvironmentTimelineWaiting = false;
+				m_bEnvironmentTimelinePatternStarted = false;
+				m_strAuditionStatus = "Rotation playback stopped.";
+			}
+		}
+		ImGui::TextDisabled(
+			"Plays every authored rotation step in order. Each step resets the"
+			" arena and queues its pattern through the same Brain path a"
+			" health-bar crossing uses.");
+	}
 
 	if (!m_strAuditionStatus.empty())
 		ImGui::TextWrapped("%s", m_strAuditionStatus.c_str());
@@ -1556,6 +1770,9 @@ bool_t CLevel_ValtanArena::Apply_EncounterPropPresentation()
 
 	std::vector<std::pair<uint64_t, DEPLOY_PROP_STATE>> states;
 	states.reserve(props.Slots.size());
+	/* One cue per slot. A slot that shatters on its own tick must not be
+	   folded into a neighbour that is still standing. */
+	std::vector<WORLD_DESTRUCTION_DEBRIS_CUE> burstCues;
 	for (size_t index = 0u; index < props.Slots.size(); ++index)
 	{
 		const LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE& slot =
@@ -1580,11 +1797,49 @@ bool_t CLevel_ValtanArena::Apply_EncounterPropPresentation()
 		default:
 			return false;
 		}
+		/* The shatter is an edge. The Server repeats BREAKING for as long as the
+		   slot stays in it, so the burst is keyed to the slot state version and
+		   thrown exactly once for it. */
+		if (LostArk::Shared::ENCOUNTER_PROP_STATE::BREAKING == slot.eState &&
+			0u != slot.iStateVersion &&
+			m_FiredEncounterPropBurstVersions[index] != slot.iStateVersion)
+		{
+			WORLD_DESTRUCTION_DEBRIS_CUE burstCue{};
+			burstCue.groupId = slot.strSlotId;
+			burstCue.eventSequence = slot.iStateVersion;
+			burstCue.randomSeed = slot.iOccurrenceSequence;
+			WORLD_DESTRUCTION_DEBRIS_EMITTER_CUE emitter{};
+			emitter.sourceRuntimePlacementId =
+				VALTAN_PILLAR_SLOT_PLACEMENT_IDS[index];
+			emitter.direction = float3_t(0.f, 1.f, 0.f);
+			emitter.speedMetersPerSecond =
+				VALTAN_PILLAR_BURST_SPEED_METERS_PER_SECOND;
+			emitter.gravityScale = VALTAN_PILLAR_BURST_GRAVITY_SCALE;
+			emitter.lifetimeSeconds = VALTAN_PILLAR_BURST_LIFETIME_SECONDS;
+			emitter.spreadDegrees = BURST_DEBRIS_SPREAD_DEGREES;
+			burstCue.emitters.push_back(std::move(emitter));
+			burstCues.push_back(std::move(burstCue));
+			m_FiredEncounterPropBurstVersions[index] = slot.iStateVersion;
+		}
 		states.emplace_back(
 			VALTAN_PILLAR_SLOT_PLACEMENT_IDS[index], deployState);
 	}
 	if (!m_DeployRuntime.Set_States(states))
 		return false;
+	for (const WORLD_DESTRUCTION_DEBRIS_CUE& burstCue : burstCues)
+	{
+		std::string cueStatus;
+		/* A stele with no authored twelve-piece recipe is still retired by the
+		   Server's own HIDDEN edge, so a refused cue costs the shatter, never the
+		   mechanic. */
+		if (!m_WorldDestructionDebrisPresentationRuntime.Play_Cue(
+			burstCue, 1u, cueStatus))
+		{
+			OutputDebugStringA((
+				"[Level_ValtanArena][EncounterProps] " +
+				cueStatus + "\n").c_str());
+		}
+	}
 	m_iObservedEncounterPropEpoch = props.iEncounterEpoch;
 	m_iObservedEncounterPropServerTick = props.iServerTick;
 	return true;

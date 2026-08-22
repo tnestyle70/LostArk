@@ -75,8 +75,8 @@ $floorStageBPatternId = 'VALTAN_ARENA_BREAK_33'
 $floorStageBStageId = 'LANDING'
 $floorStageBActionId = 'valtan.mechanic.arena-break-33.landing'
 $floorStageBStageIndex = 1
-$expectedFloorStageAGroupCount = 1
-$expectedFloorStageBGroupCount = 5
+$expectedFloorStageAGroupCount = 3
+$expectedFloorStageBGroupCount = 3
 # Each ring source owns one bound visual filler alias. Only the thirty sources
 # emit debris, while all sixty placements follow the same thirty group states.
 $expectedFragmentsPerEmitter = 12
@@ -1038,8 +1038,11 @@ function Compile-ValtanWorldDestruction {
         }
     }
     # The two floor stages are their own reachable sub-graphs. Stage A drops the
-    # outer rail at 84 bars and stage B drops the brick ring at 30, and neither
-    # may reach a wall group, share a sector or repeat a navigation cell.
+    # yaw-0 half of the arena disc at 84 bars and stage B drops the yaw-180 half at
+    # 30, each half being its own outer rail plus two brick sectors. Neither may
+    # reach a wall group, share a sector or repeat a navigation cell. The SL00 inner
+    # wedge and centre cap are Map placements, so they are outside this contract and
+    # stay standing as the platform the fight ends on.
     $floorBindings = @($serverBindings | Where-Object {
         $_.TriggerKind -ceq 'STAGE' -and $_.ReceiverId -ceq '-' -and
         (($_.PatternId -ceq $floorStageAPatternId -and $_.StageId -ceq $floorStageAStageId) -or
@@ -1134,10 +1137,10 @@ function Compile-ValtanWorldDestruction {
         }
         if ($floorBindings.Count -gt 0) {
             if ($floorStageGroupIds[$floorStageAGroupIdPrefix].Count -ne $expectedFloorStageAGroupCount) {
-                throw "Floor stage A must reach exactly $expectedFloorStageAGroupCount outer rail sectors, not $($floorStageGroupIds[$floorStageAGroupIdPrefix].Count)."
+                throw "Floor stage A must reach exactly $expectedFloorStageAGroupCount yaw-0 half sectors, not $($floorStageGroupIds[$floorStageAGroupIdPrefix].Count)."
             }
             if ($floorStageGroupIds[$floorStageBGroupIdPrefix].Count -ne $expectedFloorStageBGroupCount) {
-                throw "Floor stage B must reach exactly $expectedFloorStageBGroupCount brick ring sectors, not $($floorStageGroupIds[$floorStageBGroupIdPrefix].Count)."
+                throw "Floor stage B must reach exactly $expectedFloorStageBGroupCount yaw-180 half sectors, not $($floorStageGroupIds[$floorStageBGroupIdPrefix].Count)."
             }
             foreach ($floorMemberId in $floorMemberIds) {
                 if ($outerMemberIds.Contains([string]$floorMemberId)) {

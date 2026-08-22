@@ -1,0 +1,32 @@
+{
+  "schema": "lostark.world-encounter-props",
+  "formatVersion": 1,
+  "areaId": "LV_LUT_HEARTRB_ED",
+  "revision": 1,
+  "propSets": [
+    {
+      "propSetId": "encounterprop.valtan.four-pillars",
+      "encounterId": "ENCOUNTER_VALTAN",
+      "deployAssetId": "DEPLOY_ITR_02326",
+      "coverRadiusMeters": 0.9,
+      "slots": [
+        {
+          "slotId": "pillar.valtan.slot00",
+          "deployPlacementId": "14226635865317864635"
+        },
+        {
+          "slotId": "pillar.valtan.slot01",
+          "deployPlacementId": "14753860598629869201"
+        },
+        {
+          "slotId": "pillar.valtan.slot02",
+          "deployPlacementId": "16421721927631310369"
+        },
+        {
+          "slotId": "pillar.valtan.slot03",
+          "deployPlacementId": "13580356114054111471"
+        }
+      ]
+    }
+  ]
+}

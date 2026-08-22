@@ -109,6 +109,9 @@ namespace LostArk::Server
 		std::uint32_t iPatternHitDelayMs = 0;
 		std::uint32_t iAppliedPatternHitCount = 0;
 		bool bPatternWallContact = false;
+		/* The running stage reaches through a raised encounter prop, so cover
+		does not answer this blow. */
+		bool bPatternPiercesCover = false;
 		/* Player push of the running pattern stage's hit; negative pulls toward
 		the boss. */
 		float fPatternPushRangeM = 0.f;

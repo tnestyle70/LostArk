@@ -809,6 +809,14 @@ namespace LostArk::Shared
 		// resolves to one stable product pattern inside the Server catalog.
 		PLAY_ORDERED_1_67,
 		STOP_ORDERED_1_67,
+		// Debug pattern browser. A NORMAL pattern that no health bar owns can
+		// otherwise only be seen by fighting until it is rolled, so this plays
+		// one authored pattern chosen by its position in the encounter
+		// document. iTargetHealthBar carries that 1-based index rather than a
+		// bar: both ends read the same authored order, the Client from
+		// ValtanEncounter.json and the Server from the PATTERN rows the
+		// publisher writes in that same document order.
+		PLAY_PATTERN,
 		END
 	};
 

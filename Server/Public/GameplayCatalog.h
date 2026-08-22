@@ -416,7 +416,17 @@ namespace LostArk::Server
 		maximumRange over the stage duration, and meeting an impact receiver ends
 		the stage early into the GROGGY stage that must follow it. */
 		bool bChargeImpact = false;
+		/* This stage reaches through a raised encounter prop. Only the authored
+		allowlist grants it, so a new pattern can never silently ignore the only
+		protection the raid has. */
+		bool bPiercesCover = false;
 		BOSS_PATTERN_STAGE_MOTION Motion;
+		/* Encounter prop slots this stage edge shatters. The stele set outlives
+		the pattern that raised it, so the edge that breaks a pair is authored
+		here instead of being inferred from the raise. Empty for every stage that
+		owns no prop. */
+		std::string strPropBreakSetId;
+		std::vector<std::string> PropBreakSlotIds;
 		std::vector<BOSS_PATTERN_STAGE_BRANCH> Branches;
 		std::vector<BOSS_PATTERN_STAGE_ACTION> Actions;
 	};
@@ -424,7 +434,10 @@ namespace LostArk::Server
 	enum class BOSS_PATTERN_MOTION_KIND : std::uint8_t
 	{
 		NONE,
-		LEAP_TO_ANCHOR
+		LEAP_TO_ANCHOR,
+		/* Lands on the position the pattern locked its target at, and on the
+		authored anchor when the boss reached the leap with no target at all. */
+		LEAP_TO_TARGET
 	};
 
 	/* A pattern whose boss motion the Server computes itself carries one

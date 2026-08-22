@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameplayCatalog.h"
+#include "Gameplay/CombatCollisionContract.h"
 #include "ServerNavigation.h"
 #include "ServerPlayer.h"
 #include "ServerWorldEntity.h"
@@ -40,6 +41,10 @@ namespace LostArk::Server
 
 		/* outDamageEvents collects the hits this pattern tick lands on players so
 		the room can ship the amounts in the same tick's snapshot. */
+		/* coverCircles are the raised encounter props standing this tick. A boss
+		   attack whose straight line to a player passes through one is answered
+		   by that prop, so the player takes nothing. An empty list is the normal
+		   case and costs one branch. */
 		void Update(
 			SERVER_WORLD_ENTITY& boss,
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -47,6 +52,8 @@ namespace LostArk::Server
 			const CServerNavigation& navigation,
 			float fixedDeltaSeconds,
 			std::uint32_t serverTick,
+			const std::vector<LostArk::Shared::CombatCollision::CIRCLE_XZ>&
+				coverCircles,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents) const;
 		bool Try_BuildStageMotion(
 			const SERVER_WORLD_ENTITY& boss,

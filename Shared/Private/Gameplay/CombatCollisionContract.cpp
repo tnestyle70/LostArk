@@ -305,6 +305,26 @@ bool LostArk::Shared::CombatCollision::Circle_IntersectsSixDirections(
 	return WithinInclusiveRadius(minimumDistanceSquared, target.fRadius);
 }
 
+bool LostArk::Shared::CombatCollision::Segment_IntersectsCircle(
+	const float startX,
+	const float startZ,
+	const float endX,
+	const float endZ,
+	const CIRCLE_XZ& circle) noexcept
+{
+	if (!IsValidCircle(circle) || !IsFinite(startX) || !IsFinite(startZ) ||
+		!IsFinite(endX) || !IsFinite(endZ))
+	{
+		return false;
+	}
+	return WithinInclusiveRadius(
+		DistanceSquaredToSegment(
+			VECTOR2{ circle.fCenterX, circle.fCenterZ },
+			VECTOR2{ startX, startZ },
+			VECTOR2{ endX, endZ }),
+		circle.fRadius);
+}
+
 bool LostArk::Shared::CombatCollision::Circle_IntersectsCone(
 	const BODY_CIRCLE_XZ& target,
 	const float originX,

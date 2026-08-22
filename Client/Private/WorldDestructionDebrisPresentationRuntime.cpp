@@ -19,7 +19,6 @@ namespace
 {
 	constexpr f32_t PI = 3.14159265358979323846f;
 	constexpr f32_t MINIMUM_SHAPE_HALF_EXTENT = 0.01f;
-	constexpr f32_t DIRECTION_SPREAD_RADIANS = 28.f * PI / 180.f;
 	constexpr f32_t UPWARD_SPEED_METERS_PER_SECOND = 3.25f;
 	constexpr f32_t MINIMUM_SPEED_SCALE = 0.8f;
 	constexpr f32_t MAXIMUM_SPEED_SCALE = 1.2f;
@@ -114,6 +113,7 @@ namespace
 
 	float3_t Build_SpreadDirection(
 		const float3_t& authoredDirection,
+		const f32_t spreadDegrees,
 		uint64_t& randomState)
 	{
 		const vector_t forward = XMVector3Normalize(
@@ -127,7 +127,11 @@ namespace
 			XMVector3Cross(reference, forward));
 		const vector_t secondary = XMVector3Normalize(
 			XMVector3Cross(forward, right));
-		const f32_t angle = DIRECTION_SPREAD_RADIANS *
+		/* An authored spread outside the half-sphere would fold the cone back
+		   on itself, so it is clamped rather than trusted. */
+		const f32_t spreadRadians =
+			(std::clamp)(spreadDegrees, 0.f, 180.f) * PI / 180.f;
+		const f32_t angle = spreadRadians *
 			std::sqrt(Random_Unit(randomState));
 		const f32_t azimuth = 2.f * PI * Random_Unit(randomState);
 		const vector_t radial = right * std::cos(azimuth) +
@@ -554,7 +558,7 @@ bool_t Client::CWorldDestructionDebrisPresentationRuntime::Stage_Emitter(
 		uint64_t randomState = Build_Seed(
 			cue, emitterCue.sourceRuntimePlacementId, pieceIndex);
 		const float3_t spreadDirection = Build_SpreadDirection(
-			emitterCue.direction, randomState);
+			emitterCue.direction, emitterCue.spreadDegrees, randomState);
 		const f32_t speedScale = MINIMUM_SPEED_SCALE +
 			(MAXIMUM_SPEED_SCALE - MINIMUM_SPEED_SCALE) *
 			Random_Unit(randomState);

@@ -313,6 +313,22 @@ bool LostArk::Server::CBossCombatRuntime::Set_StaggerGauge(
 	return true;
 }
 
+bool LostArk::Server::CBossCombatRuntime::Set_GameplayPhase(
+	SERVER_WORLD_ENTITY& boss,
+	const std::uint8_t phase) noexcept
+{
+	if (boss.iPhase == phase)
+		return false;
+	boss.iPhase = phase;
+	/* iPhase is replicated as BOSS_COMBAT_SNAPSHOT::iGameplayPhase, so the
+	snapshot the client compares against its own copy has changed. Leaving the
+	revision behind makes an honest frame look corrupt and the client drops
+	every later frame that carries the same revision. */
+	boss.BossCombat.iStateRevision =
+		NextRevision(boss.BossCombat.iStateRevision);
+	return true;
+}
+
 bool LostArk::Server::CBossCombatRuntime::Set_Shield(
 	SERVER_BOSS_COMBAT_STATE& state,
 	const std::uint32_t maximum) noexcept

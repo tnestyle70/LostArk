@@ -133,5 +133,12 @@ namespace LostArk::Server
 		static bool Set_Shield(
 			SERVER_BOSS_COMBAT_STATE& state,
 			std::uint32_t maximum) noexcept;
+		/* The gameplay phase lives on the entity but ships inside the boss
+		combat snapshot, so the revision that guards that snapshot has to move
+		with it. A client that sees the same revision is entitled to assume the
+		same contents and rejects the frame otherwise. */
+		static bool Set_GameplayPhase(
+			SERVER_WORLD_ENTITY& boss,
+			std::uint8_t phase) noexcept;
 	};
 }

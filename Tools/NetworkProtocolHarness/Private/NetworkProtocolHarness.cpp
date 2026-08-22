@@ -2808,6 +2808,33 @@ namespace
 		}
 
 		{
+			/* The pattern browser reuses the bar field as a one-based index into
+			the authored pattern order, so it round-trips a non-zero payload and
+			still rejects the zero that would mean "no bar". */
+			C2S_VALTAN_AUDITION_REQUEST patternPlay{};
+			patternPlay.iRequestSequence = 31u;
+			patternPlay.eOperation = VALTAN_AUDITION_OPERATION::PLAY_PATTERN;
+			patternPlay.iTargetHealthBar = 17u;
+			CPacketWriter patternWriter;
+			C2S_VALTAN_AUDITION_REQUEST decodedPattern{};
+			const bool wrotePattern = Write_Message(patternWriter, patternPlay);
+			CPacketReader patternReader{ patternWriter.Get_Buffer() };
+			testRunner.Require(
+				wrotePattern && Read_Message(patternReader, decodedPattern) &&
+				0u == patternReader.Get_RemainingSize() &&
+				VALTAN_AUDITION_OPERATION::PLAY_PATTERN ==
+					decodedPattern.eOperation &&
+				17u == decodedPattern.iTargetHealthBar,
+				"Valtan Pattern Browser Round Trips Its One-Based Pattern Index");
+
+			patternPlay.iTargetHealthBar = 0u;
+			CPacketWriter emptyPatternWriter;
+			testRunner.Require(
+				!Write_Message(emptyPatternWriter, patternPlay),
+				"Reject A Valtan Pattern Browser Request Without An Index");
+		}
+
+		{
 			C2S_VALTAN_AUDITION_REQUEST invalid = request;
 			invalid.iRequestSequence = 0u;
 			CPacketWriter writer;

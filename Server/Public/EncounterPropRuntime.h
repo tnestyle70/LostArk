@@ -18,12 +18,32 @@ namespace LostArk::Server
 	/* Slot IDs are the replicated encounter identity. The Client projection
 	   resolves them to the four existing inner DEPLOY_ITR_02326 placements;
 	   placement IDs never become Server combat authority. */
+	/* A raised slot is cover. Its position is published from the one Deploy
+	   placement the Client renders, so the Server and the screen can never
+	   describe different ground. */
+	struct ENCOUNTER_PROP_SLOT_DESCRIPTOR final
+	{
+		std::string strSlotId;
+		float fPositionX = 0.f;
+		float fPositionZ = 0.f;
+	};
+
 	struct ENCOUNTER_PROP_SET_DESCRIPTOR final
 	{
 		std::string strPropSetId;
 		std::string strEncounterId;
-		std::vector<std::string> SlotIds;
+		/* Metres. A boss attack whose segment to the target passes through this
+		   circle around a raised slot is answered by the stele instead. */
+		float fCoverRadiusMeters = 0.f;
+		std::vector<ENCOUNTER_PROP_SLOT_DESCRIPTOR> Slots;
 	};
+
+	/* Reads <world>.encounterpropsbootstrap. A world that owns no encounter prop
+	   set is not an error, so an absent file answers true with an empty set. */
+	[[nodiscard]] bool Load_EncounterPropSets(
+		LostArk::Shared::WORLD_ID worldId,
+		std::vector<ENCOUNTER_PROP_SET_DESCRIPTOR>& outSets,
+		std::string& status);
 
 	struct ENCOUNTER_PROP_SLOT_STATE final
 	{
@@ -33,6 +53,10 @@ namespace LostArk::Server
 		std::uint32_t iStateVersion = 0u;
 		std::uint32_t iStateStartTick = 0u;
 		std::uint32_t iOccurrenceSequence = 0u;
+		/* Copied from the descriptor so a live cover query needs the slot list
+		   alone rather than a second lookup against the authored set. */
+		float fPositionX = 0.f;
+		float fPositionZ = 0.f;
 	};
 
 	enum class ENCOUNTER_PROP_PREPARE_RESULT : std::uint8_t
@@ -108,6 +132,10 @@ namespace LostArk::Server
 		std::uint32_t Get_OccurrenceSequence() const noexcept
 		{
 			return m_iOccurrenceSequence;
+		}
+		float Get_CoverRadiusMeters() const noexcept
+		{
+			return m_Descriptor.fCoverRadiusMeters;
 		}
 		const std::string& Get_PropSetId() const noexcept
 		{

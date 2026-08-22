@@ -1663,8 +1663,10 @@ bool LostArk::Server::CGameplayCatalog::Load()
 		else if (!fields.empty() && "PATTERNMOTION" == fields[0])
 		{
 			BOSS_PATTERN_MOTION motion{};
+			const bool leapsToTarget = "LEAP_TO_TARGET" == fields[3];
 			if (9u != fields.size() || !IsStableId(fields[1]) ||
-				!IsStableId(fields[2]) || "LEAP_TO_ANCHOR" != fields[3] ||
+				!IsStableId(fields[2]) ||
+				("LEAP_TO_ANCHOR" != fields[3] && !leapsToTarget) ||
 				!IsStableId(fields[4]) ||
 				!ParseNumber(fields[5], motion.fLandingX) ||
 				!ParseNumber(fields[6], motion.fLandingY) ||
@@ -1679,7 +1681,9 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				m_strStatus = "Boss pattern motion row is invalid";
 				return false;
 			}
-			motion.eKind = BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR;
+			motion.eKind = leapsToTarget ?
+				BOSS_PATTERN_MOTION_KIND::LEAP_TO_TARGET :
+				BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR;
 			motion.strAnchorId = std::string(fields[4]);
 			const std::string motionEncounterId(fields[1]);
 			auto& motionPatterns = m_BossPatterns[motionEncounterId];
@@ -2027,6 +2031,91 @@ bool LostArk::Server::CGameplayCatalog::Load()
 				return false;
 			}
 			stage.bWallContact = true;
+		}
+		/* Sorted after PATTERNSTAGE by the publisher, exactly like
+		PATTERNWALLCONTACT, so the stage it refines already exists here. */
+		else if (!fields.empty() && "PATTERNSTAGECOVERPIERCE" == fields[0])
+		{
+			std::uint32_t stageIndex = 0u;
+			if (6u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !ParseNumber(fields[3], stageIndex) ||
+				!IsStableId(fields[4]) || !IsStableId(fields[5]))
+			{
+				m_strStatus = "Boss pattern cover-pierce row is invalid";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap)
+			{
+				m_strStatus = "Boss pattern cover-pierce has no encounter";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner ||
+				stageIndex >= owner->Stages.size())
+			{
+				m_strStatus = "Boss pattern cover-pierce has no stage owner";
+				return false;
+			}
+			BOSS_PATTERN_STAGE_DEFINITION& stage = owner->Stages[stageIndex];
+			if (stage.strStageId != fields[4] ||
+				stage.strActionId != fields[5] || stage.bPiercesCover ||
+				BOSS_PATTERN_HIT_SHAPE::NONE == stage.eHitShape ||
+				0u == stage.iHitCount)
+			{
+				m_strStatus = "Boss pattern cover-pierce join is invalid";
+				return false;
+			}
+			stage.bPiercesCover = true;
+		}
+		/* One row per slot so the row stays a fixed width. The stage collects
+		them, and a slot the publisher already gave to another edge cannot arrive
+		twice because it validates that across the whole document. */
+		else if (!fields.empty() && "PATTERNSTAGEPROPBREAK" == fields[0])
+		{
+			std::uint32_t stageIndex = 0u;
+			if (8u != fields.size() || !IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) || !ParseNumber(fields[3], stageIndex) ||
+				!IsStableId(fields[4]) || !IsStableId(fields[5]) ||
+				!IsStableId(fields[6]) || !IsStableId(fields[7]))
+			{
+				m_strStatus = "Boss pattern prop-break row is invalid";
+				return false;
+			}
+			const auto ownerMap = m_BossPatterns.find(std::string(fields[1]));
+			if (m_BossPatterns.end() == ownerMap)
+			{
+				m_strStatus = "Boss pattern prop-break has no encounter";
+				return false;
+			}
+			const auto owner = std::find_if(
+				ownerMap->second.begin(), ownerMap->second.end(),
+				[&fields](const BOSS_PATTERN_DEFINITION& pattern)
+				{ return pattern.strPatternId == fields[2]; });
+			if (ownerMap->second.end() == owner ||
+				stageIndex >= owner->Stages.size())
+			{
+				m_strStatus = "Boss pattern prop-break has no stage owner";
+				return false;
+			}
+			BOSS_PATTERN_STAGE_DEFINITION& stage = owner->Stages[stageIndex];
+			const std::string slotId(fields[7]);
+			if (stage.strStageId != fields[4] ||
+				stage.strActionId != fields[5] ||
+				(!stage.strPropBreakSetId.empty() &&
+					stage.strPropBreakSetId != fields[6]) ||
+				stage.PropBreakSlotIds.end() != std::find(
+					stage.PropBreakSlotIds.begin(),
+					stage.PropBreakSlotIds.end(), slotId))
+			{
+				m_strStatus = "Boss pattern prop-break join is invalid";
+				return false;
+			}
+			stage.strPropBreakSetId = std::string(fields[6]);
+			stage.PropBreakSlotIds.push_back(slotId);
 		}
 		/* Sorted after PATTERNSTAGE by the publisher, exactly like
 		PATTERNWALLCONTACT, so the stage it refines already exists here. */

@@ -879,6 +879,71 @@ Client::CDestructionSimulationRuntime::Get_ProjectAuthoredDebrisModelSpecs()
 			L"Prototype_Component_Model_DestructionFloor_BrickB_Chunk11",
 			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
 			3.5f, "VALTAN_FLOOR_BRICK_B", { -10.529007000f, 0.250000000f, 3.226997000f }
+		},
+		/* The stele is a repeatable encounter prop, not map dressing, and it
+		   bursts rather than toppling. No offline fracture of its own geometry
+		   exists yet, so the recipe reuses the authored Valtan rubble the floor
+		   sectors already shed. Swapping in twelve real chunks later replaces
+		   these rows and nothing else. */
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece00",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { 0.350000000f, 0.350000000f, 0.000000000f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece01",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { -0.175000000f, 0.350000000f, 0.303108891f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece02",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { -0.175000000f, 0.350000000f, -0.303108891f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece03",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { 0.268115555f, 1.150000000f, 0.224975663f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece04",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { -0.328892417f, 1.150000000f, 0.119707050f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece05",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { 0.060776862f, 1.150000000f, -0.344682714f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece06",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { 0.060776862f, 1.950000000f, 0.344682714f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece07",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { -0.328892417f, 1.950000000f, -0.119707050f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece08",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { 0.268115555f, 1.950000000f, -0.224975663f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece09",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_002.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { -0.175000000f, 2.750000000f, 0.303108891f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece10",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_004.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { -0.175000000f, 2.750000000f, -0.303108891f }
+		},
+		{
+			L"Prototype_Component_Model_DestructionStele_02326_Piece11",
+			"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_010.wmodel",
+			3.5f, "DEPLOY_ITR_02326", { 0.350000000f, 2.750000000f, 0.000000000f }
 		}
 	};
 	return specs;

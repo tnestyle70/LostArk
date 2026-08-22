@@ -1,11 +1,82 @@
 #include "EncounterPropRuntime.h"
 
+#include <Windows.h>
+
 #include <algorithm>
+#include <charconv>
+#include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <limits>
+#include <string_view>
 
 namespace
 {
 	using LostArk::Shared::ENCOUNTER_PROP_STATE;
+	using LostArk::Shared::WORLD_ID;
+
+	std::string_view World_ToString(const WORLD_ID worldId)
+	{
+		switch (worldId)
+		{
+		case WORLD_ID::BERN: return "BERN";
+		case WORLD_ID::VALTAN_ARENA: return "VALTAN_ARENA";
+		case WORLD_ID::TRAINING_GROUND: return "TRAINING_GROUND";
+		case WORLD_ID::CHARACTER_SELECT_ARENA: return "CHARACTER_SELECT_ARENA";
+		default: return {};
+		}
+	}
+
+	// Same resolution rule the other Server bootstraps use: an explicit root
+	// wins, otherwise the DataFiles folder beside the executable.
+	std::filesystem::path Resolve_DataRoot()
+	{
+		wchar_t configured[32768]{};
+		const DWORD configuredLength = GetEnvironmentVariableW(
+			L"LOSTARK_SERVER_DATA_ROOT", configured,
+			static_cast<DWORD>(std::size(configured)));
+		if (0u != configuredLength && configuredLength < std::size(configured))
+			return std::filesystem::path(configured).lexically_normal();
+		wchar_t modulePath[32768]{};
+		const DWORD moduleLength = GetModuleFileNameW(
+			nullptr, modulePath, static_cast<DWORD>(std::size(modulePath)));
+		if (0u == moduleLength || moduleLength >= std::size(modulePath))
+			return {};
+		return std::filesystem::path(modulePath).parent_path().parent_path() /
+			L"DataFiles";
+	}
+
+	std::vector<std::string_view> SplitTabs(const std::string& line)
+	{
+		std::vector<std::string_view> result;
+		std::string_view view(line);
+		size_t start = 0;
+		while (true)
+		{
+			const size_t tab = view.find('	', start);
+			result.push_back(view.substr(start,
+				std::string_view::npos == tab ? tab : tab - start));
+			if (std::string_view::npos == tab)
+				break;
+			start = tab + 1u;
+		}
+		return result;
+	}
+
+	template<typename T>
+	bool ParseNumber(const std::string_view value, T& outValue)
+	{
+		const auto parsed = std::from_chars(
+			value.data(), value.data() + value.size(), outValue);
+		return std::errc{} == parsed.ec &&
+			parsed.ptr == value.data() + value.size();
+	}
+
+	void StripCarriageReturn(std::string& line)
+	{
+		if (!line.empty() && '' == line.back())
+			line.pop_back();
+	}
 
 	bool Is_ForwardTick(
 		const std::uint32_t candidate,
@@ -18,14 +89,140 @@ namespace
 	}
 }
 
+bool LostArk::Server::Load_EncounterPropSets(
+	const LostArk::Shared::WORLD_ID worldId,
+	std::vector<ENCOUNTER_PROP_SET_DESCRIPTOR>& outSets,
+	std::string& status)
+{
+	outSets.clear();
+	const std::string_view worldName = World_ToString(worldId);
+	if (worldName.empty())
+	{
+		status = "Unknown encounter prop world ID";
+		return false;
+	}
+	const std::filesystem::path path = Resolve_DataRoot() / L"World" /
+		std::filesystem::path(std::string(worldName) + ".encounterpropsbootstrap");
+	std::ifstream input(path, std::ios::binary);
+	if (!input)
+	{
+		/* Most worlds own no encounter prop set. An absent file is the normal
+		   answer, not a missing dependency. */
+		status = "No encounter props for world";
+		return true;
+	}
+
+	std::string line;
+	if (!std::getline(input, line))
+	{
+		status = "Empty encounter prop bootstrap";
+		return false;
+	}
+	StripCarriageReturn(line);
+	const auto header = SplitTabs(line);
+	std::uint32_t version = 0u;
+	std::uint32_t revision = 0u;
+	std::uint32_t setCount = 0u;
+	std::uint32_t slotCount = 0u;
+	if (7u != header.size() ||
+		"LOSTARK_ENCOUNTER_PROP_BOOTSTRAP" != header[0] ||
+		!ParseNumber(header[1], version) || 1u != version ||
+		header[2] != worldName ||
+		!ParseNumber(header[4], revision) || 0u == revision ||
+		!ParseNumber(header[5], setCount) || 0u == setCount || setCount > 8u ||
+		!ParseNumber(header[6], slotCount) || 0u == slotCount ||
+		slotCount > setCount * LostArk::Shared::MAX_ENCOUNTER_PROP_SLOTS)
+	{
+		status = "Encounter prop bootstrap header is invalid";
+		return false;
+	}
+
+	std::vector<ENCOUNTER_PROP_SET_DESCRIPTOR> staged;
+	std::uint32_t observedSlots = 0u;
+	while (std::getline(input, line))
+	{
+		StripCarriageReturn(line);
+		if (line.empty())
+			continue;
+		const auto fields = SplitTabs(line);
+		if (!fields.empty() && "PROPSET" == fields[0])
+		{
+			ENCOUNTER_PROP_SET_DESCRIPTOR set{};
+			if (5u != fields.size() || fields[1].empty() || fields[2].empty() ||
+				fields[3].empty() ||
+				!ParseNumber(fields[4], set.fCoverRadiusMeters) ||
+				!std::isfinite(set.fCoverRadiusMeters) ||
+				set.fCoverRadiusMeters <= 0.f)
+			{
+				status = "Encounter prop set row is invalid";
+				return false;
+			}
+			set.strPropSetId = std::string(fields[1]);
+			set.strEncounterId = std::string(fields[2]);
+			if (std::any_of(staged.begin(), staged.end(),
+				[&set](const ENCOUNTER_PROP_SET_DESCRIPTOR& existing)
+				{ return existing.strPropSetId == set.strPropSetId; }))
+			{
+				status = "Duplicate encounter prop set: " + set.strPropSetId;
+				return false;
+			}
+			staged.push_back(std::move(set));
+		}
+		else if (!fields.empty() && "PROPSLOT" == fields[0])
+		{
+			ENCOUNTER_PROP_SLOT_DESCRIPTOR slot{};
+			if (5u != fields.size() || fields[1].empty() || fields[2].empty() ||
+				!ParseNumber(fields[3], slot.fPositionX) ||
+				!ParseNumber(fields[4], slot.fPositionZ) ||
+				!std::isfinite(slot.fPositionX) ||
+				!std::isfinite(slot.fPositionZ))
+			{
+				status = "Encounter prop slot row is invalid";
+				return false;
+			}
+			slot.strSlotId = std::string(fields[2]);
+			const auto owner = std::find_if(staged.begin(), staged.end(),
+				[&fields](const ENCOUNTER_PROP_SET_DESCRIPTOR& candidate)
+				{ return candidate.strPropSetId == fields[1]; });
+			if (staged.end() == owner ||
+				owner->Slots.size() >=
+					LostArk::Shared::MAX_ENCOUNTER_PROP_SLOTS)
+			{
+				status = "Encounter prop slot has no set owner: " + slot.strSlotId;
+				return false;
+			}
+			owner->Slots.push_back(std::move(slot));
+			++observedSlots;
+		}
+		else
+		{
+			status = "Unknown encounter prop bootstrap row";
+			return false;
+		}
+	}
+	if (staged.size() != setCount || observedSlots != slotCount ||
+		std::any_of(staged.begin(), staged.end(),
+			[](const ENCOUNTER_PROP_SET_DESCRIPTOR& set)
+			{ return set.Slots.empty(); }))
+	{
+		status = "Encounter prop bootstrap counts do not match its header";
+		return false;
+	}
+	outSets = std::move(staged);
+	status = "Encounter prop bootstrap loaded";
+	return true;
+}
+
 bool LostArk::Server::CEncounterPropRuntime::Initialize(
 	const ENCOUNTER_PROP_SET_DESCRIPTOR& descriptor,
 	std::string& status,
 	const std::uint32_t initialServerTick)
 {
 	if (descriptor.strPropSetId.empty() || descriptor.strEncounterId.empty() ||
-		descriptor.SlotIds.empty() ||
-		descriptor.SlotIds.size() > LostArk::Shared::MAX_ENCOUNTER_PROP_SLOTS ||
+		descriptor.Slots.empty() ||
+		descriptor.Slots.size() > LostArk::Shared::MAX_ENCOUNTER_PROP_SLOTS ||
+		!std::isfinite(descriptor.fCoverRadiusMeters) ||
+		descriptor.fCoverRadiusMeters <= 0.f ||
 		0u == initialServerTick)
 	{
 		status = "Encounter prop descriptor is invalid";
@@ -33,10 +230,12 @@ bool LostArk::Server::CEncounterPropRuntime::Initialize(
 	}
 
 	std::vector<ENCOUNTER_PROP_SLOT_STATE> staged;
-	staged.reserve(descriptor.SlotIds.size());
-	for (const std::string& slotId : descriptor.SlotIds)
+	staged.reserve(descriptor.Slots.size());
+	for (const ENCOUNTER_PROP_SLOT_DESCRIPTOR& slot : descriptor.Slots)
 	{
-		if (slotId.empty())
+		const std::string& slotId = slot.strSlotId;
+		if (slotId.empty() || !std::isfinite(slot.fPositionX) ||
+			!std::isfinite(slot.fPositionZ))
 		{
 			status = "Encounter prop slot identity is invalid";
 			return false;
@@ -56,6 +255,8 @@ bool LostArk::Server::CEncounterPropRuntime::Initialize(
 		state.iStateVersion = 1u;
 		state.iStateStartTick = initialServerTick;
 		state.iOccurrenceSequence = 0u;
+		state.fPositionX = slot.fPositionX;
+		state.fPositionZ = slot.fPositionZ;
 		staged.push_back(std::move(state));
 	}
 	/* The wire carries slots in one canonical order, so the codec can reject a

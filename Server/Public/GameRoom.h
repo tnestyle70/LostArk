@@ -341,6 +341,30 @@ namespace LostArk::Server
 		bool Apply_WorldDestructionStageEntry(
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t serverTick);
+		/* Commit the 69 ordinary contact walls and the 30 outer ring walls in one
+		transaction, leaving every floor sector INTACT. A floor-collapse bar only
+		arrives after the fight has already taken those walls down, so the
+		audition for such a bar has to clear them inside the same atomic request
+		instead of a second one the boss could start a pattern between. */
+		bool Break_EveryWallForAudition(
+			const SERVER_WORLD_ENTITY& boss,
+			std::uint32_t resetTick,
+			std::string& status);
+		/* The navigation grid is the ground a boss pattern stride may cross.
+		Pattern motion is swept against impact receivers alone, and nothing in
+		that sweep knows where the ground stops, so the furthest sample the grid
+		still owns is what the stride is allowed to reach: a charge stops against
+		the face of a wall instead of entering geometry it then has to be
+		projected out of. A start the grid already refuses passes through
+		unchanged, because refusing it there would strand the boss for good. */
+		static void Resolve_NavigableStep(
+			const CServerNavigation& navigation,
+			float fromX,
+			float fromZ,
+			float targetX,
+			float targetZ,
+			float& outX,
+			float& outZ);
 		/* Raise the pillar slots on the authored stage edge of the pattern that
 		owns them. The shatter has no identified product owner yet. */
 		bool Apply_EncounterPropStageEntry(
