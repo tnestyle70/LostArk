@@ -1,0 +1,49 @@
+{
+  "schema": "lostark.effect-screen-overlay-product-binding-receipt",
+  "formatVersion": 1,
+  "effectAssetId": "effect.dimensionmaster.skill.2050230.unified",
+  "skillId": 2050230,
+  "presentationId": "effect.dimensionmaster.skill.2050230.unified.screen-overlay",
+  "classification": {
+    "carrierProvenance": "PROJECT_TUNED",
+    "sourceEvidenceStatus": "PARTIAL",
+    "automatedRuntimeStatus": "AUTO_PASS",
+    "userVisualStatus": "PENDING"
+  },
+  "preservedAuthoredDocument": {
+    "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050230.unified.effect.json",
+    "elementCount": 8,
+    "rawSha256": "afab680bd36b4efcc4baf654c4848a1f3571a29cbc338b0ed58fec940de60e09",
+    "elementsCanonicalSha256": "a3e3b1348614c57e78fcf4d8b3feff89d43559fa985ad5f877673c94839747ee"
+  },
+  "sourceEvidence": {
+    "importedDocumentPath": "Data/Effects/Imported/DimensionMaster/Converted/effect.dimensionmaster.skill.2050230.imported.effect.json",
+    "worldFragmentElementId": "fx_pc_swp_03.par_s_swp_chrono_atk_01.particlespriteemitter_15",
+    "worldFragmentStartSeconds": 0.7,
+    "worldFragmentParticleLifetimeSeconds": 0.4000000059604645,
+    "worldFragmentBurstCountMinimum": 7,
+    "worldFragmentBurstCountMaximum": 7,
+    "rgbNoiseElementId": "fx_post.fx_par.par_j_rgbnoise_01.particlespriteemitter_11",
+    "rgbNoiseStartSeconds": 0.7,
+    "zoomBlurElementId": "fx_post.fx_par.par_j_zoomblur_01.particlespriteemitter_0",
+    "zoomBlurStartSeconds": 0.7,
+    "screenSpaceTexturedShardOccurrenceProven": false
+  },
+  "canaryTexture": {
+    "assetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_fragment_005.dds",
+    "byteCount": 8320,
+    "sha256": "193a597baf328508763b0e6712dc702d604fd1e3b22a311494c26f45470f992c",
+    "ddsFormat": "DXT1_BC1",
+    "coverageChannel": "r",
+    "colorSpace": "srgb",
+    "selectionBasis": "The source occurrence proves this texture as a world-space glass-fragment carrier. No source occurrence proves it as a screen-space carrier; its screen placement, scale, rotation, alpha envelope, and SRGB interpretation are the first PROJECT_TUNED Product canary."
+  },
+  "runtimeContract": {
+    "catalogBindingPath": "Effects/ScreenOverlays/effect.dimensionmaster.skill.2050230.unified.screen-overlay.json",
+    "owner": "CEffectObject",
+    "typedPresentation": "CEffectScreenOverlayPresentation",
+    "engineChannel": "PRESENTATION_SCREEN_OVERLAY_DESC",
+    "compositionOrder": "after RGBNoise, ZoomBlur, and FilmNoise",
+    "sameEffectLifecycleRequired": true
+  }
+}

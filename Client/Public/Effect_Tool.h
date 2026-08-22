@@ -140,8 +140,69 @@ enum class EFFECT_AUTHORING_FAMILY : uint8_t
 	SPRITE_PARTICLE,
 	LOCAL_DECAL,
 	TRAIL_RIBBON,
+	PRESENTATION_LIGHT,
+	PRESENTATION_SCREEN_POST,
 	END
 };
+
+inline EFFECT_AUTHORING_FAMILY Resolve_EffectToolAuthoringFamily(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	switch (Element.eKind)
+	{
+	case EFFECT_ELEMENT_KIND::MESH:
+		return EFFECT_AUTHORING_FAMILY::MESH;
+	case EFFECT_ELEMENT_KIND::SPRITE:
+		return EFFECT_AUTHORING_FAMILY::SPRITE;
+	case EFFECT_ELEMENT_KIND::PARTICLE:
+		for (const EFFECT_RESOURCE_BINDING_DESC& Binding :
+			Element.ResourceBindings)
+		{
+			if (Binding.strSlotId == "meshModel")
+				return EFFECT_AUTHORING_FAMILY::MESH_PARTICLE;
+		}
+		return EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE;
+	case EFFECT_ELEMENT_KIND::DECAL:
+		return EFFECT_AUTHORING_FAMILY::LOCAL_DECAL;
+	case EFFECT_ELEMENT_KIND::TRAIL:
+		return EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON;
+	case EFFECT_ELEMENT_KIND::LIGHT:
+		return EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT;
+	case EFFECT_ELEMENT_KIND::SCREEN_POST:
+		return EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST;
+	case EFFECT_ELEMENT_KIND::END:
+	default:
+		return EFFECT_AUTHORING_FAMILY::END;
+	}
+}
+
+inline const char_t* Get_EffectToolAuthoringFamilyLabel(
+	const EFFECT_AUTHORING_FAMILY eFamily)
+{
+	switch (eFamily)
+	{
+	case EFFECT_AUTHORING_FAMILY::MESH: return "Mesh";
+	case EFFECT_AUTHORING_FAMILY::SPRITE: return "Sprite";
+	case EFFECT_AUTHORING_FAMILY::MESH_PARTICLE: return "Mesh Particle";
+	case EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE: return "Sprite Particle";
+	case EFFECT_AUTHORING_FAMILY::LOCAL_DECAL: return "Local Decal";
+	case EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON: return "Trail / Ribbon";
+	case EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT:
+		return "Presentation Light";
+	case EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST:
+		return "Presentation Screen Post";
+	case EFFECT_AUTHORING_FAMILY::END:
+	default: return "Invalid";
+	}
+}
+
+inline bool_t Is_EffectToolPresentationPreviewAdmitted(
+	const EFFECT_ELEMENT_DESC& Element)
+{
+	if (!Element.bVisible)
+		return false;
+	return Is_EffectPresentationExecutionTarget(Element);
+}
 
 /* The Server reuses its staged-action index for both COMBO attacks and HOLD
    phases. Keep the Product documents phase-local, but give the Tool an exact
@@ -558,6 +619,14 @@ private:
 	bool_t Try_SetExactCookedCanaryEnabled(bool_t bEnabled);
 	void Reset_ExactCookedCanarySelection(std::string strReason);
 	void Invalidate_ExactCookedCanaryInstallation(std::string strReason);
+	bool_t Has_Glasshole02TranslatedCanaryOccurrence(
+		const EFFECT_DOCUMENT_DESC& Document) const;
+	bool_t Try_SetGlasshole02TranslatedCanaryEnabled(bool_t bEnabled);
+	void Reset_Glasshole02TranslatedCanarySelection(std::string strReason);
+	bool_t Has_ValtanTranslatedCanaryOccurrences(
+		const EFFECT_DOCUMENT_DESC& Document) const;
+	bool_t Try_SetValtanTranslatedCanaryEnabled(bool_t bEnabled);
+	void Reset_ValtanTranslatedCanarySelection(std::string strReason);
 	bool_t Try_StartArtist31470FullPreview();
 	bool_t Try_ResetArtist31470PreviewIsolation();
 	bool_t Try_SetArtist31470PreviewFamilyIsolation(
@@ -681,7 +750,8 @@ private:
 	bool_t Stage_WorldPreview(const EFFECT_DOCUMENT_DESC& Document,
 		bool_t bAllowReadOnlySourceProjection);
     EFFECT_DOCUMENT_DESC Build_PreviewDocument(
-        const EFFECT_DOCUMENT_DESC& Document) const;
+		const EFFECT_DOCUMENT_DESC& Document,
+		bool_t bAllowValtanTranslatedCanaryProjection = false) const;
     bool_t Try_SelectProductCue(
         const EFFECT_SKILL_TREE_ENTRY& Entry,
         size_t iCueIndex);
@@ -926,6 +996,8 @@ private:
     EFFECT_TRANSFORM_DESC m_CueTransferLocalTransform{};
     EFFECT_FOLLOW_POLICY m_eCueTransferFollowPolicy =
         EFFECT_FOLLOW_POLICY::FOLLOW;
+	EFFECT_ORIENTATION_POLICY m_eCueTransferOrientationPolicy =
+		EFFECT_ORIENTATION_POLICY::ANCHOR;
     EFFECT_STOP_POLICY m_eCueTransferStopPolicy =
         EFFECT_STOP_POLICY::NATURAL;
     float2_t m_vMouseViewportPosition{};
@@ -953,6 +1025,8 @@ private:
 	bool_t m_bDocumentDirty = false;
 	bool_t m_bExactCookedCanaryEnabled = false;
 	bool_t m_bExactCookedCanaryVariantsInstalled = false;
+	bool_t m_bGlasshole02TranslatedCanaryEnabled = false;
+	bool_t m_bValtanTranslatedCanaryEnabled = false;
 	bool_t m_bActiveDocumentDrawable = false;
     bool_t m_bActiveDocumentMatchesRuntime = false;
     bool_t m_bResourceCatalogRefreshAttempted = false;
@@ -973,6 +1047,8 @@ private:
     bool_t m_bPromoteConfirmationRequested = false;
     bool_t m_bPendingDocumentLoadModalRequested = false;
     bool_t m_bProductCueSnapshotCaptured = false;
+	f32_t m_fProductCueActionFacingYawDegrees = 0.f;
+	bool_t m_bProductCueActionFacingCaptured = false;
     uint64_t m_iFrameNumber = 0u;
     uint64_t m_iSynchronizedAnimationTargetGeneration = 0u;
     uint64_t m_iAnimationClipLabelTargetGeneration = 0u;
@@ -1004,6 +1080,10 @@ private:
     string m_strPreviewStatus;
 	string m_strExactCookedCanaryStatus =
 		"OFF: family-lite authoring preview remains active.";
+	string m_strGlasshole02TranslatedCanaryStatus =
+		"OFF: translated Glasshole02 Tool canary is not staged.";
+	string m_strValtanTranslatedCanaryStatus =
+		"OFF: translated Valtan core-three Tool canary is not staged.";
     string m_strPreviewAnimationStatus;
     string m_strAnimationClipLabelStatus;
 };

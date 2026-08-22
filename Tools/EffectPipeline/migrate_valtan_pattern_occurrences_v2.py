@@ -30,6 +30,15 @@ ANIM_NOTIFY_PATH = (
     REPOSITORY_ROOT / "Data/Animation/Reference/Valtan/Valtan.animnotify"
 )
 RECEIPT_PATH = VALTAN_ROOT / "Valtan.pattern-occurrence-v2-migration.receipt.json"
+CARRIER_V1_RECEIPT_PATH = (
+    REPOSITORY_ROOT
+    / "Data/Effects/Imported/Valtan/CarrierV1"
+    / "Valtan.carrier-v1-materialization-receipt.v1.json"
+)
+CARRIER_V1_RECEIPT_REPOSITORY_PATH = (
+    "Data/Effects/Imported/Valtan/CarrierV1/"
+    "Valtan.carrier-v1-materialization-receipt.v1.json"
+)
 
 ANIMATION_PR_127_ACTIONS = frozenset(
     {
@@ -68,6 +77,44 @@ PATTERN_PR_REFERENCE_ACTIONS = frozenset(
 EXPECTED_BINDING_COUNT = 124
 EXPECTED_CLIP_OCCURRENCE_COUNT = 128
 EXPECTED_CUE_COUNT = 99
+EXPECTED_CARRIER_V1_CUE_COUNT = 44
+EXPECTED_CARRIER_V1_RETIRED_CUE_COUNT = 105
+EXPECTED_CARRIER_V1_REPLACEMENT_MAPPING_COUNT = 48
+EXPECTED_CARRIER_V1_BLOCKED_MAPPING_COUNT = 57
+EXPECTED_CARRIER_V1_CLIP_CUE_COUNT = 43
+RETIRED_BASELINE_CUES = (
+    {
+        "bindingId": "cue.valtan.front-back-front.windup",
+        "occurrenceId": (
+            "cue.valtan.front-back-front.windup.occurrence.01"
+        ),
+        "reason": "LEGACY_CLIP_AGGREGATE_CARRIER_COLLAPSE",
+        "replacementOwnerKind": "ANIMATION_EFFECT_CUE",
+        "replacementBindingId": (
+            "cue.valtan.front-back-front.v1-watertrail-audition"
+        ),
+        "replacementOccurrenceId": (
+            "cue.valtan.front-back-front.v1-watertrail-audition.occurrence.01"
+        ),
+        "replacementEffectAssetId": (
+            "effect.valtan.front-back-front.v1-watertrail-audition"
+        ),
+        "effectAssetId": "effect.valtan.front-back-front.windup",
+    },
+    {
+        "bindingId": "cue.valtan.red-blade-wave.active",
+        "occurrenceId": "cue.valtan.red-blade-wave.active.occurrence.01",
+        "reason": "COMBAT_OBJECT_OWNERSHIP_TRANSFER",
+        "replacementOwnerKind": "BOSS_COMBAT_OBJECT",
+        "combatObjectArchetypeId": (
+            "combatobject.valtan.red-blade-wave.projectile"
+        ),
+        "clientVisualId": (
+            "combatobject.visual.valtan.red-blade-wave.projectile.v1"
+        ),
+        "effectAssetId": "effect.valtan.red-blade-wave.active",
+    },
+)
 STABLE_TOKEN = re.compile(r"^[A-Za-z0-9_.-]+$")
 ANIM_NOTIFY_ROW = re.compile(
     r'^"(?P<clip>[^"]+)".*\slen=(?P<seconds>[0-9]+(?:\.[0-9]+)?)'
@@ -94,6 +141,23 @@ def pretty_bytes(value: dict[str, Any]) -> bytes:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def canonical_sha256(value: Any) -> str:
+    """Match the Carrier V1 publisher's canonical JSON hash contract."""
+
+    return sha256_bytes(
+        (
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            )
+            + "\n"
+        ).encode("utf-8")
+    )
 
 
 def require_token(value: Any, label: str) -> str:
@@ -317,14 +381,26 @@ def validate_v2(
         raise MigrationError("Expected Valtan v2 row arrays.")
     occurrence_count = sum(len(row.get("clips", [])) for row in binding_rows)
     counts = (len(binding_rows), occurrence_count, len(cue_rows))
-    expected = (
+    migration_expected = (
         EXPECTED_BINDING_COUNT,
         EXPECTED_CLIP_OCCURRENCE_COUNT,
         EXPECTED_CUE_COUNT,
     )
-    if (require_migration_denominator and counts != expected) or (
+    current_expected = (
+        len(binding_rows),
+        occurrence_count,
+        EXPECTED_CARRIER_V1_CUE_COUNT,
+    )
+    if (
+        require_migration_denominator
+        and counts != migration_expected
+    ) or (
         not require_migration_denominator
-        and any(actual < baseline for actual, baseline in zip(counts, expected))
+        and (
+            counts[0] < EXPECTED_BINDING_COUNT
+            or counts[1] < EXPECTED_CLIP_OCCURRENCE_COUNT
+            or counts != current_expected
+        )
     ):
         raise MigrationError(f"Unexpected v2 denominators: {counts}")
     return counts
@@ -408,10 +484,369 @@ def build_receipt(
     }
 
 
+def build_carrier_v1_successor_contract(
+    carrier_receipt: dict[str, Any],
+    cues: dict[str, Any],
+    baseline_cues: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Validate and summarize the Carrier V1 cue-owner replacement closure."""
+
+    if (
+        carrier_receipt.get("schema")
+        != "lostark.valtan-carrier-v1-materialization-receipt"
+        or carrier_receipt.get("formatVersion") != 1
+        or carrier_receipt.get("bossArchetypeId") != "BOSS_VALTAN"
+    ):
+        raise MigrationError("Carrier V1 materialization receipt is invalid.")
+    if (
+        cues.get("schema") != "lostark.valtan-pattern-effect-cues"
+        or cues.get("formatVersion") != 2
+        or cues.get("ownerArchetypeId") != "BOSS_VALTAN"
+    ):
+        raise MigrationError("Current Valtan cue document header is invalid.")
+
+    cue_rows = cues.get("cues")
+    if (
+        not isinstance(cue_rows, list)
+        or len(cue_rows) != EXPECTED_CARRIER_V1_CUE_COUNT
+        or any(not isinstance(row, dict) for row in cue_rows)
+    ):
+        raise MigrationError("Current Carrier V1 cue denominator drifted.")
+    current_by_binding = {
+        row.get("bindingId"): row for row in cue_rows
+    }
+    current_by_occurrence = {
+        row.get("occurrenceId"): row for row in cue_rows
+    }
+    if (
+        None in current_by_binding
+        or None in current_by_occurrence
+        or len(current_by_binding) != len(cue_rows)
+        or len(current_by_occurrence) != len(cue_rows)
+    ):
+        raise MigrationError("Current Carrier V1 cue identity is duplicated.")
+    for binding_id, row in current_by_binding.items():
+        require_token(binding_id, "current cue bindingId")
+        occurrence_id = require_token(
+            row.get("occurrenceId"), "current cue occurrenceId"
+        )
+        if occurrence_id != f"{binding_id}.occurrence.01":
+            raise MigrationError(
+                f"Current Carrier V1 cue occurrence is rebound: {binding_id}"
+            )
+
+    outputs = carrier_receipt.get("outputs")
+    cue_output = (outputs or {}).get("cues")
+    current_cue_sha256 = canonical_sha256(cues)
+    if (
+        not isinstance(cue_output, dict)
+        or cue_output.get("path")
+        != "Data/Animation/Authored/Valtan/Valtan.patterneffectcues.json"
+        or cue_output.get("cueCount") != EXPECTED_CARRIER_V1_CUE_COUNT
+        or cue_output.get("canonicalSha256") != current_cue_sha256
+    ):
+        raise MigrationError("Carrier V1 current cue canonical hash drifted.")
+    if (
+        (carrier_receipt.get("summary") or {}).get(
+            "finalBossRootCueCount"
+        )
+        != EXPECTED_CARRIER_V1_CUE_COUNT
+        or (carrier_receipt.get("productReset") or {}).get(
+            "finalBossRootCueCount"
+        )
+        != EXPECTED_CARRIER_V1_CUE_COUNT
+    ):
+        raise MigrationError("Carrier V1 final cue summary drifted.")
+
+    mappings = carrier_receipt.get("retiredOwnerSuccessorMappings")
+    mapping_fields = {
+        "retiredBindingId",
+        "retiredEffectAssetId",
+        "patternId",
+        "stageId",
+        "actionId",
+        "clipOccurrenceId",
+        "disposition",
+        "replacementBindingId",
+        "replacementEffectAssetId",
+    }
+    if (
+        not isinstance(mappings, list)
+        or len(mappings) != EXPECTED_CARRIER_V1_RETIRED_CUE_COUNT
+        or any(
+            not isinstance(row, dict) or set(row) != mapping_fields
+            for row in mappings
+        )
+    ):
+        raise MigrationError("Carrier V1 successor mapping denominator drifted.")
+    mappings_by_retired = {
+        row.get("retiredBindingId"): row for row in mappings
+    }
+    if (
+        None in mappings_by_retired
+        or len(mappings_by_retired) != len(mappings)
+    ):
+        raise MigrationError("Carrier V1 retired cue identity is duplicated.")
+    retired_ids = set(mappings_by_retired)
+    legacy_migration = carrier_receipt.get("legacyMigration") or {}
+    sealed_retired_ids = legacy_migration.get("retiredCueBindingIds")
+    if (
+        not isinstance(sealed_retired_ids, list)
+        or len(sealed_retired_ids) != EXPECTED_CARRIER_V1_RETIRED_CUE_COUNT
+        or set(sealed_retired_ids) != retired_ids
+        or (carrier_receipt.get("productReset") or {}).get(
+            "retiredBossRootCueCount"
+        )
+        != EXPECTED_CARRIER_V1_RETIRED_CUE_COUNT
+    ):
+        raise MigrationError("Carrier V1 retired cue seal drifted.")
+    if retired_ids & set(current_by_binding):
+        raise MigrationError("A Carrier V1 retired cue was restored.")
+
+    replacement_mappings = []
+    blocked_mappings = []
+    for retired_id, row in mappings_by_retired.items():
+        require_token(retired_id, "retired cue bindingId")
+        for field in (
+            "retiredEffectAssetId",
+            "patternId",
+            "stageId",
+            "actionId",
+            "clipOccurrenceId",
+        ):
+            require_token(row.get(field), f"{retired_id} {field}")
+        disposition = row.get("disposition")
+        replacement_id = row.get("replacementBindingId")
+        replacement_effect = row.get("replacementEffectAssetId")
+        if disposition == "REPLACED_BY_EXACT_CARRIER_V1_CLIP_OWNER":
+            replacement_id = require_token(
+                replacement_id, f"{retired_id} replacementBindingId"
+            )
+            replacement_effect = require_token(
+                replacement_effect, f"{retired_id} replacementEffectAssetId"
+            )
+            current = current_by_binding.get(replacement_id)
+            if not isinstance(current, dict) or any(
+                current.get(field) != row.get(source_field)
+                for field, source_field in (
+                    ("patternId", "patternId"),
+                    ("stageId", "stageId"),
+                    ("actionId", "actionId"),
+                    ("clipOccurrenceId", "clipOccurrenceId"),
+                )
+            ) or current.get("effectAssetId") != replacement_effect:
+                raise MigrationError(
+                    "Carrier V1 successor cue is missing or rebound: "
+                    f"{replacement_id}"
+                )
+            replacement_mappings.append(row)
+        elif disposition == "RETIRED_NO_EXACT_REVIEWED_CARRIER_OWNER":
+            if replacement_id is not None or replacement_effect is not None:
+                raise MigrationError(
+                    f"Blocked Carrier V1 retirement gained a successor: {retired_id}"
+                )
+            blocked_mappings.append(row)
+        else:
+            raise MigrationError(
+                f"Unknown Carrier V1 successor disposition: {disposition}"
+            )
+    if (
+        len(replacement_mappings)
+        != EXPECTED_CARRIER_V1_REPLACEMENT_MAPPING_COUNT
+        or len(blocked_mappings) != EXPECTED_CARRIER_V1_BLOCKED_MAPPING_COUNT
+    ):
+        raise MigrationError("Carrier V1 successor disposition counts drifted.")
+
+    clip_groups = carrier_receipt.get("clipGroups")
+    if not isinstance(clip_groups, list) or len(clip_groups) != 44:
+        raise MigrationError("Carrier V1 clip owner denominator drifted.")
+    cue_groups = [
+        row
+        for row in clip_groups
+        if isinstance(row, dict)
+        and row.get("owner") == "VALTAN_PATTERN_EFFECT_CUE"
+    ]
+    combat_groups = [
+        row
+        for row in clip_groups
+        if isinstance(row, dict)
+        and row.get("owner") == "BOSS_CATALOG_COMBAT_OBJECT"
+    ]
+    if (
+        len(cue_groups) != EXPECTED_CARRIER_V1_CLIP_CUE_COUNT
+        or len(combat_groups) != 1
+        or combat_groups[0].get("cueBindingId") is not None
+    ):
+        raise MigrationError("Carrier V1 clip owner kinds drifted.")
+    clip_cue_ids: set[str] = set()
+    for group in cue_groups:
+        binding_id = require_token(
+            group.get("cueBindingId"), "Carrier V1 clip cue bindingId"
+        )
+        current = current_by_binding.get(binding_id)
+        if binding_id in clip_cue_ids or not isinstance(current, dict):
+            raise MigrationError(
+                f"Carrier V1 clip cue owner is duplicated or missing: {binding_id}"
+            )
+        clip_cue_ids.add(binding_id)
+        if any(
+            current.get(field) != group.get(source_field)
+            for field, source_field in (
+                ("patternId", "patternId"),
+                ("stageId", "semanticStageId"),
+                ("actionId", "gameplayActionId"),
+                ("clipOccurrenceId", "clipOccurrenceId"),
+                ("effectAssetId", "effectAssetId"),
+            )
+        ):
+            raise MigrationError(
+                f"Carrier V1 clip cue owner is rebound: {binding_id}"
+            )
+
+    exceptions = carrier_receipt.get("ownershipExceptions")
+    protected = next(
+        (
+            row
+            for row in exceptions
+            if isinstance(row, dict)
+            and row.get("disposition")
+            == "PRESERVE_9_ROW_CANARY_RESEAL_2_WMODEL_SCALE_FIELDS"
+        ),
+        None,
+    ) if isinstance(exceptions, list) else None
+    if not isinstance(protected, dict):
+        raise MigrationError("Carrier V1 protected cue exception is missing.")
+    protected_rows = [
+        row
+        for row in cue_rows
+        if row.get("effectAssetId") == protected.get("effectAssetId")
+        and row.get("clipOccurrenceId") == protected.get("clipOccurrenceId")
+    ]
+    if (
+        len(protected_rows) != 1
+        or canonical_sha256(protected_rows[0])
+        != protected.get("cueRowCanonicalSha256")
+    ):
+        raise MigrationError("Carrier V1 protected cue owner seal drifted.")
+    protected_binding_id = protected_rows[0]["bindingId"]
+    if set(current_by_binding) != clip_cue_ids | {protected_binding_id}:
+        raise MigrationError("Carrier V1 current cue owner set drifted.")
+
+    baseline_by_binding = {
+        row.get("bindingId"): row for row in baseline_cues
+    }
+    if (
+        None in baseline_by_binding
+        or len(baseline_by_binding) != EXPECTED_CUE_COUNT
+    ):
+        raise MigrationError("Migration baseline cue identity is duplicated.")
+    legacy_retired_ids = {
+        row["bindingId"] for row in RETIRED_BASELINE_CUES
+    }
+    carrier_retired_baseline_ids = retired_ids & set(baseline_by_binding)
+    if carrier_retired_baseline_ids & legacy_retired_ids:
+        raise MigrationError("Baseline cue was retired by two authorities.")
+    for binding_id in carrier_retired_baseline_ids:
+        baseline = baseline_by_binding[binding_id]
+        mapping = mappings_by_retired[binding_id]
+        if any(
+            mapping.get(mapping_field) != baseline.get(baseline_field)
+            for mapping_field, baseline_field in (
+                ("patternId", "patternId"),
+                ("stageId", "stageId"),
+                ("actionId", "actionId"),
+                ("clipOccurrenceId", "clipOccurrenceId"),
+                ("retiredEffectAssetId", "effectAssetId"),
+            )
+        ) or mapping.get("retiredBindingId") != binding_id:
+            raise MigrationError(
+                f"Carrier V1 retired baseline cue is rebound: {binding_id}"
+            )
+
+    surviving_baseline_ids = (
+        set(baseline_by_binding)
+        - legacy_retired_ids
+        - carrier_retired_baseline_ids
+    )
+    if (
+        len(carrier_retired_baseline_ids) != 96
+        or len(legacy_retired_ids) != 2
+        or len(surviving_baseline_ids) != 1
+    ):
+        raise MigrationError("Carrier V1 baseline successor denominator drifted.")
+    identity_fields = (
+        "bindingId",
+        "occurrenceId",
+        "patternId",
+        "stageId",
+        "actionId",
+        "clipOccurrenceId",
+        "effectAssetId",
+    )
+    for binding_id in surviving_baseline_ids:
+        baseline = baseline_by_binding[binding_id]
+        current = current_by_binding.get(binding_id)
+        if not isinstance(current, dict) or any(
+            current.get(field) != baseline.get(field)
+            for field in identity_fields
+        ):
+            raise MigrationError(
+                f"Surviving baseline cue was removed or rebound: {binding_id}"
+            )
+
+    for retired in RETIRED_BASELINE_CUES:
+        replacement_id = retired.get("replacementBindingId")
+        if replacement_id is None:
+            continue
+        replacement_retirement = mappings_by_retired.get(replacement_id)
+        if replacement_id not in current_by_binding and not isinstance(
+            replacement_retirement, dict
+        ):
+            raise MigrationError(
+                "Legacy retired cue successor chain is broken: "
+                f"{replacement_id}"
+            )
+        if isinstance(replacement_retirement, dict) and (
+            replacement_retirement.get("retiredEffectAssetId")
+            != retired.get("replacementEffectAssetId")
+        ):
+            raise MigrationError(
+                "Legacy retired cue successor chain is rebound: "
+                f"{replacement_id}"
+            )
+
+    replacement_ids = {
+        row["replacementBindingId"] for row in replacement_mappings
+    }
+    new_clip_cues = clip_cue_ids - replacement_ids
+    if len(replacement_ids) != 42 or len(new_clip_cues) != 1:
+        raise MigrationError("Carrier V1 successor owner coverage drifted.")
+
+    return {
+        "carrierReceiptPath": CARRIER_V1_RECEIPT_REPOSITORY_PATH,
+        "carrierReceiptCanonicalSha256": canonical_sha256(carrier_receipt),
+        "currentCueCanonicalSha256": current_cue_sha256,
+        "currentCueCount": len(cue_rows),
+        "retiredCueCount": len(mappings),
+        "replacementMappingCount": len(replacement_mappings),
+        "retiredWithoutSuccessorCount": len(blocked_mappings),
+        "uniqueReplacementBindingCount": len(replacement_ids),
+        "carrierClipCueCount": len(clip_cue_ids),
+        "newCarrierCueWithoutRetiredPredecessorCount": len(new_clip_cues),
+        "carrierRetiredBaselineCueCount": len(
+            carrier_retired_baseline_ids
+        ),
+        "legacyRetiredBaselineCueCount": len(legacy_retired_ids),
+        "survivingBaselineCueCount": len(surviving_baseline_ids),
+        "postBaselineRetiredCueCount": len(retired_ids - set(baseline_by_binding)),
+    }
+
+
 def check_receipt(
     receipt: dict[str, Any],
     bindings: dict[str, Any],
     cues: dict[str, Any],
+    carrier_receipt: dict[str, Any] | None = None,
 ) -> None:
     if receipt.get("schema") != (
         "lostark.valtan-pattern-occurrence-v2-migration-receipt"
@@ -425,6 +860,7 @@ def check_receipt(
         raise MigrationError("Occurrence migration receipt has no identity set.")
     baseline_bindings = baseline_identity.get("bindings")
     baseline_cues = baseline_identity.get("cues")
+    retired_baseline_cues = receipt.get("retiredBaselineCues")
     if (
         not isinstance(baseline_bindings, list)
         or not isinstance(baseline_cues, list)
@@ -432,6 +868,17 @@ def check_receipt(
         or len(baseline_cues) != outputs.get("cueOccurrenceCount")
     ):
         raise MigrationError("Occurrence migration identity denominator drifted.")
+    if retired_baseline_cues != list(RETIRED_BASELINE_CUES):
+        raise MigrationError("Occurrence migration retirement ledger drifted.")
+    if carrier_receipt is None:
+        carrier_receipt = read_json(CARRIER_V1_RECEIPT_PATH)
+    expected_carrier_contract = build_carrier_v1_successor_contract(
+        carrier_receipt,
+        cues,
+        baseline_cues,
+    )
+    if receipt.get("carrierV1SuccessorContract") != expected_carrier_contract:
+        raise MigrationError("Carrier V1 successor contract seal drifted.")
 
     current_bindings = {
         row.get("actionId"): row
@@ -504,11 +951,52 @@ def check_receipt(
         for row in cues.get("cues", [])
         if isinstance(row, dict)
     }
+    retired_by_occurrence = {
+        row["occurrenceId"]: row for row in RETIRED_BASELINE_CUES
+    }
+    carrier_retired_by_binding = {
+        row["retiredBindingId"]: row
+        for row in carrier_receipt["retiredOwnerSuccessorMappings"]
+    }
     for baseline in baseline_cues:
         if not isinstance(baseline, dict):
             raise MigrationError("Invalid baseline cue identity row.")
         occurrence_id = baseline.get("occurrenceId")
         current = current_cues.get(occurrence_id)
+        retired = retired_by_occurrence.get(occurrence_id)
+        if retired is not None:
+            if (
+                baseline.get("bindingId") != retired["bindingId"]
+                or baseline.get("effectAssetId") != retired["effectAssetId"]
+                or current is not None
+                or any(
+                    row.get("bindingId") == retired["bindingId"]
+                    for row in cues.get("cues", [])
+                    if isinstance(row, dict)
+                )
+            ):
+                raise MigrationError(
+                    "Retired migrated cue identity was restored or rebound: "
+                    f"{occurrence_id}"
+                )
+            continue
+        carrier_retired = carrier_retired_by_binding.get(
+            baseline.get("bindingId")
+        )
+        if carrier_retired is not None:
+            if (
+                current is not None
+                or any(
+                    row.get("bindingId") == baseline.get("bindingId")
+                    for row in cues.get("cues", [])
+                    if isinstance(row, dict)
+                )
+            ):
+                raise MigrationError(
+                    "Carrier V1 retired migrated cue was restored: "
+                    f"{occurrence_id}"
+                )
+            continue
         if not isinstance(current, dict) or any(
             current.get(field) != baseline.get(field)
             for field in cue_identity_fields

@@ -287,7 +287,9 @@ class FrontBackFrontSourceWaveApplicatorTests(unittest.TestCase):
         sut.check_projection(projection)
         self.assertEqual((), projection.changed_paths)
         cues = _read_json(SOURCE_ROOT, sut.CUE_PATH)["cues"]
-        self.assertGreaterEqual(len(cues), 108)
+        # Two combat-object-owned visuals are intentionally no longer boss-root
+        # cue rows; the current Valtan boss-root contract is 106.
+        self.assertGreaterEqual(len(cues), 106)
         self.assertTrue(
             SAFE_REVIEWED_CUE_IDS.issubset(
                 {row["bindingId"] for row in cues}
@@ -327,6 +329,94 @@ class FrontBackFrontSourceWaveApplicatorTests(unittest.TestCase):
             {sut.DEFAULT_APPLICATION_RECEIPT},
             set(projection.changed_paths),
         )
+
+    def test_declared_historical_receipt_reseal_deep_preserves_all_canonical_outputs(self) -> None:
+        fixture = self.make_fixture()
+        first = fixture.projection()
+        sut.commit_projection(first)
+        protected_paths = set(first.canonical_outputs)
+        before = {
+            relative: fixture.root.joinpath(*relative.parts).read_bytes()
+            for relative in protected_paths
+        }
+
+        candidate_path = fixture.root.joinpath(*sut.DEFAULT_CANDIDATE_RECEIPT.parts)
+        candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+        candidate["sourceGuards"] = list(reversed(candidate["sourceGuards"]))
+        _write_json_like(candidate_path, candidate)
+        proof = json.loads(fixture.proof_path.read_text(encoding="utf-8"))
+        proof["candidateReceiptSha256"] = _sha256(candidate_path.read_bytes())
+        _write_json_like(fixture.proof_path, proof)
+
+        default_proof_path = fixture.root.joinpath(*sut.DEFAULT_DRAWABLE_PROOF.parts)
+        default_proof_path.parent.mkdir(parents=True, exist_ok=True)
+        default_proof_path.write_bytes(fixture.proof_path.read_bytes())
+        prior_path = fixture.root.joinpath(*sut.DEFAULT_APPLICATION_RECEIPT.parts)
+        prior = json.loads(prior_path.read_text(encoding="utf-8"))
+        prior["inputs"]["drawableProofPath"] = sut.DEFAULT_DRAWABLE_PROOF.as_posix()
+        prior["inputs"]["candidateReceiptSha256"] = (
+            sut.HISTORICAL_CANDIDATE_RECEIPT_SHA256
+        )
+        prior["inputs"]["drawableProofSha256"] = (
+            sut.HISTORICAL_DRAWABLE_PROOF_SHA256
+        )
+        _write_json_like(prior_path, prior)
+
+        resealed = sut.collect_projection(
+            fixture.root, drawable_proof=default_proof_path
+        )
+        self.assertEqual(
+            {sut.DEFAULT_APPLICATION_RECEIPT}, set(resealed.changed_paths)
+        )
+        sut.commit_projection(resealed)
+        self.assertEqual(
+            before,
+            {
+                relative: fixture.root.joinpath(*relative.parts).read_bytes()
+                for relative in protected_paths
+            },
+        )
+        sut.check_projection(
+            sut.collect_projection(
+                fixture.root, drawable_proof=default_proof_path
+            )
+        )
+
+    def test_prior_receipt_tampering_cannot_masquerade_as_composition_reseal(self) -> None:
+        mutations = (
+            (
+                "input lineage",
+                lambda receipt: receipt["inputs"].__setitem__(
+                    "candidateReceiptSha256", "0" * 64
+                ),
+            ),
+            (
+                "contract drift",
+                lambda receipt: receipt.__setitem__("policy", {"corrupted": True}),
+            ),
+            (
+                "contract drift",
+                lambda receipt: receipt.__setitem__("closure", {"corrupted": True}),
+            ),
+            (
+                "target drift",
+                lambda receipt: receipt["targets"][0].__setitem__(
+                    "candidateDocumentSha256", "1" * 64
+                ),
+            ),
+        )
+        for expected, mutate in mutations:
+            with self.subTest(expected=expected):
+                fixture = self.make_fixture()
+                sut.commit_projection(fixture.projection())
+                receipt_path = fixture.root.joinpath(
+                    *sut.DEFAULT_APPLICATION_RECEIPT.parts
+                )
+                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                mutate(receipt)
+                _write_json_like(receipt_path, receipt)
+                with self.assertRaisesRegex(sut.SourceRebaseRequired, expected):
+                    fixture.projection()
 
     def test_hand_tuned_wave_element_is_deep_preserved(self) -> None:
         fixture = self.make_fixture()

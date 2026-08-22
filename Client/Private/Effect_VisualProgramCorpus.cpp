@@ -862,18 +862,25 @@ namespace
 		const DATA_JSON_VALUE& Value,
 		EFFECT_VISUAL_PROGRAM_TRAIL_ATTACHMENT& Out,
 		const bool_t bBakedEdgePacket,
+		const bool_t bAllowDetachedCascade,
 		std::string& strOutError)
 	{
 		const DATA_JSON_VALUE* Transform = Required(
 			Value, "socketLocalTransform", DATA_JSON_TYPE::OBJECT);
+		const bool_t bHasSnapshotBasis = nullptr !=
+			Value.Find("snapshotRootSourceBasisYawDegrees");
 		const bool_t bShapeValid = bBakedEdgePacket ?
 			Has_ExactKeys(Value, {
 				"enabled", "follow", "sourceAnchorSlotId", "runtimeAnchorSlotId",
 				"runtimeBoneName", "snapshotRootSourceBasisYawDegrees",
 				"socketLocalTransform" }) :
-			Has_ExactKeys(Value, {
-				"enabled", "follow", "sourceAnchorSlotId", "runtimeAnchorSlotId",
-				"runtimeBoneName", "socketLocalTransform" });
+			(Has_ExactKeys(Value, {
+					"enabled", "follow", "sourceAnchorSlotId", "runtimeAnchorSlotId",
+					"runtimeBoneName", "socketLocalTransform" }) ||
+			 (bAllowDetachedCascade && Has_ExactKeys(Value, {
+					"enabled", "follow", "sourceAnchorSlotId", "runtimeAnchorSlotId",
+					"runtimeBoneName", "snapshotRootSourceBasisYawDegrees",
+					"socketLocalTransform" })));
 		EFFECT_VISUAL_PROGRAM_TRAIL_ATTACHMENT Staged;
 		if (!bShapeValid || nullptr == Transform ||
 			!Has_ExactKeys(*Transform, {
@@ -886,7 +893,7 @@ namespace
 				Staged.strRuntimeAnchorSlotId) ||
 			!Read_StringAllowEmpty(Value, "runtimeBoneName",
 				Staged.strRuntimeBoneName) ||
-			(bBakedEdgePacket &&
+			((bBakedEdgePacket || bHasSnapshotBasis) &&
 				!Read_Number(Value, "snapshotRootSourceBasisYawDegrees",
 					Staged.fSnapshotRootSourceBasisYawDegrees)) ||
 			!Read_NumberArray(*Transform, "position", Staged.vPosition) ||
@@ -900,13 +907,13 @@ namespace
 			return false;
 		}
 
+		const bool_t bIdentityTransform =
+			Staged.vPosition == std::array<double, 3u>{ 0.0, 0.0, 0.0 } &&
+			Staged.vRotationDegrees ==
+				std::array<double, 3u>{ 0.0, 0.0, 0.0 } &&
+			Staged.vScale == std::array<double, 3u>{ 1.0, 1.0, 1.0 };
 		if (bBakedEdgePacket)
 		{
-			const bool_t bIdentityTransform =
-				Staged.vPosition == std::array<double, 3u>{ 0.0, 0.0, 0.0 } &&
-				Staged.vRotationDegrees ==
-					std::array<double, 3u>{ 0.0, 0.0, 0.0 } &&
-				Staged.vScale == std::array<double, 3u>{ 1.0, 1.0, 1.0 };
 			if (Staged.bEnabled || Staged.bFollow ||
 				!Staged.strSourceAnchorSlotId.empty() ||
 				!Staged.strRuntimeAnchorSlotId.empty() ||
@@ -923,8 +930,16 @@ namespace
 			Staged.strRuntimeAnchorSlotId.empty() ||
 			Staged.strRuntimeBoneName.empty())
 		{
-			strOutError = "Trail attachment identity is empty.";
-			return false;
+			if (!bAllowDetachedCascade || Staged.bEnabled || Staged.bFollow ||
+				!Staged.strSourceAnchorSlotId.empty() ||
+				!Staged.strRuntimeAnchorSlotId.empty() ||
+				!Staged.strRuntimeBoneName.empty() ||
+				0.0 != Staged.fSnapshotRootSourceBasisYawDegrees ||
+				!bIdentityTransform)
+			{
+				strOutError = "Trail attachment identity is empty.";
+				return false;
+			}
 		}
 
 		Out = std::move(Staged);
@@ -933,11 +948,18 @@ namespace
 
 	bool_t Parse_TrailGeometry(
 		const DATA_JSON_VALUE& Value,
-		EFFECT_VISUAL_PROGRAM_TRAIL_GEOMETRY& Out)
+		EFFECT_VISUAL_PROGRAM_TRAIL_GEOMETRY& Out,
+		const bool_t bAllowDistanceFields = false)
 	{
-		return Has_ExactKeys(Value, {
-			"maxPoints", "pointLifeTimeSeconds", "sampleIntervalSeconds",
-			"minimumDistance", "startWidth", "endWidth", "faceCamera" }) &&
+		const bool_t bShapeValid = Has_ExactKeys(Value, {
+				"maxPoints", "pointLifeTimeSeconds", "sampleIntervalSeconds",
+				"minimumDistance", "startWidth", "endWidth", "faceCamera" }) ||
+			(bAllowDistanceFields && Has_ExactKeys(Value, {
+				"maxPoints", "pointLifeTimeSeconds", "sampleIntervalSeconds",
+				"minimumDistance", "startWidth", "endWidth",
+				"tilingDistanceWorldUnits",
+				"distanceTessellationStepWorldUnits", "faceCamera" }));
+		return bShapeValid &&
 			Read_Unsigned(Value, "maxPoints", Out.iMaxPoints) &&
 			Read_Number(Value, "pointLifeTimeSeconds",
 				Out.fPointLifeTimeSeconds) &&
@@ -999,9 +1021,9 @@ namespace
 			!Read_Unsigned(Value, "operationalMaxPoints",
 				Staged.iOperationalMaxPoints) ||
 			!Parse_TrailTiming(*Timing, Staged.Timing) ||
-			!Parse_TrailAttachment(*Attachment, Staged.Attachment, false,
+			!Parse_TrailAttachment(*Attachment, Staged.Attachment, false, true,
 				strOutError) ||
-			!Parse_TrailGeometry(*Trail, Staged.Trail) ||
+			!Parse_TrailGeometry(*Trail, Staged.Trail, true) ||
 			!Read_Sha(Value, "sourceRecipeSha256",
 				Staged.strSourceRecipeSha256) ||
 			!Read_Sha(Value, "moduleClosureSha256",
@@ -1019,6 +1041,23 @@ namespace
 			Staged.iOperationalMaxPoints < 2u || 0u == Staged.iModuleCount ||
 			Staged.PreservedLimitations.empty())
 			return false;
+		if (nullptr != Trail->Find("tilingDistanceWorldUnits"))
+		{
+			double fTrailTilingDistance = 0.0;
+			double fTrailTessellationStep = 0.0;
+			if (!Read_Number(*Trail, "tilingDistanceWorldUnits",
+					fTrailTilingDistance) ||
+				!Read_Number(*Trail, "distanceTessellationStepWorldUnits",
+					fTrailTessellationStep) ||
+				std::abs(fTrailTilingDistance - Staged.fTilingDistance) > 1e-5 ||
+				std::abs(fTrailTessellationStep -
+					Staged.fDistanceTessellationStepSize) > 1e-5)
+			{
+				strOutError =
+					"CascadeRibbon Trail distance fields do not match its typed packet.";
+				return false;
+			}
+		}
 		Out = std::move(Staged);
 		return true;
 	}
@@ -1077,7 +1116,7 @@ namespace
 			!Read_String(Value, "targetElementId", Staged.strTargetElementId) ||
 			!Parse_TrailTiming(*Timing, Staged.TargetTiming) ||
 			!Parse_TrailAttachment(*Attachment, Staged.Attachment,
-				bBakedEdgePacket, strOutError) ||
+				bBakedEdgePacket, false, strOutError) ||
 			!Parse_TrailGeometry(*Trail, Staged.Trail) ||
 			(bBakedEdgePacket &&
 				(!Read_String(Value, "historyId", Staged.strHistoryId) ||
@@ -1847,6 +1886,7 @@ namespace
 			if (Out.eProjectionKind ==
 					EFFECT_VISUAL_PROGRAM_PROJECTION_KIND::SOURCE_RECIPE_OVERLAY_V1 &&
 				Element.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL &&
+				Element.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON &&
 				Element.eFamily != EFFECT_VISUAL_PROGRAM_FAMILY::LIGHT_PARTICLE)
 			{
 				strOutError =
@@ -2002,7 +2042,8 @@ namespace
 			"programCount", "sourceRecipeOverlayProgramCount", "adapterPacketProgramCount",
 			"visualRowCount", "sourceRecipeOverlayCount", "localDecalAdapterPacketCount",
 			"cascadeRibbonVisualRowCount", "supplementalElementCount",
-			"artistFCascadeRibbonElementCount", "animationTrailElementCount",
+			"artistFCascadeRibbonElementCount", "artistTCascadeRibbonElementCount",
+			"animationTrailElementCount",
 			"bakedEdgeLightElementCount",
 			"failClosedCount", "extensionCanaryCount", "productMutationCount" }) ||
 			!Read_Unsigned(*Value, "programCount", Out.iDeclaredProgramCount) ||
@@ -2020,7 +2061,9 @@ namespace
 			!Read_Unsigned(*Value, "supplementalElementCount",
 				Out.iDeclaredSupplementalElementCount) ||
 			!Read_Unsigned(*Value, "artistFCascadeRibbonElementCount",
-				Out.iDeclaredArtistCascadeRibbonElementCount) ||
+				Out.iDeclaredArtistFCascadeRibbonElementCount) ||
+			!Read_Unsigned(*Value, "artistTCascadeRibbonElementCount",
+				Out.iDeclaredArtistTCascadeRibbonElementCount) ||
 			!Read_Unsigned(*Value, "animationTrailElementCount",
 				Out.iDeclaredAnimationTrailElementCount) ||
 			!Read_Unsigned(*Value, "bakedEdgeLightElementCount",
@@ -2456,7 +2499,8 @@ bool_t Client::CEffectVisualProgramCorpusCodec::Validate(
 	uint32_t iLocalRows = 0u;
 	uint32_t iCascadeRibbonRows = 0u;
 	uint32_t iSupplementalElements = 0u;
-	uint32_t iArtistCascadeRibbonElements = 0u;
+	uint32_t iArtistFCascadeRibbonElements = 0u;
+	uint32_t iArtistTCascadeRibbonElements = 0u;
 	uint32_t iAnimationTrailElements = 0u;
 	uint32_t iBakedEdgeLightElements = 0u;
 	uint32_t iFailClosedRows = 0u;
@@ -2591,7 +2635,21 @@ bool_t Client::CEffectVisualProgramCorpusCodec::Validate(
 			}
 			if (Supplemental.eFamily ==
 				EFFECT_VISUAL_PROGRAM_FAMILY::CASCADE_RIBBON)
-				++iArtistCascadeRibbonElements;
+			{
+				if (Program.strEffectAssetId == "effect.artist.skill.31470")
+					++iArtistFCascadeRibbonElements;
+				else if (Program.strEffectAssetId ==
+					"effect.artist.skill.31950.unified")
+				{
+					++iArtistTCascadeRibbonElements;
+				}
+				else
+				{
+					strOutError =
+						"Visual-program CascadeRibbon supplemental owner is invalid.";
+					return false;
+				}
+			}
 			else if (Supplemental.eFamily ==
 				EFFECT_VISUAL_PROGRAM_FAMILY::ANIMATION_TRAIL)
 				++iAnimationTrailElements;
@@ -2667,8 +2725,10 @@ bool_t Client::CEffectVisualProgramCorpusCodec::Validate(
 		iLocalRows != Corpus.iDeclaredLocalDecalAdapterPacketCount ||
 		iCascadeRibbonRows != Corpus.iDeclaredCascadeRibbonVisualRowCount ||
 		iSupplementalElements != Corpus.iDeclaredSupplementalElementCount ||
-		iArtistCascadeRibbonElements !=
-			Corpus.iDeclaredArtistCascadeRibbonElementCount ||
+		iArtistFCascadeRibbonElements !=
+			Corpus.iDeclaredArtistFCascadeRibbonElementCount ||
+		iArtistTCascadeRibbonElements !=
+			Corpus.iDeclaredArtistTCascadeRibbonElementCount ||
 		iAnimationTrailElements != Corpus.iDeclaredAnimationTrailElementCount ||
 		iBakedEdgeLightElements != Corpus.iDeclaredBakedEdgeLightElementCount ||
 		iFailClosedRows != Corpus.iDeclaredFailClosedCount)

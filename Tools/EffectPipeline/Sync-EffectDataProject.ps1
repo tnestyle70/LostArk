@@ -95,6 +95,7 @@ try {
         throw 'git ls-files failed while enumerating Data/Effects.'
     }
     $effectFiles = @($effectFiles |
+        Where-Object { $_ -notmatch '(?i)\.tmp(?:\.|$)' } |
         Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
         ForEach-Object { $_.Replace('\', '/') })
     $effectFiles = @(Sort-OrdinalUnique $effectFiles)

@@ -277,6 +277,12 @@ HRESULT CLevel_ValtanArena::Initialize()
 
 	m_pPlayerCommandSink = make_shared<CNetworkPlayerCommandSink>();
 	m_PlayerController.Set_CommandSink(m_pPlayerCommandSink);
+	if (!m_PlayerController.Initialize_TargetingPreview(
+			ETOUI(LEVEL::VALTAN_ARENA)))
+	{
+		return Report_InitFailure("[Level_ValtanArena][TargetingPreview]",
+			"Ground-target preview object could not be initialized");
+	}
 
 	return S_OK;
 }

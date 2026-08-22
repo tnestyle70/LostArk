@@ -8,10 +8,12 @@
     "stage": "G03_5_SOURCE_VALUE_UNIFORM_CB0_CLOSURE"
   },
   "scope": {
-    "stage": "G03_5_SOURCE_VALUE_UNIFORM_CB0_CLOSURE",
+    "stage": "G03_6_TARGET_PACKED_SCALAR_EVIDENCE_CLOSURE",
     "classNeutralEvaluator": true,
     "numericMaterialUniformSliceClosed": true,
     "nativeScalarGroupPackingSourceClosed": false,
+    "epicPackedScalarAbiCorroborated": true,
+    "targetPaddingFreePackedScalarEvidence": true,
     "texturesAndSamplersClosed": false,
     "engineOwnedConstantRowsClosed": false,
     "sourceValueReplayAdmission": false,
@@ -22,16 +24,16 @@
   "inputs": {
     "manifest": {
       "repoRelativePath": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.source-value-uniform-evaluation.targets.json",
-      "rawSha256": "ab69a243fec97e678c77f1776167f5661245c476e6b042bbb344cd067a40f2f4"
+      "rawSha256": "6246e71ed908938cdf44601c2340fab036ef11cafa3849b7825f269013a220ff"
     },
     "g03_3ExactMaterialMapReceipt": {
       "repoRelativePath": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-material-maps.receipt.json",
-      "rawSha256": "6cb11cfd89e5d9ea0ab70f04634148b502a34183a734cf3cb52ee289081d43ad",
-      "receiptSha256": "d089a4058266792095408ea04595ba8c08e5958937048dc3e4f86b5e17d20b2e"
+      "rawSha256": "7dfab72eb7cb09762e01cb8f2e1a20f1a1181826a8a9833bf06d341cab44103e",
+      "receiptSha256": "b492cecffabf1a4f4b4bb888541c983b8484fd6b53de545761329bec58d3c08c"
     },
     "evaluator": {
       "repoRelativePath": "Tools/EffectPipeline/evaluate_ue3_material_uniform_expressions.py",
-      "rawSha256": "095061be212f735fd5f341e6bf8ee54906316bc913f572011b58caf4cf8646ed"
+      "rawSha256": "77686bdf595747e8b8723be812cd19ebaa9217799fa3a4059a8a838941bb6a8a"
     },
     "officialEngineSource": {
       "path": "C:/Users/user/Desktop/UnrealEngine/UnrealEngine/Engine/Source/Runtime/Engine/Private/Materials/MaterialUniformExpressions.h",
@@ -71,6 +73,20 @@
     "comparison": "FNAME_BASE_TEXT_CASEFOLD_PLUS_RAW_NUMBER",
     "overridePrecedence": "BASE_EXPRESSION_DEFAULT_THEN_PARENT_TO_LEAF_MIC",
     "duplicateWithinOneMic": "FAIL_CLOSED"
+  },
+  "epicPackedScalarAbiCorroboration": {
+    "evidenceId": "EPIC_UE_4_0_2_SEQUENTIAL_PACKED_SCALAR_FLOAT_STORE",
+    "repository": "EpicGames/UnrealEngine",
+    "tag": "4.0.2-release",
+    "commit": "488f3e727e5c02bbca9ba351ad26c39c5a5f150a",
+    "repoRelativePath": "Engine/Source/Runtime/Engine/Private/Materials/MaterialUniformExpressions.cpp",
+    "gitBlobSha1": "117c5ea41c0e6fe7a9e18e486d74b64ed43a4e6b",
+    "normalizedUtf8Sha256": "98be6f87716ba90832e6565977b3d58c284bc192c850353d5d4c22d4c947c5f9",
+    "float4ArrayCountRule": "(UniformScalarExpressions.Num()+3)/4",
+    "sequentialStoreRule": "TempScalarBuffer[ScalarIndex]=VectorValue.R",
+    "projectedLaneRule": "expressionIndex=group*4+laneIndex(xyzw)",
+    "sameRevisionAsLostArkV975": false,
+    "sourceExactAdmission": false
   },
   "targets": [
     {
@@ -1359,7 +1375,176 @@
               ]
             }
           ],
-          "materialRowsSemanticSha256": "6600a1a2d04176958e081d4ba49acac6160069dcb376eaa2785f73f86206fe84"
+          "materialRowsSemanticSha256": "6600a1a2d04176958e081d4ba49acac6160069dcb376eaa2785f73f86206fe84",
+          "nativeScalarGroupPackingEvidence": {
+            "fidelity": "EPIC_PACKED_SCALAR_ABI_CORROBORATED_AND_TARGET_PADDING_FREE",
+            "epicPackedScalarAbiCorroborationId": "EPIC_UE_4_0_2_SEQUENTIAL_PACKED_SCALAR_FLOAT_STORE",
+            "nativeScalarGroupPackingSourceClosed": false,
+            "sourceExactAdmission": false,
+            "targetPaddingFreeCorroborationAdmission": true,
+            "scalarExpressionCount": 56,
+            "selectedGroupCount": 8,
+            "completeGroupCount": 8,
+            "partialGroupCount": 0,
+            "targetPaddingFree": true,
+            "projectionRule": "expressionIndex=group*4+laneIndex(xyzw)",
+            "laneOrder": [
+              "x",
+              "y",
+              "z",
+              "w"
+            ],
+            "payloadRowOrder": "ASCENDING_CB0_SLOT",
+            "packedLittleEndianFloatEncoding": "IEEE754_BINARY32",
+            "packedLittleEndianByteCount": 128,
+            "packedLittleEndianSha256": "23e40670db53319d0c8a013b9f63866c4ed6aa16afdb4837db3a9c0c242e356d",
+            "groupsInAscendingCb0SlotOrder": [
+              {
+                "group": 1,
+                "slot": 14,
+                "baseIndex": 224,
+                "projectedExpressionIndices": [
+                  4,
+                  5,
+                  6,
+                  7
+                ],
+                "presentExpressionIndices": [
+                  4,
+                  5,
+                  6,
+                  7
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 7,
+                "slot": 15,
+                "baseIndex": 240,
+                "projectedExpressionIndices": [
+                  28,
+                  29,
+                  30,
+                  31
+                ],
+                "presentExpressionIndices": [
+                  28,
+                  29,
+                  30,
+                  31
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 8,
+                "slot": 16,
+                "baseIndex": 256,
+                "projectedExpressionIndices": [
+                  32,
+                  33,
+                  34,
+                  35
+                ],
+                "presentExpressionIndices": [
+                  32,
+                  33,
+                  34,
+                  35
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 9,
+                "slot": 17,
+                "baseIndex": 272,
+                "projectedExpressionIndices": [
+                  36,
+                  37,
+                  38,
+                  39
+                ],
+                "presentExpressionIndices": [
+                  36,
+                  37,
+                  38,
+                  39
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 10,
+                "slot": 18,
+                "baseIndex": 288,
+                "projectedExpressionIndices": [
+                  40,
+                  41,
+                  42,
+                  43
+                ],
+                "presentExpressionIndices": [
+                  40,
+                  41,
+                  42,
+                  43
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 11,
+                "slot": 19,
+                "baseIndex": 304,
+                "projectedExpressionIndices": [
+                  44,
+                  45,
+                  46,
+                  47
+                ],
+                "presentExpressionIndices": [
+                  44,
+                  45,
+                  46,
+                  47
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 12,
+                "slot": 20,
+                "baseIndex": 320,
+                "projectedExpressionIndices": [
+                  48,
+                  49,
+                  50,
+                  51
+                ],
+                "presentExpressionIndices": [
+                  48,
+                  49,
+                  50,
+                  51
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 13,
+                "slot": 21,
+                "baseIndex": 336,
+                "projectedExpressionIndices": [
+                  52,
+                  53,
+                  54,
+                  55
+                ],
+                "presentExpressionIndices": [
+                  52,
+                  53,
+                  54,
+                  55
+                ],
+                "completeFourLaneProjection": true
+              }
+            ]
+          }
         }
       },
       "sourceValueUniformCb0ClosureAdmission": true,
@@ -2748,7 +2933,211 @@
               ]
             }
           ],
-          "materialRowsSemanticSha256": "3b091b1829d9e78454b48f28ce2176df9666bc710a7d2fe7246b3ba9d44bcb4a"
+          "materialRowsSemanticSha256": "3b091b1829d9e78454b48f28ce2176df9666bc710a7d2fe7246b3ba9d44bcb4a",
+          "nativeScalarGroupPackingEvidence": {
+            "fidelity": "EPIC_PACKED_SCALAR_ABI_CORROBORATED_BUT_TARGET_PADDING_UNRESOLVED",
+            "epicPackedScalarAbiCorroborationId": "EPIC_UE_4_0_2_SEQUENTIAL_PACKED_SCALAR_FLOAT_STORE",
+            "nativeScalarGroupPackingSourceClosed": false,
+            "sourceExactAdmission": false,
+            "targetPaddingFreeCorroborationAdmission": false,
+            "scalarExpressionCount": 43,
+            "selectedGroupCount": 10,
+            "completeGroupCount": 9,
+            "partialGroupCount": 1,
+            "targetPaddingFree": false,
+            "projectionRule": "expressionIndex=group*4+laneIndex(xyzw)",
+            "laneOrder": [
+              "x",
+              "y",
+              "z",
+              "w"
+            ],
+            "payloadRowOrder": "ASCENDING_CB0_SLOT",
+            "packedLittleEndianFloatEncoding": "IEEE754_BINARY32",
+            "packedLittleEndianByteCount": null,
+            "packedLittleEndianSha256": null,
+            "groupsInAscendingCb0SlotOrder": [
+              {
+                "group": 0,
+                "slot": 9,
+                "baseIndex": 144,
+                "projectedExpressionIndices": [
+                  0,
+                  1,
+                  2,
+                  3
+                ],
+                "presentExpressionIndices": [
+                  0,
+                  1,
+                  2,
+                  3
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 2,
+                "slot": 10,
+                "baseIndex": 160,
+                "projectedExpressionIndices": [
+                  8,
+                  9,
+                  10,
+                  11
+                ],
+                "presentExpressionIndices": [
+                  8,
+                  9,
+                  10,
+                  11
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 3,
+                "slot": 11,
+                "baseIndex": 176,
+                "projectedExpressionIndices": [
+                  12,
+                  13,
+                  14,
+                  15
+                ],
+                "presentExpressionIndices": [
+                  12,
+                  13,
+                  14,
+                  15
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 4,
+                "slot": 12,
+                "baseIndex": 192,
+                "projectedExpressionIndices": [
+                  16,
+                  17,
+                  18,
+                  19
+                ],
+                "presentExpressionIndices": [
+                  16,
+                  17,
+                  18,
+                  19
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 5,
+                "slot": 13,
+                "baseIndex": 208,
+                "projectedExpressionIndices": [
+                  20,
+                  21,
+                  22,
+                  23
+                ],
+                "presentExpressionIndices": [
+                  20,
+                  21,
+                  22,
+                  23
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 6,
+                "slot": 14,
+                "baseIndex": 224,
+                "projectedExpressionIndices": [
+                  24,
+                  25,
+                  26,
+                  27
+                ],
+                "presentExpressionIndices": [
+                  24,
+                  25,
+                  26,
+                  27
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 7,
+                "slot": 15,
+                "baseIndex": 240,
+                "projectedExpressionIndices": [
+                  28,
+                  29,
+                  30,
+                  31
+                ],
+                "presentExpressionIndices": [
+                  28,
+                  29,
+                  30,
+                  31
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 8,
+                "slot": 16,
+                "baseIndex": 256,
+                "projectedExpressionIndices": [
+                  32,
+                  33,
+                  34,
+                  35
+                ],
+                "presentExpressionIndices": [
+                  32,
+                  33,
+                  34,
+                  35
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 9,
+                "slot": 17,
+                "baseIndex": 272,
+                "projectedExpressionIndices": [
+                  36,
+                  37,
+                  38,
+                  39
+                ],
+                "presentExpressionIndices": [
+                  36,
+                  37,
+                  38,
+                  39
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 10,
+                "slot": 18,
+                "baseIndex": 288,
+                "projectedExpressionIndices": [
+                  40,
+                  41,
+                  42,
+                  43
+                ],
+                "presentExpressionIndices": [
+                  40,
+                  41,
+                  42
+                ],
+                "completeFourLaneProjection": false
+              }
+            ]
+          }
         }
       },
       "sourceValueUniformCb0ClosureAdmission": true,
@@ -4063,7 +4452,173 @@
               ]
             }
           ],
-          "materialRowsSemanticSha256": "27ff058c1d8aab55f0a6a958fa0e3faaee20343fbcce0fbc3b86757a22a9c86d"
+          "materialRowsSemanticSha256": "27ff058c1d8aab55f0a6a958fa0e3faaee20343fbcce0fbc3b86757a22a9c86d",
+          "nativeScalarGroupPackingEvidence": {
+            "fidelity": "EPIC_PACKED_SCALAR_ABI_CORROBORATED_BUT_TARGET_PADDING_UNRESOLVED",
+            "epicPackedScalarAbiCorroborationId": "EPIC_UE_4_0_2_SEQUENTIAL_PACKED_SCALAR_FLOAT_STORE",
+            "nativeScalarGroupPackingSourceClosed": false,
+            "sourceExactAdmission": false,
+            "targetPaddingFreeCorroborationAdmission": false,
+            "scalarExpressionCount": 41,
+            "selectedGroupCount": 8,
+            "completeGroupCount": 7,
+            "partialGroupCount": 1,
+            "targetPaddingFree": false,
+            "projectionRule": "expressionIndex=group*4+laneIndex(xyzw)",
+            "laneOrder": [
+              "x",
+              "y",
+              "z",
+              "w"
+            ],
+            "payloadRowOrder": "ASCENDING_CB0_SLOT",
+            "packedLittleEndianFloatEncoding": "IEEE754_BINARY32",
+            "packedLittleEndianByteCount": null,
+            "packedLittleEndianSha256": null,
+            "groupsInAscendingCb0SlotOrder": [
+              {
+                "group": 2,
+                "slot": 11,
+                "baseIndex": 176,
+                "projectedExpressionIndices": [
+                  8,
+                  9,
+                  10,
+                  11
+                ],
+                "presentExpressionIndices": [
+                  8,
+                  9,
+                  10,
+                  11
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 3,
+                "slot": 12,
+                "baseIndex": 192,
+                "projectedExpressionIndices": [
+                  12,
+                  13,
+                  14,
+                  15
+                ],
+                "presentExpressionIndices": [
+                  12,
+                  13,
+                  14,
+                  15
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 5,
+                "slot": 13,
+                "baseIndex": 208,
+                "projectedExpressionIndices": [
+                  20,
+                  21,
+                  22,
+                  23
+                ],
+                "presentExpressionIndices": [
+                  20,
+                  21,
+                  22,
+                  23
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 6,
+                "slot": 14,
+                "baseIndex": 224,
+                "projectedExpressionIndices": [
+                  24,
+                  25,
+                  26,
+                  27
+                ],
+                "presentExpressionIndices": [
+                  24,
+                  25,
+                  26,
+                  27
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 7,
+                "slot": 15,
+                "baseIndex": 240,
+                "projectedExpressionIndices": [
+                  28,
+                  29,
+                  30,
+                  31
+                ],
+                "presentExpressionIndices": [
+                  28,
+                  29,
+                  30,
+                  31
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 8,
+                "slot": 16,
+                "baseIndex": 256,
+                "projectedExpressionIndices": [
+                  32,
+                  33,
+                  34,
+                  35
+                ],
+                "presentExpressionIndices": [
+                  32,
+                  33,
+                  34,
+                  35
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 9,
+                "slot": 17,
+                "baseIndex": 272,
+                "projectedExpressionIndices": [
+                  36,
+                  37,
+                  38,
+                  39
+                ],
+                "presentExpressionIndices": [
+                  36,
+                  37,
+                  38,
+                  39
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 10,
+                "slot": 18,
+                "baseIndex": 288,
+                "projectedExpressionIndices": [
+                  40,
+                  41,
+                  42,
+                  43
+                ],
+                "presentExpressionIndices": [
+                  40
+                ],
+                "completeFourLaneProjection": false
+              }
+            ]
+          }
         }
       },
       "sourceValueUniformCb0ClosureAdmission": true,
@@ -4817,7 +5372,174 @@
               ]
             }
           ],
-          "materialRowsSemanticSha256": "aecb3e3ba843607fda869c8dd047641c2b903d849ebf7b4963fc4626b9785788"
+          "materialRowsSemanticSha256": "aecb3e3ba843607fda869c8dd047641c2b903d849ebf7b4963fc4626b9785788",
+          "nativeScalarGroupPackingEvidence": {
+            "fidelity": "EPIC_PACKED_SCALAR_ABI_CORROBORATED_BUT_TARGET_PADDING_UNRESOLVED",
+            "epicPackedScalarAbiCorroborationId": "EPIC_UE_4_0_2_SEQUENTIAL_PACKED_SCALAR_FLOAT_STORE",
+            "nativeScalarGroupPackingSourceClosed": false,
+            "sourceExactAdmission": false,
+            "targetPaddingFreeCorroborationAdmission": false,
+            "scalarExpressionCount": 30,
+            "selectedGroupCount": 8,
+            "completeGroupCount": 7,
+            "partialGroupCount": 1,
+            "targetPaddingFree": false,
+            "projectionRule": "expressionIndex=group*4+laneIndex(xyzw)",
+            "laneOrder": [
+              "x",
+              "y",
+              "z",
+              "w"
+            ],
+            "payloadRowOrder": "ASCENDING_CB0_SLOT",
+            "packedLittleEndianFloatEncoding": "IEEE754_BINARY32",
+            "packedLittleEndianByteCount": null,
+            "packedLittleEndianSha256": null,
+            "groupsInAscendingCb0SlotOrder": [
+              {
+                "group": 0,
+                "slot": 5,
+                "baseIndex": 80,
+                "projectedExpressionIndices": [
+                  0,
+                  1,
+                  2,
+                  3
+                ],
+                "presentExpressionIndices": [
+                  0,
+                  1,
+                  2,
+                  3
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 1,
+                "slot": 6,
+                "baseIndex": 96,
+                "projectedExpressionIndices": [
+                  4,
+                  5,
+                  6,
+                  7
+                ],
+                "presentExpressionIndices": [
+                  4,
+                  5,
+                  6,
+                  7
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 2,
+                "slot": 7,
+                "baseIndex": 112,
+                "projectedExpressionIndices": [
+                  8,
+                  9,
+                  10,
+                  11
+                ],
+                "presentExpressionIndices": [
+                  8,
+                  9,
+                  10,
+                  11
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 3,
+                "slot": 8,
+                "baseIndex": 128,
+                "projectedExpressionIndices": [
+                  12,
+                  13,
+                  14,
+                  15
+                ],
+                "presentExpressionIndices": [
+                  12,
+                  13,
+                  14,
+                  15
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 4,
+                "slot": 9,
+                "baseIndex": 144,
+                "projectedExpressionIndices": [
+                  16,
+                  17,
+                  18,
+                  19
+                ],
+                "presentExpressionIndices": [
+                  16,
+                  17,
+                  18,
+                  19
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 5,
+                "slot": 10,
+                "baseIndex": 160,
+                "projectedExpressionIndices": [
+                  20,
+                  21,
+                  22,
+                  23
+                ],
+                "presentExpressionIndices": [
+                  20,
+                  21,
+                  22,
+                  23
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 6,
+                "slot": 11,
+                "baseIndex": 176,
+                "projectedExpressionIndices": [
+                  24,
+                  25,
+                  26,
+                  27
+                ],
+                "presentExpressionIndices": [
+                  24,
+                  25,
+                  26,
+                  27
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 7,
+                "slot": 12,
+                "baseIndex": 192,
+                "projectedExpressionIndices": [
+                  28,
+                  29,
+                  30,
+                  31
+                ],
+                "presentExpressionIndices": [
+                  28,
+                  29
+                ],
+                "completeFourLaneProjection": false
+              }
+            ]
+          }
         }
       },
       "sourceValueUniformCb0ClosureAdmission": true,
@@ -6106,7 +6828,210 @@
               ]
             }
           ],
-          "materialRowsSemanticSha256": "f4326715ff5edb5ac09a25e596eeb38b8e6fc74fc941ea8f56824b88cdd3774e"
+          "materialRowsSemanticSha256": "f4326715ff5edb5ac09a25e596eeb38b8e6fc74fc941ea8f56824b88cdd3774e",
+          "nativeScalarGroupPackingEvidence": {
+            "fidelity": "EPIC_PACKED_SCALAR_ABI_CORROBORATED_BUT_TARGET_PADDING_UNRESOLVED",
+            "epicPackedScalarAbiCorroborationId": "EPIC_UE_4_0_2_SEQUENTIAL_PACKED_SCALAR_FLOAT_STORE",
+            "nativeScalarGroupPackingSourceClosed": false,
+            "sourceExactAdmission": false,
+            "targetPaddingFreeCorroborationAdmission": false,
+            "scalarExpressionCount": 46,
+            "selectedGroupCount": 10,
+            "completeGroupCount": 9,
+            "partialGroupCount": 1,
+            "targetPaddingFree": false,
+            "projectionRule": "expressionIndex=group*4+laneIndex(xyzw)",
+            "laneOrder": [
+              "x",
+              "y",
+              "z",
+              "w"
+            ],
+            "payloadRowOrder": "ASCENDING_CB0_SLOT",
+            "packedLittleEndianFloatEncoding": "IEEE754_BINARY32",
+            "packedLittleEndianByteCount": null,
+            "packedLittleEndianSha256": null,
+            "groupsInAscendingCb0SlotOrder": [
+              {
+                "group": 1,
+                "slot": 12,
+                "baseIndex": 192,
+                "projectedExpressionIndices": [
+                  4,
+                  5,
+                  6,
+                  7
+                ],
+                "presentExpressionIndices": [
+                  4,
+                  5,
+                  6,
+                  7
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 2,
+                "slot": 13,
+                "baseIndex": 208,
+                "projectedExpressionIndices": [
+                  8,
+                  9,
+                  10,
+                  11
+                ],
+                "presentExpressionIndices": [
+                  8,
+                  9,
+                  10,
+                  11
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 4,
+                "slot": 14,
+                "baseIndex": 224,
+                "projectedExpressionIndices": [
+                  16,
+                  17,
+                  18,
+                  19
+                ],
+                "presentExpressionIndices": [
+                  16,
+                  17,
+                  18,
+                  19
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 5,
+                "slot": 15,
+                "baseIndex": 240,
+                "projectedExpressionIndices": [
+                  20,
+                  21,
+                  22,
+                  23
+                ],
+                "presentExpressionIndices": [
+                  20,
+                  21,
+                  22,
+                  23
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 6,
+                "slot": 16,
+                "baseIndex": 256,
+                "projectedExpressionIndices": [
+                  24,
+                  25,
+                  26,
+                  27
+                ],
+                "presentExpressionIndices": [
+                  24,
+                  25,
+                  26,
+                  27
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 7,
+                "slot": 17,
+                "baseIndex": 272,
+                "projectedExpressionIndices": [
+                  28,
+                  29,
+                  30,
+                  31
+                ],
+                "presentExpressionIndices": [
+                  28,
+                  29,
+                  30,
+                  31
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 8,
+                "slot": 18,
+                "baseIndex": 288,
+                "projectedExpressionIndices": [
+                  32,
+                  33,
+                  34,
+                  35
+                ],
+                "presentExpressionIndices": [
+                  32,
+                  33,
+                  34,
+                  35
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 9,
+                "slot": 19,
+                "baseIndex": 304,
+                "projectedExpressionIndices": [
+                  36,
+                  37,
+                  38,
+                  39
+                ],
+                "presentExpressionIndices": [
+                  36,
+                  37,
+                  38,
+                  39
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 10,
+                "slot": 20,
+                "baseIndex": 320,
+                "projectedExpressionIndices": [
+                  40,
+                  41,
+                  42,
+                  43
+                ],
+                "presentExpressionIndices": [
+                  40,
+                  41,
+                  42,
+                  43
+                ],
+                "completeFourLaneProjection": true
+              },
+              {
+                "group": 11,
+                "slot": 21,
+                "baseIndex": 336,
+                "projectedExpressionIndices": [
+                  44,
+                  45,
+                  46,
+                  47
+                ],
+                "presentExpressionIndices": [
+                  44,
+                  45
+                ],
+                "completeFourLaneProjection": false
+              }
+            ]
+          }
         }
       },
       "sourceValueUniformCb0ClosureAdmission": true,
@@ -6123,11 +7048,16 @@
     "actualVfPassAdmissionCount": 0,
     "runtimeAdmissionCount": 0,
     "visualAdmissionCount": 0,
-    "result": "PASS_G03_5_SOURCE_VALUE_UNIFORM_CB0_CLOSED_TEXTURE_SAMPLER_REPLAY_OPEN"
+    "targetPaddingFreePackedScalarCount": 1,
+    "result": "PASS_G03_6_GLASSHOLE_TARGET_PACKED_SCALAR_EVIDENCE_CLOSED_GENERIC_PADDING_AND_REPLAY_OPEN"
   },
   "decision": {
     "foldedMathOrdinal0": "SOURCE_PROVEN_ADD",
     "foldedMathOrdinal2": "SOURCE_PROVEN_MUL_AND_ARTIST_COOKED_CORROBORATED",
+    "packedScalarAbi": "EPIC_CROSS_REVISION_CORROBORATED_LOSTARK_V975_SOURCE_OPEN",
+    "glassholePackedScalarFidelity": "EPIC_PACKED_SCALAR_ABI_CORROBORATED_AND_TARGET_PADDING_FREE",
+    "glassholePackedScalarPayloadSha256": "23e40670db53319d0c8a013b9f63866c4ed6aa16afdb4837db3a9c0c242e356d",
+    "nativeScalarGroupPackingSourceClosed": false,
     "sourceValueUniformCb0ClosureAdmission": true,
     "sourceValueReplayAdmission": false,
     "remainingBlockers": [
@@ -6141,5 +7071,5 @@
     "sliceSourceScaleSizePoint25Untouched": true,
     "familyLiteFallbackPreserved": true
   },
-  "receiptSha256": "3d8b6738fce8cf95a3ff974ef934a50a6a86c4b1c90c1bab42696c13ec1f8913"
+  "receiptSha256": "a3023d5e6345a0b033b398c6202702549a7f8ded25957cc501d58bb4daefb86e"
 }

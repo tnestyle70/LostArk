@@ -12,6 +12,7 @@ if ($LASTEXITCODE -ne 0) {
 Push-Location $repositoryRoot
 try {
     $effectFiles = @(& git ls-files --cached --others --exclude-standard -- Data/Effects |
+        Where-Object { $_ -notmatch '(?i)\.tmp(?:\.|$)' } |
         Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
         ForEach-Object { '..\..\' + $_.Replace('/', '\') })
 }
@@ -48,6 +49,9 @@ if ($filterItems.Count -ne $effectFiles.Count) {
 }
 if (@($projectIncludes | Group-Object | Where-Object Count -ne 1).Count -ne 0) {
     throw 'Client.vcxproj contains duplicate Effect data entries.'
+}
+if (@($projectIncludes | Where-Object { $_ -match '(?i)\.tmp(?:\.|$)' }).Count -ne 0) {
+    throw 'Client.vcxproj contains a temporary Effect authoring file.'
 }
 
 foreach ($item in $filterItems) {

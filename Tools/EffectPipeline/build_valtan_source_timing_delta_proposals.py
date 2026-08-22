@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Propose reviewed source-time compression without mutating animation data.
 
-The first positive row compresses Portal Rush FINISH's full 1666.7 ms source
-clip into its 600 ms Server stage.  The proposal preserves clip identity and
-order, changes the mapping basis to ``SOURCE_REVIEWED_DELTA``, disables the
-legacy final loop, and expands the v2 cue's source-local end so its wall-clock
-projection covers the selected source segment.  Dash 400424 remains an
-explicit cross-stage review item and is never auto-split by this tool.
+The first review row compresses Portal Rush FINISH's full 1666.7 ms source
+clip into its 600 ms Server stage.  Carrier V1 intentionally retired FINISH
+without an exact successor, so this tool proposes only the animation binding
+delta and records its source window as non-Product timing evidence.  It never
+recreates the historical cue.  Dash 400424 remains an explicit cross-stage
+review item and is never auto-split by this tool.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import build_valtan_source_occurrence_inventory as source_inventory
+import build_valtan_portal_rush_imported_canary as portal_canary
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -41,6 +42,8 @@ CUE_PATH = source_inventory.CUE_PATH
 PORTAL_PATTERN_ID = "VALTAN_PORTAL_RUSH"
 PORTAL_ACTION_ID = "valtan.attack.portal-rush.finish"
 PORTAL_CLIP_OCCURRENCE_ID = "valtan.attack.portal-rush.finish.clip.01"
+PORTAL_RETIRED_BINDING_ID = "cue.valtan.portal-rush.finish"
+PORTAL_RETIRED_EFFECT_ID = "effect.valtan.portal-rush.finish"
 PORTAL_CLIP = "mesh_att_battle_18_03-1"
 PORTAL_SOURCE_ACTION_ID = 420622
 PORTAL_SOURCE_STAGE_INDEX = 5
@@ -114,7 +117,7 @@ def validate_transform(
     source_duration_ms: float,
     stage_duration_ms: int,
     proposed_binding: dict[str, Any],
-    proposed_cue: dict[str, Any],
+    review_source_window: dict[str, Any],
 ) -> dict[str, Any]:
     rate = proposed_binding.get("playRate")
     if (
@@ -129,8 +132,8 @@ def validate_transform(
     effective_wall_ms = source_duration_ms / float(rate)
     if effective_wall_ms > stage_duration_ms + 1e-6:
         raise TimingProposalError("full source segment exceeds Server stage")
-    cue_start = proposed_cue.get("sourceStartMs")
-    cue_end = proposed_cue.get("sourceEndMs")
+    cue_start = review_source_window.get("sourceStartMs")
+    cue_end = review_source_window.get("sourceEndMs")
     if (
         isinstance(cue_start, bool)
         or isinstance(cue_end, bool)
@@ -140,7 +143,7 @@ def validate_transform(
         or cue_end <= cue_start
         or cue_end > math.floor(source_duration_ms)
     ):
-        raise TimingProposalError("proposed cue source segment is invalid")
+        raise TimingProposalError("review-only source window is invalid")
     cue_wall_end_ms = cue_end / float(rate)
     notify_rows = [
         {
@@ -212,13 +215,40 @@ def build_proposals() -> dict[str, Any]:
     ):
         raise TimingProposalError("Portal FINISH is not awaiting timing review")
 
-    cues = cue_index(read_json(CUE_PATH))
-    portal_cues = cues.get(PORTAL_CLIP_OCCURRENCE_ID, [])
-    if len(portal_cues) != 1:
-        raise TimingProposalError("Portal FINISH v2 cue identity is not unique")
-    current_cue = copy.deepcopy(portal_cues[0])
-    if not current_cue or current_cue.get("repeatPolicy") != "once":
-        raise TimingProposalError("Portal FINISH v2 cue identity drifted")
+    try:
+        successor_contract = portal_canary.load_carrier_v1_successor_contract()
+    except portal_canary.CanaryError as error:
+        raise TimingProposalError(
+            f"Carrier V1 successor contract is invalid: {error}"
+        ) from error
+    finish_retirement = successor_contract["byRetiredBindingId"].get(
+        PORTAL_RETIRED_BINDING_ID
+    )
+    if (
+        finish_retirement is None
+        or finish_retirement.get("retiredEffectAssetId")
+        != PORTAL_RETIRED_EFFECT_ID
+        or finish_retirement.get("patternId") != PORTAL_PATTERN_ID
+        or finish_retirement.get("stageId") != "FINISH"
+        or finish_retirement.get("actionId") != PORTAL_ACTION_ID
+        or finish_retirement.get("clipOccurrenceId")
+        != PORTAL_CLIP_OCCURRENCE_ID
+        or finish_retirement.get("disposition")
+        != "RETIRED_NO_EXACT_REVIEWED_CARRIER_OWNER"
+        or finish_retirement.get("replacementBindingId") is not None
+        or finish_retirement.get("replacementEffectAssetId") is not None
+    ):
+        raise TimingProposalError("Portal FINISH retirement contract drifted")
+
+    cues = cue_index(successor_contract["cueDocument"])
+    if cues.get(PORTAL_CLIP_OCCURRENCE_ID):
+        raise TimingProposalError("Portal FINISH unexpectedly regained a Product cue")
+    if any(
+        row.get("bindingId") == PORTAL_RETIRED_BINDING_ID
+        for rows in cues.values()
+        for row in rows
+    ):
+        raise TimingProposalError("retired Portal FINISH cue was restored")
 
     play_rate = source_duration_ms / stage_duration_ms
     proposed_binding = copy.deepcopy(current_clip)
@@ -231,14 +261,16 @@ def build_proposals() -> dict[str, Any]:
             "loop": False,
         }
     )
-    proposed_cue = copy.deepcopy(current_cue)
-    proposed_cue["sourceStartMs"] = 0
-    proposed_cue["sourceEndMs"] = math.floor(source_duration_ms)
+    review_source_window = {
+        "sourceStartMs": 0,
+        "sourceEndMs": math.floor(source_duration_ms),
+        "disposition": "REVIEW_ONLY_NOT_A_PRODUCT_CUE",
+    }
     transform = validate_transform(
         source_duration_ms,
         stage_duration_ms,
         proposed_binding,
-        proposed_cue,
+        review_source_window,
     )
 
     return {
@@ -253,8 +285,27 @@ def build_proposals() -> dict[str, Any]:
                 CUE_PATH,
                 ANIMNOTIFY_PATH,
                 SELECTION_PATH,
+                portal_canary.CARRIER_V1_RECEIPT_PATH,
+                portal_canary.MIGRATION_RECEIPT_PATH,
             ]
         ),
+        "carrierV1SuccessorContract": {
+            "carrierReceiptPath": portal_canary.CARRIER_V1_RECEIPT_PATH.relative_to(
+                ROOT
+            ).as_posix(),
+            "carrierReceiptCanonicalSha256": successor_contract[
+                "carrierReceiptCanonicalSha256"
+            ],
+            "migrationReceiptPath": portal_canary.MIGRATION_RECEIPT_PATH.relative_to(
+                ROOT
+            ).as_posix(),
+            "migrationReceiptCanonicalSha256": successor_contract[
+                "migrationReceiptCanonicalSha256"
+            ],
+            "currentCueCanonicalSha256": successor_contract[
+                "currentCueCanonicalSha256"
+            ],
+        },
         "proposals": [
             {
                 "proposalId": "valtan.portal-rush.finish.full-segment-compression.v1",
@@ -264,7 +315,10 @@ def build_proposals() -> dict[str, Any]:
                 "sourceActionId": PORTAL_SOURCE_ACTION_ID,
                 "sourceStageIndex": PORTAL_SOURCE_STAGE_INDEX,
                 "sourceClipOrdinal": PORTAL_SOURCE_CLIP_ORDINAL,
-                "status": "PROPOSED_SOURCE_REVIEWED_DELTA_NOT_ACCEPTED",
+                "status": (
+                    "PROPOSED_BINDING_DELTA_BLOCKED_NO_EXACT_"
+                    "CARRIER_V1_CUE_SUCCESSOR"
+                ),
                 "sourceSegment": {
                     "clip": PORTAL_CLIP,
                     "sourceStartMs": 0,
@@ -274,8 +328,14 @@ def build_proposals() -> dict[str, Any]:
                 "serverStageDurationMs": stage_duration_ms,
                 "currentBindingClip": current_clip,
                 "proposedBindingClip": proposed_binding,
-                "currentCue": current_cue,
-                "proposedCue": proposed_cue,
+                "historicalCueOwner": copy.deepcopy(finish_retirement),
+                "currentProductCue": None,
+                "proposedProductCue": None,
+                "reviewOnlySourceWindow": review_source_window,
+                "productCueDisposition": (
+                    "BLOCKED_RETIRED_NO_EXACT_CARRIER_V1_SUCCESSOR_"
+                    "DO_NOT_RESTORE_LEGACY_CUE"
+                ),
                 "wallProjection": transform,
             }
         ],
@@ -290,6 +350,8 @@ def build_proposals() -> dict[str, Any]:
         "summary": {
             "proposalCount": 1,
             "fullSegmentFitsStageCount": 1,
+            "productCueProposalCount": 0,
+            "historicalBlockedCueCount": 1,
             "canonicalDataMutationCount": 0,
             "deferredCrossStageReviewCount": 1,
         },

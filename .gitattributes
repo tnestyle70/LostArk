@@ -37,6 +37,23 @@
 # the hash and fails Publish-GameplayBalance.ps1's staleness check.
 *.py text eol=lf
 
+# The Valtan FRONT_BACK_FRONT translated runtime canary receipt binds the raw
+# implementation bytes below. Keep the exact Tool adapter, integration seams,
+# and translated shaders LF-stable across core.autocrlf=true worktrees.
+/Client/Public/Effect_ValtanTranslatedCanaryRuntime.h text eol=lf
+/Client/Private/Effect_ValtanTranslatedCanaryRuntime.cpp text eol=lf
+/Client/Public/Effect_DocumentRenderer.h text eol=lf
+/Client/Private/Effect_DocumentRenderer.cpp text eol=lf
+/Client/Public/Effect_Tool.h text eol=lf
+/Client/Private/Effect_Tool.cpp text eol=lf
+/Client/Bin/ShaderFiles/Shader_Ue3ValtanCrack01.hlsli text eol=lf
+/Client/Bin/ShaderFiles/Shader_Ue3ValtanDissolve01.hlsli text eol=lf
+/Client/Bin/ShaderFiles/Shader_Ue3ValtanGround04.hlsli text eol=lf
+/Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanCrack01.hlsl text eol=lf
+/Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanDissolve01.hlsl text eol=lf
+/Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanGround04.hlsl text eol=lf
+/Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/TranslatedShaders/*.hlsli text eol=lf
+
 # The Artist 31470 reconstructed runtime program has a frozen raw UTF-8/LF
 # identity. Keep this one generated candidate byte-exact on every checkout.
 /Data/Effects/Imported/Artist/Candidates/skill.31470.reconstructed-runtime-program.candidate.json text eol=lf
@@ -93,5 +110,20 @@
 # deliberately migrated together with every consumer.
 /Data/Effects/Imported/Valtan/Valtan.basebuff-effect-source.json text eol=crlf
 /Data/Effects/Imported/Valtan/Valtan.420633.whirlwind-baked-edge-history.v1.json text eol=crlf
+
+# The DimensionMaster Glasshole02 recovery chain hashes generated receipts into
+# downstream receipts. Keep the complete target/receipt cohort LF-stable so a
+# clean checkout cannot change those identities through core.autocrlf.
+/Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3*.json text eol=lf
+/Data/Effects/Authored/effect.dimensionmaster.skill.2050120.clip3.unified.effect.json text eol=lf
+/Data/Effects/Imported/DimensionMaster/DimensionMaster.resource-source-manifest.json text eol=lf
+/Data/Effects/Contracts/ue3-exact-cooked-shader-variants.v1.json text eol=lf
+/Client/Bin/ShaderFiles/Shader_Ue3Glasshole02.hlsli text eol=lf
+/Client/Bin/ShaderFiles/Shader_Ue3Glasshole02Translation.hlsl text eol=lf
+/Client/Bin/ShaderFiles/Shader_VtxEffectGlasshole02.hlsl text eol=lf
+/Client/Private/Effect_DocumentRenderer.cpp text eol=lf
+/Client/Public/Effect_DocumentRenderer.h text eol=lf
+/Client/Private/Effect_Tool.cpp text eol=lf
+/Client/Public/Effect_Tool.h text eol=lf
 
 

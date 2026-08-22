@@ -1,0 +1,3915 @@
+{
+  "schema": "lostark.effect-ue3-material-texture-sampler-closure-receipt",
+  "formatVersion": 1,
+  "identity": {
+    "encounter": "VALTAN",
+    "pattern": "FRONT_BACK_FRONT",
+    "scope": "FIVE_FAMILY_SOURCE_EXACT_CANARY",
+    "carrierScope": "SOURCE_ORDER_3_6_7_14_19_PLUS_ATK_04_CRACK",
+    "runtimeAdmission": false,
+    "visualAdmission": false
+  },
+  "scope": {
+    "stage": "G03_6_SOURCE_REVISION_TEXTURE_CDO_SAMPLER_EVIDENCE",
+    "classNeutralExtractor": true,
+    "targetFilterApplied": true,
+    "targetFilterId": "valtan.front-back-front.core-three.texture-sampler-closure",
+    "selectedTargetIds": [
+      "valtan-front-back-front-masked-dissolve-stone",
+      "valtan-front-back-front-ground-decal",
+      "valtan-front-back-front-crack-translucent"
+    ],
+    "authoredGenericResourceSlotsRead": false,
+    "sourceRevisionTextureCdoClosed": true,
+    "sourceRevisionTextureEnumsClosed": true,
+    "sourceRevisionNativeConstructorDefaultsClosed": false,
+    "sourceRevisionTextureLodSettingsHardwareFilterClosed": false,
+    "sourceExactTextureBindingAdmission": true,
+    "sourceExactSamplerAdmission": false,
+    "runtimeAdmission": false,
+    "visualAdmission": false
+  },
+  "inputs": {
+    "exactMaterialMapReceipt": {
+      "path": "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/Valtan.front-back-front-source-exact-family-receipt.v1.json",
+      "byteSize": 541717,
+      "sha256": "cccbcc06486b301ddca5d6ecf15fbacdea713f1a6c2a7fb3c581d02ae920d73d",
+      "role": "CANONICAL_G03_3_INPUT"
+    },
+    "resourceSourceManifest": {
+      "path": "Data/Effects/Imported/DimensionMaster/DimensionMaster.resource-source-manifest.json",
+      "byteSize": 373541,
+      "sha256": "a7411ceb1b0e29126503c6932dca1fe8438e7c6ee7fa7345856e72b472e15143",
+      "role": "SOURCE_ASSET_TO_PHYSICAL_PACKAGE_INDEX"
+    },
+    "materialDdsReceipt": {
+      "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/EffectExtraction/VALTAN/materials/Valtan.material-extract.receipt.json",
+      "byteSize": 3524487,
+      "sha256": "dc0f1248ded79726de1adc3d2af697dcbfde107778464c870d4c2d34fdce0fbe",
+      "role": "MATCHED_MATERIAL_UMODEL_DDS_EVIDENCE"
+    },
+    "rawDdsReceipt": {
+      "path": "C:/Users/user/Desktop/Resource_LostArk/05_Reports/RawResourceInventory/R8-42b437d59bf56c71-20260811T1630KST-v1/raw-resource-extraction-run-v1.json",
+      "byteSize": 4477007,
+      "sha256": "cf58ad0b26b7f24e0d0cd91e713f14bf96a3c9c14d4284a60415512977980137",
+      "role": "AUTHENTICATED_RAW_DDS_EVIDENCE"
+    },
+    "officialV975Manifest": {
+      "path": "C:/Users/user/Desktop/Resource_LostArk/01_Extracted/Effect/ARTIST/31470_TrackA_20260812/OfficialRefShaderCacheV974/45_975.json",
+      "byteSize": 9930955,
+      "sha256": "331bfb3ef14cafc5a31f9006bc7590540589d61718527f2668eeb58ee7ec96e9",
+      "role": "PINNED_OFFICIAL_SOURCE_REVISION_MANIFEST"
+    },
+    "officialV975EnginePackage": {
+      "path": "C:/Users/user/Desktop/Resource_LostArk/01_Extracted/Effect/ARTIST/31470_TrackA_20260812/OfficialRefShaderCacheV974/NE1FENCQ4UNE9ZPRENOQS.v975.u",
+      "byteSize": 1397047,
+      "sha256": "3b6de4c2cf785174d3cbeb8c9b31bdec846bf51737bcee0887160dcf64d58c3f",
+      "role": "PINNED_OFFICIAL_SOURCE_REVISION_ENGINE_PACKAGE"
+    },
+    "extractor": {
+      "path": "Tools/EffectPipeline/extract_ue3_material_texture_sampler_closure.py",
+      "byteSize": 92606,
+      "sha256": "1cf28f8c3171459fb5b350f1ba011dc0c70c2ea45acd81538fa633f56d7a30da",
+      "role": "TRACKED_SOURCE"
+    },
+    "targetFilter": {
+      "path": "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/Valtan.front-back-front-texture-sampler-closure-targets.v1.json",
+      "byteSize": 1206,
+      "sha256": "1b643df7eb1afa50ad500a29a4f0910eb0e7390cd21756cceae8ca637fb4e502",
+      "role": "PINNED_CLASS_NEUTRAL_TARGET_SUBSET"
+    },
+    "sourcePackManifest": {
+      "path": "C:/Users/user/Desktop/Resource_LostArk/00_SourcePackages/Effect_DIMENSIONMASTER_20260803_v3/source_pack_manifest.json",
+      "byteSize": 270014,
+      "sha256": "8ddce11f3cdd36efc4098b127da860b3e77e0f6916263412f1089cce3967d62d",
+      "role": "LOGICAL_TO_PHYSICAL_PACKAGE_INDEX"
+    }
+  },
+  "sourceRevisionTextureAbi": {
+    "sourceRevision": 975,
+    "officialManifestRow": {
+      "manifestOrdinal": 687,
+      "entryType": "X",
+      "logicalPath": "/EFGame/ReleasePC/NE1FENCQ4UNE9ZPRENOQS.u",
+      "version": 975,
+      "sequence": 14,
+      "codec": "xd",
+      "rawByteSize": 1397047,
+      "packedByteSize": 1142697,
+      "rawMd5": "d24d1cb9e034558aec501a4adbc7553d",
+      "packedMd5": "cb27c7febb8553208465913a9f5415f5",
+      "cdnRelativePath": "v975/14.gz"
+    },
+    "enginePackage": {
+      "logicalPath": "/EFGame/ReleasePC/NE1FENCQ4UNE9ZPRENOQS.u",
+      "physicalByteSize": 1397047,
+      "physicalMd5": "d24d1cb9e034558aec501a4adbc7553d",
+      "physicalSha256": "3b6de4c2cf785174d3cbeb8c9b31bdec846bf51737bcee0887160dcf64d58c3f",
+      "logicalByteSize": 6093451,
+      "logicalSha256": "b64c0d72c5d7479c9a98cd3ea40b085341894a30c8694a0e9b6bcee91d6964fd",
+      "packageVersion": 868,
+      "licenseeVersion": 16,
+      "engineVersion": 12097,
+      "cookerVersion": 136,
+      "packageGuidHex": "8fb2f40c3e328a478b44f5e14511c09d",
+      "nameCount": 21134,
+      "importCount": 185,
+      "exportCount": 32875
+    },
+    "cdoChain": {
+      "precedence": [
+        "Default__Texture2D",
+        "Default__Texture",
+        "native-constructor"
+      ],
+      "defaultTexture": {
+        "objectPath": "Default__Texture",
+        "className": "texture",
+        "exportIndexZeroBased": 9747,
+        "archetypePackageReference": 9659,
+        "archetypePath": "Default__Surface",
+        "serialOffset": 3754293,
+        "serialByteSize": 351,
+        "serialSha256": "630d85dd8451cd9be1cbafbb75422f08b2e854e04b62ced8fd7ec03a6a2e6516",
+        "propertyStreamStart": 4,
+        "propertyStreamEnd": 351,
+        "propertyStreamSha256": "c727a72743714d4d891a03ac8185556839359086c447e92434a89c7acc9ee9d8",
+        "fields": {
+          "addressx": {
+            "status": "OMITTED_FROM_EXPORT"
+          },
+          "addressy": {
+            "status": "OMITTED_FROM_EXPORT"
+          },
+          "srgb": {
+            "status": "SERIALIZED_EXPLICIT",
+            "propertyName": "SRGB",
+            "propertyType": "BoolProperty",
+            "value": true,
+            "tagOffset": 4,
+            "valueOffset": 28,
+            "recordEndOffset": 29,
+            "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+            "encodedValueSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a"
+          },
+          "filter": {
+            "status": "SERIALIZED_EXPLICIT",
+            "propertyName": "Filter",
+            "propertyType": "ByteProperty",
+            "value": "TF_Linear",
+            "tagOffset": 191,
+            "valueOffset": 223,
+            "recordEndOffset": 231,
+            "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+            "encodedValueSha256": "ddc52bfd0a4b11674a8cee97836f1d83fccff8bbdf335bfd7266b0774bd4216f"
+          },
+          "lodgroup": {
+            "status": "OMITTED_FROM_EXPORT"
+          }
+        },
+        "fidelity": "SOURCE_EXACT_V975_TEXTURE_CDO_SERIAL"
+      },
+      "defaultTexture2D": {
+        "objectPath": "Default__Texture2D",
+        "className": "texture2d",
+        "exportIndexZeroBased": 9831,
+        "archetypePackageReference": 9748,
+        "archetypePath": "Default__Texture",
+        "serialOffset": 3758613,
+        "serialByteSize": 101,
+        "serialSha256": "6fa2b3c999339b71b228a3fb1c8ec5d5c4dba920fedc1a93004bcfd568e1c086",
+        "propertyStreamStart": 4,
+        "propertyStreamEnd": 101,
+        "propertyStreamSha256": "5c387eee6f93eccc70116ca9e5f4434dbe9179d5647d6efc01862aeaa00ed64e",
+        "fields": {
+          "addressx": {
+            "status": "OMITTED_FROM_EXPORT"
+          },
+          "addressy": {
+            "status": "OMITTED_FROM_EXPORT"
+          },
+          "srgb": {
+            "status": "OMITTED_FROM_EXPORT"
+          },
+          "filter": {
+            "status": "OMITTED_FROM_EXPORT"
+          },
+          "lodgroup": {
+            "status": "OMITTED_FROM_EXPORT"
+          }
+        },
+        "fidelity": "SOURCE_EXACT_V975_TEXTURE_CDO_SERIAL"
+      }
+    },
+    "effectiveSerializedDefaults": {
+      "addressx": {
+        "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+        "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED"
+      },
+      "addressy": {
+        "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+        "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED"
+      },
+      "srgb": {
+        "status": "SOURCE_REVISION_CDO_SERIALIZED",
+        "declaringCdo": "Default__Texture",
+        "propertyName": "SRGB",
+        "propertyType": "BoolProperty",
+        "value": true,
+        "tagOffset": 4,
+        "valueOffset": 28,
+        "recordEndOffset": 29,
+        "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+        "encodedValueSha256": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+        "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY"
+      },
+      "filter": {
+        "status": "SOURCE_REVISION_CDO_SERIALIZED",
+        "declaringCdo": "Default__Texture",
+        "propertyName": "Filter",
+        "propertyType": "ByteProperty",
+        "value": "TF_Linear",
+        "tagOffset": 191,
+        "valueOffset": 223,
+        "recordEndOffset": 231,
+        "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+        "encodedValueSha256": "ddc52bfd0a4b11674a8cee97836f1d83fccff8bbdf335bfd7266b0774bd4216f",
+        "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY"
+      },
+      "lodgroup": {
+        "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+        "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED"
+      }
+    },
+    "enums": {
+      "TextureFilter": {
+        "objectPath": "Texture.TextureFilter",
+        "exportIndexZeroBased": 9661,
+        "serialOffset": 3749475,
+        "serialByteSize": 44,
+        "serialSha256": "84074bed4c695561388b0d3f1488b6adff2b212989fec65a999ab8d7461a8a93",
+        "enumPrefixSha256": "670ec11db87ca08426b0faa8ac51503135bfcb6c5a9d9401bcddd773f69b6b36",
+        "valueCount": 3,
+        "values": [
+          {
+            "ordinal": 0,
+            "name": "TF_Nearest"
+          },
+          {
+            "ordinal": 1,
+            "name": "TF_Linear"
+          },
+          {
+            "ordinal": 2,
+            "name": "TF_MAX"
+          }
+        ],
+        "fidelity": "SOURCE_EXACT_V975_UENUM_SERIAL"
+      },
+      "TextureAddress": {
+        "objectPath": "Texture.TextureAddress",
+        "exportIndexZeroBased": 9662,
+        "serialOffset": 3749519,
+        "serialByteSize": 52,
+        "serialSha256": "5c0eb6470a0f5d244ccf84d265c38ec3ed6456c02cb50c6ea502d02dbca03aff",
+        "enumPrefixSha256": "732df4820406d58a43fb11f9f19a0a8b84bb4c460ccde799e0c6f284dae8cd4a",
+        "valueCount": 4,
+        "values": [
+          {
+            "ordinal": 0,
+            "name": "TA_Wrap"
+          },
+          {
+            "ordinal": 1,
+            "name": "TA_Clamp"
+          },
+          {
+            "ordinal": 2,
+            "name": "TA_Mirror"
+          },
+          {
+            "ordinal": 3,
+            "name": "TA_MAX"
+          }
+        ],
+        "fidelity": "SOURCE_EXACT_V975_UENUM_SERIAL"
+      },
+      "TextureGroup": {
+        "objectPath": "Texture.TextureGroup",
+        "exportIndexZeroBased": 9663,
+        "serialOffset": 3749571,
+        "serialByteSize": 284,
+        "serialSha256": "69b375fdbf273f59fde2efae75d047d25089a198dec8797c52e6b386138211e3",
+        "enumPrefixSha256": "2d900aaf91dda5ddcfcee55b4706019ba3d21d67f7e5f5371ce31dd6d81f5a8f",
+        "valueCount": 33,
+        "values": [
+          {
+            "ordinal": 0,
+            "name": "TEXTUREGROUP_World"
+          },
+          {
+            "ordinal": 1,
+            "name": "TEXTUREGROUP_WorldNormalMap"
+          },
+          {
+            "ordinal": 2,
+            "name": "TEXTUREGROUP_WorldSpecular"
+          },
+          {
+            "ordinal": 3,
+            "name": "TEXTUREGROUP_Character"
+          },
+          {
+            "ordinal": 4,
+            "name": "TEXTUREGROUP_CharacterNormalMap"
+          },
+          {
+            "ordinal": 5,
+            "name": "TEXTUREGROUP_CharacterSpecular"
+          },
+          {
+            "ordinal": 6,
+            "name": "TEXTUREGROUP_Weapon"
+          },
+          {
+            "ordinal": 7,
+            "name": "TEXTUREGROUP_WeaponNormalMap"
+          },
+          {
+            "ordinal": 8,
+            "name": "TEXTUREGROUP_WeaponSpecular"
+          },
+          {
+            "ordinal": 9,
+            "name": "TEXTUREGROUP_Vehicle"
+          },
+          {
+            "ordinal": 10,
+            "name": "TEXTUREGROUP_VehicleNormalMap"
+          },
+          {
+            "ordinal": 11,
+            "name": "TEXTUREGROUP_VehicleSpecular"
+          },
+          {
+            "ordinal": 12,
+            "name": "TEXTUREGROUP_Cinematic"
+          },
+          {
+            "ordinal": 13,
+            "name": "TEXTUREGROUP_Effects"
+          },
+          {
+            "ordinal": 14,
+            "name": "TEXTUREGROUP_EffectsNotFiltered"
+          },
+          {
+            "ordinal": 15,
+            "name": "TEXTUREGROUP_Skybox"
+          },
+          {
+            "ordinal": 16,
+            "name": "TEXTUREGROUP_UI"
+          },
+          {
+            "ordinal": 17,
+            "name": "TEXTUREGROUP_Lightmap"
+          },
+          {
+            "ordinal": 18,
+            "name": "TEXTUREGROUP_RenderTarget"
+          },
+          {
+            "ordinal": 19,
+            "name": "TEXTUREGROUP_MobileFlattened"
+          },
+          {
+            "ordinal": 20,
+            "name": "TEXTUREGROUP_ProcBuilding_Face"
+          },
+          {
+            "ordinal": 21,
+            "name": "TEXTUREGROUP_ProcBuilding_LightMap"
+          },
+          {
+            "ordinal": 22,
+            "name": "TEXTUREGROUP_Shadowmap"
+          },
+          {
+            "ordinal": 23,
+            "name": "TEXTUREGROUP_ColorLookupTable"
+          },
+          {
+            "ordinal": 24,
+            "name": "TEXTUREGROUP_Terrain_Heightmap"
+          },
+          {
+            "ordinal": 25,
+            "name": "TEXTUREGROUP_Terrain_Weightmap"
+          },
+          {
+            "ordinal": 26,
+            "name": "TEXTUREGROUP_ImageBasedReflection"
+          },
+          {
+            "ordinal": 27,
+            "name": "TEXTUREGROUP_Bokeh"
+          },
+          {
+            "ordinal": 28,
+            "name": "TEXTUREGROUP_WorldExtend"
+          },
+          {
+            "ordinal": 29,
+            "name": "TEXTUREGROUP_WorldExtendNormalMap"
+          },
+          {
+            "ordinal": 30,
+            "name": "TEXTUREGROUP_WorldExtendSpecular"
+          },
+          {
+            "ordinal": 31,
+            "name": "TEXTUREGROUP_EffectsNormalMap"
+          },
+          {
+            "ordinal": 32,
+            "name": "TEXTUREGROUP_MAX"
+          }
+        ],
+        "fidelity": "SOURCE_EXACT_V975_UENUM_SERIAL"
+      }
+    },
+    "textureLodSettings": {
+      "finalHardwareFilterResolved": false,
+      "status": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED",
+      "fidelity": "BLOCKER_NOT_GENERIC_UE3_ASSUMPTION"
+    },
+    "sourceRevisionCdoClosed": true,
+    "sourceRevisionEnumsClosed": true,
+    "nativeConstructorDefaultsClosed": false,
+    "textureLodSettingsHardwareFilterClosed": false
+  },
+  "targets": [
+    {
+      "targetId": "valtan-front-back-front-masked-dissolve-stone",
+      "familyId": "ue3.material.fx.m.mi.n.00.fx.n.me.dissolve.04.011.ma.748e33633b4a",
+      "rendererType": "MeshParticle",
+      "sourceMaterialPath": "fx_m_mi_n_00.fx_n_me_dissolve_04_011_ma",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_pa_dissolve_01_ma",
+      "status": "EXACT_TEXTURE_BINDING_SAMPLER_BLOCKED",
+      "parentMaterialResource": {
+        "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+        "physicalPackageSha256": "5b9d692b3f8ccb4bb914ce1b1b0ab100afc0b8a482a184cd10716aa523756cc8",
+        "objectPath": "fx_m.fx_d_pa_dissolve_01_ma",
+        "exportIndexZeroBased": 67,
+        "serialSha256": "4b1a4ec0ee6c40150d9cab05ef4563ae2dcedbf5ab19c4a9a406d73e6a375674",
+        "materialStateGuidHex": "748e33633b4ade4cb65609bba963824c",
+        "referencedTextures": [
+          {
+            "index": 0,
+            "offsetInNativeTail": 40,
+            "packageReference": -1154,
+            "objectPath": "fx_tex_02.fx_d_arrow_001",
+            "className": "texture2d"
+          },
+          {
+            "index": 1,
+            "offsetInNativeTail": 44,
+            "packageReference": -1618,
+            "objectPath": "fx_tex_04.fx_f_rectangle_001",
+            "className": "texture2d"
+          }
+        ],
+        "nativeTailSha256": "67f8374bcb909e22aa1e8182731beb8bf3256ef5b6de7988e6c67fdaca3db794",
+        "fidelity": "SOURCE_EXACT_PARENT_MATERIAL_RESOURCE"
+      },
+      "micMaterialResource": {
+        "headerByteCount": 36,
+        "headerRawSha256": "cd52d69d19663b2b180c7fed5b61712236101c8eff7e5c1fe88c69dfa703e817",
+        "referencedTextureCountOffsetInNativeTail": 36,
+        "referencedTextures": [
+          {
+            "index": 0,
+            "offsetInNativeTail": 40,
+            "packageReference": -776,
+            "objectPath": "fx_tex_02.fx_d_arrow_001",
+            "className": "texture2d"
+          },
+          {
+            "index": 1,
+            "offsetInNativeTail": 44,
+            "packageReference": -641,
+            "objectPath": "fx_tex_00.fx_a_environ_003_n",
+            "className": "texture2d"
+          },
+          {
+            "index": 2,
+            "offsetInNativeTail": 48,
+            "packageReference": -868,
+            "objectPath": "fx_tex_02.fx_d_environ_001",
+            "className": "texture2d"
+          },
+          {
+            "index": 3,
+            "offsetInNativeTail": 52,
+            "packageReference": -608,
+            "objectPath": "fx_tex_00.fx_a_atypical_040",
+            "className": "texture2d"
+          },
+          {
+            "index": 4,
+            "offsetInNativeTail": 56,
+            "packageReference": -1075,
+            "objectPath": "fx_tex_04.fx_f_rectangle_001",
+            "className": "texture2d"
+          },
+          {
+            "index": 5,
+            "offsetInNativeTail": 60,
+            "packageReference": -840,
+            "objectPath": "fx_tex_02.fx_d_decal_005",
+            "className": "texture2d"
+          },
+          {
+            "index": 6,
+            "offsetInNativeTail": 64,
+            "packageReference": -977,
+            "objectPath": "fx_tex_02.fx_d_normal_102",
+            "className": "texture2d"
+          },
+          {
+            "index": 7,
+            "offsetInNativeTail": 68,
+            "packageReference": -882,
+            "objectPath": "fx_tex_02.fx_d_fluid_020",
+            "className": "texture2d"
+          },
+          {
+            "index": 8,
+            "offsetInNativeTail": 72,
+            "packageReference": -984,
+            "objectPath": "fx_tex_02.fx_d_stoneparts_002",
+            "className": "texture2d"
+          },
+          {
+            "index": 9,
+            "offsetInNativeTail": 76,
+            "packageReference": -1086,
+            "objectPath": "fx_tex_04.fx_h_noise_001",
+            "className": "texture2d"
+          }
+        ],
+        "referencedTexturesEndOffsetInNativeTail": 80,
+        "opaqueBytesBeforeStaticSet": 44,
+        "staticParameterSetOffsetInNativeTail": 124,
+        "nativeTailByteCount": 2444,
+        "nativeTailSha256": "4c563148eba44bbd681b3bfa3129254e3d7d4de45626a020fc20e7db49a234e4",
+        "fidelity": "SOURCE_EXACT_MIC_MATERIAL_RESOURCE_ORDERED_REFERENCED_TEXTURES"
+      },
+      "micTextureOverrides": {
+        "propertyStatus": "SERIALIZED_EXPLICIT",
+        "propertyStreamStart": 4,
+        "propertyStreamEnd": 4105,
+        "propertyRecordSha256": "eb2125739c79f589cedf9996c1e55d24e4830874e44e1d13b1d0e1e25d0cc7b5",
+        "propertyPayloadSha256": "fcf04f4bdf254bdad12a32861f03eb1b67b5be4e130299221ba30535ccf08b4f",
+        "overrides": [
+          {
+            "index": 0,
+            "parameterName": "40.emissionmask",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "40.emissionmask#0",
+            "packageReference": -840,
+            "sourceObjectPath": "fx_tex_02.fx_d_decal_005",
+            "parameterNameRecordSha256": "55e4aff76c519c89e8bdea878e6b52377b465dfef740af265514ffbb667ba134",
+            "parameterValueRecordSha256": "4719cf4e834d4271a8f49f27580091ca5c10cff934511a5b73baa7518e16c13c",
+            "expressionGuidHex": "7fd06b1a3ac1c742bb318df8dc38b3ca"
+          },
+          {
+            "index": 1,
+            "parameterName": "11.dirtmap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "11.dirtmap#0",
+            "packageReference": -984,
+            "sourceObjectPath": "fx_tex_02.fx_d_stoneparts_002",
+            "parameterNameRecordSha256": "41c93fff9971a9af5d04d42d6320bce9af4185699380ee94b4be292c0efb5165",
+            "parameterValueRecordSha256": "73b7f3511b7de15a2f21f22a7a5ec72d05557974f6a2ac421809c93694aed201",
+            "expressionGuidHex": "b42b2854f9b4c543a78664b5655b8df0"
+          },
+          {
+            "index": 2,
+            "parameterName": "41.normalmap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "41.normalmap#0",
+            "packageReference": -977,
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_102",
+            "parameterNameRecordSha256": "5d28757a7af75cb253f0efe899ff135ece8162ee47c43f3b0f3bbd080be8f52a",
+            "parameterValueRecordSha256": "2138bd4b956d3e00e2095a31f3f4fff4cc69611a86428e97ffba9ae03423bd56",
+            "expressionGuidHex": "6e89df30e2920747acff1f5dda399f1c"
+          },
+          {
+            "index": 3,
+            "parameterName": "01.specmap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "01.specmap#0",
+            "packageReference": -882,
+            "sourceObjectPath": "fx_tex_02.fx_d_fluid_020",
+            "parameterNameRecordSha256": "324c40f6842f1cb5e4f92807d44cbd72b38273991bf8723ed9e5de1b5831a195",
+            "parameterValueRecordSha256": "f244eb69857134fa6de5cf60ad3e9b170fe001ba7d023178c5fc38f280e11b5e",
+            "expressionGuidHex": "a095d637d6bc4c448cb3cff3eaac6bc9"
+          },
+          {
+            "index": 4,
+            "parameterName": "11.edge_map",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "11.edge_map#0",
+            "packageReference": -1086,
+            "sourceObjectPath": "fx_tex_04.fx_h_noise_001",
+            "parameterNameRecordSha256": "a2263e0093828aac30aba23633706e74e700ec6fee05bf8fd7082e959e845fcb",
+            "parameterValueRecordSha256": "90d57f1dc21d4dd9bffe008700f0ad9bb29392a2de4185340c4fc765aa26ed36",
+            "expressionGuidHex": "89be4a784a12964cbdb7043aa14cf211"
+          }
+        ]
+      },
+      "uniformTextureBindings": [
+        {
+          "uniformExpressionIndex": 0,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "40.emissionmask",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "40.emissionmask#0",
+          "fallbackReferencedTextureIndex": 0,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_arrow_001",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 0,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_decal_005",
+          "textureRegister": "t1",
+          "samplerRegister": "s0",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_decal_005",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_decal_005",
+            "className": "texture2d",
+            "exportIndexZeroBased": 324,
+            "serialOffset": 1560184,
+            "serialByteSize": 15055,
+            "serialSha256": "b2b79037b8e309b48e7e5436020744a050ed0e66865effa2e00e82395b27d1d6",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 297,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_decal_005",
+            "sourceExactDds": {
+              "byteSize": 32896,
+              "sha256": "aa9af6ba71f87936935c01e8fac06290b53bba9fee4d1d1f4df3132f5101311e"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "00597ed324b693f7/FX_TEX_02/Texture2D/fx_d_decal_005.dds",
+                "byteSize": 32896,
+                "sha256": "aa9af6ba71f87936935c01e8fac06290b53bba9fee4d1d1f4df3132f5101311e",
+                "fileIdentityVerified": true
+              },
+              {
+                "provider": "AUTHENTICATED_FOURCLASS_RAW_RESOURCE_INVENTORY",
+                "relativePath": "FourClass/raw/FX_TEX_02/Texture2D/fx_d_decal_005.dds",
+                "byteSize": 32896,
+                "sha256": "aa9af6ba71f87936935c01e8fac06290b53bba9fee4d1d1f4df3132f5101311e",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_005.dds",
+              "status": "PRESENT",
+              "byteSize": 32896,
+              "sha256": "aa9af6ba71f87936935c01e8fac06290b53bba9fee4d1d1f4df3132f5101311e",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 1,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "41.normalmap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "41.normalmap#0",
+          "fallbackReferencedTextureIndex": 1,
+          "fallbackSourceObjectPath": "fx_tex_00.fx_a_environ_003_n",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 2,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_normal_102",
+          "textureRegister": "t2",
+          "samplerRegister": "s1",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_102",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_normal_102",
+            "className": "texture2d",
+            "exportIndexZeroBased": 707,
+            "serialOffset": 10133561,
+            "serialByteSize": 116881,
+            "serialSha256": "6760bdd5c3ca677b04ac2f6a79b52fdce6bb4c9987f41cb432d95433c78901d1",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 482,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "srgb",
+                "propertyType": "boolproperty",
+                "value": false,
+                "tagOffset": 224,
+                "valueOffset": 248,
+                "recordEndOffset": 249,
+                "recordSha256": "c1eb3cecf650307862f4ada3e9a72bae6b21ed66ed0b279dc5cd1853502a0bc2",
+                "encodedValueSha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effectsnormalmap",
+                "tagOffset": 398,
+                "valueOffset": 430,
+                "recordEndOffset": 438,
+                "recordSha256": "2ed4aa540d30ef0dec7c2be04cdd1f99b9ba8bc7f171258fa390423727416bbc",
+                "encodedValueSha256": "f10ca6fb162d356e0501d1e4f8d756b16760e52da9513d31c363da2b04abe183"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effectsnormalmap",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "linear",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_102",
+            "sourceExactDds": {
+              "byteSize": 262272,
+              "sha256": "e966b832b441fdc439d9f586fc1c631ec2c99bc15f8a2bed0154a4c674f22537"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "00597ed324b693f7/FX_TEX_02/Texture2D/fx_d_normal_102.dds",
+                "byteSize": 262272,
+                "sha256": "e966b832b441fdc439d9f586fc1c631ec2c99bc15f8a2bed0154a4c674f22537",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_normal_102.dds",
+              "status": "PRESENT",
+              "byteSize": 262272,
+              "sha256": "e966b832b441fdc439d9f586fc1c631ec2c99bc15f8a2bed0154a4c674f22537",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 2,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "01.specmap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "01.specmap#0",
+          "fallbackReferencedTextureIndex": 2,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_environ_001",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 3,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_fluid_020",
+          "textureRegister": "t3",
+          "samplerRegister": "s2",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_fluid_020",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_fluid_020",
+            "className": "texture2d",
+            "exportIndexZeroBased": 469,
+            "serialOffset": 5192893,
+            "serialByteSize": 15122,
+            "serialSha256": "11e71c9f9698a998d13734f6e26d07e6cae209d7af07ab66de6ddf8630fbfcd5",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 333,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_fluid_020",
+            "sourceExactDds": {
+              "byteSize": 32896,
+              "sha256": "21bb4ed2b7d8758cd8c225aa1946b7f40e6c2e9d1a7d00a6ef0a43646f51dae3"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "00597ed324b693f7/FX_TEX_02/Texture2D/fx_d_fluid_020.dds",
+                "byteSize": 32896,
+                "sha256": "21bb4ed2b7d8758cd8c225aa1946b7f40e6c2e9d1a7d00a6ef0a43646f51dae3",
+                "fileIdentityVerified": true
+              },
+              {
+                "provider": "AUTHENTICATED_FOURCLASS_RAW_RESOURCE_INVENTORY",
+                "relativePath": "FourClass/raw/FX_TEX_02/Texture2D/fx_d_fluid_020.dds",
+                "byteSize": 32896,
+                "sha256": "21bb4ed2b7d8758cd8c225aa1946b7f40e6c2e9d1a7d00a6ef0a43646f51dae3",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fluid_020.dds",
+              "status": "PRESENT",
+              "byteSize": 32896,
+              "sha256": "21bb4ed2b7d8758cd8c225aa1946b7f40e6c2e9d1a7d00a6ef0a43646f51dae3",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 3,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "11.dirtmap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "11.dirtmap#0",
+          "fallbackReferencedTextureIndex": 3,
+          "fallbackSourceObjectPath": "fx_tex_00.fx_a_atypical_040",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 1,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_stoneparts_002",
+          "textureRegister": "t4",
+          "samplerRegister": "s3",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_stoneparts_002",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_stoneparts_002",
+            "className": "texture2d",
+            "exportIndexZeroBased": 744,
+            "serialOffset": 11863235,
+            "serialByteSize": 54515,
+            "serialSha256": "dd1461e5754d6136c3d99243c1a832efd30d0d8e331ceb195064c35ebb9f30b7",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 333,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_stoneparts_002",
+            "sourceExactDds": {
+              "byteSize": 131200,
+              "sha256": "e9b7fae9a47868ad05be52000a6580f5d133e4e0d7e771fc0be30a17e22cf238"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "00597ed324b693f7/FX_TEX_02/Texture2D/fx_d_stoneparts_002.dds",
+                "byteSize": 131200,
+                "sha256": "e9b7fae9a47868ad05be52000a6580f5d133e4e0d7e771fc0be30a17e22cf238",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_stoneparts_002.dds",
+              "status": "PRESENT",
+              "byteSize": 131200,
+              "sha256": "e9b7fae9a47868ad05be52000a6580f5d133e4e0d7e771fc0be30a17e22cf238",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 4,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "11.edge_map",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "11.edge_map#0",
+          "fallbackReferencedTextureIndex": 4,
+          "fallbackSourceObjectPath": "fx_tex_04.fx_f_rectangle_001",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 4,
+          "effectiveSourceObjectPath": "fx_tex_04.fx_h_noise_001",
+          "textureRegister": "t0",
+          "samplerRegister": "s4",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_04.fx_h_noise_001",
+            "manifestLogicalPackage": "fx_tex_04",
+            "packageResolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+            "physicalPackage": "YGI3SORGM3I1TGHA5BMJ8O5CZ.upk",
+            "physicalPackageByteSize": 9918333,
+            "physicalPackageSha256": "7af83c5dc7bf9dc228fddf200b3b7fcda6a75c3a378cbc682c647dc22b909ce9",
+            "objectPath": "fx_h_noise_001",
+            "className": "texture2d",
+            "exportIndexZeroBased": 419,
+            "serialOffset": 6757641,
+            "serialByteSize": 21029,
+            "serialSha256": "742e7de92673864d330ba2ada31833c0aaca52acdce42706d1c1c7a6ee97babf",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 333,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "02b80da26089a7e23984c1eb9c495990522cb72ab8e450a41691ea6f1e9721ad",
+                "encodedValueSha256": "a49b2363dd2ef66dd86c229b7c693a3720c334e1ae14ea1a6ae1f0a76d60d042"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_04.fx_h_noise_001",
+            "sourceExactDds": {
+              "byteSize": 32896,
+              "sha256": "c3d5c5db7995c07bb04bc940fc8aaad5bd82614ea10f92c15bb5748d2fbd5bd2"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "00597ed324b693f7/FX_TEX_04/Texture2D/fx_h_noise_001.dds",
+                "byteSize": 32896,
+                "sha256": "c3d5c5db7995c07bb04bc940fc8aaad5bd82614ea10f92c15bb5748d2fbd5bd2",
+                "fileIdentityVerified": true
+              },
+              {
+                "provider": "AUTHENTICATED_FOURCLASS_RAW_RESOURCE_INVENTORY",
+                "relativePath": "FourClass/raw/FX_TEX_04/Texture2D/fx_h_noise_001.dds",
+                "byteSize": 32896,
+                "sha256": "c3d5c5db7995c07bb04bc940fc8aaad5bd82614ea10f92c15bb5748d2fbd5bd2",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_04/fx_h_noise_001.dds",
+              "status": "PRESENT",
+              "byteSize": 32896,
+              "sha256": "c3d5c5db7995c07bb04bc940fc8aaad5bd82614ea10f92c15bb5748d2fbd5bd2",
+              "sourceExactParity": true
+            }
+          }
+        }
+      ],
+      "uniformTextureBindingCount": 5,
+      "uniqueEffectiveTextureCount": 5,
+      "uniqueEffectiveTexturePaths": [
+        "fx_tex_02.fx_d_decal_005",
+        "fx_tex_02.fx_d_fluid_020",
+        "fx_tex_02.fx_d_normal_102",
+        "fx_tex_02.fx_d_stoneparts_002",
+        "fx_tex_04.fx_h_noise_001"
+      ],
+      "sourceExactTextureBindingAdmission": true,
+      "runtimeDdsParityAdmission": true,
+      "sourceExactSamplerAdmission": false,
+      "sourceExactColorSpaceBindingCount": 5,
+      "sourceExactFilterSelectorBindingCount": 5,
+      "sourceExactAddressAxisCount": 0,
+      "sourceExactAddressAxisDenominator": 10,
+      "sourceExactLodGroupBindingCount": 5,
+      "sourceExactHardwareFilterBindingCount": 0,
+      "sourceValueTextureSamplerAdmission": false,
+      "blockers": [
+        "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+        "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+        "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+      ]
+    },
+    {
+      "targetId": "valtan-front-back-front-ground-decal",
+      "familyId": "ue3.material.fx.m.mi.n.00.fx.n.de.ground.04.30.tr.9ad14c432bdb",
+      "rendererType": "LocalDecal",
+      "sourceMaterialPath": "fx_m_mi_n_00.fx_mi.fx_n_de_ground_04_30_tr",
+      "parentMaterialPath": "fx_m_mi_04.fx_m.fx_d_de_ground_04_tr",
+      "status": "EXACT_TEXTURE_BINDING_SAMPLER_BLOCKED",
+      "parentMaterialResource": {
+        "physicalPackage": "YGI3SB3OBJ3O1TGUMP6QMP8O5.upk",
+        "physicalPackageSha256": "aeb9a9b9efb7b8fa9f49fabf0ad19010390227f25a2e23b2044110a6012954f7",
+        "objectPath": "fx_m.fx_d_de_ground_04_tr",
+        "exportIndexZeroBased": 80,
+        "serialSha256": "e85a01266581f6e85bcc33cf31e2124e63e3cb2b2ff1ed6e73861705fcbc87ad",
+        "materialStateGuidHex": "9ad14c432bdbfe4da0a72829eaaa26a5",
+        "referencedTextures": [
+          {
+            "index": 0,
+            "offsetInNativeTail": 40,
+            "packageReference": -365,
+            "objectPath": "fx_tex_02.fx_d_normal_033_1",
+            "className": "texture2d"
+          },
+          {
+            "index": 1,
+            "offsetInNativeTail": 44,
+            "packageReference": -276,
+            "objectPath": "fx_tex_02.fx_d_decal_033",
+            "className": "texture2d"
+          },
+          {
+            "index": 2,
+            "offsetInNativeTail": 48,
+            "packageReference": -251,
+            "objectPath": "fx_tex_02.fx_d_atypical_051",
+            "className": "texture2d"
+          },
+          {
+            "index": 3,
+            "offsetInNativeTail": 52,
+            "packageReference": -364,
+            "objectPath": "fx_tex_02.fx_d_normal_033",
+            "className": "texture2d"
+          }
+        ],
+        "nativeTailSha256": "a33e7fff21eaad330aa933bf518a86682d2c95aac0199738a2c41569c843ea59",
+        "fidelity": "SOURCE_EXACT_PARENT_MATERIAL_RESOURCE"
+      },
+      "micMaterialResource": {
+        "headerByteCount": 36,
+        "headerRawSha256": "a966cf6981a83e8155deee4ed2e56d5594a67d50bf0da0fcd65ae1ae80772bc8",
+        "referencedTextureCountOffsetInNativeTail": 36,
+        "referencedTextures": [
+          {
+            "index": 0,
+            "offsetInNativeTail": 40,
+            "packageReference": -950,
+            "objectPath": "fx_tex_02.fx_d_normal_033_1",
+            "className": "texture2d"
+          },
+          {
+            "index": 1,
+            "offsetInNativeTail": 44,
+            "packageReference": -952,
+            "objectPath": "fx_tex_02.fx_d_normal_034_1",
+            "className": "texture2d"
+          },
+          {
+            "index": 2,
+            "offsetInNativeTail": 48,
+            "packageReference": -718,
+            "objectPath": "fx_tex_00.fx_bg_dustpanner_01",
+            "className": "texture2d"
+          },
+          {
+            "index": 3,
+            "offsetInNativeTail": 52,
+            "packageReference": -808,
+            "objectPath": "fx_tex_02.fx_d_atypical_051",
+            "className": "texture2d"
+          },
+          {
+            "index": 4,
+            "offsetInNativeTail": 56,
+            "packageReference": -949,
+            "objectPath": "fx_tex_02.fx_d_normal_033",
+            "className": "texture2d"
+          },
+          {
+            "index": 5,
+            "offsetInNativeTail": 60,
+            "packageReference": -848,
+            "objectPath": "fx_tex_02.fx_d_decal_033",
+            "className": "texture2d"
+          },
+          {
+            "index": 6,
+            "offsetInNativeTail": 64,
+            "packageReference": -939,
+            "objectPath": "fx_tex_02.fx_d_normal_012_1",
+            "className": "texture2d"
+          },
+          {
+            "index": 7,
+            "offsetInNativeTail": 68,
+            "packageReference": -893,
+            "objectPath": "fx_tex_02.fx_d_fragment_016",
+            "className": "texture2d"
+          },
+          {
+            "index": 8,
+            "offsetInNativeTail": 72,
+            "packageReference": -926,
+            "objectPath": "fx_tex_02.fx_d_noise_030",
+            "className": "texture2d"
+          },
+          {
+            "index": 9,
+            "offsetInNativeTail": 76,
+            "packageReference": -1052,
+            "objectPath": "fx_tex_03.fx_e_noise_002",
+            "className": "texture2d"
+          },
+          {
+            "index": 10,
+            "offsetInNativeTail": 80,
+            "packageReference": -938,
+            "objectPath": "fx_tex_02.fx_d_normal_012",
+            "className": "texture2d"
+          },
+          {
+            "index": 11,
+            "offsetInNativeTail": 84,
+            "packageReference": -841,
+            "objectPath": "fx_tex_02.fx_d_decal_012",
+            "className": "texture2d"
+          }
+        ],
+        "referencedTexturesEndOffsetInNativeTail": 88,
+        "opaqueBytesBeforeStaticSet": 60,
+        "staticParameterSetOffsetInNativeTail": 148,
+        "nativeTailByteCount": 1764,
+        "nativeTailSha256": "a1a10161d586b92e786134e0647a94acf65e9a15b7bb5e3a2ab93435c3d28dec",
+        "fidelity": "SOURCE_EXACT_MIC_MATERIAL_RESOURCE_ORDERED_REFERENCED_TEXTURES"
+      },
+      "micTextureOverrides": {
+        "propertyStatus": "SERIALIZED_EXPLICIT",
+        "propertyStreamStart": 4,
+        "propertyStreamEnd": 2673,
+        "propertyRecordSha256": "d9357b8e979ee9205f75eda9f40a076838ec881d5928cb8efc0182cb2ea8fb5b",
+        "propertyPayloadSha256": "3b66e7cf1bdcc9a866b7b7d817ce37a3f6e695e3d06301ffb7e8a0fb7212538d",
+        "overrides": [
+          {
+            "index": 0,
+            "parameterName": "01.diffusemap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "01.diffusemap#0",
+            "packageReference": -841,
+            "sourceObjectPath": "fx_tex_02.fx_d_decal_012",
+            "parameterNameRecordSha256": "1c676e0e0cf84b7d1be4b5c7b3a5256685639ccc4b8e50215d6da179947a79a7",
+            "parameterValueRecordSha256": "ec3c998e78c8ffb464e1842e86aed5f8ad38ff81ddcc2f4cd1ac355d75b14c3a",
+            "expressionGuidHex": "abbba44a5e74b64fa384dc0580b81df6"
+          },
+          {
+            "index": 1,
+            "parameterName": "06.normalmap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "06.normalmap#0",
+            "packageReference": -938,
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_012",
+            "parameterNameRecordSha256": "363a2dff39309ddbe4b7c4c693777e915794455a8981a969d2e70cbdfd1a53e9",
+            "parameterValueRecordSha256": "a2c71a21e627444bab02831d9d81c7a3c56a52b66cc040213a16d504559e33d9",
+            "expressionGuidHex": "bce944c0079cc449bf89f9acbce318c9"
+          },
+          {
+            "index": 2,
+            "parameterName": "11.maskmap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "11.maskmap#0",
+            "packageReference": -939,
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_012_1",
+            "parameterNameRecordSha256": "a2c5ee60db7e09eb5050035fc45a53906055364910608568ecf250af84daea41",
+            "parameterValueRecordSha256": "b9ccf6c137bfd3b3d4cfabcc56a1b86b9db4803f2d05d2e7b516d7161a0d9e34",
+            "expressionGuidHex": "6d67033f63054845af3fa09d315ec8f6"
+          },
+          {
+            "index": 3,
+            "parameterName": "01.emismaskmap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "01.emismaskmap#0",
+            "packageReference": -893,
+            "sourceObjectPath": "fx_tex_02.fx_d_fragment_016",
+            "parameterNameRecordSha256": "f035bbc39f2228112258b39e675b4f7a6f92a8fcba284ce77edb4356ab809fcd",
+            "parameterValueRecordSha256": "8a003d4b65f95ab9df6c10734ffbc831dcd2920261e7f4fedd6c8c1d7ed6646e",
+            "expressionGuidHex": "fd6c19346c00aa44beafb66cc13437a7"
+          },
+          {
+            "index": 4,
+            "parameterName": "15.phasemap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "15.phasemap#0",
+            "packageReference": -926,
+            "sourceObjectPath": "fx_tex_02.fx_d_noise_030",
+            "parameterNameRecordSha256": "35cb01ba45015bc77de1a6642e1698423c7bcd88977fb329a2ce01d816895bbc",
+            "parameterValueRecordSha256": "6360f86d3d8e13a6fdd1d02a01fa6c857315a1b45514ae8dd9bed87a81583d81",
+            "expressionGuidHex": "d4ec03920d1b2b438551706765055aff"
+          },
+          {
+            "index": 5,
+            "parameterName": "01.dissolvemap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "01.dissolvemap#0",
+            "packageReference": -1052,
+            "sourceObjectPath": "fx_tex_03.fx_e_noise_002",
+            "parameterNameRecordSha256": "aadbb0bc320b938d302077e08a6056adc5d4d616eecd4b9a50e5722e46304ef7",
+            "parameterValueRecordSha256": "94c35e352c8676075e4344aaaf30a9325dd41b49895d78537cab644d8eec8c6d",
+            "expressionGuidHex": "0cf1d3980f7e47478f5bcf0e96cd6981"
+          }
+        ]
+      },
+      "uniformTextureBindings": [
+        {
+          "uniformExpressionIndex": 0,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "11.maskmap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "11.maskmap#0",
+          "fallbackReferencedTextureIndex": 0,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_normal_033_1",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 2,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_normal_012_1",
+          "textureRegister": "t0",
+          "samplerRegister": "s0",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_012_1",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_normal_012_1",
+            "className": "texture2d",
+            "exportIndexZeroBased": 627,
+            "serialOffset": 7839737,
+            "serialByteSize": 17522,
+            "serialSha256": "867c0dae4844f422a6b23cd66e7038b8879017749db74723621db6527bda6dcb",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 297,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_012_1",
+            "sourceExactDds": {
+              "byteSize": 32896,
+              "sha256": "27edebc94df0813690976c889cbe5bad5aecebab037266022d87f1ea3fe9d443"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "358f639a8aa68f9c/FX_TEX_02/Texture2D/fx_d_normal_012_1.dds",
+                "byteSize": 32896,
+                "sha256": "27edebc94df0813690976c889cbe5bad5aecebab037266022d87f1ea3fe9d443",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_normal_012_1.dds",
+              "status": "PRESENT",
+              "byteSize": 32896,
+              "sha256": "27edebc94df0813690976c889cbe5bad5aecebab037266022d87f1ea3fe9d443",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 1,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "01.emismaskmap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "01.emismaskmap#0",
+          "fallbackReferencedTextureIndex": 1,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_normal_034_1",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 3,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_fragment_016",
+          "textureRegister": "t4",
+          "samplerRegister": "s1",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_fragment_016",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_fragment_016",
+            "className": "texture2d",
+            "exportIndexZeroBased": 519,
+            "serialOffset": 6353267,
+            "serialByteSize": 11152,
+            "serialSha256": "8d1a4cd6ef4431873dd97e621bb2d0cfad1138138e51a32f28c80963020d1d71",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 333,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_fragment_016",
+            "sourceExactDds": {
+              "byteSize": 32896,
+              "sha256": "8f2bb7cc5da371d2e269c4ce9ea3ca3d74026cbf1441651d5670175d94d81222"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "358f639a8aa68f9c/FX_TEX_02/Texture2D/fx_d_fragment_016.dds",
+                "byteSize": 32896,
+                "sha256": "8f2bb7cc5da371d2e269c4ce9ea3ca3d74026cbf1441651d5670175d94d81222",
+                "fileIdentityVerified": true
+              },
+              {
+                "provider": "AUTHENTICATED_FOURCLASS_RAW_RESOURCE_INVENTORY",
+                "relativePath": "FourClass/raw/FX_TEX_02/Texture2D/fx_d_fragment_016.dds",
+                "byteSize": 32896,
+                "sha256": "8f2bb7cc5da371d2e269c4ce9ea3ca3d74026cbf1441651d5670175d94d81222",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_fragment_016.dds",
+              "status": "PRESENT",
+              "byteSize": 32896,
+              "sha256": "8f2bb7cc5da371d2e269c4ce9ea3ca3d74026cbf1441651d5670175d94d81222",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 2,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "15.phasemap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "15.phasemap#0",
+          "fallbackReferencedTextureIndex": 2,
+          "fallbackSourceObjectPath": "fx_tex_00.fx_bg_dustpanner_01",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 4,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_noise_030",
+          "textureRegister": "t5",
+          "samplerRegister": "s2",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_noise_030",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_noise_030",
+            "className": "texture2d",
+            "exportIndexZeroBased": 596,
+            "serialOffset": 7102863,
+            "serialByteSize": 15495,
+            "serialSha256": "3fb429a7134ad38c5e040fb02f268ff109e0f3bcac58d4380d0b8f9279f4d502",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 297,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_noise_030",
+            "sourceExactDds": {
+              "byteSize": 32896,
+              "sha256": "9a876ceb5d173869af5350d348462f54fc8a9b00134957bd3cd56805860d0581"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "358f639a8aa68f9c/FX_TEX_02/Texture2D/fx_d_noise_030.dds",
+                "byteSize": 32896,
+                "sha256": "9a876ceb5d173869af5350d348462f54fc8a9b00134957bd3cd56805860d0581",
+                "fileIdentityVerified": true
+              },
+              {
+                "provider": "AUTHENTICATED_FOURCLASS_RAW_RESOURCE_INVENTORY",
+                "relativePath": "FourClass/raw/FX_TEX_02/Texture2D/fx_d_noise_030.dds",
+                "byteSize": 32896,
+                "sha256": "9a876ceb5d173869af5350d348462f54fc8a9b00134957bd3cd56805860d0581",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_030.dds",
+              "status": "PRESENT",
+              "byteSize": 32896,
+              "sha256": "9a876ceb5d173869af5350d348462f54fc8a9b00134957bd3cd56805860d0581",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 3,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "01.dissolvemap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "01.dissolvemap#0",
+          "fallbackReferencedTextureIndex": 3,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_atypical_051",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 5,
+          "effectiveSourceObjectPath": "fx_tex_03.fx_e_noise_002",
+          "textureRegister": "t1",
+          "samplerRegister": "s3",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_03.fx_e_noise_002",
+            "manifestLogicalPackage": "fx_tex_03",
+            "packageResolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+            "physicalPackage": "YGI3SORGM3I1MGHA5BMJ8B5CZ.upk",
+            "physicalPackageByteSize": 6344494,
+            "physicalPackageSha256": "f47383ab63e08875d6a98929eba42843cad1be059c299c59aa03c5eb3ae5b314",
+            "objectPath": "fx_e_noise_002",
+            "className": "texture2d",
+            "exportIndexZeroBased": 200,
+            "serialOffset": 4483686,
+            "serialByteSize": 44806,
+            "serialSha256": "d2a67261305f87681cee18f20dd65d7680ded5afec52630b176e1bbaaf0deeba",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 297,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "e2e03b6366978310fc95863e9ed3901e32aca97dd1a5e1b3e0f998d58c5893ef",
+                "encodedValueSha256": "2bb5403868e9531dfcd65d09413242d2d785ddfa2ecd85344f1cdfef756cc91e"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_03.fx_e_noise_002",
+            "sourceExactDds": {
+              "byteSize": 65664,
+              "sha256": "9abbd5202b3a68654cd4b8a5b1a7afc31f596d1ef03431ab5333e4e2062a0d3a"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "358f639a8aa68f9c/FX_TEX_03/Texture2D/fx_e_noise_002.dds",
+                "byteSize": 65664,
+                "sha256": "9abbd5202b3a68654cd4b8a5b1a7afc31f596d1ef03431ab5333e4e2062a0d3a",
+                "fileIdentityVerified": true
+              },
+              {
+                "provider": "AUTHENTICATED_FOURCLASS_RAW_RESOURCE_INVENTORY",
+                "relativePath": "FourClass/raw/FX_TEX_03/Texture2D/fx_e_noise_002.dds",
+                "byteSize": 65664,
+                "sha256": "9abbd5202b3a68654cd4b8a5b1a7afc31f596d1ef03431ab5333e4e2062a0d3a",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_03/fx_e_noise_002.dds",
+              "status": "PRESENT",
+              "byteSize": 65664,
+              "sha256": "9abbd5202b3a68654cd4b8a5b1a7afc31f596d1ef03431ab5333e4e2062a0d3a",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 4,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "06.normalmap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "06.normalmap#0",
+          "fallbackReferencedTextureIndex": 4,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_normal_033",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 1,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_normal_012",
+          "textureRegister": "t2",
+          "samplerRegister": "s4",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_012",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_normal_012",
+            "className": "texture2d",
+            "exportIndexZeroBased": 626,
+            "serialOffset": 7807992,
+            "serialByteSize": 31745,
+            "serialSha256": "d90aa2c1ff8765377ff90a6eba7defc56c4a54f5aebb4431a04654bc971b56f7",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 507,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "srgb",
+                "propertyType": "boolproperty",
+                "value": false,
+                "tagOffset": 224,
+                "valueOffset": 248,
+                "recordEndOffset": 249,
+                "recordSha256": "c1eb3cecf650307862f4ada3e9a72bae6b21ed66ed0b279dc5cd1853502a0bc2",
+                "encodedValueSha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effectsnormalmap",
+                "tagOffset": 423,
+                "valueOffset": 455,
+                "recordEndOffset": 463,
+                "recordSha256": "2ed4aa540d30ef0dec7c2be04cdd1f99b9ba8bc7f171258fa390423727416bbc",
+                "encodedValueSha256": "f10ca6fb162d356e0501d1e4f8d756b16760e52da9513d31c363da2b04abe183"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effectsnormalmap",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "linear",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_012",
+            "sourceExactDds": {
+              "byteSize": 65664,
+              "sha256": "15593b1de7fc71c59eb71c93f7c799a120dcead45c7fb292674ebf1230b8149b"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "358f639a8aa68f9c/FX_TEX_02/Texture2D/fx_d_normal_012.dds",
+                "byteSize": 65664,
+                "sha256": "15593b1de7fc71c59eb71c93f7c799a120dcead45c7fb292674ebf1230b8149b",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_normal_012.dds",
+              "status": "PRESENT",
+              "byteSize": 65664,
+              "sha256": "15593b1de7fc71c59eb71c93f7c799a120dcead45c7fb292674ebf1230b8149b",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 5,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "01.diffusemap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "01.diffusemap#0",
+          "fallbackReferencedTextureIndex": 5,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_decal_033",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 0,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_decal_012",
+          "textureRegister": "t3",
+          "samplerRegister": "s5",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_decal_012",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_decal_012",
+            "className": "texture2d",
+            "exportIndexZeroBased": 329,
+            "serialOffset": 1630056,
+            "serialByteSize": 40473,
+            "serialSha256": "90d9df9eb7f83947113c6ae2e2589fe8c63e55c2085811a17cee003a77fadaf3",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 333,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_decal_012",
+            "sourceExactDds": {
+              "byteSize": 65664,
+              "sha256": "a02f2184b25786a4e699dad6ff4405cce717defd458990fa832d2e94f34f91ac"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "358f639a8aa68f9c/FX_TEX_02/Texture2D/fx_d_decal_012.dds",
+                "byteSize": 65664,
+                "sha256": "a02f2184b25786a4e699dad6ff4405cce717defd458990fa832d2e94f34f91ac",
+                "fileIdentityVerified": true
+              },
+              {
+                "provider": "AUTHENTICATED_FOURCLASS_RAW_RESOURCE_INVENTORY",
+                "relativePath": "FourClass/raw/FX_TEX_02/Texture2D/fx_d_decal_012.dds",
+                "byteSize": 65664,
+                "sha256": "a02f2184b25786a4e699dad6ff4405cce717defd458990fa832d2e94f34f91ac",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_012.dds",
+              "status": "PRESENT",
+              "byteSize": 65664,
+              "sha256": "a02f2184b25786a4e699dad6ff4405cce717defd458990fa832d2e94f34f91ac",
+              "sourceExactParity": true
+            }
+          }
+        }
+      ],
+      "uniformTextureBindingCount": 6,
+      "uniqueEffectiveTextureCount": 6,
+      "uniqueEffectiveTexturePaths": [
+        "fx_tex_02.fx_d_decal_012",
+        "fx_tex_02.fx_d_fragment_016",
+        "fx_tex_02.fx_d_noise_030",
+        "fx_tex_02.fx_d_normal_012",
+        "fx_tex_02.fx_d_normal_012_1",
+        "fx_tex_03.fx_e_noise_002"
+      ],
+      "sourceExactTextureBindingAdmission": true,
+      "runtimeDdsParityAdmission": true,
+      "sourceExactSamplerAdmission": false,
+      "sourceExactColorSpaceBindingCount": 6,
+      "sourceExactFilterSelectorBindingCount": 6,
+      "sourceExactAddressAxisCount": 0,
+      "sourceExactAddressAxisDenominator": 12,
+      "sourceExactLodGroupBindingCount": 6,
+      "sourceExactHardwareFilterBindingCount": 0,
+      "sourceValueTextureSamplerAdmission": false,
+      "blockers": [
+        "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+        "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+        "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+      ]
+    },
+    {
+      "targetId": "valtan-front-back-front-crack-translucent",
+      "familyId": "ue3.material.fx.m.mi.o.00.fx.o.me.crack.01.01.tr.c9f38136093d",
+      "rendererType": "MeshParticle",
+      "sourceMaterialPath": "fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr",
+      "parentMaterialPath": "fx_m_mi_00.fx_m.fx_d_me_crack_01_tr",
+      "status": "EXACT_TEXTURE_BINDING_SAMPLER_BLOCKED",
+      "parentMaterialResource": {
+        "physicalPackage": "YGI3SB3OBJ3O11GUMP6QMP885.upk",
+        "physicalPackageSha256": "5b9d692b3f8ccb4bb914ce1b1b0ab100afc0b8a482a184cd10716aa523756cc8",
+        "objectPath": "fx_m.fx_d_me_crack_01_tr",
+        "exportIndexZeroBased": 19,
+        "serialSha256": "c29a3ebe4cfa6fe90a044cf54759a0bcdecad49578a195e503e87d57b7074ab6",
+        "materialStateGuidHex": "c9f38136093d0a4bad5c6e1524caa09f",
+        "referencedTextures": [
+          {
+            "index": 0,
+            "offsetInNativeTail": 40,
+            "packageReference": -1428,
+            "objectPath": "fx_tex_02.fx_d_normal_053",
+            "className": "texture2d"
+          },
+          {
+            "index": 1,
+            "offsetInNativeTail": 44,
+            "packageReference": -1427,
+            "objectPath": "fx_tex_02.fx_d_normal_046_1_1_ycl",
+            "className": "texture2d"
+          },
+          {
+            "index": 2,
+            "offsetInNativeTail": 48,
+            "packageReference": -995,
+            "objectPath": "fx_tex_00.fx_a_line_011",
+            "className": "texture2d"
+          },
+          {
+            "index": 3,
+            "offsetInNativeTail": 52,
+            "packageReference": -1187,
+            "objectPath": "fx_tex_02.fx_d_atypical_039_1",
+            "className": "texture2d"
+          },
+          {
+            "index": 4,
+            "offsetInNativeTail": 56,
+            "packageReference": -1230,
+            "objectPath": "fx_tex_02.fx_d_atypical_091_2_cl",
+            "className": "texture2d"
+          },
+          {
+            "index": 5,
+            "offsetInNativeTail": 60,
+            "packageReference": -1314,
+            "objectPath": "fx_tex_02.fx_d_environ_035",
+            "className": "texture2d"
+          },
+          {
+            "index": 6,
+            "offsetInNativeTail": 64,
+            "packageReference": -1406,
+            "objectPath": "fx_tex_02.fx_d_noise_031",
+            "className": "texture2d"
+          },
+          {
+            "index": 7,
+            "offsetInNativeTail": 68,
+            "packageReference": -1276,
+            "objectPath": "fx_tex_02.fx_d_decal_046_1",
+            "className": "texture2d"
+          }
+        ],
+        "nativeTailSha256": "25393c4b125ca3f99453cf522733c4b993d4c86c98b2f1875224d60b6884b794",
+        "fidelity": "SOURCE_EXACT_PARENT_MATERIAL_RESOURCE"
+      },
+      "micMaterialResource": {
+        "headerByteCount": 36,
+        "headerRawSha256": "7a3946eef685358fae3d08e49705752eb67d7cbe7788b8154ee0d68bc52cb1a5",
+        "referencedTextureCountOffsetInNativeTail": 36,
+        "referencedTextures": [
+          {
+            "index": 0,
+            "offsetInNativeTail": 40,
+            "packageReference": -707,
+            "objectPath": "fx_tex_02.fx_d_normal_053",
+            "className": "texture2d"
+          },
+          {
+            "index": 1,
+            "offsetInNativeTail": 44,
+            "packageReference": -706,
+            "objectPath": "fx_tex_02.fx_d_normal_046_1_1_ycl",
+            "className": "texture2d"
+          },
+          {
+            "index": 2,
+            "offsetInNativeTail": 48,
+            "packageReference": -468,
+            "objectPath": "fx_tex_00.fx_a_line_011",
+            "className": "texture2d"
+          },
+          {
+            "index": 3,
+            "offsetInNativeTail": 52,
+            "packageReference": -574,
+            "objectPath": "fx_tex_02.fx_d_atypical_039_1",
+            "className": "texture2d"
+          },
+          {
+            "index": 4,
+            "offsetInNativeTail": 56,
+            "packageReference": -597,
+            "objectPath": "fx_tex_02.fx_d_atypical_091_2_cl",
+            "className": "texture2d"
+          },
+          {
+            "index": 5,
+            "offsetInNativeTail": 60,
+            "packageReference": -630,
+            "objectPath": "fx_tex_02.fx_d_environ_035",
+            "className": "texture2d"
+          },
+          {
+            "index": 6,
+            "offsetInNativeTail": 64,
+            "packageReference": -672,
+            "objectPath": "fx_tex_02.fx_d_noise_031",
+            "className": "texture2d"
+          },
+          {
+            "index": 7,
+            "offsetInNativeTail": 68,
+            "packageReference": -621,
+            "objectPath": "fx_tex_02.fx_d_decal_046_1",
+            "className": "texture2d"
+          },
+          {
+            "index": 8,
+            "offsetInNativeTail": 72,
+            "packageReference": -624,
+            "objectPath": "fx_tex_02.fx_d_electric_013_ycl",
+            "className": "texture2d"
+          },
+          {
+            "index": 9,
+            "offsetInNativeTail": 76,
+            "packageReference": -599,
+            "objectPath": "fx_tex_02.fx_d_atypical_097",
+            "className": "texture2d"
+          }
+        ],
+        "referencedTexturesEndOffsetInNativeTail": 80,
+        "opaqueBytesBeforeStaticSet": 60,
+        "staticParameterSetOffsetInNativeTail": 140,
+        "nativeTailByteCount": 400,
+        "nativeTailSha256": "67fcb7207ac77ae330a1ea96f4cc3606e8fb855fbe7f6e452425148f800eeefa",
+        "fidelity": "SOURCE_EXACT_MIC_MATERIAL_RESOURCE_ORDERED_REFERENCED_TEXTURES"
+      },
+      "micTextureOverrides": {
+        "propertyStatus": "SERIALIZED_EXPLICIT",
+        "propertyStreamStart": 4,
+        "propertyStreamEnd": 2234,
+        "propertyRecordSha256": "8f1dcbc119e9464254b9341b425a5cef2e1c613c701f444e055c9614afb2b60e",
+        "propertyPayloadSha256": "21cbbeac38715e587ba7465e4e0110ddf10dc29ccfa7aacfb9aeee412e790859",
+        "overrides": [
+          {
+            "index": 0,
+            "parameterName": "01.alphamap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "01.alphamap#0",
+            "packageReference": -599,
+            "sourceObjectPath": "fx_tex_02.fx_d_atypical_097",
+            "parameterNameRecordSha256": "5926ef16fc99bb69c90c15e9ca8d1b061a6d085d625235935871abad466580dd",
+            "parameterValueRecordSha256": "5bc71bac54bf16beedd417f13ff17fa4eb9e8db7e12b7e16d44fb19d923390d9",
+            "expressionGuidHex": "fe80964ccdb6b24da47cf9ddb27a084a"
+          },
+          {
+            "index": 1,
+            "parameterName": "01.diffusemap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "01.diffusemap#0",
+            "packageReference": -621,
+            "sourceObjectPath": "fx_tex_02.fx_d_decal_046_1",
+            "parameterNameRecordSha256": "5d092f4a8cde3db199fd8c6afc4a00dd677a8d81d5b50fe79c6124a606a75ec4",
+            "parameterValueRecordSha256": "f5d4f1bccb9ffddcccad1e23d06606cb54e7d5b3525dceb8c4734298869fcee9",
+            "expressionGuidHex": "defce098b485054986a4db3c671be2fd"
+          },
+          {
+            "index": 2,
+            "parameterName": "01.emissionmap",
+            "parameterNameNumber": 0,
+            "parameterFNameKey": "01.emissionmap#0",
+            "packageReference": -624,
+            "sourceObjectPath": "fx_tex_02.fx_d_electric_013_ycl",
+            "parameterNameRecordSha256": "b9903711ace4de2e42b2c568fae3df2c6306414338bb64dd783d3eaf0803ab65",
+            "parameterValueRecordSha256": "245b8e3a4f385986649ebbc4888e174d81a586e92b60932ac4d743b1e64067b4",
+            "expressionGuidHex": "8c079606c8461e40b7d019a9879fcb25"
+          }
+        ]
+      },
+      "uniformTextureBindings": [
+        {
+          "uniformExpressionIndex": 0,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "01.normalmap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "01.normalmap#0",
+          "fallbackReferencedTextureIndex": 0,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_normal_053",
+          "micOverrideApplied": false,
+          "micOverrideIndex": null,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_normal_053",
+          "textureRegister": "t7",
+          "samplerRegister": "s1",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_053",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_normal_053",
+            "className": "texture2d",
+            "exportIndexZeroBased": 682,
+            "serialOffset": 9213298,
+            "serialByteSize": 34605,
+            "serialSha256": "8edbb934aa101757a68c9c067bb4b5aada835ad7069bb97a8909b1e61e644427",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 482,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "srgb",
+                "propertyType": "boolproperty",
+                "value": false,
+                "tagOffset": 224,
+                "valueOffset": 248,
+                "recordEndOffset": 249,
+                "recordSha256": "c1eb3cecf650307862f4ada3e9a72bae6b21ed66ed0b279dc5cd1853502a0bc2",
+                "encodedValueSha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effectsnormalmap",
+                "tagOffset": 398,
+                "valueOffset": 430,
+                "recordEndOffset": 438,
+                "recordSha256": "2ed4aa540d30ef0dec7c2be04cdd1f99b9ba8bc7f171258fa390423727416bbc",
+                "encodedValueSha256": "f10ca6fb162d356e0501d1e4f8d756b16760e52da9513d31c363da2b04abe183"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effectsnormalmap",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "linear",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_normal_053",
+            "sourceExactDds": {
+              "byteSize": 65664,
+              "sha256": "55452d24b322f4271a0e896e9ce001bfb440170cf91d55937ad2331b4d1be06e"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "3bd82a417198f4af/FX_TEX_02/Texture2D/fx_d_normal_053.dds",
+                "byteSize": 65664,
+                "sha256": "55452d24b322f4271a0e896e9ce001bfb440170cf91d55937ad2331b4d1be06e",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_normal_053.dds",
+              "status": "PRESENT",
+              "byteSize": 65664,
+              "sha256": "55452d24b322f4271a0e896e9ce001bfb440170cf91d55937ad2331b4d1be06e",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 1,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "01.emissionmap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "01.emissionmap#0",
+          "fallbackReferencedTextureIndex": 1,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_normal_046_1_1_ycl",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 2,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_electric_013_ycl",
+          "textureRegister": "t8",
+          "samplerRegister": "s2",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_electric_013_ycl",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_electric_013_ycl",
+            "className": "texture2d",
+            "exportIndexZeroBased": 375,
+            "serialOffset": 3195265,
+            "serialByteSize": 13030,
+            "serialSha256": "e11f4b9ed3c3d66f0c7531411667cc73b47e2428f078f49eb9ed6e12bf4ad1a6",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 437,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "addressy",
+                "propertyType": "byteproperty",
+                "value": "ta_clamp",
+                "tagOffset": 188,
+                "valueOffset": 220,
+                "recordEndOffset": 228,
+                "recordSha256": "7e49f9de76c89ee8f920c30aad3cd11d44989123736840b0ae6acd5bbfa045b7",
+                "encodedValueSha256": "6bfcac2f2dc6565acf14a459b4188be51625a1a7a4b05b537e5234b6e982ea56"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 389,
+                "valueOffset": 421,
+                "recordEndOffset": 429,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "ta_clamp",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 1,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_electric_013_ycl",
+            "sourceExactDds": {
+              "byteSize": 65664,
+              "sha256": "270acb6fadcdd03488e30825a086fc3e4b01d2b7027cd06ab79993a0085b76b1"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "3bd82a417198f4af/FX_TEX_02/Texture2D/fx_d_electric_013_ycl.dds",
+                "byteSize": 65664,
+                "sha256": "270acb6fadcdd03488e30825a086fc3e4b01d2b7027cd06ab79993a0085b76b1",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_electric_013_ycl.dds",
+              "status": "PRESENT",
+              "byteSize": 65664,
+              "sha256": "270acb6fadcdd03488e30825a086fc3e4b01d2b7027cd06ab79993a0085b76b1",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 2,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "01.alphamap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "01.alphamap#0",
+          "fallbackReferencedTextureIndex": 2,
+          "fallbackSourceObjectPath": "fx_tex_00.fx_a_line_011",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 0,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_atypical_097",
+          "textureRegister": "t0",
+          "samplerRegister": "s3",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_atypical_097",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_atypical_097",
+            "className": "texture2d",
+            "exportIndexZeroBased": 267,
+            "serialOffset": 800693,
+            "serialByteSize": 31378,
+            "serialSha256": "c164dab882d5648ef5515199db0611a460813e6c047061946c42af2c8eef1808",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 297,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_atypical_097",
+            "sourceExactDds": {
+              "byteSize": 65664,
+              "sha256": "46ba6a315b34e3cfde1a273786c703d15fe769542eb9a2f7749971df3a111dc0"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "3bd82a417198f4af/FX_TEX_02/Texture2D/fx_d_atypical_097.dds",
+                "byteSize": 65664,
+                "sha256": "46ba6a315b34e3cfde1a273786c703d15fe769542eb9a2f7749971df3a111dc0",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_097.dds",
+              "status": "PRESENT",
+              "byteSize": 65664,
+              "sha256": "46ba6a315b34e3cfde1a273786c703d15fe769542eb9a2f7749971df3a111dc0",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 3,
+          "expressionType": "fmaterialuniformexpressiontexture",
+          "parameterName": null,
+          "parameterNameNumber": null,
+          "parameterFNameKey": null,
+          "fallbackReferencedTextureIndex": 3,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_atypical_039_1",
+          "micOverrideApplied": false,
+          "micOverrideIndex": null,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_atypical_039_1",
+          "textureRegister": "t1",
+          "samplerRegister": "s4",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_atypical_039_1",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_atypical_039_1",
+            "className": "texture2d",
+            "exportIndexZeroBased": 209,
+            "serialOffset": 338718,
+            "serialByteSize": 961,
+            "serialSha256": "68736af430462e862a5f53c932a7f16780bccaa45c580a7f5bda067b33de3d6c",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 322,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "srgb",
+                "propertyType": "boolproperty",
+                "value": false,
+                "tagOffset": 224,
+                "valueOffset": 248,
+                "recordEndOffset": 249,
+                "recordSha256": "c1eb3cecf650307862f4ada3e9a72bae6b21ed66ed0b279dc5cd1853502a0bc2",
+                "encodedValueSha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 274,
+                "valueOffset": 306,
+                "recordEndOffset": 314,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "linear",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_atypical_039_1",
+            "sourceExactDds": {
+              "byteSize": 384,
+              "sha256": "e2f7f0f1090cff2ced06f097d7965dd0632511662a7c786d82d20d4140fb7a80"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "3bd82a417198f4af/FX_TEX_02/Texture2D/fx_d_atypical_039_1.dds",
+                "byteSize": 384,
+                "sha256": "e2f7f0f1090cff2ced06f097d7965dd0632511662a7c786d82d20d4140fb7a80",
+                "fileIdentityVerified": true
+              },
+              {
+                "provider": "AUTHENTICATED_FOURCLASS_RAW_RESOURCE_INVENTORY",
+                "relativePath": "FourClass/raw/FX_TEX_02/Texture2D/fx_d_atypical_039_1.dds",
+                "byteSize": 384,
+                "sha256": "e2f7f0f1090cff2ced06f097d7965dd0632511662a7c786d82d20d4140fb7a80",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_039_1.dds",
+              "status": "PRESENT",
+              "byteSize": 384,
+              "sha256": "e2f7f0f1090cff2ced06f097d7965dd0632511662a7c786d82d20d4140fb7a80",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 4,
+          "expressionType": "fmaterialuniformexpressiontexture",
+          "parameterName": null,
+          "parameterNameNumber": null,
+          "parameterFNameKey": null,
+          "fallbackReferencedTextureIndex": 4,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_atypical_091_2_cl",
+          "micOverrideApplied": false,
+          "micOverrideIndex": null,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_atypical_091_2_cl",
+          "textureRegister": "t2",
+          "samplerRegister": "s5",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_atypical_091_2_cl",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_atypical_091_2_cl",
+            "className": "texture2d",
+            "exportIndexZeroBased": 260,
+            "serialOffset": 744693,
+            "serialByteSize": 1227,
+            "serialSha256": "2853e9db0529025e3e28e3ef6efdeb0e03180a40839f4108be2a92a027f41cfc",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 538,
+            "fields": {
+              "addressx": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "addressx",
+                "propertyType": "byteproperty",
+                "value": "ta_clamp",
+                "tagOffset": 188,
+                "valueOffset": 220,
+                "recordEndOffset": 228,
+                "recordSha256": "bb2ebdd8b9efc819bd76cabb647e1b8a284be80cb033c816ddd11f2299c9038f",
+                "encodedValueSha256": "6bfcac2f2dc6565acf14a459b4188be51625a1a7a4b05b537e5234b6e982ea56"
+              },
+              "addressy": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "addressy",
+                "propertyType": "byteproperty",
+                "value": "ta_clamp",
+                "tagOffset": 228,
+                "valueOffset": 260,
+                "recordEndOffset": 268,
+                "recordSha256": "7e49f9de76c89ee8f920c30aad3cd11d44989123736840b0ae6acd5bbfa045b7",
+                "encodedValueSha256": "6bfcac2f2dc6565acf14a459b4188be51625a1a7a4b05b537e5234b6e982ea56"
+              },
+              "srgb": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "srgb",
+                "propertyType": "boolproperty",
+                "value": false,
+                "tagOffset": 304,
+                "valueOffset": 328,
+                "recordEndOffset": 329,
+                "recordSha256": "c1eb3cecf650307862f4ada3e9a72bae6b21ed66ed0b279dc5cd1853502a0bc2",
+                "encodedValueSha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 454,
+                "valueOffset": 486,
+                "recordEndOffset": 494,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "ta_clamp",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "addressV": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "ta_clamp",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "linear",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 2,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_atypical_091_2_cl",
+            "sourceExactDds": {
+              "byteSize": 384,
+              "sha256": "4992ae031ae7eccabcdd74e4ceb5059fff4bbc7f07086ef79c7b4d9a1f101cb2"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "3bd82a417198f4af/FX_TEX_02/Texture2D/fx_d_atypical_091_2_cl.dds",
+                "byteSize": 384,
+                "sha256": "4992ae031ae7eccabcdd74e4ceb5059fff4bbc7f07086ef79c7b4d9a1f101cb2",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_091_2_cl.dds",
+              "status": "PRESENT",
+              "byteSize": 384,
+              "sha256": "4992ae031ae7eccabcdd74e4ceb5059fff4bbc7f07086ef79c7b4d9a1f101cb2",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 5,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "90.noisemap-wpuv",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "90.noisemap-wpuv#0",
+          "fallbackReferencedTextureIndex": 5,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_environ_035",
+          "micOverrideApplied": false,
+          "micOverrideIndex": null,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_environ_035",
+          "textureRegister": "t3",
+          "samplerRegister": "s6",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_environ_035",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_environ_035",
+            "className": "texture2d",
+            "exportIndexZeroBased": 407,
+            "serialOffset": 3659877,
+            "serialByteSize": 21330,
+            "serialSha256": "f7b23161372020f05d919f105ac8304883c282522635096c7041eb75d124ca7d",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 297,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_environ_035",
+            "sourceExactDds": {
+              "byteSize": 32896,
+              "sha256": "67845b6501a645505f2ccb016d164a221d58f0f5bd3f23e58c83f7c4abaaacd8"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "3bd82a417198f4af/FX_TEX_02/Texture2D/fx_d_environ_035.dds",
+                "byteSize": 32896,
+                "sha256": "67845b6501a645505f2ccb016d164a221d58f0f5bd3f23e58c83f7c4abaaacd8",
+                "fileIdentityVerified": true
+              },
+              {
+                "provider": "AUTHENTICATED_FOURCLASS_RAW_RESOURCE_INVENTORY",
+                "relativePath": "FourClass/raw/FX_TEX_02/Texture2D/fx_d_environ_035.dds",
+                "byteSize": 32896,
+                "sha256": "67845b6501a645505f2ccb016d164a221d58f0f5bd3f23e58c83f7c4abaaacd8",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_environ_035.dds",
+              "status": "PRESENT",
+              "byteSize": 32896,
+              "sha256": "67845b6501a645505f2ccb016d164a221d58f0f5bd3f23e58c83f7c4abaaacd8",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 6,
+          "expressionType": "fmaterialuniformexpressiontexture",
+          "parameterName": null,
+          "parameterNameNumber": null,
+          "parameterFNameKey": null,
+          "fallbackReferencedTextureIndex": 6,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_noise_031",
+          "micOverrideApplied": false,
+          "micOverrideIndex": null,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_noise_031",
+          "textureRegister": "t4",
+          "samplerRegister": "s7",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_noise_031",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_SOURCE_PACKAGE",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_noise_031",
+            "className": "texture2d",
+            "exportIndexZeroBased": 597,
+            "serialOffset": 7118358,
+            "serialByteSize": 16095,
+            "serialSha256": "58708d567c3774fe73514133b1fb8dd5cac21ae8944f8c60c01ff73a1705c7eb",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 297,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_noise_031",
+            "sourceExactDds": {
+              "byteSize": 32896,
+              "sha256": "d9e03979a39e8c24fb5645ea87e0957303785b1ba1ddf31b7c68bab3a5ad9c6c"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "3bd82a417198f4af/FX_TEX_02/Texture2D/fx_d_noise_031.dds",
+                "byteSize": 32896,
+                "sha256": "d9e03979a39e8c24fb5645ea87e0957303785b1ba1ddf31b7c68bab3a5ad9c6c",
+                "fileIdentityVerified": true
+              },
+              {
+                "provider": "AUTHENTICATED_FOURCLASS_RAW_RESOURCE_INVENTORY",
+                "relativePath": "FourClass/raw/FX_TEX_02/Texture2D/fx_d_noise_031.dds",
+                "byteSize": 32896,
+                "sha256": "d9e03979a39e8c24fb5645ea87e0957303785b1ba1ddf31b7c68bab3a5ad9c6c",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_noise_031.dds",
+              "status": "PRESENT",
+              "byteSize": 32896,
+              "sha256": "d9e03979a39e8c24fb5645ea87e0957303785b1ba1ddf31b7c68bab3a5ad9c6c",
+              "sourceExactParity": true
+            }
+          }
+        },
+        {
+          "uniformExpressionIndex": 7,
+          "expressionType": "fmaterialuniformexpressiontextureparameter",
+          "parameterName": "01.diffusemap",
+          "parameterNameNumber": 0,
+          "parameterFNameKey": "01.diffusemap#0",
+          "fallbackReferencedTextureIndex": 7,
+          "fallbackSourceObjectPath": "fx_tex_02.fx_d_decal_046_1",
+          "micOverrideApplied": true,
+          "micOverrideIndex": 1,
+          "effectiveSourceObjectPath": "fx_tex_02.fx_d_decal_046_1",
+          "textureRegister": "t6",
+          "samplerRegister": "s8",
+          "bindingFidelity": "SOURCE_EXACT_UNIFORM_EXPRESSION_PLUS_NATIVE_WIRE_PLUS_MIC_EFFECTIVE_RESOURCE_AND_FULL_FNAME_OVERRIDE",
+          "sourceTexture2D": {
+            "sourceObjectPath": "fx_tex_02.fx_d_decal_046_1",
+            "manifestLogicalPackage": "fx_tex_02",
+            "packageResolutionStatus": "RESOLVED_BY_EXACT_LOGICAL_PACKAGE_MAPPING",
+            "physicalPackage": "YGI3SORGM3I1FGHA5BMJ8Y5CZ.upk",
+            "physicalPackageByteSize": 17288410,
+            "physicalPackageSha256": "5f49a9481b02e5a174bc1ab1cb3bc621d6ed73e3b386d07ef0c5df3ead65f0a5",
+            "objectPath": "fx_d_decal_046_1",
+            "className": "texture2d",
+            "exportIndexZeroBased": 351,
+            "serialOffset": 2686594,
+            "serialByteSize": 67620,
+            "serialSha256": "da12425de01e4c29551887d56eb41bf747aa3ed87a4cf098a11c37519a382100",
+            "propertyStreamStart": 4,
+            "propertyStreamEnd": 297,
+            "fields": {
+              "addressx": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "addressy": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "srgb": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "filter": {
+                "status": "OMITTED_FROM_EXPORT"
+              },
+              "lodgroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "propertyName": "lodgroup",
+                "propertyType": "byteproperty",
+                "value": "texturegroup_effects",
+                "tagOffset": 249,
+                "valueOffset": 281,
+                "recordEndOffset": 289,
+                "recordSha256": "fa2c92c38f977b68c95d78ef2748cb5d366618fbf449dbac3a460d6fc8c44132",
+                "encodedValueSha256": "82d48e7db991ca358ddc68ab4f24941d6d4a94f54209e621d06a82c05abdbdfe"
+              }
+            },
+            "samplerAndColorSpace": {
+              "precedence": "TEXTURE2D_EXPLICIT_THEN_SOURCE_CDO_THEN_NATIVE_UNRESOLVED",
+              "addressU": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "addressV": {
+                "status": "NATIVE_CONSTRUCTOR_UNRESOLVED",
+                "value": null,
+                "propertySource": "NATIVE_CONSTRUCTOR",
+                "fidelity": "SOURCE_REVISION_NATIVE_CONSTRUCTOR_NOT_SERIALIZED",
+                "sourceExact": false
+              },
+              "filterSelector": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "tf_linear",
+                "propertySource": "Default__Texture",
+                "recordSha256": "4c140c1453a336286281e8b0a4e80b17c0ffdde73bef0465494e6e046db7ef5c",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "lodGroup": {
+                "status": "SERIALIZED_EXPLICIT",
+                "value": "texturegroup_effects",
+                "propertySource": "TEXTURE2D_EXPORT",
+                "fidelity": "SOURCE_EXACT_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "hardwareFilter": {
+                "value": null,
+                "selector": "tf_linear",
+                "sourceExact": false,
+                "fidelity": "PROTECTED_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              },
+              "resolvedFilter": null,
+              "colorSpace": {
+                "status": "SOURCE_REVISION_CDO_INHERITED",
+                "value": "srgb",
+                "propertySource": "Default__Texture",
+                "recordSha256": "a3f8d954fd1e7446518a66b0e796d019755c2ee7f0dc15cfd347e67410e64e61",
+                "fidelity": "SOURCE_EXACT_V975_CDO_SERIALIZED_PROPERTY",
+                "sourceExact": true
+              },
+              "sourceExactColorSpace": true,
+              "sourceExactFilterSelector": true,
+              "sourceExactAddressAxisCount": 0,
+              "sourceExactLodGroup": true,
+              "sourceExactHardwareFilter": false,
+              "sourceExactSamplerAndColorSpace": false,
+              "blockers": [
+                "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+                "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+              ]
+            }
+          },
+          "ddsIdentity": {
+            "sourceObjectPath": "fx_tex_02.fx_d_decal_046_1",
+            "sourceExactDds": {
+              "byteSize": 131200,
+              "sha256": "8d6f55c37c9ec0ccf9937497e88ab21841f18f26e24947b6720bf52db555268e"
+            },
+            "evidence": [
+              {
+                "provider": "MATCHED_SOURCE_MATERIAL_UMODEL_EXPORT",
+                "relativePath": "3bd82a417198f4af/FX_TEX_02/Texture2D/fx_d_decal_046_1.dds",
+                "byteSize": 131200,
+                "sha256": "8d6f55c37c9ec0ccf9937497e88ab21841f18f26e24947b6720bf52db555268e",
+                "fileIdentityVerified": true
+              }
+            ],
+            "runtimeTexture": {
+              "relativePath": "Effect/Valtan/Textures/FX_TEX_02/fx_d_decal_046_1.dds",
+              "status": "PRESENT",
+              "byteSize": 131200,
+              "sha256": "8d6f55c37c9ec0ccf9937497e88ab21841f18f26e24947b6720bf52db555268e",
+              "sourceExactParity": true
+            }
+          }
+        }
+      ],
+      "uniformTextureBindingCount": 8,
+      "uniqueEffectiveTextureCount": 8,
+      "uniqueEffectiveTexturePaths": [
+        "fx_tex_02.fx_d_atypical_039_1",
+        "fx_tex_02.fx_d_atypical_091_2_cl",
+        "fx_tex_02.fx_d_atypical_097",
+        "fx_tex_02.fx_d_decal_046_1",
+        "fx_tex_02.fx_d_electric_013_ycl",
+        "fx_tex_02.fx_d_environ_035",
+        "fx_tex_02.fx_d_noise_031",
+        "fx_tex_02.fx_d_normal_053"
+      ],
+      "sourceExactTextureBindingAdmission": true,
+      "runtimeDdsParityAdmission": true,
+      "sourceExactSamplerAdmission": false,
+      "sourceExactColorSpaceBindingCount": 8,
+      "sourceExactFilterSelectorBindingCount": 8,
+      "sourceExactAddressAxisCount": 3,
+      "sourceExactAddressAxisDenominator": 16,
+      "sourceExactLodGroupBindingCount": 8,
+      "sourceExactHardwareFilterBindingCount": 0,
+      "sourceValueTextureSamplerAdmission": false,
+      "blockers": [
+        "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+        "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+        "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+      ]
+    }
+  ],
+  "summary": {
+    "targetCount": 3,
+    "exactTargetCount": 3,
+    "upstreamBlockedTargetCount": 0,
+    "uniformTextureBindingCount": 19,
+    "sourceExactTextureBindingCount": 3,
+    "runtimeDdsParityTargetCount": 3,
+    "sourceExactSamplerTargetCount": 0,
+    "sourceValueTextureSamplerTargetCount": 0,
+    "uniqueEffectiveTextureCount": 19,
+    "targetSamplerEvidence": [
+      {
+        "targetId": "valtan-front-back-front-masked-dissolve-stone",
+        "bindingCount": 5,
+        "sourceExactColorSpaceBindingCount": 5,
+        "sourceExactFilterSelectorBindingCount": 5,
+        "sourceExactAddressAxisCount": 0,
+        "sourceExactAddressAxisDenominator": 10,
+        "sourceExactLodGroupBindingCount": 5,
+        "sourceExactHardwareFilterBindingCount": 0,
+        "sourceExactFullSamplerAdmission": false
+      },
+      {
+        "targetId": "valtan-front-back-front-ground-decal",
+        "bindingCount": 6,
+        "sourceExactColorSpaceBindingCount": 6,
+        "sourceExactFilterSelectorBindingCount": 6,
+        "sourceExactAddressAxisCount": 0,
+        "sourceExactAddressAxisDenominator": 12,
+        "sourceExactLodGroupBindingCount": 6,
+        "sourceExactHardwareFilterBindingCount": 0,
+        "sourceExactFullSamplerAdmission": false
+      },
+      {
+        "targetId": "valtan-front-back-front-crack-translucent",
+        "bindingCount": 8,
+        "sourceExactColorSpaceBindingCount": 8,
+        "sourceExactFilterSelectorBindingCount": 8,
+        "sourceExactAddressAxisCount": 3,
+        "sourceExactAddressAxisDenominator": 16,
+        "sourceExactLodGroupBindingCount": 8,
+        "sourceExactHardwareFilterBindingCount": 0,
+        "sourceExactFullSamplerAdmission": false
+      }
+    ],
+    "result": "PASS_CLASS_NEUTRAL_FILTERED_SOURCE_TEXTURE_BINDING_PARTIAL_SAMPLER_CLOSURE"
+  },
+  "receiptSha256": "737143f2d055cf7b4c35a6d97eb301e9f2446ca4c0bc8d58da0ff16da2d122fa"
+}

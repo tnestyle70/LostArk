@@ -26,14 +26,6 @@ MODULE = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
-SAFE_REVIEWED_CUE_IDS = {
-    "cue.valtan.floor-wipe-130.arena-wipe-impact",
-    "cue.valtan.floor-wipe-130.arena-wipe-telegraph",
-    "cue.valtan.floor-wipe-130.six-direction-impact",
-    "cue.valtan.floor-wipe-130.six-direction-telegraph",
-}
-
-
 class ValtanPriorityProjectionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.source_root = SCRIPT_PATH.resolve().parents[2]
@@ -54,11 +46,13 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
         for target in self.plan["targets"]:
             self._copy(PurePosixPath(target["overlayDocumentPath"]))
             target_relative = PurePosixPath(target["targetAuthoringPath"])
-            if target["targetEffectAssetId"] != MODULE.HIGH_JUMP_EFFECT_ID:
-                self._copy(target_relative)
+            self._copy(target_relative)
         self._copy(MODULE.CATALOG_PATH)
         self._copy(MODULE.CUE_PATH)
         self._copy(MODULE.PATTERN_BINDINGS_PATH)
+        self._copy(MODULE.BOSS_CATALOG_PATH)
+        self._copy(MODULE.COMBAT_OBJECTS_PATH)
+        self._copy(MODULE.LEGACY_HIGH_JUMP_AUTHORING_PATH)
         for relative in MODULE.WHIRLWIND_REQUIRED_FILES:
             self._copy(relative)
         self._normalize_to_preapply_state()
@@ -108,22 +102,6 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
             ]
             self._write_json(target_relative, document)
 
-        catalog = self._read_json(MODULE.CATALOG_PATH)
-        catalog["effects"] = [
-            row
-            for row in catalog["effects"]
-            if row.get("effectAssetId") != MODULE.HIGH_JUMP_EFFECT_ID
-        ]
-        self._write_json(MODULE.CATALOG_PATH, catalog)
-        cues = self._read_json(MODULE.CUE_PATH)
-        cues["cues"] = [
-            row
-            for row in cues["cues"]
-            if row.get("bindingId") != MODULE.HIGH_JUMP_CUE_ROW["bindingId"]
-            and row.get("occurrenceId")
-            != MODULE.HIGH_JUMP_CUE_ROW["occurrenceId"]
-        ]
-        self._write_json(MODULE.CUE_PATH, cues)
         receipt = self._path(self.receipt_relative)
         if receipt.is_file():
             receipt.unlink()
@@ -215,9 +193,10 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
         self.assertEqual(before, self._snapshot(), "dry-run staging mutated files")
         self.assertEqual(9, projection.receipt["closure"]["candidateDocumentCount"])
         self.assertEqual(
-            3,
+            1,
             projection.receipt["closure"]["officialAxePresentationCount"],
         )
+        self.assertEqual(7, projection.receipt["closure"]["preservationSentinelCount"])
         expected_elements = sum(
             len(self._read_json(PurePosixPath(target["overlayDocumentPath"]))["elements"])
             for target in self.plan["targets"]
@@ -226,7 +205,7 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
             expected_elements,
             projection.receipt["closure"]["projectedElementCount"],
         )
-        self.assertEqual(11, len(projection.canonical_outputs))
+        self.assertEqual(9, len(projection.canonical_outputs))
         with self.assertRaisesRegex(MODULE.ProjectionError, "not applied"):
             MODULE.check_projection(projection)
         self.assertEqual(before, self._snapshot(), "check-before-apply mutated files")
@@ -237,65 +216,49 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
         }
         catalog_before = self._read_json(MODULE.CATALOG_PATH)
         cues_before = self._read_json(MODULE.CUE_PATH)
+        sky_target = next(
+            target for target in self.plan["targets"]
+            if target["targetEffectAssetId"] == MODULE.SKY_AXE_EFFECT_ID
+        )
+        sky_before = self._read_json(
+            PurePosixPath(sky_target["targetAuthoringPath"])
+        )
+        descent_before = next(
+            element for element in sky_before["elements"]
+            if element["id"] == MODULE.SKY_AXE_DESCENT_ELEMENT_ID
+        )
         MODULE.commit_projection(projection)
         MODULE.check_projection(self._collect())
 
-        high_jump_target = next(
-            target
-            for target in self.plan["targets"]
-            if target["targetEffectAssetId"] == MODULE.HIGH_JUMP_EFFECT_ID
-        )
-        high_jump = self._read_json(
-            PurePosixPath(high_jump_target["targetAuthoringPath"])
+        sky_axe = self._read_json(
+            PurePosixPath(sky_target["targetAuthoringPath"])
         )
         overlay = self._read_json(
-            PurePosixPath(high_jump_target["overlayDocumentPath"])
+            PurePosixPath(sky_target["overlayDocumentPath"])
         )
-        self.assertEqual(overlay, high_jump)
-        self.assertEqual(9, len(high_jump["elements"]))
+        self.assertEqual(3, len(sky_axe["elements"]))
         self.assertEqual(
-            {"decal": 3, "mesh": 3, "particle": 3},
             {
-                kind: sum(
-                    element["kind"] == kind
-                    for element in high_jump["elements"]
-                )
-                for kind in ("decal", "mesh", "particle")
+                MODULE.SKY_AXE_DESCENT_ELEMENT_ID,
+                MODULE.SKY_AXE_TARGET_DECAL_ELEMENT_ID,
+                MODULE.SKY_AXE_IMPACT_ELEMENT_ID,
             },
+            {element["id"] for element in sky_axe["elements"]},
         )
-        for axe in (
-            element for element in high_jump["elements"]
-            if element["kind"] == "mesh"
-        ):
-            self.assertEqual(
-                [{
-                    "slotId": "meshModel",
-                    "assetId": MODULE.HIGH_JUMP_AXE_MODEL_ASSET_ID,
-                }],
-                axe["resources"],
-            )
-            self.assertTrue(axe["detail"]["mesh"]["useModelMaterial"])
-            self.assertEqual(1.0, axe["detail"]["mesh"]["modelPreScale"])
-            self.assertFalse(axe["actionCueAttachment"]["enabled"])
+        descent_after = next(
+            element for element in sky_axe["elements"]
+            if element["id"] == MODULE.SKY_AXE_DESCENT_ELEMENT_ID
+        )
+        self.assertEqual(descent_before, descent_after)
+        self.assertEqual(
+            {element["id"] for element in overlay["elements"]},
+            {MODULE.SKY_AXE_TARGET_DECAL_ELEMENT_ID, MODULE.SKY_AXE_IMPACT_ELEMENT_ID},
+        )
 
         catalog_after = self._read_json(MODULE.CATALOG_PATH)
         cues_after = self._read_json(MODULE.CUE_PATH)
-        self.assertEqual(
-            catalog_before["effects"],
-            [
-                row
-                for row in catalog_after["effects"]
-                if row["effectAssetId"] != MODULE.HIGH_JUMP_EFFECT_ID
-            ],
-        )
-        self.assertEqual(
-            cues_before["cues"],
-            [
-                row
-                for row in cues_after["cues"]
-                if row["bindingId"] != MODULE.HIGH_JUMP_CUE_ROW["bindingId"]
-            ],
-        )
+        self.assertEqual(catalog_before, catalog_after)
+        self.assertEqual(cues_before, cues_after)
         for relative, payload in whirlwind_files_before.items():
             self.assertEqual(payload, self._path(relative).read_bytes())
 
@@ -334,7 +297,7 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
         self.assertIn("not applied", error.getvalue())
         self.assertEqual(before, self._snapshot())
 
-    def test_current_repository_projection_check_is_a_no_op(self) -> None:
+    def test_current_repository_projection_proof_is_applied_and_exact(self) -> None:
         proof = (
             self.source_root
             / "Data/Effects/Imported/Valtan/ProjectAuthoredPriority/DrawableProof/"
@@ -353,17 +316,9 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
             self.source_root,
             drawable_proof=proof,
         )
-        MODULE.check_projection(projection)
         self.assertEqual((), projection.changed_paths)
-        cues = json.loads(
-            self._source_path(MODULE.CUE_PATH).read_text(encoding="utf-8")
-        )["cues"]
-        self.assertGreaterEqual(len(cues), 108)
-        self.assertTrue(
-            SAFE_REVIEWED_CUE_IDS.issubset(
-                {row["bindingId"] for row in cues}
-            )
-        )
+        self.assertEqual((), projection.new_paths)
+        MODULE.check_projection(projection)
         self.assertEqual(
             before,
             {
@@ -437,7 +392,7 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
             self._collect()
         self.assertEqual(before, self._snapshot())
 
-    def test_missing_existing_document_or_unreceipted_airborne_fails_closed(self) -> None:
+    def test_missing_document_or_changed_preservation_sentinel_fails_closed(self) -> None:
         existing_target = next(
             target
             for target in self.plan["targets"]
@@ -455,21 +410,22 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
         self.assertEqual(before, self._snapshot())
 
         self._copy(PurePosixPath(existing_target["targetAuthoringPath"]))
-        high_jump_target = next(
+        sky_target = next(
             target
             for target in self.plan["targets"]
-            if target["targetEffectAssetId"] == MODULE.HIGH_JUMP_EFFECT_ID
+            if target["targetEffectAssetId"] == MODULE.SKY_AXE_EFFECT_ID
         )
-        high_jump_target_path = self._path(
-            PurePosixPath(high_jump_target["targetAuthoringPath"])
+        sky_relative = PurePosixPath(sky_target["targetAuthoringPath"])
+        sky_document = self._read_json(sky_relative)
+        descent = next(
+            element for element in sky_document["elements"]
+            if element["id"] == MODULE.SKY_AXE_DESCENT_ELEMENT_ID
         )
-        high_jump_target_path.parent.mkdir(parents=True, exist_ok=True)
-        high_jump_target_path.write_bytes(
-            self._path(PurePosixPath(high_jump_target["overlayDocumentPath"])).read_bytes()
-        )
+        descent["detail"]["color"]["multiply"] = [0.2, 0.3, 0.4, 0.5]
+        self._write_json(sky_relative, sky_document)
         before = self._snapshot()
         with self.assertRaisesRegex(
-            MODULE.SourceRebaseRequired, "unexpected canonical document appeared"
+            MODULE.SourceRebaseRequired, "preserved element changed"
         ):
             self._collect()
         self.assertEqual(before, self._snapshot())
@@ -535,7 +491,7 @@ class ValtanPriorityProjectionTests(unittest.TestCase):
         self.assertFalse(proof_schema["additionalProperties"])
         self.assertFalse(receipt_schema["additionalProperties"])
         self.assertEqual(9, proof_schema["properties"]["targets"]["minItems"])
-        self.assertEqual(11, receipt_schema["properties"]["canonicalOutputs"]["minItems"])
+        self.assertEqual(9, receipt_schema["properties"]["canonicalOutputs"]["minItems"])
         projection = self._collect()
         self.assertEqual(MODULE.RECEIPT_SCHEMA, projection.receipt["schema"])
         self.assertEqual("COMMITTED", projection.receipt["transactionStatus"])

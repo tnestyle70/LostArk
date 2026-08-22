@@ -2,6 +2,7 @@
 #include "Shader_Artist31470RuntimeMaterial.hlsli"
 #include "Shader_Artist31470Diagnostic.hlsli"
 #include "Shader_Artist31470Active011OuterMaterial.hlsli"
+#include "Shader_EffectUe3MaterialFamilies.hlsli"
 
 float4x4 g_WorldMatrix;
 float4x4 g_NormalMatrix;
@@ -61,6 +62,23 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
             return Shade_Artist31470Active011OuterMaterial(
                 input.uv, input.worldPosition, input.normal,
                 g_CameraPosition.xyz,
+                g_ColorMultiply + g_ColorOffset,
+                g_EffectDynamicParameter);
+        }
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_DRAGON_PH_MASKED_MESH)
+        {
+            return Shade_EffectUe3DragonPhMaskedMesh(
+                input.uv, input.worldPosition, input.normal,
+                input.tangent, input.binormal, g_CameraPosition.xyz,
+                g_ColorMultiply + g_ColorOffset,
+                g_EffectDynamicParameter);
+        }
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_WPO_SINWAVE_ELECTRIC_RT0_MESH)
+        {
+            return Shade_EffectUe3WpoSinWaveElectricRt0Mesh(
+                input.uv,
                 g_ColorMultiply + g_ColorOffset,
                 g_EffectDynamicParameter);
         }

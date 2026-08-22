@@ -198,6 +198,7 @@ namespace
 		player.eAction = 0u == player.iCurrentHp ?
 			PLAYER_ACTION_STATE::DEAD : PLAYER_ACTION_STATE::NONE;
 		player.iCurrentSkillId = INVALID_SKILL_ID;
+		player.Clear_SkillTarget();
 		player.iActionStartTick = 0u;
 		player.fFallVelocityY = 0.f;
 		player.iFallDeathTick = 0u;
@@ -1329,10 +1330,12 @@ void LostArk::Server::CGameRoom::Commit_PendingPlayerCommand(
 		LostArk::Shared::C2S_USE_SKILL command{};
 		command.iClientSequence = pending.iClientSequence;
 		command.iSkillId = pending.iSkillId;
+		command.eTargetIntent = pending.eTargetIntent;
 		command.fAimX = pending.fX;
 		command.fAimZ = pending.fZ;
 		if (m_PlayerSkillSystem.Try_StartPending(
-				player, command, m_GameplayCatalog, actionStartTick))
+				player, command, m_GameplayCatalog, actionStartTick,
+				&m_ServerNavigation))
 		{
 			player.isCombatReady = true;
 		}
@@ -1380,7 +1383,8 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 	}
 #endif
 	if (m_PlayerSkillSystem.Try_StagePendingSkill(
-			playerIter->second, useSkill, m_GameplayCatalog))
+			playerIter->second, useSkill, m_GameplayCatalog,
+			&m_ServerNavigation))
 	{
 		playerIter->second.isCombatReady = true;
 		return;
@@ -1391,7 +1395,8 @@ void LostArk::Server::CGameRoom::Handle_UseSkill(
 		playerIter->second,
 		useSkill,
 		m_GameplayCatalog,
-		actionStartTick))
+		actionStartTick,
+		&m_ServerNavigation))
 	{
 #ifdef _DEBUG
 		if (LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId)
@@ -1467,6 +1472,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	player.eAction = PLAYER_ACTION_STATE::NONE;
 	player.eStance = profile->eDefaultStance;
 	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
 	player.iActionStartTick = 0u;
 	player.fFallVelocityY = 0.f;
 	player.iFallDeathTick = 0u;
@@ -1703,6 +1709,7 @@ LostArk::Server::CGameRoom::Apply_CharacterClassChange(
 	staged.eAction = PLAYER_ACTION_STATE::NONE;
 	staged.eStance = profile->eDefaultStance;
 	staged.iCurrentSkillId = INVALID_SKILL_ID;
+	staged.Clear_SkillTarget();
 	staged.iActionStartTick = 0u;
 	staged.TriggerMove = {};
 	staged.fKnockbackRemainingSeconds = 0.f;
@@ -3171,6 +3178,7 @@ LostArk::Server::CGameRoom::Evaluate_ValtanAudition(
 			player->second.isCombatReady = true;
 			player->second.eAction = PLAYER_ACTION_STATE::NONE;
 			player->second.iCurrentSkillId = INVALID_SKILL_ID;
+			player->second.Clear_SkillTarget();
 			player->second.iActionStartTick = resetTick;
 			player->second.fActionElapsedSeconds = 0.f;
 			player->second.iComboStage = 0u;
@@ -3781,6 +3789,14 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 		snapshot.eStance = player.eStance;
 		snapshot.iSkillId = player.iCurrentSkillId;
 		snapshot.iActionStartTick = player.iActionStartTick;
+		if (PLAYER_ACTION_STATE::SKILL == player.eAction &&
+			player.hasSkillTarget)
+		{
+			snapshot.hasSkillTarget = true;
+			snapshot.fSkillTargetX = player.fSkillTargetX;
+			snapshot.fSkillTargetY = player.fSkillTargetY;
+			snapshot.fSkillTargetZ = player.fSkillTargetZ;
+		}
 		snapshot.iCurrentHp = player.iCurrentHp;
 		snapshot.iMaximumHp = player.iMaximumHp;
 		snapshot.iCurrentResource = player.iCurrentResource;
@@ -5396,6 +5412,8 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 		{
 			player.iCurrentHp = 0u;
 			player.eAction = PLAYER_ACTION_STATE::DEAD;
+			player.iCurrentSkillId = INVALID_SKILL_ID;
+			player.Clear_SkillTarget();
 			player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
 			player.fFallVelocityY = 0.f;
 			player.iFallDeathTick = 0u;
@@ -5419,6 +5437,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 	/* Everything the fall interrupts is cleared here instead of inside each
 	system, so no half-finished action can resume when the body lands dead. */
 	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
 	player.fActionElapsedSeconds = 0.f;
 	player.hasAppliedSkillDamage = false;
 	player.iAppliedHitMask = 0;
@@ -5480,6 +5499,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		{
 			player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::NONE;
 			player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
+			player.Clear_SkillTarget();
 			player.iActionStartTick = 0u;
 			player.fActionElapsedSeconds = 0.f;
 			player.iKnockdownEndTick = 0u;

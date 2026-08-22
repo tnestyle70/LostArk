@@ -912,46 +912,6 @@ namespace
 			{
 				continue;
 			}
-			const PLAYER_RUNTIME_PROFILE* playerProfile =
-				catalog.Find_Player(player.eCharacterClass);
-			const std::uint32_t damage = CGameplayCatalog::Apply_Defense(
-				rawDamage, nullptr == playerProfile ? 0u : playerProfile->iDefense);
-			player.iCurrentHp = damage >= player.iCurrentHp ?
-				0u : player.iCurrentHp - damage;
-			if (0u != damage &&
-				outDamageEvents.size() < LostArk::Shared::MAX_DAMAGE_EVENTS)
-			{
-				LostArk::Shared::DAMAGE_EVENT event{};
-				event.iTargetNetEntityId = player.iNetEntityId;
-				event.iAmount = damage;
-				event.fPositionX = player.fPositionX;
-				event.fPositionY = player.fPositionY;
-				event.fPositionZ = player.fPositionZ;
-				event.isOutgoing = false;
-				outDamageEvents.push_back(event);
-			}
-			if (0u == player.iCurrentHp)
-			{
-				player.eAction = LostArk::Shared::PLAYER_ACTION_STATE::DEAD;
-				player.iCurrentSkillId = LostArk::Shared::INVALID_SKILL_ID;
-				player.iActionStartTick = 0u == serverTick ? 1u : serverTick;
-				player.hasBufferedComboInput = false;
-				player.PendingCommand.Clear();
-				player.hasMoveGoal = false;
-				player.MovePath.clear();
-			}
-			else
-			{
-				CPlayerSkillSystem::Arm_PlayerHitReaction(
-					player,
-					boss.fPositionX,
-					boss.fPositionZ,
-					boss.fPatternPushRangeM,
-					boss.iPatternPushMs,
-					boss.bPatternKnockdown,
-					boss.iPatternDownMs,
-					serverTick);
-			}
 			SERVER_WORLD_TO_PLAYER_HIT incoming{};
 			incoming.iRawDamage = rawDamage;
 			incoming.fSourceX = boss.fPositionX;

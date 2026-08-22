@@ -26,6 +26,23 @@ struct EFFECT_VISUAL_PROGRAM;
 struct EFFECT_VISUAL_PROGRAM_CORPUS;
 struct EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION;
 
+struct EFFECT_SCREEN_OVERLAY_RESOURCE_IDENTITY final
+{
+	uint64_t iByteCount = 0u;
+	std::string strAssetId;
+	std::string strSha256;
+};
+
+struct EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING final
+{
+	uint64_t iByteCount = 0u;
+	std::string strEffectAssetId;
+	std::string strPresentationId;
+	std::string strSha256;
+	std::string strUtf8Json;
+	std::vector<EFFECT_SCREEN_OVERLAY_RESOURCE_IDENTITY> Resources;
+};
+
 struct EFFECT_RUNTIME_PROGRAM_CATALOG_IDENTITY final
 {
 	uint64_t iCatalogRevision = 0u;
@@ -484,6 +501,8 @@ public:
 	   must not trigger document I/O. */
 	static std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
 		Find_VisualProjection_Loaded(const std::string& strEffectAssetId);
+	static std::shared_ptr<const EFFECT_SCREEN_OVERLAY_PRODUCT_BINDING>
+		Find_ScreenOverlayProductBinding(const std::string& strEffectAssetId);
 	static bool_t Prepare_ReconstructedRuntimeProgram(
 		const std::string& strEffectAssetId,
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>&

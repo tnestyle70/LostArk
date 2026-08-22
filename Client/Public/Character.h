@@ -104,7 +104,11 @@ public:
 		LostArk::Shared::SKILL_ID skillId,
 		std::uint32_t serverTick,
 		std::uint32_t actionStartTick,
-		std::uint8_t comboStage = 0);
+		f32_t actionFacingYawDegrees,
+		std::uint8_t comboStage = 0,
+		bool_t hasSkillTarget = false,
+		const float3_t& skillTarget = {});
+	bool_t Try_Get_SkillTargetRoot(float4x4_t& outWorld) const;
 	void Apply_NetworkStance(LostArk::Shared::PLAYER_STANCE_ID stance);
 	/* A Model View clone may mirror the live scene stance, but only after that
 	   scene Character has consumed an authoritative snapshot. Before then its
@@ -124,6 +128,10 @@ public:
 	bool_t Set_Animation(CHARACTER_ANIM eAnim, bool_t isLoop);
 	bool_t Set_Animation(const char_t* pClipName, bool_t isLoop);
 	PATH_RESULT_CODE Request_Move(fvector_t vGoalPosition);
+	bool_t Try_SampleTargetGround(
+		f32_t x,
+		f32_t z,
+		float3_t& outPosition) const;
 	void Cancel_Move();
 	bool_t Is_Moving() const {
 		return m_isMoving;
@@ -230,8 +238,12 @@ private:
 	ANIMATION_EFFECT_CUE_DOCUMENT m_EffectCueDocument;
 	f32_t m_fPreviousEffectCueStageWallSeconds = -1.f;
 	std::uint32_t m_iEffectActionStartTick = 0u;
+	f32_t m_fEffectActionFacingYawDegrees = 0.f;
+	bool_t m_bHasEffectActionFacingYaw = false;
 	LostArk::Shared::SKILL_ID m_iCurrentEffectSkillId =
 		LostArk::Shared::INVALID_SKILL_ID;
+	bool_t m_hasNetworkSkillTarget = false;
+	float3_t m_NetworkSkillTarget{};
 	DEFERRED_EMISSIVE_OVERRIDE m_ActionEmissiveOverride;
 	struct NETWORK_TRANSFORM_SAMPLE
 	{
@@ -293,7 +305,9 @@ private:
 	void Update_SkillProjectileDebug(f32_t fTimeDelta);
 #endif
 	bool_t Load_EffectCues();
-	void Reset_EffectCueCursor(std::uint32_t iActionStartTick);
+	void Reset_EffectCueCursor(
+		std::uint32_t iActionStartTick,
+		f32_t fActionFacingYawDegrees);
 	void Update_EffectCues();
 	void Spawn_FallbackEffect(LostArk::Shared::SKILL_ID iSkillId);
 	f32_t Get_EffectPlaybackRate() const;

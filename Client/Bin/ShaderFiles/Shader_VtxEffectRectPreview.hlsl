@@ -1,4 +1,6 @@
 #include "Shader_EffectCommon.hlsli"
+#include "Shader_Artist31470RuntimeMaterial.hlsli"
+#include "Shader_EffectUe3MaterialFamilies.hlsli"
 
 float4x4 g_WorldMatrix;
 float4x4 g_ViewMatrix;
@@ -28,6 +30,16 @@ VS_OUT VS_MAIN(VS_IN input)
 
 EFFECT_PS_OUT PS_MAIN(VS_OUT input)
 {
+    if (0u != g_RuntimeMaterialV2Enabled)
+    {
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_PROJECT_BASE_COVERAGE_EMISSIVE_DISSOLVE_RECT)
+        {
+            return Shade_EffectProjectBaseCoverageEmissiveDissolveRect(input.uv);
+        }
+        clip(-1.f);
+        return (EFFECT_PS_OUT)0;
+    }
     return Shade_Effect(
         input.uv,
         float3(1.f, 1.f, 1.f),

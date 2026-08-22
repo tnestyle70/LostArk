@@ -78,6 +78,31 @@ namespace
 	constexpr const char_t* VALTAN_EXACT_HISTORY_EFFECT_ASSET_ID =
 		"effect.valtan.pattern.420633.active";
 
+	const char_t* Tool_PlayerStanceLabel(
+		const LostArk::Shared::PLAYER_STANCE_ID eStance)
+	{
+		using LostArk::Shared::PLAYER_STANCE_ID;
+		switch (eStance)
+		{
+		case PLAYER_STANCE_ID::NONE: return "NONE";
+		case PLAYER_STANCE_ID::LANCE_MASTER_LONG_SPEAR:
+			return "LANCE_MASTER_LONG_SPEAR";
+		case PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR:
+			return "LANCE_MASTER_SHORT_SPEAR";
+		case PLAYER_STANCE_ID::WARLORD_NORMAL: return "WARLORD_NORMAL";
+		case PLAYER_STANCE_ID::WARLORD_DEFENSE: return "WARLORD_DEFENSE";
+		case PLAYER_STANCE_ID::END:
+		default: return "INVALID";
+		}
+	}
+
+	std::string Tool_SkillIdentitySuffix(
+		const Client::PLAYER_SKILL_DEFINITION& Skill)
+	{
+		return " | #" + std::to_string(Skill.iSkillId) + " | Stance " +
+			Tool_PlayerStanceLabel(Skill.eRequiredStance);
+	}
+
 	struct TOOL_SOURCE_ANCHOR_REQUEST final
 	{
 		std::string strRuntimeAnchorSlotId;
@@ -336,6 +361,8 @@ namespace
 			return "ArtistVisualV4";
 		case Client::EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL:
 			return "LocalDecal";
+		case Client::EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1:
+			return "StandardColorV1";
 		case Client::EFFECT_MATERIAL_EXECUTION_BACKEND::END:
 		default:
 			return "Invalid";
@@ -822,21 +849,7 @@ namespace
 	const char* AuthoringFamily_Label(
 		const Client::EFFECT_AUTHORING_FAMILY eFamily)
 	{
-		switch (eFamily)
-		{
-		case Client::EFFECT_AUTHORING_FAMILY::MESH: return "Mesh";
-		case Client::EFFECT_AUTHORING_FAMILY::SPRITE: return "Sprite";
-		case Client::EFFECT_AUTHORING_FAMILY::MESH_PARTICLE:
-			return "Mesh Particle";
-		case Client::EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE:
-			return "Sprite Particle";
-		case Client::EFFECT_AUTHORING_FAMILY::LOCAL_DECAL:
-			return "Local Decal";
-		case Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON:
-			return "Trail / Ribbon";
-		case Client::EFFECT_AUTHORING_FAMILY::END:
-		default: return "Invalid";
-		}
+		return Client::Get_EffectToolAuthoringFamilyLabel(eFamily);
 	}
 
 	Client::EFFECT_ELEMENT_KIND AuthoringFamily_Kind(
@@ -855,9 +868,20 @@ namespace
 			return Client::EFFECT_ELEMENT_KIND::DECAL;
 		case Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON:
 			return Client::EFFECT_ELEMENT_KIND::TRAIL;
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT:
+			return Client::EFFECT_ELEMENT_KIND::LIGHT;
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST:
+			return Client::EFFECT_ELEMENT_KIND::SCREEN_POST;
 		case Client::EFFECT_AUTHORING_FAMILY::END:
 		default: return Client::EFFECT_ELEMENT_KIND::END;
 		}
+	}
+
+	bool_t AuthoringFamily_CanCreate(
+		const Client::EFFECT_AUTHORING_FAMILY eFamily)
+	{
+		return eFamily >= Client::EFFECT_AUTHORING_FAMILY::MESH &&
+			eFamily <= Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON;
 	}
 
 	bool_t AuthoringFamily_RequiresMesh(
@@ -882,6 +906,10 @@ namespace
 			return "local_decal";
 		case Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON:
 			return "trail_ribbon";
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_LIGHT:
+			return "presentation_light";
+		case Client::EFFECT_AUTHORING_FAMILY::PRESENTATION_SCREEN_POST:
+			return "presentation_screen_post";
 		case Client::EFFECT_AUTHORING_FAMILY::END:
 		default: return "element";
 		}
@@ -890,29 +918,23 @@ namespace
 	Client::EFFECT_AUTHORING_FAMILY Resolve_AuthoringFamily(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
-		switch (Element.eKind)
+		return Client::Resolve_EffectToolAuthoringFamily(Element);
+	}
+
+	const char_t* ScreenPostProfile_Label(
+		const Client::EFFECT_SCREEN_POST_PROFILE eProfile)
+	{
+		switch (eProfile)
 		{
-		case Client::EFFECT_ELEMENT_KIND::MESH:
-			return Client::EFFECT_AUTHORING_FAMILY::MESH;
-		case Client::EFFECT_ELEMENT_KIND::SPRITE:
-			return Client::EFFECT_AUTHORING_FAMILY::SPRITE;
-		case Client::EFFECT_ELEMENT_KIND::PARTICLE:
-			return std::any_of(Element.ResourceBindings.begin(),
-				Element.ResourceBindings.end(),
-				[](const Client::EFFECT_RESOURCE_BINDING_DESC& Binding)
-				{
-					return Binding.strSlotId ==
-						Client::EFFECT_MESH_SHAPE_SLOT_ID;
-				}) ? Client::EFFECT_AUTHORING_FAMILY::MESH_PARTICLE :
-				Client::EFFECT_AUTHORING_FAMILY::SPRITE_PARTICLE;
-		case Client::EFFECT_ELEMENT_KIND::DECAL:
-			return Client::EFFECT_AUTHORING_FAMILY::LOCAL_DECAL;
-		case Client::EFFECT_ELEMENT_KIND::TRAIL:
-			return Client::EFFECT_AUTHORING_FAMILY::TRAIL_RIBBON;
-		case Client::EFFECT_ELEMENT_KIND::LIGHT:
-		case Client::EFFECT_ELEMENT_KIND::SCREEN_POST:
-		case Client::EFFECT_ELEMENT_KIND::END:
-		default: return Client::EFFECT_AUTHORING_FAMILY::END;
+		case Client::EFFECT_SCREEN_POST_PROFILE::RGB_NOISE_RECONSTRUCTED_V1:
+			return "RGB Noise (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::ZOOM_BLUR_RECONSTRUCTED_V1:
+			return "Zoom Blur (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::FILM_NOISE_RECONSTRUCTED_V1:
+			return "Film Noise (Reconstructed v1)";
+		case Client::EFFECT_SCREEN_POST_PROFILE::END:
+		default:
+			return "Unresolved";
 		}
 	}
 
@@ -2002,6 +2024,25 @@ namespace
         return Result;
     }
 
+	bool_t Try_ExtractPlanarYawDegrees(
+		const float4x4_t& Root,
+		f32_t& fOutYawDegrees)
+	{
+		const f32_t fForwardLength = std::sqrt(
+			Root._31 * Root._31 + Root._33 * Root._33);
+		if (!std::isfinite(Root._31) || !std::isfinite(Root._33) ||
+			!std::isfinite(fForwardLength) || fForwardLength <= 1.0e-6f)
+		{
+			return false;
+		}
+		const f32_t fYawDegrees = XMConvertToDegrees(
+			std::atan2(Root._31, Root._33));
+		if (!std::isfinite(fYawDegrees))
+			return false;
+		fOutYawDegrees = fYawDegrees;
+		return true;
+	}
+
 	const char* Source_Label(const Client::EFFECT_DOCUMENT_SOURCE eSource)
 	{
         switch (eSource)
@@ -2575,6 +2616,11 @@ namespace
         const Client::EFFECT_ELEMENT_KIND eKind,
         const Client::EFFECT_RESOURCE_SLOT eSlot)
     {
+		if (Client::EFFECT_ELEMENT_KIND::LIGHT == eKind ||
+			Client::EFFECT_ELEMENT_KIND::SCREEN_POST == eKind)
+		{
+			return false;
+		}
         if (Client::EFFECT_RESOURCE_SLOT::MESH_MODEL == eSlot)
             return Client::EFFECT_ELEMENT_KIND::MESH == eKind ||
                 Client::EFFECT_ELEMENT_KIND::PARTICLE == eKind;
@@ -2648,6 +2694,11 @@ namespace
 	bool Is_ElementPreviewAdmitted(
 		const Client::EFFECT_ELEMENT_DESC& Element)
 	{
+		if (Element.eKind == Client::EFFECT_ELEMENT_KIND::LIGHT ||
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::SCREEN_POST)
+		{
+			return Client::Is_EffectToolPresentationPreviewAdmitted(Element);
+		}
 		// An authoring-approximate carrier owns its exact source resources and
 		// only lacks proven material semantics.  It previews so the artist can
 		// tune it; product admission is refused elsewhere and is unaffected.
@@ -2757,6 +2808,11 @@ namespace
         const Client::EFFECT_ELEMENT_DESC& Element,
         const std::string_view strSlotId)
     {
+		if (Client::EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
+			Client::EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
+		{
+			return false;
+		}
         if (strSlotId == Client::EFFECT_MESH_SHAPE_SLOT_ID)
             return Client::EFFECT_ELEMENT_KIND::MESH == Element.eKind ||
                 Client::EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind;
@@ -4312,10 +4368,12 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         const ANIMATION_EFFECT_CUE& Cue =
             m_ProductPreview->ProductCue.Cue;
         ImGui::TextWrapped(
-            "Product cue placement: %s | %s | %u ms",
+            "Product cue placement: %s | %s | %s | %u ms",
             Cue.strAnchorSlotId.c_str(),
             EFFECT_FOLLOW_POLICY::FOLLOW == Cue.eFollowPolicy ?
                 "follow" : "snapshot",
+			EFFECT_ORIENTATION_POLICY::ANCHOR == Cue.eOrientationPolicy ?
+				"anchor orientation" : "action facing",
             Cue.iStartMs);
         ImGui::TextDisabled(
             "Product Play locks pivot and local transform to the admitted animation cue.");
@@ -4452,6 +4510,21 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     if (ImGui::RadioButton("Cue Snapshot",
         EFFECT_FOLLOW_POLICY::SNAPSHOT == m_eCueTransferFollowPolicy))
         m_eCueTransferFollowPolicy = EFFECT_FOLLOW_POLICY::SNAPSHOT;
+	if (ImGui::RadioButton("Cue Anchor Orientation",
+		EFFECT_ORIENTATION_POLICY::ANCHOR ==
+			m_eCueTransferOrientationPolicy))
+	{
+		m_eCueTransferOrientationPolicy =
+			EFFECT_ORIENTATION_POLICY::ANCHOR;
+	}
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Cue Action Facing",
+		EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+			m_eCueTransferOrientationPolicy))
+	{
+		m_eCueTransferOrientationPolicy =
+			EFFECT_ORIENTATION_POLICY::ACTION_FACING;
+	}
     if (ImGui::RadioButton("Natural Stop",
         EFFECT_STOP_POLICY::NATURAL == m_eCueTransferStopPolicy))
         m_eCueTransferStopPolicy = EFFECT_STOP_POLICY::NATURAL;
@@ -4476,6 +4549,9 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
         !Has_UnsavedWork() &&
         m_bActiveDocumentMatchesRuntime &&
         EFFECT_PREVIEW_PIVOT_KIND::WORLD != m_ePreviewPivotKind &&
+		(EFFECT_ORIENTATION_POLICY::ACTION_FACING !=
+			m_eCueTransferOrientationPolicy ||
+		 EFFECT_PREVIEW_PIVOT_KIND::PLAYER_ROOT == m_ePreviewPivotKind) &&
         nullptr != pModel && bCueScaleValid &&
         (EFFECT_STOP_POLICY::NATURAL == m_eCueTransferStopPolicy ||
             m_iCueTransferDurationMs > 0u);
@@ -4520,6 +4596,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
                     EFFECT_CUE_PIVOT_KIND::MODEL_BONE);
             Transfer.LocalTransform = m_CueTransferLocalTransform;
             Transfer.eFollowPolicy = m_eCueTransferFollowPolicy;
+			Transfer.eOrientationPolicy = m_eCueTransferOrientationPolicy;
             Transfer.eStopPolicy = m_eCueTransferStopPolicy;
             CEffectAuthoringTransfer::Publish(std::move(Transfer));
             m_strPreviewStatus =
@@ -4925,6 +5002,33 @@ void Client::CEffect_Tool::Render_SelectionPath() const
 	ImGui::Text("Level: %s", pSelectionLevel);
 	ImGui::TextWrapped("Skill / Document: %s",
 		m_ActiveDocument->strEffectAssetId.c_str());
+	if (m_ProductPreview.has_value())
+	{
+		const PLAYER_SKILL_DEFINITION* pSkill =
+			CPlayerSkillCatalog::Find_ById(m_ProductPreview->iSkillId);
+		if (nullptr != pSkill &&
+			pSkill->eCharacterClass == m_ProductPreview->eCharacterClass)
+		{
+			const EFFECT_SKILL_TREE_ENTRY::PRODUCT_CUE& ProductCue =
+				m_ProductPreview->ProductCue;
+			ImGui::TextWrapped(
+				"Product Skill: #%u | Input %s | Required Stance %s",
+				static_cast<uint32_t>(pSkill->iSkillId),
+				pSkill->strInputSlot.c_str(),
+				Tool_PlayerStanceLabel(pSkill->eRequiredStance));
+			ImGui::TextWrapped(
+				"Product Cue: Stage %zu / Clip %zu | %s @ %u ms | %s",
+				ProductCue.iStageIndex + 1u,
+				ProductCue.iStageClipIndex + 1u,
+				ProductCue.Cue.strClipName.c_str(),
+				ProductCue.Cue.iStartMs,
+				ProductCue.Cue.strEffectAssetId.c_str());
+			ImGui::TextDisabled(
+				"Apply / Save replaces only this Product target at the current "
+				"catalog revision. An active occurrence stays immutable; Restart "
+				"or the next cast consumes it.");
+		}
+	}
 	if (!m_strSelectedComponentId.empty())
 		ImGui::TextWrapped("Component: %s", m_strSelectedComponentId.c_str());
 	if (!m_strSelectedEmitterId.empty())
@@ -5381,6 +5485,44 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 			"Fidelity: cooked PS exact; vector CB0 rows and texture register/DDS parity exact; scalar CB0 packing, sampler/color-space, and carrier bridge approximate.");
 		ImGui::TextDisabled(
 			"Selection key: sourceMaterialPath MIC only. Unmatched Elements and any failure stay on family-lite.");
+		ImGui::SeparatorText("Translated Glasshole02 Canary");
+		bool_t bTranslatedRequested =
+			m_bGlasshole02TranslatedCanaryEnabled;
+		ImGui::BeginDisabled(Has_ProductCuePreview() ||
+			m_bExactCookedCanaryEnabled ||
+			m_bValtanTranslatedCanaryEnabled);
+		if (ImGui::Checkbox("Enable Translated Glasshole02 Canary",
+			&bTranslatedRequested))
+		{
+			Try_SetGlasshole02TranslatedCanaryEnabled(
+				bTranslatedRequested);
+		}
+		ImGui::EndDisabled();
+		ImGui::TextWrapped("%s",
+			m_strGlasshole02TranslatedCanaryStatus.c_str());
+		ImGui::TextDisabled(
+			"Scope: one DimensionMaster W occurrence only; default OFF, Product/read-only OFF, and draw failure fail-closed.");
+		ImGui::TextDisabled(
+			"Carrier: translated RT0 HLSL with live exact CB0 assembly, 7 DDS SRVs plus Target_Depth t2, and 8 typed samplers.");
+		ImGui::SeparatorText("Translated Valtan Core-Three Canary");
+		bool_t bValtanTranslatedRequested =
+			m_bValtanTranslatedCanaryEnabled;
+		ImGui::BeginDisabled(Has_ProductCuePreview() ||
+			m_bExactCookedCanaryEnabled ||
+			m_bGlasshole02TranslatedCanaryEnabled);
+		if (ImGui::Checkbox("Enable Valtan Ground / Crack / Dissolve Canary",
+			&bValtanTranslatedRequested))
+		{
+			Try_SetValtanTranslatedCanaryEnabled(
+				bValtanTranslatedRequested);
+		}
+		ImGui::EndDisabled();
+		ImGui::TextWrapped("%s",
+			m_strValtanTranslatedCanaryStatus.c_str());
+		ImGui::TextDisabled(
+			"Scope: FRONT_BACK_FRONT windup only; nine exact occurrences, default OFF, Product/read-only OFF, draw failure fail-closed.");
+		ImGui::TextDisabled(
+			"Fidelity: exact translated PS equation + 19/19 source DDS + exact material CB0/time; RT0 bounded LocalMesh/LocalDecal carriers and neutral engine scene-CB lanes. Source VF/MRT, scene-CB parity, and full sampler parity remain OFF.");
 	}
 	if (!bEditableSource)
 	{
@@ -5558,7 +5700,18 @@ void Client::CEffect_Tool::Render_EffectDetailWindow()
 		"Exact adapter packet inspection. Persistent transforms use Stable occurrence Save / Reload; create a generic Authored starting copy before material/resource editing." :
 		"Drag numeric values for live preview; Apply updates Current Effect memory, and Save Changes writes the whole Effect.");
 	ImGui::BeginDisabled(bAdapterPacketInspection);
-	Render_ResourceSlots(false);
+	const bool_t bPresentationElement =
+		m_DetailDraft->eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+		m_DetailDraft->eKind == EFFECT_ELEMENT_KIND::SCREEN_POST;
+	if (bPresentationElement)
+	{
+		ImGui::TextDisabled(
+			"Presentation carriers have no WModel/DDS material slots. Their typed payload is edited below.");
+	}
+	else
+	{
+		Render_ResourceSlots(false);
+	}
 	Render_Detail(*m_DetailDraft, bChanged);
     if (bChanged)
     {
@@ -6151,16 +6304,24 @@ void Client::CEffect_Tool::Render_Detail(
 	ImGui::Text("%s %s %s%s", pSurface, "\xC2\xB7",
 		Get_EffectAuthoringFidelityLabel(eFidelity),
 		bModified ? " \xC2\xB7 Modified" : "");
-	/* Playback ignores the authored Detail while the source recipe owns the
-	   Element (Effect_Playback.cpp gates every module read on bEnabled), so
-	   without this the numbers below look editable and change nothing. */
-	if (Element.SourceRecipe.bEnabled)
+	const bool_t bTypedPresentationElement =
+		Element.eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+		Element.eKind == EFFECT_ELEMENT_KIND::SCREEN_POST;
+	/* Drawable source carriers keep their compiler module ownership. Typed
+	   presentation carriers are different: source modules still supply their
+	   lifetime/curves, while Detail.Light/ScreenPost owns the submitted output. */
+	if (Element.SourceRecipe.bEnabled && !bTypedPresentationElement)
 	{
 		ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
 			"Source modules own playback: the values below are ignored.");
 		ImGui::TextDisabled(
 			"%zu source modules. Deleting this Element judges it as the source plays it, not as it would tune.",
 			Element.SourceRecipe.Modules.size());
+	}
+	else if (bTypedPresentationElement)
+	{
+		ImGui::TextDisabled(
+			"Typed Presentation Detail owns output; source modules retain lifetime and curve evaluation only.");
 	}
 	else
 	{
@@ -7402,6 +7563,72 @@ void Client::CEffect_Tool::Render_KindDetail(
 				bChanged = true;
 			}
 		}
+
+		ImGui::SeparatorText("Particle Target Attractor");
+		EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC& Attractor =
+			Detail.Particle.TargetAttractor;
+		bool_t bAttractorEnabled = Attractor.bEnabled;
+		if (ImGui::Checkbox("Enable Target Attractor", &bAttractorEnabled))
+		{
+			if (bAttractorEnabled)
+			{
+				Attractor.bEnabled = true;
+				if (Attractor.fRadialAcceleration == 0.f)
+					Attractor.fRadialAcceleration = 8.f;
+			}
+			else
+			{
+				Attractor = EFFECT_PARTICLE_TARGET_ATTRACTOR_DESC{};
+			}
+			bChanged = true;
+		}
+		if (Attractor.bEnabled)
+		{
+			static const char* const s_AttractorTargetSpaceLabels[] =
+			{
+				"Effect Root Local", "Element Local"
+			};
+			int32_t iTargetSpace = static_cast<int32_t>(
+				Attractor.eTargetSpace);
+			if (ImGui::Combo("Target Space", &iTargetSpace,
+				s_AttractorTargetSpaceLabels,
+				IM_ARRAYSIZE(s_AttractorTargetSpaceLabels)))
+			{
+				Attractor.eTargetSpace =
+					static_cast<EFFECT_PARTICLE_ATTRACTOR_TARGET_SPACE>(
+						iTargetSpace);
+				bChanged = true;
+			}
+			bChanged |= DragFloat3("Target Offset",
+				Attractor.vTargetOffset, 0.01f, -1000.f, 1000.f);
+			if (DragFloat2("Active Normalized Min/Max",
+				Attractor.vActiveNormalized, 0.01f, 0.f, 1.f))
+			{
+				Attractor.vActiveNormalized.x = std::clamp(
+					Attractor.vActiveNormalized.x, 0.f, 0.999f);
+				Attractor.vActiveNormalized.y = std::clamp(
+					Attractor.vActiveNormalized.y,
+					Attractor.vActiveNormalized.x + 0.001f, 1.f);
+				bChanged = true;
+			}
+			bChanged |= ImGui::DragFloat("Radial Acceleration",
+				&Attractor.fRadialAcceleration, 0.1f, 0.f, 10000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Tangential Acceleration",
+				&Attractor.fTangentialAcceleration, 0.1f, -10000.f,
+				10000.f, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Maximum Speed",
+				&Attractor.fMaximumSpeed, 0.1f, 0.001f, 1000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Convergence Radius",
+				&Attractor.fConvergenceRadius, 0.01f, 0.001f, 1000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			bChanged |= ImGui::DragFloat("Arrival Damping",
+				&Attractor.fArrivalDamping, 0.1f, 0.f, 1000.f,
+				"%.3f", ImGuiSliderFlags_AlwaysClamp);
+			ImGui::TextDisabled(
+				"Authored PROJECT_TUNED motion layer. SourceRecipe modules run first; this layer then steers the effective velocity toward the selected centre.");
+		}
         bChanged |= ImGui::Checkbox("Particle Local Space",
             &Detail.Particle.bLocalSpace);
 		if (ImGui::IsItemHovered())
@@ -7489,15 +7716,105 @@ void Client::CEffect_Tool::Render_KindDetail(
             &Detail.Trail.bFaceCamera);
         break;
     case EFFECT_ELEMENT_KIND::LIGHT:
-        ImGui::TextWrapped(
-            "Light execution is described by the original typed module stack below. "
-            "Transform, color, timing, and every source distribution remain editable.");
+	{
+		EFFECT_LIGHT_DETAIL_DESC& Light = Detail.Light;
+		ImGui::SeparatorText("Presentation Light");
+		ImGui::TextDisabled("Profile: Point Light (Reconstructed v1)");
+		if (!Light.bEnabled)
+		{
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+				"This source row has no admitted typed Light payload. Delete or hide it here; enabling it requires source-backed materialization.");
+		}
+		bool_t bPresentationChanged = false;
+		ImGui::BeginDisabled(!Light.bEnabled);
+		bPresentationChanged |= ImGui::DragFloat("Light Range",
+			&Light.fRange, 0.01f, 0.001f, 100000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::DragFloat("Light Intensity",
+			&Light.fIntensity, 0.01f, 0.f, 100000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::ColorEdit4("Light Color",
+			&Light.vColor.x, ImGuiColorEditFlags_Float |
+			ImGuiColorEditFlags_HDR);
+		bPresentationChanged |= ImGui::ColorEdit4("Ambient Color",
+			&Light.vAmbient.x, ImGuiColorEditFlags_Float |
+			ImGuiColorEditFlags_HDR);
+		bPresentationChanged |= ImGui::DragFloat("Falloff Exponent",
+			&Light.fFalloffExponent, 0.01f, 0.001f, 128.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		ImGui::EndDisabled();
+		if (bPresentationChanged)
+		{
+			Light.eProfile = EFFECT_LIGHT_PROFILE::POINT_RECONSTRUCTED_V1;
+			Light.eStatus =
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+			bChanged = true;
+		}
+		ImGui::TextDisabled(
+			"Visible, Transform, Timing, Color Multiply, Solo and Delete use the same active Element transaction.");
         break;
+	}
     case EFFECT_ELEMENT_KIND::SCREEN_POST:
-        ImGui::TextWrapped(
-            "Screen Post execution is described by the original typed module stack below. "
-            "It is a presentation channel and is not rendered as a Particle sprite.");
+	{
+		EFFECT_SCREEN_POST_DETAIL_DESC& Post = Detail.ScreenPost;
+		ImGui::SeparatorText("Presentation Screen Post");
+		if (!Post.bEnabled)
+		{
+			ImGui::TextColored(ImVec4(1.f, 0.72f, 0.22f, 1.f),
+				"This source row has no admitted typed Screen Post payload. Delete or hide it here; enabling it requires source-backed materialization.");
+		}
+		bool_t bPresentationChanged = false;
+		ImGui::BeginDisabled(!Post.bEnabled);
+		if (ImGui::BeginCombo("Screen Post Profile",
+			ScreenPostProfile_Label(Post.eProfile)))
+		{
+			for (uint8_t iProfile = 0u;
+				iProfile < static_cast<uint8_t>(EFFECT_SCREEN_POST_PROFILE::END);
+				++iProfile)
+			{
+				const EFFECT_SCREEN_POST_PROFILE eCandidate =
+					static_cast<EFFECT_SCREEN_POST_PROFILE>(iProfile);
+				const bool_t bSelected = eCandidate == Post.eProfile;
+				if (ImGui::Selectable(ScreenPostProfile_Label(eCandidate),
+					bSelected))
+				{
+					Post.eProfile = eCandidate;
+					bPresentationChanged = true;
+				}
+				if (bSelected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		bPresentationChanged |= ImGui::DragFloat("Post Intensity",
+			&Post.fIntensity, 0.001f, 0.f, 100.f, "%.4f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::DragFloat("Post Secondary Intensity",
+			&Post.fSecondaryIntensity, 0.001f, 0.f, 100.f, "%.4f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::DragFloat("Post Frequency",
+			&Post.fFrequency, 0.01f, 0.f, 1000.f, "%.3f",
+			ImGuiSliderFlags_AlwaysClamp);
+		bPresentationChanged |= ImGui::ColorEdit4("Post Tint",
+			&Post.vTint.x, ImGuiColorEditFlags_Float |
+			ImGuiColorEditFlags_HDR);
+		if (ImGui::InputScalar("Post Random Seed", ImGuiDataType_U32,
+			&Post.iRandomSeed))
+		{
+			Post.iRandomSeed = (std::max)(1u, Post.iRandomSeed);
+			bPresentationChanged = true;
+		}
+		ImGui::EndDisabled();
+		if (bPresentationChanged)
+		{
+			Post.eStatus =
+				EFFECT_PRESENTATION_RUNTIME_STATUS::RECONSTRUCTED_PROFILE;
+			bChanged = true;
+		}
+		ImGui::TextDisabled(
+			"The global Preview ScreenPost switch remains a non-persistent A/B gate; these fields persist only after Apply and Save.");
         break;
+	}
     case EFFECT_ELEMENT_KIND::END:
     default:
         break;
@@ -9608,9 +9925,12 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 		Try_DeleteSelectedElement();
 	ImGui::EndDisabled();
 	ImGui::SameLine();
+	const EFFECT_ELEMENT_DESC* pSelectedForDuplicate = Find_SelectedElement();
 	const bool_t bCanDuplicateSelected = !Has_UnappliedDetailDraft() &&
 		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
-		!m_strSelectedElementId.empty();
+		nullptr != pSelectedForDuplicate &&
+		AuthoringFamily_CanCreate(
+			Resolve_AuthoringFamily(*pSelectedForDuplicate));
 	ImGui::BeginDisabled(!bCanDuplicateSelected);
 	if (ImGui::SmallButton("Duplicate Selected"))
 		Try_DuplicateSelectedElement();
@@ -9624,9 +9944,12 @@ void Client::CEffect_Tool::Render_ActiveAuthoredEffectTree()
 	ImGui::TextDisabled(
 		"Ctrl or Shift click Element rows to mark several, then Delete; Duplicate copies the open row as one independent occurrence.");
 	ImGui::SameLine();
+	const EFFECT_ELEMENT_DESC* pSelectedForSeed = Find_SelectedElement();
 	const bool_t bCanSeedSelected =
 		EFFECT_DETAIL_SELECTION::ELEMENT == m_eDetailSelection &&
-		!m_strSelectedElementId.empty() && !Has_UnappliedDetailDraft();
+		nullptr != pSelectedForSeed && !Has_UnappliedDetailDraft() &&
+		AuthoringFamily_CanCreate(
+			Resolve_AuthoringFamily(*pSelectedForSeed));
 	ImGui::BeginDisabled(!bCanSeedSelected);
 	if (ImGui::SmallButton("Use Selected as New Layer Seed"))
 		Try_UseSelectedElementAsAuthoringPreset();
@@ -10088,6 +10411,16 @@ bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(
 			if (Contains_NoCase(Effect.strEffectAssetId, strSearch))
 				return true;
 		}
+		for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Effect :
+			Stage.CombatObjectEffects)
+		{
+			if (Contains_NoCase(Effect.strCombatObjectArchetypeId, strSearch) ||
+				Contains_NoCase(Effect.strClientVisualId, strSearch) ||
+				Contains_NoCase(Effect.strEffectAssetId, strSearch))
+			{
+				return true;
+			}
+		}
 	}
 	return false;
 }
@@ -10171,7 +10504,8 @@ void Client::CEffect_Tool::Render_ValtanStageRow(
 		Stage.strStageKind + " | " + std::to_string(Stage.iDurationMs) +
 		" ms | " + Shape + " | " +
 		std::to_string(Stage.ClipOccurrences.size()) + " clips | " +
-		std::to_string(Stage.ProductCues.size()) + " cues";
+		std::to_string(Stage.ProductCues.size()) + " cues | " +
+		std::to_string(Stage.CombatObjectEffects.size()) + " moving fx";
 	const bool_t bStageOpen = ImGui::TreeNodeEx(StageLabel.c_str(),
 		ImGuiTreeNodeFlags_OpenOnArrow);
 	if (bStageOpen)
@@ -10197,7 +10531,51 @@ void Client::CEffect_Tool::Render_ValtanStageRow(
 		if (Stage.ClipOccurrences.empty())
 			ImGui::TextDisabled("(no ordered animation clip occurrence)");
 
-		if (!Stage.Has_ProductCue() && !Stage.Effects.empty())
+		if (!Stage.CombatObjectEffects.empty())
+		{
+			ImGui::SeparatorText("Combat Object Visuals (Server world-root)");
+			for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Effect :
+				Stage.CombatObjectEffects)
+			{
+				ImGui::PushID(Effect.strCombatObjectArchetypeId.c_str());
+				ImGui::TextDisabled("%s | %s | %s x%u",
+					Effect.strCombatObjectArchetypeId.c_str(),
+					Effect.strClientVisualId.c_str(),
+					Effect.strTrigger.c_str(), Effect.iSpawnValue);
+				std::string EditableStatus;
+				const std::filesystem::path* pEditablePath =
+					Resolve_DirectAuthoredEditablePath(
+						Effect.strEffectAssetId, EditableStatus);
+				if (nullptr == pEditablePath)
+				{
+					ImGui::TextDisabled("Unified Effect document is unavailable: %s",
+						EditableStatus.c_str());
+				}
+				else
+				{
+					UNIFIED_EFFECT_CACHE& Cache =
+						m_ValtanUnifiedEffectCaches[Effect.strEffectAssetId];
+					if (!Refresh_UnifiedEffectCache(
+							Cache, *pEditablePath, Effect.strEffectAssetId) ||
+						!Cache.bValid)
+					{
+						ImGui::TextDisabled(
+							"Unified Effect could not be staged: %s",
+							Cache.strStatus.c_str());
+					}
+					else
+					{
+						Render_UnifiedEffectTree(Cache,
+							"Combat Object Visual | " +
+							Effect.strEffectAssetId);
+					}
+				}
+				ImGui::PopID();
+			}
+		}
+
+		if (!Stage.Has_ProductCue() &&
+			Stage.CombatObjectEffects.empty() && !Stage.Effects.empty())
 		{
 			ImGui::SeparatorText("Reference / Unmapped Effects");
 			for (const VALTAN_STAGE_EFFECT_VIEW& Effect : Stage.Effects)
@@ -10215,7 +10593,8 @@ void Client::CEffect_Tool::Render_ValtanStageRow(
 				ImGui::PopID();
 			}
 		}
-		if (!Stage.Has_ProductCue() && Stage.Effects.empty())
+		if (!Stage.Has_ProductCue() && Stage.Effects.empty() &&
+			Stage.CombatObjectEffects.empty())
 		{
 			ImGui::TextDisabled("(no Product cue or Effect document)");
 			ImGui::SameLine();
@@ -10478,7 +10857,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 	if (m_bAllEffectsValtanBossSelected)
 	{
 		ImGui::TextDisabled(
-			"Phase -> Pattern -> Stage -> ordered Clip occurrence -> Product cue -> unified Families/Elements. Server hit windows are read-only.");
+			"Phase -> Pattern -> Stage -> ordered Clip occurrence -> Product cue or Server combat-object visual -> unified Families/Elements. Server hit windows and moving roots are read-only.");
 	}
 	else
 	{
@@ -10574,6 +10953,11 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 					}
 					for (const VALTAN_STAGE_EFFECT_VIEW& Effect : Stage.Effects)
 						TreeMappedAssetIds.insert(Effect.strEffectAssetId);
+					for (const VALTAN_COMBAT_OBJECT_EFFECT_VIEW& Effect :
+						Stage.CombatObjectEffects)
+					{
+						TreeMappedAssetIds.insert(Effect.strEffectAssetId);
+					}
 				}
 			}
 		};
@@ -10739,7 +11123,8 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			ImGui::PushID(static_cast<int>(Skill.iSkillId));
 			const std::string SkillLabel = "Skill | Input " +
 				Skill.strInputSlot + " | " + Skill.strDisplayName +
-				" | Saved " + std::to_string(SavedBindings.size());
+				Tool_SkillIdentitySuffix(Skill) + " | Saved " +
+				std::to_string(SavedBindings.size());
 			if (ImGui::TreeNodeEx(SkillLabel.c_str(),
 				ImGuiTreeNodeFlags_OpenOnArrow))
 			{
@@ -11364,6 +11749,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
 			EFFECT_DETAIL_SELECTION::SKILL == m_eDetailSelection;
         const std::string SkillLabel = "Skill | " + Entry.Skill.strInputSlot +
 			" | " + Entry.Skill.strDisplayName +
+			Tool_SkillIdentitySuffix(Entry.Skill) +
             (Entry.ProductCues.empty() ?
                 " | [Active Product Cue missing]" :
                 (Entry.ProductCues.size() == 1u ?
@@ -11393,7 +11779,7 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
             {
                 ImGui::SetTooltip(
                     "Product cue target: %s\n"
-                    "Clip %s @ %u ms | Anchor %s | %s\n"
+                    "Clip %s @ %u ms | Anchor %s | %s | %s\n"
                     "%zu Elements in the indexed Authored Product.\n"
                     "Standalone Mesh %zu | Mesh Particle %zu\n"
                     "Standalone Sprite %zu | Sprite Particle %zu\n"
@@ -11406,6 +11792,9 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                     pProductCue->Cue.strAnchorSlotId.c_str(),
                     EFFECT_FOLLOW_POLICY::FOLLOW ==
                         pProductCue->Cue.eFollowPolicy ? "follow" : "snapshot",
+					EFFECT_ORIENTATION_POLICY::ANCHOR ==
+						pProductCue->Cue.eOrientationPolicy ?
+						"anchor orientation" : "action facing",
                     pTreeDocument->Elements.size(),
                     ParticleSummary.iStandaloneMeshCount,
                     ParticleSummary.iMeshRendererCount,
@@ -11486,10 +11875,13 @@ void Client::CEffect_Tool::Render_AllEffectsWindow()
                     if (ImGui::Selectable(CueLabel.c_str(), bCueSelected))
                         Try_SelectProductCue(Entry, iCue);
                     ImGui::TextDisabled(
-                        "Anchor %s | %s | %s",
+                        "Anchor %s | %s | %s | %s",
                         ProductCue.Cue.strAnchorSlotId.c_str(),
                         EFFECT_FOLLOW_POLICY::FOLLOW ==
                             ProductCue.Cue.eFollowPolicy ? "follow" : "snapshot",
+						EFFECT_ORIENTATION_POLICY::ANCHOR ==
+							ProductCue.Cue.eOrientationPolicy ?
+							"anchor orientation" : "action facing",
                         EFFECT_STOP_POLICY::NATURAL ==
                             ProductCue.Cue.eStopPolicy ? "natural" : "cue_end");
                 }
@@ -12624,10 +13016,11 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		m_eSelectedAuthoringFamily;
 	const EFFECT_ELEMENT_KIND eElementKind =
 		AuthoringFamily_Kind(eAuthoringFamily);
-	if (EFFECT_AUTHORING_FAMILY::END == eAuthoringFamily ||
+	if (!AuthoringFamily_CanCreate(eAuthoringFamily) ||
 		EFFECT_ELEMENT_KIND::END == eElementKind)
 	{
-		m_strElementStatus = "Select one supported authoring family.";
+		m_strElementStatus =
+			"Select one drawable authoring family. Presentation Light and Screen Post creation requires source-backed materialization.";
 		return false;
 	}
 
@@ -12828,6 +13221,10 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		m_ProductCueSnapshotRoot;
 	const bool_t bPreviousProductCueSnapshotCaptured =
 		m_bProductCueSnapshotCaptured;
+	const f32_t fPreviousProductCueActionFacingYawDegrees =
+		m_fProductCueActionFacingYawDegrees;
+	const bool_t bPreviousProductCueActionFacingCaptured =
+		m_bProductCueActionFacingCaptured;
 	std::string ValtanRestoreError;
 	const auto RestorePreviousSourcePreviewState = [this,
 		&PreviousProductPreview, &PreviousValtanProductPreview,
@@ -12837,7 +13234,9 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 		ePreviousPreviewFilter, fPreviousPreviewTimeSeconds,
 		fPreviousPreviewDurationSeconds, bPreviousPreviewPlaying,
 		bPreviousPreviewVisibleRequested, &PreviousProductCueSnapshotRoot,
-		bPreviousProductCueSnapshotCaptured, &ValtanRestoreError]()
+		bPreviousProductCueSnapshotCaptured,
+		fPreviousProductCueActionFacingYawDegrees,
+		bPreviousProductCueActionFacingCaptured, &ValtanRestoreError]()
 	{
 		m_ProductPreview = PreviousProductPreview;
 		m_ValtanProductPreview = PreviousValtanProductPreview;
@@ -12861,7 +13260,16 @@ bool_t Client::CEffect_Tool::Try_CreateMeshEffect(
 					bPreviousProductCueSnapshotCaptured,
 					ValtanRestoreError);
 			else
+			{
+				m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+				m_bProductCueSnapshotCaptured =
+					bPreviousProductCueSnapshotCaptured;
+				m_fProductCueActionFacingYawDegrees =
+					fPreviousProductCueActionFacingYawDegrees;
+				m_bProductCueActionFacingCaptured =
+					bPreviousProductCueActionFacingCaptured;
 				Synchronize_LoadedSkillPreview();
+			}
 		}
 		return true;
 	};
@@ -13066,10 +13474,10 @@ bool_t Client::CEffect_Tool::Try_StageElementAsAuthoringPreset(
 	}
 	EFFECT_ELEMENT_DESC Preset = GenericCopy.Elements.front();
 	const EFFECT_AUTHORING_FAMILY eFamily = Resolve_AuthoringFamily(Preset);
-	if (EFFECT_AUTHORING_FAMILY::END == eFamily)
+	if (!AuthoringFamily_CanCreate(eFamily))
 	{
 		m_strElementStatus =
-			"The selected Element family is not authorable here.";
+			"Presentation Light and Screen Post are edited or deleted in the active Effect; creating them from a drawable Element preset is not admitted.";
 		return false;
 	}
 	Preset.strGroupId = "manual.hit1";
@@ -13223,10 +13631,11 @@ bool_t Client::CEffect_Tool::Try_CreateElementDraft()
 		return false;
 	}
     const EFFECT_ELEMENT_KIND eKind = AuthoringFamily_Kind(eFamily);
-    if (EFFECT_AUTHORING_FAMILY::END == eFamily ||
+    if (!AuthoringFamily_CanCreate(eFamily) ||
         EFFECT_ELEMENT_KIND::END == eKind)
     {
-        m_strElementStatus = "Select one supported Element Type.";
+		m_strElementStatus =
+			"Select one drawable Element Type. Presentation Light and Screen Post creation requires source-backed materialization.";
         return false;
     }
     if (EFFECT_AUTHORING_FAMILY::MESH_PARTICLE == eFamily &&
@@ -13394,6 +13803,12 @@ bool_t Client::CEffect_Tool::Try_DuplicateSelectedElement()
 	{
 		m_strElementStatus =
 			"The selected Element no longer exists; nothing was duplicated.";
+		return false;
+	}
+	if (!AuthoringFamily_CanCreate(Resolve_AuthoringFamily(*Selected)))
+	{
+		m_strElementStatus =
+			"Presentation Light and Screen Post duplication is not admitted; use source-backed materialization or edit/delete the existing occurrence.";
 		return false;
 	}
 	if (Selected->TransformInheritance.bEnabled)
@@ -15233,6 +15648,10 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 				m_ProductCueSnapshotRoot;
 			const bool_t bPreviousProductCueSnapshotCaptured =
 				m_bProductCueSnapshotCaptured;
+			const f32_t fPreviousProductCueActionFacingYawDegrees =
+				m_fProductCueActionFacingYawDegrees;
+			const bool_t bPreviousProductCueActionFacingCaptured =
+				m_bProductCueActionFacingCaptured;
 			Clear_ProductCuePreview();
 			if (!Try_StartArtist31470FullPreview())
 			{
@@ -15257,7 +15676,16 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 						bPreviousProductCueSnapshotCaptured,
 						ValtanRestoreError);
 				else
+				{
+					m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+					m_bProductCueSnapshotCaptured =
+						bPreviousProductCueSnapshotCaptured;
+					m_fProductCueActionFacingYawDegrees =
+						fPreviousProductCueActionFacingYawDegrees;
+					m_bProductCueActionFacingCaptured =
+						bPreviousProductCueActionFacingCaptured;
 					Synchronize_LoadedSkillPreview();
+				}
 				m_strElementStatus = bRestored ?
 					"Artist F full preview failed; the previous preview was restored: " +
 						ArtistStartError :
@@ -15297,6 +15725,10 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 		m_ProductCueSnapshotRoot;
 	const bool_t bPreviousProductCueSnapshotCaptured =
 		m_bProductCueSnapshotCaptured;
+	const f32_t fPreviousProductCueActionFacingYawDegrees =
+		m_fProductCueActionFacingYawDegrees;
+	const bool_t bPreviousProductCueActionFacingCaptured =
+		m_bProductCueActionFacingCaptured;
     EFFECT_PRODUCT_PREVIEW Preview;
     Preview.eCharacterClass = Entry.Skill.eCharacterClass;
     Preview.iSkillId = Entry.Skill.iSkillId;
@@ -15339,7 +15771,16 @@ bool_t Client::CEffect_Tool::Try_SelectProductCue(
 				bPreviousProductCueSnapshotCaptured,
 				ValtanRestoreError);
 		else
+		{
+			m_ProductCueSnapshotRoot = PreviousProductCueSnapshotRoot;
+			m_bProductCueSnapshotCaptured =
+				bPreviousProductCueSnapshotCaptured;
+			m_fProductCueActionFacingYawDegrees =
+				fPreviousProductCueActionFacingYawDegrees;
+			m_bProductCueActionFacingCaptured =
+				bPreviousProductCueActionFacingCaptured;
 			Synchronize_LoadedSkillPreview();
+		}
         m_strElementStatus =
 			"Play Full Effect could not stage this source preview: " +
 			StageError + (bRestored ? std::string{} :
@@ -16247,11 +16688,19 @@ bool_t Client::CEffect_Tool::Try_BindResource(
 			"The exact adapter packet is inspection-only. Save the selected Decal/Trail as a generic Authored starting copy before binding resources.";
 		return false;
 	}
-    if (!m_ActiveDocument.has_value() || nullptr == Find_SelectedElement())
+    const EFFECT_ELEMENT_DESC* pSelectedElement = Find_SelectedElement();
+    if (!m_ActiveDocument.has_value() || nullptr == pSelectedElement)
     {
         m_strResourceStatus = "Select an Element before choosing a resource.";
         return false;
     }
+	if (pSelectedElement->eKind == EFFECT_ELEMENT_KIND::LIGHT ||
+		pSelectedElement->eKind == EFFECT_ELEMENT_KIND::SCREEN_POST)
+	{
+		m_strResourceStatus =
+			"Presentation Light and Screen Post have no material resource lanes; edit their typed fields or delete the occurrence.";
+		return false;
+	}
     EFFECT_DOCUMENT_DESC Staged = *m_ActiveDocument;
     EFFECT_ELEMENT_DESC* pElement = nullptr;
     for (EFFECT_ELEMENT_DESC& Element : Staged.Elements)
@@ -16720,10 +17169,11 @@ bool_t Client::CEffect_Tool::Try_SetExactCookedCanaryEnabled(
 
 	if (!m_ActiveDocument.has_value() ||
 		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
-		Has_ProductCuePreview())
+		Has_ProductCuePreview() || m_bGlasshole02TranslatedCanaryEnabled ||
+		m_bValtanTranslatedCanaryEnabled)
 	{
 		m_strExactCookedCanaryStatus =
-			"REFUSED: enable is available only for an open saved Authored document outside Product Play.";
+			"REFUSED: enable requires saved Authored preview, Product OFF, and translated family canaries OFF.";
 		return false;
 	}
 	std::string InstallError;
@@ -16765,6 +17215,8 @@ bool_t Client::CEffect_Tool::Try_SetExactCookedCanaryEnabled(
 void Client::CEffect_Tool::Reset_ExactCookedCanarySelection(
 	std::string strReason)
 {
+	Reset_Glasshole02TranslatedCanarySelection(strReason);
+	Reset_ValtanTranslatedCanarySelection(strReason);
 	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
 		nullptr != pObject &&
 		pObject->Is_AuthoringExactPreviewExecutionEnabled())
@@ -16780,6 +17232,8 @@ void Client::CEffect_Tool::Reset_ExactCookedCanarySelection(
 void Client::CEffect_Tool::Invalidate_ExactCookedCanaryInstallation(
 	std::string strReason)
 {
+	Reset_Glasshole02TranslatedCanarySelection(strReason);
+	Reset_ValtanTranslatedCanarySelection(strReason);
 	bool_t bHadInstalledSelection =
 		m_bExactCookedCanaryEnabled ||
 		m_bExactCookedCanaryVariantsInstalled ||
@@ -16820,6 +17274,247 @@ void Client::CEffect_Tool::Invalidate_ExactCookedCanaryInstallation(
 	}
 	m_strExactCookedCanaryStatus = "OFF: " + std::move(strReason) +
 		" Exact registry and MIC selection cache were invalidated; the next explicit enable reloads the contract and blobs.";
+}
+
+bool_t Client::CEffect_Tool::Has_Glasshole02TranslatedCanaryOccurrence(
+	const EFFECT_DOCUMENT_DESC& Document) const
+{
+	if (Document.strEffectAssetId !=
+		CEffectDocumentRenderer::GLASSHOLE02_TRANSLATED_CANARY_EFFECT_ASSET_ID)
+	{
+		return false;
+	}
+	return 1u == static_cast<size_t>(std::count_if(
+		Document.Elements.begin(), Document.Elements.end(),
+		[](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.strElementId ==
+				CEffectDocumentRenderer::
+					GLASSHOLE02_TRANSLATED_CANARY_OCCURRENCE_ID &&
+				Element.Material.SourceMaterial.strProfileId ==
+				CEffectDocumentRenderer::
+					GLASSHOLE02_TRANSLATED_CANARY_FAMILY_ID &&
+				Element.Material.SourceMaterial.strRuntimeShaderProfileId ==
+				CEffectDocumentRenderer::
+					GLASSHOLE02_TRANSLATED_CANARY_PROFILE_ID;
+		}));
+}
+
+bool_t Client::CEffect_Tool::Try_SetGlasshole02TranslatedCanaryEnabled(
+	const bool_t bEnabled)
+{
+	if (!bEnabled)
+	{
+		if (const shared_ptr<CEffectObject> pObject =
+				m_pWorldPreviewObject.lock();
+			nullptr != pObject &&
+			pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
+		{
+			std::string Error;
+			if (!pObject->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
+				false, Error))
+			{
+				m_strGlasshole02TranslatedCanaryStatus =
+					"FAILED to disable translated Glasshole02 canary: " + Error;
+				return false;
+			}
+		}
+		m_bGlasshole02TranslatedCanaryEnabled = false;
+		m_strGlasshole02TranslatedCanaryStatus =
+			"OFF: translated Glasshole02 Tool canary is not staged.";
+		if (m_ActiveDocument.has_value() &&
+			EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+			!Has_ProductCuePreview())
+		{
+			Stage_WorldPreview(*m_ActiveDocument);
+		}
+		return true;
+	}
+
+	if (!m_ActiveDocument.has_value() ||
+		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
+		Has_ProductCuePreview() || m_bExactCookedCanaryEnabled ||
+		m_bValtanTranslatedCanaryEnabled ||
+		!Has_Glasshole02TranslatedCanaryOccurrence(*m_ActiveDocument))
+	{
+		m_strGlasshole02TranslatedCanaryStatus =
+			"REFUSED: open the exact DimensionMaster W Authored document with raw cooked canary and Product Play OFF.";
+		return false;
+	}
+
+	m_bGlasshole02TranslatedCanaryEnabled = true;
+	if (nullptr == m_pWorldPreviewObject.lock())
+	{
+		m_strGlasshole02TranslatedCanaryStatus =
+			"ARMED: stage the Authored preview to compile the translated Glasshole02 canary.";
+		return true;
+	}
+	Release_WorldPreview(true);
+	if (!Stage_WorldPreview(*m_ActiveDocument))
+	{
+		const std::string CanaryFailure = m_strPreviewStatus;
+		m_bGlasshole02TranslatedCanaryEnabled = false;
+		Release_WorldPreview(true);
+		const bool_t bOrdinaryPreviewRestored =
+			Stage_WorldPreview(*m_ActiveDocument);
+		m_strGlasshole02TranslatedCanaryStatus =
+			bOrdinaryPreviewRestored ?
+			"FAILED TO ARM: translated Glasshole02 staging rolled back and the previous ordinary preview contract was restored." :
+			"FAILED CLOSED: translated Glasshole02 staging and ordinary preview restoration both failed.";
+		m_strPreviewStatus = CanaryFailure +
+			(bOrdinaryPreviewRestored ?
+				" Ordinary preview was restored with the canary OFF." :
+				" Ordinary preview restoration also failed.");
+		return false;
+	}
+	m_strGlasshole02TranslatedCanaryStatus =
+		"ACTIVE: exact occurrence uses translated RT0 HLSL, live CB0 time, seven typed DDS lanes, and Target_Depth; Product remains OFF.";
+	return true;
+}
+
+void Client::CEffect_Tool::Reset_Glasshole02TranslatedCanarySelection(
+	std::string strReason)
+{
+	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+		nullptr != pObject &&
+		pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
+	{
+		std::string Ignore;
+		pObject->Set_AuthoringGlasshole02TranslatedCanaryEnabled(false, Ignore);
+	}
+	m_bGlasshole02TranslatedCanaryEnabled = false;
+	m_strGlasshole02TranslatedCanaryStatus =
+		"OFF: " + std::move(strReason) +
+		" Translated Glasshole02 canary must be enabled explicitly again.";
+}
+
+bool_t Client::CEffect_Tool::Has_ValtanTranslatedCanaryOccurrences(
+	const EFFECT_DOCUMENT_DESC& Document) const
+{
+	if (Document.strEffectAssetId !=
+		CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID)
+	{
+		return false;
+	}
+	for (const std::string_view strExpectedId :
+		CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS)
+	{
+		const EFFECT_ELEMENT_DESC* pFound = nullptr;
+		for (const EFFECT_ELEMENT_DESC& Element : Document.Elements)
+		{
+			if (Element.strElementId != strExpectedId)
+				continue;
+			if (nullptr != pFound)
+				return false;
+			pFound = &Element;
+		}
+		if (nullptr == pFound ||
+			EFFECT_ELEMENT_KIND::PARTICLE != pFound->eKind ||
+			!std::isfinite(pFound->Detail.Mesh.fModelPreScale) ||
+			std::abs(pFound->Detail.Mesh.fModelPreScale - 0.01f) > 1.e-6f)
+		{
+			return false;
+		}
+		const std::string_view strExpectedMaterial =
+			strExpectedId == "par_n_rpbf_atk_01_02.em07" ?
+				"fx_m_mi_n_00.fx_n_me_dissolve_04_011_ma" :
+			strExpectedId == "par_n_rpbf_atk_01_02.em14" ?
+				"fx_m_mi_n_00.fx_mi.fx_n_de_ground_04_30_tr" :
+				"fx_m_mi_o_00.fx_mi.fx_o_me_crack_01_01_tr";
+		if (pFound->Material.strSourceMaterialPath != strExpectedMaterial ||
+			pFound->Material.SourceMaterial.bEnabled)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool_t Client::CEffect_Tool::Try_SetValtanTranslatedCanaryEnabled(
+	const bool_t bEnabled)
+{
+	if (!bEnabled)
+	{
+		if (const shared_ptr<CEffectObject> pObject =
+				m_pWorldPreviewObject.lock();
+			nullptr != pObject &&
+			pObject->Is_AuthoringValtanTranslatedCanaryEnabled())
+		{
+			std::string Error;
+			if (!pObject->Set_AuthoringValtanTranslatedCanaryEnabled(
+				false, Error))
+			{
+				m_strValtanTranslatedCanaryStatus =
+					"FAILED to disable translated Valtan canary: " + Error;
+				return false;
+			}
+		}
+		m_bValtanTranslatedCanaryEnabled = false;
+		m_strValtanTranslatedCanaryStatus =
+			"OFF: translated Valtan core-three Tool canary is not staged.";
+		if (m_ActiveDocument.has_value() &&
+			EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+			!Has_ProductCuePreview())
+		{
+			Stage_WorldPreview(*m_ActiveDocument);
+		}
+		return true;
+	}
+
+	if (!m_ActiveDocument.has_value() ||
+		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
+		Has_ProductCuePreview() || m_bExactCookedCanaryEnabled ||
+		m_bGlasshole02TranslatedCanaryEnabled ||
+		!Has_ValtanTranslatedCanaryOccurrences(*m_ActiveDocument))
+	{
+		m_strValtanTranslatedCanaryStatus =
+			"REFUSED: open exact Valtan FRONT_BACK_FRONT windup Authored data with Product and other canaries OFF.";
+		return false;
+	}
+
+	m_bValtanTranslatedCanaryEnabled = true;
+	if (nullptr == m_pWorldPreviewObject.lock())
+	{
+		m_strValtanTranslatedCanaryStatus =
+			"ARMED: stage the Authored preview to compile the three translated family programs.";
+		return true;
+	}
+	Release_WorldPreview(true);
+	if (!Stage_WorldPreview(*m_ActiveDocument))
+	{
+		const std::string CanaryFailure = m_strPreviewStatus;
+		m_bValtanTranslatedCanaryEnabled = false;
+		Release_WorldPreview(true);
+		const bool_t bOrdinaryPreviewRestored =
+			Stage_WorldPreview(*m_ActiveDocument);
+		m_strValtanTranslatedCanaryStatus = bOrdinaryPreviewRestored ?
+			"FAILED TO ARM: Valtan translated staging rolled back and ordinary preview was restored." :
+			"FAILED CLOSED: Valtan translated staging and ordinary preview restoration both failed.";
+		m_strPreviewStatus = CanaryFailure +
+			(bOrdinaryPreviewRestored ?
+				" Ordinary preview was restored with the canary OFF." :
+				" Ordinary preview restoration also failed.");
+		return false;
+	}
+	m_strValtanTranslatedCanaryStatus =
+		"ACTIVE: the 9/9 Authored gate passed; the current exact preview subset uses translated RT0 HLSL, exact material CB0/time, bounded engine scene CBs, and 19/19 source DDS. Product remains OFF.";
+	return true;
+}
+
+void Client::CEffect_Tool::Reset_ValtanTranslatedCanarySelection(
+	std::string strReason)
+{
+	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+		nullptr != pObject &&
+		pObject->Is_AuthoringValtanTranslatedCanaryEnabled())
+	{
+		std::string Ignore;
+		pObject->Set_AuthoringValtanTranslatedCanaryEnabled(false, Ignore);
+	}
+	m_bValtanTranslatedCanaryEnabled = false;
+	m_strValtanTranslatedCanaryStatus =
+		"OFF: " + std::move(strReason) +
+		" Translated Valtan canary must be enabled explicitly again.";
 }
 
 bool_t Client::CEffect_Tool::Try_StartArtist31470FullPreview()
@@ -17386,6 +18081,7 @@ bool_t Client::CEffect_Tool::Ensure_ArtistFMaterialExecutionSnapshots()
 		case EFFECT_MATERIAL_EXECUTION_BACKEND::LOCAL_DECAL:
 			++iLocalDecalCount;
 			break;
+		case EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1:
 		case EFFECT_MATERIAL_EXECUTION_BACKEND::GENERIC:
 		case EFFECT_MATERIAL_EXECUTION_BACKEND::END:
 		default:
@@ -18686,10 +19382,10 @@ bool_t Client::CEffect_Tool::Try_OpenVisualProgramElementForAuthoring(
 
 	EFFECT_ELEMENT_DESC Preset = Selection.GenericElement;
 	const EFFECT_AUTHORING_FAMILY eFamily = Resolve_AuthoringFamily(Preset);
-	if (EFFECT_AUTHORING_FAMILY::END == eFamily)
+	if (!AuthoringFamily_CanCreate(eFamily))
 	{
 		m_strElementStatus =
-			"The selected Element family is not authorable here.";
+			"Presentation Light and Screen Post are edited or deleted in the active Effect; creating them from a source preset is not admitted.";
 		return false;
 	}
 	Preset.strGroupId = "manual.hit1";
@@ -20807,15 +21503,73 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	const EFFECT_DOCUMENT_DESC& Document,
 	const bool_t bAllowReadOnlySourceProjection)
 {
-    const EFFECT_DOCUMENT_DESC PreviewDocument =
-        Build_PreviewDocument(Document);
+	const bool_t bValtanTranslatedCanaryStage =
+		m_bValtanTranslatedCanaryEnabled &&
+		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+		!bAllowReadOnlySourceProjection && !Has_ProductCuePreview() &&
+		m_ActiveDocument.has_value() &&
+		Document.strEffectAssetId == m_ActiveDocument->strEffectAssetId &&
+		Has_ValtanTranslatedCanaryOccurrences(Document);
+	if (m_bValtanTranslatedCanaryEnabled &&
+		!bValtanTranslatedCanaryStage)
+	{
+		m_strValtanTranslatedCanaryStatus =
+			"FAILED CLOSED before stage: the exact 9/9 Valtan Authored identity changed. Toggle OFF explicitly to return to ordinary preview.";
+		m_strPreviewStatus =
+			"Translated Valtan canary staging was refused after its exact Authored identity changed; ordinary preview was not substituted.";
+		return false;
+	}
+	const EFFECT_DOCUMENT_DESC PreviewDocument =
+		Build_PreviewDocument(Document, bValtanTranslatedCanaryStage);
+	const bool_t bGlasshole02TranslatedCanaryStage =
+		m_bGlasshole02TranslatedCanaryEnabled &&
+		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+		!bAllowReadOnlySourceProjection && !Has_ProductCuePreview() &&
+		m_ActiveDocument.has_value() &&
+		Document.strEffectAssetId == m_ActiveDocument->strEffectAssetId &&
+		Has_Glasshole02TranslatedCanaryOccurrence(PreviewDocument);
 	bool_t bExactCanaryStage = m_bExactCookedCanaryEnabled &&
+		!bGlasshole02TranslatedCanaryStage &&
+		!bValtanTranslatedCanaryStage &&
 		m_bExactCookedCanaryVariantsInstalled &&
 		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
 		!bAllowReadOnlySourceProjection && !Has_ProductCuePreview() &&
 		m_ActiveDocument.has_value() &&
 		Document.strEffectAssetId == m_ActiveDocument->strEffectAssetId &&
 		Has_ExactCookedCanaryMaterial(PreviewDocument);
+	if (const shared_ptr<CEffectObject> pExisting =
+			m_pWorldPreviewObject.lock();
+		nullptr != pExisting)
+	{
+		if (bValtanTranslatedCanaryStage &&
+			!pExisting->Is_AuthoringValtanTranslatedCanaryEnabled())
+		{
+			Release_WorldPreview(true);
+		}
+		else if (!bValtanTranslatedCanaryStage &&
+			pExisting->Is_AuthoringValtanTranslatedCanaryEnabled())
+		{
+			std::string DisableError;
+			pExisting->Set_AuthoringValtanTranslatedCanaryEnabled(
+				false, DisableError);
+			Release_WorldPreview(true);
+		}
+		else if (bGlasshole02TranslatedCanaryStage &&
+			!pExisting->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
+		{
+			/* The translated shader is compiled only by an explicit pre-stage
+			   gate. Recreate an already staged ordinary/Product preview. */
+			Release_WorldPreview(true);
+		}
+		else if (!bGlasshole02TranslatedCanaryStage &&
+			pExisting->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
+		{
+			std::string DisableError;
+			pExisting->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
+				false, DisableError);
+			Release_WorldPreview(true);
+		}
+	}
 	if (bExactCanaryStage)
 	{
 		const shared_ptr<CEffectObject> pExisting =
@@ -20835,6 +21589,30 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	std::string ExactFallbackReason;
 	if (nullptr != pObject)
 	{
+		if (bValtanTranslatedCanaryStage &&
+			!pObject->Is_AuthoringValtanTranslatedCanaryEnabled() &&
+			!pObject->Set_AuthoringValtanTranslatedCanaryEnabled(
+				true, Error))
+		{
+			m_strValtanTranslatedCanaryStatus =
+				"FAILED CLOSED before stage: " + Error +
+				" Toggle OFF explicitly to return to ordinary preview.";
+			m_strPreviewStatus =
+				"Translated Valtan canary could not be armed: " + Error;
+			return false;
+		}
+		if (bGlasshole02TranslatedCanaryStage &&
+			!pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled() &&
+			!pObject->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
+				true, Error))
+		{
+			m_strGlasshole02TranslatedCanaryStatus =
+				"FAILED CLOSED before stage: " + Error +
+				" Toggle OFF explicitly to return to ordinary preview.";
+			m_strPreviewStatus =
+				"Translated Glasshole02 canary could not be armed: " + Error;
+			return false;
+		}
 		if (bExactCanaryStage &&
 			!pObject->Is_AuthoringExactPreviewExecutionEnabled() &&
 			!pObject->Set_AuthoringExactPreviewExecutionEnabled(true, Error))
@@ -20925,6 +21703,18 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	if (!bStaged)
     {
         m_strPreviewStatus = "Document is editable but not drawable yet: " + Error;
+		if (bValtanTranslatedCanaryStage)
+		{
+			m_strValtanTranslatedCanaryStatus =
+				"FAILED CLOSED during stage: " + Error +
+				" Toggle OFF explicitly to return to ordinary preview.";
+		}
+		if (bGlasshole02TranslatedCanaryStage)
+		{
+			m_strGlasshole02TranslatedCanaryStatus =
+				"FAILED CLOSED during stage: " + Error +
+				" Toggle OFF explicitly to return to ordinary preview.";
+		}
 		if (!ExactFallbackReason.empty())
 		{
 			m_strExactCookedCanaryStatus =
@@ -20994,6 +21784,22 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         break;
     }
 	if (nullptr != pObject &&
+		pObject->Is_AuthoringValtanTranslatedCanaryEnabled())
+	{
+		m_strPreviewStatus +=
+			" Translated Valtan core-three RT0 canary is active after the 9/9 Authored gate; the current exact preview subset is staged.";
+		m_strValtanTranslatedCanaryStatus =
+			"ACTIVE: exact material CB0/time, bounded neutral engine scene-CB lanes, 19/19 source DDS parity, bounded LocalMesh/LocalDecal adapters, Product OFF, draw fail-closed.";
+	}
+	else if (nullptr != pObject &&
+		pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
+	{
+		m_strPreviewStatus +=
+			" Translated Glasshole02 RT0 canary is active for its exact occurrence.";
+		m_strGlasshole02TranslatedCanaryStatus =
+			"ACTIVE: live exact CB0, 7/7 DDS parity, Target_Depth t2, 8 samplers, Product OFF, draw fail-closed.";
+	}
+	else if (nullptr != pObject &&
 		pObject->Is_AuthoringExactPreviewExecutionEnabled())
 	{
 		m_strPreviewStatus +=
@@ -21014,9 +21820,69 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 
 Client::EFFECT_DOCUMENT_DESC
 Client::CEffect_Tool::Build_PreviewDocument(
-    const EFFECT_DOCUMENT_DESC& Document) const
+	const EFFECT_DOCUMENT_DESC& Document,
+	const bool_t bAllowValtanTranslatedCanaryProjection) const
 {
     EFFECT_DOCUMENT_DESC Preview = Document;
+	if (bAllowValtanTranslatedCanaryProjection &&
+		m_bValtanTranslatedCanaryEnabled &&
+		Preview.strEffectAssetId ==
+			CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID)
+	{
+		/* This is a non-persistent Tool projection.  The authored document keeps
+		   the imported generic plane carriers so Save/Publish cannot silently
+		   Product-admit an unproven source VF.  The explicit canary gate swaps
+		   only the two bounded carrier adapters required for visual audition. */
+		for (EFFECT_ELEMENT_DESC& Element : Preview.Elements)
+		{
+			if (Element.strElementId == "par_n_rpbf_atk_01_02.em07")
+			{
+				const auto Model = std::find_if(
+					Element.ResourceBindings.begin(),
+					Element.ResourceBindings.end(),
+					[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+					{
+						return Binding.strSlotId == "meshModel";
+					});
+				if (Model != Element.ResourceBindings.end())
+				{
+					Model->strAssetId =
+						"Effect/Valtan/Meshes/FX_SM_00/fm_a_stone_001.wmodel";
+				}
+				Element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+				Element.Renderer.eType = EFFECT_RENDERER_TYPE::MESH_PARTICLE;
+				Element.SourceRecipe.strRendererShape = "mesh";
+				Element.Detail.Mesh.bUseModelMaterial = false;
+				Element.Detail.Mesh.fModelPreScale = 0.01f;
+			}
+			else if (Element.strElementId == "par_n_rpbf_atk_01_02.em14")
+			{
+				std::erase_if(Element.ResourceBindings,
+					[](const EFFECT_RESOURCE_BINDING_DESC& Binding)
+					{
+						return Binding.strSlotId == "meshModel";
+					});
+				Element.eKind = EFFECT_ELEMENT_KIND::DECAL;
+				Element.Renderer.eType = EFFECT_RENDERER_TYPE::DECAL_PARTICLE;
+				Element.SourceRecipe.strRendererShape = "decal";
+				Element.Detail.Decal.vSize =
+					Element.Detail.Particle.vStartSize;
+				Element.Detail.Decal.fDepth = 0.25f;
+			}
+			else if (std::find(
+				CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS.begin(),
+				CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS.end(),
+				std::string_view(Element.strElementId)) !=
+				CEffectDocumentRenderer::VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS.end())
+			{
+				Element.eKind = EFFECT_ELEMENT_KIND::PARTICLE;
+				Element.Renderer.eType = EFFECT_RENDERER_TYPE::MESH_PARTICLE;
+				Element.SourceRecipe.strRendererShape = "mesh";
+				Element.Detail.Mesh.bUseModelMaterial = false;
+				Element.Detail.Mesh.fModelPreScale = 0.01f;
+			}
+		}
+	}
 	if (!m_bPreviewScreenPostEnabled)
 	{
 		std::erase_if(Preview.Elements,
@@ -21275,6 +22141,9 @@ bool_t Client::CEffect_Tool::Resolve_PreviewRoot(float4x4_t& OutRoot)
 	const bool_t bValtanSnapshot = m_ValtanProductPreview.has_value() &&
 		EFFECT_FOLLOW_POLICY::SNAPSHOT ==
 			m_ValtanProductPreview->Cue.eFollowPolicy;
+	const bool_t bPlayerActionFacing = m_ProductPreview.has_value() &&
+		EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+			m_ProductPreview->ProductCue.Cue.eOrientationPolicy;
     if ((bPlayerSnapshot || bValtanSnapshot) &&
 		m_bProductCueSnapshotCaptured)
     {
@@ -21333,8 +22202,25 @@ bool_t Client::CEffect_Tool::Resolve_PreviewRoot(float4x4_t& OutRoot)
 
 	if (m_ProductPreview.has_value())
 	{
-		OutRoot = Compose_EffectLocal(
-			m_ProductPreview->ProductCue.Cue.LocalTransform, Anchor);
+		const ANIMATION_EFFECT_CUE& Cue =
+			m_ProductPreview->ProductCue.Cue;
+		if (bPlayerActionFacing && "root" != Cue.strAnchorSlotId)
+			return false;
+		if (bPlayerActionFacing && !m_bProductCueActionFacingCaptured)
+		{
+			if (!Try_ExtractPlanarYawDegrees(
+				Anchor, m_fProductCueActionFacingYawDegrees))
+			{
+				return false;
+			}
+			m_bProductCueActionFacingCaptured = true;
+		}
+		if (!CAnimationEffectCueDocument::Try_ComposeRootTransform(
+			Cue.LocalTransform, Anchor, Cue.eOrientationPolicy,
+			m_fProductCueActionFacingYawDegrees, OutRoot))
+		{
+			return false;
+		}
 	}
 	else
 	{
@@ -21509,6 +22395,8 @@ bool_t Client::CEffect_Tool::Restore_ValtanProductPreviewPlayback(
 	m_bPreviewVisibleRequested = bVisibleRequested;
 	m_ProductCueSnapshotRoot = SnapshotRoot;
 	m_bProductCueSnapshotCaptured = bSnapshotCaptured;
+	m_fProductCueActionFacingYawDegrees = 0.f;
+	m_bProductCueActionFacingCaptured = false;
 	/* Rebuild document-owned boss state first. This restores the exact 420633
 	   transform-history preparation when the selected document owns it. The v2
 	   occurrence then replaces the legacy clip with its exact source segment. */
@@ -21618,6 +22506,8 @@ void Client::CEffect_Tool::Reset_ProductCueSnapshot()
 {
     m_ProductCueSnapshotRoot = Identity_Matrix();
     m_bProductCueSnapshotCaptured = false;
+	m_fProductCueActionFacingYawDegrees = 0.f;
+	m_bProductCueActionFacingCaptured = false;
 }
 
 void Client::CEffect_Tool::Start_WorldPreviewFromBeginning()

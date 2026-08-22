@@ -1,0 +1,317 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-four-slash-weapon-trail-candidate.schema.json",
+  "title": "Valtan FourSlash weapon-bone Trail isolated candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "generator",
+    "policy",
+    "target",
+    "inputIdentity",
+    "boundedProjection",
+    "candidateIdentity",
+    "requiredDrawableHarness",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-four-slash-weapon-trail-candidate"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "bossArchetypeId": {
+      "const": "BOSS_VALTAN"
+    },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["script", "schemaPath", "policyVersion"],
+      "properties": {
+        "script": {
+          "const": "Tools/EffectPipeline/build_valtan_four_slash_weapon_trail_candidate.py"
+        },
+        "schemaPath": {
+          "const": "Tools/EffectPipeline/Schemas/lostark.valtan-four-slash-weapon-trail-candidate.schema.json"
+        },
+        "policyVersion": {
+          "const": 1
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "fidelity",
+        "reconcileMode",
+        "candidateOnly",
+        "canonicalMutationPerformed",
+        "cueBindingMutationPerformed",
+        "catalogMutationPerformed",
+        "sourceExactClaim",
+        "drawableProofStatus"
+      ],
+      "properties": {
+        "classification": { "const": "PROJECT_TUNED" },
+        "fidelity": { "const": "BOUNDED_RECONSTRUCTION" },
+        "reconcileMode": { "const": "MISSING_ONLY" },
+        "candidateOnly": { "const": true },
+        "canonicalMutationPerformed": { "const": false },
+        "cueBindingMutationPerformed": { "const": false },
+        "catalogMutationPerformed": { "const": false },
+        "sourceExactClaim": { "const": false },
+        "drawableProofStatus": { "const": "NOT_ATTEMPTED" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "stageId",
+        "actionId",
+        "clipOccurrenceId",
+        "effectAssetId",
+        "canonicalPath",
+        "candidatePath",
+        "candidateElementId",
+        "candidateSourceNode"
+      ],
+      "properties": {
+        "patternId": { "const": "VALTAN_FOUR_SLASH" },
+        "stageId": { "const": "SLASHES" },
+        "actionId": { "const": "valtan.attack.four-slash.active" },
+        "clipOccurrenceId": {
+          "const": "valtan.attack.four-slash.active.clip.02"
+        },
+        "effectAssetId": {
+          "const": "effect.valtan.four-slash.active.clip-02"
+        },
+        "canonicalPath": {
+          "const": "Data/Effects/Authored/effect.valtan.four-slash.active.clip-02.effect.json"
+        },
+        "candidatePath": {
+          "const": "Data/Effects/Imported/Valtan/ProjectTunedFourSlashWeaponTrail/effect.valtan.four-slash.active.clip-02.weapon-bone-trail.candidate.effect.json"
+        },
+        "candidateElementId": {
+          "const": "project-four-slash-weapon-bone-trail"
+        },
+        "candidateSourceNode": {
+          "const": "project-authored:valtan.four-slash.active.clip-02.weapon-bone-trail"
+        }
+      }
+    },
+    "inputIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalDocumentRawSha256",
+        "canonicalDocumentCanonicalSha256",
+        "preservedSourceElementId",
+        "preservedSourceElementSha256",
+        "preservedSourceElementAttachment"
+      ],
+      "properties": {
+        "canonicalDocumentRawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalDocumentCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "preservedSourceElementId": {
+          "const": "safe-gap.trail.6dc8db3e4616f2794149d838"
+        },
+        "preservedSourceElementSha256": { "$ref": "#/$defs/sha256" },
+        "preservedSourceElementAttachment": {
+          "$ref": "#/$defs/disabledAttachment"
+        }
+      }
+    },
+    "boundedProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runtimeAnchorSlotId",
+        "runtimeBoneName",
+        "sourceOccurrenceTimeSeconds",
+        "resourceClosureSha256",
+        "materialClosureSha256",
+        "trailGeometrySha256",
+        "sourceRecipeDisposition",
+        "sourcePresentationDisposition",
+        "resourceEvidence",
+        "modelBoneEvidence"
+      ],
+      "properties": {
+        "runtimeAnchorSlotId": { "const": "VALTAN_FOUR_SLASH_WEAPON_R" },
+        "runtimeBoneName": { "const": "b_wp_r_01" },
+        "sourceOccurrenceTimeSeconds": { "const": 1.6400439739227295 },
+        "resourceClosureSha256": { "$ref": "#/$defs/sha256" },
+        "materialClosureSha256": { "$ref": "#/$defs/sha256" },
+        "trailGeometrySha256": { "$ref": "#/$defs/sha256" },
+        "sourceRecipeDisposition": {
+          "const": "DISABLED_PROJECT_CARRIER"
+        },
+        "sourcePresentationDisposition": {
+          "const": "DISABLED_NO_SOURCE_EXACT_CLAIM"
+        },
+        "resourceEvidence": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/resourceEvidence" }
+        },
+        "modelBoneEvidence": { "$ref": "#/$defs/modelBoneEvidence" }
+      }
+    },
+    "candidateIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rawSha256",
+        "canonicalSha256",
+        "elementSha256",
+        "elementCount"
+      ],
+      "properties": {
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" },
+        "elementSha256": { "$ref": "#/$defs/sha256" },
+        "elementCount": { "const": 1 }
+      }
+    },
+    "requiredDrawableHarness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "rootWorldPolicy",
+        "boneAnchorPolicy",
+        "positiveAssertions",
+        "negativeControls",
+        "proofAdmission"
+      ],
+      "properties": {
+        "status": {
+          "const": "MISSING_STATIONARY_ROOT_MOVING_BONE_FIXTURE"
+        },
+        "rootWorldPolicy": {
+          "const": "IDENTITY_AND_STATIONARY_FOR_ALL_FIXED_STEPS"
+        },
+        "boneAnchorPolicy": {
+          "const": "SUPPLY_DISTINCT_FINITE_b_wp_r_01_WORLD_PER_FIXED_STEP"
+        },
+        "positiveAssertions": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "negativeControls": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "proofAdmission": {
+          "const": "DO_NOT_MARK_DRAWABLE_BEFORE_FIXTURE_PASSES"
+        }
+      }
+    },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "vec3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" }
+    },
+    "socketLocalTransform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position", "rotationDegrees", "scale"],
+      "properties": {
+        "position": { "$ref": "#/$defs/vec3" },
+        "rotationDegrees": { "$ref": "#/$defs/vec3" },
+        "scale": { "$ref": "#/$defs/vec3" }
+      }
+    },
+    "disabledAttachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "follow",
+        "sourceAnchorSlotId",
+        "runtimeAnchorSlotId",
+        "runtimeBoneName",
+        "snapshotRootSourceBasisYawDegrees",
+        "socketLocalTransform"
+      ],
+      "properties": {
+        "enabled": { "const": false },
+        "follow": { "const": false },
+        "sourceAnchorSlotId": { "const": "" },
+        "runtimeAnchorSlotId": { "const": "" },
+        "runtimeBoneName": { "const": "" },
+        "snapshotRootSourceBasisYawDegrees": { "const": 0 },
+        "socketLocalTransform": { "$ref": "#/$defs/socketLocalTransform" }
+      }
+    },
+    "resourceEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slotId", "assetId", "byteSize", "sha256"],
+      "properties": {
+        "slotId": { "enum": ["base", "noise"] },
+        "assetId": {
+          "type": "string",
+          "pattern": "^Effect/Valtan/.+\\.dds$"
+        },
+        "byteSize": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "modelBoneEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceAnchorSlotId",
+        "runtimeModelAssetId",
+        "runtimeBoneName",
+        "boneIndex",
+        "boneNameHash",
+        "matchPolicy",
+        "modelSha256",
+        "admission",
+        "parentBoneIndex",
+        "runtimeAnchorSlotId"
+      ],
+      "properties": {
+        "sourceAnchorSlotId": { "const": "b_wp_r_01" },
+        "runtimeModelAssetId": {
+          "const": "Character/Valtan/MN_RPBF_01.wmodel"
+        },
+        "runtimeBoneName": { "const": "b_wp_r_01" },
+        "boneIndex": { "const": 54 },
+        "boneNameHash": { "const": "51bf337724f3b4ca" },
+        "matchPolicy": { "const": "EXACT_CASE_SENSITIVE" },
+        "modelSha256": {
+          "const": "227191781b035b9aa41d60cc8c49bf1e8b2f67a749111e4afe8f6f3c997b2011"
+        },
+        "admission": { "const": "ADMITTED_EXPLICIT_RUNTIME_BONE" },
+        "parentBoneIndex": { "const": 41 },
+        "runtimeAnchorSlotId": { "const": "VALTAN_FOUR_SLASH_WEAPON_R" }
+      }
+    }
+  }
+}

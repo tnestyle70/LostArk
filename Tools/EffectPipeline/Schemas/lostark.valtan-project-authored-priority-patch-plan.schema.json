@@ -13,8 +13,8 @@
     "resourceVerification",
     "resourceRoleDispositions",
     "targets",
-    "highJumpAirbornePatch",
-    "projectilePresentations"
+    "highJumpCombatObjectTransfer",
+    "officialAxePresentation"
   ],
   "properties": {
     "schema": {
@@ -29,7 +29,10 @@
     "generator": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["script", "policyVersion"],
+      "required": [
+        "script",
+        "policyVersion"
+      ],
       "properties": {
         "script": {
           "const": "Tools/EffectPipeline/build_valtan_project_authored_priority_candidates.py"
@@ -104,16 +107,11 @@
         "$ref": "#/$defs/target"
       }
     },
-    "highJumpAirbornePatch": {
-      "$ref": "#/$defs/highJumpAirbornePatch"
+    "highJumpCombatObjectTransfer": {
+      "$ref": "#/$defs/highJumpCombatObjectTransfer"
     },
-    "projectilePresentations": {
-      "type": "array",
-      "minItems": 3,
-      "maxItems": 3,
-      "items": {
-        "$ref": "#/$defs/projectilePresentation"
-      }
+    "officialAxePresentation": {
+      "$ref": "#/$defs/officialAxePresentation"
     }
   },
   "$defs": {
@@ -136,7 +134,11 @@
     "resourceVerification": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["assetId", "byteSize", "sha256"],
+      "required": [
+        "assetId",
+        "byteSize",
+        "sha256"
+      ],
       "properties": {
         "assetId": {
           "$ref": "#/$defs/resourceAssetId"
@@ -227,20 +229,33 @@
           "$ref": "#/$defs/stableId"
         },
         "sourceNode": {
-          "allOf": [
+          "oneOf": [
             {
-              "$ref": "#/$defs/stableId"
+              "const": ""
             },
             {
-              "pattern": "^project-authored:"
+              "allOf": [
+                {
+                  "$ref": "#/$defs/stableId"
+                },
+                {
+                  "pattern": "^project-authored:"
+                }
+              ]
             }
           ]
         },
         "disposition": {
-          "enum": ["PROJECT_AUTHORED", "PROJECT_TUNED_OVERRIDE"]
+          "enum": [
+            "PROJECT_AUTHORED",
+            "PROJECT_TUNED_OVERRIDE"
+          ]
         },
         "reconcileAction": {
-          "enum": ["APPEND_MISSING", "PRESERVE_EXISTING"]
+          "enum": [
+            "APPEND_MISSING",
+            "PRESERVE_EXISTING"
+          ]
         },
         "canonicalElementSha256": {
           "oneOf": [
@@ -302,10 +317,13 @@
           "pattern": "^Data/Effects/Authored/effect\\.valtan\\.[a-z0-9.-]+\\.effect\\.json$"
         },
         "canonicalState": {
-          "enum": ["EXISTING_DOCUMENT", "MISSING_DOCUMENT"]
+          "const": "EXISTING_DOCUMENT"
         },
         "disposition": {
-          "enum": ["PROJECT_AUTHORED", "PROJECT_TUNED_OVERRIDE"]
+          "enum": [
+            "PROJECT_AUTHORED",
+            "PROJECT_TUNED_OVERRIDE"
+          ]
         },
         "presentationOnly": {
           "type": "boolean"
@@ -362,159 +380,92 @@
         }
       }
     },
-    "identityTransform": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["position", "rotationDegrees", "scale"],
-      "properties": {
-        "position": {
-          "const": [0, 0, 0]
-        },
-        "rotationDegrees": {
-          "const": [0, 0, 0]
-        },
-        "scale": {
-          "const": [1, 1, 1]
-        }
-      }
-    },
-    "catalogRow": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["effectAssetId", "payloadKind", "authoringPath"],
-      "properties": {
-        "effectAssetId": {
-          "const": "effect.valtan.high-jump.airborne"
-        },
-        "payloadKind": {
-          "const": "DIRECT_AUTHORED_DOCUMENT_V13"
-        },
-        "authoringPath": {
-          "const": "Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
-        }
-      }
-    },
-    "cueRow": {
+    "highJumpCombatObjectTransfer": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "bindingId",
-        "occurrenceId",
         "patternId",
         "stageId",
-        "actionId",
-        "clipOccurrenceId",
+        "ownerStageActionId",
+        "combatObjectArchetypeId",
+        "clientVisualId",
         "effectAssetId",
-        "anchorSlotId",
-        "followPolicy",
-        "stopPolicy",
-        "repeatPolicy",
-        "sourceStartMs",
-        "sourceEndMs",
-        "localTransform"
+        "targetAuthoringPath",
+        "effectCatalogRow",
+        "bossCatalogVisualRow",
+        "combatObjectContract",
+        "retiredBossRoot",
+        "authority"
       ],
       "properties": {
-        "bindingId": {
-          "const": "cue.valtan.high-jump.airborne.project-authored"
-        },
-        "occurrenceId": {
-          "const": "cue.valtan.high-jump.airborne.project-authored.occurrence.01"
-        },
         "patternId": {
           "const": "VALTAN_HIGH_JUMP"
         },
         "stageId": {
           "const": "AIRBORNE"
         },
-        "actionId": {
+        "ownerStageActionId": {
           "const": "valtan.attack.high-jump.airborne"
         },
-        "clipOccurrenceId": {
-          "const": "valtan.attack.high-jump.airborne.clip.01"
+        "combatObjectArchetypeId": {
+          "const": "combatobject.valtan.high-jump.target-axe"
+        },
+        "clientVisualId": {
+          "const": "combatobject.visual.valtan.high-jump.target-axe.v1"
         },
         "effectAssetId": {
-          "const": "effect.valtan.high-jump.airborne"
+          "const": "effect.valtan.sky-axe.active"
         },
-        "anchorSlotId": {
-          "const": "root"
+        "targetAuthoringPath": {
+          "const": "Data/Effects/Authored/effect.valtan.sky-axe.active.effect.json"
         },
-        "followPolicy": {
-          "const": "snapshot"
+        "effectCatalogRow": {
+          "const": {
+            "effectAssetId": "effect.valtan.sky-axe.active",
+            "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+            "authoringPath": "Effects/Authored/effect.valtan.sky-axe.active.effect.json"
+          }
         },
-        "stopPolicy": {
-          "const": "natural"
+        "bossCatalogVisualRow": {
+          "const": {
+            "combatObjectArchetypeId": "combatobject.valtan.high-jump.target-axe",
+            "clientVisualId": "combatobject.visual.valtan.high-jump.target-axe.v1",
+            "effectAssetId": "effect.valtan.sky-axe.active"
+          }
         },
-        "repeatPolicy": {
-          "const": "once"
+        "combatObjectContract": {
+          "const": {
+            "kind": "FIXED_AREA",
+            "originPolicy": "LOCKED_TARGET_PER_ALIVE_PLAYER",
+            "lifeMs": 1900,
+            "timedImpactMs": 1200,
+            "serverDamageProfileId": "damage.valtan.high-jump"
+          }
         },
-        "sourceStartMs": {
-          "const": 0
-        },
-        "sourceEndMs": {
-          "type": "null"
-        },
-        "localTransform": {
-          "$ref": "#/$defs/identityTransform"
-        }
-      }
-    },
-    "highJumpAirbornePatch": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["catalogRow", "cueRow", "authoringDocument", "authority"],
-      "properties": {
-        "catalogRow": {
-          "$ref": "#/$defs/catalogRow"
-        },
-        "cueRow": {
-          "$ref": "#/$defs/cueRow"
-        },
-        "authoringDocument": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["effectAssetId", "targetAuthoringPath"],
-          "properties": {
-            "effectAssetId": {
-              "const": "effect.valtan.high-jump.airborne"
-            },
-            "targetAuthoringPath": {
-              "const": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json"
-            }
+        "retiredBossRoot": {
+          "const": {
+            "effectAssetId": "effect.valtan.high-jump.airborne",
+            "authoringHistoryPath": "Data/Effects/Authored/effect.valtan.high-jump.airborne.effect.json",
+            "effectCatalogRegistrationAllowed": false,
+            "productCueRegistrationAllowed": false
           }
         },
         "authority": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "presentationOnly",
-            "serverGameplayChange",
-            "serverDamagePolicy",
-            "projectileAuthorityStatus"
-          ],
-          "properties": {
-            "presentationOnly": {
-              "const": true
-            },
-            "serverGameplayChange": {
-              "const": false
-            },
-            "serverDamagePolicy": {
-              "const": "UNCHANGED_EXISTING_LAND_STAGE_AUTHORITY"
-            },
-            "projectileAuthorityStatus": {
-              "const": "PRESENTATION_ONLY_OFFICIAL_ASSET_REUSE"
-            }
+          "const": {
+            "effectPresentationOnly": true,
+            "serverCombatObjectAuthority": true,
+            "serverGameplayChange": false,
+            "serverDamagePolicy": "TIMED_COMBAT_OBJECT_HIT"
           }
         }
       }
     },
-    "projectilePresentation": {
+    "officialAxePresentation": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "presentationId",
-        "patternId",
-        "stageId",
+        "combatObjectArchetypeId",
         "elementId",
         "disposition",
         "modelAssetId",
@@ -522,33 +473,21 @@
         "geometryProvenance",
         "baseTextureProvenance",
         "trajectoryTimingProvenance",
-        "sourceActionPayloadClaim",
         "presentationOnly",
         "serverGameplayChange"
       ],
       "properties": {
         "presentationId": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/stableId"
-            },
-            {
-              "pattern": "^project-authored:valtan\\.high-jump\\.airborne\\.beat-[0-9]{2}\\.axe$"
-            }
-          ]
+          "const": "mesh.valtan.sky-axe.descent"
         },
-        "patternId": {
-          "const": "VALTAN_HIGH_JUMP"
-        },
-        "stageId": {
-          "const": "AIRBORNE"
+        "combatObjectArchetypeId": {
+          "const": "combatobject.valtan.high-jump.target-axe"
         },
         "elementId": {
-          "type": "string",
-          "pattern": "^project-axe-beat-[0-9]{2}-falling-axe$"
+          "const": "mesh.valtan.sky-axe.descent"
         },
         "disposition": {
-          "const": "PROJECT_AUTHORED_OFFICIAL_ASSET_REUSE"
+          "const": "PRESERVE_EXISTING_OFFICIAL_ASSET_REUSE"
         },
         "modelAssetId": {
           "const": "Character/Valtan/ValtanWeapon.wmodel"
@@ -563,10 +502,7 @@
           "const": "OFFICIAL_MODEL_MATERIAL_BASE_TEXTURE_EXACT"
         },
         "trajectoryTimingProvenance": {
-          "const": "PROJECT_AUTHORED"
-        },
-        "sourceActionPayloadClaim": {
-          "const": "NONE"
+          "const": "EXISTING_HAND_TUNED_PRESERVE"
         },
         "presentationOnly": {
           "const": true

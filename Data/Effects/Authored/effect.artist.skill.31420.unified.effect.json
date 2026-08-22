@@ -2136,6 +2136,896 @@
         "enabled": false,
         "masterElementId": ""
       }
-    }
+    },
+      {
+        "id": "sprite.artist.31420.grass-coverage.v1",
+        "displayName": "PROJECT_TUNED | S grass coverage dissolve",
+        "groupId": "project.artist.31420.grass-tip-fade",
+        "sourceNode": "project-authored:artist:31420:s:grass-coverage:v1",
+        "visible": true,
+        "kind": "sprite",
+        "resources": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/Artist/Textures/fx_a_line_003.dds"
+          },
+          {
+            "slotId": "mask",
+            "assetId": "Effect/Artist/Textures/fx_o_grass_04.dds"
+          },
+          {
+            "slotId": "emissive",
+            "assetId": "Effect/Artist/Textures/fx_d_fluid_007.dds"
+          },
+          {
+            "slotId": "dissolve",
+            "assetId": "Effect/Artist/Textures/fx_o_grass_03.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "",
+          "renderProfile": "alpha_two_sided_depth_read",
+          "sourceProfile": {
+            "enabled": false
+          },
+          "execution": {
+            "enabled": true,
+            "version": 1,
+            "backend": "runtimeMaterialV2",
+            "opcode": 21,
+            "passIndex": 1,
+            "renderState": {
+              "rasterizer": "RS_Cull_None",
+              "depthStencil": "DSS_ReadOnly",
+              "blend": "BS_EffectAlpha",
+              "stencilReference": 0
+            },
+            "textureLaneCount": 4,
+            "textureMask": 15,
+            "textureLanes": [
+              {
+                "laneId": "lane.0",
+                "role": "base_radiance",
+                "assetId": "Effect/Artist/Textures/fx_a_line_003.dds",
+                "textureRegister": 0,
+                "samplerRegister": 5,
+                "sourceChannel": "RGBA",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.1",
+                "role": "coverage",
+                "assetId": "Effect/Artist/Textures/fx_o_grass_04.dds",
+                "textureRegister": 1,
+                "samplerRegister": 6,
+                "sourceChannel": "R",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.2",
+                "role": "emissive_radiance",
+                "assetId": "Effect/Artist/Textures/fx_d_fluid_007.dds",
+                "textureRegister": 2,
+                "samplerRegister": 7,
+                "sourceChannel": "RGB",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.3",
+                "role": "dissolve",
+                "assetId": "Effect/Artist/Textures/fx_o_grass_03.dds",
+                "textureRegister": 3,
+                "samplerRegister": 8,
+                "sourceChannel": "R",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              }
+            ],
+            "dynamicConsumedMask": 0,
+            "dynamicSuppressedMask": 0,
+            "particleColorPolicy": 0,
+            "particleColorConsumedMask": 0,
+            "particleColorSuppressedMask": 0,
+            "scalarCount": 0,
+            "vectorCount": 0,
+            "inputCount": 0,
+            "inputConsumedMask": [
+              0,
+              0
+            ],
+            "inputSuppressedMask": [
+              0,
+              0
+            ],
+            "vectorComponentConsumedMask": [
+              0,
+              0,
+              0
+            ],
+            "vectorComponentSuppressedMask": [
+              0,
+              0,
+              0
+            ],
+            "staticInputCount": 0,
+            "staticSelectedMask": 0,
+            "staticConsumedMask": 0,
+            "staticSuppressedMask": 0,
+            "renderInputCount": 0,
+            "renderConsumedMask": 0,
+            "renderSuppressedMask": 0,
+            "scalars": [],
+            "vectors": [],
+            "artistParameters": [],
+            "colors": []
+          }
+        },
+        "actionCueAttachment": {
+          "enabled": true,
+          "follow": false,
+          "sourceAnchorSlotId": "root",
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0,
+          "socketLocalTransform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "transformInheritance": {
+          "enabled": false,
+          "masterElementId": ""
+        },
+        "detail": {
+          "transform": {
+            "position": [
+              0,
+              0.72,
+              1.15
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "revolutionDegreesPerSecond": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              4.6,
+              1.5,
+              1
+            ],
+            "velocityPerSecond": [
+              0,
+              0,
+              0
+            ]
+          },
+          "color": {
+            "offset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "multiply": [
+              0.28,
+              0.78,
+              0.38,
+              0.82
+            ],
+            "clip": 0.02,
+            "emissiveIntensity": 1.4,
+            "distortionIntensity": 0,
+            "distortionOnBaseMaterial": false,
+            "radialTime": 0,
+            "radialIntensity": 0
+          },
+          "uv": {
+            "start": [
+              0,
+              0
+            ],
+            "speed": [
+              0,
+              0.08
+            ],
+            "wave": false,
+            "waveAmplitude": [
+              0,
+              0
+            ],
+            "waveFrequency": 1,
+            "sequence": false,
+            "loop": true,
+            "sequenceTerm": 0.1,
+            "tileColumns": 1,
+            "tileRows": 1,
+            "tileIndex": 0
+          },
+          "timing": {
+            "startDelaySeconds": 0.4318,
+            "lifeTimeSeconds": 1.1,
+            "afterImageSeconds": 0,
+            "dissolveStartNormalized": 0.42
+          },
+          "mesh": {
+            "useModelMaterial": false,
+            "sourceTypeDataRotationDegrees": [
+              0,
+              0,
+              0
+            ]
+          },
+          "sprite": {
+            "billboard": true,
+            "billboardRollDegrees": 0,
+            "billboardRollDegreesPerSecond": 0
+          },
+          "decal": {
+            "size": [
+              4.6,
+              1.5
+            ],
+            "depth": 0.25
+          },
+          "linearLerp": {
+            "position": false,
+            "endPosition": [
+              0,
+              0.72,
+              1.15
+            ],
+            "rotation": false,
+            "endRotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "revolution": false,
+            "endRevolutionDegreesPerSecond": [
+              0,
+              0,
+              0
+            ],
+            "scale": false,
+            "endScale": [
+              4.6,
+              1.5,
+              1
+            ],
+            "velocity": false,
+            "endVelocityPerSecond": [
+              0,
+              0,
+              0
+            ],
+            "colorOffset": false,
+            "endColorOffset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "colorMultiply": true,
+            "endColorMultiply": [
+              0.28,
+              0.78,
+              0.38,
+              0
+            ],
+            "emissiveIntensity": true,
+            "endEmissiveIntensity": 0
+          },
+          "particle": {
+            "maxParticles": 1,
+            "spawnRatePerSecond": 0,
+            "burstCount": 0,
+            "randomSeed": 31420,
+            "lifeTimeSeconds": [
+              1.1,
+              1.1
+            ],
+            "initialPositionMin": [
+              0,
+              0,
+              0
+            ],
+            "initialPositionMax": [
+              0,
+              0,
+              0
+            ],
+            "initialVelocityMin": [
+              0,
+              0,
+              0
+            ],
+            "initialVelocityMax": [
+              0,
+              0,
+              0
+            ],
+            "acceleration": [
+              0,
+              0,
+              0
+            ],
+            "startSize": [
+              4.6,
+              1.5
+            ],
+            "endSize": [
+              4.6,
+              1.5
+            ],
+            "localSpace": true,
+            "billboard": true
+          },
+          "trail": {
+            "maxPoints": 64,
+            "pointLifeTimeSeconds": 0.35,
+            "sampleIntervalSeconds": 0.0166667,
+            "minimumDistance": 0.01,
+            "startWidth": 0.2,
+            "endWidth": 0,
+            "tilingDistanceWorldUnits": 0,
+            "distanceTessellationStepWorldUnits": 0,
+            "faceCamera": true
+          },
+          "afterImage": {
+            "sampleIntervalSeconds": 0.05,
+            "maxCopies": 16,
+            "alphaExponent": 1
+          },
+          "light": {
+            "enabled": false
+          },
+          "screenPost": {
+            "enabled": false
+          }
+        },
+        "sourceRecipe": {
+          "enabled": false,
+          "rendererShape": "",
+          "emitterDelaySeconds": 0,
+          "emitterDurationSeconds": 0,
+          "emitterLoopCount": 1,
+          "bursts": [],
+          "modules": []
+        },
+        "sourcePresentation": {
+          "enabled": false
+        }
+      },
+      {
+        "id": "sprite.artist.31420.grass-tip-emissive.v1",
+        "displayName": "PROJECT_TUNED | S grass-tip HDR emissive fade",
+        "groupId": "project.artist.31420.grass-tip-fade",
+        "sourceNode": "project-authored:artist:31420:s:grass-tip-emissive:v1",
+        "visible": true,
+        "kind": "sprite",
+        "resources": [
+          {
+            "slotId": "base",
+            "assetId": "Effect/Artist/Textures/fx_a_line_003.dds"
+          },
+          {
+            "slotId": "mask",
+            "assetId": "Effect/Artist/Textures/fx_o_grass_03.dds"
+          },
+          {
+            "slotId": "emissive",
+            "assetId": "Effect/Artist/Textures/fx_d_fluid_007.dds"
+          },
+          {
+            "slotId": "dissolve",
+            "assetId": "Effect/Artist/Textures/fx_o_grass_04.dds"
+          }
+        ],
+        "material": {
+          "templateId": "effect.standard",
+          "sourceMaterialPath": "",
+          "renderProfile": "alpha_two_sided_depth_read",
+          "sourceProfile": {
+            "enabled": false
+          },
+          "execution": {
+            "enabled": true,
+            "version": 1,
+            "backend": "runtimeMaterialV2",
+            "opcode": 21,
+            "passIndex": 1,
+            "renderState": {
+              "rasterizer": "RS_Cull_None",
+              "depthStencil": "DSS_ReadOnly",
+              "blend": "BS_EffectAlpha",
+              "stencilReference": 0
+            },
+            "textureLaneCount": 4,
+            "textureMask": 15,
+            "textureLanes": [
+              {
+                "laneId": "lane.0",
+                "role": "base_radiance",
+                "assetId": "Effect/Artist/Textures/fx_a_line_003.dds",
+                "textureRegister": 0,
+                "samplerRegister": 5,
+                "sourceChannel": "RGBA",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.1",
+                "role": "coverage",
+                "assetId": "Effect/Artist/Textures/fx_o_grass_03.dds",
+                "textureRegister": 1,
+                "samplerRegister": 6,
+                "sourceChannel": "R",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.2",
+                "role": "emissive_radiance",
+                "assetId": "Effect/Artist/Textures/fx_d_fluid_007.dds",
+                "textureRegister": 2,
+                "samplerRegister": 7,
+                "sourceChannel": "RGB",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              },
+              {
+                "laneId": "lane.3",
+                "role": "dissolve",
+                "assetId": "Effect/Artist/Textures/fx_o_grass_04.dds",
+                "textureRegister": 3,
+                "samplerRegister": 8,
+                "sourceChannel": "R",
+                "colorSpace": "linear",
+                "sampler": {
+                  "filter": "linear",
+                  "addressU": "wrap",
+                  "addressV": "wrap",
+                  "addressW": "wrap",
+                  "mipLodBias": 0,
+                  "maxAnisotropy": 1,
+                  "comparison": "never",
+                  "borderColor": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "minLod": 0,
+                  "maxLod": 3.40282347e+38
+                }
+              }
+            ],
+            "dynamicConsumedMask": 0,
+            "dynamicSuppressedMask": 0,
+            "particleColorPolicy": 0,
+            "particleColorConsumedMask": 0,
+            "particleColorSuppressedMask": 0,
+            "scalarCount": 0,
+            "vectorCount": 0,
+            "inputCount": 0,
+            "inputConsumedMask": [
+              0,
+              0
+            ],
+            "inputSuppressedMask": [
+              0,
+              0
+            ],
+            "vectorComponentConsumedMask": [
+              0,
+              0,
+              0
+            ],
+            "vectorComponentSuppressedMask": [
+              0,
+              0,
+              0
+            ],
+            "staticInputCount": 0,
+            "staticSelectedMask": 0,
+            "staticConsumedMask": 0,
+            "staticSuppressedMask": 0,
+            "renderInputCount": 0,
+            "renderConsumedMask": 0,
+            "renderSuppressedMask": 0,
+            "scalars": [],
+            "vectors": [],
+            "artistParameters": [],
+            "colors": []
+          }
+        },
+        "actionCueAttachment": {
+          "enabled": true,
+          "follow": false,
+          "sourceAnchorSlotId": "root",
+          "runtimeAnchorSlotId": "root",
+          "runtimeBoneName": "",
+          "snapshotRootSourceBasisYawDegrees": 0,
+          "socketLocalTransform": {
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        "transformInheritance": {
+          "enabled": false,
+          "masterElementId": ""
+        },
+        "detail": {
+          "transform": {
+            "position": [
+              0,
+              1.32,
+              1.15
+            ],
+            "rotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "revolutionDegreesPerSecond": [
+              0,
+              0,
+              0
+            ],
+            "scale": [
+              4.35,
+              0.5,
+              1
+            ],
+            "velocityPerSecond": [
+              0,
+              0,
+              0
+            ]
+          },
+          "color": {
+            "offset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "multiply": [
+              0.95,
+              1,
+              0.42,
+              0.78
+            ],
+            "clip": 0.02,
+            "emissiveIntensity": 6,
+            "distortionIntensity": 0,
+            "distortionOnBaseMaterial": false,
+            "radialTime": 0,
+            "radialIntensity": 0
+          },
+          "uv": {
+            "start": [
+              0,
+              0
+            ],
+            "speed": [
+              0,
+              -0.05
+            ],
+            "wave": false,
+            "waveAmplitude": [
+              0,
+              0
+            ],
+            "waveFrequency": 1,
+            "sequence": false,
+            "loop": true,
+            "sequenceTerm": 0.1,
+            "tileColumns": 1,
+            "tileRows": 1,
+            "tileIndex": 0
+          },
+          "timing": {
+            "startDelaySeconds": 0.4618,
+            "lifeTimeSeconds": 1.07,
+            "afterImageSeconds": 0,
+            "dissolveStartNormalized": 0.38
+          },
+          "mesh": {
+            "useModelMaterial": false,
+            "sourceTypeDataRotationDegrees": [
+              0,
+              0,
+              0
+            ]
+          },
+          "sprite": {
+            "billboard": true,
+            "billboardRollDegrees": 0,
+            "billboardRollDegreesPerSecond": 0
+          },
+          "decal": {
+            "size": [
+              4.35,
+              0.5
+            ],
+            "depth": 0.25
+          },
+          "linearLerp": {
+            "position": false,
+            "endPosition": [
+              0,
+              1.32,
+              1.15
+            ],
+            "rotation": false,
+            "endRotationDegrees": [
+              0,
+              0,
+              0
+            ],
+            "revolution": false,
+            "endRevolutionDegreesPerSecond": [
+              0,
+              0,
+              0
+            ],
+            "scale": true,
+            "endScale": [
+              4.7,
+              0.18,
+              1
+            ],
+            "velocity": false,
+            "endVelocityPerSecond": [
+              0,
+              0,
+              0
+            ],
+            "colorOffset": false,
+            "endColorOffset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "colorMultiply": true,
+            "endColorMultiply": [
+              0.95,
+              1,
+              0.42,
+              0
+            ],
+            "emissiveIntensity": true,
+            "endEmissiveIntensity": 0
+          },
+          "particle": {
+            "maxParticles": 1,
+            "spawnRatePerSecond": 0,
+            "burstCount": 0,
+            "randomSeed": 31421,
+            "lifeTimeSeconds": [
+              1.07,
+              1.07
+            ],
+            "initialPositionMin": [
+              0,
+              0,
+              0
+            ],
+            "initialPositionMax": [
+              0,
+              0,
+              0
+            ],
+            "initialVelocityMin": [
+              0,
+              0,
+              0
+            ],
+            "initialVelocityMax": [
+              0,
+              0,
+              0
+            ],
+            "acceleration": [
+              0,
+              0,
+              0
+            ],
+            "startSize": [
+              4.35,
+              0.5
+            ],
+            "endSize": [
+              4.7,
+              0.18
+            ],
+            "localSpace": true,
+            "billboard": true
+          },
+          "trail": {
+            "maxPoints": 64,
+            "pointLifeTimeSeconds": 0.35,
+            "sampleIntervalSeconds": 0.0166667,
+            "minimumDistance": 0.01,
+            "startWidth": 0.2,
+            "endWidth": 0,
+            "tilingDistanceWorldUnits": 0,
+            "distanceTessellationStepWorldUnits": 0,
+            "faceCamera": true
+          },
+          "afterImage": {
+            "sampleIntervalSeconds": 0.05,
+            "maxCopies": 16,
+            "alphaExponent": 1
+          },
+          "light": {
+            "enabled": false
+          },
+          "screenPost": {
+            "enabled": false
+          }
+        },
+        "sourceRecipe": {
+          "enabled": false,
+          "rendererShape": "",
+          "emitterDelaySeconds": 0,
+          "emitterDurationSeconds": 0,
+          "emitterLoopCount": 1,
+          "bursts": [],
+          "modules": []
+        },
+        "sourcePresentation": {
+          "enabled": false
+        }
+      }
   ]
 }

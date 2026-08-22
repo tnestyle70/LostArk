@@ -785,31 +785,43 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         const float dissolveAmount = saturate(Source_DynamicParameterValue(
             dynamicParameter, 18u, 0.f));
         const float2 noiseUV = uv * max(
-            abs(g_SourceVector0.zw), float2(0.01f, 0.01f)) +
-            float2(noisePan, alphaPan) * g_EffectLocalTime;
+            abs(g_TypedTrailParameters[2].xy), float2(0.01f, 0.01f)) +
+            (g_TypedTrailParameters[2].zw + float2(noisePan, 0.f)) *
+                g_EffectLocalTime;
         const float4 noise = g_NoiseTexture.Sample(LinearSampler, noiseUV);
         const float2 warpedUV = uv + (noise.rg * 2.f - 1.f) *
-            min(abs(g_SourceScalars1.z) * noiseStrength * 0.0025f, 0.1f);
+            clamp(g_TypedTrailParameters[3].x * noiseStrength * 0.01f,
+                -0.1f, 0.1f);
+        // The source parent exposes independent R/G U-coordinate lanes.  Its
+        // `*_r_texcoord` and `*_g_texcoord` values are not a packed float2 UV:
+        // each channel scales and offsets U while preserving the mesh V.
         const float2 alphaRUV = float2(
-            warpedUV.x * max(abs(g_SourceScalars1.x), 0.01f) +
-                g_SourceVector0.x + alphaPan * g_EffectLocalTime,
+            warpedUV.x * max(abs(g_TypedTrailParameters[1].x), 0.01f) +
+                g_TypedTrailParameters[1].z +
+                (g_TypedTrailParameters[0].z + alphaPan) *
+                    g_EffectLocalTime,
             warpedUV.y);
         const float2 alphaGUV = float2(
-            warpedUV.x * max(abs(g_SourceScalars1.y), 0.01f) +
-                g_SourceVector0.y + alphaPan * g_EffectLocalTime,
+            warpedUV.x * max(abs(g_TypedTrailParameters[1].y), 0.01f) +
+                g_TypedTrailParameters[1].w +
+                (g_TypedTrailParameters[0].w + alphaPan) *
+                    g_EffectLocalTime,
             warpedUV.y);
         const float alphaR = g_MaskTexture.Sample(
             LinearSampler, alphaRUV).r;
         const float alphaG = g_MaskTexture.Sample(
             LinearSampler, alphaGUV).g;
         const float alphaTexture = max(alphaR, alphaG);
-        const float alphaCarrier = smoothstep(
-            0.04f, 0.2f, alphaTexture *
-                max(g_SourceScalars0.x, 0.f) * 0.15f);
+        const float alphaCarrier = pow(saturate(
+            alphaTexture * max(g_TypedTrailParameters[0].x, 0.f)),
+            max(abs(g_TypedTrailParameters[0].y), 0.01f));
+        const float2 dissolveUV = warpedUV * max(
+            abs(g_TypedTrailParameters[7].zw), float2(0.01f, 0.01f)) +
+            g_TypedTrailParameters[3].zw * g_EffectLocalTime;
         const float dissolveValue = g_DissolveTexture.Sample(
-            LinearSampler, warpedUV).r;
+            LinearSampler, dissolveUV).r;
         const float dissolveSoftness = rcp(
-            max(abs(g_SourceScalars1.w), 1.f));
+            max(abs(g_TypedTrailParameters[3].y), 1.f));
         const float dissolveGate = smoothstep(
             dissolveAmount - dissolveSoftness,
             dissolveAmount + dissolveSoftness,
@@ -819,9 +831,10 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         const float edgeFeather = saturate(edgeDistance * 64.f);
         shape = alphaCarrier * dissolveGate * edgeFeather;
         const float4 base = g_BaseTexture.Sample(LinearSampler, warpedUV);
-        const float emissivePower = max(abs(g_SourceScalars0.w), 0.01f);
+        const float emissivePower = max(
+            abs(g_TypedTrailParameters[7].y), 0.01f);
         const float emissiveStrength = min(
-            max(g_SourceScalars0.z, 0.f) * 0.05f, 8.f);
+            max(g_TypedTrailParameters[7].x, 0.f) * 0.05f, 8.f);
         output.SceneColor.rgb = pow(saturate(
             base.rgb + alphaTexture.xxx), emissivePower) *
             emissiveStrength * shape;
@@ -2055,6 +2068,155 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         output.SceneColor.rgb = (primary + secondary) *
             max(g_SourceVector0.rgb, float3(0.f, 0.f, 0.f));
     }
+    else if (39 == g_SourceMaterialProfile)
+    {
+        // fx_mm_basic_01_ad / _tr.  The parent exposes one emissive radiance
+        // lane, one dedicated coverage lane and two independent uv_noise
+        // domains with their own tiling and panning.  The grouped path had a
+        // single pan and inferred coverage from base luminance, which both
+        // scrolled artwork the source keeps still and treated the dedicated
+        // alpha_tex child as a second colour source.
+        clip((g_SourceTextureMask & 0x1u) == 0x1u ? 1.f : -1.f);
+
+        const float2 emissivePan =
+            g_TypedTrailParameters[0].xy * g_EffectLocalTime;
+        // Every current occurrence authors uv_scale 1.0, so this lane is
+        // carried for child overrides rather than exercised by the corpus.
+        const float uvScale = max(abs(g_TypedTrailParameters[0].z), 0.0001f);
+        const float emissivePower = max(g_TypedTrailParameters[0].w, 0.f);
+        const float desaturation = saturate(g_TypedTrailParameters[1].x);
+
+        float2 noiseOffset = float2(0.f, 0.f);
+        if (0u != (g_SourceTextureMask & 0x4u))
+        {
+            const float2 noise01UV =
+                localUV * max(abs(g_TypedTrailParameters[2].zw), 0.01f) +
+                g_TypedTrailParameters[2].xy * g_EffectLocalTime;
+            noiseOffset += (Sample_SourceTexture2(noise01UV).rg * 2.f - 1.f) *
+                clamp(g_TypedTrailParameters[4].x, -0.25f, 0.25f);
+        }
+        if (0u != (g_SourceTextureMask & 0x8u))
+        {
+            const float2 noise02UV =
+                localUV * max(abs(g_TypedTrailParameters[3].zw), 0.01f) +
+                g_TypedTrailParameters[3].xy * g_EffectLocalTime;
+            noiseOffset += (Sample_SourceTexture3(noise02UV).rg * 2.f - 1.f) *
+                clamp(g_TypedTrailParameters[4].y, -0.25f, 0.25f);
+        }
+
+        const float2 basicCentered = localUV - float2(0.5f, 0.5f);
+        const float2 emissiveUV = basicCentered * uvScale +
+            float2(0.5f, 0.5f) + emissivePan + noiseOffset;
+        const float3 emissiveColor = Desaturate_SourceColor(
+            Sample_SourceTexture0(emissiveUV).rgb, desaturation);
+
+        // The dedicated alpha lane owns coverage whenever the child binds one.
+        // Without it this family shares the simple_01 situation of BC1 artwork
+        // whose alpha is 1 for every texel, so luminance and a radial envelope
+        // replace the constant alpha that produced a visible card edge.
+        float basicCoverage;
+        if (0u != (g_SourceTextureMask & 0x2u))
+        {
+            basicCoverage = saturate(Sample_SourceTexture1(emissiveUV).r);
+        }
+        else
+        {
+            const float envelope = saturate(
+                1.f - smoothstep(0.42f, 0.5f, length(basicCentered)));
+            basicCoverage = saturate(dot(max(emissiveColor, 0.f),
+                float3(0.299f, 0.587f, 0.114f))) * envelope;
+        }
+
+        shape = basicCoverage;
+        output.SceneColor.rgb = emissiveColor * emissivePower;
+        output.Distortion.xy = noiseOffset *
+            clamp(g_TypedTrailParameters[1].y * 0.01f, -0.25f, 0.25f) *
+            basicCoverage;
+    }
+    else if (40 == g_SourceMaterialProfile)
+    {
+        // fx_k_me_flowtrail_01_ts_tr.  diff owns radiance, opacity owns
+        // coverage and noise offsets both, each in its own UV domain with its
+        // own tile, centre and rotation.  The grouped path has a single shared
+        // UV scale, so a trail authored with diff v-tile 0.2 against opacity
+        // v-tile 1.0 collapses onto one domain and loses the flow.
+        //
+        // The source wave group and cameravec_pow are not evaluated here: no
+        // child in the corpus overrides wave_tile or wave_pan_speed and the
+        // parent expression graph is not in evidence, so the wave geometry
+        // would be invented rather than restored.
+        clip((g_SourceTextureMask & 0x3u) == 0x3u ? 1.f : -1.f);
+
+        float2 flowNoiseOffset = float2(0.f, 0.f);
+        if (0u != (g_SourceTextureMask & 0x4u))
+        {
+            const float2 flowNoiseUV =
+                localUV * max(abs(g_TypedTrailParameters[3].zw), 0.01f) +
+                g_TypedTrailParameters[4].xy * g_EffectLocalTime;
+            flowNoiseOffset =
+                (Sample_SourceTexture2(flowNoiseUV).rg * 2.f - 1.f) *
+                clamp(g_TypedTrailParameters[3].y, -1.f, 1.f);
+        }
+
+        const float2 flowCentered = localUV - float2(0.5f, 0.5f);
+
+        const float diffRotation = g_TypedTrailParameters[0].w;
+        const float2 diffRotated = float2(
+            flowCentered.x * cos(diffRotation) - flowCentered.y * sin(diffRotation),
+            flowCentered.x * sin(diffRotation) + flowCentered.y * cos(diffRotation));
+        const float2 diffUV =
+            (diffRotated + float2(0.5f, 0.5f)) *
+                max(abs(g_TypedTrailParameters[0].xy), 0.01f) +
+            float2(g_TypedTrailParameters[0].z, 0.f) + flowNoiseOffset;
+        const float3 diffColor = Desaturate_SourceColor(
+            Sample_SourceTexture0(diffUV).rgb,
+            saturate(g_TypedTrailParameters[1].z));
+
+        const float opacityRotation = g_TypedTrailParameters[2].w;
+        const float2 opacityRotated = float2(
+            flowCentered.x * cos(opacityRotation) -
+                flowCentered.y * sin(opacityRotation),
+            flowCentered.x * sin(opacityRotation) +
+                flowCentered.y * cos(opacityRotation));
+        const float2 opacityUV =
+            (opacityRotated + float2(0.5f, 0.5f)) *
+                max(abs(g_TypedTrailParameters[2].xy), 0.01f) +
+            float2(g_TypedTrailParameters[2].z, 0.f) + flowNoiseOffset;
+
+        shape = saturate(Sample_SourceTexture1(opacityUV).r *
+            max(g_TypedTrailParameters[3].x, 0.f));
+        output.SceneColor.rgb =
+            pow(saturate(diffColor), max(g_TypedTrailParameters[1].x, 0.01f)) *
+            max(g_TypedTrailParameters[1].y, 0.f);
+        output.Distortion.xy = flowNoiseOffset *
+            clamp(g_TypedTrailParameters[1].w * 0.01f, -0.25f, 0.25f) * shape;
+    }
+    else if (41 == g_SourceMaterialProfile)
+    {
+        // fx_d_me_chain_01_ma, the Warlord hook-chain link.  The parent
+        // declares no texture parameter and only two world-position-offset
+        // scalars, so the material owns the masked cutout while the chain
+        // artwork arrives through the element base binding.
+        //
+        // BLEND_Masked is a binary cutout, not a soft alpha ramp.  The grouped
+        // path had no cutout at all (authored colour clip is 0), so the links
+        // drew as translucent ghosts with no silhouette.
+        //
+        // The source DDS has no alpha channel, so artwork luminance drives the
+        // cutout.  worldpositionoffset_bias and worldpositionoffset_uvscale are
+        // not evaluated: world position offset is a vertex stage output and the
+        // 132-slot parent graph that shapes it is not in evidence.  Restoring
+        // it belongs to the NATIVE_PARITY backlog, not to this RT0 base.
+        clip((g_SourceTextureMask & 0x1u) == 0x1u ? 1.f : -1.f);
+        const float3 chain = Sample_SourceTexture0(localUV).rgb;
+        const float chainCoverage = saturate(dot(max(chain, 0.f),
+            float3(0.299f, 0.587f, 0.114f)));
+        // UE3 masked materials cut at OpacityMaskClipValue.  One third is the
+        // engine default and this parent serializes no override for it.
+        clip(chainCoverage - 0.3333f);
+        shape = 1.f;
+        output.SceneColor.rgb = chain;
+    }
 
     float4 color = (g_ColorMultiply + g_ColorOffset) * vertexColor;
     if (3 != g_SourceMaterialProfile && 4 != g_SourceMaterialProfile &&
@@ -2074,7 +2236,10 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         32 != g_SourceMaterialProfile && 33 != g_SourceMaterialProfile &&
         34 != g_SourceMaterialProfile && 35 != g_SourceMaterialProfile &&
         36 != g_SourceMaterialProfile && 37 != g_SourceMaterialProfile &&
-        38 != g_SourceMaterialProfile)
+        38 != g_SourceMaterialProfile &&
+        39 != g_SourceMaterialProfile &&
+        40 != g_SourceMaterialProfile &&
+        41 != g_SourceMaterialProfile)
         output.SceneColor.rgb = color.rgb;
     else
     {
@@ -2113,7 +2278,7 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
     output.SceneColor.rgb *= lighting * g_EmissiveIntensity * emissive;
     if ((g_SourceMaterialProfile >= 19 && g_SourceMaterialProfile <= 32) ||
         34 == g_SourceMaterialProfile ||
-        (g_SourceMaterialProfile >= 37 && g_SourceMaterialProfile <= 38))
+        (g_SourceMaterialProfile >= 37 && g_SourceMaterialProfile <= 40))
     {
         const float peakRadiance = max(output.SceneColor.r,
             max(output.SceneColor.g, output.SceneColor.b));

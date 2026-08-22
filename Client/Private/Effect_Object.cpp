@@ -105,6 +105,22 @@ HRESULT Client::CEffectObject::Initialize(void* pArg)
 	m_RootWorld = Desc.RootWorld;
 	m_bPlaying = Desc.bAutoPlay;
 	m_fPlaybackRate = Desc.fPlaybackRate;
+	if (nullptr != Desc.pScreenOverlayPresentationTemplate)
+	{
+		if (nullptr != Desc.pReconstructedRuntimePreparation ||
+			(nullptr == Desc.pDocument &&
+			 nullptr == Desc.pVisualProgramProjection))
+		{
+			return E_FAIL;
+		}
+		m_pScreenOverlayPresentation =
+			Desc.pScreenOverlayPresentationTemplate->Clone_PlaybackInstance();
+		if (nullptr == m_pScreenOverlayPresentation ||
+			FAILED(m_pScreenOverlayPresentation->Seek(0.f)))
+		{
+			return E_FAIL;
+		}
+	}
 	if (nullptr != Desc.pVisualProgramProjection)
 	{
 		if (nullptr != Desc.pDocument || nullptr == Desc.pPreparedResources)
@@ -193,6 +209,48 @@ bool_t Client::CEffectObject::Is_AuthoringExactPreviewExecutionEnabled() const
 {
 	return nullptr != m_pRenderer &&
 		m_pRenderer->Is_AuthoringExactPreviewExecutionEnabled();
+}
+
+bool_t Client::CEffectObject::
+	Set_AuthoringGlasshole02TranslatedCanaryEnabled(
+		const bool_t bEnabled,
+		std::string& strOutError)
+{
+	if (nullptr == m_pRenderer)
+	{
+		strOutError = "Effect renderer is unavailable.";
+		return false;
+	}
+	return m_pRenderer->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
+		bEnabled, strOutError);
+}
+
+bool_t Client::CEffectObject::
+	Is_AuthoringGlasshole02TranslatedCanaryEnabled() const
+{
+	return nullptr != m_pRenderer &&
+		m_pRenderer->Is_AuthoringGlasshole02TranslatedCanaryEnabled();
+}
+
+bool_t Client::CEffectObject::
+	Set_AuthoringValtanTranslatedCanaryEnabled(
+		const bool_t bEnabled,
+		std::string& strOutError)
+{
+	if (nullptr == m_pRenderer)
+	{
+		strOutError = "Effect renderer is unavailable.";
+		return false;
+	}
+	return m_pRenderer->Set_AuthoringValtanTranslatedCanaryEnabled(
+		bEnabled, strOutError);
+}
+
+bool_t Client::CEffectObject::
+	Is_AuthoringValtanTranslatedCanaryEnabled() const
+{
+	return nullptr != m_pRenderer &&
+		m_pRenderer->Is_AuthoringValtanTranslatedCanaryEnabled();
 }
 
 bool_t Client::CEffectObject::Stage_PreparedDocument(
@@ -673,13 +731,18 @@ void Client::CEffectObject::Set_SampleTime(const f32_t fSampleTimeSeconds)
 		return;
 	m_bPlaying = false;
 	m_Playback.Seek(fSampleTimeSeconds, m_RootWorld);
+	if (nullptr != m_pScreenOverlayPresentation)
+		(void)m_pScreenOverlayPresentation->Seek(fSampleTimeSeconds);
 }
 
 void Client::CEffectObject::Advance_Preview(const f32_t fTimeDelta)
 {
 	if (m_bReconstructedDiagnosticActive)
 		return;
-	m_Playback.Update((std::max)(0.f, fTimeDelta), m_RootWorld);
+	const f32_t fCommittedDelta = (std::max)(0.f, fTimeDelta);
+	m_Playback.Update(fCommittedDelta, m_RootWorld);
+	if (nullptr != m_pScreenOverlayPresentation)
+		(void)m_pScreenOverlayPresentation->Update(fCommittedDelta);
 }
 
 void Client::CEffectObject::Advance_Preview(
@@ -689,7 +752,10 @@ void Client::CEffectObject::Advance_Preview(
 	m_RootWorld = RootWorld;
 	if (m_bReconstructedDiagnosticActive)
 		return;
-	m_Playback.Update((std::max)(0.f, fTimeDelta), m_RootWorld);
+	const f32_t fCommittedDelta = (std::max)(0.f, fTimeDelta);
+	m_Playback.Update(fCommittedDelta, m_RootWorld);
+	if (nullptr != m_pScreenOverlayPresentation)
+		(void)m_pScreenOverlayPresentation->Update(fCommittedDelta);
 }
 
 void Client::CEffectObject::Set_RootWorldForNextUpdate(
@@ -716,6 +782,8 @@ bool_t Client::CEffectObject::Set_SampleTimeWithTransformHistory(
 	}
 	m_RootWorld = m_Playback.Get_Frame().RootWorld;
 	m_bPlaying = false;
+	if (nullptr != m_pScreenOverlayPresentation)
+		(void)m_pScreenOverlayPresentation->Seek(fSampleTimeSeconds);
 	return true;
 }
 
@@ -736,7 +804,18 @@ bool_t Client::CEffectObject::Advance_PreviewWithTransformHistory(
 		return false;
 	}
 	m_RootWorld = m_Playback.Get_Frame().RootWorld;
+	if (nullptr != m_pScreenOverlayPresentation)
+		(void)m_pScreenOverlayPresentation->Update(fTimeDelta);
 	return true;
+}
+
+void Client::CEffectObject::Set_Visible(const bool_t bVisible)
+{
+	if (m_bRenderFailureIsolated && bVisible)
+		return;
+	m_bVisible = bVisible;
+	if (!bVisible && nullptr != m_pScreenOverlayPresentation)
+		m_pScreenOverlayPresentation->Cancel();
 }
 
 void Client::CEffectObject::Reset()
@@ -744,6 +823,8 @@ void Client::CEffectObject::Reset()
 	if (m_bReconstructedDiagnosticActive)
 		return;
 	m_Playback.Seek(0.f, m_RootWorld);
+	if (nullptr != m_pScreenOverlayPresentation)
+		(void)m_pScreenOverlayPresentation->Seek(0.f);
 }
 
 void Client::CEffectObject::Update(const f32_t fTimeDelta)
@@ -760,7 +841,13 @@ void Client::CEffectObject::Update(const f32_t fTimeDelta)
 		return;
 	}
 	if (m_bPlaying)
-		m_Playback.Update(fTimeDelta * m_fPlaybackRate, m_RootWorld);
+	{
+		const f32_t fCommittedDelta =
+			(std::max)(0.f, fTimeDelta) * m_fPlaybackRate;
+		m_Playback.Update(fCommittedDelta, m_RootWorld);
+		if (nullptr != m_pScreenOverlayPresentation)
+			(void)m_pScreenOverlayPresentation->Update(fCommittedDelta);
+	}
 }
 
 void Client::CEffectObject::Late_Update(const f32_t fTimeDelta)
@@ -823,6 +910,12 @@ void Client::CEffectObject::Begin_PresentationSubmission()
 		m_iConfiguredLightCount;
 	m_LastPresentationSubmissionStats.ScreenPosts.iConfigured =
 		m_iConfiguredScreenPostCount;
+	if (nullptr != m_pScreenOverlayPresentation)
+	{
+		m_pScreenOverlayPresentation->Begin_PresentationSubmission();
+		m_LastPresentationSubmissionStats.ScreenOverlays.iConfigured =
+			m_pScreenOverlayPresentation->Get_PreparedOverlayCount();
+	}
 }
 
 HRESULT Client::CEffectObject::Submit_Presentation()
@@ -950,10 +1043,36 @@ HRESULT Client::CEffectObject::Submit_Presentation()
 		}
 		bSuppressed = bSuppressed || S_FALSE == hResult;
 	}
+	if (nullptr != m_pScreenOverlayPresentation)
+	{
+		PRESENTATION_CHANNEL_SUBMISSION_STATS& OverlayStats =
+			m_LastPresentationSubmissionStats.ScreenOverlays;
+		OverlayStats.iExpected =
+			m_pScreenOverlayPresentation->Get_ActiveOverlayCount();
+		OverlayStats.iAttempted = OverlayStats.iExpected;
+		const HRESULT hOverlayResult =
+			m_pScreenOverlayPresentation->Submit_Presentation();
+		if (FAILED(hOverlayResult))
+		{
+			OverlayStats.iFailed = OverlayStats.iExpected;
+			m_ePresentationFailureScope =
+				m_pScreenOverlayPresentation->Get_PresentationFailureScope();
+			m_strStatus =
+				"Effect screen-overlay presentation submission failed.";
+			return Complete(hOverlayResult);
+		}
+		if (S_FALSE == hOverlayResult)
+			OverlayStats.iSuppressed = OverlayStats.iExpected;
+		else
+			OverlayStats.iAccepted = OverlayStats.iExpected;
+		bSuppressed = bSuppressed || S_FALSE == hOverlayResult;
+	}
 	if (!Is_CompleteLocalSubmission(
 			m_LastPresentationSubmissionStats.Lights) ||
 		!Is_CompleteLocalSubmission(
-			m_LastPresentationSubmissionStats.ScreenPosts))
+			m_LastPresentationSubmissionStats.ScreenPosts) ||
+		!Is_CompleteLocalSubmission(
+			m_LastPresentationSubmissionStats.ScreenOverlays))
 	{
 		m_ePresentationFailureScope =
 			PRESENTATION_FAILURE_SCOPE::LOCAL_PROVIDER_CONTRACT;
@@ -1076,6 +1195,8 @@ HRESULT Client::CEffectObject::Complete_LocalEffectFailure(
 		m_hRenderFailure = hResult;
 		m_bVisible = false;
 		m_bPlaying = false;
+		if (nullptr != m_pScreenOverlayPresentation)
+			m_pScreenOverlayPresentation->Cancel();
 		if (strFailureContext.empty())
 			strFailureContext = "Effect renderer returned no failure detail.";
 		m_strStatus = std::string("Effect ") + pFailureChannel +

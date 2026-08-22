@@ -42,8 +42,8 @@
     },
     "programs": {
       "type": "array",
-      "minItems": 14,
-      "maxItems": 14,
+      "minItems": 17,
+      "maxItems": 17,
       "items": { "$ref": "#/$defs/program" }
     },
     "extensionCanaries": {
@@ -65,6 +65,7 @@
         "cascadeRibbonVisualRowCount",
         "supplementalElementCount",
         "artistFCascadeRibbonElementCount",
+        "artistTCascadeRibbonElementCount",
         "animationTrailElementCount",
         "bakedEdgeLightElementCount",
         "failClosedCount",
@@ -72,16 +73,17 @@
         "productMutationCount"
       ],
       "properties": {
-        "programCount": { "const": 14 },
-        "sourceRecipeOverlayProgramCount": { "const": 13 },
+        "programCount": { "const": 17 },
+        "sourceRecipeOverlayProgramCount": { "const": 16 },
         "adapterPacketProgramCount": { "const": 1 },
         "visualRowCount": { "const": 135 },
         "sourceRecipeOverlayCount": { "const": 66 },
         "localDecalAdapterPacketCount": { "const": 2 },
         "cascadeRibbonVisualRowCount": { "const": 4 },
-        "supplementalElementCount": { "const": 9 },
+        "supplementalElementCount": { "const": 16 },
         "artistFCascadeRibbonElementCount": { "const": 1 },
-        "animationTrailElementCount": { "const": 7 },
+        "artistTCascadeRibbonElementCount": { "const": 1 },
+        "animationTrailElementCount": { "const": 13 },
         "bakedEdgeLightElementCount": { "const": 1 },
         "failClosedCount": { "const": 67 },
         "extensionCanaryCount": { "const": 2 },

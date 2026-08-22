@@ -312,12 +312,26 @@ namespace LostArk::Shared
 		CPacketReader& reader,
 		C2S_MOVE& message);
 
+	/* AIM_POINT preserves the existing world-point aim contract. GROUND_POINT
+	 carries an exact world XZ which the server must range/nav validate before
+	 it becomes an action target. Keeping the kind typed prevents an old or
+	 compromised client from making an ordinary directional skill acquire
+	 ground-target semantics just by changing its coordinates. */
+	enum class SKILL_TARGET_INTENT_KIND : std::uint8_t
+	{
+		AIM_POINT,
+		GROUND_POINT,
+		END
+	};
+
 	// Client intent contains no player or entity ID. The server resolves the
 	// actor from the authenticated session that owns this command.
 	struct C2S_USE_SKILL
 	{
 		std::uint32_t iClientSequence = 0;
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
+		SKILL_TARGET_INTENT_KIND eTargetIntent =
+			SKILL_TARGET_INTENT_KIND::AIM_POINT;
 		float fAimX = 0.f;
 		float fAimZ = 0.f;
 	};
@@ -488,6 +502,14 @@ namespace LostArk::Shared
 		PLAYER_STANCE_ID eStance = PLAYER_STANCE_ID::NONE;
 		SKILL_ID iSkillId = INVALID_SKILL_ID;
 		std::uint32_t iActionStartTick = 0;
+		/* Present only for a server-approved GROUND_POINT skill. The Y component
+		 is sampled from the authoritative navigation grid so every client roots
+		 the action effect at the same surface. A non-target action must carry
+		 false and canonical zero coordinates. */
+		bool hasSkillTarget = false;
+		float fSkillTargetX = 0.f;
+		float fSkillTargetY = 0.f;
+		float fSkillTargetZ = 0.f;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
 		std::uint32_t iCurrentResource = 0;

@@ -64,7 +64,7 @@ namespace LostArk::Server
 
 	class CGameRoom final
 	{
-		friend int Run_ServerGameplayContractTests();
+		friend int Run_ServerGameplayContractTests(bool);
 	public:
 		explicit CGameRoom(LostArk::Shared::WORLD_ID worldId);
 

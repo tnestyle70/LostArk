@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import copy
 import hashlib
+import json
 import struct
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 
 from Tools.EffectPipeline import evaluate_ue3_material_uniform_expressions as subject
 
@@ -56,6 +63,60 @@ def _parameter_item(
         )
     result += _fname(names, "None")
     return bytes(result)
+
+
+def _glasshole_scalar_values() -> list[float]:
+    values = [0.0] * subject.GLASSHOLE_SCALAR_EXPRESSION_COUNT
+    packed_rows = {
+        1: [2.5, -15.0, -7.5, 1.0],
+        7: [0.0, 0.0, -7.0, 0.2],
+        8: [0.0, 2.0, 1.0, 0.3],
+        9: [0.0, 0.0, 1.0, 0.1],
+        10: [0.0, 2.0, -0.8, 1.0],
+        11: [1.0, 0.0, 0.0, 0.0],
+        12: [0.0, 0.0, 0.0, 2.0],
+        13: [5.0, -0.0, 0.0, 0.8],
+    }
+    for group, row in packed_rows.items():
+        values[group * 4 : group * 4 + 4] = row
+    return values
+
+
+def _glasshole_native_binding() -> dict[str, object]:
+    return {
+        "constantBufferClosure": {
+            "declaredConstantBuffer0Float4Count": 22,
+        },
+        "scalarGroups": [
+            {
+                "expressionIndexOrGroup": group,
+                "baseIndex": slot * 16,
+            }
+            for group, slot in subject.GLASSHOLE_SCALAR_GROUP_WIRES
+        ],
+    }
+
+
+def _glasshole_evaluation(evidence: dict[str, object]) -> dict[str, object]:
+    values = _glasshole_scalar_values()
+    material_rows = []
+    for group in evidence["groupsInAscendingCb0SlotOrder"]:
+        indices = group["projectedExpressionIndices"]
+        material_rows.append(
+            {
+                "slot": group["slot"],
+                "source": "PIXEL_SCALAR_EXPRESSION_GROUP",
+                "expressionIndices": indices,
+                "value": [subject._float32(values[index]) for index in indices],
+            }
+        )
+    return {
+        "pixelScalarExpressionValues": values,
+        "nativeCb0": {
+            "materialRows": material_rows,
+            "nativeScalarGroupPackingEvidence": evidence,
+        },
+    }
 
 
 class SourceValueUniformEvaluatorTests(unittest.TestCase):
@@ -139,7 +200,7 @@ class SourceValueUniformEvaluatorTests(unittest.TestCase):
         self.assertEqual(by_key[("rate", 2)]["value"], 2.0)
         self.assertEqual(by_key[("rate", 2)]["sourceObjectPath"], "Parent.MI")
 
-    def test_folded_math_zero_is_add_and_two_is_multiply(self) -> None:
+    def test_folded_math_zero_add_two_multiply_three_divide(self) -> None:
         constant_a = {
             "typeName": "fmaterialuniformexpressionconstant",
             "value": [1.0, 2.0, 3.0, 4.0],
@@ -168,6 +229,11 @@ class SourceValueUniformEvaluatorTests(unittest.TestCase):
         self.assertEqual(
             subject.evaluate_expression(folded(2), {}, {}, **kwargs),
             [5.0, 12.0, 21.0, 32.0],
+        )
+        self.assertEqual(
+            subject.evaluate_expression(folded(3), {}, {}, **kwargs),
+            [0.20000000298023224, 0.3333333432674408,
+             0.4285714328289032, 0.5],
         )
         with self.assertRaisesRegex(ValueError, "not source-proven"):
             subject.evaluate_expression(folded(1), {}, {}, **kwargs)
@@ -218,6 +284,29 @@ class SourceValueUniformEvaluatorTests(unittest.TestCase):
         )
         self.assertEqual(result[:3], [-0.25, -0.25, 0.25])
         self.assertEqual(struct.pack("<f", result[3]), struct.pack("<f", 0.0))
+
+    def test_max_is_component_wise_and_float32(self) -> None:
+        expression = {
+            "typeName": "fmaterialuniformexpressionmax",
+            "a": {
+                "typeName": "fmaterialuniformexpressionconstant",
+                "value": [1.0, 4.0, -3.0, 8.0],
+            },
+            "b": {
+                "typeName": "fmaterialuniformexpressionconstant",
+                "value": [2.0, 3.0, -2.0, 9.0],
+            },
+        }
+        self.assertEqual(
+            subject.evaluate_expression(
+                expression,
+                {},
+                {},
+                game_time_seconds=0.0,
+                real_time_seconds=0.0,
+            ),
+            [2.0, 4.0, -2.0, 9.0],
+        )
 
     def test_native_cb0_pack_preserves_engine_holes(self) -> None:
         uniform_set = {
@@ -271,6 +360,111 @@ class SourceValueUniformEvaluatorTests(unittest.TestCase):
         self.assertEqual(rows[1]["value"], [1.0, 2.0, 3.0, 4.0])
         self.assertEqual(rows[2]["value"], [5.0, 0.0, 0.0, 0.0])
         self.assertEqual(rows[3]["value"], [1.0, 2.0, 3.0, 4.0])
+        evidence = result["nativeCb0"]["nativeScalarGroupPackingEvidence"]
+        self.assertEqual(evidence["partialGroupCount"], 1)
+        self.assertFalse(evidence["targetPaddingFree"])
+        self.assertFalse(evidence["targetPaddingFreeCorroborationAdmission"])
+        self.assertEqual(
+            evidence["fidelity"], subject.PACKED_SCALAR_PADDING_UNRESOLVED
+        )
+        self.assertIsNone(evidence["packedLittleEndianByteCount"])
+        self.assertIsNone(evidence["packedLittleEndianSha256"])
+        partial = evidence["groupsInAscendingCb0SlotOrder"][1]
+        self.assertFalse(partial["completeFourLaneProjection"])
+        self.assertEqual(partial["projectedExpressionIndices"], [4, 5, 6, 7])
+        self.assertEqual(partial["presentExpressionIndices"], [4])
+
+    def test_glasshole_native_scalar_groups_are_padding_free_and_hash_sealed(self) -> None:
+        values = _glasshole_scalar_values()
+        evidence = subject.project_native_scalar_group_packing(
+            values, _glasshole_native_binding()
+        )
+        subject.validate_target_native_scalar_group_packing(
+            subject.GLASSHOLE_TARGET_ID, _glasshole_evaluation(evidence)
+        )
+
+        self.assertEqual(evidence["fidelity"], subject.PACKED_SCALAR_FIDELITY)
+        self.assertEqual(evidence["selectedGroupCount"], 8)
+        self.assertEqual(evidence["completeGroupCount"], 8)
+        self.assertEqual(evidence["partialGroupCount"], 0)
+        self.assertEqual(
+            evidence["packedLittleEndianByteCount"],
+            subject.GLASSHOLE_PACKED_SCALAR_BYTE_COUNT,
+        )
+        self.assertEqual(
+            evidence["packedLittleEndianSha256"],
+            subject.GLASSHOLE_PACKED_SCALAR_SHA256,
+        )
+        self.assertEqual(
+            [
+                [
+                    subject._float32(values[index])
+                    for index in row["projectedExpressionIndices"]
+                ]
+                for row in evidence["groupsInAscendingCb0SlotOrder"]
+            ],
+            [
+                [2.5, -15.0, -7.5, 1.0],
+                [0.0, 0.0, -7.0, subject._float32(0.2)],
+                [0.0, 2.0, 1.0, subject._float32(0.3)],
+                [0.0, 0.0, 1.0, subject._float32(0.1)],
+                [0.0, 2.0, subject._float32(-0.8), 1.0],
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 2.0],
+                [5.0, -0.0, 0.0, subject._float32(0.8)],
+            ],
+        )
+
+    def test_glasshole_lane_swap_and_group_mutation_fail_closed(self) -> None:
+        values = _glasshole_scalar_values()
+        evidence = subject.project_native_scalar_group_packing(
+            values, _glasshole_native_binding()
+        )
+        lane_swapped = copy.deepcopy(evidence)
+        indices = lane_swapped["groupsInAscendingCb0SlotOrder"][0][
+            "projectedExpressionIndices"
+        ]
+        indices[0], indices[1] = indices[1], indices[0]
+        with self.assertRaisesRegex(ValueError, "lane projection changed"):
+            subject.validate_native_scalar_group_packing_evidence(
+                lane_swapped, values
+            )
+
+        mutated_native = _glasshole_native_binding()
+        mutated_native["scalarGroups"][0]["expressionIndexOrGroup"] = 2
+        group_mutated = subject.project_native_scalar_group_packing(
+            values, mutated_native
+        )
+        with self.assertRaisesRegex(ValueError, "Glasshole scalar group wire changed"):
+            subject.validate_target_native_scalar_group_packing(
+                subject.GLASSHOLE_TARGET_ID,
+                _glasshole_evaluation(group_mutated),
+            )
+
+    def test_tracked_receipt_seals_only_glasshole_target_padding_free(self) -> None:
+        receipt_path = REPOSITORY_ROOT / (
+            "Data/Effects/Imported/DimensionMaster/Materials/"
+            "skill.2050120.clip3.source-value-uniform-evaluation.receipt.json"
+        )
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        subject.validate_output_receipt(receipt)
+        admitted = [
+            target
+            for target in receipt["targets"]
+            if target["sourceValueUniformEvaluation"]["nativeCb0"]
+            ["nativeScalarGroupPackingEvidence"]
+            ["targetPaddingFreeCorroborationAdmission"]
+        ]
+        self.assertEqual(
+            [target["targetId"] for target in admitted],
+            [subject.GLASSHOLE_TARGET_ID],
+        )
+        for target in receipt["targets"]:
+            self.assertFalse(target["sourceValueReplayAdmission"])
+            self.assertFalse(target["actualVfPassAdmission"])
+            self.assertFalse(target["runtimeAdmission"])
+            self.assertFalse(target["visualAdmission"])
+        self.assertFalse(receipt["scope"]["nativeScalarGroupPackingSourceClosed"])
 
     def test_official_source_semantics_are_verified_not_assumed(self) -> None:
         text = """
@@ -280,10 +474,13 @@ enum EFoldedMathOperation
 };
 case FMO_Add: OutData.WriteOpcode(UE::Shader::EPreshaderOpcode::Add); break;
 case FMO_Mul: OutData.WriteOpcode(UE::Shader::EPreshaderOpcode::Mul); break;
+case FMO_Div: OutData.WriteOpcode(UE::Shader::EPreshaderOpcode::Div); break;
 class FMaterialUniformExpressionPeriodic {};
 EPreshaderOpcode::Fractional;
 class FMaterialUniformExpressionSine {};
 bIsCosine ? UE::Shader::EPreshaderOpcode::Cos : UE::Shader::EPreshaderOpcode::Sin;
+class FMaterialUniformExpressionMax {};
+OutData.WriteOpcode(UE::Shader::EPreshaderOpcode::Max);
 """.lstrip()
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "MaterialUniformExpressions.h"
@@ -307,6 +504,8 @@ bIsCosine ? UE::Shader::EPreshaderOpcode::Cos : UE::Shader::EPreshaderOpcode::Si
             evidence = subject.validate_official_source(path, expected)
         self.assertEqual(evidence["verifiedSemantics"]["foldedMathOrdinal0"], "ADD")
         self.assertEqual(evidence["verifiedSemantics"]["foldedMathOrdinal2"], "MUL")
+        self.assertEqual(evidence["verifiedSemantics"]["foldedMathOrdinal3"], "DIV")
+        self.assertEqual(evidence["verifiedSemantics"]["max"], "COMPONENT_WISE_MAX")
 
 
 if __name__ == "__main__":

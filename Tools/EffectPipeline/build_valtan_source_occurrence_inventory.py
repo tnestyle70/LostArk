@@ -75,6 +75,153 @@ OUTPUT_PATH = (
     / "Data/Effects/Imported/Valtan/Valtan.source-occurrence-inventory.v1.json"
 )
 AUTHORED_ROOT = ROOT / "Data/Effects/Authored"
+CARRIER_V1_RECEIPT_PATH = (
+    ROOT
+    / "Data/Effects/Imported/Valtan/CarrierV1"
+    / "Valtan.carrier-v1-materialization-receipt.v1.json"
+)
+PROTECTED_WHIRLWIND_EFFECT_ID = "effect.valtan.pattern.420633.active"
+
+
+def portable_recipe_with_exact_decal(
+    source_recipe: dict[str, Any],
+) -> dict[str, Any]:
+    """Extend the shared Sprite/Mesh portable contract for exact EF Decals."""
+    modules = list(source_recipe.get("modules") or [])
+    decal_modules = [
+        row
+        for row in modules
+        if str(row.get("className") or "").casefold()
+        == "efparticlemoduletypedatadecal"
+    ]
+    if source_recipe.get("rendererShape") != "decal":
+        if decal_modules:
+            raise MaterializeError(
+                "TypeDataDecal is attached to a non-Decal renderer"
+            )
+        return portable_recipe(source_recipe)
+    if len(decal_modules) != 1:
+        raise MaterializeError(
+            "exact Decal carrier does not have one EF TypeDataDecal module"
+        )
+
+    globals_map = portable_recipe.__globals__
+    staged = copy.deepcopy(source_recipe)
+    for field in globals_map["SOURCE_ONLY_RECIPE_FIELDS"]:
+        staged.pop(field, None)
+    staged["emitterDelaySeconds"] = 0
+
+    portable_classes = set(globals_map["PORTABLE_MODULE_CLASSES"])
+    portable_classes.add("particlemoduletypedatadecal")
+    module_ids: set[str] = set()
+    class_counts: Counter[str] = Counter()
+    for module in staged.get("modules", []):
+        source_class = module.get("className")
+        if not isinstance(source_class, str):
+            raise MaterializeError("Decal source module class is missing")
+        normalized = globals_map["normalized_module_class"](source_class)
+        if normalized not in portable_classes:
+            raise MaterializeError(
+                f"unsupported Decal source module class: {source_class}"
+            )
+        if normalized in {
+            "particlemodulerequired",
+            "particlemodulespawn",
+            "particlemoduletypedatamesh",
+        } and source_class != normalized:
+            raise MaterializeError(
+                f"Decal module requires exact Playback class: {source_class}"
+            )
+        stable_id = module.get("stableId")
+        if (
+            not isinstance(stable_id, str)
+            or not stable_id
+            or stable_id in module_ids
+        ):
+            raise MaterializeError(
+                f"missing/duplicate Decal source module ID: {stable_id}"
+            )
+        module_ids.add(stable_id)
+        class_counts[normalized] += 1
+        property_paths: set[str] = set()
+        for literal in module.get("literals", []):
+            property_path = literal.get("propertyPath")
+            if (
+                not isinstance(property_path, str)
+                or property_path in property_paths
+            ):
+                raise MaterializeError(
+                    "missing/duplicate Decal source literal property: "
+                    f"{source_class}/{property_path}"
+                )
+            property_paths.add(property_path)
+        globals_map["validate_exact_module_semantics"](
+            module, source_class, normalized
+        )
+        capability_class = globals_map["distribution_capability_class"](
+            source_class, normalized
+        )
+        allowed_properties = globals_map[
+            "PORTABLE_DISTRIBUTION_PROPERTIES"
+        ].get(capability_class, set())
+        for distribution in module.get("distributions", []):
+            property_path = distribution.get("propertyPath")
+            if (
+                not isinstance(property_path, str)
+                or property_path in property_paths
+            ):
+                raise MaterializeError(
+                    "missing/duplicate Decal source distribution property: "
+                    f"{source_class}/{property_path}"
+                )
+            property_paths.add(property_path)
+            if (
+                distribution.get("parameterBinding", "none") != "none"
+                or distribution.get("parameterName", "")
+                or property_path not in allowed_properties
+            ):
+                raise MaterializeError(
+                    "unsupported Decal source distribution capability: "
+                    f"{source_class}/{property_path}"
+                )
+            ignored_null_cdo = (
+                normalized == "particlemodulerequired"
+                and property_path == "spawnrate"
+            )
+            if ignored_null_cdo and not globals_map[
+                "is_null_cdo_distribution"
+            ](distribution):
+                raise MaterializeError(
+                    "ignored Decal Required.spawnrate is not null-CDO"
+                )
+            for field in globals_map["SOURCE_ONLY_DISTRIBUTION_FIELDS"]:
+                distribution.pop(field, None)
+        if {
+            row["propertyPath"] for row in module.get("distributions", [])
+        } != allowed_properties:
+            raise MaterializeError(
+                "Decal source distribution capability is incomplete: "
+                f"{source_class}"
+            )
+
+    maximums = globals_map["PORTABLE_MODULE_MAX_COUNTS"]
+    for source_class, count in class_counts.items():
+        if count > maximums.get(source_class, 1):
+            raise MaterializeError(
+                "Decal source module cardinality is unsupported: "
+                f"{source_class}"
+            )
+    if (
+        class_counts["particlemodulerequired"] != 1
+        or class_counts["particlemoduletypedatadecal"] != 1
+        or class_counts["particlemoduletypedatamesh"] != 0
+    ):
+        raise MaterializeError(
+            "Decal Required/TypeDataDecal cardinality is invalid"
+        )
+    if staged.get("rendererShape") != "decal":
+        raise MaterializeError("portable Decal recipe lost renderer shape")
+    return staged
 
 EXPECTED_PATTERN_COUNT = 33
 MISSING_ACTION_BINDING_POLICIES = {
@@ -136,6 +283,26 @@ ARENA84_BINDING_GAP_PROPOSALS = [
         },
     },
 ]
+
+# PR #138 added product-animation rows for the three Arena 84 actions.  They
+# are CURRENT_PRODUCT_BASELINE presentation clips, not acceptance of the
+# older 420629/12_0x source-review proposals above.  Keep both facts explicit:
+# the product graph has no binding gap, while source-family projection stays
+# fail-closed until the proposal is separately reviewed.
+ARENA84_CURRENT_PRODUCT_BINDINGS = {
+    "valtan.mechanic.arena-floor-84.windup": (
+        "valtan.mechanic.arena-floor-84.windup.clip.01",
+        "mesh_att_battle_2_01",
+    ),
+    "valtan.mechanic.arena-floor-84.impact": (
+        "valtan.mechanic.arena-floor-84.impact.clip.01",
+        "mesh_att_battle_2_02",
+    ),
+    "valtan.mechanic.arena-floor-84.recovery": (
+        "valtan.mechanic.arena-floor-84.recovery.clip.01",
+        "mesh_att_battle_2_03",
+    ),
+}
 SOURCE_VISUAL_SIGNATURE_EQUIVALENCE_REVIEWS = {
     "VALTAN_SWING": [(420601, 0), (420660, 0)],
     "VALTAN_IMPRISON_ROAR": [(420603, 0), (420603, 2), (420603, 3)],
@@ -290,6 +457,29 @@ def sha256_file(path: Path) -> str:
 
 def canonical_sha256(value: Any) -> str:
     return sha256_bytes(canonical_json_bytes(value))
+
+
+def effect_catalog_prefix_projection(
+    catalog: dict[str, Any], prefix: str
+) -> dict[str, Any]:
+    """Return a stable catalog slice owned by one effect ID namespace."""
+
+    effects = catalog.get("effects")
+    if not prefix or not isinstance(effects, list):
+        raise InventoryError("Effect catalog prefix projection is invalid")
+    if any(not isinstance(row, dict) for row in effects):
+        raise InventoryError("Effect catalog contains a non-object row")
+    rows = [
+        row
+        for row in effects
+        if str(row.get("effectAssetId") or "").startswith(prefix)
+    ]
+    rows.sort(key=lambda row: str(row.get("effectAssetId") or ""))
+    return {
+        "formatVersion": catalog.get("formatVersion"),
+        "effectAssetIdPrefix": prefix,
+        "effects": rows,
+    }
 
 
 def stable_slug(value: Any, maximum: int = 120) -> str:
@@ -1335,6 +1525,39 @@ def carrier_element_seed(
         if any(token in source_material.casefold() for token in ("_ad", "add"))
         else "alpha_two_sided_depth_read"
     )
+    normalized_detail = copy.deepcopy(detail)
+    mesh_detail = normalized_detail.setdefault("mesh", {})
+    if not isinstance(mesh_detail, dict):
+        raise InventoryError("source carrier mesh detail is not an object")
+    mesh_bindings = [
+        row
+        for row in resources
+        if isinstance(row, dict) and row.get("slotId") == "meshModel"
+    ]
+    if renderer_shape == "mesh":
+        if kind != "particle" or len(mesh_bindings) != 1:
+            raise InventoryError(
+                "mesh source carrier must have exactly one meshModel binding"
+            )
+        mesh_asset_id = str(mesh_bindings[0].get("assetId") or "")
+        if (
+            not mesh_asset_id.startswith("Effect/Valtan/Meshes/")
+            or not mesh_asset_id.casefold().endswith(".wmodel")
+        ):
+            raise InventoryError(
+                "Valtan mesh source carrier has a non-WModel mesh binding"
+            )
+        # ModelAssetConverter emits Effect WModels in source centimetres while
+        # the unified renderer consumes metres.  Omitting this field replays
+        # the exact carrier at 100x scale.
+        mesh_detail["modelPreScale"] = 0.01
+    else:
+        if mesh_bindings:
+            raise InventoryError(
+                "non-mesh source carrier cannot inherit a system meshModel"
+            )
+        mesh_detail.pop("modelPreScale", None)
+
     return {
         "id": f"source.{sha256_bytes(carrier_key.encode('utf-8'))[:20]}",
         "displayName": emitter_path.rsplit(".", 1)[-1][:64],
@@ -1349,7 +1572,7 @@ def carrier_element_seed(
             "renderProfile": render_profile,
             "sourceProfile": {"enabled": False},
         },
-        "detail": copy.deepcopy(detail),
+        "detail": normalized_detail,
         "sourceRecipe": copy.deepcopy(source_recipe),
         "sourcePresentation": imported_effects.default_source_presentation(),
         "inventoryRendererShape": renderer_shape,
@@ -1530,7 +1753,9 @@ def build_system_inventory(
                                     "sourceSlotId": color_carrier["slotId"],
                                 }
                             )
-                portable_source_recipe = portable_recipe(source_recipe)
+                portable_source_recipe = portable_recipe_with_exact_decal(
+                    source_recipe
+                )
             except MaterializeError as error:
                 conversion_status = "UNRESOLVED_RUNTIME_ADAPTER"
                 conversion_blockers.append(
@@ -2534,13 +2759,30 @@ def build_inventory(
         for row in pattern_bindings.get("bindings", [])
     }
     binding_gaps = sorted(encounter_action_ids - bound_action_ids)
-    proposed_gap_ids = sorted(
-        row["actionId"] for row in ARENA84_BINDING_GAP_PROPOSALS
-    )
-    if binding_gaps != proposed_gap_ids:
+    if binding_gaps:
         raise InventoryError(
             "canonical pattern binding gaps changed: " + repr(binding_gaps)
         )
+    bindings_by_action = {
+        str(row.get("actionId") or ""): row
+        for row in pattern_bindings.get("bindings", [])
+        if isinstance(row, dict)
+    }
+    for action_id, (occurrence_id, clip_name) in (
+        ARENA84_CURRENT_PRODUCT_BINDINGS.items()
+    ):
+        binding = bindings_by_action.get(action_id)
+        clips = binding.get("clips") if isinstance(binding, dict) else None
+        if (
+            not isinstance(clips, list)
+            or len(clips) != 1
+            or clips[0].get("clipOccurrenceId") != occurrence_id
+            or clips[0].get("clip") != clip_name
+            or clips[0].get("mappingBasis") != "CURRENT_PRODUCT_BASELINE"
+        ):
+            raise InventoryError(
+                "Arena 84 current product binding changed: " + action_id
+            )
     all_expanded = [
         f"{occurrence['fullKey']}|{carrier['carrierKey']}"
         for occurrence in occurrences
@@ -2959,12 +3201,15 @@ def validate_inventory(document: dict[str, Any]) -> None:
         )
 
 
-def cue_effect_index(cue_document: dict[str, Any]) -> dict[tuple[str, str], str]:
-    result: dict[tuple[str, str], str] = {}
+def cue_effect_index(
+    cue_document: dict[str, Any],
+) -> dict[tuple[str, str, str], str]:
+    result: dict[tuple[str, str, str], str] = {}
     for cue in cue_document.get("cues", []):
         key = (
             str(cue.get("patternId") or ""),
             str(cue.get("actionId") or ""),
+            str(cue.get("clipOccurrenceId") or ""),
         )
         effect_id = str(cue.get("effectAssetId") or "")
         if not all(key) or not effect_id:
@@ -3003,6 +3248,53 @@ def occurrence_element_seed(
     timing = detail.setdefault("timing", {})
     timing["startDelaySeconds"] = occurrence["sourceTimeSeconds"]
     return seed
+
+
+def compact_v13_source_element(
+    element: dict[str, Any],
+) -> tuple[dict[str, Any], str]:
+    """Project a full occurrence/carrier key into v13's stable source field."""
+    result = copy.deepcopy(element)
+    full_key = str(result.get("sourceNode") or "")
+    if not full_key:
+        raise InventoryError("candidate source element lost its full source key")
+    result["sourceNode"] = "valtan.source." + sha256_bytes(
+        full_key.encode("utf-8")
+    )
+    return result, full_key
+
+
+def load_protected_whirlwind_aliases(
+    path: Path = CARRIER_V1_RECEIPT_PATH,
+) -> dict[str, dict[str, Any]]:
+    if not path.is_file():
+        return {}
+    receipt = read_json(path)
+    if (
+        receipt.get("schema")
+        != "lostark.valtan-carrier-v1-materialization-receipt"
+        or receipt.get("formatVersion") != 1
+    ):
+        raise InventoryError("carrier V1 receipt header is invalid")
+    proofs = receipt.get("protectedWhirlwindExactAliasProof")
+    if not isinstance(proofs, list) or len(proofs) != 3:
+        raise InventoryError("protected Whirlwind alias proof denominator drifted")
+    aliases: dict[str, dict[str, Any]] = {}
+    for proof in proofs:
+        if (
+            not isinstance(proof, dict)
+            or proof.get("joinStatus")
+            != "EXACT_SOURCE_OCCURRENCE_EMITTER_LOD_MATERIAL_RECIPE_ALIAS"
+        ):
+            raise InventoryError("protected Whirlwind alias proof is invalid")
+        full_key = (
+            f"{proof.get('occurrenceFullKey') or ''}|"
+            f"{proof.get('carrierKey') or ''}"
+        )
+        if full_key in aliases or full_key.startswith("|") or full_key.endswith("|"):
+            raise InventoryError("protected Whirlwind alias proof key is invalid")
+        aliases[full_key] = proof
+    return aliases
 
 
 def reconcile_effect_document(
@@ -3062,6 +3354,8 @@ def build_reconcile_plan(
     inventory: dict[str, Any], authored_root: Path = AUTHORED_ROOT
 ) -> dict[str, Any]:
     cues = cue_effect_index(read_json(CUE_PATH))
+    protected_aliases = load_protected_whirlwind_aliases()
+    covered_protected_aliases: set[str] = set()
     systems = {
         row["sourceSystemId"]: {
             carrier["carrierKey"]: carrier for carrier in row["carriers"]
@@ -3077,6 +3371,7 @@ def build_reconcile_plan(
             (
                 occurrence["patternId"],
                 str(occurrence.get("gameplayActionId") or ""),
+                str(occurrence.get("clipOccurrenceId") or ""),
             )
         )
         if not effect_id:
@@ -3094,9 +3389,31 @@ def build_reconcile_plan(
                 or carrier.get("elementSeed") is None
             ):
                 continue
-            candidates[effect_id].append(
+            candidate, full_key = compact_v13_source_element(
                 occurrence_element_seed(occurrence, carrier)
             )
+            if (
+                effect_id == PROTECTED_WHIRLWIND_EFFECT_ID
+                and full_key in protected_aliases
+            ):
+                proof = protected_aliases[full_key]
+                if (
+                    str((candidate.get("material") or {}).get(
+                        "sourceMaterialPath"
+                    ) or "").casefold()
+                    != str(proof.get("sourceMaterialPath") or "").casefold()
+                    or str(candidate.get("inventoryRendererShape") or "")
+                    != str(proof.get("rendererShape") or "")
+                ):
+                    raise InventoryError(
+                        "protected Whirlwind alias material/carrier drifted"
+                    )
+                covered_protected_aliases.add(full_key)
+                continue
+            candidates[effect_id].append(candidate)
+
+    if protected_aliases and covered_protected_aliases != set(protected_aliases):
+        raise InventoryError("protected Whirlwind alias coverage drifted")
 
     documents = []
     for effect_id in sorted(candidates):
@@ -3133,6 +3450,9 @@ def build_reconcile_plan(
                 len(row["legacyGenericRetireCandidates"]) for row in documents
             ),
             "deletedElementCount": 0,
+            "protectedWhirlwindAliasCoveredCount": len(
+                covered_protected_aliases
+            ),
             "unresolvedCount": len(unresolved),
         },
     }

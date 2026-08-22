@@ -1,0 +1,637 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lostark.valtan-legacy-v0-carrier-migration-inventory.schema.json",
+  "title": "LostArk Valtan legacy V0 carrier migration inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "completionPolicy",
+    "sources",
+    "summary",
+    "documents",
+    "legacyRowAudit",
+    "sourceSystems",
+    "legacyClipAggregateCandidates"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-legacy-v0-carrier-migration-inventory"
+    },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "completionPolicy": { "type": "string", "minLength": 1 },
+    "sources": { "$ref": "#/$defs/sources" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "documents": {
+      "type": "array",
+      "minItems": 97,
+      "maxItems": 97,
+      "items": { "$ref": "#/$defs/document" }
+    },
+    "legacyRowAudit": {
+      "type": "array",
+      "minItems": 3032,
+      "maxItems": 3032,
+      "items": { "$ref": "#/$defs/legacyRow" }
+    },
+    "sourceSystems": {
+      "type": "array",
+      "minItems": 115,
+      "maxItems": 115,
+      "items": { "$ref": "#/$defs/sourceSystem" }
+    },
+    "legacyClipAggregateCandidates": {
+      "type": "array",
+      "minItems": 3403,
+      "maxItems": 3403,
+      "items": { "$ref": "#/$defs/aggregateCandidate" }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "shapeCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sprite": { "type": "integer", "minimum": 0 },
+        "mesh": { "type": "integer", "minimum": 0 },
+        "decal": { "type": "integer", "minimum": 0 },
+        "light": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sourceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sourceGraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logicalPackage", "logicalPath", "sha256"],
+      "properties": {
+        "logicalPackage": { "type": "string", "minLength": 1 },
+        "logicalPath": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "runtimeCookReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logicalPath",
+        "sha256",
+        "assetCount",
+        "verifiedRuntimeFileCount",
+        "failureCount"
+      ],
+      "properties": {
+        "logicalPath": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "assetCount": { "type": "integer", "minimum": 0 },
+        "verifiedRuntimeFileCount": { "type": "integer", "minimum": 0 },
+        "failureCount": { "const": 0 }
+      }
+    },
+    "productEffectSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effectAssetId", "path", "sha256"],
+      "properties": {
+        "effectAssetId": {
+          "type": "string",
+          "pattern": "^effect\\.valtan\\."
+        },
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "sourceGraphs",
+        "runtimeCookReceipt",
+        "productEffectDocuments"
+      ],
+      "properties": {
+        "repository": {
+          "type": "array",
+          "minItems": 10,
+          "items": { "$ref": "#/$defs/sourceArtifact" }
+        },
+        "sourceGraphs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/sourceGraph" }
+        },
+        "runtimeCookReceipt": { "$ref": "#/$defs/runtimeCookReceipt" },
+        "productEffectDocuments": {
+          "type": "array",
+          "minItems": 97,
+          "maxItems": 97,
+          "items": { "$ref": "#/$defs/productEffectSource" }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productOwnerDocumentCount",
+        "bossPatternCueOwnerDocumentCount",
+        "combatObjectOwnerDocumentCount",
+        "productElementCount",
+        "legacyAggregateElementCount",
+        "legacyRowsWithMeshModelBindingCount",
+        "legacyRowsWithoutMeshModelBindingCount",
+        "preservedNonLegacyElementCount",
+        "pureLegacyDocumentCount",
+        "mixedLegacyDocumentCount",
+        "rawAggregateDenominatorLabel",
+        "rawAggregateCarrierCandidateCount",
+        "rawAggregateRendererShapeCounts",
+        "uniqueSourceSystemCount",
+        "uniqueSourceCarrierCount",
+        "uniqueSourceCarrierRendererShapeCounts",
+        "unknownSourceSystemJoinCount",
+        "duplicateSourceSystemJoinCount",
+        "exactMaterialOrdinalJoinCount",
+        "blockedLegacyIdentityDriftCount",
+        "exactReviewedSourceOccurrenceJoinCount",
+        "migrationDispositionCounts",
+        "failedButRemovedElementCount"
+      ],
+      "properties": {
+        "productOwnerDocumentCount": { "const": 97 },
+        "bossPatternCueOwnerDocumentCount": { "const": 96 },
+        "combatObjectOwnerDocumentCount": { "const": 1 },
+        "productElementCount": { "const": 3343 },
+        "legacyAggregateElementCount": { "const": 3032 },
+        "legacyRowsWithMeshModelBindingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "legacyRowsWithoutMeshModelBindingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "preservedNonLegacyElementCount": { "const": 311 },
+        "pureLegacyDocumentCount": { "const": 54 },
+        "mixedLegacyDocumentCount": { "const": 43 },
+        "rawAggregateDenominatorLabel": {
+          "const": "LEGACY_CLIP_AGGREGATE_CANDIDATE_DENOMINATOR"
+        },
+        "rawAggregateCarrierCandidateCount": { "const": 3403 },
+        "rawAggregateRendererShapeCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sprite", "mesh", "decal", "light"],
+          "properties": {
+            "sprite": { "const": 2914 },
+            "mesh": { "const": 394 },
+            "decal": { "const": 89 },
+            "light": { "const": 6 }
+          }
+        },
+        "uniqueSourceSystemCount": { "const": 115 },
+        "uniqueSourceCarrierCount": { "const": 934 },
+        "uniqueSourceCarrierRendererShapeCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sprite", "mesh", "decal", "light"],
+          "properties": {
+            "sprite": { "const": 741 },
+            "mesh": { "const": 162 },
+            "decal": { "const": 29 },
+            "light": { "const": 2 }
+          }
+        },
+        "unknownSourceSystemJoinCount": { "const": 0 },
+        "duplicateSourceSystemJoinCount": { "const": 0 },
+        "exactMaterialOrdinalJoinCount": { "const": 3032 },
+        "blockedLegacyIdentityDriftCount": { "const": 0 },
+        "exactReviewedSourceOccurrenceJoinCount": { "const": 0 },
+        "migrationDispositionCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "BLOCKED_SOURCE_BRANCH",
+            "BLOCKED_LEGACY_IDENTITY_DRIFT"
+          ],
+          "properties": {
+            "BLOCKED_SOURCE_BRANCH": { "const": 3032 },
+            "BLOCKED_LEGACY_IDENTITY_DRIFT": { "const": 0 }
+          }
+        },
+        "failedButRemovedElementCount": { "const": 0 }
+      }
+    },
+    "productOwner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ownerKind",
+        "ownerRoot",
+        "ownerId",
+        "ownerPatternId",
+        "ownerStageId",
+        "ownerStageActionId",
+        "ownerClipOccurrenceId",
+        "ownerClip",
+        "effectAssetId",
+        "occurrenceId",
+        "bindingId",
+        "combatObjectArchetypeId",
+        "clientVisualId"
+      ],
+      "properties": {
+        "ownerKind": {
+          "enum": ["BOSS_PATTERN_CUE", "COMBAT_OBJECT"]
+        },
+        "ownerRoot": { "enum": ["BOSS_ROOT", "WORLD_ROOT"] },
+        "ownerId": { "type": "string", "minLength": 1 },
+        "ownerPatternId": {
+          "type": "string",
+          "pattern": "^VALTAN_[A-Z0-9_]+$"
+        },
+        "ownerStageId": { "type": "string", "minLength": 1 },
+        "ownerStageActionId": { "type": "string", "minLength": 1 },
+        "ownerClipOccurrenceId": { "type": "string", "minLength": 1 },
+        "ownerClip": { "type": "string", "minLength": 1 },
+        "effectAssetId": {
+          "type": "string",
+          "pattern": "^effect\\.valtan\\."
+        },
+        "occurrenceId": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        },
+        "bindingId": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        },
+        "combatObjectArchetypeId": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        },
+        "clientVisualId": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "ownerKind": { "const": "COMBAT_OBJECT" } }
+          },
+          "then": {
+            "properties": {
+              "ownerRoot": { "const": "WORLD_ROOT" },
+              "occurrenceId": { "type": "null" },
+              "bindingId": { "type": "null" },
+              "combatObjectArchetypeId": { "type": "string", "minLength": 1 },
+              "clientVisualId": { "type": "string", "minLength": 1 }
+            }
+          },
+          "else": {
+            "properties": {
+              "ownerRoot": { "const": "BOSS_ROOT" },
+              "occurrenceId": { "type": "string", "minLength": 1 },
+              "bindingId": { "type": "string", "minLength": 1 },
+              "combatObjectArchetypeId": { "type": "null" },
+              "clientVisualId": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "preservedElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elementIndex",
+        "elementId",
+        "sourceNode",
+        "elementSha256",
+        "preservationDisposition"
+      ],
+      "properties": {
+        "elementIndex": { "type": "integer", "minimum": 0 },
+        "elementId": { "type": "string" },
+        "sourceNode": { "type": "string" },
+        "elementSha256": { "$ref": "#/$defs/sha256" },
+        "preservationDisposition": {
+          "const": "PRESERVE_EXISTING_NONLEGACY"
+        }
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectAssetId",
+        "authoringPath",
+        "documentSha256",
+        "productOwner",
+        "documentClassification",
+        "productElementCount",
+        "legacyAggregateElementCount",
+        "preservedNonLegacyElementCount",
+        "deduplicatedSourceSystemCount",
+        "deduplicatedSourceSystemIds",
+        "rawAggregateDenominatorLabel",
+        "rawAggregateCarrierCandidateCount",
+        "rawAggregateRendererShapeCounts",
+        "exactReviewedSourceOccurrenceJoinCount",
+        "migrationDisposition",
+        "preservedNonLegacyElements"
+      ],
+      "properties": {
+        "effectAssetId": {
+          "type": "string",
+          "pattern": "^effect\\.valtan\\."
+        },
+        "authoringPath": { "type": "string", "minLength": 1 },
+        "documentSha256": { "$ref": "#/$defs/sha256" },
+        "productOwner": { "$ref": "#/$defs/productOwner" },
+        "documentClassification": {
+          "enum": [
+            "PURE_LEGACY_V0",
+            "MIXED_LEGACY_V0_AND_PRESERVED_NONLEGACY"
+          ]
+        },
+        "productElementCount": { "type": "integer", "minimum": 1 },
+        "legacyAggregateElementCount": { "type": "integer", "minimum": 1 },
+        "preservedNonLegacyElementCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deduplicatedSourceSystemCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "deduplicatedSourceSystemIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "rawAggregateDenominatorLabel": {
+          "const": "LEGACY_CLIP_AGGREGATE_CANDIDATE_DENOMINATOR"
+        },
+        "rawAggregateCarrierCandidateCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rawAggregateRendererShapeCounts": { "$ref": "#/$defs/shapeCounts" },
+        "exactReviewedSourceOccurrenceJoinCount": { "const": 0 },
+        "migrationDisposition": { "const": "BLOCKED_SOURCE_BRANCH" },
+        "preservedNonLegacyElements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/preservedElement" }
+        }
+      }
+    },
+    "legacyRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "auditId",
+        "effectAssetId",
+        "ownerKind",
+        "elementIndex",
+        "elementId",
+        "sourceNode",
+        "legacySourceSystemStem",
+        "legacyEmitterOrdinal",
+        "legacyKind",
+        "legacyMeshModelBindingCount",
+        "legacyElementSha256",
+        "legacySourceMaterialPath",
+        "candidateSourceSystemId",
+        "candidateCatalogSourceAsset",
+        "sourceSystemJoinStatus",
+        "candidateMaterialObjectPath",
+        "candidateMaterialBindingCount",
+        "materialOrdinalJoinStatus",
+        "exactCarrierKey",
+        "exactReviewedSourceOccurrenceId",
+        "migrationDisposition",
+        "blockingReasons"
+      ],
+      "properties": {
+        "auditId": { "type": "string", "pattern": "^legacy-row\\." },
+        "effectAssetId": {
+          "type": "string",
+          "pattern": "^effect\\.valtan\\."
+        },
+        "ownerKind": {
+          "enum": ["BOSS_PATTERN_CUE", "COMBAT_OBJECT"]
+        },
+        "elementIndex": { "type": "integer", "minimum": 0 },
+        "elementId": {
+          "type": "string",
+          "pattern": "\\.em[0-9]+$"
+        },
+        "sourceNode": { "const": "" },
+        "legacySourceSystemStem": { "type": "string", "minLength": 1 },
+        "legacyEmitterOrdinal": { "type": "integer", "minimum": 0 },
+        "legacyKind": { "type": "string", "minLength": 1 },
+        "legacyMeshModelBindingCount": { "type": "integer", "minimum": 0 },
+        "legacyElementSha256": { "$ref": "#/$defs/sha256" },
+        "legacySourceMaterialPath": { "type": "string" },
+        "candidateSourceSystemId": { "type": "string", "minLength": 1 },
+        "candidateCatalogSourceAsset": { "type": "string", "minLength": 1 },
+        "sourceSystemJoinStatus": {
+          "const": "UNIQUE_SOURCE_SYSTEM_CANDIDATE_ONLY"
+        },
+        "candidateMaterialObjectPath": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        },
+        "candidateMaterialBindingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "materialOrdinalJoinStatus": {
+          "enum": [
+            "EXACT_MATERIAL_ORDINAL_JOIN",
+            "MATERIAL_ORDINAL_OUT_OF_RANGE",
+            "SOURCE_MATERIAL_PATH_MISMATCH",
+            "SOURCE_SYSTEM_JOIN_UNAVAILABLE"
+          ]
+        },
+        "exactCarrierKey": { "type": "null" },
+        "exactReviewedSourceOccurrenceId": { "type": "null" },
+        "migrationDisposition": {
+          "enum": [
+            "BLOCKED_SOURCE_BRANCH",
+            "BLOCKED_LEGACY_IDENTITY_DRIFT"
+          ]
+        },
+        "blockingReasons": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "carrier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "carrierKey",
+        "sourceOrder",
+        "sourceEmitterNodeId",
+        "sourceEmitterOccurrence",
+        "sourceEmitterPath",
+        "selectedLodNodeId",
+        "selectedLodPath",
+        "rendererShape",
+        "kind",
+        "runtimeReadinessDisposition",
+        "conversionStatus",
+        "sourceRecipeSha256",
+        "sourceResourceClosureSha256",
+        "aggregateMigrationDisposition",
+        "blockingReason"
+      ],
+      "properties": {
+        "carrierKey": { "type": "string", "minLength": 1 },
+        "sourceOrder": { "type": "integer", "minimum": 0 },
+        "sourceEmitterNodeId": { "type": "string", "minLength": 1 },
+        "sourceEmitterOccurrence": { "type": "integer", "minimum": 0 },
+        "sourceEmitterPath": { "type": "string", "minLength": 1 },
+        "selectedLodNodeId": { "type": "string", "minLength": 1 },
+        "selectedLodPath": { "type": "string", "minLength": 1 },
+        "rendererShape": {
+          "enum": ["sprite", "mesh", "decal", "light"]
+        },
+        "kind": { "type": "string", "minLength": 1 },
+        "runtimeReadinessDisposition": { "type": "string", "minLength": 1 },
+        "conversionStatus": { "type": "string", "minLength": 1 },
+        "sourceRecipeSha256": {
+          "anyOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
+        },
+        "sourceResourceClosureSha256": { "$ref": "#/$defs/sha256" },
+        "aggregateMigrationDisposition": { "const": "BLOCKED_SOURCE_BRANCH" },
+        "blockingReason": {
+          "const": "EXACT_REVIEWED_SOURCE_OCCURRENCE_NOT_JOINED"
+        }
+      }
+    },
+    "sourceSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceSystemId",
+        "catalogSourceAsset",
+        "logicalPackage",
+        "graphRootNodeId",
+        "rootEmitterDenominator",
+        "selectedLodCarrierCount",
+        "preservedUnresolvedEmitterCount",
+        "droppedCarrierCount",
+        "duplicateCarrierCount",
+        "rendererShapeCounts",
+        "carriers"
+      ],
+      "properties": {
+        "sourceSystemId": { "type": "string", "minLength": 1 },
+        "catalogSourceAsset": { "type": "string", "minLength": 1 },
+        "logicalPackage": { "type": "string", "minLength": 1 },
+        "graphRootNodeId": { "type": "string", "minLength": 1 },
+        "rootEmitterDenominator": { "type": "integer", "minimum": 1 },
+        "selectedLodCarrierCount": { "type": "integer", "minimum": 1 },
+        "preservedUnresolvedEmitterCount": { "const": 0 },
+        "droppedCarrierCount": { "const": 0 },
+        "duplicateCarrierCount": { "const": 0 },
+        "rendererShapeCounts": { "$ref": "#/$defs/shapeCounts" },
+        "carriers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/carrier" }
+        }
+      }
+    },
+    "aggregateCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "denominatorLabel",
+        "effectAssetId",
+        "ownerKind",
+        "ownerRoot",
+        "ownerId",
+        "ownerStageActionId",
+        "ownerClipOccurrenceId",
+        "ownerClip",
+        "sourceSystemId",
+        "carrierKey",
+        "sourceOrder",
+        "rendererShape",
+        "productOccurrenceId",
+        "exactProductOccurrenceJoinStatus",
+        "migrationDisposition"
+      ],
+      "properties": {
+        "candidateId": {
+          "type": "string",
+          "pattern": "^aggregate-candidate\\."
+        },
+        "denominatorLabel": {
+          "const": "LEGACY_CLIP_AGGREGATE_CANDIDATE_DENOMINATOR"
+        },
+        "effectAssetId": {
+          "type": "string",
+          "pattern": "^effect\\.valtan\\."
+        },
+        "ownerKind": {
+          "enum": ["BOSS_PATTERN_CUE", "COMBAT_OBJECT"]
+        },
+        "ownerRoot": { "enum": ["BOSS_ROOT", "WORLD_ROOT"] },
+        "ownerId": { "type": "string", "minLength": 1 },
+        "ownerStageActionId": { "type": "string", "minLength": 1 },
+        "ownerClipOccurrenceId": { "type": "string", "minLength": 1 },
+        "ownerClip": { "type": "string", "minLength": 1 },
+        "sourceSystemId": { "type": "string", "minLength": 1 },
+        "carrierKey": { "type": "string", "minLength": 1 },
+        "sourceOrder": { "type": "integer", "minimum": 0 },
+        "rendererShape": {
+          "enum": ["sprite", "mesh", "decal", "light"]
+        },
+        "productOccurrenceId": { "type": "null" },
+        "exactProductOccurrenceJoinStatus": {
+          "const": "NOT_ESTABLISHED_LEGACY_CLIP_AGGREGATE"
+        },
+        "migrationDisposition": { "const": "BLOCKED_SOURCE_BRANCH" }
+      }
+    }
+  }
+}

@@ -1,0 +1,2122 @@
+{
+  "schema": "lostark.effect-ue3-glasshole02-runtime-canary-contract",
+  "formatVersion": 1,
+  "canaryId": "dimensionmaster.skill.2050120.clip3.glasshole02.first-runtime-canary",
+  "inputs": [
+    {
+      "path": "Data/Effects/Authored/effect.dimensionmaster.skill.2050120.clip3.unified.effect.json",
+      "byteSize": 268990,
+      "sha256": "f0492a1563f7d14ea43778bcc973c4ab373d6da764ef0eee966fa7de6dd2fc1d",
+      "role": "exact authored effect and occurrence"
+    },
+    {
+      "path": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-material-maps.receipt.json",
+      "byteSize": 476696,
+      "sha256": "7dfab72eb7cb09762e01cb8f2e1a20f1a1181826a8a9833bf06d341cab44103e",
+      "role": "exact material map, source emitter VF, and NoDensity VS evidence"
+    },
+    {
+      "path": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.exact-texture-sampler-closure.receipt.json",
+      "byteSize": 215871,
+      "sha256": "98f760e18ac40c70ccdf16e545185b7c5397ba6b180c8b814794d62f558dfd9c",
+      "role": "exact texture identity and sampler-axis provenance"
+    },
+    {
+      "path": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.glasshole02-hlsl-translation.receipt.json",
+      "byteSize": 35632,
+      "sha256": "d1a2144fd0e174d9ae02c24aa75b8f9155b7d95d9355688b361c278325656a1f",
+      "role": "fixed-fixture HLSL equation and RT sentinel evidence"
+    },
+    {
+      "path": "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.source-value-uniform-evaluation.receipt.json",
+      "byteSize": 201841,
+      "sha256": "abffaf1a982fb51313064cd070649cb44e3b8f0d5006d03c4c401f238cb00bde",
+      "role": "effective MIC values for multi-time exact-AST evaluation"
+    },
+    {
+      "path": "Client/Bin/ShaderFiles/Shader_Ue3Glasshole02.hlsli",
+      "byteSize": 13489,
+      "sha256": "95ef0ee0976a4dd137493f26fa492394ac7b401623c3ed1b271600189dc185ce",
+      "role": "shared Glasshole02 translated equation ABI"
+    },
+    {
+      "path": "Client/Bin/ShaderFiles/Shader_VtxEffectGlasshole02.hlsl",
+      "byteSize": 6084,
+      "sha256": "4f1c1dd2c5d9e95452059e65b858403ae790d2ff94454be609881e9f4a502490",
+      "role": "focused runtime canary shader adapter"
+    },
+    {
+      "path": "Client/Private/Effect_DocumentRenderer.cpp",
+      "byteSize": 826236,
+      "sha256": "370a8b4248eef859100cc97d6fde1b37528f74f740aae745c0b6cdcbe1047460",
+      "role": "focused authoring renderer canary gate and bindings"
+    },
+    {
+      "path": "Client/Public/Effect_DocumentRenderer.h",
+      "byteSize": 35521,
+      "sha256": "f6af03281369a93daacafefc91606f5e60609034914e233cb7442d66de852666",
+      "role": "focused canary identity and closed activation constants"
+    },
+    {
+      "path": "Client/Private/Effect_Tool.cpp",
+      "byteSize": 890477,
+      "sha256": "6b169d5d8d861cacf549e561e038db116bdfbe907f1f5f33bfcd71d4b25ef8da",
+      "role": "explicit authoring Tool canary toggle, staging, and rollback seam"
+    },
+    {
+      "path": "Client/Public/Effect_Tool.h",
+      "byteSize": 41462,
+      "sha256": "f26cb56bfd899ed37804cdde2f4d55b91ca50acbca745d25d1ebf37b94b5e234",
+      "role": "separate default-off Tool canary state"
+    }
+  ],
+  "subject": {
+    "effectAssetId": "effect.dimensionmaster.skill.2050120.clip3.unified",
+    "occurrenceId": "authored.source-particle.40e1b48e2f0f88dcfeff1549",
+    "occurrenceCount": 1,
+    "targetId": "dimensionmaster-w-glasshole-02",
+    "familyId": "ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2",
+    "runtimeShaderProfileId": "effect.ue3.glasshole-02.v1",
+    "sourceMaterialPath": "fx_m_mi_k_00.fx_mi.fx_k_pa_glasshole_02_01_tr",
+    "parentMaterialPath": "fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr"
+  },
+  "carrierAndVertexFactory": {
+    "rendererShape": "sprite",
+    "requiredModuleStableId": "FX_PC_SWP_05:export:2282@ref:0",
+    "offsetCenter": true,
+    "screenAlignment": "psa_rectangle",
+    "dynamicModuleStableId": "FX_PC_SWP_05:export:1895@ref:4",
+    "dynamicParameterUpdateFlags": 15,
+    "sourceEmitterVertexFactoryType": "fparticleoffsetcenterdynamicparametervertexfactory",
+    "sourceNoDensityVertexShaderType": "tbasepassvertexshaderfnolightmappolicyfnodensitypolicy",
+    "sourceNoDensityVertexShaderIdHex": "2dd6d96a7e6c974fac82106409a5b9b8",
+    "sourceNoDensityVertexShaderSha256": "defae822f429760d30e0bfd31cef8c1217af8d7e43f794be6b42e85e6552995b",
+    "exactSourceVertexPixelSignatureClosure": true,
+    "runtimeAdapterVertexPixelSignatureClosure": {
+      "linkedSemanticCount": 8,
+      "rasterizerOwnedSystemValueCount": 1,
+      "links": [
+        {
+          "semanticName": "TEXCOORD",
+          "semanticIndex": 10,
+          "consumerRegister": 0,
+          "consumerMask": 15,
+          "producerRegister": 0,
+          "producerMask": 15,
+          "componentType": 3
+        },
+        {
+          "semanticName": "TEXCOORD",
+          "semanticIndex": 11,
+          "consumerRegister": 1,
+          "consumerMask": 15,
+          "producerRegister": 1,
+          "producerMask": 15,
+          "componentType": 3
+        },
+        {
+          "semanticName": "TEXCOORD",
+          "semanticIndex": 0,
+          "consumerRegister": 2,
+          "consumerMask": 15,
+          "producerRegister": 2,
+          "producerMask": 15,
+          "componentType": 3
+        },
+        {
+          "semanticName": "TEXCOORD",
+          "semanticIndex": 1,
+          "consumerRegister": 3,
+          "consumerMask": 15,
+          "producerRegister": 3,
+          "producerMask": 15,
+          "componentType": 3
+        },
+        {
+          "semanticName": "TEXCOORD",
+          "semanticIndex": 2,
+          "consumerRegister": 4,
+          "consumerMask": 15,
+          "producerRegister": 4,
+          "producerMask": 15,
+          "componentType": 3
+        },
+        {
+          "semanticName": "TEXCOORD",
+          "semanticIndex": 4,
+          "consumerRegister": 5,
+          "consumerMask": 15,
+          "producerRegister": 5,
+          "producerMask": 15,
+          "componentType": 3
+        },
+        {
+          "semanticName": "TEXCOORD",
+          "semanticIndex": 6,
+          "consumerRegister": 6,
+          "consumerMask": 15,
+          "producerRegister": 6,
+          "producerMask": 15,
+          "componentType": 3
+        },
+        {
+          "semanticName": "TEXCOORD",
+          "semanticIndex": 5,
+          "consumerRegister": 7,
+          "consumerMask": 15,
+          "producerRegister": 7,
+          "producerMask": 15,
+          "componentType": 3
+        }
+      ],
+      "pass": true
+    },
+    "rawSourceVertexShaderExecution": false,
+    "sourceExactVertexConstantBuffer": false
+  },
+  "resourceBindings": {
+    "materialDdsSlotCount": 7,
+    "materialDdsSlots": [
+      {
+        "runtimeSourceTextureSlot": 0,
+        "textureRegister": "t0",
+        "samplerRegister": "s1",
+        "sourceObjectPath": "fx_tex_06.fx_j_normal_bc5_09",
+        "runtimeDdsAssetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
+        "runtimeDdsByteSize": 262272,
+        "runtimeDdsSha256": "75829aa6ea4c6f8a4bd3c2f646dac2ce08071af06052d3b048e5c558d6f30f44",
+        "runtimeDdsSourceExactParity": true,
+        "sourceColorSpace": "linear",
+        "sourceExactColorSpace": true,
+        "sourceFilterSelector": "tf_linear",
+        "sourceExactFilterSelector": true,
+        "sourceAddressU": null,
+        "sourceExactAddressU": false,
+        "sourceAddressV": null,
+        "sourceExactAddressV": false,
+        "sourceHardwareFilter": null,
+        "sourceExactHardwareFilter": false,
+        "fullSourceExactSampler": false,
+        "blockers": [
+          "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+        ]
+      },
+      {
+        "runtimeSourceTextureSlot": 1,
+        "textureRegister": "t1",
+        "samplerRegister": "s2",
+        "sourceObjectPath": "fx_tex_02.fx_d_atypical_094_ycl",
+        "runtimeDdsAssetId": "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_094_ycl.dds",
+        "runtimeDdsByteSize": 65664,
+        "runtimeDdsSha256": "8097e1011480df43f56ad42a0ab849c74b9d8a29c17c867556f1df68dd071041",
+        "runtimeDdsSourceExactParity": true,
+        "sourceColorSpace": "srgb",
+        "sourceExactColorSpace": true,
+        "sourceFilterSelector": "tf_linear",
+        "sourceExactFilterSelector": true,
+        "sourceAddressU": null,
+        "sourceExactAddressU": false,
+        "sourceAddressV": "ta_clamp",
+        "sourceExactAddressV": true,
+        "sourceHardwareFilter": null,
+        "sourceExactHardwareFilter": false,
+        "fullSourceExactSampler": false,
+        "blockers": [
+          "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+        ]
+      },
+      {
+        "runtimeSourceTextureSlot": 2,
+        "textureRegister": "t3",
+        "samplerRegister": "s3",
+        "sourceObjectPath": "fx_tex_06.fx_m_cybernoise_02",
+        "runtimeDdsAssetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_cybernoise_02.dds",
+        "runtimeDdsByteSize": 131200,
+        "runtimeDdsSha256": "389d6a10a5f3d321a1c085e42a9ac9cd6d2c82366cfc8c24690626610efe70b3",
+        "runtimeDdsSourceExactParity": true,
+        "sourceColorSpace": "srgb",
+        "sourceExactColorSpace": true,
+        "sourceFilterSelector": "tf_linear",
+        "sourceExactFilterSelector": true,
+        "sourceAddressU": null,
+        "sourceExactAddressU": false,
+        "sourceAddressV": null,
+        "sourceExactAddressV": false,
+        "sourceHardwareFilter": null,
+        "sourceExactHardwareFilter": false,
+        "fullSourceExactSampler": false,
+        "blockers": [
+          "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED",
+          "LOD_GROUP_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED"
+        ]
+      },
+      {
+        "runtimeSourceTextureSlot": 3,
+        "textureRegister": "t4",
+        "samplerRegister": "s4",
+        "sourceObjectPath": "fx_tex_06.fx_j_dustparticle_tile_02",
+        "runtimeDdsAssetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_dustparticle_tile_02.dds",
+        "runtimeDdsByteSize": 262272,
+        "runtimeDdsSha256": "57f00863a0be5449b1c0c5b07d9d44055f1cc1fc043bac481b83810e2c995c8f",
+        "runtimeDdsSourceExactParity": true,
+        "sourceColorSpace": "srgb",
+        "sourceExactColorSpace": true,
+        "sourceFilterSelector": "tf_linear",
+        "sourceExactFilterSelector": true,
+        "sourceAddressU": null,
+        "sourceExactAddressU": false,
+        "sourceAddressV": null,
+        "sourceExactAddressV": false,
+        "sourceHardwareFilter": null,
+        "sourceExactHardwareFilter": false,
+        "fullSourceExactSampler": false,
+        "blockers": [
+          "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+        ]
+      },
+      {
+        "runtimeSourceTextureSlot": 4,
+        "textureRegister": "t5",
+        "samplerRegister": "s5",
+        "sourceObjectPath": "fx_tex_06.fx_j_environment_tile_01",
+        "runtimeDdsAssetId": "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_environment_tile_01.dds",
+        "runtimeDdsByteSize": 131200,
+        "runtimeDdsSha256": "78dcb7d7b4e624365651e263f2272c05faa1d9171b526383cc9cbf8e8e073963",
+        "runtimeDdsSourceExactParity": true,
+        "sourceColorSpace": "srgb",
+        "sourceExactColorSpace": true,
+        "sourceFilterSelector": "tf_linear",
+        "sourceExactFilterSelector": true,
+        "sourceAddressU": null,
+        "sourceExactAddressU": false,
+        "sourceAddressV": null,
+        "sourceExactAddressV": false,
+        "sourceHardwareFilter": null,
+        "sourceExactHardwareFilter": false,
+        "fullSourceExactSampler": false,
+        "blockers": [
+          "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+        ]
+      },
+      {
+        "runtimeSourceTextureSlot": 5,
+        "textureRegister": "t6",
+        "samplerRegister": "s6",
+        "sourceObjectPath": "fx_tex_04.fx_f_aura_004_1",
+        "runtimeDdsAssetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_f_aura_004_1.dds",
+        "runtimeDdsByteSize": 32896,
+        "runtimeDdsSha256": "80a7797447d457de7e56594951e2d91c12899d144a7e0c730a4a8da14fdca896",
+        "runtimeDdsSourceExactParity": true,
+        "sourceColorSpace": "srgb",
+        "sourceExactColorSpace": true,
+        "sourceFilterSelector": "tf_linear",
+        "sourceExactFilterSelector": true,
+        "sourceAddressU": null,
+        "sourceExactAddressU": false,
+        "sourceAddressV": null,
+        "sourceExactAddressV": false,
+        "sourceHardwareFilter": null,
+        "sourceExactHardwareFilter": false,
+        "fullSourceExactSampler": false,
+        "blockers": [
+          "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+        ]
+      },
+      {
+        "runtimeSourceTextureSlot": 6,
+        "textureRegister": "t7",
+        "samplerRegister": "s7",
+        "sourceObjectPath": "fx_tex_04.fx_i_environment_001",
+        "runtimeDdsAssetId": "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_environment_001.dds",
+        "runtimeDdsByteSize": 32896,
+        "runtimeDdsSha256": "840ddffab2b54960a5fa045bb4333b43b02f3869716f25704149156c88ef61e6",
+        "runtimeDdsSourceExactParity": true,
+        "sourceColorSpace": "srgb",
+        "sourceExactColorSpace": true,
+        "sourceFilterSelector": "tf_linear",
+        "sourceExactFilterSelector": true,
+        "sourceAddressU": null,
+        "sourceExactAddressU": false,
+        "sourceAddressV": null,
+        "sourceExactAddressV": false,
+        "sourceHardwareFilter": null,
+        "sourceExactHardwareFilter": false,
+        "fullSourceExactSampler": false,
+        "blockers": [
+          "ADDRESS_U_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "ADDRESS_V_NATIVE_CONSTRUCTOR_DEFAULT_UNRESOLVED",
+          "FILTER_TF_LINEAR_SOURCE_REVISION_TEXTURELODSETTINGS_UNRESOLVED"
+        ]
+      }
+    ],
+    "engineSceneDepth": {
+      "textureRegister": "t2",
+      "samplerRegister": "s0",
+      "ownership": "ENGINE_SCENE_DEPTH",
+      "ddsSlot": null
+    },
+    "declaredTextureRegisters": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "declaredSamplerRegisters": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "textureRegisterCount": 8,
+    "samplerRegisterCount": 8,
+    "requiredSourceTextureMask": 127,
+    "requiredSourceTextureMaskHex": "0x7f",
+    "sourceExactColorSpaceBindingCount": 7,
+    "sourceExactFilterSelectorBindingCount": 7,
+    "sourceExactAddressAxisCount": 1,
+    "sourceExactAddressAxisDenominator": 14,
+    "sourceExactHardwareFilterBindingCount": 0,
+    "fullSourceExactSampler": false,
+    "previewSamplerCandidateCount": 8,
+    "previewSamplerCandidates": [
+      {
+        "samplerRegister": "s0",
+        "owner": "ENGINE_SCENE_DEPTH",
+        "filter": "MIN_MAG_MIP_POINT",
+        "addressU": "CLAMP",
+        "addressV": "CLAMP",
+        "addressW": "CLAMP",
+        "fidelity": "EXPLICIT_AUTHORING_CANARY_CANDIDATE_NOT_SOURCE_MATERIAL_SAMPLER",
+        "sourceExact": false
+      },
+      {
+        "samplerRegister": "s1",
+        "owner": "MATERIAL_PREVIEW_CANDIDATE",
+        "filter": "MIN_MAG_MIP_LINEAR",
+        "addressU": "WRAP",
+        "addressV": "WRAP",
+        "addressW": "WRAP",
+        "fidelity": "EXPLICIT_AUTHORING_CANARY_CANDIDATE_NOT_SOURCE_EXACT_HARDWARE_SAMPLER",
+        "sourceExact": false
+      },
+      {
+        "samplerRegister": "s2",
+        "owner": "MATERIAL_PREVIEW_CANDIDATE",
+        "filter": "MIN_MAG_MIP_LINEAR",
+        "addressU": "WRAP",
+        "addressV": "CLAMP",
+        "addressW": "WRAP",
+        "fidelity": "EXPLICIT_AUTHORING_CANARY_CANDIDATE_NOT_SOURCE_EXACT_HARDWARE_SAMPLER",
+        "sourceExact": false
+      },
+      {
+        "samplerRegister": "s3",
+        "owner": "MATERIAL_PREVIEW_CANDIDATE",
+        "filter": "MIN_MAG_MIP_LINEAR",
+        "addressU": "WRAP",
+        "addressV": "WRAP",
+        "addressW": "WRAP",
+        "fidelity": "EXPLICIT_AUTHORING_CANARY_CANDIDATE_NOT_SOURCE_EXACT_HARDWARE_SAMPLER",
+        "sourceExact": false
+      },
+      {
+        "samplerRegister": "s4",
+        "owner": "MATERIAL_PREVIEW_CANDIDATE",
+        "filter": "MIN_MAG_MIP_LINEAR",
+        "addressU": "WRAP",
+        "addressV": "WRAP",
+        "addressW": "WRAP",
+        "fidelity": "EXPLICIT_AUTHORING_CANARY_CANDIDATE_NOT_SOURCE_EXACT_HARDWARE_SAMPLER",
+        "sourceExact": false
+      },
+      {
+        "samplerRegister": "s5",
+        "owner": "MATERIAL_PREVIEW_CANDIDATE",
+        "filter": "MIN_MAG_MIP_LINEAR",
+        "addressU": "WRAP",
+        "addressV": "WRAP",
+        "addressW": "WRAP",
+        "fidelity": "EXPLICIT_AUTHORING_CANARY_CANDIDATE_NOT_SOURCE_EXACT_HARDWARE_SAMPLER",
+        "sourceExact": false
+      },
+      {
+        "samplerRegister": "s6",
+        "owner": "MATERIAL_PREVIEW_CANDIDATE",
+        "filter": "MIN_MAG_MIP_LINEAR",
+        "addressU": "WRAP",
+        "addressV": "WRAP",
+        "addressW": "WRAP",
+        "fidelity": "EXPLICIT_AUTHORING_CANARY_CANDIDATE_NOT_SOURCE_EXACT_HARDWARE_SAMPLER",
+        "sourceExact": false
+      },
+      {
+        "samplerRegister": "s7",
+        "owner": "MATERIAL_PREVIEW_CANDIDATE",
+        "filter": "MIN_MAG_MIP_LINEAR",
+        "addressU": "WRAP",
+        "addressV": "WRAP",
+        "addressW": "WRAP",
+        "fidelity": "EXPLICIT_AUTHORING_CANARY_CANDIDATE_NOT_SOURCE_EXACT_HARDWARE_SAMPLER",
+        "sourceExact": false
+      }
+    ]
+  },
+  "timeVaryingCb0": {
+    "source": "EXACT_MATERIAL_MAP_UNIFORM_EXPRESSION_AST_PLUS_EFFECTIVE_MIC_VALUES_FOR_C1_THROUGH_C21",
+    "clock": "OCCURRENCE_LOCAL_GAME_TIME_SECONDS",
+    "runtimeSeamName": "g_Glasshole02LocalTimeSeconds",
+    "evaluationTimesSeconds": [
+      0.0,
+      0.25,
+      0.6
+    ],
+    "evaluations": [
+      {
+        "gameTimeSeconds": 0.0,
+        "realTimeSeconds": 0.0,
+        "nativeCb0MaterialRowsSemanticSha256": "6600a1a2d04176958e081d4ba49acac6160069dcb376eaa2785f73f86206fe84",
+        "pixelVectorValuesSemanticSha256": "d4cde377ea7561bb6669309d621dc3194d05b11e0ab61d6344fa067319f52204",
+        "pixelScalarValuesSemanticSha256": "d17b04a48e8a33200fb9376b14ffdd440625e70eef89750d85286758ca4610a7",
+        "runtimeCb0WithRendererC0SemanticSha256": "1a3e8ed9b0d94d88fbd14860ced014b9a6bdefde01cdc14681c279d6800786d5",
+        "runtimeCb0Rows": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645
+          ],
+          [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          [
+            4.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            2.0,
+            1.2000000476837158,
+            0.800000011920929,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            2.5,
+            -15.0,
+            -7.5,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            -7.0,
+            0.20000000298023224
+          ],
+          [
+            0.0,
+            2.0,
+            1.0,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.10000000149011612
+          ],
+          [
+            0.0,
+            2.0,
+            -0.800000011920929,
+            1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            2.0
+          ],
+          [
+            5.0,
+            -0.0,
+            0.0,
+            0.800000011920929
+          ]
+        ]
+      },
+      {
+        "gameTimeSeconds": 0.25,
+        "realTimeSeconds": 0.25,
+        "nativeCb0MaterialRowsSemanticSha256": "f5e3fa920e55cc2fa426ca58f0bc3e3d531f4d8c2cc355553ca920ee811298e6",
+        "pixelVectorValuesSemanticSha256": "14d2e1bd61c4aab800002fb74693b9ec6038703baed471157b7473e65f1cfa98",
+        "pixelScalarValuesSemanticSha256": "e9407df42f03ff5cfa43436bd22944216d99419f7dd09fb8181e34809253eddf",
+        "runtimeCb0WithRendererC0SemanticSha256": "9b5d0938426f30970b7584205151a3c4e2ee472cb6b468c58b0100ddf055b852",
+        "runtimeCb0Rows": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.0037499999161809683,
+            0.0062500000931322575,
+            0.0062500000931322575,
+            0.0062500000931322575
+          ],
+          [
+            0.0024999999441206455,
+            0.007499999832361937,
+            0.0,
+            0.0
+          ],
+          [
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645
+          ],
+          [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          [
+            4.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.03125,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.04374999925494194,
+            0.0,
+            0.0
+          ],
+          [
+            2.0,
+            1.2000000476837158,
+            0.800000011920929,
+            1.0
+          ],
+          [
+            0.0,
+            -0.125,
+            0.0,
+            0.0
+          ],
+          [
+            2.5,
+            -15.0,
+            -7.5,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            -7.0,
+            0.20000000298023224
+          ],
+          [
+            0.0,
+            2.0,
+            1.0,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            0.03125,
+            1.0,
+            0.10000000149011612
+          ],
+          [
+            0.0,
+            2.0,
+            -0.800000011920929,
+            1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.03125
+          ],
+          [
+            0.0,
+            0.04374999925494194,
+            0.04374999925494194,
+            2.0
+          ],
+          [
+            5.0,
+            -0.125,
+            -0.125,
+            0.800000011920929
+          ]
+        ]
+      },
+      {
+        "gameTimeSeconds": 0.6,
+        "realTimeSeconds": 0.6,
+        "nativeCb0MaterialRowsSemanticSha256": "9704dd3702e355312b91721532727e8d48bfc9130bbb06fa20254bd2e89eaac1",
+        "pixelVectorValuesSemanticSha256": "c0d878b360097c4c9248f9ec39e9e7ea14c7df51391c97eaf083f6d930f62156",
+        "pixelScalarValuesSemanticSha256": "2882cc6274df813fa3044e49f0168e3612462fe7b5899a0494afe1191d8a920d",
+        "runtimeCb0WithRendererC0SemanticSha256": "5ef652373bcb5ae813ccc3401be424d055cfba240be711900557360ebf37fbcd",
+        "runtimeCb0Rows": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.009000000543892384,
+            0.015000000596046448,
+            0.015000000596046448,
+            0.015000000596046448
+          ],
+          [
+            0.006000000052154064,
+            0.018000001087784767,
+            0.0,
+            0.0
+          ],
+          [
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645
+          ],
+          [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          [
+            4.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.07500000298023224,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.10500000417232513,
+            0.0,
+            0.0
+          ],
+          [
+            2.0,
+            1.2000000476837158,
+            0.800000011920929,
+            1.0
+          ],
+          [
+            0.0,
+            -0.30000001192092896,
+            0.0,
+            0.0
+          ],
+          [
+            2.5,
+            -15.0,
+            -7.5,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            -7.0,
+            0.20000000298023224
+          ],
+          [
+            0.0,
+            2.0,
+            1.0,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            0.07500000298023224,
+            1.0,
+            0.10000000149011612
+          ],
+          [
+            0.0,
+            2.0,
+            -0.800000011920929,
+            1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.07500000298023224
+          ],
+          [
+            0.0,
+            0.10500000417232513,
+            0.10500000417232513,
+            2.0
+          ],
+          [
+            5.0,
+            -0.30000001192092896,
+            -0.30000001192092896,
+            0.800000011920929
+          ]
+        ]
+      }
+    ],
+    "astTimeDependentCb0Slots": [
+      2,
+      3,
+      7,
+      8,
+      10,
+      11,
+      13,
+      15,
+      17,
+      19,
+      20,
+      21
+    ],
+    "valueChangingCb0SlotsAtSealedTimes": [
+      2,
+      3,
+      10,
+      11,
+      13,
+      17,
+      19,
+      20,
+      21
+    ],
+    "distinctMaterialRowsSemanticHashCount": 3,
+    "staticCb0PacketAllowed": false,
+    "runtimeShaderConsumesLocalTime": true,
+    "rendererUploadsOccurrenceLocalTime": true
+  },
+  "runtimeCb0Contract": {
+    "float4Count": 22,
+    "rendererOwnedC0": {
+      "slot": 0,
+      "value": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "RUNTIME_PARTICLE_ALPHA_ALREADY_CARRIES_LIFE_ENVELOPE_EXTERNAL_OPACITY_EXCEPTION",
+      "sourceExactMaterialAstParity": false
+    },
+    "exactMaterialAstParitySlots": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+    ],
+    "exactMaterialAstParityFloat4Count": 21,
+    "cppSelfTestTimesSeconds": [
+      0.0,
+      0.25,
+      0.6
+    ],
+    "cppSelfTestFixture": {
+      "basis": "EXACT_AST_WITH_SYNTHETIC_TIME_SCALAR_OVERRIDE_FOR_NONZERO_DEPENDENCY_COVERAGE",
+      "scalarParameter": "time",
+      "sourceAuthoredValue": 0.0,
+      "selfTestValue": 0.4
+    },
+    "cppSelfTestSemanticHashes": [
+      {
+        "gameTimeSeconds": 0.0,
+        "exactAstC1ThroughC21SemanticSha256": "6600a1a2d04176958e081d4ba49acac6160069dcb376eaa2785f73f86206fe84",
+        "runtimeC0PlusExactAstC1ThroughC21SemanticSha256": "1a3e8ed9b0d94d88fbd14860ced014b9a6bdefde01cdc14681c279d6800786d5",
+        "runtimeCb0Rows": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645
+          ],
+          [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          [
+            4.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            2.0,
+            1.2000000476837158,
+            0.800000011920929,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            2.5,
+            -15.0,
+            -7.5,
+            1.0
+          ],
+          [
+            0.0,
+            0.0,
+            -7.0,
+            0.20000000298023224
+          ],
+          [
+            0.0,
+            2.0,
+            1.0,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.10000000149011612
+          ],
+          [
+            0.0,
+            2.0,
+            -0.800000011920929,
+            1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            2.0
+          ],
+          [
+            5.0,
+            -0.0,
+            0.0,
+            0.800000011920929
+          ]
+        ]
+      },
+      {
+        "gameTimeSeconds": 0.25,
+        "exactAstC1ThroughC21SemanticSha256": "79acaf4857f6b11129fe44d132295cf2583c06a4ca7811131ad7b28599c2d627",
+        "runtimeC0PlusExactAstC1ThroughC21SemanticSha256": "39d60275e88b14b7d1bc8843666d21ab21e9a996e9e9371bff9dfe1a4262e895",
+        "runtimeCb0Rows": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.0037499999161809683,
+            0.0062500000931322575,
+            0.0062500000931322575,
+            0.0062500000931322575
+          ],
+          [
+            0.0024999999441206455,
+            0.007499999832361937,
+            0.0,
+            0.0
+          ],
+          [
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645
+          ],
+          [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          [
+            4.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.10000000149011612,
+            -0.023000000044703484,
+            0.0,
+            0.0
+          ],
+          [
+            -0.05000000074505806,
+            0.03700000047683716,
+            0.0,
+            0.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.03125,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.04374999925494194,
+            0.0,
+            0.0
+          ],
+          [
+            2.0,
+            1.2000000476837158,
+            0.800000011920929,
+            1.0
+          ],
+          [
+            0.0,
+            -0.125,
+            0.0,
+            0.0
+          ],
+          [
+            2.5,
+            -15.0,
+            -7.5,
+            1.0
+          ],
+          [
+            0.03700000047683716,
+            -0.05000000074505806,
+            -7.0,
+            0.20000000298023224
+          ],
+          [
+            0.0,
+            2.0,
+            1.0,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            0.03125,
+            1.0,
+            0.10000000149011612
+          ],
+          [
+            0.0,
+            2.0,
+            -0.800000011920929,
+            1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.03125
+          ],
+          [
+            0.0,
+            0.04374999925494194,
+            0.04374999925494194,
+            2.0
+          ],
+          [
+            5.0,
+            -0.125,
+            -0.125,
+            0.800000011920929
+          ]
+        ]
+      },
+      {
+        "gameTimeSeconds": 0.6,
+        "exactAstC1ThroughC21SemanticSha256": "2c6c8f5c3b9274cbd9bbe25f2c1661978ec4da545f3b41b318091afb54c339cc",
+        "runtimeC0PlusExactAstC1ThroughC21SemanticSha256": "9844d49a46fff111008cc84904b78fe5bd6f0d4bffbcb16587497909d46659d1",
+        "runtimeCb0Rows": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          [
+            0.009000000543892384,
+            0.015000000596046448,
+            0.015000000596046448,
+            0.015000000596046448
+          ],
+          [
+            0.006000000052154064,
+            0.018000001087784767,
+            0.0,
+            0.0
+          ],
+          [
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645,
+            0.4000000059604645
+          ],
+          [
+            0.5,
+            0.5,
+            0.5,
+            0.5
+          ],
+          [
+            4.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.24000000953674316,
+            -0.0552000030875206,
+            0.0,
+            0.0
+          ],
+          [
+            -0.12000000476837158,
+            0.08880000561475754,
+            0.0,
+            0.0
+          ],
+          [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          [
+            0.0,
+            0.07500000298023224,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.10500000417232513,
+            0.0,
+            0.0
+          ],
+          [
+            2.0,
+            1.2000000476837158,
+            0.800000011920929,
+            1.0
+          ],
+          [
+            0.0,
+            -0.30000001192092896,
+            0.0,
+            0.0
+          ],
+          [
+            2.5,
+            -15.0,
+            -7.5,
+            1.0
+          ],
+          [
+            0.08880000561475754,
+            -0.12000000476837158,
+            -7.0,
+            0.20000000298023224
+          ],
+          [
+            0.0,
+            2.0,
+            1.0,
+            0.30000001192092896
+          ],
+          [
+            0.0,
+            0.07500000298023224,
+            1.0,
+            0.10000000149011612
+          ],
+          [
+            0.0,
+            2.0,
+            -0.800000011920929,
+            1.0
+          ],
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.07500000298023224
+          ],
+          [
+            0.0,
+            0.10500000417232513,
+            0.10500000417232513,
+            2.0
+          ],
+          [
+            5.0,
+            -0.30000001192092896,
+            -0.30000001192092896,
+            0.800000011920929
+          ]
+        ]
+      }
+    ],
+    "cppSelfTestFullRuntimeRowCount": 22,
+    "cppZeroTailSlots": [
+      3,
+      10,
+      11,
+      13
+    ],
+    "fullCb0SourceExact": false,
+    "materialRowsC1ThroughC21ExactAstParity": true
+  },
+  "runtimeInputMapping": {
+    "basis": "EXACT_AST_PARAMETER_DEFAULT_THEN_EFFECTIVE_MIC_OVERRIDE_CROSS_CHECKED_WITH_AUTHORED_SOURCE_PROFILE",
+    "scalarParameterCount": 32,
+    "parameterRowCount": 8,
+    "parameterRows": [
+      {
+        "parameterRow": 0,
+        "lanes": [
+          {
+            "lane": "x",
+            "parameterName": "alpha_tile_x",
+            "value": 0.4000000059604645,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "y",
+            "parameterName": "alpha_tile_y",
+            "value": 0.4000000059604645,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "z",
+            "parameterName": "alpha_offsetx",
+            "value": 0.5,
+            "valueSource": "EXACT_AST_PARAMETER_DEFAULT"
+          },
+          {
+            "lane": "w",
+            "parameterName": "alpha_offsety",
+            "value": 0.5,
+            "valueSource": "EXACT_AST_PARAMETER_DEFAULT"
+          }
+        ],
+        "value": [
+          0.4000000059604645,
+          0.4000000059604645,
+          0.5,
+          0.5
+        ]
+      },
+      {
+        "parameterRow": 1,
+        "lanes": [
+          {
+            "lane": "x",
+            "parameterName": "aura_str",
+            "value": 5.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "y",
+            "parameterName": "aura_pow",
+            "value": 2.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "z",
+            "parameterName": "curve_power",
+            "value": 2.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "w",
+            "parameterName": "twist_str",
+            "value": 0.10000000149011612,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          }
+        ],
+        "value": [
+          5.0,
+          2.0,
+          2.0,
+          0.10000000149011612
+        ]
+      },
+      {
+        "parameterRow": 2,
+        "lanes": [
+          {
+            "lane": "x",
+            "parameterName": "main_ucoord",
+            "value": 1.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "y",
+            "parameterName": "main_v_coord",
+            "value": 0.0,
+            "valueSource": "AUTHORED_SOURCE_PROFILE_DEAD_AST_INPUT"
+          },
+          {
+            "lane": "z",
+            "parameterName": "main_tex_upanner",
+            "value": 0.0,
+            "valueSource": "EXACT_AST_PARAMETER_DEFAULT"
+          },
+          {
+            "lane": "w",
+            "parameterName": "main_v_panner",
+            "value": -0.800000011920929,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          }
+        ],
+        "value": [
+          1.0,
+          0.0,
+          0.0,
+          -0.800000011920929
+        ]
+      },
+      {
+        "parameterRow": 3,
+        "lanes": [
+          {
+            "lane": "x",
+            "parameterName": "uvnoise_utile",
+            "value": 1.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "y",
+            "parameterName": "uvnoise_vtile",
+            "value": 1.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "z",
+            "parameterName": "uvnoise_pan",
+            "value": 0.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "w",
+            "parameterName": "in_hole_crackuv",
+            "value": 0.20000000298023224,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          }
+        ],
+        "value": [
+          1.0,
+          1.0,
+          0.0,
+          0.20000000298023224
+        ]
+      },
+      {
+        "parameterRow": 4,
+        "lanes": [
+          {
+            "lane": "x",
+            "parameterName": "in_hole_panx",
+            "value": 0.014999999664723873,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "y",
+            "parameterName": "in_hole_pany",
+            "value": 0.02500000037252903,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "z",
+            "parameterName": "in_hole_pow",
+            "value": 2.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "w",
+            "parameterName": "in_hole_str",
+            "value": 1.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          }
+        ],
+        "value": [
+          0.014999999664723873,
+          0.02500000037252903,
+          2.0,
+          1.0
+        ]
+      },
+      {
+        "parameterRow": 5,
+        "lanes": [
+          {
+            "lane": "x",
+            "parameterName": "in_hole_desaturation",
+            "value": 0.30000001192092896,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "y",
+            "parameterName": "distortionpower",
+            "value": 10.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "z",
+            "parameterName": "distortionscale",
+            "value": -15.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "w",
+            "parameterName": "scale",
+            "value": 1.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          }
+        ],
+        "value": [
+          0.30000001192092896,
+          10.0,
+          -15.0,
+          1.0
+        ]
+      },
+      {
+        "parameterRow": 6,
+        "lanes": [
+          {
+            "lane": "x",
+            "parameterName": "cracknormal_tile_x",
+            "value": 4.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "y",
+            "parameterName": "cracknormal_tile_y",
+            "value": 0.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "z",
+            "parameterName": "cracknormal_str",
+            "value": -7.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "w",
+            "parameterName": "edge_crack_desaturation",
+            "value": 0.800000011920929,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          }
+        ],
+        "value": [
+          4.0,
+          0.0,
+          -7.0,
+          0.800000011920929
+        ]
+      },
+      {
+        "parameterRow": 7,
+        "lanes": [
+          {
+            "lane": "x",
+            "parameterName": "edge_line",
+            "value": 4.0,
+            "valueSource": "AUTHORED_SOURCE_PROFILE_DEAD_AST_INPUT"
+          },
+          {
+            "lane": "y",
+            "parameterName": "edge_size",
+            "value": 2.0,
+            "valueSource": "AUTHORED_SOURCE_PROFILE_DEAD_AST_INPUT"
+          },
+          {
+            "lane": "z",
+            "parameterName": "time",
+            "value": 0.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          },
+          {
+            "lane": "w",
+            "parameterName": "in_hole_height",
+            "value": 0.0,
+            "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+          }
+        ],
+        "value": [
+          4.0,
+          2.0,
+          0.0,
+          0.0
+        ]
+      }
+    ],
+    "parameterRowsSemanticSha256": "35befe48d9cc0e4b86c78eef1f6dd01256e79344b6d1dbd0eacb2bd7a1349f94",
+    "vectorParameterCount": 2,
+    "vectors": [
+      {
+        "runtimeField": "vSourceVector0",
+        "parameterName": "aura_color",
+        "value": [
+          2.0,
+          1.2000000476837158,
+          0.800000011920929,
+          1.0
+        ],
+        "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+      },
+      {
+        "runtimeField": "vSourceVector1",
+        "parameterName": "in_hole_color",
+        "value": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "valueSource": "EFFECTIVE_MIC_OVERRIDE"
+      }
+    ],
+    "vectorsSemanticSha256": "10f9dadeed8bebde1787fb7fb80c04a9a6f4d9c7be6dad8a80b4ff91af4ea975",
+    "cppStagingFields": {
+      "parameterRows": "TypedTrailParameters",
+      "auraColor": "vSourceVector0",
+      "inHoleColor": "vSourceVector1"
+    },
+    "profileResolution": {
+      "storedProfileIndex": 29,
+      "resolver": "SourceMaterialProfileIndex",
+      "effectiveCarrierGate": "EffectiveSourceMaterialProfileIndex",
+      "resourceField": "iSourceMaterialProfile",
+      "buildDispatchProfileIndex": 29,
+      "failClosedValue": "UINT32_MAX"
+    }
+  },
+  "runtimeShader": {
+    "path": "Client/Bin/ShaderFiles/Shader_VtxEffectGlasshole02.hlsl",
+    "vertexEntry": "VS_MAIN",
+    "pixelEntry": "PS_MAIN",
+    "technique": "DefaultTechnique",
+    "pass": "Glasshole02AlphaTwoSidedDepthRead",
+    "compiledVertexDxbcSha256": "39f3c981582608e70e37ab45e1a89cdf0d80aa66761632ff6cf82337bc444138",
+    "compiledPixelDxbcSha256": "6d3c6f9309f005b6344a25870a080bf5dfc7d1a5231e51f524e6ee7112f90123",
+    "vertexInputSignature": [
+      {
+        "semanticName": "POSITION",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 0,
+        "mask": 7,
+        "readWriteMask": 7,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 1,
+        "mask": 3,
+        "readWriteMask": 3,
+        "stream": 0
+      },
+      {
+        "semanticName": "WORLD",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 2,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "WORLD",
+        "semanticIndex": 1,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 3,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "WORLD",
+        "semanticIndex": 2,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 4,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "WORLD",
+        "semanticIndex": 3,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 5,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "COLOR",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 6,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "DYNAMIC",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 7,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "UVTRANSFORM",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 8,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "UVTRANSFORM",
+        "semanticIndex": 1,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 9,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "PARTICLEDATA",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 10,
+        "mask": 3,
+        "readWriteMask": 3,
+        "stream": 0
+      }
+    ],
+    "vertexOutputSignature": [
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 10,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 0,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 11,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 1,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 2,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 1,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 3,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 2,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 4,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 4,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 5,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 6,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 6,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 5,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 7,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "SV_POSITION",
+        "semanticIndex": 0,
+        "systemValueType": 1,
+        "componentType": 3,
+        "register": 8,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      }
+    ],
+    "pixelInputSignature": [
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 10,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 0,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 11,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 1,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 2,
+        "mask": 15,
+        "readWriteMask": 3,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 1,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 3,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 2,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 4,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 4,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 5,
+        "mask": 15,
+        "readWriteMask": 15,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 6,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 6,
+        "mask": 15,
+        "readWriteMask": 7,
+        "stream": 0
+      },
+      {
+        "semanticName": "TEXCOORD",
+        "semanticIndex": 5,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 7,
+        "mask": 15,
+        "readWriteMask": 11,
+        "stream": 0
+      },
+      {
+        "semanticName": "SV_IsFrontFace",
+        "semanticIndex": 0,
+        "systemValueType": 9,
+        "componentType": 1,
+        "register": 8,
+        "mask": 1,
+        "readWriteMask": 0,
+        "stream": 0
+      }
+    ],
+    "pixelOutputSignature": [
+      {
+        "semanticName": "SV_Target",
+        "semanticIndex": 0,
+        "systemValueType": 0,
+        "componentType": 3,
+        "register": 0,
+        "mask": 15,
+        "readWriteMask": 0,
+        "stream": 0
+      }
+    ],
+    "pixelOutputRegisters": [
+      0
+    ]
+  },
+  "rtContract": {
+    "runtimeDeclaredRenderTargets": [
+      "RT0"
+    ],
+    "rt1BoundSentinel": -99.0,
+    "offlineCaseCount": 13,
+    "offlineRawAndTranslationLeaveRt1SentinelUntouched": true,
+    "runtimePixelShaderCannotWriteRt1": true,
+    "rt1SentinelRequiredAfterCanaryDraw": true
+  },
+  "activation": {
+    "scope": "AUTHORING_DEBUG_EXACT_OCCURRENCE_ONLY",
+    "defaultEnabled": false,
+    "productEnabled": false,
+    "failClosed": true,
+    "requiresAllSevenDds": true,
+    "requiresSourceTextureMask": 127,
+    "requiresSceneDepthT2": true,
+    "requiresAllEightSamplers": true,
+    "fallbackToApproximationOnCanaryFailure": false
+  },
+  "toolFrontendContract": {
+    "separateFlagDefaultOff": true,
+    "separateCheckbox": true,
+    "rawCookedCanaryMutuallyExclusive": true,
+    "authoredExactOccurrenceOnly": true,
+    "productAndReadOnlyOffBeforeStage": true,
+    "translatedExecutionEnabledBeforeDocumentStage": true,
+    "initialStageFailureFlagOffReleaseOrdinaryRestage": true,
+    "productReadOnlyStageDisablesTranslatedExecution": true,
+    "documentChangeReset": true,
+    "frontendRuntimeAdmission": false
+  },
+  "admission": {
+    "exactAuthoredOccurrence": true,
+    "exactCarrierAndSourceEmitterVf": true,
+    "exactSevenDdsIdentity": true,
+    "exactColorSpaceAndFilterSelectors": true,
+    "sourceExactFullSampler": false,
+    "focusedAuthoringCanaryContract": true,
+    "rendererContractStatus": "CONTRACT_STAGED_AWAITING_CPP_RUNTIME_HARNESS",
+    "rendererRuntimeAdmission": false,
+    "defaultRuntime": false,
+    "product": false,
+    "rawSourceVertexShaderExecution": false,
+    "visual": false
+  },
+  "receiptSha256": "eacde49dd0d3faacea8d3127afdcdf2e507a34609adacff72669b1444c097184"
+}

@@ -3,8 +3,11 @@
 
 This tool is intentionally a report-only bridge.  It reads the exact reviewed
 source occurrence inventory and canonical v2 cue graph, then writes candidates
-only below ``Data/Effects/Imported/Valtan/ReviewedSourceFamilies``.  It never
-changes Authored Effect documents, EffectCatalog, or pattern Effect cues.
+only below ``Data/Effects/Imported/Valtan/ReviewedSourceFamilies``.  The one
+reviewed RED_BLADE cue retirement is resolved through the exact BossCatalog +
+ValtanCombatObjects world-root owner while retaining its historical projection
+window in the receipt.  The tool never changes Authored Effect documents,
+EffectCatalog, or pattern Effect cues.
 
 Only ``REACHABLE_REVIEWED`` occurrence x ``EXECUTABLE_CORE`` carrier rows may
 be projected.  A source notify is clip local, while an Effect element is cue
@@ -45,6 +48,10 @@ OUTPUT_ROOT = (
 RECEIPT_NAME = "Valtan.reviewed-source-family-candidates.v1.json"
 CATALOG_PATH = ROOT / "Data/Effects/EffectCatalog.json"
 CUE_PATH = source_inventory.CUE_PATH
+BOSS_CATALOG_PATH = ROOT / "Data/Actors/BossCatalog.json"
+COMBAT_OBJECTS_PATH = (
+    ROOT / "Data/Encounters/Valtan/ValtanCombatObjects.json"
+)
 AUTHORED_ROOT = source_inventory.AUTHORED_ROOT
 IMPORTED_VALTAN_ROOT = ROOT / "Data/Effects/Imported/Valtan"
 SAFE_GAP_ROOT = IMPORTED_VALTAN_ROOT / "SafeReviewedGaps"
@@ -54,11 +61,99 @@ SAFE_GAP_MANIFEST_PATH = (
 SAFE_GAP_APPLICATION_RECEIPT_PATH = (
     SAFE_GAP_ROOT / "Valtan.safe-reviewed-gap-application-receipt.v1.json"
 )
+CARRIER_V1_RECEIPT_PATH = (
+    IMPORTED_VALTAN_ROOT
+    / "CarrierV1/Valtan.carrier-v1-materialization-receipt.v1.json"
+)
 
 PROTECTED_EFFECT_ASSET_IDS = {
     "effect.valtan.pattern.420633.active",
 }
+ALLOWED_POST_SAFE_GAP_CATALOG_ROWS = (
+    {
+        "effectAssetId": "effect.artist.skill.31490.unified",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": (
+            "Effects/Authored/effect.artist.skill.31490.unified.effect.json"
+        ),
+    },
+)
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
+
+# These two boss-root cues were deliberately retired after the reviewed-source
+# batch was sealed.  Their replacement is not another cue: the Server spawns a
+# world-root combat object and BossCatalog supplies that object's exact visual.
+# Keep the old cue row only as immutable projection-window history so the
+# already-render-proven source elements remain byte-identical.  It must never
+# be written back to the canonical cue document.
+COMBAT_OBJECT_OWNER_TRANSFERS = (
+    {
+        "candidateJoinEnabled": True,
+        "retiredCueRow": {
+            "bindingId": "cue.valtan.red-blade-wave.active",
+            "occurrenceId": "cue.valtan.red-blade-wave.active.occurrence.01",
+            "patternId": "VALTAN_RED_BLADE_WAVE",
+            "stageId": "PROJECTILE",
+            "actionId": "valtan.attack.red-blade-wave.active",
+            "clipOccurrenceId": "valtan.attack.red-blade-wave.active.clip.01",
+            "effectAssetId": "effect.valtan.red-blade-wave.active",
+            "anchorSlotId": "root",
+            "followPolicy": "follow",
+            "stopPolicy": "cue_end",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": 1000,
+            "localTransform": {
+                "position": [0, 0, 0],
+                "rotationDegrees": [0, 0, 0],
+                "scale": [1, 1, 1],
+            },
+        },
+        "combatObjectArchetypeId": (
+            "combatobject.valtan.red-blade-wave.projectile"
+        ),
+        "clientVisualId": (
+            "combatobject.visual.valtan.red-blade-wave.projectile.v1"
+        ),
+        "effectAssetId": "effect.valtan.red-blade-wave.active",
+        "ownerPatternId": "VALTAN_RED_BLADE_WAVE",
+        "ownerStageActionId": "valtan.attack.red-blade-wave.active",
+    },
+    {
+        "candidateJoinEnabled": False,
+        "retiredCueRow": {
+            "bindingId": "cue.valtan.high-jump.airborne.project-authored",
+            "occurrenceId": (
+                "cue.valtan.high-jump.airborne.project-authored.occurrence.01"
+            ),
+            "patternId": "VALTAN_HIGH_JUMP",
+            "stageId": "AIRBORNE",
+            "actionId": "valtan.attack.high-jump.airborne",
+            "clipOccurrenceId": "valtan.attack.high-jump.airborne.clip.01",
+            "effectAssetId": "effect.valtan.high-jump.airborne",
+            "anchorSlotId": "root",
+            "followPolicy": "snapshot",
+            "stopPolicy": "natural",
+            "repeatPolicy": "once",
+            "sourceStartMs": 0,
+            "sourceEndMs": None,
+            "localTransform": {
+                "position": [0, 0, 0],
+                "rotationDegrees": [0, 0, 0],
+                "scale": [1, 1, 1],
+            },
+        },
+        "combatObjectArchetypeId": (
+            "combatobject.valtan.high-jump.target-axe"
+        ),
+        "clientVisualId": (
+            "combatobject.visual.valtan.high-jump.target-axe.v1"
+        ),
+        "effectAssetId": "effect.valtan.sky-axe.active",
+        "ownerPatternId": "VALTAN_HIGH_JUMP",
+        "ownerStageActionId": "valtan.attack.high-jump.airborne",
+    },
+)
 
 # These are source/cue projection denominators, not visual-fidelity claims.
 # A change means the reviewed sequence manifest, exact clip mapping, cue
@@ -196,6 +291,115 @@ def cue_index(
     for rows in result.values():
         rows.sort(key=lambda row: str(row["occurrenceId"]))
     return dict(result)
+
+
+def combat_object_owner_transfers(
+    boss_catalog_document: dict[str, Any],
+    combat_objects_document: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Resolve the two exact boss-cue -> world-root ownership transfers.
+
+    The returned map is keyed by the retired clip occurrence.  Only the red
+    blade row is eligible as a reviewed-source candidate join; the high-jump
+    row is still validated because it is the second deliberate downstream cue
+    retirement that composes with the older SafeReviewedGaps baseline.
+    """
+    if (
+        boss_catalog_document.get("schema") != "lostark.boss-catalog"
+        or boss_catalog_document.get("formatVersion") != 3
+    ):
+        raise CandidateError("BossCatalog combat-object owner header is invalid")
+    bosses = [
+        row
+        for row in boss_catalog_document.get("bosses", [])
+        if str(row.get("archetypeId") or "") == "BOSS_VALTAN"
+    ]
+    if len(bosses) != 1:
+        raise CandidateError("BossCatalog must contain exactly one BOSS_VALTAN")
+    visual_rows = bosses[0].get("combatObjectVisuals")
+    if not isinstance(visual_rows, list):
+        raise CandidateError("BOSS_VALTAN combatObjectVisuals is invalid")
+    visual_by_archetype: dict[str, dict[str, Any]] = {}
+    for row in visual_rows:
+        if not isinstance(row, dict):
+            raise CandidateError("BossCatalog combat-object visual is invalid")
+        archetype_id = str(row.get("combatObjectArchetypeId") or "")
+        if not archetype_id or archetype_id in visual_by_archetype:
+            raise CandidateError(
+                "BossCatalog combat-object visual identity is empty or duplicated"
+            )
+        visual_by_archetype[archetype_id] = row
+
+    if (
+        combat_objects_document.get("schema")
+        != "lostark.valtan-combat-objects"
+        or combat_objects_document.get("formatVersion") != 1
+        or combat_objects_document.get("encounterId") != "ENCOUNTER_VALTAN"
+    ):
+        raise CandidateError("ValtanCombatObjects owner header is invalid")
+    object_rows = combat_objects_document.get("objects")
+    if not isinstance(object_rows, list):
+        raise CandidateError("ValtanCombatObjects.objects is invalid")
+    object_by_archetype: dict[str, dict[str, Any]] = {}
+    for row in object_rows:
+        if not isinstance(row, dict):
+            raise CandidateError("Valtan combat-object row is invalid")
+        archetype_id = str(row.get("combatObjectArchetypeId") or "")
+        if not archetype_id or archetype_id in object_by_archetype:
+            raise CandidateError(
+                "Valtan combat-object identity is empty or duplicated"
+            )
+        object_by_archetype[archetype_id] = row
+
+    result: dict[str, dict[str, Any]] = {}
+    for spec in COMBAT_OBJECT_OWNER_TRANSFERS:
+        archetype_id = str(spec["combatObjectArchetypeId"])
+        expected_visual = {
+            "combatObjectArchetypeId": archetype_id,
+            "clientVisualId": spec["clientVisualId"],
+            "effectAssetId": spec["effectAssetId"],
+        }
+        visual = visual_by_archetype.get(archetype_id)
+        combat_object = object_by_archetype.get(archetype_id)
+        if visual != expected_visual or combat_object is None:
+            raise CandidateError(
+                f"exact combat-object visual owner drifted: {archetype_id}"
+            )
+        expected_owner_identity = {
+            "combatObjectArchetypeId": archetype_id,
+            "clientVisualId": spec["clientVisualId"],
+            "ownerPatternId": spec["ownerPatternId"],
+            "ownerStageActionId": spec["ownerStageActionId"],
+        }
+        if any(
+            combat_object.get(field) != value
+            for field, value in expected_owner_identity.items()
+        ):
+            raise CandidateError(
+                f"exact Valtan combat-object owner drifted: {archetype_id}"
+            )
+        retired_cue = copy.deepcopy(spec["retiredCueRow"])
+        if (
+            retired_cue["patternId"] != spec["ownerPatternId"]
+            or retired_cue["actionId"] != spec["ownerStageActionId"]
+        ):
+            raise CandidateError(
+                f"retired cue/combat-object owner identity diverged: {archetype_id}"
+            )
+        clip_id = str(retired_cue["clipOccurrenceId"])
+        if not clip_id or clip_id in result:
+            raise CandidateError(
+                "combat-object owner transfer clip identity is empty or duplicated"
+            )
+        result[clip_id] = {
+            "ownerKind": "BOSS_COMBAT_OBJECT",
+            "bossArchetypeId": "BOSS_VALTAN",
+            "candidateJoinEnabled": bool(spec["candidateJoinEnabled"]),
+            "retiredCueRow": retired_cue,
+            "bossCatalogVisualRow": copy.deepcopy(visual),
+            "combatObjectRow": copy.deepcopy(combat_object),
+        }
+    return result
 
 
 def authored_document_path(catalog_row: dict[str, Any]) -> Path:
@@ -673,13 +877,15 @@ def load_inventory(selection_path: Path) -> dict[str, Any]:
 def validate_safe_gap_core_projection_identity(
     inventory: dict[str, Any], manifest: dict[str, Any]
 ) -> None:
-    """Prove the downstream SafeGap core slice is the frozen 160-row gap.
+    """Prove the downstream SafeGap core slice is the frozen 160-row witness.
 
     The reviewed batch predates SafeReviewedGaps.  Once that later batch is
     applied, its four extra cues must not be reinterpreted as reviewed input.
     We therefore join the downstream receipt back to the exact source
     occurrence/carrier pairs instead of excluding a cue merely by a friendly
-    effect name.
+    effect name.  Carrier V1 may add exact decal carriers to those clips, so
+    the historical 160 pairs are required to remain an exact subset rather
+    than pretending to be the current exhaustive carrier denominator.
     """
     candidate_rows = manifest.get("candidateDocuments")
     core_rows = manifest.get("coreProjections")
@@ -782,7 +988,7 @@ def validate_safe_gap_core_projection_identity(
 
     expected_count = EXPECTED_COUNTS["missingCueProjectionCount"]
     if (
-        receipt_pairs != expected_pairs
+        not receipt_pairs.issubset(expected_pairs)
         or len(receipt_pairs) != expected_count
         or summary.get("coreProjectionCount") != expected_count
         or sum(
@@ -801,6 +1007,7 @@ def reconstruct_reviewed_inputs_after_safe_gap(
     inventory: dict[str, Any],
     manifest: dict[str, Any],
     application_receipt: dict[str, Any],
+    owner_transfers: dict[str, dict[str, Any]],
     *,
     verify_repository_outputs: bool,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, str]]:
@@ -916,25 +1123,200 @@ def reconstruct_reviewed_inputs_after_safe_gap(
         if str(row.get("effectAssetId") or "") not in proposed_effect_ids
     ]
     input_identity = manifest.get("inputIdentity") or {}
-    baseline = {
-        "cueRawSha256": str(input_identity.get("cueRawSha256") or ""),
-        "catalogRawSha256": str(input_identity.get("catalogRawSha256") or ""),
+    expected_sky_axe_row = {
+        "effectAssetId": "effect.valtan.sky-axe.active",
+        "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+        "authoringPath": "Effects/Authored/effect.valtan.sky-axe.active.effect.json",
     }
+    sky_axe_rows = [
+        row
+        for row in reviewed_catalog["effects"]
+        if row.get("effectAssetId") == expected_sky_axe_row["effectAssetId"]
+    ]
+    retired_cues = [
+        copy.deepcopy(row["retiredCueRow"])
+        for row in owner_transfers.values()
+    ]
+    retired_binding_ids = {
+        str(row["bindingId"]) for row in retired_cues
+    }
+    if (
+        len(retired_binding_ids) != len(COMBAT_OBJECT_OWNER_TRANSFERS)
+        or any(
+            str(row.get("bindingId") or "") in retired_binding_ids
+            for row in reviewed_cues["cues"]
+        )
+    ):
+        raise CandidateError(
+            "retired boss-root cue was restored beside its combat-object owner"
+        )
+    if any(
+        row.get("effectAssetId") == "effect.valtan.high-jump.airborne"
+        for row in reviewed_catalog["effects"]
+    ):
+        raise CandidateError(
+            "retired high-jump boss-root Effect catalog row was restored"
+        )
+    cue_view_sha = source_inventory.sha256_bytes(
+        source_inventory.pretty_json_bytes(reviewed_cues)
+    )
+    catalog_view_sha = source_inventory.sha256_bytes(
+        source_inventory.pretty_json_bytes(reviewed_catalog)
+    )
+    baseline = {
+        "cueRawSha256": cue_view_sha,
+        "catalogRawSha256": catalog_view_sha,
+    }
+    catalog_delta = (
+        len(reviewed_catalog["effects"])
+        - int(input_identity.get("catalogCount") or 0)
+    )
+    cue_delta = (
+        len(reviewed_cues["cues"])
+        - int(input_identity.get("cueCount") or 0)
+    )
+    allowed_cue_composition = cue_delta == -len(retired_binding_ids)
+    downstream_catalog_rows = [
+        row
+        for expected in ALLOWED_POST_SAFE_GAP_CATALOG_ROWS
+        for row in reviewed_catalog["effects"]
+        if row.get("effectAssetId") == expected["effectAssetId"]
+    ]
+    allowed_catalog_composition = (
+        catalog_delta == len(ALLOWED_POST_SAFE_GAP_CATALOG_ROWS)
+        and downstream_catalog_rows == list(ALLOWED_POST_SAFE_GAP_CATALOG_ROWS)
+        and sky_axe_rows == [expected_sky_axe_row]
+    )
     if (
         not SHA256_RE.fullmatch(baseline["cueRawSha256"])
         or not SHA256_RE.fullmatch(baseline["catalogRawSha256"])
         or (
             verify_repository_outputs
             and (
-                input_identity.get("cueCount")
-                != len(reviewed_cues["cues"])
-                or input_identity.get("catalogCount")
-                != len(reviewed_catalog["effects"])
+                not allowed_cue_composition
+                or not allowed_catalog_composition
             )
         )
     ):
         raise CandidateError("SafeReviewedGaps baseline input identity is invalid")
     return reviewed_cues, reviewed_catalog, baseline
+
+
+def validate_historical_candidate_outputs(
+    receipt: dict[str, Any], inventory: dict[str, Any]
+) -> None:
+    """Keep the predecessor candidates as sealed, non-Product witnesses."""
+    validate_receipt(receipt)
+    if (
+        receipt.get("summary", {}).get("candidateDocumentCount") != 36
+        or receipt.get("summary", {}).get("candidateElementCount") != 279
+        or receipt.get("summary", {}).get("reachableCoreProjectionCount") != 628
+    ):
+        raise CandidateError("historical reviewed candidate denominator drifted")
+    for row in receipt.get("documents") or []:
+        relative = str(row.get("candidateDocumentPath") or "")
+        path = ROOT / relative
+        if not path.is_file() or source_inventory.sha256_file(path) != row.get(
+            "candidateDocumentSha256"
+        ):
+            raise CandidateError(
+                f"historical reviewed candidate output drifted: {relative}"
+            )
+    safe_manifest = read_json(SAFE_GAP_MANIFEST_PATH)
+    validate_sealed_artifact(
+        safe_manifest,
+        "lostark.valtan-safe-reviewed-gap-candidates",
+        "SafeReviewedGaps historical witness",
+    )
+    validate_safe_gap_core_projection_identity(inventory, safe_manifest)
+
+
+def validate_carrier_v1_successor(
+    historical_receipt: dict[str, Any],
+    *,
+    cue_document: dict[str, Any] | None = None,
+    catalog_document: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Prove the current Product is Carrier V1, not the old candidate batch."""
+    successor = read_json(CARRIER_V1_RECEIPT_PATH)
+    if (
+        successor.get("schema")
+        != "lostark.valtan-carrier-v1-materialization-receipt"
+        or successor.get("formatVersion") != 1
+        or successor.get("bossArchetypeId") != "BOSS_VALTAN"
+    ):
+        raise CandidateError("Carrier V1 successor receipt header is invalid")
+    summary = successor.get("summary") or {}
+    reset = successor.get("productReset") or {}
+    if (
+        summary.get("reviewedCoreProjectionCount") != 660
+        or summary.get("reviewedCoreSpriteProjectionCount") != 455
+        or summary.get("reviewedCoreMeshProjectionCount") != 173
+        or summary.get("reviewedCoreDecalProjectionCount") != 32
+        or summary.get("materializedProjectionCount") != 657
+        or summary.get("finalValtanCatalogCount") != 46
+        or summary.get("finalBossRootCueCount") != 44
+        or reset.get("nonExactOldBossRootSurvivorCount") != 0
+        or reset.get("duplicateClipOccurrenceOwnerCount") != 0
+    ):
+        raise CandidateError("Carrier V1 successor denominator drifted")
+
+    cue_document = cue_document or read_json(CUE_PATH)
+    catalog_document = catalog_document or read_json(CATALOG_PATH)
+    outputs = successor.get("outputs") or {}
+    cue_output = outputs.get("cues") or {}
+    catalog_output = outputs.get("catalog") or {}
+    catalog_projection = source_inventory.effect_catalog_prefix_projection(
+        catalog_document, "effect.valtan."
+    )
+    if (
+        cue_output.get("cueCount") != len(cue_document.get("cues") or [])
+        or cue_output.get("canonicalSha256")
+        != source_inventory.canonical_sha256(cue_document)
+        or catalog_output.get("scope") != "EFFECT_ASSET_ID_PREFIX"
+        or catalog_output.get("effectAssetIdPrefix") != "effect.valtan."
+        or catalog_output.get("effectCount")
+        != len(catalog_projection["effects"])
+        or catalog_output.get("canonicalSha256")
+        != source_inventory.canonical_sha256(catalog_projection)
+    ):
+        raise CandidateError("Carrier V1 current Product outputs drifted")
+
+    historical_effect_ids = {
+        str(row.get("effectAssetId") or "")
+        for row in historical_receipt.get("documents") or []
+    }
+    live_effect_ids = {
+        str(row.get("effectAssetId") or "")
+        for row in catalog_document.get("effects") or []
+    }
+    live_historical = historical_effect_ids.intersection(live_effect_ids)
+    if live_historical != {"effect.valtan.red-blade-wave.active"}:
+        raise CandidateError(
+            "historical reviewed owner was restored outside the Red Blade "
+            "combat-object exception"
+        )
+    live_cue_effect_ids = {
+        str(row.get("effectAssetId") or "")
+        for row in cue_document.get("cues") or []
+    }
+    if "effect.valtan.red-blade-wave.active" in live_cue_effect_ids:
+        raise CandidateError("Red Blade combat-object owner regained a boss-root cue")
+
+    mappings_by_effect: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in successor.get("retiredOwnerSuccessorMappings") or []:
+        mappings_by_effect[str(row.get("retiredEffectAssetId") or "")].append(row)
+    unmapped = sorted(
+        effect_id
+        for effect_id in historical_effect_ids
+        if effect_id != "effect.valtan.red-blade-wave.active"
+        and not mappings_by_effect.get(effect_id)
+    )
+    if unmapped:
+        raise CandidateError(
+            "Carrier V1 omitted historical owner mappings: " + ", ".join(unmapped)
+        )
+    return successor
 
 
 def build_candidates(
@@ -944,17 +1326,44 @@ def build_candidates(
     inventory_document: dict[str, Any] | None = None,
     cue_document: dict[str, Any] | None = None,
     catalog_document: dict[str, Any] | None = None,
+    boss_catalog_document: dict[str, Any] | None = None,
+    combat_objects_document: dict[str, Any] | None = None,
     enforce_expected_counts: bool = True,
 ) -> tuple[dict[str, bytes], dict[str, Any]]:
     selection_path = selection_path.resolve()
     output_root = output_root.resolve()
     validate_output_root(output_root)
+    if CARRIER_V1_RECEIPT_PATH.is_file():
+        historical_receipt_path = output_root / RECEIPT_NAME
+        if not historical_receipt_path.is_file():
+            raise CandidateError(
+                "historical reviewed source candidate receipt is missing"
+            )
+        historical_receipt = read_json(historical_receipt_path)
+        inventory = inventory_document or load_inventory(selection_path)
+        validate_historical_candidate_outputs(historical_receipt, inventory)
+        validate_carrier_v1_successor(
+            historical_receipt,
+            cue_document=cue_document,
+            catalog_document=catalog_document,
+        )
+        relative = historical_receipt_path.relative_to(ROOT).as_posix()
+        return {relative: historical_receipt_path.read_bytes()}, historical_receipt
     inventory = inventory_document or load_inventory(selection_path)
     _validate_source_denominator(inventory)
     injected_cue_document = cue_document is not None
     injected_catalog_document = catalog_document is not None
+    injected_boss_catalog_document = boss_catalog_document is not None
+    injected_combat_objects_document = combat_objects_document is not None
     cue_document = cue_document or read_json(CUE_PATH)
     catalog_document = catalog_document or read_json(CATALOG_PATH)
+    boss_catalog_document = boss_catalog_document or read_json(BOSS_CATALOG_PATH)
+    combat_objects_document = (
+        combat_objects_document or read_json(COMBAT_OBJECTS_PATH)
+    )
+    owner_transfers = combat_object_owner_transfers(
+        boss_catalog_document, combat_objects_document
+    )
     safe_gap_baseline: dict[str, str] | None = None
     safe_manifest_exists = SAFE_GAP_MANIFEST_PATH.is_file()
     safe_application_exists = SAFE_GAP_APPLICATION_RECEIPT_PATH.is_file()
@@ -970,6 +1379,7 @@ def build_candidates(
                 inventory,
                 read_json(SAFE_GAP_MANIFEST_PATH),
                 read_json(SAFE_GAP_APPLICATION_RECEIPT_PATH),
+                owner_transfers,
                 verify_repository_outputs=(
                     not injected_cue_document
                     and not injected_catalog_document
@@ -1026,6 +1436,20 @@ def build_candidates(
         pattern_counts[pattern_id]["reachableCoreProjectionCount"] += carrier_count
         clip_occurrence_id = str(occurrence.get("clipOccurrenceId") or "")
         cue_rows = cues_by_clip.get(clip_occurrence_id, [])
+        combat_owner = owner_transfers.get(clip_occurrence_id)
+        if combat_owner is not None and cue_rows:
+            raise CandidateError(
+                "retired boss-root cue was restored beside the exact "
+                f"combat-object owner: {clip_occurrence_id}"
+            )
+        projection_owner = (
+            combat_owner
+            if combat_owner is not None
+            and combat_owner.get("candidateJoinEnabled") is True
+            else None
+        )
+        if not cue_rows and projection_owner is not None:
+            cue_rows = [copy.deepcopy(projection_owner["retiredCueRow"])]
         if not cue_rows:
             _aggregate_blocker(
                 unresolved_joins,
@@ -1088,6 +1512,7 @@ def build_candidates(
                 "gameplayActionId": str(occurrence.get("gameplayActionId") or ""),
                 "clipOccurrenceId": clip_occurrence_id,
                 "cueRow": copy.deepcopy(cue),
+                "combatObjectOwner": copy.deepcopy(projection_owner),
                 "elements": [],
                 "sourceElementKeys": [],
                 "sourceOccurrenceFullKeys": set(),
@@ -1265,24 +1690,39 @@ def build_candidates(
                 if ordinal == 0
                 else "EQUIVALENT_EFFECT_ASSET_REUSE_NO_DUPLICATE_ELEMENTS"
             )
-            clip_rows.append(
-                {
-                    "patternId": group["patternId"],
-                    "semanticStageId": group["semanticStageId"],
-                    "gameplayActionId": group["gameplayActionId"],
-                    "clipOccurrenceId": group["clipOccurrenceId"],
-                    "cueDisposition": "REUSE_EXISTING_V2_NO_MUTATION",
-                    "cueRow": copy.deepcopy(group["cueRow"]),
-                    "sourceOccurrenceCount": len(
-                        group["sourceOccurrenceFullKeys"]
+            owner = group.get("combatObjectOwner")
+            clip_row = {
+                "patternId": group["patternId"],
+                "semanticStageId": group["semanticStageId"],
+                "gameplayActionId": group["gameplayActionId"],
+                "clipOccurrenceId": group["clipOccurrenceId"],
+                "cueDisposition": (
+                    "RETIRED_V2_REPLACED_BY_EXACT_COMBAT_OBJECT_OWNER"
+                    if owner is not None
+                    else "REUSE_EXISTING_V2_NO_MUTATION"
+                ),
+                "cueRow": copy.deepcopy(group["cueRow"]),
+                "sourceOccurrenceCount": len(
+                    group["sourceOccurrenceFullKeys"]
+                ),
+                "sourceOccurrenceFullKeys": sorted(
+                    group["sourceOccurrenceFullKeys"]
+                ),
+                "sourceProjectionCount": len(group["elements"]),
+                "candidateProjectionDisposition": disposition,
+            }
+            if owner is not None:
+                clip_row["combatObjectOwner"] = {
+                    "ownerKind": owner["ownerKind"],
+                    "bossArchetypeId": owner["bossArchetypeId"],
+                    "bossCatalogVisualRow": copy.deepcopy(
+                        owner["bossCatalogVisualRow"]
                     ),
-                    "sourceOccurrenceFullKeys": sorted(
-                        group["sourceOccurrenceFullKeys"]
+                    "combatObjectRow": copy.deepcopy(
+                        owner["combatObjectRow"]
                     ),
-                    "sourceProjectionCount": len(group["elements"]),
-                    "candidateProjectionDisposition": disposition,
                 }
-            )
+            clip_rows.append(clip_row)
             candidate_clip_ids.add(group["clipOccurrenceId"])
             candidate_patterns.add(group["patternId"])
         admitted_projection_count += sum(
@@ -1510,6 +1950,32 @@ def build_candidates(
                 ),
                 "formatVersion": 1,
             },
+            "bossCatalog": {
+                "path": BOSS_CATALOG_PATH.relative_to(ROOT).as_posix(),
+                "sha256": (
+                    source_inventory.sha256_bytes(
+                        source_inventory.pretty_json_bytes(
+                            boss_catalog_document
+                        )
+                    )
+                    if injected_boss_catalog_document
+                    else source_inventory.sha256_file(BOSS_CATALOG_PATH)
+                ),
+                "formatVersion": 3,
+            },
+            "valtanCombatObjects": {
+                "path": COMBAT_OBJECTS_PATH.relative_to(ROOT).as_posix(),
+                "sha256": (
+                    source_inventory.sha256_bytes(
+                        source_inventory.pretty_json_bytes(
+                            combat_objects_document
+                        )
+                    )
+                    if injected_combat_objects_document
+                    else source_inventory.sha256_file(COMBAT_OBJECTS_PATH)
+                ),
+                "formatVersion": 1,
+            },
             "sourceInventoryRepositorySources": copy.deepcopy(
                 (inventory.get("sources") or {}).get("repository", [])
             ),
@@ -1586,11 +2052,20 @@ def validate_receipt(receipt: dict[str, Any]) -> None:
             raise CandidateError(
                 "candidate notify/system timing group closure is incomplete"
             )
-        if any(
-            clip.get("cueDisposition") != "REUSE_EXISTING_V2_NO_MUTATION"
-            for clip in row.get("clipOccurrences", [])
-        ):
-            raise CandidateError("candidate cue disposition is mutable")
+        for clip in row.get("clipOccurrences", []):
+            cue_disposition = clip.get("cueDisposition")
+            if cue_disposition == "REUSE_EXISTING_V2_NO_MUTATION":
+                if "combatObjectOwner" in clip:
+                    raise CandidateError(
+                        "boss-root cue unexpectedly carries a combat-object owner"
+                    )
+                continue
+            if (
+                cue_disposition
+                != "RETIRED_V2_REPLACED_BY_EXACT_COMBAT_OBJECT_OWNER"
+                or not isinstance(clip.get("combatObjectOwner"), dict)
+            ):
+                raise CandidateError("candidate Effect owner disposition is unsafe")
     summary = receipt.get("summary") or {}
     if summary.get("deletedElementCount") != 0:
         raise CandidateError("receipt reports an authored deletion")

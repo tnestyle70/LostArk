@@ -23,9 +23,19 @@
   },
   "baseline": {
     "documentElementCount": 117,
-    "visibleElementCount": 56,
-    "roleLockedElementCount": 37,
+    "visibleElementCount": 68,
+    "roleLockedElementCount": 25,
     "suppressedByDefaultCount": 24
+  },
+  "productMaterialization": {
+    "mode": "SELECTIVE_VISIBLE_ROLE_SUBSET",
+    "retainedElementCount": 68,
+    "preservedBaselineElementCount": 56,
+    "typedRole": "BLACK_TIGER_STROKE",
+    "typedMaterializationReceipt": "Data/Effects/AuthoredCorrections/Generated/Artist/effect.artist.skill.31490.black-tiger-stroke.materialization-receipt.v1.json",
+    "fidelity": "TYPED_SOURCE_RECONSTRUCTION",
+    "sourceExactness": "PARTIAL",
+    "nativeShaderStatus": "PENDING"
   },
   "visibleRoleAllowlists": {
     "GROUND_INK_DECAL": [
@@ -89,17 +99,6 @@
       "authored.source-particle.4cbfdf5a6fa6a88ff74f1c78",
       "authored.source-particle.062adfb957519ad9d8471b7b",
       "authored.source-particle.fc04d584812352d794ecedcc"
-    ]
-  },
-  "roleLockedAllowlists": {
-    "BRUSH_RIBBON": [
-      "authored.source-particle.597c6656b27438174311a704"
-    ],
-    "GROUND_INK_DECAL": [
-      "authored.source-decal.049d25ae119e2b62f6f46e00",
-      "authored.source-decal.01a610dbcf9186d675af9e5c",
-      "authored.source-decal.eafca314d4ac9a84deb6f17d",
-      "authored.source-decal.14270957001366d4b06bed8e"
     ],
     "BLACK_TIGER_STROKE": [
       "authored.source-particle.763aea38ab1100ba9072dbfb",
@@ -114,6 +113,17 @@
       "authored.source-particle.01c398219f73706b66509e77",
       "authored.source-particle.93420edbc5815b8a01b38ef4",
       "authored.source-particle.76d0b67fe194395ce21c51ab"
+    ]
+  },
+  "roleLockedAllowlists": {
+    "BRUSH_RIBBON": [
+      "authored.source-particle.597c6656b27438174311a704"
+    ],
+    "GROUND_INK_DECAL": [
+      "authored.source-decal.049d25ae119e2b62f6f46e00",
+      "authored.source-decal.01a610dbcf9186d675af9e5c",
+      "authored.source-decal.eafca314d4ac9a84deb6f17d",
+      "authored.source-decal.14270957001366d4b06bed8e"
     ],
     "SMALL_BLACK_SLASH_MESH": [
       "authored.source-particle.285afce491861117cfeddf6b",
@@ -156,6 +166,26 @@
     {
       "assetId": "Effect/Artist/Meshes/fm_h_swing_05.wmodel",
       "sha256": "9586b5d299b5e9dc7e5973cf8b4b7f31058413c334dc3f7ff2d8410ab7b0a8fd"
+    },
+    {
+      "assetId": "Effect/Artist/Textures/fx_m_trail_010.dds",
+      "sha256": "59725dffeb4593957f5dc12e848c93609858689da01de3ac84a3b282cdc50709"
+    },
+    {
+      "assetId": "Effect/Artist/Textures/fx_c_noise_009.dds",
+      "sha256": "d9b2b59b2657fcfe333852ef2580492fcd1e7769af2d8d5096be47050cddc65e"
+    },
+    {
+      "assetId": "Effect/Artist/Textures/fx_o_symbol_14.dds",
+      "sha256": "574dd0f33ac53559be424c0d9efee28d5d2e34174b4dc29cd90e54fc5ec2988e"
+    },
+    {
+      "assetId": "Effect/Artist/Textures/fx_m_trail_004_cl.dds",
+      "sha256": "5681360a77c21948e854a46cd2b6a547f40f676f3ff31c73902e777f112c30b0"
+    },
+    {
+      "assetId": "Effect/Artist/Textures/fx_bg_dustpanner_01.dds",
+      "sha256": "2eed480e6ca2baff90c08cc81b4cc6847ce61f79a2c14559d7a2984d6aa444c4"
     }
   ]
 }

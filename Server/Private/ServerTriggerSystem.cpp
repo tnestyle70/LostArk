@@ -283,6 +283,7 @@ bool LostArk::Server::CServerTriggerSystem::Begin_MovePlayer(
 	player.MovePath.clear();
 	player.iMovePathIndex = 0;
 	player.iCurrentSkillId = INVALID_SKILL_ID;
+	player.Clear_SkillTarget();
 	player.fActionElapsedSeconds = 0.f;
 	player.iComboStage = 0;
 	player.hasBufferedComboInput = false;

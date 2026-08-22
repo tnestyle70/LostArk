@@ -46,6 +46,8 @@ struct EFFECT_MATERIAL_TEMPLATE_DESC final
 inline constexpr std::string_view EFFECT_MESH_SHAPE_SLOT_ID = "meshModel";
 inline constexpr std::string_view EFFECT_STANDARD_MATERIAL_TEMPLATE_ID =
 	"effect.standard";
+inline constexpr std::string_view EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID =
+	"effect.standard_color_v1";
 inline constexpr std::string_view EFFECT_SOURCE_MATERIAL_TEMPLATE_ID =
 	"effect.source_material";
 inline constexpr f32_t EFFECT_MANUAL_MESH_DEFAULT_SCALE = 0.01f;
@@ -96,6 +98,14 @@ inline constexpr std::array<std::string_view, 1u>
 inline constexpr std::array<std::string_view, 3u>
 	EFFECT_SIMPLE02_SOURCE_TEXTURE_NAMES = {{
 		"emissive_tex", "uv_noise_tex", "emissive_tex_02"
+	}};
+inline constexpr std::array<std::string_view, 1u>
+	EFFECT_MM_BASIC01_SOURCE_TEXTURE_NAMES = {{
+		"emissive_tex"
+	}};
+inline constexpr std::array<std::string_view, 2u>
+	EFFECT_FLOWTRAIL01_SOURCE_TEXTURE_NAMES = {{
+		"diff_tex", "opacity_tex"
 	}};
 
 inline constexpr std::array<std::string_view, 7u>
@@ -279,6 +289,10 @@ enum class EFFECT_STRICT_TYPED_SOURCE_PROFILE : uint8_t
 	FLUIDNINJA01,
 	CUSTOMPARTICLE01,
 	CRACKHOLEV2,
+	MM_BASIC01,
+	FLOWTRAIL01,
+	MM_LIGHT01,
+	MESH_MASKED_CHAIN01,
 	END
 };
 
@@ -435,12 +449,76 @@ inline EFFECT_STRICT_TYPED_SOURCE_PROFILE Resolve_EffectStrictTypedSourceProfile
 	{
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_MAKEFLOW01;
 	}
-	if (Source.strProfileId ==
+	/* Both package paths resolve to the same parent object
+	   fx_c_pa_lensflare_01_ad: identical 46 expression slots, zero static
+	   switches, the single lensflaretexture parameter bound to
+	   fx_c_glow_006 and the same three scalar defaults.  Only the child
+	   package differs, so the equation and lane layout are shared. */
+	if ((Source.strProfileId ==
 			"ue3.material.fx.m.mi.00.fx.m.fx.c.pa.lensflare.01.ad.2cdc706962af" &&
-		Source.strParentMaterialPath ==
-			"fx_m_mi_00.fx_m.fx_c_pa_lensflare_01_ad")
+		 Source.strParentMaterialPath ==
+			"fx_m_mi_00.fx_m.fx_c_pa_lensflare_01_ad") ||
+		(Source.strProfileId ==
+			"ue3.material.fx.m.fx.c.pa.lensflare.01.ad.ed326b13c7b3" &&
+		 Source.strParentMaterialPath ==
+			"fx_m.fx_c_pa_lensflare_01_ad"))
 	{
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::ARTIST_LENSFLARE01;
+	}
+	/* fx_mm_basic_01 is one master material authored in an additive and a
+	   translucent variant.  Both expose the same four texture parameters
+	   (emissive_tex, alpha_tex, uv_noise_01_tex, uv_noise_02_tex) and the
+	   same scalar surface, so they share one equation; the blend belongs
+	   to the element render profile, not to the family. */
+	if ((Source.strProfileId ==
+			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.ad.c509bec15c99" &&
+		 Source.strParentMaterialPath ==
+			"fx_mastermaterial.fx_mm.fx_mm_basic_01_ad") ||
+		(Source.strProfileId ==
+			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.basic.01.tr.ce17b96d1b77" &&
+		 Source.strParentMaterialPath ==
+			"fx_mastermaterial.fx_mm.fx_mm_basic_01_tr"))
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MM_BASIC01;
+	}
+	/* fx_k_me_flowtrail_01_ts_tr keeps the diff, opacity and noise lanes in
+	   three separate UV domains with their own tiling, centre and rotation.
+	   The grouped path has one shared UV scale, so a trail authored with
+	   diff v-tiling 0.2 against opacity v-tiling 1.0 cannot be expressed. */
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.02.fx.m.fx.k.me.flowtrail.01.ts.tr.bc0628267aaa" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_02.fx_m.fx_k_me_flowtrail_01_ts_tr")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWTRAIL01;
+	}
+	/* fx_mm_light_01 is the smallest master material in the corpus: one
+	   emissive lane, no scalar and no vector parameter.  Its output is what
+	   fx_mm_simple_01 already computes once every simple_01 input is neutral,
+	   so the two share the evaluator and only the carrier blend differs
+	   between the additive and translucent variants. */
+	if ((Source.strProfileId ==
+			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ad.f431613b2bdf" &&
+		 Source.strParentMaterialPath ==
+			"fx_mastermaterial.fx_mm.fx_mm_light_01_ad") ||
+		(Source.strProfileId ==
+			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.tr.8a6435f0c4e0" &&
+		 Source.strParentMaterialPath ==
+			"fx_mastermaterial.fx_mm.fx_mm_light_01_tr"))
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MM_LIGHT01;
+	}
+	/* fx_d_me_chain_01_ma is the Warlord hook-chain link material.  Its parent
+	   declares no texture parameter at all and only two world-position-offset
+	   scalars, and it is authored BLEND_Masked and two sided.  Masked means a
+	   binary cutout, which the grouped translucent path cannot express, so the
+	   links currently draw as soft ghosts instead of solid chain. */
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.00.fx.m.fx.d.me.chain.01.ma.a8a92d2a6abc" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_00.fx_m.fx_d_me_chain_01_ma")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MESH_MASKED_CHAIN01;
 	}
 	if (strSourceMaterialPath ==
 			"fx_m_mi_w_00.mi.fx_w_pa_worldoffset_02_14_tr" &&
@@ -763,6 +841,14 @@ inline constexpr EFFECT_MATERIAL_TEMPLATE_DESC
 	};
 
 inline constexpr EFFECT_MATERIAL_TEMPLATE_DESC
+	EFFECT_STANDARD_COLOR_V1_TEMPLATE = {
+		EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID,
+		"effect.standard-color.hlsl.v1",
+		nullptr,
+		0u
+	};
+
+inline constexpr EFFECT_MATERIAL_TEMPLATE_DESC
 	EFFECT_SOURCE_MATERIAL_TEMPLATE = {
 		EFFECT_SOURCE_MATERIAL_TEMPLATE_ID,
 		"effect.source-material.ue3-profile-runtime.v1",
@@ -775,6 +861,8 @@ inline const EFFECT_MATERIAL_TEMPLATE_DESC* Find_EffectMaterialTemplate(
 {
 	if (strTemplateId == EFFECT_STANDARD_MATERIAL_TEMPLATE_ID)
 		return &EFFECT_STANDARD_MATERIAL_TEMPLATE;
+	if (strTemplateId == EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID)
+		return &EFFECT_STANDARD_COLOR_V1_TEMPLATE;
 	if (strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID)
 		return &EFFECT_SOURCE_MATERIAL_TEMPLATE;
 	return nullptr;
@@ -1364,6 +1452,29 @@ inline bool_t Has_EffectSimple01NamedTextureContract(
 	return Has_EffectUniqueNamedTextureContract(
 		Source, EFFECT_SIMPLE01_SOURCE_TEXTURE_NAMES) &&
 		Is_EffectNamedTextureLaneUnique(Source, "uv_noise_tex");
+}
+
+/* Only the emissive lane is required.  alpha_tex and the two uv_noise
+   lanes are child-optional in this family and the equation gates them on
+   the staged texture mask instead of rejecting the occurrence. */
+inline bool_t Has_EffectMmBasic01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_MM_BASIC01_SOURCE_TEXTURE_NAMES) &&
+		Is_EffectNamedTextureLaneUnique(Source, "alpha_tex") &&
+		Is_EffectNamedTextureLaneUnique(Source, "uv_noise_01_tex") &&
+		Is_EffectNamedTextureLaneUnique(Source, "uv_noise_02_tex");
+}
+
+/* diff and opacity are the two lanes the equation cannot run without.  The
+   noise lane is child-optional and gated on the staged texture mask. */
+inline bool_t Has_EffectFlowTrail01NamedTextureContract(
+	const EFFECT_SOURCE_MATERIAL_DESC& Source)
+{
+	return Has_EffectUniqueNamedTextureContract(
+		Source, EFFECT_FLOWTRAIL01_SOURCE_TEXTURE_NAMES) &&
+		Is_EffectNamedTextureLaneUnique(Source, "noise_tex");
 }
 
 inline bool_t Has_EffectSimple02NamedTextureContract(

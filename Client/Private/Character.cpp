@@ -243,6 +243,7 @@ bool_t CCharacter::Load_EffectCues()
 	for (const ANIMATION_EFFECT_CUE& cue : staged.Cues)
 	{
 		if ("root" != cue.strAnchorSlotId &&
+			"skill_target" != cue.strAnchorSlotId &&
 			!m_pBodyModel->Has_Bone(cue.strAnchorSlotId.c_str()))
 		{
 			OutputDebugStringA(("Character Effect cue anchor rejected: " +
@@ -262,10 +263,13 @@ bool_t CCharacter::Load_EffectCues()
 }
 
 void CCharacter::Reset_EffectCueCursor(
-	const std::uint32_t iActionStartTick)
+	const std::uint32_t iActionStartTick,
+	const f32_t fActionFacingYawDegrees)
 {
 	m_fPreviousEffectCueStageWallSeconds = -1.f;
 	m_iEffectActionStartTick = iActionStartTick;
+	m_fEffectActionFacingYawDegrees = fActionFacingYawDegrees;
+	m_bHasEffectActionFacingYaw = true;
 }
 
 f32_t CCharacter::Get_EffectPlaybackRate() const
@@ -317,8 +321,13 @@ void CCharacter::Spawn_FallbackEffect(
 	EFFECT_SPAWN_DESC Desc;
 	Desc.strEffectAssetId = pDefinition->strEffectId;
 	Desc.pOwner = static_pointer_cast<CCharacter>(shared_from_this());
-	Desc.strAnchorSlotId = "root";
-	Desc.eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
+	const bool_t bGroundTarget =
+		LostArk::Shared::SKILL_TARGET_INTENT_KIND::GROUND_POINT ==
+			pDefinition->eTargetIntent;
+	Desc.strAnchorSlotId = bGroundTarget ? "skill_target" : "root";
+	Desc.eFollowPolicy = bGroundTarget ?
+		EFFECT_FOLLOW_POLICY::SNAPSHOT : EFFECT_FOLLOW_POLICY::FOLLOW;
+	Desc.eOrientationPolicy = EFFECT_ORIENTATION_POLICY::ANCHOR;
 	Desc.eStopPolicy = EFFECT_STOP_POLICY::NATURAL;
 	Desc.iActionStartTick = m_iEffectActionStartTick;
 	Desc.iCueStartMs = 0u;
@@ -432,6 +441,15 @@ void CCharacter::Update_EffectCues()
 				Desc.strAnchorSlotId = Cue.strAnchorSlotId;
 				Desc.LocalTransform = Cue.LocalTransform;
 				Desc.eFollowPolicy = Cue.eFollowPolicy;
+				Desc.eOrientationPolicy = Cue.eOrientationPolicy;
+				if (EFFECT_ORIENTATION_POLICY::ACTION_FACING ==
+					Cue.eOrientationPolicy)
+				{
+					Desc.bHasActionFacingYaw =
+						m_bHasEffectActionFacingYaw;
+					Desc.fActionFacingYawDegrees =
+						m_fEffectActionFacingYawDegrees;
+				}
 				Desc.eStopPolicy = Cue.eStopPolicy;
 				Desc.iCueDurationMs = iCueDurationMs;
 				Desc.iActionStartTick = m_iEffectActionStartTick;
@@ -914,11 +932,36 @@ bool_t CCharacter::Apply_NetworkAction(
 	const LostArk::Shared::SKILL_ID skillId,
 	const std::uint32_t serverTick,
 	const std::uint32_t actionStartTick,
-	const std::uint8_t comboStage)
+	const f32_t actionFacingYawDegrees,
+	const std::uint8_t comboStage,
+	const bool_t hasSkillTarget,
+	const float3_t& skillTarget)
 {
 	using namespace LostArk::Shared;
-	if (0u == serverTick || static_cast<std::uint8_t>(action) >=
+	if (0u == serverTick || !std::isfinite(actionFacingYawDegrees) ||
+		static_cast<std::uint8_t>(action) >=
 		static_cast<std::uint8_t>(PLAYER_ACTION_STATE::END))
+	{
+		return false;
+	}
+	const PLAYER_SKILL_DEFINITION* targetDefinition =
+		PLAYER_ACTION_STATE::SKILL == action ?
+		CPlayerSkillCatalog::Find_ById(skillId) : nullptr;
+	const bool_t expectsGroundTarget = nullptr != targetDefinition &&
+		SKILL_TARGET_INTENT_KIND::GROUND_POINT ==
+			targetDefinition->eTargetIntent;
+	if (expectsGroundTarget != hasSkillTarget ||
+		(hasSkillTarget && (!std::isfinite(skillTarget.x) ||
+			!std::isfinite(skillTarget.y) || !std::isfinite(skillTarget.z))))
+	{
+		return false;
+	}
+	if (hasSkillTarget && m_hasNetworkSkillTarget &&
+		m_eNetworkAction == action &&
+		m_iLastNetworkActionStartTick == actionStartTick &&
+		(std::abs(m_NetworkSkillTarget.x - skillTarget.x) > 0.001f ||
+		 std::abs(m_NetworkSkillTarget.y - skillTarget.y) > 0.001f ||
+		 std::abs(m_NetworkSkillTarget.z - skillTarget.z) > 0.001f))
 	{
 		return false;
 	}
@@ -962,7 +1005,12 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_eKnockdownStep = KNOCKDOWN_STEP::NONE;
 		Commit_PendingClipChains();
 		m_iCurrentEffectSkillId = skillId;
-		Reset_EffectCueCursor(actionStartTick);
+		Reset_EffectCueCursor(actionStartTick, actionFacingYawDegrees);
+		/* A presentation fallback may resolve its anchor synchronously below.
+		Commit the already-validated Server target before that spawn so even a
+		missing clip stays rooted at the authoritative point, never the caster. */
+		m_hasNetworkSkillTarget = hasSkillTarget;
+		m_NetworkSkillTarget = hasSkillTarget ? skillTarget : float3_t{};
 
 		bool_t presented = Play_Skill(
 			static_cast<int32_t>(skillId),
@@ -1031,6 +1079,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		Set_Animation(CHARACTER_ANIM::HIT, true);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
 	}
 	else if (PLAYER_ACTION_STATE::KNOCKDOWN == action)
 	{
@@ -1051,6 +1101,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		m_eKnockdownStep = KNOCKDOWN_STEP::FALLING;
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
 		m_iLastNetworkActionStartTick = actionStartTick;
 	}
 	else if (PLAYER_ACTION_STATE::DEAD == action)
@@ -1064,6 +1116,8 @@ bool_t CCharacter::Apply_NetworkAction(
 		Set_Animation(CHARACTER_ANIM::DEAD, false);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
 	}
 	else if (PLAYER_ACTION_STATE::SKILL == m_eNetworkAction)
 	{
@@ -1077,6 +1131,8 @@ bool_t CCharacter::Apply_NetworkAction(
 			true);
 		m_iCurrentEffectSkillId = INVALID_SKILL_ID;
 		m_iEffectActionStartTick = 0u;
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
 	}
 	else if (PLAYER_ACTION_STATE::KNOCKDOWN == m_eNetworkAction)
 	{
@@ -1093,8 +1149,36 @@ bool_t CCharacter::Apply_NetworkAction(
 				true);
 		}
 	}
+	if (PLAYER_ACTION_STATE::SKILL != action)
+	{
+		m_bHasEffectActionFacingYaw = false;
+		m_fEffectActionFacingYawDegrees = 0.f;
+	}
 	Update_ActionEmissiveOverride(action, skillId);
+	m_hasNetworkSkillTarget = hasSkillTarget;
+	m_NetworkSkillTarget = hasSkillTarget ? skillTarget : float3_t{};
 	m_eNetworkAction = action;
+	return true;
+}
+
+bool_t CCharacter::Try_Get_SkillTargetRoot(float4x4_t& outWorld) const
+{
+	if (!m_hasNetworkSkillTarget ||
+		LostArk::Shared::PLAYER_ACTION_STATE::SKILL != m_eNetworkAction ||
+		!std::isfinite(m_NetworkSkillTarget.x) ||
+		!std::isfinite(m_NetworkSkillTarget.y) ||
+		!std::isfinite(m_NetworkSkillTarget.z))
+	{
+		return false;
+	}
+	const f32_t yawDegrees = m_bHasEffectActionFacingYaw ?
+		m_fEffectActionFacingYawDegrees : m_fPresentationYawDegrees;
+	XMStoreFloat4x4(&outWorld,
+		XMMatrixRotationY(XMConvertToRadians(yawDegrees)) *
+		XMMatrixTranslation(
+			m_NetworkSkillTarget.x,
+			m_NetworkSkillTarget.y,
+			m_NetworkSkillTarget.z));
 	return true;
 }
 
@@ -1191,6 +1275,17 @@ bool_t CCharacter::Set_Animation(const char_t* pClipName, bool_t isLoop)
 		pClipName,
 		isLoop,
 		CLIP_BLEND_SECONDS);
+}
+
+bool_t CCharacter::Try_SampleTargetGround(
+	const f32_t x,
+	const f32_t z,
+	float3_t& outPosition) const
+{
+	if (nullptr == m_pNavigationCom || !std::isfinite(x) || !std::isfinite(z))
+		return false;
+	return m_pNavigationCom->Try_SampleWalkablePoint(
+		XMVectorSet(x, 0.f, z, 1.f), outPosition);
 }
 
 PATH_RESULT_CODE CCharacter::Request_Move(fvector_t vGoalPosition)

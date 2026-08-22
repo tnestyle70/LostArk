@@ -46,11 +46,14 @@ namespace
 		ETOUI(DEFERRED::PRESENTATION_ZOOM_BLUR);
 	constexpr uint32_t DEFERRED_PASS_FILM_NOISE =
 		ETOUI(DEFERRED::PRESENTATION_FILM_NOISE);
+	constexpr uint32_t DEFERRED_PASS_TEXTURED_OVERLAY =
+		PRESENTATION_TEXTURED_OVERLAY_PASS_INDEX;
 
 	static_assert(8u == DEFERRED_PASS_SCENE_RESOLVE);
 	static_assert(9u == DEFERRED_PASS_RGB_NOISE);
 	static_assert(10u == DEFERRED_PASS_ZOOM_BLUR);
 	static_assert(11u == DEFERRED_PASS_FILM_NOISE);
+	static_assert(14u == DEFERRED_PASS_TEXTURED_OVERLAY);
 	static_assert(12u == ETOUI(DEFERRED::SSAO_RAW));
 	static_assert(13u == ETOUI(DEFERRED::SSAO_BLUR));
 	static_assert(14u == ETOUI(DEFERRED::END));
@@ -826,8 +829,108 @@ HRESULT CRenderer::Render_ScreenPosts()
 			m_pScenePostRTVs[Step.iDestinationTarget],
 			iPassIndex, &Post);
 	}
-	m_iScenePostFinalTarget =
-		PresentationScreenPostFinalTarget(ScreenPosts.size());
+	const vector<PRESENTATION_SCREEN_OVERLAY_DESC>& ScreenOverlays =
+		Presentation.Get_ScreenOverlays();
+	for (size_t iOverlay = 0u;
+		SUCCEEDED(hResult) && iOverlay < ScreenOverlays.size(); ++iOverlay)
+	{
+		const PRESENTATION_SCREEN_OVERLAY_DESC& Overlay =
+			ScreenOverlays[iOverlay];
+		const PRESENTATION_SCREEN_POST_PLAN_STEP Step =
+			Build_PresentationScreenOverlayPlanStep(
+				ScreenPosts.size(), iOverlay);
+		ComPtr<ID3D11ShaderResourceView> pSourceSRV =
+			m_pScenePostSRVs[Step.iSourceTarget];
+		ComPtr<ID3D11RenderTargetView> pDestinationRTV =
+			m_pScenePostRTVs[Step.iDestinationTarget];
+		if (nullptr == pSourceSRV || nullptr == pDestinationRTV ||
+			nullptr == Overlay.pTexture)
+		{
+			hResult = E_FAIL;
+			break;
+		}
+		ComPtr<ID3D11Resource> pSourceResource;
+		ComPtr<ID3D11Resource> pDestinationResource;
+		ComPtr<ID3D11Resource> pOverlayResource;
+		pSourceSRV->GetResource(&pSourceResource);
+		pDestinationRTV->GetResource(&pDestinationResource);
+		Overlay.pTexture->GetResource(&pOverlayResource);
+		if (nullptr == pSourceResource || nullptr == pDestinationResource ||
+			nullptr == pOverlayResource ||
+			pSourceResource.Get() == pDestinationResource.Get() ||
+			pOverlayResource.Get() == pDestinationResource.Get())
+		{
+			hResult = E_FAIL;
+			break;
+		}
+
+		ID3D11ShaderResourceView* pNullSRVs[
+			D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
+		m_pContext->PSSetShaderResources(
+			0u, _countof(pNullSRVs), pNullSRVs);
+		ID3D11RenderTargetView* pDestination = pDestinationRTV.Get();
+		m_pContext->OMSetRenderTargets(1u, &pDestination, nullptr);
+		const float4_t vClear{};
+		m_pContext->ClearRenderTargetView(pDestination, &vClear.x);
+		const uint32_t iCoverageChannel =
+			static_cast<uint32_t>(Overlay.eCoverageChannel);
+		const uint32_t iFilter = static_cast<uint32_t>(Overlay.eFilter);
+		const uint32_t iAddress = static_cast<uint32_t>(Overlay.eAddress);
+		if (FAILED(m_pShader->Bind_Texture(
+				"g_PostProcessTexture", pSourceSRV)) ||
+			FAILED(m_pShader->Bind_Texture(
+				"g_PresentationOverlayTexture", Overlay.pTexture)) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_fPresentationTime", &Overlay.fSampleTimeSeconds,
+				sizeof(Overlay.fSampleTimeSeconds))) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_vPresentationOverlayPosition", &Overlay.vPosition,
+				sizeof(Overlay.vPosition))) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_vPresentationOverlayScale", &Overlay.vScale,
+				sizeof(Overlay.vScale))) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_fPresentationOverlayRotationDegrees",
+				&Overlay.fRotationDegrees,
+				sizeof(Overlay.fRotationDegrees))) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_fPresentationOverlayAngularVelocityDegreesPerSecond",
+				&Overlay.fAngularVelocityDegreesPerSecond,
+				sizeof(Overlay.fAngularVelocityDegreesPerSecond))) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_vPresentationOverlayUvDriftPerSecond",
+				&Overlay.vUvDriftPerSecond,
+				sizeof(Overlay.vUvDriftPerSecond))) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_vPresentationOverlayTint", &Overlay.vTint,
+				sizeof(Overlay.vTint))) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_fPresentationOverlayAlpha", &Overlay.fAlpha,
+				sizeof(Overlay.fAlpha))) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_iPresentationOverlayCoverageChannel",
+				&iCoverageChannel, sizeof(iCoverageChannel))) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_iPresentationOverlayFilter", &iFilter,
+				sizeof(iFilter))) ||
+			FAILED(m_pShader->Bind_RawValue(
+				"g_iPresentationOverlayAddress", &iAddress,
+				sizeof(iAddress))) ||
+			FAILED(m_pShader->Bind_Matrix(
+				"g_WorldMatrix", &m_WorldMatrix)) ||
+			FAILED(m_pShader->Bind_Matrix(
+				"g_ViewMatrix", &m_ViewMatrix)) ||
+			FAILED(m_pShader->Bind_Matrix(
+				"g_ProjMatrix", &m_ProjMatrix)) ||
+			FAILED(m_pShader->Begin(DEFERRED_PASS_TEXTURED_OVERLAY)) ||
+			FAILED(m_pVIBuffer->Bind_Resources()) ||
+			FAILED(m_pVIBuffer->Render()))
+		{
+			hResult = E_FAIL;
+		}
+	}
+	m_iScenePostFinalTarget = PresentationScreenCompositionFinalTarget(
+		ScreenPosts.size(), ScreenOverlays.size());
 
 	ID3D11ShaderResourceView* pNullSRVs[
 		D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]{};
@@ -843,6 +946,7 @@ HRESULT CRenderer::Render_ScreenPosts()
 	else
 		m_pContext->RSSetViewports(0u, nullptr);
 	Presentation.Clear_ScreenPosts();
+	Presentation.Clear_ScreenOverlays();
 	return hResult;
 }
 

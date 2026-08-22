@@ -29,6 +29,16 @@ function Assert-StableId([string]$Value, [string]$Context) {
     if ($Value -notmatch $stableIdPattern) { throw "$Context is not a stable ID: '$Value'" }
 }
 
+function Assert-EffectTextureAssetId([string]$Value, [string]$Context) {
+	if ([string]::IsNullOrWhiteSpace($Value) -or $Value.Length -gt 260 -or
+		-not $Value.StartsWith('Effect/', [StringComparison]::Ordinal) -or
+		-not $Value.EndsWith('.dds', [StringComparison]::OrdinalIgnoreCase) -or
+		$Value.Contains('\') -or $Value.StartsWith('/') -or
+		$Value -match '^[A-Za-z]:' -or @($Value.Split('/')) -contains '..') {
+		throw "$Context is not a Resources-relative Effect texture asset ID: '$Value'"
+	}
+}
+
 function Format-InvariantFloat([double]$Value, [string]$Context) {
     if ([double]::IsNaN($Value) -or [double]::IsInfinity($Value) -or $Value -lt 0.0 -or $Value -gt 100000.0) {
         throw "$Context is invalid: $Value"
@@ -773,6 +783,112 @@ foreach ($skill in @($skillDocument.skills)) {
 			[uint32]$stage.comboAdvanceMs,
 			[uint32]$stage.inputOpenMs, [uint32]$stage.inputCloseMs) -join "`t"))
 	}
+}
+
+# Ground targeting is a separate typed contract so the official PlayerSkills
+# values and their provenance receipt remain byte-for-byte unchanged. The Server
+# bootstrap receives only admission fields; texture IDs stay Client-only.
+$targetingDocument = Read-JsonDocument 'Data/Balance/PlayerSkillTargeting.json'
+Assert-ExactProperties $targetingDocument @(
+	'schema','formatVersion','skills') 'player skill targeting document'
+Assert-JsonString $targetingDocument.schema 'player skill targeting schema'
+Assert-JsonInteger $targetingDocument.formatVersion `
+	'player skill targeting formatVersion' 1 1
+if ([string]$targetingDocument.schema -cne 'lostark.player-skill-targeting' -or
+	[uint32]$targetingDocument.formatVersion -ne 1 -or
+	$targetingDocument.skills -isnot [Array]) {
+	throw 'Player skill targeting header is invalid.'
+}
+$targetingSkillIds = [Collections.Generic.HashSet[uint32]]::new()
+foreach ($targeting in @($targetingDocument.skills)) {
+	Assert-ExactProperties $targeting @(
+		'skillId','targetingKind','maximumRange','requiresWalkable',
+		'rangePreview','targetPreview') 'player skill targeting row'
+	Assert-JsonInteger $targeting.skillId 'targeting skillId' 1 ([uint32]::MaxValue)
+	Assert-JsonString $targeting.targetingKind `
+		"targeting $($targeting.skillId) targetingKind"
+	Assert-JsonNumber $targeting.maximumRange `
+		"targeting $($targeting.skillId) maximumRange"
+	if ($targeting.requiresWalkable -isnot [bool]) {
+		throw "Targeting requiresWalkable must be a JSON Boolean: $($targeting.skillId)"
+	}
+	$targetingId = [uint32]$targeting.skillId
+	$ownerSkills = @($skillDocument.skills | Where-Object {
+		[uint32]$_.skillId -eq $targetingId })
+	if (-not $targetingSkillIds.Add($targetingId) -or
+		$ownerSkills.Count -ne 1 -or
+		[string]$targeting.targetingKind -cne 'GROUND_POINT' -or
+		-not [bool]$targeting.requiresWalkable -or
+		[double]$targeting.maximumRange -le 0.0 -or
+		[double]$targeting.maximumRange -ne [double]$ownerSkills[0].maximumRange -or
+		[string]$ownerSkills[0].skillKind -cne 'ACTIVE') {
+		throw "Player skill targeting owner, kind, range, or walkability is invalid: $targetingId"
+	}
+	foreach ($previewName in @('rangePreview','targetPreview')) {
+		$preview = $targeting.$previewName
+		Assert-ExactProperties $preview @(
+			'assetId','diameter','coverageChannel','validTint','invalidTint','assetIdentityBasis',
+			'usageBasis','sourceEvidence') "targeting $targetingId $previewName"
+		foreach ($field in @(
+			'assetId','coverageChannel','assetIdentityBasis','usageBasis',
+			'sourceEvidence')) {
+			Assert-JsonString $preview.$field `
+				"targeting $targetingId $previewName $field"
+		}
+		Assert-JsonNumber $preview.diameter `
+			"targeting $targetingId $previewName diameter"
+		Assert-EffectTextureAssetId ([string]$preview.assetId) `
+			"targeting $targetingId $previewName assetId"
+		foreach ($tintName in @('validTint','invalidTint')) {
+			$tint = @($preview.$tintName)
+			if ($preview.$tintName -isnot [Array] -or $tint.Count -ne 4) {
+				throw "Targeting preview tint must contain RGBA: $targetingId/$previewName/$tintName"
+			}
+			foreach ($component in $tint) {
+				Assert-JsonNumber $component `
+					"targeting $targetingId $previewName $tintName"
+				if ([double]$component -lt 0.0 -or [double]$component -gt 1.0) {
+					throw "Targeting preview tint is outside [0,1]: $targetingId/$previewName/$tintName"
+				}
+			}
+		}
+		if ([double]$preview.diameter -le 0.0 -or
+			[string]$preview.coverageChannel -cne 'R' -or
+			[string]$preview.usageBasis -cne 'PROJECT_TUNED' -or
+			[string]$preview.assetIdentityBasis -notin @(
+				'SOURCE_EXTRACTED','RUNTIME_RESOURCE')) {
+			throw "Player skill targeting preview semantics are invalid: $targetingId/$previewName"
+		}
+		$evidence = [string]$preview.sourceEvidence
+		if ([string]$preview.assetIdentityBasis -ceq 'SOURCE_EXTRACTED') {
+			$evidencePath = [IO.Path]::GetFullPath((Join-Path $repoRoot $evidence))
+			if (-not $evidence.StartsWith('Data/', [StringComparison]::Ordinal) -or
+				@($evidence.Split('/')) -contains '..' -or
+				-not [IO.File]::Exists($evidencePath)) {
+				throw "SOURCE_EXTRACTED targeting preview lacks checked-in evidence: $targetingId/$previewName"
+			}
+			$evidenceText = [IO.File]::ReadAllText($evidencePath)
+			$assetFieldPattern = '"assetId"\s*:\s*"' +
+				[Regex]::Escape([string]$preview.assetId) + '"'
+			if (-not [Regex]::IsMatch(
+					$evidenceText, $assetFieldPattern,
+					[Text.RegularExpressions.RegexOptions]::CultureInvariant)) {
+				throw "SOURCE_EXTRACTED targeting preview evidence does not own assetId: $targetingId/$previewName"
+			}
+		}
+		elseif ($evidence.Length -ne 0) {
+			throw "RUNTIME_RESOURCE targeting preview must not claim source evidence: $targetingId/$previewName"
+		}
+	}
+	if ([double]$targeting.rangePreview.diameter -ne
+		(2.0 * [double]$targeting.maximumRange)) {
+		throw "Targeting range preview diameter must be twice maximumRange: $targetingId"
+	}
+	$skillRows.Add((@(
+		'SKILLTARGET', $targetingId, [string]$targeting.targetingKind,
+		(Format-InvariantFloat $targeting.maximumRange `
+			"targeting $targetingId maximumRange"),
+		$(if ([bool]$targeting.requiresWalkable) { 1 } else { 0 })) -join "`t"))
 }
 
 $classesWithIdentitySkillCost = [Collections.Generic.HashSet[string]]::new()
@@ -1540,6 +1656,94 @@ foreach ($pattern in @($encounterDocument.patterns)) {
 	}
 }
 if ($patternRows.Count -eq 0) { throw 'Valtan encounter has no patterns.' }
+
+# The combat-runtime branch owns these reactive/mechanic transitions.  A merge
+# once retained the stage/clip rows but silently dropped every non-combat-object
+# action and branch, which still passed the generic optional-field validator.
+# Keep the exact compiled row set here so Validate fails before such a partial
+# encounter can be published again.
+$authoredStageCount = 0
+$authoredStageActionCount = 0
+$authoredStageBranchCount = 0
+$authoredStageMotionCount = 0
+foreach ($pattern in @($encounterDocument.patterns)) {
+	foreach ($stage in @($pattern.stages)) {
+		++$authoredStageCount
+		$actionsProperty = $stage.PSObject.Properties['actions']
+		$branchesProperty = $stage.PSObject.Properties['branches']
+		$motionProperty = $stage.PSObject.Properties['motion']
+		if ($null -ne $actionsProperty) {
+			$authoredStageActionCount += @($actionsProperty.Value).Count
+		}
+		if ($null -ne $branchesProperty) {
+			$authoredStageBranchCount += @($branchesProperty.Value).Count
+		}
+		if ($null -ne $motionProperty) {
+			++$authoredStageMotionCount
+		}
+	}
+}
+if (@($encounterDocument.patterns).Count -ne 33 -or
+	$authoredStageCount -ne 130 -or
+	$authoredStageActionCount -ne 22 -or
+	$authoredStageBranchCount -ne 18 -or
+	$authoredStageMotionCount -ne 2) {
+	throw ('Valtan reactive stage topology count drifted: ' +
+		"patterns=$(@($encounterDocument.patterns).Count) " +
+		"stages=$authoredStageCount actions=$authoredStageActionCount " +
+		"branches=$authoredStageBranchCount motions=$authoredStageMotionCount")
+}
+
+$requiredReactiveRows = @(
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t0`tENTER`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t30`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`t1`tEXIT`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_HIGH_JUMP`tvaltan.attack.high-jump.airborne`t0`tENTER`tSPAWN_COMBAT_OBJECT`tcombatobject.valtan.high-jump.target-axe`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_RED_BLADE_WAVE`tvaltan.attack.red-blade-wave.active`t0`tENTER`tSPAWN_COMBAT_OBJECT`tcombatobject.valtan.red-blade-wave.projectile`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.second`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.second`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.third`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.third`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.groggy`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.groggy`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.groggy`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.groggy`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.shield`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.invulnerable`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.shield`t1`tENTER`tSET_SHIELD`tboss.gauge.shield`t6000`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`t0`tENTER`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t100`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`t1`tEXIT`tSET_STAGGER_GAUGE`tboss.gauge.stagger`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`t2`tEXIT`tSET_SHIELD`tboss.gauge.shield`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`t3`tEXIT`tSET_BOSS_FLAG`tboss.flag.invulnerable`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.groggy`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.groggy`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.groggy`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.groggy`t0`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`t0`tENTER`tSET_BOSS_FLAG`tboss.flag.counterable`t1`t0",
+	"PATTERNSTAGEACTION`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`t1`tEXIT`tSET_BOSS_FLAG`tboss.flag.counterable`t0`t0",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`tSTAGGER_BROKEN`tvaltan.reactive.parry.slash",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.stance`tTIMEOUT`tvaltan.reactive.parry.normal-slash",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_PARRY`tvaltan.reactive.parry.slash`tTIMEOUT`tvaltan.reactive.parry.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`tCOUNTER_HIT`tvaltan.reactive.triple-counter.second",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.first`tTIMEOUT`tvaltan.reactive.triple-counter.first-fail",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.second`tCOUNTER_HIT`tvaltan.reactive.triple-counter.third",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.second`tTIMEOUT`tvaltan.reactive.triple-counter.second-fail",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.third`tCOUNTER_HIT`tvaltan.reactive.triple-counter.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_TRIPLE_COUNTER`tvaltan.reactive.triple-counter.third`tTIMEOUT`tvaltan.reactive.triple-counter.third-fail",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tWALL_CONTACT`tvaltan.mechanic.armor-break-opening.groggy",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tTIMEOUT`t-",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.groggy`tPART_DESTROYED`tvaltan.mechanic.armor-break-opening.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.groggy`tTIMEOUT`tvaltan.mechanic.armor-break-opening.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`tSTAGGER_BROKEN`tvaltan.mechanic.magic-orb-stagger-76.groggy",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.window`tTIMEOUT`tvaltan.mechanic.magic-orb-stagger-76.wipe",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_MAGIC_ORB_STAGGER_76`tvaltan.mechanic.magic-orb-stagger-76.groggy`tTIMEOUT`tvaltan.mechanic.magic-orb-stagger-76.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tCOUNTER_HIT`tvaltan.mechanic.center-grab-counter-64.recovery",
+	"PATTERNSTAGEBRANCH`tENCOUNTER_VALTAN`tVALTAN_CENTER_GRAB_COUNTER_64`tvaltan.mechanic.center-grab-counter-64.counter`tTIMEOUT`tvaltan.mechanic.center-grab-counter-64.failed-charge",
+	"PATTERNSTAGEMOTION`tENCOUNTER_VALTAN`tVALTAN_ARMOR_BREAK_OPENING`tvaltan.mechanic.armor-break-opening.charge`tFORWARD`t100"
+)
+$missingReactiveRows = @($requiredReactiveRows | Where-Object {
+	-not $patternRows.Contains([string]$_)
+})
+if ($missingReactiveRows.Count -ne 0) {
+	throw ('Valtan reactive stage topology row is missing or changed: ' +
+		($missingReactiveRows -join ', '))
+}
 
 $combatObjectIds = [Collections.Generic.HashSet[string]]::new(
 	[StringComparer]::Ordinal)
@@ -2871,7 +3075,7 @@ $rows = @($damageRows + $skillRows + $playerRows + $bossRows +
 	$bossPartRows + $combatObjectRows + $rootMotionRows + $hitShapeRows +
 	$patternRows | Sort-Object -Property @{
 		Expression = { Get-BootstrapRowSortKey -Row $_ } })
-$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t15`t$($rows.Count)") + $rows
+$lines = @("LOSTARK_GAMEPLAY_BOOTSTRAP`t16`t$($rows.Count)") + $rows
 
 if ($Mode -eq 'Publish') {
     $root = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputRoot))

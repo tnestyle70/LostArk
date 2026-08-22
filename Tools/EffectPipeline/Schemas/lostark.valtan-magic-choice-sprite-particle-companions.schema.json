@@ -1,0 +1,451 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lostark.local/schemas/lostark.valtan-magic-choice-sprite-particle-companions.schema.json",
+  "title": "Valtan MagicChoice isolated SpriteParticle companion candidates",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "formatVersion",
+    "bossArchetypeId",
+    "generator",
+    "policy",
+    "target",
+    "sourceIdentity",
+    "candidateIdentity",
+    "candidateDocumentIdentity",
+    "resourceEvidence",
+    "carrierTranslation",
+    "requiresCommonColorAbi",
+    "requiredValidation",
+    "artifactSha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "lostark.valtan-magic-choice-sprite-particle-companions"
+    },
+    "formatVersion": { "const": 1 },
+    "bossArchetypeId": { "const": "BOSS_VALTAN" },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["script", "schemaPath", "policyVersion"],
+      "properties": {
+        "script": {
+          "const": "Tools/EffectPipeline/build_valtan_magic_choice_sprite_particle_companions.py"
+        },
+        "schemaPath": {
+          "const": "Tools/EffectPipeline/Schemas/lostark.valtan-magic-choice-sprite-particle-companions.schema.json"
+        },
+        "policyVersion": { "const": 1 }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "classification",
+        "fidelity",
+        "reconcileMode",
+        "candidateOnly",
+        "canonicalMutationPerformed",
+        "cueMutationPerformed",
+        "bindingMutationPerformed",
+        "catalogMutationPerformed",
+        "commonRuntimeMutationPerformed",
+        "sourceExactClaim",
+        "drawableProofStatus",
+        "productAdmission"
+      ],
+      "properties": {
+        "classification": { "const": "PROJECT_TUNED" },
+        "fidelity": { "const": "BOUNDED_CARRIER_TRANSLATION" },
+        "reconcileMode": { "const": "MISSING_ONLY" },
+        "candidateOnly": { "const": true },
+        "canonicalMutationPerformed": { "const": false },
+        "cueMutationPerformed": { "const": false },
+        "bindingMutationPerformed": { "const": false },
+        "catalogMutationPerformed": { "const": false },
+        "commonRuntimeMutationPerformed": { "const": false },
+        "sourceExactClaim": { "const": false },
+        "drawableProofStatus": {
+          "const": "NOT_ATTEMPTED_COMMON_COLOR_ABI_REQUIRED"
+        },
+        "productAdmission": { "const": "BLOCKED_CANDIDATE_ONLY" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "patternId",
+        "carrierFamily",
+        "sourceCarrierFamily",
+        "candidateCount",
+        "candidateDocumentCount"
+      ],
+      "properties": {
+        "patternId": { "const": "VALTAN_MAGIC_CHOICE" },
+        "carrierFamily": { "const": "SPRITE_PARTICLE" },
+        "sourceCarrierFamily": { "const": "LOCAL_DECAL" },
+        "candidateCount": { "const": 4 },
+        "candidateDocumentCount": { "const": 3 }
+      }
+    },
+    "sourceIdentity": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/sourceIdentity" }
+    },
+    "candidateIdentity": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/candidateIdentity" }
+    },
+    "candidateDocumentIdentity": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/candidateDocumentIdentity" }
+    },
+    "resourceEvidence": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/resourceEvidence" }
+    },
+    "carrierTranslation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "meshModelForbidden",
+        "groundPlaneRotationDegrees",
+        "billboard",
+        "burstCount",
+        "localSpace",
+        "timingPolicy",
+        "colorPolicy",
+        "uvPolicy",
+        "resourcePolicy",
+        "materialPolicy",
+        "innerGrowthPolicy",
+        "attachmentPolicy"
+      ],
+      "properties": {
+        "kind": { "const": "particle" },
+        "meshModelForbidden": { "const": true },
+        "groundPlaneRotationDegrees": {
+          "const": [90.0, 0.0, 0.0]
+        },
+        "billboard": { "const": false },
+        "burstCount": { "const": 1 },
+        "localSpace": { "const": true },
+        "timingPolicy": { "const": "COPY_EXACT_FROM_SOURCE_ROW" },
+        "colorPolicy": { "const": "COPY_EXACT_FROM_SOURCE_ROW" },
+        "uvPolicy": { "const": "COPY_EXACT_FROM_SOURCE_ROW" },
+        "resourcePolicy": { "const": "COPY_EXACT_FROM_SOURCE_ROW" },
+        "materialPolicy": { "const": "COPY_EXACT_FROM_SOURCE_ROW" },
+        "innerGrowthPolicy": {
+          "const": "PARTICLE_SIZE_7_TO_18_NO_DOUBLE_ELEMENT_SCALE"
+        },
+        "attachmentPolicy": {
+          "const": "COPY_DISABLED_SOURCE_ATTACHMENT"
+        }
+      }
+    },
+    "requiresCommonColorAbi": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "minimumContractVersion",
+        "variantSelection",
+        "lanes",
+        "coverage",
+        "radiance",
+        "blendProfiles"
+      ],
+      "properties": {
+        "status": { "const": "REQUIRED_BEFORE_PRODUCT_ADMISSION" },
+        "minimumContractVersion": { "const": 1 },
+        "variantSelection": {
+          "const": "EXPLICIT_TYPED_VARIANT_NO_FILENAME_HEURISTICS"
+        },
+        "lanes": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/colorLane" }
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "boundary",
+            "impact",
+            "forbidDxt1ImplicitAlphaCoverage"
+          ],
+          "properties": {
+            "boundary": { "$ref": "#/$defs/coverageProgram" },
+            "impact": { "$ref": "#/$defs/coverageProgram" },
+            "forbidDxt1ImplicitAlphaCoverage": { "const": true }
+          }
+        },
+        "radiance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baseRadianceSpace",
+            "authoredEmissiveIntensitySource",
+            "emissiveOperation",
+            "allowValuesAboveOne",
+            "internalHdrClamp",
+            "internalToneMap",
+            "toneMapOwner"
+          ],
+          "properties": {
+            "baseRadianceSpace": { "const": "SCENE_LINEAR" },
+            "authoredEmissiveIntensitySource": {
+              "const": "DETAIL_COLOR_EMISSIVE_INTENSITY"
+            },
+            "emissiveOperation": {
+              "const": "MULTIPLY_BASE_RADIANCE"
+            },
+            "allowValuesAboveOne": { "const": true },
+            "internalHdrClamp": { "const": "FORBIDDEN" },
+            "internalToneMap": { "const": "FORBIDDEN" },
+            "toneMapOwner": { "const": "EXTERNAL_RENDERING_PROFILE" }
+          }
+        },
+        "blendProfiles": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["boundary", "impact"],
+          "properties": {
+            "boundary": {
+              "const": "STRAIGHT_ALPHA_SRC_ALPHA_INV_SRC_ALPHA"
+            },
+            "impact": {
+              "const": "SRC_ALPHA_ADDITIVE_SRC_ALPHA_ONE"
+            }
+          }
+        }
+      }
+    },
+    "requiredValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "requiredBeforeDrawableClaim", "proofAdmission"],
+      "properties": {
+        "status": { "const": "NOT_RUN" },
+        "requiredBeforeDrawableClaim": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "proofAdmission": {
+          "const": "DO_NOT_MARK_DRAWABLE_OR_SOURCE_EXACT_YET"
+        }
+      }
+    },
+    "artifactSha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semanticStage",
+        "canonicalPath",
+        "effectAssetId",
+        "sourceElementId",
+        "sourceElementSha256",
+        "canonicalDocumentRawSha256",
+        "canonicalDocumentCanonicalSha256",
+        "resourceClosureSha256",
+        "materialClosureSha256",
+        "timingSha256",
+        "colorSha256",
+        "uvSha256"
+      ],
+      "properties": {
+        "semanticStage": { "enum": ["WINDUP", "INNER", "OUTER"] },
+        "canonicalPath": {
+          "type": "string",
+          "pattern": "^Data/Effects/Authored/effect\\.valtan\\.magic-choice\\..+\\.effect\\.json$"
+        },
+        "effectAssetId": {
+          "type": "string",
+          "pattern": "^effect\\.valtan\\.magic-choice\\.(windup|inner|outer)$"
+        },
+        "sourceElementId": {
+          "enum": [
+            "project-donut-outer-boundary",
+            "project-donut-inner-growing-boundary",
+            "project-donut-inner-impact",
+            "project-donut-outer-impact"
+          ]
+        },
+        "sourceElementSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalDocumentRawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalDocumentCanonicalSha256": { "$ref": "#/$defs/sha256" },
+        "resourceClosureSha256": { "$ref": "#/$defs/sha256" },
+        "materialClosureSha256": { "$ref": "#/$defs/sha256" },
+        "timingSha256": { "$ref": "#/$defs/sha256" },
+        "colorSha256": { "$ref": "#/$defs/sha256" },
+        "uvSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "candidateIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semanticStage",
+        "candidatePath",
+        "candidateElementId",
+        "candidateSourceNode",
+        "candidateElementSha256"
+      ],
+      "properties": {
+        "semanticStage": { "enum": ["WINDUP", "INNER", "OUTER"] },
+        "candidatePath": {
+          "type": "string",
+          "pattern": "^Data/Effects/Imported/Valtan/ProjectTunedMagicChoiceSpriteParticleCompanions/.+\\.candidate\\.effect\\.json$"
+        },
+        "candidateElementId": {
+          "type": "string",
+          "pattern": "^project-donut-.+\\.sprite-particle-v1$"
+        },
+        "candidateSourceNode": {
+          "type": "string",
+          "pattern": "^project-authored:valtan\\.magic-choice\\.donut\\..+\\.sprite-particle-v1$"
+        },
+        "candidateElementSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "candidateDocumentIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidatePath",
+        "effectAssetId",
+        "rawSha256",
+        "canonicalSha256",
+        "elementCount"
+      ],
+      "properties": {
+        "candidatePath": {
+          "type": "string",
+          "pattern": "^Data/Effects/Imported/Valtan/ProjectTunedMagicChoiceSpriteParticleCompanions/.+\\.candidate\\.effect\\.json$"
+        },
+        "effectAssetId": {
+          "type": "string",
+          "pattern": "^effect\\.valtan\\.magic-choice\\.(windup|inner|outer)$"
+        },
+        "rawSha256": { "$ref": "#/$defs/sha256" },
+        "canonicalSha256": { "$ref": "#/$defs/sha256" },
+        "elementCount": { "type": "integer", "minimum": 1, "maximum": 2 }
+      }
+    },
+    "resourceEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assetId", "byteSize", "sha256"],
+      "properties": {
+        "assetId": {
+          "enum": [
+            "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_002.dds",
+            "Effect/Valtan/Textures/FX_TEX_01/fx_c_ring_004_cl.dds",
+            "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_009.dds",
+            "Effect/Valtan/Textures/FX_TEX_02/fx_d_atypical_011.dds"
+          ]
+        },
+        "byteSize": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "colorLane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assetId",
+        "roles",
+        "rgbDecode",
+        "dataDecode",
+        "coverageSwizzle",
+        "coverageSemantic"
+      ],
+      "properties": {
+        "assetId": {
+          "type": "string",
+          "pattern": "^Effect/Valtan/.+\\.dds$"
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["BASE_RADIANCE", "COVERAGE", "MASK", "DISSOLVE"]
+          }
+        },
+        "rgbDecode": {
+          "enum": ["SRGB_TO_SCENE_LINEAR", "LINEAR"]
+        },
+        "dataDecode": { "const": "LINEAR" },
+        "coverageSwizzle": { "enum": ["A", "R", "NONE"] },
+        "coverageSemantic": {
+          "enum": [
+            "RING_ALPHA",
+            "GRAYSCALE_LUMINANCE_MASK",
+            "NOT_A_COVERAGE_OWNER",
+            "DISSOLVE_SCALAR"
+          ]
+        }
+      }
+    },
+    "coverageProgram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["terms", "threshold", "softness", "particleAlphaMode"],
+      "properties": {
+        "terms": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/coverageTerm" }
+        },
+        "threshold": { "type": "number", "minimum": 0 },
+        "softness": { "type": "number", "minimum": 0 },
+        "particleAlphaMode": { "const": "MULTIPLY_COVERAGE" }
+      }
+    },
+    "coverageTerm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceLane", "assetId", "swizzle", "operator"],
+      "properties": {
+        "sourceLane": {
+          "enum": ["base", "mask", "dissolve", "particle"]
+        },
+        "assetId": {
+          "type": "string",
+          "pattern": "^(|Effect/Valtan/.+\\.dds)$"
+        },
+        "swizzle": { "enum": ["A", "R"] },
+        "operator": {
+          "enum": ["REPLACE", "MULTIPLY", "DISSOLVE_MULTIPLY"]
+        }
+      }
+    }
+  }
+}

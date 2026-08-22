@@ -28,6 +28,11 @@ public:
 		LostArk::Shared::SKILL_ID skillId,
 		float aimX,
 		float aimZ) override;
+	bool Request_UseGroundTargetSkill(
+		std::uint32_t clientSequence,
+		LostArk::Shared::SKILL_ID skillId,
+		float targetX,
+		float targetZ) override;
 	bool Request_ReleaseSkill(
 		std::uint32_t clientSequence,
 		LostArk::Shared::SKILL_ID skillId) override;

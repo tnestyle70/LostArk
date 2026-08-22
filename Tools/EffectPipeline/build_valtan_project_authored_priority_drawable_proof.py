@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Seal headless renderer evidence for the nine Valtan priority overlays.
 
-The input sweep must be emitted by ClientFrontendHarness from the exact
+The input sweep is an immutable headless-renderer capture for the exact
 absolute candidate document paths.  This builder does not synthesize draw
 results: it validates the recorded document/element denominator, counter
 dispositions, resource root, and raw candidate hashes before projecting the

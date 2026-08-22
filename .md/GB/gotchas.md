@@ -275,9 +275,10 @@ source 소유 particle 4,609
 하나씩 추가한다. 상세는
 `.md/GB/08-17/2026-08-17_EFFECT_SOURCE_TRIM_AND_DEDUP_CORRECTION_RESULT.md`.
 
-### 12.5 원본 동일을 목표로 하면 스킬 수만큼 셰이더가 필요하다
+### 12.5 원본 동일의 비용 단위는 스킬 수가 아니라 exact program과 ABI다
 
-도화가 F만 화면이 나온 이유는 문서가 좋아서가 아니라 전용 셰이더 5벌을 사람이 썼기 때문이다.
+도화가 F가 가장 높은 화면 완성도를 낸 것은 generic profile 하나에 맡긴 결과가 아니라, stable
+occurrence와 resource 역할을 고정하고 다음 translated/typed 셰이더들을 실제 carrier에 연결했기 때문이다.
 
 ```text
 Shader_Artist31470RuntimeMaterial.hlsli         34 sample
@@ -290,9 +291,13 @@ Shader_Artist31470Diagnostic.hlsli               6
 `g_SourceTexture0..6`을 실제로 샘플링하는 것은 이 파일들과 decal adapter 뿐이고,
 표준 경로 `Shader_EffectCommon.hlsli`는 이름 있는 5개만 샘플링한다.
 
-**교훈**: "원본과 동일"은 스킬 × family 마다 셰이더 한 벌을 요구한다. 그 비용을 감당할 수 없으면
-목표를 "원본에서 데이터만 얻고 표준 셰이더로 만든다"로 바꾼다. 1차가 도화가 F 하나에서
-멈춘 것이 그 증거다.
+**교훈**: "원본과 동일"은 element나 스킬마다 셰이더 한 벌을 요구하지 않는다. equation이 같은
+occurrence는 translated HLSL program과 renderer adapter를 재사용하고 texture·CB·sampler 차이는
+exact descriptor가 소유한다. equation이 다르면 새 program, VF/pass/scene/RT topology가 다르면 새
+adapter가 필요하다. 도화가 F에서 사람이 쓴 전용 파일은 이 경계를 처음 증명한 선례이지,
+스킬별 renderer 복제를 정본으로 만든 근거가 아니다. 현재 공정은
+[`EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md`](../TEAM/EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md)를
+따른다.
 
 ### 12.6 판정자 없는 목표를 세우지 않는다
 
@@ -301,3 +306,25 @@ Shader_Artist31470Diagnostic.hlsli               6
 
 목표를 쓰기 전에 **무엇을 보면 끝났다고 판정하는가**를 한 줄로 먼저 쓴다.
 그 판정자가 없으면 목표를 바꾼다. 화면에 변화 없는 작업이 이틀 연속이면 경보로 취급한다.
+## Valtan source carrier를 system-wide mesh로 합치면 100배 WModel과 carrier 붕괴가 함께 난다
+
+- 발탄 ParticleSystem 하나에 mesh emitter가 있다는 이유로 같은 system의 모든 emitter에
+  `meshModel`을 복사하면 안 된다. emitter별 원본 carrier가 정본이며 Sprite, Mesh, Decal,
+  Light를 각각 보존해야 한다.
+- `build_valtan_stage_effects.py` 계열의 clip aggregate는 source 감사 자료일 뿐 V1 Product 입력이
+  아니다. reviewed occurrence와 `carrierKey + sourceOrder + rendererShape`가 exact join된 행만
+  candidate element가 될 수 있다.
+- `Effect/Valtan/Meshes/**/*.wmodel`을 사용하는 exact Mesh carrier는
+  `detail.mesh.modelPreScale=0.01`을 반드시 가진다. 런타임 기본값 `1.0`을 쓰면 같은 WModel이
+  100배로 렌더링된다.
+- Sprite/Decal/Light carrier에는 `meshModel`과 `modelPreScale`을 넣지 않는다. exact resource와
+  portable runtime closure가 닫힌 Sprite/Mesh/Decal은 source material identity를 보존한 채
+  `effect.standard + alpha_two_sided_depth_read` 공통 RT0로 손튜닝 시작점을 만들 수 있다. Light,
+  ScreenPost, resource/adapter 미해석 행은 임의 quad/mesh로 위장하지 않고 `BLOCKED_REQUIRED`로
+  남긴다. 공통 RT0 승격은 family 복원이나 `V1_COMPLETE`를 뜻하지 않는다.
+- 회귀 검증은 후보 전체에 대해 `rendererShape=mesh <=> meshModel 1개 + modelPreScale 0.01`과
+  `rendererShape!=mesh => meshModel 0개`를 함께 검사해야 한다.
+- 발탄 materialization receipt가 전체 `EffectCatalog.json` 해시를 봉인하면 다른 캐릭터가 catalog
+  행 하나를 추가하는 것만으로 발탄 검증이 실패한다. receipt는 `effect.valtan.` slice와 catalog
+  formatVersion만 봉인하고, 전체 catalog 보존은 publisher가 담당해야 한다. 그래야 병렬 캐릭터
+  복원과 발탄 exact carrier 검증이 서로의 Product를 지우거나 재봉인하지 않는다.

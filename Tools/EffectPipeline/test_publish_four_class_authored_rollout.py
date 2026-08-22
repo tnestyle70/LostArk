@@ -20,11 +20,13 @@ def _stage(
     stage_index: int,
     runtime_hash: str = "a" * 64,
     reuse: str | None = None,
+    animation_asset_id: str = "Artist",
+    character_class: str = "ARTIST",
 ) -> dict:
     product_target = reuse or target
     product = {
-        "animationAssetId": "Artist",
-        "characterClass": "ARTIST",
+        "animationAssetId": animation_asset_id,
+        "characterClass": character_class,
         "productSkillId": skill_id,
         "stageIndex": stage_index,
         "stageClipIndex": 0,
@@ -39,8 +41,8 @@ def _stage(
         "document": {"effectAssetId": product_target},
     }
     row = {
-        "animationAssetId": "Artist",
-        "characterClass": "ARTIST",
+        "animationAssetId": animation_asset_id,
+        "characterClass": character_class,
         "productSkillId": skill_id,
         "stageIndex": stage_index,
         "clips": [clip],
@@ -245,6 +247,148 @@ class FourClassAuthoredRolloutPublisherTests(unittest.TestCase):
                     publisher._desired_animevent_bytes(
                         contract, [first, second]
                     )
+
+    def test_animevent_typed_placement_is_preserved_and_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_root = Path(directory) / "Data"
+            event_path = data_root / "Animation/Authored/Artist/Artist.animevents"
+            event_path.parent.mkdir(parents=True)
+            target = "effect.artist.skill.31200.authored-baseline"
+            event_path.write_text(
+                'LOSTARK_ANIM_EVENTS 5 "Artist" 1\n'
+                '"fixture_clip" EFFECT startms=25 endms=125 '
+                f'payload="{target}" effectref=asset anchor="weapon_socket" '
+                'follow=snapshot stop=cue_end px=1.25 py=-2 pz=3.5 '
+                'rx=4 ry=5 rz=6 sx=0.5 sy=1.5 sz=2.5\n',
+                encoding="utf-8",
+            )
+            stage = _stage(target, "fixture_clip", skill_id=31200, stage_index=0)
+            contract = {"animationAssetId": "Artist", "classToken": "artist"}
+            with mock.patch.object(publisher, "DATA_ROOT", data_root):
+                path, first, count = publisher._desired_animevent_bytes(
+                    contract, [stage]
+                )
+                self.assertEqual(event_path, path)
+                self.assertEqual(1, count)
+                text = first.decode("utf-8")
+                self.assertIn('anchor="weapon_socket" follow=snapshot', text)
+                self.assertIn('startms=25 endms=125', text)
+                self.assertIn('stop=cue_end px=1.25 py=-2 pz=3.5', text)
+                self.assertNotIn("orientation=", text)
+                event_path.write_bytes(first)
+                self.assertEqual(
+                    first,
+                    publisher._desired_animevent_bytes(contract, [stage])[1],
+                )
+
+    def test_reviewed_action_facing_cues_are_exact_and_never_wiped(self) -> None:
+        fixtures = (
+            (
+                "Warlord", "WARLORD", "wgl_sk_firebullet", 17060,
+                "effect.warlord.skill.17060.unified", "follow",
+            ),
+            (
+                "DimensionMaster", "DIMENSIONMASTER",
+                "pc_sp_m_00_sk_sk_willowrend", 2050210,
+                "effect.dimensionmaster.skill.2050210.unified", "snapshot",
+            ),
+        )
+        for asset, character_class, clip, skill_id, target, previous_follow in fixtures:
+            with self.subTest(asset=asset), tempfile.TemporaryDirectory() as directory:
+                expected = publisher.ACTION_FACING_PRODUCT_CUES[(asset, clip)]
+                self.assertEqual(target, expected["effectAssetId"])
+                self.assertEqual(previous_follow, expected["previousFollowPolicy"])
+                self.assertEqual("follow", expected["followPolicy"])
+                data_root = Path(directory) / "Data"
+                event_path = (
+                    data_root / f"Animation/Authored/{asset}/{asset}.animevents"
+                )
+                event_path.parent.mkdir(parents=True)
+                previous = (
+                    f'LOSTARK_ANIM_EVENTS 5 "{asset}" 1\n'
+                    f'"{clip}" EFFECT startms=0 payload="{target}" '
+                    f'effectref=asset anchor="root" follow={previous_follow} '
+                    'stop=natural px=0 py=0 pz=0 rx=0 ry=0 rz=0 '
+                    'sx=1 sy=1 sz=1\n'
+                )
+                event_path.write_text(previous, encoding="utf-8")
+                stage = _stage(
+                    target, clip, skill_id=skill_id, stage_index=0,
+                    animation_asset_id=asset, character_class=character_class,
+                )
+                contract = {
+                    "animationAssetId": asset,
+                    "classToken": asset.casefold(),
+                }
+                with mock.patch.object(publisher, "DATA_ROOT", data_root):
+                    with self.assertRaisesRegex(
+                        ValueError, "Reviewed action-facing Product animevent drifted"
+                    ):
+                        publisher._desired_animevent_bytes(contract, [stage])
+
+                    current = previous.replace(
+                        f'LOSTARK_ANIM_EVENTS 5 "{asset}"',
+                        f'LOSTARK_ANIM_EVENTS 6 "{asset}"',
+                    ).replace(
+                        f"follow={previous_follow}",
+                        "follow=follow orientation=action_facing",
+                    )
+                    event_path.write_text(current, encoding="utf-8")
+                    first = publisher._desired_animevent_bytes(
+                        contract, [stage]
+                    )[1]
+                    self.assertIn(
+                        b"follow=follow orientation=action_facing", first
+                    )
+                    event_path.write_bytes(first)
+                    second = publisher._desired_animevent_bytes(
+                        contract, [stage]
+                    )[1]
+                    self.assertEqual(first, second)
+
+    def test_v6_animevent_orientation_rejects_unknown_nonroot_and_unreviewed(self) -> None:
+        target = "effect.warlord.skill.17060.unified"
+        base = (
+            '"wgl_sk_firebullet" EFFECT startms=0 '
+            f'payload="{target}" effectref=asset anchor="root" '
+            'follow=follow orientation=action_facing stop=natural '
+            'px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1'
+        )
+        invalid = (
+            ("Warlord", base.replace("action_facing", "steering"),
+             "orientation is invalid"),
+            ("Warlord", base.replace('anchor="root"', 'anchor="socket"'),
+             "action_facing requires root"),
+            ("Artist", base.replace("wgl_sk_firebullet", "artist_clip")
+             .replace("effect.warlord.skill.17060.unified",
+                      "effect.artist.skill.31200.authored-baseline"),
+             "Unexpected action-facing"),
+        )
+        for asset, row, message in invalid:
+            with self.subTest(message=message), tempfile.TemporaryDirectory() as directory:
+                data_root = Path(directory) / "Data"
+                event_path = data_root / f"Animation/Authored/{asset}/{asset}.animevents"
+                event_path.parent.mkdir(parents=True)
+                event_path.write_text(
+                    f'LOSTARK_ANIM_EVENTS 6 "{asset}" 1\n{row}\n',
+                    encoding="utf-8",
+                )
+                clip = "wgl_sk_firebullet" if asset == "Warlord" else "artist_clip"
+                effect_id = target if asset == "Warlord" else (
+                    "effect.artist.skill.31200.authored-baseline"
+                )
+                stage = _stage(
+                    effect_id, clip,
+                    skill_id=17060 if asset == "Warlord" else 31200,
+                    stage_index=0,
+                    animation_asset_id=asset,
+                    character_class="WARLORD" if asset == "Warlord" else "ARTIST",
+                )
+                with mock.patch.object(publisher, "DATA_ROOT", data_root):
+                    with self.assertRaisesRegex(ValueError, message):
+                        publisher._desired_animevent_bytes(
+                            {"animationAssetId": asset}, [stage]
+                        )
 
     def test_silent_stage_rejects_stale_authored_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

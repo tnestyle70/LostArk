@@ -193,6 +193,7 @@ struct EFFECT_PARTICLE_RUNTIME_PROBE final
 	f32_t fMaxAlpha = 0.f;
 	f32_t fFirstNormalizedLife = 0.f;
 	f32_t fFirstSubImageIndex = 0.f;
+	float3_t vFirstWorldPosition{};
 	EFFECT_SUBUV_FRAME_DESC FirstSubUV{};
 };
 
@@ -214,6 +215,9 @@ private:
 		float3_t vSourceDirectDirectionContribution{};
 		float3_t vInheritedParentVelocity{};
 		float3_t vVelocityScale = { 1.f, 1.f, 1.f };
+		/* Additive steering is kept in world metres per second.  It must never
+		   absorb VelocityOverLife's transient per-step scale into vVelocity. */
+		float3_t vTargetAttractorWorldVelocity{};
 		float3_t vBaseSize = { 1.f, 1.f, 1.f };
 		float3_t vSize = { 1.f, 1.f, 1.f };
 		float3_t vRotationDegrees{};
@@ -288,6 +292,11 @@ private:
 	};
 
 public:
+	/* Shared strict gate used by reconstructed-plan staging and focused
+	   execution-contract harnesses.  It performs no runtime mutation. */
+	static bool_t Validate_ReconstructedSourceModuleExecution(
+		const EFFECT_SOURCE_MODULE_DESC& Module,
+		std::string& strOutError);
 	static bool_t Prepare_DocumentResources(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_RESOURCES>& OutPrepared,
@@ -410,6 +419,8 @@ private:
 		std::string& strOutError);
 	bool_t Is_SourceVisualProgramElementAdmitted(
 		const EFFECT_ELEMENT_DESC& Element) const;
+	bool_t Is_PlaybackElementAdmitted(
+		const EFFECT_ELEMENT_DESC& Element) const;
 	bool_t Collect_TransformHistorySample(
 		f32_t fSampleTimeSeconds,
 		const EFFECT_FIXED_STEP_TRANSFORM_PROVIDER& TransformProvider,
@@ -447,6 +458,13 @@ private:
 		f32_t fNormalizedAge,
 		f32_t fFixedDelta,
 		const float4x4_t& ElementWorld);
+	float3_t Apply_TargetAttractor(
+		const EFFECT_ELEMENT_DESC& Element,
+		PARTICLE_STATE& Particle,
+		f32_t fNormalizedAge,
+		f32_t fFixedDelta,
+		const float4x4_t& ElementWorld,
+		const float4x4_t& RootWorld);
 	void Initialize_ModuleRandomStates(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_STATE& State);

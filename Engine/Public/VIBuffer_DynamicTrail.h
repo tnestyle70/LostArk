@@ -11,8 +11,9 @@ struct VTXEFFECT_TRAIL final
 	float3_t vPosition{};
 	float2_t vTexcoord{};
 	float4_t vColor = { 1.f, 1.f, 1.f, 1.f };
+	float4_t vDynamicParameter{};
 
-	static constexpr uint32_t iNumElements = 3u;
+	static constexpr uint32_t iNumElements = 4u;
 	static constexpr D3D11_INPUT_ELEMENT_DESC Elements[] =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,
@@ -20,7 +21,9 @@ struct VTXEFFECT_TRAIL final
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,
 			0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT,
-			0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+			0, 20, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 1, DXGI_FORMAT_R32G32B32A32_FLOAT,
+			0, 36, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 	};
 };
 

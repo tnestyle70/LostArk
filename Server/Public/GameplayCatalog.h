@@ -12,7 +12,7 @@ namespace LostArk::Server
 	/* The only gameplay bootstrap version this build reads. The publisher
 	stamps it and the loader refuses anything else, so a bump has to travel
 	through both sides at once instead of leaving one of them behind. */
-	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 15u;
+	inline constexpr std::uint32_t GAMEPLAY_BOOTSTRAP_VERSION = 16u;
 
 	struct PLAYER_ROOT_MOTION_SAMPLE
 	{
@@ -130,6 +130,10 @@ namespace LostArk::Server
 		std::uint32_t iCounterPower = 0;
 		float fMovementDistance = 0.f;
 		float fMaximumRange = 0.f;
+		LostArk::Shared::SKILL_TARGET_INTENT_KIND eTargetIntent =
+			LostArk::Shared::SKILL_TARGET_INTENT_KIND::AIM_POINT;
+		float fTargetMaximumRange = 0.f;
+		bool requiresWalkableTarget = false;
 		LostArk::Shared::PLAYER_SKILL_KIND eSkillKind =
 			LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE;
 		LostArk::Shared::PLAYER_STANCE_ID eRequiredStance =

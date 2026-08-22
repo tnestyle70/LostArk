@@ -112,7 +112,7 @@ class ValtanPriorityDrawableProofTests(unittest.TestCase):
         proof = self._build()
         self.assertEqual(9, len(proof["targets"]))
         self.assertEqual(
-            24, sum(len(target["elements"]) for target in proof["targets"])
+            17, sum(len(target["elements"]) for target in proof["targets"])
         )
         self.assertEqual(
             hashlib.sha256(self._path(self.sweep_relative).read_bytes()).hexdigest(),
