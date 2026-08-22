@@ -67,6 +67,10 @@ public:
 		bool_t bEnabled,
 		std::string& strOutError);
 	bool_t Is_AuthoringExactPreviewExecutionEnabled() const;
+	bool_t Set_AuthoringGlasshole02TranslatedCanaryEnabled(
+		bool_t bEnabled,
+		std::string& strOutError);
+	bool_t Is_AuthoringGlasshole02TranslatedCanaryEnabled() const;
 	bool_t Stage_PreparedDocument(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>

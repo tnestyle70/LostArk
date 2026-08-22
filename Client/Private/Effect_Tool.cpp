@@ -5381,6 +5381,24 @@ void Client::CEffect_Tool::Render_AuthoringSessionBar()
 			"Fidelity: cooked PS exact; vector CB0 rows and texture register/DDS parity exact; scalar CB0 packing, sampler/color-space, and carrier bridge approximate.");
 		ImGui::TextDisabled(
 			"Selection key: sourceMaterialPath MIC only. Unmatched Elements and any failure stay on family-lite.");
+		ImGui::SeparatorText("Translated Glasshole02 Canary");
+		bool_t bTranslatedRequested =
+			m_bGlasshole02TranslatedCanaryEnabled;
+		ImGui::BeginDisabled(Has_ProductCuePreview() ||
+			m_bExactCookedCanaryEnabled);
+		if (ImGui::Checkbox("Enable Translated Glasshole02 Canary",
+			&bTranslatedRequested))
+		{
+			Try_SetGlasshole02TranslatedCanaryEnabled(
+				bTranslatedRequested);
+		}
+		ImGui::EndDisabled();
+		ImGui::TextWrapped("%s",
+			m_strGlasshole02TranslatedCanaryStatus.c_str());
+		ImGui::TextDisabled(
+			"Scope: one DimensionMaster W occurrence only; default OFF, Product/read-only OFF, and draw failure fail-closed.");
+		ImGui::TextDisabled(
+			"Carrier: translated RT0 HLSL with live exact CB0 assembly, 7 DDS SRVs plus Target_Depth t2, and 8 typed samplers.");
 	}
 	if (!bEditableSource)
 	{
@@ -16781,10 +16799,10 @@ bool_t Client::CEffect_Tool::Try_SetExactCookedCanaryEnabled(
 
 	if (!m_ActiveDocument.has_value() ||
 		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
-		Has_ProductCuePreview())
+		Has_ProductCuePreview() || m_bGlasshole02TranslatedCanaryEnabled)
 	{
 		m_strExactCookedCanaryStatus =
-			"REFUSED: enable is available only for an open saved Authored document outside Product Play.";
+			"REFUSED: enable requires saved Authored preview, Product OFF, and translated Glasshole02 canary OFF.";
 		return false;
 	}
 	std::string InstallError;
@@ -16826,6 +16844,7 @@ bool_t Client::CEffect_Tool::Try_SetExactCookedCanaryEnabled(
 void Client::CEffect_Tool::Reset_ExactCookedCanarySelection(
 	std::string strReason)
 {
+	Reset_Glasshole02TranslatedCanarySelection(strReason);
 	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
 		nullptr != pObject &&
 		pObject->Is_AuthoringExactPreviewExecutionEnabled())
@@ -16841,6 +16860,7 @@ void Client::CEffect_Tool::Reset_ExactCookedCanarySelection(
 void Client::CEffect_Tool::Invalidate_ExactCookedCanaryInstallation(
 	std::string strReason)
 {
+	Reset_Glasshole02TranslatedCanarySelection(strReason);
 	bool_t bHadInstalledSelection =
 		m_bExactCookedCanaryEnabled ||
 		m_bExactCookedCanaryVariantsInstalled ||
@@ -16881,6 +16901,117 @@ void Client::CEffect_Tool::Invalidate_ExactCookedCanaryInstallation(
 	}
 	m_strExactCookedCanaryStatus = "OFF: " + std::move(strReason) +
 		" Exact registry and MIC selection cache were invalidated; the next explicit enable reloads the contract and blobs.";
+}
+
+bool_t Client::CEffect_Tool::Has_Glasshole02TranslatedCanaryOccurrence(
+	const EFFECT_DOCUMENT_DESC& Document) const
+{
+	if (Document.strEffectAssetId !=
+		CEffectDocumentRenderer::GLASSHOLE02_TRANSLATED_CANARY_EFFECT_ASSET_ID)
+	{
+		return false;
+	}
+	return 1u == static_cast<size_t>(std::count_if(
+		Document.Elements.begin(), Document.Elements.end(),
+		[](const EFFECT_ELEMENT_DESC& Element)
+		{
+			return Element.strElementId ==
+				CEffectDocumentRenderer::
+					GLASSHOLE02_TRANSLATED_CANARY_OCCURRENCE_ID &&
+				Element.Material.SourceMaterial.strProfileId ==
+				CEffectDocumentRenderer::
+					GLASSHOLE02_TRANSLATED_CANARY_FAMILY_ID &&
+				Element.Material.SourceMaterial.strRuntimeShaderProfileId ==
+				CEffectDocumentRenderer::
+					GLASSHOLE02_TRANSLATED_CANARY_PROFILE_ID;
+		}));
+}
+
+bool_t Client::CEffect_Tool::Try_SetGlasshole02TranslatedCanaryEnabled(
+	const bool_t bEnabled)
+{
+	if (!bEnabled)
+	{
+		if (const shared_ptr<CEffectObject> pObject =
+				m_pWorldPreviewObject.lock();
+			nullptr != pObject &&
+			pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
+		{
+			std::string Error;
+			if (!pObject->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
+				false, Error))
+			{
+				m_strGlasshole02TranslatedCanaryStatus =
+					"FAILED to disable translated Glasshole02 canary: " + Error;
+				return false;
+			}
+		}
+		m_bGlasshole02TranslatedCanaryEnabled = false;
+		m_strGlasshole02TranslatedCanaryStatus =
+			"OFF: translated Glasshole02 Tool canary is not staged.";
+		if (m_ActiveDocument.has_value() &&
+			EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+			!Has_ProductCuePreview())
+		{
+			Stage_WorldPreview(*m_ActiveDocument);
+		}
+		return true;
+	}
+
+	if (!m_ActiveDocument.has_value() ||
+		EFFECT_DOCUMENT_SOURCE::AUTHORED != m_eActiveDocumentSource ||
+		Has_ProductCuePreview() || m_bExactCookedCanaryEnabled ||
+		!Has_Glasshole02TranslatedCanaryOccurrence(*m_ActiveDocument))
+	{
+		m_strGlasshole02TranslatedCanaryStatus =
+			"REFUSED: open the exact DimensionMaster W Authored document with raw cooked canary and Product Play OFF.";
+		return false;
+	}
+
+	m_bGlasshole02TranslatedCanaryEnabled = true;
+	if (nullptr == m_pWorldPreviewObject.lock())
+	{
+		m_strGlasshole02TranslatedCanaryStatus =
+			"ARMED: stage the Authored preview to compile the translated Glasshole02 canary.";
+		return true;
+	}
+	Release_WorldPreview(true);
+	if (!Stage_WorldPreview(*m_ActiveDocument))
+	{
+		const std::string CanaryFailure = m_strPreviewStatus;
+		m_bGlasshole02TranslatedCanaryEnabled = false;
+		Release_WorldPreview(true);
+		const bool_t bOrdinaryPreviewRestored =
+			Stage_WorldPreview(*m_ActiveDocument);
+		m_strGlasshole02TranslatedCanaryStatus =
+			bOrdinaryPreviewRestored ?
+			"FAILED TO ARM: translated Glasshole02 staging rolled back and the previous ordinary preview contract was restored." :
+			"FAILED CLOSED: translated Glasshole02 staging and ordinary preview restoration both failed.";
+		m_strPreviewStatus = CanaryFailure +
+			(bOrdinaryPreviewRestored ?
+				" Ordinary preview was restored with the canary OFF." :
+				" Ordinary preview restoration also failed.");
+		return false;
+	}
+	m_strGlasshole02TranslatedCanaryStatus =
+		"ACTIVE: exact occurrence uses translated RT0 HLSL, live CB0 time, seven typed DDS lanes, and Target_Depth; Product remains OFF.";
+	return true;
+}
+
+void Client::CEffect_Tool::Reset_Glasshole02TranslatedCanarySelection(
+	std::string strReason)
+{
+	if (const shared_ptr<CEffectObject> pObject = m_pWorldPreviewObject.lock();
+		nullptr != pObject &&
+		pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
+	{
+		std::string Ignore;
+		pObject->Set_AuthoringGlasshole02TranslatedCanaryEnabled(false, Ignore);
+	}
+	m_bGlasshole02TranslatedCanaryEnabled = false;
+	m_strGlasshole02TranslatedCanaryStatus =
+		"OFF: " + std::move(strReason) +
+		" Translated Glasshole02 canary must be enabled explicitly again.";
 }
 
 bool_t Client::CEffect_Tool::Try_StartArtist31470FullPreview()
@@ -20870,13 +21001,41 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 {
     const EFFECT_DOCUMENT_DESC PreviewDocument =
         Build_PreviewDocument(Document);
+	const bool_t bGlasshole02TranslatedCanaryStage =
+		m_bGlasshole02TranslatedCanaryEnabled &&
+		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
+		!bAllowReadOnlySourceProjection && !Has_ProductCuePreview() &&
+		m_ActiveDocument.has_value() &&
+		Document.strEffectAssetId == m_ActiveDocument->strEffectAssetId &&
+		Has_Glasshole02TranslatedCanaryOccurrence(PreviewDocument);
 	bool_t bExactCanaryStage = m_bExactCookedCanaryEnabled &&
+		!bGlasshole02TranslatedCanaryStage &&
 		m_bExactCookedCanaryVariantsInstalled &&
 		EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource &&
 		!bAllowReadOnlySourceProjection && !Has_ProductCuePreview() &&
 		m_ActiveDocument.has_value() &&
 		Document.strEffectAssetId == m_ActiveDocument->strEffectAssetId &&
 		Has_ExactCookedCanaryMaterial(PreviewDocument);
+	if (const shared_ptr<CEffectObject> pExisting =
+			m_pWorldPreviewObject.lock();
+		nullptr != pExisting)
+	{
+		if (bGlasshole02TranslatedCanaryStage &&
+			!pExisting->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
+		{
+			/* The translated shader is compiled only by an explicit pre-stage
+			   gate. Recreate an already staged ordinary/Product preview. */
+			Release_WorldPreview(true);
+		}
+		else if (!bGlasshole02TranslatedCanaryStage &&
+			pExisting->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
+		{
+			std::string DisableError;
+			pExisting->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
+				false, DisableError);
+			Release_WorldPreview(true);
+		}
+	}
 	if (bExactCanaryStage)
 	{
 		const shared_ptr<CEffectObject> pExisting =
@@ -20896,6 +21055,18 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	std::string ExactFallbackReason;
 	if (nullptr != pObject)
 	{
+		if (bGlasshole02TranslatedCanaryStage &&
+			!pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled() &&
+			!pObject->Set_AuthoringGlasshole02TranslatedCanaryEnabled(
+				true, Error))
+		{
+			m_strGlasshole02TranslatedCanaryStatus =
+				"FAILED CLOSED before stage: " + Error +
+				" Toggle OFF explicitly to return to ordinary preview.";
+			m_strPreviewStatus =
+				"Translated Glasshole02 canary could not be armed: " + Error;
+			return false;
+		}
 		if (bExactCanaryStage &&
 			!pObject->Is_AuthoringExactPreviewExecutionEnabled() &&
 			!pObject->Set_AuthoringExactPreviewExecutionEnabled(true, Error))
@@ -20986,6 +21157,12 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
 	if (!bStaged)
     {
         m_strPreviewStatus = "Document is editable but not drawable yet: " + Error;
+		if (bGlasshole02TranslatedCanaryStage)
+		{
+			m_strGlasshole02TranslatedCanaryStatus =
+				"FAILED CLOSED during stage: " + Error +
+				" Toggle OFF explicitly to return to ordinary preview.";
+		}
 		if (!ExactFallbackReason.empty())
 		{
 			m_strExactCookedCanaryStatus =
@@ -21055,6 +21232,14 @@ bool_t Client::CEffect_Tool::Stage_WorldPreview(
         break;
     }
 	if (nullptr != pObject &&
+		pObject->Is_AuthoringGlasshole02TranslatedCanaryEnabled())
+	{
+		m_strPreviewStatus +=
+			" Translated Glasshole02 RT0 canary is active for its exact occurrence.";
+		m_strGlasshole02TranslatedCanaryStatus =
+			"ACTIVE: live exact CB0, 7/7 DDS parity, Target_Depth t2, 8 samplers, Product OFF, draw fail-closed.";
+	}
+	else if (nullptr != pObject &&
 		pObject->Is_AuthoringExactPreviewExecutionEnabled())
 	{
 		m_strPreviewStatus +=
