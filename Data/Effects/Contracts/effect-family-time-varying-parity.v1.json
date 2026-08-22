@@ -1,0 +1,163 @@
+{
+  "schema": "lostark.effect-family-time-varying-parity",
+  "formatVersion": 1,
+  "identity": {
+    "admits": "OFFLINE_RECONSTRUCTED_CB0_EQUATION_RESPONSE_ONLY",
+    "proves": [
+      "DXBC_AND_REGENERATED_TRANSLATION_AGREE_AT_RECONSTRUCTED_CB0",
+      "OFFLINE_EVALUATOR_PRODUCES_TIME_VARYING_CB0_ROWS"
+    ],
+    "doesNotProve": [
+      "CHECKED_HLSLI_ARTIFACT_IDENTITY",
+      "ACTUAL_TEXTURE_OR_SAMPLER_SEMANTICS",
+      "ACTUAL_CARRIER_OR_VERTEX_FACTORY_INPUTS",
+      "ENGINE_OWNED_CONSTANT_BUFFER_VALUES",
+      "RUNTIME_CONSTANT_BUFFER_UPLOAD",
+      "RENDER_STATE_OR_PASS_OR_MRT",
+      "UV_OR_OUTPUT_MOTION",
+      "VISUAL_FIDELITY_OR_PRODUCT_ADMISSION"
+    ]
+  },
+  "inputs": {
+    "shaderMapIndex": "Data/Effects/Contracts/effect-family-shader-map-index.v1.json",
+    "shaderMapArtifactSha256": "dca8c67a93fb97c7a6b67282a94539412ac09b9acb9962075c4f1026e2ce68d3",
+    "shaderMapRawSha256": "6e8011e65db4e75bd934f89e5a7655da2d167ab2a397b945a46fa792396e0a7a",
+    "shaderMapByteSize": 1873940,
+    "cookedPixelShaders": "Data/Effects/Contracts/effect-family-cooked-pixel-shaders.v1.json",
+    "cookedPixelShadersArtifactSha256": "bd25e8777c3d1b037cddc293063dccf6e0ab6ce96bd30250dc030da917b72d80",
+    "cookedPixelShadersRawSha256": "c415c167dacd04cc263f196f69c13c4d00a8074d13565d418a3739d75e199771",
+    "cookedPixelShadersByteSize": 284911,
+    "namedAbi": "Data/Effects/Contracts/effect-family-named-abi.v1.json",
+    "namedAbiArtifactSha256": "1c07d6c92408a6a93a8740bd859e351de17d141ea6ac67550134abc57ad7d14f",
+    "namedAbiRawSha256": "878c69569e3efef2093c0b3289a135b2ff473bcbfd73e93d461ba81360e9a839",
+    "namedAbiByteSize": 2491783,
+    "authoredDocument": "Data/Effects/Authored/effect.lancemaster.skill.34150.unified.effect.json",
+    "authoredDocumentRawSha256": "e5a2211ec9daa86701d932bef5a2c9fbfa1766356042a880208573704708a6f3",
+    "authoredDocumentByteSize": 7282487,
+    "cookedDxbcFileName": "830a1374733bd995a756fe0a3606dbeda157543a0a5c5c658978b09f420c1788.dxbc",
+    "cookedDxbcRawSha256": "830a1374733bd995a756fe0a3606dbeda157543a0a5c5c658978b09f420c1788",
+    "cookedDxbcByteSize": 3388,
+    "refShaderCacheFileName": "EV2LG3OVEH3HGV7THTFFTM7TOKMCC.v974.upk",
+    "refShaderCacheRawSha256": "83609267d9476f393cfe793d3d8cd265535c3d855e2f1f79774c618f85ed6455",
+    "refShaderCacheByteSize": 245114448,
+    "d3dCompilerFileName": "d3dcompiler_47.dll",
+    "d3dCompilerRawSha256": "ce013eb1639f8e2620a509e73b33029108f55a293e304e33e38b72fd65c531b8",
+    "d3dCompilerByteSize": 4916800
+  },
+  "occurrence": {
+    "parentMaterialPath": "fx_m_mi_02.fx_m.fx_k_me_flowtrail_01_ts_tr",
+    "effectAssetId": "effect.lancemaster.skill.34150.unified",
+    "elementId": "authored.source-particle.1dda1a259e98ed79e8fbb978",
+    "sourceMaterialPath": "fx_m_mi_n_00.fx_mi.fx_n_me_flowtrail_02_12_ts_tr",
+    "sourceProfileSemanticStatus": "reconstructed_profile",
+    "renderProfile": "alpha_two_sided_depth_read",
+    "dxbcSha256": "830a1374733bd995a756fe0a3606dbeda157543a0a5c5c658978b09f420c1788",
+    "instructionCount": 78,
+    "gameTimesSampled": [
+      0.0,
+      0.25,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "worstParityDelta": 0.0,
+    "constantMotionAcrossTime": 1.0,
+    "movingConstantRows": [
+      "cb0[15]",
+      "cb0[16]",
+      "cb0[7]",
+      "cb0[9]"
+    ],
+    "expectedTimeDependentRows": [
+      "cb0[15]",
+      "cb0[16]",
+      "cb0[7]",
+      "cb0[9]"
+    ],
+    "outputMotionAcrossTime": 0.0,
+    "outputMotionCaveat": "REPLAY_BINDS_1X1_TEXTURES_SO_UV_PANNING_CANNOT_SHOW",
+    "boundConstantRows": [
+      "cb0[10]",
+      "cb0[11]",
+      "cb0[12]",
+      "cb0[13]",
+      "cb0[14]",
+      "cb0[15]",
+      "cb0[16]",
+      "cb0[17]",
+      "cb0[18]",
+      "cb0[19]",
+      "cb0[2]",
+      "cb0[3]",
+      "cb0[4]",
+      "cb0[5]",
+      "cb0[6]",
+      "cb0[7]",
+      "cb0[8]",
+      "cb0[9]"
+    ],
+    "fixtureBoundary": {
+      "translationSource": "REGENERATED_FROM_CURRENT_TRANSLATOR_NOT_CHECKED_HLSLI",
+      "carrierInputs": "SYNTHETIC_CONSTANT_FLOAT4_ROWS",
+      "engineConstantBuffers": "SYNTHETIC_CONSTANT_FLOAT4_ROWS",
+      "textures": "SYNTHETIC_CONSTANT_1X1_RGBA",
+      "runtimeRendererExecuted": false
+    },
+    "samples": [
+      {
+        "gameTimeSeconds": 0.0,
+        "worstRelativeDelta": 0.0,
+        "renderTarget0": [
+          0.3700000047683716,
+          0.6100000143051147,
+          0.5,
+          0.0
+        ]
+      },
+      {
+        "gameTimeSeconds": 0.25,
+        "worstRelativeDelta": 0.0,
+        "renderTarget0": [
+          0.3700000047683716,
+          0.6100000143051147,
+          0.5,
+          0.0
+        ]
+      },
+      {
+        "gameTimeSeconds": 0.5,
+        "worstRelativeDelta": 0.0,
+        "renderTarget0": [
+          0.3700000047683716,
+          0.6100000143051147,
+          0.5,
+          0.0
+        ]
+      },
+      {
+        "gameTimeSeconds": 1.0,
+        "worstRelativeDelta": 0.0,
+        "renderTarget0": [
+          0.3700000047683716,
+          0.6100000143051147,
+          0.5,
+          0.0
+        ]
+      },
+      {
+        "gameTimeSeconds": 2.0,
+        "worstRelativeDelta": 0.0,
+        "renderTarget0": [
+          0.3700000047683716,
+          0.6100000143051147,
+          0.5,
+          0.0
+        ]
+      }
+    ],
+    "parityResult": "AUTHORED_RECONSTRUCTED_CB0_VALUE_PARITY",
+    "motionResult": "OFFLINE_EVALUATOR_CB0_CHANGES_WITH_TIME",
+    "admits": "OFFLINE_RECONSTRUCTED_CB0_EQUATION_RESPONSE_ONLY"
+  },
+  "artifactSha256": "e2ac9a13b1f3dc2c4a92c758b8178bbc23aa804ecc37dd77433fa105d252b444"
+}
