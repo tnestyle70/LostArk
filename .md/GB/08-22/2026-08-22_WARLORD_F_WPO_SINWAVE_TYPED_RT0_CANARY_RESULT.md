@@ -93,13 +93,16 @@ carrier의 정점 위치를 사용하므로 이름의 WPO는 source identity이�
 
 ```text
 test_materialize_warlord_17140_wpo_sinwave_canary.py
-  Ran 9 tests, OK
+  Ran 10 tests, OK
 
 materialize_warlord_17140_wpo_sinwave_canary.py --check
   current; changed=false; productRows=56; candidateRows=2; opcode=22
 
 Sync-EffectDataProject.ps1 -Check
   PASS after registration update
+
+fresh-checkout materializer replay
+  PASS; HLSL/C++ implementation identity uses CRLF-to-LF canonical bytes
 
 Publish-Effects.ps1 -Mode Validate
   PASS; validated 207 Effect catalog entries and visual-program sidecar

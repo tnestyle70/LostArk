@@ -411,10 +411,15 @@ def build_catalog(catalog: dict[str, Any]) -> dict[str, Any]:
 
 def descriptor(path: Path, role: str) -> dict[str, Any]:
     require(path.is_file(), f"WPO implementation input missing: {path}")
+    # Source files are tracked as LF but can be checked out as CRLF on the
+    # Windows client.  Seal the Git-semantic text identity, not the incidental
+    # worktree newline representation.
+    payload = path.read_bytes().replace(b"\r\n", b"\n")
     return {
         "path": path.relative_to(ROOT).as_posix(),
-        "byteSize": path.stat().st_size,
-        "sha256": raw_sha256(path),
+        "byteSize": len(payload),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "identityNormalization": "CRLF_TO_LF",
         "role": role,
     }
 
@@ -521,13 +526,30 @@ def run(mode: str) -> bool:
     candidate = build_candidate(product)
     catalog = build_catalog(read_json(CATALOG))
     receipt = build_receipt(candidate, catalog, source_row, resources)
-    outputs = {
-        CANDIDATE: pretty_bytes(candidate),
-        CATALOG: pretty_bytes(catalog),
-        RECEIPT: pretty_bytes(receipt),
+    documents = {
+        CANDIDATE: candidate,
+        CATALOG: catalog,
+        RECEIPT: receipt,
     }
-    stale = [path for path, payload in outputs.items()
-             if not path.is_file() or path.read_bytes() != payload]
+    outputs = {path: pretty_bytes(document)
+               for path, document in documents.items()}
+    # Git's Windows checkout can materialize the tracked LF JSON as CRLF.
+    # Admission is semantic/canonical; treating only newline conversion as a
+    # stale authored document makes a clean checkout fail its own materializer.
+    # Parsing still rejects malformed JSON and exact field drift remains
+    # fail-closed through object equality and the hashes sealed in the receipt.
+    stale = []
+    for path, document in documents.items():
+        if not path.is_file():
+            stale.append(path)
+            continue
+        try:
+            current = read_json(path)
+        except (OSError, json.JSONDecodeError):
+            stale.append(path)
+            continue
+        if current != document:
+            stale.append(path)
     if mode == "write":
         for path in stale:
             atomic_write(path, outputs[path])

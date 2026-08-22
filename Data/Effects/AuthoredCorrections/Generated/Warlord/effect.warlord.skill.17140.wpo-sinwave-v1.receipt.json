@@ -127,23 +127,26 @@
     "implementation": [
       {
         "path": "Client/Bin/ShaderFiles/Shader_EffectUe3MaterialFamilies.hlsli",
-        "byteSize": 35782,
-        "sha256": "af3e07de1602a17a288963062e9eb8742b94d7bcc3fc58c6fca94c5e703e46cd",
+        "byteSize": 35097,
+        "sha256": "3d9a2ace2cc4e29701d7f93923cd69ae588f9c3ef25c1f0987974fcf8a8e4c23",
+        "identityNormalization": "CRLF_TO_LF",
         "role": "class-neutral opcode 22 two-proven-lane RT0 equation"
       },
       {
         "path": "Client/Bin/ShaderFiles/Shader_VtxEffectMeshPreview.hlsl",
-        "byteSize": 6401,
-        "sha256": "50db49d8372d0c5a174ea07bc5ebbf48ae3c9f15e65f2072b8df8e6aace833a2",
+        "byteSize": 6236,
+        "sha256": "43eec0bd3bf9a8e66d562a1b0291081c1de513d836dc254e63b0a8338b445cab",
+        "identityNormalization": "CRLF_TO_LF",
         "role": "typed mesh carrier dispatch"
       },
       {
         "path": "Client/Private/Effect_DocumentRenderer.cpp",
         "byteSize": 840410,
         "sha256": "6f66ce0f89b4c5b3a6b485f4df8eb06d7413fcce830d841bce81fbc67602a599",
+        "identityNormalization": "CRLF_TO_LF",
         "role": "exact child/parent/carrier/occurrence admission and fail-close"
       }
     ]
   },
-  "receiptSha256": "bacf46625578e6a512cdfc0493cb87fb8712a43146ddb04d4152bec12a6619c6"
+  "receiptSha256": "7ece10796de843308c46a26c5686a33574a085e16876bef0de75ec281bf6f773"
 }

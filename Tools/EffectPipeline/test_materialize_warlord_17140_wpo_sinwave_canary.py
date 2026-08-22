@@ -111,6 +111,19 @@ class WarlordWpoSinWaveCanaryTests(unittest.TestCase):
             hashlib.sha256(canary.pretty_bytes(self.candidate)).hexdigest(),
         )
 
+    def test_implementation_identity_normalizes_windows_newlines(self) -> None:
+        path = (
+            canary.ROOT
+            / "Client/Bin/ShaderFiles/Shader_EffectUe3MaterialFamilies.hlsli"
+        )
+        payload = path.read_bytes().replace(b"\r\n", b"\n")
+        descriptor = canary.descriptor(path, "test")
+        self.assertEqual(descriptor["identityNormalization"], "CRLF_TO_LF")
+        self.assertEqual(descriptor["byteSize"], len(payload))
+        self.assertEqual(
+            descriptor["sha256"], hashlib.sha256(payload).hexdigest()
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
