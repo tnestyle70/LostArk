@@ -138,7 +138,7 @@ Crack의 다음 세 source-exact DDS는 기존 runtime Resources에 없어서 �
 - 세 exact DXBC -> HLSL WARP replay: mismatch `0`
 - 세 wrapper HLSL Debug/Release VS/PS compile: PASS, RT0 only
 - runtime DDS byte/SHA/color-space pins: 19/19 PASS
-- Valtan family/source-value/texture-closure/runtime-contract focused unit tests: 91 PASS
+- Valtan family/source-value/texture-closure/runtime-contract focused unit tests: 93 PASS
 - runtime contract deterministic `--check`: PASS
 - runtime-sealed C++/HLSL 12개 경로의 Git `text/eol=lf` 계약: PASS
 - Client x64 Debug full compile/link: PASS

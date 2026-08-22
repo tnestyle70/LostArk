@@ -416,7 +416,7 @@ Tool의 `Solo Element`는 별도 데이터나 element를 만드는 기능이 아
   runtime canary 순으로 receipt chain을 다시 생성했다.
 
 최종 runtime canary receipt seal은
-`2c14a5640f7818fa79e0f6b6a06326e4b4f2dcc240a9afb1f2926f9875e36b34`다.
+`2349aded6fa05b7055036c796d583e90f05d31298335a0c2252167303ff52aec`다.
 
 ## 13. renderer adapter 전수조사 비평
 
@@ -464,7 +464,7 @@ Glasshole02 source-exact 증거, 전용 HLSL, 기존 occurrence Tool canary는 P
 
 통합 이후 canonical LF receipt chain을 별도 clean checkout에서도 다시 실행했다. exact material부터
 runtime canary까지 모든 check가 통과했고 최종 runtime receipt seal은
-`2c14a5640f7818fa79e0f6b6a06326e4b4f2dcc240a9afb1f2926f9875e36b34`로 고정됐다.
+`2349aded6fa05b7055036c796d583e90f05d31298335a0c2252167303ff52aec`로 고정됐다.
 
 ```text
 focused Python unit tests                    108 PASS
