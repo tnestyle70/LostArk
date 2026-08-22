@@ -93,7 +93,22 @@ class DimensionMasterFluid01SpriteTests(unittest.TestCase):
         self.assertEqual(
             receipt["runtimeExecutor"], "TYPED_SOURCE_RECONSTRUCTION"
         )
-        self.assertEqual(receipt["runtimeAdmission"], "AUTHORING_ONLY")
+        self.assertEqual(receipt["runtimeAdmission"], "PRODUCT_TYPED_PACKET")
+        self.assertEqual(
+            receipt["productJoin"], "DIRECT_AUTHORED_CATALOG_PUBLISHED"
+        )
+        self.assertEqual(
+            [row["carrierDisposition"] for row in receipt["selectiveRestore"]["rows"]],
+            ["KEEP", "KEEP"],
+        )
+        self.assertEqual(
+            [row["cohortRole"] for row in receipt["selectiveRestore"]["rows"]],
+            ["CANARY", "DATA_ONLY_EXPANSION"],
+        )
+        self.assertEqual(
+            receipt["firstPixel"]["automaticStatus"],
+            "REFERENCE_RT0_NONZERO",
+        )
         self.assertEqual(receipt["userReview"], "PENDING")
 
     def test_wrong_role_is_rejected_by_idempotence_contract(self) -> None:

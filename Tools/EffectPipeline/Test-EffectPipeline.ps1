@@ -1571,6 +1571,7 @@ $pythonContractTests = @(
     'Tools.EffectPipeline.test_apply_warlord_17240_screen_noise_and_decals',
     'Tools.EffectPipeline.test_build_character_effect_restoration_inventory',
     'Tools.EffectPipeline.test_materialize_dimensionmaster_2050230_fluid01_sprite',
+    'Tools.EffectPipeline.test_verify_dimensionmaster_2050230_fluid01_first_pixel',
     'Tools.EffectPipeline.test_materialize_dimensionmaster_2050210_occurrences',
     'Tools.EffectPipeline.test_verify_artist_31490_product_join',
     'Tools.EffectPipeline.test_build_valtan_stage_effects',
