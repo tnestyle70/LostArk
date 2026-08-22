@@ -4,6 +4,8 @@ branch: `codex/v1-carrier-cohort`
 
 integration base: `origin/main@48c53f20` (PR #151 창술사 D/F profile39/40 확장 포함)
 
+implementation merge: PR `#152`, `main@dc436ae8fdf4b9d68251785c0c18aa1f8d2062e7`
+
 master plan: `2026-08-22_FOUR_CHARACTER_VALTAN_EFFECT_V1_FULL_MIGRATION_MASTER_PLAN.md`
 
 ## 1. 결론

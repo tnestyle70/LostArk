@@ -6,6 +6,8 @@ V0 fixture origin commit: `61930d4ab7018b9df04dea7c297681505160c34d`
 
 첫 carrier cohort 통합 base: `origin/main@48c53f20`
 
+첫 carrier cohort 구현 merge: PR `#152`, `main@dc436ae8`
+
 V0 상태: `COMPLETE_BASELINE`
 
 V1 상태: `FIRST_CANARY_AUTOMATED / USER_REVIEW_PENDING`
