@@ -2191,6 +2191,32 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         output.Distortion.xy = flowNoiseOffset *
             clamp(g_TypedTrailParameters[1].w * 0.01f, -0.25f, 0.25f) * shape;
     }
+    else if (41 == g_SourceMaterialProfile)
+    {
+        // fx_d_me_chain_01_ma, the Warlord hook-chain link.  The parent
+        // declares no texture parameter and only two world-position-offset
+        // scalars, so the material owns the masked cutout while the chain
+        // artwork arrives through the element base binding.
+        //
+        // BLEND_Masked is a binary cutout, not a soft alpha ramp.  The grouped
+        // path had no cutout at all (authored colour clip is 0), so the links
+        // drew as translucent ghosts with no silhouette.
+        //
+        // The source DDS has no alpha channel, so artwork luminance drives the
+        // cutout.  worldpositionoffset_bias and worldpositionoffset_uvscale are
+        // not evaluated: world position offset is a vertex stage output and the
+        // 132-slot parent graph that shapes it is not in evidence.  Restoring
+        // it belongs to the NATIVE_PARITY backlog, not to this RT0 base.
+        clip((g_SourceTextureMask & 0x1u) == 0x1u ? 1.f : -1.f);
+        const float3 chain = Sample_SourceTexture0(localUV).rgb;
+        const float chainCoverage = saturate(dot(max(chain, 0.f),
+            float3(0.299f, 0.587f, 0.114f)));
+        // UE3 masked materials cut at OpacityMaskClipValue.  One third is the
+        // engine default and this parent serializes no override for it.
+        clip(chainCoverage - 0.3333f);
+        shape = 1.f;
+        output.SceneColor.rgb = chain;
+    }
 
     float4 color = (g_ColorMultiply + g_ColorOffset) * vertexColor;
     if (3 != g_SourceMaterialProfile && 4 != g_SourceMaterialProfile &&
@@ -2212,7 +2238,8 @@ EFFECT_PS_OUT Shade_EffectParticleUV(
         36 != g_SourceMaterialProfile && 37 != g_SourceMaterialProfile &&
         38 != g_SourceMaterialProfile &&
         39 != g_SourceMaterialProfile &&
-        40 != g_SourceMaterialProfile)
+        40 != g_SourceMaterialProfile &&
+        41 != g_SourceMaterialProfile)
         output.SceneColor.rgb = color.rgb;
     else
     {

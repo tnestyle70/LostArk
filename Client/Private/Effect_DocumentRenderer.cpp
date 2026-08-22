@@ -3478,6 +3478,17 @@ namespace
 				return 39u;
 			}
 			break;
+		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::MESH_MASKED_CHAIN01:
+			/* The parent owns no texture parameter, so the admission gate is the
+			   mesh carrier plus the base binding the converter attached. */
+			if (Is_StrictParticleShapeCarrierContractSatisfied(Element, "mesh") &&
+				Source.StaticSwitches.empty() &&
+				nullptr != Find_Binding(Element,
+					Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE))
+			{
+				return 41u;
+			}
+			break;
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::MM_LIGHT01:
 			/* Reuses the simple_01 evaluator and its lane staging.  With no
 			   scalar authored, every simple_01 input falls back to neutral and
@@ -6691,6 +6702,24 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 					SourceMaterial, "noise_tex"), false))
 			return E_FAIL;
 	}
+	else if (41u == Staged.iSourceMaterialProfile)
+	{
+		/* This family has no named source texture: the chain artwork is the
+		   element base binding, staged into lane 0 as linear. */
+		const Client::EFFECT_RESOURCE_BINDING_DESC* pChainBase =
+			Find_Binding(Element, Client::EFFECT_RESOURCE_SLOT::BASE_TEXTURE);
+		if (nullptr == pChainBase || pChainBase->strAssetId.empty())
+		{
+			strOutError = "Masked chain element has no base binding: " +
+				Element.strElementId;
+			return E_FAIL;
+		}
+		const std::array<std::string_view, 1u> ChainBaseTexture = {{
+			pChainBase->strAssetId
+		}};
+		if (!StageExactLinearSourceTextures(ChainBaseTexture))
+			return E_FAIL;
+	}
 	else if (34u == Staged.iSourceMaterialProfile)
 	{
 		static constexpr std::array<std::string_view, 2u>
@@ -6805,7 +6834,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		34u == Staged.iSourceMaterialProfile ||
 		35u == Staged.iSourceMaterialProfile ||
 		(Staged.iSourceMaterialProfile >= 36u &&
-		 Staged.iSourceMaterialProfile <= 40u);
+		 Staged.iSourceMaterialProfile <= 41u);
 	Staged.bSourceMaterialFallbackBlocked = !Element.Material.Execution.bEnabled &&
 		((!bStrictTypedApproximateProfile &&
 			Is_SourceMaterialFallbackBlocked(Element, Staged.GroupedConstants)) ||
@@ -6871,7 +6900,9 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		(39u == Staged.iSourceMaterialProfile &&
 			(Staged.iSourceTextureMask & 0x1u) != 0x1u) ||
 		(40u == Staged.iSourceMaterialProfile &&
-			(Staged.iSourceTextureMask & 0x3u) != 0x3u));
+			(Staged.iSourceTextureMask & 0x3u) != 0x3u) ||
+		(41u == Staged.iSourceMaterialProfile &&
+			(Staged.iSourceTextureMask & 0x1u) != 0x1u));
 	OutResource = std::move(Staged);
 	return S_OK;
 }

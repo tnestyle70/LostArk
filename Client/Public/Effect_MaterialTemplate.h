@@ -292,6 +292,7 @@ enum class EFFECT_STRICT_TYPED_SOURCE_PROFILE : uint8_t
 	MM_BASIC01,
 	FLOWTRAIL01,
 	MM_LIGHT01,
+	MESH_MASKED_CHAIN01,
 	END
 };
 
@@ -506,6 +507,18 @@ inline EFFECT_STRICT_TYPED_SOURCE_PROFILE Resolve_EffectStrictTypedSourceProfile
 			"fx_mastermaterial.fx_mm.fx_mm_light_01_tr"))
 	{
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MM_LIGHT01;
+	}
+	/* fx_d_me_chain_01_ma is the Warlord hook-chain link material.  Its parent
+	   declares no texture parameter at all and only two world-position-offset
+	   scalars, and it is authored BLEND_Masked and two sided.  Masked means a
+	   binary cutout, which the grouped translucent path cannot express, so the
+	   links currently draw as soft ghosts instead of solid chain. */
+	if (Source.strProfileId ==
+			"ue3.material.fx.m.mi.00.fx.m.fx.d.me.chain.01.ma.a8a92d2a6abc" &&
+		Source.strParentMaterialPath ==
+			"fx_m_mi_00.fx_m.fx_d_me_chain_01_ma")
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MESH_MASKED_CHAIN01;
 	}
 	if (strSourceMaterialPath ==
 			"fx_m_mi_w_00.mi.fx_w_pa_worldoffset_02_14_tr" &&
