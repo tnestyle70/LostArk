@@ -130,7 +130,7 @@ ARTIST_LIGHTFLARE01 3 / ARTIST_MM_DISSOLVE01 3`이다.
 | parent material | D | F | 다음 조치 |
 |---|---:|---:|---|
 | `fx_m_mi_m_00.fx_mi.fx_m_pa_trail_01_4_tr` | 5 | 24 | parent evidence에 texture/scalar parameter가 0개다. source intake부터 필요 |
-| `fx_m.fx_k_me_makeflow_02_tr` | 0 | 18 | `MAKEFLOW_02` 계약이 `color_tex`를 요구하는데 이 자식들은 4 lane만 가진다. alias만으로는 fail-closed |
+| `fx_m.fx_k_me_makeflow_02_tr` | 0 | 17 | 18행 중 exact child 1행은 carrier cohort가 inherited `color_tex`까지 연결해 profile36으로 승격했다. 남은 17개 4-lane 자식은 alias만으로는 fail-closed |
 | `fx_mastermaterial.fx_mm.fx_mm_distortion_01_ad` | 0 | 9 | evidence 있음. 다음 family 후보 |
 | `fx_m_mi_02.fx_m.fx_j_me_flamesurface_01_ma` | 0 | 9 | `BLEND_Masked` — masked carrier 경계를 먼저 확인해야 한다 |
 | `fx_mastermaterial.fx_mm.fx_mm_simple_03_tr` | 8 | 0 | evidence 있음. `SIMPLE01`과 lane 집합이 같아 확장 후보 |

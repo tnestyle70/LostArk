@@ -19,9 +19,32 @@
   "provenance": "SOURCE_EXACT",
   "evidence": "PARTIAL",
   "runtimeExecutor": "TYPED_SOURCE_RECONSTRUCTION",
-  "runtimeAdmission": "AUTHORING_ONLY",
-  "productJoin": "AUTHORED_NOT_PUBLISHED",
+  "runtimeAdmission": "PRODUCT_TYPED_PACKET",
+  "productJoin": "DIRECT_AUTHORED_CATALOG_PUBLISHED",
   "userReview": "PENDING",
+  "selectiveRestore": {
+    "rawFamilyOccurrenceCount": 2,
+    "productFamilyOccurrenceCount": 2,
+    "rows": [
+      {
+        "elementId": "authored.source-particle.1ae3416ac205fee634b746a9",
+        "carrierDisposition": "KEEP",
+        "cohortRole": "CANARY"
+      },
+      {
+        "elementId": "authored.source-particle.ed33fb10661afb8854e76957",
+        "carrierDisposition": "KEEP",
+        "cohortRole": "DATA_ONLY_EXPANSION"
+      }
+    ],
+    "bulkRestore": false,
+    "unownedProductRowsFrozen": true
+  },
+  "firstPixel": {
+    "automaticStatus": "REFERENCE_RT0_NONZERO",
+    "harness": "Tools/EffectPipeline/verify_dimensionmaster_2050230_fluid01_first_pixel.py",
+    "visualStatus": "PENDING_USER_REVIEW"
+  },
   "runtimeMaterial": {
     "backend": "runtimeMaterialV2",
     "opcode": 17,
@@ -105,5 +128,5 @@
       "authored.source-particle.fc4ef87d47a878a70100a4d8": "7bb5aac32f557b741c9c2cdd2e73a6d6e81f195c2afdbc51b73b56995c94d27e"
     }
   },
-  "artifactSha256": "2438dcabdd29c752879eaf8d77dc884785bb07cc55ecdeccaaf82a61ef6b6d58"
+  "artifactSha256": "015ba5f31fa918175a0cdbe71f5f2e23b88a6c94786821a31890e9d2663639d7"
 }

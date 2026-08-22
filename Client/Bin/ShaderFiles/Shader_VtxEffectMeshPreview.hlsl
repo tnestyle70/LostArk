@@ -74,6 +74,14 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input)
                 g_ColorMultiply + g_ColorOffset,
                 g_EffectDynamicParameter);
         }
+        if (g_RuntimeMaterialV2Opcode ==
+            RUNTIME_MATERIAL_V2_UE3_WPO_SINWAVE_ELECTRIC_RT0_MESH)
+        {
+            return Shade_EffectUe3WpoSinWaveElectricRt0Mesh(
+                input.uv,
+                g_ColorMultiply + g_ColorOffset,
+                g_EffectDynamicParameter);
+        }
         return Shade_RuntimeMaterialV2Mesh(
             input.uv, input.worldPosition, input.normal,
             input.tangent, input.binormal, g_CameraPosition.xyz,

@@ -1513,6 +1513,235 @@ namespace
 
 	constexpr uint32_t LANCE_DRAGON_MASKED_OPCODE = 19u;
 	constexpr uint32_t PROJECT_BASE_COVERAGE_EMISSIVE_DISSOLVE_RECT_OPCODE = 21u;
+	constexpr uint32_t WARLORD_WPO_SINWAVE_ELECTRIC_RT0_OPCODE = 22u;
+
+	struct WARLORD_WPO_SINWAVE_ROW final
+	{
+		std::string_view strElementId;
+		std::string_view strSourceNode;
+	};
+
+	constexpr std::array<WARLORD_WPO_SINWAVE_ROW, 2u>
+		WARLORD_WPO_SINWAVE_ROWS = {{
+		{ "authored.source-particle.8c0d6ab070c1a6c83479e590",
+			"authored-source-particle:effect.warlord.skill.17140.unified|"
+			"source:effect.warlord.skill.17140.imported|element:fx_pc_wgl_07."
+			"par_s_wgl_guardianlightning_01.particlespriteemitter_13" },
+		{ "authored.source-particle.59e6ffa8852fba74279b6ae9",
+			"authored-source-particle:effect.warlord.skill.17140.unified|"
+			"source:effect.warlord.skill.17140.imported|element:fx_pc_wgl_07."
+			"par_s_wgl_guardianlightning_02.particlespriteemitter_52" },
+	}};
+
+	const WARLORD_WPO_SINWAVE_ROW* Find_WarlordWpoSinWaveRow(
+		const std::string_view strElementId)
+	{
+		const auto Iterator = std::ranges::find_if(
+			WARLORD_WPO_SINWAVE_ROWS,
+			[strElementId](const WARLORD_WPO_SINWAVE_ROW& Row)
+			{
+				return Row.strElementId == strElementId;
+			});
+		return Iterator == WARLORD_WPO_SINWAVE_ROWS.end() ? nullptr : &*Iterator;
+	}
+
+	bool_t Has_WarlordWpoSinWaveDynamicModule(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		static constexpr std::array<std::string_view, 4u> PATHS = {{
+			"dynamicparams[0].paramvalue", "dynamicparams[1].paramvalue",
+			"dynamicparams[2].paramvalue", "dynamicparams[3].paramvalue"
+		}};
+		static constexpr std::array<std::array<f32_t, 4u>, 4u> VALUES = {{
+			{{ 1.f, 1.f, 1.f, 1.f }}, {{ 0.f, 1.f, 1.f, 0.f }},
+			{{ 0.5f, 0.5f, 0.5f, 0.5f }}, {{ 1.f, 1.f, 1.f, 1.f }}
+		}};
+		size_t iCount = 0u;
+		for (const Client::EFFECT_SOURCE_MODULE_DESC& Module :
+			Element.SourceRecipe.Modules)
+		{
+			if (Module.strClassName != "particlemoduleparameterdynamic")
+				continue;
+			++iCount;
+			if (Module.strStableId != "FX_PC_WGL_07:export:1032@ref:4" ||
+				Module.Distributions.size() != PATHS.size())
+			{
+				return false;
+			}
+			for (size_t i = 0u; i < PATHS.size(); ++i)
+			{
+				const Client::EFFECT_DISTRIBUTION_DESC& Distribution =
+					Module.Distributions[i];
+				if (Distribution.strPropertyPath != PATHS[i] ||
+					Distribution.LookupTable.size() != VALUES[i].size() ||
+					!std::equal(Distribution.LookupTable.begin(),
+						Distribution.LookupTable.end(), VALUES[i].begin()))
+				{
+					return false;
+				}
+			}
+		}
+		return iCount == 1u;
+	}
+
+	bool_t Validate_WarlordWpoSinWaveElectricExecution(
+		const Client::EFFECT_ELEMENT_DESC& Element,
+		std::string& strOutError)
+	{
+		const Client::EFFECT_MATERIAL_EXECUTION_DESC& Execution =
+			Element.Material.Execution;
+		const WARLORD_WPO_SINWAVE_ROW* pRow =
+			Find_WarlordWpoSinWaveRow(Element.strElementId);
+		if (nullptr == pRow)
+		{
+			if (Execution.bEnabled &&
+				Execution.eBackend ==
+					Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+				Execution.iOpcode == WARLORD_WPO_SINWAVE_ELECTRIC_RT0_OPCODE)
+			{
+				strOutError =
+					"Warlord WPO SinWave opcode escaped its two-occurrence allowlist: " +
+					Element.strElementId;
+				return false;
+			}
+			return true;
+		}
+		/* The Product Warlord F rows intentionally remain on their byte-frozen
+		   grouped source profile.  Only a separately authored Tool candidate
+		   enables opcode 22. */
+		if (!Execution.bEnabled)
+			return true;
+
+		static constexpr std::array<std::string_view, 2u> LANE_ROLES = {{
+			"alpha_mask_21_map_c", "emission_02_map_e"
+		}};
+		static constexpr std::array<std::string_view, 2u> LANE_ASSETS = {{
+			"Effect/Warlord/Textures/FX_TEX_04/fx_i_thunder_02_ycl.dds",
+			"Effect/Warlord/Textures/FX_TEX_02/fx_d_atypical_049.dds"
+		}};
+		static constexpr std::array<std::string_view, 2u> LANE_CHANNELS = {{
+			"R", "RGB"
+		}};
+		static constexpr std::array<std::string_view, 10u> SCALAR_NAMES = {{
+			"alpha_power", "alpha_strength", "alpha_uv_scale_x",
+			"alpha_uv_scale_y", "emission_power", "emission_desaturation",
+			"emission_uv_scale_x", "emission_uv_scale_y",
+			"emission_pan_x", "emission_pan_y"
+		}};
+		static constexpr std::array<f32_t, 10u> SCALAR_VALUES = {{
+			2.f, 2.f, 2.f, 1.5f, 2.f, 1.f, 4.f, 1.f, 0.f, 0.f
+		}};
+		const auto NearlyEqual = [](const f32_t fLeft, const f32_t fRight)
+		{
+			return std::abs(fLeft - fRight) <= 1.0e-6f *
+				(std::max)({ 1.f, std::abs(fLeft), std::abs(fRight) });
+		};
+
+		bool_t bValid = Element.bVisible &&
+			Element.eKind == Client::EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.strSourceNode == pRow->strSourceNode &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "mesh" &&
+			Has_WarlordWpoSinWaveDynamicModule(Element) &&
+			Element.ResourceBindings.size() == 3u &&
+			Element.ResourceBindings[0u].strSlotId == "meshModel" &&
+			Element.ResourceBindings[0u].strAssetId ==
+				"Effect/Warlord/Meshes/FX_SM_00/"
+				"fm_d_electric_05_vertexcolor.wmodel" &&
+			Element.ResourceBindings[1u].strSlotId == "base" &&
+			Element.ResourceBindings[1u].strAssetId == LANE_ASSETS[1u] &&
+			Element.ResourceBindings[2u].strSlotId == "noise" &&
+			Element.ResourceBindings[2u].strAssetId == LANE_ASSETS[0u] &&
+			Element.Material.strTemplateId == "effect.standard" &&
+			Element.Material.strSourceMaterialPath ==
+				"fx_m_mi_d_00.fx_mi."
+				"fx_d_me_worldpositionoffset_sinwave_01_04_ad" &&
+			Element.Material.eRenderProfile ==
+				Client::EFFECT_RENDER_PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ &&
+			!Element.Material.SourceMaterial.bEnabled &&
+			Element.Material.SourceMaterial.strProfileId ==
+				"ue3.material.fx.m.mi.d.00.fx.m.fx.d.me."
+				"worldpositionoffset.sinwave.01.ad.1feb93cbb95e" &&
+			Element.Material.SourceMaterial.strParentMaterialPath ==
+				"fx_m_mi_d_00.fx_m."
+				"fx_d_me_worldpositionoffset_sinwave_01_ad" &&
+			!Execution.bFailClosed && !Execution.bAuthoringApproximate &&
+			Execution.iVersion == 1u &&
+			Execution.eBackend ==
+				Client::EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 &&
+			Execution.iOpcode == WARLORD_WPO_SINWAVE_ELECTRIC_RT0_OPCODE &&
+			Execution.iPassIndex == 4u &&
+			Execution.strRasterizerState == "RS_Default" &&
+			Execution.strDepthStencilState == "DSS_ReadOnly" &&
+			Execution.strBlendState == "BS_EffectAdditive" &&
+			Execution.iStencilReference == 0u &&
+			Execution.iTextureLaneCount == 2u &&
+			Execution.iTextureMask == 0x03u &&
+			Execution.TextureLanes.size() == 2u &&
+			Execution.iDynamicConsumedMask == 0x02u &&
+			Execution.iDynamicSuppressedMask == 0x0du &&
+			Execution.iParticleColorPolicy == 2u &&
+			Execution.iParticleColorConsumedMask == 0x0fu &&
+			Execution.iParticleColorSuppressedMask == 0u &&
+			Execution.iScalarCount == SCALAR_NAMES.size() &&
+			Execution.Scalars.size() == SCALAR_NAMES.size() &&
+			Execution.iVectorCount == 1u && Execution.Vectors.size() == 1u &&
+			Execution.iInputCount == 10u &&
+			Execution.InputConsumedMask ==
+				std::array<uint32_t, 2u>{ 0x03ffu, 0u } &&
+			Execution.InputSuppressedMask ==
+				std::array<uint32_t, 2u>{ 0u, 0u } &&
+			Execution.VectorComponentConsumedMask ==
+				std::array<uint32_t, 3u>{ 0x07u, 0u, 0u } &&
+			Execution.VectorComponentSuppressedMask ==
+				std::array<uint32_t, 3u>{ 0x08u, 0u, 0u } &&
+			Execution.iStaticInputCount == 0u &&
+			Execution.iStaticSelectedMask == 0u &&
+			Execution.iStaticConsumedMask == 0u &&
+			Execution.iStaticSuppressedMask == 0u &&
+			Execution.iRenderInputCount == 6u &&
+			Execution.iRenderConsumedMask == 0x2fu &&
+			Execution.iRenderSuppressedMask == 0x10u &&
+			Execution.ArtistParameters.empty() && Execution.Colors.empty();
+		for (size_t i = 0u; bValid && i < LANE_ROLES.size(); ++i)
+		{
+			const Client::EFFECT_MATERIAL_TEXTURE_LANE_DESC& Lane =
+				Execution.TextureLanes[i];
+			bValid = Lane.strLaneId == "lane." + std::to_string(i) &&
+				Lane.strRole == LANE_ROLES[i] && Lane.strAssetId == LANE_ASSETS[i] &&
+				Lane.iTextureRegister == i && Lane.iSamplerRegister == 5u + i &&
+				Lane.strSourceChannel == LANE_CHANNELS[i] &&
+				Lane.eColorSpace == Client::EFFECT_TEXTURE_COLOR_SPACE::LINEAR &&
+				Is_ArtistDBlackTigerSampler(Lane.Sampler);
+		}
+		for (size_t i = 0u; bValid && i < SCALAR_NAMES.size(); ++i)
+		{
+			const Client::EFFECT_MATERIAL_SCALAR_PARAMETER_DESC& Scalar =
+				Execution.Scalars[i];
+			bValid = Scalar.strName == SCALAR_NAMES[i] &&
+				Scalar.iPackedIndex == i &&
+				NearlyEqual(Scalar.fValue, SCALAR_VALUES[i]);
+		}
+		if (bValid)
+		{
+			const Client::EFFECT_MATERIAL_VECTOR_PARAMETER_DESC& Color =
+				Execution.Vectors[0u];
+			bValid = Color.strName == "emission_color" &&
+				Color.iPackedIndex == 0u && NearlyEqual(Color.vValue.x, 5.f) &&
+				NearlyEqual(Color.vValue.y, 5.f) &&
+				NearlyEqual(Color.vValue.z, 5.f) &&
+				NearlyEqual(Color.vValue.w, 1.f);
+		}
+		if (!bValid)
+		{
+			strOutError =
+				"Warlord WPO SinWave opcode 22 packet is not the admitted "
+				"child/parent/carrier/two-lane Tool tuple: " +
+				Element.strElementId;
+			return false;
+		}
+		return true;
+	}
 
 	struct LANCE_DRAGON_MASKED_ROW final
 	{
@@ -6720,6 +6949,8 @@ bool_t Client::CEffectDocumentRenderer::Stage_AuthoredMaterialExecution(
 	PREWARM_ASSET_CACHE* pSharedAssets) const
 {
 	const EFFECT_MATERIAL_EXECUTION_DESC& Execution = Element.Material.Execution;
+	if (!Validate_WarlordWpoSinWaveElectricExecution(Element, strOutError))
+		return false;
 	if (!Validate_LanceDragonMaskedExecution(Element, strOutError))
 		return false;
 	if (!Validate_ArtistDBlackTigerStrokeExecution(Element, strOutError))
