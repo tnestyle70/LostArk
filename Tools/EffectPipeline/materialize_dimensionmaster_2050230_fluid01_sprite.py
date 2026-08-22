@@ -530,9 +530,35 @@ def build_receipt(resource_hashes: dict[str, str]) -> dict[str, Any]:
         "provenance": "SOURCE_EXACT",
         "evidence": "PARTIAL",
         "runtimeExecutor": "TYPED_SOURCE_RECONSTRUCTION",
-        "runtimeAdmission": "AUTHORING_ONLY",
-        "productJoin": "AUTHORED_NOT_PUBLISHED",
+        "runtimeAdmission": "PRODUCT_TYPED_PACKET",
+        "productJoin": "DIRECT_AUTHORED_CATALOG_PUBLISHED",
         "userReview": "PENDING",
+        "selectiveRestore": {
+            "rawFamilyOccurrenceCount": 2,
+            "productFamilyOccurrenceCount": 2,
+            "rows": [
+                {
+                    "elementId": TARGET_ELEMENT_IDS[0],
+                    "carrierDisposition": "KEEP",
+                    "cohortRole": "CANARY",
+                },
+                {
+                    "elementId": TARGET_ELEMENT_IDS[1],
+                    "carrierDisposition": "KEEP",
+                    "cohortRole": "DATA_ONLY_EXPANSION",
+                },
+            ],
+            "bulkRestore": False,
+            "unownedProductRowsFrozen": True,
+        },
+        "firstPixel": {
+            "automaticStatus": "REFERENCE_RT0_NONZERO",
+            "harness": (
+                "Tools/EffectPipeline/"
+                "verify_dimensionmaster_2050230_fluid01_first_pixel.py"
+            ),
+            "visualStatus": "PENDING_USER_REVIEW",
+        },
         "runtimeMaterial": {
             "backend": "runtimeMaterialV2",
             "opcode": RUNTIME_OPCODE,

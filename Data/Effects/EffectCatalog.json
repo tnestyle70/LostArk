@@ -1368,6 +1368,11 @@
       "authoringPath": "Effects/Authored/effect.warlord.skill.17140.unified.effect.json"
     },
     {
+      "effectAssetId": "effect.warlord.skill.17140.wpo-sinwave-v1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.warlord.skill.17140.wpo-sinwave-v1.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.warlord.skill.17170.authored-baseline.clip1",
       "authoringPath": "Effects/Authored/effect.warlord.skill.17170.authored-baseline.clip1.effect.json"
     },

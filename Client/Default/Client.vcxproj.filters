@@ -3507,6 +3507,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17140.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17140.wpo-sinwave-v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17170.authored-baseline.clip1.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -3804,6 +3807,9 @@
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34100.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
     </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34110-34150.v1-cohort.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
+    </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34120.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
     </None>
@@ -3925,6 +3931,9 @@
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\Warlord</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Warlord\effect.warlord.skill.17140.authored-baseline.approximation-receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\Warlord</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Warlord\effect.warlord.skill.17140.wpo-sinwave-v1.receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\Warlord</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\Warlord\effect.warlord.skill.17170.authored-baseline.approximation-receipt.json">
