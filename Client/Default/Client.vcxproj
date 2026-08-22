@@ -931,6 +931,7 @@
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip1.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip2.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.clip3.unified.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34610.restoration-candidate.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.authored-baseline.clip1.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.authored-baseline.clip2.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34630.authored-baseline.clip3.effect.json" />

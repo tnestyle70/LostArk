@@ -291,6 +291,7 @@ enum class EFFECT_STRICT_TYPED_SOURCE_PROFILE : uint8_t
 	CRACKHOLEV2,
 	MM_BASIC01,
 	FLOWTRAIL01,
+	MM_LIGHT01,
 	END
 };
 
@@ -489,6 +490,22 @@ inline EFFECT_STRICT_TYPED_SOURCE_PROFILE Resolve_EffectStrictTypedSourceProfile
 			"fx_m_mi_02.fx_m.fx_k_me_flowtrail_01_ts_tr")
 	{
 		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWTRAIL01;
+	}
+	/* fx_mm_light_01 is the smallest master material in the corpus: one
+	   emissive lane, no scalar and no vector parameter.  Its output is what
+	   fx_mm_simple_01 already computes once every simple_01 input is neutral,
+	   so the two share the evaluator and only the carrier blend differs
+	   between the additive and translucent variants. */
+	if ((Source.strProfileId ==
+			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.ad.f431613b2bdf" &&
+		 Source.strParentMaterialPath ==
+			"fx_mastermaterial.fx_mm.fx_mm_light_01_ad") ||
+		(Source.strProfileId ==
+			"ue3.material.fx.mastermaterial.fx.mm.fx.mm.light.01.tr.8a6435f0c4e0" &&
+		 Source.strParentMaterialPath ==
+			"fx_mastermaterial.fx_mm.fx_mm_light_01_tr"))
+	{
+		return EFFECT_STRICT_TYPED_SOURCE_PROFILE::MM_LIGHT01;
 	}
 	if (strSourceMaterialPath ==
 			"fx_m_mi_w_00.mi.fx_w_pa_worldoffset_02_14_tr" &&

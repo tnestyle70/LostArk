@@ -3478,6 +3478,20 @@ namespace
 				return 39u;
 			}
 			break;
+		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::MM_LIGHT01:
+			/* Reuses the simple_01 evaluator and its lane staging.  With no
+			   scalar authored, every simple_01 input falls back to neutral and
+			   the equation reduces to the single emissive sample this family
+			   owns.  Both blends admit because sidedness and blend are raster
+			   state, not a different formula. */
+			if (Is_StrictParticleShapeCarrierContractSatisfied(
+					Element, "sprite") &&
+				Source.StaticSwitches.empty() &&
+				Client::Has_EffectSimple01NamedTextureContract(Source))
+			{
+				return 33u;
+			}
+			break;
 		case Client::EFFECT_STRICT_TYPED_SOURCE_PROFILE::FLOWTRAIL01:
 			if (Is_StrictTwoSidedAlphaMeshCarrierContractSatisfied(Element) &&
 				Source.StaticSwitches.empty() &&
