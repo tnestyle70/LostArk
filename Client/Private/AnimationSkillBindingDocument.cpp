@@ -150,7 +150,7 @@ namespace
 		return true;
 	}
 
-	bool Try_ParseBossMs(const DATA_JSON_VALUE& value,
+	bool Try_ParseSourceMs(const DATA_JSON_VALUE& value,
 		std::uint32_t& outMilliseconds)
 	{
 		if (!value.Is_Number())
@@ -187,13 +187,16 @@ namespace
 		std::ostringstream& output,
 		const ANIMATION_SKILL_CLIP& clip)
 	{
-		if (0u == clip.iPlayMs && 1.f == clip.fPlayRate)
+		if (0u == clip.iPlayMs && 1.f == clip.fPlayRate &&
+			0u == clip.iSourceStartMs)
 		{
 			output << '"' << CDataJson::Escape(clip.strClipName) << '"';
 			return;
 		}
 		output << "{ \"clip\": \""
 			<< CDataJson::Escape(clip.strClipName) << '"';
+		if (0u != clip.iSourceStartMs)
+			output << ", \"sourceStartMs\": " << clip.iSourceStartMs;
 		if (0u != clip.iPlayMs)
 			output << ", \"playMs\": " << clip.iPlayMs;
 		if (1.f != clip.fPlayRate)
@@ -388,20 +391,26 @@ bool_t Client::CAnimationSkillBindingDocument::Parse_Text(
 					stagedClip.strClipName = clip.Get_String();
 				}
 				else if (Has_OnlyKnownProperties(
-					clip, { "clip", "playMs", "playRate" }))
+					clip, { "clip", "sourceStartMs", "playMs", "playRate" }))
 				{
 					const DATA_JSON_VALUE* clipName = Required(
 						clip, "clip", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* sourceStartMs =
+						clip.Find("sourceStartMs");
 					const DATA_JSON_VALUE* playMs = clip.Find("playMs");
 					const DATA_JSON_VALUE* playRate = clip.Find("playRate");
 					if (nullptr == clipName ||
-						(nullptr == playMs && nullptr == playRate) ||
+						(nullptr == sourceStartMs && nullptr == playMs &&
+							nullptr == playRate) ||
+						(nullptr != sourceStartMs &&
+							!Try_ParseSourceMs(
+								*sourceStartMs, stagedClip.iSourceStartMs)) ||
 						(nullptr != playMs &&
 							!Try_ParsePlayMs(*playMs, stagedClip.iPlayMs)) ||
 						(nullptr != playRate &&
 							!Try_ParsePlayRate(*playRate, stagedClip.fPlayRate)))
 					{
-						outStatus = "Skill binding clip play length is invalid.";
+						outStatus = "Skill binding clip source window is invalid.";
 						return false;
 					}
 					stagedClip.strClipName = clipName->Get_String();
@@ -522,6 +531,7 @@ bool_t Client::CAnimationSkillBindingDocument::Validate(
 			for (const ANIMATION_SKILL_CLIP& clip : stage.Clips)
 			{
 				if (!Is_StableToken(clip.strClipName) ||
+					clip.iSourceStartMs > MAX_CLIP_PLAY_MS ||
 					clip.iPlayMs > MAX_CLIP_PLAY_MS ||
 					!std::isfinite(clip.fPlayRate) ||
 					clip.fPlayRate < 0.05f || clip.fPlayRate > 16.f ||
@@ -834,9 +844,9 @@ bool_t Client::CValtanPatternAnimationBindingDocument::Parse_Text(
 					nullptr == playRate ||
 					!Try_ParsePlayRate(*playRate, stagedClip.fPlayRate) ||
 					nullptr == loop ||
-					!Try_ParseBossMs(*clipValue.Find("sourceStartMs"),
+					!Try_ParseSourceMs(*clipValue.Find("sourceStartMs"),
 						stagedClip.iSourceStartMs) ||
-					!Try_ParseBossMs(*clipValue.Find("playMs"),
+					!Try_ParseSourceMs(*clipValue.Find("playMs"),
 						stagedClip.iPlayMs))
 				{
 					outStatus = "Boss pattern binding v2 clip is invalid.";

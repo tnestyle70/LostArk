@@ -286,6 +286,26 @@
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.unified.effect.json"
     },
     {
+      "effectAssetId": "effect.dimensionmaster.skill.2050210.a1.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.a1.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050210.a2.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.a2.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050210.a3.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.a3.unified.effect.json"
+    },
+    {
+      "effectAssetId": "effect.dimensionmaster.skill.2050210.a4.unified",
+      "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+      "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050210.a4.unified.effect.json"
+    },
+    {
       "effectAssetId": "effect.dimensionmaster.skill.2050220.authored-baseline",
       "authoringPath": "Effects/Authored/effect.dimensionmaster.skill.2050220.authored-baseline.effect.json"
     },

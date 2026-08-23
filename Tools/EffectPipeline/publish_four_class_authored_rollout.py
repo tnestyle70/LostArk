@@ -199,12 +199,24 @@ def _binding_clip(value: Any) -> dict[str, Any]:
     if isinstance(value, str):
         if not value:
             raise ValueError("Animation binding contains an empty clip")
-        return {"clip": value, "playMs": None, "playRate": 1.0}
+        return {
+            "clip": value,
+            "sourceStartMs": 0,
+            "playMs": None,
+            "playRate": 1.0,
+        }
     if not isinstance(value, dict):
         raise ValueError("Animation binding has an unsupported clip shape")
     clip = value.get("clip")
     if not isinstance(clip, str) or not clip:
         raise ValueError("Animation binding object contains no clip")
+    source_start_ms = value.get("sourceStartMs", 0)
+    if (
+        isinstance(source_start_ms, bool)
+        or not isinstance(source_start_ms, int)
+        or source_start_ms < 0
+    ):
+        raise ValueError(f"Animation binding sourceStartMs is invalid: {clip}")
     play_ms = value.get("playMs")
     if play_ms is not None:
         if isinstance(play_ms, bool) or not isinstance(play_ms, int) or play_ms <= 0:
@@ -219,6 +231,7 @@ def _binding_clip(value: Any) -> dict[str, Any]:
         raise ValueError(f"Animation binding playRate is invalid: {clip}")
     return {
         "clip": clip,
+        "sourceStartMs": source_start_ms,
         "playMs": play_ms,
         "playRate": float(play_rate),
     }
@@ -408,6 +421,13 @@ def _load_scope() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
                     manifest_clips.append(raw_clip)
                 binding_stage = binding_stages[stage_index]
                 if clips != [row["clip"] for row in binding_stage]:
+                    if any(row["sourceStartMs"] for row in binding_stage):
+                        raise ValueError(
+                            "Historical four-class rollout is frozen before "
+                            "source-window/occurrence-local Product authoring; "
+                            "use Tools/EffectPipeline/Publish-Effects.ps1 for "
+                            "the live catalog"
+                        )
                     raise ValueError(
                         f"Manifest/binding clip mismatch: "
                         f"{asset_id}/{skill_id}/{stage_index}"

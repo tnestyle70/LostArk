@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Selectively restore DimensionMaster A's four MakeFlow occurrences.
+"""Restore and split DimensionMaster A's four MakeFlow occurrences.
 
 The current nine Product rows are user-tuned authoring and are immutable input
 to this transaction. The retained ``a58f...`` row remains PROJECT_TUNED: its
@@ -9,7 +9,10 @@ projected from the immutable imported document and Track A receipt. The source-
 base 0.25 row is not admitted because the current tuned row occupies that
 visual slot; only the missing 0.60/0.90/1.30 rows are appended. Keeping those
 provenance lanes separate prevents both a fifth visible slash and a full
-34/63-row rollback.
+34/63-row rollback.  The admitted aggregate is immutable evidence; Product
+playback uses four occurrence-local authored documents whose element delays
+are rebased to zero and whose cue source times retain the 0.25/0.60/0.90/1.30
+second cadence.
 """
 
 from __future__ import annotations
@@ -50,8 +53,17 @@ RESTORATION_RECEIPT_PATH = REPOSITORY_ROOT / (
 ANIMATION_EVENTS_PATH = REPOSITORY_ROOT / (
     "Data/Animation/Authored/DimensionMaster/DimensionMaster.animevents"
 )
+EFFECT_CATALOG_PATH = REPOSITORY_ROOT / "Data/Effects/EffectCatalog.json"
 
 TARGET_EFFECT_ID = "effect.dimensionmaster.skill.2050210.unified"
+OCCURRENCE_EFFECT_IDS = tuple(
+    f"effect.dimensionmaster.skill.2050210.a{index}.unified"
+    for index in range(1, 5)
+)
+OCCURRENCE_PATHS = tuple(
+    REPOSITORY_ROOT / f"Data/Effects/Authored/{effect_id}.effect.json"
+    for effect_id in OCCURRENCE_EFFECT_IDS
+)
 SOURCE_EFFECT_ID = "effect.dimensionmaster.skill.2050210.imported"
 CHARACTER_CLASS = "DIMENSIONMASTER"
 SKILL_ID = 2050210
@@ -167,11 +179,15 @@ EXPECTED_MATERIAL_SHA256 = (
     "4f379c76dea44d7ddb73397585579faa0c13e4adab492745f92dffb7bcefd80d"
 )
 
-EXPECTED_A_CUE_LINE = (
-    '"pc_sp_m_00_sk_sk_willowrend" EFFECT startms=0 '
-    'payload="effect.dimensionmaster.skill.2050210.unified" effectref=asset '
+EXPECTED_A_CUE_LINES = tuple(
+    '"pc_sp_m_00_sk_sk_willowrend" EFFECT '
+    f"startms={round(start_seconds * 1000)} "
+    f'payload="{effect_id}" effectref=asset '
     'anchor="root" follow=follow orientation=action_facing stop=natural '
     "px=0 py=0 pz=0 rx=0 ry=0 rz=0 sx=1 sy=1 sz=1"
+    for effect_id, start_seconds in zip(
+        OCCURRENCE_EFFECT_IDS, SOURCE_START_SECONDS
+    )
 )
 
 
@@ -593,6 +609,129 @@ def build_document(
     return result
 
 
+def _occurrence_element_ids() -> tuple[tuple[str, ...], ...]:
+    return (
+        tuple(element_id for element_id, _ in EXPECTED_TUNED_ROWS),
+        (SOURCE_TARGET_IDS[1],),
+        (SOURCE_TARGET_IDS[2],),
+        (SOURCE_TARGET_IDS[3],),
+    )
+
+
+def build_occurrence_documents(
+    aggregate: dict[str, Any],
+) -> tuple[dict[str, Any], ...]:
+    """Partition the admitted aggregate without cloning a row across slashes."""
+
+    _validate_target_header(aggregate)
+    elements = aggregate.get("elements")
+    if not isinstance(elements, list) or len(elements) != 12:
+        raise MaterializationError(
+            "2050210 aggregate must contain exactly 12 admitted rows before split"
+        )
+    ids = [row.get("id") for row in elements if isinstance(row, dict)]
+    expected_ids = [
+        element_id
+        for occurrence_ids in _occurrence_element_ids()
+        for element_id in occurrence_ids
+    ]
+    if ids != expected_ids or len(ids) != len(set(ids)):
+        raise MaterializationError(
+            "2050210 aggregate row order/identity changed before split"
+        )
+
+    by_id = {str(row["id"]): row for row in elements}
+    documents: list[dict[str, Any]] = []
+    admitted_ids: list[str] = []
+    for effect_id, source_start, occurrence_ids in zip(
+        OCCURRENCE_EFFECT_IDS,
+        SOURCE_START_SECONDS,
+        _occurrence_element_ids(),
+    ):
+        document = copy.deepcopy(aggregate)
+        document["effectAssetId"] = effect_id
+        document["displayName"] = effect_id
+        occurrence_elements: list[dict[str, Any]] = []
+        for element_id in occurrence_ids:
+            element = copy.deepcopy(by_id[element_id])
+            timing = element.get("detail", {}).get("timing")
+            if not isinstance(timing, dict):
+                raise MaterializationError(
+                    f"{element_id}: occurrence timing is missing"
+                )
+            actual_start = _require_finite(
+                timing.get("startDelaySeconds"),
+                f"{element_id} aggregate start",
+            )
+            if actual_start != source_start:
+                raise MaterializationError(
+                    f"{element_id}: aggregate occurrence start changed"
+                )
+            timing["startDelaySeconds"] = 0
+            occurrence_elements.append(element)
+            admitted_ids.append(element_id)
+        document["elements"] = occurrence_elements
+        documents.append(document)
+
+    if admitted_ids != expected_ids or len(admitted_ids) != len(set(admitted_ids)):
+        raise MaterializationError(
+            "2050210 occurrence partition is not an exact 12-row union"
+        )
+    return tuple(documents)
+
+
+def validate_occurrence_documents(
+    actual_documents: tuple[dict[str, Any], ...],
+    aggregate: dict[str, Any],
+) -> None:
+    expected_documents = build_occurrence_documents(aggregate)
+    if len(actual_documents) != len(expected_documents):
+        raise MaterializationError(
+            "2050210 occurrence document cardinality is not four"
+        )
+    for effect_id, actual, expected in zip(
+        OCCURRENCE_EFFECT_IDS, actual_documents, expected_documents
+    ):
+        if actual != expected:
+            raise MaterializationError(
+                f"{effect_id}: occurrence document drifted from exact partition"
+            )
+
+
+def render_occurrence_text(document: dict[str, Any]) -> str:
+    return json.dumps(
+        document, ensure_ascii=False, indent=2, allow_nan=False
+    ) + "\n"
+
+
+def validate_effect_catalog(document: dict[str, Any]) -> None:
+    if document.get("formatVersion") != 1:
+        raise MaterializationError("Effect Catalog formatVersion changed")
+    effects = document.get("effects")
+    if not isinstance(effects, list):
+        raise MaterializationError("Effect Catalog effects array is missing")
+    effect_ids = [
+        row.get("effectAssetId") for row in effects if isinstance(row, dict)
+    ]
+    if len(effect_ids) != len(effects) or len(effect_ids) != len(set(effect_ids)):
+        raise MaterializationError("Effect Catalog IDs are missing/duplicated")
+    if effect_ids.count(TARGET_EFFECT_ID) != 1:
+        raise MaterializationError(
+            "2050210 aggregate Catalog evidence row is missing/duplicated"
+        )
+    by_id = {str(row["effectAssetId"]): row for row in effects}
+    for effect_id in OCCURRENCE_EFFECT_IDS:
+        expected = {
+            "effectAssetId": effect_id,
+            "payloadKind": "DIRECT_AUTHORED_DOCUMENT_V13",
+            "authoringPath": f"Effects/Authored/{effect_id}.effect.json",
+        }
+        if by_id.get(effect_id) != expected:
+            raise MaterializationError(
+                f"{effect_id}: Effect Catalog occurrence row changed"
+            )
+
+
 def _elements_array_bounds(text: str) -> tuple[int, int]:
     match = re.search(r'"elements"\s*:\s*\[', text)
     if match is None:
@@ -668,15 +807,17 @@ def validate_animation_event_text(text: str) -> None:
     )
     if header is None or int(header.group(1)) != len(lines) - 1:
         raise MaterializationError("DimensionMaster animevents header/count changed")
+    product_ids = {TARGET_EFFECT_ID, *OCCURRENCE_EFFECT_IDS}
     cues = [
         line
         for line in lines[1:]
         if line.startswith('"pc_sp_m_00_sk_sk_willowrend" EFFECT ')
-        and f'payload="{TARGET_EFFECT_ID}"' in line
+        and any(f'payload="{effect_id}"' in line for effect_id in product_ids)
     ]
-    if cues != [EXPECTED_A_CUE_LINE]:
+    if cues != list(EXPECTED_A_CUE_LINES):
         raise MaterializationError(
-            "A cue must be one root FOLLOW + action_facing orientation occurrence"
+            "A cues must be four exact source-timed root FOLLOW + "
+            "action_facing occurrences with no aggregate Product cue"
         )
 
 
@@ -711,7 +852,11 @@ def run(
     source_path: pathlib.Path = IMPORTED_PATH,
     receipt_path: pathlib.Path = RESTORATION_RECEIPT_PATH,
     animation_events_path: pathlib.Path = ANIMATION_EVENTS_PATH,
+    effect_catalog_path: pathlib.Path = EFFECT_CATALOG_PATH,
+    occurrence_paths: tuple[pathlib.Path, ...] = OCCURRENCE_PATHS,
 ) -> bool:
+    if len(occurrence_paths) != len(OCCURRENCE_EFFECT_IDS):
+        raise MaterializationError("2050210 occurrence output path count is not four")
     raw = target_path.read_bytes()
     bom = raw.startswith(codecs.BOM_UTF8)
     original_text = raw.decode("utf-8-sig")
@@ -725,15 +870,38 @@ def run(
             f"cannot read {animation_events_path}: {error}"
         ) from error
     validate_animation_event_text(animation_text)
+    validate_effect_catalog(load_json(effect_catalog_path))
     result = build_document(target, source, receipt)
     rendered = render_materialized_text(original_text, target, result)
-    changed = rendered != original_text
+    expected_occurrences = build_occurrence_documents(result)
+    missing_occurrences: list[
+        tuple[pathlib.Path, dict[str, Any]]
+    ] = []
+    for path, expected in zip(occurrence_paths, expected_occurrences):
+        if not path.exists():
+            missing_occurrences.append((path, expected))
+            continue
+        actual = load_json(path)
+        if actual != expected:
+            raise MaterializationError(
+                f"{path}: existing occurrence document drifted; refusing overwrite"
+            )
+    changed = rendered != original_text or bool(missing_occurrences)
     if changed and not write:
         raise MaterializationError(
-            "2050210 target requires selective materialization; rerun with --write"
+            "2050210 aggregate/split requires materialization; rerun with --write"
         )
-    if changed:
+    if rendered != original_text:
         _atomic_replace(target_path, rendered, result, bom=bom)
+    for path, expected in missing_occurrences:
+        _atomic_replace(
+            path,
+            render_occurrence_text(expected),
+            expected,
+            bom=False,
+        )
+    actual_occurrences = tuple(load_json(path) for path in occurrence_paths)
+    validate_occurrence_documents(actual_occurrences, result)
     return changed
 
 
@@ -747,9 +915,15 @@ def main() -> int:
     arguments = parser.parse_args()
     changed = run(write=arguments.write)
     if changed:
-        print(f"materialized three missing source-exact MakeFlow rows: {TARGET_PATH}")
+        print(
+            "materialized DimensionMaster A aggregate and four "
+            "occurrence-local Product documents"
+        )
     else:
-        print("check passed: 9 tuned rows + 3 source-exact rows = 4 visible slashes")
+        print(
+            "check passed: aggregate 12 rows -> A1/A2/A3/A4 "
+            "exact 9/1/1/1 partition"
+        )
     return 0
 
 

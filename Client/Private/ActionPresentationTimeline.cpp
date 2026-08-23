@@ -141,8 +141,13 @@ bool Client::CActionPresentationTimeline::Resolve_CueWallOffset(
 			Clips[iClip].fSourceStartSeconds;
 		const float fSourceEndSeconds =
 			fSourceStartSeconds + fSourceDurationSeconds;
+		/* Explicit source trims are half-open.  Adjacent slices of the same source
+		clip must never both claim a cue on their shared boundary.  A legacy
+		natural remainder keeps its inclusive model-end tolerance. */
 		if (fCueSourceTimeSeconds + 0.000001f < fSourceStartSeconds ||
-			fCueSourceTimeSeconds > fSourceEndSeconds + 0.000001f ||
+			(0u != Clips[iClip].iPlayMs ?
+				fCueSourceTimeSeconds + 0.000001f >= fSourceEndSeconds :
+				fCueSourceTimeSeconds > fSourceEndSeconds + 0.000001f) ||
 			(!Clips[iClip].bLoop && 0u != iLoopEpoch))
 		{
 			return false;

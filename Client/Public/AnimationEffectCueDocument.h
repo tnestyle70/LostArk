@@ -110,6 +110,12 @@ struct ANIMATION_EFFECT_PREVIEW_CANDIDATE final
 class CAnimationEffectCueDocument final
 {
 public:
+	/* A Product occurrence belongs to exactly one half-open playable source
+	   window.  playMs==0 means the remainder of the model clip. */
+	static bool_t Is_CueStartInClipWindow(
+		const ANIMATION_SKILL_CLIP& Clip,
+		uint32_t iCueStartMs);
+
 	/* Local TRS is applied to the sampled root once. ACTION_FACING preserves
 	   sampled root translation/scale while replacing only its rotational basis
 	   with the action-start yaw captured by the caller. */

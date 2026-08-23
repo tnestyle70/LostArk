@@ -821,6 +821,10 @@
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050190.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050200.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.a-restoration-candidate.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.a1.unified.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.a2.unified.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.a3.unified.effect.json" />
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.a4.unified.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.authored-baseline.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.effect.json" />
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050210.unified.effect.json" />

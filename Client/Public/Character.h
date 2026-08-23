@@ -34,6 +34,7 @@ public:
 		uint32_t playMs = 0u;
 		f32_t playRate = 1.f;
 		bool_t loop = false;
+		uint32_t sourceStartMs = 0u;
 	};
 
 	/* A stage runs its own clips back to back. ACTIVE owns one stage, so its whole
