@@ -201,6 +201,8 @@ public:
 		f32_t fRimPower = 3.f;
 		f32_t fRimIntensity = 0.f;
 		f32_t fGhostAlpha = 0.f;
+		f32_t fOutlineWidth = 0.f;
+		float4_t vOutlineColor = { 1.f, 1.f, 1.f, 1.f };
 		f32_t fBloomIntensity = 1.f;
 		f32_t fDistortionIntensity = 0.f;
 		float2_t vUVStart = { 0.f, 0.f };
@@ -220,6 +222,7 @@ public:
 		f32_t fMeshPreScale = 0.01f;
 		uint32_t iAnimationIndex = 0u;
 		bool_t bAnimationLoop = true;
+		bool_t bColorTexturesSRGB = true;
 		PARTICLE_PARAMS Particle;
 		DECAL_PARAMS Decal;
 		TRAIL_PARAMS Trail;
@@ -307,6 +310,7 @@ public:
 		return m_Parts[iIndex].strBaseAssetId;
 	}
 	HRESULT Set_PartBase(uint32_t iIndex, const std::string& strAssetId);
+	HRESULT Reload_ColorTextures();
 	bool_t Is_Skinned() const { return m_bSkinned; }
 	uint32_t Animation_Count() const;
 	const char_t* Animation_Name(uint32_t iIndex) const;
@@ -340,7 +344,13 @@ public:
 
 private:
 	HRESULT Load_Texture(
-		const std::string& strAssetId, ComPtr<ID3D11ShaderResourceView>& OutView);
+		const std::string& strAssetId,
+		bool_t bColorTexture,
+		ComPtr<ID3D11ShaderResourceView>& OutView);
+	static bool_t Is_ColorInput(TEXTURE_INPUT eInput)
+	{
+		return TEXTURE_INPUT::BASE == eInput || TEXTURE_INPUT::EMISSIVE == eInput;
+	}
 	static HRESULT Acquire_Model(
 		const ComPtr<ID3D11Device>& pDevice,
 		const ComPtr<ID3D11DeviceContext>& pContext,
@@ -365,6 +375,7 @@ private:
 	static HRESULT Acquire_Texture(
 		const ComPtr<ID3D11Device>& pDevice,
 		const std::string& strAssetId,
+		bool_t bSRGB,
 		ComPtr<ID3D11ShaderResourceView>& OutView);
 	void Apply_Transform();
 	void Sync_Animation(bool_t bRestart);

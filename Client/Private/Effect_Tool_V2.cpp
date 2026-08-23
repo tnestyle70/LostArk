@@ -1331,6 +1331,8 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 	Desc.vPosition = vPosition;
 	Desc.fYawDegree = 0.f;
 	Desc.fCollisionRadius = 0.f;
+	if (pActor->shaderProfile == "esther")
+		Desc.fOutlineWidth = CNpc::ESTHER_OUTLINE_WIDTH;
 	std::shared_ptr<CGameObject> pGameObject;
 	if (FAILED(GameInstance.Add_GameObject_to_Layer(
 		iLevel, TEXT("Prototype_GameObject_Npc"), iLevel, TARGET_LAYER_TAG,
@@ -1816,11 +1818,14 @@ namespace
 			ImGui::SetTooltip("Lerp Color Mul from Start to End over the lifetime.");
 		ImGui::SameLine();
 		ImGui::ColorEdit4(P.bColorMulLerp ? "Color Mul Start" : "Color Mul",
-			&P.vColorMul.x, ImGuiColorEditFlags_Float);
+			&P.vColorMul.x, ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("HDR: values above 1 push the effect past the bloom threshold (type into the fields).");
 		if (P.bColorMulLerp)
 		{
 			ImGui::Indent(24.f);
-			ImGui::ColorEdit4("Color Mul End", &P.vColorMulEnd.x, ImGuiColorEditFlags_Float);
+			ImGui::ColorEdit4("Color Mul End", &P.vColorMulEnd.x,
+				ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
 			ImGui::Unindent(24.f);
 		}
 		if (bShowOffset)
@@ -2074,8 +2079,10 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 			E.eAlignment = static_cast<CEffectV2Object::PARTICLE_ALIGNMENT>(iAlignment);
 
 		ImGui::SeparatorText("Particle Color / Sub-UV");
-		ImGui::ColorEdit4("Color Start", &E.vColorStart.x, ImGuiColorEditFlags_Float);
-		ImGui::ColorEdit4("Color End", &E.vColorEnd.x, ImGuiColorEditFlags_Float);
+		ImGui::ColorEdit4("Color Start", &E.vColorStart.x,
+			ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
+		ImGui::ColorEdit4("Color End", &E.vColorEnd.x,
+			ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("Multiplied with Color Mul below over each particle's life.");
 		int32_t iColumns = static_cast<int32_t>(E.iTileColumns);
@@ -2190,6 +2197,13 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 
 	ImGui::SeparatorText("Color");
 	Draw_ColorTracks(P, true);
+	if (ImGui::Checkbox("Base/Emissive are sRGB (gamma) textures", &P.bColorTexturesSRGB))
+	{
+		if (FAILED(pPreview->Reload_ColorTextures()))
+			m_strPreviewStatus = "Color texture reload failed.";
+	}
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("On (default): colour textures are decoded to linear before the HDR scene, matching the engine materials. Off: sampled raw (washed-out mid-tones for painted textures; correct for data/mask images used as Base).");
 	int32_t iClipChannel = static_cast<int32_t>(P.eColorClipChannel);
 	ImGui::SetNextItemWidth(90.f);
 	if (ImGui::Combo("##ClipChannel", &iClipChannel, "RGB\0Alpha\0"))
@@ -2208,6 +2222,13 @@ void Client::CEffect_Tool_V2::Render_TuningPanel()
 		ImGui::SliderFloat("Ghost Alpha", &P.fGhostAlpha, 0.f, 1.f);
 		if (ImGui::IsItemHovered())
 			ImGui::SetTooltip("0 = alpha untouched, 1 = alpha multiplied by the fresnel term (only silhouettes remain).");
+
+		ImGui::SeparatorText("Outline (inverted hull)");
+		ImGui::DragFloat("Outline Width (m, 0 = off)", &P.fOutlineWidth, 0.001f, 0.f, 0.5f, "%.3f");
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("Front-culled copy pushed along the normals, stencil-tested against the body so it only shows at the silhouette. Follows the Dissolve texture.");
+		ImGui::ColorEdit4("Outline Color", &P.vOutlineColor.x,
+			ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR);
 	}
 
 	ImGui::SeparatorText("Bloom / Distortion");

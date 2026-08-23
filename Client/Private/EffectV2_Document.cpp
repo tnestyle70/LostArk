@@ -351,6 +351,8 @@ bool_t Client::CEffectV2Document::Parse_Document(
 		!Read_Number(*pParams, "rimPower", P.fRimPower, strOutError) ||
 		!Read_Number(*pParams, "rimIntensity", P.fRimIntensity, strOutError) ||
 		!Read_Number(*pParams, "ghostAlpha", P.fGhostAlpha, strOutError) ||
+		!Read_Number(*pParams, "outlineWidth", P.fOutlineWidth, strOutError) ||
+		!Read_FloatArray(*pParams, "outlineColor", &P.vOutlineColor.x, 4u, strOutError) ||
 		!Read_Number(*pParams, "bloomIntensity", P.fBloomIntensity, strOutError) ||
 		!Read_Number(*pParams, "distortionIntensity", P.fDistortionIntensity, strOutError) ||
 		!Read_FloatArray(*pParams, "uvStart", &P.vUVStart.x, 2u, strOutError) ||
@@ -368,7 +370,8 @@ bool_t Client::CEffectV2Document::Parse_Document(
 		!Read_Bool(*pParams, "loop", P.bLoop, strOutError) ||
 		!Read_Number(*pParams, "playRate", P.fPlayRate, strOutError) ||
 		!Read_Number(*pParams, "meshPreScale", P.fMeshPreScale, strOutError) ||
-		!Read_Bool(*pParams, "animationLoop", P.bAnimationLoop, strOutError))
+		!Read_Bool(*pParams, "animationLoop", P.bAnimationLoop, strOutError) ||
+		!Read_Bool(*pParams, "colorTexturesSRGB", P.bColorTexturesSRGB, strOutError))
 	{
 		return false;
 	}
@@ -684,6 +687,8 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "    \"rimPower\": " + Json_Number(P.fRimPower) + ",\n";
 	Text += "    \"rimIntensity\": " + Json_Number(P.fRimIntensity) + ",\n";
 	Text += "    \"ghostAlpha\": " + Json_Number(P.fGhostAlpha) + ",\n";
+	Text += "    \"outlineWidth\": " + Json_Number(P.fOutlineWidth) + ",\n";
+	Text += "    \"outlineColor\": " + Json_Float4(P.vOutlineColor) + ",\n";
 	Text += "    \"bloomIntensity\": " + Json_Number(P.fBloomIntensity) + ",\n";
 	Text += "    \"distortionIntensity\": " + Json_Number(P.fDistortionIntensity) + ",\n";
 	Text += "    \"uvStart\": " + Json_Float2(P.vUVStart) + ",\n";
@@ -703,6 +708,7 @@ std::string Client::CEffectV2Document::Serialize_Document(const EFFECT_V2_DOCUME
 	Text += "    \"meshPreScale\": " + Json_Number(P.fMeshPreScale) + ",\n";
 	Text += "    \"animationClip\": " + Json_String(Document.strAnimationClip) + ",\n";
 	Text += std::string("    \"animationLoop\": ") + Json_Bool(P.bAnimationLoop) + ",\n";
+	Text += std::string("    \"colorTexturesSRGB\": ") + Json_Bool(P.bColorTexturesSRGB) + ",\n";
 	const CEffectV2Object::PARTICLE_PARAMS& E = P.Particle;
 	Text += "    \"particle\": {\n";
 	Text += "      \"maxParticles\": " + std::to_string(E.iMaxParticles) + ",\n";

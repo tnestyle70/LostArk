@@ -157,7 +157,8 @@ HRESULT Client::CEffectV2Object::Initialize(void* pArg)
 		const std::string& strAssetId = Desc.TextureAssetIds[iInput];
 		if (strAssetId.empty())
 			continue;
-		if (FAILED(Load_Texture(strAssetId, m_Textures[iInput])))
+		if (FAILED(Load_Texture(strAssetId,
+			Is_ColorInput(static_cast<TEXTURE_INPUT>(iInput)), m_Textures[iInput])))
 			return Fail("Texture load failed: " + strAssetId);
 	}
 	Sync_Animation(true);
@@ -168,9 +169,44 @@ HRESULT Client::CEffectV2Object::Initialize(void* pArg)
 
 HRESULT Client::CEffectV2Object::Load_Texture(
 	const std::string& strAssetId,
+	const bool_t bColorTexture,
 	ComPtr<ID3D11ShaderResourceView>& OutView)
 {
-	return Acquire_Texture(m_pDevice, strAssetId, OutView);
+	return Acquire_Texture(m_pDevice, strAssetId,
+		bColorTexture && m_Params.bColorTexturesSRGB, OutView);
+}
+
+HRESULT Client::CEffectV2Object::Reload_ColorTextures()
+{
+	HRESULT hResult = S_OK;
+	for (size_t iInput = 0u; iInput < m_Textures.size(); ++iInput)
+	{
+		if (!Is_ColorInput(static_cast<TEXTURE_INPUT>(iInput)))
+			continue;
+		const std::string& strAssetId = m_CreationDesc.TextureAssetIds[iInput];
+		if (strAssetId.empty())
+			continue;
+		ComPtr<ID3D11ShaderResourceView> pView;
+		if (FAILED(Load_Texture(strAssetId, true, pView)))
+		{
+			hResult = E_FAIL;
+			continue;
+		}
+		m_Textures[iInput] = std::move(pView);
+	}
+	for (PART& Part : m_Parts)
+	{
+		if (Part.strBaseAssetId.empty())
+			continue;
+		ComPtr<ID3D11ShaderResourceView> pView;
+		if (FAILED(Load_Texture(Part.strBaseAssetId, true, pView)))
+		{
+			hResult = E_FAIL;
+			continue;
+		}
+		Part.pBaseView = std::move(pView);
+	}
+	return hResult;
 }
 
 namespace
@@ -315,9 +351,11 @@ HRESULT Client::CEffectV2Object::Acquire_ShapeShader(
 HRESULT Client::CEffectV2Object::Acquire_Texture(
 	const ComPtr<ID3D11Device>& pDevice,
 	const std::string& strAssetId,
+	const bool_t bSRGB,
 	ComPtr<ID3D11ShaderResourceView>& OutView)
 {
-	auto Found = g_TextureCache.find(strAssetId);
+	const std::string strCacheKey = strAssetId + (bSRGB ? "|srgb" : "|linear");
+	auto Found = g_TextureCache.find(strCacheKey);
 	if (Found == g_TextureCache.end())
 	{
 		const std::filesystem::path Path =
@@ -325,10 +363,13 @@ HRESULT Client::CEffectV2Object::Acquire_Texture(
 		if (Path.empty() || !std::filesystem::is_regular_file(Path))
 			return E_FAIL;
 		ComPtr<ID3D11ShaderResourceView> pView;
-		if (FAILED(DirectX::CreateDDSTextureFromFile(
-			pDevice.Get(), Path.c_str(), nullptr, &pView)))
+		if (FAILED(DirectX::CreateDDSTextureFromFileEx(
+			pDevice.Get(), Path.c_str(), 0u, D3D11_USAGE_DEFAULT,
+			D3D11_BIND_SHADER_RESOURCE, 0u, 0u,
+			bSRGB ? DirectX::DDS_LOADER_FORCE_SRGB : DirectX::DDS_LOADER_IGNORE_SRGB,
+			nullptr, &pView)))
 			return E_FAIL;
-		Found = g_TextureCache.emplace(strAssetId, std::move(pView)).first;
+		Found = g_TextureCache.emplace(strCacheKey, std::move(pView)).first;
 	}
 	OutView = Found->second;
 	return S_OK;
@@ -350,12 +391,15 @@ HRESULT Client::CEffectV2Object::Prewarm(
 	shared_ptr<Engine::CShader> pShader;
 	if (FAILED(Acquire_ShapeShader(pDevice, pContext, Desc.eShape, bSkinned, pShader, strOutError)))
 		return E_FAIL;
-	for (const std::string& strAssetId : Desc.TextureAssetIds)
+	for (size_t iInput = 0u; iInput < Desc.TextureAssetIds.size(); ++iInput)
 	{
+		const std::string& strAssetId = Desc.TextureAssetIds[iInput];
 		if (strAssetId.empty())
 			continue;
 		ComPtr<ID3D11ShaderResourceView> pView;
-		if (FAILED(Acquire_Texture(pDevice, strAssetId, pView)))
+		const bool_t bSRGB = Desc.Params.bColorTexturesSRGB &&
+			Is_ColorInput(static_cast<TEXTURE_INPUT>(iInput));
+		if (FAILED(Acquire_Texture(pDevice, strAssetId, bSRGB, pView)))
 		{
 			strOutError = "Texture load failed: " + strAssetId;
 			return E_FAIL;
@@ -392,7 +436,7 @@ HRESULT Client::CEffectV2Object::Set_PartBase(
 		return S_OK;
 	}
 	ComPtr<ID3D11ShaderResourceView> pView;
-	if (FAILED(Load_Texture(strAssetId, pView)))
+	if (FAILED(Load_Texture(strAssetId, true, pView)))
 		return E_FAIL;
 	Part.strBaseAssetId = strAssetId;
 	Part.pBaseView = std::move(pView);
@@ -1212,6 +1256,33 @@ HRESULT Client::CEffectV2Object::Render()
 			{
 				m_strStatus = "Mesh draw failed.";
 				return E_FAIL;
+			}
+		}
+		if (m_Params.fOutlineWidth > 0.f && m_Params.vOutlineColor.w > 0.f)
+		{
+			if (FAILED(m_pShader->Bind_RawValue("g_OutlineWidth",
+					&m_Params.fOutlineWidth, sizeof(f32_t))) ||
+				FAILED(m_pShader->Bind_RawValue("g_OutlineColor",
+					&m_Params.vOutlineColor, sizeof(m_Params.vOutlineColor))))
+			{
+				m_strStatus = "Outline bind failed.";
+				return E_FAIL;
+			}
+			for (uint32_t iMesh = 0u; iMesh < m_pModel->Get_NumMeshes(); ++iMesh)
+			{
+				if (iMesh < m_Parts.size() && !m_Parts[iMesh].bVisible)
+					continue;
+				if (m_bSkinned && FAILED(m_pModel->Bind_BoneMatrices(
+					m_pShader, "g_BoneMatrices", iMesh)))
+				{
+					m_strStatus = "Bone matrix bind failed.";
+					return E_FAIL;
+				}
+				if (FAILED(m_pShader->Begin(5u)) || FAILED(m_pModel->Render(iMesh)))
+				{
+					m_strStatus = "Outline draw failed.";
+					return E_FAIL;
+				}
 			}
 		}
 		return S_OK;
