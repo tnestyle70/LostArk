@@ -34,9 +34,6 @@ NS_END
 
 NS_BEGIN(Client)
 
-class CValtanTranslatedCanaryRuntime;
-struct VALTAN_TRANSLATED_CANARY_ELEMENT_PACKET;
-
 enum class RECONSTRUCTED_DIAGNOSTIC_SOLO : uint8_t
 {
 	MESH,
@@ -101,56 +98,6 @@ enum class EFFECT_PREVIEW_SUBMISSION_ISOLATION_KIND : uint8_t
 	OCCURRENCE,
 	ELEMENT_SET,
 	END
-};
-
-/* Authoring-only carrier for a sealed UE3 cooked pixel-shader variant.  The
-   registration key is material identity, never a gameplay skill or occurrence
-   id, so the same sealed variant can be auditioned by every matching Effect. */
-enum class EFFECT_EXACT_PREVIEW_CARRIER : uint8_t
-{
-	SPRITE_PARTICLE,
-	LOCAL_MESH,
-	END
-};
-
-enum class EFFECT_EXACT_PREVIEW_OUTPUT_CONTRACT : uint8_t
-{
-	/* The admitted CustomParticle/Helix canary writes opacity into RGB while
-	   returning zero alpha.  ONE/ONE is therefore part of the sealed preview
-	   contract and must not inherit the family-lite SrcAlpha blend state. */
-	ADDITIVE_ONE_ONE_RT0_ZERO_ALPHA,
-	END
-};
-
-struct EFFECT_EXACT_PREVIEW_TEXTURE_BINDING_DESC final
-{
-	std::string strAssetId;
-	EFFECT_TEXTURE_COLOR_SPACE eColorSpace =
-		EFFECT_TEXTURE_COLOR_SPACE::LINEAR;
-	uint32_t iTextureRegister = UINT32_MAX;
-	uint32_t iSamplerRegister = UINT32_MAX;
-	EFFECT_MATERIAL_SAMPLER_DESC Sampler;
-};
-
-/* Non-owning install view produced by the cooked-shader sidecar loader.  The
-   renderer validates and owns every byte/resource before this call returns. */
-struct EFFECT_EXACT_PREVIEW_VARIANT_DESC final
-{
-	std::string strVariantKey;
-	std::string strSourceMaterialPath;
-	EFFECT_EXACT_PREVIEW_CARRIER eCarrier =
-		EFFECT_EXACT_PREVIEW_CARRIER::END;
-	EFFECT_EXACT_PREVIEW_OUTPUT_CONTRACT eOutputContract =
-		EFFECT_EXACT_PREVIEW_OUTPUT_CONTRACT::END;
-	std::span<const uint8_t> PixelShaderBytecode;
-	uint64_t iExpectedPixelShaderByteCount = 0u;
-	std::string strExpectedPixelShaderSha256;
-	std::vector<float4_t> CBuffer0Rows;
-	std::vector<EFFECT_EXACT_PREVIEW_TEXTURE_BINDING_DESC> TextureBindings;
-	/* Optional row/component whose sealed scalar is multiplied by a draw-local
-	   opacity scale. UINT32_MAX leaves the exact CB0 bytes untouched. */
-	uint32_t iExternalOpacityRow = UINT32_MAX;
-	uint32_t iExternalOpacityComponent = UINT32_MAX;
 };
 
 /* Object-local Tool preview control.  It never changes the immutable source
@@ -250,59 +197,6 @@ class CEffectDocumentRenderer final
 public:
 	struct PREPARED_DOCUMENT;
 	struct PRODUCT_PREWARM_SESSION;
-	struct EXACT_PREVIEW_PROGRAM;
-	struct EXACT_PREVIEW_ELEMENT_PACKET;
-	struct GLASSHOLE02_TRANSLATED_CANARY_ELEMENT_PACKET;
-
-	/* Tool-only translated-HLSL canary contract.  Product preparation never
-	   enables this gate, and the stable occurrence must fail closed instead of
-	   falling through to the family-lite particle shader. */
-	static constexpr std::string_view
-		GLASSHOLE02_TRANSLATED_CANARY_EFFECT_ASSET_ID =
-		"effect.dimensionmaster.skill.2050120.clip3.unified";
-	static constexpr std::string_view
-		GLASSHOLE02_TRANSLATED_CANARY_OCCURRENCE_ID =
-		"authored.source-particle.40e1b48e2f0f88dcfeff1549";
-	static constexpr std::string_view
-		GLASSHOLE02_TRANSLATED_CANARY_FAMILY_ID =
-		"ue3.material.fx.m.mi.j.00.fx.m.fx.j.pa.glasshole.02.tr.175266c16bb2";
-	static constexpr std::string_view
-		GLASSHOLE02_TRANSLATED_CANARY_PROFILE_ID =
-		"effect.ue3.glasshole-02.v1";
-	static constexpr uint32_t
-		GLASSHOLE02_TRANSLATED_CANARY_REQUIRED_SOURCE_MASK = 0x7fu;
-	static constexpr bool_t
-		GLASSHOLE02_TRANSLATED_CANARY_DEFAULT_ENABLED = false;
-	static constexpr bool_t
-		GLASSHOLE02_TRANSLATED_CANARY_PRODUCT_ENABLED = false;
-	static constexpr bool_t
-		GLASSHOLE02_TRANSLATED_CANARY_FAIL_CLOSED = true;
-
-	/* One Tool-only gate owns the three source families selected for the first
-	   Valtan FRONT_BACK_FRONT family audition.  Product preparation never
-	   enables it; exact HLSL draw failures suppress only the admitted
-	   occurrence instead of falling through to the family-lite shader. */
-	static constexpr std::string_view
-		VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID =
-		"effect.valtan.front-back-front.windup";
-	static constexpr std::array<std::string_view, 9u>
-		VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS = {{
-		"par_n_rpbf_atk_01_02.em07",
-		"par_n_rpbf_atk_01_02.em14",
-		"par_n_rpbf_atk_04_11.em00",
-		"par_n_rpbf_atk_04_11.em01",
-		"par_n_rpbf_atk_04_12.em00",
-		"par_n_rpbf_atk_04_12.em01",
-		"par_n_rpbf_atk_04_12.em02",
-		"par_n_rpbf_atk_04_13.em00",
-		"par_n_rpbf_atk_04_13.em01",
-	}};
-	static constexpr bool_t
-		VALTAN_TRANSLATED_CANARY_DEFAULT_ENABLED = false;
-	static constexpr bool_t
-		VALTAN_TRANSLATED_CANARY_PRODUCT_ENABLED = false;
-	static constexpr bool_t
-		VALTAN_TRANSLATED_CANARY_FAIL_CLOSED = true;
 
 private:
 	struct ELEMENT_RESOURCE final
@@ -390,12 +284,6 @@ private:
 		EFFECT_GROUPED_TRANSLUCENT_CONSTANTS GroupedConstants;
 		bool_t bSourceMaterialFallbackBlocked = false;
 		bool_t bOccurrenceVisualSuppressed = false;
-		std::shared_ptr<const EXACT_PREVIEW_ELEMENT_PACKET>
-			pExactPreviewPacket;
-		std::shared_ptr<const GLASSHOLE02_TRANSLATED_CANARY_ELEMENT_PACKET>
-			pGlasshole02TranslatedCanaryPacket;
-		std::shared_ptr<const VALTAN_TRANSLATED_CANARY_ELEMENT_PACKET>
-			pValtanTranslatedCanaryPacket;
 		std::shared_ptr<const EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>
 			pMaterialProgramBinding;
 	};
@@ -444,13 +332,6 @@ public:
 		ComPtr<ID3D11DeviceContext> pContext,
 		uint64_t iCatalogRevision,
 		const EFFECT_RENDER_PREWARM_TARGET& Target,
-		std::string& strOutError);
-	/* Main-thread authoring-preview registration. Empty Variants clears the
-	   device-local registry. Product preparation never enables this path. */
-	static bool_t Install_AuthoringExactPreviewVariants(
-		ComPtr<ID3D11Device> pDevice,
-		ComPtr<ID3D11DeviceContext> pContext,
-		std::span<const EFFECT_EXACT_PREVIEW_VARIANT_DESC> Variants,
 		std::string& strOutError);
 	static std::shared_ptr<const PREPARED_DOCUMENT> Find_Prepared(
 		uint64_t iCatalogRevision,
@@ -638,31 +519,6 @@ public:
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);
-	/* Must be enabled before Stage_Document. Clear() returns it to false. */
-	bool_t Set_AuthoringExactPreviewExecutionEnabled(
-		bool_t bEnabled,
-		std::string& strOutError);
-	bool_t Is_AuthoringExactPreviewExecutionEnabled() const
-	{
-		return m_bAuthoringExactPreviewExecutionEnabled;
-	}
-	/* This translated-HLSL canary is intentionally independent from the raw
-	   cooked preview registry.  Enable it before Stage_Document; Clear and all
-	   Product/prepared paths return it to OFF. */
-	bool_t Set_AuthoringGlasshole02TranslatedCanaryEnabled(
-		bool_t bEnabled,
-		std::string& strOutError);
-	bool_t Is_AuthoringGlasshole02TranslatedCanaryEnabled() const
-	{
-		return m_bAuthoringGlasshole02TranslatedCanaryEnabled;
-	}
-	bool_t Set_AuthoringValtanTranslatedCanaryEnabled(
-		bool_t bEnabled,
-		std::string& strOutError);
-	bool_t Is_AuthoringValtanTranslatedCanaryEnabled() const
-	{
-		return m_bAuthoringValtanTranslatedCanaryEnabled;
-	}
 	bool_t Stage_ReconstructedRuntimeProgram(
 		std::shared_ptr<const EFFECT_RECONSTRUCTED_RUNTIME_PREPARATION>
 			pPreparation,
@@ -737,29 +593,13 @@ private:
 	bool_t Stage_PreparedInternal(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const PREPARED_DOCUMENT> pPrepared,
-		std::string& strOutError,
-		bool_t bAllowPreserveGlasshole02TranslatedCanary);
+		std::string& strOutError);
 	HRESULT Stage_ElementResource(
-		const std::string& strEffectAssetId,
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_RESOURCE& OutResource,
 		std::string& strOutError,
 		PREWARM_ASSET_CACHE* pSharedAssets = nullptr,
 		f32_t fModelPreScale = 1.f) const;
-	bool_t Stage_AuthoringExactPreviewPacket(
-		const EFFECT_ELEMENT_DESC& Element,
-		ELEMENT_RESOURCE& InOutResource,
-		std::string& strOutError) const;
-	bool_t Stage_Glasshole02TranslatedCanaryPacket(
-		const std::string& strEffectAssetId,
-		const EFFECT_ELEMENT_DESC& Element,
-		ELEMENT_RESOURCE& InOutResource,
-		std::string& strOutError) const;
-	bool_t Stage_ValtanTranslatedCanaryPacket(
-		const std::string& strEffectAssetId,
-		const EFFECT_ELEMENT_DESC& Element,
-		ELEMENT_RESOURCE& InOutResource,
-		std::string& strOutError) const;
 	bool_t Stage_AuthoredMaterialExecution(
 		const EFFECT_ELEMENT_DESC& Element,
 		ELEMENT_RESOURCE& InOutResource,
@@ -852,13 +692,6 @@ private:
 		const float4x4_t* pWorldOverride = nullptr,
 		const float4_t* pDynamicParameter = nullptr,
 		const EFFECT_SUBUV_FRAME_DESC* pSubUVOverride = nullptr);
-	HRESULT Render_AuthoringExactPreviewMesh(
-		const EFFECT_EVALUATED_ELEMENT& Element,
-		const ELEMENT_RESOURCE& Resource,
-		f32_t fAlphaScale,
-		const float4x4_t& World,
-		const float4x4_t& NormalMatrix,
-		const float4_t& DynamicParameter);
 	HRESULT Render_Rect(
 		const EFFECT_EVALUATED_ELEMENT& Element,
 		const ELEMENT_RESOURCE& Resource,
@@ -870,24 +703,6 @@ private:
 	HRESULT Render_Particles(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		std::span<const EFFECT_EVALUATED_PARTICLE> Particles);
-	HRESULT Render_AuthoringExactPreviewParticles(
-		const EFFECT_ELEMENT_DESC& Source,
-		const ELEMENT_RESOURCE& Resource,
-		std::span<const Engine::VTXEFFECT_PARTICLE> Instances);
-	HRESULT Render_Glasshole02TranslatedCanaryParticles(
-		const EFFECT_ELEMENT_DESC& Source,
-		const ELEMENT_RESOURCE& Resource,
-		f32_t fLocalTimeSeconds,
-		std::span<const Engine::VTXEFFECT_PARTICLE> Instances);
-	HRESULT Render_ValtanTranslatedCanaryMesh(
-		const EFFECT_EVALUATED_ELEMENT& Element,
-		const ELEMENT_RESOURCE& Resource,
-		const float4x4_t& World,
-		const float4x4_t& NormalMatrix,
-		const float4_t& DynamicParameter);
-	HRESULT Render_ValtanTranslatedCanaryGround(
-		const EFFECT_EVALUATED_ELEMENT& Element,
-		const ELEMENT_RESOURCE& Resource);
 	HRESULT Render_Trails(
 		const EFFECT_EVALUATED_FRAME& Frame,
 		std::span<const EFFECT_EVALUATED_TRAIL> Trails);
@@ -938,8 +753,6 @@ private:
 	shared_ptr<Engine::CShader> m_pAnimatedModelShader;
 	shared_ptr<Engine::CShader> m_pRectShader;
 	shared_ptr<Engine::CShader> m_pParticleShader;
-	shared_ptr<Engine::CShader> m_pExactSpriteBridgeShader;
-	shared_ptr<Engine::CShader> m_pExactLocalMeshBridgeShader;
 	shared_ptr<Engine::CShader> m_pTrailShader;
 	shared_ptr<Engine::CShader> m_pDecalShader;
 	shared_ptr<Engine::CVIBuffer_Rect> m_pRect;
@@ -955,16 +768,6 @@ private:
 	std::vector<uint32_t> m_TrailIndexScratch;
 	ComPtr<ID3D11ShaderResourceView> m_pWhiteTexture;
 	ComPtr<ID3D11ShaderResourceView> m_pBlackTexture;
-	ComPtr<ID3D11BlendState> m_pExactPreviewAdditiveOneOneBlendState;
-	shared_ptr<Engine::CShader> m_pGlasshole02TranslatedCanaryShader;
-	ComPtr<ID3D11BlendState> m_pGlasshole02TranslatedCanaryBlendState;
-	std::unique_ptr<CValtanTranslatedCanaryRuntime>
-		m_pValtanTranslatedCanaryRuntime;
-	bool_t m_bAuthoringExactPreviewExecutionEnabled = false;
-	bool_t m_bAuthoringGlasshole02TranslatedCanaryEnabled =
-		GLASSHOLE02_TRANSLATED_CANARY_DEFAULT_ENABLED;
-	bool_t m_bAuthoringValtanTranslatedCanaryEnabled =
-		VALTAN_TRANSLATED_CANARY_DEFAULT_ENABLED;
 	bool_t m_bReconstructedSourceRuntimeActive = false;
 	bool_t m_bSourceVisualProgramActive = false;
 	EFFECT_PREVIEW_SUBMISSION_ISOLATION m_PreviewSubmissionIsolation;

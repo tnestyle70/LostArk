@@ -8,7 +8,6 @@
 #include "Effect_DocumentCodec.h"
 #include "Effect_MaterialTemplate.h"
 #include "Effect_RuntimeAuthority.h"
-#include "Effect_ValtanTranslatedCanaryRuntime.h"
 #include "GameInstance.h"
 #include "Model.h"
 #include "RuntimeAssetRoot.h"
@@ -4286,73 +4285,20 @@ struct Client::CEffectDocumentRenderer::RECONSTRUCTED_DIAGNOSTIC_COMPOSITE final
 	std::array<GPU_RESOURCE, 2u> Resources;
 };
 
-struct Client::CEffectDocumentRenderer::EXACT_PREVIEW_PROGRAM final
-{
-	std::string strVariantKey;
-	EFFECT_EXACT_PREVIEW_CARRIER eCarrier =
-		EFFECT_EXACT_PREVIEW_CARRIER::END;
-	ComPtr<ID3D11PixelShader> pPixelShader;
-	uint32_t iCBuffer0ByteCount = 0u;
-};
-
-struct Client::CEffectDocumentRenderer::EXACT_PREVIEW_ELEMENT_PACKET final
-{
-	struct TEXTURE_BINDING final
-	{
-		uint32_t iTextureRegister = UINT32_MAX;
-		uint32_t iSamplerRegister = UINT32_MAX;
-		ComPtr<ID3D11ShaderResourceView> pTexture;
-		ComPtr<ID3D11SamplerState> pSampler;
-	};
-
-	std::shared_ptr<const EXACT_PREVIEW_PROGRAM> pProgram;
-	ComPtr<ID3D11Buffer> pCBuffer0;
-	std::vector<uint8_t> CBuffer0Bytes;
-	std::vector<TEXTURE_BINDING> TextureBindings;
-	uint32_t iExternalOpacityRow = UINT32_MAX;
-	uint32_t iExternalOpacityComponent = UINT32_MAX;
-};
-
-struct Client::CEffectDocumentRenderer::
-	GLASSHOLE02_TRANSLATED_CANARY_ELEMENT_PACKET final
-{
-	std::array<ComPtr<ID3D11ShaderResourceView>, 7u> MaterialTextures;
-	std::array<ComPtr<ID3D11SamplerState>, 8u> Samplers;
-	uint32_t iRequiredSourceMask = 0u;
-};
-
 namespace
 {
-	struct EXACT_PREVIEW_INSTALLED_VARIANT final
-	{
-		std::string strSourceMaterialPath;
-		std::shared_ptr<const Client::CEffectDocumentRenderer::EXACT_PREVIEW_PROGRAM>
-			pProgram;
-		std::vector<uint8_t> CBuffer0Bytes;
-		std::vector<Client::CEffectDocumentRenderer::EXACT_PREVIEW_ELEMENT_PACKET::TEXTURE_BINDING>
-			TextureBindings;
-		uint32_t iExternalOpacityRow = UINT32_MAX;
-		uint32_t iExternalOpacityComponent = UINT32_MAX;
-	};
-
 	struct EFFECT_RENDERER_CORE final
 	{
 		shared_ptr<Engine::CShader> pMeshShader;
 		shared_ptr<Engine::CShader> pAnimatedModelShader;
 		shared_ptr<Engine::CShader> pRectShader;
 		shared_ptr<Engine::CShader> pParticleShader;
-		shared_ptr<Engine::CShader> pExactSpriteBridgeShader;
-		shared_ptr<Engine::CShader> pExactLocalMeshBridgeShader;
 		shared_ptr<Engine::CShader> pTrailShader;
 		shared_ptr<Engine::CShader> pDecalShader;
 		shared_ptr<Engine::CVIBuffer_Rect> pRect;
 		shared_ptr<Engine::CVIBuffer_ParticleRect> pParticleBuffer;
 		ComPtr<ID3D11ShaderResourceView> pWhiteTexture;
 		ComPtr<ID3D11ShaderResourceView> pBlackTexture;
-		ComPtr<ID3D11BlendState> pExactPreviewAdditiveOneOneBlendState;
-		std::unordered_map<std::string,
-			std::shared_ptr<const EXACT_PREVIEW_INSTALLED_VARIANT>>
-			ExactPreviewVariantsBySourceMaterial;
 	};
 
 	struct PREPARED_KEY final
@@ -4439,241 +4385,6 @@ namespace
 		OutPath = Path;
 		OutBytes = std::move(Bytes);
 		return true;
-	}
-
-	struct GLASSHOLE02_TRANSLATED_TEXTURE_PIN final
-	{
-		const char* pAssetId;
-		uint64_t iByteCount;
-		const char* pSha256;
-		bool_t bSRGB;
-	};
-
-	/* Seven material SRVs are source-ordered; t2 is reserved for the engine
-	   Target_Depth SRV.  These hashes are the exact runtime-DDS parity receipt,
-	   not a best-effort lookup through the generic source texture lanes. */
-	constexpr std::array<GLASSHOLE02_TRANSLATED_TEXTURE_PIN, 7u>
-		GLASSHOLE02_TRANSLATED_TEXTURE_PINS = {{
-		{ "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_normal_bc5_09.dds",
-			262272u,
-			"75829aa6ea4c6f8a4bd3c2f646dac2ce08071af06052d3b048e5c558d6f30f44",
-			false },
-		{ "Effect/DimensionMaster/Textures/FX_TEX_02/fx_d_atypical_094_ycl.dds",
-			65664u,
-			"8097e1011480df43f56ad42a0ab849c74b9d8a29c17c867556f1df68dd071041",
-			true },
-		{ "Effect/DimensionMaster/Textures/FX_TEX_06/fx_m_cybernoise_02.dds",
-			131200u,
-			"389d6a10a5f3d321a1c085e42a9ac9cd6d2c82366cfc8c24690626610efe70b3",
-			true },
-		{ "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_dustparticle_tile_02.dds",
-			262272u,
-			"57f00863a0be5449b1c0c5b07d9d44055f1cc1fc043bac481b83810e2c995c8f",
-			true },
-		{ "Effect/DimensionMaster/Textures/FX_TEX_06/fx_j_environment_tile_01.dds",
-			131200u,
-			"78dcb7d7b4e624365651e263f2272c05faa1d9171b526383cc9cbf8e8e073963",
-			true },
-		{ "Effect/DimensionMaster/Textures/FX_TEX_04/fx_f_aura_004_1.dds",
-			32896u,
-			"80a7797447d457de7e56594951e2d91c12899d144a7e0c730a4a8da14fdca896",
-			true },
-		{ "Effect/DimensionMaster/Textures/FX_TEX_04/fx_i_environment_001.dds",
-			32896u,
-			"840ddffab2b54960a5fa045bb4333b43b02f3869716f25704149156c88ef61e6",
-			true },
-	}};
-
-	constexpr std::array<const char*, 8u>
-		GLASSHOLE02_TRANSLATED_TEXTURE_VARIABLES = {{
-		"g_Ue3Glasshole02CrackNormal",
-		"g_Ue3Glasshole02AtypicalMask",
-		"g_Ue3Glasshole02SceneDepth",
-		"g_Ue3Glasshole02InnerHole",
-		"g_Ue3Glasshole02Dust",
-		"g_Ue3Glasshole02Environment",
-		"g_Ue3Glasshole02Aura",
-		"g_Ue3Glasshole02EnvironmentOverlay",
-	}};
-
-	constexpr std::string_view GLASSHOLE02_TRANSLATED_SOURCE_MATERIAL =
-		"fx_m_mi_k_00.fx_mi.fx_k_pa_glasshole_02_01_tr";
-	constexpr std::string_view GLASSHOLE02_TRANSLATED_PARENT_MATERIAL =
-		"fx_m_mi_j_00.fx_m.fx_j_pa_glasshole_02_tr";
-
-	f32_t Glasshole02SignedFractional(const f32_t fValue)
-	{
-		/* UE3 Periodic uses x-trunc(x), retaining the sign for negative time
-		   panners. HLSL frac(x) would incorrectly wrap those rows positive. */
-		return fValue - std::trunc(fValue);
-	}
-
-	bool_t Build_Glasshole02TranslatedCanaryCB0(
-		const std::array<float4_t, 8u>& Parameters,
-		const float4_t& vAuraColor,
-		const float4_t& vInHoleColor,
-		const f32_t fLocalTimeSeconds,
-		std::array<float4_t, 22u>& OutRows)
-	{
-		const auto IsFinite4 = [](const float4_t& Value)
-		{
-			return std::isfinite(Value.x) && std::isfinite(Value.y) &&
-				std::isfinite(Value.z) && std::isfinite(Value.w);
-		};
-		if (!std::isfinite(fLocalTimeSeconds) || fLocalTimeSeconds < 0.f ||
-			!std::all_of(Parameters.begin(), Parameters.end(), IsFinite4) ||
-			!IsFinite4(vAuraColor) || !IsFinite4(vInHoleColor))
-		{
-			return false;
-		}
-
-		const auto& P = Parameters;
-		const f32_t t = fLocalTimeSeconds;
-		const auto SFrac = [](const f32_t Value)
-		{
-			return Glasshole02SignedFractional(Value);
-		};
-		const auto SplatTail = [](const f32_t x, const f32_t y)
-		{
-			return float4_t(x, y, y, y);
-		};
-
-		/* Runtime particle COLOR.w already carries the life-alpha envelope.  The
-		   source CB0 external-opacity row remains 1 to avoid applying it twice. */
-		OutRows[0] = { 1.f, 0.f, 0.f, 0.f };
-		OutRows[1] = { 0.f, 0.f, 0.f, 1.f };
-		OutRows[2] = SplatTail(P[4].x * t, P[4].y * t);
-		OutRows[3] = { SFrac(0.01f * t), SFrac(0.03f * t), 0.f, 0.f };
-		OutRows[4] = SplatTail(P[0].x, P[0].y);
-		OutRows[5] = SplatTail(P[0].z, P[0].w);
-		OutRows[6] = SplatTail(P[6].x, P[6].y);
-		OutRows[7] = { SFrac(t * P[7].z),
-			SFrac(t * P[7].z * -0.23f), 0.f, 0.f };
-		OutRows[8] = { SFrac(t * P[7].z * -0.5f),
-			SFrac(t * P[7].z * 0.37f), 0.f, 0.f };
-		OutRows[9] = vInHoleColor;
-		OutRows[10] = { 0.f, SFrac(0.125f * t), 0.f, 0.f };
-		OutRows[11] = { 0.f, SFrac(0.175f * t), 0.f, 0.f };
-		OutRows[12] = vAuraColor;
-		OutRows[13] = { 0.f, SFrac(-0.5f * t), 0.f, 0.f };
-		OutRows[14] = { P[5].y * 0.25f, P[5].z,
-			P[5].z * 0.5f, P[5].w };
-		OutRows[15] = { SFrac(t * P[7].z * 0.37f),
-			SFrac(t * P[7].z * -0.5f), P[6].z, P[3].w };
-		OutRows[16] = { P[7].w, P[4].z, P[4].w, P[5].x };
-		OutRows[17] = { 0.f, 0.125f * t, P[2].x, P[1].w };
-		OutRows[18] = { P[2].z, P[1].z, P[2].w, P[3].x };
-		OutRows[19] = { P[3].y, P[3].z,
-			P[3].z * t, SFrac(0.125f * t) };
-		OutRows[20] = { 0.f, 0.175f * t,
-			SFrac(0.175f * t), P[1].y };
-		OutRows[21] = { P[1].x, -0.5f * t,
-			SFrac(-0.5f * t), P[6].w };
-		return std::all_of(OutRows.begin(), OutRows.end(), IsFinite4);
-	}
-
-	bool_t Validate_Glasshole02TranslatedCanaryCB0Evaluator()
-	{
-		const std::array<float4_t, 8u> Parameters = {{
-			{ 0.4f, 0.4f, 0.5f, 0.5f },
-			{ 5.f, 2.f, 2.f, 0.1f },
-			{ 1.f, 0.f, 0.f, -0.8f },
-			{ 1.f, 1.f, 0.f, 0.2f },
-			{ 0.015f, 0.025f, 2.f, 1.f },
-			{ 0.3f, 10.f, -15.f, 1.f },
-			{ 4.f, 0.f, -7.f, 0.8f },
-			{ 4.f, 2.f, 0.4f, 0.f },
-		}};
-		const float4_t Aura{ 2.f, 1.2f, 0.8f, 1.f };
-		const float4_t InHole{ 1.f, 1.f, 1.f, 1.f };
-		const auto Close = [](const f32_t Left, const f32_t Right)
-		{
-			return std::abs(Left - Right) <= 1.e-6f;
-		};
-		const auto RowEquals = [&Close](const float4_t& Row,
-			const float4_t& Expected)
-		{
-			return Close(Row.x, Expected.x) && Close(Row.y, Expected.y) &&
-				Close(Row.z, Expected.z) && Close(Row.w, Expected.w);
-		};
-
-		std::array<float4_t, 22u> Rows{};
-		if (!Build_Glasshole02TranslatedCanaryCB0(
-			Parameters, Aura, InHole, 0.f, Rows))
-		{
-			return false;
-		}
-		const std::array<float4_t, 22u> TimeZero = {{
-			{ 1.f, 0.f, 0.f, 0.f }, { 0.f, 0.f, 0.f, 1.f },
-			{ 0.f, 0.f, 0.f, 0.f }, { 0.f, 0.f, 0.f, 0.f },
-			{ 0.4f, 0.4f, 0.4f, 0.4f },
-			{ 0.5f, 0.5f, 0.5f, 0.5f }, { 4.f, 0.f, 0.f, 0.f },
-			{ 0.f, 0.f, 0.f, 0.f }, { 0.f, 0.f, 0.f, 0.f },
-			{ 1.f, 1.f, 1.f, 1.f }, { 0.f, 0.f, 0.f, 0.f },
-			{ 0.f, 0.f, 0.f, 0.f }, { 2.f, 1.2f, 0.8f, 1.f },
-			{ 0.f, 0.f, 0.f, 0.f }, { 2.5f, -15.f, -7.5f, 1.f },
-			{ 0.f, 0.f, -7.f, 0.2f }, { 0.f, 2.f, 1.f, 0.3f },
-			{ 0.f, 0.f, 1.f, 0.1f }, { 0.f, 2.f, -0.8f, 1.f },
-			{ 1.f, 0.f, 0.f, 0.f }, { 0.f, 0.f, 0.f, 2.f },
-			{ 5.f, 0.f, 0.f, 0.8f },
-		}};
-		const auto AllRowsEqual = [&RowEquals](
-			const std::array<float4_t, 22u>& Actual,
-			const std::array<float4_t, 22u>& Expected)
-		{
-			for (size_t i = 0u; i < Actual.size(); ++i)
-			{
-				if (!RowEquals(Actual[i], Expected[i]))
-					return false;
-			}
-			return true;
-		};
-		if (!AllRowsEqual(Rows, TimeZero))
-			return false;
-
-		const std::array<float4_t, 22u> TimeQuarter = {{
-			{ 1.f, 0.f, 0.f, 0.f }, { 0.f, 0.f, 0.f, 1.f },
-			{ 0.00375f, 0.00625f, 0.00625f, 0.00625f },
-			{ 0.0025f, 0.0075f, 0.f, 0.f },
-			{ 0.4f, 0.4f, 0.4f, 0.4f },
-			{ 0.5f, 0.5f, 0.5f, 0.5f }, { 4.f, 0.f, 0.f, 0.f },
-			{ 0.1f, -0.023f, 0.f, 0.f },
-			{ -0.05f, 0.037f, 0.f, 0.f },
-			{ 1.f, 1.f, 1.f, 1.f }, { 0.f, 0.03125f, 0.f, 0.f },
-			{ 0.f, 0.04375f, 0.f, 0.f }, { 2.f, 1.2f, 0.8f, 1.f },
-			{ 0.f, -0.125f, 0.f, 0.f }, { 2.5f, -15.f, -7.5f, 1.f },
-			{ 0.037f, -0.05f, -7.f, 0.2f }, { 0.f, 2.f, 1.f, 0.3f },
-			{ 0.f, 0.03125f, 1.f, 0.1f }, { 0.f, 2.f, -0.8f, 1.f },
-			{ 1.f, 0.f, 0.f, 0.03125f },
-			{ 0.f, 0.04375f, 0.04375f, 2.f },
-			{ 5.f, -0.125f, -0.125f, 0.8f },
-		}};
-		if (!Build_Glasshole02TranslatedCanaryCB0(
-			Parameters, Aura, InHole, 0.25f, Rows) ||
-			!AllRowsEqual(Rows, TimeQuarter))
-		{
-			return false;
-		}
-
-		const std::array<float4_t, 22u> TimePointSix = {{
-			{ 1.f, 0.f, 0.f, 0.f }, { 0.f, 0.f, 0.f, 1.f },
-			{ 0.009f, 0.015f, 0.015f, 0.015f },
-			{ 0.006f, 0.018f, 0.f, 0.f },
-			{ 0.4f, 0.4f, 0.4f, 0.4f },
-			{ 0.5f, 0.5f, 0.5f, 0.5f }, { 4.f, 0.f, 0.f, 0.f },
-			{ 0.24f, -0.0552f, 0.f, 0.f },
-			{ -0.12f, 0.0888f, 0.f, 0.f },
-			{ 1.f, 1.f, 1.f, 1.f }, { 0.f, 0.075f, 0.f, 0.f },
-			{ 0.f, 0.105f, 0.f, 0.f }, { 2.f, 1.2f, 0.8f, 1.f },
-			{ 0.f, -0.3f, 0.f, 0.f }, { 2.5f, -15.f, -7.5f, 1.f },
-			{ 0.0888f, -0.12f, -7.f, 0.2f }, { 0.f, 2.f, 1.f, 0.3f },
-			{ 0.f, 0.075f, 1.f, 0.1f }, { 0.f, 2.f, -0.8f, 1.f },
-			{ 1.f, 0.f, 0.f, 0.075f }, { 0.f, 0.105f, 0.105f, 2.f },
-			{ 5.f, -0.3f, -0.3f, 0.8f },
-		}};
-		return Build_Glasshole02TranslatedCanaryCB0(
-			Parameters, Aura, InHole, 0.6f, Rows) &&
-			AllRowsEqual(Rows, TimePointSix);
 	}
 
 	std::string Sha256Hex(const std::array<uint8_t, 32u>& Bytes)
@@ -5025,327 +4736,6 @@ namespace
 		uint32_t m_iStencilReference = 0u;
 	};
 
-	/* Raw cooked PS audition bypasses Effects11's normal state ownership.  Keep
-	   the complete state surface touched by the bridge pass and raw PS draw so a
-	   failed object-local canary cannot contaminate the next renderer. */
-	class CExactPreviewPipelineStateGuard final
-	{
-	public:
-		explicit CExactPreviewPipelineStateGuard(ID3D11DeviceContext* pContext)
-			: m_pContext(pContext)
-		{
-			if (nullptr == m_pContext)
-				return;
-
-			ID3D11InputLayout* pInputLayout = nullptr;
-			m_pContext->IAGetInputLayout(&pInputLayout);
-			m_pInputLayout.Attach(pInputLayout);
-			std::array<ID3D11Buffer*,
-				D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> VertexBuffers{};
-			m_pContext->IAGetVertexBuffers(0u,
-				D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT,
-				VertexBuffers.data(), m_VertexBufferStrides.data(),
-				m_VertexBufferOffsets.data());
-			for (size_t i = 0u; i < VertexBuffers.size(); ++i)
-				m_VertexBuffers[i].Attach(VertexBuffers[i]);
-			ID3D11Buffer* pIndexBuffer = nullptr;
-			m_pContext->IAGetIndexBuffer(
-				&pIndexBuffer, &m_IndexFormat, &m_iIndexOffset);
-			m_pIndexBuffer.Attach(pIndexBuffer);
-			m_pContext->IAGetPrimitiveTopology(&m_PrimitiveTopology);
-
-			ID3D11VertexShader* pVertexShader = nullptr;
-			ID3D11GeometryShader* pGeometryShader = nullptr;
-			ID3D11PixelShader* pPixelShader = nullptr;
-			m_pContext->VSGetShader(&pVertexShader, nullptr, nullptr);
-			m_pContext->GSGetShader(&pGeometryShader, nullptr, nullptr);
-			m_pContext->PSGetShader(&pPixelShader, nullptr, nullptr);
-			m_pVertexShader.Attach(pVertexShader);
-			m_pGeometryShader.Attach(pGeometryShader);
-			m_pPixelShader.Attach(pPixelShader);
-
-			CaptureConstantBuffers();
-			CapturePixelResources();
-			CaptureOutputMerger();
-			CaptureRasterizer();
-			m_bCaptured = true;
-		}
-
-		~CExactPreviewPipelineStateGuard()
-		{
-			Restore();
-		}
-
-		CExactPreviewPipelineStateGuard(
-			const CExactPreviewPipelineStateGuard&) = delete;
-		CExactPreviewPipelineStateGuard& operator=(
-			const CExactPreviewPipelineStateGuard&) = delete;
-
-	private:
-		void CaptureConstantBuffers()
-		{
-			std::array<ID3D11Buffer*,
-				D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> VSRaw{};
-			std::array<ID3D11Buffer*,
-				D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> PSRaw{};
-			m_pContext->VSGetConstantBuffers(0u,
-				D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, VSRaw.data());
-			m_pContext->PSGetConstantBuffers(0u,
-				D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, PSRaw.data());
-			for (size_t i = 0u; i < VSRaw.size(); ++i)
-			{
-				m_VSConstantBuffers[i].Attach(VSRaw[i]);
-				m_PSConstantBuffers[i].Attach(PSRaw[i]);
-			}
-		}
-
-		void CapturePixelResources()
-		{
-			std::array<ID3D11ShaderResourceView*,
-				D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> ResourceRaw{};
-			std::array<ID3D11SamplerState*,
-				D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT> SamplerRaw{};
-			m_pContext->PSGetShaderResources(0u,
-				D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,
-				ResourceRaw.data());
-			m_pContext->PSGetSamplers(0u,
-				D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, SamplerRaw.data());
-			for (size_t i = 0u; i < ResourceRaw.size(); ++i)
-				m_PSShaderResources[i].Attach(ResourceRaw[i]);
-			for (size_t i = 0u; i < SamplerRaw.size(); ++i)
-				m_PSSamplers[i].Attach(SamplerRaw[i]);
-		}
-
-		void CaptureOutputMerger()
-		{
-			std::array<ID3D11RenderTargetView*,
-				D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> RenderTargetRaw{};
-			ID3D11DepthStencilView* pDepthStencilView = nullptr;
-			m_pContext->OMGetRenderTargets(
-				D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
-				RenderTargetRaw.data(), &pDepthStencilView);
-			for (size_t i = 0u; i < RenderTargetRaw.size(); ++i)
-				m_RenderTargets[i].Attach(RenderTargetRaw[i]);
-			m_pDepthStencilView.Attach(pDepthStencilView);
-
-			ID3D11BlendState* pBlendState = nullptr;
-			ID3D11DepthStencilState* pDepthStencilState = nullptr;
-			m_pContext->OMGetBlendState(
-				&pBlendState, m_BlendFactor.data(), &m_iSampleMask);
-			m_pContext->OMGetDepthStencilState(
-				&pDepthStencilState, &m_iStencilReference);
-			m_pBlendState.Attach(pBlendState);
-			m_pDepthStencilState.Attach(pDepthStencilState);
-		}
-
-		void CaptureRasterizer()
-		{
-			ID3D11RasterizerState* pRasterizerState = nullptr;
-			m_pContext->RSGetState(&pRasterizerState);
-			m_pRasterizerState.Attach(pRasterizerState);
-			m_iViewportCount = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
-			m_iScissorCount = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
-			m_pContext->RSGetViewports(&m_iViewportCount, m_Viewports.data());
-			m_pContext->RSGetScissorRects(&m_iScissorCount, m_Scissors.data());
-		}
-
-		void Restore()
-		{
-			if (!m_bCaptured || nullptr == m_pContext)
-				return;
-
-			/* Break raw-PS SRV/RT hazards before restoring the captured graph. */
-			std::array<ID3D11ShaderResourceView*,
-				D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> NullResources{};
-			std::array<ID3D11RenderTargetView*,
-				D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> NullTargets{};
-			m_pContext->PSSetShaderResources(0u,
-				D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,
-				NullResources.data());
-			m_pContext->OMSetRenderTargets(
-				D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
-				NullTargets.data(), nullptr);
-
-			ID3D11InputLayout* pInputLayout = m_pInputLayout.Get();
-			m_pContext->IASetInputLayout(pInputLayout);
-			std::array<ID3D11Buffer*,
-				D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> VertexBufferRaw{};
-			for (size_t i = 0u; i < VertexBufferRaw.size(); ++i)
-				VertexBufferRaw[i] = m_VertexBuffers[i].Get();
-			m_pContext->IASetVertexBuffers(0u,
-				D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT,
-				VertexBufferRaw.data(), m_VertexBufferStrides.data(),
-				m_VertexBufferOffsets.data());
-			m_pContext->IASetIndexBuffer(
-				m_pIndexBuffer.Get(), m_IndexFormat, m_iIndexOffset);
-			m_pContext->IASetPrimitiveTopology(m_PrimitiveTopology);
-
-			m_pContext->VSSetShader(m_pVertexShader.Get(), nullptr, 0u);
-			m_pContext->GSSetShader(m_pGeometryShader.Get(), nullptr, 0u);
-			m_pContext->PSSetShader(m_pPixelShader.Get(), nullptr, 0u);
-			std::array<ID3D11Buffer*,
-				D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> VSRaw{};
-			std::array<ID3D11Buffer*,
-				D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> PSRaw{};
-			for (size_t i = 0u; i < VSRaw.size(); ++i)
-			{
-				VSRaw[i] = m_VSConstantBuffers[i].Get();
-				PSRaw[i] = m_PSConstantBuffers[i].Get();
-			}
-			m_pContext->VSSetConstantBuffers(0u,
-				D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, VSRaw.data());
-			m_pContext->PSSetConstantBuffers(0u,
-				D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, PSRaw.data());
-
-			std::array<ID3D11ShaderResourceView*,
-				D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> ResourceRaw{};
-			std::array<ID3D11SamplerState*,
-				D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT> SamplerRaw{};
-			for (size_t i = 0u; i < ResourceRaw.size(); ++i)
-				ResourceRaw[i] = m_PSShaderResources[i].Get();
-			for (size_t i = 0u; i < SamplerRaw.size(); ++i)
-				SamplerRaw[i] = m_PSSamplers[i].Get();
-			m_pContext->PSSetShaderResources(0u,
-				D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT,
-				ResourceRaw.data());
-			m_pContext->PSSetSamplers(0u,
-				D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, SamplerRaw.data());
-
-			std::array<ID3D11RenderTargetView*,
-				D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> RenderTargetRaw{};
-			for (size_t i = 0u; i < RenderTargetRaw.size(); ++i)
-				RenderTargetRaw[i] = m_RenderTargets[i].Get();
-			m_pContext->OMSetRenderTargets(
-				D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT,
-				RenderTargetRaw.data(), m_pDepthStencilView.Get());
-			m_pContext->OMSetBlendState(
-				m_pBlendState.Get(), m_BlendFactor.data(), m_iSampleMask);
-			m_pContext->OMSetDepthStencilState(
-				m_pDepthStencilState.Get(), m_iStencilReference);
-			m_pContext->RSSetState(m_pRasterizerState.Get());
-			m_pContext->RSSetViewports(m_iViewportCount, m_Viewports.data());
-			m_pContext->RSSetScissorRects(m_iScissorCount, m_Scissors.data());
-			m_bCaptured = false;
-		}
-
-		ID3D11DeviceContext* m_pContext = nullptr;
-		bool_t m_bCaptured = false;
-		ComPtr<ID3D11InputLayout> m_pInputLayout;
-		std::array<ComPtr<ID3D11Buffer>,
-			D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> m_VertexBuffers{};
-		std::array<uint32_t, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT>
-			m_VertexBufferStrides{};
-		std::array<uint32_t, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT>
-			m_VertexBufferOffsets{};
-		ComPtr<ID3D11Buffer> m_pIndexBuffer;
-		DXGI_FORMAT m_IndexFormat = DXGI_FORMAT_UNKNOWN;
-		uint32_t m_iIndexOffset = 0u;
-		D3D11_PRIMITIVE_TOPOLOGY m_PrimitiveTopology =
-			D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
-		ComPtr<ID3D11VertexShader> m_pVertexShader;
-		ComPtr<ID3D11GeometryShader> m_pGeometryShader;
-		ComPtr<ID3D11PixelShader> m_pPixelShader;
-		std::array<ComPtr<ID3D11Buffer>,
-			D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT>
-			m_VSConstantBuffers{};
-		std::array<ComPtr<ID3D11Buffer>,
-			D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT>
-			m_PSConstantBuffers{};
-		std::array<ComPtr<ID3D11ShaderResourceView>,
-			D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>
-			m_PSShaderResources{};
-		std::array<ComPtr<ID3D11SamplerState>,
-			D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT> m_PSSamplers{};
-		std::array<ComPtr<ID3D11RenderTargetView>,
-			D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> m_RenderTargets{};
-		ComPtr<ID3D11DepthStencilView> m_pDepthStencilView;
-		ComPtr<ID3D11BlendState> m_pBlendState;
-		ComPtr<ID3D11DepthStencilState> m_pDepthStencilState;
-		ComPtr<ID3D11RasterizerState> m_pRasterizerState;
-		std::array<float, 4u> m_BlendFactor{};
-		uint32_t m_iSampleMask = 0xffffffffu;
-		uint32_t m_iStencilReference = 0u;
-		std::array<D3D11_VIEWPORT,
-			D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE>
-			m_Viewports{};
-		std::array<D3D11_RECT,
-			D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE>
-			m_Scissors{};
-		uint32_t m_iViewportCount = 0u;
-		uint32_t m_iScissorCount = 0u;
-	};
-
-	HRESULT Bind_AuthoringExactPreviewPacket(
-		ID3D11DeviceContext* pContext,
-		const Client::CEffectDocumentRenderer::EXACT_PREVIEW_ELEMENT_PACKET& Packet,
-		ID3D11BlendState* pAdditiveOneOneBlendState,
-		const f32_t fExternalOpacityScale)
-	{
-		if (nullptr == pContext || nullptr == pAdditiveOneOneBlendState ||
-			nullptr == Packet.pProgram ||
-			nullptr == Packet.pProgram->pPixelShader ||
-			nullptr == Packet.pCBuffer0 || Packet.CBuffer0Bytes.empty() ||
-			Packet.CBuffer0Bytes.size() !=
-				Packet.pProgram->iCBuffer0ByteCount ||
-			!std::isfinite(fExternalOpacityScale) ||
-			fExternalOpacityScale < 0.f)
-		{
-			return E_INVALIDARG;
-		}
-
-		D3D11_MAPPED_SUBRESOURCE Mapped{};
-		const HRESULT MapResult = pContext->Map(
-			Packet.pCBuffer0.Get(), 0u, D3D11_MAP_WRITE_DISCARD, 0u, &Mapped);
-		if (FAILED(MapResult) || nullptr == Mapped.pData)
-			return FAILED(MapResult) ? MapResult : E_FAIL;
-		std::memcpy(Mapped.pData, Packet.CBuffer0Bytes.data(),
-			Packet.CBuffer0Bytes.size());
-		if (UINT32_MAX != Packet.iExternalOpacityRow)
-		{
-			if (Packet.iExternalOpacityComponent >= 4u ||
-				Packet.iExternalOpacityRow * sizeof(float4_t) +
-					(Packet.iExternalOpacityComponent + 1u) * sizeof(f32_t) >
-					Packet.CBuffer0Bytes.size())
-			{
-				pContext->Unmap(Packet.pCBuffer0.Get(), 0u);
-				return E_INVALIDARG;
-			}
-			f32_t* const pScalars = reinterpret_cast<f32_t*>(Mapped.pData);
-			const size_t iScalar =
-				static_cast<size_t>(Packet.iExternalOpacityRow) * 4u +
-				Packet.iExternalOpacityComponent;
-			pScalars[iScalar] *= fExternalOpacityScale;
-		}
-		pContext->Unmap(Packet.pCBuffer0.Get(), 0u);
-
-		ID3D11Buffer* pCBuffer0 = Packet.pCBuffer0.Get();
-		pContext->PSSetConstantBuffers(0u, 1u, &pCBuffer0);
-		for (const auto& Binding : Packet.TextureBindings)
-		{
-			if (nullptr == Binding.pTexture || nullptr == Binding.pSampler ||
-				Binding.iTextureRegister >=
-					D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT ||
-				Binding.iSamplerRegister >=
-					D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT)
-			{
-				return E_INVALIDARG;
-			}
-			ID3D11ShaderResourceView* pTexture = Binding.pTexture.Get();
-			ID3D11SamplerState* pSampler = Binding.pSampler.Get();
-			pContext->PSSetShaderResources(
-				Binding.iTextureRegister, 1u, &pTexture);
-			pContext->PSSetSamplers(
-				Binding.iSamplerRegister, 1u, &pSampler);
-		}
-		pContext->PSSetShader(
-			Packet.pProgram->pPixelShader.Get(), nullptr, 0u);
-		constexpr std::array<f32_t, 4u> BLEND_FACTOR =
-			{{ 0.f, 0.f, 0.f, 0.f }};
-		pContext->OMSetBlendState(
-			pAdditiveOneOneBlendState, BLEND_FACTOR.data(), 0xffffffffu);
-		return S_OK;
-	}
-
 	uint64_t Build_ResourceSignature(
 		const Client::EFFECT_DOCUMENT_DESC& Document)
 	{
@@ -5466,15 +4856,6 @@ namespace
 			TEXT("../Bin/ShaderFiles/Shader_VtxEffectParticle.hlsl"),
 			Engine::VTXEFFECT_PARTICLE::Elements,
 			Engine::VTXEFFECT_PARTICLE::iNumElements);
-		Core->pExactSpriteBridgeShader = Engine::CShader::Create(
-			pDevice, pContext,
-			TEXT("../Bin/ShaderFiles/Shader_EffectExactSpriteBridge.hlsl"),
-			Engine::VTXEFFECT_PARTICLE::Elements,
-			Engine::VTXEFFECT_PARTICLE::iNumElements);
-		Core->pExactLocalMeshBridgeShader = Engine::CShader::Create(
-			pDevice, pContext,
-			TEXT("../Bin/ShaderFiles/Shader_EffectExactLocalMeshBridge.hlsl"),
-			VTXMESH::Elements, VTXMESH::iNumElements);
 		Core->pTrailShader = Engine::CShader::Create(
 			pDevice, pContext,
 			TEXT("../Bin/ShaderFiles/Shader_VtxEffectTrail.hlsl"),
@@ -5491,27 +4872,13 @@ namespace
 		   GPU buffer creation. */
 		Core->pParticleBuffer = Engine::CVIBuffer_ParticleRect::Create(
 			pDevice, pContext, 2048u);
-		D3D11_BLEND_DESC ExactBlend{};
-		ExactBlend.RenderTarget[0u].BlendEnable = true;
-		ExactBlend.RenderTarget[0u].SrcBlend = D3D11_BLEND_ONE;
-		ExactBlend.RenderTarget[0u].DestBlend = D3D11_BLEND_ONE;
-		ExactBlend.RenderTarget[0u].BlendOp = D3D11_BLEND_OP_ADD;
-		ExactBlend.RenderTarget[0u].SrcBlendAlpha = D3D11_BLEND_ONE;
-		ExactBlend.RenderTarget[0u].DestBlendAlpha = D3D11_BLEND_ONE;
-		ExactBlend.RenderTarget[0u].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-		ExactBlend.RenderTarget[0u].RenderTargetWriteMask =
-			D3D11_COLOR_WRITE_ENABLE_ALL;
 		if (nullptr == Core->pMeshShader ||
 			nullptr == Core->pAnimatedModelShader ||
 			nullptr == Core->pRectShader ||
 			nullptr == Core->pParticleShader ||
-			nullptr == Core->pExactSpriteBridgeShader ||
-			nullptr == Core->pExactLocalMeshBridgeShader ||
 			nullptr == Core->pTrailShader ||
 			nullptr == Core->pDecalShader || nullptr == Core->pRect ||
 			nullptr == Core->pParticleBuffer ||
-			FAILED(pDevice->CreateBlendState(
-				&ExactBlend, &Core->pExactPreviewAdditiveOneOneBlendState)) ||
 			FAILED(Create_SolidTexture(
 				pDevice.Get(), 0xffffffffu, Core->pWhiteTexture)) ||
 			FAILED(Create_SolidTexture(
@@ -5570,549 +4937,14 @@ HRESULT Client::CEffectDocumentRenderer::Initialize()
 	m_pAnimatedModelShader = Core->pAnimatedModelShader;
 	m_pRectShader = Core->pRectShader;
 	m_pParticleShader = Core->pParticleShader;
-	m_pExactSpriteBridgeShader = Core->pExactSpriteBridgeShader;
-	m_pExactLocalMeshBridgeShader = Core->pExactLocalMeshBridgeShader;
 	m_pTrailShader = Core->pTrailShader;
 	m_pDecalShader = Core->pDecalShader;
 	m_pRect = Core->pRect;
 	m_pParticleBuffer = Core->pParticleBuffer;
 	m_pWhiteTexture = Core->pWhiteTexture;
 	m_pBlackTexture = Core->pBlackTexture;
-	m_pExactPreviewAdditiveOneOneBlendState =
-		Core->pExactPreviewAdditiveOneOneBlendState;
 	m_strStatus = "Effect renderer ready.";
 	return S_OK;
-}
-
-bool_t Client::CEffectDocumentRenderer::Install_AuthoringExactPreviewVariants(
-	ComPtr<ID3D11Device> pDevice,
-	ComPtr<ID3D11DeviceContext> pContext,
-	const std::span<const EFFECT_EXACT_PREVIEW_VARIANT_DESC> Variants,
-	std::string& strOutError)
-{
-	strOutError.clear();
-	if (nullptr == pDevice || nullptr == pContext)
-	{
-		strOutError = "Exact preview install requires a D3D11 device/context.";
-		return false;
-	}
-	const std::shared_ptr<EFFECT_RENDERER_CORE> Core =
-		Acquire_RendererCore(pDevice, pContext);
-	if (nullptr == Core)
-	{
-		strOutError = "Exact preview renderer core creation failed.";
-		return false;
-	}
-
-	std::unordered_map<std::string,
-		std::shared_ptr<const EXACT_PREVIEW_INSTALLED_VARIANT>> StagedBySource;
-	std::unordered_set<std::string> VariantKeys;
-	for (const EFFECT_EXACT_PREVIEW_VARIANT_DESC& Variant : Variants)
-	{
-		if (Variant.strVariantKey.empty() ||
-			Variant.strSourceMaterialPath.empty() ||
-			EFFECT_EXACT_PREVIEW_CARRIER::END == Variant.eCarrier ||
-			EFFECT_EXACT_PREVIEW_OUTPUT_CONTRACT::
-				ADDITIVE_ONE_ONE_RT0_ZERO_ALPHA != Variant.eOutputContract)
-		{
-			strOutError = "Exact preview variant identity/output contract is invalid.";
-			return false;
-		}
-		if (!VariantKeys.emplace(Variant.strVariantKey).second ||
-			StagedBySource.contains(Variant.strSourceMaterialPath))
-		{
-			strOutError = "Exact preview variant/source material is duplicated: " +
-				Variant.strVariantKey;
-			return false;
-		}
-		if (Variant.PixelShaderBytecode.size() < 4u ||
-			0 != std::memcmp(
-				Variant.PixelShaderBytecode.data(), "DXBC", 4u) ||
-			Variant.iExpectedPixelShaderByteCount !=
-				Variant.PixelShaderBytecode.size())
-		{
-			strOutError = "Exact preview pixel shader byte contract changed: " +
-				Variant.strVariantKey;
-			return false;
-		}
-		const std::string_view ShaderBytes(
-			reinterpret_cast<const char*>(Variant.PixelShaderBytecode.data()),
-			Variant.PixelShaderBytecode.size());
-		if (Variant.strExpectedPixelShaderSha256.size() != 64u ||
-			CEffectRuntimeAuthorityCodec::Compute_Sha256Hex(ShaderBytes) !=
-				Variant.strExpectedPixelShaderSha256)
-		{
-			strOutError = "Exact preview pixel shader SHA-256 changed: " +
-				Variant.strVariantKey;
-			return false;
-		}
-
-		ComPtr<ID3D11ShaderReflection> Reflection;
-		if (FAILED(D3DReflect(Variant.PixelShaderBytecode.data(),
-			Variant.PixelShaderBytecode.size(), IID_PPV_ARGS(&Reflection))))
-		{
-			strOutError = "Exact preview pixel shader reflection failed: " +
-				Variant.strVariantKey;
-			return false;
-		}
-		D3D11_SHADER_DESC ShaderDesc{};
-		if (FAILED(Reflection->GetDesc(&ShaderDesc)) ||
-			D3D11_SHVER_PIXEL_SHADER != D3D11_SHVER_GET_TYPE(ShaderDesc.Version) ||
-			1u != ShaderDesc.OutputParameters)
-		{
-			strOutError = "Exact preview is not a one-target pixel shader: " +
-				Variant.strVariantKey;
-			return false;
-		}
-		D3D11_SIGNATURE_PARAMETER_DESC OutputDesc{};
-		if (FAILED(Reflection->GetOutputParameterDesc(0u, &OutputDesc)) ||
-			0u != OutputDesc.Register || D3D_NAME_TARGET != OutputDesc.SystemValueType)
-		{
-			strOutError = "Exact preview output is not SV_Target0: " +
-				Variant.strVariantKey;
-			return false;
-		}
-
-		struct REQUIRED_INPUT final
-		{
-			const char* pSemantic;
-			uint32_t iSemanticIndex;
-		};
-		static constexpr std::array<REQUIRED_INPUT, 8u> SPRITE_INPUTS = {{
-			{ "TEXCOORD", 10u }, { "TEXCOORD", 11u },
-			{ "TEXCOORD", 0u }, { "TEXCOORD", 1u },
-			{ "TEXCOORD", 2u }, { "TEXCOORD", 4u },
-			{ "TEXCOORD", 6u }, { "TEXCOORD", 5u }
-		}};
-		static constexpr std::array<REQUIRED_INPUT, 8u> LOCAL_MESH_INPUTS = {{
-			{ "TEXCOORD", 10u }, { "TEXCOORD", 11u },
-			{ "COLOR", 0u }, { "COLOR", 1u },
-			{ "TEXCOORD", 0u }, { "TEXCOORD", 4u },
-			{ "TEXCOORD", 6u }, { "TEXCOORD", 5u }
-		}};
-		const std::span<const REQUIRED_INPUT> RequiredInputs =
-			EFFECT_EXACT_PREVIEW_CARRIER::LOCAL_MESH == Variant.eCarrier ?
-				std::span<const REQUIRED_INPUT>(LOCAL_MESH_INPUTS) :
-				std::span<const REQUIRED_INPUT>(SPRITE_INPUTS);
-		std::array<bool_t, 8u> FoundInputs{};
-		bool_t bHasFrontFace = false;
-		for (uint32_t iInput = 0u; iInput < ShaderDesc.InputParameters; ++iInput)
-		{
-			D3D11_SIGNATURE_PARAMETER_DESC InputDesc{};
-			if (FAILED(Reflection->GetInputParameterDesc(iInput, &InputDesc)))
-			{
-				strOutError = "Exact preview input reflection failed: " +
-					Variant.strVariantKey;
-				return false;
-			}
-			if (D3D_NAME_IS_FRONT_FACE == InputDesc.SystemValueType)
-			{
-				bHasFrontFace = true;
-				continue;
-			}
-			const auto Iterator = std::find_if(
-				RequiredInputs.begin(), RequiredInputs.end(),
-				[&InputDesc](const REQUIRED_INPUT& Required)
-				{
-					return nullptr != InputDesc.SemanticName &&
-						0 == _stricmp(InputDesc.SemanticName,
-							Required.pSemantic) &&
-						InputDesc.SemanticIndex == Required.iSemanticIndex;
-				});
-			if (Iterator == RequiredInputs.end())
-			{
-				strOutError = "Exact preview carrier signature changed: " +
-					Variant.strVariantKey;
-				return false;
-			}
-			FoundInputs[static_cast<size_t>(
-				std::distance(RequiredInputs.begin(), Iterator))] = true;
-		}
-		if (!bHasFrontFace ||
-			!std::all_of(FoundInputs.begin(), FoundInputs.end(),
-				[](const bool_t bFound) { return bFound; }))
-		{
-			strOutError = "Exact preview bridge signature is incomplete: " +
-				Variant.strVariantKey;
-			return false;
-		}
-
-		std::unordered_set<uint32_t> ReflectedTextures;
-		std::unordered_set<uint32_t> ReflectedSamplers;
-		std::string CBuffer0Name;
-		const bool_t bResourceReflectionStripped =
-			0u == ShaderDesc.BoundResources &&
-			0u == ShaderDesc.ConstantBuffers;
-		for (uint32_t iResource = 0u;
-			iResource < ShaderDesc.BoundResources; ++iResource)
-		{
-			D3D11_SHADER_INPUT_BIND_DESC Binding{};
-			if (FAILED(Reflection->GetResourceBindingDesc(iResource, &Binding)) ||
-				0u == Binding.BindCount)
-			{
-				strOutError = "Exact preview resource reflection failed: " +
-					Variant.strVariantKey;
-				return false;
-			}
-			if (D3D_SIT_CBUFFER == Binding.Type)
-			{
-				if (!CBuffer0Name.empty() || 0u != Binding.BindPoint ||
-					1u != Binding.BindCount || nullptr == Binding.Name)
-				{
-					strOutError = "Exact preview CB binding is unsupported: " +
-						Variant.strVariantKey;
-					return false;
-				}
-				CBuffer0Name = Binding.Name;
-				continue;
-			}
-			if (D3D_SIT_TEXTURE == Binding.Type ||
-				D3D_SIT_SAMPLER == Binding.Type)
-			{
-				auto& Registers = D3D_SIT_TEXTURE == Binding.Type ?
-					ReflectedTextures : ReflectedSamplers;
-				for (uint32_t i = 0u; i < Binding.BindCount; ++i)
-					Registers.emplace(Binding.BindPoint + i);
-				continue;
-			}
-			strOutError = "Exact preview uses an unsupported GPU resource: " +
-				Variant.strVariantKey;
-			return false;
-		}
-		static_assert(16u == sizeof(float4_t));
-		if (Variant.CBuffer0Rows.empty() ||
-			Variant.CBuffer0Rows.size() >
-				D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT)
-		{
-			strOutError = "Exact preview sealed CB0 rows are invalid: " +
-				Variant.strVariantKey;
-			return false;
-		}
-		const uint32_t iSealedCBuffer0ByteCount = static_cast<uint32_t>(
-			Variant.CBuffer0Rows.size() * sizeof(float4_t));
-		uint32_t iCBuffer0ByteCount = iSealedCBuffer0ByteCount;
-		if (!bResourceReflectionStripped)
-		{
-			if (CBuffer0Name.empty())
-			{
-				strOutError = "Exact preview CB0 is absent: " +
-					Variant.strVariantKey;
-				return false;
-			}
-			ID3D11ShaderReflectionConstantBuffer* const pReflectedCBuffer =
-				Reflection->GetConstantBufferByName(CBuffer0Name.c_str());
-			D3D11_SHADER_BUFFER_DESC CBufferDesc{};
-			if (nullptr == pReflectedCBuffer ||
-				FAILED(pReflectedCBuffer->GetDesc(&CBufferDesc)) ||
-				0u == CBufferDesc.Size || 0u != CBufferDesc.Size % 16u ||
-				iSealedCBuffer0ByteCount != CBufferDesc.Size)
-			{
-				strOutError = "Exact preview CB0 byte closure changed: " +
-					Variant.strVariantKey;
-				return false;
-			}
-			iCBuffer0ByteCount = CBufferDesc.Size;
-		}
-		/* The recovered UE3 cooked shaders deliberately retain input/output
-		   signatures but omit RDEF resource metadata.  In that fully stripped
-		   case only, the sealed sidecar owns the bounded CB0 byte count and t/s
-		   register list.  Any shader that still exposes resource reflection
-		   remains on the strict equality path below. */
-
-		std::unordered_set<uint32_t> RequestedTextures;
-		std::unordered_set<uint32_t> RequestedSamplers;
-		auto Installed = std::make_shared<EXACT_PREVIEW_INSTALLED_VARIANT>();
-		Installed->strSourceMaterialPath = Variant.strSourceMaterialPath;
-		Installed->CBuffer0Bytes.resize(iCBuffer0ByteCount);
-		std::memcpy(Installed->CBuffer0Bytes.data(),
-			Variant.CBuffer0Rows.data(), iCBuffer0ByteCount);
-		for (const EFFECT_EXACT_PREVIEW_TEXTURE_BINDING_DESC& Texture :
-			Variant.TextureBindings)
-		{
-			if (Texture.strAssetId.empty() ||
-				Texture.iTextureRegister >=
-					D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT ||
-				Texture.iSamplerRegister >=
-					D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT ||
-				!RequestedTextures.emplace(Texture.iTextureRegister).second ||
-				!RequestedSamplers.emplace(Texture.iSamplerRegister).second)
-			{
-				strOutError = "Exact preview texture/sampler binding is invalid: " +
-					Variant.strVariantKey;
-				return false;
-			}
-			const std::filesystem::path TexturePath =
-				CRuntimeAssetRoot::Resolve(
-					std::filesystem::path(Texture.strAssetId));
-			if (TexturePath.empty() || !std::filesystem::is_regular_file(TexturePath))
-			{
-				strOutError = "Exact preview texture is missing: " + Texture.strAssetId;
-				return false;
-			}
-			EXACT_PREVIEW_ELEMENT_PACKET::TEXTURE_BINDING RuntimeBinding;
-			RuntimeBinding.iTextureRegister = Texture.iTextureRegister;
-			RuntimeBinding.iSamplerRegister = Texture.iSamplerRegister;
-			const DirectX::DDS_LOADER_FLAGS Flags =
-				EFFECT_TEXTURE_COLOR_SPACE::SRGB == Texture.eColorSpace ?
-					DirectX::DDS_LOADER_FORCE_SRGB :
-					DirectX::DDS_LOADER_IGNORE_SRGB;
-			if (FAILED(DirectX::CreateDDSTextureFromFileEx(
-				pDevice.Get(), TexturePath.c_str(), 0u, D3D11_USAGE_DEFAULT,
-				D3D11_BIND_SHADER_RESOURCE, 0u, 0u, Flags, nullptr,
-				&RuntimeBinding.pTexture)))
-			{
-				strOutError = "Exact preview DDS load failed: " + Texture.strAssetId;
-				return false;
-			}
-			D3D11_SAMPLER_DESC SamplerDesc{};
-			if (!Try_ToD3dSampler(Texture.Sampler, SamplerDesc) ||
-				FAILED(pDevice->CreateSamplerState(
-					&SamplerDesc, &RuntimeBinding.pSampler)))
-			{
-				strOutError = "Exact preview sampler creation failed: " +
-					Variant.strVariantKey;
-				return false;
-			}
-			Installed->TextureBindings.push_back(std::move(RuntimeBinding));
-		}
-		if (!bResourceReflectionStripped &&
-			(RequestedTextures != ReflectedTextures ||
-				RequestedSamplers != ReflectedSamplers))
-		{
-			strOutError = "Exact preview texture/sampler register closure changed: " +
-				Variant.strVariantKey;
-			return false;
-		}
-
-		const bool_t bHasOpacityPatch =
-			UINT32_MAX != Variant.iExternalOpacityRow ||
-			UINT32_MAX != Variant.iExternalOpacityComponent;
-		if (bHasOpacityPatch &&
-			(Variant.iExternalOpacityRow >= Variant.CBuffer0Rows.size() ||
-				Variant.iExternalOpacityComponent >= 4u))
-		{
-			strOutError = "Exact preview external-opacity lane is invalid: " +
-				Variant.strVariantKey;
-			return false;
-		}
-
-		auto Program = std::make_shared<EXACT_PREVIEW_PROGRAM>();
-		Program->strVariantKey = Variant.strVariantKey;
-		Program->eCarrier = Variant.eCarrier;
-		Program->iCBuffer0ByteCount = iCBuffer0ByteCount;
-		if (FAILED(pDevice->CreatePixelShader(
-			Variant.PixelShaderBytecode.data(),
-			Variant.PixelShaderBytecode.size(), nullptr,
-			&Program->pPixelShader)))
-		{
-			strOutError = "Exact preview pixel shader creation failed: " +
-				Variant.strVariantKey;
-			return false;
-		}
-		Installed->pProgram = std::move(Program);
-		Installed->iExternalOpacityRow = Variant.iExternalOpacityRow;
-		Installed->iExternalOpacityComponent =
-			Variant.iExternalOpacityComponent;
-		StagedBySource.emplace(
-			Installed->strSourceMaterialPath, std::move(Installed));
-	}
-
-	{
-		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
-		const auto Iterator = g_EffectRendererCores.find(pDevice.Get());
-		if (Iterator == g_EffectRendererCores.end() ||
-			Iterator->second.get() != Core.get())
-		{
-			strOutError = "Exact preview renderer core changed during install.";
-			return false;
-		}
-		Core->ExactPreviewVariantsBySourceMaterial = std::move(StagedBySource);
-	}
-	return true;
-}
-
-bool_t Client::CEffectDocumentRenderer::Set_AuthoringExactPreviewExecutionEnabled(
-	const bool_t bEnabled,
-	std::string& strOutError)
-{
-	strOutError.clear();
-	if (!bEnabled)
-	{
-		m_bAuthoringExactPreviewExecutionEnabled = false;
-		m_strStatus = "Authoring exact preview disabled; family-lite fallback active.";
-		return true;
-	}
-	if (nullptr != m_pPreparedDocument || !m_Document.Elements.empty())
-	{
-		strOutError =
-			"Enable authoring exact preview before staging an Effect Document.";
-		return false;
-	}
-	if (m_bAuthoringGlasshole02TranslatedCanaryEnabled ||
-		m_bAuthoringValtanTranslatedCanaryEnabled)
-	{
-		strOutError =
-			"Raw cooked preview and translated family canaries are mutually exclusive.";
-		return false;
-	}
-	const std::shared_ptr<EFFECT_RENDERER_CORE> Core =
-		Acquire_RendererCore(m_pDevice, m_pContext);
-	if (nullptr == Core)
-	{
-		strOutError = "Exact preview renderer core is unavailable.";
-		return false;
-	}
-	{
-		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
-		if (Core->ExactPreviewVariantsBySourceMaterial.empty())
-		{
-			strOutError = "No sealed authoring exact-preview variants are installed.";
-			return false;
-		}
-	}
-	m_bAuthoringExactPreviewExecutionEnabled = true;
-	m_strStatus =
-		"Authoring exact preview enabled for sealed material matches only.";
-	return true;
-}
-
-bool_t Client::CEffectDocumentRenderer::
-	Set_AuthoringGlasshole02TranslatedCanaryEnabled(
-		const bool_t bEnabled,
-		std::string& strOutError)
-{
-	strOutError.clear();
-	static_assert(!GLASSHOLE02_TRANSLATED_CANARY_DEFAULT_ENABLED);
-	static_assert(!GLASSHOLE02_TRANSLATED_CANARY_PRODUCT_ENABLED);
-	static_assert(GLASSHOLE02_TRANSLATED_CANARY_FAIL_CLOSED);
-	/* Stable runtime-time seam consumed by
-	   Build_Glasshole02TranslatedCanaryCB0 every draw:
-	   g_Glasshole02LocalTimeSeconds. */
-	if (!bEnabled)
-	{
-		m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
-		m_pGlasshole02TranslatedCanaryShader.reset();
-		m_pGlasshole02TranslatedCanaryBlendState.Reset();
-		m_strStatus =
-			"Glasshole02 translated-HLSL canary disabled; ordinary preview active.";
-		return true;
-	}
-	if (nullptr != m_pPreparedDocument || !m_Document.Elements.empty())
-	{
-		strOutError =
-			"Enable Glasshole02 translated canary before staging an Effect Document.";
-		return false;
-	}
-	if (m_bAuthoringExactPreviewExecutionEnabled)
-	{
-		strOutError =
-			"Glasshole02 translated canary and raw cooked preview are mutually exclusive.";
-		return false;
-	}
-	if (m_bAuthoringValtanTranslatedCanaryEnabled)
-	{
-		strOutError =
-			"Glasshole02 and Valtan translated canaries are mutually exclusive.";
-		return false;
-	}
-	if (!Validate_Glasshole02TranslatedCanaryCB0Evaluator())
-	{
-		strOutError =
-			"Glasshole02 exact CB0 local-time evaluator self-test failed.";
-		return false;
-	}
-
-	shared_ptr<Engine::CShader> StagedShader = Engine::CShader::Create(
-		m_pDevice, m_pContext,
-		TEXT("../Bin/ShaderFiles/Shader_VtxEffectGlasshole02.hlsl"),
-		Engine::VTXEFFECT_PARTICLE::Elements,
-		Engine::VTXEFFECT_PARTICLE::iNumElements);
-	if (nullptr == StagedShader)
-	{
-		strOutError =
-			"Glasshole02 translated runtime shader compile/create failed.";
-		return false;
-	}
-
-	D3D11_BLEND_DESC Blend{};
-	Blend.IndependentBlendEnable = true;
-	Blend.RenderTarget[0u].BlendEnable = true;
-	Blend.RenderTarget[0u].SrcBlend = D3D11_BLEND_SRC_ALPHA;
-	Blend.RenderTarget[0u].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
-	Blend.RenderTarget[0u].BlendOp = D3D11_BLEND_OP_ADD;
-	Blend.RenderTarget[0u].SrcBlendAlpha = D3D11_BLEND_ONE;
-	Blend.RenderTarget[0u].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
-	Blend.RenderTarget[0u].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-	Blend.RenderTarget[0u].RenderTargetWriteMask =
-		D3D11_COLOR_WRITE_ENABLE_ALL;
-	/* The Tool carrier is RT0-only.  Target_Distortion/RT1 remains an explicit
-	   sentinel even if an Effect pass is later widened accidentally. */
-	Blend.RenderTarget[1u].RenderTargetWriteMask = 0u;
-	ComPtr<ID3D11BlendState> StagedBlend;
-	if (FAILED(m_pDevice->CreateBlendState(&Blend, &StagedBlend)))
-	{
-		strOutError =
-			"Glasshole02 translated RT0-only blend state creation failed.";
-		return false;
-	}
-
-	m_pGlasshole02TranslatedCanaryShader = std::move(StagedShader);
-	m_pGlasshole02TranslatedCanaryBlendState = std::move(StagedBlend);
-	m_bAuthoringGlasshole02TranslatedCanaryEnabled = true;
-	m_strStatus =
-		"Glasshole02 translated-HLSL Tool canary armed; Product remains OFF and failures are fail-closed.";
-	return true;
-}
-
-bool_t Client::CEffectDocumentRenderer::
-	Set_AuthoringValtanTranslatedCanaryEnabled(
-		const bool_t bEnabled,
-		std::string& strOutError)
-{
-	strOutError.clear();
-	static_assert(!VALTAN_TRANSLATED_CANARY_DEFAULT_ENABLED);
-	static_assert(!VALTAN_TRANSLATED_CANARY_PRODUCT_ENABLED);
-	static_assert(VALTAN_TRANSLATED_CANARY_FAIL_CLOSED);
-	static_assert(!CValtanTranslatedCanaryRuntime::DEFAULT_ENABLED);
-	static_assert(!CValtanTranslatedCanaryRuntime::PRODUCT_ENABLED);
-	static_assert(CValtanTranslatedCanaryRuntime::FAIL_CLOSED);
-	static_assert(!CValtanTranslatedCanaryRuntime::ENGINE_SCENE_CB_EXACT);
-	if (!bEnabled)
-	{
-		m_bAuthoringValtanTranslatedCanaryEnabled = false;
-		if (nullptr != m_pValtanTranslatedCanaryRuntime)
-			m_pValtanTranslatedCanaryRuntime->Clear();
-		m_pValtanTranslatedCanaryRuntime.reset();
-		m_strStatus =
-			"Valtan translated-HLSL canary disabled; ordinary preview active.";
-		return true;
-	}
-	if (nullptr != m_pPreparedDocument || !m_Document.Elements.empty())
-	{
-		strOutError =
-			"Enable Valtan translated canary before staging an Effect Document.";
-		return false;
-	}
-	if (m_bAuthoringExactPreviewExecutionEnabled ||
-		m_bAuthoringGlasshole02TranslatedCanaryEnabled)
-	{
-		strOutError =
-			"Valtan translated canary and other authoring canaries are mutually exclusive.";
-		return false;
-	}
-	auto Staged = std::make_unique<CValtanTranslatedCanaryRuntime>(
-		m_pDevice, m_pContext);
-	if (!Staged->Arm(strOutError))
-	{
-		if (strOutError.empty())
-			strOutError = "Valtan translated runtime could not be armed.";
-		return false;
-	}
-	m_pValtanTranslatedCanaryRuntime = std::move(Staged);
-	m_bAuthoringValtanTranslatedCanaryEnabled = true;
-	m_strStatus =
-		"Valtan core-three translated-HLSL Tool canary armed; Product remains OFF and failures are fail-closed.";
-	return true;
 }
 
 HRESULT Client::CEffectDocumentRenderer::Load_Texture(
@@ -6189,308 +5021,7 @@ HRESULT Client::CEffectDocumentRenderer::Load_SourceTexture(
 	return S_OK;
 }
 
-bool_t Client::CEffectDocumentRenderer::Stage_AuthoringExactPreviewPacket(
-	const EFFECT_ELEMENT_DESC& Element,
-	ELEMENT_RESOURCE& InOutResource,
-	std::string& strOutError) const
-{
-	if (!m_bAuthoringExactPreviewExecutionEnabled ||
-		Element.Material.strSourceMaterialPath.empty())
-	{
-		return true;
-	}
-
-	std::shared_ptr<const EXACT_PREVIEW_INSTALLED_VARIANT> Installed;
-	{
-		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
-		const auto CoreIterator = g_EffectRendererCores.find(m_pDevice.Get());
-		if (CoreIterator == g_EffectRendererCores.end())
-		{
-			strOutError = "Exact preview renderer core disappeared while staging.";
-			return false;
-		}
-		const auto VariantIterator =
-			CoreIterator->second->ExactPreviewVariantsBySourceMaterial.find(
-				Element.Material.strSourceMaterialPath);
-		if (VariantIterator ==
-			CoreIterator->second->ExactPreviewVariantsBySourceMaterial.end())
-		{
-			/* An unregistered material deliberately keeps its existing family-lite
-			   path. Exact registration is an opt-in canary, not a global mode. */
-			return true;
-		}
-		Installed = VariantIterator->second;
-	}
-	if (nullptr == Installed || nullptr == Installed->pProgram ||
-		nullptr == Installed->pProgram->pPixelShader)
-	{
-		strOutError = "Exact preview installed program is incomplete.";
-		return false;
-	}
-
-	const bool_t bHasModel = nullptr !=
-		Find_Binding(Element, EFFECT_RESOURCE_SLOT::MESH_MODEL);
-	const bool_t bCarrierMatches =
-		(EFFECT_EXACT_PREVIEW_CARRIER::SPRITE_PARTICLE ==
-			Installed->pProgram->eCarrier && !bHasModel &&
-			(EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind ||
-			 EFFECT_ELEMENT_KIND::SPRITE == Element.eKind ||
-			 (Element.SourceRecipe.bEnabled &&
-			  Element.SourceRecipe.strRendererShape == "sprite"))) ||
-		(EFFECT_EXACT_PREVIEW_CARRIER::LOCAL_MESH ==
-			Installed->pProgram->eCarrier && bHasModel);
-	if (!bCarrierMatches)
-		return true;
-
-	auto Packet = std::make_shared<EXACT_PREVIEW_ELEMENT_PACKET>();
-	Packet->pProgram = Installed->pProgram;
-	Packet->CBuffer0Bytes = Installed->CBuffer0Bytes;
-	Packet->TextureBindings = Installed->TextureBindings;
-	Packet->iExternalOpacityRow = Installed->iExternalOpacityRow;
-	Packet->iExternalOpacityComponent =
-		Installed->iExternalOpacityComponent;
-	D3D11_BUFFER_DESC BufferDesc{};
-	BufferDesc.ByteWidth = Packet->pProgram->iCBuffer0ByteCount;
-	BufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	BufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	BufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	if (0u == BufferDesc.ByteWidth ||
-		BufferDesc.ByteWidth != Packet->CBuffer0Bytes.size() ||
-		FAILED(m_pDevice->CreateBuffer(
-			&BufferDesc, nullptr, &Packet->pCBuffer0)))
-	{
-		strOutError = "Exact preview per-element CB0 creation failed: " +
-			Element.strElementId;
-		return false;
-	}
-	InOutResource.pExactPreviewPacket = std::move(Packet);
-	return true;
-}
-
-bool_t Client::CEffectDocumentRenderer::
-	Stage_Glasshole02TranslatedCanaryPacket(
-		const std::string& strEffectAssetId,
-		const EFFECT_ELEMENT_DESC& Element,
-		ELEMENT_RESOURCE& InOutResource,
-		std::string& strOutError) const
-{
-	if (!m_bAuthoringGlasshole02TranslatedCanaryEnabled)
-		return true;
-	if (strEffectAssetId != GLASSHOLE02_TRANSLATED_CANARY_EFFECT_ASSET_ID)
-	{
-		strOutError =
-			"Glasshole02 translated canary rejected a non-target Effect ID.";
-		return false;
-	}
-	if (Element.strElementId != GLASSHOLE02_TRANSLATED_CANARY_OCCURRENCE_ID)
-		return true;
-
-	const EFFECT_SOURCE_MATERIAL_DESC& Source =
-		Element.Material.SourceMaterial;
-	const auto FindUniqueModule = [&Element](
-		const std::string_view strStableId,
-		const std::string_view strClassName)
-		-> const EFFECT_SOURCE_MODULE_DESC*
-	{
-		const EFFECT_SOURCE_MODULE_DESC* pFound = nullptr;
-		for (const EFFECT_SOURCE_MODULE_DESC& Module :
-			Element.SourceRecipe.Modules)
-		{
-			if (Module.strStableId != strStableId ||
-				Module.strClassName != strClassName)
-			{
-				continue;
-			}
-			if (nullptr != pFound)
-				return nullptr;
-			pFound = &Module;
-		}
-		return pFound;
-	};
-	const EFFECT_SOURCE_MODULE_DESC* const pRequired = FindUniqueModule(
-		"FX_PC_SWP_05:export:2282@ref:0", "particlemodulerequired");
-	const EFFECT_SOURCE_MODULE_DESC* const pDynamic = FindUniqueModule(
-		"FX_PC_SWP_05:export:1895@ref:4",
-		"particlemoduleparameterdynamic");
-	const auto HasBooleanLiteral = [](const EFFECT_SOURCE_MODULE_DESC* pModule,
-		const std::string_view strPath, const bool_t bExpected)
-	{
-		if (nullptr == pModule)
-			return false;
-		size_t iCount = 0u;
-		bool_t bMatches = false;
-		for (const EFFECT_SOURCE_LITERAL_DESC& Literal : pModule->Literals)
-		{
-			if (Literal.strPropertyPath != strPath)
-				continue;
-			++iCount;
-			bMatches = Literal.eKind == EFFECT_SOURCE_LITERAL_KIND::BOOLEAN &&
-				Literal.bBoolean == bExpected;
-		}
-		return 1u == iCount && bMatches;
-	};
-	const auto HasStringLiteral = [](const EFFECT_SOURCE_MODULE_DESC* pModule,
-		const std::string_view strPath,
-		const std::string_view strExpected)
-	{
-		if (nullptr == pModule)
-			return false;
-		size_t iCount = 0u;
-		bool_t bMatches = false;
-		for (const EFFECT_SOURCE_LITERAL_DESC& Literal : pModule->Literals)
-		{
-			if (Literal.strPropertyPath != strPath)
-				continue;
-			++iCount;
-			bMatches = Literal.eKind == EFFECT_SOURCE_LITERAL_KIND::STRING &&
-				Literal.strString == strExpected;
-		}
-		return 1u == iCount && bMatches;
-	};
-	const auto HasNumberLiteral = [](const EFFECT_SOURCE_MODULE_DESC* pModule,
-		const std::string_view strPath, const f64_t fExpected)
-	{
-		if (nullptr == pModule)
-			return false;
-		size_t iCount = 0u;
-		bool_t bMatches = false;
-		for (const EFFECT_SOURCE_LITERAL_DESC& Literal : pModule->Literals)
-		{
-			if (Literal.strPropertyPath != strPath)
-				continue;
-			++iCount;
-			bMatches = Literal.eKind == EFFECT_SOURCE_LITERAL_KIND::NUMBER &&
-				Literal.fNumber == fExpected;
-		}
-		return 1u == iCount && bMatches;
-	};
-	if (EFFECT_ELEMENT_KIND::PARTICLE != Element.eKind ||
-		!Element.SourceRecipe.bEnabled ||
-		Element.SourceRecipe.strRendererShape != "sprite" ||
-		!HasBooleanLiteral(pRequired, "boffsetcenter", true) ||
-		!HasStringLiteral(pRequired, "screenalignment", "psa_rectangle") ||
-		!HasNumberLiteral(pDynamic, "updateflags", 15.0) ||
-		nullptr != Find_Binding(Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
-		29u != EffectiveSourceMaterialProfileIndex(Element) ||
-		!Source.bEnabled ||
-		Element.Material.strSourceMaterialPath !=
-			GLASSHOLE02_TRANSLATED_SOURCE_MATERIAL ||
-		Source.strProfileId != GLASSHOLE02_TRANSLATED_CANARY_FAMILY_ID ||
-		Source.strRuntimeShaderProfileId !=
-			GLASSHOLE02_TRANSLATED_CANARY_PROFILE_ID ||
-		Source.strParentMaterialPath !=
-			GLASSHOLE02_TRANSLATED_PARENT_MATERIAL ||
-		EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ !=
-			Element.Material.eRenderProfile)
-	{
-		strOutError =
-			"Glasshole02 translated canary occurrence/VF/material identity changed.";
-		return false;
-	}
-	if (nullptr == m_pGlasshole02TranslatedCanaryShader ||
-		nullptr == m_pGlasshole02TranslatedCanaryBlendState)
-	{
-		strOutError =
-			"Glasshole02 translated canary GPU program was not armed before staging.";
-		return false;
-	}
-
-	auto Packet =
-		std::make_shared<GLASSHOLE02_TRANSLATED_CANARY_ELEMENT_PACKET>();
-	for (size_t iLane = 0u;
-		iLane < GLASSHOLE02_TRANSLATED_TEXTURE_PINS.size(); ++iLane)
-	{
-		const GLASSHOLE02_TRANSLATED_TEXTURE_PIN& Pin =
-			GLASSHOLE02_TRANSLATED_TEXTURE_PINS[iLane];
-		std::filesystem::path TexturePath;
-		std::vector<uint8_t> TextureBytes;
-		if (!Read_ReconstructedAssetBytes(Pin.pAssetId, Pin.iByteCount,
-			Pin.pSha256, TexturePath, TextureBytes, strOutError))
-		{
-			return false;
-		}
-		const DirectX::DDS_LOADER_FLAGS Flags = Pin.bSRGB ?
-			DirectX::DDS_LOADER_FORCE_SRGB :
-			DirectX::DDS_LOADER_IGNORE_SRGB;
-		if (FAILED(DirectX::CreateDDSTextureFromMemoryEx(
-			m_pDevice.Get(), TextureBytes.data(), TextureBytes.size(), 0u,
-			D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0u, 0u,
-			Flags, nullptr, &Packet->MaterialTextures[iLane])) ||
-			nullptr == Packet->MaterialTextures[iLane])
-		{
-			strOutError = std::string(
-				"Glasshole02 translated canary DDS typed upload failed: ") +
-				Pin.pAssetId;
-			return false;
-		}
-	}
-
-	for (size_t iSampler = 0u; iSampler < Packet->Samplers.size(); ++iSampler)
-	{
-		D3D11_SAMPLER_DESC Desc{};
-		Desc.Filter = 0u == iSampler ?
-			D3D11_FILTER_MIN_MAG_MIP_POINT :
-			D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-		Desc.AddressU = 0u == iSampler ?
-			D3D11_TEXTURE_ADDRESS_CLAMP : D3D11_TEXTURE_ADDRESS_WRAP;
-		Desc.AddressV = (0u == iSampler || 2u == iSampler) ?
-			D3D11_TEXTURE_ADDRESS_CLAMP : D3D11_TEXTURE_ADDRESS_WRAP;
-		Desc.AddressW = 0u == iSampler ?
-			D3D11_TEXTURE_ADDRESS_CLAMP : D3D11_TEXTURE_ADDRESS_WRAP;
-		Desc.MaxAnisotropy = 1u;
-		Desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-		Desc.MinLOD = 0.f;
-		Desc.MaxLOD = D3D11_FLOAT32_MAX;
-		if (FAILED(m_pDevice->CreateSamplerState(
-			&Desc, &Packet->Samplers[iSampler])) ||
-			nullptr == Packet->Samplers[iSampler])
-		{
-			strOutError =
-				"Glasshole02 translated canary sampler creation failed.";
-			return false;
-		}
-	}
-
-	Packet->iRequiredSourceMask =
-		GLASSHOLE02_TRANSLATED_CANARY_REQUIRED_SOURCE_MASK;
-	InOutResource.pGlasshole02TranslatedCanaryPacket = std::move(Packet);
-	return true;
-}
-
-bool_t Client::CEffectDocumentRenderer::
-	Stage_ValtanTranslatedCanaryPacket(
-		const std::string& strEffectAssetId,
-		const EFFECT_ELEMENT_DESC& Element,
-		ELEMENT_RESOURCE& InOutResource,
-		std::string& strOutError) const
-{
-	if (!m_bAuthoringValtanTranslatedCanaryEnabled)
-		return true;
-	if (strEffectAssetId != VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID)
-	{
-		strOutError =
-			"Valtan translated canary rejected a non-target Effect ID.";
-		return false;
-	}
-	if (nullptr == m_pValtanTranslatedCanaryRuntime ||
-		!m_pValtanTranslatedCanaryRuntime->Is_Armed())
-	{
-		strOutError =
-			"Valtan translated canary runtime was not armed before staging.";
-		return false;
-	}
-	std::shared_ptr<const VALTAN_TRANSLATED_CANARY_ELEMENT_PACKET> Packet;
-	if (!m_pValtanTranslatedCanaryRuntime->Stage_Packet(
-		strEffectAssetId, Element, Packet, strOutError))
-	{
-		return false;
-	}
-	InOutResource.pValtanTranslatedCanaryPacket = std::move(Packet);
-	return true;
-}
-
 HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
-	const std::string& strEffectAssetId,
 	const EFFECT_ELEMENT_DESC& Element,
 	ELEMENT_RESOURCE& OutResource,
 	std::string& strOutError,
@@ -6498,18 +5029,6 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 	const f32_t fModelPreScale) const
 {
 	ELEMENT_RESOURCE Staged;
-	if (!Stage_AuthoringExactPreviewPacket(Element, Staged, strOutError))
-		return E_FAIL;
-	if (!Stage_Glasshole02TranslatedCanaryPacket(
-		strEffectAssetId, Element, Staged, strOutError))
-	{
-		return E_FAIL;
-	}
-	if (!Stage_ValtanTranslatedCanaryPacket(
-		strEffectAssetId, Element, Staged, strOutError))
-	{
-		return E_FAIL;
-	}
 	if (EFFECT_ELEMENT_KIND::LIGHT == Element.eKind ||
 	EFFECT_ELEMENT_KIND::SCREEN_POST == Element.eKind)
 	{
@@ -6517,10 +5036,7 @@ HRESULT Client::CEffectDocumentRenderer::Stage_ElementResource(
 		return S_OK;
 	}
 	if (Element.Material.Execution.bFailClosed &&
-		!Element.Material.Execution.bAuthoringApproximate &&
-		nullptr == Staged.pExactPreviewPacket &&
-		nullptr == Staged.pGlasshole02TranslatedCanaryPacket &&
-		nullptr == Staged.pValtanTranslatedCanaryPacket)
+		!Element.Material.Execution.bAuthoringApproximate)
 	{
 		Staged.bOccurrenceVisualSuppressed = true;
 		OutResource = std::move(Staged);
@@ -15653,9 +14169,6 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 		ELEMENT_RESOURCE Resource;
 		const bool_t bOrdinaryFailClosed = nullptr == pPreparation &&
 			nullptr == pVisualProgramProjection &&
-			!m_bAuthoringExactPreviewExecutionEnabled &&
-			!m_bAuthoringGlasshole02TranslatedCanaryEnabled &&
-			!m_bAuthoringValtanTranslatedCanaryEnabled &&
 			Element.Material.Execution.bFailClosed &&
 			!Element.Material.Execution.bAuthoringApproximate;
 		if (bOrdinaryFailClosed)
@@ -15667,7 +14180,7 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 			Resource.bOccurrenceVisualSuppressed = true;
 		}
 		else if (FAILED(Stage_ElementResource(
-			strEffectAssetId, *pStagedElement, Resource, strOutError,
+			*pStagedElement, Resource, strOutError,
 			pSharedAssets, fModelPreScale)))
 		{
 			return false;
@@ -16954,26 +15467,16 @@ bool_t Client::CEffectDocumentRenderer::Stage_Prepared(
 	std::shared_ptr<const PREPARED_DOCUMENT> pPrepared,
 	std::string& strOutError)
 {
-	return Stage_PreparedInternal(
-		Document, std::move(pPrepared), strOutError, false);
+	return Stage_PreparedInternal(Document, std::move(pPrepared), strOutError);
 }
 
 bool_t Client::CEffectDocumentRenderer::Stage_PreparedInternal(
 	const EFFECT_DOCUMENT_DESC& Document,
 	std::shared_ptr<const PREPARED_DOCUMENT> pPrepared,
-	std::string& strOutError,
-	const bool_t bAllowPreserveGlasshole02TranslatedCanary)
+	std::string& strOutError)
 {
 	const bool_t bCatalogPrepared = nullptr != pPrepared &&
 		0u != pPrepared->iCatalogRevision;
-	const bool_t bPreserveAuthoringExactPreview =
-		!bCatalogPrepared && m_bAuthoringExactPreviewExecutionEnabled;
-	const bool_t bPreserveGlasshole02TranslatedCanary =
-		bAllowPreserveGlasshole02TranslatedCanary && !bCatalogPrepared &&
-		m_bAuthoringGlasshole02TranslatedCanaryEnabled;
-	const bool_t bPreserveValtanTranslatedCanary =
-		bAllowPreserveGlasshole02TranslatedCanary && !bCatalogPrepared &&
-		m_bAuthoringValtanTranslatedCanaryEnabled;
 	bool_t bCatalogIdentityCurrent = true;
 	if (bCatalogPrepared)
 	{
@@ -17025,23 +15528,6 @@ bool_t Client::CEffectDocumentRenderer::Stage_PreparedInternal(
 	m_pTrailBuffer = pStagedTrailBuffer;
 	m_pReconstructedDiagnostic.reset();
 	m_ReconstructedRuntimeBoundary.Clear();
-	m_bAuthoringExactPreviewExecutionEnabled =
-		bPreserveAuthoringExactPreview;
-	m_bAuthoringGlasshole02TranslatedCanaryEnabled =
-		bPreserveGlasshole02TranslatedCanary;
-	if (!bPreserveGlasshole02TranslatedCanary)
-	{
-		m_pGlasshole02TranslatedCanaryShader.reset();
-		m_pGlasshole02TranslatedCanaryBlendState.Reset();
-	}
-	m_bAuthoringValtanTranslatedCanaryEnabled =
-		bPreserveValtanTranslatedCanary;
-	if (!bPreserveValtanTranslatedCanary)
-	{
-		if (nullptr != m_pValtanTranslatedCanaryRuntime)
-			m_pValtanTranslatedCanaryRuntime->Clear();
-		m_pValtanTranslatedCanaryRuntime.reset();
-	}
 	m_bReconstructedSourceRuntimeActive = false;
 	m_bSourceVisualProgramActive = false;
 	Reset_PreviewSubmissionIsolation();
@@ -17126,14 +15612,6 @@ bool_t Client::CEffectDocumentRenderer::Stage_PrevalidatedVisualProgramDocument(
 	m_pReconstructedDiagnostic.reset();
 	m_ModelCueResources = std::move(StagedModelCueResources);
 	m_ReconstructedRuntimeBoundary.Clear();
-	m_bAuthoringExactPreviewExecutionEnabled = false;
-	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
-	m_pGlasshole02TranslatedCanaryShader.reset();
-	m_pGlasshole02TranslatedCanaryBlendState.Reset();
-	m_bAuthoringValtanTranslatedCanaryEnabled = false;
-	if (nullptr != m_pValtanTranslatedCanaryRuntime)
-		m_pValtanTranslatedCanaryRuntime->Clear();
-	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = false;
 	/* Source-module execution is enabled only by an admitted overlay program.
 	   Adapter packets (for example LocalDecal) reuse the base playback document
@@ -17161,77 +15639,9 @@ bool_t Client::CEffectDocumentRenderer::Stage_Document(
 		const std::scoped_lock Lock(g_EffectRenderCacheMutex);
 		++g_EffectRenderPrewarmProbe.iSynchronousDocumentStageCount;
 	}
-	if (m_bAuthoringGlasshole02TranslatedCanaryEnabled)
-	{
-		if (Document.strEffectAssetId !=
-			GLASSHOLE02_TRANSLATED_CANARY_EFFECT_ASSET_ID ||
-			nullptr == m_pGlasshole02TranslatedCanaryShader ||
-			nullptr == m_pGlasshole02TranslatedCanaryBlendState)
-		{
-			strOutError =
-				"Glasshole02 translated canary document/program identity changed.";
-			return false;
-		}
-		const size_t iOccurrenceCount = static_cast<size_t>(std::count_if(
-			Document.Elements.begin(), Document.Elements.end(),
-			[](const EFFECT_ELEMENT_DESC& Element)
-			{
-				return Element.strElementId ==
-					GLASSHOLE02_TRANSLATED_CANARY_OCCURRENCE_ID;
-			}));
-		if (1u != iOccurrenceCount)
-		{
-			strOutError =
-				"Glasshole02 translated canary occurrence is absent or duplicated.";
-			return false;
-		}
-	}
-	if (m_bAuthoringValtanTranslatedCanaryEnabled)
-	{
-		if (Document.strEffectAssetId !=
-			VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID ||
-			nullptr == m_pValtanTranslatedCanaryRuntime ||
-			!m_pValtanTranslatedCanaryRuntime->Is_Armed())
-		{
-			strOutError =
-				"Valtan translated canary document/program identity changed.";
-			return false;
-		}
-		size_t iStagedOccurrenceCount = 0u;
-		for (const std::string_view strOccurrenceId :
-			VALTAN_TRANSLATED_CANARY_OCCURRENCE_IDS)
-		{
-			const size_t iCount = static_cast<size_t>(std::count_if(
-				Document.Elements.begin(), Document.Elements.end(),
-				[strOccurrenceId](const EFFECT_ELEMENT_DESC& Element)
-				{
-					return Element.strElementId == strOccurrenceId;
-				}));
-			if (iCount > 1u)
-			{
-				strOutError =
-					"Valtan translated canary occurrence is duplicated: " +
-					std::string(strOccurrenceId);
-				return false;
-			}
-			iStagedOccurrenceCount += iCount;
-		}
-		/* CEffect_Tool verifies the complete nine-occurrence authored identity
-		   before arming.  Preview isolation then removes non-solo elements, so the
-		   renderer accepts a non-empty exact subset while Stage_Packet still
-		   validates every surviving material/carrier identity fail-closed. */
-		if (0u == iStagedOccurrenceCount)
-		{
-			strOutError =
-				"Valtan translated canary preview contains no target occurrence.";
-			return false;
-		}
-	}
 	if (!CEffectDocumentCodec::Validate_Drawable(Document, strOutError))
 		return false;
-	if (!m_bAuthoringGlasshole02TranslatedCanaryEnabled &&
-		!m_bAuthoringValtanTranslatedCanaryEnabled &&
-		nullptr != m_pPreparedDocument &&
+	if (nullptr != m_pPreparedDocument &&
 		0u == m_pPreparedDocument->iCatalogRevision &&
 		Resource_SignatureMatches(m_Document, Document))
 	{
@@ -17254,8 +15664,7 @@ bool_t Client::CEffectDocumentRenderer::Stage_Document(
 	{
 		return false;
 	}
-	return Stage_PreparedInternal(
-		Document, std::move(Prepared), strOutError, true);
+	return Stage_PreparedInternal(Document, std::move(Prepared), strOutError);
 }
 
 bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedRuntimeProgram(
@@ -17271,14 +15680,6 @@ bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedRuntimeProgram(
 	m_pReconstructedDiagnostic.reset();
 	m_ModelCueResources.clear();
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
-	m_bAuthoringExactPreviewExecutionEnabled = false;
-	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
-	m_pGlasshole02TranslatedCanaryShader.reset();
-	m_pGlasshole02TranslatedCanaryBlendState.Reset();
-	m_bAuthoringValtanTranslatedCanaryEnabled = false;
-	if (nullptr != m_pValtanTranslatedCanaryRuntime)
-		m_pValtanTranslatedCanaryRuntime->Clear();
-	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = false;
 	m_bSourceVisualProgramActive = false;
 	Reset_PreviewSubmissionIsolation();
@@ -17329,14 +15730,6 @@ bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedSourceRuntime(
 	m_pReconstructedDiagnostic.reset();
 	m_ModelCueResources = std::move(StagedModelCueResources);
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
-	m_bAuthoringExactPreviewExecutionEnabled = false;
-	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
-	m_pGlasshole02TranslatedCanaryShader.reset();
-	m_pGlasshole02TranslatedCanaryBlendState.Reset();
-	m_bAuthoringValtanTranslatedCanaryEnabled = false;
-	if (nullptr != m_pValtanTranslatedCanaryRuntime)
-		m_pValtanTranslatedCanaryRuntime->Clear();
-	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = true;
 	m_bSourceVisualProgramActive = true;
 	Reset_PreviewSubmissionIsolation();
@@ -17402,14 +15795,6 @@ bool_t Client::CEffectDocumentRenderer::
 	m_pReconstructedDiagnostic.reset();
 	m_ModelCueResources = std::move(StagedModelCueResources);
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
-	m_bAuthoringExactPreviewExecutionEnabled = false;
-	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
-	m_pGlasshole02TranslatedCanaryShader.reset();
-	m_pGlasshole02TranslatedCanaryBlendState.Reset();
-	m_bAuthoringValtanTranslatedCanaryEnabled = false;
-	if (nullptr != m_pValtanTranslatedCanaryRuntime)
-		m_pValtanTranslatedCanaryRuntime->Clear();
-	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = true;
 	/* Adapter packets add renderer state only.  The reconstructed preparation
 	   continues to own source-module execution and its 35-row target closure. */
@@ -17877,14 +16262,6 @@ bool_t Client::CEffectDocumentRenderer::Stage_ReconstructedDiagnostic(
 	m_ModelCueResources.clear();
 	m_ReconstructedRuntimeBoundary = std::move(StagedBoundary);
 	m_pReconstructedDiagnostic = std::move(Staged);
-	m_bAuthoringExactPreviewExecutionEnabled = false;
-	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
-	m_pGlasshole02TranslatedCanaryShader.reset();
-	m_pGlasshole02TranslatedCanaryBlendState.Reset();
-	m_bAuthoringValtanTranslatedCanaryEnabled = false;
-	if (nullptr != m_pValtanTranslatedCanaryRuntime)
-		m_pValtanTranslatedCanaryRuntime->Clear();
-	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = false;
 	m_bSourceVisualProgramActive = false;
 	Reset_PreviewSubmissionIsolation();
@@ -18118,14 +16495,6 @@ void Client::CEffectDocumentRenderer::Clear()
 	m_pPreparedDocument.reset();
 	m_pReconstructedDiagnostic.reset();
 	m_ReconstructedRuntimeBoundary.Clear();
-	m_bAuthoringExactPreviewExecutionEnabled = false;
-	m_bAuthoringGlasshole02TranslatedCanaryEnabled = false;
-	m_pGlasshole02TranslatedCanaryShader.reset();
-	m_pGlasshole02TranslatedCanaryBlendState.Reset();
-	m_bAuthoringValtanTranslatedCanaryEnabled = false;
-	if (nullptr != m_pValtanTranslatedCanaryRuntime)
-		m_pValtanTranslatedCanaryRuntime->Clear();
-	m_pValtanTranslatedCanaryRuntime.reset();
 	m_bReconstructedSourceRuntimeActive = false;
 	m_bSourceVisualProgramActive = false;
 	Reset_PreviewSubmissionIsolation();
@@ -18829,78 +17198,6 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 	return S_OK;
 }
 
-HRESULT Client::CEffectDocumentRenderer::Render_AuthoringExactPreviewMesh(
-	const EFFECT_EVALUATED_ELEMENT& Element,
-	const ELEMENT_RESOURCE& Resource,
-	const f32_t fAlphaScale,
-	const float4x4_t& World,
-	const float4x4_t& NormalMatrix,
-	const float4_t& DynamicParameter)
-{
-	const std::shared_ptr<const EXACT_PREVIEW_ELEMENT_PACKET>& Packet =
-		Resource.pExactPreviewPacket;
-	if (!m_bAuthoringExactPreviewExecutionEnabled || nullptr == Packet ||
-		nullptr == Packet->pProgram ||
-		EFFECT_EXACT_PREVIEW_CARRIER::LOCAL_MESH !=
-			Packet->pProgram->eCarrier)
-	{
-		return S_FALSE;
-	}
-	if (nullptr == Resource.pModel || nullptr == Element.pElement ||
-		nullptr == m_pExactLocalMeshBridgeShader ||
-		nullptr == m_pExactPreviewAdditiveOneOneBlendState)
-	{
-		return E_FAIL;
-	}
-
-	CExactPreviewPipelineStateGuard StateGuard(m_pContext.Get());
-	HRESULT hResult = m_pExactLocalMeshBridgeShader->Bind_Matrix(
-		"g_WorldMatrix", &World);
-	if (SUCCEEDED(hResult))
-		hResult = m_pExactLocalMeshBridgeShader->Bind_Matrix(
-			"g_NormalMatrix", &NormalMatrix);
-	if (SUCCEEDED(hResult))
-		hResult = m_pExactLocalMeshBridgeShader->Bind_Matrix(
-			"g_ViewMatrix", CGameInstance::Get().Get_Transform(D3DTS::VIEW));
-	if (SUCCEEDED(hResult))
-		hResult = m_pExactLocalMeshBridgeShader->Bind_Matrix(
-			"g_ProjMatrix", CGameInstance::Get().Get_Transform(D3DTS::PROJ));
-	const float4_t ExactColor = Element.Color.vColorMultiply;
-	if (SUCCEEDED(hResult))
-		hResult = m_pExactLocalMeshBridgeShader->Bind_RawValue(
-			"g_ExactColor", &ExactColor, sizeof(ExactColor));
-	if (SUCCEEDED(hResult))
-		hResult = m_pExactLocalMeshBridgeShader->Bind_RawValue(
-			"g_ExactDynamicParameter", &DynamicParameter,
-			sizeof(DynamicParameter));
-	if (SUCCEEDED(hResult))
-		hResult = m_pExactLocalMeshBridgeShader->Begin(0u);
-	if (SUCCEEDED(hResult))
-		hResult = Bind_AuthoringExactPreviewPacket(
-			m_pContext.Get(), *Packet,
-			m_pExactPreviewAdditiveOneOneBlendState.Get(), fAlphaScale);
-	if (FAILED(hResult))
-		return hResult;
-
-	bool_t bSubmitted = false;
-	for (uint32_t iMesh = 0u; iMesh < Resource.pModel->Get_NumMeshes(); ++iMesh)
-	{
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-		Record_TestDrawSelection(
-			EFFECT_GPU_RENDER_CARRIER::MESH_CMODEL, 0u);
-#endif
-		hResult = Resource.pModel->Render(iMesh);
-		if (S_OK != hResult)
-			return hResult;
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-		Record_TestVIBufferBinding();
-		Record_TestIssuedDraw(World);
-#endif
-		bSubmitted = true;
-	}
-	return bSubmitted ? S_OK : S_FALSE;
-}
-
 HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	const EFFECT_EVALUATED_ELEMENT& Element,
 	const ELEMENT_RESOURCE& Resource,
@@ -19096,27 +17393,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	}
 	XMStoreFloat4x4(&NormalMatrix,
 		XMMatrixTranspose(XMMatrixInverse(nullptr, LoadedWorld)));
-	if (m_bAuthoringValtanTranslatedCanaryEnabled &&
-		nullptr != Resource.pValtanTranslatedCanaryPacket)
-	{
-		const HRESULT CanaryResult = Render_ValtanTranslatedCanaryMesh(
-			Element, Resource, World, NormalMatrix, DynamicParameter);
-		if (S_OK == CanaryResult)
-			return S_OK;
-		return Fail_RenderOperation(
-			"Valtan translated mesh canary draw failed closed.",
-			FAILED(CanaryResult) ? CanaryResult : E_FAIL, true);
-	}
-	const HRESULT ExactResult = Render_AuthoringExactPreviewMesh(
-		Element, Resource, fAlphaScale, World, NormalMatrix, DynamicParameter);
-	if (S_OK == ExactResult)
-		return S_OK;
-	if (FAILED(ExactResult))
-	{
-		/* The sealed canary is authoring-only. A device/runtime rejection keeps
-		   the existing family-lite draw visible instead of blanking the Effect. */
-		m_strStatus = "Authoring exact mesh preview failed; family-lite fallback used.";
-	}
 	HRESULT hResult = m_pMeshShader->Bind_Matrix("g_WorldMatrix", &World);
 	if (FAILED(hResult))
 		return Fail_RenderOperation(
@@ -19346,60 +17622,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_Rect(
 	return S_OK;
 }
 
-HRESULT Client::CEffectDocumentRenderer::Render_ValtanTranslatedCanaryMesh(
-	const EFFECT_EVALUATED_ELEMENT& Element,
-	const ELEMENT_RESOURCE& Resource,
-	const float4x4_t& World,
-	const float4x4_t& NormalMatrix,
-	const float4_t& DynamicParameter)
-{
-	if (!m_bAuthoringValtanTranslatedCanaryEnabled ||
-		nullptr == Resource.pValtanTranslatedCanaryPacket)
-	{
-		return S_FALSE;
-	}
-	if (nullptr == Element.pElement ||
-		nullptr == m_pValtanTranslatedCanaryRuntime ||
-		!m_pValtanTranslatedCanaryRuntime->Is_Armed())
-	{
-		return E_INVALIDARG;
-	}
-	return m_pValtanTranslatedCanaryRuntime->Draw_Mesh(
-		*Element.pElement, Resource.pModel,
-		Resource.pValtanTranslatedCanaryPacket,
-		World, NormalMatrix, DynamicParameter, Element.fLocalTimeSeconds);
-}
-
-HRESULT Client::CEffectDocumentRenderer::Render_ValtanTranslatedCanaryGround(
-	const EFFECT_EVALUATED_ELEMENT& Element,
-	const ELEMENT_RESOURCE& Resource)
-{
-	if (!m_bAuthoringValtanTranslatedCanaryEnabled ||
-		nullptr == Resource.pValtanTranslatedCanaryPacket)
-	{
-		return S_FALSE;
-	}
-	if (nullptr == Element.pElement || nullptr == m_pRect ||
-		nullptr == m_pValtanTranslatedCanaryRuntime ||
-		!m_pValtanTranslatedCanaryRuntime->Is_Armed())
-	{
-		return E_INVALIDARG;
-	}
-	const matrix_t World = XMLoadFloat4x4(&Element.World);
-	if (S_OK != Validate_DecalProjectionWorld(Element))
-		return E_INVALIDARG;
-	float4x4_t InverseDecal{};
-	XMStoreFloat4x4(&InverseDecal, XMMatrixInverse(nullptr, World));
-	EFFECT_DECAL_SHADER_PROJECTION_DESC Projection{};
-	if (!Resolve_DecalShaderProjection(Element, Projection))
-		return E_INVALIDARG;
-	return m_pValtanTranslatedCanaryRuntime->Draw_Ground(
-		*Element.pElement, m_pRect,
-		Resource.pValtanTranslatedCanaryPacket,
-		InverseDecal, Projection.vSize, Projection.fDepth,
-		Element.fLocalTimeSeconds);
-}
-
 HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	const EFFECT_EVALUATED_ELEMENT& Element,
 	const ELEMENT_RESOURCE& Resource)
@@ -19476,17 +17698,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	if (!Resolve_DecalShaderProjection(Element, Projection))
 		return Fail_RenderOperation("Decal shader projection is invalid.",
 			E_INVALIDARG, true);
-	if (m_bAuthoringValtanTranslatedCanaryEnabled &&
-		nullptr != Resource.pValtanTranslatedCanaryPacket)
-	{
-		const HRESULT CanaryResult = Render_ValtanTranslatedCanaryGround(
-			Element, Resource);
-		if (S_OK == CanaryResult)
-			return S_OK;
-		return Fail_RenderOperation(
-			"Valtan translated ground canary draw failed closed.",
-			FAILED(CanaryResult) ? CanaryResult : E_FAIL, true);
-	}
 	HRESULT hResult = Bind_MaterialInputs(m_pDecalShader,
 		*Element.pElement, Element.Color,
 		Element.fLocalTimeSeconds, Element.fNormalizedLife, Resource);
@@ -19593,9 +17804,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Element(
 	if (nullptr == Element.pElement)
 		return Fail_RenderOperation(
 			"Effect element descriptor is missing.", E_INVALIDARG, true);
-	if (Resource.bOccurrenceVisualSuppressed &&
-		!(m_bAuthoringValtanTranslatedCanaryEnabled &&
-			nullptr != Resource.pValtanTranslatedCanaryPacket))
+	if (Resource.bOccurrenceVisualSuppressed)
 		return S_FALSE;
 	switch (Element.pElement->eKind)
 	{
@@ -19673,171 +17882,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_AfterImages(
 	return bSubmitted ? S_OK : S_FALSE;
 }
 
-HRESULT Client::CEffectDocumentRenderer::Render_AuthoringExactPreviewParticles(
-	const EFFECT_ELEMENT_DESC& Source,
-	const ELEMENT_RESOURCE& Resource,
-	const std::span<const Engine::VTXEFFECT_PARTICLE> Instances)
-{
-	const std::shared_ptr<const EXACT_PREVIEW_ELEMENT_PACKET>& Packet =
-		Resource.pExactPreviewPacket;
-	if (!m_bAuthoringExactPreviewExecutionEnabled || nullptr == Packet ||
-		nullptr == Packet->pProgram ||
-		EFFECT_EXACT_PREVIEW_CARRIER::SPRITE_PARTICLE !=
-			Packet->pProgram->eCarrier)
-	{
-		return S_FALSE;
-	}
-	if (Instances.empty() || nullptr == m_pParticleBuffer ||
-		nullptr == m_pExactSpriteBridgeShader ||
-		nullptr == m_pExactPreviewAdditiveOneOneBlendState)
-	{
-		return E_FAIL;
-	}
-
-	CExactPreviewPipelineStateGuard StateGuard(m_pContext.Get());
-	HRESULT hResult = m_pExactSpriteBridgeShader->Bind_Matrix(
-		"g_ViewMatrix", CGameInstance::Get().Get_Transform(D3DTS::VIEW));
-	if (SUCCEEDED(hResult))
-		hResult = m_pExactSpriteBridgeShader->Bind_Matrix(
-			"g_ProjMatrix", CGameInstance::Get().Get_Transform(D3DTS::PROJ));
-	if (SUCCEEDED(hResult))
-		hResult = m_pExactSpriteBridgeShader->Begin(0u);
-	if (SUCCEEDED(hResult))
-		hResult = Bind_AuthoringExactPreviewPacket(
-			m_pContext.Get(), *Packet,
-			m_pExactPreviewAdditiveOneOneBlendState.Get(), 1.f);
-	if (FAILED(hResult))
-		return hResult;
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-	Record_TestDrawSelection(
-		EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE, 0u);
-#endif
-	hResult = m_pParticleBuffer->Render();
-	if (S_OK != hResult)
-		return hResult;
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-	Record_TestVIBufferBinding();
-	Record_TestIssuedDraw(Instances);
-#endif
-	return S_OK;
-}
-
-HRESULT Client::CEffectDocumentRenderer::
-	Render_Glasshole02TranslatedCanaryParticles(
-		const EFFECT_ELEMENT_DESC& Source,
-		const ELEMENT_RESOURCE& Resource,
-		const f32_t fLocalTimeSeconds,
-		const std::span<const Engine::VTXEFFECT_PARTICLE> Instances)
-{
-	const std::shared_ptr<const GLASSHOLE02_TRANSLATED_CANARY_ELEMENT_PACKET>&
-		Packet = Resource.pGlasshole02TranslatedCanaryPacket;
-	if (!m_bAuthoringGlasshole02TranslatedCanaryEnabled || nullptr == Packet)
-		return S_FALSE;
-	if (Source.strElementId != GLASSHOLE02_TRANSLATED_CANARY_OCCURRENCE_ID ||
-		Packet->iRequiredSourceMask !=
-			GLASSHOLE02_TRANSLATED_CANARY_REQUIRED_SOURCE_MASK ||
-		29u != Resource.iSourceMaterialProfile ||
-		Instances.empty() || nullptr == m_pParticleBuffer ||
-		nullptr == m_pGlasshole02TranslatedCanaryShader ||
-		nullptr == m_pGlasshole02TranslatedCanaryBlendState ||
-		std::any_of(Packet->MaterialTextures.begin(),
-			Packet->MaterialTextures.end(),
-			[](const auto& Texture) { return nullptr == Texture; }) ||
-		std::any_of(Packet->Samplers.begin(), Packet->Samplers.end(),
-			[](const auto& Sampler) { return nullptr == Sampler; }))
-	{
-		return E_INVALIDARG;
-	}
-
-	std::array<float4_t, 22u> MaterialCB0{};
-	if (!Build_Glasshole02TranslatedCanaryCB0(
-		Resource.TypedTrailParameters, Resource.vSourceVector0,
-		Resource.vSourceVector1, fLocalTimeSeconds, MaterialCB0))
-	{
-		return E_INVALIDARG;
-	}
-
-	const float4x4_t* const pView =
-		CGameInstance::Get().Get_Transform(D3DTS::VIEW);
-	const float4x4_t* const pProjection =
-		CGameInstance::Get().Get_Transform(D3DTS::PROJ);
-	if (nullptr == pView || nullptr == pProjection)
-		return E_POINTER;
-	const f32_t* const pProjectionValues = &pProjection->_11;
-	constexpr f32_t PerspectiveShapeTolerance = 1.e-5f;
-	if (!std::all_of(pProjectionValues, pProjectionValues + 16u,
-		[](const f32_t Value) { return std::isfinite(Value); }) ||
-		std::abs(pProjection->_43) <= 1.e-8f ||
-		std::abs(pProjection->_34 - 1.f) > PerspectiveShapeTolerance ||
-		std::abs(pProjection->_44) > PerspectiveShapeTolerance)
-	{
-		return E_INVALIDARG;
-	}
-	std::array<float4_t, 4u> SceneCB2{};
-	SceneCB2[0] = { 0.5f, -0.5f, 0.5f, 0.5f };
-	SceneCB2[1] = { 0.f, 0.f, 1.f / pProjection->_43,
-		pProjection->_33 / pProjection->_43 };
-
-	CExactPreviewPipelineStateGuard StateGuard(m_pContext.Get());
-	HRESULT hResult = m_pGlasshole02TranslatedCanaryShader->Bind_Matrix(
-		"g_ViewMatrix", pView);
-	if (SUCCEEDED(hResult))
-		hResult = m_pGlasshole02TranslatedCanaryShader->Bind_Matrix(
-			"g_ProjMatrix", pProjection);
-	if (SUCCEEDED(hResult))
-		hResult = m_pGlasshole02TranslatedCanaryShader->Bind_RawValue(
-			"g_Ue3Glasshole02CB0", MaterialCB0.data(), sizeof(MaterialCB0));
-	if (SUCCEEDED(hResult))
-		hResult = m_pGlasshole02TranslatedCanaryShader->Bind_RawValue(
-			"g_Ue3Glasshole02CB2", SceneCB2.data(), sizeof(SceneCB2));
-	if (SUCCEEDED(hResult))
-		hResult = m_pGlasshole02TranslatedCanaryShader->Bind_RawValue(
-			"g_Glasshole02LocalTimeSeconds", &fLocalTimeSeconds,
-			sizeof(fLocalTimeSeconds));
-	for (size_t iLane = 0u;
-		SUCCEEDED(hResult) && iLane < Packet->MaterialTextures.size(); ++iLane)
-	{
-		const size_t iVariable = iLane < 2u ? iLane : iLane + 1u;
-		hResult = m_pGlasshole02TranslatedCanaryShader->Bind_Texture(
-			GLASSHOLE02_TRANSLATED_TEXTURE_VARIABLES[iVariable],
-			Packet->MaterialTextures[iLane]);
-	}
-	if (SUCCEEDED(hResult))
-		hResult = CGameInstance::Get().Bind_RT_SRV(
-			TEXT("Target_Depth"), m_pGlasshole02TranslatedCanaryShader,
-			GLASSHOLE02_TRANSLATED_TEXTURE_VARIABLES[2u]);
-	if (SUCCEEDED(hResult))
-		hResult = m_pGlasshole02TranslatedCanaryShader->Begin(0u);
-	if (FAILED(hResult))
-		return hResult;
-
-	std::array<ID3D11SamplerState*, 8u> Samplers{};
-	for (size_t i = 0u; i < Samplers.size(); ++i)
-		Samplers[i] = Packet->Samplers[i].Get();
-	m_pContext->PSSetSamplers(
-		0u, static_cast<uint32_t>(Samplers.size()), Samplers.data());
-	constexpr std::array<f32_t, 4u> BLEND_FACTOR =
-		{{ 0.f, 0.f, 0.f, 0.f }};
-	m_pContext->OMSetBlendState(
-		m_pGlasshole02TranslatedCanaryBlendState.Get(),
-		BLEND_FACTOR.data(), 0xffffffffu);
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-	Record_TestMaterialBinding();
-	Record_TestSamplerBinding();
-	Record_TestShaderPassApplication();
-	Record_TestDrawSelection(
-		EFFECT_GPU_RENDER_CARRIER::SPRITE_INSTANCE, 0u);
-#endif
-	hResult = m_pParticleBuffer->Render();
-	if (S_OK != hResult)
-		return hResult;
-#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
-	Record_TestVIBufferBinding();
-	Record_TestIssuedDraw(Instances);
-#endif
-	return S_OK;
-}
-
 HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	const EFFECT_EVALUATED_FRAME& Frame,
 	const std::span<const EFFECT_EVALUATED_PARTICLE> Particles)
@@ -19857,26 +17901,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 	if (nullptr == pResource)
 		return Fail_RenderOperation(
 			"Particle resource contract is missing.", E_FAIL, true);
-	const bool_t bExactPreviewCandidate =
-		m_bAuthoringExactPreviewExecutionEnabled &&
-		nullptr != pResource->pExactPreviewPacket;
-	const bool_t bGlasshole02TranslatedCanaryCandidate =
-		m_bAuthoringGlasshole02TranslatedCanaryEnabled &&
-		Get_StagedDocument().strEffectAssetId ==
-			GLASSHOLE02_TRANSLATED_CANARY_EFFECT_ASSET_ID &&
-		pSource->strElementId ==
-			GLASSHOLE02_TRANSLATED_CANARY_OCCURRENCE_ID;
-	const bool_t bValtanTranslatedCanaryCandidate =
-		m_bAuthoringValtanTranslatedCanaryEnabled &&
-		Get_StagedDocument().strEffectAssetId ==
-			VALTAN_TRANSLATED_CANARY_EFFECT_ASSET_ID &&
-		nullptr != pResource->pValtanTranslatedCanaryPacket;
-	const bool_t bAnyAuthoringCanaryCandidate =
-		bExactPreviewCandidate || bGlasshole02TranslatedCanaryCandidate ||
-		bValtanTranslatedCanaryCandidate;
-	if ((pResource->bSourceMaterialFallbackBlocked ||
-		pResource->bOccurrenceVisualSuppressed) &&
-		!bAnyAuthoringCanaryCandidate)
+	if (pResource->bSourceMaterialFallbackBlocked ||
+		pResource->bOccurrenceVisualSuppressed)
 		return S_FALSE;
 	const bool_t bTypedDirectSmoke =
 		0u != pResource->iRuntimeMaterialV2Enabled &&
@@ -19884,8 +17910,7 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 		pResource->iRuntimeMaterialV2TextureLaneCount == 1u &&
 		pResource->iRuntimeMaterialV2TextureMask == 0x01u;
 	if (pSource->Material.strTemplateId == EFFECT_SOURCE_MATERIAL_TEMPLATE_ID &&
-		!pSource->Material.SourceMaterial.bEnabled && !bTypedDirectSmoke &&
-		!bAnyAuthoringCanaryCandidate)
+		!pSource->Material.SourceMaterial.bEnabled && !bTypedDirectSmoke)
 	{
 		// Version 10 and older source-material documents are intentionally
 		// fail-closed.  They remain loadable for migration, but must not turn
@@ -19995,33 +18020,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 #endif
 	const f32_t LocalTime = (std::max)(0.f,
 		Frame.fSampleTimeSeconds - Source.Detail.Timing.fStartDelaySeconds);
-	if (bGlasshole02TranslatedCanaryCandidate)
-	{
-		const HRESULT CanaryResult =
-			Render_Glasshole02TranslatedCanaryParticles(
-				Source, *pResource, LocalTime,
-				std::span<const Engine::VTXEFFECT_PARTICLE>(
-					Instances.data(), Instances.size()));
-		if (S_OK == CanaryResult)
-			return S_OK;
-		/* The translated packet owns this occurrence once staged.  Any stage
-		   invariant or draw failure is object-local and fail-closed; the same
-		   occurrence must never reach the family-lite shader in this frame. */
-		return Fail_RenderOperation(
-			"Glasshole02 translated canary draw failed closed.",
-			FAILED(CanaryResult) ? CanaryResult : E_FAIL, true);
-	}
-	const HRESULT ExactResult = Render_AuthoringExactPreviewParticles(
-		Source, *pResource,
-		std::span<const Engine::VTXEFFECT_PARTICLE>(
-			Instances.data(), Instances.size()));
-	if (S_OK == ExactResult)
-		return S_OK;
-	if (FAILED(ExactResult))
-	{
-		m_strStatus =
-			"Authoring exact sprite preview failed; family-lite fallback used.";
-	}
 	const f32_t Normalized = std::clamp(
 		LocalTime / Source.Detail.Timing.fLifeTimeSeconds, 0.f, 1.f);
 	EFFECT_COLOR_DESC CommonColor =

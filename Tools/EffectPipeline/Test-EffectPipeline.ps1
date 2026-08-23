@@ -1045,9 +1045,53 @@ try {
     $document.elements[0].detail.particle.sourceScale.spawnDelay = 16.01
     Write-Fixture $document $catalog
     Assert-PublishRejected 'Source Trim delay overflow' $sourceScaleBaseline
-    $document.elements[0].detail.particle.sourceScale.spawnDelay = 0.0
+	$document.elements[0].detail.particle.sourceScale.spawnDelay = 0.0
 
-    Write-Fixture $document $catalog
+	$originalKind = [string]$document.elements[0].kind
+	$originalMaximum = [int64]$document.elements[0].detail.particle.maxParticles
+	$document.elements[0].kind = 'particle'
+	$document.elements[0].detail.particle.maxParticles = 513
+	$document.elements[0]['sourceRecipe'] = [ordered]@{
+			enabled = $true
+			rendererShape = 'sprite'
+			emitterDelaySeconds = 0.0
+			emitterDurationSeconds = 1.0
+			emitterLoopCount = 1
+			bursts = @()
+			modules = @()
+		}
+	Write-Fixture $document $catalog
+	Assert-AdmissionValidateRejected `
+		'Source Playback scaled particle budget' $sourceScaleBaseline `
+		'Effect Document exceeds particle/trail/after-image budget'
+
+	$document.elements[0].detail.particle.maxParticles = 257
+	$document.elements[0].sourceRecipe.modules = @([ordered]@{
+		stableId = 'fixture.event-generator'
+		className = 'particlemoduleeventgenerator'
+		objectPath = 'Fixture.EventGenerator'
+		literals = @(
+			[ordered]@{
+				propertyPath = 'events[0].type'
+				kind = 'string'
+				value = 'epet_spawn'
+			},
+			[ordered]@{
+				propertyPath = 'events[0].customname'
+				kind = 'string'
+				value = 'fixture_spawn'
+			})
+		distributions = @()
+	})
+	Write-Fixture $document $catalog
+	Assert-AdmissionValidateRejected `
+		'Source Playback scaled event queue' $sourceScaleBaseline `
+		'Portable authored particle event queue has an unbounded per-step upper limit'
+	$document.elements[0].Remove('sourceRecipe')
+	$document.elements[0].kind = $originalKind
+	$document.elements[0].detail.particle.maxParticles = $originalMaximum
+
+	Write-Fixture $document $catalog
     foreach ($path in @($authoringPath, $componentPath)) {
         $text = [IO.File]::ReadAllText($path, $utf8NoBomStrict)
         $nonFinite = [regex]::Replace(
@@ -1422,6 +1466,8 @@ try {
     $groupedElement.material | Add-Member -NotePropertyName execution `
         -NotePropertyValue ([ordered]@{
             enabled = $true
+            backend = 'runtimeMaterialV2'
+            opcode = 8
             textureLanes = @()
             scalars = @([ordered]@{
                 name = 'opacity_strength'

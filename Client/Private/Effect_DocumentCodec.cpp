@@ -49,6 +49,17 @@ namespace
 	constexpr size_t MAX_AUTHORED_MATERIAL_SCALARS = 52u;
 	constexpr size_t MAX_AUTHORED_MATERIAL_VECTORS = 8u;
 	constexpr size_t MAX_AUTHORED_MATERIAL_COLORS = 2u;
+
+	uint64_t SourceScaledParticleCeiling(
+		const Client::EFFECT_ELEMENT_DESC& Element)
+	{
+		const uint64_t iMaximum = Element.Detail.Particle.iMaxParticles;
+		if (!Element.SourceRecipe.bEnabled)
+			return iMaximum;
+		const double fScaled = std::round(static_cast<double>(iMaximum) *
+			static_cast<double>(Element.Detail.Particle.SourceScale.fCount));
+		return static_cast<uint64_t>((std::max)(0.0, fScaled));
+	}
 	constexpr const char_t* EFFECT_SOURCE_PRESENTATION_SCHEMA =
 		"lostark.effect-source-presentation";
 	constexpr std::string_view WARLORD_17090_EFFECT_ASSET_ID =
@@ -6605,7 +6616,9 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			 Element.SourceRecipe.strRendererShape == "decal");
 		if (EFFECT_ELEMENT_KIND::PARTICLE == Element.eKind ||
 			bSourceRecipeParticleCarrier)
-			iTotalParticles += D.Particle.iMaxParticles;
+		{
+			iTotalParticles += SourceScaledParticleCeiling(Element);
+		}
 		if (EFFECT_ELEMENT_KIND::TRAIL == Element.eKind)
 			iTotalTrailPoints += D.Trail.iMaxPoints;
 		if (D.Timing.fAfterImageSeconds > 0.f &&
@@ -9843,8 +9856,7 @@ namespace
 						Element.strElementId);
 				}
 			}
-			iMaximumQueuedEvents +=
-				static_cast<uint64_t>(Element.Detail.Particle.iMaxParticles) *
+			iMaximumQueuedEvents += SourceScaledParticleCeiling(Element) *
 				static_cast<uint64_t>(iGeneratorCount);
 		}
 

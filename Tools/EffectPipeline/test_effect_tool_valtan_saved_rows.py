@@ -35,6 +35,51 @@ V1_ALIAS_PATH = (
     REPOSITORY_ROOT
     / "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json"
 )
+RETIRED_CANARY_LIVE_FILES = (
+    REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp",
+    REPOSITORY_ROOT / "Client/Public/Effect_Tool.h",
+    REPOSITORY_ROOT / "Client/Private/Effect_Object.cpp",
+    REPOSITORY_ROOT / "Client/Public/Effect_Object.h",
+    REPOSITORY_ROOT / "Client/Private/Effect_DocumentRenderer.cpp",
+    REPOSITORY_ROOT / "Client/Public/Effect_DocumentRenderer.h",
+    REPOSITORY_ROOT / "Client/Default/Client.vcxproj",
+    REPOSITORY_ROOT / "Client/Default/Client.vcxproj.filters",
+    REPOSITORY_ROOT
+    / "Tools/EffectRenderContractHarness/Default/EffectRenderContractHarness.vcxproj",
+    REPOSITORY_ROOT
+    / "Tools/EffectRenderContractHarness/Default/EffectRenderContractHarness.vcxproj.filters",
+)
+RETIRED_CANARY_DEDICATED_PATHS = (
+    REPOSITORY_ROOT / "Client/Public/Effect_ValtanTranslatedCanaryRuntime.h",
+    REPOSITORY_ROOT / "Client/Private/Effect_ValtanTranslatedCanaryRuntime.cpp",
+    REPOSITORY_ROOT / "Client/Bin/ShaderFiles/Shader_EffectExactLocalMeshBridge.hlsl",
+    REPOSITORY_ROOT / "Client/Bin/ShaderFiles/Shader_EffectExactSpriteBridge.hlsl",
+    REPOSITORY_ROOT / "Client/Bin/ShaderFiles/Shader_VtxEffectGlasshole02.hlsl",
+    REPOSITORY_ROOT / "Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanCrack01.hlsl",
+    REPOSITORY_ROOT / "Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanDissolve01.hlsl",
+    REPOSITORY_ROOT / "Client/Bin/ShaderFiles/Shader_VtxEffectUe3ValtanGround04.hlsl",
+    REPOSITORY_ROOT / "Client/Bin/ShaderFiles/Shader_Ue3ValtanCrack01.hlsli",
+    REPOSITORY_ROOT / "Client/Bin/ShaderFiles/Shader_Ue3ValtanDissolve01.hlsli",
+    REPOSITORY_ROOT / "Client/Bin/ShaderFiles/Shader_Ue3ValtanGround04.hlsli",
+    REPOSITORY_ROOT
+    / "Data/Effects/Imported/DimensionMaster/Materials/skill.2050120.clip3.glasshole02-runtime-canary.contract.receipt.json",
+    REPOSITORY_ROOT
+    / "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/Valtan.front-back-front-runtime-canary-contract.receipt.v1.json",
+    REPOSITORY_ROOT
+    / "Data/Effects/Imported/Valtan/FrontBackFrontFamilyRestoration/Valtan.front-back-front-runtime-canary-contract.targets.v1.json",
+    REPOSITORY_ROOT
+    / "Tools/EffectPipeline/materialize_ue3_glasshole02_runtime_canary_contract.py",
+    REPOSITORY_ROOT
+    / "Tools/EffectPipeline/materialize_valtan_front_back_front_runtime_canary_contract.py",
+    REPOSITORY_ROOT
+    / "Tools/EffectPipeline/replay_ue3_glasshole02_runtime_rt0.py",
+    REPOSITORY_ROOT
+    / "Tools/EffectPipeline/test_materialize_ue3_glasshole02_runtime_canary_contract.py",
+    REPOSITORY_ROOT
+    / "Tools/EffectPipeline/test_materialize_valtan_front_back_front_runtime_canary_contract.py",
+    REPOSITORY_ROOT
+    / "Tools/EffectPipeline/test_replay_ue3_glasshole02_runtime_rt0.py",
+)
 
 
 def function_slice(text: str, signature: str, next_signature: str) -> str:
@@ -490,6 +535,125 @@ def validate_pending_reference_preview_contract(cpp_text: str) -> None:
             )
 
 
+def validate_manual_authoring_detail_contract(cpp_text: str) -> None:
+    size = function_slice(
+        cpp_text,
+        "void Client::CEffect_Tool::Render_SizeDetail(",
+        "void Client::CEffect_Tool::Render_AuthoringMaterialParameters(",
+    )
+    kind = function_slice(
+        cpp_text,
+        "void Client::CEffect_Tool::Render_KindDetail(",
+        "void Client::CEffect_Tool::Render_SourceRecipeDetail(",
+    )
+
+    required_size = (
+        '"Source Playback Tuning###SizeDetail"',
+        "Tuning.fCount",
+        "Tuning.fSize",
+        "Tuning.fLifeTime",
+        "Tuning.fSpeed",
+        "Tuning.fRotation",
+        "Tuning.fAlpha",
+        'DragFloat2("Start Size"',
+        'DragFloat2("End Size"',
+        'DragFloat2("Decal Size"',
+        'ImGui::DragFloat("Projection Depth"',
+        'ImGui::DragFloat("Start Width"',
+        'ImGui::DragFloat("End Width"',
+    )
+    for token in required_size:
+        if token not in size:
+            raise AssertionError(f"manual authoring Size surface lost: {token}")
+
+    if "Is_SourceParticleCarrier(Element)" not in size:
+        raise AssertionError(
+            "Source Playback Tuning must use the mesh/sprite/decal carrier predicate"
+        )
+    source_start = size.index("if (bSourceParticleCarrier)")
+    source_end = size.index("\n\t\treturn;", source_start)
+    source_branch = size[source_start:source_end]
+    if "Element.eKind == EFFECT_ELEMENT_KIND::DECAL" not in source_branch:
+        raise AssertionError("source decal lost its working Projection Depth overlay")
+    if 'ImGui::DragFloat("Projection Depth"' not in source_branch:
+        raise AssertionError("source decal Projection Depth is not editable")
+    if 'DragFloat2("Decal Size"' in source_branch:
+        raise AssertionError(
+            "source decal must use Source Size x instead of ignored Detail.Decal.vSize"
+        )
+    if size.index('DragFloat2("Decal Size"') < source_end:
+        raise AssertionError("manual Decal Size must remain outside the source-owned branch")
+    if "SourceScale.fSpawnDelay" in size or '"Spawn Delay x"' in size:
+        raise AssertionError(
+            "Source Playback Tuning must not expose the non-scheduled Spawn Delay axis"
+        )
+
+    preview_end = function_slice(
+        cpp_text,
+        "\tf32_t Element_PreviewEndSeconds(",
+        "    bool Slot_Allowed(",
+    )
+    for token in (
+        "Is_PreviewParticleSimulationElement(Element)",
+        "SourceScale.fLifeTime",
+        "SourceRecipe.fEmitterDelaySeconds",
+        "SourceRecipe.fEmitterDurationSeconds",
+        "SourceRecipe.iEmitterLoopCount",
+    ):
+        if token not in preview_end:
+            raise AssertionError(f"Tool preview duration lost source schedule parity: {token}")
+    recalculate = function_slice(
+        cpp_text,
+        "void Client::CEffect_Tool::Recalculate_PreviewDuration(\n    const EFFECT_DOCUMENT_DESC& Document)",
+        "bool_t Client::CEffect_Tool::Has_UnsavedWork() const",
+    )
+    if "Element_PreviewEndSeconds(Element)" not in recalculate:
+        raise AssertionError(
+            "document preview duration must consume the shared Element end calculation"
+        )
+
+    duplicate_fields = (
+        "Detail.Mesh.fModelPreScale",
+        "Detail.Particle.vStartSize",
+        "Detail.Particle.vEndSize",
+        "Detail.Decal.vSize",
+        "Detail.Decal.fDepth",
+        "Detail.Trail.fStartWidth",
+        "Detail.Trail.fEndWidth",
+    )
+    for token in duplicate_fields:
+        if token in kind:
+            raise AssertionError(f"Type Detail duplicates the Size owner: {token}")
+
+    required_kind = (
+        "Detail.Particle.iMaxParticles",
+        "Detail.Particle.iRandomSeed",
+        "bCompilerOwnedSourceParticle",
+        "if (bCompilerOwnedSourceParticle)",
+        "Detail.Particle.fSpawnRatePerSecond",
+        "Detail.Particle.vLifeTimeSeconds",
+        "Detail.Particle.vInitialPositionMin",
+        "Detail.Particle.SpawnShape",
+        "Detail.Particle.InitialVelocity",
+        "Detail.Particle.vDynamicParameterStart",
+        "Detail.Particle.bLocalSpace",
+        "Detail.Particle.TargetAttractor",
+    )
+    for token in required_kind:
+        if token not in kind:
+            raise AssertionError(f"working Particle overlay was hidden: {token}")
+
+    retired_labels = (
+        "Source Trim",
+        "Exact Cooked Canary",
+        "Translated Glasshole02 Canary",
+        "Translated Valtan Core-Three Canary",
+    )
+    for token in retired_labels:
+        if token in cpp_text:
+            raise AssertionError(f"retired Effect Detail surface survived: {token}")
+
+
 def stage_effect_asset_id(pattern: dict[str, object], stage: dict[str, object]) -> str:
     pattern_action = str(pattern["actionId"])
     stage_action = str(stage["actionId"])
@@ -624,6 +788,30 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
         validate_pending_reference_preview_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8")
         )
+
+    def test_effect_detail_has_one_working_owner_per_manual_tuning_axis(self) -> None:
+        validate_manual_authoring_detail_contract(
+            EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        )
+
+    def test_retired_authoring_canaries_have_no_live_execution_path(self) -> None:
+        live_text = "\n".join(
+            path.read_text(encoding="utf-8") for path in RETIRED_CANARY_LIVE_FILES
+        )
+        forbidden = (
+            "Set_AuthoringExactPreviewExecutionEnabled",
+            "Set_AuthoringGlasshole02TranslatedCanaryEnabled",
+            "Set_AuthoringValtanTranslatedCanaryEnabled",
+            "Effect_ValtanTranslatedCanaryRuntime",
+            "Shader_EffectExactLocalMeshBridge",
+            "Shader_EffectExactSpriteBridge",
+            "Shader_VtxEffectGlasshole02",
+            "Shader_VtxEffectUe3Valtan",
+        )
+        for token in forbidden:
+            self.assertNotIn(token, live_text)
+        for path in RETIRED_CANARY_DEDICATED_PATHS:
+            self.assertFalse(path.exists(), str(path))
 
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
