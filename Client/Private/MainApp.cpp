@@ -568,6 +568,8 @@ HRESULT CMainApp::Render()
 		m_pInventoryView->Render_Text();
 	RenderQuickSlotKeyLabels();
 	RenderLobbyButtonText();
+	RenderItemUpgradeButtonText();
+	RenderItemUpgradeLevelText();
 	if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
 	{
 		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
@@ -1088,18 +1090,13 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	for (const KEY_LABEL& Label : LABELS)
 		DrawKeyLabel(Label.pSlotId, Label.pLabel);
 
-	/* Z/X are not common ACTIVE slots like the ones above -- only Artist has Z ("저무는 달") and
-	only Warlord has X ("전장의 방패")/Z ("방어 태세 전환"), per PlayerSkills.json's per-class
-	ACTIVE slot lists. Drawing them unconditionally like the shared LABELS above would put a
-	"Z"/"X" label over a slot a class never uses. */
-	using LostArk::Shared::CHARACTER_CLASS_ID;
-	if (CHARACTER_CLASS_ID::ARTIST == keyLabelPlayer.eCharacterClass)
-		DrawKeyLabel("Skill_Z", L"Z");
-	else if (CHARACTER_CLASS_ID::WARLORD == keyLabelPlayer.eCharacterClass)
-	{
-		DrawKeyLabel("Skill_X", L"X");
-		DrawKeyLabel("Skill_Z", L"Z");
-	}
+	/* Artist's Z ("저무는 달") and Warlord's X/Z ("전장의 방패"/"방어 태세 전환") are not drawn
+	here. The only "Skill_Z" slot in HUD_Layout.json is Warlord-owned, KEYFRAME_ANIMATION type
+	with a placeholder 1x1 rect (its real on-screen size/position lives in the keyframe document
+	SkillZState.json, not this JSON's rect) -- DrawKeyLabel's slot-width-based centering math
+	doesn't apply to it, so both the Artist and Warlord cases produced a mispositioned label.
+	Skip until there's a real anchor to read (either from the keyframe document's own bounds, or
+	a dedicated non-keyframe slot). */
 }
 
 void CMainApp::Render_LobbyButtons()
@@ -1181,6 +1178,88 @@ void CMainApp::RenderLobbyButtonText()
 	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
 		float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
 		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+}
+
+void CMainApp::RenderItemUpgradeButtonText()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+		return;
+
+	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+	if (!m_pItemUpgradeView->Get_SlotRect(
+		"ItemUpgrade_ReforgeButton", fX, fY, fWidth, fHeight))
+	{
+		return;
+	}
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	const f32_t fCenterX = fX + fWidth * 0.5f;
+	const f32_t fCenterY = fY + fHeight * 0.5f;
+
+	const wchar_t* pLabel = L"\xC7A5\xBE44 \xC7AC\xB828"; // "장비 재련"
+	const float2_t vMeasured =
+		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+	const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * 0.32f / vMeasured.y) : 1.f;
+	const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.8f / vMeasured.x) : 1.f;
+	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+		float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+}
+
+void CMainApp::RenderItemUpgradeLevelText()
+{
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible)
+		return;
+
+	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
+	const float textScaleX = vTextViewportSize.x / 1280.f;
+	const float textScaleY = vTextViewportSize.y / 720.f;
+	const float textUiScale = (std::min)(textScaleX, textScaleY);
+
+	struct LEVEL_TEXT_SLOT
+	{
+		const char* pSlotId;
+		const wchar_t* pLabel;
+		f32_t fHeightRatio;
+		fvector_t vColor;
+	};
+	// colors are the real ItemBuildUpLevelWndContent/ItemBuildUpLevelGroupMc .as
+	// itemName_lb.color=13769983(0xD21CFF), curLevel_lb.color=16760138(0xFFBD4A),
+	// nextLevel_lb.color=12057344(0xB7FB00). The ">>>" arrow is a real animated
+	// flourish icon (ItemUpgrade_LevelArrow AnimationFrames), not text.
+	const LEVEL_TEXT_SLOT SLOTS[] =
+	{
+		{ "ItemUpgrade_ItemNameLabel", L"\xC6B4\xBA85\xC758 \xC5C5\xD654 \xC0C1\xC758", 0.6f,
+			XMVectorSet(0.8235f, 0.1098f, 1.0f, 1.f) }, // "운명의 업화 상의"
+		{ "ItemUpgrade_CurLevelLabel", L"18\xB2E8\xACC4", 0.7f,
+			XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f) }, // "18단계"
+		{ "ItemUpgrade_NextLevelLabel", L"19\xB2E8\xACC4", 0.7f,
+			XMVectorSet(0.7176f, 0.9843f, 0.0f, 1.f) }, // "19단계"
+	};
+
+	for (const LEVEL_TEXT_SLOT& Slot : SLOTS)
+	{
+		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
+		if (!m_pItemUpgradeView->Get_SlotRect(Slot.pSlotId, fX, fY, fWidth, fHeight))
+			continue;
+
+		const f32_t fCenterX = fX + fWidth * 0.5f;
+		const f32_t fCenterY = fY + fHeight * 0.5f;
+
+		const float2_t vMeasured =
+			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Slot.pLabel);
+		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * Slot.fHeightRatio / vMeasured.y) : 1.f;
+		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.9f / vMeasured.x) : 1.f;
+		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Slot.pLabel,
+			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
+			Slot.vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+	}
 }
 
 void CMainApp::Render_ItemQuickSlots()

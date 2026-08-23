@@ -15,7 +15,7 @@
         { "path": "UI/HUD/Common/Empty bar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_Q",
@@ -29,7 +29,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_W",
@@ -43,7 +43,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_E",
@@ -57,7 +57,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_A",
@@ -71,7 +71,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_S",
@@ -85,7 +85,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_D",
@@ -99,7 +99,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "ManaBar_BG",
@@ -112,7 +112,7 @@
         { "path": "UI/HUD/Common/Empty bar reverse.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "SpecialSkill_2",
@@ -126,7 +126,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "SpecialSkill_3",
@@ -140,7 +140,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "SpecialSkill_4",
@@ -154,7 +154,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "SpecialSkill_5",
@@ -168,7 +168,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "SpecialSkill_6",
@@ -182,7 +182,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Item_2",
@@ -196,7 +196,7 @@
         { "path": "UI/HUD/Common/Empty Slot 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Item_3",
@@ -210,7 +210,7 @@
         { "path": "UI/HUD/Common/Empty Slot 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Item_4",
@@ -224,7 +224,7 @@
         { "path": "UI/HUD/Common/Empty Slot 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "SpecialSkill_1",
@@ -238,7 +238,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Yi_id_brush",
@@ -249,7 +249,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Artist/BrushIdle.json",
       "keyframeAnimationScale": 1
     },
@@ -265,7 +265,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Yi_Id_GaugeRing",
@@ -278,7 +278,7 @@
         { "path": "UI/HUD/Artist/Identity/Gauge_050.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Artist/GaugeSlot.json",
       "keyframeAnimationScale": 1
     },
@@ -291,7 +291,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Artist/GaugeSlot.json",
       "keyframeAnimationScale": 1
     },
@@ -304,7 +304,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Artist/GaugeSlot.json",
       "keyframeAnimationScale": 1
     },
@@ -319,7 +319,7 @@
         { "path": "UI/HUD/Artist/Yi id skill edge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Yin_Skill_Z",
@@ -330,7 +330,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Artist/SkillZState.json",
       "keyframeAnimationScale": 1
     },
@@ -343,7 +343,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Artist/ZXWipe.json",
       "keyframeAnimationScale": 1
     },
@@ -358,7 +358,7 @@
         { "path": "UI/HUD/Artist/Yi id skill edge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Yin_Skill_X",
@@ -369,7 +369,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Artist/SkillXState.json",
       "keyframeAnimationScale": 1
     },
@@ -382,7 +382,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Artist/ZXWipe.json",
       "keyframeAnimationScale": 1
     },
@@ -397,7 +397,7 @@
         { "path": "UI/HUD/Common/Empty bar reverse.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "HealthBar",
@@ -410,7 +410,7 @@
         { "path": "UI/HUD/Common/Empty bar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Slayer_Emblem",
@@ -423,7 +423,7 @@
         { "path": "UI/HUD/Slayer/Slayer id Emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Slayer_Wing_1",
@@ -436,7 +436,7 @@
         { "path": "UI/HUD/Slayer/Slayer Emblem wing 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Slayer_Wing_2",
@@ -449,7 +449,7 @@
         { "path": "UI/HUD/Slayer/Slayer Emblem wing 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Slayer_Emblem_3",
@@ -462,7 +462,7 @@
         { "path": "UI/HUD/Slayer/Slayer id Emblem 3.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_F",
@@ -476,7 +476,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Slayer_Emblem_4",
@@ -489,7 +489,7 @@
         { "path": "UI/HUD/Slayer/Slayer id Emblem 4.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Slayer_Emblem_2",
@@ -502,7 +502,7 @@
         { "path": "UI/HUD/Slayer/Slayer id Emblem 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Slayer_Gauge_BG",
@@ -515,7 +515,7 @@
         { "path": "UI/HUD/Slayer/Slayer id gauge bg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Slayer_Gauge",
@@ -528,7 +528,7 @@
         { "path": "UI/HUD/Slayer/Slayer id gauge.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Gun_Emblem",
@@ -541,7 +541,7 @@
         { "path": "UI/HUD/Gunslinger/Gun id Emblem.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Gun_Emblem_2",
@@ -554,7 +554,7 @@
         { "path": "UI/HUD/Gunslinger/Gun id Emblem 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Gun_Slot_L",
@@ -568,7 +568,7 @@
         { "path": "UI/HUD/Gunslinger/Gun id slot 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Gun_Slot_C",
@@ -582,7 +582,7 @@
         { "path": "UI/HUD/Gunslinger/Gun id slot 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Gun_Slot_R",
@@ -596,7 +596,7 @@
         { "path": "UI/HUD/Gunslinger/Gun id slot 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Gun_Pistol",
@@ -609,7 +609,7 @@
         { "path": "UI/HUD/Gunslinger/Gun id pistol.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Gun_Shotgun",
@@ -622,7 +622,7 @@
         { "path": "UI/HUD/Gunslinger/Gun id shotgun.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Gun_Rifle",
@@ -635,7 +635,7 @@
         { "path": "UI/HUD/Gunslinger/Gun id rifle.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Gun_Arrow_L",
@@ -648,7 +648,7 @@
         { "path": "UI/HUD/Gunslinger/Gun id arrow L.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Gun_Arrow_R",
@@ -661,7 +661,7 @@
         { "path": "UI/HUD/Gunslinger/Gun id arrow R.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Item_1",
@@ -675,7 +675,7 @@
         { "path": "UI/HUD/Common/Empty Slot 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Lance_Id_Stance",
@@ -686,7 +686,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/LanceMaster/StanceMaster.json",
       "keyframeAnimationScale": 1
     },
@@ -701,7 +701,7 @@
         { "path": "UI/HUD/LanceMaster/Identity/gauge0_emptybar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Lance_Id_GaugeBg1",
@@ -714,7 +714,7 @@
         { "path": "UI/HUD/LanceMaster/Identity/gauge1_emptybar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Lance_Id_GaugeBg2",
@@ -727,7 +727,7 @@
         { "path": "UI/HUD/LanceMaster/Identity/gauge2_emptybar.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Lance_Id_GaugeFill0",
@@ -738,7 +738,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/LanceMaster/Gauge0Fill.json",
       "keyframeAnimationScale": 1
     },
@@ -751,7 +751,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/LanceMaster/Gauge1Fill.json",
       "keyframeAnimationScale": 1
     },
@@ -764,7 +764,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/LanceMaster/Gauge2Fill.json",
       "keyframeAnimationScale": 1
     },
@@ -777,7 +777,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/LanceMaster/Gauge0BurnLoop.json",
       "keyframeAnimationScale": 1
     },
@@ -790,7 +790,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/LanceMaster/Gauge1BurnLoop.json",
       "keyframeAnimationScale": 1
     },
@@ -803,7 +803,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/LanceMaster/Gauge2BurnLoop.json",
       "keyframeAnimationScale": 1
     },
@@ -816,7 +816,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/LanceMaster/Gauge0Burn.json",
       "keyframeAnimationScale": 1
     },
@@ -829,7 +829,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/LanceMaster/Gauge1Burn.json",
       "keyframeAnimationScale": 1
     },
@@ -842,7 +842,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/LanceMaster/Gauge2Burn.json",
       "keyframeAnimationScale": 1
     },
@@ -857,7 +857,7 @@
         { "path": "UI/HUD/DimensionMaster/Backplate_Shadow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_DaggerRow",
@@ -870,7 +870,7 @@
         { "path": "UI/HUD/DimensionMaster/DaggerRow.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Chain_Trim",
@@ -883,7 +883,7 @@
         { "path": "UI/HUD/DimensionMaster/Chain_Trim.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Gear_515",
@@ -896,7 +896,7 @@
         { "path": "UI/HUD/DimensionMaster/Gear_515.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Gear_519",
@@ -909,7 +909,7 @@
         { "path": "UI/HUD/DimensionMaster/Gear_519.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Gear_523",
@@ -922,7 +922,7 @@
         { "path": "UI/HUD/DimensionMaster/Gear_523.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Ring_Trim",
@@ -935,7 +935,7 @@
         { "path": "UI/HUD/DimensionMaster/Ring_Trim.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Gear_529",
@@ -948,7 +948,7 @@
         { "path": "UI/HUD/DimensionMaster/Gear_529.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Gear_531",
@@ -961,7 +961,7 @@
         { "path": "UI/HUD/DimensionMaster/Gear_531.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Gear_535",
@@ -974,7 +974,7 @@
         { "path": "UI/HUD/DimensionMaster/Gear_535.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Gear_538",
@@ -987,7 +987,7 @@
         { "path": "UI/HUD/DimensionMaster/Gear_538.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Clip_541_A",
@@ -1000,7 +1000,7 @@
         { "path": "UI/HUD/DimensionMaster/Clip_541_A.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Clip_541_B",
@@ -1013,7 +1013,7 @@
         { "path": "UI/HUD/DimensionMaster/Clip_541_B.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Gear_545",
@@ -1026,7 +1026,7 @@
         { "path": "UI/HUD/DimensionMaster/Gear_545.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Emblem_Base",
@@ -1039,7 +1039,7 @@
         { "path": "UI/HUD/DimensionMaster/Emblem_Base.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_Emblem_Battle",
@@ -1052,7 +1052,7 @@
         { "path": "UI/HUD/DimensionMaster/Emblem_Battle.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_HourHand",
@@ -1065,7 +1065,7 @@
         { "path": "UI/HUD/DimensionMaster/HourHand.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Dimen_MinuteHand",
@@ -1078,7 +1078,7 @@
         { "path": "UI/HUD/DimensionMaster/MinuteHand.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "WarL_Id_GaugeBg",
@@ -1091,7 +1091,7 @@
         { "path": "UI/HUD/Warlord/Identity/GaugeBg.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "WarL_Id_Base",
@@ -1104,7 +1104,7 @@
         { "path": "UI/HUD/Warlord/Identity/BaseFrame.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "WarL_Id_DefenseBody",
@@ -1115,7 +1115,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/DefenseBody.json",
       "keyframeAnimationScale": 1
     },
@@ -1128,7 +1128,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/DefenseEffect.json",
       "keyframeAnimationScale": 1
     },
@@ -1141,7 +1141,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/ProtectBody.json",
       "keyframeAnimationScale": 1
     },
@@ -1154,7 +1154,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/ProtectEffect.json",
       "keyframeAnimationScale": 1
     },
@@ -1167,7 +1167,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/GaugeR.json",
       "keyframeAnimationScale": 1
     },
@@ -1180,7 +1180,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/GaugeL.json",
       "keyframeAnimationScale": 1
     },
@@ -1196,7 +1196,7 @@
         { "path": "UI/HUD/Common/Awaken Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_V_Flash",
@@ -1207,7 +1207,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
     },
@@ -1223,7 +1223,7 @@
         { "path": "UI/HUD/Common/Empty Slot.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_T_Flash",
@@ -1234,7 +1234,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
     },
@@ -1249,7 +1249,7 @@
         { "path": "UI/HUD/Common/V skill edge 1.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_V_Edge2",
@@ -1262,7 +1262,7 @@
         { "path": "UI/HUD/Common/V skill edge 2.png", "hoverPath": null, "tint": [1, 1, 1, 1], "additive": false, "flipX": false }
       ],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true }
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false }
     },
     {
       "id": "Skill_Z",
@@ -1273,7 +1273,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/SkillZState.json",
       "keyframeAnimationScale": 1
     },
@@ -1286,7 +1286,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/SkillXState.json",
       "keyframeAnimationScale": 1
     },
@@ -1299,7 +1299,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/CooldownWipe.json",
       "keyframeAnimationScale": 1
     },
@@ -1312,7 +1312,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/CooldownWipe.json",
       "keyframeAnimationScale": 1
     },
@@ -1325,7 +1325,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/EnableRingZ.json",
       "keyframeAnimationScale": 1
     },
@@ -1338,7 +1338,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/Warlord/EnableRingX.json",
       "keyframeAnimationScale": 1
     },
@@ -1351,7 +1351,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
     },
@@ -1364,7 +1364,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
     },
@@ -1377,7 +1377,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
     },
@@ -1390,7 +1390,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
     },
@@ -1403,7 +1403,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
     },
@@ -1416,7 +1416,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
     },
@@ -1429,7 +1429,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
     },
@@ -1442,7 +1442,7 @@
       "stages": { "baseFrom": 0, "shineFrom": 1 },
       "layers": [],
       "shine": { "texture": null, "additive": false },
-      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true },
+      "animation": { "fps": 10, "scale": 1.10000002, "offset": { "x": 0, "y": 0 }, "frames": [], "loop": true, "additive": false },
       "keyframeAnimationPath": "UI/HUD/IdentityAnimation/QuickSlot/UseSkillFlash.json",
       "keyframeAnimationScale": 0.724900007
     }

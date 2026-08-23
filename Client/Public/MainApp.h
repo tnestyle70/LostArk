@@ -96,6 +96,11 @@ private:
 	/* White "캐릭터 생성" label for Lobby_CreateCharacterButton. Called after EndFrame() like the
 	other LOA-font text, same z-order reason as RenderQuickSlotKeyLabels. */
 	void RenderLobbyButtonText();
+	/* White "장비 재련" label for ItemUpgrade_ReforgeButton, same reasoning/pattern as
+	RenderLobbyButtonText() -- the button image itself is blank (reused from
+	UI/Lobby/create_character_button.png), text drawn separately on top. */
+	void RenderItemUpgradeButtonText();
+	void RenderItemUpgradeLevelText();
 	void RenderBossHealthBar();
 	/* Boss title/HP/bar-count text. Split out from RenderBossHealthBar and called after
 	CImGuiLayer::EndFrame() (next to RenderCombatHUDText, same reason) -- CGameInstance::Draw_Text

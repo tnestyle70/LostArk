@@ -10,56 +10,12 @@
  ],
  "slots": [
   {
-   "id": "ItemUpgrade_PanelBg",
-   "ownerClass": null,
-   "type": 0,
-   "rect": {
-    "x": 259.657196,
-    "y": 4.43819237,
-    "width": 442,
-    "height": 485.333313
-   },
-   "rotation": 0,
-   "stages": {
-    "baseFrom": 0,
-    "shineFrom": 1
-   },
-   "layers": [
-    {
-     "path": "UI/ItemUpgrade/buildup_panel_bg.png",
-     "hoverPath": null,
-     "tint": [
-      1,
-      1,
-      1,
-      1
-     ],
-     "additive": false,
-     "flipX": false
-    }
-   ],
-   "shine": {
-    "texture": null,
-    "additive": false
-   },
-   "animation": {
-    "fps": 10,
-    "scale": 1,
-    "offset": {
-     "x": 0,
-     "y": 0
-    },
-    "frames": [],
-    "loop": true
-   }
-  },
-  {
    "id": "ItemUpgrade_SuccessModalBg",
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 364.666809,
-    "y": 631.42865,
+    "x": 191.809723,
+    "y": 98.5712891,
     "width": 948,
     "height": 489.333313
    },
@@ -94,7 +50,53 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_PanelBg",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 409.657043,
+    "y": 98.7238617,
+    "width": 442,
+    "height": 485.333313
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_panel_bg.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
    }
   },
   {
@@ -102,8 +104,8 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 373.41272,
-    "y": 325,
+    "x": 523.412781,
+    "y": 419.285614,
     "width": 60,
     "height": 68
    },
@@ -138,7 +140,8 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
@@ -146,8 +149,8 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 449.074677,
-    "y": 325,
+    "x": 599.075439,
+    "y": 419.285614,
     "width": 60,
     "height": 68
    },
@@ -182,7 +185,8 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
@@ -190,8 +194,8 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 528.969299,
-    "y": 325,
+    "x": 678.969788,
+    "y": 419.285614,
     "width": 60,
     "height": 68
    },
@@ -226,7 +230,8 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
@@ -234,8 +239,8 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 451.593597,
-    "y": 41.2919273,
+    "x": 601.594299,
+    "y": 135.577774,
     "width": 57.3333015,
     "height": 57.3333015
    },
@@ -270,51 +275,8 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
-   }
-  },
-  {
-   "id": "ItemUpgrade_SpecialListPageBg",
-   "ownerClass": null,
-   "type": 0,
-   "rect": {
-    "x": 837.099854,
-    "y": 174.360428,
-    "width": 295.914001,
-    "height": 453.963989
-   },
-   "rotation": 0,
-   "stages": {
-    "baseFrom": 0,
-    "shineFrom": 1
-   },
-   "layers": [
-    {
-     "path": "UI/ItemUpgrade/buildup_speciallistpage_bg.png",
-     "hoverPath": null,
-     "tint": [
-      1,
-      1,
-      1,
-      1
-     ],
-     "additive": false,
-     "flipX": false
-    }
-   ],
-   "shine": {
-    "texture": null,
+    "loop": true,
     "additive": false
-   },
-   "animation": {
-    "fps": 10,
-    "scale": 1,
-    "offset": {
-     "x": 0,
-     "y": 0
-    },
-    "frames": [],
-    "loop": true
    }
   },
   {
@@ -322,8 +284,8 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 253.633133,
-    "y": 62.8284073,
+    "x": 403.632935,
+    "y": 157.114197,
     "width": 456,
     "height": 260.666687
    },
@@ -358,7 +320,8 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
@@ -366,8 +329,8 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 444.570587,
-    "y": 166.531937,
+    "x": 594.571472,
+    "y": 260.817963,
     "width": 71.3332977,
     "height": 70.6667023
    },
@@ -490,7 +453,8 @@
      "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_098.png",
      "UI/ItemUpgrade/GaugeFillPercent/GaugeFill_099.png"
     ],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
@@ -498,8 +462,8 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 362.703918,
-    "y": 127.766266,
+    "x": 512.703857,
+    "y": 222.05217,
     "width": 236,
     "height": 162.666702
    },
@@ -534,7 +498,40 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_SelectedItemIconBounds",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 601.594299,
+    "y": 135.577774,
+    "width": 57.3333015,
+    "height": 57.3333015
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
    }
   },
   {
@@ -542,8 +539,8 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 444.51532,
-    "y": 257.411133,
+    "x": 594.516174,
+    "y": 351.697144,
     "width": 71.3332977,
     "height": 26.6667004
    },
@@ -578,7 +575,8 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
@@ -586,8 +584,8 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 374.451965,
-    "y": 315.138123,
+    "x": 524.452087,
+    "y": 409.423767,
     "width": 211.333298,
     "height": 8
    },
@@ -622,7 +620,8 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
@@ -630,10 +629,10 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 430.2372,
-    "y": 151.8653,
-    "width": 100.0,
-    "height": 100.0
+    "x": 580.237976,
+    "y": 246.151276,
+    "width": 100,
+    "height": 100
    },
    "rotation": 0,
    "stages": {
@@ -723,10 +722,10 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 381.2463,
-    "y": 102.8744,
-    "width": 197.9818,
-    "height": 197.9818
+    "x": 531.246399,
+    "y": 197.160248,
+    "width": 197.981796,
+    "height": 197.981796
    },
    "rotation": 0,
    "stages": {
@@ -784,10 +783,10 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 413.5706,
-    "y": 135.1986,
-    "width": 133.3333,
-    "height": 133.3333
+    "x": 563.570862,
+    "y": 229.48436,
+    "width": 133.333298,
+    "height": 133.333298
    },
    "rotation": 0,
    "stages": {
@@ -844,10 +843,10 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 253.3333,
-    "y": 29.3333,
-    "width": 441.3333,
-    "height": 329.3333
+    "x": 403.333099,
+    "y": 123.619156,
+    "width": 441.333313,
+    "height": 329.333313
    },
    "rotation": 0,
    "stages": {
@@ -952,10 +951,10 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 11.8333,
-    "y": 42.7,
-    "width": 295.914,
-    "height": 453.964
+    "x": 191.833359,
+    "y": 99.842804,
+    "width": 261.914001,
+    "height": 488.963989
    },
    "rotation": 0,
    "stages": {
@@ -988,18 +987,19 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
-   "id": "ItemUpgrade_ListNormalBg0",
+   "id": "ItemUpgrade_ListGradeBg0",
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 11.8333,
-    "y": 42.7,
-    "width": 137.3333,
-    "height": 23.3333
+    "x": 198.369202,
+    "y": 143.134705,
+    "width": 103.984001,
+    "height": 33.6267014
    },
    "rotation": 0,
    "stages": {
@@ -1008,7 +1008,52 @@
    },
    "layers": [
     {
-     "path": "UI/ItemUpgrade/buildup_liststep2_normal.png",
+     "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_SelectedItemGradeBg",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 601.594299,
+    "y": 135.577774,
+    "width": 57.3333015,
+    "height": 57.3333015
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
      "hoverPath": null,
      "tint": [
       1,
@@ -1036,14 +1081,14 @@
    }
   },
   {
-   "id": "ItemUpgrade_ListNormalBg1",
+   "id": "ItemUpgrade_SelectedItemIcon",
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 11.8333,
-    "y": 79.3667,
-    "width": 137.3333,
-    "height": 23.3333
+    "x": 601.594299,
+    "y": 135.577774,
+    "width": 57.3333015,
+    "height": 57.3333015
    },
    "rotation": 0,
    "stages": {
@@ -1052,7 +1097,7 @@
    },
    "layers": [
     {
-     "path": "UI/ItemUpgrade/buildup_liststep2_normal.png",
+     "path": "UI/ItemUpgrade/lm_top_icon.png",
      "hoverPath": null,
      "tint": [
       1,
@@ -1064,6 +1109,38 @@
      "flipX": false
     }
    ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ItemNameLabel",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 386.05,
+    "y": 194.62,
+    "width": 220,
+    "height": 24
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [],
    "shine": {
     "texture": null,
     "additive": false
@@ -1080,34 +1157,21 @@
    }
   },
   {
-   "id": "ItemUpgrade_ListNormalBg2",
+   "id": "ItemUpgrade_CurLevelLabel",
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 11.8333,
-    "y": 116.0333,
-    "width": 137.3333,
-    "height": 23.3333
+    "x": 436.42,
+    "y": 208.95,
+    "width": 110,
+    "height": 24
    },
    "rotation": 0,
    "stages": {
     "baseFrom": 0,
     "shineFrom": 1
    },
-   "layers": [
-    {
-     "path": "UI/ItemUpgrade/buildup_liststep2_normal.png",
-     "hoverPath": null,
-     "tint": [
-      1,
-      1,
-      1,
-      1
-     ],
-     "additive": false,
-     "flipX": false
-    }
-   ],
+   "layers": [],
    "shine": {
     "texture": null,
     "additive": false
@@ -1124,14 +1188,45 @@
    }
   },
   {
-   "id": "ItemUpgrade_ListNormalBg3",
+   "id": "ItemUpgrade_NextLevelLabel",
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 11.8333,
-    "y": 152.7,
-    "width": 137.3333,
-    "height": 23.3333
+    "x": 641.75,
+    "y": 208.95,
+    "width": 110,
+    "height": 24
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListGradeBg1",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 198.369202,
+    "y": 179.801407,
+    "width": 103.984001,
+    "height": 33.6267014
    },
    "rotation": 0,
    "stages": {
@@ -1140,7 +1235,7 @@
    },
    "layers": [
     {
-     "path": "UI/ItemUpgrade/buildup_liststep2_normal.png",
+     "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
      "hoverPath": null,
      "tint": [
       1,
@@ -1164,7 +1259,98 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListGradeBg2",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 198.369202,
+    "y": 216.468002,
+    "width": 103.984001,
+    "height": 33.6267014
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListGradeBg3",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 198.369202,
+    "y": 253.134705,
+    "width": 103.984001,
+    "height": 33.6267014
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
    }
   },
   {
@@ -1172,10 +1358,10 @@
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 685.3333,
-    "y": 40.0,
-    "width": 295.914,
-    "height": 453.964
+    "x": 845.333252,
+    "y": 98.5714188,
+    "width": 295.914001,
+    "height": 483.963989
    },
    "rotation": 0,
    "stages": {
@@ -1208,18 +1394,19 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
-   "id": "ItemUpgrade_ListSelectedExample",
+   "id": "ItemUpgrade_GradeRowEmblem0",
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 11.8333,
-    "y": 42.7,
-    "width": 138.6667,
-    "height": 24.6667
+    "x": 848.190308,
+    "y": 145.714249,
+    "width": 240,
+    "height": 61.3333015
    },
    "rotation": 0,
    "stages": {
@@ -1228,7 +1415,7 @@
    },
    "layers": [
     {
-     "path": "UI/ItemUpgrade/buildup_list_selected.png",
+     "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
      "hoverPath": null,
      "tint": [
       1,
@@ -1252,18 +1439,19 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
-   "id": "ItemUpgrade_ListLockExample",
+   "id": "ItemUpgrade_GradeRowEmblem1",
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 15.1667,
-    "y": 82.0333,
-    "width": 14.0,
-    "height": 18.0
+    "x": 848.190308,
+    "y": 207.047745,
+    "width": 240,
+    "height": 61.3333015
    },
    "rotation": 0,
    "stages": {
@@ -1272,7 +1460,7 @@
    },
    "layers": [
     {
-     "path": "UI/ItemUpgrade/buildup_lock_icon.png",
+     "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
      "hoverPath": null,
      "tint": [
       1,
@@ -1296,18 +1484,19 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
-   "id": "ItemUpgrade_ListDisabledExample",
+   "id": "ItemUpgrade_GradeRowEmblem2",
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 11.8333,
-    "y": 116.0333,
-    "width": 190.0,
-    "height": 35.3333
+    "x": 848.190308,
+    "y": 268.380951,
+    "width": 240,
+    "height": 61.3333015
    },
    "rotation": 0,
    "stages": {
@@ -1316,7 +1505,7 @@
    },
    "layers": [
     {
-     "path": "UI/ItemUpgrade/buildup_list_disabled.png",
+     "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
      "hoverPath": null,
      "tint": [
       1,
@@ -1340,18 +1529,19 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
    }
   },
   {
-   "id": "ItemUpgrade_GradeTierA",
+   "id": "ItemUpgrade_GradeRowEmblem3",
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 685.3333,
-    "y": 40.0,
-    "width": 133.3333,
-    "height": 43.3333
+    "x": 848.190308,
+    "y": 329.71402,
+    "width": 240,
+    "height": 61.3333015
    },
    "rotation": 0,
    "stages": {
@@ -1360,7 +1550,7 @@
    },
    "layers": [
     {
-     "path": "UI/ItemUpgrade/buildup_grade_tier_a.png",
+     "path": "UI/ItemUpgrade/buildup_graderow_emblem.png",
      "hoverPath": null,
      "tint": [
       1,
@@ -1384,150 +1574,19 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
-   }
-  },
-  {
-   "id": "ItemUpgrade_GradeTierB",
-   "ownerClass": null,
-   "type": 0,
-   "rect": {
-    "x": 685.3333,
-    "y": 86.6667,
-    "width": 133.3333,
-    "height": 43.3333
-   },
-   "rotation": 0,
-   "stages": {
-    "baseFrom": 0,
-    "shineFrom": 1
-   },
-   "layers": [
-    {
-     "path": "UI/ItemUpgrade/buildup_grade_tier_b.png",
-     "hoverPath": null,
-     "tint": [
-      1,
-      1,
-      1,
-      1
-     ],
-     "additive": false,
-     "flipX": false
-    }
-   ],
-   "shine": {
-    "texture": null,
+    "loop": true,
     "additive": false
-   },
-   "animation": {
-    "fps": 10,
-    "scale": 1,
-    "offset": {
-     "x": 0,
-     "y": 0
-    },
-    "frames": [],
-    "loop": true
    }
   },
   {
-   "id": "ItemUpgrade_GradeSelectedExample",
+   "id": "ItemUpgrade_GradeStripB0",
    "ownerClass": null,
    "type": 0,
    "rect": {
-    "x": 685.3333,
-    "y": 168.0,
-    "width": 240.0,
-    "height": 61.3333
-   },
-   "rotation": 0,
-   "stages": {
-    "baseFrom": 0,
-    "shineFrom": 1
-   },
-   "layers": [
-    {
-     "path": "UI/ItemUpgrade/buildup_grade_selected.png",
-     "hoverPath": null,
-     "tint": [
-      1,
-      1,
-      1,
-      1
-     ],
-     "additive": false,
-     "flipX": false
-    }
-   ],
-   "shine": {
-    "texture": null,
-    "additive": false
-   },
-   "animation": {
-    "fps": 10,
-    "scale": 1,
-    "offset": {
-     "x": 0,
-     "y": 0
-    },
-    "frames": [],
-    "loop": true
-   }
-  },
-  {
-   "id": "ItemUpgrade_GradeStripA",
-   "ownerClass": null,
-   "type": 0,
-   "rect": {
-    "x": 685.3333,
-    "y": 232.0,
-    "width": 2.6667,
-    "height": 61.3333
-   },
-   "rotation": 0,
-   "stages": {
-    "baseFrom": 0,
-    "shineFrom": 1
-   },
-   "layers": [
-    {
-     "path": "UI/ItemUpgrade/buildup_grade_strip_a.png",
-     "hoverPath": null,
-     "tint": [
-      1,
-      1,
-      1,
-      1
-     ],
-     "additive": false,
-     "flipX": false
-    }
-   ],
-   "shine": {
-    "texture": null,
-    "additive": false
-   },
-   "animation": {
-    "fps": 10,
-    "scale": 1,
-    "offset": {
-     "x": 0,
-     "y": 0
-    },
-    "frames": [],
-    "loop": true
-   }
-  },
-  {
-   "id": "ItemUpgrade_GradeStripB",
-   "ownerClass": null,
-   "type": 0,
-   "rect": {
-    "x": 690.6667,
-    "y": 232.0,
-    "width": 2.6667,
-    "height": 61.3333
+    "x": 845.523621,
+    "y": 145.714249,
+    "width": 2.66669989,
+    "height": 61.3333015
    },
    "rotation": 0,
    "stages": {
@@ -1560,7 +1619,756 @@
      "y": 0
     },
     "frames": [],
-    "loop": true
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_GradeStripB1",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 845.523621,
+    "y": 207.047745,
+    "width": 2.66669989,
+    "height": 61.3333015
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListSelectedExample",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 197.702545,
+    "y": 215.801407,
+    "width": 257,
+    "height": 39.6669998
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_list_selected.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListDisabledExample",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 195.668457,
+    "y": 143.103683,
+    "width": 252,
+    "height": 35.3333015
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_list_disabled.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_GradeStripB2",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 845.523621,
+    "y": 268.380951,
+    "width": 2.66669989,
+    "height": 61.3333015
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_GradeStripB3",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 845.523621,
+    "y": 329.71402,
+    "width": 2.66669989,
+    "height": 61.3333015
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_grade_strip_b.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_GradeSelectedExample",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 845.368958,
+    "y": 145.432129,
+    "width": 240,
+    "height": 61.3333015
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_grade_selected.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListItemIcon0",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 197.601593,
+    "y": 144.015701,
+    "width": 34,
+    "height": 34
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/lm_head_icon.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ReforgeButton",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 533.51416,
+    "y": 528.343079,
+    "width": 200,
+    "height": 48
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/Lobby/create_character_button.png",
+     "hoverPath": "UI/Lobby/create_character_button_hover.png",
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListItemIcon1",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 197.601593,
+    "y": 180.682404,
+    "width": 34,
+    "height": 34
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/lm_shoulder_icon.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListItemIcon2",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 197.601593,
+    "y": 217.348999,
+    "width": 34,
+    "height": 34
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/lm_top_icon.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListItemIcon3",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 197.601593,
+    "y": 254.015701,
+    "width": 34,
+    "height": 34
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/lm_bottom_icon.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListItemIcon4",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 197.601593,
+    "y": 290.682404,
+    "width": 34,
+    "height": 34
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/lm_glove_icon.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListGradeBg4",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 198.369202,
+    "y": 289.801392,
+    "width": 103.984001,
+    "height": 33.6267014
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListGradeBg5",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 198.369202,
+    "y": 326.467987,
+    "width": 103.984001,
+    "height": 33.6267014
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/buildup_gradebg_legend.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_ListItemIcon5",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 197.601593,
+    "y": 327.348999,
+    "width": 34,
+    "height": 34
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 1
+   },
+   "layers": [
+    {
+     "path": "UI/ItemUpgrade/lm_weapon_icon.png",
+     "hoverPath": null,
+     "tint": [
+      1,
+      1,
+      1,
+      1
+     ],
+     "additive": false,
+     "flipX": false
+    }
+   ],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 10,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [],
+    "loop": true,
+    "additive": false
+   }
+  },
+  {
+   "id": "ItemUpgrade_LevelArrow",
+   "ownerClass": null,
+   "type": 0,
+   "rect": {
+    "x": 639.3457,
+    "y": 210.95,
+    "width": 38.8085,
+    "height": 32.0
+   },
+   "rotation": 0,
+   "stages": {
+    "baseFrom": 0,
+    "shineFrom": 0
+   },
+   "layers": [],
+   "shine": {
+    "texture": null,
+    "additive": false
+   },
+   "animation": {
+    "fps": 40,
+    "scale": 1,
+    "offset": {
+     "x": 0,
+     "y": 0
+    },
+    "frames": [
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_001.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_002.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_003.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_004.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_005.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_006.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_007.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_008.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_009.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_010.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_011.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_012.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_013.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_014.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_015.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_016.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_017.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_018.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_019.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_020.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_021.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_022.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_023.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_024.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_025.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_026.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_027.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_028.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_029.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_030.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_031.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_032.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_033.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_034.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_035.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_036.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_037.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_038.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_039.png",
+     "UI/ItemUpgrade/LevelArrow/LevelArrow_040.png"
+    ],
+    "loop": true,
+    "additive": false
    }
   }
  ]
