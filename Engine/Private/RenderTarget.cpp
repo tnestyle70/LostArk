@@ -14,6 +14,11 @@ CRenderTarget::~CRenderTarget()
 	//SaveDDSTextureToFile(m_pContext.Get(), m_pTexture2D.Get(), TEXT("../Bin/Diffuse.dds"));
 }
 
+ComPtr<ID3D11ShaderResourceView> CRenderTarget::Get_SRV() const
+{
+	return m_pSRV;
+}
+
 HRESULT CRenderTarget::Initialize(uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor)
 {
 	D3D11_TEXTURE2D_DESC	TextureDesc{};

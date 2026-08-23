@@ -28,6 +28,8 @@ MATERIAL_PROGRAM_SOURCE_PATH = (
     / "MaterialPrograms"
     / "effect-material-program-registry.v1.json"
 )
+EFFECT_SOURCE_CATALOG_PATH = REPOSITORY_ROOT / "Data" / "Effects" / "EffectCatalog.json"
+DATA_ROOT = REPOSITORY_ROOT / "Data"
 
 
 def make_authored_payload(effect_id: str = EFFECT_ID) -> bytes:
@@ -91,8 +93,11 @@ def make_catalog(runtime_catalog_path: Path) -> dict[str, object]:
 
 def make_v4_catalog(runtime_catalog_path: Path) -> dict[str, object]:
     legacy = make_catalog(runtime_catalog_path)
-    material_programs = json.loads(
-        MATERIAL_PROGRAM_SOURCE_PATH.read_text(encoding="utf-8")
+    registry_validator = validator._load_material_program_registry_validator()
+    material_programs = registry_validator.build_registry(
+        MATERIAL_PROGRAM_SOURCE_PATH,
+        EFFECT_SOURCE_CATALOG_PATH,
+        DATA_ROOT,
     )
     material_programs["bindings"] = []
     return {

@@ -15,6 +15,7 @@ public:
 	ComPtr<ID3D11RenderTargetView> Get_RTV() {
 		return m_pRTV;
 	}
+	ComPtr<ID3D11ShaderResourceView> Get_SRV() const;
 
 public:
 	HRESULT Initialize(uint32_t iWidth, uint32_t iHeight, DXGI_FORMAT ePixelFormat, const float4_t& vClearColor);

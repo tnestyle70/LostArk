@@ -118,6 +118,7 @@ public: /* For.Target_Manager */
 	HRESULT Begin_DepthOnly(ComPtr<ID3D11DepthStencilView> pDSV);
 	HRESULT End_DepthOnly();
 	HRESULT Bind_RT_SRV(const wstring_t& strTargetTag, shared_ptr<class CShader> pShader, const char_t* pConstantName);
+	ComPtr<ID3D11ShaderResourceView> Get_RT_SRV(const wstring_t& strTargetTag) const;
 	HRESULT Copy_RT_Resource(const wstring_t& strTargetTag, ComPtr<ID3D11Texture2D> pTexture2D);
 
 

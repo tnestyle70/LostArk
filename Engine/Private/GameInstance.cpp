@@ -510,6 +510,12 @@ HRESULT CGameInstance::Bind_RT_SRV(const wstring_t& strTargetTag, shared_ptr<cla
 	return m_pTarget_Manager->Bind_SRV(strTargetTag, pShader, pConstantName);
 }
 
+ComPtr<ID3D11ShaderResourceView> CGameInstance::Get_RT_SRV(
+	const wstring_t& strTargetTag) const
+{
+	return m_pTarget_Manager->Get_SRV(strTargetTag);
+}
+
 HRESULT CGameInstance::Copy_RT_Resource(const wstring_t& strTargetTag, ComPtr<ID3D11Texture2D> pTexture2D)
 {
 	return m_pTarget_Manager->Copy_Resource(strTargetTag, pTexture2D);

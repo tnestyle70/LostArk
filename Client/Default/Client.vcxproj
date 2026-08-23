@@ -2562,6 +2562,7 @@
     <None Include="..\..\Data\Effects\Imported\Warlord\Warlord.unbound-particle-resource-catalog.json" />
     <None Include="..\..\Data\Effects\Imported\Warlord\skill.17000.source-receipt.json" />
     <None Include="..\..\Data\Effects\MaterialPrograms\effect-material-program-registry.v1.json" />
+    <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\artist-f-golden.material-program-fragment.v1.json" />
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy-source.json" />
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy.receipt.json" />
     <None Include="..\..\Data\Effects\ResourceIndex\DimensionMaster\A\DimensionMaster.A.effect-resources.json" />

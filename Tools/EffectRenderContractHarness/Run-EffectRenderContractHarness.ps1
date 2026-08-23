@@ -3,7 +3,7 @@ param(
     [string]$Configuration = 'Debug',
 
     [Parameter(Mandatory = $true)]
-    [ValidateSet(0, 1)]
+    [ValidateRange(0, 65536)]
     [int]$ExpectedBindingCount
 )
 

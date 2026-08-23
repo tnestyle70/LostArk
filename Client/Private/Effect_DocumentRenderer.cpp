@@ -65,39 +65,145 @@ namespace
 			Target.RenderTargetWriteMask == D3D11_COLOR_WRITE_ENABLE_ALL;
 	}
 
-	bool_t Is_CompiledSpriteParticleAdapter(
+	bool_t Is_CompiledMaterialAdapter(
 		const Client::EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter)
 	{
-		return Adapter.eAdapterId ==
-				Client::EFFECT_COMPILED_MATERIAL_ADAPTER_ID::
-				SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1 &&
-			Adapter.eCarrier ==
-				Client::EFFECT_COMPILED_MATERIAL_CARRIER::SPRITE_PARTICLE &&
-			Adapter.strAdapterId ==
-				Client::EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADAPTER_ID &&
-			Adapter.strShaderId == "Shader_VtxEffectParticle.hlsl" &&
-			Adapter.strVertexLayoutId == "VTXEFFECT_PARTICLE" &&
-			Adapter.iPassIndex == 1u && Adapter.strMrtId == "MRT_SceneHDR" &&
-			Adapter.iSceneColorRenderTargetIndex == 0u &&
-			Adapter.strSceneColorSemantic == "SV_TARGET0" &&
-			Adapter.iDistortionRenderTargetIndex == 1u &&
-			Adapter.strDistortionSemantic == "SV_TARGET1" &&
-			Adapter.bDistortionDeterministicZero &&
-			Adapter.strRasterizerState == "RS_Cull_None" &&
-			Adapter.strDepthStencilState == "DSS_ReadOnly" &&
-			Adapter.strBlendState == "BS_EffectAlpha" &&
-			Adapter.iStencilReference == 0u;
+		using ADAPTER_ID =
+			Client::EFFECT_COMPILED_MATERIAL_ADAPTER_ID;
+		using CARRIER = Client::EFFECT_COMPILED_MATERIAL_CARRIER;
+		using PROFILE = Client::EFFECT_RENDER_PROFILE;
+		const auto MatchesIdentity = [&Adapter](
+			const CARRIER eCarrier,
+			const std::string_view strAdapterId,
+			const std::string_view strShaderId,
+			const std::string_view strVertexLayoutId,
+			const PROFILE eProfile)
+		{
+			return Adapter.eCarrier == eCarrier &&
+				Adapter.strAdapterId == strAdapterId &&
+				Adapter.strShaderId == strShaderId &&
+				Adapter.strVertexLayoutId == strVertexLayoutId &&
+				Adapter.eRenderProfile == eProfile;
+		};
+		bool_t bIdentityValid = false;
+		switch (Adapter.eAdapterId)
+		{
+		case ADAPTER_ID::SPRITE_PARTICLE_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::SPRITE_PARTICLE,
+				Client::EFFECT_SPRITE_PARTICLE_SCENE_COLOR_ADAPTER_ID,
+				"Shader_VtxEffectParticle.hlsl", "VTXEFFECT_PARTICLE",
+				PROFILE::ALPHA_TWO_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::MESH_PARTICLE_CMODEL_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_TWO_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::MESH_PARTICLE_CMODEL,
+				Client::EFFECT_MESH_PARTICLE_SCENE_COLOR_ALPHA_TWO_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectMeshPreview.hlsl", "VTXMESH",
+				PROFILE::ALPHA_TWO_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::LOCAL_DECAL_PROJECTOR_SCENE_COLOR_RT0_ZERO_DISTORTION_RT1_ALPHA_ONE_SIDED_V1:
+			bIdentityValid = MatchesIdentity(CARRIER::LOCAL_DECAL_PROJECTOR,
+				Client::EFFECT_LOCAL_DECAL_SCENE_COLOR_ALPHA_ONE_SIDED_ADAPTER_ID,
+				"Shader_VtxEffectDecal.hlsl", "VTXTEX",
+				PROFILE::ALPHA_ONE_SIDED_DEPTH_READ);
+			break;
+		case ADAPTER_ID::END:
+		default:
+			return false;
+		}
+		if (!bIdentityValid || Adapter.strMrtId != "MRT_SceneHDR" ||
+			Adapter.iSceneColorRenderTargetIndex != 0u ||
+			Adapter.strSceneColorSemantic != "SV_TARGET0" ||
+			Adapter.iDistortionRenderTargetIndex != 1u ||
+			Adapter.strDistortionSemantic != "SV_TARGET1" ||
+			!Adapter.bDistortionDeterministicZero ||
+			Adapter.iStencilReference != 0u)
+		{
+			return false;
+		}
+		switch (Adapter.eRenderProfile)
+		{
+		case PROFILE::ALPHA_TWO_SIDED_DEPTH_READ:
+			return Adapter.iPassIndex == 1u &&
+				Adapter.strRasterizerState == "RS_Cull_None" &&
+				Adapter.strDepthStencilState == "DSS_ReadOnly" &&
+				Adapter.strBlendState == "BS_EffectAlpha";
+		case PROFILE::ALPHA_ONE_SIDED_DEPTH_READ:
+			return Adapter.iPassIndex == 3u &&
+				Adapter.strRasterizerState == "RS_Default" &&
+				Adapter.strDepthStencilState == "DSS_ReadOnly" &&
+				Adapter.strBlendState == "BS_EffectAlpha";
+		case PROFILE::OPAQUE_BACK_DEPTH_WRITE:
+		case PROFILE::ADDITIVE_TWO_SIDED_DEPTH_READ:
+		case PROFILE::ADDITIVE_ONE_SIDED_DEPTH_READ:
+		case PROFILE::END:
+		default:
+			return false;
+		}
 	}
 
-	bool_t Validate_ActualSpriteParticleAdapterPipeline(
-		ID3D11DeviceContext* pContext,
-		const Client::EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter)
+	enum class COMPILED_ADAPTER_ACTUAL_BLEND : uint8_t
 	{
-		if (nullptr == pContext || !Is_CompiledSpriteParticleAdapter(Adapter) ||
-			Engine::CRenderOutputContract::Get_Active() !=
-				Engine::RENDER_OUTPUT_CONTRACT::
-					SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION ||
-			!Engine::CRenderOutputContract::Matches_ActiveRenderTargets(pContext))
+		ALPHA_BLEND,
+	};
+
+	bool_t Resolve_ActualMaterialAdapterPipelineReceipt(
+		const Client::EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter,
+		const uint32_t iActualPassIndex,
+		D3D11_CULL_MODE& eOutCullMode,
+		bool_t& bOutDepthWrite,
+		COMPILED_ADAPTER_ACTUAL_BLEND& eOutBlend)
+	{
+		using CARRIER = Client::EFFECT_COMPILED_MATERIAL_CARRIER;
+		using PROFILE = Client::EFFECT_RENDER_PROFILE;
+		const bool_t bActualPassAllowed = [&]()
+		{
+			switch (Adapter.eCarrier)
+			{
+			case CARRIER::SPRITE_PARTICLE:
+				return iActualPassIndex == Adapter.iPassIndex;
+			case CARRIER::MESH_PARTICLE_CMODEL:
+				return Adapter.eRenderProfile ==
+					PROFILE::ALPHA_TWO_SIDED_DEPTH_READ &&
+					iActualPassIndex == 1u;
+			case CARRIER::LOCAL_DECAL_PROJECTOR:
+				return iActualPassIndex == 3u;
+			case CARRIER::END:
+			default:
+				return false;
+			}
+		}();
+		if (!bActualPassAllowed)
+			return false;
+		switch (iActualPassIndex)
+		{
+		case 1u:
+			eOutCullMode = D3D11_CULL_NONE;
+			bOutDepthWrite = false;
+			eOutBlend = COMPILED_ADAPTER_ACTUAL_BLEND::ALPHA_BLEND;
+			return true;
+		case 3u:
+			eOutCullMode = D3D11_CULL_BACK;
+			bOutDepthWrite = false;
+			eOutBlend = COMPILED_ADAPTER_ACTUAL_BLEND::ALPHA_BLEND;
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	bool_t Validate_ActualMaterialAdapterFixedFunctionState(
+		ID3D11DeviceContext* pContext,
+		const Client::EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter,
+		const uint32_t iActualPassIndex)
+	{
+		D3D11_CULL_MODE eExpectedCull = D3D11_CULL_NONE;
+		bool_t bDepthWrite = false;
+		COMPILED_ADAPTER_ACTUAL_BLEND eExpectedBlend =
+			COMPILED_ADAPTER_ACTUAL_BLEND::ALPHA_BLEND;
+		if (nullptr == pContext || !Is_CompiledMaterialAdapter(Adapter) ||
+			!Resolve_ActualMaterialAdapterPipelineReceipt(
+				Adapter, iActualPassIndex, eExpectedCull, bDepthWrite,
+				eExpectedBlend))
 		{
 			return false;
 		}
@@ -136,15 +242,29 @@ namespace
 		pBlend->GetDesc(&Blend);
 		const D3D11_RENDER_TARGET_BLEND_DESC& SceneColor = Blend.RenderTarget[0u];
 		const D3D11_RENDER_TARGET_BLEND_DESC& Distortion = Blend.RenderTarget[1u];
-		return Rasterizer.FillMode == D3D11_FILL_SOLID &&
-			Rasterizer.CullMode == D3D11_CULL_NONE &&
+		const bool_t bSceneColorAlpha =
+			eExpectedBlend == COMPILED_ADAPTER_ACTUAL_BLEND::ALPHA_BLEND;
+		const bool_t bSceneColorBlendValid =
+			SceneColor.BlendEnable &&
+			 SceneColor.SrcBlend == D3D11_BLEND_SRC_ALPHA &&
+			 SceneColor.DestBlend == D3D11_BLEND_INV_SRC_ALPHA &&
+			 SceneColor.BlendOp == D3D11_BLEND_OP_ADD &&
+			 SceneColor.SrcBlendAlpha == D3D11_BLEND_ONE &&
+			 SceneColor.DestBlendAlpha == D3D11_BLEND_INV_SRC_ALPHA &&
+			 SceneColor.BlendOpAlpha == D3D11_BLEND_OP_ADD &&
+			 SceneColor.RenderTargetWriteMask ==
+				D3D11_COLOR_WRITE_ENABLE_ALL;
+		return bSceneColorAlpha &&
+			Rasterizer.FillMode == D3D11_FILL_SOLID &&
+			Rasterizer.CullMode == eExpectedCull &&
 			!Rasterizer.FrontCounterClockwise && Rasterizer.DepthBias == 0 &&
 			Is_ZeroFloatBits(Rasterizer.DepthBiasClamp) &&
 			Is_ZeroFloatBits(Rasterizer.SlopeScaledDepthBias) &&
 			Rasterizer.DepthClipEnable && !Rasterizer.ScissorEnable &&
 			!Rasterizer.MultisampleEnable &&
 			!Rasterizer.AntialiasedLineEnable && DepthStencil.DepthEnable &&
-			DepthStencil.DepthWriteMask == D3D11_DEPTH_WRITE_MASK_ZERO &&
+			DepthStencil.DepthWriteMask == (bDepthWrite ?
+				D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO) &&
 			DepthStencil.DepthFunc == D3D11_COMPARISON_LESS_EQUAL &&
 			!DepthStencil.StencilEnable &&
 			DepthStencil.StencilReadMask == D3D11_DEFAULT_STENCIL_READ_MASK &&
@@ -152,14 +272,7 @@ namespace
 			Is_DefaultStencilFace(DepthStencil.FrontFace) &&
 			Is_DefaultStencilFace(DepthStencil.BackFace) &&
 			!Blend.AlphaToCoverageEnable && Blend.IndependentBlendEnable &&
-			SceneColor.BlendEnable &&
-			SceneColor.SrcBlend == D3D11_BLEND_SRC_ALPHA &&
-			SceneColor.DestBlend == D3D11_BLEND_INV_SRC_ALPHA &&
-			SceneColor.BlendOp == D3D11_BLEND_OP_ADD &&
-			SceneColor.SrcBlendAlpha == D3D11_BLEND_ONE &&
-			SceneColor.DestBlendAlpha == D3D11_BLEND_INV_SRC_ALPHA &&
-			SceneColor.BlendOpAlpha == D3D11_BLEND_OP_ADD &&
-			SceneColor.RenderTargetWriteMask == D3D11_COLOR_WRITE_ENABLE_ALL &&
+			bSceneColorBlendValid &&
 			Distortion.BlendEnable && Distortion.SrcBlend == D3D11_BLEND_ONE &&
 			Distortion.DestBlend == D3D11_BLEND_ONE &&
 			Distortion.BlendOp == D3D11_BLEND_OP_ADD &&
@@ -170,6 +283,46 @@ namespace
 				(D3D11_COLOR_WRITE_ENABLE_RED | D3D11_COLOR_WRITE_ENABLE_GREEN) &&
 			std::all_of(Blend.RenderTarget + 2u, Blend.RenderTarget + 8u,
 				Is_DefaultUnusedBlendTarget);
+	}
+
+	bool_t Validate_ActualMaterialAdapterPipeline(
+		ID3D11DeviceContext* pContext,
+		const Client::EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter,
+		const uint32_t iActualPassIndex)
+	{
+		return nullptr != pContext &&
+			Engine::CRenderOutputContract::Get_Active() ==
+				Engine::RENDER_OUTPUT_CONTRACT::
+					SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION &&
+			Engine::CRenderOutputContract::Matches_ActiveRenderTargets(pContext) &&
+			Validate_ActualMaterialAdapterFixedFunctionState(
+				pContext, Adapter, iActualPassIndex);
+	}
+
+	bool_t Validate_ActualLocalDecalDepthShaderResource(
+		ID3D11DeviceContext* pContext)
+	{
+		/* The compiled six-lane LocalDecal pass consumes Common base/noise/
+		   mask/emissive/dissolve/base2/mask2/noise2 plus SourceTexture0..5.
+		   SourceTexture6 is unreachable for this opcode and is removed by FXC,
+		   so the named Target_Depth receipt is PS t14 after Begin(3). */
+		constexpr uint32_t LOCAL_DECAL_DEPTH_TEXTURE_SLOT = 14u;
+		static_assert(LOCAL_DECAL_DEPTH_TEXTURE_SLOT <
+			D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT);
+		if (nullptr == pContext)
+			return false;
+
+		const ComPtr<ID3D11ShaderResourceView> pExpectedDepth =
+			CGameInstance::Get().Get_RT_SRV(TEXT("Target_Depth"));
+		if (nullptr == pExpectedDepth)
+			return false;
+
+		ID3D11ShaderResourceView* pActualDepthRaw = nullptr;
+		pContext->PSGetShaderResources(
+			LOCAL_DECAL_DEPTH_TEXTURE_SLOT, 1u, &pActualDepthRaw);
+		ComPtr<ID3D11ShaderResourceView> pActualDepth;
+		pActualDepth.Attach(pActualDepthRaw);
+		return pActualDepth.Get() == pExpectedDepth.Get();
 	}
 
 	struct ARTIST31470_EMITTER_ROW_PIN final
@@ -15218,6 +15371,8 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 			if (pMaterialProgramBinding->iCatalogRevision != iCatalogRevision ||
 				pMaterialProgramBinding->iRegistryGenerationId !=
 					pMaterialProgramRegistry->Get_GenerationId() ||
+				pMaterialProgramBinding->eInlineMirrorPolicy !=
+					EFFECT_MATERIAL_INLINE_MIRROR_POLICY::INLINE_MIRROR_REQUIRED ||
 				pMaterialProgramBinding->strEffectAssetId != strEffectAssetId ||
 				pMaterialProgramBinding->strElementId != Element.strElementId ||
 				!CEffectMaterialProgramRegistry::Is_ExecutionBitExact(
@@ -15357,28 +15512,51 @@ bool_t Client::CEffectDocumentRenderer::Build_PreparedDocument(
 		{
 			const EFFECT_MATERIAL_EXECUTION_DESC& Execution =
 				pMaterialProgramBinding->Execution;
-			if (!Is_CompiledSpriteParticleAdapter(
-					pMaterialProgramBinding->Adapter) ||
-				Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
-				!Element.SourceRecipe.bEnabled ||
-				Element.SourceRecipe.strRendererShape != "sprite" ||
+			const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter =
+				pMaterialProgramBinding->Adapter;
+			const bool_t bSpriteCarrier =
+				Adapter.eCarrier ==
+					EFFECT_COMPILED_MATERIAL_CARRIER::SPRITE_PARTICLE &&
+				Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				Element.SourceRecipe.bEnabled &&
+				Element.SourceRecipe.strRendererShape == "sprite" &&
+				nullptr == Find_Binding(
+					Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) &&
+				nullptr == Resource.pModel;
+			const bool_t bMeshCarrier =
+				Adapter.eCarrier ==
+					EFFECT_COMPILED_MATERIAL_CARRIER::MESH_PARTICLE_CMODEL &&
+				Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+				Element.SourceRecipe.bEnabled &&
+				Element.SourceRecipe.strRendererShape == "mesh" &&
 				nullptr != Find_Binding(
-					Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
-				nullptr != Resource.pModel ||
-				Element.Material.eRenderProfile !=
-					EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
-				Execution.eBackend !=
-					EFFECT_MATERIAL_EXECUTION_BACKEND::RUNTIME_MATERIAL_V2 ||
-				Execution.iOpcode != 6u || Execution.iPassIndex != 1u ||
-				Execution.strRasterizerState != "RS_Cull_None" ||
-				Execution.strDepthStencilState != "DSS_ReadOnly" ||
-				Execution.strBlendState != "BS_EffectAlpha" ||
+					Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) &&
+				nullptr != Resource.pModel;
+			const bool_t bDecalCarrier =
+				Adapter.eCarrier ==
+					EFFECT_COMPILED_MATERIAL_CARRIER::LOCAL_DECAL_PROJECTOR &&
+				Element.eKind == EFFECT_ELEMENT_KIND::DECAL &&
+				nullptr == Find_Binding(
+					Element, EFFECT_RESOURCE_SLOT::MESH_MODEL) &&
+				nullptr == Resource.pModel;
+			if (!Is_CompiledMaterialAdapter(Adapter) ||
+				(!bSpriteCarrier && !bMeshCarrier && !bDecalCarrier) ||
+				Element.Material.eRenderProfile != Adapter.eRenderProfile ||
+				Select_Pass(Element.Material.eRenderProfile) !=
+					Adapter.iPassIndex ||
+				Execution.iPassIndex != Adapter.iPassIndex ||
+				Execution.strRasterizerState != Adapter.strRasterizerState ||
+				Execution.strDepthStencilState != Adapter.strDepthStencilState ||
+				Execution.strBlendState != Adapter.strBlendState ||
 				Execution.iStencilReference != 0u ||
 				0u == Resource.iRuntimeMaterialV2Enabled ||
-				Resource.iRuntimeMaterialV2Opcode != 6u)
+				Resource.iRuntimeMaterialV2Opcode != Execution.iOpcode ||
+				Resource.iRuntimeMaterialV2TextureLaneCount !=
+					Execution.iTextureLaneCount ||
+				Resource.iRuntimeMaterialV2TextureMask != Execution.iTextureMask)
 			{
 				strOutError =
-					"Bound material-program compiled Sprite adapter carrier changed: " +
+					"Bound material-program compiled adapter/carrier changed: " +
 					Element.strElementId;
 				return false;
 			}
@@ -16450,6 +16628,132 @@ Client::CEffectDocumentRenderer::Get_PrewarmProbe()
 		CEffectPlayback::Get_VectorFieldDiskLoadCount();
 	return Probe;
 }
+
+#if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+bool_t Client::CEffectDocumentRenderer::
+	Prepare_UnboundMaterialProgramDocumentForTests(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		std::shared_ptr<const EFFECT_DOCUMENT_DESC> pDocument,
+		std::shared_ptr<const EFFECT_VISUAL_PROGRAM_DOCUMENT_PROJECTION>
+			pVisualProgramProjection,
+		std::shared_ptr<const PREPARED_DOCUMENT>& OutPrepared,
+		std::string& strOutError)
+{
+	OutPrepared.reset();
+	if (nullptr == pDevice || nullptr == pContext || nullptr == pDocument ||
+		(nullptr != pVisualProgramProjection &&
+			(!pVisualProgramProjection->Is_Valid() ||
+			 pVisualProgramProjection->Get_EffectAssetId() !=
+				pDocument->strEffectAssetId ||
+			 pVisualProgramProjection->Get_DocumentShared().get() !=
+				pDocument.get())) ||
+		nullptr == Acquire_RendererCore(pDevice, pContext))
+	{
+		strOutError = "Binding0 comparison preparation identity is invalid.";
+		return false;
+	}
+	PREWARM_ASSET_CACHE SharedAssets;
+	CEffectDocumentRenderer Loader(pDevice, pContext);
+	if (!Loader.Build_PreparedDocument(
+			0u, pDocument->strEffectAssetId, *pDocument, &SharedAssets,
+			OutPrepared, strOutError, nullptr, pVisualProgramProjection) ||
+		nullptr == OutPrepared || 0u != OutPrepared->iCatalogRevision ||
+		0u != OutPrepared->iMaterialProgramRegistryGeneration ||
+		nullptr != OutPrepared->pMaterialProgramRegistry ||
+		0u != OutPrepared->iMaterialProgramResolvedElementCount)
+	{
+		OutPrepared.reset();
+		if (strOutError.empty())
+			strOutError = "Binding0 comparison preparation admitted a registry Binding.";
+		return false;
+	}
+	strOutError.clear();
+	return true;
+}
+
+bool_t Client::CEffectDocumentRenderer::
+	Validate_MaterialProgramPreparedComparisonForTests(
+		ComPtr<ID3D11Device> pDevice,
+		ComPtr<ID3D11DeviceContext> pContext,
+		const std::shared_ptr<const PREPARED_DOCUMENT>& pUnboundPrepared,
+		const std::shared_ptr<const PREPARED_DOCUMENT>& pBoundPrepared,
+		const std::string_view strElementId,
+		std::string& strOutError)
+{
+	if (nullptr == pDevice || nullptr == pContext ||
+		nullptr == pUnboundPrepared || nullptr == pBoundPrepared ||
+		strElementId.empty() ||
+		pUnboundPrepared->strEffectAssetId != pBoundPrepared->strEffectAssetId ||
+		pUnboundPrepared->iResourceSignature != pBoundPrepared->iResourceSignature ||
+		nullptr != pUnboundPrepared->pMaterialProgramRegistry ||
+		0u != pUnboundPrepared->iMaterialProgramResolvedElementCount ||
+		nullptr == pBoundPrepared->pMaterialProgramRegistry ||
+		pBoundPrepared->iMaterialProgramResolvedElementCount == 0u)
+	{
+		strOutError = "Binding0/Binding1 prepared comparison identity is invalid.";
+		return false;
+	}
+	const EFFECT_DOCUMENT_DESC& UnboundDocument =
+		nullptr == pUnboundPrepared->pImmutableDocument ?
+			pUnboundPrepared->ResourceDocument :
+			*pUnboundPrepared->pImmutableDocument;
+	const EFFECT_DOCUMENT_DESC& BoundDocument =
+		nullptr == pBoundPrepared->pImmutableDocument ?
+			pBoundPrepared->ResourceDocument : *pBoundPrepared->pImmutableDocument;
+	const auto FindElement = [strElementId](const EFFECT_DOCUMENT_DESC& Document)
+	{
+		return std::find_if(Document.Elements.begin(), Document.Elements.end(),
+			[strElementId](const EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId == strElementId;
+			});
+	};
+	const auto UnboundElement = FindElement(UnboundDocument);
+	const auto BoundElement = FindElement(BoundDocument);
+	const auto UnboundResource = pUnboundPrepared->ElementResources.find(
+		std::string(strElementId));
+	const auto BoundResource = pBoundPrepared->ElementResources.find(
+		std::string(strElementId));
+	if (UnboundElement == UnboundDocument.Elements.end() ||
+		BoundElement == BoundDocument.Elements.end() ||
+		UnboundResource == pUnboundPrepared->ElementResources.end() ||
+		BoundResource == pBoundPrepared->ElementResources.end() ||
+		nullptr != UnboundResource->second.pMaterialProgramBinding ||
+		nullptr == BoundResource->second.pMaterialProgramBinding)
+	{
+		strOutError = "Binding0/Binding1 occurrence resource closure is invalid.";
+		return false;
+	}
+	CEffectDocumentRenderer Compiler(std::move(pDevice), std::move(pContext));
+	EFFECT_MATERIAL_EXECUTION_DESC UnboundSnapshot;
+	EFFECT_MATERIAL_EXECUTION_DESC BoundSnapshot;
+	if (!Compiler.Build_MaterialExecutionSnapshot(
+			*UnboundElement, UnboundResource->second, UnboundSnapshot,
+			strOutError) ||
+		!Compiler.Build_MaterialExecutionSnapshot(
+			*BoundElement, BoundResource->second, BoundSnapshot, strOutError) ||
+		!CEffectMaterialProgramRegistry::Is_ExecutionBitExact(
+			UnboundElement->Material.Execution,
+			BoundElement->Material.Execution) ||
+		!CEffectMaterialProgramRegistry::Is_ExecutionBitExact(
+			UnboundSnapshot, BoundSnapshot) ||
+		!CEffectMaterialProgramRegistry::Is_ExecutionBitExact(
+			BoundResource->second.pMaterialProgramBinding->Execution,
+			BoundSnapshot))
+	{
+		if (strOutError.empty())
+		{
+			strOutError =
+				"Binding0/Binding1 execution packet or prepared snapshot diverged.";
+		}
+		return false;
+	}
+	strOutError.clear();
+	return true;
+}
+
+#endif
 
 void Client::CEffectDocumentRenderer::Clear_Prepared_Catalog()
 {
@@ -17854,6 +18158,11 @@ void Client::CEffectDocumentRenderer::Record_TestIssuedDraw(
 		return;
 	++m_pActiveOccurrenceStats->iVIBufferDrawCount;
 	++m_pActiveOccurrenceStats->iIssuedDrawCallCount;
+	if (!m_pActiveOccurrenceStats->bHasFirstSubmittedParticleWorld)
+	{
+		m_pActiveOccurrenceStats->FirstSubmittedParticleWorld = World;
+		m_pActiveOccurrenceStats->bHasFirstSubmittedParticleWorld = true;
+	}
 	Extend_SubmittedPosition(*m_pActiveOccurrenceStats,
 		{ World._41, World._42, World._43 });
 }
@@ -18430,6 +18739,47 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	if (UINT32_MAX == iPass)
 		return Fail_RenderOperation(
 			"Mesh render-profile pass is invalid.", E_INVALIDARG, true);
+	const std::shared_ptr<const EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>&
+		pMaterialProgramBinding = Resource.pMaterialProgramBinding;
+	if (nullptr != pMaterialProgramBinding)
+	{
+		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter =
+			pMaterialProgramBinding->Adapter;
+		if (nullptr == m_pPreparedDocument ||
+			nullptr == m_pPreparedDocument->pMaterialProgramRegistry ||
+			m_pPreparedDocument->pMaterialProgramRegistry->Get_CatalogRevision() !=
+				pMaterialProgramBinding->iCatalogRevision ||
+			m_pPreparedDocument->iMaterialProgramRegistryGeneration !=
+				pMaterialProgramBinding->iRegistryGenerationId ||
+			m_pPreparedDocument->pMaterialProgramRegistry->Resolve(
+					Get_StagedDocument().strEffectAssetId,
+					Element.pElement->strElementId).get() !=
+				pMaterialProgramBinding.get() ||
+			pMaterialProgramBinding->eInlineMirrorPolicy !=
+				EFFECT_MATERIAL_INLINE_MIRROR_POLICY::INLINE_MIRROR_REQUIRED ||
+			!Is_CompiledMaterialAdapter(Adapter) ||
+			Adapter.eCarrier !=
+				EFFECT_COMPILED_MATERIAL_CARRIER::MESH_PARTICLE_CMODEL ||
+			Element.pElement->eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
+			!Element.pElement->SourceRecipe.bEnabled ||
+			Element.pElement->SourceRecipe.strRendererShape != "mesh" ||
+			nullptr == Find_Binding(
+				*Element.pElement, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
+			Element.pElement->Material.eRenderProfile != Adapter.eRenderProfile ||
+			0u == Resource.iRuntimeMaterialV2Enabled ||
+			Resource.iRuntimeMaterialV2Opcode !=
+				pMaterialProgramBinding->Execution.iOpcode ||
+			iPass != Adapter.iPassIndex ||
+			Engine::CRenderOutputContract::Get_Active() !=
+				Engine::RENDER_OUTPUT_CONTRACT::
+					SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION)
+		{
+			return Fail_RenderOperation(
+				"Bound Mesh material adapter draw contract changed.",
+				E_FAIL, true);
+		}
+		iPass = Adapter.iPassIndex;
+	}
 	const float4x4_t& World = nullptr != pWorldOverride ?
 		*pWorldOverride : Element.World;
 	const bool_t bMainSourceReplay =
@@ -18544,13 +18894,6 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 	// occurrence boundary.  It must not abort the whole effect frame.
 	if (std::abs(fDeterminant) <= std::numeric_limits<f32_t>::epsilon())
 		return S_FALSE;
-	if (fDeterminant < 0.f)
-	{
-		if (3u == iPass)
-			iPass = 5u;
-		else if (4u == iPass)
-			iPass = 6u;
-	}
 	XMStoreFloat4x4(&NormalMatrix,
 		XMMatrixTranspose(XMMatrixInverse(nullptr, LoadedWorld)));
 	if (m_bAuthoringValtanTranslatedCanaryEnabled &&
@@ -18630,7 +18973,18 @@ HRESULT Client::CEffectDocumentRenderer::Render_Mesh(
 		if (FAILED(hResult))
 			return Fail_RenderOperation(
 				"Mesh shader pass apply failed.", hResult);
+		if (nullptr != pMaterialProgramBinding &&
+			!Validate_ActualMaterialAdapterPipeline(
+				m_pContext.Get(), pMaterialProgramBinding->Adapter,
+				iPass))
+		{
+			return Fail_RenderOperation(
+				"Bound Mesh material adapter actual pass/state/MRT changed.",
+				E_FAIL, true);
+		}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+		if (nullptr != pMaterialProgramBinding)
+			Record_TestCompiledAdapterPipelineValidation();
 		Record_TestShaderPassApplication();
 #endif
 		PIXEL_SHADER_SAMPLER_SCOPE SamplerScope(m_pContext.Get());
@@ -18803,11 +19157,51 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 		nullptr == m_pRect)
 		return Fail_RenderOperation("Decal element/shader/buffer contract is missing.",
 			E_INVALIDARG, true);
-	const uint32_t iPass = Select_Pass(
+	uint32_t iPass = Select_Pass(
 		Element.pElement->Material.eRenderProfile);
 	if (UINT32_MAX == iPass)
 		return Fail_RenderOperation("Decal render-profile pass is invalid.",
 			E_INVALIDARG, true);
+	const std::shared_ptr<const EFFECT_RESOLVED_MATERIAL_PROGRAM_BINDING>&
+		pMaterialProgramBinding = Resource.pMaterialProgramBinding;
+	if (nullptr != pMaterialProgramBinding)
+	{
+		const EFFECT_COMPILED_MATERIAL_ADAPTER_DESC& Adapter =
+			pMaterialProgramBinding->Adapter;
+		if (nullptr == m_pPreparedDocument ||
+			nullptr == m_pPreparedDocument->pMaterialProgramRegistry ||
+			m_pPreparedDocument->pMaterialProgramRegistry->Get_CatalogRevision() !=
+				pMaterialProgramBinding->iCatalogRevision ||
+			m_pPreparedDocument->iMaterialProgramRegistryGeneration !=
+				pMaterialProgramBinding->iRegistryGenerationId ||
+			m_pPreparedDocument->pMaterialProgramRegistry->Resolve(
+					Get_StagedDocument().strEffectAssetId,
+					Element.pElement->strElementId).get() !=
+				pMaterialProgramBinding.get() ||
+			pMaterialProgramBinding->eInlineMirrorPolicy !=
+				EFFECT_MATERIAL_INLINE_MIRROR_POLICY::INLINE_MIRROR_REQUIRED ||
+			!Is_CompiledMaterialAdapter(Adapter) ||
+			Adapter.eCarrier !=
+				EFFECT_COMPILED_MATERIAL_CARRIER::LOCAL_DECAL_PROJECTOR ||
+			Element.pElement->eKind != EFFECT_ELEMENT_KIND::DECAL ||
+			nullptr != Find_Binding(
+				*Element.pElement, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
+			nullptr != Resource.pModel ||
+			Element.pElement->Material.eRenderProfile != Adapter.eRenderProfile ||
+			0u == Resource.iRuntimeMaterialV2Enabled ||
+			Resource.iRuntimeMaterialV2Opcode !=
+				pMaterialProgramBinding->Execution.iOpcode ||
+			iPass != Adapter.iPassIndex ||
+			Engine::CRenderOutputContract::Get_Active() !=
+				Engine::RENDER_OUTPUT_CONTRACT::
+					SCENE_HDR_RT0_SCENE_COLOR_RT1_DISTORTION)
+		{
+			return Fail_RenderOperation(
+				"Bound LocalDecal material adapter draw contract changed.",
+				E_FAIL, true);
+		}
+		iPass = Adapter.iPassIndex;
+	}
 	const matrix_t World = XMLoadFloat4x4(&Element.World);
 	const HRESULT WorldStatus = Validate_DecalProjectionWorld(Element);
 	if (S_OK != WorldStatus)
@@ -18869,7 +19263,24 @@ HRESULT Client::CEffectDocumentRenderer::Render_Decal(
 	hResult = m_pDecalShader->Begin(iPass);
 	if (FAILED(hResult))
 		return Fail_RenderOperation("Decal shader pass apply failed.", hResult);
+	if (nullptr != pMaterialProgramBinding &&
+		!Validate_ActualMaterialAdapterPipeline(
+			m_pContext.Get(), pMaterialProgramBinding->Adapter, iPass))
+	{
+		return Fail_RenderOperation(
+			"Bound LocalDecal material adapter actual pass/state/MRT changed.",
+			E_FAIL, true);
+	}
+	if (nullptr != pMaterialProgramBinding &&
+		!Validate_ActualLocalDecalDepthShaderResource(m_pContext.Get()))
+	{
+		return Fail_RenderOperation(
+			"Bound LocalDecal material adapter actual depth SRV changed.",
+			E_FAIL, true);
+	}
 #if defined(LOSTARK_EFFECT_RECONSTRUCTED_EXECUTION_TESTS)
+	if (nullptr != pMaterialProgramBinding)
+		Record_TestCompiledAdapterPipelineValidation();
 	Record_TestShaderPassApplication();
 #endif
 	PIXEL_SHADER_SAMPLER_SCOPE SamplerScope(m_pContext.Get());
@@ -19358,17 +19769,21 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			m_pPreparedDocument->pMaterialProgramRegistry->Resolve(
 					Get_StagedDocument().strEffectAssetId,
 					Source.strElementId).get() != pMaterialProgramBinding.get() ||
-			!Is_CompiledSpriteParticleAdapter(Adapter) ||
+			pMaterialProgramBinding->eInlineMirrorPolicy !=
+				EFFECT_MATERIAL_INLINE_MIRROR_POLICY::INLINE_MIRROR_REQUIRED ||
+			!Is_CompiledMaterialAdapter(Adapter) ||
+			Adapter.eCarrier !=
+				EFFECT_COMPILED_MATERIAL_CARRIER::SPRITE_PARTICLE ||
 			Source.eKind != EFFECT_ELEMENT_KIND::PARTICLE ||
 			!Source.SourceRecipe.bEnabled ||
 			Source.SourceRecipe.strRendererShape != "sprite" ||
 			nullptr != Find_Binding(Source, EFFECT_RESOURCE_SLOT::MESH_MODEL) ||
 			nullptr != pResource->pModel || nullptr == m_pParticleShader ||
 			nullptr == m_pParticleBuffer ||
-			Source.Material.eRenderProfile !=
-				EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ ||
+			Source.Material.eRenderProfile != Adapter.eRenderProfile ||
 			0u == pResource->iRuntimeMaterialV2Enabled ||
-			pResource->iRuntimeMaterialV2Opcode != 6u ||
+			pResource->iRuntimeMaterialV2Opcode !=
+				pMaterialProgramBinding->Execution.iOpcode ||
 			Select_Pass(Source.Material.eRenderProfile) != Adapter.iPassIndex ||
 			Engine::CRenderOutputContract::Get_Active() !=
 				Engine::RENDER_OUTPUT_CONTRACT::
@@ -19396,8 +19811,8 @@ HRESULT Client::CEffectDocumentRenderer::Render_Particles(
 			"Particle shader pass apply failed.", hResult);
 	if (nullptr != pMaterialProgramBinding)
 	{
-		if (!Validate_ActualSpriteParticleAdapterPipeline(
-				m_pContext.Get(), pMaterialProgramBinding->Adapter))
+		if (!Validate_ActualMaterialAdapterPipeline(
+				m_pContext.Get(), pMaterialProgramBinding->Adapter, iPass))
 		{
 			return Fail_RenderOperation(
 				"Bound Sprite material adapter actual pass/state/MRT changed.",

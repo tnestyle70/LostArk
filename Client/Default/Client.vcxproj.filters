@@ -2175,6 +2175,9 @@
     <Filter Include="96.DataFiles\Effects\MaterialPrograms">
       <UniqueIdentifier>{322e5c70-b991-5499-a203-6f6315e9b50d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\MaterialPrograms\Fragments">
+      <UniqueIdentifier>{83690159-895c-41da-a2d8-99ab56b7027f}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\Policies">
       <UniqueIdentifier>{96261560-2769-5840-ba4d-aead402703fe}</UniqueIdentifier>
     </Filter>
@@ -7937,6 +7940,9 @@
     </None>
     <None Include="..\..\Data\Effects\MaterialPrograms\effect-material-program-registry.v1.json">
       <Filter>96.DataFiles\Effects\MaterialPrograms</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\artist-f-golden.material-program-fragment.v1.json">
+      <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
     </None>
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy-source.json">
       <Filter>96.DataFiles\Effects\Policies\Artist</Filter>

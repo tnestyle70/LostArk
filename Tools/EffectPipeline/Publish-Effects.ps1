@@ -30,6 +30,8 @@ $visualProgramSourcePath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
     'Effects\VisualPrograms\effect-visual-program-runtime.v1.json'))
 $materialProgramSourcePath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
     'Effects\MaterialPrograms\effect-material-program-registry.v1.json'))
+$materialProgramFragmentRoot = [IO.Path]::GetFullPath((Join-Path $DataRoot `
+    'Effects\MaterialPrograms\Fragments'))
 $visualProgramOutputPath = [IO.Path]::GetFullPath((Join-Path `
     (Split-Path -Parent $OutputPath) 'EffectVisualPrograms.runtime.json'))
 $catalogPath = [IO.Path]::GetFullPath((Join-Path $DataRoot `
@@ -1363,6 +1365,7 @@ function Invoke-MaterialProgramRegistryBuild {
     }
     $registryJson = & $python.Source -B $materialProgramRegistryTool `
         --source $materialProgramSourcePath `
+        --fragment-root $materialProgramFragmentRoot `
         --effect-catalog $catalogPath `
         --data-root $DataRoot
     if ($LASTEXITCODE -ne 0) {

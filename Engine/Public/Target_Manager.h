@@ -19,6 +19,7 @@ public:
 	HRESULT Begin_DepthOnly(ComPtr<ID3D11DepthStencilView> pDSV);
 	HRESULT End_DepthOnly();
 	HRESULT Bind_SRV(const wstring_t& strTargetTag, shared_ptr<class CShader> pShader, const char_t* pConstantName);
+	ComPtr<ID3D11ShaderResourceView> Get_SRV(const wstring_t& strTargetTag) const;
 	HRESULT Copy_Resource(const wstring_t& strTargetTag, ComPtr<ID3D11Texture2D> pTexture2D);
 
 #ifdef _DEBUG
@@ -39,7 +40,7 @@ private:
 	map<const wstring_t, shared_ptr<class CRenderTarget>>			m_RenderTargets;
 	map<const wstring_t, list<shared_ptr<class CRenderTarget>>>		m_MRTs;
 private:
-	shared_ptr<class CRenderTarget> Find_RenderTarget(const wstring_t& strTargetTag);
+	shared_ptr<class CRenderTarget> Find_RenderTarget(const wstring_t& strTargetTag) const;
 	list<shared_ptr<class CRenderTarget>>* Find_MRT(const wstring_t& strMRTTag);
 
 public:
