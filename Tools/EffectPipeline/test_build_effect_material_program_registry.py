@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from collections import Counter
 import importlib.util
 import io
 import json
@@ -44,6 +45,13 @@ SHADOW_ELEMENT_ID = "sprite.c65181324417a1a8"
 PROGRAM_ID = "effect.program.runtime-material-v2.opcode-6.v1"
 LAYOUT_ID = "effect.layout.runtime-material-v2.opcode-6.abi-3aafae1b4639c551.v1"
 DESCRIPTOR_ID = "effect.descriptor.artist-f.sprite-2b3dc6842507e910.v1"
+REPRESENTATIVE_V1_EFFECT_IDS = {
+    "effect.artist.skill.31460.v1.unified",
+    "effect.dimensionmaster.skill.2050180.v1.unified",
+    "effect.lancemaster.skill.34110.v1.unified",
+    "effect.warlord.skill.17110.clip2.v1.unified",
+    "effect.warlord.skill.17110.clip3.v1.unified",
+}
 
 
 def make_registry() -> dict[str, object]:
@@ -99,9 +107,31 @@ class MaterialProgramRegistryTests(unittest.TestCase):
             SOURCE_PATH, EFFECT_CATALOG_PATH, DATA_ROOT
         )
         self.assertEqual(make_binding(), registry["bindings"][0])
+        artist_f_bindings = [
+            row for row in registry["bindings"] if row["effectAssetId"] == EFFECT_ID
+        ]
         self.assertEqual(
             [ELEMENT_ID, "mesh.062366ee9f9655d3", "decal.f3b5c3b63b4a7e34"],
-            [row["elementId"] for row in registry["bindings"]],
+            [row["elementId"] for row in artist_f_bindings],
+        )
+        representative_bindings = [
+            row
+            for row in registry["bindings"]
+            if row["effectAssetId"] in REPRESENTATIVE_V1_EFFECT_IDS
+        ]
+        self.assertEqual(134, len(registry["bindings"]))
+        self.assertEqual(131, len(representative_bindings))
+        self.assertEqual(
+            {
+                registry_tool.DECAL_ALPHA_TWO_SIDED_ADAPTER_ID: 8,
+                registry_tool.MESH_ALPHA_ONE_SIDED_ADAPTER_ID: 3,
+                registry_tool.MESH_ALPHA_TWO_SIDED_ADAPTER_ID: 22,
+                registry_tool.SPRITE_ADDITIVE_ONE_SIDED_ADAPTER_ID: 23,
+                registry_tool.SPRITE_ADDITIVE_TWO_SIDED_ADAPTER_ID: 24,
+                registry_tool.SPRITE_ALPHA_ONE_SIDED_ADAPTER_ID: 41,
+                registry_tool.CANONICAL_SPRITE_ADAPTER_ID: 10,
+            },
+            dict(Counter(row["adapterId"] for row in representative_bindings)),
         )
         self.assertTrue(
             all(
@@ -136,7 +166,13 @@ class MaterialProgramRegistryTests(unittest.TestCase):
         )
         self.assertEqual(
             set(registry_tool.COMPILED_LAYOUT_IDS.values()),
-            {row["layoutId"] for row in registry["layouts"]},
+            {
+                row["layoutId"]
+                for row in registry["layouts"]
+                if not row["layoutId"].startswith(
+                    "effect.layout.standard-color-v1."
+                )
+            },
         )
 
         domain_program = make_registry()
@@ -162,7 +198,103 @@ class MaterialProgramRegistryTests(unittest.TestCase):
         duplicate_layout_alias["layouts"].append(alias)
         with self.assertRaisesRegex(registry_tool.ContractError, "canonical compiled ABI ID"):
             registry_tool.validate_registry(duplicate_layout_alias)
+    def test_representative_standard_color_packet_and_float_bits_are_exact(self) -> None:
+        registry = make_registry()
+        binding = next(
+            row
+            for row in registry["bindings"]
+            if row["effectAssetId"] == "effect.artist.skill.31460.v1.unified"
+            and row["adapterId"]
+            == registry_tool.DECAL_ALPHA_TWO_SIDED_ADAPTER_ID
+        )
+        programs = {row["programId"]: row for row in registry["programs"]}
+        layouts = {row["layoutId"]: row for row in registry["layouts"]}
+        descriptors = {
+            row["descriptorId"]: row for row in registry["descriptors"]
+        }
+        packet = registry_tool.materialize_binding(
+            binding, programs, layouts, descriptors
+        )
+        self.assertEqual("standardColorV1", packet["backend"])
+        self.assertEqual(1, packet["opcode"])
+        self.assertEqual("DSS_ZNone", packet["renderState"]["depthStencil"])
+        self.assertEqual(
+            ["base_radiance", "coverage"],
+            [row["role"] for row in packet["textureLanes"]],
+        )
+        self.assertEqual(
+            {
+                "packetVersion": 1,
+                "baseRadianceLaneId": "lane.0",
+                "baseRadianceChannel": "RGB",
+                "coverageLaneId": "lane.1",
+                "coverageChannel": "R",
+                "emissiveMode": "baseRadiance",
+                "lifetimeEnvelope": "carrierAlpha",
+                "dissolveMode": "none",
+                "dissolveLaneId": "",
+                "dissolveChannel": "invalid",
+                "dissolveSoftness": 0.0,
+                "missingLanePolicy": "failClosed",
+            },
+            packet["standardColor"],
+        )
 
+        drifted = copy.deepcopy(registry)
+        authored = registry_tool.load_binding_authored_documents(
+            drifted, EFFECT_CATALOG_PATH, DATA_ROOT
+        )
+        target = next(
+            row
+            for row in authored[binding["effectAssetId"]]["elements"]
+            if row["id"] == binding["elementId"]
+        )
+        target["material"]["execution"]["standardColor"][
+            "dissolveSoftness"
+        ] = -0.0
+        with self.assertRaisesRegex(registry_tool.ContractError, "float-bit mismatch"):
+            registry_tool.validate_registry(drifted, authored)
+
+    def test_standard_color_carrier_resource_contract_fails_closed(self) -> None:
+        registry = make_registry()
+        authored = registry_tool.load_binding_authored_documents(
+            registry, EFFECT_CATALOG_PATH, DATA_ROOT
+        )
+        cases = (
+            (
+                registry_tool.SPRITE_ALPHA_ONE_SIDED_ADAPTER_ID,
+                [{"slotId": "base", "assetId": "Effect/invalid.dds"}],
+            ),
+            (
+                registry_tool.MESH_ALPHA_ONE_SIDED_ADAPTER_ID,
+                [
+                    {"slotId": "meshModel", "assetId": "Effect/valid.wmodel"},
+                    {"slotId": "base", "assetId": "Effect/invalid.dds"},
+                ],
+            ),
+            (
+                registry_tool.DECAL_ALPHA_TWO_SIDED_ADAPTER_ID,
+                [{"slotId": "base", "assetId": "Effect/invalid.dds"}],
+            ),
+        )
+        for adapter_id, resources in cases:
+            with self.subTest(adapter=adapter_id):
+                binding = next(
+                    row for row in registry["bindings"]
+                    if row["adapterId"] == adapter_id
+                    and row["effectAssetId"].endswith(".v1.unified")
+                )
+                mutated = copy.deepcopy(authored)
+                target = next(
+                    row
+                    for row in mutated[binding["effectAssetId"]]["elements"]
+                    if row["id"] == binding["elementId"]
+                )
+                target["resources"] = resources
+                with self.assertRaisesRegex(
+                    registry_tool.ContractError, "carrier is incompatible"
+                ):
+                    registry_tool.validate_registry(registry, mutated)
     def test_artist_f_canary_binding_materializes_bit_exact_inline_packet(self) -> None:
         registry = make_bound_registry(ELEMENT_ID)
         registry_tool.validate_registry(registry, make_authored_documents())

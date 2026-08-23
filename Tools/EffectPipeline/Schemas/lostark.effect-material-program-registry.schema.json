@@ -96,11 +96,19 @@
             "backend": { "const": "localDecal" },
             "opcode": { "const": 14 }
           }
+        },
+        {
+          "properties": {
+            "backend": { "const": "standardColorV1" },
+            "opcode": { "const": 1 }
+          }
         }
       ],
       "properties": {
         "programId": { "$ref": "#/$defs/stableId" },
-        "backend": { "enum": ["runtimeMaterialV2", "localDecal"] },
+        "backend": {
+          "enum": ["runtimeMaterialV2", "localDecal", "standardColorV1"]
+        },
         "opcode": { "$ref": "#/$defs/uint32" }
       }
     },
@@ -340,7 +348,12 @@
           "enum": [
             "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
             "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1",
-            "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1"
+            "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1",
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1",
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.additive-two-sided.v1",
+            "effect.adapter.sprite-particle.scene-color-rt0.zero-distortion-rt1.additive-one-sided.v1",
+            "effect.adapter.mesh-particle.cmodel.scene-color-rt0.zero-distortion-rt1.alpha-one-sided.v1",
+            "effect.adapter.local-decal.projector.scene-color-rt0.zero-distortion-rt1.alpha-two-sided.v1"
           ]
         }
       }

@@ -1632,6 +1632,9 @@
     <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster">
       <UniqueIdentifier>{e77ed5c4-d9dc-5814-8f72-54d2208a63ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Generated\RepresentativeFour">
+      <UniqueIdentifier>{90ad3a9a-0276-58e4-9a36-7d4d3804c52e}</UniqueIdentifier>
+    </Filter>
     <Filter Include="96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB">
       <UniqueIdentifier>{cc1a9767-7084-5b88-ab8a-f3ab5c339fee}</UniqueIdentifier>
     </Filter>
@@ -2604,6 +2607,9 @@
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31460.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.artist.skill.31470.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
@@ -2731,6 +2737,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050180.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050180.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.dimensionmaster.skill.2050190.effect.json">
@@ -2899,6 +2908,9 @@
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34110.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34110.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.lancemaster.skill.34120.authored-baseline.clip1.effect.json">
@@ -3687,7 +3699,13 @@
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip2.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip2.v1.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip3.unified.effect.json">
+      <Filter>96.DataFiles\Effects\Authored</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17110.clip3.v1.unified.effect.json">
       <Filter>96.DataFiles\Effects\Authored</Filter>
     </None>
     <None Include="..\..\Data\Effects\Authored\effect.warlord.skill.17140.authored-baseline.effect.json">
@@ -4061,6 +4079,9 @@
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\LanceMaster\effect.lancemaster.skill.34650.authored-baseline.approximation-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\LanceMaster</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\RepresentativeFour\representative-four-v1-standard-color.receipt.json">
+      <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\RepresentativeFour</Filter>
     </None>
     <None Include="..\..\Data\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates\effect.lancemaster.skill.34010.ba1.candidate-receipt.json">
       <Filter>96.DataFiles\Effects\AuthoredCorrections\Generated\TrackB\LanceMasterLmbCandidates</Filter>
@@ -7948,6 +7969,9 @@
       <Filter>96.DataFiles\Effects\MaterialPrograms</Filter>
     </None>
     <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\artist-f-golden.material-program-fragment.v1.json">
+      <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
+    </None>
+    <None Include="..\..\Data\Effects\MaterialPrograms\Fragments\representative-four-v1-standard-color.material-program-fragment.v1.json">
       <Filter>96.DataFiles\Effects\MaterialPrograms\Fragments</Filter>
     </None>
     <None Include="..\..\Data\Effects\Policies\Artist\artist.31470.f.reconstructed-approved-v1.policy-source.json">

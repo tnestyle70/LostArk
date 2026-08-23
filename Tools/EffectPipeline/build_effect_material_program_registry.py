@@ -11,6 +11,7 @@ mirror, including every float's IEEE-754 binary32 representation.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 from pathlib import Path, PurePosixPath
@@ -39,6 +40,26 @@ DECAL_ALPHA_ONE_SIDED_ADAPTER_ID = (
     "effect.adapter.local-decal.projector.scene-color-rt0."
     "zero-distortion-rt1.alpha-one-sided.v1"
 )
+SPRITE_ALPHA_ONE_SIDED_ADAPTER_ID = (
+    "effect.adapter.sprite-particle.scene-color-rt0."
+    "zero-distortion-rt1.alpha-one-sided.v1"
+)
+SPRITE_ADDITIVE_TWO_SIDED_ADAPTER_ID = (
+    "effect.adapter.sprite-particle.scene-color-rt0."
+    "zero-distortion-rt1.additive-two-sided.v1"
+)
+SPRITE_ADDITIVE_ONE_SIDED_ADAPTER_ID = (
+    "effect.adapter.sprite-particle.scene-color-rt0."
+    "zero-distortion-rt1.additive-one-sided.v1"
+)
+MESH_ALPHA_ONE_SIDED_ADAPTER_ID = (
+    "effect.adapter.mesh-particle.cmodel.scene-color-rt0."
+    "zero-distortion-rt1.alpha-one-sided.v1"
+)
+DECAL_ALPHA_TWO_SIDED_ADAPTER_ID = (
+    "effect.adapter.local-decal.projector.scene-color-rt0."
+    "zero-distortion-rt1.alpha-two-sided.v1"
+)
 
 INLINE_MIRROR_REQUIRED = "INLINE_MIRROR_REQUIRED"
 
@@ -48,21 +69,70 @@ COMPILED_ADAPTERS: dict[str, dict[str, Any]] = {
         "renderProfile": "alpha_two_sided_depth_read",
         "passIndex": 1,
         "renderState": ("RS_Cull_None", "DSS_ReadOnly", "BS_EffectAlpha"),
-        "programs": frozenset((("runtimeMaterialV2", 6),)),
+        "programs": frozenset(
+            (("runtimeMaterialV2", 6), ("standardColorV1", 1))
+        ),
     },
     MESH_ALPHA_TWO_SIDED_ADAPTER_ID: {
         "carrier": "MESH_PARTICLE",
         "renderProfile": "alpha_two_sided_depth_read",
         "passIndex": 1,
         "renderState": ("RS_Cull_None", "DSS_ReadOnly", "BS_EffectAlpha"),
-        "programs": frozenset((("runtimeMaterialV2", 3),)),
+        "programs": frozenset(
+            (("runtimeMaterialV2", 3), ("standardColorV1", 1))
+        ),
     },
     DECAL_ALPHA_ONE_SIDED_ADAPTER_ID: {
         "carrier": "LOCAL_DECAL",
         "renderProfile": "alpha_one_sided_depth_read",
         "passIndex": 3,
         "renderState": ("RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
-        "programs": frozenset((("localDecal", 14),)),
+        "programs": frozenset(
+            (("localDecal", 14), ("standardColorV1", 1))
+        ),
+    },
+    SPRITE_ALPHA_ONE_SIDED_ADAPTER_ID: {
+        "carrier": "SPRITE_PARTICLE",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "passIndex": 3,
+        "renderState": ("RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
+        "programs": frozenset((("standardColorV1", 1),)),
+    },
+    SPRITE_ADDITIVE_TWO_SIDED_ADAPTER_ID: {
+        "carrier": "SPRITE_PARTICLE",
+        "renderProfile": "additive_two_sided_depth_read",
+        "passIndex": 2,
+        "renderState": (
+            "RS_Cull_None",
+            "DSS_ReadOnly",
+            "BS_EffectAdditive",
+        ),
+        "programs": frozenset((("standardColorV1", 1),)),
+    },
+    SPRITE_ADDITIVE_ONE_SIDED_ADAPTER_ID: {
+        "carrier": "SPRITE_PARTICLE",
+        "renderProfile": "additive_one_sided_depth_read",
+        "passIndex": 4,
+        "renderState": ("RS_Default", "DSS_ReadOnly", "BS_EffectAdditive"),
+        "programs": frozenset((("standardColorV1", 1),)),
+    },
+    MESH_ALPHA_ONE_SIDED_ADAPTER_ID: {
+        "carrier": "MESH_PARTICLE",
+        "renderProfile": "alpha_one_sided_depth_read",
+        "passIndex": 3,
+        "renderState": ("RS_Default", "DSS_ReadOnly", "BS_EffectAlpha"),
+        "programs": frozenset((("standardColorV1", 1),)),
+    },
+    DECAL_ALPHA_TWO_SIDED_ADAPTER_ID: {
+        "carrier": "LOCAL_DECAL",
+        "renderProfile": "alpha_two_sided_depth_read",
+        "passIndex": 1,
+        "renderState": (
+            "RS_Cull_None",
+            "DSS_ZNone",
+            "BS_EffectAlpha",
+        ),
+        "programs": frozenset((("standardColorV1", 1),)),
     },
 }
 
@@ -192,6 +262,25 @@ EXECUTION_KEYS = (
     "artistParameters",
     "colors",
 )
+STANDARD_COLOR_EXECUTION_KEYS = (
+    *EXECUTION_KEYS[:9],
+    "standardColor",
+    *EXECUTION_KEYS[9:],
+)
+STANDARD_COLOR_KEYS = (
+    "packetVersion",
+    "baseRadianceLaneId",
+    "baseRadianceChannel",
+    "coverageLaneId",
+    "coverageChannel",
+    "emissiveMode",
+    "lifetimeEnvelope",
+    "dissolveMode",
+    "dissolveLaneId",
+    "dissolveChannel",
+    "dissolveSoftness",
+    "missingLanePolicy",
+)
 
 
 def _packed_abi_rows(prefix: str, count: int) -> list[dict[str, Any]]:
@@ -314,6 +403,7 @@ COMPILED_PROGRAM_IDS: dict[tuple[str, int], str] = {
     ("runtimeMaterialV2", 6): "effect.program.runtime-material-v2.opcode-6.v1",
     ("runtimeMaterialV2", 3): "effect.program.runtime-material-v2.opcode-3.v1",
     ("localDecal", 14): "effect.program.local-decal.opcode-14.v1",
+    ("standardColorV1", 1): "effect.program.standard-color-v1.opcode-1.v1",
 }
 COMPILED_LAYOUT_IDS: dict[tuple[str, int], str] = {
     ("runtimeMaterialV2", 6):
@@ -554,10 +644,17 @@ def _validate_programs(value: Any) -> dict[str, dict[str, Any]]:
         if row_id in result:
             raise ContractError(f"duplicate programId: {row_id}")
         backend = row["backend"]
-        if backend not in ("runtimeMaterialV2", "localDecal"):
+        if backend not in (
+            "runtimeMaterialV2",
+            "localDecal",
+            "standardColorV1",
+        ):
             raise ContractError(f"program {row_id} backend is unsupported")
         opcode = _require_uint32(row["opcode"], f"program {row_id} opcode")
-        if (backend, opcode) not in COMPILED_PROGRAM_LAYOUT_ABIS:
+        if (
+            (backend, opcode) not in COMPILED_PROGRAM_LAYOUT_ABIS
+            and (backend, opcode) != ("standardColorV1", 1)
+        ):
             raise ContractError(
                 f"program {row_id} has no compiled Program/Layout ABI receipt"
             )
@@ -672,16 +769,41 @@ def _validate_layouts(value: Any) -> dict[str, dict[str, Any]]:
         _validate_packed_rows(row["colorRows"], f"layout {row_id} colorRows", MAX_NAMED_VECTOR_ROWS)
         if len(scalar_rows) != scalar_count or len(vector_rows) != vector_count:
             raise ContractError(f"layout {row_id} packed row count mismatch")
-        matching_receipts = [
-            identity
-            for identity, receipt in COMPILED_PROGRAM_LAYOUT_ABIS.items()
-            if all(row.get(field) == expected for field, expected in receipt.items())
-        ]
-        if len(matching_receipts) != 1:
-            raise ContractError(
-                f"layout {row_id} does not match exactly one compiled ABI receipt"
+        standard_color_prefix = "effect.layout.standard-color-v1."
+        if row_id.startswith(standard_color_prefix):
+            _validate_compiled_program_layout_abi(
+                {"backend": "standardColorV1", "opcode": 1}, row, row_id
             )
-        expected_id = COMPILED_LAYOUT_IDS[matching_receipts[0]]
+            signature = [
+                {
+                    "role": lane["role"],
+                    "sourceChannel": lane["sourceChannel"],
+                    "colorSpace": lane["colorSpace"],
+                }
+                for lane in lanes
+            ]
+            digest = hashlib.sha256(
+                json.dumps(
+                    signature,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            ).hexdigest()[:16]
+            expected_id = (
+                f"{standard_color_prefix}{lane_count}-lane.{digest}.v1"
+            )
+        else:
+            matching_receipts = [
+                identity
+                for identity, receipt in COMPILED_PROGRAM_LAYOUT_ABIS.items()
+                if all(row.get(field) == expected for field, expected in receipt.items())
+            ]
+            if len(matching_receipts) != 1:
+                raise ContractError(
+                    f"layout {row_id} does not match exactly one compiled ABI receipt"
+                )
+            expected_id = COMPILED_LAYOUT_IDS[matching_receipts[0]]
         if row_id != expected_id:
             raise ContractError(
                 f"layout {row_id} must use canonical compiled ABI ID {expected_id}"
@@ -791,7 +913,7 @@ def materialize_binding(
             )
         ]
 
-    return {
+    materialized: dict[str, Any] = {
         "enabled": True,
         "version": layout["executionVersion"],
         "backend": program["backend"],
@@ -806,6 +928,30 @@ def materialize_binding(
         "textureLaneCount": layout["textureLaneCount"],
         "textureMask": layout["textureMask"],
         "textureLanes": texture_lanes,
+    }
+    if (program["backend"], program["opcode"]) == ("standardColorV1", 1):
+        has_dissolve = layout["textureLaneCount"] == 3
+        materialized["standardColor"] = {
+            "packetVersion": 1,
+            "baseRadianceLaneId": layout["textureLanes"][0]["laneId"],
+            "baseRadianceChannel": layout["textureLanes"][0]["sourceChannel"],
+            "coverageLaneId": layout["textureLanes"][1]["laneId"],
+            "coverageChannel": layout["textureLanes"][1]["sourceChannel"],
+            "emissiveMode": "baseRadiance",
+            "lifetimeEnvelope": "carrierAlpha",
+            "dissolveMode": "laneThreshold" if has_dissolve else "none",
+            "dissolveLaneId": (
+                layout["textureLanes"][2]["laneId"] if has_dissolve else ""
+            ),
+            "dissolveChannel": (
+                layout["textureLanes"][2]["sourceChannel"]
+                if has_dissolve
+                else "invalid"
+            ),
+            "dissolveSoftness": 0.1 if has_dissolve else 0.0,
+            "missingLanePolicy": "failClosed",
+        }
+    materialized.update({
         "dynamicConsumedMask": layout["dynamicConsumedMask"],
         "dynamicSuppressedMask": layout["dynamicSuppressedMask"],
         "particleColorPolicy": layout["particleColorPolicy"],
@@ -829,7 +975,8 @@ def materialize_binding(
         "vectors": merge_rows("vectorRows", "vectors"),
         "artistParameters": merge_rows("artistParameterRows", "artistParameters"),
         "colors": merge_rows("colorRows", "colors"),
-    }
+    })
+    return materialized
 
 
 def _require_same(actual: Any, expected: Any, label: str) -> None:
@@ -841,6 +988,72 @@ def _validate_compiled_program_layout_abi(
     program: Mapping[str, Any], layout: Mapping[str, Any], label: str
 ) -> None:
     identity = (program["backend"], program["opcode"])
+    if identity == ("standardColorV1", 1):
+        lane_count = layout.get("textureLaneCount")
+        lanes = layout.get("textureLanes")
+        expected_roles = (
+            ("base_radiance", "coverage")
+            if lane_count == 2
+            else ("base_radiance", "coverage", "dissolve")
+        )
+        base_channels = {"R", "G", "B", "RGB"}
+        scalar_channels = {"R", "G", "B", "A"}
+        zero_fields = (
+            "dynamicConsumedMask",
+            "dynamicSuppressedMask",
+            "particleColorPolicy",
+            "particleColorConsumedMask",
+            "particleColorSuppressedMask",
+            "scalarCount",
+            "vectorCount",
+            "inputCount",
+            "staticInputCount",
+            "staticSelectedMask",
+            "staticConsumedMask",
+            "staticSuppressedMask",
+            "renderInputCount",
+            "renderConsumedMask",
+            "renderSuppressedMask",
+        )
+        zero_arrays = (
+            ("inputConsumedMask", [0, 0]),
+            ("inputSuppressedMask", [0, 0]),
+            ("vectorComponentConsumedMask", [0, 0, 0]),
+            ("vectorComponentSuppressedMask", [0, 0, 0]),
+            ("scalarRows", []),
+            ("vectorRows", []),
+            ("artistParameterRows", []),
+            ("colorRows", []),
+        )
+        valid = (
+            layout.get("executionVersion") == 1
+            and lane_count in (2, 3)
+            and layout.get("textureMask") == (1 << lane_count) - 1
+            and isinstance(lanes, list)
+            and len(lanes) == lane_count
+            and all(layout.get(field) == 0 for field in zero_fields)
+            and all(layout.get(field) == expected for field, expected in zero_arrays)
+        )
+        for index, (lane, role) in enumerate(zip(lanes or (), expected_roles)):
+            allowed_channels = base_channels if index == 0 else scalar_channels
+            valid = valid and (
+                lane.get("laneId") == f"lane.{index}"
+                and lane.get("role") == role
+                and lane.get("textureRegister") == index
+                and lane.get("samplerRegister") == 5 + index
+                and lane.get("sourceChannel") in allowed_channels
+                and lane.get("colorSpace") in ("linear", "srgb")
+                and (
+                    index == 0
+                    or lane.get("sourceChannel") == "A"
+                    or lane.get("colorSpace") == "linear"
+                )
+            )
+        if not valid:
+            raise ContractError(
+                f"binding {label} Program/Layout ABI mismatch at StandardColorV1"
+            )
+        return
     expected = COMPILED_PROGRAM_LAYOUT_ABIS.get(identity)
     if expected is None:
         raise ContractError(f"binding {label} has no compiled Program/Layout ABI receipt")
@@ -855,8 +1068,15 @@ def _validate_compiled_program_layout_abi(
 def assert_execution_bit_exact(
     materialized: Mapping[str, Any], authored: Any, label: str
 ) -> None:
-    _require_exact_order(materialized, EXECUTION_KEYS, f"{label} materialized execution")
-    _require_exact_order(authored, EXECUTION_KEYS, f"{label} authored execution")
+    execution_keys = (
+        STANDARD_COLOR_EXECUTION_KEYS
+        if materialized.get("backend") == "standardColorV1"
+        else EXECUTION_KEYS
+    )
+    _require_exact_order(
+        materialized, execution_keys, f"{label} materialized execution"
+    )
+    _require_exact_order(authored, execution_keys, f"{label} authored execution")
     simple_fields = (
         "enabled",
         "version",
@@ -891,6 +1111,33 @@ def assert_execution_bit_exact(
     _require_exact_order(authored["renderState"], RENDER_STATE_KEYS, f"{label}.renderState")
     for field in RENDER_STATE_KEYS:
         _require_same(authored["renderState"][field], materialized["renderState"][field], f"{label}.renderState.{field}")
+
+    if materialized.get("backend") == "standardColorV1":
+        expected_standard = materialized["standardColor"]
+        actual_standard = authored["standardColor"]
+        _require_exact_order(
+            expected_standard, STANDARD_COLOR_KEYS, f"{label}.standardColor"
+        )
+        _require_exact_order(
+            actual_standard, STANDARD_COLOR_KEYS, f"{label}.standardColor"
+        )
+        for field in STANDARD_COLOR_KEYS:
+            if field == "dissolveSoftness":
+                if _float32_bits(
+                    actual_standard[field], f"{label}.standardColor.{field}"
+                ) != _float32_bits(
+                    expected_standard[field], f"{label}.standardColor.{field}"
+                ):
+                    raise ContractError(
+                        "materialized execution float-bit mismatch at "
+                        f"{label}.standardColor.{field}"
+                    )
+            else:
+                _require_same(
+                    actual_standard[field],
+                    expected_standard[field],
+                    f"{label}.standardColor.{field}",
+                )
 
     materialized_lanes = materialized["textureLanes"]
     authored_lanes = authored["textureLanes"]
@@ -964,7 +1211,10 @@ def _find_authored_element(
 
 
 def _validate_binding_carrier(
-    element: Mapping[str, Any], adapter: Mapping[str, Any], label: str
+    element: Mapping[str, Any],
+    adapter: Mapping[str, Any],
+    program: Mapping[str, Any],
+    label: str,
 ) -> None:
     kind = element.get("kind")
     source_recipe = element.get("sourceRecipe")
@@ -983,7 +1233,34 @@ def _validate_binding_carrier(
     material = element.get("material")
     render_profile = material.get("renderProfile") if isinstance(material, dict) else None
     matches = False
-    if carrier == "SPRITE_PARTICLE":
+    if program.get("backend") == "standardColorV1":
+        if carrier == "SPRITE_PARTICLE":
+            matches = (
+                kind == "particle"
+                and renderer_shape == "sprite"
+                and isinstance(resources, list)
+                and len(resources) == 0
+            )
+        elif carrier == "MESH_PARTICLE":
+            matches = (
+                kind == "particle"
+                and renderer_shape == "mesh"
+                and isinstance(resources, list)
+                and len(resources) == 1
+                and isinstance(resources[0], dict)
+                and set(resources[0]) == {"slotId", "assetId"}
+                and resources[0].get("slotId") == "meshModel"
+                and isinstance(resources[0].get("assetId"), str)
+                and bool(resources[0]["assetId"])
+            )
+        elif carrier == "LOCAL_DECAL":
+            matches = (
+                kind == "decal"
+                and renderer_shape == "decal"
+                and isinstance(resources, list)
+                and len(resources) == 0
+            )
+    elif carrier == "SPRITE_PARTICLE":
         matches = (
             kind == "particle"
             and renderer_shape == "sprite"
@@ -1076,7 +1353,7 @@ def validate_registry(
                 authored_documents, effect_id, element_id
             )
             _validate_binding_carrier(
-                element, adapter, f"{effect_id}/{element_id}"
+                element, adapter, program, f"{effect_id}/{element_id}"
             )
             authored = _find_authored_execution(
                 element, effect_id, element_id,

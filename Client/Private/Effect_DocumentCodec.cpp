@@ -5953,6 +5953,21 @@ bool_t Client::CEffectDocumentCodec::Validate(
 				EFFECT_MATERIAL_EXECUTION_BACKEND::STANDARD_COLOR_V1;
 		const bool_t bStandardColorTemplate =
 			Element.Material.strTemplateId == EFFECT_STANDARD_COLOR_V1_TEMPLATE_ID;
+		const bool_t bStandardColorMeshCarrier =
+			Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			Element.SourceRecipe.bEnabled &&
+			Element.SourceRecipe.strRendererShape == "mesh" &&
+			Element.ResourceBindings.size() == 1u &&
+			Element.ResourceBindings[0u].strSlotId == "meshModel" &&
+			!Element.ResourceBindings[0u].strAssetId.empty();
+		const bool_t bStandardColorResourceContract =
+			bStandardColorMeshCarrier ||
+			(Element.ResourceBindings.empty() &&
+			 ((Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
+			   Element.SourceRecipe.bEnabled &&
+			   Element.SourceRecipe.strRendererShape == "sprite") ||
+			  Element.eKind == EFFECT_ELEMENT_KIND::DECAL ||
+			  Element.eKind == EFFECT_ELEMENT_KIND::TRAIL));
 		if (bStandardColorBackend != bStandardColorTemplate ||
 			(bStandardColorBackend &&
 			 (Element.eKind != EFFECT_ELEMENT_KIND::PARTICLE &&
@@ -5961,15 +5976,16 @@ bool_t Client::CEffectDocumentCodec::Validate(
 			(bStandardColorBackend &&
 			 (Element.Renderer.eType != EFFECT_RENDERER_TYPE::END ||
 			  Element.Renderer.eSourceSpace != EFFECT_SOURCE_SPACE::END)) ||
-			(bStandardColorBackend && !Element.ResourceBindings.empty()) ||
+			(bStandardColorBackend && !bStandardColorResourceContract) ||
 			(bStandardColorBackend && Element.Material.SourceMaterial.bEnabled) ||
 			(bStandardColorBackend &&
 			 Element.Material.eRenderProfile ==
 				EFFECT_RENDER_PROFILE::OPAQUE_BACK_DEPTH_WRITE) ||
 			(bStandardColorBackend &&
 			 Element.eKind == EFFECT_ELEMENT_KIND::PARTICLE &&
-			 Element.SourceRecipe.bEnabled &&
-			 Element.SourceRecipe.strRendererShape != "sprite") ||
+			 (!Element.SourceRecipe.bEnabled ||
+			  (Element.SourceRecipe.strRendererShape != "sprite" &&
+			   Element.SourceRecipe.strRendererShape != "mesh"))) ||
 			(bStandardColorBackend &&
 			 (0.f != Element.Detail.Color.fDistortionIntensity ||
 			  Element.Detail.Color.bDistortionOnBaseMaterial ||

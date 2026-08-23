@@ -85,6 +85,7 @@
 # The material-program registry is a raw-byte source authority consumed by the
 # publisher. Keep it stable across fresh checkouts before publishing the catalog.
 /Data/Effects/MaterialPrograms/effect-material-program-registry.v1.json text eol=lf
+/Data/Effects/MaterialPrograms/Fragments/*.json text eol=lf
 
 # The generated Effect runtime Catalog is a raw-byte authority consumed by the
 # exact old10/new13 harness. Keep its one trailing newline byte-exact on every

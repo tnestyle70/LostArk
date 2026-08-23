@@ -662,8 +662,16 @@ function Get-ActiveProductEffectIds([string]$RootPath) {
             Path = 'Animation\Authored\DimensionMaster\DimensionMaster.animevents'
         },
         [pscustomobject]@{
+            AnimationAssetId = 'GunSlinger'
+            Path = 'Animation\Authored\GunSlinger\GunSlinger.animevents'
+        },
+        [pscustomobject]@{
             AnimationAssetId = 'LanceMaster'
             Path = 'Animation\Authored\LanceMaster\LanceMaster.animevents'
+        },
+        [pscustomobject]@{
+            AnimationAssetId = 'Slayer'
+            Path = 'Animation\Authored\Slayer\Slayer.animevents'
         },
         [pscustomobject]@{
             AnimationAssetId = 'Warlord'
@@ -2138,6 +2146,28 @@ finally {
     $visualProgramSourceDocument = $null
 }
 $materialPrograms = Invoke-MaterialProgramRegistryBuild
+$materialProgramBoundEffectIds =
+    [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$standardColorV1ProgramIds =
+    [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($program in @($materialPrograms.programs)) {
+    $programId = Get-RequiredProperty $program 'programId' String
+    if ((Get-RequiredProperty $program 'backend' String) -ceq
+            'standardColorV1') {
+        [void]$standardColorV1ProgramIds.Add($programId)
+    }
+}
+$standardColorV1BoundEffectIds =
+    [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($binding in @($materialPrograms.bindings)) {
+    $boundEffectAssetId = Get-RequiredProperty $binding 'effectAssetId' String
+    Assert-StableId $boundEffectAssetId 'Material-program Binding EffectAssetId'
+    [void]$materialProgramBoundEffectIds.Add($boundEffectAssetId)
+    $boundProgramId = Get-RequiredProperty $binding 'programId' String
+    if ($standardColorV1ProgramIds.Contains($boundProgramId)) {
+        [void]$standardColorV1BoundEffectIds.Add($boundEffectAssetId)
+    }
+}
 
 $activeProductEffectIds = Get-ActiveProductEffectIds $DataRoot
 if ($activeProductEffectIds.Count -lt 1) {
@@ -2187,12 +2217,15 @@ try {
         [StringComparer]::Ordinal)
     $matchedActiveProductEffectIds =
         [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $matchedMaterialProgramBoundEffectIds =
+        [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     $directAuthoredRuntimeFilesByPath =
         [Collections.Generic.Dictionary[string,object]]::new(
             [StringComparer]::Ordinal)
     $activeDirectRuntimeCount = 0
     $activeLegacyRuntimeCount = 0
     $reconstructedRuntimeCount = 0
+    $registryBoundAuditionDirectRuntimeCount = 0
     foreach ($entry in @($effects)) {
         $effectAssetId = Get-RequiredProperty $entry 'effectAssetId' String
         Assert-StableId $effectAssetId 'EffectAssetId'
@@ -2210,6 +2243,17 @@ try {
         if ($isActiveProductEffect) {
             [void]$matchedActiveProductEffectIds.Add($effectAssetId)
         }
+        $isMaterialProgramBoundEffect =
+            $materialProgramBoundEffectIds.Contains($effectAssetId)
+        $isStandardColorV1BoundEffect =
+            $standardColorV1BoundEffectIds.Contains($effectAssetId)
+        if ($isMaterialProgramBoundEffect) {
+            [void]$matchedMaterialProgramBoundEffectIds.Add($effectAssetId)
+        }
+        if ($isStandardColorV1BoundEffect -and $isActiveProductEffect) {
+            throw ("StandardColorV1 is PROJECT_TUNED audition-only and cannot " +
+                "be an active Product Effect: $effectAssetId")
+        }
         if ($effectAssetId -ceq 'effect.artist.skill.31470' -and
             ($sourcePayloadKind -cne
                     'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM')) {
@@ -2217,6 +2261,10 @@ try {
         }
         if ($sourcePayloadKind -ceq
                 'IMMUTABLE_RECONSTRUCTED_RUNTIME_PROGRAM') {
+            if ($isMaterialProgramBoundEffect) {
+                throw ("Material-program Binding targets must use a direct " +
+                    "authored document: $effectAssetId")
+            }
             $occurrenceTuningProperty =
                 $entry.PSObject.Properties['occurrenceTuningPath']
             $expectedSourceFields = @(
@@ -2291,16 +2339,111 @@ try {
             continue
         }
         $screenOverlayPresentationPathProperty = $null
+        $runtimeAdmissionProperty =
+            $entry.PSObject.Properties['runtimeAdmission']
+        $fidelityClassProperty =
+            $entry.PSObject.Properties['fidelityClass']
+        $sourceEffectAssetIdProperty =
+            $entry.PSObject.Properties['sourceEffectAssetId']
+        $sourceDocumentRawSha256Property =
+            $entry.PSObject.Properties['sourceDocumentRawSha256']
+        $auditionMetadataPropertyCount = @(
+            $runtimeAdmissionProperty,
+            $fidelityClassProperty,
+            $sourceEffectAssetIdProperty,
+            $sourceDocumentRawSha256Property | Where-Object { $null -ne $_ }
+        ).Count
+        $hasRegistryBoundAuditionAdmission = $false
         if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
             $screenOverlayPresentationPathProperty =
                 $entry.PSObject.Properties['screenOverlayPresentationPath']
             $expectedDirectSourceFields = @(
                 'effectAssetId', 'payloadKind', 'authoringPath')
+            if ($auditionMetadataPropertyCount -ne 0) {
+                if ($auditionMetadataPropertyCount -ne 4) {
+                    throw ("Direct authored audition metadata must be complete: " +
+                        $effectAssetId)
+                }
+                $expectedDirectSourceFields += @(
+                    'runtimeAdmission',
+                    'fidelityClass',
+                    'sourceEffectAssetId',
+                    'sourceDocumentRawSha256')
+            }
             if ($null -ne $screenOverlayPresentationPathProperty) {
                 $expectedDirectSourceFields += 'screenOverlayPresentationPath'
             }
             Assert-ExactPropertyOrder $entry $expectedDirectSourceFields `
                 'Direct authored v13 source catalog entry'
+
+            if ($auditionMetadataPropertyCount -eq 4) {
+                $runtimeAdmission = Get-RequiredProperty $entry `
+                    'runtimeAdmission' String
+                $fidelityClass = Get-RequiredProperty $entry `
+                    'fidelityClass' String
+                $sourceEffectAssetId = Get-RequiredProperty $entry `
+                    'sourceEffectAssetId' String
+                $sourceDocumentRawSha256 = Get-RequiredProperty $entry `
+                    'sourceDocumentRawSha256' String
+                Assert-StableId $sourceEffectAssetId `
+                    'Registry-bound audition source EffectAssetId'
+                if ($runtimeAdmission -cne
+                        'REGISTRY_BOUND_AUDITION_ONLY' -or
+                    # This admission path verifies an immutable V0 seal and an
+                    # internally exact registry mirror, but it does not prove
+                    # V1 semantic equivalence to the source material graph.
+                    # SOURCE_EXACT needs its own evidence verifier.
+                    $fidelityClass -cne 'PROJECT_TUNED_APPROX' -or
+                    $sourceEffectAssetId -ceq $effectAssetId -or
+                    $sourceDocumentRawSha256 -cnotmatch '^[0-9a-f]{64}$') {
+                    throw ("Direct authored registry-bound audition identity " +
+                        "is invalid: $effectAssetId")
+                }
+                if ($isActiveProductEffect) {
+                    throw ("Registry-bound audition cannot be an active Product " +
+                        "Effect: $effectAssetId")
+                }
+                if (-not $isMaterialProgramBoundEffect) {
+                    throw ("Registry-bound audition must have a material-program " +
+                        "Binding: $effectAssetId")
+                }
+                if (-not $activeProductEffectIds.Contains(
+                        $sourceEffectAssetId)) {
+                    throw ("Registry-bound audition source must be an active " +
+                        "Product baseline: $effectAssetId/$sourceEffectAssetId")
+                }
+                $sourceCatalogEntries = @($effects | Where-Object {
+                    [string]$_.effectAssetId -ceq $sourceEffectAssetId
+                })
+                if ($sourceCatalogEntries.Count -ne 1) {
+                    throw ("Registry-bound audition source is missing or " +
+                        "duplicate: $effectAssetId/$sourceEffectAssetId")
+                }
+                $sourceCatalogEntry = $sourceCatalogEntries[0]
+                if ((Get-RequiredProperty $sourceCatalogEntry `
+                        'payloadKind' String) -cne
+                        'DIRECT_AUTHORED_DOCUMENT_V13' -or
+                    $null -ne $sourceCatalogEntry.PSObject.Properties[
+                        'runtimeAdmission']) {
+                    throw ("Registry-bound audition source is not a direct " +
+                        "Product baseline: $effectAssetId/$sourceEffectAssetId")
+                }
+                $sourceAuthoringPath = Get-RequiredProperty `
+                    $sourceCatalogEntry 'authoringPath' String
+                $sourceAuthoringFile = Resolve-SafeDataFile `
+                    $sourceAuthoringPath `
+                    'Effects/Authored/' `
+                    $authoringRoot `
+                    "$sourceEffectAssetId.effect.json"
+                $actualSourceRawSha256 = Get-Sha256Hex `
+                    ([IO.File]::ReadAllBytes($sourceAuthoringFile))
+                if ($actualSourceRawSha256 -cne
+                        $sourceDocumentRawSha256) {
+                    throw ("Registry-bound audition source document seal " +
+                        "changed: $effectAssetId/$sourceEffectAssetId")
+                }
+                $hasRegistryBoundAuditionAdmission = $true
+            }
         }
         elseif (-not [string]::IsNullOrEmpty($sourcePayloadKind)) {
             throw "Unsupported source catalog payload kind: $sourcePayloadKind"
@@ -2327,8 +2470,20 @@ try {
         if ([IO.Path]::GetFileName($authoringFile) -cne $expectedFile) {
             throw "Authoring filename must match EffectAssetId: $effectAssetId"
         }
-        if (-not $isActiveProductEffect) {
+        if (-not $isActiveProductEffect -and
+            -not $isMaterialProgramBoundEffect) {
             continue
+        }
+        if ($isMaterialProgramBoundEffect -and
+            $sourcePayloadKind -cne 'DIRECT_AUTHORED_DOCUMENT_V13') {
+            throw ("Material-program Binding targets must use " +
+                "DIRECT_AUTHORED_DOCUMENT_V13: $effectAssetId")
+        }
+        if ($isMaterialProgramBoundEffect -and
+            -not $isActiveProductEffect -and
+            -not $hasRegistryBoundAuditionAdmission) {
+            throw ("Material-program bound non-Product Effects require " +
+                "REGISTRY_BOUND_AUDITION_ONLY admission: $effectAssetId")
         }
         $screenOverlayRuntimeBinding = $null
         if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13' -and
@@ -2339,9 +2494,14 @@ try {
                 $effectAssetId $screenOverlayPresentationPath
         }
         if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
-            ++$activeDirectRuntimeCount
+            if ($isActiveProductEffect) {
+                ++$activeDirectRuntimeCount
+            }
+            elseif ($isMaterialProgramBoundEffect) {
+                ++$registryBoundAuditionDirectRuntimeCount
+            }
         }
-        else {
+        elseif ($isActiveProductEffect) {
             ++$activeLegacyRuntimeCount
         }
 
@@ -2544,7 +2704,10 @@ try {
 						throw ("Element '{0}' in '{1}' requires SOURCE_GROUPED_MATERIAL_APPROXIMATION and cannot be published as Full." -f
 							$elementId, $effectAssetId)
 					}
-                    if ($materialTemplateId -notin @('effect.standard','effect.source_material')) {
+                    if ($materialTemplateId -notin @(
+                            'effect.standard',
+                            'effect.source_material',
+                            'effect.standard_color_v1')) {
                         throw "Unknown Material Template in ${effectAssetId}: $materialTemplateId"
                     }
                     if ($materialTemplateId -eq 'effect.source_material' -and
@@ -2825,7 +2988,7 @@ try {
                 $executionColorsByName =
                     [Collections.Generic.Dictionary[string,double[]]]::new(
                         [StringComparer]::Ordinal)
-                if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
+                    if ($sourcePayloadKind -ceq 'DIRECT_AUTHORED_DOCUMENT_V13') {
                     $executionProperty = $material.PSObject.Properties['execution']
                     $execution = if ($null -eq $executionProperty) {
                         $null
@@ -2929,6 +3092,23 @@ try {
                                 $collection.Values.Add(
                                     $parameterName, $vectorParameterValue)
                             }
+                        }
+                    }
+                    if ($materialTemplateId -ceq 'effect.standard_color_v1') {
+                        if ($isActiveProductEffect) {
+                            throw ("StandardColorV1 is PROJECT_TUNED audition-only " +
+                                "and cannot be an active Product Effect: " +
+                                $effectAssetId)
+                        }
+                        if ($documentVersion -ne 13 -or
+                            -not $executionEnabled -or
+                            $sourceProfileEnabled -or
+                            (Get-RequiredProperty $execution 'backend' String) -cne
+                                'standardColorV1' -or
+                            [int](Get-RequiredProperty $execution 'opcode' Number) -ne 1) {
+                            throw ("StandardColorV1 requires a direct v13, enabled " +
+                                "opcode-1 execution and a disabled source profile in " +
+                                "${effectAssetId}: $elementId")
                         }
                     }
                 }
@@ -3315,14 +3495,37 @@ try {
         throw ("Authored animation Product Effect cue targets are missing " +
             "from EffectCatalog.json: " + ($missingActiveIds -join ', '))
     }
+    if (-not $matchedMaterialProgramBoundEffectIds.SetEquals(
+            $materialProgramBoundEffectIds)) {
+        $missingBoundIds = @($materialProgramBoundEffectIds | Where-Object {
+            -not $matchedMaterialProgramBoundEffectIds.Contains($_)
+        } | Sort-Object)
+        throw ("Material-program Binding targets are missing from " +
+            "EffectCatalog.json: " + ($missingBoundIds -join ', '))
+    }
+    $registryBoundAuditionEffectCount = @(
+        $materialProgramBoundEffectIds | Where-Object {
+            -not $activeProductEffectIds.Contains($_)
+        }).Count
     if (($activeDirectRuntimeCount + $activeLegacyRuntimeCount +
-            $reconstructedRuntimeCount) -ne $activeProductEffectIds.Count -or
-        $directAuthoredRuntimeFilesByPath.Count -ne
-            $activeDirectRuntimeCount) {
+            $reconstructedRuntimeCount) -ne $activeProductEffectIds.Count) {
         throw ("Effect runtime active payload partition changed: " +
             "direct=$activeDirectRuntimeCount legacy=$activeLegacyRuntimeCount " +
-            "reconstructed=$reconstructedRuntimeCount " +
-            "sealed=$($directAuthoredRuntimeFilesByPath.Count)")
+            "reconstructed=$reconstructedRuntimeCount")
+    }
+    if ($registryBoundAuditionDirectRuntimeCount -ne
+            $registryBoundAuditionEffectCount -or
+        $directAuthoredRuntimeFilesByPath.Count -ne
+            ($activeDirectRuntimeCount +
+                $registryBoundAuditionDirectRuntimeCount) -or
+        $runtimeEffects.Count -ne
+            ($activeProductEffectIds.Count +
+                $registryBoundAuditionEffectCount)) {
+        throw ("Effect runtime registry-bound audition partition changed: " +
+            "audition=$registryBoundAuditionDirectRuntimeCount " +
+            "boundOnly=$registryBoundAuditionEffectCount " +
+            "sealed=$($directAuthoredRuntimeFilesByPath.Count) " +
+            "runtime=$($runtimeEffects.Count)")
     }
 
     $runtimeComponents = @($runtimeComponentsById.GetEnumerator() |
@@ -3366,6 +3569,7 @@ try {
         Write-Host (
             "PASS: validated $($runtimeEffects.Count) Effect catalog entries " +
             "with $(@($materialPrograms.bindings).Count) material-program bindings " +
+            "($registryBoundAuditionDirectRuntimeCount registry-bound audition effects) " +
             "and $($visualProgramSourcePath) visual-program sidecar.")
         return
     }
