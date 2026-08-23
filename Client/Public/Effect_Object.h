@@ -66,18 +66,6 @@ public:
 	bool_t Stage_Document(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::string& strOutError);
-	bool_t Set_AuthoringExactPreviewExecutionEnabled(
-		bool_t bEnabled,
-		std::string& strOutError);
-	bool_t Is_AuthoringExactPreviewExecutionEnabled() const;
-	bool_t Set_AuthoringGlasshole02TranslatedCanaryEnabled(
-		bool_t bEnabled,
-		std::string& strOutError);
-	bool_t Is_AuthoringGlasshole02TranslatedCanaryEnabled() const;
-	bool_t Set_AuthoringValtanTranslatedCanaryEnabled(
-		bool_t bEnabled,
-		std::string& strOutError);
-	bool_t Is_AuthoringValtanTranslatedCanaryEnabled() const;
 	bool_t Stage_PreparedDocument(
 		const EFFECT_DOCUMENT_DESC& Document,
 		std::shared_ptr<const CEffectDocumentRenderer::PREPARED_DOCUMENT>

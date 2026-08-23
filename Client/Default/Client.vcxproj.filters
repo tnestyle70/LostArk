@@ -330,9 +330,6 @@
 	<ClCompile Include="..\Private\Effect_RuntimeAuthority.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
-	<ClCompile Include="..\Private\Effect_ValtanTranslatedCanaryRuntime.cpp">
-	  <Filter>03. Tools\02. Effect</Filter>
-	</ClCompile>
 	<ClCompile Include="..\Private\Effect_Artist31470ShaderRegistry.cpp">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClCompile>
@@ -914,9 +911,6 @@
       <Filter>03. Tools\02. Effect</Filter>
     </ClInclude>
 	<ClInclude Include="..\Public\Effect_RuntimeAuthority.h">
-	  <Filter>03. Tools\02. Effect</Filter>
-	</ClInclude>
-	<ClInclude Include="..\Public\Effect_ValtanTranslatedCanaryRuntime.h">
 	  <Filter>03. Tools\02. Effect</Filter>
 	</ClInclude>
 	<ClInclude Include="..\Public\Effect_Artist31470ShaderRegistry.h">
@@ -1530,24 +1524,6 @@
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectParticle.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactSpriteBridge.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_EffectExactLocalMeshBridge.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectGlasshole02.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanCrack01.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanDissolve01.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectUe3ValtanGround04.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </FxCompile>
     <FxCompile Include="..\Bin\ShaderFiles\Shader_VtxEffectTrail.hlsl">
       <Filter>97.ShaderFiles</Filter>
     </FxCompile>
@@ -1576,15 +1552,6 @@
       <Filter>97.ShaderFiles</Filter>
     </None>
     <None Include="..\Bin\ShaderFiles\Shader_Ue3Glasshole02Translation.hlsl">
-      <Filter>97.ShaderFiles</Filter>
-    </None>
-    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanCrack01.hlsli">
-      <Filter>97.ShaderFiles</Filter>
-    </None>
-    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanDissolve01.hlsli">
-      <Filter>97.ShaderFiles</Filter>
-    </None>
-    <None Include="..\Bin\ShaderFiles\Shader_Ue3ValtanGround04.hlsli">
       <Filter>97.ShaderFiles</Filter>
     </None>
   </ItemGroup>
@@ -6687,9 +6654,6 @@
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.glasshole02-hlsl-translation.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
     </None>
-    <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.glasshole02-runtime-canary.contract.receipt.json">
-      <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
-    </None>
     <None Include="..\..\Data\Effects\Imported\DimensionMaster\Materials\skill.2050120.clip3.source-value-uniform-evaluation.receipt.json">
       <Filter>96.DataFiles\Effects\Imported\DimensionMaster\Materials</Filter>
     </None>
@@ -7381,12 +7345,6 @@
       <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-pixel-equation-warp-replay.v1.json">
-      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
-    </None>
-    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-runtime-canary-contract.receipt.v1.json">
-      <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
-    </None>
-    <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-runtime-canary-contract.targets.v1.json">
       <Filter>96.DataFiles\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration</Filter>
     </None>
     <None Include="..\..\Data\Effects\Imported\Valtan\FrontBackFrontFamilyRestoration\Valtan.front-back-front-source-exact-family-receipt.v1.json">

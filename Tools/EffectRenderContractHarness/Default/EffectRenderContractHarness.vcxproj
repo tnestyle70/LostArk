@@ -110,7 +110,6 @@
     <ClCompile Include="..\..\..\Client\Private\Effect_ReconstructedExecution.cpp"><Link>Client\Effect_ReconstructedExecution.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_RuntimeAuthority.cpp"><Link>Client\Effect_RuntimeAuthority.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_ScreenOverlayPresentation.cpp"><Link>Client\Effect_ScreenOverlayPresentation.cpp</Link></ClCompile>
-    <ClCompile Include="..\..\..\Client\Private\Effect_ValtanTranslatedCanaryRuntime.cpp"><Link>Client\Effect_ValtanTranslatedCanaryRuntime.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\Effect_VisualProgramCorpus.cpp"><Link>Client\Effect_VisualProgramCorpus.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\ProjectDataRoot.cpp"><Link>Client\ProjectDataRoot.cpp</Link></ClCompile>
     <ClCompile Include="..\..\..\Client\Private\RuntimeAssetRoot.cpp"><Link>Client\RuntimeAssetRoot.cpp</Link></ClCompile>

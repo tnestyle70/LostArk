@@ -2633,6 +2633,7 @@ try {
             [int64]$totalParticles = 0
             [int64]$totalTrailPoints = 0
             [int64]$totalAfterImages = 0
+			[int64]$maximumQueuedSourceEvents = 0
             if ($documentVersion -ge 8) {
                 $particleSystem = Get-RequiredProperty $document 'particleSystem' Object
                 $uniformScale = Get-NumberValue $particleSystem `
@@ -2739,12 +2740,14 @@ try {
                 $sourceVectorsByName =
                     [Collections.Generic.Dictionary[string,double[]]]::new(
                         [StringComparer]::Ordinal)
+				$elementVisible = $true
                 Assert-StableId $elementId 'Element ID'
                 if ($documentVersion -ge 6) {
                     $elementDisplayName = Get-RequiredProperty $element 'displayName' String
                     $groupId = Get-RequiredProperty $element 'groupId' String
                     [void](Get-RequiredProperty $element 'sourceNode' String)
-                    [void](Get-RequiredProperty $element 'visible' Boolean)
+					$elementVisible = [bool](Get-RequiredProperty `
+						$element 'visible' Boolean)
                     if ([Text.Encoding]::UTF8.GetByteCount($elementDisplayName) -lt 1 -or
                         [Text.Encoding]::UTF8.GetByteCount($elementDisplayName) -gt 64 -or
                         [string]::IsNullOrWhiteSpace($elementDisplayName)) {
@@ -3440,9 +3443,100 @@ try {
 								'effect.ue3.local-crack.v1'))) {
                     throw "Mesh useModelMaterial=false requires 'base' in ${effectAssetId}: $elementId"
                 }
-                if ($kind -eq 'particle') {
-                    $totalParticles += [int64]$detail.particle.maxParticles
-                }
+				$sourceRecipeEnabled = $false
+				$sourceRendererShape = ''
+				$sourceRecipe = $null
+				if ($null -ne $element.PSObject.Properties['sourceRecipe']) {
+					$sourceRecipe = Get-RequiredProperty $element 'sourceRecipe' Object
+					$sourceRecipeEnabled = [bool](Get-RequiredProperty `
+						$sourceRecipe 'enabled' Boolean)
+					if ($sourceRecipeEnabled) {
+						$sourceRendererShape = [string](Get-RequiredProperty `
+							$sourceRecipe 'rendererShape' String)
+					}
+				}
+				$isSourceParticleCarrier = $sourceRecipeEnabled -and
+					$sourceRendererShape -cin @('mesh', 'sprite', 'decal')
+				if ($kind -eq 'particle' -or $isSourceParticleCarrier) {
+					[double]$countScale = 1.0
+					if ($sourceRecipeEnabled -and
+						$null -ne $detail.particle.PSObject.Properties['sourceScale'] -and
+						$null -ne $detail.particle.sourceScale.PSObject.Properties['count']) {
+						$countScale = [double]$detail.particle.sourceScale.count
+					}
+					$scaledMaximum = [Math]::Floor(
+						[double]$detail.particle.maxParticles * $countScale + 0.5)
+					$totalParticles += [int64]$scaledMaximum
+					if ($elementVisible -and $isProductExecutionTarget -and
+						$kind -ceq 'particle' -and $sourceRecipeEnabled -and
+						$sourceRendererShape -cin @('mesh', 'sprite')) {
+						[int64]$eventGeneratorCount = 0
+						foreach ($module in @(Get-RequiredProperty `
+								$sourceRecipe 'modules' Array)) {
+							$moduleClass = [string](Get-RequiredProperty `
+								$module 'className' String)
+							if ($moduleClass.StartsWith(
+									'efparticlemodule',
+									[StringComparison]::Ordinal)) {
+								$moduleClass = $moduleClass.Substring(2)
+							}
+							if ($moduleClass.EndsWith(
+									'_seeded', [StringComparison]::Ordinal)) {
+								$moduleClass = $moduleClass.Substring(
+									0, $moduleClass.Length - 7)
+							}
+							$moduleEnabled = $true
+							$enabledLiterals = @(
+								@(Get-RequiredProperty $module 'literals' Array) |
+									Where-Object {
+										[string]$_.propertyPath -ceq 'benabled'
+									})
+							if ($enabledLiterals.Count -gt 1) {
+								throw "Portable source event module has duplicate benabled literals in ${effectAssetId}: $elementId"
+							}
+							if ($enabledLiterals.Count -eq 1) {
+								$enabledLiteral = $enabledLiterals[0]
+								if ((Get-RequiredProperty $enabledLiteral `
+										'kind' String) -cne 'boolean') {
+									throw "Portable source event module benabled literal is not boolean in ${effectAssetId}: $elementId"
+								}
+								$moduleEnabled = [bool](Get-RequiredProperty `
+									$enabledLiteral 'value' Boolean)
+							}
+							if ($moduleEnabled -and
+								$moduleClass -ceq 'particlemoduleeventgenerator') {
+								$typeLiterals = @(
+									@(Get-RequiredProperty $module 'literals' Array) |
+										Where-Object {
+											[string]$_.propertyPath -ceq
+												'events[0].type'
+										})
+								$nameLiterals = @(
+									@(Get-RequiredProperty $module 'literals' Array) |
+										Where-Object {
+											[string]$_.propertyPath -ceq
+												'events[0].customname'
+										})
+								if ($typeLiterals.Count -ne 1 -or
+									$nameLiterals.Count -ne 1 -or
+									(Get-RequiredProperty $typeLiterals[0] `
+										'kind' String) -cne 'string' -or
+									(Get-RequiredProperty $nameLiterals[0] `
+										'kind' String) -cne 'string' -or
+									(Get-RequiredProperty $typeLiterals[0] `
+										'value' String) -cne 'epet_spawn' -or
+									[string]::IsNullOrWhiteSpace(
+										(Get-RequiredProperty $nameLiterals[0] `
+											'value' String))) {
+									throw "Portable authored particle event generator route identity is invalid in ${effectAssetId}: $elementId"
+								}
+								++$eventGeneratorCount
+							}
+						}
+						$maximumQueuedSourceEvents +=
+							[int64]$scaledMaximum * $eventGeneratorCount
+					}
+				}
                 if ($kind -eq 'trail') {
                     $totalTrailPoints += [int64]$detail.trail.maxPoints
                 }
@@ -3455,6 +3549,9 @@ try {
                 $totalAfterImages -gt 256) {
                 throw "Effect Document exceeds particle/trail/after-image budget: $effectAssetId"
             }
+			if ($maximumQueuedSourceEvents -gt 4096) {
+				throw "Portable authored particle event queue has an unbounded per-step upper limit: $effectAssetId"
+			}
             $dependencyRows = @($dependencies.GetEnumerator() | ForEach-Object {
                 [ordered]@{ assetId = $_.Key; sha256 = $_.Value }
             })

@@ -9,6 +9,7 @@
 #include "Effect_MaterialProgramRegistry.h"
 #include "Effect_Object.h"
 #include "Effect_OccurrenceTuning.h"
+#include "Effect_Playback.h"
 #include "Effect_ReconstructedExecution.h"
 #include "Effect_VisualProgramCorpus.h"
 #include "GameInstance.h"
@@ -18,6 +19,7 @@
 #include <array>
 #include <bit>
 #include <cctype>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -1122,6 +1124,121 @@ namespace
 		return true;
 	}
 
+	bool_t Validate_SourcePlaybackTuningContract(
+		const std::filesystem::path& RepositoryRoot,
+		std::string& strOutError)
+	{
+		const std::filesystem::path AuthoredRoot = RepositoryRoot / L"Data" /
+			L"Effects" / L"Authored";
+		Client::EFFECT_DOCUMENT_DESC BudgetDocument;
+		if (!Client::CEffectDocumentCodec::Load(
+				AuthoredRoot /
+					L"effect.lancemaster.skill.34580.ba1.unified.effect.json",
+				BudgetDocument, strOutError) || BudgetDocument.Elements.size() != 1u)
+		{
+			strOutError = "source playback tuning budget fixture failed to load: " +
+				strOutError;
+			return false;
+		}
+		Client::EFFECT_ELEMENT_DESC& BudgetElement =
+			BudgetDocument.Elements.front();
+		BudgetElement.Detail.Particle.iMaxParticles = 512u;
+		BudgetElement.Detail.Particle.SourceScale.fCount = 16.f;
+		std::string ValidationError;
+		if (!Client::CEffectDocumentCodec::Validate(
+				BudgetDocument, ValidationError))
+		{
+			strOutError =
+				"source playback tuning rejected the exact 8192-particle boundary: " +
+				ValidationError;
+			return false;
+		}
+		BudgetElement.Detail.Particle.iMaxParticles = 513u;
+		if (Client::CEffectDocumentCodec::Validate(
+				BudgetDocument, ValidationError) ||
+			ValidationError !=
+				"Effect Document exceeds the particle, trail, or after-image budget.")
+		{
+			strOutError =
+				"source playback Count x did not close the scaled document budget";
+			return false;
+		}
+
+		Client::EFFECT_DOCUMENT_DESC EventDocument;
+		if (!Client::CEffectDocumentCodec::Load(
+				AuthoredRoot / L"effect.lancemaster.skill.34550.unified.effect.json",
+				EventDocument, strOutError))
+		{
+			strOutError = "source playback event fixture failed to load: " +
+				strOutError;
+			return false;
+		}
+		const auto Generator = std::find_if(EventDocument.Elements.begin(),
+			EventDocument.Elements.end(), [](const Client::EFFECT_ELEMENT_DESC& Element)
+			{
+				return Element.strElementId ==
+					"authored.source-particle.54c1cad976d33db94d22d98a";
+			});
+		if (Generator == EventDocument.Elements.end())
+		{
+			strOutError = "source playback event generator fixture is missing";
+			return false;
+		}
+		Generator->Detail.Particle.SourceScale.fCount = 16.f;
+		Generator->Detail.Particle.iMaxParticles = 128u;
+		ValidationError.clear();
+		if (!Client::CEffectDocumentCodec::Validate(
+				EventDocument, ValidationError))
+		{
+			strOutError =
+				"source playback tuning rejected the exact 4096-event boundary: " +
+				ValidationError;
+			return false;
+		}
+		Generator->Detail.Particle.iMaxParticles = 129u;
+		if (Client::CEffectDocumentCodec::Validate(
+				EventDocument, ValidationError) ||
+			ValidationError !=
+				"Portable authored particle event queue has an unbounded per-step upper limit.")
+		{
+			strOutError =
+				"source playback Count x did not close the scaled event queue bound";
+			return false;
+		}
+
+		BudgetElement.Detail.Particle.iMaxParticles = 3u;
+		BudgetElement.Detail.Particle.SourceScale.fCount = 1.f;
+		BudgetElement.Detail.Timing.fStartDelaySeconds = 0.25f;
+		BudgetElement.Detail.Timing.fLifeTimeSeconds = 0.75f;
+		BudgetElement.Detail.Timing.fAfterImageSeconds = 0.f;
+		BudgetElement.Detail.Particle.vLifeTimeSeconds = { 0.5f, 0.5f };
+		BudgetElement.Detail.Particle.SourceScale.fLifeTime = 4.f;
+		BudgetElement.SourceRecipe.fEmitterDelaySeconds = 0.f;
+		BudgetElement.SourceRecipe.fEmitterDurationSeconds = 0.f;
+		BudgetElement.SourceRecipe.iEmitterLoopCount = 0u;
+		std::shared_ptr<const Client::CEffectPlayback::PREPARED_RESOURCES>
+			Prepared;
+		if (!Client::CEffectPlayback::Prepare_DocumentResources(
+				BudgetDocument, Prepared, strOutError))
+		{
+			strOutError = "source playback duration resources failed: " +
+				strOutError;
+			return false;
+		}
+		Client::CEffectPlayback Playback;
+		if (!Playback.Stage_PrevalidatedDocument(
+				BudgetDocument, Prepared, strOutError) ||
+			std::abs(Playback.Get_DurationSeconds() - 3.f) > 1.0e-4f)
+		{
+			strOutError =
+				"source playback Life x did not extend the declared preview tail";
+			return false;
+		}
+
+		strOutError.clear();
+		return true;
+	}
+
 	std::shared_ptr<Client::CEffectObject> Add_EffectObject(
 		const wchar_t* pPrototypeTag, const wchar_t* pLayerTag,
 		Client::CEffectObject::EFFECT_OBJECT_DESC& Desc)
@@ -2057,6 +2174,14 @@ int wmain(const int argc, wchar_t** argv)
 		std::cerr << "could not enter Client/Default\n";
 		return 2;
 	}
+
+	Write_Progress("source-playback-tuning.begin");
+	if (!Validate_SourcePlaybackTuningContract(RepositoryRoot, Status))
+	{
+		std::cerr << Status << '\n';
+		return 1;
+	}
+	Write_Progress("source-playback-tuning.complete");
 
 	Engine::Set_NonInteractiveErrorMode(true);
 	Client::CEffectDocumentRenderer::Clear_Prepared_Catalog();
