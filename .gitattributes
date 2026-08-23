@@ -87,6 +87,22 @@
 /Data/Effects/MaterialPrograms/effect-material-program-registry.v1.json text eol=lf
 /Data/Effects/MaterialPrograms/Fragments/*.json text eol=lf
 
+# Representative-four V1 admission seals the raw V0 document bytes.  Preserve
+# the historical mixed line endings explicitly so a fresh checkout cannot
+# silently invalidate those five source identities.  The materializer emits
+# every V1 document and its receipt as canonical LF.
+/Data/Effects/Authored/effect.dimensionmaster.skill.2050180.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.artist.skill.31460.unified.effect.json text eol=crlf
+/Data/Effects/Authored/effect.lancemaster.skill.34110.unified.effect.json text eol=crlf
+/Data/Effects/Authored/effect.warlord.skill.17110.clip2.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.warlord.skill.17110.clip3.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.dimensionmaster.skill.2050180.v1.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.artist.skill.31460.v1.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.lancemaster.skill.34110.v1.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.warlord.skill.17110.clip2.v1.unified.effect.json text eol=lf
+/Data/Effects/Authored/effect.warlord.skill.17110.clip3.v1.unified.effect.json text eol=lf
+/Data/Effects/AuthoredCorrections/Generated/RepresentativeFour/representative-four-v1-standard-color.receipt.json text eol=lf
+
 # The generated Effect runtime Catalog is a raw-byte authority consumed by the
 # exact old10/new13 harness. Keep its one trailing newline byte-exact on every
 # checkout instead of allowing core.autocrlf to rewrite it.

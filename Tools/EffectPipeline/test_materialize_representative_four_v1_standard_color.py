@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 
@@ -50,6 +52,70 @@ class RepresentativeFourV1StandardColorTests(unittest.TestCase):
                 "fallback": 11,
             },
         )
+
+    def test_clean_checkout_preserves_sealed_source_and_generated_bytes(self) -> None:
+        source_eol = {
+            "effect.dimensionmaster.skill.2050180.unified": "lf",
+            "effect.artist.skill.31460.unified": "crlf",
+            "effect.lancemaster.skill.34110.unified": "crlf",
+            "effect.warlord.skill.17110.clip2.unified": "lf",
+            "effect.warlord.skill.17110.clip3.unified": "lf",
+        }
+        source_rows = [
+            (
+                subject.source_document_path(spec["v0"]),
+                source_eol[spec["v0"]],
+                spec["rawSha256"],
+            )
+            for spec in subject.SPECS
+        ]
+        generated_paths = [
+            subject.source_document_path(spec["v1"])
+            for spec in subject.SPECS
+        ] + [subject.RECEIPT_PATH]
+        rows = source_rows + [
+            (path, "lf", None) for path in generated_paths
+        ]
+        relatives = [path.as_posix() for path, _, _ in rows]
+        attributes = subprocess.run(
+            ["git", "check-attr", "text", "eol", "--", *relatives],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines()
+        self.assertEqual(
+            attributes,
+            [
+                line
+                for relative, (_, eol, _) in zip(relatives, rows)
+                for line in (
+                    f"{relative}: text: set",
+                    f"{relative}: eol: {eol}",
+                )
+            ],
+        )
+
+        for relative, eol, expected_sha256 in rows:
+            with self.subTest(path=relative, eol=eol):
+                repository_bytes = subprocess.run(
+                    ["git", "cat-file", "blob", f"HEAD:{relative.as_posix()}"],
+                    cwd=ROOT,
+                    check=True,
+                    capture_output=True,
+                ).stdout
+                self.assertNotIn(b"\r", repository_bytes)
+                checkout_bytes = (
+                    repository_bytes
+                    if eol == "lf"
+                    else repository_bytes.replace(b"\n", b"\r\n")
+                )
+                self.assertEqual((ROOT / relative).read_bytes(), checkout_bytes)
+                if expected_sha256 is not None:
+                    self.assertEqual(
+                        hashlib.sha256(checkout_bytes).hexdigest(),
+                        expected_sha256,
+                    )
 
     def test_all_rows_are_truthfully_project_tuned_approx(self) -> None:
         rows = self.receipt["occurrences"]
