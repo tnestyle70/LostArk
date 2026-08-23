@@ -319,9 +319,6 @@ bool_t Client::CValtanPatternTree::Load(
 	const std::filesystem::path BindingRelative =
 		std::filesystem::path(L"Animation") / L"Authored" / L"Valtan" /
 		L"Valtan.patternbindings.json";
-	const std::filesystem::path CueRelative =
-		std::filesystem::path(L"Animation") / L"Authored" / L"Valtan" /
-		L"Valtan.patterneffectcues.json";
 	if (!Parse_Document(EncounterRelative, Encounter, Error))
 	{
 		strOutStatus = "Valtan encounter load failed: " + Error;
@@ -354,19 +351,8 @@ bool_t Client::CValtanPatternTree::Load(
 		return false;
 	}
 
-	CEncounterPatternReference EncounterReference;
-	if (!EncounterReference.Load(
-			CProjectDataRoot::Resolve(EncounterRelative), Error))
-	{
-		strOutStatus = "Valtan encounter contract load failed: " + Error;
-		return false;
-	}
-	std::string CueText;
 	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
-	if (!Read_TextDocument(CProjectDataRoot::Resolve(CueRelative),
-			CueText, Error) ||
-		!CValtanPatternEffectCueDocument::Parse_Text(CueText,
-			EncounterReference, BindingDocument, CueDocument, Error))
+	if (!CValtanPatternEffectCueDocument::Load_Source(CueDocument, Error))
 	{
 		strOutStatus = "Valtan Product Effect cue load failed: " + Error;
 		return false;
@@ -527,6 +513,7 @@ bool_t Client::CValtanPatternTree::Load(
 		Cue.strActionId = SourceCue.strActionId;
 		Cue.strClipOccurrenceId = SourceCue.strClipOccurrenceId;
 		Cue.strEffectAssetId = SourceCue.strEffectAssetId;
+		Cue.strV1EffectAssetId = SourceCue.strV1EffectAssetId;
 		Cue.strAnchorSlotId = SourceCue.strAnchorSlotId;
 		Cue.LocalTransform = SourceCue.LocalTransform;
 		Cue.eFollowPolicy = SourceCue.eFollowPolicy;

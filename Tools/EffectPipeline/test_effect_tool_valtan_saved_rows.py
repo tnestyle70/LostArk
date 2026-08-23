@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -11,6 +12,8 @@ import unittest
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 EFFECT_TOOL_CPP = REPOSITORY_ROOT / "Client/Private/Effect_Tool.cpp"
 EFFECT_TOOL_HEADER = REPOSITORY_ROOT / "Client/Public/Effect_Tool.h"
+VALTAN_PATTERN_TREE_CPP = REPOSITORY_ROOT / "Client/Private/ValtanPatternTree.cpp"
+VALTAN_PATTERN_TREE_HEADER = REPOSITORY_ROOT / "Client/Public/ValtanPatternTree.h"
 ENCOUNTER_PATH = (
     REPOSITORY_ROOT / "Data/Encounters/Valtan/ValtanEncounter.json"
 )
@@ -24,6 +27,14 @@ REFERENCE_PATH = (
 )
 BOSS_CATALOG_PATH = REPOSITORY_ROOT / "Data/Actors/BossCatalog.json"
 AUTHORED_ROOT = REPOSITORY_ROOT / "Data/Effects/Authored"
+SOURCE_CATALOG_PATH = REPOSITORY_ROOT / "Data/Effects/EffectCatalog.json"
+RUNTIME_CATALOG_PATH = (
+    REPOSITORY_ROOT / "Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json"
+)
+V1_ALIAS_PATH = (
+    REPOSITORY_ROOT
+    / "Data/Animation/Authored/Valtan/Valtan.patterneffectv1aliases.json"
+)
 
 
 def function_slice(text: str, signature: str, next_signature: str) -> str:
@@ -104,6 +115,100 @@ def validate_source_contract(cpp_text: str, header_text: str) -> None:
             raise AssertionError(f"Valtan Saved row contract lost: {token}")
     if "Try_PlaySavedUnifiedEffect(" in pattern:
         raise AssertionError("Valtan must not use the Player-only saved play path")
+
+
+def validate_v1_alias_projection_contract(
+    cpp_text: str, tree_cpp_text: str, tree_header_text: str
+) -> None:
+    pattern = function_slice(
+        cpp_text,
+        "void Client::CEffect_Tool::Render_ValtanPatternNode(",
+        "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+    )
+    required_tree = (
+        "std::string strV1EffectAssetId;",
+        "Cue.strV1EffectAssetId = SourceCue.strV1EffectAssetId;",
+        "CValtanPatternEffectCueDocument::Load_Source(CueDocument, Error)",
+    )
+    combined_tree = tree_header_text + "\n" + tree_cpp_text
+    for token in required_tree:
+        if token not in combined_tree:
+            raise AssertionError(f"typed V1 alias propagation lost: {token}")
+
+    required_pattern = (
+        "Cue.strV1EffectAssetId",
+        "ResolveRow(Cue.strV1EffectAssetId)",
+        "V1Row.bV1Alias = true",
+        '"[V0] "',
+        '"[V1] "',
+        "PlaybackCue.strEffectAssetId = Row.strEffectAssetId",
+    )
+    for token in required_pattern:
+        if token not in pattern:
+            raise AssertionError(f"paired V0/V1 Saved row contract lost: {token}")
+    if re.search(r"strEffectAssetId\s*\+\s*[^;]*v1\.unified", pattern):
+        raise AssertionError("V1 Saved rows must consume the typed alias, not infer a suffix")
+
+
+def validate_drawable_preflight_contract(cpp_text: str) -> None:
+    play_helper = function_slice(
+        cpp_text,
+        "bool_t Client::CEffect_Tool::Try_PlayValtanSavedUnifiedEffect(",
+        "bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(",
+    )
+    reference_helper = function_slice(
+        cpp_text,
+        "bool_t Client::CEffect_Tool::Try_OpenValtanSavedReferenceEffect(",
+        "bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(",
+    )
+    product_helper = function_slice(
+        cpp_text,
+        "bool_t Client::CEffect_Tool::Try_OpenValtanAuthoredEffect(",
+        "bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree(",
+    )
+
+    for name, helper, commit_token in (
+        ("play", play_helper, "Is_UnifiedEffectActive(Cache)"),
+        ("reference", reference_helper, "Try_LoadDocumentPath("),
+        ("product", product_helper, "Try_LoadDocumentPath("),
+    ):
+        refresh = helper.find("Refresh_UnifiedEffectCache(")
+        valid = helper.find("!Cache.bValid")
+        drawable = helper.find("!Cache.bDrawable")
+        commit = helper.find(commit_token)
+        if min(refresh, valid, drawable, commit) < 0:
+            raise AssertionError(f"{name} helper lost the full drawable preflight")
+        if not (refresh < valid < commit and refresh < drawable < commit):
+            raise AssertionError(
+                f"{name} helper must reject invalid/non-drawable data before preview mutation"
+            )
+
+    refresh_tree = function_slice(
+        cpp_text,
+        "bool_t Client::CEffect_Tool::Refresh_ValtanPatternTree(",
+        "bool_t Client::CEffect_Tool::Matches_ValtanPatternSearch(",
+    )
+    if "m_ValtanUnifiedEffectCaches.clear();" not in refresh_tree:
+        raise AssertionError("explicit Valtan Refresh must reopen repaired documents")
+
+    pattern = function_slice(
+        cpp_text,
+        "void Client::CEffect_Tool::Render_ValtanPatternNode(",
+        "void Client::CEffect_Tool::Render_ValtanPatternTreeSection(",
+    )
+    open_button = pattern.find('ImGui::SmallButton("Open Saved Effect")')
+    play_button = pattern.find('ImGui::SmallButton("Play Saved Effect")')
+    refreshed_lookup = pattern.find("const auto RefreshedCache =", play_button)
+    if min(open_button, play_button, refreshed_lookup) < 0 or not (
+        open_button < play_button < refreshed_lookup
+    ):
+        raise AssertionError(
+            "Saved row must reacquire its unordered cache iterator after button actions"
+        )
+    if "ObservedCache->" in pattern[open_button:]:
+        raise AssertionError(
+            "Saved row retained a possibly invalidated cache iterator across Open/Play"
+        )
 
 
 def validate_animation_stage_metadata_contract(cpp_text: str) -> None:
@@ -337,11 +442,16 @@ def stage_effect_asset_id(pattern: dict[str, object], stage: dict[str, object]) 
     return f"effect.valtan.{pattern_slug}.{stage_slug}"
 
 
-def project_saved_rows() -> tuple[dict[str, list[str]], int]:
+def project_saved_rows(include_v1_aliases: bool = True) -> tuple[dict[str, list[str]], int]:
     encounter = json.loads(ENCOUNTER_PATH.read_text(encoding="utf-8"))
     cue_document = json.loads(CUE_PATH.read_text(encoding="utf-8"))
     reference_document = json.loads(REFERENCE_PATH.read_text(encoding="utf-8"))
     boss_catalog = json.loads(BOSS_CATALOG_PATH.read_text(encoding="utf-8"))
+    alias_document = json.loads(V1_ALIAS_PATH.read_text(encoding="utf-8"))
+    v1_aliases = {
+        row["effectAssetId"]: row["v1EffectAssetId"]
+        for row in alias_document["aliases"]
+    }
 
     cues_by_stage: dict[tuple[str, str, str], list[str]] = {}
     for cue in cue_document["cues"]:
@@ -379,6 +489,8 @@ def project_saved_rows() -> tuple[dict[str, list[str]], int]:
             product_ids = cues_by_stage.get(key, [])
             for effect_id in product_ids:
                 add(effect_id)
+                if include_v1_aliases and effect_id in v1_aliases:
+                    add(v1_aliases[effect_id])
 
             explicit = references_by_action.get(stage["actionId"])
             if explicit:
@@ -410,6 +522,18 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             EFFECT_TOOL_HEADER.read_text(encoding="utf-8"),
         )
 
+    def test_typed_v1_aliases_project_as_paired_saved_rows(self) -> None:
+        validate_v1_alias_projection_contract(
+            EFFECT_TOOL_CPP.read_text(encoding="utf-8"),
+            VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8"),
+            VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8"),
+        )
+
+    def test_saved_open_and_play_fail_closed_before_preview_mutation(self) -> None:
+        validate_drawable_preflight_contract(
+            EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        )
+
     def test_animation_stage_rows_do_not_decode_or_open_saved_documents(self) -> None:
         validate_animation_stage_metadata_contract(
             EFFECT_TOOL_CPP.read_text(encoding="utf-8")
@@ -438,16 +562,152 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
     def test_live_data_projects_every_owned_saved_document_once_per_pattern(self) -> None:
         projected, raw_links = project_saved_rows()
         self.assertEqual(33, len(projected))
-        self.assertEqual(107, raw_links)
-        self.assertEqual(106, sum(len(rows) for rows in projected.values()))
+        self.assertEqual(113, raw_links)
+        self.assertEqual(112, sum(len(rows) for rows in projected.values()))
         self.assertEqual(4, len(projected["VALTAN_DASH_CHARGE"]))
         self.assertEqual(3, len(projected["VALTAN_FRONT_BACK_FRONT"]))
         self.assertEqual(4, len(projected["VALTAN_FOUR_SLASH"]))
-        self.assertEqual(2, len(projected["VALTAN_WHIRLWIND"]))
+        self.assertEqual(4, len(projected["VALTAN_WHIRLWIND"]))
         self.assertEqual(
             len(projected["VALTAN_WHIRLWIND"]),
             len(set(projected["VALTAN_WHIRLWIND"])),
         )
+
+    def test_base_saved_projection_inventory_requires_explicit_migration(self) -> None:
+        # This is a named UI inventory snapshot, not the full authored corpus.
+        # A legitimate Product-coverage migration updates these counts explicitly.
+        projected, raw_links = project_saved_rows(include_v1_aliases=False)
+        self.assertEqual(107, raw_links)
+        self.assertEqual(106, sum(len(rows) for rows in projected.values()))
+        catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        nonempty_candidates = 0
+        empty_shells = 0
+        for effect_ids in projected.values():
+            for effect_id in effect_ids:
+                entry = catalog.get(effect_id)
+                path = (
+                    REPOSITORY_ROOT / "Data" / entry["authoringPath"]
+                    if entry is not None
+                    else AUTHORED_ROOT / f"{effect_id}.effect.json"
+                )
+                document = json.loads(path.read_text(encoding="utf-8"))
+                if document.get("elements") or document.get("modelCues"):
+                    nonempty_candidates += 1
+                else:
+                    empty_shells += 1
+        self.assertEqual(49, nonempty_candidates)
+        self.assertEqual(57, empty_shells)
+
+    def test_all_declared_v0_product_cues_remain_published_and_nonempty(self) -> None:
+        cues = json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
+        source_catalog = json.loads(
+            SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
+        )["effects"]
+        runtime_catalog = json.loads(
+            RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
+        )["effects"]
+        effect_ids = [cue["effectAssetId"] for cue in cues]
+        self.assertEqual(44, len(effect_ids))
+        self.assertEqual(44, len(set(effect_ids)))
+        visible_elements = 0
+        hidden_elements = 0
+        model_cues = 0
+        for effect_id in effect_ids:
+            source_matches = [
+                row for row in source_catalog if row["effectAssetId"] == effect_id
+            ]
+            runtime_matches = [
+                row for row in runtime_catalog if row["effectAssetId"] == effect_id
+            ]
+            self.assertEqual(1, len(source_matches), effect_id)
+            self.assertEqual(1, len(runtime_matches), effect_id)
+            source_entry = source_matches[0]
+            source_path = REPOSITORY_ROOT / "Data" / source_entry["authoringPath"]
+            source_document = json.loads(source_path.read_text(encoding="utf-8"))
+            self.assertEqual(effect_id, source_document["effectAssetId"])
+            self.assertTrue(
+                source_document.get("elements") or source_document.get("modelCues"),
+                effect_id,
+            )
+            visible_elements += sum(
+                1 for element in source_document.get("elements", [])
+                if element.get("visible", True)
+            )
+            hidden_elements += sum(
+                1 for element in source_document.get("elements", [])
+                if not element.get("visible", True)
+            )
+            model_cues += len(source_document.get("modelCues", []))
+            self.assertTrue(
+                any(
+                    element.get("visible", True)
+                    for element in source_document.get("elements", [])
+                ) or source_document.get("modelCues"),
+                effect_id,
+            )
+            runtime_entry = runtime_matches[0]
+            runtime_path = (
+                REPOSITORY_ROOT
+                / "Client/Bin/DataFiles/Effect"
+                / runtime_entry["authoredDocumentPath"]
+            )
+            self.assertTrue(runtime_path.is_file(), effect_id)
+            runtime_bytes = runtime_path.read_bytes()
+            hash_match = re.search(
+                r"\.([0-9a-f]{64})\.effect\.json$", runtime_path.name
+            )
+            self.assertIsNotNone(hash_match, effect_id)
+            self.assertEqual(
+                hash_match.group(1), hashlib.sha256(runtime_bytes).hexdigest()
+            )
+            runtime_document = json.loads(runtime_bytes.decode("utf-8"))
+            self.assertEqual(source_document, runtime_document, effect_id)
+        self.assertEqual(657, visible_elements)
+        self.assertEqual(4, hidden_elements)
+        self.assertEqual(0, model_cues)
+
+    def test_v1_alias_sidecar_is_exactly_six_valid_pairs(self) -> None:
+        aliases = json.loads(V1_ALIAS_PATH.read_text(encoding="utf-8"))["aliases"]
+        cue_ids = {
+            cue["effectAssetId"]
+            for cue in json.loads(CUE_PATH.read_text(encoding="utf-8"))["cues"]
+        }
+        source_catalog = {
+            row["effectAssetId"]: row
+            for row in json.loads(
+                SOURCE_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        runtime_ids = {
+            row["effectAssetId"]
+            for row in json.loads(
+                RUNTIME_CATALOG_PATH.read_text(encoding="utf-8")
+            )["effects"]
+        }
+        self.assertEqual(6, len(aliases))
+        self.assertEqual(6, len({row["effectAssetId"] for row in aliases}))
+        self.assertEqual(6, len({row["v1EffectAssetId"] for row in aliases}))
+        for row in aliases:
+            self.assertIn(row["effectAssetId"], cue_ids)
+            self.assertIn(row["effectAssetId"], source_catalog)
+            self.assertIn(row["v1EffectAssetId"], source_catalog)
+            self.assertIn(row["v1EffectAssetId"], runtime_ids)
+            self.assertTrue(row["v1EffectAssetId"].endswith(".v1.unified"))
+            v1_path = (
+                REPOSITORY_ROOT
+                / "Data"
+                / source_catalog[row["v1EffectAssetId"]]["authoringPath"]
+            )
+            v1_document = json.loads(v1_path.read_text(encoding="utf-8"))
+            self.assertTrue(
+                v1_document.get("elements") or v1_document.get("modelCues"),
+                row["v1EffectAssetId"],
+            )
 
     def test_ui_contract_mutations_fail_closed(self) -> None:
         cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
@@ -465,6 +725,34 @@ class EffectToolValtanSavedRowsTests(unittest.TestCase):
             with self.subTest(mutation=mutations.index(mutation)):
                 with self.assertRaises(AssertionError):
                     validate_source_contract(mutation, header_text)
+
+    def test_v1_and_drawable_gate_mutations_fail_closed(self) -> None:
+        cpp_text = EFFECT_TOOL_CPP.read_text(encoding="utf-8")
+        tree_cpp_text = VALTAN_PATTERN_TREE_CPP.read_text(encoding="utf-8")
+        tree_header_text = VALTAN_PATTERN_TREE_HEADER.read_text(encoding="utf-8")
+        v1_mutations = (
+            cpp_text.replace(
+                "ResolveRow(Cue.strV1EffectAssetId)",
+                "ResolveRow(Cue.strEffectAssetId)",
+            ),
+            cpp_text.replace(
+                "PlaybackCue.strEffectAssetId = Row.strEffectAssetId",
+                "PlaybackCue.strEffectAssetId = pProductSource->pCue->strEffectAssetId",
+            ),
+        )
+        for mutation in v1_mutations:
+            with self.assertRaises(AssertionError):
+                validate_v1_alias_projection_contract(
+                    mutation, tree_cpp_text, tree_header_text
+                )
+        with self.assertRaises(AssertionError):
+            validate_drawable_preflight_contract(
+                cpp_text.replace("!Cache.bDrawable", "false", 1)
+            )
+        with self.assertRaises(AssertionError):
+            validate_drawable_preflight_contract(
+                cpp_text.replace("RefreshedCache", "ObservedCache")
+            )
 
 
 if __name__ == "__main__":

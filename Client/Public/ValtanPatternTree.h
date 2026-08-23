@@ -45,6 +45,7 @@ struct VALTAN_PRODUCT_EFFECT_CUE_VIEW final
 	std::string strActionId;
 	std::string strClipOccurrenceId;
 	std::string strEffectAssetId;
+	std::string strV1EffectAssetId;
 	std::string strAnchorSlotId;
 	EFFECT_TRANSFORM_DESC LocalTransform{};
 	EFFECT_FOLLOW_POLICY eFollowPolicy = EFFECT_FOLLOW_POLICY::FOLLOW;
