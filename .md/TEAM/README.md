@@ -36,6 +36,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 7. F1 Balance Tool과 공식 provenance 작업법: `BALANCE_TOOL_OWNER_HANDOFF.md`
 8. Animation/Effect/Character Preview Tool 경계: `ANIMATION_TOOL_OWNER_HANDOFF.md`
 9. Effect family/runtime ABI 복원 경계: `EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md`
+9-1. Effect 셰이더·데이터 폴더 전수 인벤토리: `EFFECT_SHADER_AND_DATA_INVENTORY.md`
 10. Area별 데이터 레이어와 확장 경계: `AREA_DATA_LAYER_GUIDE.md`
 11. Map Destruction PhysX·Mesh Debris 작업법: `MAP_DESTRUCTION_PHYSX_HANDOFF.md`
 12. 밸런스 Hot Reload 경계: `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`
@@ -60,6 +61,7 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 | `ANIMATION_TOOL_OWNER_HANDOFF.md` | Animation/Effect/Character Preview Tool의 authoring 소유권이 바뀔 때 |
 | `EFFECT_FAMILY_RUNTIME_ABI_RESTORATION_GUIDE.md` | Effect element→pixel 구조, family/program/descriptor/adapter 경계와 source-exact admission 공정이 바뀔 때 |
 | `AREA_DATA_LAYER_GUIDE.md` | Area 등록, optional layer, publisher, MapTool 지원 범위가 바뀔 때 |
+| `EFFECT_SHADER_AND_DATA_INVENTORY.md` | 셰이더 파일이나 `Data/Effects` 폴더 구조가 추가·삭제·이동될 때 |
 | `MAP_DESTRUCTION_PHYSX_HANDOFF.md` | MapTool 파괴 preview의 Mesh Emitter, PhysX, trigger/effect 연결 절차가 바뀔 때 |
 | `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md` | 수치 정본, 튜닝 절차, runtime reload 정책이 바뀔 때 |
 | `Tools/Network/TeamLanEndpoint.json` | 임시 팀 Server 주소나 만료일이 바뀔 때 |
