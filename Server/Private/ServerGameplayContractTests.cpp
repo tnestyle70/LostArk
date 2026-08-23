@@ -2579,6 +2579,86 @@ int LostArk::Server::Run_ServerGameplayContractTests(
 	   the 109 collapse, so the test walks a route that stays inside it. */
 	tests.Require(navigation.Find_Path(147.75f, -117.25f, 156.25f, -122.25f, path) &&
 		!path.empty(), "Find authoritative navigation path");
+
+	/* The entrance corridor bakes a walkway several metres above the floor
+	it shadows, and both surfaces land in the same XZ column because the grid
+	keeps one height per cell. A step cost that ignored the rise let the route
+	climb the walkway, which defeated the line-of-sight smoother and left the
+	raw staircase in the move order. Both ends come from the bootstrap so
+	re-authoring the entrance cannot freeze a stale coordinate here. */
+	const WORLD_BOOTSTRAP_PLACEMENT* entranceSpawn = nullptr;
+	const WORLD_BOOTSTRAP_PLACEMENT* entranceTrigger = nullptr;
+	for (const WORLD_BOOTSTRAP_PLACEMENT& placement : world.Get_Placements())
+	{
+		if (WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind &&
+			placement.isEnabled)
+		{
+			entranceSpawn = &placement;
+			break;
+		}
+	}
+	float nearestTriggerDistanceSquared = (std::numeric_limits<float>::max)();
+	for (const WORLD_BOOTSTRAP_PLACEMENT& placement : world.Get_Placements())
+	{
+		if (nullptr == entranceSpawn ||
+			WORLD_BOOTSTRAP_KIND::TRIGGER_BOX != placement.eKind ||
+			!placement.isEnabled ||
+			std::none_of(
+				placement.TriggerActions.begin(),
+				placement.TriggerActions.end(),
+				[](const WORLD_TRIGGER_ACTION& action)
+				{
+					return WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER == action.eKind;
+				}))
+		{
+			continue;
+		}
+		const float triggerDeltaX =
+			placement.fPositionX - entranceSpawn->fPositionX;
+		const float triggerDeltaZ =
+			placement.fPositionZ - entranceSpawn->fPositionZ;
+		const float triggerDistanceSquared =
+			triggerDeltaX * triggerDeltaX + triggerDeltaZ * triggerDeltaZ;
+		if (triggerDistanceSquared < nearestTriggerDistanceSquared)
+		{
+			nearestTriggerDistanceSquared = triggerDistanceSquared;
+			entranceTrigger = &placement;
+		}
+	}
+	tests.Require(nullptr != entranceSpawn && nullptr != entranceTrigger,
+		"Find the Valtan entrance spawn and its nearest move-player trigger");
+
+	std::vector<SERVER_NAV_POINT> entrancePath;
+	SERVER_NAV_POINT entranceStart{};
+	SERVER_NAV_POINT entranceGoal{};
+	bool entranceStaysOnTheFloor = false;
+	if (nullptr != entranceSpawn && nullptr != entranceTrigger &&
+		navigation.Project_Point(entranceSpawn->fPositionX,
+			entranceSpawn->fPositionZ, entranceStart) &&
+		navigation.Project_Point(entranceTrigger->fPositionX,
+			entranceTrigger->fPositionZ, entranceGoal) &&
+		navigation.Find_Path(
+			entranceSpawn->fPositionX, entranceSpawn->fPositionZ,
+			entranceTrigger->fPositionX, entranceTrigger->fPositionZ,
+			entrancePath) &&
+		!entrancePath.empty())
+	{
+		/* Climbing the walkway puts the route 5.57 above both ends; staying on
+		the floor keeps it within 0.17 of them. Two metres separates the two
+		outcomes without pinning either measurement into this file. */
+		constexpr float ENTRANCE_HEIGHT_ALLOWANCE = 2.f;
+		const float entranceFloorHeight =
+			(std::max)(entranceStart.y, entranceGoal.y);
+		entranceStaysOnTheFloor = std::none_of(
+			entrancePath.begin(), entrancePath.end(),
+			[entranceFloorHeight](const SERVER_NAV_POINT& point)
+			{
+				return point.y >
+					entranceFloorHeight + ENTRANCE_HEIGHT_ALLOWANCE;
+			});
+	}
+	tests.Require(entranceStaysOnTheFloor,
+		"Walk the Valtan entrance on its floor instead of the walkway above it");
 	SERVER_NAV_POINT rejected{};
 	tests.Require(!navigation.Project_Point(10000.f, 10000.f, rejected),
 		"Reject navigation point outside projection radius");

@@ -462,7 +462,19 @@ bool LostArk::Server::CServerNavigation::Find_Path(
 				if (!Is_CellWalkable(sideA) || !Is_CellWalkable(sideB))
 					continue;
 			}
-			const float candidate = costs[current] + (diagonal ? 1.41421356f : 1.f);
+			/* The grid keeps one height per XZ cell, so a walkway baked over
+			the floor it shadows shares a column with the ground beneath it. A
+			purely horizontal step cost makes that lip free to climb, the route
+			runs across the structure, and Has_LineOfSight then refuses to
+			straighten a run whose floor jumps, so the raw staircase survives
+			into the move order. Measuring the step in three dimensions keeps
+			the route on one surface and never removes an edge, so no area
+			loses reachability. The 2D heuristic stays a lower bound. */
+			const float flatCost = diagonal ? 1.41421356f : 1.f;
+			const float riseCost = std::abs(
+				m_Heights[next] - m_Heights[current]) / m_fCellSize;
+			const float candidate =
+				costs[current] + std::hypot(flatCost, riseCost);
 			if (candidate >= costs[next])
 				continue;
 			costs[next] = candidate;
