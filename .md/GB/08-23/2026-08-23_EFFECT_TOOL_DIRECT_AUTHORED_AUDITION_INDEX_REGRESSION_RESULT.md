@@ -66,6 +66,18 @@ admission되는지 검사한다.
   - total compiled-adapter actual draws `8`
 - EffectRenderContractHarness x64 Release build/run: PASS
   - Debug와 같은 index/binding/draw 계약 확인
+- PR `#182` merge와 canonical main fast-forward: PASS
+  - canonical commit `e9992f09651172eec9eced35e373998e4158203f`
+  - 다른 세션의 dirty 문서와 world JSON은 보존
+- canonical Client x64 Debug build/link: PASS
+  - `Client/Bin/Debug/Client.exe`
+  - SHA-256 `28aea87e068ba69a6f5c334aeb623a835aa096b50ae1b54b3cc86300e4c5d4e1`
+- canonical Client x64 Release build/link: PASS
+  - `Client/Bin/Release/Client.exe`
+  - SHA-256 `823973a8d0d9646174b4e6ea98e2404243534ad1757fe0ec72459594921b2a78`
+- runtime Effect catalog identity
+  - `Client/Bin/DataFiles/Effect/EffectCatalog.runtime.json`
+  - SHA-256 `f0f804dafa76d9fbba29f518f4f0b2a804669d50e4eb891cc3ab000957e10d12`
 
 ## 사용자 화면 검증
 
